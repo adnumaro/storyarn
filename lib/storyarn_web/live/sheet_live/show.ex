@@ -17,6 +17,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   alias Storyarn.Collaboration.Presence
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets
+  alias StoryarnWeb.Components.CompareLayout
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Helpers.UndoRedoStack
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
@@ -101,8 +102,13 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   defp render_compact(assigns) do
     ~H"""
-    <div class="h-screen overflow-y-auto bg-background p-4">
+    <CompareLayout.compare
+      socket={@socket}
+      flash={@flash}
+      content_class="h-full overflow-y-auto bg-background p-4"
+    >
       <.sheet_content
+        inject="compare-layout"
         sheet={@sheet}
         socket={@socket}
         current_tab={@current_tab}
@@ -124,7 +130,7 @@ defmodule StoryarnWeb.SheetLive.Show do
         current_user_id={@current_scope.user.id}
         compact={true}
       />
-    </div>
+    </CompareLayout.compare>
     """
   end
 

@@ -29,6 +29,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   alias Storyarn.Scenes
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Versioning
+  alias StoryarnWeb.Components.CompareLayout
   alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Helpers.VersionHistoryHelpers
@@ -47,9 +48,9 @@ defmodule StoryarnWeb.SceneLive.Show do
   @impl true
   def render(%{compact: true, scene: nil} = assigns) do
     ~H"""
-    <Layouts.compare flash={@flash}>
+    <CompareLayout.compare socket={@socket} flash={@flash}>
       <div class="h-full"></div>
-    </Layouts.compare>
+    </CompareLayout.compare>
     """
   end
 
@@ -142,15 +143,16 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   defp render_compact(assigns) do
     ~H"""
-    <Layouts.compare flash={@flash}>
+    <CompareLayout.compare socket={@socket} flash={@flash}>
       <.vue
         v-component="live/scene/show/CompactSurface"
         v-socket={@socket}
+        v-inject="compare-layout"
         id={"scene-compact-surface-#{@scene.id}"}
         class="h-full relative"
         surface={scene_compact_surface_props(assigns)}
       />
-    </Layouts.compare>
+    </CompareLayout.compare>
     """
   end
 

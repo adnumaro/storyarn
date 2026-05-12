@@ -12,7 +12,7 @@ Migrate three LVs in `lib/storyarn_web/live/scene_live/` to the ProjectShell pat
 - `SceneLive.Index` → into `:project_scope`, render `<ProjectShell>` with `SceneSidebarLive` as `sidebar_module`. Mount broadcasts `{:active_scene, nil}` to clear the sticky sidebar's selection.
 - `SceneLive.Show` → into `:project_scope`, render `<ProjectShell>`, sticky sidebar carries the scenes tree + layers panel + tree mutations. Toolbar/SearchPanel/SceneActions render inline in the `:top_bar_extras_left` and `:top_bar_extras_right` slots. Restoration banner forwarded as a top-level attr. Canvas mode requires a small `ProjectShell` extension (no top padding, full-bleed `<main>`) since it's the first canvas page to migrate.
 - `SceneLive.ExplorationLive` → **stays out** of `:project_scope`. It already uses `layout: false`, has zero PubSub, no presence, no chrome — perfectly analogous to `FlowLive.PlayerLive`. Leaving it in `:require_authenticated_user` is intentional and symmetrical.
-- `CompareLive.Scene` → **stays out** for now. Scene compare uses `Layouts.compare`, not the project chrome; a dedicated decision later applies to all three Compare LVs together.
+- `CompareLive.Scene` → **stays out**. Scene compare uses `CompareLayout`, not the project chrome.
 
 The sticky sidebar (`SceneSidebarLive`) is the trickiest piece: scenes has a **two-tab tree panel** (Layers + Scenes), where Layers is per-scene state. The Layers tab needs to know the active scene id (and its layers + active_layer_id + edit_mode) to render. We have two viable shapes for this — see "Open question 1" below.
 
@@ -85,7 +85,7 @@ Confirmed properties:
 
 ### `CompareLive.Scene`
 
-In `:require_authenticated_user`. Uses `Layouts.compare`. Same boundary as `CompareLive.Sheet` and `CompareLive.Flow`. Stays out of `:project_scope` for this migration.
+In `:require_authenticated_user`. Uses `CompareLayout`. Same boundary as `CompareLive.Sheet` and `CompareLive.Flow`. Stays out of `:project_scope` for this migration.
 
 ### Key assigns currently held by `SceneLive.Show` (selection of relevance)
 
@@ -288,7 +288,7 @@ Time: 30 min. No commit.
     - `:top_bar_extras_left` slot (replaces `:top_bar_extra`): inline `SceneToolbar` and `SearchPanel` guarded by `:if={@scene}`.
     - `:top_bar_extras_right` slot (replaces `:top_bar_extra_right`): inline `SceneActions` guarded by `:if={@scene}`.
     - **Important**: SceneToolbar and SearchPanel have reactive props. Per `reference_livevue_nested_lv_race.md`, in the shell context with reactive props, they MAY need `phx-update="ignore"` + dynamic id keyed on a signature — TEST in browser.
-  - **Render compact mode**: Untouched. `Layouts.compare` continues to work for `?layout=compact`.
+  - **Render compact mode**: Uses `CompareLayout` for `?layout=compact`.
 
 **Verification**:
 
@@ -365,7 +365,7 @@ Time: 30 min. No commit.
 
 5. **`SceneActions` as inline slot?** Edit mode toggle is per-scene. **Default**: inline.
 
-6. **Should `CompareLive.Scene` move into `:project_scope`?** It uses `Layouts.compare`, not the project chrome, so the only benefit is dropping the manual project load (~15 lines). **Default**: leave for a later sweep that handles all three Compare LVs together.
+6. **Should `CompareLive.Scene` move into `:project_scope`?** It uses `CompareLayout`, not the project chrome, so the only benefit is dropping the manual project load (~15 lines). **Default**: leave it with the other compare routes.
 
 7. **Scene-scope `:online_users` overwriting project-scope `:online_users`** is a known shared pattern with sheets. Should we eventually split (e.g., `:project_online_users` vs `:scene_online_users`)? **Default**: out of scope; revisit when migrating flows (which has cursors).
 
@@ -383,7 +383,7 @@ Time: 30 min. No commit.
 - [ ] LiveVue race: open dev console, navigate `/scenes` → `/scenes/:id` → `/scenes/:id_b` → `/sheets` → back; check for `Cannot read properties of undefined (reading 'props')` errors.
 - [ ] Restoration banner: trigger a project restoration; banner appears above all chrome on Index AND Show.
 - [ ] `?highlight=pin:N`, `?highlight=zone:N` deep links continue to focus.
-- [ ] `?layout=compact` continues to render `Layouts.compare`.
+- [ ] `?layout=compact` continues to render through `CompareLayout`.
 - [ ] Tool switcher links use `live_redirect` (not plain `<a href>`).
 - [ ] Tab switcher in TreePanel (Layers / Scenes) toggles correctly when on a scene; only "Scenes" shows on the dashboard.
 - [ ] Active scene highlight in tree: navigating between scenes via tree clicks updates the highlighted item.

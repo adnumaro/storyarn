@@ -4,13 +4,13 @@ Generated: 2026-04-10
 
 ## Legend
 
-| Status    | Description                                                                                                                                                                                                         |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| V2        | Fully migrated. LiveView renders Vue component(s) via `<.vue v-component>`. No HEEx UI.                                                                                                                             |
+| Status    | Description                                                                                                                                           |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| V2        | Fully migrated. LiveView renders Vue component(s) via `<.vue v-component>`. No HEEx UI.                                                               |
 | V2-layout | LiveView content is Vue, but wrapped in an Elixir layout boundary (`Layouts.app`, `SettingsLayout.settings`, etc.) that mounts shared LiveVue chrome. |
-| Partial   | Mix of Vue components and HEEx UI elements in the LiveView's own render.                                                                                                                                            |
-| V1        | Fully HEEx/DaisyUI. No Vue components.                                                                                                                                                                              |
-| N/A       | Backend-only (redirects on mount, no meaningful render).                                                                                                                                                            |
+| Partial   | Mix of Vue components and HEEx UI elements in the LiveView's own render.                                                                              |
+| V1        | Fully HEEx/DaisyUI. No Vue components.                                                                                                                |
+| N/A       | Backend-only (redirects on mount, no meaningful render).                                                                                              |
 
 ---
 
@@ -32,12 +32,12 @@ Generated: 2026-04-10
 
 ### Workspaces (`workspace_live/`)
 
-| LiveView                   | Status    | Notes                                    |
-| -------------------------- | --------- | ---------------------------------------- |
-| `WorkspaceLive.Index`      | V2        | Redirect + loading Vue component         |
-| `WorkspaceLive.Show`       | V2-layout | Vue dashboard inside `Layouts.app`       |
-| `WorkspaceLive.New`        | V2        | Single Vue component                     |
-| `WorkspaceLive.Invitation` | V2        | Single Vue component in `PublicLayout`   |
+| LiveView                   | Status    | Notes                                  |
+| -------------------------- | --------- | -------------------------------------- |
+| `WorkspaceLive.Index`      | V2        | Redirect + loading Vue component       |
+| `WorkspaceLive.Show`       | V2-layout | Vue dashboard inside `Layouts.app`     |
+| `WorkspaceLive.New`        | V2        | Single Vue component                   |
+| `WorkspaceLive.Invitation` | V2        | Single Vue component in `PublicLayout` |
 
 ### Projects (`project_live/`)
 
@@ -88,16 +88,16 @@ Generated: 2026-04-10
 
 ### Compare (`compare_live/`)
 
-| LiveView            | Status | Notes                                 |
-| ------------------- | ------ | ------------------------------------- |
-| `CompareLive.Flow`  | V2     | Single Vue component, `layout: false` |
-| `CompareLive.Sheet` | V2     | Single Vue component, `layout: false` |
-| `CompareLive.Scene` | V2     | Single Vue component, `layout: false` |
+| LiveView            | Status | Notes                                                                  |
+| ------------------- | ------ | ---------------------------------------------------------------------- |
+| `CompareLive.Flow`  | V2     | Uses `CompareLayout` + `live/versioning/compare/Page`, `layout: false` |
+| `CompareLive.Sheet` | V2     | Uses `CompareLayout` + `live/versioning/compare/Page`, `layout: false` |
+| `CompareLive.Scene` | V2     | Uses `CompareLayout` + `live/versioning/compare/Page`, `layout: false` |
 
 ### Project Settings (`project_settings_live/`)
 
-| LiveView                             | Status    | Notes                         |
-| ------------------------------------ | --------- | ----------------------------- |
+| LiveView                             | Status    | Notes                                |
+| ------------------------------------ | --------- | ------------------------------------ |
 | `ProjectSettingsLive.General`        | V2-layout | Vue inside `SettingsLayout.settings` |
 | `ProjectSettingsLive.Members`        | V2-layout | Vue inside `SettingsLayout.settings` |
 | `ProjectSettingsLive.Snapshots`      | V2-layout | Vue inside `SettingsLayout.settings` |
@@ -106,14 +106,14 @@ Generated: 2026-04-10
 
 ### Export/Import (`export_import_live/`)
 
-| LiveView                 | Status    | Notes                         |
-| ------------------------ | --------- | ----------------------------- |
+| LiveView                 | Status    | Notes                                |
+| ------------------------ | --------- | ------------------------------------ |
 | `ExportImportLive.Index` | V2-layout | Vue inside `SettingsLayout.settings` |
 
 ### Settings (`settings_live/`)
 
-| LiveView                                | Status    | Notes                         |
-| --------------------------------------- | --------- | ----------------------------- |
+| LiveView                                | Status    | Notes                                |
+| --------------------------------------- | --------- | ------------------------------------ |
 | `SettingsLive.Profile`                  | V2-layout | Vue inside `SettingsLayout.settings` |
 | `SettingsLive.Security`                 | V2-layout | Vue inside `SettingsLayout.settings` |
 | `SettingsLive.Connections`              | V2-layout | Vue inside `SettingsLayout.settings` |
@@ -123,8 +123,8 @@ Generated: 2026-04-10
 
 ### Docs (`docs_live/`)
 
-| LiveView        | Status      | Notes                                                                                                                                                                   |
-| --------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| LiveView        | Status       | Notes                                                                                                                                                            |
+| --------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `DocsLive.Show` | **Migrated** | `DocsLayout.docs` is a thin LiveVue boundary (`live/layouts/docs/Layout`) and `DocsLive.Show` injects the sanitized guide body through `live/docs/show/Content`. |
 
 ---

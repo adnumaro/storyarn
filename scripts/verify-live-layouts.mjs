@@ -46,6 +46,13 @@ function lineNumberAt(source, index) {
 const files = await listFiles(libRoot);
 const failures = [];
 const allowedLegacyLayoutsApp = [];
+const movedLayoutTargets = {
+  auth: "AuthLayout",
+  docs: "DocsLayout",
+  settings: "SettingsLayout",
+  public: "PublicLayout",
+  compare: "CompareLayout",
+};
 
 for (const filePath of files) {
   const source = await readFile(filePath, "utf8");
@@ -67,17 +74,10 @@ for (const filePath of files) {
     }
   }
 
-  for (const match of source.matchAll(/\bLayouts\.(auth|docs|settings|public)\b/g)) {
+  for (const match of source.matchAll(/\bLayouts\.(auth|docs|settings|public|compare)\b/g)) {
     const layoutName = match[1];
     const location = `${rel}:${lineNumberAt(source, match.index ?? 0)}`;
-    const targetLayout =
-      layoutName === "auth"
-        ? "AuthLayout"
-        : layoutName === "docs"
-          ? "DocsLayout"
-          : layoutName === "settings"
-            ? "SettingsLayout"
-            : "PublicLayout";
+    const targetLayout = movedLayoutTargets[layoutName];
 
     failures.push(`${location} Layouts.${layoutName} has moved to ${targetLayout}`);
   }

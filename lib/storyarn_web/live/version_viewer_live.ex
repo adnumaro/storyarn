@@ -9,14 +9,16 @@ defmodule StoryarnWeb.VersionViewerLive do
   alias Storyarn.Scenes
   alias Storyarn.Sheets
   alias Storyarn.Versioning
+  alias StoryarnWeb.Components.CompareLayout
 
   @impl true
   def render(%{entity_type: :flow} = assigns) do
     ~H"""
-    <Layouts.compare flash={@flash}>
+    <CompareLayout.compare socket={@socket} flash={@flash}>
       <.vue
         v-component="live/flow/show/Canvas"
         v-socket={@socket}
+        v-inject="compare-layout"
         id={"flow-version-viewer-#{@entity_id}-#{@version_number}"}
         class="w-full h-full"
         flow-data={Jason.encode!(@flow_data)}
@@ -28,40 +30,44 @@ defmodule StoryarnWeb.VersionViewerLive do
         canvas-id={"flow-version-canvas-#{@entity_id}-#{@version_number}"}
         toolbar-data={Jason.encode!(@toolbar_data)}
       />
-    </Layouts.compare>
+    </CompareLayout.compare>
     """
   end
 
   def render(%{entity_type: :scene} = assigns) do
     ~H"""
-    <Layouts.compare flash={@flash}>
+    <CompareLayout.compare socket={@socket} flash={@flash}>
       <.vue
         v-component="live/scene/show/CompactSurface"
         v-socket={@socket}
+        v-inject="compare-layout"
         id={"scene-version-viewer-#{@entity_id}-#{@version_number}"}
         class="h-full relative"
         surface={@surface}
       />
-    </Layouts.compare>
+    </CompareLayout.compare>
     """
   end
 
   def render(%{entity_type: :sheet} = assigns) do
     ~H"""
-    <Layouts.compare flash={@flash}>
-      <div class="h-screen overflow-y-auto bg-background p-4">
-        <.vue
-          v-component="live/sheet/show/Surface"
-          v-socket={@socket}
-          id={"sheet-version-surface-#{@entity_id}-#{@version_number}"}
-          class="contents"
-          sheet={@sheet}
-          can-edit={false}
-          source-shortcut={nil}
-          surface={@surface}
-        />
-      </div>
-    </Layouts.compare>
+    <CompareLayout.compare
+      socket={@socket}
+      flash={@flash}
+      content_class="h-full overflow-y-auto bg-background p-4"
+    >
+      <.vue
+        v-component="live/sheet/show/Surface"
+        v-socket={@socket}
+        v-inject="compare-layout"
+        id={"sheet-version-surface-#{@entity_id}-#{@version_number}"}
+        class="contents"
+        sheet={@sheet}
+        can-edit={false}
+        source-shortcut={nil}
+        surface={@surface}
+      />
+    </CompareLayout.compare>
     """
   end
 

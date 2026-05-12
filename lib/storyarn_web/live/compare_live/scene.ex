@@ -11,21 +11,25 @@ defmodule StoryarnWeb.CompareLive.Scene do
   alias Storyarn.Projects
   alias Storyarn.Scenes
   alias Storyarn.Versioning
+  alias StoryarnWeb.Components.CompareLayout
 
   @impl true
   def render(assigns) do
     ~H"""
-    <.vue
-      v-component="live/versioning/compare/Compare"
-      v-socket={@socket}
-      id="scene-compare-vue"
-      back-url={@back_url}
-      version-label={@version_label}
-      prev-version-url={@prev_version && compare_url(assigns, @prev_version)}
-      next-version-url={@next_version && compare_url(assigns, @next_version)}
-      current-url={@current_url}
-      version-url={@version_url}
-    />
+    <CompareLayout.compare socket={@socket} flash={@flash}>
+      <.vue
+        v-component="live/versioning/compare/Page"
+        v-socket={@socket}
+        v-inject="compare-layout"
+        id="scene-compare-vue"
+        back-url={@back_url}
+        version-label={@version_label}
+        prev-version-url={@prev_version && compare_url(assigns, @prev_version)}
+        next-version-url={@next_version && compare_url(assigns, @next_version)}
+        current-url={@current_url}
+        version-url={@version_url}
+      />
+    </CompareLayout.compare>
     """
   end
 

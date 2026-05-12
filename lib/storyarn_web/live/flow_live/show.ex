@@ -9,6 +9,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias Storyarn.Scenes
   alias Storyarn.Sheets
   alias Storyarn.Versioning
+  alias StoryarnWeb.Components.CompareLayout
   alias StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers
   alias StoryarnWeb.FlowLive.Handlers.DebugHandlers
   alias StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers
@@ -39,14 +40,6 @@ defmodule StoryarnWeb.FlowLive.Show do
   @lock_heartbeat_interval 10_000
 
   @impl true
-  def render(%{compact: true, loading: true} = assigns) do
-    ~H"""
-    <Layouts.compare flash={@flash}>
-      <div class="h-full"></div>
-    </Layouts.compare>
-    """
-  end
-
   def render(%{compact: true} = assigns) do
     render_compact(assigns)
   end
@@ -132,25 +125,43 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   defp render_compact(assigns) do
+    assigns =
+      assigns
+      |> assign(
+        :compact_flow_data,
+        if(assigns.loading || is_nil(assigns[:flow_data]), do: nil, else: Jason.encode!(assigns.flow_data))
+      )
+      |> assign(
+        :compact_variable_map,
+        if(assigns.loading,
+          do: nil,
+          else: Jason.encode!(FormHelpers.sheets_map(assigns.all_sheets, assigns.gallery_by_sheet))
+        )
+      )
+      |> assign(
+        :compact_toolbar_data,
+        if(assigns.loading, do: Jason.encode!(%{}), else: Jason.encode!(toolbar_data(assigns)))
+      )
+
     ~H"""
-    <Layouts.compare flash={@flash}>
-      <div class="h-full relative">
-        <.vue
-          v-component="live/flow/show/Canvas"
-          v-socket={@socket}
-          id={"flow-editor-compact-#{@flow.id}"}
-          class="w-full h-full"
-          flow-data={Jason.encode!(@flow_data)}
-          variable-map={Jason.encode!(FormHelpers.sheets_map(@all_sheets, @gallery_by_sheet))}
-          loading={false}
-          readonly={!@can_edit}
-          user-id={@current_scope.user.id}
-          user-color={Collaboration.user_color(@current_scope.user.id)}
-          canvas-id={"flow-canvas-#{@flow.id}"}
-          toolbar-data={Jason.encode!(toolbar_data(assigns))}
-        />
-      </div>
-    </Layouts.compare>
+    <CompareLayout.compare socket={@socket} flash={@flash}>
+      <.vue
+        :if={@flow}
+        v-component="live/flow/show/Canvas"
+        v-socket={@socket}
+        v-inject="compare-layout"
+        id={"flow-editor-compact-#{@flow.id}"}
+        class="w-full h-full"
+        flow-data={@compact_flow_data}
+        variable-map={@compact_variable_map}
+        loading={@loading}
+        readonly={!@can_edit}
+        user-id={@current_scope.user.id}
+        user-color={Collaboration.user_color(@current_scope.user.id)}
+        canvas-id={"flow-canvas-#{@flow.id}"}
+        toolbar-data={@compact_toolbar_data}
+      />
+    </CompareLayout.compare>
     """
   end
 

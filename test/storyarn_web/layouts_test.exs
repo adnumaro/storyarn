@@ -4,6 +4,7 @@ defmodule StoryarnWeb.LayoutsTest do
   import Phoenix.LiveViewTest
 
   alias StoryarnWeb.Components.AuthLayout
+  alias StoryarnWeb.Components.CompareLayout
   alias StoryarnWeb.Components.PublicLayout
   alias StoryarnWeb.Components.SettingsLayout
   alias StoryarnWeb.Layouts
@@ -177,6 +178,54 @@ defmodule StoryarnWeb.LayoutsTest do
           socket: mock_socket(),
           current_scope: nil,
           inner_block: inner_block("<p>Auth</p>")
+        )
+
+      assert html =~ ~s(id="flash-group")
+    end
+  end
+
+  # ── compare/1 ──────────────────────────────────────────────────────
+
+  describe "compare/1" do
+    test "renders compare LiveVue layout boundary and content" do
+      html =
+        render_component(&CompareLayout.compare/1,
+          flash: %{},
+          socket: mock_socket(),
+          inner_block: inner_block("<p>Compare content</p>")
+        )
+
+      vue = LiveVue.Test.get_vue(html, name: "live/layouts/compare/Layout")
+
+      assert vue.id == "compare-layout"
+      assert vue.props["content-class"] == "h-full overflow-hidden"
+      assert html =~ "Compare content"
+    end
+
+    test "passes panel and content options to compare layout" do
+      html =
+        render_component(&CompareLayout.compare/1,
+          flash: %{},
+          socket: mock_socket(),
+          panel_title: "Layers",
+          panel_open: false,
+          content_class: "h-full overflow-y-auto p-4",
+          inner_block: inner_block("<p>Scrollable compare</p>")
+        )
+
+      vue = LiveVue.Test.get_vue(html, name: "live/layouts/compare/Layout")
+
+      assert vue.props["panel-title"] == "Layers"
+      assert vue.props["panel-open"] == false
+      assert vue.props["content-class"] == "h-full overflow-y-auto p-4"
+    end
+
+    test "renders flash group outside compare boundary" do
+      html =
+        render_component(&CompareLayout.compare/1,
+          flash: %{},
+          socket: mock_socket(),
+          inner_block: inner_block("<p>Compare</p>")
         )
 
       assert html =~ ~s(id="flash-group")

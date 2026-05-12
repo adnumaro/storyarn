@@ -32,7 +32,7 @@ Known remaining work:
 - `Layouts.app` still has two LiveView consumers:
   - `WorkspaceLive.New`
   - `ProjectLive.Trash`
-- `Layouts.compare`, flow player, and scene exploration still contain visual HEEx composition.
+- Flow player and scene exploration still contain visual HEEx composition.
 - `ProjectLayout` should normalize the project navbar height to one canonical value.
 - Generic flash visibility for `ProjectLayout` needs an explicit decision because project tools still call `put_flash/3`.
 
@@ -545,7 +545,7 @@ target. It must be browser-tested with background upload and drag/drop.
 
 ### Phase 3: Compare And Immersive Layouts
 
-Status: pending.
+Status: compare done, immersive pending.
 
 Goal:
 
@@ -553,9 +553,10 @@ Make non-standard fullscreen modes explicit.
 
 Tasks:
 
-- create `live/layouts/compare/Layout.vue`
+- create `live/layouts/compare/Layout.vue` ✅
 - create `live/layouts/immersive/Layout.vue`
-- migrate compare/version viewer/player/exploration routes
+- migrate compare/version viewer routes ✅
+- migrate player/exploration routes
 - keep them outside project tool chrome unless explicitly needed
 
 ### Phase 4: App / Workspace / Settings Layout

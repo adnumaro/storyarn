@@ -20,7 +20,7 @@ const {
 </script>
 
 <template>
-  <div class="h-screen w-screen flex flex-col bg-background">
+  <div class="h-full w-full flex flex-col bg-background">
     <!-- Compare header bar -->
     <header
       class="h-11 shrink-0 flex items-center justify-between px-4 bg-muted border-b border-border"
