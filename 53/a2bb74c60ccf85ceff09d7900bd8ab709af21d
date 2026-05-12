@@ -1,0 +1,69 @@
+assets/app/live/public/contact/Page.vue
+  s_116fc484719db6::t_b06e776529396a 38
+  s_116fc484719db6::t_826228005c8db5 1,3-4,11-21,25-36,39-40,42-65,67,69-71
+  s_116fc484719db6::t_18684315bb834f 2,6-10,37,41
+.env.example
+  h_46be6e61f3d9dd 69
+scripts/verify-live-layouts.mjs
+  s_116fc484719db6::t_b49dd2ebb71721 70,74-80
+lib/storyarn_web/components/public_layout.ex
+  s_116fc484719db6::t_d1514bede97f04 1-36,40-58
+  s_116fc484719db6::t_de651c401ee8c2 37-39
+docs/conventions/component-registry.md
+  s_116fc484719db6::t_16b75a1e5b9820 162,184,186
+assets/app/locales/es/public.json
+  s_116fc484719db6::t_826228005c8db5 1-2,10-24
+  s_116fc484719db6::t_d1514bede97f04 3-9
+lib/storyarn_web/live/workspace_live/invitation.ex
+  s_116fc484719db6::t_1db1e7333d15c3 12,17,25
+  s_116fc484719db6::t_de651c401ee8c2 21
+docs/audit/migration-summary.md
+  s_116fc484719db6::t_16b75a1e5b9820 40,48
+lib/storyarn_web/live/project_live/invitation.ex
+  s_116fc484719db6::t_de651c401ee8c2 21
+  s_116fc484719db6::t_1db1e7333d15c3 12,17,25
+assets/app/live/layouts/public/Layout.vue
+  s_116fc484719db6::t_bbee50c9aa3534 62,239
+  s_116fc484719db6::t_d1514bede97f04 1-61,63-238,240-266
+docs/plans/live-vue-layout-architecture.md
+  s_116fc484719db6::t_16b75a1e5b9820 35,594
+assets/app/locales/en/public.json
+  s_116fc484719db6::t_826228005c8db5 1-2,10-24
+  s_116fc484719db6::t_d1514bede97f04 3-9
+lib/storyarn_web/live/landing_live/contact.ex
+  s_116fc484719db6::t_79331a9d0131fe 1-32
+config/runtime.exs
+  s_116fc484719db6::t_7b881af969dc00 32
+  s_116fc484719db6::t_6721c0a31fee01 33
+lib/storyarn_web/router.ex
+  s_116fc484719db6::t_79331a9d0131fe 293
+test/storyarn_web/live/landing_live/contact_test.exs
+  s_116fc484719db6::t_9b77d41ba8d578 1-16
+lib/storyarn_web/live/landing_live/index.ex
+  s_116fc484719db6::t_1db1e7333d15c3 8,28,36
+  s_116fc484719db6::t_de651c401ee8c2 32
+test/storyarn_web/layouts_test.exs
+  s_116fc484719db6::t_eec82105f045d7 68,83
+  s_116fc484719db6::t_9f317830c624e5 7,57,59,65-67,69,73,75,81,84,87,89,99,101,107-115,120,127-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "53a2bb74c60ccf85ceff09d7900bd8ab709af21d",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
