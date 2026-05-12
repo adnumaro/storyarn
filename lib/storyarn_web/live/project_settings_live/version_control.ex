@@ -5,6 +5,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
 
   alias Storyarn.Billing
   alias Storyarn.Projects
+  alias StoryarnWeb.Components.SettingsLayout
   alias StoryarnWeb.Helpers.Authorize
 
   # ===========================================================================
@@ -14,7 +15,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.settings
+    <SettingsLayout.settings
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -38,7 +39,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
         auto-version-sheets={version_control_value(@version_control_form, :auto_version_sheets)}
         version-usage={serialize_version_usage(@version_usage)}
       />
-    </Layouts.settings>
+    </SettingsLayout.settings>
     """
   end
 

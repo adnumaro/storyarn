@@ -6,6 +6,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
 
   alias Storyarn.Accounts
   alias Storyarn.Workspaces
+  alias StoryarnWeb.Components.SettingsLayout
   alias StoryarnWeb.Helpers.Authorize
 
   @impl true
@@ -45,7 +46,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.settings
+    <SettingsLayout.settings
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -62,7 +63,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
         current-user-id={@current_scope.user.id}
         can-manage={@membership.role == "owner"}
       />
-    </Layouts.settings>
+    </SettingsLayout.settings>
     """
   end
 

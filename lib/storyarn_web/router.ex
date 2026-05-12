@@ -228,7 +228,7 @@ defmodule StoryarnWeb.Router do
            AssetLive.Index,
            :index
 
-      # Project Settings (uses Layouts.settings, not project chrome — keeps the
+      # Project Settings (uses SettingsLayout, not project chrome — keeps the
       # full-page settings sidebar nav while sharing project scope assigns.)
       live "/workspaces/:workspace_slug/projects/:project_slug/settings",
            ProjectSettingsLive.General,

@@ -6,6 +6,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
   import StoryarnWeb.ProjectLive.Components.SettingsComponents
 
   alias Storyarn.Projects
+  alias StoryarnWeb.Components.SettingsLayout
   alias StoryarnWeb.Helpers.Authorize
 
   # ===========================================================================
@@ -15,7 +16,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.settings
+    <SettingsLayout.settings
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -35,7 +36,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
         has-api-key={@has_api_key}
         provider-usage={serialize_provider_usage(@provider_usage)}
       />
-    </Layouts.settings>
+    </SettingsLayout.settings>
     """
   end
 

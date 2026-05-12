@@ -7,7 +7,7 @@ Generated: 2026-04-10
 | Status    | Description                                                                                                                                                                                                         |
 | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | V2        | Fully migrated. LiveView renders Vue component(s) via `<.vue v-component>`. No HEEx UI.                                                                                                                             |
-| V2-layout | LiveView content is Vue, but wrapped in a HEEx layout (`Layouts.app`, `Layouts.settings`, etc.) which itself renders HEEx chrome (header, sidebar). This is the expected pattern -- layouts are shared HEEx shells. |
+| V2-layout | LiveView content is Vue, but wrapped in an Elixir layout boundary (`Layouts.app`, `SettingsLayout.settings`, etc.) that mounts shared LiveVue chrome. |
 | Partial   | Mix of Vue components and HEEx UI elements in the LiveView's own render.                                                                                                                                            |
 | V1        | Fully HEEx/DaisyUI. No Vue components.                                                                                                                                                                              |
 | N/A       | Backend-only (redirects on mount, no meaningful render).                                                                                                                                                            |
@@ -98,28 +98,28 @@ Generated: 2026-04-10
 
 | LiveView                             | Status    | Notes                         |
 | ------------------------------------ | --------- | ----------------------------- |
-| `ProjectSettingsLive.General`        | V2-layout | Vue inside `Layouts.settings` |
-| `ProjectSettingsLive.Members`        | V2-layout | Vue inside `Layouts.settings` |
-| `ProjectSettingsLive.Snapshots`      | V2-layout | Vue inside `Layouts.settings` |
-| `ProjectSettingsLive.Localization`   | V2-layout | Vue inside `Layouts.settings` |
-| `ProjectSettingsLive.VersionControl` | V2-layout | Vue inside `Layouts.settings` |
+| `ProjectSettingsLive.General`        | V2-layout | Vue inside `SettingsLayout.settings` |
+| `ProjectSettingsLive.Members`        | V2-layout | Vue inside `SettingsLayout.settings` |
+| `ProjectSettingsLive.Snapshots`      | V2-layout | Vue inside `SettingsLayout.settings` |
+| `ProjectSettingsLive.Localization`   | V2-layout | Vue inside `SettingsLayout.settings` |
+| `ProjectSettingsLive.VersionControl` | V2-layout | Vue inside `SettingsLayout.settings` |
 
 ### Export/Import (`export_import_live/`)
 
 | LiveView                 | Status    | Notes                         |
 | ------------------------ | --------- | ----------------------------- |
-| `ExportImportLive.Index` | V2-layout | Vue inside `Layouts.settings` |
+| `ExportImportLive.Index` | V2-layout | Vue inside `SettingsLayout.settings` |
 
 ### Settings (`settings_live/`)
 
 | LiveView                                | Status    | Notes                         |
 | --------------------------------------- | --------- | ----------------------------- |
-| `SettingsLive.Profile`                  | V2-layout | Vue inside `Layouts.settings` |
-| `SettingsLive.Security`                 | V2-layout | Vue inside `Layouts.settings` |
-| `SettingsLive.Connections`              | V2-layout | Vue inside `Layouts.settings` |
-| `SettingsLive.WorkspaceGeneral`         | V2-layout | Vue inside `Layouts.settings` |
-| `SettingsLive.WorkspaceMembers`         | V2-layout | Vue inside `Layouts.settings` |
-| `SettingsLive.WorkspaceDeletedProjects` | V2-layout | Vue inside `Layouts.settings` |
+| `SettingsLive.Profile`                  | V2-layout | Vue inside `SettingsLayout.settings` |
+| `SettingsLive.Security`                 | V2-layout | Vue inside `SettingsLayout.settings` |
+| `SettingsLive.Connections`              | V2-layout | Vue inside `SettingsLayout.settings` |
+| `SettingsLive.WorkspaceGeneral`         | V2-layout | Vue inside `SettingsLayout.settings` |
+| `SettingsLive.WorkspaceMembers`         | V2-layout | Vue inside `SettingsLayout.settings` |
+| `SettingsLive.WorkspaceDeletedProjects` | V2-layout | Vue inside `SettingsLayout.settings` |
 
 ### Docs (`docs_live/`)
 

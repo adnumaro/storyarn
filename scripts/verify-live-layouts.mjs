@@ -66,6 +66,15 @@ for (const filePath of files) {
       failures.push(`${location} Layouts.app is deprecated for LiveView pages`);
     }
   }
+
+  for (const match of source.matchAll(/\bLayouts\.(docs|settings)\b/g)) {
+    const layoutName = match[1];
+    const location = `${rel}:${lineNumberAt(source, match.index ?? 0)}`;
+
+    failures.push(
+      `${location} Layouts.${layoutName} has moved to ${layoutName === "docs" ? "DocsLayout" : "SettingsLayout"}`,
+    );
+  }
 }
 
 if (failures.length > 0) {

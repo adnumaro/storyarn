@@ -5,6 +5,7 @@ defmodule StoryarnWeb.SettingsLive.Connections do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Accounts
+  alias StoryarnWeb.Components.SettingsLayout
 
   on_mount {StoryarnWeb.UserAuth, :require_sudo_mode}
 
@@ -26,7 +27,7 @@ defmodule StoryarnWeb.SettingsLive.Connections do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.settings
+    <SettingsLayout.settings
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -42,7 +43,7 @@ defmodule StoryarnWeb.SettingsLive.Connections do
         identities={serialize_identities(@identities)}
         has-password={@has_password}
       />
-    </Layouts.settings>
+    </SettingsLayout.settings>
     """
   end
 

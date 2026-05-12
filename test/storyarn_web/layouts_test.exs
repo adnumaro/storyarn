@@ -3,6 +3,7 @@ defmodule StoryarnWeb.LayoutsTest do
 
   import Phoenix.LiveViewTest
 
+  alias StoryarnWeb.Components.SettingsLayout
   alias StoryarnWeb.Layouts
 
   # ── Helpers ──────────────────────────────────────────────────────────
@@ -272,7 +273,7 @@ defmodule StoryarnWeb.LayoutsTest do
   describe "settings/1" do
     test "renders settings layout with title and content" do
       html =
-        render_component(&Layouts.settings/1,
+        render_component(&SettingsLayout.settings/1,
           flash: %{},
           socket: mock_socket(),
           current_scope: %{user: user_map()},
@@ -288,7 +289,7 @@ defmodule StoryarnWeb.LayoutsTest do
 
     test "renders subtitle slot when provided" do
       html =
-        render_component(&Layouts.settings/1,
+        render_component(&SettingsLayout.settings/1,
           flash: %{},
           socket: mock_socket(),
           current_scope: %{user: user_map()},
@@ -304,7 +305,7 @@ defmodule StoryarnWeb.LayoutsTest do
 
     test "passes account settings context to LiveVue boundary" do
       html =
-        render_component(&Layouts.settings/1,
+        render_component(&SettingsLayout.settings/1,
           flash: %{},
           socket: mock_socket(),
           current_scope: %{user: user_map()},
@@ -324,7 +325,7 @@ defmodule StoryarnWeb.LayoutsTest do
       workspaces = [%{id: 1, slug: "team-ws", name: "Team Workspace"}]
 
       html =
-        render_component(&Layouts.settings/1,
+        render_component(&SettingsLayout.settings/1,
           flash: %{},
           socket: mock_socket(),
           current_scope: %{user: user_map()},
@@ -342,7 +343,7 @@ defmodule StoryarnWeb.LayoutsTest do
 
     test "renders settings LiveVue boundary and content" do
       html =
-        render_component(&Layouts.settings/1,
+        render_component(&SettingsLayout.settings/1,
           flash: %{},
           socket: mock_socket(),
           current_scope: %{user: user_map()},

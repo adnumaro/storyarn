@@ -7,6 +7,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
 
   alias Storyarn.Localization
   alias Storyarn.Projects
+  alias StoryarnWeb.Components.SettingsLayout
   alias StoryarnWeb.Helpers.Authorize
 
   # ===========================================================================
@@ -16,7 +17,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.settings
+    <SettingsLayout.settings
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -40,7 +41,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
         theme-accent={@theme_accent}
         has-custom-theme={@has_custom_theme}
       />
-    </Layouts.settings>
+    </SettingsLayout.settings>
     """
   end
 

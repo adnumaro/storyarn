@@ -159,6 +159,7 @@ import StoryarnWeb.Components.Sidebar.SceneTree
 | `VersionsSection`     | `import StoryarnWeb.Components.VersionsSection`     | Version history display                             |
 | `FocusLayout`         | `import StoryarnWeb.Components.FocusLayout`         | Focus layout helper components                      |
 | `DocsLayout`          | `alias StoryarnWeb.Components.DocsLayout`           | Documentation LiveVue layout boundary              |
+| `SettingsLayout`      | `alias StoryarnWeb.Components.SettingsLayout`       | Settings LiveVue layout boundary                   |
 
 ---
 
@@ -182,10 +183,10 @@ import StoryarnWeb.Components.Sidebar.SceneTree
   # Public pages (landing, marketing)
 </Layouts.public>
 
-<Layouts.settings flash={@flash} current_scope={@current_scope} current_path={@current_path}
+<SettingsLayout.settings flash={@flash} current_scope={@current_scope} current_path={@current_path}
   workspaces={@workspaces}>
   # Settings shell with floating toolbars, sidebar nav, max-width content. Slots: :title (required), :subtitle
-</Layouts.settings>
+</SettingsLayout.settings>
 
 <DocsLayout.docs flash={@flash}>
   # Documentation layout with sidebar nav and TOC right rail
