@@ -7,7 +7,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
   alias Storyarn.Billing
   alias Storyarn.Projects
   alias Storyarn.Versioning
-  alias StoryarnWeb.Components.SettingsLayout
   alias StoryarnWeb.Helpers.Authorize
 
   @impl true
@@ -47,7 +46,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
   @impl true
   def render(assigns) do
     ~H"""
-    <SettingsLayout.settings
+    <Layouts.settings
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -65,7 +64,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
         snapshots={serialize_snapshots(@snapshots)}
         recovering={@recovering}
       />
-    </SettingsLayout.settings>
+    </Layouts.settings>
     """
   end
 

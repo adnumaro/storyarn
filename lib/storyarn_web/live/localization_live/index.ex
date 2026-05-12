@@ -15,7 +15,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <StoryarnWeb.Components.ProjectLayout.project_layout
+    <Layouts.project
       socket={@socket}
       flash={@flash}
       project={@project}
@@ -77,7 +77,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
         has-provider={@has_provider}
         has-target-languages={@target_languages != []}
       />
-    </StoryarnWeb.Components.ProjectLayout.project_layout>
+    </Layouts.project>
     """
   end
 

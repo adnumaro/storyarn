@@ -3,10 +3,6 @@ defmodule StoryarnWeb.LayoutsTest do
 
   import Phoenix.LiveViewTest
 
-  alias StoryarnWeb.Components.AuthLayout
-  alias StoryarnWeb.Components.CompareLayout
-  alias StoryarnWeb.Components.PublicLayout
-  alias StoryarnWeb.Components.SettingsLayout
   alias StoryarnWeb.Layouts
 
   # ── Helpers ──────────────────────────────────────────────────────────
@@ -35,7 +31,7 @@ defmodule StoryarnWeb.LayoutsTest do
   describe "public/1" do
     test "renders public LiveVue layout boundary when no user" do
       html =
-        render_component(&PublicLayout.public/1,
+        render_component(&Layouts.public/1,
           flash: %{},
           socket: mock_socket(),
           current_scope: nil,
@@ -52,7 +48,7 @@ defmodule StoryarnWeb.LayoutsTest do
 
     test "marks public layout as signed in when user is logged in" do
       html =
-        render_component(&PublicLayout.public/1,
+        render_component(&Layouts.public/1,
           flash: %{},
           socket: mock_socket(),
           current_scope: %{user: user_map()},
@@ -67,7 +63,7 @@ defmodule StoryarnWeb.LayoutsTest do
 
     test "passes inner_block content through the public layout slot" do
       html =
-        render_component(&PublicLayout.public/1,
+        render_component(&Layouts.public/1,
           flash: %{},
           socket: mock_socket(),
           current_scope: nil,
@@ -80,7 +76,7 @@ defmodule StoryarnWeb.LayoutsTest do
 
     test "passes canonical public urls to Vue" do
       html =
-        render_component(&PublicLayout.public/1,
+        render_component(&Layouts.public/1,
           flash: %{},
           socket: mock_socket(),
           current_scope: nil,
@@ -100,7 +96,7 @@ defmodule StoryarnWeb.LayoutsTest do
 
     test "supports forcing a dark theme for the public subtree" do
       html =
-        render_component(&PublicLayout.public/1,
+        render_component(&Layouts.public/1,
           flash: %{},
           socket: mock_socket(),
           current_scope: nil,
@@ -115,7 +111,7 @@ defmodule StoryarnWeb.LayoutsTest do
 
     test "renders flash group outside public boundary" do
       html =
-        render_component(&PublicLayout.public/1,
+        render_component(&Layouts.public/1,
           flash: %{},
           socket: mock_socket(),
           current_scope: nil,
@@ -131,7 +127,7 @@ defmodule StoryarnWeb.LayoutsTest do
   describe "auth/1" do
     test "renders auth layout with inner content" do
       html =
-        render_component(&AuthLayout.auth/1,
+        render_component(&Layouts.auth/1,
           flash: %{},
           socket: mock_socket(),
           current_scope: nil,
@@ -144,7 +140,7 @@ defmodule StoryarnWeb.LayoutsTest do
 
     test "renders auth LiveVue boundary" do
       html =
-        render_component(&AuthLayout.auth/1,
+        render_component(&Layouts.auth/1,
           flash: %{},
           socket: mock_socket(),
           current_scope: nil,
@@ -157,7 +153,7 @@ defmodule StoryarnWeb.LayoutsTest do
 
     test "renders flash group outside auth boundary" do
       html =
-        render_component(&AuthLayout.auth/1,
+        render_component(&Layouts.auth/1,
           flash: %{},
           socket: mock_socket(),
           current_scope: nil,
@@ -173,7 +169,7 @@ defmodule StoryarnWeb.LayoutsTest do
   describe "compare/1" do
     test "renders compare LiveVue layout boundary and content" do
       html =
-        render_component(&CompareLayout.compare/1,
+        render_component(&Layouts.compare/1,
           flash: %{},
           socket: mock_socket(),
           inner_block: inner_block("<p>Compare content</p>")
@@ -188,7 +184,7 @@ defmodule StoryarnWeb.LayoutsTest do
 
     test "passes panel and content options to compare layout" do
       html =
-        render_component(&CompareLayout.compare/1,
+        render_component(&Layouts.compare/1,
           flash: %{},
           socket: mock_socket(),
           panel_title: "Layers",
@@ -206,7 +202,7 @@ defmodule StoryarnWeb.LayoutsTest do
 
     test "renders flash group outside compare boundary" do
       html =
-        render_component(&CompareLayout.compare/1,
+        render_component(&Layouts.compare/1,
           flash: %{},
           socket: mock_socket(),
           inner_block: inner_block("<p>Compare</p>")
@@ -221,7 +217,7 @@ defmodule StoryarnWeb.LayoutsTest do
   describe "settings/1" do
     test "renders settings layout with title and content" do
       html =
-        render_component(&SettingsLayout.settings/1,
+        render_component(&Layouts.settings/1,
           flash: %{},
           socket: mock_socket(),
           current_scope: %{user: user_map()},
@@ -237,7 +233,7 @@ defmodule StoryarnWeb.LayoutsTest do
 
     test "renders subtitle slot when provided" do
       html =
-        render_component(&SettingsLayout.settings/1,
+        render_component(&Layouts.settings/1,
           flash: %{},
           socket: mock_socket(),
           current_scope: %{user: user_map()},
@@ -253,7 +249,7 @@ defmodule StoryarnWeb.LayoutsTest do
 
     test "passes account settings context to LiveVue boundary" do
       html =
-        render_component(&SettingsLayout.settings/1,
+        render_component(&Layouts.settings/1,
           flash: %{},
           socket: mock_socket(),
           current_scope: %{user: user_map()},
@@ -273,7 +269,7 @@ defmodule StoryarnWeb.LayoutsTest do
       workspaces = [%{id: 1, slug: "team-ws", name: "Team Workspace"}]
 
       html =
-        render_component(&SettingsLayout.settings/1,
+        render_component(&Layouts.settings/1,
           flash: %{},
           socket: mock_socket(),
           current_scope: %{user: user_map()},
@@ -291,7 +287,7 @@ defmodule StoryarnWeb.LayoutsTest do
 
     test "renders settings LiveVue boundary and content" do
       html =
-        render_component(&SettingsLayout.settings/1,
+        render_component(&Layouts.settings/1,
           flash: %{},
           socket: mock_socket(),
           current_scope: %{user: user_map()},

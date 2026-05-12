@@ -9,7 +9,6 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias Storyarn.Scenes
   alias Storyarn.Sheets
   alias Storyarn.Versioning
-  alias StoryarnWeb.Components.CompareLayout
   alias StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers
   alias StoryarnWeb.FlowLive.Handlers.DebugHandlers
   alias StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers
@@ -46,7 +45,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   def render(assigns) do
     ~H"""
-    <StoryarnWeb.Components.ProjectLayout.project_layout
+    <Layouts.project
       socket={@socket}
       flash={@flash}
       project={@project}
@@ -120,7 +119,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         id="flow-panels"
         panels={flow_panels_props(assigns)}
       />
-    </StoryarnWeb.Components.ProjectLayout.project_layout>
+    </Layouts.project>
     """
   end
 
@@ -144,7 +143,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       )
 
     ~H"""
-    <CompareLayout.compare socket={@socket} flash={@flash}>
+    <Layouts.compare socket={@socket} flash={@flash}>
       <.vue
         :if={@flow}
         v-component="live/flow/show/Canvas"
@@ -161,7 +160,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         canvas-id={"flow-canvas-#{@flow.id}"}
         toolbar-data={@compact_toolbar_data}
       />
-    </CompareLayout.compare>
+    </Layouts.compare>
     """
   end
 

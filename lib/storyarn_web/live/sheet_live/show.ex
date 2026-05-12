@@ -17,7 +17,6 @@ defmodule StoryarnWeb.SheetLive.Show do
   alias Storyarn.Collaboration.Presence
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets
-  alias StoryarnWeb.Components.CompareLayout
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Helpers.UndoRedoStack
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
@@ -46,7 +45,7 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   defp render_full(assigns) do
     ~H"""
-    <StoryarnWeb.Components.ProjectLayout.project_layout
+    <Layouts.project
       socket={@socket}
       flash={@flash}
       project={@project}
@@ -96,13 +95,13 @@ defmodule StoryarnWeb.SheetLive.Show do
         current_user_id={@current_scope.user.id}
         compact={false}
       />
-    </StoryarnWeb.Components.ProjectLayout.project_layout>
+    </Layouts.project>
     """
   end
 
   defp render_compact(assigns) do
     ~H"""
-    <CompareLayout.compare
+    <Layouts.compare
       socket={@socket}
       flash={@flash}
       content_class="h-full overflow-y-auto bg-background p-4"
@@ -130,7 +129,7 @@ defmodule StoryarnWeb.SheetLive.Show do
         current_user_id={@current_scope.user.id}
         compact={true}
       />
-    </CompareLayout.compare>
+    </Layouts.compare>
     """
   end
 

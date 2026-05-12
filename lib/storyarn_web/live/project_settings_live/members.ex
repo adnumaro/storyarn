@@ -6,7 +6,6 @@ defmodule StoryarnWeb.ProjectSettingsLive.Members do
   import StoryarnWeb.ProjectLive.Components.SettingsComponents
 
   alias Storyarn.Projects
-  alias StoryarnWeb.Components.SettingsLayout
   alias StoryarnWeb.Helpers.Authorize
 
   # ===========================================================================
@@ -16,7 +15,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Members do
   @impl true
   def render(assigns) do
     ~H"""
-    <SettingsLayout.settings
+    <Layouts.settings
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -35,7 +34,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Members do
         members={serialize_members(@members)}
         current-user-id={@current_scope.user.id}
       />
-    </SettingsLayout.settings>
+    </Layouts.settings>
     """
   end
 

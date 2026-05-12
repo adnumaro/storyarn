@@ -5,12 +5,11 @@ defmodule StoryarnWeb.UserLive.Registration do
 
   alias Storyarn.Accounts
   alias Storyarn.RateLimiter
-  alias StoryarnWeb.Components.AuthLayout
 
   @impl true
   def render(assigns) do
     ~H"""
-    <AuthLayout.auth flash={@flash} current_scope={@current_scope} socket={@socket}>
+    <Layouts.auth flash={@flash} current_scope={@current_scope} socket={@socket}>
       <.vue
         v-component="live/auth/registration/Form"
         v-socket={@socket}
@@ -20,7 +19,7 @@ defmodule StoryarnWeb.UserLive.Registration do
         user-email={@invited_user.email}
         login-url={~p"/users/log-in"}
       />
-    </AuthLayout.auth>
+    </Layouts.auth>
     """
   end
 

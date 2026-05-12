@@ -27,7 +27,7 @@ defmodule StoryarnWeb.Components.ProjectLayout do
 
   slot :inner_block, required: true
 
-  def project_layout(assigns) do
+  def project(assigns) do
     ~H"""
     <div>
       {live_render(@socket, StoryarnWeb.PresenceLive,

@@ -9,7 +9,7 @@ defmodule StoryarnWeb.LocalizationLive.Report do
   @impl true
   def render(assigns) do
     ~H"""
-    <StoryarnWeb.Components.ProjectLayout.project_layout
+    <Layouts.project
       socket={@socket}
       flash={@flash}
       project={@project}
@@ -49,7 +49,7 @@ defmodule StoryarnWeb.LocalizationLive.Report do
         vo-progress={@vo_progress}
         type-counts={@type_counts}
       />
-    </StoryarnWeb.Components.ProjectLayout.project_layout>
+    </Layouts.project>
     """
   end
 

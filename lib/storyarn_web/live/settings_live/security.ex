@@ -5,7 +5,6 @@ defmodule StoryarnWeb.SettingsLive.Security do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Accounts
-  alias StoryarnWeb.Components.SettingsLayout
 
   on_mount {StoryarnWeb.UserAuth, :require_sudo_mode}
 
@@ -28,7 +27,7 @@ defmodule StoryarnWeb.SettingsLive.Security do
   @impl true
   def render(assigns) do
     ~H"""
-    <SettingsLayout.settings
+    <Layouts.settings
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -46,7 +45,7 @@ defmodule StoryarnWeb.SettingsLive.Security do
         trigger-submit={@trigger_submit}
         password-action={~p"/users/update-password"}
       />
-    </SettingsLayout.settings>
+    </Layouts.settings>
     """
   end
 

@@ -3,8 +3,6 @@ defmodule StoryarnWeb.LandingLive.Contact do
 
   use StoryarnWeb, :live_view
 
-  alias StoryarnWeb.Components.PublicLayout
-
   @impl true
   def mount(_params, _session, socket) do
     {:ok, assign(socket, page_title: gettext("Contact"))}
@@ -13,7 +11,7 @@ defmodule StoryarnWeb.LandingLive.Contact do
   @impl true
   def render(assigns) do
     ~H"""
-    <PublicLayout.public flash={@flash} socket={@socket} current_scope={@current_scope} theme="dark">
+    <Layouts.public flash={@flash} socket={@socket} current_scope={@current_scope} theme="dark">
       <.vue
         v-component="live/public/contact/Page"
         v-socket={@socket}
@@ -22,7 +20,7 @@ defmodule StoryarnWeb.LandingLive.Contact do
         class="flex flex-1 flex-col"
         contact-email={contact_email()}
       />
-    </PublicLayout.public>
+    </Layouts.public>
     """
   end
 

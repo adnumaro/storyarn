@@ -9,12 +9,11 @@ defmodule StoryarnWeb.VersionViewerLive do
   alias Storyarn.Scenes
   alias Storyarn.Sheets
   alias Storyarn.Versioning
-  alias StoryarnWeb.Components.CompareLayout
 
   @impl true
   def render(%{entity_type: :flow} = assigns) do
     ~H"""
-    <CompareLayout.compare socket={@socket} flash={@flash}>
+    <Layouts.compare socket={@socket} flash={@flash}>
       <.vue
         v-component="live/flow/show/Canvas"
         v-socket={@socket}
@@ -30,13 +29,13 @@ defmodule StoryarnWeb.VersionViewerLive do
         canvas-id={"flow-version-canvas-#{@entity_id}-#{@version_number}"}
         toolbar-data={Jason.encode!(@toolbar_data)}
       />
-    </CompareLayout.compare>
+    </Layouts.compare>
     """
   end
 
   def render(%{entity_type: :scene} = assigns) do
     ~H"""
-    <CompareLayout.compare socket={@socket} flash={@flash}>
+    <Layouts.compare socket={@socket} flash={@flash}>
       <.vue
         v-component="live/scene/show/CompactSurface"
         v-socket={@socket}
@@ -45,13 +44,13 @@ defmodule StoryarnWeb.VersionViewerLive do
         class="h-full relative"
         surface={@surface}
       />
-    </CompareLayout.compare>
+    </Layouts.compare>
     """
   end
 
   def render(%{entity_type: :sheet} = assigns) do
     ~H"""
-    <CompareLayout.compare
+    <Layouts.compare
       socket={@socket}
       flash={@flash}
       content_class="h-full overflow-y-auto bg-background p-4"
@@ -67,7 +66,7 @@ defmodule StoryarnWeb.VersionViewerLive do
         source-shortcut={nil}
         surface={@surface}
       />
-    </CompareLayout.compare>
+    </Layouts.compare>
     """
   end
 

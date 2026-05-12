@@ -6,7 +6,6 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   alias Storyarn.Exports
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Imports
-  alias StoryarnWeb.Components.SettingsLayout
   alias StoryarnWeb.Helpers.Authorize
 
   @all_sections ~w(sheets flows scenes screenplays localization)a
@@ -14,7 +13,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <SettingsLayout.settings
+    <Layouts.settings
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -79,7 +78,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       >
         <.live_file_input upload={@uploads.import_file} />
       </form>
-    </SettingsLayout.settings>
+    </Layouts.settings>
     """
   end
 

@@ -8,7 +8,6 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
   alias Storyarn.Scenes
   alias Storyarn.Screenplays
   alias Storyarn.Sheets
-  alias StoryarnWeb.Components.SettingsLayout
   alias StoryarnWeb.Helpers.Authorize
 
   @page_size 25
@@ -16,7 +15,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
   @impl true
   def render(assigns) do
     ~H"""
-    <SettingsLayout.settings
+    <Layouts.settings
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -41,7 +40,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
         search-query={@trash_search}
         can-manage={@can_manage}
       />
-    </SettingsLayout.settings>
+    </Layouts.settings>
     """
   end
 

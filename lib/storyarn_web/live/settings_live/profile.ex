@@ -5,7 +5,6 @@ defmodule StoryarnWeb.SettingsLive.Profile do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Accounts
-  alias StoryarnWeb.Components.SettingsLayout
 
   on_mount {StoryarnWeb.UserAuth, :require_sudo_mode}
 
@@ -47,7 +46,7 @@ defmodule StoryarnWeb.SettingsLive.Profile do
   @impl true
   def render(assigns) do
     ~H"""
-    <SettingsLayout.settings
+    <Layouts.settings
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -64,7 +63,7 @@ defmodule StoryarnWeb.SettingsLive.Profile do
         email-form={@email_form}
         current-email={@current_email}
       />
-    </SettingsLayout.settings>
+    </Layouts.settings>
     """
   end
 

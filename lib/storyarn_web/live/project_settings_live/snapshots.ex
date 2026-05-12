@@ -9,7 +9,6 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   alias Storyarn.Collaboration
   alias Storyarn.Projects
   alias Storyarn.Versioning
-  alias StoryarnWeb.Components.SettingsLayout
   alias StoryarnWeb.Helpers.Authorize
 
   # ===========================================================================
@@ -19,7 +18,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   @impl true
   def render(assigns) do
     ~H"""
-    <SettingsLayout.settings
+    <Layouts.settings
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -43,7 +42,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
         workspace-slug={@workspace.slug}
         project-slug={@project.slug}
       />
-    </SettingsLayout.settings>
+    </Layouts.settings>
     """
   end
 

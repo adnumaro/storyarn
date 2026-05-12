@@ -4,7 +4,6 @@ defmodule StoryarnWeb.DocsLive.Show do
 
   alias Storyarn.Docs
   alias Storyarn.Shared.HtmlSanitizer
-  alias StoryarnWeb.Components.DocsLayout
 
   @impl true
   def mount(_params, _session, socket) do
@@ -99,7 +98,7 @@ defmodule StoryarnWeb.DocsLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <DocsLayout.docs
+    <Layouts.docs
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -120,7 +119,7 @@ defmodule StoryarnWeb.DocsLive.Show do
         id="docs-show-vue"
         guide-body={if @guide, do: HtmlSanitizer.sanitize_html(@guide.body)}
       />
-    </DocsLayout.docs>
+    </Layouts.docs>
     """
   end
 

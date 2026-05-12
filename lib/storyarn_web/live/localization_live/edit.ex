@@ -12,7 +12,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
   @impl true
   def render(assigns) do
     ~H"""
-    <StoryarnWeb.Components.ProjectLayout.project_layout
+    <Layouts.project
       socket={@socket}
       flash={@flash}
       project={@project}
@@ -53,7 +53,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
           ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/texts/#{@text.locale_code}"
         }
       />
-    </StoryarnWeb.Components.ProjectLayout.project_layout>
+    </Layouts.project>
     """
   end
 

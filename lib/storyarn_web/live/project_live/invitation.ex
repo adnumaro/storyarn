@@ -9,12 +9,11 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Projects
-  alias StoryarnWeb.Components.PublicLayout
 
   @impl true
   def render(assigns) do
     ~H"""
-    <PublicLayout.public flash={@flash} socket={@socket} current_scope={@current_scope}>
+    <Layouts.public flash={@flash} socket={@socket} current_scope={@current_scope}>
       <.vue
         v-component="live/project/invitation/Response"
         v-socket={@socket}
@@ -22,7 +21,7 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
         id="project-invitation"
         homepage-url={~p"/"}
       />
-    </PublicLayout.public>
+    </Layouts.public>
     """
   end
 
