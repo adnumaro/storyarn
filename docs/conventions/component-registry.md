@@ -155,13 +155,18 @@ import StoryarnWeb.Components.Sidebar.SceneTree
 | `CanvasToolbar`       | `import StoryarnWeb.Components.CanvasToolbar`       | Canvas-aware toolbar component                      |
 | `CanvasDock`          | `import StoryarnWeb.Components.CanvasDock`          | Dockable panels for canvas views                    |
 | `ToolbarColorPicker`  | `import StoryarnWeb.Components.ToolbarColorPicker`  | Toolbar-specific color picker                       |
-| `DashboardComponents` | `import StoryarnWeb.Components.DashboardComponents` | Dashboard UI components                             |
 | `VersionsSection`     | `import StoryarnWeb.Components.VersionsSection`     | Version history display                             |
 | `FocusLayout`         | `import StoryarnWeb.Components.FocusLayout`         | Focus layout helper components                      |
 | `AuthLayout`          | `alias StoryarnWeb.Components.AuthLayout`           | Authentication LiveVue layout boundary             |
 | `PublicLayout`        | `alias StoryarnWeb.Components.PublicLayout`         | Public marketing/invitation LiveVue layout boundary |
 | `DocsLayout`          | `alias StoryarnWeb.Components.DocsLayout`           | Documentation LiveVue layout boundary              |
 | `SettingsLayout`      | `alias StoryarnWeb.Components.SettingsLayout`       | Settings LiveVue layout boundary                   |
+
+### Shared Live Helpers
+
+| Module             | Import                                             | Purpose                                                 |
+| ------------------ | -------------------------------------------------- | ------------------------------------------------------- |
+| `DashboardHelpers` | `import StoryarnWeb.Live.Shared.DashboardHelpers` | Sort, pagination, and reload helpers for Vue dashboards |
 
 ---
 

@@ -6,7 +6,7 @@ defmodule StoryarnWeb.SceneLive.Index do
   use StoryarnWeb, :live_view
   use StoryarnWeb.Live.Shared.DashboardHandlers
 
-  import StoryarnWeb.Components.DashboardComponents,
+  import StoryarnWeb.Live.Shared.DashboardHelpers,
     only: [
       sort_table: 4,
       paginate: 2,
