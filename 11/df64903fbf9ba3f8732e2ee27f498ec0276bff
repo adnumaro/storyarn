@@ -1,0 +1,100 @@
+lib/storyarn_web/live/settings_live/connections.ex
+  s_116fc484719db6::t_58b9f59a9ea570 29,45
+lib/storyarn_web/live/version_viewer_live.ex
+  s_116fc484719db6::t_58b9f59a9ea570 16,32,38,47,53,69
+lib/storyarn_web/live/localization_live/report.ex
+  s_116fc484719db6::t_58b9f59a9ea570 12,52
+lib/storyarn_web/live/project_settings_live/version_control.ex
+  s_116fc484719db6::t_58b9f59a9ea570 17,41
+lib/storyarn_web/live/flow_live/index.ex
+  s_116fc484719db6::t_58b9f59a9ea570 25,73
+lib/storyarn_web/live/asset_live/index.ex
+  s_116fc484719db6::t_58b9f59a9ea570 15,53
+lib/storyarn_web/live/compare_live/scene.ex
+  s_116fc484719db6::t_58b9f59a9ea570 18,31
+lib/storyarn_web/live/scene_live/show.ex
+  s_116fc484719db6::t_58b9f59a9ea570 50,52,64,139,145,154
+lib/storyarn_web/live/localization_live/index.ex
+  s_116fc484719db6::t_58b9f59a9ea570 18,80
+lib/storyarn_web/components/project_layout.ex
+  s_116fc484719db6::t_31f6b424c4c6bf 30
+lib/storyarn_web/components/layouts.ex
+  s_116fc484719db6::t_9677c9ad952eba 17-22
+test/storyarn_web/layouts_test.exs
+  s_116fc484719db6::t_8810371f876d9d 34,51,66,79,99,114,130,143,156,172,187,205,220,236,252,272,290
+lib/storyarn_web/live/workspace_live/invitation.ex
+  s_116fc484719db6::t_58b9f59a9ea570 16,24
+lib/storyarn_web/live/landing_live/contact.ex
+  s_116fc484719db6::t_58b9f59a9ea570 14,23
+lib/storyarn_web/live/settings_live/workspace_members.ex
+  s_116fc484719db6::t_58b9f59a9ea570 48,65
+lib/storyarn_web/live/project_settings_live/general.ex
+  s_116fc484719db6::t_58b9f59a9ea570 19,43
+lib/storyarn_web/live/project_settings_live/localization.ex
+  s_116fc484719db6::t_58b9f59a9ea570 18,38
+lib/storyarn_web/live/project_live/invitation.ex
+  s_116fc484719db6::t_58b9f59a9ea570 16,24
+lib/storyarn_web/live/user_live/registration.ex
+  s_116fc484719db6::t_58b9f59a9ea570 12,22
+lib/storyarn_web/live/user_live/confirm_access.ex
+  s_116fc484719db6::t_58b9f59a9ea570 17,28
+lib/storyarn_web/live/sheet_live/show.ex
+  s_116fc484719db6::t_58b9f59a9ea570 48,98,104,132
+lib/storyarn_web/live/project_settings_live/snapshots.ex
+  s_116fc484719db6::t_58b9f59a9ea570 21,45
+lib/storyarn_web/live/landing_live/index.ex
+  s_116fc484719db6::t_58b9f59a9ea570 27,35
+lib/storyarn_web/live/settings_live/workspace_general.ex
+  s_116fc484719db6::t_58b9f59a9ea570 37,59
+lib/storyarn_web/live/scene_live/index.ex
+  s_116fc484719db6::t_58b9f59a9ea570 26,74
+lib/storyarn_web/live/project_live/show.ex
+  s_116fc484719db6::t_58b9f59a9ea570 19,49
+lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex
+  s_116fc484719db6::t_58b9f59a9ea570 49,67
+lib/storyarn_web/live/settings_live/profile.ex
+  s_116fc484719db6::t_58b9f59a9ea570 49,66
+lib/storyarn_web/live/project_settings_live/trash.ex
+  s_116fc484719db6::t_58b9f59a9ea570 18,43
+lib/storyarn_web/live/export_import_live/index.ex
+  s_116fc484719db6::t_58b9f59a9ea570 16,81
+lib/storyarn_web/live/localization_live/edit.ex
+  s_116fc484719db6::t_58b9f59a9ea570 15,56
+lib/storyarn_web/live/sheet_live/index.ex
+  s_116fc484719db6::t_58b9f59a9ea570 26,74
+lib/storyarn_web/live/project_settings_live/members.ex
+  s_116fc484719db6::t_58b9f59a9ea570 18,37
+lib/storyarn_web/live/compare_live/flow.ex
+  s_116fc484719db6::t_58b9f59a9ea570 18,31
+lib/storyarn_web/live/settings_live/security.ex
+  s_116fc484719db6::t_58b9f59a9ea570 30,48
+lib/storyarn_web/live/user_live/login.ex
+  s_116fc484719db6::t_58b9f59a9ea570 9,21
+lib/storyarn_web/live/flow_live/show.ex
+  s_116fc484719db6::t_58b9f59a9ea570 48,122,146,163
+lib/storyarn_web/live/compare_live/sheet.ex
+  s_116fc484719db6::t_58b9f59a9ea570 19,32
+lib/storyarn_web/live/docs_live/show.ex
+  s_116fc484719db6::t_58b9f59a9ea570 101,122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "11df64903fbf9ba3f8732e2ee27f498ec0276bff",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
