@@ -11,10 +11,12 @@ defmodule StoryarnWeb.UserLive.ConfirmAccess do
 
   use StoryarnWeb, :live_view
 
+  alias StoryarnWeb.Components.AuthLayout
+
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.auth flash={@flash} current_scope={@current_scope} socket={@socket}>
+    <AuthLayout.auth flash={@flash} current_scope={@current_scope} socket={@socket}>
       <.vue
         v-component="live/auth/confirm-access/Form"
         v-socket={@socket}
@@ -25,7 +27,7 @@ defmodule StoryarnWeb.UserLive.ConfirmAccess do
         back-url={~p"/workspaces"}
         csrf-token={Plug.CSRFProtection.get_csrf_token()}
       />
-    </Layouts.auth>
+    </AuthLayout.auth>
     """
   end
 

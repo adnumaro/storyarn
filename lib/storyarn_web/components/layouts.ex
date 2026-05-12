@@ -106,37 +106,6 @@ defmodule StoryarnWeb.Layouts do
   end
 
   @doc """
-  Renders a centered layout without sidebar for auth sheets.
-
-  ## Examples
-
-      <Layouts.auth flash={@flash} socket={@socket}>
-        <h1>Login</h1>
-      </Layouts.auth>
-
-  """
-  attr :flash, :map, required: true, doc: "the map of flash messages"
-  attr :socket, :any, required: true, doc: "the LiveView socket (needed for LiveVue)"
-
-  attr :current_scope, :map,
-    default: nil,
-    doc: "the current [scope](https://hexdocs.pm/phoenix/scopes.html)"
-
-  slot :inner_block, required: true
-
-  def auth(assigns) do
-    ~H"""
-    <div id="auth-layout-wrapper">
-      <.vue v-component="live/layouts/auth/Layout" v-socket={@socket} id="auth-layout" />
-
-      {render_slot(@inner_block)}
-
-      <.flash_group flash={@flash} />
-    </div>
-    """
-  end
-
-  @doc """
   Renders a simple centered layout for public sheets.
 
   ## Examples

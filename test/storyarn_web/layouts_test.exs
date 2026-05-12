@@ -3,6 +3,7 @@ defmodule StoryarnWeb.LayoutsTest do
 
   import Phoenix.LiveViewTest
 
+  alias StoryarnWeb.Components.AuthLayout
   alias StoryarnWeb.Components.SettingsLayout
   alias StoryarnWeb.Layouts
 
@@ -124,7 +125,7 @@ defmodule StoryarnWeb.LayoutsTest do
   describe "auth/1" do
     test "renders auth layout with inner content" do
       html =
-        render_component(&Layouts.auth/1,
+        render_component(&AuthLayout.auth/1,
           flash: %{},
           socket: mock_socket(),
           current_scope: nil,
@@ -137,7 +138,7 @@ defmodule StoryarnWeb.LayoutsTest do
 
     test "renders auth LiveVue boundary" do
       html =
-        render_component(&Layouts.auth/1,
+        render_component(&AuthLayout.auth/1,
           flash: %{},
           socket: mock_socket(),
           current_scope: nil,
@@ -150,7 +151,7 @@ defmodule StoryarnWeb.LayoutsTest do
 
     test "renders flash group outside auth boundary" do
       html =
-        render_component(&Layouts.auth/1,
+        render_component(&AuthLayout.auth/1,
           flash: %{},
           socket: mock_socket(),
           current_scope: nil,

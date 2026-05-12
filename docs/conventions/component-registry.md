@@ -158,6 +158,7 @@ import StoryarnWeb.Components.Sidebar.SceneTree
 | `DashboardComponents` | `import StoryarnWeb.Components.DashboardComponents` | Dashboard UI components                             |
 | `VersionsSection`     | `import StoryarnWeb.Components.VersionsSection`     | Version history display                             |
 | `FocusLayout`         | `import StoryarnWeb.Components.FocusLayout`         | Focus layout helper components                      |
+| `AuthLayout`          | `alias StoryarnWeb.Components.AuthLayout`           | Authentication LiveVue layout boundary             |
 | `DocsLayout`          | `alias StoryarnWeb.Components.DocsLayout`           | Documentation LiveVue layout boundary              |
 | `SettingsLayout`      | `alias StoryarnWeb.Components.SettingsLayout`       | Settings LiveVue layout boundary                   |
 
@@ -175,9 +176,9 @@ import StoryarnWeb.Components.Sidebar.SceneTree
   # Project editor with floating toolbars, pinnable tree panel, canvas support
 </Layouts.focus>
 
-<Layouts.auth flash={@flash}>
+<AuthLayout.auth flash={@flash}>
   # Centered auth pages (login/register)
-</Layouts.auth>
+</AuthLayout.auth>
 
 <Layouts.public flash={@flash}>
   # Public pages (landing, marketing)
