@@ -14,7 +14,7 @@ defmodule StoryarnWeb.WorkspaceLive.Invitation do
   @impl true
   def render(assigns) do
     ~H"""
-    <PublicLayout.public flash={@flash} current_scope={@current_scope}>
+    <PublicLayout.public flash={@flash} socket={@socket} current_scope={@current_scope}>
       <.vue
         v-component="live/workspace/invitation/Response"
         v-socket={@socket}

@@ -22,50 +22,59 @@ defmodule StoryarnWeb.Layouts do
 
   ## Examples
 
-      <.flash_group flash={@flash} />
+      <.flash_group flash={@flash} socket={@socket} />
   """
   attr :flash, :map, required: true, doc: "the map of flash messages"
+  attr :socket, :any, required: true, doc: "the LiveView socket (needed for LiveVue events)"
   attr :id, :string, default: "flash-group", doc: "the optional id of flash container"
 
   def flash_group(assigns) do
+    assigns =
+      assigns
+      |> assign(:flash_messages, flash_messages(assigns.flash))
+      |> assign(:network_flash, network_flash_messages())
+
     ~H"""
     <div
       id={@id}
       aria-live="polite"
-      data-slot="toaster"
-      class="fixed bottom-4 right-4 z-[2000] flex flex-col gap-2 w-full max-w-sm pointer-events-none [&>*]:pointer-events-auto"
+      phx-disconnected={
+        JS.remove_attribute("hidden", to: ".phx-client-error #client-error")
+        |> show(".phx-client-error #client-error")
+        |> JS.remove_attribute("hidden", to: ".phx-server-error #server-error")
+        |> show(".phx-server-error #server-error")
+      }
+      phx-connected={
+        hide("#client-error")
+        |> JS.set_attribute({"hidden", ""}, to: "#client-error")
+        |> hide("#server-error")
+        |> JS.set_attribute({"hidden", ""}, to: "#server-error")
+      }
     >
-      <.flash kind={:info} flash={@flash} />
-      <.flash kind={:error} flash={@flash} />
-
-      <.flash
-        id="client-error"
-        kind={:error}
-        title={gettext("We can't find the internet")}
-        phx-disconnected={show(".phx-client-error #client-error") |> JS.remove_attribute("hidden")}
-        phx-connected={hide("#client-error") |> JS.set_attribute({"hidden", ""})}
-        hidden
-      >
-        <span class="flex items-center gap-1.5">
-          {gettext("Attempting to reconnect")}
-          <.icon name="loader-circle" class="size-4 motion-safe:animate-spin" />
-        </span>
-      </.flash>
-
-      <.flash
-        id="server-error"
-        kind={:error}
-        title={gettext("Something went wrong!")}
-        phx-disconnected={show(".phx-server-error #server-error") |> JS.remove_attribute("hidden")}
-        phx-connected={hide("#server-error") |> JS.set_attribute({"hidden", ""})}
-        hidden
-      >
-        <span class="flex items-center gap-1.5">
-          {gettext("Attempting to reconnect")}
-          <.icon name="loader-circle" class="size-4 motion-safe:animate-spin" />
-        </span>
-      </.flash>
+      <.vue
+        v-component="live/layouts/flash/FlashGroup"
+        v-socket={@socket}
+        id={"#{@id}-content"}
+        flash={@flash_messages}
+        network={@network_flash}
+      />
     </div>
     """
+  end
+
+  defp flash_messages(flash) do
+    %{
+      info: Phoenix.Flash.get(flash, :info),
+      warning: Phoenix.Flash.get(flash, :warning),
+      error: Phoenix.Flash.get(flash, :error)
+    }
+  end
+
+  defp network_flash_messages do
+    %{
+      clientTitle: gettext("We can't find the internet"),
+      serverTitle: gettext("Something went wrong!"),
+      reconnecting: gettext("Attempting to reconnect")
+    }
   end
 end

@@ -39,7 +39,6 @@ const privateModuleSegments = new Set([
   "services",
   "toolbar",
 ]);
-const publicGlobalComponentPatterns = [/^components\/LucideIcon$/];
 
 async function listFiles(root, predicate) {
   const entries = await readdir(root, { withFileTypes: true });
@@ -134,10 +133,6 @@ function publicBoundaryWarning(componentPath) {
   }
 
   if (root === "components") {
-    if (publicGlobalComponentPatterns.some((pattern) => pattern.test(componentPath))) {
-      return null;
-    }
-
     return "shared component rendered directly";
   }
 

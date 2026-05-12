@@ -13,7 +13,7 @@ defmodule StoryarnWeb.LandingLive.Contact do
   @impl true
   def render(assigns) do
     ~H"""
-    <PublicLayout.public flash={@flash} current_scope={@current_scope} theme="dark">
+    <PublicLayout.public flash={@flash} socket={@socket} current_scope={@current_scope} theme="dark">
       <.vue
         v-component="live/public/contact/Page"
         v-socket={@socket}

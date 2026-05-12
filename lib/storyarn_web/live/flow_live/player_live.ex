@@ -43,7 +43,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
         responses={serialize_responses(@slide)}
       />
 
-      <.flash_group flash={@flash} />
+      <.flash_group flash={@flash} socket={@socket} />
     </div>
     """
   end

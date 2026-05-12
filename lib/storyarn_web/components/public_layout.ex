@@ -9,6 +9,7 @@ defmodule StoryarnWeb.Components.PublicLayout do
   use StoryarnWeb, :html
 
   attr :flash, :map, required: true, doc: "the map of flash messages"
+  attr :socket, :any, required: true, doc: "the LiveView socket (needed for LiveVue)"
 
   attr :current_scope, :map,
     default: nil,
@@ -30,6 +31,7 @@ defmodule StoryarnWeb.Components.PublicLayout do
     <div id="public-layout-wrapper">
       <.vue
         v-component="live/layouts/public/Layout"
+        v-socket={@socket}
         id="public-layout"
         theme={@theme}
         urls={@public_layout_urls}
@@ -38,7 +40,7 @@ defmodule StoryarnWeb.Components.PublicLayout do
 
       {render_slot(@inner_block)}
 
-      <Layouts.flash_group flash={@flash} />
+      <Layouts.flash_group flash={@flash} socket={@socket} />
     </div>
     """
   end

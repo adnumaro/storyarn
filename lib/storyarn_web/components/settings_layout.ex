@@ -55,7 +55,7 @@ defmodule StoryarnWeb.Components.SettingsLayout do
 
       {render_slot(@inner_block)}
 
-      <Layouts.flash_group flash={@flash} />
+      <Layouts.flash_group flash={@flash} socket={@socket} />
     </div>
     """
   end

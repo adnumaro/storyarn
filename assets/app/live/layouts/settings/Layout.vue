@@ -1,7 +1,21 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import type { Component } from "vue";
 import { useI18n } from "vue-i18n";
-import LucideIcon from "@components/LucideIcon.vue";
+import {
+  Archive,
+  ChevronLeft,
+  GitBranch,
+  Languages,
+  Link,
+  Menu,
+  Package,
+  Settings,
+  ShieldCheck,
+  Trash2,
+  User,
+  Users,
+} from "lucide-vue-next";
 import LiveLink from "@components/navigation/LiveLink.vue";
 
 interface SettingsItem {
@@ -47,6 +61,23 @@ const {
 }>();
 
 const { t } = useI18n();
+
+const iconMap: Record<string, Component> = {
+  archive: Archive,
+  "chevron-left": ChevronLeft,
+  "git-branch": GitBranch,
+  languages: Languages,
+  link: Link,
+  menu: Menu,
+  package: Package,
+  settings: Settings,
+  "shield-check": ShieldCheck,
+  "trash-2": Trash2,
+  user: User,
+  users: Users,
+};
+
+const navIcon = (name: string): Component => iconMap[name] ?? Settings;
 
 const projectSettingsBasePath = computed(() => {
   if (!workspace || !project) return null;
@@ -179,7 +210,7 @@ const sections = computed<SettingsSection[]>(() => {
         for="settings-sidebar-check"
         class="inline-flex items-center justify-center size-9 rounded-md bg-background border border-border shadow-sm hover:bg-accent transition-colors cursor-pointer text-muted-foreground"
       >
-        <LucideIcon name="menu" icon-class="size-5" />
+        <Menu class="size-5" />
       </label>
     </div>
 
@@ -197,7 +228,7 @@ const sections = computed<SettingsSection[]>(() => {
           :to="backPath"
           class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm font-medium text-foreground/70 hover:bg-black/5 hover:text-foreground dark:hover:bg-white/5 transition-colors"
         >
-          <LucideIcon name="chevron-left" icon-class="size-4" />
+          <ChevronLeft class="size-4" />
           {{ backLabel }}
         </LiveLink>
       </div>
@@ -219,7 +250,7 @@ const sections = computed<SettingsSection[]>(() => {
                     'text-foreground/80 hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground',
                 ]"
               >
-                <LucideIcon :name="item.icon" icon-class="size-4 opacity-70" />
+                <component :is="navIcon(item.icon)" class="size-4 opacity-70" />
                 {{ item.label }}
               </LiveLink>
             </li>

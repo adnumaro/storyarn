@@ -25,7 +25,7 @@ defmodule StoryarnWeb.LandingLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <PublicLayout.public flash={@flash} current_scope={@current_scope} theme="dark">
+    <PublicLayout.public flash={@flash} socket={@socket} current_scope={@current_scope} theme="dark">
       <.vue
         v-component="live/public/landing/Page"
         v-socket={@socket}

@@ -72,7 +72,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
           }
         }
       />
-      <.flash_group flash={@flash} />
+      <.flash_group flash={@flash} socket={@socket} />
     </div>
     """
   end

@@ -37,6 +37,7 @@ defmodule StoryarnWeb.LayoutsTest do
       html =
         render_component(&PublicLayout.public/1,
           flash: %{},
+          socket: mock_socket(),
           current_scope: nil,
           inner_block: inner_block("<p>Public page content</p>")
         )
@@ -53,6 +54,7 @@ defmodule StoryarnWeb.LayoutsTest do
       html =
         render_component(&PublicLayout.public/1,
           flash: %{},
+          socket: mock_socket(),
           current_scope: %{user: user_map()},
           inner_block: inner_block("<p>Logged in page</p>")
         )
@@ -67,6 +69,7 @@ defmodule StoryarnWeb.LayoutsTest do
       html =
         render_component(&PublicLayout.public/1,
           flash: %{},
+          socket: mock_socket(),
           current_scope: nil,
           inner_block: inner_block("<div id=\"hero\">Welcome</div>")
         )
@@ -79,6 +82,7 @@ defmodule StoryarnWeb.LayoutsTest do
       html =
         render_component(&PublicLayout.public/1,
           flash: %{},
+          socket: mock_socket(),
           current_scope: nil,
           inner_block: inner_block("<p>Test</p>")
         )
@@ -98,6 +102,7 @@ defmodule StoryarnWeb.LayoutsTest do
       html =
         render_component(&PublicLayout.public/1,
           flash: %{},
+          socket: mock_socket(),
           current_scope: nil,
           theme: "dark",
           inner_block: inner_block("<p>Dark landing</p>")
@@ -112,6 +117,7 @@ defmodule StoryarnWeb.LayoutsTest do
       html =
         render_component(&PublicLayout.public/1,
           flash: %{},
+          socket: mock_socket(),
           current_scope: nil,
           inner_block: inner_block("<p>Public page</p>")
         )
@@ -307,6 +313,7 @@ defmodule StoryarnWeb.LayoutsTest do
       html =
         render_component(&Layouts.flash_group/1,
           flash: %{},
+          socket: mock_socket(),
           id: "flash-group"
         )
 
@@ -314,25 +321,52 @@ defmodule StoryarnWeb.LayoutsTest do
       assert html =~ ~s(aria-live="polite")
     end
 
+    test "passes current flash messages to Vue" do
+      html =
+        render_component(&Layouts.flash_group/1,
+          flash: %{
+            "info" => "Saved",
+            "warning" => "Check this",
+            "error" => "Failed"
+          },
+          socket: mock_socket(),
+          id: "flash-group"
+        )
+
+      vue = LiveVue.Test.get_vue(html, name: "live/layouts/flash/FlashGroup")
+
+      assert vue.props["flash"]["info"] == "Saved"
+      assert vue.props["flash"]["warning"] == "Check this"
+      assert vue.props["flash"]["error"] == "Failed"
+    end
+
     test "renders client and server error flash elements" do
       html =
         render_component(&Layouts.flash_group/1,
           flash: %{},
+          socket: mock_socket(),
           id: "flash-group"
         )
 
-      assert html =~ ~s(id="client-error")
-      assert html =~ ~s(id="server-error")
+      vue = LiveVue.Test.get_vue(html, name: "live/layouts/flash/FlashGroup")
+
+      assert html =~ "#client-error"
+      assert html =~ "#server-error"
+      assert vue.props["network"]["clientTitle"] == "We can't find the internet"
+      assert vue.props["network"]["serverTitle"] == "Something went wrong!"
     end
 
     test "renders reconnection messaging" do
       html =
         render_component(&Layouts.flash_group/1,
           flash: %{},
+          socket: mock_socket(),
           id: "flash-group"
         )
 
-      assert html =~ "Attempting to reconnect"
+      vue = LiveVue.Test.get_vue(html, name: "live/layouts/flash/FlashGroup")
+
+      assert vue.props["network"]["reconnecting"] == "Attempting to reconnect"
     end
   end
 end
