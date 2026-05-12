@@ -132,15 +132,16 @@ const overrideAvatarUrl = computed(() => {
 });
 
 const defaultAvatarUrl = computed(() => speaker.value?.avatar_url || null);
+const avatarUrl = computed(() => overrideAvatarUrl.value || defaultAvatarUrl.value);
 
 const stageDirections = computed(() => dialogue.value.stageDirections);
 const menuText = computed(() => dialogue.value.menuText);
 const preview = computed(() => previewText(dialogue.value.text));
 
-// Visual strip: override avatar, default avatar, colored bg, or nothing
-const hasVisual = computed(
-  () => overrideAvatarUrl.value || defaultAvatarUrl.value || speaker.value,
-);
+// Visual strip: avatar, speaker color bg, or nothing.
+// Keep the container stable so swapping avatar overrides does not resize the
+// node or leave Rete connections attached to stale socket positions.
+const hasVisual = computed(() => avatarUrl.value || speaker.value);
 
 // Sockets
 const inputs = computed(() => Object.entries(data?.inputs || {}));
@@ -285,24 +286,18 @@ function onSpeakerSelect(id: number | string | null) {
 
     <!-- Visual strip: avatar (shared between modes) -->
     <template v-if="hasVisual">
-      <img
-        v-if="overrideAvatarUrl"
-        :src="overrideAvatarUrl"
-        alt=""
-        class="block w-[calc(100%-24px)] max-h-50 object-contain rounded-lg mx-3 mt-3"
-      />
       <div
-        v-else-if="defaultAvatarUrl"
-        class="flex items-center justify-center px-3 pt-3"
+        class="flow-dialogue-visual flex items-center justify-center px-3"
+        :class="avatarUrl ? 'h-24 py-3' : 'h-3'"
         :style="{ backgroundColor: color + '20' }"
       >
-        <img :src="defaultAvatarUrl" alt="" class="size-16 rounded-lg object-cover shadow-md" />
+        <img
+          v-if="avatarUrl"
+          :src="avatarUrl"
+          alt=""
+          class="max-h-full max-w-full rounded-lg object-contain"
+        />
       </div>
-      <div
-        v-else-if="speaker"
-        class="flex items-center justify-center px-3 pt-3"
-        :style="{ backgroundColor: color + '20' }"
-      />
     </template>
 
     <!-- EDIT MODE BODY -->

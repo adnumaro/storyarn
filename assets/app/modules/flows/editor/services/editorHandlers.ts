@@ -567,6 +567,7 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
         if (ctx) {
           ctx.nodeDataVersion = (ctx.nodeDataVersion || 0) + 1;
         }
+        await hook.syncNodeSize(existingNode.id);
       }
 
       if (existingNode.nodeType === "hub" || existingNode.nodeType === "jump") {
