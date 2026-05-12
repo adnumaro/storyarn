@@ -1,0 +1,27 @@
+assets/app/modules/flows/editor/components/entities/nodes/DialogueNode.vue
+  s_116fc484719db6::t_80dc778f0994b1 135,141-144,290-291,294-297,299
+  s_116fc484719db6::t_d8ff29c62e4e2c 298
+assets/app/modules/flows/editor/services/editorHandlers.ts
+  s_116fc484719db6::t_76bd6478fd1e13 570
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "440216256320fceb879a01df6514f5ebe27593d1",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
