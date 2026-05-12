@@ -158,6 +158,7 @@ import StoryarnWeb.Components.Sidebar.SceneTree
 | `DashboardComponents` | `import StoryarnWeb.Components.DashboardComponents` | Dashboard UI components                             |
 | `VersionsSection`     | `import StoryarnWeb.Components.VersionsSection`     | Version history display                             |
 | `FocusLayout`         | `import StoryarnWeb.Components.FocusLayout`         | Focus layout helper components                      |
+| `DocsLayout`          | `alias StoryarnWeb.Components.DocsLayout`           | Documentation LiveVue layout boundary              |
 
 ---
 
@@ -186,9 +187,9 @@ import StoryarnWeb.Components.Sidebar.SceneTree
   # Settings shell with floating toolbars, sidebar nav, max-width content. Slots: :title (required), :subtitle
 </Layouts.settings>
 
-<Layouts.docs flash={@flash}>
+<DocsLayout.docs flash={@flash}>
   # Documentation layout with sidebar nav and TOC right rail
-</Layouts.docs>
+</DocsLayout.docs>
 ```
 
 **Layouts.focus** additional attrs: `flows_tree`, `screenplays_tree`, `scenes_tree`, `current_path`, `selected_sheet_id`, `selected_flow_id`, `selected_screenplay_id`, `selected_scene_id`, `can_edit`

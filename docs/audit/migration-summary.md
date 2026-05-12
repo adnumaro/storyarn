@@ -125,7 +125,7 @@ Generated: 2026-04-10
 
 | LiveView        | Status      | Notes                                                                                                                                                                   |
 | --------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DocsLive.Show` | **Partial** | Vue component for content body, but `Layouts.docs` renders full HEEx sidebar (`DocsSidebar`), header, prev/next nav. See [migration task](migration-docs-live-show.md). |
+| `DocsLive.Show` | **Migrated** | `DocsLayout.docs` is a thin LiveVue boundary (`live/layouts/docs/Layout`) and `DocsLive.Show` injects the sanitized guide body through `live/docs/show/Content`. |
 
 ---
 
@@ -138,7 +138,6 @@ These HEEx components are used by LiveViews/layouts and represent V1 patterns:
 | `CollaborationComponents.collab_toast/1`        | `FlowLive.Show`                         | Function component |
 | `CollaborationComponents.online_users/1`        | Moduledoc only (not used in any render) | Function component |
 | `CollaborationComponents.node_lock_indicator/1` | Moduledoc only (not used in any render) | Function component |
-| `DocsSidebar.docs_sidebar/1`                    | `Layouts.docs`                          | Function component |
 | `PlayerSlide`                                   | `FlowLive.PlayerLive`                   | Function component |
 | `PlayerToolbar`                                 | `FlowLive.PlayerLive`                   | Function component |
 | `PlayerChoices`                                 | `FlowLive.PlayerLive`                   | Function component |

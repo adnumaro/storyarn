@@ -14,6 +14,7 @@ project tools can navigate without a full document reload.
 Implemented LiveVue layout boundaries:
 
 - `assets/app/live/layouts/auth/Layout.vue`
+- `assets/app/live/layouts/docs/Layout.vue`
 - `assets/app/live/layouts/settings/Layout.vue`
 - `assets/app/live/layouts/workspace/Layout.vue`
 - `assets/app/live/layouts/project/Layout.vue`
@@ -31,7 +32,7 @@ Known remaining work:
 - `Layouts.app` still has two LiveView consumers:
   - `WorkspaceLive.New`
   - `ProjectLive.Trash`
-- `Layouts.public`, `Layouts.docs`, `Layouts.compare`, flow player, and scene exploration still contain visual HEEx composition.
+- `Layouts.public`, `Layouts.compare`, flow player, and scene exploration still contain visual HEEx composition.
 - `ProjectLayout` should normalize the project navbar height to one canonical value.
 - Generic flash visibility for `ProjectLayout` needs an explicit decision because project tools still call `put_flash/3`.
 
@@ -589,11 +590,11 @@ Finish consistency for lower-risk families.
 Completed:
 
 - migrate auth layout
+- migrate docs layout as a thin Elixir data boundary plus `live/layouts/docs/Layout`
 
 Remaining:
 
 - migrate public layout
-- migrate docs layout
 - decide whether docs uses sticky `v-inject` based on sidebar/search state requirements
 
 ## Risks
