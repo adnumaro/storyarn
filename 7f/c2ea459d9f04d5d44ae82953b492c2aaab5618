@@ -1,0 +1,74 @@
+docs/conventions/component-registry.md
+  s_116fc484719db6::t_db50e63e41df62 186,189
+  s_116fc484719db6::t_d7ca4dfac1e596 162
+test/storyarn_web/layouts_test.exs
+  s_116fc484719db6::t_4e9fbdf429b4a3 276,292,308,328,346
+  s_116fc484719db6::t_61a317cb80b88f 6
+lib/storyarn_web/live/project_settings_live/localization.ex
+  s_116fc484719db6::t_4e9fbdf429b4a3 19,39
+  s_116fc484719db6::t_5749899a387c97 9
+lib/storyarn_web/live/settings_live/workspace_members.ex
+  s_116fc484719db6::t_5749899a387c97 9
+  s_116fc484719db6::t_4e9fbdf429b4a3 49,66
+lib/storyarn_web/live/project_settings_live/general.ex
+  s_116fc484719db6::t_5749899a387c97 10
+  s_116fc484719db6::t_4e9fbdf429b4a3 20,44
+lib/storyarn_web/live/project_settings_live/version_control.ex
+  s_116fc484719db6::t_4e9fbdf429b4a3 18,42
+  s_116fc484719db6::t_5749899a387c97 8
+lib/storyarn_web/live/export_import_live/index.ex
+  s_116fc484719db6::t_5749899a387c97 9
+  s_116fc484719db6::t_4e9fbdf429b4a3 17,82
+lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex
+  s_116fc484719db6::t_5749899a387c97 10
+  s_116fc484719db6::t_4e9fbdf429b4a3 50,68
+lib/storyarn_web/live/project_settings_live/members.ex
+  s_116fc484719db6::t_5749899a387c97 9
+  s_116fc484719db6::t_4e9fbdf429b4a3 19,38
+lib/storyarn_web/live/settings_live/connections.ex
+  s_116fc484719db6::t_4e9fbdf429b4a3 30,46
+  s_116fc484719db6::t_5749899a387c97 8
+lib/storyarn_web/live/settings_live/profile.ex
+  s_116fc484719db6::t_5749899a387c97 8
+  s_116fc484719db6::t_4e9fbdf429b4a3 50,67
+scripts/verify-live-layouts.mjs
+  s_116fc484719db6::t_43223be9617b6e 70
+  s_116fc484719db6::t_051cd0a751d523 69,71-77
+lib/storyarn_web/router.ex
+  s_116fc484719db6::t_c013bf170479ee 231
+lib/storyarn_web/live/settings_live/workspace_general.ex
+  s_116fc484719db6::t_5749899a387c97 9
+  s_116fc484719db6::t_4e9fbdf429b4a3 38,60
+lib/storyarn_web/live/settings_live/security.ex
+  s_116fc484719db6::t_5749899a387c97 8
+  s_116fc484719db6::t_4e9fbdf429b4a3 31,49
+lib/storyarn_web/components/settings_layout.ex
+  s_116fc484719db6::t_46e7c5faf9fb7d 1-111
+docs/audit/migration-summary.md
+  s_116fc484719db6::t_45795c3bd4688f 10
+  s_116fc484719db6::t_db50e63e41df62 101-105,111,117-122
+lib/storyarn_web/live/project_settings_live/snapshots.ex
+  s_116fc484719db6::t_4e9fbdf429b4a3 22,46
+  s_116fc484719db6::t_5749899a387c97 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "7fc2ea459d9f04d5d44ae82953b492c2aaab5618",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
