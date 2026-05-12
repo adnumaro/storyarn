@@ -4,6 +4,7 @@ defmodule StoryarnWeb.LayoutsTest do
   import Phoenix.LiveViewTest
 
   alias StoryarnWeb.Components.AuthLayout
+  alias StoryarnWeb.Components.PublicLayout
   alias StoryarnWeb.Components.SettingsLayout
   alias StoryarnWeb.Layouts
 
@@ -53,37 +54,39 @@ defmodule StoryarnWeb.LayoutsTest do
   # ── public/1 ────────────────────────────────────────────────────────
 
   describe "public/1" do
-    test "renders public layout with login/signup links when no user" do
+    test "renders public LiveVue layout boundary when no user" do
       html =
-        render_component(&Layouts.public/1,
+        render_component(&PublicLayout.public/1,
           flash: %{},
           current_scope: nil,
           inner_block: inner_block("<p>Public page content</p>")
         )
 
+      vue = LiveVue.Test.get_vue(html, name: "live/layouts/public/Layout")
+
+      assert vue.id == "public-layout"
+      assert vue.props["is-logged-in"] == false
+      assert vue.props["urls"]["login"] == "/users/log-in"
       assert html =~ "Public page content"
-      assert html =~ "Storyarn"
-      assert html =~ "Log in"
-      assert html =~ "Request access"
     end
 
-    test "renders Dashboard link when user is logged in" do
+    test "marks public layout as signed in when user is logged in" do
       html =
-        render_component(&Layouts.public/1,
+        render_component(&PublicLayout.public/1,
           flash: %{},
           current_scope: %{user: user_map()},
           inner_block: inner_block("<p>Logged in page</p>")
         )
 
-      assert html =~ "Dashboard"
-      assert html =~ "/workspaces"
-      refute html =~ ">Log in<"
-      refute html =~ ">Sign up<"
+      vue = LiveVue.Test.get_vue(html, name: "live/layouts/public/Layout")
+
+      assert vue.props["is-logged-in"] == true
+      assert vue.props["urls"]["workspaces"] == "/workspaces"
     end
 
-    test "renders inner_block content" do
+    test "passes inner_block content through the public layout slot" do
       html =
-        render_component(&Layouts.public/1,
+        render_component(&PublicLayout.public/1,
           flash: %{},
           current_scope: nil,
           inner_block: inner_block("<div id=\"hero\">Welcome</div>")
@@ -93,30 +96,48 @@ defmodule StoryarnWeb.LayoutsTest do
       assert html =~ "Welcome"
     end
 
-    test "renders logo link to root" do
+    test "passes canonical public urls to Vue" do
       html =
-        render_component(&Layouts.public/1,
+        render_component(&PublicLayout.public/1,
           flash: %{},
           current_scope: nil,
           inner_block: inner_block("<p>Test</p>")
         )
 
-      assert html =~ ~s(logo-name-black.png)
-      assert html =~ ~s(logo-name-white.png)
-      assert html =~ "Storyarn"
+      vue = LiveVue.Test.get_vue(html, name: "live/layouts/public/Layout")
+
+      assert vue.props["urls"] == %{
+               "home" => "/",
+               "docs" => "/docs",
+               "contact" => "/contact",
+               "login" => "/users/log-in",
+               "workspaces" => "/workspaces"
+             }
     end
 
     test "supports forcing a dark theme for the public subtree" do
       html =
-        render_component(&Layouts.public/1,
+        render_component(&PublicLayout.public/1,
           flash: %{},
           current_scope: nil,
           theme: "dark",
           inner_block: inner_block("<p>Dark landing</p>")
         )
 
-      # Tailwind dark mode uses a "dark" class on the root element
-      assert html =~ ~r/class="[^"]*\bdark\b/
+      vue = LiveVue.Test.get_vue(html, name: "live/layouts/public/Layout")
+
+      assert vue.props["theme"] == "dark"
+    end
+
+    test "renders flash group outside public boundary" do
+      html =
+        render_component(&PublicLayout.public/1,
+          flash: %{},
+          current_scope: nil,
+          inner_block: inner_block("<p>Public page</p>")
+        )
+
+      assert html =~ ~s(id="flash-group")
     end
   end
 

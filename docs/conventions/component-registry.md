@@ -159,6 +159,7 @@ import StoryarnWeb.Components.Sidebar.SceneTree
 | `VersionsSection`     | `import StoryarnWeb.Components.VersionsSection`     | Version history display                             |
 | `FocusLayout`         | `import StoryarnWeb.Components.FocusLayout`         | Focus layout helper components                      |
 | `AuthLayout`          | `alias StoryarnWeb.Components.AuthLayout`           | Authentication LiveVue layout boundary             |
+| `PublicLayout`        | `alias StoryarnWeb.Components.PublicLayout`         | Public marketing/invitation LiveVue layout boundary |
 | `DocsLayout`          | `alias StoryarnWeb.Components.DocsLayout`           | Documentation LiveVue layout boundary              |
 | `SettingsLayout`      | `alias StoryarnWeb.Components.SettingsLayout`       | Settings LiveVue layout boundary                   |
 
@@ -180,9 +181,9 @@ import StoryarnWeb.Components.Sidebar.SceneTree
   # Centered auth pages (login/register)
 </AuthLayout.auth>
 
-<Layouts.public flash={@flash}>
+<PublicLayout.public flash={@flash}>
   # Public pages (landing, marketing)
-</Layouts.public>
+</PublicLayout.public>
 
 <SettingsLayout.settings flash={@flash} current_scope={@current_scope} current_path={@current_path}
   workspaces={@workspaces}>

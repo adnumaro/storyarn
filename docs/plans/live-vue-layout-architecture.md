@@ -32,7 +32,7 @@ Known remaining work:
 - `Layouts.app` still has two LiveView consumers:
   - `WorkspaceLive.New`
   - `ProjectLive.Trash`
-- `Layouts.public`, `Layouts.compare`, flow player, and scene exploration still contain visual HEEx composition.
+- `Layouts.compare`, flow player, and scene exploration still contain visual HEEx composition.
 - `ProjectLayout` should normalize the project navbar height to one canonical value.
 - Generic flash visibility for `ProjectLayout` needs an explicit decision because project tools still call `put_flash/3`.
 
@@ -591,10 +591,10 @@ Completed:
 
 - migrate auth layout
 - migrate docs layout as a thin Elixir data boundary plus `live/layouts/docs/Layout`
+- migrate public layout as a thin Elixir data boundary plus `live/layouts/public/Layout`
 
 Remaining:
 
-- migrate public layout
 - decide whether docs uses sticky `v-inject` based on sidebar/search state requirements
 
 ## Risks

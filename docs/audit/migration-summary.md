@@ -37,7 +37,7 @@ Generated: 2026-04-10
 | `WorkspaceLive.Index`      | V2        | Redirect + loading Vue component         |
 | `WorkspaceLive.Show`       | V2-layout | Vue dashboard inside `Layouts.app`       |
 | `WorkspaceLive.New`        | V2        | Single Vue component                     |
-| `WorkspaceLive.Invitation` | V2        | Single Vue component in `Layouts.public` |
+| `WorkspaceLive.Invitation` | V2        | Single Vue component in `PublicLayout`   |
 
 ### Projects (`project_live/`)
 
@@ -45,7 +45,7 @@ Generated: 2026-04-10
 | ------------------------ | --------- | ------------------------------------------------------------------- |
 | `ProjectLive.Show`       | V2-layout | Vue dashboard inside `Layouts.app`                                  |
 | `ProjectLive.Form`       | V2        | Single Vue component (uses `:live_component` macro but renders Vue) |
-| `ProjectLive.Invitation` | V2        | Vue in `Layouts.public`, redirects on accept                        |
+| `ProjectLive.Invitation` | V2        | Vue in `PublicLayout`, redirects on accept                          |
 | `ProjectLive.Trash`      | V2        | Single Vue component                                                |
 
 ### Sheets (`sheet_live/`)

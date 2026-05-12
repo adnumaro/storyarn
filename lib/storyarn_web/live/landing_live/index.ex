@@ -5,6 +5,7 @@ defmodule StoryarnWeb.LandingLive.Index do
   alias Storyarn.Accounts
   alias Storyarn.RateLimiter
   alias Storyarn.Workspaces
+  alias StoryarnWeb.Components.PublicLayout
 
   @impl true
   def mount(_params, _session, socket) do
@@ -24,14 +25,15 @@ defmodule StoryarnWeb.LandingLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.public flash={@flash} current_scope={@current_scope} theme="dark">
+    <PublicLayout.public flash={@flash} current_scope={@current_scope} theme="dark">
       <.vue
         v-component="live/public/landing/Page"
         v-socket={@socket}
+        v-inject="public-layout"
         id="landing-page"
         is-logged-in={!!@current_scope && !!@current_scope.user}
       />
-    </Layouts.public>
+    </PublicLayout.public>
     """
   end
 

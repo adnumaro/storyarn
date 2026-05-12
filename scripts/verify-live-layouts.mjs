@@ -67,11 +67,17 @@ for (const filePath of files) {
     }
   }
 
-  for (const match of source.matchAll(/\bLayouts\.(auth|docs|settings)\b/g)) {
+  for (const match of source.matchAll(/\bLayouts\.(auth|docs|settings|public)\b/g)) {
     const layoutName = match[1];
     const location = `${rel}:${lineNumberAt(source, match.index ?? 0)}`;
     const targetLayout =
-      layoutName === "auth" ? "AuthLayout" : layoutName === "docs" ? "DocsLayout" : "SettingsLayout";
+      layoutName === "auth"
+        ? "AuthLayout"
+        : layoutName === "docs"
+          ? "DocsLayout"
+          : layoutName === "settings"
+            ? "SettingsLayout"
+            : "PublicLayout";
 
     failures.push(`${location} Layouts.${layoutName} has moved to ${targetLayout}`);
   }

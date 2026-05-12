@@ -29,6 +29,8 @@ if admin_email = System.get_env("ADMIN_EMAIL") do
   config :storyarn, :admin_email, admin_email
 end
 
+config :storyarn, :contact_email, System.get_env("CONTACT_EMAIL") || "hello@storyarn.com"
+
 # Sentry error tracking
 if sentry_dsn = System.get_env("SENTRY_DSN") do
   config :logger, :sentry,

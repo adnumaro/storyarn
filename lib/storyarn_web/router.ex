@@ -42,7 +42,6 @@ defmodule StoryarnWeb.Router do
   scope "/", StoryarnWeb do
     pipe_through :browser
 
-    get "/contact", PageController, :contact
     post "/waitlist", PageController, :join_waitlist
   end
 
@@ -291,6 +290,7 @@ defmodule StoryarnWeb.Router do
       live "/users/register/:token", UserLive.Registration, :new
       live "/users/log-in", UserLive.Login, :new
       live "/users/confirm-access", UserLive.ConfirmAccess, :new
+      live "/contact", LandingLive.Contact, :show
 
       # Project invitations (accessible with or without auth)
       live "/projects/invitations/:token", ProjectLive.Invitation, :show

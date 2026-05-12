@@ -4,10 +4,6 @@ defmodule StoryarnWeb.PageController do
   alias Storyarn.Accounts
   alias Storyarn.RateLimiter
 
-  def contact(conn, _params) do
-    render(conn, :contact)
-  end
-
   def join_waitlist(conn, %{"waitlist" => %{"email" => email}}) do
     case RateLimiter.check_waitlist(format_ip(conn)) do
       :ok ->
