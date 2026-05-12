@@ -13,9 +13,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
   # Test Helpers
   # ============================================================================
 
-  # Simulates the FlowLoader JS hook: triggers the event + waits for start_async
+  # Waits for the automatic flow data load started by handle_params.
   defp load_flow(view) do
-    render_click(view, "load_flow_data", %{})
     await_async(view)
   end
 

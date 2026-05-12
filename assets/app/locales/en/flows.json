@@ -39,6 +39,9 @@
       "no_scene": "No scene",
       "inherited": "(inherited)",
       "no_scene_inherit": "No scene (inherit)",
+      "word_count": "{count} word in this flow | {count} words in this flow",
+      "errors": "Errors",
+      "info": "Info",
       "looks_great": "This flow looks great!",
       "saving": "Saving",
       "saved": "Saved"

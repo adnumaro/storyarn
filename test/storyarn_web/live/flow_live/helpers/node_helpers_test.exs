@@ -567,8 +567,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
         )
 
-      # Trigger async load and select node so selected_node is set
-      render_click(view, "load_flow_data", %{})
+      # Wait for automatic flow data load and select node so selected_node is set
       await_async(view)
       render_click(view, "node_selected", %{"id" => node.id})
 
@@ -600,7 +599,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
         )
 
-      render_click(view, "load_flow_data", %{})
       await_async(view)
       render_click(view, "node_selected", %{"id" => node.id})
 
@@ -629,7 +627,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
         )
 
-      render_click(view, "load_flow_data", %{})
       await_async(view)
       render_click(view, "node_selected", %{"id" => node.id})
 
@@ -671,8 +668,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
         )
 
-      # Must load flow data and select node so selected_node assign is set
-      render_click(view, "load_flow_data", %{})
+      # Wait for automatic flow data load and select node so selected_node assign is set
       await_async(view)
       render_click(view, "node_selected", %{"id" => node.id})
 
@@ -704,7 +700,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
         )
 
-      render_click(view, "load_flow_data", %{})
       await_async(view)
       render_click(view, "node_selected", %{"id" => node.id})
 
@@ -730,7 +725,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
         )
 
-      render_click(view, "load_flow_data", %{})
       await_async(view)
       render_click(view, "node_selected", %{"id" => node.id})
 
@@ -768,7 +762,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
         )
 
-      render_click(view, "load_flow_data", %{})
       await_async(view)
       render_click(view, "node_selected", %{"id" => node.id})
 

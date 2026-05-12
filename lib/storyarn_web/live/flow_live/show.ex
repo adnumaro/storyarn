@@ -360,7 +360,6 @@ defmodule StoryarnWeb.FlowLive.Show do
           |> assign(:loading, true)
           |> assign(:flow, flow)
 
-        # V2: start async load directly (V1 defers via FlowLoader hook)
         if connected?(socket) do
           project = socket.assigns.project
 
@@ -611,29 +610,6 @@ defmodule StoryarnWeb.FlowLive.Show do
       _ ->
         {:noreply, socket}
     end
-  end
-
-  # Triggered by the FlowLoader hook after the browser has painted the spinner.
-  def handle_event("load_flow_data", _params, socket) do
-    %{flow: flow, project: project} = socket.assigns
-
-    socket =
-      start_async(socket, :load_flow_data, fn ->
-        full_flow = Flows.get_flow!(project.id, flow.id)
-        project_variables = VariableHelpers.list_all_variables(project.id)
-
-        %{
-          flow: full_flow,
-          flow_data: Flows.serialize_for_canvas(full_flow, project_variables: project_variables),
-          all_sheets: Sheets.list_all_sheets(project.id),
-          gallery_by_sheet: Sheets.batch_load_gallery_data_by_sheet(project.id),
-          flow_hubs: Flows.list_hubs(flow.id),
-          project_variables: project_variables,
-          available_scenes: Scenes.list_scenes(project.id)
-        }
-      end)
-
-    {:noreply, socket}
   end
 
   def handle_event("wrap_selection_in_sequence", %{"node_ids" => node_ids}, socket) do

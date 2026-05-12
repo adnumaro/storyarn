@@ -7,9 +7,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.NavigationHandlersTest do
 
   alias Storyarn.Repo
 
-  # Simulates the FlowLoader JS hook: triggers the event + waits for start_async
+  # Waits for the automatic flow data load started by handle_params.
   defp load_flow(view) do
-    render_click(view, "load_flow_data", %{})
     render_async(view, 2000)
   end
 

@@ -39,6 +39,9 @@
       "no_scene": "Sin escena",
       "inherited": "(heredada)",
       "no_scene_inherit": "Sin escena (heredar)",
+      "word_count": "{count} palabra en este flujo | {count} palabras en este flujo",
+      "errors": "Errores",
+      "info": "Info",
       "looks_great": "Este flujo se ve bien",
       "saving": "Guardando",
       "saved": "Guardado"

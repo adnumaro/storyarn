@@ -206,7 +206,9 @@ function navigateToNode(nodeId: number | string): void {
       <!-- Word count -->
       <div
         class="toolbar-btn gap-1.5 text-muted-foreground"
-        :title="`${flowHealth.wordCount} words in this flow`"
+        :title="
+          $t('flows.header.word_count', { count: flowHealth.wordCount }, flowHealth.wordCount)
+        "
       >
         <Text class="size-3.5" />
         <span>{{ flowHealth.wordCount }}</span>
@@ -234,7 +236,7 @@ function navigateToNode(nodeId: number | string): void {
                 v-if="flowHealth.infoNodes.length > 0"
                 class="px-2 py-1 text-[10px] text-muted-foreground font-medium uppercase"
               >
-                Errors
+                {{ $t("flows.header.errors") }}
               </div>
               <button
                 v-for="node in flowHealth.errorNodes"
@@ -251,7 +253,7 @@ function navigateToNode(nodeId: number | string): void {
                 v-if="flowHealth.errorNodes.length > 0"
                 class="px-2 py-1 text-[10px] text-muted-foreground font-medium uppercase mt-1"
               >
-                Info
+                {{ $t("flows.header.info") }}
               </div>
               <button
                 v-for="node in flowHealth.infoNodes"

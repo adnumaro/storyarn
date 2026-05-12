@@ -9,9 +9,8 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
   alias Storyarn.Collaboration
   alias Storyarn.Repo
 
-  # Simulates the FlowLoader JS hook: triggers the event + waits for start_async
+  # Waits for the automatic flow data load started by handle_params.
   defp load_flow(view) do
-    render_click(view, "load_flow_data", %{})
     await_async(view)
   end
 
@@ -28,7 +27,6 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
         )
 
-      # Simulate FlowLoader hook + wait for async data load
       load_flow(view)
 
       # Collaboration data is now passed as Vue props, not HTML data attributes
