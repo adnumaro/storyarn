@@ -4,7 +4,7 @@ import { reactiveOmit, useCurrentElement } from "@vueuse/core";
 import { ListboxItem, useForwardPropsEmits, useId, type AsTag } from "reka-ui";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { cn } from "../../../shared/utils/utils";
-import { useCommand, useCommandGroup } from ".";
+import { useCommand, useCommandGroup } from "./context";
 
 const props = defineProps<{
   value: string;

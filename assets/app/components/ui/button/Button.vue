@@ -2,7 +2,7 @@
 import type { Component, HTMLAttributes } from "vue";
 import { Primitive, type AsTag } from "reka-ui";
 import { cn } from "../../../shared/utils/utils";
-import { buttonVariants } from ".";
+import { buttonVariants } from "./variants";
 
 const props = withDefaults(
   defineProps<{

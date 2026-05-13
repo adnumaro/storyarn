@@ -9,7 +9,8 @@ import {
   type AsTag,
 } from "reka-ui";
 import { cn } from "../../../shared/utils/utils";
-import { SelectScrollDownButton, SelectScrollUpButton } from ".";
+import SelectScrollDownButton from "./SelectScrollDownButton.vue";
+import SelectScrollUpButton from "./SelectScrollUpButton.vue";
 
 defineOptions({
   inheritAttrs: false,

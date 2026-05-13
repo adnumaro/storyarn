@@ -4,7 +4,7 @@ import { reactiveOmit } from "@vueuse/core";
 import { Primitive, type AsTag } from "reka-ui";
 import { computed } from "vue";
 import { cn } from "../../../shared/utils/utils";
-import { useCommand } from ".";
+import { useCommand } from "./context";
 
 const props = defineProps<{
   asChild?: boolean;

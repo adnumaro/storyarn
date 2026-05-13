@@ -3,7 +3,7 @@ import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
 import { Primitive, type AsTag } from "reka-ui";
 import { cn } from "../../../shared/utils/utils";
-import { badgeVariants } from ".";
+import { badgeVariants } from "./variants";
 
 const props = defineProps<{
   asChild?: boolean;

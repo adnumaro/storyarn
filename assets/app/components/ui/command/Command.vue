@@ -4,7 +4,7 @@ import { reactiveOmit } from "@vueuse/core";
 import { ListboxRoot, useFilter, useForwardPropsEmits, type AsTag } from "reka-ui";
 import { reactive, ref, watch } from "vue";
 import { cn } from "../../../shared/utils/utils";
-import { provideCommandContext } from ".";
+import { provideCommandContext } from "./context";
 
 const props = defineProps<{
   modelValue?: string | string[];

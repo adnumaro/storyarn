@@ -3,7 +3,7 @@ import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
 import { Toggle, useForwardPropsEmits, type AsTag } from "reka-ui";
 import { cn } from "../../../shared/utils/utils";
-import { toggleVariants } from ".";
+import { toggleVariants } from "./variants";
 
 const props = defineProps<{
   defaultValue?: boolean;

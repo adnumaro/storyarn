@@ -4,7 +4,7 @@ import { reactiveOmit } from "@vueuse/core";
 import { Search } from "lucide-vue-next";
 import { ListboxFilter, useForwardProps, type AsTag } from "reka-ui";
 import { cn } from "../../../shared/utils/utils";
-import { useCommand } from ".";
+import { useCommand } from "./context";
 
 defineOptions({
   inheritAttrs: false,
