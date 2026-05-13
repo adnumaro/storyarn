@@ -97,9 +97,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
 
   # Sequence config / track changes — only matter to viewers who currently
   # have the sequence config panel open on the same sequence. Refresh the
-  # panel data assign so Vue re-renders with the new background image,
-  # position, fit, or track state. Skip the canvas reload — these fields
-  # don't affect node graph topology.
+  # panel data assign so Vue re-renders with the new visual/audio state.
+  # Skip the canvas reload — these fields don't affect node graph topology.
   def handle_remote_change(:sequence_config_updated, payload, socket) do
     socket = CollaborationHelpers.push_remote_change_event(socket, :sequence_config_updated, payload)
     refresh_sequence_panel_if_open(socket, payload.sequence_id)
@@ -110,6 +109,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
   end
 
   def handle_remote_change(:sequence_track_cleared, payload, socket) do
+    refresh_sequence_panel_if_open(socket, payload.sequence_id)
+  end
+
+  def handle_remote_change(:sequence_visual_layer_changed, payload, socket) do
     refresh_sequence_panel_if_open(socket, payload.sequence_id)
   end
 

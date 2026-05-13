@@ -25,12 +25,21 @@ function defaultProps() {
     canGoBack: false,
     showContinue: true,
     isFinished: false,
-    backgrounds: [] as Array<{
+    visualLayers: [] as Array<{
+      id: string | number;
       sequence_id?: string | number;
+      sequence_depth?: number | null;
+      kind: string;
       url: string;
-      position?: string | null;
+      z_index?: number | null;
+      x?: number | null;
+      y?: number | null;
+      width?: number | null;
+      height?: number | null;
+      anchor_x?: number | null;
+      anchor_y?: number | null;
       fit?: "cover" | "contain" | "fill" | null;
-      depth?: number | null;
+      opacity?: number | null;
     }>,
     audioTracks: [] as Array<{
       id: string | number;
@@ -94,28 +103,60 @@ describe("FlowPlayer", () => {
       expect(w.find(".player-slide-dialogue").exists()).toBe(false);
     });
 
-    it("renders player background layers ordered by sequence depth", () => {
+    it("renders visual layers ordered by sequence depth and z-index", () => {
       const w = mountPlayer({
-        backgrounds: [
-          { sequence_id: 10, url: "/outer.png", position: "top-left", fit: "cover", depth: 0 },
-          { sequence_id: 11, url: "/inner.png", position: "top-right", fit: "contain", depth: 1 },
+        visualLayers: [
+          {
+            id: 1,
+            sequence_id: 10,
+            sequence_depth: 0,
+            kind: "backdrop",
+            url: "/outer.png",
+            z_index: 0,
+            x: 0,
+            y: 0,
+            width: 1,
+            height: 1,
+            anchor_x: 0,
+            anchor_y: 0,
+            fit: "cover",
+          },
+          {
+            id: 2,
+            sequence_id: 11,
+            sequence_depth: 1,
+            kind: "character",
+            url: "/inner.png",
+            z_index: 100,
+            x: 0.75,
+            y: 1,
+            width: 0.38,
+            height: 0.9,
+            anchor_x: 0.5,
+            anchor_y: 1,
+            fit: "contain",
+          },
         ],
       });
-      const backdrops = w.findAll(".player-backdrop");
-      expect(backdrops).toHaveLength(2);
-      expect(backdrops[0]!.element.tagName).toBe("IMG");
-      expect(backdrops[0]!.attributes("src")).toBe("/outer.png");
-      expect(backdrops[0]!.attributes("style")).toContain("object-fit: cover");
-      expect(backdrops[0]!.attributes("style")).toContain("object-position: top left");
-      expect(backdrops[1]!.attributes("src")).toBe("/inner.png");
-      expect(backdrops[1]!.attributes("style")).toContain("object-fit: contain");
-      expect(backdrops[1]!.attributes("style")).toContain("object-position: top right");
-      expect(backdrops[1]!.attributes("data-depth")).toBe("1");
+      const layers = w.findAll(".flow-player-stage-layer");
+      expect(layers).toHaveLength(2);
+      expect(layers[0]!.attributes("data-kind")).toBe("backdrop");
+      expect(layers[0]!.attributes("data-sequence-depth")).toBe("0");
+      expect(layers[0]!.attributes("style")).toContain("width: 100%");
+      expect(layers[1]!.attributes("data-kind")).toBe("character");
+      expect(layers[1]!.attributes("data-sequence-depth")).toBe("1");
+      expect(layers[1]!.attributes("style")).toContain("left: 75%");
+
+      const images = w.findAll(".flow-player-stage-layer-img");
+      expect(images[0]!.attributes("src")).toBe("/outer.png");
+      expect(images[0]!.attributes("style")).toContain("object-fit: cover");
+      expect(images[1]!.attributes("src")).toBe("/inner.png");
+      expect(images[1]!.attributes("style")).toContain("object-fit: contain");
     });
 
-    it("hides player background when URL is null", () => {
-      const w = mountPlayer({ backgrounds: [] });
-      expect(w.find(".player-backdrop").exists()).toBe(false);
+    it("hides visual layers when there are no layer URLs", () => {
+      const w = mountPlayer({ visualLayers: [] });
+      expect(w.find(".flow-player-stage-layer").exists()).toBe(false);
     });
 
     it("renders sequence audio tracks", async () => {

@@ -212,11 +212,13 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   def build_sequence_panel_data(socket, %{type: "sequence", id: seq_id}) do
     project_id = socket.assigns.project.id
     config = Repo.get_by(SequenceConfig, flow_node_id: seq_id)
+    visual_layers = Flows.list_sequence_visual_layers(seq_id)
     tracks = Flows.list_sequence_tracks(seq_id)
 
     %{
       sequence_id: seq_id,
       config: serialize_sequence_config(config),
+      visual_layers: Enum.map(visual_layers, &serialize_sequence_visual_layer/1),
       tracks: Enum.map(tracks, &serialize_sequence_track/1),
       image_assets: serialize_assets(Assets.list_assets(project_id, images_only: true)),
       audio_assets: serialize_assets(Assets.list_assets(project_id, content_type: "audio/"))
@@ -229,10 +231,28 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     %{
       name: cfg.name,
       width: cfg.width,
-      height: cfg.height,
-      background_asset_id: cfg.background_asset_id,
-      background_position: cfg.background_position,
-      background_fit: cfg.background_fit
+      height: cfg.height
+    }
+  end
+
+  defp serialize_sequence_visual_layer(%Storyarn.Flows.SequenceVisualLayer{} = layer) do
+    %{
+      id: layer.id,
+      kind: layer.kind,
+      label: layer.label,
+      asset_id: layer.asset_id,
+      url: Assets.display_url(layer.asset),
+      z_index: layer.z_index,
+      slot: layer.slot,
+      x: layer.x,
+      y: layer.y,
+      width: layer.width,
+      height: layer.height,
+      anchor_x: layer.anchor_x,
+      anchor_y: layer.anchor_y,
+      fit: layer.fit,
+      opacity: layer.opacity,
+      visible: layer.visible
     }
   end
 
@@ -618,11 +638,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   def handle_update_sequence_name(_params, socket), do: {:noreply, socket}
 
   @doc """
-  Updates one or more background media fields on a sequence's config.
-  Accepts any subset of `background_asset_id`, `background_position`,
-  `background_fit`. Validates ownership (the target must be a sequence)
-  and re-serializes the panel data so the Vue component re-renders with
-  the fresh values.
+  Updates one or more sequence metadata fields. Visual composition lives
+  in sequence visual layers and is handled by dedicated layer events.
   """
   @spec handle_update_sequence_config(map(), Socket.t()) ::
           {:noreply, Socket.t()}
@@ -655,10 +672,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       "position_x",
       "position_y",
       "width",
-      "height",
-      "background_asset_id",
-      "background_position",
-      "background_fit"
+      "height"
     ]
     |> Enum.reduce(
       base,
@@ -683,9 +697,102 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
   defp ensure_name_fallback(attrs, _id), do: attrs
 
+  @doc "Creates a visual layer for the selected sequence."
+  @spec handle_create_sequence_visual_layer(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
+  def handle_create_sequence_visual_layer(%{"id" => node_id} = params, socket) do
+    with {:ok, parsed_id} <- parse_optional_int(node_id),
+         true <- is_integer(parsed_id),
+         %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
+         attrs = visual_layer_attrs_from_params(params),
+         {:ok, _layer} <- Flows.create_sequence_visual_layer(parsed_id, attrs) do
+      {:noreply,
+       socket
+       |> mark_saved()
+       |> assign(:sequence_panel_data, build_sequence_panel_data(socket, seq))
+       |> CollaborationHelpers.broadcast_change(:sequence_visual_layer_changed, %{
+         sequence_id: parsed_id
+       })}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  @doc "Updates a visual layer for the selected sequence."
+  @spec handle_update_sequence_visual_layer(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
+  def handle_update_sequence_visual_layer(%{"id" => node_id, "layer_id" => layer_id} = params, socket) do
+    with {:ok, parsed_id} <- parse_optional_int(node_id),
+         true <- is_integer(parsed_id),
+         {:ok, parsed_layer_id} <- parse_optional_int(layer_id),
+         true <- is_integer(parsed_layer_id),
+         %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
+         layer when not is_nil(layer) <- Flows.get_sequence_visual_layer(parsed_id, parsed_layer_id),
+         attrs = visual_layer_attrs_from_params(params),
+         {:ok, _layer} <- Flows.update_sequence_visual_layer(layer, attrs) do
+      {:noreply,
+       socket
+       |> mark_saved()
+       |> assign(:sequence_panel_data, build_sequence_panel_data(socket, seq))
+       |> CollaborationHelpers.broadcast_change(:sequence_visual_layer_changed, %{
+         sequence_id: parsed_id
+       })}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  @doc "Deletes a visual layer for the selected sequence."
+  @spec handle_delete_sequence_visual_layer(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
+  def handle_delete_sequence_visual_layer(%{"id" => node_id, "layer_id" => layer_id}, socket) do
+    with {:ok, parsed_id} <- parse_optional_int(node_id),
+         true <- is_integer(parsed_id),
+         {:ok, parsed_layer_id} <- parse_optional_int(layer_id),
+         true <- is_integer(parsed_layer_id),
+         %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
+         layer when not is_nil(layer) <- Flows.get_sequence_visual_layer(parsed_id, parsed_layer_id),
+         {:ok, _layer} <- Flows.delete_sequence_visual_layer(layer) do
+      {:noreply,
+       socket
+       |> mark_saved()
+       |> assign(:sequence_panel_data, build_sequence_panel_data(socket, seq))
+       |> CollaborationHelpers.broadcast_change(:sequence_visual_layer_changed, %{
+         sequence_id: parsed_id
+       })}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  defp visual_layer_attrs_from_params(params) do
+    Enum.reduce(
+      [
+        "asset_id",
+        "kind",
+        "label",
+        "z_index",
+        "slot",
+        "x",
+        "y",
+        "width",
+        "height",
+        "anchor_x",
+        "anchor_y",
+        "fit",
+        "opacity",
+        "visible"
+      ],
+      %{},
+      fn field, acc ->
+        if Map.has_key?(params, field), do: Map.put(acc, field, params[field]), else: acc
+      end
+    )
+  end
+
   @doc """
   Upserts an audio track for the selected sequence. `kind` must be one
-  of `background | music | ambient`. `asset_id` nullable. `volume` a
+  of `music | ambience | sfx`. `asset_id` nullable. `volume` a
   decimal in [0, 1].
   """
   @spec handle_upsert_sequence_track(map(), Socket.t()) ::

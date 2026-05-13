@@ -18,6 +18,7 @@ defmodule Storyarn.Flows.SequenceCrud do
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Flows.SequenceTrack
+  alias Storyarn.Flows.SequenceVisualLayer
   alias Storyarn.Repo
 
   @type sequence :: FlowNode.t()
@@ -131,14 +132,7 @@ defmodule Storyarn.Flows.SequenceCrud do
     node_attrs = Map.take(attrs, ["position_x", "position_y", "parent_id"])
 
     config_attrs =
-      Map.take(attrs, [
-        "name",
-        "width",
-        "height",
-        "background_asset_id",
-        "background_position",
-        "background_fit"
-      ])
+      Map.take(attrs, ["name", "width", "height"])
 
     Repo.transaction(fn ->
       updated_node =
@@ -275,6 +269,147 @@ defmodule Storyarn.Flows.SequenceCrud do
 
     Repo.update_all(from(n in FlowNode, where: n.id in ^ids), set: [parent_id: sequence_id])
     :ok
+  end
+
+  # =========================================================================
+  # Sequence visual layers
+  # =========================================================================
+
+  @doc """
+  Lists all visual layers for a sequence, ordered for player rendering.
+  """
+  @spec list_sequence_visual_layers(integer()) :: [SequenceVisualLayer.t()]
+  def list_sequence_visual_layers(sequence_id) when is_integer(sequence_id) do
+    Repo.all(
+      from(l in SequenceVisualLayer,
+        where: l.flow_node_id == ^sequence_id,
+        order_by: [asc: l.z_index, asc: l.id],
+        preload: [:asset]
+      )
+    )
+  end
+
+  @doc "Fetches a visual layer scoped to its sequence."
+  @spec get_sequence_visual_layer(integer(), integer()) :: SequenceVisualLayer.t() | nil
+  def get_sequence_visual_layer(sequence_id, id) when is_integer(sequence_id) and is_integer(id) do
+    Repo.one(
+      from(l in SequenceVisualLayer,
+        where: l.flow_node_id == ^sequence_id and l.id == ^id,
+        preload: [:asset]
+      )
+    )
+  end
+
+  @doc """
+  Creates a visual layer for a sequence. `kind` drives sensible stage
+  defaults, and explicit attrs override those defaults.
+  """
+  @spec create_sequence_visual_layer(integer(), map()) ::
+          {:ok, SequenceVisualLayer.t()} | {:error, Ecto.Changeset.t()}
+  def create_sequence_visual_layer(sequence_id, attrs) when is_integer(sequence_id) and is_map(attrs) do
+    attrs = normalize_keys(attrs)
+    kind = Map.get(attrs, "kind", "prop")
+    slot = Map.get(attrs, "slot", default_slot_for_visual_kind(kind))
+
+    attrs =
+      kind
+      |> visual_layer_defaults(slot)
+      |> Map.merge(attrs)
+      |> Map.put("flow_node_id", sequence_id)
+      |> Map.put("kind", kind)
+      |> Map.put("slot", slot)
+
+    %SequenceVisualLayer{}
+    |> SequenceVisualLayer.create_changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc "Updates a sequence visual layer."
+  @spec update_sequence_visual_layer(SequenceVisualLayer.t(), map()) ::
+          {:ok, SequenceVisualLayer.t()} | {:error, Ecto.Changeset.t()}
+  def update_sequence_visual_layer(%SequenceVisualLayer{} = layer, attrs) when is_map(attrs) do
+    layer
+    |> SequenceVisualLayer.update_changeset(normalize_keys(attrs))
+    |> Repo.update()
+  end
+
+  @doc "Deletes a sequence visual layer."
+  @spec delete_sequence_visual_layer(SequenceVisualLayer.t()) ::
+          {:ok, SequenceVisualLayer.t()} | {:error, Ecto.Changeset.t()}
+  def delete_sequence_visual_layer(%SequenceVisualLayer{} = layer), do: Repo.delete(layer)
+
+  defp default_slot_for_visual_kind("backdrop"), do: "full"
+  defp default_slot_for_visual_kind("overlay"), do: "full"
+  defp default_slot_for_visual_kind("character"), do: "center"
+  defp default_slot_for_visual_kind(_), do: "custom"
+
+  defp visual_layer_defaults("backdrop", _slot) do
+    %{
+      "slot" => "full",
+      "x" => 0.0,
+      "y" => 0.0,
+      "width" => 1.0,
+      "height" => 1.0,
+      "anchor_x" => 0.0,
+      "anchor_y" => 0.0,
+      "fit" => "cover",
+      "z_index" => 0,
+      "opacity" => 1.0,
+      "visible" => true
+    }
+  end
+
+  defp visual_layer_defaults("character", slot) do
+    {x, width} =
+      case slot do
+        "left" -> {0.25, 0.38}
+        "right" -> {0.75, 0.38}
+        _ -> {0.5, 0.42}
+      end
+
+    %{
+      "x" => x,
+      "y" => 1.0,
+      "width" => width,
+      "height" => 0.9,
+      "anchor_x" => 0.5,
+      "anchor_y" => 1.0,
+      "fit" => "contain",
+      "z_index" => 100,
+      "opacity" => 1.0,
+      "visible" => true
+    }
+  end
+
+  defp visual_layer_defaults("overlay", _slot) do
+    %{
+      "slot" => "full",
+      "x" => 0.0,
+      "y" => 0.0,
+      "width" => 1.0,
+      "height" => 1.0,
+      "anchor_x" => 0.0,
+      "anchor_y" => 0.0,
+      "fit" => "cover",
+      "z_index" => 300,
+      "opacity" => 1.0,
+      "visible" => true
+    }
+  end
+
+  defp visual_layer_defaults(_kind, _slot) do
+    %{
+      "x" => 0.5,
+      "y" => 0.5,
+      "width" => 0.25,
+      "height" => 0.25,
+      "anchor_x" => 0.5,
+      "anchor_y" => 0.5,
+      "fit" => "contain",
+      "z_index" => 200,
+      "opacity" => 1.0,
+      "visible" => true
+    }
   end
 
   # =========================================================================

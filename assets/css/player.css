@@ -329,7 +329,7 @@
   text-align: center;
 }
 
-/* ===== Player Background ===== */
+/* ===== Player Stage ===== */
 
 .player-dialogue-overlay {
   position: absolute;
@@ -348,13 +348,25 @@
   padding: 1rem 1.25rem 1.25rem;
 }
 
-.player-backdrop {
+.flow-player-stage-layers {
   position: absolute;
   inset: 0;
   z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.flow-player-stage-layer {
+  position: absolute;
   display: block;
+  pointer-events: none;
+}
+
+.flow-player-stage-layer-img {
   width: 100%;
   height: 100%;
+  display: block;
+  object-position: center;
   pointer-events: none;
 }
 
@@ -374,8 +386,8 @@
   filter: blur(2px);
 }
 
-.player-backdrop-transition {
-  animation: player-background-fade 0.5s ease;
+.flow-player-stage-layer-transition {
+  animation: player-stage-layer-fade 0.5s ease;
 }
 
 .player-audio-tracks {
@@ -387,7 +399,7 @@
   opacity: 0;
 }
 
-@keyframes player-background-fade {
+@keyframes player-stage-layer-fade {
   from {
     opacity: 0;
   }

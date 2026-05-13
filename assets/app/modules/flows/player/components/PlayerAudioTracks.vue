@@ -5,7 +5,7 @@ export interface PlayerAudioTrack {
   id: string | number;
   sequence_id?: string | number;
   sequenceId?: string | number;
-  kind: "background" | "music" | "ambient" | string;
+  kind: "music" | "ambience" | "sfx" | string;
   position?: number | null;
   url: string;
   volume?: number | null;

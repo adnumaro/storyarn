@@ -82,13 +82,35 @@
       "name_placeholder": "Nombre de la secuencia",
       "toolbar_open_config": "Abrir configuración de la secuencia",
       "tracks": {
-        "background": "Fondo",
         "music": "Música",
-        "ambient": "Ambiente"
+        "ambience": "Ambiente",
+        "sfx": "SFX"
+      },
+      "visual_layers": {
+        "title": "Composición visual",
+        "add": "Añadir",
+        "pick_asset": "Elegir imagen",
+        "delete": "Eliminar capa",
+        "kind": "Tipo",
+        "slot": "Posición",
+        "fit": "Ajuste",
+        "opacity": "Opacidad",
+        "kinds": {
+          "backdrop": "Escenario",
+          "character": "Personaje",
+          "prop": "Objeto",
+          "overlay": "Overlay"
+        },
+        "slots": {
+          "full": "Completo",
+          "left": "Izquierda",
+          "center": "Centro",
+          "right": "Derecha",
+          "custom": "Custom"
+        }
       },
       "config_panel": {
         "title": "Secuencia",
-        "background_title": "Imagen de fondo",
         "pick_image": "Elige una imagen",
         "search_image": "Buscar imágenes…",
         "clear_image": "Quitar imagen",

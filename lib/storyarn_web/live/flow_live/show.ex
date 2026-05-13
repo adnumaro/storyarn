@@ -800,6 +800,24 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
+  def handle_event("create_sequence_visual_layer", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_create_sequence_visual_layer(params, socket)
+    end)
+  end
+
+  def handle_event("update_sequence_visual_layer", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_update_sequence_visual_layer(params, socket)
+    end)
+  end
+
+  def handle_event("delete_sequence_visual_layer", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_delete_sequence_visual_layer(params, socket)
+    end)
+  end
+
   def handle_event("upsert_sequence_track", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       GenericNodeHandlers.handle_upsert_sequence_track(params, socket)

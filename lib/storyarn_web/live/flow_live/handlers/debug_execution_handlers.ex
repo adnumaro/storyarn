@@ -353,7 +353,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
   def build_nodes_map(flow_id) do
     flow_id
     |> Flows.list_nodes()
-    |> Repo.preload(sequence_config: [:background_asset], sequence_tracks: [:asset])
+    |> Repo.preload([:sequence_config, sequence_tracks: [:asset], sequence_visual_layers: [:asset]])
     |> Map.new(fn node -> {node.id, build_node_map(node)} end)
   end
 
@@ -364,19 +364,40 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
       data: node.data || %{},
       parent_id: node.parent_id,
       sequence_config: serialize_sequence_config(node.sequence_config),
+      sequence_visual_layers: Enum.map(node.sequence_visual_layers || [], &serialize_sequence_visual_layer/1),
       sequence_tracks: Enum.map(node.sequence_tracks || [], &serialize_sequence_track/1)
     }
   end
 
   defp serialize_sequence_config(%SequenceConfig{} = config) do
     %{
-      background_url: Storyarn.Assets.display_url(config.background_asset),
-      background_position: config.background_position,
-      background_fit: config.background_fit
+      name: config.name,
+      width: config.width,
+      height: config.height
     }
   end
 
   defp serialize_sequence_config(_), do: nil
+
+  defp serialize_sequence_visual_layer(layer) do
+    %{
+      id: layer.id,
+      kind: layer.kind,
+      label: layer.label,
+      url: Storyarn.Assets.display_url(layer.asset),
+      z_index: layer.z_index,
+      slot: layer.slot,
+      x: layer.x,
+      y: layer.y,
+      width: layer.width,
+      height: layer.height,
+      anchor_x: layer.anchor_x,
+      anchor_y: layer.anchor_y,
+      fit: layer.fit,
+      opacity: layer.opacity,
+      visible: layer.visible
+    }
+  end
 
   defp serialize_sequence_track(track) do
     %{

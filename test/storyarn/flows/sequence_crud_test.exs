@@ -10,6 +10,7 @@ defmodule Storyarn.Flows.SequenceCrudTest do
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Flows.SequenceTrack
+  alias Storyarn.Flows.SequenceVisualLayer
   alias Storyarn.Repo
 
   defp setup_flow(_ctx \\ %{}) do
@@ -169,45 +170,122 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       assert updated.type == "sequence"
     end
 
-    test "updates background media fields (asset/position/fit) on config" do
-      %{flow: flow, project: project, user: user} = setup_flow()
+    test "ignores non-metadata attrs on sequence config updates" do
+      %{flow: flow} = setup_flow()
       {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "s"})
-      asset = Storyarn.AssetsFixtures.image_asset_fixture(project, user)
 
       {:ok, updated} =
         Flows.update_sequence(seq, %{
           "name" => "s",
-          "background_asset_id" => asset.id,
-          "background_position" => "top-right",
-          "background_fit" => "contain"
+          "kind" => "backdrop"
         })
 
-      assert updated.sequence_config.background_asset_id == asset.id
-      assert updated.sequence_config.background_position == "top-right"
-      assert updated.sequence_config.background_fit == "contain"
+      assert updated.sequence_config.name == "s"
     end
+  end
 
-    test "rejects background_position outside the 9-value whitelist" do
-      %{flow: flow} = setup_flow()
+  describe "sequence visual layers" do
+    test "creates a backdrop layer with stage defaults" do
+      %{flow: flow, project: project, user: user} = setup_flow()
       {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "s"})
+      asset = Storyarn.AssetsFixtures.image_asset_fixture(project, user)
 
-      assert {:error, changeset} =
-               Flows.update_sequence(seq, %{
-                 "name" => "s",
-                 "background_position" => "diagonal-upward"
+      assert {:ok, %SequenceVisualLayer{} = layer} =
+               Flows.create_sequence_visual_layer(seq.id, %{
+                 "kind" => "backdrop",
+                 "asset_id" => asset.id
                })
 
-      assert %{background_position: ["is invalid"]} = errors_on(changeset)
+      assert layer.flow_node_id == seq.id
+      assert layer.asset_id == asset.id
+      assert layer.kind == "backdrop"
+      assert layer.slot == "full"
+      assert layer.fit == "cover"
+      assert layer.x == 0.0
+      assert layer.y == 0.0
+      assert layer.width == 1.0
+      assert layer.height == 1.0
     end
 
-    test "rejects background_fit outside the cover/contain/fill whitelist" do
-      %{flow: flow} = setup_flow()
+    test "creates a character layer with right-slot defaults" do
+      %{flow: flow, project: project, user: user} = setup_flow()
       {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "s"})
+      asset = Storyarn.AssetsFixtures.image_asset_fixture(project, user)
 
-      assert {:error, changeset} =
-               Flows.update_sequence(seq, %{"name" => "s", "background_fit" => "stretch"})
+      assert {:ok, layer} =
+               Flows.create_sequence_visual_layer(seq.id, %{
+                 "kind" => "character",
+                 "slot" => "right",
+                 "asset_id" => asset.id
+               })
 
-      assert %{background_fit: ["is invalid"]} = errors_on(changeset)
+      assert layer.kind == "character"
+      assert layer.slot == "right"
+      assert layer.fit == "contain"
+      assert layer.x == 0.75
+      assert layer.y == 1.0
+      assert layer.width == 0.38
+      assert layer.height == 0.9
+      assert layer.anchor_x == 0.5
+      assert layer.anchor_y == 1.0
+    end
+
+    test "lists visual layers ordered by z-index then id" do
+      %{flow: flow, project: project, user: user} = setup_flow()
+      {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "s"})
+      backdrop = Storyarn.AssetsFixtures.image_asset_fixture(project, user)
+      character = Storyarn.AssetsFixtures.image_asset_fixture(project, user)
+
+      {:ok, character_layer} =
+        Flows.create_sequence_visual_layer(seq.id, %{
+          "kind" => "character",
+          "asset_id" => character.id
+        })
+
+      {:ok, backdrop_layer} =
+        Flows.create_sequence_visual_layer(seq.id, %{
+          "kind" => "backdrop",
+          "asset_id" => backdrop.id
+        })
+
+      assert seq.id |> Flows.list_sequence_visual_layers() |> Enum.map(& &1.id) == [
+               backdrop_layer.id,
+               character_layer.id
+             ]
+    end
+
+    test "updates and deletes a visual layer" do
+      %{flow: flow, project: project, user: user} = setup_flow()
+      {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "s"})
+      asset = Storyarn.AssetsFixtures.image_asset_fixture(project, user)
+
+      {:ok, layer} =
+        Flows.create_sequence_visual_layer(seq.id, %{
+          "kind" => "prop",
+          "asset_id" => asset.id
+        })
+
+      assert {:ok, updated} =
+               Flows.update_sequence_visual_layer(layer, %{"opacity" => 0.5, "slot" => "center"})
+
+      assert updated.opacity == 0.5
+      assert updated.slot == "center"
+
+      assert {:ok, _deleted} = Flows.delete_sequence_visual_layer(updated)
+      assert Flows.get_sequence_visual_layer(seq.id, layer.id) == nil
+    end
+
+    test "DB trigger rejects layers pointing to non-sequence flow_nodes" do
+      %{flow: flow, project: project, user: user} = setup_flow()
+      asset = Storyarn.AssetsFixtures.image_asset_fixture(project, user)
+      dialogue = node_fixture(flow, %{type: "dialogue", data: %{"text" => "x"}})
+
+      assert_raise Postgrex.Error, ~r/must reference a sequence node/, fn ->
+        Flows.create_sequence_visual_layer(dialogue.id, %{
+          "kind" => "backdrop",
+          "asset_id" => asset.id
+        })
+      end
     end
   end
 
@@ -254,11 +332,11 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "s"})
       asset = Storyarn.AssetsFixtures.audio_asset_fixture(project, user)
 
-      {:ok, _} = Flows.upsert_sequence_track(seq.id, "ambient", %{"asset_id" => asset.id})
-      assert Flows.get_sequence_track(seq.id, "ambient")
+      {:ok, _} = Flows.upsert_sequence_track(seq.id, "ambience", %{"asset_id" => asset.id})
+      assert Flows.get_sequence_track(seq.id, "ambience")
 
-      assert {:ok, :cleared} = Flows.clear_sequence_track(seq.id, "ambient")
-      assert Flows.get_sequence_track(seq.id, "ambient") == nil
+      assert {:ok, :cleared} = Flows.clear_sequence_track(seq.id, "ambience")
+      assert Flows.get_sequence_track(seq.id, "ambience") == nil
     end
 
     test "clear is a no-op when no row exists" do
@@ -291,14 +369,14 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       %{flow: flow} = setup_flow()
       {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "s"})
 
-      {:ok, _} = Flows.upsert_sequence_track(seq.id, "background", %{})
       {:ok, _} = Flows.upsert_sequence_track(seq.id, "music", %{})
-      {:ok, _} = Flows.upsert_sequence_track(seq.id, "ambient", %{})
+      {:ok, _} = Flows.upsert_sequence_track(seq.id, "ambience", %{})
+      {:ok, _} = Flows.upsert_sequence_track(seq.id, "sfx", %{})
 
       tracks = Flows.list_sequence_tracks(seq.id)
 
       assert tracks |> Enum.map(& &1.kind) |> Enum.sort() ==
-               ["ambient", "background", "music"]
+               ["ambience", "music", "sfx"]
     end
 
     test "rejects volume outside [0, 1]" do

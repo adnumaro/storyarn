@@ -3,14 +3,12 @@ defmodule Storyarn.Flows.SequenceTrack do
   A single audio track attached to a sequence. N:1 with
   `Storyarn.Flows.FlowNode` where `type='sequence'`.
 
-  Replaces the old `flow_sequences.tracks` jsonb (which was lost in
-  phase 1 of the relational refactor). Three `kind` slots per sequence:
+  Three `kind` slots per sequence:
 
-    * `background` — looping atmosphere layer. Typically the lowest
-      in the mix.
     * `music` — melodic or rhythmic layer.
-    * `ambient` — punctual or short-loop textures (footsteps, wind,
-      etc.) that compose on top.
+    * `ambience` — looping atmosphere layer. Typically the lowest
+      in the mix.
+    * `sfx` — short-loop or punctual textures that compose on top.
 
   When the FlowPlay runtime steps into a node whose ancestor chain
   includes multiple sequences, each kind mixes additively across
@@ -18,10 +16,9 @@ defmodule Storyarn.Flows.SequenceTrack do
   The resolver collects rows per kind walking the ancestor chain;
   inner tracks sit on top.
 
-  A UNIQUE constraint on `(flow_node_id, kind)` enforces "3 slots per
-  sequence" — one track row per kind. `position` exists for a future
-  multi-layer extension; for now it's always 0 and the unique makes
-  stacking impossible.
+  A UNIQUE constraint on `(flow_node_id, kind)` enforces one slot per
+  sequence: one track row per kind. `position` exists for a future
+  multi-layer extension; for now the unique makes stacking impossible.
 
   `asset_id` is nullable because the DB-level row represents a slot
   that may hold a future asset; in practice the CRUD either creates
@@ -39,7 +36,7 @@ defmodule Storyarn.Flows.SequenceTrack do
   alias Storyarn.Assets.Asset
   alias Storyarn.Flows.FlowNode
 
-  @kinds ~w(background music ambient)
+  @kinds ~w(music ambience sfx)
 
   @type t :: %__MODULE__{
           id: integer() | nil,

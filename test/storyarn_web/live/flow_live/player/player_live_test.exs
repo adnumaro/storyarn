@@ -516,17 +516,17 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
 
       vue = get_player_vue(view)
       assert vue.props["slide"]["text"] =~ "With backdrop"
-      assert vue.props["backgrounds"] == []
+      assert vue.props["visual-layers"] == []
     end
 
-    test "uses active sequence backgrounds ordered from parent to child", %{
+    test "uses active sequence visual layers ordered from parent to child", %{
       conn: conn,
       project: project,
       user: user
     } do
-      asset = image_asset_fixture(project, user, %{url: "/uploads/sequence-bg.png"})
-      child_asset = image_asset_fixture(project, user, %{url: "/uploads/sequence-child-bg.png"})
-      flow = flow_fixture(project, %{name: "Sequence Background Flow"})
+      backdrop_asset = image_asset_fixture(project, user, %{url: "/uploads/sequence-bg.png"})
+      character_asset = image_asset_fixture(project, user, %{url: "/uploads/sequence-character.png"})
+      flow = flow_fixture(project, %{name: "Sequence Visual Layer Flow"})
       {entry, _exit} = get_auto_nodes(flow)
 
       {:ok, sequence} =
@@ -534,11 +534,10 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
           "name" => "Intro Sequence"
         })
 
-      {:ok, sequence} =
-        Flows.update_sequence(sequence, %{
-          "background_asset_id" => asset.id,
-          "background_position" => "top-right",
-          "background_fit" => "contain"
+      {:ok, backdrop_layer} =
+        Flows.create_sequence_visual_layer(sequence.id, %{
+          "kind" => "backdrop",
+          "asset_id" => backdrop_asset.id
         })
 
       {:ok, child_sequence} =
@@ -547,11 +546,11 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
           "parent_id" => sequence.id
         })
 
-      {:ok, child_sequence} =
-        Flows.update_sequence(child_sequence, %{
-          "background_asset_id" => child_asset.id,
-          "background_position" => "bottom-left",
-          "background_fit" => "cover"
+      {:ok, character_layer} =
+        Flows.create_sequence_visual_layer(child_sequence.id, %{
+          "kind" => "character",
+          "asset_id" => character_asset.id,
+          "slot" => "right"
         })
 
       dialogue =
@@ -575,20 +574,42 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
 
       vue = get_player_vue(view)
 
-      assert vue.props["backgrounds"] == [
+      assert vue.props["visual-layers"] == [
                %{
+                 "id" => backdrop_layer.id,
                  "sequence_id" => sequence.id,
+                 "sequence_depth" => 0,
+                 "kind" => "backdrop",
+                 "label" => nil,
                  "url" => "/uploads/sequence-bg.png",
-                 "position" => "top-right",
-                 "fit" => "contain",
-                 "depth" => 0
+                 "z_index" => 0,
+                 "slot" => "full",
+                 "x" => 0.0,
+                 "y" => 0.0,
+                 "width" => 1.0,
+                 "height" => 1.0,
+                 "anchor_x" => 0.0,
+                 "anchor_y" => 0.0,
+                 "fit" => "cover",
+                 "opacity" => 1.0
                },
                %{
+                 "id" => character_layer.id,
                  "sequence_id" => child_sequence.id,
-                 "url" => "/uploads/sequence-child-bg.png",
-                 "position" => "bottom-left",
-                 "fit" => "cover",
-                 "depth" => 1
+                 "sequence_depth" => 1,
+                 "kind" => "character",
+                 "label" => nil,
+                 "url" => "/uploads/sequence-character.png",
+                 "z_index" => 100,
+                 "slot" => "right",
+                 "x" => 0.75,
+                 "y" => 1.0,
+                 "width" => 0.38,
+                 "height" => 0.9,
+                 "anchor_x" => 0.5,
+                 "anchor_y" => 1.0,
+                 "fit" => "contain",
+                 "opacity" => 1.0
                }
              ]
     end
@@ -618,7 +639,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
         })
 
       {:ok, child_track} =
-        Flows.upsert_sequence_track(child_sequence.id, "ambient", %{
+        Flows.upsert_sequence_track(child_sequence.id, "ambience", %{
           "asset_id" => child_audio.id,
           "volume" => Decimal.new("0.25")
         })
@@ -659,7 +680,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
                %{
                  "id" => child_track.id,
                  "sequence_id" => child_sequence.id,
-                 "kind" => "ambient",
+                 "kind" => "ambience",
                  "position" => 0,
                  "url" => "/uploads/child-ambient.mp3",
                  "volume" => 0.25,

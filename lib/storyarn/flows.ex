@@ -1086,7 +1086,7 @@ defmodule Storyarn.Flows do
   @doc "Creates a sequence for a flow."
   defdelegate create_sequence(flow_id, attrs), to: SequenceCrud
 
-  @doc "Updates a sequence (name, tracks, canvas geometry, or parent)."
+  @doc "Updates a sequence (name, canvas geometry, or parent)."
   defdelegate update_sequence(sequence, attrs), to: SequenceCrud
 
   @doc "Soft-deletes a sequence."
@@ -1101,13 +1101,28 @@ defmodule Storyarn.Flows do
   """
   defdelegate wrap_selection_in_sequence(flow, node_ids, attrs \\ %{}), to: SequenceCrud
 
+  @doc "Lists visual layers assigned to a sequence."
+  defdelegate list_sequence_visual_layers(sequence_id), to: SequenceCrud
+
+  @doc "Fetches a visual layer scoped to its sequence."
+  defdelegate get_sequence_visual_layer(sequence_id, id), to: SequenceCrud
+
+  @doc "Creates a visual layer for a sequence."
+  defdelegate create_sequence_visual_layer(sequence_id, attrs), to: SequenceCrud
+
+  @doc "Updates a sequence visual layer."
+  defdelegate update_sequence_visual_layer(layer, attrs), to: SequenceCrud
+
+  @doc "Deletes a sequence visual layer."
+  defdelegate delete_sequence_visual_layer(layer), to: SequenceCrud
+
   @doc "Lists the audio tracks assigned to a sequence (one per kind, 0-3 rows)."
   defdelegate list_sequence_tracks(sequence_id), to: SequenceCrud
 
   @doc "Fetches the single track for `(sequence_id, kind)`, or nil."
   defdelegate get_sequence_track(sequence_id, kind), to: SequenceCrud
 
-  @doc "Upserts a track slot. `kind` ∈ {background, music, ambient}."
+  @doc "Upserts a track slot. `kind` ∈ {music, ambience, sfx}."
   defdelegate upsert_sequence_track(sequence_id, kind, attrs), to: SequenceCrud
 
   @doc "Clears the track for `(sequence_id, kind)`. No-op if already empty."

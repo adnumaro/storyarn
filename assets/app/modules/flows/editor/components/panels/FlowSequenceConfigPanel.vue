@@ -2,29 +2,26 @@
 /**
  * Right sidebar opened when a sequence is selected on the canvas.
  *
- * Sections:
- *   1. Background image: asset picker + 9-cell position grid + fit selector.
- *   2. Audio tracks: one row per kind (background | music | ambient) with
- *      asset picker + volume slider + clear.
- *
- * Server events (see `GenericNodeHandlers`):
- *   - `update_sequence_config` — patches background_asset_id /
- *     background_position / background_fit. Partial payload; only fields
- *     the user just touched get sent.
- *   - `upsert_sequence_track` — sets asset_id and/or volume for a kind.
- *   - `clear_sequence_track` — deletes the track row.
- *
- * Name editing lives in the floating toolbar (`SequenceToolbar.vue`), not
- * here — kept the sidebar scoped to media config so it can grow into
- * heavier tooling (per-track timeline, clip-trim) without crowding the
- * always-visible toolbar.
+ * Sequences define stage context for the flow player: visual layers
+ * compose parent-to-child, and audio tracks play as sequence-level sound.
  */
-import { Image as ImageIcon, Layers, Music, Volume2, X } from "lucide-vue-next";
-import { computed } from "vue";
+import {
+  Box,
+  Image as ImageIcon,
+  Layers,
+  Music,
+  Sparkles,
+  UserRound,
+  Volume2,
+  Wand2,
+  X,
+} from "lucide-vue-next";
+import { computed, type Component } from "vue";
+import { useI18n } from "vue-i18n";
 
 import AudioAsset from "../../../../../components/forms/assets/AudioAsset.vue";
 import ImageAsset from "../../../../../components/forms/assets/ImageAsset.vue";
-import ImagePosition from "../../../../../components/forms/assets/ImagePosition.vue";
+import { Button } from "../../../../../components/ui/button";
 import Sidebar from "../../../../../shell/Sidebar.vue";
 import { useLive } from "../../../../../shared/composables/useLive";
 
@@ -37,9 +34,26 @@ interface AssetEntry {
 
 interface SequenceConfig {
   name?: string | null;
-  background_asset_id?: number | string | null;
-  background_position?: string | null;
-  background_fit?: string | null;
+  width?: number | null;
+  height?: number | null;
+}
+
+interface SequenceVisualLayer {
+  id: number | string;
+  kind: string;
+  label?: string | null;
+  asset_id?: number | string | null;
+  z_index?: number | null;
+  slot?: string | null;
+  x?: number | null;
+  y?: number | null;
+  width?: number | null;
+  height?: number | null;
+  anchor_x?: number | null;
+  anchor_y?: number | null;
+  fit?: "cover" | "contain" | "fill" | null;
+  opacity?: number | null;
+  visible?: boolean | null;
 }
 
 interface SequenceTrack {
@@ -51,10 +65,15 @@ interface SequenceTrack {
 interface PanelData {
   sequence_id: number | string;
   config: SequenceConfig | null;
+  visual_layers: SequenceVisualLayer[];
   tracks: SequenceTrack[];
   image_assets: AssetEntry[];
   audio_assets: AssetEntry[];
 }
+
+type VisualKind = "backdrop" | "character" | "prop" | "overlay";
+type VisualSlot = "full" | "left" | "center" | "right" | "custom";
+type VisualFit = "cover" | "contain" | "fill";
 
 const {
   open = false,
@@ -67,48 +86,135 @@ const {
 }>();
 
 const live = useLive();
+const { t } = useI18n();
 
-const TRACK_KINDS = ["background", "music", "ambient"] as const;
+const TRACK_KINDS = ["music", "ambience", "sfx"] as const;
+const VISUAL_KINDS: readonly VisualKind[] = ["backdrop", "character", "prop", "overlay"];
+const VISUAL_SLOTS: readonly VisualSlot[] = ["full", "left", "center", "right", "custom"];
+const VISUAL_FITS: readonly VisualFit[] = ["cover", "contain", "fill"];
 
 const sequenceId = computed(() => data?.sequence_id ?? null);
 
-const backgroundAssetId = computed(() => data?.config?.background_asset_id ?? null);
-const backgroundPosition = computed(() => data?.config?.background_position ?? "center");
-const backgroundFit = computed<"cover" | "contain" | "fill">(
-  () => (data?.config?.background_fit as "cover" | "contain" | "fill" | undefined) ?? "cover",
+const visualLayers = computed(() =>
+  [...(data?.visual_layers || [])].sort((a, b) => {
+    const zDelta = (a.z_index ?? 0) - (b.z_index ?? 0);
+    if (zDelta !== 0) return zDelta;
+    return String(a.id).localeCompare(String(b.id));
+  }),
 );
 
 function close() {
-  // Closing the panel keeps the sequence selected (toolbar stays visible).
-  // Mirrors `close_builder` / `close_editor` — sidebar dismiss != deselect.
   live.pushEvent("close_sequence_config", {});
 }
 
-function pushConfig(patch: Partial<SequenceConfig>) {
+function pushSequenceEvent(event: string, payload: Record<string, unknown>) {
   if (!sequenceId.value) return;
-  live.pushEvent("update_sequence_config", {
+  live.pushEvent(event, {
     id: sequenceId.value,
+    ...payload,
+  });
+}
+
+function createVisualLayer(kind: VisualKind, asset: AssetEntry) {
+  pushSequenceEvent("create_sequence_visual_layer", {
+    kind,
+    asset_id: asset.id,
+    label: asset.filename,
+    slot: defaultSlot(kind),
+  });
+}
+
+function updateVisualLayer(layer: SequenceVisualLayer, patch: Partial<SequenceVisualLayer>) {
+  pushSequenceEvent("update_sequence_visual_layer", {
+    layer_id: layer.id,
     ...patch,
   });
 }
 
-function pickBackgroundImage(asset: AssetEntry) {
-  pushConfig({ background_asset_id: asset.id });
+function deleteVisualLayer(layer: SequenceVisualLayer) {
+  pushSequenceEvent("delete_sequence_visual_layer", { layer_id: layer.id });
 }
 
-function clearBackgroundImage() {
-  pushConfig({ background_asset_id: null });
+function setVisualSlot(layer: SequenceVisualLayer, slot: string) {
+  updateVisualLayer(layer, { slot, ...geometryForSlot(layer.kind, slot) });
 }
 
-function setBackgroundPosition(pos: string) {
-  pushConfig({ background_position: pos });
+function setVisualFit(layer: SequenceVisualLayer, fit: string) {
+  updateVisualLayer(layer, { fit: fit as VisualFit });
 }
 
-function setBackgroundFit(fit: string) {
-  pushConfig({ background_fit: fit });
+function setVisualKind(layer: SequenceVisualLayer, kind: string) {
+  const slot = defaultSlot(kind);
+  updateVisualLayer(layer, { kind, slot, ...geometryForSlot(kind, slot) });
 }
 
-// --- Tracks ----------------------------------------------------------------
+function setVisualOpacity(layer: SequenceVisualLayer, event: Event) {
+  const value = Number((event.target as HTMLInputElement).value);
+  if (!Number.isFinite(value)) return;
+  updateVisualLayer(layer, { opacity: value / 100 });
+}
+
+function eventValue(event: Event): string {
+  return (event.target as HTMLSelectElement).value;
+}
+
+function defaultSlot(kind: string): VisualSlot {
+  if (kind === "backdrop" || kind === "overlay") return "full";
+  if (kind === "character") return "center";
+  return "custom";
+}
+
+function geometryForSlot(kind: string, slot: string): Partial<SequenceVisualLayer> {
+  if (kind === "backdrop" || kind === "overlay" || slot === "full") {
+    return {
+      x: 0,
+      y: 0,
+      width: 1,
+      height: 1,
+      anchor_x: 0,
+      anchor_y: 0,
+      fit: kind === "backdrop" || kind === "overlay" ? "cover" : "contain",
+    };
+  }
+
+  if (kind === "character") {
+    let x = 0.5;
+    if (slot === "left") x = 0.25;
+    if (slot === "right") x = 0.75;
+
+    const width = slot === "center" ? 0.42 : 0.38;
+    return {
+      x,
+      y: 1,
+      width,
+      height: 0.9,
+      anchor_x: 0.5,
+      anchor_y: 1,
+      fit: "contain",
+    };
+  }
+
+  return {
+    x: 0.5,
+    y: 0.5,
+    width: 0.25,
+    height: 0.25,
+    anchor_x: 0.5,
+    anchor_y: 0.5,
+    fit: "contain",
+  };
+}
+
+function kindIcon(kind: string): Component {
+  if (kind === "backdrop") return ImageIcon;
+  if (kind === "character") return UserRound;
+  if (kind === "overlay") return Sparkles;
+  return Box;
+}
+
+function addLayerLabel(kind: string): string {
+  return `${t("flows.sequences.visual_layers.add")} ${t(`flows.sequences.visual_layers.kinds.${kind}`)}`;
+}
 
 function trackFor(kind: string): SequenceTrack | null {
   if (!data?.tracks) return null;
@@ -122,26 +228,18 @@ function trackVolumePercent(kind: string): number | null {
 }
 
 function pickTrackAsset(kind: string, asset: AssetEntry) {
-  if (!sequenceId.value) return;
-  live.pushEvent("upsert_sequence_track", {
-    id: sequenceId.value,
+  pushSequenceEvent("upsert_sequence_track", {
     kind,
     asset_id: asset.id,
   });
 }
 
 function clearTrack(kind: string) {
-  if (!sequenceId.value) return;
-  live.pushEvent("clear_sequence_track", {
-    id: sequenceId.value,
-    kind,
-  });
+  pushSequenceEvent("clear_sequence_track", { kind });
 }
 
 function onVolumeChange(kind: string, percent: number) {
-  if (!sequenceId.value) return;
-  live.pushEvent("upsert_sequence_track", {
-    id: sequenceId.value,
+  pushSequenceEvent("upsert_sequence_track", {
     kind,
     volume: percent / 100,
   });
@@ -149,8 +247,8 @@ function onVolumeChange(kind: string, percent: number) {
 
 function trackIcon(kind: string) {
   if (kind === "music") return Music;
-  if (kind === "ambient") return Volume2;
-  return Layers;
+  if (kind === "ambience") return Volume2;
+  return Wand2;
 }
 </script>
 
@@ -162,50 +260,133 @@ function trackIcon(kind: string) {
           <Layers class="size-4" />
           {{ $t("flows.sequences.config_panel.title") }}
         </div>
-        <button
-          type="button"
-          class="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-          @click="close"
-        >
+        <Button type="button" variant="ghost" size="icon-xs" @click="close">
           <X class="size-4" />
-        </button>
+        </Button>
       </div>
     </template>
 
     <div class="flex flex-col gap-6">
-      <!-- Background image section -->
       <section class="flex flex-col gap-3">
         <header
           class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground"
         >
-          <ImageIcon class="size-3.5" />
-          {{ $t("flows.sequences.config_panel.background_title") }}
+          <Layers class="size-3.5" />
+          {{ $t("flows.sequences.visual_layers.title") }}
         </header>
 
-        <ImageAsset
-          :asset-id="backgroundAssetId"
-          :image-assets="data?.image_assets || []"
-          :can-edit="canEdit"
-          :pick-placeholder="$t('flows.sequences.config_panel.pick_image')"
-          :search-placeholder="$t('flows.sequences.config_panel.search_image')"
-          :clear-title="$t('flows.sequences.config_panel.clear_image')"
-          :preview-position="backgroundPosition"
-          :preview-fit="backgroundFit"
-          @select="pickBackgroundImage"
-          @clear="clearBackgroundImage"
-        />
+        <div class="grid grid-cols-2 gap-2">
+          <ImageAsset
+            v-for="kind in VISUAL_KINDS"
+            :key="kind"
+            :label="addLayerLabel(kind)"
+            :icon="kindIcon(kind)"
+            :image-assets="data?.image_assets || []"
+            :can-edit="canEdit"
+            :pick-placeholder="$t('flows.sequences.visual_layers.pick_asset')"
+            :search-placeholder="$t('flows.sequences.config_panel.search_image')"
+            @select="(asset) => createVisualLayer(kind, asset)"
+          />
+        </div>
 
-        <ImagePosition
-          v-if="backgroundAssetId"
-          :position="backgroundPosition"
-          :fit="backgroundFit"
-          :can-edit="canEdit"
-          @position-change="setBackgroundPosition"
-          @fit-change="setBackgroundFit"
-        />
+        <div v-if="visualLayers.length > 0" class="flex flex-col gap-3">
+          <article
+            v-for="layer in visualLayers"
+            :key="layer.id"
+            class="rounded border border-border bg-muted/20 p-2 flex flex-col gap-2"
+          >
+            <ImageAsset
+              :label="layer.label || $t(`flows.sequences.visual_layers.kinds.${layer.kind}`)"
+              :icon="kindIcon(layer.kind)"
+              :asset-id="layer.asset_id"
+              :image-assets="data?.image_assets || []"
+              :can-edit="canEdit"
+              :pick-placeholder="$t('flows.sequences.visual_layers.pick_asset')"
+              :search-placeholder="$t('flows.sequences.config_panel.search_image')"
+              :clear-title="$t('flows.sequences.visual_layers.delete')"
+              :preview-fit="layer.fit || 'contain'"
+              @select="
+                (asset) => updateVisualLayer(layer, { asset_id: asset.id, label: asset.filename })
+              "
+              @clear="deleteVisualLayer(layer)"
+            >
+              <template #header-actions>
+                <Button
+                  v-if="canEdit"
+                  variant="ghost"
+                  size="icon-xs"
+                  :title="$t('flows.sequences.visual_layers.delete')"
+                  @click="deleteVisualLayer(layer)"
+                >
+                  <X class="size-3" />
+                </Button>
+              </template>
+            </ImageAsset>
+
+            <div class="grid grid-cols-3 gap-2">
+              <label class="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                {{ $t("flows.sequences.visual_layers.kind") }}
+                <select
+                  class="h-8 rounded border border-border bg-background px-2 text-xs text-foreground"
+                  :value="layer.kind"
+                  :disabled="!canEdit"
+                  @change="setVisualKind(layer, eventValue($event))"
+                >
+                  <option v-for="kind in VISUAL_KINDS" :key="kind" :value="kind">
+                    {{ $t(`flows.sequences.visual_layers.kinds.${kind}`) }}
+                  </option>
+                </select>
+              </label>
+
+              <label class="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                {{ $t("flows.sequences.visual_layers.slot") }}
+                <select
+                  class="h-8 rounded border border-border bg-background px-2 text-xs text-foreground"
+                  :value="layer.slot || defaultSlot(layer.kind)"
+                  :disabled="!canEdit"
+                  @change="setVisualSlot(layer, eventValue($event))"
+                >
+                  <option v-for="slot in VISUAL_SLOTS" :key="slot" :value="slot">
+                    {{ $t(`flows.sequences.visual_layers.slots.${slot}`) }}
+                  </option>
+                </select>
+              </label>
+
+              <label class="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                {{ $t("flows.sequences.visual_layers.fit") }}
+                <select
+                  class="h-8 rounded border border-border bg-background px-2 text-xs text-foreground"
+                  :value="layer.fit || 'contain'"
+                  :disabled="!canEdit"
+                  @change="setVisualFit(layer, eventValue($event))"
+                >
+                  <option v-for="fit in VISUAL_FITS" :key="fit" :value="fit">
+                    {{ $t(`common.assets.image.fit_${fit}`) }}
+                  </option>
+                </select>
+              </label>
+            </div>
+
+            <label class="flex items-center gap-2 text-[11px] text-muted-foreground">
+              <span class="w-14">{{ $t("flows.sequences.visual_layers.opacity") }}</span>
+              <input
+                class="flex-1 accent-primary"
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                :value="Math.round((layer.opacity ?? 1) * 100)"
+                :disabled="!canEdit"
+                @input="setVisualOpacity(layer, $event)"
+              />
+              <span class="w-8 text-right tabular-nums">
+                {{ Math.round((layer.opacity ?? 1) * 100) }}
+              </span>
+            </label>
+          </article>
+        </div>
       </section>
 
-      <!-- Audio tracks section -->
       <section class="flex flex-col gap-3">
         <header
           class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground"

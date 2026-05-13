@@ -82,13 +82,35 @@
       "name_placeholder": "Sequence name",
       "toolbar_open_config": "Open sequence config",
       "tracks": {
-        "background": "Background",
         "music": "Music",
-        "ambient": "Ambient"
+        "ambience": "Ambience",
+        "sfx": "SFX"
+      },
+      "visual_layers": {
+        "title": "Visual composition",
+        "add": "Add",
+        "pick_asset": "Pick image",
+        "delete": "Delete layer",
+        "kind": "Type",
+        "slot": "Slot",
+        "fit": "Fit",
+        "opacity": "Opacity",
+        "kinds": {
+          "backdrop": "Backdrop",
+          "character": "Character",
+          "prop": "Prop",
+          "overlay": "Overlay"
+        },
+        "slots": {
+          "full": "Full",
+          "left": "Left",
+          "center": "Center",
+          "right": "Right",
+          "custom": "Custom"
+        }
       },
       "config_panel": {
         "title": "Sequence",
-        "background_title": "Background image",
         "pick_image": "Pick an image",
         "search_image": "Search images…",
         "clear_image": "Remove image",

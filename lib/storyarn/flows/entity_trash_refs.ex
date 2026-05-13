@@ -20,8 +20,8 @@ defmodule Storyarn.Flows.EntityTrashRefs do
     * Column on the source row — see `sweep_column/5`.
     * Flat JSONB field — see `sweep_jsonb_field/6`.
 
-  Nested JSONB array paths (e.g. `tracks.background[N].asset_id`) ship in
-  Fase 0.A.5 alongside `Assets.delete_asset` integration for sequence tracks.
+  Nested JSONB array paths are intentionally not part of the current
+  sequence media model; sequence visual/audio records are relational.
 
   All operations run in `Repo.transaction`.
 

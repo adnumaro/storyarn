@@ -15,7 +15,7 @@ defmodule Storyarn.Flows.EntityTrashRef do
 
     * column field on the source:        `"referenced_flow_id"`
     * JSONB field on `flow_nodes.data`:  `"data.speaker_sheet_id"`
-    * JSONB nested path:                 `"tracks.background[0].asset_id"`
+    * JSONB nested path:                 `"legacy.path[0].asset_id"`
 
   The `Storyarn.Flows.EntityTrashRefs` module owns the generic sweep/restore
   API and interprets `source_field` paths.

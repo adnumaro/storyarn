@@ -38,7 +38,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
         can-go-back={@can_go_back}
         show-continue={show_continue?(@slide)}
         is-finished={@engine_state.status == :finished}
-        backgrounds={player_backgrounds(assigns)}
+        visual-layers={player_visual_layers(assigns)}
         audio-tracks={player_audio_tracks(assigns)}
         editor-url={editor_url(assigns)}
         responses={serialize_responses(@slide)}
@@ -535,16 +535,12 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
     end)
   end
 
-  defp player_backgrounds(assigns) do
+  defp player_visual_layers(assigns) do
     assigns
     |> active_sequence_chain()
     |> Enum.with_index()
-    |> Enum.flat_map(fn {sequence, depth} ->
-      case serialize_background(sequence, depth) do
-        nil -> []
-        background -> [background]
-      end
-    end)
+    |> Enum.flat_map(fn {sequence, depth} -> serialize_visual_layers(sequence, depth) end)
+    |> Enum.sort_by(&{&1.sequence_depth, &1.z_index, &1.id})
   end
 
   defp player_audio_tracks(assigns) do
@@ -592,18 +588,41 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
     end
   end
 
-  defp serialize_background(%{id: sequence_id, sequence_config: %{background_url: url} = background}, depth)
-       when is_binary(url) and url != "" do
-    %{
-      sequence_id: sequence_id,
-      url: url,
-      position: background[:background_position] || "center",
-      fit: background[:background_fit] || "cover",
-      depth: depth
-    }
+  defp serialize_visual_layers(%{id: sequence_id} = sequence, depth) do
+    sequence
+    |> Map.get(:sequence_visual_layers, [])
+    |> case do
+      layers when is_list(layers) -> layers
+      _ -> []
+    end
+    |> Enum.flat_map(&serialize_visual_layer(&1, sequence_id, depth))
   end
 
-  defp serialize_background(_, _depth), do: nil
+  defp serialize_visual_layer(%{url: url, visible: visible} = layer, sequence_id, depth)
+       when is_binary(url) and url != "" and visible != false do
+    [
+      %{
+        id: layer.id,
+        sequence_id: sequence_id,
+        sequence_depth: depth,
+        kind: layer.kind,
+        label: Map.get(layer, :label),
+        url: url,
+        z_index: Map.get(layer, :z_index) || 0,
+        slot: Map.get(layer, :slot),
+        x: Map.get(layer, :x) || 0.0,
+        y: Map.get(layer, :y) || 0.0,
+        width: Map.get(layer, :width) || 1.0,
+        height: Map.get(layer, :height) || 1.0,
+        anchor_x: Map.get(layer, :anchor_x) || 0.0,
+        anchor_y: Map.get(layer, :anchor_y) || 0.0,
+        fit: Map.get(layer, :fit) || "contain",
+        opacity: Map.get(layer, :opacity) || 1.0
+      }
+    ]
+  end
+
+  defp serialize_visual_layer(_layer, _sequence_id, _depth), do: []
 
   defp serialize_audio_track(%{url: url} = track, sequence_id, depth) when is_binary(url) and url != "" do
     [
@@ -613,9 +632,9 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
         kind: track.kind,
         position: track.position || 0,
         url: url,
-        volume: track[:volume] || 1.0,
-        content_type: track[:content_type],
-        filename: track[:filename],
+        volume: Map.get(track, :volume) || 1.0,
+        content_type: Map.get(track, :content_type),
+        filename: Map.get(track, :filename),
         depth: depth
       }
     ]
@@ -623,9 +642,9 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
 
   defp serialize_audio_track(_track, _sequence_id, _depth), do: []
 
-  defp track_kind_order(%{kind: "background"}), do: 0
+  defp track_kind_order(%{kind: "ambience"}), do: 0
   defp track_kind_order(%{kind: "music"}), do: 1
-  defp track_kind_order(%{kind: "ambient"}), do: 2
+  defp track_kind_order(%{kind: "sfx"}), do: 2
   defp track_kind_order(_), do: 3
 
   defp editor_url(assigns) do

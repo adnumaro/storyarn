@@ -212,7 +212,7 @@ async function copyLocalizationId(): Promise<void> {
 }
 
 // D2 from REFACTOR.md §10: drop the V1 :audio_picker PubSub, route through
-// update_node_field. Mirrors how FlowSequenceConfigPanel writes background_asset_id.
+// update_node_field.
 function selectAudio(asset: AudioAssetItem): void {
   live.pushEvent("update_node_field", {
     field: "audio_asset_id",
