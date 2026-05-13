@@ -1,0 +1,20 @@
+docs/plans/flow-scopes-plugin-migration.md
+  s_116fc484719db6::t_f6182285d4fd57 113-118
+  s_116fc484719db6::t_3ff6328ce77887 18,20,22-24,109-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "e977e25c84dd5f48064f059369ba53fc4149cd43",
+  "prompts": {},
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
