@@ -6,25 +6,17 @@
  * node size sync, hub map rebuild, event bindings, auto-layout, and cleanup.
  */
 
-import { ClassicPreset, type NodeEditor } from "rete";
-import type { AreaPlugin } from "rete-area-plugin";
-import type { HistoryPlugin } from "rete-history-plugin";
-import type { ConnectionPlugin } from "rete-connection-plugin";
-import type { MinimapPlugin } from "rete-minimap-plugin";
-import type { ScopesPlugin } from "rete-scopes-plugin";
-import { onUnmounted, reactive, ref, shallowRef, type Ref, type ShallowRef } from "vue";
+import { ClassicPreset } from "rete";
+import { onUnmounted } from "vue";
 
 import { FlowNode } from "../lib/flow-node";
-import type { NodeData } from "../lib/node-configs";
-import type { FlowSchemes, FlowAreaExtra, FlowConnection } from "../lib/rete-schemes";
+import type { FlowAreaExtra, FlowConnection } from "../lib/rete-schemes";
 import { debug } from "../services/debug";
 import { AutoLayoutAction, buildBatchPositions, type Position } from "../services/historyPreset";
 import {
   editorHandlers,
-  type EditorHandlers,
   type FlowContext,
   type HookProxy,
-  type SheetMapEntry,
   type NodeMovedPayload,
   type NodeServerPayload,
   type NodeRemovedPayload,
@@ -38,315 +30,63 @@ import {
   type FlowUpdatedPayload,
   type SequenceConfigUpdatedPayload,
 } from "../services/editorHandlers";
-import { keyboard, type KeyboardHandler } from "../services/keyboard";
-import { lod, type LodController } from "../services/lod";
-import { navigation, type NavigationHandler } from "../services/navigation";
+import { keyboard } from "../services/keyboard";
+import { lod } from "../services/lod";
+import { navigation } from "../services/navigation";
 
 import { createPlugins, finalizeSetup } from "../services/reteSetup";
 import { runFlowAutoLayout, snapshotFlowPositions } from "../services/flowAutoLayout";
+import { createFlowCanvasRuntime } from "./flowCanvasRuntime";
+import type {
+  ConnectionData,
+  FlowCanvasOpts,
+  FlowCanvasReturn,
+  FlowData,
+  InitOpts,
+  NodeBounds,
+  NodeServerData,
+  NodeView,
+  SequenceExpansionOpts,
+  SequenceFitMode,
+  SequenceGeometry,
+  SequenceResizeDetail,
+} from "./flowCanvasTypes";
 import { isReparentModifierActive } from "../lib/flow-reparent-state";
 import { SEQUENCE_MIN_HEIGHT, SEQUENCE_MIN_WIDTH, SEQUENCE_PADDING } from "../lib/sequence-layout";
 import type {
-  DebugHandler,
   DebugHighlightNodeData,
   DebugHighlightConnectionsData,
   DebugUpdateBreakpointsData,
 } from "../services/debug";
 import { createFlowMarquee } from "../services/flowMarquee";
 
-interface FlowCanvasOpts {
-  pushEvent: (event: string, payload: Record<string, unknown>) => void;
-  handleEvent: (event: string, callback: (data: Record<string, unknown>) => void) => void;
-}
-
-interface ToolbarState {
-  visible: boolean;
-  nodeId: string | number | null;
-  reteNodeId: string | null;
-  nodeType: string | null;
-  nodeData: NodeData | null;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-interface InitOpts {
-  sheetsMap?: Record<string, SheetMapEntry>;
-  readonly?: boolean;
-  userId?: number;
-  userColor?: string;
-}
-
-interface FlowData {
-  nodes?: {
-    type: string;
-    id: string | number;
-    data: NodeData;
-    position?: { x: number; y: number };
-    parent_id?: number | null;
-  }[];
-  connections?: {
-    id: number;
-    source_node_id: string | number;
-    target_node_id: string | number;
-    source_pin: string;
-    target_pin: string;
-    label?: string;
-    condition?: unknown;
-  }[];
-}
-
-interface ConnectionData {
-  id: number;
-  source_node_id: string | number;
-  target_node_id: string | number;
-  source_pin: string;
-  target_pin: string;
-  label?: string;
-  condition?: unknown;
-}
-
-interface NodeServerData {
-  type: string;
-  id: string | number;
-  data: NodeData;
-  position?: { x: number; y: number };
-  parent_id?: number | null;
-}
-
-interface SequenceResizeDetail {
-  reteId: string;
-  nodeId: string | number;
-  width: number;
-  height: number;
-  commit: boolean;
-}
-
-interface SequenceGeometry {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-interface SequenceGeometryPatch extends SequenceGeometry {
-  nodeId: string | number;
-}
-
-interface SequenceExpansionOpts {
-  allowModifier: boolean;
-  track: boolean;
-}
-
-type SequenceFitMode = "contain" | "fit";
-
-interface NodeView {
-  position: { x: number; y: number };
-  element: HTMLElement;
-}
-
-interface NodeBounds {
-  left: number;
-  top: number;
-  right: number;
-  bottom: number;
-}
-
-export interface FlowCanvasReturn {
-  editor: ShallowRef<NodeEditor<FlowSchemes> | null>;
-  area: ShallowRef<AreaPlugin<FlowSchemes, FlowAreaExtra> | null>;
-  loading: Ref<boolean>;
-  toolbarState: ToolbarState;
-  init(containerEl: HTMLElement, flowData: FlowData, opts?: InitOpts): Promise<void>;
-  addNodeToEditor(nodeData: NodeServerData): Promise<FlowNode>;
-  addConnectionToEditor(connData: ConnectionData): Promise<FlowConnection | undefined>;
-  rebuildHubsMap(): Promise<void>;
-  syncNodeSize(nodeId: string): Promise<void>;
-  destroy(): void;
-  setToolbarProps(props: Record<string, unknown>): void;
-}
+export type { FlowCanvasReturn } from "./flowCanvasTypes";
 
 export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowCanvasReturn {
-  const editor = shallowRef<NodeEditor<FlowSchemes> | null>(null);
-  const area = shallowRef<AreaPlugin<FlowSchemes, FlowAreaExtra> | null>(null);
-  const loading = ref(true);
+  const runtime = createFlowCanvasRuntime(
+    { pushEvent, handleEvent },
+    {
+      addNodeToEditor,
+      addConnectionToEditor,
+      rebuildHubsMap,
+      syncNodeSize,
+      syncAllNodeSizes,
+      fitSequencesToChildren,
+      loadFlow: loadInitialFlowData,
+      performAutoLayout,
+    },
+  );
 
-  // Reactive toolbar positioning -- updated on node pick, drag, zoom, pan
-  const toolbarState: ToolbarState = reactive({
-    visible: false,
-    nodeId: null,
-    reteNodeId: null,
-    nodeType: null,
-    nodeData: null,
-    x: 0,
-    y: 0,
-    width: 0,
-    height: 0,
-  });
-
-  // Internal state (not reactive -- performance-critical)
-  let _editor: NodeEditor<FlowSchemes> | null = null;
-  let _area: AreaPlugin<FlowSchemes, FlowAreaExtra> | null = null;
-  let _connection: ConnectionPlugin<FlowSchemes> | null = null;
-  let _history: HistoryPlugin<FlowSchemes> | null = null;
-  let _minimap: MinimapPlugin<FlowSchemes> | null = null;
-  let _scopes: ScopesPlugin<FlowSchemes> | null = null;
-  let _marqueeTeardown: (() => void) | null = null;
-
-  const _nodeMap = new Map<string | number, FlowNode>();
-  const _connectionDataMap = new Map<
-    string,
-    { id: number; label: string | null; condition: unknown }
-  >();
-  const _pendingSequenceGeometry = new Map<string, SequenceGeometryPatch>();
-  let _loadingFromServerCount = 0;
-  let _deferSocketCalc = false;
-  let _deferredSockets: unknown[] = [];
-  let _socketRenderedEvents: unknown[] = [];
-  let _isRecalculatingSockets = false;
-  let _nodeMoveQueue: Promise<void> | null = Promise.resolve();
-  let _nodeUpdateQueue: Promise<void> | null = Promise.resolve();
-
-  let _editorHandlers: EditorHandlers | null = null;
-  let _navigationHandler: NavigationHandler | null = null;
-  let _debugHandler: DebugHandler | null = null;
-  let _keyboardHandler: KeyboardHandler | null = null;
-  let _lodController: LodController | null = null;
-
-  let _selectedNodeId: string | number | null = null;
-  let _lastNodeClickTime = 0;
-  let _lastClickedNodeId: string | number | null = null;
-  let _destroyed = false;
-  let _canvasClickController: AbortController | null = null;
-  let _sequenceResizeController: AbortController | null = null;
-  let _autoLayoutInProgress = false;
-
-  // Expose as a "hook-like" object for handler modules that expect `hook.pushEvent`, etc.
-  const hookProxy: HookProxy = {
-    get pushEvent() {
-      return pushEvent;
-    },
-    get handleEvent() {
-      return handleEvent;
-    },
-    get editor() {
-      return _editor!;
-    },
-    get area() {
-      return _area!;
-    },
-    get connection() {
-      return _connection;
-    },
-    get history() {
-      return _history;
-    },
-    get scopes() {
-      return _scopes!;
-    },
-    get nodeMap() {
-      return _nodeMap;
-    },
-    get connectionDataMap() {
-      return _connectionDataMap;
-    },
-    get sheetsMap() {
-      return hookProxy._sheetsMap || {};
-    },
-    get hubsMap() {
-      return hookProxy._hubsMap || {};
-    },
-    get currentLod() {
-      return _lodController?.currentLod || "full";
-    },
-    get readonly() {
-      return hookProxy._readonly || false;
-    },
-    get currentUserId() {
-      return hookProxy._currentUserId || 0;
-    },
-    get currentUserColor() {
-      return hookProxy._currentUserColor || "#3b82f6";
-    },
-    get selectedNodeId() {
-      return _selectedNodeId;
-    },
-    set selectedNodeId(v: string | number | null) {
-      _selectedNodeId = v;
-    },
-    get lastNodeClickTime() {
-      return _lastNodeClickTime;
-    },
-    set lastNodeClickTime(v: number) {
-      _lastNodeClickTime = v;
-    },
-    get lastClickedNodeId() {
-      return _lastClickedNodeId;
-    },
-    set lastClickedNodeId(v: string | number | null) {
-      _lastClickedNodeId = v;
-    },
-    get isLoadingFromServer() {
-      return _loadingFromServerCount > 0;
-    },
-    get _deferSocketCalc() {
-      return _deferSocketCalc;
-    },
-    get _deferredSockets() {
-      return _deferredSockets;
-    },
-    get _socketRenderedEvents() {
-      return _socketRenderedEvents;
-    },
-    set _socketRenderedEvents(v: unknown[]) {
-      _socketRenderedEvents = v;
-    },
-    get _isRecalculatingSockets() {
-      return _isRecalculatingSockets;
-    },
-    // el proxy -- handlers use hook.el for DOM queries
-    get el() {
-      return hookProxy._containerEl;
-    },
-    // Expose enterLoadingFromServer/exitLoadingFromServer
-    enterLoadingFromServer() {
-      _loadingFromServerCount++;
-    },
-    exitLoadingFromServer() {
-      _loadingFromServerCount = Math.max(0, _loadingFromServerCount - 1);
-    },
-    performAutoLayout() {
-      return performAutoLayout();
-    },
-    // Internal refs for handlers
-    _sheetsMap: {},
-    _hubsMap: {},
-    _readonly: false,
-    _currentUserId: 0,
-    _currentUserColor: "#3b82f6",
-    _containerEl: null,
-    _inlineEditingNodeId: null,
-    _speakerPopover: null,
-    _eventBindingsController: null,
-    editorHandlers: null,
-    navigationHandler: null,
-    debugHandler: null,
-    keyboardHandler: null,
-    lodController: null,
-    addNodeToEditor,
-    addConnectionToEditor,
-    rebuildHubsMap,
-    syncNodeSize,
-    syncAllNodeSizes,
-    fitSequencesToChildren,
-    loadFlow: loadInitialFlowData,
-  } as HookProxy;
+  const editor = runtime.editorRef;
+  const area = runtime.areaRef;
+  const loading = runtime.loading;
+  const toolbarState = runtime.toolbarState;
+  const hookProxy: HookProxy = runtime.hookProxy;
 
   // --- Toolbar positioning ---
 
   function selectNodeForToolbar(reteNodeId: string): void {
-    const node = _editor!.getNode(reteNodeId);
+    const node = runtime.editor!.getNode(reteNodeId);
     if (!node) {
       clearToolbar();
       return;
@@ -372,7 +112,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
 
   function enterInlineEdit(reteNodeId: string): void {
     exitInlineEdit();
-    const node = _editor!.getNode(reteNodeId);
+    const node = runtime.editor!.getNode(reteNodeId);
     if (!node) {
       return;
     }
@@ -401,7 +141,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     // Blur active input/textarea/contenteditable inside the node so blur
     // handlers fire and save. Contenteditable covers the TipTap inline editor
     // — its onBlur handler is what commits the dialogue text on Esc.
-    const nodeView = _area?.nodeViews.get(editingId);
+    const nodeView = runtime.area?.nodeViews.get(editingId);
     if (nodeView) {
       const focused = nodeView.element.querySelector(
         'textarea:focus, input:focus, [contenteditable="true"]:focus',
@@ -416,7 +156,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
   }
 
   function handleInlineEditSave(reteNodeId: string, field: string, value: unknown): void {
-    const node = _editor!.getNode(reteNodeId);
+    const node = runtime.editor!.getNode(reteNodeId);
     if (!node) {
       return;
     }
@@ -435,7 +175,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
       const newSpeakerId = value || null;
       node.nodeData = { ...node.nodeData, speaker_sheet_id: newSpeakerId };
       node._updateTs = Date.now();
-      _area!.update("node", node.id);
+      runtime.area!.update("node", node.id);
       pushEvent("update_node_field", {
         field: "speaker_sheet_id",
         value: newSpeakerId as string,
@@ -449,32 +189,32 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
   // --- Init helpers ---
 
   function initHandlers(): void {
-    _editorHandlers = editorHandlers(hookProxy);
-    _navigationHandler = navigation(_area!, _nodeMap, pushEvent);
-    _debugHandler = debug(hookProxy.area, hookProxy.editor, _nodeMap, undefined);
+    runtime.editorHandlers = editorHandlers(hookProxy);
+    runtime.navigationHandler = navigation(runtime.area!, runtime.nodeMap, pushEvent);
+    runtime.debugHandler = debug(hookProxy.area, hookProxy.editor, runtime.nodeMap, undefined);
 
-    hookProxy.editorHandlers = _editorHandlers;
-    hookProxy.navigationHandler = _navigationHandler;
-    hookProxy.debugHandler = _debugHandler;
+    hookProxy.editorHandlers = runtime.editorHandlers;
+    hookProxy.navigationHandler = runtime.navigationHandler;
+    hookProxy.debugHandler = runtime.debugHandler;
 
-    _editorHandlers.init();
+    runtime.editorHandlers.init();
   }
 
   function initPlugins(containerEl: HTMLElement): void {
     const plugins = createPlugins(containerEl, hookProxy);
-    _editor = plugins.editor;
-    _area = plugins.area;
-    _connection = plugins.connection;
-    _history = plugins.history;
-    _minimap = plugins.minimap;
-    _scopes = plugins.scopes;
+    runtime.editor = plugins.editor;
+    runtime.area = plugins.area;
+    runtime.connection = plugins.connection;
+    runtime.history = plugins.history;
+    runtime.minimap = plugins.minimap;
+    runtime.scopes = plugins.scopes;
 
-    editor.value = _editor;
-    area.value = _area;
+    editor.value = runtime.editor;
+    area.value = runtime.area;
   }
 
   function setupCanvasClickHandler(containerEl: HTMLElement): void {
-    _canvasClickController = new AbortController();
+    runtime.canvasClickController = new AbortController();
     containerEl.addEventListener(
       "pointerdown",
       (e: PointerEvent) => {
@@ -487,10 +227,10 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
             exitInlineEdit();
           }
           clearToolbar();
-          _selectedNodeId = null;
+          runtime.selectedNodeId = null;
         }
       },
-      { signal: _canvasClickController.signal },
+      { signal: runtime.canvasClickController.signal },
     );
   }
 
@@ -499,23 +239,23 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
       return;
     }
 
-    _sequenceResizeController = new AbortController();
+    runtime.sequenceResizeController = new AbortController();
     containerEl.addEventListener(
       "flow-sequence-resize",
       (event) => {
         void handleSequenceResize(event as CustomEvent<SequenceResizeDetail>);
       },
-      { signal: _sequenceResizeController.signal },
+      { signal: runtime.sequenceResizeController.signal },
     );
   }
 
   async function handleSequenceResize(event: CustomEvent<SequenceResizeDetail>): Promise<void> {
-    if (!_editor || !_area || _destroyed) {
+    if (!runtime.editor || !runtime.area || runtime.destroyed) {
       return;
     }
 
     const { reteId, width, height, commit } = event.detail;
-    const node = _editor.getNode(String(reteId));
+    const node = runtime.editor.getNode(String(reteId));
     if (!node || node.nodeType !== "sequence") {
       return;
     }
@@ -540,7 +280,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
   }
 
   function nodeView(nodeId: string): NodeView | null {
-    return (_area?.nodeViews.get(nodeId) as NodeView | undefined) ?? null;
+    return (runtime.area?.nodeViews.get(nodeId) as NodeView | undefined) ?? null;
   }
 
   function sequenceGeometry(sequence: FlowNode): SequenceGeometry | null {
@@ -558,10 +298,10 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
   }
 
   function sequenceChildren(sequenceId: string): FlowNode[] {
-    if (!_editor) {
+    if (!runtime.editor) {
       return [];
     }
-    return _editor.getNodes().filter((node) => node.parent === sequenceId);
+    return runtime.editor.getNodes().filter((node) => node.parent === sequenceId);
   }
 
   function nodeBounds(node: FlowNode, position?: { x: number; y: number }): NodeBounds | null {
@@ -698,10 +438,10 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     sequence.width = geometry.width;
     sequence.height = geometry.height;
     sequence.nodeData = { ...sequence.nodeData, width: geometry.width, height: geometry.height };
-    await _area!.resize(sequence.id, geometry.width, geometry.height);
+    await runtime.area!.resize(sequence.id, geometry.width, geometry.height);
 
     if (opts.track) {
-      _pendingSequenceGeometry.set(sequence.id, {
+      runtime.pendingSequenceGeometry.set(sequence.id, {
         nodeId: sequence.nodeId,
         ...geometry,
       });
@@ -711,11 +451,11 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
   }
 
   async function refreshConnections(): Promise<void> {
-    if (!_editor || !_area) {
+    if (!runtime.editor || !runtime.area) {
       return;
     }
-    for (const connection of _editor.getConnections()) {
-      await _area.update("connection", connection.id);
+    for (const connection of runtime.editor.getConnections()) {
+      await runtime.area.update("connection", connection.id);
     }
   }
 
@@ -725,7 +465,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
       mode?: SequenceFitMode;
     } = {},
   ): Promise<void> {
-    if (!_editor || _destroyed) {
+    if (!runtime.editor || runtime.destroyed) {
       return;
     }
 
@@ -744,7 +484,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
   }
 
   function sequencesDeepestFirst(): FlowNode[] {
-    if (!_editor) {
+    if (!runtime.editor) {
       return [];
     }
 
@@ -752,7 +492,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
       let current = node;
       let value = 0;
       while (current.parent) {
-        const parent = _editor!.getNode(current.parent);
+        const parent = runtime.editor!.getNode(current.parent);
         if (!parent) break;
         value++;
         current = parent;
@@ -760,7 +500,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
       return value;
     };
 
-    return _editor
+    return runtime.editor
       .getNodes()
       .filter((node) => node.nodeType === "sequence")
       .sort((a, b) => depth(b) - depth(a));
@@ -799,14 +539,14 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
       if (selected.has(parentId)) {
         return true;
       }
-      parentId = _editor?.getNode(parentId)?.parent;
+      parentId = runtime.editor?.getNode(parentId)?.parent;
     }
     return false;
   }
 
   function canExpandParentSequence(node: FlowNode, opts: { allowModifier: boolean }): boolean {
     return Boolean(
-      _editor &&
+      runtime.editor &&
       node.parent &&
       !hasSelectedAncestor(node) &&
       (opts.allowModifier || !isReparentModifierActive()),
@@ -814,11 +554,11 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
   }
 
   function parentSequenceForNode(node: FlowNode): FlowNode | null {
-    if (!_editor || !node.parent) {
+    if (!runtime.editor || !node.parent) {
       return null;
     }
 
-    const parent = _editor.getNode(node.parent);
+    const parent = runtime.editor.getNode(node.parent);
     return parent?.nodeType === "sequence" ? parent : null;
   }
 
@@ -896,7 +636,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
   }
 
   function flushPendingSequenceGeometry(): void {
-    for (const patch of _pendingSequenceGeometry.values()) {
+    for (const patch of runtime.pendingSequenceGeometry.values()) {
       pushEvent("update_sequence_config", {
         id: patch.nodeId,
         position_x: patch.x,
@@ -905,7 +645,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
         height: patch.height,
       });
     }
-    _pendingSequenceGeometry.clear();
+    runtime.pendingSequenceGeometry.clear();
   }
 
   async function loadInitialFlowData(flowData: FlowData): Promise<void> {
@@ -914,8 +654,8 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
       return;
     }
 
-    _deferSocketCalc = true;
-    _loadingFromServerCount++;
+    runtime.deferSocketCalc = true;
+    runtime.loadingFromServerCount++;
 
     // rete-scopes-plugin requires parents to exist before their children
     // reference them via `parent`. Sort nodes so ancestors load first.
@@ -925,14 +665,14 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
       await addNodeToEditor(nodeData);
     }
 
-    _deferSocketCalc = false;
+    runtime.deferSocketCalc = false;
     await flushDeferredSockets();
 
     for (const connData of flowData.connections || []) {
       await addConnectionToEditor(connData);
     }
 
-    _loadingFromServerCount = Math.max(0, _loadingFromServerCount - 1);
+    runtime.loadingFromServerCount = Math.max(0, runtime.loadingFromServerCount - 1);
   }
 
   function sortNodesByParentDepth(
@@ -959,13 +699,13 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
   }
 
   function setupLOD(containerEl: HTMLElement): void {
-    _lodController = lod(_area!, hookProxy);
-    hookProxy.lodController = _lodController;
+    runtime.lodController = lod(runtime.area!, hookProxy);
+    hookProxy.lodController = runtime.lodController;
 
-    _area!.addPipe((context) => {
+    runtime.area!.addPipe((context) => {
       if ((context as { type: string }).type === "zoomed") {
-        _lodController!.onZoom();
-        const k = _area!.area.transform.k;
+        runtime.lodController!.onZoom();
+        const k = runtime.area!.area.transform.k;
         containerEl.style.setProperty("--canvas-zoom", String(k));
         hookProxy._flowContext.zoom = k;
       }
@@ -977,17 +717,17 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     if (hookProxy._readonly) {
       return;
     }
-    _keyboardHandler = keyboard(hookProxy, null);
-    _keyboardHandler.init();
-    hookProxy.keyboardHandler = _keyboardHandler;
+    runtime.keyboardHandler = keyboard(hookProxy, null);
+    runtime.keyboardHandler.init();
+    hookProxy.keyboardHandler = runtime.keyboardHandler;
   }
 
   function activatePostLoadPlugins(): void {
-    if (_history && !hookProxy._readonly) {
-      _area!.use(_history);
+    if (runtime.history && !hookProxy._readonly) {
+      runtime.area!.use(runtime.history);
     }
-    if (_minimap) {
-      _area!.use(_minimap);
+    if (runtime.minimap) {
+      runtime.area!.use(runtime.minimap);
     }
   }
 
@@ -1005,8 +745,8 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     await syncAllNodeSizes();
     await fitSequencesToChildren();
     const selection = await finalizeSetup(
-      _area!,
-      _editor!,
+      runtime.area!,
+      runtime.editor!,
       (flowData.nodes?.length ?? 0) > 0,
       hookProxy._flowContext,
     );
@@ -1015,10 +755,10 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     // Marquee selection (drag-rectangle). Only active while the dock's tool
     // is in "select" mode — the composable watches `activeFlowTool` internally.
     if (!hookProxy._readonly && hookProxy._containerEl) {
-      _marqueeTeardown = createFlowMarquee({
+      runtime.marqueeTeardown = createFlowMarquee({
         containerEl: hookProxy._containerEl,
-        area: _area!,
-        editor: _editor!,
+        area: runtime.area!,
+        editor: runtime.editor!,
         selection,
       });
     }
@@ -1073,18 +813,18 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
       node.parent = `node-${nodeData.parent_id}`;
     }
 
-    await _editor!.addNode(node);
+    await runtime.editor!.addNode(node);
 
     const x = nodeData.position?.x || 0;
     const y = nodeData.position?.y || 0;
 
-    if (_deferSocketCalc) {
-      const view = _area!.nodeViews.get(node.id);
+    if (runtime.deferSocketCalc) {
+      const view = runtime.area!.nodeViews.get(node.id);
       if (view) {
         view.translate(x, y);
       }
     } else {
-      await _area!.translate(node.id, { x, y });
+      await runtime.area!.translate(node.id, { x, y });
     }
 
     // Sequences render via `Sequence.vue`, which deliberately does NOT bind
@@ -1099,18 +839,18 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     // FlowNode's own width/height (seeded from `data.width/height` in the
     // constructor) so the bbox shows up correctly before any interaction.
     if (node.nodeType === "sequence") {
-      await _area!.resize(node.id, node.width, node.height);
+      await runtime.area!.resize(node.id, node.width, node.height);
     }
 
-    _nodeMap.set(nodeData.id, node);
+    runtime.nodeMap.set(nodeData.id, node);
     return node;
   }
 
   async function addConnectionToEditor(
     connData: ConnectionData,
   ): Promise<FlowConnection | undefined> {
-    const sourceNode = _nodeMap.get(connData.source_node_id);
-    const targetNode = _nodeMap.get(connData.target_node_id);
+    const sourceNode = runtime.nodeMap.get(connData.source_node_id);
+    const targetNode = runtime.nodeMap.get(connData.target_node_id);
     if (!sourceNode || !targetNode) {
       return;
     }
@@ -1130,45 +870,45 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     );
     connection.id = `conn-${connData.id}`;
 
-    _connectionDataMap.set(connection.id, {
+    runtime.connectionDataMap.set(connection.id, {
       id: connData.id,
       label: connData.label || null,
       condition: connData.condition,
     });
 
-    await _editor!.addConnection(connection);
+    await runtime.editor!.addConnection(connection);
     return connection;
   }
 
   // --- Socket management ---
 
   async function flushDeferredSockets(): Promise<void> {
-    const deferred = _deferredSockets;
-    _deferredSockets = [];
+    const deferred = runtime.deferredSockets;
+    runtime.deferredSockets = [];
     await new Promise((r) => requestAnimationFrame(r));
     for (const ctx of deferred) {
-      await _area!.emit(ctx as FlowAreaExtra);
+      await runtime.area!.emit(ctx as FlowAreaExtra);
     }
   }
 
   async function recalculateAllSockets(): Promise<void> {
-    const events = _socketRenderedEvents;
+    const events = runtime.socketRenderedEvents;
     if (!events || events.length === 0) {
       return;
     }
-    _socketRenderedEvents = [];
-    _isRecalculatingSockets = true;
+    runtime.socketRenderedEvents = [];
+    runtime.isRecalculatingSockets = true;
     await new Promise((r) => requestAnimationFrame(r));
     for (const ctx of events) {
-      await _area!.emit(ctx as FlowAreaExtra);
+      await runtime.area!.emit(ctx as FlowAreaExtra);
     }
-    _isRecalculatingSockets = false;
+    runtime.isRecalculatingSockets = false;
   }
 
   // --- Node size sync (Vue DOM, no shadow DOM) ---
 
   async function syncNodeSize(nodeId: string): Promise<void> {
-    const view = _area!.nodeViews.get(nodeId);
+    const view = runtime.area!.nodeViews.get(nodeId);
     if (!view) {
       return;
     }
@@ -1181,18 +921,18 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     const w = nodeEl.offsetWidth;
     const h = nodeEl.offsetHeight;
     if (w > 0 && h > 0) {
-      const node = _editor!.getNode(nodeId);
+      const node = runtime.editor!.getNode(nodeId);
       if (node) {
         node.width = w;
         node.height = h;
       }
-      await _area!.resize(nodeId, w, h);
+      await runtime.area!.resize(nodeId, w, h);
     }
   }
 
   async function syncAllNodeSizes(): Promise<void> {
     await new Promise((r) => requestAnimationFrame(r));
-    for (const [nodeId] of _area!.nodeViews) {
+    for (const [nodeId] of runtime.area!.nodeViews) {
       await syncNodeSize(nodeId);
     }
   }
@@ -1204,7 +944,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     { color_hex: string | null; label: string; jumpCount: number }
   > {
     const map: Record<string, { color_hex: string | null; label: string; jumpCount: number }> = {};
-    for (const [, node] of _nodeMap) {
+    for (const [, node] of runtime.nodeMap) {
       if (node.nodeType === "hub" && node.nodeData?.hub_id) {
         map[node.nodeData.hub_id as string] = {
           color_hex: (node.nodeData.color_hex as string) || null,
@@ -1219,7 +959,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
   function countHubJumps(
     map: Record<string, { color_hex: string | null; label: string; jumpCount: number }>,
   ): void {
-    for (const [, node] of _nodeMap) {
+    for (const [, node] of runtime.nodeMap) {
       if (node.nodeType === "jump" && node.nodeData?.target_hub_id) {
         const entry = map[node.nodeData.target_hub_id as string];
         if (entry) {
@@ -1231,10 +971,10 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
 
   async function updateHubAndJumpNodes(): Promise<void> {
     const ts = Date.now();
-    for (const [, node] of _nodeMap) {
+    for (const [, node] of runtime.nodeMap) {
       if (node.nodeType === "hub" || node.nodeType === "jump") {
         node._updateTs = ts;
-        await _area!.update("node", node.id);
+        await runtime.area!.update("node", node.id);
       }
     }
   }
@@ -1265,10 +1005,10 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
       return;
     }
     const ctxData = (context as { data: { id: string; position: { x: number; y: number } } }).data;
-    const node = _editor!.getNode(ctxData.id);
+    const node = runtime.editor!.getNode(ctxData.id);
     if (node?.nodeId) {
       await expandParentSequenceForNode(node, ctxData.position, { allowModifier: false });
-      _editorHandlers!.throttleNodeMoved(node.nodeId, ctxData.position);
+      runtime.editorHandlers!.throttleNodeMoved(node.nodeId, ctxData.position);
     }
   }
 
@@ -1291,16 +1031,16 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
       }
       // Keys are string-numeric; convert back to the raw type flushNodeMoved expects.
       const numeric = Number(nodeId);
-      _editorHandlers!.flushNodeMoved(Number.isFinite(numeric) ? numeric : nodeId);
+      runtime.editorHandlers!.flushNodeMoved(Number.isFinite(numeric) ? numeric : nodeId);
     }
     // Fallback for the grabbed node, in case it had no pending (edge case).
-    const node = _editor!.getNode((context as { data: { id: string } }).data.id);
+    const node = runtime.editor!.getNode((context as { data: { id: string } }).data.id);
     if (node?.nodeId && !nodeIds.includes(String(node.nodeId))) {
       const view = nodeView(node.id);
       if (view) {
         await expandParentSequenceForNode(node, view.position, { allowModifier: false });
       }
-      _editorHandlers!.flushNodeMoved(node.nodeId);
+      runtime.editorHandlers!.flushNodeMoved(node.nodeId);
     }
     flushPendingSequenceGeometry();
   }
@@ -1309,11 +1049,11 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
 
   function setupAreaPipes(): void {
     if (hookProxy._readonly) {
-      _area!.addPipe((context) => {
+      runtime.area!.addPipe((context) => {
         if ((context as { type: string }).type === "nodepicked") {
-          const node = _editor!.getNode((context as { data: { id: string } }).data.id);
+          const node = runtime.editor!.getNode((context as { data: { id: string } }).data.id);
           if (node?.nodeId) {
-            _selectedNodeId = node.nodeId;
+            runtime.selectedNodeId = node.nodeId;
             pushEvent("node_selected", { id: node.nodeId });
           }
         }
@@ -1323,7 +1063,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     }
 
     // Node drag + toolbar reposition
-    _area!.addPipe(async (context) => {
+    runtime.area!.addPipe(async (context) => {
       const type = (context as { type: string }).type;
       if (type === "nodetranslated") {
         await handleNodeTranslated(context);
@@ -1334,21 +1074,21 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     });
 
     // Node selection + double-click
-    _area!.addPipe((context) => {
+    runtime.area!.addPipe((context) => {
       if ((context as { type: string }).type === "nodepicked") {
         const nodeId = (context as { data: { id: string } }).data.id;
-        const node = _editor!.getNode(nodeId);
+        const node = runtime.editor!.getNode(nodeId);
         if (node?.nodeId) {
           const now = Date.now();
           const isDoubleClick =
-            _lastClickedNodeId === node.nodeId && now - _lastNodeClickTime < 300;
+            runtime.lastClickedNodeId === node.nodeId && now - runtime.lastNodeClickTime < 300;
 
-          _lastNodeClickTime = now;
-          _lastClickedNodeId = node.nodeId;
-          _selectedNodeId = node.nodeId;
+          runtime.lastNodeClickTime = now;
+          runtime.lastClickedNodeId = node.nodeId;
+          runtime.selectedNodeId = node.nodeId;
 
           if (isDoubleClick) {
-            const reteNode = _editor!.getNode(nodeId);
+            const reteNode = runtime.editor!.getNode(nodeId);
             const type = reteNode?.nodeType;
             if (type === "dialogue" || type === "annotation") {
               enterInlineEdit(nodeId);
@@ -1365,7 +1105,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     });
 
     // Connection created
-    _editor!.addPipe((context) => {
+    runtime.editor!.addPipe((context) => {
       if (
         (context as { type: string }).type === "connectioncreate" &&
         !hookProxy.isLoadingFromServer
@@ -1375,8 +1115,8 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
             data: { source: string; sourceOutput: string; target: string; targetInput: string };
           }
         ).data;
-        const sourceNode = _editor!.getNode(conn.source);
-        const targetNode = _editor!.getNode(conn.target);
+        const sourceNode = runtime.editor!.getNode(conn.source);
+        const targetNode = runtime.editor!.getNode(conn.target);
 
         if (sourceNode?.nodeId && targetNode?.nodeId) {
           pushEvent("connection_created", {
@@ -1391,14 +1131,14 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     });
 
     // Connection deleted
-    _editor!.addPipe((context) => {
+    runtime.editor!.addPipe((context) => {
       if (
         (context as { type: string }).type === "connectionremove" &&
         !hookProxy.isLoadingFromServer
       ) {
         const conn = (context as { data: { source: string; target: string } }).data;
-        const sourceNode = _editor!.getNode(conn.source);
-        const targetNode = _editor!.getNode(conn.target);
+        const sourceNode = runtime.editor!.getNode(conn.source);
+        const targetNode = runtime.editor!.getNode(conn.target);
 
         if (sourceNode?.nodeId && targetNode?.nodeId) {
           pushEvent("connection_deleted", {
@@ -1414,90 +1154,92 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
   // --- Server event handlers ---
 
   function setupServerEvents(): void {
-    if (!_editorHandlers) {
+    if (!runtime.editorHandlers) {
       return;
     }
 
     handleEvent("flow_updated", (data) =>
-      _editorHandlers!.handleFlowUpdated(data as FlowUpdatedPayload),
+      runtime.editorHandlers!.handleFlowUpdated(data as FlowUpdatedPayload),
     );
 
-    _nodeMoveQueue = Promise.resolve();
+    runtime.nodeMoveQueue = Promise.resolve();
     handleEvent("node_moved", (raw) => {
-      if (!_nodeMoveQueue) {
+      if (!runtime.nodeMoveQueue) {
         return;
       }
       const data = raw as unknown as NodeMovedPayload;
-      _nodeMoveQueue = _nodeMoveQueue
+      runtime.nodeMoveQueue = runtime.nodeMoveQueue
         .then(() => {
-          if (!_area || _destroyed) {
+          if (!runtime.area || runtime.destroyed) {
             return;
           }
-          return _editorHandlers!.handleNodeMoved(data);
+          return runtime.editorHandlers!.handleNodeMoved(data);
         })
         .catch(() => {});
     });
 
     handleEvent("node_reparented", (raw) => {
-      if (_destroyed) {
+      if (runtime.destroyed) {
         return;
       }
       const payload = raw as unknown as {
         node_id: string | number;
         parent_id: string | number | null;
       };
-      _editorHandlers!.handleNodeReparented(payload);
+      runtime.editorHandlers!.handleNodeReparented(payload);
     });
 
     handleEvent("sequence_renamed", (raw) => {
-      if (_destroyed) {
+      if (runtime.destroyed) {
         return;
       }
       const payload = raw as unknown as { node_id: string | number; name: string };
-      _editorHandlers!.handleSequenceRenamed(payload);
+      runtime.editorHandlers!.handleSequenceRenamed(payload);
     });
 
     handleEvent("sequence_config_updated", (raw) => {
-      if (_destroyed) {
+      if (runtime.destroyed) {
         return;
       }
-      _editorHandlers!.handleSequenceConfigUpdated(raw as unknown as SequenceConfigUpdatedPayload);
+      runtime.editorHandlers!.handleSequenceConfigUpdated(
+        raw as unknown as SequenceConfigUpdatedPayload,
+      );
     });
 
     handleEvent("node_added", (data) => {
-      if (_destroyed) {
+      if (runtime.destroyed) {
         return;
       }
-      _editorHandlers!.handleNodeAdded(data as unknown as NodeServerPayload);
+      runtime.editorHandlers!.handleNodeAdded(data as unknown as NodeServerPayload);
     });
     handleEvent("node_removed", (data) => {
-      if (_destroyed) {
+      if (runtime.destroyed) {
         return;
       }
-      _editorHandlers!.handleNodeRemoved(data as unknown as NodeRemovedPayload);
+      runtime.editorHandlers!.handleNodeRemoved(data as unknown as NodeRemovedPayload);
     });
     handleEvent("node_restored", (data) => {
-      if (_destroyed) {
+      if (runtime.destroyed) {
         return;
       }
-      _editorHandlers!.handleNodeRestored(data as unknown as NodeRestoredPayload);
+      runtime.editorHandlers!.handleNodeRestored(data as unknown as NodeRestoredPayload);
     });
 
-    _nodeUpdateQueue = Promise.resolve();
+    runtime.nodeUpdateQueue = Promise.resolve();
     handleEvent("node_updated", (raw) => {
-      if (!_nodeUpdateQueue) {
+      if (!runtime.nodeUpdateQueue) {
         return;
       }
       const data = raw as unknown as NodeUpdatedPayload;
-      _nodeUpdateQueue = _nodeUpdateQueue
+      runtime.nodeUpdateQueue = runtime.nodeUpdateQueue
         .then(async () => {
-          if (!_area || _destroyed) {
+          if (!runtime.area || runtime.destroyed) {
             return;
           }
-          await _editorHandlers!.handleNodeUpdated(data);
+          await runtime.editorHandlers!.handleNodeUpdated(data);
           // Sync toolbar if the updated node is the one selected
           if (toolbarState.nodeId && String(data.id) === String(toolbarState.nodeId)) {
-            const reteNode = _nodeMap.get(data.id);
+            const reteNode = runtime.nodeMap.get(data.id);
             if (reteNode) {
               toolbarState.nodeData = { ...reteNode.nodeData };
             }
@@ -1507,72 +1249,76 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     });
 
     handleEvent("node_data_changed", (data) =>
-      _editorHandlers!.handleNodeDataChanged(data as unknown as NodeDataChangedPayload),
+      runtime.editorHandlers!.handleNodeDataChanged(data as unknown as NodeDataChangedPayload),
     );
     handleEvent("flow_meta_changed", (data) =>
-      _editorHandlers!.handleFlowMetaChanged(data as unknown as FlowMetaChangedPayload),
+      runtime.editorHandlers!.handleFlowMetaChanged(data as unknown as FlowMetaChangedPayload),
     );
     handleEvent("connection_added", (data) =>
-      _editorHandlers!.handleConnectionAdded(data as unknown as ConnectionServerPayload),
+      runtime.editorHandlers!.handleConnectionAdded(data as unknown as ConnectionServerPayload),
     );
     handleEvent("connection_removed", (data) =>
-      _editorHandlers!.handleConnectionRemoved(data as unknown as ConnectionRemovedPayload),
+      runtime.editorHandlers!.handleConnectionRemoved(data as unknown as ConnectionRemovedPayload),
     );
     handleEvent("connection_updated", (data) =>
-      _editorHandlers!.handleConnectionUpdated(data as unknown as ConnectionUpdatedPayload),
+      runtime.editorHandlers!.handleConnectionUpdated(data as unknown as ConnectionUpdatedPayload),
     );
 
-    if (_navigationHandler) {
+    if (runtime.navigationHandler) {
       handleEvent("navigate_to_hub", (data) =>
-        _navigationHandler!.navigateToHub(data.jump_db_id as number),
+        runtime.navigationHandler!.navigateToHub(data.jump_db_id as number),
       );
       handleEvent("navigate_to_node", (data) =>
-        _navigationHandler!.navigateToNode(data.node_db_id as number),
+        runtime.navigationHandler!.navigateToNode(data.node_db_id as number),
       );
       handleEvent("navigate_to_jumps", (data) =>
-        _navigationHandler!.navigateToJumps(data.hub_db_id as number),
+        runtime.navigationHandler!.navigateToJumps(data.hub_db_id as number),
       );
     }
 
-    if (_debugHandler) {
+    if (runtime.debugHandler) {
       handleEvent("debug_highlight_node", (data) =>
-        _debugHandler!.handleHighlightNode(data as unknown as DebugHighlightNodeData),
+        runtime.debugHandler!.handleHighlightNode(data as unknown as DebugHighlightNodeData),
       );
       handleEvent("debug_highlight_connections", (data) =>
-        _debugHandler!.handleHighlightConnections(data as unknown as DebugHighlightConnectionsData),
+        runtime.debugHandler!.handleHighlightConnections(
+          data as unknown as DebugHighlightConnectionsData,
+        ),
       );
       handleEvent("debug_update_breakpoints", (data) =>
-        _debugHandler!.handleUpdateBreakpoints(data as unknown as DebugUpdateBreakpointsData),
+        runtime.debugHandler!.handleUpdateBreakpoints(
+          data as unknown as DebugUpdateBreakpointsData,
+        ),
       );
-      handleEvent("debug_clear_highlights", () => _debugHandler!.handleClearHighlights());
+      handleEvent("debug_clear_highlights", () => runtime.debugHandler!.handleClearHighlights());
     }
   }
 
   // --- Cleanup ---
 
   function cleanupEventControllers(): void {
-    _canvasClickController?.abort();
-    _sequenceResizeController?.abort();
+    runtime.canvasClickController?.abort();
+    runtime.sequenceResizeController?.abort();
     hookProxy._eventBindingsController?.abort();
   }
 
   function destroyHandlers(): void {
-    _lodController?.destroy();
-    _keyboardHandler?.destroy();
-    _editorHandlers?.destroy();
-    _navigationHandler?.destroy();
-    _debugHandler?.destroy();
-    _marqueeTeardown?.();
-    _marqueeTeardown = null;
+    runtime.lodController?.destroy();
+    runtime.keyboardHandler?.destroy();
+    runtime.editorHandlers?.destroy();
+    runtime.navigationHandler?.destroy();
+    runtime.debugHandler?.destroy();
+    runtime.marqueeTeardown?.();
+    runtime.marqueeTeardown = null;
   }
 
   function destroy(): void {
-    _destroyed = true;
+    runtime.destroyed = true;
     cleanupEventControllers();
     destroyHandlers();
-    _nodeMoveQueue = null;
-    _nodeUpdateQueue = null;
-    _area?.destroy();
+    runtime.nodeMoveQueue = null;
+    runtime.nodeUpdateQueue = null;
+    runtime.area?.destroy();
   }
 
   onUnmounted(destroy);
@@ -1586,27 +1332,27 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
   // --- Auto-layout (client-side via local ELK adapter) ---
 
   function snapshotPositions(): Map<string, Position> {
-    if (!_editor || !_area) {
+    if (!runtime.editor || !runtime.area) {
       return new Map<string, Position>();
     }
-    return snapshotFlowPositions(_area);
+    return snapshotFlowPositions(runtime.area);
   }
 
   async function performAutoLayout(): Promise<void> {
-    if (_autoLayoutInProgress) return;
-    if (!_area || !_editor) return;
-    _autoLayoutInProgress = true;
+    if (runtime.autoLayoutInProgress) return;
+    if (!runtime.area || !runtime.editor) return;
+    runtime.autoLayoutInProgress = true;
     try {
       const { AreaExtensions } = await import("rete-area-plugin");
 
       const prevPositions = snapshotPositions();
 
-      _loadingFromServerCount++;
+      runtime.loadingFromServerCount++;
       try {
         await runFlowAutoLayout(
           {
-            editor: _editor,
-            area: _area,
+            editor: runtime.editor,
+            area: runtime.area,
           },
           {
             duration: 400,
@@ -1616,24 +1362,26 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
         await fitSequencesToChildren({ mode: "fit", track: true });
         flushPendingSequenceGeometry();
       } finally {
-        _loadingFromServerCount = Math.max(0, _loadingFromServerCount - 1);
+        runtime.loadingFromServerCount = Math.max(0, runtime.loadingFromServerCount - 1);
       }
 
-      await AreaExtensions.zoomAt(_area, _editor.getNodes());
+      await AreaExtensions.zoomAt(runtime.area, runtime.editor.getNodes());
 
       const newPositions = snapshotPositions();
       pushEvent("batch_update_positions", {
         positions: buildBatchPositions(newPositions),
       });
 
-      if (_history) {
-        _history.add(new AutoLayoutAction(hookProxy, _area, prevPositions, newPositions));
+      if (runtime.history) {
+        runtime.history.add(
+          new AutoLayoutAction(hookProxy, runtime.area, prevPositions, newPositions),
+        );
       }
     } catch (error) {
       // biome-ignore lint/suspicious/noConsole: error feedback for unlikely ELK layout failure
       console.error("Auto-layout failed:", error);
     } finally {
-      _autoLayoutInProgress = false;
+      runtime.autoLayoutInProgress = false;
     }
   }
 
