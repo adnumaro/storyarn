@@ -10,6 +10,7 @@ import type { FlowContext } from "@modules/flows/editor/services/editorHandlers"
 import {
   installFlowSequenceScopes,
   normalizeFlowSequenceStacking,
+  resolveFlowSequenceParent,
   type SequenceReparentListener,
 } from "@modules/flows/editor/services/flowSequenceScopes";
 import type { FlowAreaExtra, FlowSchemes } from "@modules/flows/editor/lib/rete-schemes";
@@ -378,5 +379,43 @@ describe("installFlowSequenceScopes", () => {
     await h.emit({ type: "connectioncreated", data: { id: "conn-1" } });
 
     expect(h.elementOrder()).toEqual([sequence.id, child.id, "conn-1", outside.id]);
+  });
+
+  it("validates explicit sequence parent changes", () => {
+    const h = createHarness();
+    const sequence = h.addNode("sequence", 1, { x: 0, y: 0, width: 300, height: 200 });
+    const childSequence = h.addNode("sequence", 2, {
+      x: 40,
+      y: 50,
+      width: 200,
+      height: 120,
+      parent: sequence.id,
+    });
+    const dialogue = h.addNode("dialogue", 3, { x: 500, y: 0 });
+
+    expect(resolveFlowSequenceParent(h.editor, dialogue.id, sequence.id)).toEqual({
+      ok: true,
+      parentId: sequence.id,
+    });
+    expect(resolveFlowSequenceParent(h.editor, dialogue.id, undefined)).toEqual({
+      ok: true,
+      parentId: undefined,
+    });
+    expect(resolveFlowSequenceParent(h.editor, sequence.id, sequence.id)).toEqual({
+      ok: false,
+      reason: "self_parent",
+    });
+    expect(resolveFlowSequenceParent(h.editor, sequence.id, childSequence.id)).toEqual({
+      ok: false,
+      reason: "descendant_parent",
+    });
+    expect(resolveFlowSequenceParent(h.editor, childSequence.id, dialogue.id)).toEqual({
+      ok: false,
+      reason: "parent_not_sequence",
+    });
+    expect(resolveFlowSequenceParent(h.editor, dialogue.id, "node-missing")).toEqual({
+      ok: false,
+      reason: "missing_parent",
+    });
   });
 });

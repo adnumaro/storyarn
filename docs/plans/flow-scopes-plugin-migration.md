@@ -110,6 +110,16 @@ Baseline audit from 2026-05-13:
 - Phase 5 validation:
   - unit tests cover parent-behind-child ordering, connection visibility after picking, remote-style reparent normalization, and new connection stacking;
   - targeted lint and formatting checks passed.
+- Phase 6 implementation is complete:
+  - sequence parent validation is now explicit in `flowSequenceScopes.ts`;
+  - local drag reparent and remote `node_reparented` events share the same invariant checks;
+  - flow reload no longer clears every `.parent` pointer before removing nodes;
+  - deleted sequence children are detached locally to mirror the existing database trigger behavior.
+- Phase 6 validation:
+  - unit tests cover valid parent changes, root detach, self-parent rejection, descendant-parent rejection, non-sequence parent rejection, and missing parent rejection;
+  - flow editor sequence/autolayout tests passed;
+  - targeted lint and formatting checks passed;
+  - architecture verification passed with only the accepted `components/ui` circular warnings.
 
 ## Why Consider Removing It
 

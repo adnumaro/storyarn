@@ -54,6 +54,18 @@ export interface FlowSequenceStackingOptions {
   editor: NodeEditor<FlowSchemes>;
 }
 
+export type FlowSequenceParentResolution =
+  | { ok: true; parentId: string | undefined }
+  | {
+      ok: false;
+      reason:
+        | "missing_node"
+        | "self_parent"
+        | "missing_parent"
+        | "parent_not_sequence"
+        | "descendant_parent";
+    };
+
 function getScopeNode(
   editor: NodeEditor<FlowSchemes>,
   nodeId: string,
@@ -134,6 +146,40 @@ function hasAncestorInSet(nodeId: string, ids: string[], editor: NodeEditor<Flow
     current = getScopeNode(editor, current.parent);
   }
   return false;
+}
+
+export function resolveFlowSequenceParent(
+  editor: NodeEditor<FlowSchemes>,
+  nodeId: string,
+  parentId: string | undefined,
+): FlowSequenceParentResolution {
+  const node = getScopeNode(editor, nodeId);
+  if (!node) {
+    return { ok: false, reason: "missing_node" };
+  }
+
+  if (!parentId) {
+    return { ok: true, parentId: undefined };
+  }
+
+  if (parentId === nodeId) {
+    return { ok: false, reason: "self_parent" };
+  }
+
+  const parent = getScopeNode(editor, parentId);
+  if (!parent) {
+    return { ok: false, reason: "missing_parent" };
+  }
+
+  if (parent.nodeType !== "sequence") {
+    return { ok: false, reason: "parent_not_sequence" };
+  }
+
+  if (hasAncestorInSet(parentId, [nodeId], editor)) {
+    return { ok: false, reason: "descendant_parent" };
+  }
+
+  return { ok: true, parentId };
 }
 
 function selectedNodeIds(editor: NodeEditor<FlowSchemes>, flowContext: FlowContext): string[] {
@@ -329,11 +375,16 @@ async function reparentNodes(
   const changedNodes: SequenceScopeNode[] = [];
 
   for (const node of movingNodes) {
+    const parentChange = resolveFlowSequenceParent(opts.editor, node.id, newParentId);
+    if (!parentChange.ok) {
+      continue;
+    }
+
     const previousParent = node.parent;
-    node.parent = newParentId;
-    if (previousParent !== newParentId) {
+    node.parent = parentChange.parentId;
+    if (previousParent !== parentChange.parentId) {
       changedNodes.push(node);
-      opts.onReparented(node.id, newParentId);
+      opts.onReparented(node.id, parentChange.parentId);
     }
   }
 

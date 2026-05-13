@@ -14,7 +14,7 @@ import type { NodeData } from "../lib/node-configs";
 import { needsRebuild } from "../lib/node-configs";
 import type { FlowSchemes, FlowAreaExtra, FlowConnection } from "../lib/rete-schemes";
 import type { SheetMapEntry } from "../../types";
-import { normalizeFlowSequenceStacking } from "./flowSequenceScopes";
+import { normalizeFlowSequenceStacking, resolveFlowSequenceParent } from "./flowSequenceScopes";
 import {
   CreateNodeAction,
   DeleteNodeAction,
@@ -260,7 +260,7 @@ function recordNodeDeleteHistory(hook: HookProxy, data: NodeRemovedPayload): voi
   }
 }
 
-function clearSequenceChildParents(hook: HookProxy, node: FlowNode): void {
+function detachDeletedSequenceChildren(hook: HookProxy, node: FlowNode): void {
   if (node.nodeType !== "sequence") {
     return;
   }
@@ -498,10 +498,14 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
       }
 
       const newParent = parent_id == null ? undefined : `node-${parent_id}`;
+      const parentChange = resolveFlowSequenceParent(hook.editor, node.id, newParent);
+      if (!parentChange.ok) {
+        return;
+      }
 
       hook.enterLoadingFromServer();
       try {
-        node.parent = newParent;
+        node.parent = parentChange.parentId;
         normalizeFlowSequenceStacking({ area: hook.area, editor: hook.editor }, node.id);
         await hook.fitSequencesToChildren();
       } finally {
@@ -518,12 +522,6 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
           try {
             await hook.editor.removeConnection(conn.id);
           } catch {}
-        }
-        // Clear every `.parent` pointer before wiping so every removeNode
-        // succeeds in any iteration order and stale local parents cannot
-        // outlive the server snapshot.
-        for (const node of hook.editor.getNodes()) {
-          node.parent = undefined;
         }
         for (const node of hook.editor.getNodes()) {
           try {
@@ -572,7 +570,7 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
       hook.enterLoadingFromServer();
       try {
         await removeRelatedConnections(hook, node.id);
-        clearSequenceChildParents(hook, node);
+        detachDeletedSequenceChildren(hook, node);
         await hook.editor.removeNode(node.id);
       } finally {
         hook.exitLoadingFromServer();
