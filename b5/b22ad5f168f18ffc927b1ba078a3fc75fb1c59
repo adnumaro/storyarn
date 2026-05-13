@@ -1,0 +1,21 @@
+assets/app/modules/flows/editor/composables/useFlowCanvas.ts
+  s_116fc484719db6::t_c202e5d96118e4 632-644,666,669-675,778
+assets/app/modules/flows/editor/services/reteSetup.ts
+  s_116fc484719db6::t_4a70875cc8dbee 338-343
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "b5b22ad5f168f18ffc927b1ba078a3fc75fb1c59",
+  "prompts": {},
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
