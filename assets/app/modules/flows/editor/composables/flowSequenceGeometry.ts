@@ -1,4 +1,5 @@
 import type { FlowNode } from "../lib/flow-node";
+import { createFlowGraphQueries } from "../lib/flowGraphQueries";
 import { isReparentModifierActive } from "../lib/flow-reparent-state";
 import { SEQUENCE_MIN_HEIGHT, SEQUENCE_MIN_WIDTH, SEQUENCE_PADDING } from "../lib/sequence-layout";
 import type { FlowCanvasRuntime } from "./flowCanvasRuntime";
@@ -35,6 +36,10 @@ export function createFlowSequenceGeometry(
     return (runtime.area?.nodeViews.get(nodeId) as NodeView | undefined) ?? null;
   }
 
+  function flowGraph() {
+    return runtime.editor ? createFlowGraphQueries(runtime.editor.getNodes()) : null;
+  }
+
   function sequenceGeometry(sequence: FlowNode): SequenceGeometry | null {
     const view = nodeView(sequence.id);
     if (!view) {
@@ -50,10 +55,7 @@ export function createFlowSequenceGeometry(
   }
 
   function sequenceChildren(sequenceId: string): FlowNode[] {
-    if (!runtime.editor) {
-      return [];
-    }
-    return runtime.editor.getNodes().filter((node) => node.parent === sequenceId);
+    return flowGraph()?.children(sequenceId) ?? [];
   }
 
   function nodeBounds(node: FlowNode, position?: { x: number; y: number }): NodeBounds | null {
@@ -212,26 +214,7 @@ export function createFlowSequenceGeometry(
   }
 
   function sequencesDeepestFirst(): FlowNode[] {
-    if (!runtime.editor) {
-      return [];
-    }
-
-    const depth = (node: FlowNode): number => {
-      let current = node;
-      let value = 0;
-      while (current.parent) {
-        const parent = runtime.editor!.getNode(current.parent);
-        if (!parent) break;
-        value++;
-        current = parent;
-      }
-      return value;
-    };
-
-    return runtime.editor
-      .getNodes()
-      .filter((node) => node.nodeType === "sequence")
-      .sort((a, b) => depth(b) - depth(a));
+    return flowGraph()?.deepestFirst((node) => node.nodeType === "sequence") ?? [];
   }
 
   async function ensureSequenceContainsChildren(
@@ -281,14 +264,7 @@ export function createFlowSequenceGeometry(
       return false;
     }
 
-    let parentId = node.parent;
-    while (parentId) {
-      if (selected.has(parentId)) {
-        return true;
-      }
-      parentId = runtime.editor?.getNode(parentId)?.parent;
-    }
-    return false;
+    return flowGraph()?.hasAnyAncestor(node.id, [...selected].map(String)) ?? false;
   }
 
   function canExpandParentSequence(node: FlowNode, opts: { allowModifier: boolean }): boolean {
@@ -305,7 +281,7 @@ export function createFlowSequenceGeometry(
       return null;
     }
 
-    const parent = runtime.editor.getNode(node.parent);
+    const parent = flowGraph()?.node(node.parent);
     return parent?.nodeType === "sequence" ? parent : null;
   }
 

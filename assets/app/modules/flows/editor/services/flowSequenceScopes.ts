@@ -7,10 +7,16 @@ import {
   markDragInactive,
   syncReparentModifierFromPointerEvent,
 } from "../lib/flow-reparent-state";
+import {
+  createFlowGraphQueries,
+  type FlowGraphConnectionLike,
+  type FlowGraphQueries,
+  type FlowGraphNodeLike,
+} from "../lib/flowGraphQueries";
 import type { FlowContext } from "./editorHandlers";
 import type { FlowAreaExtra, FlowSchemes } from "../lib/rete-schemes";
 
-interface SequenceScopeNode {
+interface SequenceScopeNode extends FlowGraphNodeLike {
   id: string;
   parent?: string;
   nodeType?: string;
@@ -25,7 +31,7 @@ interface SequenceScopeView {
   translate?: (x: number, y: number) => Promise<void> | void;
 }
 
-interface SequenceScopeConnection {
+interface SequenceScopeConnection extends FlowGraphConnectionLike {
   id: string;
   source: string;
   target: string;
@@ -73,6 +79,10 @@ function getScopeNode(
   return editor.getNode(nodeId) as unknown as SequenceScopeNode | undefined;
 }
 
+function scopeNodes(editor: NodeEditor<FlowSchemes>): SequenceScopeNode[] {
+  return editor.getNodes().map((node) => node as unknown as SequenceScopeNode);
+}
+
 function nodeView(
   area: AreaPlugin<FlowSchemes, FlowAreaExtra>,
   nodeId: string,
@@ -116,44 +126,13 @@ function scopeConnections(editor: NodeEditor<FlowSchemes>): SequenceScopeConnect
   return editor.getConnections() as unknown as SequenceScopeConnection[];
 }
 
-function directChildren(editor: NodeEditor<FlowSchemes>, parentId: string): SequenceScopeNode[] {
-  return editor
-    .getNodes()
-    .map((node) => node as unknown as SequenceScopeNode)
-    .filter((node) => node.parent === parentId);
-}
-
-function descendants(editor: NodeEditor<FlowSchemes>, parentId: string): SequenceScopeNode[] {
-  const list: SequenceScopeNode[] = [];
-
-  function visit(id: string) {
-    for (const child of directChildren(editor, id)) {
-      list.push(child);
-      visit(child.id);
-    }
-  }
-
-  visit(parentId);
-  return list;
-}
-
-function hasAncestorInSet(nodeId: string, ids: string[], editor: NodeEditor<FlowSchemes>): boolean {
-  let current = getScopeNode(editor, nodeId);
-  while (current?.parent) {
-    if (ids.includes(current.parent)) {
-      return true;
-    }
-    current = getScopeNode(editor, current.parent);
-  }
-  return false;
-}
-
 export function resolveFlowSequenceParent(
   editor: NodeEditor<FlowSchemes>,
   nodeId: string,
   parentId: string | undefined,
 ): FlowSequenceParentResolution {
-  const node = getScopeNode(editor, nodeId);
+  const graph = createFlowGraphQueries(scopeNodes(editor));
+  const node = graph.node(nodeId);
   if (!node) {
     return { ok: false, reason: "missing_node" };
   }
@@ -166,7 +145,7 @@ export function resolveFlowSequenceParent(
     return { ok: false, reason: "self_parent" };
   }
 
-  const parent = getScopeNode(editor, parentId);
+  const parent = graph.node(parentId);
   if (!parent) {
     return { ok: false, reason: "missing_parent" };
   }
@@ -175,7 +154,7 @@ export function resolveFlowSequenceParent(
     return { ok: false, reason: "parent_not_sequence" };
   }
 
-  if (hasAncestorInSet(parentId, [nodeId], editor)) {
+  if (graph.hasAncestor(parentId, nodeId)) {
     return { ok: false, reason: "descendant_parent" };
   }
 
@@ -202,14 +181,15 @@ function hasSelectedAncestorBelowRoot(
   nodeId: string,
   rootId: string,
   selected: Set<string>,
-  editor: NodeEditor<FlowSchemes>,
+  graph: FlowGraphQueries<SequenceScopeNode, FlowGraphConnectionLike>,
 ): boolean {
-  let current = getScopeNode(editor, nodeId);
-  while (current?.parent && current.parent !== rootId) {
-    if (selected.has(current.parent)) {
+  for (const ancestor of graph.ancestors(nodeId)) {
+    if (ancestor.id === rootId) {
+      return false;
+    }
+    if (selected.has(ancestor.id)) {
       return true;
     }
-    current = getScopeNode(editor, current.parent);
   }
   return false;
 }
@@ -227,7 +207,8 @@ function currentMovingIds(
 }
 
 function movingRootIds(ids: string[], editor: NodeEditor<FlowSchemes>): string[] {
-  return ids.filter((id) => !hasAncestorInSet(id, ids, editor));
+  const graph = createFlowGraphQueries(scopeNodes(editor));
+  return ids.filter((id) => !graph.hasAnyAncestor(id, ids));
 }
 
 function pointerInsideSequence(
@@ -249,19 +230,19 @@ function resolveDropTarget(
   editor: NodeEditor<FlowSchemes>,
   area: AreaPlugin<FlowSchemes, FlowAreaExtra>,
 ): SequenceScopeNode | undefined {
-  const candidates = editor
-    .getNodes()
+  const graph = createFlowGraphQueries(scopeNodes(editor));
+  const candidates = graph
+    .nodes()
     .map((node) => {
-      const scopeNode = node as unknown as SequenceScopeNode;
-      const view = nodeView(area, scopeNode.id);
-      return view ? { node: scopeNode, view } : null;
+      const view = nodeView(area, node.id);
+      return view ? { node, view } : null;
     })
     .filter(
       (entry): entry is { node: SequenceScopeNode; view: SequenceScopeView } =>
         Boolean(entry) &&
         entry!.node.nodeType === "sequence" &&
         !movingIds.includes(entry!.node.id) &&
-        !hasAncestorInSet(entry!.node.id, movingIds, editor) &&
+        !graph.hasAnyAncestor(entry!.node.id, movingIds) &&
         pointerInsideSequence(pointer, entry!.node, entry!.view),
     );
 
@@ -293,11 +274,13 @@ function bringConnectionBack(
   }
 }
 
-function bringForward(nodeId: string, opts: FlowSequenceStackingOptions): void {
+function bringForward(
+  nodeId: string,
+  opts: FlowSequenceStackingOptions,
+  graph = createFlowGraphQueries(scopeNodes(opts.editor), scopeConnections(opts.editor)),
+): void {
   const view = nodeView(opts.area, nodeId);
-  const connections = scopeConnections(opts.editor).filter(
-    (connection) => connection.source === nodeId || connection.target === nodeId,
-  );
+  const connections = graph.incidentConnections(nodeId);
 
   for (const connection of connections) {
     bringConnectionForward(connection.id, opts.area);
@@ -307,42 +290,28 @@ function bringForward(nodeId: string, opts: FlowSequenceStackingOptions): void {
     reorderElement(opts.area, view.element, null);
   }
 
-  for (const child of directChildren(opts.editor, nodeId)) {
-    bringForward(child.id, opts);
+  for (const child of graph.children(nodeId)) {
+    bringForward(child.id, opts, graph);
   }
-}
-
-function topStackingRoot(
-  node: SequenceScopeNode,
-  editor: NodeEditor<FlowSchemes>,
-): SequenceScopeNode {
-  let current = node;
-  while (current.parent) {
-    const parent = getScopeNode(editor, current.parent);
-    if (!parent) {
-      break;
-    }
-    current = parent;
-  }
-  return current;
 }
 
 export function normalizeFlowSequenceStacking(
   opts: FlowSequenceStackingOptions,
   nodeId?: string,
 ): void {
+  const graph = createFlowGraphQueries(scopeNodes(opts.editor), scopeConnections(opts.editor));
+
   if (nodeId) {
-    const node = getScopeNode(opts.editor, nodeId);
+    const node = graph.node(nodeId);
     if (node) {
-      bringForward(topStackingRoot(node, opts.editor).id, opts);
+      bringForward(graph.topAncestor(node.id)?.id ?? node.id, opts, graph);
     }
     return;
   }
 
-  for (const node of opts.editor.getNodes()) {
-    const scopeNode = node as unknown as SequenceScopeNode;
-    if (!scopeNode.parent) {
-      bringForward(scopeNode.id, opts);
+  for (const node of graph.nodes()) {
+    if (!node.parent) {
+      bringForward(node.id, opts, graph);
     }
   }
 }
@@ -448,12 +417,15 @@ export function installFlowSequenceScopes(
     }
 
     const selected = selectedNodeIdSet(opts.editor, opts.flowContext);
-    const movableDescendants = descendants(opts.editor, sequence.id).filter(
-      (node) =>
-        !selected.has(node.id) &&
-        !node.selected &&
-        !hasSelectedAncestorBelowRoot(node.id, sequence.id, selected, opts.editor),
-    );
+    const graph = createFlowGraphQueries(scopeNodes(opts.editor));
+    const movableDescendants = graph
+      .descendants(sequence.id)
+      .filter(
+        (node) =>
+          !selected.has(node.id) &&
+          !node.selected &&
+          !hasSelectedAncestorBelowRoot(node.id, sequence.id, selected, graph),
+      );
 
     for (const node of movableDescendants) {
       await translateNode(node, dx, dy);
