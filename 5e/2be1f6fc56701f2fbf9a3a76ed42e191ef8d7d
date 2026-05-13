@@ -1,0 +1,39 @@
+assets/app/modules/flows/editor/composables/useFlowCanvas.ts
+  s_116fc484719db6::t_bfe61b4bfa39c1 46
+  s_116fc484719db6::t_59ed979ecdeac9 1590,1592,1597,1606-1609,1611-1613
+  s_116fc484719db6::t_fccb93cbf518e2 1586
+  s_116fc484719db6::t_da58e7461b6d32 142-143,638-643,645-664,722-725,727,735-738,771,778-784
+  s_116fc484719db6::t_420cc3d86db59d 149-155,623,644
+  s_116fc484719db6::t_f5d9c5f4c875cf 1616-1617
+docs/plans/flow-auto-layout-migration.md
+  s_116fc484719db6::t_f32388abd2aba3 1-8,10-17,28-77,79-195
+  s_116fc484719db6::t_1312ad13f5a643 9,18-27
+assets/app/modules/flows/editor/services/reteSetup.ts
+  s_116fc484719db6::t_b61835f1e837a1 227
+assets/app/modules/flows/editor/services/flowAutoLayout.ts
+  s_116fc484719db6::t_d2fcaac1f33c7c 194-198,220,320-321,326
+  s_116fc484719db6::t_744006d08b68ae 1-193,199-219,221-319,322-325,327-379
+assets/app/test/modules/flows/editor/flowAutoLayout.test.ts
+  s_116fc484719db6::t_8f944cb4b11313 1-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "5e2be1f6fc56701f2fbf9a3a76ed42e191ef8d7d",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
