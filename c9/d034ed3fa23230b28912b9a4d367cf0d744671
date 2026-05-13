@@ -1,0 +1,25 @@
+assets/app/test/modules/flows/editor/flowSequenceScopes.test.ts
+  s_116fc484719db6::t_8828c06c1095a7 13,383-419
+assets/app/modules/flows/editor/services/flowSequenceScopes.ts
+  s_116fc484719db6::t_d8991f65d86c4e 57-68,151-184,378-382,384-385,387
+docs/plans/flow-scopes-plugin-migration.md
+  s_116fc484719db6::t_b9eb8f575fbf1a 113-122
+assets/app/modules/flows/editor/services/editorHandlers.ts
+  s_116fc484719db6::t_27f47fe628895d 17,263,501-504,508,573
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "c9d034ed3fa23230b28912b9a4d367cf0d744671",
+  "prompts": {},
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
