@@ -1,0 +1,29 @@
+assets/app/test/modules/flows/editor/flowGraphQueries.test.ts
+  s_116fc484719db6::t_69a3a19cc6084e 1-67,70-71
+  s_116fc484719db6::t_c80010dc115b42 68-69
+assets/app/modules/flows/editor/services/flowSequenceScopes.ts
+  s_116fc484719db6::t_0f69a3d7dee868 10-12,14-15,19,34,82-85,134-135,148,157,186-190,210-211,233,245,277-281,283,293-294,302-303,305,307,312-314,420
+  s_116fc484719db6::t_7184b2729c9518 13,184,234-235,237-238
+  s_116fc484719db6::t_86e73ad1fc3a99 421-428
+assets/app/modules/flows/editor/composables/flowSequenceGeometry.ts
+  s_116fc484719db6::t_a82ad81658b98c 2,39-42,58,217,267,284
+assets/app/modules/flows/editor/lib/flowGraphQueries.ts
+  s_116fc484719db6::t_71d5b0fba6f5f6 84-87,125
+  s_116fc484719db6::t_c3bc983f36d38e 1-83,88-124,126-158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "267864c6f1389f15f7f94e400e7680c2b994859f",
+  "prompts": {},
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
