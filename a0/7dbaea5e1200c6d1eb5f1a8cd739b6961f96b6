@@ -1,0 +1,28 @@
+assets/app/modules/flows/editor/services/editorHandlers.ts
+  s_116fc484719db6::t_070b701aa72755 13,245-248,250-252,273-274,293-301,305-307,662-674,696-707
+assets/app/modules/flows/editor/lib/flowGraphQueries.ts
+  s_116fc484719db6::t_070b701aa72755 44-45,53,64-72,156,160
+  s_116fc484719db6::t_302988c9135b4e 43,54-63,152
+assets/app/modules/flows/editor/lib/context_menu_items.ts
+  s_116fc484719db6::t_070b701aa72755 28,75,78,215,217,270,273,287,290
+assets/app/modules/flows/editor/services/flowAutoLayout.ts
+  s_116fc484719db6::t_070b701aa72755 12,84-85,92,130-131,134-135,141,151
+assets/app/modules/flows/editor/services/debug.ts
+  s_116fc484719db6::t_070b701aa72755 20-21,82,84-85,87-92,94-96,211-222,235,245
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "a07dbaea5e1200c6d1eb5f1a8cd739b6961f96b6",
+  "prompts": {},
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
