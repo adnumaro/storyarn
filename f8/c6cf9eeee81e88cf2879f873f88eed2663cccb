@@ -1,0 +1,88 @@
+assets/app/modules/flows/player/components/PlayerVisualLayers.vue
+  s_116fc484719db6::t_4cea84b3f78a70 1-110
+lib/storyarn_web/live/flow_live/player_live.ex
+  s_116fc484719db6::t_4cd7c073f02543 41,538,542-543,591-608,610,621-622,625,645,647
+  s_116fc484719db6::t_de9f21bdc051ea 609,611-620,635-637
+lib/storyarn/flows/sequence_config.ex
+  s_116fc484719db6::t_5ac0a32609b43e 17-20,53,56,68
+assets/app/locales/en/flows.json
+  s_116fc484719db6::t_aa77c04d7df45b 86-110
+lib/storyarn/flows/sequence_crud.ex
+  s_116fc484719db6::t_f86e7c4076df1f 21,135,274-412
+lib/storyarn_web/live/flow_live/handlers/debug_execution_handlers.ex
+  s_116fc484719db6::t_96a0de3b329ea9 367,374-376,382-398
+  s_116fc484719db6::t_4d32cdd99014b2 356
+lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex
+  s_116fc484719db6::t_a17896d950f8ae 700-711,716-735,740-758,763-768,791-792,795
+  s_116fc484719db6::t_ebeec5ae1842f6 215,221,234-243,245-255
+  s_116fc484719db6::t_30c4db32b9df68 244,769-790
+  s_116fc484719db6::t_27bbe49d96d298 641-642,675
+  s_116fc484719db6::t_663015a2e167d7 712-715,736-739,759-762
+lib/storyarn/flows/flow_node.ex
+  s_116fc484719db6::t_d39203a166e497 39,71,92
+lib/storyarn/flows.ex
+  s_116fc484719db6::t_aaf4caaa4732b4 1089,1104-1118,1125
+test/storyarn/flows/sequence_crud_test.exs
+  s_116fc484719db6::t_30c4db32b9df68 251
+  s_116fc484719db6::t_5a9ef370303fe3 173,180
+  s_116fc484719db6::t_c1a9c39df01de6 335-336,338-339,373-374,379
+  s_116fc484719db6::t_f4dfa859a99fee 13,174,183,185,187-189,191,193-196,199-207,210-211,213,215-249,252-288
+lib/storyarn_web/live/flow_live/handlers/collaboration_event_handlers.ex
+  s_116fc484719db6::t_c0dff31192c046 100-101
+  s_116fc484719db6::t_89466c9de7a15b 115-118
+assets/app/modules/flows/editor/components/panels/FlowDialogueEditorBody.vue
+  s_116fc484719db6::t_b5e8979ac62bab 215
+lib/storyarn/flows/sequence_visual_layer.ex
+  s_116fc484719db6::t_47427baaed0c3b 1-134
+docs/plans/flow-player-sequence-stage-composition.md
+  s_116fc484719db6::t_60a26a778d9a61 1-444
+assets/app/modules/flows/player/components/PlayerAudioTracks.vue
+  s_116fc484719db6::t_33cd2eb60a469d 8
+lib/storyarn/flows/sequence_track.ex
+  s_116fc484719db6::t_697c7f5797737d 6,9-11,19,21,39
+  s_116fc484719db6::t_96779281ebd591 20
+test/storyarn_web/live/flow_live/player/player_live_test.exs
+  s_116fc484719db6::t_22768dcd283ed1 519,522,527-529,537-540,549-553,577,579,581-583,585-594,597,599-612,642,683
+lib/storyarn_web/live/flow_live/show.ex
+  s_116fc484719db6::t_b93934c8776056 803-820
+priv/repo/migrations/20260513143000_create_sequence_visual_layers.exs
+  s_116fc484719db6::t_0fc8a88b06661c 1-29,31-175
+  s_116fc484719db6::t_6ac0b5c4e252e9 30
+assets/app/live/flow/player/FlowPlayer.vue
+  s_116fc484719db6::t_203346cc43129a 9,14,22,32,127
+assets/app/modules/flows/editor/components/panels/FlowSequenceConfigPanel.vue
+  s_116fc484719db6::t_30c4db32b9df68 308-310
+  s_116fc484719db6::t_602b852531962d 142-145,361
+  s_116fc484719db6::t_3e83b51e2a8e42 157-158,333,347
+  s_116fc484719db6::t_0f2e28e4c9ed7b 181-184
+  s_116fc484719db6::t_0da0766039fda7 20,89,216
+  s_116fc484719db6::t_b4b1c8b98a5777 5-6,8-19,24,37-56,68,74-77,91-94,98-103,110,112,114-129,134-141,146-156,161-164,167-180,185-205,208-212,215,217,231,238,242,250-251,263,265,274-275,278-307,311-332,334-346,348-360,362-387
+lib/storyarn/flows/entity_trash_ref.ex
+  s_116fc484719db6::t_1f286e5e5f31e0 18
+lib/storyarn/live_vue_encoders.ex
+  s_116fc484719db6::t_e8a322fdcc1208 34
+assets/css/player.css
+  s_116fc484719db6::t_8aed306a4aecc4 332,351,355-360,362-365,368-369,389-390,402
+assets/app/locales/es/flows.json
+  s_116fc484719db6::t_d278e110aff272 86-110
+lib/storyarn/flows/entity_trash_refs.ex
+  s_116fc484719db6::t_0b7512a76d221b 23-24
+assets/app/test/modules/flows/player/FlowPlayer.test.ts
+  s_116fc484719db6::t_900bd376467c41 28-29,31-32,34-40,42,106,108-138,141-154,157-159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "f8c6cf9eeee81e88cf2879f873f88eed2663cccb",
+  "prompts": {},
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
