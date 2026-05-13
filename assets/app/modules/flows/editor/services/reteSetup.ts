@@ -335,6 +335,12 @@ reteStyles.textContent = `
     background-size: 24px 24px;
   }
 
+  .flow-canvas-node-dragging,
+  .flow-canvas-node-dragging * {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+  }
+
   /* Lift minimap above the bottom-right toolbar buttons (button row:
      bottom-3 + size-8 = 44px from bottom; leave a small gap). */
   .minimap {

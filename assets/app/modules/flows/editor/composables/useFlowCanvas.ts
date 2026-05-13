@@ -629,6 +629,19 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     flushPendingSequenceGeometry();
   }
 
+  function setNodeDragTextSelectionDisabled(disabled: boolean): void {
+    const container = runtime.area?.container;
+    if (!container) {
+      return;
+    }
+
+    container.classList.toggle("flow-canvas-node-dragging", disabled);
+
+    if (disabled) {
+      document.getSelection()?.removeAllRanges();
+    }
+  }
+
   // --- Area pipes (drag, selection, connections) ---
 
   function setupAreaPipes(): void {
@@ -650,9 +663,16 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     runtime.area!.addPipe(async (context) => {
       const type = (context as { type: string }).type;
       if (type === "nodetranslated") {
+        setNodeDragTextSelectionDisabled(true);
         await handleNodeTranslated(context);
       } else if (type === "nodedragged") {
-        await handleNodeDragged(context);
+        try {
+          await handleNodeDragged(context);
+        } finally {
+          setNodeDragTextSelectionDisabled(false);
+        }
+      } else if (type === "pointerup") {
+        setNodeDragTextSelectionDisabled(false);
       }
       return context;
     });
@@ -755,6 +775,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
 
   function destroy(): void {
     runtime.destroyed = true;
+    setNodeDragTextSelectionDisabled(false);
     cleanupEventControllers();
     destroyHandlers();
     runtime.nodeMoveQueue = null;
