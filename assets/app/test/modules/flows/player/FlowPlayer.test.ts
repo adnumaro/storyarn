@@ -1,5 +1,6 @@
 import { createMockLive } from "../../../setup";
 import { mount } from "@vue/test-utils";
+import { nextTick } from "vue";
 
 const mockLive = createMockLive();
 
@@ -24,7 +25,21 @@ function defaultProps() {
     canGoBack: false,
     showContinue: true,
     isFinished: false,
-    background: null,
+    backgrounds: [] as Array<{
+      sequence_id?: string | number;
+      url: string;
+      position?: string | null;
+      fit?: "cover" | "contain" | "fill" | null;
+      depth?: number | null;
+    }>,
+    audioTracks: [] as Array<{
+      id: string | number;
+      sequence_id?: string | number;
+      kind: string;
+      url: string;
+      volume?: number | null;
+      depth?: number | null;
+    }>,
     editorUrl: "/flows/123",
     responses: [] as Array<{
       id: string;
@@ -79,18 +94,63 @@ describe("FlowPlayer", () => {
       expect(w.find(".player-slide-dialogue").exists()).toBe(false);
     });
 
-    it("renders player background when URL is provided", () => {
+    it("renders player background layers ordered by sequence depth", () => {
       const w = mountPlayer({
-        background: { url: "/bg.png", position: "top-right", fit: "contain" },
+        backgrounds: [
+          { sequence_id: 10, url: "/outer.png", position: "top-left", fit: "cover", depth: 0 },
+          { sequence_id: 11, url: "/inner.png", position: "top-right", fit: "contain", depth: 1 },
+        ],
       });
-      const backdrop = w.find(".player-backdrop");
-      expect(backdrop.exists()).toBe(true);
-      expect(backdrop.attributes("style")).toContain('background-image: url("/bg.png")');
+      const backdrops = w.findAll(".player-backdrop");
+      expect(backdrops).toHaveLength(2);
+      expect(backdrops[0]!.element.tagName).toBe("IMG");
+      expect(backdrops[0]!.attributes("src")).toBe("/outer.png");
+      expect(backdrops[0]!.attributes("style")).toContain("object-fit: cover");
+      expect(backdrops[0]!.attributes("style")).toContain("object-position: top left");
+      expect(backdrops[1]!.attributes("src")).toBe("/inner.png");
+      expect(backdrops[1]!.attributes("style")).toContain("object-fit: contain");
+      expect(backdrops[1]!.attributes("style")).toContain("object-position: top right");
+      expect(backdrops[1]!.attributes("data-depth")).toBe("1");
     });
 
     it("hides player background when URL is null", () => {
-      const w = mountPlayer({ background: null });
+      const w = mountPlayer({ backgrounds: [] });
       expect(w.find(".player-backdrop").exists()).toBe(false);
+    });
+
+    it("renders sequence audio tracks", async () => {
+      const playSpy = vi.spyOn(window.HTMLMediaElement.prototype, "play").mockResolvedValue();
+      const pauseSpy = vi
+        .spyOn(window.HTMLMediaElement.prototype, "pause")
+        .mockImplementation(() => {});
+
+      const w = mountPlayer({
+        audioTracks: [
+          {
+            id: 5,
+            sequence_id: 10,
+            kind: "music",
+            url: "/theme.mp3",
+            volume: 0.5,
+            depth: 1,
+          },
+        ],
+      });
+
+      const audio = w.find(".player-audio-tracks audio");
+      expect(audio.exists()).toBe(true);
+      expect(audio.attributes("src")).toBe("/theme.mp3");
+      expect(audio.attributes("data-kind")).toBe("music");
+      expect(audio.attributes("data-depth")).toBe("1");
+      expect(audio.attributes("loop")).toBeDefined();
+      expect(audio.attributes("autoplay")).toBeDefined();
+      await nextTick();
+      expect(playSpy).toHaveBeenCalled();
+
+      w.unmount();
+      wrapper = null;
+      playSpy.mockRestore();
+      pauseSpy.mockRestore();
     });
   });
 

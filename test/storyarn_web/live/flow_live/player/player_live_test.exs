@@ -516,11 +516,16 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
 
       vue = get_player_vue(view)
       assert vue.props["slide"]["text"] =~ "With backdrop"
-      assert is_nil(vue.props["background"])
+      assert vue.props["backgrounds"] == []
     end
 
-    test "uses nearest sequence background as player background", %{conn: conn, project: project, user: user} do
+    test "uses active sequence backgrounds ordered from parent to child", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
       asset = image_asset_fixture(project, user, %{url: "/uploads/sequence-bg.png"})
+      child_asset = image_asset_fixture(project, user, %{url: "/uploads/sequence-child-bg.png"})
       flow = flow_fixture(project, %{name: "Sequence Background Flow"})
       {entry, _exit} = get_auto_nodes(flow)
 
@@ -536,10 +541,23 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
           "background_fit" => "contain"
         })
 
+      {:ok, child_sequence} =
+        Flows.create_sequence(flow.id, %{
+          "name" => "Nested Sequence",
+          "parent_id" => sequence.id
+        })
+
+      {:ok, child_sequence} =
+        Flows.update_sequence(child_sequence, %{
+          "background_asset_id" => child_asset.id,
+          "background_position" => "bottom-left",
+          "background_fit" => "cover"
+        })
+
       dialogue =
         node_fixture(flow, %{
           type: "dialogue",
-          parent_id: sequence.id,
+          parent_id: child_sequence.id,
           data: %{
             "text" => "<p>Inside sequence</p>",
             "speaker_sheet_id" => nil,
@@ -557,11 +575,99 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
 
       vue = get_player_vue(view)
 
-      assert vue.props["background"] == %{
-               "url" => "/uploads/sequence-bg.png",
-               "position" => "top-right",
-               "fit" => "contain"
-             }
+      assert vue.props["backgrounds"] == [
+               %{
+                 "sequence_id" => sequence.id,
+                 "url" => "/uploads/sequence-bg.png",
+                 "position" => "top-right",
+                 "fit" => "contain",
+                 "depth" => 0
+               },
+               %{
+                 "sequence_id" => child_sequence.id,
+                 "url" => "/uploads/sequence-child-bg.png",
+                 "position" => "bottom-left",
+                 "fit" => "cover",
+                 "depth" => 1
+               }
+             ]
+    end
+
+    test "passes active sequence audio tracks ordered from parent to child", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      parent_audio = audio_asset_fixture(project, user, %{url: "/uploads/parent-theme.mp3"})
+      child_audio = audio_asset_fixture(project, user, %{url: "/uploads/child-ambient.mp3"})
+      flow = flow_fixture(project, %{name: "Sequence Audio Flow"})
+      {entry, _exit} = get_auto_nodes(flow)
+
+      {:ok, parent_sequence} = Flows.create_sequence(flow.id, %{"name" => "Parent"})
+
+      {:ok, child_sequence} =
+        Flows.create_sequence(flow.id, %{
+          "name" => "Child",
+          "parent_id" => parent_sequence.id
+        })
+
+      {:ok, parent_track} =
+        Flows.upsert_sequence_track(parent_sequence.id, "music", %{
+          "asset_id" => parent_audio.id,
+          "volume" => Decimal.new("0.50")
+        })
+
+      {:ok, child_track} =
+        Flows.upsert_sequence_track(child_sequence.id, "ambient", %{
+          "asset_id" => child_audio.id,
+          "volume" => Decimal.new("0.25")
+        })
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          parent_id: child_sequence.id,
+          data: %{
+            "text" => "<p>Inside audio sequence</p>",
+            "speaker_sheet_id" => nil,
+            "stage_directions" => "",
+            "menu_text" => "",
+            "responses" => []
+          },
+          position_x: 200.0,
+          position_y: 0.0
+        })
+
+      _conn = connection_fixture(flow, entry, dialogue)
+
+      {:ok, view, _html} = live(conn, player_url(project, flow))
+
+      vue = get_player_vue(view)
+
+      assert vue.props["audio-tracks"] == [
+               %{
+                 "id" => parent_track.id,
+                 "sequence_id" => parent_sequence.id,
+                 "kind" => "music",
+                 "position" => 0,
+                 "url" => "/uploads/parent-theme.mp3",
+                 "volume" => 0.5,
+                 "content_type" => "audio/mpeg",
+                 "filename" => parent_audio.filename,
+                 "depth" => 0
+               },
+               %{
+                 "id" => child_track.id,
+                 "sequence_id" => child_sequence.id,
+                 "kind" => "ambient",
+                 "position" => 0,
+                 "url" => "/uploads/child-ambient.mp3",
+                 "volume" => 0.25,
+                 "content_type" => "audio/mpeg",
+                 "filename" => child_audio.filename,
+                 "depth" => 1
+               }
+             ]
     end
   end
 

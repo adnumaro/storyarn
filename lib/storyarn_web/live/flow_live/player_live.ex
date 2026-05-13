@@ -38,7 +38,8 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
         can-go-back={@can_go_back}
         show-continue={show_continue?(@slide)}
         is-finished={@engine_state.status == :finished}
-        background={player_background(assigns)}
+        backgrounds={player_backgrounds(assigns)}
+        audio-tracks={player_audio_tracks(assigns)}
         editor-url={editor_url(assigns)}
         responses={serialize_responses(@slide)}
       />
@@ -534,45 +535,98 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
     end)
   end
 
-  defp player_background(assigns) do
+  defp player_backgrounds(assigns) do
     assigns
-    |> active_sequence_background()
-    |> serialize_background()
+    |> active_sequence_chain()
+    |> Enum.with_index()
+    |> Enum.flat_map(fn {sequence, depth} ->
+      case serialize_background(sequence, depth) do
+        nil -> []
+        background -> [background]
+      end
+    end)
   end
 
-  defp active_sequence_background(%{engine_state: state, nodes: nodes}) do
+  defp player_audio_tracks(assigns) do
+    assigns
+    |> active_sequence_chain()
+    |> Enum.with_index()
+    |> Enum.flat_map(fn {sequence, depth} ->
+      (Map.get(sequence, :sequence_tracks, []) || [])
+      |> Enum.sort_by(&{track_kind_order(&1), &1.position || 0, &1.id || 0})
+      |> Enum.flat_map(&serialize_audio_track(&1, sequence.id, depth))
+    end)
+  end
+
+  defp active_sequence_chain(%{engine_state: state, nodes: nodes}) do
     nodes
     |> Map.get(state.current_node_id)
-    |> nearest_sequence_background(nodes)
+    |> sequence_chain_for_node(nodes)
   end
 
-  defp nearest_sequence_background(%{parent_id: parent_id}, nodes), do: sequence_background(parent_id, nodes)
-  defp nearest_sequence_background(_, _nodes), do: nil
+  defp active_sequence_chain(_), do: []
 
-  defp sequence_background(nil, _nodes), do: nil
+  defp sequence_chain_for_node(%{parent_id: parent_id}, nodes), do: sequence_chain(parent_id, nodes)
+  defp sequence_chain_for_node(_, _nodes), do: []
 
-  defp sequence_background(sequence_id, nodes) do
-    case Map.get(nodes, sequence_id) do
-      %{sequence_config: %{background_url: url} = config} when is_binary(url) and url != "" ->
-        config
+  defp sequence_chain(parent_id, nodes), do: do_sequence_chain(parent_id, nodes, MapSet.new(), [])
 
-      %{parent_id: parent_id} ->
-        sequence_background(parent_id, nodes)
+  defp do_sequence_chain(nil, _nodes, _visited, acc), do: acc
 
-      _ ->
-        nil
+  defp do_sequence_chain(sequence_id, nodes, visited, acc) do
+    if MapSet.member?(visited, sequence_id) do
+      acc
+    else
+      visited = MapSet.put(visited, sequence_id)
+
+      case Map.get(nodes, sequence_id) do
+        %{type: "sequence", parent_id: parent_id} = sequence ->
+          do_sequence_chain(parent_id, nodes, visited, [sequence | acc])
+
+        %{parent_id: parent_id} ->
+          do_sequence_chain(parent_id, nodes, visited, acc)
+
+        _ ->
+          acc
+      end
     end
   end
 
-  defp serialize_background(%{background_url: url} = background) do
+  defp serialize_background(%{id: sequence_id, sequence_config: %{background_url: url} = background}, depth)
+       when is_binary(url) and url != "" do
     %{
+      sequence_id: sequence_id,
       url: url,
       position: background[:background_position] || "center",
-      fit: background[:background_fit] || "cover"
+      fit: background[:background_fit] || "cover",
+      depth: depth
     }
   end
 
-  defp serialize_background(_), do: nil
+  defp serialize_background(_, _depth), do: nil
+
+  defp serialize_audio_track(%{url: url} = track, sequence_id, depth) when is_binary(url) and url != "" do
+    [
+      %{
+        id: track.id,
+        sequence_id: sequence_id,
+        kind: track.kind,
+        position: track.position || 0,
+        url: url,
+        volume: track[:volume] || 1.0,
+        content_type: track[:content_type],
+        filename: track[:filename],
+        depth: depth
+      }
+    ]
+  end
+
+  defp serialize_audio_track(_track, _sequence_id, _depth), do: []
+
+  defp track_kind_order(%{kind: "background"}), do: 0
+  defp track_kind_order(%{kind: "music"}), do: 1
+  defp track_kind_order(%{kind: "ambient"}), do: 2
+  defp track_kind_order(_), do: 3
 
   defp editor_url(assigns) do
     ~p"/workspaces/#{assigns.workspace.slug}/projects/#{assigns.project.slug}/flows/#{assigns.flow.id}"

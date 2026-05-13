@@ -35,6 +35,7 @@ defmodule Storyarn.Flows.FlowNode do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.SequenceConfig
+  alias Storyarn.Flows.SequenceTrack
   alias Storyarn.Shared.TimeHelpers
 
   @node_types ~w(annotation dialogue hub condition instruction jump entry exit subflow sequence)
@@ -65,6 +66,7 @@ defmodule Storyarn.Flows.FlowNode do
           parent: t() | NotLoaded.t() | nil,
           children: [t()] | NotLoaded.t(),
           sequence_config: SequenceConfig.t() | NotLoaded.t() | nil,
+          sequence_tracks: [SequenceTrack.t()] | NotLoaded.t(),
           outgoing_connections: [FlowConnection.t()] | NotLoaded.t(),
           incoming_connections: [FlowConnection.t()] | NotLoaded.t(),
           inserted_at: DateTime.t() | nil,
@@ -84,6 +86,7 @@ defmodule Storyarn.Flows.FlowNode do
     belongs_to :parent, __MODULE__, foreign_key: :parent_id
     has_many :children, __MODULE__, foreign_key: :parent_id
     has_one :sequence_config, SequenceConfig, foreign_key: :flow_node_id
+    has_many :sequence_tracks, SequenceTrack, foreign_key: :flow_node_id
     has_many :outgoing_connections, FlowConnection, foreign_key: :source_node_id
     has_many :incoming_connections, FlowConnection, foreign_key: :target_node_id
 

@@ -5,14 +5,19 @@ import PlayerSlide from "@modules/flows/player/components/PlayerSlide.vue";
 import PlayerChoices from "@modules/flows/player/components/PlayerChoices.vue";
 import PlayerToolbar from "@modules/flows/player/components/PlayerToolbar.vue";
 import PlayerOutcome from "@modules/flows/player/components/PlayerOutcome.vue";
+import PlayerAudioTracks from "@modules/flows/player/components/PlayerAudioTracks.vue";
 import type { SlideData } from "@modules/flows/player/components/PlayerSlide.vue";
 import type { ResponseData } from "@modules/flows/player/components/PlayerChoices.vue";
 import type { OutcomeData } from "@modules/flows/player/components/PlayerOutcome.vue";
+import type { PlayerAudioTrack } from "@modules/flows/player/components/PlayerAudioTracks.vue";
 
 interface PlayerBackground {
+  sequence_id?: string | number;
+  sequenceId?: string | number;
   url: string;
   position?: string | null;
   fit?: "cover" | "contain" | "fill" | null;
+  depth?: number | null;
 }
 
 const {
@@ -21,7 +26,8 @@ const {
   canGoBack,
   showContinue,
   isFinished,
-  background = null,
+  backgrounds = [],
+  audioTracks = [],
   editorUrl,
   responses = [],
 } = defineProps<{
@@ -30,7 +36,8 @@ const {
   canGoBack: boolean;
   showContinue: boolean;
   isFinished: boolean;
-  background: PlayerBackground | null;
+  backgrounds?: PlayerBackground[];
+  audioTracks?: PlayerAudioTrack[];
   editorUrl: string;
   responses: ResponseData[];
 }>();
@@ -64,15 +71,23 @@ const visibleResponses = computed(() => {
   return responses;
 });
 
-const backgroundStyle = computed(() => {
-  if (!background?.url) return {};
+const backgroundLayers = computed(() =>
+  [...backgrounds]
+    .filter((layer) => Boolean(layer.url))
+    .sort((a, b) => (a.depth ?? 0) - (b.depth ?? 0)),
+);
 
+function backgroundStyle(background: PlayerBackground) {
   return {
-    backgroundImage: `url(${background.url})`,
-    backgroundPosition: (background.position || "center").replace("-", " "),
-    backgroundSize: background.fit === "fill" ? "100% 100%" : background.fit || "cover",
+    objectFit: background.fit || "cover",
+    objectPosition: (background.position || "center").replace("-", " "),
+    zIndex: background.depth ?? 0,
   };
-});
+}
+
+function backgroundKey(background: PlayerBackground, index: number): string {
+  return String(background.sequence_id ?? background.sequenceId ?? `${background.url}:${index}`);
+}
 
 const EDITABLE_TAGS = new Set(["INPUT", "TEXTAREA", "SELECT"]);
 
@@ -134,11 +149,19 @@ onUnmounted(() => {
     />
 
     <div class="player-main relative">
-      <div
-        v-if="background?.url"
+      <img
+        v-for="(background, index) in backgroundLayers"
+        :key="backgroundKey(background, index)"
         class="player-backdrop player-backdrop-transition"
-        :style="backgroundStyle"
+        :src="background.url"
+        alt=""
+        aria-hidden="true"
+        :style="backgroundStyle(background)"
+        :data-sequence-id="background.sequence_id ?? background.sequenceId"
+        :data-depth="background.depth ?? 0"
       />
+
+      <PlayerAudioTracks :tracks="audioTracks" />
 
       <PlayerOutcome
         v-if="slide.type === 'outcome'"

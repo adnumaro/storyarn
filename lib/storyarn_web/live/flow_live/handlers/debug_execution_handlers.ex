@@ -353,7 +353,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
   def build_nodes_map(flow_id) do
     flow_id
     |> Flows.list_nodes()
-    |> Repo.preload(sequence_config: [:background_asset])
+    |> Repo.preload(sequence_config: [:background_asset], sequence_tracks: [:asset])
     |> Map.new(fn node -> {node.id, build_node_map(node)} end)
   end
 
@@ -363,7 +363,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
       type: node.type,
       data: node.data || %{},
       parent_id: node.parent_id,
-      sequence_config: serialize_sequence_config(node.sequence_config)
+      sequence_config: serialize_sequence_config(node.sequence_config),
+      sequence_tracks: Enum.map(node.sequence_tracks || [], &serialize_sequence_track/1)
     }
   end
 
@@ -376,6 +377,22 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
   end
 
   defp serialize_sequence_config(_), do: nil
+
+  defp serialize_sequence_track(track) do
+    %{
+      id: track.id,
+      kind: track.kind,
+      position: track.position || 0,
+      url: Storyarn.Assets.display_url(track.asset),
+      volume: serialize_volume(track.volume),
+      content_type: track.asset && track.asset.content_type,
+      filename: track.asset && track.asset.filename
+    }
+  end
+
+  defp serialize_volume(nil), do: 1.0
+  defp serialize_volume(%Decimal{} = volume), do: Decimal.to_float(volume)
+  defp serialize_volume(volume) when is_number(volume), do: volume
 
   @doc "Builds a list of connection maps for the debugger engine."
   def build_connections(flow_id) do
