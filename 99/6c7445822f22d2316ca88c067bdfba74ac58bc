@@ -1,0 +1,51 @@
+assets/app/components/ui/button/variants.ts
+  s_116fc484719db6::t_553a6d3b4a83ec 1-33
+assets/app/components/ui/badge/index.ts
+  s_116fc484719db6::t_553a6d3b4a83ec 2
+assets/app/components/ui/toggle/Toggle.vue
+  s_116fc484719db6::t_553a6d3b4a83ec 6
+assets/app/components/ui/badge/variants.ts
+  s_116fc484719db6::t_553a6d3b4a83ec 1-20
+assets/app/components/ui/button/Button.vue
+  s_116fc484719db6::t_553a6d3b4a83ec 5
+assets/app/components/ui/command/CommandEmpty.vue
+  s_116fc484719db6::t_553a6d3b4a83ec 7
+assets/app/components/ui/select/SelectContent.vue
+  s_116fc484719db6::t_553a6d3b4a83ec 12-13
+assets/app/components/ui/command/CommandItem.vue
+  s_116fc484719db6::t_553a6d3b4a83ec 7
+assets/app/components/ui/badge/Badge.vue
+  s_116fc484719db6::t_553a6d3b4a83ec 6
+assets/app/components/ui/command/CommandGroup.vue
+  s_116fc484719db6::t_553a6d3b4a83ec 7
+assets/app/components/ui/button/index.ts
+  s_116fc484719db6::t_553a6d3b4a83ec 2
+assets/app/components/ui/command/context.ts
+  s_116fc484719db6::t_553a6d3b4a83ec 1-24
+assets/app/components/ui/toggle/variants.ts
+  s_116fc484719db6::t_553a6d3b4a83ec 1-24
+assets/app/components/ui/command/Command.vue
+  s_116fc484719db6::t_553a6d3b4a83ec 7
+assets/app/components/ui/command/index.ts
+  s_116fc484719db6::t_553a6d3b4a83ec 10-17
+assets/app/components/ui/toggle/index.ts
+  s_116fc484719db6::t_553a6d3b4a83ec 2
+assets/app/components/ui/command/CommandInput.vue
+  s_116fc484719db6::t_553a6d3b4a83ec 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "996c7445822f22d2316ca88c067bdfba74ac58bc",
+  "prompts": {},
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
