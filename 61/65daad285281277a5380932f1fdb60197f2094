@@ -1,0 +1,45 @@
+assets/app/test/modules/flows/editor/flowSequenceScopes.test.ts
+  s_116fc484719db6::t_dafee936630824 51-58
+  s_116fc484719db6::t_54165cfc8a3c7b 59,72-74,81-90,121,127-133,147-154,158-159,271-330
+assets/app/modules/flows/editor/composables/useFlowCanvas.ts
+  s_116fc484719db6::t_50ebe0b8def57a 249-250
+  s_116fc484719db6::t_b5e22d73e7bdd8 421-424
+assets/app/modules/flows/editor/services/flowSequenceScopes.ts
+  s_116fc484719db6::t_6cc10795e41500 25-36,59-101,103-120,147-165,205,217,224-266,306-367,383-412,418-421,426-429
+  s_116fc484719db6::t_c22233c14559ed 102,146
+assets/app/modules/flows/editor/services/reteSetup.ts
+  s_116fc484719db6::t_08b59a3bce631e 95
+  s_116fc484719db6::t_a843945cd302c6 202
+assets/app/modules/flows/editor/components/entities/nodes/SequenceNode.vue
+  s_116fc484719db6::t_02cc13c1e0ca63 6-7,11-13
+assets/app/modules/flows/editor/services/editorHandlers.ts
+  s_116fc484719db6::t_bb5c4309c4a49e 266-268,519-521
+assets/app/modules/flows/editor/composables/flowSequenceGeometry.ts
+  s_116fc484719db6::t_1d2048e4a7ae65 168
+assets/app/modules/flows/editor/lib/flow-node.ts
+  s_116fc484719db6::t_0698e0e2f973b5 16-18,31-32
+docs/plans/flow-scopes-plugin-migration.md
+  s_116fc484719db6::t_95edc20cc4639c 91,97-105,348,350,354-357
+  s_116fc484719db6::t_33ad23f2dbb9e7 327-332
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "6165daad285281277a5380932f1fdb60197f2094",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
