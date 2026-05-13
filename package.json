@@ -64,7 +64,6 @@
     "rete-history-plugin": "^2.1.1",
     "rete-minimap-plugin": "^2.0.3",
     "rete-render-utils": "^2.0.3",
-    "rete-scopes-plugin": "^2.1.0",
     "rete-vue-plugin": "^2.1.2",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.3.0",

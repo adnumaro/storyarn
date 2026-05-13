@@ -140,9 +140,6 @@ importers:
       rete-render-utils:
         specifier: ^2.0.3
         version: 2.0.3(rete-area-plugin@2.1.5(rete@2.0.6))(rete@2.0.6)
-      rete-scopes-plugin:
-        specifier: ^2.1.0
-        version: 2.1.1(rete-area-plugin@2.1.5(rete@2.0.6))(rete@2.0.6)
       rete-vue-plugin:
         specifier: ^2.1.2
         version: 2.1.2(rete-area-plugin@2.1.5(rete@2.0.6))(rete-render-utils@2.0.3(rete-area-plugin@2.1.5(rete@2.0.6))(rete@2.0.6))(rete@2.0.6)(vue@3.5.34(typescript@6.0.3))
@@ -3262,12 +3259,6 @@ packages:
     resolution: {integrity: sha512-Oz4W2PNayHocRvlzadb5BCNf+tDzJ8RhTwB3ucBPCdCLKZ974wWDiTSCRfA287L2hmHVzRfBdyAwC03K9eP+4g==}
     peerDependencies:
       rete: ^2.0.0
-      rete-area-plugin: ^2.0.0
-
-  rete-scopes-plugin@2.1.1:
-    resolution: {integrity: sha512-7wZng5apPHxu9e9cWz3TR/U4hvr6+B4XPTVzCchPLhzCHaPLUg+TAM8l4CClqP22wIhdYJUMDFpmZBe9y6y0yQ==}
-    peerDependencies:
-      rete: ^2.0.1
       rete-area-plugin: ^2.0.0
 
   rete-vue-plugin@2.1.2:
@@ -6831,12 +6822,6 @@ snapshots:
       rete-area-plugin: 2.1.5(rete@2.0.6)
 
   rete-render-utils@2.0.3(rete-area-plugin@2.1.5(rete@2.0.6))(rete@2.0.6):
-    dependencies:
-      '@babel/runtime': 7.29.2
-      rete: 2.0.6
-      rete-area-plugin: 2.1.5(rete@2.0.6)
-
-  rete-scopes-plugin@2.1.1(rete-area-plugin@2.1.5(rete@2.0.6))(rete@2.0.6):
     dependencies:
       '@babel/runtime': 7.29.2
       rete: 2.0.6

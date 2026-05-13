@@ -15,27 +15,13 @@ The goal is not to redesign the flow editor. The goal is to make sequence behavi
 
 ## Current State
 
-`package.json` currently depends on `rete-scopes-plugin`.
+`rete-scopes-plugin` has been removed from `package.json` and `pnpm-lock.yaml`.
 
-The flow editor mounts `ScopesPlugin` in:
+The flow editor no longer mounts `ScopesPlugin`. Sequence behavior is now owned by Storyarn flow modules:
 
-```text
-assets/app/modules/flows/editor/services/reteSetup.ts
-```
-
-The plugin is already heavily constrained:
-
-- `exclude: () => true` prevents the generic plugin sizing rules from owning our sequence geometry.
-- `flowScopesPreset` replaces the classic long-press preset with Cmd/Ctrl gated reparenting.
-- sequence sizing, collision growth, manual resize, nested parent growth, and persistence live in `useFlowCanvas.ts`.
-- `editorHandlers.ts` contains workarounds for the plugin validator, especially when deleting sequence parents.
-
-This means the dependency is no longer the source of truth for sequence behavior. It mostly provides generic Rete pipe wiring for:
-
-- parent-child translation when a sequence moves;
-- node ordering for nested nodes;
-- validation around parent/child lifecycle;
-- a `ScopesPlugin` instance type used by runtime plumbing.
+- `flowSequenceGeometry.ts` owns sequence sizing, collision growth, resize clamping, nested parent growth, and geometry persistence;
+- `flowSequenceScopes.ts` owns Cmd/Ctrl reparenting, descendant translation, parent validation, and sequence stacking;
+- `editorHandlers.ts` mirrors server events into the local sequence model without plugin-specific validation workarounds.
 
 ## Phase 0 Findings
 
@@ -120,6 +106,16 @@ Baseline audit from 2026-05-13:
   - flow editor sequence/autolayout tests passed;
   - targeted lint and formatting checks passed;
   - architecture verification passed with only the accepted `components/ui` circular warnings.
+- Phase 7 implementation is complete:
+  - `rete-scopes-plugin` has been removed from `package.json`;
+  - `pnpm-lock.yaml` no longer contains the package entry, importer entry, or snapshot entry;
+  - `rg "rete-scopes-plugin|ScopesPlugin|scopepicked|scopereleased|getPickedNodes"` returns no matches in `assets/app`, `package.json`, or `pnpm-lock.yaml`.
+- Phase 7 validation:
+  - `pnpm install --lockfile-only --offline` passed;
+  - flow editor tests passed: 10 files, 103 tests;
+  - formatting check passed for the changed dependency and plan files;
+  - architecture verification passed with only the accepted `components/ui` circular warnings;
+  - browser smoke on `/flows/8` rendered the flow canvas content and reported no console errors.
 
 ## Why Consider Removing It
 
