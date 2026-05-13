@@ -13,9 +13,9 @@ export class FlowNode extends ClassicPreset.Node {
   nodeType: string;
   nodeId: string | number;
   nodeData: NodeData;
-  /** rete-scopes-plugin: parent rete-node id (e.g. `"node-12"` for the
-   * sequence node with flow_nodes.id = 12). Only populated when the
-   * node has `parent_id` set. */
+  /** Parent sequence rete-node id (e.g. `"node-12"` for the sequence node
+   * with flow_nodes.id = 12). Only populated when the node has
+   * `parent_id` set. */
   parent?: string;
   _updateTs?: number;
 
@@ -28,8 +28,8 @@ export class FlowNode extends ClassicPreset.Node {
     this.nodeData = data;
 
     // Sequence containers carry their own geometry from the config table.
-    // rete-scopes-plugin grows the box to fit children, but a sensible
-    // initial width/height matters for empty or newly-wrapped sequences.
+    // A sensible initial width/height matters for empty or newly-wrapped
+    // sequences.
     if (type === "sequence") {
       const w = data.width;
       const h = data.height;

@@ -88,12 +88,20 @@ Baseline audit from 2026-05-13:
   - formatting check passed after applying `oxfmt`.
 - Phase 3 implementation is complete:
   - Cmd/Ctrl reparenting now lives in `flowSequenceScopes.ts`;
-  - `reteSetup.ts` installs the local controller after mounting `ScopesPlugin`;
+  - `reteSetup.ts` installs the local controller for editable flows;
   - `flow-scopes-preset.ts` has been removed;
-  - `ScopesPlugin` remains mounted for validation, ordering, and sequence-child translation until later phases.
 - Phase 3 validation:
   - unit tests cover no-modifier drag, Cmd/Ctrl drop into sequence, Cmd/Ctrl drop to root, selected-descendant dedupe, descendant-drop blocking, and pointerup cleanup;
   - targeted lint and formatting checks passed;
+  - local TypeScript diagnostics are clean for the new controller. The remaining filtered `reteSetup.ts` errors are the existing Vue SFC module-resolution diagnostics.
+- Phase 4 implementation is complete:
+  - sequence descendant translation now lives in `flowSequenceScopes.ts`;
+  - selected descendant subtrees are skipped so multi-select parent + child does not double-translate;
+  - the local controller applies the minimal ordering rules needed after removing `ScopesPlugin`;
+  - `ScopesPlugin` is no longer mounted or referenced in the flow editor.
+- Phase 4 validation:
+  - unit tests cover descendant translation, selected subtree dedupe, and parent-behind-child ordering;
+  - targeted lint, formatting, and flow editor tests passed;
   - local TypeScript diagnostics are clean for the new controller. The remaining filtered `reteSetup.ts` errors are the existing Vue SFC module-resolution diagnostics.
 
 ## Why Consider Removing It
@@ -316,12 +324,12 @@ Implement the remaining high-value behavior currently provided by `ScopesPlugin`
 
 Scope:
 
-- on `nodetranslated` for a sequence, compute delta from previous position;
-- translate direct children by the same delta;
-- recurse through nested sequences by relying on each moved sequence's children or by calculating all descendants once;
-- avoid translating selected children twice when parent and child are both selected;
-- avoid creating infinite `nodetranslated` loops;
-- keep history/persistence behavior coherent.
+- [x] on `nodetranslated` for a sequence, compute delta from previous position;
+- [x] translate descendants by the same delta;
+- [x] recurse through nested sequences by calculating all descendants once;
+- [x] avoid translating selected children twice when parent and child are both selected;
+- [x] avoid creating infinite `nodetranslated` loops;
+- [x] keep history/persistence behavior coherent.
 
 Exit criteria:
 
@@ -337,22 +345,21 @@ Validation:
 - verify connections remain visible and aligned;
 - verify position persistence after reload.
 
-### Phase 5: Replace Ordering Behavior
+### Phase 5: Harden Ordering Behavior
 
-Replicate only the ordering behavior we actually need.
+Harden the local ordering behavior now that `ScopesPlugin` is no longer mounted.
 
 Scope:
 
-- parent sequence should render behind children;
-- selected/moved nodes should have predictable z-order;
-- connections should not disappear behind sequence surfaces;
-- new connections should remain visible.
+- [x] parent sequence should render behind children;
+- [ ] selected/moved nodes should have predictable z-order in all browser flows;
+- [ ] connections should not disappear behind sequence surfaces;
+- [ ] new connections should remain visible.
 
 Do not reproduce plugin internals blindly. Implement the minimum ordering rules required by Storyarn's UI.
 
 Exit criteria:
 
-- `rete-scopes-plugin` is no longer needed for ordering.
 - Visual stacking is stable after create, select, drag, reparent, and reload.
 
 Validation:

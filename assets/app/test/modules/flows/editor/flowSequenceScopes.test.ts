@@ -48,7 +48,15 @@ function modifierEvent(metaKey: boolean): PointerEvent {
 
 function createHarness() {
   const nodes = new Map<string, FlowNode>();
-  const nodeViews = new Map<string, { position: { x: number; y: number }; element: HTMLElement }>();
+  const nodeViews = new Map<
+    string,
+    {
+      position: { x: number; y: number };
+      element: HTMLElement;
+      translate: (x: number, y: number) => Promise<void>;
+    }
+  >();
+  const connections: { id: string; source: string; target: string }[] = [];
   const pipes: Pipe[] = [];
   const holder = document.createElement("div");
   const pointer = { x: 0, y: 0 };
@@ -61,13 +69,25 @@ function createHarness() {
     getNodes() {
       return [...nodes.values()];
     },
+    getConnections() {
+      return connections;
+    },
   } as unknown as NodeEditor<FlowSchemes>;
 
   const area = {
     nodeViews,
     area: {
       pointer,
-      content: { holder },
+      content: {
+        holder,
+        reorder(element: Element, before: ChildNode | null) {
+          if (before) {
+            holder.insertBefore(element, before);
+          } else {
+            holder.appendChild(element);
+          }
+        },
+      },
     },
     addPipe(handler: Pipe) {
       pipes.push(handler);
@@ -98,11 +118,19 @@ function createHarness() {
   function addNode(type: string, id: number, opts: AddNodeOptions): FlowNode {
     const node = createNode(type, id, opts);
     const element = document.createElement("div");
+    element.dataset.nodeId = node.id;
     holder.appendChild(element);
     nodes.set(node.id, node);
     nodeViews.set(node.id, {
       position: { x: opts.x, y: opts.y },
       element,
+      async translate(x: number, y: number) {
+        const view = nodeViews.get(node.id);
+        if (view) {
+          view.position = { x, y };
+          view.element.style.transform = `translate(${x}px, ${y}px)`;
+        }
+      },
     });
     return node;
   }
@@ -116,9 +144,19 @@ function createHarness() {
     pointer.y = y;
   }
 
+  function position(node: FlowNode): { x: number; y: number } {
+    return nodeViews.get(node.id)!.position;
+  }
+
+  function elementOrder(): string[] {
+    return Array.from(holder.children).map((element) => (element as HTMLElement).dataset.nodeId!);
+  }
+
   return {
     addNode,
     emit,
+    elementOrder,
+    position,
     reparented,
     select,
     setPointer,
@@ -229,5 +267,66 @@ describe("installFlowSequenceScopes", () => {
 
     expect(reparentGestureActive.value).toBe(false);
     expect(h.reparented).toEqual([]);
+  });
+
+  it("moves all non-selected descendants when a sequence is translated", async () => {
+    const h = createHarness();
+    const sequence = h.addNode("sequence", 1, { x: 10, y: 20, width: 300, height: 200 });
+    const childSequence = h.addNode("sequence", 2, {
+      x: 40,
+      y: 50,
+      width: 200,
+      height: 120,
+      parent: sequence.id,
+    });
+    const nestedChild = h.addNode("dialogue", 3, { x: 70, y: 80, parent: childSequence.id });
+
+    await h.emit({
+      type: "nodetranslated",
+      data: { id: sequence.id, previous: { x: 10, y: 20 }, position: { x: 25, y: 45 } },
+    });
+
+    expect(h.position(childSequence)).toEqual({ x: 55, y: 75 });
+    expect(h.position(nestedChild)).toEqual({ x: 85, y: 105 });
+  });
+
+  it("does not move selected descendant subtrees when their selected parent moves separately", async () => {
+    const h = createHarness();
+    const sequence = h.addNode("sequence", 1, { x: 10, y: 20, width: 300, height: 200 });
+    const childSequence = h.addNode("sequence", 2, {
+      x: 40,
+      y: 50,
+      width: 200,
+      height: 120,
+      parent: sequence.id,
+    });
+    const nestedChild = h.addNode("dialogue", 3, { x: 70, y: 80, parent: childSequence.id });
+    h.select(sequence.id, childSequence.id);
+
+    await h.emit({
+      type: "nodetranslated",
+      data: { id: sequence.id, previous: { x: 10, y: 20 }, position: { x: 25, y: 45 } },
+    });
+
+    expect(h.position(childSequence)).toEqual({ x: 40, y: 50 });
+    expect(h.position(nestedChild)).toEqual({ x: 70, y: 80 });
+
+    await h.emit({
+      type: "nodetranslated",
+      data: { id: childSequence.id, previous: { x: 40, y: 50 }, position: { x: 55, y: 75 } },
+    });
+
+    expect(h.position(nestedChild)).toEqual({ x: 85, y: 105 });
+  });
+
+  it("keeps sequence parents behind their children after picking a sequence", async () => {
+    const h = createHarness();
+    const outside = h.addNode("dialogue", 1, { x: 500, y: 0 });
+    const sequence = h.addNode("sequence", 2, { x: 0, y: 0, width: 300, height: 200 });
+    const child = h.addNode("dialogue", 3, { x: 40, y: 50, parent: sequence.id });
+
+    await h.emit({ type: "nodepicked", data: { id: sequence.id } });
+
+    expect(h.elementOrder()).toEqual([outside.id, sequence.id, child.id]);
   });
 });

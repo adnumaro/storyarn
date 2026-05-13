@@ -14,7 +14,6 @@ import {
 import { ContextMenuPlugin } from "rete-context-menu-plugin";
 import { HistoryPlugin } from "rete-history-plugin";
 import { MinimapPlugin } from "rete-minimap-plugin";
-import { ScopesPlugin } from "rete-scopes-plugin";
 import { VuePlugin, Presets as VuePresets } from "rete-vue-plugin";
 import { createApp, reactive } from "vue";
 
@@ -27,7 +26,6 @@ import Sequence from "../components/entities/nodes/SequenceNode.vue";
 import { createContextMenuItems } from "../lib/context_menu_items";
 import { FLOW_CONTEXT_KEY } from "../lib/flow-context";
 import { flowContextMenuPreset } from "../lib/context_menu_preset";
-import { SEQUENCE_MIN_HEIGHT, SEQUENCE_MIN_WIDTH } from "../lib/sequence-layout";
 import { installReparentModifierListeners } from "../lib/flow-reparent-state";
 import type { FlowSchemes, FlowAreaExtra } from "../lib/rete-schemes";
 import type { FlowContext, HookProxy } from "./editorHandlers";
@@ -42,7 +40,6 @@ interface PluginSet {
   history: HistoryPlugin<FlowSchemes>;
   minimap: MinimapPlugin<FlowSchemes>;
   render: VuePlugin<FlowSchemes, FlowAreaExtra>;
-  scopes: ScopesPlugin<FlowSchemes>;
 }
 
 /**
@@ -95,7 +92,7 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
       customize: {
         node(context) {
           if (!context.payload) return null;
-          // Sequences (rete-scopes parent nodes) render as bounding boxes.
+          // Sequence parent nodes render as bounding boxes.
           // They share the FlowNode class but are discriminated by nodeType.
           if (context.payload.nodeType === "sequence") return Sequence;
           return FlowNode;
@@ -142,32 +139,6 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
 
   area.use(connection);
   area.use(render);
-
-  // Scopes plugin — Sequences render as parent bounding boxes that contain
-  // their member nodes. Nodes declare their parent via the `parent` field
-  // (set from `node.parent_id` at load time).
-  //
-  // Cmd/Ctrl drag-reparenting is owned by `installFlowSequenceScopes`.
-  // Sequence sizing is handled by flow-specific collision logic in
-  // `useFlowCanvas`; the generic rete-scopes resize path moves/compacts
-  // the bbox and does not match our UX.
-  //
-  // `size` is still defensive for any plugin-internal resize signal, but
-  // normal sequence geometry is controlled by the flow canvas.
-  const scopes = new ScopesPlugin<FlowSchemes>({
-    exclude: () => true,
-    size: (id, size) => {
-      const node = editor.getNode(id);
-      const minWidth = node?.nodeType === "sequence" ? node.width : SEQUENCE_MIN_WIDTH;
-      const minHeight = node?.nodeType === "sequence" ? node.height : SEQUENCE_MIN_HEIGHT;
-
-      return {
-        width: Math.max(size.width, minWidth, SEQUENCE_MIN_WIDTH),
-        height: Math.max(size.height, minHeight, SEQUENCE_MIN_HEIGHT),
-      };
-    },
-  });
-  area.use(scopes);
 
   if (!hook.readonly) {
     installFlowSequenceScopes({
@@ -228,7 +199,7 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
     history.addPreset(historyPreset(hook));
   }
 
-  return { editor, area, connection, history, minimap, render, scopes };
+  return { editor, area, connection, history, minimap, render };
 }
 
 export interface SelectionHandles {

@@ -180,7 +180,6 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     runtime.connection = plugins.connection;
     runtime.history = plugins.history;
     runtime.minimap = plugins.minimap;
-    runtime.scopes = plugins.scopes;
 
     editor.value = runtime.editor;
     area.value = runtime.area;
@@ -247,8 +246,8 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     runtime.deferSocketCalc = true;
     runtime.loadingFromServerCount++;
 
-    // rete-scopes-plugin requires parents to exist before their children
-    // reference them via `parent`. Sort nodes so ancestors load first.
+    // Parent nodes should exist before their children reference them via
+    // `parent`. Sort nodes so ancestors load first.
     const sorted = sortNodesByParentDepth(flowData.nodes);
 
     for (const nodeData of sorted) {
@@ -419,15 +418,10 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
 
     // Sequences render via `Sequence.vue`, which deliberately does NOT bind
     // `:style="{ width, height }"` (see the comment in that file). Width
-    // and height live as inline DOM styles written by
-    // `rete-area-plugin`'s `area.resize`. The plugin calls `area.resize`
-    // only from `resizeParent` — triggered by a child's `nodetranslated`
-    // / `noderemoved` / `scopeupdated`. For an empty sequence on initial
-    // load (or for one that just lost its last child via reparent), there
-    // is no child to trigger it, so the Sequence div collapses to the
-    // header's intrinsic size. Kickstart the resize here with the
-    // FlowNode's own width/height (seeded from `data.width/height` in the
-    // constructor) so the bbox shows up correctly before any interaction.
+    // and height live as inline DOM styles written by `area.resize`.
+    // Kickstart the resize here with the FlowNode's own width/height
+    // (seeded from `data.width/height` in the constructor) so the bbox
+    // shows up correctly before any interaction.
     if (node.nodeType === "sequence") {
       await runtime.area!.resize(node.id, node.width, node.height);
     }

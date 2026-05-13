@@ -165,7 +165,7 @@ export function createFlowSequenceGeometry(
 
   function moveSequenceViewSilently(view: NodeView, x: number, y: number): void {
     // Expanding a sequence left/up changes the bbox origin, not the sequence's content.
-    // Calling view.translate would emit nodetranslated and rete-scopes would drag children too.
+    // Calling view.translate would emit nodetranslated and move descendants too.
     view.position = { x, y };
     view.element.style.transform = `translate(${x}px, ${y}px)`;
   }

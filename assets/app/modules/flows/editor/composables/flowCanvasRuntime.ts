@@ -3,7 +3,6 @@ import type { AreaPlugin } from "rete-area-plugin";
 import type { ConnectionPlugin } from "rete-connection-plugin";
 import type { HistoryPlugin } from "rete-history-plugin";
 import type { MinimapPlugin } from "rete-minimap-plugin";
-import type { ScopesPlugin } from "rete-scopes-plugin";
 import { reactive, ref, shallowRef, type Ref, type ShallowRef } from "vue";
 
 import type { FlowNode } from "../lib/flow-node";
@@ -44,7 +43,6 @@ export interface FlowCanvasRuntime {
   connection: ConnectionPlugin<FlowSchemes> | null;
   history: HistoryPlugin<FlowSchemes> | null;
   minimap: MinimapPlugin<FlowSchemes> | null;
-  scopes: ScopesPlugin<FlowSchemes> | null;
   marqueeTeardown: (() => void) | null;
 
   nodeMap: Map<string | number, FlowNode>;
@@ -99,7 +97,6 @@ export function createFlowCanvasRuntime(
     connection: null,
     history: null,
     minimap: null,
-    scopes: null,
     marqueeTeardown: null,
 
     nodeMap: new Map<string | number, FlowNode>(),
@@ -146,9 +143,6 @@ export function createFlowCanvasRuntime(
     },
     get history() {
       return runtime.history;
-    },
-    get scopes() {
-      return runtime.scopes!;
     },
     get nodeMap() {
       return runtime.nodeMap;

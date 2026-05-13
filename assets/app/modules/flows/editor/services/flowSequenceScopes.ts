@@ -22,6 +22,18 @@ interface SequenceScopeNode {
 interface SequenceScopeView {
   position: { x: number; y: number };
   element: HTMLElement;
+  translate?: (x: number, y: number) => Promise<void> | void;
+}
+
+interface SequenceScopeConnection {
+  id: string;
+  source: string;
+  target: string;
+}
+
+interface SequenceAreaContent {
+  holder: HTMLElement;
+  reorder?: (element: Element, before: ChildNode | null) => void;
 }
 
 export type SequenceReparentListener = (nodeId: string, newParentId: string | undefined) => void;
@@ -42,6 +54,70 @@ function getScopeNode(
   nodeId: string,
 ): SequenceScopeNode | undefined {
   return editor.getNode(nodeId) as unknown as SequenceScopeNode | undefined;
+}
+
+function nodeView(
+  area: AreaPlugin<FlowSchemes, FlowAreaExtra>,
+  nodeId: string,
+): SequenceScopeView | undefined {
+  return area.nodeViews.get(nodeId) as SequenceScopeView | undefined;
+}
+
+function connectionViewElement(
+  area: AreaPlugin<FlowSchemes, FlowAreaExtra>,
+  connectionId: string,
+): Element | null {
+  const areaWithConnections = area as unknown as {
+    connectionViews?: Map<string, { element: Element }>;
+  };
+  return areaWithConnections.connectionViews?.get(connectionId)?.element ?? null;
+}
+
+function areaContent(area: AreaPlugin<FlowSchemes, FlowAreaExtra>): SequenceAreaContent {
+  return area.area.content as unknown as SequenceAreaContent;
+}
+
+function reorderElement(
+  area: AreaPlugin<FlowSchemes, FlowAreaExtra>,
+  element: Element,
+  before: ChildNode | null,
+): void {
+  const content = areaContent(area);
+  if (typeof content.reorder === "function") {
+    content.reorder(element, before);
+    return;
+  }
+
+  if (before) {
+    content.holder.insertBefore(element, before);
+  } else {
+    content.holder.appendChild(element);
+  }
+}
+
+function scopeConnections(editor: NodeEditor<FlowSchemes>): SequenceScopeConnection[] {
+  return editor.getConnections() as unknown as SequenceScopeConnection[];
+}
+
+function directChildren(editor: NodeEditor<FlowSchemes>, parentId: string): SequenceScopeNode[] {
+  return editor
+    .getNodes()
+    .map((node) => node as unknown as SequenceScopeNode)
+    .filter((node) => node.parent === parentId);
+}
+
+function descendants(editor: NodeEditor<FlowSchemes>, parentId: string): SequenceScopeNode[] {
+  const list: SequenceScopeNode[] = [];
+
+  function visit(id: string) {
+    for (const child of directChildren(editor, id)) {
+      list.push(child);
+      visit(child.id);
+    }
+  }
+
+  visit(parentId);
+  return list;
 }
 
 function hasAncestorInSet(nodeId: string, ids: string[], editor: NodeEditor<FlowSchemes>): boolean {
@@ -65,6 +141,26 @@ function selectedNodeIds(editor: NodeEditor<FlowSchemes>, flowContext: FlowConte
     .getNodes()
     .filter((node) => (node as unknown as SequenceScopeNode).selected)
     .map((node) => (node as unknown as SequenceScopeNode).id);
+}
+
+function selectedNodeIdSet(editor: NodeEditor<FlowSchemes>, flowContext: FlowContext): Set<string> {
+  return new Set(selectedNodeIds(editor, flowContext));
+}
+
+function hasSelectedAncestorBelowRoot(
+  nodeId: string,
+  rootId: string,
+  selected: Set<string>,
+  editor: NodeEditor<FlowSchemes>,
+): boolean {
+  let current = getScopeNode(editor, nodeId);
+  while (current?.parent && current.parent !== rootId) {
+    if (selected.has(current.parent)) {
+      return true;
+    }
+    current = getScopeNode(editor, current.parent);
+  }
+  return false;
 }
 
 function currentMovingIds(
@@ -106,7 +202,7 @@ function resolveDropTarget(
     .getNodes()
     .map((node) => {
       const scopeNode = node as unknown as SequenceScopeNode;
-      const view = area.nodeViews.get(scopeNode.id) as SequenceScopeView | undefined;
+      const view = nodeView(area, scopeNode.id);
       return view ? { node: scopeNode, view } : null;
     })
     .filter(
@@ -118,11 +214,54 @@ function resolveDropTarget(
         pointerInsideSequence(pointer, entry!.node, entry!.view),
     );
 
-  const areaChildren = Array.from(area.area.content.holder.childNodes);
+  const areaChildren = Array.from(areaContent(area).holder.childNodes);
   candidates.sort(
     (a, b) => areaChildren.indexOf(b.view.element) - areaChildren.indexOf(a.view.element),
   );
   return candidates[0]?.node;
+}
+
+function bringConnectionForward(
+  connectionId: string,
+  area: AreaPlugin<FlowSchemes, FlowAreaExtra>,
+): void {
+  const element = connectionViewElement(area, connectionId);
+  if (element) {
+    reorderElement(area, element, null);
+  }
+}
+
+function bringConnectionBack(
+  connectionId: string,
+  area: AreaPlugin<FlowSchemes, FlowAreaExtra>,
+): void {
+  const element = connectionViewElement(area, connectionId);
+  const firstChild = areaContent(area).holder.firstChild;
+  if (element) {
+    reorderElement(area, element, firstChild);
+  }
+}
+
+function bringForward(
+  nodeId: string,
+  opts: Pick<FlowSequenceScopesOptions, "area" | "editor">,
+): void {
+  const view = nodeView(opts.area, nodeId);
+  const connections = scopeConnections(opts.editor).filter(
+    (connection) => connection.source === nodeId || connection.target === nodeId,
+  );
+
+  for (const connection of connections) {
+    bringConnectionForward(connection.id, opts.area);
+  }
+
+  if (view) {
+    reorderElement(opts.area, view.element, null);
+  }
+
+  for (const child of directChildren(opts.editor, nodeId)) {
+    bringForward(child.id, opts);
+  }
 }
 
 function syncModifierState(context: { type: string; data?: unknown }): void {
@@ -164,6 +303,68 @@ export function installFlowSequenceScopes(
   opts: FlowSequenceScopesOptions,
 ): FlowSequenceScopesController {
   let destroyed = false;
+  const activeTranslations = new Map<string, number>();
+
+  function incrementTranslation(nodeId: string): void {
+    activeTranslations.set(nodeId, (activeTranslations.get(nodeId) ?? 0) + 1);
+  }
+
+  function decrementTranslation(nodeId: string): void {
+    const next = (activeTranslations.get(nodeId) ?? 0) - 1;
+    if (next <= 0) {
+      activeTranslations.delete(nodeId);
+    } else {
+      activeTranslations.set(nodeId, next);
+    }
+  }
+
+  function isTranslating(nodeId: string): boolean {
+    return (activeTranslations.get(nodeId) ?? 0) > 0;
+  }
+
+  async function translateNode(node: SequenceScopeNode, dx: number, dy: number): Promise<void> {
+    const view = nodeView(opts.area, node.id);
+    if (!view) {
+      return;
+    }
+
+    const x = view.position.x + dx;
+    const y = view.position.y + dy;
+    incrementTranslation(node.id);
+    try {
+      if (typeof view.translate === "function") {
+        await view.translate(x, y);
+      } else {
+        view.position = { x, y };
+        view.element.style.transform = `translate(${x}px, ${y}px)`;
+      }
+    } finally {
+      decrementTranslation(node.id);
+    }
+  }
+
+  async function translateDescendants(
+    sequence: SequenceScopeNode,
+    data: { position: { x: number; y: number }; previous: { x: number; y: number } },
+  ): Promise<void> {
+    const dx = data.position.x - data.previous.x;
+    const dy = data.position.y - data.previous.y;
+    if (dx === 0 && dy === 0) {
+      return;
+    }
+
+    const selected = selectedNodeIdSet(opts.editor, opts.flowContext);
+    const movableDescendants = descendants(opts.editor, sequence.id).filter(
+      (node) =>
+        !selected.has(node.id) &&
+        !node.selected &&
+        !hasSelectedAncestorBelowRoot(node.id, sequence.id, selected, opts.editor),
+    );
+
+    for (const node of movableDescendants) {
+      await translateNode(node, dx, dy);
+    }
+  }
 
   async function handleNodeDragged(context: { type: string; data?: unknown }): Promise<void> {
     const draggedId = (context.data as { id?: string } | undefined)?.id;
@@ -179,15 +380,53 @@ export function installFlowSequenceScopes(
     );
   }
 
+  async function handleNodeTranslated(context: { type: string; data?: unknown }): Promise<void> {
+    const data = context.data as
+      | { id?: string; position?: { x: number; y: number }; previous?: { x: number; y: number } }
+      | undefined;
+    if (!data?.id || !data.position || !data.previous || isTranslating(data.id)) {
+      return;
+    }
+
+    const node = getScopeNode(opts.editor, data.id);
+    if (node?.nodeType === "sequence") {
+      await translateDescendants(node, { position: data.position, previous: data.previous });
+    }
+  }
+
+  function handleConnectionCreated(context: { type: string; data?: unknown }): void {
+    const connectionId = (context.data as { id?: string } | undefined)?.id;
+    if (!connectionId) {
+      return;
+    }
+
+    const connection = scopeConnections(opts.editor).find(({ id }) => id === connectionId);
+    if (!connection) {
+      return;
+    }
+
+    bringConnectionBack(connection.id, opts.area);
+    bringForward(connection.source, opts);
+    bringForward(connection.target, opts);
+  }
+
   async function handlePipeContext(context: { type: string; data?: unknown }): Promise<void> {
     syncModifierState(context);
 
     if (context.type === "nodepicked") {
       markDragActive();
+      const pickedId = (context.data as { id?: string } | undefined)?.id;
+      if (pickedId) {
+        bringForward(pickedId, opts);
+      }
     } else if (context.type === "pointerup") {
       markDragInactive();
     } else if (context.type === "nodedragged") {
       await handleNodeDragged(context);
+    } else if (context.type === "nodetranslated") {
+      await handleNodeTranslated(context);
+    } else if (context.type === "connectioncreated") {
+      handleConnectionCreated(context);
     }
   }
 

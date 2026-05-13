@@ -8,7 +8,6 @@
 import { ClassicPreset, type NodeEditor } from "rete";
 import type { AreaPlugin } from "rete-area-plugin";
 import type { HistoryPlugin } from "rete-history-plugin";
-import type { ScopesPlugin } from "rete-scopes-plugin";
 import type { FlowNode } from "../lib/flow-node";
 import { FlowNode as FlowNodeClass } from "../lib/flow-node";
 import type { NodeData } from "../lib/node-configs";
@@ -138,7 +137,6 @@ export interface HookProxy {
   area: AreaPlugin<FlowSchemes, FlowAreaExtra>;
   connection: unknown;
   history: HistoryPlugin<FlowSchemes> | null;
-  scopes: ScopesPlugin<FlowSchemes>;
   nodeMap: Map<string | number, FlowNode>;
   connectionDataMap: Map<string, { id: number; label: string | null; condition: unknown }>;
   sheetsMap: Record<string, SheetMapEntry>;
@@ -265,12 +263,9 @@ function clearSequenceChildParents(hook: HookProxy, node: FlowNode): void {
     return;
   }
 
-  // Sequences: `rete-scopes-plugin`'s `useValidator` blocks
-  // `removeNode(parent)` while any child still carries `.parent`.
-  // The server-side `flow_node_parent_nullify` trigger has already
-  // nilified child `parent_id` rows, so mirroring that locally keeps
-  // the editor consistent if accompanying `node_updated` broadcasts
-  // arrive after us.
+  // The server-side `flow_node_parent_nullify` trigger has already nilified
+  // child `parent_id` rows, so mirroring that locally keeps the editor
+  // consistent if accompanying `node_updated` broadcasts arrive after us.
   for (const child of hook.editor.getNodes()) {
     if (child.parent === node.id) {
       child.parent = undefined;
@@ -521,14 +516,9 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
             await hook.editor.removeConnection(conn.id);
           } catch {}
         }
-        // Clear every `.parent` pointer before wiping. `rete-scopes-plugin`'s
-        // `useValidator` throws `cannot remove parent node with a children` on
-        // `editor.removeNode(parent)` while any child still references it,
-        // which the outer try/catch swallows — the sequence stays as a zombie
-        // and the next `loadFlow` crashes on `editor.addNode` with the same id
-        // (`node has already been added`), leaving a single 40x60 empty
-        // sequence on screen until page reload. By nuking parent relationships
-        // first we let every removeNode succeed in any iteration order.
+        // Clear every `.parent` pointer before wiping so every removeNode
+        // succeeds in any iteration order and stale local parents cannot
+        // outlive the server snapshot.
         for (const node of hook.editor.getNodes()) {
           node.parent = undefined;
         }
