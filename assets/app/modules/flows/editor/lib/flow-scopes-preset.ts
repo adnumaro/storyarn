@@ -23,15 +23,14 @@
  *     drop-target indicator can light up.
  *
  *   - On `nodetranslated` — cancels the pending pick timer if the user
- *     actually moved (mirrors the classic preset). `resizeParent` handles
- *     the sequence auto-grow; it's installed by `ScopesPlugin` itself, not
- *     by this preset.
+ *     actually moved (mirrors the classic preset). Normal child movement
+ *     keeps the sequence bbox stable; explicit resize/reparent operations
+ *     decide when the container should change.
  *
  *   - On `nodedragged` — releases the candidates. If Cmd/Ctrl was held,
- *     runs our own `reassignParent` (deduped + resize) and reports the
- *     change via `onReparented`. If not held, does nothing — the auto-
- *     resize that ran during translate stays, leaving the sequence big
- *     and the `.parent` unchanged.
+ *     runs our own `reassignParent` (deduped) and reports the change via
+ *     `onReparented`. If not held, does nothing — the flow canvas handles
+ *     collision-based sequence growth separately.
  *
  * We also skip the classic preset's `useVisualEffects` opacity dim. Drop
  * targets get their own visual treatment in `Sequence.vue` (background +
@@ -52,6 +51,7 @@ import {
 interface ScopeNode {
   id: string;
   parent?: string;
+  nodeType?: string;
   width: number;
   height: number;
   selected?: boolean;
@@ -64,85 +64,10 @@ interface ScopeNode {
 interface ScopeArea {
   area: { pointer: { x: number; y: number }; content: { holder: HTMLElement } };
   nodeViews: Map<string, { position: { x: number; y: number }; element: HTMLElement }>;
-  resize: (id: string, width: number, height: number) => Promise<boolean>;
   addPipe: (handler: (context: unknown) => Promise<unknown> | unknown) => void;
 }
 
 type ReparentListener = (nodeId: string, newParentId: string | undefined) => void;
-type ParentRepositionListener = (nodeId: string, x: number, y: number) => void;
-
-/**
- * Compute the bbox of a set of sibling nodes. Mirrors
- * `getNodesBoundingBox` from rete-scopes.
- */
-function getNodesBoundingBox(
-  nodes: ScopeNode[],
-  area: ScopeArea,
-): { top: number; left: number; width: number; height: number } {
-  const boxes = nodes.map((node) => {
-    const view = area.nodeViews.get(node.id);
-    if (!view) {
-      throw new Error(`flow-scopes-preset: view missing for ${node.id}`);
-    }
-    return { position: view.position, width: node.width, height: node.height };
-  });
-  const left = Math.min(...boxes.map((b) => b.position.x));
-  const right = Math.max(...boxes.map((b) => b.position.x + b.width));
-  const top = Math.min(...boxes.map((b) => b.position.y));
-  const bottom = Math.max(...boxes.map((b) => b.position.y + b.height));
-  return { top, left, width: right - left, height: bottom - top };
-}
-
-/**
- * Resize `parent` to fit its remaining children. Mirrors `resizeParent`
- * from rete-scopes, minus the recursive up-chain (we only call this on
- * direct parents; the plugin's own `nodetranslated` pipe handles the
- * cascade during translations).
- */
-async function resizeParentToFit<S extends BaseSchemes>(
-  parent: ScopeNode,
-  params: AgentParams,
-  props: { editor: NodeEditor<S>; area: ScopeArea },
-  onParentMoved?: ParentRepositionListener,
-): Promise<void> {
-  const children = props.editor
-    .getNodes()
-    .filter((c) => (c as unknown as ScopeNode).parent === parent.id)
-    .filter((c) => !params.exclude((c as unknown as ScopeNode).id)) as unknown as ScopeNode[];
-  const padding = params.padding(parent.id);
-
-  if (children.length === 0) {
-    const size = params.size(parent.id, {
-      width: padding.left + padding.right,
-      height: padding.top + padding.bottom,
-    });
-    parent.width = size.width;
-    parent.height = size.height;
-    await props.area.resize(parent.id, size.width, size.height);
-    return;
-  }
-
-  const bbox = getNodesBoundingBox(children, props.area);
-  const outerWidth = bbox.width + padding.left + padding.right;
-  const outerHeight = bbox.height + padding.top + padding.bottom;
-  const outerTop = bbox.top - padding.top;
-  const outerLeft = bbox.left - padding.left;
-  const size = params.size(parent.id, { width: outerWidth, height: outerHeight });
-  parent.width = size.width;
-  parent.height = size.height;
-  await props.area.resize(parent.id, size.width, size.height);
-
-  // Only notify+translate if the position actually changes. Avoids
-  // spurious `node_moved` pushes when the bbox shift is numerically
-  // identical (e.g. user cancelled a drag).
-  const view = props.area.nodeViews.get(parent.id);
-  const currentX = view?.position.x;
-  const currentY = view?.position.y;
-  if (currentX !== outerLeft || currentY !== outerTop) {
-    await params.translate(parent.id, outerLeft, outerTop);
-    onParentMoved?.(parent.id, outerLeft, outerTop);
-  }
-}
 
 /**
  * If any ancestor of `nodeId` is in `ids`, return true. Used to dedupe
@@ -165,8 +90,8 @@ function hasAncestorInSet<S extends BaseSchemes>(
 
 /**
  * Drop-resolver: reassigns `.parent` on every id in the moving set based on
- * where the pointer landed, then resizes affected sequences and reports
- * the change through `onReparented` for persistence.
+ * where the pointer landed, then reports the change through `onReparented`
+ * for persistence. Sequence geometry is handled by `useFlowCanvas`.
  *
  * Differences vs the classic `reassignParent`:
  *   - Dedupes descendants out of `ids` so their `.parent` isn't nullified
@@ -177,10 +102,8 @@ function hasAncestorInSet<S extends BaseSchemes>(
 async function reassignParent<S extends BaseSchemes>(
   ids: string[],
   pointer: { x: number; y: number },
-  params: AgentParams,
   props: { editor: NodeEditor<S>; area: ScopeArea },
   onReparented: ReparentListener,
-  onParentMoved?: ParentRepositionListener,
 ): Promise<void> {
   if (ids.length === 0) return;
 
@@ -190,11 +113,6 @@ async function reassignParent<S extends BaseSchemes>(
   const movingNodes = movingIds
     .map((id) => props.editor.getNode(id))
     .filter((n): n is NonNullable<typeof n> => Boolean(n)) as unknown as ScopeNode[];
-
-  // Capture every former parent so we can resize each one after the reassign.
-  const formerParentIds = Array.from(
-    new Set(movingNodes.map((n) => n.parent).filter((p): p is string => Boolean(p))),
-  );
 
   // Find overlay candidates (non-moving nodes whose bbox contains the pointer).
   const overlayCandidates = props.editor
@@ -211,7 +129,9 @@ async function reassignParent<S extends BaseSchemes>(
         view: { position: { x: number; y: number }; element: HTMLElement };
       } =>
         Boolean(entry) &&
+        entry!.node.nodeType === "sequence" &&
         !movingIds.includes(entry!.node.id) &&
+        !hasAncestorInSet(entry!.node.id, movingIds, props.editor) &&
         pointer.x > entry!.view.position.x &&
         pointer.y > entry!.view.position.y &&
         pointer.x < entry!.view.position.x + entry!.node.width &&
@@ -235,16 +155,6 @@ async function reassignParent<S extends BaseSchemes>(
       onReparented(node.id, newParentId);
     }
   }
-
-  if (topOverlay) {
-    await resizeParentToFit(topOverlay.node, params, props, onParentMoved);
-  }
-  for (const formerId of formerParentIds) {
-    const formerNode = props.editor.getNode(formerId) as unknown as ScopeNode | undefined;
-    if (formerNode && formerId !== newParentId) {
-      await resizeParentToFit(formerNode, params, props, onParentMoved);
-    }
-  }
 }
 
 /**
@@ -260,12 +170,9 @@ async function reassignParent<S extends BaseSchemes>(
  *    drag target + current selection.
  *
  * 2. **No `scopepicked` / `scopereleased` emissions.** Those events
- *    populate `getPickedNodes(scopes)` internally, which then flips the
- *    `isPicked` guard inside ScopesPlugin's own `nodetranslated` pipe to
- *    `true` and skips `resizeParent`. That silently disabled the
- *    sequence's auto-grow for every drag, not just reparent-gestures. We
- *    gate auto-grow via the `exclude` callback on the plugin constructor
- *    instead (see `setup.ts`).
+ *    populate `getPickedNodes(scopes)` internally. We do not need those
+ *    events because this preset owns only reparent intent; flow-specific
+ *    sequence growth is handled by the canvas.
  *
  * What we keep:
  *
@@ -277,22 +184,8 @@ async function reassignParent<S extends BaseSchemes>(
 export function flowScopesPreset<S extends BaseSchemes>(opts: {
   /** Called with (nodeId, newParentId-or-undefined) whenever a reparent actually changes `.parent`. */
   onReparented: ReparentListener;
-  /**
-   * Called after a parent sequence is programmatically translated by
-   * `resizeParentToFit` (the non-empty branch shifts the bbox to the
-   * new `outerLeft`/`outerTop`). rete-area-plugin's `view.translate`
-   * emits `nodetranslated` which runs through our `throttleNodeMoved`
-   * → `pushEvent("node_dragging", …)`, but `node_dragging` is
-   * broadcast-only on the server (no DB write). Only `node_moved`
-   * persists, and that's normally fired from `nodedragged` which the
-   * user triggers, not us. Without this hook, a sequence that
-   * auto-repositions after a reparent would drift back to its old
-   * stored position on reload. Consumers should `pushEvent("node_moved",
-   * …)` here.
-   */
-  onParentMoved?: ParentRepositionListener;
 }): (params: AgentParams, context: AgentContext<unknown>) => void {
-  return (params, context) => {
+  return (_params, context) => {
     const area = context.area as unknown as ScopeArea;
     const editor = context.editor as unknown as NodeEditor<S>;
 
@@ -336,10 +229,8 @@ export function flowScopesPreset<S extends BaseSchemes>(opts: {
       await reassignParent(
         currentMovingIds(draggedId),
         pointer,
-        params,
         { area, editor },
         opts.onReparented,
-        opts.onParentMoved,
       );
     }
 

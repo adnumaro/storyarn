@@ -33,12 +33,14 @@ import FlowNodeToolbar from "@modules/flows/editor/components/entities/toolbar/F
 import type { FlowNode } from "../../../lib/flow-node";
 import { FLOW_CONTEXT_KEY } from "../../../lib/flow-context";
 import { reparentGestureActive } from "../../../lib/flow-reparent-state";
+import { SEQUENCE_MIN_HEIGHT, SEQUENCE_MIN_WIDTH } from "../../../lib/sequence-layout";
 
 interface FlowContextValue {
   selectedReteIds: Set<string | number>;
   canEdit: boolean;
   toolbarProps: Record<string, unknown>;
   nodeDataVersion: number;
+  zoom: number;
 }
 
 const { data } = defineProps<{
@@ -52,6 +54,7 @@ const ctx = inject<FlowContextValue>(FLOW_CONTEXT_KEY, {
   canEdit: false,
   toolbarProps: {},
   nodeDataVersion: 0,
+  zoom: 1,
 });
 
 // `FlowNode` is a plain class so mutations to `nodeData.name` (from remote
@@ -79,11 +82,72 @@ const isDropTarget = computed(
 const showToolbar = computed(
   () => ctx.canEdit && ctx.selectedReteIds.size === 1 && isSelected.value,
 );
+const showResizeHandle = computed(
+  () => ctx.canEdit && ctx.selectedReteIds.size === 1 && isSelected.value,
+);
 
 const nodeId = computed(() => {
   const reteId = String(data?.id || "");
   return reteId.startsWith("node-") ? reteId.slice(5) : reteId;
 });
+
+function startResize(event: PointerEvent) {
+  if (!showResizeHandle.value) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  const root = (event.currentTarget as HTMLElement).closest(
+    "[data-testid='flow-sequence']",
+  ) as HTMLElement | null;
+  if (!root) return;
+
+  const startX = event.clientX;
+  const startY = event.clientY;
+  const startWidth = root.offsetWidth || data.width || SEQUENCE_MIN_WIDTH;
+  const startHeight = root.offsetHeight || data.height || SEQUENCE_MIN_HEIGHT;
+  const zoom = ctx.zoom || 1;
+
+  const dispatchResize = (pointerEvent: PointerEvent, commit: boolean) => {
+    const width = Math.max(
+      SEQUENCE_MIN_WIDTH,
+      Math.round(startWidth + (pointerEvent.clientX - startX) / zoom),
+    );
+    const height = Math.max(
+      SEQUENCE_MIN_HEIGHT,
+      Math.round(startHeight + (pointerEvent.clientY - startY) / zoom),
+    );
+
+    root.dispatchEvent(
+      new CustomEvent("flow-sequence-resize", {
+        bubbles: true,
+        detail: {
+          reteId: data.id,
+          nodeId: nodeId.value,
+          width,
+          height,
+          commit,
+        },
+      }),
+    );
+  };
+
+  const onPointerMove = (moveEvent: PointerEvent) => {
+    moveEvent.preventDefault();
+    dispatchResize(moveEvent, false);
+  };
+
+  const onPointerUp = (upEvent: PointerEvent) => {
+    window.removeEventListener("pointermove", onPointerMove);
+    window.removeEventListener("pointerup", onPointerUp);
+    window.removeEventListener("pointercancel", onPointerUp);
+    dispatchResize(upEvent, true);
+  };
+
+  window.addEventListener("pointermove", onPointerMove);
+  window.addEventListener("pointerup", onPointerUp, { once: true });
+  window.addEventListener("pointercancel", onPointerUp, { once: true });
+}
 </script>
 
 <template>
@@ -105,6 +169,14 @@ const nodeId = computed(() => {
     <header class="flow-sequence-header">
       <span class="flow-sequence-label">{{ label }}</span>
     </header>
+    <button
+      v-if="showResizeHandle"
+      type="button"
+      class="flow-sequence-resize-handle"
+      aria-label="Resize sequence"
+      @pointerdown="startResize"
+      @dblclick.stop
+    />
   </div>
 </template>
 
@@ -153,5 +225,31 @@ const nodeId = computed(() => {
 
 .flow-sequence-label {
   user-select: none;
+}
+
+.flow-sequence-resize-handle {
+  position: absolute;
+  right: -0.5rem;
+  bottom: -0.5rem;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid hsl(var(--primary));
+  border-radius: 0.25rem;
+  background: hsl(var(--background));
+  box-shadow: 0 0 0 2px hsl(var(--background));
+  cursor: nwse-resize;
+  pointer-events: all;
+  z-index: 20;
+}
+
+.flow-sequence-resize-handle::after {
+  content: "";
+  position: absolute;
+  right: 0.1875rem;
+  bottom: 0.1875rem;
+  width: 0.375rem;
+  height: 0.375rem;
+  border-right: 1px solid hsl(var(--primary));
+  border-bottom: 1px solid hsl(var(--primary));
 }
 </style>

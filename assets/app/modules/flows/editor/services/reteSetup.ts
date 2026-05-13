@@ -29,10 +29,8 @@ import { createContextMenuItems } from "../lib/context_menu_items";
 import { FLOW_CONTEXT_KEY } from "../lib/flow-context";
 import { flowContextMenuPreset } from "../lib/context_menu_preset";
 import { flowScopesPreset } from "../lib/flow-scopes-preset";
-import {
-  installReparentModifierListeners,
-  reparentGestureActive,
-} from "../lib/flow-reparent-state";
+import { SEQUENCE_MIN_HEIGHT, SEQUENCE_MIN_WIDTH } from "../lib/sequence-layout";
+import { installReparentModifierListeners } from "../lib/flow-reparent-state";
 import type { FlowSchemes, FlowAreaExtra } from "../lib/rete-schemes";
 import type { FlowContext, HookProxy } from "./editorHandlers";
 import { historyPreset } from "./historyPreset";
@@ -156,34 +154,24 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
   // (set from `node.parent_id` at load time).
   //
   // We use `flowScopesPreset` instead of `ScopesPresets.classic.setup()` so
-  // drag-reparenting only fires when Cmd/Ctrl is held (see
-  // `flow-scopes-preset.ts` + `flow-reparent-state.ts`). Without the
-  // modifier, rete-scopes still auto-resizes the sequence during translate
-  // (`resizeParent` on `nodetranslated` is attached by the plugin itself,
-  // not the preset), so the user gets "drag outside = sequence grows".
+  // drag-reparenting only fires when Cmd/Ctrl is held. Sequence sizing is
+  // handled by flow-specific collision logic in `useFlowCanvas`; the generic
+  // rete-scopes resize path moves/compacts the bbox and does not match our UX.
   //
-  // `exclude` gates that auto-resize to reparent gestures. When the user
-  // holds Cmd/Ctrl while dragging, we want the sequence bbox to stay put
-  // so they can actually cross its border. Otherwise the sequence chases
-  // the node out, the pointer stays "inside" at drop time, and
-  // `reassignParent` sees the same sequence as overlay → no reparent
-  // happens. Without the modifier, `exclude` returns false and the
-  // grow-to-fit behaviour kicks in normally.
-  //
-  // `size` clamps the empty-children branch of `resizeParent`. When a
-  // sequence has no children it would otherwise shrink to just the
-  // padding (~40x60) which looks like a lost icon. We clamp to the
-  // server's default sequence_config dimensions so an orphaned sequence
-  // has the same footprint as a freshly-created one — discoverable,
-  // obvious drop-target for the next node.
-  const EMPTY_SEQUENCE_MIN_WIDTH = 300;
-  const EMPTY_SEQUENCE_MIN_HEIGHT = 200;
+  // `size` is still defensive for any plugin-internal resize signal, but
+  // normal sequence geometry is controlled by the flow canvas.
   const scopes = new ScopesPlugin<FlowSchemes>({
-    exclude: () => reparentGestureActive.value,
-    size: (_id, size) => ({
-      width: Math.max(size.width, EMPTY_SEQUENCE_MIN_WIDTH),
-      height: Math.max(size.height, EMPTY_SEQUENCE_MIN_HEIGHT),
-    }),
+    exclude: () => true,
+    size: (id, size) => {
+      const node = editor.getNode(id);
+      const minWidth = node?.nodeType === "sequence" ? node.width : SEQUENCE_MIN_WIDTH;
+      const minHeight = node?.nodeType === "sequence" ? node.height : SEQUENCE_MIN_HEIGHT;
+
+      return {
+        width: Math.max(size.width, minWidth, SEQUENCE_MIN_WIDTH),
+        height: Math.max(size.height, minHeight, SEQUENCE_MIN_HEIGHT),
+      };
+    },
   });
   scopes.addPreset(
     flowScopesPreset<FlowSchemes>({
@@ -193,18 +181,6 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
         hook.pushEvent("node_reparented", {
           id: rawNodeId,
           parent_id: rawParentId,
-        });
-      },
-      onParentMoved: (nodeId, x, y) => {
-        // Sequence auto-repositioned to fit its remaining children after a
-        // reparent. The translate call already fired `nodetranslated` which
-        // goes through `throttleNodeMoved` → `node_dragging` (broadcast
-        // only). Push `node_moved` here so the shift survives a reload.
-        const rawNodeId = nodeId.replace(/^node-/, "");
-        hook.pushEvent("node_moved", {
-          id: rawNodeId,
-          position_x: x,
-          position_y: y,
         });
       },
     }),

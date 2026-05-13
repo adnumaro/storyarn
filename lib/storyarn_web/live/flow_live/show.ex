@@ -612,7 +612,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     end
   end
 
-  def handle_event("wrap_selection_in_sequence", %{"node_ids" => node_ids}, socket) do
+  def handle_event("wrap_selection_in_sequence", %{"node_ids" => node_ids} = params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       ids =
         node_ids
@@ -625,7 +625,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         end)
         |> Enum.reject(&is_nil/1)
 
-      case Flows.wrap_selection_in_sequence(socket.assigns.flow, ids, %{}) do
+      case Flows.wrap_selection_in_sequence(socket.assigns.flow, ids, sequence_wrap_attrs(params)) do
         {:ok, _sequence} ->
           flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
           flow_data = Flows.serialize_for_canvas(flow, project_variables: socket.assigns.project_variables)
@@ -1686,6 +1686,10 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   defp sequence_config_open?(:sequence_config, %{type: "sequence"}), do: true
   defp sequence_config_open?(_, _), do: false
+
+  defp sequence_wrap_attrs(params) do
+    Map.take(params, ["position_x", "position_y", "width", "height"])
+  end
 
   defp maybe_restore_nav_history(socket) do
     user_id = socket.assigns.current_scope.user.id

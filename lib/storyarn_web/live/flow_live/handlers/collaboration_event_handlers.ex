@@ -101,6 +101,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
   # position, fit, or track state. Skip the canvas reload — these fields
   # don't affect node graph topology.
   def handle_remote_change(:sequence_config_updated, payload, socket) do
+    socket = CollaborationHelpers.push_remote_change_event(socket, :sequence_config_updated, payload)
     refresh_sequence_panel_if_open(socket, payload.sequence_id)
   end
 

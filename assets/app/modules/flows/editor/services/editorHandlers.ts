@@ -97,6 +97,14 @@ export interface FlowUpdatedPayload {
   connections?: ConnectionServerPayload[];
 }
 
+export interface SequenceConfigUpdatedPayload {
+  sequence_id: string | number;
+  position_x?: number | null;
+  position_y?: number | null;
+  width?: number | null;
+  height?: number | null;
+}
+
 export interface HubMapEntry {
   color_hex: string | null;
   label: string;
@@ -175,6 +183,7 @@ export interface HookProxy {
   rebuildHubsMap(): Promise<void>;
   syncNodeSize(nodeId: string): Promise<void>;
   syncAllNodeSizes(): Promise<void>;
+  fitSequencesToChildren(): Promise<void>;
   loadFlow(data: FlowUpdatedPayload): Promise<void>;
 }
 
@@ -200,6 +209,7 @@ export interface EditorHandlers {
   handleNodeMoved(data: NodeMovedPayload): Promise<void>;
   handleNodeReparented(data: NodeReparentedPayload): Promise<void>;
   handleSequenceRenamed(data: SequenceRenamedPayload): void;
+  handleSequenceConfigUpdated(data: SequenceConfigUpdatedPayload): Promise<void>;
   handleFlowUpdated(data: FlowUpdatedPayload): Promise<void>;
   handleNodeAdded(data: NodeServerPayload): Promise<void>;
   handleNodeRemoved(data: NodeRemovedPayload): Promise<void>;
@@ -337,6 +347,56 @@ async function reconnectNode(
   }
 }
 
+function sequenceView(hook: HookProxy, nodeId: string) {
+  return hook.area.nodeViews.get(nodeId) as
+    | { position: { x: number; y: number }; translate?: (x: number, y: number) => void }
+    | undefined;
+}
+
+function translateSequenceView(
+  view: { position: { x: number; y: number }; translate?: (x: number, y: number) => void },
+  x: number,
+  y: number,
+): void {
+  if (typeof view.translate === "function") {
+    view.translate(x, y);
+  } else {
+    view.position.x = x;
+    view.position.y = y;
+  }
+}
+
+async function refreshAllConnections(hook: HookProxy): Promise<void> {
+  for (const connection of hook.editor.getConnections()) {
+    await hook.area.update("connection", connection.id);
+  }
+}
+
+async function applyRemoteSequenceGeometry(
+  hook: HookProxy,
+  node: FlowNode,
+  data: SequenceConfigUpdatedPayload,
+): Promise<void> {
+  const view = sequenceView(hook, node.id);
+  const width = typeof data.width === "number" ? data.width : node.width;
+  const height = typeof data.height === "number" ? data.height : node.height;
+
+  hook.enterLoadingFromServer();
+  try {
+    if (view && typeof data.position_x === "number" && typeof data.position_y === "number") {
+      translateSequenceView(view, data.position_x, data.position_y);
+    }
+
+    node.width = width;
+    node.height = height;
+    node.nodeData = { ...node.nodeData, width, height };
+    await hook.area.resize(node.id, width, height);
+    await refreshAllConnections(hook);
+  } finally {
+    hook.exitLoadingFromServer();
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Main factory
 // ---------------------------------------------------------------------------
@@ -416,11 +476,24 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
       }
     },
 
+    async handleSequenceConfigUpdated(data) {
+      const node = hook.nodeMap.get(data.sequence_id);
+      if (!node || node.nodeType !== "sequence") {
+        return;
+      }
+
+      await applyRemoteSequenceGeometry(hook, node, data);
+
+      const ctx = hook._flowContext;
+      if (ctx) {
+        ctx.nodeDataVersion = (ctx.nodeDataVersion || 0) + 1;
+      }
+    },
+
     // Remote reparent (another collaborator dragged+dropped a node or used
     // the context-menu "Remove from sequence…"). Mirror the change on the
-    // local rete editor and trigger bbox recomputation for both the former
-    // and new parent sequences. `scopes.update(parentId)` emits
-    // `scopeupdated`, which ScopesPlugin turns into `resizeParent`.
+    // local rete editor and ensure sequence containers still contain their
+    // children without compacting the previous parent.
     async handleNodeReparented(data) {
       const { node_id, parent_id } = data;
       const node = hook.nodeMap.get(node_id);
@@ -428,18 +501,12 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
         return;
       }
 
-      const previousParent = node.parent;
       const newParent = parent_id == null ? undefined : `node-${parent_id}`;
 
       hook.enterLoadingFromServer();
       try {
         node.parent = newParent;
-        if (previousParent) {
-          await hook.scopes.update(previousParent);
-        }
-        if (newParent) {
-          await hook.scopes.update(newParent);
-        }
+        await hook.fitSequencesToChildren();
       } finally {
         hook.exitLoadingFromServer();
       }
@@ -448,34 +515,40 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
     async handleFlowUpdated(data: FlowUpdatedPayload) {
       hook.history?.clear();
 
-      for (const conn of hook.editor.getConnections()) {
-        try {
-          await hook.editor.removeConnection(conn.id);
-        } catch {}
-      }
-      // Clear every `.parent` pointer before wiping. `rete-scopes-plugin`'s
-      // `useValidator` throws `cannot remove parent node with a children` on
-      // `editor.removeNode(parent)` while any child still references it,
-      // which the outer try/catch swallows — the sequence stays as a zombie
-      // and the next `loadFlow` crashes on `editor.addNode` with the same id
-      // (`node has already been added`), leaving a single 40x60 empty
-      // sequence on screen until page reload. By nuking parent relationships
-      // first we let every removeNode succeed in any iteration order.
-      for (const node of hook.editor.getNodes()) {
-        node.parent = undefined;
-      }
-      for (const node of hook.editor.getNodes()) {
-        try {
-          await hook.editor.removeNode(node.id);
-        } catch {}
-      }
-      hook.nodeMap.clear();
-      hook.connectionDataMap.clear();
-      await hook.loadFlow(data);
-      await hook.rebuildHubsMap();
+      hook.enterLoadingFromServer();
+      try {
+        for (const conn of hook.editor.getConnections()) {
+          try {
+            await hook.editor.removeConnection(conn.id);
+          } catch {}
+        }
+        // Clear every `.parent` pointer before wiping. `rete-scopes-plugin`'s
+        // `useValidator` throws `cannot remove parent node with a children` on
+        // `editor.removeNode(parent)` while any child still references it,
+        // which the outer try/catch swallows — the sequence stays as a zombie
+        // and the next `loadFlow` crashes on `editor.addNode` with the same id
+        // (`node has already been added`), leaving a single 40x60 empty
+        // sequence on screen until page reload. By nuking parent relationships
+        // first we let every removeNode succeed in any iteration order.
+        for (const node of hook.editor.getNodes()) {
+          node.parent = undefined;
+        }
+        for (const node of hook.editor.getNodes()) {
+          try {
+            await hook.editor.removeNode(node.id);
+          } catch {}
+        }
+        hook.nodeMap.clear();
+        hook.connectionDataMap.clear();
+        await hook.loadFlow(data);
+        await hook.rebuildHubsMap();
 
-      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      await hook.syncAllNodeSizes();
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        await hook.syncAllNodeSizes();
+        await hook.fitSequencesToChildren();
+      } finally {
+        hook.exitLoadingFromServer();
+      }
     },
 
     async handleNodeAdded(data: NodeServerPayload) {

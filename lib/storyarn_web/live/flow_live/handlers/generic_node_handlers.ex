@@ -228,6 +228,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   defp serialize_sequence_config(%SequenceConfig{} = cfg) do
     %{
       name: cfg.name,
+      width: cfg.width,
+      height: cfg.height,
       background_asset_id: cfg.background_asset_id,
       background_position: cfg.background_position,
       background_fit: cfg.background_fit
@@ -635,7 +637,11 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
        |> mark_saved()
        |> assign(:sequence_panel_data, build_sequence_panel_data(socket, updated))
        |> CollaborationHelpers.broadcast_change(:sequence_config_updated, %{
-         sequence_id: parsed_id
+         sequence_id: parsed_id,
+         position_x: updated.position_x,
+         position_y: updated.position_y,
+         width: updated.sequence_config.width,
+         height: updated.sequence_config.height
        })}
     else
       _ -> {:noreply, socket}
@@ -645,7 +651,15 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   defp extract_sequence_config_attrs(params) do
     base = %{"name" => params["name"] || (params["config"] && params["config"]["name"])}
 
-    ["background_asset_id", "background_position", "background_fit"]
+    [
+      "position_x",
+      "position_y",
+      "width",
+      "height",
+      "background_asset_id",
+      "background_position",
+      "background_fit"
+    ]
     |> Enum.reduce(
       base,
       fn field, acc ->

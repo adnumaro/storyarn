@@ -25,6 +25,7 @@ import { Clapperboard, Copy, LayoutGrid, StickyNote, Trash2 } from "lucide-vue-n
 
 import { i18n } from "@/app/i18n";
 import { FlowNode } from "./flow-node";
+import { SEQUENCE_MIN_HEIGHT, SEQUENCE_MIN_WIDTH, SEQUENCE_PADDING } from "./sequence-layout";
 import type { HookProxy } from "../services/editorHandlers";
 
 // Extended item shape: adds an optional Vue icon component. Base shape (label,
@@ -86,7 +87,8 @@ function selectionMenu(
       key: "create_sequence",
       label: t("flows.context_menu.create_sequence_from_selection"),
       icon: Clapperboard,
-      handler: () => hook.pushEvent("wrap_selection_in_sequence", { node_ids: selectedIds }),
+      handler: () =>
+        hook.pushEvent("wrap_selection_in_sequence", buildSequenceWrapPayload(hook, selectedIds)),
     });
   }
 
@@ -153,7 +155,8 @@ function nodeMenu(hook: HookProxy, node: FlowNode, t: Translator): FlowContextMe
       key: "create_sequence",
       label: t("flows.context_menu.create_sequence_from_selection"),
       icon: Clapperboard,
-      handler: () => hook.pushEvent("wrap_selection_in_sequence", { node_ids: [nodeDbId] }),
+      handler: () =>
+        hook.pushEvent("wrap_selection_in_sequence", buildSequenceWrapPayload(hook, [nodeDbId])),
     });
   }
 
@@ -201,6 +204,52 @@ function getAreaPointer(hook: HookProxy): { x: number; y: number } {
     area?: { pointer?: { x: number; y: number } };
   };
   return area?.area?.pointer ?? { x: 200, y: 200 };
+}
+
+function buildSequenceWrapPayload(
+  hook: HookProxy,
+  selectedIds: Array<string | number>,
+): Record<string, unknown> {
+  const boxes = selectedIds
+    .map((id) => hook.editor.getNode(`node-${id}`))
+    .filter((node): node is FlowNode => node instanceof FlowNode)
+    .map((node) => {
+      const view = hook.area.nodeViews.get(node.id);
+      if (!view) return null;
+
+      return {
+        left: view.position.x,
+        top: view.position.y,
+        right: view.position.x + node.width,
+        bottom: view.position.y + node.height,
+      };
+    })
+    .filter((box): box is { left: number; top: number; right: number; bottom: number } =>
+      Boolean(box),
+    );
+
+  if (boxes.length === 0) {
+    return { node_ids: selectedIds };
+  }
+
+  const left = Math.min(...boxes.map((box) => box.left));
+  const top = Math.min(...boxes.map((box) => box.top));
+  const right = Math.max(...boxes.map((box) => box.right));
+  const bottom = Math.max(...boxes.map((box) => box.bottom));
+
+  return {
+    node_ids: selectedIds,
+    position_x: Math.floor(left - SEQUENCE_PADDING.left),
+    position_y: Math.floor(top - SEQUENCE_PADDING.top),
+    width: Math.max(
+      SEQUENCE_MIN_WIDTH,
+      Math.ceil(right - left + SEQUENCE_PADDING.left + SEQUENCE_PADDING.right),
+    ),
+    height: Math.max(
+      SEQUENCE_MIN_HEIGHT,
+      Math.ceil(bottom - top + SEQUENCE_PADDING.top + SEQUENCE_PADDING.bottom),
+    ),
+  };
 }
 
 /**

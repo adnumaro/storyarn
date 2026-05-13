@@ -3,11 +3,9 @@
  *
  * Drag-reparenting a node into / out of a sequence is a two-part gesture:
  *
- *   - Without Cmd/Ctrl held → the sequence auto-resizes to contain the node
- *     (`resizeParent` during `nodetranslated`). The `.parent` pointer stays
- *     as-is, so on reload the node is still logically inside its original
- *     parent. This is the default rete-scopes "grow to fit children"
- *     behaviour and we want to keep it.
+ *   - Without Cmd/Ctrl held → the `.parent` pointer stays as-is, so on
+ *     reload the node is still logically inside its original parent. The
+ *     flow canvas grows the sequence with its own collision rules.
  *
  *   - With Cmd/Ctrl held → the gesture actually reparents. Drop on a
  *     sequence's bbox = `.parent = that sequence`. Drop on empty canvas =

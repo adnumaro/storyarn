@@ -101,6 +101,16 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
     })
   end
 
+  def push_remote_change_event(socket, :sequence_config_updated, payload) do
+    push_event(socket, "sequence_config_updated", %{
+      sequence_id: payload.sequence_id,
+      position_x: payload[:position_x],
+      position_y: payload[:position_y],
+      width: payload[:width],
+      height: payload[:height]
+    })
+  end
+
   def push_remote_change_event(socket, :connection_added, payload) do
     push_event(socket, "connection_added", payload.connection_data)
   end

@@ -37,12 +37,15 @@ import {
   type ConnectionRemovedPayload,
   type ConnectionUpdatedPayload,
   type FlowUpdatedPayload,
+  type SequenceConfigUpdatedPayload,
 } from "../services/editorHandlers";
 import { keyboard, type KeyboardHandler } from "../services/keyboard";
 import { lod, type LodController } from "../services/lod";
 import { navigation, type NavigationHandler } from "../services/navigation";
 
 import { createPlugins, finalizeSetup } from "../services/reteSetup";
+import { isReparentModifierActive } from "../lib/flow-reparent-state";
+import { SEQUENCE_MIN_HEIGHT, SEQUENCE_MIN_WIDTH, SEQUENCE_PADDING } from "../lib/sequence-layout";
 import type {
   DebugHandler,
   DebugHighlightNodeData,
@@ -112,6 +115,35 @@ interface NodeServerData {
   parent_id?: number | null;
 }
 
+interface SequenceResizeDetail {
+  reteId: string;
+  nodeId: string | number;
+  width: number;
+  height: number;
+  commit: boolean;
+}
+
+interface SequenceGeometry {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface SequenceGeometryPatch extends SequenceGeometry {
+  nodeId: string | number;
+}
+
+interface SequenceExpansionOpts {
+  allowModifier: boolean;
+  track: boolean;
+}
+
+interface NodeView {
+  position: { x: number; y: number };
+  element: HTMLElement;
+}
+
 export interface FlowCanvasReturn {
   editor: ShallowRef<NodeEditor<FlowSchemes> | null>;
   area: ShallowRef<AreaPlugin<FlowSchemes, FlowAreaExtra> | null>;
@@ -159,6 +191,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     string,
     { id: number; label: string | null; condition: unknown }
   >();
+  const _pendingSequenceGeometry = new Map<string, SequenceGeometryPatch>();
   let _loadingFromServerCount = 0;
   let _deferSocketCalc = false;
   let _deferredSockets: unknown[] = [];
@@ -178,6 +211,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
   let _lastClickedNodeId: string | number | null = null;
   let _destroyed = false;
   let _canvasClickController: AbortController | null = null;
+  let _sequenceResizeController: AbortController | null = null;
   let _autoLayoutInProgress = false;
 
   // Expose as a "hook-like" object for handler modules that expect `hook.pushEvent`, etc.
@@ -300,6 +334,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     rebuildHubsMap,
     syncNodeSize,
     syncAllNodeSizes,
+    fitSequencesToChildren,
     loadFlow: loadInitialFlowData,
   } as HookProxy;
 
@@ -455,6 +490,385 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     );
   }
 
+  function setupSequenceResizeHandler(containerEl: HTMLElement): void {
+    if (hookProxy._readonly) {
+      return;
+    }
+
+    _sequenceResizeController = new AbortController();
+    containerEl.addEventListener(
+      "flow-sequence-resize",
+      (event) => {
+        void handleSequenceResize(event as CustomEvent<SequenceResizeDetail>);
+      },
+      { signal: _sequenceResizeController.signal },
+    );
+  }
+
+  async function handleSequenceResize(event: CustomEvent<SequenceResizeDetail>): Promise<void> {
+    if (!_editor || !_area || _destroyed) {
+      return;
+    }
+
+    const { reteId, width, height, commit } = event.detail;
+    const node = _editor.getNode(String(reteId));
+    if (!node || node.nodeType !== "sequence") {
+      return;
+    }
+
+    const current = sequenceGeometry(node);
+    if (!current) {
+      return;
+    }
+
+    const size = clampSequenceSize(node, { width, height });
+    const geometry = { ...current, width: size.width, height: size.height };
+    await applySequenceGeometry(node, geometry, { track: false });
+    await expandContainingSequencesForGeometry(node, geometry, {
+      allowModifier: true,
+      track: commit,
+    });
+
+    if (commit) {
+      pushSequenceGeometry(node, geometry);
+      flushPendingSequenceGeometry();
+    }
+  }
+
+  function nodeView(nodeId: string): NodeView | null {
+    return (_area?.nodeViews.get(nodeId) as NodeView | undefined) ?? null;
+  }
+
+  function sequenceGeometry(sequence: FlowNode): SequenceGeometry | null {
+    const view = nodeView(sequence.id);
+    if (!view) {
+      return null;
+    }
+
+    return {
+      x: view.position.x,
+      y: view.position.y,
+      width: sequence.width,
+      height: sequence.height,
+    };
+  }
+
+  function sequenceChildren(sequenceId: string): FlowNode[] {
+    if (!_editor) {
+      return [];
+    }
+    return _editor.getNodes().filter((node) => node.parent === sequenceId);
+  }
+
+  function nodeBounds(
+    node: FlowNode,
+    position?: { x: number; y: number },
+  ): { left: number; top: number; right: number; bottom: number } | null {
+    const view = nodeView(node.id);
+    const resolvedPosition = position ?? view?.position;
+    if (!resolvedPosition) {
+      return null;
+    }
+
+    return {
+      left: resolvedPosition.x,
+      top: resolvedPosition.y,
+      right: resolvedPosition.x + node.width,
+      bottom: resolvedPosition.y + node.height,
+    };
+  }
+
+  function sequenceMinimumSize(sequence: FlowNode): { width: number; height: number } {
+    const geometry = sequenceGeometry(sequence);
+    if (!geometry) {
+      return { width: SEQUENCE_MIN_WIDTH, height: SEQUENCE_MIN_HEIGHT };
+    }
+
+    return sequenceChildren(sequence.id).reduce(
+      (minSize, child) => {
+        const childBounds = nodeBounds(child);
+        if (!childBounds) {
+          return minSize;
+        }
+
+        return {
+          width: Math.max(
+            minSize.width,
+            Math.ceil(childBounds.right - geometry.x + SEQUENCE_PADDING.right),
+          ),
+          height: Math.max(
+            minSize.height,
+            Math.ceil(childBounds.bottom - geometry.y + SEQUENCE_PADDING.bottom),
+          ),
+        };
+      },
+      { width: SEQUENCE_MIN_WIDTH, height: SEQUENCE_MIN_HEIGHT },
+    );
+  }
+
+  function clampSequenceSize(
+    sequence: FlowNode,
+    size: { width: number; height: number },
+  ): { width: number; height: number } {
+    const minimum = sequenceMinimumSize(sequence);
+    return {
+      width: Math.max(size.width, minimum.width),
+      height: Math.max(size.height, minimum.height),
+    };
+  }
+
+  function expandGeometryToContainBounds(
+    geometry: SequenceGeometry,
+    bounds: { left: number; top: number; right: number; bottom: number },
+  ): SequenceGeometry {
+    const left = Math.min(geometry.x, bounds.left - SEQUENCE_PADDING.left);
+    const top = Math.min(geometry.y, bounds.top - SEQUENCE_PADDING.top);
+    const right = Math.max(geometry.x + geometry.width, bounds.right + SEQUENCE_PADDING.right);
+    const bottom = Math.max(geometry.y + geometry.height, bounds.bottom + SEQUENCE_PADDING.bottom);
+
+    return {
+      x: Math.floor(left),
+      y: Math.floor(top),
+      width: Math.max(SEQUENCE_MIN_WIDTH, Math.ceil(right - left)),
+      height: Math.max(SEQUENCE_MIN_HEIGHT, Math.ceil(bottom - top)),
+    };
+  }
+
+  function geometryChanged(a: SequenceGeometry, b: SequenceGeometry): boolean {
+    return (
+      Math.abs(a.x - b.x) > 0.5 ||
+      Math.abs(a.y - b.y) > 0.5 ||
+      Math.abs(a.width - b.width) > 0.5 ||
+      Math.abs(a.height - b.height) > 0.5
+    );
+  }
+
+  function moveSequenceViewSilently(view: NodeView, x: number, y: number): void {
+    // Expanding a sequence left/up changes the bbox origin, not the sequence's content.
+    // Calling view.translate would emit nodetranslated and rete-scopes would drag children too.
+    view.position = { x, y };
+    view.element.style.transform = `translate(${x}px, ${y}px)`;
+  }
+
+  async function applySequenceGeometry(
+    sequence: FlowNode,
+    geometry: SequenceGeometry,
+    opts: { track: boolean },
+  ): Promise<void> {
+    const view = nodeView(sequence.id);
+    if (!view) {
+      return;
+    }
+
+    if (
+      Math.abs(view.position.x - geometry.x) > 0.5 ||
+      Math.abs(view.position.y - geometry.y) > 0.5
+    ) {
+      moveSequenceViewSilently(view, geometry.x, geometry.y);
+    }
+
+    sequence.width = geometry.width;
+    sequence.height = geometry.height;
+    sequence.nodeData = { ...sequence.nodeData, width: geometry.width, height: geometry.height };
+    await _area!.resize(sequence.id, geometry.width, geometry.height);
+
+    if (opts.track) {
+      _pendingSequenceGeometry.set(sequence.id, {
+        nodeId: sequence.nodeId,
+        ...geometry,
+      });
+    }
+
+    await refreshConnections();
+  }
+
+  async function refreshConnections(): Promise<void> {
+    if (!_editor || !_area) {
+      return;
+    }
+    for (const connection of _editor.getConnections()) {
+      await _area.update("connection", connection.id);
+    }
+  }
+
+  async function fitSequencesToChildren(): Promise<void> {
+    if (!_editor || _destroyed) {
+      return;
+    }
+
+    hookProxy.enterLoadingFromServer();
+    try {
+      for (const sequence of sequencesDeepestFirst()) {
+        await ensureSequenceContainsChildren(sequence, { track: false });
+      }
+      await refreshConnections();
+    } finally {
+      hookProxy.exitLoadingFromServer();
+    }
+  }
+
+  function sequencesDeepestFirst(): FlowNode[] {
+    if (!_editor) {
+      return [];
+    }
+
+    const depth = (node: FlowNode): number => {
+      let current = node;
+      let value = 0;
+      while (current.parent) {
+        const parent = _editor!.getNode(current.parent);
+        if (!parent) break;
+        value++;
+        current = parent;
+      }
+      return value;
+    };
+
+    return _editor
+      .getNodes()
+      .filter((node) => node.nodeType === "sequence")
+      .sort((a, b) => depth(b) - depth(a));
+  }
+
+  async function ensureSequenceContainsChildren(
+    sequence: FlowNode,
+    opts: { track: boolean },
+  ): Promise<void> {
+    const current = sequenceGeometry(sequence);
+    if (!current) {
+      return;
+    }
+
+    const geometry = sequenceChildren(sequence.id).reduce((acc, child) => {
+      const bounds = nodeBounds(child);
+      return bounds ? expandGeometryToContainBounds(acc, bounds) : acc;
+    }, current);
+
+    if (geometryChanged(current, geometry)) {
+      await applySequenceGeometry(sequence, geometry, opts);
+    }
+  }
+
+  function hasSelectedAncestor(node: FlowNode): boolean {
+    const selected = hookProxy._flowContext?.selectedReteIds;
+    if (!selected || selected.size === 0) {
+      return false;
+    }
+
+    let parentId = node.parent;
+    while (parentId) {
+      if (selected.has(parentId)) {
+        return true;
+      }
+      parentId = _editor?.getNode(parentId)?.parent;
+    }
+    return false;
+  }
+
+  function canExpandParentSequence(node: FlowNode, opts: { allowModifier: boolean }): boolean {
+    return Boolean(
+      _editor &&
+      node.parent &&
+      !hasSelectedAncestor(node) &&
+      (opts.allowModifier || !isReparentModifierActive()),
+    );
+  }
+
+  function parentSequenceForNode(node: FlowNode): FlowNode | null {
+    if (!_editor || !node.parent) {
+      return null;
+    }
+
+    const parent = _editor.getNode(node.parent);
+    return parent?.nodeType === "sequence" ? parent : null;
+  }
+
+  async function expandParentSequenceForNode(
+    node: FlowNode,
+    position: { x: number; y: number },
+    opts: { allowModifier: boolean },
+  ): Promise<void> {
+    if (!canExpandParentSequence(node, opts)) {
+      return;
+    }
+
+    const parent = parentSequenceForNode(node);
+    if (!parent) {
+      return;
+    }
+
+    const current = sequenceGeometry(parent);
+    const bounds = nodeBounds(node, position);
+    if (!current || !bounds) {
+      return;
+    }
+
+    const geometry = expandGeometryToContainBounds(current, bounds);
+    if (geometryChanged(current, geometry)) {
+      await applySequenceGeometry(parent, geometry, { track: true });
+      await expandContainingSequencesForGeometry(parent, geometry, {
+        allowModifier: opts.allowModifier,
+        track: true,
+      });
+    }
+  }
+
+  async function expandContainingSequencesForGeometry(
+    sequence: FlowNode,
+    geometry: SequenceGeometry,
+    opts: SequenceExpansionOpts,
+  ): Promise<void> {
+    if (!canExpandParentSequence(sequence, { allowModifier: opts.allowModifier })) {
+      return;
+    }
+
+    const parent = parentSequenceForNode(sequence);
+    if (!parent) {
+      return;
+    }
+
+    const current = sequenceGeometry(parent);
+    if (!current) {
+      return;
+    }
+
+    const bounds = {
+      left: geometry.x,
+      top: geometry.y,
+      right: geometry.x + geometry.width,
+      bottom: geometry.y + geometry.height,
+    };
+    const next = expandGeometryToContainBounds(current, bounds);
+
+    if (geometryChanged(current, next)) {
+      await applySequenceGeometry(parent, next, { track: opts.track });
+      await expandContainingSequencesForGeometry(parent, next, opts);
+    }
+  }
+
+  function pushSequenceGeometry(sequence: FlowNode, geometry: SequenceGeometry): void {
+    pushEvent("update_sequence_config", {
+      id: sequence.nodeId,
+      position_x: geometry.x,
+      position_y: geometry.y,
+      width: geometry.width,
+      height: geometry.height,
+    });
+  }
+
+  function flushPendingSequenceGeometry(): void {
+    for (const patch of _pendingSequenceGeometry.values()) {
+      pushEvent("update_sequence_config", {
+        id: patch.nodeId,
+        position_x: patch.x,
+        position_y: patch.y,
+        width: patch.width,
+        height: patch.height,
+      });
+    }
+    _pendingSequenceGeometry.clear();
+  }
+
   async function loadInitialFlowData(flowData: FlowData): Promise<void> {
     hookProxy._hubsMap = {};
     if (!flowData.nodes) {
@@ -550,6 +964,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
 
   async function finalizeInit(flowData: FlowData): Promise<void> {
     await syncAllNodeSizes();
+    await fitSequencesToChildren();
     const selection = await finalizeSetup(
       _area!,
       _editor!,
@@ -596,6 +1011,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
       handleInlineEditSave;
 
     setupCanvasClickHandler(containerEl);
+    setupSequenceResizeHandler(containerEl);
     setupLOD(containerEl);
 
     await loadInitialFlowData(flowData);
@@ -805,18 +1221,19 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
 
   // --- Area pipe helpers ---
 
-  function handleNodeTranslated(context: unknown): void {
+  async function handleNodeTranslated(context: unknown): Promise<void> {
     if (hookProxy.isLoadingFromServer) {
       return;
     }
     const ctxData = (context as { data: { id: string; position: { x: number; y: number } } }).data;
     const node = _editor!.getNode(ctxData.id);
     if (node?.nodeId) {
+      await expandParentSequenceForNode(node, ctxData.position, { allowModifier: false });
       _editorHandlers!.throttleNodeMoved(node.nodeId, ctxData.position);
     }
   }
 
-  function handleNodeDragged(context: unknown): void {
+  async function handleNodeDragged(context: unknown): Promise<void> {
     // Rete's `nodedragged` fires ONCE per drag gesture, for the node the
     // user actually grabbed. But `selectableNodes`'s `nodetranslated` pipe
     // translates every *selected* node by the same delta while dragging,
@@ -829,6 +1246,10 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     const pending = hookProxy._pendingPositions ?? {};
     const nodeIds = Object.keys(pending);
     for (const nodeId of nodeIds) {
+      const node = hookProxy.nodeMap.get(Number(nodeId)) ?? hookProxy.nodeMap.get(nodeId);
+      if (node) {
+        await expandParentSequenceForNode(node, pending[nodeId], { allowModifier: false });
+      }
       // Keys are string-numeric; convert back to the raw type flushNodeMoved expects.
       const numeric = Number(nodeId);
       _editorHandlers!.flushNodeMoved(Number.isFinite(numeric) ? numeric : nodeId);
@@ -836,8 +1257,13 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     // Fallback for the grabbed node, in case it had no pending (edge case).
     const node = _editor!.getNode((context as { data: { id: string } }).data.id);
     if (node?.nodeId && !nodeIds.includes(String(node.nodeId))) {
+      const view = nodeView(node.id);
+      if (view) {
+        await expandParentSequenceForNode(node, view.position, { allowModifier: false });
+      }
       _editorHandlers!.flushNodeMoved(node.nodeId);
     }
+    flushPendingSequenceGeometry();
   }
 
   // --- Area pipes (drag, selection, connections) ---
@@ -858,12 +1284,12 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     }
 
     // Node drag + toolbar reposition
-    _area!.addPipe((context) => {
+    _area!.addPipe(async (context) => {
       const type = (context as { type: string }).type;
       if (type === "nodetranslated") {
-        handleNodeTranslated(context);
+        await handleNodeTranslated(context);
       } else if (type === "nodedragged") {
-        handleNodeDragged(context);
+        await handleNodeDragged(context);
       }
       return context;
     });
@@ -992,6 +1418,13 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
       _editorHandlers!.handleSequenceRenamed(payload);
     });
 
+    handleEvent("sequence_config_updated", (raw) => {
+      if (_destroyed) {
+        return;
+      }
+      _editorHandlers!.handleSequenceConfigUpdated(raw as unknown as SequenceConfigUpdatedPayload);
+    });
+
     handleEvent("node_added", (data) => {
       if (_destroyed) {
         return;
@@ -1078,10 +1511,13 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
 
   // --- Cleanup ---
 
-  function destroy(): void {
-    _destroyed = true;
+  function cleanupEventControllers(): void {
     _canvasClickController?.abort();
+    _sequenceResizeController?.abort();
     hookProxy._eventBindingsController?.abort();
+  }
+
+  function destroyHandlers(): void {
     _lodController?.destroy();
     _keyboardHandler?.destroy();
     _editorHandlers?.destroy();
@@ -1089,11 +1525,15 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     _debugHandler?.destroy();
     _marqueeTeardown?.();
     _marqueeTeardown = null;
+  }
+
+  function destroy(): void {
+    _destroyed = true;
+    cleanupEventControllers();
+    destroyHandlers();
     _nodeMoveQueue = null;
     _nodeUpdateQueue = null;
-    if (_area) {
-      _area.destroy();
-    }
+    _area?.destroy();
   }
 
   onUnmounted(destroy);
