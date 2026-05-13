@@ -2,6 +2,8 @@
   "docs": {
     "label": "docs",
     "menu": "Menu",
+    "show_sidebar": "Show documentation sidebar",
+    "hide_sidebar": "Hide documentation sidebar",
     "search_placeholder": "Search docs...",
     "clear_search": "Clear search",
     "result": "{count} result",

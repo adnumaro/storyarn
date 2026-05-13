@@ -22,7 +22,7 @@ defmodule StoryarnWeb.DocsLive.Show do
        guides: guides,
        search_query: "",
        search_results: nil,
-       sidebar_open: false,
+       sidebar_open: true,
        expanded_categories: expanded
      )}
   end
@@ -58,8 +58,7 @@ defmodule StoryarnWeb.DocsLive.Show do
           page_title: guide.title,
           guide: guide,
           prev: prev,
-          next: next,
-          sidebar_open: false
+          next: next
         )
     end
   end
