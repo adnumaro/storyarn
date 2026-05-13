@@ -86,6 +86,15 @@ Baseline audit from 2026-05-13:
   - flow/editor geometry tests passed;
   - targeted lint passed for the new geometry test file;
   - formatting check passed after applying `oxfmt`.
+- Phase 3 implementation is complete:
+  - Cmd/Ctrl reparenting now lives in `flowSequenceScopes.ts`;
+  - `reteSetup.ts` installs the local controller after mounting `ScopesPlugin`;
+  - `flow-scopes-preset.ts` has been removed;
+  - `ScopesPlugin` remains mounted for validation, ordering, and sequence-child translation until later phases.
+- Phase 3 validation:
+  - unit tests cover no-modifier drag, Cmd/Ctrl drop into sequence, Cmd/Ctrl drop to root, selected-descendant dedupe, descendant-drop blocking, and pointerup cleanup;
+  - targeted lint and formatting checks passed;
+  - local TypeScript diagnostics are clean for the new controller. The remaining filtered `reteSetup.ts` errors are the existing Vue SFC module-resolution diagnostics.
 
 ## Why Consider Removing It
 
@@ -277,13 +286,13 @@ Replace `flowScopesPreset` with a local controller that is not tied to `ScopesPl
 
 Scope:
 
-- listen to area pointer/node drag events directly;
-- track Cmd/Ctrl modifier state through `flow-reparent-state.ts`;
-- mark drag active/inactive for drop-target highlighting;
-- resolve top-most sequence under pointer;
-- dedupe moving descendants when a selected sequence and child are both selected;
-- update `.parent` only when Cmd/Ctrl is held on drop;
-- push `node_reparented` only when parent actually changed.
+- [x] listen to area pointer/node drag events directly;
+- [x] track Cmd/Ctrl modifier state through `flow-reparent-state.ts`;
+- [x] mark drag active/inactive for drop-target highlighting;
+- [x] resolve top-most sequence under pointer;
+- [x] dedupe moving descendants when a selected sequence and child are both selected;
+- [x] update `.parent` only when Cmd/Ctrl is held on drop;
+- [x] push `node_reparented` only when parent actually changed.
 
 Keep `ScopesPlugin` mounted during this phase if needed, but do not use its preset.
 

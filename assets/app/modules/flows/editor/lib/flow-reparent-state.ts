@@ -99,17 +99,17 @@ export function installReparentModifierListeners(): () => void {
   return installedTeardown;
 }
 
-/** Called by the scopes preset when a pick starts a drag gesture. */
+/** Called by the sequence reparent controller when a pick starts a drag gesture. */
 export function markDragActive(): void {
   dragActive.value = true;
 }
 
-/** Called by the scopes preset when a drag gesture ends (dragged or cancelled). */
+/** Called by the sequence reparent controller when a drag gesture ends. */
 export function markDragInactive(): void {
   dragActive.value = false;
 }
 
-/** Read the current modifier state synchronously — used by the scopes preset on `nodedragged`. */
+/** Read the current modifier state synchronously on `nodedragged`. */
 export function isReparentModifierActive(): boolean {
   return modifierHeld.value;
 }

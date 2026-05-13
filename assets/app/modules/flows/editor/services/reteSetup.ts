@@ -27,11 +27,11 @@ import Sequence from "../components/entities/nodes/SequenceNode.vue";
 import { createContextMenuItems } from "../lib/context_menu_items";
 import { FLOW_CONTEXT_KEY } from "../lib/flow-context";
 import { flowContextMenuPreset } from "../lib/context_menu_preset";
-import { flowScopesPreset } from "../lib/flow-scopes-preset";
 import { SEQUENCE_MIN_HEIGHT, SEQUENCE_MIN_WIDTH } from "../lib/sequence-layout";
 import { installReparentModifierListeners } from "../lib/flow-reparent-state";
 import type { FlowSchemes, FlowAreaExtra } from "../lib/rete-schemes";
 import type { FlowContext, HookProxy } from "./editorHandlers";
+import { installFlowSequenceScopes } from "./flowSequenceScopes";
 import { historyPreset } from "./historyPreset";
 import { magneticConnection } from "./magneticConnection";
 
@@ -147,10 +147,10 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
   // their member nodes. Nodes declare their parent via the `parent` field
   // (set from `node.parent_id` at load time).
   //
-  // We use `flowScopesPreset` instead of `ScopesPresets.classic.setup()` so
-  // drag-reparenting only fires when Cmd/Ctrl is held. Sequence sizing is
-  // handled by flow-specific collision logic in `useFlowCanvas`; the generic
-  // rete-scopes resize path moves/compacts the bbox and does not match our UX.
+  // Cmd/Ctrl drag-reparenting is owned by `installFlowSequenceScopes`.
+  // Sequence sizing is handled by flow-specific collision logic in
+  // `useFlowCanvas`; the generic rete-scopes resize path moves/compacts
+  // the bbox and does not match our UX.
   //
   // `size` is still defensive for any plugin-internal resize signal, but
   // normal sequence geometry is controlled by the flow canvas.
@@ -167,8 +167,13 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
       };
     },
   });
-  scopes.addPreset(
-    flowScopesPreset<FlowSchemes>({
+  area.use(scopes);
+
+  if (!hook.readonly) {
+    installFlowSequenceScopes({
+      area,
+      editor,
+      flowContext,
       onReparented: (nodeId, newParentId) => {
         const rawNodeId = nodeId.replace(/^node-/, "");
         const rawParentId = newParentId ? newParentId.replace(/^node-/, "") : null;
@@ -177,9 +182,8 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
           parent_id: rawParentId,
         });
       },
-    }),
-  );
-  area.use(scopes);
+    });
+  }
 
   // Modifier listeners for the reparent gesture. Idempotent — no-op if
   // already installed (e.g. on hot reload).
