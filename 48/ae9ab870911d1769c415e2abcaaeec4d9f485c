@@ -1,0 +1,14 @@
+package.json
+  h_46be6e61f3d9dd 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "48ae9ab870911d1769c415e2abcaaeec4d9f485c",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
