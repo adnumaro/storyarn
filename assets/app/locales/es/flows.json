@@ -389,7 +389,7 @@
       "back_to_editor": "Volver al editor",
       "back": "Atrás",
       "restart": "Reiniciar",
-      "toggle_mode": "Cambiar modo",
+      "toggle_mode": "Alternar entre reproductor y revisión de respuestas bloqueadas o condicionadas",
       "no_content": "No hay contenido que mostrar."
     }
   }

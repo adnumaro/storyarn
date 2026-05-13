@@ -389,7 +389,7 @@
       "back_to_editor": "Back to editor",
       "back": "Back",
       "restart": "Restart",
-      "toggle_mode": "Toggle mode",
+      "toggle_mode": "Switch between player mode and review of blocked or conditional responses",
       "no_content": "No content to display."
     }
   }
