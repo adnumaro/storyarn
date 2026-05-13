@@ -43,10 +43,12 @@ const files = await listFiles(libRoot);
 const failures = [];
 const movedLayoutTargets = {
   auth: "AuthLayout",
-  docs: "DocsLayout",
-  settings: "SettingsLayout",
-  public: "PublicLayout",
   compare: "CompareLayout",
+  docs: "DocsLayout",
+  project: "ProjectLayout",
+  public: "PublicLayout",
+  settings: "SettingsLayout",
+  workspace: "WorkspaceLayout",
 };
 
 for (const filePath of files) {
@@ -69,12 +71,26 @@ for (const filePath of files) {
     failures.push(`${location} AppLayout has been removed; use a concrete layout boundary`);
   }
 
-  for (const match of source.matchAll(/\bLayouts\.(auth|docs|settings|public|compare)\b/g)) {
+  for (const match of source.matchAll(
+    /\bLayouts\.(auth|compare|docs|project|public|settings|workspace)\b/g,
+  )) {
     const layoutName = match[1];
     const location = `${rel}:${lineNumberAt(source, match.index ?? 0)}`;
     const targetLayout = movedLayoutTargets[layoutName];
 
     failures.push(`${location} Layouts.${layoutName} has moved to ${targetLayout}`);
+  }
+
+  if (rel === "lib/storyarn_web/components/layouts.ex") {
+    for (const match of source.matchAll(
+      /\bdefdelegate\s+(auth|compare|docs|project|public|settings|workspace)\s*\(/g,
+    )) {
+      const layoutName = match[1];
+      const location = `${rel}:${lineNumberAt(source, match.index ?? 0)}`;
+      const targetLayout = movedLayoutTargets[layoutName];
+
+      failures.push(`${location} Layouts.${layoutName} delegate has moved to ${targetLayout}`);
+    }
   }
 }
 

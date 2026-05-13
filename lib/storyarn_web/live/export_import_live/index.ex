@@ -13,7 +13,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.settings
+    <StoryarnWeb.Components.SettingsLayout.settings
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -78,7 +78,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       >
         <.live_file_input upload={@uploads.import_file} />
       </form>
-    </Layouts.settings>
+    </StoryarnWeb.Components.SettingsLayout.settings>
     """
   end
 

@@ -24,7 +24,12 @@ defmodule StoryarnWeb.LandingLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.public flash={@flash} socket={@socket} current_scope={@current_scope} theme="dark">
+    <StoryarnWeb.Components.PublicLayout.public
+      flash={@flash}
+      socket={@socket}
+      current_scope={@current_scope}
+      theme="dark"
+    >
       <.vue
         v-component="live/public/landing/PublicLanding"
         v-socket={@socket}
@@ -32,7 +37,7 @@ defmodule StoryarnWeb.LandingLive.Index do
         id="landing-page"
         is-logged-in={!!@current_scope && !!@current_scope.user}
       />
-    </Layouts.public>
+    </StoryarnWeb.Components.PublicLayout.public>
     """
   end
 

@@ -45,7 +45,7 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   defp render_full(assigns) do
     ~H"""
-    <Layouts.project
+    <StoryarnWeb.Components.ProjectLayout.project
       socket={@socket}
       flash={@flash}
       project={@project}
@@ -95,13 +95,13 @@ defmodule StoryarnWeb.SheetLive.Show do
         current_user_id={@current_scope.user.id}
         compact={false}
       />
-    </Layouts.project>
+    </StoryarnWeb.Components.ProjectLayout.project>
     """
   end
 
   defp render_compact(assigns) do
     ~H"""
-    <Layouts.compare
+    <StoryarnWeb.Components.CompareLayout.compare
       socket={@socket}
       flash={@flash}
       content_class="h-full overflow-y-auto bg-background p-4"
@@ -129,7 +129,7 @@ defmodule StoryarnWeb.SheetLive.Show do
         current_user_id={@current_scope.user.id}
         compact={true}
       />
-    </Layouts.compare>
+    </StoryarnWeb.Components.CompareLayout.compare>
     """
   end
 

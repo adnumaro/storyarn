@@ -35,7 +35,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.workspace
+    <StoryarnWeb.Components.WorkspaceLayout.workspace
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -62,7 +62,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
         new-project-form={@project_form}
         settings-url={~p"/users/settings/workspaces/#{@workspace.slug}/general"}
       />
-    </Layouts.workspace>
+    </StoryarnWeb.Components.WorkspaceLayout.workspace>
     """
   end
 

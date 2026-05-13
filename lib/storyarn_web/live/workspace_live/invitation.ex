@@ -13,7 +13,11 @@ defmodule StoryarnWeb.WorkspaceLive.Invitation do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.public flash={@flash} socket={@socket} current_scope={@current_scope}>
+    <StoryarnWeb.Components.PublicLayout.public
+      flash={@flash}
+      socket={@socket}
+      current_scope={@current_scope}
+    >
       <.vue
         v-component="live/workspace/invitation/WorkspaceInvitationResponse"
         v-socket={@socket}
@@ -21,7 +25,7 @@ defmodule StoryarnWeb.WorkspaceLive.Invitation do
         id="workspace-invitation"
         homepage-url={~p"/"}
       />
-    </Layouts.public>
+    </StoryarnWeb.Components.PublicLayout.public>
     """
   end
 

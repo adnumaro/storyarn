@@ -9,7 +9,11 @@ defmodule StoryarnWeb.UserLive.Registration do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.auth flash={@flash} current_scope={@current_scope} socket={@socket}>
+    <StoryarnWeb.Components.AuthLayout.auth
+      flash={@flash}
+      current_scope={@current_scope}
+      socket={@socket}
+    >
       <.vue
         v-component="live/auth/registration/AuthRegistrationForm"
         v-socket={@socket}
@@ -19,7 +23,7 @@ defmodule StoryarnWeb.UserLive.Registration do
         user-email={@invited_user.email}
         login-url={~p"/users/log-in"}
       />
-    </Layouts.auth>
+    </StoryarnWeb.Components.AuthLayout.auth>
     """
   end
 

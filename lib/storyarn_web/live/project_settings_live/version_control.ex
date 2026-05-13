@@ -14,7 +14,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.settings
+    <StoryarnWeb.Components.SettingsLayout.settings
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -38,7 +38,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
         auto-version-sheets={version_control_value(@version_control_form, :auto_version_sheets)}
         version-usage={serialize_version_usage(@version_usage)}
       />
-    </Layouts.settings>
+    </StoryarnWeb.Components.SettingsLayout.settings>
     """
   end
 

@@ -34,7 +34,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.settings
+    <StoryarnWeb.Components.SettingsLayout.settings
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -56,7 +56,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
         }
         is-owner={@membership.role == "owner"}
       />
-    </Layouts.settings>
+    </StoryarnWeb.Components.SettingsLayout.settings>
     """
   end
 

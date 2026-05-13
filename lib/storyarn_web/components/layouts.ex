@@ -14,14 +14,6 @@ defmodule StoryarnWeb.Layouts do
   # and other static content.
   embed_templates "layouts/*"
 
-  defdelegate auth(assigns), to: StoryarnWeb.Components.AuthLayout
-  defdelegate compare(assigns), to: StoryarnWeb.Components.CompareLayout
-  defdelegate docs(assigns), to: StoryarnWeb.Components.DocsLayout
-  defdelegate project(assigns), to: StoryarnWeb.Components.ProjectLayout
-  defdelegate public(assigns), to: StoryarnWeb.Components.PublicLayout
-  defdelegate settings(assigns), to: StoryarnWeb.Components.SettingsLayout
-  defdelegate workspace(assigns), to: StoryarnWeb.Components.WorkspaceLayout
-
   @doc """
   Shows the flash group with standard titles and content.
 

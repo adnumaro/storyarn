@@ -16,7 +16,7 @@ defmodule StoryarnWeb.CompareLive.Sheet do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.compare socket={@socket} flash={@flash}>
+    <StoryarnWeb.Components.CompareLayout.compare socket={@socket} flash={@flash}>
       <.vue
         v-component="live/versioning/compare/VersioningCompare"
         v-socket={@socket}
@@ -29,7 +29,7 @@ defmodule StoryarnWeb.CompareLive.Sheet do
         current-url={@current_url}
         version-url={@version_url}
       />
-    </Layouts.compare>
+    </StoryarnWeb.Components.CompareLayout.compare>
     """
   end
 

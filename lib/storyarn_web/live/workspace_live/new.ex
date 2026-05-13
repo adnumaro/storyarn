@@ -21,7 +21,7 @@ defmodule StoryarnWeb.WorkspaceLive.New do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.workspace
+    <StoryarnWeb.Components.WorkspaceLayout.workspace
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -35,7 +35,7 @@ defmodule StoryarnWeb.WorkspaceLive.New do
         form={@form}
         cancel-url={~p"/workspaces"}
       />
-    </Layouts.workspace>
+    </StoryarnWeb.Components.WorkspaceLayout.workspace>
     """
   end
 

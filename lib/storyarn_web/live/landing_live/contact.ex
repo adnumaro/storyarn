@@ -11,7 +11,12 @@ defmodule StoryarnWeb.LandingLive.Contact do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.public flash={@flash} socket={@socket} current_scope={@current_scope} theme="dark">
+    <StoryarnWeb.Components.PublicLayout.public
+      flash={@flash}
+      socket={@socket}
+      current_scope={@current_scope}
+      theme="dark"
+    >
       <.vue
         v-component="live/public/contact/PublicContact"
         v-socket={@socket}
@@ -20,7 +25,7 @@ defmodule StoryarnWeb.LandingLive.Contact do
         class="flex flex-1 flex-col"
         contact-email={contact_email()}
       />
-    </Layouts.public>
+    </StoryarnWeb.Components.PublicLayout.public>
     """
   end
 

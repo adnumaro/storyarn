@@ -16,7 +16,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.project
+    <StoryarnWeb.Components.ProjectLayout.project
       socket={@socket}
       flash={@flash}
       project={@project}
@@ -46,7 +46,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
         project-slug={@project.slug}
         loading={is_nil(@stats)}
       />
-    </Layouts.project>
+    </StoryarnWeb.Components.ProjectLayout.project>
     """
   end
 

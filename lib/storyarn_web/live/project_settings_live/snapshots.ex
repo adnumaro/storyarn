@@ -18,7 +18,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.settings
+    <StoryarnWeb.Components.SettingsLayout.settings
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -42,7 +42,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
         workspace-slug={@workspace.slug}
         project-slug={@project.slug}
       />
-    </Layouts.settings>
+    </StoryarnWeb.Components.SettingsLayout.settings>
     """
   end
 

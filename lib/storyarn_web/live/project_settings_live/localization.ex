@@ -15,7 +15,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.settings
+    <StoryarnWeb.Components.SettingsLayout.settings
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -35,7 +35,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
         has-api-key={@has_api_key}
         provider-usage={serialize_provider_usage(@provider_usage)}
       />
-    </Layouts.settings>
+    </StoryarnWeb.Components.SettingsLayout.settings>
     """
   end
 

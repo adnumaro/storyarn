@@ -23,7 +23,7 @@ defmodule StoryarnWeb.SceneLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.project
+    <StoryarnWeb.Components.ProjectLayout.project
       socket={@socket}
       flash={@flash}
       project={@project}
@@ -71,7 +71,7 @@ defmodule StoryarnWeb.SceneLive.Index do
         workspace-slug={@workspace.slug}
         project-slug={@project.slug}
       />
-    </Layouts.project>
+    </StoryarnWeb.Components.ProjectLayout.project>
     """
   end
 

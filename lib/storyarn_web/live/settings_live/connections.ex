@@ -26,7 +26,7 @@ defmodule StoryarnWeb.SettingsLive.Connections do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.settings
+    <StoryarnWeb.Components.SettingsLayout.settings
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -42,7 +42,7 @@ defmodule StoryarnWeb.SettingsLive.Connections do
         identities={serialize_identities(@identities)}
         has-password={@has_password}
       />
-    </Layouts.settings>
+    </StoryarnWeb.Components.SettingsLayout.settings>
     """
   end
 

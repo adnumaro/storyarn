@@ -98,7 +98,7 @@ defmodule StoryarnWeb.DocsLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.docs
+    <StoryarnWeb.Components.DocsLayout.docs
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -119,7 +119,7 @@ defmodule StoryarnWeb.DocsLive.Show do
         id="docs-show-vue"
         guide-body={if @guide, do: HtmlSanitizer.sanitize_html(@guide.body)}
       />
-    </Layouts.docs>
+    </StoryarnWeb.Components.DocsLayout.docs>
     """
   end
 

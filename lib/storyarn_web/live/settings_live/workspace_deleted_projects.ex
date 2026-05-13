@@ -46,7 +46,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.settings
+    <StoryarnWeb.Components.SettingsLayout.settings
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -64,7 +64,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
         snapshots={serialize_snapshots(@snapshots)}
         recovering={@recovering}
       />
-    </Layouts.settings>
+    </StoryarnWeb.Components.SettingsLayout.settings>
     """
   end
 

@@ -47,9 +47,9 @@ defmodule StoryarnWeb.SceneLive.Show do
   @impl true
   def render(%{compact: true, scene: nil} = assigns) do
     ~H"""
-    <Layouts.compare socket={@socket} flash={@flash}>
+    <StoryarnWeb.Components.CompareLayout.compare socket={@socket} flash={@flash}>
       <div class="h-full"></div>
-    </Layouts.compare>
+    </StoryarnWeb.Components.CompareLayout.compare>
     """
   end
 
@@ -61,7 +61,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     assigns = assign(assigns, :background_upload, scene_background_upload(assigns))
 
     ~H"""
-    <Layouts.project
+    <StoryarnWeb.Components.ProjectLayout.project
       socket={@socket}
       flash={@flash}
       project={@project}
@@ -136,13 +136,13 @@ defmodule StoryarnWeb.SceneLive.Show do
         id="scene-panels"
         panels={scene_panels_props(assigns)}
       />
-    </Layouts.project>
+    </StoryarnWeb.Components.ProjectLayout.project>
     """
   end
 
   defp render_compact(assigns) do
     ~H"""
-    <Layouts.compare socket={@socket} flash={@flash}>
+    <StoryarnWeb.Components.CompareLayout.compare socket={@socket} flash={@flash}>
       <.vue
         v-component="live/scene/show/SceneCompactSurface"
         v-socket={@socket}
@@ -151,7 +151,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         class="h-full relative"
         surface={scene_compact_surface_props(assigns)}
       />
-    </Layouts.compare>
+    </StoryarnWeb.Components.CompareLayout.compare>
     """
   end
 
