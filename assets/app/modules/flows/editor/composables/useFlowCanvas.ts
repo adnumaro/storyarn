@@ -13,23 +13,7 @@ import { FlowNode } from "../lib/flow-node";
 import type { FlowAreaExtra, FlowConnection } from "../lib/rete-schemes";
 import { debug } from "../services/debug";
 import { AutoLayoutAction, buildBatchPositions, type Position } from "../services/historyPreset";
-import {
-  editorHandlers,
-  type FlowContext,
-  type HookProxy,
-  type NodeMovedPayload,
-  type NodeServerPayload,
-  type NodeRemovedPayload,
-  type NodeRestoredPayload,
-  type NodeUpdatedPayload,
-  type NodeDataChangedPayload,
-  type FlowMetaChangedPayload,
-  type ConnectionServerPayload,
-  type ConnectionRemovedPayload,
-  type ConnectionUpdatedPayload,
-  type FlowUpdatedPayload,
-  type SequenceConfigUpdatedPayload,
-} from "../services/editorHandlers";
+import { editorHandlers, type FlowContext, type HookProxy } from "../services/editorHandlers";
 import { keyboard } from "../services/keyboard";
 import { lod } from "../services/lod";
 import { navigation } from "../services/navigation";
@@ -37,6 +21,7 @@ import { navigation } from "../services/navigation";
 import { createPlugins, finalizeSetup } from "../services/reteSetup";
 import { runFlowAutoLayout, snapshotFlowPositions } from "../services/flowAutoLayout";
 import { createFlowCanvasRuntime } from "./flowCanvasRuntime";
+import { setupFlowCanvasServerEvents } from "./flowCanvasServerEvents";
 import type {
   ConnectionData,
   FlowCanvasOpts,
@@ -53,11 +38,6 @@ import type {
 } from "./flowCanvasTypes";
 import { isReparentModifierActive } from "../lib/flow-reparent-state";
 import { SEQUENCE_MIN_HEIGHT, SEQUENCE_MIN_WIDTH, SEQUENCE_PADDING } from "../lib/sequence-layout";
-import type {
-  DebugHighlightNodeData,
-  DebugHighlightConnectionsData,
-  DebugUpdateBreakpointsData,
-} from "../services/debug";
 import { createFlowMarquee } from "../services/flowMarquee";
 
 export type { FlowCanvasReturn } from "./flowCanvasTypes";
@@ -797,7 +777,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     activatePostLoadPlugins();
 
     setupAreaPipes();
-    setupServerEvents();
+    setupFlowCanvasServerEvents(runtime);
     setupKeyboard();
 
     await finalizeInit(flowData);
@@ -1149,149 +1129,6 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
       }
       return context;
     });
-  }
-
-  // --- Server event handlers ---
-
-  function setupServerEvents(): void {
-    if (!runtime.editorHandlers) {
-      return;
-    }
-
-    handleEvent("flow_updated", (data) =>
-      runtime.editorHandlers!.handleFlowUpdated(data as FlowUpdatedPayload),
-    );
-
-    runtime.nodeMoveQueue = Promise.resolve();
-    handleEvent("node_moved", (raw) => {
-      if (!runtime.nodeMoveQueue) {
-        return;
-      }
-      const data = raw as unknown as NodeMovedPayload;
-      runtime.nodeMoveQueue = runtime.nodeMoveQueue
-        .then(() => {
-          if (!runtime.area || runtime.destroyed) {
-            return;
-          }
-          return runtime.editorHandlers!.handleNodeMoved(data);
-        })
-        .catch(() => {});
-    });
-
-    handleEvent("node_reparented", (raw) => {
-      if (runtime.destroyed) {
-        return;
-      }
-      const payload = raw as unknown as {
-        node_id: string | number;
-        parent_id: string | number | null;
-      };
-      runtime.editorHandlers!.handleNodeReparented(payload);
-    });
-
-    handleEvent("sequence_renamed", (raw) => {
-      if (runtime.destroyed) {
-        return;
-      }
-      const payload = raw as unknown as { node_id: string | number; name: string };
-      runtime.editorHandlers!.handleSequenceRenamed(payload);
-    });
-
-    handleEvent("sequence_config_updated", (raw) => {
-      if (runtime.destroyed) {
-        return;
-      }
-      runtime.editorHandlers!.handleSequenceConfigUpdated(
-        raw as unknown as SequenceConfigUpdatedPayload,
-      );
-    });
-
-    handleEvent("node_added", (data) => {
-      if (runtime.destroyed) {
-        return;
-      }
-      runtime.editorHandlers!.handleNodeAdded(data as unknown as NodeServerPayload);
-    });
-    handleEvent("node_removed", (data) => {
-      if (runtime.destroyed) {
-        return;
-      }
-      runtime.editorHandlers!.handleNodeRemoved(data as unknown as NodeRemovedPayload);
-    });
-    handleEvent("node_restored", (data) => {
-      if (runtime.destroyed) {
-        return;
-      }
-      runtime.editorHandlers!.handleNodeRestored(data as unknown as NodeRestoredPayload);
-    });
-
-    runtime.nodeUpdateQueue = Promise.resolve();
-    handleEvent("node_updated", (raw) => {
-      if (!runtime.nodeUpdateQueue) {
-        return;
-      }
-      const data = raw as unknown as NodeUpdatedPayload;
-      runtime.nodeUpdateQueue = runtime.nodeUpdateQueue
-        .then(async () => {
-          if (!runtime.area || runtime.destroyed) {
-            return;
-          }
-          await runtime.editorHandlers!.handleNodeUpdated(data);
-          // Sync toolbar if the updated node is the one selected
-          if (toolbarState.nodeId && String(data.id) === String(toolbarState.nodeId)) {
-            const reteNode = runtime.nodeMap.get(data.id);
-            if (reteNode) {
-              toolbarState.nodeData = { ...reteNode.nodeData };
-            }
-          }
-        })
-        .catch(() => {});
-    });
-
-    handleEvent("node_data_changed", (data) =>
-      runtime.editorHandlers!.handleNodeDataChanged(data as unknown as NodeDataChangedPayload),
-    );
-    handleEvent("flow_meta_changed", (data) =>
-      runtime.editorHandlers!.handleFlowMetaChanged(data as unknown as FlowMetaChangedPayload),
-    );
-    handleEvent("connection_added", (data) =>
-      runtime.editorHandlers!.handleConnectionAdded(data as unknown as ConnectionServerPayload),
-    );
-    handleEvent("connection_removed", (data) =>
-      runtime.editorHandlers!.handleConnectionRemoved(data as unknown as ConnectionRemovedPayload),
-    );
-    handleEvent("connection_updated", (data) =>
-      runtime.editorHandlers!.handleConnectionUpdated(data as unknown as ConnectionUpdatedPayload),
-    );
-
-    if (runtime.navigationHandler) {
-      handleEvent("navigate_to_hub", (data) =>
-        runtime.navigationHandler!.navigateToHub(data.jump_db_id as number),
-      );
-      handleEvent("navigate_to_node", (data) =>
-        runtime.navigationHandler!.navigateToNode(data.node_db_id as number),
-      );
-      handleEvent("navigate_to_jumps", (data) =>
-        runtime.navigationHandler!.navigateToJumps(data.hub_db_id as number),
-      );
-    }
-
-    if (runtime.debugHandler) {
-      handleEvent("debug_highlight_node", (data) =>
-        runtime.debugHandler!.handleHighlightNode(data as unknown as DebugHighlightNodeData),
-      );
-      handleEvent("debug_highlight_connections", (data) =>
-        runtime.debugHandler!.handleHighlightConnections(
-          data as unknown as DebugHighlightConnectionsData,
-        ),
-      );
-      handleEvent("debug_update_breakpoints", (data) =>
-        runtime.debugHandler!.handleUpdateBreakpoints(
-          data as unknown as DebugUpdateBreakpointsData,
-        ),
-      );
-      handleEvent("debug_clear_highlights", () => runtime.debugHandler!.handleClearHighlights());
-    }
   }
 
   // --- Cleanup ---
