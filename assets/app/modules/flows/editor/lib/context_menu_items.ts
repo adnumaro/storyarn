@@ -25,6 +25,7 @@ import { Clapperboard, Copy, LayoutGrid, StickyNote, Trash2 } from "lucide-vue-n
 
 import { i18n } from "@/app/i18n";
 import { FlowNode } from "./flow-node";
+import { createFlowGraphQueries } from "./flowGraphQueries";
 import { SEQUENCE_MIN_HEIGHT, SEQUENCE_MIN_WIDTH, SEQUENCE_PADDING } from "./sequence-layout";
 import type { HookProxy } from "../services/editorHandlers";
 
@@ -71,9 +72,10 @@ function selectionMenu(
   t: Translator,
 ): FlowContextMenuItemsCollection {
   const list: FlowContextMenuItem[] = [];
+  const graph = createFlowGraphQueries(hook.editor.getNodes());
 
   const nodes = selectedIds
-    .map((id) => hook.editor.getNode(`node-${id}`))
+    .map((id) => graph.node(`node-${id}`))
     .filter((n): n is FlowNode => n instanceof FlowNode);
 
   const hasEntry = nodes.some((n) => n.nodeType === "entry");
@@ -210,8 +212,9 @@ function buildSequenceWrapPayload(
   hook: HookProxy,
   selectedIds: Array<string | number>,
 ): Record<string, unknown> {
+  const graph = createFlowGraphQueries(hook.editor.getNodes());
   const boxes = selectedIds
-    .map((id) => hook.editor.getNode(`node-${id}`))
+    .map((id) => graph.node(`node-${id}`))
     .filter((node): node is FlowNode => node instanceof FlowNode)
     .map((node) => {
       const view = hook.area.nodeViews.get(node.id);
@@ -264,9 +267,10 @@ function getSelectedNodeDbIds(hook: HookProxy): Array<string | number> {
   const set = hook._flowContext?.selectedReteIds;
   if (!set || set.size === 0) return [];
 
+  const graph = createFlowGraphQueries(hook.editor.getNodes());
   const out: Array<string | number> = [];
   for (const reteId of set) {
-    const reteNode = hook.editor.getNode(String(reteId));
+    const reteNode = graph.node(String(reteId));
     if (!reteNode || !(reteNode instanceof FlowNode)) continue;
     out.push(reteNode.nodeId);
   }
@@ -280,9 +284,10 @@ function getSelectedNodeDbIds(hook: HookProxy): Array<string | number> {
 function sameParentForNodeIds(hook: HookProxy, nodeDbIds: Array<string | number>): boolean {
   if (nodeDbIds.length <= 1) return true;
 
+  const graph = createFlowGraphQueries(hook.editor.getNodes());
   const parents = new Set<string | undefined>();
   for (const dbId of nodeDbIds) {
-    const reteNode = hook.editor.getNode(`node-${dbId}`);
+    const reteNode = graph.node(`node-${dbId}`);
     if (!reteNode || !(reteNode instanceof FlowNode)) continue;
     parents.add(reteNode.parent);
   }

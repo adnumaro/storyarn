@@ -9,6 +9,7 @@ import type { NodeEditor, NodeId } from "rete";
 import type { AreaPlugin } from "rete-area-plugin";
 
 import type { FlowNode } from "../lib/flow-node";
+import { createFlowGraphQueries, type FlowGraphQueries } from "../lib/flowGraphQueries";
 import type { FlowAreaExtra, FlowConnection, FlowSchemes } from "../lib/rete-schemes";
 import type { Position } from "./historyPreset";
 
@@ -80,13 +81,15 @@ export function buildFlowElkGraph(
   connections: FlowConnection[],
   options: LayoutOptions = {},
 ): ElkNode {
+  const graph = createFlowGraphQueries(nodes, connections);
+
   return {
     id: "root",
     layoutOptions: {
       ...FLOW_AUTO_LAYOUT_OPTIONS,
       ...options,
     },
-    ...graphToElk({ nodes, connections }),
+    ...graphToElk(graph),
   };
 }
 
@@ -124,20 +127,18 @@ export async function runFlowAutoLayout(
 }
 
 function graphToElk(
-  context: { nodes: FlowNode[]; connections: FlowConnection[] },
-  parent?: NodeId,
+  graph: FlowGraphQueries<FlowNode, FlowConnection>,
+  parent?: string,
 ): Pick<ElkNode, "children" | "edges"> {
   return {
-    children: context.nodes
-      .filter((node) => node.parent === parent)
-      .map((node) => nodeToLayoutChild(node, context)),
-    edges: parent ? [] : context.connections.map(connectionToLayoutEdge),
+    children: graph.children(parent).map((node) => nodeToLayoutChild(node, graph)),
+    edges: parent ? [] : graph.connections().map(connectionToLayoutEdge),
   };
 }
 
 function nodeToLayoutChild(
   node: FlowNode,
-  context: { nodes: FlowNode[]; connections: FlowConnection[] },
+  graph: FlowGraphQueries<FlowNode, FlowConnection>,
 ): ElkNode {
   const inputs = portEntries(node.inputs);
   const outputs = portEntries(node.outputs);
@@ -147,7 +148,7 @@ function nodeToLayoutChild(
     width: node.width,
     height: node.height,
     labels: [{ text: "label" in node ? node.label : "" }],
-    ...graphToElk(context, node.id),
+    ...graphToElk(graph, node.id),
     ports: [
       ...inputs.map((entry, index) =>
         elkPort(node, entry.key, "input", classicPortLayout(node, "input", index, inputs.length)),

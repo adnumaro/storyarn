@@ -17,7 +17,8 @@
 import { AreaExtensions, type AreaPlugin } from "rete-area-plugin";
 import type { NodeEditor } from "rete";
 import type { FlowNode } from "../lib/flow-node";
-import type { FlowSchemes, FlowAreaExtra } from "../lib/rete-schemes";
+import { createFlowGraphQueries, type FlowGraphQueries } from "../lib/flowGraphQueries";
+import type { FlowSchemes, FlowAreaExtra, FlowConnection } from "../lib/rete-schemes";
 
 export interface DebugHighlightNodeData {
   node_id: number;
@@ -78,23 +79,21 @@ function findNodeElement(
  * Returns view.element (the outer div) where CSS custom properties can be set.
  */
 function findConnectionViewElement(
-  editor: NodeEditor<FlowSchemes>,
+  graph: FlowGraphQueries<FlowNode, FlowConnection>,
   area: AreaPlugin<FlowSchemes, FlowAreaExtra>,
-  sourceDbId: number,
-  targetDbId: number,
+  sourceReteId: string,
+  targetReteId: string,
 ): HTMLElement | null {
-  for (const conn of editor.getConnections()) {
-    const srcNode = editor.getNode(conn.source);
-    const tgtNode = editor.getNode(conn.target);
+  const connection = graph
+    .outgoingConnections(sourceReteId)
+    .find((conn) => conn.target === targetReteId);
 
-    if (srcNode?.nodeId === sourceDbId && tgtNode?.nodeId === targetDbId) {
-      const view = area.connectionViews.get(conn.id);
-      if (view) {
-        return view.element as HTMLElement;
-      }
-    }
+  if (!connection) {
+    return null;
   }
-  return null;
+
+  const view = area.connectionViews.get(connection.id);
+  return view ? (view.element as HTMLElement) : null;
 }
 
 /**
@@ -209,6 +208,18 @@ export function debug(
 
   function handleHighlightConnections(data: DebugHighlightConnectionsData): void {
     const { active_connection, execution_path } = data;
+    const graph = createFlowGraphQueries(editor.getNodes(), editor.getConnections());
+
+    const viewForDbNodes = (sourceDbId: number, targetDbId: number): HTMLElement | null => {
+      const sourceNode = nodeMap.get(sourceDbId);
+      const targetNode = nodeMap.get(targetDbId);
+
+      if (!sourceNode || !targetNode) {
+        return null;
+      }
+
+      return findConnectionViewElement(graph, area, sourceNode.id, targetNode.id);
+    };
 
     // 1. Demote previous active connection to visited
     if (activeConnView) {
@@ -221,12 +232,7 @@ export function debug(
     // 2. Mark all path connections as visited
     if (execution_path && execution_path.length >= 2) {
       for (let i = 0; i < execution_path.length - 1; i++) {
-        const viewEl = findConnectionViewElement(
-          editor,
-          area,
-          execution_path[i],
-          execution_path[i + 1],
-        );
+        const viewEl = viewForDbNodes(execution_path[i], execution_path[i + 1]);
         if (viewEl && !visitedConnViews.has(viewEl)) {
           setConnVisitedProps(viewEl);
           visitedConnViews.add(viewEl);
@@ -236,9 +242,7 @@ export function debug(
 
     // 3. Highlight current active connection
     if (active_connection) {
-      const viewEl = findConnectionViewElement(
-        editor,
-        area,
+      const viewEl = viewForDbNodes(
         active_connection.source_node_id,
         active_connection.target_node_id,
       );

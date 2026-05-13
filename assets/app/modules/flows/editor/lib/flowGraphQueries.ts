@@ -40,11 +40,34 @@ export function createFlowGraphQueries<
   const connectionList = Array.from(connections);
   const nodeById = new Map(nodeList.map((node) => [node.id, node]));
   const childrenByParent = new Map<string | undefined, Node[]>();
+  const incidentByNode = new Map<string, Connection[]>();
+  const incomingByNode = new Map<string, Connection[]>();
+  const outgoingByNode = new Map<string, Connection[]>();
 
   for (const node of nodeList) {
     const children = childrenByParent.get(node.parent) ?? [];
     children.push(node);
     childrenByParent.set(node.parent, children);
+  }
+
+  for (const connection of connectionList) {
+    const sourceIncident = incidentByNode.get(connection.source) ?? [];
+    sourceIncident.push(connection);
+    incidentByNode.set(connection.source, sourceIncident);
+
+    if (connection.target !== connection.source) {
+      const targetIncident = incidentByNode.get(connection.target) ?? [];
+      targetIncident.push(connection);
+      incidentByNode.set(connection.target, targetIncident);
+    }
+
+    const outgoing = outgoingByNode.get(connection.source) ?? [];
+    outgoing.push(connection);
+    outgoingByNode.set(connection.source, outgoing);
+
+    const incoming = incomingByNode.get(connection.target) ?? [];
+    incoming.push(connection);
+    incomingByNode.set(connection.target, incoming);
   }
 
   function node(id: string): Node | undefined {
@@ -126,17 +149,15 @@ export function createFlowGraphQueries<
   }
 
   function incidentConnections(nodeId: string): Connection[] {
-    return connectionList.filter(
-      (connection) => connection.source === nodeId || connection.target === nodeId,
-    );
+    return incidentByNode.get(nodeId) ?? [];
   }
 
   function incomingConnections(nodeId: string): Connection[] {
-    return connectionList.filter((connection) => connection.target === nodeId);
+    return incomingByNode.get(nodeId) ?? [];
   }
 
   function outgoingConnections(nodeId: string): Connection[] {
-    return connectionList.filter((connection) => connection.source === nodeId);
+    return outgoingByNode.get(nodeId) ?? [];
   }
 
   return {

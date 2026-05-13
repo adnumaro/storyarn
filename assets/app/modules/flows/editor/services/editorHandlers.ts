@@ -10,6 +10,7 @@ import type { AreaPlugin } from "rete-area-plugin";
 import type { HistoryPlugin } from "rete-history-plugin";
 import type { FlowNode } from "../lib/flow-node";
 import { FlowNode as FlowNodeClass } from "../lib/flow-node";
+import { createFlowGraphQueries } from "../lib/flowGraphQueries";
 import type { NodeData } from "../lib/node-configs";
 import { needsRebuild } from "../lib/node-configs";
 import type { FlowSchemes, FlowAreaExtra, FlowConnection } from "../lib/rete-schemes";
@@ -241,13 +242,14 @@ function cleanupThrottleTimer(hook: HookProxy, nodeId: string | number): void {
   }
 }
 
+function flowGraph(hook: HookProxy) {
+  return createFlowGraphQueries(hook.editor.getNodes(), hook.editor.getConnections());
+}
+
 async function removeRelatedConnections(hook: HookProxy, reteNodeId: string): Promise<void> {
-  const connections = [...hook.editor.getConnections()];
-  for (const conn of connections) {
-    if (conn.source === reteNodeId || conn.target === reteNodeId) {
-      hook.connectionDataMap.delete(conn.id);
-      await hook.editor.removeConnection(conn.id);
-    }
+  for (const conn of flowGraph(hook).incidentConnections(reteNodeId)) {
+    hook.connectionDataMap.delete(conn.id);
+    await hook.editor.removeConnection(conn.id);
   }
 }
 
@@ -268,10 +270,8 @@ function detachDeletedSequenceChildren(hook: HookProxy, node: FlowNode): void {
   // The server-side `flow_node_parent_nullify` trigger has already nilified
   // child `parent_id` rows, so mirroring that locally keeps the editor
   // consistent if accompanying `node_updated` broadcasts arrive after us.
-  for (const child of hook.editor.getNodes()) {
-    if (child.parent === node.id) {
-      child.parent = undefined;
-    }
+  for (const child of flowGraph(hook).children(node.id)) {
+    child.parent = undefined;
   }
 }
 
@@ -290,30 +290,21 @@ interface AffectedConnection {
 }
 
 function collectAffectedConnections(hook: HookProxy, reteNodeId: string): AffectedConnection[] {
-  const connections = [...hook.editor.getConnections()];
-  const affected: AffectedConnection[] = [];
+  const graph = flowGraph(hook);
 
-  for (const conn of connections) {
-    if (conn.source === reteNodeId || conn.target === reteNodeId) {
-      affected.push({
-        source: hook.editor.getNode(conn.source)?.nodeId,
-        sourceOutput: conn.sourceOutput,
-        target: hook.editor.getNode(conn.target)?.nodeId,
-        targetInput: conn.targetInput,
-        connData: hook.connectionDataMap.get(conn.id),
-      });
-    }
-  }
-  return affected;
+  return graph.incidentConnections(reteNodeId).map((conn) => ({
+    source: graph.node(conn.source)?.nodeId,
+    sourceOutput: conn.sourceOutput,
+    target: graph.node(conn.target)?.nodeId,
+    targetInput: conn.targetInput,
+    connData: hook.connectionDataMap.get(conn.id),
+  }));
 }
 
 async function removeAffectedConnections(hook: HookProxy, reteNodeId: string): Promise<void> {
-  const connections = [...hook.editor.getConnections()];
-  for (const conn of connections) {
-    if (conn.source === reteNodeId || conn.target === reteNodeId) {
-      hook.connectionDataMap.delete(conn.id);
-      await hook.editor.removeConnection(conn.id);
-    }
+  for (const conn of flowGraph(hook).incidentConnections(reteNodeId)) {
+    hook.connectionDataMap.delete(conn.id);
+    await hook.editor.removeConnection(conn.id);
   }
 }
 
@@ -668,15 +659,19 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
     },
 
     async handleConnectionAdded(data: ConnectionServerPayload) {
-      const existingConn = hook.editor
-        .getConnections()
-        .find(
-          (c) =>
-            hook.editor.getNode(c.source)?.nodeId === data.source_node_id &&
-            c.sourceOutput === data.source_pin &&
-            hook.editor.getNode(c.target)?.nodeId === data.target_node_id &&
-            c.targetInput === data.target_pin,
-        );
+      const sourceNode = hook.nodeMap.get(data.source_node_id);
+      const targetNode = hook.nodeMap.get(data.target_node_id);
+      const existingConn =
+        sourceNode && targetNode
+          ? flowGraph(hook)
+              .outgoingConnections(sourceNode.id)
+              .find(
+                (c) =>
+                  c.target === targetNode.id &&
+                  c.sourceOutput === data.source_pin &&
+                  c.targetInput === data.target_pin,
+              )
+          : undefined;
 
       if (existingConn) {
         hook.connectionDataMap.set(existingConn.id, {
@@ -698,19 +693,18 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
     async handleConnectionRemoved(data: ConnectionRemovedPayload) {
       hook.enterLoadingFromServer();
       try {
-        const connections = hook.editor.getConnections();
-        for (const conn of connections) {
-          const sourceNode = hook.editor.getNode(conn.source);
-          const targetNode = hook.editor.getNode(conn.target);
+        const sourceNode = hook.nodeMap.get(data.source_node_id);
+        const targetNode = hook.nodeMap.get(data.target_node_id);
+        const conn =
+          sourceNode && targetNode
+            ? flowGraph(hook)
+                .outgoingConnections(sourceNode.id)
+                .find((connection) => connection.target === targetNode.id)
+            : undefined;
 
-          if (
-            sourceNode?.nodeId === data.source_node_id &&
-            targetNode?.nodeId === data.target_node_id
-          ) {
-            hook.connectionDataMap.delete(conn.id);
-            await hook.editor.removeConnection(conn.id);
-            break;
-          }
+        if (conn) {
+          hook.connectionDataMap.delete(conn.id);
+          await hook.editor.removeConnection(conn.id);
         }
       } finally {
         hook.exitLoadingFromServer();
