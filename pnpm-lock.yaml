@@ -29,9 +29,6 @@ importers:
       '@floating-ui/dom':
         specifier: ^1.7.6
         version: 1.7.6
-      '@lezer/highlight':
-        specifier: ^1.2.3
-        version: 1.2.3
       '@sentry/browser':
         specifier: ^10.47.0
         version: 10.53.1
@@ -183,9 +180,15 @@ importers:
         specifier: ^3.4.0
         version: 3.4.0(konva@10.3.0)(vue@3.5.34(typescript@6.0.3))
     devDependencies:
+      '@lezer/common':
+        specifier: ^1.5.2
+        version: 1.5.2
       '@lezer/generator':
         specifier: ^1.8.0
         version: 1.8.0
+      '@lezer/highlight':
+        specifier: ^1.2.3
+        version: 1.2.3
       '@lezer/lr':
         specifier: ^1.4.8
         version: 1.4.10
