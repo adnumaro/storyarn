@@ -1,0 +1,48 @@
+assets/app/live/flow/player/FlowPlayer.vue
+  s_116fc484719db6::t_b92e9204c9388d 8,12,15-16,20,29-30,39-40,74-78,80,84,86-90,153-154,159-161,164
+  s_116fc484719db6::t_b943c865ba6e39 82-83,152,156-158
+assets/app/modules/flows/player/components/PlayerAudioTracks.vue
+  s_116fc484719db6::t_641dea41605d5c 34
+  s_116fc484719db6::t_a5af2e87250e2f 1-33,35-74,76-129,131-136
+  s_116fc484719db6::t_28e4c49d9a3a7f 75
+  s_116fc484719db6::t_85103d34afe5d9 130
+lib/storyarn_web/live/flow_live/player_live.ex
+  s_116fc484719db6::t_1818180f6f6fb9 555
+  s_116fc484719db6::t_9a361d4d016fe4 41-42,538,540-554,556-558,561,564,567,569-570,572,574,576-591,595-596,598,601-602,606-629
+lib/storyarn_web/live/flow_live/handlers/debug_execution_handlers.ex
+  s_116fc484719db6::t_994b6de16283f0 356,366-367,381-395
+lib/storyarn/flows/flow_node.ex
+  s_116fc484719db6::t_a22dcbbf448f40 38,69,89
+assets/app/test/modules/flows/player/FlowPlayer.test.ts
+  s_116fc484719db6::t_f7bd03f28a196b 28-42,97,99-102,104-105,113,117,120,122,126-146,149,152-153
+  s_116fc484719db6::t_44093f804c9a2b 3,121,147-148
+  s_116fc484719db6::t_1d99fe4119f519 123-125
+  s_116fc484719db6::t_e449ca385f516d 106-112
+  s_116fc484719db6::t_28e4c49d9a3a7f 150-151
+test/storyarn_web/live/flow_live/player/player_live_test.exs
+  s_116fc484719db6::t_b8f5c777f2f423 519,522-526,528,544-556,560,578-670
+assets/css/player.css
+  s_116fc484719db6::t_e7925f4a3bfc14 381-389
+  s_116fc484719db6::t_b6a0ec90085af6 355-357,395
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "1df1b668f3784b9797c79fbc5bbb0a6b38b66de7",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
