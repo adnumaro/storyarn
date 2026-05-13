@@ -80,6 +80,12 @@ Baseline audit from 2026-05-13:
   - flow Vitest suite passed;
   - architecture verification passed with only the accepted `components/ui` circular warnings;
   - browser smoke check on `/flows/8` rendered nodes, sequences, and connections with no console errors.
+- Phase 2 implementation is complete:
+  - `flowSequenceGeometry.test.ts` covers fit mode, contain mode, collision growth, resize clamping, nested propagation, and selected-ancestor suppression.
+- Phase 2 validation:
+  - flow/editor geometry tests passed;
+  - targeted lint passed for the new geometry test file;
+  - formatting check passed after applying `oxfmt`.
 
 ## Why Consider Removing It
 
@@ -249,14 +255,16 @@ Before replacing the plugin, lock down the rules that previously regressed.
 
 Test cases:
 
-- a new sequence fits at least one child plus padding;
-- moving a child inside bounds does not resize the sequence;
-- dragging a child against the right edge grows only the right side;
-- dragging a child against the bottom edge grows only the bottom side;
-- manual resize cannot shrink below child bounds;
-- nested sequence growth propagates to parent sequence;
-- selected parent plus selected children does not double-apply movement;
-- Cmd/Ctrl state does not trigger collision growth rules incorrectly.
+- [x] a new sequence fits at least one child plus padding;
+- [x] moving a child inside bounds does not resize the sequence;
+- [x] dragging a child against the right edge grows only the right side;
+- [x] dragging a child against the bottom edge grows only the bottom side;
+- [x] manual resize cannot shrink below child bounds;
+- [x] nested sequence growth propagates to parent sequence;
+- [x] selected parent plus selected children does not double-apply movement;
+- [ ] Cmd/Ctrl state does not trigger collision growth rules incorrectly.
+
+The remaining Cmd/Ctrl assertion belongs with Phase 3 because the current geometry module correctly delegates that state to `flow-reparent-state.ts`, while the next phase owns the reparent controller and drop behavior.
 
 Exit criteria:
 
