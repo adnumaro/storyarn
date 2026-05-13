@@ -1,0 +1,37 @@
+assets/app/modules/flows/editor/composables/flowSequenceGeometry.ts
+  s_116fc484719db6::t_df0a4fb8cef325 120,297-299
+  s_116fc484719db6::t_1c2e34f0893e2c 17,26-30,259
+  s_116fc484719db6::t_13ea44354a67f1 1-16,18-25,31-119,121-258,260-296,300-435
+assets/app/modules/flows/editor/composables/useFlowCanvas.ts
+  s_116fc484719db6::t_17c57cc96933df 226,229,234,238
+  s_116fc484719db6::t_d462ee5403e0b2 57
+  s_116fc484719db6::t_62ea71d8905b1b 219
+  s_116fc484719db6::t_df0a4fb8cef325 32
+  s_116fc484719db6::t_a234ba6ad01aba 629
+  s_116fc484719db6::t_cf53fe381177e7 225
+docs/plans/flow-scopes-plugin-migration.md
+  s_116fc484719db6::t_f48234d4391a71 73,77-82
+  s_116fc484719db6::t_3001e804e8508a 1-39,84-453
+  s_116fc484719db6::t_cb75d01909a85c 40-72,74-76,83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "8129071de8c527cf35bf5ec3f6c887d933845665",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
