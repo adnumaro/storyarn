@@ -12,6 +12,10 @@ interface DockNodeEntry {
   description: string;
 }
 
+const { activeType = null } = defineProps<{
+  activeType?: string | null;
+}>();
+
 const emit = defineEmits<{
   "add-node": [type: string];
 }>();
@@ -50,7 +54,11 @@ defineExpose({
   <div class="dock-item group relative">
     <Popover v-model:open="open">
       <PopoverTrigger as-child>
-        <button type="button" class="dock-btn">
+        <button
+          type="button"
+          class="dock-btn"
+          :class="{ 'dock-btn-active': logicNodes.some((n) => n.type === activeType) }"
+        >
           <Zap class="size-5" />
         </button>
       </PopoverTrigger>
@@ -64,6 +72,7 @@ defineExpose({
             :key="n.type"
             type="button"
             class="w-full flex items-start gap-2.5 px-2.5 py-2 rounded-lg text-sm text-start cursor-pointer hover:bg-accent transition-colors"
+            :class="{ 'bg-accent text-accent-foreground': n.type === activeType }"
             @click="addNode(n.type)"
           >
             <component :is="n.icon" class="size-4 mt-0.5 shrink-0" />

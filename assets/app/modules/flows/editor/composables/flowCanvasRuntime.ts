@@ -44,6 +44,7 @@ export interface FlowCanvasRuntime {
   history: HistoryPlugin<FlowSchemes> | null;
   minimap: MinimapPlugin<FlowSchemes> | null;
   marqueeTeardown: (() => void) | null;
+  placementTeardown: (() => void) | null;
 
   nodeMap: Map<string | number, FlowNode>;
   connectionDataMap: Map<string, { id: number; label: string | null; condition: unknown }>;
@@ -98,6 +99,7 @@ export function createFlowCanvasRuntime(
     history: null,
     minimap: null,
     marqueeTeardown: null,
+    placementTeardown: null,
 
     nodeMap: new Map<string | number, FlowNode>(),
     connectionDataMap: new Map<string, { id: number; label: string | null; condition: unknown }>(),

@@ -203,6 +203,69 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
       assert sequence.sequence_config.height == 200.0
     end
 
+    test "creates node inside parent sequence when parent_id is provided",
+         %{conn: conn, project: project, flow: flow} do
+      {:ok, parent_sequence} =
+        Flows.create_sequence(flow.id, %{
+          "name" => "Parent sequence",
+          "position_x" => 100.0,
+          "position_y" => 100.0
+        })
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      render_click(view, "add_node", %{
+        "type" => "hub",
+        "position_x" => 180.0,
+        "position_y" => 160.0,
+        "parent_id" => parent_sequence.id
+      })
+
+      updated_flow = Flows.get_flow!(project.id, flow.id)
+      hub = Enum.find(updated_flow.nodes, &(&1.type == "hub"))
+
+      assert hub.parent_id == parent_sequence.id
+      assert hub.position_x == 180.0
+      assert hub.position_y == 160.0
+    end
+
+    test "creates nested sequence when parent_id is provided",
+         %{conn: conn, project: project, flow: flow} do
+      {:ok, parent_sequence} =
+        Flows.create_sequence(flow.id, %{
+          "name" => "Parent sequence",
+          "position_x" => 100.0,
+          "position_y" => 100.0
+        })
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      render_click(view, "add_node", %{
+        "type" => "sequence",
+        "position_x" => 180.0,
+        "position_y" => 160.0,
+        "parent_id" => parent_sequence.id
+      })
+
+      nested_sequence =
+        flow.id
+        |> Flows.list_sequences()
+        |> Enum.find(&(&1.parent_id == parent_sequence.id))
+
+      assert nested_sequence.position_x == 180.0
+      assert nested_sequence.position_y == 160.0
+      assert nested_sequence.sequence_config.width == 300.0
+      assert nested_sequence.sequence_config.height == 200.0
+    end
+
     test "places node at specified position",
          %{conn: conn, project: project, flow: flow} do
       {:ok, view, _html} =

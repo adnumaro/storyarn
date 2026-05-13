@@ -50,8 +50,25 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
         _ -> []
       end
 
+    opts =
+      case parent_id_param(params["parent_id"]) do
+        nil -> opts
+        parent_id -> Keyword.put(opts, :parent_id, parent_id)
+      end
+
     NodeHelpers.add_node(socket, type, opts)
   end
+
+  defp parent_id_param(parent_id) when is_integer(parent_id), do: parent_id
+
+  defp parent_id_param(parent_id) when is_binary(parent_id) do
+    case Integer.parse(parent_id) do
+      {id, ""} -> id
+      _ -> nil
+    end
+  end
+
+  defp parent_id_param(_parent_id), do: nil
 
   @spec handle_save_name(map(), Socket.t()) ::
           {:noreply, Socket.t()}

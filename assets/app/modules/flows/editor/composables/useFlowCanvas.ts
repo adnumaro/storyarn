@@ -17,6 +17,7 @@ import { keyboard } from "../services/keyboard";
 import { lod } from "../services/lod";
 import { navigation } from "../services/navigation";
 
+import { createFlowPlacement } from "../services/flowPlacement";
 import { createPlugins, finalizeSetup } from "../services/reteSetup";
 import { performFlowCanvasAutoLayout } from "./flowCanvasAutoLayout";
 import { createFlowCanvasRuntime } from "./flowCanvasRuntime";
@@ -349,6 +350,12 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
         area: runtime.area!,
         editor: runtime.editor!,
         selection,
+      });
+      runtime.placementTeardown = createFlowPlacement({
+        containerEl: hookProxy._containerEl,
+        editor: runtime.editor!,
+        area: runtime.area!,
+        pushEvent,
       });
     }
 
@@ -771,6 +778,8 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     runtime.debugHandler?.destroy();
     runtime.marqueeTeardown?.();
     runtime.marqueeTeardown = null;
+    runtime.placementTeardown?.();
+    runtime.placementTeardown = null;
   }
 
   function destroy(): void {

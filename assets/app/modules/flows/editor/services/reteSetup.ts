@@ -341,6 +341,96 @@ reteStyles.textContent = `
     -webkit-user-select: none !important;
   }
 
+  .flow-placement-active {
+    cursor: crosshair;
+  }
+
+  .flow-placement-shadow {
+    --flow-placement-color: var(--color-primary, #3b82f6);
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 9998;
+    display: none;
+    pointer-events: none;
+    border: 1px solid color-mix(in oklch, var(--flow-placement-color) 72%, transparent);
+    background: color-mix(in oklch, var(--flow-placement-color) 10%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in oklch, var(--color-background, #0a0a0a) 60%, transparent);
+    opacity: 0.82;
+  }
+
+  .flow-placement-shadow::before,
+  .flow-placement-shadow::after {
+    content: "";
+    position: absolute;
+    background: color-mix(in oklch, var(--flow-placement-color) 85%, white);
+    box-shadow: 0 0 0 1px color-mix(in oklch, var(--color-background, #0a0a0a) 70%, transparent);
+  }
+
+  .flow-placement-shadow::before {
+    width: 14px;
+    height: 2px;
+    top: -1px;
+    left: -7px;
+    transform: translateY(-50%);
+  }
+
+  .flow-placement-shadow::after {
+    width: 2px;
+    height: 14px;
+    top: -7px;
+    left: -1px;
+    transform: translateX(-50%);
+  }
+
+  .flow-placement-shadow__header {
+    height: min(28px, max(10px, 22%));
+    background: var(--flow-placement-color);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    text-transform: uppercase;
+    overflow: hidden;
+  }
+
+  .flow-placement-shadow__title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .flow-placement-shadow__body {
+    position: absolute;
+    inset: min(28px, max(10px, 22%)) 0 0;
+    background: color-mix(in oklch, var(--color-background, #0a0a0a) 68%, var(--flow-placement-color));
+  }
+
+  .flow-placement-shadow[data-kind="annotation"] {
+    border-radius: 2px;
+    border-color: color-mix(in oklch, #fbbf24 75%, transparent);
+    background: color-mix(in oklch, #fbbf24 45%, transparent);
+    clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
+  }
+
+  .flow-placement-shadow[data-kind="annotation"] .flow-placement-shadow__header,
+  .flow-placement-shadow[data-kind="annotation"] .flow-placement-shadow__body {
+    display: none;
+  }
+
+  .flow-placement-shadow[data-kind="sequence"] {
+    border-style: dashed;
+    background: color-mix(in oklch, var(--flow-placement-color) 7%, transparent);
+  }
+
+  .flow-placement-shadow[data-kind="sequence"] .flow-placement-shadow__header,
+  .flow-placement-shadow[data-kind="sequence"] .flow-placement-shadow__body {
+    display: none;
+  }
+
   /* Lift minimap above the bottom-right toolbar buttons (button row:
      bottom-3 + size-8 = 44px from bottom; leave a small gap). */
   .minimap {

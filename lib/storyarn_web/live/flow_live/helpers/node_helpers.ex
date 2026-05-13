@@ -120,11 +120,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   def add_node(socket, "sequence", opts) do
     {pos_x, pos_y} = node_position(opts)
 
-    attrs = %{
-      "name" => "Sequence",
-      "position_x" => pos_x,
-      "position_y" => pos_y
-    }
+    attrs = maybe_put_parent_id(%{"name" => "Sequence", "position_x" => pos_x, "position_y" => pos_y}, opts)
 
     case Flows.create_sequence(socket.assigns.flow.id, attrs) do
       {:ok, node} ->
@@ -150,18 +146,14 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   def add_node(socket, type, opts) do
     {pos_x, pos_y} = node_position(opts)
 
-    attrs = %{
-      type: type,
-      position_x: pos_x,
-      position_y: pos_y,
-      data: default_node_data(type)
-    }
+    attrs = maybe_put_parent_id(%{type: type, position_x: pos_x, position_y: pos_y, data: default_node_data(type)}, opts)
 
     case Flows.create_node(socket.assigns.flow, attrs) do
       {:ok, node} ->
         node_data = %{
           id: node.id,
           type: node.type,
+          parent_id: node.parent_id,
           position: %{x: node.position_x, y: node.position_y},
           data: canvas_data(node, socket.assigns.flow.project_id)
         }
@@ -335,6 +327,13 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
         "height" => config.height
       }
     }
+  end
+
+  defp maybe_put_parent_id(attrs, opts) do
+    case Keyword.get(opts, :parent_id) do
+      parent_id when is_integer(parent_id) -> Map.put(attrs, :parent_id, parent_id)
+      _ -> attrs
+    end
   end
 
   # Resolves node data for canvas events (e.g., hub color name → hex, type warnings).

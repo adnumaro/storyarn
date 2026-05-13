@@ -21,6 +21,7 @@ import { watch } from "vue";
 
 import type { FlowAreaExtra, FlowSchemes } from "../lib/rete-schemes";
 import { activeFlowTool } from "../lib/flow-tool-state";
+import { activeFlowPlacement } from "../lib/flow-placement-state";
 import type { SelectionHandles } from "./reteSetup";
 
 interface MarqueeOptions {
@@ -48,10 +49,13 @@ export function createFlowMarquee({
   let startY = 0;
   let dragging = false;
 
+  function canStartMarquee(e: PointerEvent): boolean {
+    return !activeFlowPlacement.value && activeFlowTool.value === "select" && e.button === 0;
+  }
+
   function onPointerDown(e: PointerEvent): void {
-    if (activeFlowTool.value !== "select") return;
     // Only left button triggers marquee; middle/right reserved for future panning
-    if (e.button !== 0) return;
+    if (!canStartMarquee(e)) return;
 
     const target = e.target as HTMLElement | null;
     if (!target) return;

@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { StickyNote } from "lucide-vue-next";
 
+const { active = false } = defineProps<{
+  active?: boolean;
+}>();
+
 defineEmits<{
   add: [];
 }>();
@@ -8,7 +12,12 @@ defineEmits<{
 
 <template>
   <div class="dock-item group relative">
-    <button type="button" class="dock-btn" @click="$emit('add')">
+    <button
+      type="button"
+      class="dock-btn"
+      :class="{ 'dock-btn-active': active }"
+      @click="$emit('add')"
+    >
       <StickyNote class="size-5" />
     </button>
     <div class="dock-tooltip">

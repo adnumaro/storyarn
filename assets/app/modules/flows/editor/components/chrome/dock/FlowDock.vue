@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { Hand, MousePointer2 } from "lucide-vue-next";
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { useLive } from "../../../../../../shared/composables/useLive";
+import { activeFlowPlacement, startFlowPlacement } from "../../../lib/flow-placement-state";
 import { activeFlowTool, type FlowTool } from "../../../lib/flow-tool-state";
+import type { FlowNodeType } from "../../../lib/node-configs";
 import DockActionsPanel from "./DockActionsPanel.vue";
 import DockAnnotationButton from "./DockAnnotationButton.vue";
 import DockLogicPanel from "./DockLogicPanel.vue";
@@ -36,14 +38,14 @@ const logicRef = ref<DockPanelExposed | null>(null);
 const navigationRef = ref<DockPanelExposed | null>(null);
 
 function addNode(type: string): void {
-  live.pushEvent("add_node", { type });
+  startFlowPlacement({ kind: "node", type: type as FlowNodeType });
   narrativeRef.value?.close();
   logicRef.value?.close();
   navigationRef.value?.close();
 }
 
 function addAnnotation() {
-  live.pushEvent("add_annotation", {});
+  startFlowPlacement({ kind: "annotation" });
 }
 
 function openVersions() {
@@ -57,6 +59,12 @@ function toggleDebug() {
 function setTool(tool: FlowTool): void {
   activeFlowTool.value = tool;
 }
+
+const activePlacementType = computed(() =>
+  activeFlowPlacement.value?.kind === "node" ? activeFlowPlacement.value.type : null,
+);
+
+const annotationPlacementActive = computed(() => activeFlowPlacement.value?.kind === "annotation");
 
 const playUrl = `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows/${flowId}/play`;
 </script>
@@ -105,19 +113,27 @@ const playUrl = `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows/${fl
       <div class="w-px h-6 bg-border mx-0.5 shrink-0" />
 
       <!-- Annotation -->
-      <DockAnnotationButton @add="addAnnotation" />
+      <DockAnnotationButton :active="annotationPlacementActive" @add="addAnnotation" />
 
       <!-- Separator -->
       <div class="w-px h-6 bg-border mx-0.5 shrink-0" />
 
       <!-- Narrative dropdown -->
-      <DockNarrativePanel ref="narrativeRef" @add-node="addNode" />
+      <DockNarrativePanel
+        ref="narrativeRef"
+        :active-type="activePlacementType"
+        @add-node="addNode"
+      />
 
       <!-- Logic dropdown -->
-      <DockLogicPanel ref="logicRef" @add-node="addNode" />
+      <DockLogicPanel ref="logicRef" :active-type="activePlacementType" @add-node="addNode" />
 
       <!-- Navigation dropdown -->
-      <DockNavigationPanel ref="navigationRef" @add-node="addNode" />
+      <DockNavigationPanel
+        ref="navigationRef"
+        :active-type="activePlacementType"
+        @add-node="addNode"
+      />
 
       <!-- Actions group (not in compact mode) -->
       <template v-if="!compact">
