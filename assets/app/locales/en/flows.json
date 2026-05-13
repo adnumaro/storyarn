@@ -133,6 +133,7 @@
       "jump": "Jump",
       "exit": "Exit",
       "subflow": "Subflow",
+      "sequence": "Sequence",
       "dialogue_toolbar_screenplay": "Screenplay editor",
       "dialogue_toolbar_preview": "Preview"
     },
@@ -154,6 +155,7 @@
       "dialogue_desc": "Character speech and player responses",
       "condition_desc": "Branch based on variable conditions",
       "instruction_desc": "Set or modify variable values",
+      "sequence_desc": "Group nodes and compose visual or audio resources",
       "exit_desc": "End point of a flow",
       "hub_desc": "Named junction for jump targets",
       "jump_desc": "Jump to a hub in any flow",

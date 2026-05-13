@@ -115,12 +115,40 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   """
   @spec add_node(Socket.t(), String.t(), keyword()) ::
           {:noreply, Socket.t()}
-  def add_node(socket, type, opts \\ []) do
-    {pos_x, pos_y} =
-      case Keyword.get(opts, :position) do
-        {x, y} -> {x * 1.0, y * 1.0}
-        _ -> {100.0 + :rand.uniform(200), 100.0 + :rand.uniform(200)}
-      end
+  def add_node(socket, type, opts \\ [])
+
+  def add_node(socket, "sequence", opts) do
+    {pos_x, pos_y} = node_position(opts)
+
+    attrs = %{
+      "name" => "Sequence",
+      "position_x" => pos_x,
+      "position_y" => pos_y
+    }
+
+    case Flows.create_sequence(socket.assigns.flow.id, attrs) do
+      {:ok, node} ->
+        node_data = sequence_node_data(node)
+
+        {:noreply,
+         socket
+         |> reload_flow_data()
+         |> schedule(:flow)
+         |> push_event("node_added", Map.put(node_data, :self, true))
+         |> CollaborationHelpers.broadcast_change(:node_added, %{node_data: node_data})}
+
+      {:error, _} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext("flows", "Could not create sequence")
+         )}
+    end
+  end
+
+  def add_node(socket, type, opts) do
+    {pos_x, pos_y} = node_position(opts)
 
     attrs = %{
       type: type,
@@ -285,6 +313,29 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   end
 
   # Private functions
+
+  defp node_position(opts) do
+    case Keyword.get(opts, :position) do
+      {x, y} -> {x * 1.0, y * 1.0}
+      _ -> {100.0 + :rand.uniform(200), 100.0 + :rand.uniform(200)}
+    end
+  end
+
+  defp sequence_node_data(node) do
+    config = node.sequence_config
+
+    %{
+      id: node.id,
+      type: node.type,
+      parent_id: node.parent_id,
+      position: %{x: node.position_x, y: node.position_y},
+      data: %{
+        "name" => config.name,
+        "width" => config.width,
+        "height" => config.height
+      }
+    }
+  end
 
   # Resolves node data for canvas events (e.g., hub color name → hex, type warnings).
   # Also used by persist_node_update and add_node.

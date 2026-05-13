@@ -133,6 +133,7 @@
       "jump": "Salto",
       "exit": "Salida",
       "subflow": "Subflujo",
+      "sequence": "Secuencia",
       "dialogue_toolbar_screenplay": "Editor de guión",
       "dialogue_toolbar_preview": "Vista previa"
     },
@@ -154,6 +155,7 @@
       "dialogue_desc": "Diálogos de personajes y respuestas del jugador",
       "condition_desc": "Bifurcar según condiciones de variables",
       "instruction_desc": "Establecer o modificar valores de variables",
+      "sequence_desc": "Agrupar nodos y componer recursos visuales o de audio",
       "exit_desc": "Punto final de un flujo",
       "hub_desc": "Punto de encuentro para saltos",
       "jump_desc": "Saltar a un hub en cualquier flujo",

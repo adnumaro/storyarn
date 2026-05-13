@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MessageSquare } from "lucide-vue-next";
+import { Layers, MessageSquare } from "lucide-vue-next";
 import type { Component } from "vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
@@ -25,6 +25,12 @@ const narrativeNodes = computed<DockNodeEntry[]>(() => [
     icon: MessageSquare,
     title: t("flows.node_types.dialogue"),
     description: t("flows.dock.dialogue_desc"),
+  },
+  {
+    type: "sequence",
+    icon: Layers,
+    title: t("flows.node_types.sequence"),
+    description: t("flows.dock.sequence_desc"),
   },
 ]);
 

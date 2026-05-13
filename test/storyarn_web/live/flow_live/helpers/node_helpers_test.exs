@@ -184,6 +184,25 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
       assert length(exit_nodes) == 2
     end
 
+    test "creates an empty sequence with minimum canvas size",
+         %{conn: conn, project: project, flow: flow} do
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      render_click(view, "add_node", %{"type" => "sequence"})
+
+      [sequence] = Flows.list_sequences(flow.id)
+
+      assert sequence.position_x >= 100.0 and sequence.position_x <= 300.0
+      assert sequence.position_y >= 100.0 and sequence.position_y <= 300.0
+      assert sequence.sequence_config.name == "Sequence"
+      assert sequence.sequence_config.width == 300.0
+      assert sequence.sequence_config.height == 200.0
+    end
+
     test "places node at specified position",
          %{conn: conn, project: project, flow: flow} do
       {:ok, view, _html} =
