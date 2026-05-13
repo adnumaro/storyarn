@@ -1,0 +1,82 @@
+assets/app/modules/flows/editor/composables/useFlowCanvas.ts
+  s_116fc484719db6::t_50f3b085677ca0 1224,1231,1236,1249-1250,1252,1260-1261,1263,1266,1287,1290,1292
+  s_116fc484719db6::t_78376bf7336568 40,1421-1425
+  s_116fc484719db6::t_e8e5d74d18f11e 137-141,527-530,534,809-845,1426-1427
+  s_116fc484719db6::t_0b68532a9abb3c 967
+  s_116fc484719db6::t_20b6fc4cca9fc8 796-799
+  s_116fc484719db6::t_54d4d09945533b 513,519-523,525-526,533,535-545,547-553,561-578,582-583,589-590,597,601,617-633,635-643,653,655-656,658-662,668-681,695,701-702,707-767,786-790,792-794,800-808,846-867,869
+  s_116fc484719db6::t_16084f3885beb8 214,493-512,514-518,531-532,868,870-871,1014,1516
+  s_116fc484719db6::t_f162b97495ddc0 524,546,554-560,579-581,584-588,591-596,598-600,602-616,634,644-645,654,657,682-694,696-700,703-706
+  s_116fc484719db6::t_7970f9d193e7a3 663-666,771-773
+  s_116fc484719db6::t_a1286c4be6e7a3 144,646,649-652,667
+  s_116fc484719db6::t_5ff2f777c14747 47,126-136,142-143,145-146,194
+  s_116fc484719db6::t_b2307aef480ba8 768-770,774-785,791,795
+  s_116fc484719db6::t_5bec366aaab111 1514,1518-1520,1528-1533,1536
+  s_116fc484719db6::t_787f9bf92cd954 647-648
+  s_116fc484719db6::t_923ac9bc58c4fa 1251,1262
+  s_116fc484719db6::t_75fbcc64bbb407 118-125
+  s_116fc484719db6::t_4c8cf044c5d459 337
+  s_116fc484719db6::t_e06c97abb02257 48
+assets/app/modules/flows/editor/lib/sequence-layout.ts
+  s_116fc484719db6::t_85e42cb4d9063b 1-9
+assets/app/modules/flows/editor/services/editorHandlers.ts
+  s_116fc484719db6::t_a39bbab653dc1e 518-550
+  s_116fc484719db6::t_2eb7535eaaa00d 350-399
+  s_116fc484719db6::t_200889e34ade88 100-101,104-107,212,479-483,486
+  s_116fc484719db6::t_78ef406475f3ae 102-103
+  s_116fc484719db6::t_0e44232211d3e1 186
+  s_116fc484719db6::t_effcc0fb3bb394 484,495-496,509
+  s_116fc484719db6::t_eaaad7a572a02f 485
+assets/app/modules/flows/editor/lib/flow-reparent-state.ts
+  s_116fc484719db6::t_a2c6cb43b302bf 6-8
+lib/storyarn_web/live/flow_live/show.ex
+  s_116fc484719db6::t_6c77576ac70654 615,628,1690-1692
+lib/storyarn_web/live/flow_live/handlers/collaboration_event_handlers.ex
+  s_116fc484719db6::t_df32c47d727502 104
+assets/app/modules/flows/editor/services/reteSetup.ts
+  s_116fc484719db6::t_984f30bd9a099b 33,157-159,164
+  s_116fc484719db6::t_2ef860c5a1b98e 32,167-168,171-172
+  s_116fc484719db6::t_d7279768d08a4e 161-162
+  s_116fc484719db6::t_a50859b4dec910 165-166,169-170,173-174
+lib/storyarn_web/live/flow_live/helpers/collaboration_helpers.ex
+  s_116fc484719db6::t_9bd89324ab2126 107-108
+  s_116fc484719db6::t_7327b665d0b21a 104-106,109-113
+assets/app/modules/flows/editor/components/entities/nodes/SequenceNode.vue
+  s_116fc484719db6::t_8c2d67da086f1d 36,107-108,113,117
+  s_116fc484719db6::t_e4031d554f049d 43,57,85-87,143,149
+  s_116fc484719db6::t_61a616a1979ae9 93-106,109-112,114-116,118-142,144-148,150,172-179,229-253
+lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex
+  s_116fc484719db6::t_76ee61ffafb769 640,643-644
+  s_116fc484719db6::t_5dded3a8dd64d5 231-232
+  s_116fc484719db6::t_4fc8f7aba80f85 641-642,654-662
+assets/app/modules/flows/editor/lib/flow-scopes-preset.ts
+  s_116fc484719db6::t_a1a0f7791ff4ff 26-28
+  s_116fc484719db6::t_a5050fc98635b8 54,132,134
+  s_116fc484719db6::t_4aef4774bf9223 93-94,173-175,188
+  s_116fc484719db6::t_32094dc36f92e6 31-33
+assets/app/modules/flows/editor/lib/context_menu_items.ts
+  s_116fc484719db6::t_a95337620c6d90 90-91,158-159
+  s_116fc484719db6::t_f1aeb7f3e00e2a 28,209-252
+  h_46be6e61f3d9dd 253-254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "cc5ced4b24273050cbba60c1c40b74116d025a04",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
