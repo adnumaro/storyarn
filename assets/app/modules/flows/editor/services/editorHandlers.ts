@@ -138,7 +138,6 @@ export interface HookProxy {
   area: AreaPlugin<FlowSchemes, FlowAreaExtra>;
   connection: unknown;
   history: HistoryPlugin<FlowSchemes> | null;
-  arrange: unknown;
   scopes: ScopesPlugin<FlowSchemes>;
   nodeMap: Map<string | number, FlowNode>;
   connectionDataMap: Map<string, { id: number; label: string | null; condition: unknown }>;

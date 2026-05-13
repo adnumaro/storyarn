@@ -6,7 +6,6 @@
 
 import { ClassicPreset, NodeEditor } from "rete";
 import { AreaExtensions, AreaPlugin } from "rete-area-plugin";
-import { Presets as ArrangePresets, AutoArrangePlugin } from "rete-auto-arrange-plugin";
 import {
   ConnectionPlugin,
   Presets as ConnectionPresets,
@@ -41,7 +40,6 @@ interface PluginSet {
   area: AreaPlugin<FlowSchemes, FlowAreaExtra>;
   connection: ConnectionPlugin<FlowSchemes>;
   history: HistoryPlugin<FlowSchemes>;
-  arrange: AutoArrangePlugin<FlowSchemes>;
   minimap: MinimapPlugin<FlowSchemes>;
   render: VuePlugin<FlowSchemes, FlowAreaExtra>;
   scopes: ScopesPlugin<FlowSchemes>;
@@ -55,7 +53,6 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
   const area = new AreaPlugin<FlowSchemes, FlowAreaExtra>(container);
   const connection = new ConnectionPlugin<FlowSchemes>();
   const history = new HistoryPlugin<FlowSchemes>({ timing: 200 });
-  const arrange = new AutoArrangePlugin<FlowSchemes>();
   const minimap = new MinimapPlugin<FlowSchemes>();
   // Shared reactive context available to all node/socket/connection Vue instances
   const flowContext: FlowContext = reactive({
@@ -88,9 +85,6 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
       return app;
     },
   });
-
-  // Configure auto-arrange plugin
-  arrange.addPreset(ArrangePresets.classic.setup());
 
   // Configure connection plugin
   connection.addPreset(ConnectionPresets.classic.setup());
@@ -226,13 +220,11 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
     },
   });
 
-  area.use(arrange);
-
   if (!hook.readonly) {
     history.addPreset(historyPreset(hook));
   }
 
-  return { editor, area, connection, history, arrange, minimap, render, scopes };
+  return { editor, area, connection, history, minimap, render, scopes };
 }
 
 export interface SelectionHandles {

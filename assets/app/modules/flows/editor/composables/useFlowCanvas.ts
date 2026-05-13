@@ -10,7 +10,6 @@ import { ClassicPreset, type NodeEditor } from "rete";
 import type { AreaPlugin } from "rete-area-plugin";
 import type { HistoryPlugin } from "rete-history-plugin";
 import type { ConnectionPlugin } from "rete-connection-plugin";
-import type { AutoArrangePlugin } from "rete-auto-arrange-plugin";
 import type { MinimapPlugin } from "rete-minimap-plugin";
 import type { ScopesPlugin } from "rete-scopes-plugin";
 import { onUnmounted, reactive, ref, shallowRef, type Ref, type ShallowRef } from "vue";
@@ -44,6 +43,7 @@ import { lod, type LodController } from "../services/lod";
 import { navigation, type NavigationHandler } from "../services/navigation";
 
 import { createPlugins, finalizeSetup } from "../services/reteSetup";
+import { runFlowAutoLayout, snapshotFlowPositions } from "../services/flowAutoLayout";
 import { isReparentModifierActive } from "../lib/flow-reparent-state";
 import { SEQUENCE_MIN_HEIGHT, SEQUENCE_MIN_WIDTH, SEQUENCE_PADDING } from "../lib/sequence-layout";
 import type {
@@ -139,9 +139,18 @@ interface SequenceExpansionOpts {
   track: boolean;
 }
 
+type SequenceFitMode = "contain" | "fit";
+
 interface NodeView {
   position: { x: number; y: number };
   element: HTMLElement;
+}
+
+interface NodeBounds {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
 }
 
 export interface FlowCanvasReturn {
@@ -181,7 +190,6 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
   let _area: AreaPlugin<FlowSchemes, FlowAreaExtra> | null = null;
   let _connection: ConnectionPlugin<FlowSchemes> | null = null;
   let _history: HistoryPlugin<FlowSchemes> | null = null;
-  let _arrange: AutoArrangePlugin<FlowSchemes> | null = null;
   let _minimap: MinimapPlugin<FlowSchemes> | null = null;
   let _scopes: ScopesPlugin<FlowSchemes> | null = null;
   let _marqueeTeardown: (() => void) | null = null;
@@ -233,9 +241,6 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     },
     get history() {
       return _history;
-    },
-    get arrange() {
-      return _arrange;
     },
     get scopes() {
       return _scopes!;
@@ -461,7 +466,6 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     _area = plugins.area;
     _connection = plugins.connection;
     _history = plugins.history;
-    _arrange = plugins.arrange;
     _minimap = plugins.minimap;
     _scopes = plugins.scopes;
 
@@ -560,10 +564,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     return _editor.getNodes().filter((node) => node.parent === sequenceId);
   }
 
-  function nodeBounds(
-    node: FlowNode,
-    position?: { x: number; y: number },
-  ): { left: number; top: number; right: number; bottom: number } | null {
+  function nodeBounds(node: FlowNode, position?: { x: number; y: number }): NodeBounds | null {
     const view = nodeView(node.id);
     const resolvedPosition = position ?? view?.position;
     if (!resolvedPosition) {
@@ -619,12 +620,39 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
 
   function expandGeometryToContainBounds(
     geometry: SequenceGeometry,
-    bounds: { left: number; top: number; right: number; bottom: number },
+    bounds: NodeBounds,
   ): SequenceGeometry {
     const left = Math.min(geometry.x, bounds.left - SEQUENCE_PADDING.left);
     const top = Math.min(geometry.y, bounds.top - SEQUENCE_PADDING.top);
     const right = Math.max(geometry.x + geometry.width, bounds.right + SEQUENCE_PADDING.right);
     const bottom = Math.max(geometry.y + geometry.height, bounds.bottom + SEQUENCE_PADDING.bottom);
+
+    return {
+      x: Math.floor(left),
+      y: Math.floor(top),
+      width: Math.max(SEQUENCE_MIN_WIDTH, Math.ceil(right - left)),
+      height: Math.max(SEQUENCE_MIN_HEIGHT, Math.ceil(bottom - top)),
+    };
+  }
+
+  function fitGeometryToChildBounds(
+    sequence: FlowNode,
+    current: SequenceGeometry,
+  ): SequenceGeometry {
+    const childrenBounds = sequenceChildren(sequence.id)
+      .map((child) => nodeBounds(child))
+      .filter((bounds): bounds is NodeBounds => Boolean(bounds));
+
+    if (childrenBounds.length === 0) {
+      return current;
+    }
+
+    const left = Math.min(...childrenBounds.map((bounds) => bounds.left)) - SEQUENCE_PADDING.left;
+    const top = Math.min(...childrenBounds.map((bounds) => bounds.top)) - SEQUENCE_PADDING.top;
+    const right =
+      Math.max(...childrenBounds.map((bounds) => bounds.right)) + SEQUENCE_PADDING.right;
+    const bottom =
+      Math.max(...childrenBounds.map((bounds) => bounds.bottom)) + SEQUENCE_PADDING.bottom;
 
     return {
       x: Math.floor(left),
@@ -691,7 +719,12 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     }
   }
 
-  async function fitSequencesToChildren(): Promise<void> {
+  async function fitSequencesToChildren(
+    opts: {
+      track?: boolean;
+      mode?: SequenceFitMode;
+    } = {},
+  ): Promise<void> {
     if (!_editor || _destroyed) {
       return;
     }
@@ -699,7 +732,10 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     hookProxy.enterLoadingFromServer();
     try {
       for (const sequence of sequencesDeepestFirst()) {
-        await ensureSequenceContainsChildren(sequence, { track: false });
+        await ensureSequenceContainsChildren(sequence, {
+          track: opts.track ?? false,
+          mode: opts.mode ?? "contain",
+        });
       }
       await refreshConnections();
     } finally {
@@ -732,17 +768,20 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
 
   async function ensureSequenceContainsChildren(
     sequence: FlowNode,
-    opts: { track: boolean },
+    opts: { track: boolean; mode?: SequenceFitMode },
   ): Promise<void> {
     const current = sequenceGeometry(sequence);
     if (!current) {
       return;
     }
 
-    const geometry = sequenceChildren(sequence.id).reduce((acc, child) => {
-      const bounds = nodeBounds(child);
-      return bounds ? expandGeometryToContainBounds(acc, bounds) : acc;
-    }, current);
+    const geometry =
+      opts.mode === "fit"
+        ? fitGeometryToChildBounds(sequence, current)
+        : sequenceChildren(sequence.id).reduce((acc, child) => {
+            const bounds = nodeBounds(child);
+            return bounds ? expandGeometryToContainBounds(acc, bounds) : acc;
+          }, current);
 
     if (geometryChanged(current, geometry)) {
       await applySequenceGeometry(sequence, geometry, opts);
@@ -1544,48 +1583,38 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     }
   }
 
-  // --- Auto-layout (client-side via rete-auto-arrange-plugin + elkjs) ---
+  // --- Auto-layout (client-side via local ELK adapter) ---
 
   function snapshotPositions(): Map<string, Position> {
-    const map = new Map<string, Position>();
     if (!_editor || !_area) {
-      return map;
+      return new Map<string, Position>();
     }
-    for (const node of _editor.getNodes()) {
-      const view = _area.nodeViews.get(node.id);
-      if (view) {
-        map.set(node.id, { x: view.position.x, y: view.position.y });
-      }
-    }
-    return map;
+    return snapshotFlowPositions(_area);
   }
 
   async function performAutoLayout(): Promise<void> {
     if (_autoLayoutInProgress) return;
-    if (!_arrange || !_area || !_editor) return;
+    if (!_area || !_editor) return;
     _autoLayoutInProgress = true;
     try {
-      const { ArrangeAppliers } = await import("rete-auto-arrange-plugin");
       const { AreaExtensions } = await import("rete-area-plugin");
 
       const prevPositions = snapshotPositions();
 
-      const applier = new ArrangeAppliers.TransitionApplier<FlowSchemes, never>({
-        duration: 400,
-        timingFunction: (t: number) => t * (2 - t),
-      });
-
       _loadingFromServerCount++;
       try {
-        await _arrange.layout({
-          applier,
-          options: {
-            "elk.algorithm": "layered",
-            "elk.direction": "RIGHT",
-            "elk.spacing.nodeNode": "60",
-            "elk.layered.spacing.nodeNodeBetweenLayers": "120",
+        await runFlowAutoLayout(
+          {
+            editor: _editor,
+            area: _area,
           },
-        });
+          {
+            duration: 400,
+            timingFunction: (t: number) => t * (2 - t),
+          },
+        );
+        await fitSequencesToChildren({ mode: "fit", track: true });
+        flushPendingSequenceGeometry();
       } finally {
         _loadingFromServerCount = Math.max(0, _loadingFromServerCount - 1);
       }

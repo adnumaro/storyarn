@@ -125,9 +125,6 @@ importers:
       rete-area-plugin:
         specifier: ^2.1.5
         version: 2.1.5(rete@2.0.6)
-      rete-auto-arrange-plugin:
-        specifier: ^2.0.2
-        version: 2.0.2(elkjs@0.11.1)(rete-area-plugin@2.1.5(rete@2.0.6))(rete@2.0.6)(web-worker@1.5.0)
       rete-connection-plugin:
         specifier: ^2.0.5
         version: 2.0.5(rete-area-plugin@2.1.5(rete@2.0.6))(rete@2.0.6)
@@ -3236,14 +3233,6 @@ packages:
     resolution: {integrity: sha512-iquEvwkQlcsO4cmgM3Z37TG0AWaE536dfA+lCJAze5YJzVx4RBaViUCqdB4dUA/utSytpBCkiDC4D3ztM9akGQ==}
     peerDependencies:
       rete: ^2.0.0
-
-  rete-auto-arrange-plugin@2.0.2:
-    resolution: {integrity: sha512-VLTnVb9tqHfQKkFMZzpYgYxDWcIa+nXHRC+Po0k+gUh2zJqegkx8bFSA1n6VkMv+wPYa9EnWsTMfUDD3k1QEzg==}
-    peerDependencies:
-      elkjs: ^0.8.2
-      rete: ^2.0.1
-      rete-area-plugin: ^2.0.0
-      web-worker: ^1.2.0
 
   rete-connection-plugin@2.0.5:
     resolution: {integrity: sha512-KFtlOyEJRc0y9STVgo2T+t+j9u5fxiTxbyzPbMCm0uqncb3b8d2ABDIzvWoNo5zQAh2Oz/OvlUovupbzrGzpSg==}
@@ -6816,14 +6805,6 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.29.2
       rete: 2.0.6
-
-  rete-auto-arrange-plugin@2.0.2(elkjs@0.11.1)(rete-area-plugin@2.1.5(rete@2.0.6))(rete@2.0.6)(web-worker@1.5.0):
-    dependencies:
-      '@babel/runtime': 7.29.2
-      elkjs: 0.11.1
-      rete: 2.0.6
-      rete-area-plugin: 2.1.5(rete@2.0.6)
-      web-worker: 1.5.0
 
   rete-connection-plugin@2.0.5(rete-area-plugin@2.1.5(rete@2.0.6))(rete@2.0.6):
     dependencies:
