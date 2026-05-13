@@ -1,0 +1,111 @@
+lib/storyarn_web/live/landing_live/contact.ex
+  s_116fc484719db6::t_b1de19dcc5eb60 14-19
+  s_116fc484719db6::t_43422ed92e0e11 28
+lib/storyarn_web/live/settings_live/connections.ex
+  s_116fc484719db6::t_43422ed92e0e11 29,45
+lib/storyarn_web/live/localization_live/edit.ex
+  s_116fc484719db6::t_9faa7914c93352 15,56
+lib/storyarn_web/live/user_live/confirm_access.ex
+  s_116fc484719db6::t_b1de19dcc5eb60 17-21
+  s_116fc484719db6::t_43422ed92e0e11 32
+lib/storyarn_web/live/settings_live/profile.ex
+  s_116fc484719db6::t_43422ed92e0e11 49,66
+lib/storyarn_web/live/landing_live/index.ex
+  s_116fc484719db6::t_b1de19dcc5eb60 27-32
+  s_116fc484719db6::t_43422ed92e0e11 40
+lib/storyarn_web/live/user_live/login.ex
+  s_116fc484719db6::t_b1de19dcc5eb60 9-13
+  s_116fc484719db6::t_43422ed92e0e11 25
+lib/storyarn_web/live/asset_live/index.ex
+  s_116fc484719db6::t_9faa7914c93352 15,53
+scripts/verify-live-layouts.mjs
+  s_116fc484719db6::t_6c028252e54505 46,48,50-51,74-76
+  s_116fc484719db6::t_8e4f5e5a67229c 83-94
+lib/storyarn_web/live/compare_live/scene.ex
+  s_116fc484719db6::t_43422ed92e0e11 18,31
+lib/storyarn_web/live/version_viewer_live.ex
+  s_116fc484719db6::t_43422ed92e0e11 16,32,38,47,53,69
+lib/storyarn_web/live/project_settings_live/general.ex
+  s_116fc484719db6::t_43422ed92e0e11 19,43
+lib/storyarn_web/live/settings_live/workspace_members.ex
+  s_116fc484719db6::t_43422ed92e0e11 48,65
+lib/storyarn_web/live/sheet_live/show.ex
+  s_116fc484719db6::t_9faa7914c93352 48,98
+  s_116fc484719db6::t_43422ed92e0e11 104,132
+lib/storyarn_web/live/scene_live/show.ex
+  s_116fc484719db6::t_43422ed92e0e11 50,52,145,154
+  s_116fc484719db6::t_9faa7914c93352 64,139
+lib/storyarn_web/live/flow_live/index.ex
+  s_116fc484719db6::t_9faa7914c93352 25,73
+lib/storyarn_web/live/project_settings_live/members.ex
+  s_116fc484719db6::t_43422ed92e0e11 18,37
+lib/storyarn_web/live/user_live/registration.ex
+  s_116fc484719db6::t_b1de19dcc5eb60 12-16
+  s_116fc484719db6::t_43422ed92e0e11 26
+lib/storyarn_web/live/settings_live/security.ex
+  s_116fc484719db6::t_43422ed92e0e11 30,48
+lib/storyarn_web/live/docs_live/show.ex
+  s_116fc484719db6::t_43422ed92e0e11 101,122
+lib/storyarn_web/live/project_settings_live/version_control.ex
+  s_116fc484719db6::t_43422ed92e0e11 17,41
+lib/storyarn_web/live/project_settings_live/localization.ex
+  s_116fc484719db6::t_43422ed92e0e11 18,38
+lib/storyarn_web/live/project_live/show.ex
+  s_116fc484719db6::t_9faa7914c93352 19,49
+lib/storyarn_web/live/project_settings_live/snapshots.ex
+  s_116fc484719db6::t_43422ed92e0e11 21,45
+lib/storyarn_web/live/workspace_live/new.ex
+  s_116fc484719db6::t_9faa7914c93352 24,38
+lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex
+  s_116fc484719db6::t_43422ed92e0e11 49,67
+lib/storyarn_web/live/settings_live/workspace_general.ex
+  s_116fc484719db6::t_43422ed92e0e11 37,59
+lib/storyarn_web/live/export_import_live/index.ex
+  s_116fc484719db6::t_43422ed92e0e11 16,81
+lib/storyarn_web/live/localization_live/report.ex
+  s_116fc484719db6::t_9faa7914c93352 12,52
+lib/storyarn_web/live/workspace_live/show.ex
+  s_116fc484719db6::t_9faa7914c93352 38,65
+lib/storyarn_web/live/scene_live/index.ex
+  s_116fc484719db6::t_9faa7914c93352 26,74
+lib/storyarn_web/live/compare_live/flow.ex
+  s_116fc484719db6::t_43422ed92e0e11 18,31
+lib/storyarn_web/live/project_live/invitation.ex
+  s_116fc484719db6::t_b1de19dcc5eb60 16-20
+  s_116fc484719db6::t_43422ed92e0e11 28
+lib/storyarn_web/live/sheet_live/index.ex
+  s_116fc484719db6::t_9faa7914c93352 26,74
+lib/storyarn_web/live/project_settings_live/trash.ex
+  s_116fc484719db6::t_43422ed92e0e11 18,43
+lib/storyarn_web/live/workspace_live/invitation.ex
+  s_116fc484719db6::t_b1de19dcc5eb60 16-20
+  s_116fc484719db6::t_43422ed92e0e11 28
+lib/storyarn_web/live/flow_live/show.ex
+  s_116fc484719db6::t_43422ed92e0e11 146,163
+  s_116fc484719db6::t_9faa7914c93352 48,122
+lib/storyarn_web/live/compare_live/sheet.ex
+  s_116fc484719db6::t_43422ed92e0e11 19,32
+lib/storyarn_web/live/localization_live/index.ex
+  s_116fc484719db6::t_9faa7914c93352 18,80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "1599452b1cde7eea0a4777b696133f139502352b",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
