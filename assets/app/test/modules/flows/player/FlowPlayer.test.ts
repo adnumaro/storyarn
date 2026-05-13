@@ -24,7 +24,7 @@ function defaultProps() {
     canGoBack: false,
     showContinue: true,
     isFinished: false,
-    sceneBackdropUrl: null,
+    background: null,
     editorUrl: "/flows/123",
     responses: [] as Array<{
       id: string;
@@ -79,23 +79,25 @@ describe("FlowPlayer", () => {
       expect(w.find(".player-slide-dialogue").exists()).toBe(false);
     });
 
-    it("renders scene backdrop when URL is provided", () => {
-      const w = mountPlayer({ sceneBackdropUrl: "/bg.png" });
-      const img = w.find(".scene-backdrop img");
-      expect(img.exists()).toBe(true);
-      expect(img.attributes("src")).toBe("/bg.png");
+    it("renders player background when URL is provided", () => {
+      const w = mountPlayer({
+        background: { url: "/bg.png", position: "top-right", fit: "contain" },
+      });
+      const backdrop = w.find(".player-backdrop");
+      expect(backdrop.exists()).toBe(true);
+      expect(backdrop.attributes("style")).toContain('background-image: url("/bg.png")');
     });
 
-    it("hides scene backdrop when URL is null", () => {
-      const w = mountPlayer({ sceneBackdropUrl: null });
-      expect(w.find(".scene-backdrop").exists()).toBe(false);
+    it("hides player background when URL is null", () => {
+      const w = mountPlayer({ background: null });
+      expect(w.find(".player-backdrop").exists()).toBe(false);
     });
   });
 
   describe("events via pushEvent", () => {
     it("pushes continue event", async () => {
       const w = mountPlayer({ showContinue: true, isFinished: false });
-      const btn = w.find(".player-toolbar-left").findAll("button")[1]!;
+      const btn = w.find(".player-response-continue");
       await btn.trigger("click");
       expect(mockLive.pushEvent).toHaveBeenCalledWith("continue", {});
     });

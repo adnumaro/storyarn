@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { ShieldQuestion } from "lucide-vue-next";
+import { ArrowRight, ShieldQuestion } from "lucide-vue-next";
 
 export interface ResponseData {
   id: string;
@@ -10,13 +10,19 @@ export interface ResponseData {
   has_condition: boolean;
 }
 
-const { responses, playerMode } = defineProps<{
+const {
+  responses,
+  playerMode,
+  showContinue = false,
+} = defineProps<{
   responses: ResponseData[];
   playerMode: "player" | "analysis";
+  showContinue?: boolean;
 }>();
 
 const emit = defineEmits<{
   choose: [responseId: string];
+  continue: [];
 }>();
 
 const visibleResponses = computed(() => {
@@ -25,10 +31,24 @@ const visibleResponses = computed(() => {
   }
   return responses;
 });
+
+const shouldShowContinue = computed(() => showContinue && visibleResponses.value.length === 0);
 </script>
 
 <template>
-  <div v-if="visibleResponses.length > 0" class="player-choices">
+  <div v-if="visibleResponses.length > 0 || shouldShowContinue" class="player-choices">
+    <button
+      v-if="shouldShowContinue"
+      type="button"
+      class="player-response player-response-continue"
+      @click="emit('continue')"
+    >
+      <span class="player-response-number player-response-icon">
+        <ArrowRight :size="14" />
+      </span>
+      <span class="player-response-text">{{ $t("flows.player.continue") }}</span>
+    </button>
+
     <button
       v-for="resp in visibleResponses"
       :key="resp.id"

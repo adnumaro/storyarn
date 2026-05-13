@@ -1,20 +1,17 @@
 <script setup lang="ts">
-import { ArrowLeft, ArrowRight, Eye, ScanEye, RotateCcw, X } from "lucide-vue-next";
+import { ArrowLeft, Eye, ScanEye, RotateCcw, X } from "lucide-vue-next";
 import { Button } from "@components/ui/button";
 import { Toggle } from "@components/ui/toggle";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 
-const { canGoBack, showContinue, playerMode, isFinished, editorUrl } = defineProps<{
+const { canGoBack, playerMode, editorUrl } = defineProps<{
   canGoBack: boolean;
-  showContinue: boolean;
   playerMode: "player" | "analysis";
-  isFinished: boolean;
   editorUrl: string;
 }>();
 
 const emit = defineEmits<{
   "go-back": [];
-  continue: [];
   "toggle-mode": [];
   restart: [];
 }>();
@@ -26,12 +23,6 @@ const emit = defineEmits<{
       <ToolbarTooltip :label="$t('flows.player.back')">
         <Button variant="ghost" size="icon-sm" :disabled="!canGoBack" @click="emit('go-back')">
           <ArrowLeft :size="16" />
-        </Button>
-      </ToolbarTooltip>
-      <ToolbarTooltip v-if="showContinue && !isFinished" :label="$t('flows.player.continue')">
-        <Button size="sm" @click="emit('continue')">
-          {{ $t("flows.player.continue") }}
-          <ArrowRight :size="16" />
         </Button>
       </ToolbarTooltip>
     </div>

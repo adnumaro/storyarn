@@ -38,7 +38,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
         can-go-back={@can_go_back}
         show-continue={show_continue?(@slide)}
         is-finished={@engine_state.status == :finished}
-        scene-backdrop-url={scene_backdrop_url(@scene_backdrop)}
+        background={player_background(assigns)}
         editor-url={editor_url(assigns)}
         responses={serialize_responses(@slide)}
       />
@@ -112,7 +112,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
             |> assign(:workspace, project.workspace)
             |> assign(:slide, slide)
             |> assign(:player_mode, :player)
-            |> assign(:can_go_back, engine_state.snapshots != [])
+            |> assign(:can_go_back, can_go_back?(engine_state, nodes_map))
             |> assign(:scene_backdrop, scene_backdrop)
             |> assign(:current_scene_id, scene_id)
 
@@ -167,7 +167,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
           |> assign(:workspace, project.workspace)
           |> assign(:slide, slide)
           |> assign(:player_mode, restored.player_mode)
-          |> assign(:can_go_back, restored.engine_state.snapshots != [])
+          |> assign(:can_go_back, can_go_back?(restored.engine_state, restored.nodes))
           |> assign(:scene_backdrop, restored[:scene_backdrop])
           |> assign(:current_scene_id, restored[:current_scene_id])
         end
@@ -185,7 +185,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
     if state.status in [:finished, :waiting_input] and state.pending_choices != nil do
       {:noreply, socket}
     else
-      case PlayerEngine.step_until_interactive(state, nodes, connections) do
+      case PlayerEngine.step_until_interactive(state, nodes, connections, advance_current_dialogue: true) do
         {:flow_jump, new_state, target_flow_id, _skipped} ->
           handle_flow_jump(socket, new_state, target_flow_id)
 
@@ -236,12 +236,16 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   end
 
   def handle_event("go_back", _params, socket) do
-    case Flows.evaluator_step_back(socket.assigns.engine_state) do
-      {:ok, new_state} ->
-        {:noreply, update_slide(socket, new_state)}
+    if can_go_back?(socket.assigns.engine_state, socket.assigns.nodes) do
+      case Flows.evaluator_step_back(socket.assigns.engine_state) do
+        {:ok, new_state} ->
+          {:noreply, update_slide_after_back(socket, new_state)}
 
-      {:error, :no_history} ->
-        {:noreply, socket}
+        {:error, :no_history} ->
+          {:noreply, socket}
+      end
+    else
+      {:noreply, socket}
     end
   end
 
@@ -442,8 +446,30 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
     socket
     |> assign(:engine_state, new_state)
     |> assign(:slide, slide)
-    |> assign(:can_go_back, new_state.snapshots != [])
+    |> assign(:can_go_back, can_go_back?(new_state, nodes))
   end
+
+  defp update_slide_after_back(socket, new_state) do
+    node = Map.get(socket.assigns.nodes, new_state.current_node_id)
+
+    if renderable_node?(node) do
+      update_slide(socket, new_state)
+    else
+      case PlayerEngine.step_until_interactive(new_state, socket.assigns.nodes, socket.assigns.connections) do
+        {_status, resolved_state, _skipped} -> update_slide(socket, resolved_state)
+        _ -> update_slide(socket, new_state)
+      end
+    end
+  end
+
+  defp can_go_back?(state, nodes) do
+    Enum.any?(state.snapshots, fn snapshot ->
+      snapshot.node_id != state.current_node_id and renderable_node?(Map.get(nodes, snapshot.node_id))
+    end)
+  end
+
+  defp renderable_node?(%{type: type}) when type in ["dialogue", "exit"], do: true
+  defp renderable_node?(_), do: false
 
   defp maybe_update_scene_backdrop(socket, new_scene_id) do
     if new_scene_id == socket.assigns.current_scene_id do
@@ -508,11 +534,45 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
     end)
   end
 
-  defp scene_backdrop_url(%{background_asset: asset}) when not is_nil(asset) do
-    Storyarn.Assets.Asset.display_url(asset)
+  defp player_background(assigns) do
+    assigns
+    |> active_sequence_background()
+    |> serialize_background()
   end
 
-  defp scene_backdrop_url(_), do: nil
+  defp active_sequence_background(%{engine_state: state, nodes: nodes}) do
+    nodes
+    |> Map.get(state.current_node_id)
+    |> nearest_sequence_background(nodes)
+  end
+
+  defp nearest_sequence_background(%{parent_id: parent_id}, nodes), do: sequence_background(parent_id, nodes)
+  defp nearest_sequence_background(_, _nodes), do: nil
+
+  defp sequence_background(nil, _nodes), do: nil
+
+  defp sequence_background(sequence_id, nodes) do
+    case Map.get(nodes, sequence_id) do
+      %{sequence_config: %{background_url: url} = config} when is_binary(url) and url != "" ->
+        config
+
+      %{parent_id: parent_id} ->
+        sequence_background(parent_id, nodes)
+
+      _ ->
+        nil
+    end
+  end
+
+  defp serialize_background(%{background_url: url} = background) do
+    %{
+      url: url,
+      position: background[:background_position] || "center",
+      fit: background[:background_fit] || "cover"
+    }
+  end
+
+  defp serialize_background(_), do: nil
 
   defp editor_url(assigns) do
     ~p"/workspaces/#{assigns.workspace.slug}/projects/#{assigns.project.slug}/flows/#{assigns.flow.id}"

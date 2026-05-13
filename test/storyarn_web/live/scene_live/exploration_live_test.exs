@@ -2052,10 +2052,8 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       FlowsFixtures.connection_fixture(sub_flow, sub_entry, sub_dialogue)
       FlowsFixtures.connection_fixture(sub_flow, sub_dialogue, sub_exit)
 
-      # Create the main flow: entry -> dialogue -> subflow_node -> dialogue_after -> exit
-      # All dialogues have no responses, so the engine auto-advances through them.
-      # The full chain: enter flow -> dialogue_before -> subflow -> jump to sub flow ->
-      # sub_dialogue -> sub_exit (caller_return) -> flow_return -> dialogue_after -> exit
+      # Create the main flow: entry -> dialogue -> subflow_node -> dialogue_after -> exit.
+      # Dialogues without choices wait for explicit continue before the engine advances.
       flow = FlowsFixtures.flow_fixture(project, %{name: "Caller Flow"})
       entry = get_entry_node(flow)
       exit_node = get_exit_node(flow)
@@ -2098,14 +2096,17 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
 
       {:ok, view, _html} = live(conn, explore_path(project, scene))
 
-      # Enter flow — engine auto-advances through dialogue_before -> subflow ->
-      # flow_jump to sub flow -> sub_dialogue -> sub_exit (caller_return) ->
-      # flow_return to parent -> dialogue_after -> exit.
+      # Enter flow and continue through each dialogue-only slide:
+      # dialogue_before -> subflow -> sub_dialogue -> caller_return -> dialogue_after -> exit.
       # This exercises the full handle_exploration_flow_jump + flow_return path.
       render_click(view, "exploration_element_click", %{
         "target_type" => "flow",
         "target_id" => to_string(flow.id)
       })
+
+      render_click(view, "flow_continue")
+      render_click(view, "flow_continue")
+      render_click(view, "flow_continue")
 
       # Verify the code path completed without crashing
       vue = get_exploration_vue(view)

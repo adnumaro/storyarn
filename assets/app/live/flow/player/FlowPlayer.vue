@@ -9,13 +9,19 @@ import type { SlideData } from "@modules/flows/player/components/PlayerSlide.vue
 import type { ResponseData } from "@modules/flows/player/components/PlayerChoices.vue";
 import type { OutcomeData } from "@modules/flows/player/components/PlayerOutcome.vue";
 
+interface PlayerBackground {
+  url: string;
+  position?: string | null;
+  fit?: "cover" | "contain" | "fill" | null;
+}
+
 const {
   slide,
   playerMode,
   canGoBack,
   showContinue,
   isFinished,
-  sceneBackdropUrl = null,
+  background = null,
   editorUrl,
   responses = [],
 } = defineProps<{
@@ -24,7 +30,7 @@ const {
   canGoBack: boolean;
   showContinue: boolean;
   isFinished: boolean;
-  sceneBackdropUrl: string | null;
+  background: PlayerBackground | null;
   editorUrl: string;
   responses: ResponseData[];
 }>();
@@ -56,6 +62,16 @@ const visibleResponses = computed(() => {
     return responses.filter((r) => r.valid);
   }
   return responses;
+});
+
+const backgroundStyle = computed(() => {
+  if (!background?.url) return {};
+
+  return {
+    backgroundImage: `url(${background.url})`,
+    backgroundPosition: (background.position || "center").replace("-", " "),
+    backgroundSize: background.fit === "fill" ? "100% 100%" : background.fit || "cover",
+  };
 });
 
 const EDITABLE_TAGS = new Set(["INPUT", "TEXTAREA", "SELECT"]);
@@ -107,40 +123,42 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="player-main relative">
-    <!-- Scene backdrop -->
-    <div v-if="sceneBackdropUrl" class="scene-backdrop scene-backdrop-transition">
-      <img :src="sceneBackdropUrl" alt="" class="scene-backdrop-img" draggable="false" />
-    </div>
+  <div class="player-frame">
+    <PlayerToolbar
+      :can-go-back="canGoBack"
+      :player-mode="playerMode"
+      :editor-url="editorUrl"
+      @go-back="onGoBack"
+      @toggle-mode="onToggleMode"
+      @restart="onRestart"
+    />
 
-    <!-- Flow content -->
-    <div class="relative z-10 flex flex-col items-center justify-center flex-1 w-full">
+    <div class="player-main relative">
+      <div
+        v-if="background?.url"
+        class="player-backdrop player-backdrop-transition"
+        :style="backgroundStyle"
+      />
+
       <PlayerOutcome
         v-if="slide.type === 'outcome'"
         :slide="slide as OutcomeData"
         :editor-url="editorUrl"
         @restart="onRestart"
       />
-      <template v-else>
-        <PlayerSlide :slide="slide as SlideData" />
-        <PlayerChoices
-          :responses="responses"
-          :player-mode="playerMode"
-          @choose="onChooseResponse"
-        />
-      </template>
+
+      <div v-else class="player-dialogue-overlay">
+        <div class="player-dialogue-panel">
+          <PlayerSlide :slide="slide as SlideData" />
+          <PlayerChoices
+            :responses="responses"
+            :player-mode="playerMode"
+            :show-continue="showContinue && !isFinished"
+            @choose="onChooseResponse"
+            @continue="onContinue"
+          />
+        </div>
+      </div>
     </div>
   </div>
-
-  <PlayerToolbar
-    :can-go-back="canGoBack"
-    :show-continue="showContinue"
-    :player-mode="playerMode"
-    :is-finished="isFinished"
-    :editor-url="editorUrl"
-    @go-back="onGoBack"
-    @continue="onContinue"
-    @toggle-mode="onToggleMode"
-    @restart="onRestart"
-  />
 </template>

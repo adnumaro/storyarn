@@ -6,9 +6,7 @@ function mountToolbar(overrides: Record<string, unknown> = {}) {
   return mount(PlayerToolbar, {
     props: {
       canGoBack: false,
-      showContinue: false,
       playerMode: "player" as const,
-      isFinished: false,
       editorUrl: "/workspaces/ws/projects/proj/flows/123",
       ...overrides,
     },
@@ -45,30 +43,6 @@ describe("PlayerToolbar", () => {
       const btn = w.find(".player-toolbar-left").findAll("button")[0]!;
       await btn.trigger("click");
       expect(w.emitted("go-back")).toHaveLength(1);
-    });
-  });
-
-  describe("continue button", () => {
-    it("shows when showContinue is true and not finished", () => {
-      const w = mountToolbar({ showContinue: true, isFinished: false });
-      expect(w.find(".player-toolbar-left").findAll("button")).toHaveLength(2);
-    });
-
-    it("hides when showContinue is false", () => {
-      const w = mountToolbar({ showContinue: false });
-      expect(w.find(".player-toolbar-left").findAll("button")).toHaveLength(1);
-    });
-
-    it("hides when isFinished is true", () => {
-      const w = mountToolbar({ showContinue: true, isFinished: true });
-      expect(w.find(".player-toolbar-left").findAll("button")).toHaveLength(1);
-    });
-
-    it("emits continue on click", async () => {
-      const w = mountToolbar({ showContinue: true, isFinished: false });
-      const btn = w.find(".player-toolbar-left").findAll("button")[1]!;
-      await btn.trigger("click");
-      expect(w.emitted("continue")).toHaveLength(1);
     });
   });
 

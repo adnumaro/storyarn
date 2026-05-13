@@ -9,6 +9,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
   use StoryarnWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
+  import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
 
@@ -221,7 +222,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
   # ===========================================================================
 
   describe "continue" do
-    test "dialogue without responses auto-advances to exit on mount", %{
+    test "dialogue without responses waits for continue before advancing", %{
       conn: conn,
       project: project
     } do
@@ -250,7 +251,56 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
       {:ok, view, _html} = live(conn, player_url(project, flow))
 
       vue = get_player_vue(view)
-      # Dialogue without responses auto-advances to exit on mount
+      assert vue.props["slide"]["type"] == "dialogue"
+      assert vue.props["slide"]["text"] =~ "First dialogue"
+      assert vue.props["show-continue"] == true
+
+      render_click(view, "continue")
+
+      vue = get_player_vue(view)
+      assert vue.props["slide"]["type"] == "outcome"
+    end
+
+    test "dialogue with a single valid response waits for continue before auto-selecting it", %{
+      conn: conn,
+      project: project
+    } do
+      flow = flow_fixture(project, %{name: "Single Response Flow"})
+      {entry, auto_exit} = get_auto_nodes(flow)
+      response_id = Ecto.UUID.generate()
+
+      Flows.update_node(auto_exit, %{data: %{"label" => "Done"}})
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "<p>Read this before choosing.</p>",
+            "speaker_sheet_id" => nil,
+            "stage_directions" => "",
+            "menu_text" => "",
+            "responses" => [
+              %{"id" => response_id, "text" => "Continue", "condition" => "", "instruction" => ""}
+            ]
+          },
+          position_x: 200.0,
+          position_y: 0.0
+        })
+
+      _conn1 = connection_fixture(flow, entry, dialogue)
+      _conn2 = connection_fixture(flow, dialogue, auto_exit, %{source_pin: response_id})
+
+      {:ok, view, _html} = live(conn, player_url(project, flow))
+
+      vue = get_player_vue(view)
+      assert vue.props["slide"]["type"] == "dialogue"
+      assert vue.props["slide"]["text"] =~ "Read this before choosing."
+      assert vue.props["responses"] == []
+      assert vue.props["show-continue"] == true
+
+      render_click(view, "continue")
+
+      vue = get_player_vue(view)
       assert vue.props["slide"]["type"] == "outcome"
     end
 
@@ -466,6 +516,52 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
 
       vue = get_player_vue(view)
       assert vue.props["slide"]["text"] =~ "With backdrop"
+      assert is_nil(vue.props["background"])
+    end
+
+    test "uses nearest sequence background as player background", %{conn: conn, project: project, user: user} do
+      asset = image_asset_fixture(project, user, %{url: "/uploads/sequence-bg.png"})
+      flow = flow_fixture(project, %{name: "Sequence Background Flow"})
+      {entry, _exit} = get_auto_nodes(flow)
+
+      {:ok, sequence} =
+        Flows.create_sequence(flow.id, %{
+          "name" => "Intro Sequence"
+        })
+
+      {:ok, sequence} =
+        Flows.update_sequence(sequence, %{
+          "background_asset_id" => asset.id,
+          "background_position" => "top-right",
+          "background_fit" => "contain"
+        })
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          parent_id: sequence.id,
+          data: %{
+            "text" => "<p>Inside sequence</p>",
+            "speaker_sheet_id" => nil,
+            "stage_directions" => "",
+            "menu_text" => "",
+            "responses" => []
+          },
+          position_x: 200.0,
+          position_y: 0.0
+        })
+
+      _conn = connection_fixture(flow, entry, dialogue)
+
+      {:ok, view, _html} = live(conn, player_url(project, flow))
+
+      vue = get_player_vue(view)
+
+      assert vue.props["background"] == %{
+               "url" => "/uploads/sequence-bg.png",
+               "position" => "top-right",
+               "fit" => "contain"
+             }
     end
   end
 
@@ -781,7 +877,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
       assert vue.props["show-continue"] == false
     end
 
-    test "hides continue button when engine is finished", %{
+    test "shows continue button when dialogue has no choices", %{
       conn: conn,
       project: project
     } do
@@ -790,8 +886,8 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
       {:ok, view, _html} = live(conn, player_url(project, flow))
 
       vue = get_player_vue(view)
-      # Either is_finished is true or show_continue is false
-      assert vue.props["is-finished"] == true or vue.props["show-continue"] == false
+      assert vue.props["is-finished"] == false
+      assert vue.props["show-continue"] == true
     end
 
     test "passes can-go-back as false initially", %{conn: conn, project: project} do

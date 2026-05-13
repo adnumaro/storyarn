@@ -318,7 +318,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     sheets_map = socket.assigns.flow_sheets_map
     project_id = socket.assigns.project.id
 
-    case PlayerEngine.step_until_interactive(state, nodes, connections) do
+    case PlayerEngine.step_until_interactive(state, nodes, connections, advance_current_dialogue: true) do
       {:flow_jump, new_state, target_flow_id, _skipped} ->
         handle_exploration_flow_jump(socket, new_state, target_flow_id)
 
@@ -375,7 +375,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     %{engine_state: state} = socket.assigns.active_flow
 
     case Flows.evaluator_step_back(state) do
-      {:ok, new_state} -> {:noreply, update_flow_slide(socket, new_state)}
+      {:ok, new_state} -> {:noreply, update_flow_slide_after_back(socket, new_state)}
       {:error, :no_history} -> {:noreply, socket}
     end
   end
@@ -828,6 +828,22 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
     assign(socket, :active_flow, %{af | engine_state: new_state, slide: slide})
   end
+
+  defp update_flow_slide_after_back(socket, new_state) do
+    node = Map.get(socket.assigns.flow_nodes, new_state.current_node_id)
+
+    if renderable_flow_node?(node) do
+      update_flow_slide(socket, new_state)
+    else
+      case PlayerEngine.step_until_interactive(new_state, socket.assigns.flow_nodes, socket.assigns.flow_connections) do
+        {_status, resolved_state, _skipped} -> update_flow_slide(socket, resolved_state)
+        _ -> update_flow_slide(socket, new_state)
+      end
+    end
+  end
+
+  defp renderable_flow_node?(%{type: type}) when type in ["dialogue", "exit"], do: true
+  defp renderable_flow_node?(_), do: false
 
   # Builds a slide from the current engine state. If the slide has no renderable
   # content (type :empty), auto-advances the engine until it finds a node with

@@ -3,9 +3,13 @@ import { mount } from "@vue/test-utils";
 import PlayerChoices from "../../../../modules/flows/player/components/PlayerChoices.vue";
 import type { ResponseData } from "../../../../modules/flows/player/components/PlayerChoices.vue";
 
-function mountChoices(responses: ResponseData[], playerMode: "player" | "analysis" = "player") {
+function mountChoices(
+  responses: ResponseData[],
+  playerMode: "player" | "analysis" = "player",
+  showContinue = false,
+) {
   return mount(PlayerChoices, {
-    props: { responses, playerMode },
+    props: { responses, playerMode, showContinue },
   });
 }
 
@@ -74,6 +78,25 @@ describe("PlayerChoices", () => {
     it("renders nothing when responses list is empty", () => {
       const w = mountChoices([], "player");
       expect(w.find(".player-choices").exists()).toBe(false);
+    });
+
+    it("renders continue as a response when there are no visible responses", async () => {
+      const w = mountChoices([], "player", true);
+
+      expect(w.find(".player-response-continue").exists()).toBe(true);
+
+      await w.find(".player-response-continue").trigger("click");
+      expect(w.emitted("continue")).toHaveLength(1);
+    });
+
+    it("does not render continue when valid responses are visible", () => {
+      const w = mountChoices(
+        [{ id: "r1", text: "Open", valid: true, number: 1, has_condition: false }],
+        "player",
+        true,
+      );
+
+      expect(w.find(".player-response-continue").exists()).toBe(false);
     });
   });
 

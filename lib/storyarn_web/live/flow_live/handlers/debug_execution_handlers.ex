@@ -11,6 +11,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
   import Phoenix.LiveView, only: [push_event: 3, push_patch: 2]
 
   alias Storyarn.Flows
+  alias Storyarn.Flows.SequenceConfig
+  alias Storyarn.Repo
 
   @doc "Advances the debugger by one step. May trigger cross-flow navigation."
   def handle_debug_step(socket) do
@@ -351,8 +353,29 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
   def build_nodes_map(flow_id) do
     flow_id
     |> Flows.list_nodes()
-    |> Map.new(fn node -> {node.id, %{id: node.id, type: node.type, data: node.data || %{}}} end)
+    |> Repo.preload(sequence_config: [:background_asset])
+    |> Map.new(fn node -> {node.id, build_node_map(node)} end)
   end
+
+  defp build_node_map(node) do
+    %{
+      id: node.id,
+      type: node.type,
+      data: node.data || %{},
+      parent_id: node.parent_id,
+      sequence_config: serialize_sequence_config(node.sequence_config)
+    }
+  end
+
+  defp serialize_sequence_config(%SequenceConfig{} = config) do
+    %{
+      background_url: Storyarn.Assets.display_url(config.background_asset),
+      background_position: config.background_position,
+      background_fit: config.background_fit
+    }
+  end
+
+  defp serialize_sequence_config(_), do: nil
 
   @doc "Builds a list of connection maps for the debugger engine."
   def build_connections(flow_id) do

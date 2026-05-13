@@ -34,10 +34,13 @@ const { slide } = defineProps<{
         {{ slide.speaker_name }}
       </div>
     </div>
-    <!-- eslint-disable-next-line vue/no-v-html -->
-    <div class="player-text" v-html="slide.text" />
-    <div v-if="slide.stage_directions" class="player-stage-directions">
-      {{ slide.stage_directions }}
+
+    <div class="player-dialogue-body">
+      <!-- eslint-disable-next-line vue/no-v-html -->
+      <div class="player-text" v-html="slide.text" />
+      <div v-if="slide.stage_directions" class="player-stage-directions">
+        {{ slide.stage_directions }}
+      </div>
     </div>
   </div>
 

@@ -154,7 +154,6 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
 
   describe "step_until_interactive/4 with entry -> dialogue (no responses)" do
     setup do
-      # Dialogue with no responses auto-advances via default output
       dialogue_data = %{"text" => "Narrator speaks.", "responses" => []}
 
       nodes =
@@ -174,17 +173,74 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
       %{nodes: nodes, connections: connections, state: state}
     end
 
-    test "dialogue with no responses returns :ok (not non-interactive, loop stops)", ctx do
-      {status, _state, skipped} =
+    test "dialogue with no responses waits for explicit continue", ctx do
+      {status, final_state, skipped} =
         PlayerEngine.step_until_interactive(ctx.state, ctx.nodes, ctx.connections)
 
-      # Dialogue with no responses auto-selects and returns {:ok, state}.
-      # Since "dialogue" is NOT in @non_interactive_types, the loop stops with :ok.
       assert status == :ok
-      # Entry was traversed and is non-interactive
+      assert final_state.current_node_id == 2
+      assert final_state.status == :paused
       assert {1, "entry"} in skipped
-      # Dialogue is NOT in skipped (it's the stop point)
       refute Enum.any?(skipped, fn {_id, type} -> type == "dialogue" end)
+    end
+
+    test "advance_current_dialogue advances after the user continues", ctx do
+      {:ok, stopped_state, _skipped} =
+        PlayerEngine.step_until_interactive(ctx.state, ctx.nodes, ctx.connections)
+
+      {status, final_state, skipped} =
+        PlayerEngine.step_until_interactive(stopped_state, ctx.nodes, ctx.connections, advance_current_dialogue: true)
+
+      assert stopped_state.current_node_id == 2
+      assert status == :finished
+      assert final_state.current_node_id == 3
+      refute {2, "dialogue"} in skipped
+    end
+  end
+
+  describe "step_until_interactive/4 with entry -> dialogue (single response)" do
+    setup do
+      dialogue_data = %{
+        "text" => "Narrator speaks.",
+        "responses" => [%{"id" => "r1", "text" => "Continue", "condition" => ""}]
+      }
+
+      nodes =
+        nodes_map([
+          make_node(1, "entry"),
+          make_node(2, "dialogue", dialogue_data),
+          make_node(3, "exit")
+        ])
+
+      connections = [
+        make_connection(1, 2),
+        make_connection(2, 3, "r1")
+      ]
+
+      state = init_state(1)
+
+      %{nodes: nodes, connections: connections, state: state}
+    end
+
+    test "single response waits for explicit continue", ctx do
+      {status, final_state, skipped} =
+        PlayerEngine.step_until_interactive(ctx.state, ctx.nodes, ctx.connections)
+
+      assert status == :ok
+      assert final_state.current_node_id == 2
+      assert final_state.status == :paused
+      assert {1, "entry"} in skipped
+    end
+
+    test "advance_current_dialogue auto-selects the single response after continue", ctx do
+      {:ok, stopped_state, _skipped} =
+        PlayerEngine.step_until_interactive(ctx.state, ctx.nodes, ctx.connections)
+
+      {status, final_state, _skipped} =
+        PlayerEngine.step_until_interactive(stopped_state, ctx.nodes, ctx.connections, advance_current_dialogue: true)
+
+      assert status == :finished
+      assert final_state.current_node_id == 3
     end
   end
 
