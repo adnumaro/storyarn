@@ -49,6 +49,11 @@ export interface FlowSequenceScopesOptions {
   onReparented: SequenceReparentListener;
 }
 
+export interface FlowSequenceStackingOptions {
+  area: AreaPlugin<FlowSchemes, FlowAreaExtra>;
+  editor: NodeEditor<FlowSchemes>;
+}
+
 function getScopeNode(
   editor: NodeEditor<FlowSchemes>,
   nodeId: string,
@@ -242,10 +247,7 @@ function bringConnectionBack(
   }
 }
 
-function bringForward(
-  nodeId: string,
-  opts: Pick<FlowSequenceScopesOptions, "area" | "editor">,
-): void {
+function bringForward(nodeId: string, opts: FlowSequenceStackingOptions): void {
   const view = nodeView(opts.area, nodeId);
   const connections = scopeConnections(opts.editor).filter(
     (connection) => connection.source === nodeId || connection.target === nodeId,
@@ -261,6 +263,41 @@ function bringForward(
 
   for (const child of directChildren(opts.editor, nodeId)) {
     bringForward(child.id, opts);
+  }
+}
+
+function topStackingRoot(
+  node: SequenceScopeNode,
+  editor: NodeEditor<FlowSchemes>,
+): SequenceScopeNode {
+  let current = node;
+  while (current.parent) {
+    const parent = getScopeNode(editor, current.parent);
+    if (!parent) {
+      break;
+    }
+    current = parent;
+  }
+  return current;
+}
+
+export function normalizeFlowSequenceStacking(
+  opts: FlowSequenceStackingOptions,
+  nodeId?: string,
+): void {
+  if (nodeId) {
+    const node = getScopeNode(opts.editor, nodeId);
+    if (node) {
+      bringForward(topStackingRoot(node, opts.editor).id, opts);
+    }
+    return;
+  }
+
+  for (const node of opts.editor.getNodes()) {
+    const scopeNode = node as unknown as SequenceScopeNode;
+    if (!scopeNode.parent) {
+      bringForward(scopeNode.id, opts);
+    }
   }
 }
 
@@ -289,13 +326,19 @@ async function reparentNodes(
     .map((id) => getScopeNode(opts.editor, id))
     .filter((node): node is SequenceScopeNode => Boolean(node));
   const newParentId = resolveDropTarget(pointer, movingIds, opts.editor, opts.area)?.id;
+  const changedNodes: SequenceScopeNode[] = [];
 
   for (const node of movingNodes) {
     const previousParent = node.parent;
     node.parent = newParentId;
     if (previousParent !== newParentId) {
+      changedNodes.push(node);
       opts.onReparented(node.id, newParentId);
     }
+  }
+
+  for (const node of changedNodes) {
+    normalizeFlowSequenceStacking(opts, node.id);
   }
 }
 
@@ -417,7 +460,7 @@ export function installFlowSequenceScopes(
       markDragActive();
       const pickedId = (context.data as { id?: string } | undefined)?.id;
       if (pickedId) {
-        bringForward(pickedId, opts);
+        normalizeFlowSequenceStacking(opts, pickedId);
       }
     } else if (context.type === "pointerup") {
       markDragInactive();

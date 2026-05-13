@@ -14,7 +14,7 @@ import type { NodeData } from "../lib/node-configs";
 import { needsRebuild } from "../lib/node-configs";
 import type { FlowSchemes, FlowAreaExtra, FlowConnection } from "../lib/rete-schemes";
 import type { SheetMapEntry } from "../../types";
-export type { SheetMapEntry };
+import { normalizeFlowSequenceStacking } from "./flowSequenceScopes";
 import {
   CreateNodeAction,
   DeleteNodeAction,
@@ -23,6 +23,8 @@ import {
   NODE_DATA_COALESCE_MS,
   NodeDataAction,
 } from "./historyPreset";
+
+export type { SheetMapEntry };
 
 // ---------------------------------------------------------------------------
 // Server event payload interfaces
@@ -500,6 +502,7 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
       hook.enterLoadingFromServer();
       try {
         node.parent = newParent;
+        normalizeFlowSequenceStacking({ area: hook.area, editor: hook.editor }, node.id);
         await hook.fitSequencesToChildren();
       } finally {
         hook.exitLoadingFromServer();

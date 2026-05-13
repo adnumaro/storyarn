@@ -9,6 +9,7 @@ import {
 import type { FlowContext } from "@modules/flows/editor/services/editorHandlers";
 import {
   installFlowSequenceScopes,
+  normalizeFlowSequenceStacking,
   type SequenceReparentListener,
 } from "@modules/flows/editor/services/flowSequenceScopes";
 import type { FlowAreaExtra, FlowSchemes } from "@modules/flows/editor/lib/rete-schemes";
@@ -57,6 +58,7 @@ function createHarness() {
     }
   >();
   const connections: { id: string; source: string; target: string }[] = [];
+  const connectionViews = new Map<string, { element: HTMLElement }>();
   const pipes: Pipe[] = [];
   const holder = document.createElement("div");
   const pointer = { x: 0, y: 0 };
@@ -76,6 +78,7 @@ function createHarness() {
 
   const area = {
     nodeViews,
+    connectionViews,
     area: {
       pointer,
       content: {
@@ -135,6 +138,15 @@ function createHarness() {
     return node;
   }
 
+  function addConnection(id: number, source: FlowNode, target: FlowNode): void {
+    const connection = { id: `conn-${id}`, source: source.id, target: target.id };
+    const element = document.createElement("svg");
+    element.dataset.nodeId = connection.id;
+    holder.appendChild(element);
+    connections.push(connection);
+    connectionViews.set(connection.id, { element });
+  }
+
   function select(...ids: (string | number)[]): void {
     flowContext.selectedReteIds = new Set(ids);
   }
@@ -153,7 +165,10 @@ function createHarness() {
   }
 
   return {
+    addConnection,
     addNode,
+    area,
+    editor,
     emit,
     elementOrder,
     position,
@@ -328,5 +343,40 @@ describe("installFlowSequenceScopes", () => {
     await h.emit({ type: "nodepicked", data: { id: sequence.id } });
 
     expect(h.elementOrder()).toEqual([outside.id, sequence.id, child.id]);
+  });
+
+  it("keeps child connections above sequence surfaces after picking a sequence", async () => {
+    const h = createHarness();
+    const outside = h.addNode("dialogue", 1, { x: 500, y: 0 });
+    const sequence = h.addNode("sequence", 2, { x: 0, y: 0, width: 300, height: 200 });
+    const child = h.addNode("dialogue", 3, { x: 40, y: 50, parent: sequence.id });
+    h.addConnection(1, child, outside);
+
+    await h.emit({ type: "nodepicked", data: { id: sequence.id } });
+
+    expect(h.elementOrder()).toEqual([outside.id, sequence.id, "conn-1", child.id]);
+  });
+
+  it("normalizes stacking after a reparent changes hierarchy without a pick", async () => {
+    const h = createHarness();
+    const child = h.addNode("dialogue", 1, { x: 500, y: 0 });
+    const sequence = h.addNode("sequence", 2, { x: 0, y: 0, width: 300, height: 200 });
+    child.parent = sequence.id;
+
+    normalizeFlowSequenceStacking({ area: h.area, editor: h.editor }, child.id);
+
+    expect(h.elementOrder()).toEqual([sequence.id, child.id]);
+  });
+
+  it("keeps new connections visible above sequence surfaces", async () => {
+    const h = createHarness();
+    const sequence = h.addNode("sequence", 1, { x: 0, y: 0, width: 300, height: 200 });
+    const child = h.addNode("dialogue", 2, { x: 40, y: 50, parent: sequence.id });
+    const outside = h.addNode("dialogue", 3, { x: 500, y: 0 });
+    h.addConnection(1, child, outside);
+
+    await h.emit({ type: "connectioncreated", data: { id: "conn-1" } });
+
+    expect(h.elementOrder()).toEqual([sequence.id, child.id, "conn-1", outside.id]);
   });
 });

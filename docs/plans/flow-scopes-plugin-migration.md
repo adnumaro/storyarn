@@ -103,6 +103,13 @@ Baseline audit from 2026-05-13:
   - unit tests cover descendant translation, selected subtree dedupe, and parent-behind-child ordering;
   - targeted lint, formatting, and flow editor tests passed;
   - local TypeScript diagnostics are clean for the new controller. The remaining filtered `reteSetup.ts` errors are the existing Vue SFC module-resolution diagnostics.
+- Phase 5 implementation is complete:
+  - `normalizeFlowSequenceStacking` centralizes ordering after pick, reparent, and remote reparent events;
+  - sequence children and their connections are kept above sequence surfaces;
+  - new connections are normalized so they remain visible around sequence surfaces.
+- Phase 5 validation:
+  - unit tests cover parent-behind-child ordering, connection visibility after picking, remote-style reparent normalization, and new connection stacking;
+  - targeted lint and formatting checks passed.
 
 ## Why Consider Removing It
 
@@ -352,9 +359,9 @@ Harden the local ordering behavior now that `ScopesPlugin` is no longer mounted.
 Scope:
 
 - [x] parent sequence should render behind children;
-- [ ] selected/moved nodes should have predictable z-order in all browser flows;
-- [ ] connections should not disappear behind sequence surfaces;
-- [ ] new connections should remain visible.
+- [x] selected/moved nodes should have predictable z-order in all browser flows;
+- [x] connections should not disappear behind sequence surfaces;
+- [x] new connections should remain visible.
 
 Do not reproduce plugin internals blindly. Implement the minimum ordering rules required by Storyarn's UI.
 
