@@ -46,7 +46,6 @@ const surface = computed(
   <div class="h-full relative">
     <div :key="surface.canvas.key" class="w-full h-full">
       <FlowCanvas
-        class="w-full h-full"
         :flow-data="surface.canvas.flowData"
         :variable-map="surface.canvas.variableMap"
         :loading="surface.canvas.loading"
