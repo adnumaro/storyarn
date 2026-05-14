@@ -136,6 +136,8 @@
       "filter_all": "Todos",
       "filter_images": "Imágenes",
       "filter_audio": "Audio",
+      "filter_files": "Archivos",
+      "filters": "Tipos",
       "search": "Buscar archivos...",
       "empty": "Aún no hay recursos. Sube archivos para empezar.",
       "type_image": "Imagen",

@@ -136,6 +136,8 @@
       "filter_all": "All",
       "filter_images": "Images",
       "filter_audio": "Audio",
+      "filter_files": "Files",
+      "filters": "Types",
       "search": "Search files...",
       "empty": "No assets yet. Upload files to get started.",
       "type_image": "Image",

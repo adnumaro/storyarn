@@ -23,6 +23,17 @@ defmodule StoryarnWeb.AssetLive.Index do
       active_tool={:assets}
       is_super_admin={@is_super_admin}
       online_users={@online_users}
+      sidebar_module={StoryarnWeb.AssetSidebarLive}
+      sidebar_session={
+        %{
+          "project_id" => @project.id,
+          "active_tool" => "assets",
+          "dashboard_url" => ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/assets",
+          "filter" => @filter,
+          "search" => @search,
+          "locale" => @locale
+        }
+      }
     >
       <.vue
         :if={@can_edit}
@@ -40,12 +51,8 @@ defmodule StoryarnWeb.AssetLive.Index do
         id="asset-index"
         class="contents"
         assets={serialize_assets(@assets)}
-        filter={@filter}
-        search={@search}
-        type-counts={@type_counts}
         selected-asset={serialize_asset(@selected_asset)}
         asset-usages={serialize_usages(@asset_usages)}
-        uploading={@uploading}
         can-edit={@can_edit}
         workspace-slug={@workspace.slug}
         project-slug={@project.slug}
@@ -96,6 +103,15 @@ defmodule StoryarnWeb.AssetLive.Index do
   def handle_info({:active_scene, _scene_id}, socket), do: {:noreply, socket}
   def handle_info({:active_locale, _locale}, socket), do: {:noreply, socket}
 
+  def handle_info({:asset_filters_changed, %{filter: filter, search: search}}, socket) do
+    {:noreply,
+     socket
+     |> assign(:filter, filter)
+     |> assign(:search, search)
+     |> clear_selected_asset()
+     |> load_assets()}
+  end
+
   def handle_info({:remote_change, _action, _payload}, socket) do
     type_counts = Assets.count_assets_by_type(socket.assigns.project.id)
 
@@ -111,10 +127,11 @@ defmodule StoryarnWeb.AssetLive.Index do
   # ===========================================================================
 
   @impl true
-  def handle_event("filter_assets", %{"type" => type}, socket) when type in ["all", "image", "audio"] do
+  def handle_event("filter_assets", %{"type" => type}, socket) when type in ["all", "image", "audio", "file"] do
     {:noreply,
      socket
      |> assign(:filter, type)
+     |> clear_selected_asset()
      |> load_assets()}
   end
 
@@ -122,6 +139,7 @@ defmodule StoryarnWeb.AssetLive.Index do
     {:noreply,
      socket
      |> assign(:search, search)
+     |> clear_selected_asset()
      |> load_assets()}
   end
 
@@ -315,6 +333,7 @@ defmodule StoryarnWeb.AssetLive.Index do
   defp filter_opts("all"), do: []
   defp filter_opts("image"), do: [content_type: "image/"]
   defp filter_opts("audio"), do: [content_type: "audio/"]
+  defp filter_opts("file"), do: [content_type: "application/"]
 
   defp search_opts(""), do: []
   defp search_opts(term), do: [search: term]
@@ -325,6 +344,12 @@ defmodule StoryarnWeb.AssetLive.Index do
 
   defp broadcast_asset_change(project_id, action) do
     Collaboration.broadcast_change_from(self(), {:assets, project_id}, action, %{})
+  end
+
+  defp clear_selected_asset(socket) do
+    socket
+    |> assign(:selected_asset, nil)
+    |> assign(:asset_usages, %{flow_nodes: [], sheet_avatars: [], sheet_banners: []})
   end
 
   defp refresh_selected_asset(socket) do

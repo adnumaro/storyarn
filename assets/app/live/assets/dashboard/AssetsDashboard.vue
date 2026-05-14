@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { File, GitBranch, Image, Link, Music, Search, Trash2, User, X } from "lucide-vue-next";
+import { File, GitBranch, Image, Link, Music, Trash2, User, X } from "lucide-vue-next";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { Badge } from "@components/ui/badge/index.ts";
 import { Button } from "@components/ui/button/index.ts";
-import { Input } from "@components/ui/input/index.ts";
 import { useLive } from "@shared/composables/useLive.ts";
 
 interface Asset {
@@ -34,23 +33,15 @@ interface AssetUsages {
 
 const {
   assets = [],
-  filter = "all",
-  search = "",
-  typeCounts = {},
   selectedAsset = null,
   assetUsages = { flowNodes: [], sheetAvatars: [], sheetBanners: [] },
-  uploading = false,
   canEdit = false,
   workspaceSlug,
   projectSlug,
 } = defineProps<{
   assets?: Asset[];
-  filter?: string;
-  search?: string;
-  typeCounts?: Record<string, number>;
   selectedAsset?: Asset | null;
   assetUsages?: AssetUsages;
-  uploading?: boolean;
   canEdit?: boolean;
   workspaceSlug: string;
   projectSlug: string;
@@ -58,19 +49,7 @@ const {
 
 const live = useLive();
 const { t } = useI18n();
-const searchValue = ref(search);
 const showDeleteConfirm = ref(false);
-
-const filterTabs = computed(() => {
-  const total = Object.values(typeCounts).reduce((a, b) => a + b, 0);
-  const imageCount = typeCounts.image || 0;
-  const audioCount = typeCounts.audio || 0;
-  return [
-    { key: "all", label: t("common.assets.filter_all"), count: total },
-    { key: "image", label: t("common.assets.filter_images"), count: imageCount },
-    { key: "audio", label: t("common.assets.filter_audio"), count: audioCount },
-  ];
-});
 
 const totalUsages = computed(() => {
   if (!assetUsages) return 0;
@@ -90,16 +69,6 @@ const deleteConfirmMessage = computed(() => {
   }
   return "Are you sure you want to delete this asset? This cannot be undone.";
 });
-
-function filterAssets(type: string) {
-  live.pushEvent("filter_assets", { type });
-}
-
-function handleSearch(event: Event) {
-  const target = event.target as HTMLInputElement;
-  searchValue.value = target.value;
-  live.pushEvent("search_assets", { search: target.value });
-}
 
 function selectAsset(id: number) {
   live.pushEvent("select_asset", { id: String(id) });
@@ -169,39 +138,7 @@ function usageSheetHref(sheet: SheetUsage) {
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto mt-4">
-    <!-- Filter tabs + Search -->
-    <div class="flex items-center justify-between mb-4 gap-4">
-      <div class="flex items-center gap-1 border-b border-border">
-        <button
-          v-for="tab in filterTabs"
-          :key="tab.key"
-          type="button"
-          :class="[
-            'px-3 py-2 text-sm font-medium border-b-2 transition-colors -mb-px',
-            filter === tab.key
-              ? 'border-primary text-foreground'
-              : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border',
-          ]"
-          @click="filterAssets(tab.key)"
-        >
-          {{ tab.label }}
-          <Badge variant="secondary" class="ml-1.5 text-[10px] px-1.5 py-0">{{ tab.count }}</Badge>
-        </button>
-      </div>
-
-      <div class="relative shrink-0">
-        <Search class="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-        <Input
-          type="text"
-          :model-value="searchValue"
-          :placeholder="$t('common.assets.search')"
-          class="pl-8 w-48"
-          @input="handleSearch"
-        />
-      </div>
-    </div>
-
+  <div class="mx-auto w-full max-w-6xl px-4 py-4">
     <!-- Empty state -->
     <div
       v-if="assets.length === 0"
