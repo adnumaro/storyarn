@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Map,
   PanelLeft,
+  PanelLeftClose,
   ScrollText,
   Settings,
   Trash2,
@@ -114,7 +115,8 @@ onUnmounted(() => {
         :class="['toolbar-btn size-8', sidebarOpen && 'bg-accent']"
         @click="toggleMainSidebar"
       >
-        <PanelLeft class="size-3.5" />
+        <PanelLeftClose v-if="sidebarOpen" class="size-3.5" />
+        <PanelLeft v-else class="size-3.5" />
       </button>
     </ToolbarTooltip>
 
