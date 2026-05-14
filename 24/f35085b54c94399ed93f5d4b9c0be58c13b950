@@ -1,0 +1,26 @@
+lib/storyarn_web/live/workspace_live/show.ex
+  s_116fc484719db6::t_93e11c1d95dbb1 98,131
+test/storyarn_web/live/workspace_live/show_test.exs
+  s_116fc484719db6::t_a4703e4cafca5c 9,32,40-43,206-219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "24f35085b54c94399ed93f5d4b9c0be58c13b950",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
