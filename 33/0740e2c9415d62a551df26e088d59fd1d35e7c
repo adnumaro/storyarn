@@ -1,0 +1,35 @@
+assets/app/shell/SidebarFrame.vue
+  s_4009926a81b72f::t_6a7de086d6a644 4,19,30-36
+assets/app/test/composables/useMediaQuery.test.ts
+  s_4009926a81b72f::t_6a7de086d6a644 1-72
+assets/app/live/layouts/docs/Layout.vue
+  s_4009926a81b72f::t_6a7de086d6a644 18,77
+assets/app/live/layouts/workspace/Layout.vue
+  s_4009926a81b72f::t_6a7de086d6a644 4,16
+assets/app/live/layouts/settings/Layout.vue
+  s_4009926a81b72f::t_6a7de086d6a644 2,20,83
+assets/app/shared/composables/useMediaQuery.ts
+  s_4009926a81b72f::t_6a7de086d6a644 2-22
+  s_4009926a81b72f::t_25b3453403a851 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "330740e2c9415d62a551df26e088d59fd1d35e7c",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
