@@ -15,6 +15,7 @@ import {
 } from "lucide-vue-next";
 import LiveLink from "@components/navigation/LiveLink.vue";
 import { useLive } from "@shared/composables/useLive";
+import { useMediaQuery } from "@shared/composables/useMediaQuery";
 
 interface DocsCategory {
   id: string;
@@ -73,10 +74,8 @@ const docs = computed(() => docsProp);
 const searchQuery = ref(docs.value.search.query);
 const currentTheme = ref<"system" | "light" | "dark">("system");
 const sidebarVisible = ref(docs.value.sidebarOpen);
-const desktopSidebar = ref(false);
+const desktopSidebar = useMediaQuery("(min-width: 1024px)");
 const sidebarInteractive = computed(() => sidebarVisible.value || desktopSidebar.value);
-
-let desktopSidebarQuery: MediaQueryList | null = null;
 
 watch(
   () => docs.value.search.query,
@@ -165,21 +164,13 @@ function syncTheme(): void {
   currentTheme.value = readTheme();
 }
 
-function syncDesktopSidebar(query: MediaQueryList | MediaQueryListEvent): void {
-  desktopSidebar.value = query.matches;
-}
-
 onMounted(() => {
   syncTheme();
-  desktopSidebarQuery = window.matchMedia("(min-width: 1024px)");
-  syncDesktopSidebar(desktopSidebarQuery);
-  desktopSidebarQuery.addEventListener("change", syncDesktopSidebar);
   window.addEventListener("storage", syncTheme);
   window.addEventListener("phx:set-theme", syncTheme);
 });
 
 onUnmounted(() => {
-  desktopSidebarQuery?.removeEventListener("change", syncDesktopSidebar);
   window.removeEventListener("storage", syncTheme);
   window.removeEventListener("phx:set-theme", syncTheme);
 });

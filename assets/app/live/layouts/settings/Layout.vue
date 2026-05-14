@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed } from "vue";
 import type { Component } from "vue";
 import { useI18n } from "vue-i18n";
 import {
@@ -17,6 +17,7 @@ import {
   Users,
 } from "lucide-vue-next";
 import LiveLink from "@components/navigation/LiveLink.vue";
+import { useMediaQuery } from "@shared/composables/useMediaQuery";
 
 interface SettingsItem {
   label: string;
@@ -79,23 +80,7 @@ const iconMap: Record<string, Component> = {
 
 const navIcon = (name: string): Component => iconMap[name] ?? Settings;
 
-const sidebarOpen = ref(false);
-
-let desktopSidebarQuery: MediaQueryList | null = null;
-
-function syncDesktopSidebar(query: MediaQueryList | MediaQueryListEvent): void {
-  sidebarOpen.value = query.matches;
-}
-
-onMounted(() => {
-  desktopSidebarQuery = window.matchMedia("(min-width: 1024px)");
-  syncDesktopSidebar(desktopSidebarQuery);
-  desktopSidebarQuery.addEventListener("change", syncDesktopSidebar);
-});
-
-onUnmounted(() => {
-  desktopSidebarQuery?.removeEventListener("change", syncDesktopSidebar);
-});
+const sidebarOpen = useMediaQuery("(min-width: 1024px)");
 
 const projectSettingsBasePath = computed(() => {
   if (!workspace || !project) return null;

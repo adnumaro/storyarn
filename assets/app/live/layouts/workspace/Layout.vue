@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from "vue";
 import WorkspaceSidebar from "@shell/WorkspaceSidebar.vue";
 import type { WorkspaceItem, WorkspaceUser } from "@shell/workspaceLayoutTypes";
+import { useMediaQuery } from "@shared/composables/useMediaQuery";
 
 const {
   currentUser,
@@ -13,23 +13,7 @@ const {
   currentWorkspaceSlug?: string | null;
 }>();
 
-const sidebarOpen = ref(false);
-
-let desktopSidebarQuery: MediaQueryList | null = null;
-
-function syncDesktopSidebar(query: MediaQueryList | MediaQueryListEvent): void {
-  sidebarOpen.value = query.matches;
-}
-
-onMounted(() => {
-  desktopSidebarQuery = window.matchMedia("(min-width: 1024px)");
-  syncDesktopSidebar(desktopSidebarQuery);
-  desktopSidebarQuery.addEventListener("change", syncDesktopSidebar);
-});
-
-onUnmounted(() => {
-  desktopSidebarQuery?.removeEventListener("change", syncDesktopSidebar);
-});
+const sidebarOpen = useMediaQuery("(min-width: 1024px)");
 </script>
 
 <template>

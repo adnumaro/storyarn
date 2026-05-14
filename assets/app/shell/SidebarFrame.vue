@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { LayoutDashboard } from "lucide-vue-next";
 import { onMounted, onUnmounted, ref, watch } from "vue";
+import { useMediaQuery } from "@shared/composables/useMediaQuery";
 
 const {
   mainSidebarOpen = false,
@@ -15,11 +16,7 @@ const {
 }>();
 
 const internalOpen = ref(false);
-let desktopSidebarQuery: MediaQueryList | null = null;
-
-function syncDesktopSidebar(query: MediaQueryList | MediaQueryListEvent): void {
-  internalOpen.value = mainSidebarOpen || query.matches;
-}
+const desktopSidebar = useMediaQuery("(min-width: 1024px)");
 
 function handleMainSidebarChange(event: Event) {
   const open = (event as CustomEvent<{ open?: boolean }>).detail?.open;
@@ -27,11 +24,16 @@ function handleMainSidebarChange(event: Event) {
 }
 
 onMounted(() => {
-  desktopSidebarQuery = window.matchMedia("(min-width: 1024px)");
-  syncDesktopSidebar(desktopSidebarQuery);
-  desktopSidebarQuery.addEventListener("change", syncDesktopSidebar);
   window.addEventListener("storyarn:main-sidebar-change", handleMainSidebarChange);
 });
+
+watch(
+  desktopSidebar,
+  (open) => {
+    internalOpen.value = mainSidebarOpen || open;
+  },
+  { immediate: true },
+);
 
 watch(
   () => mainSidebarOpen,
@@ -58,7 +60,6 @@ watch(
 
 onUnmounted(() => {
   delete document.body.dataset.mainSidebarOpen;
-  desktopSidebarQuery?.removeEventListener("change", syncDesktopSidebar);
   window.removeEventListener("storyarn:main-sidebar-change", handleMainSidebarChange);
 });
 </script>
