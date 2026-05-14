@@ -27,11 +27,11 @@ const initials = computed(() => {
 const sizeClass = computed(() => {
   switch (size) {
     case "xs":
-      return "size-4 text-[8px]";
+      return "size-5 text-[8px]";
     case "sm":
-      return "size-6 text-[10px]";
+      return "size-7 text-[10px]";
     case "md":
-      return "size-9 text-sm";
+      return "size-8 text-sm";
     case "lg":
       return "size-11 text-base";
     default:

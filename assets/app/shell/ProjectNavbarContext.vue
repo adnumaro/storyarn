@@ -92,7 +92,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <nav class="flex items-center gap-1 px-1 py-1 surface-panel h-8">
+  <nav class="flex items-center gap-1 px-1 py-1 h-8">
     <!-- Main sidebar toggle -->
     <ToolbarTooltip
       v-if="hasTree"
@@ -115,8 +115,8 @@ onUnmounted(() => {
         :class="['toolbar-btn size-8', sidebarOpen && 'bg-accent']"
         @click="toggleMainSidebar"
       >
-        <PanelLeftClose v-if="sidebarOpen" class="size-3.5" />
-        <PanelLeft v-else class="size-3.5" />
+        <PanelLeftClose v-if="sidebarOpen" class="size-4" />
+        <PanelLeft v-else class="size-4" />
       </button>
     </ToolbarTooltip>
 
@@ -125,10 +125,10 @@ onUnmounted(() => {
     <!-- Project dropdown -->
     <DropdownMenu>
       <DropdownMenuTrigger as-child>
-        <button class="toolbar-btn gap-1.5 font-medium max-w-52">
-          <Folder class="size-3.5 opacity-60 shrink-0" />
+        <button class="toolbar-btn gap-1.5 font-medium h-8 max-w-52">
+          <Folder class="size-4 opacity-60 shrink-0" />
           <span class="hidden xl:inline truncate text-sm">{{ projectName }}</span>
-          <ChevronDown class="size-3 opacity-50" />
+          <ChevronDown class="size-3.5 opacity-50" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" :side-offset="8" class="w-56">
@@ -174,12 +174,12 @@ onUnmounted(() => {
     <!-- Tool switcher -->
     <DropdownMenu v-if="showToolSwitcher">
       <DropdownMenuTrigger as-child>
-        <button class="toolbar-btn gap-1.5">
-          <component :is="activeToolDef.icon" class="size-3.5" />
+        <button class="toolbar-btn h-8 gap-1.5">
+          <component :is="activeToolDef.icon" class="size-4" />
           <span class="hidden xl:inline text-sm font-medium">{{
             $t(`layout.tools.${activeToolDef.key}`)
           }}</span>
-          <ChevronDown class="size-3 opacity-50" />
+          <ChevronDown class="size-3.5 opacity-50" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" :side-offset="8" class="w-48">

@@ -41,10 +41,10 @@ function handleFileChange(event: Event): void {
 </script>
 
 <template>
-  <div class="flex items-center px-1.5 py-1 surface-panel">
+  <div class="flex items-center px-1.5 py-1">
     <label
       :class="[
-        'inline-flex items-center justify-center h-8 px-3 text-sm rounded-md hover:bg-accent transition-colors gap-1.5 cursor-pointer',
+        'inline-flex items-center justify-center h-8 px-3 text-sm rounded-lg hover:bg-accent transition-colors gap-1.5 cursor-pointer',
         uploading && 'pointer-events-none opacity-50',
       ]"
     >

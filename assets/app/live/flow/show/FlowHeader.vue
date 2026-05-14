@@ -7,7 +7,6 @@ import {
   CircleCheck,
   Info,
   Map as MapIcon,
-  Save,
   Text,
   TriangleAlert,
   X,
@@ -104,7 +103,7 @@ function navigateToNode(nodeId: number | string): void {
     <!-- Nav history -->
     <div
       v-if="navHistory.back || navHistory.forward"
-      class="flex items-center gap-0.5 surface-panel px-1"
+      class="flex items-center gap-0.5 px-1"
     >
       <ToolbarTooltip v-if="navHistory.back" :label="$t('flows.header.nav_back')" side="bottom">
         <button
@@ -133,7 +132,7 @@ function navigateToNode(nodeId: number | string): void {
     </div>
 
     <!-- Flow title pill -->
-    <div class="flex items-center gap-1.5 surface-panel px-3 h-full">
+    <div class="flex items-center gap-1.5 px-3 h-full">
       <EditableText
         :model-value="flowName"
         :placeholder="$t('flows.header.untitled')"
@@ -161,7 +160,7 @@ function navigateToNode(nodeId: number | string): void {
     </div>
 
     <!-- Stats + Scene panel -->
-    <div class="hidden lg:flex items-center gap-1 px-1 py-1 surface-panel text-xs">
+    <div class="hidden lg:flex items-center gap-1 px-1 py-1 text-xs">
       <!-- Scene selector -->
       <template v-if="showScene">
         <Popover v-model:open="sceneOpen">

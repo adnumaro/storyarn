@@ -86,7 +86,7 @@ function getIcon(type: string): Component {
 <template>
   <div class="relative h-full">
     <!-- Input pill -->
-    <div class="surface-panel h-full">
+    <div class="h-full">
       <div class="flex items-center gap-2 px-3 h-full">
         <Search class="size-4 text-muted-foreground/60 shrink-0" />
         <input

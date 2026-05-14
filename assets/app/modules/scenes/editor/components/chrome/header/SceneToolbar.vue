@@ -20,7 +20,7 @@ function saveName(name: string): void {
 </script>
 
 <template>
-  <div class="flex items-center gap-1.5 surface-panel px-3 h-8">
+  <div class="flex items-center gap-1.5 px-3 h-8">
     <EditableText
       :model-value="sceneName"
       :placeholder="$t('scenes.toolbar.scene_name')"

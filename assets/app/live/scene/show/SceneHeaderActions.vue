@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Download, Eye, Pencil, Settings } from "lucide-vue-next";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
-import { Button } from "@components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,23 +34,23 @@ function openSettings(): void {
 </script>
 
 <template>
-  <div class="flex items-center gap-1 surface-panel px-1.5 h-full">
+  <div class="flex items-center gap-1 px-1.5 h-full">
     <!-- Settings -->
     <ToolbarTooltip
       v-if="canEdit && editMode"
       :label="$t('scenes.actions.scene_settings')"
       side="bottom"
     >
-      <Button variant="ghost" size="icon-sm" class="size-7" @click="openSettings">
-        <Settings class="size-3.5" />
-      </Button>
+      <button class="toolbar-btn size-8" @click="openSettings">
+        <Settings class="size-4" />
+      </button>
     </ToolbarTooltip>
 
     <!-- Export -->
     <DropdownMenu>
       <ToolbarTooltip :label="$t('scenes.actions.export')" side="bottom">
-        <DropdownMenuTrigger class="toolbar-btn size-7">
-          <Download class="size-3.5" />
+        <DropdownMenuTrigger class="toolbar-btn size-8">
+          <Download class="size-4" />
         </DropdownMenuTrigger>
       </ToolbarTooltip>
       <DropdownMenuContent align="end">
@@ -70,9 +69,9 @@ function openSettings(): void {
       :label="editMode ? $t('scenes.actions.switch_view') : $t('scenes.actions.switch_edit')"
       side="bottom"
     >
-      <Button variant="ghost" size="icon-sm" class="size-7" @click="toggleEditMode">
-        <component :is="editMode ? Eye : Pencil" class="size-3.5" />
-      </Button>
+      <button class="toolbar-btn size-8" @click="toggleEditMode">
+        <component :is="editMode ? Eye : Pencil" class="size-4" />
+      </button>
     </ToolbarTooltip>
   </div>
 </template>
