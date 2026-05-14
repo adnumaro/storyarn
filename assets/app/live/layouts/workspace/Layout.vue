@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onMounted, onUnmounted, ref } from "vue";
 import WorkspaceSidebar from "@shell/WorkspaceSidebar.vue";
 import type { WorkspaceItem, WorkspaceUser } from "@shell/workspaceLayoutTypes";
 
@@ -11,37 +12,54 @@ const {
   workspaces?: WorkspaceItem[];
   currentWorkspaceSlug?: string | null;
 }>();
+
+const sidebarOpen = ref(false);
+
+let desktopSidebarQuery: MediaQueryList | null = null;
+
+function syncDesktopSidebar(query: MediaQueryList | MediaQueryListEvent): void {
+  sidebarOpen.value = query.matches;
+}
+
+onMounted(() => {
+  desktopSidebarQuery = window.matchMedia("(min-width: 1024px)");
+  syncDesktopSidebar(desktopSidebarQuery);
+  desktopSidebarQuery.addEventListener("change", syncDesktopSidebar);
+});
+
+onUnmounted(() => {
+  desktopSidebarQuery?.removeEventListener("change", syncDesktopSidebar);
+});
 </script>
 
 <template>
-  <div class="flex h-screen w-screen overflow-hidden">
-    <input id="workspace-sidebar-check" type="checkbox" class="peer hidden" />
-
-    <label
-      for="workspace-sidebar-check"
-      class="fixed inset-0 bg-background/80 backdrop-blur-sm z-30 hidden peer-checked:block lg:hidden cursor-pointer"
-    />
-
+  <div class="relative h-screen w-screen overflow-hidden bg-surface">
     <aside
-      :class="[
-        'flex-none w-[252px] surface-panel flex flex-col z-40 shrink-0 overflow-hidden rounded-lg',
-        'fixed lg:relative top-3 bottom-3 left-3 lg:top-0 lg:bottom-0 lg:left-0 h-[calc(100vh-1.5rem)] lg:h-auto',
-        'lg:ml-3 lg:my-3',
-        'transition-transform duration-200',
-        '-translate-x-[calc(100%+1rem)] peer-checked:translate-x-0 lg:translate-x-0',
-      ]"
+      :aria-hidden="!sidebarOpen"
+      :inert="!sidebarOpen"
+      class="absolute inset-y-0 left-0 z-0 w-[calc(100vw-4rem)] sm:w-63 overflow-hidden"
     >
       <WorkspaceSidebar
         id="workspace-sidebar"
         :current-user="currentUser"
-        class="h-full"
+        class="h-full overflow-hidden"
         :workspaces="workspaces"
         :current-workspace-slug="currentWorkspaceSlug"
       />
     </aside>
 
-    <main id="main-content" class="overflow-y-auto p-4 lg:px-8 lg:py-3 min-dvh-100 w-full">
-      <slot />
+    <main
+      id="main-content"
+      :class="[
+        'relative z-10 h-full min-dvh-100 w-full bg-background transition-[transform,width,border-radius,box-shadow] duration-300 ease-out will-change-transform flex flex-col overflow-hidden',
+        sidebarOpen
+          ? 'translate-x-[calc(100vw-4rem)] sm:translate-x-63 sm:w-[calc(100%-15.75rem)] shadow-2xl rounded-l-2xl'
+          : 'translate-x-0',
+      ]"
+    >
+      <div class="flex-1 min-h-0 overflow-y-auto p-4 lg:px-6 lg:py-6">
+        <slot />
+      </div>
     </main>
   </div>
 </template>

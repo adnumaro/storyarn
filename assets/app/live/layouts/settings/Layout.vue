@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import type { Component } from "vue";
 import { useI18n } from "vue-i18n";
 import {
@@ -78,6 +78,24 @@ const iconMap: Record<string, Component> = {
 };
 
 const navIcon = (name: string): Component => iconMap[name] ?? Settings;
+
+const sidebarOpen = ref(false);
+
+let desktopSidebarQuery: MediaQueryList | null = null;
+
+function syncDesktopSidebar(query: MediaQueryList | MediaQueryListEvent): void {
+  sidebarOpen.value = query.matches;
+}
+
+onMounted(() => {
+  desktopSidebarQuery = window.matchMedia("(min-width: 1024px)");
+  syncDesktopSidebar(desktopSidebarQuery);
+  desktopSidebarQuery.addEventListener("change", syncDesktopSidebar);
+});
+
+onUnmounted(() => {
+  desktopSidebarQuery?.removeEventListener("change", syncDesktopSidebar);
+});
 
 const projectSettingsBasePath = computed(() => {
   if (!workspace || !project) return null;
@@ -195,33 +213,11 @@ const sections = computed<SettingsSection[]>(() => {
 </script>
 
 <template>
-  <div
-    class="flex h-screen w-screen overflow-hidden bg-linear-to-br from-background via-background to-muted/40 dark:to-muted/10"
-  >
-    <input id="settings-sidebar-check" type="checkbox" class="peer hidden" />
-
-    <label
-      for="settings-sidebar-check"
-      class="fixed inset-0 bg-background/80 backdrop-blur-sm z-30 hidden peer-checked:block lg:hidden cursor-pointer"
-    />
-
-    <div class="absolute top-3 left-3 z-20 lg:hidden">
-      <label
-        for="settings-sidebar-check"
-        class="inline-flex items-center justify-center size-9 rounded-md bg-background border border-border shadow-sm hover:bg-accent transition-colors cursor-pointer text-muted-foreground"
-      >
-        <Menu class="size-5" />
-      </label>
-    </div>
-
+  <div class="relative h-screen w-screen overflow-hidden bg-surface">
     <aside
-      :class="[
-        'flex-none w-[252px] surface-panel flex flex-col z-40 shrink-0 overflow-hidden rounded-lg',
-        'fixed lg:relative top-3 bottom-3 left-3 lg:top-0 lg:bottom-0 lg:left-0 h-[calc(100vh-1.5rem)] lg:h-auto',
-        'lg:ml-3 lg:my-3',
-        'transition-transform duration-200',
-        '-translate-x-[calc(100%+1rem)] peer-checked:translate-x-0 lg:translate-x-0',
-      ]"
+      :aria-hidden="!sidebarOpen"
+      :inert="!sidebarOpen"
+      class="absolute inset-y-0 left-0 z-0 w-[calc(100vw-4rem)] sm:w-63 overflow-hidden flex flex-col"
     >
       <div class="px-2 pt-3 pb-3 border-b border-border/10">
         <LiveLink
@@ -259,14 +255,21 @@ const sections = computed<SettingsSection[]>(() => {
       </nav>
     </aside>
 
-    <main class="flex-1 min-w-0 overflow-y-auto bg-background p-4 pt-16 lg:px-8 lg:py-3 min-vh-100">
-      <div class="max-w-3xl mx-auto lg:mt-5">
+    <main
+      :class="[
+        'relative z-10 h-full min-dvh-100 w-full bg-background transition-[transform,width,border-radius,box-shadow] duration-300 ease-out will-change-transform overflow-y-auto p-4 lg:p-8',
+        sidebarOpen
+          ? 'translate-x-[calc(100vw-4rem)] sm:translate-x-63 sm:w-[calc(100%-15.75rem)] shadow-2xl rounded-l-2xl'
+          : 'translate-x-0',
+      ]"
+    >
+      <div class="max-w-3xl mx-auto">
         <header v-if="title" class="pb-4">
           <h1 class="text-lg font-semibold leading-8">{{ title }}</h1>
           <p v-if="subtitle" class="text-sm text-muted-foreground">{{ subtitle }}</p>
         </header>
 
-        <div class="mt-8">
+        <div>
           <slot />
         </div>
       </div>

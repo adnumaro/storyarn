@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FolderOpen, Menu, Plus, Search, Settings } from "lucide-vue-next";
+import { FolderOpen, Plus, Search, Settings } from "lucide-vue-next";
 import { computed, ref } from "vue";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog/index.ts";
 import { Button } from "@components/ui/button/index.ts";
@@ -73,7 +73,7 @@ const isNewProjectModalOpen = ref(false);
 </script>
 
 <template>
-  <div class="surface-panel h-full p-4 w-full flex flex-col">
+  <div class="h-full w-full flex flex-col">
     <!-- Workspace Banner -->
     <header class="relative">
       <div
@@ -91,32 +91,26 @@ const isNewProjectModalOpen = ref(false);
       </div>
 
       <div class="absolute top-0 left-0 right-0 p-6">
-        <div class="flex items-end justify-between">
+        <div>
+          <div class="flex justify-between items-center">
+            <h1 class="text-3xl font-bold">{{ workspace.name }}</h1>
+            <Button
+              v-if="canManage && settingsUrl"
+              as="a"
+              variant="ghost"
+              size="icon"
+              :href="settingsUrl"
+              data-phx-link="redirect"
+              data-phx-link-state="push"
+            >
+              <Settings class="size-4" />
+            </Button>
+          </div>
           <div>
-            <div class="flex items-center gap-3">
-              <label
-                for="workspace-sidebar-check"
-                class="inline-flex lg:hidden items-center justify-center size-9 rounded-md bg-background/50 backdrop-blur border border-border/50 text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
-              >
-                <Menu class="size-5" />
-              </label>
-              <h1 class="text-3xl font-bold">{{ workspace.name }}</h1>
-            </div>
-            <p v-if="workspace.description" class="text-muted-foreground mt-1 max-w-2xl">
+            <p v-if="workspace.description" class="opacity-80 mt-1 max-w-2xl">
               {{ workspace.description }}
             </p>
           </div>
-          <Button
-            v-if="canManage && settingsUrl"
-            as="a"
-            variant="ghost"
-            size="icon"
-            :href="settingsUrl"
-            data-phx-link="redirect"
-            data-phx-link-state="push"
-          >
-            <Settings class="size-4" />
-          </Button>
         </div>
       </div>
 

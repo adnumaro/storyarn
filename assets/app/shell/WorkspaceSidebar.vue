@@ -57,7 +57,16 @@ const handleLogout = () => {
   <div class="flex flex-col h-full">
     <!-- Header -->
     <div class="px-4 py-4 border-b border-border/10">
-      <h2 class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Storyarn</h2>
+      <img
+        :src="'/images/logos/logo-name-black.png'"
+        alt="Storyarn"
+        class="h-7 w-auto dark:hidden"
+      />
+      <img
+        :src="'/images/logos/logo-name-white.png'"
+        alt="Storyarn"
+        class="hidden h-7 w-auto dark:block"
+      />
     </div>
 
     <!-- Workspaces List -->

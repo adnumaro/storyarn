@@ -186,11 +186,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="relative h-screen overflow-hidden bg-muted/30">
+  <div class="relative h-screen overflow-hidden bg-surface">
     <aside
       :aria-hidden="!sidebarInteractive"
       :inert="!sidebarInteractive"
-      class="absolute inset-y-0 left-0 z-0 w-[calc(100vw-4rem)] sm:w-68 lg:w-68 bg-background overflow-y-auto pt-6 pr-4"
+      class="absolute inset-y-0 left-0 z-0 w-[calc(100vw-4rem)] sm:w-68 lg:w-68 overflow-y-auto pt-6 pr-4"
     >
       <nav class="px-4 space-y-1">
         <div class="mb-5">
@@ -321,7 +321,7 @@ onUnmounted(() => {
           >
             <div
               :class="[
-                'absolute w-1/3 h-full rounded-full border-1 border-border bg-background brightness-200 transition-[left]',
+                'absolute w-1/3 h-full rounded-full border border-border bg-background brightness-200 transition-[left]',
                 themeKnobClass,
               ]"
             />
