@@ -297,25 +297,32 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
       sourceLanguageOptions:
         [exclude: Enum.reject([source_code], &is_nil/1)]
         |> Languages.options_for_select()
-        |> Enum.map(fn {label, value} -> %{label: label, value: value} end),
+        |> Enum.map(&serialize_language_option/1),
       addLanguageOptions:
         [exclude: MapSet.to_list(existing_codes)]
         |> Languages.options_for_select()
-        |> Enum.map(fn {label, value} -> %{label: label, value: value} end)
+        |> Enum.map(&serialize_language_option/1)
     }
   end
 
   defp serialize_language(nil), do: nil
 
   defp serialize_language(lang) do
-    flag_code = Languages.flag_code(lang.locale_code)
-
     %{
       id: lang.id,
       localeCode: lang.locale_code,
       name: lang.name || Languages.name(lang.locale_code) || lang.locale_code,
-      flagUrl: flag_code && "/images/flags/1x1/#{flag_code}.svg",
+      flagCode: Languages.flag_code(lang.locale_code),
       shortLabel: Languages.short_label(lang.locale_code)
+    }
+  end
+
+  defp serialize_language_option({label, value}) do
+    %{
+      label: label,
+      value: value,
+      flagCode: Languages.flag_code(value),
+      shortLabel: Languages.short_label(value)
     }
   end
 

@@ -80,7 +80,7 @@ defmodule Storyarn.Localization.Languages do
   @flag_overrides %{
     "ar" => "sa",
     "bg" => "bg",
-    "ca" => "ad",
+    "ca" => "es-ct",
     "cs" => "cz",
     "da" => "dk",
     "de" => "de",

@@ -1,11 +1,11 @@
 {
   "localization": {
     "sidebar": {
-      "source_language": "Idioma origen",
+      "source_language": "Idioma de origen",
       "change_source": "Cambiar idioma origen...",
       "search_languages": "Buscar idiomas...",
       "no_matches": "Sin resultados",
-      "target_languages": "Idiomas destino",
+      "target_languages": "Idiomas de destino",
       "no_targets": "Aún no hay idiomas destino.",
       "remove_language": "Eliminar idioma",
       "add_language": "Añadir idioma",
