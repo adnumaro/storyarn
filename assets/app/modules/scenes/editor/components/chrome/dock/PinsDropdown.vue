@@ -106,13 +106,19 @@ function selectSheet(sheetId: number | string): void {
               <CommandItem
                 v-for="sheet in projectSheets"
                 :key="sheet.id"
+                class="items-start py-2"
                 :value="sheet.name"
                 @select="selectSheet(sheet.id)"
               >
-                <span class="truncate">{{ sheet.name }}</span>
-                <span v-if="sheet.shortcut" class="ml-auto text-xs text-muted-foreground"
-                  >#{{ sheet.shortcut }}</span
-                >
+                <div class="flex min-w-0 flex-col items-start">
+                  <span class="max-w-full truncate">{{ sheet.name }}</span>
+                  <span
+                    v-if="sheet.shortcut"
+                    class="mt-0.5 max-w-full truncate text-[11px] leading-none text-muted-foreground"
+                  >
+                    #{{ sheet.shortcut }}
+                  </span>
+                </div>
               </CommandItem>
             </CommandGroup>
           </CommandList>
