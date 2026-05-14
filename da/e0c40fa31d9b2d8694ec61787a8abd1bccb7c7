@@ -1,0 +1,39 @@
+assets/app/shared/composables/useResponsiveSidebar.ts
+  s_4009926a81b72f::t_8ff836a7a11679 1
+  s_4009926a81b72f::t_38c2f491fd2eae 2-42
+assets/app/locales/en/layout.json
+  s_4009926a81b72f::t_38c2f491fd2eae 13-15
+assets/app/locales/es/layout.json
+  s_4009926a81b72f::t_38c2f491fd2eae 13-15
+assets/app/live/layouts/settings/Layout.vue
+  s_4009926a81b72f::t_38c2f491fd2eae 12-13,21,251-280,282-284
+  s_4009926a81b72f::t_cce54e15f5a060 83
+  s_4009926a81b72f::t_375c116c9db859 245,247-248
+assets/app/live/layouts/workspace/Layout.vue
+  s_4009926a81b72f::t_cce54e15f5a060 17
+  s_4009926a81b72f::t_38c2f491fd2eae 2,5,45-68
+  s_4009926a81b72f::t_375c116c9db859 39,41-42
+assets/app/test/composables/useResponsiveSidebar.test.ts
+  s_4009926a81b72f::t_38c2f491fd2eae 1-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "dae0c40fa31d9b2d8694ec61787a8abd1bccb7c7",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
