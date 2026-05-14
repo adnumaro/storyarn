@@ -1,0 +1,24 @@
+assets/app/live/layouts/settings/Layout.vue
+  h_46be6e61f3d9dd 262
+assets/app/live/layouts/compare/Layout.vue
+  h_46be6e61f3d9dd 30,45
+assets/app/live/layouts/docs/Layout.vue
+  h_46be6e61f3d9dd 273
+assets/app/live/layouts/workspace/Layout.vue
+  h_46be6e61f3d9dd 56
+assets/app/live/layouts/project/Layout.vue
+  h_46be6e61f3d9dd 93,97
+assets/app/live/layouts/public/Layout.vue
+  h_46be6e61f3d9dd 71,76,160,166,172,177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "40d94d97fed381ff857232415ef0f28831070e29",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
