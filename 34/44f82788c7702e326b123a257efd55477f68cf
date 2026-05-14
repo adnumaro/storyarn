@@ -1,0 +1,79 @@
+assets/app/shell/ProjectNavbarContext.vue
+  s_116fc484719db6::t_72941e9a03b37e 108-113
+  s_116fc484719db6::t_badb00f059b8d8 16,47,74-90,99,114
+  s_116fc484719db6::t_0c0cd61a1abf8d 70-72
+lib/storyarn_web/live/localization_sidebar_live.ex
+  s_116fc484719db6::t_6a695287d47e79 92
+  s_116fc484719db6::t_2cd5df39e7d560 12
+lib/storyarn_web/live/scene_sidebar_live.ex
+  s_116fc484719db6::t_f55151be211291 87
+lib/storyarn_web/live/sheets_sidebar_live.ex
+  s_116fc484719db6::t_731cb1652e6eb3 87
+lib/storyarn_web/live/sheet_live/show.ex
+  s_116fc484719db6::t_564af9eda7bb95 419
+lib/storyarn_web/components/project_layout.ex
+  s_116fc484719db6::t_392b4ef9996e4d 56
+  s_116fc484719db6::t_0077e4f40c854e 32
+  s_116fc484719db6::t_25e22cf6d9171a 43
+  s_116fc484719db6::t_f0407c6a7768ae 44-49
+assets/app/modules/sheets/components/chrome/tree/SheetTreeNode.vue
+  s_116fc484719db6::t_90071cfe0bed19 181
+assets/app/locales/en/layout.json
+  s_116fc484719db6::t_3723dcd94dea3c 13
+lib/storyarn_web/live/flow_sidebar_live.ex
+  s_116fc484719db6::t_592533a129114c 88
+  s_116fc484719db6::t_6e5abe24763301 33-34
+assets/app/live/layouts/project/Layout.vue
+  s_116fc484719db6::t_7c76c92b53b7e5 139-143,145-147,149
+  s_116fc484719db6::t_fa1a1501e098b6 92
+  s_116fc484719db6::t_9dacb2814e28a6 88,94
+  s_116fc484719db6::t_cdfab2f301ec16 46-47
+  s_116fc484719db6::t_d72d789406b607 90
+  s_116fc484719db6::t_ea7e7389950995 137
+  s_116fc484719db6::t_5afd46371c2d11 96-113,115-117,120-121,123-130,133,135-136,138,152
+  s_116fc484719db6::t_0e1ab47b02358e 45,48,54,59
+  s_116fc484719db6::t_1fd9b3fe8cbff9 89
+  s_116fc484719db6::t_31510261dea89f 2,42
+  s_116fc484719db6::t_bb789604482510 64
+  h_46be6e61f3d9dd 38-41,43-44,51-53,58,86-87,91,153
+  s_116fc484719db6::t_b7f125a29d0b2c 93
+assets/app/locales/es/layout.json
+  s_116fc484719db6::t_0fb65b397b51a4 13
+assets/app/modules/scenes/editor/components/chrome/tree/SceneTreeNode.vue
+  s_116fc484719db6::t_90071cfe0bed19 179
+assets/app/shell/SidebarFrame.vue
+  s_116fc484719db6::t_917e97674f8097 2
+  s_116fc484719db6::t_7d88f615bad5c1 53-54
+  s_116fc484719db6::t_e1b4448d6484ed 67,70,96
+  s_116fc484719db6::t_3c9418ab2608b2 68-69,71-72,91,93-95
+  s_116fc484719db6::t_84ea53d50eaa64 73
+  s_116fc484719db6::t_90071cfe0bed19 76
+  s_116fc484719db6::t_b9c7397840c6cb 18,20-21,30-32,37-39,61
+  s_116fc484719db6::t_706689cc8a1943 43-44
+  s_116fc484719db6::t_db049d7bf235a3 24-26,33,62
+assets/app/modules/localization/components/chrome/LocalizationSidebar.vue
+  s_116fc484719db6::t_90071cfe0bed19 179
+assets/app/modules/flows/editor/components/chrome/tree/FlowTreeNode.vue
+  s_116fc484719db6::t_90071cfe0bed19 171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "3444f82788c7702e326b123a257efd55477f68cf",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
