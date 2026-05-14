@@ -6,6 +6,7 @@ defmodule StoryarnWeb.WorkspaceLive.ShowTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.Projects.Project
   alias Storyarn.Repo
 
   defp get_dashboard_vue(view) do
@@ -28,7 +29,7 @@ defmodule StoryarnWeb.WorkspaceLive.ShowTest do
     test "passes projects to Vue", %{conn: conn, user: user} do
       workspace = workspace_fixture(user, %{name: "Game Studio"})
 
-      _project =
+      project =
         user
         |> project_fixture(%{name: "Epic RPG", workspace: workspace})
         |> Repo.preload(:workspace)
@@ -36,7 +37,10 @@ defmodule StoryarnWeb.WorkspaceLive.ShowTest do
       {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
 
       vue = get_dashboard_vue(view)
-      assert Enum.any?(vue.props["projects"], fn p -> p["project"]["name"] == "Epic RPG" end)
+      entry = Enum.find(vue.props["projects"], fn p -> p["project"]["name"] == "Epic RPG" end)
+
+      assert entry
+      assert entry["href"] == ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}"
     end
 
     test "passes empty projects list when no projects exist", %{conn: conn, user: user} do
@@ -198,6 +202,21 @@ defmodule StoryarnWeb.WorkspaceLive.ShowTest do
 
       vue = get_dashboard_vue(view)
       assert Enum.any?(vue.props["projects"], fn p -> p["project"]["id"] == project.id end)
+    end
+
+    test "create project navigates to project base route", %{conn: conn, user: user} do
+      workspace = workspace_fixture(user, %{name: "Create Studio"})
+
+      {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+
+      render_hook(view, "create_project", %{
+        "project" => %{"name" => "New Base Project", "description" => "Starts on base"}
+      })
+
+      project = Repo.get_by!(Project, workspace_id: workspace.id, name: "New Base Project")
+      {path, _flash} = assert_redirect(view)
+
+      assert path == ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}"
     end
   end
 

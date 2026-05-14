@@ -95,7 +95,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
         socket =
           socket
           |> put_flash(:info, dgettext("workspaces", "Project created successfully."))
-          |> push_navigate(to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{project.slug}/sheets")
+          |> push_navigate(to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{project.slug}")
 
         {:noreply, socket}
 
@@ -128,7 +128,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
           inserted_at_formatted: Calendar.strftime(project.inserted_at, "%b %d, %Y"),
           updated_at: project.updated_at && DateTime.to_iso8601(project.updated_at)
         },
-        href: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets"
+        href: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}"
       }
     end)
   end
