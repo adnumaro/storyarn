@@ -1,0 +1,28 @@
+assets/app/components/UserAvatar.vue
+  h_46be6e61f3d9dd 30,32,34
+assets/app/live/flow/show/FlowHeader.vue
+  h_46be6e61f3d9dd 106,135,163
+assets/app/shell/ProjectNavbarContext.vue
+  h_46be6e61f3d9dd 95,118-119,128-129,131,177-178,182
+assets/app/modules/scenes/editor/components/chrome/header/SceneToolbar.vue
+  h_46be6e61f3d9dd 23
+assets/app/modules/scenes/editor/components/chrome/header/SearchPanel.vue
+  h_46be6e61f3d9dd 89
+assets/app/live/scene/show/SceneHeaderActions.vue
+  h_46be6e61f3d9dd 37,44-46,52-53,72-74
+assets/app/components/forms/assets/AssetUploadButton.vue
+  h_46be6e61f3d9dd 44,47
+assets/app/shell/ProjectNavbarAccount.vue
+  h_46be6e61f3d9dd 59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "05d2a5d7fd6206c71ac822d789564d7a793e80ca",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
