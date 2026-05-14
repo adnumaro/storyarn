@@ -1,0 +1,38 @@
+assets/app/shell/WorkspaceSidebar.vue
+  s_116fc484719db6::t_378c9a69ae351f 60-69
+assets/app/live/layouts/docs/Layout.vue
+  h_46be6e61f3d9dd 189,193,324
+assets/app/live/layouts/workspace/Layout.vue
+  s_116fc484719db6::t_d326fc9da87218 16-18,20-21,24-32,51-53,55,57-59
+  h_46be6e61f3d9dd 36,40,45,60
+  s_116fc484719db6::t_c8c985c1326fda 54,56
+  s_116fc484719db6::t_0a7ab96a5fdbcb 2,38-39
+  s_116fc484719db6::t_fef3accc2fe0ea 22-23,61-62
+assets/app/live/layouts/settings/Layout.vue
+  h_46be6e61f3d9dd 260
+  s_116fc484719db6::t_c38174ed570cde 2,82-99,216,218-220,258-259,261-266
+assets/app/live/workspace/dashboard/WorkspaceDashboard.vue
+  s_116fc484719db6::t_d6c9c0cb67a3d0 2
+  h_46be6e61f3d9dd 76,95-96,110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "865bbd7da44dbae9aa276136b20915f251f58c44",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
