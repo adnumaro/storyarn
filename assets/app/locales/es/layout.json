@@ -12,6 +12,14 @@
     "main_sidebar": {
       "dashboard_label": "Dashboard de {tool}"
     },
+    "project_sidebar": {
+      "dashboard": "Dashboard",
+      "tools": "Herramientas",
+      "project_settings": "Ajustes del proyecto",
+      "settings": "General",
+      "export_import": "Importar y exportar",
+      "trash": "Papelera"
+    },
     "project_navbar_context": {
       "hide_panel": "Ocultar panel",
       "show_panel": "Mostrar panel",

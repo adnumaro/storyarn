@@ -27,6 +27,15 @@ defmodule StoryarnWeb.ProjectLive.Show do
       active_tool={:dashboard}
       is_super_admin={@is_super_admin}
       online_users={@online_users}
+      sidebar_module={StoryarnWeb.ProjectSidebarLive}
+      sidebar_session={
+        %{
+          "workspace_slug" => @workspace.slug,
+          "project_slug" => @project.slug,
+          "active_item" => "dashboard",
+          "locale" => @locale
+        }
+      }
       restoration_banner={@restoration_banner}
     >
       <.vue
