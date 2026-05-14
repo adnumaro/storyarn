@@ -8,8 +8,9 @@ import {
   GitBranch,
   Languages,
   Link,
-  Menu,
   Package,
+  PanelLeft,
+  PanelLeftClose,
   Settings,
   ShieldCheck,
   Trash2,
@@ -17,7 +18,7 @@ import {
   Users,
 } from "lucide-vue-next";
 import LiveLink from "@components/navigation/LiveLink.vue";
-import { useMediaQuery } from "@shared/composables/useMediaQuery";
+import { useResponsiveSidebar } from "@shared/composables/useResponsiveSidebar";
 
 interface SettingsItem {
   label: string;
@@ -69,7 +70,6 @@ const iconMap: Record<string, Component> = {
   "git-branch": GitBranch,
   languages: Languages,
   link: Link,
-  menu: Menu,
   package: Package,
   settings: Settings,
   "shield-check": ShieldCheck,
@@ -80,7 +80,7 @@ const iconMap: Record<string, Component> = {
 
 const navIcon = (name: string): Component => iconMap[name] ?? Settings;
 
-const sidebarOpen = useMediaQuery("(min-width: 1024px)");
+const { sidebarOpen, toggleSidebar } = useResponsiveSidebar();
 
 const projectSettingsBasePath = computed(() => {
   if (!workspace || !project) return null;
@@ -242,20 +242,46 @@ const sections = computed<SettingsSection[]>(() => {
 
     <main
       :class="[
-        'relative z-10 h-full min-dvh-100 w-full bg-background transition-[transform,width,border-radius,box-shadow] duration-300 ease-out will-change-transform overflow-y-auto p-4 lg:p-8',
+        'relative z-10 h-full min-dvh-100 min-w-0 w-full bg-background transition-[margin-left,width,border-radius,box-shadow] duration-300 ease-out will-change-[margin-left,width] flex flex-col overflow-hidden',
         sidebarOpen
-          ? 'translate-x-[calc(100vw-4rem)] sm:translate-x-63 sm:w-[calc(100%-15.75rem)] shadow-xl rounded-l-2xl'
-          : 'translate-x-0',
+          ? 'ml-[calc(100vw-4rem)] w-16 sm:ml-63 sm:w-[calc(100%-15.75rem)] shadow-xl rounded-l-2xl'
+          : 'ml-0 w-full',
       ]"
     >
-      <div class="max-w-3xl mx-auto">
-        <header v-if="title" class="pb-4">
-          <h1 class="text-lg font-semibold leading-8">{{ title }}</h1>
-          <p v-if="subtitle" class="text-sm text-muted-foreground">{{ subtitle }}</p>
-        </header>
+      <div
+        class="flex h-12 shrink-0 items-center border-b border-border/70 bg-background/95 px-3 lg:hidden"
+      >
+        <button
+          type="button"
+          class="toolbar-btn size-9"
+          :aria-label="
+            sidebarOpen
+              ? $t('layout.main_sidebar.hide_panel')
+              : $t('layout.main_sidebar.show_panel')
+          "
+          :title="
+            sidebarOpen
+              ? $t('layout.main_sidebar.hide_panel')
+              : $t('layout.main_sidebar.show_panel')
+          "
+          :aria-pressed="sidebarOpen"
+          @click="toggleSidebar"
+        >
+          <PanelLeftClose v-if="sidebarOpen" class="size-4" />
+          <PanelLeft v-else class="size-4" />
+        </button>
+      </div>
 
-        <div>
-          <slot />
+      <div class="flex-1 min-h-0 overflow-y-auto p-4 lg:p-8">
+        <div class="max-w-3xl mx-auto">
+          <header v-if="title" class="pb-4">
+            <h1 class="text-lg font-semibold leading-8">{{ title }}</h1>
+            <p v-if="subtitle" class="text-sm text-muted-foreground">{{ subtitle }}</p>
+          </header>
+
+          <div>
+            <slot />
+          </div>
         </div>
       </div>
     </main>

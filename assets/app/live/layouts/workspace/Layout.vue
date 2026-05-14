@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { PanelLeft, PanelLeftClose } from "lucide-vue-next";
 import WorkspaceSidebar from "@shell/WorkspaceSidebar.vue";
 import type { WorkspaceItem, WorkspaceUser } from "@shell/workspaceLayoutTypes";
-import { useMediaQuery } from "@shared/composables/useMediaQuery";
+import { useResponsiveSidebar } from "@shared/composables/useResponsiveSidebar";
 
 const {
   currentUser,
@@ -13,7 +14,7 @@ const {
   currentWorkspaceSlug?: string | null;
 }>();
 
-const sidebarOpen = useMediaQuery("(min-width: 1024px)");
+const { sidebarOpen, toggleSidebar } = useResponsiveSidebar();
 </script>
 
 <template>
@@ -35,12 +36,36 @@ const sidebarOpen = useMediaQuery("(min-width: 1024px)");
     <main
       id="main-content"
       :class="[
-        'relative z-10 h-full min-dvh-100 w-full bg-background transition-[transform,width,border-radius,box-shadow] duration-300 ease-out will-change-transform flex flex-col overflow-hidden',
+        'relative z-10 h-full min-dvh-100 min-w-0 w-full bg-background transition-[margin-left,width,border-radius,box-shadow] duration-300 ease-out will-change-[margin-left,width] flex flex-col overflow-hidden',
         sidebarOpen
-          ? 'translate-x-[calc(100vw-4rem)] sm:translate-x-63 sm:w-[calc(100%-15.75rem)] shadow-xl rounded-l-2xl'
-          : 'translate-x-0',
+          ? 'ml-[calc(100vw-4rem)] w-16 sm:ml-63 sm:w-[calc(100%-15.75rem)] shadow-xl rounded-l-2xl'
+          : 'ml-0 w-full',
       ]"
     >
+      <div
+        class="flex h-12 shrink-0 items-center border-b border-border/70 bg-background/95 px-3 lg:hidden"
+      >
+        <button
+          type="button"
+          class="toolbar-btn size-9"
+          :aria-label="
+            sidebarOpen
+              ? $t('layout.main_sidebar.hide_panel')
+              : $t('layout.main_sidebar.show_panel')
+          "
+          :title="
+            sidebarOpen
+              ? $t('layout.main_sidebar.hide_panel')
+              : $t('layout.main_sidebar.show_panel')
+          "
+          :aria-pressed="sidebarOpen"
+          @click="toggleSidebar"
+        >
+          <PanelLeftClose v-if="sidebarOpen" class="size-4" />
+          <PanelLeft v-else class="size-4" />
+        </button>
+      </div>
+
       <div class="flex-1 min-h-0 overflow-y-auto p-4 lg:px-6 lg:py-6">
         <slot />
       </div>

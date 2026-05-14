@@ -10,7 +10,9 @@
       "localization": "Localización"
     },
     "main_sidebar": {
-      "dashboard_label": "Dashboard de {tool}"
+      "dashboard_label": "Dashboard de {tool}",
+      "hide_panel": "Ocultar sidebar",
+      "show_panel": "Mostrar sidebar"
     },
     "project_sidebar": {
       "dashboard": "Dashboard",
