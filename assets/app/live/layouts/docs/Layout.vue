@@ -270,7 +270,7 @@ onUnmounted(() => {
       :class="[
         'relative z-10 h-full min-w-0 flex flex-col overflow-hidden bg-background border-l border-border transition-transform duration-300 ease-out will-change-transform lg:ml-64 lg:w-[calc(100%-16rem)] lg:translate-x-0 lg:rounded-l-2xl',
         sidebarVisible
-          ? 'translate-x-[calc(100vw-3.5rem)] sm:translate-x-64 shadow-2xl rounded-l-2xl lg:shadow-none lg:rounded-none'
+          ? 'translate-x-[calc(100vw-3.5rem)] sm:translate-x-64 shadow-xl rounded-l-2xl lg:shadow-none lg:rounded-none'
           : 'translate-x-0',
       ]"
     >

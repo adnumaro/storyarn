@@ -27,7 +27,7 @@ function togglePanel() {
     <button
       v-if="hasPanel && !panelOpen"
       type="button"
-      class="fixed top-3 left-3 z-[1020] surface-panel p-1"
+      class="fixed top-3 left-3 z-1020 surface-panel p-1"
       :title="$t('layout.main_sidebar.show_panel')"
       @click="togglePanel"
     >
@@ -42,7 +42,7 @@ function togglePanel() {
       v-if="hasPanel"
       id="compare-panel"
       :class="[
-        'fixed left-3 top-3 bottom-3 z-[1010] w-52 flex flex-col surface-panel overflow-hidden',
+        'fixed left-3 top-3 bottom-3 z-1010 w-52 flex flex-col surface-panel overflow-hidden',
         'transition-all duration-200',
         panelOpen
           ? 'translate-x-0 opacity-100'

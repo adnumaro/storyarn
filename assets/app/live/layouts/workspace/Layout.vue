@@ -53,7 +53,7 @@ onUnmounted(() => {
       :class="[
         'relative z-10 h-full min-dvh-100 w-full bg-background transition-[transform,width,border-radius,box-shadow] duration-300 ease-out will-change-transform flex flex-col overflow-hidden',
         sidebarOpen
-          ? 'translate-x-[calc(100vw-4rem)] sm:translate-x-63 sm:w-[calc(100%-15.75rem)] shadow-2xl rounded-l-2xl'
+          ? 'translate-x-[calc(100vw-4rem)] sm:translate-x-63 sm:w-[calc(100%-15.75rem)] shadow-xl rounded-l-2xl'
           : 'translate-x-0',
       ]"
     >

@@ -90,11 +90,11 @@ onUnmounted(() => {
         chrome.hasTree && sidebarOpen
           ? 'ml-[calc(100vw-4rem)] w-16 sm:ml-63 sm:w-[calc(100%-15.75rem)]'
           : 'ml-0 w-full',
-        chrome.hasTree && sidebarOpen && 'shadow-2xl rounded-l-2xl',
+        chrome.hasTree && sidebarOpen && 'shadow-xl rounded-l-2xl',
       ]"
     >
       <header
-        class="project-navbar relative z-41 shrink-0 min-h-13.5 h-13.5 max-h-13.5 border-b border-border/70 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/85"
+        class="project-navbar relative z-41 shrink-0 min-h-13.5 h-13.5 max-h-13.5 border-b border-border/70 bg-background/95"
       >
         <div class="flex h-full min-w-0 items-center gap-2 px-3">
           <div class="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">

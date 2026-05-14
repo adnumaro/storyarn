@@ -68,12 +68,12 @@ function scrollToPanel(panelIndex: number): void {
             <img
               :src="'/images/logos/logo-name-black.png'"
               alt="Storyarn"
-              class="h-[42px] w-auto dark:hidden"
+              class="h-10.5 w-auto dark:hidden"
             />
             <img
               :src="'/images/logos/logo-name-white.png'"
               alt="Storyarn"
-              class="hidden h-[42px] w-auto dark:block"
+              class="hidden h-10.5 w-auto dark:block"
             />
           </LiveLink>
         </div>
@@ -157,24 +157,24 @@ function scrollToPanel(panelIndex: number): void {
       v-show="mobileOpen"
       id="mobile-nav"
       :class="[
-        'fixed inset-0 z-[140] w-screen max-w-none xl:hidden',
+        'fixed inset-0 z-140 w-screen max-w-none xl:hidden',
         isDark && 'bg-background/96 backdrop-blur-xl',
       ]"
     >
       <div class="flex min-h-screen">
         <aside class="flex min-h-screen w-full justify-center bg-background/98 px-5 pb-8 pt-5">
-          <div class="flex min-h-full w-full max-w-[420px] flex-col">
+          <div class="flex min-h-full w-full max-w-105 flex-col">
             <div class="flex items-center justify-between gap-4">
               <LiveLink :to="urls.home" class="flex items-center text-foreground">
                 <img
                   :src="'/images/logos/logo-name-black.png'"
                   alt="Storyarn"
-                  class="h-[42px] w-auto dark:hidden"
+                  class="h-10.5 w-auto dark:hidden"
                 />
                 <img
                   :src="'/images/logos/logo-name-white.png'"
                   alt="Storyarn"
-                  class="hidden h-[42px] w-auto dark:block"
+                  class="hidden h-10.5 w-auto dark:block"
                 />
               </LiveLink>
               <button
