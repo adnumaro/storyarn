@@ -1,0 +1,41 @@
+assets/app/locales/es/localization.json
+  s_116fc484719db6::t_c1192442618502 4,8
+assets/app/modules/localization/lib/flag-icons.ts
+  s_116fc484719db6::t_e3d58a981f7ba0 1-92
+assets/app/modules/localization/components/chrome/LocalizationSidebar.vue
+  s_116fc484719db6::t_455e241dd3f3b6 2,250,252,254
+  s_116fc484719db6::t_914e876574976c 16,95-96,113,117,232,236
+  s_116fc484719db6::t_357af4e4ed8c0e 108,110,177-178,180
+  s_116fc484719db6::t_213bb72269e45d 114,233
+  s_116fc484719db6::t_9d14c71be0a8df 13,30-31,97-100,129-130,138-141,150,153-166,171-172,261-262,270-275,277,286,289-302,307-308
+  s_116fc484719db6::t_73834d60b6e52d 23,94,101,116,235
+  s_116fc484719db6::t_60f69171342de1 219,221-222,229,263-269
+  s_116fc484719db6::t_ae036f91a47abd 14,181-204
+  s_116fc484719db6::t_e59706973114e5 111,131-137
+lib/storyarn/localization/languages.ex
+  s_116fc484719db6::t_0eb6ecf75afa8f 83
+lib/storyarn_web/live/localization_sidebar_live.ex
+  s_116fc484719db6::t_8e165348e5e013 315
+  s_116fc484719db6::t_01c2d6557e733f 300,304,320-325
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "3aab89a7aa360b7495fc37ee3e1bfa26dc14c587",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
