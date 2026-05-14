@@ -13,7 +13,7 @@ import {
   Settings,
   Trash2,
 } from "lucide-vue-next";
-import { computed } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,7 +22,6 @@ import {
   DropdownMenuTrigger,
 } from "@components/ui/dropdown-menu";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
-import { useLive } from "../shared/composables/useLive";
 import type { ProjectNavbarContextUrls } from "./projectNavbarTypes";
 
 const {
@@ -45,7 +44,7 @@ const {
   urls: ProjectNavbarContextUrls;
 }>();
 
-const live = useLive();
+const sidebarOpen = ref(mainSidebarOpen);
 
 const toolDefs = [
   { key: "dashboard", icon: LayoutDashboard },
@@ -68,8 +67,27 @@ const otherTools = computed(() => {
 });
 
 function toggleMainSidebar() {
-  live.pushEvent("main_sidebar_toggle", {});
+  const open = !sidebarOpen.value;
+  sidebarOpen.value = open;
+  window.dispatchEvent(new CustomEvent("storyarn:main-sidebar-change", { detail: { open } }));
 }
+
+function syncSidebarOpenFromBody() {
+  sidebarOpen.value = document.body.dataset.mainSidebarOpen === "1";
+}
+
+function handleMainSidebarChange(event: Event) {
+  sidebarOpen.value = Boolean((event as CustomEvent<{ open?: boolean }>).detail?.open);
+}
+
+onMounted(() => {
+  syncSidebarOpenFromBody();
+  window.addEventListener("storyarn:main-sidebar-change", handleMainSidebarChange);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("storyarn:main-sidebar-change", handleMainSidebarChange);
+});
 </script>
 
 <template>
@@ -78,7 +96,7 @@ function toggleMainSidebar() {
     <ToolbarTooltip
       v-if="hasTree"
       :label="
-        mainSidebarOpen
+        sidebarOpen
           ? $t('layout.project_navbar_context.hide_panel')
           : $t('layout.project_navbar_context.show_panel')
       "
@@ -87,7 +105,13 @@ function toggleMainSidebar() {
     >
       <button
         type="button"
-        :class="['toolbar-btn size-8', mainSidebarOpen && 'bg-accent']"
+        :aria-label="
+          sidebarOpen
+            ? $t('layout.project_navbar_context.hide_panel')
+            : $t('layout.project_navbar_context.show_panel')
+        "
+        :aria-pressed="sidebarOpen"
+        :class="['toolbar-btn size-8', sidebarOpen && 'bg-accent']"
         @click="toggleMainSidebar"
       >
         <PanelLeft class="size-3.5" />

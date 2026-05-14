@@ -2,9 +2,6 @@ defmodule StoryarnWeb.Live.Shared.ProjectChromeHelpers do
   @moduledoc """
   Helpers shared by every page LV that renders project chrome.
 
-  - `forward_main_sidebar/3` — forwards `main_sidebar_*` events from
-    `ProjectNavbarContext.vue` to the per-tool sidebar LV via the shell PubSub
-    topic.
   - `initial_online_users/1` — snapshot of current presence for the
     initial render; `PresenceLive` broadcasts updates on every join/leave.
   - `build_urls/2` — URL map consumed by the project chrome Vue boundary.
@@ -12,7 +9,6 @@ defmodule StoryarnWeb.Live.Shared.ProjectChromeHelpers do
 
   use StoryarnWeb, :verified_routes
 
-  alias Phoenix.LiveView.Socket
   alias Storyarn.Collaboration
 
   @tools [
@@ -62,25 +58,6 @@ defmodule StoryarnWeb.Live.Shared.ProjectChromeHelpers do
   """
   @spec shell_topic(integer() | binary()) :: String.t()
   def shell_topic(project_id), do: "project:#{project_id}:shell"
-
-  @doc """
-  Forward a `main_sidebar_*` event onto the shell topic as a
-  `{:toolbar_event, event, params}` tuple so the active sidebar LV picks
-  it up.
-  """
-  @spec forward_main_sidebar(Socket.t(), String.t(), map()) ::
-          {:noreply, Socket.t()}
-  def forward_main_sidebar(socket, event, params) do
-    with %{} = project <- socket.assigns[:project] do
-      Phoenix.PubSub.broadcast(
-        Storyarn.PubSub,
-        shell_topic(project.id),
-        {:toolbar_event, event, params}
-      )
-    end
-
-    {:noreply, socket}
-  end
 
   @doc """
   Snapshot the current online users for a project (used for the page LV's

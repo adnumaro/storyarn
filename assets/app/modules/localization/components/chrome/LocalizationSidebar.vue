@@ -176,7 +176,7 @@ function syncTexts(): void {
         >
           <a
             :href="textsUrl(lang.localeCode)"
-            data-phx-link="patch"
+            data-phx-link="redirect"
             data-phx-link-state="push"
             class="flex min-w-0 flex-1 items-center gap-3 text-left"
           >

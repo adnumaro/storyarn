@@ -94,9 +94,6 @@ defmodule StoryarnWeb.LocalizationLive.Report do
   def handle_params(_params, _url, socket), do: {:noreply, socket}
 
   @impl true
-  def handle_event("main_sidebar_" <> _ = event, params, socket),
-    do: ProjectChromeHelpers.forward_main_sidebar(socket, event, params)
-
   def handle_event("change_locale", %{"locale" => locale}, socket) when is_binary(locale) do
     target_locale? =
       Enum.any?(socket.assigns.target_languages, fn language ->

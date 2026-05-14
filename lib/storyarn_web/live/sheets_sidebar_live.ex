@@ -46,7 +46,6 @@ defmodule StoryarnWeb.SheetsSidebarLive do
       |> assign(:dashboard_url, session["dashboard_url"])
       |> assign(:dashboard_mode, dashboard_mode)
       |> assign(:main_sidebar_open, dashboard_mode)
-      |> assign(:main_sidebar_pinned, dashboard_mode)
       |> assign(:pending_delete_id, nil)
       |> assign(:sheets_tree, load_sheets_tree(project_id))
 
@@ -67,8 +66,6 @@ defmodule StoryarnWeb.SheetsSidebarLive do
         v-socket={@socket}
         id="shell-main-sidebar"
         main-sidebar-open={@main_sidebar_open}
-        main-sidebar-pinned={@main_sidebar_pinned}
-        show-pin={not is_nil(@sheet_id)}
         active-tool={@active_tool}
         dashboard-url={@dashboard_url}
         on-dashboard={is_nil(@sheet_id)}
@@ -86,37 +83,8 @@ defmodule StoryarnWeb.SheetsSidebarLive do
     """
   end
 
-  # ── Panel state events from SidebarFrame.vue ────────────────────────────────
-  @impl true
-  def handle_event("main_sidebar_init", _params, %{assigns: %{dashboard_mode: true}} = socket) do
-    {:noreply, socket}
-  end
-
-  def handle_event("main_sidebar_init", %{"pinned" => pinned}, socket) do
-    {:noreply,
-     socket
-     |> assign(:main_sidebar_pinned, pinned)
-     |> assign(:main_sidebar_open, pinned)}
-  end
-
-  def handle_event("main_sidebar_toggle", _params, %{assigns: %{dashboard_mode: true}} = socket) do
-    {:noreply, socket}
-  end
-
-  def handle_event("main_sidebar_toggle", _params, socket) do
-    {:noreply, assign(socket, :main_sidebar_open, !socket.assigns.main_sidebar_open)}
-  end
-
-  def handle_event("main_sidebar_pin", _params, socket) do
-    pinned = !socket.assigns.main_sidebar_pinned
-
-    {:noreply,
-     socket
-     |> assign(:main_sidebar_pinned, pinned)
-     |> assign(:main_sidebar_open, pinned)}
-  end
-
   # ── Tree mutations ────────────────────────────────────────────────────────
+  @impl true
   def handle_event("create_sheet", _params, socket) do
     with_edit(socket, fn socket ->
       case Sheets.create_sheet(socket.assigns.project, %{name: dgettext("sheets", "Untitled")}) do
@@ -220,27 +188,6 @@ defmodule StoryarnWeb.SheetsSidebarLive do
   end
 
   def handle_info({:remote_change, _action, _payload}, socket), do: {:noreply, socket}
-
-  # Forwarded from ToolbarsLive (ProjectNavbarContext.vue's pushEvent lands there).
-  def handle_info({:toolbar_event, "main_sidebar_toggle", _params}, socket) do
-    {:noreply, assign(socket, :main_sidebar_open, !socket.assigns.main_sidebar_open)}
-  end
-
-  def handle_info({:toolbar_event, "main_sidebar_pin", _params}, socket) do
-    pinned = !socket.assigns.main_sidebar_pinned
-
-    {:noreply,
-     socket
-     |> assign(:main_sidebar_pinned, pinned)
-     |> assign(:main_sidebar_open, pinned)}
-  end
-
-  def handle_info({:toolbar_event, "main_sidebar_init", %{"pinned" => pinned}}, socket) do
-    {:noreply,
-     socket
-     |> assign(:main_sidebar_pinned, pinned)
-     |> assign(:main_sidebar_open, pinned)}
-  end
 
   def handle_info({:toolbar_event, _name, _params}, socket), do: {:noreply, socket}
 

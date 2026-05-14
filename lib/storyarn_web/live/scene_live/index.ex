@@ -229,9 +229,6 @@ defmodule StoryarnWeb.SceneLive.Index do
   # ===========================================================================
 
   @impl true
-  def handle_event("main_sidebar_" <> _ = event, params, socket),
-    do: ProjectChromeHelpers.forward_main_sidebar(socket, event, params)
-
   def handle_event("sort_scenes", %{"column" => column}, socket) do
     {:noreply, handle_sort(socket, column, :all_scene_table_data, :scene_table_data, scene_sort_columns())}
   end

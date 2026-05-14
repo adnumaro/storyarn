@@ -29,7 +29,7 @@ defmodule StoryarnWeb.Components.ProjectLayout do
 
   def project(assigns) do
     ~H"""
-    <div>
+    <div class="project-layout-frame relative h-screen w-screen overflow-hidden bg-surface">
       {live_render(@socket, StoryarnWeb.PresenceLive,
         id: "presence-#{@project.id}",
         sticky: true,
@@ -40,17 +40,20 @@ defmodule StoryarnWeb.Components.ProjectLayout do
       )}
 
       <%= if @sidebar_module do %>
-        {live_render(@socket, @sidebar_module,
-          id: "sidebar-#{@active_tool}-#{@project.id}",
-          sticky: true,
-          session: @sidebar_session
-        )}
+        <aside class="absolute inset-y-0 left-0 z-0 w-[calc(100vw-4rem)] overflow-hidden sm:w-63">
+          {live_render(@socket, @sidebar_module,
+            id: "sidebar-#{@active_tool}-#{@project.id}",
+            sticky: true,
+            session: @sidebar_session
+          )}
+        </aside>
       <% end %>
 
       <.vue
         v-component="live/layouts/project/Layout"
         v-socket={@socket}
         id={@id}
+        class="h-full w-full overflow-hidden pointer-events-none"
         chrome={
           %{
             activeTool: to_string(@active_tool),

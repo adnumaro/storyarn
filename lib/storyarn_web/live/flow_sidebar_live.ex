@@ -30,10 +30,8 @@ defmodule StoryarnWeb.FlowSidebarLive do
         end
       end
 
-    # Dashboard mode (no flow_id at mount time): force the tree open,
-    # force-pinned, ignore client-side main_sidebar_init pinned state, and
-    # hide the pin toggle. Matches the previous dashboard tree behavior
-    # from FlowLive.Index.
+    # Dashboard mode (no flow_id at mount time): force the tree open.
+    # Matches the previous dashboard tree behavior from FlowLive.Index.
     dashboard_mode = is_nil(session["flow_id"])
 
     socket =
@@ -49,7 +47,6 @@ defmodule StoryarnWeb.FlowSidebarLive do
       |> assign(:dashboard_url, session["dashboard_url"])
       |> assign(:dashboard_mode, dashboard_mode)
       |> assign(:main_sidebar_open, dashboard_mode)
-      |> assign(:main_sidebar_pinned, dashboard_mode)
       |> assign(:pending_delete_id, nil)
       |> assign(:flows_tree, load_flows_tree(project_id))
 
@@ -70,8 +67,6 @@ defmodule StoryarnWeb.FlowSidebarLive do
         v-socket={@socket}
         id="shell-main-sidebar"
         main-sidebar-open={@main_sidebar_open}
-        main-sidebar-pinned={@main_sidebar_pinned}
-        show-pin={not is_nil(@flow_id)}
         active-tool={@active_tool}
         dashboard-url={@dashboard_url}
         on-dashboard={is_nil(@flow_id)}
@@ -89,42 +84,8 @@ defmodule StoryarnWeb.FlowSidebarLive do
     """
   end
 
-  # ── Panel state events from SidebarFrame.vue ────────────────────────────────
-  @impl true
-  def handle_event("main_sidebar_init", _params, %{assigns: %{dashboard_mode: true}} = socket) do
-    # Dashboard mode ignores localStorage — tree stays force-open.
-    {:noreply, socket}
-  end
-
-  def handle_event("main_sidebar_init", %{"pinned" => pinned}, socket) do
-    {:noreply,
-     socket
-     |> assign(:main_sidebar_pinned, pinned)
-     |> assign(:main_sidebar_open, pinned)}
-  end
-
-  def handle_event("main_sidebar_toggle", _params, %{assigns: %{dashboard_mode: true}} = socket) do
-    {:noreply, socket}
-  end
-
-  def handle_event("main_sidebar_toggle", _params, socket) do
-    {:noreply, assign(socket, :main_sidebar_open, !socket.assigns.main_sidebar_open)}
-  end
-
-  def handle_event("main_sidebar_pin", _params, %{assigns: %{dashboard_mode: true}} = socket) do
-    {:noreply, socket}
-  end
-
-  def handle_event("main_sidebar_pin", _params, socket) do
-    pinned = !socket.assigns.main_sidebar_pinned
-
-    {:noreply,
-     socket
-     |> assign(:main_sidebar_pinned, pinned)
-     |> assign(:main_sidebar_open, pinned)}
-  end
-
   # ── Tree mutations ────────────────────────────────────────────────────────
+  @impl true
   def handle_event("create_flow", _params, socket) do
     with_edit(socket, fn socket ->
       case Flows.create_flow(socket.assigns.project, %{name: dgettext("flows", "Untitled")}) do
@@ -238,7 +199,6 @@ defmodule StoryarnWeb.FlowSidebarLive do
           socket
           |> assign(:dashboard_mode, true)
           |> assign(:main_sidebar_open, true)
-          |> assign(:main_sidebar_pinned, true)
 
         not dashboard_mode and was_dashboard ->
           assign(socket, :dashboard_mode, false)
@@ -260,32 +220,6 @@ defmodule StoryarnWeb.FlowSidebarLive do
   end
 
   def handle_info({:remote_change, _action, _payload}, socket), do: {:noreply, socket}
-
-  # Forwarded from the page LV (ProjectNavbarContext.vue's pushEvent lands there).
-  # Dashboard mode ignores toolbar toggles too — tree stays open.
-  def handle_info({:toolbar_event, _name, _params}, %{assigns: %{dashboard_mode: true}} = socket) do
-    {:noreply, socket}
-  end
-
-  def handle_info({:toolbar_event, "main_sidebar_toggle", _params}, socket) do
-    {:noreply, assign(socket, :main_sidebar_open, !socket.assigns.main_sidebar_open)}
-  end
-
-  def handle_info({:toolbar_event, "main_sidebar_pin", _params}, socket) do
-    pinned = !socket.assigns.main_sidebar_pinned
-
-    {:noreply,
-     socket
-     |> assign(:main_sidebar_pinned, pinned)
-     |> assign(:main_sidebar_open, pinned)}
-  end
-
-  def handle_info({:toolbar_event, "main_sidebar_init", %{"pinned" => pinned}}, socket) do
-    {:noreply,
-     socket
-     |> assign(:main_sidebar_pinned, pinned)
-     |> assign(:main_sidebar_open, pinned)}
-  end
 
   def handle_info({:toolbar_event, _name, _params}, socket), do: {:noreply, socket}
 

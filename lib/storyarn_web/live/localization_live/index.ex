@@ -143,15 +143,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
 
   def handle_params(_params, _url, socket), do: {:noreply, socket}
 
-  # Tree panel + localization mutations (change_locale, add/remove language,
-  # sync_texts) live in LocalizationSidebarLive. translate_batch lives in
-  # LocalizationToolbarLive. ProjectNavbarContext.vue's main_sidebar_* events fire
-  # here; forward them to the sidebar via shell topic.
-
   @impl true
-  def handle_event("main_sidebar_" <> _ = event, params, socket),
-    do: ProjectChromeHelpers.forward_main_sidebar(socket, event, params)
-
   def handle_event("change_filter", params, socket) do
     {:noreply,
      socket

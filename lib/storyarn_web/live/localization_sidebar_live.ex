@@ -9,7 +9,7 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
   Pairs with `LocalizationToolbarLive`, which injects into the project
   layout's top-right slot for the `translate_batch` button on the Index page.
 
-  Step 3 scaffold: loads languages + handles `main_sidebar_*`. Actual
+  Step 3 scaffold: loads languages. Actual
   localization mutations land in step 6.
   """
 
@@ -53,7 +53,6 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
       |> assign(:active_tool, session["active_tool"] || "localization")
       |> assign(:dashboard_url, session["dashboard_url"])
       |> assign(:main_sidebar_open, false)
-      |> assign(:main_sidebar_pinned, true)
       |> assign(:source_language, source_language)
       |> assign(:target_languages, target_languages)
 
@@ -74,8 +73,6 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
         v-socket={@socket}
         id="localization-sidebar"
         main-sidebar-open={@main_sidebar_open}
-        main-sidebar-pinned={@main_sidebar_pinned}
-        show-pin={false}
         active-tool={@active_tool}
         dashboard-url={@dashboard_url}
         on-dashboard={is_nil(@selected_locale)}
@@ -85,36 +82,14 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
     """
   end
 
-  # ── Panel state events from SidebarFrame.vue ────────────────────────────────
-  @impl true
-  def handle_event("main_sidebar_init", %{"pinned" => pinned}, socket) do
-    {:noreply,
-     socket
-     |> assign(:main_sidebar_pinned, pinned)
-     |> assign(:main_sidebar_open, pinned)}
-  end
-
-  def handle_event("main_sidebar_toggle", _params, socket) do
-    {:noreply, assign(socket, :main_sidebar_open, !socket.assigns.main_sidebar_open)}
-  end
-
-  def handle_event("main_sidebar_pin", _params, socket) do
-    pinned = !socket.assigns.main_sidebar_pinned
-
-    {:noreply,
-     socket
-     |> assign(:main_sidebar_pinned, pinned)
-     |> assign(:main_sidebar_open, pinned)}
-  end
-
   # ── Localization mutations ────────────────────────────────────────────────
-
   # Locale selection is URL-driven (target language items in LocalizationSidebar.vue
   # are `data-phx-link="patch"` anchors that navigate to /localization/texts/:locale).
   # `LocalizationLive.Index.handle_params` broadcasts `{:active_locale, locale}` on
   # the shell topic so this sidebar updates its highlight.
 
   # Empty locale codes — user selected the placeholder. No-op.
+  @impl true
   def handle_event("change_source_language", %{"locale_code" => ""}, socket), do: {:noreply, socket}
 
   def handle_event("add_target_language", %{"locale_code" => ""}, socket), do: {:noreply, socket}
@@ -249,27 +224,6 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
   end
 
   def handle_info({:remote_change, _action, _payload}, socket), do: {:noreply, socket}
-
-  # Forwarded from ToolbarsLive (ProjectNavbarContext.vue's pushEvent lands there).
-  def handle_info({:toolbar_event, "main_sidebar_toggle", _params}, socket) do
-    {:noreply, assign(socket, :main_sidebar_open, !socket.assigns.main_sidebar_open)}
-  end
-
-  def handle_info({:toolbar_event, "main_sidebar_pin", _params}, socket) do
-    pinned = !socket.assigns.main_sidebar_pinned
-
-    {:noreply,
-     socket
-     |> assign(:main_sidebar_pinned, pinned)
-     |> assign(:main_sidebar_open, pinned)}
-  end
-
-  def handle_info({:toolbar_event, "main_sidebar_init", %{"pinned" => pinned}}, socket) do
-    {:noreply,
-     socket
-     |> assign(:main_sidebar_pinned, pinned)
-     |> assign(:main_sidebar_open, pinned)}
-  end
 
   def handle_info({:toolbar_event, _name, _params}, socket), do: {:noreply, socket}
 

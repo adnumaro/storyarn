@@ -111,9 +111,6 @@ defmodule StoryarnWeb.AssetLive.Index do
   # ===========================================================================
 
   @impl true
-  def handle_event("main_sidebar_" <> _ = event, params, socket),
-    do: ProjectChromeHelpers.forward_main_sidebar(socket, event, params)
-
   def handle_event("filter_assets", %{"type" => type}, socket) when type in ["all", "image", "audio"] do
     {:noreply,
      socket

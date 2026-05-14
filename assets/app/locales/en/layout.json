@@ -10,12 +10,7 @@
       "localization": "Localization"
     },
     "main_sidebar": {
-      "dashboard_label": "{tool} dashboard",
-      "unpin": "Unpin panel",
-      "pin_panel": "Pin panel",
-      "pinned": "Pinned",
-      "pin": "Pin",
-      "close": "Close panel"
+      "dashboard_label": "{tool} dashboard"
     },
     "project_navbar_context": {
       "hide_panel": "Hide panel",

@@ -397,10 +397,6 @@ defmodule StoryarnWeb.FlowLive.Show do
   # ===========================================================================
 
   @impl true
-  # Tree panel events (forwarded to the sticky FlowSidebarLive via shell topic)
-  def handle_event("main_sidebar_" <> _ = event, params, socket),
-    do: ProjectChromeHelpers.forward_main_sidebar(socket, event, params)
-
   def handle_event("open_versions_panel", _params, %{assigns: %{compact: true}} = socket) do
     {:noreply, socket}
   end

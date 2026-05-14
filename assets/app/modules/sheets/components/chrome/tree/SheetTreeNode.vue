@@ -178,7 +178,7 @@ watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
           <!-- Sheet link -->
           <a
             :href="sheetHref(node)"
-            data-phx-link="patch"
+            data-phx-link="redirect"
             data-phx-link-state="push"
             class="flex-1 flex items-center gap-1.5 py-1.5 min-w-0"
           >

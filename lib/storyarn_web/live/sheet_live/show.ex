@@ -414,14 +414,9 @@ defmodule StoryarnWeb.SheetLive.Show do
   # Event Handlers: Header
   # ===========================================================================
 
-  # main_sidebar_* events fire from ProjectNavbarContext.vue in this LV's DOM.
-  # Forward them on the shell topic so the active sidebar LV picks them up.
-  @impl true
-  def handle_event("main_sidebar_" <> _ = event, params, socket),
-    do: ProjectChromeHelpers.forward_main_sidebar(socket, event, params)
-
   # --- Tabs ---
 
+  @impl true
   def handle_event("switch_tab", %{"tab" => tab}, socket) when tab in ~w(content references audio history) do
     if tab == "history" and socket.assigns.compact do
       {:noreply, socket}

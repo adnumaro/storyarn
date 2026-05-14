@@ -5,15 +5,11 @@ defineOptions({ inheritAttrs: false });
 
 const {
   mainSidebarOpen = false,
-  mainSidebarPinned = true,
-  showPin = true,
   activeTool = "sheets",
   dashboardUrl = null,
   onDashboard = false,
 } = defineProps<{
   mainSidebarOpen?: boolean;
-  mainSidebarPinned?: boolean;
-  showPin?: boolean;
   activeTool?: string;
   dashboardUrl?: string | null;
   onDashboard?: boolean;
@@ -23,8 +19,6 @@ const {
 <template>
   <SidebarFrame
     :main-sidebar-open="mainSidebarOpen"
-    :main-sidebar-pinned="mainSidebarPinned"
-    :show-pin="showPin"
     :active-tool="activeTool"
     :dashboard-url="dashboardUrl"
     :on-dashboard="onDashboard"

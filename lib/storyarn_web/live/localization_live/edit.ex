@@ -116,9 +116,6 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
   def handle_info(_msg, socket), do: {:noreply, socket}
 
   @impl true
-  def handle_event("main_sidebar_" <> _ = event, params, socket),
-    do: ProjectChromeHelpers.forward_main_sidebar(socket, event, params)
-
   def handle_event("save_translation", %{"localized_text" => params}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       now = TimeHelpers.now()

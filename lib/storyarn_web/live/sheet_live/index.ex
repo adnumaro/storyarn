@@ -231,12 +231,7 @@ defmodule StoryarnWeb.SheetLive.Index do
   # Events
   # ===========================================================================
 
-  # main_sidebar_* events fire from ProjectNavbarContext.vue in this LV's DOM.
-  # Forward them on the shell topic so the sidebar LV picks them up.
   @impl true
-  def handle_event("main_sidebar_" <> _ = event, params, socket),
-    do: ProjectChromeHelpers.forward_main_sidebar(socket, event, params)
-
   def handle_event("sort_sheets", %{"column" => column}, socket) do
     {:noreply, handle_sort(socket, column, :all_sheet_table_data, :sheet_table_data, sheet_sort_columns())}
   end
