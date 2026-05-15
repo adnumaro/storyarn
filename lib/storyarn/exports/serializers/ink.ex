@@ -103,7 +103,7 @@ defmodule Storyarn.Exports.Serializers.Ink do
 
   defp flow_to_knot(flow, speaker_map, flow_shortcuts_by_id, tunnel_targets) do
     knot_name = Helpers.shortcut_to_identifier(flow.shortcut || flow.name || "flow_#{flow.id}")
-    {instructions, hub_sections} = GraphTraversal.linearize(flow)
+    {instructions, hub_sections} = GraphTraversal.linearize_blocks(flow)
     is_tunnel = MapSet.member?(tunnel_targets, flow.shortcut)
 
     ctx = %{
@@ -177,8 +177,13 @@ defmodule Storyarn.Exports.Serializers.Ink do
   defp render_choice_instructions(instructions, ctx, depth) do
     instructions
     |> choice_blocks([])
-    |> Enum.flat_map(fn {choice, body} ->
-      choice_lines = render_instruction(choice, ctx, depth)
+    |> Enum.map(fn {{:choice, response, index}, body} -> {response, index, body} end)
+    |> render_choice_branches(ctx, depth)
+  end
+
+  defp render_choice_branches(branches, ctx, depth) do
+    Enum.flat_map(branches, fn {response, index, body} ->
+      choice_lines = render_instruction({:choice, response, index}, ctx, depth)
       body_lines = render_instructions(body, ctx, depth + 1)
       terminal_lines = if instructions_end_flow?(body), do: [], else: [terminal_line(ctx, depth + 1)]
 
@@ -235,6 +240,10 @@ defmodule Storyarn.Exports.Serializers.Ink do
 
   defp render_instruction({:choices_start, _node}, _ctx, _depth), do: []
 
+  defp render_instruction({:choices, _node, branches}, ctx, depth) do
+    render_choice_branches(branches, ctx, depth)
+  end
+
   defp render_instruction({:choice, resp, _idx}, _ctx, depth) do
     text = (resp["text"] || resp["menu_text"] || "") |> Helpers.strip_html() |> escape_ink_text()
     condition = build_condition_prefix(resp["condition"])
@@ -266,6 +275,15 @@ defmodule Storyarn.Exports.Serializers.Ink do
   end
 
   defp render_instruction({:choices_end, _node}, _ctx, _depth), do: []
+
+  defp render_instruction({:condition, node, branches}, ctx, depth) do
+    render_instruction({:condition_start, node}, ctx, depth) ++
+      Enum.flat_map(branches, fn {pin, label, index, body} ->
+        render_instruction({:condition_branch, pin, label, index}, ctx, depth) ++
+          render_instructions(body, ctx, depth)
+      end) ++
+      render_instruction({:condition_end, node}, ctx, depth)
+  end
 
   defp render_instruction({:condition_start, node}, _ctx, depth) do
     data = node.data || %{}

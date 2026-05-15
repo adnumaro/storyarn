@@ -119,6 +119,37 @@ defmodule Storyarn.Exports.Serializers.GraphTraversalTest do
       assert :choices_end in types
     end
 
+    test "linearize_blocks groups dialogue choice branch bodies" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "dialogue", %{
+              "text" => "What?",
+              "responses" => [
+                %{"id" => "r1", "text" => "Yes"},
+                %{"id" => "r2", "text" => "No"}
+              ]
+            }),
+            make_node(3, "dialogue", %{"text" => "Yes branch"}),
+            make_node(4, "dialogue", %{"text" => "No branch"})
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3, "response_r1"),
+            make_conn(2, 4, "response_r2")
+          ]
+        )
+
+      {instructions, _} = GraphTraversal.linearize_blocks(flow)
+
+      assert [
+               {:dialogue, _dialogue_node},
+               {:choices, _dialogue,
+                [{%{"text" => "Yes"}, 0, [{:dialogue, _yes}]}, {%{"text" => "No"}, 1, [{:dialogue, _no}]}]}
+             ] = instructions
+    end
+
     test "condition branches" do
       flow =
         make_flow(
@@ -146,6 +177,78 @@ defmodule Storyarn.Exports.Serializers.GraphTraversalTest do
       assert :condition_start in types
       assert :condition_branch in types
       assert :condition_end in types
+    end
+
+    test "linearize_blocks groups condition branch bodies" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "condition", %{
+              "condition" => %{"logic" => "all", "rules" => []},
+              "cases" => [
+                %{"id" => "true", "label" => "True", "value" => "true"},
+                %{"id" => "false", "label" => "False", "value" => "false"}
+              ]
+            }),
+            make_node(3, "dialogue", %{"text" => "True branch"}),
+            make_node(4, "dialogue", %{"text" => "False branch"})
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3, "true"),
+            make_conn(2, 4, "false")
+          ]
+        )
+
+      {instructions, _} = GraphTraversal.linearize_blocks(flow)
+
+      assert [
+               {:condition, _condition,
+                [
+                  {"true", "True", 0, [{:dialogue, _true}]},
+                  {"false", "False", 1, [{:dialogue, _false}]}
+                ]}
+             ] = instructions
+    end
+
+    test "linearize_blocks derives switch branches from condition blocks" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "condition", %{
+              "switch_mode" => true,
+              "condition" => %{
+                "logic" => "all",
+                "blocks" => [
+                  %{"id" => "case_mage", "type" => "block", "logic" => "all", "label" => "Mage", "rules" => []},
+                  %{"id" => "case_warrior", "type" => "block", "logic" => "all", "label" => "Warrior", "rules" => []}
+                ]
+              }
+            }),
+            make_node(3, "dialogue", %{"text" => "Mage branch"}),
+            make_node(4, "dialogue", %{"text" => "Warrior branch"}),
+            make_node(5, "dialogue", %{"text" => "Default branch"})
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3, "case_mage"),
+            make_conn(2, 4, "case_warrior"),
+            make_conn(2, 5, "default")
+          ]
+        )
+
+      {instructions, _} = GraphTraversal.linearize_blocks(flow)
+
+      assert [
+               {:condition, _condition,
+                [
+                  {"case_mage", "Mage", 0, [{:dialogue, _mage}]},
+                  {"case_warrior", "Warrior", 1, [{:dialogue, _warrior}]},
+                  {"default", "Default", 2, [{:dialogue, _default}]}
+                ]}
+             ] = instructions
     end
 
     test "hub + jump emits divert and hub section" do

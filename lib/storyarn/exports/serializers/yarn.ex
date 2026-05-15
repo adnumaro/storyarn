@@ -117,7 +117,7 @@ defmodule Storyarn.Exports.Serializers.Yarn do
 
   defp flow_to_yarn(flow, var_decls, speaker_map, flow_shortcuts_by_id, detour_targets, line_counter) do
     node_title = Helpers.shortcut_to_identifier(flow.shortcut || flow.name || "flow_#{flow.id}")
-    {instructions, hub_sections} = GraphTraversal.linearize(flow)
+    {instructions, hub_sections} = GraphTraversal.linearize_blocks(flow)
 
     ctx = %{
       speaker_map: speaker_map,
@@ -204,8 +204,13 @@ defmodule Storyarn.Exports.Serializers.Yarn do
   defp render_choice_instructions(instructions, ctx, line_counter, depth) do
     instructions
     |> choice_blocks([])
-    |> Enum.flat_map(fn {choice, body} ->
-      render_instruction(choice, ctx, line_counter, depth) ++
+    |> Enum.map(fn {{:choice, response, index}, body} -> {response, index, body} end)
+    |> render_choice_branches(ctx, line_counter, depth)
+  end
+
+  defp render_choice_branches(branches, ctx, line_counter, depth) do
+    Enum.flat_map(branches, fn {response, index, body} ->
+      render_instruction({:choice, response, index}, ctx, line_counter, depth) ++
         render_instructions(body, ctx, line_counter, depth + 1)
     end)
   end
@@ -242,6 +247,10 @@ defmodule Storyarn.Exports.Serializers.Yarn do
 
   defp render_instruction({:choices_start, _node}, _ctx, _lc, _depth), do: []
 
+  defp render_instruction({:choices, _node, branches}, ctx, line_counter, depth) do
+    render_choice_branches(branches, ctx, line_counter, depth)
+  end
+
   defp render_instruction({:choice, resp, _idx}, _ctx, line_counter, depth) do
     text = (resp["text"] || resp["menu_text"] || "") |> Helpers.strip_html() |> escape_yarn_text()
     line_id = next_line_id(line_counter)
@@ -273,6 +282,15 @@ defmodule Storyarn.Exports.Serializers.Yarn do
   end
 
   defp render_instruction({:choices_end, _node}, _ctx, _lc, _depth), do: []
+
+  defp render_instruction({:condition, node, branches}, ctx, line_counter, depth) do
+    render_instruction({:condition_start, node}, ctx, line_counter, depth) ++
+      Enum.flat_map(branches, fn {pin, label, index, body} ->
+        render_instruction({:condition_branch, pin, label, index}, ctx, line_counter, depth) ++
+          render_instructions(body, ctx, line_counter, depth)
+      end) ++
+      render_instruction({:condition_end, node}, ctx, line_counter, depth)
+  end
 
   defp render_instruction({:condition_start, node}, _ctx, _lc, depth) do
     data = node.data || %{}

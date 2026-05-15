@@ -26,9 +26,11 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
           | {:choices_start, node :: map()}
           | {:choice, response :: map(), index :: non_neg_integer()}
           | {:choices_end, node :: map()}
+          | {:choices, node :: map(), choice_branches :: list()}
           | {:condition_start, node :: map()}
           | {:condition_branch, pin :: String.t(), label :: String.t(), index :: non_neg_integer()}
           | {:condition_end, node :: map()}
+          | {:condition, node :: map(), condition_branches :: list()}
           | {:instruction, node :: map()}
           | {:subflow, node :: map()}
           | {:jump, node :: map(), target_label :: String.t()}
@@ -72,6 +74,37 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
     else
       {[], []}
     end
+  end
+
+  @doc """
+  Linearizes a flow and groups choice/condition branch bodies.
+
+  Returns the same `{instructions, hub_sections}` shape as `linearize/1`, but
+  replaces flat marker sequences with structured instructions:
+
+    * `{:choices, node, [{response, index, body_instructions}]}`
+    * `{:condition, node, [{pin, label, index, body_instructions}]}`
+
+  This keeps indentation-sensitive serializers from having to rediscover branch
+  boundaries from the flat stream.
+  """
+  def linearize_blocks(flow) do
+    {instructions, hub_sections} = linearize(flow)
+
+    hub_sections =
+      Enum.map(hub_sections, fn {label, instructions} ->
+        {label, group_branch_instructions(instructions)}
+      end)
+
+    {group_branch_instructions(instructions), hub_sections}
+  end
+
+  @doc """
+  Groups choice and condition marker runs in an instruction list.
+  """
+  def group_branch_instructions(instructions) do
+    {grouped, _rest} = group_until(instructions, &never_stop?/1, [])
+    grouped
   end
 
   # ---------------------------------------------------------------------------
@@ -145,8 +178,8 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
     state = %{state | instructions: [{:condition_start, node} | state.instructions]}
 
     # Condition nodes have multiple output pins (one per case)
-    cases = node.data["cases"] || []
     targets_by_pin = outgoing_by_pin(state, node.id)
+    cases = condition_cases(node, targets_by_pin)
 
     state =
       cases
@@ -194,6 +227,64 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
   end
 
   defp traverse_node(_node, state), do: state
+
+  defp condition_cases(%{data: data}, targets_by_pin) when is_map(data) do
+    explicit_cases = data["cases"] || []
+
+    cond do
+      explicit_cases != [] ->
+        maybe_append_default_case(explicit_cases, targets_by_pin)
+
+      data["switch_mode"] == true ->
+        data
+        |> switch_cases()
+        |> maybe_append_default_case(targets_by_pin)
+
+      true ->
+        boolean_cases(targets_by_pin)
+    end
+  end
+
+  defp condition_cases(_node, targets_by_pin), do: boolean_cases(targets_by_pin)
+
+  defp switch_cases(data) do
+    case Helpers.extract_condition(data["condition"]) do
+      %{"blocks" => blocks} when is_list(blocks) ->
+        Enum.flat_map(blocks, &switch_block_case/1)
+
+      %{"rules" => rules} when is_list(rules) ->
+        Enum.flat_map(rules, &switch_rule_case/1)
+
+      _ ->
+        []
+    end
+  end
+
+  defp switch_block_case(%{"type" => "block", "id" => id} = block) when is_binary(id) and id != "" do
+    [%{"id" => id, "value" => id, "label" => block["label"] || id}]
+  end
+
+  defp switch_block_case(_block), do: []
+
+  defp switch_rule_case(%{"id" => id} = rule) when is_binary(id) and id != "" do
+    [%{"id" => id, "value" => id, "label" => rule["label"] || id}]
+  end
+
+  defp switch_rule_case(_rule), do: []
+
+  defp maybe_append_default_case(cases, targets_by_pin) do
+    if Map.has_key?(targets_by_pin, "default") and not Enum.any?(cases, &(&1["id"] == "default")) do
+      cases ++ [%{"id" => "default", "value" => "default", "label" => "Default"}]
+    else
+      cases
+    end
+  end
+
+  defp boolean_cases(targets_by_pin) do
+    ["true", "false"]
+    |> Enum.filter(&Map.has_key?(targets_by_pin, &1))
+    |> Enum.map(&%{"id" => &1, "value" => &1, "label" => String.capitalize(&1)})
+  end
 
   # -- Dialogue traversal helpers --
 
@@ -334,4 +425,66 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
   defp blank?(nil), do: true
   defp blank?(""), do: true
   defp blank?(_value), do: false
+
+  # ---------------------------------------------------------------------------
+  # Branch grouping
+  # ---------------------------------------------------------------------------
+
+  defp group_until([], _stop?, acc), do: {Enum.reverse(acc), []}
+
+  defp group_until([instruction | _rest] = instructions, stop?, acc) do
+    if stop?.(instruction) do
+      {Enum.reverse(acc), instructions}
+    else
+      group_instruction(instruction, instructions, stop?, acc)
+    end
+  end
+
+  defp group_instruction({:choices_start, node}, [_instruction | rest], stop?, acc) do
+    {branches, rest} = collect_choice_branches(rest, [])
+    group_until(rest, stop?, [{:choices, node, branches} | acc])
+  end
+
+  defp group_instruction({:condition_start, node}, [_instruction | rest], stop?, acc) do
+    {branches, rest} = collect_condition_branches(rest, [])
+    group_until(rest, stop?, [{:condition, node, branches} | acc])
+  end
+
+  defp group_instruction(instruction, [_instruction | rest], stop?, acc) do
+    group_until(rest, stop?, [instruction | acc])
+  end
+
+  defp collect_choice_branches([], acc), do: {Enum.reverse(acc), []}
+  defp collect_choice_branches([{:choices_end, _node} | rest], acc), do: {Enum.reverse(acc), rest}
+
+  defp collect_choice_branches([{:choice, response, index} | rest], acc) do
+    {body, rest} = group_until(rest, &choice_boundary?/1, [])
+    collect_choice_branches(rest, [{response, index, body} | acc])
+  end
+
+  defp collect_choice_branches([_instruction | rest], acc) do
+    collect_choice_branches(rest, acc)
+  end
+
+  defp collect_condition_branches([], acc), do: {Enum.reverse(acc), []}
+  defp collect_condition_branches([{:condition_end, _node} | rest], acc), do: {Enum.reverse(acc), rest}
+
+  defp collect_condition_branches([{:condition_branch, pin, label, index} | rest], acc) do
+    {body, rest} = group_until(rest, &condition_boundary?/1, [])
+    collect_condition_branches(rest, [{pin, label, index, body} | acc])
+  end
+
+  defp collect_condition_branches([_instruction | rest], acc) do
+    collect_condition_branches(rest, acc)
+  end
+
+  defp choice_boundary?({:choice, _response, _index}), do: true
+  defp choice_boundary?({:choices_end, _node}), do: true
+  defp choice_boundary?(_instruction), do: false
+
+  defp condition_boundary?({:condition_branch, _pin, _label, _index}), do: true
+  defp condition_boundary?({:condition_end, _node}), do: true
+  defp condition_boundary?(_instruction), do: false
+
+  defp never_stop?(_instruction), do: false
 end
