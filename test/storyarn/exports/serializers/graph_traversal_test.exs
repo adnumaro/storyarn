@@ -67,6 +67,28 @@ defmodule Storyarn.Exports.Serializers.GraphTraversalTest do
       assert :exit in types
     end
 
+    test "sequence nodes are transparent when encountered" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "sequence", %{"name" => "Act I"}),
+            make_node(3, "dialogue", %{"text" => "Inside the sequence"}),
+            make_node(4, "exit")
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3),
+            make_conn(3, 4)
+          ]
+        )
+
+      {instructions, _} = GraphTraversal.linearize(flow)
+      types = instruction_types(instructions)
+      assert :dialogue in types
+      assert :exit in types
+    end
+
     test "dialogue with responses generates choices" do
       flow =
         make_flow(

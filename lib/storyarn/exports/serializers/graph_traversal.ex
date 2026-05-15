@@ -14,7 +14,8 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
   5. Condition nodes → emit `:condition_start`/`:condition_branch`/`:condition_end`
   6. Dialogue responses → emit `:choices_start`/`:choice`/`:choices_end`
   7. Exit nodes → emit `:exit`
-  8. Detect cycles via visited set, emit jump to break
+  8. Sequence nodes → transparent grouping nodes, just follow connections
+  9. Detect cycles via visited set, emit jump to break
   """
 
   alias Storyarn.Exports.Serializers.Helpers
@@ -112,6 +113,11 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
 
   defp traverse_node(%{type: "entry"} = node, state) do
     # Entry is implicit — just follow connections
+    targets = outgoing(state, node.id)
+    traverse_targets(targets, state)
+  end
+
+  defp traverse_node(%{type: "sequence"} = node, state) do
     targets = outgoing(state, node.id)
     traverse_targets(targets, state)
   end

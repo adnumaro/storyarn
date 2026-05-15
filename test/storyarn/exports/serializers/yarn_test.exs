@@ -9,6 +9,7 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
   alias Storyarn.Exports.DataCollector
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Exports.Serializers.Yarn
+  alias Storyarn.Flows
   alias Storyarn.Repo
 
   # =============================================================================
@@ -220,6 +221,37 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
       source = yarn_source(export_yarn(project))
       assert source =~ "-> Fight"
       assert source =~ "-> Flee"
+    end
+  end
+
+  # =============================================================================
+  # Sequence nodes
+  # =============================================================================
+
+  describe "sequence nodes" do
+    setup [:create_project]
+
+    test "dialogue nested inside a sequence is still exported", %{project: project} do
+      flow = flow_fixture(project, %{name: "Sequence Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+      {:ok, sequence} = Flows.create_sequence(flow.id, %{"name" => "Act I"})
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          parent_id: sequence.id,
+          data: %{
+            "text" => "Inside the sequence.",
+            "speaker_sheet_id" => nil,
+            "responses" => []
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = yarn_source(export_yarn(project))
+      assert source =~ "Inside the sequence."
     end
   end
 

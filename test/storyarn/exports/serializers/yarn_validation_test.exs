@@ -19,6 +19,7 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
   alias Storyarn.Exports.DataCollector
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Exports.Serializers.Yarn
+  alias Storyarn.Flows
   alias Storyarn.Repo
   alias Storyarn.Test.YarnCompiler
 
@@ -89,6 +90,32 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
 
       assert YarnCompiler.valid?(source),
              "ysc rejected dialogue flow:\n#{inspect(YarnCompiler.validate(source))}"
+    end
+
+    test "dialogue nested in a sequence compiles and is included", %{project: project} do
+      flow = flow_fixture(project, %{name: "Sequence"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+      {:ok, sequence} = Flows.create_sequence(flow.id, %{"name" => "Act I"})
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          parent_id: sequence.id,
+          data: %{
+            "text" => "Inside the sequence.",
+            "speaker_sheet_id" => nil,
+            "responses" => []
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = yarn_source(export_files(project))
+      assert source =~ "Inside the sequence."
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected sequence-nested dialogue:\n#{inspect(YarnCompiler.validate(source))}"
     end
 
     test "dialogue with speaker compiles", %{project: project} do
