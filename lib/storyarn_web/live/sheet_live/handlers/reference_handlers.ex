@@ -30,30 +30,11 @@ defmodule StoryarnWeb.SheetLive.Handlers.ReferenceHandlers do
 
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       block_id = helpers.parse_id.(block_id)
-      block = Sheets.get_block(block_id)
+      target_id = helpers.parse_id.(target_id)
 
-      if block && block.sheet_id == socket.assigns.sheet.id do
-        target_id_int = helpers.parse_id.(target_id)
-
-        case Sheets.validate_reference_target(
-               target_type,
-               target_id_int,
-               socket.assigns.project.id
-             ) do
-          {:ok, _target} ->
-            Sheets.update_block_value(block, %{
-              "target_type" => target_type,
-              "target_id" => target_id_int
-            })
-
-            {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("sheets", "Reference target not found."))}
-        end
-      else
-        {:noreply, socket}
-      end
+      socket
+      |> block_for_current_sheet(block_id)
+      |> select_reference_target(socket, target_type, target_id, helpers)
     end)
   end
 
@@ -68,5 +49,34 @@ defmodule StoryarnWeb.SheetLive.Handlers.ReferenceHandlers do
         {:noreply, socket}
       end
     end)
+  end
+
+  defp block_for_current_sheet(socket, block_id) do
+    case Sheets.get_block(block_id) do
+      %{sheet_id: sheet_id} = block when sheet_id == socket.assigns.sheet.id -> {:ok, block}
+      _ -> :error
+    end
+  end
+
+  defp select_reference_target({:ok, block}, socket, target_type, target_id, helpers) do
+    case Sheets.validate_reference_target(target_type, target_id, socket.assigns.project.id) do
+      {:ok, _target} ->
+        update_reference_block(block, target_type, target_id)
+        {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Reference target not found."))}
+    end
+  end
+
+  defp select_reference_target(:error, socket, _target_type, _target_id, _helpers) do
+    {:noreply, socket}
+  end
+
+  defp update_reference_block(block, target_type, target_id) do
+    Sheets.update_block_value(block, %{
+      "target_type" => target_type,
+      "target_id" => target_id
+    })
   end
 end

@@ -13,20 +13,9 @@ defmodule StoryarnWeb.SheetLive.Handlers.GalleryHandlers do
 
   def handle_attach(%{"block_id" => block_id, "asset_id" => asset_id}, socket, helpers) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      block = Sheets.get_block(helpers.parse_id.(block_id))
-
-      if block && block.sheet_id == socket.assigns.sheet.id && block.type == "gallery" do
-        case Assets.get_asset(socket.assigns.project.id, asset_id) do
-          nil ->
-            {:noreply, put_flash(socket, :error, dgettext("sheets", "Asset not found."))}
-
-          _asset ->
-            Sheets.add_gallery_image(block, asset_id)
-            {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
-        end
-      else
-        {:noreply, socket}
-      end
+      socket
+      |> gallery_block_for_current_sheet(helpers.parse_id.(block_id))
+      |> attach_asset_to_gallery(socket, asset_id, helpers)
     end)
   end
 
@@ -63,5 +52,27 @@ defmodule StoryarnWeb.SheetLive.Handlers.GalleryHandlers do
       Sheets.reorder_gallery_images(helpers.parse_id.(block_id), int_ids)
       {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
     end)
+  end
+
+  defp gallery_block_for_current_sheet(socket, block_id) do
+    case Sheets.get_block(block_id) do
+      %{sheet_id: sheet_id, type: "gallery"} = block when sheet_id == socket.assigns.sheet.id -> {:ok, block}
+      _ -> :error
+    end
+  end
+
+  defp attach_asset_to_gallery({:ok, block}, socket, asset_id, helpers) do
+    case Assets.get_asset(socket.assigns.project.id, asset_id) do
+      nil ->
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Asset not found."))}
+
+      _asset ->
+        Sheets.add_gallery_image(block, asset_id)
+        {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
+    end
+  end
+
+  defp attach_asset_to_gallery(:error, socket, _asset_id, _helpers) do
+    {:noreply, socket}
   end
 end
