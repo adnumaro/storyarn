@@ -75,37 +75,28 @@ defmodule StoryarnWeb.SheetLive.Helpers.AudioDataHelpers do
   end
 
   def process_audio_upload(socket, node_id, filename, content_type, binary_data) do
-    if Assets.allowed_content_type?(content_type) do
-      project = socket.assigns.project
+    project = socket.assigns.project
+    user = socket.assigns.current_scope.user
 
-      case Billing.can_upload_asset_for_project?(project, byte_size(binary_data)) do
-        :ok ->
-          user = socket.assigns.current_scope.user
-
-          case Assets.upload_binary_and_create_asset(
-                 binary_data,
-                 %{filename: filename, content_type: content_type},
-                 project,
-                 user
-               ) do
-            {:ok, asset} ->
-              Collaboration.broadcast_change({:assets, project.id}, :asset_created, %{})
-              update_node_audio(socket, node_id, asset.id)
-
-            {:error, _reason} ->
-              {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not upload audio file."))}
-          end
-
-        {:error, :limit_reached, _details} ->
-          {:noreply,
-           put_flash(
-             socket,
-             :error,
-             dgettext("sheets", "Storage limit reached. Upgrade your plan.")
-           )}
-      end
+    with :ok <- validate_audio_content_type(content_type),
+         :ok <- Billing.can_upload_asset_for_project?(project, byte_size(binary_data)),
+         {:ok, asset} <- upload_audio_asset(binary_data, filename, content_type, project, user) do
+      Collaboration.broadcast_change({:assets, project.id}, :asset_created, %{})
+      update_node_audio(socket, node_id, asset.id)
     else
-      {:noreply, put_flash(socket, :error, dgettext("sheets", "Unsupported file type."))}
+      {:error, :unsupported_file_type} ->
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Unsupported file type."))}
+
+      {:error, :limit_reached, _details} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext("sheets", "Storage limit reached. Upgrade your plan.")
+         )}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not upload audio file."))}
     end
   end
 
@@ -114,6 +105,21 @@ defmodule StoryarnWeb.SheetLive.Helpers.AudioDataHelpers do
 
   defp resolve_audio_asset(project_id, asset_id) do
     Assets.get_asset(project_id, asset_id)
+  end
+
+  defp validate_audio_content_type(content_type) do
+    if Assets.allowed_content_type?(content_type),
+      do: :ok,
+      else: {:error, :unsupported_file_type}
+  end
+
+  defp upload_audio_asset(binary_data, filename, content_type, project, user) do
+    Assets.upload_binary_and_create_asset(
+      binary_data,
+      %{filename: filename, content_type: content_type},
+      project,
+      user
+    )
   end
 
   defp serialize_audio_asset(nil), do: nil
