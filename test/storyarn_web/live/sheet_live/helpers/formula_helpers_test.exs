@@ -395,4 +395,42 @@ defmodule StoryarnWeb.SheetLive.Helpers.FormulaHelpersTest do
       assert FormulaHelpers.formula_binding_display(nil, "a", []) == ""
     end
   end
+
+  # ===========================================================================
+  # compute_formulas/2
+  # ===========================================================================
+
+  describe "compute_formulas/2" do
+    test "enriches formula cells with computed result and resolved values" do
+      columns = [
+        %{slug: "base", type: "number"},
+        %{slug: "modifier", type: "formula"}
+      ]
+
+      row = %{
+        id: 1,
+        cells: %{
+          "base" => "10",
+          "modifier" => %{
+            "expression" => "a - 3",
+            "bindings" => %{"a" => %{"type" => "same_row", "column_slug" => "base"}}
+          }
+        }
+      }
+
+      table_data = %{99 => %{columns: columns, rows: [row]}}
+
+      result = FormulaHelpers.compute_formulas(table_data, 0)
+      formula_cell = result[99].rows |> hd() |> then(& &1.cells["modifier"])
+
+      assert formula_cell["__result"] == 7
+      assert formula_cell["__resolved"] == %{"a" => 10.0}
+    end
+
+    test "leaves table data unchanged when there are no formula columns" do
+      table_data = %{99 => %{columns: [%{slug: "base", type: "number"}], rows: [%{id: 1, cells: %{}}]}}
+
+      assert FormulaHelpers.compute_formulas(table_data, 0) == table_data
+    end
+  end
 end

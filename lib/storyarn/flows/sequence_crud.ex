@@ -135,27 +135,8 @@ defmodule Storyarn.Flows.SequenceCrud do
       Map.take(attrs, ["name", "width", "height"])
 
     Repo.transaction(fn ->
-      updated_node =
-        if map_size(node_attrs) > 0 do
-          case node |> FlowNode.update_changeset(node_attrs) |> Repo.update() do
-            {:ok, n} -> n
-            {:error, cs} -> Repo.rollback(cs)
-          end
-        else
-          node
-        end
-
-      updated_config =
-        if map_size(config_attrs) > 0 do
-          config = ensure_config_loaded(node)
-
-          case config |> SequenceConfig.update_changeset(config_attrs) |> Repo.update() do
-            {:ok, c} -> c
-            {:error, cs} -> Repo.rollback(cs)
-          end
-        else
-          ensure_config_loaded(node)
-        end
+      updated_node = update_sequence_node(node, node_attrs)
+      updated_config = update_sequence_config(node, config_attrs)
 
       %{updated_node | sequence_config: updated_config}
     end)
@@ -234,6 +215,26 @@ defmodule Storyarn.Flows.SequenceCrud do
   defp ensure_config_loaded(%FlowNode{sequence_config: %SequenceConfig{} = c}), do: c
 
   defp ensure_config_loaded(%FlowNode{id: id}), do: Repo.get_by!(SequenceConfig, flow_node_id: id)
+
+  defp update_sequence_node(node, attrs) when map_size(attrs) == 0, do: node
+
+  defp update_sequence_node(node, attrs) do
+    case node |> FlowNode.update_changeset(attrs) |> Repo.update() do
+      {:ok, node} -> node
+      {:error, changeset} -> Repo.rollback(changeset)
+    end
+  end
+
+  defp update_sequence_config(node, attrs) when map_size(attrs) == 0 do
+    ensure_config_loaded(node)
+  end
+
+  defp update_sequence_config(node, attrs) do
+    case node |> ensure_config_loaded() |> SequenceConfig.update_changeset(attrs) |> Repo.update() do
+      {:ok, config} -> config
+      {:error, changeset} -> Repo.rollback(changeset)
+    end
+  end
 
   defp load_active_nodes(flow_id, node_ids) do
     nodes =

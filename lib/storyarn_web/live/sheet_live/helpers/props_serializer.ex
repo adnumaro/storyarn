@@ -75,19 +75,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.PropsSerializer do
 
     raw
     |> Enum.chunk_by(& &1.column_group_id)
-    |> Enum.flat_map(fn chunk ->
-      case chunk do
-        [%{column_group_id: nil} | _] ->
-          Enum.map(chunk, fn b -> %{type: "full_width", block: b} end)
-
-        [%{column_group_id: gid} | _] when not is_nil(gid) ->
-          sorted = Enum.sort_by(chunk, & &1.column_index)
-          [%{type: "column_group", group_id: gid, blocks: sorted, column_count: length(sorted)}]
-
-        other ->
-          Enum.map(other, fn b -> %{type: "full_width", block: b} end)
-      end
-    end)
+    |> Enum.flat_map(&serialize_layout_chunk/1)
   end
 
   def serialize_block_locks(locks) when is_map(locks) do
@@ -129,82 +117,105 @@ defmodule StoryarnWeb.SheetLive.Helpers.PropsSerializer do
   defp extract_avatar_url(_), do: nil
 
   defp prepare_blocks_for_vue_raw(blocks, gallery_data, table_data, project_id) do
-    Enum.map(blocks, fn b ->
-      base = %{
-        id: b.id,
-        type: b.type,
-        position: b.position,
-        is_constant: b.is_constant,
-        variable_name: b.variable_name,
-        scope: b.scope || "self",
-        inherited: b.inherited_from_block_id != nil && !b.detached,
-        detached: b.detached || false,
-        required: b.required || false,
-        column_group_id: b.column_group_id,
-        column_index: b.column_index || 0,
-        config: b.config || %{},
-        value: b.value || %{}
-      }
-
-      cond do
-        b.type == "gallery" ->
-          images =
-            gallery_data
-            |> Map.get(b.id, [])
-            |> Enum.map(fn gi ->
-              %{
-                id: gi.id,
-                url: Assets.display_url(gi.asset),
-                label: gi.label,
-                description: gi.description
-              }
-            end)
-
-          Map.put(base, :gallery_images, images)
-
-        b.type == "table" ->
-          td = Map.get(table_data, b.id, %{columns: [], rows: []})
-
-          columns =
-            Enum.map(td.columns, fn c ->
-              %{
-                id: c.id,
-                name: c.name,
-                slug: c.slug,
-                type: c.type,
-                position: c.position,
-                is_constant: c.is_constant,
-                required: c.required,
-                config: c.config || %{}
-              }
-            end)
-
-          rows =
-            Enum.map(td.rows, fn r ->
-              %{id: r.id, name: r.name, slug: r.slug, position: r.position, cells: r.cells || %{}}
-            end)
-
-          collapsed = get_in(b.config, ["collapsed"]) || false
-
-          base
-          |> Map.put(:columns, columns)
-          |> Map.put(:rows, rows)
-          |> Map.put(:collapsed, collapsed)
-
-        b.type == "reference" ->
-          target_type = get_in(b.value, ["target_type"])
-          target_id = get_in(b.value, ["target_id"])
-
-          reference_target =
-            if target_type && target_id && project_id do
-              Sheets.get_reference_target(target_type, target_id, project_id)
-            end
-
-          Map.put(base, :reference_target, reference_target)
-
-        true ->
-          base
-      end
-    end)
+    Enum.map(blocks, &prepare_block_for_vue(&1, gallery_data, table_data, project_id))
   end
+
+  defp serialize_layout_chunk([%{column_group_id: nil} | _] = chunk) do
+    Enum.map(chunk, &full_width_layout_item/1)
+  end
+
+  defp serialize_layout_chunk([%{column_group_id: group_id} | _] = chunk) when not is_nil(group_id) do
+    sorted = Enum.sort_by(chunk, & &1.column_index)
+    [%{type: "column_group", group_id: group_id, blocks: sorted, column_count: length(sorted)}]
+  end
+
+  defp serialize_layout_chunk(chunk) do
+    Enum.map(chunk, &full_width_layout_item/1)
+  end
+
+  defp full_width_layout_item(block), do: %{type: "full_width", block: block}
+
+  defp prepare_block_for_vue(block, gallery_data, table_data, project_id) do
+    block
+    |> base_block_props()
+    |> add_type_specific_block_props(block, gallery_data, table_data, project_id)
+  end
+
+  defp base_block_props(block) do
+    %{
+      id: block.id,
+      type: block.type,
+      position: block.position,
+      is_constant: block.is_constant,
+      variable_name: block.variable_name,
+      scope: block.scope || "self",
+      inherited: block.inherited_from_block_id != nil && !block.detached,
+      detached: block.detached || false,
+      required: block.required || false,
+      column_group_id: block.column_group_id,
+      column_index: block.column_index || 0,
+      config: block.config || %{},
+      value: block.value || %{}
+    }
+  end
+
+  defp add_type_specific_block_props(base, %{type: "gallery"} = block, gallery_data, _table_data, _project_id) do
+    images =
+      gallery_data
+      |> Map.get(block.id, [])
+      |> Enum.map(&serialize_gallery_image/1)
+
+    Map.put(base, :gallery_images, images)
+  end
+
+  defp add_type_specific_block_props(base, %{type: "table"} = block, _gallery_data, table_data, _project_id) do
+    table = Map.get(table_data, block.id, %{columns: [], rows: []})
+
+    base
+    |> Map.put(:columns, Enum.map(table.columns, &serialize_table_column/1))
+    |> Map.put(:rows, Enum.map(table.rows, &serialize_table_row/1))
+    |> Map.put(:collapsed, get_in(block.config, ["collapsed"]) || false)
+  end
+
+  defp add_type_specific_block_props(base, %{type: "reference"} = block, _gallery_data, _table_data, project_id) do
+    target_type = get_in(block.value, ["target_type"])
+    target_id = get_in(block.value, ["target_id"])
+
+    Map.put(base, :reference_target, reference_target(target_type, target_id, project_id))
+  end
+
+  defp add_type_specific_block_props(base, _block, _gallery_data, _table_data, _project_id), do: base
+
+  defp serialize_gallery_image(gallery_image) do
+    %{
+      id: gallery_image.id,
+      url: Assets.display_url(gallery_image.asset),
+      label: gallery_image.label,
+      description: gallery_image.description
+    }
+  end
+
+  defp serialize_table_column(column) do
+    %{
+      id: column.id,
+      name: column.name,
+      slug: column.slug,
+      type: column.type,
+      position: column.position,
+      is_constant: column.is_constant,
+      required: column.required,
+      config: column.config || %{}
+    }
+  end
+
+  defp serialize_table_row(row) do
+    %{id: row.id, name: row.name, slug: row.slug, position: row.position, cells: row.cells || %{}}
+  end
+
+  defp reference_target(target_type, target_id, project_id)
+       when not is_nil(target_type) and not is_nil(target_id) and not is_nil(project_id) do
+    Sheets.get_reference_target(target_type, target_id, project_id)
+  end
+
+  defp reference_target(_target_type, _target_id, _project_id), do: nil
 end

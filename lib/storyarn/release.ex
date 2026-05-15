@@ -30,14 +30,7 @@ defmodule Storyarn.Release do
 
     case Storyarn.Accounts.find_or_register_confirmed_user(email) do
       {:ok, user} ->
-        IO.puts("User account ready for #{email}")
-
-        case Storyarn.Accounts.deliver_waitlist_invite_instructions(user, fn token ->
-               Storyarn.Urls.base_url() <> "/users/register/" <> token
-             end) do
-          {:ok, _} -> IO.puts("Invitation sent to #{email}")
-          {:error, reason} -> IO.puts("Failed to send: #{inspect(reason)}")
-        end
+        deliver_waitlist_invitation(user, email)
 
       {:error, reason} ->
         IO.puts("Failed to create user: #{inspect(reason)}")
@@ -95,6 +88,19 @@ defmodule Storyarn.Release do
 
   defp invitation_config("workspace", id) do
     {Storyarn.Workspaces, Storyarn.Workspaces.get_workspace!(id)}
+  end
+
+  defp deliver_waitlist_invitation(user, email) do
+    IO.puts("User account ready for #{email}")
+
+    case Storyarn.Accounts.deliver_waitlist_invite_instructions(user, &waitlist_invitation_url/1) do
+      {:ok, _} -> IO.puts("Invitation sent to #{email}")
+      {:error, reason} -> IO.puts("Failed to send: #{inspect(reason)}")
+    end
+  end
+
+  defp waitlist_invitation_url(token) do
+    Storyarn.Urls.base_url() <> "/users/register/" <> token
   end
 
   defp repos do

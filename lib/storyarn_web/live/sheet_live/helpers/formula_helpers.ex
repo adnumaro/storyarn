@@ -199,47 +199,17 @@ defmodule StoryarnWeb.SheetLive.Helpers.FormulaHelpers do
   end
 
   def search_binding_variables(project_id, query, offset) do
-    all_vars = Sheets.list_project_variables(project_id)
-
     filtered =
-      all_vars
-      |> Enum.filter(fn v -> v.block_type in ["number", "formula"] end)
-      |> then(fn vars ->
-        if query == "" do
-          vars
-        else
-          q = String.downcase(query)
-
-          Enum.filter(vars, fn v ->
-            String.contains?(String.downcase(v.variable_name), q) or
-              String.contains?(String.downcase(v.sheet_shortcut), q) or
-              String.contains?(
-                String.downcase(v.sheet_shortcut <> "." <> v.variable_name),
-                q
-              )
-          end)
-        end
-      end)
+      project_id
+      |> Sheets.list_project_variables()
+      |> Enum.filter(&numeric_formula_variable?/1)
+      |> filter_binding_variables(query)
 
     total = length(filtered)
     page = filtered |> Enum.drop(offset) |> Enum.take(@formula_page_size)
     has_more = offset + @formula_page_size < total
 
-    grouped =
-      page
-      |> Enum.group_by(fn v -> v.sheet_shortcut end)
-      |> Enum.sort_by(fn {sheet, _} -> sheet end)
-      |> Enum.map(fn {sheet_shortcut, vars} ->
-        %{
-          heading: sheet_shortcut,
-          items:
-            Enum.map(vars, fn v ->
-              %{value: sheet_shortcut <> "." <> v.variable_name, label: v.variable_name}
-            end)
-        }
-      end)
-
-    {grouped, has_more}
+    {group_binding_variables(page), has_more}
   end
 
   def merge_search_results(existing, new_page) do
@@ -261,43 +231,82 @@ defmodule StoryarnWeb.SheetLive.Helpers.FormulaHelpers do
   with `__result` and `__resolved` keys.
   """
   def compute_formulas(table_data, project_id) do
-    alias Storyarn.Sheets.FormulaResolver
+    Map.new(table_data, &compute_table_formulas(&1, project_id))
+  end
 
-    Map.new(table_data, fn {block_id, %{columns: cols, rows: rows} = data} ->
-      formula_cols = Enum.filter(cols, &(&1.type == "formula"))
+  defp numeric_formula_variable?(variable) do
+    variable.block_type in ["number", "formula"]
+  end
 
-      if formula_cols == [] do
-        {block_id, data}
-      else
-        computed =
-          try do
-            FormulaResolver.compute_all(cols, rows, project_id)
-          rescue
-            _ -> %{}
-          end
+  defp filter_binding_variables(vars, ""), do: vars
 
-        enriched_rows =
-          Enum.map(rows, fn row ->
-            formula_results = Map.get(computed, row.id, %{})
+  defp filter_binding_variables(vars, query) do
+    query = String.downcase(query)
+    Enum.filter(vars, &binding_variable_matches?(&1, query))
+  end
 
-            updated_cells =
-              Enum.reduce(formula_results, row.cells, fn {slug, %{result: result} = computed_entry}, cells ->
-                current = cells[slug]
-                resolved = Map.get(computed_entry, :resolved, %{})
+  defp binding_variable_matches?(variable, query) do
+    Enum.any?(
+      [
+        variable.variable_name,
+        variable.sheet_shortcut,
+        variable.sheet_shortcut <> "." <> variable.variable_name
+      ],
+      &(&1 |> String.downcase() |> String.contains?(query))
+    )
+  end
 
-                enriched =
-                  if is_map(current),
-                    do: current |> Map.put("__result", result) |> Map.put("__resolved", resolved),
-                    else: %{"__result" => result, "__resolved" => resolved}
-
-                Map.put(cells, slug, enriched)
-              end)
-
-            %{row | cells: updated_cells}
-          end)
-
-        {block_id, %{data | rows: enriched_rows}}
-      end
+  defp group_binding_variables(vars) do
+    vars
+    |> Enum.group_by(fn v -> v.sheet_shortcut end)
+    |> Enum.sort_by(fn {sheet, _} -> sheet end)
+    |> Enum.map(fn {sheet_shortcut, vars} ->
+      %{heading: sheet_shortcut, items: Enum.map(vars, &binding_variable_item(sheet_shortcut, &1))}
     end)
+  end
+
+  defp binding_variable_item(sheet_shortcut, variable) do
+    %{value: sheet_shortcut <> "." <> variable.variable_name, label: variable.variable_name}
+  end
+
+  defp compute_table_formulas({block_id, %{columns: columns} = data}, project_id) do
+    formula_columns = Enum.filter(columns, &(&1.type == "formula"))
+    {block_id, compute_table_formula_data(data, formula_columns, project_id)}
+  end
+
+  defp compute_table_formula_data(data, [], _project_id), do: data
+
+  defp compute_table_formula_data(%{columns: columns, rows: rows} = data, _formula_columns, project_id) do
+    computed = compute_formula_results(columns, rows, project_id)
+    %{data | rows: Enum.map(rows, &enrich_formula_row(&1, computed))}
+  end
+
+  defp compute_formula_results(columns, rows, project_id) do
+    Storyarn.Sheets.FormulaResolver.compute_all(columns, rows, project_id)
+  rescue
+    _ -> %{}
+  end
+
+  defp enrich_formula_row(row, computed) do
+    formula_results = Map.get(computed, row.id, %{})
+    %{row | cells: enrich_formula_cells(row.cells, formula_results)}
+  end
+
+  defp enrich_formula_cells(cells, formula_results) do
+    Enum.reduce(formula_results, cells, fn {slug, computed_entry}, cells ->
+      Map.put(cells, slug, enrich_formula_cell(cells[slug], computed_entry))
+    end)
+  end
+
+  defp enrich_formula_cell(current, %{result: result} = computed_entry) when is_map(current) do
+    resolved = Map.get(computed_entry, :resolved, %{})
+
+    current
+    |> Map.put("__result", result)
+    |> Map.put("__resolved", resolved)
+  end
+
+  defp enrich_formula_cell(_current, %{result: result} = computed_entry) do
+    %{"__result" => result, "__resolved" => Map.get(computed_entry, :resolved, %{})}
   end
 end

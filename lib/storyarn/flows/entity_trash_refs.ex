@@ -138,24 +138,7 @@ defmodule Storyarn.Flows.EntityTrashRefs do
         )
         |> Repo.all()
 
-      case rows do
-        [] ->
-          0
-
-        _ ->
-          source_field = "#{jsonb_column}.#{jsonb_key}"
-          insert_trash_refs(rows, source_type, source_field, target_column, target_id)
-
-          Enum.each(rows, fn row ->
-            new_jsonb = row |> Map.fetch!(jsonb_column) |> Map.put(jsonb_key, nil)
-
-            source_schema
-            |> where([s], s.id == ^row.id)
-            |> Repo.update_all(set: [{jsonb_column, new_jsonb}])
-          end)
-
-          length(rows)
-      end
+      sweep_jsonb_rows(rows, source_schema, source_type, jsonb_column, jsonb_key, target_column, target_id)
     end)
   end
 
@@ -227,6 +210,25 @@ defmodule Storyarn.Flows.EntityTrashRefs do
       end)
 
     Repo.insert_all(EntityTrashRef, entries)
+  end
+
+  defp sweep_jsonb_rows([], _source_schema, _source_type, _jsonb_column, _jsonb_key, _target_column, _target_id) do
+    0
+  end
+
+  defp sweep_jsonb_rows(rows, source_schema, source_type, jsonb_column, jsonb_key, target_column, target_id) do
+    source_field = "#{jsonb_column}.#{jsonb_key}"
+    insert_trash_refs(rows, source_type, source_field, target_column, target_id)
+    Enum.each(rows, &clear_jsonb_ref(source_schema, &1, jsonb_column, jsonb_key))
+    length(rows)
+  end
+
+  defp clear_jsonb_ref(source_schema, row, jsonb_column, jsonb_key) do
+    new_jsonb = row |> Map.fetch!(jsonb_column) |> Map.put(jsonb_key, nil)
+
+    source_schema
+    |> where([s], s.id == ^row.id)
+    |> Repo.update_all(set: [{jsonb_column, new_jsonb}])
   end
 
   defp apply_restore(%EntityTrashRef{} = ref, target_id) do
