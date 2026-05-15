@@ -11,6 +11,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
   alias Storyarn.Repo
   alias Storyarn.Scenes
+  alias Storyarn.Versioning
 
   # Reads the SceneCanvas Vue component and builds a composite scene_data map
   # whose keys match the V1 data-scene JSON shape (snake_case). This keeps all
@@ -3599,5 +3600,59 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       assert html =~ "Cannot delete a locked element"
       assert Scenes.get_annotation(scene.id, annotation.id)
     end
+  end
+
+  describe "version history events" do
+    setup :register_and_log_in_user
+
+    setup %{user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project, %{name: "History Scene"})
+      url = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
+
+      %{project: project, scene: scene, url: url}
+    end
+
+    test "creates a named version", %{conn: conn, url: url, scene: scene} do
+      view = mount_scene(conn, url)
+
+      render_click(view, "create_version", %{
+        "title" => "First milestone",
+        "description" => "Initial playable scene"
+      })
+
+      version = Versioning.get_version("scene", scene.id, 1)
+      assert version.title == "First milestone"
+      assert version.description == "Initial playable scene"
+      refute version.is_auto
+    end
+
+    test "restores the scene from the selected version", %{
+      conn: conn,
+      user: user,
+      project: project,
+      url: url,
+      scene: scene
+    } do
+      {:ok, version} =
+        Versioning.create_version("scene", scene, project.id, user.id, title: "Before rename")
+
+      {:ok, _changed_scene} = Scenes.update_scene(scene, %{"name" => "Changed Scene"})
+      view = mount_scene(conn, url)
+
+      render_click(view, "confirm_restore", %{
+        "version_number" => to_string(version.version_number),
+        "skip_pre_snapshot" => true
+      })
+
+      restored = Scenes.get_scene(project.id, scene.id)
+      assert restored.name == "History Scene"
+    end
+  end
+
+  defp mount_scene(conn, url) do
+    {:ok, view, _html} = live(conn, url)
+    await_async(view)
+    view
   end
 end

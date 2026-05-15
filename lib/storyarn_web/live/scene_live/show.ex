@@ -28,9 +28,9 @@ defmodule StoryarnWeb.SceneLive.Show do
   alias Storyarn.Collaboration.Presence
   alias Storyarn.Scenes
   alias Storyarn.Shared.MapUtils
-  alias Storyarn.Versioning
   alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.VersionEventHelpers
   alias StoryarnWeb.Helpers.VersionHistoryHelpers
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
@@ -487,6 +487,24 @@ defmodule StoryarnWeb.SceneLive.Show do
     assign(socket, :ambient_flows, Scenes.list_ambient_flows(socket.assigns.scene.id))
   end
 
+  defp update_ambient_flow_priority(socket, af_id, value) do
+    id = MapUtils.parse_int(af_id)
+
+    case Scenes.get_ambient_flow(socket.assigns.scene.id, id) do
+      nil -> socket
+      af -> save_ambient_flow_priority(socket, af, value)
+    end
+  end
+
+  defp save_ambient_flow_priority(socket, ambient_flow, value) do
+    priority = MapUtils.parse_int(value) || 0
+
+    case Scenes.update_ambient_flow(ambient_flow, %{"priority" => priority}) do
+      {:ok, _} -> reload_ambient_flows(socket)
+      {:error, _} -> socket
+    end
+  end
+
   defp do_remove_ambient_flow(socket, id) do
     scene = socket.assigns.scene
 
@@ -675,191 +693,43 @@ defmodule StoryarnWeb.SceneLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("create_version", %{"title" => title, "description" => description}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      title = if title == "", do: nil, else: title
-      description = if description == "", do: nil, else: description
-
-      if title == nil do
-        {:noreply, put_flash(socket, :error, dgettext("versioning", "Title is required."))}
-      else
-        scene = socket.assigns.scene
-        user_id = socket.assigns.current_scope.user.id
-        project_id = socket.assigns.project.id
-
-        case Versioning.create_version("scene", scene, project_id, user_id,
-               title: title,
-               description: description
-             ) do
-          {:ok, _version} ->
-            {:noreply,
-             socket
-             |> reload_history_data()
-             |> put_flash(:info, dgettext("versioning", "Version created."))}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not create version."))}
-        end
-      end
-    end)
+    VersionEventHelpers.handle_create(%{"title" => title, "description" => description}, socket, scene_version_config())
   end
 
   def handle_event("promote_version", params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      %{"version_number" => vn, "title" => title, "description" => description} = params
-      title = if title == "", do: nil, else: title
-      description = if description == "", do: nil, else: description
-
-      with {:ok, number} <- VersionHistoryHelpers.parse_version_number(vn),
-           version when not is_nil(version) <-
-             Versioning.get_version("scene", socket.assigns.scene.id, number) do
-        case Versioning.update_version(version, %{title: title, description: description}) do
-          {:ok, _} ->
-            {:noreply,
-             socket
-             |> reload_history_data()
-             |> put_flash(:info, dgettext("versioning", "Version named successfully."))}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not name version."))}
-        end
-      else
-        _ -> {:noreply, put_flash(socket, :error, dgettext("versioning", "Version not found."))}
-      end
-    end)
+    VersionEventHelpers.handle_promote(params, socket, scene_version_config())
   end
 
   def handle_event("delete_version", %{"version_number" => vn}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      with {:ok, number} <- VersionHistoryHelpers.parse_version_number(vn),
-           version when not is_nil(version) <-
-             Versioning.get_version("scene", socket.assigns.scene.id, number) do
-        case Versioning.delete_version(version) do
-          {:ok, _} ->
-            {:noreply,
-             socket
-             |> reload_history_data()
-             |> put_flash(:info, dgettext("versioning", "Version deleted."))}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not delete version."))}
-        end
-      else
-        _ -> {:noreply, put_flash(socket, :error, dgettext("versioning", "Version not found."))}
-      end
-    end)
+    VersionEventHelpers.handle_delete(%{"version_number" => vn}, socket, scene_version_config())
   end
 
   def handle_event("load_more_versions", _params, socket) do
-    history = socket.assigns.history_data
-
-    if history do
-      next_page = (history[:page] || 1) + 1
-
-      {:noreply,
-       VersionHistoryHelpers.load_more_history(
-         socket,
-         "scene",
-         socket.assigns.scene.id,
-         next_page
-       )}
-    else
-      {:noreply, socket}
-    end
+    VersionEventHelpers.handle_load_more(socket, scene_version_config())
   end
 
   def handle_event("preview_restore", %{"version_number" => vn}, socket) do
-    with {:ok, number} <- VersionHistoryHelpers.parse_version_number(vn),
-         version when not is_nil(version) <-
-           Versioning.get_version("scene", socket.assigns.scene.id, number) do
-      VersionHistoryHelpers.detect_and_show_restore_preview(
-        socket,
-        "scene",
-        socket.assigns.scene,
-        version
-      )
-    else
-      _ -> {:noreply, put_flash(socket, :error, dgettext("versioning", "Version not found."))}
-    end
+    VersionEventHelpers.handle_preview_restore(%{"version_number" => vn}, socket, scene_version_config())
   end
 
   def handle_event("save_and_restore", %{"version_number" => vn}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      with {:ok, number} <- VersionHistoryHelpers.parse_version_number(vn),
-           version when not is_nil(version) <-
-             Versioning.get_version("scene", socket.assigns.scene.id, number) do
-        scene = socket.assigns.scene
-        project_id = socket.assigns.project.id
-        user_id = socket.assigns.current_scope.user.id
-
-        Versioning.create_version("scene", scene, project_id, user_id,
-          title: dgettext("versioning", "Before restore to v%{n}", n: number)
-        )
-
-        VersionHistoryHelpers.show_conflict_preview(socket, "scene", scene, version, true)
-      else
-        _ -> {:noreply, socket}
-      end
-    end)
+    VersionEventHelpers.handle_save_and_restore(%{"version_number" => vn}, socket, scene_version_config())
   end
 
   def handle_event("discard_and_restore", %{"version_number" => vn}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      with {:ok, number} <- VersionHistoryHelpers.parse_version_number(vn),
-           version when not is_nil(version) <-
-             Versioning.get_version("scene", socket.assigns.scene.id, number) do
-        VersionHistoryHelpers.show_conflict_preview(
-          socket,
-          "scene",
-          socket.assigns.scene,
-          version,
-          true
-        )
-      else
-        _ -> {:noreply, socket}
-      end
-    end)
+    VersionEventHelpers.handle_discard_and_restore(%{"version_number" => vn}, socket, scene_version_config())
   end
 
   def handle_event("confirm_restore", %{"version_number" => vn} = params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      with {:ok, number} <- VersionHistoryHelpers.parse_version_number(vn),
-           version when not is_nil(version) <-
-             Versioning.get_version("scene", socket.assigns.scene.id, number) do
-        skip = params["skip_pre_snapshot"] == true
-
-        case Versioning.restore_version(version, "scene", socket.assigns.scene, skip_pre_snapshot: skip) do
-          {:ok, _} ->
-            {:noreply,
-             socket
-             |> push_event("version_restored", %{})
-             |> put_flash(:info, dgettext("versioning", "Version restored."))
-             |> push_navigate(
-               to:
-                 ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{socket.assigns.scene.id}"
-             )}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not restore version."))}
-        end
-      else
-        _ -> {:noreply, socket}
-      end
-    end)
+    VersionEventHelpers.handle_confirm_restore(
+      %{"version_number" => vn, "skip_pre_snapshot" => params["skip_pre_snapshot"]},
+      socket,
+      scene_version_config()
+    )
   end
 
   def handle_event("compare_version", %{"version_number" => vn}, socket) do
-    case VersionHistoryHelpers.parse_version_number(vn) do
-      {:ok, number} ->
-        %{workspace: workspace, project: project, scene: scene} = socket.assigns
-
-        compare_url =
-          ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}/compare/#{number}"
-
-        {:noreply, push_navigate(socket, to: compare_url)}
-
-      _ ->
-        {:noreply, socket}
-    end
+    VersionEventHelpers.handle_compare(%{"version_number" => vn}, socket, scene_version_config())
   end
 
   def handle_event("save_name", params, socket) do
@@ -1299,20 +1169,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("update_ambient_flow_priority", %{"id" => af_id, "value" => value}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      id = MapUtils.parse_int(af_id)
-
-      case Scenes.get_ambient_flow(socket.assigns.scene.id, id) do
-        nil ->
-          {:noreply, socket}
-
-        af ->
-          priority = MapUtils.parse_int(value) || 0
-
-          case Scenes.update_ambient_flow(af, %{"priority" => priority}) do
-            {:ok, _} -> {:noreply, reload_ambient_flows(socket)}
-            {:error, _} -> {:noreply, socket}
-          end
-      end
+      {:noreply, update_ambient_flow_priority(socket, af_id, value)}
     end)
   end
 
@@ -1891,6 +1748,26 @@ defmodule StoryarnWeb.SceneLive.Show do
       socket.assigns.project.id,
       socket.assigns.workspace.id
     )
+  end
+
+  defp scene_version_config do
+    %{
+      entity_type: "scene",
+      entity_key: :scene,
+      reload_history: &reload_history_data/1,
+      restore_path: &scene_restore_path/1,
+      compare_path: &scene_compare_path/2
+    }
+  end
+
+  defp scene_restore_path(socket) do
+    %{workspace: workspace, project: project, scene: scene} = socket.assigns
+    ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
+  end
+
+  defp scene_compare_path(socket, version_number) do
+    %{workspace: workspace, project: project, scene: scene} = socket.assigns
+    ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}/compare/#{version_number}"
   end
 
   defp broadcast_scene_change({:noreply, socket} = _result) do

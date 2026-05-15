@@ -8,7 +8,6 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias Storyarn.Flows
   alias Storyarn.Scenes
   alias Storyarn.Sheets
-  alias Storyarn.Versioning
   alias StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers
   alias StoryarnWeb.FlowLive.Handlers.DebugHandlers
   alias StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers
@@ -30,6 +29,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Nodes.Subflow
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.VersionEventHelpers
   alias StoryarnWeb.Helpers.VersionHistoryHelpers
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
@@ -335,52 +335,52 @@ defmodule StoryarnWeb.FlowLive.Show do
         |> push_navigate(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows")
 
       flow ->
-        # Teardown collaboration for previous flow (if switching)
-        socket =
-          case socket.assigns.flow do
-            %{id: prev_id} when prev_id != flow.id ->
-              if ref = socket.assigns[:lock_heartbeat_ref], do: Process.cancel_timer(ref)
-
-              CollaborationHelpers.teardown_collaboration(
-                prev_id,
-                socket.assigns.current_scope.user.id
-              )
-
-              socket
-              |> assign(:locked_node_id, nil)
-              |> assign(:lock_heartbeat_ref, nil)
-              |> assign(:collab_scope, nil)
-
-            _ ->
-              socket
-          end
-
-        socket =
-          socket
-          |> assign(:loading, true)
-          |> assign(:flow, flow)
-
-        if connected?(socket) do
-          project = socket.assigns.project
-
-          start_async(socket, :load_flow_data, fn ->
-            full_flow = Flows.get_flow!(project.id, flow.id)
-            project_variables = VariableHelpers.list_all_variables(project.id)
-
-            %{
-              flow: full_flow,
-              flow_data: Flows.serialize_for_canvas(full_flow, project_variables: project_variables),
-              all_sheets: Sheets.list_all_sheets(project.id),
-              gallery_by_sheet: Sheets.batch_load_gallery_data_by_sheet(project.id),
-              flow_hubs: Flows.list_hubs(flow.id),
-              project_variables: project_variables,
-              available_scenes: Scenes.list_scenes(project.id)
-            }
-          end)
-        else
-          socket
-        end
+        socket
+        |> teardown_previous_flow(flow)
+        |> assign(:loading, true)
+        |> assign(:flow, flow)
+        |> maybe_start_flow_load(flow)
     end
+  end
+
+  defp teardown_previous_flow(%{assigns: %{flow: %{id: prev_id}}} = socket, %{id: next_id}) when prev_id != next_id do
+    if ref = socket.assigns[:lock_heartbeat_ref], do: Process.cancel_timer(ref)
+
+    CollaborationHelpers.teardown_collaboration(
+      prev_id,
+      socket.assigns.current_scope.user.id
+    )
+
+    socket
+    |> assign(:locked_node_id, nil)
+    |> assign(:lock_heartbeat_ref, nil)
+    |> assign(:collab_scope, nil)
+  end
+
+  defp teardown_previous_flow(socket, _flow), do: socket
+
+  defp maybe_start_flow_load(socket, flow) do
+    if connected?(socket) do
+      project = socket.assigns.project
+      start_async(socket, :load_flow_data, fn -> load_flow_data(project, flow) end)
+    else
+      socket
+    end
+  end
+
+  defp load_flow_data(project, flow) do
+    full_flow = Flows.get_flow!(project.id, flow.id)
+    project_variables = VariableHelpers.list_all_variables(project.id)
+
+    %{
+      flow: full_flow,
+      flow_data: Flows.serialize_for_canvas(full_flow, project_variables: project_variables),
+      all_sheets: Sheets.list_all_sheets(project.id),
+      gallery_by_sheet: Sheets.batch_load_gallery_data_by_sheet(project.id),
+      flow_hubs: Flows.list_hubs(flow.id),
+      project_variables: project_variables,
+      available_scenes: Scenes.list_scenes(project.id)
+    }
   end
 
   defp maybe_navigate_to_node(socket, nil), do: socket
@@ -427,225 +427,48 @@ defmodule StoryarnWeb.FlowLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("create_version", %{"title" => title, "description" => description}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      title = if title == "", do: nil, else: title
-      description = if description == "", do: nil, else: description
-
-      if title == nil do
-        {:noreply, put_flash(socket, :error, dgettext("versioning", "Title is required."))}
-      else
-        flow = socket.assigns.flow
-        user_id = socket.assigns.current_scope.user.id
-        project_id = socket.assigns.project.id
-
-        case Versioning.create_version("flow", flow, project_id, user_id,
-               title: title,
-               description: description
-             ) do
-          {:ok, _version} ->
-            {:noreply,
-             socket
-             |> reload_history_data()
-             |> put_flash(:info, dgettext("versioning", "Version created."))}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not create version."))}
-        end
-      end
-    end)
+    VersionEventHelpers.handle_create(%{"title" => title, "description" => description}, socket, flow_version_config())
   end
 
   def handle_event("promote_version", params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      %{"version_number" => vn, "title" => title, "description" => description} = params
-      title = if title == "", do: nil, else: title
-      description = if description == "", do: nil, else: description
-
-      with {:ok, number} <- VersionHistoryHelpers.parse_version_number(vn),
-           version when not is_nil(version) <-
-             Versioning.get_version("flow", socket.assigns.flow.id, number) do
-        case Versioning.update_version(version, %{title: title, description: description}) do
-          {:ok, _} ->
-            {:noreply,
-             socket
-             |> reload_history_data()
-             |> put_flash(:info, dgettext("versioning", "Version named successfully."))}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not name version."))}
-        end
-      else
-        _ -> {:noreply, put_flash(socket, :error, dgettext("versioning", "Version not found."))}
-      end
-    end)
+    VersionEventHelpers.handle_promote(params, socket, flow_version_config())
   end
 
   def handle_event("delete_version", %{"version_number" => vn}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      with {:ok, number} <- VersionHistoryHelpers.parse_version_number(vn),
-           version when not is_nil(version) <-
-             Versioning.get_version("flow", socket.assigns.flow.id, number) do
-        case Versioning.delete_version(version) do
-          {:ok, _} ->
-            {:noreply,
-             socket
-             |> reload_history_data()
-             |> put_flash(:info, dgettext("versioning", "Version deleted."))}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not delete version."))}
-        end
-      else
-        _ -> {:noreply, put_flash(socket, :error, dgettext("versioning", "Version not found."))}
-      end
-    end)
+    VersionEventHelpers.handle_delete(%{"version_number" => vn}, socket, flow_version_config())
   end
 
   def handle_event("load_more_versions", _params, socket) do
-    history = socket.assigns.history_data
-
-    if history do
-      next_page = (history[:page] || 1) + 1
-
-      {:noreply, VersionHistoryHelpers.load_more_history(socket, "flow", socket.assigns.flow.id, next_page)}
-    else
-      {:noreply, socket}
-    end
+    VersionEventHelpers.handle_load_more(socket, flow_version_config())
   end
 
   def handle_event("preview_restore", %{"version_number" => vn}, socket) do
-    with {:ok, number} <- VersionHistoryHelpers.parse_version_number(vn),
-         version when not is_nil(version) <-
-           Versioning.get_version("flow", socket.assigns.flow.id, number) do
-      VersionHistoryHelpers.detect_and_show_restore_preview(
-        socket,
-        "flow",
-        socket.assigns.flow,
-        version
-      )
-    else
-      _ -> {:noreply, put_flash(socket, :error, dgettext("versioning", "Version not found."))}
-    end
+    VersionEventHelpers.handle_preview_restore(%{"version_number" => vn}, socket, flow_version_config())
   end
 
   def handle_event("save_and_restore", %{"version_number" => vn}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      with {:ok, number} <- VersionHistoryHelpers.parse_version_number(vn),
-           version when not is_nil(version) <-
-             Versioning.get_version("flow", socket.assigns.flow.id, number) do
-        flow = socket.assigns.flow
-        project_id = socket.assigns.project.id
-        user_id = socket.assigns.current_scope.user.id
-
-        Versioning.create_version("flow", flow, project_id, user_id,
-          title: dgettext("versioning", "Before restore to v%{n}", n: number)
-        )
-
-        VersionHistoryHelpers.show_conflict_preview(socket, "flow", flow, version, true)
-      else
-        _ -> {:noreply, socket}
-      end
-    end)
+    VersionEventHelpers.handle_save_and_restore(%{"version_number" => vn}, socket, flow_version_config())
   end
 
   def handle_event("discard_and_restore", %{"version_number" => vn}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      with {:ok, number} <- VersionHistoryHelpers.parse_version_number(vn),
-           version when not is_nil(version) <-
-             Versioning.get_version("flow", socket.assigns.flow.id, number) do
-        VersionHistoryHelpers.show_conflict_preview(
-          socket,
-          "flow",
-          socket.assigns.flow,
-          version,
-          true
-        )
-      else
-        _ -> {:noreply, socket}
-      end
-    end)
+    VersionEventHelpers.handle_discard_and_restore(%{"version_number" => vn}, socket, flow_version_config())
   end
 
   def handle_event("confirm_restore", %{"version_number" => vn} = params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      with {:ok, number} <- VersionHistoryHelpers.parse_version_number(vn),
-           version when not is_nil(version) <-
-             Versioning.get_version("flow", socket.assigns.flow.id, number) do
-        skip = params["skip_pre_snapshot"] == true
-
-        case Versioning.restore_version(version, "flow", socket.assigns.flow, skip_pre_snapshot: skip) do
-          {:ok, _} ->
-            {:noreply,
-             socket
-             |> push_event("version_restored", %{})
-             |> put_flash(:info, dgettext("versioning", "Version restored."))
-             |> push_navigate(
-               to:
-                 ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{socket.assigns.flow.id}"
-             )}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not restore version."))}
-        end
-      else
-        _ -> {:noreply, socket}
-      end
-    end)
+    VersionEventHelpers.handle_confirm_restore(
+      %{"version_number" => vn, "skip_pre_snapshot" => params["skip_pre_snapshot"]},
+      socket,
+      flow_version_config()
+    )
   end
 
   def handle_event("compare_version", %{"version_number" => vn}, socket) do
-    case VersionHistoryHelpers.parse_version_number(vn) do
-      {:ok, number} ->
-        %{workspace: workspace, project: project, flow: flow} = socket.assigns
-
-        compare_url =
-          ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows/#{flow.id}/compare/#{number}"
-
-        {:noreply, push_navigate(socket, to: compare_url)}
-
-      _ ->
-        {:noreply, socket}
-    end
+    VersionEventHelpers.handle_compare(%{"version_number" => vn}, socket, flow_version_config())
   end
 
   def handle_event("wrap_selection_in_sequence", %{"node_ids" => node_ids} = params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      ids =
-        node_ids
-        |> List.wrap()
-        |> Enum.map(fn id ->
-          case parse_node_id(id) do
-            {:ok, int_id} -> int_id
-            :error -> nil
-          end
-        end)
-        |> Enum.reject(&is_nil/1)
-
-      case Flows.wrap_selection_in_sequence(socket.assigns.flow, ids, sequence_wrap_attrs(params)) do
-        {:ok, _sequence} ->
-          flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
-          flow_data = Flows.serialize_for_canvas(flow, project_variables: socket.assigns.project_variables)
-
-          {:noreply,
-           socket
-           |> assign(:flow_data, flow_data)
-           |> push_event("flow_updated", flow_data)
-           |> put_flash(:info, dgettext("flows", "Sequence created"))}
-
-        {:error, :empty_selection} ->
-          {:noreply, put_flash(socket, :error, dgettext("flows", "Select at least one node first"))}
-
-        {:error, :mixed_parents} ->
-          {:noreply,
-           put_flash(
-             socket,
-             :error,
-             dgettext("flows", "Nodes must belong to the same container")
-           )}
-
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create sequence"))}
-      end
+      wrap_selection_in_sequence(socket, node_ids, params)
     end)
   end
 
@@ -1277,6 +1100,47 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   defp parse_node_id(_), do: :error
 
+  defp parse_node_ids(node_ids) do
+    node_ids
+    |> List.wrap()
+    |> Enum.flat_map(fn node_id ->
+      case parse_node_id(node_id) do
+        {:ok, int_id} -> [int_id]
+        :error -> []
+      end
+    end)
+  end
+
+  defp wrap_selection_in_sequence(socket, node_ids, params) do
+    ids = parse_node_ids(node_ids)
+
+    case Flows.wrap_selection_in_sequence(socket.assigns.flow, ids, sequence_wrap_attrs(params)) do
+      {:ok, _sequence} ->
+        flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
+        flow_data = Flows.serialize_for_canvas(flow, project_variables: socket.assigns.project_variables)
+
+        {:noreply,
+         socket
+         |> assign(:flow_data, flow_data)
+         |> push_event("flow_updated", flow_data)
+         |> put_flash(:info, dgettext("flows", "Sequence created"))}
+
+      {:error, :empty_selection} ->
+        {:noreply, put_flash(socket, :error, dgettext("flows", "Select at least one node first"))}
+
+      {:error, :mixed_parents} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext("flows", "Nodes must belong to the same container")
+         )}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create sequence"))}
+    end
+  end
+
   # Tree mutations (create_flow, create_child_flow, set_main_flow,
   # set_pending_delete_flow, confirm_delete_flow, delete_flow, move_to_parent)
   # now live in FlowSidebarLive — they never reach this LV because the tree
@@ -1290,6 +1154,26 @@ defmodule StoryarnWeb.FlowLive.Show do
       socket.assigns.project.id,
       socket.assigns.workspace.id
     )
+  end
+
+  defp flow_version_config do
+    %{
+      entity_type: "flow",
+      entity_key: :flow,
+      reload_history: &reload_history_data/1,
+      restore_path: &flow_restore_path/1,
+      compare_path: &flow_compare_path/2
+    }
+  end
+
+  defp flow_restore_path(socket) do
+    %{workspace: workspace, project: project, flow: flow} = socket.assigns
+    ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+  end
+
+  defp flow_compare_path(socket, version_number) do
+    %{workspace: workspace, project: project, flow: flow} = socket.assigns
+    ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows/#{flow.id}/compare/#{version_number}"
   end
 
   # ===========================================================================

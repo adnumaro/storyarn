@@ -34,6 +34,8 @@ defmodule StoryarnWeb.SheetLive.Show do
   alias StoryarnWeb.SheetLive.Handlers.TableHandlers
   alias StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers
 
+  @sheet_tabs ~w(content references audio history)
+
   @impl true
   def render(assigns) do
     if assigns.compact do
@@ -417,29 +419,12 @@ defmodule StoryarnWeb.SheetLive.Show do
   # --- Tabs ---
 
   @impl true
-  def handle_event("switch_tab", %{"tab" => tab}, socket) when tab in ~w(content references audio history) do
-    if tab == "history" and socket.assigns.compact do
-      {:noreply, socket}
-    else
-      socket = assign(socket, :current_tab, tab)
+  def handle_event(event, _params, socket) when event in ~w(main_sidebar_toggle main_sidebar_pin main_sidebar_init) do
+    {:noreply, socket}
+  end
 
-      socket =
-        cond do
-          tab == "references" && is_nil(socket.assigns.references_data) ->
-            load_references_data(socket)
-
-          tab == "audio" && is_nil(socket.assigns.audio_data) ->
-            load_audio_data(socket)
-
-          tab == "history" && is_nil(socket.assigns.history_data) ->
-            load_history_data(socket)
-
-          true ->
-            socket
-        end
-
-      {:noreply, socket}
-    end
+  def handle_event("switch_tab", %{"tab" => tab}, socket) when tab in @sheet_tabs do
+    {:noreply, maybe_switch_tab(socket, tab)}
   end
 
   def handle_event("switch_tab", _params, socket), do: {:noreply, socket}
@@ -960,6 +945,32 @@ defmodule StoryarnWeb.SheetLive.Show do
   # ===========================================================================
   # Private Helpers
   # ===========================================================================
+
+  defp maybe_switch_tab(%{assigns: %{compact: true}} = socket, "history"), do: socket
+
+  defp maybe_switch_tab(socket, tab) do
+    socket
+    |> assign(:current_tab, tab)
+    |> maybe_load_tab_data(tab)
+  end
+
+  defp maybe_load_tab_data(socket, "references") do
+    maybe_load_assign(socket, :references_data, &load_references_data/1)
+  end
+
+  defp maybe_load_tab_data(socket, "audio") do
+    maybe_load_assign(socket, :audio_data, &load_audio_data/1)
+  end
+
+  defp maybe_load_tab_data(socket, "history") do
+    maybe_load_assign(socket, :history_data, &load_history_data/1)
+  end
+
+  defp maybe_load_tab_data(socket, _tab), do: socket
+
+  defp maybe_load_assign(socket, assign_name, loader) do
+    if is_nil(socket.assigns[assign_name]), do: loader.(socket), else: socket
+  end
 
   defp formula_handler_helpers do
     %{

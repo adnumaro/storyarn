@@ -6,7 +6,9 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
   import Storyarn.ProjectsFixtures
 
   alias Phoenix.LiveView.Socket
+  alias Storyarn.Flows
   alias Storyarn.Repo
+  alias Storyarn.Versioning
   alias StoryarnWeb.FlowLive.Show
 
   describe "flow editor layout" do
@@ -88,5 +90,101 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       assert result.assigns.loading == true
       assert result.assigns.selected_node == :keep
     end
+  end
+
+  describe "version history events" do
+    setup :register_and_log_in_user
+
+    setup %{user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "History Flow"})
+      url = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+
+      %{project: project, flow: flow, url: url}
+    end
+
+    test "creates a named version", %{conn: conn, url: url, flow: flow} do
+      view = mount_flow(conn, url)
+
+      render_click(view, "create_version", %{
+        "title" => "First milestone",
+        "description" => "Initial playable flow"
+      })
+
+      version = Versioning.get_version("flow", flow.id, 1)
+      assert version.title == "First milestone"
+      assert version.description == "Initial playable flow"
+      refute version.is_auto
+    end
+
+    test "requires a title", %{conn: conn, url: url, flow: flow} do
+      view = mount_flow(conn, url)
+
+      render_click(view, "create_version", %{"title" => "", "description" => "Ignored"})
+
+      assert Versioning.count_versions("flow", flow.id) == 0
+    end
+
+    test "updates version title and description", %{
+      conn: conn,
+      user: user,
+      project: project,
+      url: url,
+      flow: flow
+    } do
+      {:ok, version} =
+        Versioning.create_version("flow", flow, project.id, user.id, is_auto: true)
+
+      view = mount_flow(conn, url)
+
+      render_click(view, "promote_version", %{
+        "version_number" => to_string(version.version_number),
+        "title" => "Named checkpoint",
+        "description" => "Ready for review"
+      })
+
+      updated = Versioning.get_version("flow", flow.id, version.version_number)
+      assert updated.title == "Named checkpoint"
+      assert updated.description == "Ready for review"
+    end
+
+    test "deletes an existing version", %{conn: conn, user: user, project: project, url: url, flow: flow} do
+      {:ok, version} =
+        Versioning.create_version("flow", flow, project.id, user.id, title: "Disposable")
+
+      view = mount_flow(conn, url)
+
+      render_click(view, "delete_version", %{"version_number" => to_string(version.version_number)})
+
+      refute Versioning.get_version("flow", flow.id, version.version_number)
+    end
+
+    test "restores the flow from the selected version", %{
+      conn: conn,
+      user: user,
+      project: project,
+      url: url,
+      flow: flow
+    } do
+      {:ok, version} =
+        Versioning.create_version("flow", flow, project.id, user.id, title: "Before rename")
+
+      {:ok, _changed_flow} = Flows.update_flow(flow, %{name: "Changed Flow"})
+      view = mount_flow(conn, url)
+
+      render_click(view, "confirm_restore", %{
+        "version_number" => to_string(version.version_number),
+        "skip_pre_snapshot" => true
+      })
+
+      restored = Flows.get_flow(project.id, flow.id)
+      assert restored.name == "History Flow"
+    end
+  end
+
+  defp mount_flow(conn, url) do
+    {:ok, view, _html} = live(conn, url)
+    await_async(view)
+    view
   end
 end
