@@ -1,0 +1,24 @@
+lib/storyarn_web/live/sheet_live/handlers/block_handlers.ex
+  s_4009926a81b72f::t_bcff0892b480eb 40-42,48-50,56-58,64-66,72-74,98,108-110,116,119,125,128,134,137,147-149,155-157,165-330
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "e318b6b9d9490d0c4e3ee6ed47311ab5c1f203a5",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
