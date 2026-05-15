@@ -7,7 +7,7 @@
 import { useLoop } from "@tresjs/core";
 import { gsap } from "gsap";
 import * as THREE from "three";
-import { RoundedBoxGeometry } from "three/addons";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { onMounted, shallowRef, watch } from "vue";
 
 const { activeStep = 0 } = defineProps<{
