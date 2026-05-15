@@ -14,62 +14,13 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
 
   def handle_save_name(%{"name" => name}, socket, helpers) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      sheet = socket.assigns.sheet
-
-      case Sheets.update_sheet(sheet, %{name: name}) do
-        {:ok, updated_sheet} ->
-          if name != sheet.name do
-            Sheets.maybe_create_version(updated_sheet, socket.assigns.current_scope.user.id)
-          end
-
-          socket =
-            socket
-            |> assign(:sheet, Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id))
-            |> helpers.broadcast.(:sheet_updated)
-
-          if name != sheet.name do
-            Phoenix.PubSub.broadcast(
-              Storyarn.PubSub,
-              StoryarnWeb.SheetsSidebarLive.shell_topic(socket.assigns.project.id),
-              {:tree_changed, :sheets}
-            )
-          end
-
-          {:noreply, socket}
-
-        {:error, _changeset} ->
-          {:noreply, socket}
-      end
+      save_name(socket, name, helpers)
     end)
   end
 
   def handle_save_shortcut(%{"shortcut" => shortcut}, socket, helpers) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      sheet = socket.assigns.sheet
-      shortcut = if shortcut == "", do: nil, else: shortcut
-
-      case Sheets.update_sheet(sheet, %{shortcut: shortcut}) do
-        {:ok, _updated_sheet} ->
-          updated_sheet = Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id)
-
-          if shortcut != sheet.shortcut do
-            Sheets.maybe_create_version(updated_sheet, socket.assigns.current_scope.user.id)
-          end
-
-          {:noreply,
-           socket
-           |> assign(:sheet, updated_sheet)
-           |> helpers.broadcast.(:sheet_updated)}
-
-        {:error, changeset} ->
-          error_msg =
-            case changeset.errors[:shortcut] do
-              {msg, _opts} -> dgettext("sheets", "Shortcut %{error}", error: msg)
-              nil -> dgettext("sheets", "Could not save shortcut.")
-            end
-
-          {:noreply, put_flash(socket, :error, error_msg)}
-      end
+      save_shortcut(socket, normalize_shortcut(shortcut), helpers)
     end)
   end
 
@@ -199,6 +150,86 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
 
       {:error, _} ->
         {:noreply, socket}
+    end
+  end
+
+  defp save_name(socket, name, helpers) do
+    sheet = socket.assigns.sheet
+
+    case Sheets.update_sheet(sheet, %{name: name}) do
+      {:ok, updated_sheet} ->
+        {:noreply, after_sheet_name_saved(socket, sheet, updated_sheet, name, helpers)}
+
+      {:error, _changeset} ->
+        {:noreply, socket}
+    end
+  end
+
+  defp after_sheet_name_saved(socket, previous_sheet, updated_sheet, name, helpers) do
+    changed? = name != previous_sheet.name
+
+    maybe_create_sheet_version(changed?, updated_sheet, socket)
+
+    socket =
+      socket
+      |> reload_sheet_assign(previous_sheet.id)
+      |> helpers.broadcast.(:sheet_updated)
+
+    maybe_broadcast_tree_changed(changed?, socket.assigns.project.id)
+
+    socket
+  end
+
+  defp save_shortcut(socket, shortcut, helpers) do
+    sheet = socket.assigns.sheet
+
+    case Sheets.update_sheet(sheet, %{shortcut: shortcut}) do
+      {:ok, _updated_sheet} ->
+        {:noreply, after_sheet_shortcut_saved(socket, sheet, shortcut, helpers)}
+
+      {:error, changeset} ->
+        {:noreply, put_flash(socket, :error, shortcut_error_message(changeset))}
+    end
+  end
+
+  defp after_sheet_shortcut_saved(socket, previous_sheet, shortcut, helpers) do
+    updated_sheet = Sheets.get_sheet_full!(socket.assigns.project.id, previous_sheet.id)
+    changed? = shortcut != previous_sheet.shortcut
+
+    maybe_create_sheet_version(changed?, updated_sheet, socket)
+
+    socket
+    |> assign(:sheet, updated_sheet)
+    |> helpers.broadcast.(:sheet_updated)
+  end
+
+  defp normalize_shortcut(""), do: nil
+  defp normalize_shortcut(shortcut), do: shortcut
+
+  defp reload_sheet_assign(socket, sheet_id) do
+    assign(socket, :sheet, Sheets.get_sheet_full!(socket.assigns.project.id, sheet_id))
+  end
+
+  defp maybe_create_sheet_version(true, sheet, socket) do
+    Sheets.maybe_create_version(sheet, socket.assigns.current_scope.user.id)
+  end
+
+  defp maybe_create_sheet_version(false, _sheet, _socket), do: :ok
+
+  defp maybe_broadcast_tree_changed(true, project_id) do
+    Phoenix.PubSub.broadcast(
+      Storyarn.PubSub,
+      StoryarnWeb.SheetsSidebarLive.shell_topic(project_id),
+      {:tree_changed, :sheets}
+    )
+  end
+
+  defp maybe_broadcast_tree_changed(false, _project_id), do: :ok
+
+  defp shortcut_error_message(changeset) do
+    case changeset.errors[:shortcut] do
+      {msg, _opts} -> dgettext("sheets", "Shortcut %{error}", error: msg)
+      nil -> dgettext("sheets", "Could not save shortcut.")
     end
   end
 end
