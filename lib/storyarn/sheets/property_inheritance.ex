@@ -362,59 +362,17 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   # Recalculates inheritance for a single sheet: soft-deletes non-detached
   # inherited instances and re-inherits from the current ancestor chain.
   defp recalculate_sheet_inheritance(sheet_id) do
-    # Detach inherited instances that no longer have a valid ancestor source
-    # (instead of deleting, so the user keeps their values)
-    new_ancestor_ids =
-      case Repo.get!(Sheet, sheet_id) do
-        %Sheet{parent_id: nil} -> []
-        sheet -> sheet.id |> SheetQueries.list_ancestors() |> Enum.map(& &1.id)
-      end
+    detach_stale_inherited_blocks(sheet_id)
 
-    new_source_block_ids =
-      if new_ancestor_ids == [] do
-        []
-      else
-        Repo.all(
-          from(b in Block,
-            where: b.sheet_id in ^new_ancestor_ids and b.scope == "children" and is_nil(b.deleted_at),
-            select: b.id
-          )
-        )
-      end
-
-    Repo.update_all(
-      from(b in Block,
-        where:
-          b.sheet_id == ^sheet_id and not is_nil(b.inherited_from_block_id) and b.detached == false and
-            is_nil(b.deleted_at) and b.inherited_from_block_id not in ^new_source_block_ids
-      ),
-      set: [detached: true]
-    )
-
-    # Re-inherit from new ancestor chain, but skip blocks that already
-    # have a detached instance (user chose to keep them as own blocks)
     sheet = Repo.get!(Sheet, sheet_id)
-
-    # All source block IDs that already have an instance (detached or not)
-    existing_source_ids =
-      from(b in Block,
-        where:
-          b.sheet_id == ^sheet_id and
-            not is_nil(b.inherited_from_block_id) and
-            is_nil(b.deleted_at),
-        select: b.inherited_from_block_id
-      )
-      |> Repo.all()
-      |> MapSet.new()
-
     ancestors = build_ancestor_list(sheet)
     hidden_block_ids = collect_hidden_block_ids([sheet | ancestors])
+    existing_source_ids = existing_inherited_source_ids(sheet_id)
 
     inheritable_blocks =
       ancestors
       |> Enum.flat_map(&load_children_scope_blocks/1)
-      |> Enum.reject(fn b -> b.id in hidden_block_ids end)
-      |> Enum.reject(fn b -> MapSet.member?(existing_source_ids, b.id) end)
+      |> Enum.reject(fn b -> b.id in hidden_block_ids or MapSet.member?(existing_source_ids, b.id) end)
 
     {:ok, count} = do_inherit_blocks(sheet, inheritable_blocks)
     count
@@ -426,6 +384,56 @@ defmodule Storyarn.Sheets.PropertyInheritance do
 
   defp build_ancestor_list(%Sheet{parent_id: nil}), do: []
   defp build_ancestor_list(%Sheet{} = sheet), do: SheetQueries.list_ancestors(sheet.id)
+
+  defp detach_stale_inherited_blocks(sheet_id) do
+    new_source_block_ids = current_ancestor_source_block_ids(sheet_id)
+
+    Repo.update_all(
+      from(b in Block,
+        where:
+          b.sheet_id == ^sheet_id and not is_nil(b.inherited_from_block_id) and
+            b.detached == false and is_nil(b.deleted_at) and
+            b.inherited_from_block_id not in ^new_source_block_ids
+      ),
+      set: [detached: true]
+    )
+  end
+
+  defp current_ancestor_source_block_ids(sheet_id) do
+    sheet_id
+    |> ancestor_sheet_ids()
+    |> children_scope_block_ids()
+  end
+
+  defp ancestor_sheet_ids(sheet_id) do
+    case Repo.get!(Sheet, sheet_id) do
+      %Sheet{parent_id: nil} -> []
+      sheet -> sheet.id |> SheetQueries.list_ancestors() |> Enum.map(& &1.id)
+    end
+  end
+
+  defp children_scope_block_ids([]), do: []
+
+  defp children_scope_block_ids(ancestor_ids) do
+    Repo.all(
+      from(b in Block,
+        where: b.sheet_id in ^ancestor_ids and b.scope == "children" and is_nil(b.deleted_at),
+        select: b.id
+      )
+    )
+  end
+
+  defp existing_inherited_source_ids(sheet_id) do
+    from(b in Block,
+      where:
+        b.sheet_id == ^sheet_id and
+          not is_nil(b.inherited_from_block_id) and
+          is_nil(b.deleted_at),
+      select: b.inherited_from_block_id
+    )
+    |> Repo.all()
+    |> MapSet.new()
+  end
 
   defp collect_hidden_block_ids(sheets) do
     sheets
