@@ -1,0 +1,30 @@
+test/storyarn/exports/serializers/yarn_test.exs
+  s_4009926a81b72f::t_3bb2d3fed012dd 12,227-254
+lib/storyarn/exports/serializers/graph_traversal.ex
+  s_4009926a81b72f::t_475fbb3d92976b 17-18,120
+test/storyarn/exports/serializers/graph_traversal_test.exs
+  s_4009926a81b72f::t_fb2b1bd0fa7f7b 70-91
+test/storyarn/exports/serializers/yarn_validation_test.exs
+  s_4009926a81b72f::t_d9fb06bedc5450 22,95-118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "633c2ae54b71395a08c6b3efe0434159ba6257da",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
