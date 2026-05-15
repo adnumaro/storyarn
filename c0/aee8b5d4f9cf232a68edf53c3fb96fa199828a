@@ -1,0 +1,45 @@
+lib/storyarn_web/live/flow_live/show.ex
+  s_4009926a81b72f::t_51ace129e4b3d0 32,430,434,438,442,446,450,454,458-462,466
+  s_4009926a81b72f::t_bb9a03c2e05723 1103-1143
+  s_4009926a81b72f::t_b236d172dfc34f 338-344,347-367,371-385,471
+  s_4009926a81b72f::t_25e2dca67c0dfc 346
+  s_4009926a81b72f::t_2ce1924d46fe1b 1159-1178
+lib/storyarn_web/live/scene_live/show.ex
+  s_4009926a81b72f::t_71b8b8b68aec68 33
+  s_4009926a81b72f::t_00588a4cb4229f 490-507
+  s_4009926a81b72f::t_02458e1a1b3b5b 696,700,704,708,712,716,720,724-728,732
+  s_4009926a81b72f::t_fe3b49f61e56fd 1172
+  s_4009926a81b72f::t_6025bc7fd83b90 1753-1772
+test/storyarn_web/live/scene_live/show_test.exs
+  s_4009926a81b72f::t_e249ef272c7fad 14,3604-3656
+test/storyarn_web/live/flow_live/show_test.exs
+  s_4009926a81b72f::t_9efac43555661a 9,11,94-188
+lib/storyarn_web/live/sheet_live/show.ex
+  s_4009926a81b72f::t_d7e67a198913a8 37-38,426-427,949-973
+  s_4009926a81b72f::t_850ba1267c2aa2 422-424
+lib/storyarn_web/helpers/version_event_helpers.ex
+  s_4009926a81b72f::t_ddb969169af4b2 1-69,73-83,87-97,101-197,199-212
+  s_4009926a81b72f::t_d36af192d82ea7 198
+  s_4009926a81b72f::t_3e0788e3fe0796 70-72,84-86,98-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "c0aee8b5d4f9cf232a68edf53c3fb96fa199828a",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
