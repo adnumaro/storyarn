@@ -9,6 +9,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Exports
+  alias Storyarn.Flows
   alias Storyarn.Imports
 
   # =============================================================================
@@ -283,6 +284,40 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       sp_with_data = Storyarn.Repo.preload(sp, :elements)
 
       assert sp_with_data.elements != []
+    end
+
+    test "remaps node flow references after all flows are imported", %{source: source, target: target} do
+      referenced_flow = flow_fixture(source, %{name: "Referenced Flow"})
+      source_flow = flow_fixture(source, %{name: "Source Flow"})
+
+      _subflow =
+        node_fixture(source_flow, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => referenced_flow.id}
+        })
+
+      _exit =
+        node_fixture(source_flow, %{
+          type: "exit",
+          data: %{"target_type" => "flow", "target_id" => referenced_flow.id}
+        })
+
+      {:ok, json} =
+        Exports.export_project(source, %{format: :storyarn, validate_before_export: false})
+
+      {:ok, parsed} = Imports.parse_file(json)
+      {:ok, _result} = Imports.execute(target, parsed.data)
+
+      imported_flows = Flows.list_flows(target.id)
+      imported_referenced_flow = Enum.find(imported_flows, &(&1.name == "Referenced Flow"))
+      imported_source_flow = Enum.find(imported_flows, &(&1.name == "Source Flow"))
+      imported_nodes = Flows.list_nodes(imported_source_flow.id)
+
+      imported_subflow = Enum.find(imported_nodes, &(&1.type == "subflow"))
+      imported_exit = Enum.find(imported_nodes, &(&1.data["target_type"] == "flow"))
+
+      assert imported_subflow.data["referenced_flow_id"] == imported_referenced_flow.id
+      assert imported_exit.data["target_id"] == imported_referenced_flow.id
     end
   end
 end

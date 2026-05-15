@@ -1075,8 +1075,21 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   defp remap_id(_map, _type, nil), do: nil
 
   defp remap_id(map, type, old_id) do
-    Map.get(map, {type, old_id})
+    Map.get(map, {type, old_id}) || remap_equivalent_id(map, type, old_id)
   end
+
+  defp remap_equivalent_id(map, type, old_id) when is_integer(old_id) do
+    Map.get(map, {type, to_string(old_id)})
+  end
+
+  defp remap_equivalent_id(map, type, old_id) when is_binary(old_id) do
+    case Integer.parse(old_id) do
+      {int_id, ""} -> Map.get(map, {type, int_id})
+      _ -> nil
+    end
+  end
+
+  defp remap_equivalent_id(_map, _type, _old_id), do: nil
 
   defp remap_source_id(_map, _source_type, nil), do: nil
   defp remap_source_id(map, "flow_node", old_id), do: Map.get(map, {:node, old_id})
@@ -1230,58 +1243,72 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   # (subflow referenced_flow_id, exit referenced_flow_id, exit target_id for flow targets)
   # can't be resolved until all flows exist in the id_map. This pass links them.
   defp link_node_flow_references(data, id_map) do
-    for flow_data <- data["flows"] || [],
-        node_data <- flow_data["nodes"] || [],
-        node_new_id = Map.get(id_map, {:node, node_data["id"]}),
-        not is_nil(node_new_id) do
-      original_data = node_data["data"] || %{}
-      remapped = remap_node_flow_fields(original_data, id_map)
-
-      if remapped != %{} do
-        # Merge remapped flow IDs into the node's existing data
-        existing_node = Repo.get(Storyarn.Flows.FlowNode, node_new_id)
-
-        if existing_node do
-          updated_data = Map.merge(existing_node.data || %{}, remapped)
-          Flows.link_node_import_data(node_new_id, updated_data)
-        end
-      end
-    end
+    data
+    |> exported_flow_nodes()
+    |> Enum.each(&link_node_flow_reference(&1, id_map))
   end
 
   defp remap_node_flow_fields(data, id_map) do
-    result = %{}
+    %{}
+    |> maybe_put_remapped_node_ref("referenced_flow_id", data["referenced_flow_id"], :flow, id_map)
+    |> maybe_put_remapped_node_target(data, id_map)
+  end
 
-    result =
-      case data["referenced_flow_id"] do
-        nil ->
-          result
+  defp exported_flow_nodes(data) do
+    data["flows"]
+    |> List.wrap()
+    |> Enum.flat_map(fn flow_data -> flow_data["nodes"] || [] end)
+  end
 
-        "" ->
-          result
+  defp link_node_flow_reference(node_data, id_map) do
+    node_data
+    |> remapped_node_flow_fields(id_map)
+    |> maybe_link_node_import_data(node_data, id_map)
+  end
 
-        old_id ->
-          case remap_id(id_map, :flow, old_id) do
-            nil -> result
-            new_id -> Map.put(result, "referenced_flow_id", new_id)
-          end
-      end
+  defp remapped_node_flow_fields(node_data, id_map) do
+    node_data
+    |> Map.get("data", %{})
+    |> remap_node_flow_fields(id_map)
+  end
 
-    case {data["target_type"], data["target_id"]} do
-      {"flow", old_id} when not is_nil(old_id) and old_id != "" ->
-        case remap_id(id_map, :flow, old_id) do
-          nil -> result
-          new_id -> Map.put(result, "target_id", new_id)
-        end
+  defp maybe_link_node_import_data(remapped_fields, _node_data, _id_map) when remapped_fields == %{}, do: :ok
 
-      {"scene", old_id} when not is_nil(old_id) and old_id != "" ->
-        case remap_id(id_map, :scene, old_id) do
-          nil -> result
-          new_id -> Map.put(result, "target_id", new_id)
-        end
+  defp maybe_link_node_import_data(remapped_fields, node_data, id_map) do
+    case Map.get(id_map, {:node, node_data["id"]}) do
+      nil -> :ok
+      node_id -> link_existing_node_import_data(node_id, remapped_fields)
+    end
+  end
 
-      _ ->
-        result
+  defp link_existing_node_import_data(node_id, remapped_fields) do
+    case Repo.get(Storyarn.Flows.FlowNode, node_id) do
+      nil ->
+        :ok
+
+      existing_node ->
+        updated_data = Map.merge(existing_node.data || %{}, remapped_fields)
+        Flows.link_node_import_data(node_id, updated_data)
+    end
+  end
+
+  defp maybe_put_remapped_node_target(result, %{"target_type" => "flow", "target_id" => old_id}, id_map) do
+    maybe_put_remapped_node_ref(result, "target_id", old_id, :flow, id_map)
+  end
+
+  defp maybe_put_remapped_node_target(result, %{"target_type" => "scene", "target_id" => old_id}, id_map) do
+    maybe_put_remapped_node_ref(result, "target_id", old_id, :scene, id_map)
+  end
+
+  defp maybe_put_remapped_node_target(result, _data, _id_map), do: result
+
+  defp maybe_put_remapped_node_ref(result, _field, nil, _type, _id_map), do: result
+  defp maybe_put_remapped_node_ref(result, _field, "", _type, _id_map), do: result
+
+  defp maybe_put_remapped_node_ref(result, field, old_id, type, id_map) do
+    case remap_id(id_map, type, old_id) do
+      nil -> result
+      new_id -> Map.put(result, field, new_id)
     end
   end
 
