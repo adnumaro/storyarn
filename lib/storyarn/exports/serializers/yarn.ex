@@ -37,6 +37,8 @@ defmodule Storyarn.Exports.Serializers.Yarn do
     flows = project_data.flows || []
     variables = Helpers.collect_variables(sheets)
     speaker_map = Helpers.build_speaker_map(sheets)
+    flow_shortcuts_by_id = flow_shortcuts_by_id(flows)
+    detour_targets = collect_detour_targets(flows, flow_shortcuts_by_id)
 
     # Multi-file for >5 flows, single-file otherwise
     project_name = Helpers.shortcut_to_identifier(project_data.project.slug || "story")
@@ -46,9 +48,17 @@ defmodule Storyarn.Exports.Serializers.Yarn do
 
     yarn_files =
       if length(flows) > 5 do
-        serialize_multi_file(flows, var_decls, speaker_map, line_counter)
+        serialize_multi_file(flows, var_decls, speaker_map, flow_shortcuts_by_id, detour_targets, line_counter)
       else
-        serialize_single_file(flows, var_decls, speaker_map, line_counter, project_name)
+        serialize_single_file(
+          flows,
+          var_decls,
+          speaker_map,
+          flow_shortcuts_by_id,
+          detour_targets,
+          line_counter,
+          project_name
+        )
       end
 
     metadata = build_metadata(project_data.project, sheets, variables, flows)
@@ -65,24 +75,32 @@ defmodule Storyarn.Exports.Serializers.Yarn do
   # Multi-file / single-file strategies
   # ---------------------------------------------------------------------------
 
-  defp serialize_multi_file(flows, var_decls, speaker_map, line_counter) do
+  defp serialize_multi_file(flows, var_decls, speaker_map, flow_shortcuts_by_id, detour_targets, line_counter) do
     flows
     |> Enum.with_index()
     |> Enum.map(fn {flow, idx} ->
       filename = Helpers.shortcut_to_identifier(flow.shortcut || "flow_#{flow.id}")
       decls = if idx == 0, do: var_decls, else: []
-      content = flow_to_yarn(flow, decls, speaker_map, line_counter)
+      content = flow_to_yarn(flow, decls, speaker_map, flow_shortcuts_by_id, detour_targets, line_counter)
       {"#{filename}.yarn", content}
     end)
   end
 
-  defp serialize_single_file(flows, var_decls, speaker_map, line_counter, project_name) do
+  defp serialize_single_file(
+         flows,
+         var_decls,
+         speaker_map,
+         flow_shortcuts_by_id,
+         detour_targets,
+         line_counter,
+         project_name
+       ) do
     {first_content, rest_content} =
       case flows do
         [first | rest] ->
           {
-            flow_to_yarn(first, var_decls, speaker_map, line_counter),
-            Enum.map(rest, &flow_to_yarn(&1, [], speaker_map, line_counter))
+            flow_to_yarn(first, var_decls, speaker_map, flow_shortcuts_by_id, detour_targets, line_counter),
+            Enum.map(rest, &flow_to_yarn(&1, [], speaker_map, flow_shortcuts_by_id, detour_targets, line_counter))
           }
 
         [] ->
@@ -97,12 +115,18 @@ defmodule Storyarn.Exports.Serializers.Yarn do
   # Flow → Yarn node(s)
   # ---------------------------------------------------------------------------
 
-  defp flow_to_yarn(flow, var_decls, speaker_map, line_counter) do
+  defp flow_to_yarn(flow, var_decls, speaker_map, flow_shortcuts_by_id, detour_targets, line_counter) do
     node_title = Helpers.shortcut_to_identifier(flow.shortcut || flow.name || "flow_#{flow.id}")
     {instructions, hub_sections} = GraphTraversal.linearize(flow)
 
+    ctx = %{
+      speaker_map: speaker_map,
+      flow_shortcuts_by_id: flow_shortcuts_by_id,
+      is_detour_target: MapSet.member?(detour_targets, flow.shortcut)
+    }
+
     # Main node
-    main_body = render_instructions(instructions, speaker_map, line_counter, 0)
+    main_body = render_instructions(instructions, ctx, line_counter, 0)
 
     main_node =
       yarn_node(node_title, flow.name, var_decls ++ main_body)
@@ -110,7 +134,7 @@ defmodule Storyarn.Exports.Serializers.Yarn do
     # Hub sections as separate Yarn nodes
     hub_nodes =
       Enum.map(hub_sections, fn {label, instrs} ->
-        body = render_instructions(instrs, speaker_map, line_counter, 0)
+        body = render_instructions(instrs, ctx, line_counter, 0)
         yarn_node(label, "", body)
       end)
 
@@ -149,14 +173,61 @@ defmodule Storyarn.Exports.Serializers.Yarn do
   # Instruction rendering
   # ---------------------------------------------------------------------------
 
-  defp render_instructions(instructions, speaker_map, line_counter, depth) do
-    Enum.flat_map(instructions, &render_instruction(&1, speaker_map, line_counter, depth))
+  defp render_instructions(instructions, ctx, line_counter, depth) do
+    render_instruction_stream(instructions, ctx, line_counter, depth)
   end
 
-  defp render_instruction({:dialogue, node}, speaker_map, line_counter, depth) do
+  defp render_instruction_stream([], _ctx, _line_counter, _depth), do: []
+
+  defp render_instruction_stream([{:choices_start, _node} | rest], ctx, line_counter, depth) do
+    {choice_instructions, rest} =
+      Enum.split_while(rest, fn
+        {:choices_end, _node} -> false
+        _instruction -> true
+      end)
+
+    rest =
+      case rest do
+        [{:choices_end, _node} | tail] -> tail
+        tail -> tail
+      end
+
+    render_choice_instructions(choice_instructions, ctx, line_counter, depth) ++
+      render_instruction_stream(rest, ctx, line_counter, depth)
+  end
+
+  defp render_instruction_stream([instruction | rest], ctx, line_counter, depth) do
+    render_instruction(instruction, ctx, line_counter, depth) ++
+      render_instruction_stream(rest, ctx, line_counter, depth)
+  end
+
+  defp render_choice_instructions(instructions, ctx, line_counter, depth) do
+    instructions
+    |> choice_blocks([])
+    |> Enum.flat_map(fn {choice, body} ->
+      render_instruction(choice, ctx, line_counter, depth) ++
+        render_instructions(body, ctx, line_counter, depth + 1)
+    end)
+  end
+
+  defp choice_blocks([], acc), do: Enum.reverse(acc)
+
+  defp choice_blocks([{:choice, _resp, _idx} = choice | rest], acc) do
+    {body, rest} =
+      Enum.split_while(rest, fn
+        {:choice, _resp, _idx} -> false
+        _instruction -> true
+      end)
+
+    choice_blocks(rest, [{choice, body} | acc])
+  end
+
+  defp choice_blocks([_instruction | rest], acc), do: choice_blocks(rest, acc)
+
+  defp render_instruction({:dialogue, node}, ctx, line_counter, depth) do
     data = node.data || %{}
     text = data |> Helpers.dialogue_text() |> escape_yarn_text()
-    speaker = Helpers.speaker_name(data, speaker_map)
+    speaker = Helpers.speaker_name(data, ctx.speaker_map)
     line_id = next_line_id(line_counter)
 
     line =
@@ -169,9 +240,9 @@ defmodule Storyarn.Exports.Serializers.Yarn do
     [line]
   end
 
-  defp render_instruction({:choices_start, _node}, _speaker_map, _lc, _depth), do: []
+  defp render_instruction({:choices_start, _node}, _ctx, _lc, _depth), do: []
 
-  defp render_instruction({:choice, resp, _idx}, _speaker_map, line_counter, depth) do
+  defp render_instruction({:choice, resp, _idx}, _ctx, line_counter, depth) do
     text = (resp["text"] || resp["menu_text"] || "") |> Helpers.strip_html() |> escape_yarn_text()
     line_id = next_line_id(line_counter)
     condition = build_yarn_condition(resp["condition"])
@@ -201,9 +272,9 @@ defmodule Storyarn.Exports.Serializers.Yarn do
     [choice_line | assign_lines]
   end
 
-  defp render_instruction({:choices_end, _node}, _speaker_map, _lc, _depth), do: []
+  defp render_instruction({:choices_end, _node}, _ctx, _lc, _depth), do: []
 
-  defp render_instruction({:condition_start, node}, _speaker_map, _lc, depth) do
+  defp render_instruction({:condition_start, node}, _ctx, _lc, depth) do
     data = node.data || %{}
     condition = Helpers.extract_condition(data["condition"])
 
@@ -216,7 +287,7 @@ defmodule Storyarn.Exports.Serializers.Yarn do
     end
   end
 
-  defp render_instruction({:condition_branch, _pin, _label, idx}, _sm, _lc, depth) do
+  defp render_instruction({:condition_branch, _pin, _label, idx}, _ctx, _lc, depth) do
     case idx do
       0 -> []
       1 -> ["#{indent(depth)}<<else>>"]
@@ -225,11 +296,11 @@ defmodule Storyarn.Exports.Serializers.Yarn do
     end
   end
 
-  defp render_instruction({:condition_end, _node}, _speaker_map, _lc, depth) do
+  defp render_instruction({:condition_end, _node}, _ctx, _lc, depth) do
     ["#{indent(depth)}<<endif>>"]
   end
 
-  defp render_instruction({:instruction, node}, _speaker_map, _lc, depth) do
+  defp render_instruction({:instruction, node}, _ctx, _lc, depth) do
     data = node.data || %{}
     assignments = Helpers.extract_assignments(data)
 
@@ -242,23 +313,37 @@ defmodule Storyarn.Exports.Serializers.Yarn do
     end
   end
 
-  defp render_instruction({:subflow, node}, _speaker_map, _lc, depth) do
+  defp render_instruction({:subflow, node}, ctx, _lc, depth) do
     data = node.data || %{}
-    target = Helpers.shortcut_to_identifier(data["flow_shortcut"] || "subflow_#{node.id}")
-    ["#{indent(depth)}<<jump #{target}>>"]
+    target = Helpers.shortcut_to_identifier(resolve_flow_shortcut(data, ctx) || "subflow_#{node.id}")
+    ["#{indent(depth)}<<detour #{target}>>"]
   end
 
-  defp render_instruction({:jump, _node, target_label}, _speaker_map, _lc, depth) do
+  defp render_instruction({:jump, _node, target_label}, _ctx, _lc, depth) do
     ["#{indent(depth)}<<jump #{target_label}>>"]
   end
 
-  defp render_instruction({:divert, target_label}, _speaker_map, _lc, depth) do
+  defp render_instruction({:divert, target_label}, _ctx, _lc, depth) do
     ["#{indent(depth)}<<jump #{target_label}>>"]
   end
 
-  defp render_instruction({:exit, _node}, _speaker_map, _lc, _depth), do: []
+  defp render_instruction({:exit, node}, ctx, _lc, depth) do
+    data = node.data || %{}
 
-  defp render_instruction(_, _speaker_map, _lc, _depth), do: []
+    case data["exit_mode"] do
+      "flow_reference" ->
+        target = Helpers.shortcut_to_identifier(resolve_flow_shortcut(data, ctx) || "unknown")
+        ["#{indent(depth)}<<jump #{target}>>"]
+
+      "caller_return" ->
+        ["#{indent(depth)}<<return>>"]
+
+      _mode ->
+        [terminal_command(ctx, depth)]
+    end
+  end
+
+  defp render_instruction(_, _ctx, _lc, _depth), do: []
 
   # ---------------------------------------------------------------------------
   # Helpers
@@ -275,6 +360,38 @@ defmodule Storyarn.Exports.Serializers.Yarn do
   end
 
   defp escape_yarn_text(_), do: ""
+
+  defp terminal_command(%{is_detour_target: true}, depth), do: "#{indent(depth)}<<return>>"
+  defp terminal_command(_ctx, depth), do: "#{indent(depth)}<<stop>>"
+
+  defp flow_shortcuts_by_id(flows) do
+    Map.new(flows, fn flow -> {to_string(flow.id), flow.shortcut} end)
+  end
+
+  defp collect_detour_targets(flows, flow_shortcuts_by_id) do
+    flows
+    |> Enum.flat_map(fn flow ->
+      (flow.nodes || [])
+      |> Enum.filter(&(&1.type == "subflow"))
+      |> Enum.map(&resolve_flow_shortcut(&1.data || %{}, flow_shortcuts_by_id))
+      |> Enum.reject(&blank?/1)
+    end)
+    |> MapSet.new()
+  end
+
+  defp resolve_flow_shortcut(data, %{flow_shortcuts_by_id: flow_shortcuts_by_id}) do
+    resolve_flow_shortcut(data, flow_shortcuts_by_id)
+  end
+
+  defp resolve_flow_shortcut(data, flow_shortcuts_by_id) do
+    data["flow_shortcut"] ||
+      data["referenced_flow_shortcut"] ||
+      flow_shortcuts_by_id[to_string(data["referenced_flow_id"])]
+  end
+
+  defp blank?(nil), do: true
+  defp blank?(""), do: true
+  defp blank?(_value), do: false
 
   defp indent(0), do: ""
   defp indent(n), do: String.duplicate("    ", n)
