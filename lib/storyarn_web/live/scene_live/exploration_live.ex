@@ -562,74 +562,74 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         {:error, put_flash(socket, :error, dgettext("scenes", "Flow not found."))}
 
       flow ->
-        nodes_map = DebugExecutionHandlers.build_nodes_map(flow.id)
-        connections = DebugExecutionHandlers.build_connections(flow.id)
-        all_sheets = Sheets.list_all_sheets(project.id)
-        sheets_map = FormHelpers.sheets_map(all_sheets)
-
-        case find_entry_and_step(nodes_map, connections, socket.assigns.variables, flow.id) do
-          {:error, reason} ->
-            {:error, put_flash(socket, :error, reason)}
-
-          {:ok, engine_state} ->
-            case build_slide_or_advance(
-                   engine_state,
-                   nodes_map,
-                   connections,
-                   sheets_map,
-                   project.id
-                 ) do
-              {:finished, final_state} ->
-                # Flow completed with no interactive content — apply variables silently
-                new_variables = FormulaRuntime.recompute_formulas(final_state.variables)
-                {:ok, apply_variable_update(socket, new_variables)}
-
-              {:content, ready_state, slide} ->
-                {:ok,
-                 socket
-                 |> assign(:flow_mode, true)
-                 |> assign(:flow_nodes, nodes_map)
-                 |> assign(:flow_connections, connections)
-                 |> assign(:flow_sheets_map, sheets_map)
-                 |> push_event("patrol_pause", %{})
-                 |> pause_ambient_flow()
-                 |> assign(:active_flow, %{
-                   flow_id: flow.id,
-                   flow: flow,
-                   engine_state: ready_state,
-                   slide: slide
-                 })}
-
-              {:flow_jump, jumped_state, target_flow_id} ->
-                # Flow immediately hit a subflow before reaching interactive content.
-                # Set up main flow context so handle_exploration_flow_jump can push it.
-                socket =
-                  socket
-                  |> assign(:flow_mode, true)
-                  |> assign(:flow_nodes, nodes_map)
-                  |> assign(:flow_connections, connections)
-                  |> assign(:flow_sheets_map, sheets_map)
-                  |> push_event("patrol_pause", %{})
-                  |> pause_ambient_flow()
-                  |> assign(:active_flow, %{
-                    flow_id: flow.id,
-                    flow: flow,
-                    engine_state: jumped_state,
-                    slide: Slide.build(nil, jumped_state, sheets_map, project.id)
-                  })
-
-                {:noreply, socket} =
-                  handle_exploration_flow_jump(socket, jumped_state, target_flow_id)
-
-                {:ok, socket}
-
-              {:flow_return, returned_state} ->
-                # Unexpected flow_return during init — treat as finished
-                new_variables = FormulaRuntime.recompute_formulas(returned_state.variables)
-                {:ok, apply_variable_update(socket, new_variables)}
-            end
-        end
+        context = build_flow_context(project, flow)
+        init_flow_context(socket, context)
     end
+  end
+
+  defp build_flow_context(project, flow) do
+    nodes_map = DebugExecutionHandlers.build_nodes_map(flow.id)
+    all_sheets = Sheets.list_all_sheets(project.id)
+
+    %{
+      project_id: project.id,
+      flow: flow,
+      nodes: nodes_map,
+      connections: DebugExecutionHandlers.build_connections(flow.id),
+      sheets_map: FormHelpers.sheets_map(all_sheets)
+    }
+  end
+
+  defp init_flow_context(socket, context) do
+    case find_entry_and_step(context.nodes, context.connections, socket.assigns.variables, context.flow.id) do
+      {:error, reason} -> {:error, put_flash(socket, :error, reason)}
+      {:ok, engine_state} -> init_flow_state(socket, context, engine_state)
+    end
+  end
+
+  defp init_flow_state(socket, context, engine_state) do
+    case build_slide_or_advance(engine_state, context.nodes, context.connections, context.sheets_map, context.project_id) do
+      {:finished, final_state} ->
+        apply_finished_flow(socket, final_state)
+
+      {:content, ready_state, slide} ->
+        {:ok, activate_flow_socket(socket, context, ready_state, slide)}
+
+      {:flow_jump, jumped_state, target_flow_id} ->
+        handle_initial_flow_jump(socket, context, jumped_state, target_flow_id)
+
+      {:flow_return, returned_state} ->
+        apply_finished_flow(socket, returned_state)
+    end
+  end
+
+  defp apply_finished_flow(socket, state) do
+    state.variables
+    |> FormulaRuntime.recompute_formulas()
+    |> then(&{:ok, apply_variable_update(socket, &1)})
+  end
+
+  defp activate_flow_socket(socket, context, engine_state, slide) do
+    socket
+    |> assign(:flow_mode, true)
+    |> assign(:flow_nodes, context.nodes)
+    |> assign(:flow_connections, context.connections)
+    |> assign(:flow_sheets_map, context.sheets_map)
+    |> push_event("patrol_pause", %{})
+    |> pause_ambient_flow()
+    |> assign(:active_flow, %{
+      flow_id: context.flow.id,
+      flow: context.flow,
+      engine_state: engine_state,
+      slide: slide
+    })
+  end
+
+  defp handle_initial_flow_jump(socket, context, jumped_state, target_flow_id) do
+    placeholder_slide = Slide.build(nil, jumped_state, context.sheets_map, context.project_id)
+    socket = activate_flow_socket(socket, context, jumped_state, placeholder_slide)
+    {:noreply, socket} = handle_exploration_flow_jump(socket, jumped_state, target_flow_id)
+    {:ok, socket}
   end
 
   defp find_entry_and_step(nodes_map, connections, variables, flow_id) do
@@ -859,41 +859,46 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   end
 
   defp do_build_slide_or_advance(state, nodes_map, connections, sheets_map, project_id, attempts) do
-    node = Map.get(nodes_map, state.current_node_id)
-    slide = Slide.build(node, state, sheets_map, project_id)
+    slide = build_flow_slide(state, nodes_map, sheets_map, project_id)
 
-    if slide.type in [:dialogue, :outcome] do
+    if renderable_slide?(slide) do
       {:content, state, slide}
     else
-      # Empty slide — advance past it
-      case PlayerEngine.step_until_interactive(state, nodes_map, connections) do
-        {:finished, new_state, _} ->
-          # Try one more time with the final node (might be an exit/outcome)
-          final_node = Map.get(nodes_map, new_state.current_node_id)
-          final_slide = Slide.build(final_node, new_state, sheets_map, project_id)
+      advance_empty_slide(state, nodes_map, connections, sheets_map, project_id, attempts)
+    end
+  end
 
-          if final_slide.type in [:dialogue, :outcome] do
-            {:content, new_state, final_slide}
-          else
-            {:finished, new_state}
-          end
+  defp build_flow_slide(state, nodes_map, sheets_map, project_id) do
+    nodes_map
+    |> Map.get(state.current_node_id)
+    |> Slide.build(state, sheets_map, project_id)
+  end
 
-        {:flow_jump, new_state, target_flow_id, _} ->
-          {:flow_jump, new_state, target_flow_id}
+  defp renderable_slide?(slide), do: slide.type in [:dialogue, :outcome]
 
-        {:flow_return, new_state, _} ->
-          {:flow_return, new_state}
+  defp advance_empty_slide(state, nodes_map, connections, sheets_map, project_id, attempts) do
+    case PlayerEngine.step_until_interactive(state, nodes_map, connections) do
+      {:finished, new_state, _} ->
+        finish_or_render_final_slide(new_state, nodes_map, sheets_map, project_id)
 
-        {_status, new_state, _} ->
-          do_build_slide_or_advance(
-            new_state,
-            nodes_map,
-            connections,
-            sheets_map,
-            project_id,
-            attempts + 1
-          )
-      end
+      {:flow_jump, new_state, target_flow_id, _} ->
+        {:flow_jump, new_state, target_flow_id}
+
+      {:flow_return, new_state, _} ->
+        {:flow_return, new_state}
+
+      {_status, new_state, _} ->
+        do_build_slide_or_advance(new_state, nodes_map, connections, sheets_map, project_id, attempts + 1)
+    end
+  end
+
+  defp finish_or_render_final_slide(state, nodes_map, sheets_map, project_id) do
+    slide = build_flow_slide(state, nodes_map, sheets_map, project_id)
+
+    if renderable_slide?(slide) do
+      {:content, state, slide}
+    else
+      {:finished, state}
     end
   end
 
