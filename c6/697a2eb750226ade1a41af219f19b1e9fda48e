@@ -1,0 +1,94 @@
+assets/app/modules/scenes/exploration/components/ExplorationToolbar.vue
+  s_4009926a81b72f::t_2cabbf00ecd941 57-63,68-74
+assets/app/modules/scenes/editor/components/toolbar/controls/ToolbarLockToggle.vue
+  s_4009926a81b72f::t_2a796f1c048b9d 22-23
+assets/app/modules/scenes/editor/components/chrome/tree/SceneTreeNode.vue
+  s_4009926a81b72f::t_92580d2f319dcc 171,197,206
+  s_4009926a81b72f::t_78bc5f91310448 170
+assets/app/modules/scenes/editor/components/chrome/layers/SceneLayerList.vue
+  s_4009926a81b72f::t_cd4f4c14f5110a 119,168
+assets/app/modules/scenes/editor/components/toolbar/controls/ToolbarLayerPicker.vue
+  s_4009926a81b72f::t_7c4c0b00930164 37-43
+assets/app/modules/scenes/editor/components/chrome/dock/DockToolButton.vue
+  s_4009926a81b72f::t_e415dbb90c9e13 35-36
+assets/app/modules/scenes/editor/components/panels/SettingsPanel.vue
+  s_4009926a81b72f::t_d19c0b46323682 70
+assets/app/modules/scenes/editor/components/toolbar/sections/ZoneToolbar.vue
+  s_4009926a81b72f::t_03602ee217311c 149-155
+assets/app/modules/scenes/exploration/components/CollectionModal.vue
+  s_4009926a81b72f::t_d3de44bb78f3f0 51-57
+assets/app/modules/scenes/editor/components/chrome/dock/PendingSheetIndicator.vue
+  s_4009926a81b72f::t_2be5c8337576c0 26-32
+assets/app/modules/scenes/editor/components/chrome/header/SearchPanel.vue
+  s_4009926a81b72f::t_de33c8de219625 6,34,89-113,115,117,119-123,161-162
+assets/app/locales/en/scenes.json
+  s_4009926a81b72f::t_88d4455ccb65cf 216-217
+  s_4009926a81b72f::t_f19c866931b1be 14-20,104-105,112-113,181,321-323
+  s_4009926a81b72f::t_db700e59403358 30-32
+  s_4009926a81b72f::t_be098d1fd95932 130-131
+  s_4009926a81b72f::t_55f294b8b6f29d 287
+assets/app/modules/scenes/editor/components/panels/properties/zone/CollectionItemCard.vue
+  s_4009926a81b72f::t_eac38530e9fbdb 72-73
+assets/app/modules/scenes/editor/components/chrome/dock/ZonesDropdown.vue
+  s_4009926a81b72f::t_e5e15128ced605 52-58
+assets/app/modules/scenes/editor/components/chrome/dock/PinsDropdown.vue
+  s_4009926a81b72f::t_318069a6748f8c 55-61,102-107
+assets/app/live/scene/dashboard/SceneDashboard.vue
+  s_4009926a81b72f::t_6da5e947842a82 3,20-27,111-112,126-134,136-142,274-280,287,312-313,333-334,364-386
+assets/app/modules/scenes/editor/components/panels/ElementPropertiesPanel.vue
+  s_4009926a81b72f::t_378f3569a79c16 72
+assets/app/modules/scenes/editor/components/chrome/layers/Legend.vue
+  s_4009926a81b72f::t_73c2959e79c4b1 67
+assets/app/shell/ProjectNavbarContext.vue
+  s_4009926a81b72f::t_b2c4f41cda9c03 128-132,181-185
+assets/app/components/toolbar/ToolbarColorPicker.vue
+  s_4009926a81b72f::t_30d54388b67d92 30-36,53-54
+assets/app/modules/scenes/editor/components/toolbar/controls/ToolbarTypePicker.vue
+  s_4009926a81b72f::t_16b00389cd44a3 47-53
+assets/app/modules/scenes/editor/components/panels/VersionHistoryPanel.vue
+  s_4009926a81b72f::t_983dd4ea038d01 48-49
+assets/app/modules/scenes/editor/components/toolbar/controls/ToolbarStrokePicker.vue
+  s_4009926a81b72f::t_b55929b5d188e8 47-53,90-91,117-118,128-129
+assets/app/live/scene/show/SceneHeaderActions.vue
+  s_4009926a81b72f::t_16a001f4ea4def 44-50,58-62,82-88
+assets/app/modules/scenes/editor/components/chrome/layers/LayerListPopover.vue
+  s_4009926a81b72f::t_222f9ccc5a4a87 40
+assets/app/modules/scenes/editor/components/panels/settings/AmbientFlowRow.vue
+  s_4009926a81b72f::t_ee2f6195af5fc5 99,108,129-130
+  s_4009926a81b72f::t_78bc5f91310448 117-119
+assets/app/components/toolbar/ToolbarSizePicker.vue
+  s_4009926a81b72f::t_b2621607ec97ac 34-39
+assets/app/modules/scenes/editor/components/toolbar/sections/PinToolbar.vue
+  s_4009926a81b72f::t_af2e8673779926 136-142
+assets/app/modules/scenes/editor/components/toolbar/controls/ToolbarActionTypePicker.vue
+  s_4009926a81b72f::t_783a97e2fcfa27 74-80
+assets/app/locales/es/scenes.json
+  s_4009926a81b72f::t_6e676b75a70981 216-217
+  s_4009926a81b72f::t_f4377eb419a150 287
+  s_4009926a81b72f::t_11a99eeea198f7 130-131
+  s_4009926a81b72f::t_4f6ee93fd80f44 14-20,104-105,112-113,181,321-323
+  s_4009926a81b72f::t_2b238657df1d7d 30-32
+assets/app/modules/scenes/editor/components/toolbar/sections/ConnectionToolbar.vue
+  s_4009926a81b72f::t_766d53bcfe1ef9 81-82,96-97,107-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "c6697a2eb750226ade1a41af219f19b1e9fda48e",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
