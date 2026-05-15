@@ -78,6 +78,8 @@ function toggleElementPanel(): void {
       class="toolbar-btn px-1.5"
       :class="{ '!bg-accent': element.showLabel }"
       :disabled="!canEdit"
+      :aria-label="$t('scenes.connection_toolbar.show_label')"
+      :title="$t('scenes.connection_toolbar.show_label')"
       @click="toggleField('show_label', element.showLabel)"
     >
       <Tag class="size-3" />
@@ -91,6 +93,8 @@ function toggleElementPanel(): void {
       class="toolbar-btn px-1.5"
       :class="{ '!bg-accent': element.bidirectional }"
       :disabled="!canEdit"
+      :aria-label="$t('scenes.connection_toolbar.bidirectional')"
+      :title="$t('scenes.connection_toolbar.bidirectional')"
       @click="toggleField('bidirectional', element.bidirectional)"
     >
       <ArrowLeftRight class="size-3" />
@@ -100,7 +104,13 @@ function toggleElementPanel(): void {
 
   <!-- Settings cog -->
   <ToolbarTooltip :label="$t('scenes.connection_toolbar.properties')">
-    <button type="button" class="toolbar-btn" @click="toggleElementPanel">
+    <button
+      type="button"
+      class="toolbar-btn"
+      :aria-label="$t('scenes.connection_toolbar.properties')"
+      :title="$t('scenes.connection_toolbar.properties')"
+      @click="toggleElementPanel"
+    >
       <Settings class="size-3.5" />
     </button>
   </ToolbarTooltip>

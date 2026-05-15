@@ -69,6 +69,7 @@ function close() {
           type="button"
           class="inline-flex items-center justify-center size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           :title="$t('scenes.element_properties.close')"
+          :aria-label="$t('scenes.element_properties.close')"
           @click="close"
         >
           <X class="size-3" />

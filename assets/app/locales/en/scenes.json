@@ -11,7 +11,13 @@
       "pins": "Pins",
       "connections": "Connections",
       "backgrounds": "Backgrounds",
-      "modified": "Modified"
+      "modified": "Modified",
+      "scene_actions": "Scene actions",
+      "previous_page": "Previous page",
+      "next_page": "Next page",
+      "delete_title": "Delete scene?",
+      "delete_description": "\"{name}\" will be deleted.",
+      "cancel": "Cancel"
     },
     "tree": {
       "filter": "Filter scenes...",
@@ -21,7 +27,9 @@
       "cancel": "Cancel",
       "delete": "Delete",
       "add_child": "Add child scene",
-      "move_to_trash": "Move to Trash"
+      "move_to_trash": "Move to Trash",
+      "expand_scene": "Expand scene",
+      "collapse_scene": "Collapse scene"
     },
     "toolbar": {
       "scene_name": "Scene name"
@@ -93,14 +101,16 @@
       "zones": "Zones",
       "notes": "Notes",
       "lines": "Lines",
-      "no_results": "No results found"
+      "no_results": "No results found",
+      "clear": "Clear search"
     },
     "settings_panel": {
       "title": "Scene Settings",
       "close": "Close panel"
     },
     "version_history": {
-      "title": "Version History"
+      "title": "Version History",
+      "close": "Close version history"
     },
     "dock": {
       "select": "Select",
@@ -117,7 +127,8 @@
       "version_history_desc": "View and manage version history",
       "play": "Play",
       "play_desc": "Play exploration mode",
-      "place_pin": "Click on canvas to place"
+      "place_pin": "Click on canvas to place",
+      "cancel_place_pin": "Cancel pin placement"
     },
     "pins_dropdown": {
       "title": "Place a Pin",
@@ -167,6 +178,7 @@
       "back": "Back",
       "continue": "Continue",
       "return_to_map": "Return to map",
+      "close_collection": "Close collection",
       "saved_progress_title": "Saved Progress Found",
       "saved_progress_desc": "You have a saved exploration session.",
       "scene_label": "Scene:",
@@ -201,7 +213,8 @@
       "display_variable": "Display variable",
       "display_variable_placeholder": "Select variable...",
       "collection": "Collection",
-      "condition": "Condition"
+      "condition": "Condition",
+      "remove_item": "Remove item"
     },
     "pin_patrol": {
       "patrol": "Patrol",
@@ -271,6 +284,7 @@
       "move_down": "Move down",
       "disable": "Disable",
       "enable": "Enable",
+      "remove": "Remove ambient flow",
       "interval": "Interval (ms)",
       "variable_ref": "Variable reference",
       "priority": "Priority (higher = first)",
@@ -304,7 +318,9 @@
       "style": "Style",
       "width": "Width",
       "color": "Color",
-      "custom_color": "Custom color"
+      "custom_color": "Custom color",
+      "decrease_width": "Decrease width",
+      "increase_width": "Increase width"
     },
     "type_picker": {
       "pin_type": "Pin type",

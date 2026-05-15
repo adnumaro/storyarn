@@ -23,7 +23,13 @@ const emit = defineEmits<{
     <span>
       {{ $t("scenes.dock.place_pin") }} <strong>{{ pendingSheet.name }}</strong>
     </span>
-    <button type="button" class="dock-btn size-5! rounded-md!" @click="emit('cancel')">
+    <button
+      type="button"
+      class="dock-btn size-5! rounded-md!"
+      :aria-label="$t('scenes.dock.cancel_place_pin')"
+      :title="$t('scenes.dock.cancel_place_pin')"
+      @click="emit('cancel')"
+    >
       <X class="size-3" />
     </button>
   </div>

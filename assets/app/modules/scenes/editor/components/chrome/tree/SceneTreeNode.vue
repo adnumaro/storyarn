@@ -167,6 +167,8 @@ watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
             v-if="hasChildren"
             type="button"
             class="shrink-0 size-5 inline-flex items-center justify-center rounded hover:bg-accent"
+            :aria-label="isOpen ? $t('scenes.tree.collapse_scene') : $t('scenes.tree.expand_scene')"
+            :title="isOpen ? $t('scenes.tree.collapse_scene') : $t('scenes.tree.expand_scene')"
             @click.stop.prevent="onToggle"
           >
             <ChevronRight :class="['size-3 transition-transform', isOpen && 'rotate-90']" />
@@ -192,6 +194,7 @@ watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
             <button
               type="button"
               class="size-5 inline-flex items-center justify-center rounded hover:bg-accent text-muted-foreground hover:text-foreground"
+              :aria-label="$t('scenes.tree.add_child')"
               :title="$t('scenes.tree.add_child')"
               @click.stop.prevent="emit('createChild', node.id)"
             >
@@ -200,6 +203,7 @@ watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
             <button
               type="button"
               class="size-5 inline-flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+              :aria-label="$t('scenes.tree.move_to_trash')"
               :title="$t('scenes.tree.move_to_trash')"
               @click.stop.prevent="emit('requestDelete', node)"
             >

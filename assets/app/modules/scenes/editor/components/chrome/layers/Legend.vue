@@ -64,6 +64,7 @@ function getPinIcon(iconName: string): Component {
       type="button"
       class="inline-flex items-center gap-1.5 h-8 px-3 text-sm bg-surface border border-border rounded-lg shadow-md hover:bg-accent transition-colors"
       :title="legendOpen ? $t('scenes.legend.hide') : $t('scenes.legend.show')"
+      :aria-label="legendOpen ? $t('scenes.legend.hide') : $t('scenes.legend.show')"
       @click="toggleLegend"
     >
       <List class="size-4" />

@@ -44,7 +44,13 @@ function onCustomColor(e: Event) {
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
       <ToolbarTooltip :label="$t('scenes.stroke_picker.line_style')">
-        <button type="button" class="toolbar-btn" :disabled="disabled">
+        <button
+          type="button"
+          class="toolbar-btn"
+          :disabled="disabled"
+          :aria-label="$t('scenes.stroke_picker.line_style')"
+          :title="$t('scenes.stroke_picker.line_style')"
+        >
           <span class="flex items-center gap-1">
             <svg width="16" height="16" viewBox="0 0 16 16" class="text-current">
               <line
@@ -81,6 +87,8 @@ function onCustomColor(e: Event) {
                 class="toolbar-btn h-7 w-10"
                 :class="{ 'bg-primary text-primary-foreground': style === lineStyle }"
                 :disabled="disabled"
+                :aria-label="style"
+                :title="style"
                 @click="emit('update:lineStyle', style)"
               >
                 <svg width="24" height="8" viewBox="0 0 24 8" class="text-current">
@@ -106,6 +114,8 @@ function onCustomColor(e: Event) {
                 type="button"
                 class="toolbar-btn h-6 w-6 text-xs"
                 :disabled="disabled || lineWidth <= 0"
+                :aria-label="$t('scenes.stroke_picker.decrease_width')"
+                :title="$t('scenes.stroke_picker.decrease_width')"
                 @click="decWidth"
               >
                 −
@@ -115,6 +125,8 @@ function onCustomColor(e: Event) {
                 type="button"
                 class="toolbar-btn h-6 w-6 text-xs"
                 :disabled="disabled || lineWidth >= 10"
+                :aria-label="$t('scenes.stroke_picker.increase_width')"
+                :title="$t('scenes.stroke_picker.increase_width')"
                 @click="incWidth"
               >
                 +

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Component } from "vue";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import {
   AlertTriangle,
   ArrowDown,
@@ -17,6 +17,14 @@ import {
   Trash2,
 } from "lucide-vue-next";
 import { Button } from "@components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -100,6 +108,8 @@ const {
 }>();
 
 const live = useLive();
+const deleteDialogOpen = ref(false);
+const pendingDeleteScene = ref<TableDataRow | null>(null);
 
 function sceneHref(row: TableDataRow): string {
   return `/workspaces/${workspaceSlug}/projects/${projectSlug}/scenes/${row.id}`;
@@ -113,9 +123,23 @@ function goToPage(page: number): void {
   live.pushEvent("page_scenes", { page });
 }
 
-function requestDelete(id: number | string): void {
-  live.pushEvent("set_pending_delete_scene", { id });
+function requestDelete(scene: TableDataRow): void {
+  pendingDeleteScene.value = scene;
+  deleteDialogOpen.value = true;
+}
+
+function confirmDelete(): void {
+  if (!pendingDeleteScene.value) return;
+
+  live.pushEvent("set_pending_delete_scene", { id: pendingDeleteScene.value.id });
   live.pushEvent("confirm_delete_scene", {});
+  deleteDialogOpen.value = false;
+  pendingDeleteScene.value = null;
+}
+
+function cancelDelete(): void {
+  deleteDialogOpen.value = false;
+  pendingDeleteScene.value = null;
 }
 
 function sortIcon(column: string): Component {
@@ -247,14 +271,20 @@ const pages = computed(() => {
               <TableCell v-if="canEdit" class="text-right w-10">
                 <DropdownMenu>
                   <DropdownMenuTrigger as-child>
-                    <Button variant="ghost" size="icon-sm" class="size-7">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      class="size-7"
+                      :aria-label="$t('scenes.dashboard.scene_actions')"
+                      :title="$t('scenes.dashboard.scene_actions')"
+                    >
                       <MoreHorizontal class="size-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem
                       class="text-destructive gap-2 text-xs"
-                      @select="requestDelete(row.id)"
+                      @select="requestDelete(row)"
                     >
                       <Trash2 class="size-3.5" />
                       {{ $t("scenes.dashboard.delete") }}
@@ -279,6 +309,8 @@ const pages = computed(() => {
             size="icon-sm"
             class="size-7"
             :disabled="pagination.page <= 1"
+            :aria-label="$t('scenes.dashboard.previous_page')"
+            :title="$t('scenes.dashboard.previous_page')"
             @click="goToPage(pagination.page - 1)"
           >
             <ChevronLeft class="size-4" />
@@ -298,6 +330,8 @@ const pages = computed(() => {
             size="icon-sm"
             class="size-7"
             :disabled="pagination.page >= pagination.totalPages"
+            :aria-label="$t('scenes.dashboard.next_page')"
+            :title="$t('scenes.dashboard.next_page')"
             @click="goToPage(pagination.page + 1)"
           >
             <ChevronRight class="size-4" />
@@ -327,5 +361,28 @@ const pages = computed(() => {
         </a>
       </div>
     </div>
+
+    <Dialog v-model:open="deleteDialogOpen">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{{ $t("scenes.dashboard.delete_title") }}</DialogTitle>
+          <DialogDescription>
+            {{
+              $t("scenes.dashboard.delete_description", {
+                name: pendingDeleteScene?.name,
+              })
+            }}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" size="sm" @click="cancelDelete">
+            {{ $t("scenes.dashboard.cancel") }}
+          </Button>
+          <Button variant="destructive" size="sm" @click="confirmDelete">
+            {{ $t("scenes.dashboard.delete") }}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </DashboardContent>
 </template>

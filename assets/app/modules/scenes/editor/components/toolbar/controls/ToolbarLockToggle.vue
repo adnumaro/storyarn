@@ -19,6 +19,8 @@ const emit = defineEmits<{
       class="toolbar-btn"
       :class="{ 'text-red-500!': locked }"
       :disabled="disabled"
+      :aria-label="locked ? $t('scenes.lock_toggle.unlock') : $t('scenes.lock_toggle.lock')"
+      :title="locked ? $t('scenes.lock_toggle.unlock') : $t('scenes.lock_toggle.lock')"
       @click="emit('toggle')"
     >
       <Lock v-if="locked" class="size-3.5" />

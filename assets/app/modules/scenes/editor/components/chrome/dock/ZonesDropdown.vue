@@ -49,7 +49,13 @@ function setTool(type: string): void {
   <div class="dock-item group relative">
     <Popover v-model:open="shapesOpen">
       <PopoverTrigger as-child>
-        <button type="button" class="dock-btn" :class="{ 'dock-btn-active': isShapeActive() }">
+        <button
+          type="button"
+          class="dock-btn"
+          :class="{ 'dock-btn-active': isShapeActive() }"
+          :aria-label="$t('scenes.zones_dropdown.zones_tooltip')"
+          :title="$t('scenes.zones_dropdown.zones_tooltip')"
+        >
           <component :is="isShapeActive() ? activeShapeIcon() : PenTool" class="size-5" />
         </button>
       </PopoverTrigger>

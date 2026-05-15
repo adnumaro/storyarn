@@ -45,6 +45,8 @@ function close(): void {
         <button
           type="button"
           class="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+          :aria-label="$t('scenes.version_history.close')"
+          :title="$t('scenes.version_history.close')"
           @click="close"
         >
           <X class="size-4" />

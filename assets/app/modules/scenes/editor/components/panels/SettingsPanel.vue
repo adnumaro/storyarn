@@ -67,6 +67,7 @@ function close(): void {
           type="button"
           class="inline-flex items-center justify-center size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           :title="$t('scenes.settings_panel.close')"
+          :aria-label="$t('scenes.settings_panel.close')"
           @click="close"
         >
           <X class="size-3" />

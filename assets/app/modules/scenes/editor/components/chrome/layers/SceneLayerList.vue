@@ -116,6 +116,7 @@ function isActive(layer: LayerItem): boolean {
           v-if="canEdit && editMode"
           type="button"
           class="shrink-0 size-6 inline-flex items-center justify-center rounded hover:bg-accent"
+          :aria-label="$t('scenes.layers.toggle_visibility')"
           :title="$t('scenes.layers.toggle_visibility')"
           @click="toggleVisibility(layer.id)"
         >
@@ -164,6 +165,7 @@ function isActive(layer: LayerItem): boolean {
             <button
               type="button"
               class="shrink-0 size-5 inline-flex items-center justify-center rounded text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent hover:text-foreground"
+              :aria-label="$t('scenes.layers.layer_options')"
               :title="$t('scenes.layers.layer_options')"
             >
               <EllipsisVertical class="size-3" />

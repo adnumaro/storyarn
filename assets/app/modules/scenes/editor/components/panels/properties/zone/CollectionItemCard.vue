@@ -69,6 +69,8 @@ function remove() {
         v-if="canEdit"
         type="button"
         class="text-muted-foreground hover:text-destructive transition-colors"
+        :aria-label="$t('scenes.collection_editor.remove_item')"
+        :title="$t('scenes.collection_editor.remove_item')"
         @click="remove"
       >
         <Trash2 class="size-3" />

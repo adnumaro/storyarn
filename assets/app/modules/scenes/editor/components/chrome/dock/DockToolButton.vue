@@ -32,6 +32,8 @@ const emit = defineEmits<{
       :data-phx-link-state="tag === 'a' ? 'push' : undefined"
       class="dock-btn"
       :class="{ 'dock-btn-active': active }"
+      :aria-label="tooltipTitle"
+      :title="tooltipTitle"
       @click="emit('click')"
     >
       <component :is="icon" class="size-5" />

@@ -96,6 +96,7 @@ function triggerLabel(type: string): string {
         <button
           type="button"
           class="size-6 inline-flex items-center justify-center rounded hover:bg-accent text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+          :aria-label="$t('scenes.ambient_row.move_up')"
           :title="$t('scenes.ambient_row.move_up')"
           @click="reorder('up')"
         >
@@ -104,6 +105,7 @@ function triggerLabel(type: string): string {
         <button
           type="button"
           class="size-6 inline-flex items-center justify-center rounded hover:bg-accent text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+          :aria-label="$t('scenes.ambient_row.move_down')"
           :title="$t('scenes.ambient_row.move_down')"
           @click="reorder('down')"
         >
@@ -112,6 +114,9 @@ function triggerLabel(type: string): string {
         <button
           type="button"
           class="size-6 inline-flex items-center justify-center rounded transition-colors"
+          :aria-label="
+            flow.enabled ? $t('scenes.ambient_row.disable') : $t('scenes.ambient_row.enable')
+          "
           :title="flow.enabled ? $t('scenes.ambient_row.disable') : $t('scenes.ambient_row.enable')"
           @click="toggle"
         >
@@ -121,6 +126,8 @@ function triggerLabel(type: string): string {
         <button
           type="button"
           class="size-6 inline-flex items-center justify-center rounded text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+          :aria-label="$t('scenes.ambient_row.remove')"
+          :title="$t('scenes.ambient_row.remove')"
           @click="remove"
         >
           <X class="size-3" />

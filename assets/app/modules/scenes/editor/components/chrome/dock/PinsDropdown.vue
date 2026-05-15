@@ -52,7 +52,13 @@ function selectSheet(sheetId: number | string): void {
     <!-- Pin menu (Free Pin / From Sheet) -->
     <Popover v-if="!sheetPickerOpen" v-model:open="pinsOpen">
       <PopoverTrigger as-child>
-        <button type="button" class="dock-btn" :class="{ 'dock-btn-active': activeTool === 'pin' }">
+        <button
+          type="button"
+          class="dock-btn"
+          :class="{ 'dock-btn-active': activeTool === 'pin' }"
+          :aria-label="$t('scenes.pins_dropdown.pin_tooltip')"
+          :title="$t('scenes.pins_dropdown.pin_tooltip')"
+        >
           <MapPin class="size-5" />
         </button>
       </PopoverTrigger>
@@ -93,7 +99,12 @@ function selectSheet(sheetId: number | string): void {
     <!-- Sheet picker (replaces pin menu when open) -->
     <Popover v-else v-model:open="sheetPickerOpen">
       <PopoverTrigger as-child>
-        <button type="button" class="dock-btn dock-btn-active">
+        <button
+          type="button"
+          class="dock-btn dock-btn-active"
+          :aria-label="$t('scenes.pins_dropdown.pin_tooltip')"
+          :title="$t('scenes.pins_dropdown.pin_tooltip')"
+        >
           <MapPin class="size-5" />
         </button>
       </PopoverTrigger>

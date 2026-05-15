@@ -146,7 +146,13 @@ function toggleElementPanel(): void {
 
   <!-- Settings cog -->
   <ToolbarTooltip :label="$t('scenes.zone_toolbar.properties')">
-    <button type="button" class="toolbar-btn" @click="toggleElementPanel">
+    <button
+      type="button"
+      class="toolbar-btn"
+      :aria-label="$t('scenes.zone_toolbar.properties')"
+      :title="$t('scenes.zone_toolbar.properties')"
+      @click="toggleElementPanel"
+    >
       <Settings class="size-3.5" />
     </button>
   </ToolbarTooltip>

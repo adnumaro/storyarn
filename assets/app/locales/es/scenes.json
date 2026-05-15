@@ -11,7 +11,13 @@
       "pins": "Pines",
       "connections": "Conexiones",
       "backgrounds": "Fondos",
-      "modified": "Modificado"
+      "modified": "Modificado",
+      "scene_actions": "Acciones de escena",
+      "previous_page": "Página anterior",
+      "next_page": "Página siguiente",
+      "delete_title": "¿Eliminar escena?",
+      "delete_description": "Se eliminará \"{name}\".",
+      "cancel": "Cancelar"
     },
     "tree": {
       "filter": "Filtrar escenas...",
@@ -21,7 +27,9 @@
       "cancel": "Cancelar",
       "delete": "Eliminar",
       "add_child": "Añadir escena hija",
-      "move_to_trash": "Mover a la papelera"
+      "move_to_trash": "Mover a la papelera",
+      "expand_scene": "Expandir escena",
+      "collapse_scene": "Contraer escena"
     },
     "toolbar": {
       "scene_name": "Nombre de la escena"
@@ -93,14 +101,16 @@
       "zones": "Zonas",
       "notes": "Notas",
       "lines": "Líneas",
-      "no_results": "Sin resultados"
+      "no_results": "Sin resultados",
+      "clear": "Limpiar búsqueda"
     },
     "settings_panel": {
       "title": "Ajustes de la escena",
       "close": "Cerrar panel"
     },
     "version_history": {
-      "title": "Historial de versiones"
+      "title": "Historial de versiones",
+      "close": "Cerrar historial de versiones"
     },
     "dock": {
       "select": "Seleccionar",
@@ -117,7 +127,8 @@
       "version_history_desc": "Ver y gestionar el historial de versiones",
       "play": "Reproducir",
       "play_desc": "Reproducir modo exploración",
-      "place_pin": "Haz clic en el lienzo para colocar"
+      "place_pin": "Haz clic en el lienzo para colocar",
+      "cancel_place_pin": "Cancelar colocación de pin"
     },
     "pins_dropdown": {
       "title": "Colocar un pin",
@@ -167,6 +178,7 @@
       "back": "Atrás",
       "continue": "Continuar",
       "return_to_map": "Volver al mapa",
+      "close_collection": "Cerrar colección",
       "saved_progress_title": "Progreso guardado encontrado",
       "saved_progress_desc": "Tienes una sesión de exploración guardada.",
       "scene_label": "Escena:",
@@ -201,7 +213,8 @@
       "display_variable": "Mostrar variable",
       "display_variable_placeholder": "Seleccionar variable...",
       "collection": "Colección",
-      "condition": "Condición"
+      "condition": "Condición",
+      "remove_item": "Eliminar elemento"
     },
     "pin_patrol": {
       "patrol": "Patrulla",
@@ -271,6 +284,7 @@
       "move_down": "Bajar",
       "disable": "Desactivar",
       "enable": "Activar",
+      "remove": "Eliminar flujo ambiental",
       "interval": "Intervalo (ms)",
       "variable_ref": "Referencia de variable",
       "priority": "Prioridad (mayor = primero)",
@@ -304,7 +318,9 @@
       "style": "Estilo",
       "width": "Ancho",
       "color": "Color",
-      "custom_color": "Color personalizado"
+      "custom_color": "Color personalizado",
+      "decrease_width": "Reducir ancho",
+      "increase_width": "Aumentar ancho"
     },
     "type_picker": {
       "pin_type": "Tipo de pin",

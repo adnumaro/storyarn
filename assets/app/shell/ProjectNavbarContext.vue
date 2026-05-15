@@ -125,7 +125,11 @@ onUnmounted(() => {
     <!-- Project dropdown -->
     <DropdownMenu>
       <DropdownMenuTrigger as-child>
-        <button class="toolbar-btn gap-1.5 font-medium h-8 max-w-52">
+        <button
+          class="toolbar-btn gap-1.5 font-medium h-8 max-w-52"
+          :aria-label="projectName"
+          :title="projectName"
+        >
           <Folder class="size-4 opacity-60 shrink-0" />
           <span class="hidden xl:inline truncate text-sm">{{ projectName }}</span>
           <ChevronDown class="size-3.5 opacity-50" />
@@ -174,7 +178,11 @@ onUnmounted(() => {
     <!-- Tool switcher -->
     <DropdownMenu v-if="showToolSwitcher">
       <DropdownMenuTrigger as-child>
-        <button class="toolbar-btn h-8 gap-1.5">
+        <button
+          class="toolbar-btn h-8 gap-1.5"
+          :aria-label="$t(`layout.tools.${activeToolDef.key}`)"
+          :title="$t(`layout.tools.${activeToolDef.key}`)"
+        >
           <component :is="activeToolDef.icon" class="size-4" />
           <span class="hidden xl:inline text-sm font-medium">{{
             $t(`layout.tools.${activeToolDef.key}`)

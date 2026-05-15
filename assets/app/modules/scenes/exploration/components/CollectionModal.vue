@@ -48,7 +48,13 @@ function close() {
           <PackageOpen class="size-5 opacity-60" />
           {{ $t("scenes.exploration.collection_title") }}
         </DialogTitle>
-        <Button variant="ghost" size="icon-sm" @click="close">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          :aria-label="$t('scenes.exploration.close_collection')"
+          :title="$t('scenes.exploration.close_collection')"
+          @click="close"
+        >
           <X class="size-4" />
         </Button>
       </DialogHeader>

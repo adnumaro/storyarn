@@ -71,7 +71,13 @@ const current = (): ActionTypeOption =>
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
       <ToolbarTooltip :label="$t('scenes.action_type_picker.tooltip')">
-        <button type="button" class="toolbar-btn gap-1" :disabled="disabled">
+        <button
+          type="button"
+          class="toolbar-btn gap-1"
+          :disabled="disabled"
+          :aria-label="$t('scenes.action_type_picker.tooltip')"
+          :title="$t('scenes.action_type_picker.tooltip')"
+        >
           <component :is="current().icon" class="size-3.5" />
         </button>
       </ToolbarTooltip>

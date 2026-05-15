@@ -41,7 +41,13 @@ function openSettings(): void {
       :label="$t('scenes.actions.scene_settings')"
       side="bottom"
     >
-      <button class="toolbar-btn size-8" @click="openSettings">
+      <button
+        type="button"
+        class="toolbar-btn size-8"
+        :aria-label="$t('scenes.actions.scene_settings')"
+        :title="$t('scenes.actions.scene_settings')"
+        @click="openSettings"
+      >
         <Settings class="size-4" />
       </button>
     </ToolbarTooltip>
@@ -49,7 +55,11 @@ function openSettings(): void {
     <!-- Export -->
     <DropdownMenu>
       <ToolbarTooltip :label="$t('scenes.actions.export')" side="bottom">
-        <DropdownMenuTrigger class="toolbar-btn size-8">
+        <DropdownMenuTrigger
+          class="toolbar-btn size-8"
+          :aria-label="$t('scenes.actions.export')"
+          :title="$t('scenes.actions.export')"
+        >
           <Download class="size-4" />
         </DropdownMenuTrigger>
       </ToolbarTooltip>
@@ -69,7 +79,13 @@ function openSettings(): void {
       :label="editMode ? $t('scenes.actions.switch_view') : $t('scenes.actions.switch_edit')"
       side="bottom"
     >
-      <button class="toolbar-btn size-8" @click="toggleEditMode">
+      <button
+        type="button"
+        class="toolbar-btn size-8"
+        :aria-label="editMode ? $t('scenes.actions.switch_view') : $t('scenes.actions.switch_edit')"
+        :title="editMode ? $t('scenes.actions.switch_view') : $t('scenes.actions.switch_edit')"
+        @click="toggleEditMode"
+      >
         <component :is="editMode ? Eye : Pencil" class="size-4" />
       </button>
     </ToolbarTooltip>
