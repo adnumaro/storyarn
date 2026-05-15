@@ -1,0 +1,51 @@
+test/storyarn/exports/serializers/ink_validation_test.exs
+  s_4009926a81b72f::t_eb0182635c495a 353,627
+  s_4009926a81b72f::t_e7325a1a730c51 21,94-119,170-209,820-840
+  s_4009926a81b72f::t_70e36c4853db7c 341
+  s_4009926a81b72f::t_4eb6afc590ea16 365-395
+test/storyarn/exports/serializers/graph_traversal_test.exs
+  s_4009926a81b72f::t_6d3399fdb87084 322-327,329-341
+  s_4009926a81b72f::t_13251e8ca3e2ca 328
+lib/storyarn/exports/serializers/ink.ex
+  s_4009926a81b72f::t_9d93e00251425a 141,154-182,184-202,205-208,351-353,356,359-360
+  s_4009926a81b72f::t_813244274adb9b 104,109-115,129
+  s_4009926a81b72f::t_34d40ae7c57731 312,314,326-332,334-339
+  s_4009926a81b72f::t_de130d5a9e83a4 363-370,375-376,381-393
+  s_4009926a81b72f::t_acd8344d197c1e 40-41,47
+  s_4009926a81b72f::t_69e29d3f54d3bc 144-153,183,203-204,209
+test/storyarn/exports/serializers/ink_test.exs
+  s_4009926a81b72f::t_ce923092844059 855,1391
+  s_4009926a81b72f::t_071709d630438b 861
+  s_4009926a81b72f::t_e97a265efe6dc3 11,581,921
+  s_4009926a81b72f::t_1d46d8f50dfbc8 566-580,582-584
+  s_4009926a81b72f::t_a3a78a2b463bf8 13,253-283,1342-1380,1453-1472
+  s_4009926a81b72f::t_d19882c5217ac1 900-920,922-925
+test/support/ink_compiler.ex
+  s_4009926a81b72f::t_61db9baa31b75f 69-70
+  s_4009926a81b72f::t_3454479613e604 62-68
+lib/storyarn/exports/serializers/graph_traversal.ex
+  s_4009926a81b72f::t_8fd5d30a17622f 54,60,81,84,86-90,92,102-104,175,178,288,329-336
+  s_4009926a81b72f::t_d43af78ad9be55 85
+  s_4009926a81b72f::t_d30b36ecd98c05 289,296-298,300-304,306-308,311-326
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "dd2973b7a3c541f5f495d9d7fead3e7114d3d03f",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
