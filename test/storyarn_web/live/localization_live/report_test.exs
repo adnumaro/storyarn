@@ -134,7 +134,7 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
 
       vue = get_report_vue(view)
       assert is_list(vue.props["language-progress"])
-      assert length(vue.props["language-progress"]) >= 1
+      assert vue.props["language-progress"] != []
     end
 
     test "handles project with no localized texts", %{conn: conn, user: user} do

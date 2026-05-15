@@ -1441,7 +1441,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       layer_props = get_layer_list_props(view)
       # Default layer is auto-created with the scene
-      assert length(layer_props["layers"]) >= 1
+      assert layer_props["layers"] != []
     end
 
     test "renders correct number of layers", %{conn: conn, user: user} do
