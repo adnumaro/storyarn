@@ -9,31 +9,31 @@ default:
 
 # Lint JS with Oxlint
 js-lint:
-    npm run lint
+    pnpm run lint
 
 # Format JS with Oxfmt
 js-format:
-    npm run fmt
+    pnpm run fmt
 
 # Check JS (lint + format) with Oxlint/Oxfmt
 js-check:
-    npm run fmt:check && npm run lint
+    pnpm run fmt:check && pnpm run lint
 
 # Check and auto-fix JS with Oxlint/Oxfmt
 js-fix:
-    npm run fmt && npm run lint:fix
+    pnpm run fmt && pnpm run lint:fix
 
 # Build Lezer grammar
 js-grammar:
-    npm run build:grammar
+    pnpm run build:grammar
 
 # Run JS tests
 js-test:
-    npm run test
+    pnpm run test
 
 # Run JS tests in watch mode
 js-test-watch:
-    npm run test:watch
+    pnpm run test:watch
 
 # ─── Elixir ─────────────────────────────────────────────────────
 
@@ -57,9 +57,10 @@ server:
 
 # Run all quality checks: Oxlint fix, Credo strict, Elixir tests, JS tests, E2E tests
 quality:
-    npm run fmt && npm run lint:fix
+    pnpm run fmt && pnpm run lint:fix
+    pnpm arch & pnpm knip
+    mix format
     mix convention.check
     mix credo --strict
     mix test
-    mix test.e2e
-    npm run test
+    pnpm run test

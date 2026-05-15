@@ -101,10 +101,7 @@ function navigateToNode(nodeId: number | string): void {
 <template>
   <div class="flex items-stretch gap-2 h-8">
     <!-- Nav history -->
-    <div
-      v-if="navHistory.back || navHistory.forward"
-      class="flex items-center gap-0.5 px-1"
-    >
+    <div v-if="navHistory.back || navHistory.forward" class="flex items-center gap-0.5 px-1">
       <ToolbarTooltip v-if="navHistory.back" :label="$t('flows.header.nav_back')" side="bottom">
         <button
           type="button"
