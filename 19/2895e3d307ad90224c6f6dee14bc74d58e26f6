@@ -1,0 +1,28 @@
+priv/repo/migrations/20260515120500_update_oban_to_v14.exs
+  s_4009926a81b72f::t_20a05b6bbed864 1-7
+.credo.exs
+  h_46be6e61f3d9dd 49
+test/storyarn_web/live/localization_live/index_test.exs
+  s_4009926a81b72f::t_d12feaa3a6a5be 103,110,112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "192895e3d307ad90224c6f6dee14bc74d58e26f6",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
