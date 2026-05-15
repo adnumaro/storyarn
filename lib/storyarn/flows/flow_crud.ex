@@ -458,7 +458,13 @@ defmodule Storyarn.Flows.FlowCrud do
   Used by the export DataCollector and Validator.
   """
   def list_flows_for_export(project_id, opts \\ []) do
-    nodes_query = from(n in FlowNode, where: is_nil(n.deleted_at), order_by: [asc: n.id])
+    nodes_query =
+      from(n in FlowNode,
+        where: is_nil(n.deleted_at),
+        order_by: [asc: n.id],
+        preload: [:sequence_config]
+      )
+
     filter_ids = Keyword.get(opts, :filter_ids, :all)
 
     query =

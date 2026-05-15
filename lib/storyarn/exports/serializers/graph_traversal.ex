@@ -18,6 +18,7 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
   9. Detect cycles via visited set, emit jump to break
   """
 
+  alias Storyarn.Exports.Serializers.FlowControlResolver
   alias Storyarn.Exports.Serializers.Helpers
 
   @type instruction ::
@@ -53,7 +54,7 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
 
     if entry do
       # First pass: identify all hub nodes (they become labels)
-      hub_refs = collect_hub_refs(flow.nodes)
+      hub_refs = FlowControlResolver.hub_reference_map(flow.nodes)
 
       # Second pass: traverse from entry, collecting instructions
       state = %{
@@ -105,24 +106,6 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
   def group_branch_instructions(instructions) do
     {grouped, _rest} = group_until(instructions, &never_stop?/1, [])
     grouped
-  end
-
-  # ---------------------------------------------------------------------------
-  # Hub label collection
-  # ---------------------------------------------------------------------------
-
-  defp collect_hub_refs(nodes) do
-    nodes
-    |> Enum.filter(&(&1.type == "hub"))
-    |> Enum.flat_map(fn hub ->
-      label = Helpers.shortcut_to_identifier(hub.data["label"] || hub.data["hub_id"] || "hub_#{hub.id}")
-      refs = [hub.id, to_string(hub.id), hub.data["hub_id"]]
-
-      refs
-      |> Enum.reject(&blank?/1)
-      |> Enum.map(&{&1, {hub.id, label}})
-    end)
-    |> Map.new()
   end
 
   # ---------------------------------------------------------------------------
@@ -179,7 +162,7 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
 
     # Condition nodes have multiple output pins (one per case)
     targets_by_pin = outgoing_by_pin(state, node.id)
-    cases = condition_cases(node, targets_by_pin)
+    cases = FlowControlResolver.condition_cases(node, targets_by_pin)
 
     state =
       cases
@@ -227,64 +210,6 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
   end
 
   defp traverse_node(_node, state), do: state
-
-  defp condition_cases(%{data: data}, targets_by_pin) when is_map(data) do
-    explicit_cases = data["cases"] || []
-
-    cond do
-      explicit_cases != [] ->
-        maybe_append_default_case(explicit_cases, targets_by_pin)
-
-      data["switch_mode"] == true ->
-        data
-        |> switch_cases()
-        |> maybe_append_default_case(targets_by_pin)
-
-      true ->
-        boolean_cases(targets_by_pin)
-    end
-  end
-
-  defp condition_cases(_node, targets_by_pin), do: boolean_cases(targets_by_pin)
-
-  defp switch_cases(data) do
-    case Helpers.extract_condition(data["condition"]) do
-      %{"blocks" => blocks} when is_list(blocks) ->
-        Enum.flat_map(blocks, &switch_block_case/1)
-
-      %{"rules" => rules} when is_list(rules) ->
-        Enum.flat_map(rules, &switch_rule_case/1)
-
-      _ ->
-        []
-    end
-  end
-
-  defp switch_block_case(%{"type" => "block", "id" => id} = block) when is_binary(id) and id != "" do
-    [%{"id" => id, "value" => id, "label" => block["label"] || id}]
-  end
-
-  defp switch_block_case(_block), do: []
-
-  defp switch_rule_case(%{"id" => id} = rule) when is_binary(id) and id != "" do
-    [%{"id" => id, "value" => id, "label" => rule["label"] || id}]
-  end
-
-  defp switch_rule_case(_rule), do: []
-
-  defp maybe_append_default_case(cases, targets_by_pin) do
-    if Map.has_key?(targets_by_pin, "default") and not Enum.any?(cases, &(&1["id"] == "default")) do
-      cases ++ [%{"id" => "default", "value" => "default", "label" => "Default"}]
-    else
-      cases
-    end
-  end
-
-  defp boolean_cases(targets_by_pin) do
-    ["true", "false"]
-    |> Enum.filter(&Map.has_key?(targets_by_pin, &1))
-    |> Enum.map(&%{"id" => &1, "value" => &1, "label" => String.capitalize(&1)})
-  end
 
   # -- Dialogue traversal helpers --
 
@@ -376,7 +301,7 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
 
     cond do
       # Jump to a hub within same flow
-      hub_ref = data["target_hub_id"] || data["hub_id"] ->
+      hub_ref = FlowControlResolver.target_hub_id(data) ->
         resolve_hub_jump_target(hub_ref, state)
 
       # Jump to another flow
@@ -419,12 +344,8 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
   end
 
   defp hub_target(state, ref) do
-    Map.get(state.hub_refs, ref) || Map.get(state.hub_refs, to_string(ref))
+    FlowControlResolver.hub_target(state.hub_refs, ref)
   end
-
-  defp blank?(nil), do: true
-  defp blank?(""), do: true
-  defp blank?(_value), do: false
 
   # ---------------------------------------------------------------------------
   # Branch grouping
