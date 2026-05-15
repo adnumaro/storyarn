@@ -1,0 +1,26 @@
+lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex
+  s_4009926a81b72f::t_dad85b0e60dac9 78-85,87-99,110-122
+test/storyarn_web/live/sheet_live/handlers/audio_handlers_test.exs
+  s_4009926a81b72f::t_4c1648cadbe8b7 1-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "2326468c22e8a9eeb9dff37298655756b8116fcd",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
