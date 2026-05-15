@@ -37,13 +37,14 @@ defmodule Storyarn.Exports.Serializers.Ink do
     flows = project_data.flows || []
     variables = Helpers.collect_variables(sheets)
     speaker_map = Helpers.build_speaker_map(sheets)
-    tunnel_targets = collect_tunnel_targets(flows)
+    flow_shortcuts_by_id = flow_shortcuts_by_id(flows)
+    tunnel_targets = collect_tunnel_targets(flows, flow_shortcuts_by_id)
 
     ink_lines =
       List.flatten([
         header_lines(project_data.project),
         variable_declaration_lines(variables),
-        Enum.flat_map(flows, &flow_to_knot(&1, speaker_map, tunnel_targets))
+        Enum.flat_map(flows, &flow_to_knot(&1, speaker_map, flow_shortcuts_by_id, tunnel_targets))
       ])
 
     ink_source =
@@ -100,15 +101,18 @@ defmodule Storyarn.Exports.Serializers.Ink do
   # Flow → Knot
   # ---------------------------------------------------------------------------
 
-  defp flow_to_knot(flow, speaker_map, tunnel_targets) do
+  defp flow_to_knot(flow, speaker_map, flow_shortcuts_by_id, tunnel_targets) do
     knot_name = Helpers.shortcut_to_identifier(flow.shortcut || flow.name || "flow_#{flow.id}")
     {instructions, hub_sections} = GraphTraversal.linearize(flow)
     is_tunnel = MapSet.member?(tunnel_targets, flow.shortcut)
-    ctx = %{speaker_map: speaker_map, is_tunnel: is_tunnel}
 
-    body = render_instructions(instructions, ctx, 0)
-    # Ink requires at least one content line per knot
-    body = if body == [], do: ["-> END"], else: body
+    ctx = %{
+      speaker_map: speaker_map,
+      is_tunnel: is_tunnel,
+      flow_shortcuts_by_id: flow_shortcuts_by_id
+    }
+
+    body = render_body(instructions, ctx, 0)
 
     knot_lines =
       [
@@ -122,7 +126,7 @@ defmodule Storyarn.Exports.Serializers.Ink do
         [
           "",
           "= #{label}",
-          "" | render_instructions(instrs, ctx, 0)
+          "" | render_body(instrs, ctx, 0)
         ]
       end)
 
@@ -134,7 +138,75 @@ defmodule Storyarn.Exports.Serializers.Ink do
   # ---------------------------------------------------------------------------
 
   defp render_instructions(instructions, ctx, depth) do
-    Enum.flat_map(instructions, &render_instruction(&1, ctx, depth))
+    render_instruction_stream(instructions, ctx, depth)
+  end
+
+  defp render_body(instructions, ctx, depth) do
+    lines = render_instructions(instructions, ctx, depth)
+
+    cond do
+      lines == [] -> [terminal_line(ctx, depth)]
+      instructions_end_flow?(instructions) -> lines
+      true -> lines ++ [terminal_line(ctx, depth)]
+    end
+  end
+
+  defp render_instruction_stream([], _ctx, _depth), do: []
+
+  defp render_instruction_stream([{:choices_start, _node} | rest], ctx, depth) do
+    {choice_instructions, rest} =
+      Enum.split_while(rest, fn
+        {:choices_end, _node} -> false
+        _instruction -> true
+      end)
+
+    rest =
+      case rest do
+        [{:choices_end, _node} | tail] -> tail
+        tail -> tail
+      end
+
+    render_choice_instructions(choice_instructions, ctx, depth) ++
+      render_instruction_stream(rest, ctx, depth)
+  end
+
+  defp render_instruction_stream([instruction | rest], ctx, depth) do
+    render_instruction(instruction, ctx, depth) ++ render_instruction_stream(rest, ctx, depth)
+  end
+
+  defp render_choice_instructions(instructions, ctx, depth) do
+    instructions
+    |> choice_blocks([])
+    |> Enum.flat_map(fn {choice, body} ->
+      choice_lines = render_instruction(choice, ctx, depth)
+      body_lines = render_instructions(body, ctx, depth + 1)
+      terminal_lines = if instructions_end_flow?(body), do: [], else: [terminal_line(ctx, depth + 1)]
+
+      choice_lines ++ body_lines ++ terminal_lines
+    end)
+  end
+
+  defp choice_blocks([], acc), do: Enum.reverse(acc)
+
+  defp choice_blocks([{:choice, _resp, _idx} = choice | rest], acc) do
+    {body, rest} =
+      Enum.split_while(rest, fn
+        {:choice, _resp, _idx} -> false
+        _instruction -> true
+      end)
+
+    choice_blocks(rest, [{choice, body} | acc])
+  end
+
+  defp choice_blocks([_instruction | rest], acc), do: choice_blocks(rest, acc)
+
+  defp instructions_end_flow?(instructions) do
+    case List.last(instructions) do
+      {:exit, _node} -> true
+      {:jump, _node, _target_label} -> true
+      {:divert, _target_label} -> true
+      _instruction -> false
+    end
   end
 
   defp render_instruction({:dialogue, node}, ctx, depth) do
@@ -237,9 +309,9 @@ defmodule Storyarn.Exports.Serializers.Ink do
     end
   end
 
-  defp render_instruction({:subflow, node}, _ctx, depth) do
+  defp render_instruction({:subflow, node}, ctx, depth) do
     data = node.data || %{}
-    target = Helpers.shortcut_to_identifier(data["flow_shortcut"] || "subflow_#{node.id}")
+    target = Helpers.shortcut_to_identifier(resolve_flow_shortcut(data, ctx) || "subflow_#{node.id}")
     ["#{indent(depth)}-> #{target} ->"]
   end
 
@@ -251,13 +323,20 @@ defmodule Storyarn.Exports.Serializers.Ink do
     ["#{indent(depth)}-> #{target_label}"]
   end
 
-  # C2 fix: tunnel flows use ->-> (tunnel return) instead of -> END
-  defp render_instruction({:exit, _node}, %{is_tunnel: true}, depth) do
-    ["#{indent(depth)}->->"]
-  end
+  defp render_instruction({:exit, node}, ctx, depth) do
+    data = node.data || %{}
 
-  defp render_instruction({:exit, _node}, _ctx, depth) do
-    ["#{indent(depth)}-> END"]
+    case data["exit_mode"] do
+      "flow_reference" ->
+        target = Helpers.shortcut_to_identifier(resolve_flow_shortcut(data, ctx) || "unknown")
+        ["#{indent(depth)}-> #{target}"]
+
+      "caller_return" ->
+        ["#{indent(depth)}->->"]
+
+      _mode ->
+        [terminal_line(ctx, depth)]
+    end
   end
 
   defp render_instruction(_, _ctx, _depth), do: []
@@ -269,20 +348,49 @@ defmodule Storyarn.Exports.Serializers.Ink do
   defp escape_ink_text(text) do
     text
     |> String.replace("\\", "\\\\")
+    |> String.replace("#", "\\#")
+    |> String.replace("{", "\\{")
+    |> String.replace("}", "\\}")
     |> String.replace("[", "\\[")
     |> String.replace("]", "\\]")
+    |> escape_ink_line_starts()
   end
 
-  defp collect_tunnel_targets(flows) do
+  defp escape_ink_line_starts(text) do
+    Regex.replace(~r/(^|\n)(\s*)([-=*+])/, text, "\\1\\2\\\\\\3")
+  end
+
+  defp terminal_line(%{is_tunnel: true}, depth), do: "#{indent(depth)}->->"
+  defp terminal_line(_ctx, depth), do: "#{indent(depth)}-> END"
+
+  defp flow_shortcuts_by_id(flows) do
+    Map.new(flows, fn flow -> {to_string(flow.id), flow.shortcut} end)
+  end
+
+  defp collect_tunnel_targets(flows, flow_shortcuts_by_id) do
     flows
     |> Enum.flat_map(fn flow ->
       (flow.nodes || [])
       |> Enum.filter(&(&1.type == "subflow"))
-      |> Enum.map(& &1.data["flow_shortcut"])
-      |> Enum.reject(&is_nil/1)
+      |> Enum.map(&resolve_flow_shortcut(&1.data || %{}, flow_shortcuts_by_id))
+      |> Enum.reject(&blank?/1)
     end)
     |> MapSet.new()
   end
+
+  defp resolve_flow_shortcut(data, %{flow_shortcuts_by_id: flow_shortcuts_by_id}) do
+    resolve_flow_shortcut(data, flow_shortcuts_by_id)
+  end
+
+  defp resolve_flow_shortcut(data, flow_shortcuts_by_id) do
+    data["flow_shortcut"] ||
+      data["referenced_flow_shortcut"] ||
+      flow_shortcuts_by_id[to_string(data["referenced_flow_id"])]
+  end
+
+  defp blank?(nil), do: true
+  defp blank?(""), do: true
+  defp blank?(_value), do: false
 
   defp indent(0), do: ""
   defp indent(n), do: String.duplicate("    ", n)

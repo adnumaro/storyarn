@@ -51,13 +51,13 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
 
     if entry do
       # First pass: identify all hub nodes (they become labels)
-      hub_labels = collect_hub_labels(flow.nodes)
+      hub_refs = collect_hub_refs(flow.nodes)
 
       # Second pass: traverse from entry, collecting instructions
       state = %{
         nodes: nodes,
         conn_graph: conn_graph,
-        hub_labels: hub_labels,
+        hub_refs: hub_refs,
         visited: MapSet.new(),
         hub_queue: [],
         instructions: []
@@ -78,13 +78,18 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
   # Hub label collection
   # ---------------------------------------------------------------------------
 
-  defp collect_hub_labels(nodes) do
+  defp collect_hub_refs(nodes) do
     nodes
     |> Enum.filter(&(&1.type == "hub"))
-    |> Map.new(fn hub ->
-      label = Helpers.shortcut_to_identifier(hub.data["label"] || "hub_#{hub.id}")
-      {hub.id, label}
+    |> Enum.flat_map(fn hub ->
+      label = Helpers.shortcut_to_identifier(hub.data["label"] || hub.data["hub_id"] || "hub_#{hub.id}")
+      refs = [hub.id, to_string(hub.id), hub.data["hub_id"]]
+
+      refs
+      |> Enum.reject(&blank?/1)
+      |> Enum.map(&{&1, {hub.id, label}})
     end)
+    |> Map.new()
   end
 
   # ---------------------------------------------------------------------------
@@ -94,12 +99,9 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
   defp traverse(node_id, state) do
     if MapSet.member?(state.visited, node_id) do
       # Cycle detected — emit a divert to the node's label if it's a hub
-      label = state.hub_labels[node_id]
-
-      if label do
-        %{state | instructions: [{:divert, label} | state.instructions]}
-      else
-        state
+      case hub_target(state, node_id) do
+        {_hub_id, label} -> %{state | instructions: [{:divert, label} | state.instructions]}
+        nil -> state
       end
     else
       state = %{state | visited: MapSet.put(state.visited, node_id)}
@@ -170,10 +172,10 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
   end
 
   defp traverse_node(%{type: "hub"} = node, state) do
-    label = state.hub_labels[node.id] || "hub_#{node.id}"
+    {hub_id, label} = hub_target(state, node.id) || {node.id, "hub_#{node.id}"}
 
     # Queue hub for separate section emission
-    state = %{state | hub_queue: [{node.id, label} | state.hub_queue]}
+    state = %{state | hub_queue: [{hub_id, label} | state.hub_queue]}
 
     # Emit a divert to this hub
     %{state | instructions: [{:divert, label} | state.instructions]}
@@ -283,29 +285,53 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
 
     cond do
       # Jump to a hub within same flow
-      hub_id = data["hub_id"] ->
-        label = state.hub_labels[hub_id] || Helpers.shortcut_to_identifier("hub_#{hub_id}")
-        # Queue the hub for section emission (same as inline hub traversal)
-        state = %{state | hub_queue: [{hub_id, label} | state.hub_queue]}
-        {label, state}
+      hub_ref = data["target_hub_id"] || data["hub_id"] ->
+        resolve_hub_jump_target(hub_ref, state)
 
       # Jump to another flow
       flow_shortcut = data["target_flow_shortcut"] ->
         {Helpers.shortcut_to_identifier(flow_shortcut), state}
 
       true ->
-        # Follow the connection to find the target
-        label =
-          case outgoing(state, node.id) do
-            [{target_id, _, _} | _] ->
-              state.hub_labels[target_id] ||
-                Helpers.shortcut_to_identifier("node_#{target_id}")
-
-            [] ->
-              "unknown"
-          end
-
-        {label, state}
+        resolve_connected_jump_target(node, state)
     end
   end
+
+  defp resolve_hub_jump_target(hub_ref, state) do
+    case hub_target(state, hub_ref) do
+      {hub_id, label} ->
+        # Queue the hub for section emission (same as inline hub traversal)
+        state = %{state | hub_queue: [{hub_id, label} | state.hub_queue]}
+        {label, state}
+
+      nil ->
+        {Helpers.shortcut_to_identifier("hub_#{hub_ref}"), state}
+    end
+  end
+
+  defp resolve_connected_jump_target(node, state) do
+    {connected_jump_label(node, state), state}
+  end
+
+  defp connected_jump_label(node, state) do
+    case outgoing(state, node.id) do
+      [{target_id, _, _} | _] -> hub_label_or_node_identifier(state, target_id)
+      [] -> "unknown"
+    end
+  end
+
+  defp hub_label_or_node_identifier(state, target_id) do
+    case hub_target(state, target_id) do
+      {_hub_id, hub_label} -> hub_label
+      nil -> Helpers.shortcut_to_identifier("node_#{target_id}")
+    end
+  end
+
+  defp hub_target(state, ref) do
+    Map.get(state.hub_refs, ref) || Map.get(state.hub_refs, to_string(ref))
+  end
+
+  defp blank?(nil), do: true
+  defp blank?(""), do: true
+  defp blank?(_value), do: false
 end

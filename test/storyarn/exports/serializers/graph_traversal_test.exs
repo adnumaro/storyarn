@@ -319,6 +319,26 @@ defmodule Storyarn.Exports.Serializers.GraphTraversalTest do
       assert [{:jump, _node, "chapter_two"}] = instructions
     end
 
+    test "jump with target_hub_id resolves user hub identifier" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "jump", %{"target_hub_id" => "safe-house"}),
+            make_node(3, "hub", %{"hub_id" => "safe-house", "label" => "safe_house"}),
+            make_node(4, "exit")
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(3, 4)
+          ]
+        )
+
+      {instructions, hub_sections} = GraphTraversal.linearize(flow)
+      assert [{:jump, _node, "safe_house"}] = instructions
+      assert [{"safe_house", [exit: _exit_node]}] = hub_sections
+    end
+
     test "jump without hub_id or target_flow_shortcut follows connection" do
       # When jump has no hub_id and no target_flow_shortcut, it follows
       # the outgoing connection to determine the target label.

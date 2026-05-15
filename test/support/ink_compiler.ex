@@ -59,8 +59,15 @@ defmodule Storyarn.Test.InkCompiler do
              stderr_to_stdout: true,
              cd: dir
            ) do
-        {_output, 0} -> :ok
-        {output, code} -> {:error, code, output}
+        {output, 0} ->
+          if String.contains?(output, "WARNING:") do
+            {:error, 0, output}
+          else
+            :ok
+          end
+
+        {output, code} ->
+          {:error, code, output}
       end
     after
       File.rm_rf!(dir)

@@ -8,7 +8,9 @@ defmodule Storyarn.Exports.Serializers.InkTest do
 
   alias Storyarn.Exports.DataCollector
   alias Storyarn.Exports.ExportOptions
+  alias Storyarn.Exports.Serializers.Helpers
   alias Storyarn.Exports.Serializers.Ink
+  alias Storyarn.Flows
   alias Storyarn.Repo
 
   # =============================================================================
@@ -245,6 +247,37 @@ defmodule Storyarn.Exports.Serializers.InkTest do
 
       source = ink_source(export_ink(project))
       assert source =~ "-> END"
+    end
+  end
+
+  # =============================================================================
+  # Sequence nodes
+  # =============================================================================
+
+  describe "sequence nodes" do
+    setup [:create_project]
+
+    test "dialogue nested inside a sequence is still exported", %{project: project} do
+      flow = flow_fixture(project, %{name: "Sequence Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+      {:ok, sequence} = Flows.create_sequence(flow.id, %{"name" => "Act I"})
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          parent_id: sequence.id,
+          data: %{
+            "text" => "Inside the sequence.",
+            "speaker_sheet_id" => nil,
+            "responses" => []
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = ink_source(export_ink(project))
+      assert source =~ "Inside the sequence."
     end
   end
 
@@ -530,6 +563,25 @@ defmodule Storyarn.Exports.Serializers.InkTest do
       assert source =~ "-> side_quest_rescue ->"
     end
 
+    test "subflow with referenced_flow_id resolves target flow shortcut", %{project: project} do
+      target_flow = flow_fixture(project, %{name: "Side Quest"})
+      caller_flow = flow_fixture(project, %{name: "Main"})
+      caller_flow = reload_flow(caller_flow)
+      caller_entry = Enum.find(caller_flow.nodes, &(&1.type == "entry"))
+
+      subflow =
+        node_fixture(caller_flow, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => target_flow.id}
+        })
+
+      connection_fixture(caller_flow, caller_entry, subflow)
+
+      source = ink_source(export_ink(project))
+      target = Helpers.shortcut_to_identifier(target_flow.shortcut)
+      assert source =~ "-> #{target} ->"
+    end
+
     test "subflow without shortcut uses fallback id", %{project: project} do
       flow = flow_fixture(project, %{name: "Subflow Fallback"})
       flow = reload_flow(flow)
@@ -800,13 +852,13 @@ defmodule Storyarn.Exports.Serializers.InkTest do
       hub =
         node_fixture(flow, %{
           type: "hub",
-          data: %{"label" => "meeting_point"}
+          data: %{"hub_id" => "meeting_point", "label" => "meeting_point"}
         })
 
       jump =
         node_fixture(flow, %{
           type: "jump",
-          data: %{"hub_id" => hub.id}
+          data: %{"target_hub_id" => "meeting_point"}
         })
 
       connection_fixture(flow, entry, jump)
@@ -841,6 +893,33 @@ defmodule Storyarn.Exports.Serializers.InkTest do
 
       source = ink_source(export_ink(project))
       assert source =~ "-> act2_beginning"
+    end
+  end
+
+  # =============================================================================
+  # Exit nodes with flow references
+  # =============================================================================
+
+  describe "exit flow references" do
+    setup [:create_project]
+
+    test "exit with flow_reference mode diverts to referenced flow", %{project: project} do
+      target_flow = flow_fixture(project, %{name: "Next Chapter"})
+      source_flow = flow_fixture(project, %{name: "Current Chapter"})
+      source_flow = reload_flow(source_flow)
+      entry = Enum.find(source_flow.nodes, &(&1.type == "entry"))
+
+      exit_node =
+        node_fixture(source_flow, %{
+          type: "exit",
+          data: %{"exit_mode" => "flow_reference", "referenced_flow_id" => target_flow.id}
+        })
+
+      connection_fixture(source_flow, entry, exit_node)
+
+      source = ink_source(export_ink(project))
+      target = Helpers.shortcut_to_identifier(target_flow.shortcut)
+      assert source =~ "-> #{target}"
     end
   end
 
@@ -1260,6 +1339,47 @@ defmodule Storyarn.Exports.Serializers.InkTest do
       assert source =~ "+ [Leave]"
     end
 
+    test "dialogue choices nest branch bodies and terminate unconnected branches", %{
+      project: project
+    } do
+      flow = flow_fixture(project, %{name: "Branching Choice Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Pick a path.",
+            "speaker_sheet_id" => nil,
+            "responses" => [
+              %{"id" => "fight", "text" => "Fight", "condition" => nil, "instruction" => nil},
+              %{"id" => "run", "text" => "Run", "condition" => nil, "instruction" => nil}
+            ]
+          }
+        })
+
+      fight_dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "You fight.", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      run_dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "You run.", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      connection_fixture(flow, entry, dialogue)
+      connection_fixture(flow, dialogue, fight_dialogue, %{source_pin: "response_fight"})
+      connection_fixture(flow, dialogue, run_dialogue, %{source_pin: "response_run"})
+
+      source = ink_source(export_ink(project))
+      assert source =~ "+ [Fight]\n    You fight.\n    -> END"
+      assert source =~ "+ [Run]\n    You run.\n    -> END"
+    end
+
     test "hub with connected dialogue produces stitch section", %{project: project} do
       flow = flow_fixture(project, %{name: "Hub Section Flow"})
       flow = reload_flow(flow)
@@ -1268,7 +1388,7 @@ defmodule Storyarn.Exports.Serializers.InkTest do
       hub =
         node_fixture(flow, %{
           type: "hub",
-          data: %{"label" => "rest_area"}
+          data: %{"hub_id" => "rest_area", "label" => "rest_area"}
         })
 
       dialogue_after_hub =
@@ -1328,6 +1448,28 @@ defmodule Storyarn.Exports.Serializers.InkTest do
       # Square brackets must be escaped to avoid Ink treating them as choice markers
       refute source =~ "Check [inventory] now"
       assert source =~ ~S(Check \[inventory\] now)
+    end
+
+    test "dialogue text escapes Ink control characters", %{project: project} do
+      flow = flow_fixture(project, %{name: "Control Char Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Use {potion} #3\n* not a choice",
+            "speaker_sheet_id" => nil,
+            "responses" => []
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = ink_source(export_ink(project))
+      assert source =~ ~S(Use \{potion\} \#3)
+      assert source =~ ~S(\* not a choice)
     end
 
     test "response text with square brackets escapes them", %{project: project} do
