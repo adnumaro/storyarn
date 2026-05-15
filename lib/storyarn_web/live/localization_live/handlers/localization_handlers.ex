@@ -87,50 +87,6 @@ defmodule StoryarnWeb.LocalizationLive.Handlers.LocalizationHandlers do
     end
   end
 
-  @spec handle_translate_batch(map(), Socket.t()) ::
-          {:noreply, Socket.t()}
-  def handle_translate_batch(_params, socket) do
-    locale = socket.assigns.selected_locale
-
-    case Localization.translate_batch(socket.assigns.project.id, locale) do
-      {:ok, %{translated: count}} ->
-        socket =
-          socket
-          |> load_texts()
-          |> put_flash(
-            :info,
-            dngettext(
-              "localization",
-              "Translated %{count} string.",
-              "Translated %{count} strings.",
-              count,
-              count: count
-            )
-          )
-
-        {:noreply, socket}
-
-      {:error, :rate_limited} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("localization", "Rate limited by DeepL. Try again later.")
-         )}
-
-      {:error, :quota_exceeded} ->
-        {:noreply, put_flash(socket, :error, dgettext("localization", "DeepL quota exceeded."))}
-
-      {:error, reason} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("localization", "Translation failed: %{reason}", reason: inspect(reason))
-         )}
-    end
-  end
-
   @spec handle_translate_single(map(), Socket.t()) ::
           {:noreply, Socket.t()}
   def handle_translate_single(%{"id" => id}, socket) do

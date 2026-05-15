@@ -19,7 +19,6 @@ defmodule StoryarnWeb.LocalizationToolbarLive do
 
   use StoryarnWeb, :live_view
   use Gettext, backend: Storyarn.Gettext
-  use StoryarnWeb, :verified_routes
 
   alias Storyarn.Localization
 

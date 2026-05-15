@@ -100,16 +100,16 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       refute "en" in values
     end
 
-    test "passes flag URLs for source and target locales", %{conn: conn, user: user} do
+    test "passes flag codes for source and target locales", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
       sidebar = get_sidebar_props(view)
-      assert sidebar["sourceLanguage"]["flagUrl"] =~ "/images/flags/"
+      assert sidebar["sourceLanguage"]["flagCode"] == "gb"
       [target | _] = sidebar["targetLanguages"]
-      assert target["flagUrl"] =~ "/images/flags/"
+      assert target["flagCode"] == "es"
     end
 
     test "passes progress data when texts exist", %{conn: conn, user: user} do
