@@ -1,0 +1,36 @@
+test/storyarn_web/live/scene_live/handlers/tree_handlers_test.exs
+  s_4009926a81b72f::t_097ca25183cf9e 58-60,610,613,616
+  s_4009926a81b72f::t_0c0731a30aedab 223-226,247-250,264-267
+  s_4009926a81b72f::t_6cd1d53132d461 285-292
+  s_4009926a81b72f::t_7e1d78d6ef6c5d 21-29,40,42,44,54,56-57,74,76,78-80,95,97-98,100-101,116,119,122,134,137-138,153,155,171,173,184,186-188,199,201,220,244,261,282
+  s_4009926a81b72f::t_b9a23f8d730229 222,246,263,269
+test/storyarn_web/live/sheet_live/handlers_test.exs
+  s_4009926a81b72f::t_57b0083fa505b2 41
+test/storyarn_web/live/asset_live/index_test.exs
+  s_4009926a81b72f::t_6d6d5738063ddb 19-33,98-100,112,114,116,128,130,132,144,146-147,149,174,176,178,190,192-193,207,209-210,223,225,360
+test/storyarn_web/live/sheet_live/handlers/undo_redo_handlers_test.exs
+  s_4009926a81b72f::t_57b0083fa505b2 61
+lib/storyarn_web/live/scene_sidebar_live.ex
+  s_4009926a81b72f::t_305002b66cfc85 103,105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "3bfb841dabf3ab5b073170779864354b59c9c72d",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
