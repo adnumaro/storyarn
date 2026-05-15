@@ -16,6 +16,21 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
     LiveVue.Test.get_vue(view, name: "live/assets/dashboard/AssetsDashboard")
   end
 
+  defp get_header_actions_vue(view) do
+    LiveVue.Test.get_vue(view, name: "live/assets/dashboard/AssetsHeaderActions")
+  end
+
+  defp get_sidebar_live(view, project) do
+    find_live_child(view, "sidebar-assets-#{project.id}")
+  end
+
+  defp get_sidebar_props(view, project) do
+    project
+    |> then(&get_sidebar_live(view, &1))
+    |> LiveVue.Test.get_vue(name: "live/assets/sidebar/AssetsSidebar")
+    |> then(& &1.props["sidebar-props"])
+  end
+
   describe "Index" do
     setup :register_and_log_in_user
 
@@ -80,10 +95,9 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
 
       {:ok, view, _html} = live(conn, assets_path(project))
 
-      vue = get_assets_vue(view)
-      counts = vue.props["type-counts"]
-      assert counts["image"] == 2
-      assert counts["audio"] == 1
+      sidebar_props = get_sidebar_props(view, project)
+      assert sidebar_props["typeCounts"]["image"] == 2
+      assert sidebar_props["typeCounts"]["audio"] == 1
     end
 
     test "filter 'image' updates filter and filters assets via event", %{
@@ -95,11 +109,12 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       audio_asset_fixture(project, user, %{filename: "voice.mp3"})
 
       {:ok, view, _html} = live(conn, assets_path(project))
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "filter_assets", %{"type" => "image"})
+      render_click(sidebar, "filter_assets", %{"type" => "image"})
 
+      assert get_sidebar_props(view, project)["filter"] == "image"
       vue = get_assets_vue(view)
-      assert vue.props["filter"] == "image"
       filenames = Enum.map(vue.props["assets"], & &1["filename"])
       assert "photo.png" in filenames
       refute "voice.mp3" in filenames
@@ -110,11 +125,12 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       audio_asset_fixture(project, user, %{filename: "voice.mp3"})
 
       {:ok, view, _html} = live(conn, assets_path(project))
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "filter_assets", %{"type" => "audio"})
+      render_click(sidebar, "filter_assets", %{"type" => "audio"})
 
+      assert get_sidebar_props(view, project)["filter"] == "audio"
       vue = get_assets_vue(view)
-      assert vue.props["filter"] == "audio"
       filenames = Enum.map(vue.props["assets"], & &1["filename"])
       refute "photo.png" in filenames
       assert "voice.mp3" in filenames
@@ -125,12 +141,13 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       audio_asset_fixture(project, user, %{filename: "voice.mp3"})
 
       {:ok, view, _html} = live(conn, assets_path(project))
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "filter_assets", %{"type" => "image"})
-      render_click(view, "filter_assets", %{"type" => "all"})
+      render_click(sidebar, "filter_assets", %{"type" => "image"})
+      render_click(sidebar, "filter_assets", %{"type" => "all"})
 
+      assert get_sidebar_props(view, project)["filter"] == "all"
       vue = get_assets_vue(view)
-      assert vue.props["filter"] == "all"
       filenames = Enum.map(vue.props["assets"], & &1["filename"])
       assert "photo.png" in filenames
       assert "voice.mp3" in filenames
@@ -154,11 +171,12 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       audio_asset_fixture(project, user, %{filename: "battle_theme.mp3"})
 
       {:ok, view, _html} = live(conn, assets_path(project))
+      sidebar = get_sidebar_live(view, project)
 
-      render_change(view, "search_assets", %{"search" => "hero"})
+      render_change(sidebar, "search_assets", %{"search" => "hero"})
 
+      assert get_sidebar_props(view, project)["search"] == "hero"
       vue = get_assets_vue(view)
-      assert vue.props["search"] == "hero"
       filenames = Enum.map(vue.props["assets"], & &1["filename"])
       assert "hero_banner.png" in filenames
       refute "battle_theme.mp3" in filenames
@@ -169,9 +187,10 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       audio_asset_fixture(project, user, %{filename: "battle_theme.mp3"})
 
       {:ok, view, _html} = live(conn, assets_path(project))
+      sidebar = get_sidebar_live(view, project)
 
-      render_change(view, "search_assets", %{"search" => "hero"})
-      render_change(view, "search_assets", %{"search" => ""})
+      render_change(sidebar, "search_assets", %{"search" => "hero"})
+      render_change(sidebar, "search_assets", %{"search" => ""})
 
       vue = get_assets_vue(view)
       filenames = Enum.map(vue.props["assets"], & &1["filename"])
@@ -185,9 +204,10 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       audio_asset_fixture(project, user, %{filename: "hero_theme.mp3"})
 
       {:ok, view, _html} = live(conn, assets_path(project))
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "filter_assets", %{"type" => "image"})
-      render_change(view, "search_assets", %{"search" => "hero"})
+      render_click(sidebar, "filter_assets", %{"type" => "image"})
+      render_change(sidebar, "search_assets", %{"search" => "hero"})
 
       vue = get_assets_vue(view)
       filenames = Enum.map(vue.props["assets"], & &1["filename"])
@@ -200,8 +220,9 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       image_asset_fixture(project, user, %{filename: "hero_banner.png"})
 
       {:ok, view, _html} = live(conn, assets_path(project))
+      sidebar = get_sidebar_live(view, project)
 
-      render_change(view, "search_assets", %{"search" => "HERO"})
+      render_change(sidebar, "search_assets", %{"search" => "HERO"})
 
       vue = get_assets_vue(view)
       filenames = Enum.map(vue.props["assets"], & &1["filename"])
@@ -336,7 +357,7 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
     test "passes uploading=false initially", %{conn: conn, project: project} do
       {:ok, view, _html} = live(conn, assets_path(project))
 
-      vue = get_assets_vue(view)
+      vue = get_header_actions_vue(view)
       assert vue.props["uploading"] == false
     end
 

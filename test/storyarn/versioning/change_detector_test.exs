@@ -1,7 +1,6 @@
 defmodule Storyarn.Versioning.ChangeDetectorTest do
   use Storyarn.DataCase, async: true
 
-  import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
 

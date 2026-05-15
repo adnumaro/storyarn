@@ -18,6 +18,15 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
     ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
   end
 
+  defp get_sidebar_live(view, project) do
+    find_live_child(view, "sidebar-scenes-#{project.id}")
+  end
+
+  defp delete_scene_via_sidebar(sidebar, scene_id) do
+    render_click(sidebar, "set_pending_delete_scene", %{"id" => to_string(scene_id)})
+    render_click(sidebar, "confirm_delete_scene", %{})
+  end
+
   # ── handle_create_scene ───────────────────────────────────────────
 
   describe "create_scene event" do
@@ -28,10 +37,11 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
       scene = scene_fixture(project, %{name: "Existing Scene"})
 
       {:ok, view, _html} = live(conn, scene_url(project, scene))
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "create_scene", %{})
+      render_click(sidebar, "create_scene", %{})
 
-      assert_patch(view)
+      assert project.id |> Scenes.list_scenes() |> Enum.any?(&(&1.name == "Untitled"))
     end
 
     test "rejected for viewer role", %{conn: conn, user: user} do
@@ -41,10 +51,13 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
       scene = scene_fixture(project)
 
       {:ok, view, _html} = live(conn, scene_url(project, scene))
+      sidebar = get_sidebar_live(view, project)
 
-      html = render_click(view, "create_scene", %{})
-      # Viewer should not be able to create — flash or unchanged page
-      assert html =~ "scene-canvas-"
+      render_click(sidebar, "create_scene", %{})
+
+      scenes = Scenes.list_scenes(project.id)
+      assert length(scenes) == 1
+      assert hd(scenes).id == scene.id
     end
   end
 
@@ -58,10 +71,13 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
       parent_scene = scene_fixture(project, %{name: "Parent"})
 
       {:ok, view, _html} = live(conn, scene_url(project, parent_scene))
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "create_child_scene", %{"parent-id" => parent_scene.id})
+      render_click(sidebar, "create_child_scene", %{"parent_id" => parent_scene.id})
 
-      assert_patch(view)
+      child = project.id |> Scenes.list_scenes() |> Enum.find(&(&1.parent_id == parent_scene.id))
+      assert child
+      assert child.name == "Untitled"
     end
   end
 
@@ -76,12 +92,13 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
       other_scene = scene_fixture(project, %{name: "To Delete"})
 
       {:ok, view, _html} = live(conn, scene_url(project, scene))
+      sidebar = get_sidebar_live(view, project)
 
-      # This event doesn't have authorization wrapper, anyone can set it
-      html = render_click(view, "set_pending_delete_scene", %{"id" => to_string(other_scene.id)})
+      render_click(sidebar, "set_pending_delete_scene", %{"id" => to_string(other_scene.id)})
+      render_click(sidebar, "confirm_delete_scene", %{})
 
-      # Should not crash and scene should still be rendered
-      assert html =~ "scene-canvas-"
+      refute Scenes.get_scene(project.id, other_scene.id)
+      assert Scenes.get_scene(project.id, scene.id)
     end
   end
 
@@ -96,12 +113,13 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
       to_delete = scene_fixture(project, %{name: "To Delete"})
 
       {:ok, view, _html} = live(conn, scene_url(project, scene))
+      sidebar = get_sidebar_live(view, project)
 
       # First set pending delete
-      render_click(view, "set_pending_delete_scene", %{"id" => to_string(to_delete.id)})
+      render_click(sidebar, "set_pending_delete_scene", %{"id" => to_string(to_delete.id)})
 
       # Then confirm deletion
-      render_click(view, "confirm_delete_scene", %{})
+      render_click(sidebar, "confirm_delete_scene", %{})
 
       # The scene should be soft-deleted
       deleted = Scenes.get_scene(project.id, to_delete.id)
@@ -113,10 +131,11 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
       scene = scene_fixture(project)
 
       {:ok, view, _html} = live(conn, scene_url(project, scene))
+      sidebar = get_sidebar_live(view, project)
 
       # Confirm without setting pending — should be a no-op
-      html = render_click(view, "confirm_delete_scene", %{})
-      assert html =~ "scene-canvas-"
+      render_click(sidebar, "confirm_delete_scene", %{})
+      assert Scenes.get_scene(project.id, scene.id)
     end
   end
 
@@ -131,8 +150,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
       other = scene_fixture(project, %{name: "Other"})
 
       {:ok, view, _html} = live(conn, scene_url(project, scene))
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "delete_scene", %{"id" => to_string(other.id)})
+      delete_scene_via_sidebar(sidebar, other.id)
 
       # Should stay on current page (not redirect) — the scenes tree reloads
       html = render(view)
@@ -148,8 +168,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
       scene = scene_fixture(project, %{name: "Current"})
 
       {:ok, view, _html} = live(conn, scene_url(project, scene))
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "delete_scene", %{"id" => to_string(scene.id)})
+      delete_scene_via_sidebar(sidebar, scene.id)
 
       {path, _flash} = assert_redirect(view)
       assert path == scenes_index_url(project)
@@ -160,10 +181,11 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
       scene = scene_fixture(project)
 
       {:ok, view, _html} = live(conn, scene_url(project, scene))
+      sidebar = get_sidebar_live(view, project)
 
-      html = render_click(view, "delete_scene", %{"id" => "999999"})
-      # Should not crash — just no-op
-      assert html =~ "scene-canvas-"
+      delete_scene_via_sidebar(sidebar, "999999")
+
+      assert Scenes.get_scene(project.id, scene.id)
     end
 
     test "rejected for viewer role", %{conn: conn, user: user} do
@@ -174,8 +196,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
       target = scene_fixture(project, %{name: "Target"})
 
       {:ok, view, _html} = live(conn, scene_url(project, scene))
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "delete_scene", %{"id" => to_string(target.id)})
+      delete_scene_via_sidebar(sidebar, target.id)
 
       # Scene should not be deleted
       assert Scenes.get_scene(project.id, target.id)
@@ -194,15 +217,13 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
       new_parent = scene_fixture(project, %{name: "New Parent"})
 
       {:ok, view, _html} = live(conn, scene_url(project, scene))
+      sidebar = get_sidebar_live(view, project)
 
-      html =
-        render_click(view, "move_to_parent", %{
-          "item_id" => to_string(child.id),
-          "new_parent_id" => to_string(new_parent.id),
-          "position" => "0"
-        })
-
-      assert html =~ "scene-canvas-"
+      render_click(sidebar, "move_to_parent", %{
+        "item_id" => to_string(child.id),
+        "new_parent_id" => to_string(new_parent.id),
+        "position" => "0"
+      })
 
       # Verify scene was moved
       moved = Scenes.get_scene(project.id, child.id)
@@ -220,15 +241,13 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
       {:ok, _} = Scenes.move_scene_to_position(child, parent.id, 0)
 
       {:ok, view, _html} = live(conn, scene_url(project, parent))
+      sidebar = get_sidebar_live(view, project)
 
-      html =
-        render_click(view, "move_to_parent", %{
-          "item_id" => to_string(child.id),
-          "new_parent_id" => "",
-          "position" => "0"
-        })
-
-      assert html =~ "scene-canvas-"
+      render_click(sidebar, "move_to_parent", %{
+        "item_id" => to_string(child.id),
+        "new_parent_id" => "",
+        "position" => "0"
+      })
 
       moved = Scenes.get_scene(project.id, child.id)
       assert is_nil(moved.parent_id)
@@ -239,16 +258,15 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
       scene = scene_fixture(project)
 
       {:ok, view, _html} = live(conn, scene_url(project, scene))
+      sidebar = get_sidebar_live(view, project)
 
-      html =
-        render_click(view, "move_to_parent", %{
-          "item_id" => "999999",
-          "new_parent_id" => "",
-          "position" => "0"
-        })
+      render_click(sidebar, "move_to_parent", %{
+        "item_id" => "999999",
+        "new_parent_id" => "",
+        "position" => "0"
+      })
 
-      # Should not crash — just no-op
-      assert html =~ "scene-canvas-"
+      assert Scenes.get_scene(project.id, scene.id)
     end
 
     test "shows error when moving scene into its own descendant (cyclic)",
@@ -261,16 +279,17 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
       {:ok, _} = Scenes.move_scene_to_position(child, parent.id, 0)
 
       {:ok, view, _html} = live(conn, scene_url(project, parent))
+      sidebar = get_sidebar_live(view, project)
 
       # Try to move parent under its own child — cyclic error
-      html =
-        render_click(view, "move_to_parent", %{
-          "item_id" => to_string(parent.id),
-          "new_parent_id" => to_string(child.id),
-          "position" => "0"
-        })
+      render_click(sidebar, "move_to_parent", %{
+        "item_id" => to_string(parent.id),
+        "new_parent_id" => to_string(child.id),
+        "position" => "0"
+      })
 
-      assert html =~ "Could not move scene"
+      assert is_nil(Scenes.get_scene(project.id, parent.id).parent_id)
+      assert Scenes.get_scene(project.id, child.id).parent_id == parent.id
     end
   end
 
@@ -588,12 +607,13 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
       scene = scene_fixture(project, %{name: "To Delete"})
 
       {:ok, view, _html} = live(conn, scene_url(project, scene))
+      sidebar = get_sidebar_live(view, project)
 
       # Set pending delete to current scene
-      render_click(view, "set_pending_delete_scene", %{"id" => to_string(scene.id)})
+      render_click(sidebar, "set_pending_delete_scene", %{"id" => to_string(scene.id)})
 
       # Confirm — should delete and redirect to index
-      render_click(view, "confirm_delete_scene", %{})
+      render_click(sidebar, "confirm_delete_scene", %{})
 
       {path, _flash} = assert_redirect(view)
       assert path == scenes_index_url(project)

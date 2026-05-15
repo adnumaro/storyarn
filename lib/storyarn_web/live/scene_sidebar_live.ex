@@ -100,8 +100,9 @@ defmodule StoryarnWeb.SceneSidebarLive do
     end)
   end
 
-  def handle_event("create_child_scene", %{"parent-id" => parent_id}, socket) do
+  def handle_event("create_child_scene", params, socket) do
     with_edit(socket, fn socket ->
+      parent_id = params["parent_id"] || params["parent-id"]
       attrs = %{name: dgettext("scenes", "Untitled"), parent_id: parent_id}
 
       case Scenes.create_scene(socket.assigns.project, attrs) do

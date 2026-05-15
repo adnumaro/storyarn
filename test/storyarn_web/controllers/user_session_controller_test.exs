@@ -3,8 +3,6 @@ defmodule StoryarnWeb.UserSessionControllerTest do
 
   import Storyarn.AccountsFixtures
 
-  alias Storyarn.Accounts
-
   setup do
     %{unconfirmed_user: unconfirmed_user_fixture(), user: user_fixture()}
   end

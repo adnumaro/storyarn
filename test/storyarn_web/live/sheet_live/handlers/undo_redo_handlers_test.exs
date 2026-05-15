@@ -58,7 +58,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
     }
   end
 
-  defp send_to_content_tab(view, event, params \\ %{}) do
+  defp send_to_content_tab(view, event, params) do
     view
     |> with_target("#content-tab")
     |> render_click(event, params)

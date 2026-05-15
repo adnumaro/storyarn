@@ -38,7 +38,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
 
   # Sends an event to the ContentTab LiveComponent via with_target.
   # This is used for events that originate from JS hooks (not phx-click).
-  defp send_to_content_tab(view, event, params \\ %{}) do
+  defp send_to_content_tab(view, event, params) do
     view
     |> with_target("#content-tab")
     |> render_click(event, params)
