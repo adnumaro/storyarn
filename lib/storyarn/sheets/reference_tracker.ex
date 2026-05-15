@@ -226,7 +226,10 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   @spec count_backlinks(String.t(), any()) :: integer()
   def count_backlinks(target_type, target_id) do
     Repo.one(
-      from(r in EntityReference, where: r.target_type == ^target_type and r.target_id == ^target_id, select: count(r.id))
+      from(r in EntityReference,
+        where: r.target_type == ^target_type and r.target_id == ^target_id,
+        select: count(r.id)
+      )
     )
   end
 

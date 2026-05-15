@@ -180,7 +180,8 @@ defmodule Storyarn.Sheets.SheetQueries do
     Repo.all(
       from(s in Sheet,
         where:
-          s.project_id == ^project_id and s.id not in subquery(parent_ids_subquery(project_id)) and is_nil(s.deleted_at),
+          s.project_id == ^project_id and
+            s.id not in subquery(parent_ids_subquery(project_id)) and is_nil(s.deleted_at),
         order_by: [asc: s.position, asc: s.name],
         preload: [avatars: :asset]
       )

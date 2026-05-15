@@ -477,7 +477,10 @@ defmodule Storyarn.Screenplays.FlowSync do
 
     # Clear element links to orphaned nodes
     if orphaned_ids != [] do
-      Repo.update_all(from(e in ScreenplayElement, where: e.linked_node_id in ^orphaned_ids), set: [linked_node_id: nil])
+      Repo.update_all(
+        from(e in ScreenplayElement, where: e.linked_node_id in ^orphaned_ids),
+        set: [linked_node_id: nil]
+      )
     end
 
     # Delete orphaned nodes (skip protected ones)

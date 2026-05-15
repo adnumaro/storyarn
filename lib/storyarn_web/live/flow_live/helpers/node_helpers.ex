@@ -146,7 +146,11 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   def add_node(socket, type, opts) do
     {pos_x, pos_y} = node_position(opts)
 
-    attrs = maybe_put_parent_id(%{type: type, position_x: pos_x, position_y: pos_y, data: default_node_data(type)}, opts)
+    attrs =
+      maybe_put_parent_id(
+        %{type: type, position_x: pos_x, position_y: pos_y, data: default_node_data(type)},
+        opts
+      )
 
     case Flows.create_node(socket.assigns.flow, attrs) do
       {:ok, node} ->

@@ -21,7 +21,10 @@ defmodule Storyarn.Scenes.ConnectionCrud do
   """
   def get_connection(scene_id, connection_id) do
     Repo.one(
-      from(c in SceneConnection, where: c.scene_id == ^scene_id and c.id == ^connection_id, preload: [:from_pin, :to_pin])
+      from(c in SceneConnection,
+        where: c.scene_id == ^scene_id and c.id == ^connection_id,
+        preload: [:from_pin, :to_pin]
+      )
     )
   end
 
@@ -30,7 +33,10 @@ defmodule Storyarn.Scenes.ConnectionCrud do
   """
   def get_connection!(scene_id, connection_id) do
     Repo.one!(
-      from(c in SceneConnection, where: c.scene_id == ^scene_id and c.id == ^connection_id, preload: [:from_pin, :to_pin])
+      from(c in SceneConnection,
+        where: c.scene_id == ^scene_id and c.id == ^connection_id,
+        preload: [:from_pin, :to_pin]
+      )
     )
   end
 

@@ -601,7 +601,12 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   defp replace_references(source_type, source_id, refs, opts \\ []) do
     Repo.transaction(fn ->
-      Repo.delete_all(from(vr in VariableReference, where: vr.source_type == ^source_type and vr.source_id == ^source_id))
+      Repo.delete_all(
+        from(vr in VariableReference,
+          where: vr.source_type == ^source_type and vr.source_id == ^source_id
+        )
+      )
+
       unique_refs = Enum.uniq_by(refs, fn r -> {r.block_id, r.kind, r.source_variable} end)
       now = TimeHelpers.now()
 

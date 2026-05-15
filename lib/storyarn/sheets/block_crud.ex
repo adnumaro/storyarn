@@ -609,7 +609,11 @@ defmodule Storyarn.Sheets.BlockCrud do
   """
   def dissolve_column_group(sheet_id, column_group_id) do
     Repo.update_all(
-      from(b in Block, where: b.sheet_id == ^sheet_id and b.column_group_id == ^column_group_id and is_nil(b.deleted_at)),
+      from(b in Block,
+        where:
+          b.sheet_id == ^sheet_id and b.column_group_id == ^column_group_id and
+            is_nil(b.deleted_at)
+      ),
       set: [column_group_id: nil, column_index: 0]
     )
 
