@@ -1,0 +1,41 @@
+lib/storyarn/flows/sequence_crud.ex
+  s_4009926a81b72f::t_a6738e5707754e 138-139,219-237
+test/storyarn_web/live/sheet_live/helpers/formula_helpers_data_test.exs
+  s_4009926a81b72f::t_c04b14091d030e 1-11,13-35
+  s_4009926a81b72f::t_3566bc9dea6bae 12
+lib/storyarn/release.ex
+  s_4009926a81b72f::t_80ce2f32f5f3fe 33,93-103
+test/storyarn_web/live/sheet_live/helpers/props_serializer_test.exs
+  s_4009926a81b72f::t_ff6aa8f10914ec 110
+  s_4009926a81b72f::t_0c65d7d079d8ba 1-109,111-152
+lib/storyarn/flows/entity_trash_refs.ex
+  s_4009926a81b72f::t_2b8c9285bb6cb2 141,215-231
+lib/storyarn_web/live/sheet_live/helpers/props_serializer.ex
+  s_4009926a81b72f::t_7a5d99e847ba4b 78,120-121,123-177,179-220
+lib/storyarn_web/live/sheet_live/helpers/formula_helpers.ex
+  s_4009926a81b72f::t_3566bc9dea6bae 255
+  s_4009926a81b72f::t_f8edb2a88c7a8f 203-206,212,234-254,256-264,267-310
+test/storyarn_web/live/sheet_live/helpers/formula_helpers_test.exs
+  s_4009926a81b72f::t_3c6d9864322959 398-435
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "6fa78b034db16ba18ce1a66a1ff1dd25a38e04fe",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
