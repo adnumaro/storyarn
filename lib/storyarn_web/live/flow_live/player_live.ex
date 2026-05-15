@@ -492,35 +492,38 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   # Vue serialization
   # ===========================================================================
 
-  defp serialize_slide(slide) do
-    base = %{
-      type: to_string(slide.type)
+  defp serialize_slide(%{type: :dialogue} = slide) do
+    Map.merge(slide_base(slide), dialogue_slide_props(slide))
+  end
+
+  defp serialize_slide(%{type: :outcome} = slide) do
+    Map.merge(slide_base(slide), outcome_slide_props(slide))
+  end
+
+  defp serialize_slide(slide), do: slide_base(slide)
+
+  defp slide_base(slide), do: %{type: to_string(slide.type)}
+
+  defp dialogue_slide_props(slide) do
+    %{
+      speaker_name: slide[:speaker_name],
+      speaker_initials: slide[:speaker_initials] || "?",
+      speaker_avatar_url: slide[:speaker_avatar_url],
+      speaker_color: slide[:speaker_color],
+      text: slide[:text] || "",
+      stage_directions: slide[:stage_directions] || ""
     }
+  end
 
-    case slide.type do
-      :dialogue ->
-        Map.merge(base, %{
-          speaker_name: slide[:speaker_name],
-          speaker_initials: slide[:speaker_initials] || "?",
-          speaker_avatar_url: slide[:speaker_avatar_url],
-          speaker_color: slide[:speaker_color],
-          text: slide[:text] || "",
-          stage_directions: slide[:stage_directions] || ""
-        })
-
-      :outcome ->
-        Map.merge(base, %{
-          label: slide[:label] || dgettext("flows", "The End"),
-          outcome_color: slide[:outcome_color],
-          outcome_tags: slide[:outcome_tags] || [],
-          step_count: slide[:step_count] || 0,
-          choices_made: slide[:choices_made] || 0,
-          variables_changed: slide[:variables_changed] || 0
-        })
-
-      _ ->
-        base
-    end
+  defp outcome_slide_props(slide) do
+    %{
+      label: slide[:label] || dgettext("flows", "The End"),
+      outcome_color: slide[:outcome_color],
+      outcome_tags: slide[:outcome_tags] || [],
+      step_count: slide[:step_count] || 0,
+      choices_made: slide[:choices_made] || 0,
+      variables_changed: slide[:variables_changed] || 0
+    }
   end
 
   defp serialize_responses(slide) do
@@ -608,21 +611,23 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
         kind: layer.kind,
         label: Map.get(layer, :label),
         url: url,
-        z_index: Map.get(layer, :z_index) || 0,
+        z_index: layer_value(layer, :z_index, 0),
         slot: Map.get(layer, :slot),
-        x: Map.get(layer, :x) || 0.0,
-        y: Map.get(layer, :y) || 0.0,
-        width: Map.get(layer, :width) || 1.0,
-        height: Map.get(layer, :height) || 1.0,
-        anchor_x: Map.get(layer, :anchor_x) || 0.0,
-        anchor_y: Map.get(layer, :anchor_y) || 0.0,
-        fit: Map.get(layer, :fit) || "contain",
-        opacity: Map.get(layer, :opacity) || 1.0
+        x: layer_value(layer, :x, 0.0),
+        y: layer_value(layer, :y, 0.0),
+        width: layer_value(layer, :width, 1.0),
+        height: layer_value(layer, :height, 1.0),
+        anchor_x: layer_value(layer, :anchor_x, 0.0),
+        anchor_y: layer_value(layer, :anchor_y, 0.0),
+        fit: layer_value(layer, :fit, "contain"),
+        opacity: layer_value(layer, :opacity, 1.0)
       }
     ]
   end
 
   defp serialize_visual_layer(_layer, _sequence_id, _depth), do: []
+
+  defp layer_value(layer, key, default), do: Map.get(layer, key) || default
 
   defp serialize_audio_track(%{url: url} = track, sequence_id, depth) when is_binary(url) and url != "" do
     [
