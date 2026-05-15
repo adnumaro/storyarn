@@ -14,7 +14,7 @@ defmodule StoryarnWeb.FlowSidebarLive do
   alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Projects
-  alias Storyarn.Shared.MapUtils
+  alias StoryarnWeb.Live.TreeSidebarActions
 
   @impl true
   def mount(_params, session, socket) do
@@ -135,52 +135,11 @@ defmodule StoryarnWeb.FlowSidebarLive do
   end
 
   def handle_event("confirm_delete_flow", _params, socket) do
-    with_edit(socket, fn socket ->
-      case socket.assigns.pending_delete_id do
-        nil ->
-          {:noreply, socket}
-
-        id ->
-          with %{} = flow <- Flows.get_flow(socket.assigns.project.id, id),
-               {:ok, _} <- Flows.delete_flow(flow) do
-            broadcast_entity_deleted(socket, id)
-
-            {:noreply,
-             socket
-             |> assign(:pending_delete_id, nil)
-             |> put_flash(:info, dgettext("flows", "Flow moved to trash."))
-             |> refresh_tree_and_broadcast()}
-          else
-            _ ->
-              {:noreply, put_flash(socket, :error, dgettext("flows", "Could not delete flow."))}
-          end
-      end
-    end)
+    with_edit(socket, &confirm_delete_flow/1)
   end
 
   def handle_event("move_to_parent", params, socket) do
-    with_edit(socket, fn socket ->
-      %{"item_id" => id, "new_parent_id" => new_parent_id, "position" => position} = params
-
-      flow = Flows.get_flow(socket.assigns.project.id, MapUtils.parse_int(id))
-
-      if flow do
-        parsed_parent =
-          if new_parent_id in [nil, ""], do: nil, else: MapUtils.parse_int(new_parent_id)
-
-        parsed_pos = MapUtils.parse_int(position) || 0
-
-        case Flows.move_flow_to_position(flow, parsed_parent, parsed_pos) do
-          {:ok, _} ->
-            {:noreply, refresh_tree_and_broadcast(socket)}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("flows", "Could not move flow."))}
-        end
-      else
-        {:noreply, socket}
-      end
-    end)
+    with_edit(socket, fn socket -> move_flow_to_parent(socket, params) end)
   end
 
   # ── Shell → sidebar synchronization ───────────────────────────────────────
@@ -227,11 +186,27 @@ defmodule StoryarnWeb.FlowSidebarLive do
 
   # ── Helpers ───────────────────────────────────────────────────────────────
   defp with_edit(socket, fun) do
-    if socket.assigns.can_edit do
-      fun.(socket)
-    else
-      {:noreply, put_flash(socket, :error, dgettext("flows", "You don't have permission to edit."))}
-    end
+    TreeSidebarActions.with_edit(socket, dgettext("flows", "You don't have permission to edit."), fun)
+  end
+
+  defp confirm_delete_flow(socket) do
+    TreeSidebarActions.confirm_delete(socket, %{
+      get_entity: &Flows.get_flow/2,
+      delete_entity: &Flows.delete_flow/1,
+      broadcast_deleted: &broadcast_entity_deleted/2,
+      refresh_tree: &refresh_tree_and_broadcast/1,
+      deleted_message: dgettext("flows", "Flow moved to trash."),
+      delete_error_message: dgettext("flows", "Could not delete flow.")
+    })
+  end
+
+  defp move_flow_to_parent(socket, params) do
+    TreeSidebarActions.move_to_parent(socket, params, %{
+      get_entity: &Flows.get_flow/2,
+      move_entity: &Flows.move_flow_to_position/3,
+      refresh_tree: &refresh_tree_and_broadcast/1,
+      move_error_message: dgettext("flows", "Could not move flow.")
+    })
   end
 
   defp refresh_tree_and_broadcast(socket) do

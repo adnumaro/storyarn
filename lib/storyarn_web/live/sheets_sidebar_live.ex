@@ -13,8 +13,8 @@ defmodule StoryarnWeb.SheetsSidebarLive do
 
   alias Storyarn.Collaboration
   alias Storyarn.Projects
-  alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets
+  alias StoryarnWeb.Live.TreeSidebarActions
   alias StoryarnWeb.SheetLive.Helpers.PropsSerializer
 
   @impl true
@@ -122,52 +122,11 @@ defmodule StoryarnWeb.SheetsSidebarLive do
   end
 
   def handle_event("confirm_delete_sheet", _params, socket) do
-    with_edit(socket, fn socket ->
-      case socket.assigns.pending_delete_id do
-        nil ->
-          {:noreply, socket}
-
-        id ->
-          with %{} = sheet <- Sheets.get_sheet(socket.assigns.project.id, id),
-               {:ok, _} <- Sheets.delete_sheet(sheet) do
-            broadcast_entity_deleted(socket, id)
-
-            {:noreply,
-             socket
-             |> assign(:pending_delete_id, nil)
-             |> put_flash(:info, dgettext("sheets", "Sheet moved to trash."))
-             |> refresh_tree_and_broadcast()}
-          else
-            _ ->
-              {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete sheet."))}
-          end
-      end
-    end)
+    with_edit(socket, &confirm_delete_sheet/1)
   end
 
   def handle_event("move_to_parent", params, socket) do
-    with_edit(socket, fn socket ->
-      %{"item_id" => id, "new_parent_id" => new_parent_id, "position" => position} = params
-
-      sheet = Sheets.get_sheet(socket.assigns.project.id, MapUtils.parse_int(id))
-
-      if sheet do
-        parsed_parent =
-          if new_parent_id in [nil, ""], do: nil, else: MapUtils.parse_int(new_parent_id)
-
-        parsed_pos = MapUtils.parse_int(position) || 0
-
-        case Sheets.move_sheet_to_position(sheet, parsed_parent, parsed_pos) do
-          {:ok, _} ->
-            {:noreply, refresh_tree_and_broadcast(socket)}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not move sheet."))}
-        end
-      else
-        {:noreply, socket}
-      end
-    end)
+    with_edit(socket, fn socket -> move_sheet_to_parent(socket, params) end)
   end
 
   # ── Shell → sidebar synchronization ───────────────────────────────────────
@@ -195,11 +154,27 @@ defmodule StoryarnWeb.SheetsSidebarLive do
 
   # ── Helpers ───────────────────────────────────────────────────────────────
   defp with_edit(socket, fun) do
-    if socket.assigns.can_edit do
-      fun.(socket)
-    else
-      {:noreply, put_flash(socket, :error, gettext("You don't have permission to edit."))}
-    end
+    TreeSidebarActions.with_edit(socket, gettext("You don't have permission to edit."), fun)
+  end
+
+  defp confirm_delete_sheet(socket) do
+    TreeSidebarActions.confirm_delete(socket, %{
+      get_entity: &Sheets.get_sheet/2,
+      delete_entity: &Sheets.delete_sheet/1,
+      broadcast_deleted: &broadcast_entity_deleted/2,
+      refresh_tree: &refresh_tree_and_broadcast/1,
+      deleted_message: dgettext("sheets", "Sheet moved to trash."),
+      delete_error_message: dgettext("sheets", "Could not delete sheet.")
+    })
+  end
+
+  defp move_sheet_to_parent(socket, params) do
+    TreeSidebarActions.move_to_parent(socket, params, %{
+      get_entity: &Sheets.get_sheet/2,
+      move_entity: &Sheets.move_sheet_to_position/3,
+      refresh_tree: &refresh_tree_and_broadcast/1,
+      move_error_message: dgettext("sheets", "Could not move sheet.")
+    })
   end
 
   defp refresh_tree_and_broadcast(socket) do
