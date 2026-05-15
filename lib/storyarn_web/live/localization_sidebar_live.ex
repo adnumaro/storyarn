@@ -24,42 +24,17 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
   @impl true
   def mount(_params, session, socket) do
     current_scope = session["current_scope"]
-    if locale = session["locale"], do: Gettext.put_locale(Storyarn.Gettext, locale)
     project_id = session["project_id"]
+    project = load_project(current_scope, project_id)
 
-    project =
-      if project_id && current_scope do
-        case Projects.get_project(current_scope, project_id) do
-          {:ok, project, _membership} -> project
-          _ -> nil
-        end
-      end
-
-    # Auto-create the source language row if missing. Mirrors what the old
-    # LocalizationLive.Index mount did.
-    if project, do: Localization.ensure_source_language(project)
-
+    maybe_put_locale(session["locale"])
+    maybe_ensure_source_language(project)
     {source_language, target_languages} = load_languages(project_id)
 
     socket =
       socket
-      |> assign(:current_scope, current_scope)
-      |> assign(:project, project)
-      |> assign(:project_id, project_id)
-      |> assign(:workspace_slug, session["workspace_slug"])
-      |> assign(:project_slug, session["project_slug"])
-      |> assign(:selected_locale, session["selected_locale"])
-      |> assign(:can_edit, session["can_edit"] || false)
-      |> assign(:active_tool, session["active_tool"] || "localization")
-      |> assign(:dashboard_url, session["dashboard_url"])
-      |> assign(:main_sidebar_open, false)
-      |> assign(:source_language, source_language)
-      |> assign(:target_languages, target_languages)
-
-    if connected?(socket) do
-      Phoenix.PubSub.subscribe(Storyarn.PubSub, shell_topic(project_id))
-      Collaboration.subscribe_changes({:project, project_id})
-    end
+      |> assign_initial_state(session, current_scope, project, source_language, target_languages)
+      |> subscribe_when_connected(project_id)
 
     {:ok, socket, layout: false}
   end
@@ -115,72 +90,11 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
   end
 
   def handle_event("add_target_language", %{"locale_code" => code}, socket) do
-    with_edit(socket, fn socket ->
-      name = Localization.language_name(code)
-
-      attrs = %{"locale_code" => code, "name" => name, "is_source" => false}
-
-      case Localization.add_language(socket.assigns.project, attrs) do
-        {:ok, _lang} ->
-          count =
-            case Localization.extract_all(socket.assigns.project.id) do
-              {:ok, c} -> c
-              {:error, _} -> 0
-            end
-
-          msg =
-            if count > 0 do
-              dngettext(
-                "localization",
-                "Language added. Extracted %{count} text.",
-                "Language added. Extracted %{count} texts.",
-                count,
-                count: count
-              )
-            else
-              dgettext("localization", "Language added.")
-            end
-
-          {:noreply,
-           socket
-           |> reload_and_broadcast()
-           |> put_flash(:info, msg)}
-
-        {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, dgettext("localization", "Failed to add language."))}
-      end
-    end)
+    with_edit(socket, fn socket -> add_target_language(socket, code) end)
   end
 
   def handle_event("remove_language", %{"id" => id}, socket) do
-    with_edit(socket, fn socket ->
-      lang = Localization.get_language(socket.assigns.project.id, id)
-
-      cond do
-        is_nil(lang) ->
-          {:noreply, socket}
-
-        lang.is_source ->
-          {:noreply,
-           put_flash(
-             socket,
-             :error,
-             dgettext("localization", "Cannot remove the source language.")
-           )}
-
-        true ->
-          case Localization.remove_language(lang) do
-            {:ok, _} ->
-              {:noreply,
-               socket
-               |> reload_and_broadcast()
-               |> put_flash(:info, dgettext("localization", "Language removed."))}
-
-            {:error, _} ->
-              {:noreply, put_flash(socket, :error, dgettext("localization", "Could not remove language."))}
-          end
-      end
-    end)
+    with_edit(socket, fn socket -> remove_language(socket, id) end)
   end
 
   def handle_event("sync_texts", _params, socket) do
@@ -235,6 +149,118 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
       fun.(socket)
     else
       {:noreply, put_flash(socket, :error, dgettext("localization", "You don't have permission to edit."))}
+    end
+  end
+
+  defp maybe_put_locale(nil), do: :ok
+  defp maybe_put_locale(locale), do: Gettext.put_locale(Storyarn.Gettext, locale)
+
+  defp load_project(nil, _project_id), do: nil
+  defp load_project(_current_scope, nil), do: nil
+
+  defp load_project(current_scope, project_id) do
+    case Projects.get_project(current_scope, project_id) do
+      {:ok, project, _membership} -> project
+      _ -> nil
+    end
+  end
+
+  # Auto-create the source language row if missing. Mirrors what the old
+  # LocalizationLive.Index mount did.
+  defp maybe_ensure_source_language(nil), do: :ok
+  defp maybe_ensure_source_language(project), do: Localization.ensure_source_language(project)
+
+  defp assign_initial_state(socket, session, current_scope, project, source_language, target_languages) do
+    socket
+    |> assign(:current_scope, current_scope)
+    |> assign(:project, project)
+    |> assign(:project_id, session["project_id"])
+    |> assign(:workspace_slug, session["workspace_slug"])
+    |> assign(:project_slug, session["project_slug"])
+    |> assign(:selected_locale, session["selected_locale"])
+    |> assign(:can_edit, session["can_edit"] || false)
+    |> assign(:active_tool, session["active_tool"] || "localization")
+    |> assign(:dashboard_url, session["dashboard_url"])
+    |> assign(:main_sidebar_open, false)
+    |> assign(:source_language, source_language)
+    |> assign(:target_languages, target_languages)
+  end
+
+  defp subscribe_when_connected(socket, project_id) do
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(Storyarn.PubSub, shell_topic(project_id))
+      Collaboration.subscribe_changes({:project, project_id})
+    end
+
+    socket
+  end
+
+  defp add_target_language(socket, code) do
+    attrs = %{"locale_code" => code, "name" => Localization.language_name(code), "is_source" => false}
+
+    case Localization.add_language(socket.assigns.project, attrs) do
+      {:ok, _lang} ->
+        {:noreply, on_target_language_added(socket)}
+
+      {:error, _changeset} ->
+        {:noreply, put_flash(socket, :error, dgettext("localization", "Failed to add language."))}
+    end
+  end
+
+  defp on_target_language_added(socket) do
+    count = extract_text_count(socket.assigns.project.id)
+
+    socket
+    |> reload_and_broadcast()
+    |> put_flash(:info, language_added_message(count))
+  end
+
+  defp extract_text_count(project_id) do
+    case Localization.extract_all(project_id) do
+      {:ok, count} -> count
+      {:error, _} -> 0
+    end
+  end
+
+  defp language_added_message(0), do: dgettext("localization", "Language added.")
+
+  defp language_added_message(count) do
+    dngettext(
+      "localization",
+      "Language added. Extracted %{count} text.",
+      "Language added. Extracted %{count} texts.",
+      count,
+      count: count
+    )
+  end
+
+  defp remove_language(socket, id) do
+    socket.assigns.project.id
+    |> Localization.get_language(id)
+    |> remove_existing_language(socket)
+  end
+
+  defp remove_existing_language(nil, socket), do: {:noreply, socket}
+
+  defp remove_existing_language(%{is_source: true}, socket) do
+    {:noreply,
+     put_flash(
+       socket,
+       :error,
+       dgettext("localization", "Cannot remove the source language.")
+     )}
+  end
+
+  defp remove_existing_language(lang, socket) do
+    case Localization.remove_language(lang) do
+      {:ok, _} ->
+        {:noreply,
+         socket
+         |> reload_and_broadcast()
+         |> put_flash(:info, dgettext("localization", "Language removed."))}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, dgettext("localization", "Could not remove language."))}
     end
   end
 
