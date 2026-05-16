@@ -21,7 +21,7 @@ defmodule Storyarn.Projects.ProjectCrud do
     |> where([p], is_nil(p.deleted_at))
     |> join(:inner, [p], m in ProjectMembership, on: m.project_id == p.id and m.user_id == ^user.id)
     |> select([p, m], %{project: p, role: m.role})
-    |> order_by([p], desc: p.updated_at)
+    |> order_by([p], desc: fragment("COALESCE(?, ?)", p.last_activity_at, p.updated_at))
     |> Repo.all()
   end
 
@@ -41,7 +41,7 @@ defmodule Storyarn.Projects.ProjectCrud do
       project_role: pm.role,
       workspace_role: wm.role
     })
-    |> order_by([p], desc: p.updated_at)
+    |> order_by([p], desc: fragment("COALESCE(?, ?)", p.last_activity_at, p.updated_at))
     |> Repo.all()
   end
 
@@ -119,7 +119,21 @@ defmodule Storyarn.Projects.ProjectCrud do
   def update_project(%Project{} = project, attrs) do
     project
     |> Project.update_changeset(attrs)
+    |> Ecto.Changeset.put_change(:last_activity_at, TimeHelpers.now())
     |> Repo.update()
+  end
+
+  @doc """
+  Marks a project as having content activity without changing project metadata.
+  """
+  def touch_project(project_id, at \\ TimeHelpers.now())
+
+  def touch_project(project_id, nil), do: touch_project(project_id, TimeHelpers.now())
+
+  def touch_project(project_id, at) when is_integer(project_id) do
+    Repo.update_all(from(p in Project, where: p.id == ^project_id), set: [last_activity_at: at])
+
+    :ok
   end
 
   @doc """

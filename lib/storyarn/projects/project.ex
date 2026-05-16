@@ -38,6 +38,7 @@ defmodule Storyarn.Projects.Project do
           deleted_at: DateTime.t() | nil,
           deleted_by_id: integer() | nil,
           inserted_at: DateTime.t() | nil,
+          last_activity_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
 
@@ -57,6 +58,7 @@ defmodule Storyarn.Projects.Project do
 
     field :deleted_at, :utc_datetime
     belongs_to :deleted_by, User
+    field :last_activity_at, :utc_datetime
 
     field :snapshot_count, :integer, virtual: true, default: 0
 

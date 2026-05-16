@@ -126,10 +126,19 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
           name: project.name,
           description: project.description,
           inserted_at_formatted: Calendar.strftime(project.inserted_at, "%b %d, %Y"),
-          updated_at: project.updated_at && DateTime.to_iso8601(project.updated_at)
+          updated_at: datetime_to_iso8601(project.last_activity_at || project.updated_at)
         },
         href: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}"
       }
     end)
+  end
+
+  defp datetime_to_iso8601(nil), do: nil
+  defp datetime_to_iso8601(%DateTime{} = datetime), do: DateTime.to_iso8601(datetime)
+
+  defp datetime_to_iso8601(%NaiveDateTime{} = datetime) do
+    datetime
+    |> DateTime.from_naive!("Etc/UTC")
+    |> DateTime.to_iso8601()
   end
 end

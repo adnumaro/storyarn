@@ -173,11 +173,6 @@ const sections = computed<SettingsSection[]>(() => {
           path: "/users/settings/security",
           icon: "shield-check",
         },
-        {
-          label: t("settings.nav.items.connected_accounts"),
-          path: "/users/settings/connections",
-          icon: "link",
-        },
       ],
     },
     ...managedWorkspaces.map((workspace) => ({

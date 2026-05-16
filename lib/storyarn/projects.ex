@@ -104,6 +104,12 @@ defmodule Storyarn.Projects do
   defdelegate update_project(project, attrs), to: ProjectCrud
 
   @doc """
+  Marks a project as having content activity without changing project metadata.
+  """
+  @spec touch_project(integer(), DateTime.t() | nil) :: :ok
+  defdelegate touch_project(project_id, at \\ nil), to: ProjectCrud
+
+  @doc """
   Soft-deletes a project.
   """
   @spec delete_project(project(), integer()) :: {:ok, project()} | {:error, changeset()}

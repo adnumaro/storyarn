@@ -1,9 +1,11 @@
 defmodule StoryarnWeb.WorkspaceLive.ShowTest do
   use StoryarnWeb.ConnCase, async: true
 
+  import Ecto.Query
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
   import Storyarn.WorkspacesFixtures
 
   alias Storyarn.Projects.Project
@@ -171,6 +173,46 @@ defmodule StoryarnWeb.WorkspaceLive.ShowTest do
         Enum.find(vue.props["projects"], fn p -> p["project"]["name"] == "Described Project" end)
 
       assert entry["project"]["description"] == "An epic adventure game"
+    end
+
+    test "uses project last activity as project card updated_at", %{conn: conn, user: user} do
+      workspace = workspace_fixture(user, %{name: "Activity Studio"})
+      project = project_fixture(user, %{name: "Active Project", workspace: workspace})
+
+      older_at = ~U[2026-01-01 10:00:00Z]
+      latest_at = ~U[2026-01-02 10:00:00Z]
+
+      Repo.update_all(from(p in Project, where: p.id == ^project.id),
+        set: [updated_at: older_at, last_activity_at: latest_at]
+      )
+
+      {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+
+      vue = get_dashboard_vue(view)
+
+      entry =
+        Enum.find(vue.props["projects"], fn p -> p["project"]["name"] == "Active Project" end)
+
+      assert entry["project"]["updated_at"] == DateTime.to_iso8601(latest_at)
+    end
+
+    test "touches project last activity when sheet content changes", %{conn: conn, user: user} do
+      workspace = workspace_fixture(user, %{name: "Touched Studio"})
+      project = project_fixture(user, %{name: "Touched Project", workspace: workspace})
+      old_at = ~U[2000-01-01 00:00:00Z]
+
+      Repo.update_all(from(p in Project, where: p.id == ^project.id), set: [last_activity_at: old_at])
+
+      _sheet = sheet_fixture(project, %{name: "Touched Sheet"})
+
+      {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+
+      vue = get_dashboard_vue(view)
+
+      entry =
+        Enum.find(vue.props["projects"], fn p -> p["project"]["name"] == "Touched Project" end)
+
+      assert entry["project"]["updated_at"] != DateTime.to_iso8601(old_at)
     end
 
     test "search event filters projects", %{conn: conn, user: user} do
