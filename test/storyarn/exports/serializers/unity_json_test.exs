@@ -3,6 +3,7 @@ defmodule Storyarn.Exports.Serializers.UnityJSONTest do
 
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
+  import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
@@ -105,6 +106,7 @@ defmodule Storyarn.Exports.Serializers.UnityJSONTest do
       sections = UnityJSON.supported_sections()
       assert :flows in sections
       assert :sheets in sections
+      assert :localization in sections
     end
 
     test "serialize_to_file returns not_implemented" do
@@ -738,6 +740,147 @@ defmodule Storyarn.Exports.Serializers.UnityJSONTest do
       assert field_value(dialogue_entry, "Storyarn Sequence Name") == "Inner"
       assert field_value(dialogue_entry, "Storyarn Sequence Path") == "Outer / Inner"
       assert field_value(dialogue_entry, "Storyarn Sequence Depth") == "2"
+    end
+  end
+
+  describe "localization fields" do
+    setup [:create_project]
+
+    test "dialogue entries keep source text and add localized text fields", %{project: project} do
+      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      _es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      flow = project |> flow_fixture(%{name: "Localized Flow"}) |> reload_flow()
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "<p>Hello</p>",
+            "menu_text" => "Talk",
+            "responses" => []
+          }
+        })
+
+      _source_text =
+        localized_text_fixture(project.id, %{
+          source_type: "flow_node",
+          source_id: dialogue.id,
+          source_field: "text",
+          source_text: "Hello",
+          locale_code: "en",
+          translated_text: "Hello",
+          status: "final"
+        })
+
+      _dialogue_text =
+        localized_text_fixture(project.id, %{
+          source_type: "flow_node",
+          source_id: dialogue.id,
+          source_field: "text",
+          source_text: "Hello",
+          locale_code: "es",
+          translated_text: "<p>Hola</p>",
+          status: "final"
+        })
+
+      _menu_text =
+        localized_text_fixture(project.id, %{
+          source_type: "flow_node",
+          source_id: dialogue.id,
+          source_field: "menu_text",
+          source_text: "Talk",
+          locale_code: "es",
+          translated_text: "Hablar",
+          status: "final"
+        })
+
+      _unrelated_text =
+        localized_text_fixture(project.id, %{
+          source_type: "flow_node",
+          source_id: System.unique_integer([:positive]),
+          source_field: "text",
+          source_text: "Other",
+          locale_code: "es",
+          translated_text: "Otro",
+          status: "final"
+        })
+
+      result = export_and_decode(project)
+      entries = result |> conversation_by_title("Localized Flow") |> Map.fetch!("dialogueEntries")
+      dialogue_entry = entry_by_storyarn_node_id(entries, dialogue.id)
+
+      assert field_value(dialogue_entry, "Dialogue Text") == "Hello"
+      assert field_value(dialogue_entry, "Menu Text") == "Talk"
+      assert field_value(dialogue_entry, "Dialogue Text es") == "Hola"
+      assert field_value(dialogue_entry, "Menu Text es") == "Hablar"
+      refute maybe_field(dialogue_entry, "Dialogue Text en")
+      refute maybe_field(dialogue_entry, "Dialogue Text fr")
+    end
+
+    test "response entries add localized menu and dialogue text fields", %{project: project} do
+      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      _es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      flow = project |> flow_fixture(%{name: "Localized Responses"}) |> reload_flow()
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Choose",
+            "responses" => [%{"id" => "ask", "text" => "Ask", "condition" => nil, "instruction" => nil}]
+          }
+        })
+
+      _response_text =
+        localized_text_fixture(project.id, %{
+          source_type: "flow_node",
+          source_id: dialogue.id,
+          source_field: "response.ask.text",
+          source_text: "Ask",
+          locale_code: "es",
+          translated_text: "Preguntar",
+          status: "final"
+        })
+
+      result = export_and_decode(project)
+      entries = result |> conversation_by_title("Localized Responses") |> Map.fetch!("dialogueEntries")
+      response_entry = entry_by_storyarn_response_id(entries, "ask")
+
+      assert field_value(response_entry, "Menu Text") == "Ask"
+      assert field_value(response_entry, "Dialogue Text") == "Ask"
+      assert field_value(response_entry, "Menu Text es") == "Preguntar"
+      assert field_value(response_entry, "Dialogue Text es") == "Preguntar"
+    end
+
+    test "include_localization false omits localized fields", %{project: project} do
+      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      _es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      flow = project |> flow_fixture(%{name: "Localization Disabled"}) |> reload_flow()
+      dialogue = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello", "responses" => []}})
+
+      _dialogue_text =
+        localized_text_fixture(project.id, %{
+          source_type: "flow_node",
+          source_id: dialogue.id,
+          source_field: "text",
+          source_text: "Hello",
+          locale_code: "es",
+          translated_text: "Hola",
+          status: "final"
+        })
+
+      {:ok, opts} =
+        ExportOptions.new(%{format: :unity, validate_before_export: false, include_localization: false})
+
+      result = export_and_decode(project, opts)
+      entries = result |> conversation_by_title("Localization Disabled") |> Map.fetch!("dialogueEntries")
+      dialogue_entry = entry_by_storyarn_node_id(entries, dialogue.id)
+
+      assert field_value(dialogue_entry, "Dialogue Text") == "Hello"
+      refute maybe_field(dialogue_entry, "Dialogue Text es")
     end
   end
 

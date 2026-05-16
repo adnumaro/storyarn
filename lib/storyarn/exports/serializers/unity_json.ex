@@ -39,7 +39,7 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
   def format_label, do: "Unity Dialogue System (JSON)"
 
   @impl true
-  def supported_sections, do: [:flows, :sheets]
+  def supported_sections, do: [:flows, :sheets, :localization]
 
   @impl true
   def serialize(project_data, %ExportOptions{} = opts) do
@@ -49,6 +49,7 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
     variables = Helpers.collect_variables(sheets)
     actor_id_map = build_actor_id_map(sheets)
     conversation_id_map = build_conversation_id_map(flows)
+    localization_index = build_localization_index(Map.get(project_data, :localization))
 
     result = %{
       "version" => "1.0",
@@ -60,7 +61,7 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
       "items" => [],
       "locations" => [],
       "variables" => build_variables(variables),
-      "conversations" => build_conversations(flows, actor_id_map, conversation_id_map),
+      "conversations" => build_conversations(flows, actor_id_map, conversation_id_map, localization_index),
       "syncInfo" => sync_info(),
       "templateJson" => template_json()
     }
@@ -72,6 +73,58 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
   @impl true
   def serialize_to_file(_data, _file_path, _options, _callbacks) do
     {:error, :not_implemented}
+  end
+
+  # ---------------------------------------------------------------------------
+  # Localization
+  # ---------------------------------------------------------------------------
+
+  defp build_localization_index(%{languages: languages, strings: strings}) do
+    source_locale_codes = source_locale_codes(languages)
+
+    strings
+    |> Enum.reject(fn text -> MapSet.member?(source_locale_codes, localization_attr(text, :locale_code)) end)
+    |> Enum.filter(&(localized_translation(&1) != ""))
+    |> Enum.group_by(fn text ->
+      {
+        localization_attr(text, :source_type),
+        text |> localization_attr(:source_id) |> to_string(),
+        localization_attr(text, :source_field)
+      }
+    end)
+  end
+
+  defp build_localization_index(_localization), do: %{}
+
+  defp source_locale_codes(languages) do
+    languages
+    |> Enum.filter(&(localization_attr(&1, :is_source) == true))
+    |> MapSet.new(&localization_attr(&1, :locale_code))
+  end
+
+  defp localized_text_fields(plan, node, source_field, field_title) do
+    plan.localization_index
+    |> Map.get({"flow_node", to_string(node.id), source_field}, [])
+    |> Enum.sort_by(&localization_attr(&1, :locale_code))
+    |> Enum.map(fn text ->
+      text_field("#{field_title} #{localization_attr(text, :locale_code)}", localized_translation(text))
+    end)
+  end
+
+  defp localized_translation(text) do
+    text
+    |> localization_attr(:translated_text)
+    |> case do
+      nil -> ""
+      value -> value |> to_string() |> Helpers.strip_html()
+    end
+  end
+
+  defp localization_attr(record, field) do
+    case Map.fetch(record, field) do
+      {:ok, value} -> value
+      :error -> Map.get(record, to_string(field))
+    end
   end
 
   # ---------------------------------------------------------------------------
@@ -151,7 +204,7 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
     |> Map.new(fn {flow, idx} -> {to_string(flow.id), idx} end)
   end
 
-  defp build_conversations(flows, actor_id_map, conversation_id_map) do
+  defp build_conversations(flows, actor_id_map, conversation_id_map, localization_index) do
     root_entry_id_map = build_root_entry_id_map(flows)
     flow_id_by_shortcut = FlowControlResolver.flow_id_by_shortcut(flows)
 
@@ -163,7 +216,8 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
         build_dialogue_entries(flow, conversation_id, actor_id_map, default_conversant, %{
           conversation_id_map: conversation_id_map,
           flow_id_by_shortcut: flow_id_by_shortcut,
-          root_entry_id_map: root_entry_id_map
+          root_entry_id_map: root_entry_id_map,
+          localization_index: localization_index
         })
 
       %{
@@ -265,7 +319,8 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
       sequence_nodes_by_id: sequence_nodes_by_id,
       conversation_id_map: Map.fetch!(references, :conversation_id_map),
       flow_id_by_shortcut: Map.fetch!(references, :flow_id_by_shortcut),
-      root_entry_id_map: Map.fetch!(references, :root_entry_id_map)
+      root_entry_id_map: Map.fetch!(references, :root_entry_id_map),
+      localization_index: Map.fetch!(references, :localization_index)
     }
   end
 
@@ -325,6 +380,8 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
       sequence: "",
       description: Helpers.strip_html(data["stage_directions"] || "")
     }) ++
+      localized_text_fields(plan, node, "menu_text", "Menu Text") ++
+      localized_text_fields(plan, node, "text", "Dialogue Text") ++
       [
         text_field("Storyarn Localization ID", data["localization_id"] || ""),
         text_field("Storyarn Technical ID", data["technical_id"] || "")
@@ -489,21 +546,26 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
       menu_text = response["menu_text"] || response["text"] || ""
       dialogue_text = response["text"] || ""
 
+      localized_response_fields =
+        localized_text_fields(plan, node, "response.#{response["id"]}.text", "Menu Text") ++
+          localized_text_fields(plan, node, "response.#{response["id"]}.text", "Dialogue Text")
+
       dialogue_entry(%{
         id: response_id,
         conversation_id: plan.conversation_id,
-        fields: [
-          text_field("Title", Helpers.strip_html(menu_text)),
-          text_field("Description", ""),
-          actor_ref_field("Actor", @player_actor_id),
-          actor_ref_field("Conversant", dialogue_actor_id),
-          text_field("Menu Text", Helpers.strip_html(menu_text)),
-          text_field("Dialogue Text", Helpers.strip_html(dialogue_text)),
-          text_field("Sequence", ""),
-          text_field("Storyarn Node ID", node.id),
-          text_field("Storyarn Node Type", "response"),
-          text_field("Storyarn Response ID", response["id"])
-        ],
+        fields:
+          [
+            text_field("Title", Helpers.strip_html(menu_text)),
+            text_field("Description", ""),
+            actor_ref_field("Actor", @player_actor_id),
+            actor_ref_field("Conversant", dialogue_actor_id),
+            text_field("Menu Text", Helpers.strip_html(menu_text)),
+            text_field("Dialogue Text", Helpers.strip_html(dialogue_text)),
+            text_field("Sequence", ""),
+            text_field("Storyarn Node ID", node.id),
+            text_field("Storyarn Node Type", "response"),
+            text_field("Storyarn Response ID", response["id"])
+          ] ++ localized_response_fields,
         is_root: false,
         is_group: false,
         outgoing_links: response_outgoing_links(node, response, response_id, plan),
