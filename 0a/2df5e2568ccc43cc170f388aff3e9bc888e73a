@@ -1,0 +1,98 @@
+assets/app/locales/en/common.json
+  s_4009926a81b72f::t_c2b6bf045d8663 153,156-157,160-161,164
+  s_4009926a81b72f::t_6709881fabaaf6 167-177
+  s_4009926a81b72f::t_0602832a8df1bb 162-163
+assets/app/live/assets/dashboard/AssetsDashboard.vue
+  s_4009926a81b72f::t_f76216b836a630 2,28-39,44-51,57-63,80,83-109,112-115,123-127,129
+  s_4009926a81b72f::t_b9d7c743fb5274 122,128
+  s_4009926a81b72f::t_d2292dd8137304 81
+  s_4009926a81b72f::t_479ed0e4297f52 365-400
+  s_4009926a81b72f::t_4e1ad2098b4c50 116-121
+  s_4009926a81b72f::t_66861bf3d238c9 428,431-443
+  s_4009926a81b72f::t_1896e94f65ee72 196-199
+lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex
+  s_4009926a81b72f::t_46bb6d71fcdf9a 59,75
+  s_4009926a81b72f::t_9f9e3fa3b46a6b 134-143,219-227
+test/storyarn/assets_test.exs
+  s_4009926a81b72f::t_e1094f1763c62c 12-14,164-193,309-333,342-343
+  s_4009926a81b72f::t_996afdd89ac93e 360-361,378,1120
+test/storyarn_web/live/asset_live/index_test.exs
+  s_4009926a81b72f::t_050e05688ff6ef 9,11,430-449
+assets/app/modules/sheets/components/chrome/header/SheetContentHeader.vue
+  s_4009926a81b72f::t_6d7f262b063b77 2,7-8,25-34,59,77,130,133-134,183-190
+assets/app/live/scene/show/SceneSurface.vue
+  s_4009926a81b72f::t_024f75099841bc 2,5-7,85-86,88,90-122,130-131,133-139,161-162,164,173,190-207,260-268
+lib/storyarn_web/router.ex
+  s_4009926a81b72f::t_6c51ecf5170a65 116-123
+lib/storyarn/assets/upload_policy.ex
+  s_4009926a81b72f::t_9753d36c5878c4 109
+  s_4009926a81b72f::t_d1940d3e00650e 1-108,110-143
+lib/storyarn_web/live/sheet_live/show.ex
+  s_4009926a81b72f::t_9f9e3fa3b46a6b 1009,1014-1019
+lib/storyarn/assets/image_processor.ex
+  s_4009926a81b72f::t_487a43be215363 21-22,127-140,210,219-220,231-232,312-326
+lib/storyarn_web/live/scene_live/show.ex
+  s_4009926a81b72f::t_45953b4e5e95eb 1100-1110
+assets/app/shared/components/assets/AssetUploadDecisionDialog.vue
+  s_4009926a81b72f::t_ed82716c4c045f 42,51-53,89-94
+  s_4009926a81b72f::t_1a9cd1e75fd030 43,45,50,54,56,61,85,88,97
+  s_4009926a81b72f::t_77e43b2f38018d 1-41,44,46-49,55,57-60,62-84,86-87,95-96,98-104
+test/storyarn_web/live/sheet_live/show_test.exs
+  s_4009926a81b72f::t_c1cc079321d725 28-30
+  s_4009926a81b72f::t_0aa64d1d7c2c30 39
+  s_4009926a81b72f::t_91770f7c1757db 6,21-27,31-38,40-43,73-107
+test/storyarn/assets/image_optimization_test.exs
+  s_4009926a81b72f::t_8deefd14a58ded 31,40,43,48-50,54
+test/storyarn/assets/upload_decision_test.exs
+  s_4009926a81b72f::t_1a2759ef34f589 4
+  s_4009926a81b72f::t_1cc5e0a628ff27 1-3,5-85
+lib/storyarn_web/live/asset_live/index.ex
+  s_4009926a81b72f::t_d2dcffa27ac5c7 12-19,92,167,311-312,319,336-338,340-346,366,379,419-431
+  s_4009926a81b72f::t_f8e571ac47c043 339
+lib/storyarn_web/controllers/upload_controller.ex
+  s_4009926a81b72f::t_d178271b1d1ab7 12,16,36,87,95
+  s_4009926a81b72f::t_4804590139dbf3 17-35,37-55,69-70,86,88-94,96-126
+assets/app/locales/es/common.json
+  s_4009926a81b72f::t_e98b42dc3baaf4 153,156-157,160-161,164
+  s_4009926a81b72f::t_33dd426b9f2e1e 162-163
+  s_4009926a81b72f::t_b87309f5f911ec 167-177
+assets/app/shared/composables/useAssetDecisionUpload.ts
+  s_4009926a81b72f::t_77e5c3d415fd81 1-231,233-294
+  s_4009926a81b72f::t_d4e4b0cf14e9bc 232
+assets/app/modules/scenes/editor/components/panels/settings/BackgroundSection.vue
+  s_4009926a81b72f::t_0cfc2c7cbb5f3f 2,4-5,14-23,26,32-43,48-54,66,86,92-100
+test/storyarn_web/live/scene_live/show_test.exs
+  s_4009926a81b72f::t_16e0ababe8906f 2091-2107
+  s_4009926a81b72f::t_4342f5af6bcef9 2127-2145
+lib/storyarn/assets.ex
+  s_4009926a81b72f::t_d178271b1d1ab7 863
+  s_4009926a81b72f::t_7046d82584ceb8 372-373,375
+  s_4009926a81b72f::t_9537d2b58099d9 18-19,22-23,27,185-186,188-189,193-203,268-269,275-277,283-285,291-300,309-313
+  s_4009926a81b72f::t_734254ab0de953 448-526
+  s_4009926a81b72f::t_24e26335c4f5c8 25,314-371,374,376-408
+  s_4009926a81b72f::t_1db0e8ded557e1 582-751,753-769
+  s_4009926a81b72f::t_39de49a9022311 752
+  s_4009926a81b72f::t_55496d66b4d63b 16
+  s_4009926a81b72f::t_8c74a68ad11978 858-862,864-875
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "0a2df5e2568ccc43cc170f388aff3e9bc888e73a",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
