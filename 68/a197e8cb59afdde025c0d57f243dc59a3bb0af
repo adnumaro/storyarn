@@ -1,0 +1,46 @@
+assets/app/locales/en/settings.json
+  s_4009926a81b72f::t_4508da38ef4f2b 19
+  s_4009926a81b72f::t_30a6c038e14ca6 24-27
+assets/app/live/account/settings/AccountSettingsProfile.vue
+  s_4009926a81b72f::t_2782cfe5cc25d0 3-4,11,19,27-34,40-50,55,67,77-84,123-125,128,131-139
+  s_4009926a81b72f::t_3c5f4849d4a7a1 22,61-66,73-76,111,113
+  s_4009926a81b72f::t_8c80f7f4a70098 68-72,109
+  s_4009926a81b72f::t_42465402e56ca7 85-86
+  s_4009926a81b72f::t_a40d340c59cb0e 26,35-39
+assets/app/test/live/account/settings/AccountSettingsProfile.test.ts
+  s_4009926a81b72f::t_f4da2b033c6cb8 1-38
+lib/storyarn_web/live/settings_live/profile.ex
+  s_4009926a81b72f::t_7079ec4586b0c6 87-93
+  s_4009926a81b72f::t_1ddf61d5126270 3,8,82-85,100,102-103,105-107
+assets/app/test/live/account/settings/AccountSettingsSecurity.test.ts
+  s_4009926a81b72f::t_dfc6259ccb393a 1-39
+assets/js/app.js
+  s_4009926a81b72f::t_c51a2a50f6c380 45-51
+test/storyarn_web/live/settings_live/profile_test.exs
+  s_4009926a81b72f::t_fb1f93fc067f63 24,32-33,51,54,56-57,60,63,65
+  s_4009926a81b72f::t_03a780ded7ff13 7-8,66
+assets/app/live/account/settings/AccountSettingsSecurity.vue
+  s_4009926a81b72f::t_9e4d985abac725 51-60,135,153
+  s_4009926a81b72f::t_c9d1bd91e7267c 61-70,143,160
+  s_4009926a81b72f::t_bdf4a85f53dd4f 4,37-50,71-78,118,137,141,155,158
+  s_4009926a81b72f::t_51200b67bab2d2 114
+assets/app/locales/es/settings.json
+  s_4009926a81b72f::t_bc1a57cf0b8afc 24-27
+  s_4009926a81b72f::t_ccbe72b65d6280 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "68a197e8cb59afdde025c0d57f243dc59a3bb0af",
+  "prompts": {},
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
