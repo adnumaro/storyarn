@@ -1,0 +1,84 @@
+priv/docs/es/world-building/02-blocks.md
+  s_4009926a81b72f::t_f0d1249c29b2c7 32,77
+priv/docs/es/narrative-design/02-dialogue-nodes.md
+  s_4009926a81b72f::t_31332c059fe4c3 2-3,5
+priv/docs/es/quick-start/03-first-flow.md
+  s_4009926a81b72f::t_65798c3d377e5f 92-103
+priv/docs/es/welcome/02-core-workflow.md
+  s_4009926a81b72f::t_f00b82d2f88c51 55,62-63
+lib/storyarn/shared/html_sanitizer.ex
+  s_4009926a81b72f::t_9d023180803242 11
+priv/docs/en/narrative-design/01-flows-overview.md
+  s_4009926a81b72f::t_779654fe0657ed 33,45-46,53-54,83
+  s_4009926a81b72f::t_0180804f5de2ce 12
+priv/docs/es/welcome/01-what-is-storyarn.md
+  s_4009926a81b72f::t_f00b82d2f88c51 38
+  s_4009926a81b72f::t_c6ee364aa04570 14,34,40
+priv/docs/en/import-export/01-import-export-overview.md
+  s_4009926a81b72f::t_839c466741ce87 54
+priv/docs/es/localization/01-localization-overview.md
+  s_4009926a81b72f::t_31332c059fe4c3 2-3,5
+  s_4009926a81b72f::t_839c466741ce87 31
+  s_4009926a81b72f::t_c5e244969220cf 112
+priv/docs/es/narrative-design/04-debug-mode.md
+  s_4009926a81b72f::t_31332c059fe4c3 2-3
+priv/docs/en/quick-start/03-first-flow.md
+  s_4009926a81b72f::t_65798c3d377e5f 92-103
+priv/docs/es/collaboration/01-collaboration-overview.md
+  s_4009926a81b72f::t_31332c059fe4c3 2-3
+priv/docs/en/localization/01-localization-overview.md
+  s_4009926a81b72f::t_c5e244969220cf 112
+  s_4009926a81b72f::t_839c466741ce87 31
+priv/docs/en/world-building/01-sheets-overview.md
+  s_4009926a81b72f::t_0180804f5de2ce 14
+priv/docs/es/narrative-design/03-conditions-instructions.md
+  s_4009926a81b72f::t_cad39cea61db9b 1-6,10,12-15,19,21,23,25-27,33,35-42,46,48,50-51,53-54,56,58-61,67,71,75,77,79-82,86,88,90,92-100,102,104-107,113,115-116,122,124,126-130,132
+priv/docs/es/scene-design/01-scenes-overview.md
+  s_4009926a81b72f::t_f0cdac74b96ee4 12-13,15-16
+  s_4009926a81b72f::t_31332c059fe4c3 3,14
+priv/docs/es/import-export/01-import-export-overview.md
+  s_4009926a81b72f::t_839c466741ce87 54
+  s_4009926a81b72f::t_f0d1249c29b2c7 111
+priv/docs/es/world-building/01-sheets-overview.md
+  s_4009926a81b72f::t_0180804f5de2ce 14
+priv/docs/en/welcome/01-what-is-storyarn.md
+  s_4009926a81b72f::t_f00b82d2f88c51 38
+  s_4009926a81b72f::t_c6ee364aa04570 14,34,40
+priv/docs/en/scene-design/01-scenes-overview.md
+  s_4009926a81b72f::t_f0cdac74b96ee4 12-16
+priv/docs/es/narrative-design/01-flows-overview.md
+  s_4009926a81b72f::t_779654fe0657ed 3,5,10,33,39,45-46,53-54,83,117
+  s_4009926a81b72f::t_0180804f5de2ce 12
+priv/docs/en/welcome/02-core-workflow.md
+  s_4009926a81b72f::t_f00b82d2f88c51 55,62-63
+test/storyarn/shared/html_sanitizer_test.exs
+  s_4009926a81b72f::t_1dc50ea42d800c 43-61
+  s_4009926a81b72f::t_9d023180803242 77-80,82-83,254
+  s_4009926a81b72f::t_f8940d9eb3618b 81,258
+lib/storyarn/docs/guide.ex
+  s_4009926a81b72f::t_0296821f2de0e5 13-14
+assets/css/app.css
+  s_4009926a81b72f::t_0296821f2de0e5 575-618
+  s_4009926a81b72f::t_4481c49129ab4e 632-665
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "69f7e888ff9db027536992f20e38d0f2739a4ce2",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
