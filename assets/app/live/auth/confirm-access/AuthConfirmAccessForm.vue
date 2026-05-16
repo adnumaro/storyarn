@@ -40,11 +40,12 @@ const passwordValue = ref("");
 
     <form :action="loginAction" method="post">
       <input type="hidden" name="_csrf_token" :value="csrfToken" />
+      <input type="hidden" name="_action" value="confirmed" />
       <div class="space-y-1.5 mb-4">
         <Label for="confirm-email">{{ $t("auth.email") }}</Label>
         <Input
           id="confirm-email"
-          :value="email"
+          :model-value="email"
           type="email"
           name="user[email]"
           autocomplete="email"

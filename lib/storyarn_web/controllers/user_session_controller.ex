@@ -6,7 +6,14 @@ defmodule StoryarnWeb.UserSessionController do
   alias Storyarn.RateLimiter
   alias StoryarnWeb.UserAuth
 
-  def create(conn, %{"_action" => "confirmed"} = params) do
+  def create(conn, %{"_action" => "confirmed", "user" => user_params} = params) do
+    params =
+      put_in(
+        params,
+        ["user", "email"],
+        confirmed_access_email(conn, user_params)
+      )
+
     create(conn, params, dgettext("identity", "User confirmed successfully."))
   end
 
@@ -40,6 +47,16 @@ defmodule StoryarnWeb.UserSessionController do
           dgettext("identity", "Too many login attempts. Please try again later.")
         )
         |> redirect(to: ~p"/users/log-in")
+    end
+  end
+
+  defp confirmed_access_email(conn, user_params) do
+    case user_params["email"] do
+      email when is_binary(email) and email != "" ->
+        email
+
+      _ ->
+        get_in(conn.assigns, [:current_scope, Access.key(:user), Access.key(:email)]) || ""
     end
   end
 

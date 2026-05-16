@@ -60,6 +60,22 @@ defmodule StoryarnWeb.UserSessionControllerTest do
       assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "Welcome back!"
     end
 
+    test "confirmed access uses current user email when form email is absent", %{conn: conn, user: user} do
+      stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -121, :minute)
+
+      conn =
+        conn
+        |> log_in_user(user, token_authenticated_at: stale_authenticated_at)
+        |> put_session(:user_return_to, "/users/settings")
+        |> post(~p"/users/log-in", %{
+          "_action" => "confirmed",
+          "user" => %{"password" => valid_user_password()}
+        })
+
+      assert redirected_to(conn) == "/users/settings"
+      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "User confirmed successfully."
+    end
+
     test "redirects to login page with invalid credentials", %{conn: conn, user: user} do
       conn =
         post(conn, ~p"/users/log-in?mode=password", %{
