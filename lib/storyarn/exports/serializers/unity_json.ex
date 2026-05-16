@@ -41,16 +41,18 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
   def format_label, do: "Unity Dialogue System (JSON)"
 
   @impl true
-  def supported_sections, do: [:flows, :sheets, :localization]
+  def supported_sections, do: [:flows, :sheets, :localization, :assets]
 
   @impl true
   def serialize(project_data, %ExportOptions{} = opts) do
     sheets = Map.get(project_data, :sheets, []) || []
     flows = Map.get(project_data, :flows, []) || []
+    assets = Map.get(project_data, :assets, []) || []
     project = Map.get(project_data, :project)
     variables = Helpers.collect_variables(sheets)
     actor_id_map = build_actor_id_map(sheets)
     conversation_id_map = build_conversation_id_map(flows)
+    assets_by_id = build_asset_id_map(assets)
     localization_index = build_localization_index(Map.get(project_data, :localization))
 
     result = %{
@@ -59,11 +61,11 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
       "description" => database_description(project, opts),
       "globalUserScript" => "",
       "emphasisSettings" => default_emphasis_settings(),
-      "actors" => build_actors(sheets, actor_id_map),
+      "actors" => build_actors(sheets, actor_id_map, assets_by_id),
       "items" => [],
       "locations" => [],
       "variables" => build_variables(variables),
-      "conversations" => build_conversations(flows, actor_id_map, conversation_id_map, localization_index),
+      "conversations" => build_conversations(flows, actor_id_map, conversation_id_map, localization_index, assets_by_id),
       "syncInfo" => sync_info(),
       "templateJson" => template_json()
     }
@@ -78,6 +80,76 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
   end
 
   # ---------------------------------------------------------------------------
+  # Assets
+  # ---------------------------------------------------------------------------
+
+  defp build_asset_id_map(assets) do
+    Map.new(assets, fn asset -> {asset |> asset_attr(:id) |> to_string(), asset} end)
+  end
+
+  defp asset_by_id(_assets_by_id, value) when value in [nil, ""], do: nil
+
+  defp asset_by_id(assets_by_id, value) do
+    Map.get(assets_by_id, to_string(value))
+  end
+
+  defp asset_reference_fields(_prefix, nil), do: []
+
+  defp asset_reference_fields(prefix, asset) do
+    [
+      text_field("#{prefix} Asset ID", asset_attr(asset, :id)),
+      text_field("#{prefix} Filename", asset_attr(asset, :filename)),
+      text_field("#{prefix} URL", asset_attr(asset, :url)),
+      text_field("#{prefix} Key", asset_attr(asset, :key))
+    ]
+  end
+
+  defp asset_file_reference(nil), do: nil
+
+  defp asset_file_reference(asset) do
+    asset_attr(asset, :url) || asset_attr(asset, :key) || asset_attr(asset, :filename)
+  end
+
+  defp files_value(assets) do
+    refs =
+      assets
+      |> Enum.map(&asset_file_reference/1)
+      |> Enum.reject(&blank?/1)
+
+    "[#{Enum.join(refs, ",")}]"
+  end
+
+  defp image_asset?(nil), do: false
+
+  defp image_asset?(asset) do
+    asset
+    |> asset_attr(:content_type)
+    |> case do
+      "image/" <> _ -> true
+      _ -> false
+    end
+  end
+
+  defp voiceover_file(nil), do: ""
+
+  defp voiceover_file(asset) do
+    asset
+    |> asset_attr(:filename)
+    |> Kernel.||(asset_file_reference(asset))
+    |> case do
+      nil -> ""
+      value -> value |> Path.basename() |> Path.rootname()
+    end
+  end
+
+  defp asset_attr(record, field) do
+    case Map.fetch(record, field) do
+      {:ok, value} -> value
+      :error -> Map.get(record, to_string(field))
+    end
+  end
+
+  # ---------------------------------------------------------------------------
   # Localization
   # ---------------------------------------------------------------------------
 
@@ -86,7 +158,7 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
 
     strings
     |> Enum.reject(fn text -> MapSet.member?(source_locale_codes, localization_attr(text, :locale_code)) end)
-    |> Enum.filter(&(localized_translation(&1) != ""))
+    |> Enum.filter(&(localized_translation(&1) != "" or not blank?(localization_attr(&1, :vo_asset_id))))
     |> Enum.group_by(fn text ->
       {
         localization_attr(text, :source_type),
@@ -108,8 +180,28 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
     plan.localization_index
     |> Map.get({"flow_node", to_string(node.id), source_field}, [])
     |> Enum.sort_by(&localization_attr(&1, :locale_code))
+    |> Enum.filter(&(localized_translation(&1) != ""))
     |> Enum.map(fn text ->
       localization_field("#{field_title} #{localization_attr(text, :locale_code)}", localized_translation(text))
+    end)
+  end
+
+  defp localized_voiceover_fields(plan, node, source_field) do
+    plan.localization_index
+    |> Map.get({"flow_node", to_string(node.id), source_field}, [])
+    |> Enum.sort_by(&localization_attr(&1, :locale_code))
+    |> Enum.flat_map(fn text ->
+      locale = localization_attr(text, :locale_code)
+
+      case asset_by_id(plan.assets_by_id, localization_attr(text, :vo_asset_id)) do
+        nil ->
+          []
+
+        asset ->
+          [
+            localization_field("VoiceOverFile #{locale}", voiceover_file(asset))
+          ] ++ asset_reference_fields("Storyarn VoiceOver #{locale}", asset)
+      end
     end)
   end
 
@@ -139,8 +231,8 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
     |> Map.new(fn {sheet, idx} -> {to_string(sheet.id), idx} end)
   end
 
-  defp build_actors(sheets, actor_id_map) do
-    [player_actor() | Enum.map(sheets, &sheet_actor(&1, actor_id_map))]
+  defp build_actors(sheets, actor_id_map, assets_by_id) do
+    [player_actor() | Enum.map(sheets, &sheet_actor(&1, actor_id_map, assets_by_id))]
   end
 
   defp player_actor do
@@ -154,17 +246,43 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
     ])
   end
 
-  defp sheet_actor(sheet, actor_id_map) do
-    actor_asset(actor_id_map[to_string(sheet.id)], [
-      text_field("Name", sheet.name),
-      files_field("Pictures", "[]"),
-      text_field("Description", ""),
-      boolean_field("IsPlayer", false),
-      text_field("Display Name", sheet.name),
-      text_field("Storyarn Sheet ID", sheet.id),
-      text_field("Storyarn Shortcut", sheet.shortcut)
-    ])
+  defp sheet_actor(sheet, actor_id_map, assets_by_id) do
+    portrait_asset = sheet_portrait_asset(sheet, assets_by_id)
+
+    actor_asset(
+      actor_id_map[to_string(sheet.id)],
+      [
+        text_field("Name", sheet.name),
+        files_field("Pictures", files_value([portrait_asset])),
+        text_field("Description", ""),
+        boolean_field("IsPlayer", false),
+        text_field("Display Name", sheet.name),
+        text_field("Storyarn Sheet ID", sheet.id),
+        text_field("Storyarn Shortcut", sheet.shortcut)
+      ] ++ asset_reference_fields("Storyarn Portrait", portrait_asset)
+    )
   end
+
+  defp sheet_portrait_asset(%{avatars: avatars}, assets_by_id) when is_list(avatars) do
+    avatars
+    |> Enum.find(& &1.is_default)
+    |> Kernel.||(List.first(avatars))
+    |> avatar_asset(assets_by_id)
+    |> case do
+      asset when is_map(asset) -> if image_asset?(asset), do: asset
+      _ -> nil
+    end
+  end
+
+  defp sheet_portrait_asset(_sheet, _assets_by_id), do: nil
+
+  defp avatar_asset(nil, _assets_by_id), do: nil
+
+  defp avatar_asset(%{asset: asset}, _assets_by_id) when is_map(asset), do: asset
+
+  defp avatar_asset(%{asset_id: asset_id}, assets_by_id), do: asset_by_id(assets_by_id, asset_id)
+
+  defp avatar_asset(_avatar, _assets_by_id), do: nil
 
   defp actor_asset(id, fields) do
     %{
@@ -206,7 +324,7 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
     |> Map.new(fn {flow, idx} -> {to_string(flow.id), idx} end)
   end
 
-  defp build_conversations(flows, actor_id_map, conversation_id_map, localization_index) do
+  defp build_conversations(flows, actor_id_map, conversation_id_map, localization_index, assets_by_id) do
     root_entry_id_map = build_root_entry_id_map(flows)
     flow_id_by_shortcut = FlowControlResolver.flow_id_by_shortcut(flows)
 
@@ -219,7 +337,8 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
           conversation_id_map: conversation_id_map,
           flow_id_by_shortcut: flow_id_by_shortcut,
           root_entry_id_map: root_entry_id_map,
-          localization_index: localization_index
+          localization_index: localization_index,
+          assets_by_id: assets_by_id
         })
 
       %{
@@ -322,7 +441,8 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
       conversation_id_map: Map.fetch!(references, :conversation_id_map),
       flow_id_by_shortcut: Map.fetch!(references, :flow_id_by_shortcut),
       root_entry_id_map: Map.fetch!(references, :root_entry_id_map),
-      localization_index: Map.fetch!(references, :localization_index)
+      localization_index: Map.fetch!(references, :localization_index),
+      assets_by_id: Map.fetch!(references, :assets_by_id)
     }
   end
 
@@ -372,6 +492,7 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
   defp node_fields(%{type: "dialogue"} = node, plan) do
     data = node.data || %{}
     actor_id = resolve_actor_id(data, plan.actor_id_map, plan.default_conversant)
+    audio_asset = asset_by_id(plan.assets_by_id, data["audio_asset_id"])
 
     base_entry_fields(node, plan, %{
       title: entry_title(node),
@@ -379,11 +500,13 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
       conversant_id: @player_actor_id,
       menu_text: Helpers.strip_html(data["menu_text"] || ""),
       dialogue_text: Helpers.dialogue_text(data),
-      sequence: "",
+      sequence: dialogue_sequence(audio_asset),
       description: Helpers.strip_html(data["stage_directions"] || "")
     }) ++
       localized_text_fields(plan, node, "menu_text", "Menu Text") ++
       localized_text_fields(plan, node, "text", "Dialogue Text") ++
+      voiceover_fields(audio_asset) ++
+      localized_voiceover_fields(plan, node, "text") ++
       [
         text_field("Storyarn Localization ID", data["localization_id"] || ""),
         text_field("Storyarn Technical ID", data["technical_id"] || "")
@@ -537,6 +660,17 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
 
   defp sequence_name(%{id: id}), do: "Sequence #{id}"
 
+  defp dialogue_sequence(nil), do: ""
+  defp dialogue_sequence(_audio_asset), do: "AudioWait(entrytag)"
+
+  defp voiceover_fields(nil), do: []
+
+  defp voiceover_fields(asset) do
+    [
+      text_field("VoiceOverFile", voiceover_file(asset))
+    ] ++ asset_reference_fields("Storyarn Audio", asset)
+  end
+
   defp build_response_entries(%{type: "dialogue"} = node, plan) do
     data = node.data || %{}
     dialogue_actor_id = resolve_actor_id(data, plan.actor_id_map, plan.default_conversant)
@@ -551,6 +685,9 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
       localized_response_fields =
         localized_text_fields(plan, node, "response.#{response["id"]}.text", "Menu Text") ++
           localized_text_fields(plan, node, "response.#{response["id"]}.text", "Dialogue Text")
+
+      localized_response_voiceover_fields =
+        localized_voiceover_fields(plan, node, "response.#{response["id"]}.text")
 
       dialogue_entry(%{
         id: response_id,
@@ -567,7 +704,7 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
             text_field("Storyarn Node ID", node.id),
             text_field("Storyarn Node Type", "response"),
             text_field("Storyarn Response ID", response["id"])
-          ] ++ localized_response_fields,
+          ] ++ localized_response_fields ++ localized_response_voiceover_fields,
         is_root: false,
         is_group: false,
         outgoing_links: response_outgoing_links(node, response, response_id, plan),
@@ -1044,6 +1181,10 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
   defp field_value(value) when is_atom(value), do: Atom.to_string(value)
   defp field_value(value), do: to_string(value)
 
+  defp blank?(nil), do: true
+  defp blank?(""), do: true
+  defp blank?(_value), do: false
+
   defp boolean_string(true), do: "True"
   defp boolean_string(false), do: "False"
   defp boolean_string(_), do: "False"
@@ -1119,7 +1260,8 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
         actor_ref_field("Conversant", 0),
         text_field("Menu Text", ""),
         text_field("Dialogue Text", ""),
-        text_field("Sequence", "")
+        text_field("Sequence", ""),
+        text_field("VoiceOverFile", "")
       ],
       "actorPrimaryFieldTitles" => [],
       "itemPrimaryFieldTitles" => [],

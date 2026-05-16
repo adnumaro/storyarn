@@ -2,6 +2,7 @@ defmodule Storyarn.Exports.Serializers.UnityJSONTest do
   use Storyarn.DataCase, async: true
 
   import Storyarn.AccountsFixtures
+  import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
@@ -11,7 +12,9 @@ defmodule Storyarn.Exports.Serializers.UnityJSONTest do
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Exports.Serializers.UnityJSON
   alias Storyarn.Flows
+  alias Storyarn.Localization
   alias Storyarn.Repo
+  alias Storyarn.Sheets
 
   defp reload_flow(flow), do: Repo.preload(flow, [:nodes, :connections], force: true)
 
@@ -107,6 +110,7 @@ defmodule Storyarn.Exports.Serializers.UnityJSONTest do
       assert :flows in sections
       assert :sheets in sections
       assert :localization in sections
+      assert :assets in sections
     end
 
     test "serialize_to_file returns not_implemented" do
@@ -173,6 +177,28 @@ defmodule Storyarn.Exports.Serializers.UnityJSONTest do
       assert field(actor, "Name")["typeString"] == "CustomFieldType_Text"
       assert field(actor, "IsPlayer")["type"] == 2
       assert field(actor, "IsPlayer")["typeString"] == "CustomFieldType_Boolean"
+    end
+
+    test "uses the sheet default avatar as the actor Pictures file", %{project: project, user: user} do
+      sheet = sheet_fixture(project, %{name: "Kael"})
+
+      portrait =
+        image_asset_fixture(project, user, %{
+          filename: "kael_portrait.png",
+          url: "Assets/Storyarn/Portraits/kael_portrait.png",
+          key: "projects/storyarn/assets/kael_portrait.png"
+        })
+
+      {:ok, _avatar} = Sheets.add_avatar(sheet, portrait.id, %{name: "default"})
+
+      result = export_and_decode(project)
+      actor = actor_by_name(result, "Kael")
+
+      assert field_value(actor, "Pictures") == "[Assets/Storyarn/Portraits/kael_portrait.png]"
+      assert field_value(actor, "Storyarn Portrait Asset ID") == to_string(portrait.id)
+      assert field_value(actor, "Storyarn Portrait Filename") == "kael_portrait.png"
+      assert field_value(actor, "Storyarn Portrait URL") == "Assets/Storyarn/Portraits/kael_portrait.png"
+      assert field(actor, "Pictures")["typeString"] == "CustomFieldType_Files"
     end
   end
 
@@ -287,6 +313,40 @@ defmodule Storyarn.Exports.Serializers.UnityJSONTest do
 
       assert_link(root_entry, dialogue_entry)
       assert_link(dialogue_entry, exit_entry)
+    end
+
+    test "dialogue audio assets become voice over file fields and an audio sequence", %{
+      project: project,
+      user: user
+    } do
+      audio =
+        audio_asset_fixture(project, user, %{
+          filename: "kael_line_001.mp3",
+          url: "Assets/Storyarn/Voice/kael_line_001.mp3",
+          key: "projects/storyarn/assets/kael_line_001.mp3"
+        })
+
+      flow = project |> flow_fixture(%{name: "Audio Test"}) |> reload_flow()
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "With audio",
+            "audio_asset_id" => audio.id,
+            "responses" => []
+          }
+        })
+
+      result = export_and_decode(project)
+      entries = result |> conversation_by_title("Audio Test") |> Map.fetch!("dialogueEntries")
+      dialogue_entry = entry_by_storyarn_node_id(entries, dialogue.id)
+
+      assert field_value(dialogue_entry, "Sequence") == "AudioWait(entrytag)"
+      assert field_value(dialogue_entry, "VoiceOverFile") == "kael_line_001"
+      assert field_value(dialogue_entry, "Storyarn Audio Asset ID") == to_string(audio.id)
+      assert field_value(dialogue_entry, "Storyarn Audio Filename") == "kael_line_001.mp3"
+      assert field_value(dialogue_entry, "Storyarn Audio URL") == "Assets/Storyarn/Voice/kael_line_001.mp3"
     end
 
     test "dialogue responses become player entries with branch links", %{project: project} do
@@ -876,6 +936,45 @@ defmodule Storyarn.Exports.Serializers.UnityJSONTest do
       assert field(response_entry, "Menu Text es")["typeString"] == "CustomFieldType_Localization"
       assert field(response_entry, "Dialogue Text es")["type"] == 4
       assert field(response_entry, "Dialogue Text es")["typeString"] == "CustomFieldType_Localization"
+    end
+
+    test "localized voice over assets become localized VoiceOverFile fields", %{project: project, user: user} do
+      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      _es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      voice =
+        audio_asset_fixture(project, user, %{
+          filename: "kael_line_001_es.ogg",
+          url: "Assets/Storyarn/Voice/es/kael_line_001_es.ogg",
+          key: "projects/storyarn/assets/kael_line_001_es.ogg"
+        })
+
+      flow = project |> flow_fixture(%{name: "Localized Voice"}) |> reload_flow()
+      dialogue = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello", "responses" => []}})
+
+      dialogue_text =
+        localized_text_fixture(project.id, %{
+          source_type: "flow_node",
+          source_id: dialogue.id,
+          source_field: "text",
+          source_text: "Hello",
+          locale_code: "es",
+          translated_text: "Hola",
+          status: "final"
+        })
+
+      {:ok, _dialogue_text} = Localization.update_text(dialogue_text, %{vo_asset_id: voice.id})
+
+      result = export_and_decode(project)
+      entries = result |> conversation_by_title("Localized Voice") |> Map.fetch!("dialogueEntries")
+      dialogue_entry = entry_by_storyarn_node_id(entries, dialogue.id)
+
+      assert field_value(dialogue_entry, "Dialogue Text es") == "Hola"
+      assert field_value(dialogue_entry, "VoiceOverFile es") == "kael_line_001_es"
+      assert field(dialogue_entry, "VoiceOverFile es")["type"] == 4
+      assert field(dialogue_entry, "VoiceOverFile es")["typeString"] == "CustomFieldType_Localization"
+      assert field_value(dialogue_entry, "Storyarn VoiceOver es Asset ID") == to_string(voice.id)
+      assert field_value(dialogue_entry, "Storyarn VoiceOver es Filename") == "kael_line_001_es.ogg"
     end
 
     test "include_localization false omits localized fields", %{project: project} do
