@@ -1,0 +1,50 @@
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_4009926a81b72f::t_f0cdc1175e8dbb 331-340
+assets/app/locales/es/project-settings.json
+  s_4009926a81b72f::t_475caf2b3694bd 13,140-175
+lib/storyarn/assets/upload_policy.ex
+  s_4009926a81b72f::t_6d32c0db5b9aef 146-147
+  s_4009926a81b72f::t_515ae0e5e1030c 139-145,148-157
+lib/storyarn/billing.ex
+  s_4009926a81b72f::t_58d5c328e0d81b 32
+priv/gettext/projects.pot
+  s_4009926a81b72f::t_5d8415e2610732 416-425
+test/storyarn_web/live/project_live/settings_test.exs
+  s_4009926a81b72f::t_77e3fe810bb7f6 176,185
+  s_4009926a81b72f::t_5d5c87d415da0e 6-7,9-10,24-31,151-174,177-180,182-184,186-201
+  s_4009926a81b72f::t_7b833b5ebaec6b 175,181
+lib/storyarn_web/router.ex
+  s_4009926a81b72f::t_aa1c98371add58 255-258
+assets/app/live/layouts/settings/Layout.vue
+  s_4009926a81b72f::t_eb0770ca81da37 8,71,116-119
+lib/storyarn/billing/limits.ex
+  s_4009926a81b72f::t_904393422b93b2 137-190,218-231,314-325
+lib/storyarn_web/live/project_settings_live/usage_limits.ex
+  s_4009926a81b72f::t_77e3fe810bb7f6 25-27
+  s_4009926a81b72f::t_f13d30b107c1a4 1-24,28-117
+assets/app/live/project/settings/ProjectSettingsUsageLimits.vue
+  s_4009926a81b72f::t_b5978263141cf5 1-2,4-50,52-54,57-59,63-66,70-73,77-83,87-90,94-97,101-105,122-135,137-139,151,153-159,163-300
+  s_4009926a81b72f::t_9a77f2ecbd4340 3,55-56,60-61,67-68,74-75,84-85,91-92,98-99,136,140-141,146-150,152
+  s_4009926a81b72f::t_35c6075d90bf0b 51,62,69,76,86,93,100,108,112,116,120
+  s_4009926a81b72f::t_e0756233174711 106-107,109-111,113-115,117-119,121,142-145,160-162
+assets/app/locales/en/project-settings.json
+  s_4009926a81b72f::t_426fdf99ff5382 13,140-175
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_4009926a81b72f::t_5eaff6c8ed3c85 331-340
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "4b31f094cee9cb0c66598772d94a6325c3d6a468",
+  "prompts": {},
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
