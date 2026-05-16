@@ -1,8 +1,8 @@
 %{
-title: "Vista general de Localizacion",
-category_label: "Localizacion",
+title: "Vista general de Localización",
+category_label: "Localización",
 order: 1,
-description: "Traduce tu proyecto a multiples idiomas con extraccion automatica, DeepL y glosarios."
+description: "Traduce tu proyecto a múltiples idiomas con extracción automática, DeepL y glosarios."
 }
 
 ---
@@ -28,7 +28,7 @@ Haz clic en **Sincronizar** para escanear todo tu proyecto y extraer cada texto 
 
 | Fuente             | Que se extrae                                                                                                                    |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| **Nodos de flujo** | Texto de dialogo, acotaciones, texto de menu, textos de respuestas individuales, descripciones de slug line, etiquetas de salida |
+| **Nodos de flujo** | Texto de dialogo, acotaciones, texto de menu, textos de respuestas individuales y etiquetas de salida |
 | **Fichas**         | Nombre de ficha, descripcion de ficha                                                                                            |
 | **Bloques**        | Etiquetas de bloque, valores de contenido de texto, etiquetas de opciones de seleccion                                           |
 | **Flujos**         | Nombre de flujo, descripcion de flujo                                                                                            |
@@ -109,10 +109,7 @@ El reporte de localizacion te da una vista panoramica del progreso de traduccion
 
 **Desglose de contenido** -- Ve cuantas entradas de texto provienen de cada tipo de fuente (nodos de flujo, bloques, fichas, flujos) para un idioma dado.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  La pagina de reportes de localizacion mostrando barras de progreso por idioma, tabla de conteo de palabras por hablante y desglose de estado de VO
-</div>
+<img src="/images/docs/veilbreak-localization-dashboard.png" alt="Informe de localización de Veilbreak con progreso por idioma, recuento de palabras y estado de doblaje" loading="lazy">
 
 ## Exportar e importar
 

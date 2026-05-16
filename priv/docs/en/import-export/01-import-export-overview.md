@@ -51,7 +51,7 @@ Before downloading, you can run validation to catch issues that would cause prob
 **Errors** (will likely break your game):
 
 - Flows missing an Entry node
-- Broken references: jump nodes pointing to non-existent hubs, subflow nodes referencing deleted flows, slug lines linked to missing scenes
+- Broken references: jump nodes pointing to non-existent hubs and subflow nodes referencing deleted flows
 
 **Warnings** (potential issues):
 

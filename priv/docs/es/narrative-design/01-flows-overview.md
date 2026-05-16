@@ -1,18 +1,15 @@
 %{
 title: "Vista general de Flujos",
-category_label: "Diseno Narrativo",
+category_label: "Diseño Narrativo",
 order: 1,
-description: "Arboles de dialogo visuales y logica narrativa ramificada."
+description: "Árboles de diálogo visuales y lógica narrativa ramificada."
 }
 
 ---
 
-Los Flujos (Flows) son el corazon de Storyarn -- **grafos de nodos visuales** donde construyes dialogos ramificados, logica de juego y narrativas interactivas. Cada flujo es un lienzo de nodos conectados que define como se desarrolla una conversacion o secuencia, desde un intercambio lineal simple hasta un arbol de misiones extenso con decenas de ramas.
+Los Flujos (Flows) son el corazón de Storyarn -- **grafos de nodos visuales** donde construyes diálogos ramificados, lógica de juego y narrativas interactivas. Cada flujo es un lienzo de nodos conectados que define cómo se desarrolla una conversación o secuencia, desde un intercambio lineal simple hasta un árbol de misiones extenso con decenas de ramas.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  El lienzo del editor de flujos mostrando un arbol de dialogo ramificado con nodos conectados
-</div>
+<img src="/images/docs/veilbreak-flow-editor.png" alt="Lienzo del editor de flujos de Veilbreak con nodos conectados y minimapa" loading="lazy">
 
 ---
 
@@ -33,27 +30,28 @@ Los nodos se conectan mediante **pines** -- pequenos circulos en los bordes de c
 
 ## Tipos de nodos
 
-Storyarn tiene **9 tipos de nodos**, cada uno con un rol distinto en el grafo del flujo:
+Storyarn tiene **10 tipos de nodos**, cada uno con un rol distinto en el grafo del flujo:
 
 | Nodo            | Icono          | Proposito                                                                                                                                                                                                                                        |
 | --------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Entrada**     | Play           | Donde comienza el flujo. Se crea automaticamente con el flujo, no se puede eliminar. Muestra que otros flujos lo referencian mediante nodos de subflujo.                                                                                         |
 | **Salida**      | Arrow right    | Donde termina el flujo. Soporta tres modos: **Terminal** (termina completamente), **Continuar a flujo** (encadena con otro flujo) y **Retornar al llamador** (retorna desde un subflujo). Tiene etiquetas de resultado y codificacion por color. |
-| **Dialogo**     | Message square | Dialogo de personaje con respuestas opcionales del jugador. El tipo de nodo mas comun -- consulta la [guia dedicada](/es/narrative-design/dialogue-nodes).                                                                                       |
+| **Dialogo**     | Message square | Dialogo de personaje con respuestas opcionales del jugador. El tipo de nodo mas comun -- consulta la [guia dedicada](/docs/narrative-design/dialogue-nodes).                                                                                     |
 | **Condicion**   | Git branch     | Ramifica el flujo segun valores de variables. Constructor visual con logica AND/OR -- no requiere codigo. Soporta modo booleano (salidas Verdadero/Falso) y modo switch (multiples salidas personalizadas).                                      |
 | **Instruccion** | Zap            | Modifica valores de variables cuando el flujo pasa a traves del nodo. Soporta Establecer, Sumar, Restar, Alternar, Limpiar y operaciones especificas para booleanos.                                                                             |
 | **Hub**         | Log in         | Un punto de convergencia con nombre donde multiples caminos se unen. Tiene una etiqueta, un ID y un color.                                                                                                                                       |
 | **Salto**       | Log out        | Salta a un nodo Hub dentro del mismo flujo. Selecciona un hub destino desde el desplegable de la barra de herramientas; un boton de mira lo localiza en el lienzo.                                                                               |
-| **Slug Line**   | Clapperboard   | Encabezado de escena o marcador de ubicacion, tomado de las convenciones de guion. Referencia una ficha de ubicacion, con ajuste INT/EXT y momento del dia (dia, noche, manana, tarde, continuo).                                                |
 | **Subflujo**    | Box            | Incrusta otro flujo dentro de este. Los pines de salida dinamicos se generan a partir de los nodos de Salida del flujo referenciado, permitiendo ramificar segun como termina el subflujo. Las referencias circulares se detectan y previenen.   |
+| **Secuencia**   | Panels top     | Agrupa nodos relacionados dentro de un contenedor visual. Permite organizar beats largos, configurar capas visuales y asociar pistas de audio a una secuencia narrativa.                                                                          |
+| **Anotacion**   | Sticky note    | Nota visual pura para documentar intencion, tareas o contexto de diseno en el lienzo. No afecta a la ejecucion del flujo ni a los exports de dialogo.                                                                                            |
 
 ---
 
 ## Una estructura tipica
 
 ```
-Entry
-  -> Slug Line ("INT. TAVERN - NIGHT")
+Sequence ("Tavern encounter")
+  Entry
     -> Dialogue (NPC greeting)
       -> Condition (has quest item?)
         -> True: Dialogue (quest complete)
@@ -82,7 +80,7 @@ Cada nodo de Salida en el flujo referenciado crea un pin de salida separado en e
 
 ## {accent}Story Player{/accent}
 
-Haz clic en **Play** en la barra de herramientas para experimentar tu flujo como lo haria un jugador. El {accent}Story Player{/accent} es una vista cinematica a pantalla completa que avanza automaticamente a traves de nodos no interactivos (condiciones, instrucciones, hubs, saltos, slug lines) y se detiene solo en nodos de dialogo donde lees lineas o tomas decisiones.
+Haz clic en **Play** en la barra de herramientas para experimentar tu flujo como lo haria un jugador. El {accent}Story Player{/accent} es una vista cinematica a pantalla completa que avanza automaticamente a traves de nodos no interactivos (entrada, hubs, condiciones, instrucciones, saltos y subflujos) y se detiene solo en nodos de dialogo donde lees lineas o tomas decisiones.
 
 - Los fondos de escena de escenas vinculadas se atenuan detras del dialogo
 - Navega hacia atras en el historial con el boton de retroceso
@@ -116,4 +114,4 @@ La mayoria de herramientas narrativas te obligan a probar jugando el juego compl
 
 Cambia un valor de variable, reinicia y vuelve a ejecutar para probar caminos alternativos. Sin necesidad de motor de juego, sin ciclo de exportacion -- verifica tu logica justo donde la escribes.
 
-Para una guia detallada, consulta la [guia del Modo de depuracion](/es/narrative-design/debug-mode).
+Para una guia detallada, consulta la [guia del Modo de depuracion](/docs/narrative-design/debug-mode).

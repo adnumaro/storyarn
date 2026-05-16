@@ -11,10 +11,7 @@ Storyarn es una **plataforma de diseño narrativo** para diseñadores de juegos 
 
 Ya sea que estés construyendo un RPG, una novela visual o un juego de aventuras, Storyarn te da las herramientas para diseñar tu historia de forma visual y colaborativa.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Vista general del proyecto — barra lateral con iconos de herramientas, una ficha abierta en el editor
-</div>
+<img src="/images/docs/veilbreak-project-dashboard.png" alt="Dashboard del proyecto Veilbreak Demo con métricas, advertencias y actividad reciente" loading="lazy">
 
 ---
 
@@ -34,19 +31,13 @@ Una sola plataforma. Todo conectado. Define las estadísticas de un personaje en
 
 Contenedores de datos estructurados para todo tu mundo — perfiles de personajes, catálogos de objetos, detalles de ubicaciones, seguimiento de misiones. Cada campo se convierte en una **variable** que los flujos, las escenas y las condiciones pueden leer y modificar. Organiza con carpetas, hereda propiedades entre fichas y registra cambios con el versionado integrado.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Editor de fichas — perfil de personaje con bloques de texto, número y selección, una sección de propiedades heredadas y un bloque de tabla
-</div>
+<img src="/images/docs/veilbreak-sheet-editor.png" alt="Ficha de Sera Voss en Veilbreak con banner, avatar y bloques de personaje heredados" loading="lazy">
 
 <h3><span class="docs-tool-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg></span> Flujos (Flows)</h3>
 
-Grafos visuales de nodos para diálogos ramificados y lógica narrativa. Nueve tipos de nodos — desde diálogos y condiciones hasta subflujos y saltos. Prueba tu trabajo al instante con el **Reproductor de Historia** (reproducción cinematográfica completa) y el **Modo Depuración** (ejecución paso a paso con inspección de variables en vivo). Sin necesidad de exportar — verifica tu lógica justo donde la escribes.
+Grafos visuales de nodos para diálogos ramificados y lógica narrativa. Diez tipos de nodos — desde diálogos y condiciones hasta secuencias, subflujos y saltos. Prueba tu trabajo al instante con el **Reproductor de Historia** (reproducción cinematográfica completa) y el **Modo Depuración** (ejecución paso a paso con inspección de variables en vivo). Sin necesidad de exportar — verifica tu lógica justo donde la escribes.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Editor de flujos — árbol de diálogo ramificado con nodos de diálogo, condición e instrucción conectados
-</div>
+<img src="/images/docs/veilbreak-flow-editor.png" alt="Editor de flujos de Veilbreak mostrando nodos de diálogo, condición, instrucción y salida conectados" loading="lazy">
 
 <h3><span class="docs-tool-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg></span> Escenas (Scenes)</h3>
 

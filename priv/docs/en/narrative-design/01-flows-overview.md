@@ -9,10 +9,7 @@ description: "Visual dialogue trees and branching narrative logic."
 
 Flows are the heart of Storyarn -- **visual node graphs** where you build branching dialogue, game logic, and interactive narratives. Each flow is a canvas of connected nodes that define how a conversation or sequence plays out, from a simple linear exchange to a sprawling quest tree with dozens of branches.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  The flow editor canvas showing a branching dialogue tree with connected nodes
-</div>
+<img src="/images/docs/veilbreak-flow-editor.png" alt="Veilbreak flow editor canvas with connected nodes and minimap" loading="lazy">
 
 ---
 
@@ -33,7 +30,7 @@ Nodes are connected through **pins** -- small circles on the edges of each node.
 
 ## Node types
 
-Storyarn has **9 node types**, each serving a distinct role in the flow graph:
+Storyarn has **10 node types**, each serving a distinct role in the flow graph:
 
 | Node            | Icon           | Purpose                                                                                                                                                                                                         |
 | --------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -44,16 +41,17 @@ Storyarn has **9 node types**, each serving a distinct role in the flow graph:
 | **Instruction** | Zap            | Modifies variable values when the flow passes through. Supports Set, Add, Subtract, Toggle, Clear, and boolean-specific operations.                                                                             |
 | **Hub**         | Log in         | A named merge point where multiple paths converge. Has a label, an ID, and a color.                                                                                                                             |
 | **Jump**        | Log out        | Jumps to a Hub node within the same flow. Select a target hub from the toolbar dropdown; a crosshair button locates it on the canvas.                                                                           |
-| **Slug Line**   | Clapperboard   | Scene heading or location marker, borrowed from screenplay conventions. References a location sheet, with INT/EXT setting and time of day (day, night, morning, evening, continuous).                           |
 | **Subflow**     | Box            | Embeds another flow inside this one. Dynamic output pins are generated from the referenced flow's Exit nodes, enabling branching based on how the subflow ends. Circular references are detected and prevented. |
+| **Sequence**    | Panels top     | Groups related nodes inside a visual container. Use it to organize larger beats, configure visual layers, and attach audio tracks to a narrative sequence.                                                       |
+| **Annotation**  | Sticky note    | Purely visual note for design intent, TODOs, or context on the canvas. It does not affect flow execution or dialogue exports.                                                                                   |
 
 ---
 
 ## A typical structure
 
 ```
-Entry
-  -> Slug Line ("INT. TAVERN - NIGHT")
+Sequence ("Tavern encounter")
+  Entry
     -> Dialogue (NPC greeting)
       -> Condition (has quest item?)
         -> True: Dialogue (quest complete)
@@ -82,7 +80,7 @@ Each Exit node in the referenced flow creates a separate output pin on the subfl
 
 ## {accent}Story Player{/accent}
 
-Click **Play** in the toolbar to experience your flow as a player would. The {accent}Story Player{/accent} is a full-screen cinematic view that auto-advances through non-interactive nodes (conditions, instructions, hubs, jumps, slug lines) and stops only at dialogue nodes where you read lines or make choices.
+Click **Play** in the toolbar to experience your flow as a player would. The {accent}Story Player{/accent} is a full-screen cinematic view that auto-advances through non-interactive nodes (entry, hubs, conditions, instructions, jumps, and subflows) and stops only at dialogue nodes where you read lines or make choices.
 
 - Scene backdrops from linked scenes dim behind the dialogue
 - Navigate back through history with the back button

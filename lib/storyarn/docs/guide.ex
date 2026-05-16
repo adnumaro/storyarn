@@ -10,7 +10,8 @@ defmodule Storyarn.Docs.Guide do
     build: Storyarn.Docs.GuideBuilder,
     from: "priv/docs/**/*.md",
     as: :guides,
-    highlighters: [:makeup_elixir]
+    highlighters: [:makeup_elixir],
+    earmark_options: %Earmark.Options{gfm_tables: true}
 
   @default_locale "en"
 

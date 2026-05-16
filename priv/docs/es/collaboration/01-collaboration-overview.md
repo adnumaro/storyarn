@@ -1,6 +1,6 @@
 %{
-title: "Colaboracion en tiempo real",
-category_label: "Colaboracion",
+title: "Colaboración en tiempo real",
+category_label: "Colaboración",
 order: 1,
 description: "Trabaja con tu equipo en tiempo real -- presencia, cursores y bloqueo."
 }

@@ -1,6 +1,6 @@
 %{
-title: "Modo de depuracion",
-category_label: "Diseno Narrativo",
+title: "Modo de depuración",
+category_label: "Diseño Narrativo",
 order: 4,
 description: "Prueba y verifica tus flujos con el depurador integrado."
 }

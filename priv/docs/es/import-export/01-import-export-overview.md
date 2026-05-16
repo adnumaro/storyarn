@@ -51,7 +51,7 @@ Antes de descargar, puedes ejecutar la validacion para detectar problemas que ca
 **Errores** (probablemente rompan tu juego):
 
 - Flujos sin nodo de Entrada
-- Referencias rotas: nodos de salto apuntando a hubs inexistentes, nodos de subflujo referenciando flujos eliminados, slug lines vinculados a escenas faltantes
+- Referencias rotas: nodos de salto apuntando a hubs inexistentes y nodos de subflujo referenciando flujos eliminados
 
 **Advertencias** (problemas potenciales):
 
@@ -108,6 +108,6 @@ Storyarn puede importar datos de proyecto desde archivos {accent}.storyarn.json{
 
 Mas alla de la pagina principal de Exportar e Importar, Storyarn ofrece funciones de exportacion especializadas en otras areas:
 
-**Exportacion de localizacion** -- Desde la pagina de Localizacion, exporta traducciones como Excel (.xlsx) o CSV filtrado por idioma. Importa archivos CSV traducidos de vuelta con emparejamiento por ID. Consulta la [Vista general de Localizacion](/es/localization/01-localization-overview) para mas detalles.
+**Exportacion de localizacion** -- Desde la pagina de Localizacion, exporta traducciones como Excel (.xlsx) o CSV filtrado por idioma. Importa archivos CSV traducidos de vuelta con emparejamiento por ID. Consulta la [Vista general de Localizacion](/docs/localization/localization-overview) para mas detalles.
 
 **Exportacion de guion** -- Exporta guiones individuales a formato Fountain (.fountain) para usar en herramientas de escritura de guion como Final Draft, Highland o WriterSolo. Importa archivos Fountain existentes para crear nuevos guiones en Storyarn.

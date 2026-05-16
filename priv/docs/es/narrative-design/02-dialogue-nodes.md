@@ -1,8 +1,8 @@
 %{
-title: "Nodos de Dialogo",
-category_label: "Diseno Narrativo",
+title: "Nodos de Diálogo",
+category_label: "Diseño Narrativo",
 order: 2,
-description: "Dialogo de personajes, respuestas del jugador y configuracion de dialogos."
+description: "Diálogo de personajes, respuestas del jugador y configuración de diálogos."
 }
 
 ---

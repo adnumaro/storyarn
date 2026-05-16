@@ -11,10 +11,7 @@ Sheets are {accent}structured data containers{/accent} for your project's world 
 
 Each sheet holds a set of **blocks** (typed fields like text, number, select, boolean) that define its structure. Blocks that aren't marked as constants automatically become **variables** that flows can read and modify at runtime.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  A character sheet showing blocks like Name (text), Health (number), Class (select), and a banner image.
-</div>
+<img src="/images/docs/veilbreak-sheet-editor.png" alt="Sera Voss character sheet with banner, avatar, and typed blocks" loading="lazy">
 
 ---
 

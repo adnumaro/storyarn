@@ -40,6 +40,25 @@ defmodule Storyarn.Shared.HtmlSanitizerTest do
       assert result =~ "<ol><li>three</li></ol>"
     end
 
+    test "preserves table tags" do
+      html = """
+      <table>
+        <caption>Variables</caption>
+        <thead><tr><th>Type</th><th>Operators</th></tr></thead>
+        <tbody><tr><td>Number</td><td>equals</td></tr></tbody>
+        <tfoot><tr><td>Total</td><td>1</td></tr></tfoot>
+      </table>
+      """
+
+      result = HtmlSanitizer.sanitize_html(html)
+
+      assert result =~ "<table>"
+      assert result =~ "<caption>Variables</caption>"
+      assert result =~ "<thead><tr><th>Type</th><th>Operators</th></tr></thead>"
+      assert result =~ "<tbody><tr><td>Number</td><td>equals</td></tr></tbody>"
+      assert result =~ "<tfoot><tr><td>Total</td><td>1</td></tr></tfoot>"
+    end
+
     test "preserves heading tags h1 through h6" do
       for level <- 1..6 do
         tag = "h#{level}"
@@ -53,6 +72,13 @@ defmodule Storyarn.Shared.HtmlSanitizerTest do
       html = ~s[<a href="https://example.com">link</a>]
       result = HtmlSanitizer.sanitize_html(html)
       assert result =~ ~s[<a href="https://example.com">link</a>]
+    end
+
+    test "preserves images with safe src" do
+      html = ~s[<img src="/images/docs/example.png" alt="Example" loading="lazy">]
+      result = HtmlSanitizer.sanitize_html(html)
+
+      assert result =~ ~s[<img src="/images/docs/example.png" alt="Example" loading="lazy"/>]
     end
 
     test "preserves br, span, sub, sup, del tags" do
@@ -225,12 +251,11 @@ defmodule Storyarn.Shared.HtmlSanitizerTest do
     end
 
     test "removes src with data: scheme containing base64" do
-      # Note: img is not in the allowed tags list, so the whole tag is stripped.
-      # Test with an allowed tag that could theoretically have a src attribute.
-      html = ~s[<a href="data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==">x</a>]
+      html = ~s[<img src="data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==" alt="x">]
       result = HtmlSanitizer.sanitize_html(html)
 
       refute result =~ "data:"
+      assert result =~ ~s[<img alt="x"/>]
     end
   end
 

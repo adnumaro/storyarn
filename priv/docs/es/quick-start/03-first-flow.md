@@ -89,14 +89,15 @@ Prueba a cambiar el valor de Health a `30` en la ficha de personaje y ejecutar e
 
 El editor de flujos admite estos tipos de nodos, todos disponibles desde el desplegable **Añadir Nodo**:
 
-| Nodo                                 | Propósito                                                                     |
-| ------------------------------------ | ----------------------------------------------------------------------------- |
-| **Entrada (Entry)**                  | Punto de inicio del flujo                                                     |
-| **Salida (Exit)**                    | Termina el flujo (terminal, continuar a otro flujo, o volver al llamador)     |
-| **Diálogo (Dialogue)**               | Discurso de personaje con respuestas opcionales, locutor, audio y acotaciones |
-| **Condición (Condition)**            | Ramifica según condiciones de variables (modo booleano o switch)              |
-| **Instrucción (Instruction)**        | Modifica valores de variables (asignaciones)                                  |
-| **Hub**                              | Punto de convergencia con nombre al que los nodos de Salto pueden apuntar     |
-| **Salto (Jump)**                     | Salta la ejecución a un nodo Hub                                              |
-| **Encabezado de escena (Slug Line)** | Encabezado de escena estilo guion (INT/EXT, ubicación, momento del día)       |
-| **Subflujo (Subflow)**               | Incrusta otro flujo como una subrutina reutilizable                           |
+| Nodo                          | Propósito                                                                     |
+| ----------------------------- | ----------------------------------------------------------------------------- |
+| **Entrada (Entry)**           | Punto de inicio del flujo                                                     |
+| **Salida (Exit)**             | Termina el flujo (terminal, continuar a otro flujo, o volver al llamador)     |
+| **Diálogo (Dialogue)**        | Discurso de personaje con respuestas opcionales, locutor, audio y acotaciones |
+| **Condición (Condition)**     | Ramifica según condiciones de variables (modo booleano o switch)              |
+| **Instrucción (Instruction)** | Modifica valores de variables (asignaciones)                                  |
+| **Hub**                       | Punto de convergencia con nombre al que los nodos de Salto pueden apuntar     |
+| **Salto (Jump)**              | Salta la ejecución a un nodo Hub                                              |
+| **Subflujo (Subflow)**        | Incrusta otro flujo como una subrutina reutilizable                           |
+| **Secuencia (Sequence)**      | Agrupa nodos relacionados y permite configurar capas visuales y audio         |
+| **Anotación (Annotation)**    | Nota visual para documentar el lienzo sin afectar a la ejecución              |

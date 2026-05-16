@@ -11,10 +11,7 @@ Storyarn is a **narrative design platform** for game designers and interactive s
 
 Whether you're building an RPG, a visual novel, or an adventure game, Storyarn gives you the tools to design your story visually and collaboratively.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Project overview — sidebar with tool icons, a sheet open in the editor
-</div>
+<img src="/images/docs/veilbreak-project-dashboard.png" alt="Veilbreak Demo project dashboard with metrics, warnings, and recent activity" loading="lazy">
 
 ---
 
@@ -34,19 +31,13 @@ One platform. Everything connected. Define a character's stats in a **Sheet**, r
 
 Structured data containers for your entire world — character profiles, item catalogs, location details, quest trackers. Every field becomes a **variable** that flows, scenes, and conditions can read and modify. Organize with folders, inherit properties across sheets, and track changes with built-in versioning.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Sheet editor — character profile with text, number, and select blocks, an inherited property section, and a table block
-</div>
+<img src="/images/docs/veilbreak-sheet-editor.png" alt="Sera Voss sheet in Veilbreak with banner, avatar, and inherited character blocks" loading="lazy">
 
 <h3><span class="docs-tool-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg></span> Flows</h3>
 
-Visual node graphs for branching dialogue and narrative logic. Nine node types — from dialogue and conditions to subflows and jumps. Test your work instantly with the **Story Player** (full cinematic playthrough) and the **Debug Mode** (step-by-step execution with live variable inspection). No export needed — verify your logic right where you write it.
+Visual node graphs for branching dialogue and narrative logic. Ten node types — from dialogue and conditions to sequences, subflows, and jumps. Test your work instantly with the **Story Player** (full cinematic playthrough) and the **Debug Mode** (step-by-step execution with live variable inspection). No export needed — verify your logic right where you write it.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Flow editor — branching dialogue tree with dialogue, condition, and instruction nodes connected
-</div>
+<img src="/images/docs/veilbreak-flow-editor.png" alt="Veilbreak flow editor showing connected dialogue, condition, instruction, and exit nodes" loading="lazy">
 
 <h3><span class="docs-tool-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg></span> Scenes</h3>
 

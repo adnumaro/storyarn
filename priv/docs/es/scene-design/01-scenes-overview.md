@@ -1,6 +1,6 @@
 %{
 title: "Vista general de Escenas",
-category_label: "Diseno de Escenas",
+category_label: "Diseño de Escenas",
 order: 1,
 description: "Mapea tu mundo con lienzos espaciales, zonas, pines y conexiones."
 }
@@ -8,6 +8,11 @@ description: "Mapea tu mundo con lienzos espaciales, zonas, pines y conexiones."
 ---
 
 Las Escenas (Scenes) son **lienzos espaciales** para mapear tu mundo de juego. Construidas sobre un lienzo Leaflet.js con soporte completo de desplazamiento, zoom y minimapa, te permiten disponer ubicaciones, definir areas interactivas, dibujar conexiones entre lugares y -- de forma unica -- explorar el resultado como lo haria un jugador.
+
+<div class="docs-alert docs-alert-warning">
+  <svg class="docs-alert-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+  <p><strong>Documentación en construcción.</strong> La feature de Escenas está evolucionando activamente. Esta página describe la dirección y las piezas principales, pero algunos detalles de interfaz, acciones y modo de exploración pueden cambiar.</p>
+</div>
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>

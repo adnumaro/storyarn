@@ -52,14 +52,15 @@ Organiza las fichas en una jerarquía de árbol. Usa la **herencia de propiedade
 
 ## Construye narrativas ramificadas con Flujos
 
-Los **Flujos (Flows)** son grafos visuales de nodos donde tu historia toma forma. Nueve tipos de nodos cubren todo:
+Los **Flujos (Flows)** son grafos visuales de nodos donde tu historia toma forma. Diez tipos de nodos cubren todo:
 
 - **Diálogo** — discurso de personaje con respuestas opcionales del jugador, cada una con sus propias condiciones e instrucciones
 - **Condición** — ramifica según valores de variables usando un constructor visual (sin código)
 - **Instrucción** — modifica variables cuando el flujo pasa por el nodo
 - **Hub y Salto (Jump)** — crea bucles y puntos de convergencia para narrativas no lineales
 - **Subflujo (Subflow)** — incrusta flujos reutilizables dentro de otros, con una pila de llamadas completa
-- **Encabezado de escena (Slug Line)** — encabezados de escena para integración con guiones
+- **Secuencia (Sequence)** — agrupa beats narrativos grandes y permite configurar capas visuales y audio
+- **Anotación (Annotation)** — deja notas visuales en el lienzo sin afectar a la ejecución
 - **Entrada (Entry) y Salida (Exit)** — define dónde empiezan y terminan los flujos, con modos de salida para encadenar flujos
 
 Conecta nodos arrastrando entre puertos. Edita el contenido en el panel lateral. Colabora en tiempo real — ve los cursores de tus compañeros y el bloqueo automático previene ediciones conflictivas.

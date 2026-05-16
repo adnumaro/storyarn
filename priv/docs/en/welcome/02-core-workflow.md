@@ -52,14 +52,15 @@ Organize sheets in a tree hierarchy. Use **property inheritance** to cascade blo
 
 ## Build branching narratives with Flows
 
-**Flows** are visual node graphs where your story takes shape. Nine node types cover everything:
+**Flows** are visual node graphs where your story takes shape. Ten node types cover everything:
 
 - **Dialogue** — character speech with optional player responses, each with their own conditions and instructions
 - **Condition** — branch based on variable values using a visual builder (no code)
 - **Instruction** — modify variables when the flow passes through
 - **Hub & Jump** — create loops and convergence points for non-linear narratives
 - **Subflow** — embed reusable flows inside others, with a full call stack
-- **Slug Line** — scene headings for screenplay integration
+- **Sequence** — group larger narrative beats and configure visual layers and audio
+- **Annotation** — leave visual notes on the canvas without affecting execution
 - **Entry & Exit** — define where flows start and end, with exit modes for chaining flows
 
 Connect nodes by dragging between pins. Edit content in the side panel. Collaborate in real time — see your teammates' cursors, and automatic locking prevents conflicting edits.

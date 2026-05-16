@@ -572,6 +572,50 @@
     @apply font-bold;
   }
 
+  .docs-content table {
+    width: 100%;
+    margin: 1.5rem 0;
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.5rem;
+    overflow: hidden;
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  .docs-content th,
+  .docs-content td {
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid hsl(var(--border));
+    border-right: 1px solid hsl(var(--border));
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .docs-content th:last-child,
+  .docs-content td:last-child {
+    border-right: 0;
+  }
+
+  .docs-content tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .docs-content th {
+    background-color: hsl(var(--accent) / 0.55);
+    color: hsl(var(--foreground));
+    font-weight: 600;
+  }
+
+  .docs-content td {
+    color: hsl(var(--foreground) / 0.88);
+  }
+
+  .docs-content tbody tr:nth-child(even) {
+    background-color: hsl(var(--accent) / 0.16);
+  }
+
   /* Custom docs inline utilities matching Shadcn theme */
   .docs-tool-icon {
     @apply inline-flex items-center justify-center size-7 rounded-lg bg-accent text-foreground align-middle mr-1.5;
@@ -583,6 +627,40 @@
 
   .docs-accent {
     @apply text-primary font-medium;
+  }
+
+  .docs-alert {
+    display: flex;
+    gap: 0.75rem;
+    margin: 1.5rem 0;
+    padding: 0.875rem 1rem;
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.5rem;
+    background-color: hsl(var(--accent) / 0.35);
+    color: hsl(var(--foreground));
+  }
+
+  .docs-alert p {
+    margin: 0;
+    line-height: 1.6;
+  }
+
+  .docs-alert strong {
+    display: block;
+    margin-bottom: 0.125rem;
+  }
+
+  .docs-alert-warning {
+    border-color: hsl(38 92% 50% / 0.38);
+    background-color: hsl(38 92% 50% / 0.1);
+  }
+
+  .docs-alert-icon {
+    flex: 0 0 auto;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-top: 0.125rem;
+    color: hsl(38 92% 50%);
   }
 
   .docs-image-placeholder {

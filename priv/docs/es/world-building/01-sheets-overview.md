@@ -11,10 +11,7 @@ Las Fichas (Sheets) son {accent}contenedores de datos estructurados{/accent} par
 
 Cada ficha contiene un conjunto de **bloques (blocks)** (campos tipados como texto, número, selección, booleano) que definen su estructura. Los bloques que no estén marcados como constantes se convierten automáticamente en **variables** que los flujos pueden leer y modificar en tiempo de ejecución.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Una ficha de personaje mostrando bloques como Name (texto), Health (número), Class (selección) y una imagen de banner.
-</div>
+<img src="/images/docs/veilbreak-sheet-editor.png" alt="Ficha de personaje de Sera Voss con banner, avatar y bloques tipados" loading="lazy">
 
 ---
 
