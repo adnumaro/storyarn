@@ -1,0 +1,26 @@
+lib/storyarn_web/controllers/user_session_controller.ex
+  s_4009926a81b72f::t_d6cbcb7d3a2ace 59
+  s_4009926a81b72f::t_10b6d1acd59174 9-16,53-58
+assets/app/live/auth/confirm-access/AuthConfirmAccessForm.vue
+  s_4009926a81b72f::t_3611aaff610919 43,48
+test/storyarn_web/controllers/user_session_controller_test.exs
+  s_4009926a81b72f::t_ccf82fbde56e8a 63-78
+assets/app/test/live/auth/confirm-access/AuthConfirmAccessForm.test.ts
+  s_4009926a81b72f::t_2c773a80808a2f 1-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "34f5303042e05a570c4b253fe933bd6acd084b86",
+  "prompts": {},
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
