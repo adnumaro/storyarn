@@ -2088,6 +2088,23 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       assert is_nil(updated.background_asset_id)
     end
 
+    test "attach_background_asset sets background_asset_id", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      asset = image_asset_fixture(project, user, %{url: "https://example.com/bg.png"})
+      scene = scene_fixture(project)
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
+        )
+
+      render_hook(view, "attach_background_asset", %{"asset_id" => asset.id})
+
+      updated = Scenes.get_scene(project.id, scene.id)
+      assert updated.background_asset_id == asset.id
+    end
+
     test "remove_background rejected for viewer", %{conn: conn, user: user} do
       owner = user_fixture()
       project = owner |> project_fixture() |> Repo.preload(:workspace)
@@ -2106,6 +2123,25 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       unchanged = Scenes.get_scene(project.id, scene.id)
       assert unchanged.background_asset_id == asset.id
+    end
+
+    test "attach_background_asset rejected for viewer", %{conn: conn, user: user} do
+      owner = user_fixture()
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+      _membership = membership_fixture(project, user, "viewer")
+      asset = image_asset_fixture(project, owner, %{url: "https://example.com/bg.png"})
+      scene = scene_fixture(project)
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
+        )
+
+      render_hook(view, "attach_background_asset", %{"asset_id" => asset.id})
+
+      unchanged = Scenes.get_scene(project.id, scene.id)
+      assert is_nil(unchanged.background_asset_id)
     end
   end
 

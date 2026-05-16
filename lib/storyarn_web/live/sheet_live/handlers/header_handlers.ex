@@ -56,7 +56,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
 
       case Sheets.remove_avatar(socket.assigns.sheet.id, id) do
         {:ok, _} ->
-          {:noreply, socket |> helpers.reload_sheet.() |> helpers.broadcast.(:sheet_updated)}
+          {:noreply, reload_broadcast_and_refresh_tree(socket, helpers)}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not remove avatar."))}
@@ -72,7 +72,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
       if avatar && avatar.sheet_id == socket.assigns.sheet.id do
         Sheets.set_avatar_default(avatar)
 
-        {:noreply, socket |> helpers.reload_sheet.() |> helpers.broadcast.(:sheet_updated)}
+        {:noreply, reload_broadcast_and_refresh_tree(socket, helpers)}
       else
         {:noreply, socket}
       end
@@ -131,10 +131,16 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
           :avatar -> Sheets.add_avatar(sheet, asset_id)
         end
 
-        {:noreply,
-         socket
-         |> helpers.reload_sheet.()
-         |> helpers.broadcast.(:sheet_updated)}
+        socket =
+          if purpose == :avatar do
+            reload_broadcast_and_refresh_tree(socket, helpers)
+          else
+            socket
+            |> helpers.reload_sheet.()
+            |> helpers.broadcast.(:sheet_updated)
+          end
+
+        {:noreply, socket}
     end
   end
 
@@ -208,6 +214,17 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
 
   defp reload_sheet_assign(socket, sheet_id) do
     assign(socket, :sheet, Sheets.get_sheet_full!(socket.assigns.project.id, sheet_id))
+  end
+
+  defp reload_broadcast_and_refresh_tree(socket, helpers) do
+    socket =
+      socket
+      |> helpers.reload_sheet.()
+      |> helpers.broadcast.(:sheet_updated)
+
+    helpers.broadcast_tree_changed.(socket.assigns.project.id)
+
+    socket
   end
 
   defp maybe_create_sheet_version(true, sheet, socket) do

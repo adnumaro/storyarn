@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useLiveVue } from "live_vue";
 import { ImagePlus, Upload } from "lucide-vue-next";
+import AssetUploadDecisionDialog from "@shared/components/assets/AssetUploadDecisionDialog.vue";
+import { useAssetDecisionUpload } from "@shared/composables/useAssetDecisionUpload.ts";
+import { useLive } from "@shared/composables/useLive.ts";
 import SceneCanvas from "@modules/scenes/editor/components/canvas/SceneCanvas.vue";
 import SceneDock from "@modules/scenes/editor/components/chrome/dock/SceneDock.vue";
 import LayerListPopover from "@modules/scenes/editor/components/chrome/layers/LayerListPopover.vue";
@@ -79,10 +82,44 @@ const { surface: initialSurface } = defineProps<{
   surface: SceneSurface;
 }>();
 
-const live = useLiveVue();
+const liveVue = useLiveVue();
+const live = useLive();
 const surface = computed(
-  () => (live.vue.props.surface as SceneSurface | undefined) ?? initialSurface,
+  () => (liveVue.vue.props.surface as SceneSurface | undefined) ?? initialSurface,
 );
+
+const backgroundInput = ref<HTMLInputElement | null>(null);
+const {
+  dialog: uploadDialog,
+  uploading,
+  progress,
+  error: uploadError,
+  uploadWithDecision,
+  confirmDecision,
+  cancelDecision,
+} = useAssetDecisionUpload();
+
+function triggerBackgroundUpload(): void {
+  backgroundInput.value?.click();
+}
+
+async function handleBackgroundInput(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement;
+  await uploadBackground(input.files?.[0] ?? null);
+  input.value = "";
+}
+
+async function handleBackgroundDrop(event: DragEvent): Promise<void> {
+  if (!surface.value.upload.canUpload) return;
+  await uploadBackground(event.dataTransfer?.files?.[0] ?? null);
+}
+
+async function uploadBackground(file: File | null): Promise<void> {
+  if (!file) return;
+
+  const result = await uploadWithDecision(file, "scene_background");
+  if (result) live.pushEvent("attach_background_asset", { asset_id: result.id });
+}
 </script>
 
 <template>
@@ -90,8 +127,16 @@ const surface = computed(
     <div
       id="scene-canvas-wrapper"
       class="absolute inset-0 overflow-hidden"
-      :phx-drop-target="surface.upload.dropTarget || undefined"
+      @dragover.prevent
+      @drop.prevent="handleBackgroundDrop"
     >
+      <input
+        ref="backgroundInput"
+        type="file"
+        accept="image/jpeg,image/png,image/gif,image/webp"
+        class="hidden"
+        @change="handleBackgroundInput"
+      />
       <div :id="surface.canvas.mountId" :key="surface.canvas.key" class="w-full h-full">
         <SceneCanvas
           :id="surface.canvas.id"
@@ -113,9 +158,10 @@ const surface = computed(
         v-if="surface.upload.canUpload && !surface.upload.backgroundSet"
         class="absolute inset-0 flex items-center justify-center z-10 pointer-events-none"
       >
-        <label
-          :for="surface.upload.inputRef || undefined"
+        <button
+          type="button"
           class="pointer-events-auto cursor-pointer group flex flex-col items-center gap-3 p-8 rounded-xl border-2 border-dashed border-foreground/15 hover:border-primary/40 hover:bg-background/50 transition-colors"
+          @click="triggerBackgroundUpload"
         >
           <ImagePlus class="size-10 opacity-20 group-hover:opacity-50 transition-opacity" />
           <span class="text-sm text-foreground/40 group-hover:text-foreground/60 transition-colors">
@@ -124,7 +170,7 @@ const surface = computed(
           <span class="text-xs text-foreground/25">
             {{ $t("scenes.settings.bg_drag_drop") }}
           </span>
-        </label>
+        </button>
       </div>
 
       <div
@@ -137,6 +183,24 @@ const surface = computed(
           <p class="text-sm font-medium text-primary/60">
             {{ $t("scenes.settings.bg_drop_to_set") }}
           </p>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="uploading"
+      class="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 bg-background rounded-lg border border-border shadow-lg px-4 py-2 flex items-center gap-3"
+    >
+      <Upload class="size-4 animate-pulse text-primary" />
+      <div class="w-40">
+        <div class="text-xs text-muted-foreground mb-1">
+          {{ $t("common.assets.upload_decision.processing") }}
+        </div>
+        <div class="w-full bg-muted rounded-full h-1.5">
+          <div
+            class="bg-primary h-1.5 rounded-full transition-all"
+            :style="{ width: `${progress}%` }"
+          />
         </div>
       </div>
     </div>
@@ -193,5 +257,14 @@ const surface = computed(
     <div id="scene-collab-toast" class="contents">
       <SceneCollabToast />
     </div>
+
+    <AssetUploadDecisionDialog
+      :state="uploadDialog"
+      :uploading="uploading"
+      :progress="progress"
+      :error="uploadError"
+      @confirm="confirmDecision"
+      @cancel="cancelDecision"
+    />
   </div>
 </template>

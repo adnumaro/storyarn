@@ -28,7 +28,7 @@ defmodule Storyarn.Assets.ImageOptimizationTest do
     end
 
     test "generates for PNG avatar" do
-      assert {:generate, %{width: 192, height: 192, crop: true}} =
+      assert {:generate, %{width: 500, height: 500, crop: true}} =
                ImageProcessor.needs_optimization?(
                  "image/png",
                  %{"width" => 100, "height" => 100},
@@ -37,20 +37,21 @@ defmodule Storyarn.Assets.ImageOptimizationTest do
     end
 
     test "generates for oversized JPEG avatar" do
-      assert {:generate, %{width: 192, height: 192, crop: true}} =
+      assert {:generate, %{width: 500, height: 500, crop: true}} =
                ImageProcessor.needs_optimization?(
                  "image/jpeg",
-                 %{"width" => 500, "height" => 500},
+                 %{"width" => 1200, "height" => 1200},
                  :avatar
                )
     end
 
-    test "skips JPEG avatar with missing metadata (defaults to 0x0)" do
-      assert :skip == ImageProcessor.needs_optimization?("image/jpeg", %{}, :avatar)
+    test "generates JPEG avatar with missing metadata" do
+      assert {:generate, %{width: 500, height: 500, crop: true}} =
+               ImageProcessor.needs_optimization?("image/jpeg", %{}, :avatar)
     end
 
     test "generates for GIF avatar regardless of size" do
-      assert {:generate, %{width: 192, height: 192, crop: true}} =
+      assert {:generate, %{width: 500, height: 500, crop: true}} =
                ImageProcessor.needs_optimization?(
                  "image/gif",
                  %{"width" => 50, "height" => 50},

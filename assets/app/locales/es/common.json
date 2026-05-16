@@ -150,13 +150,31 @@
       "uploaded": "Subido",
       "usage": "Uso",
       "not_used": "No se usa en ningún sitio",
+      "flow_audio_context": "(audio de flujo)",
       "avatar_context": "(avatar)",
       "banner_context": "(banner)",
+      "scene_background_context": "(fondo de escena)",
+      "scene_pin_icon_context": "(pin en {scene})",
       "delete_asset": "Eliminar recurso",
       "delete_confirm_title": "¿Eliminar recurso?",
+      "delete_confirm_unused": "¿Seguro que quieres eliminar este recurso?",
+      "delete_confirm_unused_consequence": "Esta acción no se puede deshacer.",
+      "delete_confirm_used_one": "Este recurso se usa en 1 lugar. ¿Quieres eliminarlo igualmente?",
+      "delete_confirm_used_many": "Este recurso se usa en {count} lugares. ¿Quieres eliminarlo igualmente?",
+      "delete_confirm_used_consequence": "Storyarn eliminará el archivo y desvinculará las referencias listadas abajo.",
       "file_too_large": "Archivo demasiado grande (máx. 20MB).",
       "uploading": "Subiendo...",
-      "upload": "Subir"
+      "upload": "Subir",
+      "upload_decision": {
+        "title": "Preparar imagen",
+        "description": "Storyarn reutilizará la imagen original cuando sea posible y creará la versión adecuada para este uso.",
+        "source_exists": "Esta imagen ya existe en el proyecto, así que no se volverá a subir el original.",
+        "variant_exists": "La versión adaptada ya existe y se reutilizará.",
+        "variant_required": "Se creará una versión adaptada de {size} para este uso.",
+        "original_ready": "Esta imagen puede usarse tal cual.",
+        "processing": "Subiendo y procesando imagen...",
+        "confirm": "Continuar"
+      }
     }
   }
 }

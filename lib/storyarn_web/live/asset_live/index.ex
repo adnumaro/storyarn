@@ -9,6 +9,14 @@ defmodule StoryarnWeb.AssetLive.Index do
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 
+  @empty_asset_usages %{
+    flow_nodes: [],
+    sheet_avatars: [],
+    sheet_banners: [],
+    scene_backgrounds: [],
+    scene_pin_icons: []
+  }
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -81,7 +89,7 @@ defmodule StoryarnWeb.AssetLive.Index do
       |> assign(:search, "")
       |> assign(:type_counts, type_counts)
       |> assign(:selected_asset, nil)
-      |> assign(:asset_usages, %{flow_nodes: [], sheet_avatars: [], sheet_banners: []})
+      |> assign(:asset_usages, @empty_asset_usages)
       |> assign(:uploading, false)
       |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
       |> load_assets()
@@ -156,7 +164,7 @@ defmodule StoryarnWeb.AssetLive.Index do
     {:noreply,
      socket
      |> assign(:selected_asset, nil)
-     |> assign(:asset_usages, %{flow_nodes: [], sheet_avatars: [], sheet_banners: []})}
+     |> assign(:asset_usages, @empty_asset_usages)}
   end
 
   def handle_event("confirm_delete_asset", _params, socket) do
@@ -298,22 +306,17 @@ defmodule StoryarnWeb.AssetLive.Index do
         {:noreply, socket}
 
       asset ->
-        # Delete from storage (best-effort)
-        Assets.storage_delete(asset.key)
-
-        if thumbnail_key = asset.metadata["thumbnail_key"] do
-          Assets.storage_delete(thumbnail_key)
-        end
-
         case Assets.delete_asset(asset) do
           {:ok, _} ->
+            delete_asset_files(asset)
+
             type_counts = Assets.count_assets_by_type(socket.assigns.project.id)
             broadcast_asset_change(socket.assigns.project.id, :asset_deleted)
 
             {:noreply,
              socket
              |> assign(:selected_asset, nil)
-             |> assign(:asset_usages, %{flow_nodes: [], sheet_avatars: [], sheet_banners: []})
+             |> assign(:asset_usages, @empty_asset_usages)
              |> assign(:type_counts, type_counts)
              |> load_assets()
              |> put_flash(:info, dgettext("assets", "Asset deleted."))}
@@ -328,6 +331,17 @@ defmodule StoryarnWeb.AssetLive.Index do
     project_id = socket.assigns.project.id
     opts = filter_opts(socket.assigns.filter) ++ search_opts(socket.assigns.search)
     assign(socket, :assets, Assets.list_assets(project_id, opts))
+  end
+
+  defp delete_asset_files(asset) do
+    Assets.storage_delete(asset.key)
+
+    (asset.metadata || %{})
+    |> Map.get("thumbnail_key")
+    |> then(fn
+      nil -> :ok
+      thumbnail_key -> Assets.storage_delete(thumbnail_key)
+    end)
   end
 
   defp filter_opts("all"), do: []
@@ -349,7 +363,7 @@ defmodule StoryarnWeb.AssetLive.Index do
   defp clear_selected_asset(socket) do
     socket
     |> assign(:selected_asset, nil)
-    |> assign(:asset_usages, %{flow_nodes: [], sheet_avatars: [], sheet_banners: []})
+    |> assign(:asset_usages, @empty_asset_usages)
   end
 
   defp refresh_selected_asset(socket) do
@@ -362,7 +376,7 @@ defmodule StoryarnWeb.AssetLive.Index do
           nil ->
             socket
             |> assign(:selected_asset, nil)
-            |> assign(:asset_usages, %{flow_nodes: [], sheet_avatars: [], sheet_banners: []})
+            |> assign(:asset_usages, @empty_asset_usages)
 
           refreshed ->
             assign(socket, :selected_asset, refreshed)
@@ -402,6 +416,19 @@ defmodule StoryarnWeb.AssetLive.Index do
       sheetBanners:
         Enum.map(usages.sheet_banners, fn s ->
           %{id: s.id, name: s.name}
+        end),
+      sceneBackgrounds:
+        Enum.map(usages.scene_backgrounds, fn s ->
+          %{id: s.id, name: s.name}
+        end),
+      scenePinIcons:
+        Enum.map(usages.scene_pin_icons, fn p ->
+          %{
+            pinId: p.pin_id,
+            pinLabel: p.pin_label,
+            sceneId: p.scene_id,
+            sceneName: p.scene_name
+          }
         end)
     }
   end

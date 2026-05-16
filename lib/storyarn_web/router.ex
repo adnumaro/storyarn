@@ -113,6 +113,14 @@ defmodule StoryarnWeb.Router do
          UploadController,
          :create
 
+    post "/workspaces/:workspace_slug/projects/:project_slug/upload/inspect",
+         UploadController,
+         :inspect_upload
+
+    post "/workspaces/:workspace_slug/projects/:project_slug/upload/materialize",
+         UploadController,
+         :materialize
+
     get "/workspaces/:workspace_slug/projects/:project_slug/localization/export/:format/:locale",
         LocalizationExportController,
         :export

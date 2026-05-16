@@ -3,6 +3,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
 
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
+  import Storyarn.AssetsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
@@ -15,6 +16,29 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
 
   defp get_sheet_surface_vue(view) do
     LiveVue.Test.get_vue(view, name: "live/sheet/show/SheetSurface")
+  end
+
+  defp get_sidebar_props(view, project) do
+    view
+    |> get_sidebar_live(project)
+    |> LiveVue.Test.get_vue(name: "live/sheet/sidebar/SheetSidebar")
+    |> then(& &1.props["sidebar-props"])
+  end
+
+  defp find_tree_node(nil, _id), do: nil
+
+  defp find_tree_node(nodes, id) when is_list(nodes) do
+    Enum.find_value(nodes, fn node ->
+      if to_string(prop(node, :id)) == to_string(id) do
+        node
+      else
+        node |> prop(:children) |> find_tree_node(id)
+      end
+    end)
+  end
+
+  defp prop(map, key) do
+    Map.get(map, key) || Map.get(map, to_string(key))
   end
 
   defp get_sheet_surface_props(view) do
@@ -44,6 +68,43 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
 
       html = await_async(view)
       assert html =~ "Test Sheet"
+    end
+
+    test "refreshes sidebar avatar when avatar is attached from sheet content", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      sheet = sheet_fixture(project, %{name: "Avatar Sheet"})
+      asset = image_asset_fixture(project, user, %{url: "/uploads/projects/test/avatar.png"})
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
+        )
+
+      await_async(view)
+
+      before_node =
+        view
+        |> get_sidebar_props(project)
+        |> prop(:sheetsTree)
+        |> find_tree_node(sheet.id)
+
+      assert before_node
+      assert is_nil(prop(before_node, :avatar_url))
+
+      render_hook(view, "attach_avatar", %{"asset_id" => asset.id})
+      render(get_sidebar_live(view, project))
+
+      after_node =
+        view
+        |> get_sidebar_props(project)
+        |> prop(:sheetsTree)
+        |> find_tree_node(sheet.id)
+
+      assert prop(after_node, :avatar_url) == asset.url
     end
 
     test "renders sheet for editor member", %{conn: conn, user: user} do

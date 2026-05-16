@@ -6,7 +6,9 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
   import Storyarn.AssetsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Assets.Asset
   alias Storyarn.Repo
+  alias Storyarn.Sheets.SheetAvatar
 
   defp assets_path(project) do
     ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets"
@@ -423,6 +425,28 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
 
       vue = get_assets_vue(view)
       assert vue.props["selected-asset"] == nil
+    end
+
+    test "deleting an asset used as a sheet avatar detaches the avatar and keeps the UI mounted", %{
+      conn: conn,
+      user: user,
+      project: project
+    } do
+      import Storyarn.SheetsFixtures
+
+      asset = image_asset_fixture(project, user, %{filename: "portrait.png"})
+      sheet = sheet_fixture(project, %{name: "Hero"})
+      {:ok, avatar} = Storyarn.Sheets.add_avatar(sheet, asset.id, %{is_default: true})
+
+      {:ok, view, _html} = live(conn, assets_path(project))
+
+      render_click(view, "select_asset", %{"id" => to_string(asset.id)})
+      html = render_hook(view, "confirm_delete_asset", %{})
+
+      assert is_binary(html)
+      assert Repo.get(Asset, asset.id) == nil
+      assert Repo.get(SheetAvatar, avatar.id) == nil
+      assert get_assets_vue(view).props["selected-asset"] == nil
     end
 
     test "selecting asset in use passes usages to Vue", %{

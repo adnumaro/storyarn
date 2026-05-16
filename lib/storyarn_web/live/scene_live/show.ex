@@ -1097,6 +1097,17 @@ defmodule StoryarnWeb.SceneLive.Show do
     {:noreply, assign(socket, :layers_popover_open, !socket.assigns.layers_popover_open)}
   end
 
+  def handle_event("attach_background_asset", %{"asset_id" => asset_id}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      project_id = socket.assigns.project.id
+
+      case Assets.get_asset(project_id, MapUtils.parse_int(asset_id)) do
+        nil -> {:noreply, put_flash(socket, :error, dgettext("scenes", "Asset not found."))}
+        asset -> process_background_upload(socket, asset)
+      end
+    end)
+  end
+
   def handle_event("remove_background", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       params |> LayerHandlers.handle_remove_background(socket) |> broadcast_scene_change()

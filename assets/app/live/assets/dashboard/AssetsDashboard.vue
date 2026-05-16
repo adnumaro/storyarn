@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { File, GitBranch, Image, Link, Music, Trash2, User, X } from "lucide-vue-next";
+import { File, GitBranch, Image, Link, MapPin, Music, Trash2, User, X } from "lucide-vue-next";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { Badge } from "@components/ui/badge/index.ts";
@@ -25,16 +25,42 @@ interface SheetUsage {
   name: string;
 }
 
+interface SceneUsage {
+  id: number;
+  name: string;
+}
+
+interface ScenePinUsage {
+  pinId: number;
+  pinLabel: string | null;
+  sceneId: number;
+  sceneName: string;
+}
+
 interface AssetUsages {
   flowNodes: FlowNodeUsage[];
   sheetAvatars: SheetUsage[];
   sheetBanners: SheetUsage[];
+  sceneBackgrounds: SceneUsage[];
+  scenePinIcons: ScenePinUsage[];
+}
+
+interface UsageSummary {
+  key: string;
+  name: string;
+  context: string;
 }
 
 const {
   assets = [],
   selectedAsset = null,
-  assetUsages = { flowNodes: [], sheetAvatars: [], sheetBanners: [] },
+  assetUsages = {
+    flowNodes: [],
+    sheetAvatars: [],
+    sheetBanners: [],
+    sceneBackgrounds: [],
+    scenePinIcons: [],
+  },
   canEdit = false,
   workspaceSlug,
   projectSlug,
@@ -51,24 +77,56 @@ const live = useLive();
 const { t } = useI18n();
 const showDeleteConfirm = ref(false);
 
-const totalUsages = computed(() => {
-  if (!assetUsages) return 0;
-  return (
-    (assetUsages.flowNodes?.length || 0) +
-    (assetUsages.sheetAvatars?.length || 0) +
-    (assetUsages.sheetBanners?.length || 0)
-  );
+const usageSummaries = computed<UsageSummary[]>(() => {
+  if (!assetUsages) return [];
+
+  return [
+    ...(assetUsages.flowNodes || []).map((usage) => ({
+      key: `flow-${usage.flowId}`,
+      name: usage.flowName,
+      context: t("common.assets.flow_audio_context"),
+    })),
+    ...(assetUsages.sheetAvatars || []).map((sheet) => ({
+      key: `avatar-${sheet.id}`,
+      name: sheet.name,
+      context: t("common.assets.avatar_context"),
+    })),
+    ...(assetUsages.sheetBanners || []).map((sheet) => ({
+      key: `banner-${sheet.id}`,
+      name: sheet.name,
+      context: t("common.assets.banner_context"),
+    })),
+    ...(assetUsages.sceneBackgrounds || []).map((scene) => ({
+      key: `scene-bg-${scene.id}`,
+      name: scene.name,
+      context: t("common.assets.scene_background_context"),
+    })),
+    ...(assetUsages.scenePinIcons || []).map((pin) => ({
+      key: `scene-pin-${pin.pinId}`,
+      name: pin.pinLabel || pin.sceneName,
+      context: t("common.assets.scene_pin_icon_context", { scene: pin.sceneName }),
+    })),
+  ];
 });
 
-const deleteConfirmMessage = computed(() => {
-  const total = totalUsages.value;
-  if (total > 0) {
-    return total === 1
-      ? "This asset is used in 1 place. Are you sure you want to delete it?"
-      : `This asset is used in ${total} places. Are you sure you want to delete it?`;
-  }
-  return "Are you sure you want to delete this asset? This cannot be undone.";
-});
+const totalUsages = computed(() => usageSummaries.value.length);
+
+const deleteConfirmMessage = computed(() =>
+  totalUsages.value > 0
+    ? t(
+        totalUsages.value === 1
+          ? "common.assets.delete_confirm_used_one"
+          : "common.assets.delete_confirm_used_many",
+        { count: totalUsages.value },
+      )
+    : t("common.assets.delete_confirm_unused"),
+);
+
+const deleteConfirmConsequence = computed(() =>
+  totalUsages.value > 0
+    ? t("common.assets.delete_confirm_used_consequence")
+    : t("common.assets.delete_confirm_unused_consequence"),
+);
 
 function selectAsset(id: number) {
   live.pushEvent("select_asset", { id: String(id) });
@@ -134,6 +192,10 @@ function usageFlowHref(usage: FlowNodeUsage) {
 
 function usageSheetHref(sheet: SheetUsage) {
   return `/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets/${sheet.id}`;
+}
+
+function usageSceneHref(sceneId: number) {
+  return `/workspaces/${workspaceSlug}/projects/${projectSlug}/scenes/${sceneId}`;
 }
 </script>
 
@@ -300,6 +362,42 @@ function usageSheetHref(sheet: SheetUsage) {
                 <span class="text-muted-foreground">{{ $t("common.assets.banner_context") }}</span>
               </a>
             </li>
+            <li
+              v-for="scene in assetUsages.sceneBackgrounds"
+              :key="'scene-bg-' + scene.id"
+              class="flex items-center gap-2"
+            >
+              <Image class="size-3 text-muted-foreground" />
+              <a
+                :href="usageSceneHref(scene.id)"
+                data-phx-link="redirect"
+                data-phx-link-state="push"
+                class="text-primary hover:underline truncate"
+              >
+                {{ scene.name }}
+                <span class="text-muted-foreground">{{
+                  $t("common.assets.scene_background_context")
+                }}</span>
+              </a>
+            </li>
+            <li
+              v-for="pin in assetUsages.scenePinIcons"
+              :key="'scene-pin-' + pin.pinId"
+              class="flex items-center gap-2"
+            >
+              <MapPin class="size-3 text-muted-foreground" />
+              <a
+                :href="usageSceneHref(pin.sceneId)"
+                data-phx-link="redirect"
+                data-phx-link-state="push"
+                class="text-primary hover:underline truncate"
+              >
+                {{ pin.pinLabel || pin.sceneName }}
+                <span class="text-muted-foreground">
+                  {{ $t("common.assets.scene_pin_icon_context", { scene: pin.sceneName }) }}
+                </span>
+              </a>
+            </li>
           </ul>
         </div>
 
@@ -327,8 +425,22 @@ function usageSheetHref(sheet: SheetUsage) {
             <div>
               <h3 class="font-semibold text-sm">{{ $t("common.assets.delete_confirm_title") }}</h3>
               <p class="text-sm text-muted-foreground mt-1">{{ deleteConfirmMessage }}</p>
+              <p class="text-sm text-muted-foreground mt-2">{{ deleteConfirmConsequence }}</p>
             </div>
           </div>
+          <ul
+            v-if="usageSummaries.length > 0"
+            class="mb-4 max-h-40 overflow-y-auto rounded-md border border-border bg-muted/30 p-2 text-sm"
+          >
+            <li
+              v-for="usage in usageSummaries"
+              :key="usage.key"
+              class="flex items-center justify-between gap-3 py-1"
+            >
+              <span class="truncate text-foreground">{{ usage.name }}</span>
+              <span class="shrink-0 text-xs text-muted-foreground">{{ usage.context }}</span>
+            </li>
+          </ul>
           <div class="flex justify-end gap-2">
             <Button variant="ghost" size="sm" @click="cancelDelete">{{
               $t("common.cancel")

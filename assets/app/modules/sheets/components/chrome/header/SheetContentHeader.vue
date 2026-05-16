@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { Image, Trash2 } from "lucide-vue-next";
+import { Image, Loader2, Trash2 } from "lucide-vue-next";
 import { ref, watch } from "vue";
 import ColorPickerPopover from "@components/forms/ColorPickerPopover.vue";
 import { Button } from "@components/ui/button";
 import { useLive } from "@shared/composables/useLive.ts";
-import { useUpload } from "@shared/composables/useUpload.ts";
+import AssetUploadDecisionDialog from "@shared/components/assets/AssetUploadDecisionDialog.vue";
+import { useAssetDecisionUpload } from "@shared/composables/useAssetDecisionUpload.ts";
 import type { Sheet } from "@modules/sheets/types";
 import AvatarGallery from "@modules/sheets/components/chrome/header/AvatarGallery.vue";
 import SheetAvatarSection from "@modules/sheets/components/chrome/header/SheetAvatarSection.vue";
@@ -21,7 +22,16 @@ const {
 }>();
 
 const live = useLive();
-const { uploadFile, uploadFiles } = useUpload();
+const {
+  dialog: uploadDialog,
+  uploading,
+  progress,
+  error: uploadError,
+  uploadWithDecision,
+  uploadManyWithDecision,
+  confirmDecision,
+  cancelDecision,
+} = useAssetDecisionUpload();
 
 // ── Color picker ──
 const localColor = ref(sheet.color || "#3b82f6");
@@ -46,7 +56,7 @@ function triggerBannerUpload(): void {
   input.onchange = async (e) => {
     const file = (e.target as HTMLInputElement).files?.[0];
     if (!file) return;
-    const result = await uploadFile(file, "banner");
+    const result = await uploadWithDecision(file, "banner");
     if (result) live.pushEvent("attach_banner", { asset_id: result.id });
   };
   input.click();
@@ -64,7 +74,7 @@ function triggerAvatarUpload(): void {
   input.multiple = true;
   input.onchange = async (e) => {
     const files = Array.from((e.target as HTMLInputElement).files ?? []);
-    const results = await uploadFiles(files, "avatar");
+    const results = await uploadManyWithDecision(files, "avatar");
     for (const result of results) {
       live.pushEvent("attach_avatar", { asset_id: result.id });
     }
@@ -117,9 +127,11 @@ function updateAvatarNotes(id: number | string, value: string): void {
             variant="secondary"
             size="sm"
             class="bg-surface/80 hover:bg-surface gap-1.5"
+            :disabled="uploading"
             @click="triggerBannerUpload"
           >
-            <Image class="size-4" />
+            <Loader2 v-if="uploading" class="size-4 animate-spin" />
+            <Image v-else class="size-4" />
             {{ sheet.bannerUrl ? $t("sheets.header.change_cover") : $t("sheets.header.add_cover") }}
           </Button>
           <Button
@@ -167,6 +179,15 @@ function updateAvatarNotes(id: number | string, value: string): void {
       @remove="removeAvatar"
       @update-name="updateAvatarName"
       @update-notes="updateAvatarNotes"
+    />
+
+    <AssetUploadDecisionDialog
+      :state="uploadDialog"
+      :uploading="uploading"
+      :progress="progress"
+      :error="uploadError"
+      @confirm="confirmDecision"
+      @cancel="cancelDecision"
     />
   </div>
 </template>

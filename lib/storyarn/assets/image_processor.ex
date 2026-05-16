@@ -18,8 +18,8 @@ defmodule Storyarn.Assets.ImageProcessor do
   @default_quality 85
 
   @webp_types ~w(image/webp image/jpeg)
-  @avatar_max_width 192
-  @avatar_max_height 192
+  @avatar_max_width 500
+  @avatar_max_height 500
   @banner_max_width 1920
   @banner_max_height 640
 
@@ -125,6 +125,20 @@ defmodule Storyarn.Assets.ImageProcessor do
   end
 
   @doc """
+  Extracts dimensions from image binary data.
+  """
+  def get_dimensions_from_binary(binary_data) do
+    tmp_input = tmp_path("dimensions")
+
+    try do
+      File.write!(tmp_input, binary_data)
+      get_dimensions(tmp_input)
+    after
+      File.rm(tmp_input)
+    end
+  end
+
+  @doc """
   Processes an image: generates thumbnail and extracts metadata.
 
   ## Options
@@ -193,7 +207,7 @@ defmodule Storyarn.Assets.ImageProcessor do
 
   ## Purposes
 
-    * `:avatar` - Skip if WebP/JPEG and ≤192×192
+    * `:avatar` - Skip if WebP/JPEG, square, and ≤500×500
     * `:banner` - Skip if WebP/JPEG and ≤1920×640
     * `:scene_background` / `:gallery` - Skip if WebP/JPEG (any size)
   """
@@ -202,6 +216,8 @@ defmodule Storyarn.Assets.ImageProcessor do
 
   def needs_optimization?(content_type, metadata, :avatar) do
     if content_type in @webp_types and
+         square?(metadata) and
+         positive_dimensions?(metadata) and
          Map.get(metadata, "width", 0) <= @avatar_max_width and
          Map.get(metadata, "height", 0) <= @avatar_max_height do
       :skip
@@ -212,6 +228,8 @@ defmodule Storyarn.Assets.ImageProcessor do
 
   def needs_optimization?(content_type, metadata, :banner) do
     if content_type in @webp_types and
+         positive_dimensions?(metadata) and
+         same_aspect?(metadata, @banner_max_width, @banner_max_height) and
          Map.get(metadata, "width", 0) <= @banner_max_width and
          Map.get(metadata, "height", 0) <= @banner_max_height do
       :skip
@@ -289,6 +307,23 @@ defmodule Storyarn.Assets.ImageProcessor do
 
   defp tmp_path(prefix) do
     Path.join(System.tmp_dir!(), "storyarn_#{prefix}_#{Ecto.UUID.generate()}")
+  end
+
+  defp positive_dimensions?(metadata) do
+    Map.get(metadata, "width", 0) > 0 and Map.get(metadata, "height", 0) > 0
+  end
+
+  defp square?(metadata), do: Map.get(metadata, "width") == Map.get(metadata, "height")
+
+  defp same_aspect?(metadata, target_width, target_height) do
+    width = Map.get(metadata, "width", 0)
+    height = Map.get(metadata, "height", 0)
+
+    if width > 0 and height > 0 do
+      abs(width / height - target_width / target_height) < 0.01
+    else
+      false
+    end
   end
 
   defp format_error(%Vix.Vips.Image.Error{message: message}), do: message

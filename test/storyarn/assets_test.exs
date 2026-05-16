@@ -9,6 +9,9 @@ defmodule Storyarn.AssetsTest do
   alias Storyarn.Assets
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
+  alias Storyarn.Flows.FlowNode
+  alias Storyarn.Repo
+  alias Storyarn.Sheets.SheetAvatar
 
   describe "assets" do
     setup do
@@ -158,6 +161,36 @@ defmodule Storyarn.AssetsTest do
       assert Assets.get_asset(project.id, asset.id) == nil
     end
 
+    test "delete_asset/1 removes sheet avatar references before deleting", %{project: project, user: user} do
+      import Storyarn.SheetsFixtures
+
+      asset = image_asset_fixture(project, user)
+      sheet = sheet_fixture(project, %{name: "Hero"})
+      {:ok, avatar} = Storyarn.Sheets.add_avatar(sheet, asset.id, %{is_default: true})
+
+      assert {:ok, _} = Assets.delete_asset(asset)
+      assert Assets.get_asset(project.id, asset.id) == nil
+      assert Repo.get(SheetAvatar, avatar.id) == nil
+    end
+
+    test "delete_asset/1 clears flow node audio references", %{project: project, user: user} do
+      import Storyarn.FlowsFixtures
+
+      asset = audio_asset_fixture(project, user)
+      flow = flow_fixture(project)
+
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"audio_asset_id" => asset.id, "text" => "Hello"}
+        })
+
+      assert {:ok, _} = Assets.delete_asset(asset)
+
+      refreshed = Repo.get!(FlowNode, node.id)
+      refute Map.has_key?(refreshed.data, "audio_asset_id")
+    end
+
     test "change_asset/2 returns a changeset", %{project: project, user: user} do
       asset = asset_fixture(project, user)
 
@@ -273,6 +306,31 @@ defmodule Storyarn.AssetsTest do
       assert hd(usages.sheet_banners).id == sheet.id
     end
 
+    test "returns scene background usages", %{project: project, user: user} do
+      import Storyarn.ScenesFixtures
+
+      image = image_asset_fixture(project, user)
+      scene = scene_fixture(project, %{name: "Bridge", background_asset_id: image.id})
+
+      usages = Assets.get_asset_usages(project.id, image.id)
+
+      assert length(usages.scene_backgrounds) == 1
+      assert hd(usages.scene_backgrounds).id == scene.id
+    end
+
+    test "returns scene pin icon usages", %{project: project, user: user} do
+      import Storyarn.ScenesFixtures
+
+      image = image_asset_fixture(project, user)
+      scene = scene_fixture(project, %{name: "Bridge"})
+      pin = pin_fixture(scene, %{"label" => "Gate", "icon_asset_id" => image.id})
+
+      usages = Assets.get_asset_usages(project.id, image.id)
+
+      assert length(usages.scene_pin_icons) == 1
+      assert hd(usages.scene_pin_icons).pin_id == pin.id
+    end
+
     test "returns empty when asset is unused", %{project: project, user: user} do
       asset = asset_fixture(project, user)
 
@@ -281,6 +339,8 @@ defmodule Storyarn.AssetsTest do
       assert usages.flow_nodes == []
       assert usages.sheet_avatars == []
       assert usages.sheet_banners == []
+      assert usages.scene_backgrounds == []
+      assert usages.scene_pin_icons == []
     end
 
     test "excludes soft-deleted nodes", %{project: project, user: user} do
@@ -297,8 +357,8 @@ defmodule Storyarn.AssetsTest do
 
       # Soft-delete the node
       node
-      |> Storyarn.Flows.FlowNode.soft_delete_changeset()
-      |> Storyarn.Repo.update!()
+      |> FlowNode.soft_delete_changeset()
+      |> Repo.update!()
 
       usages = Assets.get_asset_usages(project.id, audio.id)
 
@@ -315,7 +375,7 @@ defmodule Storyarn.AssetsTest do
       # Soft-delete the sheet via raw changeset
       sheet
       |> Ecto.Changeset.change(deleted_at: DateTime.truncate(DateTime.utc_now(), :second))
-      |> Storyarn.Repo.update!()
+      |> Repo.update!()
 
       usages = Assets.get_asset_usages(project.id, image.id)
 
@@ -1057,7 +1117,7 @@ defmodule Storyarn.AssetsTest do
         project_id: project.id,
         uploaded_by_id: user.id
       })
-      |> Storyarn.Repo.insert!()
+      |> Repo.insert!()
 
       # Create a temp file for the upload attempt
       tmp_path = Path.join(System.tmp_dir!(), "quota_test_#{Ecto.UUID.generate()}.txt")

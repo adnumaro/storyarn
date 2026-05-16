@@ -1006,8 +1006,17 @@ defmodule StoryarnWeb.SheetLive.Show do
     %{
       reload_sheet: &reload_sheet/1,
       broadcast: &broadcast_sheet_change/2,
+      broadcast_tree_changed: &broadcast_sheet_tree_changed/1,
       parse_id: &MapUtils.parse_int/1
     }
+  end
+
+  defp broadcast_sheet_tree_changed(project_id) do
+    Phoenix.PubSub.broadcast(
+      Storyarn.PubSub,
+      StoryarnWeb.SheetsSidebarLive.shell_topic(project_id),
+      {:tree_changed, :sheets}
+    )
   end
 
   defp table_helpers(_socket) do
