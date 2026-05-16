@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { useLiveForm, type Form } from "live_vue";
 import { Info } from "lucide-vue-next";
-import { ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import { Separator } from "@components/ui/separator";
-import { useLive } from "@shared/composables/useLive";
 
 interface PasswordFormValues {
   email: string;
@@ -26,8 +25,6 @@ const {
   passwordAction: string;
 }>();
 
-const live = useLive();
-
 const passwordForm = useLiveForm(() => passwordFormProp, {
   changeEvent: "validate_password",
   submitEvent: "update_password",
@@ -37,14 +34,53 @@ const passwordForm = useLiveForm(() => passwordFormProp, {
 const password = passwordForm.field("password");
 const passwordConfirmation = passwordForm.field("password_confirmation");
 
+const passwordValue = computed({
+  get: () => password.value.value ?? "",
+  set: (value: string) => {
+    password.value.value = value;
+  },
+});
+
+const passwordConfirmationValue = computed({
+  get: () => passwordConfirmation.value.value ?? "",
+  set: (value: string) => {
+    passwordConfirmation.value.value = value;
+  },
+});
+
+const passwordInputAttrs = computed(() => {
+  const { value: _value, onInput: _onInput, ...attrs } = password.inputAttrs.value;
+  return attrs;
+});
+
+const passwordConfirmationInputAttrs = computed(() => {
+  const { value: _value, onInput: _onInput, ...attrs } = passwordConfirmation.inputAttrs.value;
+  return attrs;
+});
+
+const showPasswordError = computed(
+  () => password.errorMessage.value && (password.isDirty.value || password.isTouched.value),
+);
+
+const showPasswordConfirmationError = computed(
+  () =>
+    passwordConfirmation.errorMessage.value &&
+    (passwordConfirmation.isDirty.value || passwordConfirmation.isTouched.value),
+);
+
+function updatePassword(value: string | number): void {
+  passwordValue.value = String(value);
+}
+
+function updatePasswordConfirmation(value: string | number): void {
+  passwordConfirmationValue.value = String(value);
+}
+
 // For the form action POST, we use a hidden form that triggers on valid submit
 const hiddenFormRef = ref<HTMLFormElement | null>(null);
 const csrfToken = ref(
   document.querySelector("meta[name=csrf-token]")?.getAttribute("content") ?? "",
 );
-
-// Use a watcher effect
-import { watch } from "vue";
 
 watch(
   () => triggerSubmit,
@@ -75,15 +111,11 @@ watch(
         autocomplete="username"
         :value="currentEmail"
       />
-      <input
-        :name="password.inputAttrs.value.name"
-        type="hidden"
-        :value="password.inputAttrs.value.value"
-      />
+      <input :name="password.inputAttrs.value.name" type="hidden" :value="passwordValue" />
       <input
         :name="passwordConfirmation.inputAttrs.value.name"
         type="hidden"
-        :value="passwordConfirmation.inputAttrs.value.value"
+        :value="passwordConfirmationValue"
       />
     </form>
 
@@ -100,13 +132,15 @@ watch(
         <div class="space-y-1.5">
           <Label for="security-password">{{ $t("settings.security.new_password") }}</Label>
           <Input
-            v-bind="password.inputAttrs.value"
+            v-bind="passwordInputAttrs"
             id="security-password"
+            :model-value="passwordValue"
             type="password"
             autocomplete="new-password"
             required
+            @update:model-value="updatePassword"
           />
-          <p v-if="password.errorMessage.value" class="text-sm text-destructive mt-1">
+          <p v-if="showPasswordError" class="text-sm text-destructive mt-1">
             {{ password.errorMessage.value }}
           </p>
         </div>
@@ -116,12 +150,14 @@ watch(
             $t("settings.security.confirm_password")
           }}</Label>
           <Input
-            v-bind="passwordConfirmation.inputAttrs.value"
+            v-bind="passwordConfirmationInputAttrs"
             id="security-password-confirmation"
+            :model-value="passwordConfirmationValue"
             type="password"
             autocomplete="new-password"
+            @update:model-value="updatePasswordConfirmation"
           />
-          <p v-if="passwordConfirmation.errorMessage.value" class="text-sm text-destructive mt-1">
+          <p v-if="showPasswordConfirmationError" class="text-sm text-destructive mt-1">
             {{ passwordConfirmation.errorMessage.value }}
           </p>
         </div>

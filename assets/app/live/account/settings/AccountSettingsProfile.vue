@@ -1,50 +1,89 @@
 <script setup lang="ts">
 import { useLiveForm, type Form } from "live_vue";
+import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@components/ui/select";
-import { Separator } from "@components/ui/separator";
 
 interface ProfileFormValues {
   display_name: string;
-  locale: string;
+  locale: string | null;
 }
 
-interface EmailFormValues {
-  email: string;
-}
-
-const { profileForm: profileFormProp, emailForm: emailFormProp } = defineProps<{
+const { profileForm: profileFormProp } = defineProps<{
   profileForm: Form<ProfileFormValues>;
-  emailForm: Form<EmailFormValues>;
-  currentEmail: string;
 }>();
+
+const { availableLocales, locale: currentLocale, t } = useI18n({ useScope: "global" });
+
+const localeOptions = computed(() =>
+  availableLocales.map((value) => ({
+    value,
+    label: t(`settings.profile.languages.${value}`),
+  })),
+);
+
+const fallbackLocale = computed(() =>
+  localeOptions.value.some((option) => option.value === currentLocale.value)
+    ? currentLocale.value
+    : (localeOptions.value[0]?.value ?? "en"),
+);
+
+function normalizeLocale(value: string | null | undefined): string {
+  return localeOptions.value.some((option) => option.value === value)
+    ? (value as string)
+    : fallbackLocale.value;
+}
+
+function prepareProfileData(data: ProfileFormValues): ProfileFormValues {
+  return { ...data, locale: normalizeLocale(data.locale) };
+}
 
 const profileForm = useLiveForm(() => profileFormProp, {
   changeEvent: "validate_profile",
   submitEvent: "update_profile",
   debounceInMiliseconds: 300,
-});
-
-const emailForm = useLiveForm(() => emailFormProp, {
-  changeEvent: "validate_email",
-  submitEvent: "update_email",
-  debounceInMiliseconds: 300,
+  prepareData: prepareProfileData,
 });
 
 const displayName = profileForm.field("display_name");
 const locale = profileForm.field("locale");
-const email = emailForm.field("email");
 
-function updateLocale(val: string): void {
-  locale.value.value = val;
+const displayNameValue = computed({
+  get: () => displayName.value.value ?? "",
+  set: (value: string) => {
+    displayName.value.value = value;
+  },
+});
+
+const displayNameInputAttrs = computed(() => {
+  const { value: _value, onInput: _onInput, ...attrs } = displayName.inputAttrs.value;
+  return attrs;
+});
+
+function updateDisplayName(value: string | number): void {
+  displayNameValue.value = String(value);
+}
+
+const selectedLocale = computed({
+  get: () => normalizeLocale(locale.value.value),
+  set: (value: string) => {
+    locale.value.value = normalizeLocale(value);
+  },
+});
+
+function updateLocale(value: string | string[]): void {
+  const nextValue = Array.isArray(value) ? value[0] : value;
+  selectedLocale.value = normalizeLocale(nextValue);
 }
 </script>
 
@@ -67,9 +106,11 @@ function updateLocale(val: string): void {
         <div class="space-y-1.5">
           <Label for="profile-display-name">{{ $t("settings.profile.display_name") }}</Label>
           <Input
-            v-bind="displayName.inputAttrs.value"
+            v-bind="displayNameInputAttrs"
             id="profile-display-name"
+            :model-value="displayNameValue"
             :placeholder="$t('settings.profile.display_name_placeholder')"
+            @update:model-value="updateDisplayName"
           />
           <p v-if="displayName.errorMessage.value" class="text-sm text-destructive mt-1">
             {{ displayName.errorMessage.value }}
@@ -79,18 +120,23 @@ function updateLocale(val: string): void {
         <div class="space-y-1.5">
           <Label for="profile-locale">{{ $t("settings.profile.language") }}</Label>
           <Select
-            :model-value="locale.inputAttrs.value.value || ''"
-            @update:model-value="
-              (v: string | string[]) => updateLocale(Array.isArray(v) ? v[0] : v)
-            "
+            :model-value="selectedLocale"
+            :name="locale.inputAttrs.value.name"
+            @update:model-value="updateLocale"
           >
             <SelectTrigger id="profile-locale" class="w-full">
-              <SelectValue :placeholder="$t('settings.profile.auto_detect')" />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">{{ $t("settings.profile.auto_detect") }}</SelectItem>
-              <SelectItem value="en">English</SelectItem>
-              <SelectItem value="es">Espa&#241;ol</SelectItem>
+              <SelectGroup>
+                <SelectItem
+                  v-for="option in localeOptions"
+                  :key="option.value"
+                  :value="option.value"
+                >
+                  {{ option.label }}
+                </SelectItem>
+              </SelectGroup>
             </SelectContent>
           </Select>
           <p v-if="locale.errorMessage.value" class="text-sm text-destructive mt-1">
@@ -100,36 +146,6 @@ function updateLocale(val: string): void {
 
         <div class="flex justify-end gap-3">
           <Button @click="profileForm.submit()"> {{ $t("settings.profile.save_profile") }} </Button>
-        </div>
-      </div>
-    </section>
-
-    <Separator />
-
-    <!-- Email Section -->
-    <section>
-      <h3 class="text-lg font-semibold mb-4">{{ $t("settings.profile.email_address") }}</h3>
-      <p class="text-sm text-muted-foreground mb-4">
-        {{ $t("settings.profile.email_description") }}
-      </p>
-
-      <div class="space-y-4">
-        <div class="space-y-1.5">
-          <Label for="profile-email">{{ $t("settings.profile.email") }}</Label>
-          <Input
-            v-bind="email.inputAttrs.value"
-            id="profile-email"
-            type="email"
-            autocomplete="username"
-            required
-          />
-          <p v-if="email.errorMessage.value" class="text-sm text-destructive mt-1">
-            {{ email.errorMessage.value }}
-          </p>
-        </div>
-
-        <div class="flex justify-end gap-3">
-          <Button @click="emailForm.submit()"> {{ $t("settings.profile.change_email") }} </Button>
         </div>
       </div>
     </section>

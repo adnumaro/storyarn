@@ -42,6 +42,13 @@ window.addEventListener("storage", (e) => {
 });
 window.addEventListener("phx:set-theme", applyTheme);
 
+window.addEventListener("phx:set-locale", (event) => {
+  const locale = event.detail?.locale;
+  if (typeof locale === "string" && locale.length > 0) {
+    document.documentElement.lang = locale;
+  }
+});
+
 // Native Modals
 window.addEventListener("phx:show-modal", (e) => {
   if (e.target.showModal) {

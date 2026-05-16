@@ -1,10 +1,11 @@
 defmodule StoryarnWeb.SettingsLive.Profile do
   @moduledoc """
-  LiveView for user profile and email settings.
+  LiveView for user profile settings.
   """
   use StoryarnWeb, :live_view
 
   alias Storyarn.Accounts
+  alias Storyarn.Accounts.Scope
 
   on_mount {StoryarnWeb.UserAuth, :require_sudo_mode}
 
@@ -29,15 +30,12 @@ defmodule StoryarnWeb.SettingsLive.Profile do
   def mount(_params, _session, socket) do
     user = socket.assigns.current_scope.user
 
-    email_changeset = Accounts.change_user_email(user, %{}, validate_unique: false)
     profile_changeset = Accounts.change_user_profile(user, %{})
 
     socket =
       socket
       |> assign(:page_title, dgettext("settings", "Profile Settings"))
       |> assign(:current_path, ~p"/users/settings")
-      |> assign(:current_email, user.email)
-      |> assign(:email_form, to_form(email_changeset))
       |> assign(:profile_form, to_form(profile_changeset))
 
     {:ok, socket}
@@ -60,8 +58,6 @@ defmodule StoryarnWeb.SettingsLive.Profile do
         v-inject="settings-layout"
         id="settings-profile-vue"
         profile-form={@profile_form}
-        email-form={@email_form}
-        current-email={@current_email}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>
     """
@@ -83,55 +79,31 @@ defmodule StoryarnWeb.SettingsLive.Profile do
 
     case Accounts.update_user_profile(user, user_params) do
       {:ok, updated_user} ->
-        path =
-          if updated_user.locale do
-            ~p"/users/settings?locale=#{updated_user.locale}"
-          else
-            ~p"/users/settings"
-          end
+        profile_form =
+          updated_user
+          |> Accounts.change_user_profile(%{})
+          |> to_form()
 
-        {:noreply,
-         socket
-         |> put_flash(:info, dgettext("settings", "Profile updated successfully."))
-         |> redirect(to: path)}
+        socket =
+          socket
+          |> assign(:current_scope, Scope.for_user(updated_user))
+          |> assign(:profile_form, profile_form)
+          |> maybe_apply_locale(updated_user.locale)
+
+        {:noreply, put_flash(socket, :info, dgettext("settings", "Profile updated successfully."))}
 
       {:error, changeset} ->
         {:noreply, assign(socket, profile_form: to_form(changeset, action: :insert))}
     end
   end
 
-  def handle_event("validate_email", %{"user" => user_params}, socket) do
-    email_form =
-      socket.assigns.current_scope.user
-      |> Accounts.change_user_email(user_params, validate_unique: false)
-      |> Map.put(:action, :validate)
-      |> to_form()
+  defp maybe_apply_locale(socket, nil), do: socket
 
-    {:noreply, assign(socket, email_form: email_form)}
-  end
+  defp maybe_apply_locale(socket, locale) do
+    Gettext.put_locale(Storyarn.Gettext, locale)
 
-  def handle_event("update_email", %{"user" => user_params}, socket) do
-    user = socket.assigns.current_scope.user
-    true = Accounts.sudo_mode?(user)
-
-    case Accounts.change_user_email(user, user_params) do
-      %{valid?: true} = changeset ->
-        Accounts.deliver_user_update_email_instructions(
-          Ecto.Changeset.apply_action!(changeset, :insert),
-          user.email,
-          &url(~p"/users/settings/confirm-email/#{&1}")
-        )
-
-        info =
-          dgettext(
-            "settings",
-            "A link to confirm your email change has been sent to the new address."
-          )
-
-        {:noreply, put_flash(socket, :info, info)}
-
-      changeset ->
-        {:noreply, assign(socket, :email_form, to_form(changeset, action: :insert))}
-    end
+    socket
+    |> assign(:locale, locale)
+    |> push_event("set-locale", %{locale: locale})
   end
 end

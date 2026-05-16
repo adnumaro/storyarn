@@ -16,12 +16,15 @@
     },
     "profile": {
       "title": "Perfil",
-      "subtitle": "Gestiona tu información personal y dirección de correo electrónico",
+      "subtitle": "Gestiona tu información personal y preferencias de idioma",
       "personal_info": "Información personal",
       "display_name": "Nombre a mostrar",
       "display_name_placeholder": "Cómo quieres que te llamen",
       "language": "Idioma",
-      "auto_detect": "Autodetectar del navegador",
+      "languages": {
+        "en": "Inglés",
+        "es": "Español"
+      },
       "save_profile": "Guardar perfil",
       "email_address": "Dirección de correo electrónico",
       "email_description": "Tu correo se usa para iniciar sesión y para notificaciones.",

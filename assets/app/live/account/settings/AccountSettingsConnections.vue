@@ -12,7 +12,6 @@ import {
   DialogTitle,
 } from "@components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip";
-import { useLive } from "@shared/composables/useLive";
 
 interface OAuthIdentity {
   provider: string;
@@ -24,8 +23,6 @@ const { identities, hasPassword } = defineProps<{
   identities: OAuthIdentity[];
   hasPassword: boolean;
 }>();
-
-const live = useLive();
 
 const providers = [
   { key: "github", label: "GitHub" },
