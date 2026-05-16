@@ -17,11 +17,13 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
   @text_type 0
   @boolean_type 2
   @files_type 3
+  @localization_type 4
   @actor_type 5
 
   @text_type_string "CustomFieldType_Text"
   @boolean_type_string "CustomFieldType_Boolean"
   @files_type_string "CustomFieldType_Files"
+  @localization_type_string "CustomFieldType_Localization"
   @actor_type_string "CustomFieldType_Actor"
 
   @player_actor_id 1
@@ -107,7 +109,7 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
     |> Map.get({"flow_node", to_string(node.id), source_field}, [])
     |> Enum.sort_by(&localization_attr(&1, :locale_code))
     |> Enum.map(fn text ->
-      text_field("#{field_title} #{localization_attr(text, :locale_code)}", localized_translation(text))
+      localization_field("#{field_title} #{localization_attr(text, :locale_code)}", localized_translation(text))
     end)
   end
 
@@ -324,7 +326,7 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
     }
   end
 
-  defp export_dialogue_entry_node?(%{type: "sequence"}), do: false
+  defp export_dialogue_entry_node?(%{type: type}) when type in ["annotation", "sequence"], do: false
   defp export_dialogue_entry_node?(_node), do: true
 
   defp allocate_condition_branch_entry_ids(nodes, conn_graph, next_id) do
@@ -1022,6 +1024,7 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
   defp text_field(title, value), do: field(title, value, @text_type, @text_type_string)
   defp boolean_field(title, value), do: field(title, boolean_string(value), @boolean_type, @boolean_type_string)
   defp files_field(title, value), do: field(title, value, @files_type, @files_type_string)
+  defp localization_field(title, value), do: field(title, value, @localization_type, @localization_type_string)
   defp actor_ref_field(title, value), do: field(title, value, @actor_type, @actor_type_string)
 
   defp field(title, value, type, type_string) do

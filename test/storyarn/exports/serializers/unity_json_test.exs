@@ -236,6 +236,22 @@ defmodule Storyarn.Exports.Serializers.UnityJSONTest do
       assert is_map(root_entry["canvasRect"])
     end
 
+    test "annotation nodes are editor-only and are not exported as dialogue entries", %{project: project} do
+      flow = project |> flow_fixture(%{name: "Annotation Test"}) |> reload_flow()
+
+      annotation =
+        node_fixture(flow, %{
+          type: "annotation",
+          data: %{"text" => "Designer note"}
+        })
+
+      result = export_and_decode(project)
+      entries = result |> conversation_by_title("Annotation Test") |> Map.fetch!("dialogueEntries")
+
+      refute Enum.any?(entries, &(maybe_field_value(&1, "Storyarn Node ID") == to_string(annotation.id)))
+      refute Enum.any?(entries, &(maybe_field_value(&1, "Storyarn Node Type") == "annotation"))
+    end
+
     test "linear dialogue exports fields and outgoing links", %{project: project} do
       sheet = sheet_fixture(project, %{name: "Kael"})
       flow = project |> flow_fixture(%{name: "Dialogue Test"}) |> reload_flow()
@@ -814,6 +830,10 @@ defmodule Storyarn.Exports.Serializers.UnityJSONTest do
       assert field_value(dialogue_entry, "Menu Text") == "Talk"
       assert field_value(dialogue_entry, "Dialogue Text es") == "Hola"
       assert field_value(dialogue_entry, "Menu Text es") == "Hablar"
+      assert field(dialogue_entry, "Dialogue Text es")["type"] == 4
+      assert field(dialogue_entry, "Dialogue Text es")["typeString"] == "CustomFieldType_Localization"
+      assert field(dialogue_entry, "Menu Text es")["type"] == 4
+      assert field(dialogue_entry, "Menu Text es")["typeString"] == "CustomFieldType_Localization"
       refute maybe_field(dialogue_entry, "Dialogue Text en")
       refute maybe_field(dialogue_entry, "Dialogue Text fr")
     end
@@ -852,6 +872,10 @@ defmodule Storyarn.Exports.Serializers.UnityJSONTest do
       assert field_value(response_entry, "Dialogue Text") == "Ask"
       assert field_value(response_entry, "Menu Text es") == "Preguntar"
       assert field_value(response_entry, "Dialogue Text es") == "Preguntar"
+      assert field(response_entry, "Menu Text es")["type"] == 4
+      assert field(response_entry, "Menu Text es")["typeString"] == "CustomFieldType_Localization"
+      assert field(response_entry, "Dialogue Text es")["type"] == 4
+      assert field(response_entry, "Dialogue Text es")["typeString"] == "CustomFieldType_Localization"
     end
 
     test "include_localization false omits localized fields", %{project: project} do
