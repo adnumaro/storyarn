@@ -1,0 +1,25 @@
+config/config.exs
+  s_4009926a81b72f::t_19cb3917d15746 21-23
+test/storyarn_web/live/settings_live/security_test.exs
+  s_4009926a81b72f::t_3f0823e122d373 84-105
+assets/app/test/live/account/settings/AccountSettingsSecurity.test.ts
+  s_4009926a81b72f::t_59bad04f3bb2df 36,39-40
+assets/app/live/account/settings/AccountSettingsSecurity.vue
+  s_4009926a81b72f::t_6022a8a4530857 61-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "57a1dd7cc232e1386ff103005cc4138012bbf242",
+  "prompts": {},
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
