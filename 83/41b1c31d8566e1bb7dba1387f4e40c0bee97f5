@@ -1,0 +1,39 @@
+lib/storyarn/exports/serializers/unity_json.ex
+  s_4009926a81b72f::t_89b44872de5c6c 252-263
+  s_4009926a81b72f::t_01a050ff3f7f17 1263-1264
+  s_4009926a81b72f::t_d9f60ae735f11d 83-151
+  s_4009926a81b72f::t_8b5ee3f99c05b8 327,340-341,444-445
+  s_4009926a81b72f::t_c5bce97e4efc7c 495,503,508-509,689-691,707
+  s_4009926a81b72f::t_eb0bf51fabdc2a 161,183,189-204
+  s_4009926a81b72f::t_e4f4701baa09a8 1184-1187
+  s_4009926a81b72f::t_0327a583e882b3 663-673
+  s_4009926a81b72f::t_5308b3e690eef6 234-235,249-251,264-274,277-285
+  s_4009926a81b72f::t_12a083f0829465 44,50,55,64,68
+test/storyarn/exports/serializers/unity_json_test.exs
+  s_4009926a81b72f::t_cb40edbf67eed8 5,17,113
+  s_4009926a81b72f::t_e5012d5a7ac0c8 181-202
+  s_4009926a81b72f::t_fe534f2b2c8d18 941-954,956-964,967-979
+  s_4009926a81b72f::t_dabf8619aede68 15,955,965-966
+  s_4009926a81b72f::t_0b220cb79ae78c 318-351
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "8341b1c31d8566e1bb7dba1387f4e40c0bee97f5",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
