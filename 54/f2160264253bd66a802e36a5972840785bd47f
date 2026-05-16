@@ -1,0 +1,26 @@
+test/storyarn/exports/serializers/unity_json_test.exs
+  s_4009926a81b72f::t_bfa47163d23bca 239-254,833-836,875-878
+lib/storyarn/exports/serializers/unity_json.ex
+  s_4009926a81b72f::t_a17ab8496e63be 20,26,112,329,1027
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "54f2160264253bd66a802e36a5972840785bd47f",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
