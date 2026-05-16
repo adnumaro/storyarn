@@ -33,7 +33,10 @@ function mountSecurity() {
 describe("AccountSettingsSecurity", () => {
   it("does not show untouched password errors on initial render", () => {
     const wrapper = mountSecurity();
+    const passwordInput = wrapper.get("#security-password");
 
     expect(wrapper.text()).not.toContain("can't be blank");
+    expect(passwordInput.attributes("aria-invalid")).not.toBe("true");
+    expect(passwordInput.attributes("aria-describedby")).toBeUndefined();
   });
 });

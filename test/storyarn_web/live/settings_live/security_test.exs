@@ -81,6 +81,28 @@ defmodule StoryarnWeb.SettingsLive.SecurityTest do
       password_form = vue.props["password-form"]
       assert password_form["errors"] != %{} or password_form["valid"] == false
     end
+
+    test "translates password errors using the user locale", %{conn: conn} do
+      user = user_fixture()
+      {:ok, user} = Storyarn.Accounts.update_user_profile(user, %{"locale" => "es"})
+
+      {:ok, view, _html} =
+        conn
+        |> log_in_user(user)
+        |> live(~p"/users/settings/security")
+
+      render_click(view, "validate_password", %{
+        "user" => %{
+          "password" => "",
+          "password_confirmation" => ""
+        }
+      })
+
+      vue = get_security_vue(view)
+      password_form = vue.props["password-form"]
+
+      assert ["no puede estar vacío"] = password_form["errors"]["password"]
+    end
   end
 
   describe "update_password event" do

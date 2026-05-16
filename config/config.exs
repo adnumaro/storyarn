@@ -18,7 +18,9 @@ config :ex_aws,
   http_client: ExAws.Request.Req
 
 # LiveVue configuration
-config :live_vue, ssr: false
+config :live_vue,
+  ssr: false,
+  gettext_backend: Storyarn.Gettext
 
 # Configures Elixir's Logger
 config :logger, :default_formatter,

@@ -48,16 +48,6 @@ const passwordConfirmationValue = computed({
   },
 });
 
-const passwordInputAttrs = computed(() => {
-  const { value: _value, onInput: _onInput, ...attrs } = password.inputAttrs.value;
-  return attrs;
-});
-
-const passwordConfirmationInputAttrs = computed(() => {
-  const { value: _value, onInput: _onInput, ...attrs } = passwordConfirmation.inputAttrs.value;
-  return attrs;
-});
-
 const showPasswordError = computed(
   () => password.errorMessage.value && (password.isDirty.value || password.isTouched.value),
 );
@@ -67,6 +57,38 @@ const showPasswordConfirmationError = computed(
     passwordConfirmation.errorMessage.value &&
     (passwordConfirmation.isDirty.value || passwordConfirmation.isTouched.value),
 );
+
+const passwordInputAttrs = computed(() => {
+  const {
+    value: _value,
+    onInput: _onInput,
+    "aria-invalid": _ariaInvalid,
+    "aria-describedby": ariaDescribedBy,
+    ...attrs
+  } = password.inputAttrs.value;
+
+  return {
+    ...attrs,
+    "aria-invalid": showPasswordError.value ? true : undefined,
+    "aria-describedby": showPasswordError.value ? ariaDescribedBy : undefined,
+  };
+});
+
+const passwordConfirmationInputAttrs = computed(() => {
+  const {
+    value: _value,
+    onInput: _onInput,
+    "aria-invalid": _ariaInvalid,
+    "aria-describedby": ariaDescribedBy,
+    ...attrs
+  } = passwordConfirmation.inputAttrs.value;
+
+  return {
+    ...attrs,
+    "aria-invalid": showPasswordConfirmationError.value ? true : undefined,
+    "aria-describedby": showPasswordConfirmationError.value ? ariaDescribedBy : undefined,
+  };
+});
 
 function updatePassword(value: string | number): void {
   passwordValue.value = String(value);
