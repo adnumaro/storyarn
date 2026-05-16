@@ -32,14 +32,14 @@ El {accent}**Constructor de Condiciones**{/accent} es una interfaz completamente
 
 Diferentes tipos de variables soportan diferentes operadores de comparación:
 
-| Tipo de variable        | Operadores disponibles                                                                                           |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| **Número**              | igual, no igual, mayor que, mayor o igual que, menor que, menor o igual que, no está establecido                 |
-| **Texto / enriquecido** | igual, no igual, contiene, empieza con, termina con, está vacío, no está establecido                             |
-| **Booleano**            | es verdadero, es falso, no está establecido                                                                      |
-| **Selección**           | igual, no igual, no está establecido                                                                             |
-| **Selección múltiple**  | contiene, no contiene, está vacío, no está establecido                                                           |
-| **Fecha**               | igual, antes de, después de, no está establecido                                                                 |
+| Tipo de variable        | Operadores disponibles                                                                           |
+| ----------------------- | ------------------------------------------------------------------------------------------------ |
+| **Número**              | igual, no igual, mayor que, mayor o igual que, menor que, menor o igual que, no está establecido |
+| **Texto / enriquecido** | igual, no igual, contiene, empieza con, termina con, está vacío, no está establecido             |
+| **Booleano**            | es verdadero, es falso, no está establecido                                                      |
+| **Selección**           | igual, no igual, no está establecido                                                             |
+| **Selección múltiple**  | contiene, no contiene, está vacío, no está establecido                                           |
+| **Fecha**               | igual, antes de, después de, no está establecido                                                 |
 
 ---
 
@@ -89,15 +89,15 @@ Los nodos de instrucción **modifican variables** cuando el flujo pasa a través
 
 Cada instrucción es una **frase en lenguaje natural** que se lee como un comando:
 
-| Operación         | Frase                                   | Efecto                 | Tipos de variable |
-| ----------------- | --------------------------------------- | ---------------------- | ----------------- |
-| **Establecer**    | Establecer `mc.jaime` . `health` a `75` | Asigna un valor        | Todos los tipos   |
-| **Sumar**         | Sumar `100` a `mc.jaime` . `gold`       | Suma al valor actual   | Número            |
-| **Restar**        | Restar `25` de `mc.jaime` . `health`    | Resta del valor actual | Número            |
-| **Establecer sí** | Establecer `quest.door` . `unlocked` a true | Pone el booleano a true | Booleano       |
-| **Establecer no** | Establecer `quest.door` . `unlocked` a false | Pone el booleano a false | Booleano     |
-| **Alternar**      | Alternar `quest.door` . `unlocked`      | Invierte el booleano   | Booleano          |
-| **Limpiar**       | Limpiar `mc.jaime` . `notes`            | Elimina el valor       | Texto, enriquecido |
+| Operación         | Frase                                        | Efecto                   | Tipos de variable  |
+| ----------------- | -------------------------------------------- | ------------------------ | ------------------ |
+| **Establecer**    | Establecer `mc.jaime` . `health` a `75`      | Asigna un valor          | Todos los tipos    |
+| **Sumar**         | Sumar `100` a `mc.jaime` . `gold`            | Suma al valor actual     | Número             |
+| **Restar**        | Restar `25` de `mc.jaime` . `health`         | Resta del valor actual   | Número             |
+| **Establecer sí** | Establecer `quest.door` . `unlocked` a true  | Pone el booleano a true  | Booleano           |
+| **Establecer no** | Establecer `quest.door` . `unlocked` a false | Pone el booleano a false | Booleano           |
+| **Alternar**      | Alternar `quest.door` . `unlocked`           | Invierte el booleano     | Booleano           |
+| **Limpiar**       | Limpiar `mc.jaime` . `notes`                 | Elimina el valor         | Texto, enriquecido |
 
 Un solo nodo de instrucción puede contener **múltiples asignaciones** que se ejecutan en orden. Haz clic en **Agregar asignación** para crear una nueva fila.
 

@@ -26,12 +26,12 @@ Abre **Localizacion** en la barra lateral de tu proyecto. El idioma fuente de tu
 
 Haz clic en **Sincronizar** para escanear todo tu proyecto y extraer cada texto traducible. El extractor obtiene contenido de cuatro tipos de fuente:
 
-| Fuente             | Que se extrae                                                                                                                    |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| Fuente             | Que se extrae                                                                                         |
+| ------------------ | ----------------------------------------------------------------------------------------------------- |
 | **Nodos de flujo** | Texto de dialogo, acotaciones, texto de menu, textos de respuestas individuales y etiquetas de salida |
-| **Fichas**         | Nombre de ficha, descripcion de ficha                                                                                            |
-| **Bloques**        | Etiquetas de bloque, valores de contenido de texto, etiquetas de opciones de seleccion                                           |
-| **Flujos**         | Nombre de flujo, descripcion de flujo                                                                                            |
+| **Fichas**         | Nombre de ficha, descripcion de ficha                                                                 |
+| **Bloques**        | Etiquetas de bloque, valores de contenido de texto, etiquetas de opciones de seleccion                |
+| **Flujos**         | Nombre de flujo, descripcion de flujo                                                                 |
 
 Cada texto extraido recibe un hash SHA-256 de su contenido fuente. Cuando vuelves a sincronizar, Storyarn detecta cambios -- si el texto fuente ha sido modificado desde la ultima traduccion, el sistema puede marcarlo para re-traduccion. La extraccion es idempotente: ejecutarla multiples veces nunca crea duplicados gracias a la logica de upsert.
 

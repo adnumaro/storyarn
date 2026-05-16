@@ -42,7 +42,7 @@ Storyarn has **10 node types**, each serving a distinct role in the flow graph:
 | **Hub**         | Log in         | A named merge point where multiple paths converge. Has a label, an ID, and a color.                                                                                                                             |
 | **Jump**        | Log out        | Jumps to a Hub node within the same flow. Select a target hub from the toolbar dropdown; a crosshair button locates it on the canvas.                                                                           |
 | **Subflow**     | Box            | Embeds another flow inside this one. Dynamic output pins are generated from the referenced flow's Exit nodes, enabling branching based on how the subflow ends. Circular references are detected and prevented. |
-| **Sequence**    | Panels top     | Groups related nodes inside a visual container. Use it to organize larger beats, configure visual layers, and attach audio tracks to a narrative sequence.                                                       |
+| **Sequence**    | Panels top     | Groups related nodes inside a visual container. Use it to organize larger beats, configure visual layers, and attach audio tracks to a narrative sequence.                                                      |
 | **Annotation**  | Sticky note    | Purely visual note for design intent, TODOs, or context on the canvas. It does not affect flow execution or dialogue exports.                                                                                   |
 
 ---

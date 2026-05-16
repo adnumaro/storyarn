@@ -42,7 +42,7 @@ Storyarn tiene **10 tipos de nodos**, cada uno con un rol distinto en el grafo d
 | **Hub**         | Log in         | Un punto de convergencia con nombre donde multiples caminos se unen. Tiene una etiqueta, un ID y un color.                                                                                                                                       |
 | **Salto**       | Log out        | Salta a un nodo Hub dentro del mismo flujo. Selecciona un hub destino desde el desplegable de la barra de herramientas; un boton de mira lo localiza en el lienzo.                                                                               |
 | **Subflujo**    | Box            | Incrusta otro flujo dentro de este. Los pines de salida dinamicos se generan a partir de los nodos de Salida del flujo referenciado, permitiendo ramificar segun como termina el subflujo. Las referencias circulares se detectan y previenen.   |
-| **Secuencia**   | Panels top     | Agrupa nodos relacionados dentro de un contenedor visual. Permite organizar beats largos, configurar capas visuales y asociar pistas de audio a una secuencia narrativa.                                                                          |
+| **Secuencia**   | Panels top     | Agrupa nodos relacionados dentro de un contenedor visual. Permite organizar beats largos, configurar capas visuales y asociar pistas de audio a una secuencia narrativa.                                                                         |
 | **Anotacion**   | Sticky note    | Nota visual pura para documentar intencion, tareas o contexto de diseno en el lienzo. No afecta a la ejecucion del flujo ni a los exports de dialogo.                                                                                            |
 
 ---

@@ -89,15 +89,15 @@ Try changing the Health value to `30` on the character sheet and running the deb
 
 The flow editor supports these node types, all available from the **Add Node** dropdown:
 
-| Node            | Purpose                                                                         |
-| --------------- | ------------------------------------------------------------------------------- |
-| **Entry**       | Starting point of the flow                                                      |
-| **Exit**        | Ends the flow (terminal, continue to another flow, or return to caller)         |
-| **Dialogue**    | Character speech with optional responses, speaker, audio, and stage directions  |
-| **Condition**   | Branches based on variable conditions (boolean or switch mode)                  |
-| **Instruction** | Modifies variable values (assignments)                                          |
-| **Hub**         | Named merge point that Jump nodes can target                                    |
-| **Jump**        | Jumps execution to a Hub node                                                   |
-| **Subflow**     | Embeds another flow as a reusable sub-routine                                   |
-| **Sequence**    | Groups related nodes and can configure visual layers and audio for a beat       |
-| **Annotation**  | Visual note for documenting the canvas without affecting execution              |
+| Node            | Purpose                                                                        |
+| --------------- | ------------------------------------------------------------------------------ |
+| **Entry**       | Starting point of the flow                                                     |
+| **Exit**        | Ends the flow (terminal, continue to another flow, or return to caller)        |
+| **Dialogue**    | Character speech with optional responses, speaker, audio, and stage directions |
+| **Condition**   | Branches based on variable conditions (boolean or switch mode)                 |
+| **Instruction** | Modifies variable values (assignments)                                         |
+| **Hub**         | Named merge point that Jump nodes can target                                   |
+| **Jump**        | Jumps execution to a Hub node                                                  |
+| **Subflow**     | Embeds another flow as a reusable sub-routine                                  |
+| **Sequence**    | Groups related nodes and can configure visual layers and audio for a beat      |
+| **Annotation**  | Visual note for documenting the canvas without affecting execution             |

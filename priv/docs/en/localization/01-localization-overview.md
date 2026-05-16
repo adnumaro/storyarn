@@ -26,12 +26,12 @@ Open **Localization** in your project sidebar. Your project's source language is
 
 Click **Sync** to scan your entire project and extract every piece of translatable text. The extractor pulls content from four source types:
 
-| Source         | What gets extracted                                                                                        |
-| -------------- | ---------------------------------------------------------------------------------------------------------- |
+| Source         | What gets extracted                                                                    |
+| -------------- | -------------------------------------------------------------------------------------- |
 | **Flow nodes** | Dialogue text, stage directions, menu text, individual response texts, and exit labels |
-| **Sheets**     | Sheet name, sheet description                                                                              |
-| **Blocks**     | Block labels, text content values, select option labels                                                    |
-| **Flows**      | Flow name, flow description                                                                                |
+| **Sheets**     | Sheet name, sheet description                                                          |
+| **Blocks**     | Block labels, text content values, select option labels                                |
+| **Flows**      | Flow name, flow description                                                            |
 
 Each extracted text gets a SHA-256 hash of its source content. When you re-sync, Storyarn detects changes -- if the source text has been modified since the last translation, the system can flag it for re-translation. Extraction is idempotent: running it multiple times never creates duplicates thanks to upsert logic.
 
