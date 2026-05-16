@@ -413,6 +413,16 @@ msgstr ""
 msgid "Export your project data or import from a file."
 msgstr ""
 
+#: lib/storyarn_web/live/project_settings_live/usage_limits.ex:26
+#, elixir-autogen, elixir-format
+msgid "Review project and workspace usage against plan limits"
+msgstr ""
+
+#: lib/storyarn_web/live/project_settings_live/usage_limits.ex:24
+#, elixir-autogen, elixir-format
+msgid "Usage Limits"
+msgstr ""
+
 #: lib/storyarn/exports/validator.ex:465
 #, elixir-autogen, elixir-format
 msgid "%{pending} of %{total} strings are untranslated for locale \"%{locale}\""

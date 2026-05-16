@@ -10,6 +10,7 @@
       "items": {
         "general": "General",
         "version_control": "Version Control",
+        "usage_limits": "Usage Limits",
         "localization": "Localization",
         "members": "Members",
         "snapshots": "Snapshots",
@@ -135,6 +136,43 @@
       "usage": "Usage",
       "project_snapshots": "Project Snapshots",
       "named_versions": "Named Versions"
+    },
+    "usage_limits": {
+      "current_plan": "Current plan",
+      "current_plan_description": "Limits combine project quotas and shared workspace quotas.",
+      "project_limits": "Project limits",
+      "project_limits_description": "These counters block new entities or versions inside this project.",
+      "workspace_limits": "Workspace limits",
+      "workspace_limits_description": "These quotas are shared by every project in the workspace.",
+      "project_storage_note": "This project uses {storage} across {assets} assets.",
+      "rows": {
+        "items": "Items",
+        "project_snapshots": "Project snapshots",
+        "named_versions": "Named versions",
+        "storage": "Storage",
+        "projects": "Projects",
+        "members": "Members"
+      },
+      "descriptions": {
+        "items": "Sheets, flows, scenes, and flow nodes in this project.",
+        "project_snapshots": "Manual and automatic snapshots stored for this project.",
+        "named_versions": "Promoted entity versions that count against the project quota.",
+        "storage": "Total asset storage used by every project in this workspace.",
+        "projects": "Active projects in this workspace.",
+        "members": "Unique workspace and project members."
+      },
+      "breakdown": {
+        "sheets": "Sheets",
+        "flows": "Flows",
+        "scenes": "Scenes",
+        "flow_nodes": "Flow nodes"
+      },
+      "status": {
+        "available": "Available",
+        "near_limit": "Near limit",
+        "limit_reached": "Limit reached",
+        "no_limit": "No limit"
+      }
     },
     "export": {
       "title": "Export",

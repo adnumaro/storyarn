@@ -29,6 +29,7 @@ defmodule Storyarn.Billing do
   defdelegate can_create_named_version?(project_id, workspace_id), to: Limits
   defdelegate can_create_project_snapshot?(project_id, workspace_id), to: Limits
   defdelegate project_usage(project_id, workspace_id), to: Limits
+  defdelegate project_limits_usage(project), to: Limits
   defdelegate usage(workspace), to: Limits
 
   # Subscription operations

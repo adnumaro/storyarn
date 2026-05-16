@@ -328,6 +328,16 @@ msgstr "Snapshots"
 msgid "Stale restoration lock cleared."
 msgstr "Bloqueo de restauración obsoleto eliminado."
 
+#: lib/storyarn_web/live/project_settings_live/usage_limits.ex:26
+#, elixir-autogen, elixir-format
+msgid "Review project and workspace usage against plan limits"
+msgstr "Revisa el uso del proyecto y del workspace frente a los límites del plan"
+
+#: lib/storyarn_web/live/project_settings_live/usage_limits.ex:24
+#, elixir-autogen, elixir-format
+msgid "Usage Limits"
+msgstr "Límites de uso"
+
 #: lib/storyarn_web/live/project_settings_live/version_control.ex:26
 #, elixir-autogen, elixir-format
 msgid "Version Control"

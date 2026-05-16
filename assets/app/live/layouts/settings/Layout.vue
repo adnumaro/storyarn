@@ -5,6 +5,7 @@ import { useI18n } from "vue-i18n";
 import {
   Archive,
   ChevronLeft,
+  Gauge,
   GitBranch,
   Languages,
   Link,
@@ -67,6 +68,7 @@ const { t } = useI18n();
 const iconMap: Record<string, Component> = {
   archive: Archive,
   "chevron-left": ChevronLeft,
+  gauge: Gauge,
   "git-branch": GitBranch,
   languages: Languages,
   link: Link,
@@ -110,6 +112,11 @@ const sections = computed<SettingsSection[]>(() => {
             label: t("project_settings.nav.items.version_control"),
             path: `${basePath}/version-control`,
             icon: "git-branch",
+          },
+          {
+            label: t("project_settings.nav.items.usage_limits"),
+            path: `${basePath}/usage-limits`,
+            icon: "gauge",
           },
         ],
       },

@@ -252,6 +252,10 @@ defmodule StoryarnWeb.Router do
            ProjectSettingsLive.VersionControl,
            :edit
 
+      live "/workspaces/:workspace_slug/projects/:project_slug/settings/usage-limits",
+           ProjectSettingsLive.UsageLimits,
+           :show
+
       live "/workspaces/:workspace_slug/projects/:project_slug/settings/export-import",
            ExportImportLive.Index,
            :index

@@ -136,8 +136,24 @@ defmodule Storyarn.Assets.UploadPolicy do
   defp parse_int(_), do: nil
 
   defp value(attrs, key) do
-    Map.get(attrs, key) || Map.get(attrs, String.to_atom(key))
-  rescue
-    ArgumentError -> nil
+    case Map.fetch(attrs, key) do
+      {:ok, value} -> value
+      :error -> atom_key_value(attrs, key)
+    end
+  end
+
+  defp atom_key_value(attrs, key) do
+    attrs
+    |> Enum.find_value(fn
+      {attr_key, value} when is_atom(attr_key) ->
+        if Atom.to_string(attr_key) == key, do: {:ok, value}
+
+      _ ->
+        false
+    end)
+    |> case do
+      {:ok, value} -> value
+      nil -> nil
+    end
   end
 end

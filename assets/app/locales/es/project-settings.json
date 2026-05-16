@@ -10,6 +10,7 @@
       "items": {
         "general": "General",
         "version_control": "Control de versiones",
+        "usage_limits": "Límites de uso",
         "localization": "Localización",
         "members": "Miembros",
         "snapshots": "Snapshots",
@@ -135,6 +136,43 @@
       "usage": "Uso",
       "project_snapshots": "Snapshots del proyecto",
       "named_versions": "Versiones con nombre"
+    },
+    "usage_limits": {
+      "current_plan": "Plan actual",
+      "current_plan_description": "Los límites combinan cuotas propias del proyecto y cuotas compartidas del workspace.",
+      "project_limits": "Límites del proyecto",
+      "project_limits_description": "Estos contadores bloquean nuevas entidades o versiones dentro de este proyecto.",
+      "workspace_limits": "Límites del workspace",
+      "workspace_limits_description": "Estas cuotas son compartidas por todos los proyectos del workspace.",
+      "project_storage_note": "Este proyecto usa {storage} en {assets} recursos.",
+      "rows": {
+        "items": "Items",
+        "project_snapshots": "Snapshots del proyecto",
+        "named_versions": "Versiones con nombre",
+        "storage": "Almacenamiento",
+        "projects": "Proyectos",
+        "members": "Miembros"
+      },
+      "descriptions": {
+        "items": "Fichas, flujos, escenas y nodos de flujo en este proyecto.",
+        "project_snapshots": "Snapshots manuales y automáticas almacenadas para este proyecto.",
+        "named_versions": "Versiones promocionadas de entidades que cuentan contra la cuota del proyecto.",
+        "storage": "Almacenamiento total de recursos usado por todos los proyectos del workspace.",
+        "projects": "Proyectos activos en este workspace.",
+        "members": "Usuarios únicos con membresía de workspace o de proyecto."
+      },
+      "breakdown": {
+        "sheets": "Fichas",
+        "flows": "Flujos",
+        "scenes": "Escenas",
+        "flow_nodes": "Nodos de flujo"
+      },
+      "status": {
+        "available": "Disponible",
+        "near_limit": "Cerca del límite",
+        "limit_reached": "Límite alcanzado",
+        "no_limit": "Sin límite"
+      }
     },
     "export": {
       "title": "Exportar",

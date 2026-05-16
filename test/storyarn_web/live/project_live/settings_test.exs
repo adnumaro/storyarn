@@ -3,7 +3,11 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
+  import Storyarn.AssetsFixtures
+  import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
+  import Storyarn.SheetsFixtures
 
   alias Storyarn.Localization
   alias Storyarn.Repo
@@ -15,6 +19,14 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
   defp get_general_vue(view) do
     LiveVue.Test.get_vue(view, name: "live/project/settings/ProjectSettingsGeneral")
+  end
+
+  defp get_usage_limits_vue(view) do
+    LiveVue.Test.get_vue(view, name: "live/project/settings/ProjectSettingsUsageLimits")
+  end
+
+  defp get_settings_layout_vue(view) do
+    LiveVue.Test.get_vue(view, name: "live/layouts/settings/Layout")
   end
 
   describe "General section" do
@@ -134,6 +146,59 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
       vue = LiveVue.Test.get_vue(view, name: "live/project/settings/ProjectSettingsMembers")
       refute Enum.any?(vue.props["members"], fn m -> m["email"] == "removeme@example.com" end)
+    end
+  end
+
+  describe "Usage limits section" do
+    setup :register_and_log_in_user
+
+    test "passes project and workspace usage limits to Vue", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      _sheet = sheet_fixture(project)
+      flow = flow_fixture(project)
+      _node = node_fixture(flow)
+      _scene = scene_fixture(project)
+      _asset = asset_fixture(project, user, %{size: 2_048})
+
+      {:ok, view, _html} = live(conn, settings_path(project, "usage-limits"))
+
+      layout = get_settings_layout_vue(view)
+
+      assert layout.props["current-path"] ==
+               "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/usage-limits"
+
+      vue = get_usage_limits_vue(view)
+      assert vue.component == "live/project/settings/ProjectSettingsUsageLimits"
+
+      usage = vue.props["usage-limits"]
+      assert usage["plan"] == %{"key" => "free", "name" => "Free"}
+      assert usage["project"]["items"] == %{"used" => 6, "limit" => 700}
+
+      assert usage["itemBreakdown"] == %{
+               "sheets" => 1,
+               "flows" => 1,
+               "scenes" => 1,
+               "flowNodes" => 3
+             }
+
+      assert usage["storage"] == %{"projectBytes" => 2_048, "assetCount" => 1}
+
+      assert usage["workspace"]["storageBytes"] == %{
+               "used" => 2_048,
+               "limit" => 262_144_000
+             }
+    end
+
+    test "redirects non-owner", %{conn: conn, user: user} do
+      owner = user_fixture()
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+      _membership = membership_fixture(project, user, "editor")
+
+      {:error, {:redirect, %{to: path, flash: flash}}} =
+        live(conn, settings_path(project, "usage-limits"))
+
+      assert path =~ "/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
+      assert flash["error"] =~ "permission"
     end
   end
 end

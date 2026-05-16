@@ -134,6 +134,61 @@ defmodule Storyarn.Billing.Limits do
   end
 
   @doc """
+  Returns all usage data relevant to a project settings limits page.
+
+  Some limits are scoped to the project itself, while others are scoped to the
+  containing workspace but directly affect project actions.
+  """
+  def project_limits_usage(%Project{} = project) do
+    workspace = Repo.get!(Workspace, project.workspace_id)
+    plan = SubscriptionCrud.plan_for(workspace)
+
+    %{
+      plan: plan_summary(plan),
+      project: %{
+        items: usage_bucket(count_project_items(project.id), Plan.limit(plan, :items_per_project)),
+        project_snapshots:
+          usage_bucket(
+            Storyarn.Versioning.count_project_snapshots(project.id),
+            Plan.limit(plan, :project_snapshots_per_project)
+          ),
+        named_versions:
+          usage_bucket(
+            Storyarn.Versioning.count_named_versions(project.id),
+            Plan.limit(plan, :named_versions_per_project)
+          )
+      },
+      workspace: %{
+        projects:
+          usage_bucket(
+            count_workspace_projects(workspace.id),
+            Plan.limit(plan, :projects_per_workspace)
+          ),
+        members:
+          usage_bucket(
+            count_unique_workspace_users(workspace.id),
+            Plan.limit(plan, :members_per_workspace)
+          ),
+        storage_bytes:
+          usage_bucket(
+            total_workspace_storage(workspace.id),
+            Plan.limit(plan, :storage_bytes_per_workspace)
+          )
+      },
+      item_breakdown: %{
+        sheets: count_active(Sheet, project.id),
+        flows: count_active(Flow, project.id),
+        scenes: count_active(Scene, project.id),
+        flow_nodes: count_nodes(project.id)
+      },
+      storage: %{
+        project_bytes: total_project_storage(project.id),
+        asset_count: count_assets(project.id)
+      }
+    }
+  end
+
+  @doc """
   Returns usage data for a workspace.
   """
   def usage(workspace) do
@@ -159,6 +214,20 @@ defmodule Storyarn.Billing.Limits do
   # ============================================================================
   # Private count helpers
   # ============================================================================
+
+  defp plan_summary(plan) do
+    %{
+      key: plan,
+      name: (Plan.get(plan) || %{})[:name] || plan
+    }
+  end
+
+  defp usage_bucket(used, limit) do
+    %{
+      used: used || 0,
+      limit: limit
+    }
+  end
 
   defp check_limit(resource, used, nil) do
     # Unknown plan/resource — default to blocking
@@ -241,5 +310,18 @@ defmodule Storyarn.Billing.Limits do
         select: coalesce(sum(a.size), 0)
       )
     )
+  end
+
+  defp total_project_storage(project_id) do
+    Repo.one(
+      from(a in Asset,
+        where: a.project_id == ^project_id,
+        select: coalesce(sum(a.size), 0)
+      )
+    )
+  end
+
+  defp count_assets(project_id) do
+    Repo.aggregate(from(a in Asset, where: a.project_id == ^project_id), :count)
   end
 end
