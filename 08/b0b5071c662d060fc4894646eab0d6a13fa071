@@ -1,0 +1,67 @@
+lib/storyarn_web/live/project_settings_live/version_control.ex
+  s_4009926a81b72f::t_87a31f89949061 6,132-133,149-156
+test/storyarn/analytics_test.exs
+  s_4009926a81b72f::t_b068b77aa6fd38 65-88
+lib/storyarn_web/live/scene_live/show.ex
+  s_4009926a81b72f::t_df2223d4ba26f5 26,672-673
+  s_4009926a81b72f::t_47f06d1a091d72 1767-1773
+lib/storyarn_web/live/scene_live/exploration_live.ex
+  s_4009926a81b72f::t_baf7488a823e86 23,187-193
+assets/js/utils/posthog.js
+  s_4009926a81b72f::t_3e52b7bd7e2fca 34,39-42
+lib/storyarn_web/live/flow_live/player_live.ex
+  s_4009926a81b72f::t_1adba7eb936809 122-125
+lib/storyarn_web/helpers/version_event_helpers.ex
+  s_4009926a81b72f::t_f42a7c6d921754 203
+  s_4009926a81b72f::t_3ee119c7a782ef 10,107-110,131-132,207-208,221-234
+  s_4009926a81b72f::t_9db3debaed7599 111-112
+assets/app/test/utils/posthog.test.ts
+  s_4009926a81b72f::t_463a0d0306b7ac 69-73
+lib/storyarn_web/live/flow_live/handlers/debug_session_handlers.ex
+  s_4009926a81b72f::t_7737f2f664b84e 12,189,202-206
+lib/storyarn/analytics.ex
+  s_4009926a81b72f::t_4591ca20a59a52 29
+  s_4009926a81b72f::t_8dbd90c52e279d 18-20,23-25,27-28,32-37
+  s_4009926a81b72f::t_9db3debaed7599 26
+lib/storyarn_web/live/sheet_live/handlers/block_handlers.ex
+  s_4009926a81b72f::t_71ac6ff77ef680 10,41-42,44-47
+  s_4009926a81b72f::t_e7ba2331b2b47c 26,40,43,260
+lib/storyarn_web/live/flow_live/show.ex
+  s_4009926a81b72f::t_2bb87a8f5165f6 1174-1180
+  s_4009926a81b72f::t_9e96e227e9675b 6,406-407
+  s_4009926a81b72f::t_ef6bdf37e0fdc6 1121-1123,1149-1156
+lib/storyarn_web/live/flow_live/helpers/node_helpers.ex
+  s_4009926a81b72f::t_f789ee422e4839 16,129,159-160,236-237,349-356
+lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex
+  s_4009926a81b72f::t_b7568383823c8e 21
+  s_4009926a81b72f::t_f4945ea1350246 726-728,752-756,829-834
+  s_4009926a81b72f::t_4054aad8d278dc 903-926
+lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex
+  s_4009926a81b72f::t_f863577688c2e9 187,194
+  s_4009926a81b72f::t_1f447897fb53b1 13,22,112-113,195,233-245
+  s_4009926a81b72f::t_ea3d1b6e249901 191
+lib/storyarn_web/live/sheet_live/show.ex
+  s_4009926a81b72f::t_9db3debaed7599 960
+  s_4009926a81b72f::t_07f5639ff1cd41 16,428,959,961-968
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "08b0b5071c662d060fc4894646eab0d6a13fa071",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
