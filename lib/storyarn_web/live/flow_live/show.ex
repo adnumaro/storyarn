@@ -3,6 +3,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   use StoryarnWeb, :live_view
 
+  alias Storyarn.Analytics
   alias Storyarn.Collaboration
   alias Storyarn.Collaboration.Presence
   alias Storyarn.Flows
@@ -402,6 +403,8 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("open_versions_panel", _params, socket) do
+    maybe_track_version_panel_opened(socket, "flow")
+
     socket =
       if is_nil(socket.assigns.history_data) do
         VersionHistoryHelpers.load_history_data(
@@ -1115,7 +1118,9 @@ defmodule StoryarnWeb.FlowLive.Show do
     ids = parse_node_ids(node_ids)
 
     case Flows.wrap_selection_in_sequence(socket.assigns.flow, ids, sequence_wrap_attrs(params)) do
-      {:ok, _sequence} ->
+      {:ok, sequence} ->
+        track_sequence_created_from_wrap(socket, sequence)
+
         flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
         flow_data = Flows.serialize_for_canvas(flow, project_variables: socket.assigns.project_variables)
 
@@ -1141,6 +1146,16 @@ defmodule StoryarnWeb.FlowLive.Show do
     end
   end
 
+  defp track_sequence_created_from_wrap(socket, sequence) do
+    Analytics.track(socket.assigns.current_scope, "flow node created", %{
+      creation_method: "wrap_selection",
+      flow_id: socket.assigns.flow.id,
+      has_parent: not is_nil(sequence.parent_id),
+      node_type: "sequence",
+      project_id: socket.assigns.project.id
+    })
+  end
+
   # Tree mutations (create_flow, create_child_flow, set_main_flow,
   # set_pending_delete_flow, confirm_delete_flow, delete_flow, move_to_parent)
   # now live in FlowSidebarLive — they never reach this LV because the tree
@@ -1154,6 +1169,15 @@ defmodule StoryarnWeb.FlowLive.Show do
       socket.assigns.project.id,
       socket.assigns.workspace.id
     )
+  end
+
+  defp maybe_track_version_panel_opened(socket, entity_type) do
+    if !socket.assigns[:versions_panel_open] do
+      Analytics.track(socket.assigns.current_scope, "version panel opened", %{
+        entity_type: entity_type,
+        project_id: socket.assigns.project.id
+      })
+    end
   end
 
   defp flow_version_config do

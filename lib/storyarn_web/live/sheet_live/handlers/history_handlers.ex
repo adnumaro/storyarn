@@ -10,6 +10,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
   import Phoenix.LiveView, only: [push_event: 3, push_navigate: 2, put_flash: 3]
   import StoryarnWeb.SheetLive.Helpers.HistoryDataHelpers
 
+  alias Storyarn.Analytics
   alias Storyarn.Sheets
   alias Storyarn.Versioning
   alias StoryarnWeb.Helpers.Authorize
@@ -18,6 +19,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
     case parse_version_number(version_number) do
       {:ok, number} ->
         %{workspace: workspace, project: project, sheet: sheet} = socket.assigns
+        track_version_event(socket, "version compared")
 
         compare_url =
           ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}/compare/#{number}"
@@ -107,6 +109,8 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
            description: description
          ) do
       {:ok, _version} ->
+        track_version_event(socket, "version created")
+
         {:noreply,
          socket
          |> load_history_data()
@@ -180,12 +184,15 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
 
   defp restore_version(socket, version, params, helpers) do
     sheet = socket.assigns.sheet
+    skip_pre_snapshot = params["skip_pre_snapshot"] in [true, "true"]
 
     case Versioning.restore_version("sheet", sheet, version,
            user_id: socket.assigns.current_scope.user.id,
-           skip_pre_snapshot: params["skip_pre_snapshot"] || false
+           skip_pre_snapshot: skip_pre_snapshot
          ) do
       {:ok, _updated_entity} ->
+        track_version_event(socket, "version restored", %{skip_pre_snapshot: skip_pre_snapshot})
+
         on_version_restored(socket, version, helpers)
 
       {:error, {:pre_restore_snapshot_failed, _}} ->
@@ -222,5 +229,19 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
        :info,
        dgettext("versioning", "Restored to version %{number}", number: version.version_number)
      )}
+  end
+
+  defp track_version_event(socket, event_name, extra \\ %{}) do
+    Analytics.track(
+      socket.assigns.current_scope,
+      event_name,
+      Map.merge(
+        %{
+          entity_type: "sheet",
+          project_id: socket.assigns.project.id
+        },
+        extra
+      )
+    )
   end
 end

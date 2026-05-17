@@ -119,7 +119,10 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
             |> assign(:current_scene_id, scene_id)
 
         if connected?(socket) do
-          Analytics.track(socket.assigns.current_scope, "flow player started", %{project_id: project.id})
+          Analytics.track(socket.assigns.current_scope, "flow player started", %{
+            flow_id: flow.id,
+            project_id: project.id
+          })
         end
 
         {:ok, socket, layout: false}

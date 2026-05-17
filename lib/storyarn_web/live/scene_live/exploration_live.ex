@@ -20,6 +20,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
       prepare_exploration_data_for_vue: 3
     ]
 
+  alias Storyarn.Analytics
   alias Storyarn.Flows
   alias Storyarn.Projects
   alias Storyarn.Scenes
@@ -182,6 +183,14 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
           |> assign(:ambient_timed_refs, %{})
           |> assign(:ambient_event_flows, [])
           |> maybe_start_ambient_flows(scene, existing_session)
+
+        if connected?(socket) do
+          Analytics.track(socket.assigns.current_scope, "scene exploration started", %{
+            has_saved_session: not is_nil(existing_session),
+            project_id: project.id,
+            scene_id: scene.id
+          })
+        end
 
         {:ok, socket, layout: false}
     end

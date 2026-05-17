@@ -18,6 +18,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   import StoryarnWeb.Helpers.SaveStatusTimer, only: [mark_saved: 1]
 
   alias Phoenix.LiveView.Socket
+  alias Storyarn.Analytics
   alias Storyarn.Assets
   alias Storyarn.Flows
   alias Storyarn.Flows.SequenceConfig
@@ -722,7 +723,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
          true <- is_integer(parsed_id),
          %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
          attrs = visual_layer_attrs_from_params(params),
-         {:ok, _layer} <- Flows.create_sequence_visual_layer(parsed_id, attrs) do
+         {:ok, layer} <- Flows.create_sequence_visual_layer(parsed_id, attrs) do
+      track_sequence_visual_layer(socket, "sequence visual layer created", parsed_id, layer, %{changed_asset: true})
+
       {:noreply,
        socket
        |> mark_saved()
@@ -746,7 +749,11 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
          %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
          layer when not is_nil(layer) <- Flows.get_sequence_visual_layer(parsed_id, parsed_layer_id),
          attrs = visual_layer_attrs_from_params(params),
-         {:ok, _layer} <- Flows.update_sequence_visual_layer(layer, attrs) do
+         {:ok, layer} <- Flows.update_sequence_visual_layer(layer, attrs) do
+      track_sequence_visual_layer(socket, "sequence visual layer updated", parsed_id, layer, %{
+        changed_asset: Map.has_key?(params, "asset_id")
+      })
+
       {:noreply,
        socket
        |> mark_saved()
@@ -819,7 +826,12 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
          true <- is_integer(parsed_id),
          %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
          attrs = track_attrs_from_params(params),
-         {:ok, _track} <- Flows.upsert_sequence_track(parsed_id, kind, attrs) do
+         {:ok, track} <- Flows.upsert_sequence_track(parsed_id, kind, attrs) do
+      track_sequence_audio(socket, parsed_id, track, %{
+        changed_asset: Map.has_key?(params, "asset_id"),
+        changed_volume: Map.has_key?(params, "volume")
+      })
+
       {:noreply,
        socket
        |> mark_saved()
@@ -887,6 +899,30 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   end
 
   defp parse_optional_int(_), do: :error
+
+  defp track_sequence_visual_layer(socket, event_name, sequence_id, layer, extra) do
+    Analytics.track(socket.assigns.current_scope, event_name, %{
+      changed_asset: extra[:changed_asset],
+      flow_id: socket.assigns.flow.id,
+      has_asset: not is_nil(layer.asset_id),
+      layer_kind: layer.kind,
+      project_id: socket.assigns.project.id,
+      sequence_id: sequence_id,
+      slot: layer.slot
+    })
+  end
+
+  defp track_sequence_audio(socket, sequence_id, track, extra) do
+    Analytics.track(socket.assigns.current_scope, "sequence track updated", %{
+      changed_asset: extra.changed_asset,
+      changed_volume: extra.changed_volume,
+      flow_id: socket.assigns.flow.id,
+      has_asset: not is_nil(track.asset_id),
+      project_id: socket.assigns.project.id,
+      sequence_id: sequence_id,
+      track_kind: track.kind
+    })
+  end
 
   @spec handle_update_node_data(map(), Socket.t()) ::
           {:noreply, Socket.t()}

@@ -66,6 +66,11 @@ describe("PostHog frontend utility", () => {
   it("uses path only as a private dedupe key so same-family navigation still counts", () => {
     expect(routeFamilyForPath("/workspaces/ws/projects/project/sheets/8")).toBe("sheets");
     expect(routeFamilyForPath("/workspaces/ws/projects/project/sheets/9")).toBe("sheets");
+    expect(routeFamilyForPath("/workspaces/ws/projects/project/flows/1/play")).toBe("flow_player");
+    expect(routeFamilyForPath("/workspaces/ws/projects/project/scenes/1/explore")).toBe("scene_exploration");
+    expect(routeFamilyForPath("/workspaces/ws/projects/project/settings/version-control")).toBe(
+      "project_version_control_settings",
+    );
     expect(pageviewKeyForPath("/workspaces/ws/projects/project/sheets/8")).not.toBe(
       pageviewKeyForPath("/workspaces/ws/projects/project/sheets/9"),
     );

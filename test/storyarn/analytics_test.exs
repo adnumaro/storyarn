@@ -62,6 +62,30 @@ defmodule Storyarn.AnalyticsTest do
     refute_receive {:analytics_capture, _payload}
   end
 
+  test "track supports product usage events without content properties" do
+    Analytics.track(%User{id: 42}, "flow node created", %{
+      content: "private dialogue",
+      creation_method: "create",
+      flow_id: 11,
+      has_parent: true,
+      node_type: "sequence",
+      project_id: 7,
+      slug: "private-slug"
+    })
+
+    assert_receive {:analytics_capture,
+                    %{
+                      event: "flow node created",
+                      properties: %{
+                        "creation_method" => "create",
+                        "flow_id" => 11,
+                        "has_parent" => true,
+                        "node_type" => "sequence",
+                        "project_id" => 7
+                      }
+                    }}
+  end
+
   test "identify_user excludes email and display name" do
     user = %User{
       id: 42,

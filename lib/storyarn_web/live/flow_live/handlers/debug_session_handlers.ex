@@ -9,6 +9,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
 
+  alias Storyarn.Analytics
   alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers
   alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
@@ -185,6 +186,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
         variables = VariableHelpers.build_variables(project.id)
         state = Flows.evaluator_init(variables, entry_node_id)
         state = %{state | current_flow_id: flow.id}
+        track_debug_started(socket, project, flow)
 
         {:noreply,
          socket
@@ -195,6 +197,13 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
          |> assign(:debug_connections, connections)
          |> DebugExecutionHandlers.push_debug_canvas(state)}
     end
+  end
+
+  defp track_debug_started(socket, project, flow) do
+    Analytics.track(socket.assigns.current_scope, "flow debug started", %{
+      flow_id: flow.id,
+      project_id: project.id
+    })
   end
 
   # ===========================================================================

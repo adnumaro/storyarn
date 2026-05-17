@@ -7,6 +7,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockHandlers do
 
   import Phoenix.LiveView, only: [put_flash: 3]
 
+  alias Storyarn.Analytics
   alias Storyarn.Sheets
   alias StoryarnWeb.Helpers.Authorize
 
@@ -22,6 +23,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockHandlers do
       case Sheets.create_block(socket.assigns.sheet, attrs) do
         {:ok, block} ->
           snapshot = helpers.block_to_snapshot.(block)
+          track_block_created(socket, block, params, "create")
 
           {:noreply,
            socket
@@ -33,6 +35,16 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockHandlers do
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create block."))}
       end
     end)
+  end
+
+  defp track_block_created(socket, block, params, creation_method) do
+    Analytics.track(socket.assigns.current_scope, "sheet block created", %{
+      block_type: block.type,
+      creation_method: creation_method,
+      project_id: socket.assigns.project.id,
+      scope: params["scope"],
+      sheet_id: socket.assigns.sheet.id
+    })
   end
 
   def handle_update_value(%{"id" => id, "value" => value}, socket, helpers) do
@@ -245,6 +257,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockHandlers do
     case Sheets.duplicate_block(block) do
       {:ok, new_block} ->
         snapshot = helpers.block_to_snapshot.(new_block)
+        track_block_created(socket, new_block, %{}, "duplicate")
 
         {:noreply,
          socket

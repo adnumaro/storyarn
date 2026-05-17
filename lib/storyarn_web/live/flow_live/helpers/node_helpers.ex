@@ -13,6 +13,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   import StoryarnWeb.Helpers.SaveStatusTimer, only: [mark_saved: 1]
 
   alias Phoenix.LiveView.Socket
+  alias Storyarn.Analytics
   alias Storyarn.Flows
   alias Storyarn.Flows.FlowNode
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
@@ -125,6 +126,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
     case Flows.create_sequence(socket.assigns.flow.id, attrs) do
       {:ok, node} ->
         node_data = sequence_node_data(node)
+        track_node_created(socket, node, opts, "create")
 
         {:noreply,
          socket
@@ -154,6 +156,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
 
     case Flows.create_node(socket.assigns.flow, attrs) do
       {:ok, node} ->
+        track_node_created(socket, node, opts, "create")
+
         node_data = %{
           id: node.id,
           type: node.type,
@@ -229,6 +233,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
 
     case Flows.create_node(socket.assigns.flow, attrs) do
       {:ok, new_node} ->
+        track_node_created(socket, new_node, [], "duplicate")
+
         node_data = %{
           id: new_node.id,
           type: new_node.type,
@@ -338,6 +344,16 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
       parent_id when is_integer(parent_id) -> Map.put(attrs, :parent_id, parent_id)
       _ -> attrs
     end
+  end
+
+  defp track_node_created(socket, node, opts, creation_method) do
+    Analytics.track(socket.assigns.current_scope, "flow node created", %{
+      creation_method: creation_method,
+      flow_id: socket.assigns.flow.id,
+      has_parent: not is_nil(node.parent_id || Keyword.get(opts, :parent_id)),
+      node_type: node.type,
+      project_id: socket.assigns.flow.project_id
+    })
   end
 
   # Resolves node data for canvas events (e.g., hub color name → hex, type warnings).

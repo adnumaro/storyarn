@@ -7,6 +7,7 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpers do
 
   import Phoenix.LiveView, only: [push_event: 3, push_navigate: 2, put_flash: 3]
 
+  alias Storyarn.Analytics
   alias Storyarn.Versioning
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Helpers.VersionHistoryHelpers
@@ -103,8 +104,12 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpers do
 
   def handle_compare(%{"version_number" => version_number}, socket, config) do
     case VersionHistoryHelpers.parse_version_number(version_number) do
-      {:ok, number} -> {:noreply, push_navigate(socket, to: config.compare_path.(socket, number))}
-      _ -> {:noreply, socket}
+      {:ok, number} ->
+        track_version_event(socket, config, "version compared")
+        {:noreply, push_navigate(socket, to: config.compare_path.(socket, number))}
+
+      _ ->
+        {:noreply, socket}
     end
   end
 
@@ -123,6 +128,8 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpers do
            description: description
          ) do
       {:ok, _version} ->
+        track_version_event(socket, config, "version created")
+
         {:noreply,
          socket
          |> config.reload_history.()
@@ -193,10 +200,12 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpers do
   end
 
   defp restore_version(socket, config, version, params) do
-    skip = params["skip_pre_snapshot"] == true
+    skip = params["skip_pre_snapshot"] in [true, "true"]
 
     case Versioning.restore_version(config.entity_type, entity(socket, config), version, skip_pre_snapshot: skip) do
       {:ok, _} ->
+        track_version_event(socket, config, "version restored", %{skip_pre_snapshot: skip})
+
         {:noreply,
          socket
          |> push_event("version_restored", %{})
@@ -209,4 +218,18 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpers do
   end
 
   defp entity(socket, config), do: Map.fetch!(socket.assigns, config.entity_key)
+
+  defp track_version_event(socket, config, event_name, extra \\ %{}) do
+    Analytics.track(
+      socket.assigns.current_scope,
+      event_name,
+      Map.merge(
+        %{
+          entity_type: config.entity_type,
+          project_id: socket.assigns.project.id
+        },
+        extra
+      )
+    )
+  end
 end

@@ -3,6 +3,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
 
   use StoryarnWeb, :live_view
 
+  alias Storyarn.Analytics
   alias Storyarn.Billing
   alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
@@ -128,6 +129,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
 
       case Projects.update_project(socket.assigns.project, attrs) do
         {:ok, project} ->
+          track_version_control_settings(socket, project, attrs)
+
           {:noreply,
            socket
            |> assign(:project, project)
@@ -141,6 +144,16 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
           {:noreply, put_flash(socket, :error, dgettext("projects", "Failed to save settings."))}
       end
     end)
+  end
+
+  defp track_version_control_settings(socket, project, attrs) do
+    Analytics.track(socket.assigns.current_scope, "version control settings updated", %{
+      auto_snapshots_enabled: attrs.auto_snapshots_enabled,
+      auto_version_flows: attrs.auto_version_flows,
+      auto_version_scenes: attrs.auto_version_scenes,
+      auto_version_sheets: attrs.auto_version_sheets,
+      project_id: project.id
+    })
   end
 
   # ===========================================================================

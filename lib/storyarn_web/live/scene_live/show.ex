@@ -23,6 +23,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   import StoryarnWeb.SceneLive.Helpers.SceneHelpers
   import StoryarnWeb.SceneLive.Helpers.SceneSerializer
 
+  alias Storyarn.Analytics
   alias Storyarn.Assets
   alias Storyarn.Collaboration
   alias Storyarn.Collaboration.Presence
@@ -668,6 +669,8 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   def handle_event("open_versions_panel", _params, socket) do
+    maybe_track_version_panel_opened(socket, "scene")
+
     socket =
       if is_nil(socket.assigns.history_data) do
         VersionHistoryHelpers.load_history_data(
@@ -1759,6 +1762,15 @@ defmodule StoryarnWeb.SceneLive.Show do
       socket.assigns.project.id,
       socket.assigns.workspace.id
     )
+  end
+
+  defp maybe_track_version_panel_opened(socket, entity_type) do
+    if socket.assigns[:right_panel] != :versions do
+      Analytics.track(socket.assigns.current_scope, "version panel opened", %{
+        entity_type: entity_type,
+        project_id: socket.assigns.project.id
+      })
+    end
   end
 
   defp scene_version_config do

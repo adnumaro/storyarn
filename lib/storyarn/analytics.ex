@@ -15,11 +15,26 @@ defmodule Storyarn.Analytics do
 
   @event_property_keys %{
     "asset uploaded" => MapSet.new(~w(asset_type content_type created_variant project_id purpose size_bucket)),
-    "flow player started" => MapSet.new(~w(project_id)),
+    "flow debug started" => MapSet.new(~w(flow_id project_id)),
+    "flow node created" => MapSet.new(~w(creation_method flow_id has_parent node_type project_id)),
+    "flow player started" => MapSet.new(~w(flow_id project_id)),
     "page viewed" => MapSet.new(~w(route_family)),
     "project created" => MapSet.new(~w(project_id workspace_id)),
+    "scene exploration started" => MapSet.new(~w(has_saved_session project_id scene_id)),
+    "sequence track updated" =>
+      MapSet.new(~w(changed_asset changed_volume flow_id has_asset project_id sequence_id track_kind)),
+    "sequence visual layer created" => MapSet.new(~w(flow_id has_asset layer_kind project_id sequence_id slot)),
+    "sequence visual layer updated" =>
+      MapSet.new(~w(changed_asset flow_id has_asset layer_kind project_id sequence_id slot)),
+    "sheet block created" => MapSet.new(~w(block_type creation_method project_id scope sheet_id)),
     "user logged in" => MapSet.new(~w(auth_method)),
     "user signed up" => MapSet.new(~w(auth_method)),
+    "version compared" => MapSet.new(~w(entity_type project_id)),
+    "version control settings updated" =>
+      MapSet.new(~w(auto_snapshots_enabled auto_version_flows auto_version_scenes auto_version_sheets project_id)),
+    "version created" => MapSet.new(~w(entity_type project_id)),
+    "version panel opened" => MapSet.new(~w(entity_type project_id)),
+    "version restored" => MapSet.new(~w(entity_type project_id skip_pre_snapshot)),
     "workspace created" => MapSet.new(~w(workspace_id))
   }
 

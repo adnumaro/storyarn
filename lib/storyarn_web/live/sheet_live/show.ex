@@ -13,6 +13,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   import StoryarnWeb.SheetLive.Helpers.PropsSerializer
   import StoryarnWeb.SheetLive.Helpers.ReferencesDataHelpers
 
+  alias Storyarn.Analytics
   alias Storyarn.Collaboration
   alias Storyarn.Collaboration.Presence
   alias Storyarn.Shared.MapUtils
@@ -424,6 +425,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   def handle_event("switch_tab", %{"tab" => tab}, socket) when tab in @sheet_tabs do
+    track_sheet_history_opened(socket, tab)
     {:noreply, maybe_switch_tab(socket, tab)}
   end
 
@@ -953,6 +955,17 @@ defmodule StoryarnWeb.SheetLive.Show do
     |> assign(:current_tab, tab)
     |> maybe_load_tab_data(tab)
   end
+
+  defp track_sheet_history_opened(socket, "history") do
+    if !(socket.assigns.current_tab == "history" or socket.assigns.compact) do
+      Analytics.track(socket.assigns.current_scope, "version panel opened", %{
+        entity_type: "sheet",
+        project_id: socket.assigns.project.id
+      })
+    end
+  end
+
+  defp track_sheet_history_opened(_socket, _tab), do: :ok
 
   defp maybe_load_tab_data(socket, "references") do
     maybe_load_assign(socket, :references_data, &load_references_data/1)
