@@ -281,8 +281,18 @@ defmodule StoryarnWeb.UserAuth do
         @default_locale
 
     Gettext.put_locale(Storyarn.Gettext, locale)
+    put_error_tracking_context(user)
 
     Phoenix.Component.assign(socket, :locale, locale)
+  end
+
+  defp put_error_tracking_context(%Accounts.User{id: user_id}) do
+    Logger.metadata(user_id: user_id)
+    PostHog.set_context(%{distinct_id: "user:#{user_id}"})
+  end
+
+  defp put_error_tracking_context(_user) do
+    Logger.metadata(user_id: nil)
   end
 
   defp load_workspaces(socket) do

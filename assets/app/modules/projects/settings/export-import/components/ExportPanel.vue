@@ -8,6 +8,7 @@ import { Label } from "@components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group";
 import { useI18n } from "vue-i18n";
 import { useLive } from "@shared/composables/useLive";
+import { capture } from "@/js/utils/posthog";
 
 const { t } = useI18n();
 
@@ -96,6 +97,14 @@ function toggleOption(option: string) {
 
 function validateExport() {
   live.pushEvent("validate_export", {});
+}
+
+function trackExport() {
+  capture("project exported", {
+    format: formatConfig.selected,
+    asset_mode: options.assetMode,
+    section_count: sectionConfig.selected.length,
+  });
 }
 
 function validationStatusLabel(status: string) {
@@ -211,7 +220,7 @@ function validationBadgeVariant(status: string) {
       </Button>
 
       <Button size="sm" as-child>
-        <a :href="exportDownloadUrl" data-live-link-exempt="download">
+        <a :href="exportDownloadUrl" data-live-link-exempt="download" @click="trackExport">
           <Download class="size-4" />
           {{ $t("project_settings.export.download", { ext: formatConfig.extension }) }}
         </a>

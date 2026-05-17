@@ -28,6 +28,14 @@ config :phoenix_test,
     timeout: to_timeout(second: 10)
   ]
 
+config :posthog,
+  enable: true,
+  enable_error_tracking: false,
+  api_host: "https://us.i.posthog.com",
+  in_app_otp_apps: [:storyarn],
+  test_mode: true,
+  api_key: "phc_test"
+
 # Oban: inline mode for testing
 config :storyarn, Oban, testing: :manual
 

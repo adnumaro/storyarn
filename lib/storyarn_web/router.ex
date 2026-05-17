@@ -7,16 +7,22 @@ defmodule StoryarnWeb.Router do
                     else: ""
                   )
 
-  @csp_policy "default-src 'self'; " <>
-                "script-src 'self'#{@csp_dev_extras}; " <>
-                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com#{@csp_dev_extras}; " <>
-                "img-src 'self' data: blob: https:; " <>
-                "font-src 'self' data: https://fonts.gstatic.com#{@csp_dev_extras}; " <>
-                "connect-src 'self' ws: wss: https://*.ingest.sentry.io https://*.ingest.us.sentry.io#{@csp_dev_extras}; " <>
-                "frame-src 'self'; " <>
-                "frame-ancestors 'self'; " <>
-                "base-uri 'self'; " <>
-                "form-action 'self'"
+  @sentry_connect_src "https://*.ingest.sentry.io https://*.ingest.us.sentry.io"
+  @posthog_default_connect_src "https://*.posthog.com https://*.i.posthog.com " <>
+                                 "https://us.i.posthog.com https://eu.i.posthog.com"
+
+  defp csp_policy do
+    "default-src 'self'; " <>
+      "script-src 'self'#{@csp_dev_extras}; " <>
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com#{@csp_dev_extras}; " <>
+      "img-src 'self' data: blob: https:; " <>
+      "font-src 'self' data: https://fonts.gstatic.com#{@csp_dev_extras}; " <>
+      "connect-src 'self' ws: wss: #{@sentry_connect_src} #{posthog_connect_src()}#{@csp_dev_extras}; " <>
+      "frame-src 'self'; " <>
+      "frame-ancestors 'self'; " <>
+      "base-uri 'self'; " <>
+      "form-action 'self'"
+  end
 
   @user_auth_hook Module.concat(["StoryarnWeb", "UserAuth"])
 
@@ -26,8 +32,10 @@ defmodule StoryarnWeb.Router do
     plug :fetch_live_flash
     plug :put_root_layout, html: {StoryarnWeb.Layouts, :root}
     plug :protect_from_forgery
-    plug :put_secure_browser_headers, %{"content-security-policy" => @csp_policy}
+    plug :put_secure_browser_headers
+    plug :put_content_security_policy
     plug :fetch_current_scope_for_user
+    plug :put_posthog_user_context
     plug StoryarnWeb.Plugs.Locale
   end
 
@@ -38,6 +46,50 @@ defmodule StoryarnWeb.Router do
   pipeline :sudo_return_to do
     plug :store_sudo_return_to
   end
+
+  defp put_content_security_policy(conn, _opts) do
+    Plug.Conn.put_resp_header(conn, "content-security-policy", csp_policy())
+  end
+
+  defp put_posthog_user_context(%{assigns: %{current_scope: %{user: %{id: user_id}}}} = conn, _opts) do
+    Logger.metadata(user_id: user_id)
+    PostHog.set_context(%{distinct_id: "user:#{user_id}"})
+    conn
+  end
+
+  defp put_posthog_user_context(conn, _opts) do
+    Logger.metadata(user_id: nil)
+    conn
+  end
+
+  defp posthog_connect_src do
+    posthog_host =
+      :posthog
+      |> Application.get_env(:api_host)
+      |> csp_origin()
+
+    [@posthog_default_connect_src, posthog_host]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join(" ")
+  end
+
+  defp csp_origin(url) when is_binary(url) do
+    case URI.parse(url) do
+      %URI{scheme: scheme, host: host, port: port} when scheme in ["http", "https"] and is_binary(host) ->
+        port_suffix = csp_port_suffix(scheme, port)
+        "#{scheme}://#{host}#{port_suffix}"
+
+      _ ->
+        nil
+    end
+  end
+
+  defp csp_origin(_url), do: nil
+
+  defp csp_port_suffix("http", 80), do: ""
+  defp csp_port_suffix("https", 443), do: ""
+  defp csp_port_suffix(_scheme, nil), do: ""
+  defp csp_port_suffix(_scheme, port), do: ":#{port}"
 
   scope "/", StoryarnWeb do
     pipe_through :browser

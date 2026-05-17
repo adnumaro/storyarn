@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { Footprints, MousePointerClick, Variable, RotateCcw, ArrowLeft } from "lucide-vue-next";
+import { onMounted } from "vue";
 import { Button } from "@components/ui/button";
 import { Badge } from "@components/ui/badge";
+import { capture } from "@/js/utils/posthog";
 
 export interface OutcomeData {
   type: "outcome";
@@ -21,6 +23,10 @@ const { slide, editorUrl } = defineProps<{
 const emit = defineEmits<{
   restart: [];
 }>();
+
+onMounted(() => {
+  capture("flow player completed", { step_count: slide.step_count, choices_made: slide.choices_made });
+});
 </script>
 
 <template>

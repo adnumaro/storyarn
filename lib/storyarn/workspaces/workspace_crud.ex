@@ -5,6 +5,7 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.Accounts.User
+  alias Storyarn.Analytics
   alias Storyarn.Billing
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
@@ -129,13 +130,23 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
   end
 
   defp do_create_workspace_with_owner(user, attrs) do
-    Repo.transact(fn ->
-      with {:ok, workspace} <- insert_workspace(user, attrs),
-           {:ok, _membership} <- create_owner_membership(workspace, user),
-           {:ok, _subscription} <- Billing.create_subscription(workspace) do
+    result =
+      Repo.transact(fn ->
+        with {:ok, workspace} <- insert_workspace(user, attrs),
+             {:ok, _membership} <- create_owner_membership(workspace, user),
+             {:ok, _subscription} <- Billing.create_subscription(workspace) do
+          {:ok, workspace}
+        end
+      end)
+
+    case result do
+      {:ok, workspace} ->
+        Analytics.track(user, "workspace created", %{workspace_id: workspace.id})
         {:ok, workspace}
-      end
-    end)
+
+      error ->
+        error
+    end
   end
 
   @doc """

@@ -99,6 +99,7 @@ defmodule Storyarn.MixProject do
 
       # Error tracking
       {:sentry, "~> 12.0"},
+      {:posthog, "~> 2.0"},
       {:hackney, "~> 1.8"},
 
       # Email templates (MJML → HTML via Rust NIF)

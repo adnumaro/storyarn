@@ -5,6 +5,7 @@ defmodule Storyarn.Accounts.Registration do
 
   alias Storyarn.Accounts.User
   alias Storyarn.Accounts.UserToken
+  alias Storyarn.Analytics
   alias Storyarn.Repo
   alias Storyarn.Workspaces
 
@@ -65,15 +66,26 @@ defmodule Storyarn.Accounts.Registration do
   Completes the user's registration by setting their password and consuming the invite token.
   """
   def complete_registration(%User{} = user, token_record, attrs) do
-    Repo.transact(fn ->
-      user_changeset = User.password_changeset(user, attrs, hash_password: true)
+    result =
+      Repo.transact(fn ->
+        user_changeset = User.password_changeset(user, attrs, hash_password: true)
 
-      with {:ok, updated_user} <- Repo.update(user_changeset) do
-        # Consume the token immediately
-        Repo.delete!(token_record)
+        with {:ok, updated_user} <- Repo.update(user_changeset) do
+          # Consume the token immediately
+          Repo.delete!(token_record)
+          {:ok, updated_user}
+        end
+      end)
+
+    case result do
+      {:ok, updated_user} ->
+        Analytics.identify_user(updated_user)
+        Analytics.track(updated_user, "user signed up", %{auth_method: "invite"})
         {:ok, updated_user}
-      end
-    end)
+
+      error ->
+        error
+    end
   end
 
   @doc """

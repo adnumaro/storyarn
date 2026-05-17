@@ -4,6 +4,7 @@ defmodule Storyarn.Projects.ProjectCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Accounts.Scope
+  alias Storyarn.Analytics
   alias Storyarn.Billing
   alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.Project
@@ -98,12 +99,26 @@ defmodule Storyarn.Projects.ProjectCrud do
   end
 
   defp do_create_project(user, attrs) do
-    Repo.transact(fn ->
-      with {:ok, project} <- insert_project(user, attrs),
-           {:ok, _membership} <- create_owner_membership(project, user) do
+    result =
+      Repo.transact(fn ->
+        with {:ok, project} <- insert_project(user, attrs),
+             {:ok, _membership} <- create_owner_membership(project, user) do
+          {:ok, project}
+        end
+      end)
+
+    case result do
+      {:ok, project} ->
+        Analytics.track(user, "project created", %{
+          project_id: project.id,
+          workspace_id: project.workspace_id
+        })
+
         {:ok, project}
-      end
-    end)
+
+      error ->
+        error
+    end
   end
 
   @doc """

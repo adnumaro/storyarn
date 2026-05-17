@@ -29,7 +29,61 @@ if admin_email = System.get_env("ADMIN_EMAIL") do
   config :storyarn, :admin_email, admin_email
 end
 
+posthog_dotenv =
+  if config_env() == :dev and File.exists?(".env") do
+    ".env"
+    |> File.stream!()
+    |> Enum.reduce(%{}, fn line, env ->
+      line = String.trim(line)
+
+      case String.split(line, "=", parts: 2) do
+        ["POSTHOG" <> _ = key, value] when key != "" ->
+          Map.put(env, key, value |> String.trim() |> String.trim(~s(")) |> String.trim("'"))
+
+        _ ->
+          env
+      end
+    end)
+  else
+    %{}
+  end
+
+posthog_env = fn key, default ->
+  System.get_env(key) || Map.get(posthog_dotenv, key) || default
+end
+
 config :storyarn, :contact_email, System.get_env("CONTACT_EMAIL") || "hello@storyarn.com"
+
+if config_env() != :test do
+  posthog_api_key = posthog_env.("POSTHOG_PROJECT_API_KEY", nil)
+  posthog_enabled? = posthog_env.("POSTHOG_ENABLED", nil) in ~w(true 1)
+  posthog_configured? = posthog_enabled? and is_binary(posthog_api_key) and posthog_api_key != ""
+  posthog_frontend_enabled? = posthog_env.("POSTHOG_FRONTEND_ENABLED", "true") in ~w(true 1)
+  posthog_error_tracking_enabled? = posthog_env.("POSTHOG_ERROR_TRACKING_ENABLED", "true") in ~w(true 1)
+
+  posthog_frontend_error_tracking_enabled? =
+    posthog_env.(
+      "POSTHOG_FRONTEND_ERROR_TRACKING_ENABLED",
+      if(posthog_error_tracking_enabled?, do: "true", else: "false")
+    ) in ~w(true 1)
+
+  posthog_host = posthog_env.("POSTHOG_HOST", "https://us.i.posthog.com")
+
+  config :posthog,
+    enable: posthog_configured?,
+    enable_error_tracking: posthog_configured? and posthog_error_tracking_enabled?,
+    api_host: posthog_host,
+    api_key: posthog_api_key || "",
+    capture_level: :error,
+    enable_source_code_context: true,
+    global_properties: %{environment: to_string(config_env())},
+    in_app_otp_apps: [:storyarn],
+    metadata: [:request_id, :user_id]
+
+  config :storyarn, :posthog_frontend,
+    frontend_enabled: posthog_configured? and posthog_frontend_enabled?,
+    error_tracking_enabled: posthog_configured? and posthog_frontend_enabled? and posthog_frontend_error_tracking_enabled?
+end
 
 # Sentry error tracking
 if sentry_dsn = System.get_env("SENTRY_DSN") do

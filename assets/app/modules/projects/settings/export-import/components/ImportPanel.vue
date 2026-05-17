@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useLiveUpload, type UploadConfig } from "live_vue";
 import { AlertTriangle, CheckCircle, Eye, Lock, Upload } from "lucide-vue-next";
-import { computed, toRef } from "vue";
+import { computed, toRef, watch } from "vue";
 import { Button } from "@components/ui/button";
 import { Label } from "@components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group";
@@ -15,6 +15,7 @@ import {
 } from "@components/ui/table";
 import { useI18n } from "vue-i18n";
 import { useLive } from "@shared/composables/useLive";
+import { capture } from "@/js/utils/posthog";
 
 const { t } = useI18n();
 
@@ -107,6 +108,15 @@ const importResultRows = computed(() => {
       !(typeof r.items === "object" && Object.keys(r.items).length === 0),
   );
 });
+
+watch(
+  () => importState.step,
+  (step) => {
+    if (step === "done") {
+      capture("project imported", { has_conflicts: importState.preview?.has_conflicts ?? false });
+    }
+  },
+);
 
 // --- Event handlers ---
 function executeImport() {

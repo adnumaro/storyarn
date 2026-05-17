@@ -7,6 +7,7 @@ defmodule StoryarnWeb.Layouts do
   use Gettext, backend: Storyarn.Gettext
 
   alias Phoenix.LiveView.JS
+  alias Storyarn.Analytics
 
   # Embed all files in layouts/* within this module.
   # The default root.html.heex file contains the HTML
@@ -74,4 +75,22 @@ defmodule StoryarnWeb.Layouts do
       reconnecting: gettext("Attempting to reconnect")
     }
   end
+
+  def posthog_frontend_config(assigns) do
+    assigns
+    |> current_scope_from_assigns()
+    |> Analytics.frontend_config()
+  end
+
+  defp current_scope_from_assigns(%{current_scope: current_scope}), do: current_scope
+
+  defp current_scope_from_assigns(%{conn: %{assigns: %{current_scope: current_scope}}}) do
+    current_scope
+  end
+
+  defp current_scope_from_assigns(%{socket: %{assigns: %{current_scope: current_scope}}}) do
+    current_scope
+  end
+
+  defp current_scope_from_assigns(_assigns), do: nil
 end

@@ -13,6 +13,24 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content={get_csrf_token()} />
+    <%= if posthog = posthog_frontend_config(assigns) do %>
+      <meta name="posthog-enabled" content="true" />
+      <meta name="posthog-key" content={posthog.api_key} />
+      <meta name="posthog-host" content={posthog.host} />
+      <meta
+        name="posthog-error-tracking-enabled"
+        content={to_string(posthog.error_tracking_enabled)}
+      />
+      <%= if posthog.distinct_id do %>
+        <meta name="posthog-user-id" content={posthog.distinct_id} />
+      <% end %>
+      <%= if posthog.user_locale do %>
+        <meta name="posthog-user-locale" content={posthog.user_locale} />
+      <% end %>
+      <%= if is_boolean(posthog.user_super_admin) do %>
+        <meta name="posthog-user-super-admin" content={to_string(posthog.user_super_admin)} />
+      <% end %>
+    <% end %>
     <link rel="icon" href={~p"/images/logos/logo-white-32.png"} type="image/png" sizes="32x32" />
     <.live_title default="Storyarn" suffix=" · Storyarn">
       {assigns[:page_title]}

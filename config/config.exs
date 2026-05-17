@@ -25,7 +25,7 @@ config :live_vue,
 # Configures Elixir's Logger
 config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",
-  metadata: [:request_id]
+  metadata: [:request_id, :user_id]
 
 # Filter sensitive parameters from logs
 config :phoenix, :filter_parameters, ["password", "secret", "token", "api_key", "_csrf_token"]
@@ -40,6 +40,13 @@ config :phoenix_vite, PhoenixVite.Npm,
     cd: Path.expand("..", __DIR__),
     env: %{"MIX_BUILD_PATH" => Mix.Project.build_path()}
   ]
+
+# PostHog product analytics and error tracking are enabled only from runtime
+# config once a project API key is present.
+config :posthog,
+  enable: false,
+  enable_error_tracking: false,
+  in_app_otp_apps: [:storyarn]
 
 # Sentry error tracking (DSN configured in runtime.exs for production)
 config :sentry,
@@ -104,6 +111,13 @@ config :storyarn, :admin_email, "adan@storyarn.com"
 
 # Email sender configuration (name and email address for outgoing emails)
 config :storyarn, :mailer_sender, {"Storyarn", "noreply@storyarn.com"}
+
+# Frontend PostHog boot is optional. The SDK config above remains the source for
+# api_host/api_key; this only controls whether root metadata initializes the
+# browser client.
+config :storyarn, :posthog_frontend,
+  frontend_enabled: false,
+  error_tracking_enabled: false
 
 config :storyarn, :scopes,
   user: [

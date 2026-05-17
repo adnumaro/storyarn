@@ -10,6 +10,7 @@ import { Socket } from "phoenix";
 import { LiveSocket } from "phoenix_live_view";
 import topbar from "topbar";
 import liveVueApp from "../app";
+import { initPostHog } from "./utils/posthog";
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
 
@@ -48,6 +49,8 @@ window.addEventListener("phx:set-locale", (event) => {
     document.documentElement.lang = locale;
   }
 });
+
+initPostHog();
 
 // Native Modals
 window.addEventListener("phx:show-modal", (e) => {

@@ -11,6 +11,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
 
   import StoryarnWeb.Layouts, only: [flash_group: 1]
 
+  alias Storyarn.Analytics
   alias Storyarn.Flows
   alias Storyarn.Projects
   alias Storyarn.Scenes
@@ -116,6 +117,10 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
             |> assign(:can_go_back, can_go_back?(engine_state, nodes_map))
             |> assign(:scene_backdrop, scene_backdrop)
             |> assign(:current_scene_id, scene_id)
+
+        if connected?(socket) do
+          Analytics.track(socket.assigns.current_scope, "flow player started", %{project_id: project.id})
+        end
 
         {:ok, socket, layout: false}
     end

@@ -56,6 +56,7 @@
     "phoenix_html": "file:deps/phoenix_html",
     "phoenix_live_view": "file:deps/phoenix_live_view",
     "phoenix_vite": "file:deps/phoenix_vite",
+    "posthog-js": "^1.373.5",
     "reka-ui": "^2.9.7",
     "rete": "^2.0.6",
     "rete-area-plugin": "^2.1.5",

@@ -9,6 +9,7 @@ defmodule Storyarn.Assets do
   import Ecto.Query, warn: false
 
   alias Storyarn.Accounts.User
+  alias Storyarn.Analytics
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.ImageProcessor
@@ -159,6 +160,7 @@ defmodule Storyarn.Assets do
     %Asset{project_id: project.id, uploaded_by_id: user.id}
     |> Asset.create_changeset(attrs)
     |> Repo.insert()
+    |> track_asset_created(user, attrs)
   end
 
   @doc """
@@ -169,6 +171,7 @@ defmodule Storyarn.Assets do
     %Asset{project_id: project.id}
     |> Asset.create_changeset(attrs)
     |> Repo.insert()
+    |> track_asset_created(nil, attrs)
   end
 
   @doc """
@@ -831,7 +834,10 @@ defmodule Storyarn.Assets do
         link_variant_to_original(original_asset, variant)
 
       {:error, reason} ->
-        Logger.warning("[ImageOptimization] Failed to upload variant for asset #{original_asset.id}: #{inspect(reason)}")
+        Logger.warning(
+          "[ImageOptimization] Failed to upload variant for asset #{original_asset.id}: " <>
+            inspect(reason)
+        )
 
         {:ok, original_asset}
     end
@@ -875,6 +881,49 @@ defmodule Storyarn.Assets do
 
   defp do_create_asset(project, nil, attrs), do: create_asset(project, attrs)
   defp do_create_asset(project, user, attrs), do: create_asset(project, user, attrs)
+
+  defp track_asset_created({:ok, asset}, user, attrs) do
+    properties = asset_analytics_properties(asset, attrs)
+
+    case user do
+      %User{} -> Analytics.track(user, "asset uploaded", properties)
+      _ -> Analytics.track_system("asset uploaded", properties)
+    end
+
+    {:ok, asset}
+  end
+
+  defp track_asset_created(result, _user, _attrs), do: result
+
+  defp asset_analytics_properties(asset, attrs) do
+    metadata = asset.metadata || %{}
+
+    %{
+      asset_type: asset_type_for_content_type(asset.content_type),
+      content_type: asset.content_type,
+      created_variant: metadata["is_variant"] == true,
+      project_id: asset.project_id,
+      purpose: analytics_value(Map.get(attrs, :purpose) || Map.get(attrs, "purpose")),
+      size_bucket: size_bucket(asset.size)
+    }
+  end
+
+  defp asset_type_for_content_type(content_type) when is_binary(content_type) do
+    content_type
+    |> String.split("/", parts: 2)
+    |> List.first()
+  end
+
+  defp asset_type_for_content_type(_content_type), do: nil
+
+  defp size_bucket(size) when is_integer(size) and size < 100 * 1024, do: "under_100kb"
+  defp size_bucket(size) when is_integer(size) and size < 1024 * 1024, do: "100kb_to_1mb"
+  defp size_bucket(size) when is_integer(size) and size < 10 * 1024 * 1024, do: "1mb_to_10mb"
+  defp size_bucket(size) when is_integer(size), do: "over_10mb"
+  defp size_bucket(_size), do: nil
+
+  defp analytics_value(value) when is_atom(value), do: Atom.to_string(value)
+  defp analytics_value(value), do: value
 
   defp extract_image_metadata(path, content_type) do
     if String.starts_with?(content_type, "image/") and ImageProcessor.available?() do

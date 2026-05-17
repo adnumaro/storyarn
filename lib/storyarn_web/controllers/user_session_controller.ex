@@ -3,6 +3,7 @@ defmodule StoryarnWeb.UserSessionController do
   use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Accounts
+  alias Storyarn.Analytics
   alias Storyarn.RateLimiter
   alias StoryarnWeb.UserAuth
 
@@ -29,6 +30,9 @@ defmodule StoryarnWeb.UserSessionController do
     case RateLimiter.check_login(ip_address) do
       :ok ->
         if user = Accounts.get_user_by_email_and_password(email, password) do
+          Analytics.identify_user(user)
+          Analytics.track(user, "user logged in", %{auth_method: "password"})
+
           conn
           |> put_flash(:info, info)
           |> UserAuth.log_in_user(user, user_params)

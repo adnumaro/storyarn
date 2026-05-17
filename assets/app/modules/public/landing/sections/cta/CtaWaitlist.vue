@@ -5,6 +5,7 @@ import { ref } from "vue";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { useRevealOnScroll } from "../../composables/useRevealOnScroll";
+import { capture } from "@/js/utils/posthog";
 
 const live = useLiveVue();
 const email = ref("");
@@ -16,6 +17,7 @@ async function handleSubmit() {
   if (!email.value || submitting.value) return;
   submitting.value = true;
   await live.pushEvent("join_waitlist", { email: email.value });
+  capture("waitlist joined", {});
   email.value = "";
   submitting.value = false;
 }
