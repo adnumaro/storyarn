@@ -134,6 +134,9 @@
       "desc": "Estamos incorporando a un pequeño grupo de diseñadores narrativos y estudios de juegos. Únete a la lista de espera — te contactaremos cuando tu plaza esté disponible.",
       "placeholder": "tu{'@'}estudio.com",
       "btn": "Unirse a la lista de espera",
+      "submitting": "Enviando...",
+      "success": "Ya estás en la lista. Te avisaremos cuando tu plaza esté disponible.",
+      "error": "No se ha podido enviar. Inténtalo de nuevo.",
       "footer": "Sin spam. Solo te escribiremos cuando sea el momento."
     },
     "footer": {

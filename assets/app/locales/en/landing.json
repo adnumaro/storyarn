@@ -134,6 +134,9 @@
       "desc": "We are onboarding a small group of narrative designers and game studios. Join the waitlist — we'll contact you when your slot becomes available.",
       "placeholder": "you{'@'}studio.com",
       "btn": "Join the waitlist",
+      "submitting": "Sending...",
+      "success": "You're on the list. We'll reach out when your spot is ready.",
+      "error": "We couldn't submit this. Try again.",
       "footer": "No spam. We'll only write when the time comes."
     },
     "footer": {

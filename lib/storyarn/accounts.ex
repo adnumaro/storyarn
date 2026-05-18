@@ -276,4 +276,22 @@ defmodule Storyarn.Accounts do
   def notify_admin_waitlist_signup(email, signup_info \\ %{}) do
     UserNotifier.deliver_admin_waitlist_notification(email, signup_info)
   end
+
+  @doc """
+  Notifies the admin about a new waitlist signup without blocking the caller.
+  """
+  def notify_admin_waitlist_signup_async(email, signup_info \\ %{}) do
+    case Process.whereis(Storyarn.TaskSupervisor) do
+      nil ->
+        notify_admin_waitlist_signup(email, signup_info)
+        :ok
+
+      _pid ->
+        Task.Supervisor.start_child(Storyarn.TaskSupervisor, fn ->
+          notify_admin_waitlist_signup(email, signup_info)
+        end)
+
+        :ok
+    end
+  end
 end

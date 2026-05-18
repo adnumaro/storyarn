@@ -2,24 +2,55 @@
 import { useLiveVue } from "live_vue";
 import { ArrowRight } from "lucide-vue-next";
 import { ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { useRevealOnScroll } from "../../composables/useRevealOnScroll";
 import { capture } from "@/js/utils/posthog";
 
+interface WaitlistReply {
+  status?: "ok" | "error";
+  message?: string;
+}
+
 const live = useLiveVue();
+const { t } = useI18n();
 const email = ref("");
 const submitting = ref(false);
+const feedbackMessage = ref("");
+const feedbackStatus = ref<"success" | "error" | null>(null);
 
 const { elementRef: sectionRef, isRevealed } = useRevealOnScroll();
 
 async function handleSubmit() {
-  if (!email.value || submitting.value) return;
+  const submittedEmail = email.value.trim();
+  if (!submittedEmail || submitting.value) return;
+
   submitting.value = true;
-  await live.pushEvent("join_waitlist", { email: email.value });
-  capture("waitlist joined", {});
-  email.value = "";
-  submitting.value = false;
+  feedbackMessage.value = "";
+  feedbackStatus.value = null;
+
+  try {
+    const reply = (await live.pushEvent("join_waitlist", {
+      email: submittedEmail,
+    })) as WaitlistReply;
+
+    if (reply.status === "error") {
+      feedbackStatus.value = "error";
+      feedbackMessage.value = reply.message || t("landing.cta.error");
+      return;
+    }
+
+    capture("waitlist joined", {});
+    email.value = "";
+    feedbackStatus.value = "success";
+    feedbackMessage.value = reply.message || t("landing.cta.success");
+  } catch {
+    feedbackStatus.value = "error";
+    feedbackMessage.value = t("landing.cta.error");
+  } finally {
+    submitting.value = false;
+  }
 }
 </script>
 
@@ -48,7 +79,7 @@ async function handleSubmit() {
           <p class="mb-2 max-w-160 leading-relaxed text-muted-foreground">
             {{ $t("landing.cta.desc") }}
           </p>
-          <form class="mt-6 flex max-w-xl flex-wrap gap-3" @submit.prevent="handleSubmit">
+          <form class="mt-6 flex max-w-xl flex-wrap gap-3" @submit.prevent.stop="handleSubmit">
             <Input
               v-model="email"
               type="email"
@@ -67,10 +98,21 @@ async function handleSubmit() {
                   inset 0 1px 0 rgba(255, 255, 255, 0.3);
               "
             >
-              {{ $t("landing.cta.btn") }}
+              {{ submitting ? $t("landing.cta.submitting") : $t("landing.cta.btn") }}
               <ArrowRight class="size-4" />
             </Button>
           </form>
+          <p
+            v-if="feedbackMessage"
+            :role="feedbackStatus === 'error' ? 'alert' : 'status'"
+            aria-live="polite"
+            :class="[
+              'mt-3 text-sm',
+              feedbackStatus === 'error' ? 'text-destructive' : 'text-primary',
+            ]"
+          >
+            {{ feedbackMessage }}
+          </p>
           <p class="mt-3 text-xs text-foreground/40">
             {{ $t("landing.cta.footer") }}
           </p>

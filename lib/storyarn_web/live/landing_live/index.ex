@@ -50,7 +50,7 @@ defmodule StoryarnWeb.LandingLive.Index do
         do_join_waitlist(socket, email, ip)
 
       {:error, :rate_limited} ->
-        {:noreply, put_flash(socket, :error, gettext("Too many requests. Please try again later."))}
+        {:reply, %{status: "error", message: gettext("Too many requests. Please try again later.")}, socket}
     end
   end
 
@@ -64,23 +64,17 @@ defmodule StoryarnWeb.LandingLive.Index do
           country: "unknown"
         }
 
-        Accounts.notify_admin_waitlist_signup(email, signup_info)
+        Accounts.notify_admin_waitlist_signup_async(email, signup_info)
 
-        {:noreply,
-         put_flash(
-           socket,
-           :info,
-           gettext("You're on the list! We'll reach out when your spot is ready.")
-         )}
+        {:reply, waitlist_success_reply(), socket}
 
       {:error, _changeset} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :info,
-           gettext("You're on the list! We'll reach out when your spot is ready.")
-         )}
+        {:reply, waitlist_success_reply(), socket}
     end
+  end
+
+  defp waitlist_success_reply do
+    %{status: "ok", message: gettext("You're on the list! We'll reach out when your spot is ready.")}
   end
 
   defp redirect_to_workspace(socket, user) do

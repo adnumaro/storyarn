@@ -26,7 +26,7 @@ defmodule StoryarnWeb.PageController do
           country: List.first(get_req_header(conn, "fly-region")) || "unknown"
         }
 
-        Accounts.notify_admin_waitlist_signup(email, signup_info)
+        Accounts.notify_admin_waitlist_signup_async(email, signup_info)
 
         conn
         |> put_flash(
