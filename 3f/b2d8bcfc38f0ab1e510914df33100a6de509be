@@ -1,0 +1,38 @@
+lib/storyarn_web/controllers/page_controller.ex
+  s_4009926a81b72f::t_6e2e558663c023 29
+assets/app/locales/es/landing.json
+  s_4009926a81b72f::t_21fc7d83f71cd6 137-139
+test/storyarn_web/live/landing_live/index_test.exs
+  s_4009926a81b72f::t_3a07c5c0c60fc1 1-16
+lib/storyarn/accounts.ex
+  s_4009926a81b72f::t_9b6a67c659acd7 279-296
+assets/app/modules/public/landing/sections/cta/CtaWaitlist.vue
+  s_4009926a81b72f::t_16d1487664a102 5,11-15,17,20-21,26-28,30-53,82,101,105-106,109-115
+  s_4009926a81b72f::t_cf9206c82f7e05 107-108
+lib/storyarn_web/live/landing_live/index.ex
+  s_4009926a81b72f::t_64ee1cf36e85b5 53
+  s_4009926a81b72f::t_2d5dfdd72ec8a2 67,69,72,76-77
+assets/app/locales/en/landing.json
+  s_4009926a81b72f::t_448c92288c2dec 137-139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "3fb2d8bcfc38f0ab1e510914df33100a6de509be",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
