@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { AlertTriangle, Monitor, Moon, Sun, Wrench } from "lucide-vue-next";
-import { ref, watch, onMounted, onUnmounted } from "vue";
+import { AlertTriangle, Wrench } from "lucide-vue-next";
+import { ref, watch } from "vue";
 import ColorPickerPopover from "@components/forms/ColorPickerPopover.vue";
+import ThemeSelector from "@components/ThemeSelector.vue";
 import { Button } from "@components/ui/button";
 import {
   Dialog,
@@ -111,31 +112,6 @@ function resetTheme() {
   live.pushEvent("reset_theme", {});
 }
 
-// Theme toggle
-const currentTheme = ref("system");
-
-function updateThemeRef() {
-  currentTheme.value = localStorage.getItem("phx:theme") || "system";
-}
-
-onMounted(() => {
-  updateThemeRef();
-  window.addEventListener("phx:set-theme", updateThemeRef);
-});
-
-onUnmounted(() => {
-  window.removeEventListener("phx:set-theme", updateThemeRef);
-});
-
-function setTheme(theme: string) {
-  if (theme === "system") {
-    localStorage.removeItem("phx:theme");
-  } else {
-    localStorage.setItem("phx:theme", theme);
-  }
-  window.dispatchEvent(new CustomEvent("phx:set-theme"));
-}
-
 // Repair
 const showRepairConfirm = ref(false);
 
@@ -216,44 +192,13 @@ function confirmDeleteProject() {
     <!-- Appearance -->
     <section>
       <h3 class="text-lg font-semibold mb-4">{{ $t("project_settings.general.appearance") }}</h3>
-      <div class="flex items-center gap-1 rounded-full border border-border bg-muted p-0.5 w-fit">
-        <button
-          :class="[
-            'flex items-center justify-center size-8 rounded-full transition-colors',
-            currentTheme === 'system'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-          ]"
-          :title="$t('project_settings.general.theme_system')"
-          @click="setTheme('system')"
-        >
-          <Monitor class="size-4" :class="{ 'opacity-75': currentTheme !== 'system' }" />
-        </button>
-        <button
-          :class="[
-            'flex items-center justify-center size-8 rounded-full transition-colors',
-            currentTheme === 'light'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-          ]"
-          :title="$t('project_settings.general.theme_light')"
-          @click="setTheme('light')"
-        >
-          <Sun class="size-4" :class="{ 'opacity-75': currentTheme !== 'light' }" />
-        </button>
-        <button
-          :class="[
-            'flex items-center justify-center size-8 rounded-full transition-colors',
-            currentTheme === 'dark'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-          ]"
-          :title="$t('project_settings.general.theme_dark')"
-          @click="setTheme('dark')"
-        >
-          <Moon class="size-4" :class="{ 'opacity-75': currentTheme !== 'dark' }" />
-        </button>
-      </div>
+      <ThemeSelector
+        :labels="{
+          system: $t('project_settings.general.theme_system'),
+          light: $t('project_settings.general.theme_light'),
+          dark: $t('project_settings.general.theme_dark'),
+        }"
+      />
     </section>
 
     <Separator />

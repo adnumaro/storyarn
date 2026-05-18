@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { AlertTriangle, Monitor, Moon, Sun, ImagePlus, Trash2 } from "lucide-vue-next";
-import { ref, watch, onMounted, onUnmounted } from "vue";
+import { AlertTriangle, ImagePlus, Trash2 } from "lucide-vue-next";
+import { ref, watch } from "vue";
+import ThemeSelector from "@components/ThemeSelector.vue";
 import { Button } from "@components/ui/button";
 import {
   Dialog,
@@ -110,31 +111,6 @@ function uploadBanner(file: File) {
 function removeBanner() {
   localBannerUrl.value = "";
   live.pushEvent("remove_workspace_banner", {});
-}
-
-// Theme toggle (Shared behavior)
-const currentTheme = ref("system");
-
-function updateThemeRef() {
-  currentTheme.value = localStorage.getItem("phx:theme") || "system";
-}
-
-onMounted(() => {
-  updateThemeRef();
-  window.addEventListener("phx:set-theme", updateThemeRef);
-});
-
-onUnmounted(() => {
-  window.removeEventListener("phx:set-theme", updateThemeRef);
-});
-
-function setTheme(theme: string) {
-  if (theme === "system") {
-    localStorage.removeItem("phx:theme");
-  } else {
-    localStorage.setItem("phx:theme", theme);
-  }
-  window.dispatchEvent(new CustomEvent("phx:set-theme"));
 }
 
 // Delete Workspace
@@ -250,47 +226,13 @@ function confirmDeleteWorkspace() {
     <!-- Appearance -->
     <section>
       <h3 class="text-lg font-semibold mb-4">{{ $t("settings.workspace.appearance.title") }}</h3>
-      <div class="flex items-center gap-1 rounded-full border border-border bg-muted p-0.5 w-fit">
-        <button
-          :class="[
-            'flex items-center justify-center size-8 rounded-full transition-colors',
-            currentTheme === 'system'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-          ]"
-          :title="$t('settings.workspace.appearance.system')"
-          @click="setTheme('system')"
-          type="button"
-        >
-          <Monitor class="size-4" :class="{ 'opacity-75': currentTheme !== 'system' }" />
-        </button>
-        <button
-          :class="[
-            'flex items-center justify-center size-8 rounded-full transition-colors',
-            currentTheme === 'light'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-          ]"
-          :title="$t('settings.workspace.appearance.light')"
-          @click="setTheme('light')"
-          type="button"
-        >
-          <Sun class="size-4" :class="{ 'opacity-75': currentTheme !== 'light' }" />
-        </button>
-        <button
-          :class="[
-            'flex items-center justify-center size-8 rounded-full transition-colors',
-            currentTheme === 'dark'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-          ]"
-          :title="$t('settings.workspace.appearance.dark')"
-          @click="setTheme('dark')"
-          type="button"
-        >
-          <Moon class="size-4" :class="{ 'opacity-75': currentTheme !== 'dark' }" />
-        </button>
-      </div>
+      <ThemeSelector
+        :labels="{
+          system: $t('settings.workspace.appearance.system'),
+          light: $t('settings.workspace.appearance.light'),
+          dark: $t('settings.workspace.appearance.dark'),
+        }"
+      />
     </section>
 
     <!-- Danger Zone (Only if Owner) -->

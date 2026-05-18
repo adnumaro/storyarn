@@ -1,19 +1,17 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import {
   ArrowLeft,
   ArrowRight,
   ChevronDown,
   ChevronRight,
-  Monitor,
-  Moon,
   PanelLeft,
   Search,
-  Sun,
   X,
 } from "lucide-vue-next";
 import LiveLink from "@components/navigation/LiveLink.vue";
+import ThemeSelector from "@components/ThemeSelector.vue";
 import { useLive } from "@shared/composables/useLive";
 import { useMediaQuery } from "@shared/composables/useMediaQuery";
 
@@ -72,7 +70,6 @@ const live = useLive();
 const { t } = useI18n();
 const docs = computed(() => docsProp);
 const searchQuery = ref(docs.value.search.query);
-const currentTheme = ref<"system" | "light" | "dark">("system");
 const sidebarVisible = ref(docs.value.sidebarOpen);
 const desktopSidebar = useMediaQuery("(min-width: 1024px)");
 const sidebarInteractive = computed(() => sidebarVisible.value || desktopSidebar.value);
@@ -105,12 +102,6 @@ const guidesByCategory = computed(() => {
 
 const searchResultsVisible = computed(() => docs.value.search.results !== null);
 
-const themeKnobClass = computed(() => {
-  if (currentTheme.value === "light") return "left-1/3";
-  if (currentTheme.value === "dark") return "left-2/3";
-  return "left-0";
-});
-
 function guidesFor(categoryId: string): DocsGuideNav[] {
   return guidesByCategory.value.get(categoryId) ?? [];
 }
@@ -142,38 +133,6 @@ function toggleCategory(category: string): void {
 function resultsLabel(count: number): string {
   return t(count === 1 ? "docs.result" : "docs.results", { count });
 }
-
-function readTheme(): "system" | "light" | "dark" {
-  const value = localStorage.getItem("phx:theme");
-  if (value === "light" || value === "dark") return value;
-  return "system";
-}
-
-function setTheme(theme: "system" | "light" | "dark"): void {
-  if (theme === "system") {
-    localStorage.removeItem("phx:theme");
-  } else {
-    localStorage.setItem("phx:theme", theme);
-  }
-
-  currentTheme.value = theme;
-  window.dispatchEvent(new CustomEvent("phx:set-theme"));
-}
-
-function syncTheme(): void {
-  currentTheme.value = readTheme();
-}
-
-onMounted(() => {
-  syncTheme();
-  window.addEventListener("storage", syncTheme);
-  window.addEventListener("phx:set-theme", syncTheme);
-});
-
-onUnmounted(() => {
-  window.removeEventListener("storage", syncTheme);
-  window.removeEventListener("phx:set-theme", syncTheme);
-});
 </script>
 
 <template>
@@ -266,7 +225,7 @@ onUnmounted(() => {
       ]"
     >
       <header
-        class="flex items-center h-16 px-4 sm:px-6 lg:px-8 border-b border-border bg-background shrink-0"
+        class="flex items-center h-12 px-4 sm:px-6 lg:px-8 border-b border-border bg-background shrink-0"
       >
         <div class="flex-none mr-4 lg:hidden">
           <button
@@ -283,64 +242,34 @@ onUnmounted(() => {
           </button>
         </div>
 
-        <div class="flex-1 flex items-center gap-1 min-w-0">
-          <LiveLink :to="docs.urls.home" class="flex items-center gap-2 text-foreground">
-            <img
-              :src="'/images/logos/logo-black-48.png'"
-              alt="Storyarn"
-              class="w-6 h-6 dark:hidden"
-            />
-            <img
-              :src="'/images/logos/logo-white-48.png'"
-              alt="Storyarn"
-              class="w-6 h-6 hidden dark:block"
-            />
-            <span class="text-lg font-semibold tracking-tight">Storyarn</span>
-          </LiveLink>
-
+        <div class="flex-1 flex items-center min-w-0">
           <LiveLink
             :to="docs.urls.docs"
-            class="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors self-start mt-1"
+            class="flex min-w-0 items-center"
+            aria-label="Storyarn docs"
           >
-            {{ $t("docs.label") }}
+            <img
+              :src="'/images/logos/logo-name-black-docs.png'"
+              alt="Storyarn docs"
+              class="h-auto w-40 sm:w-52 dark:hidden"
+            />
+            <img
+              :src="'/images/logos/logo-name-white-docs.png'"
+              alt="Storyarn docs"
+              class="hidden h-auto w-40 sm:w-52 dark:block"
+            />
           </LiveLink>
         </div>
 
         <div class="flex-none flex items-center gap-2">
-          <div
-            class="card relative flex flex-row items-center border-2 border-border bg-border rounded-full"
-          >
-            <div
-              :class="[
-                'absolute w-1/3 h-full rounded-full border border-border bg-background brightness-200 transition-[left]',
-                themeKnobClass,
-              ]"
-            />
-            <button
-              type="button"
-              class="relative flex p-2 cursor-pointer w-1/3"
-              :aria-label="$t('docs.theme_system')"
-              @click="setTheme('system')"
-            >
-              <Monitor class="size-4 opacity-75 hover:opacity-100" />
-            </button>
-            <button
-              type="button"
-              class="relative flex p-2 cursor-pointer w-1/3"
-              :aria-label="$t('docs.theme_light')"
-              @click="setTheme('light')"
-            >
-              <Sun class="size-4 opacity-75 hover:opacity-100" />
-            </button>
-            <button
-              type="button"
-              class="relative flex p-2 cursor-pointer w-1/3"
-              :aria-label="$t('docs.theme_dark')"
-              @click="setTheme('dark')"
-            >
-              <Moon class="size-4 opacity-75 hover:opacity-100" />
-            </button>
-          </div>
+          <ThemeSelector
+            size="xs"
+            :labels="{
+              system: $t('docs.theme_system'),
+              light: $t('docs.theme_light'),
+              dark: $t('docs.theme_dark'),
+            }"
+          />
 
           <LiveLink
             :to="docs.signedIn ? docs.urls.workspaces : docs.urls.login"
