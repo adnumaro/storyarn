@@ -1,0 +1,37 @@
+lib/storyarn_web/live/flow_live/index.ex
+  s_4009926a81b72f::t_8b5d236b4cb22c 347-353
+test/storyarn/flows/flow_crud_test.exs
+  s_4009926a81b72f::t_7740a3e5ed9505 1242-1264
+lib/storyarn/flows/flow_stats.ex
+  s_4009926a81b72f::t_87142503a883ba 60,65-67,92-100
+lib/storyarn/projects/dashboard.ex
+  s_4009926a81b72f::t_a290fa41b0d7a9 114,295-311,318-319,322-323,325-336,341-348,381-390
+lib/storyarn/flows.ex
+  s_4009926a81b72f::t_d2b22850fe43aa 679-683,686-687,706,719-725
+lib/storyarn/flows/node_connection_rules.ex
+  s_4009926a81b72f::t_ca7464ac86f0fe 17-20,31
+test/storyarn/flows_test.exs
+  s_4009926a81b72f::t_23fbf5a1c5c046 1021-1041
+  s_4009926a81b72f::t_c8c890b0fa4815 1000-1020
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.9",
+  "base_commit_sha": "36e0a11816d45c66746cdb4144bb289f313209fa",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
