@@ -27,17 +27,24 @@ const eventPropertyAllowlist = new Map([
 
 const routeFamilies = [
   [(pathname) => pathname === "/", "public_home"],
+  [(pathname) => pathname === "/landing-v2", "public_home_v2"],
   [(pathname) => pathname.startsWith("/docs"), "docs"],
   [(pathname) => pathname.startsWith("/users/log-in"), "login"],
   [(pathname) => pathname.startsWith("/users/register"), "registration"],
   [(pathname) => pathname.startsWith("/users/settings"), "account_settings"],
-  [(pathname) => pathname.includes("/settings/version-control"), "project_version_control_settings"],
+  [
+    (pathname) => pathname.includes("/settings/version-control"),
+    "project_version_control_settings",
+  ],
   [(pathname) => pathname.includes("/settings/export-import"), "project_export_import"],
   [(pathname) => pathname.includes("/settings"), "project_settings"],
   [(pathname) => pathname.includes("/localization"), "localization"],
   [(pathname) => pathname.includes("/assets"), "assets"],
   [(pathname) => pathname.includes("/flows/") && pathname.endsWith("/play"), "flow_player"],
-  [(pathname) => pathname.includes("/scenes/") && pathname.endsWith("/explore"), "scene_exploration"],
+  [
+    (pathname) => pathname.includes("/scenes/") && pathname.endsWith("/explore"),
+    "scene_exploration",
+  ],
   [(pathname) => pathname.includes("/compare/"), "version_compare"],
   [(pathname) => pathname.includes("/versions/") && pathname.endsWith("/viewer"), "version_viewer"],
   [(pathname) => pathname.includes("/sheets"), "sheets"],

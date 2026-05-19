@@ -51,8 +51,13 @@ function openMobileNav(): void {
   mobileOpen.value = true;
 }
 
-function scrollToPanel(panelIndex: number): void {
+function scrollToPanel(panelIndex: number, targetId: string): void {
   window.dispatchEvent(new CustomEvent("storyarn:force-scroll", { detail: { panelIndex } }));
+
+  if (!document.getElementById("hero-features-stack")) {
+    document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   closeMobileNav();
 }
 </script>
@@ -81,16 +86,16 @@ function scrollToPanel(panelIndex: number): void {
         <div class="hidden min-w-0 flex-1 items-center justify-between gap-6 xl:flex">
           <nav class="flex min-w-0 items-center gap-2">
             <a
-              href="#features"
+              href="#features-section"
               class="inline-flex items-center justify-center rounded-md px-4 py-2.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
-              @click.prevent="scrollToPanel(1)"
+              @click.prevent="scrollToPanel(1, 'features-section')"
             >
               {{ t("landing.common.links.features") }}
             </a>
             <a
               href="#discover"
               class="inline-flex items-center justify-center rounded-md px-4 py-2.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
-              @click.prevent="scrollToPanel(2)"
+              @click.prevent="scrollToPanel(2, 'discover')"
             >
               {{ t("landing.common.links.discover") }}
             </a>
@@ -126,7 +131,7 @@ function scrollToPanel(panelIndex: number): void {
                     0 0 20px rgba(34, 211, 238, 0.4),
                     inset 0 1px 0 rgba(255, 255, 255, 0.3);
                 "
-                @click.prevent="scrollToPanel(3)"
+                @click.prevent="scrollToPanel(3, 'waitlist')"
               >
                 {{ t("public.layout.request_access") }}
               </a>
@@ -189,9 +194,9 @@ function scrollToPanel(panelIndex: number): void {
 
             <div class="mt-8 grid gap-2">
               <a
-                href="#features"
+                href="#features-section"
                 class="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-foreground transition-colors hover:bg-accent"
-                @click.prevent="scrollToPanel(1)"
+                @click.prevent="scrollToPanel(1, 'features-section')"
               >
                 <Sparkles class="size-5 text-foreground/45" />
                 {{ t("landing.common.links.features") }}
@@ -199,7 +204,7 @@ function scrollToPanel(panelIndex: number): void {
               <a
                 href="#discover"
                 class="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-foreground transition-colors hover:bg-accent"
-                @click.prevent="scrollToPanel(2)"
+                @click.prevent="scrollToPanel(2, 'discover')"
               >
                 <PanelsTopLeft class="size-5 text-foreground/45" />
                 {{ t("landing.common.links.discover") }}
@@ -241,7 +246,7 @@ function scrollToPanel(panelIndex: number): void {
                       0 0 20px rgba(34, 211, 238, 0.4),
                       inset 0 1px 0 rgba(255, 255, 255, 0.3);
                   "
-                  @click.prevent="scrollToPanel(3)"
+                  @click.prevent="scrollToPanel(3, 'waitlist')"
                 >
                   {{ t("public.layout.request_access") }}
                 </a>

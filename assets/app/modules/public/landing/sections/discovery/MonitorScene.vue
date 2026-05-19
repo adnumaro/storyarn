@@ -16,9 +16,9 @@ const { activeStep = 0 } = defineProps<{
 }>();
 
 const SCREEN_IMAGES = [
-  "/images/landing/discovery-sheets.png",
-  "/images/landing/discovery-flows.png",
-  "/images/landing/discovery-scenes.png",
+  "/images/docs/veilbreak-sheet-editor.png",
+  "/images/docs/flows/flows.png",
+  "/images/docs/flows/flow-debug.png",
 ];
 
 const SUB_STEPS = [

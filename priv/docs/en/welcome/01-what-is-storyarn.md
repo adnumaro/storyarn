@@ -37,7 +37,7 @@ Structured data containers for your entire world — character profiles, item ca
 
 Visual node graphs for branching dialogue and narrative logic. Ten node types — from dialogue and conditions to sequences, subflows, and jumps. Test your work instantly with the **Story Player** (full cinematic playthrough) and the **Debug Mode** (step-by-step execution with live variable inspection). No export needed — verify your logic right where you write it.
 
-<img src="/images/docs/veilbreak-flow-editor.png" alt="Veilbreak flow editor showing connected dialogue, condition, instruction, and exit nodes" loading="lazy">
+<img src="/images/docs/flows/flows.png" alt="Veilbreak flow editor showing connected dialogue, condition, instruction, and exit nodes" loading="lazy">
 
 <h3><span class="docs-tool-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg></span> Scenes</h3>
 

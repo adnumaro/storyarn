@@ -37,7 +37,7 @@ Contenedores de datos estructurados para todo tu mundo — perfiles de personaje
 
 Grafos visuales de nodos para diálogos ramificados y lógica narrativa. Diez tipos de nodos — desde diálogos y condiciones hasta secuencias, subflujos y saltos. Prueba tu trabajo al instante con el **Reproductor de Historia** (reproducción cinematográfica completa) y el **Modo Depuración** (ejecución paso a paso con inspección de variables en vivo). Sin necesidad de exportar — verifica tu lógica justo donde la escribes.
 
-<img src="/images/docs/veilbreak-flow-editor.png" alt="Editor de flujos de Veilbreak mostrando nodos de diálogo, condición, instrucción y salida conectados" loading="lazy">
+<img src="/images/docs/flows/flows.png" alt="Editor de flujos de Veilbreak mostrando nodos de diálogo, condición, instrucción y salida conectados" loading="lazy">
 
 <h3><span class="docs-tool-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg></span> Escenas (Scenes)</h3>
 

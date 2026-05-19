@@ -10,6 +10,49 @@
         "contact": "Contacto"
       }
     },
+    "v2": {
+      "hero": {
+        "title": "Diseña narrativas interactivas sin perder el control del mundo.",
+        "desc": "Storyarn conecta fichas, diálogos, escenas, localización y exportación para que cada decisión narrativa viva en un único proyecto trazable.",
+        "primary_cta": "Solicitar acceso"
+      },
+      "features": {
+        "title": "Una base de producción para equipos narrativos.",
+        "desc": "Centraliza estructura, escritura, pruebas y entrega para que el equipo no dependa de hojas de cálculo, diagramas sueltos ni scripts internos."
+      },
+      "discover": {
+        "title": "Todo lo importante se referencia, no se copia.",
+        "desc": "Storyarn funciona como una fuente de verdad: defines el mundo una vez y lo reutilizas en diálogos, escenas, condiciones, localización y exportadores."
+      },
+      "pillars": {
+        "sheets": {
+          "title": "Fichas para estructurar personajes, lugares y facciones.",
+          "desc": "Campos, bloques, herencia y variables mantienen tu mundo consistente incluso cuando el proyecto crece."
+        },
+        "flows": {
+          "title": "Flujos visuales para diálogos y lógica narrativa.",
+          "desc": "Combina líneas, condiciones, instrucciones, secuencias y subflujos sin separar escritura y comportamiento."
+        },
+        "localization": {
+          "title": "Localización conectada al contenido real.",
+          "desc": "Extrae líneas, mide progreso, trabaja con glosarios y mantiene la traducción cerca del contexto narrativo."
+        }
+      },
+      "operations": {
+        "source_truth": "Fuente de verdad conectada"
+      },
+      "production": {
+        "label": "Listo para producción",
+        "title": "Prueba, localiza y exporta sin reconstruir tu narrativa.",
+        "desc": "La meta no es solo escribir mejor: es llegar al motor con datos limpios, versiones recuperables y menos trabajo manual.",
+        "items": [
+          "Debug y player para verificar ramas antes de integrar.",
+          "Snapshots y comparaciones para auditar cambios narrativos.",
+          "Exportadores para Yarn Spinner, Ink, Godot Dialogic, Unity y Unreal."
+        ],
+        "image_alt": "Dashboard de localización de Veilbreak con progreso por idioma y textos pendientes"
+      }
+    },
     "hero": {
       "title_part1": "Crea mundos.",
       "title_part2": "Teje historias.",

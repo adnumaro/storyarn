@@ -13,4 +13,13 @@ defmodule StoryarnWeb.LandingLive.IndexTest do
 
     assert Repo.get_by(WaitlistEntry, email: "waitlist@example.com")
   end
+
+  test "renders the isolated landing v2 route", %{conn: conn} do
+    {:ok, view, html} = live(conn, ~p"/landing-v2")
+
+    landing = LiveVue.Test.get_vue(view, name: "live/public/landing/PublicLandingV2")
+
+    assert landing.props["is-logged-in"] == false
+    assert html =~ ~s(data-inject="public-layout")
+  end
 end

@@ -10,6 +10,49 @@
         "contact": "Contact"
       }
     },
+    "v2": {
+      "hero": {
+        "title": "Design interactive narratives without losing control of the world.",
+        "desc": "Storyarn connects sheets, dialogue, scenes, localization, and export so every narrative decision lives in one traceable project.",
+        "primary_cta": "Request access"
+      },
+      "features": {
+        "title": "A production base for narrative teams.",
+        "desc": "Centralize structure, writing, testing, and delivery so the team does not depend on spreadsheets, loose diagrams, or internal scripts."
+      },
+      "discover": {
+        "title": "Everything important is referenced, not copied.",
+        "desc": "Storyarn works as a source of truth: define the world once and reuse it across dialogue, scenes, conditions, localization, and exporters."
+      },
+      "pillars": {
+        "sheets": {
+          "title": "Sheets structure characters, places, and factions.",
+          "desc": "Fields, blocks, inheritance, and variables keep your world consistent even as the project grows."
+        },
+        "flows": {
+          "title": "Visual flows for dialogue and narrative logic.",
+          "desc": "Combine lines, conditions, instructions, sequences, and subflows without separating writing from behavior."
+        },
+        "localization": {
+          "title": "Localization connected to real content.",
+          "desc": "Extract lines, measure progress, work with glossaries, and keep translation close to narrative context."
+        }
+      },
+      "operations": {
+        "source_truth": "Connected source of truth"
+      },
+      "production": {
+        "label": "Production ready",
+        "title": "Test, localize, and export without rebuilding your narrative.",
+        "desc": "The goal is not only writing better: it is reaching the engine with clean data, recoverable versions, and less manual work.",
+        "items": [
+          "Debug and player modes verify branches before integration.",
+          "Snapshots and comparisons audit narrative changes.",
+          "Exporters for Yarn Spinner, Ink, Godot Dialogic, Unity, and Unreal."
+        ],
+        "image_alt": "Veilbreak localization dashboard with language progress and pending texts"
+      }
+    },
     "hero": {
       "title_part1": "Create worlds.",
       "title_part2": "Weave stories.",

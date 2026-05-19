@@ -9,7 +9,7 @@ description: "Árboles de diálogo visuales y lógica narrativa ramificada."
 
 Los Flujos (Flows) son el corazón de Storyarn -- **grafos de nodos visuales** donde construyes diálogos ramificados, lógica de juego y narrativas interactivas. Cada flujo es un lienzo de nodos conectados que define cómo se desarrolla una conversación o secuencia, desde un intercambio lineal simple hasta un árbol de misiones extenso con decenas de ramas.
 
-<img src="/images/docs/veilbreak-flow-editor.png" alt="Lienzo del editor de flujos de Veilbreak con nodos conectados y minimapa" loading="lazy">
+<img src="/images/docs/flows/flows.png" alt="Lienzo del editor de flujos de Veilbreak con nodos conectados y minimapa" loading="lazy">
 
 ---
 

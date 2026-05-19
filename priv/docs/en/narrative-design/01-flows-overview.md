@@ -9,7 +9,7 @@ description: "Visual dialogue trees and branching narrative logic."
 
 Flows are the heart of Storyarn -- **visual node graphs** where you build branching dialogue, game logic, and interactive narratives. Each flow is a canvas of connected nodes that define how a conversation or sequence plays out, from a simple linear exchange to a sprawling quest tree with dozens of branches.
 
-<img src="/images/docs/veilbreak-flow-editor.png" alt="Veilbreak flow editor canvas with connected nodes and minimap" loading="lazy">
+<img src="/images/docs/flows/flows.png" alt="Veilbreak flow editor canvas with connected nodes and minimap" loading="lazy">
 
 ---
 
