@@ -10,6 +10,7 @@ defmodule Storyarn.Exports.Validator do
 
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Flows
+  alias Storyarn.Flows.NodeConnectionRules
   alias Storyarn.Localization
   alias Storyarn.Sheets
 
@@ -192,7 +193,7 @@ defmodule Storyarn.Exports.Validator do
       connected_ids = connected_node_ids(flow.connections)
 
       flow.nodes
-      |> Enum.reject(&(&1.type in ["entry", "exit"] or MapSet.member?(connected_ids, &1.id)))
+      |> Enum.reject(&(orphan_check_skipped?(&1.type) or MapSet.member?(connected_ids, &1.id)))
       |> Enum.map(fn node ->
         %{
           level: :warning,
@@ -233,7 +234,7 @@ defmodule Storyarn.Exports.Validator do
       unreachable_ids = MapSet.difference(all_node_ids, reachable)
 
       flow.nodes
-      |> Enum.filter(&(MapSet.member?(unreachable_ids, &1.id) and &1.type != "entry"))
+      |> Enum.filter(&(MapSet.member?(unreachable_ids, &1.id) and NodeConnectionRules.can_be_unreachable?(&1.type)))
       |> Enum.map(fn node ->
         %{
           level: :warning,
@@ -254,6 +255,8 @@ defmodule Storyarn.Exports.Validator do
       end)
     end
   end
+
+  defp orphan_check_skipped?(type), do: type in ["entry", "exit"] or NodeConnectionRules.connection_optional_type?(type)
 
   # =============================================================================
   # Check: empty_dialogue (warning)

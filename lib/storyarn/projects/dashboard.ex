@@ -15,6 +15,7 @@ defmodule Storyarn.Projects.Dashboard do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.NodeConnectionRules
   alias Storyarn.Localization
   alias Storyarn.Repo
   alias Storyarn.Scenes
@@ -288,6 +289,8 @@ defmodule Storyarn.Projects.Dashboard do
 
   @doc "Returns flows with disconnected nodes. Returns `[%{flow_id, flow_name, count}]`."
   def flows_with_disconnected_nodes(project_id) do
+    connection_optional_types = NodeConnectionRules.connection_optional_types()
+
     Repo.all(
       from(n in FlowNode,
         join: f in Flow,
@@ -298,7 +301,7 @@ defmodule Storyarn.Projects.Dashboard do
         on: ct.target_node_id == n.id,
         where:
           f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at) and is_nil(cs.id) and
-            is_nil(ct.id),
+            is_nil(ct.id) and n.type not in ^connection_optional_types,
         group_by: [f.id, f.name],
         select: %{flow_id: f.id, flow_name: f.name, count: count(n.id)}
       )

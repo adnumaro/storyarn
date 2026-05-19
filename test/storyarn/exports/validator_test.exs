@@ -103,6 +103,21 @@ defmodule Storyarn.Exports.ValidatorTest do
       assert length(orphan_warnings) == 1
       assert hd(orphan_warnings).node_type == "dialogue"
     end
+
+    test "ignores annotations and sequences with no graph connections", %{project: project} do
+      flow = flow_fixture(project, %{name: "Visual Nodes Flow"})
+      entry = flow.id |> Storyarn.Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
+      exit_node = flow.id |> Storyarn.Flows.list_nodes() |> Enum.find(&(&1.type == "exit"))
+
+      Storyarn.FlowsFixtures.connection_fixture(flow, entry, exit_node)
+      node_fixture(flow, %{type: "annotation", data: %{"text" => "Design note"}})
+      assert {:ok, _sequence} = Storyarn.Flows.create_sequence(flow.id, %{"name" => "Act I"})
+
+      result = Validator.validate_project(project.id)
+
+      refute Enum.any?(result.warnings, &(&1.rule == :orphan_nodes))
+      refute Enum.any?(result.warnings, &(&1.rule == :unreachable_nodes))
+    end
   end
 
   # =============================================================================

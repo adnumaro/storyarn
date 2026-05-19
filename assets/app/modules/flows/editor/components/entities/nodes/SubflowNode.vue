@@ -47,6 +47,12 @@ const errorTitle = computed(() =>
 // Sockets
 const inputs = computed(() => Object.entries(data?.inputs || {}));
 const outputs = computed(() => Object.entries(data?.outputs || {}));
+const usesDefaultOutputRow = computed(
+  () =>
+    inputs.value.length === 1 &&
+    outputs.value.length === 1 &&
+    outputs.value[0]?.[0] === "output",
+);
 
 // Exit labels for dynamic output formatting
 const exitLabels = computed<ExitLabel[]>(() => nodeData.value.exit_labels || []);
@@ -93,43 +99,69 @@ function getExitInfo(key: string): ExitLabel | null {
 
     <!-- Sockets with per-exit labels -->
     <div class="py-1">
-      <!-- Inputs -->
-      <div
-        v-for="[key, input] in inputs"
-        :key="'i-' + key"
-        class="relative flex items-center py-1 text-[11px] text-muted-foreground justify-start"
-      >
-        <Ref
-          class="input-socket absolute -left-1.5"
-          :data="{ type: 'socket', side: 'input', key, nodeId: data.id, payload: input.socket }"
-          :emit="emit"
-          data-testid="input-socket"
-        />
-      </div>
-      <!-- Outputs -->
-      <div
-        v-for="[key, output] in outputs"
-        :key="'o-' + key"
-        class="relative flex items-center py-1 text-[11px] text-muted-foreground justify-end"
-      >
-        <span class="px-2 max-w-55 wrap-break-word text-right inline-flex items-center gap-1">
-          <template v-if="getExitInfo(key)">
-            <CornerDownLeft
-              v-if="getExitInfo(key)!.exit_mode === 'caller_return'"
-              class="size-2.5 shrink-0"
+      <template v-if="usesDefaultOutputRow">
+        <div class="sockets-row relative flex justify-between items-center py-1">
+          <template v-for="[key, input] in inputs" :key="'i-' + key">
+            <Ref
+              class="input-socket absolute -left-1.5"
+              :data="{ type: 'socket', side: 'input', key, nodeId: data.id, payload: input.socket }"
+              :emit="emit"
+              data-testid="input-socket"
             />
-            <Square v-else class="size-2.5 shrink-0" />
-            {{ getExitInfo(key)!.label || "Exit" }}
+            <span class="text-[11px] text-muted-foreground ml-2">{{ key }}</span>
           </template>
-          <template v-else> {{ t("flows.nodes.subflow.output") }} </template>
-        </span>
-        <Ref
-          class="output-socket absolute -right-1.5"
-          :data="{ type: 'socket', side: 'output', key, nodeId: data.id, payload: output.socket }"
-          :emit="emit"
-          data-testid="output-socket"
-        />
-      </div>
+          <span class="flex-1" />
+          <template v-for="[key, output] in outputs" :key="'o-' + key">
+            <span class="text-[11px] text-muted-foreground mr-2">{{ key }}</span>
+            <Ref
+              class="output-socket absolute -right-1.5"
+              :data="{ type: 'socket', side: 'output', key, nodeId: data.id, payload: output.socket }"
+              :emit="emit"
+              data-testid="output-socket"
+            />
+          </template>
+        </div>
+      </template>
+      <template v-else>
+        <!-- Inputs -->
+        <div
+          v-for="[key, input] in inputs"
+          :key="'i-' + key"
+          class="relative flex items-center py-1 text-[11px] text-muted-foreground justify-start"
+        >
+          <Ref
+            class="input-socket absolute -left-1.5"
+            :data="{ type: 'socket', side: 'input', key, nodeId: data.id, payload: input.socket }"
+            :emit="emit"
+            data-testid="input-socket"
+          />
+          <span class="ml-2">{{ key }}</span>
+        </div>
+        <!-- Outputs -->
+        <div
+          v-for="[key, output] in outputs"
+          :key="'o-' + key"
+          class="relative flex items-center py-1 text-[11px] text-muted-foreground justify-end"
+        >
+          <span class="px-2 max-w-55 wrap-break-word text-right inline-flex items-center gap-1">
+            <template v-if="getExitInfo(key)">
+              <CornerDownLeft
+                v-if="getExitInfo(key)!.exit_mode === 'caller_return'"
+                class="size-2.5 shrink-0"
+              />
+              <Square v-else class="size-2.5 shrink-0" />
+              {{ getExitInfo(key)!.label || "Exit" }}
+            </template>
+            <template v-else>{{ key }}</template>
+          </span>
+          <Ref
+            class="output-socket absolute -right-1.5"
+            :data="{ type: 'socket', side: 'output', key, nodeId: data.id, payload: output.socket }"
+            :emit="emit"
+            data-testid="output-socket"
+          />
+        </div>
+      </template>
     </div>
   </NodeShell>
 </template>

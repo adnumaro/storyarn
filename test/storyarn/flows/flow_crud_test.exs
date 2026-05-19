@@ -1225,6 +1225,20 @@ defmodule Storyarn.Flows.FlowCrudTest do
       assert issue.count == 3
     end
 
+    test "ignores connectionless visual and organizational nodes" do
+      %{project: project, flow: flow} = create_project_and_flow()
+      loaded = Flows.get_flow!(project.id, flow.id)
+      entry = Enum.find(loaded.nodes, &(&1.type == "entry"))
+      exit_node = Enum.find(loaded.nodes, &(&1.type == "exit"))
+
+      Storyarn.FlowsFixtures.connection_fixture(loaded, entry, exit_node)
+      node_fixture(flow, %{type: "annotation", data: %{"text" => "Design note"}})
+      assert {:ok, _sequence} = Flows.create_sequence(flow.id, %{"name" => "Act I"})
+
+      issues = Flows.detect_flow_issues(project.id)
+      assert issues == []
+    end
+
     test "returns empty list for healthy project" do
       user = user_fixture()
       project = project_fixture(user)

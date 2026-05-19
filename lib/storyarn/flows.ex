@@ -27,6 +27,7 @@ defmodule Storyarn.Flows do
   alias Storyarn.Flows.HubColors
   alias Storyarn.Flows.Instruction
   alias Storyarn.Flows.NavigationHistoryStore
+  alias Storyarn.Flows.NodeConnectionRules
   alias Storyarn.Flows.NodeCrud
   alias Storyarn.Flows.SceneResolver
   alias Storyarn.Flows.SequenceCrud
@@ -832,13 +833,13 @@ defmodule Storyarn.Flows do
   end
 
   defp maybe_add_unreachable_flag(data, id, type, unreachable_ids) do
-    if type not in ~w(entry annotation) and MapSet.member?(unreachable_ids, id),
+    if NodeConnectionRules.can_be_unreachable?(type) and MapSet.member?(unreachable_ids, id),
       do: Map.put(data, "unreachable", true),
       else: data
   end
 
   defp maybe_add_dead_end_flag(data, id, type, dead_end_ids) do
-    if type not in ~w(exit jump entry annotation) and MapSet.member?(dead_end_ids, id),
+    if NodeConnectionRules.needs_outgoing_connection?(type) and MapSet.member?(dead_end_ids, id),
       do: Map.put(data, "dead_end", true),
       else: data
   end
@@ -864,7 +865,7 @@ defmodule Storyarn.Flows do
     source_ids = MapSet.new(connections, & &1.source_node_id)
 
     for n <- nodes,
-        n.type not in ~w(exit jump entry annotation),
+        NodeConnectionRules.needs_outgoing_connection?(n.type),
         not MapSet.member?(source_ids, n.id),
         into: MapSet.new(),
         do: n.id

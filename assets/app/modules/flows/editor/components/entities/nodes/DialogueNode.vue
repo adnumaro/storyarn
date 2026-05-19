@@ -369,7 +369,7 @@ function onSpeakerSelect(id: number | string | null) {
           :emit="emit"
           data-testid="input-socket"
         />
-        <span v-if="responses.length === 0" class="ml-2">{{ key }}</span>
+        <span class="ml-2">{{ key }}</span>
       </div>
       <!-- Outputs (responses) -->
       <div
