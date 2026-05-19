@@ -39,7 +39,7 @@ The example project shows the target implementation pattern. Consult the documen
 
 ## Framework guidelines
 
-- When a reverse proxy is configured, both /static/* AND /array/* must route to the assets origin (us-assets.i.posthog.com or eu-assets.i.posthog.com).
+- When a reverse proxy is configured, both /static/_ AND /array/_ must route to the assets origin (us-assets.i.posthog.com or eu-assets.i.posthog.com).
 
 ## Identifying users
 

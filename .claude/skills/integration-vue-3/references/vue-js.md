@@ -57,22 +57,22 @@ PostHog AI
 
 ```typescript
 // src/main.ts
-import { createApp } from 'vue'
-import { createPinia } from 'pinia'
-import App from './App.vue'
-import router from './router'
+import { createApp } from "vue";
+import { createPinia } from "pinia";
+import App from "./App.vue";
+import router from "./router";
 import posthog from "posthog-js";
 const app = createApp(App);
-posthog.init(import.meta.env.VITE_POSTHOG_TOKEN || '<ph_project_token>', {
-  api_host: import.meta.env.VITE_POSTHOG_HOST || 'https://us.i.posthog.com',
-  defaults: '2026-01-30',
+posthog.init(import.meta.env.VITE_POSTHOG_TOKEN || "<ph_project_token>", {
+  api_host: import.meta.env.VITE_POSTHOG_HOST || "https://us.i.posthog.com",
+  defaults: "2026-01-30",
 });
-app.use(createPinia())
-app.use(router)
+app.use(createPinia());
+app.use(router);
 app.config.errorHandler = (err, instance, info) => {
-  posthog.captureException(err)
-}
-app.mount('#app')
+  posthog.captureException(err);
+};
+app.mount("#app");
 ```
 
 Then, you can access PostHog throughout your app just by importing it from `posthog-js`.
@@ -103,16 +103,16 @@ PostHog AI
 
 ```javascript
 // src/plugins/posthog.js
-import posthog from 'posthog-js'
+import posthog from "posthog-js";
 export default {
   install(Vue) {
-    posthog.init('<ph_project_token>', {
-      api_host: 'https://us.i.posthog.com',
-      defaults: '2026-01-30'
-    })
-    Vue.prototype.$posthog = posthog
-  }
-}
+    posthog.init("<ph_project_token>", {
+      api_host: "https://us.i.posthog.com",
+      defaults: "2026-01-30",
+    });
+    Vue.prototype.$posthog = posthog;
+  },
+};
 ```
 
 Next, in `main.js`, import and use the plugin.
@@ -123,14 +123,14 @@ PostHog AI
 
 ```javascript
 // src/main.js
-import Vue from 'vue'
-import App from './App.vue'
-import PosthogPlugin from './plugins/posthog'
-Vue.config.productionTip = false
-Vue.use(PosthogPlugin)
+import Vue from "vue";
+import App from "./App.vue";
+import PosthogPlugin from "./plugins/posthog";
+Vue.config.productionTip = false;
+Vue.use(PosthogPlugin);
 new Vue({
-  render: h => h(App),
-}).$mount('#app')
+  render: (h) => h(App),
+}).$mount("#app");
 ```
 
 This makes PostHog available as `this.$posthog` in any Vue component.
@@ -292,10 +292,10 @@ For any technical questions for how to integrate specific PostHog features into 
 
 Alternatively, the following tutorials can help you get started:
 
--   [How to set up analytics in Vue](/tutorials/vue-analytics.md)
--   [How to set up feature flags in Vue](/tutorials/vue-feature-flags.md)
--   [How to set up A/B tests in Vue](/tutorials/vue-ab-tests.md)
--   [How to set up surveys in Vue](/tutorials/vue-surveys.md)
+- [How to set up analytics in Vue](/tutorials/vue-analytics.md)
+- [How to set up feature flags in Vue](/tutorials/vue-feature-flags.md)
+- [How to set up A/B tests in Vue](/tutorials/vue-ab-tests.md)
+- [How to set up surveys in Vue](/tutorials/vue-surveys.md)
 
 ### Community questions
 

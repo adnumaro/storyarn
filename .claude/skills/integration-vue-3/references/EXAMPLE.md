@@ -82,15 +82,15 @@ src/
 `posthog-js` is initialized once when the app boots:
 
 ```ts
-import posthog from 'posthog-js'
+import posthog from "posthog-js";
 
-posthog.init(import.meta.env.VITE_POSTHOG_PROJECT_TOKEN || '', {
-  api_host: import.meta.env.VITE_POSTHOG_HOST || 'https://us.i.posthog.com',
-})
+posthog.init(import.meta.env.VITE_POSTHOG_PROJECT_TOKEN || "", {
+  api_host: import.meta.env.VITE_POSTHOG_HOST || "https://us.i.posthog.com",
+});
 
 app.config.errorHandler = (err) => {
-  posthog.captureException(err)
-}
+  posthog.captureException(err);
+};
 ```
 
 This ensures:
@@ -104,10 +104,10 @@ This ensures:
 After a successful “login”, the app identifies the user and captures a login event:
 
 ```ts
-const success = await authStore.login(username.value, password.value)
+const success = await authStore.login(username.value, password.value);
 if (success) {
-  posthog.identify(username.value)
-  posthog.capture('user_logged_in')
+  posthog.identify(username.value);
+  posthog.capture("user_logged_in");
 }
 ```
 
@@ -118,10 +118,10 @@ Identification happens **only on login**, all further requests will automaticall
 The burrito page tracks a custom event when a user “considers” the burrito:
 
 ```ts
-posthog.capture('burrito_considered', {
+posthog.capture("burrito_considered", {
   total_considerations: updatedUser.burritoConsiderations,
   username: updatedUser.username,
-})
+});
 ```
 
 This shows how to attach useful properties to events (e.g. counts, usernames).
@@ -131,9 +131,9 @@ This shows how to attach useful properties to events (e.g. counts, usernames).
 On logout, both the local auth state and PostHog state are cleared:
 
 ```ts
-authStore.logout()
-posthog.reset()
-router.push({ name: 'home' })
+authStore.logout();
+posthog.reset();
+router.push({ name: "home" });
 ```
 
 `posthog.reset()` clears the current distinct ID and session so the next login starts a fresh identity.
@@ -190,7 +190,6 @@ VITE_POSTHOG_HOST=https://us.i.posthog.com
 
 ```ts
 /// <reference types="vite/client" />
-
 ```
 
 ---
@@ -201,9 +200,9 @@ VITE_POSTHOG_HOST=https://us.i.posthog.com
 <!DOCTYPE html>
 <html lang="">
   <head>
-    <meta charset="UTF-8">
-    <link rel="icon" href="/favicon.ico">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vite App</title>
   </head>
   <body>
@@ -211,7 +210,6 @@ VITE_POSTHOG_HOST=https://us.i.posthog.com
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
-
 ```
 
 ---
@@ -220,7 +218,7 @@ VITE_POSTHOG_HOST=https://us.i.posthog.com
 
 ```vue
 <script setup lang="ts">
-import Header from '@/components/Header.vue'
+import Header from "@/components/Header.vue";
 </script>
 
 <template>
@@ -240,7 +238,8 @@ import Header from '@/components/Header.vue'
 html,
 body {
   height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   line-height: 1.6;
   color: #333;
   background: #f5f5f5;
@@ -268,7 +267,6 @@ p {
   margin-bottom: 1rem;
 }
 </style>
-
 ```
 
 ---
@@ -289,9 +287,7 @@ p {
       <div class="user-section">
         <template v-if="authStore.user && authStore.user.username">
           <span>Welcome, {{ authStore.user.username }}!</span>
-          <button @click="handleLogout" class="btn-logout">
-            Logout
-          </button>
+          <button @click="handleLogout" class="btn-logout">Logout</button>
         </template>
         <template v-else>
           <span>Not logged in</span>
@@ -305,19 +301,19 @@ p {
 </template>
 
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import posthog from 'posthog-js'
+import { useRouter } from "vue-router";
+import { useAuthStore } from "@/stores/auth";
+import posthog from "posthog-js";
 
-const authStore = useAuthStore()
-const router = useRouter()
+const authStore = useAuthStore();
+const router = useRouter();
 
 const handleLogout = () => {
-  authStore.logout()
+  authStore.logout();
   // IMPORTANT: Reset the PostHog instance to clear the user session
-  posthog.reset()
-  router.push({ name: 'home' })
-}
+  posthog.reset();
+  router.push({ name: "home" });
+};
 </script>
 
 <style scoped>
@@ -373,7 +369,6 @@ const handleLogout = () => {
   background-color: #c82333;
 }
 </style>
-
 ```
 
 ---
@@ -381,30 +376,29 @@ const handleLogout = () => {
 ## src/main.ts
 
 ```ts
-import { createApp } from 'vue'
-import { createPinia } from 'pinia'
+import { createApp } from "vue";
+import { createPinia } from "pinia";
 
-import App from './App.vue'
-import router from './router'
+import App from "./App.vue";
+import router from "./router";
 import posthog from "posthog-js";
 
 const app = createApp(App);
 
-posthog.init(import.meta.env.VITE_POSTHOG_PROJECT_TOKEN || '', {
-  api_host: import.meta.env.VITE_POSTHOG_HOST || 'https://us.i.posthog.com',
-  defaults: '2026-01-30',
+posthog.init(import.meta.env.VITE_POSTHOG_PROJECT_TOKEN || "", {
+  api_host: import.meta.env.VITE_POSTHOG_HOST || "https://us.i.posthog.com",
+  defaults: "2026-01-30",
 });
 
-app.use(createPinia())
-app.use(router)
+app.use(createPinia());
+app.use(router);
 
 app.config.errorHandler = (err, instance, info) => {
   // report error to tracking services
-  posthog.captureException(err)
-}
+  posthog.captureException(err);
+};
 
-app.mount('#app')
-
+app.mount("#app");
 ```
 
 ---
@@ -412,54 +406,53 @@ app.mount('#app')
 ## src/router/index.ts
 
 ```ts
-import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import Home from '@/views/Home.vue'
-import Burrito from '@/views/Burrito.vue'
-import Profile from '@/views/Profile.vue'
+import { createRouter, createWebHistory } from "vue-router";
+import { useAuthStore } from "@/stores/auth";
+import Home from "@/views/Home.vue";
+import Burrito from "@/views/Burrito.vue";
+import Profile from "@/views/Profile.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
-      path: '/',
-      name: 'home',
-      component: Home
+      path: "/",
+      name: "home",
+      component: Home,
     },
     {
-      path: '/burrito',
-      name: 'burrito',
+      path: "/burrito",
+      name: "burrito",
       component: Burrito,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true },
     },
     {
-      path: '/profile',
-      name: 'profile',
+      path: "/profile",
+      name: "profile",
       component: Profile,
-      meta: { requiresAuth: true }
-    }
-  ]
-})
+      meta: { requiresAuth: true },
+    },
+  ],
+});
 
 router.beforeEach((to, from, next) => {
-  const authStore = useAuthStore()
-  
+  const authStore = useAuthStore();
+
   // Check if user exists and has a valid username
-  const isValidUser = authStore.user && authStore.user.username
-  
+  const isValidUser = authStore.user && authStore.user.username;
+
   if (to.meta.requiresAuth && !isValidUser) {
     // Clear invalid state
     if (authStore.user && !authStore.user.username) {
-      authStore.logout()
+      authStore.logout();
     }
-    next({ name: 'home' })
+    next({ name: "home" });
   } else {
-    next()
+    next();
   }
-})
+});
 
-export default router
-
+export default router;
 ```
 
 ---
@@ -467,78 +460,76 @@ export default router
 ## src/stores/auth.ts
 
 ```ts
-import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { defineStore } from "pinia";
+import { ref, computed } from "vue";
 
 interface User {
-  username: string
-  burritoConsiderations: number
+  username: string;
+  burritoConsiderations: number;
 }
 
-const users = new Map<string, User>()
+const users = new Map<string, User>();
 
-export const useAuthStore = defineStore('auth', () => {
-
+export const useAuthStore = defineStore("auth", () => {
   const getInitialUser = (): User | null => {
-    if (typeof window === 'undefined') return null
+    if (typeof window === "undefined") return null;
 
-    const storedUsername = localStorage.getItem('currentUser')
+    const storedUsername = localStorage.getItem("currentUser");
     if (storedUsername) {
-      const existingUser = users.get(storedUsername)
+      const existingUser = users.get(storedUsername);
       if (existingUser && existingUser.username) {
-        return existingUser
+        return existingUser;
       } else {
         // Clean up invalid state
-        localStorage.removeItem('currentUser')
+        localStorage.removeItem("currentUser");
       }
     }
-    return null
-  }
+    return null;
+  };
 
-  const user = ref<User | null>(getInitialUser())
+  const user = ref<User | null>(getInitialUser());
 
-  const isAuthenticated = computed(() => user.value !== null)
+  const isAuthenticated = computed(() => user.value !== null);
 
   const login = async (username: string, password: string): Promise<boolean> => {
     // Client-side only fake auth - no server calls
     if (!username || !password) {
-      return false
+      return false;
     }
 
-    let localUser = users.get(username)
+    let localUser = users.get(username);
     if (!localUser) {
       localUser = {
         username,
-        burritoConsiderations: 0
-      }
-      users.set(username, localUser)
+        burritoConsiderations: 0,
+      };
+      users.set(username, localUser);
     }
 
-    user.value = localUser
-    localStorage.setItem('currentUser', username)
+    user.value = localUser;
+    localStorage.setItem("currentUser", username);
 
-    return true
-  }
+    return true;
+  };
 
   const logout = () => {
-    user.value = null
-    localStorage.removeItem('currentUser')
-  }
+    user.value = null;
+    localStorage.removeItem("currentUser");
+  };
 
   const setUser = (newUser: User) => {
-    user.value = newUser
-    users.set(newUser.username, newUser)
-  }
+    user.value = newUser;
+    users.set(newUser.username, newUser);
+  };
 
   return {
     user,
     isAuthenticated,
     login,
     logout,
-    setUser
-  }
-})
-
+    setUser,
+  };
+});
 ```
 
 ---
@@ -569,33 +560,33 @@ export const useAuthStore = defineStore('auth', () => {
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useAuthStore } from '@/stores/auth'
-import posthog from 'posthog-js'
+import { ref } from "vue";
+import { useAuthStore } from "@/stores/auth";
+import posthog from "posthog-js";
 
-const authStore = useAuthStore()
-const hasConsidered = ref(false)
+const authStore = useAuthStore();
+const hasConsidered = ref(false);
 
 const handleConsideration = () => {
-  if (!authStore.user) return
+  if (!authStore.user) return;
 
   // Client-side only - no server calls
   const updatedUser = {
     ...authStore.user,
-    burritoConsiderations: authStore.user.burritoConsiderations + 1
-  }
-  authStore.setUser(updatedUser)
-  hasConsidered.value = true
+    burritoConsiderations: authStore.user.burritoConsiderations + 1,
+  };
+  authStore.setUser(updatedUser);
+  hasConsidered.value = true;
   setTimeout(() => {
-    hasConsidered.value = false
-  }, 2000)
+    hasConsidered.value = false;
+  }, 2000);
 
   // Capture burrito consideration event
-  posthog.capture('burrito_considered', {
+  posthog.capture("burrito_considered", {
     total_considerations: updatedUser.burritoConsiderations,
-    username: updatedUser.username
-  })
-}
+    username: updatedUser.username,
+  });
+};
 </script>
 
 <style scoped>
@@ -640,7 +631,6 @@ h3 {
   margin-bottom: 0.5rem;
 }
 </style>
-
 ```
 
 ---
@@ -665,12 +655,7 @@ h3 {
       <form @submit.prevent="handleSubmit" class="form">
         <div class="form-group">
           <label for="username">Username:</label>
-          <input
-            type="text"
-            id="username"
-            v-model="username"
-            placeholder="Enter any username"
-          />
+          <input type="text" id="username" v-model="username" placeholder="Enter any username" />
         </div>
 
         <div class="form-group">
@@ -688,45 +673,43 @@ h3 {
         <button type="submit" class="btn-primary">Sign In</button>
       </form>
 
-      <p class="note">
-        Note: This is a demo app. Use any username and password to sign in.
-      </p>
+      <p class="note">Note: This is a demo app. Use any username and password to sign in.</p>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useAuthStore } from '@/stores/auth'
-import posthog from 'posthog-js'
+import { ref, onMounted } from "vue";
+import { useAuthStore } from "@/stores/auth";
+import posthog from "posthog-js";
 
-const authStore = useAuthStore()
-const username = ref('')
-const password = ref('')
-const error = ref('')
+const authStore = useAuthStore();
+const username = ref("");
+const password = ref("");
+const error = ref("");
 
 // Clean up invalid user state on mount
 onMounted(() => {
   if (authStore.user && !authStore.user.username) {
-    authStore.logout()
+    authStore.logout();
   }
-})
+});
 
 const handleSubmit = async () => {
-  error.value = ''
+  error.value = "";
 
-  const success = await authStore.login(username.value, password.value)
+  const success = await authStore.login(username.value, password.value);
   if (success) {
     // Identifying the user once on login/sign up is enough.
-    posthog.identify(username.value)
-    posthog.capture('user_logged_in')
-    
-    username.value = ''
-    password.value = ''
+    posthog.identify(username.value);
+    posthog.capture("user_logged_in");
+
+    username.value = "";
+    password.value = "";
   } else {
-    error.value = 'Please provide both username and password'
+    error.value = "Please provide both username and password";
   }
-}
+};
 </script>
 
 <style scoped>
@@ -803,7 +786,6 @@ li {
   margin-bottom: 0.5rem;
 }
 </style>
-
 ```
 
 ---
@@ -836,18 +818,16 @@ li {
         <p v-else-if="authStore.user.burritoConsiderations < 10">
           You're becoming a burrito consideration expert!
         </p>
-        <p v-else>
-          You are a true burrito consideration master! 🌯
-        </p>
+        <p v-else>You are a true burrito consideration master! 🌯</p>
       </template>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from "@/stores/auth";
 
-const authStore = useAuthStore()
+const authStore = useAuthStore();
 </script>
 
 <style scoped>
@@ -877,7 +857,6 @@ h3 {
   margin-bottom: 0.5rem;
 }
 </style>
-
 ```
 
 ---
@@ -885,26 +864,21 @@ h3 {
 ## vite.config.ts
 
 ```ts
-import { fileURLToPath, URL } from 'node:url'
+import { fileURLToPath, URL } from "node:url";
 
-import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
-import vueDevTools from 'vite-plugin-vue-devtools'
+import { defineConfig } from "vite";
+import vue from "@vitejs/plugin-vue";
+import vueDevTools from "vite-plugin-vue-devtools";
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [
-    vue(),
-    vueDevTools(),
-  ],
+  plugins: [vue(), vueDevTools()],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
-})
-
+});
 ```
 
 ---
-
