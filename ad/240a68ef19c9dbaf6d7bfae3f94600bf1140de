@@ -1,0 +1,66 @@
+assets/app/modules/public/landing/sections/discovery/MonitorScene.vue
+  s_4009926a81b72f::t_365e83506c3793 19-21
+test/storyarn_web/live/landing_live/index_test.exs
+  s_4009926a81b72f::t_f62b6bcb81292c 16-24
+assets/app/locales/en/landing.json
+  s_4009926a81b72f::t_890d7f988e5a79 13-16,18-20,22-55
+  s_4009926a81b72f::t_70993000ee5500 17
+  s_4009926a81b72f::t_ed1036fef097d9 21
+lib/storyarn_web/router.ex
+  s_4009926a81b72f::t_0dd5f58a171708 353
+priv/docs/es/narrative-design/01-flows-overview.md
+  s_4009926a81b72f::t_365e83506c3793 12
+assets/app/locales/es/landing.json
+  s_4009926a81b72f::t_9baefe5a415ff8 13-16,18-20,22-55
+  s_4009926a81b72f::t_ed1036fef097d9 21
+  s_4009926a81b72f::t_70993000ee5500 17
+lib/storyarn_web/live/landing_live/index.ex
+  s_4009926a81b72f::t_fcf84378f02303 34,80-81
+priv/docs/en/welcome/01-what-is-storyarn.md
+  s_4009926a81b72f::t_365e83506c3793 40
+priv/docs/en/narrative-design/01-flows-overview.md
+  s_4009926a81b72f::t_365e83506c3793 12
+assets/app/live/layouts/public/Layout.vue
+  s_4009926a81b72f::t_aba6707f4226e6 89,91,197,199
+  s_4009926a81b72f::t_6cde91290d2855 54,56-60,98,134,207,249
+assets/app/test/utils/posthog.test.ts
+  s_4009926a81b72f::t_cfba08e4e38d6d 67
+  s_4009926a81b72f::t_b69e6716261b68 71-73
+assets/js/utils/posthog.js
+  s_4009926a81b72f::t_cfba08e4e38d6d 30
+  s_4009926a81b72f::t_b69e6716261b68 35-38,44-47
+priv/docs/es/welcome/01-what-is-storyarn.md
+  s_4009926a81b72f::t_365e83506c3793 40
+assets/app/live/public/landing/PublicLandingV2.vue
+  s_4009926a81b72f::t_579475f2381fde 123
+  s_4009926a81b72f::t_226266cef322df 78,80-83,85,88
+  s_4009926a81b72f::t_7aa3eced2585bc 1-35,37-75,77,86,89,91-122,124-213,217-256,258-267
+  s_4009926a81b72f::t_d9ae485c8b5d09 214-216
+  s_4009926a81b72f::t_b30a84b45827f1 76
+  s_4009926a81b72f::t_365e83506c3793 36
+  h_46be6e61f3d9dd 79
+  s_4009926a81b72f::t_51b38bfd46f817 257
+  s_4009926a81b72f::t_246220e51fa629 84,87
+  s_4009926a81b72f::t_b69e6716261b68 90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.9",
+  "base_commit_sha": "ad240a68ef19c9dbaf6d7bfae3f94600bf1140de",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
