@@ -111,6 +111,7 @@ defmodule Storyarn.Projects.Dashboard do
     [
       detect_flows_without_entry(project_id, workspace_slug, project_slug),
       detect_disconnected_nodes(project_id, workspace_slug, project_slug),
+      detect_dead_end_nodes(project_id, workspace_slug, project_slug),
       detect_empty_sheets(project_id, workspace_slug, project_slug),
       detect_untranslated_content(project_id, workspace_slug, project_slug)
     ]
@@ -291,21 +292,58 @@ defmodule Storyarn.Projects.Dashboard do
   def flows_with_disconnected_nodes(project_id) do
     connection_optional_types = NodeConnectionRules.connection_optional_types()
 
+    project_id
+    |> active_node_connection_counts(connection_optional_types)
+    |> Enum.filter(&(&1.valid_outgoing_count == 0 and &1.valid_incoming_count == 0))
+    |> group_flow_node_counts()
+  end
+
+  @doc "Returns flows with nodes that need an outgoing connection but do not have one."
+  def flows_with_dead_end_nodes(project_id) do
+    outgoing_optional_types = NodeConnectionRules.outgoing_optional_types()
+
+    project_id
+    |> active_node_connection_counts(outgoing_optional_types)
+    |> Enum.filter(&(&1.valid_outgoing_count == 0 and &1.valid_incoming_count > 0))
+    |> group_flow_node_counts()
+  end
+
+  defp active_node_connection_counts(project_id, ignored_types) do
     Repo.all(
       from(n in FlowNode,
         join: f in Flow,
         on: n.flow_id == f.id,
         left_join: cs in FlowConnection,
         on: cs.source_node_id == n.id,
+        left_join: target in FlowNode,
+        on: target.id == cs.target_node_id and target.flow_id == f.id and is_nil(target.deleted_at),
         left_join: ct in FlowConnection,
         on: ct.target_node_id == n.id,
+        left_join: source in FlowNode,
+        on: source.id == ct.source_node_id and source.flow_id == f.id and is_nil(source.deleted_at),
         where:
-          f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at) and is_nil(cs.id) and
-            is_nil(ct.id) and n.type not in ^connection_optional_types,
-        group_by: [f.id, f.name],
-        select: %{flow_id: f.id, flow_name: f.name, count: count(n.id)}
+          f.project_id == ^project_id and
+            is_nil(n.deleted_at) and
+            is_nil(f.deleted_at) and
+            n.type not in ^ignored_types,
+        group_by: [f.id, f.name, n.id],
+        select: %{
+          flow_id: f.id,
+          flow_name: f.name,
+          node_id: n.id,
+          valid_outgoing_count: count(target.id),
+          valid_incoming_count: count(source.id)
+        }
       )
     )
+  end
+
+  defp group_flow_node_counts(rows) do
+    rows
+    |> Enum.group_by(&{&1.flow_id, &1.flow_name})
+    |> Enum.map(fn {{flow_id, flow_name}, rows} ->
+      %{flow_id: flow_id, flow_name: flow_name, count: length(rows)}
+    end)
   end
 
   defp detect_flows_without_entry(project_id, workspace_slug, project_slug) do
@@ -331,6 +369,25 @@ defmodule Storyarn.Projects.Dashboard do
           dgettext(
             "flows",
             "Flow \"%{name}\" has %{count} disconnected node(s)",
+            name: row.flow_name,
+            count: row.count
+          ),
+        href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows/#{row.flow_id}",
+        count: row.count
+      }
+    end)
+  end
+
+  defp detect_dead_end_nodes(project_id, workspace_slug, project_slug) do
+    project_id
+    |> flows_with_dead_end_nodes()
+    |> Enum.map(fn row ->
+      %{
+        severity: :warning,
+        message:
+          dgettext(
+            "flows",
+            "Flow \"%{name}\" has %{count} node(s) without outgoing connection",
             name: row.flow_name,
             count: row.count
           ),

@@ -344,6 +344,13 @@ defmodule StoryarnWeb.FlowLive.Index do
                count: issue.count
              )}
 
+          :dead_end_nodes ->
+            {:warning,
+             dgettext("flows", "Flow \"%{name}\" has %{count} node(s) without outgoing connection",
+               name: issue.flow_name,
+               count: issue.count
+             )}
+
           _ ->
             {:info, gettext("Issue detected")}
         end

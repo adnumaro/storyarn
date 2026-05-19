@@ -57,11 +57,14 @@ defmodule Storyarn.Flows.FlowStats do
   Issue types:
   - `:no_entry` — flow has no entry node
   - `:disconnected_nodes` — flow has nodes with zero connections
+  - `:dead_end_nodes` — flow has connected nodes without outgoing connections
   """
   def detect_flow_issues(project_id) do
     no_entry = detect_no_entry_issues(project_id)
     disconnected = detect_disconnected_issues(project_id)
-    no_entry ++ disconnected
+    dead_end = detect_dead_end_issues(project_id)
+
+    no_entry ++ disconnected ++ dead_end
   end
 
   # ===========================================================================
@@ -82,6 +85,19 @@ defmodule Storyarn.Flows.FlowStats do
         flow_id: &1.flow_id,
         flow_name: &1.flow_name,
         issue_type: :disconnected_nodes,
+        count: &1.count
+      }
+    )
+  end
+
+  defp detect_dead_end_issues(project_id) do
+    project_id
+    |> Dashboard.flows_with_dead_end_nodes()
+    |> Enum.map(
+      &%{
+        flow_id: &1.flow_id,
+        flow_name: &1.flow_name,
+        issue_type: :dead_end_nodes,
         count: &1.count
       }
     )

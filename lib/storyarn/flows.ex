@@ -676,16 +676,17 @@ defmodule Storyarn.Flows do
     project_variables =
       opts[:project_variables] || Storyarn.Sheets.list_project_variables(flow.project_id)
 
-    subflow_cache = NodeCrud.batch_resolve_subflow_data(flow.nodes)
-    referencing_flows = NodeCrud.list_nodes_referencing_flow(flow.id, flow.project_id)
-    unreachable_ids = compute_unreachable_ids(flow.nodes, flow.connections)
-    dead_end_ids = compute_dead_end_ids(flow.nodes, flow.connections)
-
-    cache = %{subflow: subflow_cache}
-
     # Sequences now live in flow.nodes with type='sequence'. Preload their
     # 1:1 config to expose name/width/height alongside the base fields.
     nodes = Repo.preload(flow.nodes, :sequence_config)
+    active_connections = active_graph_connections(nodes, flow.connections)
+
+    subflow_cache = NodeCrud.batch_resolve_subflow_data(flow.nodes)
+    referencing_flows = NodeCrud.list_nodes_referencing_flow(flow.id, flow.project_id)
+    unreachable_ids = compute_unreachable_ids(nodes, active_connections)
+    dead_end_ids = compute_dead_end_ids(nodes, active_connections)
+
+    cache = %{subflow: subflow_cache}
 
     %{
       id: flow.id,
@@ -702,7 +703,7 @@ defmodule Storyarn.Flows do
           })
         end),
       connections:
-        Enum.map(flow.connections, fn conn ->
+        Enum.map(active_connections, fn conn ->
           %{
             id: conn.id,
             source_node_id: conn.source_node_id,
@@ -713,6 +714,15 @@ defmodule Storyarn.Flows do
           }
         end)
     }
+  end
+
+  defp active_graph_connections(nodes, connections) do
+    node_ids = MapSet.new(nodes, & &1.id)
+
+    Enum.filter(connections, fn conn ->
+      MapSet.member?(node_ids, conn.source_node_id) and
+        MapSet.member?(node_ids, conn.target_node_id)
+    end)
   end
 
   defp serialize_node(%FlowNode{type: "sequence"} = node, _ctx) do

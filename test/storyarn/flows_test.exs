@@ -997,6 +997,48 @@ defmodule Storyarn.FlowsTest do
       assert exit_id == target_exit.id
     end
 
+    test "serialize_for_canvas ignores connections pointing to soft-deleted nodes" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project, %{name: "Stale Connection Flow"})
+      source = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Continue"}})
+      target = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Deleted"}})
+
+      connection_fixture(flow, source, target)
+
+      target
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
+      |> Storyarn.Repo.update!()
+
+      serialized = project.id |> Flows.get_flow!(flow.id) |> Flows.serialize_for_canvas()
+      source_payload = Enum.find(serialized.nodes, &(&1.id == source.id))
+
+      refute Enum.any?(serialized.nodes, &(&1.id == target.id))
+      refute Enum.any?(serialized.connections, &(&1.target_node_id == target.id))
+      assert source_payload.data["dead_end"] == true
+    end
+
+    test "serialize_for_canvas marks nodes unreachable when their source is soft-deleted" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project, %{name: "Deleted Source Flow"})
+      source = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Deleted"}})
+      target = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Lost"}})
+
+      connection_fixture(flow, source, target)
+
+      source
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
+      |> Storyarn.Repo.update!()
+
+      serialized = project.id |> Flows.get_flow!(flow.id) |> Flows.serialize_for_canvas()
+      target_payload = Enum.find(serialized.nodes, &(&1.id == target.id))
+
+      refute Enum.any?(serialized.nodes, &(&1.id == source.id))
+      refute Enum.any?(serialized.connections, &(&1.source_node_id == source.id))
+      assert target_payload.data["unreachable"] == true
+    end
+
     test "serialize_for_canvas includes sequences inline in nodes[] with parent_id" do
       user = user_fixture()
       project = project_fixture(user)

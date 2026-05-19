@@ -14,6 +14,10 @@ defmodule Storyarn.Flows.NodeConnectionRules do
   @spec connection_optional_types() :: [String.t()]
   def connection_optional_types, do: @connection_optional_types
 
+  @doc "Node types that are allowed to have no outgoing graph connections."
+  @spec outgoing_optional_types() :: [String.t()]
+  def outgoing_optional_types, do: @terminal_output_types ++ @connection_optional_types
+
   @doc "Returns true when a node type should not be reported as connectionless."
   @spec connection_optional_type?(String.t()) :: boolean()
   def connection_optional_type?(type), do: type in @connection_optional_types
@@ -24,5 +28,5 @@ defmodule Storyarn.Flows.NodeConnectionRules do
 
   @doc "Returns true when a node type is expected to have at least one outgoing connection."
   @spec needs_outgoing_connection?(String.t()) :: boolean()
-  def needs_outgoing_connection?(type), do: type not in (@terminal_output_types ++ @connection_optional_types)
+  def needs_outgoing_connection?(type), do: type not in outgoing_optional_types()
 end

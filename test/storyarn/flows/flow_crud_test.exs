@@ -1239,6 +1239,29 @@ defmodule Storyarn.Flows.FlowCrudTest do
       assert issues == []
     end
 
+    test "detects connected nodes whose outgoing connection points to a soft-deleted node" do
+      %{project: project, flow: flow} = create_project_and_flow()
+      loaded = Flows.get_flow!(project.id, flow.id)
+      entry = Enum.find(loaded.nodes, &(&1.type == "entry"))
+      source = node_fixture(flow, %{type: "subflow", data: %{"referenced_flow_id" => nil}})
+      target = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Deleted"}})
+
+      Storyarn.FlowsFixtures.connection_fixture(loaded, entry, source)
+      Storyarn.FlowsFixtures.connection_fixture(loaded, source, target)
+
+      target
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
+      |> Storyarn.Repo.update!()
+
+      issues = Flows.detect_flow_issues(project.id)
+      dead_end = Enum.filter(issues, &(&1.issue_type == :dead_end_nodes))
+
+      assert length(dead_end) == 1
+      issue = hd(dead_end)
+      assert issue.flow_id == flow.id
+      assert issue.count == 1
+    end
+
     test "returns empty list for healthy project" do
       user = user_fixture()
       project = project_fixture(user)
