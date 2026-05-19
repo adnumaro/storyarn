@@ -1,0 +1,49 @@
+lib/storyarn_web/live/flow_live/player_live.ex
+  s_4009926a81b72f::t_9c4111e7d9f9a6 372
+  s_4009926a81b72f::t_2d7dbc69a2b55b 374-378
+lib/storyarn/flows.ex
+  s_4009926a81b72f::t_a8d61d94e3678e 20,615-618
+test/storyarn/flows/node_crud_test.exs
+  s_4009926a81b72f::t_7c33a919ce283d 1419,1423-1425,1447
+lib/storyarn_web/live/scene_live/exploration_live.ex
+  s_4009926a81b72f::t_a6e2db31596ae1 737-741,1648-1652
+test/storyarn/flows_test.exs
+  s_4009926a81b72f::t_57e60112bfe07f 978-999
+assets/app/modules/flows/editor/components/entities/nodes/SubflowNode.vue
+  s_4009926a81b72f::t_97e35a2aa0f519 50,60-64,102,115
+lib/storyarn_web/live/flow_live/handlers/debug_execution_handlers.ex
+  s_4009926a81b72f::t_5aaff53f675b81 287-291
+assets/app/modules/flows/editor/lib/node-configs.ts
+  s_4009926a81b72f::t_a8a14ca454ddf1 30-31,111-114,119-122
+  s_4009926a81b72f::t_e093cbde4080c3 150-161
+test/storyarn/flows/evaluator/engine_test.exs
+  s_4009926a81b72f::t_62de1ba6dfef74 63-71
+  s_4009926a81b72f::t_bb74e71305e823 5
+  s_4009926a81b72f::t_ef1366f876a6ea 42-62,72-73
+lib/storyarn/flows/node_crud.ex
+  s_4009926a81b72f::t_7e0b2b38c32766 349,352-353,360
+lib/storyarn/flows/evaluator/engine_helpers.ex
+  s_4009926a81b72f::t_230af400eb68e2 56-66,68-75
+  s_4009926a81b72f::t_0333c8a5092e7f 67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.9",
+  "base_commit_sha": "793b4948f095f78a4acd597999cd7a12ba3948f5",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
