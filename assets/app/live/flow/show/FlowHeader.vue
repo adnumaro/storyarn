@@ -31,6 +31,7 @@ interface HealthNode {
   id: number | string;
   label: string;
   reason?: string;
+  reasons?: string[];
 }
 
 interface FlowHealth {
@@ -78,6 +79,11 @@ const healthOpen = ref(false);
 const errorCount = computed(() => flowHealth.errorNodes.length);
 const infoCount = computed(() => flowHealth.infoNodes.length);
 const showScene = computed(() => canEdit || sceneSelected.name != null);
+
+function nodeReasons(node: HealthNode): string[] {
+  if (node.reasons?.length) return node.reasons;
+  return node.reason ? [node.reason] : [];
+}
 
 function saveName(name: string): void {
   live.pushEvent("save_name", { name });
@@ -247,10 +253,17 @@ function navigateToNode(nodeId: number | string): void {
                 v-for="node in flowHealth.errorNodes"
                 :key="'e-' + node.id"
                 type="button"
-                class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs hover:bg-accent transition-colors"
+                class="w-full flex flex-col items-start gap-0.5 px-2 py-1.5 rounded-md text-xs hover:bg-accent transition-colors"
                 @click="navigateToNode(node.id)"
               >
                 <span class="truncate">{{ node.label }}</span>
+                <span
+                  v-for="reason in nodeReasons(node)"
+                  :key="reason"
+                  class="text-[11px] text-muted-foreground"
+                >
+                  {{ reason }}
+                </span>
               </button>
             </div>
             <div v-if="flowHealth.infoNodes.length > 0">
@@ -268,9 +281,13 @@ function navigateToNode(nodeId: number | string): void {
                 @click="navigateToNode(node.id)"
               >
                 <span class="truncate">{{ node.label }}</span>
-                <span v-if="node.reason" class="text-[11px] text-muted-foreground">{{
-                  node.reason
-                }}</span>
+                <span
+                  v-for="reason in nodeReasons(node)"
+                  :key="reason"
+                  class="text-[11px] text-muted-foreground"
+                >
+                  {{ reason }}
+                </span>
               </button>
             </div>
           </PopoverContent>

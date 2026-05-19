@@ -75,5 +75,22 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpersTest do
       # Entry node (auto-created) + our dialogue node
       assert length(result.assigns.flow_data.nodes) >= 2
     end
+
+    test "reports multiple health reasons for dialogue nodes", %{flow: flow, socket: socket} do
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "<p><br></p>", "responses" => []}
+        })
+
+      result = SocketHelpers.reload_flow_data(socket)
+
+      info_node = Enum.find(result.assigns.flow_info_nodes, &(&1.id == dialogue.id))
+      error_node = Enum.find(result.assigns.flow_error_nodes, &(&1.id == dialogue.id))
+
+      assert "Not reachable from any entry node" in info_node.reasons
+      assert "No outgoing connection" in info_node.reasons
+      assert error_node.reasons == ["Missing dialogue text"]
+    end
   end
 end

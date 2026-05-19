@@ -240,6 +240,36 @@ msgstr ""
 msgid "Not reachable from any entry node"
 msgstr ""
 
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Missing dialogue text"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Missing subflow reference"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Response assignment type warning"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Stale subflow reference"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Stale variable reference"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Variable type warning"
+msgstr ""
+
 #: lib/storyarn_web/live/flow_live/nodes/annotation/node.ex:20
 #, elixir-autogen, elixir-format
 msgid "Note"

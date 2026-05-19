@@ -16,6 +16,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
 
   alias Phoenix.LiveView.Socket
   alias Storyarn.Flows
+  alias Storyarn.Shared.HtmlUtils
   alias StoryarnWeb.FlowLive.Helpers.NodeDataHelpers
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
 
@@ -57,17 +58,13 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
 
     error_nodes =
       flow_data.nodes
-      |> Enum.filter(&node_has_errors?/1)
-      |> Enum.map(fn n ->
-        %{id: n.id, type: n.type, label: node_short_label(n)}
-      end)
+      |> Enum.map(fn n -> node_health_payload(n, error_reasons(n)) end)
+      |> Enum.reject(&is_nil/1)
 
     info_nodes =
       flow_data.nodes
-      |> Enum.filter(&node_has_info?/1)
-      |> Enum.map(fn n ->
-        %{id: n.id, type: n.type, label: node_short_label(n), reason: info_reason(n)}
-      end)
+      |> Enum.map(fn n -> node_health_payload(n, info_reasons(n)) end)
+      |> Enum.reject(&is_nil/1)
 
     socket
     |> assign(:flow_word_count, word_count)
@@ -83,22 +80,51 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
     end)
   end
 
-  defp node_has_errors?(%{data: data, type: type}) do
-    data["has_stale_refs"] == true ||
-      data["has_type_warnings"] == true ||
-      (type == "subflow" && (data["stale_reference"] == true || !data["referenced_flow_id"])) ||
-      (type == "dialogue" && has_response_warnings?(data["responses"]))
+  defp node_health_payload(_node, []), do: nil
+
+  defp node_health_payload(node, reasons) do
+    %{
+      id: node.id,
+      type: node.type,
+      label: node_short_label(node),
+      reason: Enum.join(reasons, " · "),
+      reasons: reasons
+    }
   end
 
-  defp node_has_info?(%{data: data}) do
-    data["unreachable"] == true || data["dead_end"] == true
+  defp error_reasons(%{data: data, type: type}) do
+    []
+    |> maybe_add_reason(data["has_stale_refs"] == true, dgettext("flows", "Stale variable reference"))
+    |> maybe_add_reason(data["has_type_warnings"] == true, dgettext("flows", "Variable type warning"))
+    |> maybe_add_reason(
+      type == "subflow" && data["stale_reference"] == true,
+      dgettext("flows", "Stale subflow reference")
+    )
+    |> maybe_add_reason(
+      type == "subflow" && !data["referenced_flow_id"],
+      dgettext("flows", "Missing subflow reference")
+    )
+    |> maybe_add_reason(
+      type == "dialogue" && dialogue_text_empty?(data),
+      dgettext("flows", "Missing dialogue text")
+    )
+    |> maybe_add_reason(
+      type == "dialogue" && has_response_warnings?(data["responses"]),
+      dgettext("flows", "Response assignment type warning")
+    )
   end
 
-  defp info_reason(%{data: data}) do
-    cond do
-      data["unreachable"] -> dgettext("flows", "Not reachable from any entry node")
-      data["dead_end"] -> dgettext("flows", "No outgoing connection")
-    end
+  defp info_reasons(%{data: data}) do
+    []
+    |> maybe_add_reason(data["unreachable"] == true, dgettext("flows", "Not reachable from any entry node"))
+    |> maybe_add_reason(data["dead_end"] == true, dgettext("flows", "No outgoing connection"))
+  end
+
+  defp maybe_add_reason(reasons, true, reason), do: reasons ++ [reason]
+  defp maybe_add_reason(reasons, false, _reason), do: reasons
+
+  defp dialogue_text_empty?(data) do
+    data |> Map.get("text") |> HtmlUtils.strip_html() == ""
   end
 
   defp has_response_warnings?(nil), do: false
