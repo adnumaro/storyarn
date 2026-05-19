@@ -24,5 +24,5 @@ defmodule Storyarn.Flows.NodeConnectionRules do
 
   @doc "Returns true when a node type is expected to have at least one outgoing connection."
   @spec needs_outgoing_connection?(String.t()) :: boolean()
-  def needs_outgoing_connection?(type), do: type not in @terminal_output_types ++ @connection_optional_types
+  def needs_outgoing_connection?(type), do: type not in (@terminal_output_types ++ @connection_optional_types)
 end

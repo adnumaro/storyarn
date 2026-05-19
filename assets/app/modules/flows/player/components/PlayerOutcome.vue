@@ -25,7 +25,10 @@ const emit = defineEmits<{
 }>();
 
 onMounted(() => {
-  capture("flow player completed", { step_count: slide.step_count, choices_made: slide.choices_made });
+  capture("flow player completed", {
+    step_count: slide.step_count,
+    choices_made: slide.choices_made,
+  });
 });
 </script>
 
