@@ -346,7 +346,10 @@ defmodule Storyarn.Flows.NodeCrud do
     |> Map.put("referenced_flow_name", flow.name)
     |> Map.put("referenced_flow_shortcut", flow.shortcut)
     |> Map.put("exit_labels", exit_labels)
+    |> Map.put("exit_pins", Enum.map(exit_labels, &subflow_exit_pin/1))
   end
+
+  defp subflow_exit_pin(%{id: id}), do: "exit_#{id}"
 
   defp mark_stale_subflow(data) do
     data
@@ -354,6 +357,7 @@ defmodule Storyarn.Flows.NodeCrud do
     |> Map.put("referenced_flow_name", nil)
     |> Map.put("referenced_flow_shortcut", nil)
     |> Map.put("exit_labels", [])
+    |> Map.put("exit_pins", [])
   end
 
   @doc """

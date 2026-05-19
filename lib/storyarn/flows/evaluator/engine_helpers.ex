@@ -53,6 +53,27 @@ defmodule Storyarn.Flows.Evaluator.EngineHelpers do
   end
 
   @doc """
+  Finds the parent-flow connection to follow after returning from a subflow.
+
+  Subflow nodes can expose dynamic outputs keyed by the returned exit node
+  (`exit_<id>`). Older/simple subflow connections use `output` or `default`, so
+  those remain fallbacks.
+  """
+  def find_return_connection(connections, return_node_id, returned_exit_node_id) do
+    exit_pin = if returned_exit_node_id, do: "exit_#{returned_exit_node_id}"
+
+    Enum.find(connections, &matches_source_pin?(&1, return_node_id, exit_pin)) ||
+      Enum.find(connections, &matches_source_pin?(&1, return_node_id, "output")) ||
+      Enum.find(connections, &matches_source_pin?(&1, return_node_id, "default"))
+  end
+
+  defp matches_source_pin?(_conn, _return_node_id, nil), do: false
+
+  defp matches_source_pin?(conn, return_node_id, pin) do
+    conn.source_node_id == return_node_id and conn.source_pin == pin
+  end
+
+  @doc """
   Add a console entry to the state.
   """
   def add_console(%State{} = state, level, node_id, node_label, message) do

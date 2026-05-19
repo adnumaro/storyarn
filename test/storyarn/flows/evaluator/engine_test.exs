@@ -2,6 +2,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
   use ExUnit.Case, async: true
 
   alias Storyarn.Flows.Evaluator.Engine
+  alias Storyarn.Flows.Evaluator.EngineHelpers
 
   # =============================================================================
   # Test helpers
@@ -35,6 +36,39 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
 
   defp console_messages(state) do
     state.console |> Enum.reverse() |> Enum.map(& &1.message)
+  end
+
+  # =============================================================================
+  # find_return_connection/3
+  # =============================================================================
+
+  describe "find_return_connection/3" do
+    test "prefers the connection matching the returned subflow exit" do
+      connections = [
+        conn(2, "exit_10", 3),
+        conn(2, "exit_11", 4),
+        conn(2, "output", 5)
+      ]
+
+      assert EngineHelpers.find_return_connection(connections, 2, 11).target_node_id == 4
+    end
+
+    test "falls back to output and legacy default connections" do
+      output_connection = conn(2, "output", 3)
+      default_connection = conn(2, "default", 4)
+
+      assert EngineHelpers.find_return_connection([output_connection], 2, 99) == output_connection
+      assert EngineHelpers.find_return_connection([default_connection], 2, 99) == default_connection
+    end
+
+    test "does not follow unrelated dynamic exits after returning from another exit" do
+      connections = [
+        conn(2, "exit_10", 3),
+        conn(2, "exit_11", 4)
+      ]
+
+      assert EngineHelpers.find_return_connection(connections, 2, 99) == nil
+    end
   end
 
   # =============================================================================

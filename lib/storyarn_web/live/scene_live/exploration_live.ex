@@ -734,9 +734,11 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         parent_connections = frame.connections
 
         conn =
-          Enum.find(parent_connections, fn c ->
-            c.source_node_id == frame.return_node_id and c.source_pin in ["default", "output"]
-          end)
+          Flows.evaluator_find_return_connection(
+            parent_connections,
+            frame.return_node_id,
+            new_state.current_node_id
+          )
 
         new_state =
           if conn do
@@ -1643,9 +1645,11 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         parent_connections = frame.connections
 
         conn =
-          Enum.find(parent_connections, fn c ->
-            c.source_node_id == frame.return_node_id and c.source_pin in ["default", "output"]
-          end)
+          Flows.evaluator_find_return_connection(
+            parent_connections,
+            frame.return_node_id,
+            new_state.current_node_id
+          )
 
         new_state =
           if conn do

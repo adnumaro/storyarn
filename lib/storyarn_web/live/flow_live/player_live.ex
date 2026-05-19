@@ -369,13 +369,13 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
         parent_scene_id = if parent_flow, do: Flows.resolve_scene_id(parent_flow)
         socket = maybe_update_scene_backdrop(socket, parent_scene_id)
 
-        # Find the connection after the return node to advance
-        return_node_id = frame.return_node_id
-
+        # Find the connection after the return node to advance.
         conn =
-          Enum.find(parent_connections, fn c ->
-            c.source_node_id == return_node_id and c.source_pin in ["default", "output"]
-          end)
+          Flows.evaluator_find_return_connection(
+            parent_connections,
+            frame.return_node_id,
+            new_state.current_node_id
+          )
 
         new_state =
           if conn do

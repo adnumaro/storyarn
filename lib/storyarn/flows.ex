@@ -17,6 +17,7 @@ defmodule Storyarn.Flows do
   alias Storyarn.Flows.EntityTrashRefs
   alias Storyarn.Flows.Evaluator.ConditionEval
   alias Storyarn.Flows.Evaluator.Engine
+  alias Storyarn.Flows.Evaluator.EngineHelpers
   alias Storyarn.Flows.Evaluator.Helpers
   alias Storyarn.Flows.Evaluator.InstructionExec
   alias Storyarn.Flows.Flow
@@ -610,6 +611,11 @@ defmodule Storyarn.Flows do
 
   @doc "Pop a sub-flow context from the call stack."
   defdelegate evaluator_pop_flow_context(state), to: Engine, as: :pop_flow_context
+
+  @doc "Find the parent-flow connection after returning from a sub-flow exit."
+  defdelegate evaluator_find_return_connection(connections, return_node_id, returned_exit_node_id),
+    to: EngineHelpers,
+    as: :find_return_connection
 
   @doc "Reset the evaluator to its initial state."
   defdelegate evaluator_reset(state), to: Engine, as: :reset

@@ -1416,9 +1416,13 @@ defmodule Storyarn.Flows.NodeCrudTest do
 
       cache = Flows.NodeCrud.batch_resolve_subflow_data([subflow])
       resolved = Flows.NodeCrud.resolve_subflow_data(subflow.data, cache)
+      exit_node = target_flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "exit"))
 
       assert resolved["referenced_flow_name"] == "Enriched Flow"
       assert resolved["stale_reference"] == false
+      assert resolved["exit_pins"] == ["exit_#{exit_node.id}"]
+      assert [%{id: exit_id}] = resolved["exit_labels"]
+      assert exit_id == exit_node.id
     end
 
     test "returns data unchanged when referenced_flow_id is nil" do
@@ -1440,6 +1444,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
       assert resolved["stale_reference"] == true
       assert resolved["referenced_flow_name"] == nil
       assert resolved["exit_labels"] == []
+      assert resolved["exit_pins"] == []
     end
   end
 

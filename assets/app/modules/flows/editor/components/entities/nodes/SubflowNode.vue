@@ -47,12 +47,7 @@ const errorTitle = computed(() =>
 // Sockets
 const inputs = computed(() => Object.entries(data?.inputs || {}));
 const outputs = computed(() => Object.entries(data?.outputs || {}));
-const usesDefaultOutputRow = computed(
-  () =>
-    inputs.value.length === 1 &&
-    outputs.value.length === 1 &&
-    outputs.value[0]?.[0] === "output",
-);
+const usesSingleOutputRow = computed(() => inputs.value.length === 1 && outputs.value.length === 1);
 
 // Exit labels for dynamic output formatting
 const exitLabels = computed<ExitLabel[]>(() => nodeData.value.exit_labels || []);
@@ -61,6 +56,11 @@ function getExitInfo(key: string): ExitLabel | null {
   if (!key.startsWith("exit_")) return null;
   const exitId = Number.parseInt(key.replace("exit_", ""), 10);
   return exitLabels.value.find((e) => e.id === exitId) || null;
+}
+
+function outputLabel(key: string): string {
+  const exitInfo = getExitInfo(key);
+  return exitInfo ? exitInfo.label || "Exit" : key;
 }
 </script>
 
@@ -99,7 +99,7 @@ function getExitInfo(key: string): ExitLabel | null {
 
     <!-- Sockets with per-exit labels -->
     <div class="py-1">
-      <template v-if="usesDefaultOutputRow">
+      <template v-if="usesSingleOutputRow">
         <div class="sockets-row relative flex justify-between items-center py-1">
           <template v-for="[key, input] in inputs" :key="'i-' + key">
             <Ref
@@ -112,10 +112,16 @@ function getExitInfo(key: string): ExitLabel | null {
           </template>
           <span class="flex-1" />
           <template v-for="[key, output] in outputs" :key="'o-' + key">
-            <span class="text-[11px] text-muted-foreground mr-2">{{ key }}</span>
+            <span class="text-[11px] text-muted-foreground mr-2">{{ outputLabel(key) }}</span>
             <Ref
               class="output-socket absolute -right-1.5"
-              :data="{ type: 'socket', side: 'output', key, nodeId: data.id, payload: output.socket }"
+              :data="{
+                type: 'socket',
+                side: 'output',
+                key,
+                nodeId: data.id,
+                payload: output.socket,
+              }"
               :emit="emit"
               data-testid="output-socket"
             />

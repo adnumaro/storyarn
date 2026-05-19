@@ -975,6 +975,28 @@ defmodule Storyarn.FlowsTest do
       refute Map.has_key?(serialized, :sequences)
     end
 
+    test "serialize_for_canvas includes subflow exit pins from the referenced flow" do
+      user = user_fixture()
+      project = project_fixture(user)
+      parent_flow = flow_fixture(project, %{name: "Parent Flow"})
+      target_flow = flow_fixture(project, %{name: "Target Flow"})
+      target_exit = target_flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "exit"))
+
+      subflow =
+        node_fixture(parent_flow, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => target_flow.id}
+        })
+
+      serialized = project.id |> Flows.get_flow!(parent_flow.id) |> Flows.serialize_for_canvas()
+      subflow_payload = Enum.find(serialized.nodes, &(&1.id == subflow.id))
+
+      assert subflow_payload.data["referenced_flow_name"] == "Target Flow"
+      assert subflow_payload.data["exit_pins"] == ["exit_#{target_exit.id}"]
+      assert [%{id: exit_id}] = subflow_payload.data["exit_labels"]
+      assert exit_id == target_exit.id
+    end
+
     test "serialize_for_canvas includes sequences inline in nodes[] with parent_id" do
       user = user_fixture()
       project = project_fixture(user)

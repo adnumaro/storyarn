@@ -284,9 +284,11 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
         state = %{state | current_flow_id: frame.flow_id}
 
         next_conn =
-          Enum.find(frame.connections, fn c ->
-            c.source_node_id == frame.return_node_id
-          end)
+          Flows.evaluator_find_return_connection(
+            frame.connections,
+            frame.return_node_id,
+            state.current_node_id
+          )
 
         state =
           if next_conn do

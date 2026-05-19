@@ -27,7 +27,8 @@ export interface NodeConfig {
 
 export interface NodeData {
   responses?: { id: string }[];
-  exit_pins?: ({ id: string } | string)[];
+  exit_pins?: ({ id: string | number } | string | number)[];
+  exit_labels?: ({ id: string | number } | string | number)[];
   condition?: { rules?: { id?: string }[] };
   switch_mode?: boolean;
   [key: string]: unknown;
@@ -107,9 +108,18 @@ export function createDynamicOutputs(type: string, data: NodeData): string[] | n
     return data.responses.map((r) => r.id);
   }
   if (type === "subflow" && data.exit_pins && data.exit_pins.length > 0) {
-    return data.exit_pins.map((p): string => (typeof p === "object" ? p.id : p));
+    return data.exit_pins.map(subflowExitPinId);
+  }
+  if (type === "subflow" && data.exit_labels && data.exit_labels.length > 0) {
+    return data.exit_labels.map(subflowExitPinId);
   }
   return null;
+}
+
+function subflowExitPinId(pin: { id: string | number } | string | number): string {
+  const id = typeof pin === "object" ? pin.id : pin;
+  const value = String(id);
+  return value.startsWith("exit_") ? value : `exit_${value}`;
 }
 
 /**
@@ -137,9 +147,18 @@ function conditionNeedsRebuild(oldData: NodeData | null, newData: NodeData): boo
 }
 
 function subflowNeedsRebuild(oldData: NodeData | null, newData: NodeData): boolean {
-  const oldPins = oldData?.exit_pins || [];
-  const newPins = newData.exit_pins || [];
-  return oldPins.length !== newPins.length;
+  const oldPins = subflowOutputPins(oldData);
+  const newPins = subflowOutputPins(newData);
+
+  return oldPins.length !== newPins.length || oldPins.some((pin, index) => pin !== newPins[index]);
+}
+
+function subflowOutputPins(data: NodeData | null): string[] {
+  if (!data) return [];
+  if (data.exit_pins && data.exit_pins.length > 0) return data.exit_pins.map(subflowExitPinId);
+  if (data.exit_labels && data.exit_labels.length > 0)
+    return data.exit_labels.map(subflowExitPinId);
+  return [];
 }
 
 type RebuildChecker = (oldData: NodeData | null, newData: NodeData) => boolean;
