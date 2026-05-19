@@ -1,0 +1,41 @@
+lib/storyarn/projects/dashboard.ex
+  s_4009926a81b72f::t_68d509d138bfd8 18,292-293,304
+lib/storyarn/flows/node_connection_rules.ex
+  s_4009926a81b72f::t_55563e62b0f609 1-28
+assets/app/modules/flows/editor/components/entities/nodes/DialogueNode.vue
+  s_4009926a81b72f::t_90e67be1b811fb 372
+test/storyarn/exports/validator_test.exs
+  s_4009926a81b72f::t_0238373944d459 106-120
+assets/app/modules/flows/editor/components/entities/nodes/SubflowNode.vue
+  s_4009926a81b72f::t_01fab6348ce8c4 51-54
+  s_4009926a81b72f::t_f2ca727a100e79 50,55,102-109,111,113-164
+lib/storyarn/flows.ex
+  s_4009926a81b72f::t_53c8c336ae03ef 30
+  s_4009926a81b72f::t_fbdd5a9d7d28d8 836,842,868
+test/storyarn/flows/flow_crud_test.exs
+  s_4009926a81b72f::t_4fd4fd5ffac94d 1228-1233,1235-1241
+  s_4009926a81b72f::t_f53efc5151e7c7 1234
+lib/storyarn/exports/validator.ex
+  s_4009926a81b72f::t_aff2a897b8b3ca 13,196,237,259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.9",
+  "base_commit_sha": "7e7a1ac77e0521d241f2b2c4ab51b9dde3aefac3",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
