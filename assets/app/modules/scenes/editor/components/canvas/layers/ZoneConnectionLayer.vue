@@ -64,6 +64,23 @@ function onConnectionDblclick(id: number | string, e: KonvaEventObject<MouseEven
           perfectDrawEnabled: false,
         }"
       />
+      <v-line
+        v-if="zone.isSelected"
+        :config="{
+          points: zone.points,
+          stroke: selectionColor,
+          strokeWidth: Math.max(zone.strokeWidth + 2, 4),
+          dash: [8, 5],
+          opacity: 0.95,
+          closed: true,
+          listening: false,
+          shadowColor: selectionColor,
+          shadowBlur: 6,
+          shadowOpacity: 0.45,
+          shadowForStrokeEnabled: false,
+          perfectDrawEnabled: false,
+        }"
+      />
       <v-text
         v-if="zone.name"
         :config="{
@@ -72,9 +89,10 @@ function onConnectionDblclick(id: number | string, e: KonvaEventObject<MouseEven
           fontSize: 12,
           fontStyle: '600',
           align: 'center',
-          x: zone.centroidX - 50,
-          y: zone.centroidY - 8,
-          width: 100,
+          x: zone.labelX,
+          y: zone.labelY,
+          width: zone.labelWidth,
+          height: zone.labelHeight,
           ellipsis: true,
           wrap: 'none',
           shadowColor: 'black',

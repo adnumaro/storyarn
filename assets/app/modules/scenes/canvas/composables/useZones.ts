@@ -4,6 +4,8 @@ import { useHiddenLayerIds, type LayerData } from "./useLayerVisibility";
 
 const DEFAULT_FILL_COLOR = "#3b82f6";
 const DEFAULT_BORDER_COLOR = "#1e40af";
+const LABEL_WIDTH = 100;
+const LABEL_HEIGHT = 16;
 
 const DASH_PATTERNS: Record<string, number[] | null> = {
   solid: null,
@@ -50,6 +52,10 @@ export interface ZoneConfig {
   points: number[];
   centroidX: number;
   centroidY: number;
+  labelX: number;
+  labelY: number;
+  labelWidth: number;
+  labelHeight: number;
   fill: string;
   stroke: string;
   strokeWidth: number;
@@ -139,6 +145,10 @@ function buildZoneConfig(
     points: geo.points,
     centroidX: geo.centroidX,
     centroidY: geo.centroidY,
+    labelX: geo.centroidX - LABEL_WIDTH / 2,
+    labelY: geo.centroidY - LABEL_HEIGHT / 2,
+    labelWidth: LABEL_WIDTH,
+    labelHeight: LABEL_HEIGHT,
     fill: zone.fillColor || DEFAULT_FILL_COLOR,
     stroke: zone.borderColor || DEFAULT_BORDER_COLOR,
     strokeWidth: zone.borderWidth ?? 2,
@@ -193,7 +203,8 @@ export function useZones({
 
         const lock = entityLocks.value[String(zone.id)];
         const isLockedByOther = !!lock && String(lock.userId) !== String(currentUserId.value);
-        const isSelected = selectedType?.value === "zone" && selectedId?.value === zone.id;
+        const isSelected =
+          selectedType?.value === "zone" && String(selectedId?.value) === String(zone.id);
 
         return buildZoneConfig(
           zone,

@@ -382,16 +382,9 @@ function getPinPosition(id: number | string): ElementRect | null {
 
 function getZonePosition(id: number | string): ElementRect | null {
   const zone = zoneConfigs.value.find((z) => z.id === id);
-  if (!zone || zone.points.length < 4) return null;
-  const xs: number[] = [];
-  const ys: number[] = [];
-  for (let i = 0; i < zone.points.length; i += 2) {
-    xs.push(zone.points[i]);
-    ys.push(zone.points[i + 1]);
-  }
-  const minX = Math.min(...xs);
-  const minY = Math.min(...ys);
-  return { x: minX, y: minY, width: Math.max(...xs) - minX, height: Math.max(...ys) - minY };
+  return zone
+    ? { x: zone.labelX, y: zone.labelY, width: zone.labelWidth, height: zone.labelHeight }
+    : null;
 }
 
 function getConnectionPosition(id: number | string): ElementRect | null {
