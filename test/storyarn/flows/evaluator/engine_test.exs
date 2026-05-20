@@ -53,12 +53,16 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       assert EngineHelpers.find_return_connection(connections, 2, 11).target_node_id == 4
     end
 
-    test "falls back to output and legacy default connections" do
+    test "falls back to standard output connections" do
       output_connection = conn(2, "output", 3)
-      default_connection = conn(2, "default", 4)
 
       assert EngineHelpers.find_return_connection([output_connection], 2, 99) == output_connection
-      assert EngineHelpers.find_return_connection([default_connection], 2, 99) == default_connection
+    end
+
+    test "does not follow legacy default connections" do
+      default_connection = conn(2, "default", 4)
+
+      assert EngineHelpers.find_return_connection([default_connection], 2, 99) == nil
     end
 
     test "does not follow unrelated dynamic exits after returning from another exit" do
@@ -68,6 +72,24 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       ]
 
       assert EngineHelpers.find_return_connection(connections, 2, 99) == nil
+    end
+  end
+
+  # =============================================================================
+  # find_output_connection/2
+  # =============================================================================
+
+  describe "find_output_connection/2" do
+    test "uses the current output pin" do
+      output_connection = conn(2, "output", 3)
+
+      assert EngineHelpers.find_output_connection([output_connection], 2) == output_connection
+    end
+
+    test "does not use legacy default pins" do
+      default_connection = conn(2, "default", 3)
+
+      assert EngineHelpers.find_output_connection([default_connection], 2) == nil
     end
   end
 
@@ -104,7 +126,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         2 => node(2, "exit")
       }
 
-      connections = [conn(1, "default", 2)]
+      connections = [conn(1, "output", 2)]
       state = Engine.init(%{}, 1)
 
       {:ok, state: state, nodes: nodes, connections: connections}
@@ -160,7 +182,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         3 => node(3, "exit")
       }
 
-      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      conns = [conn(1, "output", 2), conn(2, "output", 3)]
       state = Engine.init(%{}, 1)
 
       {:ok, state} = Engine.step(state, nodes, conns)
@@ -186,7 +208,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         4 => node(4, "exit")
       }
 
-      conns = [conn(1, "default", 2), conn(3, "default", 4)]
+      conns = [conn(1, "output", 2), conn(3, "output", 4)]
       state = Engine.init(%{}, 1)
 
       # entry → jump
@@ -212,7 +234,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         2 => node(2, "jump", %{})
       }
 
-      conns = [conn(1, "default", 2)]
+      conns = [conn(1, "output", 2)]
       state = Engine.init(%{}, 1)
 
       {:ok, state} = Engine.step(state, nodes, conns)
@@ -227,7 +249,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         2 => node(2, "jump", %{"target_hub_id" => "nonexistent"})
       }
 
-      conns = [conn(1, "default", 2)]
+      conns = [conn(1, "output", 2)]
       state = Engine.init(%{}, 1)
 
       {:ok, state} = Engine.step(state, nodes, conns)
@@ -248,7 +270,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         2 => node(2, "subflow", %{"referenced_flow_id" => 42})
       }
 
-      conns = [conn(1, "default", 2)]
+      conns = [conn(1, "output", 2)]
       state = Engine.init(%{}, 1)
 
       {:ok, state} = Engine.step(state, nodes, conns)
@@ -262,7 +284,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         2 => node(2, "subflow", %{"referenced_flow_id" => nil})
       }
 
-      conns = [conn(1, "default", 2)]
+      conns = [conn(1, "output", 2)]
       state = Engine.init(%{}, 1)
 
       {:ok, state} = Engine.step(state, nodes, conns)
@@ -284,7 +306,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         3 => node(3, "exit")
       }
 
-      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      conns = [conn(1, "output", 2), conn(2, "output", 3)]
       state = Engine.init(%{}, 1)
 
       {:ok, state} = Engine.step(state, nodes, conns)
@@ -317,7 +339,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       }
 
       conns = [
-        conn(1, "default", 2),
+        conn(1, "output", 2),
         conn(2, "r1", 3),
         conn(2, "r2", 4)
       ]
@@ -365,7 +387,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
     test "choose_response with resp_ prefix pin", ctx do
       # Some flows might use "resp_r1" as pin name
       conns = [
-        conn(1, "default", 2),
+        conn(1, "output", 2),
         conn(2, "resp_r1", 3),
         conn(2, "resp_r2", 4)
       ]
@@ -443,7 +465,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
           })
       }
 
-      conns = [conn(1, "default", 2)]
+      conns = [conn(1, "output", 2)]
       variables = %{"mc.jaime.health" => var(80, "number")}
       state = Engine.init(variables, 1)
 
@@ -500,7 +522,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
           })
       }
 
-      conns = [conn(1, "default", 2)]
+      conns = [conn(1, "output", 2)]
       variables = %{"mc.jaime.health" => var(80, "number")}
       state = Engine.init(variables, 1)
 
@@ -550,7 +572,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         3 => node(3, "exit")
       }
 
-      conns = [conn(1, "default", 2), conn(2, "r1", 3)]
+      conns = [conn(1, "output", 2), conn(2, "r1", 3)]
       variables = %{"mc.jaime.health" => var(100, "number")}
       state = Engine.init(variables, 1)
 
@@ -600,7 +622,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         3 => node(3, "exit")
       }
 
-      conns = [conn(1, "default", 2), conn(2, "r1", 3)]
+      conns = [conn(1, "output", 2), conn(2, "r1", 3)]
       variables = %{"mc.jaime.health" => var(100, "number")}
       state = Engine.init(variables, 1)
 
@@ -664,7 +686,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         3 => node(3, "exit")
       }
 
-      conns = [conn(1, "default", 2), conn(2, "r1", 3)]
+      conns = [conn(1, "output", 2), conn(2, "r1", 3)]
       variables = %{"mc.jaime.health" => var(100, "number")}
       state = Engine.init(variables, 1)
 
@@ -707,7 +729,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         3 => node(3, "exit")
       }
 
-      conns = [conn(1, "default", 2), conn(2, "r1", 3)]
+      conns = [conn(1, "output", 2), conn(2, "r1", 3)]
       variables = %{"mc.jaime.health" => var(100, "number")}
       state = Engine.init(variables, 1)
 
@@ -754,7 +776,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       }
 
       conns = [
-        conn(1, "default", 2),
+        conn(1, "output", 2),
         conn(2, "true", 3),
         conn(2, "false", 4)
       ]
@@ -806,7 +828,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       }
 
       # No "true" connection
-      conns = [conn(1, "default", 2)]
+      conns = [conn(1, "output", 2)]
       state = Engine.init(%{}, 1)
 
       {:ok, state} = Engine.step(state, nodes, conns)
@@ -852,7 +874,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       }
 
       conns = [
-        conn(1, "default", 2),
+        conn(1, "output", 2),
         conn(2, "case_1", 3),
         conn(2, "case_2", 4),
         conn(2, "default", 5)
@@ -888,7 +910,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       }
 
       conns = [
-        conn(1, "default", 2),
+        conn(1, "output", 2),
         conn(2, "case_1", 3),
         conn(2, "default", 4)
       ]
@@ -927,7 +949,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         3 => node(3, "exit")
       }
 
-      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      conns = [conn(1, "output", 2), conn(2, "output", 3)]
       variables = %{"mc.jaime.health" => var(100, "number")}
       state = Engine.init(variables, 1)
 
@@ -946,7 +968,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         3 => node(3, "exit")
       }
 
-      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      conns = [conn(1, "output", 2), conn(2, "output", 3)]
       state = Engine.init(%{}, 1)
 
       {:ok, state} = Engine.step(state, nodes, conns)
@@ -980,7 +1002,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         3 => node(3, "exit")
       }
 
-      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      conns = [conn(1, "output", 2), conn(2, "output", 3)]
       variables = %{"mc.jaime.health" => var(100, "number")}
       state = Engine.init(variables, 1)
 
@@ -1006,7 +1028,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         3 => node(3, "exit")
       }
 
-      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      conns = [conn(1, "output", 2), conn(2, "output", 3)]
       state = Engine.init(%{}, 1)
 
       {:ok, state} = Engine.step(state, nodes, conns)
@@ -1045,7 +1067,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         3 => node(3, "exit")
       }
 
-      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      conns = [conn(1, "output", 2), conn(2, "output", 3)]
       variables = %{"mc.jaime.health" => var(100, "number")}
       state = Engine.init(variables, 1)
 
@@ -1072,12 +1094,12 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         3 => node(3, "exit")
       }
 
-      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      conns = [conn(1, "output", 2), conn(2, "output", 3)]
       state = Engine.init(%{}, 1)
 
       # Push a flow context before stepping
       parent_nodes = %{10 => node(10, "entry")}
-      parent_conns = [conn(10, "default", 11)]
+      parent_conns = [conn(10, "output", 11)]
       state = Engine.push_flow_context(state, 10, parent_nodes, parent_conns)
       assert length(state.call_stack) == 1
 
@@ -1097,7 +1119,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         3 => node(3, "exit")
       }
 
-      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      conns = [conn(1, "output", 2), conn(2, "output", 3)]
       state = Engine.init(%{}, 1)
       state = %{state | current_flow_id: 42}
 
@@ -1133,7 +1155,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
           })
       }
 
-      conns = [conn(1, "default", 2)]
+      conns = [conn(1, "output", 2)]
       state = Engine.init(%{}, 1)
 
       {:ok, state} = Engine.step(state, nodes, conns)
@@ -1173,7 +1195,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         3 => node(3, "exit")
       }
 
-      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      conns = [conn(1, "output", 2), conn(2, "output", 3)]
       variables = %{"mc.jaime.health" => var(100, "number")}
       state = Engine.init(variables, 1)
 
@@ -1254,7 +1276,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       }
 
       # Circular: 1 → 2 → 1
-      conns = [conn(1, "default", 2), conn(2, "default", 1)]
+      conns = [conn(1, "output", 2), conn(2, "output", 1)]
       state = Engine.init(%{}, 1)
       state = %{state | max_steps: 5}
 
@@ -1291,7 +1313,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         2 => node(2, "exit")
       }
 
-      conns = [conn(1, "default", 2)]
+      conns = [conn(1, "output", 2)]
       state = Engine.init(%{}, 1)
       state = %{state | max_steps: 2}
 
@@ -1351,7 +1373,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         4 => node(4, "exit")
       }
 
-      conns = [conn(1, "default", 2), conn(2, "default", 3), conn(3, "default", 4)]
+      conns = [conn(1, "output", 2), conn(2, "output", 3), conn(3, "output", 4)]
       state = Engine.init(%{}, 1)
 
       {:ok, state} = Engine.step(state, nodes, conns)
@@ -1418,8 +1440,8 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       }
 
       conns = [
-        conn(1, "default", 2),
-        conn(2, "default", 3),
+        conn(1, "output", 2),
+        conn(2, "output", 3),
         conn(3, "true", 4),
         conn(3, "false", 6),
         conn(4, "r1", 5)
@@ -1476,7 +1498,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         3 => node(3, "exit")
       }
 
-      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      conns = [conn(1, "output", 2), conn(2, "output", 3)]
       variables = %{"mc.jaime.health" => var(100, "number")}
       state = Engine.init(variables, 1)
 
@@ -1524,7 +1546,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         3 => node(3, "exit")
       }
 
-      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      conns = [conn(1, "output", 2), conn(2, "output", 3)]
 
       variables = %{
         "mc.jaime.health" => var(100, "number"),
@@ -1574,7 +1596,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         3 => node(3, "exit")
       }
 
-      conns = [conn(1, "default", 2), conn(2, "r1", 3)]
+      conns = [conn(1, "output", 2), conn(2, "r1", 3)]
       variables = %{"mc.jaime.health" => var(100, "number")}
       state = Engine.init(variables, 1)
 
@@ -1612,7 +1634,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         3 => node(3, "exit")
       }
 
-      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      conns = [conn(1, "output", 2), conn(2, "output", 3)]
       variables = %{"mc.jaime.health" => var(100, "number")}
       state = Engine.init(variables, 1)
 
@@ -1649,7 +1671,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         3 => node(3, "exit")
       }
 
-      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      conns = [conn(1, "output", 2), conn(2, "output", 3)]
       variables = %{"mc.jaime.health" => var(100, "number")}
       state = Engine.init(variables, 1)
 
@@ -1668,7 +1690,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         3 => node(3, "exit")
       }
 
-      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      conns = [conn(1, "output", 2), conn(2, "output", 3)]
       state = Engine.init(%{}, 1)
 
       {:ok, state} = Engine.step(state, nodes, conns)
@@ -1690,7 +1712,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         2 => node(2, "exit", %{"exit_mode" => "flow_reference", "referenced_flow_id" => 99})
       }
 
-      conns = [conn(1, "default", 2)]
+      conns = [conn(1, "output", 2)]
       state = Engine.init(%{}, 1)
 
       {:ok, state} = Engine.step(state, nodes, conns)
@@ -1704,7 +1726,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         2 => node(2, "exit", %{"exit_mode" => "flow_reference", "referenced_flow_id" => nil})
       }
 
-      conns = [conn(1, "default", 2)]
+      conns = [conn(1, "output", 2)]
       state = Engine.init(%{}, 1)
 
       {:ok, state} = Engine.step(state, nodes, conns)
@@ -1719,7 +1741,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         2 => node(2, "exit", %{"exit_mode" => "caller_return"})
       }
 
-      conns = [conn(1, "default", 2)]
+      conns = [conn(1, "output", 2)]
       state = Engine.init(%{}, 1)
       # Simulate a call stack with one frame
       state = Engine.push_flow_context(state, 10, %{}, [])
@@ -1735,7 +1757,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         2 => node(2, "exit", %{"exit_mode" => "caller_return"})
       }
 
-      conns = [conn(1, "default", 2)]
+      conns = [conn(1, "output", 2)]
       state = Engine.init(%{}, 1)
 
       {:ok, state} = Engine.step(state, nodes, conns)
@@ -1750,7 +1772,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         2 => node(2, "exit", %{"exit_mode" => "terminal"})
       }
 
-      conns = [conn(1, "default", 2)]
+      conns = [conn(1, "output", 2)]
       state = Engine.init(%{}, 1)
 
       {:ok, state} = Engine.step(state, nodes, conns)
@@ -1770,7 +1792,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       state = %{state | current_flow_id: 100, execution_path: [3, 2, 1]}
 
       nodes_map = %{10 => node(10, "entry")}
-      conns_list = [conn(10, "default", 11)]
+      conns_list = [conn(10, "output", 11)]
 
       state = Engine.push_flow_context(state, 5, nodes_map, conns_list)
       assert length(state.call_stack) == 1
@@ -1929,7 +1951,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       }
 
       conns = [
-        conn(1, "default", 2),
+        conn(1, "output", 2),
         conn(2, "true", 3),
         conn(2, "false", 4)
       ]
@@ -1964,7 +1986,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         3 => node(3, "exit")
       }
 
-      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      conns = [conn(1, "output", 2), conn(2, "output", 3)]
       state = Engine.init(vars, 1)
 
       {:ok, state} = Engine.step(state, nodes, conns)
@@ -2021,10 +2043,10 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       }
 
       conns = [
-        conn(1, "default", 2),
+        conn(1, "output", 2),
         conn(2, "true", 3),
         conn(2, "false", 5),
-        conn(3, "default", 4)
+        conn(3, "output", 4)
       ]
 
       state = Engine.init(vars, 1)
@@ -2063,7 +2085,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         3 => node(3, "exit")
       }
 
-      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      conns = [conn(1, "output", 2), conn(2, "output", 3)]
       state = Engine.init(vars, 1)
 
       {:ok, state} = Engine.step(state, nodes, conns)
@@ -2091,7 +2113,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         3 => node(3, "exit")
       }
 
-      connections = [conn(1, "default", 2), conn(2, "default", 3)]
+      connections = [conn(1, "output", 2), conn(2, "output", 3)]
       state = Engine.init(%{}, 1)
 
       {:ok, state} = Engine.step(state, nodes, connections)
@@ -2118,13 +2140,13 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         12 => node(12, "exit")
       }
 
-      connections = [conn(10, "default", 11), conn(11, "default", 12)]
+      connections = [conn(10, "output", 11), conn(11, "output", 12)]
 
       state = Engine.init(%{}, 10)
 
       # Push a flow context to simulate being in a sub-flow
       parent_nodes = %{1 => node(1, "entry")}
-      parent_conns = [conn(1, "default", 2)]
+      parent_conns = [conn(1, "output", 2)]
       state = Engine.push_flow_context(state, 1, parent_nodes, parent_conns)
 
       {:ok, state} = Engine.step(state, nodes, connections)
@@ -2141,7 +2163,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         3 => node(3, "exit")
       }
 
-      connections = [conn(1, "default", 2), conn(2, "default", 3)]
+      connections = [conn(1, "output", 2), conn(2, "output", 3)]
       state = Engine.init(%{}, 1)
 
       {:ok, state} = Engine.step(state, nodes, connections)
@@ -2160,7 +2182,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         2 => node(2, "exit")
       }
 
-      connections = [conn(1, "default", 2)]
+      connections = [conn(1, "output", 2)]
       state = Engine.init(%{}, 1)
       {:ok, state} = Engine.step(state, nodes, connections)
 
@@ -2183,7 +2205,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         3 => node(3, "exit")
       }
 
-      connections = [conn(1, "default", 2), conn(2, "r1", 3)]
+      connections = [conn(1, "output", 2), conn(2, "r1", 3)]
       state = Engine.init(%{}, 1)
 
       {:ok, state} = Engine.step(state, nodes, connections)

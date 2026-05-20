@@ -18,7 +18,7 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
     %{id: id, type: type, data: data}
   end
 
-  defp make_connection(source_id, target_id, source_pin \\ "default", target_pin \\ "input") do
+  defp make_connection(source_id, target_id, source_pin \\ "output", target_pin \\ "input") do
     %{
       source_node_id: source_id,
       source_pin: source_pin,

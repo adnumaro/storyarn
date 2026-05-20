@@ -21,7 +21,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
 
   ## Connection list format
 
-      [%{source_node_id: 1, source_pin: "default", target_node_id: 2, target_pin: "input"}, ...]
+      [%{source_node_id: 1, source_pin: "output", target_node_id: 2, target_pin: "input"}, ...]
   """
 
   use Gettext, backend: Storyarn.Gettext

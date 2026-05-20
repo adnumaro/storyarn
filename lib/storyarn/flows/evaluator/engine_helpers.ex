@@ -28,10 +28,10 @@ defmodule Storyarn.Flows.Evaluator.EngineHelpers do
   end
 
   @doc """
-  Follow the default/output pin from a node, finishing if no connection exists.
+  Follow the output pin from a node, finishing if no connection exists.
   """
   def follow_output(state, node_id, label, connections) do
-    conn = find_connection(connections, node_id, "default")
+    conn = find_output_connection(connections, node_id)
 
     case conn do
       nil ->
@@ -53,18 +53,23 @@ defmodule Storyarn.Flows.Evaluator.EngineHelpers do
   end
 
   @doc """
+  Find the standard outgoing connection for pass-through nodes.
+  """
+  def find_output_connection(connections, source_node_id) do
+    find_connection(connections, source_node_id, "output")
+  end
+
+  @doc """
   Finds the parent-flow connection to follow after returning from a subflow.
 
   Subflow nodes can expose dynamic outputs keyed by the returned exit node
-  (`exit_<id>`). Older/simple subflow connections use `output` or `default`, so
-  those remain fallbacks.
+  (`exit_<id>`). Simple subflow connections use the standard `output` pin.
   """
   def find_return_connection(connections, return_node_id, returned_exit_node_id) do
     exit_pin = if returned_exit_node_id, do: "exit_#{returned_exit_node_id}"
 
     Enum.find(connections, &matches_source_pin?(&1, return_node_id, exit_pin)) ||
-      Enum.find(connections, &matches_source_pin?(&1, return_node_id, "output")) ||
-      Enum.find(connections, &matches_source_pin?(&1, return_node_id, "default"))
+      Enum.find(connections, &matches_source_pin?(&1, return_node_id, "output"))
   end
 
   defp matches_source_pin?(_conn, _return_node_id, nil), do: false
