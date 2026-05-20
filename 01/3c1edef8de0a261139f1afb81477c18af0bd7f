@@ -1,0 +1,32 @@
+assets/app/modules/scenes/exploration/components/ExplorationCanvas.vue
+  s_4009926a81b72f::t_b6d87ff77d70bf 425
+assets/app/modules/scenes/canvas/composables/usePins.ts
+  s_4009926a81b72f::t_c7582b59d1c651 1,56,88,103,120,139,161-165,197,224-227,246,248-249
+assets/app/modules/scenes/canvas/lib/pin-icons.ts
+  s_4009926a81b72f::t_558f5bc4e8cc3c 65-66,68-71,74,76-78,80,82-85,88-89,161,180,182
+  s_4009926a81b72f::t_58b226cd14587e 67,73,75,86-87,91,93,95,100,115,162,165,173-176,244-245
+  s_4009926a81b72f::t_c75f39bba15f71 31-38,72,79,81,126,129-135,146-151,163-164,166-172,177-179,181,197,221
+assets/app/modules/scenes/editor/components/canvas/layers/PinLayer.vue
+  s_4009926a81b72f::t_f555feda99a954 76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "013c1edef8de0a261139f1afb81477c18af0bd7f",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
