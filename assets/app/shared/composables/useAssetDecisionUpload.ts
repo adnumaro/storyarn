@@ -43,6 +43,24 @@ interface PendingConfirmation {
 const uploading = ref(false);
 const progress = ref(0);
 const error = ref<string | null>(null);
+const ERROR_DISMISS_MS = 6000;
+
+let errorDismissTimeout: ReturnType<typeof setTimeout> | null = null;
+
+function clearError(): void {
+  error.value = null;
+
+  if (errorDismissTimeout) {
+    clearTimeout(errorDismissTimeout);
+    errorDismissTimeout = null;
+  }
+}
+
+function setError(message: string): void {
+  clearError();
+  error.value = message;
+  errorDismissTimeout = setTimeout(clearError, ERROR_DISMISS_MS);
+}
 
 function getUploadUrl(suffix = ""): string {
   const path = window.location.pathname;
@@ -202,7 +220,7 @@ export function useAssetDecisionUpload() {
   ): Promise<UploadResult | null> {
     if (!file) return null;
 
-    error.value = null;
+    clearError();
     progress.value = 0;
 
     try {
@@ -228,7 +246,7 @@ export function useAssetDecisionUpload() {
 
       return await uploadFile(file, purpose);
     } catch (reason) {
-      error.value = reason instanceof Error ? reason.message : String(reason);
+      setError(reason instanceof Error ? reason.message : String(reason));
       return null;
     } finally {
       uploading.value = false;
@@ -286,6 +304,7 @@ export function useAssetDecisionUpload() {
     uploading: busy,
     progress,
     error,
+    clearError,
     uploadWithDecision,
     uploadManyWithDecision,
     confirmDecision,

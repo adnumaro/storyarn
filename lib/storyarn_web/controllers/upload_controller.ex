@@ -78,6 +78,12 @@ defmodule StoryarnWeb.UploadController do
       {:error, :limit_reached, _} ->
         conn |> put_status(:payment_required) |> json(%{error: "storage_limit_reached"})
 
+      {:error, :too_large} ->
+        conn |> put_status(:unprocessable_entity) |> json(%{error: "too_large"})
+
+      {:error, :not_accepted} ->
+        conn |> put_status(:unprocessable_entity) |> json(%{error: "not_accepted"})
+
       {:error, _reason} ->
         conn |> put_status(:unprocessable_entity) |> json(%{error: "upload_failed"})
     end

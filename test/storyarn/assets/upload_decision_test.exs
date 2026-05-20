@@ -8,6 +8,7 @@ defmodule Storyarn.Assets.UploadDecisionTest do
   alias Storyarn.Assets
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
+  alias Storyarn.Assets.UploadPolicy
   alias Storyarn.Repo
 
   @test_png_path "test/fixtures/images/quadrant_map.png"
@@ -81,5 +82,18 @@ defmodule Storyarn.Assets.UploadDecisionTest do
     project.id
     |> Assets.list_assets()
     |> Enum.each(&Assets.storage_delete(&1.key))
+  end
+
+  test "rejects oversized files during upload inspection", %{project: project} do
+    assert {:error, :too_large} =
+             Assets.inspect_upload(project, %{
+               "purpose" => "scene_background",
+               "hash" => String.duplicate("a", 64),
+               "size" => UploadPolicy.max_file_size() + 1,
+               "width" => 4096,
+               "height" => 2160,
+               "content_type" => "image/png",
+               "filename" => "huge-background.png"
+             })
   end
 end

@@ -7,6 +7,7 @@ defmodule Storyarn.Assets.UploadPolicy do
   """
 
   @max_image_size 52_428_800
+  @multipart_request_overhead 1_048_576
   @image_types ~w(image/jpeg image/png image/gif image/webp)
 
   @profiles %{
@@ -40,6 +41,12 @@ defmodule Storyarn.Assets.UploadPolicy do
 
   @spec supported_purpose?(atom()) :: boolean()
   def supported_purpose?(purpose), do: Map.has_key?(@profiles, purpose)
+
+  @spec max_file_size() :: pos_integer()
+  def max_file_size, do: @max_image_size
+
+  @spec max_request_size() :: pos_integer()
+  def max_request_size, do: @max_image_size + @multipart_request_overhead
 
   @spec profile_for(atom()) :: {:ok, profile()} | {:error, :unsupported_purpose}
   def profile_for(purpose) do

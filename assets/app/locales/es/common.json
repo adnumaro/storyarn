@@ -2,6 +2,7 @@
   "common": {
     "cancel": "Cancelar",
     "delete": "Eliminar",
+    "dismiss": "Descartar",
     "no_results": "Sin resultados",
     "search": "Buscar...",
     "none": "Ninguno",
@@ -163,6 +164,10 @@
       "delete_confirm_used_many": "Este recurso se usa en {count} lugares. ¿Quieres eliminarlo igualmente?",
       "delete_confirm_used_consequence": "Storyarn eliminará el archivo y desvinculará las referencias listadas abajo.",
       "file_too_large": "Archivo demasiado grande (máx. 20MB).",
+      "api_file_too_large": "Archivo demasiado grande (máx. 50MB).",
+      "file_not_accepted": "Tipo de archivo no soportado. Sube una imagen JPEG, PNG, GIF o WebP.",
+      "storage_limit_reached": "Se ha alcanzado el límite de almacenamiento del proyecto. Libera espacio o aumenta el límite antes de subir más archivos.",
+      "upload_failed": "No se pudo subir el archivo. Inténtalo de nuevo.",
       "uploading": "Subiendo...",
       "upload": "Subir",
       "upload_decision": {

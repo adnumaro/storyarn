@@ -2,6 +2,7 @@
   "common": {
     "cancel": "Cancel",
     "delete": "Delete",
+    "dismiss": "Dismiss",
     "no_results": "No results",
     "search": "Search...",
     "none": "None",
@@ -163,6 +164,10 @@
       "delete_confirm_used_many": "This asset is used in {count} places. Delete it anyway?",
       "delete_confirm_used_consequence": "Storyarn will remove this file and detach the references listed below.",
       "file_too_large": "File too large (max 20MB).",
+      "api_file_too_large": "File too large (max 50MB).",
+      "file_not_accepted": "File type not supported. Upload a JPEG, PNG, GIF, or WebP image.",
+      "storage_limit_reached": "Project storage limit reached. Free up space or raise the project limit before uploading more files.",
+      "upload_failed": "Upload failed. Please try again.",
       "uploading": "Uploading...",
       "upload": "Upload",
       "upload_decision": {

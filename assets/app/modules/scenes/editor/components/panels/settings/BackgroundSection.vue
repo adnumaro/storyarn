@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import { ImagePlus, RefreshCw, Trash2 } from "lucide-vue-next";
+import { computed, ref } from "vue";
+import { useI18n } from "vue-i18n";
+import { ImagePlus, RefreshCw, Trash2, X } from "lucide-vue-next";
 import AssetUploadDecisionDialog from "@shared/components/assets/AssetUploadDecisionDialog.vue";
 import { useAssetDecisionUpload } from "@shared/composables/useAssetDecisionUpload.ts";
 import { useLive } from "@shared/composables/useLive.ts";
@@ -17,10 +18,31 @@ const {
   uploading,
   progress,
   error: uploadError,
+  clearError: clearUploadError,
   uploadWithDecision,
   confirmDecision,
   cancelDecision,
 } = useAssetDecisionUpload();
+const { t } = useI18n();
+
+const uploadErrorMessage = computed(() => formatUploadError(uploadError.value));
+
+function formatUploadError(value: string | null): string | null {
+  switch (value) {
+    case null:
+      return null;
+    case "too_large":
+      return t("common.assets.api_file_too_large");
+    case "not_accepted":
+      return t("common.assets.file_not_accepted");
+    case "storage_limit_reached":
+      return t("common.assets.storage_limit_reached");
+    case "upload_failed":
+      return t("common.assets.upload_failed");
+    default:
+      return t("common.assets.upload_failed");
+  }
+}
 
 function triggerUpload() {
   inputRef.value?.click();
@@ -89,6 +111,22 @@ async function onFileSelected(event: Event): Promise<void> {
       <ImagePlus class="size-4" />
       {{ $t("scenes.settings.bg_upload") }}
     </button>
+
+    <div
+      v-if="uploadErrorMessage"
+      role="alert"
+      class="mt-2 flex items-start gap-2 text-xs text-destructive"
+    >
+      <span>{{ uploadErrorMessage }}</span>
+      <button
+        type="button"
+        class="rounded p-0.5 text-destructive/70 transition-colors hover:bg-destructive/10 hover:text-destructive"
+        :aria-label="$t('common.dismiss')"
+        @click="clearUploadError"
+      >
+        <X class="size-3" />
+      </button>
+    </div>
 
     <AssetUploadDecisionDialog
       :state="uploadDialog"
