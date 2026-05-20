@@ -1,0 +1,28 @@
+assets/app/modules/scenes/editor/components/canvas/SceneCanvas.vue
+  s_4009926a81b72f::t_29fa29e05e2ab3 318-322
+  s_4009926a81b72f::t_929fcdb4941412 243,323-326,541
+assets/app/modules/scenes/editor/components/toolbar/SceneFloatingToolbar.vue
+  s_4009926a81b72f::t_29fa29e05e2ab3 58-59
+  s_4009926a81b72f::t_eb957075493619 41,51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "f1ccb5980f00a6baf5e904591aa108db952815dd",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
