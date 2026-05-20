@@ -38,6 +38,7 @@ const {
   stageConfig,
   elementPosition = null,
   isDragging = false,
+  isEditingElement = false,
 } = defineProps<{
   selectedType: string | null;
   selectedElement: SelectedElementData | null;
@@ -47,13 +48,15 @@ const {
   stageConfig: StageConfig;
   elementPosition: ElementPosition | null;
   isDragging: boolean;
+  isEditingElement: boolean;
 }>();
 
 const toolbarRef = ref<HTMLDivElement | null>(null);
 const toolbarStyle = ref<CSSProperties>({ display: "none" });
 
 const visible = computed(
-  () => selectedType !== null && selectedElement !== null && canEdit && editMode,
+  () =>
+    selectedType !== null && selectedElement !== null && canEdit && editMode && !isEditingElement,
 );
 
 const TOOLBAR_COMPONENTS: Record<string, Component> = {

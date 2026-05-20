@@ -240,6 +240,7 @@ const { pinConfigs } = usePins({
 const {
   editingZoneId,
   editingVertices,
+  isEditing: isEditingZone,
   startEditing: startVertexEditing,
   onVertexDragMove,
   onVertexDragEnd,
@@ -314,10 +315,15 @@ const {
   ...selectionRefs,
 });
 
-const { startEditing, isEditingAnnotation, getDisplayText } = useAnnotationEditing({
-  containerRef,
-  stageConfig,
-});
+const { editingAnnotationId, startEditing, isEditingAnnotation, getDisplayText } =
+  useAnnotationEditing({
+    containerRef,
+    stageConfig,
+  });
+
+const isEditingElement = computed(
+  () => isEditingZone.value || isEditingWaypoints.value || editingAnnotationId.value !== null,
+);
 
 function handleAnnotationDblClick(
   annConfig: AnnotationConfig,
@@ -532,6 +538,7 @@ const LABEL_COLOR = "#d1d5db";
       :stage-config="stageConfig"
       :element-position="selectedElementPosition"
       :is-dragging="isDragging || isDraggingZone || isEditingWaypoints"
+      :is-editing-element="isEditingElement"
     />
   </div>
 </template>
