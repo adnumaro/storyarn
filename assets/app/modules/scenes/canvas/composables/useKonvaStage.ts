@@ -279,6 +279,16 @@ export function useKonvaStage({
     stageConfig.y = pointer.y - mousePointTo.y * newScale;
   }
 
+  function syncStageDragPosition(e: KonvaEventObject<DragEvent>): void {
+    const stage = e.target.getStage() || stageRef.value?.getStage?.();
+    if (!stage) {
+      return;
+    }
+
+    stageConfig.x = stage.x();
+    stageConfig.y = stage.y();
+  }
+
   // ---------- Fit to view ----------
 
   function fitToView(): void {
@@ -343,6 +353,7 @@ export function useKonvaStage({
     gridLines,
     cursorStyle,
     handleWheel,
+    syncStageDragPosition,
     fitToView,
     canvasBounds,
     percentToPixel,

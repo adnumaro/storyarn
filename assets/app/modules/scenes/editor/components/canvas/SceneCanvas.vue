@@ -139,6 +139,7 @@ const {
   gridLines,
   cursorStyle,
   handleWheel,
+  syncStageDragPosition,
   percentToPixel,
   pixelToPercent,
 } = useKonvaStage({
@@ -440,6 +441,8 @@ const LABEL_COLOR = "#d1d5db";
       :config="stageConfig"
       @wheel="handleWheel"
       @click="handleStageClick"
+      @dragmove="syncStageDragPosition"
+      @dragend="syncStageDragPosition"
       @mousemove="handleStageMouseMove"
       @mouseup="onZoneDragEnd"
       @dblclick="onStageDblClick"
