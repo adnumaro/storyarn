@@ -28,7 +28,14 @@ export const PIN_SIZES: Record<string, PinSizeDims> = {
 
 export const DEFAULT_PIN_COLOR = "#3b82f6";
 
-const iconCache = new Map<string, HTMLCanvasElement>();
+interface AsyncCanvasEntry {
+  canvas: HTMLCanvasElement;
+  loaded: boolean;
+  callbacks: Set<() => void>;
+}
+
+const iconCache = new Map<string, AsyncCanvasEntry>();
+const initialsCache = new Map<string, HTMLCanvasElement>();
 
 function hexToRgba(hex: string, opacity: number): string {
   const r = Number.parseInt(hex.slice(1, 3), 16);
@@ -55,17 +62,42 @@ function drawCircleShadow(
   ctx.restore();
 }
 
+function drawImageWhenReady(
+  ctx: CanvasRenderingContext2D,
+  src: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  onLoad?: () => void,
+  onError?: () => void,
+): void {
+  const img = new Image();
+  const draw = () => {
+    try {
+      ctx.drawImage(img, x, y, width, height);
+      onLoad?.();
+    } catch {
+      // The colored circle remains visible if the SVG cannot be decoded.
+    }
+  };
+
+  img.onload = draw;
+  img.onerror = () => onError?.();
+  img.src = src;
+}
+
 /**
- * Renders a lucide-vue-next icon component to an SVG Image element.
+ * Renders a lucide-vue-next icon component to an SVG data URL.
  * Uses a temporary Vue app to render the component, extracts the SVG markup,
- * and creates a data URL Image.
+ * and returns a browser-loadable data URL.
  */
-function renderIconToImage(
+function renderIconDataUrl(
   IconComponent: Component,
   size: number,
   color: string,
   strokeWidth: number,
-): HTMLImageElement {
+): string {
   const container = document.createElement("div");
   const app = createApp({
     render: () =>
@@ -80,9 +112,7 @@ function renderIconToImage(
   const svgStr = new XMLSerializer().serializeToString(svgEl);
   app.unmount();
 
-  const img = new Image();
-  img.src = `data:image/svg+xml;base64,${btoa(svgStr)}`;
-  return img;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgStr)}`;
 }
 
 /**
@@ -93,9 +123,16 @@ export function renderPinIcon(
   color: string,
   sizeKey: string,
   opacity: number,
+  onIconLoaded?: () => void,
 ): HTMLCanvasElement {
   const key = `icon-${pinType}-${color}-${sizeKey}-${opacity ?? 1}`;
-  if (iconCache.has(key)) return iconCache.get(key)!;
+  const cached = iconCache.get(key);
+  if (cached) {
+    if (!cached.loaded && onIconLoaded) {
+      cached.callbacks.add(onIconLoaded);
+    }
+    return cached.canvas;
+  }
 
   const dims = PIN_SIZES[sizeKey] || PIN_SIZES.md;
   const d = dims.diameter;
@@ -106,6 +143,12 @@ export function renderPinIcon(
   canvas.width = canvasSize;
   canvas.height = canvasSize;
   const ctx = canvas.getContext("2d")!;
+  const entry: AsyncCanvasEntry = {
+    canvas,
+    loaded: false,
+    callbacks: new Set(onIconLoaded ? [onIconLoaded] : []),
+  };
+  iconCache.set(key, entry);
 
   const cx = canvasSize / 2;
   const cy = canvasSize / 2;
@@ -114,10 +157,30 @@ export function renderPinIcon(
 
   const IconComponent = PIN_TYPE_COMPONENTS[pinType] || MapPin;
   const iconSize = Math.round(d * dims.iconScale);
-  const img = renderIconToImage(IconComponent, iconSize, "#ffffff", 2.5);
-  ctx.drawImage(img, cx - iconSize / 2, cy - iconSize / 2, iconSize, iconSize);
 
-  iconCache.set(key, canvas);
+  try {
+    const iconSrc = renderIconDataUrl(IconComponent, iconSize, "#ffffff", 2.5);
+    drawImageWhenReady(
+      ctx,
+      iconSrc,
+      cx - iconSize / 2,
+      cy - iconSize / 2,
+      iconSize,
+      iconSize,
+      () => {
+        entry.loaded = true;
+        for (const callback of entry.callbacks) callback();
+        entry.callbacks.clear();
+      },
+      () => {
+        entry.loaded = true;
+        entry.callbacks.clear();
+      },
+    );
+  } catch {
+    entry.loaded = true;
+  }
+
   return canvas;
 }
 
@@ -131,7 +194,7 @@ export function renderInitialsCanvas(
   opacity: number,
 ): HTMLCanvasElement {
   const key = `initials-${initials}-${color}-${sizeKey}-${opacity ?? 1}`;
-  if (iconCache.has(key)) return iconCache.get(key)!;
+  if (initialsCache.has(key)) return initialsCache.get(key)!;
 
   const dims = PIN_SIZES[sizeKey] || PIN_SIZES.md;
   const d = dims.diameter;
@@ -155,7 +218,7 @@ export function renderInitialsCanvas(
   ctx.textBaseline = "middle";
   ctx.fillText(initials, cx, cy);
 
-  iconCache.set(key, canvas);
+  initialsCache.set(key, canvas);
   return canvas;
 }
 
@@ -178,8 +241,8 @@ export function renderLockBadge(): HTMLCanvasElement {
   ctx.fillStyle = "#64748b";
   ctx.fill();
 
-  const img = renderIconToImage(Lock, 8, "#ffffff", 3);
-  ctx.drawImage(img, 3, 3, 8, 8);
+  const iconSrc = renderIconDataUrl(Lock, 8, "#ffffff", 3);
+  drawImageWhenReady(ctx, iconSrc, 3, 3, 8, 8);
 
   lockBadgeCanvas = canvas;
   return canvas;

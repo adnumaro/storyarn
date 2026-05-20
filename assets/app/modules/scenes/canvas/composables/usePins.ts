@@ -1,4 +1,4 @@
-import { computed, type ComputedRef, type Ref } from "vue";
+import { computed, ref, type ComputedRef, type Ref } from "vue";
 import {
   DEFAULT_PIN_COLOR,
   PIN_SIZES,
@@ -53,6 +53,7 @@ export interface PinConfig {
   isSelected: boolean;
   listening: boolean;
   draggable: boolean;
+  iconVersion: number;
 }
 
 type MaybeComputedRef<T> = Ref<T> | ComputedRef<T>;
@@ -84,6 +85,7 @@ function determinePinRenderMode(
   color: string,
   sizeKey: string,
   opacity: number,
+  onIconLoaded: () => void,
 ): PinRenderMode {
   if (loadedImg) {
     return { image: loadedImg, iconCanvas: null, initialsCanvas: null };
@@ -98,7 +100,7 @@ function determinePinRenderMode(
   }
   return {
     image: null,
-    iconCanvas: renderPinIcon(pin.pinType, color, sizeKey, opacity),
+    iconCanvas: renderPinIcon(pin.pinType, color, sizeKey, opacity, onIconLoaded),
     initialsCanvas: null,
   };
 }
@@ -115,6 +117,7 @@ function buildPinConfig(
   isSelected: boolean,
   listening: boolean,
   draggable: boolean,
+  iconVersion: number,
 ): PinConfig {
   return {
     id: pin.id,
@@ -133,6 +136,7 @@ function buildPinConfig(
     isSelected,
     listening,
     draggable,
+    iconVersion,
   };
 }
 
@@ -154,6 +158,11 @@ export function usePins({
   canEdit,
 }: UsePinsOpts) {
   const hiddenLayerIds = useHiddenLayerIds(layers);
+  const iconVersion = ref(0);
+
+  function markIconLoaded(): void {
+    iconVersion.value += 1;
+  }
 
   const visiblePins = computed(() =>
     pins.value.filter((pin) => {
@@ -185,7 +194,7 @@ export function usePins({
     const color = pin.color || DEFAULT_PIN_COLOR;
     const opacity = pin.opacity ?? 1;
     const loadedImg = loadedImages.value[pin.id] || null;
-    const render = determinePinRenderMode(pin, loadedImg, color, sizeKey, opacity);
+    const render = determinePinRenderMode(pin, loadedImg, color, sizeKey, opacity, markIconLoaded);
     return { dims, color, opacity, render };
   }
 
@@ -212,8 +221,10 @@ export function usePins({
     return !!lock && String(lock.userId) !== String(currentUserId.value);
   }
 
-  const pinConfigs = computed<PinConfig[]>(() =>
-    visiblePins.value
+  const pinConfigs = computed<PinConfig[]>(() => {
+    const currentIconVersion = iconVersion.value;
+
+    return visiblePins.value
       .slice()
       .sort((a, b) => (a.position || 0) - (b.position || 0))
       .map((pin) => {
@@ -232,9 +243,10 @@ export function usePins({
           isPinSelected(pin),
           isPinListening(),
           isPinDraggable(pin, isLockedByOther),
+          currentIconVersion,
         );
-      }),
-  );
+      });
+  });
 
   return { pinConfigs };
 }

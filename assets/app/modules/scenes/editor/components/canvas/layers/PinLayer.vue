@@ -73,6 +73,7 @@ const emit = defineEmits<{
       />
       <v-image
         v-if="pin.iconCanvas"
+        :key="'pin-icon-' + pin.id + '-' + pin.iconVersion"
         :config="{
           image: pin.iconCanvas,
           x: -pin.iconCanvas.width / 2,
