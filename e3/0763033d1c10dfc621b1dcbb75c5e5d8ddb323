@@ -1,0 +1,28 @@
+assets/app/modules/scenes/canvas/composables/useZones.ts
+  s_4009926a81b72f::t_5259f964765288 7-8,55-58,148-151,206-207
+assets/app/modules/scenes/editor/components/canvas/layers/ZoneConnectionLayer.vue
+  s_4009926a81b72f::t_ba206dbb027589 67-83,92-95
+assets/app/modules/scenes/editor/components/canvas/SceneCanvas.vue
+  s_4009926a81b72f::t_077d3cad1dde90 385-387
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "e30763033d1c10dfc621b1dcbb75c5e5d8ddb323",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
