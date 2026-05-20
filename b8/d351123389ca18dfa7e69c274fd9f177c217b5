@@ -1,0 +1,36 @@
+assets/app/modules/scenes/editor/components/toolbar/controls/ToolbarStrokePicker.vue
+  s_4009926a81b72f::t_46a027524c7ce3 4,45,47,70,72
+assets/app/modules/scenes/editor/components/toolbar/controls/ToolbarTypePicker.vue
+  s_4009926a81b72f::t_46a027524c7ce3 6,45,47,54,56
+test/storyarn_web/live/scene_live/show_test.exs
+  s_4009926a81b72f::t_d6d56a1dea0f85 3223-3244
+assets/app/modules/scenes/editor/components/toolbar/controls/ToolbarActionTypePicker.vue
+  s_4009926a81b72f::t_46a027524c7ce3 6,72,74,81,83
+assets/app/modules/scenes/editor/components/toolbar/controls/ToolbarLayerPicker.vue
+  s_4009926a81b72f::t_46a027524c7ce3 5,60,62,72,74
+  s_4009926a81b72f::t_d9e7dc54a82097 37-42
+  s_4009926a81b72f::t_3a31eb20fc6e63 3-4,27-36,43-50,61,63,65-66,68-71,80,90
+lib/storyarn_web/live/scene_live/handlers/layer_handlers.ex
+  s_4009926a81b72f::t_d6d56a1dea0f85 62-64,67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "b8d351123389ca18dfa7e69c274fd9f177c217b5",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
