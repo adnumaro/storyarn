@@ -3,7 +3,7 @@ import { MapPin, Star, User, Zap } from "lucide-vue-next";
 import type { Component } from "vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 
 const { t } = useI18n();
@@ -42,19 +42,18 @@ const currentIcon = (): Component =>
 
 <template>
   <Popover v-model:open="open">
-    <PopoverTrigger as-child>
+    <PopoverAnchor as-child>
       <ToolbarTooltip :label="$t('scenes.type_picker.pin_type')">
-        <button
-          type="button"
+        <PopoverTrigger
           class="toolbar-btn"
           :disabled="disabled"
           :aria-label="$t('scenes.type_picker.pin_type')"
           :title="$t('scenes.type_picker.pin_type')"
         >
           <component :is="currentIcon()" class="size-3.5" />
-        </button>
+        </PopoverTrigger>
       </ToolbarTooltip>
-    </PopoverTrigger>
+    </PopoverAnchor>
     <PopoverContent class="w-auto p-1" :side-offset="8" side="top">
       <div class="min-w-30">
         <button

@@ -3,7 +3,7 @@ import { BarChart3, Compass, Footprints, PackageOpen, Zap } from "lucide-vue-nex
 import type { Component } from "vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 
 const { t } = useI18n();
@@ -69,19 +69,18 @@ const current = (): ActionTypeOption =>
 
 <template>
   <Popover v-model:open="open">
-    <PopoverTrigger as-child>
+    <PopoverAnchor as-child>
       <ToolbarTooltip :label="$t('scenes.action_type_picker.tooltip')">
-        <button
-          type="button"
+        <PopoverTrigger
           class="toolbar-btn gap-1"
           :disabled="disabled"
           :aria-label="$t('scenes.action_type_picker.tooltip')"
           :title="$t('scenes.action_type_picker.tooltip')"
         >
           <component :is="current().icon" class="size-3.5" />
-        </button>
+        </PopoverTrigger>
       </ToolbarTooltip>
-    </PopoverTrigger>
+    </PopoverAnchor>
     <PopoverContent class="w-56 p-1" :side-offset="8" side="top">
       <button
         v-for="opt in ACTION_TYPES"

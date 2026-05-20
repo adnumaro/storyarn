@@ -59,10 +59,12 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
     {:noreply, assign(socket, :renaming_layer_id, id)}
   end
 
-  def handle_rename_layer(%{"id" => id, "value" => name}, socket) do
+  def handle_rename_layer(%{"id" => id} = params, socket) do
+    name = params |> Map.get("name", Map.get(params, "value", "")) |> to_string()
+
     {:noreply,
      socket
-     |> do_rename_layer(id, String.trim(name))
+     |> do_rename_layer(parse_id(id), String.trim(name))
      |> assign(:renaming_layer_id, nil)}
   end
 

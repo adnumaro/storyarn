@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { COLOR_SWATCHES } from "@components/toolbar/color-swatches";
-import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 
 const STYLES = ["solid", "dashed", "dotted"] as const;
@@ -42,10 +42,9 @@ function onCustomColor(e: Event) {
 
 <template>
   <Popover v-model:open="open">
-    <PopoverTrigger as-child>
+    <PopoverAnchor as-child>
       <ToolbarTooltip :label="$t('scenes.stroke_picker.line_style')">
-        <button
-          type="button"
+        <PopoverTrigger
           class="toolbar-btn"
           :disabled="disabled"
           :aria-label="$t('scenes.stroke_picker.line_style')"
@@ -68,9 +67,9 @@ function onCustomColor(e: Event) {
               :style="{ background: color }"
             />
           </span>
-        </button>
+        </PopoverTrigger>
       </ToolbarTooltip>
-    </PopoverTrigger>
+    </PopoverAnchor>
     <PopoverContent class="w-auto p-2" :side-offset="8" side="top">
       <div class="space-y-3">
         <!-- Style + Width row -->

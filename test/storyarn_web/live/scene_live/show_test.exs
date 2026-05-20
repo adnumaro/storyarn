@@ -3220,6 +3220,28 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       assert updated.name == "Renamed Layer"
     end
 
+    test "renames layer from Vue payload", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project)
+      [layer | _] = Scenes.list_layers(scene.id)
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
+        )
+
+      html =
+        render_hook(view, "rename_layer", %{
+          "id" => layer.id,
+          "name" => "Walking areas"
+        })
+
+      assert html =~ "Layer renamed"
+      updated = Scenes.get_layer!(scene.id, layer.id)
+      assert updated.name == "Walking areas"
+    end
+
     test "ignores empty name", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
