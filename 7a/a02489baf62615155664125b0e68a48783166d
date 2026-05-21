@@ -1,0 +1,33 @@
+test/storyarn_web/live/docs_live/show_test.exs
+  s_89a3f1264cbda8::t_d0f8b3b4e84b52 30-31
+  s_89a3f1264cbda8::t_7ff71bf7daab6b 21-29,32-37
+assets/css/app.css
+  s_89a3f1264cbda8::t_7576039e621556 547-562,604,611-618
+priv/docs/es/welcome/00-start-here.md
+  s_89a3f1264cbda8::t_88fdcc0ccddd1f 1-42
+assets/app/live/docs/show/DocsContent.vue
+  s_89a3f1264cbda8::t_7576039e621556 12
+priv/docs/en/welcome/00-start-here.md
+  s_89a3f1264cbda8::t_88fdcc0ccddd1f 1-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "7aa02489baf62615155664125b0e68a48783166d",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_89a3f1264cbda8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e4a48-d037-7852-a91e-119f74a3c0e1",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
