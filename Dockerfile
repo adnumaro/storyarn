@@ -52,7 +52,7 @@ RUN mix deps.compile
 RUN mix assets.setup
 
 # install pnpm dependencies (needed by Vite for JS bundling)
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml vite.config.mjs ./
 RUN corepack enable \
   && corepack prepare pnpm@10.11.1 --activate \
   && pnpm install --frozen-lockfile --ignore-scripts
