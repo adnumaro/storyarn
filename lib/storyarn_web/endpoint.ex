@@ -27,6 +27,8 @@ defmodule StoryarnWeb.Endpoint do
     plug Phoenix.Ecto.SQL.Sandbox
   end
 
+  plug StoryarnWeb.Plugs.NoindexRobots
+
   # Serve at "/" the static files from "priv/static" directory.
   #
   # When code reloading is disabled (e.g., in production),
