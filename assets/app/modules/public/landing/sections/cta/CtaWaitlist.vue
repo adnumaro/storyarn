@@ -58,7 +58,7 @@ async function handleSubmit() {
   <section
     id="waitlist"
     ref="sectionRef"
-    class="scroll-mt-32 py-8 pb-24"
+    class="scroll-mt-32 py-36"
     :class="{ 'opacity-0 translate-y-7': !isRevealed, 'opacity-100 translate-y-0': isRevealed }"
     style="
       transition:

@@ -50,7 +50,7 @@
           "Snapshots y comparaciones para auditar cambios narrativos.",
           "Exportadores para Yarn Spinner, Ink, Godot Dialogic, Unity y Unreal."
         ],
-        "image_alt": "Dashboard de localización de Veilbreak con progreso por idioma y textos pendientes"
+        "image_alt": "Vista de depuración de un flujo de Veilbreak con consola, respuestas y estado de ejecución"
       }
     },
     "hero": {

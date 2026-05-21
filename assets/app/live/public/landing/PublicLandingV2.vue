@@ -25,7 +25,7 @@ const pillars = [
   {
     id: "sheets",
     icon: Table2,
-    image: "/images/docs/veilbreak-sheet-editor.png",
+    image: "/images/docs/sheets/sheets-character.webp",
     labelKey: "landing.discovery.features.sheets.label",
     titleKey: "landing.v2.pillars.sheets.title",
     descKey: "landing.v2.pillars.sheets.desc",
@@ -33,7 +33,7 @@ const pillars = [
   {
     id: "flows",
     icon: GitBranch,
-    image: "/images/docs/flows/flows.png",
+    image: "/images/docs/flows/flows.webp",
     labelKey: "landing.discovery.features.flows.label",
     titleKey: "landing.v2.pillars.flows.title",
     descKey: "landing.v2.pillars.flows.desc",
@@ -41,7 +41,7 @@ const pillars = [
   {
     id: "localization",
     icon: Languages,
-    image: "/images/docs/veilbreak-localization-dashboard.png",
+    image: "/images/docs/localization-dashboard.webp",
     labelKey: "landing.features.cards.localization.title",
     titleKey: "landing.v2.pillars.localization.title",
     descKey: "landing.v2.pillars.localization.desc",
@@ -73,7 +73,7 @@ onUnmounted(() => {
 <template>
   <div class="min-h-screen bg-background text-foreground">
     <section
-      class="relative flex min-h-[100svh] items-center overflow-hidden border-b border-border pt-28"
+      class="relative flex min-h-svh items-center overflow-hidden border-b border-border pt-28"
     >
       <img
         :src="'/images/landing/storyarn-lab-hero.webp'"
@@ -82,7 +82,7 @@ onUnmounted(() => {
         aria-hidden="true"
       />
       <div
-        class="absolute inset-0 bg-gradient-to-r from-background via-background/78 to-background/8"
+        class="absolute inset-0 bg-linear-to-r from-background via-background/78 to-background/8"
         aria-hidden="true"
       ></div>
       <div class="absolute inset-0 bg-background/10" aria-hidden="true"></div>
@@ -120,7 +120,7 @@ onUnmounted(() => {
       </div>
     </section>
 
-    <section id="features-section" class="border-b border-border bg-background py-20">
+    <section id="features-section" class="border-b border-border bg-background py-36">
       <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
         <div class="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
           <div>
@@ -149,7 +149,7 @@ onUnmounted(() => {
       </div>
     </section>
 
-    <section id="discover" class="bg-muted/20 py-20">
+    <section id="discover" class="bg-muted/20 py-36">
       <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
         <div class="max-w-3xl">
           <p class="text-sm font-semibold uppercase text-primary">
@@ -163,11 +163,11 @@ onUnmounted(() => {
           </p>
         </div>
 
-        <div class="mt-12 grid gap-10">
+        <div class="mt-12 grid gap-24">
           <article
             v-for="(pillar, index) in pillars"
             :key="pillar.id"
-            class="grid gap-6 lg:grid-cols-2 lg:items-center"
+            class="grid gap-8 lg:grid-cols-2 lg:items-center"
           >
             <div :class="[index % 2 === 1 && 'lg:order-2']">
               <div class="flex items-center gap-3 text-sm font-semibold uppercase text-primary">
@@ -184,14 +184,14 @@ onUnmounted(() => {
             <img
               :src="pillar.image"
               :alt="$t(pillar.titleKey)"
-              class="aspect-[16/10] w-full rounded-lg border border-border object-cover object-top shadow-xl"
+              class="aspect-16/10 w-full rounded-lg border border-border object-cover object-top shadow-xl"
             />
           </article>
         </div>
       </div>
     </section>
 
-    <section id="workflow" class="border-y border-border bg-background py-20">
+    <section id="workflow" class="border-y border-border bg-background py-36">
       <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
         <div class="max-w-3xl">
           <p class="text-sm font-semibold uppercase text-primary">
@@ -227,7 +227,7 @@ onUnmounted(() => {
       </div>
     </section>
 
-    <section class="bg-muted/20 py-20">
+    <section class="bg-muted/20 py-36">
       <div
         class="mx-auto grid w-[min(calc(100%-48px),1280px)] gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center"
       >
@@ -254,9 +254,9 @@ onUnmounted(() => {
         </div>
 
         <img
-          :src="'/images/docs/veilbreak-localization-dashboard.png'"
+          :src="'/images/docs/flows/flows-debug.webp'"
           :alt="$t('landing.v2.production.image_alt')"
-          class="aspect-[16/10] w-full rounded-lg border border-border object-cover object-top shadow-xl"
+          class="aspect-16/10 w-full rounded-lg border border-border object-cover object-top shadow-xl"
         />
       </div>
     </section>
