@@ -18,6 +18,23 @@ defmodule StoryarnWeb.DocsLive.ShowTest do
       assert content.props["guide-body"] =~ "narrative design platform"
     end
 
+    test "renders start here as the first welcome guide", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/docs/welcome/start-here")
+
+      layout = LiveVue.Test.get_vue(view, name: "live/layouts/docs/Layout")
+      docs = layout.props["docs"]
+
+      assert docs["guide"]["title"] == "Start Here"
+      assert docs["guide"]["url"] == "/docs/welcome/start-here"
+
+      assert [%{"label" => "Welcome"} | _] = docs["categories"]
+      assert [%{"title" => "Start Here", "url" => "/docs/welcome/start-here"} | _] = docs["guides"]
+
+      content = LiveVue.Test.get_vue(view, name: "live/docs/show/DocsContent")
+      assert content.props["guide-body"] =~ "Pick your path"
+      assert content.props["guide-body"] =~ "localization manager"
+    end
+
     test "updates search props from the LiveVue layout event", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/docs/welcome/what-is-storyarn")
 

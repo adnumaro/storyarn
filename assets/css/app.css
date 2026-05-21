@@ -544,7 +544,22 @@
   }
 
   .docs-content a {
-    @apply font-medium text-primary underline underline-offset-4 hover:text-primary/80;
+    color: hsl(var(--primary));
+    font-weight: 500;
+    text-decoration: none;
+    transition:
+      color 0.15s ease,
+      background-color 0.15s ease;
+  }
+
+  .docs-content a:hover {
+    color: hsl(var(--foreground));
+  }
+
+  .docs-content a:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: 0.25rem;
   }
 
   .docs-content blockquote {
@@ -586,11 +601,21 @@
 
   .docs-content th,
   .docs-content td {
-    padding: 0.625rem 0.75rem;
+    padding: 0.75rem 1rem;
     border-bottom: 1px solid hsl(var(--border));
     border-right: 1px solid hsl(var(--border));
     text-align: left;
     vertical-align: top;
+  }
+
+  .docs-content th:first-child,
+  .docs-content td:first-child {
+    padding-left: 1rem;
+  }
+
+  .docs-content th:last-child,
+  .docs-content td:last-child {
+    padding-right: 1rem;
   }
 
   .docs-content th:last-child,

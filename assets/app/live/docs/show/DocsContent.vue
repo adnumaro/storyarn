@@ -9,7 +9,7 @@ const { guideBody = null } = defineProps<{
 <template>
   <div
     v-if="guideBody"
-    class="docs-content prose prose-sm dark:prose-invert max-w-none"
+    class="docs-content max-w-none"
     v-html="guideBody"
   />
 
