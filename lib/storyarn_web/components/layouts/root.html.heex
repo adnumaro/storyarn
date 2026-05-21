@@ -30,7 +30,15 @@
       names={["assets/js/app.js", "assets/css/app.css"]}
       manifest={{:storyarn, "priv/static/.vite/manifest.json"}}
       dev_server={PhoenixVite.Components.has_vite_watcher?(StoryarnWeb.Endpoint)}
-      to_url={fn p -> static_url(assigns[:conn] || assigns[:socket], p) end}
+      to_url={
+        fn path ->
+          if PhoenixVite.Components.has_vite_watcher?(StoryarnWeb.Endpoint) do
+            static_url(assigns[:conn] || assigns[:socket], path)
+          else
+            path
+          end
+        end
+      }
     />
   </head>
   <body class="bg-background text-foreground antialiased">

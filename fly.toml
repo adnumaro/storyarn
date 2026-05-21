@@ -13,7 +13,7 @@ kill_signal = 'SIGTERM'
 release_command = '/app/bin/migrate'
 
 [env]
-PHX_HOST = 'storyarn-staging.fly.dev'
+PHX_HOST = 'staging.storyarn.com'
 PORT = '8080'
 TRUST_PROXY = 'true'
 NOINDEX = 'true'
