@@ -1,0 +1,32 @@
+test/storyarn_web/live/docs_live/show_test.exs
+  s_89a3f1264cbda8::t_5e59048b4eac68 41-61
+priv/docs/es/welcome/02-core-concepts.md
+  s_89a3f1264cbda8::t_791d5be92efa28 1-59
+priv/docs/es/welcome/02-core-workflow.md
+  s_89a3f1264cbda8::t_5e59048b4eac68 4
+priv/docs/en/welcome/02-core-concepts.md
+  s_89a3f1264cbda8::t_791d5be92efa28 1-59
+priv/docs/en/welcome/02-core-workflow.md
+  s_89a3f1264cbda8::t_5e59048b4eac68 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "ad6552f1650b41a414643e1b80fd4ff5aedff060",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_89a3f1264cbda8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e4a48-d037-7852-a91e-119f74a3c0e1",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
