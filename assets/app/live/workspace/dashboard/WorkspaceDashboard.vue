@@ -6,13 +6,12 @@ import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import type { Form } from "live_vue";
 import NewProjectForm from "../../project/form/ProjectNewProjectForm.vue";
-import { useLive } from "@shared/composables/useLive";
 import { formatRelativeTime } from "@shared/utils/date-utils";
 
 interface Workspace {
   name: string;
-  description?: string;
-  banner_url?: string;
+  description?: string | null;
+  banner_url?: string | null;
 }
 
 interface Membership {
@@ -22,9 +21,9 @@ interface Membership {
 interface Project {
   id: number;
   name: string;
-  description?: string;
+  description?: string | null;
   inserted_at_formatted: string;
-  updated_at: string;
+  updated_at: string | null;
 }
 
 interface ProjectData {
@@ -55,15 +54,20 @@ const {
   settingsUrl?: string | null;
 }>();
 
-const live = useLive();
-
 const localSearch = ref(searchQuery);
 
-function onSearch(e: Event) {
-  const value = (e.target as HTMLInputElement).value;
-  localSearch.value = value;
-  live.pushEvent("search", { search: value });
-}
+const filteredProjects = computed(() => {
+  const query = localSearch.value.trim().toLowerCase();
+
+  if (!query) return projects;
+
+  return projects.filter(({ project }) => {
+    const name = project.name.toLowerCase();
+    const description = project.description?.toLowerCase() || "";
+
+    return name.includes(query) || description.includes(query);
+  });
+});
 
 const canManage = computed(() => ["owner", "admin"].includes(membership.role));
 
@@ -123,11 +127,10 @@ const isNewProjectModalOpen = ref(false);
                 class="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground"
               />
               <Input
-                type="text"
+                v-model="localSearch"
+                type="search"
                 :placeholder="$t('workspace.dashboard.search_placeholder')"
                 class="pl-9 w-64"
-                :value="localSearch"
-                @input="onSearch"
               />
             </div>
           </div>
@@ -158,7 +161,7 @@ const isNewProjectModalOpen = ref(false);
     <div class="flex-1">
       <!-- Empty states -->
       <div
-        v-if="projects.length === 0 && !localSearch"
+        v-if="filteredProjects.length === 0 && !localSearch"
         class="flex flex-col items-center justify-center py-12 text-center h-full"
       >
         <FolderOpen class="size-12 text-muted-foreground/40 mb-4" />
@@ -171,7 +174,7 @@ const isNewProjectModalOpen = ref(false);
       </div>
 
       <div
-        v-if="projects.length === 0 && localSearch"
+        v-if="filteredProjects.length === 0 && localSearch"
         class="flex flex-col items-center justify-center py-12 text-center h-full"
       >
         <Search class="size-12 text-muted-foreground/40 mb-4" />
@@ -184,7 +187,7 @@ const isNewProjectModalOpen = ref(false);
       <!-- Projects Grid -->
       <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mt-4">
         <a
-          v-for="projectData in projects"
+          v-for="projectData in filteredProjects"
           :key="projectData.project.id"
           :href="projectData.href"
           data-phx-link="redirect"
