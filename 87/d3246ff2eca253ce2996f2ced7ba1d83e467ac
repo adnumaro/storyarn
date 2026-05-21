@@ -1,0 +1,31 @@
+assets/app/locales/es/landing.json
+  s_4009926a81b72f::t_984ecc446c84e3 53
+assets/app/modules/public/landing/sections/cta/CtaWaitlist.vue
+  h_46be6e61f3d9dd 61
+assets/app/live/public/landing/PublicLandingV2.vue
+  s_4009926a81b72f::t_76820a379e1c74 28,36,44,257
+  h_46be6e61f3d9dd 76,85,123,152,166,170,187,194,230,259
+assets/app/locales/en/landing.json
+  s_4009926a81b72f::t_7da334da02ae28 53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "87d3246ff2eca253ce2996f2ced7ba1d83e467ac",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
