@@ -51,9 +51,11 @@ RUN mix deps.compile
 # install esbuild and tailwind CLI
 RUN mix assets.setup
 
-# install npm dependencies (needed by esbuild for JS bundling)
-COPY package.json assets/package-lock.json assets/
-RUN cd assets && npm ci --include=prod --ignore-scripts
+# install pnpm dependencies (needed by Vite for JS bundling)
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN corepack enable \
+  && corepack prepare pnpm@10.11.1 --activate \
+  && pnpm install --frozen-lockfile --ignore-scripts
 
 COPY priv priv
 
