@@ -27,7 +27,6 @@ const eventPropertyAllowlist = new Map([
 
 const routeFamilies = [
   [(pathname) => pathname === "/", "public_home"],
-  [(pathname) => pathname === "/landing-v2", "public_home_v2"],
   [(pathname) => pathname.startsWith("/docs"), "docs"],
   [(pathname) => pathname.startsWith("/users/log-in"), "login"],
   [(pathname) => pathname.startsWith("/users/register"), "registration"],

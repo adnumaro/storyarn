@@ -1,6 +1,5 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
-import { templateCompilerOptions } from "@tresjs/core";
 import tailwindcss from "@tailwindcss/vite";
 import liveVuePlugin from "live_vue/vitePlugin";
 import path from "path";
@@ -46,9 +45,7 @@ export default defineConfig({
     vue({
       template: {
         compilerOptions: {
-          isCustomElement: (tag) =>
-            tag.startsWith("hex-") ||
-            templateCompilerOptions.template.compilerOptions.isCustomElement(tag),
+          isCustomElement: (tag) => tag.startsWith("hex-"),
         },
       },
     }),

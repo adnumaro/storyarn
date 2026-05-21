@@ -31,7 +31,7 @@ defmodule StoryarnWeb.LandingLive.Index do
       theme="dark"
     >
       <.vue
-        v-component={landing_component(@live_action)}
+        v-component="live/public/landing/PublicLanding"
         v-socket={@socket}
         v-inject="public-layout"
         id="landing-page"
@@ -76,9 +76,6 @@ defmodule StoryarnWeb.LandingLive.Index do
   defp waitlist_success_reply do
     %{status: "ok", message: gettext("You're on the list! We'll reach out when your spot is ready.")}
   end
-
-  defp landing_component(:v2), do: "live/public/landing/PublicLandingV2"
-  defp landing_component(_action), do: "live/public/landing/PublicLanding"
 
   defp redirect_to_workspace(socket, user) do
     case Workspaces.get_default_workspace(user) do

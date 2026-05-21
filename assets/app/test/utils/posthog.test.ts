@@ -64,7 +64,7 @@ describe("PostHog frontend utility", () => {
   });
 
   it("uses path only as a private dedupe key so same-family navigation still counts", () => {
-    expect(routeFamilyForPath("/landing-v2")).toBe("public_home_v2");
+    expect(routeFamilyForPath("/")).toBe("public_home");
     expect(routeFamilyForPath("/workspaces/ws/projects/project/sheets/8")).toBe("sheets");
     expect(routeFamilyForPath("/workspaces/ws/projects/project/sheets/9")).toBe("sheets");
     expect(routeFamilyForPath("/workspaces/ws/projects/project/flows/1/play")).toBe("flow_player");
