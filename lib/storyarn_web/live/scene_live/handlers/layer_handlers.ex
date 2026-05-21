@@ -253,13 +253,33 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
          |> assign(:_broadcast, {:layer_deleted, %{}})
          |> push_event("layer_deleted", %{id: layer.id})
          |> put_flash(:info, dgettext("scenes", "Layer deleted."))
-         |> reload_scene()}
+         |> reload_scene()
+         |> clear_deleted_layer_state(layer.id)}
 
       {:error, :cannot_delete_last_layer} ->
         {:noreply, put_flash(socket, :error, dgettext("scenes", "Cannot delete the last layer of a scene."))}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not delete layer."))}
+    end
+  end
+
+  defp clear_deleted_layer_state(socket, deleted_layer_id) do
+    active_layer_id = valid_active_layer_id(socket.assigns.layers, socket.assigns[:active_layer_id], deleted_layer_id)
+
+    socket
+    |> assign(:active_layer_id, active_layer_id)
+    |> assign(:pending_delete_layer_id, nil)
+  end
+
+  defp valid_active_layer_id(layers, active_layer_id, deleted_layer_id) do
+    active_layer_removed? = to_string(active_layer_id) == to_string(deleted_layer_id)
+    active_layer_exists? = Enum.any?(layers, &(to_string(&1.id) == to_string(active_layer_id)))
+
+    if active_layer_id && !active_layer_removed? && active_layer_exists? do
+      active_layer_id
+    else
+      default_layer_id(layers)
     end
   end
 end

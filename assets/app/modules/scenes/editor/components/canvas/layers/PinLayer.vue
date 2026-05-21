@@ -28,6 +28,15 @@ const emit = defineEmits<{
   dragmove: [type: string, id: number | string, e: KonvaEventObject<DragEvent>];
   dragend: [type: string, id: number | string, e: KonvaEventObject<DragEvent>];
 }>();
+
+function emitPinDrag(
+  eventName: "dragstart" | "dragmove" | "dragend",
+  id: number | string,
+  e: KonvaEventObject<DragEvent>,
+): void {
+  e.cancelBubble = true;
+  emit(eventName, "pin", id, e);
+}
 </script>
 
 <template>
@@ -37,9 +46,9 @@ const emit = defineEmits<{
       :key="'pin-' + pin.id"
       :config="{ x: pin.x, y: pin.y, listening: pin.listening, draggable: pin.draggable }"
       @click="(e: KonvaEventObject<MouseEvent>) => emit('pin-click', pin.id, e)"
-      @dragstart="(e: KonvaEventObject<DragEvent>) => emit('dragstart', 'pin', pin.id, e)"
-      @dragmove="(e: KonvaEventObject<DragEvent>) => emit('dragmove', 'pin', pin.id, e)"
-      @dragend="(e: KonvaEventObject<DragEvent>) => emit('dragend', 'pin', pin.id, e)"
+      @dragstart="(e: KonvaEventObject<DragEvent>) => emitPinDrag('dragstart', pin.id, e)"
+      @dragmove="(e: KonvaEventObject<DragEvent>) => emitPinDrag('dragmove', pin.id, e)"
+      @dragend="(e: KonvaEventObject<DragEvent>) => emitPinDrag('dragend', pin.id, e)"
     >
       <v-circle
         v-if="pin.isSelected"

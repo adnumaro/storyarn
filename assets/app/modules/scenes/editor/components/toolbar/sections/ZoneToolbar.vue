@@ -1,7 +1,13 @@
+<script lang="ts">
+const zoneNameDrafts = new Map<string, string>();
+</script>
+
 <script setup lang="ts">
 import { Settings } from "lucide-vue-next";
+import { nextTick, onMounted, ref, watch } from "vue";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { useLive } from "@shared/composables/useLive.ts";
+import { useSceneElementOptimisticUpdater } from "../../../composables/useSceneElementOptimism";
 import {
   ToolbarActionTypePicker,
   ToolbarColorPicker,
@@ -41,8 +47,74 @@ const {
 }>();
 
 const live = useLive();
+const updateOptimistically = useSceneElementOptimisticUpdater();
+
+const FIELD_TO_PROP: Record<string, keyof ZoneElement> = {
+  name: "name",
+  fill_color: "fillColor",
+  border_color: "borderColor",
+  border_width: "borderWidth",
+  border_style: "borderStyle",
+  opacity: "opacity",
+  action_type: "actionType",
+  layer_id: "layerId",
+  locked: "locked",
+};
+
+function elementKey(): string {
+  return String(element.id);
+}
+
+const existingDraft = zoneNameDrafts.get(elementKey());
+const zoneNameDraft = ref(existingDraft ?? element.name ?? "");
+const editingName = ref(existingDraft !== undefined);
+const nameInputRef = ref<HTMLInputElement | null>(null);
+
+watch(
+  () => [element.id, element.name] as const,
+  ([id, name], previous) => {
+    const draft = zoneNameDrafts.get(String(id));
+
+    if (draft !== undefined) {
+      editingName.value = true;
+      zoneNameDraft.value = draft;
+      return;
+    }
+
+    if (!previous || id !== previous[0] || !editingName.value) {
+      editingName.value = false;
+      zoneNameDraft.value = name || "";
+    }
+  },
+  { immediate: true },
+);
+
+watch(zoneNameDraft, (value) => {
+  if (editingName.value) {
+    zoneNameDrafts.set(elementKey(), value);
+  }
+});
+
+onMounted(() => {
+  if (!editingName.value) {
+    return;
+  }
+
+  nextTick(() => {
+    const input = nameInputRef.value;
+    if (!input) {
+      return;
+    }
+
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  });
+});
 
 function updateField(field: string, value: string | number | null): void {
+  const prop = FIELD_TO_PROP[field];
+  if (prop) updateOptimistically("zone", element.id, { [prop]: value });
+
   live.pushEvent("update_zone", {
     id: String(element.id),
     field,
@@ -51,6 +123,8 @@ function updateField(field: string, value: string | number | null): void {
 }
 
 function updateActionType(type: string): void {
+  updateOptimistically("zone", element.id, { actionType: type });
+
   live.pushEvent("update_zone_action_type", {
     "zone-id": String(element.id),
     "action-type": type,
@@ -58,6 +132,8 @@ function updateActionType(type: string): void {
 }
 
 function toggleLock(): void {
+  updateOptimistically("zone", element.id, { locked: !element.locked });
+
   live.pushEvent("update_zone", {
     id: String(element.id),
     field: "locked",
@@ -67,6 +143,43 @@ function toggleLock(): void {
 
 function toggleElementPanel(): void {
   live.pushEvent("toggle_element_panel", {});
+}
+
+function startNameEdit(): void {
+  editingName.value = true;
+  zoneNameDrafts.set(elementKey(), zoneNameDraft.value);
+}
+
+function updateNameDraft(event: Event): void {
+  const value = (event.target as HTMLInputElement).value;
+  editingName.value = true;
+  zoneNameDraft.value = value;
+  zoneNameDrafts.set(elementKey(), value);
+}
+
+function finishNameEdit(): void {
+  editingName.value = false;
+  zoneNameDrafts.delete(elementKey());
+
+  const nextName = zoneNameDraft.value.trim();
+  const currentName = element.name || "";
+  if (!nextName) {
+    zoneNameDraft.value = currentName;
+    return;
+  }
+
+  if (nextName !== currentName) {
+    updateField("name", nextName);
+  } else {
+    zoneNameDraft.value = currentName;
+  }
+}
+
+function cancelNameEdit(event: KeyboardEvent): void {
+  zoneNameDraft.value = element.name || "";
+  editingName.value = false;
+  zoneNameDrafts.delete(elementKey());
+  (event.target as HTMLInputElement).blur();
 }
 </script>
 
@@ -80,13 +193,17 @@ function toggleElementPanel(): void {
 
   <!-- Name -->
   <input
+    ref="nameInputRef"
     type="text"
-    :value="element.name || ''"
+    :value="zoneNameDraft"
     class="toolbar-input w-20"
     :placeholder="$t('scenes.zone_toolbar.name')"
     :disabled="element.locked"
-    @blur="(e) => updateField('name', (e.target as HTMLInputElement).value)"
-    @keydown.enter="($event.target as HTMLInputElement).blur()"
+    @focus="startNameEdit"
+    @input="updateNameDraft"
+    @blur="finishNameEdit"
+    @keydown.enter.prevent="($event.target as HTMLInputElement).blur()"
+    @keydown.escape.prevent="cancelNameEdit"
   />
   <ToolbarSeparator />
 

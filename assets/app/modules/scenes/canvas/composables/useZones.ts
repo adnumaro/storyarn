@@ -4,8 +4,12 @@ import { useHiddenLayerIds, type LayerData } from "./useLayerVisibility";
 
 const DEFAULT_FILL_COLOR = "#3b82f6";
 const DEFAULT_BORDER_COLOR = "#1e40af";
-const LABEL_WIDTH = 100;
-const LABEL_HEIGHT = 16;
+const LABEL_MIN_WIDTH = 40;
+const LABEL_MAX_WIDTH = 180;
+const LABEL_LINE_HEIGHT = 16;
+const LABEL_FONT = "600 12px sans-serif";
+const LABEL_PADDING_X = 8;
+let labelMeasureContext: CanvasRenderingContext2D | null | undefined;
 
 const DASH_PATTERNS: Record<string, number[] | null> = {
   solid: null,
@@ -131,6 +135,72 @@ function calculateZoneGeometry(pixelCoords: PixelPoint[]): CentroidResult {
   return { points, centroidX: sumX / count, centroidY: sumY / count, maxX, minY };
 }
 
+function getLabelMeasureContext(): CanvasRenderingContext2D | null {
+  if (labelMeasureContext !== undefined) {
+    return labelMeasureContext;
+  }
+
+  if (typeof document === "undefined") {
+    labelMeasureContext = null;
+    return labelMeasureContext;
+  }
+
+  const canvas = document.createElement("canvas");
+  labelMeasureContext = canvas.getContext("2d");
+  return labelMeasureContext;
+}
+
+function measureTextWidth(text: string): number {
+  const context = getLabelMeasureContext();
+
+  if (!context) {
+    return text.length * 7;
+  }
+
+  context.font = LABEL_FONT;
+  return context.measureText(text).width;
+}
+
+function wrapLabelLines(name: string): string[] {
+  const words = name.trim().split(/\s+/);
+  const contentMaxWidth = LABEL_MAX_WIDTH - LABEL_PADDING_X;
+
+  if (words.length <= 1 || measureTextWidth(name) <= contentMaxWidth) {
+    return [name];
+  }
+
+  const lines: string[] = [];
+  let currentLine = "";
+
+  for (const word of words) {
+    const nextLine = currentLine ? `${currentLine} ${word}` : word;
+
+    if (!currentLine || measureTextWidth(nextLine) <= contentMaxWidth) {
+      currentLine = nextLine;
+    } else {
+      lines.push(currentLine);
+      currentLine = word;
+    }
+  }
+
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  return lines;
+}
+
+function calculateZoneLabelSize(name: string): { width: number; height: number } {
+  const lines = wrapLabelLines(name);
+  const widestLine = Math.max(...lines.map(measureTextWidth));
+  const naturalWidth = widestLine + LABEL_PADDING_X;
+
+  return {
+    width: Math.ceil(Math.min(LABEL_MAX_WIDTH, Math.max(LABEL_MIN_WIDTH, naturalWidth))),
+    height: lines.length * LABEL_LINE_HEIGHT,
+  };
+}
+
 /** Build a single ZoneConfig from zone data and precomputed geometry */
 function buildZoneConfig(
   zone: ZoneData,
@@ -139,16 +209,18 @@ function buildZoneConfig(
   isSelected: boolean,
   listening: boolean,
 ): ZoneConfig {
+  const labelSize = calculateZoneLabelSize(zone.name);
+
   return {
     id: zone.id,
     name: zone.name,
     points: geo.points,
     centroidX: geo.centroidX,
     centroidY: geo.centroidY,
-    labelX: geo.centroidX - LABEL_WIDTH / 2,
-    labelY: geo.centroidY - LABEL_HEIGHT / 2,
-    labelWidth: LABEL_WIDTH,
-    labelHeight: LABEL_HEIGHT,
+    labelX: geo.centroidX - labelSize.width / 2,
+    labelY: geo.centroidY - labelSize.height / 2,
+    labelWidth: labelSize.width,
+    labelHeight: labelSize.height,
     fill: zone.fillColor || DEFAULT_FILL_COLOR,
     stroke: zone.borderColor || DEFAULT_BORDER_COLOR,
     strokeWidth: zone.borderWidth ?? 2,

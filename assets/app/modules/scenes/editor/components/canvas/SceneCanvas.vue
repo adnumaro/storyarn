@@ -5,6 +5,7 @@ import { useAnnotationEditing } from "../../composables/useAnnotationEditing";
 import { useAnnotations, type AnnotationConfig } from "../../composables/useAnnotations";
 import { useCanvasCreation } from "../../composables/useCanvasCreation";
 import { useConnectionDrawing } from "../../composables/useConnectionDrawing";
+import { useOptimisticSceneElements } from "../../composables/useSceneElementOptimism";
 import { useConnections } from "../../../canvas/composables/useConnections";
 import { useDrag } from "../../composables/useDrag";
 import { useKonvaStage } from "../../../canvas/composables/useKonvaStage";
@@ -128,6 +129,19 @@ const {
   collaboration: CollaborationData;
 }>();
 
+const {
+  annotationItems,
+  connectionItems,
+  pinItems,
+  updateElement: updateElementOptimistically,
+  zoneItems,
+} = useOptimisticSceneElements({
+  annotations: () => annotations,
+  connections: () => connections,
+  pins: () => pins,
+  zones: () => zones,
+});
+
 const containerRef = ref<HTMLDivElement | null>(null);
 const activeToolRef = toRef(() => activeTool);
 
@@ -188,7 +202,7 @@ const {
   percentToPixel,
   activeTool: activeToolRef,
   ...editRefs,
-  pins: toRef(() => pins),
+  pins: pinItems,
 });
 
 // Unified creation click: try pin/annotation first, then zone, then connection cancel
@@ -210,8 +224,23 @@ const {
 
 const selectionRefs = { selectedType, selectedId, isSelectMode };
 
+function hasPinConnections(pinId: number | string): boolean {
+  return connectionItems.value.some(
+    (connection) =>
+      String(connection.fromPinId) === String(pinId) ||
+      String(connection.toPinId) === String(pinId),
+  );
+}
+
 const { isDragging, dragOverrides, onDragStart, onDragMove, onDragEnd } = useDrag({
+  onCommit: (type, id, position) => {
+    updateElementOptimistically(type, id, {
+      positionX: position.x,
+      positionY: position.y,
+    });
+  },
   pixelToPercent,
+  shouldTrackDrag: (type, id) => type === "pin" && hasPinConnections(id),
 });
 
 const { isDraggingZone, zoneDragOverride, onZoneMouseDown, onZoneDragMove, onZoneDragEnd } =
@@ -219,7 +248,7 @@ const { isDraggingZone, zoneDragOverride, onZoneMouseDown, onZoneDragMove, onZon
     stageRef,
     stageConfig,
     pixelToPercent,
-    zones: toRef(() => zones),
+    zones: zoneItems,
     selectedType,
     selectedId,
     ...editRefs,
@@ -228,12 +257,13 @@ const { isDraggingZone, zoneDragOverride, onZoneMouseDown, onZoneDragMove, onZon
   });
 
 const { pinConfigs } = usePins({
-  pins: toRef(() => pins),
+  pins: pinItems,
   layers: toRef(() => layers),
   entityLocks: toRef(() => collaboration.locks),
   currentUserId: toRef(() => collaboration.userId),
   percentToPixel,
   activeTool: activeToolRef,
+  dragOverrides,
   ...selectionRefs,
   ...editRefs,
 });
@@ -252,13 +282,13 @@ const {
   stageConfig,
   pixelToPercent,
   percentToPixel,
-  zones: toRef(() => zones),
+  zones: zoneItems,
   selectedType,
   selectedId,
 });
 
 const { zoneConfigs } = useZones({
-  zones: toRef(() => zones),
+  zones: zoneItems,
   layers: toRef(() => layers),
   entityLocks: toRef(() => collaboration.locks),
   currentUserId: toRef(() => collaboration.userId),
@@ -270,7 +300,7 @@ const { zoneConfigs } = useZones({
 });
 
 const { annotationConfigs } = useAnnotations({
-  annotations: toRef(() => annotations),
+  annotations: annotationItems,
   layers: toRef(() => layers),
   entityLocks: toRef(() => collaboration.locks),
   currentUserId: toRef(() => collaboration.userId),
@@ -289,8 +319,8 @@ const waypointEditOverride = computed(() => {
 });
 
 const { connectionConfigs } = useConnections({
-  connections: toRef(() => connections),
-  pins: toRef(() => pins),
+  connections: connectionItems,
+  pins: pinItems,
   layers: toRef(() => layers),
   percentToPixel,
   ...selectionRefs,
@@ -309,8 +339,8 @@ const {
   insertWaypoint,
   waypointEditorConfigs,
 } = useWaypointEditor({
-  connections: toRef(() => connections),
-  pins: toRef(() => pins),
+  connections: connectionItems,
+  pins: pinItems,
   pixelToPercent,
   percentToPixel,
   ...selectionRefs,
@@ -412,10 +442,10 @@ const selectedElementPosition = computed(() => {
 });
 
 const ELEMENT_LISTS: Record<string, () => { id: number | string }[]> = {
-  annotation: () => annotations,
-  connection: () => connections,
-  pin: () => pins,
-  zone: () => zones,
+  annotation: () => annotationItems.value,
+  connection: () => connectionItems.value,
+  pin: () => pinItems.value,
+  zone: () => zoneItems.value,
 };
 
 const selectedElement = computed(() => {

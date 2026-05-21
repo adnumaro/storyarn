@@ -1,4 +1,4 @@
-import { ref } from "vue";
+import { onBeforeUnmount, ref } from "vue";
 import { useLive } from "@shared/composables/useLive";
 import type { KonvaEventObject } from "konva/lib/Node";
 
@@ -7,11 +7,21 @@ interface PixelPoint {
   y: number;
 }
 
+type DraggableElementType = "annotation" | "pin";
+
 interface UseDragOpts {
   pixelToPercent: (pixelX: number, pixelY: number) => PixelPoint;
+  shouldTrackDrag?: (type: DraggableElementType, id: number | string) => boolean;
+  onCommit?: (type: DraggableElementType, id: number | string, position: PixelPoint) => void;
 }
 
-const DRAG_THROTTLE_MS = 50;
+const REMOTE_DRAG_RELAY_MS = 120;
+const OVERRIDE_CLEAR_TIMEOUT_MS = 5000;
+
+function normalizeDragType(type: string): DraggableElementType | null {
+  if (type === "annotation" || type === "pin") return type;
+  return null;
+}
 
 /**
  * Composable for dragging pins and annotations on the Konva canvas.
@@ -22,60 +32,167 @@ const DRAG_THROTTLE_MS = 50;
  *
  * @see https://konvajs.org/docs/sandbox/Connected_Objects.html
  */
-export function useDrag({ pixelToPercent }: UseDragOpts) {
+export function useDrag({ pixelToPercent, shouldTrackDrag, onCommit }: UseDragOpts) {
   const live = useLive();
   const isDragging = ref(false);
   // Live pixel positions during drag -- connections read this to follow pins
   const dragOverrides = ref<Record<string | number, PixelPoint>>({});
-  let lastDragTime = 0;
+  const clearTimers = new Map<string | number, number>();
+  let animationFrame: number | null = null;
+  let pendingOverride: { id: number | string; position: PixelPoint } | null = null;
+  let pendingRemoteRelay: {
+    type: DraggableElementType;
+    id: number | string;
+    position: PixelPoint;
+  } | null = null;
+  let remoteRelayTimer: number | null = null;
+  let tracksCurrentDrag = false;
 
-  function onDragStart(_type: string, id: number | string, e: KonvaEventObject<DragEvent>): void {
+  function clearScheduledFrame(): void {
+    if (animationFrame === null) return;
+    window.cancelAnimationFrame(animationFrame);
+    animationFrame = null;
+  }
+
+  function clearRemoteRelayTimer(): void {
+    if (remoteRelayTimer === null) return;
+    window.clearTimeout(remoteRelayTimer);
+    remoteRelayTimer = null;
+  }
+
+  function flushRemoteRelay(): void {
+    const relay = pendingRemoteRelay;
+    pendingRemoteRelay = null;
+    remoteRelayTimer = null;
+
+    if (!relay) return;
+
+    live.pushEvent(`drag_${relay.type}`, {
+      id: String(relay.id),
+      position_x: relay.position.x,
+      position_y: relay.position.y,
+    });
+  }
+
+  function applyDragOverride(id: number | string, position: PixelPoint): void {
+    dragOverrides.value = {
+      ...dragOverrides.value,
+      [id]: position,
+    };
+  }
+
+  function scheduleDragOverride(id: number | string, position: PixelPoint): void {
+    pendingOverride = { id, position };
+
+    if (animationFrame !== null) return;
+
+    animationFrame = window.requestAnimationFrame(() => {
+      animationFrame = null;
+
+      if (!pendingOverride) return;
+
+      applyDragOverride(pendingOverride.id, pendingOverride.position);
+      pendingOverride = null;
+    });
+  }
+
+  function relayRemoteDrag(
+    type: DraggableElementType,
+    id: number | string,
+    position: PixelPoint,
+  ): void {
+    pendingRemoteRelay = { type, id, position };
+
+    if (remoteRelayTimer !== null) return;
+
+    remoteRelayTimer = window.setTimeout(flushRemoteRelay, REMOTE_DRAG_RELAY_MS);
+  }
+
+  function clearDragOverride(id: number | string): void {
+    const timer = clearTimers.get(id);
+    if (timer) window.clearTimeout(timer);
+    clearTimers.delete(id);
+
+    const next = { ...dragOverrides.value };
+    delete next[id];
+    dragOverrides.value = next;
+  }
+
+  function scheduleOverrideCleanup(id: number | string): void {
+    const existingTimer = clearTimers.get(id);
+    if (existingTimer) window.clearTimeout(existingTimer);
+
+    clearTimers.set(
+      id,
+      window.setTimeout(() => clearDragOverride(id), OVERRIDE_CLEAR_TIMEOUT_MS),
+    );
+  }
+
+  function onDragStart(rawType: string, id: number | string, e: KonvaEventObject<DragEvent>): void {
+    const type = normalizeDragType(rawType);
+    if (!type) return;
+
     isDragging.value = true;
-    lastDragTime = 0;
+    tracksCurrentDrag = shouldTrackDrag?.(type, id) ?? false;
+
+    if (!tracksCurrentDrag) return;
+
     const node = e.target;
-    dragOverrides.value = {
-      ...dragOverrides.value,
-      [id]: { x: node.x(), y: node.y() },
-    };
+    applyDragOverride(id, { x: node.x(), y: node.y() });
   }
 
-  function onDragMove(type: string, id: number | string, e: KonvaEventObject<DragEvent>): void {
+  function onDragMove(rawType: string, id: number | string, e: KonvaEventObject<DragEvent>): void {
+    const type = normalizeDragType(rawType);
+    if (!type) return;
+
     const node = e.target;
+    const pixelPosition = { x: node.x(), y: node.y() };
+    const percentPosition = pixelToPercent(node.x(), node.y());
 
-    // Update live position every frame -- connections read this reactively
-    dragOverrides.value = {
-      ...dragOverrides.value,
-      [id]: { x: node.x(), y: node.y() },
-    };
-
-    // Throttle server relay events
-    const now = Date.now();
-    if (now - lastDragTime < DRAG_THROTTLE_MS) {
-      return;
+    if (tracksCurrentDrag) {
+      scheduleDragOverride(id, pixelPosition);
     }
-    lastDragTime = now;
 
-    const pos = pixelToPercent(node.x(), node.y());
-    live.pushEvent(`drag_${type}`, {
-      id: String(id),
-      position_x: pos.x,
-      position_y: pos.y,
-    });
+    relayRemoteDrag(type, id, percentPosition);
   }
 
-  function onDragEnd(type: string, id: number | string, e: KonvaEventObject<DragEvent>): void {
+  function onDragEnd(rawType: string, id: number | string, e: KonvaEventObject<DragEvent>): void {
+    const type = normalizeDragType(rawType);
+    if (!type) return;
+
     isDragging.value = false;
+    clearScheduledFrame();
+    clearRemoteRelayTimer();
+    pendingRemoteRelay = null;
+
     const node = e.target;
+    const pixelPosition = { x: node.x(), y: node.y() };
     const pos = pixelToPercent(node.x(), node.y());
 
-    // Keep override until server responds -- prevents connection snap-back
+    if (tracksCurrentDrag) {
+      applyDragOverride(id, pixelPosition);
+      scheduleOverrideCleanup(id);
+    }
+
+    onCommit?.(type, id, pos);
+
     live.pushEvent(`move_${type}`, { id: String(id), position_x: pos.x, position_y: pos.y }, () => {
-      // Server confirmed -- clear override, props now have the new position
-      const next = { ...dragOverrides.value };
-      delete next[id];
-      dragOverrides.value = next;
+      clearDragOverride(id);
     });
+
+    tracksCurrentDrag = false;
   }
+
+  onBeforeUnmount(() => {
+    clearScheduledFrame();
+    clearRemoteRelayTimer();
+
+    for (const timer of clearTimers.values()) {
+      window.clearTimeout(timer);
+    }
+
+    clearTimers.clear();
+  });
 
   return { isDragging, dragOverrides, onDragStart, onDragMove, onDragEnd };
 }

@@ -1832,6 +1832,28 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       assert length(layers) == 1
     end
 
+    test "deleting the default layer refreshes layer props and active layer", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project)
+      [default_layer] = Scenes.list_layers(scene.id)
+      {:ok, extra_layer} = Scenes.create_layer(scene.id, %{name: "Extra Layer"})
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
+        )
+
+      html = render_click(view, "delete_layer", %{"id" => to_string(default_layer.id)})
+
+      assert html =~ "Layer deleted"
+
+      layer_props = get_layer_list_props(view)
+      refute Enum.any?(layer_props["layers"], &(&1["id"] == default_layer.id))
+      assert Enum.any?(layer_props["layers"], &(&1["id"] == extra_layer.id))
+      assert layer_props["active-layer-id"] == extra_layer.id
+    end
+
     test "cannot delete the last layer", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)

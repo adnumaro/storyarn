@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Layers } from "lucide-vue-next";
+import { computed } from "vue";
 import { useLive } from "@shared/composables/useLive.ts";
 import SceneLayerList from "./SceneLayerList.vue";
 
@@ -25,6 +26,7 @@ const {
 }>();
 
 const live = useLive();
+const layerListKey = computed(() => layers.map((layer) => layer.id).join(":"));
 
 function togglePopover(): void {
   live.pushEvent("toggle_layers_popover", {});
@@ -46,10 +48,11 @@ function togglePopover(): void {
 
     <div
       v-if="popoverOpen"
-      class="absolute bottom-full right-0 mb-2 bg-surface rounded-lg border border-border shadow-md w-64 max-h-80 overflow-hidden flex flex-col"
+      class="absolute bottom-full right-0 mb-2 bg-surface rounded-lg border border-border shadow-md w-max min-w-44 max-w-64 overflow-hidden flex flex-col"
     >
       <div class="overflow-y-auto p-2">
         <SceneLayerList
+          :key="layerListKey"
           :layers="layers"
           :active-layer-id="activeLayerId"
           :can-edit="canEdit"

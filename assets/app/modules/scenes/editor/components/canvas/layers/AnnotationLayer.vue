@@ -16,6 +16,15 @@ const emit = defineEmits<{
   dragmove: [type: string, id: number | string, e: KonvaEventObject<DragEvent>];
   dragend: [type: string, id: number | string, e: KonvaEventObject<DragEvent>];
 }>();
+
+function emitAnnotationDrag(
+  eventName: "dragstart" | "dragmove" | "dragend",
+  id: number | string,
+  e: KonvaEventObject<DragEvent>,
+): void {
+  e.cancelBubble = true;
+  emit(eventName, "annotation", id, e);
+}
 </script>
 
 <template>
@@ -26,9 +35,9 @@ const emit = defineEmits<{
       :config="{ x: ann.x, y: ann.y, listening: ann.listening, draggable: ann.draggable }"
       @click="(e: KonvaEventObject<MouseEvent>) => emit('annotation-click', ann.id, e)"
       @dblclick="(e: KonvaEventObject<MouseEvent>) => emit('annotation-dblclick', ann, e)"
-      @dragstart="(e: KonvaEventObject<DragEvent>) => emit('dragstart', 'annotation', ann.id, e)"
-      @dragmove="(e: KonvaEventObject<DragEvent>) => emit('dragmove', 'annotation', ann.id, e)"
-      @dragend="(e: KonvaEventObject<DragEvent>) => emit('dragend', 'annotation', ann.id, e)"
+      @dragstart="(e: KonvaEventObject<DragEvent>) => emitAnnotationDrag('dragstart', ann.id, e)"
+      @dragmove="(e: KonvaEventObject<DragEvent>) => emitAnnotationDrag('dragmove', ann.id, e)"
+      @dragend="(e: KonvaEventObject<DragEvent>) => emitAnnotationDrag('dragend', ann.id, e)"
     >
       <v-rect
         v-if="ann.isSelected"

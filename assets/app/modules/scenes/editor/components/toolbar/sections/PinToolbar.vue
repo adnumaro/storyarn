@@ -2,6 +2,7 @@
 import { Settings } from "lucide-vue-next";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { useLive } from "@shared/composables/useLive.ts";
+import { useSceneElementOptimisticUpdater } from "../../../composables/useSceneElementOptimism";
 import {
   ToolbarColorPicker,
   ToolbarLayerPicker,
@@ -39,8 +40,26 @@ const {
 }>();
 
 const live = useLive();
+const updateOptimistically = useSceneElementOptimisticUpdater();
+
+const FIELD_TO_PROP: Record<string, keyof PinElement> = {
+  label: "label",
+  color: "color",
+  opacity: "opacity",
+  size: "size",
+  pin_type: "pinType",
+  layer_id: "layerId",
+  locked: "locked",
+};
+
+function updateLocalField(field: string, value: unknown): void {
+  const prop = FIELD_TO_PROP[field];
+  if (prop) updateOptimistically("pin", element.id, { [prop]: value });
+}
 
 function updateField(field: string, value: string | number | null): void {
+  updateLocalField(field, value);
+
   live.pushEvent("update_pin", {
     id: String(element.id),
     field,
@@ -49,6 +68,8 @@ function updateField(field: string, value: string | number | null): void {
 }
 
 function toggleLock(): void {
+  updateLocalField("locked", !element.locked);
+
   live.pushEvent("update_pin", {
     id: String(element.id),
     field: "locked",

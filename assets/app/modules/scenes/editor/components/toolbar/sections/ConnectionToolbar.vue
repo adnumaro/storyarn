@@ -2,6 +2,7 @@
 import { ArrowLeftRight, Settings, Tag } from "lucide-vue-next";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { useLive } from "@shared/composables/useLive.ts";
+import { useSceneElementOptimisticUpdater } from "../../../composables/useSceneElementOptimism";
 import { ToolbarSeparator, ToolbarStrokePicker } from "../controls";
 
 interface ConnectionElement {
@@ -20,8 +21,21 @@ const { element, canEdit = false } = defineProps<{
 }>();
 
 const live = useLive();
+const updateOptimistically = useSceneElementOptimisticUpdater();
+
+const FIELD_TO_PROP: Record<string, keyof ConnectionElement> = {
+  label: "label",
+  color: "color",
+  line_style: "lineStyle",
+  line_width: "lineWidth",
+  show_label: "showLabel",
+  bidirectional: "bidirectional",
+};
 
 function updateField(field: string, value: string | number | null): void {
+  const prop = FIELD_TO_PROP[field];
+  if (prop) updateOptimistically("connection", element.id, { [prop]: value });
+
   live.pushEvent("update_connection", {
     id: String(element.id),
     field,
@@ -30,6 +44,9 @@ function updateField(field: string, value: string | number | null): void {
 }
 
 function toggleField(field: string, currentValue: boolean): void {
+  const prop = FIELD_TO_PROP[field];
+  if (prop) updateOptimistically("connection", element.id, { [prop]: !currentValue });
+
   live.pushEvent("update_connection", {
     id: String(element.id),
     field,

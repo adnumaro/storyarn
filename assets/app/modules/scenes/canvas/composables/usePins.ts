@@ -70,6 +70,7 @@ interface UsePinsOpts {
   isSelectMode?: MaybeComputedRef<boolean>;
   editMode?: MaybeComputedRef<boolean>;
   canEdit?: MaybeComputedRef<boolean>;
+  dragOverrides?: MaybeComputedRef<Record<string | number, PixelPoint>>;
 }
 
 interface PinRenderMode {
@@ -156,6 +157,7 @@ export function usePins({
   isSelectMode,
   editMode,
   canEdit,
+  dragOverrides,
 }: UsePinsOpts) {
   const hiddenLayerIds = useHiddenLayerIds(layers);
   const iconVersion = ref(0);
@@ -228,7 +230,7 @@ export function usePins({
       .slice()
       .sort((a, b) => (a.position || 0) - (b.position || 0))
       .map((pin) => {
-        const pos = percentToPixel(pin.positionX, pin.positionY);
+        const pos = dragOverrides?.value[pin.id] || percentToPixel(pin.positionX, pin.positionY);
         const { dims, color, opacity, render } = resolvePinAppearance(pin);
         const isLockedByOther = checkPinLock(pin);
 

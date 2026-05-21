@@ -284,6 +284,9 @@ export function useKonvaStage({
     if (!stage) {
       return;
     }
+    if (e.target !== stage) {
+      return;
+    }
 
     stageConfig.x = stage.x();
     stageConfig.y = stage.y();
