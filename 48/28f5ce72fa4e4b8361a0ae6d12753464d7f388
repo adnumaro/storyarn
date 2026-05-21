@@ -1,0 +1,87 @@
+lib/storyarn_web/live/scene_live/handlers/layer_handlers.ex
+  s_4009926a81b72f::t_e4ee6e89ad65ee 268
+  s_4009926a81b72f::t_cfe6c65e12e126 256-257,266-267,269-282
+assets/app/modules/scenes/canvas/composables/useKonvaStage.ts
+  s_4009926a81b72f::t_13798d9d42c832 287-289
+assets/app/modules/scenes/editor/composables/useDrag.ts
+  s_4009926a81b72f::t_3667809aea24d7 18,21-24,48,55-74,97-98,104-108,132-134,145-146,149-150,152-153,156,160-162,165-166,188
+  s_4009926a81b72f::t_fe92bc489f6941 109-110
+  s_4009926a81b72f::t_ddef7f56d8b665 1,10-11,14-15,19,35,40-42,49,51-54,75-77,80,84-95,111-128,135-139,141-142,147-148,164,167,169,172-178,180,182-183,186-187,189-195
+  s_4009926a81b72f::t_05d089cfbfaf59 20
+  s_4009926a81b72f::t_664f3542bb2dc3 43-47,99-103,131,144,159
+assets/app/modules/scenes/editor/components/toolbar/sections/AnnotationToolbar.vue
+  s_4009926a81b72f::t_55cc83c5b60446 58-65
+  s_4009926a81b72f::t_d5d67cbccb3a75 3,37-44,47-49
+assets/app/modules/scenes/editor/components/canvas/SceneCanvas.vue
+  s_4009926a81b72f::t_8f5d739ec92c2c 132-138,227-229,232-234,236-241,243
+  s_4009926a81b72f::t_664f3542bb2dc3 230-231
+  s_4009926a81b72f::t_784370ad1df258 251
+  s_4009926a81b72f::t_6cc89cae628e54 8,139-142
+  s_4009926a81b72f::t_4a6ee5529de708 143-144,205,260,285,291,303,322-323,342-343,445-448
+  s_4009926a81b72f::t_80ca4752fed216 266
+assets/app/modules/scenes/editor/components/toolbar/SceneFloatingToolbar.vue
+  s_4009926a81b72f::t_7cb1081e1409e7 147-151
+  s_4009926a81b72f::t_d1f4cf7aa7d282 3,56,76,78-91,113-119,131-145,155-168
+  s_4009926a81b72f::t_139a7a9efcd5a3 57-58,92,99-100,105,112,120-130
+assets/app/modules/scenes/editor/components/canvas/layers/AnnotationLayer.vue
+  s_4009926a81b72f::t_270f62c68ab195 19-27,39-40
+  s_4009926a81b72f::t_ec27caea4fdafe 38
+assets/app/modules/scenes/editor/components/toolbar/sections/PinToolbar.vue
+  s_4009926a81b72f::t_b799b8e64d5e51 5,43-58,61-62,71-72
+assets/app/modules/scenes/canvas/composables/useZones.ts
+  s_4009926a81b72f::t_6e25f06426ca48 8
+  s_4009926a81b72f::t_d114a0de7ab754 12,138-142,144-145,149-152,154
+  s_4009926a81b72f::t_8a37ed12f5e83e 7,10-11,143,146-148,155-156,158-160,202-203,213
+  s_4009926a81b72f::t_a799c2bdd5c2fd 9,153,157,161-201,212,220-223
+assets/app/modules/scenes/canvas/composables/usePins.ts
+  s_4009926a81b72f::t_9511b731b19fd1 73,160,233
+assets/app/modules/scenes/editor/composables/useSceneElementOptimism.ts
+  s_4009926a81b72f::t_8873f0aae7da2f 109-111,164-169,239-260,317,342,344-355,358-380,398-400,407-409,425-427
+  s_4009926a81b72f::t_bd715ffff82ccf 1-10,432-441
+  s_4009926a81b72f::t_784370ad1df258 57-59
+  s_4009926a81b72f::t_bef4d336bf7105 48,450
+  s_4009926a81b72f::t_39be2ece9a84cc 60-62,453
+  s_4009926a81b72f::t_aae25c2e439812 11,17-47,49-50,63-108,112-150,152-155,157-163,170-238,266-316,318-341,343,356,389,394-397,401-406,410-424,428-431,442-449,451-452
+  s_4009926a81b72f::t_c665689b291132 12-16,51-56
+  s_4009926a81b72f::t_b52620eb3b146e 151,156,261-265,357,381-388,390-393
+assets/app/modules/scenes/editor/components/chrome/layers/LayerListPopover.vue
+  s_4009926a81b72f::t_d3fe457baaedf1 51
+  s_4009926a81b72f::t_31616dfb1fc050 3,29,55
+assets/app/modules/scenes/editor/components/canvas/layers/ZoneConnectionLayer.vue
+  s_4009926a81b72f::t_655988168e408f 90
+  s_4009926a81b72f::t_2b162f695a2d3b 92,99
+  s_4009926a81b72f::t_49013e2b3a66c2 98
+test/storyarn_web/live/scene_live/show_test.exs
+  s_4009926a81b72f::t_5c10d6008e42ef 1835-1856
+assets/app/modules/scenes/editor/components/toolbar/sections/ZoneToolbar.vue
+  s_4009926a81b72f::t_b550a2e080ade0 153-159,198,203
+  s_4009926a81b72f::t_9d265ea86780ad 1-4
+  s_4009926a81b72f::t_2100fd5a1a45c0 7,64-72,76-83,85,91-112,147-150,162,181,196,202
+  s_4009926a81b72f::t_8ba36c6b25ab84 10,50-62,115-117,126-127,135-136
+  s_4009926a81b72f::t_5c3f30c93c8f7e 63,73-75,84,86-90,152,160-161,163-180,182-183,204-206
+assets/app/modules/scenes/editor/components/canvas/layers/PinLayer.vue
+  s_4009926a81b72f::t_8173e97eef3bde 31-39,49-51
+assets/app/modules/scenes/editor/components/toolbar/sections/ConnectionToolbar.vue
+  s_4009926a81b72f::t_b93ad297c3c89e 5,24-33,36-38,47-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "4828f5ce72fa4e4b8361a0ae6d12753464d7f388",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
