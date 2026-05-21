@@ -7,7 +7,7 @@ description: "Crea una ficha de personaje y comprende cómo funcionan las variab
 
 ---
 
-Las Fichas (Sheets) son la columna vertebral de datos de tu proyecto. Cada campo que añadas a una ficha puede convertirse en una {accent}variable{/accent} que tus flujos leen y modifican en tiempo de ejecución.
+Las Fichas (Sheets) son la columna vertebral de datos de tu proyecto. Cada campo que añadas a una ficha puede convertirse en una {accent}variable{/accent} que tus flujos leen y modifican en tiempo de ejecución. En este paso crearás los datos de personaje que la siguiente guía usa para ramificar el diálogo.
 
 ## Crea la ficha
 
@@ -69,4 +69,12 @@ El {accent}nombre de variable{/accent} se genera automáticamente a partir de la
   El popover de configuración del bloque mostrando el campo de nombre de variable y el interruptor "es constante"
 </div>
 
-En la siguiente guía, usarás `mc.jaime.health` para crear diálogos ramificados en un flujo.
+## Punto de control
+
+Antes de continuar, confirma que tu ficha tiene:
+
+- El atajo `mc.jaime`
+- Un bloque numérico llamado **Health** con el valor `100`
+- La variable `mc.jaime.health` visible en la configuración del bloque
+
+En la siguiente guía, usarás `mc.jaime.health` para crear un diálogo ramificado en un flujo, previsualizarlo como jugador y exportar el proyecto.

@@ -7,7 +7,7 @@ description: "Create a character sheet and understand how variables work."
 
 ---
 
-Sheets are the data backbone of your project. Every field you add to a sheet can become a {accent}variable{/accent} that your flows read and modify at runtime.
+Sheets are the data backbone of your project. Every field you add to a sheet can become a {accent}variable{/accent} that your flows read and modify at runtime. In this step, you will create the character data that the next guide uses to branch dialogue.
 
 ## Create the sheet
 
@@ -69,4 +69,12 @@ The {accent}variable name{/accent} auto-generates from the block label (lowercas
   The block config popover showing the variable name field and the "is constant" toggle
 </div>
 
-In the next guide, you will use `mc.jaime.health` to create branching dialogue in a flow.
+## Checkpoint
+
+Before moving on, confirm that your sheet has:
+
+- A shortcut of `mc.jaime`
+- A number block named **Health** with the value `100`
+- The variable `mc.jaime.health` visible in the block configuration
+
+In the next guide, you will use `mc.jaime.health` to create branching dialogue in a flow, preview it as a player, and export the project.

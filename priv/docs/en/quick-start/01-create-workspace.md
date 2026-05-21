@@ -9,6 +9,14 @@ description: "Set up your workspace and create your first project in under 5 min
 
 A {accent}workspace{/accent} is your team's home base. It holds all your projects and controls who has access to them.
 
+This Quick Start builds one small, complete project path:
+
+1. Create a workspace and project.
+2. Create a character sheet with variables.
+3. Use those variables in a branching flow.
+4. Test the flow with the Story Player and Debug Mode.
+5. Export the project so it can move into your production pipeline.
+
 ## Create your workspace
 
 After signing in, you will be redirected to your default workspace. If you don't have one yet, you will land on the **Create a new workspace** page.
@@ -32,6 +40,8 @@ Each project is fully isolated with its own sheets, flows, scenes, localization,
 </div>
 
 After creation, you are taken directly into the project's sheet editor.
+
+For this tutorial, stay in the new project and continue with [Your First Sheet](/docs/quick-start/first-sheet). You will create the character data that the flow reads in the next step.
 
 ## Invite your team
 

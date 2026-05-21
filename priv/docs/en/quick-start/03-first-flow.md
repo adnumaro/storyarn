@@ -7,7 +7,7 @@ description: "Build a branching dialogue that reacts to character stats."
 
 ---
 
-Flows are where your narrative comes to life. In this guide you will build a short dialogue that branches based on the character sheet from the previous guide.
+Flows are where your narrative comes to life. In this guide you will build a short dialogue that branches based on the character sheet from the previous guide, then preview and export the result.
 
 ## Create the flow
 
@@ -84,6 +84,47 @@ Click **Step** (or press `F10`) to advance through nodes one at a time. The vari
 </div>
 
 Try changing the Health value to `30` on the character sheet and running the debugger again -- the flow will take the False path instead.
+
+## Preview with the Story Player
+
+Debug Mode explains how the flow executes. The {accent}Story Player{/accent} shows how it feels to a player.
+
+Click **Play** in the flow toolbar to open the Story Player from the Entry node. Advance through the dialogue and confirm that:
+
+- The first NPC line appears before the condition runs.
+- With `mc.jaime.health = 100`, the player reaches the healthy response.
+- After changing Health to `30`, the player reaches the healing-potion response.
+
+Use Story Player when you want to review pacing, speaker text, and choices. Use Debug Mode when you need to inspect variables, conditions, and execution history.
+
+<div class="docs-image-placeholder">
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+  The Story Player showing the tavern dialogue line and the branch selected by the current Health value
+</div>
+
+## Export the project
+
+Once the flow works, open **Export & Import** from the project sidebar. For a first export:
+
+1. Choose **Storyarn JSON** if you want a full project backup that can be imported into Storyarn again.
+2. Choose **Yarn Spinner**, **Ink**, **Unity Dialogue System**, **Godot Dialogic**, **Unreal Engine**, or **articy:draft** if you want an engine-facing export.
+3. Keep **Sheets** and **Flows** selected so the exported dialogue includes the variable data used by the condition.
+4. Turn on **Validate before export** to catch missing entry nodes, unreachable nodes, broken references, and missing translations.
+5. Click **Download**.
+
+For this tutorial, export both **Storyarn JSON** and one engine format you care about. The Storyarn JSON file gives you a safe backup; the engine format shows how the same flow leaves Storyarn for runtime integration.
+
+## Completion checklist
+
+You have finished the Quick Start when you can confirm all of this:
+
+- You created a workspace and project.
+- You created the `mc.jaime` sheet.
+- You created the `mc.jaime.health` variable.
+- You used that variable in a Condition node.
+- You tested both branches in Debug Mode.
+- You previewed the flow in Story Player.
+- You exported the project.
 
 ## Available node types
 
