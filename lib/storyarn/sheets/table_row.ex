@@ -8,6 +8,7 @@ defmodule Storyarn.Sheets.TableRow do
   Cell values are stored as a JSONB map of `column_slug => value`.
   """
   use Ecto.Schema
+
   import Ecto.Changeset
 
   alias Storyarn.Shared.NameNormalizer
@@ -42,14 +43,12 @@ defmodule Storyarn.Sheets.TableRow do
 
   @doc "Changeset for updating only the position."
   def position_changeset(row, attrs) do
-    row
-    |> cast(attrs, [:position])
+    cast(row, attrs, [:position])
   end
 
   @doc "Changeset for updating cells."
   def cells_changeset(row, attrs) do
-    row
-    |> cast(attrs, [:cells])
+    cast(row, attrs, [:cells])
   end
 
   defp generate_slug(changeset) do

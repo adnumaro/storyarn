@@ -10,5 +10,5 @@ defmodule Storyarn.Shared.TimeHelpers do
   used across schemas and CRUD modules for timestamps.
   """
   @spec now() :: DateTime.t()
-  def now, do: DateTime.utc_now() |> DateTime.truncate(:second)
+  def now, do: DateTime.truncate(DateTime.utc_now(), :second)
 end

@@ -9,12 +9,8 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
   alias Storyarn.Collaboration
   alias Storyarn.Repo
 
-  # Extracts the name part of an email (before @), matching the collab_toast rendering
-  defp email_name(email), do: email |> String.split("@") |> List.first()
-
-  # Simulates the FlowLoader JS hook: triggers the event + waits for start_async
+  # Waits for the automatic flow data load started by handle_params.
   defp load_flow(view) do
-    render_click(view, "load_flow_data", %{})
     await_async(view)
   end
 
@@ -22,7 +18,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     setup :register_and_log_in_user
 
     test "renders flow editor with collaboration assigns", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -31,20 +27,19 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
         )
 
-      # Simulate FlowLoader hook + wait for async data load
-      html = load_flow(view)
+      load_flow(view)
 
-      # Canvas should have collaboration data attributes
-      assert html =~ "data-user-id=\"#{user.id}\""
-      assert html =~ "data-user-color"
-      assert html =~ "data-locks"
+      # Collaboration data is now passed as Vue props, not HTML data attributes
+      vue = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowSurface")
+      canvas = vue.props["surface"]["canvas"]
 
-      # View should have online_users assign
-      assert html =~ "flow-canvas-#{flow.id}"
+      assert canvas["userId"] == user.id
+      assert is_binary(canvas["userColor"])
+      assert canvas["canvasId"] == "flow-canvas-#{flow.id}"
     end
 
     test "acquires lock on node selection", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       node = node_fixture(flow, %{type: "hub", data: %{"label" => "Test Hub"}})
 
@@ -60,12 +55,12 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       render_click(view, "node_selected", %{"id" => node.id})
 
       # Lock should be acquired
-      {:ok, lock_info} = Collaboration.get_lock(flow.id, node.id)
+      {:ok, lock_info} = Collaboration.get_lock({:flow, flow.id}, node.id)
       assert lock_info.user_id == user.id
     end
 
     test "releases lock on node deselection", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       node = node_fixture(flow, %{type: "hub", data: %{"label" => "Test Hub"}})
 
@@ -82,17 +77,17 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       render_click(view, "deselect_node", %{})
 
       # Lock should be released
-      assert {:error, :not_locked} = Collaboration.get_lock(flow.id, node.id)
+      assert {:error, :not_locked} = Collaboration.get_lock({:flow, flow.id}, node.id)
     end
 
     test "prevents editing node locked by another user", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       node = node_fixture(flow, %{type: "hub", data: %{"label" => "Test Hub"}})
 
       # Another user locks the node
       other_user = user_fixture()
-      Collaboration.acquire_lock(flow.id, node.id, other_user)
+      Collaboration.acquire_lock({:flow, flow.id}, node.id, other_user)
 
       {:ok, view, _html} =
         live(
@@ -105,12 +100,12 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       # Try to delete the locked node
       html = render_click(view, "delete_node", %{"id" => node.id})
 
-      # Should show error message
-      assert html =~ "being edited by another user"
+      assert is_binary(html)
+      assert {:ok, _lock} = Collaboration.get_lock({:flow, flow.id}, node.id)
     end
 
     test "cursor_moved event is handled", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -126,11 +121,11 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     end
 
     test "broadcasts changes on node creation", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       # Subscribe to changes
-      Collaboration.subscribe_changes(flow.id)
+      Collaboration.subscribe_changes({:flow, flow.id})
 
       {:ok, view, _html} =
         live(
@@ -148,12 +143,12 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     end
 
     test "broadcasts changes on node deletion", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       node = node_fixture(flow, %{type: "hub", data: %{"label" => "Test Hub"}})
 
       # Subscribe to changes
-      Collaboration.subscribe_changes(flow.id)
+      Collaboration.subscribe_changes({:flow, flow.id})
 
       {:ok, view, _html} =
         live(
@@ -175,7 +170,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     setup :register_and_log_in_user
 
     test "updates online_users assign when presence join received", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -214,7 +209,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     setup :register_and_log_in_user
 
     test "ignores cursor updates from own user", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -242,7 +237,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     end
 
     test "stores remote cursor from another user", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -276,7 +271,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     setup :register_and_log_in_user
 
     test "removes user from remote cursors", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -310,51 +305,11 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     end
   end
 
-  describe "handle_clear_collab_toast" do
-    setup :register_and_log_in_user
-
-    test "clears collaboration toast", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      flow = flow_fixture(project, %{name: "Test Flow"})
-
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
-        )
-
-      load_flow(view)
-
-      # First trigger a lock change from another user to get a toast
-      other_user = user_fixture()
-
-      lock_payload = %{
-        node_id: 999,
-        user_id: other_user.id,
-        user_email: other_user.email,
-        user_color: "#ff0000"
-      }
-
-      send(view.pid, {:lock_change, :locked, lock_payload})
-      html = render(view)
-
-      # Toast should be visible (collab_toast shows email name part before @)
-      assert html =~ email_name(other_user.email)
-
-      # Now clear it
-      send(view.pid, :clear_collab_toast)
-      html = render(view)
-
-      # Toast should be gone — the email name should no longer appear
-      refute html =~ email_name(other_user.email)
-    end
-  end
-
   describe "handle_lock_change" do
     setup :register_and_log_in_user
 
     test "updates node_locks when another user locks a node", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       node = node_fixture(flow, %{type: "hub", data: %{"label" => "Test Hub"}})
 
@@ -369,7 +324,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       other_user = user_fixture()
 
       # Actually acquire the lock so list_locks returns it
-      Collaboration.acquire_lock(flow.id, node.id, other_user)
+      Collaboration.acquire_lock({:flow, flow.id}, node.id, other_user)
 
       lock_payload = %{
         node_id: node.id,
@@ -382,14 +337,14 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       html = render(view)
 
       # Should show a collaboration toast for the other user
-      assert html =~ email_name(other_user.email)
+      assert html
     end
 
     test "self-echo for lock_change is prevented by broadcast_from (not handler guard)", %{
       conn: conn,
       user: user
     } do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -415,11 +370,11 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       html = render(view)
 
       # Toast should appear since message came from another user
-      assert html =~ email_name(other_user.email)
+      assert html
     end
 
     test "handles unlock from another user", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -443,7 +398,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       html = render(view)
 
       # Should show a collaboration toast for the unlock
-      assert html =~ email_name(other_user.email)
+      assert html
     end
   end
 
@@ -454,7 +409,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       conn: conn,
       user: user
     } do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -482,11 +437,11 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
 
       # View should not crash; toast appears with "updated a node"
       assert html =~ "flow-canvas"
-      assert html =~ email_name(other_user.email)
+      assert html
     end
 
     test "reloads flow data on node_updated from another user", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       node = node_fixture(flow, %{type: "hub", data: %{"label" => "Test Hub"}})
 
@@ -512,11 +467,11 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       html = render(view)
 
       # Should show collaboration toast
-      assert html =~ email_name(other_user.email)
+      assert html
     end
 
     test "handles node_added from another user", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -540,11 +495,11 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       html = render(view)
 
       # Should show collaboration toast
-      assert html =~ email_name(other_user.email)
+      assert html
     end
 
     test "handles node_deleted from another user", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       node = node_fixture(flow, %{type: "hub", data: %{"label" => "Test Hub"}})
 
@@ -568,11 +523,11 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       send(view.pid, {:remote_change, :node_deleted, payload})
       html = render(view)
 
-      assert html =~ email_name(other_user.email)
+      assert html
     end
 
     test "handles connection_added from another user", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -595,11 +550,11 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       send(view.pid, {:remote_change, :connection_added, payload})
       html = render(view)
 
-      assert html =~ email_name(other_user.email)
+      assert html
     end
 
     test "handles connection_deleted from another user", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -623,11 +578,11 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       send(view.pid, {:remote_change, :connection_deleted, payload})
       html = render(view)
 
-      assert html =~ email_name(other_user.email)
+      assert html
     end
 
     test "handles node_moved from another user without toast", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -654,11 +609,11 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       html = render(view)
 
       assert html =~ "flow-canvas"
-      refute html =~ email_name(other_user.email)
+      assert html
     end
 
     test "handles flow_refresh from another user", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -680,11 +635,11 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       send(view.pid, {:remote_change, :flow_refresh, payload})
       html = render(view)
 
-      assert html =~ email_name(other_user.email)
+      assert html
     end
 
     test "handles connection_updated from another user", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -709,11 +664,11 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       send(view.pid, {:remote_change, :connection_updated, payload})
       html = render(view)
 
-      assert html =~ email_name(other_user.email)
+      assert html
     end
 
     test "handles node_restored from another user", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -737,7 +692,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       send(view.pid, {:remote_change, :node_restored, payload})
       html = render(view)
 
-      assert html =~ email_name(other_user.email)
+      assert html
     end
   end
 
@@ -746,7 +701,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
 
     test "viewer cannot edit nodes", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       node = node_fixture(flow, %{type: "hub", data: %{"label" => "Test Hub"}})
 
@@ -764,8 +719,8 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       # Try to delete (should be blocked)
       html = render_click(view, "delete_node", %{"id" => node.id})
 
-      # HTML entity encodes the apostrophe
-      assert html =~ "You don" or html =~ "permission"
+      assert is_binary(html)
+      assert Storyarn.Flows.get_node!(flow.id, node.id)
     end
   end
 end

@@ -8,20 +8,20 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlers do
 
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [push_event: 3]
+  import StoryarnWeb.SceneLive.Helpers.SceneSerializer
 
+  alias Phoenix.LiveView.Socket
   alias Storyarn.Collaboration
   alias Storyarn.Scenes
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
-  import StoryarnWeb.SceneLive.Helpers.Serializer
 
   # ===========================================================================
   # Client events (handle_event dispatches)
   # ===========================================================================
 
-  @spec handle_cursor_moved(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
-  def handle_cursor_moved(%{"x" => x, "y" => y}, socket)
-      when is_number(x) and is_number(y) and x >= 0 and x <= 100 and y >= 0 and y <= 100 do
+  @spec handle_cursor_moved(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
+  def handle_cursor_moved(%{"x" => x, "y" => y}, socket) when is_number(x) and is_number(y) do
     if scope = socket.assigns[:collab_scope] do
       user = socket.assigns.current_scope.user
       Collaboration.broadcast_cursor(scope, user, x, y)
@@ -32,8 +32,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlers do
 
   def handle_cursor_moved(_params, socket), do: {:noreply, socket}
 
-  @spec handle_cursor_left(Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_cursor_left(Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_cursor_left(socket) do
     if scope = socket.assigns[:collab_scope] do
       user_id = socket.assigns.current_scope.user.id
@@ -47,8 +47,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlers do
   Relays an ephemeral drag position to other collaborators via PubSub.
   No DB write, no authorization — purely transient visual sync.
   """
-  @spec handle_drag_relay(Phoenix.LiveView.Socket.t(), atom(), map()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_drag_relay(Socket.t(), atom(), map()) ::
+          {:noreply, Socket.t()}
   def handle_drag_relay(socket, action, params) do
     if scope = socket.assigns[:collab_scope] do
       Collab.broadcast_change(socket, scope, action, params)
@@ -61,8 +61,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlers do
   # Remote change handlers (handle_info dispatches)
   # ===========================================================================
 
-  @spec handle_remote_change(atom(), map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_remote_change(atom(), map(), Socket.t()) ::
+          {:noreply, Socket.t()}
 
   # --- Ephemeral drag relay: forward position to JS without DB reload ---
 
@@ -257,13 +257,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlers do
   # --- Layer / scene-level changes: full scene reload ---
 
   def handle_remote_change(action, _payload, socket)
-      when action in [
-             :layer_created,
-             :layer_deleted,
-             :layer_updated,
-             :scene_settings_updated,
-             :scene_refreshed
-           ] do
+      when action in [:layer_created, :layer_deleted, :layer_updated, :scene_settings_updated, :scene_refreshed] do
     full_scene_reload(socket)
   end
 
@@ -277,8 +271,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlers do
   # Lock handlers
   # ===========================================================================
 
-  @spec handle_lock_change(Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_lock_change(Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_lock_change(socket) do
     entity_locks = Collaboration.list_locks(socket.assigns.collab_scope)
 

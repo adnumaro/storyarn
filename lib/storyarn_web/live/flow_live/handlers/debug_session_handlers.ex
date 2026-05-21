@@ -4,11 +4,12 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
   breakpoints, and tab/speed controls.
   """
 
+  use Gettext, backend: Storyarn.Gettext
+
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
 
-  use Gettext, backend: Storyarn.Gettext
-
+  alias Storyarn.Analytics
   alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers
   alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
@@ -48,7 +49,18 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
   def handle_debug_reset(socket) do
     state = socket.assigns.debug_state
 
-    if state.call_stack != [] do
+    if state.call_stack == [] do
+      new_state = Flows.evaluator_reset(state)
+
+      {:noreply,
+       socket
+       |> DebugExecutionHandlers.cancel_auto_timer()
+       |> assign(:debug_state, new_state)
+       |> assign(:debug_auto_playing, false)
+       |> assign(:debug_step_limit_reached, false)
+       |> push_event("debug_clear_highlights", %{})
+       |> DebugExecutionHandlers.push_debug_canvas(new_state)}
+    else
       root_frame = List.last(state.call_stack)
       root_flow_id = root_frame.flow_id
 
@@ -68,17 +80,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
         DebugExecutionHandlers.store_and_navigate(socket, root_flow_id)
 
       {:noreply, navigated_socket}
-    else
-      new_state = Flows.evaluator_reset(state)
-
-      {:noreply,
-       socket
-       |> DebugExecutionHandlers.cancel_auto_timer()
-       |> assign(:debug_state, new_state)
-       |> assign(:debug_auto_playing, false)
-       |> assign(:debug_step_limit_reached, false)
-       |> push_event("debug_clear_highlights", %{})
-       |> DebugExecutionHandlers.push_debug_canvas(new_state)}
     end
   end
 
@@ -179,13 +180,13 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
 
     case DebugExecutionHandlers.find_entry_node(nodes_map) do
       nil ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("flows", "No entry node found in this flow."))}
+        {:noreply, put_flash(socket, :error, dgettext("flows", "No entry node found in this flow."))}
 
       entry_node_id ->
         variables = VariableHelpers.build_variables(project.id)
         state = Flows.evaluator_init(variables, entry_node_id)
         state = %{state | current_flow_id: flow.id}
+        track_debug_started(socket, project, flow)
 
         {:noreply,
          socket
@@ -198,29 +199,55 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
     end
   end
 
+  defp track_debug_started(socket, project, flow) do
+    Analytics.track(socket.assigns.current_scope, "flow debug started", %{
+      flow_id: flow.id,
+      project_id: project.id
+    })
+  end
+
   # ===========================================================================
   # Private — data conversion
   # ===========================================================================
 
-  defp parse_variable_value(raw, "number") do
+  defp parse_variable_value(raw, "number") when is_binary(raw) do
     case Float.parse(raw) do
       {n, _} ->
         {n, nil}
 
       :error ->
         warning =
-          if raw != "",
-            do:
-              dgettext("flows", "Invalid number \"%{value}\", using 0",
-                value: String.slice(raw, 0, 20)
-              ),
-            else: nil
+          if raw == "",
+            do: nil,
+            else: dgettext("flows", "Invalid number \"%{value}\", using 0", value: String.slice(raw, 0, 20))
 
         {0, warning}
     end
   end
 
+  defp parse_variable_value(raw, "number") when is_number(raw), do: {raw, nil}
+
   defp parse_variable_value("true", "boolean"), do: {true, nil}
+  defp parse_variable_value("false", "boolean"), do: {false, nil}
+  defp parse_variable_value("nil", "boolean"), do: {nil, nil}
+  defp parse_variable_value(nil, "boolean"), do: {nil, nil}
+  defp parse_variable_value(true, "boolean"), do: {true, nil}
+  defp parse_variable_value(false, "boolean"), do: {false, nil}
   defp parse_variable_value(_, "boolean"), do: {false, nil}
+
+  defp parse_variable_value(list, "multi_select") when is_list(list), do: {list, nil}
+
+  defp parse_variable_value("", "multi_select"), do: {[], nil}
+
+  defp parse_variable_value(raw, "multi_select") when is_binary(raw) do
+    parts =
+      raw
+      |> String.split(",")
+      |> Enum.map(&String.trim/1)
+      |> Enum.reject(&(&1 == ""))
+
+    {parts, nil}
+  end
+
   defp parse_variable_value(raw, _), do: {raw, nil}
 end

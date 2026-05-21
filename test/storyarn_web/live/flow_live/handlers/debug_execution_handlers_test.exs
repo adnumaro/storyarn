@@ -5,6 +5,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Phoenix.LiveView.Socket
+  alias Storyarn.Flows.DebugSessionStore
   alias Storyarn.Flows.Evaluator.Engine
   alias Storyarn.Repo
   alias StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers
@@ -48,15 +50,20 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
 
     assigns = Map.merge(defaults, overrides)
 
-    %Phoenix.LiveView.Socket{
+    %Socket{
       assigns: Map.merge(%{__changed__: %{}}, assigns)
     }
   end
 
-  # Simulates the FlowLoader JS hook: triggers the event + waits for start_async
+  # Waits for the automatic flow data load started by handle_params.
   defp load_flow(view) do
-    render_click(view, "load_flow_data", %{})
     render_async(view, 2000)
+  end
+
+  defp debug_panel(view) do
+    view
+    |> LiveVue.Test.get_vue(name: "live/flow/show/FlowPanels")
+    |> then(& &1.props["panels"]["debug"])
   end
 
   # ===========================================================================
@@ -72,8 +79,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       }
 
       connections = [
-        conn(1, "output", 2),
-        conn(2, "output", 3)
+        conn(1, "default", 2),
+        conn(2, "default", 3)
       ]
 
       state = Engine.init(%{}, 1)
@@ -99,8 +106,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       }
 
       connections = [
-        conn(1, "output", 2),
-        conn(2, "output", 3)
+        conn(1, "default", 2),
+        conn(2, "default", 3)
       ]
 
       state = Engine.init(%{}, 1)
@@ -164,7 +171,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
         2 => node(2, "hub")
       }
 
-      connections = [conn(1, "output", 2)]
+      connections = [conn(1, "default", 2)]
 
       state = Engine.init(%{}, 1)
 
@@ -194,7 +201,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
           })
       }
 
-      connections = [conn(1, "output", 2)]
+      connections = [conn(1, "default", 2)]
 
       state = Engine.init(%{}, 1)
       {:ok, state} = Engine.step(state, nodes, connections)
@@ -218,7 +225,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
         2 => node(2, "hub")
       }
 
-      connections = [conn(1, "output", 2)]
+      connections = [conn(1, "default", 2)]
 
       state = %{Engine.init(%{}, 1) | max_steps: 0}
 
@@ -249,8 +256,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       }
 
       connections = [
-        conn(1, "output", 2),
-        conn(2, "output", 3)
+        conn(1, "default", 2),
+        conn(2, "default", 3)
       ]
 
       state = Engine.init(%{}, 1)
@@ -295,9 +302,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       }
 
       connections = [
-        conn(1, "output", 2),
-        conn(2, "output", 3),
-        conn(3, "output", 4)
+        conn(1, "default", 2),
+        conn(2, "default", 3),
+        conn(3, "default", 4)
       ]
 
       state = Engine.init(%{}, 1)
@@ -343,7 +350,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       }
 
       connections = [
-        conn(1, "output", 2),
+        conn(1, "default", 2),
         conn(2, "r1", 3),
         conn(2, "r2", 4)
       ]
@@ -477,7 +484,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
 
       # Engine returns {:error, state, :not_waiting_input} — handler assigns the error state
       # The state itself stays paused (the error pattern in choose_response doesn't change status)
-      assert result.assigns.debug_state != nil
+      assert result.assigns.debug_state
     end
   end
 
@@ -492,7 +499,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       {:noreply, result} = DebugExecutionHandlers.handle_debug_play(socket)
 
       assert result.assigns.debug_auto_playing == true
-      assert result.assigns.debug_auto_timer != nil
+      assert result.assigns.debug_auto_timer
       assert_receive :debug_auto_step, 600
     end
   end
@@ -623,9 +630,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       }
 
       connections = [
-        conn(1, "output", 2),
-        conn(2, "output", 3),
-        conn(3, "output", 4)
+        conn(1, "default", 2),
+        conn(2, "default", 3),
+        conn(3, "default", 4)
       ]
 
       state = Engine.init(%{}, 1)
@@ -652,7 +659,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
         2 => node(2, "exit")
       }
 
-      connections = [conn(1, "output", 2)]
+      connections = [conn(1, "default", 2)]
 
       # Pre-step to reach exit node
       state = Engine.init(%{}, 1)
@@ -682,9 +689,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       }
 
       connections = [
-        conn(1, "output", 2),
-        conn(2, "output", 3),
-        conn(3, "output", 4)
+        conn(1, "default", 2),
+        conn(2, "default", 3),
+        conn(3, "default", 4)
       ]
 
       state = Engine.init(%{}, 1)
@@ -717,7 +724,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
         2 => node(2, "hub")
       }
 
-      connections = [conn(1, "output", 2)]
+      connections = [conn(1, "default", 2)]
 
       state = %{Engine.init(%{}, 1) | max_steps: 0}
 
@@ -751,7 +758,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       }
 
       connections = [
-        conn(1, "output", 2),
+        conn(1, "default", 2),
         conn(2, "r1", 3),
         conn(2, "r2", 3)
       ]
@@ -789,7 +796,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
           execution_path: [2, 1]
       }
 
-      connections = [conn(1, "output", 2)]
+      connections = [conn(1, "default", 2)]
 
       socket =
         build_socket(%{
@@ -800,7 +807,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       result = DebugExecutionHandlers.push_debug_canvas(socket, state)
 
       # Verify push_event was called (returns updated socket)
-      assert %Phoenix.LiveView.Socket{} = result
+      assert %Socket{} = result
     end
 
     test "sets error status string when finished with error console entry" do
@@ -829,7 +836,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
 
       # Should not raise — the error status should be detected
       result = DebugExecutionHandlers.push_debug_canvas(socket, state)
-      assert %Phoenix.LiveView.Socket{} = result
+      assert %Socket{} = result
     end
 
     test "sets normal status string when finished without errors" do
@@ -857,7 +864,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
         })
 
       result = DebugExecutionHandlers.push_debug_canvas(socket, state)
-      assert %Phoenix.LiveView.Socket{} = result
+      assert %Socket{} = result
     end
 
     test "finds active connection from execution path" do
@@ -868,8 +875,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       }
 
       connections = [
-        conn(1, "output", 2),
-        conn(2, "output", 3)
+        conn(1, "default", 2),
+        conn(2, "default", 3)
       ]
 
       socket =
@@ -879,7 +886,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
         })
 
       result = DebugExecutionHandlers.push_debug_canvas(socket, state)
-      assert %Phoenix.LiveView.Socket{} = result
+      assert %Socket{} = result
     end
 
     test "handles empty execution path" do
@@ -895,7 +902,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
         })
 
       result = DebugExecutionHandlers.push_debug_canvas(socket, state)
-      assert %Phoenix.LiveView.Socket{} = result
+      assert %Socket{} = result
     end
 
     test "handles single-node execution path (no active connection)" do
@@ -912,7 +919,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
         })
 
       result = DebugExecutionHandlers.push_debug_canvas(socket, state)
-      assert %Phoenix.LiveView.Socket{} = result
+      assert %Socket{} = result
     end
   end
 
@@ -929,7 +936,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
         build_socket(%{
           debug_state: state,
           debug_nodes: %{1 => node(1, "entry")},
-          debug_connections: [conn(1, "output", 2)],
+          debug_connections: [conn(1, "default", 2)],
           debug_active_tab: "console",
           debug_speed: 500,
           debug_auto_playing: false,
@@ -944,8 +951,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       assert result_socket.redirected
 
       # Verify ETS has the stored session
-      stored = Storyarn.Flows.DebugSessionStore.take({1, 1})
-      assert stored != nil
+      stored = DebugSessionStore.take({1, 1})
+      assert stored
       assert stored.debug_state == state
       assert stored.debug_speed == 500
       assert stored.debug_var_filter == "health"
@@ -964,7 +971,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
 
       {:navigating, _result} = DebugExecutionHandlers.store_and_navigate(socket, 42)
 
-      stored = Storyarn.Flows.DebugSessionStore.take({1, 1})
+      stored = DebugSessionStore.take({1, 1})
       assert stored.debug_editing_var == nil
     end
   end
@@ -979,7 +986,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
 
       result = DebugExecutionHandlers.schedule_auto_step(socket)
 
-      assert result.assigns.debug_auto_timer != nil
+      assert result.assigns.debug_auto_timer
       assert_receive :debug_auto_step, 500
     end
 
@@ -1055,7 +1062,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       %{project: project, flow: flow}
     end
@@ -1104,7 +1111,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       %{project: project, flow: flow}
     end
@@ -1115,7 +1122,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       hub2 = node_fixture(flow, %{type: "hub", data: %{"hub_id" => "h2"}})
 
       _connection =
-        connection_fixture(flow, hub1, hub2, %{source_pin: "output", target_pin: "input"})
+        connection_fixture(flow, hub1, hub2, %{source_pin: "default", target_pin: "input"})
 
       result = DebugExecutionHandlers.build_connections(flow.id)
 
@@ -1126,8 +1133,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
           c.source_node_id == hub1.id and c.target_node_id == hub2.id
         end)
 
-      assert matching_conn != nil
-      assert matching_conn.source_pin == "output"
+      assert matching_conn
+      assert matching_conn.source_pin == "default"
       assert matching_conn.target_pin == "input"
     end
 
@@ -1146,7 +1153,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Debug Test Flow"})
 
       # flow_fixture auto-creates entry + exit nodes; use them
@@ -1158,10 +1165,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       hub = node_fixture(flow, %{type: "hub", data: %{"hub_id" => "h1", "color" => "#000"}})
 
       _conn1 =
-        connection_fixture(flow, entry, hub, %{source_pin: "output", target_pin: "input"})
+        connection_fixture(flow, entry, hub, %{source_pin: "default", target_pin: "input"})
 
       _conn2 =
-        connection_fixture(flow, hub, auto_exit, %{source_pin: "output", target_pin: "input"})
+        connection_fixture(flow, hub, auto_exit, %{source_pin: "default", target_pin: "input"})
 
       %{project: project, flow: flow, entry: entry, hub: hub, exit_node: auto_exit}
     end
@@ -1185,9 +1192,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       # Step once
       render_click(view, "debug_step", %{})
 
-      # Verify debug panel is visible
-      html = render(view)
-      assert html =~ "debug-panel"
+      assert debug_panel(view)["open"] == true
     end
 
     test "debug_start + debug_step + debug_step_back steps back", %{
@@ -1207,9 +1212,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       render_click(view, "debug_step", %{})
       render_click(view, "debug_step_back", %{})
 
-      html = render(view)
-      assert html =~ "debug-panel"
-      assert html =~ "Step"
+      debug = debug_panel(view)
+      assert debug["open"] == true
+      assert debug["state"]
     end
 
     test "debug_play enables auto-play and debug_pause stops it", %{
@@ -1228,13 +1233,13 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       render_click(view, "debug_start", %{})
       render_click(view, "debug_play", %{})
 
-      html = render(view)
-      assert html =~ "debug_pause"
+      vue = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels")
+      assert vue.props["panels"]["debug"]["controls"]["autoPlaying"] == true
 
       render_click(view, "debug_pause", %{})
 
-      html = render(view)
-      assert html =~ "debug_play"
+      vue = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels")
+      assert vue.props["panels"]["debug"]["controls"]["autoPlaying"] == false
     end
 
     test "debug_set_speed changes the speed display", %{
@@ -1253,8 +1258,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       render_click(view, "debug_start", %{})
       render_click(view, "debug_set_speed", %{"speed" => "1500"})
 
-      html = render(view)
-      assert html =~ "1.5s"
+      vue = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels")
+      assert vue.props["panels"]["debug"]["controls"]["speed"] == 1500
     end
 
     test "debug_stop closes the debug panel", %{
@@ -1272,13 +1277,11 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
 
       render_click(view, "debug_start", %{})
 
-      html = render(view)
-      assert html =~ "debug-panel"
+      assert debug_panel(view)["open"] == true
 
       render_click(view, "debug_stop", %{})
 
-      html = render(view)
-      refute html =~ "data-debug-active"
+      assert debug_panel(view)["open"] == false
     end
 
     test "auto_step timer fires and advances the debug state", %{
@@ -1301,10 +1304,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       # Wait for auto-step timer to fire
       Process.sleep(300)
       # Flush the timer message through the LiveView
-      html = render(view)
+      render(view)
 
       # The auto-step should have advanced, or finished
-      assert html =~ "debug-panel"
+      assert debug_panel(view)["state"]
     end
   end
 
@@ -1316,7 +1319,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Dialogue Flow"})
 
       # flow_fixture auto-creates entry + exit nodes; use the entry
@@ -1340,7 +1343,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
 
       _conn1 =
         connection_fixture(flow, entry, dialogue, %{
-          source_pin: "output",
+          source_pin: "default",
           target_pin: "input"
         })
 
@@ -1384,9 +1387,11 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       # Step to dialogue — should enter waiting_input with choices
       render_click(view, "debug_step", %{})
 
-      html = render(view)
-      assert html =~ "Waiting"
-      assert html =~ "Choose a response"
+      vue = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels")
+      assert vue.props["panels"]["debug"]["state"]["status"] == "waiting_input"
+      responses = vue.props["panels"]["debug"]["state"]["pending_choices"]
+      assert is_list(responses)
+      assert responses != []
     end
 
     test "choosing a response advances past dialogue", %{
@@ -1423,7 +1428,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Loop Flow"})
 
       # flow_fixture auto-creates entry + exit nodes; use the entry for our loop
@@ -1433,9 +1438,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       hub_a = node_fixture(flow, %{type: "hub", data: %{"hub_id" => "a", "color" => "#000"}})
       hub_b = node_fixture(flow, %{type: "hub", data: %{"hub_id" => "b", "color" => "#000"}})
 
-      _c1 = connection_fixture(flow, entry, hub_a, %{source_pin: "output", target_pin: "input"})
-      _c2 = connection_fixture(flow, hub_a, hub_b, %{source_pin: "output", target_pin: "input"})
-      _c3 = connection_fixture(flow, hub_b, hub_a, %{source_pin: "output", target_pin: "input"})
+      _c1 = connection_fixture(flow, entry, hub_a, %{source_pin: "default", target_pin: "input"})
+      _c2 = connection_fixture(flow, hub_a, hub_b, %{source_pin: "default", target_pin: "input"})
+      _c3 = connection_fixture(flow, hub_b, hub_a, %{source_pin: "default", target_pin: "input"})
 
       %{project: project, flow: flow}
     end
@@ -1463,8 +1468,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
         render_click(view, "debug_step", %{})
       end
 
-      html = render(view)
-      assert html =~ "debug-panel"
+      render(view)
+      assert debug_panel(view)["open"] == true
     end
   end
 

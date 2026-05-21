@@ -9,9 +9,14 @@ defmodule Storyarn.Sheets.SheetQueries do
   import Ecto.Query, warn: false
 
   alias Storyarn.Repo
-  alias Storyarn.Shared.{FormulaEngine, MapUtils, SearchHelpers}
+  alias Storyarn.Shared.FormulaEngine
+  alias Storyarn.Shared.MapUtils
+  alias Storyarn.Shared.SearchHelpers
   alias Storyarn.Shared.TreeOperations, as: SharedTree
-  alias Storyarn.Sheets.{Block, Sheet, TableColumn, TableRow}
+  alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.Sheet
+  alias Storyarn.Sheets.TableColumn
+  alias Storyarn.Sheets.TableRow
 
   # =============================================================================
   # Tree Operations
@@ -25,12 +30,13 @@ defmodule Storyarn.Sheets.SheetQueries do
   def list_sheets_tree(project_id) do
     # Single query for all non-deleted sheets, then build tree in memory
     all_sheets =
-      from(s in Sheet,
-        where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
-        order_by: [asc: s.position, asc: s.name],
-        preload: [avatars: :asset]
+      Repo.all(
+        from(s in Sheet,
+          where: s.project_id == ^project_id and is_nil(s.deleted_at),
+          order_by: [asc: s.position, asc: s.name],
+          preload: [avatars: :asset]
+        )
       )
-      |> Repo.all()
 
     SharedTree.build_tree_from_flat_list(all_sheets)
   end
@@ -42,7 +48,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   def get_sheet(project_id, sheet_id) do
     Sheet
     |> where(project_id: ^project_id, id: ^sheet_id)
-    |> where([s], is_nil(s.deleted_at) and is_nil(s.draft_id))
+    |> where([s], is_nil(s.deleted_at))
     |> preload([:blocks, :banner_asset, avatars: :asset])
     |> Repo.one()
   end
@@ -54,7 +60,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   def get_sheet!(project_id, sheet_id) do
     Sheet
     |> where(project_id: ^project_id, id: ^sheet_id)
-    |> where([s], is_nil(s.deleted_at) and is_nil(s.draft_id))
+    |> where([s], is_nil(s.deleted_at))
     |> preload([:blocks, :banner_asset, avatars: :asset])
     |> Repo.one!()
   end
@@ -67,7 +73,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   def get_sheet_full(project_id, sheet_id) do
     Sheet
     |> where(project_id: ^project_id, id: ^sheet_id)
-    |> where([s], is_nil(s.deleted_at) and is_nil(s.draft_id))
+    |> where([s], is_nil(s.deleted_at))
     |> preload([:blocks, :banner_asset, :current_version, avatars: :asset])
     |> Repo.one()
   end
@@ -80,7 +86,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   def get_sheet_full!(project_id, sheet_id) do
     Sheet
     |> where(project_id: ^project_id, id: ^sheet_id)
-    |> where([s], is_nil(s.deleted_at) and is_nil(s.draft_id))
+    |> where([s], is_nil(s.deleted_at))
     |> preload([:blocks, :banner_asset, :current_version, avatars: :asset])
     |> Repo.one!()
   end
@@ -93,7 +99,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   def get_sheet_with_ancestors(project_id, sheet_id) do
     case get_sheet(project_id, sheet_id) do
       nil -> nil
-      sheet -> Enum.reverse(list_ancestors(sheet.id)) ++ [sheet]
+      sheet -> Enum.reverse(list_ancestors(sheet.id), [sheet])
     end
   end
 
@@ -109,12 +115,13 @@ defmodule Storyarn.Sheets.SheetQueries do
       sheet ->
         # Load all non-deleted sheets in the project and build subtree from this sheet
         all_sheets =
-          from(s in Sheet,
-            where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
-            order_by: [asc: s.position, asc: s.name],
-            preload: [avatars: :asset]
+          Repo.all(
+            from(s in Sheet,
+              where: s.project_id == ^project_id and is_nil(s.deleted_at),
+              order_by: [asc: s.position, asc: s.name],
+              preload: [avatars: :asset]
+            )
           )
-          |> Repo.all()
 
         children = SharedTree.build_tree_from_flat_list(all_sheets, sheet.id)
         %{sheet | children: children}
@@ -126,12 +133,13 @@ defmodule Storyarn.Sheets.SheetQueries do
   """
   @spec get_children(integer()) :: [Sheet.t()]
   def get_children(sheet_id) do
-    from(s in Sheet,
-      where: s.parent_id == ^sheet_id and is_nil(s.deleted_at),
-      order_by: [asc: s.position, asc: s.name],
-      preload: [avatars: :asset]
+    Repo.all(
+      from(s in Sheet,
+        where: s.parent_id == ^sheet_id and is_nil(s.deleted_at),
+        order_by: [asc: s.position, asc: s.name],
+        preload: [avatars: :asset]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -142,11 +150,12 @@ defmodule Storyarn.Sheets.SheetQueries do
   def list_sheets_by_ids(_project_id, []), do: []
 
   def list_sheets_by_ids(project_id, ids) do
-    from(s in Sheet,
-      where: s.project_id == ^project_id and s.id in ^ids and is_nil(s.deleted_at),
-      preload: [:banner_asset, avatars: :asset]
+    Repo.all(
+      from(s in Sheet,
+        where: s.project_id == ^project_id and s.id in ^ids and is_nil(s.deleted_at),
+        preload: [:banner_asset, avatars: :asset]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -154,12 +163,13 @@ defmodule Storyarn.Sheets.SheetQueries do
   """
   @spec list_all_sheets(integer()) :: [Sheet.t()]
   def list_all_sheets(project_id) do
-    from(s in Sheet,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
-      order_by: [asc: s.position, asc: s.name],
-      preload: [:banner_asset, avatars: :asset]
+    Repo.all(
+      from(s in Sheet,
+        where: s.project_id == ^project_id and is_nil(s.deleted_at),
+        order_by: [asc: s.position, asc: s.name],
+        preload: [:banner_asset, avatars: :asset]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -167,23 +177,22 @@ defmodule Storyarn.Sheets.SheetQueries do
   """
   @spec list_leaf_sheets(integer()) :: [Sheet.t()]
   def list_leaf_sheets(project_id) do
-    from(s in Sheet,
-      where:
-        s.project_id == ^project_id and s.id not in subquery(parent_ids_subquery(project_id)) and
-          is_nil(s.deleted_at) and is_nil(s.draft_id),
-      order_by: [asc: s.position, asc: s.name],
-      preload: [avatars: :asset]
+    Repo.all(
+      from(s in Sheet,
+        where:
+          s.project_id == ^project_id and
+            s.id not in subquery(parent_ids_subquery(project_id)) and is_nil(s.deleted_at),
+        order_by: [asc: s.position, asc: s.name],
+        preload: [avatars: :asset]
+      )
     )
-    |> Repo.all()
   end
 
   @doc false
   @spec parent_ids_subquery(integer()) :: Ecto.Query.t()
   def parent_ids_subquery(project_id) do
     from(s in Sheet,
-      where:
-        s.project_id == ^project_id and not is_nil(s.parent_id) and is_nil(s.deleted_at) and
-          is_nil(s.draft_id),
+      where: s.project_id == ^project_id and not is_nil(s.parent_id) and is_nil(s.deleted_at),
       select: s.parent_id
     )
   end
@@ -209,24 +218,26 @@ defmodule Storyarn.Sheets.SheetQueries do
     query_str = String.trim(query)
 
     if query_str == "" do
-      from(s in Sheet,
-        where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
-        order_by: [desc: s.updated_at],
-        limit: ^limit,
-        offset: ^offset
+      Repo.all(
+        from(s in Sheet,
+          where: s.project_id == ^project_id and is_nil(s.deleted_at),
+          order_by: [desc: s.updated_at],
+          limit: ^limit,
+          offset: ^offset
+        )
       )
-      |> Repo.all()
     else
       search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
 
-      from(s in Sheet,
-        where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
-        where: ilike(s.name, ^search_term) or ilike(s.shortcut, ^search_term),
-        order_by: [asc: s.name],
-        limit: ^limit,
-        offset: ^offset
+      Repo.all(
+        from(s in Sheet,
+          where: s.project_id == ^project_id and is_nil(s.deleted_at),
+          where: ilike(s.name, ^search_term) or ilike(s.shortcut, ^search_term),
+          order_by: [asc: s.name],
+          limit: ^limit,
+          offset: ^offset
+        )
       )
-      |> Repo.all()
     end
   end
 
@@ -236,13 +247,12 @@ defmodule Storyarn.Sheets.SheetQueries do
   """
   @spec get_sheet_by_shortcut(integer(), String.t() | nil) :: Sheet.t() | nil
   def get_sheet_by_shortcut(project_id, shortcut) when is_binary(shortcut) do
-    from(s in Sheet,
-      where:
-        s.project_id == ^project_id and s.shortcut == ^shortcut and is_nil(s.deleted_at) and
-          is_nil(s.draft_id),
-      preload: [:blocks, avatars: :asset]
+    Repo.one(
+      from(s in Sheet,
+        where: s.project_id == ^project_id and s.shortcut == ^shortcut and is_nil(s.deleted_at),
+        preload: [:blocks, avatars: :asset]
+      )
     )
-    |> Repo.one()
   end
 
   def get_sheet_by_shortcut(_project_id, _shortcut), do: nil
@@ -269,7 +279,6 @@ defmodule Storyarn.Sheets.SheetQueries do
       where:
         s.project_id == ^project_id and
           is_nil(s.deleted_at) and
-          is_nil(s.draft_id) and
           is_nil(b.deleted_at) and
           b.type in ^variable_types and
           b.is_constant == false and
@@ -297,34 +306,35 @@ defmodule Storyarn.Sheets.SheetQueries do
     variable_column_types = ~w(number text boolean select multi_select date reference formula)
 
     raw_vars =
-      from(tc in TableColumn,
-        join: b in Block,
-        on: tc.block_id == b.id,
-        join: s in Sheet,
-        on: b.sheet_id == s.id,
-        join: tr in TableRow,
-        on: tr.block_id == b.id,
-        where: s.project_id == ^project_id,
-        where: is_nil(s.deleted_at) and is_nil(s.draft_id) and is_nil(b.deleted_at),
-        where: b.type == "table",
-        where: tc.type in ^variable_column_types,
-        where: tc.is_constant == false or tc.type == "formula",
-        select: %{
-          sheet_id: s.id,
-          sheet_name: s.name,
-          sheet_shortcut: coalesce(s.shortcut, fragment("CAST(? AS TEXT)", s.id)),
-          block_id: b.id,
-          variable_name: fragment("? || '.' || ? || '.' || ?", b.variable_name, tr.slug, tc.slug),
-          block_type: tc.type,
-          config: tc.config,
-          cell_value: fragment("?->?", tr.cells, tc.slug),
-          table_name: b.variable_name,
-          row_name: tr.slug,
-          column_name: tc.slug
-        },
-        order_by: [asc: s.name, asc: b.position, asc: tr.position, asc: tc.position]
+      Repo.all(
+        from(tc in TableColumn,
+          join: b in Block,
+          on: tc.block_id == b.id,
+          join: s in Sheet,
+          on: b.sheet_id == s.id,
+          join: tr in TableRow,
+          on: tr.block_id == b.id,
+          where: s.project_id == ^project_id,
+          where: is_nil(s.deleted_at) and is_nil(b.deleted_at),
+          where: b.type == "table",
+          where: tc.type in ^variable_column_types,
+          where: tc.is_constant == false or tc.type == "formula",
+          select: %{
+            sheet_id: s.id,
+            sheet_name: s.name,
+            sheet_shortcut: coalesce(s.shortcut, fragment("CAST(? AS TEXT)", s.id)),
+            block_id: b.id,
+            variable_name: fragment("? || '.' || ? || '.' || ?", b.variable_name, tr.slug, tc.slug),
+            block_type: tc.type,
+            config: tc.config,
+            cell_value: fragment("?->?", tr.cells, tc.slug),
+            table_name: b.variable_name,
+            row_name: tr.slug,
+            column_name: tc.slug
+          },
+          order_by: [asc: s.name, asc: b.position, asc: tr.position, asc: tc.position]
+        )
       )
-      |> Repo.all()
 
     # If any reference columns exist, load project sheets for option population
     has_references = Enum.any?(raw_vars, &(&1.block_type == "reference"))
@@ -347,9 +357,8 @@ defmodule Storyarn.Sheets.SheetQueries do
 
   defp remap_reference_type(var, _sheet_options), do: var
 
-  defp extract_variable_constraints(%{block_type: "number", config: config} = var)
-       when is_map(config),
-       do: Map.put(var, :constraints, Storyarn.Sheets.Constraints.Number.extract(config))
+  defp extract_variable_constraints(%{block_type: "number", config: config} = var) when is_map(config),
+    do: Map.put(var, :constraints, Storyarn.Sheets.Constraints.Number.extract(config))
 
   defp extract_variable_constraints(%{block_type: t, config: config} = var)
        when t in ["text", "rich_text"] and is_map(config),
@@ -359,13 +368,11 @@ defmodule Storyarn.Sheets.SheetQueries do
        when t in ["select", "multi_select"] and is_map(config),
        do: Map.put(var, :constraints, Storyarn.Sheets.Constraints.Selector.extract(config))
 
-  defp extract_variable_constraints(%{block_type: "date", config: config} = var)
-       when is_map(config),
-       do: Map.put(var, :constraints, Storyarn.Sheets.Constraints.Date.extract(config))
+  defp extract_variable_constraints(%{block_type: "date", config: config} = var) when is_map(config),
+    do: Map.put(var, :constraints, Storyarn.Sheets.Constraints.Date.extract(config))
 
-  defp extract_variable_constraints(%{block_type: "boolean", config: config} = var)
-       when is_map(config),
-       do: Map.put(var, :constraints, Storyarn.Sheets.Constraints.Boolean.extract(config))
+  defp extract_variable_constraints(%{block_type: "boolean", config: config} = var) when is_map(config),
+    do: Map.put(var, :constraints, Storyarn.Sheets.Constraints.Boolean.extract(config))
 
   defp extract_variable_constraints(var), do: Map.put(var, :constraints, nil)
 
@@ -393,7 +400,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   defp list_sheet_options(project_id) do
     from(s in Sheet,
       where: s.project_id == ^project_id,
-      where: is_nil(s.deleted_at) and is_nil(s.draft_id),
+      where: is_nil(s.deleted_at),
       where: not is_nil(s.shortcut) and s.shortcut != "",
       order_by: [asc: s.name],
       select: %{name: s.name, shortcut: s.shortcut}
@@ -455,7 +462,8 @@ defmodule Storyarn.Sheets.SheetQueries do
     shortcuts = pairs |> Enum.map(&elem(&1, 0)) |> Enum.uniq()
     pair_set = MapSet.new(pairs)
 
-    query_simple_blocks(project_id, shortcuts)
+    project_id
+    |> query_simple_blocks(shortcuts)
     |> Repo.all()
     |> build_simple_results(pair_set)
   end
@@ -522,7 +530,7 @@ defmodule Storyarn.Sheets.SheetQueries do
 
   defp do_resolve_table(project_id, parsed) do
     shortcuts = parsed |> Enum.map(& &1.shortcut) |> Enum.uniq()
-    rows = query_table_rows(project_id, shortcuts) |> Repo.all()
+    rows = project_id |> query_table_rows(shortcuts) |> Repo.all()
 
     Enum.reduce(parsed, %{}, fn entry, acc ->
       match_table_row(rows, entry, acc)
@@ -646,12 +654,13 @@ defmodule Storyarn.Sheets.SheetQueries do
           {[%{source_sheet: Sheet.t(), blocks: [Block.t()]}], [Block.t()]}
   def get_sheet_blocks_grouped(sheet_id) do
     blocks =
-      from(b in Block,
-        where: b.sheet_id == ^sheet_id and is_nil(b.deleted_at),
-        order_by: [asc: b.position],
-        preload: [:inherited_from_block]
+      Repo.all(
+        from(b in Block,
+          where: b.sheet_id == ^sheet_id and is_nil(b.deleted_at),
+          order_by: [asc: b.position],
+          preload: [:inherited_from_block]
+        )
       )
-      |> Repo.all()
 
     {inherited, own} =
       Enum.split_with(blocks, fn b ->
@@ -705,14 +714,12 @@ defmodule Storyarn.Sheets.SheetQueries do
   """
   @spec list_inheritable_blocks(integer()) :: [Block.t()]
   def list_inheritable_blocks(sheet_id) do
-    from(b in Block,
-      where:
-        b.sheet_id == ^sheet_id and
-          b.scope == "children" and
-          is_nil(b.deleted_at),
-      order_by: [asc: b.position]
+    Repo.all(
+      from(b in Block,
+        where: b.sheet_id == ^sheet_id and b.scope == "children" and is_nil(b.deleted_at),
+        order_by: [asc: b.position]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -720,13 +727,9 @@ defmodule Storyarn.Sheets.SheetQueries do
   """
   @spec list_inherited_instances(integer()) :: [Block.t()]
   def list_inherited_instances(parent_block_id) do
-    from(b in Block,
-      where:
-        b.inherited_from_block_id == ^parent_block_id and
-          is_nil(b.deleted_at),
-      preload: [:sheet]
+    Repo.all(
+      from(b in Block, where: b.inherited_from_block_id == ^parent_block_id and is_nil(b.deleted_at), preload: [:sheet])
     )
-    |> Repo.all()
   end
 
   # =============================================================================
@@ -738,12 +741,13 @@ defmodule Storyarn.Sheets.SheetQueries do
   """
   @spec list_trashed_sheets(integer()) :: [Sheet.t()]
   def list_trashed_sheets(project_id) do
-    from(s in Sheet,
-      where: s.project_id == ^project_id and not is_nil(s.deleted_at),
-      order_by: [desc: s.deleted_at],
-      preload: [avatars: :asset]
+    Repo.all(
+      from(s in Sheet,
+        where: s.project_id == ^project_id and not is_nil(s.deleted_at),
+        order_by: [desc: s.deleted_at],
+        preload: [avatars: :asset]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -754,7 +758,7 @@ defmodule Storyarn.Sheets.SheetQueries do
     Sheet
     |> where(project_id: ^project_id, id: ^sheet_id)
     |> where([s], not is_nil(s.deleted_at))
-    |> preload([avatars: :asset])
+    |> preload(avatars: :asset)
     |> Repo.one()
   end
 
@@ -782,9 +786,7 @@ defmodule Storyarn.Sheets.SheetQueries do
         select: %{parent_id: s.parent_id, depth: a.depth + 1}
       )
 
-    cte_query =
-      anchor
-      |> union_all(^recursion)
+    cte_query = union_all(anchor, ^recursion)
 
     # Get ordered ancestor IDs from the CTE
     ancestor_ids =
@@ -823,8 +825,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   Used by the Localization TextExtractor to resolve project scope.
   """
   def get_sheet_project_id(sheet_id) do
-    from(s in Sheet, where: s.id == ^sheet_id, select: s.project_id)
-    |> Repo.one()
+    Repo.one(from(s in Sheet, where: s.id == ^sheet_id, select: s.project_id))
   end
 
   @doc """
@@ -843,7 +844,7 @@ defmodule Storyarn.Sheets.SheetQueries do
 
     query =
       from(s in Sheet,
-        where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
+        where: s.project_id == ^project_id and is_nil(s.deleted_at),
         preload: [blocks: ^blocks_query, avatars: :asset],
         order_by: [asc: s.position, asc: s.name]
       )
@@ -857,10 +858,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   Counts non-deleted sheets for a project.
   """
   def count_sheets(project_id) do
-    from(s in Sheet,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id)
-    )
-    |> Repo.aggregate(:count)
+    Repo.aggregate(from(s in Sheet, where: s.project_id == ^project_id and is_nil(s.deleted_at)), :count)
   end
 
   @doc """
@@ -868,8 +866,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   Used by the Localization TextExtractor for bulk extraction.
   """
   def list_blocks_for_sheet_ids(sheet_ids) do
-    from(b in Block, where: b.sheet_id in ^sheet_ids)
-    |> Repo.all()
+    Repo.all(from(b in Block, where: b.sheet_id in ^sheet_ids))
   end
 
   @doc """
@@ -877,11 +874,12 @@ defmodule Storyarn.Sheets.SheetQueries do
   Used by the export Validator for orphan sheet detection.
   """
   def list_sheets_brief(project_id) do
-    from(s in Sheet,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
-      select: %{id: s.id, name: s.name, shortcut: s.shortcut}
+    Repo.all(
+      from(s in Sheet,
+        where: s.project_id == ^project_id and is_nil(s.deleted_at),
+        select: %{id: s.id, name: s.name, shortcut: s.shortcut}
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -890,7 +888,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   """
   def list_shortcuts(project_id) do
     from(s in Sheet,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
+      where: s.project_id == ^project_id and is_nil(s.deleted_at),
       select: s.shortcut
     )
     |> Repo.all()
@@ -904,11 +902,12 @@ defmodule Storyarn.Sheets.SheetQueries do
     if shortcuts == [] do
       []
     else
-      from(s in Sheet,
-        where: s.project_id == ^project_id and s.shortcut in ^shortcuts and is_nil(s.deleted_at),
-        select: s.shortcut
+      Repo.all(
+        from(s in Sheet,
+          where: s.project_id == ^project_id and s.shortcut in ^shortcuts and is_nil(s.deleted_at),
+          select: s.shortcut
+        )
       )
-      |> Repo.all()
     end
   end
 
@@ -918,10 +917,10 @@ defmodule Storyarn.Sheets.SheetQueries do
   def soft_delete_by_shortcut(project_id, shortcut) do
     now = Storyarn.Shared.TimeHelpers.now()
 
-    from(s in Sheet,
-      where: s.project_id == ^project_id and s.shortcut == ^shortcut and is_nil(s.deleted_at)
+    Repo.update_all(
+      from(s in Sheet, where: s.project_id == ^project_id and s.shortcut == ^shortcut and is_nil(s.deleted_at)),
+      set: [deleted_at: now]
     )
-    |> Repo.update_all(set: [deleted_at: now])
   end
 
   @doc """
@@ -931,62 +930,65 @@ defmodule Storyarn.Sheets.SheetQueries do
   Used by the Flows.VariableReferenceTracker for stale reference detection.
   """
   def check_stale_flow_node_variable_references(block_id, project_id) do
-    alias Storyarn.Flows.{Flow, FlowNode, VariableReference}
+    alias Storyarn.Flows.Flow
+    alias Storyarn.Flows.FlowNode
+    alias Storyarn.Flows.VariableReference
 
-    from(vr in VariableReference,
-      join: n in FlowNode,
-      on: vr.source_type == "flow_node" and n.id == vr.source_id,
-      join: f in Flow,
-      on: f.id == n.flow_id,
-      join: b in Block,
-      on: b.id == vr.block_id,
-      join: s in Sheet,
-      on: s.id == b.sheet_id,
-      where: vr.block_id == ^block_id,
-      where: f.project_id == ^project_id,
-      where: is_nil(f.deleted_at),
-      where: is_nil(s.deleted_at),
-      where: is_nil(b.deleted_at),
-      select: %{
-        source_type: vr.source_type,
-        kind: vr.kind,
-        flow_id: f.id,
-        flow_name: f.name,
-        flow_shortcut: f.shortcut,
-        node_id: n.id,
-        node_type: n.type,
-        node_data: n.data,
-        source_sheet: vr.source_sheet,
-        source_variable: vr.source_variable,
-        stale:
-          fragment(
-            """
-            CASE WHEN ? = 'table' THEN
-              ? != ? OR NOT EXISTS (
-                SELECT 1 FROM table_rows tr
-                JOIN table_columns tc ON tc.block_id = tr.block_id
-                WHERE tr.block_id = ?
-                  AND ? = ? || '.' || tr.slug || '.' || tc.slug
-              )
-            ELSE
-              ? != ? OR ? != ?
-            END
-            """,
-            b.type,
-            vr.source_sheet,
-            s.shortcut,
-            b.id,
-            vr.source_variable,
-            b.variable_name,
-            vr.source_sheet,
-            s.shortcut,
-            vr.source_variable,
-            b.variable_name
-          )
-      },
-      order_by: [asc: vr.kind, asc: f.name]
+    Repo.all(
+      from(vr in VariableReference,
+        join: n in FlowNode,
+        on: vr.source_type == "flow_node" and n.id == vr.source_id,
+        join: f in Flow,
+        on: f.id == n.flow_id,
+        join: b in Block,
+        on: b.id == vr.block_id,
+        join: s in Sheet,
+        on: s.id == b.sheet_id,
+        where: vr.block_id == ^block_id,
+        where: f.project_id == ^project_id,
+        where: is_nil(f.deleted_at),
+        where: is_nil(s.deleted_at),
+        where: is_nil(b.deleted_at),
+        select: %{
+          source_type: vr.source_type,
+          kind: vr.kind,
+          flow_id: f.id,
+          flow_name: f.name,
+          flow_shortcut: f.shortcut,
+          node_id: n.id,
+          node_type: n.type,
+          node_data: n.data,
+          source_sheet: vr.source_sheet,
+          source_variable: vr.source_variable,
+          stale:
+            fragment(
+              """
+              CASE WHEN ? = 'table' THEN
+                ? != ? OR NOT EXISTS (
+                  SELECT 1 FROM table_rows tr
+                  JOIN table_columns tc ON tc.block_id = tr.block_id
+                  WHERE tr.block_id = ?
+                    AND ? = ? || '.' || tr.slug || '.' || tc.slug
+                )
+              ELSE
+                ? != ? OR ? != ?
+              END
+              """,
+              b.type,
+              vr.source_sheet,
+              s.shortcut,
+              b.id,
+              vr.source_variable,
+              b.variable_name,
+              vr.source_sheet,
+              s.shortcut,
+              vr.source_variable,
+              b.variable_name
+            )
+        },
+        order_by: [asc: vr.kind, asc: f.name]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -995,34 +997,37 @@ defmodule Storyarn.Sheets.SheetQueries do
   Used by the Flows.VariableReferenceTracker for stale reference repair.
   """
   def list_variable_refs_with_block_info_for_repair(project_id) do
-    alias Storyarn.Flows.{Flow, FlowNode, VariableReference}
+    alias Storyarn.Flows.Flow
+    alias Storyarn.Flows.FlowNode
+    alias Storyarn.Flows.VariableReference
 
-    from(vr in VariableReference,
-      join: n in FlowNode,
-      on: vr.source_type == "flow_node" and n.id == vr.source_id,
-      join: f in Flow,
-      on: f.id == n.flow_id,
-      join: b in Block,
-      on: b.id == vr.block_id,
-      join: s in Sheet,
-      on: s.id == b.sheet_id,
-      where: f.project_id == ^project_id,
-      where: is_nil(f.deleted_at),
-      where: is_nil(s.deleted_at),
-      where: is_nil(b.deleted_at),
-      select: %{
-        node_id: n.id,
-        node_type: n.type,
-        node_data: n.data,
-        kind: vr.kind,
-        block_id: vr.block_id,
-        current_shortcut: s.shortcut,
-        current_variable: b.variable_name,
-        source_sheet: vr.source_sheet,
-        source_variable: vr.source_variable
-      }
+    Repo.all(
+      from(vr in VariableReference,
+        join: n in FlowNode,
+        on: vr.source_type == "flow_node" and n.id == vr.source_id,
+        join: f in Flow,
+        on: f.id == n.flow_id,
+        join: b in Block,
+        on: b.id == vr.block_id,
+        join: s in Sheet,
+        on: s.id == b.sheet_id,
+        where: f.project_id == ^project_id,
+        where: is_nil(f.deleted_at),
+        where: is_nil(s.deleted_at),
+        where: is_nil(b.deleted_at),
+        select: %{
+          node_id: n.id,
+          node_type: n.type,
+          node_data: n.data,
+          kind: vr.kind,
+          block_id: vr.block_id,
+          current_shortcut: s.shortcut,
+          current_variable: b.variable_name,
+          source_sheet: vr.source_sheet,
+          source_variable: vr.source_variable
+        }
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -1032,7 +1037,8 @@ defmodule Storyarn.Sheets.SheetQueries do
   Used by the Flows.VariableReferenceTracker for stale node detection.
   """
   def list_stale_regular_node_ids(flow_id) do
-    alias Storyarn.Flows.{FlowNode, VariableReference}
+    alias Storyarn.Flows.FlowNode
+    alias Storyarn.Flows.VariableReference
 
     from(vr in VariableReference,
       join: n in FlowNode,
@@ -1060,7 +1066,8 @@ defmodule Storyarn.Sheets.SheetQueries do
   Used by the Flows.VariableReferenceTracker for stale node detection.
   """
   def list_stale_table_node_ids(flow_id) do
-    alias Storyarn.Flows.{FlowNode, VariableReference}
+    alias Storyarn.Flows.FlowNode
+    alias Storyarn.Flows.VariableReference
 
     table_cell_exists =
       from(tr in TableRow,
@@ -1104,18 +1111,19 @@ defmodule Storyarn.Sheets.SheetQueries do
   Used by the Flows.VariableReferenceTracker for variable reference resolution.
   """
   def resolve_block_id_by_variable(project_id, sheet_shortcut, variable_name) do
-    from(b in Block,
-      join: s in Sheet,
-      on: s.id == b.sheet_id,
-      where: s.project_id == ^project_id,
-      where: s.shortcut == ^sheet_shortcut,
-      where: b.variable_name == ^variable_name,
-      where: is_nil(s.deleted_at),
-      where: is_nil(b.deleted_at),
-      select: b.id,
-      limit: 1
+    Repo.one(
+      from(b in Block,
+        join: s in Sheet,
+        on: s.id == b.sheet_id,
+        where: s.project_id == ^project_id,
+        where: s.shortcut == ^sheet_shortcut,
+        where: b.variable_name == ^variable_name,
+        where: is_nil(s.deleted_at),
+        where: is_nil(b.deleted_at),
+        select: b.id,
+        limit: 1
+      )
     )
-    |> Repo.one()
   end
 
   @doc """
@@ -1123,32 +1131,27 @@ defmodule Storyarn.Sheets.SheetQueries do
   Returns the block ID or nil if not found.
   Used by the Flows.VariableReferenceTracker for table variable reference resolution.
   """
-  def resolve_table_block_id_by_variable(
-        project_id,
-        sheet_shortcut,
-        table_name,
-        row_slug,
-        column_slug
-      ) do
-    from(b in Block,
-      join: s in Sheet,
-      on: s.id == b.sheet_id,
-      join: tr in TableRow,
-      on: tr.block_id == b.id,
-      join: tc in TableColumn,
-      on: tc.block_id == b.id,
-      where: s.project_id == ^project_id,
-      where: s.shortcut == ^sheet_shortcut,
-      where: b.variable_name == ^table_name,
-      where: b.type == "table",
-      where: tr.slug == ^row_slug,
-      where: tc.slug == ^column_slug,
-      where: is_nil(s.deleted_at),
-      where: is_nil(b.deleted_at),
-      select: b.id,
-      limit: 1
+  def resolve_table_block_id_by_variable(project_id, sheet_shortcut, table_name, row_slug, column_slug) do
+    Repo.one(
+      from(b in Block,
+        join: s in Sheet,
+        on: s.id == b.sheet_id,
+        join: tr in TableRow,
+        on: tr.block_id == b.id,
+        join: tc in TableColumn,
+        on: tc.block_id == b.id,
+        where: s.project_id == ^project_id,
+        where: s.shortcut == ^sheet_shortcut,
+        where: b.variable_name == ^table_name,
+        where: b.type == "table",
+        where: tr.slug == ^row_slug,
+        where: tc.slug == ^column_slug,
+        where: is_nil(s.deleted_at),
+        where: is_nil(b.deleted_at),
+        select: b.id,
+        limit: 1
+      )
     )
-    |> Repo.one()
   end
 
   @doc """
@@ -1178,15 +1181,16 @@ defmodule Storyarn.Sheets.SheetQueries do
   def list_sheets_using_asset_as_avatar(project_id, asset_id) do
     alias Storyarn.Sheets.SheetAvatar
 
-    from(s in Sheet,
-      join: sa in SheetAvatar,
-      on: sa.sheet_id == s.id and sa.asset_id == ^asset_id,
-      where: s.project_id == ^project_id,
-      where: is_nil(s.deleted_at),
-      distinct: true,
-      order_by: [asc: s.name]
+    Repo.all(
+      from(s in Sheet,
+        join: sa in SheetAvatar,
+        on: sa.sheet_id == s.id and sa.asset_id == ^asset_id,
+        where: s.project_id == ^project_id,
+        where: is_nil(s.deleted_at),
+        distinct: true,
+        order_by: [asc: s.name]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -1194,13 +1198,14 @@ defmodule Storyarn.Sheets.SheetQueries do
   Used by the Assets context for usage tracking.
   """
   def list_sheets_using_asset_as_banner(project_id, asset_id) do
-    from(s in Sheet,
-      where: s.project_id == ^project_id,
-      where: is_nil(s.deleted_at),
-      where: s.banner_asset_id == ^asset_id,
-      order_by: [asc: s.name]
+    Repo.all(
+      from(s in Sheet,
+        where: s.project_id == ^project_id,
+        where: is_nil(s.deleted_at),
+        where: s.banner_asset_id == ^asset_id,
+        order_by: [asc: s.name]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """

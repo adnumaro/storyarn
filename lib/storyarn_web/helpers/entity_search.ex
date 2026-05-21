@@ -20,14 +20,11 @@ defmodule StoryarnWeb.Helpers.EntitySearch do
   }
 
   @doc "Search entities of a single type. Delegates to the appropriate context."
-  def search_entities(:sheet, project_id, query, opts),
-    do: Sheets.search_sheets(project_id, query, opts)
+  def search_entities(:sheet, project_id, query, opts), do: Sheets.search_sheets(project_id, query, opts)
 
-  def search_entities(:flow, project_id, query, opts),
-    do: Flows.search_flows(project_id, query, opts)
+  def search_entities(:flow, project_id, query, opts), do: Flows.search_flows(project_id, query, opts)
 
-  def search_entities(:scene, project_id, query, opts),
-    do: Scenes.search_scenes(project_id, query, opts)
+  def search_entities(:scene, project_id, query, opts), do: Scenes.search_scenes(project_id, query, opts)
 
   @doc """
   Search entities across multiple types.
@@ -53,11 +50,9 @@ defmodule StoryarnWeb.Helpers.EntitySearch do
   def get_entity_name(type, project_id, id) do
     schema = Map.fetch!(@type_schemas, type)
 
-    from(e in schema,
-      where: e.id == ^id and e.project_id == ^project_id and is_nil(e.deleted_at),
-      select: e.name
+    Repo.one(
+      from(e in schema, where: e.id == ^id and e.project_id == ^project_id and is_nil(e.deleted_at), select: e.name)
     )
-    |> Repo.one()
   end
 
   @doc "Resolve an entity name across multiple types (tries each until found)."
@@ -77,7 +72,8 @@ defmodule StoryarnWeb.Helpers.EntitySearch do
     offset = Keyword.get(opts, :offset, 0)
     q = String.downcase(query)
 
-    Sheets.list_project_variables(project_id)
+    project_id
+    |> Sheets.list_project_variables()
     |> Enum.map(fn v ->
       ref = "#{v.sheet_shortcut}.#{v.variable_name}"
       %{id: ref, name: ref, prefix: "#{v.sheet_shortcut}.", suffix: v.variable_name}

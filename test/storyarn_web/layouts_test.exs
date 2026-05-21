@@ -7,431 +7,8 @@ defmodule StoryarnWeb.LayoutsTest do
 
   # ── Helpers ──────────────────────────────────────────────────────────
 
-  defp slot(name, content) do
-    [
-      %{
-        __slot__: name,
-        inner_block: fn _assigns, _context -> {:safe, content} end
-      }
-    ]
-  end
-
-  defp inner_block(content), do: slot(:inner_block, content)
-
-  defp user_map do
-    %{id: 1, email: "t@t.com", display_name: "Test User"}
-  end
-
-  defp base_focus_assigns(overrides) do
-    defaults = %{
-      flash: %{},
-      current_scope: %{user: user_map()},
-      project: %{slug: "test-project", name: "Test Project"},
-      workspace: %{slug: "test-workspace", name: "Test Workspace"},
-      active_tool: :sheets,
-      has_tree: false,
-      tree_panel_open: false,
-      tree_panel_pinned: false,
-      can_edit: false,
-      online_users: [],
-      canvas_mode: false,
-      inner_block: inner_block("<p>Focus content</p>")
-    }
-
-    Map.merge(defaults, overrides)
-    |> Enum.to_list()
-  end
-
-  # ── public/1 ────────────────────────────────────────────────────────
-
-  describe "public/1" do
-    test "renders public layout with login/signup links when no user" do
-      html =
-        render_component(&Layouts.public/1,
-          flash: %{},
-          current_scope: nil,
-          inner_block: inner_block("<p>Public page content</p>")
-        )
-
-      assert html =~ "Public page content"
-      assert html =~ "Storyarn"
-      assert html =~ "Log in"
-      assert html =~ "Request access"
-    end
-
-    test "renders Dashboard link when user is logged in" do
-      html =
-        render_component(&Layouts.public/1,
-          flash: %{},
-          current_scope: %{user: user_map()},
-          inner_block: inner_block("<p>Logged in page</p>")
-        )
-
-      assert html =~ "Dashboard"
-      assert html =~ "/workspaces"
-      refute html =~ ">Log in<"
-      refute html =~ ">Sign up<"
-    end
-
-    test "renders inner_block content" do
-      html =
-        render_component(&Layouts.public/1,
-          flash: %{},
-          current_scope: nil,
-          inner_block: inner_block("<div id=\"hero\">Welcome</div>")
-        )
-
-      assert html =~ ~s(id="hero")
-      assert html =~ "Welcome"
-    end
-
-    test "renders logo link to root" do
-      html =
-        render_component(&Layouts.public/1,
-          flash: %{},
-          current_scope: nil,
-          inner_block: inner_block("<p>Test</p>")
-        )
-
-      assert html =~ ~s(logo-name-black.png)
-      assert html =~ ~s(logo-name-white.png)
-      assert html =~ "Storyarn"
-    end
-
-    test "supports forcing a dark theme for the public subtree" do
-      html =
-        render_component(&Layouts.public/1,
-          flash: %{},
-          current_scope: nil,
-          theme: "dark",
-          inner_block: inner_block("<p>Dark landing</p>")
-        )
-
-      assert html =~ ~s(data-theme="dark")
-      assert html =~ ~s(color-scheme: dark;)
-      assert html =~ "backdrop-blur-xl"
-    end
-  end
-
-  # ── auth/1 ──────────────────────────────────────────────────────────
-
-  describe "auth/1" do
-    test "renders auth layout with inner content" do
-      html =
-        render_component(&Layouts.auth/1,
-          flash: %{},
-          current_scope: nil,
-          inner_block: inner_block("<form>Login form</form>")
-        )
-
-      assert html =~ "Login form"
-      assert html =~ "Storyarn"
-    end
-
-    test "centers content with max-width container" do
-      html =
-        render_component(&Layouts.auth/1,
-          flash: %{},
-          current_scope: nil,
-          inner_block: inner_block("<p>Centered</p>")
-        )
-
-      assert html =~ "max-w-md"
-      assert html =~ "items-center"
-      assert html =~ "justify-center"
-    end
-
-    test "renders theme toggle" do
-      html =
-        render_component(&Layouts.auth/1,
-          flash: %{},
-          current_scope: nil,
-          inner_block: inner_block("<p>Auth</p>")
-        )
-
-      # Theme toggle is present
-      assert html =~ "theme"
-    end
-
-    test "renders logo link to root" do
-      html =
-        render_component(&Layouts.auth/1,
-          flash: %{},
-          current_scope: nil,
-          inner_block: inner_block("<p>Auth</p>")
-        )
-
-      assert html =~ ~s(logo-white-48.png)
-      assert html =~ ~s(logo-black-48.png)
-    end
-  end
-
-  # ── app/1 ───────────────────────────────────────────────────────────
-
-  describe "app/1" do
-    test "renders app layout with inner content" do
-      html =
-        render_component(&Layouts.app/1,
-          flash: %{},
-          current_scope: %{user: user_map()},
-          workspaces: [],
-          current_workspace: nil,
-          inner_block: inner_block("<p>Dashboard content</p>")
-        )
-
-      assert html =~ "Dashboard content"
-    end
-
-    test "renders sidebar structure" do
-      html =
-        render_component(&Layouts.app/1,
-          flash: %{},
-          current_scope: %{user: user_map()},
-          workspaces: [],
-          current_workspace: nil,
-          inner_block: inner_block("<p>App</p>")
-        )
-
-      assert html =~ "app-layout"
-      assert html =~ "app-sidebar-check"
-    end
-
-    test "renders mobile hamburger menu" do
-      html =
-        render_component(&Layouts.app/1,
-          flash: %{},
-          current_scope: %{user: user_map()},
-          workspaces: [],
-          current_workspace: nil,
-          inner_block: inner_block("<p>App</p>")
-        )
-
-      assert html =~ "menu"
-      assert html =~ "md:hidden"
-    end
-
-    test "does not render sidebar when no user" do
-      html =
-        render_component(&Layouts.app/1,
-          flash: %{},
-          current_scope: nil,
-          workspaces: [],
-          current_workspace: nil,
-          inner_block: inner_block("<p>No sidebar</p>")
-        )
-
-      assert html =~ "No sidebar"
-      assert html =~ "app-layout"
-    end
-  end
-
-  # ── settings/1 ──────────────────────────────────────────────────────
-
-  describe "settings/1" do
-    test "renders settings layout with title and content" do
-      html =
-        render_component(&Layouts.settings/1,
-          flash: %{},
-          current_scope: %{user: user_map()},
-          workspaces: [],
-          current_path: ~p"/users/settings",
-          title: slot(:title, "Profile"),
-          inner_block: inner_block("<p>Profile settings</p>")
-        )
-
-      assert html =~ "Profile"
-      assert html =~ "Profile settings"
-    end
-
-    test "renders subtitle slot when provided" do
-      html =
-        render_component(&Layouts.settings/1,
-          flash: %{},
-          current_scope: %{user: user_map()},
-          workspaces: [],
-          current_path: ~p"/users/settings",
-          title: slot(:title, "Profile"),
-          subtitle: slot(:subtitle, "Manage your profile"),
-          inner_block: inner_block("<p>Content</p>")
-        )
-
-      assert html =~ "Manage your profile"
-    end
-
-    test "renders account navigation section" do
-      html =
-        render_component(&Layouts.settings/1,
-          flash: %{},
-          current_scope: %{user: user_map()},
-          workspaces: [],
-          current_path: ~p"/users/settings",
-          title: slot(:title, "Profile"),
-          inner_block: inner_block("<p>Content</p>")
-        )
-
-      assert html =~ "Account"
-      assert html =~ "Profile"
-      assert html =~ "Security"
-      assert html =~ "Connected accounts"
-    end
-
-    test "highlights active nav item based on current_path" do
-      html =
-        render_component(&Layouts.settings/1,
-          flash: %{},
-          current_scope: %{user: user_map()},
-          workspaces: [],
-          current_path: ~p"/users/settings/security",
-          title: slot(:title, "Security"),
-          inner_block: inner_block("<p>Content</p>")
-        )
-
-      # Active item has highlight style
-      assert html =~ "bg-base-content/5"
-    end
-
-    test "renders workspace sections in navigation" do
-      workspaces = [%{slug: "team-ws", name: "Team Workspace"}]
-
-      html =
-        render_component(&Layouts.settings/1,
-          flash: %{},
-          current_scope: %{user: user_map()},
-          workspaces: workspaces,
-          managed_workspace_slugs: MapSet.new(["team-ws"]),
-          current_path: ~p"/users/settings",
-          title: slot(:title, "Profile"),
-          inner_block: inner_block("<p>Content</p>")
-        )
-
-      assert html =~ "Team Workspace"
-      assert html =~ "General"
-      assert html =~ "Members"
-      assert html =~ "/users/settings/workspaces/team-ws/general"
-      assert html =~ "/users/settings/workspaces/team-ws/members"
-    end
-
-    test "renders back to app link" do
-      html =
-        render_component(&Layouts.settings/1,
-          flash: %{},
-          current_scope: %{user: user_map()},
-          workspaces: [],
-          current_path: ~p"/users/settings",
-          title: slot(:title, "Profile"),
-          inner_block: inner_block("<p>Content</p>")
-        )
-
-      assert html =~ "Back to app"
-      assert html =~ "/workspaces"
-    end
-  end
-
-  # ── focus/1 ─────────────────────────────────────────────────────────
-
-  describe "focus/1" do
-    test "renders content_header slot when provided" do
-      html =
-        render_component(
-          &Layouts.focus/1,
-          base_focus_assigns(%{
-            content_header: slot(:content_header, "<h1>My Sheet Title</h1>"),
-            inner_block: inner_block("<p>Main content</p>")
-          })
-        )
-
-      assert html =~ "My Sheet Title"
-      assert html =~ "Main content"
-    end
-
-    test "handles nil current_scope (no user)" do
-      html =
-        render_component(
-          &Layouts.focus/1,
-          base_focus_assigns(%{
-            current_scope: nil,
-            inner_block: inner_block("<p>No user</p>")
-          })
-        )
-
-      assert html =~ "No user"
-    end
-
-    test "hides right toolbar when no user" do
-      html =
-        render_component(
-          &Layouts.focus/1,
-          base_focus_assigns(%{current_scope: nil})
-        )
-
-      # Right toolbar is conditional on current_user_id
-      assert html =~ "Focus content"
-    end
-
-    test "renders canvas mode without padding" do
-      html =
-        render_component(
-          &Layouts.focus/1,
-          base_focus_assigns(%{canvas_mode: true})
-        )
-
-      assert html =~ "overflow-hidden"
-      refute html =~ "overflow-y-auto pt-[76px]"
-    end
-
-    test "renders non-canvas mode with padding" do
-      html =
-        render_component(
-          &Layouts.focus/1,
-          base_focus_assigns(%{canvas_mode: false})
-        )
-
-      assert html =~ "overflow-y-auto"
-      assert html =~ "pt-[76px]"
-    end
-
-    test "adds left padding when tree panel is open" do
-      html =
-        render_component(
-          &Layouts.focus/1,
-          base_focus_assigns(%{
-            has_tree: true,
-            tree_panel_open: true,
-            canvas_mode: false
-          })
-        )
-
-      assert html =~ "md:pl-[280px]"
-    end
-
-    test "no left padding when tree panel is closed" do
-      html =
-        render_component(
-          &Layouts.focus/1,
-          base_focus_assigns(%{
-            has_tree: true,
-            tree_panel_open: false,
-            canvas_mode: false
-          })
-        )
-
-      refute html =~ "md:pl-[280px]"
-    end
-
-    test "no left padding in canvas mode even when tree is open" do
-      html =
-        render_component(
-          &Layouts.focus/1,
-          base_focus_assigns(%{
-            has_tree: true,
-            tree_panel_open: true,
-            canvas_mode: true
-          })
-        )
-
-      # Canvas mode uses overflow-hidden, no padding logic
-      refute html =~ "md:pl-[280px]"
-    end
+  defp mock_socket do
+    %Phoenix.LiveView.Socket{}
   end
 
   # ── flash_group/1 ───────────────────────────────────────────────────
@@ -441,6 +18,7 @@ defmodule StoryarnWeb.LayoutsTest do
       html =
         render_component(&Layouts.flash_group/1,
           flash: %{},
+          socket: mock_socket(),
           id: "flash-group"
         )
 
@@ -448,25 +26,52 @@ defmodule StoryarnWeb.LayoutsTest do
       assert html =~ ~s(aria-live="polite")
     end
 
+    test "passes current flash messages to Vue" do
+      html =
+        render_component(&Layouts.flash_group/1,
+          flash: %{
+            "info" => "Saved",
+            "warning" => "Check this",
+            "error" => "Failed"
+          },
+          socket: mock_socket(),
+          id: "flash-group"
+        )
+
+      vue = LiveVue.Test.get_vue(html, name: "live/layouts/flash/FlashGroup")
+
+      assert vue.props["flash"]["info"] == "Saved"
+      assert vue.props["flash"]["warning"] == "Check this"
+      assert vue.props["flash"]["error"] == "Failed"
+    end
+
     test "renders client and server error flash elements" do
       html =
         render_component(&Layouts.flash_group/1,
           flash: %{},
+          socket: mock_socket(),
           id: "flash-group"
         )
 
-      assert html =~ ~s(id="client-error")
-      assert html =~ ~s(id="server-error")
+      vue = LiveVue.Test.get_vue(html, name: "live/layouts/flash/FlashGroup")
+
+      assert html =~ "#client-error"
+      assert html =~ "#server-error"
+      assert vue.props["network"]["clientTitle"] == "We can't find the internet"
+      assert vue.props["network"]["serverTitle"] == "Something went wrong!"
     end
 
     test "renders reconnection messaging" do
       html =
         render_component(&Layouts.flash_group/1,
           flash: %{},
+          socket: mock_socket(),
           id: "flash-group"
         )
 
-      assert html =~ "Attempting to reconnect"
+      vue = LiveVue.Test.get_vue(html, name: "live/layouts/flash/FlashGroup")
+
+      assert vue.props["network"]["reconnecting"] == "Attempting to reconnect"
     end
   end
 end

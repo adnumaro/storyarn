@@ -1,11 +1,11 @@
 defmodule Storyarn.Shared.InvitationNotifierTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Shared.InvitationNotifier
-  alias Storyarn.Workspaces.WorkspaceInvitation
-
   import Storyarn.AccountsFixtures
   import Storyarn.WorkspacesFixtures
+
+  alias Storyarn.Shared.InvitationNotifier
+  alias Storyarn.Workspaces.WorkspaceInvitation
 
   @config %{
     invitation_schema: WorkspaceInvitation,
@@ -105,9 +105,9 @@ defmodule Storyarn.Shared.InvitationNotifierTest do
                InvitationNotifier.deliver_invitation(@config, invitation, url)
 
       assert email.to != []
-      assert email.from != nil
-      assert email.subject != nil
-      assert email.text_body != nil
+      assert email.from
+      assert email.subject
+      assert email.text_body
     end
   end
 end

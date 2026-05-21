@@ -1,19 +1,20 @@
 defmodule StoryarnWeb.Helpers.UndoRedoStackTest do
   use ExUnit.Case, async: true
 
+  alias Phoenix.LiveView.Socket
   alias StoryarnWeb.Helpers.UndoRedoStack
 
   # Build a minimal socket-like struct with assigns
   # __changed__ is required by Phoenix.Component.assign
   defp socket(assigns \\ %{}) do
-    %Phoenix.LiveView.Socket{
+    %Socket{
       assigns: Map.merge(%{__changed__: %{}, undo_stack: [], redo_stack: []}, assigns)
     }
   end
 
   describe "init/1" do
     test "initializes empty stacks" do
-      s = UndoRedoStack.init(%Phoenix.LiveView.Socket{assigns: %{__changed__: %{}}})
+      s = UndoRedoStack.init(%Socket{assigns: %{__changed__: %{}}})
       assert s.assigns.undo_stack == []
       assert s.assigns.redo_stack == []
     end

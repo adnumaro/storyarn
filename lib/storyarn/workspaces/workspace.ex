@@ -6,8 +6,10 @@ defmodule Storyarn.Workspaces.Workspace do
   Each user has at least one workspace (created on registration).
   """
   use Ecto.Schema
+
   import Ecto.Changeset
 
+  alias Ecto.Association.NotLoaded
   alias Storyarn.Accounts.User
   alias Storyarn.Projects.Project
   alias Storyarn.Workspaces.WorkspaceMembership
@@ -24,10 +26,10 @@ defmodule Storyarn.Workspaces.Workspace do
           color: String.t() | nil,
           source_locale: String.t() | nil,
           owner_id: integer() | nil,
-          owner: User.t() | Ecto.Association.NotLoaded.t() | nil,
-          memberships: [WorkspaceMembership.t()] | Ecto.Association.NotLoaded.t(),
-          members: [User.t()] | Ecto.Association.NotLoaded.t(),
-          projects: [Project.t()] | Ecto.Association.NotLoaded.t(),
+          owner: User.t() | NotLoaded.t() | nil,
+          memberships: [WorkspaceMembership.t()] | NotLoaded.t(),
+          members: [User.t()] | NotLoaded.t(),
+          projects: [Project.t()] | NotLoaded.t(),
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -80,9 +82,7 @@ defmodule Storyarn.Workspaces.Workspace do
         changeset
 
       _color ->
-        validate_format(changeset, :color, @color_format,
-          message: "must be a valid hex color (e.g., #3b82f6)"
-        )
+        validate_format(changeset, :color, @color_format, message: "must be a valid hex color (e.g., #3b82f6)")
     end
   end
 

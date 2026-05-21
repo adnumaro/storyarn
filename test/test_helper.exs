@@ -14,9 +14,6 @@ end)
 
 Ecto.Adapters.SQL.Sandbox.mode(Storyarn.Repo, :manual)
 
-# Ensure Lucideicons module is loaded so icon atoms exist for binary_to_existing_atom
-Code.ensure_loaded!(Lucideicons)
-
 # Import factory functions globally in tests
 {:ok, _} = Application.ensure_all_started(:ex_machina)
 

@@ -34,13 +34,7 @@ defmodule Storyarn.LocalizationFixtures do
   def source_language_fixture(project \\ nil, attrs \\ %{}) do
     project = project || ProjectsFixtures.project_fixture()
 
-    attrs =
-      attrs
-      |> Enum.into(%{
-        locale_code: "en",
-        name: "English",
-        is_source: true
-      })
+    attrs = Enum.into(attrs, %{locale_code: "en", name: "English", is_source: true})
 
     {:ok, language} = Localization.add_language(project, attrs)
     language
@@ -56,7 +50,7 @@ defmodule Storyarn.LocalizationFixtures do
         source_id: System.unique_integer([:positive]),
         source_field: "text",
         source_text: "Hello world",
-        source_text_hash: :crypto.hash(:sha256, "Hello world") |> Base.encode16(case: :lower),
+        source_text_hash: :sha256 |> :crypto.hash("Hello world") |> Base.encode16(case: :lower),
         locale_code: "es",
         word_count: 2
       })

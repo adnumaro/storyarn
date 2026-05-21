@@ -27,10 +27,6 @@ defmodule StoryarnWeb.FlowLive.Player.SlideTest do
     %{id: 2, type: "exit", data: data}
   end
 
-  defp slug_line_node(data) do
-    %{id: 3, type: "slug_line", data: data}
-  end
-
   defp variable(value, initial_value \\ nil) do
     %{
       value: value,
@@ -624,115 +620,6 @@ defmodule StoryarnWeb.FlowLive.Player.SlideTest do
       result = Slide.build(node, state, %{}, 1)
 
       assert result.step_count == 15
-    end
-  end
-
-  # ---------------------------------------------------------------------------
-  # build/4 — slug_line node
-  # ---------------------------------------------------------------------------
-
-  describe "build/4 with slug_line node" do
-    test "returns slug_line slide with minimal data" do
-      node = slug_line_node(%{})
-      result = Slide.build(node, base_state(), %{}, 1)
-
-      assert result.type == :slug_line
-      assert result.node_id == 3
-      assert result.setting == "INT"
-      assert result.location_name == ""
-      assert result.sub_location == ""
-      assert result.time_of_day == ""
-      assert result.description == ""
-    end
-
-    test "uses setting from data" do
-      node = slug_line_node(%{"setting" => "EXT"})
-      result = Slide.build(node, base_state(), %{}, 1)
-
-      assert result.setting == "EXT"
-    end
-
-    test "defaults setting to INT when missing" do
-      node = slug_line_node(%{})
-      result = Slide.build(node, base_state(), %{}, 1)
-
-      assert result.setting == "INT"
-    end
-
-    test "resolves location name from sheets_map" do
-      node = slug_line_node(%{"location_sheet_id" => 10})
-      sheets_map = %{"10" => %{name: "Tavern"}}
-
-      result = Slide.build(node, base_state(), sheets_map, 1)
-
-      assert result.location_name == "Tavern"
-    end
-
-    test "falls back to location_name field when sheet not found" do
-      node = slug_line_node(%{"location_sheet_id" => 999, "location_name" => "Dark Forest"})
-      sheets_map = %{}
-
-      result = Slide.build(node, base_state(), sheets_map, 1)
-
-      # resolve_speaker returns %{name: nil, ...}, so location.name is nil,
-      # then falls through to data["location_name"]
-      assert result.location_name == "Dark Forest"
-    end
-
-    test "falls back to empty string when no location info" do
-      node = slug_line_node(%{})
-      result = Slide.build(node, base_state(), %{}, 1)
-
-      assert result.location_name == ""
-    end
-
-    test "preserves sub_location" do
-      node = slug_line_node(%{"sub_location" => "Back room"})
-      result = Slide.build(node, base_state(), %{}, 1)
-
-      assert result.sub_location == "Back room"
-    end
-
-    test "preserves time_of_day" do
-      node = slug_line_node(%{"time_of_day" => "NIGHT"})
-      result = Slide.build(node, base_state(), %{}, 1)
-
-      assert result.time_of_day == "NIGHT"
-    end
-
-    test "interpolates variables in description" do
-      state = base_state(%{variables: %{"mc.health" => variable(75)}})
-      node = slug_line_node(%{"description" => "The hero has {mc.health} HP"})
-
-      result = Slide.build(node, state, %{}, 1)
-
-      assert result.description =~ "75"
-      assert result.description =~ "player-var"
-    end
-
-    test "shows unknown marker for unresolved variable in description" do
-      state = base_state(%{variables: %{}})
-      node = slug_line_node(%{"description" => "Gold: {mc.gold}"})
-
-      result = Slide.build(node, state, %{}, 1)
-
-      assert result.description =~ "player-var-unknown"
-      assert result.description =~ "[mc.gold]"
-    end
-
-    test "handles nil data" do
-      node = %{id: 3, type: "slug_line", data: nil}
-      result = Slide.build(node, base_state(), %{}, 1)
-
-      assert result.type == :slug_line
-      assert result.setting == "INT"
-    end
-
-    test "handles empty description" do
-      node = slug_line_node(%{"description" => ""})
-      result = Slide.build(node, base_state(), %{}, 1)
-
-      assert result.description == ""
     end
   end
 

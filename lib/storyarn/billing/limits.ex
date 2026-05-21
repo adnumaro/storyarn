@@ -7,13 +7,17 @@ defmodule Storyarn.Billing.Limits do
   import Ecto.Query, warn: false
 
   alias Storyarn.Assets.Asset
-  alias Storyarn.Billing.{Plan, SubscriptionCrud}
-  alias Storyarn.Flows.{Flow, FlowNode}
-  alias Storyarn.Projects.{Project, ProjectMembership}
+  alias Storyarn.Billing.Plan
+  alias Storyarn.Billing.SubscriptionCrud
+  alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowNode
+  alias Storyarn.Projects.Project
+  alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Sheets.Sheet
-  alias Storyarn.Workspaces.{Workspace, WorkspaceMembership}
+  alias Storyarn.Workspaces.Workspace
+  alias Storyarn.Workspaces.WorkspaceMembership
 
   @doc """
   Checks if a user can create another workspace.
@@ -76,8 +80,7 @@ defmodule Storyarn.Billing.Limits do
         :ok
 
       true ->
-        {:error, :limit_reached,
-         %{resource: :storage_bytes_per_workspace, used: used, limit: limit}}
+        {:error, :limit_reached, %{resource: :storage_bytes_per_workspace, used: used, limit: limit}}
     end
   end
 
@@ -131,6 +134,61 @@ defmodule Storyarn.Billing.Limits do
   end
 
   @doc """
+  Returns all usage data relevant to a project settings limits page.
+
+  Some limits are scoped to the project itself, while others are scoped to the
+  containing workspace but directly affect project actions.
+  """
+  def project_limits_usage(%Project{} = project) do
+    workspace = Repo.get!(Workspace, project.workspace_id)
+    plan = SubscriptionCrud.plan_for(workspace)
+
+    %{
+      plan: plan_summary(plan),
+      project: %{
+        items: usage_bucket(count_project_items(project.id), Plan.limit(plan, :items_per_project)),
+        project_snapshots:
+          usage_bucket(
+            Storyarn.Versioning.count_project_snapshots(project.id),
+            Plan.limit(plan, :project_snapshots_per_project)
+          ),
+        named_versions:
+          usage_bucket(
+            Storyarn.Versioning.count_named_versions(project.id),
+            Plan.limit(plan, :named_versions_per_project)
+          )
+      },
+      workspace: %{
+        projects:
+          usage_bucket(
+            count_workspace_projects(workspace.id),
+            Plan.limit(plan, :projects_per_workspace)
+          ),
+        members:
+          usage_bucket(
+            count_unique_workspace_users(workspace.id),
+            Plan.limit(plan, :members_per_workspace)
+          ),
+        storage_bytes:
+          usage_bucket(
+            total_workspace_storage(workspace.id),
+            Plan.limit(plan, :storage_bytes_per_workspace)
+          )
+      },
+      item_breakdown: %{
+        sheets: count_active(Sheet, project.id),
+        flows: count_active(Flow, project.id),
+        scenes: count_active(Scene, project.id),
+        flow_nodes: count_nodes(project.id)
+      },
+      storage: %{
+        project_bytes: total_project_storage(project.id),
+        asset_count: count_assets(project.id)
+      }
+    }
+  end
+
+  @doc """
   Returns usage data for a workspace.
   """
   def usage(workspace) do
@@ -157,6 +215,20 @@ defmodule Storyarn.Billing.Limits do
   # Private count helpers
   # ============================================================================
 
+  defp plan_summary(plan) do
+    %{
+      key: plan,
+      name: (Plan.get(plan) || %{})[:name] || plan
+    }
+  end
+
+  defp usage_bucket(used, limit) do
+    %{
+      used: used || 0,
+      limit: limit
+    }
+  end
+
   defp check_limit(resource, used, nil) do
     # Unknown plan/resource — default to blocking
     {:error, :limit_reached, %{resource: resource, used: used, limit: 0}}
@@ -176,15 +248,11 @@ defmodule Storyarn.Billing.Limits do
   end
 
   defp count_user_workspaces(user_id) do
-    from(w in Workspace, where: w.owner_id == ^user_id)
-    |> Repo.aggregate(:count)
+    Repo.aggregate(from(w in Workspace, where: w.owner_id == ^user_id), :count)
   end
 
   defp count_workspace_projects(workspace_id) do
-    from(p in Project,
-      where: p.workspace_id == ^workspace_id and is_nil(p.deleted_at)
-    )
-    |> Repo.aggregate(:count)
+    Repo.aggregate(from(p in Project, where: p.workspace_id == ^workspace_id and is_nil(p.deleted_at)), :count)
   end
 
   @doc false
@@ -207,8 +275,7 @@ defmodule Storyarn.Billing.Limits do
 
     union_query = union(wm_query, ^pm_query)
 
-    from(u in subquery(union_query), select: count(u.user_id))
-    |> Repo.one()
+    Repo.one(from(u in subquery(union_query), select: count(u.user_id)))
   end
 
   @doc false
@@ -220,30 +287,41 @@ defmodule Storyarn.Billing.Limits do
   end
 
   defp count_nodes(project_id) do
-    from(n in FlowNode,
-      join: f in Flow,
-      on: n.flow_id == f.id,
-      where:
-        f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at) and
-          is_nil(f.draft_id)
+    Repo.aggregate(
+      from(n in FlowNode,
+        join: f in Flow,
+        on: n.flow_id == f.id,
+        where: f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at)
+      ),
+      :count
     )
-    |> Repo.aggregate(:count)
   end
 
   defp count_active(schema, project_id) do
-    from(s in schema,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id)
-    )
-    |> Repo.aggregate(:count)
+    Repo.aggregate(from(s in schema, where: s.project_id == ^project_id and is_nil(s.deleted_at)), :count)
   end
 
   defp total_workspace_storage(workspace_id) do
-    from(a in Asset,
-      join: p in Project,
-      on: a.project_id == p.id,
-      where: p.workspace_id == ^workspace_id,
-      select: coalesce(sum(a.size), 0)
+    Repo.one(
+      from(a in Asset,
+        join: p in Project,
+        on: a.project_id == p.id,
+        where: p.workspace_id == ^workspace_id,
+        select: coalesce(sum(a.size), 0)
+      )
     )
-    |> Repo.one()
+  end
+
+  defp total_project_storage(project_id) do
+    Repo.one(
+      from(a in Asset,
+        where: a.project_id == ^project_id,
+        select: coalesce(sum(a.size), 0)
+      )
+    )
+  end
+
+  defp count_assets(project_id) do
+    Repo.aggregate(from(a in Asset, where: a.project_id == ^project_id), :count)
   end
 end

@@ -5,13 +5,14 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlersTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
 
-  alias Storyarn.{Repo, Scenes}
+  alias Storyarn.Repo
+  alias Storyarn.Scenes
 
   describe "LayerHandlers via SceneLive" do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       %{project: project, scene: scene}
     end

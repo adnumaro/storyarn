@@ -4,10 +4,14 @@ defmodule Storyarn.Projects.ProjectCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Accounts.Scope
+  alias Storyarn.Analytics
   alias Storyarn.Billing
-  alias Storyarn.Projects.{Memberships, Project, ProjectMembership}
+  alias Storyarn.Projects.Memberships
+  alias Storyarn.Projects.Project
+  alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
-  alias Storyarn.Shared.{NameNormalizer, TimeHelpers}
+  alias Storyarn.Shared.NameNormalizer
+  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Workspaces.Workspace
 
   @doc """
@@ -16,11 +20,9 @@ defmodule Storyarn.Projects.ProjectCrud do
   def list_projects(%Scope{user: user}) do
     Project
     |> where([p], is_nil(p.deleted_at))
-    |> join(:inner, [p], m in ProjectMembership,
-      on: m.project_id == p.id and m.user_id == ^user.id
-    )
+    |> join(:inner, [p], m in ProjectMembership, on: m.project_id == p.id and m.user_id == ^user.id)
     |> select([p, m], %{project: p, role: m.role})
-    |> order_by([p], desc: p.updated_at)
+    |> order_by([p], desc: fragment("COALESCE(?, ?)", p.last_activity_at, p.updated_at))
     |> Repo.all()
   end
 
@@ -30,9 +32,7 @@ defmodule Storyarn.Projects.ProjectCrud do
   def list_projects_for_workspace(workspace_id, %Scope{user: user}) do
     Project
     |> where([p], p.workspace_id == ^workspace_id and is_nil(p.deleted_at))
-    |> join(:left, [p], pm in ProjectMembership,
-      on: pm.project_id == p.id and pm.user_id == ^user.id
-    )
+    |> join(:left, [p], pm in ProjectMembership, on: pm.project_id == p.id and pm.user_id == ^user.id)
     |> join(:left, [p, pm], wm in Storyarn.Workspaces.WorkspaceMembership,
       on: wm.workspace_id == p.workspace_id and wm.user_id == ^user.id
     )
@@ -42,7 +42,7 @@ defmodule Storyarn.Projects.ProjectCrud do
       project_role: pm.role,
       workspace_role: wm.role
     })
-    |> order_by([p], desc: p.updated_at)
+    |> order_by([p], desc: fragment("COALESCE(?, ?)", p.last_activity_at, p.updated_at))
     |> Repo.all()
   end
 
@@ -50,9 +50,7 @@ defmodule Storyarn.Projects.ProjectCrud do
   Gets a single project by ID with authorization check.
   """
   def get_project(%Scope{user: user}, id) do
-    project =
-      from(p in Project, where: p.id == ^id and is_nil(p.deleted_at))
-      |> Repo.one()
+    project = Repo.one(from(p in Project, where: p.id == ^id and is_nil(p.deleted_at)))
 
     with %Project{} <- project,
          %ProjectMembership{} = membership <-
@@ -101,12 +99,26 @@ defmodule Storyarn.Projects.ProjectCrud do
   end
 
   defp do_create_project(user, attrs) do
-    Repo.transact(fn ->
-      with {:ok, project} <- insert_project(user, attrs),
-           {:ok, _membership} <- create_owner_membership(project, user) do
+    result =
+      Repo.transact(fn ->
+        with {:ok, project} <- insert_project(user, attrs),
+             {:ok, _membership} <- create_owner_membership(project, user) do
+          {:ok, project}
+        end
+      end)
+
+    case result do
+      {:ok, project} ->
+        Analytics.track(user, "project created", %{
+          project_id: project.id,
+          workspace_id: project.workspace_id
+        })
+
         {:ok, project}
-      end
-    end)
+
+      error ->
+        error
+    end
   end
 
   @doc """
@@ -122,7 +134,21 @@ defmodule Storyarn.Projects.ProjectCrud do
   def update_project(%Project{} = project, attrs) do
     project
     |> Project.update_changeset(attrs)
+    |> Ecto.Changeset.put_change(:last_activity_at, TimeHelpers.now())
     |> Repo.update()
+  end
+
+  @doc """
+  Marks a project as having content activity without changing project metadata.
+  """
+  def touch_project(project_id, at \\ TimeHelpers.now())
+
+  def touch_project(project_id, nil), do: touch_project(project_id, TimeHelpers.now())
+
+  def touch_project(project_id, at) when is_integer(project_id) do
+    Repo.update_all(from(p in Project, where: p.id == ^project_id), set: [last_activity_at: at])
+
+    :ok
   end
 
   @doc """
@@ -152,33 +178,34 @@ defmodule Storyarn.Projects.ProjectCrud do
         select: count(s.id)
       )
 
-    from(p in Project,
-      as: :project,
-      where: p.workspace_id == ^workspace_id and not is_nil(p.deleted_at),
-      order_by: [desc: p.deleted_at],
-      preload: [:deleted_by],
-      select_merge: %{snapshot_count: subquery(snapshot_count_query)}
+    Repo.all(
+      from(p in Project,
+        as: :project,
+        where: p.workspace_id == ^workspace_id and not is_nil(p.deleted_at),
+        order_by: [desc: p.deleted_at],
+        preload: [:deleted_by],
+        select_merge: %{snapshot_count: subquery(snapshot_count_query)}
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
   Gets a single deleted project with its snapshots preloaded.
   """
   def get_deleted_project(workspace_id, project_id) do
-    from(p in Project,
-      where: p.id == ^project_id and p.workspace_id == ^workspace_id and not is_nil(p.deleted_at),
-      preload: [:deleted_by]
+    Repo.one(
+      from(p in Project,
+        where: p.id == ^project_id and p.workspace_id == ^workspace_id and not is_nil(p.deleted_at),
+        preload: [:deleted_by]
+      )
     )
-    |> Repo.one()
   end
 
   @doc """
   Lists all projects with auto snapshots enabled (for daily cron job).
   """
   def list_projects_with_auto_snapshots do
-    from(p in Project, where: p.auto_snapshots_enabled == true and is_nil(p.deleted_at))
-    |> Repo.all()
+    Repo.all(from(p in Project, where: p.auto_snapshots_enabled == true and is_nil(p.deleted_at)))
   end
 
   @doc """
@@ -214,18 +241,11 @@ defmodule Storyarn.Projects.ProjectCrud do
   `{:error, :already_locked}` if another restoration is in progress.
   """
   def acquire_restoration_lock(project_id, user_id) do
-    now = Storyarn.Shared.TimeHelpers.now()
+    now = TimeHelpers.now()
 
     {count, _} =
-      from(p in Project,
-        where: p.id == ^project_id and p.restoration_in_progress == false
-      )
-      |> Repo.update_all(
-        set: [
-          restoration_in_progress: true,
-          restoration_started_by_id: user_id,
-          restoration_started_at: now
-        ]
+      Repo.update_all(from(p in Project, where: p.id == ^project_id and p.restoration_in_progress == false),
+        set: [restoration_in_progress: true, restoration_started_by_id: user_id, restoration_started_at: now]
       )
 
     if count == 1 do
@@ -240,13 +260,8 @@ defmodule Storyarn.Projects.ProjectCrud do
   """
   def release_restoration_lock(project_id) do
     {_count, _} =
-      from(p in Project, where: p.id == ^project_id)
-      |> Repo.update_all(
-        set: [
-          restoration_in_progress: false,
-          restoration_started_by_id: nil,
-          restoration_started_at: nil
-        ]
+      Repo.update_all(from(p in Project, where: p.id == ^project_id),
+        set: [restoration_in_progress: false, restoration_started_by_id: nil, restoration_started_at: nil]
       )
 
     {:ok, Repo.get!(Project, project_id)}
@@ -276,21 +291,14 @@ defmodule Storyarn.Projects.ProjectCrud do
   Clears a stale restoration lock if it's older than the given timeout.
   """
   def clear_stale_restoration_lock(project_id, timeout_minutes \\ 15) do
-    cutoff = DateTime.add(Storyarn.Shared.TimeHelpers.now(), -timeout_minutes * 60, :second)
+    cutoff = DateTime.add(TimeHelpers.now(), -timeout_minutes * 60, :second)
 
     {count, _} =
-      from(p in Project,
-        where:
-          p.id == ^project_id and
-            p.restoration_in_progress == true and
-            p.restoration_started_at < ^cutoff
-      )
-      |> Repo.update_all(
-        set: [
-          restoration_in_progress: false,
-          restoration_started_by_id: nil,
-          restoration_started_at: nil
-        ]
+      Repo.update_all(
+        from(p in Project,
+          where: p.id == ^project_id and p.restoration_in_progress == true and p.restoration_started_at < ^cutoff
+        ),
+        set: [restoration_in_progress: false, restoration_started_by_id: nil, restoration_started_at: nil]
       )
 
     if count == 1, do: {:ok, :cleared}, else: {:error, :not_stale}

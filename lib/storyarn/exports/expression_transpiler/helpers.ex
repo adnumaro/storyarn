@@ -6,6 +6,8 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Helpers do
   logic joining, and condition decoding from all storage formats.
   """
 
+  use Gettext, backend: Storyarn.Gettext
+
   # ---------------------------------------------------------------------------
   # Variable reference formatting
   # ---------------------------------------------------------------------------
@@ -117,33 +119,27 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Helpers do
   # ---------------------------------------------------------------------------
 
   @doc """
-  Normalizes a condition from any storage format into a structured map.
+  Normalizes a condition from storage into a structured map.
 
-  Returns `{:ok, condition_map}` for structured conditions,
-  `{:ok, nil}` for nil/empty, or `{:error, {:legacy_condition, string}}`
-  for legacy plain-text conditions that cannot be transpiled.
+  Returns `{:ok, condition_map}` for block-format conditions,
+  or `{:ok, nil}` for nil/empty/invalid.
 
   ## Supported inputs
 
   - `nil` → `{:ok, nil}`
-  - `%{"logic" => ..., "rules" => ...}` → pass through
   - `%{"logic" => ..., "blocks" => ...}` → pass through
   - JSON string → decode to map
-  - Legacy plain string → `{:error, {:legacy_condition, string}}`
   """
-  @spec decode_condition(term()) :: {:ok, map() | nil} | {:error, term()}
+  @spec decode_condition(term()) :: {:ok, map() | nil}
   def decode_condition(nil), do: {:ok, nil}
   def decode_condition(""), do: {:ok, nil}
 
-  def decode_condition(%{"logic" => _, "rules" => _} = condition), do: {:ok, condition}
   def decode_condition(%{"logic" => _, "blocks" => _} = condition), do: {:ok, condition}
 
   def decode_condition(json_string) when is_binary(json_string) do
     case Jason.decode(json_string) do
-      {:ok, %{"logic" => _, "rules" => _} = condition} -> {:ok, condition}
       {:ok, %{"logic" => _, "blocks" => _} = condition} -> {:ok, condition}
-      {:ok, _} -> {:error, {:legacy_condition, json_string}}
-      {:error, _} -> {:error, {:legacy_condition, json_string}}
+      _ -> {:ok, nil}
     end
   end
 
@@ -154,16 +150,14 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Helpers do
   # ---------------------------------------------------------------------------
 
   @doc """
-  Extracts rules from a condition, handling both flat and block formats.
+  Extracts rules from a block-format condition.
 
-  For flat format, returns `{logic, rules}`.
-  For block format, returns `{top_logic, block_groups}` where each group
+  Returns `{top_logic, block_groups}` where each group
   is `{block_logic, rules}`.
   """
   @spec extract_condition_structure(map()) ::
-          {:flat, String.t(), [map()]} | {:blocks, String.t(), [{String.t(), [map()]}]}
-  def extract_condition_structure(%{"logic" => logic, "blocks" => blocks})
-      when is_list(blocks) do
+          {:blocks, String.t(), [{String.t(), [map()]}]}
+  def extract_condition_structure(%{"logic" => logic, "blocks" => blocks}) when is_list(blocks) do
     groups =
       blocks
       |> Enum.map(&extract_block/1)
@@ -172,20 +166,13 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Helpers do
     {:blocks, logic, groups}
   end
 
-  def extract_condition_structure(%{"logic" => logic, "rules" => rules})
-      when is_list(rules) do
-    {:flat, logic, rules}
-  end
+  def extract_condition_structure(_), do: {:blocks, "all", []}
 
-  def extract_condition_structure(_), do: {:flat, "all", []}
-
-  defp extract_block(%{"type" => "block", "logic" => logic, "rules" => rules})
-       when is_list(rules) do
+  defp extract_block(%{"type" => "block", "logic" => logic, "rules" => rules}) when is_list(rules) do
     {logic, rules}
   end
 
-  defp extract_block(%{"type" => "group", "logic" => logic, "blocks" => inner})
-       when is_list(inner) do
+  defp extract_block(%{"type" => "group", "logic" => logic, "blocks" => inner}) when is_list(inner) do
     flat_rules =
       inner
       |> Enum.map(&extract_block/1)
@@ -205,7 +192,13 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Helpers do
   def unsupported_op_warning(operator, engine, var_ref) do
     %{
       type: :unsupported_operator,
-      message: "Operator '#{operator}' is not supported by #{engine}",
+      message:
+        dgettext(
+          "projects",
+          "Operator '%{operator}' is not supported by %{engine}",
+          operator: operator,
+          engine: engine
+        ),
       details: %{operator: operator, engine: engine, variable: var_ref}
     }
   end
@@ -224,7 +217,14 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Helpers do
 
     %{
       type: :custom_function_required,
-      message: "Operator '#{operator}' requires custom function '#{func_name}' in #{engine}",
+      message:
+        dgettext(
+          "projects",
+          "Operator '%{operator}' requires custom function '%{func_name}' in %{engine}",
+          operator: operator,
+          func_name: func_name,
+          engine: engine
+        ),
       operator: operator,
       function: func_name,
       engine: engine,

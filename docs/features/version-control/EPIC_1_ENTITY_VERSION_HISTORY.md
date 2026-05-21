@@ -13,12 +13,15 @@ Each feature is independent and ordered by dependency.
 ## Feature 1: Generalize Versioning System
 
 ### What
+
 Refactor the existing sheet-only versioning into a **shared versioning engine** that works for any entity type (Sheet, Flow, Scene). Then extend it to Flows and Scenes.
 
 ### Why (standalone value)
+
 Without this, we'd duplicate the versioning code three times. A shared system means one codebase to maintain, consistent behavior across all editors, and faster implementation of future versioning features.
 
 ### Current state
+
 - `Storyarn.Sheets.Versioning` — full implementation for sheets only
 - `SheetVersion` schema — sheet-specific with `sheet_id` foreign key
 - Snapshot format hardcoded for sheet structure (name, shortcut, blocks)
@@ -27,11 +30,13 @@ Without this, we'd duplicate the versioning code three times. A shared system me
 ### Target architecture
 
 **Shared versioning engine** (`Storyarn.Shared.Versioning`):
+
 - Generic snapshot creation, listing, restore, deletion
 - Entity-type-agnostic metadata storage
 - Pluggable snapshot builders per entity type
 
 **New schema: `EntityVersion`** (replaces `SheetVersion`):
+
 ```
 entity_versions
 ├── id (id)
@@ -52,6 +57,7 @@ entity_versions
 No `snapshot` map column — the JSON lives in R2, referenced by `storage_key`.
 
 **Snapshot builder behaviour:**
+
 ```elixir
 @callback build_snapshot(entity :: struct()) :: map()
 @callback restore_snapshot(entity :: struct(), snapshot :: map()) :: {:ok, struct()} | {:error, term()}
@@ -61,6 +67,7 @@ No `snapshot` map column — the JSON lives in R2, referenced by `storage_key`.
 Implementations: `SheetSnapshotBuilder`, `FlowSnapshotBuilder`, `SceneSnapshotBuilder`.
 
 ### Key implementation areas
+
 - **Migrate SheetVersion → EntityVersion**: migration to rename/restructure table, move existing snapshot data to R2
 - **Extract shared engine**: generic CRUD for versions, pagination, rate-limiting
 - **Sheet builder**: extract from current `Versioning` module
@@ -70,6 +77,7 @@ Implementations: `SheetSnapshotBuilder`, `FlowSnapshotBuilder`, `SceneSnapshotBu
 - **Facade integration**: add version functions to `Flows` and `Scenes` contexts
 
 ### Flow snapshot structure
+
 ```json
 {
   "name": "Quest Principal",
@@ -117,6 +125,7 @@ Implementations: `SheetSnapshotBuilder`, `FlowSnapshotBuilder`, `SceneSnapshotBu
 ```
 
 ### Scene snapshot structure
+
 ```json
 {
   "name": "Tavern",
@@ -148,7 +157,11 @@ Implementations: `SheetSnapshotBuilder`, `FlowSnapshotBuilder`, `SceneSnapshotBu
       "id": "id",
       "layer_id": "id",
       "name": "Market Square",
-      "vertices": [{"x": 10, "y": 10}, {"x": 90, "y": 10}, {"x": 90, "y": 90}],
+      "vertices": [
+        { "x": 10, "y": 10 },
+        { "x": 90, "y": 10 },
+        { "x": 90, "y": 90 }
+      ],
       "fill_color": "#ff0000",
       "border_color": "#000000",
       "border_style": "solid",
@@ -193,7 +206,7 @@ Implementations: `SheetSnapshotBuilder`, `FlowSnapshotBuilder`, `SceneSnapshotBu
       "id": "id",
       "from_pin_id": "id",
       "to_pin_id": "id",
-      "waypoints": [{"x": 30, "y": 40}],
+      "waypoints": [{ "x": 30, "y": 40 }],
       "line_style": "solid",
       "line_width": 2,
       "color": "#000000",
@@ -222,12 +235,13 @@ Implementations: `SheetSnapshotBuilder`, `FlowSnapshotBuilder`, `SceneSnapshotBu
     "flow_ids": ["id2"],
     "scene_ids": ["id3"],
     "asset_ids": ["id4", "id5"],
-    "asset_blob_hashes": {"id4": "sha256a", "id5": "sha256b"}
+    "asset_blob_hashes": { "id4": "sha256a", "id5": "sha256b" }
   }
 }
 ```
 
 ### Acceptance criteria
+
 - [ ] `EntityVersion` schema replaces `SheetVersion`
 - [ ] Existing sheet versions migrated to new schema + R2 storage
 - [ ] Shared versioning engine with pluggable snapshot builders
@@ -242,20 +256,24 @@ Implementations: `SheetSnapshotBuilder`, `FlowSnapshotBuilder`, `SceneSnapshotBu
 ## Feature 2: Auto-Snapshots by Significant Action
 
 ### What
+
 Automatically create snapshots when the user performs significant changes, with a rate-limit to prevent snapshot flood. No manual action required — the safety net is always on.
 
 ### Why (standalone value)
+
 Users forget to save versions. Auto-snapshots mean they never lose more than 10-15 minutes of work, even if they never manually create a version.
 
 ### Significant actions (triggers)
 
 **Sheets:**
+
 - Block created, deleted, or reordered
 - Block type changed
 - Sheet name or shortcut changed
 - Block value changed (rate-limited — text edits are frequent)
 
 **Flows:**
+
 - Node created, deleted, or duplicated
 - Connection created or deleted
 - Node type changed
@@ -263,6 +281,7 @@ Users forget to save versions. Auto-snapshots mean they never lose more than 10-
 - Flow name or shortcut changed
 
 **Scenes:**
+
 - Zone created, deleted, or vertices changed
 - Pin created, deleted, or moved significantly
 - Connection created or deleted
@@ -271,17 +290,20 @@ Users forget to save versions. Auto-snapshots mean they never lose more than 10-
 - Scene settings changed (background, dimensions, scale)
 
 ### Rate limiting
+
 - Minimum **10 minutes** between auto-snapshots per entity
 - A significant action within the cooldown window is **deferred**: when the timer expires, if there were deferred actions, a snapshot is created
 - This ensures we capture the state after a burst of changes, not during
 
 ### Implementation approach
+
 - Hook into existing `handle_event` handlers — after successful mutation, call `Versioning.maybe_create_auto_snapshot(entity, user)`
 - The `maybe_create_auto_snapshot` function checks the rate limit and either creates immediately or schedules a deferred snapshot
 - Deferred snapshots via `Process.send_after` on the LiveView process — if the user is still connected when the timer fires, snapshot is created
 - If the user disconnects before the deferred timer, the snapshot is lost (acceptable — the next session will snapshot on first change)
 
 ### Acceptance criteria
+
 - [ ] Auto-snapshots trigger on significant actions for sheets, flows, and scenes
 - [ ] Rate limit of 10-15 minutes enforced per entity
 - [ ] Deferred snapshots capture state after burst of changes
@@ -295,12 +317,15 @@ Users forget to save versions. Auto-snapshots mean they never lose more than 10-
 ## Feature 3: Named Versions with Intent
 
 ### What
+
 User-created milestones with a title, description, and auto-generated change summary. Named versions are preserved indefinitely (not subject to auto-cleanup) and surfaced prominently in the version history.
 
 ### Why (standalone value)
+
 Auto-snapshots are a safety net, but named versions tell the **story** of the design process. "Before rewriting Act 2", "Final dialogue pass", "Client feedback round 1" — these are the versions users actually want to find later.
 
 ### UX flow
+
 1. User clicks "Save Version" in the editor toolbar or version panel
 2. Modal appears with:
    - **Title** (required, max 100 chars): "Before rewriting Act 2"
@@ -311,6 +336,7 @@ Auto-snapshots are a safety net, but named versions tell the **story** of the de
    - Marked as `is_auto: false`
 
 ### Version history UI
+
 - Named versions shown prominently (full row with title, description, author, date)
 - Auto-snapshots collapsed between named versions (expandable: "12 auto-saves between v5 and v6")
 - Current state indicator: "You are here" marker at the top
@@ -318,6 +344,7 @@ Auto-snapshots are a safety net, but named versions tell the **story** of the de
 - Actions per version: Restore, Delete, Rename (for named versions)
 
 ### Acceptance criteria
+
 - [ ] "Save Version" button in editor toolbar
 - [ ] Modal with title and description fields
 - [ ] Change summary auto-generated (nodes added/modified/deleted, connections changed, etc.)
@@ -332,15 +359,17 @@ Auto-snapshots are a safety net, but named versions tell the **story** of the de
 ## Feature 4: Restore with Conflict Detection
 
 ### What
+
 When restoring a version, scan all external references in the snapshot against the current project state. Show a conflict report before applying the restore, letting the user make an informed decision.
 
 ### Why (standalone value)
+
 Blind restore is dangerous. A flow referencing a deleted sheet, a scene pointing to a removed flow — silent broken references corrupt the project. Conflict detection makes restore **safe and transparent**.
 
 ### Conflict types
 
 | Conflict               | Example                                                                  | Resolution                                            |
-|------------------------|--------------------------------------------------------------------------|-------------------------------------------------------|
+| ---------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------- |
 | **Missing entity**     | Dialogue node references `speaker_sheet_id` that was deleted             | Clear the reference (set to nil)                      |
 | **Missing asset**      | Pin uses `icon_asset_id` that was deleted                                | Clear the reference, use default icon                 |
 | **Shortcut collision** | Restored entity has shortcut "quest.main" but another entity now uses it | Auto-rename to "quest.main-restored"                  |
@@ -348,6 +377,7 @@ Blind restore is dangerous. A flow referencing a deleted sheet, a scene pointing
 | **Missing target**     | Zone has `target_flow_id` pointing to deleted flow                       | Clear the target reference                            |
 
 ### UX flow
+
 1. User clicks "Restore" on a version
 2. System loads the snapshot from R2
 3. System scans `external_refs` against current project state
@@ -359,12 +389,14 @@ Blind restore is dangerous. A flow referencing a deleted sheet, a scene pointing
 6. On confirm: auto-snapshot current state → apply restore → notify collaborators
 
 ### Implementation
+
 - `Versioning.validate_restore(snapshot, project_id)` → `{:ok, []}` or `{:ok, conflicts}`
 - `Versioning.apply_restore(entity, snapshot, conflict_resolutions)` — applies snapshot with conflict fixes
 - Pre-restore auto-snapshot always created (user can undo the restore by restoring the auto-snapshot)
 - Restore is **non-destructive** in terms of history: it creates a new state, doesn't delete any versions
 
 ### Acceptance criteria
+
 - [ ] Restore scans external references before applying
 - [ ] Conflict report modal shows all broken references with resolution plan
 - [ ] User can proceed with restore or cancel after seeing conflicts
@@ -378,41 +410,49 @@ Blind restore is dangerous. A flow referencing a deleted sheet, a scene pointing
 ## Feature 5: Content-Addressable Asset Storage
 
 ### What
+
 Store asset binaries (images, audio) by SHA256 hash in R2. Snapshots reference assets by hash, not by ID. Multiple snapshots sharing the same asset = one copy in storage.
 
 ### Why (standalone value)
+
 Without this, every snapshot that includes an avatar, background image, or audio file duplicates the binary. 100 snapshots × 5MB background = 500MB. With content-addressable storage: 5MB (if the image never changed) to maybe 15MB (if it changed 3 times).
 
 ### How it works
 
 **On asset upload (existing flow, extended):**
+
 1. User uploads `avatar.png`
 2. System calculates SHA256 hash → `a1b2c3d4...`
 3. Stores in R2: `projects/{project_id}/blobs/a1b2c3d4.png`
 4. Asset record in DB stores both `storage_key` (current path) and `blob_hash`
 
 **On snapshot creation:**
+
 1. Snapshot builder collects all asset references from the entity
 2. For each asset: looks up the `blob_hash` from the Asset record
 3. Stores blob hashes in the snapshot JSON under `asset_blob_hashes`
 4. If the blob doesn't exist yet in the blobs path (for legacy assets), copies it
 
 **On restore:**
+
 1. Read blob hashes from snapshot
 2. For each asset reference: check if blob exists in R2 → it should, since blobs are never deleted while referenced
 3. Create or update Asset records pointing to the correct blob
 
 **Garbage collection (Oban job):**
+
 1. List all blob hashes referenced by any active version or any current entity
 2. List all blobs in R2
 3. Delete blobs not referenced by anything
 4. Run weekly or monthly
 
 ### Schema changes
+
 - `Asset`: add `blob_hash` field (string, nullable — populated on upload, nil for legacy)
 - Legacy assets get their hash computed and blob copied on first snapshot that includes them
 
 ### Acceptance criteria
+
 - [ ] New asset uploads compute and store SHA256 hash
 - [ ] Blob stored at content-addressable path in R2
 - [ ] Snapshots reference assets by blob hash

@@ -49,6 +49,13 @@ defmodule Storyarn.Shared.MapUtils do
   def parse_to_number(_), do: 0.0
 
   @doc """
+  Ensures a value is an integer, returning 0 for non-integer values.
+  """
+  @spec ensure_integer(any()) :: integer()
+  def ensure_integer(n) when is_integer(n), do: n
+  def ensure_integer(_), do: 0
+
+  @doc """
   Formats a numeric result: truncates whole floats to integer.
   E.g. `10.0` → `10`, `3.14` → `3.14`. Passes non-floats through.
   """

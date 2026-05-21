@@ -1,173 +1,78 @@
 defmodule StoryarnWeb.SheetLive.Handlers.GalleryHandlers do
   @moduledoc """
-  Handles gallery block events for the ContentTab LiveComponent.
-
-  Each public function returns `{:noreply, socket}`.
-
-  The `helpers` map must contain:
-    - `:reload_blocks`        - fn(socket) -> socket
-    - `:maybe_create_version` - fn(socket) -> any
-    - `:notify_parent`        - fn(socket, status) -> any
+  Handles gallery block image events for the V2 sheet editor.
   """
-
-  import Phoenix.LiveView, only: [put_flash: 3]
 
   use Gettext, backend: Storyarn.Gettext
 
+  import Phoenix.LiveView, only: [put_flash: 3]
+
   alias Storyarn.Assets
   alias Storyarn.Sheets
-  alias StoryarnWeb.SheetLive.Helpers.ContentTabHelpers
+  alias StoryarnWeb.Helpers.Authorize
 
-  # ===========================================================================
-  # Upload
-  # ===========================================================================
+  def handle_attach(%{"block_id" => block_id, "asset_id" => asset_id}, socket, helpers) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      socket
+      |> gallery_block_for_current_sheet(helpers.parse_id.(block_id))
+      |> attach_asset_to_gallery(socket, asset_id, helpers)
+    end)
+  end
 
-  @doc "Handles a gallery image upload (base64 from JS hook)."
-  def handle_upload_gallery_image(params, socket, helpers) do
-    block_id = ContentTabHelpers.to_integer(params["block_id"])
-    filename = params["filename"]
-    content_type = params["content_type"]
-    data = params["data"]
+  def handle_update(params, socket, helpers) do
+    %{"gallery_image_id" => id, "field" => field, "value" => value} = params
 
-    project = socket.assigns.project
-    user = socket.assigns.current_scope.user
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      case Sheets.get_gallery_image_for_sheet(socket.assigns.sheet.id, helpers.parse_id.(id)) do
+        nil ->
+          {:noreply, socket}
 
-    block = Sheets.get_block_in_project(block_id, project.id)
-
-    if block && block.type == "gallery" do
-      case decode_base64(data) do
-        {:ok, binary_data} ->
-          upload_gallery_file(
-            socket,
-            block,
-            filename,
-            content_type,
-            binary_data,
-            project,
-            user,
-            helpers
-          )
-
-        :error ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Invalid file data."))}
+        gi ->
+          Sheets.update_gallery_image(gi, %{String.to_existing_atom(field) => value})
+          {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
       end
-    else
-      {:noreply, socket}
-    end
+    end)
   end
 
-  @doc "Handles upload validation errors from JS."
-  def handle_upload_validation_error(params, socket) do
-    {:noreply, put_flash(socket, :error, params["message"] || dgettext("sheets", "Upload error"))}
+  def handle_remove(%{"gallery_image_id" => id} = _params, socket, helpers) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      case Sheets.remove_gallery_image(socket.assigns.sheet.id, helpers.parse_id.(id)) do
+        {:ok, _} ->
+          {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
+
+        _ ->
+          {:noreply, socket}
+      end
+    end)
   end
 
-  # ===========================================================================
-  # Update
-  # ===========================================================================
-
-  @doc "Updates a gallery image's label or description."
-  def handle_update_gallery_image(params, socket, helpers) do
-    gallery_image_id = ContentTabHelpers.to_integer(params["gallery-image-id"])
-    field = params["field"]
-    value = params["value"]
-
-    case Sheets.get_gallery_image(gallery_image_id) do
-      nil ->
-        {:noreply, socket}
-
-      gi ->
-        attrs = %{field => value}
-
-        case Sheets.update_gallery_image(gi, attrs) do
-          {:ok, _} ->
-            helpers.maybe_create_version.(socket)
-            helpers.notify_parent.(socket, :saved)
-            {:noreply, helpers.reload_blocks.(socket)}
-
-          {:error, _} ->
-            {:noreply, socket}
-        end
-    end
+  def handle_reorder(%{"block_id" => block_id, "ids" => ids}, socket, helpers) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      int_ids = Enum.map(ids, &helpers.parse_id.(&1))
+      Sheets.reorder_gallery_images(helpers.parse_id.(block_id), int_ids)
+      {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
+    end)
   end
 
-  # ===========================================================================
-  # Remove
-  # ===========================================================================
-
-  @doc "Removes a gallery image."
-  def handle_remove_gallery_image(params, socket, helpers) do
-    gallery_image_id = ContentTabHelpers.to_integer(params["gallery_image_id"])
-
-    case Sheets.remove_gallery_image(gallery_image_id) do
-      {:ok, _} ->
-        helpers.maybe_create_version.(socket)
-        helpers.notify_parent.(socket, :saved)
-        {:noreply, helpers.reload_blocks.(socket)}
-
-      {:error, _} ->
-        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not remove image."))}
-    end
-  end
-
-  # ===========================================================================
-  # Reorder
-  # ===========================================================================
-
-  @doc "Reorders gallery images within a block."
-  def handle_reorder_gallery_images(params, socket, helpers) do
-    block_id = ContentTabHelpers.to_integer(params["block_id"])
-    ordered_ids = Enum.map(params["ids"] || [], &ContentTabHelpers.to_integer/1)
-
-    case Sheets.reorder_gallery_images(block_id, ordered_ids) do
-      {:ok, _} ->
-        helpers.maybe_create_version.(socket)
-        helpers.notify_parent.(socket, :saved)
-        {:noreply, helpers.reload_blocks.(socket)}
-
-      {:error, _} ->
-        {:noreply, socket}
-    end
-  end
-
-  # ===========================================================================
-  # Private
-  # ===========================================================================
-
-  defp decode_base64(data) do
-    case String.split(data, ",", parts: 2) do
-      [_header, base64_data] -> Base.decode64(base64_data)
+  defp gallery_block_for_current_sheet(socket, block_id) do
+    case Sheets.get_block(block_id) do
+      %{sheet_id: sheet_id, type: "gallery"} = block when sheet_id == socket.assigns.sheet.id -> {:ok, block}
       _ -> :error
     end
   end
 
-  defp upload_gallery_file(
-         socket,
-         block,
-         filename,
-         content_type,
-         binary_data,
-         project,
-         user,
-         helpers
-       ) do
-    if Assets.allowed_content_type?(content_type) do
-      with {:ok, asset} <-
-             Assets.upload_binary_and_create_asset(
-               binary_data,
-               %{filename: filename, content_type: content_type, purpose: :gallery},
-               project,
-               user
-             ),
-           {:ok, _gi} <- Sheets.add_gallery_image(block, asset.id) do
-        helpers.maybe_create_version.(socket)
-        helpers.notify_parent.(socket, :saved)
-        {:noreply, helpers.reload_blocks.(socket)}
-      else
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not upload image."))}
-      end
-    else
-      {:noreply, put_flash(socket, :error, dgettext("sheets", "Unsupported file type."))}
+  defp attach_asset_to_gallery({:ok, block}, socket, asset_id, helpers) do
+    case Assets.get_asset(socket.assigns.project.id, asset_id) do
+      nil ->
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Asset not found."))}
+
+      _asset ->
+        Sheets.add_gallery_image(block, asset_id)
+        {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
     end
+  end
+
+  defp attach_asset_to_gallery(:error, socket, _asset_id, _helpers) do
+    {:noreply, socket}
   end
 end

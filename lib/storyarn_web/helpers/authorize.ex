@@ -31,6 +31,7 @@ defmodule StoryarnWeb.Helpers.Authorize do
   - `:manage_workspace_members` - Invite/remove members in workspace
   """
 
+  alias Phoenix.LiveView.Socket
   alias Storyarn.Projects
   alias Storyarn.Workspaces
 
@@ -66,10 +67,10 @@ defmodule StoryarnWeb.Helpers.Authorize do
       end
   """
   @spec with_authorization(
-          Phoenix.LiveView.Socket.t(),
+          Socket.t(),
           atom(),
-          (Phoenix.LiveView.Socket.t() -> {:noreply, Phoenix.LiveView.Socket.t()})
-        ) :: {:noreply, Phoenix.LiveView.Socket.t()}
+          (Socket.t() -> {:noreply, Socket.t()})
+        ) :: {:noreply, Socket.t()}
   def with_authorization(socket, action, success_fn) do
     case authorize(socket, action) do
       :ok ->
@@ -95,9 +96,9 @@ defmodule StoryarnWeb.Helpers.Authorize do
       end
   """
   @spec with_edit_authorization(
-          Phoenix.LiveView.Socket.t(),
-          (Phoenix.LiveView.Socket.t() -> {:noreply, Phoenix.LiveView.Socket.t()})
-        ) :: {:noreply, Phoenix.LiveView.Socket.t()}
+          Socket.t(),
+          (Socket.t() -> {:noreply, Socket.t()})
+        ) :: {:noreply, Socket.t()}
   def with_edit_authorization(socket, success_fn) do
     if socket.assigns[:can_edit] do
       success_fn.(socket)
@@ -133,7 +134,7 @@ defmodule StoryarnWeb.Helpers.Authorize do
         end
       end
   """
-  @spec authorize(Phoenix.LiveView.Socket.t(), atom()) :: :ok | {:error, :unauthorized}
+  @spec authorize(Socket.t(), atom()) :: :ok | {:error, :unauthorized}
   def authorize(socket, action)
 
   # Project content editing actions

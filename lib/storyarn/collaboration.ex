@@ -9,8 +9,7 @@ defmodule Storyarn.Collaboration do
   - Change notifications (see remote changes)
 
   All functions accept an `editor_scope` tuple `{type, id}` to identify the
-  editor instance. For backward compatibility, bare integers are treated as
-  `{:flow, id}`.
+  editor instance.
 
   ## Editor scopes
 
@@ -27,7 +26,10 @@ defmodule Storyarn.Collaboration do
   """
 
   alias Phoenix.PubSub
-  alias Storyarn.Collaboration.{Colors, CursorTracker, Locks, Presence}
+  alias Storyarn.Collaboration.Colors
+  alias Storyarn.Collaboration.CursorTracker
+  alias Storyarn.Collaboration.Locks
+  alias Storyarn.Collaboration.Presence
 
   @type editor_scope ::
           {:flow, integer()}
@@ -35,12 +37,7 @@ defmodule Storyarn.Collaboration do
           | {:scene, integer()}
           | {:screenplay, integer()}
 
-  # =============================================================================
-  # Scope normalization (backward compat)
-  # =============================================================================
-
   defp normalize_scope({_type, _id} = scope), do: scope
-  defp normalize_scope(id) when is_integer(id), do: {:flow, id}
 
   # =============================================================================
   # Colors
@@ -80,47 +77,6 @@ defmodule Storyarn.Collaboration do
   """
   def list_online_users(scope) do
     topic = Presence.topic(normalize_scope(scope))
-    Presence.list_users(topic)
-  end
-
-  # =============================================================================
-  # Project-level Presence
-  # =============================================================================
-
-  @doc """
-  Tracks a user's presence at the project level.
-  Used to show "User A is editing Sheet 3" in the project sidebar.
-  """
-  def track_project_presence(pid, project_id, user, meta \\ %{}) do
-    topic = project_presence_topic(project_id)
-    Presence.track_user(pid, topic, user, meta)
-  end
-
-  @doc """
-  Updates a user's project-level presence metadata.
-  Call when the user navigates to a different entity within the same editor.
-  """
-  def update_project_presence(project_id, user_id, meta_update) do
-    topic = project_presence_topic(project_id)
-
-    Presence.update(self(), topic, user_id, fn metas ->
-      Map.merge(metas, meta_update)
-    end)
-  end
-
-  @doc """
-  Subscribes to project-level presence updates.
-  """
-  def subscribe_project_presence(project_id) do
-    topic = project_presence_topic(project_id)
-    PubSub.subscribe(Storyarn.PubSub, "proxy:#{topic}")
-  end
-
-  @doc """
-  Returns a list of users currently in a project.
-  """
-  def list_project_users(project_id) do
-    topic = project_presence_topic(project_id)
     Presence.list_users(topic)
   end
 
@@ -291,11 +247,6 @@ defmodule Storyarn.Collaboration do
 
   @doc false
   def cursors_topic({type, id}), do: "#{type}:#{id}:cursors"
-
-  @doc """
-  Returns the topic for project-level presence.
-  """
-  def project_presence_topic(project_id), do: "project:#{project_id}:presence"
 
   # =============================================================================
   # Project Restoration

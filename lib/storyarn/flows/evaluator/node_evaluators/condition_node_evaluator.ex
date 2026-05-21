@@ -7,7 +7,8 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluator do
   - Switch mode: evaluates cases in order and follows the first matching case (or default).
   """
 
-  alias Storyarn.Flows.Evaluator.{ConditionEval, EngineHelpers}
+  alias Storyarn.Flows.Evaluator.ConditionEval
+  alias Storyarn.Flows.Evaluator.EngineHelpers
 
   @doc """
   Evaluate a condition node and advance to the appropriate next node.
@@ -102,8 +103,12 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluator do
   end
 
   defp evaluate_switch_block(%{"type" => "block"} = block, acc_state, node_id, label) do
-    block_condition = %{"logic" => block["logic"] || "all", "rules" => block["rules"] || []}
-    {result, _rule_results} = ConditionEval.evaluate(block_condition, acc_state.variables)
+    block_as_condition = %{
+      "logic" => block["logic"] || "all",
+      "blocks" => [%{"type" => "block", "logic" => block["logic"] || "all", "rules" => block["rules"] || []}]
+    }
+
+    {result, _rule_results} = ConditionEval.evaluate(block_as_condition, acc_state.variables)
     block_label = block["label"] || block["id"] || "unnamed"
 
     if result do

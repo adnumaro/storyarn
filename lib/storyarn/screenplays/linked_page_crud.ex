@@ -11,12 +11,9 @@ defmodule Storyarn.Screenplays.LinkedPageCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Repo
-
-  alias Storyarn.Screenplays.{
-    Screenplay,
-    ScreenplayCrud,
-    ScreenplayElement
-  }
+  alias Storyarn.Screenplays.Screenplay
+  alias Storyarn.Screenplays.ScreenplayCrud
+  alias Storyarn.Screenplays.ScreenplayElement
 
   @doc """
   Creates a child screenplay from a response choice.
@@ -105,12 +102,13 @@ defmodule Storyarn.Screenplays.LinkedPageCrud do
   Lists child screenplays for a parent. Returns `[%{id, name}]`.
   """
   def list_child_screenplays(parent_id) do
-    from(s in Screenplay,
-      where: s.parent_id == ^parent_id and is_nil(s.deleted_at),
-      order_by: [asc: s.position],
-      select: %{id: s.id, name: s.name}
+    Repo.all(
+      from(s in Screenplay,
+        where: s.parent_id == ^parent_id and is_nil(s.deleted_at),
+        order_by: [asc: s.position],
+        select: %{id: s.id, name: s.name}
+      )
     )
-    |> Repo.all()
   end
 
   # ---------------------------------------------------------------------------
@@ -120,7 +118,7 @@ defmodule Storyarn.Screenplays.LinkedPageCrud do
   defp do_create_linked_page(project, parent, element, choice) do
     name = choice_name(choice)
 
-    Repo.transaction(fn ->
+    fn ->
       with {:ok, child} <-
              ScreenplayCrud.create_screenplay(project, %{name: name, parent_id: parent.id}),
            {:ok, updated_element} <- set_linked_screenplay_id(element, choice["id"], child.id) do
@@ -128,7 +126,8 @@ defmodule Storyarn.Screenplays.LinkedPageCrud do
       else
         {:error, reason} -> Repo.rollback(reason)
       end
-    end)
+    end
+    |> Repo.transaction()
     |> case do
       {:ok, {child, updated_element}} -> {:ok, child, updated_element}
       {:error, reason} -> {:error, reason}
@@ -163,10 +162,9 @@ defmodule Storyarn.Screenplays.LinkedPageCrud do
   end
 
   defp valid_child?(child_screenplay_id, parent_id) do
-    from(s in Screenplay,
-      where: s.id == ^child_screenplay_id and s.parent_id == ^parent_id and is_nil(s.deleted_at)
+    Repo.exists?(
+      from(s in Screenplay, where: s.id == ^child_screenplay_id and s.parent_id == ^parent_id and is_nil(s.deleted_at))
     )
-    |> Repo.exists?()
   end
 
   defp already_linked_to_other_choice?(element, child_id, current_choice_id) do

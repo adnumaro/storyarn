@@ -11,22 +11,19 @@ defmodule Storyarn.Localization do
   - `BatchTranslator` - Batch translation orchestrator
   """
 
-  alias Storyarn.Localization.{
-    BatchTranslator,
-    ExportImport,
-    GlossaryCrud,
-    GlossaryEntry,
-    LanguageCrud,
-    Languages,
-    LocalizedText,
-    ProjectLanguage,
-    ProviderConfig,
-    Providers,
-    Reports,
-    TextCrud,
-    TextExtractor
-  }
-
+  alias Storyarn.Localization.BatchTranslator
+  alias Storyarn.Localization.ExportImport
+  alias Storyarn.Localization.GlossaryCrud
+  alias Storyarn.Localization.GlossaryEntry
+  alias Storyarn.Localization.LanguageCrud
+  alias Storyarn.Localization.Languages
+  alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Localization.ProjectLanguage
+  alias Storyarn.Localization.ProviderConfig
+  alias Storyarn.Localization.Providers
+  alias Storyarn.Localization.Reports
+  alias Storyarn.Localization.TextCrud
+  alias Storyarn.Localization.TextExtractor
   alias Storyarn.Projects.Project
 
   # =============================================================================

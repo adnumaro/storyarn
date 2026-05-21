@@ -20,23 +20,17 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Articy do
   defp emit_condition_op(ref, "is_nil", _), do: "#{ref} == null"
   defp emit_condition_op(ref, "is_empty", _), do: ~s(#{ref} == "")
 
-  defp emit_condition_op(ref, "contains", val),
-    do: "contains(#{ref}, #{Helpers.format_literal(val, @literal_opts)})"
+  defp emit_condition_op(ref, "contains", val), do: "contains(#{ref}, #{Helpers.format_literal(val, @literal_opts)})"
 
-  defp emit_condition_op(ref, "not_contains", val),
-    do: "!contains(#{ref}, #{Helpers.format_literal(val, @literal_opts)})"
+  defp emit_condition_op(ref, "not_contains", val), do: "!contains(#{ref}, #{Helpers.format_literal(val, @literal_opts)})"
 
-  defp emit_condition_op(ref, "starts_with", val),
-    do: "startsWith(#{ref}, #{Helpers.format_literal(val, @literal_opts)})"
+  defp emit_condition_op(ref, "starts_with", val), do: "startsWith(#{ref}, #{Helpers.format_literal(val, @literal_opts)})"
 
-  defp emit_condition_op(ref, "ends_with", val),
-    do: "endsWith(#{ref}, #{Helpers.format_literal(val, @literal_opts)})"
+  defp emit_condition_op(ref, "ends_with", val), do: "endsWith(#{ref}, #{Helpers.format_literal(val, @literal_opts)})"
 
-  defp emit_condition_op(ref, "before", val),
-    do: "#{ref} < #{Helpers.format_literal(val, @literal_opts)}"
+  defp emit_condition_op(ref, "before", val), do: "#{ref} < #{Helpers.format_literal(val, @literal_opts)}"
 
-  defp emit_condition_op(ref, "after", val),
-    do: "#{ref} > #{Helpers.format_literal(val, @literal_opts)}"
+  defp emit_condition_op(ref, "after", val), do: "#{ref} > #{Helpers.format_literal(val, @literal_opts)}"
 
   defp emit_condition_op(ref, op, value) do
     "#{ref} #{condition_op(op)} #{Helpers.format_literal(value, @literal_opts)}"

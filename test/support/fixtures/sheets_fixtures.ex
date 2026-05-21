@@ -63,7 +63,7 @@ defmodule Storyarn.SheetsFixtures do
   Creates a block with `scope: "children"` (inheritable to descendants).
   """
   def inheritable_block_fixture(sheet, attrs \\ []) do
-    attrs = Enum.into(attrs, %{})
+    attrs = Map.new(attrs)
     label = attrs[:label] || unique_block_label()
     type = attrs[:type] || "text"
 

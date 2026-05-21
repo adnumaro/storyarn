@@ -52,7 +52,7 @@ RUN mix deps.compile
 RUN mix assets.setup
 
 # install npm dependencies (needed by esbuild for JS bundling)
-COPY assets/package.json assets/package-lock.json assets/
+COPY package.json assets/package-lock.json assets/
 RUN cd assets && npm ci --include=prod --ignore-scripts
 
 COPY priv priv

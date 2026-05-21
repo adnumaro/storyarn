@@ -7,7 +7,9 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.DialogueEvaluator do
   Also handles response instructions (variable assignments triggered on selection).
   """
 
-  alias Storyarn.Flows.Evaluator.{ConditionEval, EngineHelpers, InstructionExec}
+  alias Storyarn.Flows.Evaluator.ConditionEval
+  alias Storyarn.Flows.Evaluator.EngineHelpers
+  alias Storyarn.Flows.Evaluator.InstructionExec
   alias Storyarn.Shared.FormulaRuntime
 
   @doc """
@@ -172,7 +174,14 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.DialogueEvaluator do
     {:waiting_input, %{state | status: :waiting_input, pending_choices: pending}}
   end
 
-  defp evaluate_response_conditions(responses, variables) do
+  @doc """
+  Evaluates dialogue response conditions without advancing the engine.
+
+  The debugger/evaluator uses this internally before deciding whether to wait
+  for input or auto-select a response. The player also uses it to decide whether
+  a dialogue should be presented with choices or as a continue-only slide.
+  """
+  def evaluate_response_conditions(responses, variables) do
     Enum.map(responses, fn resp ->
       condition_string = resp["condition"]
 

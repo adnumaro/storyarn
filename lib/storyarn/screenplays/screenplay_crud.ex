@@ -6,79 +6,80 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Screenplays.Screenplay
-  alias Storyarn.Shared.{ImportHelpers, MapUtils, ShortcutHelpers, SoftDelete}
+  alias Storyarn.Shared.ImportHelpers
+  alias Storyarn.Shared.MapUtils
+  alias Storyarn.Shared.ShortcutHelpers
+  alias Storyarn.Shared.SoftDelete
   alias Storyarn.Shared.TreeOperations, as: SharedTree
   alias Storyarn.Shortcuts
 
   @doc """
-  Lists all non-deleted, non-draft screenplays for a project.
+  Lists all non-deleted screenplays for a project.
   """
   def list_screenplays(project_id) do
-    from(s in Screenplay,
-      where:
-        s.project_id == ^project_id and
-          is_nil(s.deleted_at) and
-          is_nil(s.draft_of_id),
-      order_by: [asc: s.position, asc: s.name]
+    Repo.all(
+      from(s in Screenplay,
+        where: s.project_id == ^project_id and is_nil(s.deleted_at),
+        order_by: [asc: s.position, asc: s.name]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
   Lists screenplays as a tree structure.
   Returns root-level screenplays with children preloaded.
-  Excludes drafts and soft-deleted screenplays.
+  Excludes soft-deleted screenplays.
   """
   def list_screenplays_tree(project_id) do
     all =
-      from(s in Screenplay,
-        where:
-          s.project_id == ^project_id and
-            is_nil(s.deleted_at) and
-            is_nil(s.draft_of_id),
-        order_by: [asc: s.position, asc: s.name]
+      Repo.all(
+        from(s in Screenplay,
+          where: s.project_id == ^project_id and is_nil(s.deleted_at),
+          order_by: [asc: s.position, asc: s.name]
+        )
       )
-      |> Repo.all()
 
     SharedTree.build_tree_from_flat_list(all)
   end
 
   @doc """
   Gets a screenplay by project_id and screenplay_id.
-  Returns nil if not found, deleted, or is a draft.
+  Returns nil if not found or deleted.
   Preloads elements ordered by position.
   """
   def get_screenplay(project_id, screenplay_id) do
-    from(s in Screenplay,
-      where:
-        s.project_id == ^project_id and
-          s.id == ^screenplay_id and
-          is_nil(s.deleted_at) and
-          is_nil(s.draft_of_id),
-      preload: [
-        elements: ^from(e in Storyarn.Screenplays.ScreenplayElement, order_by: e.position)
-      ]
+    Repo.one(
+      from(s in Screenplay,
+        where: s.project_id == ^project_id and s.id == ^screenplay_id and is_nil(s.deleted_at),
+        preload: [elements: ^from(e in Storyarn.Screenplays.ScreenplayElement, order_by: e.position)]
+      )
     )
-    |> Repo.one()
   end
 
   @doc """
   Gets a screenplay by project_id and screenplay_id.
-  Raises if not found, deleted, or is a draft.
+  Raises if not found or deleted.
   Preloads elements ordered by position.
   """
   def get_screenplay!(project_id, screenplay_id) do
-    from(s in Screenplay,
-      where:
-        s.project_id == ^project_id and
-          s.id == ^screenplay_id and
-          is_nil(s.deleted_at) and
-          is_nil(s.draft_of_id),
-      preload: [
-        elements: ^from(e in Storyarn.Screenplays.ScreenplayElement, order_by: e.position)
-      ]
+    Repo.one!(
+      from(s in Screenplay,
+        where: s.project_id == ^project_id and s.id == ^screenplay_id and is_nil(s.deleted_at),
+        preload: [elements: ^from(e in Storyarn.Screenplays.ScreenplayElement, order_by: e.position)]
+      )
     )
-    |> Repo.one!()
+  end
+
+  @doc """
+  Gets a screenplay including soft-deleted ones (for trash/restore).
+  """
+  def get_screenplay_including_deleted(project_id, screenplay_id) do
+    Repo.one(
+      from(s in Screenplay,
+        where: s.project_id == ^project_id and s.id == ^screenplay_id,
+        preload: [elements: ^from(e in Storyarn.Screenplays.ScreenplayElement, order_by: e.position)]
+      )
+    )
   end
 
   @doc """
@@ -138,6 +139,12 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
   end
 
   @doc """
+  Permanently deletes a screenplay from the database.
+  Use with caution - this cannot be undone.
+  """
+  def hard_delete_screenplay(%Screenplay{} = screenplay), do: Repo.delete(screenplay)
+
+  @doc """
   Returns a changeset for tracking screenplay changes.
   Used by Form components for validation.
   """
@@ -146,15 +153,12 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
   end
 
   @doc """
-  Checks if a screenplay exists within a project (non-deleted, non-draft).
+  Checks if a screenplay exists within a project (non-deleted).
   """
   def screenplay_exists?(project_id, screenplay_id) do
-    from(s in Screenplay,
-      where:
-        s.id == ^screenplay_id and s.project_id == ^project_id and
-          is_nil(s.deleted_at) and is_nil(s.draft_of_id)
+    Repo.exists?(
+      from(s in Screenplay, where: s.id == ^screenplay_id and s.project_id == ^project_id and is_nil(s.deleted_at))
     )
-    |> Repo.exists?()
   end
 
   @doc """
@@ -195,7 +199,7 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
 
   defp next_position(project_id, parent_id) do
     from(s in Screenplay,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_of_id),
+      where: s.project_id == ^project_id and is_nil(s.deleted_at),
       select: max(s.position)
     )
     |> SharedTree.add_parent_filter(parent_id)
@@ -219,22 +223,20 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
 
     elements_query = from(e in ScreenplayElement, order_by: [asc: e.position])
 
-    from(sp in Screenplay,
-      where: sp.project_id == ^project_id and is_nil(sp.deleted_at),
-      preload: [elements: ^elements_query],
-      order_by: [asc: sp.position, asc: sp.name]
+    Repo.all(
+      from(sp in Screenplay,
+        where: sp.project_id == ^project_id and is_nil(sp.deleted_at),
+        preload: [elements: ^elements_query],
+        order_by: [asc: sp.position, asc: sp.name]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
   Counts non-deleted screenplays for a project.
   """
   def count_screenplays(project_id) do
-    from(sp in Screenplay,
-      where: sp.project_id == ^project_id and is_nil(sp.deleted_at) and is_nil(sp.draft_of_id)
-    )
-    |> Repo.aggregate(:count)
+    Repo.aggregate(from(sp in Screenplay, where: sp.project_id == ^project_id and is_nil(sp.deleted_at)), :count)
   end
 
   @doc """
@@ -242,7 +244,7 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
   """
   def list_shortcuts(project_id) do
     from(sp in Screenplay,
-      where: sp.project_id == ^project_id and is_nil(sp.deleted_at) and is_nil(sp.draft_of_id),
+      where: sp.project_id == ^project_id and is_nil(sp.deleted_at),
       select: sp.shortcut
     )
     |> Repo.all()
@@ -263,13 +265,11 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
   @doc """
   Creates a screenplay for import. Raw insert — no auto-shortcut, no auto-position.
   Accepts optional `extra_changes` for fields not in the create_changeset cast
-  (e.g., `linked_flow_id`, `draft_label`, `draft_status`).
+  (e.g., `linked_flow_id`).
   Returns `{:ok, screenplay}` or `{:error, changeset}`.
   """
   def import_screenplay(project_id, attrs, extra_changes \\ %{}) do
-    changeset =
-      %Screenplay{project_id: project_id}
-      |> Screenplay.create_changeset(attrs)
+    changeset = Screenplay.create_changeset(%Screenplay{project_id: project_id}, attrs)
 
     changeset =
       Enum.reduce(extra_changes, changeset, fn
@@ -289,9 +289,7 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
   def import_element(screenplay_id, attrs, extra_changes \\ %{}) do
     alias Storyarn.Screenplays.ScreenplayElement
 
-    changeset =
-      %ScreenplayElement{screenplay_id: screenplay_id}
-      |> ScreenplayElement.create_changeset(attrs)
+    changeset = ScreenplayElement.create_changeset(%ScreenplayElement{screenplay_id: screenplay_id}, attrs)
 
     changeset =
       Enum.reduce(extra_changes, changeset, fn
@@ -303,7 +301,7 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
   end
 
   @doc """
-  Updates a screenplay's parent_id and/or draft_of_id after import (two-pass linking).
+  Updates a screenplay's parent_id after import (two-pass linking).
   """
   def link_import_refs(%Screenplay{} = screenplay, changes) when changes != %{} do
     screenplay

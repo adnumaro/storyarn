@@ -2,7 +2,6 @@ defmodule StoryarnWeb.UserSessionControllerTest do
   use StoryarnWeb.ConnCase, async: true
 
   import Storyarn.AccountsFixtures
-  alias Storyarn.Accounts
 
   setup do
     %{unconfirmed_user: unconfirmed_user_fixture(), user: user_fixture()}
@@ -61,6 +60,22 @@ defmodule StoryarnWeb.UserSessionControllerTest do
       assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "Welcome back!"
     end
 
+    test "confirmed access uses current user email when form email is absent", %{conn: conn, user: user} do
+      stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -121, :minute)
+
+      conn =
+        conn
+        |> log_in_user(user, token_authenticated_at: stale_authenticated_at)
+        |> put_session(:user_return_to, "/users/settings")
+        |> post(~p"/users/log-in", %{
+          "_action" => "confirmed",
+          "user" => %{"password" => valid_user_password()}
+        })
+
+      assert redirected_to(conn) == "/users/settings"
+      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "User confirmed successfully."
+    end
+
     test "redirects to login page with invalid credentials", %{conn: conn, user: user} do
       conn =
         post(conn, ~p"/users/log-in?mode=password", %{
@@ -68,61 +83,6 @@ defmodule StoryarnWeb.UserSessionControllerTest do
         })
 
       assert Phoenix.Flash.get(conn.assigns.flash, :error) == "Invalid email or password"
-      assert redirected_to(conn) == ~p"/users/log-in"
-    end
-  end
-
-  describe "POST /users/log-in - magic link" do
-    test "logs the user in", %{conn: conn, user: user} do
-      {token, _hashed_token} = generate_user_magic_link_token(user)
-
-      conn =
-        post(conn, ~p"/users/log-in", %{
-          "user" => %{"token" => token}
-        })
-
-      assert get_session(conn, :user_token)
-      # User is redirected to their default workspace
-      assert redirected_to(conn) =~ "/workspaces/"
-
-      # Now do a logged in request to settings and assert on the menu
-      conn = get(conn, ~p"/users/settings")
-      response = html_response(conn, 200)
-      assert response =~ user.email
-    end
-
-    test "confirms unconfirmed user", %{conn: conn, unconfirmed_user: user} do
-      {token, _hashed_token} = generate_user_magic_link_token(user)
-      refute user.confirmed_at
-
-      conn =
-        post(conn, ~p"/users/log-in", %{
-          "user" => %{"token" => token},
-          "_action" => "confirmed"
-        })
-
-      assert get_session(conn, :user_token)
-      # User is redirected to their default workspace
-      assert redirected_to(conn) =~ "/workspaces/"
-      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "User confirmed successfully."
-
-      assert Accounts.get_user!(user.id).confirmed_at
-
-      # Now do a logged in request to settings and assert on the menu
-      conn = get(conn, ~p"/users/settings")
-      response = html_response(conn, 200)
-      assert response =~ user.email
-    end
-
-    test "redirects to login page when magic link is invalid", %{conn: conn} do
-      conn =
-        post(conn, ~p"/users/log-in", %{
-          "user" => %{"token" => "invalid"}
-        })
-
-      assert Phoenix.Flash.get(conn.assigns.flash, :error) ==
-               "The link is invalid or it has expired."
-
       assert redirected_to(conn) == ~p"/users/log-in"
     end
   end

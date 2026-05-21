@@ -7,6 +7,7 @@ defmodule Storyarn.Sheets.BlockGalleryImage do
   """
 
   use Ecto.Schema
+
   import Ecto.Changeset
 
   alias Storyarn.Assets.Asset
@@ -35,7 +36,6 @@ defmodule Storyarn.Sheets.BlockGalleryImage do
 
   @doc "Changeset for updating a gallery image's label and description."
   def update_changeset(gallery_image, attrs) do
-    gallery_image
-    |> cast(attrs, [:label, :description])
+    cast(gallery_image, attrs, [:label, :description])
   end
 end

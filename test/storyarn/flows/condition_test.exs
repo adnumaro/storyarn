@@ -17,10 +17,6 @@ defmodule Storyarn.Flows.ConditionTest do
     }
   end
 
-  defp make_flat(logic, rules) do
-    %{"logic" => logic, "rules" => rules}
-  end
-
   defp make_block(id, logic, rules, opts \\ []) do
     base = %{"id" => id, "type" => "block", "logic" => logic, "rules" => rules}
     if label = Keyword.get(opts, :label), do: Map.put(base, "label", label), else: base
@@ -35,10 +31,10 @@ defmodule Storyarn.Flows.ConditionTest do
   end
 
   # =============================================================================
-  # Flat format — parse
+  # parse
   # =============================================================================
 
-  describe "parse/1 flat format" do
+  describe "parse/1" do
     test "nil returns nil" do
       assert Condition.parse(nil) == nil
     end
@@ -47,26 +43,14 @@ defmodule Storyarn.Flows.ConditionTest do
       assert Condition.parse("") == nil
     end
 
-    test "valid JSON flat condition" do
-      json = Jason.encode!(make_flat("all", [make_rule("mc", "hp", "equals", "50")]))
-      result = Condition.parse(json)
-      assert %{"logic" => "all", "rules" => [%{"sheet" => "mc"}]} = result
+    test "invalid JSON returns nil" do
+      assert Condition.parse("not json") == nil
     end
 
-    test "invalid JSON returns :legacy" do
-      assert Condition.parse("not json") == :legacy
+    test "wrong structure returns nil" do
+      assert Condition.parse(Jason.encode!(%{"foo" => "bar"})) == nil
     end
 
-    test "wrong structure returns :legacy" do
-      assert Condition.parse(Jason.encode!(%{"foo" => "bar"})) == :legacy
-    end
-  end
-
-  # =============================================================================
-  # Block format — parse
-  # =============================================================================
-
-  describe "parse/1 block format" do
     test "parses block-format condition from JSON" do
       block = make_block("b1", "all", [make_rule("mc", "hp", "equals", "50")])
       condition = make_block_condition("any", [block])
@@ -103,13 +87,6 @@ defmodule Storyarn.Flows.ConditionTest do
   # =============================================================================
 
   describe "to_json/1" do
-    test "flat format roundtrip" do
-      condition = make_flat("all", [make_rule("mc", "hp", "equals", "50")])
-      json = Condition.to_json(condition)
-      assert is_binary(json)
-      assert %{"logic" => "all", "rules" => [_]} = Jason.decode!(json)
-    end
-
     test "block format roundtrip" do
       block = make_block("b1", "all", [make_rule("mc", "hp", "equals", "50")])
       condition = make_block_condition("any", [block])
@@ -122,10 +99,6 @@ defmodule Storyarn.Flows.ConditionTest do
       assert Condition.to_json(nil) == nil
     end
 
-    test "empty flat rules returns nil" do
-      assert Condition.to_json(%{"rules" => []}) == nil
-    end
-
     test "empty blocks returns nil" do
       assert Condition.to_json(%{"blocks" => []}) == nil
     end
@@ -135,37 +108,11 @@ defmodule Storyarn.Flows.ConditionTest do
   # sanitize
   # =============================================================================
 
-  describe "sanitize/1 flat format" do
-    test "sanitizes flat condition" do
-      result =
-        Condition.sanitize(%{
-          "logic" => "all",
-          "rules" => [
-            %{
-              "sheet" => "mc",
-              "variable" => "hp",
-              "operator" => "equals",
-              "value" => "10",
-              "evil_key" => "bad"
-            }
-          ]
-        })
-
-      assert %{"logic" => "all", "rules" => [rule]} = result
-      refute Map.has_key?(rule, "evil_key")
+  describe "sanitize/1" do
+    test "non-map input defaults to empty block condition" do
+      assert Condition.sanitize("bad") == %{"logic" => "all", "blocks" => []}
     end
 
-    test "invalid logic defaults to all" do
-      result = Condition.sanitize(%{"logic" => "INVALID", "rules" => []})
-      assert result["logic"] == "all"
-    end
-
-    test "non-map input defaults to empty flat" do
-      assert Condition.sanitize("bad") == %{"logic" => "all", "rules" => []}
-    end
-  end
-
-  describe "sanitize/1 block format" do
     test "sanitizes block-format condition" do
       block =
         Map.put(make_block("b1", "all", [make_rule("mc", "hp", "equals", "50")]), "evil", "bad")
@@ -209,16 +156,6 @@ defmodule Storyarn.Flows.ConditionTest do
   # =============================================================================
 
   describe "validate/1" do
-    test "valid flat condition" do
-      condition = make_flat("all", [make_rule("mc", "hp", "equals", "50")])
-      assert {:ok, _} = Condition.validate(condition)
-    end
-
-    test "invalid flat condition" do
-      condition = make_flat("all", [%{"bad" => true}])
-      assert {:error, "Invalid rule structure"} = Condition.validate(condition)
-    end
-
     test "valid block condition" do
       block = make_block("b1", "all", [make_rule("mc", "hp", "equals", "50")])
       condition = make_block_condition("any", [block])
@@ -243,15 +180,6 @@ defmodule Storyarn.Flows.ConditionTest do
   describe "has_rules?/1" do
     test "nil returns false" do
       refute Condition.has_rules?(nil)
-    end
-
-    test "flat with valid rules returns true" do
-      condition = make_flat("all", [make_rule("mc", "hp", "equals", "50")])
-      assert Condition.has_rules?(condition)
-    end
-
-    test "flat with empty rules returns false" do
-      refute Condition.has_rules?(make_flat("all", []))
     end
 
     test "block with valid rules returns true" do
@@ -282,49 +210,6 @@ defmodule Storyarn.Flows.ConditionTest do
   end
 
   # =============================================================================
-  # upgrade
-  # =============================================================================
-
-  describe "upgrade/1" do
-    test "upgrades flat condition to block format" do
-      flat = make_flat("any", [make_rule("mc", "hp", "equals", "50")])
-      result = Condition.upgrade(flat)
-
-      assert %{"logic" => "all", "blocks" => [block]} = result
-      assert block["type"] == "block"
-      assert block["logic"] == "any"
-      assert length(block["rules"]) == 1
-    end
-
-    test "passes through block-format unchanged" do
-      block = make_block("b1", "all", [make_rule("mc", "hp", "equals", "50")])
-      block_cond = make_block_condition("any", [block])
-
-      assert Condition.upgrade(block_cond) == block_cond
-    end
-
-    test "nil returns empty block condition" do
-      result = Condition.upgrade(nil)
-      assert %{"logic" => "all", "blocks" => []} = result
-    end
-
-    test "invalid input returns empty block condition" do
-      result = Condition.upgrade("bad")
-      assert %{"logic" => "all", "blocks" => []} = result
-    end
-
-    test "preserves rules and logic from flat format" do
-      rule1 = make_rule("mc", "hp", "greater_than", "50")
-      rule2 = make_rule("mc", "alive", "is_true")
-      flat = make_flat("any", [rule1, rule2])
-      result = Condition.upgrade(flat)
-
-      assert %{"blocks" => [%{"logic" => "any", "rules" => rules}]} = result
-      assert length(rules) == 2
-    end
-  end
-
-  # =============================================================================
   # new_block_condition
   # =============================================================================
 
@@ -347,12 +232,6 @@ defmodule Storyarn.Flows.ConditionTest do
   describe "extract_all_rules/1" do
     test "nil returns empty" do
       assert Condition.extract_all_rules(nil) == []
-    end
-
-    test "flat format extracts rules" do
-      rules = [make_rule("mc", "hp", "equals", "50"), make_rule("mc", "alive", "is_true")]
-      condition = make_flat("all", rules)
-      assert length(Condition.extract_all_rules(condition)) == 2
     end
 
     test "block format extracts rules from blocks" do
@@ -386,7 +265,6 @@ defmodule Storyarn.Flows.ConditionTest do
 
     test "empty condition returns empty" do
       assert Condition.extract_all_rules(%{"blocks" => []}) == []
-      assert Condition.extract_all_rules(%{"rules" => []}) == []
     end
 
     test "invalid input returns empty" do
@@ -395,18 +273,10 @@ defmodule Storyarn.Flows.ConditionTest do
   end
 
   # =============================================================================
-  # Backwards compatibility roundtrips
+  # Roundtrips
   # =============================================================================
 
-  describe "backwards compatibility" do
-    test "flat format parse → to_json roundtrip" do
-      original = make_flat("all", [make_rule("mc", "hp", "equals", "50")])
-      json = Condition.to_json(original)
-      parsed = Condition.parse(json)
-      assert parsed["logic"] == "all"
-      assert length(parsed["rules"]) == 1
-    end
-
+  describe "roundtrips" do
     test "block format parse → to_json roundtrip" do
       block = make_block("b1", "all", [make_rule("mc", "hp", "equals", "50")])
       original = make_block_condition("any", [block])
@@ -415,34 +285,6 @@ defmodule Storyarn.Flows.ConditionTest do
       assert parsed["logic"] == "any"
       assert length(parsed["blocks"]) == 1
     end
-
-    test "upgrade flat → to_json → parse roundtrip" do
-      flat = make_flat("any", [make_rule("mc", "hp", "equals", "50")])
-      upgraded = Condition.upgrade(flat)
-      json = Condition.to_json(upgraded)
-      parsed = Condition.parse(json)
-      assert Map.has_key?(parsed, "blocks")
-      assert length(parsed["blocks"]) == 1
-    end
-
-    test "existing flat-format functions still work" do
-      # add_rule, remove_rule, update_rule, set_logic should be unchanged
-      condition = Condition.new()
-      assert condition == %{"logic" => "all", "rules" => []}
-
-      with_rule = Condition.add_rule(condition)
-      assert length(with_rule["rules"]) == 1
-
-      rule_id = hd(with_rule["rules"])["id"]
-      updated = Condition.update_rule(with_rule, rule_id, "sheet", "mc")
-      assert hd(updated["rules"])["sheet"] == "mc"
-
-      removed = Condition.remove_rule(updated, rule_id)
-      assert removed["rules"] == []
-
-      logic_changed = Condition.set_logic(Condition.new(), "any")
-      assert logic_changed["logic"] == "any"
-    end
   end
 
   # =============================================================================
@@ -450,13 +292,6 @@ defmodule Storyarn.Flows.ConditionTest do
   # =============================================================================
 
   describe "edge cases" do
-    test "condition with both 'rules' and 'blocks' keys — blocks take precedence in sanitize" do
-      # If JS sends both (shouldn't happen), blocks format wins
-      mixed = %{"logic" => "all", "blocks" => [], "rules" => []}
-      result = Condition.sanitize(mixed)
-      assert Map.has_key?(result, "blocks")
-    end
-
     test "malformed block types are rejected" do
       bad = %{"type" => "bad_type", "rules" => []}
       condition = %{"logic" => "all", "blocks" => [bad]}

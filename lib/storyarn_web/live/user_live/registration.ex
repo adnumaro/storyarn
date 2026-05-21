@@ -3,72 +3,64 @@ defmodule StoryarnWeb.UserLive.Registration do
 
   use StoryarnWeb, :live_view
 
-  import StoryarnWeb.Components.UIComponents, only: [oauth_buttons: 1]
-
   alias Storyarn.Accounts
-  alias Storyarn.Accounts.User
   alias Storyarn.RateLimiter
 
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.auth flash={@flash} current_scope={@current_scope}>
-      <div class="mx-auto max-w-sm">
-        <div class="text-center">
-          <.header>
-            {dgettext("identity", "Register for an account")}
-            <:subtitle>
-              {dgettext("identity", "Already registered?")}
-              <.link navigate={~p"/users/log-in"} class="font-semibold text-brand hover:underline">
-                {dgettext("identity", "Log in")}
-              </.link>
-              {dgettext("identity", "to your account now.")}
-            </:subtitle>
-          </.header>
-        </div>
-
-        <.oauth_buttons class="mb-4" />
-
-        <div class="divider">{dgettext("identity", "or register with email")}</div>
-
-        <.form for={@form} id="registration_form" phx-submit="save" phx-change="validate">
-          <.input
-            field={@form[:email]}
-            type="email"
-            label={dgettext("identity", "Email")}
-            autocomplete="username"
-            required
-            phx-mounted={JS.focus()}
-          />
-
-          <.button
-            phx-disable-with={dgettext("identity", "Creating account...")}
-            class="btn btn-primary w-full"
-          >
-            {dgettext("identity", "Create an account")}
-          </.button>
-        </.form>
-      </div>
-    </Layouts.auth>
+    <StoryarnWeb.Components.AuthLayout.auth
+      flash={@flash}
+      current_scope={@current_scope}
+      socket={@socket}
+    >
+      <.vue
+        v-component="live/auth/registration/AuthRegistrationForm"
+        v-socket={@socket}
+        v-inject="auth-layout"
+        id="registration-vue"
+        form={@form}
+        user-email={@invited_user.email}
+        login-url={~p"/users/log-in"}
+      />
+    </StoryarnWeb.Components.AuthLayout.auth>
     """
   end
 
   @impl true
-  def mount(_params, _session, %{assigns: %{current_scope: %{user: user}}} = socket)
-      when not is_nil(user) do
+  def mount(_params, _session, %{assigns: %{current_scope: %{user: user}}} = socket) when not is_nil(user) do
     {:ok, redirect(socket, to: StoryarnWeb.UserAuth.signed_in_path(socket))}
   end
 
-  def mount(_params, _session, socket) do
-    # Registration disabled during invite-only beta
-    # Extract client IP for rate limiting (only available during mount)
+  def mount(%{"token" => token}, _session, socket) do
     ip =
       case get_connect_info(socket, :peer_data) do
         %{address: addr} when is_tuple(addr) -> addr |> :inet.ntoa() |> to_string()
         _ -> "unknown"
       end
 
-    {:ok, socket |> assign(:client_ip, ip) |> redirect(to: ~p"/")}
+    case Accounts.get_user_by_invite_token(token) do
+      {user, token_record} ->
+        # We start with an empty changeset (casted so params is %{}) so no validation errors are shown on load
+        changeset = Ecto.Changeset.cast(user, %{}, [])
+
+        {:ok,
+         socket
+         |> assign(:invited_user, user)
+         |> assign(:invite_token, token_record)
+         |> assign(:client_ip, ip)
+         |> assign_form(changeset)}
+
+      nil ->
+        {:ok,
+         socket
+         |> put_flash(:error, dgettext("identity", "Invalid or expired registration link."))
+         |> redirect(to: ~p"/")}
+    end
+  end
+
+  def mount(_params, _session, socket) do
+    {:ok, redirect(socket, to: ~p"/")}
   end
 
   @impl true
@@ -84,36 +76,32 @@ defmodule StoryarnWeb.UserLive.Registration do
            :error,
            dgettext("identity", "Too many registration attempts. Please try again later.")
          )
-         |> push_navigate(to: ~p"/users/register")}
+         |> push_navigate(to: ~p"/")}
     end
   end
 
   def handle_event("validate", %{"user" => user_params}, socket) do
-    changeset = Accounts.change_user_email(%User{}, user_params, validate_unique: false)
+    user = socket.assigns.invited_user
+    changeset = Accounts.change_user_password(user, user_params, hash_password: false)
     {:noreply, assign_form(socket, Map.put(changeset, :action, :validate))}
   end
 
   # Private helpers
 
   defp do_register(socket, user_params) do
-    case Accounts.register_user(user_params) do
-      {:ok, user} ->
-        {:ok, _} =
-          Accounts.deliver_login_instructions(
-            user,
-            &url(~p"/users/log-in/#{&1}")
-          )
+    user = socket.assigns.invited_user
+    token_record = socket.assigns.invite_token
 
+    case Accounts.complete_registration(user, token_record, user_params) do
+      {:ok, _updated_user} ->
         {:noreply,
          socket
-         |> put_flash(
-           :info,
-           dgettext(
-             "identity",
-             "An email was sent to %{email}, please access it to confirm your account.",
-             email: user.email
-           )
-         )
+         |> put_flash(:info, dgettext("identity", "Account created successfully! Welcome."))
+         # We cannot call typical redirect, log_in_user from socket. It's best to redirect to a POST endpoint
+         # or use the standard log_in_user hook if we can. Wait, UserAuth has `log_in_user` for controllers.
+         # For LiveViews, `push_navigate` but the cookies must be set.
+         # Standard phx.gen.auth redirects to login page with flash or handles it in `UserSessionController.create/2`.
+         # Let's redirect to `/users/log-in` with success message for now, forcing them to login immediately:
          |> push_navigate(to: ~p"/users/log-in")}
 
       {:error, %Ecto.Changeset{} = changeset} ->

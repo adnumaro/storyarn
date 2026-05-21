@@ -3,16 +3,17 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
   Layer management handlers for the scene LiveView.
   """
 
-  import Phoenix.Component, only: [assign: 3]
-  import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
   use StoryarnWeb, :verified_routes
   use Gettext, backend: Storyarn.Gettext
 
-  alias Storyarn.Scenes
+  import Phoenix.Component, only: [assign: 3]
+  import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
   import StoryarnWeb.Helpers.AutoSnapshot, only: [schedule: 2]
-  import StoryarnWeb.SceneLive.Helpers.SceneHelpers
-  import StoryarnWeb.SceneLive.Helpers.Serializer
   import StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers, only: [push_undo: 2]
+  import StoryarnWeb.SceneLive.Helpers.SceneHelpers
+  import StoryarnWeb.SceneLive.Helpers.SceneSerializer
+
+  alias Storyarn.Scenes
 
   def handle_create_layer(_params, socket) do
     case Scenes.create_layer(socket.assigns.scene.id, %{name: dgettext("scenes", "New Layer")}) do
@@ -58,10 +59,12 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
     {:noreply, assign(socket, :renaming_layer_id, id)}
   end
 
-  def handle_rename_layer(%{"id" => id, "value" => name}, socket) do
+  def handle_rename_layer(%{"id" => id} = params, socket) do
+    name = params |> Map.get("name", Map.get(params, "value", "")) |> to_string()
+
     {:noreply,
      socket
-     |> do_rename_layer(id, String.trim(name))
+     |> do_rename_layer(parse_id(id), String.trim(name))
      |> assign(:renaming_layer_id, nil)}
   end
 
@@ -117,8 +120,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
     end
   end
 
-  def handle_update_exploration_display_mode(%{"mode" => mode}, socket)
-      when mode in ~w(fit scaled) do
+  def handle_update_exploration_display_mode(%{"mode" => mode}, socket) when mode in ~w(fit scaled) do
     case Scenes.update_scene(socket.assigns.scene, %{"exploration_display_mode" => mode}) do
       {:ok, updated} ->
         {:noreply,
@@ -211,8 +213,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
          |> reload_scene()}
 
       {:error, _} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("scenes", "Could not toggle layer visibility."))}
+        {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not toggle layer visibility."))}
     end
   end
 
@@ -238,8 +239,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
          |> reload_scene()}
 
       {:error, _} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("scenes", "Could not update fog settings."))}
+        {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not update fog settings."))}
     end
   end
 
@@ -253,14 +253,33 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
          |> assign(:_broadcast, {:layer_deleted, %{}})
          |> push_event("layer_deleted", %{id: layer.id})
          |> put_flash(:info, dgettext("scenes", "Layer deleted."))
-         |> reload_scene()}
+         |> reload_scene()
+         |> clear_deleted_layer_state(layer.id)}
 
       {:error, :cannot_delete_last_layer} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("scenes", "Cannot delete the last layer of a scene."))}
+        {:noreply, put_flash(socket, :error, dgettext("scenes", "Cannot delete the last layer of a scene."))}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not delete layer."))}
+    end
+  end
+
+  defp clear_deleted_layer_state(socket, deleted_layer_id) do
+    active_layer_id = valid_active_layer_id(socket.assigns.layers, socket.assigns[:active_layer_id], deleted_layer_id)
+
+    socket
+    |> assign(:active_layer_id, active_layer_id)
+    |> assign(:pending_delete_layer_id, nil)
+  end
+
+  defp valid_active_layer_id(layers, active_layer_id, deleted_layer_id) do
+    active_layer_removed? = to_string(active_layer_id) == to_string(deleted_layer_id)
+    active_layer_exists? = Enum.any?(layers, &(to_string(&1.id) == to_string(active_layer_id)))
+
+    if active_layer_id && !active_layer_removed? && active_layer_exists? do
+      active_layer_id
+    else
+      default_layer_id(layers)
     end
   end
 end

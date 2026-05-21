@@ -11,15 +11,17 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
   """
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Exports.{DataCollector, ExportOptions}
-  alias Storyarn.Exports.Serializers.Yarn
-  alias Storyarn.Repo
-  alias Storyarn.Test.YarnCompiler
-
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Exports.DataCollector
+  alias Storyarn.Exports.ExportOptions
+  alias Storyarn.Exports.Serializers.Yarn
+  alias Storyarn.Flows
+  alias Storyarn.Repo
+  alias Storyarn.Test.YarnCompiler
 
   @moduletag :ysc_validation
 
@@ -90,6 +92,32 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
              "ysc rejected dialogue flow:\n#{inspect(YarnCompiler.validate(source))}"
     end
 
+    test "dialogue nested in a sequence compiles and is included", %{project: project} do
+      flow = flow_fixture(project, %{name: "Sequence"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+      {:ok, sequence} = Flows.create_sequence(flow.id, %{"name" => "Act I"})
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          parent_id: sequence.id,
+          data: %{
+            "text" => "Inside the sequence.",
+            "speaker_sheet_id" => nil,
+            "responses" => []
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = yarn_source(export_files(project))
+      assert source =~ "Inside the sequence."
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected sequence-nested dialogue:\n#{inspect(YarnCompiler.validate(source))}"
+    end
+
     test "dialogue with speaker compiles", %{project: project} do
       sheet = sheet_fixture(project, %{name: "Jaime"})
       flow = flow_fixture(project, %{name: "Speaker"})
@@ -138,6 +166,48 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
 
       assert YarnCompiler.valid?(source),
              "ysc rejected choices:\n#{inspect(YarnCompiler.validate(source))}"
+    end
+
+    test "dialogue choice branches compile nested under shortcut options", %{project: project} do
+      flow = flow_fixture(project, %{name: "ChoiceBranches"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Pick a path.",
+            "speaker_sheet_id" => nil,
+            "responses" => [
+              %{"id" => "fight", "text" => "Fight", "condition" => nil, "instruction" => nil},
+              %{"id" => "run", "text" => "Run", "condition" => nil, "instruction" => nil}
+            ]
+          }
+        })
+
+      fight_dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "You fight.", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      run_dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "You run.", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      connection_fixture(flow, entry, dialogue)
+      connection_fixture(flow, dialogue, fight_dialogue, %{source_pin: "response_fight"})
+      connection_fixture(flow, dialogue, run_dialogue, %{source_pin: "response_run"})
+
+      source = yarn_source(export_files(project))
+      assert source =~ ~r/-> Fight #line:line_\d+\n    You fight\./
+      assert source =~ ~r/-> Run #line:line_\d+\n    You run\./
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected choice branches:\n#{inspect(YarnCompiler.validate(source))}"
     end
 
     test "variable declarations compile", %{project: project} do
@@ -293,23 +363,24 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
              "ysc rejected jump/hub:\n#{inspect(YarnCompiler.validate(source))}"
     end
 
-    test "scene command compiles", %{project: project} do
-      flow = flow_fixture(project, %{name: "Scene"})
-      flow = reload_flow(flow)
-      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+    test "exit flow_reference compiles", %{project: project} do
+      target_flow = flow_fixture(project, %{name: "Next Chapter"})
+      source_flow = flow_fixture(project, %{name: "Current Chapter"})
+      source_flow = reload_flow(source_flow)
+      entry = Enum.find(source_flow.nodes, &(&1.type == "entry"))
 
-      scene =
-        node_fixture(flow, %{
-          type: "slug_line",
-          data: %{"location" => "Tavern"}
+      exit_node =
+        node_fixture(source_flow, %{
+          type: "exit",
+          data: %{"exit_mode" => "flow_reference", "referenced_flow_id" => target_flow.id}
         })
 
-      connection_fixture(flow, entry, scene)
+      connection_fixture(source_flow, entry, exit_node)
 
       source = yarn_source(export_files(project))
 
       assert YarnCompiler.valid?(source),
-             "ysc rejected scene:\n#{inspect(YarnCompiler.validate(source))}"
+             "ysc rejected exit flow_reference:\n#{inspect(YarnCompiler.validate(source))}"
     end
 
     test "conditional choice compiles", %{project: project} do
@@ -688,6 +759,40 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
       assert YarnCompiler.valid?(source),
              "ysc rejected 3-case condition (M1):\n#{inspect(YarnCompiler.validate(source))}"
     end
+
+    test "subflow detour returns correctly", %{project: project} do
+      target_flow = flow_fixture(project, %{name: "Side Quest"})
+      target_flow = reload_flow(target_flow)
+      target_entry = Enum.find(target_flow.nodes, &(&1.type == "entry"))
+      target_exit = node_fixture(target_flow, %{type: "exit", data: %{}})
+      connection_fixture(target_flow, target_entry, target_exit)
+
+      caller_flow = flow_fixture(project, %{name: "Main"})
+      caller_flow = reload_flow(caller_flow)
+      caller_entry = Enum.find(caller_flow.nodes, &(&1.type == "entry"))
+
+      subflow_node =
+        node_fixture(caller_flow, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => target_flow.id}
+        })
+
+      after_dialogue =
+        node_fixture(caller_flow, %{
+          type: "dialogue",
+          data: %{"text" => "Back from detour.", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      connection_fixture(caller_flow, caller_entry, subflow_node)
+      connection_fixture(caller_flow, subflow_node, after_dialogue)
+
+      source = yarn_source(export_files(project))
+      assert source =~ "<<detour"
+      assert source =~ "<<return>>"
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected subflow detour:\n#{inspect(YarnCompiler.validate(source))}"
+    end
   end
 
   # =============================================================================
@@ -985,18 +1090,18 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
              "ysc rejected multi-file export:\n#{inspect(YarnCompiler.validate_multi(files))}"
     end
 
-    test "multi-file with cross-flow jumps compiles", %{project: project} do
+    test "multi-file with cross-flow detours compiles", %{project: project} do
       flow_a = flow_fixture(project, %{name: "Flow A"})
       flow_b = flow_fixture(project, %{name: "Flow B"})
 
       flow_a = reload_flow(flow_a)
       entry_a = Enum.find(flow_a.nodes, &(&1.type == "entry"))
 
-      # Flow A jumps to Flow B via subflow node
+      # Flow A calls Flow B via subflow node.
       subflow =
         node_fixture(flow_a, %{
           type: "subflow",
-          data: %{"flow_shortcut" => flow_b.shortcut}
+          data: %{"referenced_flow_id" => flow_b.id}
         })
 
       connection_fixture(flow_a, entry_a, subflow)
@@ -1021,7 +1126,7 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
       files = export_files(project)
 
       assert YarnCompiler.validate_multi(files) == :ok,
-             "ysc rejected cross-flow jump:\n#{inspect(YarnCompiler.validate_multi(files))}"
+             "ysc rejected cross-flow detour:\n#{inspect(YarnCompiler.validate_multi(files))}"
     end
   end
 end

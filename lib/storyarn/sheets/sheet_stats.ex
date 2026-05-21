@@ -6,7 +6,10 @@ defmodule Storyarn.Sheets.SheetStats do
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Localization.LocalizableWords
   alias Storyarn.Repo
-  alias Storyarn.Sheets.{Block, Sheet, TableColumn, TableRow}
+  alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.Sheet
+  alias Storyarn.Sheets.TableColumn
+  alias Storyarn.Sheets.TableRow
 
   @variable_types ~w(text rich_text number select multi_select boolean date)
 
@@ -128,20 +131,18 @@ defmodule Storyarn.Sheets.SheetStats do
 
   defp detect_empty_sheets(project_id) do
     # Sheets with no blocks AND no children are "empty"
-    from(s in Sheet,
-      left_join: b in Block,
-      on: b.sheet_id == s.id and is_nil(b.deleted_at),
-      left_join: child in Sheet,
-      on:
-        child.parent_id == s.id and child.project_id == ^project_id and is_nil(child.deleted_at),
-      where:
-        s.project_id == ^project_id and is_nil(s.deleted_at) and
-          is_nil(child.id),
-      group_by: [s.id, s.name],
-      having: count(b.id) == 0,
-      select: %{issue_type: :empty_sheet, sheet_id: s.id, sheet_name: s.name}
+    Repo.all(
+      from(s in Sheet,
+        left_join: b in Block,
+        on: b.sheet_id == s.id and is_nil(b.deleted_at),
+        left_join: child in Sheet,
+        on: child.parent_id == s.id and child.project_id == ^project_id and is_nil(child.deleted_at),
+        where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(child.id),
+        group_by: [s.id, s.name],
+        having: count(b.id) == 0,
+        select: %{issue_type: :empty_sheet, sheet_id: s.id, sheet_name: s.name}
+      )
     )
-    |> Repo.all()
   end
 
   defp detect_unused_variables(project_id, referenced_ids) do
@@ -176,12 +177,11 @@ defmodule Storyarn.Sheets.SheetStats do
   end
 
   defp detect_missing_shortcuts(project_id) do
-    from(s in Sheet,
-      where:
-        s.project_id == ^project_id and is_nil(s.deleted_at) and
-          (is_nil(s.shortcut) or s.shortcut == ""),
-      select: %{issue_type: :missing_shortcut, sheet_id: s.id, sheet_name: s.name}
+    Repo.all(
+      from(s in Sheet,
+        where: s.project_id == ^project_id and is_nil(s.deleted_at) and (is_nil(s.shortcut) or s.shortcut == ""),
+        select: %{issue_type: :missing_shortcut, sheet_id: s.id, sheet_name: s.name}
+      )
     )
-    |> Repo.all()
   end
 end

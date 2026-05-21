@@ -4,8 +4,10 @@ defmodule Storyarn.Billing.Subscription do
   """
 
   use Ecto.Schema
+
   import Ecto.Changeset
 
+  alias Storyarn.Billing.Plan
   alias Storyarn.Workspaces.Workspace
 
   schema "subscriptions" do
@@ -27,7 +29,7 @@ defmodule Storyarn.Billing.Subscription do
     subscription
     |> cast(attrs, [:workspace_id, :plan, :status])
     |> validate_required([:workspace_id, :plan, :status])
-    |> validate_inclusion(:plan, Map.keys(Storyarn.Billing.Plan.all()))
+    |> validate_inclusion(:plan, Map.keys(Plan.all()))
     |> unique_constraint(:workspace_id)
   end
 
@@ -44,6 +46,6 @@ defmodule Storyarn.Billing.Subscription do
       :canceled_at
     ])
     |> validate_required([:plan, :status])
-    |> validate_inclusion(:plan, Map.keys(Storyarn.Billing.Plan.all()))
+    |> validate_inclusion(:plan, Map.keys(Plan.all()))
   end
 end

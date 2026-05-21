@@ -2,7 +2,9 @@ defmodule StoryarnWeb.OAuth.DiscordStrategyTest do
   use ExUnit.Case, async: true
 
   alias StoryarnWeb.OAuth.DiscordStrategy
-  alias Ueberauth.Auth.{Credentials, Extra, Info}
+  alias Ueberauth.Auth.Credentials
+  alias Ueberauth.Auth.Extra
+  alias Ueberauth.Auth.Info
 
   # =============================================================================
   # uid/1
@@ -175,9 +177,7 @@ defmodule StoryarnWeb.OAuth.DiscordStrategyTest do
 
   describe "handle_callback!/1 without code" do
     test "sets missing_code error" do
-      conn =
-        %Plug.Conn{params: %{}}
-        |> put_ueberauth_options()
+      conn = put_ueberauth_options(%Plug.Conn{params: %{}})
 
       result = DiscordStrategy.handle_callback!(conn)
 

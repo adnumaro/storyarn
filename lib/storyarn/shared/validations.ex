@@ -50,9 +50,7 @@ defmodule Storyarn.Shared.Validations do
   """
   @spec validate_email_format(Ecto.Changeset.t()) :: Ecto.Changeset.t()
   def validate_email_format(changeset) do
-    validate_format(changeset, :email, @email_format,
-      message: "must have the @ sign and no spaces"
-    )
+    validate_format(changeset, :email, @email_format, message: "must have the @ sign and no spaces")
   end
 
   @slug_format ~r/^[a-z0-9]+(?:-[a-z0-9]+)*$/
@@ -65,8 +63,6 @@ defmodule Storyarn.Shared.Validations do
   def validate_slug(changeset) do
     changeset
     |> validate_length(:slug, min: 1, max: 100)
-    |> validate_format(:slug, @slug_format,
-      message: "must be lowercase alphanumeric with hyphens"
-    )
+    |> validate_format(:slug, @slug_format, message: "must be lowercase alphanumeric with hyphens")
   end
 end

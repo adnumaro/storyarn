@@ -1,10 +1,10 @@
 defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpersTest do
   use Storyarn.DataCase, async: true
 
-  alias StoryarnWeb.FlowLive.Helpers.ConnectionHelpers
-
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
+
+  alias StoryarnWeb.FlowLive.Helpers.ConnectionHelpers
 
   # =============================================================================
   # create_connection/2
@@ -20,7 +20,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpersTest do
     } do
       params = %{
         "source_node_id" => entry.id,
-        "source_pin" => "output",
+        "source_pin" => "default",
         "target_node_id" => dialogue.id,
         "target_pin" => "input"
       }
@@ -29,7 +29,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpersTest do
 
       assert result.assigns.save_status == :saved
       # Flow data should be reloaded with the new connection
-      assert result.assigns.flow_data != nil
+      assert result.assigns.flow_data
       connections = Storyarn.Flows.list_connections(result.assigns.flow.id)
 
       assert Enum.any?(connections, fn c ->
@@ -41,14 +41,14 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpersTest do
       # Try to connect a node to itself
       params = %{
         "source_node_id" => entry.id,
-        "source_pin" => "output",
+        "source_pin" => "default",
         "target_node_id" => entry.id,
         "target_pin" => "input"
       }
 
       {:noreply, result} = ConnectionHelpers.create_connection(socket, params)
 
-      assert result.assigns.flash["error"] != nil
+      assert result.assigns.flash["error"]
     end
   end
 

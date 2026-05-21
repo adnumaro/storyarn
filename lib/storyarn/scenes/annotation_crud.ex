@@ -5,24 +5,20 @@ defmodule Storyarn.Scenes.AnnotationCrud do
 
   alias Storyarn.Localization
   alias Storyarn.Repo
-  alias Storyarn.Scenes.{PositionUtils, Scene, SceneAnnotation}
+  alias Storyarn.Scenes.PositionUtils
+  alias Storyarn.Scenes.Scene
+  alias Storyarn.Scenes.SceneAnnotation
 
   def list_annotations(scene_id) do
-    from(a in SceneAnnotation,
-      where: a.scene_id == ^scene_id,
-      order_by: [asc: a.position]
-    )
-    |> Repo.all()
+    Repo.all(from(a in SceneAnnotation, where: a.scene_id == ^scene_id, order_by: [asc: a.position]))
   end
 
   def get_annotation(scene_id, annotation_id) do
-    from(a in SceneAnnotation, where: a.scene_id == ^scene_id and a.id == ^annotation_id)
-    |> Repo.one()
+    Repo.one(from(a in SceneAnnotation, where: a.scene_id == ^scene_id and a.id == ^annotation_id))
   end
 
   def get_annotation!(scene_id, annotation_id) do
-    from(a in SceneAnnotation, where: a.scene_id == ^scene_id and a.id == ^annotation_id)
-    |> Repo.one!()
+    Repo.one!(from(a in SceneAnnotation, where: a.scene_id == ^scene_id and a.id == ^annotation_id))
   end
 
   def create_annotation(scene_id, attrs) do

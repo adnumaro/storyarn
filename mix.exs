@@ -68,7 +68,8 @@ defmodule Storyarn.MixProject do
       {:phoenix_live_dashboard, "~> 0.8.3"},
       {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
       {:tailwind, "~> 0.3", runtime: Mix.env() == :dev},
-      {:lucide_icons, "~> 2.0"},
+      {:live_vue, "~> 1.2"},
+      {:igniter, "~> 0.6"},
       {:swoosh, "~> 1.16"},
       {:gen_smtp, "~> 1.0"},
       {:req, "~> 0.5"},
@@ -98,6 +99,7 @@ defmodule Storyarn.MixProject do
 
       # Error tracking
       {:sentry, "~> 12.0"},
+      {:posthog, "~> 2.0"},
       {:hackney, "~> 1.8"},
 
       # Email templates (MJML → HTML via Rust NIF)
@@ -114,12 +116,12 @@ defmodule Storyarn.MixProject do
       {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:mix_unused, "~> 0.4", only: :dev, runtime: false},
+      {:styler, "~> 1.0", only: [:dev, :test], runtime: false},
 
       # Testing utilities
       {:ex_machina, "~> 2.8", only: :test},
       {:mox, "~> 1.2", only: :test},
       {:faker, "~> 0.18", only: :test},
-
       # E2E testing with Playwright
       {:phoenix_test, "~> 0.4", only: :test, runtime: false},
       {:phoenix_test_playwright, "~> 0.10", only: :test, runtime: false}
@@ -137,13 +139,13 @@ defmodule Storyarn.MixProject do
       setup: ["deps.get", "ecto.setup", "assets.setup", "assets.build"],
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
-      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
+      test: ["ecto.create --quiet", "ecto.migrate --quiet", "assets.build", "test"],
       "test.e2e": ["assets.build", "test test/e2e --include e2e"],
-      "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
-      "assets.build": ["compile", "tailwind storyarn", "esbuild storyarn"],
+      "assets.setup": ["tailwind.install --if-missing"],
+      "assets.build": ["compile", "tailwind storyarn", "phoenix_vite.npm vite build"],
       "assets.deploy": [
         "tailwind storyarn --minify",
-        "esbuild storyarn --minify",
+        "phoenix_vite.npm vite build",
         "phx.digest"
       ],
       precommit: [

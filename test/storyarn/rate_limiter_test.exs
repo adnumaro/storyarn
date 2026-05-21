@@ -2,17 +2,19 @@ defmodule Storyarn.RateLimiterTest do
   use ExUnit.Case, async: false
 
   alias Storyarn.RateLimiter
-
   # Rate limiter is disabled in test config. Tests that verify blocking
   # temporarily enable it, then restore the original setting.
+  alias Storyarn.RateLimiter.ETSBackend
+  alias Storyarn.RateLimiter.RedisBackend
+
   defp with_rate_limiting_enabled(fun) do
-    original = Application.get_env(:storyarn, Storyarn.RateLimiter)
-    Application.put_env(:storyarn, Storyarn.RateLimiter, enabled: true)
+    original = Application.get_env(:storyarn, RateLimiter)
+    Application.put_env(:storyarn, RateLimiter, enabled: true)
 
     try do
       fun.()
     after
-      Application.put_env(:storyarn, Storyarn.RateLimiter, original || [])
+      Application.put_env(:storyarn, RateLimiter, original || [])
     end
   end
 
@@ -33,33 +35,6 @@ defmodule Storyarn.RateLimiterTest do
 
         # 6th should be blocked
         assert {:error, :rate_limited} = RateLimiter.check_login(ip)
-      end)
-    end
-  end
-
-  describe "check_magic_link/1" do
-    test "blocks requests over the limit when enabled" do
-      with_rate_limiting_enabled(fn ->
-        email = "test-ml-block-#{System.unique_integer([:positive])}@example.com"
-
-        # 3 allowed
-        for _ <- 1..3, do: assert(:ok = RateLimiter.check_magic_link(email))
-
-        # 4th blocked
-        assert {:error, :rate_limited} = RateLimiter.check_magic_link(email)
-      end)
-    end
-
-    test "normalizes email to lowercase when enabled" do
-      with_rate_limiting_enabled(fn ->
-        base = "test-ml-case-#{System.unique_integer([:positive])}"
-        email_lower = "#{base}@example.com"
-        email_upper = "#{String.upcase(base)}@EXAMPLE.COM"
-
-        # Both should count against the same bucket
-        for _ <- 1..3, do: RateLimiter.check_magic_link(email_lower)
-
-        assert {:error, :rate_limited} = RateLimiter.check_magic_link(email_upper)
       end)
     end
   end
@@ -93,7 +68,7 @@ defmodule Storyarn.RateLimiterTest do
 
   describe "backend/0" do
     test "defaults to ETS backend" do
-      assert RateLimiter.backend() == Storyarn.RateLimiter.ETSBackend
+      assert RateLimiter.backend() == ETSBackend
     end
 
     test "returns Redis backend when configured" do
@@ -101,7 +76,7 @@ defmodule Storyarn.RateLimiterTest do
       Application.put_env(:storyarn, :rate_limiter_backend, :redis)
 
       try do
-        assert RateLimiter.backend() == Storyarn.RateLimiter.RedisBackend
+        assert RateLimiter.backend() == RedisBackend
       after
         if original,
           do: Application.put_env(:storyarn, :rate_limiter_backend, original),
@@ -113,7 +88,7 @@ defmodule Storyarn.RateLimiterTest do
   describe "child_spec_for_backend/0" do
     test "returns ETS child spec by default" do
       {module, opts} = RateLimiter.child_spec_for_backend()
-      assert module == Storyarn.RateLimiter.ETSBackend
+      assert module == ETSBackend
       assert Keyword.has_key?(opts, :clean_period)
     end
 
@@ -123,7 +98,7 @@ defmodule Storyarn.RateLimiterTest do
 
       try do
         {module, opts} = RateLimiter.child_spec_for_backend()
-        assert module == Storyarn.RateLimiter.RedisBackend
+        assert module == RedisBackend
         assert Keyword.has_key?(opts, :url)
       after
         if original,

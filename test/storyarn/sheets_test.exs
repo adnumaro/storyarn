@@ -2,14 +2,14 @@ defmodule Storyarn.SheetsTest do
   use Storyarn.DataCase, async: true
 
   import Ecto.Query
-
-  alias Storyarn.Sheets
-
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures
-  import Storyarn.SheetsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
+
+  alias Storyarn.Sheets
+  alias Storyarn.Sheets.Sheet
 
   describe "sheet avatar" do
     test "add_avatar/3 creates a sheet avatar record" do
@@ -834,7 +834,7 @@ defmodule Storyarn.SheetsTest do
 
       {:ok, deleted} = Sheets.trash_sheet(sheet)
 
-      assert deleted.deleted_at != nil
+      assert deleted.deleted_at
     end
 
     test "sets deleted_at on all descendant sheets" do
@@ -864,7 +864,7 @@ defmodule Storyarn.SheetsTest do
       {:ok, _} = Sheets.trash_sheet(sheet1)
 
       # sheet2 should still be accessible
-      assert Sheets.get_sheet(project.id, sheet2.id) != nil
+      assert Sheets.get_sheet(project.id, sheet2.id)
       assert Sheets.get_sheet(project.id, sheet1.id) == nil
     end
   end
@@ -918,12 +918,12 @@ defmodule Storyarn.SheetsTest do
       later = ~U[2024-01-01 11:00:00Z]
 
       Storyarn.Repo.update_all(
-        from(s in Storyarn.Sheets.Sheet, where: s.id == ^sheet1.id),
+        from(s in Sheet, where: s.id == ^sheet1.id),
         set: [deleted_at: earlier]
       )
 
       Storyarn.Repo.update_all(
-        from(s in Storyarn.Sheets.Sheet, where: s.id == ^sheet2.id),
+        from(s in Sheet, where: s.id == ^sheet2.id),
         set: [deleted_at: later]
       )
 
@@ -947,7 +947,7 @@ defmodule Storyarn.SheetsTest do
       trashed = Sheets.get_trashed_sheet(project.id, sheet.id)
 
       assert trashed.id == sheet.id
-      assert trashed.deleted_at != nil
+      assert trashed.deleted_at
     end
 
     test "returns nil for non-deleted sheet" do
@@ -966,12 +966,12 @@ defmodule Storyarn.SheetsTest do
       sheet = sheet_fixture(project)
 
       {:ok, trashed} = Sheets.trash_sheet(sheet)
-      assert trashed.deleted_at != nil
+      assert trashed.deleted_at
 
       {:ok, restored} = Sheets.restore_sheet(trashed)
 
       assert restored.deleted_at == nil
-      assert Sheets.get_sheet(project.id, sheet.id) != nil
+      assert Sheets.get_sheet(project.id, sheet.id)
     end
 
     test "restores soft-deleted blocks" do
@@ -990,7 +990,7 @@ defmodule Storyarn.SheetsTest do
 
       # Block should be restored
       restored_block = Sheets.get_block(block.id)
-      assert restored_block != nil
+      assert restored_block
       assert restored_block.deleted_at == nil
     end
   end
@@ -1073,7 +1073,7 @@ defmodule Storyarn.SheetsTest do
 
       {:ok, deleted} = Sheets.delete_block(block)
 
-      assert deleted.deleted_at != nil
+      assert deleted.deleted_at
     end
 
     test "list_blocks/1 excludes deleted blocks" do
@@ -1109,12 +1109,12 @@ defmodule Storyarn.SheetsTest do
       {:ok, block} = Sheets.create_block(sheet, %{type: "text"})
 
       {:ok, deleted} = Sheets.delete_block(block)
-      assert deleted.deleted_at != nil
+      assert deleted.deleted_at
 
       {:ok, restored} = Sheets.restore_block(deleted)
 
       assert restored.deleted_at == nil
-      assert Sheets.get_block(block.id) != nil
+      assert Sheets.get_block(block.id)
     end
 
     test "permanently_delete_block/1 removes from database" do
@@ -1199,7 +1199,7 @@ defmodule Storyarn.SheetsTest do
       # Empty name should fail validation (required field)
       {:error, changeset} = Sheets.create_sheet(project, %{name: ""})
 
-      assert changeset.errors[:name] != nil
+      assert changeset.errors[:name]
     end
 
     test "slugifies name correctly (spaces, special chars)" do
@@ -1269,7 +1269,7 @@ defmodule Storyarn.SheetsTest do
       # Trying to manually set the same shortcut should fail
       {:error, changeset} = Sheets.update_sheet(sheet2, %{shortcut: "unique-shortcut"})
 
-      assert changeset.errors[:shortcut] != nil
+      assert changeset.errors[:shortcut]
       assert {msg, _} = changeset.errors[:shortcut]
       assert msg =~ "already taken"
     end

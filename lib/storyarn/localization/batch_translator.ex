@@ -1,8 +1,10 @@
 defmodule Storyarn.Localization.BatchTranslator do
   @moduledoc false
 
-  alias Storyarn.Localization.{LanguageCrud, Providers.DeepL, TextCrud}
+  alias Storyarn.Localization.LanguageCrud
   alias Storyarn.Localization.ProviderConfig
+  alias Storyarn.Localization.Providers.DeepL
+  alias Storyarn.Localization.TextCrud
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
 

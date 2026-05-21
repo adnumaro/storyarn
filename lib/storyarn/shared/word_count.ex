@@ -11,8 +11,7 @@ defmodule Storyarn.Shared.WordCount do
   @doc """
   Computes word count for a flow node's data map.
 
-  Supports dialogue nodes (text, menu_text, stage_directions, response texts)
-  and slug_line nodes (description, sub_location, time_of_day).
+  Supports dialogue nodes (text, menu_text, stage_directions, response texts).
   Returns 0 for other node types or nil input.
   """
   @spec for_node_data(String.t(), map() | nil) :: non_neg_integer()
@@ -28,13 +27,6 @@ defmodule Storyarn.Shared.WordCount do
       end
 
     (base ++ response_texts)
-    |> Enum.reject(&(is_nil(&1) or &1 == ""))
-    |> Enum.map(&HtmlUtils.word_count/1)
-    |> Enum.sum()
-  end
-
-  def for_node_data("slug_line", data) when is_map(data) do
-    [data["description"], data["sub_location"], data["time_of_day"]]
     |> Enum.reject(&(is_nil(&1) or &1 == ""))
     |> Enum.map(&HtmlUtils.word_count/1)
     |> Enum.sum()

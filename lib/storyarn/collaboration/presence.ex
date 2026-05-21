@@ -126,7 +126,7 @@ defmodule Storyarn.Collaboration.Presence do
     topic
     |> list()
     |> Enum.map(fn {_user_id, data} ->
-      data.metas |> List.first()
+      List.first(data.metas)
     end)
     |> Enum.reject(&is_nil/1)
     |> Enum.sort_by(& &1.joined_at, {:asc, DateTime})

@@ -22,7 +22,8 @@ defmodule Storyarn.Exports.Serializers.ArticyXML do
 
   @behaviour Storyarn.Exports.Serializer
 
-  alias Storyarn.Exports.{ExportOptions, ExpressionTranspiler}
+  alias Storyarn.Exports.ExportOptions
+  alias Storyarn.Exports.ExpressionTranspiler
   alias Storyarn.Exports.Serializers.Helpers
 
   # UUID v5 namespace for deterministic GUID generation
@@ -292,18 +293,6 @@ defmodule Storyarn.Exports.Serializers.ArticyXML do
     ]
   end
 
-  defp build_articy_node(%{type: "slug_line"} = node, _speaker_map) do
-    data = node.data || %{}
-    guid = generate_guid("node:#{node.id}")
-    location = data["location"] || data["slug_line"] || ""
-
-    [
-      ~s(          <LocationSettings Id="#{guid}" TechnicalName="scene_#{node.id}">),
-      ~s(            <Location>#{escape_xml(location)}</Location>),
-      ~s(          </LocationSettings>)
-    ]
-  end
-
   defp build_articy_node(%{type: "subflow"} = node, _speaker_map) do
     data = node.data || %{}
     guid = generate_guid("node:#{node.id}")
@@ -341,7 +330,8 @@ defmodule Storyarn.Exports.Serializers.ArticyXML do
     # Deterministic: same input always produces same GUID
     # UUID v5 (SHA-1 based) with URL namespace
     hash =
-      :crypto.hash(:sha, "#{@storyarn_namespace}:#{input}")
+      :sha
+      |> :crypto.hash("#{@storyarn_namespace}:#{input}")
       |> Base.encode16(case: :upper)
       |> binary_part(0, 32)
 

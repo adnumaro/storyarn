@@ -14,6 +14,7 @@ defmodule Storyarn.Exports.ExpressionTranspiler.BaseTest do
   # ---------------------------------------------------------------------------
 
   defmodule TestEmitter do
+    @moduledoc false
     use Storyarn.Exports.ExpressionTranspiler.Base,
       var_style: :underscore,
       logic_opts: [and_keyword: " AND ", or_keyword: " OR "],
@@ -56,7 +57,12 @@ defmodule Storyarn.Exports.ExpressionTranspiler.BaseTest do
   end
 
   defp flat_condition(logic \\ "all", rules) do
-    %{"logic" => logic, "rules" => rules}
+    %{
+      "logic" => logic,
+      "blocks" => [
+        %{"id" => "b1", "type" => "block", "logic" => logic, "rules" => rules}
+      ]
+    }
   end
 
   defp block_condition(logic, blocks) do
@@ -92,8 +98,8 @@ defmodule Storyarn.Exports.ExpressionTranspiler.BaseTest do
       assert {:ok, "", []} = TestEmitter.transpile_condition(nil, %{})
     end
 
-    test "condition with empty rules returns empty string" do
-      assert {:ok, "", []} = TestEmitter.transpile_condition(%{"rules" => []}, %{})
+    test "condition with empty blocks returns empty string (via blocks key)" do
+      assert {:ok, "", []} = TestEmitter.transpile_condition(%{"blocks" => []}, %{})
     end
 
     test "condition with empty blocks returns empty string" do
@@ -105,7 +111,7 @@ defmodule Storyarn.Exports.ExpressionTranspiler.BaseTest do
   # transpile_condition/2 — flat format
   # =============================================================================
 
-  describe "transpile_condition/2 flat format" do
+  describe "transpile_condition/2 single-block format (converted from flat)" do
     test "single rule produces expected expression" do
       condition = flat_condition([rule()])
       {:ok, result, warnings} = TestEmitter.transpile_condition(condition, %{})
@@ -114,22 +120,22 @@ defmodule Storyarn.Exports.ExpressionTranspiler.BaseTest do
       assert warnings == []
     end
 
-    test "multiple rules joined with AND" do
+    test "multiple rules joined with AND (parenthesized in block)" do
       r1 = rule("mc.jaime", "health", "equals", "50")
       r2 = rule("mc.jaime", "mana", "greater_than", "30")
       condition = flat_condition("all", [r1, r2])
 
       {:ok, result, _} = TestEmitter.transpile_condition(condition, %{})
-      assert result == "mc_jaime_health == 50 AND mc_jaime_mana > 30"
+      assert result == "(mc_jaime_health == 50 AND mc_jaime_mana > 30)"
     end
 
-    test "multiple rules joined with OR" do
+    test "multiple rules joined with OR (parenthesized in block)" do
       r1 = rule("mc.jaime", "health", "equals", "50")
       r2 = rule("mc.jaime", "mana", "less_than", "10")
       condition = flat_condition("any", [r1, r2])
 
       {:ok, result, _} = TestEmitter.transpile_condition(condition, %{})
-      assert result == "mc_jaime_health == 50 OR mc_jaime_mana < 10"
+      assert result == "(mc_jaime_health == 50 OR mc_jaime_mana < 10)"
     end
 
     test "boolean operators" do
@@ -507,18 +513,18 @@ defmodule Storyarn.Exports.ExpressionTranspiler.BaseTest do
 
   describe "logic_opts configuration" do
     test "custom AND keyword is used" do
-      r1 = rule("mc.jaime", "health", "equals", "50")
-      r2 = rule("mc.jaime", "mana", "equals", "30")
-      condition = flat_condition("all", [r1, r2])
+      b1 = make_block("b1", "all", [rule("mc.jaime", "health", "equals", "50")])
+      b2 = make_block("b2", "all", [rule("mc.jaime", "mana", "equals", "30")])
+      condition = block_condition("all", [b1, b2])
 
       {:ok, result, _} = TestEmitter.transpile_condition(condition, %{})
       assert result =~ " AND "
     end
 
     test "custom OR keyword is used" do
-      r1 = rule("mc.jaime", "health", "equals", "50")
-      r2 = rule("mc.jaime", "mana", "equals", "30")
-      condition = flat_condition("any", [r1, r2])
+      b1 = make_block("b1", "all", [rule("mc.jaime", "health", "equals", "50")])
+      b2 = make_block("b2", "all", [rule("mc.jaime", "mana", "equals", "30")])
+      condition = block_condition("any", [b1, b2])
 
       {:ok, result, _} = TestEmitter.transpile_condition(condition, %{})
       assert result =~ " OR "

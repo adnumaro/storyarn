@@ -12,29 +12,29 @@
 ## Table of Contents
 
 1. [Product Overview](#1-product-overview)
-3. [The Yarn Language](#3-the-yarn-language)
-4. [Nodes & Lines](#4-nodes--lines)
-5. [Options & Branching](#5-options--branching)
-6. [Flow Control](#6-flow-control)
-7. [Variables](#7-variables)
-8. [Smart Variables](#8-smart-variables)
-9. [Enums](#9-enums)
-10. [Functions](#10-functions)
-11. [Commands](#11-commands)
-12. [Markup & Tags](#12-markup--tags)
-13. [Line Groups](#13-line-groups)
-14. [Node Groups & Saliency](#14-node-groups--saliency)
-15. [Shadow Lines](#15-shadow-lines)
-16. [VS Code Extension (Editor)](#16-vs-code-extension-editor)
-17. [Try Yarn Spinner (Web Playground)](#17-try-yarn-spinner-web-playground)
-18. [Localization](#18-localization)
-19. [Voice Over & Audio](#19-voice-over--audio)
-20. [Unity Integration](#20-unity-integration)
-21. [Godot Integration](#21-godot-integration)
-22. [Unreal Engine Integration](#22-unreal-engine-integration)
-23. [Paid Add-Ons](#23-paid-add-ons)
-24. [2026 Roadmap](#24-2026-roadmap)
-25. [Notable Games](#25-notable-games)
+2. [The Yarn Language](#3-the-yarn-language)
+3. [Nodes & Lines](#4-nodes--lines)
+4. [Options & Branching](#5-options--branching)
+5. [Flow Control](#6-flow-control)
+6. [Variables](#7-variables)
+7. [Smart Variables](#8-smart-variables)
+8. [Enums](#9-enums)
+9. [Functions](#10-functions)
+10. [Commands](#11-commands)
+11. [Markup & Tags](#12-markup--tags)
+12. [Line Groups](#13-line-groups)
+13. [Node Groups & Saliency](#14-node-groups--saliency)
+14. [Shadow Lines](#15-shadow-lines)
+15. [VS Code Extension (Editor)](#16-vs-code-extension-editor)
+16. [Try Yarn Spinner (Web Playground)](#17-try-yarn-spinner-web-playground)
+17. [Localization](#18-localization)
+18. [Voice Over & Audio](#19-voice-over--audio)
+19. [Unity Integration](#20-unity-integration)
+20. [Godot Integration](#21-godot-integration)
+21. [Unreal Engine Integration](#22-unreal-engine-integration)
+22. [Paid Add-Ons](#23-paid-add-ons)
+23. [2026 Roadmap](#24-2026-roadmap)
+24. [Notable Games](#25-notable-games)
 
 ---
 
@@ -43,6 +43,7 @@
 Yarn Spinner is a **dialogue system and scripting language** for building interactive narrative in games. Unlike articy:draft (desktop visual tool) or Arcweave (web-based visual tool), Yarn Spinner is primarily a **text-based scripting language** with an editor extension, designed to be deeply integrated into game engines.
 
 **Core pillars:**
+
 - Text-based dialogue scripting language (Yarn)
 - VS Code extension with syntax highlighting, graph view, and preview
 - Deep integration with Unity, Godot, and Unreal Engine
@@ -62,6 +63,7 @@ Yarn Spinner is a **dialogue system and scripting language** for building intera
 Yarn is a **screenplay-like scripting language** for writing interactive dialogue. Files use the `.yarn` extension.
 
 ### Basic Structure
+
 ```yarn
 title: Greeting
 ---
@@ -75,6 +77,7 @@ Sally: I'm great! Thanks for asking.
 ```
 
 ### Key Characteristics
+
 - **Plain text** - looks like a screenplay
 - **Nodes** contain dialogue passages
 - **Lines** are individual dialogue statements
@@ -89,6 +92,7 @@ Sally: I'm great! Thanks for asking.
 ## 4. Nodes & Lines
 
 ### Nodes
+
 Nodes are the fundamental organizational unit. Each node represents a block of dialogue.
 
 ```yarn
@@ -101,15 +105,17 @@ Content goes here.
 ```
 
 #### Node Structure
-| Part     | Required | Description                                          |
-|----------|----------|------------------------------------------------------|
-| `title:` | Yes      | Unique name (letters, numbers, underscores only)     |
-| Headers  | No       | Key-value pairs for metadata                         |
-| `---`    | Yes      | Separator between headers and body                   |
-| Body     | Yes      | Dialogue lines, options, commands, logic              |
-| `===`    | Yes      | End-of-node marker                                   |
+
+| Part     | Required | Description                                      |
+| -------- | -------- | ------------------------------------------------ |
+| `title:` | Yes      | Unique name (letters, numbers, underscores only) |
+| Headers  | No       | Key-value pairs for metadata                     |
+| `---`    | Yes      | Separator between headers and body               |
+| Body     | Yes      | Dialogue lines, options, commands, logic         |
+| `===`    | Yes      | End-of-node marker                               |
 
 #### Node Headers
+
 - `title:` - unique identifier (required)
 - `tags:` - space-separated tags
 - `when:` - conditions for node groups (e.g., `when: once`, `when: $has_sword`)
@@ -118,6 +124,7 @@ Content goes here.
 - Custom headers with any `key: value` pairs
 
 ### Lines
+
 Each line of text in a node body is a dialogue line delivered to the player.
 
 ```yarn
@@ -135,6 +142,7 @@ Sally: Hello! How can I help?
 ## 5. Options & Branching
 
 ### Shortcut Options
+
 Options create player choices without needing separate nodes:
 
 ```yarn
@@ -148,6 +156,7 @@ Sally: What would you like?
 ```
 
 ### Nested Options
+
 Options can be nested for multi-level choices:
 
 ```yarn
@@ -162,6 +171,7 @@ Options can be nested for multi-level choices:
 ```
 
 ### Conditional Options
+
 Restrict availability based on conditions:
 
 ```yarn
@@ -174,6 +184,7 @@ Restrict availability based on conditions:
 - Enables "what could have been" design pattern
 
 ### Option Fallthrough (v3.1)
+
 When ALL options are unavailable, Yarn Spinner skips the options group and runs the next content after them. Prevents dead ends.
 
 ---
@@ -181,13 +192,17 @@ When ALL options are unavailable, Yarn Spinner skips the options group and runs 
 ## 6. Flow Control
 
 ### Jump
+
 Move to a different node:
+
 ```yarn
 <<jump AnotherNode>>
 ```
 
 ### Detour (v3)
+
 Temporarily visit a node then return:
+
 ```yarn
 <<detour SideConversation>>
 // After SideConversation ends, execution continues here
@@ -198,6 +213,7 @@ Temporarily visit a node then return:
 - If a detoured node uses `<<jump>>`, the return stack is cleared
 
 ### If / ElseIf / Else
+
 ```yarn
 <<if $health > 50>>
     Player: I feel great!
@@ -213,7 +229,9 @@ Temporarily visit a node then return:
 - Multiple `elseif` branches allowed
 
 ### Once (v3)
+
 Run content only one time:
+
 ```yarn
 <<once>>
     Sally: Welcome! I haven't seen you before.
@@ -222,13 +240,17 @@ Sally: What can I help with?
 ```
 
 ### Stop
+
 End dialogue immediately:
+
 ```yarn
 <<stop>>
 ```
 
 ### Wait
+
 Pause dialogue:
+
 ```yarn
 <<wait 2.5>>
 ```
@@ -238,13 +260,15 @@ Pause dialogue:
 ## 7. Variables
 
 ### Types
-| Type     | Example          | Default   |
-|----------|------------------|-----------|
-| Number   | `42`, `3.14`     | `0`       |
-| String   | `"hello"`        | `""`      |
-| Boolean  | `true`, `false`  | `false`   |
+
+| Type    | Example         | Default |
+| ------- | --------------- | ------- |
+| Number  | `42`, `3.14`    | `0`     |
+| String  | `"hello"`       | `""`    |
+| Boolean | `true`, `false` | `false` |
 
 ### Declaration
+
 ```yarn
 <<declare $player_name = "Alex">>
 <<declare $health = 100>>
@@ -252,6 +276,7 @@ Pause dialogue:
 ```
 
 ### Assignment
+
 ```yarn
 <<set $health = 80>>
 <<set $gold += 50>>
@@ -259,22 +284,25 @@ Pause dialogue:
 ```
 
 ### Operators
-| Operator | Description      |
-|----------|------------------|
-| `=`      | Assign           |
-| `+=`     | Add assign       |
-| `-=`     | Subtract assign  |
-| `*=`     | Multiply assign  |
-| `/=`     | Divide assign    |
-| `%=`     | Modulo assign    |
+
+| Operator | Description     |
+| -------- | --------------- |
+| `=`      | Assign          |
+| `+=`     | Add assign      |
+| `-=`     | Subtract assign |
+| `*=`     | Multiply assign |
+| `/=`     | Divide assign   |
+| `%=`     | Modulo assign   |
 
 ### Scope
+
 - All variables are **global** (accessible across all nodes and files)
 - Names start with `$` (dollar sign)
 - Names are **case sensitive**
 - **Implicit declaration** - if used without declaring, Yarn Spinner infers type and default value
 
 ### Inline Expressions
+
 ```yarn
 Player: I have {$gold} gold pieces.
 Sally: That's {"not " if $gold < 10}enough!
@@ -287,6 +315,7 @@ Sally: That's {"not " if $gold < 10}enough!
 Smart variables are **read-only computed variables** that recalculate every time they're accessed.
 
 ### Syntax
+
 ```yarn
 <<declare $is_powerful = $strength > 50 && $magic_ability >= 20>>
 <<declare $can_afford_pie = $player_money > 10>>
@@ -295,19 +324,21 @@ Smart variables are **read-only computed variables** that recalculate every time
 ```
 
 ### Characteristics
+
 - **Read-only** - cannot be set with `<<set>>`
 - **Auto-updating** - recalculated on every access
 - **Composable** - smart variables can reference other smart variables
 - **Accessible from code** - available via VariableStorage in C#/GDScript
 
 ### Use Cases
-| Use Case                 | Example                                         |
-|--------------------------|-------------------------------------------------|
-| Relationship check       | `$sam_relationship_score > 50`                  |
-| Resource check           | `$wood >= 5 && $nails >= 10`                    |
-| Chained logic            | `$has_materials && $has_skill`                  |
-| Time-based state         | `$game_hour >= 18 && $game_hour < 22`           |
-| Quest status             | `$killed_dragon && $has_treasure`               |
+
+| Use Case           | Example                               |
+| ------------------ | ------------------------------------- |
+| Relationship check | `$sam_relationship_score > 50`        |
+| Resource check     | `$wood >= 5 && $nails >= 10`          |
+| Chained logic      | `$has_materials && $has_skill`        |
+| Time-based state   | `$game_hour >= 18 && $game_hour < 22` |
+| Quest status       | `$killed_dragon && $has_treasure`     |
 
 ---
 
@@ -316,6 +347,7 @@ Smart variables are **read-only computed variables** that recalculate every time
 Enums (v3) constrain variables to a predefined set of values.
 
 ### Syntax
+
 ```yarn
 <<enum Food>>
     <<case Apple>>
@@ -327,6 +359,7 @@ Enums (v3) constrain variables to a predefined set of values.
 ```
 
 ### Features
+
 - Variables can only be set to valid enum values
 - Compile-time type checking
 - Shorthand notation when context is clear: `<<set $favorite_food = .Banana>>`
@@ -340,8 +373,9 @@ Enums (v3) constrain variables to a predefined set of values.
 Functions return values that can be used in expressions, conditions, and inline text.
 
 ### Built-in Functions
+
 | Function                    | Returns                                |
-|-----------------------------|----------------------------------------|
+| --------------------------- | -------------------------------------- |
 | `visited("NodeName")`       | `true` if node has been visited before |
 | `visited_count("NodeName")` | Number of times node has been visited  |
 | `string(value)`             | Convert any value to string            |
@@ -360,6 +394,7 @@ Functions return values that can be used in expressions, conditions, and inline 
 | `int(n)`                    | Integer portion of number              |
 
 ### Custom Functions
+
 - Define in C# (Unity), GDScript/C# (Godot), or C++ (Unreal)
 - Yarn scripts call them like built-in functions
 - Type-checked at compile time (v3)
@@ -368,6 +403,7 @@ Functions return values that can be used in expressions, conditions, and inline 
 - Results may be cached by Yarn Spinner
 
 ### Usage
+
 ```yarn
 <<if visited("TavernGreeting")>>
     Bartender: Back again, are we?
@@ -385,8 +421,9 @@ Player: I rolled a {dice(20)}!
 Commands send instructions from Yarn scripts to the game engine.
 
 ### Built-in Commands
+
 | Command        | Description                    |
-|----------------|--------------------------------|
+| -------------- | ------------------------------ |
 | `<<wait N>>`   | Pause dialogue for N seconds   |
 | `<<stop>>`     | End dialogue immediately       |
 | `<<jump N>>`   | Jump to node N                 |
@@ -397,6 +434,7 @@ Commands send instructions from Yarn scripts to the game engine.
 | `<<once>>`     | Run enclosed content only once |
 
 ### Custom Commands
+
 - Defined in game code (C#, GDScript, C++/Blueprint)
 - Called from Yarn scripts with `<<commandName args>>`
 - Type-checked at compile time (v3)
@@ -404,6 +442,7 @@ Commands send instructions from Yarn scripts to the game engine.
 - Ctrl+click navigates to C# source code
 
 ### Example
+
 ```yarn
 // In Yarn script:
 <<fadeIn 2>>
@@ -426,6 +465,7 @@ public void PlaySound(string soundName) { ... }
 ## 12. Markup & Tags
 
 ### Markup (Inline Attributes)
+
 Apply attributes to ranges of text for custom rendering:
 
 ```yarn
@@ -439,6 +479,7 @@ Player: I'm <color=#ff0000>very angry</color> right now!
 - Properties can be constants, variables, or expressions
 
 ### Line Tags
+
 Tags add metadata to lines (not shown to players):
 
 ```yarn
@@ -454,6 +495,7 @@ Player: Hi! #line:player_greeting_01
 - `#lastline` - auto-added by compiler before options
 
 ### Node Tags
+
 ```yarn
 title: MyNode
 tags: greeting casual important
@@ -461,6 +503,7 @@ tags: greeting casual important
 ```
 
 ### Metadata
+
 Lines can carry metadata accessible to the game and included in exported CSV metadata files.
 
 ---
@@ -470,6 +513,7 @@ Lines can carry metadata accessible to the game and included in exported CSV met
 Line groups provide **computer-selected content** (as opposed to player-selected options).
 
 ### Syntax
+
 ```yarn
 => It's a lovely day! <<if $weather == "sunny">>
 => The rain is really coming down. <<if $weather == "rainy">>
@@ -477,6 +521,7 @@ Line groups provide **computer-selected content** (as opposed to player-selected
 ```
 
 ### Characteristics
+
 - Use `=>` prefix (instead of `->` for player options)
 - Computer picks which line to run (not the player)
 - Conditions filter available lines
@@ -484,6 +529,7 @@ Line groups provide **computer-selected content** (as opposed to player-selected
 - Great for **barks** - short reactive dialogue
 
 ### Use Cases
+
 - NPC ambient dialogue
 - Barks and callouts
 - Random greetings
@@ -494,6 +540,7 @@ Line groups provide **computer-selected content** (as opposed to player-selected
 ## 14. Node Groups & Saliency
 
 ### Node Groups (v3)
+
 Multiple nodes with the same name, each with `when:` conditions:
 
 ```yarn
@@ -517,15 +564,18 @@ Sally: Hello again!
 ```
 
 ### `when:` Conditions
+
 | Condition          | Behavior                                |
-|--------------------|-----------------------------------------|
+| ------------------ | --------------------------------------- |
 | `when: once`       | Run only once                           |
 | `when: always`     | Always eligible                         |
 | `when: $variable`  | Eligible when variable is true          |
 | `when: expression` | Eligible when expression evaluates true |
 
 ### Saliency Strategy
+
 When multiple nodes in a group are eligible, Yarn Spinner uses a **saliency strategy** to pick:
+
 - Considers number of conditions that passed
 - **Complexity scoring** - counts boolean operators + 1 if `once` condition
 - `always` has complexity 0 (lowest priority)
@@ -534,6 +584,7 @@ When multiple nodes in a group are eligible, Yarn Spinner uses a **saliency stra
 - Customizable strategy
 
 ### Difference from Line Groups
+
 - Line groups: short, single-line barks (computer picks a line)
 - Node groups: longer passages with full dialogue (computer picks a node)
 
@@ -551,6 +602,7 @@ Sally: Hello! #line:sally_hello_shadow #shadow:sally_hello
 ```
 
 ### Characteristics
+
 - Must have identical text to source line
 - Share the same localization entry (no duplicate translations)
 - Can have different tags (except `#shadow:` and `#line:`)
@@ -563,10 +615,12 @@ Sally: Hello! #line:sally_hello_shadow #shadow:sally_hello
 The primary authoring tool for Yarn Spinner scripts.
 
 ### Syntax Highlighting
+
 - Full color-coded syntax highlighting for `.yarn` files
 - Commands, variables, options, comments all distinctly colored
 
 ### Graph View
+
 - Interactive **node graph** visualization
 - Displays nodes as boxes, connections as arrows
 - `<<jump>>` commands visualized as connection lines
@@ -576,18 +630,21 @@ The primary authoring tool for Yarn Spinner scripts.
 - Export as `.dot` file for external graph tools
 
 ### Autocomplete / IntelliSense
+
 - Suggestions for node names, variables, commands
 - Hover documentation for commands (pulls from C# doc comments)
 - Hover info for variables (default value, where defined)
 - Type checking and error reporting
 
 ### Preview
+
 - **Play through dialogue** directly in VS Code
 - No game engine required
 - Test branching paths interactively
 - **Export as HTML** - standalone playable file to share with team
 
 ### Error Detection
+
 - Red underlines for script problems
 - Full Yarn Spinner compiler running in background
 - Ctrl+click navigation:
@@ -596,10 +653,12 @@ The primary authoring tool for Yarn Spinner scripts.
   - Click command -> go to C# source code
 
 ### Collaboration
+
 - Works with **VS Code Live Share**
 - Shared workspace gets full extension features (syntax highlighting, graph view)
 
 ### Node Styling
+
 - `style: note` header turns node into sticky note
 - `color:` header sets node color in graph view
 
@@ -608,12 +667,14 @@ The primary authoring tool for Yarn Spinner scripts.
 ## 17. Try Yarn Spinner (Web Playground)
 
 ### Features
+
 - **Browser-based** playground at try.yarnspinner.dev
 - Write and test Yarn scripts without installing anything
 - Instant preview of dialogue
 - No account required
 
 ### Use Cases
+
 - Writers drafting scenes
 - Teachers using in classes
 - Developers prototyping on the go
@@ -626,6 +687,7 @@ The primary authoring tool for Yarn Spinner scripts.
 Localization is built into Yarn Spinner's core design - not an afterthought.
 
 ### Workflow
+
 1. Set **base language** for your scripts
 2. Add **line ID tags** to each line (auto-generated or manual)
 3. **Export strings file** (CSV) for translation
@@ -634,6 +696,7 @@ Localization is built into Yarn Spinner's core design - not an afterthought.
 6. Line Provider loads correct language at runtime
 
 ### Line IDs
+
 ```yarn
 Sally: Hello! #line:sally_hello_01
 Player: How are you? #line:player_greeting_01
@@ -644,25 +707,29 @@ Player: How are you? #line:player_greeting_01
 - Stable (survive script edits)
 
 ### Strings Files (CSV)
-| id                      | text          | file          | node     | lineNumber  |
-|-------------------------|---------------|---------------|----------|-------------|
-| line:sally_hello_01     | Hello!        | greeting.yarn | Greeting | 3           |
-| line:player_greeting_01 | How are you?  | greeting.yarn | Greeting | 4           |
+
+| id                      | text         | file          | node     | lineNumber |
+| ----------------------- | ------------ | ------------- | -------- | ---------- |
+| line:sally_hello_01     | Hello!       | greeting.yarn | Greeting | 3          |
+| line:player_greeting_01 | How are you? | greeting.yarn | Greeting | 4          |
 
 - Only translate `text` column
 - Don't modify `id` column
 - "NEEDS UPDATE" marker added when original text changes
 
 ### Metadata File
+
 - Companion to strings file
 - Contains: id, file, node, lineNumber, metadata
 - Provides context for translators
 
 ### Unity Localization Options
+
 1. **Built-in system** - simple, uses Yarn Project's strings files
 2. **Unity Localization package** - advanced, integrates with Unity's localization system, supports asset tables
 
 ### Runtime Language Switching
+
 - Line Provider fetches correct language strings
 - Switch languages seamlessly at runtime
 - Support unlimited number of languages
@@ -674,25 +741,30 @@ Player: How are you? #line:player_greeting_01
 Voice over is **intimately tied to localization** in Yarn Spinner's design.
 
 ### Philosophy
+
 > "If you want text-only dialogue in a single language, you don't need to do anything. If you want anything else (including voice over), you need localization."
 
 ### Workflow
+
 1. Set up localization (line IDs, base language)
 2. **Line IDs become audio file names** (e.g., `line:tom-1.mp3`)
 3. Create audio assets per line per language
 4. Line Provider delivers audio alongside text at runtime
 
 ### Unity Asset Tables
+
 - Create **Asset Table** entries keyed by line ID
 - Map line IDs to audio clips
 - Supports per-language audio (different recordings per language)
 - Line Provider serves correct audio for current language
 
 ### Bevy Engine Convention
+
 - Audio files named after line ID: `assets/dialogue/en-US/13032079.mp3`
 - Asset providers automatically resolve path
 
 ### Text Animation
+
 - **Text Animator integration** (paid version)
 - Typewriter effects with configurable speed
 - Animated text effects via markup (wave, shake, color)
@@ -705,31 +777,35 @@ Voice over is **intimately tied to localization** in Yarn Spinner's design.
 The most mature and feature-complete engine integration.
 
 ### Installation
+
 - Unity Asset Store or Itch.io
 - Add via: **GameObject > Yarn Spinner > Dialogue System**
 
 ### Core Components
-| Component          | Description                                                              |
-|--------------------|--------------------------------------------------------------------------|
-| Dialogue Runner    | Bridge between Yarn scripts and game. Loads, runs, manages Yarn Projects |
-| Line View          | Displays single lines of dialogue in Unity UI canvas                     |
-| Options List View  | Displays player options as selectable list                               |
-| Option View        | Individual option button (used by Options List View)                     |
-| Variable Storage   | Stores and retrieves variable values                                     |
-| Line Provider      | Fetches localized text and assets (audio) for current language           |
+
+| Component         | Description                                                              |
+| ----------------- | ------------------------------------------------------------------------ |
+| Dialogue Runner   | Bridge between Yarn scripts and game. Loads, runs, manages Yarn Projects |
+| Line View         | Displays single lines of dialogue in Unity UI canvas                     |
+| Options List View | Displays player options as selectable list                               |
+| Option View       | Individual option button (used by Options List View)                     |
+| Variable Storage  | Stores and retrieves variable values                                     |
+| Line Provider     | Fetches localized text and assets (audio) for current language           |
 
 ### Dialogue Runner Settings
-| Setting               | Description                                             |
-|-----------------------|---------------------------------------------------------|
-| Yarn Project          | The compiled Yarn project to run                        |
-| Dialogue Views        | List of views that display content                      |
-| Variable Storage      | Where variables are stored (in-memory default)          |
-| Line Provider         | How localized content is fetched                        |
-| Auto Continue         | Advance lines automatically when views finish           |
-| Run Selected Options  | Re-run chosen option as a line                          |
-| Verbose Logging       | Log state changes to Console                            |
+
+| Setting              | Description                                    |
+| -------------------- | ---------------------------------------------- |
+| Yarn Project         | The compiled Yarn project to run               |
+| Dialogue Views       | List of views that display content             |
+| Variable Storage     | Where variables are stored (in-memory default) |
+| Line Provider        | How localized content is fetched               |
+| Auto Continue        | Advance lines automatically when views finish  |
+| Run Selected Options | Re-run chosen option as a line                 |
+| Verbose Logging      | Log state changes to Console                   |
 
 ### Line View Features
+
 - Character name in separate text object (TextMeshPro)
 - Auto-advance or manual advancement
 - Fade in/out effects (Canvas Group opacity)
@@ -737,11 +813,13 @@ The most mature and feature-complete engine integration.
 - "Continue" button integration
 
 ### Custom Dialogue Views
+
 - Subclass `DialogueViewBase`
 - Full control over how lines and options are presented
 - Multiple views per Dialogue Runner (e.g., one for lines, one for options)
 
 ### Custom Commands & Functions
+
 ```csharp
 [YarnCommand("fadeIn")]
 public void FadeIn(float duration) { /* ... */ }
@@ -751,6 +829,7 @@ public static int PlayerHealth() { return currentHealth; }
 ```
 
 ### Async Support (v3.1)
+
 - `StartDialogue` and `Stop` are now async
 - Dialogue presenters complete initialization before scene changes
 - Better handling of transitions
@@ -760,26 +839,30 @@ public static int PlayerHealth() { return currentHealth; }
 ## 21. Godot Integration
 
 ### Status
+
 - **Beta** (actively developed)
 - Requires **C# support** (.NET version of Godot)
 - GDScript support coming soon
 
 ### Components
-| Component            | Description                                 |
-|----------------------|---------------------------------------------|
-| Dialogue Runner      | Main dialogue controller                    |
-| Line Presenter       | Displays dialogue lines                     |
-| Options Presenter    | Displays player choices                     |
-| Variable Storage     | Variable persistence                        |
-| Line Provider        | Localized content fetching                  |
-| Markup Palette       | Visual markup handling                      |
+
+| Component         | Description                |
+| ----------------- | -------------------------- |
+| Dialogue Runner   | Main dialogue controller   |
+| Line Presenter    | Displays dialogue lines    |
+| Options Presenter | Displays player choices    |
+| Variable Storage  | Variable persistence       |
+| Line Provider     | Localized content fetching |
+| Markup Palette    | Visual markup handling     |
 
 ### Setup
+
 - Create `.yarnproject` via **Project > Tools > YarnSpinner > Create Yarn Project**
 - Custom inspector similar to Unity version
 - Works with both GDScript and C# via cross-language scripting
 
 ### Availability
+
 - GitHub repository
 - Planned for Godot Asset Library and Itch.io (with contributor revenue sharing)
 
@@ -788,12 +871,14 @@ public static int PlayerHealth() { return currentHealth; }
 ## 22. Unreal Engine Integration
 
 ### Status
+
 - **Alpha** (foundation built, full release planned 2026)
 - Being built as **native integration** (not a Unity port)
 - Respects Unreal's architecture and philosophy
 - High community demand
 
 ### Features (Planned)
+
 - Native Blueprint support
 - C++ API
 - Dialogue system components
@@ -805,6 +890,7 @@ public static int PlayerHealth() { return currentHealth; }
 ## 23. Paid Add-Ons
 
 ### Dialogue Wheel
+
 - **Mass Effect-style** radial dialogue selector
 - Two prefabs:
   - **Six-Segment Wheel** - fixed positions, light sci-fi appearance
@@ -814,6 +900,7 @@ public static int PlayerHealth() { return currentHealth; }
 - Available on Itch.io and Unity Asset Store
 
 ### Speech Bubbles
+
 - **Night in the Woods-style** speech bubbles
 - Two prefabs:
   - **Casual Bubble** - informal style
@@ -823,6 +910,7 @@ public static int PlayerHealth() { return currentHealth; }
 - Available on Itch.io and Unity Asset Store
 
 ### Text Animator Integration (Paid version only)
+
 - Integration with Febucci's Text Animator 2 & 3
 - Animated text effects within dialogue
 - Unified markup system
@@ -833,7 +921,7 @@ public static int PlayerHealth() { return currentHealth; }
 ## 24. 2026 Roadmap
 
 | Feature                   | Status      | Description                                                                                 |
-|---------------------------|-------------|---------------------------------------------------------------------------------------------|
+| ------------------------- | ----------- | ------------------------------------------------------------------------------------------- |
 | Visual Novel Kit          | Planned     | Pre-built VN presentation system                                                            |
 | Rebuilt VS Code extension | Planned     | Rewritten extension with improved features                                                  |
 | Native Unreal support     | In progress | Ground-up Unreal Engine integration                                                         |
@@ -852,17 +940,17 @@ public static int PlayerHealth() { return currentHealth; }
 
 Games built with Yarn Spinner demonstrate its production readiness:
 
-| Game               | Developer             | Notes                          |
-|--------------------|-----------------------|--------------------------------|
-| Night in the Woods | Infinite Fall         | Cult classic indie             |
-| A Short Hike       | adamgryu              | Award-winning exploration      |
-| DREDGE             | Black Salt Games      | Fishing/horror, commercial hit |
-| Lost in Random     | Zoink / EA            | AAA-published                  |
-| Escape Academy     | Coin Crew Games       | Puzzle/escape room             |
-| Baladins           | Seed by Seed          | Co-op narrative adventure      |
-| Frog Detective 2&3 | worm club             | Comedy adventure               |
-| Button City        | Subliminal Gaming     | Cozy adventure                 |
-| Unbeatable         | D-Cell Games          | Rhythm/narrative               |
+| Game               | Developer         | Notes                          |
+| ------------------ | ----------------- | ------------------------------ |
+| Night in the Woods | Infinite Fall     | Cult classic indie             |
+| A Short Hike       | adamgryu          | Award-winning exploration      |
+| DREDGE             | Black Salt Games  | Fishing/horror, commercial hit |
+| Lost in Random     | Zoink / EA        | AAA-published                  |
+| Escape Academy     | Coin Crew Games   | Puzzle/escape room             |
+| Baladins           | Seed by Seed      | Co-op narrative adventure      |
+| Frog Detective 2&3 | worm club         | Comedy adventure               |
+| Button City        | Subliminal Gaming | Cozy adventure                 |
+| Unbeatable         | D-Cell Games      | Rhythm/narrative               |
 
 ---
 

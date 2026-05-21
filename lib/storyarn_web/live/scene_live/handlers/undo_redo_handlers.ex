@@ -6,18 +6,20 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
   (pin, zone, connection, annotation), keeping layer and special actions separate.
   """
 
-  import Phoenix.Component, only: [assign: 3]
-  import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
   use StoryarnWeb, :verified_routes
   use Gettext, backend: Storyarn.Gettext
+
+  import Phoenix.Component, only: [assign: 3]
+  import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
+
+  import StoryarnWeb.SceneLive.Helpers.SceneHelpers,
+    only: [replace_in_list: 2, maybe_update_selected_element: 3]
+
+  import StoryarnWeb.SceneLive.Helpers.SceneSerializer
 
   alias Storyarn.Scenes
   alias StoryarnWeb.Helpers.UndoRedoStack
   alias StoryarnWeb.SceneLive.Handlers.ElementHandlers
-  import StoryarnWeb.SceneLive.Helpers.Serializer
-
-  import StoryarnWeb.SceneLive.Helpers.SceneHelpers,
-    only: [replace_in_list: 2, maybe_update_selected_element: 3]
 
   # ---------------------------------------------------------------------------
   # Element-type dispatch — maps type atoms to context functions, assign keys,
@@ -81,11 +83,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
   # Attr extraction helpers (used by both undo and redo of creates/deletes)
   # ---------------------------------------------------------------------------
 
-  defp to_attrs(:pin, el),
-    do: Map.put(ElementHandlers.pin_copyable_attrs(el), "locked", el.locked)
+  defp to_attrs(:pin, el), do: Map.put(ElementHandlers.pin_copyable_attrs(el), "locked", el.locked)
 
-  defp to_attrs(:zone, el),
-    do: Map.put(ElementHandlers.zone_copyable_attrs(el), "locked", el.locked)
+  defp to_attrs(:zone, el), do: Map.put(ElementHandlers.zone_copyable_attrs(el), "locked", el.locked)
 
   defp to_attrs(:connection, el) do
     %{
@@ -133,11 +133,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
   defp flash_creation_reverted(:pin), do: dgettext("scenes", "Undo: pin creation reverted.")
   defp flash_creation_reverted(:zone), do: dgettext("scenes", "Undo: zone creation reverted.")
 
-  defp flash_creation_reverted(:connection),
-    do: dgettext("scenes", "Undo: connection creation reverted.")
+  defp flash_creation_reverted(:connection), do: dgettext("scenes", "Undo: connection creation reverted.")
 
-  defp flash_creation_reverted(:annotation),
-    do: dgettext("scenes", "Undo: annotation creation reverted.")
+  defp flash_creation_reverted(:annotation), do: dgettext("scenes", "Undo: annotation creation reverted.")
 
   # ---------------------------------------------------------------------------
   # Public dispatch
@@ -425,8 +423,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
             {:ok,
              socket
              |> push_event("layer_deleted", %{id: found.id})
-             |> put_flash(:info, dgettext("scenes", "Undo: layer creation reverted.")),
-             {:create_layer, found}}
+             |> put_flash(:info, dgettext("scenes", "Undo: layer creation reverted.")), {:create_layer, found}}
 
           {:error, _} ->
             {:error, socket}
@@ -440,8 +437,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
         {:ok,
          socket
          |> push_event("layer_created", %{id: new_layer.id, name: new_layer.name})
-         |> put_flash(:info, dgettext("scenes", "Undo: layer restored.")),
-         {:delete_layer, new_layer}}
+         |> put_flash(:info, dgettext("scenes", "Undo: layer restored.")), {:delete_layer, new_layer}}
 
       {:error, _} ->
         {:error, put_flash(socket, :error, dgettext("scenes", "Could not undo."))}
@@ -470,8 +466,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
         case Scenes.update_layer(layer, prev_attrs) do
           {:ok, updated} ->
             {:ok,
-             socket
-             |> push_event("layer_fog_changed", %{
+             push_event(socket, "layer_fog_changed", %{
                id: updated.id,
                fog_enabled: updated.fog_enabled,
                fog_color: updated.fog_color,
@@ -572,8 +567,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
         {:ok,
          socket
          |> assign(cfg.assign_key, Map.get(socket.assigns, cfg.assign_key) ++ [new_el])
-         |> push_event("#{cfg.type_string}_created", serialize(type, new_el)),
-         {action_tag, new_el}}
+         |> push_event("#{cfg.type_string}_created", serialize(type, new_el)), {action_tag, new_el}}
 
       {:error, _} ->
         {:error, socket}
@@ -708,10 +702,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
   defp redo_action({:create_layer, layer}, socket) do
     case Scenes.create_layer(socket.assigns.scene.id, layer_to_attrs(layer)) do
       {:ok, new_layer} ->
-        {:ok,
-         socket
-         |> push_event("layer_created", %{id: new_layer.id, name: new_layer.name}),
-         {:create_layer, new_layer}}
+        {:ok, push_event(socket, "layer_created", %{id: new_layer.id, name: new_layer.name}), {:create_layer, new_layer}}
 
       {:error, _} ->
         {:error, socket}
@@ -726,9 +717,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
       found ->
         case Scenes.delete_layer(found) do
           {:ok, _} ->
-            {:ok,
-             socket
-             |> push_event("layer_deleted", %{id: found.id}), {:delete_layer, found}}
+            {:ok, push_event(socket, "layer_deleted", %{id: found.id}), {:delete_layer, found}}
 
           {:error, _} ->
             {:error, socket}
@@ -758,8 +747,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
         case Scenes.update_layer(layer, new_attrs) do
           {:ok, updated} ->
             {:ok,
-             socket
-             |> push_event("layer_fog_changed", %{
+             push_event(socket, "layer_fog_changed", %{
                id: updated.id,
                fog_enabled: updated.fog_enabled,
                fog_color: updated.fog_color,

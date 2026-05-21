@@ -2,39 +2,40 @@ defmodule StoryarnWeb.SceneLive.Show do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  alias StoryarnWeb.Helpers.Authorize
-  alias StoryarnWeb.Live.Shared.RestorationHandlers
 
-  import StoryarnWeb.Live.Shared.TreePanelHandlers
-  import StoryarnWeb.SceneLive.Components.Dock
-  import StoryarnWeb.SceneLive.Components.LayerBar
-  import StoryarnWeb.SceneLive.Components.Legend
-  import StoryarnWeb.SceneLive.Components.SceneHeader
-  import StoryarnWeb.SceneLive.Components.SceneSearchPanel
-  import StoryarnWeb.Components.CanvasToolbar
-  import StoryarnWeb.SceneLive.Components.FloatingToolbar
-  import StoryarnWeb.SceneLive.Components.SceneElementPanel
-  import StoryarnWeb.SceneLive.Components.SceneSettingsPanel
-  import StoryarnWeb.Components.RightSidebar
+  import StoryarnWeb.SceneLive.Helpers.PropsSerializer,
+    only: [
+      prepare_layers_for_vue: 1,
+      prepare_legend_groups: 3,
+      prepare_scene_for_vue: 1,
+      prepare_pins_for_vue: 1,
+      prepare_zones_for_vue: 1,
+      prepare_connections_for_vue: 1,
+      prepare_annotations_for_vue: 1,
+      serialize_entity_locks: 1,
+      serialize_selected_element: 2,
+      prepare_ambient_flows_for_vue: 1,
+      prepare_project_flows_for_vue: 1,
+      prepare_project_scenes_for_vue: 1,
+      prepare_project_sheets_for_vue: 1
+    ]
 
-  alias StoryarnWeb.Components.DraftComponents
-  alias StoryarnWeb.Helpers.DraftTouchTimer
-  alias StoryarnWeb.Live.Shared.DraftHandlers
+  import StoryarnWeb.SceneLive.Helpers.SceneHelpers
+  import StoryarnWeb.SceneLive.Helpers.SceneSerializer
 
+  alias Storyarn.Analytics
   alias Storyarn.Assets
   alias Storyarn.Collaboration
-  alias Storyarn.Drafts
-  alias Storyarn.Projects
+  alias Storyarn.Collaboration.Presence
   alias Storyarn.Scenes
   alias Storyarn.Shared.MapUtils
   alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
+  alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.VersionEventHelpers
+  alias StoryarnWeb.Helpers.VersionHistoryHelpers
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
-
-  alias StoryarnWeb.Components.Sidebar.SceneTree
-
-  import StoryarnWeb.SceneLive.Helpers.SceneHelpers
-  import StoryarnWeb.SceneLive.Helpers.Serializer
-
+  alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
+  alias StoryarnWeb.Live.Shared.RestorationHandlers
   alias StoryarnWeb.SceneLive.Handlers.CanvasEventHandlers
   alias StoryarnWeb.SceneLive.Handlers.CollaborationHandlers
   alias StoryarnWeb.SceneLive.Handlers.ElementHandlers
@@ -47,11 +48,9 @@ defmodule StoryarnWeb.SceneLive.Show do
   @impl true
   def render(%{compact: true, scene: nil} = assigns) do
     ~H"""
-    <Layouts.compare flash={@flash}>
-      <div class="h-full flex items-center justify-center">
-        <span class="loading loading-spinner loading-lg text-base-content/30"></span>
-      </div>
-    </Layouts.compare>
+    <StoryarnWeb.Components.CompareLayout.compare socket={@socket} flash={@flash}>
+      <div class="h-full"></div>
+    </StoryarnWeb.Components.CompareLayout.compare>
     """
   end
 
@@ -60,650 +59,352 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   def render(assigns) do
+    assigns = assign(assigns, :background_upload, scene_background_upload(assigns))
+
     ~H"""
-    <Layouts.focus
+    <StoryarnWeb.Components.ProjectLayout.project
+      socket={@socket}
       flash={@flash}
-      current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
+      current_scope={@current_scope}
+      current_user={@current_user}
+      urls={@urls}
       active_tool={:scenes}
-      has_tree={true}
-      tree_panel_open={@tree_panel_open}
-      tree_panel_pinned={@tree_panel_pinned}
-      can_edit={@can_edit}
-      canvas_mode={true}
-      restoration_banner={@restoration_banner}
+      is_super_admin={@is_super_admin}
       online_users={@online_users}
-      my_drafts={@my_drafts}
-      renaming_draft={@renaming_draft}
-    >
-      <:tree_content>
-        <div role="tablist" class="tabs tabs-border tabs-sm mb-6">
-          <button
-            role="tab"
-            class={["tab", @tree_panel_tab == "scenes" && "tab-active"]}
-            phx-click="switch_tree_tab"
-            phx-value-tab="scenes"
-          >
-            <.icon name="map" class="size-3.5 mr-1" />{dgettext("scenes", "Scenes")}
-          </button>
-          <button
-            role="tab"
-            class={["tab", @tree_panel_tab == "layers" && "tab-active"]}
-            phx-click="switch_tree_tab"
-            phx-value-tab="layers"
-          >
-            <.icon name="layers" class="size-3.5 mr-1" />{dgettext("scenes", "Layers")}
-          </button>
-        </div>
-        <div :if={@tree_panel_tab == "scenes"}>
-          <SceneTree.scenes_section
-            scenes_tree={@scenes_tree}
-            workspace={@workspace}
-            project={@project}
-            selected_scene_id={@scene && to_string(@scene.id)}
-            can_edit={@can_edit}
-          />
-        </div>
-        <div :if={@tree_panel_tab == "layers" && @scene}>
-          <.layer_panel
-            layers={@layers}
-            active_layer_id={@active_layer_id}
-            renaming_layer_id={@renaming_layer_id}
-            can_edit={@can_edit}
-            edit_mode={@edit_mode}
-          />
-        </div>
-      </:tree_content>
-      <:top_bar_extra>
-        <DraftComponents.draft_banner is_draft={@is_draft} />
-        <%= if @scene do %>
-          <.map_info_bar
-            scene={@scene}
-            ancestors={@ancestors}
-            workspace={@workspace}
-            project={@project}
-            can_edit={@can_edit}
-            referencing_flows={@referencing_flows}
-          />
-          <.map_search_panel
-            search_query={@search_query}
-            search_filter={@search_filter}
-            search_results={@search_results}
-          />
-        <% end %>
-      </:top_bar_extra>
-      <:top_bar_extra_right>
-        <%= if @scene do %>
-          <.map_actions
-            can_edit={@can_edit}
-            edit_mode={@edit_mode}
-            is_draft={@is_draft}
-          />
-        <% end %>
-      </:top_bar_extra_right>
-      <SceneTree.delete_modal :if={@can_edit} />
-      <%= if @scene do %>
-        <div class="h-full relative">
-          <%!-- Canvas fills the entire area --%>
-          <div
-            id="scene-canvas-wrapper"
-            class="absolute inset-0 overflow-hidden"
-            phx-drop-target={
-              @can_edit && @edit_mode && @uploads[:background] && @uploads.background.ref
-            }
-            phx-hook="CanvasDropZone"
-          >
-            <div
-              id={"scene-canvas-#{@scene.id}"}
-              phx-hook="SceneCanvas"
-              phx-update="ignore"
-              data-scene={Jason.encode!(@scene_data)}
-              data-i18n={Jason.encode!(@canvas_i18n)}
-              data-current-user-id={@current_scope.user.id}
-              data-locks={Jason.encode!(@entity_locks)}
-              class="w-full h-full"
-            >
-              <div id="scene-canvas-container" class="w-full h-full"></div>
-            </div>
-
-            <%!-- Hidden file input for background upload --%>
-            <form
-              :if={@can_edit && @uploads[:background]}
-              id="bg-upload-form"
-              phx-change="validate_bg_upload"
-              class="hidden"
-            >
-              <.live_file_input upload={@uploads.background} />
-            </form>
-
-            <%!-- Empty canvas — upload prompt --%>
-            <div
-              :if={!background_set?(@scene) && @can_edit && @edit_mode && @uploads[:background]}
-              class="absolute inset-0 flex items-center justify-center z-[500] pointer-events-none"
-            >
-              <label
-                for={@uploads.background.ref}
-                class="pointer-events-auto cursor-pointer group flex flex-col items-center gap-3
-                     p-8 rounded-xl border-2 border-dashed border-base-content/15
-                     hover:border-primary/40 hover:bg-base-100/50 transition-colors"
-              >
-                <.icon
-                  name="image-plus"
-                  class="size-10 opacity-20 group-hover:opacity-50 transition-opacity"
-                />
-                <span class="text-sm text-base-content/40 group-hover:text-base-content/60 transition-colors">
-                  {dgettext("scenes", "Upload background image")}
-                </span>
-                <span class="text-xs text-base-content/25">
-                  {dgettext("scenes", "or drag & drop")}
-                </span>
-              </label>
-            </div>
-
-            <%!-- Drag & drop overlay (shown by CanvasDropZone hook) --%>
-            <div
-              :if={@can_edit && @edit_mode}
-              id="canvas-drop-indicator"
-              class="hidden absolute inset-0 z-[999] bg-primary/5 border-2 border-dashed border-primary/30
-                   flex items-center justify-center pointer-events-none"
-            >
-              <div class="text-center">
-                <.icon name="image-plus" class="size-12 text-primary/50 mx-auto mb-2" />
-                <p class="text-sm font-medium text-primary/60">
-                  {dgettext("scenes", "Drop image to set background")}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <%!-- UI overlays — outside overflow-hidden wrapper so backdrop-blur works --%>
-
-          <%!-- Upload progress indicator --%>
-          <div
-            :for={
-              entry <-
-                if(@can_edit && @uploads[:background],
-                  do: @uploads.background.entries,
-                  else: []
-                )
-            }
-            class="absolute bottom-20 left-1/2 -translate-x-1/2 z-[1000]
-                 bg-base-100 rounded-lg border border-base-300 shadow-lg px-4 py-2 flex items-center gap-3"
-          >
-            <.icon name="upload" class="size-4 animate-pulse text-primary" />
-            <div class="w-40">
-              <div class="text-xs text-base-content/60 mb-1 flex min-w-0">
-                <span class="truncate">{Path.rootname(entry.client_name)}</span>
-                <span class="flex-shrink-0">{Path.extname(entry.client_name)}</span>
-              </div>
-              <div class="w-full bg-base-300 rounded-full h-1.5">
-                <div
-                  class="bg-primary h-1.5 rounded-full transition-all"
-                  style={"width: #{entry.progress}%"}
-                >
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <%!-- Bottom dock (edit mode only) --%>
-          <.dock
-            :if={@edit_mode}
-            active_tool={@active_tool}
-            pending_sheet={@pending_sheet_for_pin}
-            workspace={@workspace}
-            project={@project}
-            scene={@scene}
-          />
-
-          <%!-- Version History Panel --%>
-          <.right_sidebar
-            id="scene-versions-panel"
-            title={dgettext("scenes", "Version History")}
-            open_event="open_versions_panel"
-            close_event="close_versions_panel"
-            width="320px"
-            loading={!@versions_panel_open}
-          >
-            <:actions>
-              <button
-                :if={@can_edit && @versions_panel_open}
-                type="button"
-                class="btn btn-ghost btn-xs btn-square"
-                phx-click="show_create_version_modal"
-              >
-                <.icon name="plus" class="size-4" />
-              </button>
-            </:actions>
-            <.live_component
-              :if={@versions_panel_open}
-              module={StoryarnWeb.Components.VersionsSection}
-              id="scene-versions-section"
-              entity={@scene}
-              entity_type="scene"
-              project_id={@project.id}
-              current_user_id={@current_scope.user.id}
-              can_edit={@can_edit}
-              current_version_id={@scene.current_version_id}
-              workspace_id={@workspace.id}
-            />
-          </.right_sidebar>
-
-          <%!-- Sheet picker overlay --%>
-          <div
-            :if={@show_sheet_picker}
-            id="sheet-picker"
-            class="absolute bottom-32 left-1/2 -translate-x-1/2 z-[1001] w-72 bg-base-100 rounded-lg border border-base-300 shadow-lg overflow-hidden"
-          >
-            <div class="p-2 border-b border-base-300 flex items-center justify-between">
-              <span class="text-xs font-medium">{dgettext("scenes", "Select a sheet")}</span>
-              <button
-                type="button"
-                phx-click="cancel_sheet_picker"
-                class="btn btn-ghost btn-xs btn-square"
-              >
-                <.icon name="x" class="size-3" />
-              </button>
-            </div>
-            <div class="max-h-60 overflow-y-auto p-1">
-              <.sheet_picker_list sheets={flatten_sheets(@project_sheets)} />
-            </div>
-          </div>
-
-          <%!-- Bottom-right controls: reset zoom + legend --%>
-          <div class="absolute bottom-3 right-3 z-[1000] flex items-end gap-2">
-            <div id="scene-controls-slot" phx-update="ignore"></div>
-            <.legend
-              pins={@pins}
-              zones={@zones}
-              connections={@connections}
-              legend_open={@legend_open}
-            />
-          </div>
-
-          <%!-- Floating element toolbar --%>
-          <.canvas_toolbar
-            id="scene-floating-toolbar"
-            canvas_id={"scene-canvas-#{@scene.id}"}
-            visible={@selected_element != nil && @can_edit && @edit_mode}
-            z_class="z-[1050]"
-          >
-            <.floating_toolbar
-              selected_type={@selected_type}
-              selected_element={@selected_element}
-              layers={@layers}
-              can_edit={not Map.get(@selected_element || %{}, :locked, false)}
-              can_toggle_lock={true}
-            />
-          </.canvas_toolbar>
-
-          <%!-- Element Properties Sidebar --%>
-          <div
-            id="scene-element-panel"
-            phx-hook="RightSidebar"
-            data-right-panel
-            data-open-event="open_element_panel"
-            data-close-event="close_element_panel"
-            class={[
-              "fixed flex flex-col overflow-hidden right-sidebar",
-              "inset-0 z-[1060] bg-base-100",
-              "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:w-[480px]"
-            ]}
-          >
-            <div
-              :if={@element_panel_open && @selected_element != nil}
-              class="flex flex-col flex-1 min-h-0"
-            >
-              <.scene_element_panel
-                selected_type={@selected_type}
-                selected_element={@selected_element}
-                can_edit={not Map.get(@selected_element || %{}, :locked, false)}
-                project_id={@project.id}
-                project_scenes={@project_scenes}
-                project_sheets={@project_sheets}
-                project_flows={@project_flows}
-                project_variables={@project_variables}
-                panel_sections={@panel_sections}
-              />
-            </div>
-            <div
-              :if={!(@element_panel_open && @selected_element != nil)}
-              class="flex items-center justify-center h-full"
-            >
-              <span class="loading loading-spinner loading-md text-base-content/40"></span>
-            </div>
-          </div>
-
-          <%!-- Scene Settings Sidebar --%>
-          <div
-            id="scene-settings-panel"
-            phx-hook="RightSidebar"
-            data-right-panel
-            data-open-event="open_scene_settings"
-            data-close-event="close_scene_settings"
-            class={[
-              "fixed flex flex-col overflow-hidden right-sidebar",
-              "inset-0 z-[1060] bg-base-100",
-              "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:w-[320px]"
-            ]}
-          >
-            <div :if={@scene_settings_open && @can_edit && @edit_mode}>
-              <.scene_settings_panel
-                scene={@scene}
-                can_edit={@can_edit}
-                bg_upload_input_id={@uploads[:background] && @uploads.background.ref}
-                ambient_flows={@ambient_flows}
-                project_flows={@project_flows}
-              />
-            </div>
-            <div
-              :if={!(@scene_settings_open && @can_edit && @edit_mode)}
-              class="flex items-center justify-center h-full"
-            >
-              <span class="loading loading-spinner loading-md text-base-content/40"></span>
-            </div>
-          </div>
-        </div>
-
-        <%!-- Pin icon upload overlay (fixed, outside canvas overflow) --%>
-        <div
-          :if={@show_pin_icon_upload && @selected_type == "pin" && @project && @current_scope}
-          id="pin-icon-upload-panel"
-          class="fixed top-16 right-4 z-[1030] w-64 bg-base-200 border border-base-300 rounded-lg
-               shadow-lg p-3"
-        >
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-medium">{dgettext("scenes", "Upload Icon")}</span>
-            <button
-              type="button"
-              phx-click="toggle_pin_icon_upload"
-              class="btn btn-ghost btn-xs btn-square"
-            >
-              <.icon name="x" class="size-3" />
-            </button>
-          </div>
-          <.live_component
-            module={StoryarnWeb.Components.AssetUpload}
-            id="pin-icon-upload"
-            project={@project}
-            current_user={@current_scope.user}
-            on_upload={fn asset -> send(self(), {:pin_icon_uploaded, asset}) end}
-            accept={~w(image/jpeg image/png image/gif image/webp image/svg+xml)}
-            max_entries={1}
-            max_file_size={524_288}
-          />
-        </div>
-      <% else %>
-        <div class="h-full flex items-center justify-center">
-          <span class="loading loading-spinner loading-lg text-base-content/30"></span>
-        </div>
-      <% end %>
-
-      <%!-- Confirm modals --%>
-      <DraftComponents.discard_draft_modal is_draft={@is_draft} />
-      <DraftComponents.merge_review_modal is_draft={@is_draft} merge_summary={@merge_summary} />
-
-      <.confirm_modal
-        :if={@can_edit}
-        id="delete-scene-show-confirm"
-        title={dgettext("scenes", "Delete scene?")}
-        message={dgettext("scenes", "Are you sure you want to delete this scene?")}
-        confirm_text={dgettext("scenes", "Delete")}
-        confirm_variant="error"
-        icon="alert-triangle"
-        on_confirm={JS.push("confirm_delete_scene")}
-      />
-
-      <.confirm_modal
-        :if={@can_edit}
-        id="delete-layer-confirm"
-        title={dgettext("scenes", "Delete layer?")}
-        message={
-          dgettext(
-            "scenes",
-            "This layer will be deleted. All elements on this layer will be moved to no layer."
-          )
+      restoration_banner={@restoration_banner}
+      canvas_mode={true}
+      sidebar_module={StoryarnWeb.SceneSidebarLive}
+      sidebar_session={
+        %{
+          "project_id" => @project.id,
+          "workspace_slug" => @workspace.slug,
+          "project_slug" => @project.slug,
+          "scene_id" => @scene && to_string(@scene.id),
+          "can_edit" => @can_edit,
+          "active_tool" => "scenes",
+          "dashboard_url" => ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/scenes",
+          "current_scope" => @current_scope,
+          "locale" => @locale
         }
-        confirm_text={dgettext("scenes", "Delete")}
-        confirm_variant="error"
-        icon="alert-triangle"
-        on_confirm={JS.push("confirm_delete_layer")}
+      }
+    >
+      <.vue
+        :if={@scene}
+        v-component="live/scene/show/SceneHeader"
+        v-socket={@socket}
+        v-inject:top-left="project-layout"
+        id="scene-header"
+        header={scene_header_props(assigns)}
       />
-    </Layouts.focus>
+
+      <.vue
+        :if={@scene}
+        v-component="live/scene/show/SceneHeaderActions"
+        v-socket={@socket}
+        v-inject:top-right="project-layout"
+        id="scene-actions"
+        edit-mode={@edit_mode}
+        can-edit={@can_edit}
+      />
+
+      <.vue
+        :if={@scene}
+        v-component="live/scene/show/SceneSurface"
+        v-socket={@socket}
+        v-inject="project-layout"
+        id="scene-surface"
+        class="w-full h-full"
+        surface={scene_surface_props(assigns)}
+      />
+
+      <%!-- LiveView owns the upload input; Vue owns the visible upload surface. --%>
+      <form
+        :if={@can_edit && @background_upload}
+        id="bg-upload-form"
+        phx-change="validate_bg_upload"
+        class="hidden"
+      >
+        <.live_file_input upload={@background_upload} />
+      </form>
+
+      <.vue
+        :if={@scene}
+        v-component="live/scene/show/ScenePanels"
+        v-socket={@socket}
+        v-inject:panels="project-layout"
+        id="scene-panels"
+        panels={scene_panels_props(assigns)}
+      />
+    </StoryarnWeb.Components.ProjectLayout.project>
     """
   end
 
   defp render_compact(assigns) do
     ~H"""
-    <Layouts.compare
-      flash={@flash}
-      panel_title={dgettext("scenes", "Layers")}
-      panel_open={@tree_panel_open}
-    >
-      <:panel>
-        <.layer_panel
-          layers={@layers}
-          active_layer_id={@active_layer_id}
-          renaming_layer_id={@renaming_layer_id}
-          can_edit={@can_edit}
-          edit_mode={@edit_mode}
-        />
-      </:panel>
-      <div class="h-full relative">
-        <%!-- Canvas fills the entire area --%>
-        <div
-          id="scene-canvas-wrapper"
-          class="absolute inset-0 overflow-hidden"
-        >
-          <div
-            id={"scene-canvas-#{@scene.id}"}
-            phx-hook="SceneCanvas"
-            phx-update="ignore"
-            data-scene={Jason.encode!(@scene_data)}
-            data-i18n={Jason.encode!(@canvas_i18n)}
-            data-current-user-id={@current_scope.user.id}
-            data-locks={Jason.encode!(@entity_locks)}
-            class="w-full h-full"
-          >
-            <div id="scene-canvas-container" class="w-full h-full"></div>
-          </div>
-        </div>
-
-        <%!-- Bottom dock --%>
-        <.dock
-          :if={@edit_mode}
-          active_tool={@active_tool}
-          pending_sheet={@pending_sheet_for_pin}
-          workspace={@workspace}
-          project={@project}
-          scene={@scene}
-          compact={true}
-        />
-
-        <%!-- Bottom-right controls: zoom + legend --%>
-        <div class="absolute bottom-3 right-3 z-[1000] flex items-end gap-2">
-          <div id="scene-controls-slot" phx-update="ignore"></div>
-          <.legend
-            pins={@pins}
-            zones={@zones}
-            connections={@connections}
-            legend_open={@legend_open}
-          />
-        </div>
-
-        <%!-- Floating element toolbar --%>
-        <.canvas_toolbar
-          id="scene-floating-toolbar"
-          canvas_id={"scene-canvas-#{@scene.id}"}
-          visible={@selected_element != nil && @can_edit && @edit_mode}
-          z_class="z-[1050]"
-        >
-          <.floating_toolbar
-            selected_type={@selected_type}
-            selected_element={@selected_element}
-            layers={@layers}
-            can_edit={not Map.get(@selected_element || %{}, :locked, false)}
-            can_toggle_lock={true}
-          />
-        </.canvas_toolbar>
-      </div>
-
-      <%!-- Element Properties Sidebar (outside canvas container to avoid z-index conflicts) --%>
-      <div
-        id="scene-element-panel"
-        phx-hook="RightSidebar"
-        data-right-panel
-        data-open-event="open_element_panel"
-        data-close-event="close_element_panel"
-        class={[
-          "fixed flex flex-col overflow-hidden right-sidebar",
-          "inset-0 z-[1060] bg-base-100",
-          "xl:inset-auto xl:right-3 xl:top-3 xl:bottom-3 xl:w-[480px]"
-        ]}
-      >
-        <div :if={@element_panel_open && @selected_element != nil}>
-          <.scene_element_panel
-            selected_type={@selected_type}
-            selected_element={@selected_element}
-            can_edit={not Map.get(@selected_element || %{}, :locked, false)}
-            project_id={@project.id}
-            project_scenes={@project_scenes}
-            project_sheets={@project_sheets}
-            project_flows={@project_flows}
-            project_variables={@project_variables}
-            panel_sections={@panel_sections}
-          />
-        </div>
-        <div
-          :if={!(@element_panel_open && @selected_element != nil)}
-          class="flex items-center justify-center h-full"
-        >
-          <span class="loading loading-spinner loading-md text-base-content/40"></span>
-        </div>
-      </div>
-    </Layouts.compare>
+    <StoryarnWeb.Components.CompareLayout.compare socket={@socket} flash={@flash}>
+      <.vue
+        v-component="live/scene/show/SceneCompactSurface"
+        v-socket={@socket}
+        v-inject="compare-layout"
+        id={"scene-compact-surface-#{@scene.id}"}
+        class="h-full relative"
+        surface={scene_compact_surface_props(assigns)}
+      />
+    </StoryarnWeb.Components.CompareLayout.compare>
     """
   end
 
-  @impl true
-  def mount(
-        %{
-          "workspace_slug" => workspace_slug,
-          "project_slug" => project_slug
-        },
-        _session,
-        socket
-      ) do
-    case Projects.get_project_by_slugs(
-           socket.assigns.current_scope,
-           workspace_slug,
-           project_slug
-         ) do
-      {:ok, project, membership} ->
-        can_edit = Projects.can?(membership.role, :edit_content)
-
-        if connected?(socket), do: Collaboration.subscribe_restoration(project.id)
-
-        {can_edit, restoration_banner} =
-          RestorationHandlers.check_restoration_lock(project.id, can_edit)
-
-        socket =
-          socket
-          |> assign(focus_layout_defaults())
-          |> assign(:compact, false)
-          |> assign(:tree_panel_tab, "scenes")
-          |> assign(:project, project)
-          |> assign(:workspace, project.workspace)
-          |> assign(:membership, membership)
-          |> assign(:can_edit, can_edit)
-          |> assign(:restoration_banner, restoration_banner)
-          |> assign(:canvas_i18n, canvas_i18n())
-          |> assign(:online_users, [])
-          |> assign(:collab_scope, nil)
-          |> assign(:entity_locks, %{})
-          |> assign(:lock_heartbeat_ref, nil)
-          |> assign(:_broadcast, nil)
-          # Defaults — scene loaded in handle_params
-          |> assign(:scene, nil)
-          |> assign(:ancestors, [])
-          |> assign(:scenes_tree, Scenes.list_scenes_tree(project.id))
-          |> assign(:layers, [])
-          |> assign(:zones, [])
-          |> assign(:pins, [])
-          |> assign(:connections, [])
-          |> assign(:annotations, [])
-          |> assign(:ambient_flows, [])
-          |> assign(:scene_data, %{})
-          |> assign(:edit_mode, can_edit)
-          |> assign(:active_tool, :select)
-          |> assign(:selected_element, nil)
-          |> assign(:selected_type, nil)
-          |> assign(:element_panel_open, false)
-          |> assign(:scene_settings_open, false)
-          |> assign(:active_layer_id, nil)
-          |> assign(:renaming_layer_id, nil)
-          |> assign(:show_pin_icon_upload, false)
-          |> assign(:show_sheet_picker, false)
-          |> assign(:pending_sheet_for_pin, nil)
-          |> assign(:search_query, "")
-          |> assign(:search_filter, "all")
-          |> assign(:search_results, [])
-          |> assign(:legend_open, false)
-          |> assign(:undo_stack, [])
-          |> assign(:redo_stack, [])
-          |> assign(:panel_sections, %{})
-          |> assign(:project_scenes, [])
-          |> assign(:project_sheets, [])
-          |> assign(:project_flows, [])
-          |> assign(:project_variables, [])
-          |> assign(:referencing_flows, [])
-          |> assign(:sidebar_loaded, false)
-          |> assign(:pending_delete_id, nil)
-          |> assign(:is_draft, false)
-          |> assign(:draft, nil)
-          |> assign(:renaming_draft, nil)
-          |> assign(:_draft_touch_ref, nil)
-          |> assign(
-            :my_drafts,
-            Drafts.list_my_drafts(project.id, socket.assigns.current_scope.user.id)
-          )
-          |> assign(:merge_summary, nil)
-          |> maybe_allow_background_upload(can_edit)
-
-        {:ok, socket}
-
-      {:error, _reason} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("scenes", "You don't have access to this project."))
-         |> redirect(to: ~p"/workspaces")}
-    end
+  defp scene_header_props(assigns) do
+    %{
+      toolbar: %{
+        canEdit: assigns.can_edit,
+        sceneName: assigns.scene.name,
+        sceneShortcut: assigns.scene.shortcut
+      },
+      search: %{
+        searchQuery: assigns.search_query,
+        searchFilter: assigns.search_filter,
+        searchResults: assigns.search_results
+      }
+    }
   end
 
+  defp scene_surface_props(assigns) do
+    %{
+      canvas: scene_surface_canvas(assigns),
+      dock: scene_surface_dock(assigns),
+      layers: scene_surface_layers(assigns),
+      legend: scene_surface_legend(assigns),
+      upload: scene_surface_upload(assigns)
+    }
+  end
+
+  defp scene_compact_surface_props(assigns) do
+    %{
+      canvas:
+        assigns
+        |> scene_surface_canvas()
+        |> Map.merge(%{
+          id: "scene-canvas-compact-#{assigns.scene.id}",
+          mountId: "scene-canvas-compact-mount-#{assigns.scene.id}"
+        }),
+      dock:
+        assigns
+        |> scene_surface_dock()
+        |> Map.merge(%{compact: true, projectSheets: []})
+    }
+  end
+
+  defp scene_panels_props(assigns) do
+    %{
+      versions: scene_panels_versions(assigns),
+      element: scene_panels_element(assigns),
+      settings: scene_panels_settings(assigns)
+    }
+  end
+
+  defp scene_surface_canvas(assigns) do
+    scene_id = assigns.scene.id
+
+    %{
+      key: "scene-canvas-mount-#{scene_id}",
+      id: "scene-canvas-#{scene_id}",
+      mountId: "scene-canvas-mount-#{scene_id}",
+      sceneData: prepare_scene_for_vue(assigns.scene),
+      pins: prepare_pins_for_vue(assigns.pins),
+      zones: prepare_zones_for_vue(assigns.zones),
+      connections: prepare_connections_for_vue(assigns.connections),
+      annotations: prepare_annotations_for_vue(assigns.annotations),
+      layers: prepare_layers_for_vue(assigns.layers),
+      activeTool: to_string(assigns.active_tool),
+      editMode: assigns.edit_mode,
+      canEdit: assigns.can_edit,
+      collaboration: %{
+        userId: assigns.current_scope.user.id,
+        locks: serialize_entity_locks(assigns.entity_locks)
+      }
+    }
+  end
+
+  defp scene_surface_dock(assigns) do
+    %{
+      activeTool: to_string(assigns.active_tool),
+      editMode: assigns.edit_mode,
+      compact: false,
+      pendingSheet: assigns.pending_sheet_for_pin && %{name: assigns.pending_sheet_for_pin.name},
+      projectSheets: prepare_project_sheets_for_vue(assigns.project_sheets),
+      workspaceSlug: assigns.workspace.slug,
+      projectSlug: assigns.project.slug,
+      sceneId: assigns.scene.id
+    }
+  end
+
+  defp scene_surface_layers(assigns) do
+    %{
+      layers: prepare_layers_for_vue(assigns.layers),
+      activeLayerId: assigns.active_layer_id,
+      canEdit: assigns.can_edit,
+      editMode: assigns.edit_mode,
+      popoverOpen: assigns.layers_popover_open
+    }
+  end
+
+  defp scene_surface_legend(assigns) do
+    %{
+      legendData: prepare_legend_groups(assigns.pins, assigns.zones, assigns.connections),
+      legendOpen: assigns.legend_open
+    }
+  end
+
+  defp scene_surface_upload(assigns) do
+    background_upload = scene_background_upload(assigns)
+    can_upload = !!(assigns.can_edit && assigns.edit_mode && background_upload)
+
+    %{
+      canUpload: can_upload,
+      backgroundSet: background_set?(assigns.scene),
+      inputRef: if(can_upload, do: background_upload.ref),
+      dropTarget: if(can_upload, do: background_upload.ref),
+      entries:
+        if can_upload do
+          Enum.map(background_upload.entries, &scene_upload_entry/1)
+        else
+          []
+        end
+    }
+  end
+
+  defp scene_background_upload(assigns) do
+    assigns
+    |> Map.get(:uploads, %{})
+    |> Map.get(:background)
+  end
+
+  defp scene_upload_entry(entry) do
+    %{
+      ref: entry.ref,
+      name: entry.client_name,
+      baseName: Path.rootname(entry.client_name),
+      extension: Path.extname(entry.client_name),
+      progress: entry.progress
+    }
+  end
+
+  defp scene_panels_versions(assigns) do
+    history_data = assigns.history_data
+
+    %{
+      open: assigns.right_panel == :versions,
+      versions: history_value(history_data, :versions, []),
+      namedVersions: history_value(history_data, :named_versions, []),
+      autoVersions: history_value(history_data, :auto_versions, []),
+      hasMore: history_value(history_data, :has_more, false),
+      canNameVersion: history_value(history_data, :can_name_version, false),
+      currentVersionId: history_value(history_data, :current_version_id, nil),
+      canEdit: assigns.can_edit,
+      loading: assigns.right_panel == :versions && is_nil(history_data)
+    }
+  end
+
+  defp scene_panels_element(assigns) do
+    %{
+      selectedType: assigns.selected_type,
+      selectedElement: serialize_selected_element(assigns.selected_type, assigns.selected_element),
+      canEdit: not Map.get(assigns.selected_element || %{}, :locked, false),
+      elementPanelOpen: assigns.right_panel == :element,
+      projectSheets: prepare_project_sheets_for_vue(assigns.project_sheets),
+      projectFlows: prepare_project_flows_for_vue(assigns.project_flows),
+      projectScenes: prepare_project_scenes_for_vue(assigns.project_scenes),
+      projectVariables: assigns.project_variables
+    }
+  end
+
+  defp scene_panels_settings(assigns) do
+    %{
+      scene: prepare_scene_for_vue(assigns.scene),
+      canEdit: assigns.can_edit,
+      ambientFlows: prepare_ambient_flows_for_vue(assigns.ambient_flows),
+      projectFlows: prepare_project_flows_for_vue(assigns.project_flows),
+      sceneSettingsOpen: assigns.right_panel == :settings && assigns.can_edit && assigns.edit_mode
+    }
+  end
+
+  defp history_value(nil, _key, default), do: default
+  defp history_value(history_data, key, default), do: history_data[key] || default
+
   @impl true
-  def handle_params(%{"id" => _scene_id, "draft_id" => draft_id} = params, _url, socket) do
-    compact = params["layout"] == "compact"
+  def mount(_params, _session, socket) do
+    %{project: project, can_edit: can_edit} = socket.assigns
+
+    if connected?(socket) do
+      Collaboration.subscribe_restoration(project.id)
+
+      Phoenix.PubSub.subscribe(
+        Storyarn.PubSub,
+        ProjectChromeHelpers.shell_topic(project.id)
+      )
+    end
+
+    {can_edit, restoration_banner} =
+      RestorationHandlers.check_restoration_lock(project.id, can_edit)
 
     socket =
       socket
-      |> assign(:compact, compact)
-      |> then(fn s ->
-        if compact, do: assign(s, tree_panel_open: true, tree_panel_pinned: true), else: s
-      end)
+      |> assign(:can_edit, can_edit)
+      |> assign(:compact, false)
+      |> assign(:restoration_banner, restoration_banner)
+      |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
+      |> assign(:collab_scope, nil)
+      |> assign(:entity_locks, %{})
+      |> assign(:lock_heartbeat_ref, nil)
+      |> assign(:_broadcast, nil)
+      # Defaults — scene loaded in handle_params
+      |> assign(:scene, nil)
+      |> assign(:ancestors, [])
+      |> assign(:layers, [])
+      |> assign(:zones, [])
+      |> assign(:pins, [])
+      |> assign(:connections, [])
+      |> assign(:annotations, [])
+      |> assign(:ambient_flows, [])
+      |> assign(:scene_data, %{})
+      |> assign(:edit_mode, can_edit)
+      |> assign(:active_tool, :select)
+      |> assign(:selected_element, nil)
+      |> assign(:selected_type, nil)
+      |> assign(:right_panel, nil)
+      |> assign(:active_layer_id, nil)
+      |> assign(:renaming_layer_id, nil)
+      |> assign(:show_pin_icon_upload, false)
+      |> assign(:show_sheet_picker, false)
+      |> assign(:pending_sheet_for_pin, nil)
+      |> assign(:search_query, "")
+      |> assign(:search_filter, "all")
+      |> assign(:search_results, [])
+      |> assign(:legend_open, false)
+      |> assign(:layers_popover_open, false)
+      |> assign(:undo_stack, [])
+      |> assign(:redo_stack, [])
+      |> assign(:panel_sections, %{})
+      |> assign(:project_scenes, [])
+      |> assign(:project_sheets, [])
+      |> assign(:project_flows, [])
+      |> assign(:project_variables, [])
+      |> assign(:referencing_flows, [])
+      |> assign(:sidebar_loaded, false)
+      |> assign(:pending_delete_id, nil)
+      |> maybe_allow_background_upload(can_edit)
 
-    {:noreply, load_draft_scene(socket, draft_id)}
+    {:ok, socket}
   end
 
+  @impl true
   def handle_params(%{"id" => scene_id} = params, _url, socket) do
     compact = params["layout"] == "compact"
 
-    socket =
-      socket
-      |> assign(:compact, compact)
-      |> then(fn s ->
-        if compact, do: assign(s, tree_panel_open: true, tree_panel_pinned: true), else: s
-      end)
+    socket = assign(socket, :compact, compact)
 
     current_id =
       case socket.assigns.scene do
@@ -717,6 +418,12 @@ defmodule StoryarnWeb.SceneLive.Show do
       else
         load_scene(socket, scene_id)
       end
+
+    Phoenix.PubSub.broadcast(
+      Storyarn.PubSub,
+      ProjectChromeHelpers.shell_topic(socket.assigns.project.id),
+      {:active_scene, scene_id}
+    )
 
     # Handle highlight params
     socket =
@@ -744,9 +451,7 @@ defmodule StoryarnWeb.SceneLive.Show do
       nil ->
         socket
         |> put_flash(:error, dgettext("scenes", "Scene not found."))
-        |> push_navigate(
-          to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-        )
+        |> push_navigate(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes")
 
       scene ->
         has_tree = socket.assigns.sidebar_loaded
@@ -781,6 +486,24 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   defp reload_ambient_flows(socket) do
     assign(socket, :ambient_flows, Scenes.list_ambient_flows(socket.assigns.scene.id))
+  end
+
+  defp update_ambient_flow_priority(socket, af_id, value) do
+    id = MapUtils.parse_int(af_id)
+
+    case Scenes.get_ambient_flow(socket.assigns.scene.id, id) do
+      nil -> socket
+      af -> save_ambient_flow_priority(socket, af, value)
+    end
+  end
+
+  defp save_ambient_flow_priority(socket, ambient_flow, value) do
+    priority = MapUtils.parse_int(value) || 0
+
+    case Scenes.update_ambient_flow(ambient_flow, %{"priority" => priority}) do
+      {:ok, _} -> reload_ambient_flows(socket)
+      {:error, _} -> socket
+    end
   end
 
   defp do_remove_ambient_flow(socket, id) do
@@ -823,7 +546,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     flows = socket.assigns.ambient_flows
 
     with idx when idx != nil <- Enum.find_index(flows, &(to_string(&1.id) == id)),
-         new_idx <- compute_reorder_index(idx, direction, length(flows)),
+         new_idx = compute_reorder_index(idx, direction, length(flows)),
          true <- idx != new_idx do
       ordered_ids =
         flows
@@ -877,11 +600,9 @@ defmodule StoryarnWeb.SceneLive.Show do
     }
   end
 
-  defp build_trigger_config("timed", params),
-    do: %{"interval_ms" => MapUtils.parse_int(params["interval_ms"]) || 30_000}
+  defp build_trigger_config("timed", params), do: %{"interval_ms" => MapUtils.parse_int(params["interval_ms"]) || 30_000}
 
-  defp build_trigger_config("on_event", params),
-    do: %{"variable_ref" => params["variable_ref"] || ""}
+  defp build_trigger_config("on_event", params), do: %{"variable_ref" => params["variable_ref"] || ""}
 
   defp build_trigger_config(_type, _params), do: %{}
 
@@ -900,9 +621,8 @@ defmodule StoryarnWeb.SceneLive.Show do
     |> assign(:active_tool, :select)
     |> assign(:selected_element, nil)
     |> assign(:selected_type, nil)
-    |> assign(:element_panel_open, false)
-    |> assign(:scene_settings_open, false)
-    |> assign(:versions_panel_open, false)
+    |> assign(:right_panel, nil)
+    |> assign(:history_data, nil)
     |> assign(:active_layer_id, default_layer_id(scene.layers))
     |> assign(:renaming_layer_id, nil)
     |> assign(:show_pin_icon_upload, false)
@@ -912,6 +632,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     |> assign(:search_filter, "all")
     |> assign(:search_results, [])
     |> assign(:legend_open, false)
+    |> assign(:layers_popover_open, false)
     |> assign(:undo_stack, [])
     |> assign(:redo_stack, [])
     |> assign(:auto_snapshot_ref, nil)
@@ -920,87 +641,17 @@ defmodule StoryarnWeb.SceneLive.Show do
     |> assign(:referencing_flows, [])
   end
 
-  defp load_draft_scene(socket, draft_id) do
-    %{project: project, current_scope: scope, can_edit: can_edit} = socket.assigns
-
-    with draft when not is_nil(draft) <- Drafts.get_my_draft(draft_id, scope.user.id, project.id),
-         true <- draft.entity_type == "scene" and draft.status == "active",
-         entity when not is_nil(entity) <- Drafts.get_draft_entity(draft) do
-      # Skip collaboration for drafts
-      has_tree = socket.assigns.sidebar_loaded
-
-      socket
-      |> assign(:scene, entity)
-      |> assign(:is_draft, true)
-      |> assign(:draft, draft)
-      |> assign(:ancestors, [])
-      |> assign(:layers, entity.layers || [])
-      |> assign(:zones, entity.zones || [])
-      |> assign(:pins, entity.pins || [])
-      |> assign(:connections, entity.connections || [])
-      |> assign(:annotations, entity.annotations || [])
-      |> assign(:scene_data, build_scene_data(entity, can_edit))
-      |> assign(:edit_mode, can_edit)
-      |> assign(:active_tool, :select)
-      |> assign(:selected_element, nil)
-      |> assign(:selected_type, nil)
-      |> assign(:element_panel_open, false)
-      |> assign(:scene_settings_open, false)
-      |> assign(:versions_panel_open, false)
-      |> assign(:active_layer_id, default_layer_id(entity.layers))
-      |> assign(:renaming_layer_id, nil)
-      |> assign(:show_pin_icon_upload, false)
-      |> assign(:show_sheet_picker, false)
-      |> assign(:pending_sheet_for_pin, nil)
-      |> assign(:search_query, "")
-      |> assign(:search_filter, "all")
-      |> assign(:search_results, [])
-      |> assign(:legend_open, false)
-      |> assign(:undo_stack, [])
-      |> assign(:redo_stack, [])
-      |> assign(:panel_sections, %{})
-      |> assign(:referencing_flows, [])
-      |> maybe_load_sidebar(has_tree, project)
-    else
-      _ ->
-        socket
-        |> put_flash(:error, dgettext("scenes", "Draft not found."))
-        |> push_navigate(
-          to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-        )
-    end
-  end
-
   defp maybe_load_sidebar(socket, true, _project), do: socket
 
   defp maybe_load_sidebar(socket, false, project) do
     start_async(socket, :load_sidebar_data, fn ->
       %{
-        scenes_tree: Scenes.list_scenes_tree_with_elements(project.id),
         project_scenes: Scenes.list_scenes(project.id),
         project_sheets: Storyarn.Sheets.list_sheets_tree(project.id),
         project_flows: Storyarn.Flows.list_flows(project.id),
         project_variables: VariableHelpers.list_all_variables(project.id)
       }
     end)
-  end
-
-  defp canvas_i18n do
-    %{
-      edit_properties: dgettext("scenes", "Edit Properties"),
-      connect_to: dgettext("scenes", "Connect To\u2026"),
-      edit_vertices: dgettext("scenes", "Edit Vertices"),
-      duplicate: dgettext("scenes", "Duplicate"),
-      bring_to_front: dgettext("scenes", "Bring to Front"),
-      send_to_back: dgettext("scenes", "Send to Back"),
-      lock: dgettext("scenes", "Lock"),
-      unlock: dgettext("scenes", "Unlock"),
-      delete: dgettext("scenes", "Delete"),
-      add_pin: dgettext("scenes", "Add Pin Here"),
-      add_annotation: dgettext("scenes", "Add Annotation Here"),
-      create_child_scene: dgettext("scenes", "Create child scene"),
-      name_zone_first: dgettext("scenes", "Name the zone first")
-    }
   end
 
   defp parse_highlight_id(id) do
@@ -1013,34 +664,75 @@ defmodule StoryarnWeb.SceneLive.Show do
   @valid_tools ~w(select pan rectangle triangle circle freeform pin annotation connector ruler)
 
   @impl true
-  # Tree panel events (from FocusLayout)
-  def handle_event("tree_panel_" <> _ = event, params, socket),
-    do: handle_tree_panel_event(event, params, socket)
-
-  def handle_event("switch_tree_tab", %{"tab" => tab}, socket)
-      when tab in ~w(scenes layers) do
-    {:noreply, assign(socket, :tree_panel_tab, tab)}
-  end
-
   def handle_event("open_versions_panel", _params, %{assigns: %{compact: true}} = socket) do
     {:noreply, socket}
   end
 
   def handle_event("open_versions_panel", _params, socket) do
-    {:noreply, assign(socket, :versions_panel_open, true)}
+    maybe_track_version_panel_opened(socket, "scene")
+
+    socket =
+      if is_nil(socket.assigns.history_data) do
+        VersionHistoryHelpers.load_history_data(
+          socket,
+          "scene",
+          socket.assigns.scene,
+          socket.assigns.project.id,
+          socket.assigns.workspace.id
+        )
+      else
+        socket
+      end
+
+    {:noreply, assign(socket, :right_panel, :versions)}
   end
 
   def handle_event("close_versions_panel", _params, socket) do
-    {:noreply, assign(socket, :versions_panel_open, false)}
+    {:noreply, dismiss_right_panel(socket, :versions)}
   end
 
-  def handle_event("show_create_version_modal", _params, socket) do
-    send_update(StoryarnWeb.Components.VersionsSection,
-      id: "scene-versions-section",
-      action: :show_create_version_modal
-    )
+  # ---------------------------------------------------------------------------
+  # Version History handlers (Vue VersionHistoryPanel)
+  # ---------------------------------------------------------------------------
 
-    {:noreply, socket}
+  def handle_event("create_version", %{"title" => title, "description" => description}, socket) do
+    VersionEventHelpers.handle_create(%{"title" => title, "description" => description}, socket, scene_version_config())
+  end
+
+  def handle_event("promote_version", params, socket) do
+    VersionEventHelpers.handle_promote(params, socket, scene_version_config())
+  end
+
+  def handle_event("delete_version", %{"version_number" => vn}, socket) do
+    VersionEventHelpers.handle_delete(%{"version_number" => vn}, socket, scene_version_config())
+  end
+
+  def handle_event("load_more_versions", _params, socket) do
+    VersionEventHelpers.handle_load_more(socket, scene_version_config())
+  end
+
+  def handle_event("preview_restore", %{"version_number" => vn}, socket) do
+    VersionEventHelpers.handle_preview_restore(%{"version_number" => vn}, socket, scene_version_config())
+  end
+
+  def handle_event("save_and_restore", %{"version_number" => vn}, socket) do
+    VersionEventHelpers.handle_save_and_restore(%{"version_number" => vn}, socket, scene_version_config())
+  end
+
+  def handle_event("discard_and_restore", %{"version_number" => vn}, socket) do
+    VersionEventHelpers.handle_discard_and_restore(%{"version_number" => vn}, socket, scene_version_config())
+  end
+
+  def handle_event("confirm_restore", %{"version_number" => vn} = params, socket) do
+    VersionEventHelpers.handle_confirm_restore(
+      %{"version_number" => vn, "skip_pre_snapshot" => params["skip_pre_snapshot"]},
+      socket,
+      scene_version_config()
+    )
+  end
+
+  def handle_event("compare_version", %{"version_number" => vn}, socket) do
+    VersionEventHelpers.handle_compare(%{"version_number" => vn}, socket, scene_version_config())
   end
 
   def handle_event("save_name", params, socket) do
@@ -1093,7 +785,8 @@ defmodule StoryarnWeb.SceneLive.Show do
       when type in ~w(pin zone connection annotation) do
     release_element_lock(socket)
 
-    CanvasEventHandlers.handle_select_element(params, socket)
+    params
+    |> CanvasEventHandlers.handle_select_element(socket)
     |> maybe_acquire_lock(id)
   end
 
@@ -1147,11 +840,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("drag_pin", _params, socket), do: {:noreply, socket}
 
-  def handle_event(
-        "drag_annotation",
-        %{"id" => id, "position_x" => x, "position_y" => y},
-        socket
-      )
+  def handle_event("drag_annotation", %{"id" => id, "position_x" => x, "position_y" => y}, socket)
       when (is_binary(id) or is_integer(id)) and is_number(x) and is_number(y) do
     CollaborationHandlers.handle_drag_relay(socket, :annotation_dragging, %{
       id: id,
@@ -1177,25 +866,24 @@ defmodule StoryarnWeb.SceneLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("open_element_panel", _params, socket) do
-    {:noreply,
-     socket
-     |> assign(:element_panel_open, true)
-     |> assign(:scene_settings_open, false)}
+    {:noreply, assign(socket, :right_panel, :element)}
+  end
+
+  def handle_event("toggle_element_panel", _params, socket) do
+    target = if socket.assigns.right_panel == :element, do: nil, else: :element
+    {:noreply, assign(socket, :right_panel, target)}
   end
 
   def handle_event("close_element_panel", _params, socket) do
-    {:noreply, assign(socket, :element_panel_open, false)}
+    {:noreply, dismiss_right_panel(socket, :element)}
   end
 
   def handle_event("open_scene_settings", _params, socket) do
-    {:noreply,
-     socket
-     |> assign(:scene_settings_open, true)
-     |> assign(:element_panel_open, false)}
+    {:noreply, assign(socket, :right_panel, :settings)}
   end
 
   def handle_event("close_scene_settings", _params, socket) do
-    {:noreply, assign(socket, :scene_settings_open, false)}
+    {:noreply, dismiss_right_panel(socket, :settings)}
   end
 
   # ---------------------------------------------------------------------------
@@ -1210,38 +898,70 @@ defmodule StoryarnWeb.SceneLive.Show do
         "value" => mode
       }
 
-      ElementHandlers.handle_update_pin(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_update_pin(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_pin", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_pin(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_update_pin(socket) |> broadcast_scene_change()
+    end)
+  end
+
+  def handle_event("upload_pin_icon", %{"filename" => filename, "content_type" => ct, "data" => data}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      with %{__struct__: Scenes.ScenePin} = pin <- socket.assigns[:selected_element],
+           [_header, base64] <- String.split(data, ",", parts: 2),
+           {:ok, binary} <- Base.decode64(base64),
+           {:ok, asset} <-
+             Assets.upload_binary_and_create_asset(
+               binary,
+               %{filename: filename, content_type: ct},
+               socket.assigns.project,
+               socket.assigns.current_scope.user
+             ),
+           {:ok, updated} <- Scenes.update_pin(pin, %{"icon_asset_id" => asset.id}) do
+        updated = Scenes.preload_pin_associations(updated)
+
+        broadcast_scene_change(
+          {:noreply,
+           socket
+           |> assign(:selected_element, updated)
+           |> update_pin_in_list(updated)
+           |> push_event("pin_updated", serialize_pin(updated))
+           |> put_flash(:info, dgettext("scenes", "Pin icon updated."))}
+        )
+      else
+        _ ->
+          {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not upload pin icon."))}
+      end
     end)
   end
 
   def handle_event("update_zone", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_zone(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_update_zone(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_connection", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_connection(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_update_connection(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_connection_waypoints", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_connection_waypoints(params, socket)
+      params
+      |> ElementHandlers.handle_update_connection_waypoints(socket)
       |> broadcast_scene_change()
     end)
   end
 
   def handle_event("clear_connection_waypoints", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_clear_connection_waypoints(params, socket)
+      params
+      |> ElementHandlers.handle_clear_connection_waypoints(socket)
       |> broadcast_scene_change()
     end)
   end
@@ -1266,7 +986,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("confirm_delete_element", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_confirm_delete_element(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_confirm_delete_element(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1276,7 +996,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("create_pin", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_create_pin(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_create_pin(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1294,13 +1014,13 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("create_pin_from_sheet", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_create_pin_from_sheet(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_create_pin_from_sheet(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("move_pin", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_move_pin(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_move_pin(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1310,7 +1030,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("create_zone", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_create_zone(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_create_zone(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1320,7 +1040,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("create_layer", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      LayerHandlers.handle_create_layer(params, socket) |> broadcast_scene_change()
+      params |> LayerHandlers.handle_create_layer(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1330,13 +1050,13 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("toggle_layer_visibility", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      LayerHandlers.handle_toggle_layer_visibility(params, socket) |> broadcast_scene_change()
+      params |> LayerHandlers.handle_toggle_layer_visibility(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_layer_fog", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      LayerHandlers.handle_update_layer_fog(params, socket) |> broadcast_scene_change()
+      params |> LayerHandlers.handle_update_layer_fog(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1346,7 +1066,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("rename_layer", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      LayerHandlers.handle_rename_layer(params, socket) |> broadcast_scene_change()
+      params |> LayerHandlers.handle_rename_layer(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1358,13 +1078,13 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("confirm_delete_layer", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      LayerHandlers.handle_confirm_delete_layer(params, socket) |> broadcast_scene_change()
+      params |> LayerHandlers.handle_confirm_delete_layer(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("delete_layer", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      LayerHandlers.handle_delete_layer(params, socket) |> broadcast_scene_change()
+      params |> LayerHandlers.handle_delete_layer(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1376,21 +1096,37 @@ defmodule StoryarnWeb.SceneLive.Show do
     LayerHandlers.handle_toggle_legend(params, socket)
   end
 
+  def handle_event("toggle_layers_popover", _params, socket) do
+    {:noreply, assign(socket, :layers_popover_open, !socket.assigns.layers_popover_open)}
+  end
+
+  def handle_event("attach_background_asset", %{"asset_id" => asset_id}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      project_id = socket.assigns.project.id
+
+      case Assets.get_asset(project_id, MapUtils.parse_int(asset_id)) do
+        nil -> {:noreply, put_flash(socket, :error, dgettext("scenes", "Asset not found."))}
+        asset -> process_background_upload(socket, asset)
+      end
+    end)
+  end
+
   def handle_event("remove_background", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      LayerHandlers.handle_remove_background(params, socket) |> broadcast_scene_change()
+      params |> LayerHandlers.handle_remove_background(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_scene_scale", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      LayerHandlers.handle_update_scene_scale(params, socket) |> broadcast_scene_change()
+      params |> LayerHandlers.handle_update_scene_scale(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_exploration_display_mode", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      LayerHandlers.handle_update_exploration_display_mode(params, socket)
+      params
+      |> LayerHandlers.handle_update_exploration_display_mode(socket)
       |> broadcast_scene_change()
     end)
   end
@@ -1447,20 +1183,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("update_ambient_flow_priority", %{"id" => af_id, "value" => value}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      id = MapUtils.parse_int(af_id)
-
-      case Scenes.get_ambient_flow(socket.assigns.scene.id, id) do
-        nil ->
-          {:noreply, socket}
-
-        af ->
-          priority = MapUtils.parse_int(value) || 0
-
-          case Scenes.update_ambient_flow(af, %{"priority" => priority}) do
-            {:ok, _} -> {:noreply, reload_ambient_flows(socket)}
-            {:error, _} -> {:noreply, socket}
-          end
-      end
+      {:noreply, update_ambient_flow_priority(socket, af_id, value)}
     end)
   end
 
@@ -1490,7 +1213,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("remove_pin_icon", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      LayerHandlers.handle_remove_pin_icon(params, socket) |> broadcast_scene_change()
+      params |> LayerHandlers.handle_remove_pin_icon(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1500,95 +1223,99 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("update_zone_vertices", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_zone_vertices(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_update_zone_vertices(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("duplicate_zone", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_duplicate_zone(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_duplicate_zone(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("delete_zone", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_delete_zone(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_delete_zone(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_zone_action_type", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_zone_action_type(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_update_zone_action_type(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_zone_assignments", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_zone_assignments(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_update_zone_assignments(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("select_zone_display_var:" <> zone_id, %{"id" => variable_ref}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       params = %{"zone-id" => zone_id, "field" => "variable_ref", "value" => variable_ref}
-      ElementHandlers.handle_update_zone_action_data(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_update_zone_action_data(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_zone_action_data", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_zone_action_data(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_update_zone_action_data(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_zone_condition", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_zone_condition(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_update_zone_condition(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_zone_condition_effect", %{"effect" => _} = params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_zone_condition_effect(params, socket)
+      params
+      |> ElementHandlers.handle_update_zone_condition_effect(socket)
       |> broadcast_scene_change()
     end)
   end
 
   def handle_event("add_collection_item", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_add_collection_item(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_add_collection_item(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("remove_collection_item", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_remove_collection_item(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_remove_collection_item(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_collection_item", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_collection_item(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_update_collection_item(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_collection_item_condition", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_collection_item_condition(params, socket)
+      params
+      |> ElementHandlers.handle_update_collection_item_condition(socket)
       |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_collection_item_instruction", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_collection_item_instruction(params, socket)
+      params
+      |> ElementHandlers.handle_update_collection_item_instruction(socket)
       |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_collection_settings", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_collection_settings(params, socket)
+      params
+      |> ElementHandlers.handle_update_collection_settings(socket)
       |> broadcast_scene_change()
     end)
   end
@@ -1605,20 +1332,21 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("update_pin_condition", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_pin_condition(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_update_pin_condition(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_pin_condition_effect", %{"effect" => _} = params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_pin_condition_effect(params, socket)
+      params
+      |> ElementHandlers.handle_update_pin_condition_effect(socket)
       |> broadcast_scene_change()
     end)
   end
 
   def handle_event("delete_pin", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_delete_pin(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_delete_pin(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1628,13 +1356,13 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("create_connection", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_create_connection(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_create_connection(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("delete_connection", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_delete_connection(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_delete_connection(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1644,25 +1372,25 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("create_annotation", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_create_annotation(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_create_annotation(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_annotation", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_annotation(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_update_annotation(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("move_annotation", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_move_annotation(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_move_annotation(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("delete_annotation", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_delete_annotation(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_delete_annotation(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1678,13 +1406,13 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("delete_selected", _params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_delete_selected(socket) |> broadcast_scene_change()
+      socket |> ElementHandlers.handle_delete_selected() |> broadcast_scene_change()
     end)
   end
 
   def handle_event("duplicate_selected", _params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_duplicate_selected(socket) |> broadcast_scene_change()
+      socket |> ElementHandlers.handle_duplicate_selected() |> broadcast_scene_change()
     end)
   end
 
@@ -1694,7 +1422,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("paste_element", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_paste_element(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_paste_element(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1704,13 +1432,13 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("undo", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      UndoRedoHandlers.handle_undo(params, socket) |> broadcast_scene_change()
+      params |> UndoRedoHandlers.handle_undo(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("redo", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      UndoRedoHandlers.handle_redo(params, socket) |> broadcast_scene_change()
+      params |> UndoRedoHandlers.handle_redo(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1730,118 +1458,24 @@ defmodule StoryarnWeb.SceneLive.Show do
       _flow ->
         {:noreply,
          push_navigate(socket,
-           to:
-             ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow_id}"
+           to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow_id}"
          )}
     end
   end
 
   # ---------------------------------------------------------------------------
-  # Sidebar tree event handlers — delegate to TreeHandlers
+  # Sidebar tree event handlers
+  #
+  # `create_scene`, `create_child_scene`, `set_pending_delete_scene`,
+  # `confirm_delete_scene`, `delete_scene`, `move_to_parent` now live in
+  # `SceneSidebarLive` — they never reach this LV because the tree is
+  # rendered by that separate sticky sidebar. Only `create_child_scene_from_zone`
+  # stays because it's fired from the canvas zone context menu, not the tree.
   # ---------------------------------------------------------------------------
-
-  def handle_event("create_scene", params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      TreeHandlers.handle_create_scene(params, socket) |> broadcast_scene_change()
-    end)
-  end
-
-  def handle_event("create_child_scene", params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      TreeHandlers.handle_create_child_scene(params, socket) |> broadcast_scene_change()
-    end)
-  end
 
   def handle_event("create_child_scene_from_zone", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      TreeHandlers.handle_create_child_scene_from_zone(params, socket) |> broadcast_scene_change()
-    end)
-  end
-
-  def handle_event("create_draft", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      %{scene: scene} = socket.assigns
-
-      DraftHandlers.handle_create_draft(socket, "scene", scene.id, fn s, draft ->
-        %{project: project} = s.assigns
-
-        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}/drafts/#{draft.id}"
-      end)
-    end)
-  end
-
-  def handle_event("discard_draft", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      %{project: project} = socket.assigns
-
-      DraftHandlers.handle_discard_draft(
-        socket,
-        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-      )
-    end)
-  end
-
-  def handle_event("load_merge_summary", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      DraftHandlers.handle_load_merge_summary(socket)
-    end)
-  end
-
-  def handle_event("merge_draft", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      %{draft: draft} = socket.assigns
-
-      DraftHandlers.handle_merge_draft(socket, fn s ->
-        %{project: p} = s.assigns
-
-        ~p"/workspaces/#{p.workspace.slug}/projects/#{p.slug}/scenes/#{draft.source_entity_id}"
-      end)
-    end)
-  end
-
-  def handle_event("rename_draft_inline", %{"draft-id" => draft_id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      DraftHandlers.handle_rename_draft_inline(socket, draft_id)
-    end)
-  end
-
-  def handle_event("submit_rename_draft", params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      DraftHandlers.handle_submit_rename_draft(socket, params)
-    end)
-  end
-
-  def handle_event("cancel_rename_draft", _params, socket) do
-    {:noreply, assign(socket, :renaming_draft, nil)}
-  end
-
-  def handle_event("discard_draft_from_list", %{"draft_id" => draft_id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      DraftHandlers.handle_discard_draft_from_list(socket, draft_id)
-    end)
-  end
-
-  def handle_event("set_pending_delete_scene", %{"id" => id}, socket) do
-    handle_set_pending_delete(socket, id)
-  end
-
-  def handle_event("confirm_delete_scene", _params, socket) do
-    handle_confirm_delete(socket, fn socket, id ->
-      Authorize.with_authorization(socket, :edit_content, fn _socket ->
-        TreeHandlers.handle_delete_scene(%{"id" => id}, socket) |> broadcast_scene_change()
-      end)
-    end)
-  end
-
-  def handle_event("delete_scene", params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      TreeHandlers.handle_delete_scene(params, socket) |> broadcast_scene_change()
-    end)
-  end
-
-  def handle_event("move_to_parent", params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      TreeHandlers.handle_move_to_parent(params, socket) |> broadcast_scene_change()
+      params |> TreeHandlers.handle_create_child_scene_from_zone(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1853,7 +1487,6 @@ defmodule StoryarnWeb.SceneLive.Show do
   def handle_async(:load_sidebar_data, {:ok, data}, socket) do
     {:noreply,
      socket
-     |> assign(:scenes_tree, data.scenes_tree)
      |> assign(:project_scenes, data.project_scenes)
      |> assign(:project_sheets, data.project_sheets)
      |> assign(:project_flows, data.project_flows)
@@ -1912,15 +1545,13 @@ defmodule StoryarnWeb.SceneLive.Show do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       [zone_id, item_id] = String.split(rest, "-", parts: 2)
 
-      ElementHandlers.handle_update_collection_item(
-        %{
-          "zone-id" => zone_id,
-          "item-id" => item_id,
-          "field" => "sheet_id",
-          "value" => if(sheet_id, do: to_string(sheet_id), else: "")
-        },
-        socket
-      )
+      %{
+        "zone-id" => zone_id,
+        "item-id" => item_id,
+        "field" => "sheet_id",
+        "value" => if(sheet_id, do: to_string(sheet_id), else: "")
+      }
+      |> ElementHandlers.handle_update_collection_item(socket)
       |> broadcast_scene_change()
     end)
   end
@@ -1932,19 +1563,19 @@ defmodule StoryarnWeb.SceneLive.Show do
           {:ok, updated} ->
             updated = Scenes.preload_pin_associations(updated)
 
-            {:noreply,
-             socket
-             |> assign(:selected_element, updated)
-             |> update_pin_in_list(updated)
-             |> assign(:show_pin_icon_upload, false)
-             |> assign(:_broadcast, {:pin_updated, %{id: updated.id}})
-             |> push_event("pin_updated", serialize_pin(updated))
-             |> put_flash(:info, dgettext("scenes", "Pin icon updated."))}
-            |> broadcast_scene_change()
+            broadcast_scene_change(
+              {:noreply,
+               socket
+               |> assign(:selected_element, updated)
+               |> update_pin_in_list(updated)
+               |> assign(:show_pin_icon_upload, false)
+               |> assign(:_broadcast, {:pin_updated, %{id: updated.id}})
+               |> push_event("pin_updated", serialize_pin(updated))
+               |> put_flash(:info, dgettext("scenes", "Pin icon updated."))}
+            )
 
           {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("scenes", "Could not update pin icon."))}
+            {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not update pin icon."))}
         end
 
       _ ->
@@ -1969,95 +1600,25 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   @impl true
   def handle_info({:project_restoration_started, payload}, socket),
-    do:
-      RestorationHandlers.handle_restoration_event(
-        {:project_restoration_started, payload},
-        socket
-      )
+    do: RestorationHandlers.handle_restoration_event({:project_restoration_started, payload}, socket)
 
   @impl true
   def handle_info({:project_restoration_completed, payload}, socket),
-    do:
-      RestorationHandlers.handle_restoration_event(
-        {:project_restoration_completed, payload},
-        socket
-      )
+    do: RestorationHandlers.handle_restoration_event({:project_restoration_completed, payload}, socket)
 
   @impl true
   def handle_info({:project_restoration_failed, payload}, socket),
-    do:
-      RestorationHandlers.handle_restoration_event(
-        {:project_restoration_failed, payload},
-        socket
-      )
-
-  def handle_info({:versions_section, :version_created, %{version: _}}, socket) do
-    {:noreply, socket}
-  end
-
-  def handle_info(
-        {:versions_section, :version_restored, %{entity: updated_scene, version: _}},
-        socket
-      ) do
-    # Cancel any pending auto-snapshot (stale after restore)
-    socket = StoryarnWeb.Helpers.AutoSnapshot.cancel(socket)
-
-    %{project: project, can_edit: can_edit} = socket.assigns
-
-    # Reload scene with all associations
-    scene = Scenes.get_scene(project.id, updated_scene.id)
-    scene_data = build_scene_data(scene, can_edit)
-
-    result =
-      {:noreply,
-       socket
-       |> assign(:scene, scene)
-       |> assign(:layers, scene.layers || [])
-       |> assign(:zones, scene.zones || [])
-       |> assign(:pins, scene.pins || [])
-       |> assign(:connections, scene.connections || [])
-       |> assign(:annotations, scene.annotations || [])
-       |> assign(:scene_data, scene_data)
-       |> assign(:selected_element, nil)
-       |> assign(:selected_type, nil)
-       |> assign(:element_panel_open, false)
-       |> assign(:scene_settings_open, false)
-       |> assign(:versions_panel_open, false)
-       |> assign(:undo_stack, [])
-       |> assign(:redo_stack, [])
-       |> assign(:_broadcast, {:scene_refreshed, %{}})
-       |> push_event("scene_data", scene_data)
-       |> push_event("panel-close", %{to: "#scene-versions-panel"})}
-
-    broadcast_scene_change(result)
-  end
-
-  def handle_info({:versions_section, :version_deleted, %{version: _}}, socket) do
-    {:noreply, socket}
-  end
-
-  def handle_info({:versions_section, :compare_version, %{version: version}}, socket) do
-    %{workspace: workspace, project: project, scene: scene} = socket.assigns
-
-    compare_url =
-      ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}/compare/#{version.version_number}"
-
-    {:noreply, push_navigate(socket, to: compare_url)}
-  end
-
-  def handle_info({:versions_section, :flash, %{kind: kind, message: message}}, socket) do
-    {:noreply, put_flash(socket, kind, message)}
-  end
+    do: RestorationHandlers.handle_restoration_event({:project_restoration_failed, payload}, socket)
 
   # ---------------------------------------------------------------------------
   # Handle Info: Collaboration
   # ---------------------------------------------------------------------------
 
-  def handle_info({Storyarn.Collaboration.Presence, {:join, presence}}, socket) do
+  def handle_info({Presence, {:join, presence}}, socket) do
     Collab.handle_presence_join(socket, presence)
   end
 
-  def handle_info({Storyarn.Collaboration.Presence, {:leave, _} = event}, socket) do
+  def handle_info({Presence, {:leave, _} = event}, socket) do
     Collab.handle_presence_leave(socket, elem(event, 1))
   end
 
@@ -2081,6 +1642,40 @@ defmodule StoryarnWeb.SceneLive.Show do
     CollaborationHandlers.handle_remote_change(action, payload, socket)
   end
 
+  # ---------------------------------------------------------------------------
+  # Shell topic messages (ProjectLayout + SceneSidebarLive)
+  # ---------------------------------------------------------------------------
+
+  # Broadcast from handle_params of this LV; the sidebar listens too. Noop for
+  # Show since it owns the scene state already. Sibling active_* messages
+  # travel on the same shell topic when multiple tools share a project — swallow
+  # them so they don't crash the LV with FunctionClauseError.
+  def handle_info({:active_scene, _scene_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_sheet, _sheet_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_flow, _flow_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_locale, _locale}, socket), do: {:noreply, socket}
+
+  # Sidebar → page; Index picks it up on tree-create navigation. Ignored in Show.
+  def handle_info({:open_scene, _id}, socket), do: {:noreply, socket}
+
+  # Tree mutations in the sidebar LV broadcast this; Show doesn't own the tree.
+  def handle_info({:tree_changed, :scenes}, socket), do: {:noreply, socket}
+
+  def handle_info({:entity_deleted, id}, socket) do
+    if to_string(id) == to_string(socket.assigns.scene.id) do
+      {:noreply,
+       push_navigate(socket,
+         to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes"
+       )}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_info({:toolbar_event, _event, _params}, socket), do: {:noreply, socket}
+
+  def handle_info({:online_users, users}, socket), do: {:noreply, assign(socket, :online_users, users)}
+
   @impl true
   def handle_info(:refresh_locks, socket) do
     with scope when not is_nil(scope) <- socket.assigns[:collab_scope],
@@ -2091,8 +1686,6 @@ defmodule StoryarnWeb.SceneLive.Show do
 
     {:noreply, schedule_lock_heartbeat(socket)}
   end
-
-  def handle_info(:touch_draft, socket), do: DraftHandlers.handle_touch_draft(socket)
 
   @impl true
   def terminate(_reason, socket) do
@@ -2161,6 +1754,45 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   defp parse_element_id(_), do: nil
 
+  defp reload_history_data(socket) do
+    VersionHistoryHelpers.load_history_data(
+      socket,
+      "scene",
+      socket.assigns.scene,
+      socket.assigns.project.id,
+      socket.assigns.workspace.id
+    )
+  end
+
+  defp maybe_track_version_panel_opened(socket, entity_type) do
+    if socket.assigns[:right_panel] != :versions do
+      Analytics.track(socket.assigns.current_scope, "version panel opened", %{
+        entity_type: entity_type,
+        project_id: socket.assigns.project.id
+      })
+    end
+  end
+
+  defp scene_version_config do
+    %{
+      entity_type: "scene",
+      entity_key: :scene,
+      reload_history: &reload_history_data/1,
+      restore_path: &scene_restore_path/1,
+      compare_path: &scene_compare_path/2
+    }
+  end
+
+  defp scene_restore_path(socket) do
+    %{workspace: workspace, project: project, scene: scene} = socket.assigns
+    ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
+  end
+
+  defp scene_compare_path(socket, version_number) do
+    %{workspace: workspace, project: project, scene: scene} = socket.assigns
+    ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}/compare/#{version_number}"
+  end
+
   defp broadcast_scene_change({:noreply, socket} = _result) do
     {action, payload} =
       socket.assigns[:_broadcast] || {:scene_refreshed, %{}}
@@ -2169,10 +1801,7 @@ defmodule StoryarnWeb.SceneLive.Show do
       Collab.broadcast_change(socket, scope, action, payload)
     end
 
-    {:noreply,
-     socket
-     |> assign(:_broadcast, nil)
-     |> DraftTouchTimer.schedule_touch()}
+    {:noreply, assign(socket, :_broadcast, nil)}
   end
 
   # ---------------------------------------------------------------------------
@@ -2214,8 +1843,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     end
   end
 
-  defp handle_background_result([{:ok, asset}], socket),
-    do: process_background_upload(socket, asset)
+  defp handle_background_result([{:ok, asset}], socket), do: process_background_upload(socket, asset)
 
   defp handle_background_result(_results, socket),
     do: {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not upload background."))}
@@ -2226,13 +1854,14 @@ defmodule StoryarnWeb.SceneLive.Show do
         updated = Scenes.preload_scene_background(updated)
         Collaboration.broadcast_change({:assets, socket.assigns.project.id}, :asset_created, %{})
 
-        {:noreply,
-         socket
-         |> assign(:scene, updated)
-         |> assign(:_broadcast, {:layer_updated, %{}})
-         |> push_event("background_changed", %{url: asset.url})
-         |> put_flash(:info, dgettext("scenes", "Background image updated."))}
-        |> broadcast_scene_change()
+        broadcast_scene_change(
+          {:noreply,
+           socket
+           |> assign(:scene, updated)
+           |> assign(:_broadcast, {:layer_updated, %{}})
+           |> push_event("background_changed", %{url: asset.url})
+           |> put_flash(:info, dgettext("scenes", "Background image updated."))}
+        )
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not update background."))}
@@ -2256,36 +1885,5 @@ defmodule StoryarnWeb.SceneLive.Show do
       true ->
         dgettext("scenes", "Could not upload file.")
     end
-  end
-
-  attr :sheets, :list, required: true
-
-  defp sheet_picker_list(assigns) do
-    ~H"""
-    <button
-      :for={sheet <- @sheets}
-      type="button"
-      phx-click="start_pin_from_sheet"
-      phx-value-sheet-id={sheet.id}
-      class="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-base-200 text-left"
-    >
-      <div class="size-7 rounded-full bg-base-300 flex items-center justify-center shrink-0 overflow-hidden">
-        <img
-          :if={sheet_avatar_url(sheet)}
-          src={sheet_avatar_url(sheet)}
-          class="size-7 rounded-full object-cover"
-        />
-        <span :if={!sheet_avatar_url(sheet)} class="text-xs font-medium text-base-content/60">
-          {String.slice(sheet.name, 0, 2)}
-        </span>
-      </div>
-      <div class="min-w-0 flex-1">
-        <div class="text-sm truncate">{sheet.name}</div>
-        <div :if={sheet.shortcut} class="text-xs text-base-content/50 truncate">
-          #{sheet.shortcut}
-        </div>
-      </div>
-    </button>
-    """
   end
 end

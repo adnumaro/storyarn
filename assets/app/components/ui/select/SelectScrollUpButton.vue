@@ -1,0 +1,29 @@
+<script setup lang="ts">
+import type { Component, HTMLAttributes } from "vue";
+import { reactiveOmit } from "@vueuse/core";
+import { ChevronUp } from "lucide-vue-next";
+import { SelectScrollUpButton, useForwardProps, type AsTag } from "reka-ui";
+import { cn } from "../../../shared/utils/utils";
+
+const props = defineProps<{
+  asChild?: boolean;
+  as?: AsTag | Component;
+  class?: HTMLAttributes["class"];
+}>();
+
+const delegatedProps = reactiveOmit(props, "class");
+
+const forwardedProps = useForwardProps(delegatedProps);
+</script>
+
+<template>
+  <SelectScrollUpButton
+    data-slot="select-scroll-up-button"
+    v-bind="forwardedProps"
+    :class="cn('flex cursor-default items-center justify-center py-1', props.class)"
+  >
+    <slot>
+      <ChevronUp class="size-4" />
+    </slot>
+  </SelectScrollUpButton>
+</template>

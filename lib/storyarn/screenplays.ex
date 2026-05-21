@@ -8,42 +8,33 @@ defmodule Storyarn.Screenplays do
   This module serves as a facade, delegating to specialized submodules:
   - `ScreenplayCrud` — CRUD operations for screenplays
   - `ElementCrud` — CRUD operations for screenplay elements
-  - `ScreenplayQueries` — Read-only queries (get_with_elements, count, drafts)
+  - `ScreenplayQueries` — Read-only queries (get_with_elements, count)
   - `TreeOperations` — Reordering and moving screenplays in the tree
   """
 
   alias Storyarn.Repo
+  alias Storyarn.Screenplays.CharacterExtension
+  alias Storyarn.Screenplays.ContentUtils
+  alias Storyarn.Screenplays.ElementCrud
+  alias Storyarn.Screenplays.Export.Fountain, as: FountainExport
+  alias Storyarn.Screenplays.FlowSync
+  alias Storyarn.Screenplays.Import.Fountain, as: FountainImport
+  alias Storyarn.Screenplays.LinkedPageCrud
+  alias Storyarn.Screenplays.ScreenplayCrud
+  alias Storyarn.Screenplays.ScreenplayQueries
+  alias Storyarn.Screenplays.TiptapSerialization
+  alias Storyarn.Screenplays.TreeOperations
   alias Storyarn.Sheets
-
-  alias Storyarn.Screenplays.{
-    CharacterExtension,
-    ContentUtils,
-    ElementCrud,
-    FlowSync,
-    LinkedPageCrud,
-    Screenplay,
-    ScreenplayCrud,
-    ScreenplayQueries,
-    TiptapSerialization,
-    TreeOperations
-  }
 
   # =============================================================================
   # Screenplay Helpers
   # =============================================================================
 
-  @doc """
-  Checks if a screenplay is a draft (has a non-nil draft_of_id).
-
-  Delegates to `Storyarn.Screenplays.Screenplay.draft?/1`.
-  """
-  defdelegate draft?(screenplay), to: Screenplay
-
   # =============================================================================
   # Screenplays — CRUD Operations
   # =============================================================================
 
-  @doc "Lists all non-deleted, non-draft screenplays for a project."
+  @doc "Lists all non-deleted screenplays for a project."
   defdelegate list_screenplays(project_id), to: ScreenplayCrud
 
   @doc "Lists screenplays as a tree structure (root with children preloaded)."
@@ -54,6 +45,9 @@ defmodule Storyarn.Screenplays do
 
   @doc "Gets a screenplay by project_id and screenplay_id. Raises if not found."
   defdelegate get_screenplay!(project_id, screenplay_id), to: ScreenplayCrud
+
+  @doc "Gets a screenplay by project_id and screenplay_id, including soft-deleted records."
+  defdelegate get_screenplay_including_deleted(project_id, screenplay_id), to: ScreenplayCrud
 
   @doc "Creates a screenplay for a project. Auto-generates shortcut and position."
   defdelegate create_screenplay(project, attrs), to: ScreenplayCrud
@@ -67,10 +61,13 @@ defmodule Storyarn.Screenplays do
   @doc "Restores a soft-deleted screenplay."
   defdelegate restore_screenplay(screenplay), to: ScreenplayCrud
 
+  @doc "Permanently deletes a screenplay."
+  defdelegate hard_delete_screenplay(screenplay), to: ScreenplayCrud
+
   @doc "Returns a changeset for tracking screenplay changes."
   defdelegate change_screenplay(screenplay, attrs \\ %{}), to: ScreenplayCrud
 
-  @doc "Checks if a screenplay exists within a project (non-deleted, non-draft)."
+  @doc "Checks if a screenplay exists within a project (non-deleted)."
   defdelegate screenplay_exists?(project_id, screenplay_id), to: ScreenplayCrud
 
   @doc "Lists all soft-deleted screenplays for a project (trash)."
@@ -85,9 +82,6 @@ defmodule Storyarn.Screenplays do
 
   @doc "Returns the number of elements in a screenplay."
   defdelegate count_elements(screenplay_id), to: ScreenplayQueries
-
-  @doc "Lists all drafts of a given screenplay."
-  defdelegate list_drafts(screenplay_id), to: ScreenplayQueries
 
   @doc "Resolves screenplay element backlinks for entity reference tracking."
   defdelegate query_screenplay_element_backlinks(target_type, target_id, project_id),
@@ -256,9 +250,6 @@ defmodule Storyarn.Screenplays do
   # Export / Import
   # =============================================================================
 
-  alias Storyarn.Screenplays.Export.Fountain, as: FountainExport
-  alias Storyarn.Screenplays.Import.Fountain, as: FountainImport
-
   @doc "Exports elements to Fountain format string."
   defdelegate export_fountain(elements), to: FountainExport, as: :export
 
@@ -294,7 +285,7 @@ defmodule Storyarn.Screenplays do
   @doc "Creates a screenplay element for import (raw insert, no side effects)."
   defdelegate import_element(screenplay_id, attrs, extra_changes \\ %{}), to: ScreenplayCrud
 
-  @doc "Updates a screenplay's parent_id and/or draft_of_id after import."
+  @doc "Updates a screenplay's parent_id after import."
   defdelegate link_screenplay_import_refs(screenplay, changes),
     to: ScreenplayCrud,
     as: :link_import_refs

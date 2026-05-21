@@ -1,15 +1,16 @@
 defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Exports.{DataCollector, ExportOptions}
-  alias Storyarn.Exports.Serializers.GodotDialogic
-
-  alias Storyarn.Repo
-
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Exports.DataCollector
+  alias Storyarn.Exports.ExportOptions
+  alias Storyarn.Exports.Serializers.GodotDialogic
+  alias Storyarn.Exports.Serializers.Helpers
+  alias Storyarn.Repo
 
   # =============================================================================
   # Setup
@@ -37,6 +38,12 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
 
   defp dtl_source(files) do
     {_name, content} = Enum.find(files, fn {name, _} -> String.ends_with?(name, ".dtl") end)
+    content
+  end
+
+  defp dtl_source_for(files, flow) do
+    filename = "#{Helpers.shortcut_to_identifier(flow.shortcut || flow.name || "flow_#{flow.id}")}.dtl"
+    {_name, content} = Enum.find(files, fn {name, _} -> name == filename end)
     content
   end
 
@@ -282,6 +289,47 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
       assert has_line?(source, "- Buy")
       assert has_line?(source, "- Sell")
     end
+
+    test "choice branches are TAB-indented under their options", %{project: project} do
+      flow = flow_fixture(project, %{name: "Choice Branches"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Pick a path.",
+            "speaker_sheet_id" => nil,
+            "responses" => [
+              %{"id" => "fight", "text" => "Fight", "condition" => nil, "instruction" => nil},
+              %{"id" => "run", "text" => "Run", "condition" => nil, "instruction" => nil}
+            ]
+          }
+        })
+
+      fight_dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "You fight.", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      run_dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "You run.", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      connection_fixture(flow, entry, dialogue)
+      connection_fixture(flow, dialogue, fight_dialogue, %{source_pin: "response_fight"})
+      connection_fixture(flow, dialogue, run_dialogue, %{source_pin: "response_run"})
+
+      source = dtl_source(export_dialogic(project))
+      assert has_line?(source, "- Fight")
+      assert has_line?(source, "\tYou fight.")
+      assert has_line?(source, "- Run")
+      assert has_line?(source, "\tYou run.")
+    end
   end
 
   # =============================================================================
@@ -311,11 +359,18 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
             "condition" =>
               Jason.encode!(%{
                 "logic" => "all",
-                "rules" => [
+                "blocks" => [
                   %{
-                    "sheet" => sheet.shortcut,
-                    "variable" => "alive",
-                    "operator" => "is_true"
+                    "id" => "b1",
+                    "type" => "block",
+                    "logic" => "all",
+                    "rules" => [
+                      %{
+                        "sheet" => sheet.shortcut,
+                        "variable" => "alive",
+                        "operator" => "is_true"
+                      }
+                    ]
                   }
                 ]
               }),
@@ -497,7 +552,7 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
       connection_fixture(flow, entry, jump)
 
       source = dtl_source(export_dialogic(project))
-      assert source =~ "jump act2_beginning"
+      assert source =~ "jump act2_beginning/"
     end
 
     test "subflow renders jump with trailing slash", %{project: project} do
@@ -517,21 +572,76 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
       assert source =~ "jump side_quest_rescue/"
     end
 
-    test "slug_line node renders location comment", %{project: project} do
-      flow = flow_fixture(project, %{name: "Slug Line Flow"})
-      flow = reload_flow(flow)
-      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+    test "subflow with referenced_flow_id resolves target flow shortcut", %{project: project} do
+      target_flow = flow_fixture(project, %{name: "Side Quest"})
+      caller_flow = flow_fixture(project, %{name: "Main"})
+      caller_flow = reload_flow(caller_flow)
+      caller_entry = Enum.find(caller_flow.nodes, &(&1.type == "entry"))
 
-      slug_line =
-        node_fixture(flow, %{
-          type: "slug_line",
-          data: %{"location" => "Tavern Interior"}
+      subflow =
+        node_fixture(caller_flow, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => target_flow.id}
         })
 
-      connection_fixture(flow, entry, slug_line)
+      connection_fixture(caller_flow, caller_entry, subflow)
 
-      source = dtl_source(export_dialogic(project))
-      assert source =~ "# location: Tavern Interior"
+      source = project |> export_dialogic() |> dtl_source_for(caller_flow)
+      target = Helpers.shortcut_to_identifier(target_flow.shortcut)
+      assert source =~ "jump #{target}/"
+    end
+
+    test "exit in subflow target emits return", %{project: project} do
+      target_flow = flow_fixture(project, %{name: "Side Quest"})
+      target_flow = reload_flow(target_flow)
+      target_entry = Enum.find(target_flow.nodes, &(&1.type == "entry"))
+      target_exit = node_fixture(target_flow, %{type: "exit", data: %{}})
+      connection_fixture(target_flow, target_entry, target_exit)
+
+      caller_flow = flow_fixture(project, %{name: "Main"})
+      caller_flow = reload_flow(caller_flow)
+      caller_entry = Enum.find(caller_flow.nodes, &(&1.type == "entry"))
+
+      subflow =
+        node_fixture(caller_flow, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => target_flow.id}
+        })
+
+      after_dialogue =
+        node_fixture(caller_flow, %{
+          type: "dialogue",
+          data: %{"text" => "Back!", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      connection_fixture(caller_flow, caller_entry, subflow)
+      connection_fixture(caller_flow, subflow, after_dialogue)
+
+      files = export_dialogic(project)
+      target_source = dtl_source_for(files, target_flow)
+      caller_source = dtl_source_for(files, caller_flow)
+
+      assert has_line?(target_source, "return")
+      assert caller_source =~ "Back!"
+    end
+
+    test "exit with flow_reference mode jumps to referenced timeline", %{project: project} do
+      target_flow = flow_fixture(project, %{name: "Next Chapter"})
+      source_flow = flow_fixture(project, %{name: "Current Chapter"})
+      source_flow = reload_flow(source_flow)
+      entry = Enum.find(source_flow.nodes, &(&1.type == "entry"))
+
+      exit_node =
+        node_fixture(source_flow, %{
+          type: "exit",
+          data: %{"exit_mode" => "flow_reference", "referenced_flow_id" => target_flow.id}
+        })
+
+      connection_fixture(source_flow, entry, exit_node)
+
+      source = project |> export_dialogic() |> dtl_source_for(source_flow)
+      target = Helpers.shortcut_to_identifier(target_flow.shortcut)
+      assert source =~ "jump #{target}/"
     end
   end
 
@@ -796,31 +906,6 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
       assert has_line?(source, "[end_timeline]")
     end
 
-    test "entry -> slug_line -> dialogue chain", %{project: project} do
-      flow = flow_fixture(project, %{name: "Slug Line Chain"})
-      flow = reload_flow(flow)
-      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
-
-      slug_line =
-        node_fixture(flow, %{
-          type: "slug_line",
-          data: %{"location" => "Dark Forest"}
-        })
-
-      dialogue =
-        node_fixture(flow, %{
-          type: "dialogue",
-          data: %{"text" => "The forest is dark.", "speaker_sheet_id" => nil, "responses" => []}
-        })
-
-      connection_fixture(flow, entry, slug_line)
-      connection_fixture(flow, slug_line, dialogue)
-
-      source = dtl_source(export_dialogic(project))
-      assert source =~ "# location: Dark Forest"
-      assert source =~ "The forest is dark."
-    end
-
     test "dialogue with choices having conditions and instructions", %{project: project} do
       sheet = sheet_fixture(project, %{name: "Hero"})
 
@@ -847,12 +932,19 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
                 "condition" =>
                   Jason.encode!(%{
                     "logic" => "all",
-                    "rules" => [
+                    "blocks" => [
                       %{
-                        "sheet" => sheet.shortcut,
-                        "variable" => "gold",
-                        "operator" => "greater_than",
-                        "value" => "50"
+                        "id" => "b1",
+                        "type" => "block",
+                        "logic" => "all",
+                        "rules" => [
+                          %{
+                            "sheet" => sheet.shortcut,
+                            "variable" => "gold",
+                            "operator" => "greater_than",
+                            "value" => "50"
+                          }
+                        ]
                       }
                     ]
                   }),
@@ -875,7 +967,7 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
 
       source = dtl_source(export_dialogic(project))
       assert source =~ "Buy something?"
-      assert source =~ "- Buy sword [if"
+      assert source =~ "- Buy sword | [if"
       assert source =~ "- Leave"
     end
   end
@@ -984,11 +1076,18 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
             "condition" =>
               Jason.encode!(%{
                 "logic" => "all",
-                "rules" => [
+                "blocks" => [
                   %{
-                    "sheet" => sheet.shortcut,
-                    "variable" => "alive",
-                    "operator" => "is_true"
+                    "id" => "b1",
+                    "type" => "block",
+                    "logic" => "all",
+                    "rules" => [
+                      %{
+                        "sheet" => sheet.shortcut,
+                        "variable" => "alive",
+                        "operator" => "is_true"
+                      }
+                    ]
                   }
                 ]
               }),
@@ -1026,11 +1125,8 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
       # false branch content
       assert source =~ "Dead..."
 
-      # NOTE: Dialogic 2 expects TAB indentation inside condition branches,
-      # but the serializer currently renders branch content at depth 0.
-      # When depth-tracking is added, update these assertions:
-      #   assert has_line?(source, "\tAlive!")
-      #   assert has_line?(source, "\tDead...")
+      assert has_line?(source, "\tAlive!")
+      assert has_line?(source, "\tDead...")
     end
 
     test "choice instructions are TAB-indented", %{project: project} do
@@ -1123,25 +1219,6 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
 
   describe "additional coverage" do
     setup [:create_project]
-
-    test "slug_line node with slug_line field fallback renders location comment", %{
-      project: project
-    } do
-      flow = flow_fixture(project, %{name: "Slug Line Field Flow"})
-      flow = reload_flow(flow)
-      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
-
-      slug_line =
-        node_fixture(flow, %{
-          type: "slug_line",
-          data: %{"slug_line" => "INT. TAVERN"}
-        })
-
-      connection_fixture(flow, entry, slug_line)
-
-      source = dtl_source(export_dialogic(project))
-      assert has_line?(source, "# location: INT. TAVERN")
-    end
 
     test "subflow with nil shortcut uses node id fallback", %{project: project} do
       flow = flow_fixture(project, %{name: "Nil Subflow Flow"})
@@ -1295,7 +1372,7 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
       assert Map.has_key?(meta["variable_folders"], "mc_jaime")
     end
 
-    test "condition with 3 branches renders comment for extra branch", %{project: project} do
+    test "switch condition renders if/elif/else branches", %{project: project} do
       sheet = sheet_fixture(project, %{name: "Mode"})
 
       block_fixture(sheet, %{
@@ -1312,23 +1389,41 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
         node_fixture(flow, %{
           type: "condition",
           data: %{
+            "switch_mode" => true,
             "condition" =>
               Jason.encode!(%{
                 "logic" => "all",
-                "rules" => [
+                "blocks" => [
                   %{
-                    "sheet" => sheet.shortcut,
-                    "variable" => "mood",
-                    "operator" => "equals",
-                    "value" => "happy"
+                    "id" => "happy",
+                    "type" => "block",
+                    "logic" => "all",
+                    "label" => "Happy",
+                    "rules" => [
+                      %{
+                        "sheet" => sheet.shortcut,
+                        "variable" => "mood",
+                        "operator" => "equals",
+                        "value" => "happy"
+                      }
+                    ]
+                  },
+                  %{
+                    "id" => "sad",
+                    "type" => "block",
+                    "logic" => "all",
+                    "label" => "Sad",
+                    "rules" => [
+                      %{
+                        "sheet" => sheet.shortcut,
+                        "variable" => "mood",
+                        "operator" => "equals",
+                        "value" => "sad"
+                      }
+                    ]
                   }
                 ]
-              }),
-            "cases" => [
-              %{"id" => "c0", "value" => "true", "label" => "True"},
-              %{"id" => "c1", "value" => "false", "label" => "False"},
-              %{"id" => "c2", "value" => "other", "label" => "Other"}
-            ]
+              })
           }
         })
 
@@ -1351,14 +1446,18 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
         })
 
       connection_fixture(flow, entry, condition)
-      connection_fixture(flow, condition, d0, %{source_pin: "c0"})
-      connection_fixture(flow, condition, d1, %{source_pin: "c1"})
-      connection_fixture(flow, condition, d2, %{source_pin: "c2"})
+      connection_fixture(flow, condition, d0, %{source_pin: "happy"})
+      connection_fixture(flow, condition, d1, %{source_pin: "sad"})
+      connection_fixture(flow, condition, d2, %{source_pin: "default"})
 
       source = dtl_source(export_dialogic(project))
-      assert has_line_matching?(source, ~r/^if .+:$/)
+      assert has_line_matching?(source, ~r/^if \{.+\.mood\} == "happy":$/)
+      assert has_line_matching?(source, ~r/^elif \{.+\.mood\} == "sad":$/)
       assert has_line?(source, "else:")
-      assert has_line?(source, "# (branch 2)")
+      assert has_line?(source, "\tYay!")
+      assert has_line?(source, "\tBoo!")
+      assert has_line?(source, "\tHmm.")
+      refute source =~ "# (branch"
     end
 
     test "dialogue with empty string text", %{project: project} do

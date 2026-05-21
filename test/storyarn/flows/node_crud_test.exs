@@ -1,10 +1,11 @@
 defmodule Storyarn.Flows.NodeCrudTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Flows
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
+
+  alias Storyarn.Flows
 
   # ===========================================================================
   # Setup helpers
@@ -18,11 +19,11 @@ defmodule Storyarn.Flows.NodeCrudTest do
   end
 
   defp get_entry_node(flow) do
-    Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
+    flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
   end
 
   defp get_exit_node(flow) do
-    Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "exit"))
+    flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "exit"))
   end
 
   # ===========================================================================
@@ -456,27 +457,6 @@ defmodule Storyarn.Flows.NodeCrudTest do
     end
   end
 
-  describe "create_node/2 — slug_line" do
-    test "creates slug_line node with location data" do
-      %{flow: flow} = create_project_and_flow()
-
-      {:ok, slug_line_node} =
-        Flows.create_node(flow, %{
-          type: "slug_line",
-          position_x: 150.0,
-          position_y: 100.0,
-          data: %{
-            "location" => "INT. TAVERN - NIGHT",
-            "slug_line" => "The heroes gather"
-          }
-        })
-
-      assert slug_line_node.type == "slug_line"
-      assert slug_line_node.data["location"] == "INT. TAVERN - NIGHT"
-      assert slug_line_node.data["slug_line"] == "The heroes gather"
-    end
-  end
-
   describe "create_node/2 — subflow" do
     test "creates subflow node without reference" do
       %{flow: flow} = create_project_and_flow()
@@ -725,6 +705,79 @@ defmodule Storyarn.Flows.NodeCrudTest do
     end
   end
 
+  describe "update_node_parent/2" do
+    test "assigns a node to an existing sequence" do
+      %{flow: flow} = create_project_and_flow()
+      {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "Act I"})
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "a"}})
+      assert is_nil(node.parent_id)
+
+      {:ok, updated} = Flows.update_node_parent(node, seq.id)
+
+      assert updated.parent_id == seq.id
+    end
+
+    test "reparents a node to a different sequence" do
+      %{flow: flow} = create_project_and_flow()
+      {:ok, seq_a} = Flows.create_sequence(flow.id, %{"name" => "A"})
+      {:ok, seq_b} = Flows.create_sequence(flow.id, %{"name" => "B"})
+
+      node =
+        flow
+        |> node_fixture(%{type: "dialogue", data: %{"text" => "a"}})
+        |> Ecto.Changeset.change(%{parent_id: seq_a.id})
+        |> Repo.update!()
+
+      {:ok, updated} = Flows.update_node_parent(node, seq_b.id)
+
+      assert updated.parent_id == seq_b.id
+    end
+
+    test "detaches to root with nil parent_id" do
+      %{flow: flow} = create_project_and_flow()
+      {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "Act I"})
+
+      node =
+        flow
+        |> node_fixture(%{type: "dialogue", data: %{"text" => "a"}})
+        |> Ecto.Changeset.change(%{parent_id: seq.id})
+        |> Repo.update!()
+
+      {:ok, updated} = Flows.update_node_parent(node, nil)
+
+      assert is_nil(updated.parent_id)
+    end
+
+    test "rejects parent_id referencing a non-sequence node (DB trigger)" do
+      %{flow: flow} = create_project_and_flow()
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "a"}})
+      target = node_fixture(flow, %{type: "dialogue", data: %{"text" => "b"}})
+
+      assert_raise Postgrex.Error, ~r/only sequence nodes can be parents/, fn ->
+        Flows.update_node_parent(node, target.id)
+      end
+    end
+
+    test "does not mutate other fields" do
+      %{flow: flow} = create_project_and_flow()
+      {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "Act I"})
+
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Original"},
+          position_x: 42.0,
+          position_y: 99.0
+        })
+
+      {:ok, updated} = Flows.update_node_parent(node, seq.id)
+
+      assert updated.data["text"] == "Original"
+      assert updated.position_x == 42.0
+      assert updated.position_y == 99.0
+    end
+  end
+
   describe "update_node_data/2" do
     test "updates dialogue node data" do
       %{flow: flow} = create_project_and_flow()
@@ -829,7 +882,8 @@ defmodule Storyarn.Flows.NodeCrudTest do
 
       # Verify jump was updated
       jumps =
-        Flows.list_nodes(flow.id)
+        flow.id
+        |> Flows.list_nodes()
         |> Enum.filter(&(&1.type == "jump"))
 
       jump = hd(jumps)
@@ -879,25 +933,6 @@ defmodule Storyarn.Flows.NodeCrudTest do
 
       result = Flows.update_node_data(hub2, %{"hub_id" => "taken"})
       assert result == {:error, :hub_id_not_unique}
-    end
-
-    test "updates slug_line node data" do
-      %{flow: flow} = create_project_and_flow()
-
-      {:ok, slug_line} =
-        Flows.create_node(flow, %{
-          type: "slug_line",
-          data: %{"location" => "INT. OFFICE - DAY"}
-        })
-
-      {:ok, updated, _meta} =
-        Flows.update_node_data(slug_line, %{
-          "location" => "EXT. PARK - NIGHT",
-          "slug_line" => "A quiet evening"
-        })
-
-      assert updated.data["location"] == "EXT. PARK - NIGHT"
-      assert updated.data["slug_line"] == "A quiet evening"
     end
   end
 
@@ -976,7 +1011,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
       {:ok, deleted, meta} = Flows.delete_node(node)
 
       assert deleted.id == node.id
-      assert deleted.deleted_at != nil
+      assert deleted.deleted_at
       assert meta == %{orphaned_jumps: 0}
       assert Flows.get_node(flow.id, node.id) == nil
     end
@@ -988,7 +1023,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
         Flows.create_node(flow, %{type: "instruction", data: %{"assignments" => []}})
 
       {:ok, deleted, _meta} = Flows.delete_node(node)
-      assert deleted.deleted_at != nil
+      assert deleted.deleted_at
     end
 
     test "soft-deletes a condition node" do
@@ -998,17 +1033,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
         Flows.create_node(flow, %{type: "condition", data: %{"expression" => ""}})
 
       {:ok, deleted, _meta} = Flows.delete_node(node)
-      assert deleted.deleted_at != nil
-    end
-
-    test "soft-deletes a slug_line node" do
-      %{flow: flow} = create_project_and_flow()
-
-      {:ok, node} =
-        Flows.create_node(flow, %{type: "slug_line", data: %{"location" => "INT. OFFICE"}})
-
-      {:ok, deleted, _meta} = Flows.delete_node(node)
-      assert deleted.deleted_at != nil
+      assert deleted.deleted_at
     end
 
     test "soft-deletes a jump node" do
@@ -1018,7 +1043,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
         Flows.create_node(flow, %{type: "jump", data: %{"target_hub_id" => ""}})
 
       {:ok, deleted, _meta} = Flows.delete_node(node)
-      assert deleted.deleted_at != nil
+      assert deleted.deleted_at
     end
 
     test "soft-deletes a subflow node" do
@@ -1028,7 +1053,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
         Flows.create_node(flow, %{type: "subflow", data: %{"referenced_flow_id" => nil}})
 
       {:ok, deleted, _meta} = Flows.delete_node(node)
-      assert deleted.deleted_at != nil
+      assert deleted.deleted_at
     end
 
     test "cannot delete entry node" do
@@ -1194,7 +1219,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
       hubs = Flows.list_hubs(flow.id)
 
       assert length(hubs) == 2
-      hub_ids = Enum.map(hubs, & &1.hub_id) |> Enum.sort()
+      hub_ids = hubs |> Enum.map(& &1.hub_id) |> Enum.sort()
       assert hub_ids == ["h1", "h2"]
     end
 
@@ -1391,9 +1416,13 @@ defmodule Storyarn.Flows.NodeCrudTest do
 
       cache = Flows.NodeCrud.batch_resolve_subflow_data([subflow])
       resolved = Flows.NodeCrud.resolve_subflow_data(subflow.data, cache)
+      exit_node = target_flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "exit"))
 
       assert resolved["referenced_flow_name"] == "Enriched Flow"
       assert resolved["stale_reference"] == false
+      assert resolved["exit_pins"] == ["exit_#{exit_node.id}"]
+      assert [%{id: exit_id}] = resolved["exit_labels"]
+      assert exit_id == exit_node.id
     end
 
     test "returns data unchanged when referenced_flow_id is nil" do
@@ -1415,6 +1444,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
       assert resolved["stale_reference"] == true
       assert resolved["referenced_flow_name"] == nil
       assert resolved["exit_labels"] == []
+      assert resolved["exit_pins"] == []
     end
   end
 
@@ -1540,7 +1570,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
       refs = Flows.list_nodes_referencing_flow(target_flow.id, project.id)
 
       assert length(refs) == 2
-      types = Enum.map(refs, & &1.node_type) |> Enum.sort()
+      types = refs |> Enum.map(& &1.node_type) |> Enum.sort()
       assert types == ["exit", "subflow"]
     end
   end
@@ -1639,8 +1669,8 @@ defmodule Storyarn.Flows.NodeCrudTest do
 
       assert Flows.get_node(flow.id, node_b.id) == nil
       # Other nodes remain
-      assert Flows.get_node(flow.id, node_a.id) != nil
-      assert Flows.get_node(flow.id, node_c.id) != nil
+      assert Flows.get_node(flow.id, node_a.id)
+      assert Flows.get_node(flow.id, node_c.id)
 
       # Both connections are excluded since node_b is soft-deleted
       assert Flows.list_connections(flow.id) == []
@@ -1731,17 +1761,6 @@ defmodule Storyarn.Flows.NodeCrudTest do
       assert fetched.type == "jump"
     end
 
-    test "slug_line" do
-      %{flow: flow} = create_project_and_flow()
-
-      {:ok, node} =
-        Flows.create_node(flow, %{type: "slug_line", data: %{"location" => "EXT. BEACH"}})
-
-      fetched = Flows.get_node!(flow.id, node.id)
-      assert fetched.type == "slug_line"
-      assert fetched.data["location"] == "EXT. BEACH"
-    end
-
     test "subflow" do
       %{flow: flow} = create_project_and_flow()
 
@@ -1759,6 +1778,8 @@ defmodule Storyarn.Flows.NodeCrudTest do
 
   describe "delete_node/1 — hub with nil/empty hub_id" do
     test "deleting hub with nil hub_id does not crash" do
+      alias Storyarn.Flows.FlowNode
+
       %{flow: flow} = create_project_and_flow()
 
       # Create a hub node with a valid hub_id
@@ -1770,15 +1791,13 @@ defmodule Storyarn.Flows.NodeCrudTest do
 
       # Bypass validation to set hub_id to nil in data using low-level changeset
       # This exercises the clear_orphaned_jumps(_flow_id, _hub_id) fallback on L88
-      alias Storyarn.Flows.FlowNode
-
       {:ok, updated_hub} =
         hub
         |> FlowNode.data_changeset(%{data: %{"hub_id" => nil, "label" => "Nil Hub"}})
         |> Storyarn.Repo.update()
 
       {:ok, deleted, meta} = Flows.delete_node(updated_hub)
-      assert deleted.deleted_at != nil
+      assert deleted.deleted_at
       # With nil hub_id, the fallback clause returns 0
       assert meta.orphaned_jumps == 0
     end
@@ -1803,7 +1822,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
       assert "entry" in types
       assert "exit" in types
       assert "subflow" in types
-      assert "slug_line" in types
+      assert "sequence" in types
       assert length(types) == 10
     end
 

@@ -15,78 +15,27 @@ defmodule StoryarnWeb.CompareLive.Flow do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="h-screen w-screen flex flex-col bg-base-100">
-      <%!-- Compare header bar --%>
-      <header class="h-11 flex-shrink-0 flex items-center justify-between px-4 bg-base-200 border-b border-base-300">
-        <div class="flex items-center gap-3">
-          <.link
-            navigate={@back_url}
-            class="btn btn-ghost btn-sm btn-square"
-            aria-label={gettext("Back to editor")}
-          >
-            <.icon name="arrow-left" class="size-4" />
-          </.link>
-          <div class="flex items-center gap-1.5 text-sm text-base-content/70">
-            <.icon name="columns-2" class="size-4" />
-            <span class="font-medium">{gettext("Comparing versions")}</span>
-          </div>
-        </div>
-        <div class="flex items-center gap-1">
-          <.link
-            :if={@prev_version}
-            patch={compare_url(assigns, @prev_version)}
-            class="btn btn-ghost btn-xs btn-square"
-            aria-label={gettext("Previous version")}
-          >
-            <.icon name="chevron-left" class="size-3.5" />
-          </.link>
-          <span class="text-xs text-base-content/60 px-1">{@version_label}</span>
-          <.link
-            :if={@next_version}
-            patch={compare_url(assigns, @next_version)}
-            class="btn btn-ghost btn-xs btn-square"
-            aria-label={gettext("Next version")}
-          >
-            <.icon name="chevron-right" class="size-3.5" />
-          </.link>
-        </div>
-      </header>
-
-      <%!-- Split panes --%>
-      <div class="flex-1 overflow-hidden grid grid-cols-2 divide-x divide-base-300">
-        <%!-- Left: current state --%>
-        <div class="flex flex-col overflow-hidden">
-          <div class="h-8 flex-shrink-0 flex items-center justify-center bg-base-200/50 border-b border-base-300 text-xs font-medium text-base-content/50">
-            {gettext("Current")}
-          </div>
-          <iframe src={@current_url} class="flex-1 w-full border-0" title={gettext("Current")}>
-          </iframe>
-        </div>
-
-        <%!-- Right: historical version --%>
-        <div class="flex flex-col overflow-hidden">
-          <div class="h-8 flex-shrink-0 flex items-center justify-center bg-base-200/50 border-b border-base-300 text-xs font-medium text-base-content/50">
-            {@version_label}
-          </div>
-          <iframe src={@version_url} class="flex-1 w-full border-0" title={@version_label}></iframe>
-        </div>
-      </div>
-    </div>
+    <StoryarnWeb.Components.CompareLayout.compare socket={@socket} flash={@flash}>
+      <.vue
+        v-component="live/versioning/compare/VersioningCompare"
+        v-socket={@socket}
+        v-inject="compare-layout"
+        id="flow-compare-vue"
+        back-url={@back_url}
+        version-label={@version_label}
+        prev-version-url={@prev_version && compare_url(assigns, @prev_version)}
+        next-version-url={@next_version && compare_url(assigns, @next_version)}
+        current-url={@current_url}
+        version-url={@version_url}
+      />
+    </StoryarnWeb.Components.CompareLayout.compare>
     """
   end
 
   # ========== Mount ==========
 
   @impl true
-  def mount(
-        %{
-          "workspace_slug" => workspace_slug,
-          "project_slug" => project_slug,
-          "id" => flow_id_str
-        },
-        _session,
-        socket
-      ) do
+  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug, "id" => flow_id_str}, _session, socket) do
     with {flow_id, ""} <- Integer.parse(flow_id_str),
          {:ok, project, _membership} <-
            Projects.get_project_by_slugs(
@@ -137,7 +86,7 @@ defmodule StoryarnWeb.CompareLive.Flow do
         ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows/#{flow.id}?layout=compact"
 
       version_url =
-        ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/versions/flow/#{flow.id}/#{version.version_number}"
+        ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows/#{flow.id}/versions/#{version.version_number}/viewer"
 
       {:noreply,
        socket

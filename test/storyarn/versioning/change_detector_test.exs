@@ -1,13 +1,11 @@
 defmodule Storyarn.Versioning.ChangeDetectorTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Drafts
+  import Storyarn.FlowsFixtures
+  import Storyarn.ProjectsFixtures
+
   alias Storyarn.Versioning.ChangeDetector
   alias Storyarn.Versioning.ProjectSnapshot
-
-  import Storyarn.AccountsFixtures
-  import Storyarn.ProjectsFixtures
-  import Storyarn.FlowsFixtures
 
   describe "project_changed_since_last_snapshot?/1" do
     test "returns true when no snapshots exist" do
@@ -30,37 +28,13 @@ defmodule Storyarn.Versioning.ChangeDetectorTest do
       project = project_fixture()
 
       # Create snapshot with inserted_at in the past
-      past = DateTime.add(DateTime.utc_now(), -60, :second) |> DateTime.truncate(:second)
+      past = DateTime.utc_now() |> DateTime.add(-60, :second) |> DateTime.truncate(:second)
       insert_snapshot(project.id, inserted_at: past)
 
       # Now create an entity (updated_at will be after snapshot)
       _flow = flow_fixture(project)
 
       assert ChangeDetector.project_changed_since_last_snapshot?(project.id)
-    end
-
-    test "ignores draft entity modifications" do
-      user = user_fixture()
-      project = project_fixture(user)
-      flow = flow_fixture(project)
-
-      # Push flow timestamps into the past
-      past = DateTime.add(DateTime.utc_now(), -120, :second) |> DateTime.truncate(:second)
-      Repo.query!("UPDATE flows SET updated_at = $1 WHERE id = $2", [past, flow.id])
-
-      # Create snapshot after the flow modifications
-      snapshot_time = DateTime.add(DateTime.utc_now(), -60, :second) |> DateTime.truncate(:second)
-      insert_snapshot(project.id, inserted_at: snapshot_time)
-
-      # No changes since snapshot
-      refute ChangeDetector.project_changed_since_last_snapshot?(project.id)
-
-      # Creating a draft clones the flow with draft_id set
-      {:ok, _draft} = Drafts.create_draft(project.id, "flow", flow.id, user.id)
-
-      # The cloned flow has draft_id set, so it should NOT trigger change detection.
-      # The original flow was not modified, so the only "new" flow is the draft clone.
-      refute ChangeDetector.project_changed_since_last_snapshot?(project.id)
     end
   end
 

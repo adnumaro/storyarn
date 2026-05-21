@@ -3,17 +3,61 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
 
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
-  import Storyarn.SheetsFixtures
+  import Storyarn.AssetsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
 
   alias Storyarn.Repo
   alias Storyarn.Sheets
+
+  defp get_sidebar_live(view, project) do
+    find_live_child(view, "sidebar-sheets-#{project.id}")
+  end
+
+  defp get_sheet_surface_vue(view) do
+    LiveVue.Test.get_vue(view, name: "live/sheet/show/SheetSurface")
+  end
+
+  defp get_sidebar_props(view, project) do
+    view
+    |> get_sidebar_live(project)
+    |> LiveVue.Test.get_vue(name: "live/sheet/sidebar/SheetSidebar")
+    |> then(& &1.props["sidebar-props"])
+  end
+
+  defp find_tree_node(nil, _id), do: nil
+
+  defp find_tree_node(nodes, id) when is_list(nodes) do
+    Enum.find_value(nodes, fn node ->
+      if to_string(prop(node, :id)) == to_string(id) do
+        node
+      else
+        node |> prop(:children) |> find_tree_node(id)
+      end
+    end)
+  end
+
+  defp prop(map, key) do
+    Map.get(map, key) || Map.get(map, to_string(key))
+  end
+
+  defp get_sheet_surface_props(view) do
+    view
+    |> get_sheet_surface_vue()
+    |> then(& &1.props["surface"])
+  end
+
+  defp get_sheet_panels_props(view) do
+    view
+    |> get_sheet_surface_vue()
+    |> then(& &1.props["panels"])
+  end
 
   describe "Sheet show" do
     setup :register_and_log_in_user
 
     test "renders sheet for owner", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Test Sheet"})
 
       {:ok, view, _html} =
@@ -26,9 +70,46 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
       assert html =~ "Test Sheet"
     end
 
+    test "refreshes sidebar avatar when avatar is attached from sheet content", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      sheet = sheet_fixture(project, %{name: "Avatar Sheet"})
+      asset = image_asset_fixture(project, user, %{url: "/uploads/projects/test/avatar.png"})
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
+        )
+
+      await_async(view)
+
+      before_node =
+        view
+        |> get_sidebar_props(project)
+        |> prop(:sheetsTree)
+        |> find_tree_node(sheet.id)
+
+      assert before_node
+      assert is_nil(prop(before_node, :avatar_url))
+
+      render_hook(view, "attach_avatar", %{"asset_id" => asset.id})
+      render(get_sidebar_live(view, project))
+
+      after_node =
+        view
+        |> get_sidebar_props(project)
+        |> prop(:sheetsTree)
+        |> find_tree_node(sheet.id)
+
+      assert prop(after_node, :avatar_url) == asset.url
+    end
+
     test "renders sheet for editor member", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "editor")
       sheet = sheet_fixture(project, %{name: "Shared Sheet"})
 
@@ -44,7 +125,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
 
     test "redirects for non-member", %{conn: conn} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project)
 
       {:error, {:redirect, %{to: path, flash: flash}}} =
@@ -62,7 +143,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     setup :register_and_log_in_user
 
     test "moves sheet to new parent", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet1 = sheet_fixture(project, %{name: "Sheet 1"})
       sheet2 = sheet_fixture(project, %{name: "Sheet 2"})
 
@@ -73,9 +154,10 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
         )
 
       await_async(view)
+      sidebar = get_sidebar_live(view, project)
 
       # Simulate move_sheet event
-      render_hook(view, "move_to_parent", %{
+      render_click(sidebar, "move_to_parent", %{
         "item_id" => sheet2.id,
         "new_parent_id" => sheet1.id,
         "position" => 0
@@ -87,7 +169,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     end
 
     test "moves sheet to root level", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       parent = sheet_fixture(project, %{name: "Parent"})
       child = sheet_fixture(project, %{name: "Child", parent_id: parent.id})
 
@@ -98,9 +180,10 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
         )
 
       await_async(view)
+      sidebar = get_sidebar_live(view, project)
 
       # Move to root level (empty parent_id)
-      render_hook(view, "move_to_parent", %{
+      render_click(sidebar, "move_to_parent", %{
         "item_id" => child.id,
         "new_parent_id" => "",
         "position" => 0
@@ -112,7 +195,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     end
 
     test "prevents cycle creation", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       parent = sheet_fixture(project, %{name: "Parent"})
       child = sheet_fixture(project, %{name: "Child", parent_id: parent.id})
 
@@ -123,9 +206,10 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
         )
 
       await_async(view)
+      sidebar = get_sidebar_live(view, project)
 
       # Try to move parent under its child (would create cycle)
-      render_hook(view, "move_to_parent", %{
+      render_click(sidebar, "move_to_parent", %{
         "item_id" => parent.id,
         "new_parent_id" => child.id,
         "position" => 0
@@ -138,7 +222,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
 
     test "viewer cannot move sheets", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       sheet1 = sheet_fixture(project, %{name: "Sheet 1"})
       sheet2 = sheet_fixture(project, %{name: "Sheet 2"})
@@ -150,9 +234,10 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
         )
 
       await_async(view)
+      sidebar = get_sidebar_live(view, project)
 
       # Try to move sheet
-      render_hook(view, "move_to_parent", %{
+      render_click(sidebar, "move_to_parent", %{
         "item_id" => sheet2.id,
         "new_parent_id" => sheet1.id,
         "position" => 0
@@ -164,69 +249,11 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     end
   end
 
-  describe "create_child_sheet event" do
-    setup :register_and_log_in_user
-
-    test "creates child sheet", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      parent = sheet_fixture(project, %{name: "Parent"})
-
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{parent.id}"
-        )
-
-      await_async(view)
-
-      # Get initial sheet count
-      initial_tree = Sheets.list_sheets_tree(project.id)
-      initial_count = count_sheets(initial_tree)
-
-      # Create child sheet
-      render_hook(view, "create_child_sheet", %{"parent-id" => parent.id})
-
-      # Verify new sheet was created
-      updated_tree = Sheets.list_sheets_tree(project.id)
-      assert count_sheets(updated_tree) == initial_count + 1
-
-      # Verify it's a child of parent
-      parent_sheet = Sheets.get_sheet_with_descendants(project.id, parent.id)
-      assert length(parent_sheet.children) == 1
-    end
-
-    test "viewer cannot create child sheets", %{conn: conn, user: user} do
-      owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
-      _membership = membership_fixture(project, user, "viewer")
-      parent = sheet_fixture(project, %{name: "Parent"})
-
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{parent.id}"
-        )
-
-      await_async(view)
-
-      # Get initial sheet count
-      initial_tree = Sheets.list_sheets_tree(project.id)
-      initial_count = count_sheets(initial_tree)
-
-      # Try to create child sheet
-      render_hook(view, "create_child_sheet", %{"parent-id" => parent.id})
-
-      # Verify sheet was NOT created
-      updated_tree = Sheets.list_sheets_tree(project.id)
-      assert count_sheets(updated_tree) == initial_count
-    end
-  end
-
   describe "tab switching" do
     setup :register_and_log_in_user
 
     setup %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Tab Test Sheet"})
 
       {:ok, view, _html} =
@@ -240,34 +267,25 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
       %{view: view, project: project, sheet: sheet}
     end
 
-    test "defaults to content tab", %{view: view} do
-      html = render(view)
-      # The content tab button should have the active class
-      assert html =~ "tab-active"
-      assert html =~ "Content"
-    end
-
     test "switches to references tab", %{view: view} do
-      html = render_click(view, "switch_tab", %{"tab" => "references"})
-      assert html =~ "References"
+      render_click(view, "switch_tab", %{"tab" => "references"})
+
+      assert get_sheet_surface_props(view)["tabs"]["currentTab"] == "references"
+      assert get_sheet_panels_props(view)["references"]
     end
 
     test "switches to audio tab", %{view: view} do
-      html = render_click(view, "switch_tab", %{"tab" => "audio"})
-      assert html =~ "Audio"
+      render_click(view, "switch_tab", %{"tab" => "audio"})
+
+      assert get_sheet_surface_props(view)["tabs"]["currentTab"] == "audio"
+      assert get_sheet_panels_props(view)["audio"]
     end
 
     test "switches to history tab", %{view: view} do
-      html = render_click(view, "switch_tab", %{"tab" => "history"})
-      assert html =~ "History"
-    end
+      render_click(view, "switch_tab", %{"tab" => "history"})
 
-    test "switches back to content tab", %{view: view} do
-      # Switch away first
-      render_click(view, "switch_tab", %{"tab" => "references"})
-      # Switch back to content
-      html = render_click(view, "switch_tab", %{"tab" => "content"})
-      assert html =~ "Content"
+      assert get_sheet_surface_props(view)["tabs"]["currentTab"] == "history"
+      assert get_sheet_panels_props(view)["history"]
     end
   end
 
@@ -275,7 +293,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     setup :register_and_log_in_user
 
     test "creates a new root sheet and navigates to it", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Existing Sheet"})
 
       {:ok, view, _html} =
@@ -289,9 +307,11 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
       # Get initial sheet count
       initial_tree = Sheets.list_sheets_tree(project.id)
       initial_count = count_sheets(initial_tree)
+      sidebar = get_sidebar_live(view, project)
 
       # Create a new root sheet
-      render_click(view, "create_sheet", %{})
+      render_click(sidebar, "create_sheet", %{})
+      assert_redirect(view)
 
       # Verify a new sheet was created
       updated_tree = Sheets.list_sheets_tree(project.id)
@@ -300,7 +320,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
 
     test "viewer cannot create sheets", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       sheet = sheet_fixture(project, %{name: "Existing"})
 
@@ -314,8 +334,9 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
 
       initial_tree = Sheets.list_sheets_tree(project.id)
       initial_count = count_sheets(initial_tree)
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "create_sheet", %{})
+      render_click(sidebar, "create_sheet", %{})
 
       # Verify no sheet was created
       updated_tree = Sheets.list_sheets_tree(project.id)
@@ -323,76 +344,11 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     end
   end
 
-  describe "delete_sheet event" do
-    setup :register_and_log_in_user
-
-    test "deletes a different sheet from the tree", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      sheet = sheet_fixture(project, %{name: "Current Sheet"})
-      other_sheet = sheet_fixture(project, %{name: "To Delete"})
-
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
-        )
-
-      await_async(view)
-
-      render_click(view, "delete_sheet", %{"id" => other_sheet.id})
-
-      # Verify the other sheet was soft-deleted
-      deleted_sheet = Sheets.get_sheet(project.id, other_sheet.id)
-      assert deleted_sheet == nil
-    end
-
-    test "deletes the current sheet and redirects", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      sheet = sheet_fixture(project, %{name: "Current Sheet"})
-
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
-        )
-
-      await_async(view)
-
-      render_click(view, "delete_sheet", %{"id" => sheet.id})
-
-      # Should navigate away since the current sheet was deleted
-      {path, flash} = assert_redirect(view)
-      assert path =~ "/sheets"
-      assert flash["info"] =~ "deleted"
-    end
-
-    test "viewer cannot delete sheets", %{conn: conn, user: user} do
-      owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
-      _membership = membership_fixture(project, user, "viewer")
-      sheet = sheet_fixture(project, %{name: "Sheet"})
-      other_sheet = sheet_fixture(project, %{name: "Other"})
-
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
-        )
-
-      await_async(view)
-
-      render_click(view, "delete_sheet", %{"id" => other_sheet.id})
-
-      # Verify sheet was NOT deleted
-      assert Sheets.get_sheet(project.id, other_sheet.id) != nil
-    end
-  end
-
   describe "pending delete sheet" do
     setup :register_and_log_in_user
 
     test "sets pending delete and confirms", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Current"})
       other_sheet = sheet_fixture(project, %{name: "To Delete"})
 
@@ -403,19 +359,20 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
         )
 
       await_async(view)
+      sidebar = get_sidebar_live(view, project)
 
       # Set pending delete
-      render_click(view, "set_pending_delete_sheet", %{"id" => other_sheet.id})
+      render_click(sidebar, "set_pending_delete_sheet", %{"id" => other_sheet.id})
 
       # Confirm delete
-      render_click(view, "confirm_delete_sheet", %{})
+      render_click(sidebar, "confirm_delete_sheet", %{})
 
       # Verify the sheet was deleted
       assert Sheets.get_sheet(project.id, other_sheet.id) == nil
     end
 
     test "confirm_delete_sheet does nothing without pending id", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Current"})
 
       {:ok, view, _html} =
@@ -425,12 +382,13 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
         )
 
       await_async(view)
+      sidebar = get_sidebar_live(view, project)
 
       # Confirm delete without setting pending id first — should be a no-op
-      render_click(view, "confirm_delete_sheet", %{})
+      render_click(sidebar, "confirm_delete_sheet", %{})
 
       # The current sheet should still exist
-      assert Sheets.get_sheet(project.id, sheet.id) != nil
+      assert Sheets.get_sheet(project.id, sheet.id)
     end
   end
 
@@ -438,7 +396,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     setup :register_and_log_in_user
 
     test "sets sheet color", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Color Sheet"})
 
       {:ok, view, _html} =
@@ -456,7 +414,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     end
 
     test "clears sheet color", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Color Sheet"})
 
       {:ok, view, _html} =
@@ -479,7 +437,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
 
     test "viewer cannot set sheet color", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       sheet = sheet_fixture(project, %{name: "Color Sheet"})
 
@@ -502,7 +460,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     setup :register_and_log_in_user
 
     test "redirects when sheet does not exist", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:error, {:live_redirect, %{to: path, flash: flash}}} =
         live(
@@ -519,7 +477,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     setup :register_and_log_in_user
 
     test "renders breadcrumb for child sheet with ancestors", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       parent = sheet_fixture(project, %{name: "Grandparent Sheet"})
       child = child_sheet_fixture(project, parent, %{name: "Child Sheet"})
 
@@ -537,7 +495,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     end
 
     test "does not render breadcrumb for root sheet", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Root Sheet"})
 
       {:ok, view, _html} =
@@ -558,7 +516,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     setup :register_and_log_in_user
 
     test "toggles tree panel", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Test Sheet"})
 
       {:ok, view, _html} =
@@ -570,15 +528,15 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
       await_async(view)
 
       # Toggle the tree panel (starts open by default)
-      render_click(view, "tree_panel_toggle", %{})
+      render_click(view, "main_sidebar_toggle", %{})
 
       # Toggle back open
-      html = render_click(view, "tree_panel_toggle", %{})
+      html = render_click(view, "main_sidebar_toggle", %{})
       assert html =~ "Test Sheet"
     end
 
     test "pins tree panel", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Test Sheet"})
 
       {:ok, view, _html} =
@@ -590,13 +548,13 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
       await_async(view)
 
       # Pin/unpin the tree panel
-      render_click(view, "tree_panel_pin", %{})
-      html = render_click(view, "tree_panel_pin", %{})
+      render_click(view, "main_sidebar_pin", %{})
+      html = render_click(view, "main_sidebar_pin", %{})
       assert html =~ "Test Sheet"
     end
 
     test "tree panel init with pinned state", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Test Sheet"})
 
       {:ok, view, _html} =
@@ -608,150 +566,9 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
       await_async(view)
 
       # Simulate the JS hook sending initial pinned state
-      render_click(view, "tree_panel_init", %{"pinned" => true})
+      render_click(view, "main_sidebar_init", %{"pinned" => true})
       html = render(view)
       assert html =~ "Test Sheet"
-    end
-  end
-
-  describe "handle_info messages" do
-    setup :register_and_log_in_user
-
-    setup %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      sheet = sheet_fixture(project, %{name: "Info Test Sheet"})
-
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
-        )
-
-      await_async(view)
-
-      %{view: view, project: project, sheet: sheet}
-    end
-
-    test "reset_save_status resets to idle", %{view: view} do
-      send(view.pid, :reset_save_status)
-      html = render(view)
-      # After reset, the save indicator should be in idle state (not showing "saved")
-      assert html =~ "Info Test Sheet"
-    end
-
-    test "content_tab :saved sets save status", %{view: view} do
-      send(view.pid, {:content_tab, :saved})
-      html = render(view)
-      assert html =~ "Info Test Sheet"
-    end
-
-    test "banner :sheet_updated updates sheet", %{view: view, project: project, sheet: sheet} do
-      # Update the sheet in the DB first
-      {:ok, updated_sheet} = Sheets.update_sheet(sheet, %{description: "Updated desc"})
-      updated_sheet = Sheets.get_sheet_full!(project.id, updated_sheet.id)
-
-      send(view.pid, {:banner, :sheet_updated, updated_sheet})
-      html = render(view)
-      assert html =~ "Info Test Sheet"
-    end
-
-    test "banner :error shows flash", %{view: view} do
-      send(view.pid, {:banner, :error, "Something went wrong"})
-      html = render(view)
-      assert html =~ "Something went wrong"
-    end
-
-    test "sheet_avatar :sheet_updated updates sheet and tree", %{
-      view: view,
-      project: project,
-      sheet: sheet
-    } do
-      updated_sheet = Sheets.get_sheet_full!(project.id, sheet.id)
-      sheets_tree = Sheets.list_sheets_tree(project.id)
-
-      send(view.pid, {:sheet_avatar, :sheet_updated, updated_sheet, sheets_tree})
-      html = render(view)
-      assert html =~ "Info Test Sheet"
-    end
-
-    test "sheet_avatar :error shows flash", %{view: view} do
-      send(view.pid, {:sheet_avatar, :error, "Avatar upload failed"})
-      html = render(view)
-      assert html =~ "Avatar upload failed"
-    end
-
-    test "sheet_title :name_saved updates sheet and tree", %{
-      view: view,
-      project: project,
-      sheet: sheet
-    } do
-      {:ok, renamed_sheet} = Sheets.update_sheet(sheet, %{name: "Renamed Sheet"})
-      renamed_sheet = Sheets.get_sheet_full!(project.id, renamed_sheet.id)
-      sheets_tree = Sheets.list_sheets_tree(project.id)
-
-      send(view.pid, {:sheet_title, :name_saved, renamed_sheet, sheets_tree})
-      html = render(view)
-      assert html =~ "Renamed Sheet"
-    end
-
-    test "sheet_title :shortcut_saved updates sheet", %{
-      view: view,
-      project: project,
-      sheet: sheet
-    } do
-      {:ok, updated_sheet} = Sheets.update_sheet(sheet, %{shortcut: "new.shortcut"})
-      updated_sheet = Sheets.get_sheet_full!(project.id, updated_sheet.id)
-
-      send(view.pid, {:sheet_title, :shortcut_saved, updated_sheet})
-      html = render(view)
-      assert html =~ "Info Test Sheet"
-    end
-
-    test "sheet_title :error shows flash", %{view: view} do
-      send(view.pid, {:sheet_title, :error, "Name too long"})
-      html = render(view)
-      assert html =~ "Name too long"
-    end
-
-    test "audio_tab :error shows flash", %{view: view} do
-      send(view.pid, {:audio_tab, :error, "Audio processing failed"})
-      html = render(view)
-      assert html =~ "Audio processing failed"
-    end
-
-    test "versions_section :version_created sets save status", %{view: view} do
-      send(view.pid, {:versions_section, :version_created, %{version: %{id: 1}}})
-      html = render(view)
-      assert html =~ "Info Test Sheet"
-    end
-
-    test "versions_section :version_deleted sets save status", %{view: view} do
-      send(view.pid, {:versions_section, :version_deleted, %{version: %{id: 1}}})
-      html = render(view)
-      assert html =~ "Info Test Sheet"
-    end
-
-    test "versions_section :version_restored reloads data", %{
-      view: view,
-      project: project,
-      sheet: sheet
-    } do
-      updated_sheet = Sheets.get_sheet_full!(project.id, sheet.id)
-
-      send(
-        view.pid,
-        {:versions_section, :version_restored,
-         %{entity: updated_sheet, version: %{id: 1, version_number: 1}}}
-      )
-
-      html = render(view)
-      assert html =~ "Info Test Sheet"
-    end
-
-    test "content_tab :push_undo with generic action", %{view: view} do
-      send(view.pid, {:content_tab, :push_undo, {:some_action, "prev", "new"}})
-      html = render(view)
-      assert html =~ "Info Test Sheet"
     end
   end
 
@@ -759,7 +576,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     setup :register_and_log_in_user
 
     test "undo with empty stack is a no-op", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Undo Test"})
 
       {:ok, view, _html} =
@@ -776,7 +593,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     end
 
     test "redo with empty stack is a no-op", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Redo Test"})
 
       {:ok, view, _html} =
@@ -790,31 +607,6 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
       # Redo with empty stack — should not crash
       html = render_hook(view, "redo", %{})
       assert html =~ "Redo Test"
-    end
-
-    test "undo after color change reverts color", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      sheet = sheet_fixture(project, %{name: "Color Undo"})
-
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
-        )
-
-      await_async(view)
-
-      # Set a color (this pushes to undo stack)
-      render_click(view, "set_sheet_color", %{"color" => "#abcdef"})
-
-      # Verify color was set
-      assert Sheets.get_sheet(project.id, sheet.id).color == "#abcdef"
-
-      # Undo the color change
-      render_hook(view, "undo", %{})
-
-      # Verify color was reverted
-      assert Sheets.get_sheet(project.id, sheet.id).color == nil
     end
   end
 

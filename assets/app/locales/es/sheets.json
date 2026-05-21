@@ -1,0 +1,255 @@
+{
+  "sheets": {
+    "dashboard": {
+      "title": "Fichas",
+      "subtitle": "Crea y organiza el contenido de tu proyecto",
+      "empty": "Aún no hay fichas. Crea tu primera ficha para empezar.",
+      "all_sheets": "Todas las fichas",
+      "issues": "Problemas",
+      "delete": "Eliminar",
+      "stats": {
+        "sheets": "Fichas",
+        "blocks": "Bloques",
+        "variables": "Variables",
+        "vars_in_use": "Vars en uso",
+        "words": "Palabras"
+      },
+      "columns": {
+        "name": "Nombre",
+        "blocks": "Bloques",
+        "variables": "Variables",
+        "words": "Palabras",
+        "modified": "Modificado"
+      },
+      "total_sheets": "{n} ficha | {n} fichas"
+    },
+    "tree": {
+      "filter": "Filtrar fichas...",
+      "empty": "Aún no hay fichas",
+      "new_sheet": "Nueva ficha",
+      "delete_title": "¿Eliminar ficha?",
+      "delete_description": "¿Estás seguro de que quieres eliminar \"{name}\"?",
+      "cancel": "Cancelar",
+      "delete": "Eliminar",
+      "add_child": "Añadir ficha hija",
+      "move_to_trash": "Mover a la papelera"
+    },
+    "header": {
+      "change_cover": "Cambiar",
+      "add_cover": "Añadir portada",
+      "remove_cover": "Eliminar"
+    },
+    "metadata": {
+      "untitled": "Sin título",
+      "add_shortcut": "añadir-atajo"
+    },
+    "tabs": {
+      "content": "Contenido",
+      "references": "Referencias",
+      "audio": "Audio",
+      "history": "Historial"
+    },
+    "add_block": {
+      "button": "Añadir bloque",
+      "scope": "Alcance",
+      "scope_self": "Solo esta ficha",
+      "scope_children": "Todas las hijas",
+      "basic": "Bloques básicos",
+      "structured": "Datos estructurados"
+    },
+    "block_types": {
+      "text": "Texto",
+      "rich_text": "Texto enriquecido",
+      "number": "Número",
+      "select": "Selección",
+      "multi_select": "Selección múltiple",
+      "date": "Fecha",
+      "boolean": "Booleano",
+      "reference": "Referencia",
+      "table": "Tabla",
+      "gallery": "Galería",
+      "formula": "Fórmula"
+    },
+    "block_label": {
+      "required": "obligatorio"
+    },
+    "block_list": {
+      "inherited_from": "Heredado de",
+      "detach": "Desvincular del padre",
+      "own_properties": "Propiedades propias",
+      "empty": "Aún no hay bloques."
+    },
+    "block_toolbar": {
+      "make_variable": "Hacer variable",
+      "make_constant": "Hacer constante",
+      "self": "Propia",
+      "children": "Hijas",
+      "configure": "Configurar"
+    },
+    "collab_toast": {
+      "added_block": "añadió un bloque",
+      "edited_block": "editó un bloque",
+      "removed_block": "eliminó un bloque",
+      "reordered_blocks": "reordenó bloques",
+      "changed_type": "cambió un tipo de bloque",
+      "updated_sheet": "actualizó la ficha",
+      "restored_version": "restauró una versión"
+    },
+    "avatar_gallery": {
+      "title": "Galería de avatares",
+      "empty": "Aún no hay avatares. Sube uno para empezar.",
+      "default": "por defecto",
+      "name_placeholder": "Nombre...",
+      "add": "Añadir avatar",
+      "name_label": "Nombre",
+      "name_example": "p. ej. feliz, enfadado, combate...",
+      "notes_label": "Notas",
+      "notes_placeholder": "Dirección de voz, notas de arte...",
+      "set_default": "Establecer como predeterminado",
+      "default_badge": "Predeterminado",
+      "delete": "Eliminar",
+      "gallery": "Galería"
+    },
+    "boolean_block": {
+      "yes": "Sí",
+      "no": "No",
+      "three_states": "Tres estados (verdadero / falso / neutral)",
+      "true_label": "Etiqueta verdadero",
+      "false_label": "Etiqueta falso",
+      "neutral_label": "Etiqueta neutral",
+      "neutral": "Neutral"
+    },
+    "formula_panel": {
+      "title": "Editor de fórmulas",
+      "close": "Cerrar panel",
+      "expression": "Expresión",
+      "expression_placeholder": "p. ej. (a + b) * 2",
+      "bindings": "Enlaces de variables",
+      "result": "Resultado"
+    },
+    "number_block": {
+      "placeholder_label": "Marcador",
+      "default_placeholder": "Valor por defecto...",
+      "min": "Mín",
+      "max": "Máx",
+      "step": "Paso"
+    },
+    "select_block": {
+      "placeholder_label": "Marcador",
+      "placeholder": "Seleccionar...",
+      "no_options": "No hay opciones disponibles",
+      "none": "Ninguno"
+    },
+    "multi_select_block": {
+      "placeholder_label": "Marcador",
+      "placeholder": "Seleccionar...",
+      "no_options": "No hay opciones disponibles"
+    },
+    "text_block": {
+      "placeholder_label": "Marcador",
+      "placeholder_placeholder": "Texto de marcador...",
+      "default_placeholder": "Escribe aquí..."
+    },
+    "rich_text_block": {
+      "placeholder_label": "Marcador",
+      "default_placeholder": "Escribe algo..."
+    },
+    "rich_text_editor": {
+      "bold": "Negrita",
+      "italic": "Cursiva",
+      "strikethrough": "Tachado",
+      "h1": "Título 1",
+      "h2": "Título 2",
+      "h3": "Título 3",
+      "bullet_list": "Lista con viñetas",
+      "ordered_list": "Lista numerada",
+      "blockquote": "Cita",
+      "hr": "Línea horizontal"
+    },
+    "reference_block": {
+      "not_found": "Referencia no encontrada",
+      "select": "Seleccionar referencia...",
+      "search": "Buscar fichas y flujos...",
+      "searching": "Buscando...",
+      "no_results": "Sin resultados.",
+      "clear": "Limpiar referencia"
+    },
+    "formula_binding": {
+      "select_source": "Seleccionar fuente...",
+      "search": "Buscar variables...",
+      "searching": "Buscando...",
+      "no_results": "Sin resultados.",
+      "same_row": "Misma fila",
+      "loading": "Cargando..."
+    },
+    "option_editor": {
+      "title": "Opciones",
+      "key_placeholder": "clave",
+      "label_placeholder": "Etiqueta",
+      "add": "Añadir opción"
+    },
+    "gallery_block": {
+      "empty": "Aún no hay imágenes.",
+      "add": "Añadir imagen",
+      "image": "Imagen",
+      "label": "Etiqueta",
+      "label_placeholder": "Etiqueta de imagen...",
+      "description": "Descripción",
+      "description_placeholder": "Descripción...",
+      "delete": "Eliminar"
+    },
+    "table": {
+      "no_rows": "Aún no hay filas.",
+      "delete_row": "Eliminar",
+      "main_menu": {
+        "constant": "Constante",
+        "required": "Obligatorio",
+        "change_type": "Cambiar tipo",
+        "options": "Opciones",
+        "constraints": "Restricciones",
+        "settings": "Ajustes",
+        "delete_column": "Eliminar columna"
+      },
+      "constraints": {
+        "title": "Restricciones",
+        "min": "Valor mínimo",
+        "max": "Valor máximo",
+        "step": "Paso",
+        "no_limit": "Sin límite"
+      },
+      "settings": {
+        "title": "Ajustes",
+        "allow_multiple": "Permitir múltiple"
+      }
+    },
+    "audio_tab": {
+      "empty_title": "Sin líneas de voz",
+      "empty_description": "Los nodos de diálogo que usen esta ficha como personaje aparecerán aquí.",
+      "remove": "Eliminar",
+      "select_audio": "Seleccionar audio...",
+      "search": "Buscar audio...",
+      "no_assets": "Aún no hay recursos de audio.",
+      "no_matches": "Sin resultados",
+      "uploading": "Subiendo...",
+      "upload": "Subir",
+      "no_audio": "Sin audio",
+      "open_flow": "Abrir en editor de flujos"
+    },
+    "references_tab": {
+      "variable_usage": "Uso de variables",
+      "no_usage": "Ninguna variable de esta ficha se usa en ningún flujo o escena aún.",
+      "modified_by": "Modificado por",
+      "outdated": "Desactualizado",
+      "read_by": "Leído por",
+      "backlinks": "Backlinks",
+      "no_backlinks_title": "Aún no hay backlinks",
+      "no_backlinks_description": "Las fichas y flujos que referencien esta ficha aparecerán aquí.",
+      "scenes_title": "Aparece en escenas",
+      "no_scenes": "Esta ficha no aparece en ninguna escena aún.",
+      "no_scenes_description": "Crea un pin o zona referenciando esta ficha para verla aquí."
+    },
+    "dnd": {
+      "reattach": "Reconectar al padre"
+    }
+  }
+}

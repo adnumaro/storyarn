@@ -55,7 +55,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpersTest do
       assert form.params["condition"]["logic"] == "all"
     end
 
-    test "form has empty data for entry node" do
+    test "form is empty for entry node" do
       node = %{type: "entry", data: %{}}
       form = FormHelpers.node_data_to_form(node)
 

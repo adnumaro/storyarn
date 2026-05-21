@@ -1,9 +1,10 @@
 %{
-  title: "Blocks & Variables",
-  category_label: "World Building",
-  order: 2,
-  description: "How blocks define your data structure and become variables for flows."
+title: "Blocks & Variables",
+category_label: "World Building",
+order: 2,
+description: "How blocks define your data structure and become variables for flows."
 }
+
 ---
 
 Blocks are the {accent}fields{/accent} on a sheet. Each block has a type and a label. Unless marked as a constant or using a non-variable type, a block automatically becomes a **variable** that flows can read and modify.
@@ -19,18 +20,18 @@ Blocks are the {accent}fields{/accent} on a sheet. Each block has a type and a l
 
 Storyarn supports {accent}10 block types{/accent}:
 
-| Type | Description | Variable? | Value example |
-|------|-------------|-----------|---------------|
-| **Text** | Single-line or short text input with optional placeholder | Yes | `"Jaime"` |
-| **Rich Text** | Formatted text with bold, italic, lists, links | Yes | `"<p>A brave warrior...</p>"` |
-| **Number** | Numeric input with optional min, max, and step constraints | Yes | `42` |
-| **Boolean** | Toggle switch. Supports two-state (true/false) or tri-state (true/false/nil) modes | Yes | `true` |
-| **Select** | Single choice from a defined list of options | Yes | `"warrior"` |
-| **Multi Select** | Multiple choices from a defined list (tags) | Yes | `["fire", "ice"]` |
-| **Date** | Date picker | Yes | `"2024-03-15"` |
-| **Table** | Spreadsheet grid with typed columns and named rows | Yes (cell-level) | See [Tables](/en/world-building/tables) |
-| **Reference** | Link to another sheet or flow | **No** | -- |
-| **Gallery** | Image collection from uploaded assets | **No** | -- |
+| Type             | Description                                                                        | Variable?        | Value example                           |
+| ---------------- | ---------------------------------------------------------------------------------- | ---------------- | --------------------------------------- |
+| **Text**         | Single-line or short text input with optional placeholder                          | Yes              | `"Jaime"`                               |
+| **Rich Text**    | Formatted text with bold, italic, lists, links                                     | Yes              | `"<p>A brave warrior...</p>"`           |
+| **Number**       | Numeric input with optional min, max, and step constraints                         | Yes              | `42`                                    |
+| **Boolean**      | Toggle switch. Supports two-state (true/false) or tri-state (true/false/nil) modes | Yes              | `true`                                  |
+| **Select**       | Single choice from a defined list of options                                       | Yes              | `"warrior"`                             |
+| **Multi Select** | Multiple choices from a defined list (tags)                                        | Yes              | `["fire", "ice"]`                       |
+| **Date**         | Date picker                                                                        | Yes              | `"2024-03-15"`                          |
+| **Table**        | Spreadsheet grid with typed columns and named rows                                 | Yes (cell-level) | See [Tables](/en/world-building/tables) |
+| **Reference**    | Link to another sheet or flow                                                      | **No**           | --                                      |
+| **Gallery**      | Image collection from uploaded assets                                              | **No**           | --                                      |
 
 Reference and gallery blocks are excluded from the variable system because they don't carry a meaningful runtime value.
 
@@ -47,11 +48,11 @@ Variables follow the pattern `{sheet_shortcut}.{variable_name}`.
 
 The variable name is {accent}auto-generated{/accent} from the block's label: spaces become underscores, accented characters are transliterated to ASCII, and everything is lowercased.
 
-| Label | Variable name | Full reference (on `mc.jaime`) |
-|-------|---------------|-------------------------------|
-| Health Points | `health_points` | `mc.jaime.health_points` |
-| Clase Social | `clase_social` | `mc.jaime.clase_social` |
-| Is Alive | `is_alive` | `mc.jaime.is_alive` |
+| Label         | Variable name   | Full reference (on `mc.jaime`) |
+| ------------- | --------------- | ------------------------------ |
+| Health Points | `health_points` | `mc.jaime.health_points`       |
+| Clase Social  | `clase_social`  | `mc.jaime.clase_social`        |
+| Is Alive      | `is_alive`      | `mc.jaime.is_alive`            |
 
 You can customize the variable name after creation. If a sheet already has a variable with the same name (e.g., from inheritance), Storyarn appends a numeric suffix to keep names unique.
 

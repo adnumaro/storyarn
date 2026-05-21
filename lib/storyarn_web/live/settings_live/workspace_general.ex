@@ -3,145 +3,60 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   LiveView for workspace general settings.
   """
   use StoryarnWeb, :live_view
-  alias StoryarnWeb.Helpers.Authorize
-
-  import StoryarnWeb.Components.UIComponents,
-    only: [danger_zone: 1, form_actions: 1, theme_toggle: 1]
 
   alias Storyarn.Localization
   alias Storyarn.Workspaces
+  alias StoryarnWeb.Helpers.Authorize
 
   @impl true
-  def mount(%{"slug" => slug}, _session, socket) do
-    scope = socket.assigns.current_scope
+  def mount(_params, _session, socket) do
+    %{workspace: workspace, membership: membership} = socket.assigns
 
-    case Workspaces.get_workspace_by_slug(scope, slug) do
-      {:ok, workspace, membership} ->
-        if membership.role in ["owner", "admin"] do
-          changeset = Workspaces.change_workspace(workspace)
+    if membership.role in ["owner", "admin"] do
+      changeset = Workspaces.change_workspace(workspace)
 
-          {:ok,
-           socket
-           |> assign(:page_title, dgettext("workspaces", "Workspace Settings"))
-           |> assign(:current_path, ~p"/users/settings/workspaces/#{slug}/general")
-           |> assign(:workspace, workspace)
-           |> assign(:membership, membership)
-           |> assign(:form, to_form(changeset))}
-        else
-          {:ok,
-           socket
-           |> put_flash(
-             :error,
-             dgettext("workspaces", "You don't have permission to manage this workspace.")
-           )
-           |> push_navigate(to: ~p"/users/settings")}
-        end
-
-      {:error, :not_found} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("workspaces", "Workspace not found."))
-         |> push_navigate(to: ~p"/users/settings")}
+      {:ok,
+       socket
+       |> assign(:page_title, dgettext("workspaces", "Workspace Settings"))
+       |> assign(:current_path, ~p"/users/settings/workspaces/#{workspace.slug}/general")
+       |> assign(:form, to_form(changeset))}
+    else
+      {:ok,
+       socket
+       |> put_flash(
+         :error,
+         dgettext("workspaces", "You don't have permission to manage this workspace.")
+       )
+       |> push_navigate(to: ~p"/users/settings")}
     end
   end
 
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.settings
+    <StoryarnWeb.Components.SettingsLayout.settings
       flash={@flash}
+      socket={@socket}
       current_scope={@current_scope}
       workspaces={@workspaces}
       managed_workspace_slugs={@managed_workspace_slugs}
       current_path={@current_path}
     >
-      <:title>{dgettext("workspaces", "General")}</:title>
-      <:subtitle>
-        {dgettext("workspaces", "Manage workspace details for %{name}", name: @workspace.name)}
-      </:subtitle>
-
-      <div class="space-y-8">
-        <section>
-          <.form for={@form} phx-submit="save" phx-change="validate" class="space-y-4">
-            <.input
-              field={@form[:name]}
-              type="text"
-              label={dgettext("workspaces", "Workspace name")}
-              required
-            />
-
-            <.input
-              field={@form[:description]}
-              type="textarea"
-              label={dgettext("workspaces", "Description")}
-            />
-
-            <.input
-              field={@form[:banner_url]}
-              type="text"
-              label={dgettext("workspaces", "Banner URL")}
-              placeholder="https://example.com/banner.jpg"
-            />
-
-            <.input
-              field={@form[:source_locale]}
-              type="select"
-              label={dgettext("workspaces", "Source language")}
-              options={Localization.language_options_for_select()}
-              prompt={dgettext("workspaces", "Select language...")}
-            />
-            <p class="text-xs opacity-60 -mt-2 mb-2">
-              {dgettext("workspaces", "Default source language for new projects in this workspace.")}
-            </p>
-
-            <.form_actions>
-              <.button
-                type="submit"
-                variant="primary"
-                phx-disable-with={dgettext("workspaces", "Saving...")}
-              >
-                {dgettext("workspaces", "Save Changes")}
-              </.button>
-            </.form_actions>
-          </.form>
-        </section>
-
-        <div class="divider" />
-
-        <%!-- Appearance --%>
-        <section>
-          <h3 class="text-lg font-semibold mb-4">{dgettext("settings", "Appearance")}</h3>
-          <div class="flex items-center gap-3">
-            <.theme_toggle />
-          </div>
-        </section>
-
-        <div class="divider" />
-
-        <.danger_zone
-          :if={@membership.role == "owner"}
-          message={
-            dgettext(
-              "workspaces",
-              "Once you delete a workspace, there is no going back. All projects will be deleted."
-            )
-          }
-          on_click={show_modal("delete-workspace-confirm")}
-        >
-          {dgettext("workspaces", "Delete Workspace")}
-        </.danger_zone>
-      </div>
-
-      <.confirm_modal
-        id="delete-workspace-confirm"
-        title={dgettext("workspaces", "Delete workspace?")}
-        message={dgettext("workspaces", "This action cannot be undone.")}
-        confirm_text={dgettext("workspaces", "Delete")}
-        confirm_variant="error"
-        icon="alert-triangle"
-        on_confirm={JS.push("delete")}
+      <.vue
+        v-component="live/workspace/settings/WorkspaceSettingsGeneral"
+        v-socket={@socket}
+        v-inject="settings-layout"
+        id="workspace-settings-general"
+        workspace-name={@workspace.name || ""}
+        workspace-description={@workspace.description || ""}
+        workspace-banner-url={@workspace.banner_url || ""}
+        source-locale={@workspace.source_locale || ""}
+        language-options={
+          Enum.map(Localization.language_options_for_select(), fn {k, v} -> [k, v] end)
+        }
+        is-owner={@membership.role == "owner"}
       />
-    </Layouts.settings>
+    </StoryarnWeb.Components.SettingsLayout.settings>
     """
   end
 
@@ -173,6 +88,53 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   end
 
   @impl true
+  def handle_event(
+        "upload_workspace_banner",
+        %{"filename" => filename, "content_type" => content_type, "data" => data},
+        socket
+      ) do
+    Authorize.with_authorization(socket, :manage_workspace, fn socket ->
+      with [_header, base64_data] <- String.split(data, ",", parts: 2),
+           {:ok, binary_data} <- Base.decode64(base64_data),
+           key = "workspaces/#{socket.assigns.workspace.slug}/banner/#{filename}",
+           {:ok, url} <- Storyarn.Assets.Storage.upload(key, binary_data, content_type),
+           {:ok, workspace} <-
+             Workspaces.update_workspace(socket.assigns.workspace, %{banner_url: url}) do
+        {:noreply,
+         socket
+         |> assign(:workspace, workspace)
+         |> assign(:form, to_form(Workspaces.change_workspace(workspace)))
+         |> put_flash(:info, dgettext("workspaces", "Banner uploaded successfully."))}
+      else
+        _ ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             dgettext("workspaces", "Invalid file data or upload failed.")
+           )}
+      end
+    end)
+  end
+
+  @impl true
+  def handle_event("remove_workspace_banner", _params, socket) do
+    Authorize.with_authorization(socket, :manage_workspace, fn socket ->
+      case Workspaces.update_workspace(socket.assigns.workspace, %{banner_url: nil}) do
+        {:ok, workspace} ->
+          {:noreply,
+           socket
+           |> assign(:workspace, workspace)
+           |> assign(:form, to_form(Workspaces.change_workspace(workspace)))
+           |> put_flash(:info, dgettext("workspaces", "Banner removed successfully."))}
+
+        {:error, %Ecto.Changeset{} = changeset} ->
+          {:noreply, assign(socket, :form, to_form(changeset))}
+      end
+    end)
+  end
+
+  @impl true
   def handle_event("delete", _params, socket) do
     # Only owner can delete workspace
     if socket.assigns.membership.role == "owner" do
@@ -184,8 +146,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
            |> push_navigate(to: ~p"/users/settings")}
 
         {:error, _} ->
-          {:noreply,
-           put_flash(socket, :error, dgettext("workspaces", "Failed to delete workspace."))}
+          {:noreply, put_flash(socket, :error, dgettext("workspaces", "Failed to delete workspace."))}
       end
     else
       {:noreply,

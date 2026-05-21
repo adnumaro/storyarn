@@ -1,0 +1,24 @@
+{
+  "public": {
+    "layout": {
+      "dashboard": "Dashboard",
+      "request_access": "Request access",
+      "log_in": "Log in",
+      "menu": "Menu",
+      "close": "Close"
+    },
+    "contact": {
+      "title": "Contact",
+      "description": "Have questions about Storyarn, want to report a bug, or just want to say hi? Reach out to us.",
+      "email": {
+        "title": "Email",
+        "description": "For general inquiries, feedback, or support."
+      },
+      "discord": {
+        "title": "Discord",
+        "description": "Join the community to chat with other narrative designers.",
+        "link": "Join our Discord"
+      }
+    }
+  }
+}

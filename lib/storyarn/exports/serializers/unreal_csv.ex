@@ -16,7 +16,8 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
 
   @behaviour Storyarn.Exports.Serializer
 
-  alias Storyarn.Exports.{ExportOptions, ExpressionTranspiler}
+  alias Storyarn.Exports.ExportOptions
+  alias Storyarn.Exports.ExpressionTranspiler
   alias Storyarn.Exports.Serializers.Helpers
 
   @impl true
@@ -172,11 +173,6 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
     [simple_row(ctx, "jump", "", "", to_string(target))]
   end
 
-  defp build_typed_rows("slug_line", ctx, _speaker_map) do
-    location = ctx.data["location"] || ctx.data["slug_line"] || ""
-    [simple_row(ctx, "slug_line", location, "", "")]
-  end
-
   defp build_typed_rows("entry", ctx, _speaker_map) do
     [simple_row(ctx, "entry", "", "", "")]
   end
@@ -312,7 +308,7 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
          %{
            "name" => flow.name,
            "shortcut" => flow.shortcut,
-           "start_node" => if(entry, do: to_string(entry.id), else: nil),
+           "start_node" => if(entry, do: to_string(entry.id)),
            "nodes" => nodes_meta
          }}
       end)

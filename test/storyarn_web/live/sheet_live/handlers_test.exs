@@ -38,7 +38,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
 
   # Sends an event to the ContentTab LiveComponent via with_target.
   # This is used for events that originate from JS hooks (not phx-click).
-  defp send_to_content_tab(view, event, params \\ %{}) do
+  defp send_to_content_tab(view, event, params) do
     view
     |> with_target("#content-tab")
     |> render_click(event, params)
@@ -48,105 +48,11 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
   # BlockCrudHandlers
   # ===========================================================================
 
-  describe "BlockCrudHandlers — add_block" do
-    setup :register_and_log_in_user
-
-    setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      sheet = sheet_fixture(project, %{name: "Block Test Sheet"})
-      %{project: project, workspace: project.workspace, sheet: sheet}
-    end
-
-    test "adds a text block to the sheet", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      # First show the block menu
-      send_to_content_tab(view, "show_block_menu")
-
-      # Add a text block via with_target (the block menu buttons have phx-target=@myself)
-      send_to_content_tab(view, "add_block", %{"type" => "text"})
-
-      # Verify block was created in the database
-      blocks = Sheets.list_blocks(sheet.id)
-      assert length(blocks) == 1
-      assert hd(blocks).type == "text"
-    end
-
-    test "adds a number block to the sheet", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      send_to_content_tab(view, "show_block_menu")
-      send_to_content_tab(view, "add_block", %{"type" => "number"})
-
-      blocks = Sheets.list_blocks(sheet.id)
-      assert length(blocks) == 1
-      assert hd(blocks).type == "number"
-    end
-
-    test "adds a boolean block to the sheet", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      send_to_content_tab(view, "show_block_menu")
-      send_to_content_tab(view, "add_block", %{"type" => "boolean"})
-
-      blocks = Sheets.list_blocks(sheet.id)
-      assert length(blocks) == 1
-      assert hd(blocks).type == "boolean"
-    end
-
-    test "adds a select block to the sheet", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      send_to_content_tab(view, "show_block_menu")
-      send_to_content_tab(view, "add_block", %{"type" => "select"})
-
-      blocks = Sheets.list_blocks(sheet.id)
-      assert length(blocks) == 1
-      assert hd(blocks).type == "select"
-    end
-
-    test "adds a table block to the sheet", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      send_to_content_tab(view, "show_block_menu")
-      send_to_content_tab(view, "add_block", %{"type" => "table"})
-
-      blocks = Sheets.list_blocks(sheet.id)
-      assert length(blocks) == 1
-      assert hd(blocks).type == "table"
-    end
-  end
-
   describe "BlockCrudHandlers — delete_block" do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Delete Block Sheet"})
       block = block_fixture(sheet, %{type: "text", config: %{"label" => "Name"}})
       %{project: project, workspace: project.workspace, sheet: sheet, block: block}
@@ -182,7 +88,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
 
       # View should still be alive and the real block should be untouched
       assert render(view) =~ "Delete Block Sheet"
-      assert Sheets.get_block(block.id) != nil
+      assert Sheets.get_block(block.id)
     end
   end
 
@@ -190,7 +96,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Update Value Sheet"})
       block = block_fixture(sheet, %{type: "text", config: %{"label" => "Description"}})
       %{project: project, workspace: project.workspace, sheet: sheet, block: block}
@@ -235,49 +141,6 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     end
   end
 
-  describe "BlockCrudHandlers — reorder" do
-    setup :register_and_log_in_user
-
-    setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      sheet = sheet_fixture(project, %{name: "Reorder Sheet"})
-      block1 = block_fixture(sheet, %{type: "text", config: %{"label" => "First"}})
-      block2 = block_fixture(sheet, %{type: "text", config: %{"label" => "Second"}})
-      block3 = block_fixture(sheet, %{type: "text", config: %{"label" => "Third"}})
-
-      %{
-        project: project,
-        workspace: project.workspace,
-        sheet: sheet,
-        block1: block1,
-        block2: block2,
-        block3: block3
-      }
-    end
-
-    test "reorders blocks within the sheet", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet,
-      block1: b1,
-      block2: b2,
-      block3: b3
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      # Reorder: move block3 to position 0
-      new_order = [to_string(b3.id), to_string(b1.id), to_string(b2.id)]
-
-      send_to_content_tab(view, "reorder", %{"ids" => new_order, "group" => "blocks"})
-
-      # Verify new order
-      blocks = Sheets.list_blocks(sheet.id)
-      ids = Enum.map(blocks, & &1.id)
-      assert ids == [b3.id, b1.id, b2.id]
-    end
-  end
-
   # ===========================================================================
   # TableHandlers
   # ===========================================================================
@@ -286,7 +149,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Table Column Sheet"})
       table_block = table_block_fixture(sheet, %{label: "Inventory"})
       %{project: project, workspace: project.workspace, sheet: sheet, table_block: table_block}
@@ -319,7 +182,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Table Row Sheet"})
       table_block = table_block_fixture(sheet, %{label: "Items"})
       %{project: project, workspace: project.workspace, sheet: sheet, table_block: table_block}
@@ -352,7 +215,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Rename Column Sheet"})
       table_block = table_block_fixture(sheet, %{label: "Stats"})
       column = table_column_fixture(table_block, %{name: "Health"})
@@ -407,7 +270,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Rename Row Sheet"})
       table_block = table_block_fixture(sheet, %{label: "Characters"})
       row = table_row_fixture(table_block, %{name: "Warrior"})
@@ -462,7 +325,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Delete Column Sheet"})
       table_block = table_block_fixture(sheet, %{label: "Weapons"})
       # Table blocks come with a default column; add a second one so we can delete it
@@ -502,7 +365,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Delete Row Sheet"})
       table_block = table_block_fixture(sheet, %{label: "Items"})
       # Table blocks come with a default row; add a second one so we can delete it
@@ -542,7 +405,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Cell Update Sheet"})
       table_block = table_block_fixture(sheet, %{label: "Stats"})
 
@@ -586,7 +449,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Collapse Sheet"})
       table_block = table_block_fixture(sheet, %{label: "Collapsible"})
       %{project: project, workspace: project.workspace, sheet: sheet, table_block: table_block}
@@ -614,7 +477,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Column Type Sheet"})
       table_block = table_block_fixture(sheet, %{label: "Typed Table"})
       column = table_column_fixture(table_block, %{name: "Field"})
@@ -651,7 +514,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Column Constant Sheet"})
       table_block = table_block_fixture(sheet, %{label: "Constants"})
       column = table_column_fixture(table_block, %{name: "Fixed"})
@@ -689,7 +552,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Column Required Sheet"})
       table_block = table_block_fixture(sheet, %{label: "Required Table"})
       column = table_column_fixture(table_block, %{name: "Mandatory"})
@@ -727,7 +590,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Reorder Rows Sheet"})
       table_block = table_block_fixture(sheet, %{label: "Ordered"})
       row2 = table_row_fixture(table_block, %{name: "Second"})
@@ -776,7 +639,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Bool Cell Sheet"})
       table_block = table_block_fixture(sheet, %{label: "Flags"})
       bool_column = table_column_fixture(table_block, %{name: "Active", type: "boolean"})
@@ -826,7 +689,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       parent_sheet = sheet_fixture(project, %{name: "Parent Character"})
 
       # Create an inheritable block on the parent (scope: "children")
@@ -884,72 +747,11 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     end
   end
 
-  describe "InheritanceHandlers — hide/unhide for children" do
-    setup :register_and_log_in_user
-
-    setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      parent_sheet = sheet_fixture(project, %{name: "Template Sheet"})
-      inheritable_block = inheritable_block_fixture(parent_sheet, label: "Visible Trait")
-      _child_sheet = child_sheet_fixture(project, parent_sheet, %{name: "Instance Sheet"})
-
-      %{
-        project: project,
-        workspace: project.workspace,
-        parent_sheet: parent_sheet,
-        inheritable_block: inheritable_block
-      }
-    end
-
-    test "hide_inherited_for_children hides a block from children", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      parent_sheet: parent_sheet,
-      inheritable_block: block
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, parent_sheet)
-
-      send_to_content_tab(view, "hide_inherited_for_children", %{"id" => to_string(block.id)})
-
-      # Verify DB state: block ID is now in hidden list
-      updated_sheet = Sheets.get_sheet!(proj.id, parent_sheet.id)
-      assert block.id in (updated_sheet.hidden_inherited_block_ids || [])
-
-      # View should still be alive
-      assert render(view) =~ "Template Sheet"
-    end
-
-    test "unhide_inherited_for_children restores visibility", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      parent_sheet: parent_sheet,
-      inheritable_block: block
-    } do
-      # Hide first
-      Sheets.hide_for_children(parent_sheet, block.id)
-
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, parent_sheet)
-
-      send_to_content_tab(view, "unhide_inherited_for_children", %{
-        "id" => to_string(block.id)
-      })
-
-      # Verify DB state: block ID is no longer in hidden list
-      updated_sheet = Sheets.get_sheet!(proj.id, parent_sheet.id)
-      refute block.id in (updated_sheet.hidden_inherited_block_ids || [])
-
-      # View should still be alive
-      assert render(view) =~ "Template Sheet"
-    end
-  end
-
   describe "InheritanceHandlers — toggle_required" do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       parent_sheet = sheet_fixture(project, %{name: "Required Sheet"})
 
       inheritable_block =
@@ -989,7 +791,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
 
     setup %{user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       sheet = sheet_fixture(project, %{name: "Viewer Sheet"})
       block = block_fixture(sheet, %{type: "text", config: %{"label" => "ReadOnly"}})
@@ -1010,7 +812,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
       refute html =~ "phx-click=\"delete_block\""
 
       # Block should still exist
-      assert Sheets.get_block(block.id) != nil
+      assert Sheets.get_block(block.id)
     end
 
     test "viewer cannot add a block", %{
@@ -1034,87 +836,4 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
   # ===========================================================================
   # Block label update
   # ===========================================================================
-
-  describe "update_block_label" do
-    setup :register_and_log_in_user
-
-    setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      sheet = sheet_fixture(project, %{name: "Label Sheet"})
-      block = block_fixture(sheet, %{type: "text", config: %{"label" => "Original Label"}})
-      %{project: project, workspace: project.workspace, sheet: sheet, block: block}
-    end
-
-    test "updates block label", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet,
-      block: block
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      send_to_content_tab(view, "update_block_label", %{
-        "id" => to_string(block.id),
-        "label" => "Updated Label"
-      })
-
-      updated_block = Sheets.get_block(block.id)
-      assert updated_block.config["label"] == "Updated Label"
-    end
-  end
-
-  # ===========================================================================
-  # Block scope events
-  # ===========================================================================
-
-  describe "block scope events" do
-    setup :register_and_log_in_user
-
-    setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      sheet = sheet_fixture(project, %{name: "Scope Sheet"})
-      %{project: project, workspace: project.workspace, sheet: sheet}
-    end
-
-    test "show_block_menu and hide_block_menu toggle menu visibility", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      # Show menu
-      html = send_to_content_tab(view, "show_block_menu")
-      # Block menu should be visible (contains block type options)
-      assert html =~ "Text" || html =~ "add_block"
-
-      # Hide menu
-      send_to_content_tab(view, "hide_block_menu")
-
-      # View is still alive
-      assert render(view) =~ "Scope Sheet"
-    end
-
-    test "set_block_scope changes the scope for new blocks", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      # Set scope to children
-      send_to_content_tab(view, "set_block_scope", %{"scope" => "children"})
-
-      # Now add a block - it should be created with scope "children"
-      send_to_content_tab(view, "show_block_menu")
-      send_to_content_tab(view, "add_block", %{"type" => "text"})
-
-      blocks = Sheets.list_blocks(sheet.id)
-      assert length(blocks) == 1
-      assert hd(blocks).scope == "children"
-    end
-  end
 end

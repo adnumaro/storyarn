@@ -37,7 +37,6 @@ defmodule Storyarn.Screenplays.ReverseNodeMapping do
   # ---------------------------------------------------------------------------
 
   defp map_node(%FlowNode{type: "entry"} = node), do: map_entry(node)
-  defp map_node(%FlowNode{type: "slug_line"} = node), do: map_scene(node)
   defp map_node(%FlowNode{type: "dialogue"} = node), do: map_dialogue(node)
   defp map_node(%FlowNode{type: "condition"} = node), do: map_condition(node)
   defp map_node(%FlowNode{type: "instruction"} = node), do: map_instruction(node)
@@ -53,36 +52,6 @@ defmodule Storyarn.Screenplays.ReverseNodeMapping do
 
   defp map_entry(%FlowNode{id: id}) do
     [%{type: "scene_heading", content: "INT. - DAY", data: nil, source_node_id: id}]
-  end
-
-  # ---------------------------------------------------------------------------
-  # Scene → scene_heading (reconstructed from data)
-  # ---------------------------------------------------------------------------
-
-  defp map_scene(%FlowNode{id: id, data: data}) do
-    [
-      %{
-        type: "scene_heading",
-        content: reconstruct_scene_heading(data || %{}),
-        data: nil,
-        source_node_id: id
-      }
-    ]
-  end
-
-  defp reconstruct_scene_heading(data) do
-    prefix =
-      case data["int_ext"] do
-        "ext" -> "EXT."
-        _ -> "INT."
-      end
-
-    desc = data["description"] || ""
-    time = data["time_of_day"]
-
-    if time && time != "",
-      do: "#{prefix} #{desc} - #{time}",
-      else: "#{prefix} #{desc}"
   end
 
   # ---------------------------------------------------------------------------
@@ -122,27 +91,27 @@ defmodule Storyarn.Screenplays.ReverseNodeMapping do
   end
 
   defp build_dialogue_elements(id, text, stage_directions, menu_text, responses, speaker_sheet_id) do
-    character_name = if menu_text != "", do: menu_text, else: "CHARACTER"
+    character_name = if menu_text == "", do: "CHARACTER", else: menu_text
 
     character_data =
-      if speaker_sheet_id, do: %{"sheet_id" => speaker_sheet_id}, else: nil
+      if speaker_sheet_id, do: %{"sheet_id" => speaker_sheet_id}
 
     elements = [
       %{type: "character", content: character_name, data: character_data, source_node_id: id}
     ]
 
     elements =
-      if stage_directions != "",
-        do:
+      if stage_directions == "",
+        do: elements,
+        else:
           elements ++
-            [%{type: "parenthetical", content: stage_directions, data: nil, source_node_id: id}],
-        else: elements
+            [%{type: "parenthetical", content: stage_directions, data: nil, source_node_id: id}]
 
     elements = elements ++ [%{type: "dialogue", content: text, data: nil, source_node_id: id}]
 
-    if responses != [],
-      do: elements ++ [map_response_element(id, responses)],
-      else: elements
+    if responses == [],
+      do: elements,
+      else: elements ++ [map_response_element(id, responses)]
   end
 
   defp map_response_element(node_id, responses) do
@@ -268,8 +237,7 @@ defmodule Storyarn.Screenplays.ReverseNodeMapping do
   defp deserialize_condition(nil), do: nil
   defp deserialize_condition(condition) when is_map(condition), do: condition
 
-  defp deserialize_condition(condition) when is_binary(condition),
-    do: Flows.condition_parse(condition)
+  defp deserialize_condition(condition) when is_binary(condition), do: Flows.condition_parse(condition)
 
   defp deserialize_instruction(nil), do: nil
   defp deserialize_instruction(assignments) when is_list(assignments), do: assignments

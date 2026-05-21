@@ -160,21 +160,14 @@ defmodule Storyarn.Exports.ExpressionTranspiler.HelpersTest do
       assert Helpers.decode_condition("") == {:ok, nil}
     end
 
-    test "flat condition map passes through" do
-      condition = %{"logic" => "all", "rules" => []}
-      assert Helpers.decode_condition(condition) == {:ok, condition}
-    end
-
     test "block condition map passes through" do
       condition = %{"logic" => "all", "blocks" => []}
       assert Helpers.decode_condition(condition) == {:ok, condition}
     end
 
-    test "JSON string with rules is decoded" do
-      json = Jason.encode!(%{"logic" => "all", "rules" => [%{"op" => "eq"}]})
-      {:ok, result} = Helpers.decode_condition(json)
-      assert result["logic"] == "all"
-      assert is_list(result["rules"])
+    test "flat condition map without blocks returns {:ok, nil}" do
+      condition = %{"logic" => "all", "rules" => []}
+      assert Helpers.decode_condition(condition) == {:ok, nil}
     end
 
     test "JSON string with blocks is decoded" do
@@ -184,18 +177,22 @@ defmodule Storyarn.Exports.ExpressionTranspiler.HelpersTest do
       assert is_list(result["blocks"])
     end
 
-    test "valid JSON but wrong shape returns legacy error" do
+    test "JSON string without blocks returns {:ok, nil}" do
+      json = Jason.encode!(%{"logic" => "all", "rules" => [%{"op" => "eq"}]})
+      assert Helpers.decode_condition(json) == {:ok, nil}
+    end
+
+    test "valid JSON but wrong shape returns {:ok, nil}" do
       json = Jason.encode!(%{"foo" => "bar"})
-      assert {:error, {:legacy_condition, ^json}} = Helpers.decode_condition(json)
+      assert Helpers.decode_condition(json) == {:ok, nil}
     end
 
-    test "invalid JSON returns legacy error" do
-      assert {:error, {:legacy_condition, "not json"}} = Helpers.decode_condition("not json")
+    test "invalid JSON returns {:ok, nil}" do
+      assert Helpers.decode_condition("not json") == {:ok, nil}
     end
 
-    test "legacy expression string returns error" do
-      assert {:error, {:legacy_condition, "health > 50"}} =
-               Helpers.decode_condition("health > 50")
+    test "legacy expression string returns {:ok, nil}" do
+      assert Helpers.decode_condition("health > 50") == {:ok, nil}
     end
 
     test "other types return {:ok, nil}" do
@@ -209,11 +206,6 @@ defmodule Storyarn.Exports.ExpressionTranspiler.HelpersTest do
   # =============================================================================
 
   describe "extract_condition_structure/1" do
-    test "flat condition returns {:flat, logic, rules}" do
-      condition = %{"logic" => "any", "rules" => [%{"op" => "eq"}]}
-      assert {:flat, "any", [%{"op" => "eq"}]} = Helpers.extract_condition_structure(condition)
-    end
-
     test "block condition returns {:blocks, logic, groups}" do
       block = %{"type" => "block", "logic" => "all", "rules" => [%{"op" => "eq"}]}
       condition = %{"logic" => "any", "blocks" => [block]}
@@ -242,9 +234,9 @@ defmodule Storyarn.Exports.ExpressionTranspiler.HelpersTest do
       assert length(groups) == 1
     end
 
-    test "catchall returns empty flat" do
-      assert {:flat, "all", []} = Helpers.extract_condition_structure(%{})
-      assert {:flat, "all", []} = Helpers.extract_condition_structure(%{"logic" => "all"})
+    test "catchall returns empty blocks" do
+      assert {:blocks, "all", []} = Helpers.extract_condition_structure(%{})
+      assert {:blocks, "all", []} = Helpers.extract_condition_structure(%{"logic" => "all"})
     end
   end
 

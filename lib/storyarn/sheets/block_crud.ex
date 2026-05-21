@@ -2,34 +2,35 @@ defmodule Storyarn.Sheets.BlockCrud do
   @moduledoc false
 
   import Ecto.Query, warn: false
-  require Logger
 
   alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Localization
   alias Storyarn.References
   alias Storyarn.Repo
-  alias Storyarn.Shared.{NameNormalizer, TreeOperations, WordCount}
+  alias Storyarn.Shared.NameNormalizer
+  alias Storyarn.Shared.TreeOperations
+  alias Storyarn.Shared.WordCount
+  alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.PropertyInheritance
+  alias Storyarn.Sheets.Sheet
+  alias Storyarn.Sheets.TableColumn
+  alias Storyarn.Sheets.TableRow
 
-  alias Storyarn.Sheets.{
-    Block,
-    PropertyInheritance,
-    Sheet,
-    TableColumn,
-    TableRow
-  }
+  require Logger
 
   # =============================================================================
   # Query Operations
   # =============================================================================
 
   def list_blocks(sheet_id) do
-    from(b in Block,
-      where: b.sheet_id == ^sheet_id and is_nil(b.deleted_at),
-      order_by: [asc: b.position],
-      preload: [:inherited_from_block]
+    Repo.all(
+      from(b in Block,
+        where: b.sheet_id == ^sheet_id and is_nil(b.deleted_at),
+        order_by: [asc: b.position],
+        preload: [:inherited_from_block]
+      )
     )
-    |> Repo.all()
   end
 
   def get_block(block_id) do
@@ -51,14 +52,15 @@ defmodule Storyarn.Sheets.BlockCrud do
   Returns nil if not found or not in project.
   """
   def get_block_in_project(block_id, project_id) do
-    from(b in Block,
-      join: s in Sheet,
-      on: b.sheet_id == s.id,
-      where: b.id == ^block_id and s.project_id == ^project_id,
-      where: is_nil(b.deleted_at) and is_nil(s.deleted_at),
-      select: b
+    Repo.one(
+      from(b in Block,
+        join: s in Sheet,
+        on: b.sheet_id == s.id,
+        where: b.id == ^block_id and s.project_id == ^project_id,
+        where: is_nil(b.deleted_at) and is_nil(s.deleted_at),
+        select: b
+      )
     )
-    |> Repo.one()
   end
 
   @doc """
@@ -122,8 +124,7 @@ defmodule Storyarn.Sheets.BlockCrud do
     result
   end
 
-  defp block_word_count(block_type, value) when block_type in ~w(text rich_text),
-    do: WordCount.for_block_value(value)
+  defp block_word_count(block_type, value) when block_type in ~w(text rich_text), do: WordCount.for_block_value(value)
 
   defp block_word_count(_block_type, _value), do: 0
 
@@ -342,13 +343,10 @@ defmodule Storyarn.Sheets.BlockCrud do
 
     Repo.transaction(fn ->
       # Shift all blocks after the original position by +1
-      from(b in Block,
-        where:
-          b.sheet_id == ^sheet_id and
-            b.position > ^block.position and
-            is_nil(b.deleted_at)
+      Repo.update_all(
+        from(b in Block, where: b.sheet_id == ^sheet_id and b.position > ^block.position and is_nil(b.deleted_at)),
+        inc: [position: 1]
       )
-      |> Repo.update_all(inc: [position: 1])
 
       attrs = %{
         type: block.type,
@@ -590,10 +588,10 @@ defmodule Storyarn.Sheets.BlockCrud do
         |> Enum.with_index()
         |> Enum.reduce(0, fn {block_id, idx}, acc ->
           {count, _} =
-            from(b in Block,
-              where: b.id == ^block_id and b.sheet_id == ^sheet_id and is_nil(b.deleted_at)
+            Repo.update_all(
+              from(b in Block, where: b.id == ^block_id and b.sheet_id == ^sheet_id and is_nil(b.deleted_at)),
+              set: [column_group_id: group_id, column_index: idx]
             )
-            |> Repo.update_all(set: [column_group_id: group_id, column_index: idx])
 
           acc + count
         end)
@@ -610,13 +608,14 @@ defmodule Storyarn.Sheets.BlockCrud do
   Dissolves a column group by resetting column fields for all blocks in the group.
   """
   def dissolve_column_group(sheet_id, column_group_id) do
-    from(b in Block,
-      where:
-        b.sheet_id == ^sheet_id and
-          b.column_group_id == ^column_group_id and
-          is_nil(b.deleted_at)
+    Repo.update_all(
+      from(b in Block,
+        where:
+          b.sheet_id == ^sheet_id and b.column_group_id == ^column_group_id and
+            is_nil(b.deleted_at)
+      ),
+      set: [column_group_id: nil, column_index: 0]
     )
-    |> Repo.update_all(set: [column_group_id: nil, column_index: 0])
 
     :ok
   end
@@ -658,10 +657,10 @@ defmodule Storyarn.Sheets.BlockCrud do
       existing_names = list_variable_names(sheet_id, exclude_block_id)
       unique_name = find_unique_variable_name(variable_name, existing_names)
 
-      if unique_name != variable_name do
-        put_change(changeset, :variable_name, unique_name)
-      else
+      if unique_name == variable_name do
         changeset
+      else
+        put_change(changeset, :variable_name, unique_name)
       end
     end
   end
@@ -671,14 +670,12 @@ defmodule Storyarn.Sheets.BlockCrud do
 
   defp maybe_dissolve_column_group(sheet_id, column_group_id) do
     count =
-      from(b in Block,
-        where:
-          b.sheet_id == ^sheet_id and
-            b.column_group_id == ^column_group_id and
-            is_nil(b.deleted_at),
-        select: count(b.id)
+      Repo.one(
+        from(b in Block,
+          where: b.sheet_id == ^sheet_id and b.column_group_id == ^column_group_id and is_nil(b.deleted_at),
+          select: count(b.id)
+        )
       )
-      |> Repo.one()
 
     if count < 2 do
       dissolve_column_group(sheet_id, column_group_id)
@@ -729,9 +726,7 @@ defmodule Storyarn.Sheets.BlockCrud do
   end
 
   defp broadcast_block_change(%Block{} = block) do
-    project_id =
-      from(s in Sheet, where: s.id == ^block.sheet_id, select: s.project_id)
-      |> Repo.one()
+    project_id = Repo.one(from(s in Sheet, where: s.id == ^block.sheet_id, select: s.project_id))
 
     if project_id, do: Collaboration.broadcast_dashboard_change(project_id, :sheets)
   end

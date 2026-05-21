@@ -9,24 +9,41 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   Delegates heavy lifting to NodeHelpers. Returns `{:noreply, socket}`.
   """
 
-  import Phoenix.Component, only: [assign: 3]
-  import Phoenix.LiveView, only: [push_event: 3, push_navigate: 2, push_patch: 2, put_flash: 3]
-
   use StoryarnWeb, :verified_routes
   use Gettext, backend: Storyarn.Gettext
 
+  import Phoenix.Component, only: [assign: 3]
+  import Phoenix.LiveView, only: [push_event: 3, push_navigate: 2, push_patch: 2, put_flash: 3]
+  import StoryarnWeb.Helpers.AutoSnapshot, only: [schedule: 2]
+  import StoryarnWeb.Helpers.SaveStatusTimer, only: [mark_saved: 1]
+
+  alias Phoenix.LiveView.Socket
+  alias Storyarn.Analytics
+  alias Storyarn.Assets
   alias Storyarn.Flows
+  alias Storyarn.Flows.SequenceConfig
+  alias Storyarn.Repo
   alias Storyarn.Sheets
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
+  alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 
-  import StoryarnWeb.Helpers.SaveStatusTimer, only: [mark_saved: 1]
-  import StoryarnWeb.Helpers.AutoSnapshot, only: [schedule: 2]
+  # Notify the sticky FlowSidebarLive that the flows tree may have changed
+  # (flow rename / shortcut change). Show itself no longer owns :flows_tree.
+  defp broadcast_flows_tree_changed(socket) do
+    Phoenix.PubSub.broadcast(
+      Storyarn.PubSub,
+      ProjectChromeHelpers.shell_topic(socket.assigns.project.id),
+      {:tree_changed, :flows}
+    )
 
-  @spec handle_add_node(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+    socket
+  end
+
+  @spec handle_add_node(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_add_node(%{"type" => type} = params, socket) do
     opts =
       case {params["position_x"], params["position_y"]} do
@@ -34,11 +51,28 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
         _ -> []
       end
 
+    opts =
+      case parent_id_param(params["parent_id"]) do
+        nil -> opts
+        parent_id -> Keyword.put(opts, :parent_id, parent_id)
+      end
+
     NodeHelpers.add_node(socket, type, opts)
   end
 
-  @spec handle_save_name(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  defp parent_id_param(parent_id) when is_integer(parent_id), do: parent_id
+
+  defp parent_id_param(parent_id) when is_binary(parent_id) do
+    case Integer.parse(parent_id) do
+      {id, ""} -> id
+      _ -> nil
+    end
+  end
+
+  defp parent_id_param(_parent_id), do: nil
+
+  @spec handle_save_name(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_save_name(%{"name" => name}, socket) do
     flow = socket.assigns.flow
     prev_name = flow.name
@@ -50,6 +84,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
          |> assign(:flow, updated_flow)
          |> mark_saved()
          |> schedule(:flow)
+         |> broadcast_flows_tree_changed()
          |> push_event("flow_meta_changed", %{field: "name", prev: prev_name, new: name})}
 
       {:error, _changeset} ->
@@ -57,8 +92,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     end
   end
 
-  @spec handle_save_shortcut(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_save_shortcut(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_save_shortcut(%{"shortcut" => shortcut}, socket) do
     flow = socket.assigns.flow
     prev_shortcut = flow.shortcut
@@ -71,6 +106,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
          |> assign(:flow, updated_flow)
          |> mark_saved()
          |> schedule(:flow)
+         |> broadcast_flows_tree_changed()
          |> push_event("flow_meta_changed", %{
            field: "shortcut",
            prev: prev_shortcut,
@@ -83,8 +119,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     end
   end
 
-  @spec handle_restore_flow_meta(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_restore_flow_meta(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_restore_flow_meta(%{"field" => "name", "value" => value}, socket) do
     flow = socket.assigns.flow
 
@@ -94,6 +130,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
          socket
          |> assign(:flow, updated_flow)
          |> mark_saved()
+         |> broadcast_flows_tree_changed()
          |> push_event("restore_page_content", %{
            name: updated_flow.name,
            shortcut: updated_flow.shortcut || ""
@@ -114,6 +151,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
          socket
          |> assign(:flow, updated_flow)
          |> mark_saved()
+         |> broadcast_flows_tree_changed()
          |> push_event("restore_page_content", %{
            name: updated_flow.name,
            shortcut: updated_flow.shortcut || ""
@@ -127,8 +165,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
   def handle_restore_flow_meta(_params, socket), do: {:noreply, socket}
 
-  @spec handle_node_selected(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_node_selected(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_node_selected(%{"id" => node_id}, socket) do
     node = Flows.get_node(socket.assigns.flow.id, node_id)
     if is_nil(node), do: {:noreply, socket}, else: do_handle_node_selected(node_id, node, socket)
@@ -156,11 +194,162 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
      |> assign(:available_flows, [])
      |> assign(:subflow_exits, [])
      |> assign(:referencing_jumps, [])
-     |> assign(:referencing_flows, [])}
+     |> assign(:referencing_flows, [])
+     |> assign(:sequence_panel_data, nil)}
   end
 
-  @spec handle_node_double_clicked(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @doc """
+  Opens the sequence config sidebar for the currently-selected sequence.
+  Mirrors `open_builder` / `open_dialogue_panel`: reads `selected_node`, loads
+  the panel payload (config + tracks + asset lists), flips
+  `editing_mode` to `:sequence_config`. The panel itself is gated on
+  that mode in `show.ex`.
+  """
+  @spec handle_open_sequence_config(Socket.t()) ::
+          {:noreply, Socket.t()}
+  def handle_open_sequence_config(socket) do
+    case socket.assigns.selected_node do
+      %{type: "sequence"} = node ->
+        {:noreply,
+         socket
+         |> assign(:editing_mode, :sequence_config)
+         |> assign(:sequence_panel_data, build_sequence_panel_data(socket, node))}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  @doc """
+  Builds the sequence config panel payload (config + tracks + assets).
+  Public so collaboration handlers can refresh remote panels in-place.
+  """
+  @spec build_sequence_panel_data(Socket.t(), map()) :: map() | nil
+  def build_sequence_panel_data(_socket, %{type: type}) when type != "sequence", do: nil
+
+  def build_sequence_panel_data(socket, %{type: "sequence", id: seq_id}) do
+    project_id = socket.assigns.project.id
+    config = Repo.get_by(SequenceConfig, flow_node_id: seq_id)
+    visual_layers = Flows.list_sequence_visual_layers(seq_id)
+    tracks = Flows.list_sequence_tracks(seq_id)
+
+    %{
+      sequence_id: seq_id,
+      config: serialize_sequence_config(config),
+      visual_layers: Enum.map(visual_layers, &serialize_sequence_visual_layer/1),
+      tracks: Enum.map(tracks, &serialize_sequence_track/1),
+      image_assets: serialize_assets(Assets.list_assets(project_id, images_only: true)),
+      audio_assets: serialize_assets(Assets.list_assets(project_id, content_type: "audio/"))
+    }
+  end
+
+  defp serialize_sequence_config(nil), do: nil
+
+  defp serialize_sequence_config(%SequenceConfig{} = cfg) do
+    %{
+      name: cfg.name,
+      width: cfg.width,
+      height: cfg.height
+    }
+  end
+
+  defp serialize_sequence_visual_layer(%Storyarn.Flows.SequenceVisualLayer{} = layer) do
+    %{
+      id: layer.id,
+      kind: layer.kind,
+      label: layer.label,
+      asset_id: layer.asset_id,
+      url: Assets.display_url(layer.asset),
+      z_index: layer.z_index,
+      slot: layer.slot,
+      x: layer.x,
+      y: layer.y,
+      width: layer.width,
+      height: layer.height,
+      anchor_x: layer.anchor_x,
+      anchor_y: layer.anchor_y,
+      fit: layer.fit,
+      opacity: layer.opacity,
+      visible: layer.visible
+    }
+  end
+
+  defp serialize_sequence_track(%Storyarn.Flows.SequenceTrack{} = track) do
+    %{
+      kind: track.kind,
+      asset_id: track.asset_id,
+      volume: decimal_to_float(track.volume)
+    }
+  end
+
+  defp decimal_to_float(nil), do: nil
+  defp decimal_to_float(%Decimal{} = d), do: Decimal.to_float(d)
+
+  defp serialize_assets(assets) do
+    Enum.map(assets, fn a ->
+      %{
+        id: a.id,
+        filename: a.filename,
+        url: a.url,
+        content_type: a.content_type
+      }
+    end)
+  end
+
+  @doc """
+  Builds the dialogue panel payload (camelCase shape consumed by
+  FlowDialoguePanel.vue). Mirrors `build_sequence_panel_data/2` per D5
+  in REFACTOR.md §10. Public so the open-panel handler and
+  collaboration refreshes can both call it.
+
+  Returns `nil` if the node is not a dialogue.
+  """
+  @spec build_dialogue_panel_data(Socket.t(), map()) :: map() | nil
+  def build_dialogue_panel_data(_socket, %{type: type}) when type != "dialogue", do: nil
+
+  def build_dialogue_panel_data(socket, %{type: "dialogue"} = node) do
+    project_id = socket.assigns.project.id
+    data = node.data || %{}
+
+    %{
+      nodeId: node.id,
+      speakerSheetId: data["speaker_sheet_id"],
+      text: data["text"] || "",
+      stageDirections: data["stage_directions"] || "",
+      menuText: data["menu_text"] || "",
+      technicalId: data["technical_id"] || "",
+      localizationId: data["localization_id"] || "",
+      audioAssetId: data["audio_asset_id"],
+      avatarId: data["avatar_id"],
+      responses: serialize_dialogue_responses(data["responses"] || []),
+      allSheets: list_panel_sheets(project_id),
+      audioAssets: serialize_assets(Assets.list_assets(project_id, content_type: "audio/")),
+      projectVariables: socket.assigns[:project_variables] || []
+    }
+  end
+
+  defp serialize_dialogue_responses(responses) when is_list(responses) do
+    Enum.map(responses, fn r ->
+      %{
+        id: r["id"],
+        text: r["text"] || "",
+        condition: r["condition"],
+        instructionAssignments: r["instruction_assignments"] || [],
+        hasTypeWarnings: r["has_type_warnings"] || false
+      }
+    end)
+  end
+
+  defp serialize_dialogue_responses(_), do: []
+
+  defp list_panel_sheets(project_id) do
+    project_id
+    |> Sheets.list_all_sheets()
+    |> Enum.map(&%{id: &1.id, name: &1.name})
+  end
+
+  @spec handle_node_double_clicked(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_node_double_clicked(%{"id" => node_id}, socket) do
     case Flows.get_node(socket.assigns.flow.id, node_id) do
       nil -> {:noreply, socket}
@@ -192,8 +381,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
     {:noreply,
      push_patch(socket,
-       to:
-         ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow_id}"
+       to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow_id}"
      )}
   end
 
@@ -216,7 +404,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
     socket =
       case mode do
-        :editor -> push_event(socket, "center_on_node", %{id: node_id, sidebar_width: 600})
+        :dialogue_panel -> push_event(socket, "center_on_node", %{id: node_id, sidebar_width: 600})
         :builder -> push_event(socket, "center_on_node", %{id: node_id, sidebar_width: 480})
         _ -> socket
       end
@@ -224,20 +412,20 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     {:noreply, socket}
   end
 
-  @spec handle_open_sidebar(Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_open_sidebar(Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_open_sidebar(socket) do
     {:noreply, assign(socket, :editing_mode, :toolbar)}
   end
 
-  @spec handle_close_editor(Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_close_editor(Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_close_editor(socket) do
     # Release the edit lock but keep selected_node set.
     # Clearing selected_node here desynchronises server state from the client's
     # hook.selectedNodeId, which causes the context menu "Open editor panel" to
     # skip sending node_selected (thinking the node is still selected) and then
-    # open_screenplay finds selected_node nil → silent failure.
+    # open_dialogue_panel finds selected_node nil → silent failure.
     # The node stays visually selected (toolbar visible); deselect_node clears it.
     socket =
       if socket.assigns.selected_node && socket.assigns.can_edit do
@@ -252,8 +440,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
      |> assign(:editing_mode, nil)}
   end
 
-  @spec handle_deselect_node(Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_deselect_node(Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_deselect_node(socket) do
     socket =
       if socket.assigns.selected_node && socket.assigns.can_edit do
@@ -266,11 +454,12 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
      socket
      |> assign(:selected_node, nil)
      |> assign(:node_form, nil)
-     |> assign(:editing_mode, nil)}
+     |> assign(:editing_mode, nil)
+     |> assign(:sequence_panel_data, nil)}
   end
 
-  @spec handle_create_sheet(Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_create_sheet(Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_create_sheet(socket) do
     case Sheets.create_sheet(socket.assigns.project, %{name: dgettext("sheets", "Untitled")}) do
       {:ok, new_sheet} ->
@@ -288,10 +477,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     end
   end
 
-  @spec handle_batch_update_positions(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
-  def handle_batch_update_positions(%{"positions" => positions}, socket)
-      when is_list(positions) do
+  @spec handle_batch_update_positions(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
+  def handle_batch_update_positions(%{"positions" => positions}, socket) when is_list(positions) do
     flow = socket.assigns.flow
 
     parsed =
@@ -315,15 +503,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
          |> CollaborationHelpers.broadcast_change(:flow_refresh, %{})}
 
       {:error, _reason} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("flows", "Could not update node positions."))}
+        {:noreply, put_flash(socket, :error, dgettext("flows", "Could not update node positions."))}
     end
   end
 
   def handle_batch_update_positions(_params, socket), do: {:noreply, socket}
 
-  @spec handle_search_available_flows(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_search_available_flows(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_search_available_flows(%{"query" => query}, socket) when is_binary(query) do
     project_id = socket.assigns.project.id
     current_flow_id = socket.assigns.flow.id
@@ -341,8 +528,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
   def handle_search_available_flows(_params, socket), do: {:noreply, socket}
 
-  @spec handle_toggle_deep_search(Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_toggle_deep_search(Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_toggle_deep_search(socket) do
     deep = !socket.assigns[:flow_search_deep]
     socket = assign(socket, :flow_search_deep, deep)
@@ -352,8 +539,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     handle_search_available_flows(%{"query" => query}, socket)
   end
 
-  @spec handle_search_flows_more(Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_search_flows_more(Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_search_flows_more(socket) do
     project_id = socket.assigns.project.id
     current_flow_id = socket.assigns.flow.id
@@ -378,8 +565,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
   defp search_limit, do: Flows.default_search_limit()
 
-  @spec handle_node_dragging(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_node_dragging(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_node_dragging(%{"id" => node_id, "position_x" => x, "position_y" => y}, socket) do
     # Broadcast-only (no DB write) for real-time drag preview on remote clients.
     # No node existence check — JS validates via nodeMap, and auth is required.
@@ -391,8 +578,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
      })}
   end
 
-  @spec handle_node_moved(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_node_moved(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_node_moved(%{"id" => node_id, "position_x" => x, "position_y" => y}, socket) do
     # Use non-raising get_node/2 — the node may have been deleted while a
     # debounced move event was still in flight.
@@ -418,20 +605,339 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     end
   end
 
-  @spec handle_update_node_data(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_node_reparented(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
+  def handle_node_reparented(%{"id" => node_id, "parent_id" => parent_id}, socket) do
+    with {:ok, parsed_parent} <- parse_optional_int(parent_id),
+         node when not is_nil(node) <- Flows.get_node(socket.assigns.flow.id, node_id),
+         {:ok, _updated} <- Flows.update_node_parent(node, parsed_parent) do
+      {:noreply,
+       socket
+       |> mark_saved()
+       |> CollaborationHelpers.broadcast_change(:node_reparented, %{
+         node_id: node_id,
+         parent_id: parsed_parent
+       })}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  @spec handle_update_sequence_name(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
+  def handle_update_sequence_name(%{"id" => node_id, "name" => name}, socket) when is_binary(name) do
+    trimmed = String.trim(name)
+
+    with true <- trimmed != "",
+         {:ok, parsed_id} <- parse_optional_int(node_id),
+         true <- is_integer(parsed_id),
+         %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
+         {:ok, updated} <- Flows.update_sequence(seq, %{"name" => trimmed}) do
+      # Keep `node_id` as the integer the client's `nodeMap` uses as key —
+      # pushing a stringified id (the shape we receive from pushEvent) would
+      # miss the lookup on `handleSequenceRenamed` and leave the local
+      # label stale.
+      payload = %{node_id: parsed_id, name: updated.sequence_config.name}
+
+      # Push to self so the local editor's `handleSequenceRenamed` bumps
+      # `nodeDataVersion` and the header label re-renders immediately.
+      # `broadcast_change` below uses `broadcast_from` which skips self, so
+      # without this the local label stayed stale until reload.
+      {:noreply,
+       socket
+       |> mark_saved()
+       |> CollaborationHelpers.push_remote_change_event(:sequence_renamed, payload)
+       |> CollaborationHelpers.broadcast_change(:sequence_renamed, payload)}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_update_sequence_name(_params, socket), do: {:noreply, socket}
+
+  @doc """
+  Updates one or more sequence metadata fields. Visual composition lives
+  in sequence visual layers and is handled by dedicated layer events.
+  """
+  @spec handle_update_sequence_config(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
+  def handle_update_sequence_config(%{"id" => node_id} = params, socket) do
+    with {:ok, parsed_id} <- parse_optional_int(node_id),
+         true <- is_integer(parsed_id),
+         %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
+         attrs = extract_sequence_config_attrs(params),
+         {:ok, updated} <- Flows.update_sequence(seq, attrs) do
+      {:noreply,
+       socket
+       |> mark_saved()
+       |> assign(:sequence_panel_data, build_sequence_panel_data(socket, updated))
+       |> CollaborationHelpers.broadcast_change(:sequence_config_updated, %{
+         sequence_id: parsed_id,
+         position_x: updated.position_x,
+         position_y: updated.position_y,
+         width: updated.sequence_config.width,
+         height: updated.sequence_config.height
+       })}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  defp extract_sequence_config_attrs(params) do
+    base = %{"name" => params["name"] || (params["config"] && params["config"]["name"])}
+
+    [
+      "position_x",
+      "position_y",
+      "width",
+      "height"
+    ]
+    |> Enum.reduce(
+      base,
+      fn field, acc ->
+        if Map.has_key?(params, field) do
+          Map.put(acc, field, params[field])
+        else
+          acc
+        end
+      end
+    )
+    |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+    |> Map.new()
+    |> ensure_name_fallback(params["id"])
+  end
+
+  # `update_sequence`'s config changeset requires :name (existing row satisfies
+  # validate_required). When the client sends a partial update without name,
+  # attrs may or may not include it. If nothing sent, pull from the current
+  # config — changeset cast will no-op if same.
+  defp ensure_name_fallback(%{"name" => _} = attrs, _), do: attrs
+
+  defp ensure_name_fallback(attrs, _id), do: attrs
+
+  @doc "Creates a visual layer for the selected sequence."
+  @spec handle_create_sequence_visual_layer(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
+  def handle_create_sequence_visual_layer(%{"id" => node_id} = params, socket) do
+    with {:ok, parsed_id} <- parse_optional_int(node_id),
+         true <- is_integer(parsed_id),
+         %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
+         attrs = visual_layer_attrs_from_params(params),
+         {:ok, layer} <- Flows.create_sequence_visual_layer(parsed_id, attrs) do
+      track_sequence_visual_layer(socket, "sequence visual layer created", parsed_id, layer, %{changed_asset: true})
+
+      {:noreply,
+       socket
+       |> mark_saved()
+       |> assign(:sequence_panel_data, build_sequence_panel_data(socket, seq))
+       |> CollaborationHelpers.broadcast_change(:sequence_visual_layer_changed, %{
+         sequence_id: parsed_id
+       })}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  @doc "Updates a visual layer for the selected sequence."
+  @spec handle_update_sequence_visual_layer(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
+  def handle_update_sequence_visual_layer(%{"id" => node_id, "layer_id" => layer_id} = params, socket) do
+    with {:ok, parsed_id} <- parse_optional_int(node_id),
+         true <- is_integer(parsed_id),
+         {:ok, parsed_layer_id} <- parse_optional_int(layer_id),
+         true <- is_integer(parsed_layer_id),
+         %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
+         layer when not is_nil(layer) <- Flows.get_sequence_visual_layer(parsed_id, parsed_layer_id),
+         attrs = visual_layer_attrs_from_params(params),
+         {:ok, layer} <- Flows.update_sequence_visual_layer(layer, attrs) do
+      track_sequence_visual_layer(socket, "sequence visual layer updated", parsed_id, layer, %{
+        changed_asset: Map.has_key?(params, "asset_id")
+      })
+
+      {:noreply,
+       socket
+       |> mark_saved()
+       |> assign(:sequence_panel_data, build_sequence_panel_data(socket, seq))
+       |> CollaborationHelpers.broadcast_change(:sequence_visual_layer_changed, %{
+         sequence_id: parsed_id
+       })}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  @doc "Deletes a visual layer for the selected sequence."
+  @spec handle_delete_sequence_visual_layer(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
+  def handle_delete_sequence_visual_layer(%{"id" => node_id, "layer_id" => layer_id}, socket) do
+    with {:ok, parsed_id} <- parse_optional_int(node_id),
+         true <- is_integer(parsed_id),
+         {:ok, parsed_layer_id} <- parse_optional_int(layer_id),
+         true <- is_integer(parsed_layer_id),
+         %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
+         layer when not is_nil(layer) <- Flows.get_sequence_visual_layer(parsed_id, parsed_layer_id),
+         {:ok, _layer} <- Flows.delete_sequence_visual_layer(layer) do
+      {:noreply,
+       socket
+       |> mark_saved()
+       |> assign(:sequence_panel_data, build_sequence_panel_data(socket, seq))
+       |> CollaborationHelpers.broadcast_change(:sequence_visual_layer_changed, %{
+         sequence_id: parsed_id
+       })}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  defp visual_layer_attrs_from_params(params) do
+    Enum.reduce(
+      [
+        "asset_id",
+        "kind",
+        "label",
+        "z_index",
+        "slot",
+        "x",
+        "y",
+        "width",
+        "height",
+        "anchor_x",
+        "anchor_y",
+        "fit",
+        "opacity",
+        "visible"
+      ],
+      %{},
+      fn field, acc ->
+        if Map.has_key?(params, field), do: Map.put(acc, field, params[field]), else: acc
+      end
+    )
+  end
+
+  @doc """
+  Upserts an audio track for the selected sequence. `kind` must be one
+  of `music | ambience | sfx`. `asset_id` nullable. `volume` a
+  decimal in [0, 1].
+  """
+  @spec handle_upsert_sequence_track(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
+  def handle_upsert_sequence_track(%{"id" => node_id, "kind" => kind} = params, socket) do
+    with {:ok, parsed_id} <- parse_optional_int(node_id),
+         true <- is_integer(parsed_id),
+         %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
+         attrs = track_attrs_from_params(params),
+         {:ok, track} <- Flows.upsert_sequence_track(parsed_id, kind, attrs) do
+      track_sequence_audio(socket, parsed_id, track, %{
+        changed_asset: Map.has_key?(params, "asset_id"),
+        changed_volume: Map.has_key?(params, "volume")
+      })
+
+      {:noreply,
+       socket
+       |> mark_saved()
+       |> assign(:sequence_panel_data, build_sequence_panel_data(socket, seq))
+       |> CollaborationHelpers.broadcast_change(:sequence_track_upserted, %{
+         sequence_id: parsed_id,
+         kind: kind
+       })}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  defp track_attrs_from_params(params) do
+    attrs = %{}
+
+    attrs =
+      if Map.has_key?(params, "asset_id"),
+        do: Map.put(attrs, "asset_id", params["asset_id"]),
+        else: attrs
+
+    attrs =
+      case params["volume"] do
+        nil -> attrs
+        "" -> attrs
+        v when is_number(v) -> Map.put(attrs, "volume", Decimal.from_float(v / 1))
+        v when is_binary(v) -> Map.put(attrs, "volume", Decimal.new(v))
+        _ -> attrs
+      end
+
+    attrs
+  end
+
+  @doc "Clears the track slot for `(sequence_id, kind)`."
+  @spec handle_clear_sequence_track(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
+  def handle_clear_sequence_track(%{"id" => node_id, "kind" => kind}, socket) do
+    with {:ok, parsed_id} <- parse_optional_int(node_id),
+         true <- is_integer(parsed_id),
+         %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
+         {:ok, :cleared} <- Flows.clear_sequence_track(parsed_id, kind) do
+      {:noreply,
+       socket
+       |> mark_saved()
+       |> assign(:sequence_panel_data, build_sequence_panel_data(socket, seq))
+       |> CollaborationHelpers.broadcast_change(:sequence_track_cleared, %{
+         sequence_id: parsed_id,
+         kind: kind
+       })}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  # Accepts nil, integer, or a string that parses cleanly to an integer.
+  # Anything else returns :error so the handler can no-op.
+  defp parse_optional_int(nil), do: {:ok, nil}
+  defp parse_optional_int(i) when is_integer(i), do: {:ok, i}
+
+  defp parse_optional_int(s) when is_binary(s) do
+    case Integer.parse(s) do
+      {i, ""} -> {:ok, i}
+      _ -> :error
+    end
+  end
+
+  defp parse_optional_int(_), do: :error
+
+  defp track_sequence_visual_layer(socket, event_name, sequence_id, layer, extra) do
+    Analytics.track(socket.assigns.current_scope, event_name, %{
+      changed_asset: extra[:changed_asset],
+      flow_id: socket.assigns.flow.id,
+      has_asset: not is_nil(layer.asset_id),
+      layer_kind: layer.kind,
+      project_id: socket.assigns.project.id,
+      sequence_id: sequence_id,
+      slot: layer.slot
+    })
+  end
+
+  defp track_sequence_audio(socket, sequence_id, track, extra) do
+    Analytics.track(socket.assigns.current_scope, "sequence track updated", %{
+      changed_asset: extra.changed_asset,
+      changed_volume: extra.changed_volume,
+      flow_id: socket.assigns.flow.id,
+      has_asset: not is_nil(track.asset_id),
+      project_id: socket.assigns.project.id,
+      sequence_id: sequence_id,
+      track_kind: track.kind
+    })
+  end
+
+  @spec handle_update_node_data(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_update_node_data(%{"node" => node_params}, socket) do
     NodeHelpers.update_node_data(socket, node_params)
   end
 
-  @spec handle_update_node_text(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_update_node_text(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_update_node_text(%{"id" => node_id, "content" => content}, socket) do
     NodeHelpers.update_node_text(socket, node_id, content)
   end
 
-  @spec handle_mention_suggestions(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_mention_suggestions(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_mention_suggestions(%{"query" => query}, socket) do
     project_id = socket.assigns.project.id
     results = Sheets.search_referenceable(project_id, query, ["sheet", "flow"])
@@ -450,20 +956,20 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     {:noreply, push_event(socket, "mention_suggestions_result", %{items: items})}
   end
 
-  @spec handle_delete_node(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_delete_node(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_delete_node(%{"id" => node_id}, socket) do
     NodeHelpers.delete_node(socket, node_id)
   end
 
-  @spec handle_duplicate_node(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_duplicate_node(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_duplicate_node(%{"id" => node_id}, socket) do
     NodeHelpers.duplicate_node(socket, node_id)
   end
 
-  @spec handle_update_node_field(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_update_node_field(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_update_node_field(%{"field" => field, "value" => value}, socket) do
     node = socket.assigns.selected_node
 
@@ -471,15 +977,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       NodeHelpers.update_node_field(socket, node.id, field, value)
     else
       {:noreply, socket}
-    end
-  end
-
-  @spec handle_start_preview(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
-  def handle_start_preview(%{"id" => node_id}, socket) do
-    case Flows.get_node(socket.assigns.flow.id, node_id) do
-      nil -> {:noreply, socket}
-      node -> {:noreply, socket |> assign(:preview_show, true) |> assign(:preview_node, node)}
     end
   end
 

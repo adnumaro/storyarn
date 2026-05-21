@@ -157,7 +157,9 @@ defmodule StoryarnWeb.Live.Shared.CollaborationHelpers do
   Call from handle_info matching `{Storyarn.Collaboration.Presence, {:leave, presence}}`.
   """
   def handle_presence_leave(socket, %{metas: %{metas: []}} = presence) do
-    user_id = presence.id
+    # Phoenix.Presence converts tracked keys to strings, but online_users
+    # stores user_id as integer from the meta. Convert to match.
+    user_id = if is_binary(presence.id), do: String.to_integer(presence.id), else: presence.id
     online_users = Enum.reject(socket.assigns.online_users, &(&1.user_id == user_id))
     {:noreply, assign(socket, :online_users, online_users)}
   end

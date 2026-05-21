@@ -13,17 +13,20 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
   # Test Helpers
   # ============================================================================
 
-  # Simulates the FlowLoader JS hook: triggers the event + waits for start_async
+  # Waits for the automatic flow data load started by handle_params.
   defp load_flow(view) do
-    render_click(view, "load_flow_data", %{})
     await_async(view)
   end
 
   defp build_socket(overrides) do
     defaults = %{
       save_status: :idle,
-      preview_show: true,
-      preview_node: %{id: 1},
+      preview_show: false,
+      preview_current_node: nil,
+      preview_speaker: nil,
+      preview_responses: [],
+      preview_has_next: false,
+      preview_history: [],
       project: %{id: 999},
       project_variables: []
     }
@@ -75,30 +78,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
   end
 
   # ============================================================================
-  # Unit tests: handle_close_preview/1
-  # ============================================================================
-
-  describe "handle_close_preview/1" do
-    test "sets preview_show to false and preview_node to nil" do
-      socket = build_socket(%{preview_show: true, preview_node: %{id: 42}})
-
-      {:noreply, result} = EditorInfoHandlers.handle_close_preview(socket)
-
-      assert result.assigns.preview_show == false
-      assert result.assigns.preview_node == nil
-    end
-
-    test "is idempotent when preview already closed" do
-      socket = build_socket(%{preview_show: false, preview_node: nil})
-
-      {:noreply, result} = EditorInfoHandlers.handle_close_preview(socket)
-
-      assert result.assigns.preview_show == false
-      assert result.assigns.preview_node == nil
-    end
-  end
-
-  # ============================================================================
   # Unit tests: handle_variable_suggestions/3
   # ============================================================================
 
@@ -130,7 +109,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
       {:noreply, result} = EditorInfoHandlers.handle_variable_suggestions("health", nil, socket)
 
       payload = find_push_event(result, "variable_suggestions_result")
-      assert payload != nil
+      assert payload
       assert length(payload.items) == 1
       assert hd(payload.items).ref == "mc.jaime.health"
       assert hd(payload.items).block_type == "number"
@@ -292,7 +271,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -434,7 +413,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       %{project: project, flow: flow}
     end
@@ -468,7 +447,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       %{project: project, flow: flow}
     end
@@ -516,7 +495,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       sheet = sheet_fixture(project, %{name: "MC Jaime", shortcut: "mc.jaime"})
 
@@ -554,7 +533,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       %{project: project, flow: flow}
     end
@@ -593,36 +572,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
   end
 
   # ============================================================================
-  # Integration tests: handle_close_preview via handle_info
-  # ============================================================================
-
-  describe "close_preview through LiveView" do
-    setup :register_and_log_in_user
-
-    setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      flow = flow_fixture(project, %{name: "Test Flow"})
-      %{project: project, flow: flow}
-    end
-
-    test "processes close_preview info message",
-         %{conn: conn, project: project, flow: flow} do
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
-        )
-
-      load_flow(view)
-
-      send(view.pid, {:close_preview})
-      render(view)
-
-      assert Process.alive?(view.pid)
-    end
-  end
-
-  # ============================================================================
   # Integration tests: handle_flow_refresh via handle_event
   # ============================================================================
 
@@ -630,7 +579,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       %{project: project, flow: flow}
     end
@@ -661,7 +610,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       %{project: project, flow: flow}
     end
@@ -699,7 +648,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       sheet = sheet_fixture(project, %{name: "Hero", shortcut: "hero"})
       %{project: project, flow: flow, sheet: sheet}

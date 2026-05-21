@@ -7,8 +7,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlersTest do
   use StoryarnWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
-  import Storyarn.ScenesFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
 
   alias Storyarn.Collaboration
   alias Storyarn.Repo
@@ -18,7 +18,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlersTest do
   end
 
   defp setup_scene(%{conn: conn, user: user}) do
-    project = project_fixture(user) |> Repo.preload(:workspace)
+    project = user |> project_fixture() |> Repo.preload(:workspace)
     scene = scene_fixture(project)
     {:ok, project: project, scene: scene, conn: conn, user: user}
   end

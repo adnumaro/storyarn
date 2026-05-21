@@ -2,12 +2,11 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
   use Storyarn.DataCase, async: true
 
   import Ecto.Query, warn: false
-
-  alias Storyarn.Versioning.Builders.SheetBuilder
-
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Versioning.Builders.SheetBuilder
 
   setup do
     user = user_fixture()
@@ -101,8 +100,9 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
           config: %{"label" => "Health Copy"}
         })
 
-      from(b in Storyarn.Sheets.Block, where: b.id == ^block_b.id)
-      |> Storyarn.Repo.update_all(set: [inherited_from_block_id: block_a.id])
+      Storyarn.Repo.update_all(from(b in Storyarn.Sheets.Block, where: b.id == ^block_b.id),
+        set: [inherited_from_block_id: block_a.id]
+      )
 
       table_block = table_block_fixture(sheet, %{position: 2})
       column = table_column_fixture(table_block, %{name: "Score", type: "number"})
@@ -119,7 +119,6 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
                )
 
       assert materialized.id != sheet.id
-      assert materialized.draft_id == nil
       assert materialized.position == 7
       assert materialized.shortcut == nil
       assert id_maps.sheet == %{sheet.id => materialized.id}
@@ -181,7 +180,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       # Verify table data was restored
       blocks = Storyarn.Sheets.list_blocks(sheet.id)
       table = Enum.find(blocks, &(&1.type == "table"))
-      assert table != nil
+      assert table
 
       columns = Storyarn.Sheets.list_table_columns(table.id)
       assert Enum.any?(columns, &(&1.name == "Score"))
@@ -214,7 +213,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
 
       refs = SheetBuilder.scan_references(snapshot)
 
-      types_and_ids = Enum.map(refs, &{&1.type, &1.id}) |> Enum.sort()
+      types_and_ids = refs |> Enum.map(&{&1.type, &1.id}) |> Enum.sort()
 
       assert {:asset, 10} in types_and_ids
       assert {:asset, 20} in types_and_ids

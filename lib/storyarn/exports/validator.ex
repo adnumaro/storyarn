@@ -6,8 +6,11 @@ defmodule Storyarn.Exports.Validator do
   and other issues that would cause problems in exported files.
   """
 
+  use Gettext, backend: Storyarn.Gettext
+
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Flows
+  alias Storyarn.Flows.NodeConnectionRules
   alias Storyarn.Localization
   alias Storyarn.Sheets
 
@@ -174,7 +177,7 @@ defmodule Storyarn.Exports.Validator do
       %{
         level: :error,
         rule: :missing_entry,
-        message: "Flow \"#{flow.name}\" has no Entry node",
+        message: dgettext("projects", "Flow \"%{name}\" has no Entry node", name: flow.name),
         flow_id: flow.id,
         flow_name: flow.name
       }
@@ -190,13 +193,19 @@ defmodule Storyarn.Exports.Validator do
       connected_ids = connected_node_ids(flow.connections)
 
       flow.nodes
-      |> Enum.reject(&(&1.type in ["entry", "exit"] or MapSet.member?(connected_ids, &1.id)))
+      |> Enum.reject(&(orphan_check_skipped?(&1.type) or MapSet.member?(connected_ids, &1.id)))
       |> Enum.map(fn node ->
         %{
           level: :warning,
           rule: :orphan_nodes,
           message:
-            "#{node.type} node (id: #{node.id}) in flow \"#{flow.name}\" has no connections",
+            dgettext(
+              "projects",
+              "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has no connections",
+              type: node.type,
+              node_id: node.id,
+              flow_name: flow.name
+            ),
           flow_id: flow.id,
           flow_name: flow.name,
           node_id: node.id,
@@ -225,13 +234,19 @@ defmodule Storyarn.Exports.Validator do
       unreachable_ids = MapSet.difference(all_node_ids, reachable)
 
       flow.nodes
-      |> Enum.filter(&(MapSet.member?(unreachable_ids, &1.id) and &1.type != "entry"))
+      |> Enum.filter(&(MapSet.member?(unreachable_ids, &1.id) and NodeConnectionRules.can_be_unreachable?(&1.type)))
       |> Enum.map(fn node ->
         %{
           level: :warning,
           rule: :unreachable_nodes,
           message:
-            "#{node.type} node (id: #{node.id}) in flow \"#{flow.name}\" is not reachable from Entry",
+            dgettext(
+              "projects",
+              "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" is not reachable from Entry",
+              type: node.type,
+              node_id: node.id,
+              flow_name: flow.name
+            ),
           flow_id: flow.id,
           flow_name: flow.name,
           node_id: node.id,
@@ -240,6 +255,8 @@ defmodule Storyarn.Exports.Validator do
       end)
     end
   end
+
+  defp orphan_check_skipped?(type), do: type in ["entry", "exit"] or NodeConnectionRules.connection_optional_type?(type)
 
   # =============================================================================
   # Check: empty_dialogue (warning)
@@ -256,7 +273,13 @@ defmodule Storyarn.Exports.Validator do
         %{
           level: :warning,
           rule: :empty_dialogue,
-          message: "Dialogue node (id: #{node.id}) in flow \"#{flow.name}\" has no text",
+          message:
+            dgettext(
+              "projects",
+              "Dialogue node (id: %{node_id}) in flow \"%{flow_name}\" has no text",
+              node_id: node.id,
+              flow_name: flow.name
+            ),
           flow_id: flow.id,
           flow_name: flow.name,
           node_id: node.id
@@ -274,14 +297,19 @@ defmodule Storyarn.Exports.Validator do
       flow.nodes
       |> Enum.filter(fn node ->
         node.type == "dialogue" and
-          get_in(node.data, ["speaker_sheet_id"]) |> nil_or_empty?()
+          node.data |> get_in(["speaker_sheet_id"]) |> nil_or_empty?()
       end)
       |> Enum.map(fn node ->
         %{
           level: :warning,
           rule: :missing_speakers,
           message:
-            "Dialogue node (id: #{node.id}) in flow \"#{flow.name}\" has no speaker assigned",
+            dgettext(
+              "projects",
+              "Dialogue node (id: %{node_id}) in flow \"%{flow_name}\" has no speaker assigned",
+              node_id: node.id,
+              flow_name: flow.name
+            ),
           flow_id: flow.id,
           flow_name: flow.name,
           node_id: node.id
@@ -303,10 +331,10 @@ defmodule Storyarn.Exports.Validator do
         targets =
           flow.nodes
           |> Enum.filter(&(&1.type == "subflow"))
-          |> Enum.map(&get_in(&1.data, ["target_flow_id"]))
+          |> Enum.map(&get_in(&1.data, ["referenced_flow_id"]))
           |> Enum.reject(&is_nil/1)
 
-        if targets != [], do: Map.put(acc, flow.id, targets), else: acc
+        if targets == [], do: acc, else: Map.put(acc, flow.id, targets)
       end)
 
     # Find cycles using DFS
@@ -321,7 +349,12 @@ defmodule Storyarn.Exports.Validator do
       %{
         level: :warning,
         rule: :circular_subflows,
-        message: "Flow \"#{flow_name}\" is part of a circular subflow reference chain",
+        message:
+          dgettext(
+            "projects",
+            "Flow \"%{name}\" is part of a circular subflow reference chain",
+            name: flow_name
+          ),
         flow_id: flow_id,
         flow_name: flow_name
       }
@@ -332,17 +365,14 @@ defmodule Storyarn.Exports.Validator do
   # Check: broken_references (error)
   # =============================================================================
 
-  defp check_broken_references(project_id, flows) do
+  defp check_broken_references(_project_id, flows) do
     # Check jump nodes referencing non-existent hubs
     jump_findings = check_broken_jump_refs(flows)
 
     # Check subflow nodes referencing deleted/non-existent flows
     subflow_findings = check_broken_subflow_refs(flows)
 
-    # Check slug_line nodes referencing non-existent scenes
-    slug_line_findings = check_broken_slug_line_refs(project_id, flows)
-
-    jump_findings ++ subflow_findings ++ slug_line_findings
+    jump_findings ++ subflow_findings
   end
 
   defp check_broken_jump_refs(flows) do
@@ -363,7 +393,13 @@ defmodule Storyarn.Exports.Validator do
           level: :error,
           rule: :broken_references,
           message:
-            "Jump node (id: #{node.id}) in flow \"#{flow.name}\" references non-existent hub \"#{target}\"",
+            dgettext(
+              "projects",
+              ~s|Jump node (id: %{node_id}) in flow "%{flow_name}" references non-existent hub "%{target}"|,
+              node_id: node.id,
+              flow_name: flow.name,
+              target: target
+            ),
           flow_id: flow.id,
           flow_name: flow.name,
           node_id: node.id,
@@ -380,41 +416,23 @@ defmodule Storyarn.Exports.Validator do
     Enum.flat_map(flows, fn flow ->
       flow.nodes
       |> Enum.filter(fn node ->
-        node.type == "subflow" and has_broken_ref?(node, "target_flow_id", valid_flow_ids)
+        node.type == "subflow" and has_broken_ref?(node, "referenced_flow_id", valid_flow_ids)
       end)
       |> Enum.map(fn node ->
         %{
           level: :error,
           rule: :broken_references,
           message:
-            "Subflow node (id: #{node.id}) in flow \"#{flow.name}\" references non-existent flow",
+            dgettext(
+              "projects",
+              "Subflow node (id: %{node_id}) in flow \"%{flow_name}\" references non-existent flow",
+              node_id: node.id,
+              flow_name: flow.name
+            ),
           flow_id: flow.id,
           flow_name: flow.name,
           node_id: node.id,
           ref_type: :flow
-        }
-      end)
-    end)
-  end
-
-  defp check_broken_slug_line_refs(project_id, flows) do
-    valid_scene_ids = Flows.list_valid_scene_ids_in_project(project_id)
-
-    Enum.flat_map(flows, fn flow ->
-      flow.nodes
-      |> Enum.filter(fn node ->
-        node.type == "slug_line" and has_broken_ref?(node, "scene_id", valid_scene_ids)
-      end)
-      |> Enum.map(fn node ->
-        %{
-          level: :error,
-          rule: :broken_references,
-          message:
-            "Slug line node (id: #{node.id}) in flow \"#{flow.name}\" references non-existent scene",
-          flow_id: flow.id,
-          flow_name: flow.name,
-          node_id: node.id,
-          ref_type: :scene
         }
       end)
     end)
@@ -447,7 +465,13 @@ defmodule Storyarn.Exports.Validator do
         level: :warning,
         rule: :missing_translations,
         message:
-          "#{pending} of #{total_sources} strings are untranslated for locale \"#{locale}\"",
+          dgettext(
+            "projects",
+            "%{pending} of %{total} strings are untranslated for locale \"%{locale}\"",
+            pending: pending,
+            total: total_sources,
+            locale: locale
+          ),
         locale: locale,
         pending_count: pending,
         total_count: total_sources
@@ -479,7 +503,12 @@ defmodule Storyarn.Exports.Validator do
       %{
         level: :info,
         rule: :orphan_sheets,
-        message: "Sheet \"#{sheet.name}\" has no references from flows or scenes",
+        message:
+          dgettext(
+            "projects",
+            "Sheet \"%{name}\" has no references from flows or scenes",
+            name: sheet.name
+          ),
         sheet_id: sheet.id,
         sheet_name: sheet.name
       }
@@ -514,8 +543,10 @@ defmodule Storyarn.Exports.Validator do
 
   defp bfs(queue, adj, visited) do
     next_queue =
-      Enum.flat_map(queue, fn node_id ->
-        Map.get(adj, node_id, [])
+      queue
+      |> Enum.flat_map(fn node_id ->
+        adj
+        |> Map.get(node_id, [])
         |> Enum.reject(&MapSet.member?(visited, &1))
       end)
       |> Enum.uniq()
@@ -530,7 +561,8 @@ defmodule Storyarn.Exports.Validator do
     else
       visited = MapSet.put(visited, start_id)
 
-      Map.get(graph, start_id, [])
+      graph
+      |> Map.get(start_id, [])
       |> Enum.any?(&has_cycle?(&1, graph, visited))
     end
   end

@@ -1,6 +1,6 @@
 defmodule StoryarnWeb.SceneLive.ExplorationLive do
   @moduledoc """
-  Full-screen exploration mode player for maps.
+  Full-screen exploration mode player for maps (V2 — Vue + Konva).
 
   Renders a map with interactive zones and pins. Clicking instruction elements
   executes variable assignments; clicking target elements navigates to other maps
@@ -14,21 +14,25 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
   import StoryarnWeb.Layouts, only: [flash_group: 1]
 
-  import StoryarnWeb.FlowLive.Player.Components.PlayerSlide, only: [player_slide: 1]
-  import StoryarnWeb.FlowLive.Player.Components.PlayerChoices, only: [player_choices: 1]
+  import StoryarnWeb.SceneLive.Helpers.PropsSerializer,
+    only: [
+      prepare_scene_for_vue: 1,
+      prepare_exploration_data_for_vue: 3
+    ]
 
+  alias Storyarn.Analytics
   alias Storyarn.Flows
   alias Storyarn.Projects
   alias Storyarn.Scenes
-  alias Storyarn.Shared.{FormulaRuntime, HtmlUtils, MapUtils}
+  alias Storyarn.Shared.FormulaRuntime
+  alias Storyarn.Shared.HtmlUtils
+  alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets
-
   alias StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
   alias StoryarnWeb.FlowLive.Player.PlayerEngine
   alias StoryarnWeb.FlowLive.Player.Slide
-  alias StoryarnWeb.SceneLive.Helpers.Serializer
 
   # ===========================================================================
   # Render
@@ -37,188 +41,77 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="player-layout" phx-window-keydown="handle_keydown">
-      <div class="player-toolbar">
-        <div class="player-toolbar-left">
-          <button type="button" class="player-toolbar-btn" phx-click="exit_exploration">
-            <.icon name="arrow-left" class="size-4" />
-            {dgettext("scenes", "Exit")}
-          </button>
-        </div>
-        <div class="player-toolbar-center">
-          <span class="text-sm font-medium">{@scene.name}</span>
-          <span :if={@flow_mode && @active_flow} class="text-xs opacity-50 ml-2">
-            — {@active_flow.flow.name}
-          </span>
-        </div>
-        <div class="player-toolbar-right">
-          <button
-            type="button"
-            class="player-toolbar-btn"
-            phx-click="save_session"
-            title={dgettext("scenes", "Save progress")}
-          >
-            <.icon name="save" class="size-4" />
-          </button>
-          <button
-            type="button"
-            class={"player-toolbar-btn #{if @show_zones, do: "player-toolbar-btn-active"}"}
-            phx-click="toggle_show_zones"
-            title={dgettext("scenes", "Show zones")}
-          >
-            <.icon name="scan" class="size-4" />
-          </button>
-        </div>
-      </div>
-
-      <div class={[
-        "player-main relative",
-        @scene.exploration_display_mode == "scaled" && "exploration-viewport"
-      ]}>
-        <%!-- Session prompt overlay --%>
-        <div :if={@session_prompt} class="exploration-session-overlay">
-          <div class="session-prompt-modal">
-            <div class="session-prompt-header">
-              <h3 class="text-lg font-semibold">
-                <.icon name="bookmark" class="size-5 inline-block mr-1 opacity-60" />
-                {dgettext("scenes", "Saved Progress Found")}
-              </h3>
-            </div>
-            <div class="session-prompt-body">
-              <p class="text-sm opacity-70">
-                {dgettext("scenes", "You have a saved exploration session.")}
-              </p>
-              <div :if={@pending_session} class="session-prompt-details">
-                <div :if={@pending_session.scene} class="text-sm">
-                  <span class="opacity-50">{dgettext("scenes", "Scene:")}</span>
-                  <span class="font-medium ml-1">{@pending_session.scene.name}</span>
-                </div>
-                <div class="text-xs opacity-40">
-                  {dgettext("scenes", "Last played: %{time}",
-                    time: Calendar.strftime(@pending_session.updated_at, "%b %d, %Y at %H:%M")
-                  )}
-                </div>
-              </div>
-            </div>
-            <div class="session-prompt-actions">
-              <button
-                type="button"
-                phx-click="continue_session"
-                class="player-toolbar-btn player-toolbar-btn-primary"
-              >
-                <.icon name="play" class="size-4" />
-                {dgettext("scenes", "Continue")}
-              </button>
-              <button type="button" phx-click="new_session" class="player-toolbar-btn">
-                <.icon name="rotate-ccw" class="size-4" />
-                {dgettext("scenes", "New Game")}
-              </button>
-            </div>
-          </div>
-        </div>
-        <%!-- Map layer (dimmed when flow active) --%>
-        <div class={[
-          "w-full",
-          @scene.exploration_display_mode != "scaled" && "max-w-4xl",
-          @flow_mode && "opacity-30 pointer-events-none"
-        ]}>
-          <div
-            id="exploration-player"
-            phx-hook="ExplorationPlayer"
-            phx-update="ignore"
-            data-exploration={Jason.encode!(@exploration_data)}
-          >
-          </div>
-        </div>
-
-        <%!-- Flow overlay --%>
-        <div :if={@flow_mode && @active_flow} class="exploration-flow-overlay">
-          <.player_slide slide={@active_flow.slide} />
-          <.player_choices
-            responses={@active_flow.slide[:responses] || []}
-            player_mode={:player}
-          />
-
-          <div :if={show_flow_continue?(@active_flow)} class="mt-4">
-            <button type="button" phx-click="flow_continue" class="player-toolbar-btn">
-              {dgettext("scenes", "Continue")} →
-            </button>
-          </div>
-
-          <div :if={@active_flow.slide.type == :outcome} class="mt-4">
-            <button type="button" phx-click="flow_finish" class="player-toolbar-btn">
-              {dgettext("scenes", "Return to map")}
-            </button>
-          </div>
-        </div>
-
-        <%!-- Collection overlay --%>
-        <div :if={@collection_mode && @collection_zone} class="exploration-collection-overlay">
-          <div class="collection-modal">
-            <div class="collection-modal-header">
-              <h3 class="text-lg font-semibold">
-                <.icon name="package-open" class="size-5 inline-block mr-1 opacity-60" />
-                {dgettext("scenes", "Collection")}
-              </h3>
-              <button
-                type="button"
-                phx-click="collection_close"
-                class="player-toolbar-btn"
-              >
-                <.icon name="x" class="size-4" />
-              </button>
-            </div>
-
-            <div :if={@collection_items == []} class="collection-modal-empty">
-              <.icon name="package-open" class="size-8 opacity-30" />
-              <p class="text-sm opacity-50 mt-2">
-                {if @collection_zone.empty_message != "",
-                  do: @collection_zone.empty_message,
-                  else: dgettext("scenes", "Nothing here...")}
-              </p>
-            </div>
-
-            <div :if={@collection_items != []} class="collection-modal-items">
-              <div
-                :for={item <- @collection_items}
-                class="collection-item-card"
-              >
-                <div class="collection-item-info">
-                  <span class="collection-item-label">
-                    {item["label"] || item["_sheet_name"] || dgettext("scenes", "Item")}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  phx-click="collection_take"
-                  phx-value-item-id={item["id"]}
-                  class="player-toolbar-btn player-toolbar-btn-primary"
-                >
-                  {dgettext("scenes", "Take")}
-                </button>
-              </div>
-            </div>
-
-            <div
-              :if={@collection_items != [] && @collection_zone.collect_all_enabled}
-              class="collection-modal-footer"
-            >
-              <button
-                type="button"
-                phx-click="collection_take_all"
-                class="player-toolbar-btn player-toolbar-btn-primary"
-              >
-                <.icon name="package-check" class="size-4" />
-                {dgettext("scenes", "Take All")}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <.flash_group flash={@flash} />
+    <div id="exploration-root" class="w-full h-screen" phx-window-keydown="handle_keydown">
+      <.vue
+        v-component="live/scene/exploration/ScenePlayer"
+        v-socket={@socket}
+        id="exploration-player"
+        class="w-full h-full"
+        scene-data={prepare_scene_for_vue(@scene)}
+        exploration-data={@exploration_data}
+        scene-name={@scene.name}
+        show-zones={@show_zones}
+        flow-state={
+          %{
+            active: @flow_mode,
+            slide: @active_flow && serialize_slide(@active_flow.slide),
+            flowName: @active_flow && @active_flow.flow.name,
+            showContinue: @active_flow && show_flow_continue?(@active_flow)
+          }
+        }
+        collection={
+          %{
+            open: @collection_mode,
+            zone: @collection_zone,
+            items: @collection_items
+          }
+        }
+        session={
+          %{
+            promptOpen: @session_prompt,
+            pending: serialize_pending_session(@pending_session)
+          }
+        }
+      />
+      <.flash_group flash={@flash} socket={@socket} />
     </div>
     """
+  end
+
+  defp serialize_pending_session(nil), do: nil
+
+  defp serialize_pending_session(session) do
+    %{
+      sceneName: session.scene && session.scene.name,
+      updatedAt: Calendar.strftime(session.updated_at, "%b %d, %Y at %H:%M")
+    }
+  end
+
+  defp serialize_slide(nil), do: nil
+
+  defp serialize_slide(slide) do
+    base = %{
+      type: to_string(slide.type),
+      text: slide[:text],
+      stageDirections: slide[:stage_directions],
+      speakerName: slide[:speaker_name],
+      speakerInitials: slide[:speaker_initials],
+      speakerColor: slide[:speaker_color],
+      speakerAvatarUrl: slide[:speaker_avatar_url],
+      setting: slide[:setting],
+      locationName: slide[:location_name],
+      subLocation: slide[:sub_location],
+      timeOfDay: slide[:time_of_day],
+      description: slide[:description],
+      nodeId: slide[:node_id]
+    }
+
+    responses =
+      Enum.map(slide[:responses] || [], fn r ->
+        %{id: r.id, text: r.text, valid: r.valid, number: r.number}
+      end)
+
+    Map.put(base, :responses, responses)
   end
 
   # ===========================================================================
@@ -226,15 +119,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   # ===========================================================================
 
   @impl true
-  def mount(
-        %{
-          "workspace_slug" => workspace_slug,
-          "project_slug" => project_slug,
-          "id" => scene_id
-        },
-        _session,
-        socket
-      ) do
+  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug, "id" => scene_id}, _session, socket) do
     case Projects.get_project_by_slugs(
            socket.assigns.current_scope,
            workspace_slug,
@@ -257,9 +142,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         {:ok,
          socket
          |> put_flash(:error, dgettext("scenes", "Scene not found."))
-         |> redirect(
-           to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-         )}
+         |> redirect(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes")}
 
       scene ->
         user_id = socket.assigns.current_scope.user.id
@@ -277,7 +160,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
           |> assign(:variables, variables)
           |> assign(:zones, zones)
           |> assign(:pins, pins)
-          |> assign(:exploration_data, serialize_for_exploration(scene, zones, pins))
+          |> assign(:exploration_data, prepare_exploration_data_for_vue(scene, zones, pins))
           |> assign(:show_zones, false)
           |> assign(:flow_mode, false)
           |> assign(:active_flow, nil)
@@ -300,6 +183,14 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
           |> assign(:ambient_timed_refs, %{})
           |> assign(:ambient_event_flows, [])
           |> maybe_start_ambient_flows(scene, existing_session)
+
+        if connected?(socket) do
+          Analytics.track(socket.assigns.current_scope, "scene exploration started", %{
+            has_saved_session: not is_nil(existing_session),
+            project_id: project.id,
+            scene_id: scene.id
+          })
+        end
 
         {:ok, socket, layout: false}
     end
@@ -433,8 +324,10 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     %{engine_state: state} = socket.assigns.active_flow
     nodes = socket.assigns.flow_nodes
     connections = socket.assigns.flow_connections
+    sheets_map = socket.assigns.flow_sheets_map
+    project_id = socket.assigns.project.id
 
-    case PlayerEngine.step_until_interactive(state, nodes, connections) do
+    case PlayerEngine.step_until_interactive(state, nodes, connections, advance_current_dialogue: true) do
       {:flow_jump, new_state, target_flow_id, _skipped} ->
         handle_exploration_flow_jump(socket, new_state, target_flow_id)
 
@@ -445,7 +338,19 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         handle_flow_finished(socket, new_state)
 
       {_status, new_state, _skipped} ->
-        {:noreply, update_flow_slide(socket, new_state)}
+        case build_slide_or_advance(new_state, nodes, connections, sheets_map, project_id) do
+          {:finished, final_state} ->
+            handle_flow_finished(socket, final_state)
+
+          {:content, ready_state, _slide} ->
+            {:noreply, update_flow_slide(socket, ready_state)}
+
+          {:flow_jump, jumped_state, target_flow_id} ->
+            handle_exploration_flow_jump(socket, jumped_state, target_flow_id)
+
+          {:flow_return, returned_state} ->
+            handle_exploration_flow_return(socket, returned_state)
+        end
     end
   end
 
@@ -471,8 +376,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         end
 
       {:error, _state, _reason} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("scenes", "Could not select that response."))}
+        {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not select that response."))}
     end
   end
 
@@ -480,7 +384,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     %{engine_state: state} = socket.assigns.active_flow
 
     case Flows.evaluator_step_back(state) do
-      {:ok, new_state} -> {:noreply, update_flow_slide(socket, new_state)}
+      {:ok, new_state} -> {:noreply, update_flow_slide_after_back(socket, new_state)}
       {:error, :no_history} -> {:noreply, socket}
     end
   end
@@ -579,10 +483,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   # Private — Element Click Handling
   # ===========================================================================
 
-  defp handle_element_action(
-         %{"action_type" => "instruction", "action_data" => action_data},
-         socket
-       ) do
+  defp handle_element_action(%{"action_type" => "instruction", "action_data" => action_data}, socket) do
     assignments = action_data["assignments"] || []
 
     case Flows.execute_instructions(assignments, socket.assigns.variables) do
@@ -590,11 +491,11 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         new_variables = FormulaRuntime.recompute_formulas(new_variables)
         socket = refresh_exploration_state(socket, new_variables)
 
-        if warnings != [] do
+        if warnings == [] do
+          socket
+        else
           msg = Enum.map_join(warnings, "\n", & &1.message)
           put_flash(socket, :warning, msg)
-        else
-          socket
         end
 
       _ ->
@@ -634,8 +535,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     end
   end
 
-  defp handle_element_target(%{"element_type" => "pin", "flow_id" => flow_id}, socket)
-       when is_integer(flow_id) do
+  defp handle_element_target(%{"element_type" => "pin", "flow_id" => flow_id}, socket) when is_integer(flow_id) do
     case init_flow(socket, flow_id) do
       {:ok, socket} -> socket
       {:error, socket} -> socket
@@ -671,35 +571,74 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         {:error, put_flash(socket, :error, dgettext("scenes", "Flow not found."))}
 
       flow ->
-        nodes_map = DebugExecutionHandlers.build_nodes_map(flow.id)
-        connections = DebugExecutionHandlers.build_connections(flow.id)
-        all_sheets = Sheets.list_all_sheets(project.id)
-        sheets_map = FormHelpers.sheets_map(all_sheets)
-
-        case find_entry_and_step(nodes_map, connections, socket.assigns.variables, flow.id) do
-          {:error, reason} ->
-            {:error, put_flash(socket, :error, reason)}
-
-          {:ok, engine_state} ->
-            node = Map.get(nodes_map, engine_state.current_node_id)
-            slide = Slide.build(node, engine_state, sheets_map, project.id)
-
-            {:ok,
-             socket
-             |> assign(:flow_mode, true)
-             |> assign(:flow_nodes, nodes_map)
-             |> assign(:flow_connections, connections)
-             |> assign(:flow_sheets_map, sheets_map)
-             |> push_event("patrol_pause", %{})
-             |> pause_ambient_flow()
-             |> assign(:active_flow, %{
-               flow_id: flow.id,
-               flow: flow,
-               engine_state: engine_state,
-               slide: slide
-             })}
-        end
+        context = build_flow_context(project, flow)
+        init_flow_context(socket, context)
     end
+  end
+
+  defp build_flow_context(project, flow) do
+    nodes_map = DebugExecutionHandlers.build_nodes_map(flow.id)
+    all_sheets = Sheets.list_all_sheets(project.id)
+
+    %{
+      project_id: project.id,
+      flow: flow,
+      nodes: nodes_map,
+      connections: DebugExecutionHandlers.build_connections(flow.id),
+      sheets_map: FormHelpers.sheets_map(all_sheets)
+    }
+  end
+
+  defp init_flow_context(socket, context) do
+    case find_entry_and_step(context.nodes, context.connections, socket.assigns.variables, context.flow.id) do
+      {:error, reason} -> {:error, put_flash(socket, :error, reason)}
+      {:ok, engine_state} -> init_flow_state(socket, context, engine_state)
+    end
+  end
+
+  defp init_flow_state(socket, context, engine_state) do
+    case build_slide_or_advance(engine_state, context.nodes, context.connections, context.sheets_map, context.project_id) do
+      {:finished, final_state} ->
+        apply_finished_flow(socket, final_state)
+
+      {:content, ready_state, slide} ->
+        {:ok, activate_flow_socket(socket, context, ready_state, slide)}
+
+      {:flow_jump, jumped_state, target_flow_id} ->
+        handle_initial_flow_jump(socket, context, jumped_state, target_flow_id)
+
+      {:flow_return, returned_state} ->
+        apply_finished_flow(socket, returned_state)
+    end
+  end
+
+  defp apply_finished_flow(socket, state) do
+    state.variables
+    |> FormulaRuntime.recompute_formulas()
+    |> then(&{:ok, apply_variable_update(socket, &1)})
+  end
+
+  defp activate_flow_socket(socket, context, engine_state, slide) do
+    socket
+    |> assign(:flow_mode, true)
+    |> assign(:flow_nodes, context.nodes)
+    |> assign(:flow_connections, context.connections)
+    |> assign(:flow_sheets_map, context.sheets_map)
+    |> push_event("patrol_pause", %{})
+    |> pause_ambient_flow()
+    |> assign(:active_flow, %{
+      flow_id: context.flow.id,
+      flow: context.flow,
+      engine_state: engine_state,
+      slide: slide
+    })
+  end
+
+  defp handle_initial_flow_jump(socket, context, jumped_state, target_flow_id) do
+    placeholder_slide = Slide.build(nil, jumped_state, context.sheets_map, context.project_id)
+    socket = activate_flow_socket(socket, context, jumped_state, placeholder_slide)
+    {:noreply, socket} = handle_exploration_flow_jump(socket, jumped_state, target_flow_id)
+    {:ok, socket}
   end
 
   defp find_entry_and_step(nodes_map, connections, variables, flow_id) do
@@ -709,7 +648,8 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
       entry_id ->
         state =
-          Flows.evaluator_init(variables, entry_id)
+          variables
+          |> Flows.evaluator_init(entry_id)
           |> Map.put(:current_flow_id, flow_id)
 
         case PlayerEngine.step_until_interactive(state, nodes_map, connections) do
@@ -725,7 +665,15 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   # Private — Cross-flow Handling
   # ===========================================================================
 
-  defp handle_exploration_flow_jump(socket, state, target_flow_id) do
+  @max_exploration_jump_depth 50
+
+  defp handle_exploration_flow_jump(socket, state, target_flow_id, depth \\ 0)
+
+  defp handle_exploration_flow_jump(socket, _state, _target_flow_id, depth) when depth > @max_exploration_jump_depth do
+    {:noreply, put_flash(socket, :error, dgettext("scenes", "Too many nested subflows. Stopping execution."))}
+  end
+
+  defp handle_exploration_flow_jump(socket, state, target_flow_id, depth) do
     state =
       Flows.evaluator_push_flow_context(
         state,
@@ -740,8 +688,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
     case DebugExecutionHandlers.find_entry_node(target_nodes) do
       nil ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("scenes", "Target flow has no entry node."))}
+        {:noreply, put_flash(socket, :error, dgettext("scenes", "Target flow has no entry node."))}
 
       entry_id ->
         log_entry = %{node_id: entry_id, depth: length(state.call_stack)}
@@ -758,11 +705,11 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         case PlayerEngine.step_until_interactive(new_state, target_nodes, target_connections) do
           {:flow_jump, stepped, next_flow_id, _} ->
             socket = update_active_flow(socket, stepped, target_nodes, target_connections)
-            handle_exploration_flow_jump(socket, stepped, next_flow_id)
+            handle_exploration_flow_jump(socket, stepped, next_flow_id, depth + 1)
 
           {:flow_return, stepped, _} ->
             socket = update_active_flow(socket, stepped, target_nodes, target_connections)
-            handle_exploration_flow_return(socket, stepped)
+            handle_exploration_flow_return(socket, stepped, depth + 1)
 
           {:finished, stepped, _} ->
             socket = update_active_flow(socket, stepped, target_nodes, target_connections)
@@ -774,16 +721,24 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     end
   end
 
-  defp handle_exploration_flow_return(socket, state) do
+  defp handle_exploration_flow_return(socket, state, depth \\ 0)
+
+  defp handle_exploration_flow_return(socket, _state, depth) when depth > @max_exploration_jump_depth do
+    {:noreply, put_flash(socket, :error, dgettext("scenes", "Too many nested subflows. Stopping execution."))}
+  end
+
+  defp handle_exploration_flow_return(socket, state, depth) do
     case Flows.evaluator_pop_flow_context(state) do
       {:ok, frame, new_state} ->
         parent_nodes = frame.nodes
         parent_connections = frame.connections
 
         conn =
-          Enum.find(parent_connections, fn c ->
-            c.source_node_id == frame.return_node_id and c.source_pin in ["default", "output"]
-          end)
+          Flows.evaluator_find_return_connection(
+            parent_connections,
+            frame.return_node_id,
+            new_state.current_node_id
+          )
 
         new_state =
           if conn do
@@ -807,11 +762,11 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         case PlayerEngine.step_until_interactive(new_state, parent_nodes, parent_connections) do
           {:flow_jump, stepped, next_flow_id, _} ->
             socket = update_active_flow(socket, stepped, parent_nodes, parent_connections)
-            handle_exploration_flow_jump(socket, stepped, next_flow_id)
+            handle_exploration_flow_jump(socket, stepped, next_flow_id, depth + 1)
 
           {:flow_return, stepped, _} ->
             socket = update_active_flow(socket, stepped, parent_nodes, parent_connections)
-            handle_exploration_flow_return(socket, stepped)
+            handle_exploration_flow_return(socket, stepped, depth + 1)
 
           {:finished, stepped, _} ->
             socket = update_active_flow(socket, stepped, parent_nodes, parent_connections)
@@ -885,6 +840,79 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     assign(socket, :active_flow, %{af | engine_state: new_state, slide: slide})
   end
 
+  defp update_flow_slide_after_back(socket, new_state) do
+    node = Map.get(socket.assigns.flow_nodes, new_state.current_node_id)
+
+    if renderable_flow_node?(node) do
+      update_flow_slide(socket, new_state)
+    else
+      case PlayerEngine.step_until_interactive(new_state, socket.assigns.flow_nodes, socket.assigns.flow_connections) do
+        {_status, resolved_state, _skipped} -> update_flow_slide(socket, resolved_state)
+        _ -> update_flow_slide(socket, new_state)
+      end
+    end
+  end
+
+  defp renderable_flow_node?(%{type: type}) when type in ["dialogue", "exit"], do: true
+  defp renderable_flow_node?(_), do: false
+
+  # Builds a slide from the current engine state. If the slide has no renderable
+  # content (type :empty), auto-advances the engine until it finds a node with
+  # content or the flow finishes. Returns {:content, state, slide} or {:finished, state}.
+  @max_empty_advances 50
+
+  defp build_slide_or_advance(engine_state, nodes_map, connections, sheets_map, project_id) do
+    do_build_slide_or_advance(engine_state, nodes_map, connections, sheets_map, project_id, 0)
+  end
+
+  defp do_build_slide_or_advance(state, _nodes, _conns, _sheets, _pid, attempts) when attempts >= @max_empty_advances do
+    {:finished, state}
+  end
+
+  defp do_build_slide_or_advance(state, nodes_map, connections, sheets_map, project_id, attempts) do
+    slide = build_flow_slide(state, nodes_map, sheets_map, project_id)
+
+    if renderable_slide?(slide) do
+      {:content, state, slide}
+    else
+      advance_empty_slide(state, nodes_map, connections, sheets_map, project_id, attempts)
+    end
+  end
+
+  defp build_flow_slide(state, nodes_map, sheets_map, project_id) do
+    nodes_map
+    |> Map.get(state.current_node_id)
+    |> Slide.build(state, sheets_map, project_id)
+  end
+
+  defp renderable_slide?(slide), do: slide.type in [:dialogue, :outcome]
+
+  defp advance_empty_slide(state, nodes_map, connections, sheets_map, project_id, attempts) do
+    case PlayerEngine.step_until_interactive(state, nodes_map, connections) do
+      {:finished, new_state, _} ->
+        finish_or_render_final_slide(new_state, nodes_map, sheets_map, project_id)
+
+      {:flow_jump, new_state, target_flow_id, _} ->
+        {:flow_jump, new_state, target_flow_id}
+
+      {:flow_return, new_state, _} ->
+        {:flow_return, new_state}
+
+      {_status, new_state, _} ->
+        do_build_slide_or_advance(new_state, nodes_map, connections, sheets_map, project_id, attempts + 1)
+    end
+  end
+
+  defp finish_or_render_final_slide(state, nodes_map, sheets_map, project_id) do
+    slide = build_flow_slide(state, nodes_map, sheets_map, project_id)
+
+    if renderable_slide?(slide) do
+      {:content, state, slide}
+    else
+      {:finished, state}
+    end
+  end
+
   defp update_active_flow(socket, new_state, nodes, connections) do
     af = socket.assigns.active_flow
     node = Map.get(nodes, new_state.current_node_id)
@@ -902,7 +930,6 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     slide = active_flow.slide
     state = active_flow.engine_state
 
-    # Show continue when: dialogue without responses, or paused (not waiting_input/finished/outcome)
     cond do
       slide.type == :outcome -> false
       slide.type == :dialogue && (slide[:responses] || []) != [] -> false
@@ -935,6 +962,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     |> assign(:variables, new_variables)
     |> assign(:zones, zones)
     |> assign(:pins, pins)
+    |> assign(:exploration_data, prepare_exploration_data_for_vue(scene, zones, pins))
     |> check_ambient_event_triggers(old_variables, new_variables)
     |> push_event("exploration_state_updated", %{
       zones: Enum.map(zones, &%{id: &1.id, visibility: &1.visibility}),
@@ -946,8 +974,11 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   defp apply_pin_variable_mutations(pins, variables) do
     Enum.map(pins, fn pin ->
       case pin.shortcut do
-        nil -> pin
-        shortcut -> apply_bool_mutations(pin, shortcut, variables, ~w(hidden is_playable is_leader))
+        nil ->
+          pin
+
+        shortcut ->
+          apply_bool_mutations(pin, shortcut, variables, ~w(hidden is_playable is_leader))
       end
     end)
   end
@@ -1169,7 +1200,8 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     project_id = socket.assigns.project.id
 
     attrs =
-      build_session_attrs(socket)
+      socket
+      |> build_session_attrs()
       |> Map.merge(%{
         player_positions: %{
           "leader" => position_params["leader"],
@@ -1181,77 +1213,6 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     case Scenes.save_exploration_session(user_id, project_id, attrs) do
       {:ok, _session} -> {:ok, socket}
       {:error, _changeset} -> {:error, socket}
-    end
-  end
-
-  defp serialize_for_exploration(scene, zones, pins) do
-    connections = scene.connections || []
-
-    %{
-      background_url: Serializer.background_url(scene),
-      scene_width: scene.width,
-      scene_height: scene.height,
-      display_mode: scene.exploration_display_mode || "fit",
-      default_zoom: scene.default_zoom || 1.0,
-      default_center_x: scene.default_center_x,
-      default_center_y: scene.default_center_y,
-      zones:
-        Enum.map(zones, fn z ->
-          z |> Serializer.serialize_zone() |> Map.put(:visibility, z.visibility)
-        end),
-      pins:
-        Enum.map(pins, fn p ->
-          serialized = p |> Serializer.serialize_pin() |> Map.put(:visibility, p.visibility)
-
-          if p.patrol_mode in [nil, "none"] do
-            serialized
-          else
-            route = build_patrol_route(p, pins, connections)
-            Map.put(serialized, :patrol_route, route)
-          end
-        end)
-    }
-  end
-
-  # ---------------------------------------------------------------------------
-  # Patrol Route Builder
-  # ---------------------------------------------------------------------------
-
-  # Builds an ordered patrol route by traversing connections from the given pin.
-  # Returns a flat list of %{x, y, is_pin_stop} points.
-  defp build_patrol_route(pin, pins, connections) do
-    pins_by_id = Map.new(pins, &{&1.id, &1})
-    start_point = %{x: pin.position_x, y: pin.position_y, is_pin_stop: true}
-    traverse_route([pin.id], pin.id, pins_by_id, connections, [start_point])
-  end
-
-  defp traverse_route(visited, current_pin_id, pins_by_id, connections, acc) do
-    next_connections = find_unvisited_connections(connections, current_pin_id, visited)
-
-    case next_connections do
-      [] ->
-        Enum.reverse(acc)
-
-      [conn | _] ->
-        {waypoints, target_pin_id} = connection_traversal_data(conn, current_pin_id)
-        follow_connection(visited, target_pin_id, waypoints, pins_by_id, connections, acc)
-    end
-  end
-
-  defp find_unvisited_connections(connections, pin_id, visited) do
-    connections
-    |> Enum.filter(fn conn ->
-      (conn.from_pin_id == pin_id && conn.to_pin_id not in visited) ||
-        (conn.bidirectional && conn.to_pin_id == pin_id && conn.from_pin_id not in visited)
-    end)
-    |> Enum.sort_by(& &1.id)
-  end
-
-  defp connection_traversal_data(conn, current_pin_id) do
-    if conn.from_pin_id == current_pin_id do
-      {conn.waypoints || [], conn.to_pin_id}
-    else
-      {Enum.reverse(conn.waypoints || []), conn.from_pin_id}
     end
   end
 
@@ -1278,7 +1239,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   end
 
   defp init_ambient_triggers(socket, scene_id) do
-    all_flows = Scenes.list_ambient_flows(scene_id) |> Enum.filter(& &1.enabled)
+    all_flows = scene_id |> Scenes.list_ambient_flows() |> Enum.filter(& &1.enabled)
     completed = socket.assigns.completed_ambient_ids
 
     {on_enter, rest} = Enum.split_with(all_flows, &(&1.trigger_type == "on_enter"))
@@ -1595,8 +1556,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
   defp handle_ambient_flow_jump(socket, current, state, target_flow_id, depth \\ 0)
 
-  defp handle_ambient_flow_jump(socket, _current, _state, _target_flow_id, depth)
-       when depth > @max_ambient_jump_depth do
+  defp handle_ambient_flow_jump(socket, _current, _state, _target_flow_id, depth) when depth > @max_ambient_jump_depth do
     finish_ambient_flow(socket)
   end
 
@@ -1674,8 +1634,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
   defp handle_ambient_flow_return(socket, current, state, depth \\ 0)
 
-  defp handle_ambient_flow_return(socket, _current, _state, depth)
-       when depth > @max_ambient_jump_depth do
+  defp handle_ambient_flow_return(socket, _current, _state, depth) when depth > @max_ambient_jump_depth do
     finish_ambient_flow(socket)
   end
 
@@ -1686,9 +1645,11 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         parent_connections = frame.connections
 
         conn =
-          Enum.find(parent_connections, fn c ->
-            c.source_node_id == frame.return_node_id and c.source_pin in ["default", "output"]
-          end)
+          Flows.evaluator_find_return_connection(
+            parent_connections,
+            frame.return_node_id,
+            new_state.current_node_id
+          )
 
         new_state =
           if conn do
@@ -1777,11 +1738,11 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   defp sync_ambient_variables(socket, engine_state) do
     new_variables = engine_state.variables
 
-    if new_variables != socket.assigns.variables do
+    if new_variables == socket.assigns.variables do
+      socket
+    else
       new_variables = FormulaRuntime.recompute_formulas(new_variables)
       apply_variable_update(socket, new_variables)
-    else
-      socket
     end
   end
 
@@ -1881,33 +1842,5 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     word_count = text |> String.split(~r/\s+/, trim: true) |> length()
     duration = word_count * @ambient_ms_per_word
     duration |> max(@ambient_min_duration_ms) |> min(@ambient_max_duration_ms)
-  end
-
-  # ---------------------------------------------------------------------------
-  # Patrol Route Builder
-  # ---------------------------------------------------------------------------
-
-  defp follow_connection(visited, target_pin_id, waypoints, pins_by_id, connections, acc) do
-    waypoint_points =
-      Enum.map(waypoints, fn wp ->
-        %{x: wp["x"], y: wp["y"], is_pin_stop: false}
-      end)
-
-    case Map.get(pins_by_id, target_pin_id) do
-      nil ->
-        Enum.reverse(acc)
-
-      target_pin ->
-        pin_point = %{x: target_pin.position_x, y: target_pin.position_y, is_pin_stop: true}
-        new_acc = [pin_point | Enum.reverse(waypoint_points)] ++ acc
-
-        traverse_route(
-          [target_pin_id | visited],
-          target_pin_id,
-          pins_by_id,
-          connections,
-          new_acc
-        )
-    end
   end
 end

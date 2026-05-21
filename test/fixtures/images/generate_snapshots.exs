@@ -12,6 +12,8 @@
 # Note: ZoneImageExtractor always crops via bounding_box/1 (rectangular),
 # so all zones use simple 4-vertex rectangles matching the crop region.
 
+alias Storyarn.Scenes.ZoneImageExtractor
+
 output_dir = "test/fixtures/images/snapshots"
 File.rm_rf!(output_dir)
 File.mkdir_p!(output_dir)
@@ -41,8 +43,6 @@ zones = [
   {"river_valley", rect.(20.0, 40.0, 42.0, 68.0)},
   {"tiny_detail", rect.(44.0, 64.0, 50.0, 70.0)}
 ]
-
-alias Storyarn.Scenes.ZoneImageExtractor
 
 IO.puts("Generating snapshots for #{length(zones)} zones...\n")
 
@@ -79,7 +79,7 @@ for {name, vertices} <- zones do
 
   w = Image.width(sharpened)
   h = Image.height(sharpened)
-  hash = :crypto.hash(:sha256, File.read!(out_path)) |> Base.encode16(case: :lower)
+  hash = :sha256 |> :crypto.hash(File.read!(out_path)) |> Base.encode16(case: :lower)
   IO.puts("  #{name}: #{w}x#{h} sha256=#{String.slice(hash, 0, 16)}...")
 end
 

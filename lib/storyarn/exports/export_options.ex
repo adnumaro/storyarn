@@ -6,6 +6,8 @@ defmodule Storyarn.Exports.ExportOptions do
   and filtering options for selective export.
   """
 
+  alias Storyarn.Shared.MapUtils
+
   @type t :: %__MODULE__{
           format: atom(),
           version: String.t(),
@@ -22,8 +24,6 @@ defmodule Storyarn.Exports.ExportOptions do
           validate_before_export: boolean(),
           pretty_print: boolean()
         }
-
-  alias Storyarn.Shared.MapUtils
 
   @enforce_keys [:format]
   defstruct format: :storyarn,

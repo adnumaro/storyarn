@@ -48,7 +48,21 @@ defmodule StoryarnWeb.Components.SheetComponents do
       alt={@name || "Sheet avatar"}
       class={["rounded object-cover", @size_class]}
     />
-    <.icon :if={!@has_avatar} name="file" class={"#{@size_class} opacity-60"} />
+    <svg
+      :if={!@has_avatar}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      class={[@size_class, "opacity-60"]}
+      aria-hidden="true"
+    >
+      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+      <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+    </svg>
     """
   end
 
@@ -82,14 +96,14 @@ defmodule StoryarnWeb.Components.SheetComponents do
     <div class="hidden lg:flex items-center gap-1 surface-panel px-3 py-1.5">
       <span
         :for={{ancestor, idx} <- Enum.with_index(@ancestors)}
-        class="flex items-center gap-1 text-xs text-base-content/60"
+        class="flex items-center gap-1 text-xs text-muted-foreground"
       >
         <span :if={idx > 0} class="opacity-50">/</span>
         <.link
           navigate={
             ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets/#{ancestor.id}"
           }
-          class="hover:text-base-content flex items-center gap-1 truncate max-w-[120px]"
+          class="hover:text-foreground flex items-center gap-1 truncate max-w-[120px]"
         >
           <.sheet_avatar avatars={ancestor.avatars} name={ancestor.name} size="sm" />
           {ancestor.name}

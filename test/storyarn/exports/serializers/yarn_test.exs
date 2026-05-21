@@ -1,15 +1,17 @@
 defmodule Storyarn.Exports.Serializers.YarnTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Exports.{DataCollector, ExportOptions}
-  alias Storyarn.Exports.Serializers.Yarn
-
-  alias Storyarn.Repo
-
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Exports.DataCollector
+  alias Storyarn.Exports.ExportOptions
+  alias Storyarn.Exports.Serializers.Helpers
+  alias Storyarn.Exports.Serializers.Yarn
+  alias Storyarn.Flows
+  alias Storyarn.Repo
 
   # =============================================================================
   # Setup
@@ -221,6 +223,76 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
       assert source =~ "-> Fight"
       assert source =~ "-> Flee"
     end
+
+    test "choice branches are nested under their options", %{project: project} do
+      flow = flow_fixture(project, %{name: "Choice Branches"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Pick a path.",
+            "speaker_sheet_id" => nil,
+            "responses" => [
+              %{"id" => "fight", "text" => "Fight", "condition" => nil, "instruction" => nil},
+              %{"id" => "run", "text" => "Run", "condition" => nil, "instruction" => nil}
+            ]
+          }
+        })
+
+      fight_dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "You fight.", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      run_dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "You run.", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      connection_fixture(flow, entry, dialogue)
+      connection_fixture(flow, dialogue, fight_dialogue, %{source_pin: "response_fight"})
+      connection_fixture(flow, dialogue, run_dialogue, %{source_pin: "response_run"})
+
+      source = yarn_source(export_yarn(project))
+      assert source =~ ~r/-> Fight #line:line_\d+\n    You fight\./
+      assert source =~ ~r/-> Run #line:line_\d+\n    You run\./
+    end
+  end
+
+  # =============================================================================
+  # Sequence nodes
+  # =============================================================================
+
+  describe "sequence nodes" do
+    setup [:create_project]
+
+    test "dialogue nested inside a sequence is still exported", %{project: project} do
+      flow = flow_fixture(project, %{name: "Sequence Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+      {:ok, sequence} = Flows.create_sequence(flow.id, %{"name" => "Act I"})
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          parent_id: sequence.id,
+          data: %{
+            "text" => "Inside the sequence.",
+            "speaker_sheet_id" => nil,
+            "responses" => []
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = yarn_source(export_yarn(project))
+      assert source =~ "Inside the sequence."
+    end
   end
 
   # =============================================================================
@@ -365,12 +437,19 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
             "condition" =>
               Jason.encode!(%{
                 "logic" => "all",
-                "rules" => [
+                "blocks" => [
                   %{
-                    "sheet" => sheet.shortcut,
-                    "variable" => "health",
-                    "operator" => "greater_than",
-                    "value" => "50"
+                    "id" => "b1",
+                    "type" => "block",
+                    "logic" => "all",
+                    "rules" => [
+                      %{
+                        "sheet" => sheet.shortcut,
+                        "variable" => "health",
+                        "operator" => "greater_than",
+                        "value" => "50"
+                      }
+                    ]
                   }
                 ]
               }),
@@ -547,67 +626,13 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
   end
 
   # =============================================================================
-  # Slug line node rendering
-  # =============================================================================
-
-  describe "slug_line nodes" do
-    setup [:create_project]
-
-    test "slug_line node renders scene command", %{project: project} do
-      flow = flow_fixture(project, %{name: "Slug Line Flow"})
-      flow = reload_flow(flow)
-      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
-
-      slug_line =
-        node_fixture(flow, %{
-          type: "slug_line",
-          data: %{"location" => "Tavern Interior"}
-        })
-
-      connection_fixture(flow, entry, slug_line)
-
-      source = yarn_source(export_yarn(project))
-      assert source =~ "<<scene Tavern Interior>>"
-    end
-
-    test "slug_line node falls back to slug_line field", %{project: project} do
-      flow = flow_fixture(project, %{name: "Slug Line Field Flow"})
-      flow = reload_flow(flow)
-      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
-
-      slug_line =
-        node_fixture(flow, %{
-          type: "slug_line",
-          data: %{"slug_line" => "INT. CASTLE - NIGHT"}
-        })
-
-      connection_fixture(flow, entry, slug_line)
-
-      source = yarn_source(export_yarn(project))
-      assert source =~ "<<scene INT. CASTLE - NIGHT>>"
-    end
-
-    test "slug_line node with empty data renders empty scene command", %{project: project} do
-      flow = flow_fixture(project, %{name: "Empty Slug Line Flow"})
-      flow = reload_flow(flow)
-      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
-
-      slug_line = node_fixture(flow, %{type: "slug_line", data: %{}})
-      connection_fixture(flow, entry, slug_line)
-
-      source = yarn_source(export_yarn(project))
-      assert source =~ "<<scene >>"
-    end
-  end
-
-  # =============================================================================
   # Subflow node rendering
   # =============================================================================
 
   describe "subflow nodes" do
     setup [:create_project]
 
-    test "subflow renders jump command", %{project: project} do
+    test "subflow renders detour command", %{project: project} do
       flow = flow_fixture(project, %{name: "Subflow Flow"})
       flow = reload_flow(flow)
       entry = Enum.find(flow.nodes, &(&1.type == "entry"))
@@ -621,7 +646,26 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
       connection_fixture(flow, entry, subflow)
 
       source = yarn_source(export_yarn(project))
-      assert source =~ "<<jump side_quest_rescue>>"
+      assert source =~ "<<detour side_quest_rescue>>"
+    end
+
+    test "subflow with referenced_flow_id resolves target flow shortcut", %{project: project} do
+      target_flow = flow_fixture(project, %{name: "Side Quest"})
+      caller_flow = flow_fixture(project, %{name: "Main"})
+      caller_flow = reload_flow(caller_flow)
+      caller_entry = Enum.find(caller_flow.nodes, &(&1.type == "entry"))
+
+      subflow =
+        node_fixture(caller_flow, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => target_flow.id}
+        })
+
+      connection_fixture(caller_flow, caller_entry, subflow)
+
+      source = yarn_source(export_yarn(project))
+      target = Helpers.shortcut_to_identifier(target_flow.shortcut)
+      assert source =~ "<<detour #{target}>>"
     end
 
     test "subflow without shortcut uses fallback id", %{project: project} do
@@ -633,7 +677,38 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
       connection_fixture(flow, entry, subflow)
 
       source = yarn_source(export_yarn(project))
-      assert source =~ "<<jump subflow_"
+      assert source =~ "<<detour subflow_"
+    end
+
+    test "exit in detour target emits return command", %{project: project} do
+      target_flow = flow_fixture(project, %{name: "Side Quest"})
+      target_flow = reload_flow(target_flow)
+      target_entry = Enum.find(target_flow.nodes, &(&1.type == "entry"))
+      target_exit = node_fixture(target_flow, %{type: "exit", data: %{}})
+      connection_fixture(target_flow, target_entry, target_exit)
+
+      caller_flow = flow_fixture(project, %{name: "Main"})
+      caller_flow = reload_flow(caller_flow)
+      caller_entry = Enum.find(caller_flow.nodes, &(&1.type == "entry"))
+
+      subflow =
+        node_fixture(caller_flow, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => target_flow.id}
+        })
+
+      after_dialogue =
+        node_fixture(caller_flow, %{
+          type: "dialogue",
+          data: %{"text" => "Back!", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      connection_fixture(caller_flow, caller_entry, subflow)
+      connection_fixture(caller_flow, subflow, after_dialogue)
+
+      source = yarn_source(export_yarn(project))
+      assert source =~ "<<return>>"
+      assert source =~ "Back!"
     end
   end
 
@@ -718,7 +793,7 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
   describe "exit nodes" do
     setup [:create_project]
 
-    test "exit node produces no output in Yarn", %{project: project} do
+    test "exit node renders stop command", %{project: project} do
       flow = flow_fixture(project, %{name: "Exit Flow"})
       flow = reload_flow(flow)
       entry = Enum.find(flow.nodes, &(&1.type == "entry"))
@@ -726,9 +801,26 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
       connection_fixture(flow, entry, exit_node)
 
       source = yarn_source(export_yarn(project))
-      # Yarn exit produces no special command (empty list)
-      assert source =~ "title:"
-      refute source =~ "-> END"
+      assert source =~ "<<stop>>"
+    end
+
+    test "exit with flow_reference mode jumps to referenced flow", %{project: project} do
+      target_flow = flow_fixture(project, %{name: "Next Chapter"})
+      source_flow = flow_fixture(project, %{name: "Current Chapter"})
+      source_flow = reload_flow(source_flow)
+      entry = Enum.find(source_flow.nodes, &(&1.type == "entry"))
+
+      exit_node =
+        node_fixture(source_flow, %{
+          type: "exit",
+          data: %{"exit_mode" => "flow_reference", "referenced_flow_id" => target_flow.id}
+        })
+
+      connection_fixture(source_flow, entry, exit_node)
+
+      source = yarn_source(export_yarn(project))
+      target = Helpers.shortcut_to_identifier(target_flow.shortcut)
+      assert source =~ "<<jump #{target}>>"
     end
   end
 
@@ -759,11 +851,18 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
             "condition" =>
               Jason.encode!(%{
                 "logic" => "all",
-                "rules" => [
+                "blocks" => [
                   %{
-                    "sheet" => sheet.shortcut,
-                    "variable" => "alive",
-                    "operator" => "is_true"
+                    "id" => "b1",
+                    "type" => "block",
+                    "logic" => "all",
+                    "rules" => [
+                      %{
+                        "sheet" => sheet.shortcut,
+                        "variable" => "alive",
+                        "operator" => "is_true"
+                      }
+                    ]
                   }
                 ]
               }),
@@ -1004,12 +1103,19 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
             "condition" =>
               Jason.encode!(%{
                 "logic" => "all",
-                "rules" => [
+                "blocks" => [
                   %{
-                    "sheet" => sheet.shortcut,
-                    "variable" => "desc",
-                    "operator" => "contains",
-                    "value" => "test"
+                    "id" => "b1",
+                    "type" => "block",
+                    "logic" => "all",
+                    "rules" => [
+                      %{
+                        "sheet" => sheet.shortcut,
+                        "variable" => "desc",
+                        "operator" => "contains",
+                        "value" => "test"
+                      }
+                    ]
                   }
                 ]
               }),
@@ -1030,6 +1136,64 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
       _flow = flow_fixture(project, %{name: "No String Ops"})
       meta = metadata(export_yarn(project))
       refute Map.has_key?(meta, "required_functions")
+    end
+
+    test "metadata includes required_functions from nested condition groups", %{
+      project: project
+    } do
+      sheet = sheet_fixture(project, %{name: "Nested"})
+
+      block_fixture(sheet, %{
+        type: "text",
+        config: %{"label" => "Note"},
+        value: %{"text" => "hello"}
+      })
+
+      flow = flow_fixture(project, %{name: "Nested Groups"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      condition =
+        node_fixture(flow, %{
+          type: "condition",
+          data: %{
+            "condition" =>
+              Jason.encode!(%{
+                "logic" => "all",
+                "blocks" => [
+                  %{
+                    "id" => "g1",
+                    "type" => "group",
+                    "logic" => "any",
+                    "blocks" => [
+                      %{
+                        "id" => "b1",
+                        "type" => "block",
+                        "logic" => "all",
+                        "rules" => [
+                          %{
+                            "sheet" => sheet.shortcut,
+                            "variable" => "note",
+                            "operator" => "contains",
+                            "value" => "world"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }),
+            "cases" => [
+              %{"id" => "true", "value" => "true", "label" => "True"},
+              %{"id" => "false", "value" => "false", "label" => "False"}
+            ]
+          }
+        })
+
+      connection_fixture(flow, entry, condition)
+
+      meta = metadata(export_yarn(project))
+      assert "string_contains" in meta["required_functions"]
     end
   end
 
@@ -1105,31 +1269,6 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
       assert source =~ "<<set"
     end
 
-    test "entry -> slug_line -> dialogue chain", %{project: project} do
-      flow = flow_fixture(project, %{name: "Slug Line Chain Flow"})
-      flow = reload_flow(flow)
-      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
-
-      slug_line =
-        node_fixture(flow, %{
-          type: "slug_line",
-          data: %{"location" => "Dark Forest"}
-        })
-
-      dialogue =
-        node_fixture(flow, %{
-          type: "dialogue",
-          data: %{"text" => "The forest is dark.", "speaker_sheet_id" => nil, "responses" => []}
-        })
-
-      connection_fixture(flow, entry, slug_line)
-      connection_fixture(flow, slug_line, dialogue)
-
-      source = yarn_source(export_yarn(project))
-      assert source =~ "<<scene Dark Forest>>"
-      assert source =~ "The forest is dark."
-    end
-
     test "hub referenced by jump creates separate yarn node", %{project: project} do
       flow = flow_fixture(project, %{name: "Hub Jump Flow"})
       flow = reload_flow(flow)
@@ -1186,12 +1325,19 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
                 "condition" =>
                   Jason.encode!(%{
                     "logic" => "all",
-                    "rules" => [
+                    "blocks" => [
                       %{
-                        "sheet" => sheet.shortcut,
-                        "variable" => "gold",
-                        "operator" => "greater_than",
-                        "value" => "50"
+                        "id" => "b1",
+                        "type" => "block",
+                        "logic" => "all",
+                        "rules" => [
+                          %{
+                            "sheet" => sheet.shortcut,
+                            "variable" => "gold",
+                            "operator" => "greater_than",
+                            "value" => "50"
+                          }
+                        ]
                       }
                     ]
                   }),

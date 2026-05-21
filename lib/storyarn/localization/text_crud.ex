@@ -55,38 +55,36 @@ defmodule Storyarn.Localization.TextCrud do
   end
 
   def get_text(project_id, id) do
-    from(t in LocalizedText, where: t.id == ^id and t.project_id == ^project_id)
-    |> Repo.one()
+    Repo.one(from(t in LocalizedText, where: t.id == ^id and t.project_id == ^project_id))
   end
 
   def get_text!(project_id, id) do
-    from(t in LocalizedText, where: t.id == ^id and t.project_id == ^project_id)
-    |> Repo.one!()
+    Repo.one!(from(t in LocalizedText, where: t.id == ^id and t.project_id == ^project_id))
   end
 
   @doc """
   Gets a specific localized text by its composite key.
   """
   def get_text_by_source(source_type, source_id, source_field, locale_code) do
-    from(t in LocalizedText,
-      where:
-        t.source_type == ^source_type and
-          t.source_id == ^source_id and
-          t.source_field == ^source_field and
-          t.locale_code == ^locale_code
+    Repo.one(
+      from(t in LocalizedText,
+        where:
+          t.source_type == ^source_type and t.source_id == ^source_id and t.source_field == ^source_field and
+            t.locale_code == ^locale_code
+      )
     )
-    |> Repo.one()
   end
 
   @doc """
   Gets all localized texts for a source entity across all locales.
   """
   def get_texts_for_source(source_type, source_id) do
-    from(t in LocalizedText,
-      where: t.source_type == ^source_type and t.source_id == ^source_id,
-      order_by: [asc: t.source_field, asc: t.locale_code]
+    Repo.all(
+      from(t in LocalizedText,
+        where: t.source_type == ^source_type and t.source_id == ^source_id,
+        order_by: [asc: t.source_field, asc: t.locale_code]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -100,10 +98,10 @@ defmodule Storyarn.Localization.TextCrud do
       select: {t.status, count(t.id)}
     )
     |> Repo.all()
-    |> Enum.into(%{})
+    |> Map.new()
     |> then(fn counts ->
       total =
-        Map.values(counts) |> Enum.sum()
+        counts |> Map.values() |> Enum.sum()
 
       %{
         total: total,
@@ -151,9 +149,7 @@ defmodule Storyarn.Localization.TextCrud do
 
     # Use insert with on_conflict to avoid TOCTOU race on concurrent extractions.
     # First try to insert; on conflict, fall back to update with status downgrade logic.
-    changeset =
-      %LocalizedText{project_id: project_id}
-      |> LocalizedText.create_changeset(attrs)
+    changeset = LocalizedText.create_changeset(%LocalizedText{project_id: project_id}, attrs)
 
     case Repo.insert(changeset,
            on_conflict: :nothing,
@@ -178,10 +174,7 @@ defmodule Storyarn.Localization.TextCrud do
   Used when the source entity is deleted.
   """
   def delete_texts_for_source(source_type, source_id) do
-    from(t in LocalizedText,
-      where: t.source_type == ^source_type and t.source_id == ^source_id
-    )
-    |> Repo.delete_all()
+    Repo.delete_all(from(t in LocalizedText, where: t.source_type == ^source_type and t.source_id == ^source_id))
   end
 
   @doc """
@@ -189,13 +182,11 @@ defmodule Storyarn.Localization.TextCrud do
   Used when a specific field is removed (e.g., a response deleted from a dialogue node).
   """
   def delete_texts_for_source_field(source_type, source_id, source_field) do
-    from(t in LocalizedText,
-      where:
-        t.source_type == ^source_type and
-          t.source_id == ^source_id and
-          t.source_field == ^source_field
+    Repo.delete_all(
+      from(t in LocalizedText,
+        where: t.source_type == ^source_type and t.source_id == ^source_id and t.source_field == ^source_field
+      )
     )
-    |> Repo.delete_all()
   end
 
   # =============================================================================
@@ -220,14 +211,14 @@ defmodule Storyarn.Localization.TextCrud do
       |> Repo.update()
     else
       # Hash unchanged — no update needed (but update speaker if changed)
-      if attrs["speaker_sheet_id"] != existing.speaker_sheet_id do
+      if attrs["speaker_sheet_id"] == existing.speaker_sheet_id do
+        {:ok, existing}
+      else
         existing
         |> LocalizedText.source_update_changeset(%{
           "speaker_sheet_id" => attrs["speaker_sheet_id"]
         })
         |> Repo.update()
-      else
-        {:ok, existing}
       end
     end
   end
@@ -286,16 +277,12 @@ defmodule Storyarn.Localization.TextCrud do
   Lists localized texts for export, filtered by locale codes.
   """
   def list_texts_for_export(project_id, locale_codes) do
-    from(lt in LocalizedText,
-      where: lt.project_id == ^project_id and lt.locale_code in ^locale_codes,
-      order_by: [
-        asc: lt.source_type,
-        asc: lt.source_id,
-        asc: lt.source_field,
-        asc: lt.locale_code
-      ]
+    Repo.all(
+      from(lt in LocalizedText,
+        where: lt.project_id == ^project_id and lt.locale_code in ^locale_codes,
+        order_by: [asc: lt.source_type, asc: lt.source_id, asc: lt.source_field, asc: lt.locale_code]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -305,11 +292,9 @@ defmodule Storyarn.Localization.TextCrud do
   def list_target_locale_codes(project_id) do
     alias Storyarn.Localization.ProjectLanguage
 
-    from(l in ProjectLanguage,
-      where: l.project_id == ^project_id and l.is_source == false,
-      select: l.locale_code
+    Repo.all(
+      from(l in ProjectLanguage, where: l.project_id == ^project_id and l.is_source == false, select: l.locale_code)
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -317,11 +302,12 @@ defmodule Storyarn.Localization.TextCrud do
   Used by the export Validator.
   """
   def count_distinct_source_entries(project_id) do
-    from(lt in LocalizedText,
-      where: lt.project_id == ^project_id,
-      select: fragment("count(DISTINCT (?, ?, ?))", lt.source_type, lt.source_id, lt.source_field)
-    )
-    |> Repo.one() || 0
+    Repo.one(
+      from(lt in LocalizedText,
+        where: lt.project_id == ^project_id,
+        select: fragment("count(DISTINCT (?, ?, ?))", lt.source_type, lt.source_id, lt.source_field)
+      )
+    ) || 0
   end
 
   @doc """
@@ -416,9 +402,8 @@ defmodule Storyarn.Localization.TextCrud do
   """
 
   defp do_batch_upsert_chunk(chunk) do
-    {project_ids, source_types, source_ids, source_fields, source_texts, source_text_hashes,
-     locale_codes, word_counts, speaker_sheet_ids, statuses, vo_statuses, machine_translateds,
-     inserted_ats, updated_ats} =
+    {project_ids, source_types, source_ids, source_fields, source_texts, source_text_hashes, locale_codes, word_counts,
+     speaker_sheet_ids, statuses, vo_statuses, machine_translateds, inserted_ats, updated_ats} =
       Enum.reduce(chunk, {[], [], [], [], [], [], [], [], [], [], [], [], [], []}, fn row, acc ->
         {p, st, si, sf, stxt, sth, lc, wc, ssi, s, vs, mt, ia, ua} = acc
 

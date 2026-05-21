@@ -6,8 +6,10 @@ defmodule Storyarn.Projects.ProjectMembership do
   The project owner also has a membership record with role "owner".
   """
   use Ecto.Schema
+
   import Ecto.Changeset
 
+  alias Ecto.Association.NotLoaded
   alias Storyarn.Accounts.User
   alias Storyarn.Projects.Project
 
@@ -17,9 +19,9 @@ defmodule Storyarn.Projects.ProjectMembership do
           id: integer() | nil,
           role: String.t() | nil,
           project_id: integer() | nil,
-          project: Project.t() | Ecto.Association.NotLoaded.t() | nil,
+          project: Project.t() | NotLoaded.t() | nil,
           user_id: integer() | nil,
-          user: User.t() | Ecto.Association.NotLoaded.t() | nil,
+          user: User.t() | NotLoaded.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }

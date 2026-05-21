@@ -23,9 +23,11 @@ defmodule StoryarnWeb.WorkspaceLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="flex items-center justify-center min-h-64">
-      <span class="loading loading-spinner loading-lg"></span>
-    </div>
+    <.vue
+      v-component="live/workspace/dashboard/WorkspaceDashboardLoading"
+      v-socket={@socket}
+      id="workspace-index"
+    />
     """
   end
 end

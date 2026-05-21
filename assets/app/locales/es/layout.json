@@ -1,0 +1,40 @@
+{
+  "layout": {
+    "tools": {
+      "dashboard": "Dashboard",
+      "sheets": "Fichas",
+      "flows": "Flujos",
+      "scenes": "Escenas",
+      "screenplays": "Guiones",
+      "assets": "Recursos",
+      "localization": "Localización"
+    },
+    "main_sidebar": {
+      "dashboard_label": "Dashboard de {tool}",
+      "hide_panel": "Ocultar sidebar",
+      "show_panel": "Mostrar sidebar"
+    },
+    "project_sidebar": {
+      "dashboard": "Dashboard",
+      "tools": "Herramientas",
+      "project_settings": "Ajustes del proyecto",
+      "settings": "General",
+      "export_import": "Importar y exportar",
+      "trash": "Papelera"
+    },
+    "project_navbar_context": {
+      "hide_panel": "Ocultar panel",
+      "show_panel": "Mostrar panel",
+      "project_settings": "Ajustes del proyecto",
+      "trash": "Papelera"
+    },
+    "project_navbar_account": {
+      "account_settings": "Ajustes de cuenta",
+      "all_workspaces": "Todos los espacios",
+      "log_out": "Cerrar sesión"
+    },
+    "project_restoration": {
+      "in_progress": "El proyecto está siendo restaurado por {user}. La edición está temporalmente deshabilitada."
+    }
+  }
+}

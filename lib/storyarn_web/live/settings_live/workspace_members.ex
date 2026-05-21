@@ -3,47 +3,33 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
   LiveView for workspace team management settings.
   """
   use StoryarnWeb, :live_view
-  alias StoryarnWeb.Helpers.Authorize
-
-  import StoryarnWeb.Components.MemberComponents
-  import StoryarnWeb.Components.UIComponents, only: [form_actions: 1]
 
   alias Storyarn.Accounts
   alias Storyarn.Workspaces
+  alias StoryarnWeb.Helpers.Authorize
 
   @impl true
-  def mount(%{"slug" => slug}, _session, socket) do
-    scope = socket.assigns.current_scope
+  def mount(_params, _session, socket) do
+    %{workspace: workspace, membership: membership} = socket.assigns
 
-    case Workspaces.get_workspace_by_slug(scope, slug) do
-      {:ok, workspace, membership} ->
-        if membership.role in ["owner", "admin"] do
-          members = Workspaces.list_workspace_members(workspace.id)
-          invite_changeset = invite_changeset(%{})
+    if membership.role in ["owner", "admin"] do
+      members = Workspaces.list_workspace_members(workspace.id)
+      invite_changeset = invite_changeset(%{})
 
-          {:ok,
-           socket
-           |> assign(:page_title, dgettext("workspaces", "Workspace Members"))
-           |> assign(:current_path, ~p"/users/settings/workspaces/#{slug}/members")
-           |> assign(:workspace, workspace)
-           |> assign(:membership, membership)
-           |> assign(:members, members)
-           |> assign(:invite_form, to_form(invite_changeset, as: "invite"))}
-        else
-          {:ok,
-           socket
-           |> put_flash(
-             :error,
-             dgettext("workspaces", "You don't have permission to manage this workspace.")
-           )
-           |> push_navigate(to: ~p"/users/settings")}
-        end
-
-      {:error, :not_found} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("workspaces", "Workspace not found."))
-         |> push_navigate(to: ~p"/users/settings")}
+      {:ok,
+       socket
+       |> assign(:page_title, dgettext("workspaces", "Workspace Members"))
+       |> assign(:current_path, ~p"/users/settings/workspaces/#{workspace.slug}/members")
+       |> assign(:members, members)
+       |> assign(:invite_form, to_form(invite_changeset, as: "invite"))}
+    else
+      {:ok,
+       socket
+       |> put_flash(
+         :error,
+         dgettext("workspaces", "You don't have permission to manage this workspace.")
+       )
+       |> push_navigate(to: ~p"/users/settings")}
     end
   end
 
@@ -59,82 +45,24 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.settings
+    <StoryarnWeb.Components.SettingsLayout.settings
       flash={@flash}
+      socket={@socket}
       current_scope={@current_scope}
       workspaces={@workspaces}
       managed_workspace_slugs={@managed_workspace_slugs}
       current_path={@current_path}
     >
-      <:title>{dgettext("workspaces", "Members")}</:title>
-      <:subtitle>
-        {dgettext("workspaces", "Manage team members for %{name}", name: @workspace.name)}
-      </:subtitle>
-
-      <div class="space-y-8">
-        <%!-- Team Members Section --%>
-        <section>
-          <h3 class="text-lg font-semibold mb-4">{dgettext("workspaces", "Team Members")}</h3>
-          <div class="space-y-3">
-            <.member_row
-              :for={member <- @members}
-              member={member}
-              current_user_id={@current_scope.user.id}
-              can_manage={@membership.role == "owner"}
-              on_remove="remove_member"
-              on_role_change="change_role"
-              role_options={[
-                {dgettext("workspaces", "Admin"), "admin"},
-                {dgettext("workspaces", "Member"), "member"},
-                {dgettext("workspaces", "Viewer"), "viewer"}
-              ]}
-            />
-          </div>
-        </section>
-
-        <div class="divider" />
-
-        <%!-- Invite Form --%>
-        <section>
-          <h3 class="text-lg font-semibold mb-4">
-            {dgettext("workspaces", "Request member invitation")}
-          </h3>
-          <p class="text-sm opacity-70 mb-3">
-            {dgettext("workspaces", "Invitation requests are reviewed by an admin before being sent.")}
-          </p>
-          <.form for={@invite_form} id="invite-form" phx-submit="send_invitation">
-            <div class="flex gap-3 items-end">
-              <div class="flex-1">
-                <.input
-                  field={@invite_form[:email]}
-                  type="email"
-                  label={dgettext("workspaces", "Email address")}
-                  placeholder="colleague@example.com"
-                  required
-                />
-              </div>
-              <div class="w-32">
-                <.input
-                  field={@invite_form[:role]}
-                  type="select"
-                  label={dgettext("workspaces", "Role")}
-                  options={[
-                    {dgettext("workspaces", "Admin"), "admin"},
-                    {dgettext("workspaces", "Member"), "member"},
-                    {dgettext("workspaces", "Viewer"), "viewer"}
-                  ]}
-                />
-              </div>
-            </div>
-            <.form_actions>
-              <.button variant="primary">
-                {dgettext("workspaces", "Request Invitation")}
-              </.button>
-            </.form_actions>
-          </.form>
-        </section>
-      </div>
-    </Layouts.settings>
+      <.vue
+        v-component="live/workspace/settings/WorkspaceSettingsMembers"
+        v-socket={@socket}
+        v-inject="settings-layout"
+        id="workspace-settings-members"
+        members={serialize_members(@members)}
+        current-user-id={@current_scope.user.id}
+        can-manage={@membership.role == "owner"}
+      />
+    </StoryarnWeb.Components.SettingsLayout.settings>
     """
   end
 
@@ -147,33 +75,44 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
 
   @impl true
   def handle_event("change_role", %{"role" => role, "member-id" => member_id}, socket) do
-    if socket.assigns.membership.role != "owner" do
+    if socket.assigns.membership.role == "owner" do
+      do_change_role(socket, member_id, role)
+    else
       {:noreply,
        put_flash(
          socket,
          :error,
          dgettext("workspaces", "Only the workspace owner can change member roles.")
        )}
-    else
-      do_change_role(socket, member_id, role)
     end
   end
 
   @impl true
   def handle_event("remove_member", %{"id" => id}, socket) do
-    if socket.assigns.membership.role != "owner" do
+    if socket.assigns.membership.role == "owner" do
+      do_remove_member(socket, id)
+    else
       {:noreply,
        put_flash(
          socket,
          :error,
          dgettext("workspaces", "Only the workspace owner can remove members.")
        )}
-    else
-      do_remove_member(socket, id)
     end
   end
 
   # Private helpers
+
+  defp serialize_members(members) do
+    Enum.map(members, fn member ->
+      %{
+        id: member.id,
+        email: member.user.email,
+        display_name: member.user.display_name,
+        role: member.role
+      }
+    end)
+  end
 
   @workspace_invite_roles ~w(admin member viewer)
 
@@ -233,8 +172,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
         {:noreply, socket}
 
       {:error, :cannot_change_owner_role} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("workspaces", "Cannot change the owner's role."))}
+        {:noreply, put_flash(socket, :error, dgettext("workspaces", "Cannot change the owner's role."))}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("workspaces", "Failed to update role."))}
@@ -264,8 +202,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
         {:noreply, socket}
 
       {:error, :cannot_remove_owner} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("workspaces", "Cannot remove the workspace owner."))}
+        {:noreply, put_flash(socket, :error, dgettext("workspaces", "Cannot remove the workspace owner."))}
     end
   end
 end

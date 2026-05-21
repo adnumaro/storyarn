@@ -6,6 +6,8 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
   dialogue text, speaker info, responses, or outcome data.
   """
 
+  use Gettext, backend: Storyarn.Gettext
+
   alias Storyarn.Flows
   alias Storyarn.Shared.HtmlSanitizer
 
@@ -37,7 +39,8 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
     responses =
       case state.pending_choices do
         %{responses: resps} when is_list(resps) ->
-          Enum.with_index(resps, 1)
+          resps
+          |> Enum.with_index(1)
           |> Enum.map(fn {resp, idx} ->
             %{
               id: resp.id,
@@ -70,42 +73,19 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
     data = node.data || %{}
 
     variables_changed =
-      state.variables
-      |> Enum.count(fn {_key, %{value: v, initial_value: iv}} -> v != iv end)
+      Enum.count(state.variables, fn {_key, %{value: v, initial_value: iv}} -> v != iv end)
 
     choices_made =
-      state.console
-      |> Enum.count(fn entry -> String.starts_with?(entry.message, "Selected:") end)
+      Enum.count(state.console, fn entry -> String.starts_with?(entry.message, "Selected:") end)
 
     %{
       type: :outcome,
-      label: data["label"] || Flows.evaluator_strip_html(data["text"]) || "The End",
+      label: data["label"] || Flows.evaluator_strip_html(data["text"]) || dgettext("flows", "The End"),
       outcome_color: data["outcome_color"],
       outcome_tags: data["outcome_tags"] || [],
       step_count: state.step_count,
       variables_changed: variables_changed,
       choices_made: choices_made,
-      node_id: node.id
-    }
-  end
-
-  def build(%{type: "slug_line"} = node, state, sheets_map, _project_id) do
-    data = node.data || %{}
-    location = build_speaker(resolve_sheet_info(data["location_sheet_id"], sheets_map))
-
-    description =
-      interpolate_variables(
-        HtmlSanitizer.sanitize_html(data["description"] || ""),
-        state.variables
-      )
-
-    %{
-      type: :slug_line,
-      setting: data["setting"] || "INT",
-      location_name: location.name || data["location_name"] || "",
-      sub_location: data["sub_location"] || "",
-      time_of_day: data["time_of_day"] || "",
-      description: description,
       node_id: node.id
     }
   end
@@ -118,8 +98,7 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
   # Speaker resolution
   # ===========================================================================
 
-  defp resolve_sheet_info(sheet_id, sheets_map)
-       when is_integer(sheet_id) or is_binary(sheet_id) do
+  defp resolve_sheet_info(sheet_id, sheets_map) when is_integer(sheet_id) or is_binary(sheet_id) do
     id = parse_sheet_id(sheet_id)
     Map.get(sheets_map, to_string(id))
   end
@@ -237,8 +216,7 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
   defp format_value(false), do: "false"
   defp format_value(val) when is_list(val), do: Enum.join(val, ", ")
 
-  defp format_value(val) when is_binary(val),
-    do: Phoenix.HTML.html_escape(val) |> Phoenix.HTML.safe_to_string()
+  defp format_value(val) when is_binary(val), do: val |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
 
   defp format_value(val), do: to_string(val)
 end

@@ -18,7 +18,12 @@ defmodule Storyarn.Exports.ExpressionTranspiler.ConditionTest do
   end
 
   defp flat_condition(logic \\ "all", rules) do
-    %{"logic" => logic, "rules" => rules}
+    %{
+      "logic" => logic,
+      "blocks" => [
+        %{"id" => "b1", "type" => "block", "logic" => logic, "rules" => rules}
+      ]
+    }
   end
 
   defp block_condition(logic, blocks) do
@@ -369,7 +374,9 @@ defmodule Storyarn.Exports.ExpressionTranspiler.ConditionTest do
     end
 
     test "all (AND) joins with engine-specific AND", %{rule1: r1, rule2: r2} do
-      condition = flat_condition("all", [r1, r2])
+      b1 = make_block("b1", "all", [r1])
+      b2 = make_block("b2", "all", [r2])
+      condition = block_condition("all", [b1, b2])
 
       {:ok, ink, _} = ExpressionTranspiler.transpile_condition(condition, :ink)
       assert ink == "mc_jaime_health == 50 and mc_jaime_mana == 30"
@@ -382,7 +389,9 @@ defmodule Storyarn.Exports.ExpressionTranspiler.ConditionTest do
     end
 
     test "any (OR) joins with engine-specific OR", %{rule1: r1, rule2: r2} do
-      condition = flat_condition("any", [r1, r2])
+      b1 = make_block("b1", "all", [r1])
+      b2 = make_block("b2", "all", [r2])
+      condition = block_condition("any", [b1, b2])
 
       {:ok, ink, _} = ExpressionTranspiler.transpile_condition(condition, :ink)
       assert ink == "mc_jaime_health == 50 or mc_jaime_mana == 30"
@@ -395,7 +404,9 @@ defmodule Storyarn.Exports.ExpressionTranspiler.ConditionTest do
     end
 
     test "unity wraps each part in parentheses for OR", %{rule1: r1, rule2: r2} do
-      condition = flat_condition("any", [r1, r2])
+      b1 = make_block("b1", "all", [r1])
+      b2 = make_block("b2", "all", [r2])
+      condition = block_condition("any", [b1, b2])
       {:ok, result, _} = ExpressionTranspiler.transpile_condition(condition, :unity)
 
       assert result ==
@@ -530,15 +541,28 @@ defmodule Storyarn.Exports.ExpressionTranspiler.ConditionTest do
       end
     end
 
-    test "JSON string condition is decoded" do
-      json = Jason.encode!(%{"logic" => "all", "rules" => [simple_rule("equals")]})
+    test "JSON string condition with blocks is decoded" do
+      json =
+        Jason.encode!(%{
+          "logic" => "all",
+          "blocks" => [
+            %{
+              "id" => "b1",
+              "type" => "block",
+              "logic" => "all",
+              "rules" => [simple_rule("equals")]
+            }
+          ]
+        })
+
       {:ok, result, _} = ExpressionTranspiler.transpile_condition(json, :ink)
       assert result == "mc_jaime_health == 50"
     end
 
-    test "legacy string condition returns error" do
-      result = ExpressionTranspiler.transpile_condition("player.health > 50", :ink)
-      assert {:error, {:legacy_condition, _}} = result
+    test "legacy string condition returns {:ok, empty} (treated as nil)" do
+      {:ok, result, warnings} = ExpressionTranspiler.transpile_condition("player.health > 50", :ink)
+      assert result == ""
+      assert warnings == []
     end
 
     test "unknown engine returns error" do

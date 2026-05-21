@@ -1,10 +1,6 @@
 defmodule Storyarn.Exports.Serializers.StoryarnJSONTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Exports
-  alias Storyarn.Exports.{DataCollector, ExportOptions}
-  alias Storyarn.Exports.Serializers.StoryarnJSON
-
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures, except: [connection_fixture: 3, connection_fixture: 4]
@@ -13,6 +9,11 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSONTest do
   import Storyarn.ScenesFixtures
   import Storyarn.ScreenplaysFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Exports
+  alias Storyarn.Exports.DataCollector
+  alias Storyarn.Exports.ExportOptions
+  alias Storyarn.Exports.Serializers.StoryarnJSON
 
   # =============================================================================
   # Setup
@@ -377,17 +378,6 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSONTest do
       el = hd(exported["elements"])
       assert el["type"] == "action"
       assert el["content"] == "The hero enters."
-    end
-
-    test "includes draft fields", %{project: project} do
-      _sp = screenplay_fixture(project)
-
-      result = export_and_decode(project)
-      exported = hd(result["screenplays"])
-
-      assert Map.has_key?(exported, "draft_label")
-      assert Map.has_key?(exported, "draft_status")
-      assert Map.has_key?(exported, "draft_of_id")
     end
   end
 

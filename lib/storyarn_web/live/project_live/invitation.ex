@@ -13,20 +13,19 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.public flash={@flash}>
-      <div class="max-w-lg mx-auto text-center py-12">
-        <.icon name="x-circle" class="size-16 mx-auto text-error mb-6" />
-        <.header>
-          {dgettext("projects", "Invalid Invitation")}
-          <:subtitle>
-            {dgettext("projects", "This invitation link is invalid or has expired.")}
-          </:subtitle>
-        </.header>
-        <.link navigate={~p"/"} class="btn btn-primary mt-8">
-          {dgettext("projects", "Go to Homepage")}
-        </.link>
-      </div>
-    </Layouts.public>
+    <StoryarnWeb.Components.PublicLayout.public
+      flash={@flash}
+      socket={@socket}
+      current_scope={@current_scope}
+    >
+      <.vue
+        v-component="live/project/invitation/ProjectInvitationResponse"
+        v-socket={@socket}
+        v-inject="public-layout"
+        id="project-invitation"
+        homepage-url={~p"/"}
+      />
+    </StoryarnWeb.Components.PublicLayout.public>
     """
   end
 

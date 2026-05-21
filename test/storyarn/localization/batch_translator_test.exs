@@ -1,11 +1,12 @@
 defmodule Storyarn.Localization.BatchTranslatorTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Localization
-
   import Storyarn.AccountsFixtures
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
+
+  alias Storyarn.Localization
+  alias Storyarn.Localization.ProviderConfig
 
   describe "translate_batch/3" do
     test "returns error when no provider is configured" do
@@ -98,8 +99,8 @@ defmodule Storyarn.Localization.BatchTranslatorTest do
   defp create_provider_config(project_id, opts \\ []) do
     api_key = Keyword.get(opts, :api_key, "test-key-123")
 
-    %Storyarn.Localization.ProviderConfig{project_id: project_id}
-    |> Storyarn.Localization.ProviderConfig.changeset(%{
+    %ProviderConfig{project_id: project_id}
+    |> ProviderConfig.changeset(%{
       "provider" => "deepl",
       "api_key_encrypted" => api_key,
       "api_endpoint" => "https://api-free.deepl.com",

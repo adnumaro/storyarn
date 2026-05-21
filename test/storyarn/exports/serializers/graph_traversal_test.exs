@@ -11,7 +11,7 @@ defmodule Storyarn.Exports.Serializers.GraphTraversalTest do
     %{id: id, type: type, data: data}
   end
 
-  defp make_conn(source_id, target_id, source_pin \\ "output", target_pin \\ "input") do
+  defp make_conn(source_id, target_id, source_pin \\ "default", target_pin \\ "input") do
     %{
       id: "#{source_id}_#{target_id}_#{source_pin}",
       source_node_id: source_id,
@@ -67,6 +67,28 @@ defmodule Storyarn.Exports.Serializers.GraphTraversalTest do
       assert :exit in types
     end
 
+    test "sequence nodes are transparent when encountered" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "sequence", %{"name" => "Act I"}),
+            make_node(3, "dialogue", %{"text" => "Inside the sequence"}),
+            make_node(4, "exit")
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3),
+            make_conn(3, 4)
+          ]
+        )
+
+      {instructions, _} = GraphTraversal.linearize(flow)
+      types = instruction_types(instructions)
+      assert :dialogue in types
+      assert :exit in types
+    end
+
     test "dialogue with responses generates choices" do
       flow =
         make_flow(
@@ -97,6 +119,37 @@ defmodule Storyarn.Exports.Serializers.GraphTraversalTest do
       assert :choices_end in types
     end
 
+    test "linearize_blocks groups dialogue choice branch bodies" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "dialogue", %{
+              "text" => "What?",
+              "responses" => [
+                %{"id" => "r1", "text" => "Yes"},
+                %{"id" => "r2", "text" => "No"}
+              ]
+            }),
+            make_node(3, "dialogue", %{"text" => "Yes branch"}),
+            make_node(4, "dialogue", %{"text" => "No branch"})
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3, "response_r1"),
+            make_conn(2, 4, "response_r2")
+          ]
+        )
+
+      {instructions, _} = GraphTraversal.linearize_blocks(flow)
+
+      assert [
+               {:dialogue, _dialogue_node},
+               {:choices, _dialogue,
+                [{%{"text" => "Yes"}, 0, [{:dialogue, _yes}]}, {%{"text" => "No"}, 1, [{:dialogue, _no}]}]}
+             ] = instructions
+    end
+
     test "condition branches" do
       flow =
         make_flow(
@@ -124,6 +177,78 @@ defmodule Storyarn.Exports.Serializers.GraphTraversalTest do
       assert :condition_start in types
       assert :condition_branch in types
       assert :condition_end in types
+    end
+
+    test "linearize_blocks groups condition branch bodies" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "condition", %{
+              "condition" => %{"logic" => "all", "rules" => []},
+              "cases" => [
+                %{"id" => "true", "label" => "True", "value" => "true"},
+                %{"id" => "false", "label" => "False", "value" => "false"}
+              ]
+            }),
+            make_node(3, "dialogue", %{"text" => "True branch"}),
+            make_node(4, "dialogue", %{"text" => "False branch"})
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3, "true"),
+            make_conn(2, 4, "false")
+          ]
+        )
+
+      {instructions, _} = GraphTraversal.linearize_blocks(flow)
+
+      assert [
+               {:condition, _condition,
+                [
+                  {"true", "True", 0, [{:dialogue, _true}]},
+                  {"false", "False", 1, [{:dialogue, _false}]}
+                ]}
+             ] = instructions
+    end
+
+    test "linearize_blocks derives switch branches from condition blocks" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "condition", %{
+              "switch_mode" => true,
+              "condition" => %{
+                "logic" => "all",
+                "blocks" => [
+                  %{"id" => "case_mage", "type" => "block", "logic" => "all", "label" => "Mage", "rules" => []},
+                  %{"id" => "case_warrior", "type" => "block", "logic" => "all", "label" => "Warrior", "rules" => []}
+                ]
+              }
+            }),
+            make_node(3, "dialogue", %{"text" => "Mage branch"}),
+            make_node(4, "dialogue", %{"text" => "Warrior branch"}),
+            make_node(5, "dialogue", %{"text" => "Default branch"})
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3, "case_mage"),
+            make_conn(2, 4, "case_warrior"),
+            make_conn(2, 5, "default")
+          ]
+        )
+
+      {instructions, _} = GraphTraversal.linearize_blocks(flow)
+
+      assert [
+               {:condition, _condition,
+                [
+                  {"case_mage", "Mage", 0, [{:dialogue, _mage}]},
+                  {"case_warrior", "Warrior", 1, [{:dialogue, _warrior}]},
+                  {"default", "Default", 2, [{:dialogue, _default}]}
+                ]}
+             ] = instructions
     end
 
     test "hub + jump emits divert and hub section" do
@@ -219,22 +344,6 @@ defmodule Storyarn.Exports.Serializers.GraphTraversalTest do
       assert :subflow in types
     end
 
-    test "slug_line node is linearized" do
-      flow =
-        make_flow(
-          [
-            make_node(1, "entry"),
-            make_node(2, "slug_line", %{"location" => "Office"}),
-            make_node(3, "exit")
-          ],
-          [make_conn(1, 2), make_conn(2, 3)]
-        )
-
-      {instructions, _} = GraphTraversal.linearize(flow)
-      types = instruction_types(instructions)
-      assert :slug_line in types
-    end
-
     test "cycle detection on non-hub node emits nothing" do
       # When a non-hub node is revisited, the traversal just stops (no divert emitted).
       # Create a loop: entry → dialogue → dialogue (back to self via connection).
@@ -311,6 +420,26 @@ defmodule Storyarn.Exports.Serializers.GraphTraversalTest do
 
       {instructions, _} = GraphTraversal.linearize(flow)
       assert [{:jump, _node, "chapter_two"}] = instructions
+    end
+
+    test "jump with target_hub_id resolves user hub identifier" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "jump", %{"target_hub_id" => "safe-house"}),
+            make_node(3, "hub", %{"hub_id" => "safe-house", "label" => "safe_house"}),
+            make_node(4, "exit")
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(3, 4)
+          ]
+        )
+
+      {instructions, hub_sections} = GraphTraversal.linearize(flow)
+      assert [{:jump, _node, "safe_house"}] = instructions
+      assert [{"safe_house", [exit: _exit_node]}] = hub_sections
     end
 
     test "jump without hub_id or target_flow_shortcut follows connection" do

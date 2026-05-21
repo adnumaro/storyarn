@@ -8,6 +8,7 @@ defmodule Storyarn.Sheets.SheetAvatar do
   """
 
   use Ecto.Schema
+
   import Ecto.Changeset
 
   alias Storyarn.Assets.Asset

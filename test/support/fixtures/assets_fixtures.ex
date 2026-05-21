@@ -3,10 +3,10 @@ defmodule Storyarn.AssetsFixtures do
   Test helpers for creating entities via the `Storyarn.Assets` context.
   """
 
-  alias Storyarn.Assets
-
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
+
+  alias Storyarn.Assets
 
   def valid_asset_attributes(attrs \\ %{}) do
     Enum.into(attrs, %{

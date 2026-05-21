@@ -6,16 +6,17 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
   with compressed JSON stored in object storage.
   """
 
-  import Ecto.Query, warn: false
-
-  require Logger
-
   use Gettext, backend: Storyarn.Gettext
+
+  import Ecto.Query, warn: false
 
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
-  alias Storyarn.Versioning.{ProjectSnapshot, SnapshotStorage}
+  alias Storyarn.Versioning.ProjectSnapshot
+  alias Storyarn.Versioning.SnapshotStorage
+
+  require Logger
 
   # Version number uses optimistic concurrency: compute max+1, insert, retry on
   # unique constraint violation. Matches the pattern in VersionCrud.
@@ -123,14 +124,15 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
     limit = Keyword.get(opts, :limit, 50)
     offset = Keyword.get(opts, :offset, 0)
 
-    from(s in ProjectSnapshot,
-      where: s.project_id == ^project_id,
-      order_by: [desc: s.version_number],
-      limit: ^limit,
-      offset: ^offset,
-      preload: [:created_by]
+    Repo.all(
+      from(s in ProjectSnapshot,
+        where: s.project_id == ^project_id,
+        order_by: [desc: s.version_number],
+        limit: ^limit,
+        offset: ^offset,
+        preload: [:created_by]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -149,11 +151,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
   """
   @spec get_snapshot_by_id(integer(), integer()) :: ProjectSnapshot.t() | nil
   def get_snapshot_by_id(project_id, id) do
-    from(s in ProjectSnapshot,
-      where: s.project_id == ^project_id and s.id == ^id,
-      preload: [:created_by]
-    )
-    |> Repo.one()
+    Repo.one(from(s in ProjectSnapshot, where: s.project_id == ^project_id and s.id == ^id, preload: [:created_by]))
   end
 
   @doc """
@@ -161,11 +159,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
   """
   @spec count_snapshots(integer()) :: integer()
   def count_snapshots(project_id) do
-    from(s in ProjectSnapshot,
-      where: s.project_id == ^project_id,
-      select: count(s.id)
-    )
-    |> Repo.one()
+    Repo.one(from(s in ProjectSnapshot, where: s.project_id == ^project_id, select: count(s.id)))
   end
 
   # ========== Update ==========
@@ -196,9 +190,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
             :ok
 
           {:error, reason} ->
-            Logger.warning(
-              "Failed to delete project snapshot #{snapshot.storage_key}: #{inspect(reason)}"
-            )
+            Logger.warning("Failed to delete project snapshot #{snapshot.storage_key}: #{inspect(reason)}")
         end
 
         {:ok, deleted}
@@ -248,10 +240,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
 
   defp maybe_create_pre_restore_snapshot(project_id, snapshot, user_id) do
     case create_snapshot(project_id, user_id,
-           title:
-             dgettext("versioning", "Before restore to project snapshot v%{number}",
-               number: snapshot.version_number
-             )
+           title: dgettext("versioning", "Before restore to project snapshot v%{number}", number: snapshot.version_number)
          ) do
       {:ok, _} ->
         :ok
@@ -265,10 +254,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
 
   defp maybe_create_post_restore_snapshot(project_id, snapshot, user_id) do
     case create_snapshot(project_id, user_id,
-           title:
-             dgettext("versioning", "Restored from project snapshot v%{number}",
-               number: snapshot.version_number
-             )
+           title: dgettext("versioning", "Restored from project snapshot v%{number}", number: snapshot.version_number)
          ) do
       {:ok, _} ->
         :ok
@@ -287,19 +273,18 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
   @spec prune_auto_snapshots(integer()) :: :ok
   def prune_auto_snapshots(project_id) do
     oldest_auto =
-      from(s in ProjectSnapshot,
-        where: s.project_id == ^project_id and s.is_auto == true,
-        order_by: [asc: s.version_number],
-        limit: 1
+      Repo.one(
+        from(s in ProjectSnapshot,
+          where: s.project_id == ^project_id and s.is_auto == true,
+          order_by: [asc: s.version_number],
+          limit: 1
+        )
       )
-      |> Repo.one()
 
     if oldest_auto do
       case delete_snapshot(oldest_auto) do
         {:ok, _} ->
-          Logger.info(
-            "Pruned auto snapshot v#{oldest_auto.version_number} for project #{project_id}"
-          )
+          Logger.info("Pruned auto snapshot v#{oldest_auto.version_number} for project #{project_id}")
 
         {:error, reason} ->
           Logger.warning("Failed to prune auto snapshot: #{inspect(reason)}")
@@ -316,26 +301,20 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
   """
   @spec prune_expired_snapshots(integer(), integer()) :: integer()
   def prune_expired_snapshots(project_id, retention_days) do
-    cutoff =
-      TimeHelpers.now()
-      |> DateTime.add(-retention_days * 86_400, :second)
+    cutoff = DateTime.add(TimeHelpers.now(), -retention_days * 86_400, :second)
 
     expired =
-      from(s in ProjectSnapshot,
-        where:
-          s.project_id == ^project_id and
-            s.is_auto == true and
-            s.inserted_at < ^cutoff,
-        order_by: [asc: s.version_number]
+      Repo.all(
+        from(s in ProjectSnapshot,
+          where: s.project_id == ^project_id and s.is_auto == true and s.inserted_at < ^cutoff,
+          order_by: [asc: s.version_number]
+        )
       )
-      |> Repo.all()
 
     Enum.reduce(expired, 0, fn snapshot, count ->
       case delete_snapshot(snapshot) do
         {:ok, _} ->
-          Logger.info(
-            "Pruned expired snapshot v#{snapshot.version_number} for project #{project_id}"
-          )
+          Logger.info("Pruned expired snapshot v#{snapshot.version_number} for project #{project_id}")
 
           count + 1
 

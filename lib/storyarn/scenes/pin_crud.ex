@@ -7,7 +7,10 @@ defmodule Storyarn.Scenes.PinCrud do
   alias Storyarn.Localization
   alias Storyarn.Repo
   alias Storyarn.Scenes
-  alias Storyarn.Scenes.{PositionUtils, Scene, ScenePin}
+  alias Storyarn.Scenes.PositionUtils
+  alias Storyarn.Scenes.Scene
+  alias Storyarn.Scenes.ScenePin
+  alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets
   alias Storyarn.Shortcuts
 
@@ -42,27 +45,29 @@ defmodule Storyarn.Scenes.PinCrud do
   Gets a pin by ID, scoped to a specific map. Returns `nil` if not found.
   """
   def get_pin(scene_id, pin_id) do
-    from(p in ScenePin,
-      where: p.scene_id == ^scene_id and p.id == ^pin_id,
-      preload: [:icon_asset, sheet: [avatars: :asset]]
+    Repo.one(
+      from(p in ScenePin,
+        where: p.scene_id == ^scene_id and p.id == ^pin_id,
+        preload: [:icon_asset, sheet: [avatars: :asset]]
+      )
     )
-    |> Repo.one()
   end
 
   @doc """
   Gets a pin by ID, scoped to a specific map. Raises if not found.
   """
   def get_pin!(scene_id, pin_id) do
-    from(p in ScenePin,
-      where: p.scene_id == ^scene_id and p.id == ^pin_id,
-      preload: [:icon_asset, sheet: [avatars: :asset]]
+    Repo.one!(
+      from(p in ScenePin,
+        where: p.scene_id == ^scene_id and p.id == ^pin_id,
+        preload: [:icon_asset, sheet: [avatars: :asset]]
+      )
     )
-    |> Repo.one!()
   end
 
   def create_pin(scene_id, attrs) do
     position = PositionUtils.next_position(ScenePin, scene_id)
-    attrs = Storyarn.Shared.MapUtils.stringify_keys(attrs)
+    attrs = MapUtils.stringify_keys(attrs)
     attrs = maybe_generate_pin_shortcut(attrs, scene_id, nil)
 
     result =
@@ -75,7 +80,7 @@ defmodule Storyarn.Scenes.PinCrud do
         project_id = Scenes.get_scene_project_id(scene_id)
         Sheets.update_scene_pin_references(pin)
         Flows.update_scene_pin_references(pin, project_id: project_id)
-        Repo.get(Scene, scene_id) |> Localization.extract_scene()
+        Scene |> Repo.get(scene_id) |> Localization.extract_scene()
 
       _ ->
         :ok
@@ -103,7 +108,7 @@ defmodule Storyarn.Scenes.PinCrud do
         project_id = Scenes.get_scene_project_id(pin.scene_id)
         Sheets.update_scene_pin_references(updated_pin)
         Flows.update_scene_pin_references(updated_pin, project_id: project_id)
-        Repo.get(Scene, pin.scene_id) |> Localization.extract_scene()
+        Scene |> Repo.get(pin.scene_id) |> Localization.extract_scene()
 
       _ ->
         :ok
@@ -151,7 +156,7 @@ defmodule Storyarn.Scenes.PinCrud do
 
   # When is_playable is set to false, force is_leader to false too
   defp enforce_leader_constraints(_pin, attrs) do
-    attrs = Storyarn.Shared.MapUtils.stringify_keys(attrs)
+    attrs = MapUtils.stringify_keys(attrs)
     playable_value = attrs["is_playable"]
 
     if playable_value in [false, "false"] do
@@ -166,10 +171,9 @@ defmodule Storyarn.Scenes.PinCrud do
     leader_value = attrs["is_leader"] || attrs[:is_leader]
 
     if leader_value in [true, "true"] do
-      from(p in ScenePin,
-        where: p.scene_id == ^pin.scene_id and p.id != ^pin.id and p.is_leader == true
+      Repo.update_all(from(p in ScenePin, where: p.scene_id == ^pin.scene_id and p.id != ^pin.id and p.is_leader == true),
+        set: [is_leader: false]
       )
-      |> Repo.update_all(set: [is_leader: false])
     end
   end
 
@@ -195,18 +199,25 @@ defmodule Storyarn.Scenes.PinCrud do
         Map.put(attrs, "shortcut", nil)
 
       label_changing?(new_label, pin.label) ->
-        Map.put(attrs, "shortcut", Shortcuts.generate_pin_shortcut(new_label, pin.scene_id, pin.id))
+        Map.put(
+          attrs,
+          "shortcut",
+          Shortcuts.generate_pin_shortcut(new_label, pin.scene_id, pin.id)
+        )
 
       shortcut_missing_for_existing_label?(pin, attrs) ->
-        Map.put(attrs, "shortcut", Shortcuts.generate_pin_shortcut(pin.label, pin.scene_id, pin.id))
+        Map.put(
+          attrs,
+          "shortcut",
+          Shortcuts.generate_pin_shortcut(pin.label, pin.scene_id, pin.id)
+        )
 
       true ->
         attrs
     end
   end
 
-  defp label_being_cleared?(attrs, new_label),
-    do: Map.has_key?(attrs, "label") and (is_nil(new_label) or new_label == "")
+  defp label_being_cleared?(attrs, new_label), do: Map.has_key?(attrs, "label") and (is_nil(new_label) or new_label == "")
 
   defp label_changing?(new_label, current_label),
     do: is_binary(new_label) and new_label != "" and new_label != current_label

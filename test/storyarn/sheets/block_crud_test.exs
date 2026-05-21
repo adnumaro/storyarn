@@ -1,12 +1,13 @@
 defmodule Storyarn.Sheets.BlockCrudTest do
   use Storyarn.DataCase, async: true
 
+  import Storyarn.AccountsFixtures
+  import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
+
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
-
-  import Storyarn.AccountsFixtures
-  import Storyarn.SheetsFixtures
-  import Storyarn.ProjectsFixtures
+  alias Storyarn.Sheets.BlockCrud
 
   defp setup_context(_context) do
     user = user_fixture()
@@ -330,24 +331,24 @@ defmodule Storyarn.Sheets.BlockCrudTest do
       {:error, changeset} =
         Sheets.create_block(sheet, %{type: "invalid", config: %{"label" => "X"}})
 
-      assert errors_on(changeset)[:type] != nil
+      assert errors_on(changeset)[:type]
     end
 
     test "rejects missing type", %{sheet: sheet} do
       {:error, changeset} = Sheets.create_block(sheet, %{config: %{"label" => "X"}})
-      assert errors_on(changeset)[:type] != nil
+      assert errors_on(changeset)[:type]
     end
 
     test "rejects empty label", %{sheet: sheet} do
       {:error, changeset} =
         Sheets.create_block(sheet, %{type: "text", config: %{"label" => ""}})
 
-      assert errors_on(changeset)[:config] != nil
+      assert errors_on(changeset)[:config]
     end
 
     test "rejects missing label", %{sheet: sheet} do
       {:error, changeset} = Sheets.create_block(sheet, %{type: "text", config: %{}})
-      assert errors_on(changeset)[:config] != nil
+      assert errors_on(changeset)[:config]
     end
   end
 
@@ -414,7 +415,7 @@ defmodule Storyarn.Sheets.BlockCrudTest do
     test "rejects invalid block type on update", %{sheet: sheet} do
       block = block_fixture(sheet)
       {:error, changeset} = Sheets.update_block(block, %{type: "invalid_type"})
-      assert errors_on(changeset)[:type] != nil
+      assert errors_on(changeset)[:type]
     end
 
     test "updates scope", %{sheet: sheet} do
@@ -426,7 +427,7 @@ defmodule Storyarn.Sheets.BlockCrudTest do
     test "rejects invalid scope", %{sheet: sheet} do
       block = block_fixture(sheet)
       {:error, changeset} = Sheets.update_block(block, %{scope: "invalid"})
-      assert errors_on(changeset)[:scope] != nil
+      assert errors_on(changeset)[:scope]
     end
   end
 
@@ -522,7 +523,7 @@ defmodule Storyarn.Sheets.BlockCrudTest do
     test "rejects empty label", %{sheet: sheet} do
       block = block_fixture(sheet)
       {:error, changeset} = Sheets.update_block_config(block, %{"label" => ""})
-      assert errors_on(changeset)[:config] != nil
+      assert errors_on(changeset)[:config]
     end
   end
 
@@ -537,7 +538,7 @@ defmodule Storyarn.Sheets.BlockCrudTest do
       block = block_fixture(sheet)
       {:ok, deleted} = Sheets.delete_block(block)
 
-      assert deleted.deleted_at != nil
+      assert deleted.deleted_at
       assert Sheets.get_block(block.id) == nil
     end
 
@@ -553,8 +554,8 @@ defmodule Storyarn.Sheets.BlockCrudTest do
       {:ok, _} = Sheets.delete_block(block)
 
       found = Repo.get(Block, block.id)
-      assert found != nil
-      assert found.deleted_at != nil
+      assert found
+      assert found.deleted_at
     end
   end
 
@@ -586,7 +587,7 @@ defmodule Storyarn.Sheets.BlockCrudTest do
       {:ok, restored} = Sheets.restore_block(deleted)
 
       assert restored.deleted_at == nil
-      assert Sheets.get_block(block.id) != nil
+      assert Sheets.get_block(block.id)
     end
 
     test "restored block appears in list_blocks", %{sheet: sheet} do
@@ -745,14 +746,14 @@ defmodule Storyarn.Sheets.BlockCrudTest do
     test "returns 0 for empty sheet", %{project: project} do
       empty_sheet = sheet_fixture(project, %{name: "Empty"})
 
-      assert Storyarn.Sheets.BlockCrud.next_block_position(empty_sheet.id) == 0
+      assert BlockCrud.next_block_position(empty_sheet.id) == 0
     end
 
     test "returns max + 1", %{sheet: sheet} do
       _b1 = block_fixture(sheet, %{config: %{"label" => "A"}, position: 0})
       _b2 = block_fixture(sheet, %{config: %{"label" => "B"}, position: 5})
 
-      assert Storyarn.Sheets.BlockCrud.next_block_position(sheet.id) == 6
+      assert BlockCrud.next_block_position(sheet.id) == 6
     end
   end
 
@@ -767,7 +768,7 @@ defmodule Storyarn.Sheets.BlockCrudTest do
       {:ok, _} = Sheets.create_block(sheet, %{type: "text", config: %{"label" => "Health"}})
       {:ok, _} = Sheets.create_block(sheet, %{type: "number", config: %{"label" => "Strength"}})
 
-      names = Storyarn.Sheets.BlockCrud.list_variable_names(sheet.id)
+      names = BlockCrud.list_variable_names(sheet.id)
       assert "health" in names
       assert "strength" in names
     end
@@ -781,7 +782,7 @@ defmodule Storyarn.Sheets.BlockCrudTest do
           config: %{"label" => "Link", "allowed_types" => ["sheet"]}
         })
 
-      names = Storyarn.Sheets.BlockCrud.list_variable_names(sheet.id)
+      names = BlockCrud.list_variable_names(sheet.id)
       assert length(names) == 1
       assert "health" in names
     end
@@ -790,7 +791,7 @@ defmodule Storyarn.Sheets.BlockCrudTest do
       {:ok, b1} = Sheets.create_block(sheet, %{type: "text", config: %{"label" => "Health"}})
       {:ok, _b2} = Sheets.create_block(sheet, %{type: "text", config: %{"label" => "Mana"}})
 
-      names = Storyarn.Sheets.BlockCrud.list_variable_names(sheet.id, b1.id)
+      names = BlockCrud.list_variable_names(sheet.id, b1.id)
       assert length(names) == 1
       assert "mana" in names
     end
@@ -799,7 +800,7 @@ defmodule Storyarn.Sheets.BlockCrudTest do
       {:ok, block} = Sheets.create_block(sheet, %{type: "text", config: %{"label" => "Health"}})
       {:ok, _} = Sheets.delete_block(block)
 
-      names = Storyarn.Sheets.BlockCrud.list_variable_names(sheet.id)
+      names = BlockCrud.list_variable_names(sheet.id)
       assert names == []
     end
   end
@@ -810,30 +811,30 @@ defmodule Storyarn.Sheets.BlockCrudTest do
 
   describe "find_unique_variable_name/2" do
     test "returns base name when no collision" do
-      result = Storyarn.Sheets.BlockCrud.find_unique_variable_name("health", [])
+      result = BlockCrud.find_unique_variable_name("health", [])
       assert result == "health"
     end
 
     test "returns name_2 on first collision (list)" do
-      result = Storyarn.Sheets.BlockCrud.find_unique_variable_name("health", ["health"])
+      result = BlockCrud.find_unique_variable_name("health", ["health"])
       assert result == "health_2"
     end
 
     test "returns name_3 when name_2 also taken (list)" do
       existing = ["health", "health_2"]
-      result = Storyarn.Sheets.BlockCrud.find_unique_variable_name("health", existing)
+      result = BlockCrud.find_unique_variable_name("health", existing)
       assert result == "health_3"
     end
 
     test "works with MapSet" do
       existing = MapSet.new(["health", "health_2"])
-      result = Storyarn.Sheets.BlockCrud.find_unique_variable_name("health", existing)
+      result = BlockCrud.find_unique_variable_name("health", existing)
       assert result == "health_3"
     end
 
     test "returns base name when no collision (MapSet)" do
       existing = MapSet.new(["mana", "strength"])
-      result = Storyarn.Sheets.BlockCrud.find_unique_variable_name("health", existing)
+      result = BlockCrud.find_unique_variable_name("health", existing)
       assert result == "health"
     end
   end
@@ -998,12 +999,10 @@ defmodule Storyarn.Sheets.BlockCrudTest do
     setup :setup_context
 
     test "leaves changeset unchanged when no collision", %{sheet: sheet} do
-      changeset =
-        %Block{sheet_id: sheet.id}
-        |> Block.create_changeset(%{type: "text", config: %{"label" => "Unique"}})
+      changeset = Block.create_changeset(%Block{sheet_id: sheet.id}, %{type: "text", config: %{"label" => "Unique"}})
 
       result =
-        Storyarn.Sheets.BlockCrud.ensure_unique_variable_name_public(changeset, sheet.id, nil)
+        BlockCrud.ensure_unique_variable_name_public(changeset, sheet.id, nil)
 
       assert Ecto.Changeset.get_field(result, :variable_name) == "unique"
     end
@@ -1011,12 +1010,10 @@ defmodule Storyarn.Sheets.BlockCrudTest do
     test "appends suffix when collision exists", %{sheet: sheet} do
       {:ok, _} = Sheets.create_block(sheet, %{type: "text", config: %{"label" => "Health"}})
 
-      changeset =
-        %Block{sheet_id: sheet.id}
-        |> Block.create_changeset(%{type: "text", config: %{"label" => "Health"}})
+      changeset = Block.create_changeset(%Block{sheet_id: sheet.id}, %{type: "text", config: %{"label" => "Health"}})
 
       result =
-        Storyarn.Sheets.BlockCrud.ensure_unique_variable_name_public(changeset, sheet.id, nil)
+        BlockCrud.ensure_unique_variable_name_public(changeset, sheet.id, nil)
 
       assert Ecto.Changeset.get_field(result, :variable_name) == "health_2"
     end
@@ -1024,12 +1021,10 @@ defmodule Storyarn.Sheets.BlockCrudTest do
     test "skips self when exclude_block_id is provided", %{sheet: sheet} do
       {:ok, block} = Sheets.create_block(sheet, %{type: "text", config: %{"label" => "Health"}})
 
-      changeset =
-        block
-        |> Block.update_changeset(%{config: %{"label" => "Health"}})
+      changeset = Block.update_changeset(block, %{config: %{"label" => "Health"}})
 
       result =
-        Storyarn.Sheets.BlockCrud.ensure_unique_variable_name_public(
+        BlockCrud.ensure_unique_variable_name_public(
           changeset,
           sheet.id,
           block.id
@@ -1040,14 +1035,13 @@ defmodule Storyarn.Sheets.BlockCrudTest do
 
     test "handles nil variable_name (reference)", %{sheet: sheet} do
       changeset =
-        %Block{sheet_id: sheet.id}
-        |> Block.create_changeset(%{
+        Block.create_changeset(%Block{sheet_id: sheet.id}, %{
           type: "reference",
           config: %{"label" => "Link", "allowed_types" => ["sheet"]}
         })
 
       result =
-        Storyarn.Sheets.BlockCrud.ensure_unique_variable_name_public(changeset, sheet.id, nil)
+        BlockCrud.ensure_unique_variable_name_public(changeset, sheet.id, nil)
 
       assert Ecto.Changeset.get_field(result, :variable_name) == nil
     end
@@ -1147,7 +1141,7 @@ defmodule Storyarn.Sheets.BlockCrudTest do
 
       {:ok, copy} = Sheets.duplicate_block(block)
 
-      assert copy.variable_name != nil
+      assert copy.variable_name
       assert copy.variable_name != block.variable_name
     end
 

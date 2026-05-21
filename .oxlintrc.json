@@ -1,0 +1,39 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "vue"],
+  "jsPlugins": ["oxlint-tailwindcss"],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "complexity": [
+      "error",
+      {
+        "max": 10
+      }
+    ],
+    "no-nested-ternary": "error",
+    "vue/define-props-destructuring": "error",
+    "vue/max-props": [
+      "error",
+      {
+        "maxProps": 10
+      }
+    ],
+    "tailwindcss/no-duplicate-classes": "error",
+    "tailwindcss/no-conflicting-classes": "error",
+    "tailwindcss/no-deprecated-classes": "error",
+    "tailwindcss/no-unnecessary-whitespace": "error",
+    "tailwindcss/enforce-sort-order": "error",
+    "tailwindcss/enforce-shorthand": "error",
+    "tailwindcss/no-hardcoded-colors": "error"
+  },
+  "ignorePatterns": [
+    "assets/app/components/ui/**",
+    "assets/app/components/ColorPickerPopover.vue",
+    "priv/**"
+  ],
+  "env": {
+    "builtin": true
+  }
+}

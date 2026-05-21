@@ -1,13 +1,13 @@
 defmodule Storyarn.Sheets.FormulaResolverTest do
   use Storyarn.DataCase
 
-  alias Storyarn.Sheets
-  alias Storyarn.Sheets.FormulaResolver
-
   import Storyarn.AccountsFixtures
-  import Storyarn.WorkspacesFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
+  import Storyarn.WorkspacesFixtures
+
+  alias Storyarn.Sheets
+  alias Storyarn.Sheets.FormulaResolver
 
   setup do
     user = user_fixture()
@@ -60,11 +60,11 @@ defmodule Storyarn.Sheets.FormulaResolverTest do
       result = FormulaResolver.compute_all(ctx.columns, ctx.rows, ctx.project.id)
 
       # a - 3 where a = 5 → 2.0
-      assert Map.get(result, ctx.row1.id) |> Map.get(ctx.formula_col.slug) |> Map.get(:result) ==
+      assert result |> Map.get(ctx.row1.id) |> Map.get(ctx.formula_col.slug) |> Map.get(:result) ==
                2.0
 
       # a - 3 where a = 7 → 4.0
-      assert Map.get(result, ctx.row2.id) |> Map.get(ctx.formula_col.slug) |> Map.get(:result) ==
+      assert result |> Map.get(ctx.row2.id) |> Map.get(ctx.formula_col.slug) |> Map.get(:result) ==
                4.0
     end
 
@@ -89,7 +89,7 @@ defmodule Storyarn.Sheets.FormulaResolverTest do
 
       result = FormulaResolver.compute_all(ctx.columns, rows, ctx.project.id)
       # a - 3 where a = 0 (nil default) → -3.0
-      assert Map.get(result, row3.id) |> Map.get(ctx.formula_col.slug) |> Map.get(:result) ==
+      assert result |> Map.get(row3.id) |> Map.get(ctx.formula_col.slug) |> Map.get(:result) ==
                -3.0
     end
 
@@ -104,7 +104,7 @@ defmodule Storyarn.Sheets.FormulaResolverTest do
       rows = Sheets.list_table_rows(ctx.block.id)
       result = FormulaResolver.compute_all(ctx.columns, rows, ctx.project.id)
 
-      assert Map.get(result, ctx.row1.id) |> Map.get(ctx.formula_col.slug) |> Map.get(:result) ==
+      assert result |> Map.get(ctx.row1.id) |> Map.get(ctx.formula_col.slug) |> Map.get(:result) ==
                nil
     end
 
@@ -119,7 +119,7 @@ defmodule Storyarn.Sheets.FormulaResolverTest do
       rows = Sheets.list_table_rows(ctx.block.id)
       result = FormulaResolver.compute_all(ctx.columns, rows, ctx.project.id)
 
-      assert Map.get(result, ctx.row1.id) |> Map.get(ctx.formula_col.slug) |> Map.get(:result) ==
+      assert result |> Map.get(ctx.row1.id) |> Map.get(ctx.formula_col.slug) |> Map.get(:result) ==
                nil
     end
 
@@ -133,7 +133,7 @@ defmodule Storyarn.Sheets.FormulaResolverTest do
       rows = Sheets.list_table_rows(ctx.block.id)
       result = FormulaResolver.compute_all(ctx.columns, rows, ctx.project.id)
 
-      assert Map.get(result, ctx.row1.id) |> Map.get(ctx.formula_col.slug) |> Map.get(:result) ==
+      assert result |> Map.get(ctx.row1.id) |> Map.get(ctx.formula_col.slug) |> Map.get(:result) ==
                nil
     end
   end

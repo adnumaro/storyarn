@@ -117,8 +117,7 @@ defmodule Storyarn.Sheets.Constraints.Number do
       "3.14"
   """
   @spec format_number(number()) :: String.t()
-  def format_number(num) when is_float(num) and trunc(num) == num,
-    do: Integer.to_string(trunc(num))
+  def format_number(num) when is_float(num) and trunc(num) == num, do: Integer.to_string(trunc(num))
 
   def format_number(num), do: to_string(num)
 

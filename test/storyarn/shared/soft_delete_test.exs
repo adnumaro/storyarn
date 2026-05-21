@@ -1,12 +1,13 @@
 defmodule Storyarn.Shared.SoftDeleteTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Shared.SoftDelete
-  alias Storyarn.Sheets.Sheet
-
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Shared.SoftDelete
+  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Sheets.Sheet
 
   # ===========================================================================
   # soft_delete_children/3-4
@@ -26,8 +27,8 @@ defmodule Storyarn.Shared.SoftDeleteTest do
       updated1 = Storyarn.Repo.get!(Sheet, child1.id)
       updated2 = Storyarn.Repo.get!(Sheet, child2.id)
 
-      assert updated1.deleted_at != nil
-      assert updated2.deleted_at != nil
+      assert updated1.deleted_at
+      assert updated2.deleted_at
     end
 
     test "recursively soft-deletes grandchildren" do
@@ -43,8 +44,8 @@ defmodule Storyarn.Shared.SoftDeleteTest do
       updated_child = Storyarn.Repo.get!(Sheet, child.id)
       updated_grandchild = Storyarn.Repo.get!(Sheet, grandchild.id)
 
-      assert updated_child.deleted_at != nil
-      assert updated_grandchild.deleted_at != nil
+      assert updated_child.deleted_at
+      assert updated_grandchild.deleted_at
     end
 
     test "does not affect the parent itself" do
@@ -68,7 +69,7 @@ defmodule Storyarn.Shared.SoftDeleteTest do
       child = child_sheet_fixture(project, parent, %{name: "Child"})
 
       # Already soft-deleted
-      now = Storyarn.Shared.TimeHelpers.now()
+      now = TimeHelpers.now()
 
       Storyarn.Repo.update_all(
         from(s in Sheet, where: s.id == ^child.id),
@@ -80,7 +81,7 @@ defmodule Storyarn.Shared.SoftDeleteTest do
 
       updated = Storyarn.Repo.get!(Sheet, child.id)
       # Should keep the original deleted_at timestamp
-      assert updated.deleted_at != nil
+      assert updated.deleted_at
     end
 
     test "handles parent with no children" do
@@ -172,7 +173,7 @@ defmodule Storyarn.Shared.SoftDeleteTest do
       _active = sheet_fixture(project, %{name: "Active"})
       deleted = sheet_fixture(project, %{name: "Deleted"})
 
-      now = Storyarn.Shared.TimeHelpers.now()
+      now = TimeHelpers.now()
 
       Storyarn.Repo.update_all(
         from(s in Sheet, where: s.id == ^deleted.id),
@@ -203,8 +204,8 @@ defmodule Storyarn.Shared.SoftDeleteTest do
       sheet1 = sheet_fixture(project, %{name: "First Deleted"})
       sheet2 = sheet_fixture(project, %{name: "Second Deleted"})
 
-      early = DateTime.add(DateTime.utc_now(), -3600, :second) |> DateTime.truncate(:second)
-      late = Storyarn.Shared.TimeHelpers.now()
+      early = DateTime.utc_now() |> DateTime.add(-3600, :second) |> DateTime.truncate(:second)
+      late = TimeHelpers.now()
 
       Storyarn.Repo.update_all(
         from(s in Sheet, where: s.id == ^sheet1.id),
@@ -232,7 +233,7 @@ defmodule Storyarn.Shared.SoftDeleteTest do
       sheet1 = sheet_fixture(project1, %{name: "P1 Deleted"})
       sheet2 = sheet_fixture(project2, %{name: "P2 Deleted"})
 
-      now = Storyarn.Shared.TimeHelpers.now()
+      now = TimeHelpers.now()
 
       Storyarn.Repo.update_all(
         from(s in Sheet, where: s.id in ^[sheet1.id, sheet2.id]),

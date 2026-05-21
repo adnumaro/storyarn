@@ -2,280 +2,75 @@ defmodule StoryarnWeb.FlowLive.Index do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  alias StoryarnWeb.Helpers.Authorize
-
-  import StoryarnWeb.Components.UIComponents, only: [empty_state: 1]
-  import StoryarnWeb.Live.Shared.TreePanelHandlers
-  import StoryarnWeb.Components.DashboardComponents
-
   use StoryarnWeb.Live.Shared.DashboardHandlers
+
+  import StoryarnWeb.Live.Shared.DashboardHelpers,
+    only: [
+      sort_table: 4,
+      paginate: 2,
+      handle_sort: 5,
+      handle_page: 4,
+      reload_dashboard: 6
+    ]
 
   alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Flows
-  alias Storyarn.Projects
-  alias Storyarn.Shared.MapUtils
-  alias Storyarn.Sheets
-  alias StoryarnWeb.Components.Sidebar.FlowTree
+  alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.focus
+    <StoryarnWeb.Components.ProjectLayout.project
+      socket={@socket}
       flash={@flash}
-      current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
+      current_scope={@current_scope}
+      current_user={@current_user}
+      urls={@urls}
       active_tool={:flows}
-      on_dashboard={true}
-      has_tree={true}
-      tree_panel_open={@tree_panel_open}
-      tree_panel_pinned={@tree_panel_pinned}
-      show_pin={false}
-      can_edit={@can_edit}
+      is_super_admin={@is_super_admin}
+      online_users={@online_users}
+      sidebar_module={StoryarnWeb.FlowSidebarLive}
+      sidebar_session={
+        %{
+          "project_id" => @project.id,
+          "workspace_slug" => @workspace.slug,
+          "project_slug" => @project.slug,
+          "flow_id" => nil,
+          "can_edit" => @can_edit,
+          "active_tool" => "flows",
+          "dashboard_url" => ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows",
+          "current_scope" => @current_scope,
+          "locale" => @locale
+        }
+      }
     >
-      <:tree_content>
-        <FlowTree.flows_section
-          flows_tree={@flows_tree}
-          workspace={@workspace}
-          project={@project}
-          can_edit={@can_edit}
-        />
-      </:tree_content>
-      <FlowTree.delete_modal :if={@can_edit} />
-      <div class="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-        <.header>
-          {dgettext("flows", "Flows")}
-          <:subtitle>
-            {dgettext("flows", "Create visual narrative flows and dialogue trees")}
-          </:subtitle>
-        </.header>
-
-        <.empty_state :if={@flows == []} icon="git-branch">
-          {dgettext("flows", "No flows yet. Create your first flow to get started.")}
-        </.empty_state>
-
-        <div :if={@flows != [] and is_nil(@dashboard_stats)} class="flex justify-center py-12">
-          <span class="loading loading-spinner loading-md text-base-content/40"></span>
-        </div>
-
-        <div :if={@dashboard_stats} class="space-y-6">
-          <%!-- Stats row --%>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <.stat_card
-              icon="git-branch"
-              label={dgettext("flows", "Flows")}
-              value={@dashboard_stats.flow_count}
-            />
-            <.stat_card
-              icon="box"
-              label={dgettext("flows", "Nodes")}
-              value={@dashboard_stats.node_count}
-            />
-            <.stat_card
-              icon="message-square"
-              label={dgettext("flows", "Dialogue")}
-              value={@dashboard_stats.dialogue_count}
-            />
-            <.stat_card
-              icon="text-cursor-input"
-              label={dgettext("flows", "Words")}
-              value={@dashboard_stats.word_count}
-              tooltip={
-                dgettext(
-                  "flows",
-                  "Counts dialogue text, menu text, stage directions, response text, and slug line descriptions"
-                )
-              }
-            />
-          </div>
-
-          <%!-- Flow table --%>
-          <.dashboard_section title={dgettext("flows", "All Flows")}>
-            <.dashboard_table_wrapper>
-              <.flow_table
-                rows={@flow_table_data}
-                sort_by={@sort_by}
-                sort_dir={@sort_dir}
-                workspace={@workspace}
-                project={@project}
-                can_edit={@can_edit}
-              />
-            </.dashboard_table_wrapper>
-            <.pagination
-              page={@page}
-              total_pages={@total_pages}
-              total={length(@all_flow_table_data)}
-              event="page_flows"
-            />
-          </.dashboard_section>
-
-          <%!-- Issues --%>
-          <.dashboard_section :if={@flow_issues != []} title={dgettext("flows", "Issues")}>
-            <.issue_list issues={@flow_issues} />
-          </.dashboard_section>
-        </div>
-
-        <.confirm_modal
-          :if={@can_edit}
-          id="delete-flow-confirm"
-          title={dgettext("flows", "Delete flow?")}
-          message={dgettext("flows", "Are you sure you want to delete this flow?")}
-          confirm_text={dgettext("flows", "Delete")}
-          confirm_variant="error"
-          icon="alert-triangle"
-          on_confirm={JS.push("confirm_delete")}
-        />
-      </div>
-    </Layouts.focus>
-    """
-  end
-
-  # ===========================================================================
-  # Flow Table
-  # ===========================================================================
-
-  attr :rows, :list, required: true
-  attr :sort_by, :string, required: true
-  attr :sort_dir, :atom, required: true
-  attr :workspace, :map, required: true
-  attr :project, :map, required: true
-  attr :can_edit, :boolean, default: false
-
-  defp flow_table(assigns) do
-    ~H"""
-    <table class="table table-sm w-full">
-      <thead class="dashboard-table-head sticky top-0 z-10">
-        <tr class="text-xs text-base-content/50 uppercase">
-          <th class="font-medium">
-            <button
-              type="button"
-              phx-click="sort_flows"
-              phx-value-column="name"
-              class="flex items-center gap-1 hover:text-base-content"
-            >
-              {dgettext("flows", "Name")}
-              <.sort_indicator column="name" sort_by={@sort_by} sort_dir={@sort_dir} />
-            </button>
-          </th>
-          <th class="font-medium text-right">
-            <button
-              type="button"
-              phx-click="sort_flows"
-              phx-value-column="node_count"
-              class="flex items-center gap-1 ml-auto hover:text-base-content"
-            >
-              {dgettext("flows", "Nodes")}
-              <.sort_indicator column="node_count" sort_by={@sort_by} sort_dir={@sort_dir} />
-            </button>
-          </th>
-          <th class="font-medium text-right hidden sm:table-cell">
-            <button
-              type="button"
-              phx-click="sort_flows"
-              phx-value-column="dialogue_count"
-              class="flex items-center gap-1 ml-auto hover:text-base-content"
-            >
-              {dgettext("flows", "Dialogue")}
-              <.sort_indicator column="dialogue_count" sort_by={@sort_by} sort_dir={@sort_dir} />
-            </button>
-          </th>
-          <th class="font-medium text-right hidden sm:table-cell">
-            <button
-              type="button"
-              phx-click="sort_flows"
-              phx-value-column="condition_count"
-              class="flex items-center gap-1 ml-auto hover:text-base-content"
-            >
-              {dgettext("flows", "Conditions")}
-              <.sort_indicator column="condition_count" sort_by={@sort_by} sort_dir={@sort_dir} />
-            </button>
-          </th>
-          <th class="font-medium text-right hidden md:table-cell">
-            <button
-              type="button"
-              phx-click="sort_flows"
-              phx-value-column="word_count"
-              class="flex items-center gap-1 ml-auto hover:text-base-content"
-            >
-              {dgettext("flows", "Words")}
-              <.sort_indicator column="word_count" sort_by={@sort_by} sort_dir={@sort_dir} />
-            </button>
-          </th>
-          <th class="font-medium text-right hidden md:table-cell">
-            <button
-              type="button"
-              phx-click="sort_flows"
-              phx-value-column="updated_at"
-              class="flex items-center gap-1 ml-auto hover:text-base-content"
-            >
-              {dgettext("flows", "Modified")}
-              <.sort_indicator column="updated_at" sort_by={@sort_by} sort_dir={@sort_dir} />
-            </button>
-          </th>
-          <th :if={@can_edit} class="w-10"></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr :for={row <- @rows} class="hover:bg-base-200/50">
-          <td>
-            <.link
-              navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{row.id}"}
-              class="flex items-center gap-2 font-medium hover:underline"
-            >
-              {row.name}
-              <span
-                :if={row.is_main}
-                class="badge badge-primary badge-xs"
-                title={dgettext("flows", "Main flow")}
-              >
-                {dgettext("flows", "Main")}
-              </span>
-            </.link>
-          </td>
-          <td class="text-right tabular-nums">{row.node_count}</td>
-          <td class="text-right tabular-nums hidden sm:table-cell">{row.dialogue_count}</td>
-          <td class="text-right tabular-nums hidden sm:table-cell">{row.condition_count}</td>
-          <td class="text-right tabular-nums hidden md:table-cell">{row.word_count}</td>
-          <td class="text-right text-base-content/50 text-xs hidden md:table-cell">
-            {format_relative_time(row.updated_at)}
-          </td>
-          <td :if={@can_edit} class="text-right">
-            <div phx-hook="TableRowMenu" id={"flow-menu-#{row.id}"}>
-              <button type="button" data-role="trigger" class="btn btn-ghost btn-xs btn-square">
-                <.icon name="more-horizontal" class="size-4" />
-              </button>
-              <template data-role="popover-template">
-                <ul class="menu menu-sm">
-                  <li :if={!row.is_main}>
-                    <button
-                      type="button"
-                      data-event="set_main"
-                      data-params={Jason.encode!(%{id: row.id})}
-                    >
-                      <.icon name="star" class="size-4" />
-                      {dgettext("flows", "Set as main")}
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      class="text-error"
-                      data-event="set_pending_delete"
-                      data-params={Jason.encode!(%{id: row.id})}
-                      data-modal-id="delete-flow-confirm"
-                    >
-                      <.icon name="trash-2" class="size-4" />
-                      {dgettext("flows", "Delete")}
-                    </button>
-                  </li>
-                </ul>
-              </template>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+      <.vue
+        v-component="live/flow/dashboard/FlowDashboard"
+        v-socket={@socket}
+        v-inject="project-layout"
+        id="flow-dashboard"
+        class="contents"
+        stats={@dashboard_stats}
+        table-data={@flow_table_data}
+        pagination={
+          %{
+            sortBy: @sort_by,
+            sortDir: to_string(@sort_dir),
+            page: @page,
+            totalPages: @total_pages,
+            total: length(@all_flow_table_data)
+          }
+        }
+        issues={@flow_issues}
+        can-edit={@can_edit}
+        workspace-slug={@workspace.slug}
+        project-slug={@project.slug}
+      />
+    </StoryarnWeb.Components.ProjectLayout.project>
     """
   end
 
@@ -284,68 +79,75 @@ defmodule StoryarnWeb.FlowLive.Index do
   # ===========================================================================
 
   @impl true
-  def mount(
-        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug},
-        _session,
-        socket
-      ) do
-    case Projects.get_project_by_slugs(
-           socket.assigns.current_scope,
-           workspace_slug,
-           project_slug
-         ) do
-      {:ok, project, membership} ->
-        flows = Flows.list_flows(project.id)
-        flows_tree = Flows.list_flows_tree(project.id)
-        can_edit = Projects.can?(membership.role, :edit_content)
+  def mount(_params, _session, socket) do
+    %{project: project, current_scope: current_scope} = socket.assigns
+    flows = Flows.list_flows(project.id)
 
-        # Leaving the flow editor — clear navigation history for this user/project
-        user_id = socket.assigns.current_scope.user.id
-        Flows.nav_history_clear({user_id, project.id})
+    # Leaving the flow editor — clear navigation history for this user/project
+    Flows.nav_history_clear({current_scope.user.id, project.id})
 
-        socket =
-          socket
-          |> assign(focus_layout_defaults())
-          |> assign(:tree_panel_open, true)
-          |> assign(:project, project)
-          |> assign(:workspace, project.workspace)
-          |> assign(:membership, membership)
-          |> assign(:can_edit, can_edit)
-          |> assign(:flows, flows)
-          |> assign(:flows_tree, flows_tree)
-          |> assign(:dashboard_stats, nil)
-          |> assign(:all_flow_table_data, [])
-          |> assign(:flow_table_data, [])
-          |> assign(:flow_issues, [])
-          |> assign(:sort_by, "name")
-          |> assign(:sort_dir, :asc)
-          |> assign(:page, 1)
-          |> assign(:total_pages, 1)
-          |> assign(:pending_delete_id, nil)
+    if connected?(socket) do
+      Collaboration.subscribe_dashboard(project.id)
 
-        if connected?(socket), do: Collaboration.subscribe_dashboard(project.id)
-        if connected?(socket) and flows != [], do: send(self(), :load_dashboard_data)
+      Phoenix.PubSub.subscribe(
+        Storyarn.PubSub,
+        StoryarnWeb.FlowSidebarLive.shell_topic(project.id)
+      )
 
-        {:ok, socket}
+      # Index is the flows "dashboard" — clear any flow highlight the sticky
+      # sidebar may have carried over from a previous Show visit so the
+      # dashboard link looks active instead.
+      Phoenix.PubSub.broadcast(
+        Storyarn.PubSub,
+        StoryarnWeb.FlowSidebarLive.shell_topic(project.id),
+        {:active_flow, nil}
+      )
 
-      {:error, _reason} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("flows", "You don't have access to this project."))
-         |> redirect(to: ~p"/workspaces")}
+      if flows != [], do: send(self(), :load_dashboard_data)
     end
+
+    {:ok,
+     socket
+     |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
+     |> assign(:flows, flows)
+     |> assign(:dashboard_stats, nil)
+     |> assign(:all_flow_table_data, [])
+     |> assign(:flow_table_data, [])
+     |> assign(:flow_issues, [])
+     |> assign(:sort_by, "name")
+     |> assign(:sort_dir, :asc)
+     |> assign(:page, 1)
+     |> assign(:total_pages, 1)
+     |> assign(:pending_delete_id, nil)}
   end
 
   @impl true
-  def handle_params(_params, _url, socket) do
-    {:noreply, socket}
+  def handle_params(_params, _url, socket), do: {:noreply, socket}
+
+  # ===========================================================================
+  # Shell topic messages
+  # ===========================================================================
+
+  def handle_info({:open_flow, flow_id}, socket) do
+    path =
+      ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow_id}"
+
+    {:noreply, push_navigate(socket, to: path)}
   end
 
+  def handle_info({:active_flow, _flow_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_sheet, _sheet_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_scene, _scene_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_locale, _locale}, socket), do: {:noreply, socket}
+  def handle_info({:tree_changed, :flows}, socket), do: {:noreply, reload_flows(socket)}
+  def handle_info({:entity_deleted, _id}, socket), do: {:noreply, socket}
+  def handle_info({:toolbar_event, _event, _params}, socket), do: {:noreply, socket}
+  def handle_info({:online_users, users}, socket), do: {:noreply, assign(socket, :online_users, users)}
+
   # ===========================================================================
-  # Dashboard loading
+  # Dashboard loading (async)
   # ===========================================================================
 
-  @impl true
   def handle_info(:load_dashboard_data, socket) do
     %{project: project, workspace: workspace, sort_by: sort_by, sort_dir: sort_dir} =
       socket.assigns
@@ -356,12 +158,7 @@ defmodule StoryarnWeb.FlowLive.Index do
      end)}
   end
 
-  @impl true
-  def handle_info({StoryarnWeb.FlowLive.Form, {:saved, _flow}}, socket) do
-    {:noreply, socket}
-  end
-
-  @impl true
+  def handle_info({StoryarnWeb.FlowLive.Form, {:saved, _flow}}, socket), do: {:noreply, socket}
   def handle_info({:EXIT, _pid, :normal}, socket), do: {:noreply, socket}
 
   @impl true
@@ -376,9 +173,7 @@ defmodule StoryarnWeb.FlowLive.Index do
      |> assign(:flow_issues, data.formatted_issues)}
   end
 
-  def handle_async(:load_dashboard_data, {:exit, _reason}, socket) do
-    {:noreply, socket}
-  end
+  def handle_async(:load_dashboard_data, {:exit, _reason}, socket), do: {:noreply, socket}
 
   defp load_dashboard_data_async(project_id, workspace, project, sort_by, sort_dir) do
     flows = Flows.list_flows(project_id)
@@ -437,26 +232,21 @@ defmodule StoryarnWeb.FlowLive.Index do
   # ===========================================================================
 
   @impl true
-  # Tree panel events (from FocusLayout)
-  def handle_event("tree_panel_" <> _ = event, params, socket),
-    do: handle_tree_panel_event(event, params, socket)
-
   def handle_event("sort_flows", %{"column" => column}, socket) do
-    {:noreply,
-     handle_sort(socket, column, :all_flow_table_data, :flow_table_data, flow_sort_columns())}
+    {:noreply, handle_sort(socket, column, :all_flow_table_data, :flow_table_data, flow_sort_columns())}
   end
 
   def handle_event("page_flows", %{"page" => page}, socket) do
     {:noreply, handle_page(socket, page, :all_flow_table_data, :flow_table_data)}
   end
 
-  def handle_event(event, %{"id" => id}, socket)
-      when event in ~w(set_pending_delete set_pending_delete_flow) do
+  # Dashboard table row actions (long form routes here; short form comes from
+  # FlowDashboard.vue which uses `set_pending_delete` / `confirm_delete` / `set_main`)
+  def handle_event(event, %{"id" => id}, socket) when event in ~w(set_pending_delete set_pending_delete_flow) do
     {:noreply, assign(socket, :pending_delete_id, id)}
   end
 
-  def handle_event(event, _params, socket)
-      when event in ~w(confirm_delete confirm_delete_flow) do
+  def handle_event(event, _params, socket) when event in ~w(confirm_delete confirm_delete_flow) do
     if id = socket.assigns[:pending_delete_id] do
       handle_event("delete", %{"id" => id}, socket)
     else
@@ -464,11 +254,12 @@ defmodule StoryarnWeb.FlowLive.Index do
     end
   end
 
-  def handle_event(event, %{"id" => flow_id}, socket)
-      when event in ~w(delete delete_flow) do
+  def handle_event(event, %{"id" => flow_id}, socket) when event in ~w(delete delete_flow) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       with %{} = flow <- Flows.get_flow(socket.assigns.project.id, flow_id),
            {:ok, _} <- Flows.delete_flow(flow) do
+        broadcast_tree_changed(socket)
+
         {:noreply,
          socket
          |> put_flash(:info, dgettext("flows", "Flow moved to trash."))
@@ -483,11 +274,12 @@ defmodule StoryarnWeb.FlowLive.Index do
     end)
   end
 
-  def handle_event(event, %{"id" => flow_id}, socket)
-      when event in ~w(set_main set_main_flow) do
+  def handle_event(event, %{"id" => flow_id}, socket) when event in ~w(set_main set_main_flow) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       with %{} = flow <- Flows.get_flow(socket.assigns.project.id, flow_id),
            {:ok, _} <- Flows.set_main_flow(flow) do
+        broadcast_tree_changed(socket)
+
         {:noreply,
          socket
          |> put_flash(:info, dgettext("flows", "Flow set as main."))
@@ -502,96 +294,28 @@ defmodule StoryarnWeb.FlowLive.Index do
     end)
   end
 
-  def handle_event("create_flow", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      case Flows.create_flow(socket.assigns.project, %{name: dgettext("flows", "Untitled")}) do
-        {:ok, new_flow} ->
-          {:noreply,
-           push_navigate(socket,
-             to:
-               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{new_flow.id}"
-           )}
-
-        {:error, :limit_reached, _details} ->
-          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
-
-        {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create flow."))}
-      end
-    end)
-  end
-
-  def handle_event("create_child_flow", %{"parent-id" => parent_id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      attrs = %{name: dgettext("flows", "Untitled"), parent_id: parent_id}
-
-      case Flows.create_flow(socket.assigns.project, attrs) do
-        {:ok, new_flow} ->
-          {:noreply,
-           push_navigate(socket,
-             to:
-               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{new_flow.id}"
-           )}
-
-        {:error, :limit_reached, _details} ->
-          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
-
-        {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create flow."))}
-      end
-    end)
-  end
-
-  def handle_event(
-        "move_to_parent",
-        %{"item_id" => item_id, "new_parent_id" => new_parent_id, "position" => position},
-        socket
-      ) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      flow = Flows.get_flow!(socket.assigns.project.id, item_id)
-      new_parent_id = MapUtils.parse_int(new_parent_id)
-      position = MapUtils.parse_int(position) || 0
-
-      case Flows.move_flow_to_position(flow, new_parent_id, position) do
-        {:ok, _} ->
-          {:noreply, reload_flows(socket)}
-
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not move flow."))}
-      end
-    end)
-  end
-
-  def handle_event("create_sheet", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      case Sheets.create_sheet(socket.assigns.project, %{name: dgettext("sheets", "Untitled")}) do
-        {:ok, new_sheet} ->
-          {:noreply,
-           push_navigate(socket,
-             to:
-               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{new_sheet.id}"
-           )}
-
-        {:error, :limit_reached, _details} ->
-          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
-
-        {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create sheet."))}
-      end
-    end)
-  end
+  # Tree mutations (create_flow, create_child_flow, move_to_parent) now live in
+  # FlowSidebarLive — they never reach this LV because the tree is rendered by
+  # FlowSidebarLive which is a separate nested LV.
 
   # ===========================================================================
   # Private helpers
   # ===========================================================================
 
+  defp broadcast_tree_changed(socket) do
+    Phoenix.PubSub.broadcast_from(
+      Storyarn.PubSub,
+      self(),
+      StoryarnWeb.FlowSidebarLive.shell_topic(socket.assigns.project.id),
+      {:tree_changed, :flows}
+    )
+  end
+
   defp reload_flows(socket) do
     project_id = socket.assigns.project.id
 
     reload_dashboard(socket, :flows, :all_flow_table_data, :flow_table_data, :flow_issues, fn s ->
-      s
-      |> assign(:flows, Flows.list_flows(project_id))
-      |> assign(:flows_tree, Flows.list_flows_tree(project_id))
+      assign(s, :flows, Flows.list_flows(project_id))
     end)
   end
 
@@ -611,12 +335,18 @@ defmodule StoryarnWeb.FlowLive.Index do
       {severity, message} =
         case issue.issue_type do
           :no_entry ->
-            {:error,
-             dgettext("flows", "Flow \"%{name}\" has no entry node", name: issue.flow_name)}
+            {:error, dgettext("flows", "Flow \"%{name}\" has no entry node", name: issue.flow_name)}
 
           :disconnected_nodes ->
             {:warning,
              dgettext("flows", "Flow \"%{name}\" has %{count} disconnected node(s)",
+               name: issue.flow_name,
+               count: issue.count
+             )}
+
+          :dead_end_nodes ->
+            {:warning,
+             dgettext("flows", "Flow \"%{name}\" has %{count} node(s) without outgoing connection",
                name: issue.flow_name,
                count: issue.count
              )}

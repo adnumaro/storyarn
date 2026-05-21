@@ -13,7 +13,7 @@ defmodule Storyarn.Flows.DebugSessionStore do
 
   use Agent
 
-  @ttl_ms :timer.minutes(5)
+  @ttl_ms to_timeout(minute: 5)
 
   def start_link(_opts) do
     Agent.start_link(fn -> %{} end, name: __MODULE__)

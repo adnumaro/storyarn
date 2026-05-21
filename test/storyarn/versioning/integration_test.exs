@@ -5,13 +5,15 @@ defmodule Storyarn.Versioning.IntegrationTest do
   """
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.{Flows, Scenes, Sheets}
-
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures, except: [connection_fixture: 3, connection_fixture: 4]
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures, except: [connection_fixture: 3, connection_fixture: 4]
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Flows
+  alias Storyarn.Scenes
+  alias Storyarn.Sheets
 
   setup do
     user = user_fixture()

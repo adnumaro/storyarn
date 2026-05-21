@@ -24,9 +24,9 @@ defmodule Storyarn.Shared.TimeHelpersTest do
     end
 
     test "returns approximately current time" do
-      before = DateTime.utc_now() |> DateTime.truncate(:second)
+      before = DateTime.truncate(DateTime.utc_now(), :second)
       result = TimeHelpers.now()
-      after_time = DateTime.utc_now() |> DateTime.truncate(:second)
+      after_time = DateTime.truncate(DateTime.utc_now(), :second)
 
       # Result should be between before and after (within 1 second)
       assert DateTime.compare(result, before) in [:eq, :gt]

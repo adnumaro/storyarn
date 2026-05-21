@@ -7,17 +7,22 @@ defmodule Storyarn.Projects.Dashboard do
   and only implements new queries when needed.
   """
 
+  use Gettext, backend: Storyarn.Gettext
+
   import Ecto.Query
 
   alias Storyarn.Flows
+  alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowConnection
+  alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.NodeConnectionRules
   alias Storyarn.Localization
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Shared.HtmlUtils
   alias Storyarn.Sheets
-
-  alias Storyarn.Flows.{Flow, FlowConnection, FlowNode}
-  alias Storyarn.Sheets.{Block, Sheet}
+  alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.Sheet
 
   # ===========================================================================
   # Project Stats
@@ -68,27 +73,25 @@ defmodule Storyarn.Projects.Dashboard do
   sorted by line count descending.
   """
   def count_dialogue_lines_by_speaker(project_id, limit \\ 10) do
-    from(n in FlowNode,
-      join: f in Flow,
-      on: n.flow_id == f.id,
-      left_join: s in Sheet,
-      on: type(fragment("(?->>'speaker_sheet_id')::integer", n.data), :integer) == s.id,
-      where:
-        f.project_id == ^project_id and
-          is_nil(n.deleted_at) and
-          is_nil(f.deleted_at) and
-          n.type == "dialogue" and
-          not is_nil(fragment("?->>'speaker_sheet_id'", n.data)),
-      group_by: [fragment("(?->>'speaker_sheet_id')::integer", n.data), s.name, s.id],
-      select: %{
-        sheet_id: fragment("(?->>'speaker_sheet_id')::integer", n.data),
-        sheet_name: s.name,
-        line_count: count(n.id)
-      },
-      order_by: [desc: count(n.id)],
-      limit: ^limit
+    Repo.all(
+      from(n in FlowNode,
+        join: f in Flow,
+        on: n.flow_id == f.id,
+        left_join: s in Sheet,
+        on: type(fragment("(?->>'speaker_sheet_id')::integer", n.data), :integer) == s.id,
+        where:
+          f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at) and n.type == "dialogue" and
+            not is_nil(fragment("?->>'speaker_sheet_id'", n.data)),
+        group_by: [fragment("(?->>'speaker_sheet_id')::integer", n.data), s.name, s.id],
+        select: %{
+          sheet_id: fragment("(?->>'speaker_sheet_id')::integer", n.data),
+          sheet_name: s.name,
+          line_count: count(n.id)
+        },
+        order_by: [desc: count(n.id)],
+        limit: ^limit
+      )
     )
-    |> Repo.all()
   end
 
   # ===========================================================================
@@ -108,6 +111,7 @@ defmodule Storyarn.Projects.Dashboard do
     [
       detect_flows_without_entry(project_id, workspace_slug, project_slug),
       detect_disconnected_nodes(project_id, workspace_slug, project_slug),
+      detect_dead_end_nodes(project_id, workspace_slug, project_slug),
       detect_empty_sheets(project_id, workspace_slug, project_slug),
       detect_untranslated_content(project_id, workspace_slug, project_slug)
     ]
@@ -192,16 +196,14 @@ defmodule Storyarn.Projects.Dashboard do
   end
 
   defp count_dialogue_nodes(project_id) do
-    from(n in FlowNode,
-      join: f in Flow,
-      on: n.flow_id == f.id,
-      where:
-        f.project_id == ^project_id and
-          is_nil(n.deleted_at) and
-          is_nil(f.deleted_at) and
-          n.type == "dialogue"
+    Repo.aggregate(
+      from(n in FlowNode,
+        join: f in Flow,
+        on: n.flow_id == f.id,
+        where: f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at) and n.type == "dialogue"
+      ),
+      :count
     )
-    |> Repo.aggregate(:count)
   end
 
   # Reuse per-context counters where available so project totals stay aligned with
@@ -240,20 +242,22 @@ defmodule Storyarn.Projects.Dashboard do
 
   defp collect_screenplay_metadata(project_id) do
     screenplay_texts =
-      from(sp in "screenplays",
-        where: sp.project_id == ^project_id and is_nil(sp.deleted_at),
-        select: [sp.name, sp.description]
+      Repo.all(
+        from(sp in "screenplays",
+          where: sp.project_id == ^project_id and is_nil(sp.deleted_at),
+          select: [sp.name, sp.description]
+        )
       )
-      |> Repo.all()
 
     element_texts =
-      from(e in "screenplay_elements",
-        join: sp in "screenplays",
-        on: e.screenplay_id == sp.id,
-        where: sp.project_id == ^project_id and is_nil(sp.deleted_at),
-        select: e.content
+      Repo.all(
+        from(e in "screenplay_elements",
+          join: sp in "screenplays",
+          on: e.screenplay_id == sp.id,
+          where: sp.project_id == ^project_id and is_nil(sp.deleted_at),
+          select: e.content
+        )
       )
-      |> Repo.all()
 
     screenplay_texts ++ element_texts
   end
@@ -276,35 +280,70 @@ defmodule Storyarn.Projects.Dashboard do
         select: f.id
       )
 
-    from(f in Flow,
-      where:
-        f.project_id == ^project_id and
-          is_nil(f.deleted_at) and
-          f.id not in subquery(flows_with_entry_ids),
-      select: %{flow_id: f.id, flow_name: f.name}
+    Repo.all(
+      from(f in Flow,
+        where: f.project_id == ^project_id and is_nil(f.deleted_at) and f.id not in subquery(flows_with_entry_ids),
+        select: %{flow_id: f.id, flow_name: f.name}
+      )
     )
-    |> Repo.all()
   end
 
   @doc "Returns flows with disconnected nodes. Returns `[%{flow_id, flow_name, count}]`."
   def flows_with_disconnected_nodes(project_id) do
-    from(n in FlowNode,
-      join: f in Flow,
-      on: n.flow_id == f.id,
-      left_join: cs in FlowConnection,
-      on: cs.source_node_id == n.id,
-      left_join: ct in FlowConnection,
-      on: ct.target_node_id == n.id,
-      where:
-        f.project_id == ^project_id and
-          is_nil(n.deleted_at) and
-          is_nil(f.deleted_at) and
-          is_nil(cs.id) and
-          is_nil(ct.id),
-      group_by: [f.id, f.name],
-      select: %{flow_id: f.id, flow_name: f.name, count: count(n.id)}
+    connection_optional_types = NodeConnectionRules.connection_optional_types()
+
+    project_id
+    |> active_node_connection_counts(connection_optional_types)
+    |> Enum.filter(&(&1.valid_outgoing_count == 0 and &1.valid_incoming_count == 0))
+    |> group_flow_node_counts()
+  end
+
+  @doc "Returns flows with nodes that need an outgoing connection but do not have one."
+  def flows_with_dead_end_nodes(project_id) do
+    outgoing_optional_types = NodeConnectionRules.outgoing_optional_types()
+
+    project_id
+    |> active_node_connection_counts(outgoing_optional_types)
+    |> Enum.filter(&(&1.valid_outgoing_count == 0 and &1.valid_incoming_count > 0))
+    |> group_flow_node_counts()
+  end
+
+  defp active_node_connection_counts(project_id, ignored_types) do
+    Repo.all(
+      from(n in FlowNode,
+        join: f in Flow,
+        on: n.flow_id == f.id,
+        left_join: cs in FlowConnection,
+        on: cs.source_node_id == n.id,
+        left_join: target in FlowNode,
+        on: target.id == cs.target_node_id and target.flow_id == f.id and is_nil(target.deleted_at),
+        left_join: ct in FlowConnection,
+        on: ct.target_node_id == n.id,
+        left_join: source in FlowNode,
+        on: source.id == ct.source_node_id and source.flow_id == f.id and is_nil(source.deleted_at),
+        where:
+          f.project_id == ^project_id and
+            is_nil(n.deleted_at) and
+            is_nil(f.deleted_at) and
+            n.type not in ^ignored_types,
+        group_by: [f.id, f.name, n.id],
+        select: %{
+          flow_id: f.id,
+          flow_name: f.name,
+          node_id: n.id,
+          valid_outgoing_count: count(target.id),
+          valid_incoming_count: count(source.id)
+        }
+      )
     )
-    |> Repo.all()
+  end
+
+  defp group_flow_node_counts(rows) do
+    rows
+    |> Enum.group_by(&{&1.flow_id, &1.flow_name})
+    |> Enum.map(fn {{flow_id, flow_name}, rows} ->
+      %{flow_id: flow_id, flow_name: flow_name, count: length(rows)}
+    end)
   end
 
   defp detect_flows_without_entry(project_id, workspace_slug, project_slug) do
@@ -313,7 +352,7 @@ defmodule Storyarn.Projects.Dashboard do
     |> Enum.map(fn flow ->
       %{
         severity: :error,
-        message: "Flow \"#{flow.flow_name}\" has no entry node",
+        message: dgettext("flows", "Flow \"%{name}\" has no entry node", name: flow.flow_name),
         href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows/#{flow.flow_id}",
         count: 1
       }
@@ -326,7 +365,32 @@ defmodule Storyarn.Projects.Dashboard do
     |> Enum.map(fn row ->
       %{
         severity: :warning,
-        message: "Flow \"#{row.flow_name}\" has #{row.count} disconnected node(s)",
+        message:
+          dgettext(
+            "flows",
+            "Flow \"%{name}\" has %{count} disconnected node(s)",
+            name: row.flow_name,
+            count: row.count
+          ),
+        href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows/#{row.flow_id}",
+        count: row.count
+      }
+    end)
+  end
+
+  defp detect_dead_end_nodes(project_id, workspace_slug, project_slug) do
+    project_id
+    |> flows_with_dead_end_nodes()
+    |> Enum.map(fn row ->
+      %{
+        severity: :warning,
+        message:
+          dgettext(
+            "flows",
+            "Flow \"%{name}\" has %{count} node(s) without outgoing connection",
+            name: row.flow_name,
+            count: row.count
+          ),
         href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows/#{row.flow_id}",
         count: row.count
       }
@@ -343,14 +407,12 @@ defmodule Storyarn.Projects.Dashboard do
       )
 
     empty_sheets =
-      from(s in Sheet,
-        where:
-          s.project_id == ^project_id and
-            is_nil(s.deleted_at) and
-            s.id not in subquery(sheets_with_blocks_ids),
-        select: %{id: s.id, name: s.name}
+      Repo.all(
+        from(s in Sheet,
+          where: s.project_id == ^project_id and is_nil(s.deleted_at) and s.id not in subquery(sheets_with_blocks_ids),
+          select: %{id: s.id, name: s.name}
+        )
       )
-      |> Repo.all()
 
     case empty_sheets do
       [] ->
@@ -362,7 +424,14 @@ defmodule Storyarn.Projects.Dashboard do
         [
           %{
             severity: :info,
-            message: "#{count} sheet(s) have no blocks defined",
+            message:
+              dngettext(
+                "sheets",
+                "%{count} sheet has no blocks defined",
+                "%{count} sheets have no blocks defined",
+                count,
+                count: count
+              ),
             href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/sheets",
             count: count
           }
@@ -387,8 +456,15 @@ defmodule Storyarn.Projects.Dashboard do
         %{
           severity: :warning,
           message:
-            "#{lang.name}: #{pending} text(s) pending translation " <>
-              "(#{round(lang.percentage)}% done)",
+            dngettext(
+              "localization",
+              "%{language}: %{count} text pending translation (%{percent}% done)",
+              "%{language}: %{count} texts pending translation (%{percent}% done)",
+              pending,
+              language: lang.name,
+              count: pending,
+              percent: round(lang.percentage)
+            ),
           href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/localization",
           count: pending
         }

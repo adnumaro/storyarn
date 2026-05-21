@@ -9,9 +9,12 @@ defmodule Storyarn.Sheets.SheetCrud do
   alias Storyarn.Projects.Project
   alias Storyarn.References
   alias Storyarn.Repo
-  alias Storyarn.Shared.{MapUtils, ShortcutHelpers, TimeHelpers}
+  alias Storyarn.Shared.MapUtils
+  alias Storyarn.Shared.ShortcutHelpers
+  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Shared.TreeOperations, as: SharedTree
-  alias Storyarn.Sheets.{PropertyInheritance, Sheet}
+  alias Storyarn.Sheets.PropertyInheritance
+  alias Storyarn.Sheets.Sheet
   alias Storyarn.Shortcuts
   alias Storyarn.Versioning.EntityVersion
 
@@ -92,8 +95,7 @@ defmodule Storyarn.Sheets.SheetCrud do
       now = TimeHelpers.now()
 
       if descendant_ids != [] do
-        from(s in Sheet, where: s.id in ^descendant_ids)
-        |> Repo.update_all(set: [deleted_at: now])
+        Repo.update_all(from(s in Sheet, where: s.id in ^descendant_ids), set: [deleted_at: now])
 
         # Clean up localization texts for descendants
         Enum.each(descendant_ids, &Localization.delete_sheet_texts/1)
@@ -126,12 +128,12 @@ defmodule Storyarn.Sheets.SheetCrud do
     |> Ecto.Multi.update(:sheet, Sheet.restore_changeset(sheet))
     |> Ecto.Multi.run(:restore_blocks, fn repo, _changes ->
       {count, _} =
-        from(b in Block,
-          where:
-            b.sheet_id == ^sheet.id and not is_nil(b.deleted_at) and
-              b.deleted_at >= ^since_threshold
+        repo.update_all(
+          from(b in Block,
+            where: b.sheet_id == ^sheet.id and not is_nil(b.deleted_at) and b.deleted_at >= ^since_threshold
+          ),
+          set: [deleted_at: nil]
         )
-        |> repo.update_all(set: [deleted_at: nil])
 
       {:ok, count}
     end)
@@ -149,10 +151,7 @@ defmodule Storyarn.Sheets.SheetCrud do
   def permanently_delete_sheet(%Sheet{} = sheet) do
     Repo.transaction(fn ->
       # Delete all versions first
-      from(v in EntityVersion,
-        where: v.entity_type == "sheet" and v.entity_id == ^sheet.id
-      )
-      |> Repo.delete_all()
+      Repo.delete_all(from(v in EntityVersion, where: v.entity_type == "sheet" and v.entity_id == ^sheet.id))
 
       # Delete references where this sheet is the target
       References.delete_target_references("sheet", sheet.id)

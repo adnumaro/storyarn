@@ -11,6 +11,7 @@
 Storyarn will evolve from a narrative design tool into a **community-driven platform** where game designers share, discover, and license game design resources—from free templates to patented mechanics.
 
 **Core insight:** No platform exists where game designers can:
+
 1. Share complete narrative systems (not just code or assets)
 2. License patented mechanics with transparent pricing
 3. Fork and modify game designs like developers do with code
@@ -56,15 +57,15 @@ Storyarn will evolve from a narrative design tool into a **community-driven plat
 
 ### Current Landscape
 
-| Platform | What it offers | What's missing |
-|----------|---------------|----------------|
-| **Figma Community** | UI/UX designs, plugins | No game design focus |
-| **Unity Asset Store** | Code, 3D models, audio | No narrative/design systems |
-| **Unreal Marketplace** | Same as Unity | Same limitations |
-| **Itch.io** | Complete games | No "behind the scenes" design |
-| **GitHub** | Open source code | Not designed for non-coders |
-| **ArtStation** | Art portfolios | No interactive systems |
-| **GDD Templates** | Google Docs templates | Static, no tooling |
+| Platform               | What it offers         | What's missing                |
+| ---------------------- | ---------------------- | ----------------------------- |
+| **Figma Community**    | UI/UX designs, plugins | No game design focus          |
+| **Unity Asset Store**  | Code, 3D models, audio | No narrative/design systems   |
+| **Unreal Marketplace** | Same as Unity          | Same limitations              |
+| **Itch.io**            | Complete games         | No "behind the scenes" design |
+| **GitHub**             | Open source code       | Not designed for non-coders   |
+| **ArtStation**         | Art portfolios         | No interactive systems        |
+| **GDD Templates**      | Google Docs templates  | Static, no tooling            |
 
 **The gap:** Complete game design systems (flows, narratives, mechanics) with tooling to actually use them.
 
@@ -83,12 +84,14 @@ Storyarn will evolve from a narrative design tool into a **community-driven plat
 ### 1. Community (Free Sharing)
 
 **What users can share:**
+
 - Flow templates (dialogue systems, quest structures)
 - Page templates (character sheets, location databases)
 - Complete project structures
 - Mechanics implementations
 
 **Features:**
+
 ```
 ┌─ Community Browser ─────────────────────────────┐
 │                                                  │
@@ -118,6 +121,7 @@ Storyarn will evolve from a narrative design tool into a **community-driven plat
 ```
 
 **Community features:**
+
 - Profiles with portfolios
 - Following/followers
 - Comments and feedback
@@ -129,14 +133,15 @@ Storyarn will evolve from a narrative design tool into a **community-driven plat
 
 **What can be sold:**
 
-| Type | Examples | Price Range |
-|------|----------|-------------|
-| Premium templates | Pro-quality systems | $10-100 |
-| Complete designs | Full game narratives | $50-500 |
-| Studio packs | Multiple related templates | $100-1000 |
-| Courses/tutorials | Learning resources | $20-200 |
+| Type              | Examples                   | Price Range |
+| ----------------- | -------------------------- | ----------- |
+| Premium templates | Pro-quality systems        | $10-100     |
+| Complete designs  | Full game narratives       | $50-500     |
+| Studio packs      | Multiple related templates | $100-1000   |
+| Courses/tutorials | Learning resources         | $20-200     |
 
 **Revenue model:**
+
 ```
 Creator earns 70-85%
 Storyarn takes 15-30%
@@ -148,6 +153,7 @@ Tiers:
 ```
 
 **Marketplace features:**
+
 ```
 ┌─ Marketplace Listing ───────────────────────────┐
 │                                                  │
@@ -184,6 +190,7 @@ Tiers:
 ### 3. Patent Licensing Hub (Revolutionary)
 
 **The problem today:**
+
 - Patent licensing is opaque
 - No public pricing
 - Case-by-case negotiations
@@ -250,15 +257,16 @@ Tiers:
 
 **Why patent holders would participate:**
 
-| Benefit | Explanation |
-|---------|-------------|
-| New revenue stream | Most patents generate $0 (defensive use only) |
-| Lower transaction costs | No individual negotiations |
-| Good PR | "Democratizing game innovation" |
-| Market data | See demand for their mechanics |
-| Control | They set the terms |
+| Benefit                 | Explanation                                   |
+| ----------------------- | --------------------------------------------- |
+| New revenue stream      | Most patents generate $0 (defensive use only) |
+| Lower transaction costs | No individual negotiations                    |
+| Good PR                 | "Democratizing game innovation"               |
+| Market data             | See demand for their mechanics                |
+| Control                 | They set the terms                            |
 
 **Storyarn's role:**
+
 - Standardized contract templates
 - Payment processing
 - Usage tracking (for royalties)
@@ -308,6 +316,7 @@ Tiers:
 ```
 
 **Use cases:**
+
 - Learning resource (study how pros design)
 - Starting point (fork and modify)
 - Portfolio piece (show complete work)
@@ -361,12 +370,12 @@ Tiers:
 
 ### Projected Revenue Mix (Year 3)
 
-| Stream | % of Revenue | Notes |
-|--------|--------------|-------|
-| Subscriptions | 50% | Core business |
-| Marketplace | 25% | Growing with community |
-| Patent licensing | 15% | High-margin, unique |
-| Enterprise | 10% | Large contracts |
+| Stream           | % of Revenue | Notes                  |
+| ---------------- | ------------ | ---------------------- |
+| Subscriptions    | 50%          | Core business          |
+| Marketplace      | 25%          | Growing with community |
+| Patent licensing | 15%          | High-margin, unique    |
+| Enterprise       | 10%          | Large contracts        |
 
 ---
 
@@ -386,19 +395,20 @@ More patent holders → More mechanics → More value → More holders
 
 ### Defensibility
 
-| Moat Type | How Storyarn Builds It |
-|-----------|------------------------|
-| **Network effects** | Community content, forks, attribution chains |
-| **Switching costs** | Projects built in Storyarn format, community ties |
-| **Data advantage** | Understanding of what mechanics work, pricing data |
-| **Brand** | "The place for game design" (like Figma for UI) |
-| **Partnerships** | Exclusive patent licensing deals |
+| Moat Type           | How Storyarn Builds It                             |
+| ------------------- | -------------------------------------------------- |
+| **Network effects** | Community content, forks, attribution chains       |
+| **Switching costs** | Projects built in Storyarn format, community ties  |
+| **Data advantage**  | Understanding of what mechanics work, pricing data |
+| **Brand**           | "The place for game design" (like Figma for UI)    |
+| **Partnerships**    | Exclusive patent licensing deals                   |
 
 ---
 
 ## Roadmap
 
 ### Phase 1: Foundation (Current - Month 6)
+
 ```
 Focus: Build the best narrative design tool
 
@@ -410,6 +420,7 @@ Focus: Build the best narrative design tool
 ```
 
 ### Phase 2: Community Launch (Month 6-12)
+
 ```
 Focus: Enable sharing and discovery
 
@@ -424,6 +435,7 @@ Focus: Enable sharing and discovery
 ```
 
 ### Phase 3: Marketplace Beta (Month 12-18)
+
 ```
 Focus: Enable creators to earn
 
@@ -438,6 +450,7 @@ Focus: Enable creators to earn
 ```
 
 ### Phase 4: Patent Licensing (Month 18-24)
+
 ```
 Focus: Revolutionary differentiator
 
@@ -451,6 +464,7 @@ Focus: Revolutionary differentiator
 ```
 
 ### Phase 5: Ecosystem Expansion (Month 24+)
+
 ```
 Focus: Become the platform
 
@@ -467,38 +481,42 @@ Focus: Become the platform
 
 ## Key Risks & Mitigations
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| **Cold start problem** | No content = no users | Seed content internally, invite influential creators |
-| **Quality control** | Bad content hurts trust | Curation, reviews, verified creators |
-| **Legal complexity** | Patent licensing is hard | Start with expired patents, hire IP counsel |
-| **Competition** | Big player enters market | Move fast, build community moat |
-| **Creator churn** | Sellers leave for better terms | Competitive revenue share, community features |
-| **Patent holder reluctance** | Don't want to participate | Start small, prove model, show revenue |
+| Risk                         | Impact                         | Mitigation                                           |
+| ---------------------------- | ------------------------------ | ---------------------------------------------------- |
+| **Cold start problem**       | No content = no users          | Seed content internally, invite influential creators |
+| **Quality control**          | Bad content hurts trust        | Curation, reviews, verified creators                 |
+| **Legal complexity**         | Patent licensing is hard       | Start with expired patents, hire IP counsel          |
+| **Competition**              | Big player enters market       | Move fast, build community moat                      |
+| **Creator churn**            | Sellers leave for better terms | Competitive revenue share, community features        |
+| **Patent holder reluctance** | Don't want to participate      | Start small, prove model, show revenue               |
 
 ---
 
 ## Success Metrics
 
 ### Phase 2 (Community)
+
 - 1,000+ published templates
 - 10,000+ registered users
 - 50,000+ template forks
 - 100+ active contributors/month
 
 ### Phase 3 (Marketplace)
+
 - $100K GMV (Gross Merchandise Value)
 - 50+ paid templates
 - 100+ sellers
 - 4.5+ average rating
 
 ### Phase 4 (Patents)
+
 - 3+ patent holders participating
 - 10+ licensed mechanics available
 - $50K+ in patent licensing revenue
 - Press coverage of patent marketplace
 
 ### Phase 5 (Ecosystem)
+
 - $1M+ GMV
 - 100K+ users
 - Industry recognition
@@ -508,13 +526,13 @@ Focus: Become the platform
 
 ## Comparable Valuations
 
-| Company | Model | Valuation/Exit | Relevance |
-|---------|-------|----------------|-----------|
-| Figma | Design tool + community | $20B (Adobe) | Direct model comparison |
-| Canva | Design tool + templates | $40B | Template marketplace |
-| Unity | Game engine + asset store | $40B peak | Game dev tools |
-| GitHub | Code hosting + community | $7.5B (Microsoft) | Fork/share model |
-| Envato | Creative marketplace | $300M+ revenue | Pure marketplace |
+| Company | Model                     | Valuation/Exit    | Relevance               |
+| ------- | ------------------------- | ----------------- | ----------------------- |
+| Figma   | Design tool + community   | $20B (Adobe)      | Direct model comparison |
+| Canva   | Design tool + templates   | $40B              | Template marketplace    |
+| Unity   | Game engine + asset store | $40B peak         | Game dev tools          |
+| GitHub  | Code hosting + community  | $7.5B (Microsoft) | Fork/share model        |
+| Envato  | Creative marketplace      | $300M+ revenue    | Pure marketplace        |
 
 **Implication:** A successful execution of this vision could build a company worth $100M-$1B+ in the game development tools space.
 

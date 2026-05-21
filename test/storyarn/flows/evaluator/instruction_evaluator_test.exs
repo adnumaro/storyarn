@@ -148,7 +148,7 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.InstructionEvaluatorTest do
       result = InstructionEvaluator.evaluate(node, state, [])
 
       assert {:finished, final_state} = result
-      error_messages = final_state.console |> Enum.filter(&(&1.level == :error))
+      error_messages = Enum.filter(final_state.console, &(&1.level == :error))
       assert error_messages != []
     end
   end
@@ -158,7 +158,21 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.InstructionEvaluatorTest do
   # =============================================================================
 
   describe "evaluate/3 — connection following" do
-    test "follows default output when connection exists" do
+    test "follows output when connection exists" do
+      state = make_state()
+      node = make_node(%{"assignments" => []})
+
+      connections = [
+        %{source_node_id: "inst_1", source_pin: "output", target_node_id: "next_1"}
+      ]
+
+      result = InstructionEvaluator.evaluate(node, state, connections)
+
+      assert {:ok, final_state} = result
+      assert final_state.current_node_id == "next_1"
+    end
+
+    test "does not follow legacy default connections" do
       state = make_state()
       node = make_node(%{"assignments" => []})
 
@@ -168,8 +182,8 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.InstructionEvaluatorTest do
 
       result = InstructionEvaluator.evaluate(node, state, connections)
 
-      assert {:ok, final_state} = result
-      assert final_state.current_node_id == "next_1"
+      assert {:finished, final_state} = result
+      assert final_state.status == :finished
     end
 
     test "returns :finished when no output connection" do

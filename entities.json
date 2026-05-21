@@ -1,0 +1,27 @@
+{
+  "people": [],
+  "projects": ["Storyarn"],
+  "entities": {
+    "Storyarn": "STY",
+    "Workspace": "WSP",
+    "Project": "PRJ",
+    "Sheet": "SHT",
+    "Flow": "FLW",
+    "Scene": "SCN",
+    "Screenplay": "SCR",
+    "Block": "BLK",
+    "Node": "NOD",
+    "Connection": "CON",
+    "Layer": "LYR",
+    "Zone": "ZON",
+    "Pin": "PIN",
+    "Asset": "AST",
+    "LiveView": "LVW",
+    "Phoenix": "PHX",
+    "Ecto": "ECT",
+    "Konva": "KNV",
+    "Rete": "RTE",
+    "Tiptap": "TPT"
+  },
+  "skip_names": []
+}

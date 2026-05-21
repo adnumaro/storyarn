@@ -15,10 +15,11 @@ defmodule StoryarnWeb.SceneLive.UndoRedoTest do
   use StoryarnWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
-  import Storyarn.ScenesFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
 
-  alias Storyarn.{Repo, Scenes}
+  alias Storyarn.Repo
+  alias Storyarn.Scenes
 
   # ===========================================================================
   # Setup
@@ -27,7 +28,7 @@ defmodule StoryarnWeb.SceneLive.UndoRedoTest do
   setup :register_and_log_in_user
 
   setup %{user: user} do
-    project = project_fixture(user) |> Repo.preload(:workspace)
+    project = user |> project_fixture() |> Repo.preload(:workspace)
     scene = scene_fixture(project, %{name: "Test Map"})
     url = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
     %{project: project, scene: scene, url: url}
@@ -662,7 +663,7 @@ defmodule StoryarnWeb.SceneLive.UndoRedoTest do
 
       # Deleting pin1 should cascade-delete both connections as compound action
       render_click(view, "delete_pin", %{"id" => to_string(pin1.id)})
-      assert Scenes.list_pins(scene.id) |> length() == 2
+      assert scene.id |> Scenes.list_pins() |> length() == 2
       assert Scenes.list_connections(scene.id) == []
 
       # Undo should restore pin AND both connections (with rebased FK IDs)
@@ -674,7 +675,7 @@ defmodule StoryarnWeb.SceneLive.UndoRedoTest do
 
       # Connections should reference the newly created pin, not the old ID
       new_pin = Enum.find(Scenes.list_pins(scene.id), &(&1.label == "Hub"))
-      assert new_pin != nil
+      assert new_pin
 
       assert Enum.all?(connections, fn c ->
                c.from_pin_id == new_pin.id or c.to_pin_id == new_pin.id

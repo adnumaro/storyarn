@@ -84,19 +84,21 @@ defmodule Storyarn.Localization.ExportImport do
 
     rows =
       Enum.map(texts, fn text ->
-        [
-          text.id,
-          text.source_type,
-          text.source_id,
-          text.source_field,
-          text.locale_code,
-          csv_escape(strip_html(text.source_text)),
-          csv_escape(strip_html(text.translated_text)),
-          text.status,
-          text.word_count || 0,
-          if(text.machine_translated, do: "Yes", else: "No")
-        ]
-        |> Enum.join(",")
+        Enum.join(
+          [
+            text.id,
+            text.source_type,
+            text.source_id,
+            text.source_field,
+            text.locale_code,
+            csv_escape(strip_html(text.source_text)),
+            csv_escape(strip_html(text.translated_text)),
+            text.status,
+            text.word_count || 0,
+            if(text.machine_translated, do: "Yes", else: "No")
+          ],
+          ","
+        )
       end)
 
     csv = Enum.join([header | rows], "\n")
@@ -149,14 +151,7 @@ defmodule Storyarn.Localization.ExportImport do
   # Private
   # =============================================================================
 
-  defp reduce_csv_row(
-         {line, line_num},
-         {upd, skip, errs},
-         project_id,
-         id_col,
-         translation_col,
-         status_col
-       ) do
+  defp reduce_csv_row({line, line_num}, {upd, skip, errs}, project_id, id_col, translation_col, status_col) do
     fields = parse_csv_line(line)
     id = Enum.at(fields, id_col)
     translation = if translation_col, do: Enum.at(fields, translation_col)
@@ -188,15 +183,14 @@ defmodule Storyarn.Localization.ExportImport do
   end
 
   defp maybe_put_translation(attrs, translation) when is_binary(translation) do
-    if String.trim(translation) != "",
-      do: Map.put(attrs, "translated_text", translation),
-      else: attrs
+    if String.trim(translation) == "",
+      do: attrs,
+      else: Map.put(attrs, "translated_text", translation)
   end
 
   defp maybe_put_translation(attrs, _), do: attrs
 
-  defp maybe_put_status(attrs, status)
-       when status in ~w(pending draft in_progress review final) do
+  defp maybe_put_status(attrs, status) when status in ~w(pending draft in_progress review final) do
     Map.put(attrs, "status", status)
   end
 
@@ -247,8 +241,7 @@ defmodule Storyarn.Localization.ExportImport do
   defp parse_quoted_field("\"\"" <> rest, acc), do: parse_quoted_field(rest, acc <> "\"")
   defp parse_quoted_field("\"" <> rest, acc), do: {acc, rest}
 
-  defp parse_quoted_field(<<char::utf8, rest::binary>>, acc),
-    do: parse_quoted_field(rest, acc <> <<char::utf8>>)
+  defp parse_quoted_field(<<char::utf8, rest::binary>>, acc), do: parse_quoted_field(rest, acc <> <<char::utf8>>)
 
   defp parse_quoted_field("", acc), do: {acc, ""}
 

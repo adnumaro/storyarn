@@ -1,0 +1,40 @@
+{
+  "layout": {
+    "tools": {
+      "dashboard": "Dashboard",
+      "sheets": "Sheets",
+      "flows": "Flows",
+      "scenes": "Scenes",
+      "screenplays": "Screenplays",
+      "assets": "Assets",
+      "localization": "Localization"
+    },
+    "main_sidebar": {
+      "dashboard_label": "{tool} dashboard",
+      "hide_panel": "Hide sidebar",
+      "show_panel": "Show sidebar"
+    },
+    "project_sidebar": {
+      "dashboard": "Dashboard",
+      "tools": "Tools",
+      "project_settings": "Project settings",
+      "settings": "General",
+      "export_import": "Import & export",
+      "trash": "Trash"
+    },
+    "project_navbar_context": {
+      "hide_panel": "Hide panel",
+      "show_panel": "Show panel",
+      "project_settings": "Project settings",
+      "trash": "Trash"
+    },
+    "project_navbar_account": {
+      "account_settings": "Account settings",
+      "all_workspaces": "All workspaces",
+      "log_out": "Log out"
+    },
+    "project_restoration": {
+      "in_progress": "Project is being restored by {user}. Editing is temporarily disabled."
+    }
+  }
+}

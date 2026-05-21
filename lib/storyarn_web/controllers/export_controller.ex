@@ -13,16 +13,12 @@ defmodule StoryarnWeb.ExportController do
   Reads format from URL param, options from query params.
   Handles both single-file (binary) and multi-file (list of tuples) serializer output.
   """
-  def export(conn, %{
-        "workspace_slug" => workspace_slug,
-        "project_slug" => project_slug,
-        "format" => format_str
-      }) do
+  def export(conn, %{"workspace_slug" => workspace_slug, "project_slug" => project_slug, "format" => format_str}) do
     with {:ok, format} <- parse_format(format_str),
          {:ok, serializer} <- Exports.get_serializer(format),
          {:ok, project, _membership} <-
            Projects.get_project_by_slugs(conn.assigns.current_scope, workspace_slug, project_slug),
-         opts <- build_options(conn.params, format),
+         opts = build_options(conn.params, format),
          {:ok, output} <- Exports.export_project(project, opts) do
       slug = NameNormalizer.slugify(project.name)
       send_export(conn, output, slug, serializer)

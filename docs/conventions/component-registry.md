@@ -6,21 +6,21 @@ These are available in ALL HEEx templates without explicit import (via `Storyarn
 
 ### CoreComponents (`core_components.ex`)
 
-| Component          | Purpose             | Key Attributes                                                                                                                        |
-|--------------------|---------------------|---------------------------------------------------------------------------------------------------------------------------------------|
-| `<.button>`        | Button (nav-aware)  | `variant` (primary/error), `href`/`navigate`/`patch`                                                                                  |
-| `<.input>`         | Form input wrapper  | `field`, `type` (text/textarea/select/checkbox + 13 more HTML5 types), `label`, `errors`                                              |
-| `<.icon>`          | Lucide icon         | `name` (string, required), `class`                                                                                                    |
-| `<.header>`        | Page header         | `inner_block`, `:subtitle` slot, `:actions` slot                                                                                      |
-| `<.modal>`         | Dialog modal        | `id`, `show`, `on_cancel`                                                                                                             |
-| `<.confirm_modal>` | Confirmation dialog | `id`, `title`, `message`, `confirm_text`, `cancel_text`, `confirm_variant` (primary/error/warning), `on_confirm`, `on_cancel`, `icon` |
-| `<.table>`         | Data table          | `rows`, `row_id`, `row_click`, `:col` slot, `:action` slot                                                                            |
-| `<.list>`          | Key-value list      | `:item` slot (with title)                                                                                                             |
-| `<.flash>`         | Flash notification  | `kind`, `flash`                                                                                                                       |
-| `<.back>`          | Back link           | `navigate`                                                                                                                            |
-| `<.block_label>`   | Block field label   | `label`, `is_constant`                                                                                                                |
+| Component           | Purpose                   | Key Attributes                                                                                                                                 |
+| ------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<.button>`         | Button (nav-aware)        | `variant` (primary/error), `href`/`navigate`/`patch`                                                                                           |
+| `<.input>`          | Form input wrapper        | `field`, `type` (text/textarea/select/checkbox + 13 more HTML5 types), `label`, `errors`                                                       |
+| `<.icon>`           | Lucide icon               | `name` (string, required), `class`                                                                                                             |
+| `<.modal>`          | Dialog modal              | `id`, `show`, `on_cancel`                                                                                                                      |
+| `ConfirmDialog.vue` | Confirmation dialog (Vue) | `open` (v-model), `title`, `description`, `confirmText`, `cancelText`, `variant` (default/destructive/warning), `icon` — `@confirm`, `@cancel` |
+| `<.table>`          | Data table                | `rows`, `row_id`, `row_click`, `:col` slot, `:action` slot                                                                                     |
+| `<.list>`           | Key-value list            | `:item` slot (with title)                                                                                                                      |
+| `<.flash>`          | Flash notification        | `kind`, `flash`                                                                                                                                |
+| `<.back>`           | Back link                 | `navigate`                                                                                                                                     |
+| `<.block_label>`    | Block field label         | `label`, `is_constant`                                                                                                                         |
 
 **Helper functions:**
+
 - `show(js, selector)` / `hide(js, selector)` — JS visibility commands
 - `show_modal(js \\ %JS{}, id)` / `hide_modal(js \\ %JS{}, id)` — Modal open/close
 - `translate_error(error_tuple)` / `translate_errors(errors, field)` — Ecto error to string
@@ -28,7 +28,7 @@ These are available in ALL HEEx templates without explicit import (via `Storyarn
 ### UIComponents (`ui_components.ex`)
 
 | Component          | Purpose             | Key Attributes                                                             |
-|--------------------|---------------------|----------------------------------------------------------------------------|
+| ------------------ | ------------------- | -------------------------------------------------------------------------- |
 | `<.role_badge>`    | Role indicator      | `role` (owner/admin/editor/member/viewer)                                  |
 | `<.oauth_buttons>` | OAuth login buttons | `action` (login/link), `class`                                             |
 | `<.kbd>`           | Keyboard shortcut   | `inner_block` (content slot), `size` (xs/sm/md)                            |
@@ -48,7 +48,7 @@ import StoryarnWeb.Components.MemberComponents
 ```
 
 | Component           | Purpose                                                                                           |
-|---------------------|---------------------------------------------------------------------------------------------------|
+| ------------------- | ------------------------------------------------------------------------------------------------- |
 | `<.user_avatar>`    | Avatar with initials fallback. Attrs: `user`, `email`, `size` (sm/md/lg)                          |
 | `<.member_row>`     | Member list item. Attrs: `member`, `current_user_id`, `can_manage`, `on_remove`, `on_role_change` |
 | `<.invitation_row>` | Invitation list item. Attrs: `invitation`, `can_revoke`, `on_revoke`                              |
@@ -60,7 +60,7 @@ import StoryarnWeb.Components.BlockComponents
 ```
 
 | Component            | Purpose                                                                                                                |
-|----------------------|------------------------------------------------------------------------------------------------------------------------|
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `<.block_component>` | Renders any block by type. Attrs: `block`, `can_edit`, `editing_block_id`, `target`, `table_data`, `reference_options` |
 | `<.block_menu>`      | Block type selector dropdown                                                                                           |
 | `<.config_panel>`    | Block configuration sidebar                                                                                            |
@@ -73,11 +73,9 @@ Submodules: `TextBlocks`, `SelectBlocks`, `LayoutBlocks`, `BooleanBlocks`, `Refe
 import StoryarnWeb.Components.CollaborationComponents
 ```
 
-| Component                | Purpose                                                                           |
-|--------------------------|-----------------------------------------------------------------------------------|
-| `<.online_users>`        | Online user avatars. Attrs: `users`, `current_user_id`                            |
-| `<.collab_toast>`        | Collaboration event toast. Attrs: `action`, `user_email`, `user_color`, `details` |
-| `<.node_lock_indicator>` | Lock indicator on nodes. Attrs: `lock` (map)                                      |
+| Component         | Purpose                                                                           |
+| ----------------- | --------------------------------------------------------------------------------- |
+| `<.collab_toast>` | Collaboration event toast. Attrs: `action`, `user_email`, `user_color`, `details` |
 
 ### SaveIndicator
 
@@ -86,7 +84,7 @@ import StoryarnWeb.Components.SaveIndicator
 ```
 
 | Component           | Purpose                                                                                    |
-|---------------------|--------------------------------------------------------------------------------------------|
+| ------------------- | ------------------------------------------------------------------------------------------ |
 | `<.save_indicator>` | Save status display. Attrs: `status` (:idle/:saving/:saved), `variant` (:inline/:floating) |
 
 ### ConditionBuilder
@@ -96,7 +94,7 @@ import StoryarnWeb.Components.ConditionBuilder
 ```
 
 | Component              | Purpose                                                                                                              |
-|------------------------|----------------------------------------------------------------------------------------------------------------------|
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `<.condition_builder>` | Variable condition editor. Attrs: `id`, `condition`, `variables`, `can_edit`, `switch_mode`, `event_name`, `context` |
 
 ### InstructionBuilder
@@ -106,7 +104,7 @@ import StoryarnWeb.Components.InstructionBuilder
 ```
 
 | Component                | Purpose                                                                                                  |
-|--------------------------|----------------------------------------------------------------------------------------------------------|
+| ------------------------ | -------------------------------------------------------------------------------------------------------- |
 | `<.instruction_builder>` | Variable assignment editor. Attrs: `id`, `assignments`, `variables`, `can_edit`, `event_name`, `context` |
 
 ### ColorPicker
@@ -116,7 +114,7 @@ import StoryarnWeb.Components.ColorPicker
 ```
 
 | Component         | Purpose                                                                                                                         |
-|-------------------|---------------------------------------------------------------------------------------------------------------------------------|
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `<.color_picker>` | Color selection. Attrs: `id` (required), `color` (default "#8b5cf6"), `event` (required), `field` (default "color"), `disabled` |
 
 ### AudioPicker (LiveComponent)
@@ -127,7 +125,7 @@ import StoryarnWeb.Components.ColorPicker
 ```
 
 | Component     | Purpose                                                                         |
-|---------------|---------------------------------------------------------------------------------|
+| ------------- | ------------------------------------------------------------------------------- |
 | `AudioPicker` | Audio asset selector for dialogue nodes (LiveComponent, not function component) |
 
 ### TreeComponents (`tree.ex`)
@@ -150,50 +148,59 @@ import StoryarnWeb.Components.Sidebar.SceneTree
 ### Other Shared Components
 
 | Module               | Import                                             | Components                                          |
-|----------------------|----------------------------------------------------|-----------------------------------------------------|
+| -------------------- | -------------------------------------------------- | --------------------------------------------------- |
 | `ExpressionEditor`   | `import StoryarnWeb.Components.ExpressionEditor`   | `<.expression_editor>` — tabbed Builder/Code editor |
 | `SheetComponents`    | `import StoryarnWeb.Components.SheetComponents`    | `<.sheet_avatar>`                                   |
 | `Sidebar`            | `import StoryarnWeb.Components.Sidebar`            | `<.sidebar>` — workspace navigation                 |
 | `CanvasToolbar`      | `import StoryarnWeb.Components.CanvasToolbar`      | Canvas-aware toolbar component                      |
 | `CanvasDock`         | `import StoryarnWeb.Components.CanvasDock`         | Dockable panels for canvas views                    |
 | `ToolbarColorPicker` | `import StoryarnWeb.Components.ToolbarColorPicker` | Toolbar-specific color picker                       |
-| `DashboardComponents`| `import StoryarnWeb.Components.DashboardComponents`| Dashboard UI components                             |
 | `VersionsSection`    | `import StoryarnWeb.Components.VersionsSection`    | Version history display                             |
 | `FocusLayout`        | `import StoryarnWeb.Components.FocusLayout`        | Focus layout helper components                      |
+| `AuthLayout`         | `alias StoryarnWeb.Components.AuthLayout`          | Authentication LiveVue layout boundary              |
+| `PublicLayout`       | `alias StoryarnWeb.Components.PublicLayout`        | Public marketing/invitation LiveVue layout boundary |
+| `DocsLayout`         | `alias StoryarnWeb.Components.DocsLayout`          | Documentation LiveVue layout boundary               |
+| `SettingsLayout`     | `alias StoryarnWeb.Components.SettingsLayout`      | Settings LiveVue layout boundary                    |
+
+### Shared Live Helpers
+
+| Module             | Import                                            | Purpose                                                 |
+| ------------------ | ------------------------------------------------- | ------------------------------------------------------- |
+| `DashboardHelpers` | `import StoryarnWeb.Live.Shared.DashboardHelpers` | Sort, pagination, and reload helpers for Vue dashboards |
 
 ---
 
 ## Layouts (6 independent, NOT nested)
 
 ```elixir
-<Layouts.app flash={@flash} current_scope={@current_scope} workspaces={@workspaces}>
-  # Main app shell with workspace sidebar (floating surface-panel toolbars)
-</Layouts.app>
-
-<Layouts.focus flash={@flash} current_scope={@current_scope} project={@project}
-  workspace={@workspace} sheets_tree={@sheets_tree} active_tool={:sheets}>
-  # Project editor with floating toolbars, pinnable tree panel, canvas support
-</Layouts.focus>
-
-<Layouts.auth flash={@flash}>
-  # Centered auth pages (login/register)
-</Layouts.auth>
-
-<Layouts.public flash={@flash}>
-  # Public pages (landing, marketing)
-</Layouts.public>
-
-<Layouts.settings flash={@flash} current_scope={@current_scope} current_path={@current_path}
+<Layouts.workspace flash={@flash} current_scope={@current_scope} current_workspace={@workspace}
   workspaces={@workspaces}>
-  # Settings shell with floating toolbars, sidebar nav, max-width content. Slots: :title (required), :subtitle
-</Layouts.settings>
+  # Workspace dashboard/new-workspace shell with workspace sidebar
+</Layouts.workspace>
 
-<Layouts.docs flash={@flash}>
+<StoryarnWeb.Components.ProjectLayout.project_layout socket={@socket} flash={@flash}
+  project={@project} workspace={@workspace} current_scope={@current_scope}
+  current_user={@current_user} urls={@urls}>
+  # Project tools shell with navbar and optional sticky sidebar
+</StoryarnWeb.Components.ProjectLayout.project_layout>
+
+<AuthLayout.auth flash={@flash}>
+  # Centered auth pages (login/register)
+</AuthLayout.auth>
+
+<PublicLayout.public flash={@flash}>
+  # Public pages (landing, marketing)
+</PublicLayout.public>
+
+<SettingsLayout.settings flash={@flash} current_scope={@current_scope} current_path={@current_path}
+  workspaces={@workspaces} workspace={@workspace} project={@project}>
+  # Account, workspace, and project settings shell with sidebar nav. Slots: :title, :subtitle
+</SettingsLayout.settings>
+
+<DocsLayout.docs flash={@flash}>
   # Documentation layout with sidebar nav and TOC right rail
-</Layouts.docs>
+</DocsLayout.docs>
 ```
-
-**Layouts.focus** additional attrs: `flows_tree`, `screenplays_tree`, `scenes_tree`, `current_path`, `selected_sheet_id`, `selected_flow_id`, `selected_screenplay_id`, `selected_scene_id`, `can_edit`
 
 ---
 
@@ -202,7 +209,7 @@ import StoryarnWeb.Components.Sidebar.SceneTree
 **File:** `lib/storyarn/scenes/changeset_helpers.ex`
 
 | Function                 | Purpose                                                    |
-|--------------------------|------------------------------------------------------------|
+| ------------------------ | ---------------------------------------------------------- |
 | `validate_target_pair/2` | Ensures target_type and target_id are both set or both nil |
 | `validate_color/2`       | Validates hex color format (#RGB, #RRGGBB, #RRGGBBAA)      |
 

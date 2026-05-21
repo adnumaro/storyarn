@@ -12,7 +12,10 @@ defmodule Storyarn.Exports do
   - `Serializers.StoryarnJSON` - Native JSON format (lossless round-trip)
   """
 
-  alias Storyarn.Exports.{DataCollector, ExportOptions, SerializerRegistry, Validator}
+  alias Storyarn.Exports.DataCollector
+  alias Storyarn.Exports.ExportOptions
+  alias Storyarn.Exports.SerializerRegistry
+  alias Storyarn.Exports.Validator
 
   @doc """
   Export a project to the specified format.

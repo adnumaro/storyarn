@@ -1,0 +1,79 @@
+{
+  "workspace": {
+    "dashboard": {
+      "search_placeholder": "Search projects...",
+      "new_project": "New Project",
+      "limit_reached": "Project limit reached for your plan",
+      "no_description": "No description provided",
+      "updated_at": "Updated {time}",
+      "empty_projects": {
+        "title": "No projects yet",
+        "description": "Create your first project to get started"
+      },
+      "empty_search": {
+        "title": "No projects found",
+        "description": "Try a different search term"
+      }
+    },
+    "new_project": {
+      "title": "New Project",
+      "submit": "Create Project",
+      "cancel": "Cancel",
+      "fields": {
+        "name": {
+          "label": "Project Name",
+          "placeholder": "My Narrative Project"
+        },
+        "description": {
+          "label": "Description",
+          "placeholder": "A brief description of your project"
+        }
+      }
+    },
+    "new_workspace": {
+      "title": "Create a new workspace",
+      "subtitle": "Workspaces help you organize projects for different teams or purposes.",
+      "name": "Workspace name",
+      "name_placeholder": "My Workspace",
+      "description": "Description",
+      "description_placeholder": "What is this workspace for?",
+      "cancel": "Cancel",
+      "submit": "Create Workspace"
+    },
+    "invitation": {
+      "invalid_title": "Invalid Invitation",
+      "invalid_description": "This invitation link is invalid or has expired.",
+      "go_home": "Go to Homepage"
+    },
+    "project_dashboard": {
+      "stats": {
+        "sheets": "Sheets",
+        "variables": "Variables",
+        "flows": "Flows",
+        "dialogue_lines": "Dialogue Lines",
+        "scenes": "Scenes",
+        "words": "Words"
+      },
+      "activity_types": {
+        "sheet": "Sheet",
+        "flow": "Flow",
+        "scene": "Scene",
+        "screenplay": "Screenplay"
+      },
+      "node_distribution": "Node Distribution",
+      "no_nodes": "No flow nodes yet",
+      "top_speakers": "Top Speakers",
+      "no_speakers": "No dialogue with speakers yet",
+      "issues": "Issues & Warnings",
+      "localization_progress": "Localization Progress",
+      "recent_activity": "Recent Activity",
+      "no_activity": "No activity yet"
+    },
+    "sidebar": {
+      "my_workspaces": "My Workspaces",
+      "account_settings": "Account settings",
+      "all_workspaces": "All workspaces",
+      "log_out": "Log out"
+    }
+  }
+}

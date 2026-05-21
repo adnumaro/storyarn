@@ -1,0 +1,146 @@
+<script setup lang="ts">
+import { MapPin } from "lucide-vue-next";
+import { nextTick, ref } from "vue";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
+
+interface ProjectSheet {
+  id: number | string;
+  name: string;
+  shortcut?: string;
+}
+
+const { activeTool = "select", projectSheets = [] } = defineProps<{
+  activeTool: string;
+  projectSheets: ProjectSheet[];
+}>();
+
+const emit = defineEmits<{
+  "set-tool": [type: string];
+  "select-sheet": [sheetId: number | string];
+}>();
+
+const pinsOpen = ref(false);
+const sheetPickerOpen = ref(false);
+
+async function openSheetPicker(): Promise<void> {
+  pinsOpen.value = false;
+  await nextTick();
+  sheetPickerOpen.value = true;
+}
+
+function setTool(type: string): void {
+  emit("set-tool", type);
+  pinsOpen.value = false;
+}
+
+function selectSheet(sheetId: number | string): void {
+  sheetPickerOpen.value = false;
+  emit("select-sheet", sheetId);
+}
+</script>
+
+<template>
+  <div class="dock-item group relative">
+    <!-- Pin menu (Free Pin / From Sheet) -->
+    <Popover v-if="!sheetPickerOpen" v-model:open="pinsOpen">
+      <PopoverTrigger as-child>
+        <button
+          type="button"
+          class="dock-btn"
+          :class="{ 'dock-btn-active': activeTool === 'pin' }"
+          :aria-label="$t('scenes.pins_dropdown.pin_tooltip')"
+          :title="$t('scenes.pins_dropdown.pin_tooltip')"
+        >
+          <MapPin class="size-5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="top" :side-offset="12" class="w-52 p-3">
+        <div class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
+          {{ $t("scenes.pins_dropdown.title") }}
+        </div>
+        <div class="flex flex-col gap-0.5">
+          <button
+            type="button"
+            class="w-full flex items-start gap-2.5 px-2.5 py-2 rounded-lg text-sm text-start cursor-pointer hover:bg-accent transition-colors"
+            @click="setTool('pin')"
+          >
+            <MapPin class="size-4 mt-0.5 shrink-0" />
+            <div>
+              <div class="font-medium">{{ $t("scenes.pins_dropdown.free_pin") }}</div>
+              <div class="text-xs text-muted-foreground">
+                {{ $t("scenes.pins_dropdown.free_pin_desc") }}
+              </div>
+            </div>
+          </button>
+          <button
+            type="button"
+            class="w-full flex items-start gap-2.5 px-2.5 py-2 rounded-lg text-sm text-start cursor-pointer hover:bg-accent transition-colors"
+            @click="openSheetPicker"
+          >
+            <MapPin class="size-4 mt-0.5 shrink-0" />
+            <div>
+              <div class="font-medium">{{ $t("scenes.pins_dropdown.from_sheet") }}</div>
+              <div class="text-xs text-muted-foreground">
+                {{ $t("scenes.pins_dropdown.from_sheet_desc") }}
+              </div>
+            </div>
+          </button>
+        </div>
+      </PopoverContent>
+    </Popover>
+    <!-- Sheet picker (replaces pin menu when open) -->
+    <Popover v-else v-model:open="sheetPickerOpen">
+      <PopoverTrigger as-child>
+        <button
+          type="button"
+          class="dock-btn dock-btn-active"
+          :aria-label="$t('scenes.pins_dropdown.pin_tooltip')"
+          :title="$t('scenes.pins_dropdown.pin_tooltip')"
+        >
+          <MapPin class="size-5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="top" :side-offset="12" class="w-56 p-0">
+        <Command>
+          <CommandInput :placeholder="$t('scenes.pins_dropdown.search_sheets')" />
+          <CommandList>
+            <CommandEmpty>{{ $t("scenes.pins_dropdown.no_sheets") }}</CommandEmpty>
+            <CommandGroup>
+              <CommandItem
+                v-for="sheet in projectSheets"
+                :key="sheet.id"
+                class="items-start py-2"
+                :value="sheet.name"
+                @select="selectSheet(sheet.id)"
+              >
+                <div class="flex min-w-0 flex-col items-start">
+                  <span class="max-w-full truncate">{{ sheet.name }}</span>
+                  <span
+                    v-if="sheet.shortcut"
+                    class="mt-0.5 max-w-full truncate text-[11px] leading-none text-muted-foreground"
+                  >
+                    #{{ sheet.shortcut }}
+                  </span>
+                </div>
+              </CommandItem>
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+    <div v-if="!pinsOpen && !sheetPickerOpen" class="dock-tooltip">
+      <div class="text-sm font-semibold mb-0.5">{{ $t("scenes.pins_dropdown.pin_tooltip") }}</div>
+      <div class="text-xs text-muted-foreground leading-relaxed">
+        {{ $t("scenes.pins_dropdown.pin_tooltip_desc") }}
+      </div>
+    </div>
+  </div>
+</template>

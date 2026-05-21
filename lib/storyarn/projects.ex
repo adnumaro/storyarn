@@ -11,17 +11,16 @@ defmodule Storyarn.Projects do
   - `Invitations` - Invitation management
   """
 
-  alias Storyarn.Accounts.{Scope, User}
-
-  alias Storyarn.Projects.{
-    Dashboard,
-    Invitations,
-    Memberships,
-    Project,
-    ProjectCrud,
-    ProjectInvitation,
-    ProjectMembership
-  }
+  alias Storyarn.Accounts.Scope
+  alias Storyarn.Accounts.User
+  alias Storyarn.Projects.Dashboard
+  alias Storyarn.Projects.Invitations
+  alias Storyarn.Projects.Memberships
+  alias Storyarn.Projects.Project
+  alias Storyarn.Projects.ProjectCrud
+  alias Storyarn.Projects.ProjectInvitation
+  alias Storyarn.Projects.ProjectMembership
+  alias Storyarn.Projects.ProjectTrash
 
   # =============================================================================
   # Type Definitions
@@ -105,6 +104,12 @@ defmodule Storyarn.Projects do
   defdelegate update_project(project, attrs), to: ProjectCrud
 
   @doc """
+  Marks a project as having content activity without changing project metadata.
+  """
+  @spec touch_project(integer(), DateTime.t() | nil) :: :ok
+  defdelegate touch_project(project_id, at \\ nil), to: ProjectCrud
+
+  @doc """
   Soft-deletes a project.
   """
   @spec delete_project(project(), integer()) :: {:ok, project()} | {:error, changeset()}
@@ -134,6 +139,28 @@ defmodule Storyarn.Projects do
   @spec list_projects_with_auto_snapshots() :: [project()]
   defdelegate list_projects_with_auto_snapshots(), to: ProjectCrud
   defdelegate auto_versioning_enabled?(project_id, entity_type), to: ProjectCrud
+
+  # =============================================================================
+  # Project Trash
+  # =============================================================================
+
+  @doc """
+  Returns a DB-paginated trash page for all project-level entities.
+  """
+  @spec paginate_deleted_items(integer(), keyword()) :: ProjectTrash.page()
+  defdelegate paginate_deleted_items(project_id, opts \\ []), to: ProjectTrash
+
+  @doc """
+  Lists deleted project-level entities across all trash domains.
+  """
+  @spec list_deleted_items(integer(), keyword()) :: [ProjectTrash.deleted_item()]
+  defdelegate list_deleted_items(project_id, opts \\ []), to: ProjectTrash
+
+  @doc """
+  Lists deleted project-level entities with retention metadata for cleanup jobs.
+  """
+  @spec list_deleted_items_for_retention() :: [map()]
+  defdelegate list_deleted_items_for_retention(), to: ProjectTrash
 
   # =============================================================================
   # Restoration Lock
@@ -282,8 +309,7 @@ defmodule Storyarn.Projects do
   """
   @spec accept_invitation(invitation(), user()) ::
           {:ok, membership()}
-          | {:error,
-             :email_mismatch | :already_member | :already_accepted | :expired | changeset()}
+          | {:error, :email_mismatch | :already_member | :already_accepted | :expired | changeset()}
   defdelegate accept_invitation(invitation, user), to: Invitations
 
   @doc """

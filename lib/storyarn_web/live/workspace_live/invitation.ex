@@ -13,20 +13,19 @@ defmodule StoryarnWeb.WorkspaceLive.Invitation do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.public flash={@flash}>
-      <div class="max-w-lg mx-auto text-center py-12">
-        <.icon name="x-circle" class="size-16 mx-auto text-error mb-6" />
-        <.header>
-          {dgettext("workspaces", "Invalid Invitation")}
-          <:subtitle>
-            {dgettext("workspaces", "This invitation link is invalid or has expired.")}
-          </:subtitle>
-        </.header>
-        <.link navigate={~p"/"} class="btn btn-primary mt-8">
-          {dgettext("workspaces", "Go to Homepage")}
-        </.link>
-      </div>
-    </Layouts.public>
+    <StoryarnWeb.Components.PublicLayout.public
+      flash={@flash}
+      socket={@socket}
+      current_scope={@current_scope}
+    >
+      <.vue
+        v-component="live/workspace/invitation/WorkspaceInvitationResponse"
+        v-socket={@socket}
+        v-inject="public-layout"
+        id="workspace-invitation"
+        homepage-url={~p"/"}
+      />
+    </StoryarnWeb.Components.PublicLayout.public>
     """
   end
 

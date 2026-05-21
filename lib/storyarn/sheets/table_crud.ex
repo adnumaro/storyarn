@@ -7,8 +7,14 @@ defmodule Storyarn.Sheets.TableCrud do
   alias Storyarn.Flows
   alias Storyarn.Localization
   alias Storyarn.Repo
-  alias Storyarn.Shared.{NameNormalizer, TimeHelpers, TreeOperations}
-  alias Storyarn.Sheets.{Block, FormulaBindingRewriter, Sheet, TableColumn, TableRow}
+  alias Storyarn.Shared.NameNormalizer
+  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Shared.TreeOperations
+  alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.FormulaBindingRewriter
+  alias Storyarn.Sheets.Sheet
+  alias Storyarn.Sheets.TableColumn
+  alias Storyarn.Sheets.TableRow
 
   # =============================================================================
   # Column Operations
@@ -16,23 +22,17 @@ defmodule Storyarn.Sheets.TableCrud do
 
   @doc "Lists all columns for a block, ordered by position."
   def list_columns(block_id) do
-    from(c in TableColumn,
-      where: c.block_id == ^block_id,
-      order_by: [asc: c.position]
-    )
-    |> Repo.all()
+    Repo.all(from(c in TableColumn, where: c.block_id == ^block_id, order_by: [asc: c.position]))
   end
 
   @doc "Gets a single column by ID, scoped to a block. Raises if not found."
   def get_column!(block_id, column_id) do
-    from(c in TableColumn, where: c.id == ^column_id and c.block_id == ^block_id)
-    |> Repo.one!()
+    Repo.one!(from(c in TableColumn, where: c.id == ^column_id and c.block_id == ^block_id))
   end
 
   @doc "Gets a single column by ID, scoped to a block. Returns nil if not found."
   def get_column(block_id, column_id) do
-    from(c in TableColumn, where: c.id == ^column_id and c.block_id == ^block_id)
-    |> Repo.one()
+    Repo.one(from(c in TableColumn, where: c.id == ^column_id and c.block_id == ^block_id))
   end
 
   @doc """
@@ -45,18 +45,16 @@ defmodule Storyarn.Sheets.TableCrud do
     position = attrs[:position] || next_column_position(block_id)
     existing_slugs = list_column_slugs(block_id)
 
-    changeset =
-      %TableColumn{block_id: block_id}
-      |> TableColumn.create_changeset(Map.put(attrs, :position, position))
+    changeset = TableColumn.create_changeset(%TableColumn{block_id: block_id}, Map.put(attrs, :position, position))
 
     slug = Ecto.Changeset.get_field(changeset, :slug)
     unique_slug = ensure_unique_slug(slug, existing_slugs)
 
     changeset =
-      if unique_slug != slug do
-        Ecto.Changeset.put_change(changeset, :slug, unique_slug)
-      else
+      if unique_slug == slug do
         changeset
+      else
+        Ecto.Changeset.put_change(changeset, :slug, unique_slug)
       end
 
     result =
@@ -73,7 +71,7 @@ defmodule Storyarn.Sheets.TableCrud do
       |> Repo.transaction()
       |> case do
         {:ok, %{column: column}} ->
-          Repo.get(Block, block_id) |> Localization.extract_block()
+          Block |> Repo.get(block_id) |> Localization.extract_block()
           {:ok, column}
 
         {:error, :column, changeset, _} ->
@@ -115,9 +113,7 @@ defmodule Storyarn.Sheets.TableCrud do
 
     final_new_slug = Ecto.Changeset.get_field(changeset, :slug)
 
-    multi =
-      Multi.new()
-      |> Multi.update(:column, changeset)
+    multi = Multi.update(Multi.new(), :column, changeset)
 
     # Migrate cell keys if slug changed
     multi =
@@ -150,7 +146,7 @@ defmodule Storyarn.Sheets.TableCrud do
     |> Repo.transaction()
     |> case do
       {:ok, %{column: column}} ->
-        Repo.get(Block, column.block_id) |> Localization.extract_block()
+        Block |> Repo.get(column.block_id) |> Localization.extract_block()
         {:ok, column}
 
       {:error, :column, changeset, _} ->
@@ -166,11 +162,8 @@ defmodule Storyarn.Sheets.TableCrud do
     Multi.new()
     |> Multi.run(:check_last, fn _repo, _changes ->
       # Lock the block row to serialize concurrent column deletions
-      from(b in Block, where: b.id == ^column.block_id, lock: "FOR UPDATE") |> Repo.one!()
-
-      count =
-        from(c in TableColumn, where: c.block_id == ^column.block_id, select: count(c.id))
-        |> Repo.one()
+      Repo.one!(from(b in Block, where: b.id == ^column.block_id, lock: "FOR UPDATE"))
+      count = Repo.one(from(c in TableColumn, where: c.block_id == ^column.block_id, select: count(c.id)))
 
       if count <= 1, do: {:error, :last_column}, else: {:ok, :checked}
     end)
@@ -186,7 +179,7 @@ defmodule Storyarn.Sheets.TableCrud do
     |> Repo.transaction()
     |> case do
       {:ok, %{column: column}} ->
-        Repo.get(Block, column.block_id) |> Localization.extract_block()
+        Block |> Repo.get(column.block_id) |> Localization.extract_block()
         {:ok, column}
 
       {:error, :check_last, :last_column, _} ->
@@ -255,18 +248,9 @@ defmodule Storyarn.Sheets.TableCrud do
   """
   def batch_load_table_data(block_ids) when is_list(block_ids) do
     columns =
-      from(c in TableColumn,
-        where: c.block_id in ^block_ids,
-        order_by: [asc: c.block_id, asc: c.position]
-      )
-      |> Repo.all()
+      Repo.all(from(c in TableColumn, where: c.block_id in ^block_ids, order_by: [asc: c.block_id, asc: c.position]))
 
-    rows =
-      from(r in TableRow,
-        where: r.block_id in ^block_ids,
-        order_by: [asc: r.block_id, asc: r.position]
-      )
-      |> Repo.all()
+    rows = Repo.all(from(r in TableRow, where: r.block_id in ^block_ids, order_by: [asc: r.block_id, asc: r.position]))
 
     columns_by_block = Enum.group_by(columns, & &1.block_id)
     rows_by_block = Enum.group_by(rows, & &1.block_id)
@@ -286,11 +270,7 @@ defmodule Storyarn.Sheets.TableCrud do
 
   @doc "Lists all rows for a block, ordered by position."
   def list_rows(block_id) do
-    from(r in TableRow,
-      where: r.block_id == ^block_id,
-      order_by: [asc: r.position]
-    )
-    |> Repo.all()
+    Repo.all(from(r in TableRow, where: r.block_id == ^block_id, order_by: [asc: r.position]))
   end
 
   @doc "Gets a single row by ID. Raises if not found."
@@ -317,21 +297,19 @@ defmodule Storyarn.Sheets.TableCrud do
     cells = Map.merge(default_cells, attrs[:cells] || %{})
 
     changeset =
-      %TableRow{block_id: block_id}
-      |> TableRow.create_changeset(
-        attrs
-        |> Map.put(:position, position)
-        |> Map.put(:cells, cells)
+      TableRow.create_changeset(
+        %TableRow{block_id: block_id},
+        attrs |> Map.put(:position, position) |> Map.put(:cells, cells)
       )
 
     slug = Ecto.Changeset.get_field(changeset, :slug)
     unique_slug = ensure_unique_slug(slug, existing_slugs)
 
     changeset =
-      if unique_slug != slug do
-        Ecto.Changeset.put_change(changeset, :slug, unique_slug)
-      else
+      if unique_slug == slug do
         changeset
+      else
+        Ecto.Changeset.put_change(changeset, :slug, unique_slug)
       end
 
     result =
@@ -344,7 +322,7 @@ defmodule Storyarn.Sheets.TableCrud do
       |> Repo.transaction()
       |> case do
         {:ok, %{row: row}} ->
-          Repo.get(Block, block_id) |> Localization.extract_block()
+          Block |> Repo.get(block_id) |> Localization.extract_block()
           {:ok, row}
 
         {:error, :row, changeset, _} ->
@@ -366,12 +344,12 @@ defmodule Storyarn.Sheets.TableCrud do
     new_slug = Ecto.Changeset.get_field(changeset, :slug)
 
     changeset =
-      if new_slug != row.slug do
+      if new_slug == row.slug do
+        changeset
+      else
         existing_slugs = list_row_slugs(row.block_id, row.id)
         unique_slug = ensure_unique_slug(new_slug, existing_slugs)
         Ecto.Changeset.put_change(changeset, :slug, unique_slug)
-      else
-        changeset
       end
 
     Multi.new()
@@ -383,7 +361,7 @@ defmodule Storyarn.Sheets.TableCrud do
     |> Repo.transaction()
     |> case do
       {:ok, %{row: row}} ->
-        Repo.get(Block, row.block_id) |> Localization.extract_block()
+        Block |> Repo.get(row.block_id) |> Localization.extract_block()
         {:ok, row}
 
       {:error, :row, changeset, _} ->
@@ -413,11 +391,8 @@ defmodule Storyarn.Sheets.TableCrud do
     Multi.new()
     |> Multi.run(:check_last, fn _repo, _changes ->
       # Lock the block row to serialize concurrent row deletions
-      from(b in Block, where: b.id == ^row.block_id, lock: "FOR UPDATE") |> Repo.one!()
-
-      count =
-        from(r in TableRow, where: r.block_id == ^row.block_id, select: count(r.id))
-        |> Repo.one()
+      Repo.one!(from(b in Block, where: b.id == ^row.block_id, lock: "FOR UPDATE"))
+      count = Repo.one(from(r in TableRow, where: r.block_id == ^row.block_id, select: count(r.id)))
 
       if count <= 1, do: {:error, :last_row}, else: {:ok, :checked}
     end)
@@ -429,7 +404,7 @@ defmodule Storyarn.Sheets.TableCrud do
     |> Repo.transaction()
     |> case do
       {:ok, %{row: row}} ->
-        Repo.get(Block, row.block_id) |> Localization.extract_block()
+        Block |> Repo.get(row.block_id) |> Localization.extract_block()
         {:ok, row}
 
       {:error, :check_last, :last_row, _} ->
@@ -505,10 +480,7 @@ defmodule Storyarn.Sheets.TableCrud do
   # Syncs a column deletion to non-detached inherited instances.
   defp sync_column_to_children(parent_block_id, %TableColumn{} = column, :delete) do
     with_inheriting_instances(parent_block_id, fn instance_ids ->
-      from(c in TableColumn,
-        where: c.block_id in ^instance_ids and c.slug == ^column.slug
-      )
-      |> Repo.delete_all()
+      Repo.delete_all(from(c in TableColumn, where: c.block_id in ^instance_ids and c.slug == ^column.slug))
 
       Enum.each(instance_ids, fn instance_id ->
         remove_cell_from_all_rows(instance_id, column.slug)
@@ -517,20 +489,11 @@ defmodule Storyarn.Sheets.TableCrud do
   end
 
   # Syncs a column update (rename + type change) to non-detached inherited instances.
-  defp sync_column_to_children(
-         parent_block_id,
-         %TableColumn{} = column,
-         :update,
-         old_slug,
-         type_changed?
-       ) do
+  defp sync_column_to_children(parent_block_id, %TableColumn{} = column, :update, old_slug, type_changed?) do
     with_inheriting_instances(parent_block_id, fn instance_ids ->
       slug_changed? = column.slug != old_slug
 
-      from(c in TableColumn,
-        where: c.block_id in ^instance_ids and c.slug == ^old_slug
-      )
-      |> Repo.update_all(
+      Repo.update_all(from(c in TableColumn, where: c.block_id in ^instance_ids and c.slug == ^old_slug),
         set: [
           name: column.name,
           slug: column.slug,
@@ -587,10 +550,7 @@ defmodule Storyarn.Sheets.TableCrud do
   # Syncs a row deletion to non-detached inherited instances.
   defp sync_row_to_children(parent_block_id, %TableRow{} = row, :delete) do
     with_inheriting_instances(parent_block_id, fn instance_ids ->
-      from(r in TableRow,
-        where: r.block_id in ^instance_ids and r.slug == ^row.slug
-      )
-      |> Repo.delete_all()
+      Repo.delete_all(from(r in TableRow, where: r.block_id in ^instance_ids and r.slug == ^row.slug))
     end)
   end
 
@@ -598,10 +558,9 @@ defmodule Storyarn.Sheets.TableCrud do
   # Does NOT overwrite cell values (children may have overridden them).
   defp sync_row_to_children(parent_block_id, %TableRow{} = row, :update, old_slug) do
     with_inheriting_instances(parent_block_id, fn instance_ids ->
-      from(r in TableRow,
-        where: r.block_id in ^instance_ids and r.slug == ^old_slug
+      Repo.update_all(from(r in TableRow, where: r.block_id in ^instance_ids and r.slug == ^old_slug),
+        set: [name: row.name, slug: row.slug]
       )
-      |> Repo.update_all(set: [name: row.name, slug: row.slug])
     end)
   end
 
@@ -632,28 +591,22 @@ defmodule Storyarn.Sheets.TableCrud do
 
     # Load instances with their sheet_ids
     instances =
-      from(b in Block,
-        where:
-          b.inherited_from_block_id == ^parent_block.id and
-            b.detached == false and
-            is_nil(b.deleted_at),
-        select: %{id: b.id, sheet_id: b.sheet_id}
+      Repo.all(
+        from(b in Block,
+          where: b.inherited_from_block_id == ^parent_block.id and b.detached == false and is_nil(b.deleted_at),
+          select: %{id: b.id, sheet_id: b.sheet_id}
+        )
       )
-      |> Repo.all()
 
     if instances == [] do
       :ok
     else
       parent_shortcut =
-        from(s in Sheet,
-          join: b in Block,
-          on: b.sheet_id == s.id,
-          where: b.id == ^parent_block.id,
-          select: s.shortcut
+        Repo.one(
+          from(s in Sheet, join: b in Block, on: b.sheet_id == s.id, where: b.id == ^parent_block.id, select: s.shortcut)
         )
-        |> Repo.one()
 
-      child_sheet_ids = Enum.map(instances, & &1.sheet_id) |> Enum.uniq()
+      child_sheet_ids = instances |> Enum.map(& &1.sheet_id) |> Enum.uniq()
 
       child_shortcuts =
         from(s in Sheet, where: s.id in ^child_sheet_ids, select: {s.id, s.shortcut})
@@ -662,8 +615,7 @@ defmodule Storyarn.Sheets.TableCrud do
 
       mappings =
         Map.new(child_sheet_ids, fn sheet_id ->
-          {sheet_id,
-           FormulaBindingRewriter.build_var_name_mapping(parent_block.sheet_id, sheet_id)}
+          {sheet_id, FormulaBindingRewriter.build_var_name_mapping(parent_block.sheet_id, sheet_id)}
         end)
 
       now = TimeHelpers.now()
@@ -722,14 +674,12 @@ defmodule Storyarn.Sheets.TableCrud do
 
   defp do_with_inheriting_instances(parent_block_id, fun) do
     instance_ids =
-      from(b in Block,
-        where:
-          b.inherited_from_block_id == ^parent_block_id and
-            b.detached == false and
-            is_nil(b.deleted_at),
-        select: b.id
+      Repo.all(
+        from(b in Block,
+          where: b.inherited_from_block_id == ^parent_block_id and b.detached == false and is_nil(b.deleted_at),
+          select: b.id
+        )
       )
-      |> Repo.all()
 
     if instance_ids != [] do
       fun.(instance_ids)

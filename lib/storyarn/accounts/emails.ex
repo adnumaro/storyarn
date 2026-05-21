@@ -3,7 +3,9 @@ defmodule Storyarn.Accounts.Emails do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Accounts.{User, UserNotifier, UserToken}
+  alias Storyarn.Accounts.User
+  alias Storyarn.Accounts.UserNotifier
+  alias Storyarn.Accounts.UserToken
   alias Storyarn.Repo
 
   @doc """

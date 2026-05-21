@@ -38,7 +38,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
   end
 
   defp setup_table(%{user: user}) do
-    project = project_fixture(user) |> Repo.preload(:workspace)
+    project = user |> project_fixture() |> Repo.preload(:workspace)
     sheet = sheet_fixture(project, %{name: "Table Test Sheet"})
     table_block = table_block_fixture(sheet, %{label: "Test Table"})
 
@@ -154,7 +154,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
       })
 
       # Column still exists — deletion was prevented
-      assert Sheets.get_table_column!(ctx.default_col.block_id, ctx.default_col.id) != nil
+      assert Sheets.get_table_column!(ctx.default_col.block_id, ctx.default_col.id)
 
       # Table data still has exactly 1 column
       data = Sheets.batch_load_table_data([ctx.table_block.id])
@@ -176,7 +176,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
       })
 
       # Row still exists — deletion was prevented
-      assert Sheets.get_table_row!(ctx.default_row.id) != nil
+      assert Sheets.get_table_row!(ctx.default_row.id)
 
       # Table data still has exactly 1 row
       data = Sheets.batch_load_table_data([ctx.table_block.id])
@@ -236,37 +236,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
 
       updated = Sheets.get_table_row!(ctx.default_row.id)
       assert updated.name == ctx.default_row.name
-    end
-  end
-
-  describe "rename_table_row_keydown" do
-    setup [:register_and_log_in_user, :setup_table]
-
-    test "renames row on Enter key", ctx do
-      {:ok, view, _html} = mount_sheet(ctx.conn, ctx.workspace, ctx.project, ctx.sheet)
-
-      send_to_content_tab(view, "rename_table_row_keydown", %{
-        "key" => "Enter",
-        "row-id" => to_string(ctx.default_row.id),
-        "value" => "Renamed Via Enter"
-      })
-
-      updated = Sheets.get_table_row!(ctx.default_row.id)
-      assert updated.name == "Renamed Via Enter"
-    end
-
-    test "does nothing on non-Enter key", ctx do
-      {:ok, view, _html} = mount_sheet(ctx.conn, ctx.workspace, ctx.project, ctx.sheet)
-      original_name = ctx.default_row.name
-
-      send_to_content_tab(view, "rename_table_row_keydown", %{
-        "key" => "Escape",
-        "row-id" => to_string(ctx.default_row.id),
-        "value" => "Should Not Apply"
-      })
-
-      updated = Sheets.get_table_row!(ctx.default_row.id)
-      assert updated.name == original_name
     end
   end
 
@@ -561,164 +530,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
   # ===========================================================================
   # Add/Remove/Update Column Option
   # ===========================================================================
-
-  describe "add_table_column_option_keydown" do
-    setup [:register_and_log_in_user, :setup_table]
-
-    setup ctx do
-      col =
-        table_column_fixture(ctx.table_block, %{
-          name: "Grade",
-          type: "select"
-        })
-
-      Sheets.update_table_column(col, %{config: %{"options" => []}})
-
-      %{grade_col: Sheets.get_table_column!(col.block_id, col.id)}
-    end
-
-    test "adds option to column on Enter", ctx do
-      {:ok, view, _html} = mount_sheet(ctx.conn, ctx.workspace, ctx.project, ctx.sheet)
-
-      send_to_content_tab(view, "add_table_column_option_keydown", %{
-        "key" => "Enter",
-        "column-id" => to_string(ctx.grade_col.id),
-        "value" => "A+"
-      })
-
-      updated = Sheets.get_table_column!(ctx.grade_col.block_id, ctx.grade_col.id)
-      assert length(updated.config["options"]) == 1
-      assert hd(updated.config["options"])["value"] == "A+"
-    end
-
-    test "normalizes punctuation-only values to option", ctx do
-      {:ok, view, _html} = mount_sheet(ctx.conn, ctx.workspace, ctx.project, ctx.sheet)
-
-      send_to_content_tab(view, "add_table_column_option_keydown", %{
-        "key" => "Enter",
-        "column-id" => to_string(ctx.grade_col.id),
-        "value" => "_."
-      })
-
-      updated = Sheets.get_table_column!(ctx.grade_col.block_id, ctx.grade_col.id)
-      assert hd(updated.config["options"])["key"] == "option"
-    end
-
-    test "ignores non-Enter keydown", ctx do
-      {:ok, view, _html} = mount_sheet(ctx.conn, ctx.workspace, ctx.project, ctx.sheet)
-
-      send_to_content_tab(view, "add_table_column_option_keydown", %{
-        "key" => "Tab",
-        "column-id" => to_string(ctx.grade_col.id),
-        "value" => "Should Not Add"
-      })
-
-      updated = Sheets.get_table_column!(ctx.grade_col.block_id, ctx.grade_col.id)
-      assert updated.config["options"] == []
-    end
-
-    test "ignores empty value on Enter", ctx do
-      {:ok, view, _html} = mount_sheet(ctx.conn, ctx.workspace, ctx.project, ctx.sheet)
-
-      send_to_content_tab(view, "add_table_column_option_keydown", %{
-        "key" => "Enter",
-        "column-id" => to_string(ctx.grade_col.id),
-        "value" => "  "
-      })
-
-      updated = Sheets.get_table_column!(ctx.grade_col.block_id, ctx.grade_col.id)
-      assert updated.config["options"] == []
-    end
-  end
-
-  describe "remove_table_column_option" do
-    setup [:register_and_log_in_user, :setup_table]
-
-    setup ctx do
-      col =
-        table_column_fixture(ctx.table_block, %{
-          name: "Status",
-          type: "select"
-        })
-
-      Sheets.update_table_column(col, %{
-        config: %{
-          "options" => [
-            %{"key" => "active", "value" => "Active"},
-            %{"key" => "inactive", "value" => "Inactive"}
-          ]
-        }
-      })
-
-      %{status_col: Sheets.get_table_column!(col.block_id, col.id)}
-    end
-
-    test "removes an option by key", ctx do
-      {:ok, view, _html} = mount_sheet(ctx.conn, ctx.workspace, ctx.project, ctx.sheet)
-
-      send_to_content_tab(view, "remove_table_column_option", %{
-        "column-id" => to_string(ctx.status_col.id),
-        "key" => "active"
-      })
-
-      updated = Sheets.get_table_column!(ctx.status_col.block_id, ctx.status_col.id)
-      keys = Enum.map(updated.config["options"], & &1["key"])
-      assert keys == ["inactive"]
-    end
-  end
-
-  describe "update_table_column_option" do
-    setup [:register_and_log_in_user, :setup_table]
-
-    setup ctx do
-      col =
-        table_column_fixture(ctx.table_block, %{
-          name: "Tier",
-          type: "select"
-        })
-
-      Sheets.update_table_column(col, %{
-        config: %{
-          "options" => [
-            %{"key" => "bronze", "value" => "Bronze"},
-            %{"key" => "silver", "value" => "Silver"}
-          ]
-        }
-      })
-
-      %{tier_col: Sheets.get_table_column!(col.block_id, col.id)}
-    end
-
-    test "updates option value at index", ctx do
-      {:ok, view, _html} = mount_sheet(ctx.conn, ctx.workspace, ctx.project, ctx.sheet)
-
-      send_to_content_tab(view, "update_table_column_option", %{
-        "column-id" => to_string(ctx.tier_col.id),
-        "index" => "0",
-        "value" => "Gold"
-      })
-
-      updated = Sheets.get_table_column!(ctx.tier_col.block_id, ctx.tier_col.id)
-      first_option = hd(updated.config["options"])
-      assert first_option["value"] == "Gold"
-      assert first_option["key"] == "gold"
-    end
-
-    test "keeps underscores when regenerating keys", ctx do
-      {:ok, view, _html} = mount_sheet(ctx.conn, ctx.workspace, ctx.project, ctx.sheet)
-
-      send_to_content_tab(view, "update_table_column_option", %{
-        "column-id" => to_string(ctx.tier_col.id),
-        "index" => "0",
-        "value" => "Ice_Blast"
-      })
-
-      updated = Sheets.get_table_column!(ctx.tier_col.block_id, ctx.tier_col.id)
-      first_option = hd(updated.config["options"])
-      assert first_option["value"] == "Ice_Blast"
-      assert first_option["key"] == "ice_blast"
-    end
-  end
 
   # ===========================================================================
   # Toggle Reference Multiple
@@ -1242,7 +1053,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
       updated_row = Sheets.get_table_row!(ctx.default_row.id)
       # The value should be clamped to max 100
       cell_val = updated_row.cells[ctx.clamp_col.slug]
-      assert cell_val != nil
+      assert cell_val
     end
   end
 

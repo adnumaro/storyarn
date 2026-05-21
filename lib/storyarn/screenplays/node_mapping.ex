@@ -13,7 +13,7 @@ defmodule Storyarn.Screenplays.NodeMapping do
   Converts a list of element groups into a list of node attr maps.
 
   Skips non-mappeable groups and dual_dialogue (returns only mappeable entries).
-  The first `scene_heading` group maps to an `entry` node; subsequent ones to `scene` nodes.
+  The first `scene_heading` group maps to an `entry` node; subsequent ones are non-mappeable.
   """
   def groups_to_node_attrs(groups, opts \\ []) when is_list(groups) do
     offset = if Keyword.get(opts, :child_page, false), do: 1, else: 0
@@ -94,8 +94,7 @@ defmodule Storyarn.Screenplays.NodeMapping do
     data = %{
       "speaker_sheet_id" => speaker_sheet_id,
       "text" => (dialogue && dialogue.content) || "",
-      "stage_directions" =>
-        ContentUtils.strip_html((parenthetical && parenthetical.content) || ""),
+      "stage_directions" => ContentUtils.strip_html((parenthetical && parenthetical.content) || ""),
       "menu_text" => ContentUtils.strip_html((character && character.content) || ""),
       "audio_asset_id" => nil,
       "technical_id" => "",
@@ -120,23 +119,7 @@ defmodule Storyarn.Screenplays.NodeMapping do
     }
   end
 
-  defp map_scene_heading(element, _index) do
-    parsed = parse_scene_heading(ContentUtils.strip_html(element.content || ""))
-
-    %{
-      type: "slug_line",
-      data: %{
-        "location_sheet_id" => nil,
-        "int_ext" => parsed.int_ext,
-        "sub_location" => "",
-        "time_of_day" => parsed.time_of_day,
-        "description" => parsed.description,
-        "technical_id" => ""
-      },
-      element_ids: [element.id],
-      source: "screenplay_sync"
-    }
-  end
+  defp map_scene_heading(_element, _index), do: nil
 
   defp map_action(element) do
     %{
@@ -263,8 +246,7 @@ defmodule Storyarn.Screenplays.NodeMapping do
     }
   end
 
-  defp dual_side_to_node_data(nil),
-    do: %{"text" => "", "stage_directions" => "", "menu_text" => ""}
+  defp dual_side_to_node_data(nil), do: %{"text" => "", "stage_directions" => "", "menu_text" => ""}
 
   defp dual_side_to_node_data(side) do
     %{
@@ -281,8 +263,7 @@ defmodule Storyarn.Screenplays.NodeMapping do
   defp map_responses(nil), do: []
 
   defp map_responses(%{data: data}) do
-    (data["choices"] || [])
-    |> Enum.map(fn choice ->
+    Enum.map(data["choices"] || [], fn choice ->
       %{
         "id" => choice["id"],
         "text" => choice["text"] || "",
@@ -295,40 +276,13 @@ defmodule Storyarn.Screenplays.NodeMapping do
 
   defp serialize_condition(nil), do: nil
 
-  defp serialize_condition(condition) when is_map(condition),
-    do: Flows.condition_to_json(condition)
+  defp serialize_condition(condition) when is_map(condition), do: Flows.condition_to_json(condition)
 
   defp serialize_condition(condition) when is_binary(condition), do: condition
 
   defp serialize_instruction(nil), do: nil
 
-  defp serialize_instruction(assignments) when is_list(assignments),
-    do: Jason.encode!(assignments)
+  defp serialize_instruction(assignments) when is_list(assignments), do: Jason.encode!(assignments)
 
   defp serialize_instruction(instruction) when is_binary(instruction), do: instruction
-
-  defp parse_scene_heading(content) do
-    {int_ext, rest} =
-      cond do
-        String.match?(content, ~r/^INT\.?\s*\/\s*EXT\.?\s*/i) ->
-          {"int", String.replace(content, ~r/^INT\.?\s*\/\s*EXT\.?\s*/i, "")}
-
-        String.match?(content, ~r/^EXT\.?\s*/i) ->
-          {"ext", String.replace(content, ~r/^EXT\.?\s*/i, "")}
-
-        String.match?(content, ~r/^INT\.?\s*/i) ->
-          {"int", String.replace(content, ~r/^INT\.?\s*/i, "")}
-
-        true ->
-          {"int", content}
-      end
-
-    {description, time_of_day} =
-      case String.split(rest, ~r/\s+-\s+/, parts: 2) do
-        [desc, time] -> {String.trim(desc), String.trim(time)}
-        [desc] -> {String.trim(desc), ""}
-      end
-
-    %{int_ext: int_ext, description: description, time_of_day: time_of_day}
-  end
 end

@@ -14,8 +14,16 @@ defmodule Storyarn.Scenes.SceneCrud do
   alias Storyarn.Localization
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
-  alias Storyarn.Scenes.{Scene, SceneLayer, ScenePin, SceneZone, TreeOperations}
-  alias Storyarn.Shared.{ImportHelpers, MapUtils, SearchHelpers, ShortcutHelpers, SoftDelete}
+  alias Storyarn.Scenes.Scene
+  alias Storyarn.Scenes.SceneLayer
+  alias Storyarn.Scenes.ScenePin
+  alias Storyarn.Scenes.SceneZone
+  alias Storyarn.Scenes.TreeOperations
+  alias Storyarn.Shared.ImportHelpers
+  alias Storyarn.Shared.MapUtils
+  alias Storyarn.Shared.SearchHelpers
+  alias Storyarn.Shared.ShortcutHelpers
+  alias Storyarn.Shared.SoftDelete
   alias Storyarn.Shared.TreeOperations, as: SharedTree
   alias Storyarn.Shortcuts
 
@@ -24,11 +32,12 @@ defmodule Storyarn.Scenes.SceneCrud do
   Returns scenes ordered by position then name.
   """
   def list_scenes(project_id) do
-    from(m in Scene,
-      where: m.project_id == ^project_id and is_nil(m.deleted_at) and is_nil(m.draft_id),
-      order_by: [asc: m.position, asc: m.name]
+    Repo.all(
+      from(m in Scene,
+        where: m.project_id == ^project_id and is_nil(m.deleted_at),
+        order_by: [asc: m.position, asc: m.name]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -36,7 +45,7 @@ defmodule Storyarn.Scenes.SceneCrud do
   For the scene editor sidebar with zone/pin previews, use `list_scenes_tree_with_elements/1`.
   """
   def list_scenes_tree(project_id) do
-    all_scenes = base_scenes_query(project_id) |> Repo.all()
+    all_scenes = project_id |> base_scenes_query() |> Repo.all()
     SharedTree.build_tree_from_flat_list(all_scenes)
   end
 
@@ -47,7 +56,7 @@ defmodule Storyarn.Scenes.SceneCrud do
   Each scene gets :sidebar_zones, :sidebar_pins, :zone_count, :pin_count.
   """
   def list_scenes_tree_with_elements(project_id) do
-    all_scenes = base_scenes_query(project_id) |> Repo.all()
+    all_scenes = project_id |> base_scenes_query() |> Repo.all()
 
     scene_ids = Enum.map(all_scenes, & &1.id)
 
@@ -134,7 +143,8 @@ defmodule Storyarn.Scenes.SceneCrud do
   defp collect_descendant_ids(rows, root_id) do
     children_by_parent = Enum.group_by(rows, &elem(&1, 1), &elem(&1, 0))
 
-    do_collect_descendant_ids(children_by_parent, root_id, [])
+    children_by_parent
+    |> do_collect_descendant_ids(root_id, [])
     |> Enum.reverse()
   end
 
@@ -159,24 +169,26 @@ defmodule Storyarn.Scenes.SceneCrud do
     query_str = String.trim(query)
 
     if query_str == "" do
-      from(m in Scene,
-        where: m.project_id == ^project_id and is_nil(m.deleted_at) and is_nil(m.draft_id),
-        order_by: [desc: m.updated_at],
-        limit: ^limit,
-        offset: ^offset
+      Repo.all(
+        from(m in Scene,
+          where: m.project_id == ^project_id and is_nil(m.deleted_at),
+          order_by: [desc: m.updated_at],
+          limit: ^limit,
+          offset: ^offset
+        )
       )
-      |> Repo.all()
     else
       search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
 
-      from(m in Scene,
-        where: m.project_id == ^project_id and is_nil(m.deleted_at) and is_nil(m.draft_id),
-        where: ilike(m.name, ^search_term) or ilike(m.shortcut, ^search_term),
-        order_by: [asc: m.name],
-        limit: ^limit,
-        offset: ^offset
+      Repo.all(
+        from(m in Scene,
+          where: m.project_id == ^project_id and is_nil(m.deleted_at),
+          where: ilike(m.name, ^search_term) or ilike(m.shortcut, ^search_term),
+          order_by: [asc: m.name],
+          limit: ^limit,
+          offset: ^offset
+        )
       )
-      |> Repo.all()
     end
   end
 
@@ -194,13 +206,12 @@ defmodule Storyarn.Scenes.SceneCrud do
   Returns nil if not found or deleted.
   """
   def get_scene(project_id, scene_id) do
-    from(m in Scene,
-      where:
-        m.project_id == ^project_id and m.id == ^scene_id and is_nil(m.deleted_at) and
-          is_nil(m.draft_id),
-      preload: ^@scene_preloads
+    Repo.one(
+      from(m in Scene,
+        where: m.project_id == ^project_id and m.id == ^scene_id and is_nil(m.deleted_at),
+        preload: ^@scene_preloads
+      )
     )
-    |> Repo.one()
   end
 
   @doc """
@@ -208,13 +219,12 @@ defmodule Storyarn.Scenes.SceneCrud do
   Raises if not found or deleted.
   """
   def get_scene!(project_id, scene_id) do
-    from(m in Scene,
-      where:
-        m.project_id == ^project_id and m.id == ^scene_id and is_nil(m.deleted_at) and
-          is_nil(m.draft_id),
-      preload: ^@scene_preloads
+    Repo.one!(
+      from(m in Scene,
+        where: m.project_id == ^project_id and m.id == ^scene_id and is_nil(m.deleted_at),
+        preload: ^@scene_preloads
+      )
     )
-    |> Repo.one!()
   end
 
   @doc """
@@ -222,10 +232,7 @@ defmodule Storyarn.Scenes.SceneCrud do
   Used for canvas data enrichment where the scene reference is already project-scoped.
   """
   def get_scene_by_id(scene_id) do
-    from(m in Scene,
-      where: m.id == ^scene_id and is_nil(m.deleted_at) and is_nil(m.draft_id)
-    )
-    |> Repo.one()
+    Repo.one(from(m in Scene, where: m.id == ^scene_id and is_nil(m.deleted_at)))
   end
 
   @doc """
@@ -233,23 +240,19 @@ defmodule Storyarn.Scenes.SceneCrud do
   Used for breadcrumbs and lightweight lookups.
   """
   def get_scene_brief(project_id, scene_id) do
-    from(m in Scene,
-      where:
-        m.project_id == ^project_id and m.id == ^scene_id and is_nil(m.deleted_at) and
-          is_nil(m.draft_id)
-    )
-    |> Repo.one()
+    Repo.one(from(m in Scene, where: m.project_id == ^project_id and m.id == ^scene_id and is_nil(m.deleted_at)))
   end
 
   @doc """
   Gets a scene including soft-deleted ones (for trash/restore).
   """
   def get_scene_including_deleted(project_id, scene_id) do
-    from(m in Scene,
-      where: m.project_id == ^project_id and m.id == ^scene_id,
-      preload: [:layers, :zones, :pins, connections: [:from_pin, :to_pin]]
+    Repo.one(
+      from(m in Scene,
+        where: m.project_id == ^project_id and m.id == ^scene_id,
+        preload: [:layers, :zones, :pins, connections: [:from_pin, :to_pin]]
+      )
     )
-    |> Repo.one()
   end
 
   @doc """
@@ -396,7 +399,7 @@ defmodule Storyarn.Scenes.SceneCrud do
         select: %{parent_id: m.parent_id, depth: a.depth + 1}
       )
 
-    cte_query = anchor |> union_all(^recursion)
+    cte_query = union_all(anchor, ^recursion)
 
     # Get ordered ancestor IDs from the CTE (child-first order)
     ancestor_ids =
@@ -436,7 +439,7 @@ defmodule Storyarn.Scenes.SceneCrud do
 
   defp base_scenes_query(project_id) do
     from(m in Scene,
-      where: m.project_id == ^project_id and is_nil(m.deleted_at) and is_nil(m.draft_id),
+      where: m.project_id == ^project_id and is_nil(m.deleted_at),
       order_by: [asc: m.position, asc: m.name]
     )
   end
@@ -447,20 +450,16 @@ defmodule Storyarn.Scenes.SceneCrud do
     since_threshold = DateTime.add(since, -1, :second)
 
     children =
-      from(m in Scene,
-        where:
-          m.project_id == ^project_id and
-            m.parent_id == ^parent_id and
-            not is_nil(m.deleted_at) and
-            m.deleted_at >= ^since_threshold and
-            is_nil(m.draft_id)
+      Repo.all(
+        from(m in Scene,
+          where:
+            m.project_id == ^project_id and m.parent_id == ^parent_id and not is_nil(m.deleted_at) and
+              m.deleted_at >= ^since_threshold
+        )
       )
-      |> Repo.all()
 
     Enum.each(children, fn child ->
-      from(m in Scene, where: m.id == ^child.id)
-      |> Repo.update_all(set: [deleted_at: nil])
-
+      Repo.update_all(from(m in Scene, where: m.id == ^child.id), set: [deleted_at: nil])
       restore_children(project_id, child.id, since)
     end)
   end
@@ -490,11 +489,7 @@ defmodule Storyarn.Scenes.SceneCrud do
   Used for rendering scene backdrops in the flow player.
   """
   def get_scene_backdrop(scene_id) do
-    from(m in Scene,
-      where: m.id == ^scene_id and is_nil(m.deleted_at),
-      preload: [:background_asset]
-    )
-    |> Repo.one()
+    Repo.one(from(m in Scene, where: m.id == ^scene_id and is_nil(m.deleted_at), preload: [:background_asset]))
   end
 
   @doc """
@@ -502,8 +497,7 @@ defmodule Storyarn.Scenes.SceneCrud do
   Used by reference trackers that need the project scope from a scene.
   """
   def get_scene_project_id(scene_id) do
-    from(m in Scene, where: m.id == ^scene_id, select: m.project_id)
-    |> Repo.one()
+    Repo.one(from(m in Scene, where: m.id == ^scene_id, select: m.project_id))
   end
 
   defp maybe_assign_position(attrs, project_id, parent_id) do
@@ -528,7 +522,7 @@ defmodule Storyarn.Scenes.SceneCrud do
 
     query =
       from(s in Scene,
-        where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
+        where: s.project_id == ^project_id and is_nil(s.deleted_at),
         preload: [:layers, :pins, :zones, :connections, :annotations],
         order_by: [asc: s.position, asc: s.name]
       )
@@ -542,10 +536,7 @@ defmodule Storyarn.Scenes.SceneCrud do
   Counts non-deleted scenes for a project.
   """
   def count_scenes(project_id) do
-    from(s in Scene,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id)
-    )
-    |> Repo.aggregate(:count)
+    Repo.aggregate(from(s in Scene, where: s.project_id == ^project_id and is_nil(s.deleted_at)), :count)
   end
 
   @doc """
@@ -556,26 +547,27 @@ defmodule Storyarn.Scenes.SceneCrud do
   def get_scene_zone_variable_usage(block_id, project_id) do
     alias Storyarn.Flows.VariableReference
 
-    from(vr in VariableReference,
-      join: z in SceneZone,
-      on: vr.source_type == "scene_zone" and z.id == vr.source_id,
-      join: m in Scene,
-      on: m.id == z.scene_id,
-      where: vr.block_id == ^block_id,
-      where: m.project_id == ^project_id,
-      where: is_nil(m.deleted_at),
-      select: %{
-        source_type: vr.source_type,
-        kind: vr.kind,
-        scene_id: m.id,
-        scene_name: m.name,
-        zone_id: z.id,
-        zone_name: z.name,
-        zone_action_data: z.action_data
-      },
-      order_by: [asc: vr.kind, asc: m.name]
+    Repo.all(
+      from(vr in VariableReference,
+        join: z in SceneZone,
+        on: vr.source_type == "scene_zone" and z.id == vr.source_id,
+        join: m in Scene,
+        on: m.id == z.scene_id,
+        where: vr.block_id == ^block_id,
+        where: m.project_id == ^project_id,
+        where: is_nil(m.deleted_at),
+        select: %{
+          source_type: vr.source_type,
+          kind: vr.kind,
+          scene_id: m.id,
+          scene_name: m.name,
+          zone_id: z.id,
+          zone_name: z.name,
+          zone_action_data: z.action_data
+        },
+        order_by: [asc: vr.kind, asc: m.name]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -586,25 +578,26 @@ defmodule Storyarn.Scenes.SceneCrud do
   def get_scene_pin_variable_usage(block_id, project_id) do
     alias Storyarn.Flows.VariableReference
 
-    from(vr in VariableReference,
-      join: p in ScenePin,
-      on: vr.source_type == "scene_pin" and p.id == vr.source_id,
-      join: m in Scene,
-      on: m.id == p.scene_id,
-      where: vr.block_id == ^block_id,
-      where: m.project_id == ^project_id,
-      where: is_nil(m.deleted_at),
-      select: %{
-        source_type: vr.source_type,
-        kind: vr.kind,
-        scene_id: m.id,
-        scene_name: m.name,
-        pin_id: p.id,
-        pin_label: p.label
-      },
-      order_by: [asc: vr.kind, asc: m.name]
+    Repo.all(
+      from(vr in VariableReference,
+        join: p in ScenePin,
+        on: vr.source_type == "scene_pin" and p.id == vr.source_id,
+        join: m in Scene,
+        on: m.id == p.scene_id,
+        where: vr.block_id == ^block_id,
+        where: m.project_id == ^project_id,
+        where: is_nil(m.deleted_at),
+        select: %{
+          source_type: vr.source_type,
+          kind: vr.kind,
+          scene_id: m.id,
+          scene_name: m.name,
+          pin_id: p.id,
+          pin_label: p.label
+        },
+        order_by: [asc: vr.kind, asc: m.name]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -615,61 +608,63 @@ defmodule Storyarn.Scenes.SceneCrud do
   """
   def check_stale_scene_zone_variable_references(block_id, project_id) do
     alias Storyarn.Flows.VariableReference
-    alias Storyarn.Sheets.{Block, Sheet}
+    alias Storyarn.Sheets.Block
+    alias Storyarn.Sheets.Sheet
 
-    from(vr in VariableReference,
-      join: z in SceneZone,
-      on: vr.source_type == "scene_zone" and z.id == vr.source_id,
-      join: m in Scene,
-      on: m.id == z.scene_id,
-      join: b in Block,
-      on: b.id == vr.block_id,
-      join: s in Sheet,
-      on: s.id == b.sheet_id,
-      where: vr.block_id == ^block_id,
-      where: m.project_id == ^project_id,
-      where: is_nil(m.deleted_at),
-      where: is_nil(s.deleted_at),
-      where: is_nil(b.deleted_at),
-      select: %{
-        source_type: vr.source_type,
-        kind: vr.kind,
-        scene_id: m.id,
-        scene_name: m.name,
-        zone_id: z.id,
-        zone_name: z.name,
-        zone_action_data: z.action_data,
-        source_sheet: vr.source_sheet,
-        source_variable: vr.source_variable,
-        stale:
-          fragment(
-            """
-            CASE WHEN ? = 'table' THEN
-              ? != ? OR NOT EXISTS (
-                SELECT 1 FROM table_rows tr
-                JOIN table_columns tc ON tc.block_id = tr.block_id
-                WHERE tr.block_id = ?
-                  AND ? = ? || '.' || tr.slug || '.' || tc.slug
-              )
-            ELSE
-              ? != ? OR ? != ?
-            END
-            """,
-            b.type,
-            vr.source_sheet,
-            s.shortcut,
-            b.id,
-            vr.source_variable,
-            b.variable_name,
-            vr.source_sheet,
-            s.shortcut,
-            vr.source_variable,
-            b.variable_name
-          )
-      },
-      order_by: [asc: vr.kind, asc: m.name]
+    Repo.all(
+      from(vr in VariableReference,
+        join: z in SceneZone,
+        on: vr.source_type == "scene_zone" and z.id == vr.source_id,
+        join: m in Scene,
+        on: m.id == z.scene_id,
+        join: b in Block,
+        on: b.id == vr.block_id,
+        join: s in Sheet,
+        on: s.id == b.sheet_id,
+        where: vr.block_id == ^block_id,
+        where: m.project_id == ^project_id,
+        where: is_nil(m.deleted_at),
+        where: is_nil(s.deleted_at),
+        where: is_nil(b.deleted_at),
+        select: %{
+          source_type: vr.source_type,
+          kind: vr.kind,
+          scene_id: m.id,
+          scene_name: m.name,
+          zone_id: z.id,
+          zone_name: z.name,
+          zone_action_data: z.action_data,
+          source_sheet: vr.source_sheet,
+          source_variable: vr.source_variable,
+          stale:
+            fragment(
+              """
+              CASE WHEN ? = 'table' THEN
+                ? != ? OR NOT EXISTS (
+                  SELECT 1 FROM table_rows tr
+                  JOIN table_columns tc ON tc.block_id = tr.block_id
+                  WHERE tr.block_id = ?
+                    AND ? = ? || '.' || tr.slug || '.' || tc.slug
+                )
+              ELSE
+                ? != ? OR ? != ?
+              END
+              """,
+              b.type,
+              vr.source_sheet,
+              s.shortcut,
+              b.id,
+              vr.source_variable,
+              b.variable_name,
+              vr.source_sheet,
+              s.shortcut,
+              vr.source_variable,
+              b.variable_name
+            )
+        },
+        order_by: [asc: vr.kind, asc: m.name]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -680,60 +675,62 @@ defmodule Storyarn.Scenes.SceneCrud do
   """
   def check_stale_scene_pin_variable_references(block_id, project_id) do
     alias Storyarn.Flows.VariableReference
-    alias Storyarn.Sheets.{Block, Sheet}
+    alias Storyarn.Sheets.Block
+    alias Storyarn.Sheets.Sheet
 
-    from(vr in VariableReference,
-      join: p in ScenePin,
-      on: vr.source_type == "scene_pin" and p.id == vr.source_id,
-      join: m in Scene,
-      on: m.id == p.scene_id,
-      join: b in Block,
-      on: b.id == vr.block_id,
-      join: s in Sheet,
-      on: s.id == b.sheet_id,
-      where: vr.block_id == ^block_id,
-      where: m.project_id == ^project_id,
-      where: is_nil(m.deleted_at),
-      where: is_nil(s.deleted_at),
-      where: is_nil(b.deleted_at),
-      select: %{
-        source_type: vr.source_type,
-        kind: vr.kind,
-        scene_id: m.id,
-        scene_name: m.name,
-        pin_id: p.id,
-        pin_label: p.label,
-        source_sheet: vr.source_sheet,
-        source_variable: vr.source_variable,
-        stale:
-          fragment(
-            """
-            CASE WHEN ? = 'table' THEN
-              ? != ? OR NOT EXISTS (
-                SELECT 1 FROM table_rows tr
-                JOIN table_columns tc ON tc.block_id = tr.block_id
-                WHERE tr.block_id = ?
-                  AND ? = ? || '.' || tr.slug || '.' || tc.slug
-              )
-            ELSE
-              ? != ? OR ? != ?
-            END
-            """,
-            b.type,
-            vr.source_sheet,
-            s.shortcut,
-            b.id,
-            vr.source_variable,
-            b.variable_name,
-            vr.source_sheet,
-            s.shortcut,
-            vr.source_variable,
-            b.variable_name
-          )
-      },
-      order_by: [asc: vr.kind, asc: m.name]
+    Repo.all(
+      from(vr in VariableReference,
+        join: p in ScenePin,
+        on: vr.source_type == "scene_pin" and p.id == vr.source_id,
+        join: m in Scene,
+        on: m.id == p.scene_id,
+        join: b in Block,
+        on: b.id == vr.block_id,
+        join: s in Sheet,
+        on: s.id == b.sheet_id,
+        where: vr.block_id == ^block_id,
+        where: m.project_id == ^project_id,
+        where: is_nil(m.deleted_at),
+        where: is_nil(s.deleted_at),
+        where: is_nil(b.deleted_at),
+        select: %{
+          source_type: vr.source_type,
+          kind: vr.kind,
+          scene_id: m.id,
+          scene_name: m.name,
+          pin_id: p.id,
+          pin_label: p.label,
+          source_sheet: vr.source_sheet,
+          source_variable: vr.source_variable,
+          stale:
+            fragment(
+              """
+              CASE WHEN ? = 'table' THEN
+                ? != ? OR NOT EXISTS (
+                  SELECT 1 FROM table_rows tr
+                  JOIN table_columns tc ON tc.block_id = tr.block_id
+                  WHERE tr.block_id = ?
+                    AND ? = ? || '.' || tr.slug || '.' || tc.slug
+                )
+              ELSE
+                ? != ? OR ? != ?
+              END
+              """,
+              b.type,
+              vr.source_sheet,
+              s.shortcut,
+              b.id,
+              vr.source_variable,
+              b.variable_name,
+              vr.source_sheet,
+              s.shortcut,
+              vr.source_variable,
+              b.variable_name
+            )
+        },
+        order_by: [asc: vr.kind, asc: m.name]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -788,7 +785,6 @@ defmodule Storyarn.Scenes.SceneCrud do
   Used by the Sheets.ReferenceTracker to avoid cross-context schema queries.
   """
   def query_scene_zone_backlinks(target_type, target_id, project_id) do
-    alias Storyarn.Scenes.SceneZone
     alias Storyarn.Sheets.EntityReference
 
     from(r in EntityReference,
@@ -850,7 +846,7 @@ defmodule Storyarn.Scenes.SceneCrud do
   """
   def list_active_scene_ids(project_id) do
     from(s in Scene,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
+      where: s.project_id == ^project_id and is_nil(s.deleted_at),
       select: s.id
     )
     |> Repo.all()
@@ -862,7 +858,7 @@ defmodule Storyarn.Scenes.SceneCrud do
   """
   def list_shortcuts(project_id) do
     from(s in Scene,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
+      where: s.project_id == ^project_id and is_nil(s.deleted_at),
       select: s.shortcut
     )
     |> Repo.all()
@@ -916,8 +912,6 @@ defmodule Storyarn.Scenes.SceneCrud do
   Returns `{:ok, layer}` or `{:error, changeset}`.
   """
   def import_layer(scene_id, attrs) do
-    alias Storyarn.Scenes.SceneLayer
-
     %SceneLayer{scene_id: scene_id}
     |> SceneLayer.create_changeset(attrs)
     |> Repo.insert()
@@ -928,8 +922,6 @@ defmodule Storyarn.Scenes.SceneCrud do
   no reference tracking. Returns `{:ok, pin}` or `{:error, changeset}`.
   """
   def import_pin(scene_id, attrs) do
-    alias Storyarn.Scenes.ScenePin
-
     %ScenePin{scene_id: scene_id}
     |> ScenePin.create_changeset(attrs)
     |> Repo.insert()
@@ -940,8 +932,6 @@ defmodule Storyarn.Scenes.SceneCrud do
   no reference tracking. Returns `{:ok, zone}` or `{:error, changeset}`.
   """
   def import_zone(scene_id, attrs) do
-    alias Storyarn.Scenes.SceneZone
-
     %SceneZone{scene_id: scene_id}
     |> SceneZone.create_changeset(attrs)
     |> Repo.insert()
@@ -953,6 +943,28 @@ defmodule Storyarn.Scenes.SceneCrud do
   def link_import_parent(%Scene{} = scene, parent_id) do
     scene
     |> Ecto.Changeset.change(%{parent_id: parent_id})
+    |> Repo.update!()
+  end
+
+  @doc """
+  Links a pin's flow_id after import. Used in the second pass since
+  scenes are imported before flows, so flow_id isn't available at pin creation time.
+  """
+  def link_pin_import_flow_id(pin_id, flow_id) do
+    ScenePin
+    |> Repo.get!(pin_id)
+    |> Ecto.Changeset.change(%{flow_id: flow_id})
+    |> Repo.update!()
+  end
+
+  @doc """
+  Links a zone's target_id after import. Used in the second pass since
+  scenes are imported before flows, so flow target_ids aren't available at zone creation time.
+  """
+  def link_zone_import_target(zone_id, target_type, target_id) do
+    SceneZone
+    |> Repo.get!(zone_id)
+    |> Ecto.Changeset.change(%{target_type: target_type, target_id: target_id})
     |> Repo.update!()
   end
 
@@ -969,7 +981,7 @@ defmodule Storyarn.Scenes.SceneCrud do
       join: s in Scene,
       on: p.scene_id == s.id,
       where:
-        s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id) and
+        s.project_id == ^project_id and is_nil(s.deleted_at) and
           not is_nil(p.shortcut),
       select: %{
         id: p.id,
@@ -1023,7 +1035,7 @@ defmodule Storyarn.Scenes.SceneCrud do
       join: s in Scene,
       on: z.scene_id == s.id,
       where:
-        s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id) and
+        s.project_id == ^project_id and is_nil(s.deleted_at) and
           not is_nil(z.shortcut),
       select: %{
         id: z.id,

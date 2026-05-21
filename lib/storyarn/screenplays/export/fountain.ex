@@ -48,8 +48,7 @@ defmodule Storyarn.Screenplays.Export.Fountain do
     data = element.data || %{}
 
     lines =
-      @title_page_keys
-      |> Enum.flat_map(fn key ->
+      Enum.flat_map(@title_page_keys, fn key ->
         value = data[key]
 
         if value && String.trim(value) != "" do

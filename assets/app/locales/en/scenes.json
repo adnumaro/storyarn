@@ -1,0 +1,333 @@
+{
+  "scenes": {
+    "dashboard": {
+      "title": "Scenes",
+      "subtitle": "Create scenes to visualize your world",
+      "empty": "No scenes yet. Create your first scene to get started.",
+      "all_scenes": "All Scenes",
+      "delete": "Delete",
+      "name": "Name",
+      "zones": "Zones",
+      "pins": "Pins",
+      "connections": "Connections",
+      "backgrounds": "Backgrounds",
+      "modified": "Modified",
+      "scene_actions": "Scene actions",
+      "previous_page": "Previous page",
+      "next_page": "Next page",
+      "delete_title": "Delete scene?",
+      "delete_description": "\"{name}\" will be deleted.",
+      "cancel": "Cancel"
+    },
+    "tree": {
+      "filter": "Filter scenes...",
+      "empty": "No scenes yet",
+      "new_scene": "New Scene",
+      "delete_title": "Delete scene?",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "add_child": "Add child scene",
+      "move_to_trash": "Move to Trash",
+      "expand_scene": "Expand scene",
+      "collapse_scene": "Collapse scene"
+    },
+    "toolbar": {
+      "scene_name": "Scene name"
+    },
+    "actions": {
+      "scene_settings": "Scene settings",
+      "export": "Export",
+      "export_png": "Export as PNG",
+      "export_svg": "Export as SVG",
+      "switch_view": "Switch to view mode",
+      "switch_edit": "Switch to edit mode"
+    },
+    "collab_toast": {
+      "pin_created": "added a pin",
+      "pin_updated": "updated a pin",
+      "pin_deleted": "removed a pin",
+      "zone_created": "added a zone",
+      "zone_updated": "updated a zone",
+      "zone_deleted": "removed a zone",
+      "connection_created": "added a connection",
+      "connection_updated": "updated a connection",
+      "connection_deleted": "removed a connection",
+      "annotation_created": "added an annotation",
+      "annotation_updated": "updated an annotation",
+      "annotation_deleted": "removed an annotation",
+      "layer_created": "added a layer",
+      "layer_updated": "updated a layer",
+      "layer_deleted": "removed a layer",
+      "scene_updated": "updated the scene",
+      "scene_settings_changed": "changed scene settings"
+    },
+    "element_properties": {
+      "zone": "Zone Properties",
+      "pin": "Pin Properties",
+      "connection": "Connection Properties",
+      "annotation": "Annotation Properties",
+      "fallback": "Properties",
+      "close": "Close panel"
+    },
+    "layers": {
+      "hide_layers": "Hide layers",
+      "show_layers": "Show layers",
+      "layers": "Layers",
+      "toggle_visibility": "Toggle visibility",
+      "set_active": "Set as active layer",
+      "fog_enabled": "Fog of War enabled",
+      "layer_options": "Layer options",
+      "rename": "Rename",
+      "enable_fog": "Enable Fog",
+      "disable_fog": "Disable Fog",
+      "delete": "Delete",
+      "new_layer": "New Layer",
+      "delete_title": "Delete layer?",
+      "delete_description": "This layer will be deleted. All elements on this layer will be moved to no layer.",
+      "cancel": "Cancel"
+    },
+    "legend": {
+      "hide": "Hide legend",
+      "show": "Show legend",
+      "legend": "Legend",
+      "pins": "Pins",
+      "zones": "Zones",
+      "connections": "Connections"
+    },
+    "search": {
+      "placeholder": "Search elements...",
+      "all": "All",
+      "pins": "Pins",
+      "zones": "Zones",
+      "notes": "Notes",
+      "lines": "Lines",
+      "no_results": "No results found",
+      "clear": "Clear search"
+    },
+    "settings_panel": {
+      "title": "Scene Settings",
+      "close": "Close panel"
+    },
+    "version_history": {
+      "title": "Version History",
+      "close": "Close version history"
+    },
+    "dock": {
+      "select": "Select",
+      "select_desc": "Select elements on the canvas",
+      "pan": "Pan",
+      "pan_desc": "Pan and scroll around the map",
+      "annotation": "Annotation",
+      "annotation_desc": "Add text notes directly on the canvas",
+      "connector": "Connector",
+      "connector_desc": "Draw connections between two pins. Click the source pin, then the target.",
+      "ruler": "Ruler",
+      "ruler_desc": "Measure distances between two points on the map",
+      "version_history": "Version History",
+      "version_history_desc": "View and manage version history",
+      "play": "Play",
+      "play_desc": "Play exploration mode",
+      "place_pin": "Click on canvas to place",
+      "cancel_place_pin": "Cancel pin placement"
+    },
+    "pins_dropdown": {
+      "title": "Place a Pin",
+      "free_pin": "Free Pin",
+      "free_pin_desc": "Place anywhere on the map",
+      "from_sheet": "From Sheet",
+      "from_sheet_desc": "Link a character or item",
+      "search_sheets": "Search sheets...",
+      "no_sheets": "No sheets found",
+      "pin_tooltip": "Pin",
+      "pin_tooltip_desc": "Place markers on the map, optionally linked to a sheet"
+    },
+    "zones_dropdown": {
+      "title": "Zone Shapes",
+      "rectangle": "Rectangle",
+      "triangle": "Triangle",
+      "circle": "Circle",
+      "freeform": "Freeform",
+      "zones_tooltip": "Zones",
+      "zones_tooltip_desc": "Draw shapes to define areas on the map"
+    },
+    "connection_toolbar": {
+      "label": "Label",
+      "show_label": "Show Label",
+      "bidirectional": "Bidirectional",
+      "properties": "Properties"
+    },
+    "pin_toolbar": {
+      "label": "Label",
+      "opacity": "Opacity",
+      "properties": "Properties"
+    },
+    "zone_toolbar": {
+      "name": "Name",
+      "opacity": "Opacity",
+      "properties": "Properties"
+    },
+    "exploration": {
+      "exit": "Exit",
+      "save_progress": "Save progress",
+      "show_zones": "Show zones",
+      "collection_title": "Collection",
+      "collection_empty": "Nothing here...",
+      "collection_item": "Item",
+      "take": "Take",
+      "take_all": "Take All",
+      "back": "Back",
+      "continue": "Continue",
+      "return_to_map": "Return to map",
+      "close_collection": "Close collection",
+      "saved_progress_title": "Saved Progress Found",
+      "saved_progress_desc": "You have a saved exploration session.",
+      "scene_label": "Scene:",
+      "last_played": "Last played:",
+      "new_game": "New Game"
+    },
+    "connection_properties": {
+      "no_waypoints": "No waypoints",
+      "straighten": "Straighten path"
+    },
+    "pin_properties": {
+      "shortcut": "Shortcut",
+      "tooltip": "Tooltip",
+      "tooltip_placeholder": "Hover text...",
+      "sheet": "Sheet",
+      "sheet_placeholder": "Select sheet...",
+      "change_icon": "Change Icon",
+      "flow": "Flow",
+      "flow_placeholder": "Select flow...",
+      "hidden_exploration": "Hidden in exploration",
+      "condition": "Condition",
+      "effect_hide": "Hide",
+      "effect_disable": "Disable"
+    },
+    "zone_properties": {
+      "walkable": "Walkable area",
+      "shortcut": "Shortcut",
+      "hidden_exploration": "Hidden in exploration",
+      "tooltip": "Tooltip",
+      "tooltip_placeholder": "Hover text...",
+      "instruction": "Instruction",
+      "display_variable": "Display variable",
+      "display_variable_placeholder": "Select variable...",
+      "collection": "Collection",
+      "condition": "Condition",
+      "remove_item": "Remove item"
+    },
+    "pin_patrol": {
+      "patrol": "Patrol",
+      "none": "None",
+      "loop": "Loop",
+      "ping_pong": "Ping-pong",
+      "one_way": "One-way",
+      "speed": "Speed",
+      "pause_waypoints": "Pause at waypoints (ms)",
+      "mode_placeholder": "Select mode..."
+    },
+    "pin_playable": {
+      "playable": "Playable character",
+      "party_leader": "Party leader"
+    },
+    "collection_editor": {
+      "collect_all": "Collect all",
+      "empty_message": "Empty message",
+      "empty_placeholder": "Nothing to collect...",
+      "add_item": "Add item",
+      "sheet": "Sheet",
+      "sheet_placeholder": "Select sheet...",
+      "label": "Label",
+      "label_placeholder": "Item label...",
+      "condition": "Condition"
+    },
+    "target_picker": {
+      "link_to": "Link to",
+      "no_link": "No link",
+      "flow": "Flow",
+      "scene": "Scene",
+      "back": "Back",
+      "remove_link": "Remove link",
+      "no_items": "No items"
+    },
+    "settings": {
+      "ambient_flows": "Ambient Flows",
+      "no_ambient": "No ambient flows linked to this scene.",
+      "add_ambient": "Add ambient flow...",
+      "search_flows": "Search flows...",
+      "no_flows": "No flows found.",
+      "background": "Background Image",
+      "bg_change": "Change",
+      "bg_remove": "Remove",
+      "bg_upload": "Upload Background",
+      "bg_drag_drop": "or drag & drop",
+      "bg_drop_to_set": "Drop image to set background",
+      "dimensions": "Dimensions",
+      "exploration_display": "Exploration Display",
+      "fit": "Fit",
+      "scaled": "Scaled",
+      "scaled_desc": "Renders at native pixel size with CRPG-style camera scrolling.",
+      "fit_desc": "Scales to fit the viewport.",
+      "zoom": "Zoom",
+      "scene_scale": "Scene Scale",
+      "total_width": "Total width",
+      "unit": "Unit",
+      "width_placeholder": "500",
+      "unit_placeholder": "km"
+    },
+    "ambient_row": {
+      "on_enter": "On Enter",
+      "timed": "Timed",
+      "on_event": "On Event",
+      "one_shot": "One Shot",
+      "move_up": "Move up",
+      "move_down": "Move down",
+      "disable": "Disable",
+      "enable": "Enable",
+      "remove": "Remove ambient flow",
+      "interval": "Interval (ms)",
+      "variable_ref": "Variable reference",
+      "priority": "Priority (higher = first)",
+      "trigger_placeholder": "Trigger...",
+      "variable_placeholder": "Select variable...",
+      "priority_placeholder": "0"
+    },
+    "action_type_picker": {
+      "navigation": "Navigation",
+      "navigation_desc": "Clicking navigates or opens a link",
+      "walkable": "Walkable Area",
+      "walkable_desc": "Defines traversable ground",
+      "action": "Action",
+      "action_desc": "Sets variables when triggered",
+      "display": "Display",
+      "display_desc": "Shows a variable value on the map",
+      "collection": "Collection",
+      "collection_desc": "Opens a collection modal with items",
+      "tooltip": "Action type"
+    },
+    "layer_picker": {
+      "layer": "Layer",
+      "none": "None"
+    },
+    "lock_toggle": {
+      "unlock": "Unlock",
+      "lock": "Lock"
+    },
+    "stroke_picker": {
+      "line_style": "Line style",
+      "style": "Style",
+      "width": "Width",
+      "color": "Color",
+      "custom_color": "Custom color",
+      "decrease_width": "Decrease width",
+      "increase_width": "Increase width"
+    },
+    "type_picker": {
+      "pin_type": "Pin type",
+      "location": "Location",
+      "character": "Character",
+      "event": "Event",
+      "custom": "Custom"
+    }
+  }
+}

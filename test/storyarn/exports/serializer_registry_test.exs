@@ -2,34 +2,41 @@ defmodule Storyarn.Exports.SerializerRegistryTest do
   use ExUnit.Case, async: true
 
   alias Storyarn.Exports.SerializerRegistry
+  alias Storyarn.Exports.Serializers.ArticyXML
+  alias Storyarn.Exports.Serializers.GodotDialogic
+  alias Storyarn.Exports.Serializers.Ink
+  alias Storyarn.Exports.Serializers.StoryarnJSON
+  alias Storyarn.Exports.Serializers.UnityJSON
+  alias Storyarn.Exports.Serializers.UnrealCSV
+  alias Storyarn.Exports.Serializers.Yarn
 
   describe "get/1" do
     test "returns the storyarn serializer module" do
-      assert {:ok, Storyarn.Exports.Serializers.StoryarnJSON} = SerializerRegistry.get(:storyarn)
+      assert {:ok, StoryarnJSON} = SerializerRegistry.get(:storyarn)
     end
 
     test "returns the ink serializer module" do
-      assert {:ok, Storyarn.Exports.Serializers.Ink} = SerializerRegistry.get(:ink)
+      assert {:ok, Ink} = SerializerRegistry.get(:ink)
     end
 
     test "returns the yarn serializer module" do
-      assert {:ok, Storyarn.Exports.Serializers.Yarn} = SerializerRegistry.get(:yarn)
+      assert {:ok, Yarn} = SerializerRegistry.get(:yarn)
     end
 
     test "returns the unity serializer module" do
-      assert {:ok, Storyarn.Exports.Serializers.UnityJSON} = SerializerRegistry.get(:unity)
+      assert {:ok, UnityJSON} = SerializerRegistry.get(:unity)
     end
 
     test "returns the godot serializer module" do
-      assert {:ok, Storyarn.Exports.Serializers.GodotDialogic} = SerializerRegistry.get(:godot)
+      assert {:ok, GodotDialogic} = SerializerRegistry.get(:godot)
     end
 
     test "returns the unreal serializer module" do
-      assert {:ok, Storyarn.Exports.Serializers.UnrealCSV} = SerializerRegistry.get(:unreal)
+      assert {:ok, UnrealCSV} = SerializerRegistry.get(:unreal)
     end
 
     test "returns the articy serializer module" do
-      assert {:ok, Storyarn.Exports.Serializers.ArticyXML} = SerializerRegistry.get(:articy)
+      assert {:ok, ArticyXML} = SerializerRegistry.get(:articy)
     end
 
     test "returns error for unknown format" do
@@ -43,13 +50,13 @@ defmodule Storyarn.Exports.SerializerRegistryTest do
       assert is_map(serializers)
       assert map_size(serializers) == 7
 
-      assert serializers[:storyarn] == Storyarn.Exports.Serializers.StoryarnJSON
-      assert serializers[:ink] == Storyarn.Exports.Serializers.Ink
-      assert serializers[:yarn] == Storyarn.Exports.Serializers.Yarn
-      assert serializers[:unity] == Storyarn.Exports.Serializers.UnityJSON
-      assert serializers[:godot] == Storyarn.Exports.Serializers.GodotDialogic
-      assert serializers[:unreal] == Storyarn.Exports.Serializers.UnrealCSV
-      assert serializers[:articy] == Storyarn.Exports.Serializers.ArticyXML
+      assert serializers[:storyarn] == StoryarnJSON
+      assert serializers[:ink] == Ink
+      assert serializers[:yarn] == Yarn
+      assert serializers[:unity] == UnityJSON
+      assert serializers[:godot] == GodotDialogic
+      assert serializers[:unreal] == UnrealCSV
+      assert serializers[:articy] == ArticyXML
     end
   end
 
@@ -100,7 +107,7 @@ defmodule Storyarn.Exports.SerializerRegistryTest do
     end
 
     test "display order matches: storyarn, ink, yarn, unity, godot, unreal, articy" do
-      formats = SerializerRegistry.list_with_metadata() |> Enum.map(& &1.format)
+      formats = Enum.map(SerializerRegistry.list_with_metadata(), & &1.format)
       assert formats == [:storyarn, :ink, :yarn, :unity, :godot, :unreal, :articy]
     end
   end

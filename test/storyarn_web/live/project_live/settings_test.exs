@@ -3,7 +3,11 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
+  import Storyarn.AssetsFixtures
+  import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
+  import Storyarn.SheetsFixtures
 
   alias Storyarn.Localization
   alias Storyarn.Repo
@@ -13,35 +17,35 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
     if section, do: "#{base}/#{section}", else: base
   end
 
+  defp get_general_vue(view) do
+    LiveVue.Test.get_vue(view, name: "live/project/settings/ProjectSettingsGeneral")
+  end
+
+  defp get_usage_limits_vue(view) do
+    LiveVue.Test.get_vue(view, name: "live/project/settings/ProjectSettingsUsageLimits")
+  end
+
+  defp get_settings_layout_vue(view) do
+    LiveVue.Test.get_vue(view, name: "live/layouts/settings/Layout")
+  end
+
   describe "General section" do
     setup :register_and_log_in_user
 
-    test "renders settings with sidebar navigation", %{conn: conn, user: user} do
-      project = project_fixture(user, %{name: "My Project"}) |> Repo.preload(:workspace)
+    test "renders general settings Vue component", %{conn: conn, user: user} do
+      project = user |> project_fixture(%{name: "My Project"}) |> Repo.preload(:workspace)
 
-      {:ok, view, html} = live(conn, settings_path(project))
+      {:ok, view, _html} = live(conn, settings_path(project))
 
-      # Sidebar sections
-      assert html =~ "Back to project"
-      assert html =~ "General"
-      assert html =~ "Integrations"
-      assert html =~ "Localization"
-      assert html =~ "Administration"
-      assert html =~ "Members"
-      assert html =~ "Import &amp; Export"
-
-      # General content
-      assert html =~ "My Project"
-      assert html =~ "Source language"
-      assert html =~ "Project Theme"
-      assert html =~ "Maintenance"
-      assert html =~ "Danger Zone"
-      assert has_element?(view, "#project-source-language-picker[phx-hook='SearchableSelect']")
+      vue = get_general_vue(view)
+      assert vue.component == "live/project/settings/ProjectSettingsGeneral"
+      assert vue.props["project-name"] == "My Project"
+      assert vue.props["source-language"]["localeCode"] == "en"
     end
 
     test "redirects non-owner", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "editor")
 
       {:error, {:redirect, %{to: path, flash: flash}}} =
@@ -51,39 +55,42 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       assert flash["error"] =~ "permission"
     end
 
-    test "updates project details", %{conn: conn, user: user} do
-      project = project_fixture(user, %{name: "Old Name"}) |> Repo.preload(:workspace)
+    test "updates project details via update_project event", %{conn: conn, user: user} do
+      project = user |> project_fixture(%{name: "Old Name"}) |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, settings_path(project))
 
       html =
-        view
-        |> form("#project-form", project: %{name: "New Name"})
-        |> render_submit()
+        render_click(view, "update_project", %{"project" => %{"name" => "New Name"}})
 
       assert html =~ "updated successfully"
-      assert html =~ ~s(value="New Name")
+
+      vue = get_general_vue(view)
+      assert vue.props["project-name"] == "New Name"
     end
 
-    test "updates the project source language with the shared picker", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+    test "updates the project source language via change_source_language event", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, settings_path(project))
 
       html = render_click(view, "change_source_language", %{"locale_code" => "es-419"})
 
       assert html =~ "Source language updated."
-      assert html =~ "Spanish (Latin America)"
-      assert html =~ "es-419"
+
+      vue = get_general_vue(view)
+      assert vue.props["source-language"]["localeCode"] == "es-419"
 
       source_language = Localization.get_source_language(project.id)
       assert source_language.locale_code == "es-419"
       assert Localization.get_language_by_locale(project.id, "en") == nil
-      assert has_element?(view, "#project-source-language-option", "LA")
     end
 
-    test "deletes project from danger zone", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+    test "deletes project via delete_project event", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, settings_path(project))
 
@@ -98,44 +105,100 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
   describe "Members section" do
     setup :register_and_log_in_user
 
-    test "lists team members", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+    test "passes members list to Vue", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       member = user_fixture(%{email: "member@example.com"})
       _membership = membership_fixture(project, member, "editor")
 
-      {:ok, _view, html} = live(conn, settings_path(project, "members"))
+      {:ok, view, _html} = live(conn, settings_path(project, "members"))
 
-      assert html =~ user.email
-      assert html =~ "member@example.com"
-      assert html =~ "owner"
-      assert html =~ "editor"
+      vue = LiveVue.Test.get_vue(view, name: "live/project/settings/ProjectSettingsMembers")
+      assert vue.component == "live/project/settings/ProjectSettingsMembers"
+      members = vue.props["members"]
+      assert Enum.any?(members, fn m -> m["email"] == user.email end)
+      assert Enum.any?(members, fn m -> m["email"] == "member@example.com" end)
     end
 
-    test "sends invitation request", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+    test "sends invitation request via invite_member event", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, settings_path(project, "members"))
 
-      view
-      |> form("#invite-form", invite: %{email: "newmember@example.com", role: "editor"})
-      |> render_submit()
+      html =
+        render_click(view, "send_invitation", %{
+          "invite" => %{"email" => "newmember@example.com", "role" => "editor"}
+        })
 
-      assert render(view) =~ "Invitation request sent"
+      assert html =~ "Invitation request sent"
     end
 
-    test "removes member", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+    test "removes member via remove_member event", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       member = user_fixture(%{email: "removeme@example.com"})
       membership = membership_fixture(project, member, "editor")
 
-      {:ok, view, html} = live(conn, settings_path(project, "members"))
+      {:ok, view, _html} = live(conn, settings_path(project, "members"))
 
-      assert html =~ "removeme@example.com"
+      vue = LiveVue.Test.get_vue(view, name: "live/project/settings/ProjectSettingsMembers")
+      assert Enum.any?(vue.props["members"], fn m -> m["email"] == "removeme@example.com" end)
 
-      render_click(view, "remove_member", %{id: to_string(membership.id)})
+      render_click(view, "remove_member", %{"id" => to_string(membership.id)})
 
-      assert render(view) =~ "Member removed"
-      refute render(view) =~ "removeme@example.com"
+      vue = LiveVue.Test.get_vue(view, name: "live/project/settings/ProjectSettingsMembers")
+      refute Enum.any?(vue.props["members"], fn m -> m["email"] == "removeme@example.com" end)
+    end
+  end
+
+  describe "Usage limits section" do
+    setup :register_and_log_in_user
+
+    test "passes project and workspace usage limits to Vue", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      _sheet = sheet_fixture(project)
+      flow = flow_fixture(project)
+      _node = node_fixture(flow)
+      _scene = scene_fixture(project)
+      _asset = asset_fixture(project, user, %{size: 2_048})
+
+      {:ok, view, _html} = live(conn, settings_path(project, "usage-limits"))
+
+      layout = get_settings_layout_vue(view)
+
+      assert layout.props["current-path"] ==
+               "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/usage-limits"
+
+      vue = get_usage_limits_vue(view)
+      assert vue.component == "live/project/settings/ProjectSettingsUsageLimits"
+
+      usage = vue.props["usage-limits"]
+      assert usage["plan"] == %{"key" => "free", "name" => "Free"}
+      assert usage["project"]["items"] == %{"used" => 6, "limit" => 700}
+
+      assert usage["itemBreakdown"] == %{
+               "sheets" => 1,
+               "flows" => 1,
+               "scenes" => 1,
+               "flowNodes" => 3
+             }
+
+      assert usage["storage"] == %{"projectBytes" => 2_048, "assetCount" => 1}
+
+      assert usage["workspace"]["storageBytes"] == %{
+               "used" => 2_048,
+               "limit" => 262_144_000
+             }
+    end
+
+    test "redirects non-owner", %{conn: conn, user: user} do
+      owner = user_fixture()
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+      _membership = membership_fixture(project, user, "editor")
+
+      {:error, {:redirect, %{to: path, flash: flash}}} =
+        live(conn, settings_path(project, "usage-limits"))
+
+      assert path =~ "/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
+      assert flash["error"] =~ "permission"
     end
   end
 end

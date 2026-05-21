@@ -1,17 +1,17 @@
 defmodule Storyarn.Localization.TextExtractorTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Flows
-  alias Storyarn.Localization
-  alias Storyarn.Localization.TextExtractor
-  alias Storyarn.Sheets
-
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Flows
+  alias Storyarn.Localization
+  alias Storyarn.Localization.TextExtractor
+  alias Storyarn.Sheets
 
   setup do
     user = user_fixture()
@@ -64,7 +64,7 @@ defmodule Storyarn.Localization.TextExtractorTest do
       assert length(texts) == 5
 
       # Verify specific fields exist
-      fields = Enum.map(texts, & &1.source_field) |> MapSet.new()
+      fields = MapSet.new(texts, & &1.source_field)
       assert "text" in fields
       assert "stage_directions" in fields
       assert "menu_text" in fields
@@ -160,7 +160,7 @@ defmodule Storyarn.Localization.TextExtractorTest do
 
       texts = Localization.get_texts_for_source("flow_node", node.id)
       assert length(texts) == 2
-      fields = Enum.map(texts, & &1.source_field) |> MapSet.new()
+      fields = MapSet.new(texts, & &1.source_field)
       assert "response.r1.text" in fields
       refute "response.r2.text" in fields
     end
@@ -231,7 +231,7 @@ defmodule Storyarn.Localization.TextExtractorTest do
       texts = Localization.get_texts_for_source("flow_node", node.id)
       assert length(texts) == 2
 
-      fields = Enum.map(texts, & &1.source_field) |> MapSet.new()
+      fields = MapSet.new(texts, & &1.source_field)
       assert "text" in fields
       assert "response.r4.text" in fields
     end
@@ -311,50 +311,6 @@ defmodule Storyarn.Localization.TextExtractorTest do
 
       [text] = Localization.get_texts_for_source("flow_node", node.id)
       assert text.word_count == 3
-    end
-  end
-
-  # =============================================================================
-  # Flow Node Extraction — Slug Line
-  # =============================================================================
-
-  describe "flow node extraction — slug_line" do
-    test "extracts slug_line node description", %{project: project} do
-      flow = flow_fixture(project)
-
-      node =
-        node_fixture(flow, %{
-          type: "slug_line",
-          data: %{"description" => "A dark forest clearing"}
-        })
-
-      {:ok, _updated, _} =
-        Flows.update_node_data(node, %{"description" => "A dark forest clearing"})
-
-      texts = Localization.get_texts_for_source("flow_node", node.id)
-      assert length(texts) == 1
-      assert hd(texts).source_field == "description"
-      assert hd(texts).source_text == "A dark forest clearing"
-    end
-
-    test "slug_line node with blank description produces no texts", %{project: project} do
-      flow = flow_fixture(project)
-      node = node_fixture(flow, %{type: "slug_line", data: %{"description" => ""}})
-
-      {:ok, _updated, _} = Flows.update_node_data(node, %{"description" => ""})
-
-      texts = Localization.get_texts_for_source("flow_node", node.id)
-      assert texts == []
-    end
-
-    test "slug_line node without description field produces no texts", %{project: project} do
-      flow = flow_fixture(project)
-      node = node_fixture(flow, %{type: "slug_line", data: %{}})
-
-      {:ok, _updated, _} = Flows.update_node_data(node, %{})
-
-      texts = Localization.get_texts_for_source("flow_node", node.id)
-      assert texts == []
     end
   end
 
@@ -483,7 +439,7 @@ defmodule Storyarn.Localization.TextExtractorTest do
       texts = Localization.get_texts_for_source("block", block.id)
       assert length(texts) == 2
 
-      fields = Enum.map(texts, & &1.source_field) |> MapSet.new()
+      fields = MapSet.new(texts, & &1.source_field)
       assert "config.label" in fields
       assert "value.content" in fields
 
@@ -547,7 +503,7 @@ defmodule Storyarn.Localization.TextExtractorTest do
       # Should have: config.label + config.placeholder + 3 option labels = 5
       assert length(texts) == 5
 
-      fields = Enum.map(texts, & &1.source_field) |> MapSet.new()
+      fields = MapSet.new(texts, & &1.source_field)
       assert "config.label" in fields
       assert "config.placeholder" in fields
       assert "config.options.warrior" in fields
@@ -586,7 +542,7 @@ defmodule Storyarn.Localization.TextExtractorTest do
       # config.label + warrior option = 2
       assert length(texts) == 2
 
-      fields = Enum.map(texts, & &1.source_field) |> MapSet.new()
+      fields = MapSet.new(texts, & &1.source_field)
       assert "config.label" in fields
       assert "config.options.warrior" in fields
     end
@@ -624,7 +580,7 @@ defmodule Storyarn.Localization.TextExtractorTest do
       texts = Localization.get_texts_for_source("block", block.id)
       assert length(texts) == 2
 
-      fields = Enum.map(texts, & &1.source_field) |> MapSet.new()
+      fields = MapSet.new(texts, & &1.source_field)
       assert "config.label" in fields
       assert "config.placeholder" in fields
     end
@@ -699,7 +655,7 @@ defmodule Storyarn.Localization.TextExtractorTest do
       texts = Localization.get_texts_for_source("sheet", sheet.id)
       assert length(texts) == 2
 
-      fields = Enum.map(texts, & &1.source_field) |> MapSet.new()
+      fields = MapSet.new(texts, & &1.source_field)
       assert "name" in fields
       assert "description" in fields
     end
@@ -751,7 +707,7 @@ defmodule Storyarn.Localization.TextExtractorTest do
       texts = Localization.get_texts_for_source("flow", flow.id)
       assert length(texts) == 2
 
-      fields = Enum.map(texts, & &1.source_field) |> MapSet.new()
+      fields = MapSet.new(texts, & &1.source_field)
       assert "name" in fields
       assert "description" in fields
     end
@@ -834,7 +790,7 @@ defmodule Storyarn.Localization.TextExtractorTest do
         })
 
       texts = Localization.get_texts_for_source("scene", scene.id)
-      fields = Enum.map(texts, & &1.source_field) |> MapSet.new()
+      fields = MapSet.new(texts, & &1.source_field)
 
       assert "name" in fields
       assert "description" in fields
@@ -866,7 +822,7 @@ defmodule Storyarn.Localization.TextExtractorTest do
       texts = Localization.get_texts_for_source("flow_node", node.id)
       assert length(texts) == 2
 
-      locales = Enum.map(texts, & &1.locale_code) |> MapSet.new()
+      locales = MapSet.new(texts, & &1.locale_code)
       assert "es" in locales
       assert "fr" in locales
     end
@@ -890,7 +846,7 @@ defmodule Storyarn.Localization.TextExtractorTest do
       # 2 fields (config.label, value.content) x 2 locales (es, fr) = 4
       assert length(texts) == 4
 
-      locales = Enum.map(texts, & &1.locale_code) |> MapSet.new()
+      locales = MapSet.new(texts, & &1.locale_code)
       assert "es" in locales
       assert "fr" in locales
     end

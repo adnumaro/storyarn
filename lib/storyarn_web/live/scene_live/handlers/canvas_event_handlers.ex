@@ -6,20 +6,20 @@ defmodule StoryarnWeb.SceneLive.Handlers.CanvasEventHandlers do
   selection/deselection. Returns `{:noreply, socket}`.
   """
 
-  import Phoenix.Component, only: [assign: 3]
-  import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
-
   use StoryarnWeb, :verified_routes
   use Gettext, backend: Storyarn.Gettext
 
-  alias Storyarn.Scenes
-
+  import Phoenix.Component, only: [assign: 3]
+  import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
   import StoryarnWeb.Helpers.AutoSnapshot, only: [schedule: 2]
   import StoryarnWeb.SceneLive.Helpers.SceneHelpers
-  import StoryarnWeb.SceneLive.Helpers.Serializer
+  import StoryarnWeb.SceneLive.Helpers.SceneSerializer
 
-  @spec handle_save_name(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  alias Phoenix.LiveView.Socket
+  alias Storyarn.Scenes
+
+  @spec handle_save_name(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_save_name(%{"name" => name}, socket) do
     case Scenes.update_scene(socket.assigns.scene, %{name: name}) do
       {:ok, updated} ->
@@ -36,8 +36,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.CanvasEventHandlers do
 
   @valid_tools ~w(select pan pin rectangle triangle circle freeform annotation connector ruler)a
 
-  @spec handle_set_tool(String.t(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_set_tool(String.t(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_set_tool(tool, socket) do
     case Enum.find(@valid_tools, fn t -> Atom.to_string(t) == tool end) do
       nil ->
@@ -51,14 +51,14 @@ defmodule StoryarnWeb.SceneLive.Handlers.CanvasEventHandlers do
     end
   end
 
-  @spec handle_export_scene(String.t(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_export_scene(String.t(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_export_scene(format, socket) do
     {:noreply, push_event(socket, "export_scene", %{format: format})}
   end
 
-  @spec handle_toggle_edit_mode(Phoenix.LiveView.Socket.t(), map()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_toggle_edit_mode(Socket.t(), map()) ::
+          {:noreply, Socket.t()}
   def handle_toggle_edit_mode(socket, params) do
     new_mode =
       case params do
@@ -79,8 +79,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.CanvasEventHandlers do
     end
   end
 
-  @spec handle_search_elements(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_search_elements(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_search_elements(%{"query" => query}, socket) do
     query = String.trim(query)
 
@@ -103,12 +103,14 @@ defmodule StoryarnWeb.SceneLive.Handlers.CanvasEventHandlers do
     end
   end
 
-  @spec handle_set_search_filter(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_set_search_filter(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_set_search_filter(%{"filter" => filter}, socket) do
     socket = assign(socket, :search_filter, filter)
 
-    if socket.assigns.search_query != "" do
+    if socket.assigns.search_query == "" do
+      {:noreply, socket}
+    else
       results = search_map_elements(socket, socket.assigns.search_query, filter)
 
       {:noreply,
@@ -117,13 +119,11 @@ defmodule StoryarnWeb.SceneLive.Handlers.CanvasEventHandlers do
        |> push_event("highlight_elements", %{
          elements: Enum.map(results, &%{type: &1.type, id: &1.id})
        })}
-    else
-      {:noreply, socket}
     end
   end
 
-  @spec handle_clear_search(Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_clear_search(Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_clear_search(socket) do
     {:noreply,
      socket
@@ -133,8 +133,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.CanvasEventHandlers do
      |> push_event("clear_highlights", %{})}
   end
 
-  @spec handle_focus_search_result(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_focus_search_result(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_focus_search_result(%{"type" => type, "id" => id}, socket) do
     id = parse_id(id)
     scene_id = socket.assigns.scene.id
@@ -153,8 +153,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.CanvasEventHandlers do
     end
   end
 
-  @spec handle_select_element(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_select_element(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_select_element(%{"type" => type, "id" => id}, socket) do
     id = parse_id(id)
     scene_id = socket.assigns.scene.id
@@ -172,14 +172,14 @@ defmodule StoryarnWeb.SceneLive.Handlers.CanvasEventHandlers do
     end
   end
 
-  @spec handle_deselect(Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_deselect(Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_deselect(socket) do
     {:noreply,
      socket
      |> assign(:selected_type, nil)
      |> assign(:selected_element, nil)
-     |> assign(:element_panel_open, false)
+     |> dismiss_right_panel(:element)
      |> push_event("element_deselected", %{})}
   end
 end

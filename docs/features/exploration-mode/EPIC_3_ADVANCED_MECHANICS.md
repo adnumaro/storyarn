@@ -13,17 +13,21 @@ Each feature is independent and delivers standalone value.
 ## Feature 1: Zone Interaction Chains (Unlock/Attack)
 
 ### What
+
 Multi-step interaction pipelines for zones. Instead of "click → immediate result", zones can require **preconditions and alternative actions** before yielding their content.
 
 Examples:
+
 - **Locked chest**: requires key item → pick lock (skill check) → force open (strength check) → loot contents
 - **Sealed door**: requires magic word (variable) → use battering ram (item) → find secret switch (discovery)
 - **Guarded NPC**: defeat guard first (combat flow) → bribe (gold check) → sneak past (stealth check)
 
 ### Why (standalone value)
+
 This is where prototyping starts to feel like actual game design. Multi-step interactions create puzzles, resource management decisions, and emergent gameplay. A designer can prototype a dungeon room with locked chests, trapped doors, and hidden passages — all without code.
 
 ### Key concepts
+
 - **Interaction pipeline**: ordered list of interaction methods for a zone
 - **Each method has**:
   - `condition` — can the player attempt this? (has lockpick? strength > 15?)
@@ -36,6 +40,7 @@ This is where prototyping starts to feel like actual game design. Multi-step int
 - **After successful interaction**: zone opens to its inner content (collection items, flow, etc.)
 
 ### Schema changes
+
 - `SceneZone`: extend `action_data` for a new interaction model:
   ```json
   {
@@ -58,6 +63,7 @@ This is where prototyping starts to feel like actual game design. Multi-step int
   ```
 
 ### Design considerations
+
 - Interaction methods are shown as action buttons in a modal (not a dropdown)
 - Only methods whose conditions are met are visible — hidden alternatives create mystery
 - The "inner action" is what you get after succeeding — could be collection, flow, instruction, or nothing (the success IS the reward, like opening a door)
@@ -66,6 +72,7 @@ This is where prototyping starts to feel like actual game design. Multi-step int
 - Backward compatible: zones without `interaction_methods` work exactly as before (direct click → action)
 
 ### Acceptance criteria
+
 - [ ] Zone editor: configure interaction methods with conditions, labels, icons
 - [ ] Zone editor: define inner action (what happens after successful interaction)
 - [ ] Exploration: clicking zone with interaction methods shows method selection modal
@@ -79,12 +86,15 @@ This is where prototyping starts to feel like actual game design. Multi-step int
 ## Feature 2: Zone Templates
 
 ### What
+
 Pre-configured zone presets that create a fully configured zone with one click. Templates encode common game patterns so designers don't have to configure every field manually.
 
 ### Why (standalone value)
+
 Configuration fatigue is the biggest threat to adoption. A designer who has to manually set up conditions, instructions, and items for every chest in a dungeon will give up. Templates reduce a 10-minute configuration to 2 clicks.
 
 ### Key concepts
+
 - **Built-in templates**:
   - **Loot container**: collection zone with "Take" / "Take All". Configurable: items
   - **Shop/merchant**: collection-like zone but items require gold (instruction: `gold -= price`). Two-way: buy and sell
@@ -96,10 +106,12 @@ Configuration fatigue is the biggest threat to adoption. A designer who has to m
 - **Custom templates** (future): save your own zone configuration as a reusable template
 
 ### Schema changes
+
 - None for applying templates — they pre-fill existing fields
 - Future (custom templates): `SceneZoneTemplate` schema with project-level storage
 
 ### Design considerations
+
 - Templates live in the zone creation flow: "Add zone → Choose template or blank"
 - Template applies defaults that the designer can then customize
 - Templates should be discoverable and self-explanatory (icon + name + one-line description)
@@ -107,6 +119,7 @@ Configuration fatigue is the biggest threat to adoption. A designer who has to m
 - Templates are NOT a runtime concept — they're a design-time accelerator
 
 ### Acceptance criteria
+
 - [ ] Zone creation offers template selection
 - [ ] Each built-in template creates a properly configured zone
 - [ ] All template fields are editable after application
@@ -118,12 +131,15 @@ Configuration fatigue is the biggest threat to adoption. A designer who has to m
 ## Feature 3: Minimap
 
 ### What
+
 A small overlay map in the corner of the exploration viewport showing the player's position, discovered areas, and key landmarks. Essential for large scenes using scaled display mode with CRPG camera.
 
 ### Why (standalone value)
+
 When the scene is larger than the viewport (scaled mode), players lose spatial orientation. A minimap provides constant awareness of position within the larger scene — standard in every CRPG.
 
 ### Key concepts
+
 - **Thumbnail**: downscaled version of the scene background image
 - **Player indicator**: dot/icon at current position
 - **Party indicators**: smaller dots for companions
@@ -134,9 +150,11 @@ When the scene is larger than the viewport (scaled mode), players lose spatial o
 - **Toggle**: can be hidden/shown by the player
 
 ### Schema changes
+
 - `Scene`: add `show_minimap` (boolean, default: true) — designer can disable per scene
 
 ### Design considerations
+
 - Minimap should be subtle — semi-transparent, small (15-20% of viewport width)
 - Position: bottom-right or top-right corner (configurable?)
 - Performance: minimap is a static thumbnail, not a re-render. Only indicators update
@@ -145,6 +163,7 @@ When the scene is larger than the viewport (scaled mode), players lose spatial o
 - Mobile: minimap might be too small. Consider a full-screen map toggle instead
 
 ### Acceptance criteria
+
 - [ ] Minimap renders in exploration mode (scaled scenes)
 - [ ] Player position shown as indicator on minimap
 - [ ] Viewport frame shows currently visible area
@@ -159,12 +178,15 @@ When the scene is larger than the viewport (scaled mode), players lose spatial o
 ## Feature 4: Scene Transitions with Animations
 
 ### What
+
 Smooth visual transitions when navigating between scenes (via zone targets, pin targets, or scene connections). Instead of an instant page load, the player sees a fade, slide, or custom transition.
 
 ### Why (standalone value)
+
 Instant scene changes break immersion. A brief fade-to-black between rooms, a slide transition between connected areas — these small details make the exploration feel **cinematic** rather than like clicking links in a wiki.
 
 ### Key concepts
+
 - **Transition types**: `fade` (fade to black and back), `slide` (directional slide based on exit direction), `cut` (instant, current behavior), `dissolve` (crossfade between scenes)
 - **Configurable per connection**: a zone targeting scene B can specify its transition type
 - **Duration**: configurable (default: 500ms)
@@ -172,11 +194,13 @@ Instant scene changes break immersion. A brief fade-to-black between rooms, a sl
 - **Direction inference**: if the exit zone is on the right edge of the scene, slide left. If on bottom, slide up
 
 ### Schema changes
+
 - `SceneZone`: add `transition_type` (string enum: `cut` | `fade` | `slide` | `dissolve`, default: `fade`)
 - `SceneZone`: add `transition_duration_ms` (integer, default: 500)
 - `SceneZone`: add `transition_text` (string, nullable, max 200 chars)
 
 ### Design considerations
+
 - Transition happens client-side during the LiveView navigation/patch
 - Preload the target scene background during transition to avoid flash of unstyled content
 - Save exploration state before transition (position, variables)
@@ -185,6 +209,7 @@ Instant scene changes break immersion. A brief fade-to-black between rooms, a sl
 - Consider: transition sound effect (whoosh, door creak) via audio asset — defer to later
 
 ### Acceptance criteria
+
 - [ ] Zone editor: transition type, duration, and text settings
 - [ ] `fade` transition: screen fades to black, loads scene, fades in
 - [ ] `slide` transition: current scene slides out, new scene slides in
@@ -199,12 +224,15 @@ Instant scene changes break immersion. A brief fade-to-black between rooms, a sl
 ## Feature 5: Quick Preview from Editor
 
 ### What
+
 A "Preview" button in the scene editor that launches exploration mode in-context (overlay or split view), allowing rapid iteration without full navigation. Edit → Preview → Edit → Preview in seconds.
 
 ### Why (standalone value)
+
 The current workflow is: edit scene → navigate to exploration URL → test → navigate back → edit → repeat. This friction slows down iteration dramatically. Quick preview removes the navigation overhead, making the design-test loop **instant**.
 
 ### Key concepts
+
 - **Preview overlay**: full-screen exploration mode rendered as an overlay on top of the editor
 - **Quick toggle**: keyboard shortcut (e.g., `Ctrl+P` or `F5`) to enter/exit preview
 - **State sync**: preview uses the current editor state (unsaved changes included)
@@ -212,9 +240,11 @@ The current workflow is: edit scene → navigate to exploration URL → test →
 - **Partial preview**: optionally preview from a specific pin position (right-click pin → "Preview from here")
 
 ### Schema changes
+
 - None — this is a UI/workflow feature
 
 ### Design considerations
+
 - Preview must use the same exploration player code — no separate implementation
 - Preview state is ephemeral (not saved to ExplorationSession)
 - Editor state is frozen during preview (no edits while previewing)
@@ -224,6 +254,7 @@ The current workflow is: edit scene → navigate to exploration URL → test →
 - Preview inherits the scene's display mode settings
 
 ### Acceptance criteria
+
 - [ ] "Preview" button in scene editor toolbar
 - [ ] Keyboard shortcut to toggle preview mode
 - [ ] Preview launches exploration as overlay (no navigation)
@@ -238,12 +269,15 @@ The current workflow is: edit scene → navigate to exploration URL → test →
 ## Feature: Zone-Level Ambient Flows
 
 ### What
+
 Move ambient flows from scene-level to zone-level. Instead of flows triggering when the scene loads, they trigger when the player enters/exits a specific zone. This allows localized narrative that responds to where the player is standing.
 
 ### Why
+
 Scene-level ambient flows fire globally — a companion comment plays regardless of where the player is. Zone-level ambient flows enable spatial narrative: entering a graveyard triggers eerie dialogue, stepping into a tavern triggers a bard's song, leaving a safe zone triggers a warning.
 
 ### Migration
+
 - **Current**: `SceneAmbientFlow` belongs_to `:scene` — flows are scene-wide
 - **Target**: `SceneAmbientFlow` belongs_to `:zone` (nullable) — flows can be zone-scoped or scene-wide (fallback)
 - Add `zone_id` foreign key to `scene_ambient_flows` table
@@ -251,6 +285,7 @@ Scene-level ambient flows fire globally — a companion comment plays regardless
 - Zone-level flows take priority when the player is inside that zone
 
 ### Trigger types (zone-scoped)
+
 - `on_enter` — player enters the zone
 - `on_exit` — player leaves the zone
 - `on_event` — variable changes while player is in zone
@@ -258,11 +293,13 @@ Scene-level ambient flows fire globally — a companion comment plays regardless
 - `one_shot` — once per session per zone
 
 ### Editor UI
+
 - Move ambient flow configuration from scene settings panel to zone panel
 - Zone panel gets an "Ambient Flows" section (same UI pattern)
 - Scene settings panel keeps a "Default Ambient Flows" section for scene-wide flows (zone_id = nil)
 
 ### Key considerations
+
 - Multiple overlapping zones: all active zone ambient flows run (priority resolves order)
 - Player movement between zones: exit flows for old zone, enter flows for new zone
 - Zone conditions still apply: if zone is hidden by condition, its ambient flows don't trigger

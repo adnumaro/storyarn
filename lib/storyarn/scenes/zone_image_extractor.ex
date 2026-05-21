@@ -12,10 +12,10 @@ defmodule Storyarn.Scenes.ZoneImageExtractor do
   Returns {:error, :image_extraction_failed} on processing failures.
   """
 
-  require Logger
-
   alias Storyarn.Assets
   alias Storyarn.Scenes.SceneZone
+
+  require Logger
 
   # Target minimum dimension for the output image
   @min_output_size 1000
@@ -83,7 +83,7 @@ defmodule Storyarn.Scenes.ZoneImageExtractor do
          {:ok, cropped} <- crop_to_bbox(img, zone_bbox),
          {:ok, final} <- ensure_min_size(cropped),
          {:ok, sharpened} <- sharpen(final),
-         dims <- {Image.width(sharpened), Image.height(sharpened)},
+         dims = {Image.width(sharpened), Image.height(sharpened)},
          {:ok, temp_path} <- write_temp(sharpened) do
       case upload_and_create_asset(temp_path, zone_name, project) do
         {:ok, uploaded_asset} -> {:ok, uploaded_asset, dims, temp_path}
@@ -205,8 +205,6 @@ defmodule Storyarn.Scenes.ZoneImageExtractor do
           y: (access_coord(v, "y") - min_y) / range_y * 100
         }
       end)
-    else
-      nil
     end
   end
 

@@ -2,29 +2,11 @@ defmodule StoryarnWeb.FlowLive.Show do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  alias StoryarnWeb.Helpers.Authorize
-  alias StoryarnWeb.Live.Shared.RestorationHandlers
 
-  import StoryarnWeb.Components.CollaborationComponents
-  import StoryarnWeb.FlowLive.Components.BuilderPanel
-  import StoryarnWeb.FlowLive.Components.DebugPanel
-  import StoryarnWeb.FlowLive.Components.FlowDock
-  import StoryarnWeb.FlowLive.Components.FlowHeader
-  import StoryarnWeb.Components.CanvasToolbar
-  import StoryarnWeb.Components.RightSidebar
-  import StoryarnWeb.FlowLive.Components.FlowToolbar
-  import StoryarnWeb.Live.Shared.TreePanelHandlers
-
-  alias StoryarnWeb.Components.Sidebar.FlowTree
-  alias StoryarnWeb.FlowLive.Components.ScreenplayEditor
-
-  alias StoryarnWeb.Components.DraftComponents
-  alias StoryarnWeb.Live.Shared.DraftHandlers
-
+  alias Storyarn.Analytics
   alias Storyarn.Collaboration
-  alias Storyarn.Drafts
+  alias Storyarn.Collaboration.Presence
   alias Storyarn.Flows
-  alias Storyarn.Projects
   alias Storyarn.Scenes
   alias Storyarn.Sheets
   alias StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers
@@ -32,8 +14,10 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers
   alias StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers
   alias StoryarnWeb.FlowLive.Handlers.NavigationHandlers
+  alias StoryarnWeb.FlowLive.Handlers.PreviewHandlers
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.ConnectionHelpers
+  alias StoryarnWeb.FlowLive.Helpers.DebugSerializer
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.Helpers.NavigationHistory
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
@@ -43,383 +27,141 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Nodes.Dialogue
   alias StoryarnWeb.FlowLive.Nodes.Exit, as: ExitNode
   alias StoryarnWeb.FlowLive.Nodes.Instruction
-  alias StoryarnWeb.FlowLive.Nodes.SlugLine
   alias StoryarnWeb.FlowLive.Nodes.Subflow
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
+  alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.VersionEventHelpers
+  alias StoryarnWeb.Helpers.VersionHistoryHelpers
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
+  alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
+  alias StoryarnWeb.Live.Shared.RestorationHandlers
 
   # Node types are now rendered by flow_dock.ex
   @lock_heartbeat_interval 10_000
 
   @impl true
-  def render(%{loading: true} = assigns) do
-    ~H"""
-    <Layouts.focus
-      flash={@flash}
-      current_scope={@current_scope}
-      project={@project}
-      workspace={@workspace}
-      active_tool={:flows}
-      has_tree={@flows_tree != []}
-      tree_panel_open={@tree_panel_open}
-      tree_panel_pinned={@tree_panel_pinned}
-      can_edit={@can_edit}
-      canvas_mode={true}
-      restoration_banner={@restoration_banner}
-      my_drafts={@my_drafts}
-      renaming_draft={@renaming_draft}
-    >
-      <:tree_content>
-        <FlowTree.flows_section
-          flows_tree={@flows_tree}
-          workspace={@workspace}
-          project={@project}
-          selected_flow_id={@flow && to_string(@flow.id)}
-          can_edit={@can_edit}
-        />
-      </:tree_content>
-      <FlowTree.delete_modal :if={@can_edit} />
-      <div id={"flow-loader-#{@flow && @flow.id}"} phx-hook="FlowLoader" class="hidden"></div>
-    </Layouts.focus>
-    """
-  end
-
-  def render(%{compact: true, loading: true} = assigns) do
-    ~H"""
-    <Layouts.compare flash={@flash}>
-      <div id={"flow-loader-#{@flow && @flow.id}"} phx-hook="FlowLoader" class="hidden"></div>
-    </Layouts.compare>
-    """
-  end
-
   def render(%{compact: true} = assigns) do
     render_compact(assigns)
   end
 
   def render(assigns) do
     ~H"""
-    <Layouts.focus
+    <StoryarnWeb.Components.ProjectLayout.project
+      socket={@socket}
       flash={@flash}
-      current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
+      current_scope={@current_scope}
+      current_user={@current_user}
+      urls={@urls}
       active_tool={:flows}
-      has_tree={true}
-      tree_panel_open={@tree_panel_open}
-      tree_panel_pinned={@tree_panel_pinned}
-      can_edit={@can_edit}
+      is_super_admin={@is_super_admin}
       online_users={@online_users}
-      canvas_mode={true}
       restoration_banner={@restoration_banner}
-      my_drafts={@my_drafts}
-      renaming_draft={@renaming_draft}
+      canvas_mode={true}
+      sidebar_module={StoryarnWeb.FlowSidebarLive}
+      sidebar_session={
+        %{
+          "project_id" => @project.id,
+          "workspace_slug" => @workspace.slug,
+          "project_slug" => @project.slug,
+          "flow_id" => @flow && to_string(@flow.id),
+          "can_edit" => @can_edit,
+          "active_tool" => "flows",
+          "dashboard_url" => ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows",
+          "current_scope" => @current_scope,
+          "locale" => @locale
+        }
+      }
     >
-      <:top_bar_extra>
-        <DraftComponents.draft_banner is_draft={@is_draft} />
-        <.flow_info_bar
-          flow={@flow}
-          can_edit={@can_edit}
-          save_status={@save_status}
-          nav_history={@nav_history}
-          scene_name={@scene_name}
-          scene_inherited={@scene_inherited}
-          available_scenes={@available_scenes}
-          flow_word_count={@flow_word_count}
-          flow_error_nodes={@flow_error_nodes}
-          flow_info_nodes={@flow_info_nodes}
-          is_draft={@is_draft}
-        />
-      </:top_bar_extra>
-      <:tree_content>
-        <FlowTree.flows_section
-          flows_tree={@flows_tree}
-          workspace={@workspace}
-          project={@project}
-          selected_flow_id={@flow && to_string(@flow.id)}
-          can_edit={@can_edit}
-        />
-      </:tree_content>
-      <FlowTree.delete_modal :if={@can_edit} />
-      <DraftComponents.discard_draft_modal is_draft={@is_draft} />
-      <DraftComponents.merge_review_modal is_draft={@is_draft} merge_summary={@merge_summary} />
-      <div class="h-full relative">
-        <%!-- Canvas fills the entire area --%>
-        <div class="absolute inset-0 flex flex-col">
-          <div class="flex-1 relative bg-base-200">
-            <div
-              id={"flow-canvas-#{@flow.id}"}
-              phx-hook="FlowCanvas"
-              phx-update="ignore"
-              class="absolute inset-0"
-              data-flow={Jason.encode!(@flow_data)}
-              data-sheets={Jason.encode!(FormHelpers.sheets_map(@all_sheets, @gallery_by_sheet))}
-              data-locks={Jason.encode!(@node_locks)}
-              data-user-id={@current_scope.user.id}
-              data-user-color={Collaboration.user_color(@current_scope.user.id)}
-              data-labels={Jason.encode!(flow_canvas_labels())}
-            >
-            </div>
-
-            <%!-- Floating Toolbar --%>
-            <.canvas_toolbar
-              id="flow-floating-toolbar"
-              canvas_id={"flow-canvas-#{@flow.id}"}
-              visible={@selected_node != nil && @editing_mode in [:toolbar, :annotation]}
-            >
-              <%= if @editing_mode == :annotation do %>
-                <.annotation_toolbar node={@selected_node} can_edit={@can_edit} />
-              <% else %>
-                <.node_toolbar
-                  node={@selected_node}
-                  form={@node_form}
-                  can_edit={@can_edit}
-                  all_sheets={@all_sheets}
-                  gallery_by_sheet={@gallery_by_sheet}
-                  flow_hubs={@flow_hubs}
-                  available_flows={@available_flows}
-                  available_scenes={assigns[:available_scenes] || []}
-                  flow_search_has_more={@flow_search_has_more}
-                  flow_search_deep={@flow_search_deep}
-                  subflow_exits={@subflow_exits}
-                  referencing_jumps={@referencing_jumps}
-                  referencing_flows={@referencing_flows}
-                  project_scenes={@project_scenes}
-                  node_select_loading={@node_select_loading}
-                />
-              <% end %>
-            </.canvas_toolbar>
-
-            <%!-- Bottom dock --%>
-            <.flow_dock
-              flow={@flow}
-              workspace={@workspace}
-              project={@project}
-              can_edit={@can_edit}
-              debug_panel_open={@debug_panel_open}
-            />
-
-            <%!-- Version History Panel --%>
-            <.right_sidebar
-              id="flow-versions-panel"
-              title={dgettext("flows", "Version History")}
-              open_event="open_versions_panel"
-              close_event="close_versions_panel"
-              width="320px"
-              loading={!@versions_panel_open}
-            >
-              <:actions>
-                <button
-                  :if={@can_edit && @versions_panel_open}
-                  type="button"
-                  class="btn btn-ghost btn-xs btn-square"
-                  phx-click="show_create_version_modal"
-                >
-                  <.icon name="plus" class="size-4" />
-                </button>
-              </:actions>
-              <.live_component
-                :if={@versions_panel_open}
-                module={StoryarnWeb.Components.VersionsSection}
-                id="flow-versions-section"
-                entity={@flow}
-                entity_type="flow"
-                project_id={@project.id}
-                current_user_id={@current_scope.user.id}
-                can_edit={@can_edit}
-                current_version_id={@flow.current_version_id}
-                workspace_id={@workspace.id}
-              />
-            </.right_sidebar>
-          </div>
-
-          <.debug_panel
-            :if={@debug_panel_open && @debug_state}
-            debug_state={@debug_state}
-            debug_active_tab={@debug_active_tab}
-            debug_nodes={@debug_nodes}
-            debug_auto_playing={@debug_auto_playing}
-            debug_speed={@debug_speed}
-            debug_editing_var={@debug_editing_var}
-            debug_var_filter={@debug_var_filter}
-            debug_var_changed_only={@debug_var_changed_only}
-            debug_current_flow_name={@flow.name}
-            debug_step_limit_reached={@debug_step_limit_reached}
-          />
-        </div>
-
-        <%!-- Collaboration Toast --%>
-        <.collab_toast
-          :if={@collab_toast}
-          action={@collab_toast.action}
-          user_email={@collab_toast.user_email}
-          user_color={@collab_toast.user_color}
-        />
-      </div>
-
-      <%!-- Builder Sidebar (condition / instruction nodes) --%>
-      <div
-        id="builder-sidebar"
-        phx-hook="RightSidebar"
-        data-right-panel
-        data-open-event="open_builder"
-        data-close-event="close_builder"
-        class={[
-          "fixed flex flex-col overflow-hidden right-sidebar",
-          "inset-0 z-[1030] bg-base-100",
-          "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:w-[480px]"
-        ]}
-      >
-        <div :if={@selected_node && @editing_mode == :builder}>
-          <.builder_content
-            node={@selected_node}
-            form={@node_form}
-            can_edit={@can_edit}
-            project_variables={@project_variables}
-            panel_sections={@panel_sections}
-          />
-        </div>
-        <div
-          :if={!(@selected_node && @editing_mode == :builder)}
-          class="flex items-center justify-center h-full"
-        >
-          <span class="loading loading-spinner loading-md text-base-content/40"></span>
-        </div>
-      </div>
-
-      <%!-- Screenplay Editor sidebar --%>
-      <.live_component
-        :if={@selected_node && @editing_mode in [:screenplay, :editor]}
-        module={ScreenplayEditor}
-        id={"screenplay-editor-#{@selected_node.id}"}
-        node={@selected_node}
-        can_edit={@can_edit}
-        all_sheets={@all_sheets}
-        project_variables={@project_variables}
-        project={@project}
-        current_user={@current_scope.user}
-        panel_sections={@panel_sections}
+      <.vue
+        :if={@flow}
+        v-component="live/flow/show/FlowHeader"
+        v-socket={@socket}
+        v-inject:top-left="project-layout"
+        id="flow-header"
+        flow-name={@flow.name}
+        flow-shortcut={@flow.shortcut}
+        is-main={@flow.is_main}
+        can-edit={@can_edit}
+        save-status={to_string(@save_status)}
+        nav-history={
+          %{
+            back: @nav_history && NavigationHistory.peek_back(@nav_history),
+            forward: @nav_history && NavigationHistory.peek_forward(@nav_history)
+          }
+        }
+        flow-health={
+          %{
+            wordCount: @flow_word_count,
+            errorNodes: @flow_error_nodes,
+            infoNodes: @flow_info_nodes
+          }
+        }
+        scene-selected={%{name: @scene_name, inherited: @scene_inherited}}
+        project-scenes={Enum.map(@available_scenes, &Map.take(&1, [:id, :name]))}
       />
 
-      <%!-- Preview Modal --%>
-      <.live_component
-        module={StoryarnWeb.FlowLive.PreviewComponent}
-        id="flow-preview"
-        show={@preview_show}
-        start_node={@preview_node}
-        project={@project}
-        sheets_map={FormHelpers.sheets_map(@all_sheets)}
+      <.vue
+        :if={@flow}
+        v-component="live/flow/show/FlowSurface"
+        v-socket={@socket}
+        v-inject="project-layout"
+        id="flow-surface"
+        class="w-full h-full"
+        surface={flow_surface_props(assigns)}
       />
-    </Layouts.focus>
+
+      <.vue
+        :if={@flow}
+        v-component="live/flow/show/FlowPanels"
+        v-socket={@socket}
+        v-inject:panels="project-layout"
+        id="flow-panels"
+        panels={flow_panels_props(assigns)}
+      />
+    </StoryarnWeb.Components.ProjectLayout.project>
     """
   end
 
   defp render_compact(assigns) do
+    assigns =
+      assigns
+      |> assign(
+        :compact_flow_data,
+        if(assigns.loading || is_nil(assigns[:flow_data]), do: nil, else: Jason.encode!(assigns.flow_data))
+      )
+      |> assign(
+        :compact_variable_map,
+        if(assigns.loading,
+          do: nil,
+          else: Jason.encode!(FormHelpers.sheets_map(assigns.all_sheets, assigns.gallery_by_sheet))
+        )
+      )
+      |> assign(
+        :compact_toolbar_data,
+        if(assigns.loading, do: Jason.encode!(%{}), else: Jason.encode!(toolbar_data(assigns)))
+      )
+
     ~H"""
-    <Layouts.compare flash={@flash}>
-      <div class="h-full relative">
-        <%!-- Canvas fills the entire area --%>
-        <div class="absolute inset-0 flex flex-col">
-          <div class="flex-1 relative bg-base-200">
-            <div
-              id={"flow-canvas-#{@flow.id}"}
-              phx-hook="FlowCanvas"
-              phx-update="ignore"
-              class="absolute inset-0"
-              data-flow={Jason.encode!(@flow_data)}
-              data-sheets={Jason.encode!(FormHelpers.sheets_map(@all_sheets, @gallery_by_sheet))}
-              data-locks={Jason.encode!(@node_locks)}
-              data-user-id={@current_scope.user.id}
-              data-user-color={Collaboration.user_color(@current_scope.user.id)}
-              data-labels={Jason.encode!(flow_canvas_labels())}
-            >
-            </div>
-
-            <%!-- Floating Toolbar --%>
-            <.canvas_toolbar
-              id="flow-floating-toolbar"
-              canvas_id={"flow-canvas-#{@flow.id}"}
-              visible={@selected_node != nil && @editing_mode in [:toolbar, :annotation]}
-            >
-              <%= if @editing_mode == :annotation do %>
-                <.annotation_toolbar node={@selected_node} can_edit={@can_edit} />
-              <% else %>
-                <.node_toolbar
-                  node={@selected_node}
-                  form={@node_form}
-                  can_edit={@can_edit}
-                  all_sheets={@all_sheets}
-                  gallery_by_sheet={@gallery_by_sheet}
-                  flow_hubs={@flow_hubs}
-                  available_flows={@available_flows}
-                  available_scenes={assigns[:available_scenes] || []}
-                  flow_search_has_more={@flow_search_has_more}
-                  flow_search_deep={@flow_search_deep}
-                  subflow_exits={@subflow_exits}
-                  referencing_jumps={@referencing_jumps}
-                  referencing_flows={@referencing_flows}
-                  project_scenes={@project_scenes}
-                  node_select_loading={@node_select_loading}
-                />
-              <% end %>
-            </.canvas_toolbar>
-
-            <%!-- Bottom dock --%>
-            <.flow_dock
-              flow={@flow}
-              workspace={@workspace}
-              project={@project}
-              can_edit={@can_edit}
-              debug_panel_open={@debug_panel_open}
-              compact={true}
-            />
-          </div>
-        </div>
-      </div>
-
-      <%!-- Builder Sidebar (condition / instruction nodes) --%>
-      <div
-        id="builder-sidebar"
-        phx-hook="RightSidebar"
-        data-right-panel
-        data-open-event="open_builder"
-        data-close-event="close_builder"
-        class={[
-          "fixed flex flex-col overflow-hidden right-sidebar",
-          "inset-0 z-[1030] bg-base-100",
-          "xl:inset-auto xl:right-3 xl:top-3 xl:bottom-3 xl:w-[480px]"
-        ]}
-      >
-        <div :if={@selected_node && @editing_mode == :builder}>
-          <.builder_content
-            node={@selected_node}
-            form={@node_form}
-            can_edit={@can_edit}
-            project_variables={@project_variables}
-            panel_sections={@panel_sections}
-          />
-        </div>
-        <div
-          :if={!(@selected_node && @editing_mode == :builder)}
-          class="flex items-center justify-center h-full"
-        >
-          <span class="loading loading-spinner loading-md text-base-content/40"></span>
-        </div>
-      </div>
-
-      <%!-- Screenplay Editor sidebar --%>
-      <.live_component
-        :if={@selected_node && @editing_mode in [:screenplay, :editor]}
-        module={ScreenplayEditor}
-        id={"screenplay-editor-#{@selected_node.id}"}
-        node={@selected_node}
-        can_edit={@can_edit}
-        all_sheets={@all_sheets}
-        project_variables={@project_variables}
-        project={@project}
-        current_user={@current_scope.user}
-        panel_sections={@panel_sections}
+    <StoryarnWeb.Components.CompareLayout.compare socket={@socket} flash={@flash}>
+      <.vue
+        :if={@flow}
+        v-component="live/flow/show/FlowCanvas"
+        v-socket={@socket}
+        v-inject="compare-layout"
+        id={"flow-editor-compact-#{@flow.id}"}
+        class="w-full h-full"
+        flow-data={@compact_flow_data}
+        variable-map={@compact_variable_map}
+        loading={@loading}
+        readonly={!@can_edit}
+        user-id={@current_scope.user.id}
+        user-color={Collaboration.user_color(@current_scope.user.id)}
+        canvas-id={"flow-canvas-#{@flow.id}"}
+        toolbar-data={@compact_toolbar_data}
       />
-    </Layouts.compare>
+    </StoryarnWeb.Components.CompareLayout.compare>
     """
   end
 
@@ -428,59 +170,76 @@ defmodule StoryarnWeb.FlowLive.Show do
   # ===========================================================================
 
   @impl true
-  def mount(
-        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug},
-        _session,
-        socket
-      ) do
-    case Projects.get_project_by_slugs(socket.assigns.current_scope, workspace_slug, project_slug) do
-      {:ok, project, membership} ->
-        can_edit = Projects.can?(membership.role, :edit_content)
+  def mount(_params, _session, socket) do
+    %{project: project, can_edit: can_edit} = socket.assigns
 
-        if connected?(socket), do: Collaboration.subscribe_restoration(project.id)
+    if connected?(socket) do
+      Collaboration.subscribe_restoration(project.id)
 
-        {can_edit, restoration_banner} =
-          RestorationHandlers.check_restoration_lock(project.id, can_edit)
-
-        socket =
-          socket
-          |> assign(focus_layout_defaults())
-          |> assign(:compact, false)
-          |> assign(:loading, true)
-          |> assign(:project, project)
-          |> assign(:workspace, project.workspace)
-          |> assign(:membership, membership)
-          |> assign(:can_edit, can_edit)
-          |> assign(:restoration_banner, restoration_banner)
-          # Defaults — flow loaded in handle_params
-          |> assign(:flow, nil)
-          |> assign(:nav_history, nil)
-          |> assign(:flows_tree, Flows.list_flows_tree(project.id))
-          |> assign(:pending_delete_id, nil)
-          |> assign(:scene_name, nil)
-          |> assign(:scene_inherited, false)
-          |> assign(:available_scenes, [])
-          |> assign(:flow_word_count, 0)
-          |> assign(:flow_error_nodes, [])
-          |> assign(:flow_info_nodes, [])
-          |> assign(:is_draft, false)
-          |> assign(:draft, nil)
-          |> assign(:merge_summary, nil)
-          |> assign(:renaming_draft, nil)
-          |> assign(:_draft_touch_ref, nil)
-          |> assign(
-            :my_drafts,
-            Drafts.list_my_drafts(project.id, socket.assigns.current_scope.user.id)
-          )
-
-        {:ok, socket}
-
-      {:error, _reason} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("flows", "You don't have access to this project."))
-         |> redirect(to: ~p"/workspaces")}
+      Phoenix.PubSub.subscribe(
+        Storyarn.PubSub,
+        ProjectChromeHelpers.shell_topic(project.id)
+      )
     end
+
+    {can_edit, restoration_banner} =
+      RestorationHandlers.check_restoration_lock(project.id, can_edit)
+
+    socket =
+      socket
+      |> assign(:can_edit, can_edit)
+      |> assign(:compact, false)
+      |> assign(:loading, true)
+      |> assign(:restoration_banner, restoration_banner)
+      |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
+      # Defaults — flow loaded in handle_params
+      |> assign(:flow, nil)
+      |> assign(:nav_history, nil)
+      |> assign(:scene_name, nil)
+      |> assign(:scene_inherited, false)
+      |> assign(:available_scenes, [])
+      |> assign(:flow_word_count, 0)
+      |> assign(:flow_error_nodes, [])
+      |> assign(:flow_info_nodes, [])
+      |> assign(:save_status, :idle)
+      |> assign(:selected_node, nil)
+      |> assign(:node_form, nil)
+      |> assign(:editing_mode, nil)
+      |> assign(:sequence_panel_data, nil)
+      |> assign(:debug_panel_open, false)
+      |> assign(:debug_state, nil)
+      |> assign(:debug_active_tab, "console")
+      |> assign(:debug_nodes, %{})
+      |> assign(:debug_auto_playing, false)
+      |> assign(:debug_speed, 800)
+      |> assign(:debug_editing_var, nil)
+      |> assign(:debug_var_filter, "")
+      |> assign(:debug_var_changed_only, false)
+      |> assign(:debug_step_limit_reached, false)
+      |> assign(:versions_panel_open, false)
+      |> assign(:history_data, nil)
+      |> assign(:all_sheets, [])
+      |> assign(:dialogue_panel_data, nil)
+      |> assign(:gallery_by_sheet, %{})
+      |> assign(:flow_hubs, [])
+      |> assign(:available_flows, [])
+      |> assign(:flow_search_has_more, false)
+      |> assign(:flow_search_deep, false)
+      |> assign(:subflow_exits, [])
+      |> assign(:referencing_jumps, [])
+      |> assign(:referencing_flows, [])
+      |> assign(:project_scenes, [])
+      |> assign(:node_select_loading, false)
+      |> assign(:panel_sections, %{})
+      |> assign(:project_variables, [])
+      |> assign(:preview_show, false)
+      |> assign(:preview_current_node, nil)
+      |> assign(:preview_speaker, nil)
+      |> assign(:preview_responses, [])
+      |> assign(:preview_has_next, false)
+      |> assign(:preview_history, [])
+
+    {:ok, socket}
   end
 
   defp maybe_restore_debug_session(socket) do
@@ -536,11 +295,6 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   @impl true
-  def handle_params(%{"id" => _flow_id, "draft_id" => draft_id} = params, _url, socket) do
-    compact = params["layout"] == "compact"
-    {:noreply, socket |> assign(:compact, compact) |> load_draft_flow(draft_id)}
-  end
-
   def handle_params(%{"id" => flow_id} = params, _url, socket) do
     compact = params["layout"] == "compact"
     socket = assign(socket, :compact, compact)
@@ -551,37 +305,25 @@ defmodule StoryarnWeb.FlowLive.Show do
         _ -> nil
       end
 
-    if flow_id == current_id do
-      # Same flow — just handle ?node= param
-      if socket.assigns.loading do
-        {:noreply, socket}
+    socket =
+      if flow_id == current_id do
+        # Same flow — just handle ?node= param
+        if socket.assigns.loading do
+          socket
+        else
+          maybe_navigate_to_node(socket, params["node"])
+        end
       else
-        {:noreply, maybe_navigate_to_node(socket, params["node"])}
+        load_flow(socket, flow_id)
       end
-    else
-      {:noreply, load_flow(socket, flow_id)}
-    end
-  end
 
-  defp load_draft_flow(socket, draft_id) do
-    %{project: project, current_scope: scope} = socket.assigns
+    Phoenix.PubSub.broadcast(
+      Storyarn.PubSub,
+      ProjectChromeHelpers.shell_topic(socket.assigns.project.id),
+      {:active_flow, flow_id}
+    )
 
-    with draft when not is_nil(draft) <- Drafts.get_my_draft(draft_id, scope.user.id, project.id),
-         true <- draft.entity_type == "flow" and draft.status == "active",
-         entity when not is_nil(entity) <- Drafts.get_draft_entity(draft) do
-      socket
-      |> assign(:loading, true)
-      |> assign(:is_draft, true)
-      |> assign(:draft, draft)
-      |> assign(:flow, entity)
-    else
-      _ ->
-        socket
-        |> put_flash(:error, dgettext("flows", "Draft not found."))
-        |> push_navigate(
-          to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows"
-        )
-    end
+    {:noreply, socket}
   end
 
   defp load_flow(socket, flow_id) do
@@ -591,27 +333,55 @@ defmodule StoryarnWeb.FlowLive.Show do
       nil ->
         socket
         |> put_flash(:error, dgettext("flows", "Flow not found."))
-        |> push_navigate(
-          to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows"
-        )
+        |> push_navigate(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows")
 
       flow ->
-        # Teardown collaboration for previous flow (if switching)
-        case socket.assigns.flow do
-          %{id: prev_id} when prev_id != flow.id ->
-            CollaborationHelpers.teardown_collaboration(
-              prev_id,
-              socket.assigns.current_scope.user.id
-            )
-
-          _ ->
-            :ok
-        end
-
         socket
+        |> teardown_previous_flow(flow)
         |> assign(:loading, true)
         |> assign(:flow, flow)
+        |> maybe_start_flow_load(flow)
     end
+  end
+
+  defp teardown_previous_flow(%{assigns: %{flow: %{id: prev_id}}} = socket, %{id: next_id}) when prev_id != next_id do
+    if ref = socket.assigns[:lock_heartbeat_ref], do: Process.cancel_timer(ref)
+
+    CollaborationHelpers.teardown_collaboration(
+      prev_id,
+      socket.assigns.current_scope.user.id
+    )
+
+    socket
+    |> assign(:locked_node_id, nil)
+    |> assign(:lock_heartbeat_ref, nil)
+    |> assign(:collab_scope, nil)
+  end
+
+  defp teardown_previous_flow(socket, _flow), do: socket
+
+  defp maybe_start_flow_load(socket, flow) do
+    if connected?(socket) do
+      project = socket.assigns.project
+      start_async(socket, :load_flow_data, fn -> load_flow_data(project, flow) end)
+    else
+      socket
+    end
+  end
+
+  defp load_flow_data(project, flow) do
+    full_flow = Flows.get_flow!(project.id, flow.id)
+    project_variables = VariableHelpers.list_all_variables(project.id)
+
+    %{
+      flow: full_flow,
+      flow_data: Flows.serialize_for_canvas(full_flow, project_variables: project_variables),
+      all_sheets: Sheets.list_all_sheets(project.id),
+      gallery_by_sheet: Sheets.batch_load_gallery_data_by_sheet(project.id),
+      flow_hubs: Flows.list_hubs(flow.id),
+      project_variables: project_variables,
+      available_scenes: Scenes.list_scenes(project.id)
+    }
   end
 
   defp maybe_navigate_to_node(socket, nil), do: socket
@@ -628,15 +398,26 @@ defmodule StoryarnWeb.FlowLive.Show do
   # ===========================================================================
 
   @impl true
-  # Tree panel events (from FocusLayout)
-  def handle_event("tree_panel_" <> _ = event, params, socket),
-    do: handle_tree_panel_event(event, params, socket)
-
   def handle_event("open_versions_panel", _params, %{assigns: %{compact: true}} = socket) do
     {:noreply, socket}
   end
 
   def handle_event("open_versions_panel", _params, socket) do
+    maybe_track_version_panel_opened(socket, "flow")
+
+    socket =
+      if is_nil(socket.assigns.history_data) do
+        VersionHistoryHelpers.load_history_data(
+          socket,
+          "flow",
+          socket.assigns.flow,
+          socket.assigns.project.id,
+          socket.assigns.workspace.id
+        )
+      else
+        socket
+      end
+
     {:noreply, assign(socket, :versions_panel_open, true)}
   end
 
@@ -644,37 +425,54 @@ defmodule StoryarnWeb.FlowLive.Show do
     {:noreply, assign(socket, :versions_panel_open, false)}
   end
 
-  def handle_event("show_create_version_modal", _params, socket) do
-    send_update(StoryarnWeb.Components.VersionsSection,
-      id: "flow-versions-section",
-      action: :show_create_version_modal
-    )
+  # ---------------------------------------------------------------------------
+  # Version History handlers (Vue FlowVersionHistoryPanel)
+  # ---------------------------------------------------------------------------
 
-    {:noreply, socket}
+  def handle_event("create_version", %{"title" => title, "description" => description}, socket) do
+    VersionEventHelpers.handle_create(%{"title" => title, "description" => description}, socket, flow_version_config())
   end
 
-  # Triggered by the FlowLoader hook after the browser has painted the spinner.
-  def handle_event("load_flow_data", _params, socket) do
-    %{flow: flow, project: project, is_draft: is_draft} = socket.assigns
+  def handle_event("promote_version", params, socket) do
+    VersionEventHelpers.handle_promote(params, socket, flow_version_config())
+  end
 
-    socket =
-      start_async(socket, :load_flow_data, fn ->
-        full_flow = Flows.get_flow!(project.id, flow.id, include_drafts: is_draft)
-        project_variables = VariableHelpers.list_all_variables(project.id)
+  def handle_event("delete_version", %{"version_number" => vn}, socket) do
+    VersionEventHelpers.handle_delete(%{"version_number" => vn}, socket, flow_version_config())
+  end
 
-        %{
-          flow: full_flow,
-          flow_data: Flows.serialize_for_canvas(full_flow, project_variables: project_variables),
-          all_sheets: Sheets.list_all_sheets(project.id),
-          gallery_by_sheet: Sheets.batch_load_gallery_data_by_sheet(project.id),
-          flow_hubs: Flows.list_hubs(flow.id),
-          project_variables: project_variables,
-          flows_tree: Flows.list_flows_tree(project.id),
-          available_scenes: Scenes.list_scenes(project.id)
-        }
-      end)
+  def handle_event("load_more_versions", _params, socket) do
+    VersionEventHelpers.handle_load_more(socket, flow_version_config())
+  end
 
-    {:noreply, socket}
+  def handle_event("preview_restore", %{"version_number" => vn}, socket) do
+    VersionEventHelpers.handle_preview_restore(%{"version_number" => vn}, socket, flow_version_config())
+  end
+
+  def handle_event("save_and_restore", %{"version_number" => vn}, socket) do
+    VersionEventHelpers.handle_save_and_restore(%{"version_number" => vn}, socket, flow_version_config())
+  end
+
+  def handle_event("discard_and_restore", %{"version_number" => vn}, socket) do
+    VersionEventHelpers.handle_discard_and_restore(%{"version_number" => vn}, socket, flow_version_config())
+  end
+
+  def handle_event("confirm_restore", %{"version_number" => vn} = params, socket) do
+    VersionEventHelpers.handle_confirm_restore(
+      %{"version_number" => vn, "skip_pre_snapshot" => params["skip_pre_snapshot"]},
+      socket,
+      flow_version_config()
+    )
+  end
+
+  def handle_event("compare_version", %{"version_number" => vn}, socket) do
+    VersionEventHelpers.handle_compare(%{"version_number" => vn}, socket, flow_version_config())
+  end
+
+  def handle_event("wrap_selection_in_sequence", %{"node_ids" => node_ids} = params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      wrap_selection_in_sequence(socket, node_ids, params)
+    end)
   end
 
   def handle_event("add_node", params, socket) do
@@ -722,8 +520,20 @@ defmodule StoryarnWeb.FlowLive.Show do
     GenericNodeHandlers.handle_node_double_clicked(params, socket)
   end
 
-  def handle_event("open_screenplay", params, socket) do
-    Dialogue.Node.handle_open_screenplay(params, socket)
+  def handle_event("open_dialogue_panel", params, socket) do
+    Dialogue.Node.handle_open_dialogue_panel(params, socket)
+  end
+
+  def handle_event("open_dialogue_fullscreen", _params, socket) do
+    if socket.assigns[:selected_node] do
+      {:noreply, assign(socket, :editing_mode, :dialogue_fullscreen)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("minimize_dialogue_fullscreen", _params, socket) do
+    {:noreply, assign(socket, :editing_mode, :dialogue_panel)}
   end
 
   def handle_event("open_sidebar", _params, socket) do
@@ -747,6 +557,19 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   def handle_event("close_builder", _params, socket) do
     {:noreply, assign(socket, :editing_mode, :toolbar)}
+  end
+
+  def handle_event("open_sequence_config", _params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_open_sequence_config(socket)
+    end)
+  end
+
+  def handle_event("close_sequence_config", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:editing_mode, :toolbar)
+     |> assign(:sequence_panel_data, nil)}
   end
 
   def handle_event("close_editor", _params, socket) do
@@ -778,6 +601,54 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_event("batch_update_positions", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       GenericNodeHandlers.handle_batch_update_positions(params, socket)
+    end)
+  end
+
+  def handle_event("node_reparented", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_node_reparented(params, socket)
+    end)
+  end
+
+  def handle_event("update_sequence_name", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_update_sequence_name(params, socket)
+    end)
+  end
+
+  def handle_event("update_sequence_config", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_update_sequence_config(params, socket)
+    end)
+  end
+
+  def handle_event("create_sequence_visual_layer", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_create_sequence_visual_layer(params, socket)
+    end)
+  end
+
+  def handle_event("update_sequence_visual_layer", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_update_sequence_visual_layer(params, socket)
+    end)
+  end
+
+  def handle_event("delete_sequence_visual_layer", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_delete_sequence_visual_layer(params, socket)
+    end)
+  end
+
+  def handle_event("upsert_sequence_track", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_upsert_sequence_track(params, socket)
+    end)
+  end
+
+  def handle_event("clear_sequence_track", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_clear_sequence_track(params, socket)
     end)
   end
 
@@ -849,9 +720,6 @@ defmodule StoryarnWeb.FlowLive.Show do
         node && node.type == "exit" ->
           ExitNode.Node.handle_generate_technical_id(socket)
 
-        node && node.type == "slug_line" ->
-          SlugLine.Node.handle_generate_technical_id(socket)
-
         true ->
           {:noreply, socket}
       end
@@ -870,8 +738,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
-  def handle_event("update_annotation_font_size", %{"value" => size}, socket)
-      when size in ["sm", "md", "lg"] do
+  def handle_event("update_annotation_font_size", %{"value" => size}, socket) when size in ["sm", "md", "lg"] do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       update_selected_node_data(socket, "font_size", size)
     end)
@@ -921,11 +788,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
-  def handle_event(
-        "connection_deleted",
-        %{"source_node_id" => source_id, "target_node_id" => target_id},
-        socket
-      ) do
+  def handle_event("connection_deleted", %{"source_node_id" => source_id, "target_node_id" => target_id}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ConnectionHelpers.delete_connection_by_nodes(socket, source_id, target_id)
     end)
@@ -1089,7 +952,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_event("update_hub_color", %{"color" => color}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       validated =
-        StoryarnWeb.FlowLive.Components.NodeTypeHelpers.validate_hex_color(
+        StoryarnWeb.FlowLive.Helpers.NodeDataHelpers.validate_hex_color(
           color,
           Flows.hub_colors_default_hex()
         )
@@ -1185,7 +1048,23 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("start_preview", params, socket) do
-    GenericNodeHandlers.handle_start_preview(params, socket)
+    PreviewHandlers.handle_start_preview(params, socket)
+  end
+
+  def handle_event("preview_select_response", params, socket) do
+    PreviewHandlers.handle_select_response(params, socket)
+  end
+
+  def handle_event("preview_continue", params, socket) do
+    PreviewHandlers.handle_continue(params, socket)
+  end
+
+  def handle_event("preview_go_back", params, socket) do
+    PreviewHandlers.handle_go_back(params, socket)
+  end
+
+  def handle_event("preview_close", _params, socket) do
+    PreviewHandlers.handle_close(socket)
   end
 
   def handle_event("request_flow_refresh", _params, socket) do
@@ -1193,191 +1072,132 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("navigate_to_hub", %{"id" => node_id}, socket) do
-    case Integer.parse(node_id) do
-      {id, ""} -> {:noreply, push_event(socket, "navigate_to_hub", %{jump_db_id: id})}
-      _ -> {:noreply, socket}
+    case parse_node_id(node_id) do
+      {:ok, id} -> {:noreply, push_event(socket, "navigate_to_hub", %{jump_db_id: id})}
+      :error -> {:noreply, socket}
     end
   end
 
   def handle_event("navigate_to_node", %{"id" => node_id}, socket) do
-    case Integer.parse(node_id) do
-      {id, ""} -> {:noreply, push_event(socket, "navigate_to_node", %{node_db_id: id})}
-      _ -> {:noreply, socket}
+    case parse_node_id(node_id) do
+      {:ok, id} -> {:noreply, push_event(socket, "navigate_to_node", %{node_db_id: id})}
+      :error -> {:noreply, socket}
     end
   end
 
   def handle_event("navigate_to_jumps", %{"id" => node_id}, socket) do
-    case Integer.parse(node_id) do
-      {id, ""} -> {:noreply, push_event(socket, "navigate_to_jumps", %{hub_db_id: id})}
-      _ -> {:noreply, socket}
+    case parse_node_id(node_id) do
+      {:ok, id} -> {:noreply, push_event(socket, "navigate_to_jumps", %{hub_db_id: id})}
+      :error -> {:noreply, socket}
     end
   end
 
-  # ===========================================================================
-  # Sidebar Tree Event Handlers
-  # ===========================================================================
+  defp parse_node_id(id) when is_integer(id), do: {:ok, id}
 
-  def handle_event("create_flow", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      handle_create_entity(
-        socket,
-        %{name: dgettext("flows", "Untitled")},
-        &Flows.create_flow/2,
-        &flow_path/2,
-        dgettext("flows", "Could not create flow."),
-        patch: true,
-        reload_tree_fn: &reload_flows_tree/1
-      )
-    end)
+  defp parse_node_id(id) when is_binary(id) do
+    case Integer.parse(id) do
+      {i, ""} -> {:ok, i}
+      _ -> :error
+    end
   end
 
-  def handle_event("create_child_flow", %{"parent-id" => parent_id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      handle_create_child(
-        socket,
-        parent_id,
-        %{name: dgettext("flows", "Untitled")},
-        &Flows.create_flow/2,
-        &flow_path/2,
-        dgettext("flows", "Could not create flow."),
-        patch: true,
-        reload_tree_fn: &reload_flows_tree/1
-      )
-    end)
-  end
+  defp parse_node_id(_), do: :error
 
-  def handle_event("set_main_flow", %{"id" => flow_id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      case Flows.get_flow(socket.assigns.project.id, flow_id) do
-        nil ->
-          {:noreply, put_flash(socket, :error, dgettext("flows", "Flow not found."))}
-
-        flow ->
-          do_set_main_flow(socket, flow)
+  defp parse_node_ids(node_ids) do
+    node_ids
+    |> List.wrap()
+    |> Enum.flat_map(fn node_id ->
+      case parse_node_id(node_id) do
+        {:ok, int_id} -> [int_id]
+        :error -> []
       end
     end)
   end
 
-  def handle_event("create_draft", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      %{flow: flow} = socket.assigns
+  defp wrap_selection_in_sequence(socket, node_ids, params) do
+    ids = parse_node_ids(node_ids)
 
-      DraftHandlers.handle_create_draft(socket, "flow", flow.id, fn s, draft ->
-        %{project: project} = s.assigns
+    case Flows.wrap_selection_in_sequence(socket.assigns.flow, ids, sequence_wrap_attrs(params)) do
+      {:ok, sequence} ->
+        track_sequence_created_from_wrap(socket, sequence)
 
-        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}/drafts/#{draft.id}"
-      end)
-    end)
+        flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
+        flow_data = Flows.serialize_for_canvas(flow, project_variables: socket.assigns.project_variables)
+
+        {:noreply,
+         socket
+         |> assign(:flow_data, flow_data)
+         |> push_event("flow_updated", flow_data)
+         |> put_flash(:info, dgettext("flows", "Sequence created"))}
+
+      {:error, :empty_selection} ->
+        {:noreply, put_flash(socket, :error, dgettext("flows", "Select at least one node first"))}
+
+      {:error, :mixed_parents} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext("flows", "Nodes must belong to the same container")
+         )}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create sequence"))}
+    end
   end
 
-  def handle_event("discard_draft", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      %{project: project} = socket.assigns
-
-      DraftHandlers.handle_discard_draft(
-        socket,
-        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows"
-      )
-    end)
+  defp track_sequence_created_from_wrap(socket, sequence) do
+    Analytics.track(socket.assigns.current_scope, "flow node created", %{
+      creation_method: "wrap_selection",
+      flow_id: socket.assigns.flow.id,
+      has_parent: not is_nil(sequence.parent_id),
+      node_type: "sequence",
+      project_id: socket.assigns.project.id
+    })
   end
 
-  def handle_event("load_merge_summary", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      DraftHandlers.handle_load_merge_summary(socket)
-    end)
+  # Tree mutations (create_flow, create_child_flow, set_main_flow,
+  # set_pending_delete_flow, confirm_delete_flow, delete_flow, move_to_parent)
+  # now live in FlowSidebarLive — they never reach this LV because the tree
+  # is rendered by FlowSidebarLive which is a separate nested LV.
+
+  defp reload_history_data(socket) do
+    VersionHistoryHelpers.load_history_data(
+      socket,
+      "flow",
+      socket.assigns.flow,
+      socket.assigns.project.id,
+      socket.assigns.workspace.id
+    )
   end
 
-  def handle_event("merge_draft", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      %{draft: draft} = socket.assigns
-
-      DraftHandlers.handle_merge_draft(socket, fn s ->
-        %{project: p} = s.assigns
-
-        ~p"/workspaces/#{p.workspace.slug}/projects/#{p.slug}/flows/#{draft.source_entity_id}"
-      end)
-    end)
+  defp maybe_track_version_panel_opened(socket, entity_type) do
+    if !socket.assigns[:versions_panel_open] do
+      Analytics.track(socket.assigns.current_scope, "version panel opened", %{
+        entity_type: entity_type,
+        project_id: socket.assigns.project.id
+      })
+    end
   end
 
-  def handle_event("rename_draft_inline", %{"draft-id" => draft_id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      DraftHandlers.handle_rename_draft_inline(socket, draft_id)
-    end)
+  defp flow_version_config do
+    %{
+      entity_type: "flow",
+      entity_key: :flow,
+      reload_history: &reload_history_data/1,
+      restore_path: &flow_restore_path/1,
+      compare_path: &flow_compare_path/2
+    }
   end
 
-  def handle_event("submit_rename_draft", params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      DraftHandlers.handle_submit_rename_draft(socket, params)
-    end)
+  defp flow_restore_path(socket) do
+    %{workspace: workspace, project: project, flow: flow} = socket.assigns
+    ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
   end
 
-  def handle_event("cancel_rename_draft", _params, socket) do
-    {:noreply, assign(socket, :renaming_draft, nil)}
-  end
-
-  def handle_event("discard_draft_from_list", %{"draft_id" => draft_id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      DraftHandlers.handle_discard_draft_from_list(socket, draft_id)
-    end)
-  end
-
-  def handle_event("set_pending_delete_flow", %{"id" => id}, socket) do
-    handle_set_pending_delete(socket, id)
-  end
-
-  def handle_event("confirm_delete_flow", _params, socket) do
-    handle_confirm_delete(socket, fn socket, id ->
-      Authorize.with_authorization(socket, :edit_content, fn _socket ->
-        handle_delete_entity(socket, id,
-          current_entity_id: socket.assigns.flow.id,
-          get_fn: &Flows.get_flow!/2,
-          delete_fn: &Flows.delete_flow/1,
-          index_path:
-            ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows",
-          reload_tree_fn: &reload_flows_tree/1,
-          success_msg: dgettext("flows", "Flow moved to trash."),
-          error_msg: dgettext("flows", "Could not delete flow.")
-        )
-      end)
-    end)
-  end
-
-  def handle_event("delete_flow", %{"id" => flow_id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      handle_delete_entity(socket, flow_id,
-        current_entity_id: socket.assigns.flow.id,
-        get_fn: &Flows.get_flow!/2,
-        delete_fn: &Flows.delete_flow/1,
-        index_path:
-          ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows",
-        reload_tree_fn: &reload_flows_tree/1,
-        success_msg: dgettext("flows", "Flow moved to trash."),
-        error_msg: dgettext("flows", "Could not delete flow.")
-      )
-    end)
-  end
-
-  def handle_event(
-        "move_to_parent",
-        %{"item_id" => item_id, "new_parent_id" => new_parent_id, "position" => position},
-        socket
-      ) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      handle_move_entity(socket, item_id, new_parent_id, position,
-        get_fn: &Flows.get_flow!/2,
-        move_fn: &Flows.move_flow_to_position/3,
-        reload_tree_fn: &reload_flows_tree/1,
-        error_msg: dgettext("flows", "Could not move flow.")
-      )
-    end)
-  end
-
-  defp flow_path(socket, flow) do
-    ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow.id}"
-  end
-
-  defp reload_flows_tree(socket) do
-    assign(socket, :flows_tree, Flows.list_flows_tree(socket.assigns.project.id))
+  defp flow_compare_path(socket, version_number) do
+    %{workspace: workspace, project: project, flow: flow} = socket.assigns
+    ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows/#{flow.id}/compare/#{version_number}"
   end
 
   # ===========================================================================
@@ -1386,40 +1206,49 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   @impl true
   def handle_async(:load_flow_data, {:ok, data}, socket) do
+    if stale_flow_load?(socket, data.flow) do
+      {:noreply, socket}
+    else
+      {:noreply, apply_loaded_flow_data(socket, data)}
+    end
+  end
+
+  def handle_async(:load_flow_data, {:exit, _reason}, socket) do
+    %{workspace: workspace, project: project} = socket.assigns
+
+    {:noreply,
+     socket
+     |> put_flash(:error, dgettext("flows", "Could not load flow data."))
+     |> redirect(to: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows")}
+  end
+
+  defp apply_loaded_flow_data(socket, data) do
     # Replace the brief flow with the fully-preloaded one
     flow = data.flow
     user = socket.assigns.current_scope.user
 
-    unless socket.assigns.is_draft or socket.assigns.compact do
+    if !socket.assigns.compact do
       CollaborationHelpers.setup_collaboration(socket, flow, user)
     end
 
     {online_users, node_locks} =
-      if socket.assigns.is_draft or socket.assigns.compact do
+      if socket.assigns.compact do
         {[], %{}}
       else
         CollaborationHelpers.get_initial_collab_state(socket, flow)
-      end
-
-    # Reuse tree if already loaded (patch navigation)
-    flows_tree =
-      if socket.assigns.flows_tree != [] do
-        socket.assigns.flows_tree
-      else
-        data.flows_tree
       end
 
     socket =
       socket
       |> assign(:flow, flow)
       |> assign(:flow_data, data.flow_data)
-      |> assign(:flows_tree, flows_tree)
       |> assign(:all_sheets, data.all_sheets)
       |> assign(:gallery_by_sheet, data.gallery_by_sheet)
       |> assign(:flow_hubs, data.flow_hubs)
       |> assign(:project_variables, data.project_variables)
       |> assign(:selected_node, nil)
       |> assign(:node_form, nil)
+      |> assign(:sequence_panel_data, nil)
       |> assign(:node_select_loading, false)
       |> assign(:referencing_jumps, [])
       |> assign(:available_flows, [])
@@ -1434,14 +1263,16 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:editing_mode, nil)
       |> assign(:save_status, :idle)
       |> assign(:preview_show, false)
-      |> assign(:preview_node, nil)
+      |> assign(:preview_current_node, nil)
+      |> assign(:preview_speaker, nil)
+      |> assign(:preview_responses, [])
+      |> assign(:preview_has_next, false)
+      |> assign(:preview_history, [])
       |> assign(:versions_panel_open, false)
-      |> then(fn s ->
-        if s.assigns.is_draft, do: s, else: assign(s, :collab_scope, {:flow, flow.id})
-      end)
+      |> assign(:history_data, nil)
+      |> assign(:collab_scope, {:flow, flow.id})
       |> assign(:online_users, online_users)
       |> assign(:node_locks, node_locks)
-      |> assign(:collab_toast, nil)
       |> assign(:remote_cursors, %{})
       |> assign(:panel_sections, %{})
       |> assign(:debug_state, nil)
@@ -1468,16 +1299,14 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> maybe_restore_nav_history()
       |> maybe_restore_debug_session()
 
-    {:noreply, socket}
+    socket
   end
 
-  def handle_async(:load_flow_data, {:exit, _reason}, socket) do
-    %{workspace: workspace, project: project} = socket.assigns
-
-    {:noreply,
-     socket
-     |> put_flash(:error, dgettext("flows", "Could not load flow data."))
-     |> redirect(to: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows")}
+  defp stale_flow_load?(socket, loaded_flow) do
+    case socket.assigns[:flow] do
+      %{id: current_id} -> to_string(current_id) != to_string(loaded_flow.id)
+      _ -> true
+    end
   end
 
   # Linked helper processes can terminate normally during flow transitions.
@@ -1485,29 +1314,39 @@ defmodule StoryarnWeb.FlowLive.Show do
   @impl true
   def handle_info({:EXIT, _pid, :normal}, socket), do: {:noreply, socket}
 
-  @impl true
+  # Shell topic messages (forwarded by FlowSidebarLive / PresenceLive).
+  def handle_info({:active_flow, _flow_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_sheet, _sheet_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_scene, _scene_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_locale, _locale}, socket), do: {:noreply, socket}
+  def handle_info({:open_flow, _flow_id}, socket), do: {:noreply, socket}
+  def handle_info({:tree_changed, :flows}, socket), do: {:noreply, socket}
+
+  def handle_info({:entity_deleted, id}, socket) do
+    if to_string(id) == to_string(socket.assigns.flow.id) do
+      {:noreply,
+       push_navigate(socket,
+         to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows"
+       )}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_info({:toolbar_event, _event, _params}, socket), do: {:noreply, socket}
+
+  def handle_info({:online_users, users}, socket), do: {:noreply, assign(socket, :online_users, users)}
+
   def handle_info({:project_restoration_started, payload}, socket),
-    do:
-      RestorationHandlers.handle_restoration_event(
-        {:project_restoration_started, payload},
-        socket
-      )
+    do: RestorationHandlers.handle_restoration_event({:project_restoration_started, payload}, socket)
 
   @impl true
   def handle_info({:project_restoration_completed, payload}, socket),
-    do:
-      RestorationHandlers.handle_restoration_event(
-        {:project_restoration_completed, payload},
-        socket
-      )
+    do: RestorationHandlers.handle_restoration_event({:project_restoration_completed, payload}, socket)
 
   @impl true
   def handle_info({:project_restoration_failed, payload}, socket),
-    do:
-      RestorationHandlers.handle_restoration_event(
-        {:project_restoration_failed, payload},
-        socket
-      )
+    do: RestorationHandlers.handle_restoration_event({:project_restoration_failed, payload}, socket)
 
   @impl true
   def handle_info({:try_auto_snapshot, token}, socket) do
@@ -1524,66 +1363,12 @@ defmodule StoryarnWeb.FlowLive.Show do
     EditorInfoHandlers.handle_reset_save_status(socket)
   end
 
-  # Scheduled by DraftTouchTimer via EditorInfoHandlers.handle_reset_save_status/1
-  def handle_info(:touch_draft, socket), do: DraftHandlers.handle_touch_draft(socket)
-
   def handle_info({:load_node_select_data, node}, socket) do
     socket = NodeTypeRegistry.on_select(node.type, node, socket)
     {:noreply, assign(socket, :node_select_loading, false)}
   end
 
-  # Handle messages from VersionsSection LiveComponent
-  def handle_info({:versions_section, :version_created, %{version: _}}, socket) do
-    {:noreply, socket}
-  end
-
-  def handle_info(
-        {:versions_section, :version_restored, %{entity: updated_flow, version: _}},
-        socket
-      ) do
-    # Cancel any pending auto-snapshot (stale after restore)
-    socket = StoryarnWeb.Helpers.AutoSnapshot.cancel(socket)
-
-    # Reload full flow data after version restore
-    %{project: project} = socket.assigns
-    full_flow = Flows.get_flow!(project.id, updated_flow.id)
-    project_variables = VariableHelpers.list_all_variables(project.id)
-    flow_data = Flows.serialize_for_canvas(full_flow, project_variables: project_variables)
-
-    {:noreply,
-     socket
-     |> assign(:flow, full_flow)
-     |> assign(:flow_data, flow_data)
-     |> assign(:flow_hubs, Flows.list_hubs(full_flow.id))
-     |> assign(:versions_panel_open, false)
-     |> SocketHelpers.assign_flow_stats(full_flow, flow_data)
-     |> push_event("flow_updated", flow_data)
-     |> push_event("panel-close", %{to: "#flow-versions-panel"})
-     |> CollaborationHelpers.broadcast_change(:flow_refresh, %{})}
-  end
-
-  def handle_info({:versions_section, :version_deleted, %{version: _}}, socket) do
-    {:noreply, socket}
-  end
-
-  def handle_info({:versions_section, :compare_version, %{version: version}}, socket) do
-    %{workspace: workspace, project: project, flow: flow} = socket.assigns
-
-    compare_url =
-      ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows/#{flow.id}/compare/#{version.version_number}"
-
-    {:noreply, push_navigate(socket, to: compare_url)}
-  end
-
-  def handle_info({:versions_section, :flash, %{kind: kind, message: message}}, socket) do
-    {:noreply, put_flash(socket, kind, message)}
-  end
-
-  def handle_info({:node_updated, updated_node}, socket),
-    do: EditorInfoHandlers.handle_node_updated(updated_node, socket)
-
-  def handle_info({:close_preview}, socket),
-    do: EditorInfoHandlers.handle_close_preview(socket)
+  def handle_info({:node_updated, updated_node}, socket), do: EditorInfoHandlers.handle_node_updated(updated_node, socket)
 
   def handle_info({:mention_suggestions, query, component_cid}, socket),
     do: EditorInfoHandlers.handle_mention_suggestions(query, component_cid, socket)
@@ -1594,23 +1379,18 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_info({:resolve_variable_defaults, refs, component_cid}, socket),
     do: EditorInfoHandlers.handle_resolve_variable_defaults(refs, component_cid, socket)
 
-  def handle_info(:debug_auto_step, socket),
-    do: DebugHandlers.handle_debug_auto_step(socket)
+  def handle_info(:debug_auto_step, socket), do: DebugHandlers.handle_debug_auto_step(socket)
 
-  def handle_info(:clear_collab_toast, socket),
-    do: CollaborationEventHandlers.handle_clear_collab_toast(socket)
-
-  def handle_info({Storyarn.Collaboration.Presence, {:join, _} = event}, socket),
+  def handle_info({Presence, {:join, _} = event}, socket),
     do: CollaborationEventHandlers.handle_presence_event(event, socket)
 
-  def handle_info({Storyarn.Collaboration.Presence, {:leave, _} = event}, socket),
+  def handle_info({Presence, {:leave, _} = event}, socket),
     do: CollaborationEventHandlers.handle_presence_event(event, socket)
 
   def handle_info({:cursor_update, cursor_data}, socket),
     do: CollaborationEventHandlers.handle_cursor_update(cursor_data, socket)
 
-  def handle_info({:cursor_leave, user_id}, socket),
-    do: CollaborationEventHandlers.handle_cursor_leave(user_id, socket)
+  def handle_info({:cursor_leave, user_id}, socket), do: CollaborationEventHandlers.handle_cursor_leave(user_id, socket)
 
   def handle_info({:lock_change, action, payload}, socket),
     do: CollaborationEventHandlers.handle_lock_change(action, payload, socket)
@@ -1670,42 +1450,167 @@ defmodule StoryarnWeb.FlowLive.Show do
   # Private Helpers
   # ===========================================================================
 
-  defp flow_canvas_labels do
+  defp toolbar_data(assigns) do
     %{
-      # Root menu
-      add_node: dgettext("flows", "Add node"),
-      add_note: dgettext("flows", "Add Note"),
-      play_preview: dgettext("flows", "Play preview"),
-      start_debugging: dgettext("flows", "Start debugging"),
-      auto_layout: dgettext("flows", "Auto-layout"),
-      # Node types
-      dialogue: dgettext("flows", "Dialogue"),
-      condition: dgettext("flows", "Condition"),
-      instruction: dgettext("flows", "Instruction"),
-      hub: dgettext("flows", "Hub"),
-      jump: dgettext("flows", "Jump"),
-      exit: dgettext("flows", "Exit"),
-      subflow: dgettext("flows", "Subflow"),
-      slug_line: dgettext("flows", "Slug Line"),
-      # Node actions
-      open_editor_panel: dgettext("flows", "Open editor panel"),
-      preview_from_here: dgettext("flows", "Preview from here"),
-      generate_technical_id: dgettext("flows", "Generate technical ID"),
-      toggle_switch_mode: dgettext("flows", "Toggle switch mode"),
-      locate_referencing_jumps: dgettext("flows", "Locate referencing jumps"),
-      locate_target_hub: dgettext("flows", "Locate target hub"),
-      open_referenced_flow: dgettext("flows", "Open referenced flow"),
-      create_linked_flow: dgettext("flows", "Create linked flow"),
-      view_referencing_flows: dgettext("flows", "View referencing flows"),
-      duplicate: dgettext("flows", "Duplicate"),
-      delete: dgettext("flows", "Delete"),
-      # Inline edit
-      search: dgettext("flows", "Search…"),
-      no_speaker: dgettext("flows", "Dialogue"),
-      stage_directions: dgettext("flows", "Stage directions…"),
-      menu_text: dgettext("flows", "Menu text…"),
-      dialogue_text: dgettext("flows", "Dialogue text…")
+      hubs: assigns.flow_hubs,
+      projectFlows: Enum.map(assigns.available_flows, &Map.take(&1, [:id, :name])),
+      sheetAvatars:
+        Enum.map(assigns.all_sheets, fn s ->
+          avatars =
+            if is_list(s.avatars),
+              do:
+                Enum.map(s.avatars, fn a ->
+                  %{
+                    id: a.id,
+                    name: a.name,
+                    position: a.position,
+                    asset: %{url: a.asset && a.asset.url}
+                  }
+                end),
+              else: []
+
+          %{id: s.id, name: s.name, color: s.color, avatars: avatars}
+        end),
+      subflowExits: assigns.subflow_exits,
+      referencingJumps: assigns.referencing_jumps,
+      referencingFlows: assigns.referencing_flows
     }
+  end
+
+  defp flow_surface_props(assigns) do
+    %{
+      canvas: flow_surface_canvas(assigns),
+      dock: flow_surface_dock(assigns)
+    }
+  end
+
+  defp flow_panels_props(assigns) do
+    %{
+      versions: flow_panels_versions(assigns),
+      debug: flow_panels_debug(assigns),
+      builder: flow_panels_builder(assigns),
+      dialogue: flow_panels_dialogue(assigns),
+      dialogueFullscreen: flow_panels_dialogue_fullscreen(assigns),
+      sequence: flow_panels_sequence(assigns),
+      preview: PreviewHandlers.serialize_preview_state(assigns.socket)
+    }
+  end
+
+  defp flow_surface_canvas(assigns) do
+    %{
+      key: "flow-editor-#{assigns.flow.id}",
+      flowData: if(assigns.loading, do: nil, else: Jason.encode!(assigns.flow_data)),
+      variableMap: flow_surface_variable_map(assigns),
+      loading: assigns.loading,
+      readonly: !assigns.can_edit,
+      userId: assigns.current_scope.user.id,
+      userColor: Collaboration.user_color(assigns.current_scope.user.id),
+      canvasId: "flow-canvas-#{assigns.flow.id}",
+      toolbarData: Jason.encode!(toolbar_data(assigns))
+    }
+  end
+
+  defp flow_surface_variable_map(%{loading: true}), do: nil
+
+  defp flow_surface_variable_map(assigns) do
+    assigns.all_sheets
+    |> FormHelpers.sheets_map(assigns.gallery_by_sheet)
+    |> Jason.encode!()
+  end
+
+  defp flow_surface_dock(assigns) do
+    %{
+      canEdit: assigns.can_edit,
+      compact: false,
+      debugPanelOpen: assigns.debug_panel_open,
+      workspaceSlug: assigns.workspace.slug,
+      projectSlug: assigns.project.slug,
+      flowId: assigns.flow.id
+    }
+  end
+
+  defp flow_panels_versions(assigns) do
+    history_data = assigns.history_data
+
+    %{
+      open: assigns.versions_panel_open,
+      versions: history_value(history_data, :versions, []),
+      namedVersions: history_value(history_data, :named_versions, []),
+      autoVersions: history_value(history_data, :auto_versions, []),
+      hasMore: history_value(history_data, :has_more, false),
+      canNameVersion: history_value(history_data, :can_name_version, false),
+      currentVersionId: history_value(history_data, :current_version_id, nil),
+      canEdit: assigns.can_edit,
+      loading: assigns.versions_panel_open && is_nil(history_data)
+    }
+  end
+
+  defp history_value(nil, _key, default), do: default
+  defp history_value(history_data, key, default), do: history_data[key] || default
+
+  defp flow_panels_debug(assigns) do
+    %{
+      open: assigns.debug_panel_open && assigns.debug_state != nil,
+      state: DebugSerializer.serialize(assigns.debug_state),
+      nodes: assigns.debug_nodes,
+      controls: %{
+        activeTab: assigns.debug_active_tab,
+        autoPlaying: assigns.debug_auto_playing,
+        speed: assigns.debug_speed,
+        varFilter: assigns.debug_var_filter,
+        varChangedOnly: assigns.debug_var_changed_only,
+        flowName: assigns.flow && assigns.flow.name,
+        stepLimitReached: assigns.debug_step_limit_reached
+      }
+    }
+  end
+
+  defp flow_panels_builder(assigns) do
+    selected_node = assigns.selected_node
+
+    %{
+      open: assigns.editing_mode == :builder && selected_node != nil,
+      nodeType: selected_node && selected_node.type,
+      nodeId: selected_node && selected_node.id,
+      condition: selected_node && selected_node.data["condition"],
+      assignments: selected_node && (selected_node.data["assignments"] || []),
+      switchMode: selected_node && selected_node.data["switch_mode"] == true,
+      projectVariables: Jason.encode!(assigns.project_variables),
+      canEdit: assigns.can_edit
+    }
+  end
+
+  defp flow_panels_dialogue(assigns) do
+    %{
+      open: assigns.editing_mode == :dialogue_panel && assigns.selected_node != nil,
+      data: assigns.dialogue_panel_data,
+      canEdit: assigns.can_edit
+    }
+  end
+
+  defp flow_panels_dialogue_fullscreen(assigns) do
+    %{
+      open: assigns.editing_mode == :dialogue_fullscreen && assigns.selected_node != nil,
+      data: assigns.dialogue_panel_data,
+      canEdit: assigns.can_edit
+    }
+  end
+
+  defp flow_panels_sequence(assigns) do
+    selected_node = assigns.selected_node
+
+    %{
+      open: sequence_config_open?(assigns.editing_mode, selected_node),
+      data: assigns.sequence_panel_data,
+      canEdit: assigns.can_edit
+    }
+  end
+
+  defp sequence_config_open?(:sequence_config, %{type: "sequence"}), do: true
+  defp sequence_config_open?(_, _), do: false
+
+  defp sequence_wrap_attrs(params) do
+    Map.take(params, ["position_x", "position_y", "width", "height"])
   end
 
   defp maybe_restore_nav_history(socket) do
@@ -1747,19 +1652,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
 
       {:error, _, _reason, _changes} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("flows", "Could not create linked flow."))}
-    end
-  end
-
-  defp do_set_main_flow(socket, flow) do
-    case Flows.set_main_flow(flow) do
-      {:ok, _} ->
-        {:noreply,
-         assign(socket, :flows_tree, Flows.list_flows_tree(socket.assigns.project.id))}
-
-      {:error, _} ->
-        {:noreply, put_flash(socket, :error, dgettext("flows", "Could not set main flow."))}
+        {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create linked flow."))}
     end
   end
 

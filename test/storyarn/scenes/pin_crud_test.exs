@@ -1,11 +1,11 @@
 defmodule Storyarn.Scenes.PinCrudTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Scenes.PinCrud
-
   import Storyarn.AccountsFixtures
-  import Storyarn.ScenesFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
+
+  alias Storyarn.Scenes.PinCrud
 
   defp create_project(_context \\ %{}) do
     user = user_fixture()

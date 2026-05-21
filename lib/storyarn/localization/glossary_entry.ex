@@ -14,6 +14,7 @@ defmodule Storyarn.Localization.GlossaryEntry do
   - `do_not_translate` - If true, term should be kept as-is (proper nouns)
   """
   use Ecto.Schema
+
   import Ecto.Changeset
 
   alias Storyarn.Projects.Project
@@ -71,7 +72,6 @@ defmodule Storyarn.Localization.GlossaryEntry do
   Changeset for updating a glossary entry.
   """
   def update_changeset(entry, attrs) do
-    entry
-    |> cast(attrs, [:target_term, :context, :do_not_translate])
+    cast(entry, attrs, [:target_term, :context, :do_not_translate])
   end
 end

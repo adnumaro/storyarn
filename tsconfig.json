@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "allowJs": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "jsx": "preserve",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": "./assets",
+    "ignoreDeprecations": "6.0",
+    "paths": {
+      "*": ["../deps/*"],
+      "@/*": ["./*"],
+      "@app/*": ["./app/*"],
+      "@components/*": ["./app/components/*"],
+      "@shared/*": ["./app/shared/*"],
+      "@modules/*": ["./app/modules/*"],
+      "@shell/*": ["./app/shell/*"],
+      "@plugins/*": ["./app/plugins/*"]
+    },
+    "types": ["vite/client", "vitest/globals"]
+  },
+  "include": ["assets/app/**/*.ts", "assets/app/**/*.vue", "assets/app/**/*.js"],
+  "exclude": ["node_modules", "priv", "assets/js"]
+}

@@ -18,11 +18,6 @@ defmodule StoryarnWeb.RouterTest do
       conn = get(conn, ~p"/users/log-in")
       assert html_response(conn, 200)
     end
-
-    test "registration page redirects in beta mode", %{conn: conn} do
-      conn = get(conn, ~p"/users/register")
-      assert redirected_to(conn) == "/"
-    end
   end
 
   # ── Auth gating ────────────────────────────────────────────────
@@ -63,11 +58,6 @@ defmodule StoryarnWeb.RouterTest do
       assert redirected_to(conn) =~ "/users/log-in"
     end
 
-    test "redirects to login for unauthenticated screenplay access", %{conn: conn} do
-      conn = get(conn, ~p"/workspaces/test-ws/projects/test-proj/screenplays")
-      assert redirected_to(conn) =~ "/users/log-in"
-    end
-
     test "redirects to login for unauthenticated localization access", %{conn: conn} do
       conn = get(conn, ~p"/workspaces/test-ws/projects/test-proj/localization")
       assert redirected_to(conn) =~ "/users/log-in"
@@ -79,7 +69,7 @@ defmodule StoryarnWeb.RouterTest do
     end
 
     test "redirects to login for unauthenticated trash access", %{conn: conn} do
-      conn = get(conn, ~p"/workspaces/test-ws/projects/test-proj/trash")
+      conn = get(conn, ~p"/workspaces/test-ws/projects/test-proj/settings/trash")
       assert redirected_to(conn) =~ "/users/log-in"
     end
 
@@ -170,15 +160,8 @@ defmodule StoryarnWeb.RouterTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
-    end
-
-    test "screenplay fountain export requires auth", %{conn: conn} do
-      # Non-authed request
-      conn = conn |> delete_req_header("cookie") |> Phoenix.ConnTest.recycle()
-      conn = get(conn, "/workspaces/ws/projects/proj/screenplays/1/export/fountain")
-      assert redirected_to(conn) =~ "/users/log-in"
     end
 
     test "project export route requires auth", %{conn: conn} do

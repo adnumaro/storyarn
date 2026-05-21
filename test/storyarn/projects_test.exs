@@ -1,12 +1,12 @@
 defmodule Storyarn.ProjectsTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Projects
-  alias Storyarn.Projects.ProjectMembership
-
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
+
+  alias Storyarn.Projects
+  alias Storyarn.Projects.ProjectMembership
 
   describe "projects" do
     test "list_projects/1 returns projects user has access to" do
@@ -79,7 +79,7 @@ defmodule Storyarn.ProjectsTest do
       assert project.name == "Test Project"
       assert project.description == "A test"
       assert project.owner_id == user.id
-      assert project.slug != nil
+      assert project.slug
 
       # Check owner membership was created
       membership = Projects.get_membership(project.id, user.id)
@@ -353,7 +353,7 @@ defmodule Storyarn.ProjectsTest do
       scope = user_scope_fixture(member)
       assert {:ok, _project, membership} = Projects.get_project(scope, ctx.project.id)
       assert membership.role == "editor"
-      assert membership.id != nil
+      assert membership.id
     end
 
     test "no membership at all returns not_found", ctx do

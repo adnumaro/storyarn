@@ -1,0 +1,398 @@
+{
+  "flows": {
+    "dashboard": {
+      "title": "Flows",
+      "subtitle": "Create visual narrative flows and dialogue trees",
+      "empty": "No flows yet. Create your first flow to get started.",
+      "all_flows": "All Flows",
+      "issues": "Issues",
+      "main": "Main",
+      "set_main": "Set as main",
+      "delete": "Delete",
+      "columns": {
+        "name": "Name",
+        "nodes": "Nodes",
+        "dialogue": "Dialogue",
+        "conditions": "Conditions",
+        "words": "Words",
+        "modified": "Modified"
+      }
+    },
+    "tree": {
+      "filter": "Filter flows...",
+      "empty": "No flows yet",
+      "new_flow": "New Flow",
+      "delete_title": "Delete flow?",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "add_child": "Add child flow",
+      "move_to_trash": "Move to Trash",
+      "set_main": "Set as main"
+    },
+    "header": {
+      "nav_back": "Alt+Left",
+      "nav_forward": "Alt+Right",
+      "untitled": "Untitled",
+      "add_shortcut": "add-shortcut",
+      "main": "Main",
+      "scene_backdrop": "Scene backdrop",
+      "no_scene": "No scene",
+      "inherited": "(inherited)",
+      "no_scene_inherit": "No scene (inherit)",
+      "word_count": "{count} word in this flow | {count} words in this flow",
+      "flow_health": "Review flow health",
+      "errors": "Errors",
+      "info": "Info",
+      "looks_great": "This flow looks great!",
+      "saving": "Saving",
+      "saved": "Saved"
+    },
+    "form": {
+      "title": "New Flow",
+      "submit": "Create Flow",
+      "name": "Name",
+      "name_placeholder": "Main Story",
+      "description": "Description",
+      "description_placeholder": "Describe the purpose of this flow...",
+      "cancel": "Cancel"
+    },
+    "collab_toast": {
+      "node_created": "added a node",
+      "node_updated": "updated a node",
+      "node_deleted": "removed a node",
+      "node_restored": "restored a node",
+      "node_moved": "moved a node",
+      "connection_created": "added a connection",
+      "connection_deleted": "removed a connection",
+      "flow_updated": "updated the flow",
+      "node_locked": "locked a node",
+      "node_unlocked": "unlocked a node",
+      "flow_merged": "merged changes"
+    },
+    "context_menu": {
+      "duplicate": "Duplicate",
+      "copy_id": "Copy ID",
+      "delete": "Delete",
+      "add_node": "Add node",
+      "add_note": "Add note",
+      "auto_layout": "Auto layout",
+      "create_sequence_from_selection": "Create sequence from selection"
+    },
+    "sequences": {
+      "name_placeholder": "Sequence name",
+      "toolbar_open_config": "Open sequence config",
+      "tracks": {
+        "music": "Music",
+        "ambience": "Ambience",
+        "sfx": "SFX"
+      },
+      "visual_layers": {
+        "title": "Visual composition",
+        "add": "Add",
+        "pick_asset": "Pick image",
+        "delete": "Delete layer",
+        "kind": "Type",
+        "slot": "Slot",
+        "fit": "Fit",
+        "opacity": "Opacity",
+        "kinds": {
+          "backdrop": "Backdrop",
+          "character": "Character",
+          "prop": "Prop",
+          "overlay": "Overlay"
+        },
+        "slots": {
+          "full": "Full",
+          "left": "Left",
+          "center": "Center",
+          "right": "Right",
+          "custom": "Custom"
+        }
+      },
+      "config_panel": {
+        "title": "Sequence",
+        "pick_image": "Pick an image",
+        "search_image": "Search images…",
+        "clear_image": "Remove image",
+        "position_label": "Position",
+        "fit_label": "Fit",
+        "fit_cover": "Cover",
+        "fit_contain": "Contain",
+        "fit_fill": "Fill",
+        "audio_title": "Audio tracks",
+        "pick_audio": "Pick an audio",
+        "search_audio": "Search audio…",
+        "clear_track": "Clear track"
+      }
+    },
+    "node_types": {
+      "dialogue": "Dialogue",
+      "condition": "Condition",
+      "instruction": "Instruction",
+      "hub": "Hub",
+      "jump": "Jump",
+      "exit": "Exit",
+      "subflow": "Subflow",
+      "sequence": "Sequence",
+      "dialogue_toolbar_screenplay": "Screenplay editor",
+      "dialogue_toolbar_preview": "Preview"
+    },
+    "dock": {
+      "select": "Select",
+      "select_desc": "Draw a rectangle to select nodes. Ctrl+click to add one at a time.",
+      "pan": "Pan",
+      "pan_desc": "Drag the canvas to move around.",
+      "narrative": "Narrative",
+      "logic": "Logic",
+      "navigation": "Navigation",
+      "version_history": "Version History",
+      "version_history_desc": "View and manage version history",
+      "play": "Play",
+      "play_desc": "Run this flow in story player",
+      "debug": "Debug",
+      "debug_desc": "Step through flow execution",
+      "add_note": "Add note",
+      "dialogue_desc": "Character speech and player responses",
+      "condition_desc": "Branch based on variable conditions",
+      "instruction_desc": "Set or modify variable values",
+      "sequence_desc": "Group nodes and compose visual or audio resources",
+      "exit_desc": "End point of a flow",
+      "hub_desc": "Named junction for jump targets",
+      "jump_desc": "Jump to a hub in any flow",
+      "subflow_desc": "Embed another flow as a node"
+    },
+    "builder": {
+      "condition_title": "Condition Builder",
+      "instruction_title": "Instruction Builder",
+      "fallback_title": "Builder",
+      "condition_help": "Add rules to define when to route to True/False.",
+      "condition_switch_help": "Add conditions. Each one creates a separate output.",
+      "instruction_help": "Add assignments to set variable values when this node executes."
+    },
+    "debug": {
+      "step_limit": "Step limit ({count}) reached — possible infinite loop.",
+      "step_limit_continue": "Continue (+1000 steps)",
+      "tab_console": "Console",
+      "tab_variables": "Variables",
+      "tab_history": "History",
+      "tab_path": "Path",
+      "choose_response": "Choose a response:",
+      "empty_response": "(empty)",
+      "condition_not_met": "Condition not met",
+      "waiting": "Waiting for execution...",
+      "filter_variables": "Filter variables...",
+      "nil": "nil",
+      "step_key": "Step (F10)",
+      "step_back_key": "Step Back (F9)",
+      "reset_key": "Reset (F6)",
+      "stop": "Stop",
+      "auto_play": "Auto-play",
+      "pause": "Pause",
+      "speed_per_step": "{ms}ms per step",
+      "status_paused": "Paused",
+      "status_waiting": "Waiting",
+      "status_finished": "Finished",
+      "step_count": "Step {count}",
+      "start_label": "Start:",
+      "select_start_node": "Select node...",
+      "change_start_node": "Change start node (resets session)",
+      "search_nodes": "Search nodes...",
+      "no_matches": "No matches",
+      "current_flow": "Current",
+      "flow_label": "Flow",
+      "entering_subflow": "Entering sub-flow",
+      "returned_to_parent": "Returned to parent",
+      "var_changed_toggle": "Changed",
+      "var_changed_hint": "Show only changed variables",
+      "var_count": "{shown} of {total}",
+      "col_variable": "Variable",
+      "col_type": "Type",
+      "col_initial": "Initial",
+      "col_previous": "Previous",
+      "col_current": "Current",
+      "no_variables": "No variables in this project",
+      "no_matching_vars": "No matching variables",
+      "click_to_edit": "Click to edit",
+      "col_time": "Time",
+      "col_node": "Node",
+      "col_change": "Change",
+      "col_source": "Source",
+      "history_source_instruction": "instr",
+      "history_source_user": "user",
+      "user_override_label": "(user override)",
+      "no_history": "No variable changes yet",
+      "no_path": "No steps yet",
+      "set_breakpoint": "Set breakpoint",
+      "remove_breakpoint": "Remove breakpoint",
+      "select_option": "Select an option",
+      "select_options": "Select options",
+      "search_options": "Search options...",
+      "no_options": "No options",
+      "bool_true": "True",
+      "bool_false": "False",
+      "bool_nil": "Unset"
+    },
+    "minimap": {
+      "toggle": "Toggle minimap",
+      "fit_view": "Fit to view",
+      "zoom_in": "Zoom in",
+      "zoom_out": "Zoom out"
+    },
+    "preview": {
+      "narrator": "Narrator",
+      "node": "Node",
+      "responses": "Responses:",
+      "continue": "Continue",
+      "end_branch": "End of dialogue branch",
+      "back": "Back",
+      "close": "Close",
+      "no_node": "No node selected for preview."
+    },
+    "dialogue_panel": {
+      "title": "Dialogue Editor",
+      "tab_text": "Text",
+      "tab_responses": "Responses",
+      "tab_settings": "Settings",
+      "speaker": "Speaker",
+      "no_speaker": "No speaker",
+      "stage_directions": "Stage directions",
+      "stage_directions_placeholder": "e.g., looks away nervously",
+      "dialogue": "Dialogue",
+      "dialogue_placeholder": "Write dialogue...",
+      "response": "Response",
+      "remove": "Remove",
+      "condition": "Condition",
+      "instructions": "Instructions",
+      "add_response": "+ Add Response",
+      "menu_text": "Menu text",
+      "menu_text_placeholder": "Short text for menus...",
+      "technical_id": "Technical ID",
+      "technical_id_placeholder": "auto-generated",
+      "generate_technical_id": "Generate technical ID",
+      "localization_id": "Localization ID",
+      "localization_id_placeholder": "Auto-generated localization key",
+      "copy_localization_id": "Copy to clipboard",
+      "copied": "Copied",
+      "audio": "Audio",
+      "pick_audio": "Pick an audio asset",
+      "search_audio": "Search audio...",
+      "clear_audio": "Remove audio",
+      "audio_attached": "Audio attached",
+      "word_count": "{count} word | {count} words",
+      "response_placeholder": "Response text...",
+      "maximize": "Open in fullscreen",
+      "minimize": "Back to side panel"
+    },
+    "version_history": {
+      "title": "Version History"
+    },
+    "exit_modes": {
+      "terminal": "Terminal",
+      "terminal_desc": "End of flow — no continuation",
+      "flow_reference": "Flow Reference",
+      "flow_reference_desc": "Continue to another flow",
+      "caller_return": "Caller Return",
+      "caller_return_desc": "Return to the calling flow"
+    },
+    "condition_toolbar": {
+      "routes": "Routes",
+      "multi": "Multi",
+      "edit_condition": "Edit condition"
+    },
+    "hub_toolbar": {
+      "label_placeholder": "Label",
+      "hub_id_placeholder": "hub_id",
+      "locate_jumps": "Locate jumps"
+    },
+    "jump_toolbar": {
+      "target_placeholder": "Target hub\u2026",
+      "locate_target": "Locate target hub"
+    },
+    "subflow_toolbar": {
+      "select_flow_placeholder": "Select flow\u2026",
+      "open_flow": "Open flow"
+    },
+    "instruction_toolbar": {
+      "edit_instructions": "Edit instructions"
+    },
+    "dialogue_toolbar": {
+      "tech_id_placeholder": "tech_id",
+      "has_audio": "Has audio"
+    },
+    "avatar_picker": {
+      "select_avatar": "Select avatar",
+      "use_default": "Use default"
+    },
+    "searchable_select": {
+      "no_results": "No results",
+      "none": "None"
+    },
+    "annotation": {
+      "placeholder": "\u2026",
+      "delete": "Delete"
+    },
+    "entry_toolbar": {
+      "entry_point": "Entry point",
+      "refs": "{n} ref | {n} refs"
+    },
+    "exit_toolbar": {
+      "label_placeholder": "Label…",
+      "open_flow": "Open referenced flow"
+    },
+    "nodes": {
+      "dialogue": {
+        "no_speaker": "No speaker",
+        "stage_placeholder": "Stage directions…",
+        "menu_placeholder": "Menu text…",
+        "dialogue_placeholder": "Dialogue text…",
+        "empty_response": "Empty response text",
+        "type_mismatch": "Type mismatch",
+        "has_condition": "Has condition",
+        "has_instructions": "Has instructions"
+      },
+      "condition": {
+        "incomplete_rule": "Incomplete rule",
+        "true": "True",
+        "false": "False",
+        "block_incomplete": "Block has incomplete rules"
+      },
+      "exit": {
+        "no_flow": "No flow referenced",
+        "flow_deleted": "Referenced flow was deleted"
+      },
+      "instruction": {
+        "set_true": "Set {var} to true",
+        "set_false": "Set {var} to false",
+        "toggle": "Toggle {var}",
+        "clear": "Clear {var}",
+        "add": "Add {value} to {var}",
+        "subtract": "Subtract {value} from {var}",
+        "stale_references": "Stale references",
+        "type_mismatch": "Type mismatch in assignments"
+      },
+      "jump": {
+        "no_target": "No target hub"
+      },
+      "subflow": {
+        "no_flow": "No flow selected",
+        "no_flow_ref": "No flow referenced",
+        "flow_deleted": "Referenced flow was deleted",
+        "output": "Output"
+      }
+    },
+    "player": {
+      "continue": "Continue",
+      "mode_player": "Player",
+      "mode_analysis": "Analysis",
+      "steps": "Steps:",
+      "choices": "Choices:",
+      "variables_changed": "Variables changed:",
+      "play_again": "Play again",
+      "back_to_editor": "Back to editor",
+      "back": "Back",
+      "restart": "Restart",
+      "toggle_mode": "Switch between player mode and review of blocked or conditional responses",
+      "no_content": "No content to display."
+    }
+  }
+}

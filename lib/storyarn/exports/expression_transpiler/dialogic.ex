@@ -7,6 +7,8 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Dialogic do
   Instructions: `set {var} = value` prefix syntax
   """
 
+  use Gettext, backend: Storyarn.Gettext
+
   use Storyarn.Exports.ExpressionTranspiler.Base,
     var_style: :dialogic_curly,
     logic_opts: [and_keyword: " and ", or_keyword: " or "],
@@ -26,23 +28,17 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Dialogic do
   defp emit_condition_op(ref, "is_nil", _), do: "#{ref} == null"
   defp emit_condition_op(ref, "is_empty", _), do: ~s(#{ref} == "")
 
-  defp emit_condition_op(ref, "contains", val),
-    do: "#{Helpers.format_literal(val, @literal_opts)} in #{ref}"
+  defp emit_condition_op(ref, "contains", val), do: "#{Helpers.format_literal(val, @literal_opts)} in #{ref}"
 
-  defp emit_condition_op(ref, "not_contains", val),
-    do: "#{Helpers.format_literal(val, @literal_opts)} not in #{ref}"
+  defp emit_condition_op(ref, "not_contains", val), do: "#{Helpers.format_literal(val, @literal_opts)} not in #{ref}"
 
-  defp emit_condition_op(ref, "starts_with", val),
-    do: "#{ref}.begins_with(#{Helpers.format_literal(val, @literal_opts)})"
+  defp emit_condition_op(ref, "starts_with", val), do: "#{ref}.begins_with(#{Helpers.format_literal(val, @literal_opts)})"
 
-  defp emit_condition_op(ref, "ends_with", val),
-    do: "#{ref}.ends_with(#{Helpers.format_literal(val, @literal_opts)})"
+  defp emit_condition_op(ref, "ends_with", val), do: "#{ref}.ends_with(#{Helpers.format_literal(val, @literal_opts)})"
 
-  defp emit_condition_op(ref, "before", val),
-    do: "#{ref} < #{Helpers.format_literal(val, @literal_opts)}"
+  defp emit_condition_op(ref, "before", val), do: "#{ref} < #{Helpers.format_literal(val, @literal_opts)}"
 
-  defp emit_condition_op(ref, "after", val),
-    do: "#{ref} > #{Helpers.format_literal(val, @literal_opts)}"
+  defp emit_condition_op(ref, "after", val), do: "#{ref} > #{Helpers.format_literal(val, @literal_opts)}"
 
   defp emit_condition_op(ref, op, value) do
     "#{ref} #{condition_op(op)} #{Helpers.format_literal(value, @literal_opts)}"
@@ -77,7 +73,11 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Dialogic do
       |> Enum.map(fn %{"sheet" => s, "variable" => v} ->
         %{
           type: :semantic_loss,
-          message: "set_if_unset emits unconditional set in Dialogic (no conditional set syntax)",
+          message:
+            dgettext(
+              "projects",
+              "set_if_unset emits unconditional set in Dialogic (no conditional set syntax)"
+            ),
           operator: "set_if_unset",
           engine: "Dialogic",
           variable: "#{s}.#{v}"

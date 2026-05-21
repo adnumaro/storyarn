@@ -1,5 +1,7 @@
 defmodule Storyarn.Accounts.WaitlistEntry do
+  @moduledoc false
   use Ecto.Schema
+
   import Ecto.Changeset
 
   alias Storyarn.Shared.Validations

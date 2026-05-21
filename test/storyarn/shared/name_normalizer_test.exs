@@ -7,6 +7,8 @@ defmodule Storyarn.Shared.NameNormalizerTest do
   # slugify/1
   # ===========================================================================
 
+  alias Storyarn.Workspaces.Workspace
+
   describe "slugify/1" do
     test "converts simple name to slug" do
       assert NameNormalizer.slugify("My Workspace") == "my-workspace"
@@ -164,7 +166,7 @@ defmodule Storyarn.Shared.NameNormalizerTest do
     test "generates slug from name when no collision" do
       # Using Storyarn.Workspaces.Workspace which has a slug field
       slug =
-        NameNormalizer.generate_unique_slug(Storyarn.Workspaces.Workspace, [], "My Workspace")
+        NameNormalizer.generate_unique_slug(Workspace, [], "My Workspace")
 
       assert slug == "my-workspace"
     end
@@ -179,7 +181,7 @@ defmodule Storyarn.Shared.NameNormalizerTest do
       # Now try to generate slug for the same name - it should add a suffix
       slug =
         NameNormalizer.generate_unique_slug(
-          Storyarn.Workspaces.Workspace,
+          Workspace,
           [],
           "Test Workspace"
         )
@@ -198,7 +200,7 @@ defmodule Storyarn.Shared.NameNormalizerTest do
       # Generate slug for a different name - no collision
       slug =
         NameNormalizer.generate_unique_slug(
-          Storyarn.Workspaces.Workspace,
+          Workspace,
           [],
           "Unique Name"
         )

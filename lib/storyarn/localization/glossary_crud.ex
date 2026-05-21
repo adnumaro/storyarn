@@ -23,13 +23,11 @@ defmodule Storyarn.Localization.GlossaryCrud do
   end
 
   def get_entry(project_id, id) do
-    from(e in GlossaryEntry, where: e.id == ^id and e.project_id == ^project_id)
-    |> Repo.one()
+    Repo.one(from(e in GlossaryEntry, where: e.id == ^id and e.project_id == ^project_id))
   end
 
   def get_entry!(project_id, id) do
-    from(e in GlossaryEntry, where: e.id == ^id and e.project_id == ^project_id)
-    |> Repo.one!()
+    Repo.one!(from(e in GlossaryEntry, where: e.id == ^id and e.project_id == ^project_id))
   end
 
   @doc """
@@ -37,15 +35,13 @@ defmodule Storyarn.Localization.GlossaryCrud do
   Returns entries as tuples `{source_term, target_term}` for DeepL API.
   """
   def get_entries_for_pair(project_id, source_locale, target_locale) do
-    from(e in GlossaryEntry,
-      where:
-        e.project_id == ^project_id and
-          e.source_locale == ^source_locale and
-          e.target_locale == ^target_locale,
-      select: {e.source_term, e.target_term},
-      order_by: [asc: e.source_term]
+    Repo.all(
+      from(e in GlossaryEntry,
+        where: e.project_id == ^project_id and e.source_locale == ^source_locale and e.target_locale == ^target_locale,
+        select: {e.source_term, e.target_term},
+        order_by: [asc: e.source_term]
+      )
     )
-    |> Repo.all()
   end
 
   # =============================================================================
@@ -105,11 +101,9 @@ defmodule Storyarn.Localization.GlossaryCrud do
   Lists all glossary entries for a project for export.
   """
   def list_entries_for_export(project_id) do
-    from(g in GlossaryEntry,
-      where: g.project_id == ^project_id,
-      order_by: [asc: g.source_term, asc: g.target_locale]
+    Repo.all(
+      from(g in GlossaryEntry, where: g.project_id == ^project_id, order_by: [asc: g.source_term, asc: g.target_locale])
     )
-    |> Repo.all()
   end
 
   @doc """

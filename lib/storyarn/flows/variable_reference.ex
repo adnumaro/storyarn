@@ -11,6 +11,7 @@ defmodule Storyarn.Flows.VariableReference do
   - `"write"` — The node writes this variable (e.g., instruction node setting a value)
   """
   use Ecto.Schema
+
   import Ecto.Changeset
 
   alias Storyarn.Flows.FlowNode

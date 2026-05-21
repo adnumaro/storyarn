@@ -3,11 +3,15 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Accounts.{Scope, User}
+  alias Storyarn.Accounts.Scope
+  alias Storyarn.Accounts.User
+  alias Storyarn.Analytics
   alias Storyarn.Billing
-  alias Storyarn.Projects.{Project, ProjectMembership}
+  alias Storyarn.Projects.Project
+  alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
-  alias Storyarn.Workspaces.{Workspace, WorkspaceMembership}
+  alias Storyarn.Workspaces.Workspace
+  alias Storyarn.Workspaces.WorkspaceMembership
 
   @doc """
   Lists all workspaces the user has access to.
@@ -19,34 +23,29 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
     # Workspaces via workspace membership
     via_wm =
       Workspace
-      |> join(:inner, [w], m in WorkspaceMembership,
-        on: m.workspace_id == w.id and m.user_id == ^user.id
-      )
+      |> join(:inner, [w], m in WorkspaceMembership, on: m.workspace_id == w.id and m.user_id == ^user.id)
       |> select([w, m], %{workspace_id: w.id, role: m.role})
 
     # Workspaces via project membership only (no workspace membership)
     via_pm =
       Workspace
       |> join(:inner, [w], p in Project, on: p.workspace_id == w.id)
-      |> join(:inner, [w, p], pm in ProjectMembership,
-        on: pm.project_id == p.id and pm.user_id == ^user.id
-      )
-      |> join(:left, [w, p, pm], wm in WorkspaceMembership,
-        on: wm.workspace_id == w.id and wm.user_id == ^user.id
-      )
+      |> join(:inner, [w, p], pm in ProjectMembership, on: pm.project_id == p.id and pm.user_id == ^user.id)
+      |> join(:left, [w, p, pm], wm in WorkspaceMembership, on: wm.workspace_id == w.id and wm.user_id == ^user.id)
       |> where([w, p, pm, wm], is_nil(wm.id))
       |> select([w, p, pm, wm], %{workspace_id: w.id, role: type(^nil, :string)})
       |> distinct(true)
 
     union_query = union(via_wm, ^via_pm)
 
-    from(u in subquery(union_query),
-      join: w in Workspace,
-      on: w.id == u.workspace_id,
-      select: %{workspace: w, role: u.role},
-      order_by: [asc: w.inserted_at]
+    Repo.all(
+      from(u in subquery(union_query),
+        join: w in Workspace,
+        on: w.id == u.workspace_id,
+        select: %{workspace: w, role: u.role},
+        order_by: [asc: w.inserted_at]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -56,13 +55,9 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
   """
   def list_workspaces_for_user(%User{} = user) do
     Workspace
-    |> join(:left, [w], wm in WorkspaceMembership,
-      on: wm.workspace_id == w.id and wm.user_id == ^user.id
-    )
+    |> join(:left, [w], wm in WorkspaceMembership, on: wm.workspace_id == w.id and wm.user_id == ^user.id)
     |> join(:left, [w, wm], p in Project, on: p.workspace_id == w.id)
-    |> join(:left, [w, wm, p], pm in ProjectMembership,
-      on: pm.project_id == p.id and pm.user_id == ^user.id
-    )
+    |> join(:left, [w, wm, p], pm in ProjectMembership, on: pm.project_id == p.id and pm.user_id == ^user.id)
     |> where([w, wm, p, pm], not is_nil(wm.id) or not is_nil(pm.id))
     |> distinct([w], w.id)
     |> order_by([w], asc: w.inserted_at)
@@ -78,9 +73,7 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
   def get_default_workspace(%User{} = user) do
     workspace =
       Workspace
-      |> join(:inner, [w], m in WorkspaceMembership,
-        on: m.workspace_id == w.id and m.user_id == ^user.id
-      )
+      |> join(:inner, [w], m in WorkspaceMembership, on: m.workspace_id == w.id and m.user_id == ^user.id)
       |> order_by([w, m],
         desc: fragment("CASE WHEN ? = 'owner' THEN 1 ELSE 0 END", m.role),
         asc: w.inserted_at
@@ -98,7 +91,8 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
   access only through ProjectMembership (no workspace-level permissions).
   """
   def get_workspace(%Scope{user: user}, id) do
-    Repo.get(Workspace, id)
+    Workspace
+    |> Repo.get(id)
     |> authorize_workspace_access(user)
   end
 
@@ -109,7 +103,8 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
   access only through ProjectMembership (no workspace-level permissions).
   """
   def get_workspace_by_slug(%Scope{user: user}, slug) do
-    Repo.get_by(Workspace, slug: slug)
+    Workspace
+    |> Repo.get_by(slug: slug)
     |> authorize_workspace_access(user)
   end
 
@@ -135,13 +130,23 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
   end
 
   defp do_create_workspace_with_owner(user, attrs) do
-    Repo.transact(fn ->
-      with {:ok, workspace} <- insert_workspace(user, attrs),
-           {:ok, _membership} <- create_owner_membership(workspace, user),
-           {:ok, _subscription} <- Billing.create_subscription(workspace) do
+    result =
+      Repo.transact(fn ->
+        with {:ok, workspace} <- insert_workspace(user, attrs),
+             {:ok, _membership} <- create_owner_membership(workspace, user),
+             {:ok, _subscription} <- Billing.create_subscription(workspace) do
+          {:ok, workspace}
+        end
+      end)
+
+    case result do
+      {:ok, workspace} ->
+        Analytics.track(user, "workspace created", %{workspace_id: workspace.id})
         {:ok, workspace}
-      end
-    end)
+
+      error ->
+        error
+    end
   end
 
   @doc """
@@ -220,9 +225,7 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
   defp get_default_workspace_via_project(%User{} = user) do
     Workspace
     |> join(:inner, [w], p in Project, on: p.workspace_id == w.id)
-    |> join(:inner, [w, p], pm in ProjectMembership,
-      on: pm.project_id == p.id and pm.user_id == ^user.id
-    )
+    |> join(:inner, [w, p], pm in ProjectMembership, on: pm.project_id == p.id and pm.user_id == ^user.id)
     |> order_by([w], asc: w.inserted_at)
     |> limit(1)
     |> Repo.one()

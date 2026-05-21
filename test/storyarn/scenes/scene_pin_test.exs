@@ -2,6 +2,7 @@ defmodule Storyarn.Scenes.ScenePinTest do
   use ExUnit.Case, async: true
 
   import Ecto.Changeset, only: [get_change: 2]
+
   alias Storyarn.Scenes.ScenePin
 
   defp valid_attrs do
@@ -41,26 +42,8 @@ defmodule Storyarn.Scenes.ScenePinTest do
       assert errors_on(cs)[:position_y]
     end
 
-    test "invalid with position_x out of range (negative)" do
-      cs = ScenePin.create_changeset(%ScenePin{}, %{position_x: -1.0, position_y: 50.0})
-      refute cs.valid?
-      assert errors_on(cs)[:position_x]
-    end
-
-    test "invalid with position_x out of range (over 100)" do
-      cs = ScenePin.create_changeset(%ScenePin{}, %{position_x: 101.0, position_y: 50.0})
-      refute cs.valid?
-      assert errors_on(cs)[:position_x]
-    end
-
-    test "invalid with position_y out of range" do
-      cs = ScenePin.create_changeset(%ScenePin{}, %{position_x: 50.0, position_y: -1.0})
-      refute cs.valid?
-      assert errors_on(cs)[:position_y]
-    end
-
-    test "boundary values are valid (0 and 100)" do
-      cs = ScenePin.create_changeset(%ScenePin{}, %{position_x: 0.0, position_y: 100.0})
+    test "positions outside 0-100 range are valid (no coordinate clamp)" do
+      cs = ScenePin.create_changeset(%ScenePin{}, %{position_x: -50.0, position_y: 200.0})
       assert cs.valid?
     end
   end
@@ -347,10 +330,9 @@ defmodule Storyarn.Scenes.ScenePinTest do
       assert errors_on(cs)[:position_y]
     end
 
-    test "validates position range" do
-      cs = ScenePin.move_changeset(%ScenePin{}, %{position_x: 150.0, position_y: 50.0})
-      refute cs.valid?
-      assert errors_on(cs)[:position_x]
+    test "allows positions outside 0-100 range (no coordinate clamp)" do
+      cs = ScenePin.move_changeset(%ScenePin{}, %{position_x: 150.0, position_y: -50.0})
+      assert cs.valid?
     end
   end
 

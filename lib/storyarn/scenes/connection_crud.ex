@@ -5,39 +5,39 @@ defmodule Storyarn.Scenes.ConnectionCrud do
 
   alias Storyarn.Localization
   alias Storyarn.Repo
-  alias Storyarn.Scenes.{Scene, SceneConnection, ScenePin}
+  alias Storyarn.Scenes.Scene
+  alias Storyarn.Scenes.SceneConnection
+  alias Storyarn.Scenes.ScenePin
 
   @doc """
   Lists all connections for a map, with from_pin and to_pin preloaded.
   """
   def list_connections(scene_id) do
-    from(c in SceneConnection,
-      where: c.scene_id == ^scene_id,
-      preload: [:from_pin, :to_pin]
-    )
-    |> Repo.all()
+    Repo.all(from(c in SceneConnection, where: c.scene_id == ^scene_id, preload: [:from_pin, :to_pin]))
   end
 
   @doc """
   Gets a connection by ID, scoped to a specific scene. Returns `nil` if not found.
   """
   def get_connection(scene_id, connection_id) do
-    from(c in SceneConnection,
-      where: c.scene_id == ^scene_id and c.id == ^connection_id,
-      preload: [:from_pin, :to_pin]
+    Repo.one(
+      from(c in SceneConnection,
+        where: c.scene_id == ^scene_id and c.id == ^connection_id,
+        preload: [:from_pin, :to_pin]
+      )
     )
-    |> Repo.one()
   end
 
   @doc """
   Gets a connection by ID, scoped to a specific map. Raises if not found.
   """
   def get_connection!(scene_id, connection_id) do
-    from(c in SceneConnection,
-      where: c.scene_id == ^scene_id and c.id == ^connection_id,
-      preload: [:from_pin, :to_pin]
+    Repo.one!(
+      from(c in SceneConnection,
+        where: c.scene_id == ^scene_id and c.id == ^connection_id,
+        preload: [:from_pin, :to_pin]
+      )
     )
-    |> Repo.one!()
   end
 
   @doc """

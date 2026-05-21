@@ -11,15 +11,15 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
     - `:notify_parent`       - fn(socket, status) -> any
   """
 
+  use Gettext, backend: Storyarn.Gettext
+
   import Phoenix.LiveView, only: [put_flash: 3]
   import StoryarnWeb.SheetLive.Helpers.FormulaHelpers, only: [parse_binding_value: 1]
 
-  use Gettext, backend: Storyarn.Gettext
-
   alias Storyarn.Shared.FormulaEngine
+  alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets
   alias StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers
-  alias StoryarnWeb.SheetLive.Helpers.ContentTabHelpers
 
   # ===========================================================================
   # Column resize (silent — no save indicator flash)
@@ -27,10 +27,10 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Persists a column width after drag-resize. No reload, no save indicator."
   def handle_resize_column(params, socket) do
-    column_id = ContentTabHelpers.to_integer(params["column-id"])
+    column_id = MapUtils.parse_int(params["column-id"])
 
     with {:ok, block_id} <- find_block_id_for_column(socket, column_id),
-         column <- Sheets.get_table_column!(block_id, column_id),
+         column = Sheets.get_table_column!(block_id, column_id),
          {:ok, width} <- sanitize_width(params["width"]) do
       new_config = Map.put(column.config || %{}, "width", width)
 
@@ -57,7 +57,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Updates a single cell value in a table row."
   def handle_update_cell(params, socket, helpers) do
-    row_id = ContentTabHelpers.to_integer(params["row-id"])
+    row_id = MapUtils.parse_int(params["row-id"])
     column_slug = params["column-slug"]
 
     value =
@@ -80,7 +80,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Toggles the collapsed state of a table block."
   def handle_toggle_collapse(params, socket, helpers) do
-    block_id = ContentTabHelpers.to_integer(params["block-id"])
+    block_id = MapUtils.parse_int(params["block-id"])
     project_id = socket.assigns.project.id
     block = Sheets.get_block_in_project!(block_id, project_id)
     collapsed = block.config["collapsed"] || false
@@ -97,7 +97,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Toggles a boolean cell value in a table."
   def handle_toggle_cell_boolean(params, socket, helpers) do
-    row_id = ContentTabHelpers.to_integer(params["row-id"])
+    row_id = MapUtils.parse_int(params["row-id"])
     column_slug = params["column-slug"]
     row = Sheets.get_table_row!(row_id)
 
@@ -107,9 +107,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
       case Sheets.update_table_cell(row, column_slug, new_value) do
         {:ok, _} ->
-          helpers.push_undo.(
-            {:update_table_cell, row.block_id, row.id, column_slug, current, new_value}
-          )
+          helpers.push_undo.({:update_table_cell, row.block_id, row.id, column_slug, current, new_value})
 
           save_and_reload(socket, helpers)
 
@@ -125,7 +123,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Adds a new column to a table block."
   def handle_add_column(params, socket, helpers) do
-    block_id = ContentTabHelpers.to_integer(params["block-id"])
+    block_id = MapUtils.parse_int(params["block-id"])
     project_id = socket.assigns.project.id
     block = Sheets.get_block_in_project!(block_id, project_id)
 
@@ -134,9 +132,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
     case Sheets.create_table_column(block, %{name: default_name}) do
       {:ok, column} ->
-        helpers.push_undo.(
-          {:add_table_column, block_id, UndoRedoHandlers.table_column_to_snapshot(column)}
-        )
+        helpers.push_undo.({:add_table_column, block_id, UndoRedoHandlers.table_column_to_snapshot(column)})
 
         save_and_reload(socket, helpers)
 
@@ -147,7 +143,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Adds a new row to a table block."
   def handle_add_row(params, socket, helpers) do
-    block_id = ContentTabHelpers.to_integer(params["block-id"])
+    block_id = MapUtils.parse_int(params["block-id"])
     project_id = socket.assigns.project.id
     block = Sheets.get_block_in_project!(block_id, project_id)
 
@@ -156,9 +152,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
     case Sheets.create_table_row(block, %{name: default_name}) do
       {:ok, row} ->
-        helpers.push_undo.(
-          {:add_table_row, block_id, UndoRedoHandlers.table_row_to_snapshot(row)}
-        )
+        helpers.push_undo.({:add_table_row, block_id, UndoRedoHandlers.table_row_to_snapshot(row)})
 
         save_and_reload(socket, helpers)
 
@@ -173,7 +167,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Renames a table column."
   def handle_rename_column(params, socket, helpers) do
-    column_id = ContentTabHelpers.to_integer(params["column-id"])
+    column_id = MapUtils.parse_int(params["column-id"])
     new_name = String.trim(params["value"] || "")
 
     case find_block_id_for_column(socket, column_id) do
@@ -193,7 +187,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Changes a column type directly (no confirmation)."
   def handle_change_column_type(params, socket, helpers) do
-    column_id = ContentTabHelpers.to_integer(params["column-id"])
+    column_id = MapUtils.parse_int(params["column-id"])
     new_type = params["new-type"]
 
     case find_block_id_for_column(socket, column_id) do
@@ -208,7 +202,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Toggles the is_constant flag on a column."
   def handle_toggle_column_constant(params, socket, helpers) do
-    column_id = ContentTabHelpers.to_integer(params["column-id"])
+    column_id = MapUtils.parse_int(params["column-id"])
 
     case find_block_id_for_column(socket, column_id) do
       {:ok, block_id} ->
@@ -218,9 +212,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
         case Sheets.update_table_column(column, %{is_constant: new_val}) do
           {:ok, _} ->
-            helpers.push_undo.(
-              {:toggle_column_flag, column.block_id, column.id, :is_constant, prev, new_val}
-            )
+            helpers.push_undo.({:toggle_column_flag, column.block_id, column.id, :is_constant, prev, new_val})
 
             save_and_reload(socket, helpers)
 
@@ -235,7 +227,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Toggles the required flag on a column."
   def handle_toggle_column_required(params, socket, helpers) do
-    column_id = ContentTabHelpers.to_integer(params["column-id"])
+    column_id = MapUtils.parse_int(params["column-id"])
 
     case find_block_id_for_column(socket, column_id) do
       {:ok, block_id} ->
@@ -245,9 +237,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
         case Sheets.update_table_column(column, %{required: new_val}) do
           {:ok, _} ->
-            helpers.push_undo.(
-              {:toggle_column_flag, column.block_id, column.id, :required, prev, new_val}
-            )
+            helpers.push_undo.({:toggle_column_flag, column.block_id, column.id, :required, prev, new_val})
 
             save_and_reload(socket, helpers)
 
@@ -262,7 +252,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Deletes a table column directly."
   def handle_delete_column(params, socket, helpers) do
-    column_id = ContentTabHelpers.to_integer(params["column-id"])
+    column_id = MapUtils.parse_int(params["column-id"])
 
     case find_block_id_for_column(socket, column_id) do
       {:ok, block_id} ->
@@ -280,7 +270,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Renames a table row."
   def handle_rename_row(params, socket, helpers) do
-    row_id = ContentTabHelpers.to_integer(params["row-id"])
+    row_id = MapUtils.parse_int(params["row-id"])
     new_name = String.trim(params["value"] || "")
     row = Sheets.get_table_row!(row_id)
 
@@ -304,7 +294,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Deletes a table row directly."
   def handle_delete_row(params, socket, helpers) do
-    row_id = ContentTabHelpers.to_integer(params["row-id"])
+    row_id = MapUtils.parse_int(params["row-id"])
     row = Sheets.get_table_row!(row_id)
 
     with :ok <- verify_row_ownership(socket, row) do
@@ -314,11 +304,11 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Reorders table rows by their IDs."
   def handle_reorder_rows(params, socket, helpers) do
-    block_id = ContentTabHelpers.to_integer(params["block_id"])
-    row_ids = Enum.map(params["row_ids"] || [], &ContentTabHelpers.to_integer/1)
+    block_id = MapUtils.parse_int(params["block_id"])
+    row_ids = Enum.map(params["row_ids"] || [], &MapUtils.parse_int/1)
 
     with :ok <- verify_block_ownership(socket, block_id) do
-      prev_order = Sheets.list_table_rows(block_id) |> Enum.map(& &1.id)
+      prev_order = block_id |> Sheets.list_table_rows() |> Enum.map(& &1.id)
 
       case Sheets.reorder_table_rows(block_id, row_ids) do
         {:ok, _} ->
@@ -337,7 +327,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Toggles the multiple flag on a reference column."
   def handle_toggle_reference_multiple(params, socket, helpers) do
-    column_id = ContentTabHelpers.to_integer(params["column-id"])
+    column_id = MapUtils.parse_int(params["column-id"])
 
     case find_block_id_for_column(socket, column_id) do
       {:ok, block_id} ->
@@ -355,7 +345,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Updates a number constraint (min, max, or step) on a column."
   def handle_update_number_constraint(params, socket, helpers) do
-    column_id = ContentTabHelpers.to_integer(params["column-id"])
+    column_id = MapUtils.parse_int(params["column-id"])
     field = params["field"]
     value = params["value"]
 
@@ -368,9 +358,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
       case Sheets.update_table_column(column, %{config: new_config}) do
         {:ok, _} ->
-          helpers.push_undo.(
-            {:update_table_column_config, column.block_id, column.id, prev_config, new_config}
-          )
+          helpers.push_undo.({:update_table_column_config, column.block_id, column.id, prev_config, new_config})
 
           save_and_reload(socket, helpers)
 
@@ -389,7 +377,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Saves a formula (expression + bindings) to a specific cell."
   def handle_update_formula_cell(params, socket, helpers) do
-    row_id = ContentTabHelpers.to_integer(params["row-id"])
+    row_id = MapUtils.parse_int(params["row-id"])
     column_slug = params["column-slug"]
     expression = params["expression"] || ""
     raw_bindings = params["bindings"] || %{}
@@ -419,9 +407,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
       case Sheets.update_table_cell(row, column_slug, formula_value) do
         {:ok, _} ->
-          helpers.push_undo.(
-            {:update_table_cell, row.block_id, row.id, column_slug, prev_value, formula_value}
-          )
+          helpers.push_undo.({:update_table_cell, row.block_id, row.id, column_slug, prev_value, formula_value})
 
           save_and_reload(socket, helpers)
 
@@ -438,9 +424,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
     case Sheets.update_table_column(column, %{config: new_config}) do
       {:ok, _} ->
-        helpers.push_undo.(
-          {:update_table_column_config, column.block_id, column.id, prev_config, new_config}
-        )
+        helpers.push_undo.({:update_table_column_config, column.block_id, column.id, prev_config, new_config})
 
         if !new_multiple, do: reset_reference_multi_cells(column)
         save_and_reload(socket, helpers)
@@ -470,7 +454,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Sets a select cell value to the given key (or clears it)."
   def handle_select_table_cell(params, socket, helpers) do
-    row_id = ContentTabHelpers.to_integer(params["row-id"])
+    row_id = MapUtils.parse_int(params["row-id"])
     column_slug = params["column-slug"]
     key = params["key"]
     row = Sheets.get_table_row!(row_id)
@@ -484,7 +468,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Toggles a key in a multi-select cell (add if absent, remove if present)."
   def handle_toggle_table_cell_multi_select(params, socket, helpers) do
-    row_id = ContentTabHelpers.to_integer(params["row-id"])
+    row_id = MapUtils.parse_int(params["row-id"])
     column_slug = params["column-slug"]
     key = params["key"]
     row = Sheets.get_table_row!(row_id)
@@ -504,8 +488,8 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Adds a new option to a column and selects/toggles it in the cell."
   def handle_add_table_cell_option(params, socket, helpers) do
-    column_id = ContentTabHelpers.to_integer(params["column-id"])
-    row_id = ContentTabHelpers.to_integer(params["row-id"])
+    column_id = MapUtils.parse_int(params["column-id"])
+    row_id = MapUtils.parse_int(params["row-id"])
     column_slug = params["column-slug"]
     label = String.trim(params["value"] || "")
 
@@ -520,96 +504,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
         :not_found ->
           {:noreply, err(socket, :column_update)}
       end
-    end
-  end
-
-  # ===========================================================================
-  # Select/Multi-Select options management
-  # ===========================================================================
-
-  @doc "Adds a new option to a select/multi_select column."
-  def handle_add_column_option(params, socket, helpers) do
-    column_id = ContentTabHelpers.to_integer(params["column-id"])
-    label = String.trim(params["value"] || "")
-
-    if label == "" do
-      {:noreply, socket}
-    else
-      case find_block_id_for_column(socket, column_id) do
-        {:ok, block_id} ->
-          column = Sheets.get_table_column!(block_id, column_id)
-          do_add_column_option(column, label, socket, helpers)
-
-        :not_found ->
-          {:noreply, err(socket, :column_update)}
-      end
-    end
-  end
-
-  @doc "Removes an option from a select/multi_select column by key."
-  def handle_remove_column_option(params, socket, helpers) do
-    column_id = ContentTabHelpers.to_integer(params["column-id"])
-    key = params["key"]
-
-    case find_block_id_for_column(socket, column_id) do
-      {:ok, block_id} ->
-        column = Sheets.get_table_column!(block_id, column_id)
-        prev_config = column.config
-        existing_options = (prev_config || %{})["options"] || []
-        new_options = Enum.reject(existing_options, fn opt -> opt["key"] == key end)
-        new_config = Map.put(prev_config || %{}, "options", new_options)
-
-        case Sheets.update_table_column(column, %{config: new_config}) do
-          {:ok, _} ->
-            helpers.push_undo.(
-              {:update_table_column_config, column.block_id, column.id, prev_config, new_config}
-            )
-
-            save_and_reload(socket, helpers)
-
-          {:error, _} ->
-            {:noreply, err(socket, :column_update)}
-        end
-
-      :not_found ->
-        {:noreply, err(socket, :column_update)}
-    end
-  end
-
-  @doc "Updates an option value at a given index in a select/multi_select column."
-  def handle_update_column_option(params, socket, helpers) do
-    column_id = ContentTabHelpers.to_integer(params["column-id"])
-    index = ContentTabHelpers.to_integer(params["index"])
-    new_value = String.trim(params["value"] || "")
-
-    case find_block_id_for_column(socket, column_id) do
-      {:ok, block_id} ->
-        column = Sheets.get_table_column!(block_id, column_id)
-        prev_config = column.config
-        existing_options = (prev_config || %{})["options"] || []
-
-        new_options =
-          List.update_at(existing_options, index, fn opt ->
-            %{"key" => option_key_for(new_value), "value" => new_value}
-            |> Map.merge(Map.drop(opt, ["key", "value"]))
-          end)
-
-        new_config = Map.put(prev_config || %{}, "options", new_options)
-
-        case Sheets.update_table_column(column, %{config: new_config}) do
-          {:ok, _} ->
-            helpers.push_undo.(
-              {:update_table_column_config, column.block_id, column.id, prev_config, new_config}
-            )
-
-            save_and_reload(socket, helpers)
-
-          {:error, _} ->
-            {:noreply, err(socket, :column_update)}
-        end
-
-      :not_found ->
-        {:noreply, err(socket, :column_update)}
     end
   end
 
@@ -651,44 +545,31 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
   end
 
   # Error messages — using dgettext macros so strings are extractable
-  defp err(socket, :cell_update),
-    do: put_flash(socket, :error, dgettext("sheets", "Could not update cell."))
+  defp err(socket, :cell_update), do: put_flash(socket, :error, dgettext("sheets", "Could not update cell."))
 
-  defp err(socket, :column_add),
-    do: put_flash(socket, :error, dgettext("sheets", "Could not add column."))
+  defp err(socket, :column_add), do: put_flash(socket, :error, dgettext("sheets", "Could not add column."))
 
-  defp err(socket, :column_update),
-    do: put_flash(socket, :error, dgettext("sheets", "Could not update column."))
+  defp err(socket, :column_update), do: put_flash(socket, :error, dgettext("sheets", "Could not update column."))
 
-  defp err(socket, :column_rename),
-    do: put_flash(socket, :error, dgettext("sheets", "Could not rename column."))
+  defp err(socket, :column_rename), do: put_flash(socket, :error, dgettext("sheets", "Could not rename column."))
 
-  defp err(socket, :column_type),
-    do: put_flash(socket, :error, dgettext("sheets", "Could not change column type."))
+  defp err(socket, :column_type), do: put_flash(socket, :error, dgettext("sheets", "Could not change column type."))
 
-  defp err(socket, :column_delete),
-    do: put_flash(socket, :error, dgettext("sheets", "Could not delete column."))
+  defp err(socket, :column_delete), do: put_flash(socket, :error, dgettext("sheets", "Could not delete column."))
 
-  defp err(socket, :column_last),
-    do: put_flash(socket, :error, dgettext("sheets", "Cannot delete the last column."))
+  defp err(socket, :column_last), do: put_flash(socket, :error, dgettext("sheets", "Cannot delete the last column."))
 
-  defp err(socket, :row_add),
-    do: put_flash(socket, :error, dgettext("sheets", "Could not add row."))
+  defp err(socket, :row_add), do: put_flash(socket, :error, dgettext("sheets", "Could not add row."))
 
-  defp err(socket, :row_rename),
-    do: put_flash(socket, :error, dgettext("sheets", "Could not rename row."))
+  defp err(socket, :row_rename), do: put_flash(socket, :error, dgettext("sheets", "Could not rename row."))
 
-  defp err(socket, :row_delete),
-    do: put_flash(socket, :error, dgettext("sheets", "Could not delete row."))
+  defp err(socket, :row_delete), do: put_flash(socket, :error, dgettext("sheets", "Could not delete row."))
 
-  defp err(socket, :row_last),
-    do: put_flash(socket, :error, dgettext("sheets", "Cannot delete the last row."))
+  defp err(socket, :row_last), do: put_flash(socket, :error, dgettext("sheets", "Cannot delete the last row."))
 
-  defp err(socket, :row_reorder),
-    do: put_flash(socket, :error, dgettext("sheets", "Could not reorder rows."))
+  defp err(socket, :row_reorder), do: put_flash(socket, :error, dgettext("sheets", "Could not reorder rows."))
 
-  defp err(socket, :required_field),
-    do: put_flash(socket, :error, dgettext("sheets", "This field is required."))
+  defp err(socket, :required_field), do: put_flash(socket, :error, dgettext("sheets", "This field is required."))
 
   # Looks up a column from socket.assigns.table_data by block_id + slug
   defp find_column_by_slug(socket, block_id, slug) do
@@ -714,9 +595,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
     case Sheets.update_table_column(column, %{type: new_type}) do
       {:ok, _} ->
-        helpers.push_undo.(
-          {:change_column_type, column.block_id, column.id, prev_type, new_type, prev_cells}
-        )
+        helpers.push_undo.({:change_column_type, column.block_id, column.id, prev_type, new_type, prev_cells})
 
         save_and_reload(socket, helpers)
 
@@ -730,9 +609,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
     case Sheets.update_table_column(column, %{name: new_name}) do
       {:ok, _} ->
-        helpers.push_undo.(
-          {:rename_table_column, column.block_id, column.id, prev_name, new_name}
-        )
+        helpers.push_undo.({:rename_table_column, column.block_id, column.id, prev_name, new_name})
 
         save_and_reload(socket, helpers)
 
@@ -805,9 +682,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
         case Sheets.update_table_cell(row, column_slug, final_value) do
           {:ok, _} ->
-            helpers.push_undo.(
-              {:update_table_cell, row.block_id, row.id, column_slug, prev_value, final_value}
-            )
+            helpers.push_undo.({:update_table_cell, row.block_id, row.id, column_slug, prev_value, final_value})
 
             save_and_reload(socket, helpers)
 
@@ -847,16 +722,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
     end
   end
 
-  defp select_new_option_in_cell(
-         column,
-         row_id,
-         column_slug,
-         key,
-         prev_config,
-         new_config,
-         socket,
-         helpers
-       ) do
+  defp select_new_option_in_cell(column, row_id, column_slug, key, prev_config, new_config, socket, helpers) do
     row = Sheets.get_table_row!(row_id)
     prev_cell = row.cells[column_slug]
 
@@ -881,26 +747,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
     )
 
     save_and_reload(socket, helpers)
-  end
-
-  defp do_add_column_option(column, label, socket, helpers) do
-    prev_config = column.config
-    existing_options = (prev_config || %{})["options"] || []
-    key = option_key_for(label)
-    new_option = %{"key" => key, "value" => label}
-    new_config = Map.put(prev_config || %{}, "options", existing_options ++ [new_option])
-
-    case Sheets.update_table_column(column, %{config: new_config}) do
-      {:ok, _} ->
-        helpers.push_undo.(
-          {:update_table_column_config, column.block_id, column.id, prev_config, new_config}
-        )
-
-        save_and_reload(socket, helpers)
-
-      {:error, _} ->
-        {:noreply, err(socket, :column_update)}
-    end
   end
 
   defp option_key_for(label) do

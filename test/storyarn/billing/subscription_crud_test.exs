@@ -1,10 +1,13 @@
 defmodule Storyarn.Billing.SubscriptionCrudTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Billing.{Subscription, SubscriptionCrud}
-
   import Storyarn.AccountsFixtures
   import Storyarn.WorkspacesFixtures
+
+  alias Storyarn.Accounts.User
+  alias Storyarn.Billing.Subscription
+  alias Storyarn.Billing.SubscriptionCrud
+  alias Storyarn.Workspaces.Workspace
 
   setup do
     user = user_fixture()
@@ -16,12 +19,12 @@ defmodule Storyarn.Billing.SubscriptionCrudTest do
     test "creates free subscription for a workspace without one" do
       # Create a workspace without the auto-subscription by inserting directly
       workspace =
-        %Storyarn.Workspaces.Workspace{}
+        %Workspace{}
         |> Ecto.Changeset.change(%{
           name: "Bare Workspace",
           slug: "bare-workspace-#{System.unique_integer([:positive])}",
           owner_id:
-            (%Storyarn.Accounts.User{}
+            (%User{}
              |> Ecto.Changeset.change(%{
                email: "bare#{System.unique_integer([:positive])}@test.com",
                confirmed_at: DateTime.utc_now(:second)
@@ -52,12 +55,12 @@ defmodule Storyarn.Billing.SubscriptionCrudTest do
     test "returns 'free' when no subscription exists" do
       # Create workspace without subscription
       workspace =
-        %Storyarn.Workspaces.Workspace{}
+        %Workspace{}
         |> Ecto.Changeset.change(%{
           name: "No Sub Workspace",
           slug: "no-sub-#{System.unique_integer([:positive])}",
           owner_id:
-            (%Storyarn.Accounts.User{}
+            (%User{}
              |> Ecto.Changeset.change(%{
                email: "nosub#{System.unique_integer([:positive])}@test.com",
                confirmed_at: DateTime.utc_now(:second)

@@ -27,9 +27,6 @@ defmodule Storyarn.Versioning.MaterializationHelpers do
   @spec root_position(keyword()) :: integer()
   def root_position(opts), do: Keyword.get(opts, :position, 0)
 
-  @spec root_draft_id(keyword()) :: integer() | nil
-  def root_draft_id(opts), do: Keyword.get(opts, :draft_id)
-
   @spec preserve_external_refs?(keyword()) :: boolean()
   def preserve_external_refs?(opts), do: Keyword.get(opts, :preserve_external_refs, true)
 
@@ -126,8 +123,6 @@ defmodule Storyarn.Versioning.MaterializationHelpers do
   end
 
   defp project_owned_ref?(schema, source_id, project_id) do
-    Repo.exists?(
-      from record in schema, where: record.id == ^source_id and record.project_id == ^project_id
-    )
+    Repo.exists?(from record in schema, where: record.id == ^source_id and record.project_id == ^project_id)
   end
 end

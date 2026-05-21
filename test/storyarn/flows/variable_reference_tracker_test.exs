@@ -3,11 +3,13 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
 
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
-  import Storyarn.SheetsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
 
   alias Storyarn.Flows
-  alias Storyarn.Flows.{VariableReference, VariableReferenceTracker}
+  alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.VariableReference
+  alias Storyarn.Flows.VariableReferenceTracker
 
   setup do
     user = user_fixture()
@@ -95,7 +97,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
 
       VariableReferenceTracker.update_references(node)
 
-      refs = Repo.all(VariableReference) |> Enum.sort_by(& &1.kind)
+      refs = VariableReference |> Repo.all() |> Enum.sort_by(& &1.kind)
       assert length(refs) == 2
 
       read_ref = Enum.find(refs, &(&1.kind == "read"))
@@ -205,7 +207,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
 
       VariableReferenceTracker.update_references(node)
 
-      read_ref = Repo.all(VariableReference) |> Enum.find(&(&1.kind == "read"))
+      read_ref = VariableReference |> Repo.all() |> Enum.find(&(&1.kind == "read"))
       assert read_ref.source_sheet == "global.quests"
       assert read_ref.source_variable == "sword_done"
     end
@@ -219,13 +221,20 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
           data: %{
             "condition" => %{
               "logic" => "all",
-              "rules" => [
+              "blocks" => [
                 %{
-                  "id" => "rule_1",
-                  "sheet" => "mc.jaime",
-                  "variable" => "health",
-                  "operator" => "greater_than",
-                  "value" => "50"
+                  "id" => "b1",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "id" => "rule_1",
+                      "sheet" => "mc.jaime",
+                      "variable" => "health",
+                      "operator" => "greater_than",
+                      "value" => "50"
+                    }
+                  ]
                 }
               ]
             }
@@ -250,20 +259,27 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
           data: %{
             "condition" => %{
               "logic" => "all",
-              "rules" => [
+              "blocks" => [
                 %{
-                  "id" => "rule_1",
-                  "sheet" => "mc.jaime",
-                  "variable" => "health",
-                  "operator" => "greater_than",
-                  "value" => "50"
-                },
-                %{
-                  "id" => "rule_2",
-                  "sheet" => "global.quests",
-                  "variable" => "sword_done",
-                  "operator" => "is_true",
-                  "value" => nil
+                  "id" => "b1",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "id" => "rule_1",
+                      "sheet" => "mc.jaime",
+                      "variable" => "health",
+                      "operator" => "greater_than",
+                      "value" => "50"
+                    },
+                    %{
+                      "id" => "rule_2",
+                      "sheet" => "global.quests",
+                      "variable" => "sword_done",
+                      "operator" => "is_true",
+                      "value" => nil
+                    }
+                  ]
                 }
               ]
             }
@@ -276,7 +292,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       assert length(refs) == 2
       assert Enum.all?(refs, &(&1.kind == "read"))
 
-      block_ids = Enum.map(refs, & &1.block_id) |> Enum.sort()
+      block_ids = refs |> Enum.map(& &1.block_id) |> Enum.sort()
       expected = Enum.sort([ctx.health_block.id, ctx.quest_block.id])
       assert block_ids == expected
     end
@@ -288,13 +304,20 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
           data: %{
             "condition" => %{
               "logic" => "all",
-              "rules" => [
+              "blocks" => [
                 %{
-                  "id" => "rule_1",
-                  "sheet" => "mc.jaime",
-                  "variable" => "health",
-                  "operator" => "greater_than",
-                  "value" => "50"
+                  "id" => "b1",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "id" => "rule_1",
+                      "sheet" => "mc.jaime",
+                      "variable" => "health",
+                      "operator" => "greater_than",
+                      "value" => "50"
+                    }
+                  ]
                 }
               ]
             }
@@ -476,13 +499,20 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
           data: %{
             "condition" => %{
               "logic" => "all",
-              "rules" => [
+              "blocks" => [
                 %{
-                  "id" => "rule_1",
-                  "sheet" => "mc.jaime",
-                  "variable" => "health",
-                  "operator" => "greater_than",
-                  "value" => "50"
+                  "id" => "b1",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "id" => "rule_1",
+                      "sheet" => "mc.jaime",
+                      "variable" => "health",
+                      "operator" => "greater_than",
+                      "value" => "50"
+                    }
+                  ]
                 }
               ]
             }
@@ -564,13 +594,20 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
           data: %{
             "condition" => %{
               "logic" => "all",
-              "rules" => [
+              "blocks" => [
                 %{
-                  "id" => "rule_1",
-                  "sheet" => "mc.jaime",
-                  "variable" => "health",
-                  "operator" => "greater_than",
-                  "value" => "50"
+                  "id" => "b1",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "id" => "rule_1",
+                      "sheet" => "mc.jaime",
+                      "variable" => "health",
+                      "operator" => "greater_than",
+                      "value" => "50"
+                    }
+                  ]
                 }
               ]
             }
@@ -652,13 +689,20 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
           data: %{
             "condition" => %{
               "logic" => "all",
-              "rules" => [
+              "blocks" => [
                 %{
-                  "id" => "rule_1",
-                  "sheet" => "mc.jaime",
-                  "variable" => "health",
-                  "operator" => "greater_than",
-                  "value" => "50"
+                  "id" => "b1",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "id" => "rule_1",
+                      "sheet" => "mc.jaime",
+                      "variable" => "health",
+                      "operator" => "greater_than",
+                      "value" => "50"
+                    }
+                  ]
                 }
               ]
             }
@@ -773,7 +817,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       assert hd(refs).stale == false
 
       # Verify node data was updated
-      updated_node = Storyarn.Repo.get!(Storyarn.Flows.FlowNode, node.id)
+      updated_node = Storyarn.Repo.get!(FlowNode, node.id)
       assignment = hd(updated_node.data["assignments"])
       assert assignment["sheet"] == "mc.renamed"
       assert assignment["variable"] == "health"
@@ -786,13 +830,20 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
           data: %{
             "condition" => %{
               "logic" => "all",
-              "rules" => [
+              "blocks" => [
                 %{
-                  "id" => "rule_1",
-                  "sheet" => "mc.jaime",
-                  "variable" => "health",
-                  "operator" => "greater_than",
-                  "value" => "50"
+                  "id" => "b1",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "id" => "rule_1",
+                      "sheet" => "mc.jaime",
+                      "variable" => "health",
+                      "operator" => "greater_than",
+                      "value" => "50"
+                    }
+                  ]
                 }
               ]
             }
@@ -808,8 +859,8 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       assert count == 1
 
       # Verify node data was updated
-      updated_node = Storyarn.Repo.get!(Storyarn.Flows.FlowNode, node.id)
-      rule = hd(updated_node.data["condition"]["rules"])
+      updated_node = Storyarn.Repo.get!(FlowNode, node.id)
+      rule = hd(hd(updated_node.data["condition"]["blocks"])["rules"])
       assert rule["sheet"] == "mc.renamed"
       assert rule["variable"] == "health"
     end
@@ -983,7 +1034,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       {:ok, count} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
       assert count == 1
 
-      updated_node = Repo.get!(Storyarn.Flows.FlowNode, node.id)
+      updated_node = Repo.get!(FlowNode, node.id)
       [a1, a2] = updated_node.data["assignments"]
 
       assert a1["sheet"] == "mc.renamed"
@@ -1020,7 +1071,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       {:ok, count} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
       assert count == 1
 
-      updated_node = Repo.get!(Storyarn.Flows.FlowNode, node.id)
+      updated_node = Repo.get!(FlowNode, node.id)
       assignment = hd(updated_node.data["assignments"])
 
       assert assignment["value_sheet"] == "mc.renamed"
@@ -1037,20 +1088,27 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
           data: %{
             "condition" => %{
               "logic" => "all",
-              "rules" => [
+              "blocks" => [
                 %{
-                  "id" => "r1",
-                  "sheet" => "mc.jaime",
-                  "variable" => "health",
-                  "operator" => "greater_than",
-                  "value" => "50"
-                },
-                %{
-                  "id" => "r2",
-                  "sheet" => "global.quests",
-                  "variable" => "sword_done",
-                  "operator" => "is_true",
-                  "value" => nil
+                  "id" => "b1",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "id" => "r1",
+                      "sheet" => "mc.jaime",
+                      "variable" => "health",
+                      "operator" => "greater_than",
+                      "value" => "50"
+                    },
+                    %{
+                      "id" => "r2",
+                      "sheet" => "global.quests",
+                      "variable" => "sword_done",
+                      "operator" => "is_true",
+                      "value" => nil
+                    }
+                  ]
                 }
               ]
             }
@@ -1065,8 +1123,8 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       {:ok, count} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
       assert count == 1
 
-      updated_node = Repo.get!(Storyarn.Flows.FlowNode, node.id)
-      [r1, r2] = updated_node.data["condition"]["rules"]
+      updated_node = Repo.get!(FlowNode, node.id)
+      [r1, r2] = hd(updated_node.data["condition"]["blocks"])["rules"]
 
       assert r1["sheet"] == "mc.renamed"
       assert r1["variable"] == "health"
@@ -1109,7 +1167,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       {:ok, count} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
       assert count == 1
 
-      updated_node = Repo.get!(Storyarn.Flows.FlowNode, node.id)
+      updated_node = Repo.get!(FlowNode, node.id)
       assignment = hd(updated_node.data["assignments"])
       assert assignment["sheet"] == "mc.jaime"
       assert assignment["variable"] == "vitality"
@@ -1147,7 +1205,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
 
       {:ok, 1} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
 
-      updated_node = Repo.get!(Storyarn.Flows.FlowNode, node.id)
+      updated_node = Repo.get!(FlowNode, node.id)
       [a1, a2] = updated_node.data["assignments"]
 
       # Stale one repaired
@@ -1227,7 +1285,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       {:ok, count} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
       assert count == 1
 
-      updated_node = Repo.get!(Storyarn.Flows.FlowNode, node.id)
+      updated_node = Repo.get!(FlowNode, node.id)
       [a1, a2] = updated_node.data["assignments"]
 
       # Each assignment gets the CORRECT new shortcut — no cross-wiring
@@ -1344,7 +1402,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
 
       VariableReferenceTracker.update_references(node)
 
-      refs = Repo.all(VariableReference) |> Enum.sort_by(& &1.kind)
+      refs = VariableReference |> Repo.all() |> Enum.sort_by(& &1.kind)
       assert length(refs) == 2
 
       read_ref = Enum.find(refs, &(&1.kind == "read"))
@@ -1390,7 +1448,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       assert Enum.all?(refs, &(&1.block_id == ctx.table_block.id))
       assert Enum.all?(refs, &(&1.kind == "write"))
 
-      variables = Enum.map(refs, & &1.source_variable) |> Enum.sort()
+      variables = refs |> Enum.map(& &1.source_variable) |> Enum.sort()
       assert variables == ["attributes.strength.value", "attributes.wisdom.value"]
     end
   end
@@ -1414,13 +1472,20 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
           data: %{
             "condition" => %{
               "logic" => "all",
-              "rules" => [
+              "blocks" => [
                 %{
-                  "id" => "rule_1",
-                  "sheet" => "mc.jaime",
-                  "variable" => "attributes.strength.value",
-                  "operator" => "greater_than",
-                  "value" => "5"
+                  "id" => "b1",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "id" => "rule_1",
+                      "sheet" => "mc.jaime",
+                      "variable" => "attributes.strength.value",
+                      "operator" => "greater_than",
+                      "value" => "5"
+                    }
+                  ]
                 }
               ]
             }
@@ -1742,7 +1807,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       {:ok, count} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
       assert count == 1
 
-      updated_node = Repo.get!(Storyarn.Flows.FlowNode, node.id)
+      updated_node = Repo.get!(FlowNode, node.id)
       assignment = hd(updated_node.data["assignments"])
       assert assignment["sheet"] == "mc.renamed"
       assert assignment["variable"] == "attributes.strength.value"
@@ -1776,7 +1841,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       {:ok, count} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
       assert count == 1
 
-      updated_node = Repo.get!(Storyarn.Flows.FlowNode, node.id)
+      updated_node = Repo.get!(FlowNode, node.id)
       assignment = hd(updated_node.data["assignments"])
       assert assignment["sheet"] == "mc.jaime"
       # table_name part replaced, row/col slugs preserved
@@ -1840,7 +1905,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       {:ok, count} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
       assert count == 1
 
-      updated_node = Repo.get!(Storyarn.Flows.FlowNode, node.id)
+      updated_node = Repo.get!(FlowNode, node.id)
       [a1, a2] = updated_node.data["assignments"]
 
       # Both get sheet renamed
@@ -1857,13 +1922,20 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
           data: %{
             "condition" => %{
               "logic" => "all",
-              "rules" => [
+              "blocks" => [
                 %{
-                  "id" => "r1",
-                  "sheet" => "mc.jaime",
-                  "variable" => "attributes.strength.value",
-                  "operator" => "greater_than",
-                  "value" => "5"
+                  "id" => "b1",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "id" => "r1",
+                      "sheet" => "mc.jaime",
+                      "variable" => "attributes.strength.value",
+                      "operator" => "greater_than",
+                      "value" => "5"
+                    }
+                  ]
                 }
               ]
             }
@@ -1876,8 +1948,8 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       {:ok, count} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
       assert count == 1
 
-      updated_node = Repo.get!(Storyarn.Flows.FlowNode, node.id)
-      rule = hd(updated_node.data["condition"]["rules"])
+      updated_node = Repo.get!(FlowNode, node.id)
+      rule = hd(hd(updated_node.data["condition"]["blocks"])["rules"])
       assert rule["sheet"] == "mc.renamed"
       assert rule["variable"] == "attributes.strength.value"
     end
@@ -1901,9 +1973,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
 
       VariableReferenceTracker.update_references(node)
 
-      refs =
-        from(vr in VariableReference, where: vr.flow_node_id == ^node.id)
-        |> Repo.all()
+      refs = Repo.all(from(vr in VariableReference, where: vr.flow_node_id == ^node.id))
 
       assert refs == []
     end
@@ -1917,9 +1987,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
 
       VariableReferenceTracker.update_references(node)
 
-      refs =
-        from(vr in VariableReference, where: vr.flow_node_id == ^node.id)
-        |> Repo.all()
+      refs = Repo.all(from(vr in VariableReference, where: vr.flow_node_id == ^node.id))
 
       assert refs == []
     end
@@ -1954,12 +2022,19 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
           data: %{
             "condition" => %{
               "logic" => "all",
-              "rules" => [
+              "blocks" => [
                 %{
-                  "sheet" => "mc.jaime",
-                  "variable" => "health",
-                  "operator" => "greater_than",
-                  "value" => "50"
+                  "id" => "b1",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "sheet" => "mc.jaime",
+                      "variable" => "health",
+                      "operator" => "greater_than",
+                      "value" => "50"
+                    }
+                  ]
                 }
               ]
             }
@@ -2000,9 +2075,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
 
       VariableReferenceTracker.update_references(node)
 
-      refs =
-        from(vr in VariableReference, where: vr.flow_node_id == ^node.id)
-        |> Repo.all()
+      refs = Repo.all(from(vr in VariableReference, where: vr.flow_node_id == ^node.id))
 
       assert refs == []
     end
@@ -2027,9 +2100,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
 
       VariableReferenceTracker.update_references(node)
 
-      refs =
-        from(vr in VariableReference, where: vr.flow_node_id == ^node.id)
-        |> Repo.all()
+      refs = Repo.all(from(vr in VariableReference, where: vr.flow_node_id == ^node.id))
 
       assert refs == []
     end

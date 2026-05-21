@@ -14,24 +14,23 @@ defmodule Storyarn.Accounts do
   - `Profiles` - User profile and sudo mode
   """
 
-  alias Storyarn.Accounts.{
-    Emails,
-    MagicLinks,
-    OAuth,
-    Passwords,
-    Profiles,
-    Registration,
-    Sessions,
-    User,
-    UserIdentity,
-    UserNotifier,
-    Users,
-    UserToken
-  }
+  alias Storyarn.Accounts.Emails
+  alias Storyarn.Accounts.OAuth
+  alias Storyarn.Accounts.Passwords
+  alias Storyarn.Accounts.Profiles
+  alias Storyarn.Accounts.Registration
+  alias Storyarn.Accounts.Sessions
+  alias Storyarn.Accounts.User
+  alias Storyarn.Accounts.UserIdentity
+  alias Storyarn.Accounts.UserNotifier
+  alias Storyarn.Accounts.Users
+  alias Storyarn.Accounts.UserToken
 
   # =============================================================================
   # Type Definitions
   # =============================================================================
+
+  alias Storyarn.Accounts.WaitlistEntry
 
   @type user :: User.t()
   @type user_identity :: UserIdentity.t()
@@ -162,29 +161,6 @@ defmodule Storyarn.Accounts do
   defdelegate delete_user_session_token(token), to: Sessions
 
   # =============================================================================
-  # Magic Links
-  # =============================================================================
-
-  @doc """
-  Gets the user with the given magic link token.
-  """
-  @spec get_user_by_magic_link_token(String.t()) :: user() | nil
-  defdelegate get_user_by_magic_link_token(token), to: MagicLinks
-
-  @doc """
-  Logs the user in by magic link.
-  """
-  @spec login_user_by_magic_link(String.t()) ::
-          {:ok, {user(), [user_token()]}} | {:error, :not_found}
-  defdelegate login_user_by_magic_link(token), to: MagicLinks
-
-  @doc """
-  Delivers the magic link login instructions to the given user.
-  """
-  @spec deliver_login_instructions(user(), (String.t() -> String.t())) :: {:ok, map()}
-  defdelegate deliver_login_instructions(user, magic_link_url_fun), to: MagicLinks
-
-  # =============================================================================
   # Emails
   # =============================================================================
 
@@ -256,8 +232,6 @@ defmodule Storyarn.Accounts do
 
   ## Waitlist
 
-  alias Storyarn.Accounts.WaitlistEntry
-
   @doc """
   Adds an email to the beta waitlist. Returns `{:ok, entry}` or `{:error, changeset}`.
   """
@@ -268,10 +242,26 @@ defmodule Storyarn.Accounts do
   end
 
   @doc """
+  Gets the user with the given invite token and deletes the token if found.
+  Used for gating registration.
+  """
+  defdelegate get_user_by_invite_token(token), to: Registration
+
+  @doc """
+  Completes the user's registration by setting their password and consuming the invite token.
+  """
+  defdelegate complete_registration(user, token, attrs), to: Registration
+
+  @doc """
   Finds an existing user by email, or registers and auto-confirms a new one.
   Used for invitation acceptance.
   """
   defdelegate find_or_register_confirmed_user(email), to: Registration
+
+  @doc """
+  Delivers the waitlist invite instructions to the given user.
+  """
+  defdelegate deliver_waitlist_invite_instructions(user, invite_url_fun), to: Registration
 
   @doc """
   Notifies the admin about a member invitation request.
@@ -285,5 +275,23 @@ defmodule Storyarn.Accounts do
   """
   def notify_admin_waitlist_signup(email, signup_info \\ %{}) do
     UserNotifier.deliver_admin_waitlist_notification(email, signup_info)
+  end
+
+  @doc """
+  Notifies the admin about a new waitlist signup without blocking the caller.
+  """
+  def notify_admin_waitlist_signup_async(email, signup_info \\ %{}) do
+    case Process.whereis(Storyarn.TaskSupervisor) do
+      nil ->
+        notify_admin_waitlist_signup(email, signup_info)
+        :ok
+
+      _pid ->
+        Task.Supervisor.start_child(Storyarn.TaskSupervisor, fn ->
+          notify_admin_waitlist_signup(email, signup_info)
+        end)
+
+        :ok
+    end
   end
 end

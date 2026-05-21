@@ -15,16 +15,19 @@ Visual diffs solve this by highlighting changes directly on the canvas: added el
 ## Feature 1: Diff Highlighting in Split View
 
 ### What
+
 When comparing two versions in split view, color-code elements (nodes, connections, pins, zones, blocks) by their change status: added, removed, or modified.
 
 ### Design
 
 **Data flow:**
+
 1. Parent editor computes diff via `SnapshotDiff.diff/3` between current state and the compared version
 2. Diff result is sent to both the main editor and the iframe via `postMessage`
 3. Each editor applies CSS classes to highlight elements by their change status
 
 **Visual language:**
+
 - **Added** — green border/background tint
 - **Removed** — red border/background tint (shown only in the historical version)
 - **Modified** — amber border/background tint
@@ -35,6 +38,7 @@ When comparing two versions in split view, color-code elements (nodes, connectio
 ## Feature 2: Synchronized Navigation
 
 ### What
+
 Sync zoom and pan between the two split view panes so both editors show the same area of the canvas.
 
 ---
@@ -42,6 +46,7 @@ Sync zoom and pan between the two split view panes so both editors show the same
 ## Feature 3: Change Navigation
 
 ### What
+
 "Next change" / "Previous change" buttons that jump between modified elements across the canvas, centering both views on the relevant area.
 
 ---

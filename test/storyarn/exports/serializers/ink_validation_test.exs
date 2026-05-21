@@ -10,15 +10,17 @@ defmodule Storyarn.Exports.Serializers.InkValidationTest do
   """
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Exports.{DataCollector, ExportOptions}
-  alias Storyarn.Exports.Serializers.Ink
-  alias Storyarn.Repo
-  alias Storyarn.Test.InkCompiler
-
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Exports.DataCollector
+  alias Storyarn.Exports.ExportOptions
+  alias Storyarn.Exports.Serializers.Ink
+  alias Storyarn.Flows
+  alias Storyarn.Repo
+  alias Storyarn.Test.InkCompiler
 
   @moduletag :ink_validation
 
@@ -89,6 +91,32 @@ defmodule Storyarn.Exports.Serializers.InkValidationTest do
              "inklecate rejected dialogue flow:\n#{inspect(InkCompiler.validate(source))}"
     end
 
+    test "dialogue nested in a sequence compiles and is included", %{project: project} do
+      flow = flow_fixture(project, %{name: "Sequence"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+      {:ok, sequence} = Flows.create_sequence(flow.id, %{"name" => "Act I"})
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          parent_id: sequence.id,
+          data: %{
+            "text" => "Inside the sequence.",
+            "speaker_sheet_id" => nil,
+            "responses" => []
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = ink_source(export_files(project))
+      assert source =~ "Inside the sequence."
+
+      assert InkCompiler.valid?(source),
+             "inklecate rejected sequence-nested dialogue:\n#{inspect(InkCompiler.validate(source))}"
+    end
+
     test "dialogue with speaker compiles", %{project: project} do
       sheet = sheet_fixture(project, %{name: "Jaime"})
       flow = flow_fixture(project, %{name: "Speaker"})
@@ -137,6 +165,48 @@ defmodule Storyarn.Exports.Serializers.InkValidationTest do
 
       assert InkCompiler.valid?(source),
              "inklecate rejected choices:\n#{inspect(InkCompiler.validate(source))}"
+    end
+
+    test "dialogue choice branches compile without loose-end warnings", %{project: project} do
+      flow = flow_fixture(project, %{name: "ChoiceBranches"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Pick a path.",
+            "speaker_sheet_id" => nil,
+            "responses" => [
+              %{"id" => "fight", "text" => "Fight", "condition" => nil, "instruction" => nil},
+              %{"id" => "run", "text" => "Run", "condition" => nil, "instruction" => nil}
+            ]
+          }
+        })
+
+      fight_dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "You fight.", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      run_dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "You run.", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      connection_fixture(flow, entry, dialogue)
+      connection_fixture(flow, dialogue, fight_dialogue, %{source_pin: "response_fight"})
+      connection_fixture(flow, dialogue, run_dialogue, %{source_pin: "response_run"})
+
+      source = ink_source(export_files(project))
+      assert source =~ "You fight."
+      assert source =~ "You run."
+
+      assert InkCompiler.valid?(source),
+             "inklecate rejected choice branches:\n#{inspect(InkCompiler.validate(source))}"
     end
 
     test "variable declarations compile", %{project: project} do
@@ -268,7 +338,7 @@ defmodule Storyarn.Exports.Serializers.InkValidationTest do
       hub =
         node_fixture(flow, %{
           type: "hub",
-          data: %{"label" => "checkpoint"}
+          data: %{"hub_id" => "checkpoint", "label" => "checkpoint"}
         })
 
       dialogue =
@@ -280,7 +350,7 @@ defmodule Storyarn.Exports.Serializers.InkValidationTest do
       jump =
         node_fixture(flow, %{
           type: "jump",
-          data: %{"hub_id" => hub.id}
+          data: %{"target_hub_id" => "checkpoint"}
         })
 
       connection_fixture(flow, entry, jump)
@@ -292,23 +362,35 @@ defmodule Storyarn.Exports.Serializers.InkValidationTest do
              "inklecate rejected jump/hub:\n#{inspect(InkCompiler.validate(source))}"
     end
 
-    test "slug_line node scene command compiles", %{project: project} do
-      flow = flow_fixture(project, %{name: "Slug Line"})
-      flow = reload_flow(flow)
-      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+    test "exit flow_reference compiles", %{project: project} do
+      target_flow = flow_fixture(project, %{name: "Next Chapter"})
+      target_flow = reload_flow(target_flow)
+      target_entry = Enum.find(target_flow.nodes, &(&1.type == "entry"))
 
-      slug_line =
-        node_fixture(flow, %{
-          type: "slug_line",
-          data: %{"location" => "Tavern"}
+      target_dialogue =
+        node_fixture(target_flow, %{
+          type: "dialogue",
+          data: %{"text" => "The next chapter begins.", "speaker_sheet_id" => nil, "responses" => []}
         })
 
-      connection_fixture(flow, entry, slug_line)
+      connection_fixture(target_flow, target_entry, target_dialogue)
+
+      source_flow = flow_fixture(project, %{name: "Current Chapter"})
+      source_flow = reload_flow(source_flow)
+      source_entry = Enum.find(source_flow.nodes, &(&1.type == "entry"))
+
+      exit_node =
+        node_fixture(source_flow, %{
+          type: "exit",
+          data: %{"exit_mode" => "flow_reference", "referenced_flow_id" => target_flow.id}
+        })
+
+      connection_fixture(source_flow, source_entry, exit_node)
 
       source = ink_source(export_files(project))
 
       assert InkCompiler.valid?(source),
-             "inklecate rejected slug_line scene command:\n#{inspect(InkCompiler.validate(source))}"
+             "inklecate rejected exit flow_reference:\n#{inspect(InkCompiler.validate(source))}"
     end
 
     test "conditional choice compiles", %{project: project} do
@@ -542,7 +624,7 @@ defmodule Storyarn.Exports.Serializers.InkValidationTest do
       subflow_node =
         node_fixture(caller_flow, %{
           type: "subflow",
-          data: %{"flow_shortcut" => target_flow.shortcut}
+          data: %{"referenced_flow_id" => target_flow.id}
         })
 
       after_dialogue =
@@ -733,6 +815,29 @@ defmodule Storyarn.Exports.Serializers.InkValidationTest do
 
       assert InkCompiler.valid?(source),
              "inklecate rejected brackets in text (B1):\n#{inspect(InkCompiler.validate(source))}"
+    end
+
+    test "dialogue with Ink control characters compiles (B6)", %{project: project} do
+      flow = flow_fixture(project, %{name: "ControlChars"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Use {potion} #3\n* not a choice",
+            "speaker_sheet_id" => nil,
+            "responses" => []
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = ink_source(export_files(project))
+
+      assert InkCompiler.valid?(source),
+             "inklecate rejected escaped control chars (B6):\n#{inspect(InkCompiler.validate(source))}"
     end
 
     # B3: Empty condition expression

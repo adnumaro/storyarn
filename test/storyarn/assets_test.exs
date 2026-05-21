@@ -1,12 +1,17 @@
 defmodule Storyarn.AssetsTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Assets
-  alias Storyarn.Assets.Asset
-
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
   import Storyarn.ProjectsFixtures
+
+  alias Phoenix.LiveView.UploadEntry
+  alias Storyarn.Assets
+  alias Storyarn.Assets.Asset
+  alias Storyarn.Assets.BlobStore
+  alias Storyarn.Flows.FlowNode
+  alias Storyarn.Repo
+  alias Storyarn.Sheets.SheetAvatar
 
   describe "assets" do
     setup do
@@ -138,7 +143,7 @@ defmodule Storyarn.AssetsTest do
       attrs = valid_asset_attributes()
 
       assert {:ok, asset} = Assets.create_asset(project, attrs)
-      assert asset.filename != nil
+      assert asset.filename
       assert asset.uploaded_by_id == nil
     end
 
@@ -154,6 +159,36 @@ defmodule Storyarn.AssetsTest do
 
       assert {:ok, _} = Assets.delete_asset(asset)
       assert Assets.get_asset(project.id, asset.id) == nil
+    end
+
+    test "delete_asset/1 removes sheet avatar references before deleting", %{project: project, user: user} do
+      import Storyarn.SheetsFixtures
+
+      asset = image_asset_fixture(project, user)
+      sheet = sheet_fixture(project, %{name: "Hero"})
+      {:ok, avatar} = Storyarn.Sheets.add_avatar(sheet, asset.id, %{is_default: true})
+
+      assert {:ok, _} = Assets.delete_asset(asset)
+      assert Assets.get_asset(project.id, asset.id) == nil
+      assert Repo.get(SheetAvatar, avatar.id) == nil
+    end
+
+    test "delete_asset/1 clears flow node audio references", %{project: project, user: user} do
+      import Storyarn.FlowsFixtures
+
+      asset = audio_asset_fixture(project, user)
+      flow = flow_fixture(project)
+
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"audio_asset_id" => asset.id, "text" => "Hello"}
+        })
+
+      assert {:ok, _} = Assets.delete_asset(asset)
+
+      refreshed = Repo.get!(FlowNode, node.id)
+      refute Map.has_key?(refreshed.data, "audio_asset_id")
     end
 
     test "change_asset/2 returns a changeset", %{project: project, user: user} do
@@ -271,6 +306,31 @@ defmodule Storyarn.AssetsTest do
       assert hd(usages.sheet_banners).id == sheet.id
     end
 
+    test "returns scene background usages", %{project: project, user: user} do
+      import Storyarn.ScenesFixtures
+
+      image = image_asset_fixture(project, user)
+      scene = scene_fixture(project, %{name: "Bridge", background_asset_id: image.id})
+
+      usages = Assets.get_asset_usages(project.id, image.id)
+
+      assert length(usages.scene_backgrounds) == 1
+      assert hd(usages.scene_backgrounds).id == scene.id
+    end
+
+    test "returns scene pin icon usages", %{project: project, user: user} do
+      import Storyarn.ScenesFixtures
+
+      image = image_asset_fixture(project, user)
+      scene = scene_fixture(project, %{name: "Bridge"})
+      pin = pin_fixture(scene, %{"label" => "Gate", "icon_asset_id" => image.id})
+
+      usages = Assets.get_asset_usages(project.id, image.id)
+
+      assert length(usages.scene_pin_icons) == 1
+      assert hd(usages.scene_pin_icons).pin_id == pin.id
+    end
+
     test "returns empty when asset is unused", %{project: project, user: user} do
       asset = asset_fixture(project, user)
 
@@ -279,6 +339,8 @@ defmodule Storyarn.AssetsTest do
       assert usages.flow_nodes == []
       assert usages.sheet_avatars == []
       assert usages.sheet_banners == []
+      assert usages.scene_backgrounds == []
+      assert usages.scene_pin_icons == []
     end
 
     test "excludes soft-deleted nodes", %{project: project, user: user} do
@@ -294,8 +356,9 @@ defmodule Storyarn.AssetsTest do
         })
 
       # Soft-delete the node
-      Storyarn.Flows.FlowNode.soft_delete_changeset(node)
-      |> Storyarn.Repo.update!()
+      node
+      |> FlowNode.soft_delete_changeset()
+      |> Repo.update!()
 
       usages = Assets.get_asset_usages(project.id, audio.id)
 
@@ -310,8 +373,9 @@ defmodule Storyarn.AssetsTest do
       {:ok, _} = Storyarn.Sheets.add_avatar(sheet, image.id, %{is_default: true})
 
       # Soft-delete the sheet via raw changeset
-      Ecto.Changeset.change(sheet, deleted_at: DateTime.utc_now() |> DateTime.truncate(:second))
-      |> Storyarn.Repo.update!()
+      sheet
+      |> Ecto.Changeset.change(deleted_at: DateTime.truncate(DateTime.utc_now(), :second))
+      |> Repo.update!()
 
       usages = Assets.get_asset_usages(project.id, image.id)
 
@@ -585,7 +649,7 @@ defmodule Storyarn.AssetsTest do
     end
 
     @tag skip:
-           unless(Storyarn.Assets.image_processor_available?(),
+           if(!Assets.image_processor_available?(),
              do: "Image processor not available"
            )
     test "image_processor_get_dimensions/1 with valid image" do
@@ -597,7 +661,7 @@ defmodule Storyarn.AssetsTest do
     end
 
     @tag skip:
-           unless(Storyarn.Assets.image_processor_available?(),
+           if(!Assets.image_processor_available?(),
              do: "Image processor not available"
            )
     test "image_processor_get_dimensions/1 with nonexistent file" do
@@ -621,7 +685,7 @@ defmodule Storyarn.AssetsTest do
       tmp_path = Path.join(tmp_dir, "test_upload_#{Ecto.UUID.generate()}.txt")
       File.write!(tmp_path, "test file content")
 
-      entry = %Phoenix.LiveView.UploadEntry{
+      entry = %UploadEntry{
         client_name: "my_document.pdf",
         client_type: "application/pdf",
         client_size: 17
@@ -653,7 +717,7 @@ defmodule Storyarn.AssetsTest do
       if Assets.image_processor_available?() and File.exists?(image_path) do
         %{size: file_size} = File.stat!(image_path)
 
-        entry = %Phoenix.LiveView.UploadEntry{
+        entry = %UploadEntry{
           client_name: "quadrant_map.png",
           client_type: "image/png",
           client_size: file_size
@@ -682,7 +746,7 @@ defmodule Storyarn.AssetsTest do
       tmp_path = Path.join(tmp_dir, "test_audio_#{Ecto.UUID.generate()}.mp3")
       File.write!(tmp_path, "fake audio content")
 
-      entry = %Phoenix.LiveView.UploadEntry{
+      entry = %UploadEntry{
         client_name: "test_audio.mp3",
         client_type: "audio/mpeg",
         client_size: 18
@@ -707,7 +771,7 @@ defmodule Storyarn.AssetsTest do
       File.write!(tmp_path, "test content for cleanup")
 
       # First, create an asset to get a key collision
-      first_entry = %Phoenix.LiveView.UploadEntry{
+      first_entry = %UploadEntry{
         client_name: "collision_test.pdf",
         client_type: "application/pdf",
         client_size: 23
@@ -718,7 +782,7 @@ defmodule Storyarn.AssetsTest do
       # Now try to create a second asset with the same key - we can't easily force
       # a key collision due to UUID generation, but we can test by creating an asset
       # with an invalid content_type that will fail changeset validation
-      bad_entry = %Phoenix.LiveView.UploadEntry{
+      bad_entry = %UploadEntry{
         client_name: "bad_type.xyz",
         client_type: "application/x-malware",
         client_size: 23
@@ -1043,7 +1107,7 @@ defmodule Storyarn.AssetsTest do
       storage_limit = 250 * 1024 * 1024
 
       # Insert an asset that fills the entire storage limit
-      %Storyarn.Assets.Asset{}
+      %Asset{}
       |> Ecto.Changeset.change(%{
         filename: "huge_file.zip",
         content_type: "application/zip",
@@ -1053,13 +1117,13 @@ defmodule Storyarn.AssetsTest do
         project_id: project.id,
         uploaded_by_id: user.id
       })
-      |> Storyarn.Repo.insert!()
+      |> Repo.insert!()
 
       # Create a temp file for the upload attempt
       tmp_path = Path.join(System.tmp_dir!(), "quota_test_#{Ecto.UUID.generate()}.txt")
       File.write!(tmp_path, "small content")
 
-      entry = %Phoenix.LiveView.UploadEntry{
+      entry = %UploadEntry{
         client_name: "new_file.pdf",
         client_type: "application/pdf",
         client_size: 1024
@@ -1077,7 +1141,7 @@ defmodule Storyarn.AssetsTest do
       tmp_path = Path.join(System.tmp_dir!(), "quota_ok_#{Ecto.UUID.generate()}.txt")
       File.write!(tmp_path, "small content")
 
-      entry = %Phoenix.LiveView.UploadEntry{
+      entry = %UploadEntry{
         client_name: "small_file.pdf",
         client_type: "application/pdf",
         client_size: 13
@@ -1114,13 +1178,13 @@ defmodule Storyarn.AssetsTest do
       File.write!(tmp_path_a, content)
       File.write!(tmp_path_b, content)
 
-      entry_a = %Phoenix.LiveView.UploadEntry{
+      entry_a = %UploadEntry{
         client_name: "file_a.pdf",
         client_type: "application/pdf",
         client_size: byte_size(content)
       }
 
-      entry_b = %Phoenix.LiveView.UploadEntry{
+      entry_b = %UploadEntry{
         client_name: "file_b.pdf",
         client_type: "application/pdf",
         client_size: byte_size(content)
@@ -1131,7 +1195,7 @@ defmodule Storyarn.AssetsTest do
         assert {:ok, asset_b} = Assets.upload_and_create_asset(tmp_path_b, entry_b, project, user)
 
         assert asset_a.blob_hash == asset_b.blob_hash
-        assert asset_a.blob_hash == Storyarn.Assets.BlobStore.compute_hash(content)
+        assert asset_a.blob_hash == BlobStore.compute_hash(content)
 
         # Different filenames, different keys
         refute asset_a.key == asset_b.key
@@ -1158,13 +1222,13 @@ defmodule Storyarn.AssetsTest do
       File.write!(tmp_path_x, content_x)
       File.write!(tmp_path_y, content_y)
 
-      entry_x = %Phoenix.LiveView.UploadEntry{
+      entry_x = %UploadEntry{
         client_name: "file_x.pdf",
         client_type: "application/pdf",
         client_size: byte_size(content_x)
       }
 
-      entry_y = %Phoenix.LiveView.UploadEntry{
+      entry_y = %UploadEntry{
         client_name: "file_y.pdf",
         client_type: "application/pdf",
         client_size: byte_size(content_y)
@@ -1175,8 +1239,8 @@ defmodule Storyarn.AssetsTest do
         assert {:ok, asset_y} = Assets.upload_and_create_asset(tmp_path_y, entry_y, project, user)
 
         refute asset_x.blob_hash == asset_y.blob_hash
-        assert asset_x.blob_hash == Storyarn.Assets.BlobStore.compute_hash(content_x)
-        assert asset_y.blob_hash == Storyarn.Assets.BlobStore.compute_hash(content_y)
+        assert asset_x.blob_hash == BlobStore.compute_hash(content_x)
+        assert asset_y.blob_hash == BlobStore.compute_hash(content_y)
 
         # Cleanup
         Assets.storage_delete(asset_x.key)

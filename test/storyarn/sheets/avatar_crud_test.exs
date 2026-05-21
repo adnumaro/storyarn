@@ -1,12 +1,12 @@
 defmodule Storyarn.Sheets.AvatarCrudTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Sheets
-
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Sheets
 
   setup do
     user = user_fixture()
@@ -55,7 +55,11 @@ defmodule Storyarn.Sheets.AvatarCrudTest do
       assert {:error, _changeset} = Sheets.add_avatar(sheet, asset1.id)
     end
 
-    test "allows same asset on different sheets", %{project: project, sheet: sheet, asset1: asset1} do
+    test "allows same asset on different sheets", %{
+      project: project,
+      sheet: sheet,
+      asset1: asset1
+    } do
       other_sheet = sheet_fixture(project, %{name: "Other"})
       {:ok, _} = Sheets.add_avatar(sheet, asset1.id)
       assert {:ok, _} = Sheets.add_avatar(other_sheet, asset1.id)
@@ -139,7 +143,7 @@ defmodule Storyarn.Sheets.AvatarCrudTest do
     end
   end
 
-  describe "remove_avatar/1" do
+  describe "remove_avatar/2" do
     test "removes default avatar and promotes next", %{
       sheet: sheet,
       asset1: asset1,
@@ -148,7 +152,7 @@ defmodule Storyarn.Sheets.AvatarCrudTest do
       {:ok, first} = Sheets.add_avatar(sheet, asset1.id)
       {:ok, _} = Sheets.add_avatar(sheet, asset2.id)
 
-      assert {:ok, _} = Sheets.remove_avatar(first.id)
+      assert {:ok, _} = Sheets.remove_avatar(sheet.id, first.id)
 
       remaining = Sheets.list_avatars(sheet.id)
       assert length(remaining) == 1
@@ -163,7 +167,7 @@ defmodule Storyarn.Sheets.AvatarCrudTest do
       {:ok, first} = Sheets.add_avatar(sheet, asset1.id)
       {:ok, second} = Sheets.add_avatar(sheet, asset2.id)
 
-      assert {:ok, _} = Sheets.remove_avatar(second.id)
+      assert {:ok, _} = Sheets.remove_avatar(sheet.id, second.id)
 
       remaining = Sheets.list_avatars(sheet.id)
       assert length(remaining) == 1
@@ -174,13 +178,13 @@ defmodule Storyarn.Sheets.AvatarCrudTest do
     test "removes last avatar gracefully", %{sheet: sheet, asset1: asset1} do
       {:ok, avatar} = Sheets.add_avatar(sheet, asset1.id)
 
-      assert {:ok, _} = Sheets.remove_avatar(avatar.id)
+      assert {:ok, _} = Sheets.remove_avatar(sheet.id, avatar.id)
       assert Sheets.list_avatars(sheet.id) == []
       assert Sheets.get_default_avatar(sheet.id) == nil
     end
 
-    test "returns error for non-existent id" do
-      assert {:error, :not_found} = Sheets.remove_avatar(0)
+    test "returns error for non-existent id", %{sheet: sheet} do
+      assert {:error, :not_found} = Sheets.remove_avatar(sheet.id, 0)
     end
   end
 
@@ -188,7 +192,9 @@ defmodule Storyarn.Sheets.AvatarCrudTest do
     test "updates name with variablify and notes", %{sheet: sheet, asset1: asset1} do
       {:ok, avatar} = Sheets.add_avatar(sheet, asset1.id)
 
-      {:ok, updated} = Sheets.update_avatar(avatar, %{name: "Angry Face", notes: "Used in combat"})
+      {:ok, updated} =
+        Sheets.update_avatar(avatar, %{name: "Angry Face", notes: "Used in combat"})
+
       assert updated.name == "angry_face"
       assert updated.notes == "Used in combat"
     end
@@ -230,14 +236,15 @@ defmodule Storyarn.Sheets.AvatarCrudTest do
       result = Sheets.batch_load_avatars_by_sheet(project.id)
       assert Map.has_key?(result, sheet.id)
       assert length(result[sheet.id]) == 1
-      assert hd(result[sheet.id]).asset != nil
+      assert hd(result[sheet.id]).asset
     end
 
     test "excludes soft-deleted sheets", %{project: project, asset1: asset1} do
       deleted_sheet = sheet_fixture(project, %{name: "Deleted"})
       {:ok, _} = Sheets.add_avatar(deleted_sheet, asset1.id)
 
-      Ecto.Changeset.change(deleted_sheet, deleted_at: Storyarn.Shared.TimeHelpers.now())
+      deleted_sheet
+      |> Ecto.Changeset.change(deleted_at: Storyarn.Shared.TimeHelpers.now())
       |> Storyarn.Repo.update!()
 
       result = Sheets.batch_load_avatars_by_sheet(project.id)

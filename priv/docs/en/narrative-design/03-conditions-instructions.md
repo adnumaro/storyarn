@@ -1,9 +1,10 @@
 %{
-  title: "Conditions & Instructions",
-  category_label: "Narrative Design",
-  order: 3,
-  description: "Branch your narrative with conditions and modify game state with instructions."
+title: "Conditions & Instructions",
+category_label: "Narrative Design",
+order: 3,
+description: "Branch your narrative with conditions and modify game state with instructions."
 }
+
 ---
 
 Conditions read your variables to make decisions. Instructions write to your variables to change game state. Together, they are how flows interact with your world data -- the bridge between narrative and game logic.
@@ -31,14 +32,14 @@ The {accent}**Condition Builder**{/accent} is a fully visual interface -- no cod
 
 Different variable types support different comparison operators:
 
-| Variable type | Available operators |
-|--------------|-------------------|
-| **Number** | equals, not equals, greater than, greater than or equal, less than, less than or equal, is not set |
-| **Text / Rich text** | equals, not equals, contains, starts with, ends with, is empty, is not set |
-| **Boolean** | is true, is false, is not set |
-| **Select** | equals, not equals, is not set |
-| **Multi-select** | contains, does not contain, is empty, is not set |
-| **Date** | equals, before, after, is not set |
+| Variable type        | Available operators                                                                                |
+| -------------------- | -------------------------------------------------------------------------------------------------- |
+| **Number**           | equals, not equals, greater than, greater than or equal, less than, less than or equal, is not set |
+| **Text / Rich text** | equals, not equals, contains, starts with, ends with, is empty, is not set                         |
+| **Boolean**          | is true, is false, is not set                                                                      |
+| **Select**           | equals, not equals, is not set                                                                     |
+| **Multi-select**     | contains, does not contain, is empty, is not set                                                   |
+| **Date**             | equals, before, after, is not set                                                                  |
 
 ---
 
@@ -46,10 +47,10 @@ Different variable types support different comparison operators:
 
 Combine multiple rules with **All (AND)** or **Any (OR)** logic:
 
-> *"Match **all** of the rules: Jaime has more than 50 health AND has the key"*
+> _"Match **all** of the rules: Jaime has more than 50 health AND has the key"_
 > Both must be true for the condition to pass.
 
-> *"Match **any** of the rules: Player is a Mage OR has the spell scroll"*
+> _"Match **any** of the rules: Player is a Mage OR has the spell scroll"_
 > Either one is enough.
 
 You can also group rules into **blocks** for more complex nested logic. Select multiple rules and click **Group selected** to combine them into a sub-group with its own AND/OR toggle.
@@ -88,15 +89,15 @@ Instruction nodes **modify variables** when the flow passes through them. Double
 
 Each instruction is a **natural language sentence** that reads like a command:
 
-| Operation | Sentence | Effect | Variable types |
-|-----------|----------|--------|---------------|
-| **Set** | Set `mc.jaime` . `health` to `75` | Assigns a value | All types |
-| **Add** | Add `100` to `mc.jaime` . `gold` | Adds to current value | Number |
-| **Subtract** | Subtract `25` from `mc.jaime` . `health` | Subtracts from current value | Number |
-| **Set true** | Set `quest.door` . `unlocked` to true | Sets boolean to true | Boolean |
-| **Set false** | Set `quest.door` . `unlocked` to false | Sets boolean to false | Boolean |
-| **Toggle** | Toggle `quest.door` . `unlocked` | Flips boolean value | Boolean |
-| **Clear** | Clear `mc.jaime` . `notes` | Removes the value | Text, Rich text |
+| Operation     | Sentence                                 | Effect                       | Variable types  |
+| ------------- | ---------------------------------------- | ---------------------------- | --------------- |
+| **Set**       | Set `mc.jaime` . `health` to `75`        | Assigns a value              | All types       |
+| **Add**       | Add `100` to `mc.jaime` . `gold`         | Adds to current value        | Number          |
+| **Subtract**  | Subtract `25` from `mc.jaime` . `health` | Subtracts from current value | Number          |
+| **Set true**  | Set `quest.door` . `unlocked` to true    | Sets boolean to true         | Boolean         |
+| **Set false** | Set `quest.door` . `unlocked` to false   | Sets boolean to false        | Boolean         |
+| **Toggle**    | Toggle `quest.door` . `unlocked`         | Flips boolean value          | Boolean         |
+| **Clear**     | Clear `mc.jaime` . `notes`               | Removes the value            | Text, Rich text |
 
 A single instruction node can contain **multiple assignments** that execute in order. Click **Add assignment** to create a new row.
 
@@ -111,7 +112,7 @@ A single instruction node can contain **multiple assignments** that execute in o
 
 By default, instruction values are **literal** -- you type a number or string directly. But you can switch any value slot to a **variable reference**, which reads the current value of another variable at execution time.
 
-> *Example: Set `mc.jaime` . `health` to `mc.jaime` . `max_health`*
+> _Example: Set `mc.jaime` . `health` to `mc.jaime` . `max_health`_
 > This copies the value of max_health into health.
 
 Click the toggle icon next to the value input to switch between literal value and variable reference modes.

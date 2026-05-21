@@ -23,10 +23,8 @@ defmodule StoryarnWeb.E2E.CollaborationTest do
   @session_options [
     store: :cookie,
     key: "_storyarn_key",
-    signing_salt:
-      Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_signing_salt]),
-    encryption_salt:
-      Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_encryption_salt])
+    signing_salt: Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_signing_salt]),
+    encryption_salt: Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_encryption_salt])
   ]
 
   # Authenticate by injecting a signed session cookie directly.
@@ -40,7 +38,7 @@ defmodule StoryarnWeb.E2E.CollaborationTest do
   describe "collaboration UI elements" do
     test "flow editor shows canvas with collaboration data attributes", %{conn: conn} do
       user = user_fixture()
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Collab Test Flow"})
 
       conn
@@ -53,7 +51,7 @@ defmodule StoryarnWeb.E2E.CollaborationTest do
 
     test "save indicator shows when editing node", %{conn: conn} do
       user = user_fixture()
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Save Test Flow"})
       _node = node_fixture(flow, %{type: "hub", data: %{"label" => "Test Hub"}})
 

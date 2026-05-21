@@ -17,7 +17,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
   import Phoenix.LiveView, only: [push_event: 3]
 
   alias Storyarn.Flows
-  alias StoryarnWeb.FlowLive.Components.NodeTypeHelpers
+  alias StoryarnWeb.FlowLive.Helpers.NodeDataHelpers
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
 
   # -- Type metadata --
@@ -62,8 +62,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
 
   def on_select(_node, socket), do: socket
 
-  @doc "Dialogue nodes open fullscreen editor on double-click."
-  def on_double_click(_node), do: :editor
+  @doc "Dialogue nodes open the dialogue panel on double-click."
+  def on_double_click(_node), do: :dialogue_panel
 
   def duplicate_data_cleanup(data) do
     data
@@ -150,10 +150,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
   end
 
   @doc "Updates response text."
-  def handle_update_response_text(
-        %{"response-id" => response_id, "node-id" => node_id, "value" => text},
-        socket
-      ) do
+  def handle_update_response_text(%{"response-id" => response_id, "node-id" => node_id, "value" => text}, socket) do
     update_response_field(socket, node_id, response_id, "text", text)
   end
 
@@ -199,13 +196,13 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
   end
 
   @doc """
-  Opens editor sidebar for a dialogue node.
+  Opens the dialogue panel for a dialogue node.
 
   Uses `selected_node` if it's already the correct node. Falls back to looking
   up the node by `params["id"]` — needed when `close_editor` was called between
   the last selection and this event (race condition via context menu / shortcut).
   """
-  def handle_open_screenplay(params, socket) do
+  def handle_open_dialogue_panel(params, socket) do
     node =
       cond do
         socket.assigns.selected_node &&
@@ -220,11 +217,20 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
       end
 
     if node && node.type == "dialogue" do
-      {:noreply,
-       socket
-       |> assign(:selected_node, node)
-       |> assign(:editing_mode, :editor)
-       |> push_event("center_on_node", %{id: node.id})}
+      socket =
+        socket
+        |> assign(:selected_node, node)
+        |> assign(:editing_mode, :dialogue_panel)
+        |> assign(
+          :dialogue_panel_data,
+          StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers.build_dialogue_panel_data(
+            socket,
+            node
+          )
+        )
+        |> push_event("center_on_node", %{id: node.id})
+
+      {:noreply, socket}
     else
       {:noreply, socket}
     end
@@ -289,8 +295,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
   end
 
   defp generate_technical_id(flow_slug, speaker_name, speaker_count) do
-    flow_part = NodeTypeHelpers.normalize_for_id(flow_slug || "")
-    speaker_part = NodeTypeHelpers.normalize_for_id(speaker_name || "")
+    flow_part = NodeDataHelpers.normalize_for_id(flow_slug || "")
+    speaker_part = NodeDataHelpers.normalize_for_id(speaker_name || "")
     flow_part = if flow_part == "", do: "dlg", else: flow_part
     speaker_part = if speaker_part == "", do: "narrator", else: speaker_part
     "#{flow_part}_#{speaker_part}_#{speaker_count}"
@@ -298,7 +304,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
 
   defp generate_localization_id do
     suffix =
-      :erlang.unique_integer([:positive])
+      [:positive]
+      |> :erlang.unique_integer()
       |> Integer.to_string(16)
       |> String.downcase()
       |> String.slice(0, 6)

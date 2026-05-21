@@ -6,11 +6,13 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
   Each node type is defined in its own module under `Nodes.{Type}.Node`.
 
   Consumers:
-  - `NodeTypeHelpers` delegates icon_name, label, default_data
+  - `NodeDataHelpers` delegates default_data
   - `FormHelpers` delegates extract_form_data
   - `NodeHelpers` delegates duplicate_data_cleanup
   - `NodeEventHandlers` delegates on_select, on_double_click
   """
+
+  alias Phoenix.LiveView.Socket
 
   @node_suffixes %{
     "annotation" => "Annotation",
@@ -21,11 +23,10 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
     "condition" => "Condition",
     "instruction" => "Instruction",
     "jump" => "Jump",
-    "subflow" => "Subflow",
-    "slug_line" => "SlugLine"
+    "subflow" => "Subflow"
   }
 
-  @types Map.keys(@node_suffixes) |> Enum.sort()
+  @types @node_suffixes |> Map.keys() |> Enum.sort()
 
   @doc "All known node types."
   @spec types() :: [String.t()]
@@ -90,7 +91,8 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
   end
 
   @doc "Returns the editing mode for double-click on a node type."
-  @spec on_double_click(String.t(), map()) :: :toolbar | :editor | :builder | {:navigate, any()}
+  @spec on_double_click(String.t(), map()) ::
+          :toolbar | :dialogue_panel | :builder | {:navigate, any()}
   def on_double_click(type, node) do
     case node_module(type) do
       nil -> :toolbar
@@ -99,7 +101,7 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
   end
 
   @doc "Performs extra work when a node is selected (e.g., hub loads referencing jumps)."
-  @spec on_select(String.t(), map(), Phoenix.LiveView.Socket.t()) :: Phoenix.LiveView.Socket.t()
+  @spec on_select(String.t(), map(), Socket.t()) :: Socket.t()
   def on_select(type, node, socket) do
     case node_module(type) do
       nil -> socket

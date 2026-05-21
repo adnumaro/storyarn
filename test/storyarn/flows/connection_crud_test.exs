@@ -1,11 +1,11 @@
 defmodule Storyarn.Flows.ConnectionCrudTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Flows
-
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
+
+  alias Storyarn.Flows
 
   # ===========================================================================
   # Setup helpers
@@ -19,11 +19,11 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
   end
 
   defp get_entry_node(flow) do
-    Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
+    flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
   end
 
   defp get_exit_node(flow) do
-    Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "exit"))
+    flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "exit"))
   end
 
   # ===========================================================================
@@ -92,8 +92,8 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
       d1 = node_fixture(flow, %{type: "dialogue"})
       d2 = node_fixture(flow, %{type: "dialogue"})
 
-      conn1 = connection_fixture(flow, entry, d1, %{source_pin: "output"})
-      conn2 = connection_fixture(flow, d1, d2, %{source_pin: "output"})
+      conn1 = connection_fixture(flow, entry, d1, %{source_pin: "default"})
+      conn2 = connection_fixture(flow, d1, d2, %{source_pin: "default"})
 
       connections = Flows.list_connections(flow.id)
       ids = Enum.map(connections, & &1.id)
@@ -214,13 +214,13 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
 
       {:ok, conn} =
         Flows.create_connection(flow, entry, dialogue, %{
-          source_pin: "output",
+          source_pin: "default",
           target_pin: "input"
         })
 
       assert conn.source_node_id == entry.id
       assert conn.target_node_id == dialogue.id
-      assert conn.source_pin == "output"
+      assert conn.source_pin == "default"
       assert conn.target_pin == "input"
       assert conn.flow_id == flow.id
     end
@@ -232,7 +232,7 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
 
       {:ok, conn} =
         Flows.create_connection(flow, entry, dialogue, %{
-          source_pin: "output",
+          source_pin: "default",
           target_pin: "input",
           label: "True"
         })
@@ -257,7 +257,7 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
       dialogue = node_fixture(flow, %{type: "dialogue"})
 
       {:error, changeset} =
-        Flows.create_connection(flow, entry, dialogue, %{source_pin: "output"})
+        Flows.create_connection(flow, entry, dialogue, %{source_pin: "default"})
 
       assert errors_on(changeset).target_pin
     end
@@ -268,7 +268,7 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
 
       {:error, changeset} =
         Flows.create_connection(flow, dialogue, dialogue, %{
-          source_pin: "output",
+          source_pin: "default",
           target_pin: "input"
         })
 
@@ -282,13 +282,13 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
 
       {:ok, _conn} =
         Flows.create_connection(flow, entry, dialogue, %{
-          source_pin: "output",
+          source_pin: "default",
           target_pin: "input"
         })
 
       {:error, changeset} =
         Flows.create_connection(flow, entry, dialogue, %{
-          source_pin: "output",
+          source_pin: "default",
           target_pin: "input"
         })
 
@@ -330,7 +330,7 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
         Flows.create_connection_with_attrs(flow, %{
           source_node_id: entry.id,
           target_node_id: dialogue.id,
-          source_pin: "output",
+          source_pin: "default",
           target_pin: "input"
         })
 
@@ -347,7 +347,7 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
         Flows.create_connection_with_attrs(flow, %{
           source_node_id: exit_node.id,
           target_node_id: dialogue.id,
-          source_pin: "output",
+          source_pin: "default",
           target_pin: "input"
         })
 
@@ -363,7 +363,7 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
         Flows.create_connection_with_attrs(flow, %{
           source_node_id: dialogue.id,
           target_node_id: entry.id,
-          source_pin: "output",
+          source_pin: "default",
           target_pin: "input"
         })
 
@@ -379,7 +379,7 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
         Flows.create_connection_with_attrs(flow, %{
           source_node_id: jump.id,
           target_node_id: dialogue.id,
-          source_pin: "output",
+          source_pin: "default",
           target_pin: "input"
         })
 
@@ -394,7 +394,7 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
         Flows.create_connection_with_attrs(flow, %{
           source_node_id: 0,
           target_node_id: dialogue.id,
-          source_pin: "output",
+          source_pin: "default",
           target_pin: "input"
         })
 
@@ -409,7 +409,7 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
         Flows.create_connection_with_attrs(flow, %{
           source_node_id: entry.id,
           target_node_id: 0,
-          source_pin: "output",
+          source_pin: "default",
           target_pin: "input"
         })
 
@@ -425,7 +425,7 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
         Flows.create_connection_with_attrs(flow, %{
           source_node_id: d1.id,
           target_node_id: d2.id,
-          source_pin: "output",
+          source_pin: "default",
           target_pin: "input"
         })
 
@@ -442,7 +442,7 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
         Flows.create_connection_with_attrs(flow, %{
           "source_node_id" => entry.id,
           "target_node_id" => dialogue.id,
-          "source_pin" => "output",
+          "source_pin" => "default",
           "target_pin" => "input"
         })
 
@@ -595,7 +595,7 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
       %{flow: flow} = create_project_and_flow()
       d1 = node_fixture(flow, %{type: "dialogue"})
       d2 = node_fixture(flow, %{type: "dialogue"})
-      _conn = connection_fixture(flow, d1, d2, %{source_pin: "output", target_pin: "input"})
+      _conn = connection_fixture(flow, d1, d2, %{source_pin: "default", target_pin: "input"})
 
       {count, _} =
         Flows.delete_connection_by_pins(flow.id, d1.id, "nonexistent", d2.id, "input")
@@ -656,7 +656,7 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
       d2 = node_fixture(flow, %{type: "dialogue"})
 
       _conn1 = connection_fixture(flow, entry, d1)
-      _conn2 = connection_fixture(flow, entry, d2, %{source_pin: "output", target_pin: "input"})
+      _conn2 = connection_fixture(flow, entry, d2, %{source_pin: "default", target_pin: "input"})
 
       outgoing = Flows.get_outgoing_connections(entry.id)
       assert length(outgoing) == 2

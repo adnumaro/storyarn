@@ -1,14 +1,15 @@
 defmodule Storyarn.Sheets.SheetQueriesTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Sheets
-  alias Storyarn.Sheets.SheetQueries
-
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Sheets
+  alias Storyarn.Sheets.Sheet
+  alias Storyarn.Sheets.SheetQueries
 
   # Helper to create a standard project setup
   defp setup_project(_context \\ %{}) do
@@ -433,16 +434,16 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
       assert length(results) == 1
     end
 
-    test "returns at most 10 results" do
+    test "returns at most the default limit of 20 results" do
       %{project: project} = setup_project()
 
-      for i <- 1..15 do
+      for i <- 1..25 do
         sheet_fixture(project, %{name: "Match Sheet #{i}"})
       end
 
       results = SheetQueries.search_sheets(project.id, "Match")
 
-      assert length(results) == 10
+      assert length(results) == 20
     end
 
     test "case-insensitive search" do
@@ -1014,12 +1015,12 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
 
       # Set explicit timestamps
       Repo.update_all(
-        from(s in Storyarn.Sheets.Sheet, where: s.id == ^sheet1.id),
+        from(s in Sheet, where: s.id == ^sheet1.id),
         set: [deleted_at: ~U[2024-01-01 10:00:00Z]]
       )
 
       Repo.update_all(
-        from(s in Storyarn.Sheets.Sheet, where: s.id == ^sheet2.id),
+        from(s in Sheet, where: s.id == ^sheet2.id),
         set: [deleted_at: ~U[2024-01-01 11:00:00Z]]
       )
 
@@ -1050,7 +1051,7 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
       result = SheetQueries.get_trashed_sheet(project.id, sheet.id)
 
       assert result.id == sheet.id
-      assert result.deleted_at != nil
+      assert result.deleted_at
     end
 
     test "returns nil for non-deleted sheet" do
@@ -1374,7 +1375,7 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
 
       SheetQueries.soft_delete_by_shortcut(project.id, "delete")
 
-      assert SheetQueries.get_sheet_by_shortcut(project.id, "keep") != nil
+      assert SheetQueries.get_sheet_by_shortcut(project.id, "keep")
       assert SheetQueries.get_sheet_by_shortcut(project.id, "delete") == nil
     end
 
@@ -1551,6 +1552,8 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
     end
 
     test "excludes sheets without shortcuts" do
+      import Ecto.Query
+
       %{project: project} = setup_project()
 
       # Sheet with shortcut
@@ -1559,10 +1562,8 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
       # so create one and then clear its shortcut
       sheet = sheet_fixture(project, %{name: "No Shortcut"})
 
-      import Ecto.Query
-
       Storyarn.Repo.update_all(
-        from(s in Storyarn.Sheets.Sheet, where: s.id == ^sheet.id),
+        from(s in Sheet, where: s.id == ^sheet.id),
         set: [shortcut: nil]
       )
 

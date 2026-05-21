@@ -3,51 +3,36 @@ defmodule StoryarnWeb.SettingsLive.ConnectionsTest do
 
   import Phoenix.LiveViewTest
 
+  defp get_connections_vue(view) do
+    LiveVue.Test.get_vue(view, name: "live/account/settings/AccountSettingsConnections")
+  end
+
   describe "Connections LiveView" do
     setup :register_and_log_in_user
 
-    test "renders page title", %{conn: conn} do
-      {:ok, _view, html} = live(conn, ~p"/users/settings/connections")
-      assert html =~ "Connected Accounts"
+    test "renders Connections Vue component", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/users/settings/connections")
+      vue = get_connections_vue(view)
+      assert vue.component == "live/account/settings/AccountSettingsConnections"
     end
 
-    test "renders subtitle", %{conn: conn} do
-      {:ok, _view, html} = live(conn, ~p"/users/settings/connections")
-      assert html =~ "Link your social accounts"
+    test "passes identities prop as a list", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/users/settings/connections")
+      vue = get_connections_vue(view)
+      assert is_list(vue.props["identities"])
     end
 
-    test "renders all three providers", %{conn: conn} do
-      {:ok, _view, html} = live(conn, ~p"/users/settings/connections")
-      assert html =~ "GitHub"
-      assert html =~ "Google"
-      assert html =~ "Discord"
+    test "passes has-password prop", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/users/settings/connections")
+      vue = get_connections_vue(view)
+      # user_fixture creates user with password
+      assert vue.props["has-password"] == true
     end
 
-    test "shows Not connected for providers without identity", %{conn: conn} do
-      {:ok, _view, html} = live(conn, ~p"/users/settings/connections")
-      assert html =~ "Not connected"
-    end
-
-    test "shows Connect button for unlinked providers", %{conn: conn} do
-      {:ok, _view, html} = live(conn, ~p"/users/settings/connections")
-      assert html =~ "Connect"
-      assert html =~ "/auth/github/link"
-      assert html =~ "/auth/google/link"
-      assert html =~ "/auth/discord/link"
-    end
-
-    test "renders why connect section", %{conn: conn} do
-      {:ok, _view, html} = live(conn, ~p"/users/settings/connections")
-      assert html =~ "Why connect accounts?"
-      assert html =~ "Sign in faster"
-      assert html =~ "forget your password"
-      assert html =~ "multiple authentication"
-    end
-
-    test "sets correct current path assign", %{conn: conn} do
-      {:ok, _view, html} = live(conn, ~p"/users/settings/connections")
-      # The settings layout highlights the current nav item
-      assert html =~ "connections"
+    test "starts with empty identities for fresh user", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/users/settings/connections")
+      vue = get_connections_vue(view)
+      assert vue.props["identities"] == []
     end
   end
 end

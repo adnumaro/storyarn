@@ -15,8 +15,10 @@ defmodule Storyarn.Localization.LocalizedText do
   When source text changes on a `final` entry, status downgrades to `review`.
   """
   use Ecto.Schema
+
   import Ecto.Changeset
 
+  alias Ecto.Association.NotLoaded
   alias Storyarn.Accounts.User
   alias Storyarn.Assets.Asset
   alias Storyarn.Projects.Project
@@ -29,7 +31,7 @@ defmodule Storyarn.Localization.LocalizedText do
   @type t :: %__MODULE__{
           id: integer() | nil,
           project_id: integer() | nil,
-          project: Project.t() | Ecto.Association.NotLoaded.t() | nil,
+          project: Project.t() | NotLoaded.t() | nil,
           source_type: String.t() | nil,
           source_id: integer() | nil,
           source_field: String.t() | nil,
@@ -40,19 +42,19 @@ defmodule Storyarn.Localization.LocalizedText do
           status: String.t(),
           vo_status: String.t(),
           vo_asset_id: integer() | nil,
-          vo_asset: Asset.t() | Ecto.Association.NotLoaded.t() | nil,
+          vo_asset: Asset.t() | NotLoaded.t() | nil,
           translator_notes: String.t() | nil,
           reviewer_notes: String.t() | nil,
           speaker_sheet_id: integer() | nil,
-          speaker_sheet: Sheet.t() | Ecto.Association.NotLoaded.t() | nil,
+          speaker_sheet: Sheet.t() | NotLoaded.t() | nil,
           word_count: integer() | nil,
           machine_translated: boolean(),
           last_translated_at: DateTime.t() | nil,
           last_reviewed_at: DateTime.t() | nil,
           translated_by_id: integer() | nil,
-          translated_by: User.t() | Ecto.Association.NotLoaded.t() | nil,
+          translated_by: User.t() | NotLoaded.t() | nil,
           reviewed_by_id: integer() | nil,
-          reviewed_by: User.t() | Ecto.Association.NotLoaded.t() | nil,
+          reviewed_by: User.t() | NotLoaded.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -148,7 +150,6 @@ defmodule Storyarn.Localization.LocalizedText do
   Only updates source_text, source_text_hash, word_count, and possibly status.
   """
   def source_update_changeset(text, attrs) do
-    text
-    |> cast(attrs, [:source_text, :source_text_hash, :word_count, :status, :speaker_sheet_id])
+    cast(text, attrs, [:source_text, :source_text_hash, :word_count, :status, :speaker_sheet_id])
   end
 end

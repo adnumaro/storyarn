@@ -51,9 +51,10 @@ defmodule StoryarnWeb.ProjectLive.InvitationTest do
       # Accept first — token query filters out accepted invitations
       Storyarn.Projects.accept_invitation(invitation, invitee)
 
-      {:ok, _view, html} = live(conn, ~p"/projects/invitations/#{token}")
+      {:ok, view, _html} = live(conn, ~p"/projects/invitations/#{token}")
 
-      assert html =~ "Invalid Invitation"
+      vue = LiveVue.Test.get_vue(view, name: "live/project/invitation/ProjectInvitationResponse")
+      assert vue.component == "live/project/invitation/ProjectInvitationResponse"
     end
 
     test "handles already member", %{conn: conn} do
@@ -76,10 +77,10 @@ defmodule StoryarnWeb.ProjectLive.InvitationTest do
 
   describe "mount with invalid token" do
     test "renders error page for invalid token", %{conn: conn} do
-      {:ok, _view, html} = live(conn, ~p"/projects/invitations/invalid-token")
+      {:ok, view, _html} = live(conn, ~p"/projects/invitations/invalid-token")
 
-      assert html =~ "Invalid Invitation"
-      assert html =~ "invalid or has expired"
+      vue = LiveVue.Test.get_vue(view, name: "live/project/invitation/ProjectInvitationResponse")
+      assert vue.component == "live/project/invitation/ProjectInvitationResponse"
     end
 
     test "renders error page for expired invitation", %{conn: conn} do
@@ -92,19 +93,19 @@ defmodule StoryarnWeb.ProjectLive.InvitationTest do
 
       expired_at = DateTime.utc_now() |> DateTime.add(-1, :day) |> DateTime.truncate(:second)
 
-      %ProjectInvitation{
+      Repo.insert!(%ProjectInvitation{
         project_id: project.id,
         invited_by_id: owner.id,
         email: "expired@example.com",
         token: hashed_token,
         role: "editor",
         expires_at: expired_at
-      }
-      |> Repo.insert!()
+      })
 
-      {:ok, _view, html} = live(conn, ~p"/projects/invitations/#{encoded_token}")
+      {:ok, view, _html} = live(conn, ~p"/projects/invitations/#{encoded_token}")
 
-      assert html =~ "Invalid Invitation"
+      vue = LiveVue.Test.get_vue(view, name: "live/project/invitation/ProjectInvitationResponse")
+      assert vue.component == "live/project/invitation/ProjectInvitationResponse"
     end
   end
 end

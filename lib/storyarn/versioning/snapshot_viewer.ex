@@ -5,6 +5,8 @@ defmodule Storyarn.Versioning.SnapshotViewer do
   any database queries.
   """
 
+  alias Storyarn.Flows.HubColors
+
   @doc """
   Serializes a flow snapshot into the shape expected by the FlowCanvas JS hook.
   Uses negative IDs to avoid collisions with live data.
@@ -71,9 +73,7 @@ defmodule Storyarn.Versioning.SnapshotViewer do
   # ========== Flow Helpers ==========
 
   defp serialize_flow_node({node, idx}, id_map) do
-    data =
-      (node["data"] || %{})
-      |> maybe_add_hub_color()
+    data = maybe_add_hub_color(node["data"] || %{})
 
     %{
       id: Map.fetch!(id_map, idx),
@@ -95,7 +95,7 @@ defmodule Storyarn.Versioning.SnapshotViewer do
   end
 
   defp maybe_add_hub_color(%{"color" => color} = data) when is_binary(color) do
-    hex = Storyarn.Flows.HubColors.to_hex(color, Storyarn.Flows.HubColors.default_hex())
+    hex = HubColors.to_hex(color, HubColors.default_hex())
     Map.put(data, "color_hex", hex)
   end
 
@@ -157,8 +157,7 @@ defmodule Storyarn.Versioning.SnapshotViewer do
       fog_opacity: layer["fog_opacity"] || 0.85
     }
 
-    {{serialized_layer, serialized_pins, serialized_zones, serialized_annotations},
-     {updated_pin_map, counter}}
+    {{serialized_layer, serialized_pins, serialized_zones, serialized_annotations}, {updated_pin_map, counter}}
   end
 
   defp serialize_pin(pin, pin_id, layer_id, asset_metadata) do

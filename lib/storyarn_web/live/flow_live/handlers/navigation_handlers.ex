@@ -6,15 +6,16 @@ defmodule StoryarnWeb.FlowLive.Handlers.NavigationHandlers do
   canvas node-level navigation events.
   """
 
-  import Phoenix.LiveView, only: [push_patch: 2, put_flash: 3]
-
   use StoryarnWeb, :verified_routes
   use Gettext, backend: Storyarn.Gettext
 
+  import Phoenix.LiveView, only: [push_patch: 2, put_flash: 3]
+
+  alias Phoenix.LiveView.Socket
   alias Storyarn.Flows
 
-  @spec handle_navigate_to_flow(String.t(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_navigate_to_flow(String.t(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_navigate_to_flow(flow_id_str, socket) do
     case Integer.parse(flow_id_str) do
       {flow_id, ""} ->

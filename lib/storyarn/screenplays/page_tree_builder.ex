@@ -7,7 +7,8 @@ defmodule Storyarn.Screenplays.PageTreeBuilder do
   Used by `FlowSync.sync_to_flow/1` for multi-page screenplay sync.
   """
 
-  alias Storyarn.Screenplays.{ElementGrouping, NodeMapping}
+  alias Storyarn.Screenplays.ElementGrouping
+  alias Storyarn.Screenplays.NodeMapping
 
   @doc """
   Builds a page tree from preloaded screenplay data.
@@ -121,7 +122,9 @@ defmodule Storyarn.Screenplays.PageTreeBuilder do
           flatten_tree(branch.child, cur)
 
         branch_conn =
-          if child_all != [] do
+          if child_all == [] do
+            []
+          else
             [
               %{
                 source_index: offset + branch.source_node_index,
@@ -130,8 +133,6 @@ defmodule Storyarn.Screenplays.PageTreeBuilder do
                 target_pin: "input"
               }
             ]
-          else
-            []
           end
 
         {ca ++ child_all, bc ++ branch_conn ++ child_conns, ci ++ child_screenplay_ids, child_end}

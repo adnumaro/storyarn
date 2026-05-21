@@ -38,8 +38,10 @@ defmodule Storyarn.Screenplays.ScreenplayElement do
   Dialogue groups are computed from adjacency — no stored group_id (Edge Case F).
   """
   use Ecto.Schema
+
   import Ecto.Changeset
 
+  alias Ecto.Association.NotLoaded
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Screenplays.Screenplay
 
@@ -68,9 +70,9 @@ defmodule Storyarn.Screenplays.ScreenplayElement do
           depth: integer(),
           branch: String.t() | nil,
           screenplay_id: integer() | nil,
-          screenplay: Screenplay.t() | Ecto.Association.NotLoaded.t() | nil,
+          screenplay: Screenplay.t() | NotLoaded.t() | nil,
           linked_node_id: integer() | nil,
-          linked_node: FlowNode.t() | Ecto.Association.NotLoaded.t() | nil,
+          linked_node: FlowNode.t() | NotLoaded.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }

@@ -24,9 +24,7 @@ defmodule StoryarnWeb.LocalizationExportController do
             filename = sanitize_filename("#{project.slug}_translations_#{locale}") <> ".xlsx"
 
             conn
-            |> put_resp_content_type(
-              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+            |> put_resp_content_type("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
             |> put_resp_header("content-disposition", ~s(attachment; filename="#{filename}"))
             |> send_resp(200, binary)
 

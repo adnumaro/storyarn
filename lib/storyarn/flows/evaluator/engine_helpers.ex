@@ -7,7 +7,8 @@ defmodule Storyarn.Flows.Evaluator.EngineHelpers do
   both Engine and the per-node-type evaluator modules.
   """
 
-  alias Storyarn.Flows.Evaluator.{Helpers, State}
+  alias Storyarn.Flows.Evaluator.Helpers
+  alias Storyarn.Flows.Evaluator.State
 
   @doc """
   Advance execution to the given target node, updating execution path and log.
@@ -27,13 +28,10 @@ defmodule Storyarn.Flows.Evaluator.EngineHelpers do
   end
 
   @doc """
-  Follow the default/output pin from a node, finishing if no connection exists.
+  Follow the output pin from a node, finishing if no connection exists.
   """
   def follow_output(state, node_id, label, connections) do
-    # Check both pin names: "default" is canonical, "output" is legacy.
-    conn =
-      find_connection(connections, node_id, "default") ||
-        find_connection(connections, node_id, "output")
+    conn = find_output_connection(connections, node_id)
 
     case conn do
       nil ->
@@ -52,6 +50,32 @@ defmodule Storyarn.Flows.Evaluator.EngineHelpers do
     Enum.find(connections, fn conn ->
       conn.source_node_id == source_node_id and conn.source_pin == source_pin
     end)
+  end
+
+  @doc """
+  Find the standard outgoing connection for pass-through nodes.
+  """
+  def find_output_connection(connections, source_node_id) do
+    find_connection(connections, source_node_id, "output")
+  end
+
+  @doc """
+  Finds the parent-flow connection to follow after returning from a subflow.
+
+  Subflow nodes can expose dynamic outputs keyed by the returned exit node
+  (`exit_<id>`). Simple subflow connections use the standard `output` pin.
+  """
+  def find_return_connection(connections, return_node_id, returned_exit_node_id) do
+    exit_pin = if returned_exit_node_id, do: "exit_#{returned_exit_node_id}"
+
+    Enum.find(connections, &matches_source_pin?(&1, return_node_id, exit_pin)) ||
+      Enum.find(connections, &matches_source_pin?(&1, return_node_id, "output"))
+  end
+
+  defp matches_source_pin?(_conn, _return_node_id, nil), do: false
+
+  defp matches_source_pin?(conn, return_node_id, pin) do
+    conn.source_node_id == return_node_id and conn.source_pin == pin
   end
 
   @doc """
@@ -105,7 +129,7 @@ defmodule Storyarn.Flows.Evaluator.EngineHelpers do
         }
       end)
 
-    %{state | history: Enum.reverse(entries) ++ state.history}
+    %{state | history: Enum.reverse(entries, state.history)}
   end
 
   @doc """

@@ -5,12 +5,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
   Also exports canvas push utilities and timer helpers used by DebugSessionHandlers.
   """
 
+  use StoryarnWeb, :verified_routes
+
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [push_event: 3, push_patch: 2]
 
-  use StoryarnWeb, :verified_routes
-
   alias Storyarn.Flows
+  alias Storyarn.Flows.SequenceConfig
+  alias Storyarn.Repo
 
   @doc "Advances the debugger by one step. May trigger cross-flow navigation."
   def handle_debug_step(socket) do
@@ -227,17 +229,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
     end
   end
 
-  defp schedule_or_stop_auto_play(socket, _state, true),
-    do: {:noreply, assign(socket, :debug_auto_playing, false)}
+  defp schedule_or_stop_auto_play(socket, _state, true), do: {:noreply, assign(socket, :debug_auto_playing, false)}
 
   defp schedule_or_stop_auto_play(socket, %{status: :finished}, _),
     do: {:noreply, assign(socket, :debug_auto_playing, false)}
 
-  defp schedule_or_stop_auto_play(socket, %{status: :waiting_input}, _),
-    do: {:noreply, socket}
+  defp schedule_or_stop_auto_play(socket, %{status: :waiting_input}, _), do: {:noreply, socket}
 
-  defp schedule_or_stop_auto_play(socket, _state, _),
-    do: {:noreply, schedule_auto_step(socket)}
+  defp schedule_or_stop_auto_play(socket, _state, _), do: {:noreply, schedule_auto_step(socket)}
 
   defp apply_step_result({:flow_jump, state, target_flow_id}, socket) do
     current_node_id = state.current_node_id
@@ -285,9 +284,11 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
         state = %{state | current_flow_id: frame.flow_id}
 
         next_conn =
-          Enum.find(frame.connections, fn c ->
-            c.source_node_id == frame.return_node_id
-          end)
+          Flows.evaluator_find_return_connection(
+            frame.connections,
+            frame.return_node_id,
+            state.current_node_id
+          )
 
         state =
           if next_conn do
@@ -352,13 +353,74 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
 
   @doc "Builds a `%{node_id => node_map}` lookup from all nodes in a flow."
   def build_nodes_map(flow_id) do
-    Flows.list_nodes(flow_id)
-    |> Map.new(fn node -> {node.id, %{id: node.id, type: node.type, data: node.data || %{}}} end)
+    flow_id
+    |> Flows.list_nodes()
+    |> Repo.preload([:sequence_config, sequence_tracks: [:asset], sequence_visual_layers: [:asset]])
+    |> Map.new(fn node -> {node.id, build_node_map(node)} end)
   end
+
+  defp build_node_map(node) do
+    %{
+      id: node.id,
+      type: node.type,
+      data: node.data || %{},
+      parent_id: node.parent_id,
+      sequence_config: serialize_sequence_config(node.sequence_config),
+      sequence_visual_layers: Enum.map(node.sequence_visual_layers || [], &serialize_sequence_visual_layer/1),
+      sequence_tracks: Enum.map(node.sequence_tracks || [], &serialize_sequence_track/1)
+    }
+  end
+
+  defp serialize_sequence_config(%SequenceConfig{} = config) do
+    %{
+      name: config.name,
+      width: config.width,
+      height: config.height
+    }
+  end
+
+  defp serialize_sequence_config(_), do: nil
+
+  defp serialize_sequence_visual_layer(layer) do
+    %{
+      id: layer.id,
+      kind: layer.kind,
+      label: layer.label,
+      url: Storyarn.Assets.display_url(layer.asset),
+      z_index: layer.z_index,
+      slot: layer.slot,
+      x: layer.x,
+      y: layer.y,
+      width: layer.width,
+      height: layer.height,
+      anchor_x: layer.anchor_x,
+      anchor_y: layer.anchor_y,
+      fit: layer.fit,
+      opacity: layer.opacity,
+      visible: layer.visible
+    }
+  end
+
+  defp serialize_sequence_track(track) do
+    %{
+      id: track.id,
+      kind: track.kind,
+      position: track.position || 0,
+      url: Storyarn.Assets.display_url(track.asset),
+      volume: serialize_volume(track.volume),
+      content_type: track.asset && track.asset.content_type,
+      filename: track.asset && track.asset.filename
+    }
+  end
+
+  defp serialize_volume(nil), do: 1.0
+  defp serialize_volume(%Decimal{} = volume), do: Decimal.to_float(volume)
+  defp serialize_volume(volume) when is_number(volume), do: volume
 
   @doc "Builds a list of connection maps for the debugger engine."
   def build_connections(flow_id) do
-    Flows.list_connections(flow_id)
+    flow_id
+    |> Flows.list_connections()
     |> Enum.map(fn conn ->
       %{
         source_node_id: conn.source_node_id,

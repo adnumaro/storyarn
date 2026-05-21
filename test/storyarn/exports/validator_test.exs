@@ -1,15 +1,14 @@
 defmodule Storyarn.Exports.ValidatorTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Exports.Validator
-  alias Storyarn.Exports.Validator.ValidationResult
-
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures, except: [connection_fixture: 3, connection_fixture: 4]
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
-
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Exports.Validator
+  alias Storyarn.Exports.Validator.ValidationResult
 
   # =============================================================================
   # Setup
@@ -48,7 +47,7 @@ defmodule Storyarn.Exports.ValidatorTest do
       exit_node = node_fixture(flow, %{type: "exit", data: %{}})
 
       # Get the auto-created entry
-      entry = Storyarn.Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
+      entry = flow.id |> Storyarn.Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
 
       # Connect: entry → dialogue → exit
       Storyarn.FlowsFixtures.connection_fixture(flow, entry, dialogue)
@@ -70,7 +69,7 @@ defmodule Storyarn.Exports.ValidatorTest do
     test "reports error when flow has no entry node", %{project: project} do
       # Create flow, then delete its auto-created entry node
       flow = flow_fixture(project, %{name: "Broken Flow"})
-      entry = Storyarn.Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
+      entry = flow.id |> Storyarn.Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
       # Hard-delete the entry node to simulate a broken state
       Storyarn.Repo.delete!(entry)
 
@@ -78,7 +77,7 @@ defmodule Storyarn.Exports.ValidatorTest do
       assert result.status == :errors
 
       entry_error = Enum.find(result.errors, &(&1.rule == :missing_entry))
-      assert entry_error != nil
+      assert entry_error
       assert entry_error.flow_name == "Broken Flow"
     end
   end
@@ -103,6 +102,21 @@ defmodule Storyarn.Exports.ValidatorTest do
       orphan_warnings = Enum.filter(result.warnings, &(&1.rule == :orphan_nodes))
       assert length(orphan_warnings) == 1
       assert hd(orphan_warnings).node_type == "dialogue"
+    end
+
+    test "ignores annotations and sequences with no graph connections", %{project: project} do
+      flow = flow_fixture(project, %{name: "Visual Nodes Flow"})
+      entry = flow.id |> Storyarn.Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
+      exit_node = flow.id |> Storyarn.Flows.list_nodes() |> Enum.find(&(&1.type == "exit"))
+
+      Storyarn.FlowsFixtures.connection_fixture(flow, entry, exit_node)
+      node_fixture(flow, %{type: "annotation", data: %{"text" => "Design note"}})
+      assert {:ok, _sequence} = Storyarn.Flows.create_sequence(flow.id, %{"name" => "Act I"})
+
+      result = Validator.validate_project(project.id)
+
+      refute Enum.any?(result.warnings, &(&1.rule == :orphan_nodes))
+      refute Enum.any?(result.warnings, &(&1.rule == :unreachable_nodes))
     end
   end
 
@@ -239,30 +253,13 @@ defmodule Storyarn.Exports.ValidatorTest do
       _subflow =
         node_fixture(flow, %{
           type: "subflow",
-          data: %{"target_flow_id" => -999}
+          data: %{"referenced_flow_id" => -999}
         })
 
       result = Validator.validate_project(project.id)
 
       broken =
         Enum.filter(result.errors, &(&1.rule == :broken_references && &1[:ref_type] == :flow))
-
-      assert length(broken) == 1
-    end
-
-    test "reports error for slug_line node targeting non-existent scene", %{project: project} do
-      flow = flow_fixture(project, %{name: "Broken Scene Flow"})
-
-      _slug_line_node =
-        node_fixture(flow, %{
-          type: "slug_line",
-          data: %{"scene_id" => -999}
-        })
-
-      result = Validator.validate_project(project.id)
-
-      broken =
-        Enum.filter(result.errors, &(&1.rule == :broken_references && &1[:ref_type] == :scene))
 
       assert length(broken) == 1
     end
@@ -348,21 +345,24 @@ defmodule Storyarn.Exports.ValidatorTest do
       _subflow_a =
         node_fixture(flow_a, %{
           type: "subflow",
-          data: %{"target_flow_id" => flow_b.id}
+          data: %{"referenced_flow_id" => flow_b.id}
         })
 
-      # B references A (circular)
-      _subflow_b =
-        node_fixture(flow_b, %{
+      # B references A (circular) — insert directly to bypass circular reference check
+      {:ok, _subflow_b} =
+        Storyarn.Repo.insert(%Storyarn.Flows.FlowNode{
+          flow_id: flow_b.id,
           type: "subflow",
-          data: %{"target_flow_id" => flow_a.id}
+          data: %{"referenced_flow_id" => flow_a.id},
+          position_x: 100.0,
+          position_y: 100.0
         })
 
       result = Validator.validate_project(project.id)
       circular = Enum.filter(result.warnings, &(&1.rule == :circular_subflows))
       assert length(circular) == 2
 
-      flow_ids = Enum.map(circular, & &1.flow_id) |> MapSet.new()
+      flow_ids = MapSet.new(circular, & &1.flow_id)
       assert MapSet.member?(flow_ids, flow_a.id)
       assert MapSet.member?(flow_ids, flow_b.id)
     end
@@ -375,7 +375,7 @@ defmodule Storyarn.Exports.ValidatorTest do
       _subflow =
         node_fixture(flow_a, %{
           type: "subflow",
-          data: %{"target_flow_id" => flow_b.id}
+          data: %{"referenced_flow_id" => flow_b.id}
         })
 
       result = Validator.validate_project(project.id)
@@ -419,7 +419,7 @@ defmodule Storyarn.Exports.ValidatorTest do
 
     test "status is :errors when errors exist", %{project: project} do
       flow = flow_fixture(project, %{name: "Error Flow"})
-      entry = Storyarn.Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
+      entry = flow.id |> Storyarn.Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
       Storyarn.Repo.delete!(entry)
 
       result = Validator.validate_project(project.id)
@@ -435,7 +435,7 @@ defmodule Storyarn.Exports.ValidatorTest do
     test "export fails when validation detects errors", %{project: project} do
       # Create a flow with a broken state (no entry node)
       flow = flow_fixture(project, %{name: "Broken Flow"})
-      entry = Storyarn.Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
+      entry = flow.id |> Storyarn.Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
       Storyarn.Repo.delete!(entry)
 
       # Export with validation enabled (default) should fail
@@ -446,7 +446,7 @@ defmodule Storyarn.Exports.ValidatorTest do
     test "export succeeds when validation is disabled", %{project: project} do
       # Create a flow with a broken state
       flow = flow_fixture(project, %{name: "Broken Flow"})
-      entry = Storyarn.Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
+      entry = flow.id |> Storyarn.Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
       Storyarn.Repo.delete!(entry)
 
       # Export with validation disabled should succeed

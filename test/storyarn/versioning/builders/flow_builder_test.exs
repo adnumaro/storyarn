@@ -1,13 +1,13 @@
 defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Versioning.Builders.FlowBuilder
-
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures, only: [scene_fixture: 1]
+
+  alias Storyarn.Versioning.Builders.FlowBuilder
 
   setup do
     user = user_fixture()
@@ -52,7 +52,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       [conn] = snapshot["connections"]
       assert is_integer(conn["source_node_index"])
       assert is_integer(conn["target_node_index"])
-      assert conn["source_pin"] == "output"
+      assert conn["source_pin"] == "default"
       assert conn["target_pin"] == "input"
     end
 
@@ -105,7 +105,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
                )
 
       assert materialized.id != flow.id
-      assert materialized.draft_id == nil
       assert materialized.position == 11
       assert materialized.shortcut == nil
       assert id_maps.flow == %{flow.id => materialized.id}
@@ -213,7 +212,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
 
       refs = FlowBuilder.scan_references(snapshot)
 
-      types_and_ids = Enum.map(refs, &{&1.type, &1.id}) |> Enum.sort()
+      types_and_ids = refs |> Enum.map(&{&1.type, &1.id}) |> Enum.sort()
 
       assert {:asset, 20} in types_and_ids
       assert {:flow, 30} in types_and_ids

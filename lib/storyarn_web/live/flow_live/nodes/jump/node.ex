@@ -15,7 +15,9 @@ defmodule StoryarnWeb.FlowLive.Nodes.Jump.Node do
   def default_data, do: %{"target_hub_id" => ""}
 
   def extract_form_data(data) do
-    %{"target_hub_id" => data["target_hub_id"] || ""}
+    %{
+      "target_hub_id" => data["target_hub_id"] || ""
+    }
   end
 
   def on_select(_node, socket), do: socket

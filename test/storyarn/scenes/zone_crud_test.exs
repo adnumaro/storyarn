@@ -1,11 +1,11 @@
 defmodule Storyarn.Scenes.ZoneCrudTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Scenes.ZoneCrud
-
   import Storyarn.AccountsFixtures
-  import Storyarn.ScenesFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
+
+  alias Storyarn.Scenes.ZoneCrud
 
   defp create_scene(_context \\ %{}) do
     user = user_fixture()

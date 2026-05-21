@@ -16,6 +16,7 @@ defmodule Storyarn.Shared.HierarchicalSchema do
   """
 
   import Ecto.Changeset
+
   alias Storyarn.Shared.TimeHelpers
 
   @doc """

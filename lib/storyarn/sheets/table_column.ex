@@ -9,6 +9,7 @@ defmodule Storyarn.Sheets.TableColumn do
   explicitly excluded — tables use plain text only.
   """
   use Ecto.Schema
+
   import Ecto.Changeset
 
   alias Storyarn.Shared.NameNormalizer
@@ -53,8 +54,7 @@ defmodule Storyarn.Sheets.TableColumn do
 
   @doc "Changeset for updating only the position."
   def position_changeset(column, attrs) do
-    column
-    |> cast(attrs, [:position])
+    cast(column, attrs, [:position])
   end
 
   defp generate_slug(changeset) do

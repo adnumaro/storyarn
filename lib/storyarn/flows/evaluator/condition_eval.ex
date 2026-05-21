@@ -37,18 +37,14 @@ defmodule Storyarn.Flows.Evaluator.ConditionEval do
 
   Special cases:
   - `nil` or empty condition → `{true, []}` (no condition = always passes)
-  - `:legacy` condition → `{true, []}` (legacy plain text, can't evaluate)
   - Condition with no complete rules → `{true, []}` (nothing to evaluate)
   """
   @spec evaluate(map() | nil, map()) :: {boolean(), [rule_result()]}
   def evaluate(nil, _variables), do: {true, []}
-  def evaluate(%{"rules" => []}, _variables), do: {true, []}
-  def evaluate(%{"rules" => nil}, _variables), do: {true, []}
   def evaluate(%{"blocks" => []}, _variables), do: {true, []}
   def evaluate(%{"blocks" => nil}, _variables), do: {true, []}
 
-  def evaluate(%{"logic" => logic, "blocks" => blocks}, variables)
-      when is_list(blocks) do
+  def evaluate(%{"logic" => logic, "blocks" => blocks}, variables) when is_list(blocks) do
     block_evals = Enum.map(blocks, &evaluate_block(&1, variables))
     all_rule_results = Enum.flat_map(block_evals, fn {_passed, rr} -> rr end)
 
@@ -60,29 +56,12 @@ defmodule Storyarn.Flows.Evaluator.ConditionEval do
     end
   end
 
-  def evaluate(%{"logic" => logic, "rules" => rules}, variables)
-      when is_list(rules) do
-    rule_results =
-      rules
-      |> Enum.filter(&complete_rule?/1)
-      |> Enum.map(&evaluate_rule(&1, variables))
-
-    # No complete rules → pass
-    if rule_results == [] do
-      {true, []}
-    else
-      passed_list = Enum.map(rule_results, & &1.passed)
-      {apply_logic(logic, passed_list), rule_results}
-    end
-  end
-
   def evaluate(_invalid, _variables), do: {true, []}
 
   @doc """
   Evaluates a condition stored as a JSON string (as found in dialogue node fields).
 
   Parses the string first using `Condition.parse/1`, then evaluates.
-  Legacy plain-text conditions pass automatically.
   """
   @spec evaluate_string(String.t() | nil, map()) :: {boolean(), [rule_result()]}
   def evaluate_string(nil, _variables), do: {true, []}
@@ -90,7 +69,6 @@ defmodule Storyarn.Flows.Evaluator.ConditionEval do
 
   def evaluate_string(condition_string, variables) when is_binary(condition_string) do
     case Condition.parse(condition_string) do
-      :legacy -> {true, []}
       nil -> {true, []}
       condition_map -> evaluate(condition_map, variables)
     end
@@ -102,10 +80,7 @@ defmodule Storyarn.Flows.Evaluator.ConditionEval do
   Returns a `rule_result` map with pass/fail and comparison details.
   """
   @spec evaluate_rule(map(), map()) :: rule_result()
-  def evaluate_rule(
-        %{"sheet" => sheet, "variable" => variable, "operator" => operator} = rule,
-        variables
-      ) do
+  def evaluate_rule(%{"sheet" => sheet, "variable" => variable, "operator" => operator} = rule, variables) do
     variable_ref = "#{sheet}.#{variable}"
     expected_value = rule["value"]
 
@@ -140,8 +115,7 @@ defmodule Storyarn.Flows.Evaluator.ConditionEval do
   # -- Block evaluation --
   # Returns {passed, rule_results} to avoid double evaluation.
 
-  defp evaluate_block(%{"type" => "block", "logic" => logic, "rules" => rules}, variables)
-       when is_list(rules) do
+  defp evaluate_block(%{"type" => "block", "logic" => logic, "rules" => rules}, variables) when is_list(rules) do
     rule_results =
       rules
       |> Enum.filter(&complete_rule?/1)
@@ -157,8 +131,7 @@ defmodule Storyarn.Flows.Evaluator.ConditionEval do
     {passed, rule_results}
   end
 
-  defp evaluate_block(%{"type" => "group", "logic" => logic, "blocks" => blocks}, variables)
-       when is_list(blocks) do
+  defp evaluate_block(%{"type" => "group", "logic" => logic, "blocks" => blocks}, variables) when is_list(blocks) do
     block_evals = Enum.map(blocks, &evaluate_block(&1, variables))
     all_rule_results = Enum.flat_map(block_evals, fn {_passed, rr} -> rr end)
 
@@ -227,35 +200,29 @@ defmodule Storyarn.Flows.Evaluator.ConditionEval do
   defp evaluate_operator("is_nil", actual, _expected, _block_type), do: is_nil(actual)
 
   # Text operators
-  defp evaluate_operator("equals", actual, expected, block_type)
-       when block_type in ["text", "rich_text"] do
+  defp evaluate_operator("equals", actual, expected, block_type) when block_type in ["text", "rich_text"] do
     to_string_safe(actual) == to_string_safe(expected)
   end
 
-  defp evaluate_operator("not_equals", actual, expected, block_type)
-       when block_type in ["text", "rich_text"] do
+  defp evaluate_operator("not_equals", actual, expected, block_type) when block_type in ["text", "rich_text"] do
     to_string_safe(actual) != to_string_safe(expected)
   end
 
-  defp evaluate_operator("contains", actual, expected, block_type)
-       when block_type in ["text", "rich_text"] do
+  defp evaluate_operator("contains", actual, expected, block_type) when block_type in ["text", "rich_text"] do
     str = to_string_safe(actual)
     substr = to_string_safe(expected)
     substr != "" and String.contains?(str, substr)
   end
 
-  defp evaluate_operator("starts_with", actual, expected, block_type)
-       when block_type in ["text", "rich_text"] do
+  defp evaluate_operator("starts_with", actual, expected, block_type) when block_type in ["text", "rich_text"] do
     String.starts_with?(to_string_safe(actual), to_string_safe(expected))
   end
 
-  defp evaluate_operator("ends_with", actual, expected, block_type)
-       when block_type in ["text", "rich_text"] do
+  defp evaluate_operator("ends_with", actual, expected, block_type) when block_type in ["text", "rich_text"] do
     String.ends_with?(to_string_safe(actual), to_string_safe(expected))
   end
 
-  defp evaluate_operator("is_empty", actual, _expected, block_type)
-       when block_type in ["text", "rich_text"] do
+  defp evaluate_operator("is_empty", actual, _expected, block_type) when block_type in ["text", "rich_text"] do
     actual in [nil, ""]
   end
 
@@ -275,8 +242,7 @@ defmodule Storyarn.Flows.Evaluator.ConditionEval do
 
   defp evaluate_operator("contains", _actual, _expected, "multi_select"), do: false
 
-  defp evaluate_operator("not_contains", actual, expected, "multi_select")
-       when is_list(actual) do
+  defp evaluate_operator("not_contains", actual, expected, "multi_select") when is_list(actual) do
     to_string_safe(expected) not in Enum.map(actual, &to_string_safe/1)
   end
 

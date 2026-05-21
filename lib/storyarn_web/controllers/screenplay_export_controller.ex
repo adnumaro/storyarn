@@ -7,11 +7,7 @@ defmodule StoryarnWeb.ScreenplayExportController do
   alias Storyarn.Screenplays
   alias Storyarn.Shared.NameNormalizer
 
-  def fountain(conn, %{
-        "workspace_slug" => workspace_slug,
-        "project_slug" => project_slug,
-        "id" => id
-      }) do
+  def fountain(conn, %{"workspace_slug" => workspace_slug, "project_slug" => project_slug, "id" => id}) do
     if conn.assigns.current_scope.user.is_super_admin do
       export_fountain(conn, workspace_slug, project_slug, id)
     else

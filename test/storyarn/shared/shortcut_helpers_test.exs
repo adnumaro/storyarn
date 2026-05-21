@@ -261,9 +261,7 @@ defmodule Storyarn.Shared.ShortcutHelpersTest do
       check_fn = fn _entity -> true end
 
       result =
-        ShortcutHelpers.maybe_generate_shortcut_on_update(e, attrs, &generator_fn/3,
-          check_backlinks_fn: check_fn
-        )
+        ShortcutHelpers.maybe_generate_shortcut_on_update(e, attrs, &generator_fn/3, check_backlinks_fn: check_fn)
 
       # When referenced, the shortcut should be preserved
       assert result["shortcut"] == "old-name"
@@ -275,9 +273,7 @@ defmodule Storyarn.Shared.ShortcutHelpersTest do
       check_fn = fn _entity -> false end
 
       result =
-        ShortcutHelpers.maybe_generate_shortcut_on_update(e, attrs, &generator_fn/3,
-          check_backlinks_fn: check_fn
-        )
+        ShortcutHelpers.maybe_generate_shortcut_on_update(e, attrs, &generator_fn/3, check_backlinks_fn: check_fn)
 
       assert result["shortcut"] == "new-name"
     end

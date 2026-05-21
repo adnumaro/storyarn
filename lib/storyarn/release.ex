@@ -29,19 +29,12 @@ defmodule Storyarn.Release do
     Gettext.put_locale(Storyarn.Gettext, locale)
 
     case Storyarn.Accounts.find_or_register_confirmed_user(email) do
-      {:ok, _user} ->
-        IO.puts("User account ready for #{email}")
+      {:ok, user} ->
+        deliver_waitlist_invitation(user, email)
 
       {:error, reason} ->
         IO.puts("Failed to create user: #{inspect(reason)}")
         raise "Cannot invite #{email}: user creation failed"
-    end
-
-    login_url = Storyarn.Urls.base_url() <> "/users/log-in"
-
-    case Storyarn.Accounts.UserNotifier.deliver_waitlist_invite(email, login_url) do
-      {:ok, _} -> IO.puts("Invitation sent to #{email}")
-      {:error, reason} -> IO.puts("Failed to send: #{inspect(reason)}")
     end
   end
 
@@ -62,7 +55,7 @@ defmodule Storyarn.Release do
       when is_binary(email) and type in ["project", "workspace"] do
     allowed_roles = if type == "project", do: @project_roles, else: @workspace_roles
 
-    unless role in allowed_roles do
+    if role not in allowed_roles do
       raise ArgumentError,
             "Invalid role #{inspect(role)} for #{type}. Allowed: #{inspect(allowed_roles)}"
     end
@@ -75,9 +68,7 @@ defmodule Storyarn.Release do
 
     case context_module.create_admin_invitation(entity, email, role, inviter_name: inviter_name) do
       {:ok, _invitation} ->
-        IO.puts(
-          "Invitation created and email sent to #{email} as #{role} to #{type} ##{entity_id}"
-        )
+        IO.puts("Invitation created and email sent to #{email} as #{role} to #{type} ##{entity_id}")
 
       {:error, :already_member} ->
         IO.puts("#{email} is already a member of this #{type}")
@@ -97,6 +88,19 @@ defmodule Storyarn.Release do
 
   defp invitation_config("workspace", id) do
     {Storyarn.Workspaces, Storyarn.Workspaces.get_workspace!(id)}
+  end
+
+  defp deliver_waitlist_invitation(user, email) do
+    IO.puts("User account ready for #{email}")
+
+    case Storyarn.Accounts.deliver_waitlist_invite_instructions(user, &waitlist_invitation_url/1) do
+      {:ok, _} -> IO.puts("Invitation sent to #{email}")
+      {:error, reason} -> IO.puts("Failed to send: #{inspect(reason)}")
+    end
+  end
+
+  defp waitlist_invitation_url(token) do
+    Storyarn.Urls.base_url() <> "/users/register/" <> token
   end
 
   defp repos do

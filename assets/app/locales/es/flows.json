@@ -1,0 +1,398 @@
+{
+  "flows": {
+    "dashboard": {
+      "title": "Flujos",
+      "subtitle": "Crea flujos narrativos visuales y árboles de diálogo",
+      "empty": "Aún no hay flujos. Crea tu primer flujo para empezar.",
+      "all_flows": "Todos los flujos",
+      "issues": "Problemas",
+      "main": "Principal",
+      "set_main": "Establecer como principal",
+      "delete": "Eliminar",
+      "columns": {
+        "name": "Nombre",
+        "nodes": "Nodos",
+        "dialogue": "Diálogos",
+        "conditions": "Condiciones",
+        "words": "Palabras",
+        "modified": "Modificado"
+      }
+    },
+    "tree": {
+      "filter": "Filtrar flujos...",
+      "empty": "Aún no hay flujos",
+      "new_flow": "Nuevo flujo",
+      "delete_title": "¿Eliminar flujo?",
+      "cancel": "Cancelar",
+      "delete": "Eliminar",
+      "add_child": "Añadir flujo hijo",
+      "move_to_trash": "Mover a la papelera",
+      "set_main": "Establecer como principal"
+    },
+    "header": {
+      "nav_back": "Alt+Izquierda",
+      "nav_forward": "Alt+Derecha",
+      "untitled": "Sin título",
+      "add_shortcut": "añadir-atajo",
+      "main": "Principal",
+      "scene_backdrop": "Escena de fondo",
+      "no_scene": "Sin escena",
+      "inherited": "(heredada)",
+      "no_scene_inherit": "Sin escena (heredar)",
+      "word_count": "{count} palabra en este flujo | {count} palabras en este flujo",
+      "flow_health": "Revisar estado del flujo",
+      "errors": "Errores",
+      "info": "Info",
+      "looks_great": "Este flujo se ve bien",
+      "saving": "Guardando",
+      "saved": "Guardado"
+    },
+    "form": {
+      "title": "Nuevo flujo",
+      "submit": "Crear flujo",
+      "name": "Nombre",
+      "name_placeholder": "Historia principal",
+      "description": "Descripción",
+      "description_placeholder": "Describe el propósito de este flujo...",
+      "cancel": "Cancelar"
+    },
+    "collab_toast": {
+      "node_created": "añadió un nodo",
+      "node_updated": "actualizó un nodo",
+      "node_deleted": "eliminó un nodo",
+      "node_restored": "restauró un nodo",
+      "node_moved": "movió un nodo",
+      "connection_created": "añadió una conexión",
+      "connection_deleted": "eliminó una conexión",
+      "flow_updated": "actualizó el flujo",
+      "node_locked": "bloqueó un nodo",
+      "node_unlocked": "desbloqueó un nodo",
+      "flow_merged": "fusionó cambios"
+    },
+    "context_menu": {
+      "duplicate": "Duplicar",
+      "copy_id": "Copiar ID",
+      "delete": "Eliminar",
+      "add_node": "Añadir nodo",
+      "add_note": "Añadir nota",
+      "auto_layout": "Auto layout",
+      "create_sequence_from_selection": "Crear sequence con selección"
+    },
+    "sequences": {
+      "name_placeholder": "Nombre de la secuencia",
+      "toolbar_open_config": "Abrir configuración de la secuencia",
+      "tracks": {
+        "music": "Música",
+        "ambience": "Ambiente",
+        "sfx": "SFX"
+      },
+      "visual_layers": {
+        "title": "Composición visual",
+        "add": "Añadir",
+        "pick_asset": "Elegir imagen",
+        "delete": "Eliminar capa",
+        "kind": "Tipo",
+        "slot": "Posición",
+        "fit": "Ajuste",
+        "opacity": "Opacidad",
+        "kinds": {
+          "backdrop": "Escenario",
+          "character": "Personaje",
+          "prop": "Objeto",
+          "overlay": "Overlay"
+        },
+        "slots": {
+          "full": "Completo",
+          "left": "Izquierda",
+          "center": "Centro",
+          "right": "Derecha",
+          "custom": "Custom"
+        }
+      },
+      "config_panel": {
+        "title": "Secuencia",
+        "pick_image": "Elige una imagen",
+        "search_image": "Buscar imágenes…",
+        "clear_image": "Quitar imagen",
+        "position_label": "Posición",
+        "fit_label": "Ajuste",
+        "fit_cover": "Cubrir",
+        "fit_contain": "Contener",
+        "fit_fill": "Rellenar",
+        "audio_title": "Pistas de audio",
+        "pick_audio": "Elige un audio",
+        "search_audio": "Buscar audios…",
+        "clear_track": "Limpiar pista"
+      }
+    },
+    "node_types": {
+      "dialogue": "Diálogo",
+      "condition": "Condición",
+      "instruction": "Instrucción",
+      "hub": "Hub",
+      "jump": "Salto",
+      "exit": "Salida",
+      "subflow": "Subflujo",
+      "sequence": "Secuencia",
+      "dialogue_toolbar_screenplay": "Editor de guión",
+      "dialogue_toolbar_preview": "Vista previa"
+    },
+    "dock": {
+      "select": "Seleccionar",
+      "select_desc": "Dibuja un rectángulo para seleccionar nodos. Ctrl+click para añadir uno a uno.",
+      "pan": "Mover",
+      "pan_desc": "Arrastra el lienzo para desplazarte.",
+      "narrative": "Narrativa",
+      "logic": "Lógica",
+      "navigation": "Navegación",
+      "version_history": "Historial de versiones",
+      "version_history_desc": "Ver y gestionar el historial de versiones",
+      "play": "Reproducir",
+      "play_desc": "Ejecutar este flujo en el reproductor",
+      "debug": "Depurar",
+      "debug_desc": "Recorrer la ejecución paso a paso",
+      "add_note": "Añadir nota",
+      "dialogue_desc": "Diálogos de personajes y respuestas del jugador",
+      "condition_desc": "Bifurcar según condiciones de variables",
+      "instruction_desc": "Establecer o modificar valores de variables",
+      "sequence_desc": "Agrupar nodos y componer recursos visuales o de audio",
+      "exit_desc": "Punto final de un flujo",
+      "hub_desc": "Punto de encuentro para saltos",
+      "jump_desc": "Saltar a un hub en cualquier flujo",
+      "subflow_desc": "Insertar otro flujo como nodo"
+    },
+    "builder": {
+      "condition_title": "Constructor de condiciones",
+      "instruction_title": "Constructor de instrucciones",
+      "fallback_title": "Constructor",
+      "condition_help": "Añade reglas para definir cuándo enrutar a Verdadero/Falso.",
+      "condition_switch_help": "Añade condiciones. Cada una crea una salida separada.",
+      "instruction_help": "Añade asignaciones para establecer valores de variables cuando se ejecute este nodo."
+    },
+    "debug": {
+      "step_limit": "Límite de pasos ({count}) alcanzado — posible bucle infinito.",
+      "step_limit_continue": "Continuar (+1000 pasos)",
+      "tab_console": "Consola",
+      "tab_variables": "Variables",
+      "tab_history": "Historial",
+      "tab_path": "Ruta",
+      "choose_response": "Elige una respuesta:",
+      "empty_response": "(vacío)",
+      "condition_not_met": "Condición no cumplida",
+      "waiting": "Esperando ejecución...",
+      "filter_variables": "Filtrar variables...",
+      "nil": "nil",
+      "step_key": "Paso (F10)",
+      "step_back_key": "Retroceder (F9)",
+      "reset_key": "Reiniciar (F6)",
+      "stop": "Detener",
+      "auto_play": "Reproducción automática",
+      "pause": "Pausar",
+      "speed_per_step": "{ms}ms por paso",
+      "status_paused": "Pausado",
+      "status_waiting": "Esperando",
+      "status_finished": "Finalizado",
+      "step_count": "Paso {count}",
+      "start_label": "Inicio:",
+      "select_start_node": "Selecciona nodo...",
+      "change_start_node": "Cambiar nodo inicial (reinicia la sesión)",
+      "search_nodes": "Buscar nodos...",
+      "no_matches": "Sin coincidencias",
+      "current_flow": "Actual",
+      "flow_label": "Flujo",
+      "entering_subflow": "Entrando en sub-flujo",
+      "returned_to_parent": "Vuelta al flujo padre",
+      "var_changed_toggle": "Cambiadas",
+      "var_changed_hint": "Mostrar solo variables cambiadas",
+      "var_count": "{shown} de {total}",
+      "col_variable": "Variable",
+      "col_type": "Tipo",
+      "col_initial": "Inicial",
+      "col_previous": "Anterior",
+      "col_current": "Actual",
+      "no_variables": "No hay variables en este proyecto",
+      "no_matching_vars": "Sin variables que coincidan",
+      "click_to_edit": "Clic para editar",
+      "col_time": "Tiempo",
+      "col_node": "Nodo",
+      "col_change": "Cambio",
+      "col_source": "Origen",
+      "history_source_instruction": "instr",
+      "history_source_user": "usuario",
+      "user_override_label": "(cambio manual)",
+      "no_history": "Aún no hay cambios de variables",
+      "no_path": "Aún no hay pasos",
+      "set_breakpoint": "Poner breakpoint",
+      "remove_breakpoint": "Quitar breakpoint",
+      "select_option": "Selecciona una opción",
+      "select_options": "Selecciona opciones",
+      "search_options": "Buscar opciones...",
+      "no_options": "Sin opciones",
+      "bool_true": "Sí",
+      "bool_false": "No",
+      "bool_nil": "Sin valor"
+    },
+    "minimap": {
+      "toggle": "Alternar minimapa",
+      "fit_view": "Ajustar a la vista",
+      "zoom_in": "Acercar",
+      "zoom_out": "Alejar"
+    },
+    "preview": {
+      "narrator": "Narrador",
+      "node": "Nodo",
+      "responses": "Respuestas:",
+      "continue": "Continuar",
+      "end_branch": "Fin de la rama de diálogo",
+      "back": "Atrás",
+      "close": "Cerrar",
+      "no_node": "No hay nodo seleccionado para previsualizar."
+    },
+    "dialogue_panel": {
+      "title": "Editor de diálogo",
+      "tab_text": "Texto",
+      "tab_responses": "Respuestas",
+      "tab_settings": "Ajustes",
+      "speaker": "Personaje",
+      "no_speaker": "Sin personaje",
+      "stage_directions": "Acotaciones",
+      "stage_directions_placeholder": "p. ej., mira hacia otro lado nerviosamente",
+      "dialogue": "Diálogo",
+      "dialogue_placeholder": "Escribe diálogo...",
+      "response": "Respuesta",
+      "remove": "Eliminar",
+      "condition": "Condición",
+      "instructions": "Instrucciones",
+      "add_response": "+ Añadir respuesta",
+      "menu_text": "Texto de menú",
+      "menu_text_placeholder": "Texto breve para menús...",
+      "technical_id": "ID técnico",
+      "technical_id_placeholder": "autogenerado",
+      "generate_technical_id": "Generar ID técnico",
+      "localization_id": "ID de localización",
+      "localization_id_placeholder": "Clave de localización autogenerada",
+      "copy_localization_id": "Copiar al portapapeles",
+      "copied": "Copiado",
+      "audio": "Audio",
+      "pick_audio": "Selecciona un audio",
+      "search_audio": "Buscar audio...",
+      "clear_audio": "Quitar audio",
+      "audio_attached": "Audio adjunto",
+      "word_count": "{count} palabra | {count} palabras",
+      "maximize": "Abrir en pantalla completa",
+      "minimize": "Volver al panel lateral",
+      "response_placeholder": "Texto de respuesta..."
+    },
+    "version_history": {
+      "title": "Historial de versiones"
+    },
+    "exit_modes": {
+      "terminal": "Terminal",
+      "terminal_desc": "Fin del flujo — sin continuación",
+      "flow_reference": "Referencia a flujo",
+      "flow_reference_desc": "Continuar a otro flujo",
+      "caller_return": "Retorno al llamante",
+      "caller_return_desc": "Volver al flujo que lo llamó"
+    },
+    "condition_toolbar": {
+      "routes": "Rutas",
+      "multi": "Multi",
+      "edit_condition": "Editar condición"
+    },
+    "hub_toolbar": {
+      "label_placeholder": "Etiqueta",
+      "hub_id_placeholder": "hub_id",
+      "locate_jumps": "Localizar saltos"
+    },
+    "jump_toolbar": {
+      "target_placeholder": "Hub destino\u2026",
+      "locate_target": "Localizar hub destino"
+    },
+    "subflow_toolbar": {
+      "select_flow_placeholder": "Seleccionar flujo\u2026",
+      "open_flow": "Abrir flujo"
+    },
+    "instruction_toolbar": {
+      "edit_instructions": "Editar instrucciones"
+    },
+    "dialogue_toolbar": {
+      "tech_id_placeholder": "tech_id",
+      "has_audio": "Tiene audio"
+    },
+    "avatar_picker": {
+      "select_avatar": "Seleccionar avatar",
+      "use_default": "Usar predeterminado"
+    },
+    "searchable_select": {
+      "no_results": "Sin resultados",
+      "none": "Ninguno"
+    },
+    "annotation": {
+      "placeholder": "\u2026",
+      "delete": "Eliminar"
+    },
+    "entry_toolbar": {
+      "entry_point": "Punto de entrada",
+      "refs": "{n} ref | {n} refs"
+    },
+    "exit_toolbar": {
+      "label_placeholder": "Etiqueta…",
+      "open_flow": "Abrir flujo referenciado"
+    },
+    "nodes": {
+      "dialogue": {
+        "no_speaker": "Sin personaje",
+        "stage_placeholder": "Acotaciones…",
+        "menu_placeholder": "Texto de menú…",
+        "dialogue_placeholder": "Texto de diálogo…",
+        "empty_response": "Respuesta vacía",
+        "type_mismatch": "Tipo incompatible",
+        "has_condition": "Tiene condición",
+        "has_instructions": "Tiene instrucciones"
+      },
+      "condition": {
+        "incomplete_rule": "Regla incompleta",
+        "true": "Verdadero",
+        "false": "Falso",
+        "block_incomplete": "El bloque tiene reglas incompletas"
+      },
+      "exit": {
+        "no_flow": "Sin flujo referenciado",
+        "flow_deleted": "El flujo referenciado fue eliminado"
+      },
+      "instruction": {
+        "set_true": "Establecer {var} a verdadero",
+        "set_false": "Establecer {var} a falso",
+        "toggle": "Alternar {var}",
+        "clear": "Limpiar {var}",
+        "add": "Sumar {value} a {var}",
+        "subtract": "Restar {value} de {var}",
+        "stale_references": "Referencias obsoletas",
+        "type_mismatch": "Tipo incompatible en asignaciones"
+      },
+      "jump": {
+        "no_target": "Sin hub destino"
+      },
+      "subflow": {
+        "no_flow": "Sin flujo seleccionado",
+        "no_flow_ref": "Sin flujo referenciado",
+        "flow_deleted": "El flujo referenciado fue eliminado",
+        "output": "Salida"
+      }
+    },
+    "player": {
+      "continue": "Continuar",
+      "mode_player": "Reproductor",
+      "mode_analysis": "Análisis",
+      "steps": "Pasos:",
+      "choices": "Elecciones:",
+      "variables_changed": "Variables modificadas:",
+      "play_again": "Jugar de nuevo",
+      "back_to_editor": "Volver al editor",
+      "back": "Atrás",
+      "restart": "Reiniciar",
+      "toggle_mode": "Alternar entre reproductor y revisión de respuestas bloqueadas o condicionadas",
+      "no_content": "No hay contenido que mostrar."
+    }
+  }
+}

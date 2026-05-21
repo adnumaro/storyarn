@@ -28,30 +28,20 @@ defmodule Storyarn.Versioning.ChangeDetector do
   def recent_manual_snapshot?(project_id, hours \\ 6) do
     cutoff = DateTime.add(TimeHelpers.now(), -hours * 3600, :second)
 
-    from(s in ProjectSnapshot,
-      where: s.project_id == ^project_id and s.is_auto == false and s.inserted_at > ^cutoff
+    Repo.exists?(
+      from(s in ProjectSnapshot, where: s.project_id == ^project_id and s.is_auto == false and s.inserted_at > ^cutoff)
     )
-    |> Repo.exists?()
   end
 
   defp last_snapshot_time(project_id) do
-    from(s in ProjectSnapshot,
-      where: s.project_id == ^project_id,
-      select: max(s.inserted_at)
-    )
-    |> Repo.one()
+    Repo.one(from(s in ProjectSnapshot, where: s.project_id == ^project_id, select: max(s.inserted_at)))
   end
 
   defp any_entity_modified_after?(project_id, since) do
     Enum.any?([Sheet, Flow, Scene], fn schema ->
-      from(e in schema,
-        where:
-          e.project_id == ^project_id and
-            is_nil(e.deleted_at) and
-            is_nil(e.draft_id) and
-            e.updated_at > ^since
+      Repo.exists?(
+        from(e in schema, where: e.project_id == ^project_id and is_nil(e.deleted_at) and e.updated_at > ^since)
       )
-      |> Repo.exists?()
     end)
   end
 end

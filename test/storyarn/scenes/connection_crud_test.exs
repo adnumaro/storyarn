@@ -1,11 +1,11 @@
 defmodule Storyarn.Scenes.ConnectionCrudTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Scenes.ConnectionCrud
-
   import Storyarn.AccountsFixtures
-  import Storyarn.ScenesFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
+
+  alias Storyarn.Scenes.ConnectionCrud
 
   defp create_scene_with_pins(_context \\ %{}) do
     user = user_fixture()

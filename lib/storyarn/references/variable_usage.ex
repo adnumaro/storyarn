@@ -15,8 +15,7 @@ defmodule Storyarn.References.VariableUsage do
   def check_stale_variable_references(block_id, project_id),
     do: VariableReferenceTracker.check_stale_references(block_id, project_id)
 
-  def repair_stale_variable_references(project_id),
-    do: VariableReferenceTracker.repair_stale_references(project_id)
+  def repair_stale_variable_references(project_id), do: VariableReferenceTracker.repair_stale_references(project_id)
 
   defdelegate list_stale_node_ids(flow_id), to: VariableReferenceTracker
 end

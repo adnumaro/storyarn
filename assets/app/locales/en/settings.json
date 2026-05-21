@@ -1,0 +1,150 @@
+{
+  "settings": {
+    "nav": {
+      "back_to_app": "Back to app",
+      "sections": {
+        "account": "Account"
+      },
+      "items": {
+        "profile": "Profile",
+        "security": "Security",
+        "connected_accounts": "Connected accounts",
+        "workspace_general": "General",
+        "workspace_members": "Members",
+        "deleted_projects": "Deleted Projects"
+      }
+    },
+    "profile": {
+      "title": "Profile",
+      "subtitle": "Manage your personal information and language preferences",
+      "personal_info": "Personal Information",
+      "display_name": "Display Name",
+      "display_name_placeholder": "How you want to be called",
+      "language": "Language",
+      "languages": {
+        "en": "English",
+        "es": "Spanish"
+      },
+      "save_profile": "Save Profile",
+      "email_address": "Email Address",
+      "email_description": "Your email is used for login and notifications.",
+      "email": "Email",
+      "change_email": "Change Email"
+    },
+    "connections": {
+      "title": "Connected Accounts",
+      "subtitle": "Link your social accounts for easier sign-in",
+      "not_connected": "Not connected",
+      "unlink": "Unlink",
+      "connect": "Connect",
+      "connected": "Connected",
+      "set_password_first": "Set a password before unlinking",
+      "unlink_modal": {
+        "title": "Unlink account?",
+        "message": "Are you sure you want to unlink this account?",
+        "cancel": "Cancel"
+      },
+      "why_connect": {
+        "title": "Why connect accounts?",
+        "reasons": [
+          "Sign in faster without typing your password",
+          "Access your account even if you forget your password",
+          "Keep your account secure with multiple authentication methods"
+        ]
+      }
+    },
+    "security": {
+      "title": "Security",
+      "subtitle": "Manage your password and account security",
+      "change_password": "Change Password",
+      "change_password_description": "Choose a strong password that you don't use elsewhere.",
+      "new_password": "New password",
+      "confirm_password": "Confirm new password",
+      "update_password": "Update Password",
+      "active_sessions": {
+        "title": "Active Sessions",
+        "description": "You are currently logged in on this device.",
+        "coming_soon": "Session management coming soon."
+      }
+    },
+    "workspace": {
+      "general": {
+        "title": "General Settings",
+        "subtitle": "Manage your workspace identity and preferences",
+        "fields": {
+          "name": "Workspace name",
+          "description": "Description",
+          "banner": "Workspace Banner",
+          "change": "Change",
+          "remove": "Remove",
+          "upload_banner": "Upload Banner",
+          "source_language": "Source language",
+          "select_language": "Select language...",
+          "source_language_hint": "Default source language for new projects in this workspace."
+        },
+        "save_changes": "Save Changes"
+      },
+      "appearance": {
+        "title": "Appearance",
+        "system": "System",
+        "light": "Light",
+        "dark": "Dark"
+      },
+      "danger_zone": {
+        "title": "Danger Zone",
+        "delete_workspace": "Delete Workspace",
+        "delete_description": "Once you delete a workspace, there is no going back. All projects will be deleted.",
+        "delete_button": "Delete Workspace"
+      },
+      "delete_modal": {
+        "title": "Delete workspace?",
+        "description": "This action cannot be undone.",
+        "cancel": "Cancel",
+        "delete": "Delete"
+      },
+      "members": {
+        "title": "Team Members",
+        "subtitle": "Manage who has access to this workspace and their roles",
+        "roles": {
+          "owner": "Owner",
+          "admin": "Admin",
+          "member": "Member",
+          "viewer": "Viewer"
+        },
+        "invitation": {
+          "title": "Invite new member",
+          "description": "Send an email invitation to collaborate in this workspace.",
+          "email": "Email address",
+          "email_placeholder": "colleague{'@'}example.com",
+          "role": "Role",
+          "submit": "Send Invite"
+        },
+        "active_members": "Active Members",
+        "no_members": "No members found.",
+        "remove_member": "Remove member"
+      },
+      "deleted_projects": {
+        "title": "Deleted Projects",
+        "subtitle": "Recover deleted projects that have snapshots available",
+        "empty": {
+          "title": "No deleted projects",
+          "description": "Deleted projects with available snapshots will appear here."
+        },
+        "snapshot_count": "{n} snapshot | {n} snapshots",
+        "no_snapshots": "No snapshots available for this project.",
+        "snapshot_prefix": "Snapshot v",
+        "recover": "Recover",
+        "recover_modal": {
+          "title": "Recover project?",
+          "description": "This will create a new project from snapshot v{number}. The recovered project will appear in your workspace.",
+          "cancel": "Cancel"
+        },
+        "entities": {
+          "sheets": "{n} sheet | {n} sheets",
+          "flows": "{n} flow | {n} flows",
+          "scenes": "{n} scene | {n} scenes"
+        }
+      }
+    }
+  }
+}

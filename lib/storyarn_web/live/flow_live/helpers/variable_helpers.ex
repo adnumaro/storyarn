@@ -17,7 +17,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.VariableHelpers do
 
   def build_variables(project_id) do
     variables =
-      list_all_variables(project_id)
+      project_id
+      |> list_all_variables()
       |> Enum.reduce(%{}, fn var, acc ->
         key = "#{var.sheet_shortcut}.#{var.variable_name}"
         {initial, formula_meta} = extract_initial_and_formula(var, key)
@@ -32,6 +33,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.VariableHelpers do
           sheet_shortcut: var.sheet_shortcut,
           variable_name: var.variable_name,
           constraints: var[:constraints],
+          options: var[:options],
           source_type: var[:source_type] || "sheet",
           source_id: var[:source_id]
         }
@@ -68,8 +70,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.VariableHelpers do
     coerce_value(cell_value, var.block_type)
   end
 
-  defp extract_initial_value(%{value: %{"content" => content}} = var)
-       when not is_nil(content) do
+  defp extract_initial_value(%{value: %{"content" => content}} = var) when not is_nil(content) do
     coerce_value(content, var.block_type)
   end
 

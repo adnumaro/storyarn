@@ -3,12 +3,24 @@ defmodule Storyarn.Localization.LocalizableWords do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows.{Flow, FlowConnection, FlowNode}
-  alias Storyarn.Localization.{LanguageCrud, TextCrud}
+  alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowConnection
+  alias Storyarn.Flows.FlowNode
+  alias Storyarn.Localization.LanguageCrud
+  alias Storyarn.Localization.TextCrud
   alias Storyarn.Repo
-  alias Storyarn.Scenes.{Scene, SceneAnnotation, SceneConnection, SceneLayer, ScenePin, SceneZone}
+  alias Storyarn.Scenes.Scene
+  alias Storyarn.Scenes.SceneAnnotation
+  alias Storyarn.Scenes.SceneConnection
+  alias Storyarn.Scenes.SceneLayer
+  alias Storyarn.Scenes.ScenePin
+  alias Storyarn.Scenes.SceneZone
   alias Storyarn.Shared.HtmlUtils
-  alias Storyarn.Sheets.{Block, BlockGalleryImage, Sheet, TableColumn, TableRow}
+  alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.BlockGalleryImage
+  alias Storyarn.Sheets.Sheet
+  alias Storyarn.Sheets.TableColumn
+  alias Storyarn.Sheets.TableRow
 
   # =============================================================================
   # Public — Word Counts
@@ -33,17 +45,16 @@ defmodule Storyarn.Localization.LocalizableWords do
       |> Map.new()
 
     flows = load_project_flows(project_id)
-    flow_connections = load_project_flow_connections(project_id) |> Enum.group_by(& &1.flow_id)
+    flow_connections = project_id |> load_project_flow_connections() |> Enum.group_by(& &1.flow_id)
 
     flow_metadata_counts =
-      flows
-      |> Enum.map(fn flow ->
+      Map.new(flows, fn flow ->
         {flow.id, count_fields(flow_source_fields(flow, Map.get(flow_connections, flow.id, [])))}
       end)
-      |> Map.new()
 
     node_metadata_counts =
-      project_flow_nodes(project_id, ["slug_line", "condition", "exit"])
+      project_id
+      |> project_flow_nodes(["condition", "exit"])
       |> Enum.group_by(& &1.flow_id)
       |> Map.new(fn {flow_id, nodes} ->
         {flow_id, nodes |> Enum.map(&count_flow_node_non_denormalized_fields/1) |> Enum.sum()}
@@ -74,9 +85,7 @@ defmodule Storyarn.Localization.LocalizableWords do
     blocks = load_project_blocks(project_id)
 
     sheet_counts =
-      sheets
-      |> Enum.map(fn sheet -> {sheet.id, count_fields(sheet_source_fields(sheet))} end)
-      |> Map.new()
+      Map.new(sheets, fn sheet -> {sheet.id, count_fields(sheet_source_fields(sheet))} end)
 
     block_counts =
       count_sheet_block_fields(blocks)
@@ -92,8 +101,7 @@ defmodule Storyarn.Localization.LocalizableWords do
     scenes = load_project_scenes(project_id)
     deps = load_scene_dependencies(Enum.map(scenes, & &1.id))
 
-    scenes
-    |> Enum.map(fn scene ->
+    Map.new(scenes, fn scene ->
       fields =
         scene_source_fields(scene, %{
           layers: Map.get(deps.layers, scene.id, []),
@@ -105,7 +113,6 @@ defmodule Storyarn.Localization.LocalizableWords do
 
       {scene.id, count_fields(fields)}
     end)
-    |> Map.new()
   end
 
   # =============================================================================
@@ -123,7 +130,7 @@ defmodule Storyarn.Localization.LocalizableWords do
       {:ok, 0}
     else
       flows = load_project_flows(project_id)
-      flow_connections = load_project_flow_connections(project_id) |> Enum.group_by(& &1.flow_id)
+      flow_connections = project_id |> load_project_flow_connections() |> Enum.group_by(& &1.flow_id)
       flow_nodes = project_flow_nodes(project_id)
 
       sheets = load_project_sheets(project_id)
@@ -320,13 +327,6 @@ defmodule Storyarn.Localization.LocalizableWords do
       indexed_text_fields("response", list_value(data["responses"]), &response_field/2)
   end
 
-  defp flow_node_source_fields(%FlowNode{type: "slug_line", data: data}) do
-    optional_field("location", data["location"]) ++
-      optional_field("description", data["description"]) ++
-      optional_field("sub_location", data["sub_location"]) ++
-      optional_field("time_of_day", data["time_of_day"])
-  end
-
   defp flow_node_source_fields(%FlowNode{type: "condition", data: data}) do
     indexed_text_fields("case", list_value(data["cases"]), &condition_case_field/2)
   end
@@ -411,8 +411,7 @@ defmodule Storyarn.Localization.LocalizableWords do
     base_fields ++ option_fields ++ table_fields ++ gallery_fields
   end
 
-  defp block_content_source_fields(%Block{type: type, value: value})
-       when type in ["text", "rich_text"] do
+  defp block_content_source_fields(%Block{type: type, value: value}) when type in ["text", "rich_text"] do
     optional_field("value.content", value["content"])
   end
 
@@ -462,14 +461,7 @@ defmodule Storyarn.Localization.LocalizableWords do
   # Private — Extraction Helpers
   # =============================================================================
 
-  defp upsert_source_fields(
-         project_id,
-         source_type,
-         source_id,
-         fields,
-         target_locales,
-         opts \\ []
-       ) do
+  defp upsert_source_fields(project_id, source_type, source_id, fields, target_locales, opts \\ []) do
     speaker_sheet_id = Keyword.get(opts, :speaker_sheet_id)
 
     for {field, text} <- fields, locale <- target_locales do
@@ -488,14 +480,7 @@ defmodule Storyarn.Localization.LocalizableWords do
     cleanup_removed_fields(source_type, source_id, fields)
   end
 
-  defp build_entries(
-         records,
-         target_locales,
-         source_type,
-         source_id_fun,
-         source_fields_fun,
-         opts_fun \\ fn _ -> %{} end
-       ) do
+  defp build_entries(records, target_locales, source_type, source_id_fun, source_fields_fun, opts_fun \\ fn _ -> %{} end) do
     for record <- records,
         {field, text} <- source_fields_fun.(record),
         locale <- target_locales do
@@ -572,11 +557,7 @@ defmodule Storyarn.Localization.LocalizableWords do
   # =============================================================================
 
   defp load_project_flows(project_id) do
-    from(f in Flow,
-      where: f.project_id == ^project_id and is_nil(f.deleted_at),
-      order_by: [asc: f.id]
-    )
-    |> Repo.all()
+    Repo.all(from(f in Flow, where: f.project_id == ^project_id and is_nil(f.deleted_at), order_by: [asc: f.id]))
   end
 
   defp project_flow_nodes(project_id, types \\ nil) do
@@ -599,41 +580,35 @@ defmodule Storyarn.Localization.LocalizableWords do
   end
 
   defp load_project_flow_connections(project_id) do
-    from(c in FlowConnection,
-      join: f in Flow,
-      on: c.flow_id == f.id,
-      where: f.project_id == ^project_id and is_nil(f.deleted_at),
-      order_by: [asc: c.id]
+    Repo.all(
+      from(c in FlowConnection,
+        join: f in Flow,
+        on: c.flow_id == f.id,
+        where: f.project_id == ^project_id and is_nil(f.deleted_at),
+        order_by: [asc: c.id]
+      )
     )
-    |> Repo.all()
   end
 
   defp load_flow_connections(flow_id) do
-    from(c in FlowConnection,
-      where: c.flow_id == ^flow_id,
-      order_by: [asc: c.id]
-    )
-    |> Repo.all()
+    Repo.all(from(c in FlowConnection, where: c.flow_id == ^flow_id, order_by: [asc: c.id]))
   end
 
   defp load_project_sheets(project_id) do
-    from(s in Sheet,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at),
-      order_by: [asc: s.id]
-    )
-    |> Repo.all()
+    Repo.all(from(s in Sheet, where: s.project_id == ^project_id and is_nil(s.deleted_at), order_by: [asc: s.id]))
   end
 
   defp project_blocks_for_sheet_ids([]), do: []
 
   defp project_blocks_for_sheet_ids(sheet_ids) do
-    from(b in Block,
-      join: s in Sheet,
-      on: b.sheet_id == s.id,
-      where: b.sheet_id in ^sheet_ids and is_nil(b.deleted_at) and is_nil(s.deleted_at),
-      order_by: [asc: b.id]
+    Repo.all(
+      from(b in Block,
+        join: s in Sheet,
+        on: b.sheet_id == s.id,
+        where: b.sheet_id in ^sheet_ids and is_nil(b.deleted_at) and is_nil(s.deleted_at),
+        order_by: [asc: b.id]
+      )
     )
-    |> Repo.all()
   end
 
   defp load_project_blocks(project_id) do
@@ -697,11 +672,7 @@ defmodule Storyarn.Localization.LocalizableWords do
   end
 
   defp load_project_scenes(project_id) do
-    from(s in Scene,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at),
-      order_by: [asc: s.id]
-    )
-    |> Repo.all()
+    Repo.all(from(s in Scene, where: s.project_id == ^project_id and is_nil(s.deleted_at), order_by: [asc: s.id]))
   end
 
   defp load_single_scene_dependencies(scene_id) do
@@ -780,13 +751,11 @@ defmodule Storyarn.Localization.LocalizableWords do
   # =============================================================================
 
   defp flow_project_id(flow_id) do
-    from(f in Flow, where: f.id == ^flow_id and is_nil(f.deleted_at), select: f.project_id)
-    |> Repo.one()
+    Repo.one(from(f in Flow, where: f.id == ^flow_id and is_nil(f.deleted_at), select: f.project_id))
   end
 
   defp sheet_project_id(sheet_id) do
-    from(s in Sheet, where: s.id == ^sheet_id and is_nil(s.deleted_at), select: s.project_id)
-    |> Repo.one()
+    Repo.one(from(s in Sheet, where: s.id == ^sheet_id and is_nil(s.deleted_at), select: s.project_id))
   end
 
   defp get_target_locales(project_id) do
@@ -840,7 +809,7 @@ defmodule Storyarn.Localization.LocalizableWords do
   defp list_value(_values), do: []
 
   defp hash(text) when is_binary(text) do
-    :crypto.hash(:sha256, text) |> Base.encode16(case: :lower)
+    :sha256 |> :crypto.hash(text) |> Base.encode16(case: :lower)
   end
 
   defp hash(_), do: nil

@@ -9,7 +9,8 @@ defmodule Storyarn.Assets.BlobStore do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Assets.{Asset, Storage}
+  alias Storyarn.Assets.Asset
+  alias Storyarn.Assets.Storage
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
 
@@ -30,7 +31,7 @@ defmodule Storyarn.Assets.BlobStore do
   """
   @spec compute_hash(binary()) :: String.t()
   def compute_hash(binary_data) do
-    :crypto.hash(:sha256, binary_data) |> Base.encode16(case: :lower)
+    :sha256 |> :crypto.hash(binary_data) |> Base.encode16(case: :lower)
   end
 
   @doc """

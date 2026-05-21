@@ -1,14 +1,14 @@
 defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
-
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
 
   setup do
     user = user_fixture()
@@ -124,7 +124,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
 
       # New entity should still exist and be unmodified
       restored_new = Storyarn.Sheets.get_sheet(project.id, new_sheet.id)
-      assert restored_new != nil
+      assert restored_new
       assert restored_new.name == "New After Snapshot"
     end
   end

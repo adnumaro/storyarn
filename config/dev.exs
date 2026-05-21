@@ -1,5 +1,33 @@
 import Config
 
+config :live_vue, vite_host: "http://localhost:5173", ssr_module: LiveVue.SSR.ViteJS
+
+# Do not include metadata nor timestamps in development logs
+config :logger, :default_formatter, format: "[$level] $message\n"
+
+# Initialize plugs at runtime for faster development compilation
+config :phoenix, :plug_init_mode, :runtime
+
+# Set a higher stacktrace during development. Avoid configuring such
+# in production as building large stacktraces may be expensive.
+config :phoenix, :stacktrace_depth, 20
+
+config :phoenix_live_view,
+  # Include debug annotations and locations in rendered markup.
+  # Changing this configuration will require mix clean and a full recompile.
+  debug_heex_annotations: true,
+  debug_attributes: true,
+  # Enable helpful, but potentially expensive runtime checks
+  enable_expensive_runtime_checks: true
+
+# Use Mailpit for development (SMTP on port 1025, Web UI on port 8025)
+# Run: docker compose up -d mailpit
+# View emails at: http://localhost:8025
+config :storyarn, Storyarn.Mailer,
+  adapter: Swoosh.Adapters.SMTP,
+  relay: "localhost",
+  port: 1025
+
 # Configure your database
 config :storyarn, Storyarn.Repo,
   username: "postgres",
@@ -25,9 +53,10 @@ config :storyarn, StoryarnWeb.Endpoint,
   debug_errors: true,
   secret_key_base: "is1dQ2K6QVxn1UOnW8D8mKFpVfq7eRlcMkiAxyGdi7qOVmc3DgicHUOXWXo8twvQ",
   watchers: [
-    esbuild: {Esbuild, :install_and_run, [:storyarn, ~w(--sourcemap=inline --watch)]},
-    tailwind: {Tailwind, :install_and_run, [:storyarn, ~w(--watch)]}
-  ]
+    tailwind: {Tailwind, :install_and_run, [:storyarn, ~w(--watch)]},
+    vite: {PhoenixVite.Npm, :run, [:vite, ~w(dev)]}
+  ],
+  static_url: [host: "localhost", port: 5173]
 
 # ## SSL Support
 #
@@ -63,41 +92,15 @@ config :storyarn, StoryarnWeb.Endpoint,
     ]
   ]
 
-# Enable dev routes for dashboard and mailbox
-config :storyarn, dev_routes: true
-
-# Do not include metadata nor timestamps in development logs
-config :logger, :default_formatter, format: "[$level] $message\n"
-
-# Set a higher stacktrace during development. Avoid configuring such
-# in production as building large stacktraces may be expensive.
-config :phoenix, :stacktrace_depth, 20
-
-# Initialize plugs at runtime for faster development compilation
-config :phoenix, :plug_init_mode, :runtime
-
-config :phoenix_live_view,
-  # Include debug annotations and locations in rendered markup.
-  # Changing this configuration will require mix clean and a full recompile.
-  debug_heex_annotations: true,
-  debug_attributes: true,
-  # Enable helpful, but potentially expensive runtime checks
-  enable_expensive_runtime_checks: true
-
-# Use Mailpit for development (SMTP on port 1025, Web UI on port 8025)
-# Run: docker compose up -d mailpit
-# View emails at: http://localhost:8025
-config :storyarn, Storyarn.Mailer,
-  adapter: Swoosh.Adapters.SMTP,
-  relay: "localhost",
-  port: 1025
-
-# Disable API client in dev (using SMTP instead)
-config :swoosh, :api_client, false
-
 # Local file storage for development (no R2 required)
 # Files are stored in priv/static/uploads and served directly
 config :storyarn, :storage,
   adapter: :local,
   upload_dir: "priv/static/uploads",
   public_path: "/uploads"
+
+# Enable dev routes for dashboard and mailbox
+config :storyarn, dev_routes: true
+
+# Disable API client in dev (using SMTP instead)
+config :swoosh, :api_client, false

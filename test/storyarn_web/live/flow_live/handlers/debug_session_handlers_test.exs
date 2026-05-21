@@ -95,7 +95,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlersTest do
         build_socket(%{
           debug_state: state,
           debug_nodes: nodes,
-          debug_connections: [conn(1, "output", 2)]
+          debug_connections: [conn(1, "default", 2)]
         })
 
       {:noreply, result} =
@@ -147,13 +147,13 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlersTest do
     test "resets state with empty call stack" do
       nodes = %{1 => node(1, "entry"), 2 => node(2, "hub")}
       state = Engine.init(%{}, 1)
-      {:ok, state} = Engine.step(state, nodes, [conn(1, "output", 2)])
+      {:ok, state} = Engine.step(state, nodes, [conn(1, "default", 2)])
 
       socket =
         build_socket(%{
           debug_state: state,
           debug_nodes: nodes,
-          debug_connections: [conn(1, "output", 2)],
+          debug_connections: [conn(1, "default", 2)],
           debug_auto_playing: true
         })
 
@@ -180,7 +180,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlersTest do
           debug_auto_playing: true,
           debug_panel_open: true,
           debug_nodes: %{1 => node(1, "entry")},
-          debug_connections: [conn(1, "output", 2)]
+          debug_connections: [conn(1, "default", 2)]
         })
 
       {:noreply, result} = DebugSessionHandlers.handle_debug_stop(socket)
@@ -429,7 +429,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlersTest do
     end
 
     test "removes existing breakpoint" do
-      state = Engine.init(%{}, 1) |> Engine.toggle_breakpoint(5)
+      state = %{} |> Engine.init(1) |> Engine.toggle_breakpoint(5)
       socket = build_socket(%{debug_state: state})
 
       {:noreply, result} =

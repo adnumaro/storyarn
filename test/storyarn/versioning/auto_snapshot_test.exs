@@ -2,13 +2,13 @@ defmodule Storyarn.Versioning.AutoSnapshotTest do
   @moduledoc "Tests that facade maybe_create_version defaults is_auto: true."
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Versioning.EntityVersion
-
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Versioning.EntityVersion
 
   setup do
     user = user_fixture()
@@ -51,9 +51,7 @@ defmodule Storyarn.Versioning.AutoSnapshotTest do
       scene = scene_fixture(project)
 
       scene =
-        Storyarn.Repo.preload(scene, [:layers, :zones, :pins, :connections, :annotations],
-          force: true
-        )
+        Storyarn.Repo.preload(scene, [:layers, :zones, :pins, :connections, :annotations], force: true)
 
       {:ok, version} = Storyarn.Scenes.maybe_create_version(scene, user.id)
       assert %EntityVersion{is_auto: true} = version

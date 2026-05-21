@@ -2,17 +2,28 @@ defmodule StoryarnWeb.Router do
   use StoryarnWeb, :router
 
   # Content Security Policy
-  # 'unsafe-inline' is kept for styles because Tailwind/daisyUI emit inline styles in places.
-  @csp_policy "default-src 'self'; " <>
-                "script-src 'self'; " <>
-                "style-src 'self' 'unsafe-inline'; " <>
-                "img-src 'self' data: blob: https:; " <>
-                "font-src 'self' data:; " <>
-                "connect-src 'self' ws: wss: https://*.ingest.sentry.io https://*.ingest.us.sentry.io; " <>
-                "frame-src 'self'; " <>
-                "frame-ancestors 'self'; " <>
-                "base-uri 'self'; " <>
-                "form-action 'self'"
+  @csp_dev_extras if(Mix.env() == :dev,
+                    do: " http://localhost:5173 'unsafe-inline' 'unsafe-eval'",
+                    else: ""
+                  )
+
+  @sentry_connect_src "https://*.ingest.sentry.io https://*.ingest.us.sentry.io"
+  @posthog_default_connect_src "https://*.posthog.com https://*.i.posthog.com " <>
+                                 "https://us.i.posthog.com https://eu.i.posthog.com"
+
+  defp csp_policy do
+    "default-src 'self'; " <>
+      "script-src 'self'#{@csp_dev_extras}; " <>
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com#{@csp_dev_extras}; " <>
+      "img-src 'self' data: blob: https:; " <>
+      "font-src 'self' data: https://fonts.gstatic.com#{@csp_dev_extras}; " <>
+      "connect-src 'self' ws: wss: #{@sentry_connect_src} #{posthog_connect_src()}#{@csp_dev_extras}; " <>
+      "frame-src 'self'; " <>
+      "frame-ancestors 'self'; " <>
+      "base-uri 'self'; " <>
+      "form-action 'self'"
+  end
+
   @user_auth_hook Module.concat(["StoryarnWeb", "UserAuth"])
 
   pipeline :browser do
@@ -21,8 +32,10 @@ defmodule StoryarnWeb.Router do
     plug :fetch_live_flash
     plug :put_root_layout, html: {StoryarnWeb.Layouts, :root}
     plug :protect_from_forgery
-    plug :put_secure_browser_headers, %{"content-security-policy" => @csp_policy}
+    plug :put_secure_browser_headers
+    plug :put_content_security_policy
     plug :fetch_current_scope_for_user
+    plug :put_posthog_user_context
     plug StoryarnWeb.Plugs.Locale
   end
 
@@ -34,11 +47,53 @@ defmodule StoryarnWeb.Router do
     plug :store_sudo_return_to
   end
 
+  defp put_content_security_policy(conn, _opts) do
+    Plug.Conn.put_resp_header(conn, "content-security-policy", csp_policy())
+  end
+
+  defp put_posthog_user_context(%{assigns: %{current_scope: %{user: %{id: user_id}}}} = conn, _opts) do
+    Logger.metadata(user_id: user_id)
+    PostHog.set_context(%{distinct_id: "user:#{user_id}"})
+    conn
+  end
+
+  defp put_posthog_user_context(conn, _opts) do
+    Logger.metadata(user_id: nil)
+    conn
+  end
+
+  defp posthog_connect_src do
+    posthog_host =
+      :posthog
+      |> Application.get_env(:api_host)
+      |> csp_origin()
+
+    [@posthog_default_connect_src, posthog_host]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join(" ")
+  end
+
+  defp csp_origin(url) when is_binary(url) do
+    case URI.parse(url) do
+      %URI{scheme: scheme, host: host, port: port} when scheme in ["http", "https"] and is_binary(host) ->
+        port_suffix = csp_port_suffix(scheme, port)
+        "#{scheme}://#{host}#{port_suffix}"
+
+      _ ->
+        nil
+    end
+  end
+
+  defp csp_origin(_url), do: nil
+
+  defp csp_port_suffix("http", 80), do: ""
+  defp csp_port_suffix("https", 443), do: ""
+  defp csp_port_suffix(_scheme, nil), do: ""
+  defp csp_port_suffix(_scheme, port), do: ":#{port}"
+
   scope "/", StoryarnWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
-    get "/contact", PageController, :contact
     post "/waitlist", PageController, :join_waitlist
   end
 
@@ -106,9 +161,17 @@ defmodule StoryarnWeb.Router do
   scope "/", StoryarnWeb do
     pipe_through [:browser, :require_authenticated_user, :sudo_return_to]
 
-    get "/workspaces/:workspace_slug/projects/:project_slug/screenplays/:id/export/fountain",
-        ScreenplayExportController,
-        :fountain
+    post "/workspaces/:workspace_slug/projects/:project_slug/upload",
+         UploadController,
+         :create
+
+    post "/workspaces/:workspace_slug/projects/:project_slug/upload/inspect",
+         UploadController,
+         :inspect_upload
+
+    post "/workspaces/:workspace_slug/projects/:project_slug/upload/materialize",
+         UploadController,
+         :materialize
 
     get "/workspaces/:workspace_slug/projects/:project_slug/localization/export/:format/:locale",
         LocalizationExportController,
@@ -122,7 +185,10 @@ defmodule StoryarnWeb.Router do
         SnapshotDownloadController,
         :download
 
-    live_session :require_authenticated_user,
+    # Authenticated app shell. Workspace dashboards, project tools, and
+    # settings intentionally share one LiveView session so navigation between
+    # those areas does not fall back to a full document reload.
+    live_session :authenticated_app,
       on_mount:
         if(Application.compile_env(:storyarn, :sql_sandbox),
           do: [Module.concat(["StoryarnWeb", "LiveSandbox"])],
@@ -131,7 +197,9 @@ defmodule StoryarnWeb.Router do
           [
             Sentry.LiveViewHook,
             {@user_auth_hook, :require_authenticated},
-            {@user_auth_hook, :load_workspaces}
+            {@user_auth_hook, :load_workspaces},
+            {StoryarnWeb.Live.Hooks.ProjectScope, :load_project},
+            {StoryarnWeb.Live.Hooks.WorkspaceScope, :load_workspace}
           ] do
       # User Settings (Linear-style)
       live "/users/settings", SettingsLive.Profile, :edit
@@ -139,94 +207,21 @@ defmodule StoryarnWeb.Router do
       live "/users/settings/connections", SettingsLive.Connections, :edit
       live "/users/settings/confirm-email/:token", SettingsLive.Profile, :confirm_email
 
-      # Workspace Settings (in unified settings)
-      live "/users/settings/workspaces/:slug/general", SettingsLive.WorkspaceGeneral, :edit
-      live "/users/settings/workspaces/:slug/members", SettingsLive.WorkspaceMembers, :edit
-
-      live "/users/settings/workspaces/:slug/deleted-projects",
-           SettingsLive.WorkspaceDeletedProjects,
-           :index
-
       # Workspaces
       live "/workspaces", WorkspaceLive.Index, :index
       live "/workspaces/new", WorkspaceLive.New, :new
       live "/workspaces/:workspace_slug", WorkspaceLive.Show, :show
-      live "/workspaces/:workspace_slug/projects/new", WorkspaceLive.Show, :new_project
-
-      # Projects (nested under workspaces)
-      live "/workspaces/:workspace_slug/projects/:project_slug", ProjectLive.Show, :show
-
-      live "/workspaces/:workspace_slug/projects/:project_slug/settings",
-           ProjectLive.Settings,
-           :general
-
-      live "/workspaces/:workspace_slug/projects/:project_slug/settings/localization",
-           ProjectLive.Settings,
-           :localization
-
-      live "/workspaces/:workspace_slug/projects/:project_slug/settings/members",
-           ProjectLive.Settings,
-           :members
-
-      live "/workspaces/:workspace_slug/projects/:project_slug/settings/snapshots",
-           ProjectLive.Settings,
-           :snapshots
-
-      live "/workspaces/:workspace_slug/projects/:project_slug/settings/version-control",
-           ProjectLive.Settings,
-           :version_control
-
-      live "/workspaces/:workspace_slug/projects/:project_slug/settings/export-import",
-           ExportImportLive.Index,
-           :index
-
-      # Sheets (character sheets, location sheets, etc.)
-      live "/workspaces/:workspace_slug/projects/:project_slug/sheets", SheetLive.Index, :index
-      live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id", SheetLive.Show, :show
-
-      live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id/drafts/:draft_id",
-           SheetLive.Show,
-           :draft
-
-      live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id/edit",
-           SheetLive.Show,
-           :edit
 
       live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id/compare/:version_number",
            CompareLive.Sheet,
            :compare
 
-      # Localization
-      live "/workspaces/:workspace_slug/projects/:project_slug/localization",
-           LocalizationLive.Index,
-           :index
+      live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id/versions/:version_number/viewer",
+           VersionViewerLive,
+           :sheet
 
-      live "/workspaces/:workspace_slug/projects/:project_slug/localization/report",
-           LocalizationLive.Report,
-           :report
-
-      live "/workspaces/:workspace_slug/projects/:project_slug/localization/:id",
-           LocalizationLive.Edit,
-           :edit
-
-      # Assets
-      live "/workspaces/:workspace_slug/projects/:project_slug/assets",
-           AssetLive.Index,
-           :index
-
-      # Trash
-      live "/workspaces/:workspace_slug/projects/:project_slug/trash",
-           ProjectLive.Trash,
-           :index
-
-      # Flows (visual narrative editor)
-      live "/workspaces/:workspace_slug/projects/:project_slug/flows", FlowLive.Index, :index
-      live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id", FlowLive.Show, :show
-
-      live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id/drafts/:draft_id",
-           FlowLive.Show,
-           :draft
-
+      # Flows — immersive player and compare views keep their own chromeless
+      # layouts, while sharing the authenticated app live_session for fast nav.
       live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id/play",
            FlowLive.PlayerLive,
            :play
@@ -235,15 +230,12 @@ defmodule StoryarnWeb.Router do
            CompareLive.Flow,
            :compare
 
-      # Scenes (world builder)
-      live "/workspaces/:workspace_slug/projects/:project_slug/scenes", SceneLive.Index, :index
-      live "/workspaces/:workspace_slug/projects/:project_slug/scenes/new", SceneLive.Index, :new
-      live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id", SceneLive.Show, :show
+      live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id/versions/:version_number/viewer",
+           VersionViewerLive,
+           :flow
 
-      live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id/drafts/:draft_id",
-           SceneLive.Show,
-           :draft
-
+      # Scenes — immersive exploration keeps its chromeless layout while
+      # sharing the authenticated app live_session for fast nav.
       live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id/explore",
            SceneLive.ExplorationLive,
            :explore
@@ -252,23 +244,92 @@ defmodule StoryarnWeb.Router do
            CompareLive.Scene,
            :compare
 
-      # Screenplays (block-based screenplay editor)
-      live "/workspaces/:workspace_slug/projects/:project_slug/screenplays",
-           ScreenplayLive.Index,
+      live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id/versions/:version_number/viewer",
+           VersionViewerLive,
+           :scene
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/sheets",
+           SheetLive.Index,
            :index
 
-      live "/workspaces/:workspace_slug/projects/:project_slug/screenplays/new",
-           ScreenplayLive.Index,
-           :new
-
-      live "/workspaces/:workspace_slug/projects/:project_slug/screenplays/:id",
-           ScreenplayLive.Show,
+      live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id",
+           SheetLive.Show,
            :show
 
-      # Version snapshot viewer (iframe for split-view comparison)
-      live "/workspaces/:workspace_slug/projects/:project_slug/versions/:entity_type/:entity_id/:version_number",
-           VersionLive.Viewer,
+      live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id/edit",
+           SheetLive.Show,
+           :edit
+
+      # Localization — Report is the tool "dashboard" (default landing);
+      # Index shows the text list filtered by locale; Edit is a single text.
+      live "/workspaces/:workspace_slug/projects/:project_slug/localization",
+           LocalizationLive.Report,
            :show
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/localization/texts/:locale",
+           LocalizationLive.Index,
+           :index
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/localization/text/:id",
+           LocalizationLive.Edit,
+           :edit
+
+      # Project dashboard
+      live "/workspaces/:workspace_slug/projects/:project_slug", ProjectLive.Show, :show
+
+      # Assets
+      live "/workspaces/:workspace_slug/projects/:project_slug/assets",
+           AssetLive.Index,
+           :index
+
+      # Project Settings (uses SettingsLayout, not project chrome — keeps the
+      # full-page settings sidebar nav while sharing project scope assigns.)
+      live "/workspaces/:workspace_slug/projects/:project_slug/settings",
+           ProjectSettingsLive.General,
+           :edit
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/settings/localization",
+           ProjectSettingsLive.Localization,
+           :edit
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/settings/members",
+           ProjectSettingsLive.Members,
+           :edit
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/settings/snapshots",
+           ProjectSettingsLive.Snapshots,
+           :edit
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/settings/version-control",
+           ProjectSettingsLive.VersionControl,
+           :edit
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/settings/usage-limits",
+           ProjectSettingsLive.UsageLimits,
+           :show
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/settings/export-import",
+           ExportImportLive.Index,
+           :index
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/settings/trash",
+           ProjectSettingsLive.Trash,
+           :index
+
+      # Scenes
+      live "/workspaces/:workspace_slug/projects/:project_slug/scenes", SceneLive.Index, :index
+      live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id", SceneLive.Show, :show
+
+      # Flows
+      live "/workspaces/:workspace_slug/projects/:project_slug/flows", FlowLive.Index, :index
+      live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id", FlowLive.Show, :show
+
+      live "/users/settings/workspaces/:slug/general", SettingsLive.WorkspaceGeneral, :edit
+      live "/users/settings/workspaces/:slug/members", SettingsLive.WorkspaceMembers, :edit
+
+      live "/users/settings/workspaces/:slug/deleted-projects",
+           SettingsLive.WorkspaceDeletedProjects,
+           :index
     end
 
     post "/users/update-password", UserSessionController, :update_password
@@ -288,10 +349,11 @@ defmodule StoryarnWeb.Router do
             {@user_auth_hook, :mount_current_scope},
             {@user_auth_hook, :load_workspaces}
           ] do
-      live "/users/register", UserLive.Registration, :new
+      live "/", LandingLive.Index, :index
+      live "/users/register/:token", UserLive.Registration, :new
       live "/users/log-in", UserLive.Login, :new
-      live "/users/log-in/:token", UserLive.Confirmation, :new
       live "/users/confirm-access", UserLive.ConfirmAccess, :new
+      live "/contact", LandingLive.Contact, :show
 
       # Project invitations (accessible with or without auth)
       live "/projects/invitations/:token", ProjectLive.Invitation, :show

@@ -2,15 +2,15 @@ defmodule StoryarnWeb.LocalizationExportControllerTest do
   use StoryarnWeb.ConnCase, async: true
 
   import Storyarn.AccountsFixtures
-  import Storyarn.ProjectsFixtures
   import Storyarn.LocalizationFixtures
+  import Storyarn.ProjectsFixtures
 
   alias Storyarn.Repo
 
   setup :register_and_log_in_user
 
   setup %{user: user} do
-    project = project_fixture(user) |> Repo.preload(:workspace)
+    project = user |> project_fixture() |> Repo.preload(:workspace)
 
     # Add a target language (Spanish) so export has something to work with
     language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
@@ -189,7 +189,7 @@ defmodule StoryarnWeb.LocalizationExportControllerTest do
 
     test "returns 404 for non-member user", %{conn: conn} do
       other_user = user_fixture()
-      other_project = project_fixture(other_user) |> Repo.preload(:workspace)
+      other_project = other_user |> project_fixture() |> Repo.preload(:workspace)
 
       conn = get(conn, export_url(other_project, "csv", "es"))
 

@@ -7,6 +7,8 @@ defmodule Storyarn.Shared.ShortcutHelpers do
   in each CRUD module.
   """
 
+  alias Storyarn.Shared.NameNormalizer
+
   @doc """
   Auto-generates shortcut from name on create if not already provided.
 
@@ -99,18 +101,18 @@ defmodule Storyarn.Shared.ShortcutHelpers do
     referenced? = check_backlinks_fn.(entity)
 
     shortcut =
-      Storyarn.Shared.NameNormalizer.maybe_regenerate(
+      NameNormalizer.maybe_regenerate(
         entity.shortcut,
         attrs["name"],
         referenced?,
-        &Storyarn.Shared.NameNormalizer.shortcutify/1
+        &NameNormalizer.shortcutify/1
       )
 
     shortcut =
-      if shortcut != entity.shortcut do
-        generator_fn.(attrs["name"], entity.project_id, entity.id)
-      else
+      if shortcut == entity.shortcut do
         shortcut
+      else
+        generator_fn.(attrs["name"], entity.project_id, entity.id)
       end
 
     Map.put(attrs, "shortcut", shortcut)

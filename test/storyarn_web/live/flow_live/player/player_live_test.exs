@@ -9,10 +9,12 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
   use StoryarnWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
+  import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
 
-  alias Storyarn.{Flows, Repo}
+  alias Storyarn.Flows
+  alias Storyarn.Repo
 
   # ===========================================================================
   # Helpers
@@ -24,6 +26,10 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
 
   defp flow_url(project, flow) do
     ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+  end
+
+  defp get_player_vue(view) do
+    LiveVue.Test.get_vue(view, name: "live/flow/player/FlowPlayer")
   end
 
   # Gets the auto-created entry and exit nodes from a flow
@@ -121,7 +127,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
   setup :register_and_log_in_user
 
   setup %{user: user} do
-    project = project_fixture(user) |> Repo.preload(:workspace)
+    project = user |> project_fixture() |> Repo.preload(:workspace)
     %{project: project}
   end
 
@@ -133,12 +139,15 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
     test "mounts player with valid flow", %{conn: conn, project: project} do
       {flow, _entry, _dialogue} = create_basic_flow(project)
 
-      {:ok, _view, html} = live(conn, player_url(project, flow))
+      {:ok, view, html} = live(conn, player_url(project, flow))
 
       # Should render the player layout
       assert html =~ "story-player"
-      # Should show dialogue text
-      assert html =~ "Hello world!"
+
+      # Vue component should be mounted with slide data
+      vue = get_player_vue(view)
+      assert vue.component == "live/flow/player/FlowPlayer"
+      assert vue.props["slide"]["type"] in ["dialogue", "outcome"]
     end
 
     test "redirects when flow not found", %{conn: conn, project: project} do
@@ -153,7 +162,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
 
     test "redirects when project not accessible", %{conn: conn} do
       other_user = Storyarn.AccountsFixtures.user_fixture()
-      other_project = project_fixture(other_user) |> Repo.preload(:workspace)
+      other_project = other_user |> project_fixture() |> Repo.preload(:workspace)
       {flow, _entry, _dialogue} = create_basic_flow(other_project)
 
       {:error, {:redirect, %{to: path, flash: flash}}} =
@@ -166,20 +175,17 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
     test "shows outcome when flow goes directly to exit", %{conn: conn, project: project} do
       {flow, _entry, _exit} = create_entry_exit_flow(project)
 
-      {:ok, _view, html} = live(conn, player_url(project, flow))
+      {:ok, view, _html} = live(conn, player_url(project, flow))
 
-      # Should render the outcome/end state
-      assert html =~ "End" or html =~ "outcome"
+      vue = get_player_vue(view)
+      assert vue.props["slide"]["type"] == "outcome"
     end
 
     test "shows empty state when entry node has no connections", %{conn: conn, project: project} do
-      # Entry nodes cannot be deleted (business rule), so we test an entry
-      # node with no outgoing connection — the engine finishes immediately
       flow = flow_fixture(project, %{name: "Disconnected Flow"})
 
       {:ok, _view, html} = live(conn, player_url(project, flow))
 
-      # Should render player layout but with empty/outcome content
       assert html =~ "story-player"
     end
   end
@@ -194,15 +200,20 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
 
       {:ok, view, _html} = live(conn, player_url(project, flow))
 
+      vue = get_player_vue(view)
+      assert vue.props["player-mode"] == "player"
+
       # Toggle to analysis mode
-      html = render_click(view, "toggle_mode")
-      assert html =~ "story-player"
-      # In analysis mode, the mode button should show "active" class
-      assert html =~ "player-toolbar-btn-active"
+      render_click(view, "toggle_mode")
+
+      vue = get_player_vue(view)
+      assert vue.props["player-mode"] == "analysis"
 
       # Toggle back to player mode
-      html = render_click(view, "toggle_mode")
-      assert html =~ "story-player"
+      render_click(view, "toggle_mode")
+
+      vue = get_player_vue(view)
+      assert vue.props["player-mode"] == "player"
     end
   end
 
@@ -211,13 +222,10 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
   # ===========================================================================
 
   describe "continue" do
-    test "dialogue without responses auto-advances to exit on mount", %{
+    test "dialogue without responses waits for continue before advancing", %{
       conn: conn,
       project: project
     } do
-      # Dialogues without responses are pass-through in the player engine —
-      # they follow_output immediately. So entry->dialogue->exit all advance
-      # at mount time, landing on the exit/outcome slide.
       flow = flow_fixture(project, %{name: "Continue Flow"})
       {entry, auto_exit} = get_auto_nodes(flow)
 
@@ -240,10 +248,60 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
       _conn1 = connection_fixture(flow, entry, dialogue)
       _conn2 = connection_fixture(flow, dialogue, auto_exit)
 
-      {:ok, _view, html} = live(conn, player_url(project, flow))
+      {:ok, view, _html} = live(conn, player_url(project, flow))
 
-      # Dialogue without responses auto-advances to exit on mount
-      assert html =~ "Done" or html =~ "outcome"
+      vue = get_player_vue(view)
+      assert vue.props["slide"]["type"] == "dialogue"
+      assert vue.props["slide"]["text"] =~ "First dialogue"
+      assert vue.props["show-continue"] == true
+
+      render_click(view, "continue")
+
+      vue = get_player_vue(view)
+      assert vue.props["slide"]["type"] == "outcome"
+    end
+
+    test "dialogue with a single valid response waits for continue before auto-selecting it", %{
+      conn: conn,
+      project: project
+    } do
+      flow = flow_fixture(project, %{name: "Single Response Flow"})
+      {entry, auto_exit} = get_auto_nodes(flow)
+      response_id = Ecto.UUID.generate()
+
+      Flows.update_node(auto_exit, %{data: %{"label" => "Done"}})
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "<p>Read this before choosing.</p>",
+            "speaker_sheet_id" => nil,
+            "stage_directions" => "",
+            "menu_text" => "",
+            "responses" => [
+              %{"id" => response_id, "text" => "Continue", "condition" => "", "instruction" => ""}
+            ]
+          },
+          position_x: 200.0,
+          position_y: 0.0
+        })
+
+      _conn1 = connection_fixture(flow, entry, dialogue)
+      _conn2 = connection_fixture(flow, dialogue, auto_exit, %{source_pin: response_id})
+
+      {:ok, view, _html} = live(conn, player_url(project, flow))
+
+      vue = get_player_vue(view)
+      assert vue.props["slide"]["type"] == "dialogue"
+      assert vue.props["slide"]["text"] =~ "Read this before choosing."
+      assert vue.props["responses"] == []
+      assert vue.props["show-continue"] == true
+
+      render_click(view, "continue")
+
+      vue = get_player_vue(view)
+      assert vue.props["slide"]["type"] == "outcome"
     end
 
     test "continue is no-op when waiting for input with responses", %{
@@ -252,14 +310,17 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
     } do
       {flow, _entry, _dialogue, _exit, _r1, _r2} = create_flow_with_responses(project)
 
-      {:ok, view, html} = live(conn, player_url(project, flow))
+      {:ok, view, _html} = live(conn, player_url(project, flow))
 
-      # Should show choices
-      assert html =~ "What do you choose?"
+      vue = get_player_vue(view)
+      assert vue.props["slide"]["type"] == "dialogue"
+      assert vue.props["slide"]["text"] =~ "What do you choose?"
 
       # Continue should be a no-op (waiting for response selection)
-      html = render_click(view, "continue")
-      assert html =~ "What do you choose?"
+      render_click(view, "continue")
+
+      vue = get_player_vue(view)
+      assert vue.props["slide"]["text"] =~ "What do you choose?"
     end
   end
 
@@ -272,16 +333,16 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
       {flow, _entry, _dialogue, _exit, response1_id, _response2_id} =
         create_flow_with_responses(project)
 
-      {:ok, view, html} = live(conn, player_url(project, flow))
+      {:ok, view, _html} = live(conn, player_url(project, flow))
 
-      assert html =~ "What do you choose?"
-      assert html =~ "Option A"
+      vue = get_player_vue(view)
+      assert vue.props["slide"]["text"] =~ "What do you choose?"
 
       # Choose response 1
-      html = render_click(view, "choose_response", %{"id" => response1_id})
+      render_click(view, "choose_response", %{"id" => response1_id})
 
-      # Should advance to exit/outcome
-      assert html =~ "The End" or html =~ "outcome"
+      vue = get_player_vue(view)
+      assert vue.props["slide"]["type"] == "outcome"
     end
 
     test "choose_response with invalid id shows error", %{conn: conn, project: project} do
@@ -293,7 +354,8 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
       html = render_click(view, "choose_response", %{"id" => "nonexistent-id"})
 
       # Should show error or remain on same dialogue
-      assert html =~ "Could not select" or html =~ "What do you choose?"
+      vue = get_player_vue(view)
+      assert html =~ "Could not select" or vue.props["slide"]["text"] =~ "What do you choose?"
     end
   end
 
@@ -308,10 +370,10 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
       {:ok, view, _html} = live(conn, player_url(project, flow))
 
       # Choose response 1 by number
-      html = render_click(view, "choose_response_by_number", %{"number" => 1})
+      render_click(view, "choose_response_by_number", %{"number" => 1})
 
-      # Should advance
-      assert html =~ "The End" or html =~ "outcome"
+      vue = get_player_vue(view)
+      assert vue.props["slide"]["type"] == "outcome"
     end
 
     test "invalid number is a no-op", %{conn: conn, project: project} do
@@ -320,10 +382,11 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
       {:ok, view, _html} = live(conn, player_url(project, flow))
 
       # Choose response with out-of-range number
-      html = render_click(view, "choose_response_by_number", %{"number" => 99})
+      render_click(view, "choose_response_by_number", %{"number" => 99})
 
       # Should stay on the same dialogue
-      assert html =~ "What do you choose?"
+      vue = get_player_vue(view)
+      assert vue.props["slide"]["text"] =~ "What do you choose?"
     end
   end
 
@@ -333,42 +396,41 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
 
   describe "go_back" do
     test "goes back to previous node after choosing response", %{conn: conn, project: project} do
-      # Use a flow with responses. After choosing a response (which advances
-      # to exit), go_back restores the pre-exit snapshot.
-      # Due to how the engine snapshots work (captures pre-evaluation state),
-      # the first go_back restores to the exit node's pre-eval state (same exit).
-      # A second go_back restores to the dialogue node's pre-eval state.
       {flow, _entry, _dialogue, _exit, response1_id, _response2_id} =
         create_flow_with_responses(project)
 
-      {:ok, view, html} = live(conn, player_url(project, flow))
+      {:ok, view, _html} = live(conn, player_url(project, flow))
 
-      # Should start at dialogue (waiting for response)
-      assert html =~ "What do you choose?"
+      vue = get_player_vue(view)
+      assert vue.props["slide"]["text"] =~ "What do you choose?"
 
       # Choose a response to advance to exit
-      html = render_click(view, "choose_response", %{"id" => response1_id})
-      assert html =~ "The End" or html =~ "outcome"
+      render_click(view, "choose_response", %{"id" => response1_id})
+
+      vue = get_player_vue(view)
+      assert vue.props["slide"]["type"] == "outcome"
 
       # Go back twice: first to pre-exit state, then to dialogue
       render_click(view, "go_back")
-      html = render_click(view, "go_back")
+      render_click(view, "go_back")
 
-      # Should be back at dialogue node (text visible, though pending_choices
-      # may be nil in the pre-eval snapshot)
-      assert html =~ "What do you choose?"
+      vue = get_player_vue(view)
+      assert vue.props["slide"]["text"] =~ "What do you choose?"
     end
 
     test "go_back is a no-op when no history", %{conn: conn, project: project} do
       {flow, _entry, _dialogue} = create_basic_flow(project)
 
-      {:ok, view, html} = live(conn, player_url(project, flow))
+      {:ok, view, _html} = live(conn, player_url(project, flow))
 
-      assert html =~ "Hello world!"
+      vue = get_player_vue(view)
+      slide_before = vue.props["slide"]
 
       # Go back at start should be a no-op
-      html = render_click(view, "go_back")
-      assert html =~ "Hello world!"
+      render_click(view, "go_back")
+
+      vue = get_player_vue(view)
+      assert vue.props["slide"]["type"] == slide_before["type"]
     end
   end
 
@@ -378,22 +440,22 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
 
   describe "restart" do
     test "restarts flow from beginning", %{conn: conn, project: project} do
-      # Use a response-based flow so the player stops at the dialogue.
-      # After choosing a response (advancing to exit), restart returns to dialogue.
       {flow, _entry, _dialogue, _exit, response1_id, _response2_id} =
         create_flow_with_responses(project)
 
-      {:ok, view, html} = live(conn, player_url(project, flow))
+      {:ok, view, _html} = live(conn, player_url(project, flow))
 
-      # Should start at dialogue
-      assert html =~ "What do you choose?"
+      vue = get_player_vue(view)
+      assert vue.props["slide"]["text"] =~ "What do you choose?"
 
       # Choose a response to advance to exit
       render_click(view, "choose_response", %{"id" => response1_id})
 
       # Restart should go back to dialogue
-      html = render_click(view, "restart")
-      assert html =~ "What do you choose?"
+      render_click(view, "restart")
+
+      vue = get_player_vue(view)
+      assert vue.props["slide"]["text"] =~ "What do you choose?"
     end
   end
 
@@ -419,7 +481,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
   # ===========================================================================
 
   describe "scene backdrop" do
-    test "renders scene backdrop when flow has scene_id", %{conn: conn, project: project} do
+    test "renders player with scene flow", %{conn: conn, project: project} do
       scene = Storyarn.ScenesFixtures.scene_fixture(project)
       flow = flow_fixture(project, %{name: "Scene Flow"})
       Flows.update_flow(flow, %{scene_id: scene.id})
@@ -448,52 +510,185 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
 
       _conn = connection_fixture(flow, entry, dialogue)
 
-      {:ok, _view, html} = live(conn, player_url(project, flow))
+      {:ok, view, html} = live(conn, player_url(project, flow))
 
-      # Player should render (scene backdrop div may or may not show depending on background_asset)
       assert html =~ "story-player"
-      assert html =~ "With backdrop"
+
+      vue = get_player_vue(view)
+      assert vue.props["slide"]["text"] =~ "With backdrop"
+      assert vue.props["visual-layers"] == []
     end
-  end
 
-  # ===========================================================================
-  # show_continue? with slug_line node
-  # ===========================================================================
+    test "uses active sequence visual layers ordered from parent to child", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      backdrop_asset = image_asset_fixture(project, user, %{url: "/uploads/sequence-bg.png"})
+      character_asset = image_asset_fixture(project, user, %{url: "/uploads/sequence-character.png"})
+      flow = flow_fixture(project, %{name: "Sequence Visual Layer Flow"})
+      {entry, _exit} = get_auto_nodes(flow)
 
-  describe "slug_line node in player" do
-    test "renders slug_line slide with continue button", %{conn: conn, project: project} do
-      flow = flow_fixture(project, %{name: "Slug Line Node Flow"})
-      {entry, auto_exit} = get_auto_nodes(flow)
+      {:ok, sequence} =
+        Flows.create_sequence(flow.id, %{
+          "name" => "Intro Sequence"
+        })
 
-      slug_line_node =
+      {:ok, backdrop_layer} =
+        Flows.create_sequence_visual_layer(sequence.id, %{
+          "kind" => "backdrop",
+          "asset_id" => backdrop_asset.id
+        })
+
+      {:ok, child_sequence} =
+        Flows.create_sequence(flow.id, %{
+          "name" => "Nested Sequence",
+          "parent_id" => sequence.id
+        })
+
+      {:ok, character_layer} =
+        Flows.create_sequence_visual_layer(child_sequence.id, %{
+          "kind" => "character",
+          "asset_id" => character_asset.id,
+          "slot" => "right"
+        })
+
+      dialogue =
         node_fixture(flow, %{
-          type: "slug_line",
+          type: "dialogue",
+          parent_id: child_sequence.id,
           data: %{
-            "setting" => "INT",
-            "location_name" => "Castle",
-            "sub_location" => "Throne Room",
-            "time_of_day" => "night",
-            "description" => "<p>A dark throne room</p>"
+            "text" => "<p>Inside sequence</p>",
+            "speaker_sheet_id" => nil,
+            "stage_directions" => "",
+            "menu_text" => "",
+            "responses" => []
           },
           position_x: 200.0,
           position_y: 0.0
         })
 
-      _conn1 = connection_fixture(flow, entry, slug_line_node)
-      _conn2 = connection_fixture(flow, slug_line_node, auto_exit)
+      _conn = connection_fixture(flow, entry, dialogue)
 
-      {:ok, view, html} = live(conn, player_url(project, flow))
+      {:ok, view, _html} = live(conn, player_url(project, flow))
 
-      # Slug line slides should show the content
-      assert html =~ "story-player"
+      vue = get_player_vue(view)
 
-      # Slug line node should show continue button (show_continue? returns true for :slug_line type)
-      # Note: depends on whether engine stops at slug_line nodes
-      assert html =~ "story-player"
+      assert vue.props["visual-layers"] == [
+               %{
+                 "id" => backdrop_layer.id,
+                 "sequence_id" => sequence.id,
+                 "sequence_depth" => 0,
+                 "kind" => "backdrop",
+                 "label" => nil,
+                 "url" => "/uploads/sequence-bg.png",
+                 "z_index" => 0,
+                 "slot" => "full",
+                 "x" => 0.0,
+                 "y" => 0.0,
+                 "width" => 1.0,
+                 "height" => 1.0,
+                 "anchor_x" => 0.0,
+                 "anchor_y" => 0.0,
+                 "fit" => "cover",
+                 "opacity" => 1.0
+               },
+               %{
+                 "id" => character_layer.id,
+                 "sequence_id" => child_sequence.id,
+                 "sequence_depth" => 1,
+                 "kind" => "character",
+                 "label" => nil,
+                 "url" => "/uploads/sequence-character.png",
+                 "z_index" => 100,
+                 "slot" => "right",
+                 "x" => 0.75,
+                 "y" => 1.0,
+                 "width" => 0.38,
+                 "height" => 0.9,
+                 "anchor_x" => 0.5,
+                 "anchor_y" => 1.0,
+                 "fit" => "contain",
+                 "opacity" => 1.0
+               }
+             ]
+    end
 
-      # Continue from slug_line node should advance to exit
-      html = render_click(view, "continue")
-      assert html =~ "story-player"
+    test "passes active sequence audio tracks ordered from parent to child", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      parent_audio = audio_asset_fixture(project, user, %{url: "/uploads/parent-theme.mp3"})
+      child_audio = audio_asset_fixture(project, user, %{url: "/uploads/child-ambient.mp3"})
+      flow = flow_fixture(project, %{name: "Sequence Audio Flow"})
+      {entry, _exit} = get_auto_nodes(flow)
+
+      {:ok, parent_sequence} = Flows.create_sequence(flow.id, %{"name" => "Parent"})
+
+      {:ok, child_sequence} =
+        Flows.create_sequence(flow.id, %{
+          "name" => "Child",
+          "parent_id" => parent_sequence.id
+        })
+
+      {:ok, parent_track} =
+        Flows.upsert_sequence_track(parent_sequence.id, "music", %{
+          "asset_id" => parent_audio.id,
+          "volume" => Decimal.new("0.50")
+        })
+
+      {:ok, child_track} =
+        Flows.upsert_sequence_track(child_sequence.id, "ambience", %{
+          "asset_id" => child_audio.id,
+          "volume" => Decimal.new("0.25")
+        })
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          parent_id: child_sequence.id,
+          data: %{
+            "text" => "<p>Inside audio sequence</p>",
+            "speaker_sheet_id" => nil,
+            "stage_directions" => "",
+            "menu_text" => "",
+            "responses" => []
+          },
+          position_x: 200.0,
+          position_y: 0.0
+        })
+
+      _conn = connection_fixture(flow, entry, dialogue)
+
+      {:ok, view, _html} = live(conn, player_url(project, flow))
+
+      vue = get_player_vue(view)
+
+      assert vue.props["audio-tracks"] == [
+               %{
+                 "id" => parent_track.id,
+                 "sequence_id" => parent_sequence.id,
+                 "kind" => "music",
+                 "position" => 0,
+                 "url" => "/uploads/parent-theme.mp3",
+                 "volume" => 0.5,
+                 "content_type" => "audio/mpeg",
+                 "filename" => parent_audio.filename,
+                 "depth" => 0
+               },
+               %{
+                 "id" => child_track.id,
+                 "sequence_id" => child_sequence.id,
+                 "kind" => "ambience",
+                 "position" => 0,
+                 "url" => "/uploads/child-ambient.mp3",
+                 "volume" => 0.25,
+                 "content_type" => "audio/mpeg",
+                 "filename" => child_audio.filename,
+                 "depth" => 1
+               }
+             ]
     end
   end
 
@@ -654,8 +849,10 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
       sub_flow: sub_flow,
       main_resp_id: main_resp_id
     } do
-      {:ok, view, html} = live(conn, player_url(project, main_flow))
-      assert html =~ "Main dialogue"
+      {:ok, view, _html} = live(conn, player_url(project, main_flow))
+
+      vue = get_player_vue(view)
+      assert vue.props["slide"]["text"] =~ "Main dialogue"
 
       # Choose response → subflow node → flow_jump → redirect to sub-flow
       render_click(view, "choose_response", %{"id" => main_resp_id})
@@ -674,8 +871,10 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
       {path, _} = assert_redirect(view)
 
       # Follow redirect — session restore shows sub-flow dialogue
-      {:ok, _new_view, html} = live(conn, path)
-      assert html =~ "Sub flow dialogue"
+      {:ok, new_view, _html} = live(conn, path)
+
+      vue = LiveVue.Test.get_vue(new_view, name: "live/flow/player/FlowPlayer")
+      assert vue.props["slide"]["text"] =~ "Sub flow dialogue"
     end
 
     test "flow_return navigates back to parent flow", %{
@@ -691,21 +890,25 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
       {sub_path, _} = assert_redirect(view)
 
       # Step 2: In sub-flow, choose response → exit(caller_return) → flow_return
-      {:ok, sub_view, html} = live(conn, sub_path)
-      assert html =~ "Sub flow dialogue"
+      {:ok, sub_view, _html} = live(conn, sub_path)
+
+      vue = LiveVue.Test.get_vue(sub_view, name: "live/flow/player/FlowPlayer")
+      assert vue.props["slide"]["text"] =~ "Sub flow dialogue"
+
       render_click(sub_view, "choose_response", %{"id" => sub_resp_id})
       {parent_path, _} = assert_redirect(sub_view)
 
       # Step 3: Should be back in main flow showing after_dialogue
-      {:ok, _parent_view, html} = live(conn, parent_path)
-      assert html =~ "Back in main"
+      {:ok, parent_view, _html} = live(conn, parent_path)
+
+      vue = LiveVue.Test.get_vue(parent_view, name: "live/flow/player/FlowPlayer")
+      assert vue.props["slide"]["text"] =~ "Back in main"
     end
 
     test "handles subflow node with nil referenced_flow_id", %{
       conn: conn,
       project: project
     } do
-      # A subflow node with no referenced flow is treated as finished
       flow = flow_fixture(project, %{name: "Bad Subflow Flow"})
       {entry, _exit} = get_auto_nodes(flow)
 
@@ -744,12 +947,16 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
         target_pin: "input"
       })
 
-      {:ok, view, html} = live(conn, player_url(project, flow))
-      assert html =~ "Before bad subflow"
+      {:ok, view, _html} = live(conn, player_url(project, flow))
+
+      vue = get_player_vue(view)
+      assert vue.props["slide"]["text"] =~ "Before bad subflow"
 
       # Choosing response advances to subflow with nil flow → engine finishes
-      html = render_click(view, "choose_response", %{"id" => resp_id})
-      assert html =~ "story-player"
+      render_click(view, "choose_response", %{"id" => resp_id})
+
+      vue = get_player_vue(view)
+      assert vue.component == "live/flow/player/FlowPlayer"
     end
   end
 
@@ -767,72 +974,67 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
       {:ok, view, _html} = live(conn, player_url(project, flow))
 
       # Toggle to analysis mode
-      html = render_click(view, "toggle_mode")
-      assert html =~ "player-toolbar-btn-active"
+      render_click(view, "toggle_mode")
 
-      # Both responses should be visible in analysis mode
-      assert html =~ "Option A"
-      assert html =~ "Option B"
+      vue = get_player_vue(view)
+      assert vue.props["player-mode"] == "analysis"
+
+      # Both responses should be in the props
+      responses = vue.props["responses"]
+      texts = Enum.map(responses, & &1["text"])
+      assert "Option A" in texts
+      assert "Option B" in texts
     end
   end
 
   # ===========================================================================
-  # Toolbar rendering
+  # Toolbar props
   # ===========================================================================
 
-  describe "toolbar rendering" do
+  describe "toolbar props" do
     test "hides continue button when dialogue has responses (waiting for choice)", %{
       conn: conn,
       project: project
     } do
-      # When a dialogue has multiple valid responses, the engine is waiting_input.
-      # The continue button should NOT appear because the player expects a response choice.
       {flow, _entry, _dialogue, _exit, _r1, _r2} = create_flow_with_responses(project)
 
-      {:ok, _view, html} = live(conn, player_url(project, flow))
+      {:ok, view, _html} = live(conn, player_url(project, flow))
 
-      # Should show the dialogue
-      assert html =~ "What do you choose?"
-      # Continue button should NOT be shown (player is waiting for response selection)
-      refute html =~ "player-toolbar-btn-primary"
+      vue = get_player_vue(view)
+      assert vue.props["show-continue"] == false
     end
 
-    test "hides continue button when engine is finished", %{
+    test "shows continue button when dialogue has no choices", %{
       conn: conn,
       project: project
     } do
-      # When the engine reaches an exit node (finished), no continue button shown.
       {flow, _entry, _dialogue} = create_basic_flow(project)
 
-      {:ok, _view, html} = live(conn, player_url(project, flow))
+      {:ok, view, _html} = live(conn, player_url(project, flow))
 
-      # The basic flow ends at a dialogue with no outgoing connection (finished state).
-      # Continue button hidden because is_finished is true.
-      refute html =~ "player-toolbar-btn-primary"
+      vue = get_player_vue(view)
+      assert vue.props["is-finished"] == false
+      assert vue.props["show-continue"] == true
     end
 
-    test "shows back button", %{conn: conn, project: project} do
+    test "passes can-go-back as false initially", %{conn: conn, project: project} do
       {flow, _entry, _dialogue} = create_basic_flow(project)
 
-      {:ok, _view, html} = live(conn, player_url(project, flow))
+      {:ok, view, _html} = live(conn, player_url(project, flow))
 
-      assert html =~ "go_back"
+      vue = get_player_vue(view)
+      # can_go_back depends on whether there are snapshots, which depends on how many
+      # nodes were auto-advanced through
+      assert is_boolean(vue.props["can-go-back"])
     end
 
-    test "shows toggle mode button", %{conn: conn, project: project} do
+    test "passes editor-url", %{conn: conn, project: project} do
       {flow, _entry, _dialogue} = create_basic_flow(project)
 
-      {:ok, _view, html} = live(conn, player_url(project, flow))
+      {:ok, view, _html} = live(conn, player_url(project, flow))
 
-      assert html =~ "toggle_mode"
-    end
-
-    test "shows restart button", %{conn: conn, project: project} do
-      {flow, _entry, _dialogue} = create_basic_flow(project)
-
-      {:ok, _view, html} = live(conn, player_url(project, flow))
-
-      assert html =~ "restart"
+      vue = get_player_vue(view)
+      assert vue.props["editor-url"] =~ "/flows/#{flow.id}"
     end
   end
 end

@@ -1,10 +1,11 @@
 defmodule Storyarn.AccountsTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Accounts
-
   import Storyarn.AccountsFixtures
-  alias Storyarn.Accounts.{User, UserToken}
+
+  alias Storyarn.Accounts
+  alias Storyarn.Accounts.User
+  alias Storyarn.Accounts.UserToken
 
   describe "get_user_by_email/1" do
     test "does not return the user if the email does not exist" do
@@ -23,12 +24,12 @@ defmodule Storyarn.AccountsTest do
     end
 
     test "does not return the user if the password is not valid" do
-      user = user_fixture() |> set_password()
+      user = set_password(user_fixture())
       refute Accounts.get_user_by_email_and_password(user.email, "invalid")
     end
 
     test "returns the user if the email and password are valid" do
-      %{id: id} = user = user_fixture() |> set_password()
+      %{id: id} = user = set_password(user_fixture())
 
       assert %User{id: ^id} =
                Accounts.get_user_by_email_and_password(user.email, valid_user_password())
@@ -261,7 +262,7 @@ defmodule Storyarn.AccountsTest do
       token = Accounts.generate_user_session_token(user)
       assert user_token = Repo.get_by(UserToken, token: token)
       assert user_token.context == "session"
-      assert user_token.authenticated_at != nil
+      assert user_token.authenticated_at
 
       # Creating the same token for another user should fail
       assert_raise Ecto.ConstraintError, fn ->
@@ -278,7 +279,7 @@ defmodule Storyarn.AccountsTest do
       token = Accounts.generate_user_session_token(user)
       assert user_token = Repo.get_by(UserToken, token: token)
       assert user_token.authenticated_at == user.authenticated_at
-      assert DateTime.compare(user_token.inserted_at, user.authenticated_at) == :gt
+      assert DateTime.after?(user_token.inserted_at, user.authenticated_at)
     end
   end
 
@@ -292,8 +293,8 @@ defmodule Storyarn.AccountsTest do
     test "returns user by token", %{user: user, token: token} do
       assert {session_user, token_inserted_at} = Accounts.get_user_by_session_token(token)
       assert session_user.id == user.id
-      assert session_user.authenticated_at != nil
-      assert token_inserted_at != nil
+      assert session_user.authenticated_at
+      assert token_inserted_at
     end
 
     test "does not return user for invalid token" do
@@ -307,85 +308,12 @@ defmodule Storyarn.AccountsTest do
     end
   end
 
-  describe "get_user_by_magic_link_token/1" do
-    setup do
-      user = user_fixture()
-      {encoded_token, _hashed_token} = generate_user_magic_link_token(user)
-      %{user: user, token: encoded_token}
-    end
-
-    test "returns user by token", %{user: user, token: token} do
-      assert session_user = Accounts.get_user_by_magic_link_token(token)
-      assert session_user.id == user.id
-    end
-
-    test "does not return user for invalid token" do
-      refute Accounts.get_user_by_magic_link_token("oops")
-    end
-
-    test "does not return user for expired token", %{token: token} do
-      {1, nil} = Repo.update_all(UserToken, set: [inserted_at: ~N[2020-01-01 00:00:00]])
-      refute Accounts.get_user_by_magic_link_token(token)
-    end
-  end
-
-  describe "login_user_by_magic_link/1" do
-    test "confirms user and expires tokens" do
-      user = unconfirmed_user_fixture()
-      refute user.confirmed_at
-      {encoded_token, hashed_token} = generate_user_magic_link_token(user)
-
-      assert {:ok, {user, [%{token: ^hashed_token}]}} =
-               Accounts.login_user_by_magic_link(encoded_token)
-
-      assert user.confirmed_at
-    end
-
-    test "returns user and (deleted) token for confirmed user" do
-      user = user_fixture()
-      assert user.confirmed_at
-      {encoded_token, _hashed_token} = generate_user_magic_link_token(user)
-      assert {:ok, {^user, []}} = Accounts.login_user_by_magic_link(encoded_token)
-      # one time use only
-      assert {:error, :not_found} = Accounts.login_user_by_magic_link(encoded_token)
-    end
-
-    test "raises when unconfirmed user has password set" do
-      user = unconfirmed_user_fixture()
-      {1, nil} = Repo.update_all(User, set: [hashed_password: "hashed"])
-      {encoded_token, _hashed_token} = generate_user_magic_link_token(user)
-
-      assert_raise RuntimeError, ~r/magic link log in is not allowed/, fn ->
-        Accounts.login_user_by_magic_link(encoded_token)
-      end
-    end
-  end
-
   describe "delete_user_session_token/1" do
     test "deletes the token" do
       user = user_fixture()
       token = Accounts.generate_user_session_token(user)
       assert Accounts.delete_user_session_token(token) == :ok
       refute Accounts.get_user_by_session_token(token)
-    end
-  end
-
-  describe "deliver_login_instructions/2" do
-    setup do
-      %{user: unconfirmed_user_fixture()}
-    end
-
-    test "sends token through notification", %{user: user} do
-      token =
-        extract_user_token(fn url ->
-          Accounts.deliver_login_instructions(user, url)
-        end)
-
-      {:ok, token} = Base.url_decode64(token, padding: false)
-      assert user_token = Repo.get_by(UserToken, token: :crypto.hash(:sha256, token))
-      assert user_token.user_id == user.id
-      assert user_token.sent_to == user.email
-      assert user_token.context == "login"
     end
   end
 
@@ -401,7 +329,7 @@ defmodule Storyarn.AccountsTest do
 
       assert {:ok, user} = Accounts.find_or_create_user_from_oauth("github", auth)
       assert user.email == auth.info.email
-      assert user.confirmed_at != nil
+      assert user.confirmed_at
     end
 
     test "returns existing user when identity already exists" do
@@ -484,7 +412,7 @@ defmodule Storyarn.AccountsTest do
 
   describe "unlink_oauth_identity/2" do
     test "removes identity when user has password" do
-      user = user_fixture() |> set_password()
+      user = set_password(user_fixture())
       _identity = user_identity_fixture(user, "github")
 
       assert {:ok, _} = Accounts.unlink_oauth_identity(user, "github")
@@ -508,7 +436,9 @@ defmodule Storyarn.AccountsTest do
     end
 
     test "returns error when trying to unlink only auth method" do
-      user = user_fixture()
+      # User without password — OAuth identity is the only auth method
+      unconfirmed_user = unconfirmed_user_fixture()
+      {:ok, user} = Storyarn.Repo.update(User.confirm_changeset(unconfirmed_user))
       _identity = user_identity_fixture(user, "github")
 
       assert {:error, :cannot_unlink_only_auth_method} =

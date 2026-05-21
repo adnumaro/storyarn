@@ -28,7 +28,7 @@ defmodule Storyarn.Emails.Layout do
           a { color: #4dd9c0; }
           .footer-link { color: #6b7280 !important; text-decoration: none !important; }
         </mj-style>
-        #{if preview != "", do: "<mj-preview>#{escape(preview)}</mj-preview>", else: ""}
+        #{if preview == "", do: "", else: "<mj-preview>#{escape(preview)}</mj-preview>"}
       </mj-head>
       <mj-body background-color="#0a0a0a">
         <mj-section padding="40px 0 16px">

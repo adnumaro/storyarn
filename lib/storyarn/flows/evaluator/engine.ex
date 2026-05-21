@@ -21,18 +21,18 @@ defmodule Storyarn.Flows.Evaluator.Engine do
 
   ## Connection list format
 
-      [%{source_node_id: 1, source_pin: "default", target_node_id: 2, target_pin: "input"}, ...]
+      [%{source_node_id: 1, source_pin: "output", target_node_id: 2, target_pin: "input"}, ...]
   """
 
-  alias Storyarn.Flows.Evaluator.{EngineHelpers, State}
-  alias Storyarn.Shared.FormulaRuntime
+  use Gettext, backend: Storyarn.Gettext
 
-  alias Storyarn.Flows.Evaluator.NodeEvaluators.{
-    ConditionNodeEvaluator,
-    DialogueEvaluator,
-    ExitEvaluator,
-    InstructionEvaluator
-  }
+  alias Storyarn.Flows.Evaluator.EngineHelpers
+  alias Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluator
+  alias Storyarn.Flows.Evaluator.NodeEvaluators.DialogueEvaluator
+  alias Storyarn.Flows.Evaluator.NodeEvaluators.ExitEvaluator
+  alias Storyarn.Flows.Evaluator.NodeEvaluators.InstructionEvaluator
+  alias Storyarn.Flows.Evaluator.State
+  alias Storyarn.Shared.FormulaRuntime
 
   # =============================================================================
   # Public API
@@ -62,7 +62,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
           level: :info,
           node_id: nil,
           node_label: "",
-          message: "Debug session started",
+          message: dgettext("flows", "Debug session started"),
           rule_details: nil
         }
       ],
@@ -96,8 +96,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
     {:waiting_input, state}
   end
 
-  def step(%State{step_count: count, max_steps: max} = state, _nodes, _connections)
-      when count >= max do
+  def step(%State{step_count: count, max_steps: max} = state, _nodes, _connections) when count >= max do
     state =
       EngineHelpers.add_console(
         state,
@@ -394,12 +393,6 @@ defmodule Storyarn.Flows.Evaluator.Engine do
     EngineHelpers.follow_output(state, node.id, label, connections)
   end
 
-  defp evaluate_node(%{type: "slug_line"} = node, state, connections, _nodes) do
-    label = EngineHelpers.node_label(node)
-    state = EngineHelpers.add_console(state, :info, node.id, label, "Slug Line — pass through")
-    EngineHelpers.follow_output(state, node.id, label, connections)
-  end
-
   defp evaluate_node(%{type: "jump"} = node, state, _connections, nodes) do
     label = EngineHelpers.node_label(node)
     data = node.data || %{}
@@ -501,13 +494,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
         "Unknown node type '#{node.type}' — skipping"
       )
 
-    case EngineHelpers.find_connection(connections, node.id, "output") do
-      nil ->
-        EngineHelpers.follow_output(state, node.id, label, connections)
-
-      conn ->
-        EngineHelpers.advance_to(state, conn.target_node_id)
-    end
+    EngineHelpers.follow_output(state, node.id, label, connections)
   end
 
   # =============================================================================

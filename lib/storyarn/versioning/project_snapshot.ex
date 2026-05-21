@@ -6,8 +6,10 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
   containing the full state of all project entities (sheets, flows, scenes).
   """
   use Ecto.Schema
+
   import Ecto.Changeset
 
+  alias Ecto.Association.NotLoaded
   alias Storyarn.Accounts.User
   alias Storyarn.Projects.Project
 
@@ -21,9 +23,9 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
           snapshot_size_bytes: integer(),
           entity_counts: map(),
           created_by_id: integer() | nil,
-          created_by: User.t() | Ecto.Association.NotLoaded.t() | nil,
+          created_by: User.t() | NotLoaded.t() | nil,
           is_auto: boolean(),
-          project: Project.t() | Ecto.Association.NotLoaded.t() | nil,
+          project: Project.t() | NotLoaded.t() | nil,
           inserted_at: DateTime.t() | nil
         }
 

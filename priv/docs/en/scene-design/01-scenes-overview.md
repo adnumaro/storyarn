@@ -1,12 +1,18 @@
 %{
-  title: "Scenes Overview",
-  category_label: "Scene Design",
-  order: 1,
-  description: "Map your world with spatial canvases, zones, pins, and connections."
+title: "Scenes Overview",
+category_label: "Scene Design",
+order: 1,
+description: "Map your world with spatial canvases, zones, pins, and connections."
 }
+
 ---
 
 Scenes are **spatial canvases** for mapping your game world. Built on a Leaflet.js canvas with full pan, zoom, and minimap support, they let you lay out locations, define interactive areas, draw connections between places, and -- uniquely -- explore the result as a player would.
+
+<div class="docs-alert docs-alert-warning">
+  <svg class="docs-alert-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+  <p><strong>Documentation in progress.</strong> The Scenes feature is still evolving. This page describes the current direction and core pieces, but some interface details, actions, and exploration mode behavior may change.</p>
+</div>
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
@@ -79,14 +85,14 @@ Scenes support multiple **layers** for organizing content. Every scene starts wi
 
 The bottom dock provides **10 tools** organized into groups:
 
-| Group | Tools | Purpose |
-|-------|-------|---------|
-| **Navigation** | Select, Pan | Select elements or pan around the canvas |
-| **Zone shapes** | Rectangle, Triangle, Circle, Freeform | Draw polygonal zones on the canvas |
-| **Elements** | Free Pin, From Sheet Pin | Place point markers (free or linked to a sheet) |
-| **Text** | Annotation | Add text notes directly on the canvas |
-| **Linking** | Connector | Draw connections between two pins |
-| **Measure** | Ruler | Measure distances between two points |
+| Group           | Tools                                 | Purpose                                         |
+| --------------- | ------------------------------------- | ----------------------------------------------- |
+| **Navigation**  | Select, Pan                           | Select elements or pan around the canvas        |
+| **Zone shapes** | Rectangle, Triangle, Circle, Freeform | Draw polygonal zones on the canvas              |
+| **Elements**    | Free Pin, From Sheet Pin              | Place point markers (free or linked to a sheet) |
+| **Text**        | Annotation                            | Add text notes directly on the canvas           |
+| **Linking**     | Connector                             | Draw connections between two pins               |
+| **Measure**     | Ruler                                 | Measure distances between two points            |
 
 The editor switches between **Edit mode** (dock visible, elements editable) and **View mode** (read-only, clean canvas).
 
@@ -117,11 +123,11 @@ Both zones and pins support **actions** and **conditions** that tie spatial elem
 
 ### Actions
 
-| Action type | Behavior |
-|-------------|----------|
-| **None** | No action (default) |
+| Action type     | Behavior                                                                                                              |
+| --------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **None**        | No action (default)                                                                                                   |
 | **Instruction** | Execute variable assignments when the element is clicked. Uses the same assignment builder as flow instruction nodes. |
-| **Display** | Show a variable's current value on the element. References a variable by its full path (e.g., `mc.jaime.health`). |
+| **Display**     | Show a variable's current value on the element. References a variable by its full path (e.g., `mc.jaime.health`).     |
 
 ### Conditions
 

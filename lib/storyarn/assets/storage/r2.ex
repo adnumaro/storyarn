@@ -11,7 +11,8 @@ defmodule Storyarn.Assets.Storage.R2 do
   def upload(key, data, content_type) do
     bucket = bucket()
 
-    case ExAws.S3.put_object(bucket, key, data, content_type: content_type)
+    case bucket
+         |> ExAws.S3.put_object(key, data, content_type: content_type)
          |> ExAws.request() do
       {:ok, _response} ->
         {:ok, get_url(key)}
@@ -23,7 +24,7 @@ defmodule Storyarn.Assets.Storage.R2 do
 
   @impl true
   def download(key) do
-    case ExAws.S3.get_object(bucket(), key) |> ExAws.request() do
+    case bucket() |> ExAws.S3.get_object(key) |> ExAws.request() do
       {:ok, %{body: body}} -> {:ok, body}
       {:error, reason} -> {:error, reason}
     end
@@ -33,7 +34,7 @@ defmodule Storyarn.Assets.Storage.R2 do
   def delete(key) do
     bucket = bucket()
 
-    case ExAws.S3.delete_object(bucket, key) |> ExAws.request() do
+    case bucket |> ExAws.S3.delete_object(key) |> ExAws.request() do
       {:ok, _response} -> :ok
       {:error, reason} -> {:error, reason}
     end
@@ -57,7 +58,7 @@ defmodule Storyarn.Assets.Storage.R2 do
   def copy(source_key, dest_key) do
     bucket = bucket()
 
-    case ExAws.S3.put_object_copy(bucket, dest_key, bucket, source_key) |> ExAws.request() do
+    case bucket |> ExAws.S3.put_object_copy(dest_key, bucket, source_key) |> ExAws.request() do
       {:ok, _response} -> :ok
       {:error, reason} -> {:error, reason}
     end

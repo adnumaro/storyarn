@@ -1,0 +1,20 @@
+{
+  "docs": {
+    "label": "docs",
+    "menu": "Menú",
+    "show_sidebar": "Mostrar sidebar de documentación",
+    "hide_sidebar": "Ocultar sidebar de documentación",
+    "search_placeholder": "Buscar en la documentación...",
+    "clear_search": "Limpiar búsqueda",
+    "result": "{count} resultado",
+    "results": "{count} resultados",
+    "on_this_page": "En esta página",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "dashboard": "Dashboard",
+    "login": "Iniciar sesión",
+    "theme_system": "Usar tema del sistema",
+    "theme_light": "Usar tema claro",
+    "theme_dark": "Usar tema oscuro"
+  }
+}

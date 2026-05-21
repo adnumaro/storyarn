@@ -6,11 +6,13 @@ defmodule Storyarn.Scenes.SceneConnection do
   routes, relationships, or paths. They can be unidirectional or bidirectional.
   """
   use Ecto.Schema
-  import Ecto.Changeset
 
+  import Ecto.Changeset
   import Storyarn.Scenes.ChangesetHelpers
 
-  alias Storyarn.Scenes.{Scene, ScenePin}
+  alias Ecto.Association.NotLoaded
+  alias Storyarn.Scenes.Scene
+  alias Storyarn.Scenes.ScenePin
 
   @valid_line_styles ~w(solid dashed dotted)
   @max_waypoints 50
@@ -23,11 +25,11 @@ defmodule Storyarn.Scenes.SceneConnection do
           bidirectional: boolean(),
           waypoints: [map()] | nil,
           scene_id: integer() | nil,
-          scene: Scene.t() | Ecto.Association.NotLoaded.t() | nil,
+          scene: Scene.t() | NotLoaded.t() | nil,
           from_pin_id: integer() | nil,
-          from_pin: ScenePin.t() | Ecto.Association.NotLoaded.t() | nil,
+          from_pin: ScenePin.t() | NotLoaded.t() | nil,
           to_pin_id: integer() | nil,
-          to_pin: ScenePin.t() | Ecto.Association.NotLoaded.t() | nil,
+          to_pin: ScenePin.t() | NotLoaded.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -119,14 +121,12 @@ defmodule Storyarn.Scenes.SceneConnection do
         if Enum.all?(waypoints, &valid_waypoint?/1) do
           changeset
         else
-          add_error(changeset, :waypoints, "all waypoints must have x and y between 0 and 100")
+          add_error(changeset, :waypoints, "all waypoints must have numeric x and y values")
         end
     end
   end
 
-  defp valid_waypoint?(%{"x" => x, "y" => y})
-       when is_number(x) and is_number(y) and x >= 0 and x <= 100 and y >= 0 and y <= 100,
-       do: true
+  defp valid_waypoint?(%{"x" => x, "y" => y}) when is_number(x) and is_number(y), do: true
 
   defp valid_waypoint?(_), do: false
 

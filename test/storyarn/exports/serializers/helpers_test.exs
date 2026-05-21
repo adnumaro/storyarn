@@ -200,7 +200,7 @@ defmodule Storyarn.Exports.Serializers.HelpersTest do
 
     test "wraps strings with special characters in quotes" do
       assert Helpers.escape_csv_field("a,b") == "\"a,b\""
-      assert Helpers.escape_csv_field("a\"b") == "\"a\"\"b\""
+      assert Helpers.escape_csv_field("a\"b") == ~s("a""b")
       assert Helpers.escape_csv_field("a\nb") == "\"a\nb\""
     end
   end
@@ -235,7 +235,7 @@ defmodule Storyarn.Exports.Serializers.HelpersTest do
       flow = %{
         nodes: [],
         connections: [
-          %{source_node_id: 1, source_pin: "output", target_node_id: 2, target_pin: "input"},
+          %{source_node_id: 1, source_pin: "default", target_node_id: 2, target_pin: "input"},
           %{source_node_id: 1, source_pin: "resp_1", target_node_id: 3, target_pin: "input"}
         ]
       }

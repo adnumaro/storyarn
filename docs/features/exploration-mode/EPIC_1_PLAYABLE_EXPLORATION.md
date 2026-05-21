@@ -13,19 +13,24 @@ Each feature below is independent and has standalone value. They are ordered by 
 ## Feature 1: Display Modes + CRPG Camera
 
 ### What
+
 Add a scene-level display mode setting for exploration:
+
 - **fit** (default): scene scales to fit the viewport entirely (current behavior)
 - **scaled**: scene renders at a size proportional to its scale configuration, potentially larger than the viewport
 
 When the scene overflows the viewport (scaled mode with a large scene), enable CRPG-style edge-scroll camera: moving the mouse near screen edges pans the view in that direction (Baldur's Gate, Divinity style).
 
 ### Why (standalone value)
+
 A scene that fills your screen and scrolls when you move to the edges **immediately** feels like a game map instead of a diagram. This single change transforms the atmosphere of exploration.
 
 ### Schema changes
+
 - `Scene`: add `exploration_display_mode` field (string enum: `fit` | `scaled`, default: `fit`)
 
 ### Key implementation areas
+
 - **Backend**: Scene schema + changeset + settings panel UI
 - **Frontend** (`exploration_player.js`):
   - `fit` mode: current behavior (aspect-ratio container)
@@ -34,6 +39,7 @@ A scene that fills your screen and scrolls when you move to the edges **immediat
   - Configurable: scroll speed, edge threshold (dead zone size), smooth acceleration/deceleration
 
 ### Design considerations
+
 - Edge-scroll should feel smooth, not jerky — ease-in when entering edge zone, constant speed at full edge
 - Need a "dead zone" in center where no scrolling happens (most of the screen)
 - Touch/mobile: consider swipe-to-pan as alternative (or defer mobile to later)
@@ -41,6 +47,7 @@ A scene that fills your screen and scrolls when you move to the edges **immediat
 - The scale_value/scale_unit already exist — the `scaled` mode uses them to calculate render size relative to viewport
 
 ### Acceptance criteria
+
 - [ ] Scene settings panel shows display mode selector (fit/scaled)
 - [ ] `fit` mode behaves exactly as current exploration
 - [ ] `scaled` mode renders scene larger than viewport when appropriate
@@ -54,6 +61,7 @@ A scene that fills your screen and scrolls when you move to the edges **immediat
 ## Feature 2: Walkable Zones + Character Movement
 
 ### What
+
 A new zone behavior: **walkable area**. In exploration mode, when the player clicks inside a walkable zone, the character pin moves to that point.
 
 - Zones can be marked as `walkable` (new flag or zone type)
@@ -63,14 +71,17 @@ A new zone behavior: **walkable area**. In exploration mode, when the player cli
 - Click outside any walkable zone → nothing happens (or visual feedback: "can't go there")
 
 ### Why (standalone value)
+
 This is THE core CRPG/Point & Click interaction. Clicking on the ground and watching your character walk there is the fundamental mechanic. Without this, it's a viewer. With this, it's a game.
 
 ### Schema changes
+
 - `SceneZone`: add `is_walkable` field (boolean, default: false)
 - `ScenePin`: add `is_playable` field (boolean, default: false)
 - `ScenePin`: add `is_leader` field (boolean, default: false)
 
 ### Key implementation areas
+
 - **Backend**: Schema changes, changeset validations, settings UI for zones and pins
 - **Zone editor**: toggle to mark zone as walkable, distinct visual style in edit mode (e.g., green tint overlay)
 - **Pin editor**: toggles for `is_playable` and `is_leader`
@@ -81,6 +92,7 @@ This is THE core CRPG/Point & Click interaction. Clicking on the ground and watc
   - Party following: non-leader playable pins follow the leader with slight delay/offset
 
 ### Design considerations
+
 - **Movement speed**: configurable per scene or per pin? Start with scene-level constant, refine later
 - **Visual feedback on click**: subtle click indicator (expanding circle) at target point
 - **Non-walkable click**: brief red flash or "blocked" cursor to communicate "can't go there"
@@ -90,6 +102,7 @@ This is THE core CRPG/Point & Click interaction. Clicking on the ground and watc
 - **Party system**: leader moves directly, companions follow with slight delay and offset (fan formation or single file). Defer complex party AI to Epic 3
 
 ### Acceptance criteria
+
 - [ ] Zone editor shows "Walkable" toggle
 - [ ] Pin editor shows "Playable" and "Leader" toggles
 - [ ] Walkable zones have distinct visual style in edit mode
@@ -105,23 +118,28 @@ This is THE core CRPG/Point & Click interaction. Clicking on the ground and watc
 ## Feature 3: Collection Zones
 
 ### What
+
 Zones configured as collection points that, when clicked in exploration mode, open a modal showing available items (linked sheets). The player can collect individual items or take all.
 
 Each item in the collection zone has:
+
 - A sheet reference (the item itself — displays name, avatar, description from the sheet)
 - A **condition** (visibility: is the item still there? e.g., `inventory.potion != true`)
 - An **instruction** (what happens when collected: e.g., `inventory.potion = true`)
 
 ### Why (standalone value)
+
 Searching a room, looting a chest, picking herbs — this is the second most fundamental interaction after movement. It lets designers create explorable environments with discoverable content.
 
 ### How it connects to existing systems
+
 - The **variable system** (sheets/blocks) IS the inventory. A sheet called "Inventory" with boolean blocks = items the player has
 - **Conditions** control whether an item appears (already collected? quest requirement met?)
 - **Instructions** execute on collection (set variable, increment counter)
 - Zone `action_type: instruction` already exists — this extends it with a **multi-item presentation layer**
 
 ### Schema changes
+
 - `SceneZone`: new `action_type` value: `collection`
 - `SceneZone`: `action_data` for collection type:
   ```json
@@ -141,6 +159,7 @@ Searching a room, looting a chest, picking herbs — this is the second most fun
   ```
 
 ### Key implementation areas
+
 - **Backend**: Zone schema validation for `collection` action_type, serialization
 - **Zone editor**: UI to configure collection items — sheet picker, condition builder, instruction builder per item
 - **Exploration player**:
@@ -152,6 +171,7 @@ Searching a room, looting a chest, picking herbs — this is the second most fun
   - When all items collected (or on close), dismiss modal
 
 ### Design considerations
+
 - **Modal design**: should feel like opening a chest or searching a bookshelf, not like a data table. Card-based layout with item images
 - **Empty state**: configurable message when all items are collected ("The chest is empty", "Nothing left to find")
 - **Feedback on collect**: brief animation/sound, item fades or disappears from modal
@@ -160,6 +180,7 @@ Searching a room, looting a chest, picking herbs — this is the second most fun
 - **Item order**: items display in the order defined by the designer (array index)
 
 ### Acceptance criteria
+
 - [ ] New `collection` action_type available for zones
 - [ ] Zone editor: add/remove/reorder items with sheet picker
 - [ ] Zone editor: condition and instruction builder per item
@@ -176,12 +197,15 @@ Searching a room, looting a chest, picking herbs — this is the second most fun
 ## Feature 4: Exploration Session Persistence
 
 ### What
+
 Save and load exploration state across browser sessions. When a player leaves and returns, their progress (variables, character position, collected items, discovered areas) is preserved.
 
 ### Why (standalone value)
+
 Without persistence, exploration resets every time you close the browser. This makes long or complex explorations pointless. Persistence transforms exploration from a "demo" into a "playthrough".
 
 ### Schema changes
+
 - New schema: `ExplorationSession`
   - `id`, `user_id`, `scene_id`, `project_id`
   - `name` (optional, for multiple saves: "Autosave", "Before boss fight")
@@ -196,6 +220,7 @@ Without persistence, exploration resets every time you close the browser. This m
   - `saved_at`
 
 ### Key implementation areas
+
 - **Backend**: New schemas, migrations, context module (`Storyarn.Exploration` or extend `Storyarn.Scenes`)
 - **Autosave**: periodic save (every N seconds or on significant action)
 - **Manual save/load**: UI in exploration toolbar — save button, load button with session list
@@ -205,6 +230,7 @@ Without persistence, exploration resets every time you close the browser. This m
 - **Multi-scene awareness**: if the player has navigated to child scenes, save which scene they're in
 
 ### Design considerations
+
 - **Save slot model vs auto-only**: start with autosave + one manual save slot. Expand later if needed
 - **Conflict with collaboration**: exploration state is per-user, not shared (unlike edit mode which is collaborative). Clear separation needed
 - **Variable snapshot strategy**: save the full variable map as JSON, not individual deltas. Simpler, more reliable, easy to debug
@@ -213,6 +239,7 @@ Without persistence, exploration resets every time you close the browser. This m
 - **Future consideration**: shared exploration sessions (multiplayer TTRPG) — one session with multiple users. Defer but keep schema flexible
 
 ### Acceptance criteria
+
 - [ ] Exploration sessions are created on entering exploration mode
 - [ ] Autosave triggers periodically and on significant actions
 - [ ] Manual save creates a named checkpoint

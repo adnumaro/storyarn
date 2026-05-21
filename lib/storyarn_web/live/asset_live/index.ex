@@ -2,121 +2,70 @@ defmodule StoryarnWeb.AssetLive.Index do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  alias StoryarnWeb.Helpers.Authorize
-
-  import StoryarnWeb.AssetLive.Components.AssetComponents
-  import StoryarnWeb.Components.UIComponents, only: [empty_state: 1]
 
   alias Storyarn.Assets
   alias Storyarn.Billing
   alias Storyarn.Collaboration
-  alias Storyarn.Projects
+  alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
+
+  @empty_asset_usages %{
+    flow_nodes: [],
+    sheet_avatars: [],
+    sheet_banners: [],
+    scene_backgrounds: [],
+    scene_pin_icons: []
+  }
 
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.focus
+    <StoryarnWeb.Components.ProjectLayout.project
+      socket={@socket}
       flash={@flash}
-      current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
+      current_scope={@current_scope}
+      current_user={@current_user}
+      urls={@urls}
       active_tool={:assets}
-      has_tree={false}
-      can_edit={@can_edit}
+      is_super_admin={@is_super_admin}
+      online_users={@online_users}
+      sidebar_module={StoryarnWeb.AssetSidebarLive}
+      sidebar_session={
+        %{
+          "project_id" => @project.id,
+          "active_tool" => "assets",
+          "dashboard_url" => ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/assets",
+          "filter" => @filter,
+          "search" => @search,
+          "locale" => @locale
+        }
+      }
     >
-      <:top_bar_extra_right :if={@can_edit}>
-        <div class="flex items-center px-1.5 py-1 surface-panel">
-          <label class={[
-            "btn btn-ghost btn-sm gap-1.5",
-            @uploading && "btn-disabled"
-          ]}>
-            <.icon name="upload" class="size-4" />
-            <span class="hidden xl:inline">
-              {if @uploading,
-                do: dgettext("assets", "Uploading..."),
-                else: dgettext("assets", "Upload")}
-            </span>
-            <input
-              type="file"
-              accept="image/*,audio/*"
-              class="hidden"
-              phx-hook="AssetUpload"
-              id="asset-upload-input"
-            />
-          </label>
-        </div>
-      </:top_bar_extra_right>
-      <div class="max-w-4xl mx-auto mt-4">
-        <%!-- Filter tabs + Search --%>
-        <div class="flex items-center justify-between mb-4 gap-4">
-          <div role="tablist" class="tabs tabs-border">
-            <button
-              :for={{type, label, count} <- filter_tabs(@type_counts)}
-              role="tab"
-              class={["tab", @filter == type && "tab-active"]}
-              phx-click="filter_assets"
-              phx-value-type={type}
-            >
-              {label}
-              <span class="badge badge-sm ml-1">{count}</span>
-            </button>
-          </div>
+      <.vue
+        :if={@can_edit}
+        v-component="live/assets/dashboard/AssetsHeaderActions"
+        v-socket={@socket}
+        v-inject:top-right="project-layout"
+        id="asset-upload-button"
+        uploading={@uploading}
+      />
 
-          <form phx-change="search_assets" class="flex-shrink-0">
-            <label class="input input-sm input-bordered flex items-center gap-2">
-              <.icon name="search" class="size-4 opacity-50" />
-              <input
-                type="text"
-                name="search"
-                value={@search}
-                placeholder={dgettext("assets", "Search files...")}
-                phx-debounce="300"
-                class="grow"
-              />
-            </label>
-          </form>
-        </div>
-
-        <.empty_state :if={@assets == []} icon="image">
-          {dgettext("assets", "No assets yet. Upload files to get started.")}
-        </.empty_state>
-
-        <%!-- Asset grid + detail panel --%>
-        <div :if={@assets != []} class="flex gap-6">
-          <div class={[
-            "grid gap-4 flex-1",
-            @selected_asset && "grid-cols-2 sm:grid-cols-2",
-            !@selected_asset && "grid-cols-2 sm:grid-cols-3 md:grid-cols-4"
-          ]}>
-            <.asset_card
-              :for={asset <- @assets}
-              asset={asset}
-              selected={@selected_asset && @selected_asset.id == asset.id}
-            />
-          </div>
-
-          <.detail_panel
-            :if={@selected_asset}
-            asset={@selected_asset}
-            usages={@asset_usages}
-            workspace={@workspace}
-            project={@project}
-            can_edit={@can_edit}
-          />
-        </div>
-
-        <.confirm_modal
-          :if={@can_edit}
-          id="delete-asset-confirm"
-          title={dgettext("assets", "Delete asset?")}
-          message={delete_confirm_message(@asset_usages)}
-          confirm_text={dgettext("assets", "Delete")}
-          confirm_variant="error"
-          icon="alert-triangle"
-          on_confirm={JS.push("confirm_delete_asset")}
-        />
-      </div>
-    </Layouts.focus>
+      <.vue
+        v-component="live/assets/dashboard/AssetsDashboard"
+        v-socket={@socket}
+        v-inject="project-layout"
+        id="asset-index"
+        class="contents"
+        assets={serialize_assets(@assets)}
+        selected-asset={serialize_asset(@selected_asset)}
+        asset-usages={serialize_usages(@asset_usages)}
+        can-edit={@can_edit}
+        workspace-slug={@workspace.slug}
+        project-slug={@project.slug}
+      />
+    </StoryarnWeb.Components.ProjectLayout.project>
     """
   end
 
@@ -125,54 +74,52 @@ defmodule StoryarnWeb.AssetLive.Index do
   # ===========================================================================
 
   @impl true
-  def mount(
-        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug},
-        _session,
-        socket
-      ) do
-    case Projects.get_project_by_slugs(
-           socket.assigns.current_scope,
-           workspace_slug,
-           project_slug
-         ) do
-      {:ok, project, membership} ->
-        can_edit = Projects.can?(membership.role, :edit_content)
-        type_counts = Assets.count_assets_by_type(project.id)
+  def mount(_params, _session, socket) do
+    %{project: project} = socket.assigns
+    type_counts = Assets.count_assets_by_type(project.id)
 
-        if connected?(socket) do
-          Collaboration.subscribe_changes({:assets, project.id})
-        end
-
-        socket =
-          socket
-          |> assign(:project, project)
-          |> assign(:workspace, project.workspace)
-          |> assign(:membership, membership)
-          |> assign(:can_edit, can_edit)
-          |> assign(:filter, "all")
-          |> assign(:search, "")
-          |> assign(:type_counts, type_counts)
-          |> assign(:selected_asset, nil)
-          |> assign(:asset_usages, %{flow_nodes: [], sheet_avatars: [], sheet_banners: []})
-          |> assign(:uploading, false)
-          |> load_assets()
-
-        {:ok, socket}
-
-      {:error, _reason} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("assets", "You don't have access to this project."))
-         |> redirect(to: ~p"/workspaces")}
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(Storyarn.PubSub, ProjectChromeHelpers.shell_topic(project.id))
+      Collaboration.subscribe_changes({:assets, project.id})
     end
+
+    socket =
+      socket
+      |> assign(:filter, "all")
+      |> assign(:search, "")
+      |> assign(:type_counts, type_counts)
+      |> assign(:selected_asset, nil)
+      |> assign(:asset_usages, @empty_asset_usages)
+      |> assign(:uploading, false)
+      |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
+      |> load_assets()
+
+    {:ok, socket}
   end
 
   @impl true
-  def handle_params(_params, _url, socket) do
-    {:noreply, socket}
-  end
+  def handle_params(_params, _url, socket), do: {:noreply, socket}
 
   @impl true
+  def handle_info({:online_users, users}, socket), do: {:noreply, assign(socket, :online_users, users)}
+
+  def handle_info({:toolbar_event, _name, _params}, socket), do: {:noreply, socket}
+
+  # Shell-topic sibling actives — broadcast by other tools sharing the topic.
+  def handle_info({:active_sheet, _sheet_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_flow, _flow_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_scene, _scene_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_locale, _locale}, socket), do: {:noreply, socket}
+
+  def handle_info({:asset_filters_changed, %{filter: filter, search: search}}, socket) do
+    {:noreply,
+     socket
+     |> assign(:filter, filter)
+     |> assign(:search, search)
+     |> clear_selected_asset()
+     |> load_assets()}
+  end
+
   def handle_info({:remote_change, _action, _payload}, socket) do
     type_counts = Assets.count_assets_by_type(socket.assigns.project.id)
 
@@ -188,11 +135,11 @@ defmodule StoryarnWeb.AssetLive.Index do
   # ===========================================================================
 
   @impl true
-  def handle_event("filter_assets", %{"type" => type}, socket)
-      when type in ["all", "image", "audio"] do
+  def handle_event("filter_assets", %{"type" => type}, socket) when type in ["all", "image", "audio", "file"] do
     {:noreply,
      socket
      |> assign(:filter, type)
+     |> clear_selected_asset()
      |> load_assets()}
   end
 
@@ -200,6 +147,7 @@ defmodule StoryarnWeb.AssetLive.Index do
     {:noreply,
      socket
      |> assign(:search, search)
+     |> clear_selected_asset()
      |> load_assets()}
   end
 
@@ -216,7 +164,7 @@ defmodule StoryarnWeb.AssetLive.Index do
     {:noreply,
      socket
      |> assign(:selected_asset, nil)
-     |> assign(:asset_usages, %{flow_nodes: [], sheet_avatars: [], sheet_banners: []})}
+     |> assign(:asset_usages, @empty_asset_usages)}
   end
 
   def handle_event("confirm_delete_asset", _params, socket) do
@@ -236,11 +184,7 @@ defmodule StoryarnWeb.AssetLive.Index do
      |> put_flash(:error, message)}
   end
 
-  def handle_event(
-        "upload_asset",
-        %{"filename" => filename, "content_type" => content_type, "data" => data},
-        socket
-      ) do
+  def handle_event("upload_asset", %{"filename" => filename, "content_type" => content_type, "data" => data}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       process_upload(socket, filename, content_type, data)
     end)
@@ -362,22 +306,17 @@ defmodule StoryarnWeb.AssetLive.Index do
         {:noreply, socket}
 
       asset ->
-        # Delete from storage (best-effort)
-        Assets.storage_delete(asset.key)
-
-        if thumbnail_key = asset.metadata["thumbnail_key"] do
-          Assets.storage_delete(thumbnail_key)
-        end
-
         case Assets.delete_asset(asset) do
           {:ok, _} ->
+            delete_asset_files(asset)
+
             type_counts = Assets.count_assets_by_type(socket.assigns.project.id)
             broadcast_asset_change(socket.assigns.project.id, :asset_deleted)
 
             {:noreply,
              socket
              |> assign(:selected_asset, nil)
-             |> assign(:asset_usages, %{flow_nodes: [], sheet_avatars: [], sheet_banners: []})
+             |> assign(:asset_usages, @empty_asset_usages)
              |> assign(:type_counts, type_counts)
              |> load_assets()
              |> put_flash(:info, dgettext("assets", "Asset deleted."))}
@@ -394,9 +333,21 @@ defmodule StoryarnWeb.AssetLive.Index do
     assign(socket, :assets, Assets.list_assets(project_id, opts))
   end
 
+  defp delete_asset_files(asset) do
+    Assets.storage_delete(asset.key)
+
+    (asset.metadata || %{})
+    |> Map.get("thumbnail_key")
+    |> then(fn
+      nil -> :ok
+      thumbnail_key -> Assets.storage_delete(thumbnail_key)
+    end)
+  end
+
   defp filter_opts("all"), do: []
   defp filter_opts("image"), do: [content_type: "image/"]
   defp filter_opts("audio"), do: [content_type: "audio/"]
+  defp filter_opts("file"), do: [content_type: "application/"]
 
   defp search_opts(""), do: []
   defp search_opts(term), do: [search: term]
@@ -405,20 +356,14 @@ defmodule StoryarnWeb.AssetLive.Index do
   # Private: View Helpers
   # ===========================================================================
 
-  defp filter_tabs(type_counts) do
-    total = type_counts |> Map.values() |> Enum.sum()
-    image_count = Map.get(type_counts, "image", 0)
-    audio_count = Map.get(type_counts, "audio", 0)
-
-    [
-      {"all", dgettext("assets", "All"), total},
-      {"image", dgettext("assets", "Images"), image_count},
-      {"audio", dgettext("assets", "Audio"), audio_count}
-    ]
-  end
-
   defp broadcast_asset_change(project_id, action) do
     Collaboration.broadcast_change_from(self(), {:assets, project_id}, action, %{})
+  end
+
+  defp clear_selected_asset(socket) do
+    socket
+    |> assign(:selected_asset, nil)
+    |> assign(:asset_usages, @empty_asset_usages)
   end
 
   defp refresh_selected_asset(socket) do
@@ -431,7 +376,7 @@ defmodule StoryarnWeb.AssetLive.Index do
           nil ->
             socket
             |> assign(:selected_asset, nil)
-            |> assign(:asset_usages, %{flow_nodes: [], sheet_avatars: [], sheet_banners: []})
+            |> assign(:asset_usages, @empty_asset_usages)
 
           refreshed ->
             assign(socket, :selected_asset, refreshed)
@@ -439,20 +384,52 @@ defmodule StoryarnWeb.AssetLive.Index do
     end
   end
 
-  defp delete_confirm_message(usages) do
-    total =
-      length(usages.flow_nodes) + length(usages.sheet_avatars) + length(usages.sheet_banners)
+  # ===========================================================================
+  # Private: Serializers (Ecto → Vue props)
+  # ===========================================================================
 
-    if total > 0 do
-      dngettext(
-        "assets",
-        "This asset is used in %{count} place. Are you sure you want to delete it?",
-        "This asset is used in %{count} places. Are you sure you want to delete it?",
-        total,
-        count: total
-      )
-    else
-      dgettext("assets", "Are you sure you want to delete this asset? This cannot be undone.")
-    end
+  defp serialize_assets(assets), do: Enum.map(assets, &serialize_asset/1)
+
+  defp serialize_asset(nil), do: nil
+
+  defp serialize_asset(asset) do
+    %{
+      id: asset.id,
+      filename: asset.filename,
+      contentType: asset.content_type,
+      size: asset.size,
+      url: asset.url,
+      insertedAt: asset.inserted_at
+    }
+  end
+
+  defp serialize_usages(usages) do
+    %{
+      flowNodes:
+        Enum.map(usages.flow_nodes, fn u ->
+          %{flowId: u.flow_id, flowName: u.flow_name}
+        end),
+      sheetAvatars:
+        Enum.map(usages.sheet_avatars, fn s ->
+          %{id: s.id, name: s.name}
+        end),
+      sheetBanners:
+        Enum.map(usages.sheet_banners, fn s ->
+          %{id: s.id, name: s.name}
+        end),
+      sceneBackgrounds:
+        Enum.map(usages.scene_backgrounds, fn s ->
+          %{id: s.id, name: s.name}
+        end),
+      scenePinIcons:
+        Enum.map(usages.scene_pin_icons, fn p ->
+          %{
+            pinId: p.pin_id,
+            pinLabel: p.pin_label,
+            sceneId: p.scene_id,
+            sceneName: p.scene_name
+          }
+        end)
+    }
   end
 end

@@ -1,11 +1,11 @@
 defmodule Storyarn.Scenes.TreeOperationsTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Scenes.TreeOperations
-
   import Storyarn.AccountsFixtures
-  import Storyarn.ScenesFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
+
+  alias Storyarn.Scenes.TreeOperations
 
   defp create_project(_context \\ %{}) do
     user = user_fixture()

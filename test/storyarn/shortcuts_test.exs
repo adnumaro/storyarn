@@ -1,12 +1,12 @@
 defmodule Storyarn.ShortcutsTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Shortcuts
-
   import Storyarn.AccountsFixtures
+  import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
-  import Storyarn.FlowsFixtures
+
+  alias Storyarn.Shortcuts
 
   defp create_project(_context \\ %{}) do
     user = user_fixture()

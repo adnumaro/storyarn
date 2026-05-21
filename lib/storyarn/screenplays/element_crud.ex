@@ -4,17 +4,14 @@ defmodule Storyarn.Screenplays.ElementCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Repo
-  alias Storyarn.Screenplays.{Screenplay, ScreenplayElement}
+  alias Storyarn.Screenplays.Screenplay
+  alias Storyarn.Screenplays.ScreenplayElement
 
   @doc """
   Lists all elements for a screenplay, ordered by position.
   """
   def list_elements(screenplay_id) do
-    from(e in ScreenplayElement,
-      where: e.screenplay_id == ^screenplay_id,
-      order_by: [asc: e.position]
-    )
-    |> Repo.all()
+    Repo.all(from(e in ScreenplayElement, where: e.screenplay_id == ^screenplay_id, order_by: [asc: e.position]))
   end
 
   @doc """
@@ -34,10 +31,9 @@ defmodule Storyarn.Screenplays.ElementCrud do
   def insert_element_at(%Screenplay{} = screenplay, position, attrs) when is_integer(position) do
     Repo.transaction(fn ->
       # Shift all elements at >= position by +1
-      from(e in ScreenplayElement,
-        where: e.screenplay_id == ^screenplay.id and e.position >= ^position
+      Repo.update_all(from(e in ScreenplayElement, where: e.screenplay_id == ^screenplay.id and e.position >= ^position),
+        inc: [position: 1]
       )
-      |> Repo.update_all(inc: [position: 1])
 
       # Insert new element at the target position
       case %ScreenplayElement{screenplay_id: screenplay.id}
@@ -69,10 +65,10 @@ defmodule Storyarn.Screenplays.ElementCrud do
       case Repo.delete(element) do
         {:ok, deleted} ->
           # Shift elements after the deleted one by -1
-          from(e in ScreenplayElement,
-            where: e.screenplay_id == ^screenplay_id and e.position > ^deleted_position
+          Repo.update_all(
+            from(e in ScreenplayElement, where: e.screenplay_id == ^screenplay_id and e.position > ^deleted_position),
+            inc: [position: -1]
           )
-          |> Repo.update_all(inc: [position: -1])
 
           deleted
 
@@ -131,10 +127,9 @@ defmodule Storyarn.Screenplays.ElementCrud do
 
     Repo.transaction(fn ->
       # Shift all elements after current position by +2
-      from(e in ScreenplayElement,
-        where: e.screenplay_id == ^screenplay_id and e.position > ^pos
+      Repo.update_all(from(e in ScreenplayElement, where: e.screenplay_id == ^screenplay_id and e.position > ^pos),
+        inc: [position: 2]
       )
-      |> Repo.update_all(inc: [position: 2])
 
       before_element =
         element

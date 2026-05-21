@@ -4,7 +4,7 @@
 
 **Storyarn** is a narrative design platform for game development and interactive storytelling. Built with collaborative, real-time editing.
 
-**Stack:** Elixir 1.15+ / Phoenix 1.8 / LiveView 1.1 / PostgreSQL / Redis / Tailwind v4 / daisyUI
+**Stack:** Elixir 1.15+ / Phoenix 1.8 / LiveView 1.1 / PostgreSQL / Redis / Tailwind v4 / daisyUI / TypeScript / Vue 3
 
 ## Debugging & Research Policy
 
@@ -17,19 +17,53 @@
 **Read these before writing code. Duplicating existing utilities is a bug.**
 
 | File                                    | Purpose                                                             |
-|-----------------------------------------|---------------------------------------------------------------------|
+| --------------------------------------- | ------------------------------------------------------------------- |
 | `AGENTS.md`                             | Phoenix/LiveView/Ecto patterns (**MUST READ**)                      |
 | @docs/conventions/shared-utilities.md   | **Shared utility registry — search here BEFORE writing any helper** |
 | @docs/conventions/domain-patterns.md    | Context facades, CRUD templates, auth patterns                      |
 | @docs/conventions/component-registry.md | All reusable HEEx components                                        |
 
+## Frontend Architecture (Vue / TypeScript)
+
+All frontend code lives in `assets/app/` and is fully TypeScript (`lang="ts"` in all Vue SFCs).
+
+```
+assets/app/
+├── utils/            — Pure utility functions (utils.ts, date-utils.ts)
+├── plugins/          — Third-party extensions (tiptap/)
+├── components/       — Shared UI (ui/, toolbar/, collab/, builders/, version-history/)
+├── composables/      — Shared composables (useLive, usePresence, etc.)
+├── modules/          — Domain modules
+│   ├── shared/         — Shared business logic (variables, operators)
+│   ├── flows/          — Flow editor (rete.js canvas, nodes, toolbar)
+│   ├── sheets/         — Sheet editor (blocks, tables, sortable)
+│   ├── scenes/         — Scene editor (konva canvas, exploration)
+│   ├── localization/   — Localization UI
+│   ├── auth/           — Sign in/up/confirm
+│   ├── landing/        — Landing page (TresJS 3D)
+│   ├── settings/       — User & workspace settings
+│   ├── workspaces/     — Workspace dashboard & project list
+│   └── project-settings/ — Project settings pages
+└── locales/          — i18n translations (en/, es/)
+```
+
+**TypeScript rules:**
+
+- All `.vue` files use `<script setup lang="ts">`
+- NO `any` — define proper interfaces
+- NO `withDefaults()` — use destructured defaults: `const { prop = default } = defineProps<{...}>()`
+- NO `Record<string, unknown>` for typed data — define interfaces based on actual field usage
+- `useLive().pushEvent` payload is the only acceptable `Record<string, unknown>` (generic bridge to Phoenix)
+
 ## Language Policy
 
 **Everything MUST be in English.** All user-facing text uses Gettext:
+
 ```elixir
 put_flash(socket, :info, gettext("Project saved"))  # ✅
 put_flash(socket, :info, "Project saved")            # ❌
 ```
+
 Locales: `en` (default), `es`
 
 ## Reuse Existing Code
@@ -47,8 +81,8 @@ mix phx.server              # Dev server (localhost:4000)
 mix test                    # Run tests
 mix precommit               # Before commit: format, credo, test
 docker compose up -d        # Start PostgreSQL + Redis + Mailpit
-just quality                # Full checks: Biome fix, Credo, tests, E2E, Vitest
-just js-fix                 # Biome auto-fix JS
+just quality                # Full checks: Oxlint fix, Credo, tests, E2E, Vitest
+just js-fix                 # Oxlint auto-fix JS
 just js-test                # Vitest JS tests
 just js-grammar             # Build Lezer grammar
 ```
@@ -71,7 +105,7 @@ Block types: `number`, `select`, `multi_select`, `boolean`, `text`, `rich_text`,
 
 ## Flow Editor
 
-Node types: `entry`, `exit`, `dialogue`, `condition`, `instruction`, `hub`, `jump`, `slug_line`, `subflow`, `annotation`
+Node types: `entry`, `exit`, `dialogue`, `condition`, `instruction`, `hub`, `jump`, `subflow`, `annotation`
 
 Per-type architecture: each `lib/storyarn_web/live/flow_live/nodes/{type}/node.ex` contains all metadata and handlers.
 
@@ -80,8 +114,8 @@ Per-type architecture: each `lib/storyarn_web/live/flow_live/nodes/{type}/node.e
 **NEVER use Unicode emojis or custom SVGs. Always use [Lucide](https://lucide.dev) icons.**
 
 - HEEx: `<.icon name="box" class="size-3" />`
-- Shadow DOM / innerHTML: `createIconHTML(Icon, { size })` from `node_config.js`
-- Node headers: `createIconSvg(Icon)` from `node_config.js`
+- Shadow DOM / innerHTML: `createIconHTML(Icon, { size })` from `node_config.ts`
+- Node headers: `createIconSvg(Icon)` from `node_config.ts`
 - Regular DOM appends: `createElement(Icon, { width, height })` from `lucide`
 - Always pre-create icon constants at module level
 
@@ -89,7 +123,7 @@ Per-type architecture: each `lib/storyarn_web/live/flow_live/nodes/{type}/node.e
 
 **NEVER use browser-native dialogs.** No `window.confirm()`, `window.alert()`, `window.prompt()`, or `data-confirm`.
 
-Use `<.confirm_modal>` + `show_modal(id)` or `<.modal>` from `core_components.ex`.
+Use `ConfirmDialog.vue` (`assets/app/components/ConfirmDialog.vue`) for Vue contexts, or `<.modal>` from `core_components.ex` for HEEx.
 
 ## Popover & Dropdown Positioning Policy
 

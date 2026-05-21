@@ -50,6 +50,7 @@
 World Anvil is a **web-based worldbuilding toolkit, RPG campaign manager, and novel-writing software**. It targets tabletop RPG game masters, players, fiction writers, and worldbuilders across all genres (fantasy, sci-fi, historical, modern).
 
 **Core pillars:**
+
 - Wiki-style articles with 28 specialized worldbuilding templates
 - Interactive maps with layered markers and cross-linking
 - Timelines and Chronicles (map-integrated historical visualization)
@@ -84,6 +85,7 @@ Articles are the core content unit. Each article uses one of 28 templates with t
 ### Article Anatomy
 
 Each article has:
+
 - **Main body** — free-form text with full formatting
 - **Template-specific prompts** — guided fields (headings or sidebar text) based on template type
 - **Sidebar sections** — four sidebar panels for supplementary content
@@ -99,73 +101,84 @@ Each article has:
 World Anvil provides **28 specialized article templates**, each with tailored prompts and relationship fields. Templates can be customized per-world (Grandmaster+).
 
 ### People & Characters
+
 | Template         | Use For                                                                                                |
-|------------------|--------------------------------------------------------------------------------------------------------|
+| ---------------- | ------------------------------------------------------------------------------------------------------ |
 | **Character**    | Any named creature (people, pets, gods, sentient objects). Includes Relationships tab for family trees |
 | **Title / Rank** | Honorifics, military ranks, noble titles, corporate positions                                          |
 | **Profession**   | Jobs, classes, roles unique to your world (dragon rider, bounty hunter)                                |
 
 ### Groups & Society
+
 | Template               | Use For                                                                                         |
-|------------------------|-------------------------------------------------------------------------------------------------|
+| ---------------------- | ----------------------------------------------------------------------------------------------- |
 | **Organization**       | Any group (guilds, armies, governments, companies, countries). Includes diplomacy web relations |
 | **Ethnicity**          | Cultures, sub-cultures, social/artistic movements                                               |
 | **Military Formation** | Unit prototypes (e.g., "Clone Commando"), composition, logistics                                |
 
 ### Places & Geography
+
 | Template                | Use For                                                                   |
-|-------------------------|---------------------------------------------------------------------------|
+| ----------------------- | ------------------------------------------------------------------------- |
 | **Geography**           | Natural places (mountains, rivers, planets, galaxies, dimensional planes) |
 | **Building / Landmark** | Constructions, monuments, streets, rooms, natural landmarks               |
 | **Settlement**          | Any populated area (hamlet to space station)                              |
 
 ### Creatures & Biology
+
 | Template    | Use For                                                         |
-|-------------|-----------------------------------------------------------------|
+| ----------- | --------------------------------------------------------------- |
 | **Species** | Any organism group (animals, plants, sapient species, monsters) |
 
 ### Conflict & Events
+
 | Template     | Use For                                                         |
-|--------------|-----------------------------------------------------------------|
+| ------------ | --------------------------------------------------------------- |
 | **Conflict** | Wars, battles, debates, any confrontation between groups/people |
 
 ### Magic & Technology
+
 | Template                        | Use For                                                                    |
-|---------------------------------|----------------------------------------------------------------------------|
+| ------------------------------- | -------------------------------------------------------------------------- |
 | **Spell**                       | Individual powers (magic spells, psionics, superpowers)                    |
 | **Technology**                  | Inventions, machines, artifacts (wheel to FTL drive)                       |
 | **Physical / Metaphysical Law** | Laws of physics, magic systems, how the world/universe fundamentally works |
 
 ### Materials & Objects
+
 | Template     | Use For                                                               |
-|--------------|-----------------------------------------------------------------------|
+| ------------ | --------------------------------------------------------------------- |
 | **Material** | Resources, substances, compounds (metals, fabrics, magical materials) |
 | **Item**     | Objects (tools, weapons, clothing, food, artifacts)                   |
 | **Vehicle**  | Means of transportation (carriages, starships, mounts)                |
 
 ### Conditions
+
 | Template      | Use For                                                |
-|---------------|--------------------------------------------------------|
+| ------------- | ------------------------------------------------------ |
 | **Condition** | Diseases, mutations, superpowers, RPG statuses, curses |
 
 ### Culture & Beliefs
+
 | Template               | Use For                                                                 |
-|------------------------|-------------------------------------------------------------------------|
+| ---------------------- | ----------------------------------------------------------------------- |
 | **Tradition / Ritual** | Celebrations, festivals, superstitions, dress codes, ceremonies         |
 | **Myth / Legend**      | Myths, legends, folklore, prophecies                                    |
 | **Language**           | Languages with built-in dictionary, VulgarLang integration for conlangs |
 
 ### Narrative & RPG
+
 | Template           | Use For                                                                 |
-|--------------------|-------------------------------------------------------------------------|
+| ------------------ | ----------------------------------------------------------------------- |
 | **Plot**           | Story arcs, campaign plots (displayed as plot tree in campaign manager) |
 | **Session Report** | Game session recaps and notes                                           |
 | **Document**       | In-world written records (manuscripts, treaties, diaries, sheet music)  |
 | **Prose**          | Literary works, in-world fiction                                        |
 
 ### General
+
 | Template            | Use For                                                                          |
-|---------------------|----------------------------------------------------------------------------------|
+| ------------------- | -------------------------------------------------------------------------------- |
 | **Generic Article** | Anything that doesn't fit other templates (RPG mechanics, primers, meta-content) |
 
 > **Note:** The above list covers 25+ confirmed templates. World Anvil states 28 total but does not publish the complete list on a single page. Some templates may be variants or sub-categories of the above.
@@ -245,7 +258,7 @@ Interactive maps are a flagship feature for visual worldbuilding.
 ### Markers
 
 | Marker Type           | Description                                                          |
-|-----------------------|----------------------------------------------------------------------|
+| --------------------- | -------------------------------------------------------------------- |
 | **Pins**              | Clickable icons placed anywhere, customizable style from library     |
 | **Labels**            | Interactive place name text displayed on the map                     |
 | **Line markers**      | Journey tracking, roads, rivers, borders                             |
@@ -282,7 +295,7 @@ Standard timelines for tracking world history across long time spans.
 ### Display Modes
 
 | Mode          | Best For              | Details                                                                                    |
-|---------------|-----------------------|--------------------------------------------------------------------------------------------|
+| ------------- | --------------------- | ------------------------------------------------------------------------------------------ |
 | **Timescale** | World history, eras   | Time as distance; longer events appear physically longer. Supports up to **250,000 years** |
 | **List**      | Sessions, novel plots | Sequential event list for short time spans (days/weeks)                                    |
 
@@ -322,7 +335,7 @@ Chronicles are an **advanced timeline variant** that integrates events with maps
 ### Capabilities
 
 | Feature            | Detail                                                           |
-|--------------------|------------------------------------------------------------------|
+| ------------------ | ---------------------------------------------------------------- |
 | Parallel lanes     | 4                                                                |
 | Multiple timelines | Yes (within same Chronicle)                                      |
 | Granular time      | Down to hours and minutes                                        |
@@ -400,7 +413,7 @@ Full-featured campaign management integrated with worldbuilding.
 ### Template Components
 
 | Component          | Purpose                                                                  |
-|--------------------|--------------------------------------------------------------------------|
+| ------------------ | ------------------------------------------------------------------------ |
 | **Full display**   | How the complete statblock/sheet renders                                 |
 | **Badge sheet**    | Abbreviated version (class, race, key stats) for profiles                |
 | **Form**           | Editable interface for players to modify their sheet from view mode      |
@@ -474,11 +487,11 @@ A powerful system for managing information visibility across different audiences
 
 ### Subscriber Limits by Tier
 
-| Tier        | Subscribers  |
-|-------------|--------------|
-| Master      | 10           |
-| Grandmaster | 100          |
-| Sage        | 1,000        |
+| Tier        | Subscribers |
+| ----------- | ----------- |
+| Master      | 10          |
+| Grandmaster | 100         |
+| Sage        | 1,000       |
 
 ### Spoiler Tags (Alternative)
 
@@ -559,7 +572,7 @@ For public worlds, `[spoiler]content|Label[/spoiler]` provides informal collapsi
 ### Display Modes
 
 | Mode                  | Description                                          |
-|-----------------------|------------------------------------------------------|
+| --------------------- | ---------------------------------------------------- |
 | **Basic web**         | Relations between one organization and all others    |
 | **Multi-directional** | Web of all relationships (using tag-based filtering) |
 
@@ -650,7 +663,7 @@ For public worlds, `[spoiler]content|Label[/spoiler]` provides informal collapsi
 Visual hierarchical displays of articles, embeddable in articles.
 
 | Display Format        | Description                      |
-|-----------------------|----------------------------------|
+| --------------------- | -------------------------------- |
 | **Interactive chart** | Zoomable, clickable tree diagram |
 | **Textual list**      | Indented list with hierarchy     |
 | **Static chart**      | Non-interactive tree with links  |
@@ -695,7 +708,7 @@ All content types now have **folder organization** — maps, timelines, manuscri
 ### Restrictions
 
 | Element                | Modifiable?      |
-|------------------------|------------------|
+| ---------------------- | ---------------- |
 | Article content        | Yes              |
 | World homepage         | Yes              |
 | Top menu bar (WA logo) | No (except Sage) |
@@ -731,6 +744,7 @@ All content types now have **folder organization** — maps, timelines, manuscri
 ### Worldbuilding Meta Tool
 
 Guided setup for new worlds covering:
+
 - **Scope:** Genre and setting type
 - **Theme:** Mood and feel
 - **Drama:** Central conflicts
@@ -753,20 +767,20 @@ Collaboration is **not real-time** — changes are saved and visible on refresh,
 
 ### Author Roles (4 Tiers)
 
-| Role                | Create      | Publish  | Edit Others  | View Private        | Config            |
-|---------------------|-------------|----------|--------------|---------------------|-------------------|
-| **Writer**          | Drafts only | No       | No           | No                  | No                |
-| **Advanced Writer** | Yes         | Own only | Own only     | No                  | No                |
-| **Editor**          | Yes         | Yes      | Yes          | Yes (incl. secrets) | No                |
-| **Co-Owner**        | Yes         | Yes      | Yes          | Yes                 | Yes (full access) |
+| Role                | Create      | Publish  | Edit Others | View Private        | Config            |
+| ------------------- | ----------- | -------- | ----------- | ------------------- | ----------------- |
+| **Writer**          | Drafts only | No       | No          | No                  | No                |
+| **Advanced Writer** | Yes         | Own only | Own only    | No                  | No                |
+| **Editor**          | Yes         | Yes      | Yes         | Yes (incl. secrets) | No                |
+| **Co-Owner**        | Yes         | Yes      | Yes         | Yes                 | Yes (full access) |
 
 ### Co-Author Slots by Tier
 
-| Tier        | Slots  |
-|-------------|--------|
-| Master      | 4      |
-| Grandmaster | 9      |
-| Sage        | 20     |
+| Tier        | Slots |
+| ----------- | ----- |
+| Master      | 4     |
+| Grandmaster | 9     |
+| Sage        | 20    |
 
 Slots are **per-world** — one user in two worlds uses two slots.
 
@@ -788,10 +802,10 @@ Slots are **per-world** — one user in two worlds uses two slots.
 
 ### API Versions
 
-| Version  | Name    | Status               |
-|----------|---------|----------------------|
-| v1       | Aragorn | Active (legacy)      |
-| v2       | Boromir | Active (recommended) |
+| Version | Name    | Status               |
+| ------- | ------- | -------------------- |
+| v1      | Aragorn | Active (legacy)      |
+| v2      | Boromir | Active (recommended) |
 
 Boromir is built from scratch — **not backward compatible** with Aragorn.
 
@@ -827,7 +841,7 @@ Boromir is built from scratch — **not backward compatible** with Aragorn.
 ### Discord
 
 | Feature                                 | Status                                     |
-|-----------------------------------------|--------------------------------------------|
+| --------------------------------------- | ------------------------------------------ |
 | Embed Discord widget in articles        | Available (`[discord:SERVER_ID]`)          |
 | Discord invite link in world footer     | Available (World Config)                   |
 | Webhooks (article notifications)        | Available                                  |
@@ -852,7 +866,7 @@ Boromir is built from scratch — **not backward compatible** with Aragorn.
 ### Export
 
 | Format           | Details                                               |
-|------------------|-------------------------------------------------------|
+| ---------------- | ----------------------------------------------------- |
 | **ZIP archive**  | All resources exported (via community toolbox)        |
 | **CSV**          | Article metadata export                               |
 | **Markdown**     | Community tool (WorldAnvil-to-MD) for Obsidian import |
@@ -905,7 +919,7 @@ Boromir is built from scratch — **not backward compatible** with Aragorn.
 ### Major Challenges
 
 | Challenge                       | When           | Goal                                    | Badges                                           |
-|---------------------------------|----------------|-----------------------------------------|--------------------------------------------------|
+| ------------------------------- | -------------- | --------------------------------------- | ------------------------------------------------ |
 | **Summer Camp**                 | July (1 month) | 30+ prompts, 300+ words each            | Copper (8), Silver (16), Gold (24), Diamond (32) |
 | **WorldEmber**                  | December       | Write as much worldbuilding as possible | 50K-word badge                                   |
 | **Worldbuilding Awards (WAWA)** | February–March | Community-nominated best worlds         | Various awards                                   |
@@ -932,7 +946,7 @@ Virtual currency earned by daily login — **not a microtransaction system**.
 ### Uses
 
 | Action                      | Cost                   |
-|-----------------------------|------------------------|
+| --------------------------- | ---------------------- |
 | Submit a feature suggestion | 300 coins              |
 | Vote on feature suggestions | Variable               |
 | Post to Global Feed         | 500 coins              |
@@ -966,7 +980,7 @@ Virtual currency earned by daily login — **not a microtransaction system**.
 ### 2025
 
 | Update                                     | Details                                                                |
-|--------------------------------------------|------------------------------------------------------------------------|
+| ------------------------------------------ | ---------------------------------------------------------------------- |
 | **Per-article editor switching**           | Use Visual or Euclid per article (Jan 2025)                            |
 | **New image selector**                     | Tighter image-article integration (May 2025)                           |
 | **New RPG systems**                        | Daggerheart, Legend in the Mist (June 2025)                            |
@@ -979,7 +993,7 @@ Virtual currency earned by daily login — **not a microtransaction system**.
 ### 2026
 
 | Update                       | Details                                                  |
-|------------------------------|----------------------------------------------------------|
+| ---------------------------- | -------------------------------------------------------- |
 | **New Search**               | Search entire world setting with 3 characters (Jan 2026) |
 | **6th Worldbuilding Awards** | Submissions open Feb 7, 2026                             |
 | **Global community stream**  | Available from any page                                  |

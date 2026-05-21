@@ -12,6 +12,7 @@ defmodule Storyarn.Workspaces.WorkspaceInvitation do
     default_role: "member",
     verify_preloads: [:workspace, :invited_by]
 
+  alias Ecto.Association.NotLoaded
   alias Storyarn.Workspaces.Workspace
 
   @type t :: %__MODULE__{
@@ -22,9 +23,9 @@ defmodule Storyarn.Workspaces.WorkspaceInvitation do
           expires_at: DateTime.t() | nil,
           accepted_at: DateTime.t() | nil,
           workspace_id: integer() | nil,
-          workspace: Workspace.t() | Ecto.Association.NotLoaded.t() | nil,
+          workspace: Workspace.t() | NotLoaded.t() | nil,
           invited_by_id: integer() | nil,
-          invited_by: User.t() | Ecto.Association.NotLoaded.t() | nil,
+          invited_by: User.t() | NotLoaded.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }

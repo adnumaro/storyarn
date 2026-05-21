@@ -1,0 +1,233 @@
+{
+  "project_settings": {
+    "nav": {
+      "back_to_project": "Volver al proyecto",
+      "sections": {
+        "general": "General",
+        "integrations": "Integraciones",
+        "administration": "Administración"
+      },
+      "items": {
+        "general": "General",
+        "version_control": "Control de versiones",
+        "usage_limits": "Límites de uso",
+        "localization": "Localización",
+        "members": "Miembros",
+        "snapshots": "Snapshots",
+        "import_export": "Importar y exportar",
+        "trash": "Papelera"
+      }
+    },
+    "general": {
+      "project_name": "Nombre del proyecto",
+      "description": "Descripción",
+      "save_changes": "Guardar cambios",
+      "source_language": "Idioma origen",
+      "source_language_description": "Define el idioma base usado para los textos fuente y los flujos de traducción en este proyecto.",
+      "source_language_hint": "Para cambiar el idioma origen, usa los ajustes de localización.",
+      "appearance": "Apariencia",
+      "theme_system": "Sistema",
+      "theme_light": "Claro",
+      "theme_dark": "Oscuro",
+      "project_theme": "Tema del proyecto",
+      "primary": "Primario",
+      "accent": "Destacado",
+      "reset_theme": "Restablecer",
+      "apply_theme": "Aplicar tema",
+      "maintenance": "Mantenimiento",
+      "repair_description": "Si renombraste atajos de fichas o nombres de variables, los nodos de flujo pueden referir nombres antiguos. Usa esto para repararlos.",
+      "repair_button": "Reparar referencias de variables",
+      "danger_zone": "Zona de peligro",
+      "delete_description": "Una vez elimines el proyecto no hay vuelta atrás. Asegúrate antes de continuar.",
+      "delete_button": "Eliminar proyecto",
+      "repair_confirm_title": "¿Reparar referencias de variables?",
+      "repair_confirm_description": "Se actualizarán los datos de nodos en todo el proyecto.",
+      "cancel": "Cancelar",
+      "continue": "Continuar",
+      "delete_confirm_title": "¿Eliminar proyecto?",
+      "delete_confirm_description": "Esta acción no se puede deshacer.",
+      "delete": "Eliminar"
+    },
+    "members": {
+      "request_title": "Solicitar invitación de miembro",
+      "request_description": "Las solicitudes de invitación son revisadas por un administrador antes de enviarse.",
+      "email": "Dirección de correo",
+      "email_placeholder": "colega{'@'}ejemplo.com",
+      "role": "Rol",
+      "role_editor": "Editor",
+      "role_viewer": "Lector",
+      "submit": "Solicitar invitación"
+    },
+    "localization": {
+      "provider_title": "Proveedor de traducción (DeepL)",
+      "api_key": "Clave API",
+      "api_tier": "Nivel API",
+      "tier_free": "Gratis (api-free.deepl.com)",
+      "tier_pro": "Pro (api.deepl.com)",
+      "test_connection": "Probar conexión",
+      "save": "Guardar",
+      "usage_prefix": "Uso: ",
+      "usage_characters": " caracteres"
+    },
+    "snapshots": {
+      "restoration_in_progress": "Hay una restauración en curso. Espera a que se complete.",
+      "clear_lock": "Limpiar bloqueo",
+      "snapshot_title": "Título de la snapshot",
+      "snapshot_placeholder": "p. ej., Antes del playtest v2",
+      "description": "Descripción",
+      "create_snapshot": "Crear snapshot",
+      "limit_reached": "Límite de snapshots alcanzado para tu plan.",
+      "snapshots_heading": "Snapshots",
+      "empty_title": "Aún no hay snapshots",
+      "empty_description": "Crea una snapshot para guardar una copia de seguridad de todo el proyecto.",
+      "untitled": "Snapshot sin título",
+      "download": "Descargar",
+      "restore": "Restaurar",
+      "restore_confirm_title": "¿Restaurar snapshot del proyecto?",
+      "restore_confirm_description": "Esto sobrescribirá todos los datos actuales del proyecto con el estado de esta snapshot. Se creará una snapshot de seguridad antes de restaurar.",
+      "delete_confirm_title": "¿Eliminar snapshot?",
+      "delete_confirm_description": "Se eliminará permanentemente esta snapshot. Esta acción no se puede deshacer.",
+      "cancel": "Cancelar",
+      "delete": "Eliminar"
+    },
+    "trash": {
+      "title": "Papelera",
+      "description": "Los elementos eliminados del proyecto se pueden recuperar hasta que termine su periodo de retención.",
+      "count_summary": "Elementos en papelera: {count}",
+      "search_placeholder": "Buscar elementos eliminados...",
+      "empty_trash": "Vaciar papelera",
+      "empty_title": "La papelera está vacía",
+      "empty_description": "Las fichas, flujos, escenas y guiones eliminados aparecerán aquí.",
+      "no_results_title": "No se encontraron elementos eliminados",
+      "no_results_description": "Ajusta la búsqueda o el filtro de tipo para encontrar otro elemento.",
+      "deleted_label": "Eliminado {time}",
+      "just_now": "ahora mismo",
+      "untitled": "Sin título",
+      "filters": {
+        "all": "Todos"
+      },
+      "types": {
+        "sheet": "Ficha",
+        "flow": "Flujo",
+        "scene": "Escena",
+        "screenplay": "Guion"
+      },
+      "restore": "Restaurar",
+      "page_of": "Página {page} de {total}",
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "delete_confirm_title": "¿Eliminar permanentemente?",
+      "delete_confirm_description": "El elemento de tipo {type} “{name}” se eliminará permanentemente. Esta acción no se puede deshacer.",
+      "delete": "Eliminar",
+      "cancel": "Cancelar",
+      "empty_confirm_title": "¿Vaciar papelera?",
+      "empty_confirm_description": "Todos los elementos eliminados del proyecto se eliminarán permanentemente. Esta acción no se puede deshacer."
+    },
+    "version_control": {
+      "auto_snapshots": "Snapshots automáticas",
+      "enable_daily": "Activar snapshots automáticas diarias",
+      "daily_description": "Crea una copia de seguridad diaria a las 3:00 AM UTC cuando se detectan cambios.",
+      "auto_versioning": "Versionado automático",
+      "auto_versioning_description": "Crear versiones automáticamente al editar entidades.",
+      "flows": "Flujos",
+      "scenes": "Escenas",
+      "sheets": "Fichas",
+      "save_changes": "Guardar cambios",
+      "usage": "Uso",
+      "project_snapshots": "Snapshots del proyecto",
+      "named_versions": "Versiones con nombre"
+    },
+    "usage_limits": {
+      "current_plan": "Plan actual",
+      "current_plan_description": "Los límites combinan cuotas propias del proyecto y cuotas compartidas del workspace.",
+      "project_limits": "Límites del proyecto",
+      "project_limits_description": "Estos contadores bloquean nuevas entidades o versiones dentro de este proyecto.",
+      "workspace_limits": "Límites del workspace",
+      "workspace_limits_description": "Estas cuotas son compartidas por todos los proyectos del workspace.",
+      "project_storage_note": "Este proyecto usa {storage} en {assets} recursos.",
+      "rows": {
+        "items": "Items",
+        "project_snapshots": "Snapshots del proyecto",
+        "named_versions": "Versiones con nombre",
+        "storage": "Almacenamiento",
+        "projects": "Proyectos",
+        "members": "Miembros"
+      },
+      "descriptions": {
+        "items": "Fichas, flujos, escenas y nodos de flujo en este proyecto.",
+        "project_snapshots": "Snapshots manuales y automáticas almacenadas para este proyecto.",
+        "named_versions": "Versiones promocionadas de entidades que cuentan contra la cuota del proyecto.",
+        "storage": "Almacenamiento total de recursos usado por todos los proyectos del workspace.",
+        "projects": "Proyectos activos en este workspace.",
+        "members": "Usuarios únicos con membresía de workspace o de proyecto."
+      },
+      "breakdown": {
+        "sheets": "Fichas",
+        "flows": "Flujos",
+        "scenes": "Escenas",
+        "flow_nodes": "Nodos de flujo"
+      },
+      "status": {
+        "available": "Disponible",
+        "near_limit": "Cerca del límite",
+        "limit_reached": "Límite alcanzado",
+        "no_limit": "Sin límite"
+      }
+    },
+    "export": {
+      "title": "Exportar",
+      "format": "Formato",
+      "content": "Contenido",
+      "sections": {
+        "sheets": "Fichas",
+        "flows": "Flujos",
+        "scenes": "Escenas",
+        "screenplays": "Guiones",
+        "localization": "Localización"
+      },
+      "assets": "Recursos",
+      "asset_references": "Solo referencias (URLs en la salida)",
+      "asset_embedded": "Incrustados (Base64 — archivo más grande)",
+      "asset_bundled": "Empaquetados (ZIP con carpeta de recursos)",
+      "options": "Opciones",
+      "validate_before": "Validar antes de exportar",
+      "pretty_print": "Formato legible",
+      "validate": "Validar",
+      "download": "Descargar .{ext}",
+      "passed": "Correcto",
+      "warnings": "Advertencias",
+      "errors": "Errores",
+      "no_issues": "No se encontraron problemas. El proyecto está listo para exportar."
+    },
+    "import": {
+      "title": "Importar",
+      "select_file": "Selecciona un archivo .storyarn.json",
+      "choose_file": "Elegir archivo...",
+      "upload_preview": "Subir y previsualizar",
+      "preview_title": "Vista previa de importación",
+      "th_entity": "Entidad",
+      "th_count": "Cantidad",
+      "entities": {
+        "sheets": "Fichas",
+        "flows": "Flujos",
+        "nodes": "Nodos",
+        "scenes": "Escenas",
+        "screenplays": "Guiones",
+        "assets": "Recursos",
+        "localization": "Localización"
+      },
+      "conflicts_title": "Se detectaron conflictos de atajos",
+      "conflict_strategy": "Estrategia de resolución",
+      "strategy_skip": "Omitir — mantener existentes, ignorar conflictos",
+      "strategy_overwrite": "Sobrescribir — reemplazar entidades existentes",
+      "strategy_rename": "Renombrar — importar con un nuevo atajo",
+      "import_button": "Importar",
+      "cancel": "Cancelar",
+      "success": "¡Importación completada con éxito!",
+      "th_imported": "Importados",
+      "try_again": "Reintentar",
+      "import_another": "Importar otro",
+      "no_permission": "Necesitas permisos de edición para importar datos."
+    }
+  }
+}

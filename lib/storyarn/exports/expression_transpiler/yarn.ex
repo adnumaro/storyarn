@@ -6,6 +6,8 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Yarn do
   Logic: `and` / `or`
   """
 
+  use Gettext, backend: Storyarn.Gettext
+
   use Storyarn.Exports.ExpressionTranspiler.Base,
     var_style: :dollar_underscore,
     logic_opts: [and_keyword: " and ", or_keyword: " or "],
@@ -68,11 +70,9 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Yarn do
   defp emit_condition_op(ref, "ends_with", val),
     do: "string_ends_with(#{ref}, #{Helpers.format_literal(val, @literal_opts)})"
 
-  defp emit_condition_op(ref, "before", val),
-    do: "#{ref} < #{Helpers.format_literal(val, @literal_opts)}"
+  defp emit_condition_op(ref, "before", val), do: "#{ref} < #{Helpers.format_literal(val, @literal_opts)}"
 
-  defp emit_condition_op(ref, "after", val),
-    do: "#{ref} > #{Helpers.format_literal(val, @literal_opts)}"
+  defp emit_condition_op(ref, "after", val), do: "#{ref} > #{Helpers.format_literal(val, @literal_opts)}"
 
   defp emit_condition_op(ref, op, value) do
     "#{ref} #{condition_op(op)} #{Helpers.format_literal(value, @literal_opts)}"
@@ -107,7 +107,11 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Yarn do
       |> Enum.map(fn %{"sheet" => s, "variable" => v} ->
         %{
           type: :semantic_loss,
-          message: "set_if_unset emits unconditional set in Yarn (no null type)",
+          message:
+            dgettext(
+              "projects",
+              "set_if_unset emits unconditional set in Yarn (no null type)"
+            ),
           operator: "set_if_unset",
           engine: "Yarn",
           variable: "#{s}.#{v}"
@@ -126,8 +130,7 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Yarn do
   defp emit_assignment(ref, "set", a), do: "<<set #{ref} to #{format_value(ref, a)}>>"
   defp emit_assignment(ref, "add", a), do: "<<set #{ref} to #{ref} + #{format_value(ref, a)}>>"
 
-  defp emit_assignment(ref, "subtract", a),
-    do: "<<set #{ref} to #{ref} - #{format_value(ref, a)}>>"
+  defp emit_assignment(ref, "subtract", a), do: "<<set #{ref} to #{ref} - #{format_value(ref, a)}>>"
 
   defp emit_assignment(ref, "set_true", _), do: "<<set #{ref} to true>>"
   defp emit_assignment(ref, "set_false", _), do: "<<set #{ref} to false>>"

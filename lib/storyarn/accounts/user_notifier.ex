@@ -3,11 +3,11 @@ defmodule Storyarn.Accounts.UserNotifier do
   Handles email notifications for user account actions.
   """
   import Swoosh.Email
-  require Logger
 
-  alias Storyarn.Accounts.User
   alias Storyarn.Emails.Templates
   alias Storyarn.Mailer
+
+  require Logger
 
   defp deliver(recipient, subject, html_body, text_body) do
     {sender_name, sender_email} = sender()
@@ -41,21 +41,6 @@ defmodule Storyarn.Accounts.UserNotifier do
   def deliver_update_email_instructions(user, url) do
     {subject, html, text} = Templates.update_email(user.email, url)
     deliver(user.email, subject, html, text)
-  end
-
-  @doc """
-  Deliver instructions to log in with a magic link.
-  """
-  def deliver_login_instructions(user, url) do
-    case user do
-      %User{confirmed_at: nil} ->
-        {subject, html, text} = Templates.confirmation(user.email, url)
-        deliver(user.email, subject, html, text)
-
-      _ ->
-        {subject, html, text} = Templates.magic_link(user.email, url)
-        deliver(user.email, subject, html, text)
-    end
   end
 
   @doc """

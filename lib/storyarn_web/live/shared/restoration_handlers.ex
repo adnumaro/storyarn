@@ -88,9 +88,9 @@ defmodule StoryarnWeb.Live.Shared.RestorationHandlers do
 
   defmacro __using__(_opts) do
     quote do
-      alias StoryarnWeb.Live.Shared.RestorationHandlers, as: RestorationHandlers
-
       import StoryarnWeb.Live.Shared.RestorationHandlers, only: [check_restoration_lock: 2]
+
+      alias StoryarnWeb.Live.Shared.RestorationHandlers, as: RestorationHandlers
 
       @impl true
       def handle_info({:project_restoration_started, payload}, socket) do

@@ -6,39 +6,11 @@ defmodule StoryarnWeb.UserLive.LoginTest do
 
   describe "login page" do
     test "renders login page", %{conn: conn} do
-      {:ok, _lv, html} = live(conn, ~p"/users/log-in")
+      {:ok, view, _html} = live(conn, ~p"/users/log-in")
 
-      assert html =~ "Log in"
-      assert html =~ "Log in with email"
-    end
-  end
-
-  describe "user login - magic link" do
-    test "sends magic link email when user exists", %{conn: conn} do
-      user = user_fixture()
-
-      {:ok, lv, _html} = live(conn, ~p"/users/log-in")
-
-      {:ok, _lv, html} =
-        form(lv, "#login_form_magic", user: %{email: user.email})
-        |> render_submit()
-        |> follow_redirect(conn, ~p"/users/log-in")
-
-      assert html =~ "If your email is in our system"
-
-      assert Storyarn.Repo.get_by!(Storyarn.Accounts.UserToken, user_id: user.id).context ==
-               "login"
-    end
-
-    test "does not disclose if user is registered", %{conn: conn} do
-      {:ok, lv, _html} = live(conn, ~p"/users/log-in")
-
-      {:ok, _lv, html} =
-        form(lv, "#login_form_magic", user: %{email: "idonotexist@example.com"})
-        |> render_submit()
-        |> follow_redirect(conn, ~p"/users/log-in")
-
-      assert html =~ "If your email is in our system"
+      vue = LiveVue.Test.get_vue(view, name: "live/auth/login/AuthLoginForm")
+      assert vue.component == "live/auth/login/AuthLoginForm"
+      assert vue.props["login-action"] == "/users/log-in"
     end
   end
 
@@ -51,47 +23,14 @@ defmodule StoryarnWeb.UserLive.LoginTest do
     end
   end
 
-  describe "user login - magic link rate limited" do
-    test "shows rate limited error when too many requests", %{conn: conn} do
-      # Temporarily enable rate limiting for this test
-      Application.put_env(:storyarn, Storyarn.RateLimiter, enabled: true)
-
-      # Use a unique email to avoid cross-test interference
-      unique_email = "ratelimit_#{System.unique_integer([:positive])}@example.com"
-
-      # Submit magic link requests until rate limited (limit is 3 per minute)
-      Enum.each(1..3, fn _ ->
-        {:ok, lv, _html} = live(conn, ~p"/users/log-in")
-
-        form(lv, "#login_form_magic", user: %{email: unique_email})
-        |> render_submit()
-      end)
-
-      # The 4th request should be rate limited
-      {:ok, lv, _html} = live(conn, ~p"/users/log-in")
-
-      {:ok, _lv, html} =
-        form(lv, "#login_form_magic", user: %{email: unique_email})
-        |> render_submit()
-        |> follow_redirect(conn, ~p"/users/log-in")
-
-      assert html =~ "Too many requests"
-    after
-      # Restore original config
-      Application.put_env(:storyarn, Storyarn.RateLimiter, enabled: false)
-    end
-  end
-
   describe "local mail adapter info" do
-    test "shows local mail adapter info when adapter is Local", %{conn: conn} do
-      # Temporarily set the mailer adapter to Local
+    test "passes local-mail-adapter=true to Vue when adapter is Local", %{conn: conn} do
       Application.put_env(:storyarn, Storyarn.Mailer, adapter: Swoosh.Adapters.Local)
 
-      {:ok, _lv, html} = live(conn, ~p"/users/log-in")
+      {:ok, view, _html} = live(conn, ~p"/users/log-in")
 
-      assert html =~ "local mail adapter"
-      assert html =~ "the mailbox"
-      assert html =~ "/dev/mailbox"
+      vue = LiveVue.Test.get_vue(view, name: "live/auth/login/AuthLoginForm")
+      assert vue.props["local-mail-adapter"] == true
     after
       Application.put_env(:storyarn, Storyarn.Mailer, adapter: Swoosh.Adapters.Test)
     end
@@ -103,14 +42,12 @@ defmodule StoryarnWeb.UserLive.LoginTest do
       %{user: user, conn: log_in_user(conn, user)}
     end
 
-    test "shows login page with email filled in", %{conn: conn, user: user} do
-      {:ok, _lv, html} = live(conn, ~p"/users/log-in")
+    test "passes email to Vue when logged in", %{conn: conn, user: user} do
+      {:ok, view, _html} = live(conn, ~p"/users/log-in")
 
-      assert html =~ "Enter your email"
-      assert html =~ "Log in with email"
-
-      assert html =~
-               ~s(<input type="email" name="user[email]" id="login_form_magic_email" value="#{user.email}")
+      vue = LiveVue.Test.get_vue(view, name: "live/auth/login/AuthLoginForm")
+      assert vue.props["email"] == user.email
+      assert vue.props["readonly"] == true
     end
   end
 end

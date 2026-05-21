@@ -29,14 +29,12 @@ defmodule Storyarn.RateLimiter do
         {:error, :rate_limited} -> show_error(...)
       end
   """
+  alias Storyarn.RateLimiter.ETSBackend
+  alias Storyarn.RateLimiter.RedisBackend
 
   # Login: 5 attempts per minute per IP
   @login_limit 5
   @login_window_ms 60_000
-
-  # Magic link: 3 requests per minute per email
-  @magic_link_limit 3
-  @magic_link_window_ms 60_000
 
   # Registration: 3 attempts per minute per IP
   @registration_limit 3
@@ -54,17 +52,6 @@ defmodule Storyarn.RateLimiter do
   @spec check_login(String.t()) :: :ok | {:error, :rate_limited}
   def check_login(ip_address) do
     check_rate("login:#{ip_address}", @login_window_ms, @login_limit)
-  end
-
-  @doc """
-  Checks if a magic link request is allowed for the given email.
-
-  Returns `:ok` if allowed, `{:error, :rate_limited}` if blocked.
-  """
-  @spec check_magic_link(String.t()) :: :ok | {:error, :rate_limited}
-  def check_magic_link(email) do
-    normalized_email = String.downcase(email)
-    check_rate("magic_link:#{normalized_email}", @magic_link_window_ms, @magic_link_limit)
   end
 
   @doc """
@@ -106,8 +93,8 @@ defmodule Storyarn.RateLimiter do
   """
   def backend do
     case Application.get_env(:storyarn, :rate_limiter_backend) do
-      :redis -> Storyarn.RateLimiter.RedisBackend
-      _ -> Storyarn.RateLimiter.ETSBackend
+      :redis -> RedisBackend
+      _ -> ETSBackend
     end
   end
 
@@ -119,10 +106,10 @@ defmodule Storyarn.RateLimiter do
     case Application.get_env(:storyarn, :rate_limiter_backend) do
       :redis ->
         redis_url = System.get_env("REDIS_URL") || "redis://localhost:6379"
-        {Storyarn.RateLimiter.RedisBackend, url: redis_url}
+        {RedisBackend, url: redis_url}
 
       _ ->
-        {Storyarn.RateLimiter.ETSBackend, clean_period: :timer.minutes(10)}
+        {ETSBackend, clean_period: to_timeout(minute: 10)}
     end
   end
 
@@ -140,7 +127,8 @@ defmodule Storyarn.RateLimiter do
   end
 
   defp enabled? do
-    Application.get_env(:storyarn, __MODULE__, [])
+    :storyarn
+    |> Application.get_env(__MODULE__, [])
     |> Keyword.get(:enabled, true)
   end
 end

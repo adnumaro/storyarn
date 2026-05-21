@@ -94,8 +94,7 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
       "position" => sheet.position,
       "avatar_asset_id" => maybe_to_string(default_avatar_asset_id(sheet)),
       "banner_asset_id" => maybe_to_string(sheet.banner_asset_id),
-      "hidden_inherited_block_ids" =>
-        Enum.map(sheet.hidden_inherited_block_ids || [], &to_string/1),
+      "hidden_inherited_block_ids" => Enum.map(sheet.hidden_inherited_block_ids || [], &to_string/1),
       "current_version_id" => maybe_to_string(sheet.current_version_id),
       "avatars" => serialize_sheet_avatars(sheet),
       "blocks" => Enum.map(sheet.blocks, &serialize_block/1)
@@ -201,10 +200,8 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
 
   defp serialize_node_data("dialogue", data) do
     responses =
-      (data["responses"] || [])
-      |> Enum.map(fn resp ->
-        resp
-        |> Map.put("instruction_assignments", parse_response_instruction(resp["instruction"]))
+      Enum.map(data["responses"] || [], fn resp ->
+        Map.put(resp, "instruction_assignments", parse_response_instruction(resp["instruction"]))
       end)
 
     Map.put(data, "responses", responses)
@@ -375,9 +372,6 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
       "parent_id" => maybe_to_string(sp.parent_id),
       "position" => sp.position,
       "linked_flow_id" => maybe_to_string(sp.linked_flow_id),
-      "draft_label" => sp.draft_label,
-      "draft_status" => sp.draft_status,
-      "draft_of_id" => maybe_to_string(sp.draft_of_id),
       "elements" => Enum.map(sp.elements, &serialize_element/1)
     }
   end

@@ -18,10 +18,10 @@ defmodule Storyarn.Versioning.DiffHelpers do
   @spec check_field_change([change()], map(), map(), String.t(), atom(), String.t()) ::
           [change()]
   def check_field_change(changes, old_snapshot, new_snapshot, field, category, detail) do
-    if old_snapshot[field] != new_snapshot[field] do
-      [%{category: category, action: :modified, detail: detail} | changes]
-    else
+    if old_snapshot[field] == new_snapshot[field] do
       changes
+    else
+      [%{category: category, action: :modified, detail: detail} | changes]
     end
   end
 
@@ -135,6 +135,6 @@ defmodule Storyarn.Versioning.DiffHelpers do
   def resolve_fk(nil, _schema), do: nil
 
   def resolve_fk(id, schema) do
-    if Repo.exists?(from(e in schema, where: e.id == ^id)), do: id, else: nil
+    if Repo.exists?(from(e in schema, where: e.id == ^id)), do: id
   end
 end

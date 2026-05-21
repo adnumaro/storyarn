@@ -15,7 +15,12 @@ defmodule StoryarnWeb.FlowLive.Nodes.Instruction.Node do
   def label, do: dgettext("flows", "Instruction")
   def description, do: dgettext("flows", "Set or modify variable values")
 
-  def default_data, do: %{"assignments" => [], "description" => ""}
+  def default_data do
+    %{
+      "assignments" => [],
+      "description" => ""
+    }
+  end
 
   def extract_form_data(data) do
     %{

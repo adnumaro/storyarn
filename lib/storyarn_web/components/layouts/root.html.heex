@@ -1,49 +1,48 @@
 <!DOCTYPE html>
 <html lang={assigns[:locale] || "en"}>
   <head>
+    <script>
+      // Sync theme class with localStorage (same key as v1: "phx:theme")
+      (function() {
+        var stored = localStorage.getItem("phx:theme");
+        var dark = stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+        if (dark) document.documentElement.classList.add("dark");
+        else document.documentElement.classList.remove("dark");
+      })();
+    </script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta
-      :if={Application.get_env(:storyarn, :noindex, false)}
-      name="robots"
-      content="noindex, nofollow"
-    />
     <meta name="csrf-token" content={get_csrf_token()} />
-    <meta
-      :if={Application.get_env(:sentry, :dsn)}
-      name="sentry-dsn"
-      content={Application.get_env(:sentry, :dsn)}
-    />
+    <%= if posthog = posthog_frontend_config(assigns) do %>
+      <meta name="posthog-enabled" content="true" />
+      <meta name="posthog-key" content={posthog.api_key} />
+      <meta name="posthog-host" content={posthog.host} />
+      <meta
+        name="posthog-error-tracking-enabled"
+        content={to_string(posthog.error_tracking_enabled)}
+      />
+      <%= if posthog.distinct_id do %>
+        <meta name="posthog-user-id" content={posthog.distinct_id} />
+      <% end %>
+      <%= if posthog.user_locale do %>
+        <meta name="posthog-user-locale" content={posthog.user_locale} />
+      <% end %>
+      <%= if is_boolean(posthog.user_super_admin) do %>
+        <meta name="posthog-user-super-admin" content={to_string(posthog.user_super_admin)} />
+      <% end %>
+    <% end %>
     <link rel="icon" href={~p"/images/logos/logo-white-32.png"} type="image/png" sizes="32x32" />
-    <link rel="icon" href={~p"/images/logos/logo-white-16.png"} type="image/png" sizes="16x16" />
-    <link rel="apple-touch-icon" href={~p"/images/logos/logo-white-180.png"} sizes="180x180" />
     <.live_title default="Storyarn" suffix=" · Storyarn">
       {assigns[:page_title]}
     </.live_title>
-    <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
-    <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
-    </script>
-    <script
-      :if={assigns[:landing_page]}
-      defer
-      phx-track-static
-      type="text/javascript"
-      src={~p"/assets/js/landing.js"}
-    >
-    </script>
+    <PhoenixVite.Components.assets
+      names={["assets/js/app.js", "assets/css/app.css"]}
+      manifest={{:storyarn, "priv/static/.vite/manifest.json"}}
+      dev_server={PhoenixVite.Components.has_vite_watcher?(StoryarnWeb.Endpoint)}
+      to_url={fn p -> static_url(assigns[:conn] || assigns[:socket], p) end}
+    />
   </head>
-  <body class="bg-base-100 antialiased">
-    <div
-      id="page-loader"
-      class="fixed inset-0 z-[9999] flex items-center justify-center bg-base-200 hidden"
-      style="will-change: transform; contain: strict"
-    >
-      <div
-        class="animate-spin size-10 rounded-full border-4 border-primary border-t-transparent"
-        style="will-change: transform"
-      >
-      </div>
-    </div>
+  <body class="bg-background text-foreground antialiased">
     {@inner_content}
   </body>
 </html>

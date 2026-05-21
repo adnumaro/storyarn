@@ -6,20 +6,29 @@ defmodule Storyarn.Assets do
   Supports both local storage (development) and Cloudflare R2 (production).
   """
 
-  require Logger
-
   import Ecto.Query, warn: false
-  alias Storyarn.Repo
 
   alias Storyarn.Accounts.User
+  alias Storyarn.Analytics
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.ImageProcessor
   alias Storyarn.Assets.Storage
+  alias Storyarn.Assets.UploadPolicy
   alias Storyarn.Billing
+  alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowNode
   alias Storyarn.Projects.Project
+  alias Storyarn.Repo
+  alias Storyarn.Scenes.Scene
+  alias Storyarn.Scenes.ScenePin
   alias Storyarn.Shared.SearchHelpers
+  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Sheets.Sheet
+  alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Workspaces.Workspace
+
+  require Logger
 
   # =============================================================================
   # Type Definitions
@@ -89,7 +98,7 @@ defmodule Storyarn.Assets do
         query
 
       term ->
-        escaped = Storyarn.Shared.SearchHelpers.sanitize_like_query(term)
+        escaped = SearchHelpers.sanitize_like_query(term)
         where(query, [a], ilike(a.filename, ^"%#{escaped}%"))
     end
   end
@@ -151,6 +160,7 @@ defmodule Storyarn.Assets do
     %Asset{project_id: project.id, uploaded_by_id: user.id}
     |> Asset.create_changeset(attrs)
     |> Repo.insert()
+    |> track_asset_created(user, attrs)
   end
 
   @doc """
@@ -161,6 +171,7 @@ defmodule Storyarn.Assets do
     %Asset{project_id: project.id}
     |> Asset.create_changeset(attrs)
     |> Repo.insert()
+    |> track_asset_created(nil, attrs)
   end
 
   @doc """
@@ -174,14 +185,25 @@ defmodule Storyarn.Assets do
   end
 
   @doc """
-  Deletes an asset.
+  Deletes an asset and detaches references that do not have database-level
+  `ON DELETE` behavior.
 
-  Note: This only deletes the database record. The actual file should be
-  deleted from storage separately.
+  Note: This only deletes database records. The actual files should be deleted
+  from storage separately, after this returns `{:ok, asset}`.
   """
   @spec delete_asset(asset()) :: {:ok, asset()} | {:error, changeset()}
   def delete_asset(%Asset{} = asset) do
-    Repo.delete(asset)
+    Repo.transaction(fn ->
+      sheet_ids = detach_sheet_avatar_references(asset)
+      _updated_flow_nodes = clear_flow_node_audio_references(asset)
+
+      Enum.each(sheet_ids, &promote_default_avatar/1)
+
+      case Repo.delete(asset) do
+        {:ok, deleted_asset} -> deleted_asset
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
+    end)
   end
 
   @doc """
@@ -214,11 +236,7 @@ defmodule Storyarn.Assets do
   """
   @spec total_storage_size(integer()) :: non_neg_integer()
   def total_storage_size(project_id) do
-    from(a in Asset,
-      where: a.project_id == ^project_id,
-      select: sum(a.size)
-    )
-    |> Repo.one() || 0
+    Repo.one(from(a in Asset, where: a.project_id == ^project_id, select: sum(a.size))) || 0
   end
 
   @doc """
@@ -250,25 +268,39 @@ defmodule Storyarn.Assets do
   - Flow nodes with `data->>'audio_asset_id'` matching the asset (excludes soft-deleted)
   - Sheets with avatars referencing the asset via `sheet_avatars` (excludes soft-deleted)
   - Sheets with `banner_asset_id` matching the asset (excludes soft-deleted)
+  - Scenes with `background_asset_id` matching the asset (excludes soft-deleted)
+  - Scene pins with `icon_asset_id` matching the asset (excludes soft-deleted scenes)
 
   Returns:
       %{
         flow_nodes: [%{node: node, flow: flow}],
         sheet_avatars: [sheet],
-        sheet_banners: [sheet]
+        sheet_banners: [sheet],
+        scene_backgrounds: [scene],
+        scene_pin_icons: [%{pin_id: id, pin_label: label, scene_id: id, scene_name: name}]
       }
   """
   @spec get_asset_usages(integer(), integer()) :: %{
           flow_nodes: [map()],
-          sheet_avatars: [Storyarn.Sheets.Sheet.t()],
-          sheet_banners: [Storyarn.Sheets.Sheet.t()]
+          sheet_avatars: [Sheet.t()],
+          sheet_banners: [Sheet.t()],
+          scene_backgrounds: [Scene.t()],
+          scene_pin_icons: [map()]
         }
   def get_asset_usages(project_id, asset_id) do
     flow_nodes = Storyarn.Flows.list_nodes_using_asset(project_id, asset_id)
     sheet_avatars = Storyarn.Sheets.list_sheets_using_asset_as_avatar(project_id, asset_id)
     sheet_banners = Storyarn.Sheets.list_sheets_using_asset_as_banner(project_id, asset_id)
+    scene_backgrounds = list_scenes_using_asset_as_background(project_id, asset_id)
+    scene_pin_icons = list_scene_pins_using_asset_as_icon(project_id, asset_id)
 
-    %{flow_nodes: flow_nodes, sheet_avatars: sheet_avatars, sheet_banners: sheet_banners}
+    %{
+      flow_nodes: flow_nodes,
+      sheet_avatars: sheet_avatars,
+      sheet_banners: sheet_banners,
+      scene_backgrounds: scene_backgrounds,
+      scene_pin_icons: scene_pin_icons
+    }
   end
 
   @doc """
@@ -277,14 +309,113 @@ defmodule Storyarn.Assets do
   @spec count_asset_usages(integer(), integer()) :: non_neg_integer()
   def count_asset_usages(project_id, asset_id) do
     usages = get_asset_usages(project_id, asset_id)
-    length(usages.flow_nodes) + length(usages.sheet_avatars) + length(usages.sheet_banners)
+
+    usages
+    |> Map.values()
+    |> Enum.map(&length/1)
+    |> Enum.sum()
+  end
+
+  defp detach_sheet_avatar_references(%Asset{id: asset_id, project_id: project_id}) do
+    avatars =
+      Repo.all(
+        from(sa in SheetAvatar,
+          join: s in Sheet,
+          on: sa.sheet_id == s.id,
+          where: sa.asset_id == ^asset_id,
+          where: s.project_id == ^project_id,
+          select: %{id: sa.id, sheet_id: sa.sheet_id, is_default: sa.is_default}
+        )
+      )
+
+    avatar_ids = Enum.map(avatars, & &1.id)
+
+    if avatar_ids != [] do
+      Repo.delete_all(from(sa in SheetAvatar, where: sa.id in ^avatar_ids))
+    end
+
+    avatars
+    |> Enum.filter(& &1.is_default)
+    |> Enum.map(& &1.sheet_id)
+    |> Enum.uniq()
+  end
+
+  defp promote_default_avatar(sheet_id) do
+    default_exists? =
+      Repo.exists?(from(sa in SheetAvatar, where: sa.sheet_id == ^sheet_id and sa.is_default == true))
+
+    if default_exists? do
+      :ok
+    else
+      case Repo.one(from(sa in SheetAvatar, where: sa.sheet_id == ^sheet_id, order_by: [asc: sa.position], limit: 1)) do
+        nil ->
+          :ok
+
+        avatar ->
+          avatar
+          |> Ecto.Changeset.change(is_default: true)
+          |> Repo.update!()
+
+          :ok
+      end
+    end
+  end
+
+  defp clear_flow_node_audio_references(%Asset{id: asset_id, project_id: project_id}) do
+    asset_id_str = to_string(asset_id)
+    now = TimeHelpers.now()
+
+    {count, _} =
+      Repo.update_all(
+        from(n in FlowNode,
+          join: f in Flow,
+          on: n.flow_id == f.id,
+          where: f.project_id == ^project_id,
+          where: is_nil(n.deleted_at),
+          where: fragment("?->>'audio_asset_id' = ?", n.data, ^asset_id_str),
+          update: [set: [data: fragment("? - 'audio_asset_id'", n.data), updated_at: ^now]]
+        ),
+        []
+      )
+
+    count
+  end
+
+  defp list_scenes_using_asset_as_background(project_id, asset_id) do
+    Repo.all(
+      from(s in Scene,
+        where: s.project_id == ^project_id,
+        where: is_nil(s.deleted_at),
+        where: s.background_asset_id == ^asset_id,
+        order_by: [asc: s.name]
+      )
+    )
+  end
+
+  defp list_scene_pins_using_asset_as_icon(project_id, asset_id) do
+    Repo.all(
+      from(p in ScenePin,
+        join: s in Scene,
+        on: p.scene_id == s.id,
+        where: s.project_id == ^project_id,
+        where: is_nil(s.deleted_at),
+        where: p.icon_asset_id == ^asset_id,
+        order_by: [asc: s.name, asc: p.label],
+        select: %{
+          pin_id: p.id,
+          pin_label: p.label,
+          scene_id: s.id,
+          scene_name: s.name
+        }
+      )
+    )
   end
 
   @doc """
   Uploads a file from a temporary path and creates the corresponding asset record.
 
   Used by LiveView's `consume_uploaded_entries/3` to process file uploads directly
-  from the parent LiveView (without going through the AssetUpload LiveComponent).
+  from the parent LiveView.
 
   Returns `{:ok, asset}` on success or `{:error, reason}` on failure.
   """
@@ -314,6 +445,86 @@ defmodule Storyarn.Assets do
       if purpose = Keyword.get(opts, :purpose), do: Map.put(attrs, :purpose, purpose), else: attrs
 
     upload_binary_and_create_asset(content, attrs, project, user)
+  end
+
+  @doc """
+  Inspects a future image upload and returns the action needed for its purpose.
+
+  The caller provides client-side metadata plus a SHA-256 source hash. The
+  server uses that hash only for lookup; actual uploads still recompute the
+  hash from the received binary.
+  """
+  @spec inspect_upload(project(), map()) :: {:ok, map()} | {:error, term()}
+  def inspect_upload(%Project{} = project, attrs) do
+    purpose = attrs |> Map.get("purpose", Map.get(attrs, :purpose)) |> UploadPolicy.parse_purpose()
+
+    with {:ok, profile} <- UploadPolicy.profile_for(purpose),
+         {:ok, metadata} <- UploadPolicy.normalize_metadata(attrs),
+         :ok <- UploadPolicy.validate(profile, metadata) do
+      existing_original = get_asset_by_blob_hash(project.id, metadata.source_hash)
+      requires_variant? = requires_variant?(purpose, metadata.content_type, image_metadata(metadata))
+
+      existing_variant =
+        if requires_variant? do
+          get_asset_by_source_profile(project.id, metadata.source_hash, profile.profile)
+        end
+
+      {:ok,
+       %{
+         action: upload_decision_action(existing_original, existing_variant, requires_variant?),
+         source_exists: not is_nil(existing_original),
+         variant_exists: not is_nil(existing_variant),
+         requires_variant: requires_variant?,
+         variant_profile: profile.profile,
+         target: profile.target,
+         asset_id: decision_asset_id(existing_original, existing_variant, requires_variant?)
+       }}
+    end
+  end
+
+  @doc """
+  Materializes a purpose-specific asset from an existing source image.
+
+  This is used after `inspect_upload/2` determines that the source hash already
+  exists in the project, so the browser does not need to upload the same binary
+  again.
+  """
+  @spec materialize_upload_variant(project(), user() | nil, map()) ::
+          {:ok, asset(), map()} | {:error, term()}
+  def materialize_upload_variant(%Project{} = project, user, attrs) do
+    purpose = attrs |> Map.get("purpose", Map.get(attrs, :purpose)) |> UploadPolicy.parse_purpose()
+    source_hash = Map.get(attrs, "hash") || Map.get(attrs, :hash)
+
+    with {:ok, profile} <- UploadPolicy.profile_for(purpose),
+         true <- is_binary(source_hash),
+         %Asset{} = original <- get_asset_by_blob_hash(project.id, source_hash),
+         {:ok, binary_data} <- Storage.download(original.key) do
+      materialize_asset_for_purpose(binary_data, original, project, user, purpose, profile)
+    else
+      false -> {:error, :invalid_hash}
+      nil -> {:error, :source_not_found}
+      error -> error
+    end
+  end
+
+  @doc """
+  Uploads a source binary and returns the asset that should be attached for
+  the requested purpose.
+
+  For avatar, banner, and scene background uploads this keeps the original
+  source once and returns a generated/reused placement-specific variant when
+  one is required.
+  """
+  @spec upload_binary_for_purpose(binary(), map(), project(), user() | nil) ::
+          {:ok, asset(), map()} | {:error, term()}
+  def upload_binary_for_purpose(binary_data, attrs, %Project{} = project, user \\ nil) do
+    purpose = attrs |> Map.get(:purpose, Map.get(attrs, "purpose")) |> UploadPolicy.parse_purpose()
+
+    with {:ok, profile} <- UploadPolicy.profile_for(purpose),
+         :ok <- validate_binary_upload(binary_data, attrs, profile),
+         {:ok, original} <- ensure_original_asset(binary_data, attrs, project, user) do
+      materialize_asset_for_purpose(binary_data, original, project, user, purpose, profile)
+    end
   end
 
   @doc """
@@ -371,6 +582,194 @@ defmodule Storyarn.Assets do
     end
   end
 
+  defp validate_binary_upload(binary_data, attrs, profile) do
+    content_type = Map.get(attrs, :content_type) || Map.get(attrs, "content_type")
+
+    UploadPolicy.validate(profile, %{
+      content_type: content_type,
+      size: byte_size(binary_data)
+    })
+  end
+
+  defp ensure_original_asset(binary_data, attrs, project, user) do
+    source_hash = BlobStore.compute_hash(binary_data)
+
+    case get_asset_by_blob_hash(project.id, source_hash) do
+      %Asset{} = asset ->
+        {:ok, ensure_original_metadata(asset, binary_data, source_hash)}
+
+      nil ->
+        upload_original_asset(binary_data, attrs, project, user, source_hash)
+    end
+  end
+
+  defp upload_original_asset(binary_data, attrs, project, user, source_hash) do
+    metadata =
+      binary_data
+      |> image_metadata_from_binary()
+      |> Map.merge(%{
+        "source_blob_hash" => source_hash,
+        "variant_profile" => "original"
+      })
+      |> Map.merge(Map.get(attrs, :metadata, Map.get(attrs, "metadata", %{})))
+
+    original_attrs =
+      attrs
+      |> normalize_asset_attrs()
+      |> Map.merge(%{metadata: metadata, skip_variants: true})
+
+    upload_binary_and_create_asset(binary_data, original_attrs, project, user)
+  end
+
+  defp normalize_asset_attrs(attrs) do
+    %{
+      filename: Map.get(attrs, :filename) || Map.get(attrs, "filename"),
+      content_type: Map.get(attrs, :content_type) || Map.get(attrs, "content_type")
+    }
+  end
+
+  defp ensure_original_metadata(asset, binary_data, source_hash) do
+    metadata = asset.metadata || %{}
+
+    if metadata["source_blob_hash"] && metadata["variant_profile"] do
+      asset
+    else
+      updated_metadata =
+        binary_data
+        |> image_metadata_from_binary()
+        |> Map.merge(metadata)
+        |> Map.merge(%{
+          "source_blob_hash" => source_hash,
+          "variant_profile" => "original"
+        })
+
+      case update_asset(asset, %{metadata: updated_metadata}) do
+        {:ok, updated} -> updated
+        {:error, _} -> asset
+      end
+    end
+  end
+
+  defp materialize_asset_for_purpose(binary_data, original, project, user, purpose, profile) do
+    source_hash = original.blob_hash || BlobStore.compute_hash(binary_data)
+    metadata = original.metadata || %{}
+
+    if requires_variant?(purpose, original.content_type, metadata) do
+      case get_asset_by_source_profile(project.id, source_hash, profile.profile) do
+        %Asset{} = variant ->
+          {:ok, variant, %{reused: true, action: :attach_existing_variant}}
+
+        nil ->
+          create_variant_asset(binary_data, original, project, user, source_hash, purpose, profile)
+      end
+    else
+      {:ok, original, %{reused: true, action: :attach_existing_original}}
+    end
+  end
+
+  defp create_variant_asset(binary_data, original, project, user, source_hash, purpose, profile) do
+    case generate_variant_binary(binary_data, purpose, profile) do
+      {:ok, webp_data} ->
+        upload_variant_asset(webp_data, original, project, user, source_hash, profile)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp generate_variant_binary(binary_data, purpose, %{target: %{width: width, height: height}})
+       when purpose in [:avatar, :banner] do
+    ImageProcessor.resize_to_webp(binary_data, width, height)
+  end
+
+  defp generate_variant_binary(binary_data, :scene_background, _profile) do
+    ImageProcessor.to_webp(binary_data)
+  end
+
+  defp upload_variant_asset(webp_data, original, project, user, source_hash, profile) do
+    dimensions = image_metadata_from_binary(webp_data)
+
+    variant_attrs = %{
+      filename: Path.rootname(original.filename) <> ".webp",
+      content_type: "image/webp",
+      metadata:
+        Map.merge(dimensions, %{
+          "is_variant" => true,
+          "original_asset_id" => original.id,
+          "source_blob_hash" => source_hash,
+          "variant_profile" => profile.profile
+        }),
+      skip_variants: true
+    }
+
+    case upload_binary_and_create_asset(webp_data, variant_attrs, project, user) do
+      {:ok, variant} ->
+        link_variant_to_original(original, variant, profile.profile)
+        {:ok, variant, %{reused: false, action: :created_variant}}
+
+      error ->
+        error
+    end
+  end
+
+  defp image_metadata(%{width: width, height: height}) do
+    %{}
+    |> maybe_put_dimension("width", width)
+    |> maybe_put_dimension("height", height)
+  end
+
+  defp image_metadata_from_binary(binary_data) do
+    if ImageProcessor.available?() do
+      case ImageProcessor.get_dimensions_from_binary(binary_data) do
+        {:ok, %{width: width, height: height}} -> %{"width" => width, "height" => height}
+        {:error, _} -> %{}
+      end
+    else
+      %{}
+    end
+  end
+
+  defp maybe_put_dimension(metadata, _key, nil), do: metadata
+  defp maybe_put_dimension(metadata, key, value), do: Map.put(metadata, key, value)
+
+  defp requires_variant?(purpose, content_type, metadata) do
+    case ImageProcessor.needs_optimization?(content_type, metadata || %{}, purpose) do
+      :skip -> false
+      {:generate, _} -> true
+    end
+  end
+
+  defp upload_decision_action(_original, %Asset{}, true), do: :attach_existing_variant
+  defp upload_decision_action(%Asset{}, nil, true), do: :create_variant_from_existing_original
+  defp upload_decision_action(%Asset{}, _variant, false), do: :attach_existing_original
+  defp upload_decision_action(nil, _variant, true), do: :upload_original_and_create_variant
+  defp upload_decision_action(nil, _variant, false), do: :upload_original_only
+
+  defp decision_asset_id(_original, %Asset{id: id}, true), do: id
+  defp decision_asset_id(%Asset{id: id}, _variant, false), do: id
+  defp decision_asset_id(_original, _variant, _requires_variant?), do: nil
+
+  defp get_asset_by_blob_hash(project_id, blob_hash) when is_binary(blob_hash) do
+    Asset
+    |> where(project_id: ^project_id, blob_hash: ^blob_hash)
+    |> where([a], fragment("coalesce(?->>'is_variant', 'false') != 'true'", a.metadata))
+    |> order_by([a], asc: a.inserted_at, asc: a.id)
+    |> limit(1)
+    |> Repo.one()
+  end
+
+  defp get_asset_by_blob_hash(_project_id, _blob_hash), do: nil
+
+  defp get_asset_by_source_profile(project_id, source_hash, profile) do
+    Asset
+    |> where([a], a.project_id == ^project_id)
+    |> where([a], fragment("?->>'source_blob_hash' = ?", a.metadata, ^source_hash))
+    |> where([a], fragment("?->>'variant_profile' = ?", a.metadata, ^profile))
+    |> order_by([a], asc: a.inserted_at, asc: a.id)
+    |> limit(1)
+    |> Repo.one()
+  end
+
   defp maybe_schedule_variant(binary_data, asset, project, user, attrs) do
     purpose = Map.get(attrs, :purpose)
     skip = Map.get(attrs, :skip_variants, false)
@@ -417,6 +816,7 @@ defmodule Storyarn.Assets do
 
       {:error, reason} ->
         Logger.warning("[ImageOptimization] Failed to generate WebP for asset #{original_asset.id}: #{inspect(reason)}")
+
         {:ok, original_asset}
     end
   end
@@ -434,7 +834,11 @@ defmodule Storyarn.Assets do
         link_variant_to_original(original_asset, variant)
 
       {:error, reason} ->
-        Logger.warning("[ImageOptimization] Failed to upload variant for asset #{original_asset.id}: #{inspect(reason)}")
+        Logger.warning(
+          "[ImageOptimization] Failed to upload variant for asset #{original_asset.id}: " <>
+            inspect(reason)
+        )
+
         {:ok, original_asset}
     end
   end
@@ -452,12 +856,74 @@ defmodule Storyarn.Assets do
 
       {:error, reason} ->
         Logger.warning("[ImageOptimization] Failed to link variant to asset #{original_asset.id}: #{inspect(reason)}")
+
+        {:ok, original_asset}
+    end
+  end
+
+  defp link_variant_to_original(original_asset, variant, profile) do
+    metadata = original_asset.metadata || %{}
+    profiles = Map.get(metadata, "variant_asset_ids", %{})
+
+    updated_metadata =
+      Map.put(metadata, "variant_asset_ids", Map.put(profiles, profile, variant.id))
+
+    case update_asset(original_asset, %{metadata: updated_metadata}) do
+      {:ok, updated_original} ->
+        {:ok, updated_original}
+
+      {:error, reason} ->
+        Logger.warning("[ImageOptimization] Failed to link variant to asset #{original_asset.id}: #{inspect(reason)}")
+
         {:ok, original_asset}
     end
   end
 
   defp do_create_asset(project, nil, attrs), do: create_asset(project, attrs)
   defp do_create_asset(project, user, attrs), do: create_asset(project, user, attrs)
+
+  defp track_asset_created({:ok, asset}, user, attrs) do
+    properties = asset_analytics_properties(asset, attrs)
+
+    case user do
+      %User{} -> Analytics.track(user, "asset uploaded", properties)
+      _ -> Analytics.track_system("asset uploaded", properties)
+    end
+
+    {:ok, asset}
+  end
+
+  defp track_asset_created(result, _user, _attrs), do: result
+
+  defp asset_analytics_properties(asset, attrs) do
+    metadata = asset.metadata || %{}
+
+    %{
+      asset_type: asset_type_for_content_type(asset.content_type),
+      content_type: asset.content_type,
+      created_variant: metadata["is_variant"] == true,
+      project_id: asset.project_id,
+      purpose: analytics_value(Map.get(attrs, :purpose) || Map.get(attrs, "purpose")),
+      size_bucket: size_bucket(asset.size)
+    }
+  end
+
+  defp asset_type_for_content_type(content_type) when is_binary(content_type) do
+    content_type
+    |> String.split("/", parts: 2)
+    |> List.first()
+  end
+
+  defp asset_type_for_content_type(_content_type), do: nil
+
+  defp size_bucket(size) when is_integer(size) and size < 100 * 1024, do: "under_100kb"
+  defp size_bucket(size) when is_integer(size) and size < 1024 * 1024, do: "100kb_to_1mb"
+  defp size_bucket(size) when is_integer(size) and size < 10 * 1024 * 1024, do: "1mb_to_10mb"
+  defp size_bucket(size) when is_integer(size), do: "over_10mb"
+  defp size_bucket(_size), do: nil
+
+  defp analytics_value(value) when is_atom(value), do: Atom.to_string(value)
+  defp analytics_value(value), do: value
 
   defp extract_image_metadata(path, content_type) do
     if String.starts_with?(content_type, "image/") and ImageProcessor.available?() do
@@ -570,11 +1036,7 @@ defmodule Storyarn.Assets do
   """
   @spec list_assets_for_export(integer()) :: [asset()]
   def list_assets_for_export(project_id) do
-    from(a in Asset,
-      where: a.project_id == ^project_id,
-      order_by: [asc: a.inserted_at, asc: a.id]
-    )
-    |> Repo.all()
+    Repo.all(from(a in Asset, where: a.project_id == ^project_id, order_by: [asc: a.inserted_at, asc: a.id]))
   end
 
   @doc """
@@ -582,8 +1044,7 @@ defmodule Storyarn.Assets do
   """
   @spec count_assets(integer()) :: non_neg_integer()
   def count_assets(project_id) do
-    from(a in Asset, where: a.project_id == ^project_id)
-    |> Repo.aggregate(:count)
+    Repo.aggregate(from(a in Asset, where: a.project_id == ^project_id), :count)
   end
 
   # =============================================================================

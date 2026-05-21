@@ -7,54 +7,58 @@ defmodule StoryarnWeb.ProjectLive.ShowTest do
 
   alias Storyarn.Repo
 
+  defp get_project_layout_vue(view) do
+    LiveVue.Test.get_vue(view, name: "live/layouts/project/Layout")
+  end
+
   describe "Show" do
     setup :register_and_log_in_user
 
     test "renders project dashboard for owner", %{conn: conn, user: user} do
       project =
-        project_fixture(user, %{name: "My Project"})
+        user
+        |> project_fixture(%{name: "My Project"})
         |> Repo.preload(:workspace)
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
 
-      # Project name in toolbar
-      assert html =~ "My Project"
-      # Dashboard tool is active (icon rendered)
-      assert html =~ "layout-dashboard"
+      chrome = get_project_layout_vue(view).props["chrome"]
+      assert chrome["projectName"] == "My Project"
+      assert chrome["activeTool"] == "dashboard"
     end
 
     test "renders project dashboard for member", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner, %{name: "Shared Project"}) |> Repo.preload(:workspace)
+      project = owner |> project_fixture(%{name: "Shared Project"}) |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "editor")
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
 
-      assert html =~ "Shared Project"
+      chrome = get_project_layout_vue(view).props["chrome"]
+      assert chrome["projectName"] == "Shared Project"
     end
 
     test "redirects for non-member", %{conn: conn} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
 
       {:error, {:redirect, %{to: path, flash: flash}}} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
 
       assert path == "/workspaces"
-      assert flash["error"] =~ "not found"
+      assert flash["error"] =~ "access"
     end
 
-    test "shows tool switcher with other tools", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+    test "shows tool switcher enabled", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
 
-      # Tool switcher shows other tools (not Dashboard since it's active)
-      assert html =~ "Sheets"
-      assert html =~ "Flows"
+      chrome = get_project_layout_vue(view).props["chrome"]
+      assert chrome["showToolSwitcher"] == true
     end
   end
 end

@@ -11,18 +11,15 @@ defmodule Storyarn.Screenplays.FlowSync do
   alias Storyarn.Flows
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Repo
-
-  alias Storyarn.Screenplays.{
-    ElementCrud,
-    FlowLayout,
-    FlowTraversal,
-    LinkedPageCrud,
-    PageTreeBuilder,
-    ReverseNodeMapping,
-    Screenplay,
-    ScreenplayCrud,
-    ScreenplayElement
-  }
+  alias Storyarn.Screenplays.ElementCrud
+  alias Storyarn.Screenplays.FlowLayout
+  alias Storyarn.Screenplays.FlowTraversal
+  alias Storyarn.Screenplays.LinkedPageCrud
+  alias Storyarn.Screenplays.PageTreeBuilder
+  alias Storyarn.Screenplays.ReverseNodeMapping
+  alias Storyarn.Screenplays.Screenplay
+  alias Storyarn.Screenplays.ScreenplayCrud
+  alias Storyarn.Screenplays.ScreenplayElement
 
   @max_tree_depth 20
 
@@ -84,10 +81,10 @@ defmodule Storyarn.Screenplays.FlowSync do
   def unlink_flow(%Screenplay{} = screenplay) do
     Repo.transaction(fn ->
       # Clear linked_node_id on all elements
-      from(e in ScreenplayElement,
-        where: e.screenplay_id == ^screenplay.id and not is_nil(e.linked_node_id)
+      Repo.update_all(
+        from(e in ScreenplayElement, where: e.screenplay_id == ^screenplay.id and not is_nil(e.linked_node_id)),
+        set: [linked_node_id: nil]
       )
-      |> Repo.update_all(set: [linked_node_id: nil])
 
       # Clear linked_flow_id on screenplay
       screenplay
@@ -176,8 +173,7 @@ defmodule Storyarn.Screenplays.FlowSync do
 
   defp sync_page_from_tree!(screenplay, tree_result, depth \\ 0)
 
-  defp sync_page_from_tree!(_screenplay, _tree_result, depth) when depth > @max_tree_depth,
-    do: :ok
+  defp sync_page_from_tree!(_screenplay, _tree_result, depth) when depth > @max_tree_depth, do: :ok
 
   defp sync_page_from_tree!(screenplay, tree_result, depth) do
     new_attrs = ReverseNodeMapping.nodes_to_element_attrs(tree_result.nodes)
@@ -205,7 +201,7 @@ defmodule Storyarn.Screenplays.FlowSync do
     orphan_ids = Enum.map(orphaned, & &1.id)
 
     if orphan_ids != [] do
-      from(e in ScreenplayElement, where: e.id in ^orphan_ids) |> Repo.delete_all()
+      Repo.delete_all(from(e in ScreenplayElement, where: e.id in ^orphan_ids))
     end
 
     final_order = insert_non_mappeable(result_elements, non_mappeable_anchored)
@@ -228,7 +224,7 @@ defmodule Storyarn.Screenplays.FlowSync do
   defp create_branch_child!(parent, choice_id, source_node) do
     project = Storyarn.Projects.get_project!(parent.project_id)
     text = get_choice_field(source_node, choice_id, "text") || ""
-    name = if text != "", do: text, else: "Untitled Branch"
+    name = if text == "", do: "Untitled Branch", else: text
 
     {:ok, child} = ScreenplayCrud.create_screenplay(project, %{name: name, parent_id: parent.id})
     set_choice_linked_id!(parent.id, source_node.id, choice_id, child.id)
@@ -236,10 +232,7 @@ defmodule Storyarn.Screenplays.FlowSync do
   end
 
   defp child_exists?(child_id, parent_id) do
-    from(s in Screenplay,
-      where: s.id == ^child_id and s.parent_id == ^parent_id and is_nil(s.deleted_at)
-    )
-    |> Repo.exists?()
+    Repo.exists?(from(s in Screenplay, where: s.id == ^child_id and s.parent_id == ^parent_id and is_nil(s.deleted_at)))
   end
 
   defp get_choice_field(node, choice_id, field) do
@@ -374,7 +367,7 @@ defmodule Storyarn.Screenplays.FlowSync do
       end)
 
     # Append any non-mappeable anchored to :end
-    tail = Map.get(by_anchor, :end, []) |> Enum.map(fn {nme, _} -> nme end)
+    tail = by_anchor |> Map.get(:end, []) |> Enum.map(fn {nme, _} -> nme end)
     final ++ tail
   end
 
@@ -484,8 +477,10 @@ defmodule Storyarn.Screenplays.FlowSync do
 
     # Clear element links to orphaned nodes
     if orphaned_ids != [] do
-      from(e in ScreenplayElement, where: e.linked_node_id in ^orphaned_ids)
-      |> Repo.update_all(set: [linked_node_id: nil])
+      Repo.update_all(
+        from(e in ScreenplayElement, where: e.linked_node_id in ^orphaned_ids),
+        set: [linked_node_id: nil]
+      )
     end
 
     # Delete orphaned nodes (skip protected ones)
@@ -539,10 +534,10 @@ defmodule Storyarn.Screenplays.FlowSync do
   end
 
   defp update_element_links!(node_attrs_list, result_nodes) do
-    Enum.zip(node_attrs_list, result_nodes)
+    node_attrs_list
+    |> Enum.zip(result_nodes)
     |> Enum.each(fn {attrs, node} ->
-      from(e in ScreenplayElement, where: e.id in ^attrs.element_ids)
-      |> Repo.update_all(set: [linked_node_id: node.id])
+      Repo.update_all(from(e in ScreenplayElement, where: e.id in ^attrs.element_ids), set: [linked_node_id: node.id])
     end)
   end
 

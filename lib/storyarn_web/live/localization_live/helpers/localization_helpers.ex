@@ -6,13 +6,15 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers do
   render helpers (status_label, source_type_icon, etc.).
   """
 
-  import Phoenix.Component, only: [assign: 3]
   use StoryarnWeb, :verified_routes
   use Gettext, backend: Storyarn.Gettext
 
+  import Phoenix.Component, only: [assign: 3]
+
+  alias Phoenix.LiveView.Socket
   alias Storyarn.Localization
 
-  @spec load_texts(Phoenix.LiveView.Socket.t()) :: Phoenix.LiveView.Socket.t()
+  @spec load_texts(Socket.t()) :: Socket.t()
   def load_texts(socket) do
     locale = socket.assigns.selected_locale
 
@@ -50,7 +52,7 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers do
     end
   end
 
-  @spec reload_languages(Phoenix.LiveView.Socket.t()) :: Phoenix.LiveView.Socket.t()
+  @spec reload_languages(Socket.t()) :: Socket.t()
   def reload_languages(socket) do
     project_id = socket.assigns.project.id
     languages = Localization.list_languages(project_id)
@@ -102,8 +104,7 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers do
   def non_blank(""), do: nil
   def non_blank(s), do: s
 
-  defp maybe_add_source_locale(codes, %{locale_code: locale_code}) when is_binary(locale_code),
-    do: [locale_code | codes]
+  defp maybe_add_source_locale(codes, %{locale_code: locale_code}) when is_binary(locale_code), do: [locale_code | codes]
 
   defp maybe_add_source_locale(codes, _source_language), do: codes
 

@@ -1,4 +1,5 @@
 defmodule StoryarnWeb.DocsLive.Show do
+  @moduledoc false
   use StoryarnWeb, :live_view
 
   alias Storyarn.Docs
@@ -12,9 +13,7 @@ defmodule StoryarnWeb.DocsLive.Show do
 
     # All categories start expanded
     expanded =
-      categories
-      |> Enum.map(fn {cat, _label} -> cat end)
-      |> MapSet.new()
+      MapSet.new(categories, fn {cat, _label} -> cat end)
 
     {:ok,
      assign(socket,
@@ -23,7 +22,7 @@ defmodule StoryarnWeb.DocsLive.Show do
        guides: guides,
        search_query: "",
        search_results: nil,
-       sidebar_open: false,
+       sidebar_open: true,
        expanded_categories: expanded
      )}
   end
@@ -36,7 +35,7 @@ defmodule StoryarnWeb.DocsLive.Show do
   defp apply_action(socket, :index, _params) do
     case Docs.first_guide(socket.assigns.locale) do
       nil ->
-        assign(socket, page_title: gettext("Documentation"), guide: nil, prev: nil, next: nil)
+        assign(socket, page_title: dgettext("docs", "Documentation"), guide: nil, prev: nil, next: nil)
 
       guide ->
         push_navigate(socket, to: ~p"/docs/#{guide.category}/#{guide.slug}")
@@ -49,7 +48,7 @@ defmodule StoryarnWeb.DocsLive.Show do
     case Docs.get_guide(category, slug, locale) do
       nil ->
         socket
-        |> put_flash(:error, gettext("Guide not found"))
+        |> put_flash(:error, dgettext("docs", "Guide not found"))
         |> push_navigate(to: ~p"/docs")
 
       guide ->
@@ -59,8 +58,7 @@ defmodule StoryarnWeb.DocsLive.Show do
           page_title: guide.title,
           guide: guide,
           prev: prev,
-          next: next,
-          sidebar_open: false
+          next: next
         )
     end
   end
@@ -72,8 +70,6 @@ defmodule StoryarnWeb.DocsLive.Show do
     results =
       if String.length(query) >= 2 do
         Docs.search(query, socket.assigns.locale)
-      else
-        nil
       end
 
     {:noreply, assign(socket, search_query: query, search_results: results)}
@@ -101,8 +97,9 @@ defmodule StoryarnWeb.DocsLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.docs
+    <StoryarnWeb.Components.DocsLayout.docs
       flash={@flash}
+      socket={@socket}
       current_scope={@current_scope}
       categories={@categories}
       guides={@guides}
@@ -114,21 +111,20 @@ defmodule StoryarnWeb.DocsLive.Show do
       next={@next}
       sidebar_open={@sidebar_open}
     >
-      <div :if={@guide} class="docs-content">
-        {Phoenix.HTML.raw(HtmlSanitizer.sanitize_html(@guide.body))}
-      </div>
-
-      <div :if={!@guide} class="text-center py-20">
-        <.icon name="book-open" class="size-12 text-base-content/30 mx-auto mb-4" />
-        <p class="text-base-content/50">{gettext("No documentation available yet.")}</p>
-      </div>
-    </Layouts.docs>
+      <.vue
+        v-component="live/docs/show/DocsContent"
+        v-socket={@socket}
+        v-inject="docs-layout"
+        id="docs-show-vue"
+        guide-body={if @guide, do: HtmlSanitizer.sanitize_html(@guide.body)}
+      />
+    </StoryarnWeb.Components.DocsLayout.docs>
     """
   end
 
   # Use current Gettext locale if docs exist for it, otherwise fall back to English.
   defp docs_locale do
     locale = Gettext.get_locale(Storyarn.Gettext)
-    if Docs.list_guides(locale) != [], do: locale, else: "en"
+    if Docs.list_guides(locale) == [], do: "en", else: locale
   end
 end

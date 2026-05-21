@@ -1,0 +1,96 @@
+wing: storyarn
+rooms:
+  - name: sheets
+    description: Sheet editor — blocks, tables, variables, property inheritance
+    keywords:
+      - sheet
+      - block
+      - table
+      - variable
+      - property_inheritance
+
+  - name: flows
+    description: Flow editor — nodes, connections, dialogue, conditions, instructions
+    keywords:
+      - flow
+      - node
+      - connection
+      - dialogue
+      - condition
+      - instruction
+
+  - name: scenes
+    description: Scene editor — layers, zones, pins, konva canvas
+    keywords:
+      - scene
+      - layer
+      - zone
+      - pin
+      - konva
+      - canvas
+
+  - name: exploration
+    description: Exploration mode — movement, patrols, waypoints, ambient
+    keywords:
+      - exploration
+      - patrol
+      - waypoint
+      - movement
+      - ambient
+
+  - name: collaboration
+    description: Real-time collaboration — presence, locks, cursors, pubsub
+    keywords:
+      - collab
+      - presence
+      - lock
+      - cursor
+      - pubsub
+      - broadcast
+
+  - name: versioning
+    description: Version control — snapshots, diffs, entity versions, history
+    keywords:
+      - version
+      - snapshot
+      - diff
+      - history
+      - restore
+
+  - name: localization
+    description: Localization — languages, translations, glossary, gettext
+    keywords:
+      - localization
+      - translation
+      - language
+      - glossary
+      - gettext
+
+  - name: import-export
+    description: Import & export — serializers, parsers, fountain, data collector
+    keywords:
+      - import
+      - export
+      - serializer
+      - parser
+      - fountain
+
+  - name: workspaces
+    description: Workspaces — memberships, invitations, billing, plans
+    keywords:
+      - workspace
+      - membership
+      - invitation
+      - billing
+      - plan
+
+  - name: projects
+    description: Projects — project CRUD, project memberships, settings
+    keywords:
+      - project
+      - project_membership
+      - project_setting
+
+  - name: general
+    description: Files that don't fit other rooms
+    keywords: []

@@ -11,7 +11,7 @@ defmodule StoryarnWeb.ExportControllerTest do
   setup :register_and_log_in_user
 
   setup %{user: user} do
-    project = project_fixture(user) |> Repo.preload(:workspace)
+    project = user |> project_fixture() |> Repo.preload(:workspace)
     %{project: project}
   end
 
@@ -122,7 +122,7 @@ defmodule StoryarnWeb.ExportControllerTest do
 
     test "returns 404 for non-member project", %{conn: conn} do
       other_user = user_fixture()
-      other_project = project_fixture(other_user) |> Repo.preload(:workspace)
+      other_project = other_user |> project_fixture() |> Repo.preload(:workspace)
 
       conn =
         get(

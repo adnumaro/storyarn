@@ -11,16 +11,17 @@ defmodule Storyarn.Screenplays.Screenplay do
   - `linked_flow_id` - Optional link to a flow for bidirectional sync
   - `deleted_at` - Soft delete support
 
-  Draft support fields (`draft_of_id`, `draft_label`, `draft_status`) are
-  included from day one but not yet implemented — see FUTURE_FEATURES.md.
   """
   use Ecto.Schema
+
   import Ecto.Changeset
 
+  alias Ecto.Association.NotLoaded
   alias Storyarn.Flows.Flow
   alias Storyarn.Projects.Project
   alias Storyarn.Screenplays.ScreenplayElement
-  alias Storyarn.Shared.{HierarchicalSchema, Validations}
+  alias Storyarn.Shared.HierarchicalSchema
+  alias Storyarn.Shared.Validations
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -29,19 +30,14 @@ defmodule Storyarn.Screenplays.Screenplay do
           description: String.t() | nil,
           position: integer() | nil,
           deleted_at: DateTime.t() | nil,
-          draft_label: String.t() | nil,
-          draft_status: String.t() | nil,
           project_id: integer() | nil,
-          project: Project.t() | Ecto.Association.NotLoaded.t() | nil,
+          project: Project.t() | NotLoaded.t() | nil,
           parent_id: integer() | nil,
-          parent: t() | Ecto.Association.NotLoaded.t() | nil,
-          children: [t()] | Ecto.Association.NotLoaded.t(),
+          parent: t() | NotLoaded.t() | nil,
+          children: [t()] | NotLoaded.t(),
           linked_flow_id: integer() | nil,
-          linked_flow: Flow.t() | Ecto.Association.NotLoaded.t() | nil,
-          draft_of_id: integer() | nil,
-          draft_of: t() | Ecto.Association.NotLoaded.t() | nil,
-          drafts: [t()] | Ecto.Association.NotLoaded.t(),
-          elements: [ScreenplayElement.t()] | Ecto.Association.NotLoaded.t(),
+          linked_flow: Flow.t() | NotLoaded.t() | nil,
+          elements: [ScreenplayElement.t()] | NotLoaded.t(),
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -53,26 +49,14 @@ defmodule Storyarn.Screenplays.Screenplay do
     field :position, :integer, default: 0
     field :deleted_at, :utc_datetime
 
-    # Draft support (see FUTURE_FEATURES.md — Copy-Based Drafts)
-    field :draft_label, :string
-    field :draft_status, :string, default: "active"
-
     belongs_to :project, Project
     belongs_to :parent, __MODULE__
     belongs_to :linked_flow, Flow
-    belongs_to :draft_of, __MODULE__
-
     has_many :children, __MODULE__, foreign_key: :parent_id
-    has_many :drafts, __MODULE__, foreign_key: :draft_of_id
     has_many :elements, ScreenplayElement
 
     timestamps(type: :utc_datetime)
   end
-
-  @doc """
-  Returns true if this screenplay is a draft of another screenplay.
-  """
-  def draft?(%__MODULE__{draft_of_id: id}), do: not is_nil(id)
 
   @doc """
   Returns true if the screenplay is soft-deleted.
@@ -134,9 +118,7 @@ defmodule Storyarn.Screenplays.Screenplay do
 
   defp validate_shortcut(changeset) do
     changeset
-    |> Validations.validate_shortcut(
-      message: "must be lowercase, alphanumeric, with dots or hyphens (e.g., chapter-1)"
-    )
+    |> Validations.validate_shortcut(message: "must be lowercase, alphanumeric, with dots or hyphens (e.g., chapter-1)")
     |> unique_constraint(:shortcut,
       name: :screenplays_project_shortcut_unique,
       message: "is already taken in this project"

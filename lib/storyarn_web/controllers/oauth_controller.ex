@@ -75,8 +75,7 @@ defmodule StoryarnWeb.OAuthController do
   @doc """
   Links an OAuth provider to the current user's account.
   """
-  def link(%{assigns: %{ueberauth_auth: auth}} = conn, %{"provider" => provider})
-      when provider in @allowed_providers do
+  def link(%{assigns: %{ueberauth_auth: auth}} = conn, %{"provider" => provider}) when provider in @allowed_providers do
     user = conn.assigns.current_scope.user
 
     case Accounts.link_oauth_identity(user, provider, auth) do

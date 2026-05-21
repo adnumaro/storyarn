@@ -5,7 +5,9 @@ defmodule Storyarn.Billing do
   Handles plan limits, subscriptions, and usage tracking.
   """
 
-  alias Storyarn.Billing.{Limits, Plan, SubscriptionCrud}
+  alias Storyarn.Billing.Limits
+  alias Storyarn.Billing.Plan
+  alias Storyarn.Billing.SubscriptionCrud
 
   # Plan queries
   defdelegate get_plan(plan_key), to: Plan, as: :get
@@ -27,6 +29,7 @@ defmodule Storyarn.Billing do
   defdelegate can_create_named_version?(project_id, workspace_id), to: Limits
   defdelegate can_create_project_snapshot?(project_id, workspace_id), to: Limits
   defdelegate project_usage(project_id, workspace_id), to: Limits
+  defdelegate project_limits_usage(project), to: Limits
   defdelegate usage(workspace), to: Limits
 
   # Subscription operations

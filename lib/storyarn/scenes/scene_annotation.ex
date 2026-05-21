@@ -6,11 +6,13 @@ defmodule Storyarn.Scenes.SceneAnnotation do
   Position is stored as percentage pairs (0-100) relative to the map dimensions.
   """
   use Ecto.Schema
-  import Ecto.Changeset
 
+  import Ecto.Changeset
   import Storyarn.Scenes.ChangesetHelpers
 
-  alias Storyarn.Scenes.{Scene, SceneLayer}
+  alias Ecto.Association.NotLoaded
+  alias Storyarn.Scenes.Scene
+  alias Storyarn.Scenes.SceneLayer
 
   @valid_font_sizes ~w(sm md lg)
 
@@ -24,9 +26,9 @@ defmodule Storyarn.Scenes.SceneAnnotation do
           position: integer() | nil,
           locked: boolean(),
           scene_id: integer() | nil,
-          scene: Scene.t() | Ecto.Association.NotLoaded.t() | nil,
+          scene: Scene.t() | NotLoaded.t() | nil,
           layer_id: integer() | nil,
-          layer: SceneLayer.t() | Ecto.Association.NotLoaded.t() | nil,
+          layer: SceneLayer.t() | NotLoaded.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -64,8 +66,6 @@ defmodule Storyarn.Scenes.SceneAnnotation do
     ])
     |> validate_required([:text, :position_x, :position_y])
     |> validate_length(:text, min: 1, max: 500)
-    |> validate_number(:position_x, greater_than_or_equal_to: 0, less_than_or_equal_to: 100)
-    |> validate_number(:position_y, greater_than_or_equal_to: 0, less_than_or_equal_to: 100)
     |> validate_inclusion(:font_size, @valid_font_sizes)
     |> validate_length(:color, max: 20)
     |> validate_color(:color)
@@ -76,7 +76,5 @@ defmodule Storyarn.Scenes.SceneAnnotation do
     annotation
     |> cast(attrs, [:position_x, :position_y])
     |> validate_required([:position_x, :position_y])
-    |> validate_number(:position_x, greater_than_or_equal_to: 0, less_than_or_equal_to: 100)
-    |> validate_number(:position_y, greater_than_or_equal_to: 0, less_than_or_equal_to: 100)
   end
 end

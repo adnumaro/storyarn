@@ -17,9 +17,11 @@ Each feature is independent and ordered by dependency.
 ## Feature 1: Create Draft from Entity
 
 ### What
+
 A user can create a **draft** (private copy) of any flow, sheet, or scene. The draft is a complete, independent clone of the entity at that moment in time.
 
 ### Why (standalone value)
+
 The ability to say "let me try something" without fear is the most requested feature in collaborative design tools. Drafts give designers a safe sandbox.
 
 ### How it works
@@ -36,6 +38,7 @@ The ability to say "let me try something" without fear is the most requested fea
 ### Schema changes
 
 **New schema: `Draft`**
+
 ```
 drafts
 ├── id (id)
@@ -52,11 +55,13 @@ drafts
 ```
 
 **Entity tables extended:**
+
 - `sheets`, `flows`, `scenes` (and child tables): add `draft_id` (id, FK to drafts, nullable)
 - When `draft_id` is not null, the entity is a draft copy
 - All existing queries filter by `is_nil(draft_id)` to exclude draft copies from normal views
 
 ### Key implementation areas
+
 - **Cloning engine**: deep copy of entity + all children, assigning new ids and setting `draft_id`
 - **Internal reference remapping**: within the draft, all internal references (node connections, layer assignments, pin connections) must point to the new cloned IDs
 - **External reference preservation**: references to entities outside the draft (sheets, flows, other scenes) keep their original IDs
@@ -65,6 +70,7 @@ drafts
 - **Draft access**: only the creator can open/edit the draft
 
 ### Design considerations
+
 - Drafts are **not** in the sidebar tree — they have their own section/panel
 - The draft editor is the same as the normal editor (same LiveView, same tools), just operating on draft entities
 - A visual indicator in the editor makes it clear you're editing a draft, not the live entity (colored banner, "DRAFT" badge)
@@ -72,6 +78,7 @@ drafts
 - The original entity may advance while the draft exists. This divergence is shown at merge time
 
 ### Acceptance criteria
+
 - [ ] "Create Draft" action available on flows, sheets, and scenes
 - [ ] Draft creates a complete deep copy with new ids
 - [ ] Internal references remapped correctly within the draft
@@ -87,12 +94,15 @@ drafts
 ## Feature 2: Edit Draft Independently
 
 ### What
+
 The draft is a fully functional entity — the designer can edit it with all the same tools available in the normal editor. Changes to the draft do not affect the original, and changes to the original do not affect the draft.
 
 ### Why (standalone value)
+
 A draft that can't be edited is useless. Full editing capability means the designer can experiment freely: restructure a flow, rewrite dialogue, reorganize a scene — all without risk.
 
 ### How it works
+
 - Opening a draft loads the draft entities into the same LiveView as normal editing
 - The LiveView detects `draft_id` in the URL/params and loads draft entities instead of live ones
 - All mutations (create node, move pin, edit block) operate on draft entities
@@ -100,18 +110,22 @@ A draft that can't be edited is useless. Full editing capability means the desig
 - Collaboration features are **disabled** for drafts (no presence, no locks, no broadcasts)
 
 ### Divergence tracking
+
 While the designer edits their draft, the original entity may also change (other collaborators editing it). The system tracks this:
+
 - `draft.source_version_number` records the version at fork time
 - When the original gets new versions, the draft panel shows: "The original has changed since you created this draft (3 new versions)"
 - This is informational only — no auto-rebase, no forced sync
 
 ### Design considerations
+
 - URL scheme: `/workspaces/{ws}/projects/{proj}/flows/{flow_id}/draft/{draft_id}` or similar
 - The sidebar shows the draft name with a draft icon
 - Undo/redo works normally within the draft session
 - The draft does not count toward the entity's version history — it has its own
 
 ### Acceptance criteria
+
 - [ ] Drafts open in the same editor as normal entities
 - [ ] All editing tools work on draft entities
 - [ ] Changes to draft don't affect original
@@ -127,9 +141,11 @@ While the designer edits their draft, the original entity may also change (other
 ## Feature 3: Draft Review and Merge
 
 ### What
+
 When a draft is ready, the designer initiates a **merge review**: a comparison between the draft and the current state of the original entity. They can then accept (merge) or continue editing.
 
 ### Why (standalone value)
+
 The whole point of drafts is to eventually bring the work back to the main entity. Merge review ensures the designer sees what changed and makes an informed decision — especially important when the original diverged.
 
 ### Merge flow
@@ -148,7 +164,9 @@ The whole point of drafts is to eventually bring the work back to the main entit
    - **Discard draft**: delete the draft entirely
 
 ### Merge strategy (v1: full replacement)
+
 For v1, merge is simple: **the draft completely replaces the original**.
+
 - The original's current state is auto-snapshotted
 - The original entity + all children are updated to match the draft's state
 - The draft entities are cleaned up (deleted from DB)
@@ -156,17 +174,22 @@ For v1, merge is simple: **the draft completely replaces the original**.
 This is intentionally simple. Selective merge (pick which nodes to keep) is a future enhancement that builds on the visual diff system.
 
 ### What if the original diverged?
+
 The comparison view warns: "The original has changed since you created this draft. Merging will overwrite those changes."
+
 - The auto-snapshot preserves those changes — they can be restored if needed
 - The designer decides: are the original's changes important? If so, they can update their draft first
 
 ### Notification to collaborators
+
 When a draft is merged:
+
 - All collaborators editing the original receive a broadcast: "The flow was updated by {user} (draft merge)"
 - Their LiveViews reload to pick up the new state
 - No lock needed (unlike project restore) — it's a single entity update, fast enough to be atomic
 
 ### Acceptance criteria
+
 - [ ] "Review & Merge" action on active drafts
 - [ ] Comparison summary shows draft changes and original changes since fork
 - [ ] Merge creates auto-snapshot of original's current state
@@ -181,38 +204,44 @@ When a draft is merged:
 ## Feature 4: Draft Lifecycle Management
 
 ### What
+
 UI and backend support for listing, renaming, discarding, and cleaning up drafts. Keeps the workspace tidy and prevents abandoned drafts from accumulating.
 
 ### Why (standalone value)
+
 Without lifecycle management, abandoned drafts pile up in the database indefinitely. Users need visibility into their drafts and easy ways to manage them.
 
 ### Features
 
 **My Drafts panel:**
+
 - Accessible from project sidebar or user menu
 - Lists all active drafts for the current user in this project
 - Shows: entity type icon, draft name, original entity name, created date, last edited date
 - Actions: Open, Rename, Discard
 
 **Draft staleness:**
+
 - Drafts not edited for 30 days show a "Stale" indicator
 - Optional: notification email for stale drafts ("You have a draft of 'Quest Principal' that hasn't been edited in 30 days")
 
 **Cleanup:**
+
 - Discarding a draft deletes all draft entities from DB
 - Merged drafts are cleaned up automatically (draft entities deleted, draft record kept for history)
 - Oban job cleans up draft entities for merged/discarded drafts (in case of incomplete cleanup)
 
 **Draft limits:**
 
-| Plan       | Max active drafts per user per project  |
-|------------|-----------------------------------------|
-| Free       | 2                                       |
-| Pro        | 10                                      |
-| Team       | 25                                      |
-| Enterprise | Unlimited                               |
+| Plan       | Max active drafts per user per project |
+| ---------- | -------------------------------------- |
+| Free       | 2                                      |
+| Pro        | 10                                     |
+| Team       | 25                                     |
+| Enterprise | Unlimited                              |
 
 ### Acceptance criteria
+
 - [ ] "My Drafts" panel lists all active drafts
 - [ ] Drafts can be renamed
 - [ ] Drafts can be discarded with confirmation

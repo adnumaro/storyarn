@@ -1,35 +1,41 @@
 defmodule StoryarnWeb.SheetLive.Show do
-  @moduledoc false
+  @moduledoc """
+  V2 Sheet editor — Phase 1: Header only (banner, avatar, title, color).
+  Same backend logic as SheetLive.Show, Vue + shadcn UI.
+  """
 
   use StoryarnWeb, :live_view
-  alias StoryarnWeb.Helpers.Authorize
-  alias StoryarnWeb.Live.Shared.RestorationHandlers
 
-  import StoryarnWeb.Components.SheetComponents
-  import StoryarnWeb.Helpers.SaveStatusTimer
-  import StoryarnWeb.Live.Shared.TreePanelHandlers
+  import StoryarnWeb.Live.Shared.RestorationHandlers, only: [check_restoration_lock: 2]
+  import StoryarnWeb.SheetLive.Helpers.AudioDataHelpers
+  import StoryarnWeb.SheetLive.Helpers.FormulaHelpers
+  import StoryarnWeb.SheetLive.Helpers.HistoryDataHelpers
+  import StoryarnWeb.SheetLive.Helpers.PropsSerializer
+  import StoryarnWeb.SheetLive.Helpers.ReferencesDataHelpers
 
-  alias StoryarnWeb.Components.DraftComponents
-  alias StoryarnWeb.Helpers.DraftTouchTimer
-  alias StoryarnWeb.Live.Shared.DraftHandlers
-
+  alias Storyarn.Analytics
   alias Storyarn.Collaboration
-  alias Storyarn.Drafts
-  alias Storyarn.Projects
+  alias Storyarn.Collaboration.Presence
+  alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets
-  alias StoryarnWeb.Components.Sidebar.SheetTree
+  alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Helpers.UndoRedoStack
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
-  alias StoryarnWeb.SheetLive.Components.AudioTab
-  alias StoryarnWeb.SheetLive.Components.Banner
-  alias StoryarnWeb.SheetLive.Components.ContentTab
-  alias StoryarnWeb.SheetLive.Components.HistoryTab
-  alias StoryarnWeb.SheetLive.Components.ReferencesTab
-  alias StoryarnWeb.SheetLive.Components.SheetAvatar
-  alias StoryarnWeb.SheetLive.Components.SheetTitle
+  alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
+  alias StoryarnWeb.Live.Shared.RestorationHandlers
+  alias StoryarnWeb.SheetLive.Handlers.AudioHandlers
+  alias StoryarnWeb.SheetLive.Handlers.BlockHandlers
+  alias StoryarnWeb.SheetLive.Handlers.FormulaHandlers
+  alias StoryarnWeb.SheetLive.Handlers.GalleryHandlers
+  alias StoryarnWeb.SheetLive.Handlers.HeaderHandlers
+  alias StoryarnWeb.SheetLive.Handlers.HistoryHandlers
+  alias StoryarnWeb.SheetLive.Handlers.LockHandlers
+  alias StoryarnWeb.SheetLive.Handlers.ReferenceHandlers
+  alias StoryarnWeb.SheetLive.Handlers.SelectOptionHandlers
+  alias StoryarnWeb.SheetLive.Handlers.TableHandlers
   alias StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers
-  alias StoryarnWeb.SheetLive.Helpers.ReferenceHelpers
-  alias StoryarnWeb.SheetLive.Helpers.SheetTreeHelpers
+
+  @sheet_tabs ~w(content references audio history)
 
   @impl true
   def render(assigns) do
@@ -40,400 +46,284 @@ defmodule StoryarnWeb.SheetLive.Show do
     end
   end
 
-  defp render_compact(assigns) do
-    ~H"""
-    <div class="h-screen overflow-y-auto bg-base-100 p-4">
-      <%= if @sheet do %>
-        <div
-          id="sheet-undo-redo"
-          phx-hook="UndoRedo"
-          class="relative w-full max-w-[950px] mx-auto bg-base-200 dark:bg-base-content/[0.07] rounded-[20px] p-5 min-h-full"
-        >
-          <div id="save-indicator-compact" phx-hook="SaveStatus" data-saved-label={gettext("Saved")} data-saving-label={gettext("Saving...")} class="absolute top-2 right-2 z-10"></div>
-          <.live_component
-            module={Banner}
-            id="sheet-banner"
-            sheet={@sheet}
-            project={@project}
-            current_user={@current_scope.user}
-            can_edit={@can_edit}
-          />
-
-          <div class="flex items-start gap-4 mb-8">
-            <.live_component
-              module={SheetAvatar}
-              id="sheet-avatar"
-              sheet={@sheet}
-              project={@project}
-              current_user={@current_scope.user}
-              can_edit={@can_edit}
-            />
-            <div class="flex-1">
-              <.live_component
-                module={SheetTitle}
-                id="sheet-title"
-                sheet={@sheet}
-                project={@project}
-                current_user_id={@current_scope.user.id}
-                can_edit={@can_edit}
-                is_draft={@is_draft}
-                source_shortcut={@source_shortcut}
-              />
-            </div>
-          </div>
-
-          <div :if={!@sheet_data_loaded} class="flex justify-center py-12">
-            <span class="loading loading-spinner loading-lg text-base-content/30"></span>
-          </div>
-
-          <div :if={@sheet_data_loaded}>
-            <div role="tablist" class="tabs tabs-border mb-6">
-              <button
-                role="tab"
-                class={["tab", @current_tab == "content" && "tab-active"]}
-                phx-click="switch_tab"
-                phx-value-tab="content"
-              >
-                <.icon name="file-text" class="size-4 mr-2" />
-                {dgettext("sheets", "Content")}
-              </button>
-              <button
-                role="tab"
-                class={["tab", @current_tab == "references" && "tab-active"]}
-                phx-click="switch_tab"
-                phx-value-tab="references"
-              >
-                <.icon name="link" class="size-4 mr-2" />
-                {dgettext("sheets", "References")}
-              </button>
-              <button
-                role="tab"
-                class={["tab", @current_tab == "audio" && "tab-active"]}
-                phx-click="switch_tab"
-                phx-value-tab="audio"
-              >
-                <.icon name="volume-2" class="size-4 mr-2" />
-                {dgettext("sheets", "Audio")}
-              </button>
-            </div>
-
-            <.live_component
-              :if={@current_tab == "content"}
-              module={ContentTab}
-              id="content-tab"
-              workspace={@workspace}
-              project={@project}
-              sheet={@sheet}
-              blocks={@blocks}
-              children={@children}
-              can_edit={@can_edit}
-              current_user_id={@current_scope.user.id}
-              current_scope={@current_scope}
-              project_variables={@project_variables}
-              block_locks={@block_locks}
-            />
-
-            <.live_component
-              :if={@current_tab == "references"}
-              module={ReferencesTab}
-              id="references-tab"
-              project={@project}
-              workspace={@workspace}
-              sheet={@sheet}
-              blocks={@blocks}
-            />
-
-            <.live_component
-              :if={@current_tab == "audio"}
-              module={AudioTab}
-              id="audio-tab"
-              project={@project}
-              workspace={@workspace}
-              sheet={@sheet}
-              can_edit={@can_edit}
-              current_user={@current_scope.user}
-            />
-          </div>
-        </div>
-      <% else %>
-        <div class="flex justify-center py-12">
-          <span class="loading loading-spinner loading-lg text-base-content/30"></span>
-        </div>
-      <% end %>
-    </div>
-    """
-  end
-
   defp render_full(assigns) do
     ~H"""
-    <Layouts.focus
+    <StoryarnWeb.Components.ProjectLayout.project
+      socket={@socket}
       flash={@flash}
-      current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
+      current_scope={@current_scope}
+      current_user={@current_user}
+      urls={@urls}
       active_tool={:sheets}
-      has_tree={true}
-      tree_panel_open={@tree_panel_open}
-      tree_panel_pinned={@tree_panel_pinned}
-      can_edit={@can_edit}
+      is_super_admin={@is_super_admin}
       online_users={@online_users}
       restoration_banner={@restoration_banner}
-      my_drafts={@my_drafts}
-      renaming_draft={@renaming_draft}
+      sidebar_module={StoryarnWeb.SheetsSidebarLive}
+      sidebar_session={
+        %{
+          "project_id" => @project.id,
+          "workspace_slug" => @workspace.slug,
+          "project_slug" => @project.slug,
+          "sheet_id" => @sheet && to_string(@sheet.id),
+          "can_edit" => @can_edit,
+          "active_tool" => "sheets",
+          "dashboard_url" => ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets",
+          "current_scope" => @current_scope,
+          "locale" => @locale
+        }
+      }
     >
-      <:top_bar_extra>
-        <DraftComponents.draft_banner is_draft={@is_draft} />
-        <.sheet_breadcrumb
-          :if={@ancestors != []}
-          ancestors={@ancestors}
-          workspace={@workspace}
-          project={@project}
-        />
-      </:top_bar_extra>
-      <:tree_content>
-        <SheetTree.sheets_section
-          sheets_tree={@sheets_tree}
-          workspace={@workspace}
-          project={@project}
-          selected_sheet_id={@sheet && to_string(@sheet.id)}
-          can_edit={@can_edit}
-        />
-      </:tree_content>
-      <SheetTree.delete_modal :if={@can_edit} />
-      <DraftComponents.discard_draft_modal is_draft={@is_draft} />
-      <DraftComponents.merge_review_modal is_draft={@is_draft} merge_summary={@merge_summary} />
-      <%= if @sheet do %>
-        <div
-          id="sheet-undo-redo"
-          phx-hook="UndoRedo"
-          class="w-full max-w-[950px] mx-auto bg-base-200 dark:bg-base-content/[0.07] rounded-[20px] p-5 min-h-full"
-        >
-          <%!-- Banner --%>
-          <.live_component
-            module={Banner}
-            id="sheet-banner"
-            sheet={@sheet}
-            project={@project}
-            current_user={@current_scope.user}
-            can_edit={@can_edit}
-          />
-
-          <%!-- Sheet Header --%>
-          <div class="relative">
-            <div class="flex items-start gap-4 mb-8">
-              <%!-- Avatar with edit options --%>
-              <.live_component
-                module={SheetAvatar}
-                id="sheet-avatar"
-                sheet={@sheet}
-                project={@project}
-                current_user={@current_scope.user}
-                can_edit={@can_edit}
-              />
-              <div class="flex-1">
-                <.live_component
-                  module={SheetTitle}
-                  id="sheet-title"
-                  sheet={@sheet}
-                  project={@project}
-                  current_user_id={@current_scope.user.id}
-                  can_edit={@can_edit}
-                  is_draft={@is_draft}
-                  source_shortcut={@source_shortcut}
-                />
-              </div>
-            </div>
-            <%!-- Save indicator + draft button (positioned at header level) --%>
-            <div class="absolute top-0 right-0 flex items-center gap-2">
-              <button
-                :if={@can_edit && !@is_draft}
-                type="button"
-                phx-click="create_draft"
-                class="btn btn-ghost btn-xs gap-1.5 text-base-content/60"
-                title={dgettext("drafts", "Create a private draft copy")}
-              >
-                <.icon name="git-branch" class="size-3.5" />
-                <span>{dgettext("drafts", "Draft")}</span>
-              </button>
-              <div id="save-indicator" phx-hook="SaveStatus" data-saved-label={gettext("Saved")} data-saving-label={gettext("Saving...")} class="absolute top-2 right-0 z-10"></div>
-            </div>
-          </div>
-
-          <%!-- Loading state while async data loads --%>
-          <div :if={!@sheet_data_loaded} class="flex justify-center py-12">
-            <span class="loading loading-spinner loading-lg text-base-content/30"></span>
-          </div>
-
-          <div :if={@sheet_data_loaded}>
-            <%!-- Tabs Navigation --%>
-            <div role="tablist" class="tabs tabs-border mb-6">
-              <button
-                role="tab"
-                class={["tab", @current_tab == "content" && "tab-active"]}
-                phx-click="switch_tab"
-                phx-value-tab="content"
-              >
-                <.icon name="file-text" class="size-4 mr-2" />
-                {dgettext("sheets", "Content")}
-              </button>
-              <button
-                role="tab"
-                class={["tab", @current_tab == "references" && "tab-active"]}
-                phx-click="switch_tab"
-                phx-value-tab="references"
-              >
-                <.icon name="link" class="size-4 mr-2" />
-                {dgettext("sheets", "References")}
-              </button>
-              <button
-                role="tab"
-                class={["tab", @current_tab == "audio" && "tab-active"]}
-                phx-click="switch_tab"
-                phx-value-tab="audio"
-              >
-                <.icon name="volume-2" class="size-4 mr-2" />
-                {dgettext("sheets", "Audio")}
-              </button>
-              <button
-                role="tab"
-                class={["tab", @current_tab == "history" && "tab-active"]}
-                phx-click="switch_tab"
-                phx-value-tab="history"
-              >
-                <.icon name="clock" class="size-4 mr-2" />
-                {dgettext("sheets", "History")}
-              </button>
-            </div>
-
-            <%!-- Tab Content: Content (LiveComponent) --%>
-            <.live_component
-              :if={@current_tab == "content"}
-              module={ContentTab}
-              id="content-tab"
-              workspace={@workspace}
-              project={@project}
-              sheet={@sheet}
-              blocks={@blocks}
-              children={@children}
-              can_edit={@can_edit}
-              current_user_id={@current_scope.user.id}
-              current_scope={@current_scope}
-              project_variables={@project_variables}
-              block_locks={@block_locks}
-            />
-
-            <%!-- Tab Content: References (LiveComponent) --%>
-            <.live_component
-              :if={@current_tab == "references"}
-              module={ReferencesTab}
-              id="references-tab"
-              project={@project}
-              workspace={@workspace}
-              sheet={@sheet}
-              blocks={@blocks}
-            />
-
-            <%!-- Tab Content: Audio (LiveComponent) --%>
-            <.live_component
-              :if={@current_tab == "audio"}
-              module={AudioTab}
-              id="audio-tab"
-              project={@project}
-              workspace={@workspace}
-              sheet={@sheet}
-              can_edit={@can_edit}
-              current_user={@current_scope.user}
-            />
-
-            <%!-- Tab Content: History (LiveComponent) --%>
-            <.live_component
-              :if={@current_tab == "history"}
-              module={HistoryTab}
-              id="history-tab"
-              project={@project}
-              sheet={@sheet}
-              can_edit={@can_edit}
-              current_user_id={@current_scope.user.id}
-              workspace_id={@workspace.id}
-            />
-          </div>
-        </div>
-      <% else %>
-        <div class="flex justify-center py-12">
-          <span class="loading loading-spinner loading-lg text-base-content/30"></span>
-        </div>
-      <% end %>
-    </Layouts.focus>
+      <.sheet_content
+        inject="project-layout"
+        sheet={@sheet}
+        socket={@socket}
+        current_tab={@current_tab}
+        can_edit={@can_edit}
+        source_shortcut={@source_shortcut}
+        blocks={@blocks}
+        gallery_data={@gallery_data}
+        table_data={@table_data}
+        inherited_groups={@inherited_groups}
+        project={@project}
+        workspace={@workspace}
+        references_data={@references_data}
+        audio_data={@audio_data}
+        history_data={@history_data}
+        formula_editing={@formula_editing}
+        formula_search_results={@formula_search_results}
+        formula_search_has_more={@formula_search_has_more}
+        block_locks={@block_locks}
+        current_user_id={@current_scope.user.id}
+        compact={false}
+      />
+    </StoryarnWeb.Components.ProjectLayout.project>
     """
   end
 
+  defp render_compact(assigns) do
+    ~H"""
+    <StoryarnWeb.Components.CompareLayout.compare
+      socket={@socket}
+      flash={@flash}
+      content_class="h-full overflow-y-auto bg-background p-4"
+    >
+      <.sheet_content
+        inject="compare-layout"
+        sheet={@sheet}
+        socket={@socket}
+        current_tab={@current_tab}
+        can_edit={@can_edit}
+        source_shortcut={@source_shortcut}
+        blocks={@blocks}
+        gallery_data={@gallery_data}
+        table_data={@table_data}
+        inherited_groups={@inherited_groups}
+        project={@project}
+        workspace={@workspace}
+        references_data={@references_data}
+        audio_data={@audio_data}
+        history_data={@history_data}
+        formula_editing={@formula_editing}
+        formula_search_results={@formula_search_results}
+        formula_search_has_more={@formula_search_has_more}
+        block_locks={@block_locks}
+        current_user_id={@current_scope.user.id}
+        compact={true}
+      />
+    </StoryarnWeb.Components.CompareLayout.compare>
+    """
+  end
+
+  attr :sheet, :map, default: nil
+  attr :socket, :any, required: true
+  attr :current_tab, :string, required: true
+  attr :can_edit, :boolean, required: true
+  attr :source_shortcut, :string, default: nil
+  attr :blocks, :list, default: []
+  attr :gallery_data, :map, default: %{}
+  attr :table_data, :map, default: %{}
+  attr :inherited_groups, :list, default: []
+  attr :project, :map, required: true
+  attr :workspace, :map, required: true
+  attr :references_data, :map, default: nil
+  attr :audio_data, :map, default: nil
+  attr :history_data, :map, default: nil
+  attr :formula_editing, :map, default: nil
+  attr :formula_search_results, :list, default: []
+  attr :formula_search_has_more, :boolean, default: false
+  attr :block_locks, :map, default: %{}
+  attr :current_user_id, :integer, default: nil
+  attr :compact, :boolean, default: false
+  attr :inject, :string, default: nil
+
+  defp sheet_content(assigns) do
+    ~H"""
+    <.vue
+      v-component="live/sheet/show/SheetSurface"
+      v-socket={@socket}
+      v-inject={@inject}
+      id="sheet-surface"
+      class="contents"
+      sheet={prepare_sheet_for_vue(@sheet)}
+      can-edit={@can_edit}
+      source-shortcut={@source_shortcut}
+      surface={sheet_surface_props(assigns)}
+      panels={sheet_panels_props(assigns)}
+    />
+    """
+  end
+
+  defp sheet_surface_props(assigns) do
+    %{
+      tabs: %{
+        currentTab: assigns.current_tab,
+        canEdit: assigns.can_edit,
+        compact: assigns.compact
+      },
+      content: sheet_surface_content_props(assigns)
+    }
+  end
+
+  defp sheet_surface_content_props(%{current_tab: "content"} = assigns) do
+    %{
+      blocks:
+        prepare_blocks_for_vue(
+          assigns.blocks,
+          assigns.gallery_data,
+          assigns.table_data,
+          assigns.project.id,
+          assigns.inherited_groups
+        ),
+      inheritedGroups:
+        prepare_inherited_groups_for_vue(
+          assigns.inherited_groups,
+          assigns.gallery_data,
+          assigns.table_data,
+          assigns.project.id
+        ),
+      workspaceSlug: assigns.workspace.slug,
+      projectSlug: assigns.project.slug,
+      canEdit: assigns.can_edit,
+      formulaEditing:
+        build_formula_editing_for_vue(
+          assigns.formula_editing,
+          assigns.formula_search_results,
+          assigns.formula_search_has_more
+        ),
+      blockLocks: serialize_block_locks(assigns.block_locks),
+      currentUserId: assigns.current_user_id
+    }
+  end
+
+  defp sheet_surface_content_props(_assigns), do: nil
+
+  defp sheet_panels_props(assigns) do
+    %{
+      currentTab: assigns.current_tab,
+      compact: assigns.compact,
+      references: sheet_references_panel_props(assigns),
+      audio: sheet_audio_panel_props(assigns),
+      history: sheet_history_panel_props(assigns)
+    }
+  end
+
+  defp sheet_references_panel_props(%{current_tab: "references"} = assigns) do
+    references_data = assigns.references_data || %{}
+
+    %{
+      variableUsage: references_data[:variable_usage] || [],
+      backlinks: references_data[:backlinks] || [],
+      sceneAppearances: references_data[:scene_appearances] || [],
+      workspaceSlug: assigns.workspace.slug,
+      projectSlug: assigns.project.slug,
+      loading: is_nil(assigns.references_data)
+    }
+  end
+
+  defp sheet_references_panel_props(_assigns), do: nil
+
+  defp sheet_audio_panel_props(%{current_tab: "audio"} = assigns) do
+    audio_data = assigns.audio_data || %{}
+
+    %{
+      groupedLines: audio_data[:grouped_lines] || [],
+      audioAssets: audio_data[:audio_assets] || [],
+      workspaceSlug: assigns.workspace.slug,
+      projectSlug: assigns.project.slug,
+      canEdit: assigns.can_edit,
+      loading: is_nil(assigns.audio_data)
+    }
+  end
+
+  defp sheet_audio_panel_props(_assigns), do: nil
+
+  defp sheet_history_panel_props(%{current_tab: "history", compact: false} = assigns) do
+    history_data = assigns.history_data || %{}
+
+    %{
+      versions: history_data[:versions] || [],
+      namedVersions: history_data[:named_versions] || [],
+      autoVersions: history_data[:auto_versions] || [],
+      hasMore: history_data[:has_more] || false,
+      canNameVersion: history_data[:can_name_version] || false,
+      currentVersionId: history_data[:current_version_id],
+      canEdit: assigns.can_edit,
+      loading: is_nil(assigns.history_data)
+    }
+  end
+
+  defp sheet_history_panel_props(_assigns), do: nil
+
+  # ===========================================================================
+  # Mount & Lifecycle
+  # ===========================================================================
+
   @impl true
-  def mount(
-        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug},
-        _session,
-        socket
-      ) do
-    case Projects.get_project_by_slugs(
-           socket.assigns.current_scope,
-           workspace_slug,
-           project_slug
-         ) do
-      {:ok, project, membership} ->
-        can_edit = Projects.can?(membership.role, :edit_content)
+  def mount(_params, _session, socket) do
+    %{project: project, can_edit: can_edit} = socket.assigns
 
-        if connected?(socket), do: Collaboration.subscribe_restoration(project.id)
+    if connected?(socket) do
+      Collaboration.subscribe_restoration(project.id)
+      Collaboration.subscribe_changes({:project, project.id})
 
-        {can_edit, restoration_banner} =
-          RestorationHandlers.check_restoration_lock(project.id, can_edit)
-
-        {:ok,
-         socket
-         |> assign(focus_layout_defaults())
-         |> assign(:compact, false)
-         |> assign(:project, project)
-         |> assign(:workspace, project.workspace)
-         |> assign(:membership, membership)
-         |> assign(:can_edit, can_edit)
-         |> assign(:restoration_banner, restoration_banner)
-         |> assign(:save_status, :idle)
-         |> push_event("save_status", %{status: "idle"})
-         |> assign(:current_tab, "content")
-         |> assign(:pending_delete_id, nil)
-         |> assign(:online_users, [])
-         |> assign(:collab_scope, nil)
-         |> assign(:block_locks, %{})
-         |> assign(:collab_toast, nil)
-         # Defaults — sheet loaded in handle_params
-         |> assign(:sheet, nil)
-         |> assign(:ancestors, [])
-         |> assign(:sheets_tree, Sheets.list_sheets_tree(project.id))
-         |> assign(:children, [])
-         |> assign(:blocks, [])
-         |> assign(:sheet_data_loaded, false)
-         |> assign(:is_draft, false)
-         |> assign(:draft, nil)
-         |> assign(:source_shortcut, nil)
-         |> assign(:merge_summary, nil)
-         |> assign(:renaming_draft, nil)
-         |> assign(:_draft_touch_ref, nil)
-         |> assign(
-           :my_drafts,
-           Drafts.list_my_drafts(project.id, socket.assigns.current_scope.user.id)
-         )}
-
-      {:error, _reason} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("sheets", "You don't have access to this project."))
-         |> redirect(to: ~p"/workspaces")}
+      Phoenix.PubSub.subscribe(
+        Storyarn.PubSub,
+        StoryarnWeb.SheetsSidebarLive.shell_topic(project.id)
+      )
     end
+
+    {can_edit, restoration_banner} = check_restoration_lock(project.id, can_edit)
+
+    {:ok,
+     socket
+     |> assign(:can_edit, can_edit)
+     |> assign(:restoration_banner, restoration_banner)
+     |> assign(:compact, false)
+     |> assign(:sheet, nil)
+     |> assign(:blocks, [])
+     |> assign(:inherited_groups, [])
+     |> assign(:gallery_data, %{})
+     |> assign(:table_data, %{})
+     |> assign(:source_shortcut, nil)
+     |> assign(:current_tab, "content")
+     |> assign(:references_data, nil)
+     |> assign(:audio_data, nil)
+     |> assign(:history_data, nil)
+     |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
+     |> assign(:collab_scope, nil)
+     |> assign(:block_locks, %{})
+     |> assign(:pending_delete_id, nil)
+     |> assign(:formula_editing, nil)
+     |> assign(:formula_search_results, [])
+     |> assign(:formula_search_query, "")
+     |> assign(:formula_search_offset, 0)
+     |> assign(:formula_search_has_more, false)
+     |> UndoRedoStack.init()}
   end
 
   @impl true
-  def handle_params(%{"id" => _sheet_id, "draft_id" => draft_id}, _url, socket) do
-    {:noreply, load_draft_sheet(socket, draft_id)}
-  end
-
   def handle_params(%{"id" => sheet_id} = params, _url, socket) do
     compact = params["layout"] == "compact"
 
@@ -445,332 +335,428 @@ defmodule StoryarnWeb.SheetLive.Show do
 
     socket = assign(socket, :compact, compact)
 
-    if sheet_id == current_sheet_id do
-      {:noreply, socket}
-    else
-      {:noreply, load_sheet(socket, sheet_id)}
-    end
-  end
-
-  defp load_draft_sheet(socket, draft_id) do
-    %{project: project, current_scope: scope} = socket.assigns
-
-    with draft when not is_nil(draft) <- Drafts.get_my_draft(draft_id, scope.user.id, project.id),
-         true <- draft.entity_type == "sheet" and draft.status == "active",
-         entity when not is_nil(entity) <- Drafts.get_draft_entity(draft) do
-      # Skip collaboration for drafts
-      has_tree = socket.assigns.sheets_tree != []
-
-      # Load original sheet's shortcut so the draft can display it read-only
-      source_shortcut =
-        case Sheets.get_sheet(project.id, draft.source_entity_id) do
-          nil -> nil
-          source -> source.shortcut
-        end
-
-      socket
-      |> assign(:sheet, entity)
-      |> assign(:ancestors, [])
-      |> assign(:current_tab, "content")
-      |> assign(:save_status, :idle)
-      |> push_event("save_status", %{status: "idle"})
-      |> assign(:children, [])
-      |> assign(:blocks, [])
-      |> assign(:project_variables, [])
-      |> assign(:sheet_data_loaded, false)
-      |> assign(:is_draft, true)
-      |> assign(:draft, draft)
-      |> assign(:source_shortcut, source_shortcut)
-      |> start_async(:load_sheet_data, fn ->
-        load_sheet_async_data(entity, project, has_tree)
-      end)
-    else
-      _ ->
+    socket =
+      if sheet_id == current_sheet_id do
         socket
-        |> put_flash(:error, dgettext("sheets", "Draft not found."))
-        |> push_navigate(
-          to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets"
-        )
-    end
+      else
+        load_sheet(socket, sheet_id)
+      end
+
+    Phoenix.PubSub.broadcast(
+      Storyarn.PubSub,
+      StoryarnWeb.SheetsSidebarLive.shell_topic(socket.assigns.project.id),
+      {:active_sheet, sheet_id}
+    )
+
+    {:noreply, socket}
   end
 
   defp load_sheet(socket, sheet_id) do
-    %{project: project} = socket.assigns
-
-    # Teardown previous sheet collaboration
     socket = teardown_sheet_collab(socket)
+    %{project: project} = socket.assigns
 
     case Sheets.get_sheet_full(project.id, sheet_id) do
       nil ->
         socket
         |> put_flash(:error, dgettext("sheets", "Sheet not found."))
-        |> push_navigate(
-          to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets"
-        )
+        |> push_navigate(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets")
 
       sheet ->
-        # Load ancestors synchronously so the breadcrumb is present on the first
-        # render and does not flash in after the async bundle completes.
-        ancestors =
-          case Sheets.get_sheet_with_ancestors(project.id, sheet.id) do
-            nil -> []
-            list -> List.delete_at(list, -1)
-          end
-
-        has_tree = socket.assigns.sheets_tree != []
-
-        # Setup collaboration for new sheet
+        # Setup collaboration
         scope = {:sheet, sheet.id}
         user = socket.assigns.current_scope.user
 
-        Collab.setup(socket, scope, user, cursors: false, locks: true, changes: true)
-        {online_users, block_locks} = Collab.get_initial_state(socket, scope)
+        if connected?(socket) do
+          Collab.setup(socket, scope, user, cursors: false, locks: true, changes: true)
+        end
+
+        {online_users, block_locks} =
+          if connected?(socket),
+            do: Collab.get_initial_state(socket, scope),
+            else: {[], %{}}
+
+        {inherited_groups, own_blocks} = Sheets.get_sheet_blocks_grouped(sheet.id)
+        all_blocks = Enum.flat_map(inherited_groups, & &1.blocks) ++ own_blocks
+
+        gallery_block_ids =
+          all_blocks |> Enum.filter(&(&1.type == "gallery")) |> Enum.map(& &1.id)
+
+        gallery_data =
+          if gallery_block_ids == [],
+            do: %{},
+            else: Sheets.batch_load_gallery_data(gallery_block_ids)
+
+        table_block_ids =
+          all_blocks |> Enum.filter(&(&1.type == "table")) |> Enum.map(& &1.id)
+
+        table_data =
+          if table_block_ids == [],
+            do: %{},
+            else:
+              table_block_ids
+              |> Sheets.batch_load_table_data()
+              |> compute_formulas(project.id)
 
         socket
         |> assign(:sheet, sheet)
-        |> assign(:ancestors, ancestors)
-        |> assign(:current_tab, "content")
-        |> assign(:save_status, :idle)
-        |> push_event("save_status", %{status: "idle"})
-        |> assign(:children, [])
-        |> assign(:blocks, [])
-        |> assign(:project_variables, [])
-        |> assign(:sheet_data_loaded, false)
         |> assign(:collab_scope, scope)
         |> assign(:online_users, online_users)
         |> assign(:block_locks, block_locks)
-        |> start_async(:load_sheet_data, fn ->
-          load_sheet_async_data(sheet, project, has_tree)
-        end)
+        |> assign(:blocks, own_blocks)
+        |> assign(:inherited_groups, inherited_groups)
+        |> assign(:gallery_data, gallery_data)
+        |> assign(:table_data, table_data)
+        |> assign(:current_tab, "content")
+        |> assign(:references_data, nil)
+        |> assign(:audio_data, nil)
+        |> assign(:history_data, nil)
     end
   end
 
-  defp load_sheet_async_data(sheet, project, has_tree) do
-    data = %{
-      children: Sheets.get_children(sheet.id),
-      blocks: ReferenceHelpers.load_blocks_with_references(sheet.id, project.id),
-      project_variables: Sheets.list_project_variables(project.id)
-    }
-
-    if has_tree, do: data, else: Map.put(data, :sheets_tree, Sheets.list_sheets_tree(project.id))
-  end
-
   # ===========================================================================
-  # Async Loading
+  # Event Handlers: Header
   # ===========================================================================
+
+  # --- Tabs ---
 
   @impl true
-  def handle_async(:load_sheet_data, {:ok, data}, socket) do
-    socket =
-      socket
-      |> assign(:children, data.children)
-      |> assign(:blocks, data.blocks)
-      |> assign(:project_variables, data.project_variables)
-      |> assign(:sheet_data_loaded, true)
-      |> UndoRedoStack.init()
-
-    # Only update tree if included (first load)
-    socket =
-      if data[:sheets_tree], do: assign(socket, :sheets_tree, data.sheets_tree), else: socket
-
+  def handle_event(event, _params, socket) when event in ~w(main_sidebar_toggle main_sidebar_pin main_sidebar_init) do
     {:noreply, socket}
   end
 
-  def handle_async(:load_sheet_data, {:exit, _reason}, socket) do
-    {:noreply,
-     socket
-     |> put_flash(:error, dgettext("sheets", "Could not load sheet data."))
-     |> assign(:sheet_data_loaded, true)}
+  def handle_event("switch_tab", %{"tab" => tab}, socket) when tab in @sheet_tabs do
+    track_sheet_history_opened(socket, tab)
+    {:noreply, maybe_switch_tab(socket, tab)}
   end
 
-  # ===========================================================================
-  # Event Handlers: Tabs
-  # ===========================================================================
+  def handle_event("switch_tab", _params, socket), do: {:noreply, socket}
 
-  @impl true
-  # Tree panel events (from FocusLayout)
-  def handle_event("tree_panel_" <> _ = event, params, socket),
-    do: handle_tree_panel_event(event, params, socket)
+  # --- Header (title, shortcut, color, banner, avatars) ---
 
-  def handle_event("switch_tab", %{"tab" => tab}, socket)
-      when tab in ["content", "references", "audio", "history"] do
-    # In compact mode, history tab is not available
-    if tab == "history" and socket.assigns.compact do
-      {:noreply, socket}
-    else
-      {:noreply, assign(socket, :current_tab, tab)}
-    end
-  end
+  def handle_event("save_name", params, socket), do: HeaderHandlers.handle_save_name(params, socket, header_helpers())
 
-  # ===========================================================================
-  # Event Handlers: Undo/Redo
-  # ===========================================================================
+  def handle_event("save_shortcut", params, socket),
+    do: HeaderHandlers.handle_save_shortcut(params, socket, header_helpers())
 
-  def handle_event("undo", params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      UndoRedoHandlers.handle_undo(params, socket)
-    end)
-  end
+  def handle_event("set_sheet_color", params, socket),
+    do: HeaderHandlers.handle_set_color(params, socket, header_helpers())
 
-  def handle_event("redo", params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      UndoRedoHandlers.handle_redo(params, socket)
-    end)
-  end
+  def handle_event("clear_sheet_color", params, socket),
+    do: HeaderHandlers.handle_clear_color(params, socket, header_helpers())
 
-  # ===========================================================================
-  # Event Handlers: Sheet Tree
-  # ===========================================================================
+  def handle_event("remove_banner", params, socket),
+    do: HeaderHandlers.handle_remove_banner(params, socket, header_helpers())
 
-  def handle_event("create_draft", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      %{sheet: sheet} = socket.assigns
+  def handle_event("attach_banner", params, socket),
+    do: HeaderHandlers.handle_attach_banner(params, socket, header_helpers())
 
-      DraftHandlers.handle_create_draft(socket, "sheet", sheet.id, fn s, draft ->
-        %{project: project} = s.assigns
+  def handle_event("attach_avatar", params, socket),
+    do: HeaderHandlers.handle_attach_avatar(params, socket, header_helpers())
 
-        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}/drafts/#{draft.id}"
+  def handle_event("remove_avatar", params, socket),
+    do: HeaderHandlers.handle_remove_avatar(params, socket, header_helpers())
+
+  def handle_event("set_default_avatar", params, socket),
+    do: HeaderHandlers.handle_set_default_avatar(params, socket, header_helpers())
+
+  def handle_event("gallery_update_name", params, socket),
+    do: HeaderHandlers.handle_gallery_update_name(params, socket, header_helpers())
+
+  def handle_event("gallery_update_notes", params, socket),
+    do: HeaderHandlers.handle_gallery_update_notes(params, socket, header_helpers())
+
+  # --- Blocks (CRUD, toolbar, reorder, inheritance) ---
+
+  def handle_event("add_block", params, socket), do: BlockHandlers.handle_add(params, socket, content_helpers())
+
+  def handle_event("update_block_value", params, socket),
+    do: BlockHandlers.handle_update_value(params, socket, content_helpers())
+
+  def handle_event("toggle_multi_select", params, socket),
+    do: BlockHandlers.handle_toggle_multi_select(params, socket, content_helpers())
+
+  def handle_event("update_block_config", params, socket),
+    do: BlockHandlers.handle_update_config(params, socket, content_helpers())
+
+  def handle_event("delete_block", params, socket), do: BlockHandlers.handle_delete(params, socket, content_helpers())
+
+  def handle_event("duplicate_block", params, socket),
+    do: BlockHandlers.handle_duplicate(params, socket, content_helpers())
+
+  def handle_event("undo", params, socket), do: BlockHandlers.handle_undo(params, socket, content_helpers())
+
+  def handle_event("redo", params, socket), do: BlockHandlers.handle_redo(params, socket, content_helpers())
+
+  def handle_event("reorder_layout", params, socket),
+    do: BlockHandlers.handle_reorder_layout(params, socket, content_helpers())
+
+  def handle_event("toggle_constant", params, socket),
+    do: BlockHandlers.handle_toggle_constant(params, socket, content_helpers())
+
+  def handle_event("update_variable_name", params, socket),
+    do: BlockHandlers.handle_update_variable_name(params, socket, content_helpers())
+
+  def handle_event("change_block_scope", params, socket),
+    do: BlockHandlers.handle_change_scope(params, socket, content_helpers())
+
+  def handle_event("toggle_required", params, socket),
+    do: BlockHandlers.handle_toggle_required(params, socket, content_helpers())
+
+  def handle_event("detach_block", params, socket), do: BlockHandlers.handle_detach(params, socket, content_helpers())
+
+  def handle_event("reattach_block", params, socket), do: BlockHandlers.handle_reattach(params, socket, content_helpers())
+
+  # --- Gallery blocks ---
+
+  def handle_event("attach_gallery_image", params, socket),
+    do: GalleryHandlers.handle_attach(params, socket, content_helpers())
+
+  def handle_event("update_gallery_image", params, socket),
+    do: GalleryHandlers.handle_update(params, socket, content_helpers())
+
+  def handle_event("remove_gallery_image", params, socket),
+    do: GalleryHandlers.handle_remove(params, socket, content_helpers())
+
+  def handle_event("reorder_gallery_images", params, socket),
+    do: GalleryHandlers.handle_reorder(params, socket, content_helpers())
+
+  # --- Table blocks ---
+
+  def handle_event("add_table_column", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_add_column(params, socket, table_helpers(socket))
       end)
     end)
   end
 
-  def handle_event("discard_draft", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      %{project: project, draft: draft} = socket.assigns
-
-      DraftHandlers.handle_discard_draft(
-        socket,
-        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{draft.source_entity_id}"
-      )
-    end)
-  end
-
-  def handle_event("load_merge_summary", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      DraftHandlers.handle_load_merge_summary(socket)
-    end)
-  end
-
-  def handle_event("merge_draft", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      %{draft: draft} = socket.assigns
-
-      DraftHandlers.handle_merge_draft(socket, fn s ->
-        %{project: p} = s.assigns
-
-        ~p"/workspaces/#{p.workspace.slug}/projects/#{p.slug}/sheets/#{draft.source_entity_id}"
+  def handle_event("add_table_row", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_add_row(params, socket, table_helpers(socket))
       end)
     end)
   end
 
-  def handle_event("rename_draft_inline", %{"draft-id" => draft_id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      DraftHandlers.handle_rename_draft_inline(socket, draft_id)
-    end)
-  end
-
-  def handle_event("submit_rename_draft", params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      DraftHandlers.handle_submit_rename_draft(socket, params)
-    end)
-  end
-
-  def handle_event("cancel_rename_draft", _params, socket) do
-    {:noreply, assign(socket, :renaming_draft, nil)}
-  end
-
-  def handle_event("discard_draft_from_list", %{"draft_id" => draft_id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      DraftHandlers.handle_discard_draft_from_list(socket, draft_id)
-    end)
-  end
-
-  def handle_event("set_pending_delete_sheet", %{"id" => id}, socket) do
-    handle_set_pending_delete(socket, id)
-  end
-
-  def handle_event("confirm_delete_sheet", _params, socket) do
-    handle_confirm_delete(socket, fn socket, id ->
-      Authorize.with_authorization(socket, :edit_content, &SheetTreeHelpers.delete_sheet(&1, id))
-    end)
-  end
-
-  def handle_event("delete_sheet", %{"id" => sheet_id}, socket) do
-    Authorize.with_authorization(
-      socket,
-      :edit_content,
-      &SheetTreeHelpers.delete_sheet(&1, sheet_id)
-    )
-  end
-
-  def handle_event(
-        "move_to_parent",
-        %{"item_id" => sheet_id, "new_parent_id" => parent_id, "position" => position},
-        socket
-      ) do
-    Authorize.with_authorization(
-      socket,
-      :edit_content,
-      &SheetTreeHelpers.move_sheet(&1, sheet_id, parent_id, position)
-    )
-  end
-
-  def handle_event("create_child_sheet", %{"parent-id" => parent_id}, socket) do
-    Authorize.with_authorization(
-      socket,
-      :edit_content,
-      &SheetTreeHelpers.create_child_sheet(&1, parent_id)
-    )
-  end
-
-  def handle_event("create_sheet", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      handle_create_entity(
-        socket,
-        %{name: dgettext("sheets", "Untitled")},
-        &Sheets.create_sheet/2,
-        &sheet_path/2,
-        dgettext("sheets", "Could not create sheet."),
-        patch: true,
-        reload_tree_fn: &reload_sheets_tree/1
-      )
-    end)
-  end
-
-  # Sheet color (from ColorPicker hook — pushes to parent LV, not LiveComponent)
-  def handle_event("set_sheet_color", %{"color" => color}, socket) do
+  def handle_event("update_table_cell", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      update_sheet_color(socket, color)
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_update_cell(params, socket, table_helpers(socket))
+      end)
     end)
   end
 
-  def handle_event("clear_sheet_color", _params, socket) do
+  def handle_event("toggle_table_cell_boolean", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      update_sheet_color(socket, nil)
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_toggle_cell_boolean(params, socket, table_helpers(socket))
+      end)
     end)
   end
 
-  defp update_sheet_color(socket, color) do
-    sheet = socket.assigns.sheet
-    prev_color = sheet.color
-
-    case Sheets.update_sheet(sheet, %{color: color}) do
-      {:ok, _updated_sheet} ->
-        updated_sheet =
-          Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id)
-
-        broadcast_sheet_change(socket, :sheet_updated)
-
-        {:noreply,
-         socket
-         |> assign(:sheet, updated_sheet)
-         |> UndoRedoStack.push_undo({:update_sheet_color, prev_color, color})
-         |> mark_saved()}
-
-      {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not update color."))}
-    end
+  def handle_event("select_table_cell", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_select_table_cell(params, socket, table_helpers(socket))
+      end)
+    end)
   end
+
+  def handle_event("toggle_table_collapse", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_toggle_collapse(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("rename_table_column", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_rename_column(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("rename_table_row", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_rename_row(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("delete_table_column", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_delete_column(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("delete_table_row", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_delete_row(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("reorder_table_rows", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_reorder_rows(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("resize_table_column", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      TableHandlers.handle_resize_column(params, socket)
+    end)
+  end
+
+  def handle_event("change_table_column_type", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_change_column_type(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("toggle_table_column_constant", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_toggle_column_constant(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("toggle_table_column_required", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_toggle_column_required(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("toggle_reference_multiple", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_toggle_reference_multiple(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("update_number_constraint", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_update_number_constraint(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("toggle_table_cell_multi_select", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_toggle_table_cell_multi_select(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("add_table_cell_option", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_add_table_cell_option(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  # --- Select option management (unified: block + column) ---
+
+  def handle_event("add_option", params, socket), do: SelectOptionHandlers.handle_add(params, socket, content_helpers())
+
+  def handle_event("remove_option", params, socket),
+    do: SelectOptionHandlers.handle_remove(params, socket, content_helpers())
+
+  def handle_event("update_option", params, socket),
+    do: SelectOptionHandlers.handle_update(params, socket, content_helpers())
+
+  # --- Reference blocks ---
+
+  def handle_event("search_references", params, socket),
+    do: ReferenceHandlers.handle_search(params, socket, content_helpers())
+
+  def handle_event("select_reference", params, socket),
+    do: ReferenceHandlers.handle_select(params, socket, content_helpers())
+
+  def handle_event("clear_reference", params, socket),
+    do: ReferenceHandlers.handle_clear(params, socket, content_helpers())
+
+  # --- Formula sidebar ---
+
+  def handle_event("open_formula_sidebar", params, socket),
+    do: FormulaHandlers.handle_open(params, socket, formula_handler_helpers())
+
+  def handle_event("close_formula_sidebar", params, socket),
+    do: FormulaHandlers.handle_close(params, socket, formula_handler_helpers())
+
+  def handle_event("save_formula_expression", params, socket),
+    do: FormulaHandlers.handle_save_expression(params, socket, formula_handler_helpers())
+
+  def handle_event("save_formula_binding", params, socket),
+    do: FormulaHandlers.handle_save_binding(params, socket, formula_handler_helpers())
+
+  def handle_event("search_formula_bindings", params, socket),
+    do: FormulaHandlers.handle_search(params, socket, formula_handler_helpers())
+
+  def handle_event("load_more_formula_bindings", params, socket),
+    do: FormulaHandlers.handle_load_more(params, socket, formula_handler_helpers())
+
+  # Tree events (create, delete, move) handled by SheetsSidebarLive — not here.
+
+  # --- Audio tab ---
+
+  def handle_event("select_audio", params, socket), do: AudioHandlers.handle_select(params, socket, content_helpers())
+
+  def handle_event("remove_audio", params, socket), do: AudioHandlers.handle_remove(params, socket, content_helpers())
+
+  def handle_event("upload_audio", params, socket), do: AudioHandlers.handle_upload(params, socket, content_helpers())
+
+  # --- History (versions, restore) ---
+
+  def handle_event("compare_version", params, socket),
+    do: HistoryHandlers.handle_compare(params, socket, history_helpers())
+
+  def handle_event("create_version", params, socket), do: HistoryHandlers.handle_create(params, socket, history_helpers())
+
+  def handle_event("promote_version", params, socket),
+    do: HistoryHandlers.handle_promote(params, socket, history_helpers())
+
+  def handle_event("delete_version", params, socket), do: HistoryHandlers.handle_delete(params, socket, history_helpers())
+
+  def handle_event("load_more_versions", params, socket),
+    do: HistoryHandlers.handle_load_more(params, socket, history_helpers())
+
+  def handle_event("preview_restore", params, socket),
+    do: HistoryHandlers.handle_preview_restore(params, socket, history_helpers())
+
+  def handle_event("save_and_restore", params, socket),
+    do: HistoryHandlers.handle_save_and_restore(params, socket, history_helpers())
+
+  def handle_event("discard_and_restore", params, socket),
+    do: HistoryHandlers.handle_discard_and_restore(params, socket, history_helpers())
+
+  def handle_event("confirm_restore", params, socket),
+    do: HistoryHandlers.handle_confirm_restore(params, socket, history_helpers())
+
+  # --- Block locking ---
+
+  def handle_event("acquire_block_lock", params, socket), do: LockHandlers.handle_acquire(params, socket)
+
+  def handle_event("release_block_lock", params, socket), do: LockHandlers.handle_release(params, socket)
+
+  def handle_event("refresh_block_lock", params, socket), do: LockHandlers.handle_refresh(params, socket)
 
   # ===========================================================================
   # Handle Info
@@ -778,203 +764,70 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   @impl true
   def handle_info({:project_restoration_started, payload}, socket),
-    do:
-      RestorationHandlers.handle_restoration_event(
-        {:project_restoration_started, payload},
-        socket
-      )
+    do: RestorationHandlers.handle_restoration_event({:project_restoration_started, payload}, socket)
 
-  @impl true
   def handle_info({:project_restoration_completed, payload}, socket),
-    do:
-      RestorationHandlers.handle_restoration_event(
-        {:project_restoration_completed, payload},
-        socket
-      )
+    do: RestorationHandlers.handle_restoration_event({:project_restoration_completed, payload}, socket)
 
-  @impl true
   def handle_info({:project_restoration_failed, payload}, socket),
-    do:
-      RestorationHandlers.handle_restoration_event(
-        {:project_restoration_failed, payload},
-        socket
-      )
+    do: RestorationHandlers.handle_restoration_event({:project_restoration_failed, payload}, socket)
 
-  @impl true
-  def handle_info(:reset_save_status, socket) do
-    {:noreply,
-     socket
-     |> assign(:save_status, :idle)
-     |> push_event("save_status", %{status: "idle"})
-     |> DraftTouchTimer.schedule_touch()}
+  # Shell-topic messages from SheetsSidebarLive:
+  def handle_info({:open_sheet, sheet_id}, socket) do
+    path =
+      ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{sheet_id}"
+
+    {:noreply, push_navigate(socket, to: path)}
   end
 
-  def handle_info(:touch_draft, socket), do: DraftHandlers.handle_touch_draft(socket)
+  def handle_info({:active_sheet, _sheet_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_flow, _flow_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_scene, _scene_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_locale, _locale}, socket), do: {:noreply, socket}
+  def handle_info({:tree_changed, :sheets}, socket), do: {:noreply, socket}
 
-  # Handle messages from ContentTab LiveComponent
-  def handle_info({:content_tab, :saved}, socket) do
-    # Broadcast generic block change to other users
-    if scope = socket.assigns[:collab_scope] do
-      Collab.broadcast_change(socket, scope, :block_updated, %{})
+  def handle_info({:entity_deleted, id}, socket) do
+    if to_string(id) == to_string(socket.assigns.sheet.id) do
+      {:noreply,
+       push_navigate(socket,
+         to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets"
+       )}
+    else
+      {:noreply, socket}
     end
-
-    {:noreply, mark_saved(socket)}
   end
 
-  # Handle messages from VersionsSection LiveComponent
-  def handle_info({:versions_section, :version_created, %{version: _version}}, socket) do
-    {:noreply, mark_saved(socket)}
-  end
+  def handle_info({:toolbar_event, _event, _params}, socket), do: {:noreply, socket}
+  def handle_info({:online_users, users}, socket), do: {:noreply, assign(socket, :online_users, users)}
 
-  def handle_info({:versions_section, :version_restored, %{entity: sheet, version: _}}, socket) do
-    sheet = Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id)
-
-    broadcast_sheet_change(socket, :sheet_restored)
-
-    {:noreply,
-     socket
-     |> reload_sheet_state(sheet)
-     |> UndoRedoStack.clear()
-     |> push_event("restore_sheet_content", %{
-       name: sheet.name,
-       shortcut: sheet.shortcut || ""
-     })
-     |> mark_saved()}
-  end
-
-  def handle_info({:versions_section, :version_deleted, %{version: _}}, socket) do
-    {:noreply, mark_saved(socket)}
-  end
-
-  def handle_info({:versions_section, :compare_version, %{version: version}}, socket) do
-    %{workspace: workspace, project: project, sheet: sheet} = socket.assigns
-
-    compare_url =
-      ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}/compare/#{version.version_number}"
-
-    {:noreply, push_navigate(socket, to: compare_url)}
-  end
-
-  def handle_info({:versions_section, :flash, %{kind: kind, message: message}}, socket) do
-    {:noreply, put_flash(socket, kind, message)}
-  end
-
-  # Handle messages from Banner LiveComponent
-  def handle_info({:banner, :sheet_updated, sheet}, socket) do
-    broadcast_sheet_change(socket, :sheet_updated)
-
-    {:noreply,
-     socket
-     |> assign(:sheet, sheet)
-     |> mark_saved()}
-  end
-
-  def handle_info({:banner, :error, message}, socket) do
-    {:noreply, put_flash(socket, :error, message)}
-  end
-
-  # Handle messages from AudioTab LiveComponent
-  def handle_info({:audio_tab, :error, message}, socket) do
-    {:noreply, put_flash(socket, :error, message)}
-  end
-
-  # Handle messages from SheetAvatar LiveComponent
-  def handle_info({:sheet_avatar, :sheet_updated, sheet, sheets_tree}, socket) do
-    broadcast_sheet_change(socket, :sheet_updated)
-
-    {:noreply,
-     socket
-     |> assign(:sheet, sheet)
-     |> assign(:sheets_tree, sheets_tree)
-     |> mark_saved()}
-  end
-
-  def handle_info({:sheet_avatar, :error, message}, socket) do
-    {:noreply, put_flash(socket, :error, message)}
-  end
-
-  # Handle messages from SheetTitle LiveComponent
-  def handle_info({:sheet_title, :name_saved, sheet, sheets_tree}, socket) do
-    prev_name = socket.assigns.sheet.name
-    broadcast_sheet_change(socket, :sheet_updated)
-
-    ancestors =
-      case Sheets.get_sheet_with_ancestors(socket.assigns.project.id, sheet.id) do
-        nil -> []
-        list -> List.delete_at(list, -1)
-      end
-
-    {:noreply,
-     socket
-     |> assign(:sheet, sheet)
-     |> assign(:sheets_tree, sheets_tree)
-     |> assign(:ancestors, ancestors)
-     |> UndoRedoHandlers.push_name_coalesced(prev_name, sheet.name)
-     |> mark_saved()}
-  end
-
-  def handle_info({:sheet_title, :shortcut_saved, sheet}, socket) do
-    prev_shortcut = socket.assigns.sheet.shortcut
-    broadcast_sheet_change(socket, :sheet_updated)
-
-    {:noreply,
-     socket
-     |> assign(:sheet, sheet)
-     |> UndoRedoHandlers.push_shortcut_coalesced(prev_shortcut, sheet.shortcut)
-     |> mark_saved()}
-  end
-
-  def handle_info({:sheet_title, :error, message}, socket) do
-    {:noreply, put_flash(socket, :error, message)}
-  end
-
-  # Handle undo action push from ContentTab LiveComponent
-  def handle_info({:content_tab, :push_undo, action}, socket) do
-    {:noreply, route_undo_push(socket, action)}
-  end
-
-  # ===========================================================================
-  # Handle Info: Collaboration
-  # ===========================================================================
-
-  def handle_info({Storyarn.Collaboration.Presence, {:join, presence}}, socket) do
+  def handle_info({Presence, {:join, presence}}, socket) do
     Collab.handle_presence_join(socket, presence)
   end
 
-  def handle_info({Storyarn.Collaboration.Presence, {:leave, _} = event}, socket) do
+  def handle_info({Presence, {:leave, _} = event}, socket) do
     Collab.handle_presence_leave(socket, elem(event, 1))
   end
 
   def handle_info({:lock_change, _action, _payload}, socket) do
-    block_locks = Collaboration.list_locks(socket.assigns.collab_scope)
-    {:noreply, assign(socket, :block_locks, block_locks)}
-  end
-
-  def handle_info({:remote_change, action, payload}, socket) do
-    # Skip echo from own changes (broadcast_from should prevent this but doesn't
-    # reliably in all subscription paths — guard by user_id as safety net)
-    if payload[:user_id] == socket.assigns.current_scope.user.id do
-      {:noreply, socket}
+    if scope = socket.assigns[:collab_scope] do
+      block_locks = Collaboration.list_locks(scope)
+      {:noreply, assign(socket, :block_locks, block_locks)}
     else
-      handle_sheet_remote_change(action, payload, socket)
+      {:noreply, socket}
     end
   end
 
-  def handle_info(:clear_collab_toast, socket) do
-    {:noreply, assign(socket, :collab_toast, nil)}
+  def handle_info({:remote_change, action, payload}, socket) do
+    handle_remote_change(action, payload, socket)
   end
 
-  defp route_undo_push(socket, {:update_block_value, block_id, prev, new}) do
-    UndoRedoHandlers.push_block_value_coalesced(socket, block_id, prev, new)
+  def handle_info({:table_push_undo, action}, socket) do
+    {:noreply, UndoRedoStack.push_undo(socket, action)}
   end
 
-  defp route_undo_push(socket, {:update_table_cell, block_id, row_id, col_slug, prev, new}) do
-    UndoRedoHandlers.push_cell_coalesced(socket, block_id, row_id, col_slug, prev, new)
-  end
-
-  defp route_undo_push(socket, action) do
-    UndoRedoStack.push_undo(socket, action)
-  end
+  # ===========================================================================
+  # Terminate
+  # ===========================================================================
 
   @impl true
   def terminate(_reason, socket) do
@@ -982,7 +835,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   # ===========================================================================
-  # Private Functions: Collaboration
+  # Collaboration Helpers
   # ===========================================================================
 
   defp teardown_sheet_collab(socket) do
@@ -992,121 +845,235 @@ defmodule StoryarnWeb.SheetLive.Show do
     end
 
     socket
+    |> assign(:collab_scope, nil)
+    |> assign(:online_users, [])
+    |> assign(:block_locks, %{})
   end
 
-  defp handle_sheet_remote_change(:block_updated, _payload, socket) do
-    blocks =
-      ReferenceHelpers.load_blocks_with_references(
-        socket.assigns.sheet.id,
-        socket.assigns.project.id
-      )
-
-    {:noreply, assign(socket, :blocks, blocks)}
-  end
-
-  defp handle_sheet_remote_change(:block_created, _payload, socket) do
-    blocks =
-      ReferenceHelpers.load_blocks_with_references(
-        socket.assigns.sheet.id,
-        socket.assigns.project.id
-      )
-
-    {:noreply, assign(socket, :blocks, blocks)}
-  end
-
-  defp handle_sheet_remote_change(:block_deleted, %{block_id: block_id}, socket) do
-    blocks = Enum.reject(socket.assigns.blocks, &(&1.id == block_id))
-    {:noreply, assign(socket, :blocks, blocks)}
-  end
-
-  defp handle_sheet_remote_change(:block_reordered, _payload, socket) do
-    blocks =
-      ReferenceHelpers.load_blocks_with_references(
-        socket.assigns.sheet.id,
-        socket.assigns.project.id
-      )
-
-    {:noreply, assign(socket, :blocks, blocks)}
-  end
-
-  defp handle_sheet_remote_change(:block_type_changed, _payload, socket) do
-    blocks =
-      ReferenceHelpers.load_blocks_with_references(
-        socket.assigns.sheet.id,
-        socket.assigns.project.id
-      )
-
-    {:noreply, assign(socket, :blocks, blocks)}
-  end
-
-  defp handle_sheet_remote_change(:sheet_updated, _payload, socket) do
-    sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
-
-    # Push name/shortcut to JS hooks (contenteditable has phx-update="ignore")
-    socket =
-      socket
-      |> assign(:sheet, sheet)
-      |> push_event("restore_page_content", %{
-        name: sheet.name,
-        shortcut: sheet.shortcut
-      })
-
-    {:noreply, socket}
-  end
-
-  defp handle_sheet_remote_change(:sheet_restored, _payload, socket) do
-    sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
-
-    {:noreply,
-     socket
-     |> reload_sheet_state(sheet)
-     |> push_event("restore_sheet_content", %{
-       name: sheet.name,
-       shortcut: sheet.shortcut || ""
-     })}
-  end
-
-  defp handle_sheet_remote_change(:entity_merged, _payload, socket) do
-    sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
-
-    {:noreply,
-     socket
-     |> reload_sheet_state(sheet)
-     |> push_event("restore_sheet_content", %{
-       name: sheet.name,
-       shortcut: sheet.shortcut || ""
-     })}
-  end
-
-  defp handle_sheet_remote_change(_action, _payload, socket) do
-    {:noreply, socket}
-  end
-
-  # ===========================================================================
-  # Private Functions
-  # ===========================================================================
-
-  defp broadcast_sheet_change(socket, action) do
+  defp broadcast_sheet_change(socket, action, extra_payload \\ %{}) do
     if scope = socket.assigns[:collab_scope] do
-      Collab.broadcast_change(socket, scope, action, %{})
+      Collab.broadcast_change(socket, scope, action, extra_payload)
+    end
+
+    socket
+  end
+
+  defp with_table_broadcast(_socket, fun) do
+    case fun.() do
+      {:noreply, updated_socket} ->
+        {:noreply, broadcast_sheet_change(updated_socket, :block_updated)}
+
+      other ->
+        other
     end
   end
 
-  defp sheet_path(socket, sheet) do
-    ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{sheet.id}"
+  defp show_collab_toast(socket, action, payload) do
+    push_event(socket, "collab_toast", %{
+      action: to_string(action),
+      userEmail: payload[:user_email] || dgettext("sheets", "Unknown"),
+      userColor: payload[:user_color] || "#666"
+    })
   end
 
-  defp reload_sheet_state(socket, sheet) do
-    blocks = ReferenceHelpers.load_blocks_with_references(sheet.id, socket.assigns.project.id)
-    sheets_tree = Sheets.list_sheets_tree(socket.assigns.project.id)
+  defp handle_remote_change(:block_updated, payload, socket) do
+    {:noreply,
+     socket
+     |> reload_blocks()
+     |> show_collab_toast(:block_updated, payload)}
+  end
+
+  defp handle_remote_change(:block_created, payload, socket) do
+    {:noreply,
+     socket
+     |> reload_blocks()
+     |> show_collab_toast(:block_created, payload)}
+  end
+
+  defp handle_remote_change(:block_deleted, payload, socket) do
+    {:noreply,
+     socket
+     |> reload_blocks()
+     |> show_collab_toast(:block_deleted, payload)}
+  end
+
+  defp handle_remote_change(:block_reordered, _payload, socket) do
+    {:noreply, reload_blocks(socket)}
+  end
+
+  defp handle_remote_change(:block_type_changed, payload, socket) do
+    {:noreply,
+     socket
+     |> reload_blocks()
+     |> show_collab_toast(:block_type_changed, payload)}
+  end
+
+  defp handle_remote_change(:sheet_updated, payload, socket) do
+    sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
+
+    {:noreply,
+     socket
+     |> assign(:sheet, sheet)
+     |> push_event("sheet_updated_remote", %{name: sheet.name, shortcut: sheet.shortcut})
+     |> show_collab_toast(:sheet_updated, payload)}
+  end
+
+  # Tree shape changes are picked up by SheetsSidebarLive directly (it subscribes
+  # to project-level Collaboration changes). Nothing to do here.
+  defp handle_remote_change(:tree_changed, _payload, socket), do: {:noreply, socket}
+
+  defp handle_remote_change(:sheet_restored, payload, socket) do
+    sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
+
+    socket =
+      socket
+      |> assign(:sheet, sheet)
+      |> reload_blocks()
+      |> UndoRedoStack.clear()
+      |> assign(:history_data, nil)
+
+    socket =
+      if socket.assigns.current_tab == "history",
+        do: load_history_data(socket),
+        else: socket
+
+    {:noreply, show_collab_toast(socket, :sheet_restored, payload)}
+  end
+
+  defp handle_remote_change(_action, _payload, socket) do
+    {:noreply, socket}
+  end
+
+  # ===========================================================================
+  # Private Helpers
+  # ===========================================================================
+
+  defp maybe_switch_tab(%{assigns: %{compact: true}} = socket, "history"), do: socket
+
+  defp maybe_switch_tab(socket, tab) do
+    socket
+    |> assign(:current_tab, tab)
+    |> maybe_load_tab_data(tab)
+  end
+
+  defp track_sheet_history_opened(socket, "history") do
+    if !(socket.assigns.current_tab == "history" or socket.assigns.compact) do
+      Analytics.track(socket.assigns.current_scope, "version panel opened", %{
+        entity_type: "sheet",
+        project_id: socket.assigns.project.id
+      })
+    end
+  end
+
+  defp track_sheet_history_opened(_socket, _tab), do: :ok
+
+  defp maybe_load_tab_data(socket, "references") do
+    maybe_load_assign(socket, :references_data, &load_references_data/1)
+  end
+
+  defp maybe_load_tab_data(socket, "audio") do
+    maybe_load_assign(socket, :audio_data, &load_audio_data/1)
+  end
+
+  defp maybe_load_tab_data(socket, "history") do
+    maybe_load_assign(socket, :history_data, &load_history_data/1)
+  end
+
+  defp maybe_load_tab_data(socket, _tab), do: socket
+
+  defp maybe_load_assign(socket, assign_name, loader) do
+    if is_nil(socket.assigns[assign_name]), do: loader.(socket), else: socket
+  end
+
+  defp formula_handler_helpers do
+    %{
+      handle_formula_cell: &TableHandlers.handle_update_formula_cell/3,
+      table_helpers: &table_helpers/1,
+      broadcast: &broadcast_sheet_change/2
+    }
+  end
+
+  defp history_helpers do
+    %{
+      reload_blocks: &reload_blocks/1,
+      broadcast: &broadcast_sheet_change/2,
+      clear_undo: &UndoRedoStack.clear/1
+    }
+  end
+
+  defp content_helpers do
+    %{
+      reload_blocks: &reload_blocks/1,
+      broadcast: &broadcast_sheet_change/2,
+      broadcast_with_payload: &broadcast_sheet_change/3,
+      parse_id: &MapUtils.parse_int/1,
+      push_undo: fn socket, action -> UndoRedoStack.push_undo(socket, action) end,
+      block_to_snapshot: &UndoRedoHandlers.block_to_snapshot/1,
+      push_block_value_coalesced: &UndoRedoHandlers.push_block_value_coalesced/4,
+      handle_undo: &UndoRedoHandlers.handle_undo/2,
+      handle_redo: &UndoRedoHandlers.handle_redo/2
+    }
+  end
+
+  defp header_helpers do
+    %{
+      reload_sheet: &reload_sheet/1,
+      broadcast: &broadcast_sheet_change/2,
+      broadcast_tree_changed: &broadcast_sheet_tree_changed/1,
+      parse_id: &MapUtils.parse_int/1
+    }
+  end
+
+  defp broadcast_sheet_tree_changed(project_id) do
+    Phoenix.PubSub.broadcast(
+      Storyarn.PubSub,
+      StoryarnWeb.SheetsSidebarLive.shell_topic(project_id),
+      {:tree_changed, :sheets}
+    )
+  end
+
+  defp table_helpers(_socket) do
+    pid = self()
+
+    %{
+      reload_blocks: &reload_blocks/1,
+      maybe_create_version: fn _socket -> :ok end,
+      notify_parent: fn _socket, _status -> :ok end,
+      push_undo: fn action -> send(pid, {:table_push_undo, action}) end
+    }
+  end
+
+  defp reload_sheet(socket) do
+    sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
+    assign(socket, :sheet, sheet)
+  end
+
+  defp reload_blocks(socket) do
+    sheet_id = socket.assigns.sheet.id
+    {inherited_groups, own_blocks} = Sheets.get_sheet_blocks_grouped(sheet_id)
+    all_blocks = Enum.flat_map(inherited_groups, & &1.blocks) ++ own_blocks
+
+    gallery_block_ids = all_blocks |> Enum.filter(&(&1.type == "gallery")) |> Enum.map(& &1.id)
+
+    gallery_data =
+      if gallery_block_ids == [], do: %{}, else: Sheets.batch_load_gallery_data(gallery_block_ids)
+
+    table_block_ids = all_blocks |> Enum.filter(&(&1.type == "table")) |> Enum.map(& &1.id)
+
+    project_id = socket.assigns.project.id
+
+    table_data =
+      if table_block_ids == [],
+        do: %{},
+        else:
+          table_block_ids
+          |> Sheets.batch_load_table_data()
+          |> compute_formulas(project_id)
 
     socket
-    |> assign(:sheet, sheet)
-    |> assign(:blocks, blocks)
-    |> assign(:sheets_tree, sheets_tree)
-  end
-
-  defp reload_sheets_tree(socket) do
-    assign(socket, :sheets_tree, Sheets.list_sheets_tree(socket.assigns.project.id))
+    |> assign(:blocks, own_blocks)
+    |> assign(:inherited_groups, inherited_groups)
+    |> assign(:gallery_data, gallery_data)
+    |> assign(:table_data, table_data)
   end
 end

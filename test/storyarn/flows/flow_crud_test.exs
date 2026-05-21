@@ -1,11 +1,12 @@
 defmodule Storyarn.Flows.FlowCrudTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Flows
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
+
+  alias Storyarn.Flows
 
   # ===========================================================================
   # Setup helpers
@@ -318,7 +319,7 @@ defmodule Storyarn.Flows.FlowCrudTest do
 
       result = Flows.get_flow_including_deleted(project.id, flow.id)
       assert result.id == flow.id
-      assert result.deleted_at != nil
+      assert result.deleted_at
     end
 
     test "returns nil when flow does not exist" do
@@ -346,7 +347,7 @@ defmodule Storyarn.Flows.FlowCrudTest do
       project = project_fixture(user)
 
       {:ok, flow} = Flows.create_flow(project, %{name: "Chapter One"})
-      assert flow.shortcut != nil
+      assert flow.shortcut
       assert flow.shortcut =~ ~r/^[a-z0-9]/
     end
 
@@ -356,7 +357,7 @@ defmodule Storyarn.Flows.FlowCrudTest do
 
       {:ok, flow} = Flows.create_flow(project, %{name: "New Flow"})
       full = Flows.get_flow!(project.id, flow.id)
-      types = Enum.map(full.nodes, & &1.type) |> Enum.sort()
+      types = full.nodes |> Enum.map(& &1.type) |> Enum.sort()
       assert types == ["entry", "exit"]
     end
 
@@ -367,7 +368,7 @@ defmodule Storyarn.Flows.FlowCrudTest do
       {:ok, flow1} = Flows.create_flow(project, %{name: "First"})
       {:ok, flow2} = Flows.create_flow(project, %{name: "Second"})
 
-      assert flow1.position != nil
+      assert flow1.position
       assert flow2.position > flow1.position
     end
 
@@ -448,7 +449,7 @@ defmodule Storyarn.Flows.FlowCrudTest do
 
       flow_without_shortcut = %{flow | shortcut: nil}
       {:ok, updated} = Flows.update_flow(flow_without_shortcut, %{name: "New Name"})
-      assert updated.shortcut != nil
+      assert updated.shortcut
     end
   end
 
@@ -461,7 +462,7 @@ defmodule Storyarn.Flows.FlowCrudTest do
       %{project: project, flow: flow} = create_project_and_flow()
 
       {:ok, deleted} = Flows.delete_flow(flow)
-      assert deleted.deleted_at != nil
+      assert deleted.deleted_at
 
       assert Flows.get_flow(project.id, flow.id) == nil
     end
@@ -504,7 +505,7 @@ defmodule Storyarn.Flows.FlowCrudTest do
       {:ok, restored} = Flows.restore_flow(deleted_flow)
 
       assert restored.deleted_at == nil
-      assert Flows.get_flow(project.id, restored.id) != nil
+      assert Flows.get_flow(project.id, restored.id)
     end
   end
 
@@ -921,8 +922,8 @@ defmodule Storyarn.Flows.FlowCrudTest do
     test "bulk-inserts connections" do
       %{project: project} = create_project_and_flow()
       flow = flow_fixture(project)
-      entry = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
-      exit_node = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "exit"))
+      entry = flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
+      exit_node = flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "exit"))
 
       now = Storyarn.Shared.TimeHelpers.now()
 
@@ -931,7 +932,7 @@ defmodule Storyarn.Flows.FlowCrudTest do
           flow_id: flow.id,
           source_node_id: entry.id,
           target_node_id: exit_node.id,
-          source_pin: "output",
+          source_pin: "default",
           target_pin: "input",
           inserted_at: now,
           updated_at: now
@@ -1036,7 +1037,7 @@ defmodule Storyarn.Flows.FlowCrudTest do
       {:ok, %{flow: new_flow}} = Flows.create_linked_flow(project, parent_flow, node)
 
       full_flow = Flows.get_flow!(project.id, new_flow.id)
-      types = Enum.map(full_flow.nodes, & &1.type) |> Enum.sort()
+      types = full_flow.nodes |> Enum.map(& &1.type) |> Enum.sort()
       assert types == ["entry", "exit"]
     end
 
@@ -1222,6 +1223,43 @@ defmodule Storyarn.Flows.FlowCrudTest do
       issue = hd(disconnected)
       assert issue.flow_id == flow.id
       assert issue.count == 3
+    end
+
+    test "ignores connectionless visual and organizational nodes" do
+      %{project: project, flow: flow} = create_project_and_flow()
+      loaded = Flows.get_flow!(project.id, flow.id)
+      entry = Enum.find(loaded.nodes, &(&1.type == "entry"))
+      exit_node = Enum.find(loaded.nodes, &(&1.type == "exit"))
+
+      Storyarn.FlowsFixtures.connection_fixture(loaded, entry, exit_node)
+      node_fixture(flow, %{type: "annotation", data: %{"text" => "Design note"}})
+      assert {:ok, _sequence} = Flows.create_sequence(flow.id, %{"name" => "Act I"})
+
+      issues = Flows.detect_flow_issues(project.id)
+      assert issues == []
+    end
+
+    test "detects connected nodes whose outgoing connection points to a soft-deleted node" do
+      %{project: project, flow: flow} = create_project_and_flow()
+      loaded = Flows.get_flow!(project.id, flow.id)
+      entry = Enum.find(loaded.nodes, &(&1.type == "entry"))
+      source = node_fixture(flow, %{type: "subflow", data: %{"referenced_flow_id" => nil}})
+      target = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Deleted"}})
+
+      Storyarn.FlowsFixtures.connection_fixture(loaded, entry, source)
+      Storyarn.FlowsFixtures.connection_fixture(loaded, source, target)
+
+      target
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
+      |> Storyarn.Repo.update!()
+
+      issues = Flows.detect_flow_issues(project.id)
+      dead_end = Enum.filter(issues, &(&1.issue_type == :dead_end_nodes))
+
+      assert length(dead_end) == 1
+      issue = hd(dead_end)
+      assert issue.flow_id == flow.id
+      assert issue.count == 1
     end
 
     test "returns empty list for healthy project" do

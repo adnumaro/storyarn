@@ -23,7 +23,9 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.Node do
   def default_data, do: %{"referenced_flow_id" => nil}
 
   def extract_form_data(data) do
-    %{"referenced_flow_id" => data["referenced_flow_id"]}
+    %{
+      "referenced_flow_id" => data["referenced_flow_id"]
+    }
   end
 
   @doc "Loads available flows and exit nodes when a subflow node is selected."

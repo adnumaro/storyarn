@@ -106,7 +106,7 @@ defmodule Storyarn.Shared.InvitationOperations do
       not is_nil(invitation.accepted_at) ->
         {:error, :already_accepted}
 
-      DateTime.compare(invitation.expires_at, TimeHelpers.now()) == :lt ->
+      DateTime.before?(invitation.expires_at, TimeHelpers.now()) ->
         {:error, :expired}
 
       String.downcase(user.email) != String.downcase(invitation.email) ->
@@ -145,22 +145,24 @@ defmodule Storyarn.Shared.InvitationOperations do
   end
 
   defp member_exists?(config, parent_id, email) do
-    from(m in config.membership_schema,
-      join: u in assoc(m, :user),
-      where: field(m, ^config.parent_key) == ^parent_id,
-      where: fragment("lower(?)", u.email) == ^email
+    Repo.exists?(
+      from(m in config.membership_schema,
+        join: u in assoc(m, :user),
+        where: field(m, ^config.parent_key) == ^parent_id,
+        where: fragment("lower(?)", u.email) == ^email
+      )
     )
-    |> Repo.exists?()
   end
 
   defp pending_invitation_exists?(config, parent_id, email) do
-    from(i in config.invitation_schema,
-      where: field(i, ^config.parent_key) == ^parent_id,
-      where: fragment("lower(?)", i.email) == ^email,
-      where: is_nil(i.accepted_at),
-      where: i.expires_at > ^TimeHelpers.now()
+    Repo.exists?(
+      from(i in config.invitation_schema,
+        where: field(i, ^config.parent_key) == ^parent_id,
+        where: fragment("lower(?)", i.email) == ^email,
+        where: is_nil(i.accepted_at),
+        where: i.expires_at > ^TimeHelpers.now()
+      )
     )
-    |> Repo.exists?()
   end
 
   defp create_if_within_limits(config, parent, invited_by, email, role) do
@@ -196,11 +198,9 @@ defmodule Storyarn.Shared.InvitationOperations do
     end
   end
 
-  defp invitation_unique_index(:project_id),
-    do: "project_invitations_project_id_email_index"
+  defp invitation_unique_index(:project_id), do: "project_invitations_project_id_email_index"
 
-  defp invitation_unique_index(:workspace_id),
-    do: "workspace_invitations_workspace_id_email_index"
+  defp invitation_unique_index(:workspace_id), do: "workspace_invitations_workspace_id_email_index"
 
   defp do_accept_invitation(config, invitation, user) do
     parent_id = Map.fetch!(invitation, config.parent_key)

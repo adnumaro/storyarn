@@ -63,7 +63,7 @@ defmodule StoryarnWeb.TelemetryTest do
           m.name == [:phoenix, :channel_handled_in, :duration]
         end)
 
-      assert handled_in != nil
+      assert handled_in
       assert :event in handled_in.tags
     end
 
@@ -75,7 +75,7 @@ defmodule StoryarnWeb.TelemetryTest do
           m.name == [:phoenix, :socket_drain, :count]
         end)
 
-      assert drain != nil
+      assert drain
       assert drain.__struct__ == @sum_mod
     end
 
@@ -124,7 +124,7 @@ defmodule StoryarnWeb.TelemetryTest do
           m.name == [:vm, :memory, :total]
         end)
 
-      assert vm_memory != nil
+      assert vm_memory
       assert vm_memory.unit == :kilobyte
     end
 
@@ -151,7 +151,7 @@ defmodule StoryarnWeb.TelemetryTest do
   describe "supervisor" do
     test "process is registered and alive" do
       pid = Process.whereis(Telemetry)
-      assert pid != nil
+      assert pid
       assert Process.alive?(pid)
     end
 
@@ -165,6 +165,6 @@ defmodule StoryarnWeb.TelemetryTest do
   # ── Helpers ─────────────────────────────────────────────────────────
 
   defp metric_names do
-    Telemetry.metrics() |> Enum.map(& &1.name)
+    Enum.map(Telemetry.metrics(), & &1.name)
   end
 end

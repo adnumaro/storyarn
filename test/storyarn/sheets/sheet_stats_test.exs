@@ -8,11 +8,12 @@ defmodule Storyarn.Sheets.SheetStatsTest do
 
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Repo
-  alias Storyarn.Sheets.{BlockGalleryImage, SheetStats}
+  alias Storyarn.Sheets.BlockGalleryImage
+  alias Storyarn.Sheets.SheetStats
 
   setup do
     user = user_fixture()
-    project = project_fixture(user) |> Repo.preload(:workspace)
+    project = user |> project_fixture() |> Repo.preload(:workspace)
     %{project: project, user: user}
   end
 
@@ -74,10 +75,11 @@ defmodule Storyarn.Sheets.SheetStatsTest do
     end
 
     test "counts table variables with multiple rows and columns", %{project: project} do
+      alias Storyarn.Sheets.TableColumn
+      alias Storyarn.Sheets.TableRow
+
       sheet = sheet_fixture(project, %{name: "Stats Sheet"})
       table_block = block_fixture(sheet, %{type: "table"})
-
-      alias Storyarn.Sheets.{TableColumn, TableRow}
 
       # Add a second variable column
       Repo.insert!(%TableColumn{
@@ -181,10 +183,10 @@ defmodule Storyarn.Sheets.SheetStatsTest do
     end
 
     test "counts table row and column names from table blocks", %{project: project} do
+      alias Storyarn.Sheets.TableRow
+
       sheet = sheet_fixture(project, %{name: "Main"})
       table_block = table_block_fixture(sheet, %{label: "Table"})
-
-      alias Storyarn.Sheets.TableRow
 
       for name <- ["STR", "DEX", "INT", "WIS", "CON", "CHA"] do
         Repo.insert!(%TableRow{
@@ -202,6 +204,8 @@ defmodule Storyarn.Sheets.SheetStatsTest do
     end
 
     test "includes table row names from inherited table blocks", %{project: project} do
+      alias Storyarn.Sheets.TableRow
+
       parent_sheet = sheet_fixture(project, %{name: "Parent"})
       child_sheet = sheet_fixture(project, %{name: "Child"})
 
@@ -213,8 +217,6 @@ defmodule Storyarn.Sheets.SheetStatsTest do
           inherited_from_block_id: parent_block.id,
           config: %{"label" => "Table", "collapsed" => false}
         })
-
-      alias Storyarn.Sheets.TableRow
 
       for {name, block_id} <- [{"STR", parent_block.id}, {"DEX", inherited_block.id}] do
         Repo.insert!(%TableRow{

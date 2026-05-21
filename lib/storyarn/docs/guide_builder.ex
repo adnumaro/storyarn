@@ -48,7 +48,8 @@ defmodule Storyarn.Docs.GuideBuilder do
 
   # Extract h2/h3 headings into a TOC list: [{level, id, text}, ...]
   defp extract_toc(body) do
-    Regex.scan(~r/<(h[23])\s+id="([^"]+)">(.*?)<\/\1>/s, body)
+    ~r/<(h[23])\s+id="([^"]+)">(.*?)<\/\1>/s
+    |> Regex.scan(body)
     |> Enum.map(fn [_, tag, id, content] ->
       level = if tag == "h2", do: 2, else: 3
       text = strip_html(content)

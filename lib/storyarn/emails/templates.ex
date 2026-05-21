@@ -13,79 +13,6 @@ defmodule Storyarn.Emails.Templates do
 
   alias Storyarn.Emails.Layout
 
-  @doc "Magic link login for existing users."
-  def magic_link(email, url) do
-    subject = dgettext("emails", "Log in to Storyarn")
-
-    content = """
-    <mj-text>
-      #{dgettext("emails", "Hi %{email},", email: escape(email))}
-    </mj-text>
-    <mj-text>
-      #{dgettext("emails", "Click the button below to log in to your Storyarn account. This link will expire in 10 minutes.")}
-    </mj-text>
-    <mj-button href="#{escape(url)}" background-color="#4dd9c0" color="#0a0a0a">
-      #{dgettext("emails", "Log in to Storyarn")}
-    </mj-button>
-    <mj-text font-size="13px" color="#9ca3af">
-      #{dgettext("emails", "If you didn't request this email, you can safely ignore it.")}
-    </mj-text>
-    <mj-text font-size="13px" color="#9ca3af">
-      #{dgettext("emails", "Or copy this link: %{url}", url: escape(url))}
-    </mj-text>
-    """
-
-    text = """
-    #{dgettext("emails", "Hi %{email},", email: email)}
-
-    #{dgettext("emails", "Log in to your Storyarn account by visiting this URL:")}
-
-    #{url}
-
-    #{dgettext("emails", "This link will expire in 10 minutes.")}
-    #{dgettext("emails", "If you didn't request this email, you can safely ignore it.")}
-    """
-
-    {subject,
-     Layout.render(content, preview: dgettext("emails", "Log in to your Storyarn account")), text}
-  end
-
-  @doc "Confirmation email for new users."
-  def confirmation(email, url) do
-    subject = dgettext("emails", "Confirm your Storyarn account")
-
-    content = """
-    <mj-text>
-      #{dgettext("emails", "Welcome to Storyarn, %{email}!", email: escape(email))}
-    </mj-text>
-    <mj-text>
-      #{dgettext("emails", "Click the button below to confirm your account and get started.")}
-    </mj-text>
-    <mj-button href="#{escape(url)}" background-color="#4dd9c0" color="#0a0a0a">
-      #{dgettext("emails", "Confirm my account")}
-    </mj-button>
-    <mj-text font-size="13px" color="#9ca3af">
-      #{dgettext("emails", "If you didn't create an account, you can safely ignore this.")}
-    </mj-text>
-    <mj-text font-size="13px" color="#9ca3af">
-      #{dgettext("emails", "Or copy this link: %{url}", url: escape(url))}
-    </mj-text>
-    """
-
-    text = """
-    #{dgettext("emails", "Welcome to Storyarn, %{email}!", email: email)}
-
-    #{dgettext("emails", "Confirm your account by visiting this URL:")}
-
-    #{url}
-
-    #{dgettext("emails", "If you didn't create an account, you can safely ignore this.")}
-    """
-
-    {subject,
-     Layout.render(content, preview: dgettext("emails", "Confirm your Storyarn account")), text}
-  end
-
   @doc "Email change instructions."
   def update_email(email, url) do
     subject = dgettext("emails", "Update your email address")
@@ -118,8 +45,7 @@ defmodule Storyarn.Emails.Templates do
     #{dgettext("emails", "If you didn't request this change, please ignore this email.")}
     """
 
-    {subject, Layout.render(content, preview: dgettext("emails", "Confirm your email change")),
-     text}
+    {subject, Layout.render(content, preview: dgettext("emails", "Confirm your email change")), text}
   end
 
   @doc "Project invitation email."
@@ -250,8 +176,7 @@ defmodule Storyarn.Emails.Templates do
     #{dgettext("emails", "You can log in with this email address (%{email}).", email: email)}
     """
 
-    {subject,
-     Layout.render(content, preview: dgettext("emails", "Your Storyarn access is ready")), text}
+    {subject, Layout.render(content, preview: dgettext("emails", "Your Storyarn access is ready")), text}
   end
 
   # --- Admin-only templates (no Gettext, always English) ---

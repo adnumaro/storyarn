@@ -1,9 +1,9 @@
 defmodule Storyarn.Accounts.PasswordsTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Accounts.Passwords
-
   import Storyarn.AccountsFixtures
+
+  alias Storyarn.Accounts.Passwords
 
   # =============================================================================
   # change_user_password/3
@@ -22,7 +22,7 @@ defmodule Storyarn.Accounts.PasswordsTest do
       changeset = Passwords.change_user_password(user, %{password: "new_password!"})
       assert %Ecto.Changeset{} = changeset
       # Password changeset hashes the password into hashed_password
-      assert Ecto.Changeset.get_change(changeset, :hashed_password) != nil
+      assert Ecto.Changeset.get_change(changeset, :hashed_password)
     end
   end
 

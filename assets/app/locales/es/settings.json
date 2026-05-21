@@ -1,0 +1,150 @@
+{
+  "settings": {
+    "nav": {
+      "back_to_app": "Volver a la app",
+      "sections": {
+        "account": "Cuenta"
+      },
+      "items": {
+        "profile": "Perfil",
+        "security": "Seguridad",
+        "connected_accounts": "Cuentas conectadas",
+        "workspace_general": "General",
+        "workspace_members": "Miembros",
+        "deleted_projects": "Proyectos eliminados"
+      }
+    },
+    "profile": {
+      "title": "Perfil",
+      "subtitle": "Gestiona tu información personal y preferencias de idioma",
+      "personal_info": "Información personal",
+      "display_name": "Nombre a mostrar",
+      "display_name_placeholder": "Cómo quieres que te llamen",
+      "language": "Idioma",
+      "languages": {
+        "en": "Inglés",
+        "es": "Español"
+      },
+      "save_profile": "Guardar perfil",
+      "email_address": "Dirección de correo electrónico",
+      "email_description": "Tu correo se usa para iniciar sesión y para notificaciones.",
+      "email": "Correo electrónico",
+      "change_email": "Cambiar correo"
+    },
+    "connections": {
+      "title": "Cuentas conectadas",
+      "subtitle": "Vincula tus cuentas sociales para iniciar sesión de forma más fácil",
+      "not_connected": "No conectado",
+      "unlink": "Desvincular",
+      "connect": "Vincular",
+      "connected": "Conectado",
+      "set_password_first": "Establece una contraseña antes de desvincular",
+      "unlink_modal": {
+        "title": "¿Desvincular cuenta?",
+        "message": "¿Estás seguro de que deseas desvincular esta cuenta?",
+        "cancel": "Cancelar"
+      },
+      "why_connect": {
+        "title": "¿Por qué conectar cuentas?",
+        "reasons": [
+          "Inicia sesión más rápido sin escribir tu contraseña",
+          "Accede a tu cuenta incluso si olvidas tu contraseña",
+          "Mantén tu cuenta segura con múltiples métodos de autenticación"
+        ]
+      }
+    },
+    "security": {
+      "title": "Seguridad",
+      "subtitle": "Gestiona tu contraseña y la seguridad de tu cuenta",
+      "change_password": "Cambiar contraseña",
+      "change_password_description": "Elige una contraseña segura que no uses en otros lugares.",
+      "new_password": "Nueva contraseña",
+      "confirm_password": "Confirmar nueva contraseña",
+      "update_password": "Actualizar contraseña",
+      "active_sessions": {
+        "title": "Sesiones activas",
+        "description": "Actualmente has iniciado sesión en este dispositivo.",
+        "coming_soon": "La gestión de sesiones estará disponible pronto."
+      }
+    },
+    "workspace": {
+      "general": {
+        "title": "Ajustes del espacio",
+        "subtitle": "Gestiona la identidad y preferencias de tu espacio de trabajo",
+        "fields": {
+          "name": "Nombre del espacio",
+          "description": "Descripción",
+          "banner": "Placa/Banner del espacio",
+          "change": "Cambiar",
+          "remove": "Eliminar",
+          "upload_banner": "Subir imagen",
+          "source_language": "Idioma origen predeterminado",
+          "select_language": "Seleccionar idioma...",
+          "source_language_hint": "Idioma origen predeterminado para los nuevos proyectos en este espacio."
+        },
+        "save_changes": "Guardar cambios"
+      },
+      "appearance": {
+        "title": "Apariencia",
+        "system": "Sistema",
+        "light": "Claro",
+        "dark": "Oscuro"
+      },
+      "danger_zone": {
+        "title": "Zona de peligro",
+        "delete_workspace": "Eliminar espacio de trabajo",
+        "delete_description": "Una vez elimines el espacio de trabajo no hay vuelta atrás. Todos los proyectos serán destruidos.",
+        "delete_button": "Eliminar espacio de trabajo"
+      },
+      "delete_modal": {
+        "title": "¿Eliminar espacio de trabajo?",
+        "description": "Esta acción no se puede deshacer.",
+        "cancel": "Cancelar",
+        "delete": "Eliminar"
+      },
+      "members": {
+        "title": "Miembros del equipo",
+        "subtitle": "Gestiona quién tiene acceso a este espacio de trabajo y sus roles",
+        "roles": {
+          "owner": "Propietario",
+          "admin": "Administrador",
+          "member": "Miembro",
+          "viewer": "Lector"
+        },
+        "invitation": {
+          "title": "Invitar nuevo miembro",
+          "description": "Envía una invitación por correo electrónico para colaborar en este espacio.",
+          "email": "Dirección de correo electrónico",
+          "email_placeholder": "colega{'@'}ejemplo.com",
+          "role": "Rol",
+          "submit": "Enviar invitación"
+        },
+        "active_members": "Miembros activos",
+        "no_members": "No se han encontrado miembros.",
+        "remove_member": "Eliminar miembro"
+      },
+      "deleted_projects": {
+        "title": "Proyectos eliminados",
+        "subtitle": "Recupera proyectos eliminados que tengan snapshots disponibles",
+        "empty": {
+          "title": "No hay proyectos eliminados",
+          "description": "Los proyectos eliminados con snapshots disponibles aparecerán aquí."
+        },
+        "snapshot_count": "{n} snapshot | {n} snapshots",
+        "no_snapshots": "No hay snapshots disponibles para este proyecto.",
+        "snapshot_prefix": "Snapshot v",
+        "recover": "Recuperar",
+        "recover_modal": {
+          "title": "¿Recuperar proyecto?",
+          "description": "Se creará un nuevo proyecto a partir de la snapshot v{number}. El proyecto recuperado aparecerá en tu espacio de trabajo.",
+          "cancel": "Cancelar"
+        },
+        "entities": {
+          "sheets": "{n} ficha | {n} fichas",
+          "flows": "{n} flujo | {n} flujos",
+          "scenes": "{n} escena | {n} escenas"
+        }
+      }
+    }
+  }
+}

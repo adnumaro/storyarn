@@ -1,11 +1,11 @@
 defmodule Storyarn.Localization.ReportsTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Localization.Reports
-
   import Storyarn.AccountsFixtures
-  import Storyarn.ProjectsFixtures
   import Storyarn.LocalizationFixtures
+  import Storyarn.ProjectsFixtures
+
+  alias Storyarn.Localization.Reports
 
   describe "progress_by_language/1" do
     test "returns progress for each target language" do

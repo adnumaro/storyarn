@@ -1,151 +1,114 @@
-/* See the Tailwind configuration guide for advanced usage
-   https://tailwindcss.com/docs/configuration */
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "katex/dist/katex.min.css";
+@import "./player.css";
+@import "./screenplay.css";
 
-@import "tailwindcss" source(none);
-@source "../css";
-@source "../js";
+@plugin "@tailwindcss/typography";
+
+@source "../app";
 @source "../../lib/storyarn_web";
 
-/* sonsie-one-latin-400-normal */
-@font-face {
-  font-family: 'Sonsie One';
-  font-style: normal;
-  font-display: swap;
-  font-weight: 400;
-  src: url("/fonts/sonsie-one-latin-400-normal.woff2") format('woff2'), url("/fonts/sonsie-one-latin-400-normal.woff") format('woff');
-  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Storyarn dark theme for shadcn-vue.
+ * Based on shadcn "neutral" base color, forced dark mode.
+ */
+:root {
+  --background: 0 0% 100%;
+  --foreground: 0 0% 3.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 3.9%;
+  --surface: 0 0% 97.5%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 3.9%;
+  --primary: 174 60% 45%;
+  --primary-foreground: 0 0% 98%;
+  --secondary: 0 0% 96.1%;
+  --secondary-foreground: 0 0% 9%;
+  --muted: 0 0% 96.1%;
+  --muted-foreground: 0 0% 45.1%;
+  --accent: 0 0% 96.1%;
+  --accent-foreground: 0 0% 9%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 0 0% 89.8%;
+  --input: 0 0% 89.8%;
+  --ring: 174 60% 45%;
+  --radius: 0.5rem;
 }
 
-/* daisyUI from npm - configured with light/dark themes */
-@plugin "daisyui" {
-  themes: light --default, dark --prefersdark;
+.dark {
+  --background: 220 20% 10%;
+  --foreground: 0 0% 90%;
+  --card: 220 18% 13%;
+  --card-foreground: 0 0% 90%;
+  --popover: 220 18% 13%;
+  --popover-foreground: 0 0% 90%;
+  --primary: 174 60% 45%;
+  --primary-foreground: 0 0% 98%;
+  --secondary: 220 15% 18%;
+  --secondary-foreground: 0 0% 90%;
+  --muted: 220 15% 18%;
+  --muted-foreground: 220 10% 55%;
+  --accent: 220 15% 22%;
+  --accent-foreground: 0 0% 90%;
+  --destructive: 0 62.8% 50.6%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 220 15% 22%;
+  --input: 210 15% 26%;
+  --ring: 174 60% 45%;
+  --surface: 220 14% 20%;
 }
 
-@theme {
-  --font-display: "Sonsie One";
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-surface: hsl(var(--surface));
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* ===== Storyarn Custom Theme ===== */
+@layer base {
+  * {
+    @apply border-border;
+  }
 
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  button,
+  [role="button"],
+  a[href],
+  [tabindex]:not([tabindex="-1"]) {
+    cursor: pointer;
+  }
+}
+
+/* Expression editor (CodeMirror) — dark theme colors for v2 */
 :root,
-[data-theme="light"],
-[data-theme="dark"] {
-  --radius-field: 0.5rem;
-}
-
-:root,
-[data-theme="light"] {
-  /* Primary: Cyan brillante */
-  --color-primary: oklch(78% 0.14 185);
-  --color-primary-content: oklch(15% 0.03 200);
-  /* Secondary: Slate azulado */
-  --color-secondary: oklch(45% 0.04 260);
-  --color-secondary-content: oklch(97% 0.005 250);
-  /* Accent: Ámbar eléctrico */
-  --color-accent: oklch(72% 0.16 60);
-  --color-accent-content: oklch(15% 0.03 60);
-  /* Neutral: Azul acero oscuro */
-  --color-neutral: oklch(18% 0.025 260);
-  --color-neutral-content: oklch(93% 0.005 250);
-
-  /* Gradient endpoints (overridable per-project) */
-  --gradient-primary-from: oklch(78% 0.14 185);
-  --gradient-primary-to: oklch(68% 0.12 210);
-  --gradient-secondary-from: oklch(50% 0.04 250);
-  --gradient-secondary-to: oklch(38% 0.05 270);
-  --gradient-accent-from: oklch(75% 0.17 65);
-  --gradient-accent-to: oklch(65% 0.18 40);
-}
-
-[data-theme="dark"] {
-  --color-primary: oklch(78% 0.14 185);
-  --color-primary-content: oklch(15% 0.03 200);
-  --color-secondary: oklch(45% 0.04 260);
-  --color-secondary-content: oklch(92% 0.005 250);
-  --color-accent: oklch(72% 0.16 60);
-  --color-accent-content: oklch(15% 0.03 60);
-  --color-neutral: oklch(18% 0.025 260);
-  --color-neutral-content: oklch(90% 0.005 250);
-
-  --gradient-primary-from: oklch(78% 0.14 185);
-  --gradient-primary-to: oklch(68% 0.12 210);
-  --gradient-secondary-from: oklch(50% 0.04 250);
-  --gradient-secondary-to: oklch(38% 0.05 270);
-  --gradient-accent-from: oklch(75% 0.17 65);
-  --gradient-accent-to: oklch(65% 0.18 40);
-}
-
-/* ===== Gradient Buttons ===== */
-
-.btn-primary:not(.btn-soft) {
-  background-image: linear-gradient(135deg, var(--gradient-primary-from), var(--gradient-primary-to));
-  border: none;
-}
-.btn-primary:not(.btn-soft):hover {
-  background-image: linear-gradient(135deg,
-    oklch(from var(--gradient-primary-from) calc(l - 0.05) c h),
-    oklch(from var(--gradient-primary-to) calc(l - 0.05) c h));
-}
-
-.btn-secondary {
-  background-image: linear-gradient(135deg, var(--gradient-secondary-from), var(--gradient-secondary-to));
-  border: none;
-  color: oklch(95% 0.005 250);
-}
-.btn-secondary:hover {
-  background-image: linear-gradient(135deg,
-    oklch(from var(--gradient-secondary-from) calc(l - 0.05) c h),
-    oklch(from var(--gradient-secondary-to) calc(l - 0.05) c h));
-}
-
-.btn-accent {
-  background-image: linear-gradient(135deg, var(--gradient-accent-from), var(--gradient-accent-to));
-  border: none;
-}
-.btn-accent:hover {
-  background-image: linear-gradient(135deg,
-    oklch(from var(--gradient-accent-from) calc(l - 0.05) c h),
-    oklch(from var(--gradient-accent-to) calc(l - 0.05) c h));
-}
-
-/* ===== Brand Logotype ===== */
-
-.brand-logotype {
-  font-family: var(--font-display);
-  font-weight: 400;
-  letter-spacing: 0.05em;
-  background: linear-gradient(90deg, var(--gradient-primary-from) 0%, var(--gradient-primary-to) 35%, currentColor 55%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-/* Expression editor (CodeMirror) — theme-adaptive colors */
-:root,
-[data-theme="light"] {
-  --cm-bg: #f8fafc;
-  --cm-gutter-bg: #f1f5f9;
-  --cm-gutter-fg: #94a3b8;
-  --cm-gutter-border: #e2e8f0;
-  --cm-active-line: #f1f5f9;
-  --cm-active-gutter: #e2e8f0;
-  --cm-selection: rgba(59, 130, 246, 0.2);
-  --cm-cursor: #2563eb;
-  --cm-text: #1e293b;
-  --cm-placeholder: #94a3b8;
-  --cm-variable: #0369a1;
-  --cm-string: #15803d;
-  --cm-number: #b45309;
-  --cm-keyword: #7c3aed;
-  --cm-operator: #0e7490;
-  --cm-paren: #b45309;
-  --cm-punct: #64748b;
-  --cm-comment: #94a3b8;
-  --cm-tooltip-bg: #ffffff;
-  --cm-tooltip-border: #e2e8f0;
-}
-
-[data-theme="dark"] {
+.dark {
   --cm-bg: #282c34;
   --cm-gutter-bg: #282c34;
   --cm-gutter-fg: #495162;
@@ -168,1029 +131,206 @@
   --cm-tooltip-border: #3e4451;
 }
 
-/* Override daisyUI hover colors — subtler than default 10% */
-.menu :where(li:not(.menu-title, .disabled) > :not(ul, details, .menu-title):not(.menu-active, :active, .btn):hover) {
-  background-color: color-mix(in oklab, var(--color-base-content) 5%, transparent);
-}
-
-.btn-ghost:hover {
-  background-color: color-mix(in oklab, var(--color-base-content) 5%, transparent);
-}
-
-
-/* Add variants based on LiveView classes */
-@custom-variant phx-click-loading (.phx-click-loading&, .phx-click-loading &);
-@custom-variant phx-submit-loading (.phx-submit-loading&, .phx-submit-loading &);
-@custom-variant phx-change-loading (.phx-change-loading&, .phx-change-loading &);
-
-/* Use the data attribute for dark mode  */
-@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
-
-/* Make LiveView wrapper divs transparent for layout */
-[data-phx-session], [data-phx-teleported-src] { display: contents }
-
-/* KaTeX math rendering */
-@import "katex/dist/katex.min.css";
-
-/* Screenplay editor styles */
-@import "./screenplay.css";
-
-/* Leaflet.js core styles (PNG-free copy, see leaflet.css header) */
-@import "./leaflet.css";
-
-/* Leaflet container background — theme-aware for dark/light mode */
-.leaflet-container {
-  background: var(--color-base-100, #e5e7eb);
-}
-
-/* Story player styles */
-@import "./player.css";
-
-/* Landing page styles */
-@import "./landing.css";
-
-/* Debug panel tabs — browser-style lifted tabs */
-.debug-panel-tabs {
-  display: flex;
-  align-items: flex-end;
-  padding: 4px 8px 0;
-  background: var(--color-base-100);
-}
-
-.debug-panel-tab {
-  padding: 5px 14px;
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-  border-radius: 0.625rem 0.625rem 0 0;
-  border: 1px solid transparent;
-  border-bottom: none;
-  color: color-mix(in oklch, var(--color-base-content) 40%, transparent);
-  cursor: pointer;
-  user-select: none;
-  white-space: nowrap;
-  transition: color 150ms;
-
-  &:hover {
-    color: color-mix(in oklch, var(--color-base-content) 70%, transparent);
-  }
-
-  &.active {
-    background: var(--color-base-200);
-    border-color: var(--color-base-300);
-    color: var(--color-base-content);
-    font-weight: 500;
-    margin-bottom: -1px;
-    position: relative;
-    z-index: 1;
-  }
-}
-
-/* Tooltip positioned below with left-aligned bubble (arrow at button center,
-   bubble extends right). Use when button is near the left viewport edge. */
-/* Delayed tooltip — shows after 600ms hover instead of immediately */
-.tooltip-delay {
-  &::before,
-  &::after {
-    transition-delay: 800ms;
-  }
-  &:not(:hover)::before,
-  &:not(:hover)::after {
-    transition-delay: 0ms;
-  }
-}
-
-.tooltip-bottom-start {
-  &[data-tip]::before {
-    transform: translateY(var(--tt-pos, -.25rem));
-    inset: var(--tt-off) auto auto 0;
-  }
-  &::after {
-    transform: translateX(-50%) translateY(var(--tt-pos, -.25rem)) rotate(180deg);
-    inset: var(--tt-tail) auto auto 0.9rem;
-  }
-}
-
-/* Shared surface for floating toolbars, sidebars, and panels.
-   Single source of truth — change here to update all UI chrome.
-   .right-sidebar inherits these tokens at xl: breakpoint (see below). */
-.surface-panel {
-  @apply bg-base-200/90 backdrop-blur border border-base-300 rounded-xl shadow-sm;
-}
-
-:root:has([data-theme="dark"]) .surface-panel,
-[data-theme="dark"] .surface-panel {
-  background-color: oklch(from var(--color-base-100) calc(l + 0.08) c h / 0.92);
-  @apply border-base-content/10;
-}
-
-.dashboard-table-head > tr > th {
-  background-color: color-mix(in oklab, var(--color-base-200) 90%, var(--color-base-100));
-}
-
-:root:has([data-theme="dark"]) .dashboard-table-head > tr > th,
-[data-theme="dark"] .dashboard-table-head > tr > th {
-  background-color: color-mix(in oklab, var(--color-base-content) 7%, var(--color-base-100));
-}
-
-/* Right sidebars — hidden by default, shown when hook sets data-panel-open.
-   The attribute lives outside the template so LiveView patches can't touch it. */
+/* Hide RightSidebar hook panels until opened */
 [phx-hook="RightSidebar"]:not([data-panel-open]) {
-  display: none !important;
+  display: none;
 }
 
-/* Right sidebar: mobile full-screen, desktop inherits surface-panel styling.
-   Uses the same surface-panel tokens so all floating chrome stays in sync. */
-@media (min-width: 1280px) {
+/* Sidebar positioning and widths */
+@media (min-width: 768px) {
+  .left-sidebar {
+    width: 18rem;
+    right: auto;
+  }
+
   .right-sidebar {
-    width: var(--rs-width, 320px);
-    @apply bg-base-200/90 backdrop-blur border border-base-300 rounded-xl shadow-sm;
-  }
-
-  :root:has([data-theme="dark"]) .right-sidebar,
-  [data-theme="dark"] .right-sidebar {
-    background-color: oklch(from var(--color-base-100) calc(l + 0.08) c h / 0.92);
-    @apply border-base-content/10;
+    width: 24rem;
+    left: auto;
   }
 }
 
-/* Scroll-collapsible toolbar text (project name fades out on scroll) */
-.toolbar-collapsible {
-  max-width: 200px;
-  opacity: 1;
-  transition: max-width 550ms ease-in-out, opacity 400ms ease-in-out;
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-[data-scrolled] .toolbar-collapsible {
-  max-width: 0;
-  opacity: 0;
-  transition: max-width 550ms ease-in-out, opacity 450ms ease-in-out 80ms;
-}
-
-/* This file is for your main application CSS */
-
-/* Drag-and-drop styles */
-
-/* Element being dragged — stays in place, dimmed */
-.dnd-dragging {
-  opacity: 0.35;
-}
-
-/* Drop position indicator line — positioned via JS, no ghost placeholder */
-body.dnd-active [data-toolbar] {
-  opacity: 0 !important;
-  pointer-events: none !important;
-}
-
-.dnd-dropped {
-  opacity: 0;
-  animation: dnd-appear 120ms 200ms ease forwards;
-}
-
-@keyframes dnd-appear {
-  to { opacity: 1; }
-}
-
-.dnd-indicator {
-  display: none;
-  position: fixed;
-  pointer-events: none;
-  background: color-mix(in srgb, var(--color-primary) 45%, transparent);
-  border-radius: 2px;
-  z-index: 9999;
-}
-
-/* Drop target highlight — item will receive the dragged element as child */
-.dnd-drop-target {
-  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
-  outline: 2px solid color-mix(in srgb, var(--color-primary) 40%, transparent);
-  outline-offset: -2px;
-  border-radius: 0.5rem;
-}
-
-/* Drag handle — disable browser touch-scroll so pointer events fire reliably */
-.drag-handle {
-  touch-action: none;
-}
-
-/* Tree items — disable browser touch-scroll for drag */
-.cursor-grab {
-  touch-action: none;
-}
-
-/* Block rendering containment — isolates reflow per block so browser
-   doesn't recalculate styles for all 1700+ elements on a single block change.
-   Note: using layout+style only (NOT paint) to avoid clipping DaisyUI dropdowns. */
-.block-wrapper,
-.column-group {
-  contain: layout style;
-}
-
-/* Side columns in block-wrapper: visual padding */
-.column-dropzone {
-  min-height: 1rem;
-}
-
-/* TipTap Editor styles */
-.tiptap-content {
-  min-height: 100px;
-}
-
-.tiptap-content .ProseMirror {
-  outline: none;
-}
-
-.tiptap-content .ProseMirror p {
-  margin: 0.5em 0;
-}
-
-.tiptap-content .ProseMirror h1 {
-  font-size: 1.875rem;
-  font-weight: 700;
-  margin: 1em 0 0.5em;
-}
-
-.tiptap-content .ProseMirror h2 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin: 0.75em 0 0.5em;
-}
-
-.tiptap-content .ProseMirror h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 0.75em 0 0.5em;
-}
-
-.tiptap-content .ProseMirror ul,
-.tiptap-content .ProseMirror ol {
-  padding-left: 1.5em;
-  margin: 0.5em 0;
-}
-
-.tiptap-content .ProseMirror ul {
-  list-style-type: disc;
-}
-
-.tiptap-content .ProseMirror ol {
-  list-style-type: decimal;
-}
-
-.tiptap-content .ProseMirror blockquote {
-  border-left: 3px solid color-mix(in oklch, var(--color-base-content) 20%, transparent);
-  padding-left: 1em;
-  margin: 0.5em 0;
-  font-style: italic;
-}
-
-.tiptap-content .ProseMirror hr {
-  border: none;
-  border-top: 1px solid color-mix(in oklch, var(--color-base-content) 20%, transparent);
-  margin: 1em 0;
-}
-
-.tiptap-content .ProseMirror code {
-  background: var(--color-base-200);
-  padding: 0.2em 0.4em;
-  border-radius: 0.25em;
-  font-family: monospace;
-}
-
-.tiptap-content .ProseMirror pre {
-  background: var(--color-base-200);
-  padding: 0.75em 1em;
-  border-radius: 0.5em;
-  overflow-x: auto;
-}
-
-.tiptap-content .ProseMirror pre code {
-  background: none;
-  padding: 0;
-}
-
-/* Block input styles - matches daisyUI input styling */
-.block-input {
-  border-width: 1px;
-  border-color: color-mix(in oklch, var(--color-base-content) 20%, transparent);
-  border-radius: var(--radius-field, 0.5rem);
-  background-color: var(--color-base-100);
-}
-
-.block-input:hover {
-  border-color: color-mix(in oklch, var(--color-base-content) 40%, transparent);
-}
-
-.block-input:focus,
-.block-input:focus-within {
-  border-color: color-mix(in oklch, var(--color-base-content) 20%, transparent);
-  outline-style: solid;
-  outline-width: 2px;
-  outline-offset: 2px;
-  outline-color: color-mix(in oklch, var(--color-base-content) 20%, transparent);
-}
-
-/* TipTap editor container - matches daisyUI input */
-.tiptap-content .ProseMirror {
-  border-width: 1px;
-  border-color: color-mix(in oklch, var(--color-base-content) 20%, transparent);
-  border-radius: var(--radius-field, 0.5rem);
-  background-color: var(--color-base-100);
-  padding: 0.75rem;
-  min-height: 100px;
-}
-
-.tiptap-content .ProseMirror:hover {
-  border-color: color-mix(in oklch, var(--color-base-content) 40%, transparent);
-}
-
-.tiptap-content .ProseMirror:focus {
-  border-color: color-mix(in oklch, var(--color-base-content) 20%, transparent);
-  outline-style: solid;
-  outline-width: 2px;
-  outline-offset: 2px;
-  outline-color: color-mix(in oklch, var(--color-base-content) 20%, transparent);
-}
-
-/* TipTap toolbar - matches daisyUI input border */
-.tiptap-toolbar {
-  border-width: 1px;
-  border-color: color-mix(in oklch, var(--color-base-content) 20%, transparent);
-  border-radius: var(--radius-field, 0.5rem);
-  background-color: var(--color-base-100);
-}
-
-/* Screenplay Editor Styles - Document/Paper feel */
-.tiptap-screenplay .ProseMirror {
-  border: none;
-  border-radius: 0;
-  background-color: transparent;
-  padding: 0;
-  min-height: 200px;
-  font-size: 1.125rem;
-  line-height: 1.75;
-}
-
-.tiptap-screenplay .ProseMirror:hover,
-.tiptap-screenplay .ProseMirror:focus {
-  border: none;
-  outline: none;
-}
-
-.tiptap-screenplay .ProseMirror p.is-editor-empty:first-child::before {
-  color: color-mix(in oklch, var(--color-base-content) 30%, transparent);
-  content: attr(data-placeholder);
-  float: left;
-  height: 0;
-  pointer-events: none;
-}
-
-/* Screenplay speaker selector - invisible border, shows name */
-.screenplay-speaker-select {
-  min-width: 200px;
-  padding: 0.5rem 1rem;
-  font-size: 1.125rem;
-  letter-spacing: 0.1em;
-}
-
-.screenplay-speaker-select:hover {
-  color: var(--color-primary);
-}
-
-/* Screenplay input - no visible borders */
-.screenplay-input {
-  padding: 0.5rem;
-  font-size: 1rem;
-}
-
-/* Instruction Builder - Sentence-Flow UI */
-.instruction-builder .assignment-row {
-  display: flex;
-  align-items: baseline;
-  gap: 0.25rem;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid color-mix(in oklch, var(--color-base-300) 30%, transparent);
-}
-
-.instruction-builder .assignment-row:hover .sp-row-action {
-  opacity: 1;
-}
-
-.instruction-builder .sentence-text,
-.condition-builder .sentence-text {
-  font-size: 0.875rem;
-  color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
-  user-select: none;
-  white-space: nowrap;
-}
-
-.instruction-builder .sentence-slot,
-.condition-builder .sentence-slot {
-  font-size: 0.875rem;
-  color: var(--color-base-content);
-  font-weight: 500;
-  background: transparent;
-  border: none;
-  border-bottom: 1px dashed color-mix(in oklch, var(--color-base-content) 20%, transparent);
-  outline: none;
-  min-width: 3ch;
-  padding: 0 0.125rem;
-}
-
-.instruction-builder .sentence-slot:focus,
-.condition-builder .sentence-slot:focus {
-  border-bottom-style: solid;
-  border-bottom-color: var(--color-primary);
-}
-
-.instruction-builder .sentence-slot.filled,
-.condition-builder .sentence-slot.filled {
-  border-bottom-style: solid;
-  border-bottom-color: color-mix(in oklch, var(--color-base-content) 10%, transparent);
-}
-
-.instruction-builder .sentence-slot::placeholder,
-.condition-builder .sentence-slot::placeholder {
-  color: color-mix(in oklch, var(--color-base-content) 25%, transparent);
-  font-weight: 400;
-  font-style: italic;
-}
-
-/* Table column resize handle — wider hit target */
-[data-resize-handle]::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: -3px;
-  width: 7px;
-  height: 100%;
-}
-
-/* Column dropdown — sliding sub-panels (Notion-style) */
-.col-dropdown-panel {
-  display: none;
-}
-
-.col-dropdown-panel[data-active] {
-  display: block;
-  animation: col-panel-in 0.15s ease;
-}
-
-@keyframes col-panel-in {
-  from { opacity: 0; transform: translateX(8px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-/* Combobox dropdown — appended to body, NOT scoped to .instruction-builder */
-.combobox-dropdown {
-  z-index: 9999;
-  max-height: 12rem;
-  overflow-y: auto;
-  background-color: var(--color-base-100);
-  border: 1px solid var(--color-base-300);
-  border-radius: 0.5rem;
-  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-}
-
-.combobox-option {
-  padding: 0.375rem 0.75rem;
-  font-size: 0.875rem;
-  cursor: pointer;
-}
-
-.combobox-option:hover {
-  background-color: var(--color-base-200);
-}
-
-.combobox-option.highlighted {
-  background-color: color-mix(in oklch, var(--color-primary) 10%, transparent);
-  color: var(--color-primary);
-}
-
-.combobox-group-header {
-  padding: 0.25rem 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: color-mix(in oklch, var(--color-base-content) 40%, transparent);
-  position: sticky;
-  top: 0;
-  background-color: var(--color-base-100);
-}
-
-/* Button-triggered searchable dropdown (speaker selector, etc.) — appended to body */
-.searchable-dropdown {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background-color: var(--color-base-100);
-  border: 1px solid var(--color-base-300);
-  border-radius: 0.5rem;
-  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-}
-
-.searchable-dropdown__search {
-  padding: 6px 8px;
-  border: none;
-  border-bottom: 1px solid var(--color-base-300);
-  background: transparent;
-  color: var(--color-base-content);
-  outline: none;
-  font-size: 0.875rem;
-  flex-shrink: 0;
-}
-
-.searchable-dropdown__list {
-  overflow-y: auto;
-  max-height: 200px;
-  padding: 4px 0;
-}
-
-/* Operator selector — clickable verb that opens a dropdown of operators */
-.instruction-builder .operator-selector-wrapper {
-  position: relative;
-  display: inline-block;
-}
-
-.instruction-builder .operator-selector {
-  font-size: 0.875rem;
-  color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
-  cursor: pointer;
-  background: none;
-  border: none;
-  border-bottom: 1px dashed color-mix(in oklch, var(--color-base-content) 20%, transparent);
-  padding: 0 0.125rem;
-  font-weight: 500;
-  user-select: none;
-  white-space: nowrap;
-}
-
-.instruction-builder .operator-selector:hover {
-  color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
-}
-
-.operator-dropdown {
-  background-color: var(--color-base-100);
-  border: 1px solid var(--color-base-300);
-  border-radius: 0.375rem;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-  overflow: hidden;
-}
-
-.operator-option {
-  padding: 0.375rem 0.75rem;
-  font-size: 0.8125rem;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.operator-option:hover {
-  background-color: var(--color-base-200);
-}
-
-.operator-option.active {
-  color: var(--color-primary);
-  font-weight: 500;
-}
-
-
-/* Dialogue screenplay editor — form controls */
-
-.dialogue-sp-select {
-  font-family: inherit;
-  font-size: inherit;
-  text-transform: uppercase;
-  font-weight: bold;
-  background: transparent;
-  border: none;
-  outline: none;
-  cursor: pointer;
-  appearance: none;
-  padding: 2px 4px;
-  color: inherit;
-  width: fit-content;
-}
-
-.dialogue-sp-select:hover {
-  color: var(--color-primary);
-}
-
-.sp-character-ref .dialogue-sp-select {
-  padding: 2px 6px;
-  border-radius: 4px;
-  background-color: color-mix(in oklch, var(--color-primary) 20%, transparent);
-}
-
-.dialogue-sp-input {
-  font-family: inherit;
-  font-size: inherit;
-  font-style: italic;
-  width: 100%;
-  background: transparent;
-  border: none;
-  outline: none;
-  padding: 2px 4px;
-  color: inherit;
-  opacity: 0.6;
-}
-
-.dialogue-sp-input::placeholder {
-  color: color-mix(in oklch, var(--color-base-content) 30%, transparent);
-  opacity: 1;
-}
-
-/* Variable references (inline code style) */
-.variable-ref {
-  font-family: monospace;
-  font-size: 0.85em;
-  background: color-mix(in oklch, var(--color-info) 15%, transparent);
-  color: var(--color-info);
-  padding: 0.1em 0.4em;
-  border-radius: 0.25rem;
-  white-space: nowrap;
-  cursor: default;
-  user-select: none;
-}
-
-.variable-ref-default {
-  color: var(--color-base-content);
-  opacity: 0.4;
-  font-family: monospace;
-  font-size: 0.85em;
-  margin-left: 0.25em;
-}
-
-/* TipTap in dialogue screenplay mode */
-.tiptap-dialogue-screenplay .ProseMirror {
-  border: none;
-  background: transparent;
-  padding: 0;
-  min-height: 200px;
-  font-family: inherit;
-  font-size: inherit;
-  line-height: inherit;
-  outline: none;
-}
-
-.tiptap-dialogue-screenplay .ProseMirror:hover,
-.tiptap-dialogue-screenplay .ProseMirror:focus {
-  border: none;
-  outline: none;
-}
-
-.tiptap-dialogue-screenplay .ProseMirror p {
-  margin: 0;
-}
-
-/* Condition Builder - Sentence-Flow UI (mirrors instruction builder) */
-.condition-builder .condition-rule-row {
-  display: flex;
-  align-items: baseline;
-  gap: 0.25rem;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid color-mix(in oklch, var(--color-base-300) 30%, transparent);
-}
-
-/* Map Canvas - Grid placeholder (theme-aware via CSS variables) */
-.map-grid-fill {
-  fill: var(--color-base-200) !important;
-  stroke: var(--color-base-300) !important;
-}
-
-.map-grid-line {
-  stroke: var(--color-base-300) !important;
-  stroke-opacity: 0.5 !important;
-}
-
-/* Map Canvas - Pin markers */
-.map-pin-marker {
-  background: none !important;
-  border: none !important;
-}
-
-.map-pin-selected .map-pin-marker > div,
-.map-pin-selected > div {
-  outline: 3px solid var(--color-primary, #3b82f6);
-  outline-offset: 2px;
-}
-
-/* Map Canvas - Zone label at centroid */
-.map-zone-label {
-  pointer-events: none;
-  user-select: none;
-  background: none !important;
-  border: none !important;
-}
-.map-zone-label span {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  white-space: nowrap;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-base-100, white);
-  text-shadow: 0 1px 3px rgba(0,0,0,0.8), 0 0 6px rgba(0,0,0,0.5);
-  transform: translateX(-50%);
-}
-.map-zone-label span svg {
-  flex-shrink: 0;
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
-}
-
-.map-annotation-marker {
-  background: none !important;
-  border: none !important;
-  width: fit-content !important;
-  height: fit-content !important;
-}
-
-/* Outer label wrapper — scales with the map via CSS custom property.
-   zoom (not transform: scale) so the layout box scales too — this makes
-   the parent fit-content wrapper, hit areas, and getBoundingClientRect
-   all match the visual size automatically. */
-.map-annotation-label {
-  position: relative;
-  cursor: grab;
-  display: inline-block;
-  zoom: var(--annotation-scale, 1);
-}
-
-/* Color fill (absolutely covers parent, clipped to post-it polygon) */
-.map-annotation-bg {
-  position: absolute;
-  inset: 0;
-  opacity: 0.75;
-  background: var(--ann-color, #fbbf24);
-  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
-}
-
-/* Text layer */
-.map-annotation-text {
-  position: relative;
-  font-weight: 600;
-  line-height: 1.3;
-  white-space: pre-wrap;
-  color: var(--color-base-content, #111827);
-}
-
-/* Fold triangle (top-right corner) */
-.map-annotation-fold {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 12px;
-  height: 12px;
-  background: var(--ann-color, #fbbf24);
-  clip-path: polygon(0 0, 100% 100%, 0 100%);
-}
-
-/* Size variants — note dimensions + text */
-.map-annotation-sm {
-  width: 140px;
-  min-height: 100px;
-}
-.map-annotation-sm .map-annotation-text {
-  font-size: 11px;
-  padding: 2px calc(6px + 12px) 2px 6px;
-}
-.map-annotation-md {
-  width: 200px;
-  min-height: 150px;
-}
-.map-annotation-md .map-annotation-text {
-  font-size: 14px;
-  padding: 4px calc(8px + 12px) 4px 8px;
-}
-.map-annotation-lg {
-  width: 260px;
-  min-height: 190px;
-}
-.map-annotation-lg .map-annotation-text {
-  font-size: 16px;
-  padding: 5px calc(10px + 12px) 5px 10px;
-}
-
-.map-annotation-selected .map-annotation-label {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
-/* Map Canvas - Connection drawing pin states */
-.map-pin-connectable .map-pin-marker > div,
-.map-pin-connectable > div {
-  box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-primary, #3b82f6) 40%, transparent),
-              0 2px 6px rgba(0, 0, 0, 0.3);
-  transition: box-shadow 0.15s ease;
-}
-
-.map-pin-source .map-pin-marker > div,
-.map-pin-source > div {
-  box-shadow: 0 0 0 3px var(--color-primary, #3b82f6),
-              0 0 12px color-mix(in oklch, var(--color-primary, #3b82f6) 50%, transparent);
-}
-
-.map-pin-target .map-pin-marker > div,
-.map-pin-target > div {
-  box-shadow: 0 0 0 3px var(--color-success, #22c55e),
-              0 0 8px color-mix(in oklch, var(--color-success, #22c55e) 40%, transparent);
-}
-
-/* Map Canvas - Search focus flash animation */
-.map-element-flash {
-  animation: map-element-flash-anim 1.5s ease-out;
-}
-
-@keyframes map-element-flash-anim {
-  0%   { filter: brightness(1.6) drop-shadow(0 0 8px var(--color-primary, #3b82f6)); }
-  25%  { filter: brightness(1); }
-  50%  { filter: brightness(1.6) drop-shadow(0 0 8px var(--color-primary, #3b82f6)); }
-  75%  { filter: brightness(1); }
-  100% { filter: brightness(1); }
-}
-
-/* Map Canvas - Reset zoom button */
-.map-minimap-toggle {
-  display: flex;
+/* ================================================================
+   Focus Layout — floating toolbar and panel chrome
+   ================================================================ */
+
+/* Frosted glass panel shared by all floating UI chrome */
+.surface-panel {
+  background-color: hsl(var(--surface) / 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+/* Toolbar button — ghost style with subtle hover */
+.toolbar-btn {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  border: 1px solid var(--color-base-300, #d1d5db);
-  background: var(--color-base-100, #fff);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+  color: hsl(var(--foreground));
+  background: transparent;
+  border: none;
   cursor: pointer;
-  color: var(--color-base-content, #1f2937);
-  opacity: 0.7;
-  transition: opacity 0.15s;
+  transition: background-color 0.15s ease;
+  white-space: nowrap;
 }
 
-.map-minimap-toggle:hover {
-  opacity: 1;
+.toolbar-btn:hover {
+  background-color: hsl(var(--accent));
 }
 
-/* Ruler measurement labels */
-.map-ruler-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-warning, #f97316);
-  background: color-mix(in oklch, var(--color-base-100, #fff) 90%, transparent);
-  border: 1px solid var(--color-warning, #f97316);
-  border-radius: 4px;
-  padding: 1px 6px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
-}
-
-/* ===== Map Floating Toolbar ===== */
-
-.floating-toolbar {
-  @apply flex items-center gap-0.5 p-1 bg-base-200/90 backdrop-blur border border-base-300 rounded-xl shadow-lg whitespace-nowrap text-base-content text-sm;
-}
-
-.canvas-toolbar {
+.toolbar-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
   pointer-events: none;
-  opacity: 0;
-  transform: translateY(4px);
-  transition: opacity 0.12s ease, transform 0.12s ease;
-}
-
-.canvas-toolbar.toolbar-visible {
-  pointer-events: auto;
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.toolbar-btn {
-  @apply btn btn-ghost btn-sm px-2;
-}
-
-/* @apply doesn't copy @supports blocks from DaisyUI's btn-ghost, so the
-   subtle color-mix hover is lost. Re-declare it here explicitly. */
-@supports (color: color-mix(in lab, red, red)) {
-  .toolbar-btn:hover {
-    background-color: color-mix(in oklab, var(--color-base-content) 5%, transparent);
-  }
-}
-
-.toolbar-btn-active {
-  @apply btn-active;
-}
-
-.toolbar-separator {
-  @apply inline-block w-px h-4.5 mx-0.5 bg-base-content/15;
 }
 
 .toolbar-input {
-  @apply input input-xs bg-base-100 text-base-content text-xs border border-base-300 rounded-md;
-  field-sizing: content;
-  min-width: 3rem;
-  max-width: 12rem;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 0.125rem 0.25rem;
+  outline: none;
+  font-family: inherit;
+  color: hsl(var(--foreground));
+  max-width: 120px;
 }
 
 .toolbar-input:focus {
-  @apply border-primary outline-none;
+  border-color: hsl(var(--primary));
 }
 
-.toolbar-input::placeholder {
-  @apply text-base-content/40;
+/* Flow node navigation highlight pulse */
+.nav-highlight {
+  animation: nav-pulse 0.6s ease-in-out 4;
 }
 
-/* Toolbar popovers use the app's light theme (base-* vars) */
-.toolbar-popover {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  min-width: 160px;
-  background-color: var(--color-base-100);
-  border: 1px solid var(--color-base-300);
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-  white-space: normal;
-  z-index: 10;
-}
+@keyframes nav-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 3px var(--highlight-color),
+      0 0 12px 2px var(--highlight-color);
+  }
 
-/* Color swatches */
-.color-swatch {
-  display: inline-block;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 1px solid transparent;
-  box-shadow: 0 0 1px 1px var(--color-base-content);
-  cursor: pointer;
-  transition: transform 0.1s, border-color 0.1s;
-  flex-shrink: 0;
-}
-
-@supports (color: color-mix(in lab, red, red)) {
-  .color-swatch {
-    box-shadow: 0 0 1px 1px color-mix(in oklch, var(--color-base-content) 20%, transparent);
+  50% {
+    box-shadow:
+      0 0 0 6px color-mix(in srgb, var(--highlight-color) 50%, transparent),
+      0 0 20px 4px color-mix(in srgb, var(--highlight-color) 30%, transparent);
   }
 }
 
-.color-swatch:hover:not(:disabled) {
-  transform: scale(1.15);
+/*
+ * Flow debug overlays — applied by services/debug.ts to [data-testid="node"]
+ * during a debug session.
+ */
+[data-testid="node"].debug-current {
+  animation: debug-pulse 1.5s ease-in-out infinite;
+  border-radius: 0.5rem;
+}
+[data-testid="node"].debug-visited {
+  box-shadow: 0 0 0 2px color-mix(in srgb, #10b981 45%, transparent); /* emerald-500 */
+  border-radius: 0.5rem;
+}
+[data-testid="node"].debug-waiting {
+  animation: debug-pulse-warning 1.5s ease-in-out infinite;
+  border-radius: 0.5rem;
+}
+[data-testid="node"].debug-error {
+  box-shadow: 0 0 0 3px hsl(var(--destructive) / 0.6);
+  border-radius: 0.5rem;
+}
+[data-testid="node"].debug-breakpoint {
+  outline: 2px solid color-mix(in srgb, #f97316 75%, transparent); /* orange-500 */
+  outline-offset: 3px;
 }
 
-.color-swatch-active {
-  border-color: var(--color-primary, #3b82f6);
-  box-shadow: 0 0 0 1px var(--color-base-100), 0 0 0 3px var(--color-primary, #3b82f6);
+@keyframes debug-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.55);
+  }
+  50% {
+    box-shadow:
+      0 0 0 6px hsl(var(--primary) / 0.18),
+      0 0 16px hsl(var(--primary) / 0.12);
+  }
 }
 
-.color-swatch-rainbow {
-  background:
-    radial-gradient(50% 50% at 50% 50%, #ffffff 0%, transparent 100%),
-    conic-gradient(from 0deg at 50% 50%, red, #ffa800 47.73deg, #ff0 79.56deg, #0f0 121.33deg, #0ff 180.99deg, #00f 238.67deg, #f0f 294.36deg, red 360deg),
-    #c4c4c4 !important;
-  border: none !important;
-  cursor: pointer;
+@keyframes debug-pulse-warning {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px color-mix(in srgb, #f59e0b 55%, transparent); /* amber-500 */
+  }
+  50% {
+    box-shadow:
+      0 0 0 6px color-mix(in srgb, #f59e0b 18%, transparent),
+      0 0 16px color-mix(in srgb, #f59e0b 12%, transparent);
+  }
 }
 
-.color-swatch:disabled {
-  opacity: 0.3;
+@keyframes debug-flow {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+
+/* Compact text input for floating toolbar (label fields) */
+.toolbar-input {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  padding: 0.125rem 0.375rem;
+  font-size: 0.75rem;
+  color: hsl(var(--foreground));
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.toolbar-input:focus {
+  border-color: hsl(var(--ring));
+}
+
+.toolbar-input::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+.toolbar-input:disabled {
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
-/* ===== Response Advanced section chevron ===== */
-
-details[open] > summary .details-chevron {
-  transform: rotate(90deg);
-}
-
-/* ===== Flow Canvas ===== */
-
-/* Prevent text selection when dragging nodes across the canvas.
-   user-select: none cascades through Shadow DOM boundaries in modern browsers,
-   so this covers text inside Rete.js web component nodes.
-   <input> and <textarea> elements remain selectable regardless of this rule. */
-#flow-canvas {
-  user-select: none;
-}
-
-/* ===== Map Dock ===== */
+/* ================================================================
+   Dock — floating bottom tool palette for canvas editors
+   ================================================================ */
 
 .dock-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 10px;
   cursor: pointer;
-  transition: background-color 0.15s, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-  color: var(--color-base-content, #1f2937);
+  transition:
+    background-color 0.15s,
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  color: hsl(var(--foreground));
   border: none;
   background: transparent;
 }
 
 .dock-btn:hover {
-  background-color: var(--color-base-200, #f3f4f6);
+  background-color: hsl(var(--accent));
 }
 
 .dock-btn-active {
-  background-color: var(--color-primary, #7c3aed) !important;
-  color: var(--color-primary-content, #fff) !important;
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
 }
 
 /* Hover bounce animation — items pop up out of the dock */
@@ -1210,8 +350,8 @@ details[open] > summary .details-chevron {
   transform: translateX(-50%);
   width: 180px;
   padding: 10px 12px;
-  background: var(--color-base-100, #fff);
-  border: 1px solid var(--color-base-300, #d1d5db);
+  background: hsl(var(--popover));
+  border: 1px solid hsl(var(--border));
   border-radius: 12px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   pointer-events: none;
@@ -1224,185 +364,310 @@ details[open] > summary .details-chevron {
   opacity: 1;
 }
 
-/* Hide tooltip when dropdown is open (for items with both) */
+/* Hide tooltip when dropdown/popover is open */
 .dock-item:focus-within .dock-tooltip {
   opacity: 0;
   transition-delay: 0s;
 }
 
-/* ===== Documentation Content ===== */
+/* ================================================================
+   Sentence-Flow UI — shared by ConditionBuilder & InstructionBuilder
+   Uses shadcn CSS variables (--color-foreground, --color-border, etc.)
+   ================================================================ */
 
-.docs-content {
-  font-size: 1rem;
-  line-height: 1.85;
-  color: var(--color-base-content);
+/* --- Assignment row (instruction) --- */
+.instruction-builder .assignment-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid hsl(var(--border) / 0.3);
 }
 
-.docs-content > * + * {
-  margin-top: 1.5em;
+.instruction-builder .assignment-row:hover .sp-row-action {
+  opacity: 1;
 }
 
-.docs-content h2 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 1.3;
-  margin-top: 3rem;
-  margin-bottom: 0.75rem;
+/* --- Condition rule row --- */
+.condition-builder .condition-rule-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid hsl(var(--border) / 0.3);
 }
 
-.docs-content h3 {
-  font-size: 1.2rem;
-  font-weight: 600;
-  line-height: 1.4;
-  margin-top: 2.25rem;
-  margin-bottom: 0.5rem;
+.condition-builder .condition-rule-row:hover .sp-row-action {
+  opacity: 1;
 }
 
-.docs-content p {
-  margin-top: 1em;
-  margin-bottom: 1em;
+/* --- Static sentence text (connectors: "to", "·", "from") --- */
+.instruction-builder .sentence-text,
+.condition-builder .sentence-text {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  user-select: none;
+  white-space: nowrap;
 }
 
-.docs-content hr {
+/* --- Interactive sentence slot (sheet, variable, operator, value) --- */
+.instruction-builder .sentence-slot,
+.condition-builder .sentence-slot {
+  font-size: 0.875rem;
+  color: hsl(var(--foreground));
+  font-weight: 500;
+  background: transparent;
   border: none;
-  border-top: 1px solid color-mix(in oklch, var(--color-base-content) 10%, transparent);
-  margin: 2.5rem 0;
+  border-bottom: 1px dashed hsl(var(--foreground) / 0.2);
+  outline: none;
+  min-width: 3ch;
+  padding: 0 0.125rem;
+  cursor: pointer;
 }
 
-.docs-content ul,
-.docs-content ol {
-  padding-left: 1.5em;
-  margin: 1.25em 0;
+.instruction-builder .sentence-slot:focus,
+.condition-builder .sentence-slot:focus {
+  border-bottom-style: solid;
+  border-bottom-color: hsl(var(--primary));
 }
 
-.docs-content ul {
-  list-style-type: disc;
+.instruction-builder .sentence-slot.filled,
+.condition-builder .sentence-slot.filled {
+  border-bottom-style: solid;
+  border-bottom-color: hsl(var(--foreground) / 0.1);
 }
 
-.docs-content ol {
-  list-style-type: decimal;
-}
-
-.docs-content li {
-  margin: 0.6em 0;
-  line-height: 1.75;
-}
-
-.docs-content li > ul,
-.docs-content li > ol {
-  margin: 0.25em 0;
-}
-
-.docs-content strong {
-  font-weight: 600;
-}
-
-.docs-content a {
-  color: var(--color-primary);
-  text-decoration: none;
-}
-
-.docs-content a:hover {
-  text-decoration: underline;
-}
-
-.docs-content blockquote {
-  border-left: 3px solid color-mix(in oklch, var(--color-base-content) 15%, transparent);
-  padding: 0.25em 0 0.25em 1.25em;
-  margin: 1.5em 0;
-  color: color-mix(in oklch, var(--color-base-content) 70%, transparent);
+.instruction-builder .sentence-slot::placeholder,
+.condition-builder .sentence-slot::placeholder {
+  color: hsl(var(--muted-foreground) / 0.6);
+  font-weight: 400;
   font-style: italic;
 }
 
-.docs-content code {
-  background: var(--color-base-200);
-  padding: 0.15em 0.4em;
-  border-radius: 0.3em;
-  font-size: 0.875em;
-  font-family: monospace;
+.instruction-builder .sentence-slot:disabled,
+.condition-builder .sentence-slot:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.docs-content pre {
-  background: var(--color-base-200);
-  padding: 1em 1.25em;
-  border-radius: 0.5em;
-  overflow-x: auto;
-  margin: 1.5em 0;
+/* --- Operator selector (clickable verb: "Set", "Add", etc.) --- */
+.instruction-builder .operator-selector {
   font-size: 0.875rem;
-  line-height: 1.7;
-}
-
-.docs-content pre code {
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
   background: none;
-  padding: 0;
-  font-size: inherit;
+  border: none;
+  border-bottom: 1px dashed hsl(var(--foreground) / 0.2);
+  padding: 0 0.125rem;
+  font-weight: 500;
+  user-select: none;
+  white-space: nowrap;
 }
 
-.docs-content table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 1.5em 0;
-  font-size: 0.925rem;
+.instruction-builder .operator-selector:hover {
+  color: hsl(var(--primary));
+  border-bottom-color: hsl(var(--primary));
 }
 
-.docs-content th {
-  text-align: left;
-  font-weight: 600;
-  padding: 0.6em 1em;
-  border-bottom: 2px solid color-mix(in oklch, var(--color-base-content) 12%, transparent);
+/* --- Operator dropdown (inside popover) --- */
+.operator-option {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
-.docs-content td {
-  padding: 0.6em 1em;
-  border-bottom: 1px solid color-mix(in oklch, var(--color-base-content) 8%, transparent);
+.operator-option:hover {
+  background-color: hsl(var(--accent));
 }
 
-.docs-content tr:last-child td {
-  border-bottom: none;
+.operator-option.active {
+  color: hsl(var(--primary));
+  font-weight: 500;
 }
 
-.docs-tool-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 0.5rem;
-  background: color-mix(in oklch, var(--color-accent) 15%, transparent);
-  color: var(--color-accent);
-  vertical-align: middle;
-  margin-right: 0.4rem;
-}
-
-.docs-tool-icon svg {
-  width: 1rem;
-  height: 1rem;
-}
-
-.docs-accent {
-  color: var(--color-accent);
-}
-
-.docs-image-placeholder {
+/* --- Row actions (remove button, value type toggle) --- */
+.sp-row-action {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  min-height: 12rem;
-  margin: 2rem 0;
-  padding: 1.5rem 2rem;
-  border: 2px dashed color-mix(in oklch, var(--color-base-content) 12%, transparent);
-  border-radius: 0.75rem;
-  background: color-mix(in oklch, var(--color-base-content) 3%, transparent);
-  color: color-mix(in oklch, var(--color-base-content) 35%, transparent);
-  font-size: 0.85rem;
-  text-align: center;
-  line-height: 1.5;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: none;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  border-radius: 4px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s ease;
 }
 
-.docs-image-placeholder svg {
-  width: 1.25rem;
-  height: 1.25rem;
-  flex-shrink: 0;
-  opacity: 0.5;
+.sp-row-action:hover {
+  color: hsl(var(--foreground));
+  background-color: hsl(var(--accent));
+}
+
+.sp-row-action-danger:hover {
+  color: hsl(var(--destructive));
+  background-color: hsl(var(--destructive) / 0.1);
+}
+
+/* Documentation Typography (Tailwind v4 manually styled) */
+@layer components {
+  .docs-content {
+    @apply text-base text-foreground leading-7;
+  }
+
+  .docs-content h1 {
+    @apply text-4xl font-bold tracking-tight mt-10 mb-6;
+  }
+
+  .docs-content h2 {
+    @apply text-2xl font-semibold tracking-tight mt-10 mb-4 border-b border-border pb-2;
+  }
+
+  .docs-content h3 {
+    @apply text-xl font-semibold tracking-tight mt-8 mb-4;
+  }
+
+  .docs-content p {
+    @apply leading-7 [&:not(:first-child)]:mt-6;
+  }
+
+  .docs-content ul {
+    @apply my-6 ml-6 list-disc [&>li]:mt-2;
+  }
+
+  .docs-content ol {
+    @apply my-6 ml-6 list-decimal [&>li]:mt-2;
+  }
+
+  .docs-content a {
+    @apply font-medium text-primary underline underline-offset-4 hover:text-primary/80;
+  }
+
+  .docs-content blockquote {
+    @apply mt-6 border-l-2 border-primary pl-6 italic text-muted-foreground;
+  }
+
+  .docs-content code {
+    @apply relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold;
+  }
+
+  .docs-content pre {
+    @apply mb-4 mt-6 overflow-x-auto rounded-lg border border-border bg-black py-4 px-4;
+  }
+
+  .docs-content pre code {
+    @apply rounded-none bg-transparent px-0 py-0 font-normal text-white;
+  }
+
+  .docs-content img {
+    @apply rounded-md border border-border mt-8 mb-4 max-w-full h-auto;
+  }
+
+  .docs-content strong,
+  .docs-content b {
+    @apply font-bold;
+  }
+
+  .docs-content table {
+    width: 100%;
+    margin: 1.5rem 0;
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.5rem;
+    overflow: hidden;
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  .docs-content th,
+  .docs-content td {
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid hsl(var(--border));
+    border-right: 1px solid hsl(var(--border));
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .docs-content th:last-child,
+  .docs-content td:last-child {
+    border-right: 0;
+  }
+
+  .docs-content tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .docs-content th {
+    background-color: hsl(var(--accent) / 0.55);
+    color: hsl(var(--foreground));
+    font-weight: 600;
+  }
+
+  .docs-content td {
+    color: hsl(var(--foreground) / 0.88);
+  }
+
+  .docs-content tbody tr:nth-child(even) {
+    background-color: hsl(var(--accent) / 0.16);
+  }
+
+  /* Custom docs inline utilities matching Shadcn theme */
+  .docs-tool-icon {
+    @apply inline-flex items-center justify-center size-7 rounded-lg bg-accent text-foreground align-middle mr-1.5;
+  }
+
+  .docs-tool-icon svg {
+    @apply size-4;
+  }
+
+  .docs-accent {
+    @apply text-primary font-medium;
+  }
+
+  .docs-alert {
+    display: flex;
+    gap: 0.75rem;
+    margin: 1.5rem 0;
+    padding: 0.875rem 1rem;
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.5rem;
+    background-color: hsl(var(--accent) / 0.35);
+    color: hsl(var(--foreground));
+  }
+
+  .docs-alert p {
+    margin: 0;
+    line-height: 1.6;
+  }
+
+  .docs-alert strong {
+    display: block;
+    margin-bottom: 0.125rem;
+  }
+
+  .docs-alert-warning {
+    border-color: hsl(38 92% 50% / 0.38);
+    background-color: hsl(38 92% 50% / 0.1);
+  }
+
+  .docs-alert-icon {
+    flex: 0 0 auto;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-top: 0.125rem;
+    color: hsl(38 92% 50%);
+  }
+
+  .docs-image-placeholder {
+    @apply flex items-center justify-center gap-2 min-h-48 my-8 px-8 py-6 border-2 border-dashed border-border rounded-xl bg-accent/20 text-muted-foreground text-sm text-center leading-relaxed;
+  }
+
+  .docs-image-placeholder svg {
+    @apply size-5 shrink-0 opacity-50;
+  }
 }

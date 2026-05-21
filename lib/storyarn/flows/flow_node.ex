@@ -2,9 +2,9 @@ defmodule Storyarn.Flows.FlowNode do
   @moduledoc """
   Schema for flow nodes.
 
-  A flow node represents a single element in the flow graph, such as a dialogue,
-  hub, condition, instruction, or jump. Each node has a type, position on the
-  canvas, and type-specific data.
+  A flow node represents a single element in the flow graph, such as a
+  dialogue, hub, condition, instruction, jump, or sequence container.
+  Each node has a type, position on the canvas, and type-specific data.
 
   ## Node Types
 
@@ -15,15 +15,31 @@ defmodule Storyarn.Flows.FlowNode do
   - `condition` - A branching point based on game state or variables
   - `instruction` - An action to execute (set variable, trigger event, etc.)
   - `jump` - A reference to another flow or node
-  - `slug_line` - A slug line establishing location and time context
+  - `subflow` - A reference to an embedded flow
+  - `annotation` - A pure-visual note on the canvas
+  - `sequence` - A container that groups child nodes; nests via `parent_id`
+
+  ## Hierarchy
+
+  `parent_id` is a self-FK: every flow_node can have a single parent, and
+  only `type='sequence'` rows are valid parents. This is enforced by a
+  DB trigger. Non-sequence nodes have `has_many :children`, which
+  conceptually only makes sense for sequence-type rows but is exposed
+  uniformly.
   """
   use Ecto.Schema
+
   import Ecto.Changeset
 
-  alias Storyarn.Flows.{Flow, FlowConnection}
+  alias Ecto.Association.NotLoaded
+  alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowConnection
+  alias Storyarn.Flows.SequenceConfig
+  alias Storyarn.Flows.SequenceTrack
+  alias Storyarn.Flows.SequenceVisualLayer
   alias Storyarn.Shared.TimeHelpers
 
-  @node_types ~w(annotation dialogue hub condition instruction jump entry exit subflow slug_line)
+  @node_types ~w(annotation dialogue hub condition instruction jump entry exit subflow sequence)
   @valid_sources ~w(manual screenplay_sync)
 
   @type node_type ::
@@ -36,7 +52,7 @@ defmodule Storyarn.Flows.FlowNode do
           | :entry
           | :exit
           | :subflow
-          | :slug_line
+          | :sequence
   @type t :: %__MODULE__{
           id: integer() | nil,
           type: String.t() | nil,
@@ -46,9 +62,15 @@ defmodule Storyarn.Flows.FlowNode do
           source: String.t(),
           deleted_at: DateTime.t() | nil,
           flow_id: integer() | nil,
-          flow: Flow.t() | Ecto.Association.NotLoaded.t() | nil,
-          outgoing_connections: [FlowConnection.t()] | Ecto.Association.NotLoaded.t(),
-          incoming_connections: [FlowConnection.t()] | Ecto.Association.NotLoaded.t(),
+          flow: Flow.t() | NotLoaded.t() | nil,
+          parent_id: integer() | nil,
+          parent: t() | NotLoaded.t() | nil,
+          children: [t()] | NotLoaded.t(),
+          sequence_config: SequenceConfig.t() | NotLoaded.t() | nil,
+          sequence_tracks: [SequenceTrack.t()] | NotLoaded.t(),
+          sequence_visual_layers: [SequenceVisualLayer.t()] | NotLoaded.t(),
+          outgoing_connections: [FlowConnection.t()] | NotLoaded.t(),
+          incoming_connections: [FlowConnection.t()] | NotLoaded.t(),
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -63,6 +85,11 @@ defmodule Storyarn.Flows.FlowNode do
     field :deleted_at, :utc_datetime
 
     belongs_to :flow, Flow
+    belongs_to :parent, __MODULE__, foreign_key: :parent_id
+    has_many :children, __MODULE__, foreign_key: :parent_id
+    has_one :sequence_config, SequenceConfig, foreign_key: :flow_node_id
+    has_many :sequence_tracks, SequenceTrack, foreign_key: :flow_node_id
+    has_many :sequence_visual_layers, SequenceVisualLayer, foreign_key: :flow_node_id
     has_many :outgoing_connections, FlowConnection, foreign_key: :source_node_id
     has_many :incoming_connections, FlowConnection, foreign_key: :target_node_id
 
@@ -79,10 +106,12 @@ defmodule Storyarn.Flows.FlowNode do
   """
   def create_changeset(node, attrs) do
     node
-    |> cast(attrs, [:type, :position_x, :position_y, :data, :source])
+    |> cast(attrs, [:type, :position_x, :position_y, :data, :source, :parent_id])
     |> validate_required([:type])
     |> validate_inclusion(:type, @node_types)
     |> validate_inclusion(:source, @valid_sources)
+    |> foreign_key_constraint(:flow_id)
+    |> foreign_key_constraint(:parent_id)
   end
 
   @doc """
@@ -90,9 +119,10 @@ defmodule Storyarn.Flows.FlowNode do
   """
   def update_changeset(node, attrs) do
     node
-    |> cast(attrs, [:type, :position_x, :position_y, :data])
+    |> cast(attrs, [:type, :position_x, :position_y, :data, :parent_id])
     |> validate_required([:type])
     |> validate_inclusion(:type, @node_types)
+    |> foreign_key_constraint(:parent_id)
   end
 
   @doc """
@@ -106,12 +136,25 @@ defmodule Storyarn.Flows.FlowNode do
   end
 
   @doc """
+  Changeset scoped to only reparenting. Accepts `parent_id` (may be nil
+  for root-level). Used by canvas drag-reparent + context-menu "Remove
+  from sequence" operations — intentionally narrow so the handler can't
+  accidentally mutate position/data/type through the same code path.
+  The `trg_flow_nodes_validate_parent_is_sequence` DB trigger enforces
+  that the target references a sequence-typed row.
+  """
+  def reparent_changeset(node, attrs) do
+    node
+    |> cast(attrs, [:parent_id])
+    |> foreign_key_constraint(:parent_id)
+  end
+
+  @doc """
   Changeset for updating only the data of a node.
   Used for editing node properties.
   """
   def data_changeset(node, attrs) do
-    node
-    |> cast(attrs, [:data])
+    cast(node, attrs, [:data])
   end
 
   @doc """

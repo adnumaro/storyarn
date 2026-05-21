@@ -1,256 +1,77 @@
 defmodule StoryarnWeb.SheetLive.Index do
-  @moduledoc false
+  @moduledoc """
+  V2 Sheets dashboard — same logic as SheetLive.Index, Vue + shadcn UI.
+  """
 
   use StoryarnWeb, :live_view
-  alias StoryarnWeb.Helpers.Authorize
-
-  import StoryarnWeb.Components.UIComponents, only: [empty_state: 1]
-  import StoryarnWeb.Live.Shared.TreePanelHandlers
-  import StoryarnWeb.Components.DashboardComponents
-
   use StoryarnWeb.Live.Shared.DashboardHandlers
+
+  import StoryarnWeb.Live.Shared.DashboardHelpers,
+    only: [
+      sort_table: 4,
+      paginate: 2,
+      handle_sort: 5,
+      handle_page: 4,
+      reload_dashboard: 6
+    ]
 
   alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache, as: DashboardCache
-  alias Storyarn.Projects
-  alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets
-  alias StoryarnWeb.Components.Sidebar.SheetTree
+  alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.focus
+    <StoryarnWeb.Components.ProjectLayout.project
+      socket={@socket}
       flash={@flash}
-      current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
+      current_scope={@current_scope}
+      current_user={@current_user}
+      urls={@urls}
       active_tool={:sheets}
-      on_dashboard={true}
-      has_tree={true}
-      tree_panel_open={@tree_panel_open}
-      tree_panel_pinned={@tree_panel_pinned}
-      show_pin={false}
-      can_edit={@can_edit}
+      is_super_admin={@is_super_admin}
+      online_users={@online_users}
+      sidebar_module={StoryarnWeb.SheetsSidebarLive}
+      sidebar_session={
+        %{
+          "project_id" => @project.id,
+          "workspace_slug" => @workspace.slug,
+          "project_slug" => @project.slug,
+          "sheet_id" => nil,
+          "can_edit" => @can_edit,
+          "active_tool" => "sheets",
+          "dashboard_url" => ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets",
+          "current_scope" => @current_scope,
+          "locale" => @locale
+        }
+      }
     >
-      <:tree_content>
-        <SheetTree.sheets_section
-          sheets_tree={@sheets_tree}
-          workspace={@workspace}
-          project={@project}
-          can_edit={@can_edit}
-        />
-      </:tree_content>
-      <SheetTree.delete_modal :if={@can_edit} />
-      <div class="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-        <.header>
-          {dgettext("sheets", "Sheets")}
-          <:subtitle>
-            {dgettext("sheets", "Create and organize your project's content")}
-          </:subtitle>
-        </.header>
-
-        <.empty_state :if={@sheets == []} icon="file-text">
-          {dgettext("sheets", "No sheets yet. Create your first sheet to get started.")}
-        </.empty_state>
-
-        <div :if={@sheets != [] and is_nil(@dashboard_stats)} class="flex justify-center py-12">
-          <span class="loading loading-spinner loading-md text-base-content/40"></span>
-        </div>
-
-        <div :if={@dashboard_stats} class="space-y-6">
-          <%!-- Stats row --%>
-          <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
-            <.stat_card
-              icon="file-text"
-              label={dgettext("sheets", "Sheets")}
-              value={@dashboard_stats.sheet_count}
-            />
-            <.stat_card
-              icon="layers"
-              label={dgettext("sheets", "Blocks")}
-              value={@dashboard_stats.block_count}
-            />
-            <.stat_card
-              icon="variable"
-              label={dgettext("sheets", "Variables")}
-              value={@dashboard_stats.variable_count}
-            />
-            <.stat_card
-              icon="link"
-              label={dgettext("sheets", "Vars in use")}
-              value={@dashboard_stats.variables_in_use}
-            />
-            <.stat_card
-              icon="text-cursor-input"
-              label={dgettext("sheets", "Words")}
-              value={@dashboard_stats.word_count}
-              tooltip={
-                dgettext(
-                  "sheets",
-                  "Counts sheet names, text block content, and table row names (excluding inherited)"
-                )
-              }
-            />
-          </div>
-
-          <%!-- Sheet table --%>
-          <.dashboard_section title={dgettext("sheets", "All Sheets")}>
-            <.dashboard_table_wrapper>
-              <.sheet_table
-                rows={@sheet_table_data}
-                sort_by={@sort_by}
-                sort_dir={@sort_dir}
-                workspace={@workspace}
-                project={@project}
-                can_edit={@can_edit}
-              />
-            </.dashboard_table_wrapper>
-            <.pagination
-              page={@page}
-              total_pages={@total_pages}
-              total={length(@all_sheet_table_data)}
-              event="page_sheets"
-            />
-          </.dashboard_section>
-
-          <%!-- Issues --%>
-          <.dashboard_section :if={@sheet_issues != []} title={dgettext("sheets", "Issues")}>
-            <.issue_list issues={@sheet_issues} />
-          </.dashboard_section>
-        </div>
-
-        <.confirm_modal
-          :if={@can_edit}
-          id="delete-sheet-confirm"
-          title={dgettext("sheets", "Delete sheet?")}
-          message={dgettext("sheets", "Are you sure you want to delete this sheet?")}
-          confirm_text={dgettext("sheets", "Delete")}
-          confirm_variant="error"
-          icon="alert-triangle"
-          on_confirm={JS.push("confirm_delete")}
-        />
-      </div>
-    </Layouts.focus>
-    """
-  end
-
-  # ===========================================================================
-  # Sheet Table
-  # ===========================================================================
-
-  attr :rows, :list, required: true
-  attr :sort_by, :string, required: true
-  attr :sort_dir, :atom, required: true
-  attr :workspace, :map, required: true
-  attr :project, :map, required: true
-  attr :can_edit, :boolean, default: false
-
-  defp sheet_table(assigns) do
-    ~H"""
-    <table class="table table-sm w-full">
-      <thead class="dashboard-table-head sticky top-0 z-10">
-        <tr class="text-xs text-base-content/50 uppercase">
-          <th class="font-medium">
-            <button
-              type="button"
-              phx-click="sort_sheets"
-              phx-value-column="name"
-              class="flex items-center gap-1 hover:text-base-content"
-            >
-              {dgettext("sheets", "Name")}
-              <.sort_indicator column="name" sort_by={@sort_by} sort_dir={@sort_dir} />
-            </button>
-          </th>
-          <th class="font-medium text-right">
-            <button
-              type="button"
-              phx-click="sort_sheets"
-              phx-value-column="block_count"
-              class="flex items-center gap-1 ml-auto hover:text-base-content"
-            >
-              {dgettext("sheets", "Blocks")}
-              <.sort_indicator column="block_count" sort_by={@sort_by} sort_dir={@sort_dir} />
-            </button>
-          </th>
-          <th class="font-medium text-right hidden sm:table-cell">
-            <button
-              type="button"
-              phx-click="sort_sheets"
-              phx-value-column="variable_count"
-              class="flex items-center gap-1 ml-auto hover:text-base-content"
-            >
-              {dgettext("sheets", "Variables")}
-              <.sort_indicator column="variable_count" sort_by={@sort_by} sort_dir={@sort_dir} />
-            </button>
-          </th>
-          <th class="font-medium text-right hidden md:table-cell">
-            <button
-              type="button"
-              phx-click="sort_sheets"
-              phx-value-column="word_count"
-              class="flex items-center gap-1 ml-auto hover:text-base-content"
-            >
-              {dgettext("sheets", "Words")}
-              <.sort_indicator column="word_count" sort_by={@sort_by} sort_dir={@sort_dir} />
-            </button>
-          </th>
-          <th class="font-medium text-right hidden md:table-cell">
-            <button
-              type="button"
-              phx-click="sort_sheets"
-              phx-value-column="updated_at"
-              class="flex items-center gap-1 ml-auto hover:text-base-content"
-            >
-              {dgettext("sheets", "Modified")}
-              <.sort_indicator column="updated_at" sort_by={@sort_by} sort_dir={@sort_dir} />
-            </button>
-          </th>
-          <th :if={@can_edit} class="w-10"></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr :for={row <- @rows} class="hover:bg-base-200/50">
-          <td>
-            <.link
-              navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets/#{row.id}"}
-              class="font-medium hover:underline"
-            >
-              {row.name}
-            </.link>
-          </td>
-          <td class="text-right tabular-nums">{row.block_count}</td>
-          <td class="text-right tabular-nums hidden sm:table-cell">{row.variable_count}</td>
-          <td class="text-right tabular-nums hidden md:table-cell">{row.word_count}</td>
-          <td class="text-right text-base-content/50 text-xs hidden md:table-cell">
-            {format_relative_time(row.updated_at)}
-          </td>
-          <td :if={@can_edit} class="text-right">
-            <div phx-hook="TableRowMenu" id={"sheet-menu-#{row.id}"}>
-              <button type="button" data-role="trigger" class="btn btn-ghost btn-xs btn-square">
-                <.icon name="more-horizontal" class="size-4" />
-              </button>
-              <template data-role="popover-template">
-                <ul class="menu menu-sm">
-                  <li>
-                    <button
-                      type="button"
-                      class="text-error"
-                      data-event="set_pending_delete"
-                      data-params={Jason.encode!(%{id: row.id})}
-                      data-modal-id="delete-sheet-confirm"
-                    >
-                      <.icon name="trash-2" class="size-4" />
-                      {dgettext("sheets", "Delete")}
-                    </button>
-                  </li>
-                </ul>
-              </template>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+      <.vue
+        v-component="live/sheet/dashboard/SheetDashboard"
+        v-socket={@socket}
+        v-inject="project-layout"
+        id="sheet-dashboard"
+        class="contents"
+        stats={@dashboard_stats}
+        table-data={@sheet_table_data}
+        pagination={
+          %{
+            sortBy: @sort_by,
+            sortDir: to_string(@sort_dir),
+            page: @page,
+            totalPages: @total_pages,
+            total: length(@all_sheet_table_data)
+          }
+        }
+        issues={@sheet_issues}
+        can-edit={@can_edit}
+        workspace-slug={@workspace.slug}
+        project-slug={@project.slug}
+      />
+    </StoryarnWeb.Components.ProjectLayout.project>
     """
   end
 
@@ -259,62 +80,68 @@ defmodule StoryarnWeb.SheetLive.Index do
   # ===========================================================================
 
   @impl true
-  def mount(
-        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug},
-        _session,
-        socket
-      ) do
-    case Projects.get_project_by_slugs(
-           socket.assigns.current_scope,
-           workspace_slug,
-           project_slug
-         ) do
-      {:ok, project, membership} ->
-        sheets_tree = Sheets.list_sheets_tree(project.id)
-        sheets = Sheets.list_all_sheets(project.id)
-        can_edit = Projects.can?(membership.role, :edit_content)
+  def mount(_params, _session, socket) do
+    %{project: project} = socket.assigns
+    sheets = Sheets.list_all_sheets(project.id)
 
-        socket =
-          socket
-          |> assign(focus_layout_defaults())
-          |> assign(:tree_panel_open, true)
-          |> assign(:project, project)
-          |> assign(:workspace, project.workspace)
-          |> assign(:membership, membership)
-          |> assign(:can_edit, can_edit)
-          |> assign(:sheets_tree, sheets_tree)
-          |> assign(:sheets, sheets)
-          |> assign(:dashboard_stats, nil)
-          |> assign(:all_sheet_table_data, [])
-          |> assign(:sheet_table_data, [])
-          |> assign(:sheet_issues, [])
-          |> assign(:sort_by, "name")
-          |> assign(:sort_dir, :asc)
-          |> assign(:page, 1)
-          |> assign(:total_pages, 1)
-          |> assign(:pending_delete_id, nil)
+    if connected?(socket) do
+      Collaboration.subscribe_dashboard(project.id)
 
-        if connected?(socket), do: Collaboration.subscribe_dashboard(project.id)
-        if connected?(socket) and sheets != [], do: send(self(), :load_dashboard_data)
+      Phoenix.PubSub.subscribe(
+        Storyarn.PubSub,
+        StoryarnWeb.SheetsSidebarLive.shell_topic(project.id)
+      )
 
-        {:ok, socket}
+      # Index is the sheets "dashboard" — clear any sheet highlight the
+      # sticky sidebar may have carried over from a previous Show visit so
+      # the dashboard link looks active instead.
+      Phoenix.PubSub.broadcast(
+        Storyarn.PubSub,
+        StoryarnWeb.SheetsSidebarLive.shell_topic(project.id),
+        {:active_sheet, nil}
+      )
 
-      {:error, _reason} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("sheets", "You don't have access to this project."))
-         |> redirect(to: ~p"/workspaces")}
+      if sheets != [], do: send(self(), :load_dashboard_data)
     end
+
+    {:ok,
+     socket
+     |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
+     |> assign(:sheets, sheets)
+     |> assign(:dashboard_stats, nil)
+     |> assign(:all_sheet_table_data, [])
+     |> assign(:sheet_table_data, [])
+     |> assign(:sheet_issues, [])
+     |> assign(:sort_by, "name")
+     |> assign(:sort_dir, :asc)
+     |> assign(:page, 1)
+     |> assign(:total_pages, 1)
+     |> assign(:pending_delete_id, nil)}
   end
 
   @impl true
-  def handle_params(_params, _url, socket) do
-    {:noreply, socket}
-  end
+  def handle_params(_params, _url, socket), do: {:noreply, socket}
 
   # ===========================================================================
-  # Dashboard loading
+  # Dashboard loading (async)
   # ===========================================================================
+
+  # Shell-topic messages from SheetsSidebarLive:
+  def handle_info({:open_sheet, sheet_id}, socket) do
+    path =
+      ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{sheet_id}"
+
+    {:noreply, push_navigate(socket, to: path)}
+  end
+
+  def handle_info({:active_sheet, _sheet_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_flow, _flow_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_scene, _scene_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_locale, _locale}, socket), do: {:noreply, socket}
+  def handle_info({:tree_changed, :sheets}, socket), do: {:noreply, reload_sheets(socket)}
+  def handle_info({:entity_deleted, _id}, socket), do: {:noreply, socket}
+  def handle_info({:toolbar_event, _event, _params}, socket), do: {:noreply, socket}
+  def handle_info({:online_users, users}, socket), do: {:noreply, assign(socket, :online_users, users)}
 
   def handle_info(:load_dashboard_data, socket) do
     %{project: project, workspace: workspace, sort_by: sort_by, sort_dir: sort_dir} =
@@ -338,9 +165,7 @@ defmodule StoryarnWeb.SheetLive.Index do
      |> assign(:sheet_issues, data.formatted_issues)}
   end
 
-  def handle_async(:load_dashboard_data, {:exit, _reason}, socket) do
-    {:noreply, socket}
-  end
+  def handle_async(:load_dashboard_data, {:exit, _reason}, socket), do: {:noreply, socket}
 
   defp load_dashboard_data_async(project_id, workspace, project, sort_by, sort_dir) do
     sheets = Sheets.list_all_sheets(project_id)
@@ -367,7 +192,7 @@ defmodule StoryarnWeb.SheetLive.Index do
 
     total_variable_count =
       DashboardCache.fetch(project_id, :sheet_total_vars, fn ->
-        Sheets.list_project_variables(project_id) |> length()
+        project_id |> Sheets.list_project_variables() |> length()
       end)
 
     table_data =
@@ -407,122 +232,18 @@ defmodule StoryarnWeb.SheetLive.Index do
   # ===========================================================================
 
   @impl true
-  # Tree panel events (from FocusLayout)
-  def handle_event("tree_panel_" <> _ = event, params, socket),
-    do: handle_tree_panel_event(event, params, socket)
-
   def handle_event("sort_sheets", %{"column" => column}, socket) do
-    {:noreply,
-     handle_sort(socket, column, :all_sheet_table_data, :sheet_table_data, sheet_sort_columns())}
+    {:noreply, handle_sort(socket, column, :all_sheet_table_data, :sheet_table_data, sheet_sort_columns())}
   end
 
   def handle_event("page_sheets", %{"page" => page}, socket) do
     {:noreply, handle_page(socket, page, :all_sheet_table_data, :sheet_table_data)}
   end
 
-  def handle_event(event, %{"id" => id}, socket)
-      when event in ~w(set_pending_delete set_pending_delete_sheet) do
-    {:noreply, assign(socket, :pending_delete_id, id)}
-  end
-
-  def handle_event(event, _params, socket)
-      when event in ~w(confirm_delete confirm_delete_sheet) do
-    if id = socket.assigns[:pending_delete_id] do
-      handle_event("delete", %{"id" => id}, socket)
-    else
-      {:noreply, socket}
-    end
-  end
-
-  def handle_event(event, %{"id" => sheet_id}, socket)
-      when event in ~w(delete delete_sheet) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with %{} = sheet <- Sheets.get_sheet(socket.assigns.project.id, sheet_id),
-           {:ok, _} <- Sheets.delete_sheet(sheet) do
-        {:noreply,
-         socket
-         |> put_flash(:info, dgettext("sheets", "Sheet moved to trash."))
-         |> reload_sheets()}
-      else
-        nil ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Sheet not found."))}
-
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete sheet."))}
-      end
-    end)
-  end
-
-  def handle_event("create_sheet", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      attrs = %{name: dgettext("sheets", "Untitled")}
-
-      case Sheets.create_sheet(socket.assigns.project, attrs) do
-        {:ok, new_sheet} ->
-          {:noreply,
-           push_navigate(socket,
-             to:
-               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{new_sheet.id}"
-           )}
-
-        {:error, :limit_reached, _details} ->
-          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
-
-        {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create sheet."))}
-      end
-    end)
-  end
-
-  def handle_event("create_child_sheet", %{"parent-id" => parent_id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      attrs = %{name: dgettext("sheets", "New Sheet"), parent_id: parent_id}
-
-      case Sheets.create_sheet(socket.assigns.project, attrs) do
-        {:ok, new_sheet} ->
-          {:noreply,
-           push_navigate(socket,
-             to:
-               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{new_sheet.id}"
-           )}
-
-        {:error, :limit_reached, _details} ->
-          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
-
-        {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create sheet."))}
-      end
-    end)
-  end
-
-  def handle_event(
-        "move_to_parent",
-        %{"item_id" => sheet_id, "new_parent_id" => parent_id, "position" => position},
-        socket
-      ) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with %{} = sheet <- Sheets.get_sheet(socket.assigns.project.id, sheet_id),
-           parent_id = MapUtils.parse_int(parent_id),
-           position = MapUtils.parse_int(position) || 0,
-           {:ok, _sheet} <- Sheets.move_sheet_to_position(sheet, parent_id, position) do
-        {:noreply, reload_sheets(socket)}
-      else
-        nil ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Sheet not found."))}
-
-        {:error, :would_create_cycle} ->
-          {:noreply,
-           put_flash(
-             socket,
-             :error,
-             dgettext("sheets", "Cannot move a sheet into its own children.")
-           )}
-
-        {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not move sheet."))}
-      end
-    end)
-  end
+  # Tree mutation events (create_sheet, create_child_sheet, move_to_parent,
+  # set_pending_delete, confirm_delete, delete) now live in SheetsSidebarLive —
+  # they never reach this LV because the tree is rendered by SheetsSidebarLive
+  # which is a separate nested LV.
 
   # ===========================================================================
   # Private helpers
@@ -537,11 +258,7 @@ defmodule StoryarnWeb.SheetLive.Index do
       :all_sheet_table_data,
       :sheet_table_data,
       :sheet_issues,
-      fn s ->
-        s
-        |> assign(:sheets_tree, Sheets.list_sheets_tree(project_id))
-        |> assign(:sheets, Sheets.list_all_sheets(project_id))
-      end
+      fn s -> assign(s, :sheets, Sheets.list_all_sheets(project_id)) end
     )
   end
 
@@ -570,15 +287,14 @@ defmodule StoryarnWeb.SheetLive.Index do
              )}
 
           :missing_shortcut ->
-            {:warning,
-             dgettext("sheets", "Sheet \"%{name}\" has no shortcut", name: issue.sheet_name)}
+            {:warning, dgettext("sheets", "Sheet \"%{name}\" has no shortcut", name: issue.sheet_name)}
 
           _ ->
-            {:info, gettext("Issue detected")}
+            {:info, dgettext("sheets", "Issue detected")}
         end
 
       %{
-        severity: severity,
+        severity: to_string(severity),
         message: message,
         href: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{issue.sheet_id}"
       }

@@ -14,9 +14,11 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
   5. Condition nodes → emit `:condition_start`/`:condition_branch`/`:condition_end`
   6. Dialogue responses → emit `:choices_start`/`:choice`/`:choices_end`
   7. Exit nodes → emit `:exit`
-  8. Detect cycles via visited set, emit jump to break
+  8. Sequence nodes → transparent grouping nodes, just follow connections
+  9. Detect cycles via visited set, emit jump to break
   """
 
+  alias Storyarn.Exports.Serializers.FlowControlResolver
   alias Storyarn.Exports.Serializers.Helpers
 
   @type instruction ::
@@ -25,12 +27,12 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
           | {:choices_start, node :: map()}
           | {:choice, response :: map(), index :: non_neg_integer()}
           | {:choices_end, node :: map()}
+          | {:choices, node :: map(), choice_branches :: list()}
           | {:condition_start, node :: map()}
-          | {:condition_branch, pin :: String.t(), label :: String.t(),
-             index :: non_neg_integer()}
+          | {:condition_branch, pin :: String.t(), label :: String.t(), index :: non_neg_integer()}
           | {:condition_end, node :: map()}
+          | {:condition, node :: map(), condition_branches :: list()}
           | {:instruction, node :: map()}
-          | {:slug_line, node :: map()}
           | {:subflow, node :: map()}
           | {:jump, node :: map(), target_label :: String.t()}
           | {:divert, target_label :: String.t()}
@@ -52,13 +54,13 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
 
     if entry do
       # First pass: identify all hub nodes (they become labels)
-      hub_labels = collect_hub_labels(flow.nodes)
+      hub_refs = FlowControlResolver.hub_reference_map(flow.nodes)
 
       # Second pass: traverse from entry, collecting instructions
       state = %{
         nodes: nodes,
         conn_graph: conn_graph,
-        hub_labels: hub_labels,
+        hub_refs: hub_refs,
         visited: MapSet.new(),
         hub_queue: [],
         instructions: []
@@ -75,17 +77,35 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
     end
   end
 
-  # ---------------------------------------------------------------------------
-  # Hub label collection
-  # ---------------------------------------------------------------------------
+  @doc """
+  Linearizes a flow and groups choice/condition branch bodies.
 
-  defp collect_hub_labels(nodes) do
-    nodes
-    |> Enum.filter(&(&1.type == "hub"))
-    |> Map.new(fn hub ->
-      label = Helpers.shortcut_to_identifier(hub.data["label"] || "hub_#{hub.id}")
-      {hub.id, label}
-    end)
+  Returns the same `{instructions, hub_sections}` shape as `linearize/1`, but
+  replaces flat marker sequences with structured instructions:
+
+    * `{:choices, node, [{response, index, body_instructions}]}`
+    * `{:condition, node, [{pin, label, index, body_instructions}]}`
+
+  This keeps indentation-sensitive serializers from having to rediscover branch
+  boundaries from the flat stream.
+  """
+  def linearize_blocks(flow) do
+    {instructions, hub_sections} = linearize(flow)
+
+    hub_sections =
+      Enum.map(hub_sections, fn {label, instructions} ->
+        {label, group_branch_instructions(instructions)}
+      end)
+
+    {group_branch_instructions(instructions), hub_sections}
+  end
+
+  @doc """
+  Groups choice and condition marker runs in an instruction list.
+  """
+  def group_branch_instructions(instructions) do
+    {grouped, _rest} = group_until(instructions, &never_stop?/1, [])
+    grouped
   end
 
   # ---------------------------------------------------------------------------
@@ -95,12 +115,9 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
   defp traverse(node_id, state) do
     if MapSet.member?(state.visited, node_id) do
       # Cycle detected — emit a divert to the node's label if it's a hub
-      label = state.hub_labels[node_id]
-
-      if label do
-        %{state | instructions: [{:divert, label} | state.instructions]}
-      else
-        state
+      case hub_target(state, node_id) do
+        {_hub_id, label} -> %{state | instructions: [{:divert, label} | state.instructions]}
+        nil -> state
       end
     else
       state = %{state | visited: MapSet.put(state.visited, node_id)}
@@ -118,6 +135,11 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
     traverse_targets(targets, state)
   end
 
+  defp traverse_node(%{type: "sequence"} = node, state) do
+    targets = outgoing(state, node.id)
+    traverse_targets(targets, state)
+  end
+
   defp traverse_node(%{type: "exit"} = node, state) do
     %{state | instructions: [{:exit, node} | state.instructions]}
   end
@@ -125,13 +147,13 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
   defp traverse_node(%{type: "dialogue"} = node, state) do
     responses = Helpers.dialogue_responses(node.data)
 
-    if responses != [] do
-      traverse_dialogue_with_choices(node, responses, state)
-    else
+    if responses == [] do
       # Dialogue without choices — just text, then follow connections
       state = %{state | instructions: [{:dialogue, node} | state.instructions]}
       targets = outgoing(state, node.id)
       traverse_targets(targets, state)
+    else
+      traverse_dialogue_with_choices(node, responses, state)
     end
   end
 
@@ -139,8 +161,8 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
     state = %{state | instructions: [{:condition_start, node} | state.instructions]}
 
     # Condition nodes have multiple output pins (one per case)
-    cases = node.data["cases"] || []
     targets_by_pin = outgoing_by_pin(state, node.id)
+    cases = FlowControlResolver.condition_cases(node, targets_by_pin)
 
     state =
       cases
@@ -166,10 +188,10 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
   end
 
   defp traverse_node(%{type: "hub"} = node, state) do
-    label = state.hub_labels[node.id] || "hub_#{node.id}"
+    {hub_id, label} = hub_target(state, node.id) || {node.id, "hub_#{node.id}"}
 
     # Queue hub for separate section emission
-    state = %{state | hub_queue: [{node.id, label} | state.hub_queue]}
+    state = %{state | hub_queue: [{hub_id, label} | state.hub_queue]}
 
     # Emit a divert to this hub
     %{state | instructions: [{:divert, label} | state.instructions]}
@@ -183,12 +205,6 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
 
   defp traverse_node(%{type: "subflow"} = node, state) do
     state = %{state | instructions: [{:subflow, node} | state.instructions]}
-    targets = outgoing(state, node.id)
-    traverse_targets(targets, state)
-  end
-
-  defp traverse_node(%{type: "slug_line"} = node, state) do
-    state = %{state | instructions: [{:slug_line, node} | state.instructions]}
     targets = outgoing(state, node.id)
     traverse_targets(targets, state)
   end
@@ -285,29 +301,111 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
 
     cond do
       # Jump to a hub within same flow
-      hub_id = data["hub_id"] ->
-        label = state.hub_labels[hub_id] || Helpers.shortcut_to_identifier("hub_#{hub_id}")
-        # Queue the hub for section emission (same as inline hub traversal)
-        state = %{state | hub_queue: [{hub_id, label} | state.hub_queue]}
-        {label, state}
+      hub_ref = FlowControlResolver.target_hub_id(data) ->
+        resolve_hub_jump_target(hub_ref, state)
 
       # Jump to another flow
       flow_shortcut = data["target_flow_shortcut"] ->
         {Helpers.shortcut_to_identifier(flow_shortcut), state}
 
       true ->
-        # Follow the connection to find the target
-        label =
-          case outgoing(state, node.id) do
-            [{target_id, _, _} | _] ->
-              state.hub_labels[target_id] ||
-                Helpers.shortcut_to_identifier("node_#{target_id}")
-
-            [] ->
-              "unknown"
-          end
-
-        {label, state}
+        resolve_connected_jump_target(node, state)
     end
   end
+
+  defp resolve_hub_jump_target(hub_ref, state) do
+    case hub_target(state, hub_ref) do
+      {hub_id, label} ->
+        # Queue the hub for section emission (same as inline hub traversal)
+        state = %{state | hub_queue: [{hub_id, label} | state.hub_queue]}
+        {label, state}
+
+      nil ->
+        {Helpers.shortcut_to_identifier("hub_#{hub_ref}"), state}
+    end
+  end
+
+  defp resolve_connected_jump_target(node, state) do
+    {connected_jump_label(node, state), state}
+  end
+
+  defp connected_jump_label(node, state) do
+    case outgoing(state, node.id) do
+      [{target_id, _, _} | _] -> hub_label_or_node_identifier(state, target_id)
+      [] -> "unknown"
+    end
+  end
+
+  defp hub_label_or_node_identifier(state, target_id) do
+    case hub_target(state, target_id) do
+      {_hub_id, hub_label} -> hub_label
+      nil -> Helpers.shortcut_to_identifier("node_#{target_id}")
+    end
+  end
+
+  defp hub_target(state, ref) do
+    FlowControlResolver.hub_target(state.hub_refs, ref)
+  end
+
+  # ---------------------------------------------------------------------------
+  # Branch grouping
+  # ---------------------------------------------------------------------------
+
+  defp group_until([], _stop?, acc), do: {Enum.reverse(acc), []}
+
+  defp group_until([instruction | _rest] = instructions, stop?, acc) do
+    if stop?.(instruction) do
+      {Enum.reverse(acc), instructions}
+    else
+      group_instruction(instruction, instructions, stop?, acc)
+    end
+  end
+
+  defp group_instruction({:choices_start, node}, [_instruction | rest], stop?, acc) do
+    {branches, rest} = collect_choice_branches(rest, [])
+    group_until(rest, stop?, [{:choices, node, branches} | acc])
+  end
+
+  defp group_instruction({:condition_start, node}, [_instruction | rest], stop?, acc) do
+    {branches, rest} = collect_condition_branches(rest, [])
+    group_until(rest, stop?, [{:condition, node, branches} | acc])
+  end
+
+  defp group_instruction(instruction, [_instruction | rest], stop?, acc) do
+    group_until(rest, stop?, [instruction | acc])
+  end
+
+  defp collect_choice_branches([], acc), do: {Enum.reverse(acc), []}
+  defp collect_choice_branches([{:choices_end, _node} | rest], acc), do: {Enum.reverse(acc), rest}
+
+  defp collect_choice_branches([{:choice, response, index} | rest], acc) do
+    {body, rest} = group_until(rest, &choice_boundary?/1, [])
+    collect_choice_branches(rest, [{response, index, body} | acc])
+  end
+
+  defp collect_choice_branches([_instruction | rest], acc) do
+    collect_choice_branches(rest, acc)
+  end
+
+  defp collect_condition_branches([], acc), do: {Enum.reverse(acc), []}
+  defp collect_condition_branches([{:condition_end, _node} | rest], acc), do: {Enum.reverse(acc), rest}
+
+  defp collect_condition_branches([{:condition_branch, pin, label, index} | rest], acc) do
+    {body, rest} = group_until(rest, &condition_boundary?/1, [])
+    collect_condition_branches(rest, [{pin, label, index, body} | acc])
+  end
+
+  defp collect_condition_branches([_instruction | rest], acc) do
+    collect_condition_branches(rest, acc)
+  end
+
+  defp choice_boundary?({:choice, _response, _index}), do: true
+  defp choice_boundary?({:choices_end, _node}), do: true
+  defp choice_boundary?(_instruction), do: false
+
+  defp condition_boundary?({:condition_branch, _pin, _label, _index}), do: true
+  defp condition_boundary?({:condition_end, _node}), do: true
+  defp condition_boundary?(_instruction), do: false
+
+  defp never_stop?(_instruction), do: false
 end

@@ -7,24 +7,28 @@ defmodule Storyarn.Versioning.ConflictDetector do
   collisions with other entities.
   """
 
-  import Ecto.Query, warn: false
   use Gettext, backend: Storyarn.Gettext
 
+  import Ecto.Query, warn: false
+
+  alias Storyarn.Flows.Flow
   alias Storyarn.Repo
+  alias Storyarn.Scenes.Scene
+  alias Storyarn.Sheets.Sheet
   alias Storyarn.Versioning.VersionCrud
 
   @type_to_schema %{
     asset: Storyarn.Assets.Asset,
-    sheet: Storyarn.Sheets.Sheet,
-    flow: Storyarn.Flows.Flow,
-    scene: Storyarn.Scenes.Scene,
+    sheet: Sheet,
+    flow: Flow,
+    scene: Scene,
     block: Storyarn.Sheets.Block
   }
 
   @entity_type_to_schema %{
-    "sheet" => Storyarn.Sheets.Sheet,
-    "flow" => Storyarn.Flows.Flow,
-    "scene" => Storyarn.Scenes.Scene
+    "sheet" => Sheet,
+    "flow" => Flow,
+    "scene" => Scene
   }
 
   @doc """
@@ -129,14 +133,12 @@ defmodule Storyarn.Versioning.ConflictDetector do
   defp shortcut_taken?(entity_type, entity, shortcut) do
     schema = Map.fetch!(@entity_type_to_schema, entity_type)
 
-    from(e in schema,
-      where:
-        e.shortcut == ^shortcut and
-          e.project_id == ^entity.project_id and
-          e.id != ^entity.id and
-          is_nil(e.deleted_at)
+    Repo.exists?(
+      from(e in schema,
+        where:
+          e.shortcut == ^shortcut and e.project_id == ^entity.project_id and e.id != ^entity.id and is_nil(e.deleted_at)
+      )
     )
-    |> Repo.exists?()
   end
 
   defp detect_auto_resolved("sheet", snapshot) do
@@ -188,18 +190,13 @@ defmodule Storyarn.Versioning.ConflictDetector do
     Enum.join(parts, ", ")
   end
 
-  defp type_label(:asset, count),
-    do: dngettext("versioning", "asset", "assets", count)
+  defp type_label(:asset, count), do: dngettext("versioning", "asset", "assets", count)
 
-  defp type_label(:sheet, count),
-    do: dngettext("versioning", "sheet", "sheets", count)
+  defp type_label(:sheet, count), do: dngettext("versioning", "sheet", "sheets", count)
 
-  defp type_label(:flow, count),
-    do: dngettext("versioning", "flow", "flows", count)
+  defp type_label(:flow, count), do: dngettext("versioning", "flow", "flows", count)
 
-  defp type_label(:scene, count),
-    do: dngettext("versioning", "scene", "scenes", count)
+  defp type_label(:scene, count), do: dngettext("versioning", "scene", "scenes", count)
 
-  defp type_label(:block, count),
-    do: dngettext("versioning", "block", "blocks", count)
+  defp type_label(:block, count), do: dngettext("versioning", "block", "blocks", count)
 end

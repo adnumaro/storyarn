@@ -24,7 +24,7 @@ This is a web application written using the Phoenix web framework.
 - This project uses **Lucide** icons (not Heroicons). **Always** use the `<.icon>` component: `<.icon name="x" class="size-5"/>`. See `CLAUDE.md` → "Icon Convention" for JS usage patterns
 - **Always** use the imported `<.input>` component for form inputs from `core_components.ex` when available. `<.input>` is imported and using it will will save steps and prevent errors
 - If you override the default input classes (`<.input class="myclass px-2 py-1 rounded-lg">)`) class with your own values, no default classes are inherited, so your
-custom classes must fully style the input
+  custom classes must fully style the input
 
 ### JS and CSS guidelines
 
@@ -51,8 +51,8 @@ custom classes must fully style the input
 - Ensure **clean typography, spacing, and layout balance** for a refined, premium look
 - Focus on **delightful details** like hover effects, loading states, and smooth page transitions
 
-
 <!-- phoenix-gen-auth-start -->
+
 ## Authentication
 
 - **Always** handle authentication flow at the router level with proper redirects
@@ -67,12 +67,12 @@ custom classes must fully style the input
 - `phx.gen.auth` assigns the `current_scope` assign - it **does not assign a `current_user` assign**
 - Always pass the assign `current_scope` to context modules as first argument. When performing queries, use `current_scope.user` to filter the query results
 - To derive/access `current_user` in templates, **always use the `@current_scope.user`**, never use **`@current_user`** in templates or LiveViews
-- **Never** duplicate `live_session` names. A `live_session :current_user` can only be defined __once__ in the router, so all routes for the `live_session :current_user`  must be grouped in a single block
+- **Never** duplicate `live_session` names. A `live_session :current_user` can only be defined **once** in the router, so all routes for the `live_session :current_user` must be grouped in a single block
 - Anytime you hit `current_scope` errors or the logged in session isn't displaying the right content, **always double check the router and ensure you are using the correct plug and `live_session` as described below**
 
 ### Routes that require authentication
 
-LiveViews that require login should **always be placed inside the __existing__ `live_session :require_authenticated_user` block**:
+LiveViews that require login should **always be placed inside the **existing** `live_session :require_authenticated_user` block**:
 
     scope "/", AppWeb do
       pipe_through [:browser, :require_authenticated_user]
@@ -97,7 +97,7 @@ Controller routes must be placed in a scope that sets the `:require_authenticate
 
 ### Routes that work with or without authentication
 
-LiveViews that can work with or without authentication, **always use the __existing__ `:current_user` scope**, ie:
+LiveViews that can work with or without authentication, **always use the **existing** `:current_user` scope**, ie:
 
     scope "/", MyAppWeb do
       pipe_through [:browser]
@@ -116,6 +116,7 @@ Controllers automatically have the `current_scope` available if they use the `:b
 <!-- usage-rules-start -->
 
 <!-- phoenix:elixir-start -->
+
 ## Elixir guidelines
 
 - Elixir lists **do not support index based access via the access syntax**
@@ -133,7 +134,7 @@ Controllers automatically have the `current_scope` available if they use the `:b
       Enum.at(mylist, i)
 
 - Elixir variables are immutable, but can be rebound, so for block expressions like `if`, `case`, `cond`, etc
-  you *must* bind the result of the expression to a variable if you want to use it and you CANNOT rebind the result inside the expression, ie:
+  you _must_ bind the result of the expression to a variable if you want to use it and you CANNOT rebind the result inside the expression, ie:
 
       # INVALID: we are rebinding inside the `if` and the result never gets assigned
       if connected?(socket) do
@@ -162,6 +163,7 @@ Controllers automatically have the `current_scope` available if they use the `:b
 <!-- phoenix:elixir-end -->
 
 <!-- phoenix:phoenix-start -->
+
 ## Phoenix guidelines
 
 - Remember Phoenix router `scope` blocks include an optional alias which is prefixed for all routes within the scope. **Always** be mindful of this when creating routes within a scope to avoid duplicate module prefixes.
@@ -180,6 +182,7 @@ Controllers automatically have the `current_scope` available if they use the `:b
 <!-- phoenix:phoenix-end -->
 
 <!-- phoenix:ecto-start -->
+
 ## Ecto Guidelines
 
 - **Always** preload Ecto associations in queries when they'll be accessed in templates, ie a message that needs to reference the `message.user.email`
@@ -191,6 +194,7 @@ Controllers automatically have the `current_scope` available if they use the `:b
 <!-- phoenix:ecto-end -->
 
 <!-- phoenix:html-start -->
+
 ## Phoenix HTML guidelines
 
 - Phoenix templates **always** use `~H` or .html.heex files (known as HEEx), **never** use `~E`
@@ -199,7 +203,7 @@ Controllers automatically have the `current_scope` available if they use the `:b
 - **Always** add unique DOM IDs to key elements (like forms, buttons, etc) when writing templates, these IDs can later be used in tests (`<.form for={@form} id="product-form">`)
 - For "app wide" template imports, you can import/alias into the `my_app_web.ex`'s `html_helpers` block, so they will be available to all LiveViews, LiveComponent's, and all modules that do `use MyAppWeb, :html` (replace "my_app" by the actual app name)
 
-- Elixir supports `if/else` but **does NOT support `if/else if` or `if/elsif`. **Never use `else if` or `elseif` in Elixir**, **always** use `cond` or `case` for multiple conditionals.
+- Elixir supports `if/else` but **does NOT support `if/else if` or `if/elsif`. **Never use `else if` or `elseif` in Elixir**, **always\*\* use `cond` or `case` for multiple conditionals.
 
   **Never do this (invalid)**:
 
@@ -220,7 +224,7 @@ Controllers automatically have the `current_scope` available if they use the `:b
           ...
       <% end %>
 
-- HEEx require special tag annotation if you want to insert literal curly's like `{` or `}`. If you want to show a textual code snippet on the page in a `<pre>` or `<code>` block you *must* annotate the parent tag with `phx-no-curly-interpolation`:
+- HEEx require special tag annotation if you want to insert literal curly's like `{` or `}`. If you want to show a textual code snippet on the page in a `<pre>` or `<code>` block you _must_ annotate the parent tag with `phx-no-curly-interpolation`:
 
       <code phx-no-curly-interpolation>
         let obj = {key: "val"}
@@ -253,26 +257,28 @@ Controllers automatically have the `current_scope` available if they use the `:b
 
   **Always** do this:
 
-      <div id={@id}>
-        {@my_assign}
-        <%= if @some_block_condition do %>
-          {@another_assign}
-        <% end %>
-      </div>
+        <div id={@id}>
+          {@my_assign}
+          <%= if @some_block_condition do %>
+            {@another_assign}
+          <% end %>
+        </div>
 
   and **Never** do this – the program will terminate with a syntax error:
 
-      <%!-- THIS IS INVALID NEVER EVER DO THIS --%>
-      <div id="<%= @invalid_interpolation %>">
-        {if @invalid_block_construct do}
-        {end}
-      </div>
-<!-- phoenix:html-end -->
+        <%!-- THIS IS INVALID NEVER EVER DO THIS --%>
+        <div id="<%= @invalid_interpolation %>">
+          {if @invalid_block_construct do}
+          {end}
+        </div>
+
+  <!-- phoenix:html-end -->
 
 <!-- phoenix:liveview-start -->
+
 ## Phoenix LiveView guidelines
 
-- **Never** use the deprecated `live_redirect` and `live_patch` functions, instead **always** use the `<.link navigate={href}>` and  `<.link patch={href}>` in templates, and `push_navigate` and `push_patch` functions LiveViews
+- **Never** use the deprecated `live_redirect` and `live_patch` functions, instead **always** use the `<.link navigate={href}>` and `<.link patch={href}>` in templates, and `push_navigate` and `push_patch` functions LiveViews
 - **Avoid LiveComponent's** unless you have a strong, specific need for them
 - LiveViews should be named like `AppWeb.WeatherLive`, with a `Live` suffix. When you go to add LiveView routes to the router, the default `:browser` scope is **already aliased** with the `AppWeb` module, so you can just do `live "/weather", WeatherLive`
 - Remember anytime you use `phx-hook="MyHook"` and that js hook manages its own DOM, you **must** also set the `phx-update="ignore"` attribute
@@ -294,7 +300,7 @@ Controllers automatically have the `current_scope` available if they use the `:b
         </div>
       </div>
 
-- LiveView streams are *not* enumerable, so you cannot use `Enum.filter/2` or `Enum.reject/2` on them. Instead, if you want to filter, prune, or refresh a list of items on the UI, you **must refetch the data and re-stream the entire stream collection, passing reset: true**:
+- LiveView streams are _not_ enumerable, so you cannot use `Enum.filter/2` or `Enum.reject/2` on them. Instead, if you want to filter, prune, or refresh a list of items on the UI, you **must refetch the data and re-stream the entire stream collection, passing reset: true**:
 
       def handle_event("filter", %{"filter" => filter}, socket) do
         # re-fetch the messages based on the filter
@@ -307,7 +313,7 @@ Controllers automatically have the `current_scope` available if they use the `:b
         |> stream(:messages, messages, reset: true)}
       end
 
-- LiveView streams *do not support counting or empty states*. If you need to display a count, you must track it using a separate assign. For empty states, you can use Tailwind classes:
+- LiveView streams _do not support counting or empty states_. If you need to display a count, you must track it using a separate assign. For empty states, you can use Tailwind classes:
 
       <div id="tasks" phx-update="stream">
         <div class="hidden only:block">No tasks yet</div>
@@ -409,8 +415,8 @@ And **never** do this:
 ### Quality Commands
 
 ```bash
-just quality                # Full: Biome fix, Credo strict, mix test, E2E, Vitest
-just js-fix                 # Biome auto-fix JS
+just quality                # Full: Oxlint fix, Credo strict, mix test, E2E, Vitest
+just js-fix                 # Oxlint auto-fix JS
 just js-test                # Vitest JS tests
 just js-grammar             # Build Lezer grammar (expression editor)
 mix test --cover            # Tests with coverage (threshold: 85%)
@@ -419,7 +425,7 @@ mix test --cover            # Tests with coverage (threshold: 85%)
 ### Current Contexts
 
 | Context       | Facade                   | Key Submodules                                                                                                                                            |
-|---------------|--------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Accounts      | `Storyarn.Accounts`      | `Users`, `Registration`, `OAuth`, `Sessions`, `MagicLinks`, `Emails`, `Passwords`, `Profiles`                                                             |
 | Workspaces    | `Storyarn.Workspaces`    | `WorkspaceCrud`, `Memberships`, `Invitations`                                                                                                             |
 | Projects      | `Storyarn.Projects`      | `ProjectCrud`, `Memberships`, `Invitations`                                                                                                               |
@@ -442,7 +448,7 @@ mix test --cover            # Tests with coverage (threshold: 85%)
 ### Elixir → JS (pushEvent / handleEvent)
 
 | Event Name                   | Direction     | Payload                                                         | Source (Elixir)              | Handler (JS)         |
-|------------------------------|---------------|-----------------------------------------------------------------|------------------------------|----------------------|
+| ---------------------------- | ------------- | --------------------------------------------------------------- | ---------------------------- | -------------------- |
 | `node_added`                 | Server→Client | `%{id, type, position: %{x, y}, data}`                          | `node_helpers.ex`, `show.ex` | `editor_handlers.js` |
 | `node_removed`               | Server→Client | `%{id}`                                                         | `node_helpers.ex`            | `editor_handlers.js` |
 | `node_updated`               | Server→Client | `%{id, data}`                                                   | `show.ex`, `node_helpers.ex` | `editor_handlers.js` |
@@ -457,29 +463,29 @@ mix test --cover            # Tests with coverage (threshold: 85%)
 
 ### JS → Elixir (pushEvent)
 
-| Event Name                          | Direction     | Payload                                                     | Source (JS)            | Handler (Elixir)   |
-|-------------------------------------|---------------|-------------------------------------------------------------|------------------------|--------------------|
-| `add_node`                          | Client→Server | `%{type}`                                                   | dropdown button        | `show.ex`          |
-| `node_selected`                     | Client→Server | `%{id}`                                                     | `flow_canvas.js`       | `show.ex`          |
-| `node_double_clicked`               | Client→Server | `%{id}`                                                     | `flow_canvas.js`       | `show.ex`          |
-| `node_moved`                        | Client→Server | `%{id, position_x, position_y}`                             | `editor_handlers.js`   | `show.ex`          |
-| `delete_node`                       | Client→Server | `%{id}`                                                     | `keyboard_handler.js`  | `show.ex`          |
-| `duplicate_node`                    | Client→Server | `%{id}`                                                     | `keyboard_handler.js`  | `show.ex`          |
-| `connection_created`                | Client→Server | `%{source_node_id, source_pin, target_node_id, target_pin}` | `flow_canvas.js`       | `show.ex`          |
-| `connection_deleted`                | Client→Server | `%{source_node_id, target_node_id}`                         | `flow_canvas.js`       | `show.ex`          |
-| `cursor_moved`                      | Client→Server | `%{x, y}`                                                   | `cursor_handler.js`    | `show.ex`          |
-| `update_node_data`                  | Client→Server | `%{node: params}`                                           | form phx-change        | `show.ex`          |
-| `update_node_text`                  | Client→Server | `%{id, content}`                                            | `tiptap_editor.js`     | `show.ex`          |
-| `update_node_field`                 | Client→Server | `%{field, value}`                                           | phx-blur inputs        | `show.ex`          |
-| `mention_suggestions`               | Client→Server | `%{query}`                                                  | `tiptap_editor.js`     | `show.ex`          |
-| `update_condition_builder`          | Client→Server | condition params                                            | `condition_builder.ex` | `show.ex`          |
-| `update_response_condition_builder` | Client→Server | condition + response params                                 | `condition_builder.ex` | `show.ex`          |
-| `toggle_switch_mode`                | Client→Server | `%{}`                                                       | checkbox               | `show.ex`          |
+| Event Name                          | Direction     | Payload                                                     | Source (JS)            | Handler (Elixir) |
+| ----------------------------------- | ------------- | ----------------------------------------------------------- | ---------------------- | ---------------- |
+| `add_node`                          | Client→Server | `%{type}`                                                   | dropdown button        | `show.ex`        |
+| `node_selected`                     | Client→Server | `%{id}`                                                     | `flow_canvas.js`       | `show.ex`        |
+| `node_double_clicked`               | Client→Server | `%{id}`                                                     | `flow_canvas.js`       | `show.ex`        |
+| `node_moved`                        | Client→Server | `%{id, position_x, position_y}`                             | `editor_handlers.js`   | `show.ex`        |
+| `delete_node`                       | Client→Server | `%{id}`                                                     | `keyboard_handler.js`  | `show.ex`        |
+| `duplicate_node`                    | Client→Server | `%{id}`                                                     | `keyboard_handler.js`  | `show.ex`        |
+| `connection_created`                | Client→Server | `%{source_node_id, source_pin, target_node_id, target_pin}` | `flow_canvas.js`       | `show.ex`        |
+| `connection_deleted`                | Client→Server | `%{source_node_id, target_node_id}`                         | `flow_canvas.js`       | `show.ex`        |
+| `cursor_moved`                      | Client→Server | `%{x, y}`                                                   | `cursor_handler.js`    | `show.ex`        |
+| `update_node_data`                  | Client→Server | `%{node: params}`                                           | form phx-change        | `show.ex`        |
+| `update_node_text`                  | Client→Server | `%{id, content}`                                            | `tiptap_editor.js`     | `show.ex`        |
+| `update_node_field`                 | Client→Server | `%{field, value}`                                           | phx-blur inputs        | `show.ex`        |
+| `mention_suggestions`               | Client→Server | `%{query}`                                                  | `tiptap_editor.js`     | `show.ex`        |
+| `update_condition_builder`          | Client→Server | condition params                                            | `condition_builder.ex` | `show.ex`        |
+| `update_response_condition_builder` | Client→Server | condition + response params                                 | `condition_builder.ex` | `show.ex`        |
+| `toggle_switch_mode`                | Client→Server | `%{}`                                                       | checkbox               | `show.ex`        |
 
 ### Hook Data Attributes
 
 | Attribute         | Set By (Elixir)        | Read By (JS)               | Purpose                  |
-|-------------------|------------------------|----------------------------|--------------------------|
+| ----------------- | ---------------------- | -------------------------- | ------------------------ |
 | `data-flow`       | `show.ex` render       | `flow_canvas.js` mounted   | Initial flow JSON        |
 | `data-sheets`     | `show.ex` render       | `flow_canvas.js` mounted   | Sheets map JSON          |
 | `data-locks`      | `show.ex` render       | `flow_canvas.js` mounted   | Initial lock state       |
@@ -493,7 +499,7 @@ mix test --cover            # Tests with coverage (threshold: 85%)
 ### Node Data Shape by Type
 
 | Type          | Fields                                                                                                                                                    | Consumed By                                                                      |
-|---------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------|
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | `annotation`  | `%{text, color}`                                                                                                                                          | `storyarn_node.js`                                                               |
 | `entry`       | `%{}`                                                                                                                                                     | `node_type_helpers.ex`, `storyarn_node.js`                                       |
 | `exit`        | `%{label, technical_id, outcome_tags, outcome_color, exit_mode, referenced_flow_id, target_type, target_id}`                                              | `properties_panels.ex`, `storyarn_node.js`                                       |
@@ -502,21 +508,20 @@ mix test --cover            # Tests with coverage (threshold: 85%)
 | `condition`   | `%{condition: %{logic, rules: [%{id, sheet, variable, operator, value, label}]}, switch_mode}`                                                            | `properties_panels.ex`, `storyarn_node.js`, `condition_builder.ex`               |
 | `instruction` | `%{assignments: [%{...}], description}`                                                                                                                   | `properties_panels.ex`, `storyarn_node.js`, `instruction_builder.ex`             |
 | `jump`        | `%{target_hub_id}`                                                                                                                                        | `properties_panels.ex`, `storyarn_node.js`                                       |
-| `slug_line`   | `%{location_sheet_id, int_ext, sub_location, time_of_day, description, technical_id}`                                                                     | `properties_panels.ex`, `storyarn_node.js`                                       |
 | `subflow`     | `%{referenced_flow_id}`                                                                                                                                   | `properties_panels.ex`, `storyarn_node.js`                                       |
 
 ### File Size Limits
 
-| Type                     | Max Lines  |
-|--------------------------|------------|
-| LiveView module          | 300        |
-| Function component       | 200        |
-| Helper module            | 200        |
-| Context facade           | 100        |
-| Context submodule        | 250        |
-| JS Hook (orchestrator)   | 100        |
-| JS Handler               | 150        |
-| JS LitElement (excl CSS) | 200        |
+| Type                     | Max Lines |
+| ------------------------ | --------- |
+| LiveView module          | 300       |
+| Function component       | 200       |
+| Helper module            | 200       |
+| Context facade           | 100       |
+| Context submodule        | 250       |
+| JS Hook (orchestrator)   | 100       |
+| JS Handler               | 150       |
+| JS LitElement (excl CSS) | 200       |
 
 ### AI Agent Checklist
 

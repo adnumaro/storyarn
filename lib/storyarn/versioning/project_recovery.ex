@@ -10,14 +10,23 @@ defmodule Storyarn.Versioning.ProjectRecovery do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
-  alias Storyarn.Localization.{GlossaryEntry, LocalizedText, ProjectLanguage}
-  alias Storyarn.Projects.{Project, ProjectMembership}
+  alias Storyarn.Localization.GlossaryEntry
+  alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Localization.ProjectLanguage
+  alias Storyarn.Projects.Project
+  alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
-  alias Storyarn.Scenes.{ScenePin, SceneZone}
-  alias Storyarn.Shared.{NameNormalizer, TimeHelpers}
-  alias Storyarn.Sheets.{Block, Sheet}
-  alias Storyarn.Versioning.Builders.{FlowBuilder, SceneBuilder, SheetBuilder}
+  alias Storyarn.Scenes.ScenePin
+  alias Storyarn.Scenes.SceneZone
+  alias Storyarn.Shared.NameNormalizer
+  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.Sheet
+  alias Storyarn.Versioning.Builders.FlowBuilder
+  alias Storyarn.Versioning.Builders.SceneBuilder
+  alias Storyarn.Versioning.Builders.SheetBuilder
 
   @recovery_id_map_keys [:sheet, :block, :flow, :node, :scene, :pin, :zone]
 
@@ -42,7 +51,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
           {:error, reason} -> Repo.rollback(reason)
         end
       end,
-      timeout: :timer.minutes(5)
+      timeout: to_timeout(minute: 5)
     )
   end
 
@@ -97,23 +106,18 @@ defmodule Storyarn.Versioning.ProjectRecovery do
 
   defp recover_scenes(project_id, snapshot_data, sheet_id_map) do
     materialize_entities(snapshot_data["scenes"] || [], :scene, fn snapshot ->
-      SceneBuilder.instantiate_snapshot(project_id, snapshot,
-        external_id_maps: %{sheet: sheet_id_map}
-      )
+      SceneBuilder.instantiate_snapshot(project_id, snapshot, external_id_maps: %{sheet: sheet_id_map})
     end)
   end
 
   defp recover_flows(project_id, snapshot_data, scene_id_map) do
     materialize_entities(snapshot_data["flows"] || [], :flow, fn snapshot ->
-      FlowBuilder.instantiate_snapshot(project_id, snapshot,
-        external_id_maps: %{scene: scene_id_map}
-      )
+      FlowBuilder.instantiate_snapshot(project_id, snapshot, external_id_maps: %{scene: scene_id_map})
     end)
   end
 
   defp materialize_entities(entries, entity_type, instantiate_fun) do
-    entries
-    |> Enum.reduce_while({:ok, empty_recovery_id_maps()}, fn entry, {:ok, id_maps} ->
+    Enum.reduce_while(entries, {:ok, empty_recovery_id_maps()}, fn entry, {:ok, id_maps} ->
       case instantiate_fun.(entry["snapshot"]) do
         {:ok, _entity, materialized_maps} ->
           {:cont, {:ok, merge_recovery_id_maps([id_maps, materialized_maps])}}
@@ -156,8 +160,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
       |> Enum.map(&Map.get(block_id_map, &1))
       |> Enum.reject(&is_nil/1)
 
-    from(s in Sheet, where: s.id == ^sheet_id)
-    |> Repo.update_all(set: [hidden_inherited_block_ids: hidden_ids])
+    Repo.update_all(from(s in Sheet, where: s.id == ^sheet_id), set: [hidden_inherited_block_ids: hidden_ids])
   end
 
   defp remap_block_inheritance(blocks_data, block_id_map) do
@@ -167,8 +170,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
       if new_block_id do
         remapped_parent = remap_id(block_data["inherited_from_block_id"], block_id_map)
 
-        from(b in Block, where: b.id == ^new_block_id)
-        |> Repo.update_all(set: [inherited_from_block_id: remapped_parent])
+        Repo.update_all(from(b in Block, where: b.id == ^new_block_id), set: [inherited_from_block_id: remapped_parent])
       end
     end)
   end
@@ -206,8 +208,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
         :ok
 
       new_id ->
-        from(f in Storyarn.Flows.Flow, where: f.id == ^new_flow_id)
-        |> Repo.update_all(set: [scene_id: new_id])
+        Repo.update_all(from(f in Flow, where: f.id == ^new_flow_id), set: [scene_id: new_id])
     end
   end
 
@@ -219,8 +220,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
       |> maybe_put_remapped("referenced_flow_id", id_maps.flow)
 
     if new_data != data do
-      from(n in FlowNode, where: n.id == ^node_id)
-      |> Repo.update_all(set: [data: new_data])
+      Repo.update_all(from(n in FlowNode, where: n.id == ^node_id), set: [data: new_data])
     end
   end
 
@@ -274,8 +274,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   defp maybe_update_scene_pin([], _new_pin_id), do: :ok
 
   defp maybe_update_scene_pin(updates, new_pin_id) do
-    from(p in ScenePin, where: p.id == ^new_pin_id)
-    |> Repo.update_all(set: updates)
+    Repo.update_all(from(p in ScenePin, where: p.id == ^new_pin_id), set: updates)
   end
 
   defp remap_single_scene_zone_ref(zone_data, id_maps) do
@@ -297,8 +296,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   defp maybe_update_scene_zone([], _new_zone_id), do: :ok
 
   defp maybe_update_scene_zone(updates, new_zone_id) do
-    from(z in SceneZone, where: z.id == ^new_zone_id)
-    |> Repo.update_all(set: updates)
+    Repo.update_all(from(z in SceneZone, where: z.id == ^new_zone_id), set: updates)
   end
 
   defp maybe_put_db_update(updates, _field, nil, _id_map), do: updates
@@ -333,8 +331,8 @@ defmodule Storyarn.Versioning.ProjectRecovery do
         :ok
 
       tree ->
-        remap_tree(tree["sheets"] || [], id_maps.sheet, Storyarn.Sheets.Sheet)
-        remap_tree(tree["flows"] || [], id_maps.flow, Storyarn.Flows.Flow)
+        remap_tree(tree["sheets"] || [], id_maps.sheet, Sheet)
+        remap_tree(tree["flows"] || [], id_maps.flow, Flow)
         remap_tree(tree["scenes"] || [], id_maps.scene, Storyarn.Scenes.Scene)
     end
   end
@@ -354,8 +352,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
         do: [position: entry["position"] || 0, parent_id: new_parent_id],
         else: [position: entry["position"] || 0]
 
-    from(e in schema, where: e.id == ^new_id)
-    |> Repo.update_all(set: updates)
+    Repo.update_all(from(e in schema, where: e.id == ^new_id), set: updates)
   end
 
   # ========== Phase D: Localization ==========

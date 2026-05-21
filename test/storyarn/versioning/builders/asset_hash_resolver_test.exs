@@ -1,11 +1,12 @@
 defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Versioning.Builders.AssetHashResolver
-
   import Storyarn.AccountsFixtures
-  import Storyarn.ProjectsFixtures
   import Storyarn.AssetsFixtures
+  import Storyarn.ProjectsFixtures
+
+  alias Storyarn.Assets.BlobStore
+  alias Storyarn.Versioning.Builders.AssetHashResolver
 
   setup do
     user = user_fixture()
@@ -49,9 +50,9 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
 
     test "recreates asset from blob when deleted", %{project: project, user: user} do
       content = "audio content for versioning"
-      hash = Storyarn.Assets.BlobStore.compute_hash(content)
+      hash = BlobStore.compute_hash(content)
       ext = "mp3"
-      {:ok, _key} = Storyarn.Assets.BlobStore.ensure_blob(project.id, hash, ext, content)
+      {:ok, _key} = BlobStore.ensure_blob(project.id, hash, ext, content)
 
       asset = asset_fixture(project, user, %{content_type: "audio/mpeg", filename: "track.mp3"})
       asset_id_str = to_string(asset.id)

@@ -3,73 +3,84 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
 
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
-  import Storyarn.ScenesFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
 
   alias Storyarn.Repo
+  alias Storyarn.Scenes
+
+  defp scenes_path(project) do
+    ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
+  end
+
+  defp get_dashboard_vue(view) do
+    LiveVue.Test.get_vue(view, name: "live/scene/dashboard/SceneDashboard")
+  end
+
+  defp get_sidebar_live(view, project) do
+    find_live_child(view, "sidebar-scenes-#{project.id}")
+  end
+
+  defp scene_names(view) do
+    view
+    |> get_dashboard_vue()
+    |> then(& &1.props["table-data"])
+    |> Enum.map(& &1["name"])
+  end
 
   describe "Scene index page" do
     setup :register_and_log_in_user
 
     test "renders page for owner", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene_fixture(project, %{name: "World Map"})
 
-      {:ok, view, html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-        )
+      {:ok, view, _html} = live(conn, scenes_path(project))
 
-      assert html =~ "Scenes"
+      vue = get_dashboard_vue(view)
+      assert vue.component == "live/scene/dashboard/SceneDashboard"
+      assert vue.props["can-edit"] == true
 
       # Scene name appears after async dashboard load
       _ = await_async(view)
-      assert render(view) =~ "World Map"
+      assert "World Map" in scene_names(view)
     end
 
     test "renders page for editor member", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "editor")
       scene_fixture(project, %{name: "Shared Scene"})
 
-      {:ok, view, html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-        )
+      {:ok, view, _html} = live(conn, scenes_path(project))
 
-      assert html =~ "Scenes"
+      vue = get_dashboard_vue(view)
+      assert vue.component == "live/scene/dashboard/SceneDashboard"
+      assert vue.props["can-edit"] == true
 
       _ = await_async(view)
-      assert render(view) =~ "Shared Scene"
+      assert "Shared Scene" in scene_names(view)
     end
 
     test "redirects non-member", %{conn: conn} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
 
-      {:error, {:redirect, %{to: path, flash: flash}}} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-        )
+      {:error, {:redirect, %{to: path, flash: flash}}} = live(conn, scenes_path(project))
 
       assert path == "/workspaces"
       assert flash["error"] =~ "access"
     end
 
-    test "renders empty state when no scenes exist", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+    test "passes empty table-data when no scenes exist", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
-      {:ok, _view, html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-        )
+      {:ok, view, _html} = live(conn, scenes_path(project))
 
-      assert html =~ "No scenes yet"
+      vue = get_dashboard_vue(view)
+      # Without scenes, mount doesn't trigger the async dashboard load at all.
+      assert vue.props["table-data"] == []
+      assert vue.props["stats"] == nil
     end
   end
 
@@ -77,38 +88,32 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
     setup :register_and_log_in_user
 
     test "creates a scene and redirects to it", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-        )
+      {:ok, view, _html} = live(conn, scenes_path(project))
+      sidebar = get_sidebar_live(view, project)
 
-      assert view
-             |> render_click("create_scene")
-             |> follow_redirect(conn)
+      render_click(sidebar, "create_scene")
+      {redirect_path, _flash} = assert_redirect(view)
 
-      # The scene was created — verify it exists
-      scenes = Storyarn.Scenes.list_scenes(project.id)
+      assert redirect_path =~ "/scenes/"
+
+      scenes = Scenes.list_scenes(project.id)
       assert length(scenes) == 1
       assert hd(scenes).name == "Untitled"
     end
 
     test "viewer cannot create a scene", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
 
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-        )
+      {:ok, view, _html} = live(conn, scenes_path(project))
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "create_scene")
+      render_click(sidebar, "create_scene")
 
-      assert render(view) =~ "permission"
+      assert Scenes.list_scenes(project.id) == []
     end
   end
 
@@ -116,21 +121,19 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
     setup :register_and_log_in_user
 
     test "creates a child scene under a parent and redirects", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       parent_scene = scene_fixture(project, %{name: "Parent"})
 
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-        )
+      {:ok, view, _html} = live(conn, scenes_path(project))
+      sidebar = get_sidebar_live(view, project)
 
-      assert view
-             |> render_click("create_child_scene", %{"parent-id" => parent_scene.id})
-             |> follow_redirect(conn)
+      render_click(sidebar, "create_child_scene", %{"parent-id" => parent_scene.id})
+      {redirect_path, _flash} = assert_redirect(view)
+
+      assert redirect_path =~ "/scenes/"
 
       # Verify the child scene was created with proper parent_id
-      scenes = Storyarn.Scenes.list_scenes(project.id)
+      scenes = Scenes.list_scenes(project.id)
       child = Enum.find(scenes, &(&1.parent_id == parent_scene.id))
       assert child
       assert child.name == "Untitled"
@@ -141,43 +144,35 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
     setup :register_and_log_in_user
 
     test "set_pending_delete + confirm_delete removes the scene", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Doomed Scene"})
 
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-        )
+      {:ok, view, _html} = live(conn, scenes_path(project))
 
       _ = await_async(view)
-      assert render(view) =~ "Doomed Scene"
+      assert "Doomed Scene" in scene_names(view)
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "set_pending_delete", %{"id" => scene.id})
-      render_click(view, "confirm_delete")
+      render_click(sidebar, "set_pending_delete_scene", %{"id" => scene.id})
+      render_click(sidebar, "confirm_delete_scene")
 
-      html = render(view)
-      refute html =~ "Doomed Scene"
-      assert html =~ "trash"
+      refute Scenes.get_scene(project.id, scene.id)
     end
 
     test "confirm_delete without pending delete does nothing", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene_fixture(project, %{name: "Safe Scene"})
 
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-        )
+      {:ok, view, _html} = live(conn, scenes_path(project))
 
       _ = await_async(view)
+      sidebar = get_sidebar_live(view, project)
 
       # Call confirm_delete without set_pending_delete first
-      render_click(view, "confirm_delete")
+      render_click(sidebar, "confirm_delete_scene")
 
       # Scene should still be displayed
-      assert render(view) =~ "Safe Scene"
+      assert project.id |> Scenes.list_scenes() |> Enum.any?(&(&1.name == "Safe Scene"))
     end
   end
 
@@ -185,53 +180,45 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
     setup :register_and_log_in_user
 
     test "directly deletes a scene by ID", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Direct Delete"})
 
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-        )
+      {:ok, view, _html} = live(conn, scenes_path(project))
 
       _ = await_async(view)
-      render_click(view, "delete", %{"id" => scene.id})
+      sidebar = get_sidebar_live(view, project)
+      render_click(sidebar, "set_pending_delete_scene", %{"id" => scene.id})
+      render_click(sidebar, "confirm_delete_scene")
 
-      html = render(view)
-      refute html =~ "Direct Delete"
+      refute Scenes.get_scene(project.id, scene.id)
     end
 
     test "delete with non-existent ID shows error", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-        )
+      {:ok, view, _html} = live(conn, scenes_path(project))
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "delete", %{"id" => -1})
+      render_click(sidebar, "set_pending_delete_scene", %{"id" => -1})
+      render_click(sidebar, "confirm_delete_scene")
 
-      assert render(view) =~ "not found"
+      assert Scenes.list_scenes(project.id) == []
     end
 
     test "viewer cannot delete a scene", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project, %{name: "Protected Scene"})
 
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-        )
+      {:ok, view, _html} = live(conn, scenes_path(project))
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "delete", %{"id" => scene.id})
+      render_click(sidebar, "set_pending_delete_scene", %{"id" => scene.id})
+      render_click(sidebar, "confirm_delete_scene")
 
-      assert render(view) =~ "permission"
       # Scene still exists
-      assert Storyarn.Scenes.get_scene(project.id, scene.id)
+      assert Scenes.get_scene(project.id, scene.id)
     end
   end
 
@@ -239,159 +226,85 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
     setup :register_and_log_in_user
 
     test "moves a scene to a new parent", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene_a = scene_fixture(project, %{name: "Scene A"})
       scene_b = scene_fixture(project, %{name: "Scene B"})
 
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-        )
+      {:ok, view, _html} = live(conn, scenes_path(project))
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "move_to_parent", %{
+      render_click(sidebar, "move_to_parent", %{
         "item_id" => scene_b.id,
         "new_parent_id" => scene_a.id,
         "position" => 0
       })
 
       # Verify scene B is now a child of scene A
-      moved = Storyarn.Scenes.get_scene(project.id, scene_b.id)
+      moved = Scenes.get_scene(project.id, scene_b.id)
       assert moved.parent_id == scene_a.id
     end
 
     test "moves a scene to root (nil parent)", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       parent = scene_fixture(project, %{name: "Parent"})
       child = scene_fixture(project, %{name: "Child", parent_id: parent.id})
 
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-        )
+      {:ok, view, _html} = live(conn, scenes_path(project))
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "move_to_parent", %{
+      render_click(sidebar, "move_to_parent", %{
         "item_id" => child.id,
         "new_parent_id" => "",
         "position" => 0
       })
 
-      moved = Storyarn.Scenes.get_scene(project.id, child.id)
+      moved = Scenes.get_scene(project.id, child.id)
       assert is_nil(moved.parent_id)
     end
 
     test "move with non-existent scene shows error", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-        )
+      {:ok, view, _html} = live(conn, scenes_path(project))
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "move_to_parent", %{
+      render_click(sidebar, "move_to_parent", %{
         "item_id" => -1,
         "new_parent_id" => "",
         "position" => 0
       })
 
-      assert render(view) =~ "not found"
-    end
-  end
-
-  describe "switch_tree_tab event" do
-    setup :register_and_log_in_user
-
-    test "switches to layers tab", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-
-      {:ok, view, html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-        )
-
-      # Default is scenes tab
-      assert html =~ "tab-active"
-
-      render_click(view, "switch_tree_tab", %{"tab" => "layers"})
-
-      html = render(view)
-      assert html =~ "Select a scene to manage layers"
-    end
-
-    test "switches back to scenes tab", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      scene_fixture(project, %{name: "Tab Test Scene"})
-
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-        )
-
-      # Switch to layers, then back to scenes
-      render_click(view, "switch_tree_tab", %{"tab" => "layers"})
-      render_click(view, "switch_tree_tab", %{"tab" => "scenes"})
-
-      # Scenes tab content should be visible again
-      html = render(view)
-      refute html =~ "Select a scene to manage layers"
-    end
-  end
-
-  describe "handle_info Form.Saved" do
-    setup :register_and_log_in_user
-
-    test "redirects to scene show page on Form saved message", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      scene = scene_fixture(project, %{name: "Saved Scene"})
-
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-        )
-
-      send(view.pid, {StoryarnWeb.SceneLive.Form, {:saved, scene}})
-
-      assert_redirect(
-        view,
-        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}",
-        1000
-      )
+      assert Scenes.list_scenes(project.id) == []
     end
   end
 
   describe "dashboard" do
     setup :register_and_log_in_user
 
-    test "renders dashboard with stat cards when scenes exist", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+    test "passes dashboard stats to Vue when scenes exist", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Dashboard Scene"})
       zone_fixture(scene)
       pin_fixture(scene)
 
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-        )
+      {:ok, view, _html} = live(conn, scenes_path(project))
 
       # Wait for async dashboard data to load
       _ = await_async(view)
-      html = render(view)
 
-      assert html =~ "Scenes"
-      assert html =~ "Zones"
-      assert html =~ "Pins"
-      assert html =~ "Backgrounds"
-      assert html =~ "Dashboard Scene"
+      vue = get_dashboard_vue(view)
+      stats = vue.props["stats"]
+
+      assert stats["scene_count"] == 1
+      assert stats["zone_count"] == 1
+      assert stats["pin_count"] == 1
+      assert Map.has_key?(stats, "background_count")
+
+      assert "Dashboard Scene" in scene_names(view)
     end
 
     test "sort_scenes event toggles table order", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene_a = scene_fixture(project, %{name: "Alpha Scene"})
       scene_b = scene_fixture(project, %{name: "Zeta Scene"})
       # Give Zeta more pins to test numeric sort
@@ -399,30 +312,20 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
       pin_fixture(scene_b)
       pin_fixture(scene_a)
 
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-        )
+      {:ok, view, _html} = live(conn, scenes_path(project))
 
       _ = await_async(view)
 
       # Default sort: name asc — Alpha before Zeta
-      html = render(view)
-      tbody = html |> Floki.parse_document!() |> Floki.find("tbody") |> Floki.raw_html()
-      assert tbody =~ ~r/Alpha Scene.*Zeta Scene/s
+      assert scene_names(view) == ["Alpha Scene", "Zeta Scene"]
 
       # Sort by pin_count asc — Alpha (1) before Zeta (2)
       render_click(view, "sort_scenes", %{"column" => "pin_count"})
-      html = render(view)
-      tbody = html |> Floki.parse_document!() |> Floki.find("tbody") |> Floki.raw_html()
-      assert tbody =~ ~r/Alpha Scene.*Zeta Scene/s
+      assert scene_names(view) == ["Alpha Scene", "Zeta Scene"]
 
       # Sort by pin_count desc — Zeta (2) before Alpha (1)
       render_click(view, "sort_scenes", %{"column" => "pin_count"})
-      html = render(view)
-      tbody = html |> Floki.parse_document!() |> Floki.find("tbody") |> Floki.raw_html()
-      assert tbody =~ ~r/Zeta Scene.*Alpha Scene/s
+      assert scene_names(view) == ["Zeta Scene", "Alpha Scene"]
     end
   end
 

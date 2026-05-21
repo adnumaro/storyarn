@@ -59,7 +59,7 @@ defmodule Storyarn.ProjectsFixturesTest do
     test "creates workspace when not provided" do
       user = user_fixture()
       project = project_fixture(user)
-      assert project.workspace_id != nil
+      assert project.workspace_id
     end
 
     test "accepts custom name" do

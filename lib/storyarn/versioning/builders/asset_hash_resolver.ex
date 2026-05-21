@@ -10,7 +10,8 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Assets.{Asset, BlobStore}
+  alias Storyarn.Assets.Asset
+  alias Storyarn.Assets.BlobStore
   alias Storyarn.Repo
 
   @doc """
@@ -27,9 +28,7 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
     if asset_ids == [] do
       {%{}, %{}}
     else
-      assets =
-        from(a in Asset, where: a.id in ^asset_ids)
-        |> Repo.all()
+      assets = Repo.all(from(a in Asset, where: a.id in ^asset_ids))
 
       hash_map = Map.new(assets, &{to_string(&1.id), &1.blob_hash})
 

@@ -3,6 +3,6 @@ defmodule StoryarnWeb.PageControllerTest do
 
   test "GET /", %{conn: conn} do
     conn = get(conn, ~p"/")
-    assert html_response(conn, 200) =~ "Craft worlds."
+    assert html_response(conn, 200) =~ "Narrative Design Platform"
   end
 end

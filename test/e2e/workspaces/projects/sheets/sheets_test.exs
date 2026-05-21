@@ -10,8 +10,8 @@ defmodule StoryarnWeb.E2E.SheetsTest do
   use PhoenixTest.Playwright.Case, async: true
 
   import Storyarn.AccountsFixtures
-  import Storyarn.SheetsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
 
   alias Storyarn.Accounts
   alias Storyarn.Repo
@@ -21,10 +21,8 @@ defmodule StoryarnWeb.E2E.SheetsTest do
   @session_options [
     store: :cookie,
     key: "_storyarn_key",
-    signing_salt:
-      Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_signing_salt]),
-    encryption_salt:
-      Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_encryption_salt])
+    signing_salt: Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_signing_salt]),
+    encryption_salt: Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_encryption_salt])
   ]
 
   # Authenticate by injecting a signed session cookie directly.
@@ -38,7 +36,7 @@ defmodule StoryarnWeb.E2E.SheetsTest do
   describe "sheets list (authenticated)" do
     test "shows empty state when project has no sheets", %{conn: conn} do
       user = user_fixture()
-      project = project_fixture(user, %{name: "My Project"}) |> Repo.preload(:workspace)
+      project = user |> project_fixture(%{name: "My Project"}) |> Repo.preload(:workspace)
 
       conn
       |> authenticate(user)
@@ -49,7 +47,7 @@ defmodule StoryarnWeb.E2E.SheetsTest do
 
     test "shows sheet list when project has sheets", %{conn: conn} do
       user = user_fixture()
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet_fixture(project, %{name: "Character Sheet"})
 
       conn
@@ -60,19 +58,19 @@ defmodule StoryarnWeb.E2E.SheetsTest do
 
     test "can create a new sheet via sidebar button", %{conn: conn} do
       user = user_fixture()
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       conn
       |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets")
       # Tree panel starts open on sheets index
-      |> assert_has("#tree-panel[data-open='true']")
+      |> assert_has("#main-sidebar[data-open='true']")
       |> assert_has("button", text: "New Sheet")
     end
 
     test "shows subsheet count on parent sheets", %{conn: conn} do
       user = user_fixture()
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       parent = sheet_fixture(project, %{name: "Characters"})
       sheet_fixture(project, %{name: "Hero", parent_id: parent.id})
       sheet_fixture(project, %{name: "Villain", parent_id: parent.id})
@@ -87,41 +85,35 @@ defmodule StoryarnWeb.E2E.SheetsTest do
   describe "sheet detail (authenticated)" do
     test "displays sheet with its name", %{conn: conn} do
       user = user_fixture()
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "World Settings"})
 
       conn
       |> authenticate(user)
-      |> visit(
-        "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
-      )
+      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}")
       |> assert_has("h1", text: "World Settings")
     end
 
     test "shows add block hint for editor", %{conn: conn} do
       user = user_fixture()
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project)
 
       conn
       |> authenticate(user)
-      |> visit(
-        "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
-      )
+      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}")
       |> assert_has("span", text: "Type / to add a block")
     end
 
     test "shows breadcrumb navigation to parent", %{conn: conn} do
       user = user_fixture()
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       parent = sheet_fixture(project, %{name: "Characters"})
       child = sheet_fixture(project, %{name: "Main Hero", parent_id: parent.id})
 
       conn
       |> authenticate(user)
-      |> visit(
-        "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{child.id}"
-      )
+      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{child.id}")
       |> assert_has("a", text: "Characters")
       |> assert_has("h1", text: "Main Hero")
     end
@@ -131,15 +123,13 @@ defmodule StoryarnWeb.E2E.SheetsTest do
     test "viewer can see sheets but not add blocks", %{conn: conn} do
       owner = user_fixture()
       viewer = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Shared Sheet"})
       membership_fixture(project, viewer, "viewer")
 
       conn
       |> authenticate(viewer)
-      |> visit(
-        "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
-      )
+      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}")
       |> assert_has("h1", text: "Shared Sheet")
       |> refute_has("span", text: "Type / to add a block")
     end
@@ -147,15 +137,13 @@ defmodule StoryarnWeb.E2E.SheetsTest do
     test "editor can see and add blocks", %{conn: conn} do
       owner = user_fixture()
       editor = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project)
       membership_fixture(project, editor, "editor")
 
       conn
       |> authenticate(editor)
-      |> visit(
-        "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
-      )
+      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}")
       |> assert_has("span", text: "Type / to add a block")
     end
   end
@@ -163,7 +151,7 @@ defmodule StoryarnWeb.E2E.SheetsTest do
   describe "sheet with blocks" do
     test "displays text block content", %{conn: conn} do
       user = user_fixture()
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Sheet with Content"})
 
       block_fixture(sheet, %{
@@ -174,9 +162,7 @@ defmodule StoryarnWeb.E2E.SheetsTest do
 
       conn
       |> authenticate(user)
-      |> visit(
-        "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
-      )
+      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}")
       |> assert_has("label", text: "Description")
     end
   end

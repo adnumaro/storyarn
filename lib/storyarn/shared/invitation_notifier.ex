@@ -11,10 +11,11 @@ defmodule Storyarn.Shared.InvitationNotifier do
   """
 
   import Swoosh.Email
-  require Logger
 
   alias Storyarn.Emails.Templates
   alias Storyarn.Mailer
+
+  require Logger
 
   @doc """
   Delivers an invitation email using the config's template function.

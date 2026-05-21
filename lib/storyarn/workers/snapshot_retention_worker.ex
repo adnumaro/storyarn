@@ -10,30 +10,25 @@ defmodule Storyarn.Workers.SnapshotRetentionWorker do
 
   use Oban.Worker, queue: :snapshots, max_attempts: 3
 
-  require Logger
-
   import Ecto.Query, warn: false
 
-  alias Storyarn.Billing.{Plan, SubscriptionCrud}
+  alias Storyarn.Billing.Plan
+  alias Storyarn.Billing.SubscriptionCrud
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Versioning
 
+  require Logger
+
   @impl Oban.Worker
   def perform(%Oban.Job{}) do
-    list_deleted_project_ids()
-    |> Enum.each(&process_project/1)
-
+    Enum.each(list_deleted_project_ids(), &process_project/1)
     :ok
   end
 
   defp list_deleted_project_ids do
-    from(p in Project,
-      where: not is_nil(p.deleted_at),
-      select: {p.id, p.workspace_id}
-    )
-    |> Repo.all()
+    Repo.all(from(p in Project, where: not is_nil(p.deleted_at), select: {p.id, p.workspace_id}))
   end
 
   defp process_project({project_id, workspace_id}) do
@@ -68,9 +63,7 @@ defmodule Storyarn.Workers.SnapshotRetentionWorker do
             Logger.info("Permanently deleted project #{project_id} (no snapshots remain)")
 
           {:error, reason} ->
-            Logger.warning(
-              "Failed to permanently delete project #{project_id}: #{inspect(reason)}"
-            )
+            Logger.warning("Failed to permanently delete project #{project_id}: #{inspect(reason)}")
         end
 
       _ ->

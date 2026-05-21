@@ -3,7 +3,8 @@ defmodule Storyarn.Billing.SubscriptionCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Billing.{Plan, Subscription}
+  alias Storyarn.Billing.Plan
+  alias Storyarn.Billing.Subscription
   alias Storyarn.Repo
   alias Storyarn.Workspaces.Workspace
 

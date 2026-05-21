@@ -1,11 +1,11 @@
 defmodule Storyarn.FlowsTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Flows
-
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
+
+  alias Storyarn.Flows
 
   describe "flows" do
     test "list_flows/1 returns all flows for a project" do
@@ -85,7 +85,7 @@ defmodule Storyarn.FlowsTest do
 
       # Flow should not appear in normal queries
       assert Flows.get_flow(project.id, flow.id) == nil
-      assert flow.id not in Enum.map(Flows.list_flows(project.id), & &1.id)
+      refute flow.id in Enum.map(Flows.list_flows(project.id), & &1.id)
 
       # But nodes and connections are preserved (for restore)
       # Flow has auto-created entry + exit nodes + 2 manually created nodes = 4 total
@@ -110,7 +110,7 @@ defmodule Storyarn.FlowsTest do
       {:ok, restored} = Flows.restore_flow(deleted_flow)
 
       assert restored.deleted_at == nil
-      assert Flows.get_flow(project.id, flow.id) != nil
+      assert Flows.get_flow(project.id, flow.id)
     end
 
     test "hard_delete_flow/1 permanently deletes flow and cascades to nodes" do
@@ -359,12 +359,12 @@ defmodule Storyarn.FlowsTest do
       assert length(nodes) == 2
 
       entry_node = Enum.find(nodes, &(&1.type == "entry"))
-      assert entry_node != nil
+      assert entry_node
       assert entry_node.position_x == 100.0
       assert entry_node.position_y == 300.0
 
       exit_node = Enum.find(nodes, &(&1.type == "exit"))
-      assert exit_node != nil
+      assert exit_node
       assert exit_node.position_x == 500.0
       assert exit_node.position_y == 300.0
       assert exit_node.data["outcome_tags"] == []
@@ -450,8 +450,8 @@ defmodule Storyarn.FlowsTest do
 
       assert {:ok, _, _} = Flows.delete_node(exit2)
 
-      remaining_exit = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "exit"))
-      assert remaining_exit != nil
+      remaining_exit = flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "exit"))
+      assert remaining_exit
       assert {:error, :cannot_delete_last_exit} = Flows.delete_node(remaining_exit)
     end
 
@@ -759,13 +759,13 @@ defmodule Storyarn.FlowsTest do
 
       {:ok, connection} =
         Flows.create_connection(flow, source, target, %{
-          source_pin: "output",
+          source_pin: "default",
           target_pin: "input"
         })
 
       assert connection.source_node_id == source.id
       assert connection.target_node_id == target.id
-      assert connection.source_pin == "output"
+      assert connection.source_pin == "default"
       assert connection.target_pin == "input"
     end
 
@@ -777,7 +777,7 @@ defmodule Storyarn.FlowsTest do
 
       {:error, changeset} =
         Flows.create_connection(flow, node, node, %{
-          source_pin: "output",
+          source_pin: "default",
           target_pin: "input"
         })
 
@@ -848,14 +848,14 @@ defmodule Storyarn.FlowsTest do
       project = project_fixture(user)
       flow = flow_fixture(project)
 
-      exit_node = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "exit"))
+      exit_node = flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "exit"))
       target = node_fixture(flow)
 
       result =
         Flows.create_connection_with_attrs(flow, %{
           source_node_id: exit_node.id,
           target_node_id: target.id,
-          source_pin: "output",
+          source_pin: "default",
           target_pin: "input"
         })
 
@@ -867,14 +867,14 @@ defmodule Storyarn.FlowsTest do
       project = project_fixture(user)
       flow = flow_fixture(project)
 
-      entry_node = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
+      entry_node = flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
       source = node_fixture(flow)
 
       result =
         Flows.create_connection_with_attrs(flow, %{
           source_node_id: source.id,
           target_node_id: entry_node.id,
-          source_pin: "output",
+          source_pin: "default",
           target_pin: "input"
         })
 
@@ -900,7 +900,7 @@ defmodule Storyarn.FlowsTest do
         Flows.create_connection_with_attrs(flow, %{
           source_node_id: jump.id,
           target_node_id: target.id,
-          source_pin: "output",
+          source_pin: "default",
           target_pin: "input"
         })
 
@@ -966,6 +966,112 @@ defmodule Storyarn.FlowsTest do
       first_connection = Enum.at(serialized.connections, 0)
       assert first_connection.source_node_id == node1.id
       assert first_connection.target_node_id == node2.id
+
+      # parent_id field present (nil by default)
+      assert Map.has_key?(first_node, :parent_id)
+      assert first_node.parent_id == nil
+
+      # No separate sequences array: sequences are inline in nodes[] with type='sequence'
+      refute Map.has_key?(serialized, :sequences)
+    end
+
+    test "serialize_for_canvas includes subflow exit pins from the referenced flow" do
+      user = user_fixture()
+      project = project_fixture(user)
+      parent_flow = flow_fixture(project, %{name: "Parent Flow"})
+      target_flow = flow_fixture(project, %{name: "Target Flow"})
+      target_exit = target_flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "exit"))
+
+      subflow =
+        node_fixture(parent_flow, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => target_flow.id}
+        })
+
+      serialized = project.id |> Flows.get_flow!(parent_flow.id) |> Flows.serialize_for_canvas()
+      subflow_payload = Enum.find(serialized.nodes, &(&1.id == subflow.id))
+
+      assert subflow_payload.data["referenced_flow_name"] == "Target Flow"
+      assert subflow_payload.data["exit_pins"] == ["exit_#{target_exit.id}"]
+      assert [%{id: exit_id}] = subflow_payload.data["exit_labels"]
+      assert exit_id == target_exit.id
+    end
+
+    test "serialize_for_canvas ignores connections pointing to soft-deleted nodes" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project, %{name: "Stale Connection Flow"})
+      source = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Continue"}})
+      target = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Deleted"}})
+
+      connection_fixture(flow, source, target)
+
+      target
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
+      |> Storyarn.Repo.update!()
+
+      serialized = project.id |> Flows.get_flow!(flow.id) |> Flows.serialize_for_canvas()
+      source_payload = Enum.find(serialized.nodes, &(&1.id == source.id))
+
+      refute Enum.any?(serialized.nodes, &(&1.id == target.id))
+      refute Enum.any?(serialized.connections, &(&1.target_node_id == target.id))
+      assert source_payload.data["dead_end"] == true
+    end
+
+    test "serialize_for_canvas marks nodes unreachable when their source is soft-deleted" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project, %{name: "Deleted Source Flow"})
+      source = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Deleted"}})
+      target = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Lost"}})
+
+      connection_fixture(flow, source, target)
+
+      source
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
+      |> Storyarn.Repo.update!()
+
+      serialized = project.id |> Flows.get_flow!(flow.id) |> Flows.serialize_for_canvas()
+      target_payload = Enum.find(serialized.nodes, &(&1.id == target.id))
+
+      refute Enum.any?(serialized.nodes, &(&1.id == source.id))
+      refute Enum.any?(serialized.connections, &(&1.source_node_id == source.id))
+      assert target_payload.data["unreachable"] == true
+    end
+
+    test "serialize_for_canvas includes sequences inline in nodes[] with parent_id" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project, %{name: "Test"})
+      {:ok, outer} = Flows.create_sequence(flow.id, %{"name" => "Outer"})
+
+      {:ok, inner} =
+        Flows.create_sequence(flow.id, %{"name" => "Inner", "parent_id" => outer.id})
+
+      node =
+        flow
+        |> node_fixture(%{type: "dialogue", position_x: 50.0, position_y: 60.0})
+        |> Ecto.Changeset.change(%{parent_id: outer.id})
+        |> Storyarn.Repo.update!()
+
+      flow = Flows.get_flow!(project.id, flow.id)
+      serialized = Flows.serialize_for_canvas(flow)
+
+      # Sequences live alongside other flow_nodes in the single nodes array.
+      sequences = Enum.filter(serialized.nodes, &(&1.type == "sequence"))
+      assert length(sequences) == 2
+
+      outer_payload = Enum.find(sequences, &(&1.id == outer.id))
+      inner_payload = Enum.find(sequences, &(&1.id == inner.id))
+
+      assert outer_payload.parent_id == nil
+      assert outer_payload.data["name"] == "Outer"
+      assert outer_payload.data["width"] == 300.0
+      assert outer_payload.data["height"] == 200.0
+      assert inner_payload.parent_id == outer.id
+
+      node_payload = Enum.find(serialized.nodes, &(&1.id == node.id))
+      assert node_payload.parent_id == outer.id
     end
   end
 
@@ -1009,7 +1115,7 @@ defmodule Storyarn.FlowsTest do
       assert length(tree) == 2
 
       parent_in_tree = Enum.find(tree, &(&1.name == "Act 1"))
-      assert parent_in_tree != nil
+      assert parent_in_tree
       assert length(parent_in_tree.children) == 2
     end
 

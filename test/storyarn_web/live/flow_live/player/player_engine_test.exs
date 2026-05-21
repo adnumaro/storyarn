@@ -18,7 +18,7 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
     %{id: id, type: type, data: data}
   end
 
-  defp make_connection(source_id, target_id, source_pin \\ "default", target_pin \\ "input") do
+  defp make_connection(source_id, target_id, source_pin \\ "output", target_pin \\ "input") do
     %{
       source_node_id: source_id,
       source_pin: source_pin,
@@ -139,7 +139,7 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
 
       assert status == :waiting_input
       assert final_state.status == :waiting_input
-      assert final_state.pending_choices != nil
+      assert final_state.pending_choices
       # Entry was traversed as non-interactive
       assert {1, "entry"} in skipped
     end
@@ -154,7 +154,6 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
 
   describe "step_until_interactive/4 with entry -> dialogue (no responses)" do
     setup do
-      # Dialogue with no responses auto-advances via default output
       dialogue_data = %{"text" => "Narrator speaks.", "responses" => []}
 
       nodes =
@@ -174,17 +173,74 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
       %{nodes: nodes, connections: connections, state: state}
     end
 
-    test "dialogue with no responses returns :ok (not non-interactive, loop stops)", ctx do
-      {status, _state, skipped} =
+    test "dialogue with no responses waits for explicit continue", ctx do
+      {status, final_state, skipped} =
         PlayerEngine.step_until_interactive(ctx.state, ctx.nodes, ctx.connections)
 
-      # Dialogue with no responses auto-selects and returns {:ok, state}.
-      # Since "dialogue" is NOT in @non_interactive_types, the loop stops with :ok.
       assert status == :ok
-      # Entry was traversed and is non-interactive
+      assert final_state.current_node_id == 2
+      assert final_state.status == :paused
       assert {1, "entry"} in skipped
-      # Dialogue is NOT in skipped (it's the stop point)
       refute Enum.any?(skipped, fn {_id, type} -> type == "dialogue" end)
+    end
+
+    test "advance_current_dialogue advances after the user continues", ctx do
+      {:ok, stopped_state, _skipped} =
+        PlayerEngine.step_until_interactive(ctx.state, ctx.nodes, ctx.connections)
+
+      {status, final_state, skipped} =
+        PlayerEngine.step_until_interactive(stopped_state, ctx.nodes, ctx.connections, advance_current_dialogue: true)
+
+      assert stopped_state.current_node_id == 2
+      assert status == :finished
+      assert final_state.current_node_id == 3
+      refute {2, "dialogue"} in skipped
+    end
+  end
+
+  describe "step_until_interactive/4 with entry -> dialogue (single response)" do
+    setup do
+      dialogue_data = %{
+        "text" => "Narrator speaks.",
+        "responses" => [%{"id" => "r1", "text" => "Continue", "condition" => ""}]
+      }
+
+      nodes =
+        nodes_map([
+          make_node(1, "entry"),
+          make_node(2, "dialogue", dialogue_data),
+          make_node(3, "exit")
+        ])
+
+      connections = [
+        make_connection(1, 2),
+        make_connection(2, 3, "r1")
+      ]
+
+      state = init_state(1)
+
+      %{nodes: nodes, connections: connections, state: state}
+    end
+
+    test "single response waits for explicit continue", ctx do
+      {status, final_state, skipped} =
+        PlayerEngine.step_until_interactive(ctx.state, ctx.nodes, ctx.connections)
+
+      assert status == :ok
+      assert final_state.current_node_id == 2
+      assert final_state.status == :paused
+      assert {1, "entry"} in skipped
+    end
+
+    test "advance_current_dialogue auto-selects the single response after continue", ctx do
+      {:ok, stopped_state, _skipped} =
+        PlayerEngine.step_until_interactive(ctx.state, ctx.nodes, ctx.connections)
+
+      {status, final_state, _skipped} =
+        PlayerEngine.step_until_interactive(stopped_state, ctx.nodes, ctx.connections, advance_current_dialogue: true)
+
+      assert status == :finished
+      assert final_state.current_node_id == 3
     end
   end
 
@@ -255,35 +311,6 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
       assert status == :finished
       assert {1, "entry"} in skipped
       assert {2, "instruction"} in skipped
-    end
-  end
-
-  describe "step_until_interactive/4 with entry -> slug_line -> exit" do
-    setup do
-      nodes =
-        nodes_map([
-          make_node(1, "entry"),
-          make_node(2, "slug_line", %{"text" => "A dark forest"}),
-          make_node(3, "exit")
-        ])
-
-      connections = [
-        make_connection(1, 2),
-        make_connection(2, 3)
-      ]
-
-      state = init_state(1)
-
-      %{nodes: nodes, connections: connections, state: state}
-    end
-
-    test "auto-advances through entry and slug_line to exit", ctx do
-      {status, _state, skipped} =
-        PlayerEngine.step_until_interactive(ctx.state, ctx.nodes, ctx.connections)
-
-      assert status == :finished
-      assert {1, "entry"} in skipped
-      assert {2, "slug_line"} in skipped
     end
   end
 
@@ -552,7 +579,7 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
         nodes_map([
           make_node(1, "entry"),
           make_node(2, "hub"),
-          make_node(3, "slug_line", %{}),
+          make_node(3, "instruction", %{}),
           make_node(4, "exit")
         ])
 
@@ -579,7 +606,7 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
       {_status, _state, skipped} =
         PlayerEngine.step_until_interactive(ctx.state, ctx.nodes, ctx.connections)
 
-      assert skipped == [{1, "entry"}, {2, "hub"}, {3, "slug_line"}]
+      assert skipped == [{1, "entry"}, {2, "hub"}, {3, "instruction"}]
     end
   end
 
@@ -658,28 +685,6 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
         PlayerEngine.step_until_interactive(state, nodes, connections, max_steps: 3)
 
       assert status == :error
-    end
-  end
-
-  describe "step_until_interactive/4 with entry that has 'output' pin (legacy)" do
-    test "follows 'output' pin as fallback" do
-      nodes =
-        nodes_map([
-          make_node(1, "entry"),
-          make_node(2, "exit")
-        ])
-
-      # Use legacy "output" pin name instead of "default"
-      connections = [make_connection(1, 2, "output")]
-
-      state = init_state(1)
-
-      {status, _state, skipped} =
-        PlayerEngine.step_until_interactive(state, nodes, connections)
-
-      # EngineHelpers.follow_output checks "default" first, then "output"
-      assert status == :finished
-      assert {1, "entry"} in skipped
     end
   end
 
@@ -810,7 +815,7 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
         PlayerEngine.step_until_interactive(ctx.state, ctx.nodes, ctx.connections)
 
       assert status == :waiting_input
-      assert final_state.pending_choices != nil
+      assert final_state.pending_choices
       assert {1, "entry"} in skipped
       assert {2, "condition"} in skipped
     end
@@ -991,12 +996,19 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
       condition_data = %{
         "condition" => %{
           "logic" => "all",
-          "rules" => [
+          "blocks" => [
             %{
-              "sheet" => "mc",
-              "variable" => "health",
-              "operator" => "greater_than",
-              "value" => "50"
+              "id" => "b1",
+              "type" => "block",
+              "logic" => "all",
+              "rules" => [
+                %{
+                  "sheet" => "mc",
+                  "variable" => "health",
+                  "operator" => "greater_than",
+                  "value" => "50"
+                }
+              ]
             }
           ]
         }
@@ -1035,7 +1047,7 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
   end
 
   describe "step_until_interactive/4 with all non-interactive types in sequence" do
-    test "traverses entry, hub, slug_line, condition, instruction, jump to hub, then exit" do
+    test "traverses entry, hub, condition, instruction, jump to hub, then exit" do
       condition_data = %{
         "condition" => %{"logic" => "all", "rules" => []}
       }
@@ -1047,22 +1059,20 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
         nodes_map([
           make_node(1, "entry"),
           make_node(2, "hub"),
-          make_node(3, "slug_line", %{}),
-          make_node(4, "condition", condition_data),
-          make_node(5, "instruction", instruction_data),
-          make_node(6, "jump", %{"target_hub_id" => "target_hub"}),
-          make_node(7, "hub", hub2_data),
-          make_node(8, "exit")
+          make_node(3, "condition", condition_data),
+          make_node(4, "instruction", instruction_data),
+          make_node(5, "jump", %{"target_hub_id" => "target_hub"}),
+          make_node(6, "hub", hub2_data),
+          make_node(7, "exit")
         ])
 
       connections = [
         make_connection(1, 2),
         make_connection(2, 3),
-        make_connection(3, 4),
-        make_connection(4, 5, "true"),
-        make_connection(5, 6),
-        # jump goes to hub 7 via hub_id lookup
-        make_connection(7, 8)
+        make_connection(3, 4, "true"),
+        make_connection(4, 5),
+        # jump goes to hub 6 via hub_id lookup
+        make_connection(6, 7)
       ]
 
       state = init_state(1)
@@ -1075,7 +1085,6 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
       skipped_types = Enum.map(skipped, fn {_id, type} -> type end)
       assert "entry" in skipped_types
       assert "hub" in skipped_types
-      assert "slug_line" in skipped_types
       assert "condition" in skipped_types
       assert "instruction" in skipped_types
       assert "jump" in skipped_types

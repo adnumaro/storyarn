@@ -5,20 +5,20 @@ defmodule Storyarn.Flows.FlowCrud do
 
   alias Storyarn.Billing
   alias Storyarn.Collaboration
-  alias Storyarn.Flows.{Flow, FlowNode, NodeCrud, TreeOperations}
+  alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.NodeCrud
+  alias Storyarn.Flows.TreeOperations
   alias Storyarn.Localization
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes
-
-  alias Storyarn.Shared.{
-    ImportHelpers,
-    MapUtils,
-    SearchHelpers,
-    ShortcutHelpers,
-    SoftDelete
-  }
-
+  alias Storyarn.Shared.ImportHelpers
+  alias Storyarn.Shared.MapUtils
+  alias Storyarn.Shared.SearchHelpers
+  alias Storyarn.Shared.ShortcutHelpers
+  alias Storyarn.Shared.SoftDelete
+  alias Storyarn.Shared.Trashable
   alias Storyarn.Shared.TreeOperations, as: SharedTree
   alias Storyarn.Sheets
   alias Storyarn.Shortcuts
@@ -28,11 +28,12 @@ defmodule Storyarn.Flows.FlowCrud do
   Returns flows ordered by is_main (descending) then name.
   """
   def list_flows(project_id) do
-    from(f in Flow,
-      where: f.project_id == ^project_id and is_nil(f.deleted_at) and is_nil(f.draft_id),
-      order_by: [desc: f.is_main, asc: f.name]
+    Repo.all(
+      from(f in Flow,
+        where: f.project_id == ^project_id and is_nil(f.deleted_at),
+        order_by: [desc: f.is_main, asc: f.name]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -41,11 +42,12 @@ defmodule Storyarn.Flows.FlowCrud do
   """
   def list_flows_tree(project_id) do
     all_flows =
-      from(f in Flow,
-        where: f.project_id == ^project_id and is_nil(f.deleted_at) and is_nil(f.draft_id),
-        order_by: [asc: f.position, asc: f.name]
+      Repo.all(
+        from(f in Flow,
+          where: f.project_id == ^project_id and is_nil(f.deleted_at),
+          order_by: [asc: f.position, asc: f.name]
+        )
       )
-      |> Repo.all()
 
     SharedTree.build_tree_from_flat_list(all_flows)
   end
@@ -72,28 +74,24 @@ defmodule Storyarn.Flows.FlowCrud do
 
     base =
       from(f in Flow,
-        where: f.project_id == ^project_id and is_nil(f.deleted_at) and is_nil(f.draft_id)
+        where: f.project_id == ^project_id and is_nil(f.deleted_at)
       )
 
     base = maybe_exclude_flow(base, exclude_id)
 
     if query_str == "" do
-      from(f in base,
-        order_by: [desc: f.updated_at],
-        limit: ^limit,
-        offset: ^offset
-      )
-      |> Repo.all()
+      Repo.all(from(f in base, order_by: [desc: f.updated_at], limit: ^limit, offset: ^offset))
     else
       search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
 
-      from(f in base,
-        where: ilike(f.name, ^search_term) or ilike(f.shortcut, ^search_term),
-        order_by: [asc: f.name],
-        limit: ^limit,
-        offset: ^offset
+      Repo.all(
+        from(f in base,
+          where: ilike(f.name, ^search_term) or ilike(f.shortcut, ^search_term),
+          order_by: [asc: f.name],
+          limit: ^limit,
+          offset: ^offset
+        )
       )
-      |> Repo.all()
     end
   end
 
@@ -124,7 +122,7 @@ defmodule Storyarn.Flows.FlowCrud do
       search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
 
       from(f in Flow,
-        where: f.project_id == ^project_id and is_nil(f.deleted_at) and is_nil(f.draft_id),
+        where: f.project_id == ^project_id and is_nil(f.deleted_at),
         where:
           ilike(f.name, ^search_term) or
             ilike(f.shortcut, ^search_term) or
@@ -159,13 +157,12 @@ defmodule Storyarn.Flows.FlowCrud do
     active_nodes_query =
       from(n in FlowNode, where: is_nil(n.deleted_at), order_by: [asc: n.inserted_at])
 
-    from(f in Flow,
-      where:
-        f.project_id == ^project_id and f.id == ^flow_id and is_nil(f.deleted_at) and
-          is_nil(f.draft_id),
-      preload: [:connections, nodes: ^active_nodes_query]
+    Repo.one(
+      from(f in Flow,
+        where: f.project_id == ^project_id and f.id == ^flow_id and is_nil(f.deleted_at),
+        preload: [:connections, nodes: ^active_nodes_query]
+      )
     )
-    |> Repo.one()
   end
 
   @doc """
@@ -173,41 +170,26 @@ defmodule Storyarn.Flows.FlowCrud do
   Used for breadcrumbs and lightweight lookups.
   """
   def get_flow_brief(project_id, flow_id) do
-    from(f in Flow,
-      where:
-        f.project_id == ^project_id and f.id == ^flow_id and is_nil(f.deleted_at) and
-          is_nil(f.draft_id)
-    )
-    |> Repo.one()
+    Repo.one(from(f in Flow, where: f.project_id == ^project_id and f.id == ^flow_id and is_nil(f.deleted_at)))
   end
 
-  def get_flow!(project_id, flow_id, opts \\ []) do
+  def get_flow!(project_id, flow_id, _opts \\ []) do
     active_nodes_query =
       from(n in FlowNode, where: is_nil(n.deleted_at), order_by: [asc: n.inserted_at])
 
-    query =
+    Repo.one!(
       from(f in Flow,
         where: f.project_id == ^project_id and f.id == ^flow_id and is_nil(f.deleted_at),
         preload: [:connections, nodes: ^active_nodes_query]
       )
-
-    query =
-      if Keyword.get(opts, :include_drafts, false),
-        do: query,
-        else: where(query, [f], is_nil(f.draft_id))
-
-    Repo.one!(query)
+    )
   end
 
   @doc """
   Gets a flow including soft-deleted ones (for trash/restore).
   """
   def get_flow_including_deleted(project_id, flow_id) do
-    from(f in Flow,
-      where: f.project_id == ^project_id and f.id == ^flow_id,
-      preload: [:nodes, :connections]
-    )
-    |> Repo.one()
+    Repo.one(from(f in Flow, where: f.project_id == ^project_id and f.id == ^flow_id, preload: [:nodes, :connections]))
   end
 
   @doc """
@@ -215,12 +197,7 @@ defmodule Storyarn.Flows.FlowCrud do
   Used by exit (flow_reference mode) and subflow nodes.
   Returns `{:ok, %{flow: flow, node: node}}` or `{:error, step, reason, changes}`.
   """
-  def create_linked_flow(
-        %Project{} = project,
-        %Flow{} = parent_flow,
-        %FlowNode{} = node,
-        opts \\ []
-      ) do
+  def create_linked_flow(%Project{} = project, %Flow{} = parent_flow, %FlowNode{} = node, opts \\ []) do
     with :ok <- Billing.can_create_item?(project) do
       name = opts[:name] || derive_linked_flow_name(parent_flow, node)
 
@@ -317,6 +294,11 @@ defmodule Storyarn.Flows.FlowCrud do
   @doc """
   Soft-deletes a flow by setting deleted_at.
   Also soft-deletes all children recursively.
+
+  Inbound refs (`flow_nodes.data["referenced_flow_id"]` from subflow + exit
+  nodes) are swept to the entity trash refs table via `Trashable.soft_delete/1`.
+  Note: cascade-soft-deleted children do NOT get their own inbound refs swept
+  — that requires recursion through Trashable, tracked as follow-up.
   """
   def delete_flow(%Flow{} = flow) do
     result =
@@ -324,8 +306,8 @@ defmodule Storyarn.Flows.FlowCrud do
         # Clean up localization texts
         Localization.delete_flow_texts(flow.id)
 
-        # Soft delete the flow itself
-        case flow |> Flow.delete_changeset() |> Repo.update() do
+        # Soft delete the flow + sweep referenced_flow_id refs atomically
+        case Trashable.soft_delete(flow) do
           {:ok, deleted_flow} ->
             # Also soft-delete all children recursively
             SoftDelete.soft_delete_children(Flow, flow.project_id, flow.id,
@@ -361,13 +343,10 @@ defmodule Storyarn.Flows.FlowCrud do
   end
 
   @doc """
-  Restores a soft-deleted flow.
+  Restores a soft-deleted flow. Trash refs (`referenced_flow_id` pointers
+  from subflow + exit nodes) are re-applied conservatively via `Trashable`.
   """
-  def restore_flow(%Flow{} = flow) do
-    flow
-    |> Flow.restore_changeset()
-    |> Repo.update()
-  end
+  def restore_flow(%Flow{} = flow), do: Trashable.restore(flow)
 
   @doc """
   Lists all soft-deleted flows for a project (trash).
@@ -421,8 +400,9 @@ defmodule Storyarn.Flows.FlowCrud do
 
   def set_main_flow(%Flow{} = flow) do
     Repo.transaction(fn ->
-      from(f in Flow, where: f.project_id == ^flow.project_id and f.is_main == true)
-      |> Repo.update_all(set: [is_main: false])
+      Repo.update_all(from(f in Flow, where: f.project_id == ^flow.project_id and f.is_main == true),
+        set: [is_main: false]
+      )
 
       case flow |> Ecto.Changeset.change(is_main: true) |> Repo.update() do
         {:ok, updated} -> updated
@@ -470,8 +450,7 @@ defmodule Storyarn.Flows.FlowCrud do
   Used by the Localization TextExtractor to resolve project scope.
   """
   def get_flow_project_id(flow_id) do
-    from(f in Flow, where: f.id == ^flow_id, select: f.project_id)
-    |> Repo.one()
+    Repo.one(from(f in Flow, where: f.id == ^flow_id, select: f.project_id))
   end
 
   @doc """
@@ -479,12 +458,18 @@ defmodule Storyarn.Flows.FlowCrud do
   Used by the export DataCollector and Validator.
   """
   def list_flows_for_export(project_id, opts \\ []) do
-    nodes_query = from(n in FlowNode, where: is_nil(n.deleted_at), order_by: [asc: n.id])
+    nodes_query =
+      from(n in FlowNode,
+        where: is_nil(n.deleted_at),
+        order_by: [asc: n.id],
+        preload: [:sequence_config]
+      )
+
     filter_ids = Keyword.get(opts, :filter_ids, :all)
 
     query =
       from(f in Flow,
-        where: f.project_id == ^project_id and is_nil(f.deleted_at) and is_nil(f.draft_id),
+        where: f.project_id == ^project_id and is_nil(f.deleted_at),
         preload: [nodes: ^nodes_query, connections: []],
         order_by: [asc: f.position, asc: f.name]
       )
@@ -498,22 +483,21 @@ defmodule Storyarn.Flows.FlowCrud do
   Counts non-deleted flows for a project.
   """
   def count_flows(project_id) do
-    from(f in Flow,
-      where: f.project_id == ^project_id and is_nil(f.deleted_at) and is_nil(f.draft_id)
-    )
-    |> Repo.aggregate(:count)
+    Repo.aggregate(from(f in Flow, where: f.project_id == ^project_id and is_nil(f.deleted_at)), :count)
   end
 
   @doc """
   Counts non-deleted flow nodes across all non-deleted flows in a project.
   """
   def count_nodes_for_project(project_id) do
-    from(n in FlowNode,
-      join: f in Flow,
-      on: n.flow_id == f.id,
-      where: f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at)
+    Repo.aggregate(
+      from(n in FlowNode,
+        join: f in Flow,
+        on: n.flow_id == f.id,
+        where: f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at)
+      ),
+      :count
     )
-    |> Repo.aggregate(:count)
   end
 
   @doc """
@@ -521,18 +505,7 @@ defmodule Storyarn.Flows.FlowCrud do
   Used by the Localization TextExtractor for bulk extraction.
   """
   def list_nodes_for_flow_ids(flow_ids) do
-    from(n in FlowNode,
-      where: n.flow_id in ^flow_ids and is_nil(n.deleted_at)
-    )
-    |> Repo.all()
-  end
-
-  @doc """
-  Lists active scene IDs referenced by slug_line nodes in a project.
-  Delegates to the Scenes context to avoid cross-context schema queries.
-  """
-  def list_valid_scene_ids_in_project(project_id) do
-    Scenes.list_active_scene_ids(project_id)
+    Repo.all(from(n in FlowNode, where: n.flow_id in ^flow_ids and is_nil(n.deleted_at)))
   end
 
   @doc """
@@ -543,16 +516,17 @@ defmodule Storyarn.Flows.FlowCrud do
   def list_nodes_using_asset(project_id, asset_id) do
     asset_id_str = to_string(asset_id)
 
-    from(n in FlowNode,
-      join: f in Flow,
-      on: n.flow_id == f.id,
-      where: f.project_id == ^project_id,
-      where: is_nil(n.deleted_at),
-      where: fragment("?->>'audio_asset_id' = ?", n.data, ^asset_id_str),
-      order_by: [asc: f.name],
-      select: %{node_id: n.id, node_type: n.type, flow_id: f.id, flow_name: f.name}
+    Repo.all(
+      from(n in FlowNode,
+        join: f in Flow,
+        on: n.flow_id == f.id,
+        where: f.project_id == ^project_id,
+        where: is_nil(n.deleted_at),
+        where: fragment("?->>'audio_asset_id' = ?", n.data, ^asset_id_str),
+        order_by: [asc: f.name],
+        select: %{node_id: n.id, node_type: n.type, flow_id: f.id, flow_name: f.name}
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -632,7 +606,7 @@ defmodule Storyarn.Flows.FlowCrud do
   """
   def list_shortcuts(project_id) do
     from(f in Flow,
-      where: f.project_id == ^project_id and is_nil(f.deleted_at) and is_nil(f.draft_id),
+      where: f.project_id == ^project_id and is_nil(f.deleted_at),
       select: f.shortcut
     )
     |> Repo.all()
@@ -694,6 +668,14 @@ defmodule Storyarn.Flows.FlowCrud do
     flow
     |> Ecto.Changeset.change(%{parent_id: parent_id})
     |> Repo.update!()
+  end
+
+  @doc """
+  Updates a node's data map after import (deferred ID remapping).
+  Used for flow-to-flow references that can't be resolved until all flows are imported.
+  """
+  def link_node_import_data(node_id, data) do
+    Repo.update_all(from(n in FlowNode, where: n.id == ^node_id), set: [data: data])
   end
 
   defp maybe_filter_export_ids(query, :all), do: query

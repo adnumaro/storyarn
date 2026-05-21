@@ -46,8 +46,7 @@ defmodule Storyarn.Shared.ColorUtils do
   defp hex_to_rgb("#" <> hex), do: hex_to_rgb(hex)
 
   defp hex_to_rgb(<<r::binary-size(2), g::binary-size(2), b::binary-size(2)>>) do
-    {String.to_integer(r, 16) / 255, String.to_integer(g, 16) / 255,
-     String.to_integer(b, 16) / 255}
+    {String.to_integer(r, 16) / 255, String.to_integer(g, 16) / 255, String.to_integer(b, 16) / 255}
   end
 
   defp rgb_to_oklch(r, g, b) do

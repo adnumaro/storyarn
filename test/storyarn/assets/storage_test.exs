@@ -2,6 +2,7 @@ defmodule Storyarn.Assets.StorageTest do
   use ExUnit.Case, async: false
 
   alias Storyarn.Assets.Storage
+  alias Storyarn.Assets.Storage.Local
 
   @test_dir "test/tmp/storage_dispatch"
 
@@ -29,7 +30,7 @@ defmodule Storyarn.Assets.StorageTest do
   describe "adapter/0" do
     test "returns Local adapter when configured as :local" do
       Application.put_env(:storyarn, :storage, adapter: :local)
-      assert Storage.adapter() == Storyarn.Assets.Storage.Local
+      assert Storage.adapter() == Local
     end
 
     test "returns R2 adapter when configured as :r2" do
@@ -43,7 +44,7 @@ defmodule Storyarn.Assets.StorageTest do
 
     test "defaults to Local adapter when no adapter configured" do
       Application.put_env(:storyarn, :storage, [])
-      assert Storage.adapter() == Storyarn.Assets.Storage.Local
+      assert Storage.adapter() == Local
     end
   end
 

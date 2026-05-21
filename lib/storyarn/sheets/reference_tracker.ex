@@ -28,10 +28,11 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   """
 
   import Ecto.Query
+
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
-
-  alias Storyarn.Sheets.{EntityReference, Sheet}
+  alias Storyarn.Sheets.EntityReference
+  alias Storyarn.Sheets.Sheet
 
   @doc """
   Updates references from a block.
@@ -45,10 +46,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
 
     Repo.transaction(fn ->
       # Delete existing references from this block
-      from(r in EntityReference,
-        where: r.source_type == "block" and r.source_id == ^block_id
-      )
-      |> Repo.delete_all()
+      Repo.delete_all(from(r in EntityReference, where: r.source_type == "block" and r.source_id == ^block_id))
 
       # Extract and batch-insert new references
       references = extract_block_references(block)
@@ -64,10 +62,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   """
   @spec delete_block_references(any()) :: {integer(), nil}
   def delete_block_references(block_id) do
-    from(r in EntityReference,
-      where: r.source_type == "block" and r.source_id == ^block_id
-    )
-    |> Repo.delete_all()
+    Repo.delete_all(from(r in EntityReference, where: r.source_type == "block" and r.source_id == ^block_id))
   end
 
   @doc """
@@ -93,10 +88,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   """
   @spec delete_flow_node_references(any()) :: {integer(), nil}
   def delete_flow_node_references(node_id) do
-    from(r in EntityReference,
-      where: r.source_type == "flow_node" and r.source_id == ^node_id
-    )
-    |> Repo.delete_all()
+    Repo.delete_all(from(r in EntityReference, where: r.source_type == "flow_node" and r.source_id == ^node_id))
   end
 
   @doc """
@@ -106,17 +98,13 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   based on the current element state (character sheet_id + inline mentions).
   """
   @spec update_screenplay_element_references(map()) :: :ok
-  def update_screenplay_element_references(%{
-        id: element_id,
-        type: type,
-        data: data,
-        content: content
-      }) do
+  def update_screenplay_element_references(%{id: element_id, type: type, data: data, content: content}) do
     Repo.transaction(fn ->
       delete_screenplay_element_references(element_id)
 
       references =
-        extract_screenplay_element_refs(type, data, content)
+        type
+        |> extract_screenplay_element_refs(data, content)
         |> Enum.uniq_by(fn ref -> {ref.type, ref.id, ref.context} end)
 
       batch_insert_references("screenplay_element", element_id, references)
@@ -133,10 +121,9 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   """
   @spec delete_screenplay_element_references(any()) :: {integer(), nil}
   def delete_screenplay_element_references(element_id) do
-    from(r in EntityReference,
-      where: r.source_type == "screenplay_element" and r.source_id == ^element_id
+    Repo.delete_all(
+      from(r in EntityReference, where: r.source_type == "screenplay_element" and r.source_id == ^element_id)
     )
-    |> Repo.delete_all()
   end
 
   @doc """
@@ -146,11 +133,12 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   """
   @spec get_backlinks(String.t(), any()) :: [map()]
   def get_backlinks(target_type, target_id) do
-    from(r in EntityReference,
-      where: r.target_type == ^target_type and r.target_id == ^target_id,
-      order_by: [desc: r.inserted_at]
+    Repo.all(
+      from(r in EntityReference,
+        where: r.target_type == ^target_type and r.target_id == ^target_id,
+        order_by: [desc: r.inserted_at]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -173,13 +161,15 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     map_pin_backlinks = query_scene_pin_backlinks(target_type, target_id, project_id)
     map_zone_backlinks = query_scene_zone_backlinks(target_type, target_id, project_id)
 
-    (block_backlinks ++
-       flow_backlinks ++ screenplay_backlinks ++ map_pin_backlinks ++ map_zone_backlinks)
-    |> Enum.sort_by(& &1.inserted_at, {:desc, NaiveDateTime})
+    Enum.sort_by(
+      block_backlinks ++ flow_backlinks ++ screenplay_backlinks ++ map_pin_backlinks ++ map_zone_backlinks,
+      & &1.inserted_at,
+      {:desc, NaiveDateTime}
+    )
   end
 
   defp query_block_backlinks(target_type, target_id, project_id) do
-    alias Storyarn.Sheets.{Block, Sheet}
+    alias Storyarn.Sheets.Block
 
     from(r in EntityReference,
       join: b in Block,
@@ -235,11 +225,12 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   """
   @spec count_backlinks(String.t(), any()) :: integer()
   def count_backlinks(target_type, target_id) do
-    from(r in EntityReference,
-      where: r.target_type == ^target_type and r.target_id == ^target_id,
-      select: count(r.id)
+    Repo.one(
+      from(r in EntityReference,
+        where: r.target_type == ^target_type and r.target_id == ^target_id,
+        select: count(r.id)
+      )
     )
-    |> Repo.one()
   end
 
   # ---------------------------------------------------------------------------
@@ -265,10 +256,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   """
   @spec delete_map_pin_references(any()) :: {integer(), nil}
   def delete_map_pin_references(pin_id) do
-    from(r in EntityReference,
-      where: r.source_type == "scene_pin" and r.source_id == ^pin_id
-    )
-    |> Repo.delete_all()
+    Repo.delete_all(from(r in EntityReference, where: r.source_type == "scene_pin" and r.source_id == ^pin_id))
   end
 
   @doc """
@@ -290,10 +278,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   """
   @spec delete_map_zone_references(any()) :: {integer(), nil}
   def delete_map_zone_references(zone_id) do
-    from(r in EntityReference,
-      where: r.source_type == "scene_zone" and r.source_id == ^zone_id
-    )
-    |> Repo.delete_all()
+    Repo.delete_all(from(r in EntityReference, where: r.source_type == "scene_zone" and r.source_id == ^zone_id))
   end
 
   @doc """
@@ -302,10 +287,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   """
   @spec delete_target_references(String.t(), any()) :: {integer(), nil}
   def delete_target_references(target_type, target_id) do
-    from(r in EntityReference,
-      where: r.target_type == ^target_type and r.target_id == ^target_id
-    )
-    |> Repo.delete_all()
+    Repo.delete_all(from(r in EntityReference, where: r.target_type == ^target_type and r.target_id == ^target_id))
   end
 
   defp query_scene_pin_backlinks(target_type, target_id, project_id) do
@@ -319,11 +301,11 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   # Private functions
 
   defp batch_insert_references(source_type, source_id, references) do
-    now = TimeHelpers.now() |> DateTime.to_naive()
+    now = DateTime.to_naive(TimeHelpers.now())
 
     entries =
       references
-      |> Enum.map(fn ref -> parse_id(ref.id) |> then(&{&1, ref}) end)
+      |> Enum.map(fn ref -> ref.id |> parse_id() |> then(&{&1, ref}) end)
       |> Enum.reject(fn {target_id, _} -> is_nil(target_id) end)
       |> Enum.map(fn {target_id, ref} ->
         %{
@@ -399,8 +381,8 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   defp extract_mentions_from_html(_), do: []
 
   defp mention_element_to_ref(element) do
-    type = Floki.attribute(element, "data-type") |> List.first()
-    id = Floki.attribute(element, "data-id") |> List.first()
+    type = element |> Floki.attribute("data-type") |> List.first()
+    id = element |> Floki.attribute("data-id") |> List.first()
 
     if type && id do
       %{type: type, id: id, context: "content"}
@@ -500,9 +482,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     refs
   end
 
-  defp extract_zone_action_data_refs(
-         %{action_type: "instruction", action_data: action_data} = zone
-       )
+  defp extract_zone_action_data_refs(%{action_type: "instruction", action_data: action_data} = zone)
        when is_map(action_data) do
     assignments = action_data["assignments"] || []
     project_id = get_project_id_from_scene(zone.scene_id)
@@ -553,13 +533,14 @@ defmodule Storyarn.Sheets.ReferenceTracker do
 
   defp resolve_sheet_ref(project_id, sheet_shortcut, context) do
     sheet_id =
-      from(s in Sheet,
-        where: s.project_id == ^project_id and s.shortcut == ^sheet_shortcut,
-        where: is_nil(s.deleted_at),
-        select: s.id,
-        limit: 1
+      Repo.one(
+        from(s in Sheet,
+          where: s.project_id == ^project_id and s.shortcut == ^sheet_shortcut,
+          where: is_nil(s.deleted_at),
+          select: s.id,
+          limit: 1
+        )
       )
-      |> Repo.one()
 
     if sheet_id do
       [%{type: "sheet", id: sheet_id, context: context}]

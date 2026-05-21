@@ -10,18 +10,16 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   import Ecto.Query, warn: false
 
   alias Storyarn.Repo
-  alias Storyarn.Shared.{NameNormalizer, TimeHelpers}
-
-  alias Storyarn.Sheets.{
-    Block,
-    BlockCrud,
-    EntityReference,
-    FormulaBindingRewriter,
-    Sheet,
-    SheetQueries,
-    TableColumn,
-    TableRow
-  }
+  alias Storyarn.Shared.NameNormalizer
+  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.BlockCrud
+  alias Storyarn.Sheets.EntityReference
+  alias Storyarn.Sheets.FormulaBindingRewriter
+  alias Storyarn.Sheets.Sheet
+  alias Storyarn.Sheets.SheetQueries
+  alias Storyarn.Sheets.TableColumn
+  alias Storyarn.Sheets.TableRow
 
   # =============================================================================
   # Resolution
@@ -64,8 +62,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   - `scope: "self"` (instances don't cascade by default)
   """
   @spec create_inherited_instances(Block.t(), [integer()]) :: {:ok, integer()}
-  def create_inherited_instances(%Block{} = parent_block, child_sheet_ids)
-      when is_list(child_sheet_ids) do
+  def create_inherited_instances(%Block{} = parent_block, child_sheet_ids) when is_list(child_sheet_ids) do
     if child_sheet_ids == [] do
       {:ok, 0}
     else
@@ -83,9 +80,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
         |> Repo.all()
         |> MapSet.new()
 
-      sheets_to_create =
-        child_sheet_ids
-        |> Enum.reject(&MapSet.member?(existing_sheet_ids, &1))
+      sheets_to_create = Enum.reject(child_sheet_ids, &MapSet.member?(existing_sheet_ids, &1))
 
       entries =
         Enum.map(sheets_to_create, fn sheet_id ->
@@ -144,7 +139,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   """
   @spec sync_definition_change(Block.t()) :: {:ok, integer()}
   def sync_definition_change(%Block{} = parent_block) do
-    Repo.transaction(fn ->
+    fn ->
       instances = list_non_detached_instances(parent_block.id)
 
       if instances == [] do
@@ -152,7 +147,8 @@ defmodule Storyarn.Sheets.PropertyInheritance do
       else
         do_sync_definition(parent_block, instances)
       end
-    end)
+    end
+    |> Repo.transaction()
     |> case do
       {:ok, count} -> {:ok, count}
       {:error, reason} -> {:error, reason}
@@ -236,13 +232,9 @@ defmodule Storyarn.Sheets.PropertyInheritance do
 
       # Get instance IDs before soft-deleting
       instance_ids =
-        from(b in Block,
-          where:
-            b.inherited_from_block_id == ^parent_block.id and
-              is_nil(b.deleted_at),
-          select: b.id
+        Repo.all(
+          from(b in Block, where: b.inherited_from_block_id == ^parent_block.id and is_nil(b.deleted_at), select: b.id)
         )
-        |> Repo.all()
 
       if instance_ids != [] do
         cleanup_instance_references(instance_ids)
@@ -251,12 +243,9 @@ defmodule Storyarn.Sheets.PropertyInheritance do
 
       # Soft-delete all instances
       {count, _} =
-        from(b in Block,
-          where:
-            b.inherited_from_block_id == ^parent_block.id and
-              is_nil(b.deleted_at)
+        Repo.update_all(from(b in Block, where: b.inherited_from_block_id == ^parent_block.id and is_nil(b.deleted_at)),
+          set: [deleted_at: now]
         )
-        |> Repo.update_all(set: [deleted_at: now])
 
       count
     end)
@@ -273,13 +262,14 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     since_threshold = DateTime.add(since, -2, :second)
 
     {count, _} =
-      from(b in Block,
-        where:
-          b.inherited_from_block_id == ^parent_block.id and
-            not is_nil(b.deleted_at) and
-            b.deleted_at >= ^since_threshold
+      Repo.update_all(
+        from(b in Block,
+          where:
+            b.inherited_from_block_id == ^parent_block.id and not is_nil(b.deleted_at) and
+              b.deleted_at >= ^since_threshold
+        ),
+        set: [deleted_at: nil]
       )
-      |> Repo.update_all(set: [deleted_at: nil])
 
     {:ok, count}
   end
@@ -316,7 +306,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
         select: %{id: s.id}
       )
 
-    cte_query = anchor |> union_all(^recursion)
+    cte_query = union_all(anchor, ^recursion)
 
     from("descendants")
     |> recursive_ctes(true)
@@ -352,7 +342,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   """
   @spec recalculate_on_move(Sheet.t()) :: {:ok, integer()}
   def recalculate_on_move(%Sheet{} = sheet) do
-    Repo.transaction(fn ->
+    fn ->
       total = recalculate_sheet_inheritance(sheet.id)
 
       # Cascade to all descendants (parents before children)
@@ -361,7 +351,8 @@ defmodule Storyarn.Sheets.PropertyInheritance do
       Enum.reduce(descendant_ids, total, fn descendant_id, acc ->
         acc + recalculate_sheet_inheritance(descendant_id)
       end)
-    end)
+    end
+    |> Repo.transaction()
     |> case do
       {:ok, count} -> {:ok, count}
       {:error, reason} -> {:error, reason}
@@ -371,21 +362,19 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   # Recalculates inheritance for a single sheet: soft-deletes non-detached
   # inherited instances and re-inherits from the current ancestor chain.
   defp recalculate_sheet_inheritance(sheet_id) do
-    now = TimeHelpers.now()
+    detach_stale_inherited_blocks(sheet_id)
 
-    # Soft-delete non-detached inherited instances (preserves data)
-    from(b in Block,
-      where:
-        b.sheet_id == ^sheet_id and
-          not is_nil(b.inherited_from_block_id) and
-          b.detached == false and
-          is_nil(b.deleted_at)
-    )
-    |> Repo.update_all(set: [deleted_at: now])
-
-    # Re-inherit from new ancestor chain
     sheet = Repo.get!(Sheet, sheet_id)
-    {:ok, count} = inherit_blocks_for_new_sheet(sheet)
+    ancestors = build_ancestor_list(sheet)
+    hidden_block_ids = collect_hidden_block_ids([sheet | ancestors])
+    existing_source_ids = existing_inherited_source_ids(sheet_id)
+
+    inheritable_blocks =
+      ancestors
+      |> Enum.flat_map(&load_children_scope_blocks/1)
+      |> Enum.reject(fn b -> b.id in hidden_block_ids or MapSet.member?(existing_source_ids, b.id) end)
+
+    {:ok, count} = do_inherit_blocks(sheet, inheritable_blocks)
     count
   end
 
@@ -395,6 +384,56 @@ defmodule Storyarn.Sheets.PropertyInheritance do
 
   defp build_ancestor_list(%Sheet{parent_id: nil}), do: []
   defp build_ancestor_list(%Sheet{} = sheet), do: SheetQueries.list_ancestors(sheet.id)
+
+  defp detach_stale_inherited_blocks(sheet_id) do
+    new_source_block_ids = current_ancestor_source_block_ids(sheet_id)
+
+    Repo.update_all(
+      from(b in Block,
+        where:
+          b.sheet_id == ^sheet_id and not is_nil(b.inherited_from_block_id) and
+            b.detached == false and is_nil(b.deleted_at) and
+            b.inherited_from_block_id not in ^new_source_block_ids
+      ),
+      set: [detached: true]
+    )
+  end
+
+  defp current_ancestor_source_block_ids(sheet_id) do
+    sheet_id
+    |> ancestor_sheet_ids()
+    |> children_scope_block_ids()
+  end
+
+  defp ancestor_sheet_ids(sheet_id) do
+    case Repo.get!(Sheet, sheet_id) do
+      %Sheet{parent_id: nil} -> []
+      sheet -> sheet.id |> SheetQueries.list_ancestors() |> Enum.map(& &1.id)
+    end
+  end
+
+  defp children_scope_block_ids([]), do: []
+
+  defp children_scope_block_ids(ancestor_ids) do
+    Repo.all(
+      from(b in Block,
+        where: b.sheet_id in ^ancestor_ids and b.scope == "children" and is_nil(b.deleted_at),
+        select: b.id
+      )
+    )
+  end
+
+  defp existing_inherited_source_ids(sheet_id) do
+    from(b in Block,
+      where:
+        b.sheet_id == ^sheet_id and
+          not is_nil(b.inherited_from_block_id) and
+          is_nil(b.deleted_at),
+      select: b.inherited_from_block_id
+    )
+    |> Repo.all()
+    |> MapSet.new()
+  end
 
   defp collect_hidden_block_ids(sheets) do
     sheets
@@ -412,8 +451,6 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     if Block.can_be_variable?(parent_block.type) and not parent_block.is_constant do
       label = get_in(parent_block.config, ["label"])
       NameNormalizer.variablify(label)
-    else
-      nil
     end
   end
 
@@ -424,8 +461,6 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     if base_name do
       existing_names = BlockCrud.list_variable_names(sheet_id)
       BlockCrud.find_unique_variable_name(base_name, existing_names)
-    else
-      nil
     end
   end
 
@@ -441,13 +476,11 @@ defmodule Storyarn.Sheets.PropertyInheritance do
 
   # Lists non-detached instances for a parent block
   defp list_non_detached_instances(parent_block_id) do
-    from(b in Block,
-      where:
-        b.inherited_from_block_id == ^parent_block_id and
-          b.detached == false and
-          is_nil(b.deleted_at)
+    Repo.all(
+      from(b in Block,
+        where: b.inherited_from_block_id == ^parent_block_id and b.detached == false and is_nil(b.deleted_at)
+      )
     )
-    |> Repo.all()
   end
 
   # Core sync logic extracted from sync_definition_change
@@ -455,13 +488,12 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     variable_name = derive_sync_variable_name(parent_block)
     common_updates = build_common_updates(parent_block, instances)
 
-    from(b in Block,
-      where:
-        b.inherited_from_block_id == ^parent_block.id and
-          b.detached == false and
-          is_nil(b.deleted_at)
+    Repo.update_all(
+      from(b in Block,
+        where: b.inherited_from_block_id == ^parent_block.id and b.detached == false and is_nil(b.deleted_at)
+      ),
+      common_updates
     )
-    |> Repo.update_all(common_updates)
 
     sync_instance_variable_names(parent_block.id, instances, variable_name)
 
@@ -474,8 +506,6 @@ defmodule Storyarn.Sheets.PropertyInheritance do
 
     if Block.can_be_variable?(parent_block.type) and not parent_block.is_constant do
       base_variable_name
-    else
-      nil
     end
   end
 
@@ -500,13 +530,12 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   end
 
   defp sync_instance_variable_names(parent_block_id, _instances, nil) do
-    from(b in Block,
-      where:
-        b.inherited_from_block_id == ^parent_block_id and
-          b.detached == false and
-          is_nil(b.deleted_at)
+    Repo.update_all(
+      from(b in Block,
+        where: b.inherited_from_block_id == ^parent_block_id and b.detached == false and is_nil(b.deleted_at)
+      ),
+      set: [variable_name: nil]
     )
-    |> Repo.update_all(set: [variable_name: nil])
   end
 
   defp sync_instance_variable_names(_parent_block_id, instances, variable_name) do
@@ -524,19 +553,14 @@ defmodule Storyarn.Sheets.PropertyInheritance do
       taken = MapSet.delete(taken, instance.variable_name)
       unique = BlockCrud.find_unique_variable_name(variable_name, taken)
 
-      from(b in Block, where: b.id == ^instance.id)
-      |> Repo.update_all(set: [variable_name: unique])
-
+      Repo.update_all(from(b in Block, where: b.id == ^instance.id), set: [variable_name: unique])
       MapSet.put(taken, unique)
     end)
   end
 
   # Cleans up entity references for deleted instance blocks
   defp cleanup_instance_references(instance_ids) do
-    from(r in EntityReference,
-      where: r.source_type == "block" and r.source_id in ^instance_ids
-    )
-    |> Repo.delete_all()
+    Repo.delete_all(from(r in EntityReference, where: r.source_type == "block" and r.source_id in ^instance_ids))
   end
 
   # Cleans orphaned hidden_inherited_block_ids on sheets referencing the parent block
@@ -556,14 +580,12 @@ defmodule Storyarn.Sheets.PropertyInheritance do
 
   # Loads children-scope blocks for an ancestor (used in inherit_blocks_for_new_sheet)
   defp load_children_scope_blocks(ancestor) do
-    from(b in Block,
-      where:
-        b.sheet_id == ^ancestor.id and
-          b.scope == "children" and
-          is_nil(b.deleted_at),
-      order_by: [asc: b.position]
+    Repo.all(
+      from(b in Block,
+        where: b.sheet_id == ^ancestor.id and b.scope == "children" and is_nil(b.deleted_at),
+        order_by: [asc: b.position]
+      )
     )
-    |> Repo.all()
   end
 
   # Creates inherited block entries from inheritable blocks
@@ -640,9 +662,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     rewrite_ctx = build_rewrite_context_if_needed(parent_block, source_rows, instances)
 
     for instance <- instances do
-      existing_count =
-        from(c in TableColumn, where: c.block_id == ^instance.id, select: count())
-        |> Repo.one()
+      existing_count = Repo.one(from(c in TableColumn, where: c.block_id == ^instance.id, select: count()))
 
       if existing_count == 0 do
         rows = maybe_rewrite_rows(source_rows, instance, rewrite_ctx)
@@ -662,8 +682,6 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     variable_name =
       if Block.can_be_variable?(source.type) and not source.is_constant do
         variable_name
-      else
-        nil
       end
 
     %{
@@ -677,7 +695,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   end
 
   defp maybe_reset_table_structure({:ok, %{type: "table"}} = result, source_id) do
-    reset_table_structure_from_source(result |> elem(1) |> Map.get(:id), source_id)
+    result |> elem(1) |> Map.get(:id) |> reset_table_structure_from_source(source_id)
     result
   end
 
@@ -696,13 +714,9 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   end
 
   defp load_table_structure(block_id) do
-    columns =
-      from(c in TableColumn, where: c.block_id == ^block_id, order_by: c.position)
-      |> Repo.all()
+    columns = Repo.all(from(c in TableColumn, where: c.block_id == ^block_id, order_by: c.position))
 
-    rows =
-      from(r in TableRow, where: r.block_id == ^block_id, order_by: r.position)
-      |> Repo.all()
+    rows = Repo.all(from(r in TableRow, where: r.block_id == ^block_id, order_by: r.position))
 
     {columns, rows}
   end
@@ -866,12 +880,10 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   defp get_parent_sheet_id_from_instance(%Block{inherited_from_block_id: nil}), do: nil
 
   defp get_parent_sheet_id_from_instance(%Block{inherited_from_block_id: source_id}) do
-    from(b in Block, where: b.id == ^source_id, select: b.sheet_id)
-    |> Repo.one()
+    Repo.one(from(b in Block, where: b.id == ^source_id, select: b.sheet_id))
   end
 
   defp get_sheet_shortcut(sheet_id) do
-    from(s in Sheet, where: s.id == ^sheet_id, select: s.shortcut)
-    |> Repo.one()
+    Repo.one(from(s in Sheet, where: s.id == ^sheet_id, select: s.shortcut))
   end
 end

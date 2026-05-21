@@ -1,15 +1,15 @@
 defmodule StoryarnWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :storyarn
 
+  @asset_upload_request_length Storyarn.Assets.UploadPolicy.max_request_size()
+
   # The session will be stored in the cookie, signed and encrypted.
   # The signing_salt and encryption_salt are configured in config.exs (dev/test) or runtime.exs (prod)
   @session_options [
     store: :cookie,
     key: "_storyarn_key",
-    signing_salt:
-      Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_signing_salt]),
-    encryption_salt:
-      Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_encryption_salt]),
+    signing_salt: Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_signing_salt]),
+    encryption_salt: Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_encryption_salt]),
     same_site: "Lax",
     secure: Application.compile_env(:storyarn, [StoryarnWeb.Endpoint, :force_ssl]) != nil
   ]
@@ -26,6 +26,8 @@ defmodule StoryarnWeb.Endpoint do
   if Application.compile_env(:storyarn, :sql_sandbox) do
     plug Phoenix.Ecto.SQL.Sandbox
   end
+
+  plug StoryarnWeb.Plugs.NoindexRobots
 
   # Serve at "/" the static files from "priv/static" directory.
   #
@@ -59,7 +61,7 @@ defmodule StoryarnWeb.Endpoint do
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
 
   plug Plug.Parsers,
-    parsers: [:urlencoded, {:multipart, length: 20_000_000}, :json],
+    parsers: [:urlencoded, {:multipart, length: @asset_upload_request_length}, :json],
     pass: ["*/*"],
     json_decoder: Phoenix.json_library()
 
@@ -68,5 +70,6 @@ defmodule StoryarnWeb.Endpoint do
   plug Plug.Session, @session_options
   plug StoryarnWeb.Plugs.TrustedProxy
   plug Sentry.PlugContext
+  plug PostHog.Integrations.Plug
   plug StoryarnWeb.Router
 end
