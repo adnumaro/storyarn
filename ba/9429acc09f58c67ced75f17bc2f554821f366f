@@ -1,0 +1,31 @@
+lib/storyarn_web/live/landing_live/index.ex
+  s_4009926a81b72f::t_7466105a91e505 34
+assets/app/test/utils/posthog.test.ts
+  s_4009926a81b72f::t_bb45c6e6a30e88 67
+vite.config.mjs
+  s_4009926a81b72f::t_d886601b26915b 48
+test/storyarn_web/live/landing_live/index_test.exs
+  s_4009926a81b72f::t_7466105a91e505 20
+  s_4009926a81b72f::t_bb45c6e6a30e88 17-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "ba9429acc09f58c67ced75f17bc2f554821f366f",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4009926a81b72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e27ab-dde7-7760-bd37-9d3b28ca8eb5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
