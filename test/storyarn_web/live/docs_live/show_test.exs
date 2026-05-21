@@ -16,6 +16,9 @@ defmodule StoryarnWeb.DocsLive.ShowTest do
 
       content = LiveVue.Test.get_vue(view, name: "live/docs/show/DocsContent")
       assert content.props["guide-body"] =~ "narrative design platform"
+      assert content.props["guide-body"] =~ "/images/docs/project-dashboard.webp"
+      assert content.props["guide-body"] =~ "/images/docs/scenes.webp"
+      refute content.props["guide-body"] =~ "veilbreak-"
     end
 
     test "renders start here as the first welcome guide", %{conn: conn} do
@@ -33,6 +36,16 @@ defmodule StoryarnWeb.DocsLive.ShowTest do
       content = LiveVue.Test.get_vue(view, name: "live/docs/show/DocsContent")
       assert content.props["guide-body"] =~ "Pick your path"
       assert content.props["guide-body"] =~ "localization manager"
+    end
+
+    test "quick start reaches preview and export", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/docs/quick-start/first-flow")
+
+      content = LiveVue.Test.get_vue(view, name: "live/docs/show/DocsContent")
+
+      assert content.props["guide-body"] =~ "Preview with the Story Player"
+      assert content.props["guide-body"] =~ "Export the project"
+      assert content.props["guide-body"] =~ "Completion checklist"
     end
 
     test "updates search props from the LiveVue layout event", %{conn: conn} do
