@@ -1,0 +1,29 @@
+test/storyarn_web/live/docs_live/show_test.exs
+  s_89a3f1264cbda8::t_8ef7e09a8a0a69 41-50
+  s_89a3f1264cbda8::t_0059aac6296415 19-21
+priv/docs/en/welcome/01-what-is-storyarn.md
+  s_89a3f1264cbda8::t_9207208bb77751 14,34,40,46,52
+priv/docs/es/welcome/01-what-is-storyarn.md
+  s_89a3f1264cbda8::t_9207208bb77751 14,34,40,46,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "d58bdea02851c3da560a9802c65fbfc979ce4fab",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_89a3f1264cbda8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e4a48-d037-7852-a91e-119f74a3c0e1",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
