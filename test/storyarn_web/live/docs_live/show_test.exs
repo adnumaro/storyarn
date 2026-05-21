@@ -38,6 +38,27 @@ defmodule StoryarnWeb.DocsLive.ShowTest do
       assert content.props["guide-body"] =~ "localization manager"
     end
 
+    test "renders core concepts glossary in welcome navigation", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/docs/welcome/core-concepts")
+
+      layout = LiveVue.Test.get_vue(view, name: "live/layouts/docs/Layout")
+      docs = layout.props["docs"]
+
+      assert docs["guide"]["title"] == "Core Concepts"
+      assert docs["guide"]["url"] == "/docs/welcome/core-concepts"
+
+      welcome_guides =
+        docs["guides"]
+        |> Enum.filter(&(&1["category"] == "welcome"))
+        |> Enum.map(& &1["title"])
+
+      assert welcome_guides == ["Start Here", "What is Storyarn?", "Core Concepts", "Core Workflow"]
+
+      content = LiveVue.Test.get_vue(view, name: "live/docs/show/DocsContent")
+      assert content.props["guide-body"] =~ "Workspace"
+      assert content.props["guide-body"] =~ "Localization ID"
+    end
+
     test "quick start reaches preview and export", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/docs/quick-start/first-flow")
 

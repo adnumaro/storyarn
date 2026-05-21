@@ -1,7 +1,7 @@
 %{
 title: "Flujo de trabajo principal",
 category_label: "Bienvenida",
-order: 2,
+order: 3,
 description: "Cómo se desarrolla un proyecto típico en Storyarn."
 }
 

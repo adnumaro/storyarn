@@ -1,7 +1,7 @@
 %{
 title: "Core Workflow",
 category_label: "Welcome",
-order: 2,
+order: 3,
 description: "How a typical project comes together in Storyarn."
 }
 
