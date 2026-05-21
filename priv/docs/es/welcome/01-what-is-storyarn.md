@@ -7,7 +7,7 @@ description: "Una visión general de Storyarn y lo que puede hacer por tus proye
 
 ---
 
-Storyarn es una **plataforma de diseño narrativo** para diseñadores de juegos y narradores interactivos. Reúne todo tu trabajo narrativo en un solo lugar: personajes, diálogos, mapas del mundo, guiones y traducciones.
+Storyarn es una **plataforma de diseño narrativo** para diseñadores de juegos y narradores interactivos. Reúne todo tu trabajo narrativo en un solo lugar: personajes, diálogos, mapas del mundo, lógica ramificada y traducciones.
 
 Ya sea que estés construyendo un RPG, una novela visual o un juego de aventuras, Storyarn te da las herramientas para diseñar tu historia de forma visual y colaborativa.
 
@@ -21,7 +21,7 @@ Existen herramientas que hacen parte de lo que Storyarn hace. Hojas de cálculo 
 
 **Mereces algo mejor.** Si alguna vez sentiste que tus herramientas narrativas te frenan — demasiado torpes, demasiado fragmentadas, demasiado difíciles de aprender — Storyarn fue creado para ti.
 
-Una sola plataforma. Todo conectado. Define las estadísticas de un personaje en una **Hoja (Sheet)**, referéncialas en un **Flujo (Flow)** para crear diálogos ramificados, coloca esa ubicación en un mapa de **Escena (Scene)**, exporta el guion como un **Guion (Screenplay)** y tradúcelo todo con las herramientas de **Localización**. Cambia un valor una sola vez y cada flujo que lo comprueba refleja la actualización de inmediato.
+Una sola plataforma. Todo conectado. Define las estadísticas de un personaje en una **Hoja (Sheet)**, referéncialas en un **Flujo (Flow)** para crear diálogos ramificados, coloca esa ubicación en un mapa de **Escena (Scene)** y tradúcelo todo con las herramientas de **Localización**. Cambia un valor una sola vez y cada flujo que lo comprueba refleja la actualización de inmediato.
 
 ---
 
@@ -47,10 +47,6 @@ Mapas interactivos para tu mundo. Dibuja zonas, coloca pines de personajes y con
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
   Editor de escenas — mapa del mundo con zonas coloreadas, pines de personajes, conexiones y el panel de capas
 </div>
-
-<h3><span class="docs-tool-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h12a2 2 0 0 0 2-2v-2H10v2a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v3h4"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M15 8h-5"/><path d="M15 12h-5"/></svg></span> Guiones (Screenplays)</h3>
-
-Escribe y lee tu narrativa en formato de guion estándar de la industria. Importación y exportación Fountain para herramientas profesionales, y sincronización bidireccional automática con tus diagramas de flujo.
 
 <h3><span class="docs-tool-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg></span> Localización</h3>
 

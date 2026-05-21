@@ -19,7 +19,7 @@ The flow editor is a full-screen canvas. You create nodes from the floating tool
 
 - **Pan** by dragging the background
 - **Zoom** with the scroll wheel
-- **Select** a node by clicking it; double-click to open its primary editor (screenplay editor for dialogue, builder panel for conditions and instructions)
+- **Select** a node by clicking it; double-click to open its primary editor (focused dialogue editor for dialogue, builder panel for conditions and instructions)
 - **Multi-select** with click-drag or Shift+click
 - **Duplicate** selected nodes with the context menu or keyboard shortcut
 - **Undo/Redo** for node operations

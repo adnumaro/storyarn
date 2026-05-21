@@ -7,7 +7,7 @@ description: "Diálogo de personajes, respuestas del jugador y configuración de
 
 ---
 
-Los nodos de Dialogo (Dialogue) son el tipo de nodo mas comun. Representan **lo que dice un personaje** y opcionalmente **lo que el jugador puede responder**. Cada nodo de dialogo puede ser tan simple como una unica linea de texto o tan completo como un beat de guion completamente configurado con hablante, acotaciones, audio y respuestas ramificadas.
+Los nodos de Dialogo (Dialogue) son el tipo de nodo mas comun. Representan **lo que dice un personaje** y opcionalmente **lo que el jugador puede responder**. Cada nodo de dialogo puede ser tan simple como una unica linea de texto o tan completo como un beat narrativo configurado con hablante, acotaciones, audio y respuestas ramificadas.
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
@@ -20,16 +20,16 @@ Los nodos de Dialogo (Dialogue) son el tipo de nodo mas comun. Representan **lo 
 
 Selecciona un nodo de dialogo para abrir el panel lateral. Encontraras los siguientes campos:
 
-- **Hablante** -- vinculo a una ficha de personaje de tu proyecto. El nombre y avatar del personaje aparecen en el nodo del lienzo, y el contexto del hablante se usa para la extraccion de localizacion y la exportacion de guion.
+- **Hablante** -- vinculo a una ficha de personaje de tu proyecto. El nombre y avatar del personaje aparecen en el nodo del lienzo, y el contexto del hablante se usa para la extraccion de localizacion y los informes.
 - **Texto** -- la linea de dialogo en si. Es un campo de texto enriquecido con formato (negrita, cursiva, subrayado, tachado, enlaces). Soporta variables de mencion de personaje para texto dinamico.
-- **Acotaciones** -- notas opcionales de actuacion o puesta en escena que acompanan la linea (p. ej., "suspira profundamente", "se gira hacia la ventana"). Aparecen en las exportaciones de guion.
+- **Acotaciones** -- notas opcionales de actuacion o puesta en escena que acompanan la linea (p. ej., "suspira profundamente", "se gira hacia la ventana"). Dan contexto adicional a traductores y revisores.
 - **Texto de menu** -- una version mas corta de la linea para menus de eleccion, usada cuando el texto completo del dialogo es demasiado largo para mostrarse como opcion del jugador.
 
 ---
 
-## Editor de guion
+## Editor enfocado de dialogo
 
-Haz doble clic en un nodo de dialogo (o haz clic en el boton de configuracion en la barra de herramientas) para abrir el {accent}**editor de guion**{/accent} -- un modo de escritura a pantalla completa que muestra todos los campos de dialogo en un diseno enfocado. Es la forma mas rapida de escribir y editar contenido de dialogo sin la distraccion del lienzo.
+Haz doble clic en un nodo de dialogo (o haz clic en el boton de configuracion en la barra de herramientas) para abrir el {accent}**editor enfocado de dialogo**{/accent} -- un modo de escritura a pantalla completa que muestra todos los campos de dialogo en un diseno enfocado. Es la forma mas rapida de escribir y editar contenido de dialogo sin la distraccion del lienzo.
 
 ---
 
@@ -94,7 +94,7 @@ Vincular un nodo de dialogo a una ficha de personaje proporciona varios benefici
 
 - El **nombre y avatar** del personaje aparecen en el nodo del lienzo, facilitando identificar quien habla de un vistazo
 - La **extraccion de localizacion** incluye el contexto del hablante, para que los traductores sepan que personaje esta hablando
-- La **exportacion de guion** atribuye correctamente las lineas a los personajes
+- Las **exportaciones e informes** pueden atribuir las lineas a los personajes correctos
 - La **generacion de ID tecnico** incluye el nombre del hablante para identificadores significativos
 - Puedes **rastrear que personajes aparecen** en que flujos a lo largo de tu proyecto
 

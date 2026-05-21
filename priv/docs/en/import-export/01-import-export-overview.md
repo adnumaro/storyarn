@@ -13,7 +13,7 @@ Storyarn can export your narrative content to {accent}7 formats{/accent} coverin
 
 | Format                    | Extension | Engine / Tool                | Content supported                                        |
 | ------------------------- | --------- | ---------------------------- | -------------------------------------------------------- |
-| **Storyarn JSON**         | `.json`   | Storyarn (full backup)       | Sheets, Flows, Scenes, Screenplays, Localization, Assets |
+| **Storyarn JSON**         | `.json`   | Storyarn (full backup)       | Sheets, Flows, Scenes, Localization, Assets              |
 | **Ink**                   | `.ink`    | Inkle's Ink runtime          | Flows, Sheets                                            |
 | **Yarn Spinner**          | `.yarn`   | Yarn Spinner (Unity, Godot)  | Flows, Sheets                                            |
 | **Unity Dialogue System** | `.json`   | Unity (Pixel Crushers, etc.) | Flows, Sheets                                            |
@@ -21,7 +21,7 @@ Storyarn can export your narrative content to {accent}7 formats{/accent} coverin
 | **Unreal Engine**         | `.csv`    | Unreal Engine (Data Tables)  | Flows, Sheets                                            |
 | **articy:draft**          | `.xml`    | articy:draft XML import      | Flows, Sheets                                            |
 
-The {accent}Storyarn JSON{/accent} format is the only one that supports the full project -- all entity types including scenes, screenplays, and localization data. The engine-specific formats focus on flows and sheets, which is what game runtimes need for dialogue and variable state.
+The {accent}Storyarn JSON{/accent} format is the only one that supports the full project -- all entity types including scenes, localization data, and assets. The engine-specific formats focus on flows and sheets, which is what game runtimes need for dialogue and variable state.
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
@@ -32,7 +32,7 @@ The {accent}Storyarn JSON{/accent} format is the only one that supports the full
 
 1. Navigate to **Export & Import** from your project sidebar.
 2. **Choose a format** -- Select from the 7 available formats. The content checkboxes update to show which sections that format supports.
-3. **Select content sections** -- Check or uncheck Sheets, Flows, Scenes, Screenplays, and Localization. Sections not supported by the selected format are disabled.
+3. **Select content sections** -- Check or uncheck Sheets, Flows, Scenes, and Localization. Sections not supported by the selected format are disabled.
 4. **Choose asset mode** -- Control how asset files (images, audio) are handled:
 
 | Asset mode          | Behavior                                                             |
@@ -79,7 +79,7 @@ Storyarn can import project data from {accent}.storyarn.json{/accent} files -- t
 
 1. **Upload** -- Select a `.json` file (maximum 50 MB). Click "Upload & Preview" to parse it.
 
-2. **Preview** -- Storyarn shows you what the file contains: counts of sheets, flows, nodes, scenes, screenplays, and assets. If any entity shortcuts conflict with existing content in your project, they are listed here.
+2. **Preview** -- Storyarn shows you what the file contains: counts of sheets, flows, nodes, scenes, and assets. If any entity shortcuts conflict with existing content in your project, they are listed here.
 
 3. **Resolve conflicts** -- When shortcut conflicts are detected, choose a strategy:
 
@@ -109,5 +109,3 @@ Storyarn can import project data from {accent}.storyarn.json{/accent} files -- t
 Beyond the main Export & Import page, Storyarn offers specialized export features in other areas:
 
 **Localization export** -- From the Localization page, export translations as Excel (.xlsx) or CSV filtered by language. Import translated CSV files back with ID-based matching. See the [Localization Overview](/docs/localization/01-localization-overview) for details.
-
-**Screenplay export** -- Export individual screenplays to Fountain format (.fountain) for use in screenwriting tools like Final Draft, Highland, or WriterSolo. Import existing Fountain files to create new screenplays in Storyarn.

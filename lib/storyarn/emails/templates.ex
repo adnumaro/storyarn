@@ -156,7 +156,7 @@ defmodule Storyarn.Emails.Templates do
       #{dgettext("emails", "Great news — your spot on the Storyarn waitlist has been activated. You now have full access to the platform.")}
     </mj-text>
     <mj-text>
-      #{dgettext("emails", "Storyarn is a narrative design platform for game developers and interactive storytellers. Create character sheets, design dialogue flows, write screenplays, and build worlds.")}
+      #{dgettext("emails", "Storyarn is a narrative design platform for game developers and interactive storytellers. Create character sheets, design dialogue flows, map worlds, and manage localization.")}
     </mj-text>
     <mj-button href="#{escape(login_url)}" background-color="#4dd9c0" color="#0a0a0a">
       #{dgettext("emails", "Get started")}

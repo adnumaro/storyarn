@@ -15,7 +15,7 @@ Cada equipo usa Storyarn de forma diferente, pero así es como un proyecto típi
 
 Crea un **espacio de trabajo (workspace)** para tu equipo. Cada espacio de trabajo tiene sus propios miembros con acceso basado en roles — los propietarios gestionan todo, los administradores manejan las invitaciones, los miembros crean proyectos y los observadores tienen acceso de solo lectura.
 
-Dentro de un espacio de trabajo, crea un **proyecto**. Cada proyecto es independiente — con sus propias fichas, flujos, escenas, guiones, localización y recursos. Los proyectos también tienen su propia membresía: los propietarios configuran los ajustes, los editores crean contenido y los observadores revisan.
+Dentro de un espacio de trabajo, crea un **proyecto**. Cada proyecto es independiente — con sus propias fichas, flujos, escenas, localización y recursos. Los proyectos también tienen su propia membresía: los propietarios configuran los ajustes, los editores crean contenido y los observadores revisan.
 
 Invita a compañeros de equipo por email. Reciben un enlace con token, lo aceptan, y ya están dentro — con el rol que elegiste.
 
@@ -116,21 +116,6 @@ Ninguna otra herramienta de diseño narrativo hace esto.
 
 ---
 
-## Escribe guiones con Guiones
-
-Los **Guiones (Screenplays)** llevan tu narrativa al formato de guion estándar de la industria. Un editor basado en bloques con 18 tipos de elementos — desde encabezados de escena y diálogos hasta condiciones interactivas, instrucciones y respuestas ramificadas.
-
-Los guiones **se sincronizan bidireccionalmente con los flujos**. Empuja cambios del guion al flujo, o tira actualizaciones del flujo al guion. Las opciones de respuesta se ramifican en **páginas vinculadas** — guiones hijos que reflejan la estructura ramificada de tu flujo.
-
-Exporta a formato **Fountain** para Final Draft, Highland o cualquier herramienta de escritura de guiones compatible. Importa archivos Fountain para traer guiones existentes a Storyarn.
-
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Editor de guiones — guion formateado con encabezado de escena, nombre de personaje, bloque de diálogo y un elemento de respuesta con opciones ramificadas
-</div>
-
----
-
 ## Localiza todo
 
 Cuando tu contenido esté listo, las herramientas de **Localización** extraen automáticamente cada texto traducible — líneas de diálogo, acotaciones, texto de menú, etiquetas de fichas y valores de bloques.
@@ -152,7 +137,6 @@ Cuando sea hora de publicar, exporta tu proyecto completo o partes individuales:
 
 - **Storyarn JSON** — copia de seguridad completa del proyecto, reimportable
 - **Ink, Yarn, Unity JSON, Godot Dialogic, Unreal CSV, Articy XML** — formatos específicos de motores
-- **Fountain** — exportación de guion
 - **Excel / CSV** — datos de localización
 
 Elige cómo manejar los recursos: solo referencias, incrustados (Base64) o empaquetados como ZIP con una carpeta de recursos. La validación previa a la exportación, opcional, detecta referencias rotas, nodos inalcanzables y traducciones faltantes antes de que lleguen a tu motor.

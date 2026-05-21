@@ -9,7 +9,7 @@ description: "Work together with your team in real time -- presence, cursors, an
 
 Storyarn is built for teams. The {accent}Flow Editor{/accent} supports full real-time collaboration -- you can see who is online, follow their cursors across the canvas, and edit nodes without conflicts thanks to automatic locking.
 
-Collaboration features are currently available in the Flow Editor, where the interactive canvas and node-based editing benefit most from real-time coordination. Other editors (sheets, scenes, screenplays) use standard optimistic saving.
+Collaboration features are currently available in the Flow Editor, where the interactive canvas and node-based editing benefit most from real-time coordination. Other editors, such as sheets and scenes, use standard optimistic saving.
 
 ## Presence
 

@@ -13,7 +13,7 @@ Storyarn puede exportar tu contenido narrativo a {accent}7 formatos{/accent} que
 
 | Formato                   | Extension | Motor / Herramienta                    | Contenido soportado                                      |
 | ------------------------- | --------- | -------------------------------------- | -------------------------------------------------------- |
-| **Storyarn JSON**         | `.json`   | Storyarn (copia de seguridad completa) | Fichas, Flujos, Escenas, Guiones, Localizacion, Recursos |
+| **Storyarn JSON**         | `.json`   | Storyarn (copia de seguridad completa) | Fichas, Flujos, Escenas, Localizacion, Recursos          |
 | **Ink**                   | `.ink`    | Runtime Ink de Inkle                   | Flujos, Fichas                                           |
 | **Yarn Spinner**          | `.yarn`   | Yarn Spinner (Unity, Godot)            | Flujos, Fichas                                           |
 | **Unity Dialogue System** | `.json`   | Unity (Pixel Crushers, etc.)           | Flujos, Fichas                                           |
@@ -21,7 +21,7 @@ Storyarn puede exportar tu contenido narrativo a {accent}7 formatos{/accent} que
 | **Unreal Engine**         | `.csv`    | Unreal Engine (Data Tables)            | Flujos, Fichas                                           |
 | **articy:draft**          | `.xml`    | Importacion XML de articy:draft        | Flujos, Fichas                                           |
 
-El formato {accent}Storyarn JSON{/accent} es el unico que soporta el proyecto completo -- todos los tipos de entidad incluyendo escenas, guiones y datos de localizacion. Los formatos especificos de motor se centran en flujos y fichas, que es lo que los runtimes de juego necesitan para dialogos y estado de variables.
+El formato {accent}Storyarn JSON{/accent} es el unico que soporta el proyecto completo -- todos los tipos de entidad incluyendo escenas, datos de localizacion y recursos. Los formatos especificos de motor se centran en flujos y fichas, que es lo que los runtimes de juego necesitan para dialogos y estado de variables.
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
@@ -32,7 +32,7 @@ El formato {accent}Storyarn JSON{/accent} es el unico que soporta el proyecto co
 
 1. Navega a **Exportar e Importar** desde la barra lateral de tu proyecto.
 2. **Elige un formato** -- Selecciona entre los 7 formatos disponibles. Las casillas de contenido se actualizan para mostrar que secciones soporta ese formato.
-3. **Selecciona secciones de contenido** -- Marca o desmarca Fichas, Flujos, Escenas, Guiones y Localizacion. Las secciones no soportadas por el formato seleccionado se deshabilitan.
+3. **Selecciona secciones de contenido** -- Marca o desmarca Fichas, Flujos, Escenas y Localizacion. Las secciones no soportadas por el formato seleccionado se deshabilitan.
 4. **Elige el modo de recursos** -- Controla como se gestionan los archivos de recursos (imagenes, audio):
 
 | Modo de recursos     | Comportamiento                                                                                 |
@@ -79,7 +79,7 @@ Storyarn puede importar datos de proyecto desde archivos {accent}.storyarn.json{
 
 1. **Subir** -- Selecciona un archivo `.json` (maximo 50 MB). Haz clic en "Subir y previsualizar" para analizarlo.
 
-2. **Previsualizar** -- Storyarn te muestra lo que contiene el archivo: conteos de fichas, flujos, nodos, escenas, guiones y recursos. Si algun shortcut de entidad entra en conflicto con contenido existente en tu proyecto, se lista aqui.
+2. **Previsualizar** -- Storyarn te muestra lo que contiene el archivo: conteos de fichas, flujos, nodos, escenas y recursos. Si algun shortcut de entidad entra en conflicto con contenido existente en tu proyecto, se lista aqui.
 
 3. **Resolver conflictos** -- Cuando se detectan conflictos de shortcuts, elige una estrategia:
 
@@ -109,5 +109,3 @@ Storyarn puede importar datos de proyecto desde archivos {accent}.storyarn.json{
 Mas alla de la pagina principal de Exportar e Importar, Storyarn ofrece funciones de exportacion especializadas en otras areas:
 
 **Exportacion de localizacion** -- Desde la pagina de Localizacion, exporta traducciones como Excel (.xlsx) o CSV filtrado por idioma. Importa archivos CSV traducidos de vuelta con emparejamiento por ID. Consulta la [Vista general de Localizacion](/docs/localization/localization-overview) para mas detalles.
-
-**Exportacion de guion** -- Exporta guiones individuales a formato Fountain (.fountain) para usar en herramientas de escritura de guion como Final Draft, Highland o WriterSolo. Importa archivos Fountain existentes para crear nuevos guiones en Storyarn.

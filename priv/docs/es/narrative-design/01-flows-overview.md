@@ -19,7 +19,7 @@ El editor de flujos es un lienzo a pantalla completa. Creas nodos (Nodes) desde 
 
 - **Desplazar** arrastrando el fondo
 - **Zoom** con la rueda del raton
-- **Seleccionar** un nodo haciendo clic; doble clic para abrir su editor principal (editor de guion para dialogos, panel constructor para condiciones e instrucciones)
+- **Seleccionar** un nodo haciendo clic; doble clic para abrir su editor principal (editor enfocado para dialogos, panel constructor para condiciones e instrucciones)
 - **Seleccion multiple** con clic-arrastre o Shift+clic
 - **Duplicar** nodos seleccionados con el menu contextual o atajo de teclado
 - **Deshacer/Rehacer** para operaciones de nodos

@@ -7,7 +7,7 @@ description: "An overview of Storyarn and what it can do for your narrative proj
 
 ---
 
-Storyarn is a **narrative design platform** for game designers and interactive storytellers. It brings all your narrative work into one place — characters, dialogue, world maps, scripts, and translations.
+Storyarn is a **narrative design platform** for game designers and interactive storytellers. It brings all your narrative work into one place — characters, dialogue, world maps, branching logic, and translations.
 
 Whether you're building an RPG, a visual novel, or an adventure game, Storyarn gives you the tools to design your story visually and collaboratively.
 
@@ -21,7 +21,7 @@ There are tools out there that do some of what Storyarn does. Spreadsheets for c
 
 **You deserve better.** If you've ever felt that your narrative tools are holding you back — too clunky, too fragmented, too painful to learn — Storyarn was built for you.
 
-One platform. Everything connected. Define a character's stats in a **Sheet**, reference them in a **Flow** to create branching dialogue, place that location on a **Scene** map, export the script as a **Screenplay**, and translate it all with the **Localization** tools. Change a value once, and every flow that checks it reflects the update immediately.
+One platform. Everything connected. Define a character's stats in a **Sheet**, reference them in a **Flow** to create branching dialogue, place that location on a **Scene** map, and translate it all with the **Localization** tools. Change a value once, and every flow that checks it reflects the update immediately.
 
 ---
 
@@ -47,10 +47,6 @@ Interactive maps for your world. Draw zones, place character pins, and connect l
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
   Scene editor — world map with colored zones, character pins, connections, and the layer panel
 </div>
-
-<h3><span class="docs-tool-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h12a2 2 0 0 0 2-2v-2H10v2a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v3h4"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M15 8h-5"/><path d="M15 12h-5"/></svg></span> Screenplays</h3>
-
-Write and read your narrative in industry-standard screenplay format. Fountain import/export for professional tools, and automatic bidirectional sync with your flow diagrams.
 
 <h3><span class="docs-tool-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg></span> Localization</h3>
 

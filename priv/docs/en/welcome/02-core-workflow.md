@@ -15,7 +15,7 @@ Every team uses Storyarn differently, but here's how a typical project flows fro
 
 Create a **workspace** for your team. Every workspace has its own members with role-based access — owners manage everything, admins handle invitations, members create projects, and viewers have read-only access.
 
-Inside a workspace, create a **project**. Each project is self-contained — its own sheets, flows, scenes, screenplays, localization, and assets. Projects have their own membership too: owners configure settings, editors create content, viewers review.
+Inside a workspace, create a **project**. Each project is self-contained — its own sheets, flows, scenes, localization, and assets. Projects have their own membership too: owners configure settings, editors create content, viewers review.
 
 Invite teammates by email. They receive a token-based link, accept, and they're in — with the role you chose.
 
@@ -116,21 +116,6 @@ No other narrative design tool does this.
 
 ---
 
-## Write scripts with Screenplays
-
-**Screenplays** bring your narrative into industry-standard script format. A block-based editor with 18 element types — from scene headings and dialogue to interactive conditions, instructions, and branching responses.
-
-Screenplays **sync bidirectionally with flows**. Push changes from screenplay to flow, or pull updates from flow to screenplay. Response choices branch into **linked pages** — child screenplays that mirror your flow's branching structure.
-
-Export to **Fountain** format for Final Draft, Highland, or any compatible screenwriting tool. Import Fountain files to bring existing scripts into Storyarn.
-
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Screenplay editor — formatted script with scene heading, character name, dialogue block, and a response element with branching choices
-</div>
-
----
-
 ## Localize everything
 
 When your content is ready, the **Localization** tools extract every translatable text automatically — dialogue lines, stage directions, menu text, sheet labels, and block values.
@@ -152,7 +137,6 @@ When it's time to ship, export your entire project or individual parts:
 
 - **Storyarn JSON** — full project backup, re-importable
 - **Ink, Yarn, Unity JSON, Godot Dialogic, Unreal CSV, Articy XML** — engine-specific formats
-- **Fountain** — screenplay export
 - **Excel / CSV** — localization data
 
 Choose how to handle assets: references only, embedded (Base64), or bundled as a ZIP with an assets folder. Optional pre-export validation catches broken references, unreachable nodes, and missing translations before they reach your engine.

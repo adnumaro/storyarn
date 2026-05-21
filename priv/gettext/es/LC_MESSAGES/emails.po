@@ -123,8 +123,8 @@ msgstr "O copia este enlace: %{url}"
 
 #: lib/storyarn/emails/templates.ex:159
 #, elixir-autogen, elixir-format
-msgid "Storyarn is a narrative design platform for game developers and interactive storytellers. Create character sheets, design dialogue flows, write screenplays, and build worlds."
-msgstr "Storyarn es una plataforma de diseño narrativo para desarrolladores de videojuegos y narradores interactivos. Crea fichas de personaje, diseña flujos de diálogo, escribe guiones y construye mundos."
+msgid "Storyarn is a narrative design platform for game developers and interactive storytellers. Create character sheets, design dialogue flows, map worlds, and manage localization."
+msgstr "Storyarn es una plataforma de diseño narrativo para desarrolladores de videojuegos y narradores interactivos. Crea fichas de personaje, diseña flujos de diálogo, mapea mundos y gestiona la localización."
 
 #: lib/storyarn/emails/templates.ex:86
 #: lib/storyarn/emails/templates.ex:134
