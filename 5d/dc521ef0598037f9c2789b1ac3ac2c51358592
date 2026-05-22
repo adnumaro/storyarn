@@ -1,0 +1,136 @@
+priv/docs/en/narrative-design/node-types/05-hub-jump.md
+  s_89a3f1264cbda8::t_5ca724b3220df3 1-42
+priv/docs/es/narrative-design/node-types/01-entry-exit.md
+  s_89a3f1264cbda8::t_5ca724b3220df3 1-57
+lib/storyarn/docs/guide_builder.ex
+  s_89a3f1264cbda8::t_9c3d27079e8754 10-12,14,21-22,27-29,37-57
+priv/docs/es/narrative-design/node-types/04-instruction.md
+  s_89a3f1264cbda8::t_4c3f811930214a 12,14-15,18,21,23,25-28,30,32,34,36
+  s_89a3f1264cbda8::t_5ca724b3220df3 1-11,13,16-17,19-20,22,24,29,31,33,35,37-40
+priv/docs/en/scene-design/05-layers-visibility.md
+  s_89a3f1264cbda8::t_770728519e8a54 1-47
+priv/docs/es/narrative-design/03-instruction-editor.md
+  s_89a3f1264cbda8::t_ec42a4171f1023 1-102
+priv/docs/en/narrative-design/node-types/08-annotation.md
+  s_89a3f1264cbda8::t_55e6eb23a49644 1-33
+priv/docs/es/world-building/03-table-blocks.md
+  s_89a3f1264cbda8::t_17571c53fb6483 1-136
+priv/docs/es/scene-design/02-zones.md
+  s_89a3f1264cbda8::t_770728519e8a54 1-46
+priv/docs/en/world-building/02-blocks-and-variables.md
+  s_89a3f1264cbda8::t_17571c53fb6483 1-110
+priv/docs/es/narrative-design/node-types/05-hub-jump.md
+  s_89a3f1264cbda8::t_5ca724b3220df3 1-42
+priv/docs/en/scene-design/06-actions-conditions-exploration.md
+  s_89a3f1264cbda8::t_770728519e8a54 1-21,23-28,30-59
+  s_89a3f1264cbda8::t_42774ce21343e7 22,29
+test/storyarn_web/live/docs_live/show_test.exs
+  s_89a3f1264cbda8::t_6a19737039e87c 72-87,98-99
+  s_89a3f1264cbda8::t_bbdb30b8cf1520 100-126
+  s_89a3f1264cbda8::t_55e6eb23a49644 95-96
+  s_89a3f1264cbda8::t_b8a792d4960824 88-94,97
+priv/docs/en/narrative-design/03-instruction-editor.md
+  s_89a3f1264cbda8::t_ec42a4171f1023 1-102
+priv/docs/en/world-building/03-table-blocks.md
+  s_89a3f1264cbda8::t_17571c53fb6483 1-136
+priv/docs/es/scene-design/03-pins.md
+  s_89a3f1264cbda8::t_770728519e8a54 1-47
+priv/docs/es/scene-design/01-scenes-overview.md
+  s_89a3f1264cbda8::t_770728519e8a54 5,10,14,19,22,24-30,32,34-37,39,41,43
+priv/docs/es/world-building/02-blocks-and-variables.md
+  s_89a3f1264cbda8::t_17571c53fb6483 1-110
+priv/docs/en/narrative-design/node-types/01-entry-exit.md
+  s_89a3f1264cbda8::t_5ca724b3220df3 1-65
+priv/docs/en/scene-design/04-connections-routes.md
+  s_89a3f1264cbda8::t_770728519e8a54 1-46
+priv/docs/en/scene-design/02-zones.md
+  s_89a3f1264cbda8::t_770728519e8a54 1-50
+assets/app/live/layouts/docs/Layout.vue
+  s_89a3f1264cbda8::t_af323fadf8d782 27-30,36-41,102,105-123,132-137,141,231,244-262
+lib/storyarn_web/live/docs_live/show.ex
+  s_89a3f1264cbda8::t_84cbdeba7f8690 41
+  s_89a3f1264cbda8::t_a2e0951b6c85c4 45,47
+priv/docs/en/narrative-design/node-types/04-instruction.md
+  s_89a3f1264cbda8::t_4c3f811930214a 12,14-15,18,21,23,25-28,30,32,34,36
+  s_89a3f1264cbda8::t_5ca724b3220df3 1-11,13,16-17,19-20,22,24,29,31,33,35,37-40
+priv/docs/es/scene-design/05-layers-visibility.md
+  s_89a3f1264cbda8::t_770728519e8a54 1-47
+priv/docs/en/narrative-design/01-flows-overview.md
+  s_89a3f1264cbda8::t_98117315c5759f 39
+  s_89a3f1264cbda8::t_42774ce21343e7 40-41
+  s_89a3f1264cbda8::t_55e6eb23a49644 37-38,42-46
+priv/docs/es/narrative-design/01-flows-overview.md
+  s_89a3f1264cbda8::t_42774ce21343e7 40-41
+  s_89a3f1264cbda8::t_98117315c5759f 39
+  s_89a3f1264cbda8::t_55e6eb23a49644 37-38,42-46
+priv/docs/en/narrative-design/02-condition-editor.md
+  s_89a3f1264cbda8::t_ec42a4171f1023 1-90
+priv/docs/es/narrative-design/node-types/07-sequence.md
+  s_89a3f1264cbda8::t_5ca724b3220df3 1-6,8-13,16-31,63,72-82,89
+  s_89a3f1264cbda8::t_cc112dbc151183 7,14-15,32-62,64-71,83-88,90
+assets/app/locales/en/layout.json
+  s_89a3f1264cbda8::t_95d7bd91d06f10 22
+priv/docs/es/narrative-design/node-types/03-condition.md
+  s_89a3f1264cbda8::t_4c3f811930214a 7,12,14,18,21,23-26,28,30,34,37,39,41,43-46,48,50,52
+  s_89a3f1264cbda8::t_c31f2ba70a0c90 16-17,19-20,22,29,31,36,38
+  s_89a3f1264cbda8::t_5ca724b3220df3 1-6,8-11,13,15,27,32-33,35,40,42,47,49,51
+priv/docs/en/narrative-design/node-types/03-condition.md
+  s_89a3f1264cbda8::t_5ca724b3220df3 1-6,8-11,13,15,20,29,32-33,35,40,42,47,49,51
+  s_89a3f1264cbda8::t_4c3f811930214a 7,12,14,18,21,23-26,28,30,34,37,39,41,43-46,48,50,52
+  s_89a3f1264cbda8::t_c31f2ba70a0c90 16-17,19,22,27,31,36,38
+priv/docs/es/scene-design/04-connections-routes.md
+  s_89a3f1264cbda8::t_770728519e8a54 1-42
+priv/docs/es/scene-design/06-actions-conditions-exploration.md
+  s_89a3f1264cbda8::t_42774ce21343e7 22,29
+  s_89a3f1264cbda8::t_770728519e8a54 1-21,23-28,30-59
+priv/docs/es/narrative-design/node-types/08-annotation.md
+  s_89a3f1264cbda8::t_55e6eb23a49644 1-33
+assets/app/locales/es/layout.json
+  s_89a3f1264cbda8::t_0a2a8ecf0222c0 22
+priv/docs/es/narrative-design/02-condition-editor.md
+  s_89a3f1264cbda8::t_ec42a4171f1023 1-90
+priv/docs/en/scene-design/03-pins.md
+  s_89a3f1264cbda8::t_770728519e8a54 1-49
+priv/docs/en/narrative-design/node-types/02-dialogue.md
+  s_89a3f1264cbda8::t_42774ce21343e7 69,80
+  s_89a3f1264cbda8::t_17571c53fb6483 1-68,70-79,81-109
+priv/docs/en/narrative-design/node-types/07-sequence.md
+  s_89a3f1264cbda8::t_5ca724b3220df3 1-6,8-13,16-31,52,72-82,89
+  s_89a3f1264cbda8::t_cc112dbc151183 7,14-15,32-51,53-71,83-88,90
+priv/docs/es/narrative-design/node-types/02-dialogue.md
+  s_89a3f1264cbda8::t_42774ce21343e7 69,80
+  s_89a3f1264cbda8::t_17571c53fb6483 1-68,70-79,81-109
+lib/storyarn_web/router.ex
+  s_89a3f1264cbda8::t_a2e0951b6c85c4 138
+priv/docs/en/scene-design/01-scenes-overview.md
+  s_89a3f1264cbda8::t_770728519e8a54 5,10,14,19,22,24-30,32,34-37,39,41,43
+priv/docs/en/narrative-design/node-types/06-subflow.md
+  s_89a3f1264cbda8::t_5ca724b3220df3 1-49
+priv/docs/es/narrative-design/node-types/06-subflow.md
+  s_89a3f1264cbda8::t_5ca724b3220df3 1-47
+lib/storyarn_web/components/docs_layout.ex
+  s_89a3f1264cbda8::t_7f8b4756acc14e 108-112,114
+lib/storyarn/docs/guide.ex
+  s_89a3f1264cbda8::t_9260eb30fa6c3c 23,36-43,50,79,81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "5ddc521ef0598037f9c2789b1ac3ac2c51358592",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_89a3f1264cbda8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e4a48-d037-7852-a91e-119f74a3c0e1",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
