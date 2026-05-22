@@ -168,7 +168,6 @@ const BOOLEAN_OUTPUT_LABELS = computed<Record<string, string>>(() => ({
 function getOutputLabel(key: string): string {
   const d = nodeData.value;
   if (!d.switch_mode) return BOOLEAN_OUTPUT_LABELS.value[key] ?? key;
-  if (key === "default") return "Default";
   if (d.condition?.blocks?.length) return findBlockLabel(d.condition.blocks, key);
   if (d.condition?.rules?.length) return findRuleLabel(d.condition.rules, key);
   return key;
@@ -194,7 +193,7 @@ function getRuleBadges(rules: ConditionRule[], key: string): OutputBadge[] {
 
 function getOutputBadges(key: string): OutputBadge[] {
   const d = nodeData.value;
-  if (!d.switch_mode || key === "default") return [];
+  if (!d.switch_mode) return [];
 
   if (d.condition?.blocks && d.condition.blocks.length > 0) {
     return getBlockBadges(d.condition.blocks, key);
