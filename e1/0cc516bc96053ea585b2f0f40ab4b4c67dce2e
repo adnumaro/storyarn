@@ -1,0 +1,80 @@
+test/storyarn/exports/serializers/helpers_test.exs
+  s_89a3f1264cbda8::t_455a392a5e6852 238
+test/storyarn/exports/serializers/unity_json_test.exs
+  s_89a3f1264cbda8::t_bf23ac71ca15d8 499
+test/storyarn/versioning/builders/flow_builder_test.exs
+  s_89a3f1264cbda8::t_72c59ab6dafdb9 55
+lib/storyarn/flows/evaluator/node_evaluators/condition_node_evaluator.ex
+  s_89a3f1264cbda8::t_0c829485153564 7,87,98,168-184,190,195
+test/storyarn/flows_test.exs
+  s_89a3f1264cbda8::t_72c59ab6dafdb9 768
+  s_89a3f1264cbda8::t_455a392a5e6852 762,780,858,877,903
+test/storyarn/flows/evaluator/condition_node_evaluator_test.exs
+  s_89a3f1264cbda8::t_1a13ebf63a907e 259,268,291,295-296,303,385,394,441,446-451,454,484,487-492,509,512-513
+lib/storyarn/exports/serializers/unity_json.ex
+  s_89a3f1264cbda8::t_cd3425f7bed193 1005,1009
+test/storyarn_web/live/flow_live/handlers/debug_execution_handlers_test.exs
+  s_89a3f1264cbda8::t_72c59ab6dafdb9 1137
+  s_89a3f1264cbda8::t_455a392a5e6852 1125,1168,1171,1346,1441-1443
+  s_89a3f1264cbda8::t_3f6f28a209c5c0 82-83,109-110,174,204,228,259-260,305-307,353,633-635,662,692-694,727,761,799,878-879,939
+test/storyarn/exports/serializers/godot_dialogic_test.exs
+  s_89a3f1264cbda8::t_256e5de00dd9ba 1449
+lib/storyarn/sheets/reference_tracker.ex
+  s_89a3f1264cbda8::t_62e4811ad6ae75 479,485
+lib/storyarn/exports/serializers/storyarn_json.ex
+  s_89a3f1264cbda8::t_416407ab98099c 325-329
+  s_89a3f1264cbda8::t_1fa315c46e6448 330
+test/storyarn/flows/flow_crud_test.exs
+  s_89a3f1264cbda8::t_455a392a5e6852 935
+test/storyarn/exports/serializers/graph_traversal_test.exs
+  s_89a3f1264cbda8::t_455a392a5e6852 14
+  s_89a3f1264cbda8::t_ff023ce2d3987d 231,236,246
+lib/storyarn/imports/parsers/storyarn_json.ex
+  s_89a3f1264cbda8::t_ceb1727329abf5 1284
+  s_89a3f1264cbda8::t_805620a5ea813e 795,825-829
+  s_89a3f1264cbda8::t_d75e9aa1068124 746,758,761,763-793
+  s_89a3f1264cbda8::t_3758d5023caa8d 797-806
+  s_89a3f1264cbda8::t_9684bb21db8bcf 796,807-822
+  s_89a3f1264cbda8::t_a2c73b395e7eff 823
+  s_89a3f1264cbda8::t_b071726be0dbbb 759-760
+  s_89a3f1264cbda8::t_8c8c6e00480600 762,794
+test/storyarn_web/live/flow_live/handlers/debug_session_handlers_test.exs
+  s_89a3f1264cbda8::t_3f6f28a209c5c0 98,150,156,183
+test/storyarn_web/live/flow_live/helpers/connection_helpers_test.exs
+  s_89a3f1264cbda8::t_455a392a5e6852 23,44
+test/storyarn/flows/connection_crud_test.exs
+  s_89a3f1264cbda8::t_72c59ab6dafdb9 223
+  s_89a3f1264cbda8::t_455a392a5e6852 95-96,217,235,260,271,285,291,333,350,366,382,397,412,428,445,598,659
+lib/storyarn/exports/serializers/flow_control_resolver.ex
+  s_89a3f1264cbda8::t_57a6b6a5d1b24d 105,108
+test/storyarn/flows/evaluator/engine_test.exs
+  s_89a3f1264cbda8::t_256e5de00dd9ba 860,866,876,900,906-907
+test/storyarn_web/live/flow_live/handlers/debug_handlers_test.exs
+  s_89a3f1264cbda8::t_3f6f28a209c5c0 137-138,165,210,250,289-291,337,345,387,421,453,462
+test/support/fixtures/flows_fixtures.ex
+  s_89a3f1264cbda8::t_4a887e9b3a0c7a 55
+lib/storyarn/flows/variable_reference_tracker.ex
+  s_89a3f1264cbda8::t_55ca20a1212a0b 8
+  s_89a3f1264cbda8::t_62e4811ad6ae75 7,551
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "e10cc516bc96053ea585b2f0f40ab4b4c67dce2e",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_89a3f1264cbda8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e4a48-d037-7852-a91e-119f74a3c0e1",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
