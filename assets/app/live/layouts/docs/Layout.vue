@@ -24,9 +24,19 @@ interface DocsCategory {
 interface DocsGuideNav {
   category: string;
   categoryLabel: string;
+  section?: string | null;
+  sectionLabel?: string | null;
+  sectionOrder?: number | null;
+  path?: string[];
   slug: string;
   title: string;
   url: string;
+}
+
+interface DocsGuideSection {
+  id: string;
+  label: string;
+  guides: DocsGuideNav[];
 }
 
 interface DocsTocEntry {
@@ -89,11 +99,28 @@ watch(
 );
 
 const guidesByCategory = computed(() => {
-  const grouped = new Map<string, DocsGuideNav[]>();
+  const grouped = new Map<string, { root: DocsGuideNav[]; sections: DocsGuideSection[] }>();
 
   for (const guide of docs.value.guides) {
-    const guides = grouped.get(guide.category) ?? [];
-    guides.push(guide);
+    const guides = grouped.get(guide.category) ?? { root: [], sections: [] };
+
+    if (guide.section) {
+      let section = guides.sections.find((item) => item.id === guide.section);
+
+      if (!section) {
+        section = {
+          id: guide.section,
+          label: guide.sectionLabel ?? guide.section,
+          guides: [],
+        };
+        guides.sections.push(section);
+      }
+
+      section.guides.push(guide);
+    } else {
+      guides.root.push(guide);
+    }
+
     grouped.set(guide.category, guides);
   }
 
@@ -102,12 +129,16 @@ const guidesByCategory = computed(() => {
 
 const searchResultsVisible = computed(() => docs.value.search.results !== null);
 
-function guidesFor(categoryId: string): DocsGuideNav[] {
-  return guidesByCategory.value.get(categoryId) ?? [];
+function rootGuidesFor(categoryId: string): DocsGuideNav[] {
+  return guidesByCategory.value.get(categoryId)?.root ?? [];
+}
+
+function sectionsFor(categoryId: string): DocsGuideSection[] {
+  return guidesByCategory.value.get(categoryId)?.sections ?? [];
 }
 
 function activeGuide(guide: DocsGuideNav): boolean {
-  return docs.value.guide?.category === guide.category && docs.value.guide.slug === guide.slug;
+  return docs.value.guide?.url === guide.url;
 }
 
 function onSearch(event: Event): void {
@@ -197,7 +228,7 @@ function resultsLabel(count: number): string {
             </button>
 
             <ul v-if="category.expanded" class="mt-0.5 ml-3 border-l border-border space-y-0.5">
-              <li v-for="guide in guidesFor(category.id)" :key="guide.url">
+              <li v-for="guide in rootGuidesFor(category.id)" :key="guide.url">
                 <LiveLink
                   :to="guide.url"
                   :class="[
@@ -209,6 +240,26 @@ function resultsLabel(count: number): string {
                 >
                   {{ guide.title }}
                 </LiveLink>
+              </li>
+              <li v-for="section in sectionsFor(category.id)" :key="section.id" class="pt-1">
+                <p class="px-3 py-1 text-xs font-medium text-muted-foreground">
+                  {{ section.label }}
+                </p>
+                <ul class="space-y-0.5">
+                  <li v-for="guide in section.guides" :key="guide.url">
+                    <LiveLink
+                      :to="guide.url"
+                      :class="[
+                        'block px-3 py-1.5 text-sm transition-colors -ml-px border-l-2',
+                        activeGuide(guide)
+                          ? 'border-primary text-primary font-medium'
+                          : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border',
+                      ]"
+                    >
+                      {{ guide.title }}
+                    </LiveLink>
+                  </li>
+                </ul>
               </li>
             </ul>
           </div>

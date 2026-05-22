@@ -1,5 +1,5 @@
 %{
-title: "Tablas",
+title: "Bloques de Tabla",
 category_label: "Construcción de Mundos",
 order: 3,
 description: "Cuadrículas tipo hoja de cálculo dentro de las fichas para inventarios, matrices de estadísticas y listas estructuradas."

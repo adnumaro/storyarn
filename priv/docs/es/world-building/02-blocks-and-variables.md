@@ -29,7 +29,7 @@ Storyarn admite {accent}10 tipos de bloques{/accent}:
 | **Selección**          | Elección única de una lista de opciones definida                                     | Sí                    | `"warrior"`                               |
 | **Selección Múltiple** | Múltiples elecciones de una lista definida (etiquetas)                               | Sí                    | `["fire", "ice"]`                         |
 | **Fecha**              | Selector de fecha                                                                    | Sí                    | `"2024-03-15"`                            |
-| **Tabla**              | Cuadrícula tipo hoja de cálculo con columnas tipadas y filas con nombre              | Sí (a nivel de celda) | Ver [Tablas](/docs/world-building/tables) |
+| **Tabla**              | Cuadrícula tipo hoja de cálculo con columnas tipadas y filas con nombre              | Sí (a nivel de celda) | Ver [Bloques de tabla](/docs/world-building/table-blocks) |
 | **Referencia**         | Enlace a otra hoja o flujo                                                           | **No**                | --                                        |
 | **Galería**            | Colección de imágenes de recursos subidos                                            | **No**                | --                                        |
 
@@ -74,7 +74,7 @@ Cada tipo de bloque tiene sus propias opciones de configuración:
 - **Número** -- placeholder, valores mínimo, máximo y de paso para validación de entrada.
 - **Booleano** -- modo de dos estados (true/false) o tres estados (true/false/sin asignar).
 - **Selección / Selección Múltiple** -- una lista de opciones, cada una con una clave y un valor de visualización.
-- **Tabla** -- visualización plegable, más definiciones de columnas y filas (ver [Tablas](/docs/world-building/tables)).
+- **Tabla** -- visualización plegable, más definiciones de columnas y filas (ver [Bloques de tabla](/docs/world-building/table-blocks)).
 - **Referencia** -- tipos de destino permitidos (hoja, flujo).
 
 ---

@@ -1,6 +1,8 @@
 %{
 title: "Dialogue Nodes",
 category_label: "Narrative Design",
+section_label: "Node Types",
+section_order: 1,
 order: 2,
 description: "Character speech, player responses, and dialogue configuration."
 }
@@ -64,7 +66,7 @@ When a dialogue node has no responses, it acts as a simple line of dialogue with
 
 ## Response conditions
 
-Each response can have a **condition** that must be true for it to appear as a valid choice. Conditions are defined using the same visual Condition Builder used by condition nodes.
+Each response can have a **condition** that must be true for it to appear as a valid choice. Conditions use the shared [Condition Editor](/docs/narrative-design/condition-editor), with both Builder view and Code view.
 
 > _Example: "[Strength > 15] Break down the door"_
 > If the player's strength is 15 or less, this option does not appear (in Player mode) or appears greyed out with a strikethrough (in {accent}Analysis mode{/accent}).
@@ -75,7 +77,7 @@ A condition indicator appears on the response in the canvas, so you can see at a
 
 ## Response instructions
 
-Each response can also carry **instructions** that modify variables when that response is chosen. These use the same Instruction Builder as instruction nodes, supporting all operations: Set, Add, Subtract, Toggle, Set true/false, and Clear.
+Each response can also carry **instructions** that modify variables when that response is chosen. These use the shared [Instruction Editor](/docs/narrative-design/instruction-editor), supporting all assignment operations: Set, Add, Subtract, Toggle, Set true/false, and Clear.
 
 > _Example: Player picks "Accept the quest" -> sets `quest.tavern.accepted` to true_
 

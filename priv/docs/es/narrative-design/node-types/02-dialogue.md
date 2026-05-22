@@ -1,6 +1,8 @@
 %{
 title: "Nodos de Diálogo",
 category_label: "Diseño Narrativo",
+section_label: "Tipos de nodos",
+section_order: 1,
 order: 2,
 description: "Diálogo de personajes, respuestas del jugador y configuración de diálogos."
 }
@@ -64,7 +66,7 @@ Cuando un nodo de dialogo no tiene respuestas, funciona como una simple linea de
 
 ## Condiciones de respuesta
 
-Cada respuesta puede tener una **condicion** que debe ser verdadera para que aparezca como opcion valida. Las condiciones se definen usando el mismo Constructor de Condiciones visual que usan los nodos de condicion.
+Cada respuesta puede tener una **condicion** que debe ser verdadera para que aparezca como opcion valida. Las condiciones usan el [Editor de Condiciones](/docs/narrative-design/condition-editor) compartido, con Builder view y Code view.
 
 > _Ejemplo: "[Fuerza > 15] Derribar la puerta"_
 > Si la fuerza del jugador es 15 o menos, esta opcion no aparece (en modo Reproductor) o aparece en gris con texto tachado (en {accent}Modo de analisis{/accent}).
@@ -75,7 +77,7 @@ Un indicador de condicion aparece en la respuesta en el lienzo, para que puedas 
 
 ## Instrucciones de respuesta
 
-Cada respuesta tambien puede llevar **instrucciones** que modifican variables cuando se elige esa respuesta. Usan el mismo Constructor de Instrucciones que los nodos de instruccion, soportando todas las operaciones: Establecer, Sumar, Restar, Alternar, Establecer verdadero/falso y Limpiar.
+Cada respuesta tambien puede llevar **instrucciones** que modifican variables cuando se elige esa respuesta. Usan el [Editor de Instrucciones](/docs/narrative-design/instruction-editor) compartido, con todas las operaciones de asignación: Establecer, Sumar, Restar, Alternar, Establecer verdadero/falso y Limpiar.
 
 > _Ejemplo: El jugador elige "Aceptar la mision" -> establece `quest.tavern.accepted` a verdadero_
 

@@ -29,7 +29,7 @@ Storyarn supports {accent}10 block types{/accent}:
 | **Select**       | Single choice from a defined list of options                                       | Yes              | `"warrior"`                             |
 | **Multi Select** | Multiple choices from a defined list (tags)                                        | Yes              | `["fire", "ice"]`                       |
 | **Date**         | Date picker                                                                        | Yes              | `"2024-03-15"`                          |
-| **Table**        | Spreadsheet grid with typed columns and named rows                                 | Yes (cell-level) | See [Tables](/en/world-building/tables) |
+| **Table**        | Spreadsheet grid with typed columns and named rows                                 | Yes (cell-level) | See [Table Blocks](/docs/world-building/table-blocks) |
 | **Reference**    | Link to another sheet or flow                                                      | **No**           | --                                      |
 | **Gallery**      | Image collection from uploaded assets                                              | **No**           | --                                      |
 
@@ -74,7 +74,7 @@ Each block type has its own configuration options:
 - **Number** -- placeholder, min, max, and step values for input validation.
 - **Boolean** -- two-state (true/false) or tri-state (true/false/unset) mode.
 - **Select / Multi Select** -- a list of options, each with a key and display value.
-- **Table** -- collapsible display, plus column and row definitions (see [Tables](/en/world-building/tables)).
+- **Table** -- collapsible display, plus column and row definitions (see [Table Blocks](/docs/world-building/table-blocks)).
 - **Reference** -- allowed target types (sheet, flow).
 
 ---

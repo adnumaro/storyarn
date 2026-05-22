@@ -135,7 +135,7 @@ defmodule StoryarnWeb.Router do
             {@user_auth_hook, :mount_current_scope}
           ] do
       live "/", DocsLive.Show, :index
-      live "/:category/:slug", DocsLive.Show, :show
+      live "/:category/*path", DocsLive.Show, :show
     end
   end
 
