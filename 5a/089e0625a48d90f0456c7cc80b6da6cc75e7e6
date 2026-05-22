@@ -1,0 +1,233 @@
+lib/storyarn_web/live/scene_live/show.ex
+  s_89a3f1264cbda8::t_00319e399ea411 965,1930-1933
+  s_89a3f1264cbda8::t_5c36f599337a66 48-50,953-954,966,969,990-992
+  s_89a3f1264cbda8::t_99bb15a802da08 319
+  s_89a3f1264cbda8::t_f72f88cf378749 1964,1966
+  s_89a3f1264cbda8::t_d550d9f0c9ea46 1935-1939,1941-1942,1944-1952,1995-1996
+  s_89a3f1264cbda8::t_e24c3f1267a3e9 951-952,955-958,1940,1943,1953,1987-1994
+  s_89a3f1264cbda8::t_08771e742fd9bf 959-963,984-987,1926-1929
+  s_89a3f1264cbda8::t_b83626ac4c24e2 964,967-968,971-972,974-983,988-989,993-998
+  s_89a3f1264cbda8::t_b7969c9636854a 31,970,973,1954-1963,1965,1967-1986
+lib/storyarn_web/live/scene_live/helpers/scene_serializer.ex
+  s_89a3f1264cbda8::t_f5bf24390b3dd0 145-149,163-169,176-181
+  s_89a3f1264cbda8::t_f38baf4d5776fb 230-238
+  s_89a3f1264cbda8::t_c7e5a774b505c3 139-141,175
+  s_89a3f1264cbda8::t_b071726be0dbbb 143-144
+  s_89a3f1264cbda8::t_faa6e23b7df0a7 170-174
+test/storyarn/scenes_test.exs
+  s_89a3f1264cbda8::t_638a361ce1c81f 581-588,590-591,664-708,710
+  s_89a3f1264cbda8::t_1c39cd77a73bef 548,551-552,555,560,564,594,597,599,655,659,713-716,718-719,730-736,740
+lib/storyarn_web/live/scene_live/handlers/element_handlers.ex
+  s_89a3f1264cbda8::t_d5a416f78f1e3c 369
+  s_89a3f1264cbda8::t_6e763821713412 38
+  s_89a3f1264cbda8::t_62e4811ad6ae75 352,357,379
+  s_89a3f1264cbda8::t_6520536e02fbd3 92
+  s_89a3f1264cbda8::t_0d004dbfb501c4 353
+  s_89a3f1264cbda8::t_d5949be98124cb 371-372
+  s_89a3f1264cbda8::t_bee3a54cc13983 370
+  s_89a3f1264cbda8::t_b28b3b98e33df4 408,425
+  s_89a3f1264cbda8::t_b7969c9636854a 385-387,400-407,409-424,426,458,471,476,481,510,515,526,536
+  s_89a3f1264cbda8::t_90e8abf6083239 37,87-91
+  s_89a3f1264cbda8::t_f72f88cf378749 459-470,477-480,511-514,527-535
+assets/app/modules/scenes/editor/components/panels/properties/ZoneProperties.vue
+  s_89a3f1264cbda8::t_6e5b43127339fe 389,422
+  s_89a3f1264cbda8::t_fa25d737f3a97c 129,140-143,252,289
+  s_89a3f1264cbda8::t_d40b38b5a92521 178,185
+  s_89a3f1264cbda8::t_bee3a54cc13983 7-13,247-248
+  s_89a3f1264cbda8::t_72101adcc402bb 83,139,260
+  s_89a3f1264cbda8::t_d941e354f1c17a 321-327
+  s_89a3f1264cbda8::t_b01cb00075fd9c 28,94-97,158-165
+  s_89a3f1264cbda8::t_dd55591233b475 304-313,315,328-329,332-334
+  s_89a3f1264cbda8::t_00319e399ea411 221,223-224
+  s_89a3f1264cbda8::t_a1384d100c4641 255-257
+  s_89a3f1264cbda8::t_53915cca6d43b6 3,14,49-53,86-93,99-128,130-138,144-146,244,250-251,253-254,258-259,261-267,285,287,303,314,316,320,353-388,390-420,430-435,472-473
+  s_89a3f1264cbda8::t_db2f6ee807f96b 98
+  s_89a3f1264cbda8::t_41b4791bcf7b30 84-85,171,175-177,179-184,186-189
+  s_89a3f1264cbda8::t_e432a738a3ed3c 245-246,249
+  s_89a3f1264cbda8::t_b7840a2b88296f 330-331
+  s_89a3f1264cbda8::t_d3b2d786804b74 156-157,167,202-203,318
+  s_89a3f1264cbda8::t_7cdea0d365f828 2,54-55,166,168-170,172-174,190-201,335-352
+lib/storyarn/versioning/builders/scene_builder.ex
+  s_89a3f1264cbda8::t_92e529d58fff25 508-509,521,551-554,556-564,566,572-587,593-598
+  s_89a3f1264cbda8::t_c4843e0f7f492f 1491-1493,1516-1518
+  s_89a3f1264cbda8::t_6e763821713412 1084
+  s_89a3f1264cbda8::t_9c12942c14a1c1 526-528,531,533-549
+  s_89a3f1264cbda8::t_aa5f9c35944e4d 174-178
+  s_89a3f1264cbda8::t_77d47c3527cd50 555,588-592,939-942,946-949
+  s_89a3f1264cbda8::t_5fdaa84b7b5aae 570-571,927,929,932-933,943-945,950-951
+  s_89a3f1264cbda8::t_7a8bc6b0c489e4 74,80-85,179
+priv/repo/migrations/20260522153500_add_scene_zone_label_icon_asset.exs
+  s_89a3f1264cbda8::t_e21dbd2c75f5c8 1-11
+assets/app/modules/scenes/exploration/composables/useExplorationInteraction.ts
+  s_89a3f1264cbda8::t_a0b52c1c8448e8 91-92
+  s_89a3f1264cbda8::t_00319e399ea411 65
+  s_89a3f1264cbda8::t_4e188b76f417af 45-46,64,85
+  s_89a3f1264cbda8::t_e39a06c1af3995 49-59,66
+  s_89a3f1264cbda8::t_27c0170e90419c 5
+lib/storyarn/scenes/scene_crud.ex
+  s_89a3f1264cbda8::t_cc2e27e610f69f 1031,1044
+  s_89a3f1264cbda8::t_f30f3a76c135b0 197
+  s_89a3f1264cbda8::t_4e4161a3e517a3 967
+test/storyarn_web/live/flow_live/helpers/variable_helpers_test.exs
+  s_89a3f1264cbda8::t_cc2e27e610f69f 693,711,737
+  s_89a3f1264cbda8::t_d52f2873e96a1c 702-703
+test/storyarn_web/live/scene_live/handlers/element_handlers_test.exs
+  s_89a3f1264cbda8::t_e56aafb974bd40 121,128,132,193-194,203,216,219
+  s_89a3f1264cbda8::t_362db017c7ceb4 159-166,172,175-181
+  s_89a3f1264cbda8::t_80ef63055bd0d7 182
+  s_89a3f1264cbda8::t_55ff0aae4af78f 243-260,286-299
+  s_89a3f1264cbda8::t_d5a416f78f1e3c 136-143,155-156
+  s_89a3f1264cbda8::t_2d5b17101e33fb 154
+lib/storyarn_web/live/scene_live/helpers/scene_helpers.ex
+  s_89a3f1264cbda8::t_62e4811ad6ae75 185,189,191,195,197-198,208
+test/storyarn_web/live/scene_live/exploration_live_test.exs
+  s_89a3f1264cbda8::t_0a843dc14f072f 613,616,619,627,634,646,663,683,2034,2037,2049
+  s_89a3f1264cbda8::t_ad1a3f53b7b0bf 696-730
+  s_89a3f1264cbda8::t_53089fafff8ca8 2195
+  s_89a3f1264cbda8::t_440aa29abc6864 185-191,662,664-682,684-695,731-757
+  s_89a3f1264cbda8::t_55ca20a1212a0b 6
+lib/storyarn/scenes/scene_zone.ex
+  s_89a3f1264cbda8::t_d20752637d0d39 23-26,49-53,82-86,128-132,144-147,156
+  s_89a3f1264cbda8::t_eaec5f71fcaee6 151-152,234-260
+  s_89a3f1264cbda8::t_38a2dd7fb43b30 15,54-55,87,133,162
+  s_89a3f1264cbda8::t_8e7153c1ac4e3c 29,214-222
+  s_89a3f1264cbda8::t_62e4811ad6ae75 22,80-81,209,211
+  s_89a3f1264cbda8::t_e825cea1f15c46 153,261-267
+assets/app/modules/scenes/editor/components/canvas/SceneCanvas.vue
+  s_89a3f1264cbda8::t_6b094b497a39b8 67
+  s_89a3f1264cbda8::t_c3a08df1c6afc8 66,68-73
+  s_89a3f1264cbda8::t_0922ddbc39a645 309
+  s_89a3f1264cbda8::t_8e2b1f950c326b 74
+lib/storyarn/scenes/zone_crud.ex
+  s_89a3f1264cbda8::t_62e4811ad6ae75 152
+  s_89a3f1264cbda8::t_f98f6a095a74fb 33-35,39-41,45-47,54,61
+  s_89a3f1264cbda8::t_925c60fd60ce12 156-159
+priv/repo/migrations/20260522133000_rename_scene_zone_instruction_to_action.exs
+  s_89a3f1264cbda8::t_92e529d58fff25 23
+  s_89a3f1264cbda8::t_bbab65d99db8aa 15-16,28-38
+  s_89a3f1264cbda8::t_62e4811ad6ae75 1-14,39-57
+  s_89a3f1264cbda8::t_c4843e3a56b182 17-22,24-27
+assets/app/modules/scenes/exploration/types.ts
+  s_89a3f1264cbda8::t_99bb15a802da08 19
+assets/app/locales/es/scenes.json
+  s_89a3f1264cbda8::t_4e188b76f417af 342
+  s_89a3f1264cbda8::t_706fab9c90467b 215-217
+  s_89a3f1264cbda8::t_8b32a1f3ff755a 236-238
+  s_89a3f1264cbda8::t_a9bf750a52267b 222
+  s_89a3f1264cbda8::t_7685fa8b0b065f 234-235
+  s_89a3f1264cbda8::t_fa6bb277796fc6 220-221,223-231,233,239-259
+  s_89a3f1264cbda8::t_c1efa59d35383c 232
+lib/storyarn_web/live/scene_live/helpers/props_serializer.ex
+  s_89a3f1264cbda8::t_27c0170e90419c 11,347,360-363,380-384,386-399
+  s_89a3f1264cbda8::t_921e573e473270 15-24,385
+  s_89a3f1264cbda8::t_998acbbce2029f 10,481,485
+  s_89a3f1264cbda8::t_562db057732d21 131-132,484,486-487
+  s_89a3f1264cbda8::t_4a3e3f6501f408 126-130
+lib/storyarn_web/live/scene_live/exploration_live.ex
+  s_89a3f1264cbda8::t_db2d0e78691785 330,406-416,425-439,446-452
+  s_89a3f1264cbda8::t_1aecbae4b3c9be 424
+  s_89a3f1264cbda8::t_27c0170e90419c 21,164,991
+  s_89a3f1264cbda8::t_b071726be0dbbb 417-423,440-445
+  s_89a3f1264cbda8::t_99bb15a802da08 1016
+  s_89a3f1264cbda8::t_00319e399ea411 325-327,329,335-337,339-341,343-344,349-350,356-358,360-364,369-372
+  s_89a3f1264cbda8::t_62e4811ad6ae75 5,512
+  s_89a3f1264cbda8::t_0043fec65cc6fd 345-347
+  s_89a3f1264cbda8::t_3b1f054e239cfc 19,984
+assets/app/locales/en/scenes.json
+  s_89a3f1264cbda8::t_6292584fdd1371 222
+  s_89a3f1264cbda8::t_b33f8b470044c2 234-235
+  s_89a3f1264cbda8::t_d2ec00b9d18965 232
+  s_89a3f1264cbda8::t_427602b04d3d61 215-217
+  s_89a3f1264cbda8::t_93c10d1328c6e3 220-221,223-231,233,239-259
+  s_89a3f1264cbda8::t_caec0969c43672 236-238
+  s_89a3f1264cbda8::t_4e188b76f417af 342
+assets/app/test/modules/scenes/exploration/useMovement.test.ts
+  s_89a3f1264cbda8::t_1afe91a35db5f6 1-33
+assets/app/modules/scenes/canvas/composables/useZones.ts
+  s_89a3f1264cbda8::t_d788572bc6b3ae 3,58,96,368,441-452,479
+  s_89a3f1264cbda8::t_1bf2b0e486561d 195,198-199,202,407
+  s_89a3f1264cbda8::t_658eeb5aaef1f2 196-197
+  s_89a3f1264cbda8::t_ed2926e1cbf930 276,284-285,287,294,296-305,312-314,316,333-346,373,380,388-389,405-406,409-411,413
+  s_89a3f1264cbda8::t_6e763821713412 286,357
+  s_89a3f1264cbda8::t_cb8df64c6caa84 306-310
+  s_89a3f1264cbda8::t_03601daad9b32b 51,269
+  s_89a3f1264cbda8::t_3d1b74101785cc 350-356,358-359
+  s_89a3f1264cbda8::t_2c94d443338401 118,277-283,311,367,371-372,433,478
+  s_89a3f1264cbda8::t_6d3b63e36b10bd 245-253,256,259-268,288-293
+  s_89a3f1264cbda8::t_d01f717c941f6b 374-379
+  s_89a3f1264cbda8::t_d7f31558cc9c6a 328-332
+  s_89a3f1264cbda8::t_4b74fa07ada9cb 12,15-21,50,52-57,92-95,97-101,187-194,200-201,205,212,216,220,230,254-255,258,275,295,315,317-320,324,370,404,408,412,453-454,481-482
+  s_89a3f1264cbda8::t_fac2e026608ed2 270-274
+  s_89a3f1264cbda8::t_bee3a54cc13983 181-186
+test/storyarn_web/live/scene_live/helpers/serializer_test.exs
+  s_89a3f1264cbda8::t_55ca20a1212a0b 152
+  s_89a3f1264cbda8::t_455a392a5e6852 44,91
+lib/storyarn/versioning/snapshot_viewer.ex
+  s_89a3f1264cbda8::t_62e4811ad6ae75 197-198
+  s_89a3f1264cbda8::t_9efc7e2ff6ebe4 204-205,237-238
+  s_89a3f1264cbda8::t_b381dee3355edf 199-203,230-234
+  s_89a3f1264cbda8::t_fcb5040e3a86e3 235
+test/storyarn/versioning/snapshot_viewer_test.exs
+  s_89a3f1264cbda8::t_72c59ab6dafdb9 42
+  s_89a3f1264cbda8::t_46dbabe52f568e 96-98,132-133
+  s_89a3f1264cbda8::t_455a392a5e6852 18
+test/storyarn/scenes/scene_zone_test.exs
+  s_89a3f1264cbda8::t_e62da96a9714b5 61-84
+assets/app/modules/scenes/editor/composables/useSceneElementOptimism.ts
+  s_89a3f1264cbda8::t_3890e6e644eea6 85-88,91
+  s_89a3f1264cbda8::t_a7bc714c6c2e66 89-90
+assets/app/modules/scenes/exploration/composables/useMovement.ts
+  s_89a3f1264cbda8::t_99bb15a802da08 59,363-371
+assets/app/modules/scenes/editor/components/toolbar/controls/ToolbarActionTypePicker.vue
+  s_89a3f1264cbda8::t_4e188b76f417af 2,26,45
+assets/app/modules/scenes/editor/components/toolbar/sections/ZoneToolbar.vue
+  s_89a3f1264cbda8::t_4e188b76f417af 189
+test/storyarn/versioning/builders/scene_builder_test.exs
+  s_89a3f1264cbda8::t_34cfbf186c6bb5 192
+  s_89a3f1264cbda8::t_0a5eb47bd783a5 178-185,209-212,288-295,311-314
+  s_89a3f1264cbda8::t_1414ff0c7b06d6 171-177,206-208,266-287,296-310
+  s_89a3f1264cbda8::t_55ff0aae4af78f 143-170,186-191,193-205,213,620-626
+test/storyarn/scenes/scene_crud_test.exs
+  s_89a3f1264cbda8::t_d52f2873e96a1c 1281-1282
+  s_89a3f1264cbda8::t_cc2e27e610f69f 1272,1288
+test/storyarn_web/live/scene_live/show_test.exs
+  s_89a3f1264cbda8::t_1afe91a35db5f6 361-380,1162-1182,1197-1215
+  s_89a3f1264cbda8::t_55ff0aae4af78f 1160,1191-1196,1216-1222
+  s_89a3f1264cbda8::t_0afa758338fe79 1161,1183-1190
+priv/repo/migrations/20260522144500_add_scene_zone_label_settings.exs
+  s_89a3f1264cbda8::t_a401f0e2d8d15a 1-13
+test/storyarn/scenes/zone_crud_test.exs
+  s_89a3f1264cbda8::t_80a7e9334cb72f 167,170,180,184-189,191,196
+  s_89a3f1264cbda8::t_925c60fd60ce12 173-176,197-202
+assets/app/modules/scenes/exploration/components/ExplorationCanvas.vue
+  s_89a3f1264cbda8::t_29dfe3dfcc36c2 70-74,387,389,391-393,395,397,407-412
+  s_89a3f1264cbda8::t_e07149a684ba61 396
+  s_89a3f1264cbda8::t_27c0170e90419c 4,69,221-230,335-337,371,454
+  s_89a3f1264cbda8::t_762228b850998d 68
+  s_89a3f1264cbda8::t_06a5a39df55b1d 413-414
+  s_89a3f1264cbda8::t_ebf00bd540bcc4 75
+assets/app/modules/scenes/editor/components/canvas/layers/ZoneConnectionLayer.vue
+  s_89a3f1264cbda8::t_190235dc76fae1 84-89,92-94,96,98,100-102,105,107
+  s_89a3f1264cbda8::t_e13b098b1cab80 90-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "5a089e0625a48d90f0456c7cc80b6da6cc75e7e6",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_89a3f1264cbda8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e4a48-d037-7852-a91e-119f74a3c0e1",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
