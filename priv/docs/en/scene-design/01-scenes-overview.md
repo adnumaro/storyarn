@@ -27,7 +27,7 @@ Scenes are spatial canvases for mapping a project's world. Use them for world ma
 | **Pins** | Point markers for locations, characters, events, objects, or custom map references. | [Pins](/docs/scene-design/pins) |
 | **Connections** | Lines between pins. Use them for paths, routes, travel links, or relationships. | [Connections and Routes](/docs/scene-design/connections-routes) |
 | **Layers** | Visibility groups for organizing canvas elements and controlling fog of war. | [Layers and Visibility](/docs/scene-design/layers-visibility) |
-| **Exploration** | A fullscreen player-like mode that evaluates actions, conditions, and flow overlays. | [Actions, Conditions, and Exploration](/docs/scene-design/actions-conditions-exploration) |
+| **Exploration** | A fullscreen player-like mode that evaluates actions, conditions, and flows opened on top of the scene. | [Actions, Conditions, and Exploration](/docs/scene-design/actions-conditions-exploration) |
 
 ## When to use scenes
 

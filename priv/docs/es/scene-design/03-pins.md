@@ -42,6 +42,6 @@ Los pines pueden enlazar a:
 
 Los pines pueden definir etiqueta, tipo, tamaño, color, icono, asset de icono, capa y bloqueo. Usa tamaño y color de forma consistente para que el mapa se pueda leer sin abrir cada pin.
 
-## Comportamiento en runtime
+## En modo exploración
 
 Como las zonas, los pines pueden usar acciones y condiciones: lanzar flujos, mostrar variables, ejecutar instrucciones, ocultarse hasta que una condición sea verdadera o aparecer deshabilitados.

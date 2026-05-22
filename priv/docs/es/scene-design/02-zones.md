@@ -2,45 +2,105 @@
 title: "Zonas y áreas interactivas",
 category_label: "Diseño de Escenas",
 order: 2,
-description: "Dibuja áreas en una escena, dales estilo, enlázalas y úsalas para navegación a escenas hijas."
+description: "Dibuja áreas en una escena y conviértelas en navegación, interacciones, indicadores, colecciones o zonas transitables."
 }
 
 ---
 
-Las zonas son regiones poligonales dibujadas en una escena. Pueden representar habitaciones, distritos, terreno, encuentros, puertas, áreas ocultas o cualquier parte del mapa que deba comportarse como un área interactiva.
+Las zonas son regiones poligonales dibujadas sobre una escena. En el editor sirven para delimitar partes del mapa; en modo exploración pueden comportarse como botones de mapa, áreas transitables, indicadores de variables o colecciones de elementos.
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Lienzo de escena con varias zonas: una habitación rectangular, una región libre y una zona resaltada para drill-down
+  Lienzo de escena con zonas de Acción, Mostrar, Colección y Área transitable visibles en el editor
 </div>
 
 ## Dibujar zonas
 
 | Herramienta | Uso típico |
 | ----------- | ---------- |
-| **Rectángulo** | Habitaciones, edificios, paneles de mapa |
-| **Triángulo** | Marcadores direccionales, puntos de interés |
+| **Rectángulo** | Habitaciones, edificios, paneles de interfaz dentro del mapa |
+| **Triángulo** | Marcadores direccionales, puntos de interés, cuñas de mapa |
 | **Círculo** | Áreas de influencia, campamentos, radios aproximados |
-| **Libre** | Habitaciones irregulares, regiones, caminos, límites de terreno |
+| **Libre** | Habitaciones irregulares, caminos, límites de terreno |
 
-Los vértices se guardan como porcentajes relativos al tamaño de la escena. Así las zonas siguen alineadas si cambia la imagen de fondo o el viewport.
+Los vértices se guardan como porcentajes relativos al tamaño de la escena. Así las zonas siguen alineadas si cambia la imagen de fondo o el tamaño de la vista.
 
-## Editar vértices
+Haz doble clic en una zona para editar sus vértices. Arrastra los puntos de edición para ajustar la forma y confirma el cambio cuando quieras que la zona siga mejor el arte del mapa.
 
-Haz doble clic en una zona para editar sus vértices. Arrastra los handles para ajustar la forma y confirma el cambio.
+## Tipos de zona
 
-## Estilo y visibilidad
+El selector de tipo define qué hace la zona en modo exploración:
 
-Las zonas pueden definir color de relleno, borde, ancho, estilo de línea, opacidad, tooltip, capa y bloqueo. Bloquea zonas que no quieras mover accidentalmente mientras editas pines o conexiones.
+| Tipo | Uso |
+| ---- | --- |
+| **Acción** | Crea una interacción: puede ejecutar instrucciones, abrir una escena, lanzar un flujo o combinar varias de estas acciones. Úsala para puertas, puntos interactivos, botones de mapa y cambios de estado simples. |
+| **Área transitable** | Marca por dónde puede moverse el jugador en modo exploración. |
+| **Mostrar** | Muestra el valor actual de una variable en el mapa. Puede mostrar solo el valor o nombre + valor. |
+| **Colección** | Abre una ventana con elementos recogibles. Cada elemento puede tener condición propia e instrucciones al recogerlo. |
 
-## Targets y drill-down
+Usa **Área transitable** para definir por dónde puede moverse el jugador. Usa **Acción** para los puntos del mapa que deben responder al clic con navegación, instrucciones o flujos.
 
-Una zona puede enlazar a otra escena. También puedes crear una escena hija desde una zona: Storyarn recorta el fondo del padre alrededor de la zona, escala la imagen cuando hace falta y crea una escena hija con coordenadas normalizadas.
+## Panel de propiedades
 
-```text
-Mapa del mundo -> Región -> Ciudad -> Edificio -> Sala
-```
+Las propiedades de zona están organizadas en pestañas:
 
-## Acciones y condiciones
+| Pestaña | Qué configura |
+| ------- | ------------- |
+| **Visual** | Texto, icono, variable mostrada, tamaño, fuente, peso y estilo. |
+| **Reglas** | Condición de disponibilidad y efecto cuando la condición no se cumple. |
+| **Acción / Movimiento / Colección** | Opciones específicas del tipo de zona seleccionada. |
+| **Ajustes** | Atajo, estado oculto en exploración y texto de ayuda. |
 
-Las zonas pueden ejecutar instrucciones, mostrar variables, ocultarse o deshabilitarse según condiciones. Consulta [Acciones, condiciones y exploración](/docs/scene-design/actions-conditions-exploration).
+## Visual
+
+Las zonas de Acción, Colección y Área transitable pueden mostrar:
+
+- **Texto** -- muestra el nombre de la zona.
+- **Icono** -- muestra un icono subido por el usuario.
+- **Texto e icono** -- muestra ambos.
+- **Nada** -- oculta la etiqueta en modo exploración, pero el editor sigue mostrando el nombre para que puedas localizar la zona.
+
+Los iconos pueden ser **SVG, PNG o GIF** y pesar como máximo **256 KB**.
+
+En zonas Mostrar, selecciona la variable que quieres enseñar y elige si se renderiza solo el **valor** o **nombre + valor**. El tamaño y la fuente afectan al valor mostrado en modo exploración.
+
+## Reglas
+
+Cada zona puede tener una condición construida con el [Editor de Condiciones](/docs/narrative-design/condition-editor). Si la condición no se cumple, elige un efecto:
+
+- **Ocultar** -- la zona desaparece de la vista de exploración.
+- **Deshabilitar** -- la zona sigue visible, pero queda bloqueada.
+
+Úsalo para puertas bloqueadas, rutas revelables, indicadores contextuales, colecciones que aparecen más tarde o puntos interactivos que dependen del estado del juego.
+
+## Acción
+
+Una zona de Acción puede:
+
+- Navegar a una **escena**.
+- Lanzar un **flujo** sobre la escena.
+- Ejecutar instrucciones con el [Editor de Instrucciones](/docs/narrative-design/instruction-editor).
+- Combinar navegación e instrucciones.
+
+Para que una Acción tenga efecto en modo exploración, configúrale al menos una navegación, una instrucción o ambas.
+
+## Área transitable
+
+Las zonas Área transitable definen dónde se puede mover el personaje líder en modo exploración. El movimiento usa el polígono de la zona: si haces clic fuera de cualquier área transitable visible, el movimiento se bloquea.
+
+Las áreas transitables se resaltan en verde cuando activas la visualización de zonas en modo exploración.
+
+## Mostrar
+
+Las zonas Mostrar enseñan una variable en el mapa. Sirven para interfaz integrada en el mundo, contadores, estadísticas visibles o etiquetas dependientes del estado.
+
+Cuando una variable numérica no tiene parte decimal útil, Storyarn la muestra como entero para evitar ruido visual.
+
+## Colección
+
+Las zonas Colección abren una ventana de colección. Cada elemento puede apuntar a una ficha, tener una etiqueta, evaluar una condición propia y ejecutar instrucciones al recogerlo. También puedes permitir **Recoger todo** y definir el mensaje cuando no hay elementos visibles.
+
+<div class="docs-image-placeholder">
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+  Panel de propiedades de una zona Colección con elementos, condiciones por elemento y opción Recoger todo
+</div>

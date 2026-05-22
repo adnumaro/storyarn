@@ -39,4 +39,4 @@ Los waypoints permiten curvar una conexión alrededor de elementos del mapa. Ús
 
 ## Qué no hacen
 
-Las conexiones son visuales y estructurales. La interacción en runtime normalmente pertenece a los pines o zonas conectados. Si una ruta debe bloquearse, ocultarse o cambiar estado, modela ese comportamiento con condiciones y acciones en los elementos relevantes.
+Las conexiones explican rutas y relaciones en el mapa. Si una ruta debe bloquearse, ocultarse o cambiar de estado durante la exploración, configura esa lógica en los pines o zonas relacionados mediante condiciones y acciones.

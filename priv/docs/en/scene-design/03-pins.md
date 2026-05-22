@@ -44,6 +44,6 @@ This makes pins useful both as map markers and as navigation points into the res
 
 Pins can define label, type, size, color, icon, custom icon asset, layer, and lock state. Use size and color consistently so users can scan a scene without opening every pin.
 
-## Runtime behavior
+## In exploration mode
 
 Like zones, pins can use actions and conditions. A pin can trigger a flow, display a variable, run an instruction, hide until a condition is true, or appear disabled when interaction is blocked.

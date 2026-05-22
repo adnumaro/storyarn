@@ -16,7 +16,7 @@ Connections are visual lines between pins. Use them to show routes, paths, trave
 
 ## Creating connections
 
-Use the connector tool, then choose a source pin and a target pin. Connections always attach to pins, which keeps route endpoints stable as pins move.
+Use the connector tool, then choose the two pins you want to connect. Connections always attach to pins, so the route stays attached when pins move.
 
 ## Direction
 
@@ -43,4 +43,4 @@ Keep routes readable. Too many waypoints can make editing harder; use enough to 
 
 ## What connections do not do
 
-Connections are visual and structural. Runtime interaction usually belongs to the connected pins or zones. If a route should become locked, hidden, or trigger state changes, model that behavior with conditions/actions on the relevant scene elements.
+Connections explain routes and relationships on the map. If a route should become locked, hidden, or change state during exploration, configure that logic on the related pins or zones with conditions and actions.
