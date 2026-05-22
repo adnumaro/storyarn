@@ -194,9 +194,15 @@ defmodule Storyarn.Versioning.SnapshotViewer do
     "opacity" => 0.3,
     "position" => 0,
     "locked" => false,
-    "action_type" => "none",
-    "action_data" => %{},
-    "condition_effect" => "hide"
+    "action_type" => "action",
+    "action_data" => %{"assignments" => []},
+    "label_mode" => "text",
+    "label_font_size" => 12,
+    "label_font_family" => "system",
+    "label_font_weight" => "600",
+    "label_font_style" => "normal",
+    "condition_effect" => "hide",
+    "is_walkable" => false
   }
 
   defp serialize_zone(zone, zone_id, layer_id) do
@@ -221,8 +227,15 @@ defmodule Storyarn.Versioning.SnapshotViewer do
       locked: z["locked"],
       action_type: z["action_type"],
       action_data: z["action_data"],
+      label_mode: z["label_mode"],
+      label_font_size: z["label_font_size"],
+      label_font_family: z["label_font_family"],
+      label_font_weight: z["label_font_weight"],
+      label_font_style: z["label_font_style"],
+      label_icon_asset_id: z["label_icon_asset_id"],
       condition: z["condition"],
-      condition_effect: z["condition_effect"]
+      condition_effect: z["condition_effect"],
+      is_walkable: z["is_walkable"]
     }
   end
 

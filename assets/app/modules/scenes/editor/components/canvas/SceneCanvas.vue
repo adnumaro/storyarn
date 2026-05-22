@@ -63,6 +63,15 @@ interface ZoneData {
   position: number | null;
   layerId: number | string | null;
   locked: boolean;
+  actionType?: string | null;
+  actionData?: { display_mode?: string | null } | null;
+  displayValue?: string | null;
+  labelMode?: string | null;
+  labelFontSize?: number | null;
+  labelFontFamily?: string | null;
+  labelFontWeight?: string | null;
+  labelFontStyle?: string | null;
+  labelIconAssetUrl?: string | null;
 }
 
 interface ConnectionData {
@@ -297,6 +306,7 @@ const { zoneConfigs } = useZones({
   zoneDragOverride,
   editingZoneId,
   editingVertices,
+  showEditorLabels: true,
 });
 
 const { annotationConfigs } = useAnnotations({

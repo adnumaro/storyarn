@@ -164,25 +164,42 @@ defmodule Storyarn.Scenes.ZoneCrudTest do
   # =============================================================================
 
   describe "list_actionable_zones/1" do
-    test "returns only zones with non-none action_type" do
+    test "returns only action and collection zones" do
       %{scene: scene} = create_scene()
 
-      zone_fixture(scene, %{"name" => "No Action", "action_type" => "none"})
+      zone_fixture(scene, %{"name" => "Walkable", "action_type" => "walkable", "is_walkable" => true})
+
+      zone_fixture(scene, %{
+        "name" => "Display",
+        "action_type" => "display",
+        "action_data" => %{"variable_ref" => "mc.hp"}
+      })
 
       zone_fixture(scene, %{
         "name" => "With Action",
-        "action_type" => "instruction",
+        "action_type" => "action",
         "action_data" => %{"assignments" => []}
       })
 
+      zone_fixture(scene, %{
+        "name" => "Collection",
+        "action_type" => "collection",
+        "action_data" => %{"items" => []}
+      })
+
       actionable = ZoneCrud.list_actionable_zones(scene.id)
-      assert length(actionable) == 1
-      assert hd(actionable).name == "With Action"
+      assert Enum.map(actionable, & &1.name) == ["With Action", "Collection"]
     end
 
     test "returns empty list when no actionable zones" do
       %{scene: scene} = create_scene()
-      zone_fixture(scene, %{"name" => "No Action"})
+      zone_fixture(scene, %{"name" => "Walkable", "action_type" => "walkable", "is_walkable" => true})
+
+      zone_fixture(scene, %{
+        "name" => "Display",
+        "action_type" => "display",
+        "action_data" => %{"variable_ref" => "mc.hp"}
+      })
 
       assert ZoneCrud.list_actionable_zones(scene.id) == []
     end

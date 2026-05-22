@@ -194,7 +194,7 @@ defmodule Storyarn.Scenes.SceneCrud do
 
   @scene_preloads [
     :layers,
-    :zones,
+    [zones: [:label_icon_asset]],
     [pins: [:icon_asset, sheet: [avatars: :asset]]],
     :annotations,
     :background_asset,
@@ -964,7 +964,7 @@ defmodule Storyarn.Scenes.SceneCrud do
   def link_zone_import_target(zone_id, target_type, target_id) do
     SceneZone
     |> Repo.get!(zone_id)
-    |> Ecto.Changeset.change(%{target_type: target_type, target_id: target_id})
+    |> SceneZone.update_changeset(%{target_type: target_type, target_id: target_id})
     |> Repo.update!()
   end
 
@@ -1028,7 +1028,7 @@ defmodule Storyarn.Scenes.SceneCrud do
 
   @doc """
   Lists zone boolean properties as variable descriptors.
-  For each zone with a shortcut, emits entries for: hidden, is_walkable.
+  For each zone with a shortcut, emits entries for: hidden.
   """
   def list_zone_variables(project_id) do
     from(z in SceneZone,
@@ -1041,8 +1041,7 @@ defmodule Storyarn.Scenes.SceneCrud do
         id: z.id,
         shortcut: z.shortcut,
         name: z.name,
-        hidden: z.hidden,
-        is_walkable: z.is_walkable
+        hidden: z.hidden
       }
     )
     |> Repo.all()
@@ -1065,11 +1064,6 @@ defmodule Storyarn.Scenes.SceneCrud do
         variable_name: "hidden",
         block_type: "boolean",
         value: %{"content" => zone.hidden}
-      }),
-      Map.merge(base, %{
-        variable_name: "is_walkable",
-        block_type: "boolean",
-        value: %{"content" => zone.is_walkable}
       })
     ]
   end

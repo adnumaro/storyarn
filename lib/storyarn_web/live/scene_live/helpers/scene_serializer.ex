@@ -136,7 +136,17 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneSerializer do
   def pin_icon_asset_url(%{icon_asset: %{url: url}}) when is_binary(url), do: url
   def pin_icon_asset_url(_), do: nil
 
+  def zone_label_icon_asset_url(%{label_icon_asset: %{url: url}}) when is_binary(url), do: url
+  def zone_label_icon_asset_url(_), do: nil
+
   def serialize_zone(zone) do
+    zone
+    |> zone_base_payload()
+    |> Map.merge(zone_visual_payload(zone))
+    |> Map.merge(zone_behavior_payload(zone))
+  end
+
+  defp zone_base_payload(zone) do
     %{
       id: zone.id,
       name: zone.name,
@@ -150,10 +160,27 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneSerializer do
       opacity: zone.opacity,
       tooltip: zone.tooltip,
       layer_id: zone.layer_id,
+      position: zone.position,
+      locked: zone.locked || false
+    }
+  end
+
+  defp zone_visual_payload(zone) do
+    %{
+      label_mode: Map.get(zone, :label_mode, "text") || "text",
+      label_font_size: Map.get(zone, :label_font_size, 12) || 12,
+      label_font_family: Map.get(zone, :label_font_family, "system") || "system",
+      label_font_weight: Map.get(zone, :label_font_weight, "600") || "600",
+      label_font_style: Map.get(zone, :label_font_style, "normal") || "normal",
+      label_icon_asset_id: Map.get(zone, :label_icon_asset_id),
+      label_icon_asset_url: zone_label_icon_asset_url(zone)
+    }
+  end
+
+  defp zone_behavior_payload(zone) do
+    %{
       target_type: zone.target_type,
       target_id: zone.target_id,
-      position: zone.position,
-      locked: zone.locked || false,
       action_type: zone.action_type,
       action_data: zone.action_data,
       condition: zone.condition,
@@ -198,6 +225,15 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneSerializer do
       end)
 
     assign(socket, :pins, pins)
+  end
+
+  def update_zone_in_list(socket, updated_zone) do
+    zones =
+      Enum.map(socket.assigns.zones, fn zone ->
+        if zone.id == updated_zone.id, do: updated_zone, else: zone
+      end)
+
+    assign(socket, :zones, zones)
   end
 
   def zone_error_message(%Ecto.Changeset{} = changeset) do

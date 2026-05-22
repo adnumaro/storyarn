@@ -7,8 +7,20 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
   use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Assets
+  alias Storyarn.Assets.Asset
+  alias Storyarn.Flows
 
   # ---- Scene ----
+
+  def format_display_value(value) when is_float(value) do
+    if value == trunc(value) do
+      Integer.to_string(trunc(value))
+    else
+      Flows.evaluator_format_value(value)
+    end
+  end
+
+  def format_display_value(value), do: Flows.evaluator_format_value(value)
 
   def prepare_scene_for_vue(nil), do: nil
 
@@ -111,6 +123,13 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
       locked: zone.locked,
       actionType: zone.action_type,
       actionData: zone.action_data,
+      labelMode: Map.get(zone, :label_mode, "text") || "text",
+      labelFontSize: Map.get(zone, :label_font_size, 12) || 12,
+      labelFontFamily: Map.get(zone, :label_font_family, "system") || "system",
+      labelFontWeight: Map.get(zone, :label_font_weight, "600") || "600",
+      labelFontStyle: Map.get(zone, :label_font_style, "normal") || "normal",
+      labelIconAssetId: Map.get(zone, :label_icon_asset_id),
+      labelIconAssetUrl: zone_label_icon_asset_url(zone),
       condition: zone.condition,
       conditionEffect: zone.condition_effect,
       isWalkable: zone.is_walkable,
@@ -325,7 +344,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
   Adds visibility states, patrol routes, and filters by evaluated conditions.
   Zones and pins must have a `:visibility` virtual field pre-evaluated by the caller.
   """
-  def prepare_exploration_data_for_vue(scene, zones, pins) do
+  def prepare_exploration_data_for_vue(scene, zones, pins, variables \\ %{}) do
     connections = scene.connections || []
 
     %{
@@ -338,7 +357,10 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
       defaultCenterY: scene.default_center_y,
       zones:
         Enum.map(zones, fn z ->
-          z |> serialize_zone() |> Map.put(:visibility, to_string(z.visibility))
+          z
+          |> serialize_zone()
+          |> Map.put(:visibility, to_string(z.visibility))
+          |> maybe_put_zone_display_value(z, variables)
         end),
       pins:
         Enum.map(pins, fn p ->
@@ -353,6 +375,28 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
         end),
       connections: prepare_connections_for_vue(connections)
     }
+  end
+
+  defp maybe_put_zone_display_value(serialized, %{action_type: "display", action_data: action_data}, variables)
+       when is_map(action_data) and is_map(variables) do
+    variable_ref = action_data["variable_ref"]
+
+    case display_variable_value(variables, variable_ref) do
+      {:ok, value} -> Map.put(serialized, :displayValue, format_display_value(value))
+      :error -> serialized
+    end
+  end
+
+  defp maybe_put_zone_display_value(serialized, _zone, _variables), do: serialized
+
+  defp display_variable_value(_variables, ref) when not is_binary(ref) or ref == "", do: :error
+
+  defp display_variable_value(variables, ref) do
+    case Map.get(variables, ref) do
+      %{value: value} -> {:ok, value}
+      %{"value" => value} -> {:ok, value}
+      _ -> :error
+    end
   end
 
   # ---- Patrol Route Builder ----
@@ -434,7 +478,11 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
 
   defp pin_avatar_url(_), do: nil
 
-  defp pin_icon_asset_url(%{icon_asset: %Storyarn.Assets.Asset{} = asset}), do: Assets.display_url(asset)
+  defp pin_icon_asset_url(%{icon_asset: %Asset{} = asset}), do: Assets.display_url(asset)
 
   defp pin_icon_asset_url(_), do: nil
+
+  defp zone_label_icon_asset_url(%{label_icon_asset: %Asset{} = asset}), do: Assets.display_url(asset)
+
+  defp zone_label_icon_asset_url(_), do: nil
 end

@@ -3,7 +3,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
   Tests for the SceneLive.ExplorationLive full-screen exploration player.
 
   Covers: mount (valid, invalid project, missing scene), exit_exploration,
-  keyboard handling, element clicks (instruction actions, scene/flow targets),
+  keyboard handling, element clicks (action assignments, scene/flow targets),
   visibility evaluation, and flow overlay interactions.
   """
 
@@ -180,6 +180,13 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       })
 
     {sheet, block}
+  end
+
+  defp exploration_zone_prop(view, zone_id) do
+    view
+    |> get_exploration_vue()
+    |> then(&get_in(&1.props, ["exploration-data", "zones"]))
+    |> Enum.find(&(&1["id"] == zone_id))
   end
 
   # =========================================================================
@@ -603,13 +610,13 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
   end
 
   # =========================================================================
-  # Element click — instruction action
+  # Element click — action assignments
   # =========================================================================
 
-  describe "exploration_element_click (instruction action)" do
+  describe "exploration_element_click (action assignments)" do
     setup :register_and_log_in_user
 
-    test "instruction action with no assignments does not crash", %{conn: conn, user: user} do
+    test "action with no assignments does not crash", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Instruction World"})
 
@@ -617,14 +624,14 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
 
       html =
         render_click(view, "exploration_element_click", %{
-          "action_type" => "instruction",
+          "action_type" => "action",
           "action_data" => %{"assignments" => []}
         })
 
       assert html =~ "Instruction World"
     end
 
-    test "instruction action with valid assignment updates variables", %{
+    test "action with valid assignment updates variables", %{
       conn: conn,
       user: user
     } do
@@ -636,7 +643,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
 
       html =
         render_click(view, "exploration_element_click", %{
-          "action_type" => "instruction",
+          "action_type" => "action",
           "action_data" => %{
             "assignments" => [
               %{
@@ -651,6 +658,103 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
 
       # Should not crash, page still renders
       assert html =~ "Assignment World"
+    end
+
+    test "action refreshes display zone values", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project, %{name: "Display Refresh World"})
+      {sheet, _block} = create_number_variable(project, "Hero", "Health", 100)
+
+      display_zone =
+        zone_fixture(scene, %{
+          "name" => "Health Display",
+          "action_type" => "display",
+          "action_data" => %{"variable_ref" => "#{sheet.shortcut}.health"}
+        })
+
+      {:ok, view, _html} = live(conn, explore_path(project, scene))
+
+      assert exploration_zone_prop(view, display_zone.id)["displayValue"] == "100"
+
+      render_click(view, "exploration_element_click", %{
+        "action_type" => "action",
+        "action_data" => %{
+          "assignments" => [
+            %{
+              "sheet" => sheet.shortcut,
+              "variable" => "health",
+              "operator" => "set",
+              "value" => "50"
+            }
+          ]
+        }
+      })
+
+      assert exploration_zone_prop(view, display_zone.id)["displayValue"] == "50"
+    end
+
+    test "display zone keeps fractional numeric values", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project, %{name: "Fraction Display World"})
+      {sheet, _block} = create_number_variable(project, "Hero", "Health", 100)
+
+      display_zone =
+        zone_fixture(scene, %{
+          "name" => "Health Display",
+          "action_type" => "display",
+          "action_data" => %{"variable_ref" => "#{sheet.shortcut}.health"}
+        })
+
+      {:ok, view, _html} = live(conn, explore_path(project, scene))
+
+      render_click(view, "exploration_element_click", %{
+        "action_type" => "action",
+        "action_data" => %{
+          "assignments" => [
+            %{
+              "sheet" => sheet.shortcut,
+              "variable" => "health",
+              "operator" => "set",
+              "value" => "50.5"
+            }
+          ]
+        }
+      })
+
+      assert exploration_zone_prop(view, display_zone.id)["displayValue"] == "50.5"
+    end
+  end
+
+  # =========================================================================
+  # Display zones
+  # =========================================================================
+
+  describe "display zones" do
+    setup :register_and_log_in_user
+
+    test "serializes the current variable value for display zones", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project, %{name: "Display World"})
+      {sheet, _block} = create_number_variable(project, "Hero", "Health", 100)
+
+      display_zone =
+        zone_fixture(scene, %{
+          "name" => "Health Display",
+          "action_type" => "display",
+          "action_data" => %{"variable_ref" => "#{sheet.shortcut}.health"}
+        })
+
+      {:ok, view, _html} = live(conn, explore_path(project, scene))
+
+      zone = exploration_zone_prop(view, display_zone.id)
+      assert zone["actionType"] == "display"
+      assert zone["displayValue"] == "100"
     end
   end
 
@@ -1927,10 +2031,10 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
   # Instruction action failure path
   # =========================================================================
 
-  describe "instruction action failure" do
+  describe "action assignment failure" do
     setup :register_and_log_in_user
 
-    test "instruction with invalid variable reference does not crash", %{
+    test "action with invalid variable reference does not crash", %{
       conn: conn,
       user: user
     } do
@@ -1942,7 +2046,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       # Send an assignment with a non-existent variable reference
       html =
         render_click(view, "exploration_element_click", %{
-          "action_type" => "instruction",
+          "action_type" => "action",
           "action_data" => %{
             "assignments" => [
               %{
@@ -2088,7 +2192,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       FlowsFixtures.connection_fixture(flow, dialogue_before, subflow_node)
 
       FlowsFixtures.connection_fixture(flow, subflow_node, dialogue_after, %{
-        source_pin: "default",
+        source_pin: "output",
         target_pin: "input"
       })
 

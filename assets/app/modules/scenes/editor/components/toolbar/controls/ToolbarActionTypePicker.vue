@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BarChart3, Compass, Footprints, PackageOpen, Zap } from "lucide-vue-next";
+import { BarChart3, Footprints, PackageOpen, Zap } from "lucide-vue-next";
 import type { Component } from "vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
@@ -17,19 +17,13 @@ interface ActionTypeOption {
 
 const ACTION_TYPES = computed<ActionTypeOption[]>(() => [
   {
-    value: "none",
-    label: t("scenes.action_type_picker.navigation"),
-    icon: Compass,
-    desc: t("scenes.action_type_picker.navigation_desc"),
-  },
-  {
     value: "walkable",
     label: t("scenes.action_type_picker.walkable"),
     icon: Footprints,
     desc: t("scenes.action_type_picker.walkable_desc"),
   },
   {
-    value: "instruction",
+    value: "action",
     label: t("scenes.action_type_picker.action"),
     icon: Zap,
     desc: t("scenes.action_type_picker.action_desc"),
@@ -48,7 +42,7 @@ const ACTION_TYPES = computed<ActionTypeOption[]>(() => [
   },
 ]);
 
-const { actionType = "none", disabled = false } = defineProps<{
+const { actionType = "action", disabled = false } = defineProps<{
   actionType?: string;
   disabled?: boolean;
 }>();

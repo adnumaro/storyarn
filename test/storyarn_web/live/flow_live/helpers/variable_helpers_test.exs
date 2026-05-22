@@ -690,7 +690,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.VariableHelpersTest do
       assert result["guard.west.hidden"].block_id == nil
     end
 
-    test "coerces zone boolean values" do
+    test "coerces zone visibility values" do
       %{project: project} = setup_project()
       scene = scene_fixture(project)
 
@@ -699,14 +699,16 @@ defmodule StoryarnWeb.FlowLive.Helpers.VariableHelpersTest do
           "shortcut" => "tavern.door",
           "name" => "Tavern Door",
           "hidden" => false,
+          "action_type" => "walkable",
+          "action_data" => %{},
           "is_walkable" => true
         })
 
       result = VariableHelpers.build_variables(project.id)
 
       assert result["tavern.door.hidden"].value == false
-      assert result["tavern.door.is_walkable"].value == true
       assert result["tavern.door.hidden"].source_type == "zone"
+      refute Map.has_key?(result, "tavern.door.is_walkable")
     end
 
     test "sheet, pin, and zone variables coexist in the same map" do
@@ -732,7 +734,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.VariableHelpersTest do
       # Pin variable
       assert result["npc.guard.hidden"].source_type == "pin"
       # Zone variable
-      assert result["area.gate.is_walkable"].source_type == "zone"
+      assert result["area.gate.hidden"].source_type == "zone"
     end
 
     test "last source wins when shortcut collides between sheet and pin" do

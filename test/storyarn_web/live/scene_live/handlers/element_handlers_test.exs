@@ -118,23 +118,29 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlersTest do
   describe "update_zone_action_type" do
     setup [:register_and_log_in_user, :setup_scene]
 
-    test "changes zone action type to instruction with default data", ctx do
+    test "changes zone action type to action with default data", ctx do
       zone = zone_fixture(ctx.scene)
 
       {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
 
       render_hook(view, "update_zone_action_type", %{
         "zone-id" => to_string(zone.id),
-        "action-type" => "instruction"
+        "action-type" => "action"
       })
 
       updated = Scenes.get_zone!(zone.id)
-      assert updated.action_type == "instruction"
+      assert updated.action_type == "action"
       assert updated.action_data == %{"assignments" => []}
     end
 
-    test "changes zone action type to display with default data", ctx do
-      zone = zone_fixture(ctx.scene)
+    test "changes zone action type to display with default data and clears target", ctx do
+      target_scene = scene_fixture(ctx.project, %{name: "Target Scene"})
+
+      zone =
+        zone_fixture(ctx.scene, %{
+          "target_type" => "scene",
+          "target_id" => target_scene.id
+        })
 
       {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
 
@@ -145,29 +151,47 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlersTest do
 
       updated = Scenes.get_zone!(zone.id)
       assert updated.action_type == "display"
-      assert updated.action_data == %{"variable_ref" => ""}
+      assert updated.action_data == %{"variable_ref" => "", "display_mode" => "value"}
+      assert is_nil(updated.target_type)
+      assert is_nil(updated.target_id)
     end
 
-    test "changes zone action type to none clears data", ctx do
+    test "changes zone action type to collection with default data and clears target", ctx do
+      target_scene = scene_fixture(ctx.project, %{name: "Target Scene"})
+
+      zone =
+        zone_fixture(ctx.scene, %{
+          "target_type" => "scene",
+          "target_id" => target_scene.id
+        })
+
+      {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
+
+      render_hook(view, "update_zone_action_type", %{
+        "zone-id" => to_string(zone.id),
+        "action-type" => "collection"
+      })
+
+      updated = Scenes.get_zone!(zone.id)
+      assert updated.action_type == "collection"
+      assert updated.action_data == %{"items" => [], "collect_all_enabled" => true, "empty_message" => ""}
+      assert is_nil(updated.target_type)
+      assert is_nil(updated.target_id)
+    end
+
+    test "invalid action type is rejected", ctx do
       zone = zone_fixture(ctx.scene)
 
       {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
 
-      # Set to instruction first
-      render_hook(view, "update_zone_action_type", %{
-        "zone-id" => to_string(zone.id),
-        "action-type" => "instruction"
-      })
-
-      # Change back to none
       render_hook(view, "update_zone_action_type", %{
         "zone-id" => to_string(zone.id),
         "action-type" => "none"
       })
 
       updated = Scenes.get_zone!(zone.id)
-      assert updated.action_type == "none"
-      assert updated.action_data == %{}
+      assert updated.action_type == "action"
+      assert updated.action_data == %{"assignments" => []}
     end
 
     test "no-op when zone does not exist", ctx do
@@ -176,7 +200,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlersTest do
       # Should not crash
       render_hook(view, "update_zone_action_type", %{
         "zone-id" => "999999",
-        "action-type" => "instruction"
+        "action-type" => "action"
       })
     end
   end
@@ -189,10 +213,10 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlersTest do
 
       {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
 
-      # First set to instruction type
+      # First set to action type
       render_hook(view, "update_zone_action_type", %{
         "zone-id" => to_string(zone.id),
-        "action-type" => "instruction"
+        "action-type" => "action"
       })
 
       assignments = [
@@ -215,6 +239,24 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlersTest do
         "zone-id" => "999999",
         "assignments" => []
       })
+    end
+
+    test "ignores assignments for non-action zones", ctx do
+      zone =
+        zone_fixture(ctx.scene, %{
+          "action_type" => "display",
+          "action_data" => %{"variable_ref" => "mc.health"}
+        })
+
+      {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
+
+      render_hook(view, "update_zone_assignments", %{
+        "zone-id" => to_string(zone.id),
+        "assignments" => [%{"variable" => "mc.health", "operator" => "set", "value" => "100"}]
+      })
+
+      updated = Scenes.get_zone!(zone.id)
+      refute Map.has_key?(updated.action_data, "assignments")
     end
   end
 
@@ -240,6 +282,21 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlersTest do
 
       updated = Scenes.get_zone!(zone.id)
       assert updated.action_data["variable_ref"] == "mc.jaime.health"
+    end
+
+    test "rejects unsupported action_data fields", ctx do
+      zone = zone_fixture(ctx.scene)
+
+      {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
+
+      render_hook(view, "update_zone_action_data", %{
+        "zone-id" => to_string(zone.id),
+        "field" => "display_mode",
+        "value" => "label_value"
+      })
+
+      updated = Scenes.get_zone!(zone.id)
+      refute Map.has_key?(updated.action_data, "display_mode")
     end
   end
 

@@ -358,6 +358,26 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       assert vue.props["scene-data"]["name"] == "Viewable Scene"
       assert vue.props["can-edit"] == false
     end
+
+    test "viewer element panel exposes can-edit false even for unlocked elements", %{conn: conn, user: user} do
+      owner = user_fixture()
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+      _membership = membership_fixture(project, user, "viewer")
+      scene = scene_fixture(project, %{name: "Viewable Scene"})
+      zone = zone_fixture(scene, %{"name" => "Unlocked Zone", "locked" => false})
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
+        )
+
+      render_hook(view, "select_element", %{"type" => "zone", "id" => zone.id})
+
+      panel = get_element_panel_vue(view)
+      assert panel.props["selected-type"] == "zone"
+      assert panel.props["can-edit"] == false
+    end
   end
 
   describe "dock and tools" do
@@ -1134,6 +1154,69 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       unchanged = Scenes.get_zone!(zone.id)
       assert unchanged.name == "Original"
+    end
+  end
+
+  describe "upload_zone_label_icon event" do
+    setup :register_and_log_in_user
+
+    test "stores a valid SVG icon on the zone", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project)
+      zone = zone_fixture(scene)
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}")
+
+      svg = ~s(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3"/></svg>)
+
+      render_hook(view, "upload_zone_label_icon", %{
+        "id" => to_string(zone.id),
+        "filename" => "icon.svg",
+        "content_type" => "image/svg+xml",
+        "data" => "data:image/svg+xml;base64,#{Base.encode64(svg)}"
+      })
+
+      updated = Scenes.get_zone!(zone.id)
+      assert updated.label_icon_asset_id
+    end
+
+    test "rejects files whose binary does not match the declared icon type", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project)
+      zone = zone_fixture(scene)
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}")
+
+      render_hook(view, "upload_zone_label_icon", %{
+        "id" => to_string(zone.id),
+        "filename" => "icon.png",
+        "content_type" => "image/png",
+        "data" => "data:image/png;base64,#{Base.encode64("not a png")}"
+      })
+
+      updated = Scenes.get_zone!(zone.id)
+      assert is_nil(updated.label_icon_asset_id)
+    end
+
+    test "rejects transparent-hostile image extensions", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project)
+      zone = zone_fixture(scene)
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}")
+
+      render_hook(view, "upload_zone_label_icon", %{
+        "id" => to_string(zone.id),
+        "filename" => "icon.jpg",
+        "content_type" => "image/jpeg",
+        "data" => "data:image/jpeg;base64,#{Base.encode64(<<255, 216, 255, 217>>)}"
+      })
+
+      updated = Scenes.get_zone!(zone.id)
+      assert is_nil(updated.label_icon_asset_id)
     end
   end
 

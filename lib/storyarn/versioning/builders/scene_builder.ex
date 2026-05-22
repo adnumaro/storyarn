@@ -71,13 +71,18 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       end)
       |> Enum.map(&connection_to_snapshot(&1, pin_index_map))
 
-    # Collect asset IDs from scene + pins
+    # Collect asset IDs from scene + pins + zone label icons
     pin_asset_ids =
       sorted_layers
       |> Enum.flat_map(fn layer -> Enum.map(layer.pins, & &1.icon_asset_id) end)
       |> Kernel.++(Enum.map(orphan_pins, & &1.icon_asset_id))
 
-    asset_ids = [scene.background_asset_id | pin_asset_ids]
+    zone_asset_ids =
+      sorted_layers
+      |> Enum.flat_map(fn layer -> Enum.map(layer.zones, & &1.label_icon_asset_id) end)
+      |> Kernel.++(Enum.map(orphan_zones, & &1.label_icon_asset_id))
+
+    asset_ids = [scene.background_asset_id | pin_asset_ids ++ zone_asset_ids]
     {hash_map, metadata_map} = AssetHashResolver.resolve_hashes(asset_ids)
 
     %{
@@ -166,6 +171,12 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       "locked" => zone.locked,
       "action_type" => zone.action_type,
       "action_data" => zone.action_data,
+      "label_mode" => zone.label_mode,
+      "label_font_size" => zone.label_font_size,
+      "label_font_family" => zone.label_font_family,
+      "label_font_weight" => zone.label_font_weight,
+      "label_font_style" => zone.label_font_style,
+      "label_icon_asset_id" => zone.label_icon_asset_id,
       "condition" => zone.condition,
       "condition_effect" => zone.condition_effect,
       "is_walkable" => zone.is_walkable
@@ -494,6 +505,8 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   end
 
   defp zone_base_attrs(d) do
+    normalized_behavior = zone_behavior_attrs(d)
+
     Map.merge(
       %{
         name: d["name"],
@@ -502,36 +515,87 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
         vertices: d["vertices"],
         fill_color: d["fill_color"],
         border_color: d["border_color"],
-        target_type: d["target_type"],
-        target_id: d["target_id"],
         tooltip: d["tooltip"],
         condition: d["condition"]
       },
-      zone_defaulted_attrs(d)
+      Map.merge(zone_defaulted_attrs(d), normalized_behavior)
     )
   end
 
   defp zone_defaulted_attrs(d) do
-    Map.merge(
-      %{
-        border_width: d["border_width"] || 2,
-        border_style: d["border_style"] || "solid",
-        opacity: d["opacity"] || 0.3,
-        position: d["position"] || 0,
-        locked: d["locked"] || false
-      },
-      zone_action_defaults(d)
-    )
+    d
+    |> zone_style_defaults()
+    |> Map.merge(zone_label_defaults(d))
   end
 
-  defp zone_action_defaults(d) do
+  defp zone_style_defaults(d) do
     %{
-      action_type: d["action_type"] || "none",
-      action_data: d["action_data"] || %{},
-      condition_effect: d["condition_effect"] || "hide",
-      is_walkable: d["is_walkable"] || false
+      border_width: d["border_width"] || 2,
+      border_style: d["border_style"] || "solid",
+      opacity: d["opacity"] || 0.3,
+      position: d["position"] || 0,
+      locked: d["locked"] || false
     }
   end
+
+  defp zone_label_defaults(d) do
+    %{
+      label_mode: d["label_mode"] || "text",
+      label_font_size: d["label_font_size"] || 12,
+      label_font_family: d["label_font_family"] || "system",
+      label_font_weight: d["label_font_weight"] || "600",
+      label_font_style: d["label_font_style"] || "normal",
+      label_icon_asset_id: d["label_icon_asset_id"]
+    }
+  end
+
+  defp zone_behavior_attrs(d) do
+    action_type = normalize_zone_action_type(d["action_type"])
+    action_data = normalize_zone_action_data(action_type, d["action_data"])
+    {target_type, target_id} = normalize_zone_target(d["target_type"], d["target_id"])
+    convert_to_walkable? = legacy_walkable_only?(action_type, action_data, target_type, target_id, d["is_walkable"])
+
+    action_type = if convert_to_walkable?, do: "walkable", else: action_type
+
+    %{
+      target_type: if(action_type == "action", do: target_type),
+      target_id: if(action_type == "action", do: target_id),
+      action_type: action_type,
+      action_data: if(action_type == "walkable", do: %{}, else: action_data),
+      condition_effect: d["condition_effect"] || "hide",
+      is_walkable: action_type == "walkable"
+    }
+  end
+
+  defp normalize_zone_action_type(type) when type in ["action", "walkable", "display", "collection"], do: type
+  defp normalize_zone_action_type(_type), do: "action"
+
+  defp normalize_zone_action_data("action", %{"assignments" => assignments} = data) when is_list(assignments), do: data
+  defp normalize_zone_action_data("action", _), do: %{"assignments" => []}
+
+  defp normalize_zone_action_data("display", %{"variable_ref" => ref} = data) when is_binary(ref) do
+    Map.put_new(data, "display_mode", "value")
+  end
+
+  defp normalize_zone_action_data("display", _), do: %{"variable_ref" => "", "display_mode" => "value"}
+
+  defp normalize_zone_action_data("collection", %{"items" => items} = data) when is_list(items), do: data
+  defp normalize_zone_action_data("collection", _), do: %{"items" => []}
+  defp normalize_zone_action_data("walkable", _), do: %{}
+  defp normalize_zone_action_data(_type, data) when is_map(data), do: data
+  defp normalize_zone_action_data(_type, _), do: %{}
+
+  defp normalize_zone_target(target_type, target_id) when target_type in ["flow", "scene"] and is_integer(target_id),
+    do: {target_type, target_id}
+
+  defp normalize_zone_target(_target_type, _target_id), do: {nil, nil}
+
+  defp legacy_walkable_only?("action", action_data, nil, nil, true) do
+    assignments = action_data["assignments"] || []
+    assignments == []
+  end
+
+  defp legacy_walkable_only?(_action_type, _action_data, _target_type, _target_id, _is_walkable), do: false
 
   defp insert_single!(repo, schema, attrs, label) do
     case repo.insert_all(schema, [attrs]) do
@@ -860,18 +924,31 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
   defp build_materialized_zone_attrs(zone_data, scene_id, layer_id, now, opts) do
     preserve_external_refs? = MaterializationHelpers.preserve_external_refs?(opts)
+    attrs = zone_base_attrs(zone_data)
 
-    zone_data
-    |> zone_base_attrs()
-    |> Map.merge(%{
+    Map.merge(attrs, %{
       scene_id: scene_id,
       layer_id: layer_id,
-      target_type: if(preserve_external_refs?, do: zone_data["target_type"]),
-      target_id: if(preserve_external_refs?, do: zone_data["target_id"]),
+      target_type: materialized_zone_target_type(attrs, zone_data, preserve_external_refs?),
+      target_id: materialized_zone_target_id(attrs, zone_data, preserve_external_refs?),
       inserted_at: now,
       updated_at: now
     })
   end
+
+  defp materialized_zone_target_type(%{action_type: "action"} = attrs, zone_data, true) do
+    {target_type, _target_id} = normalize_zone_target(zone_data["target_type"], zone_data["target_id"])
+    target_type || attrs.target_type
+  end
+
+  defp materialized_zone_target_type(attrs, _zone_data, _preserve_external_refs?), do: attrs.target_type
+
+  defp materialized_zone_target_id(%{action_type: "action"} = attrs, zone_data, true) do
+    {_target_type, target_id} = normalize_zone_target(zone_data["target_type"], zone_data["target_id"])
+    target_id || attrs.target_id
+  end
+
+  defp materialized_zone_target_id(attrs, _zone_data, _preserve_external_refs?), do: attrs.target_id
 
   defp insert_layer_pins_with_ids(_repo, _scene_id, _layer_id, [], _now, _snapshot, _project_id, _opts), do: {:ok, []}
 
@@ -1004,7 +1081,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
   @layer_compare_fields ~w(name is_default visible fog_enabled fog_color fog_opacity)
   @pin_compare_fields ~w(pin_type icon color opacity label shortcut hidden size flow_id tooltip sheet_id icon_asset_id condition condition_effect locked)
-  @zone_compare_fields ~w(name shortcut hidden vertices fill_color border_color border_width border_style opacity target_type target_id tooltip action_type action_data condition condition_effect locked)
+  @zone_compare_fields ~w(name shortcut hidden vertices fill_color border_color border_width border_style opacity target_type target_id tooltip action_type action_data label_mode label_font_size label_font_family label_font_weight label_font_style label_icon_asset_id condition condition_effect locked)
   @annotation_compare_fields ~w(text font_size color locked)
   @connection_compare_fields ~w(line_style line_width color label bidirectional show_label)
 
@@ -1411,7 +1488,9 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       prefix =
         dgettext("scenes", "Layer %{l}, Zone %{z}", l: layer_idx, z: zone_idx)
 
-      maybe_add_target_ref(acc, zone["target_type"], zone["target_id"], prefix <> " — target")
+      acc
+      |> maybe_add_target_ref(zone["target_type"], zone["target_id"], prefix <> " — target")
+      |> maybe_add_ref(:asset, zone["label_icon_asset_id"], prefix <> " — label icon")
     end)
   end
 
@@ -1434,7 +1513,9 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     |> Enum.reduce(refs, fn {zone, zone_idx}, acc ->
       prefix = dgettext("scenes", "Scene Zone %{z}", z: zone_idx)
 
-      maybe_add_target_ref(acc, zone["target_type"], zone["target_id"], prefix <> " — target")
+      acc
+      |> maybe_add_target_ref(zone["target_type"], zone["target_id"], prefix <> " — target")
+      |> maybe_add_ref(:asset, zone["label_icon_asset_id"], prefix <> " — label icon")
     end)
   end
 

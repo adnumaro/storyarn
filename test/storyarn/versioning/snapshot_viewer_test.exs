@@ -15,7 +15,7 @@ defmodule Storyarn.Versioning.SnapshotViewerTest do
           %{
             "source_node_index" => 0,
             "target_node_index" => 1,
-            "source_pin" => "default",
+            "source_pin" => "output",
             "target_pin" => "input",
             "label" => nil
           }
@@ -39,7 +39,7 @@ defmodule Storyarn.Versioning.SnapshotViewerTest do
       assert conn.id < 0
       assert conn.source_node_id == node1.id
       assert conn.target_node_id == node2.id
-      assert conn.source_pin == "default"
+      assert conn.source_pin == "output"
     end
 
     test "filters out connections with invalid node indexes" do
@@ -93,7 +93,9 @@ defmodule Storyarn.Versioning.SnapshotViewerTest do
             "zones" => [
               %{
                 "name" => "Zone A",
-                "vertices" => [[0, 0], [100, 0], [100, 100]]
+                "vertices" => [[0, 0], [100, 0], [100, 100]],
+                "action_type" => "walkable",
+                "is_walkable" => true
               }
             ],
             "annotations" => [
@@ -127,6 +129,8 @@ defmodule Storyarn.Versioning.SnapshotViewerTest do
       [zone] = result.zones
       assert zone.id < 0
       assert zone.name == "Zone A"
+      assert zone.action_type == "walkable"
+      assert zone.is_walkable == true
 
       [ann] = result.annotations
       assert ann.id < 0

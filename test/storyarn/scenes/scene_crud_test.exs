@@ -1269,7 +1269,7 @@ defmodule Storyarn.Scenes.SceneCrudTest do
       assert SceneCrud.list_zone_variables(project.id) == []
     end
 
-    test "returns 2 boolean variables per zone with correct structure" do
+    test "returns the hidden boolean variable per zone with correct structure" do
       %{project: project} = create_project()
       scene = scene_fixture(project)
 
@@ -1278,12 +1278,14 @@ defmodule Storyarn.Scenes.SceneCrudTest do
           "shortcut" => "tavern.door",
           "name" => "Tavern Door",
           "hidden" => false,
+          "action_type" => "walkable",
+          "action_data" => %{},
           "is_walkable" => true
         })
 
       vars = SceneCrud.list_zone_variables(project.id)
 
-      assert length(vars) == 2
+      assert length(vars) == 1
 
       hidden_var = Enum.find(vars, &(&1.variable_name == "hidden"))
       assert hidden_var.source_type == "zone"
@@ -1293,9 +1295,6 @@ defmodule Storyarn.Scenes.SceneCrudTest do
       assert hidden_var.block_type == "boolean"
       assert hidden_var.value == %{"content" => false}
       assert hidden_var.block_id == nil
-
-      walkable_var = Enum.find(vars, &(&1.variable_name == "is_walkable"))
-      assert walkable_var.value == %{"content" => true}
     end
 
     test "excludes zones from deleted scenes" do
