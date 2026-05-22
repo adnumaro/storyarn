@@ -1,0 +1,59 @@
+lib/storyarn_web/live/export_import_live/index.ex
+  s_89a3f1264cbda8::t_12590e01544114 207
+  s_89a3f1264cbda8::t_71d473be59fc20 10,99-100,102,109,111,115,203,206
+  s_89a3f1264cbda8::t_db349496b92f19 23-24
+priv/docs/es/welcome/02-core-concepts.md
+  s_89a3f1264cbda8::t_b8a792d4960824 25,49
+  s_89a3f1264cbda8::t_9f9f7d89199357 18,59
+assets/app/modules/projects/settings/export-import/components/ExportPanel.vue
+  s_89a3f1264cbda8::t_53ccb87a1147f1 3,84-86,92-101,156,167-186,188-189,192-198,200-209,211-229,232-245,247-261,264-272,275-283,286-293
+  s_89a3f1264cbda8::t_c9784caf1226e8 81-83
+priv/docs/en/welcome/02-core-concepts.md
+  s_89a3f1264cbda8::t_b8a792d4960824 25,49
+  s_89a3f1264cbda8::t_9f9f7d89199357 18,59
+priv/docs/en/welcome/00-start-here.md
+  s_89a3f1264cbda8::t_9f9f7d89199357 18-19,30,42
+  s_89a3f1264cbda8::t_b8a792d4960824 16-17
+priv/docs/en/quick-start/03-first-flow.md
+  s_89a3f1264cbda8::t_9f9f7d89199357 107,109-112,114
+test/storyarn_web/live/export_import_live/index_test.exs
+  s_89a3f1264cbda8::t_bdda4ff6c2cbc6 14,18-22,27,29-32,34-36,38-40,43-46,49-50,52-57,60-61,63-66,69-70,72-75,79,82,89,92,99-101,103,105-111,114-115,120-121,125,129-130,133-134,136,138-140,144-146,150-151,154-155,157-158,161-164,168,170,172,175-176,178-179,181-182,186-188,202,211,234,239,247,250-251
+  s_89a3f1264cbda8::t_bcb60ca08f47ec 212-216
+priv/docs/en/import-export/01-import-export-overview.md
+  s_89a3f1264cbda8::t_56c3e9e318930a 2-3,5,10,23,27,32-33,75
+  s_89a3f1264cbda8::t_fd6731a955917e 77
+assets/app/locales/en/project-settings.json
+  s_89a3f1264cbda8::t_2e275f994fb4b4 17
+assets/app/live/project/settings/export-import/ProjectSettingsExportImport.vue
+  s_89a3f1264cbda8::t_3ba5100401207b 46
+priv/docs/es/welcome/00-start-here.md
+  s_89a3f1264cbda8::t_b8a792d4960824 16-17
+  s_89a3f1264cbda8::t_9f9f7d89199357 18-19,30,42
+assets/app/locales/es/project-settings.json
+  s_89a3f1264cbda8::t_c02b8154c715ea 17
+priv/docs/es/quick-start/03-first-flow.md
+  s_89a3f1264cbda8::t_9f9f7d89199357 107,109-112,114
+priv/docs/es/import-export/01-import-export-overview.md
+  s_89a3f1264cbda8::t_56c3e9e318930a 2-3,5,10,23,27,32-33,75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "10a8cb8f324e377dccef5f4367f2254dd0a72c7d",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_89a3f1264cbda8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e4a48-d037-7852-a91e-119f74a3c0e1",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
