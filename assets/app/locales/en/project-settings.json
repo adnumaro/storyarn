@@ -14,7 +14,7 @@
         "localization": "Localization",
         "members": "Members",
         "snapshots": "Snapshots",
-        "import_export": "Import & Export",
+        "import_export": "Export",
         "trash": "Trash"
       }
     },
@@ -198,36 +198,6 @@
       "warnings": "Warnings",
       "errors": "Errors",
       "no_issues": "No issues found. Project is ready for export."
-    },
-    "import": {
-      "title": "Import",
-      "select_file": "Select a .storyarn.json file",
-      "choose_file": "Choose file...",
-      "upload_preview": "Upload & Preview",
-      "preview_title": "Import preview",
-      "th_entity": "Entity",
-      "th_count": "Count",
-      "entities": {
-        "sheets": "Sheets",
-        "flows": "Flows",
-        "nodes": "Nodes",
-        "scenes": "Scenes",
-        "screenplays": "Screenplays",
-        "assets": "Assets",
-        "localization": "Localization"
-      },
-      "conflicts_title": "Shortcut conflicts detected",
-      "conflict_strategy": "Conflict resolution strategy",
-      "strategy_skip": "Skip — keep existing, ignore conflicts",
-      "strategy_overwrite": "Overwrite — replace existing entities",
-      "strategy_rename": "Rename — import with a new shortcut",
-      "import_button": "Import",
-      "cancel": "Cancel",
-      "success": "Import completed successfully!",
-      "th_imported": "Imported",
-      "try_again": "Try again",
-      "import_another": "Import another",
-      "no_permission": "You need edit permissions to import data."
     }
   }
 }

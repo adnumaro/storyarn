@@ -135,7 +135,6 @@ Export translations as **Excel** or **CSV** for professional translators. Import
 
 When it's time to ship, export your entire project or individual parts:
 
-- **Storyarn JSON** — full project backup, re-importable
 - **Ink, Yarn, Unity JSON, Godot Dialogic, Unreal CSV, Articy XML** — engine-specific formats
 - **Excel / CSV** — localization data
 

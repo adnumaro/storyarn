@@ -15,14 +15,14 @@ Storyarn connects world data, branching narrative, spatial scenes, localization,
 | ------- | ------- | ------------------- |
 | **Workspace** | Your team's top-level container. It holds projects and controls workspace membership. | [Create a Workspace](/docs/quick-start/create-workspace) |
 | **Project** | A self-contained narrative workspace with its own sheets, flows, scenes, localization data, assets, and project-level members. | [Core Workflow](/docs/welcome/core-workflow) |
-| **Asset** | An uploaded media file such as an image or audio file. Assets can be referenced by sheets, flows, scenes, localization, and exports. | [Import & Export](/docs/import-export/import-export-overview) |
+| **Asset** | An uploaded media file such as an image or audio file. Assets can be referenced by sheets, flows, scenes, localization, and exports. | [Export](/docs/import-export/import-export-overview) |
 
 ## World data
 
 | Concept | Meaning | Where to learn more |
 | ------- | ------- | ------------------- |
 | **Sheet** | A structured data record for a character, item, location, faction, quest, or any world entity you need to track. | [Sheets Overview](/docs/world-building/sheets-overview) |
-| **Block** | A typed field inside a sheet. Blocks can store text, rich text, numbers, booleans, selects, dates, tables, references, and more. | [Blocks](/docs/world-building/blocks) |
+| **Block** | A typed field inside a sheet. Blocks can store text, rich text, numbers, booleans, selects, dates, tables, references, and more. | [Blocks & Variables](/docs/world-building/blocks-and-variables) |
 | **Variable** | A runtime-readable value generated from a non-constant block. Flows use variables in conditions and instructions. | [Your First Sheet](/docs/quick-start/first-sheet) |
 
 Variables use the pattern:
@@ -46,7 +46,7 @@ For example, a Health block on the `mc.jaime` sheet becomes `mc.jaime.health`.
 | Concept | Meaning | Where to learn more |
 | ------- | ------- | ------------------- |
 | **Scene** | A spatial map where narrative content can be explored through zones, pins, child scenes, and flow overlays. | [Scenes Overview](/docs/scene-design/scenes-overview) |
-| **Zone** | A drawn region inside a scene. Zones can evaluate conditions, run instructions, link to flows, or drill into child scenes. | [Scenes Overview](/docs/scene-design/scenes-overview) |
+| **Zone** | A drawn region inside a scene. Zones can evaluate conditions, run instructions, link to flows, or drill into child scenes. | [Zones and Interactive Areas](/docs/scene-design/zones) |
 
 ## Localization
 
@@ -56,4 +56,4 @@ For example, a Health block on the `mc.jaime` sheet becomes `mc.jaime.health`.
 
 ## How these concepts connect
 
-Sheets define the world state. Blocks on sheets become variables. Flows read those variables through condition nodes and change them through instruction nodes. Scenes place flows in a spatial context. Localization extracts the player-facing text from those systems. Export & Import moves the result into backups or engine-specific formats.
+Sheets define the world state. Blocks on sheets become variables. Flows read those variables through condition nodes and change them through instruction nodes. Scenes place flows in a spatial context. Localization extracts the player-facing text from those systems. Export moves the result into engine-specific formats.

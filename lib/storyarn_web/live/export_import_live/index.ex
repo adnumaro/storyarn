@@ -5,10 +5,9 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   alias Storyarn.Exports
   alias Storyarn.Exports.ExportOptions
-  alias Storyarn.Imports
-  alias StoryarnWeb.Helpers.Authorize
 
   @all_sections ~w(sheets flows scenes screenplays localization)a
+  @hidden_export_formats MapSet.new([:storyarn])
 
   @impl true
   def render(assigns) do
@@ -21,8 +20,8 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       workspace={@workspace}
       project={@project}
     >
-      <:title>{dgettext("projects", "Export & Import")}</:title>
-      <:subtitle>{dgettext("projects", "Export your project data or import from a file.")}</:subtitle>
+      <:title>{dgettext("projects", "Export")}</:title>
+      <:subtitle>{dgettext("projects", "Export your project data.")}</:subtitle>
 
       <.vue
         v-component="live/project/settings/export-import/ProjectSettingsExportImport"
@@ -50,34 +49,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
             downloadUrl: export_download_url(assigns)
           }
         }
-        can-edit={@can_edit}
-        import-state={
-          %{
-            step: to_string(@import_step),
-            preview: @import_preview,
-            result: @import_result,
-            error: serialize_import_error(@import_error),
-            conflictStrategy: to_string(@conflict_strategy)
-          }
-        }
-        upload-config={if @can_edit, do: @uploads.import_file, else: nil}
       />
-
-      <%!--
-      Hidden file upload form. The Vue component owns the visible import UI,
-      but LiveView's upload plumbing needs a <.live_file_input> mounted in the
-      DOM to receive the file entries. Keeping it hidden (and outside the Vue
-      island) leaves the UX untouched while making the upload flow testable.
-      --%>
-      <form
-        :if={@can_edit && @uploads[:import_file]}
-        id="import-form"
-        phx-change="validate_upload"
-        phx-submit="parse_import"
-        class="hidden"
-      >
-        <.live_file_input upload={@uploads.import_file} />
-      </form>
     </StoryarnWeb.Components.SettingsLayout.settings>
     """
   end
@@ -118,45 +90,35 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     %{message: finding.message}
   end
 
-  defp serialize_import_error(nil), do: nil
-  defp serialize_import_error(error), do: format_import_error(error)
-
   # ===========================================================================
   # Lifecycle
   # ===========================================================================
 
   @impl true
   def mount(_params, _session, socket) do
-    %{project: project, can_edit: can_edit} = socket.assigns
-    formats = Exports.list_formats_with_metadata()
+    %{project: project} = socket.assigns
+    formats = visible_export_formats()
     default_format = List.first(formats)
+    default_sections = default_format.sections
 
     socket =
       socket
       |> assign(:current_path, "")
       # Export state
       |> assign(:formats, formats)
-      |> assign(:selected_format, :storyarn)
+      |> assign(:selected_format, default_format.format)
       |> assign(:selected_extension, default_format.extension)
-      |> assign(:supported_sections, default_format.sections)
+      |> assign(:supported_sections, default_sections)
       |> assign(:sections, MapSet.new(@all_sections))
       |> assign(:entity_counts, %{})
       |> assign_async(:entity_counts_async, fn ->
-        opts = %ExportOptions{format: :storyarn}
+        opts = %ExportOptions{format: default_format.format}
         {:ok, %{entity_counts_async: Exports.count_entities(project.id, opts)}}
       end)
       |> assign(:asset_mode, :references)
       |> assign(:validate_before_export, true)
       |> assign(:pretty_print, true)
       |> assign(:validation_result, nil)
-      # Import state
-      |> assign(:import_step, :upload)
-      |> assign(:import_preview, nil)
-      |> assign(:import_result, nil)
-      |> assign(:import_error, nil)
-      |> assign(:conflict_strategy, :skip)
-      |> assign(:parsed_data_ref, nil)
-      |> maybe_allow_import_upload(can_edit)
 
     {:ok, socket}
   end
@@ -180,7 +142,6 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   # ===========================================================================
 
   @valid_asset_modes ~w(references embedded bundled)a
-  @valid_strategies ~w(skip overwrite rename)a
 
   @impl true
   def handle_event("set_format", %{"format" => format_str}, socket) do
@@ -239,128 +200,12 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   end
 
   # ===========================================================================
-  # Events — Import
-  # ===========================================================================
-
-  def handle_event("validate_upload", _params, socket) do
-    {:noreply, socket}
-  end
-
-  def handle_event("parse_import", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      socket
-      |> consume_and_parse_import()
-      |> handle_parse_result(socket)
-    end)
-  end
-
-  def handle_event("set_strategy", %{"strategy" => strategy_str}, socket) do
-    case Enum.find(@valid_strategies, &(to_string(&1) == strategy_str)) do
-      nil -> {:noreply, socket}
-      strategy -> {:noreply, assign(socket, :conflict_strategy, strategy)}
-    end
-  end
-
-  def handle_event("execute_import", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      ref = socket.assigns.parsed_data_ref
-
-      case take_import_data(ref) do
-        nil ->
-          {:noreply,
-           socket
-           |> assign(:import_step, :error)
-           |> assign(:import_error, :session_expired)
-           |> assign(:parsed_data_ref, nil)}
-
-        data ->
-          do_execute_import(socket, data)
-      end
-    end)
-  end
-
-  def handle_event("reset_import", _params, socket) do
-    cleanup_import_staging(socket)
-
-    {:noreply,
-     socket
-     |> assign(:import_step, :upload)
-     |> assign(:import_preview, nil)
-     |> assign(:import_result, nil)
-     |> assign(:import_error, nil)
-     |> assign(:conflict_strategy, :skip)
-     |> assign(:parsed_data_ref, nil)}
-  end
-
-  defp consume_and_parse_import(socket) do
-    case consume_uploaded_entries(socket, :import_file, fn %{path: path}, _entry ->
-           {:ok, File.read!(path)}
-         end) do
-      [binary] ->
-        with {:ok, %{data: data}} <- Imports.parse_file(binary),
-             {:ok, preview} <- Imports.preview(socket.assigns.project.id, data) do
-          {:ok, data, preview}
-        end
-
-      [] ->
-        {:error, :no_file}
-    end
-  end
-
-  defp handle_parse_result({:ok, data, preview}, socket) do
-    cleanup_import_staging(socket)
-    ref = make_ref()
-    :ets.insert(:import_staging, {ref, data})
-
-    {:noreply,
-     socket
-     |> assign(:import_step, :preview)
-     |> assign(:import_preview, preview)
-     |> assign(:parsed_data_ref, ref)}
-  end
-
-  defp handle_parse_result({:error, reason}, socket) do
-    {:noreply,
-     socket
-     |> assign(:import_step, :error)
-     |> assign(:import_error, reason)}
-  end
-
-  defp take_import_data(ref) do
-    case :ets.lookup(:import_staging, ref) do
-      [{^ref, data}] ->
-        :ets.delete(:import_staging, ref)
-        data
-
-      [] ->
-        nil
-    end
-  end
-
-  defp do_execute_import(socket, data) do
-    project = socket.assigns.project
-    strategy = socket.assigns.conflict_strategy
-
-    case Imports.execute(project, data, conflict_strategy: strategy) do
-      {:ok, result} ->
-        {:noreply,
-         socket
-         |> assign(:import_step, :done)
-         |> assign(:import_result, result)
-         |> assign(:parsed_data_ref, nil)}
-
-      {:error, reason} ->
-        {:noreply,
-         socket
-         |> assign(:import_step, :error)
-         |> assign(:import_error, reason)
-         |> assign(:parsed_data_ref, nil)}
-    end
-  end
-
-  # ===========================================================================
   # Helpers — Export
   # ===========================================================================
+
+  defp visible_export_formats do
+    Enum.reject(Exports.list_formats_with_metadata(), &MapSet.member?(@hidden_export_formats, &1.format))
+  end
 
   defp build_export_options(assigns) do
     sections = assigns.sections
@@ -410,57 +255,4 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   defp maybe_add(params, key, value, true), do: [{key, value} | params]
   defp maybe_add(params, _key, _value, false), do: params
-
-  # ===========================================================================
-  # Helpers — Import
-  # ===========================================================================
-
-  defp format_import_error(:no_file),
-    do: dgettext("projects", "No file was uploaded. Please select a file and try again.")
-
-  defp format_import_error(:session_expired),
-    do: dgettext("projects", "Import session expired. Please upload the file again.")
-
-  defp format_import_error(:invalid_json), do: dgettext("projects", "Invalid JSON file.")
-
-  defp format_import_error(:invalid_json_structure), do: dgettext("projects", "File is not a valid JSON object.")
-
-  defp format_import_error(:file_too_large), do: dgettext("projects", "File exceeds the 50 MB size limit.")
-
-  defp format_import_error({:missing_required_keys, keys}),
-    do: dgettext("projects", "Missing required keys: %{keys}", keys: Enum.join(keys, ", "))
-
-  defp format_import_error({:invalid_field_types, fields}),
-    do: dgettext("projects", "Invalid field types: %{fields}", fields: Enum.join(fields, ", "))
-
-  defp format_import_error({:entity_limits_exceeded, _details}),
-    do: dgettext("projects", "Import file exceeds entity count limits.")
-
-  defp format_import_error({:import_failed, context, _changeset}),
-    do: dgettext("projects", "Import failed at %{context}.", context: inspect(context))
-
-  defp format_import_error(other), do: dgettext("projects", "Import error: %{details}", details: inspect(other))
-
-  @impl true
-  def terminate(_reason, socket) do
-    cleanup_import_staging(socket)
-    :ok
-  end
-
-  defp cleanup_import_staging(socket) do
-    case socket.assigns[:parsed_data_ref] do
-      nil -> :ok
-      ref -> :ets.delete(:import_staging, ref)
-    end
-  end
-
-  defp maybe_allow_import_upload(socket, true) do
-    allow_upload(socket, :import_file,
-      accept: ~w(.json),
-      max_entries: 1,
-      max_file_size: 50_000_000
-    )
-  end
-
-  defp maybe_allow_import_upload(socket, false), do: socket
 end

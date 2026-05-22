@@ -13,10 +13,10 @@ New to Storyarn? Start by choosing the path that matches what you need to do fir
 
 | If you are... | Start with | Then read |
 | ------------- | ---------- | --------- |
-| **A writer or narrative designer** creating dialogue and branching scenes | [Create a Workspace](/docs/quick-start/create-workspace) and [Your First Flow](/docs/quick-start/first-flow) | [Flows Overview](/docs/narrative-design/flows-overview), [Dialogue Nodes](/docs/narrative-design/dialogue-nodes), [Conditions & Instructions](/docs/narrative-design/conditions-instructions) |
-| **A game designer or world builder** defining characters, items, stats, and state | [Your First Sheet](/docs/quick-start/first-sheet) | [Sheets Overview](/docs/world-building/sheets-overview), [Blocks](/docs/world-building/blocks), [Tables](/docs/world-building/tables) |
-| **A developer or technical designer** preparing engine integration | [Core Workflow](/docs/welcome/core-workflow) and [Import & Export](/docs/import-export/import-export-overview) | [Debug Mode](/docs/narrative-design/debug-mode), [Conditions & Instructions](/docs/narrative-design/conditions-instructions) |
-| **A localization manager or producer** planning translation work | [Localization Overview](/docs/localization/localization-overview) | [Dialogue Nodes](/docs/narrative-design/dialogue-nodes), [Import & Export](/docs/import-export/import-export-overview) |
+| **A writer or narrative designer** creating dialogue and branching scenes | [Create a Workspace](/docs/quick-start/create-workspace) and [Your First Flow](/docs/quick-start/first-flow) | [Flows Overview](/docs/narrative-design/flows-overview), [Dialogue Nodes](/docs/narrative-design/node-types/dialogue), [Condition Nodes](/docs/narrative-design/node-types/condition) |
+| **A game designer or world builder** defining characters, items, stats, and state | [Your First Sheet](/docs/quick-start/first-sheet) | [Sheets Overview](/docs/world-building/sheets-overview), [Blocks & Variables](/docs/world-building/blocks-and-variables), [Table Blocks](/docs/world-building/table-blocks) |
+| **A developer or technical designer** preparing engine integration | [Core Workflow](/docs/welcome/core-workflow) and [Export](/docs/import-export/import-export-overview) | [Debug Mode](/docs/narrative-design/debug-mode), [Instruction Nodes](/docs/narrative-design/node-types/instruction) |
+| **A localization manager or producer** planning translation work | [Localization Overview](/docs/localization/localization-overview) | [Dialogue Nodes](/docs/narrative-design/node-types/dialogue), [Export](/docs/import-export/import-export-overview) |
 
 ## The core model
 
@@ -27,7 +27,7 @@ Storyarn projects are built from a few connected concepts:
 - **Flows** use nodes to build dialogue, branching logic, conditions, and instructions.
 - **Scenes** place narrative content in spatial maps, zones, pins, and exploration flows.
 - **Localization** extracts user-facing text so it can be translated, reviewed, and exported.
-- **Export & Import** moves project content into engine-friendly formats or Storyarn backups.
+- **Export** moves project content into engine-friendly formats.
 
 ## Recommended first session
 
@@ -39,4 +39,4 @@ If you are evaluating Storyarn for the first time, spend your first session on t
 4. Build a branching dialogue with [Your First Flow](/docs/quick-start/first-flow).
 5. Open [Debug Mode](/docs/narrative-design/debug-mode) when you want to verify why a branch was taken.
 
-After that, use the sidebar by workflow: world data in **World Building**, dialogue and logic in **Narrative Design**, spatial content in **Scene Design**, translation in **Localization**, and delivery in **Import & Export**.
+After that, use the sidebar by workflow: world data in **World Building**, dialogue and logic in **Narrative Design**, spatial content in **Scene Design**, translation in **Localization**, and delivery in **Export**.

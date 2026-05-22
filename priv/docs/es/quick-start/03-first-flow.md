@@ -104,15 +104,14 @@ Usa Story Player cuando quieras revisar ritmo, texto de hablante y elecciones. U
 
 ## Exporta el proyecto
 
-Cuando el flujo funcione, abre **Exportar e Importar** desde la barra lateral del proyecto. Para una primera exportación:
+Cuando el flujo funcione, abre **Exportar** desde la barra lateral del proyecto. Para una primera exportación:
 
-1. Elige **Storyarn JSON** si quieres una copia completa del proyecto que puedas importar de nuevo en Storyarn.
-2. Elige **Yarn Spinner**, **Ink**, **Unity Dialogue System**, **Godot Dialogic**, **Unreal Engine** o **articy:draft** si quieres una exportación orientada al engine.
-3. Mantén **Fichas** y **Flujos** seleccionados para que el diálogo exportado incluya los datos de variable usados por la condición.
-4. Activa **Validar antes de exportar** para detectar nodos de entrada faltantes, nodos inalcanzables, referencias rotas y traducciones faltantes.
-5. Haz clic en **Descargar**.
+1. Elige **Yarn Spinner**, **Ink**, **Unity Dialogue System**, **Godot Dialogic**, **Unreal Engine** o **articy:draft** según el runtime o engine que quieras probar.
+2. Mantén **Fichas** y **Flujos** seleccionados para que el diálogo exportado incluya los datos de variable usados por la condición.
+3. Activa **Validar antes de exportar** para detectar nodos de entrada faltantes, nodos inalcanzables, referencias rotas y traducciones faltantes.
+4. Haz clic en **Descargar**.
 
-Para este tutorial, exporta tanto **Storyarn JSON** como un formato de engine que te interese. El archivo Storyarn JSON te da una copia segura; el formato de engine muestra cómo el mismo flujo sale de Storyarn para integrarse en runtime.
+Para este tutorial, exporta un formato de engine que te interese. El objetivo es comprobar cómo el mismo flujo sale de Storyarn para integrarse en runtime.
 
 ## Checklist final
 

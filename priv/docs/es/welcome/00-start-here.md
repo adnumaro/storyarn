@@ -13,10 +13,10 @@ description: "Elige la ruta más rápida por la documentación según tu rol y l
 
 | Si eres... | Empieza con | Después lee |
 | ---------- | ----------- | ----------- |
-| **Writer o narrative designer** creando diálogos y escenas ramificadas | [Crear un espacio de trabajo](/docs/quick-start/create-workspace) y [Tu primer flujo](/docs/quick-start/first-flow) | [Resumen de flujos](/docs/narrative-design/flows-overview), [Nodos de diálogo](/docs/narrative-design/dialogue-nodes), [Condiciones e instrucciones](/docs/narrative-design/conditions-instructions) |
-| **Game designer o world builder** definiendo personajes, objetos, estadísticas y estado | [Tu primera ficha](/docs/quick-start/first-sheet) | [Resumen de fichas](/docs/world-building/sheets-overview), [Bloques](/docs/world-building/blocks), [Tablas](/docs/world-building/tables) |
-| **Developer o technical designer** preparando integración con engine | [Flujo de trabajo principal](/docs/welcome/core-workflow) e [Importar y Exportar](/docs/import-export/import-export-overview) | [Modo Depuración](/docs/narrative-design/debug-mode), [Condiciones e instrucciones](/docs/narrative-design/conditions-instructions) |
-| **Localization manager o producer** planificando traducción | [Resumen de localización](/docs/localization/localization-overview) | [Nodos de diálogo](/docs/narrative-design/dialogue-nodes), [Importar y Exportar](/docs/import-export/import-export-overview) |
+| **Writer o narrative designer** creando diálogos y escenas ramificadas | [Crear un espacio de trabajo](/docs/quick-start/create-workspace) y [Tu primer flujo](/docs/quick-start/first-flow) | [Resumen de flujos](/docs/narrative-design/flows-overview), [Nodos de diálogo](/docs/narrative-design/node-types/dialogue), [Nodos de condición](/docs/narrative-design/node-types/condition) |
+| **Game designer o world builder** definiendo personajes, objetos, estadísticas y estado | [Tu primera ficha](/docs/quick-start/first-sheet) | [Resumen de fichas](/docs/world-building/sheets-overview), [Bloques y variables](/docs/world-building/blocks-and-variables), [Bloques de tabla](/docs/world-building/table-blocks) |
+| **Developer o technical designer** preparando integración con engine | [Flujo de trabajo principal](/docs/welcome/core-workflow) y [Exportar](/docs/import-export/import-export-overview) | [Modo Depuración](/docs/narrative-design/debug-mode), [Nodos de instrucción](/docs/narrative-design/node-types/instruction) |
+| **Localization manager o producer** planificando traducción | [Resumen de localización](/docs/localization/localization-overview) | [Nodos de diálogo](/docs/narrative-design/node-types/dialogue), [Exportar](/docs/import-export/import-export-overview) |
 
 ## El modelo central
 
@@ -27,7 +27,7 @@ Los proyectos de Storyarn se construyen con unos pocos conceptos conectados:
 - **Flujos** usan nodos para construir diálogo, lógica ramificada, condiciones e instrucciones.
 - **Escenas** colocan contenido narrativo en mapas espaciales, zonas, pines y recorridos de exploración.
 - **Localización** extrae el texto visible para traducirlo, revisarlo y exportarlo.
-- **Importar y Exportar** mueve el contenido del proyecto a formatos para engines o a copias de seguridad de Storyarn.
+- **Exportar** mueve el contenido del proyecto a formatos para engines.
 
 ## Primera sesión recomendada
 
@@ -39,4 +39,4 @@ Si estás evaluando Storyarn por primera vez, dedica tu primera sesión a esta s
 4. Construye un diálogo ramificado con [Tu primer flujo](/docs/quick-start/first-flow).
 5. Abre [Modo Depuración](/docs/narrative-design/debug-mode) cuando quieras verificar por qué se ha tomado una rama.
 
-Después, usa la barra lateral por flujo de trabajo: datos del mundo en **World Building**, diálogo y lógica en **Narrative Design**, contenido espacial en **Scene Design**, traducción en **Localization** y entrega en **Import & Export**.
+Después, usa la barra lateral por flujo de trabajo: datos del mundo en **World Building**, diálogo y lógica en **Narrative Design**, contenido espacial en **Scene Design**, traducción en **Localization** y entrega en **Export**.
