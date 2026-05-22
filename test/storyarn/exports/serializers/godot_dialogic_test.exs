@@ -1439,24 +1439,16 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
           data: %{"text" => "Boo!", "speaker_sheet_id" => nil, "responses" => []}
         })
 
-      d2 =
-        node_fixture(flow, %{
-          type: "dialogue",
-          data: %{"text" => "Hmm.", "speaker_sheet_id" => nil, "responses" => []}
-        })
-
       connection_fixture(flow, entry, condition)
       connection_fixture(flow, condition, d0, %{source_pin: "happy"})
       connection_fixture(flow, condition, d1, %{source_pin: "sad"})
-      connection_fixture(flow, condition, d2, %{source_pin: "default"})
 
       source = dtl_source(export_dialogic(project))
       assert has_line_matching?(source, ~r/^if \{.+\.mood\} == "happy":$/)
       assert has_line_matching?(source, ~r/^elif \{.+\.mood\} == "sad":$/)
-      assert has_line?(source, "else:")
+      refute has_line?(source, "else:")
       assert has_line?(source, "\tYay!")
       assert has_line?(source, "\tBoo!")
-      assert has_line?(source, "\tHmm.")
       refute source =~ "# (branch"
     end
 

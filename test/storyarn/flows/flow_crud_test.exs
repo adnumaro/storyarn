@@ -932,7 +932,7 @@ defmodule Storyarn.Flows.FlowCrudTest do
           flow_id: flow.id,
           source_node_id: entry.id,
           target_node_id: exit_node.id,
-          source_pin: "default",
+          source_pin: "output",
           target_pin: "input",
           inserted_at: now,
           updated_at: now

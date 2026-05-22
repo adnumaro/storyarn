@@ -4,7 +4,7 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluator do
 
   Supports two modes:
   - Boolean mode: evaluates a condition expression to true/false and follows the matching branch.
-  - Switch mode: evaluates cases in order and follows the first matching case (or default).
+  - Switch mode: evaluates cases in order and follows the first matching case.
   """
 
   alias Storyarn.Flows.Evaluator.ConditionEval
@@ -84,9 +84,7 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluator do
         evaluate_switch_rule(rule, acc_state, node_id, label)
       end)
 
-    state = log_switch_default_if_unmatched(state, matched_pin, node_id, label)
-    pin = matched_pin || "default"
-    follow_switch_pin(state, node_id, label, pin, connections)
+    follow_matched_switch_pin(state, node_id, label, matched_pin, connections)
   end
 
   defp evaluate_switch_blocks(node_id, label, condition, state, connections) do
@@ -97,9 +95,7 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluator do
         evaluate_switch_block(block, acc_state, node_id, label)
       end)
 
-    state = log_switch_default_if_unmatched(state, matched_pin, node_id, label)
-    pin = matched_pin || "default"
-    follow_switch_pin(state, node_id, label, pin, connections)
+    follow_matched_switch_pin(state, node_id, label, matched_pin, connections)
   end
 
   defp evaluate_switch_block(%{"type" => "block"} = block, acc_state, node_id, label) do
@@ -169,24 +165,34 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluator do
     end
   end
 
-  defp log_switch_default_if_unmatched(state, nil, node_id, label) do
+  defp follow_matched_switch_pin(state, node_id, label, nil, _connections) do
+    state =
+      log_switch_unmatched(
+        state,
+        node_id,
+        label,
+        "Switch — no case matched"
+      )
+
+    {:finished, %{state | status: :finished}}
+  end
+
+  defp follow_matched_switch_pin(state, node_id, label, pin, connections) do
+    follow_switch_pin(state, node_id, label, pin, connections)
+  end
+
+  defp log_switch_unmatched(state, node_id, label, message) do
     EngineHelpers.add_console(
       state,
       :warning,
       node_id,
       label,
-      "Switch — no case matched, following default"
+      message
     )
   end
 
-  defp log_switch_default_if_unmatched(state, _matched_pin, _node_id, _label), do: state
-
   defp follow_switch_pin(state, node_id, label, pin, connections) do
-    conn =
-      EngineHelpers.find_connection(connections, node_id, pin) ||
-        if(pin != "default", do: EngineHelpers.find_connection(connections, node_id, "default"))
-
-    case conn do
+    case EngineHelpers.find_connection(connections, node_id, pin) do
       nil ->
         state =
           EngineHelpers.add_console(

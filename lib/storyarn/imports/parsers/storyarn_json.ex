@@ -743,28 +743,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
 
   defp import_zones(scene_id, zones, id_map) do
     Enum.reduce(zones, {id_map, []}, fn zone_data, {map, results} ->
-      attrs = %{
-        "name" => zone_data["name"],
-        "shortcut" => zone_data["shortcut"],
-        "hidden" => zone_data["hidden"] || false,
-        "layer_id" => remap_id(map, :layer, zone_data["layer_id"]),
-        "vertices" => zone_data["vertices"] || [],
-        "fill_color" => zone_data["fill_color"],
-        "border_color" => zone_data["border_color"],
-        "border_width" => zone_data["border_width"],
-        "border_style" => zone_data["border_style"],
-        "opacity" => zone_data["opacity"],
-        "target_type" => zone_data["target_type"],
-        "target_id" => remap_target_id(map, zone_data["target_type"], zone_data["target_id"]),
-        "tooltip" => zone_data["tooltip"],
-        "position" => zone_data["position"] || 0,
-        "locked" => zone_data["locked"] || false,
-        "action_type" => zone_data["action_type"],
-        "action_data" => zone_data["action_data"] || %{},
-        "condition" => zone_data["condition"],
-        "condition_effect" => zone_data["condition_effect"],
-        "is_walkable" => zone_data["is_walkable"] || false
-      }
+      attrs = import_zone_attrs(zone_data, map)
 
       zone =
         facade_insert_or_rollback!(
@@ -775,6 +754,79 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
       {Map.put(map, {:zone, zone_data["id"]}, zone.id), [zone | results]}
     end)
   end
+
+  defp import_zone_attrs(zone_data, map) do
+    zone_data
+    |> zone_base_import_attrs(map)
+    |> Map.merge(zone_visual_import_attrs(zone_data, map))
+    |> Map.merge(zone_behavior_import_attrs(zone_data, map))
+  end
+
+  defp zone_base_import_attrs(zone_data, map) do
+    %{
+      "name" => zone_data["name"],
+      "shortcut" => zone_data["shortcut"],
+      "hidden" => zone_data["hidden"] || false,
+      "layer_id" => remap_id(map, :layer, zone_data["layer_id"]),
+      "vertices" => zone_data["vertices"] || [],
+      "fill_color" => zone_data["fill_color"],
+      "border_color" => zone_data["border_color"],
+      "border_width" => zone_data["border_width"],
+      "border_style" => zone_data["border_style"],
+      "opacity" => zone_data["opacity"],
+      "tooltip" => zone_data["tooltip"],
+      "position" => zone_data["position"] || 0,
+      "locked" => zone_data["locked"] || false
+    }
+  end
+
+  defp zone_visual_import_attrs(zone_data, map) do
+    %{
+      "label_mode" => zone_data["label_mode"] || "text",
+      "label_font_size" => zone_data["label_font_size"] || 12,
+      "label_font_family" => zone_data["label_font_family"] || "system",
+      "label_font_weight" => zone_data["label_font_weight"] || "600",
+      "label_font_style" => zone_data["label_font_style"] || "normal",
+      "label_icon_asset_id" => remap_id(map, :asset, zone_data["label_icon_asset_id"])
+    }
+  end
+
+  defp zone_behavior_import_attrs(zone_data, map) do
+    action_type = zone_data["action_type"] || "action"
+
+    Map.merge(
+      %{
+        "action_type" => action_type,
+        "action_data" => zone_data["action_data"] || default_zone_action_data(action_type),
+        "condition" => zone_data["condition"],
+        "condition_effect" => zone_data["condition_effect"],
+        "is_walkable" => zone_data["is_walkable"] || false
+      },
+      zone_target_import_attrs(zone_data, map, action_type)
+    )
+  end
+
+  defp zone_target_import_attrs(zone_data, map, action_type) when action_type in [nil, "action"] do
+    case zone_data["target_type"] do
+      "flow" ->
+        %{"target_type" => nil, "target_id" => nil}
+
+      target_type ->
+        %{
+          "target_type" => target_type,
+          "target_id" => remap_target_id(map, target_type, zone_data["target_id"])
+        }
+    end
+  end
+
+  defp zone_target_import_attrs(_zone_data, _map, _action_type) do
+    %{"target_type" => nil, "target_id" => nil}
+  end
+
+  defp default_zone_action_data("action"), do: %{"assignments" => []}
+  defp default_zone_action_data("display"), do: %{"variable_ref" => "", "display_mode" => "value"}
+  defp default_zone_action_data("collection"), do: %{"items" => []}
+  defp default_zone_action_data(_action_type), do: %{}
 
   defp import_scene_connections(scene_id, connections, id_map) do
     now = TimeHelpers.now()
@@ -1229,6 +1281,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
 
       # Link zone target_ids that reference flows
       for zone_data <- scene_data["zones"] || [],
+          zone_data["action_type"] in [nil, "action"],
           zone_data["target_type"] == "flow",
           target_id = remap_id(id_map, :flow, zone_data["target_id"]),
           not is_nil(target_id),

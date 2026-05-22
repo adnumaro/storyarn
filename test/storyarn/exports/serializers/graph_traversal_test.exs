@@ -11,7 +11,7 @@ defmodule Storyarn.Exports.Serializers.GraphTraversalTest do
     %{id: id, type: type, data: data}
   end
 
-  defp make_conn(source_id, target_id, source_pin \\ "default", target_pin \\ "input") do
+  defp make_conn(source_id, target_id, source_pin \\ "output", target_pin \\ "input") do
     %{
       id: "#{source_id}_#{target_id}_#{source_pin}",
       source_node_id: source_id,
@@ -228,14 +228,12 @@ defmodule Storyarn.Exports.Serializers.GraphTraversalTest do
               }
             }),
             make_node(3, "dialogue", %{"text" => "Mage branch"}),
-            make_node(4, "dialogue", %{"text" => "Warrior branch"}),
-            make_node(5, "dialogue", %{"text" => "Default branch"})
+            make_node(4, "dialogue", %{"text" => "Warrior branch"})
           ],
           [
             make_conn(1, 2),
             make_conn(2, 3, "case_mage"),
-            make_conn(2, 4, "case_warrior"),
-            make_conn(2, 5, "default")
+            make_conn(2, 4, "case_warrior")
           ]
         )
 
@@ -245,8 +243,7 @@ defmodule Storyarn.Exports.Serializers.GraphTraversalTest do
                {:condition, _condition,
                 [
                   {"case_mage", "Mage", 0, [{:dialogue, _mage}]},
-                  {"case_warrior", "Warrior", 1, [{:dialogue, _warrior}]},
-                  {"default", "Default", 2, [{:dialogue, _default}]}
+                  {"case_warrior", "Warrior", 1, [{:dialogue, _warrior}]}
                 ]}
              ] = instructions
     end

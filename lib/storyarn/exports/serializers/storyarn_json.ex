@@ -322,6 +322,12 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
       "locked" => zone.locked,
       "action_type" => zone.action_type,
       "action_data" => zone.action_data || %{},
+      "label_mode" => zone.label_mode,
+      "label_font_size" => zone.label_font_size,
+      "label_font_family" => zone.label_font_family,
+      "label_font_weight" => zone.label_font_weight,
+      "label_font_style" => zone.label_font_style,
+      "label_icon_asset_id" => maybe_to_string(zone.label_icon_asset_id),
       "condition" => zone.condition,
       "condition_effect" => zone.condition_effect,
       "is_walkable" => zone.is_walkable

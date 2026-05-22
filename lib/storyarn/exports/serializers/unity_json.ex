@@ -1002,31 +1002,11 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
     fallback_branches =
       targets_by_pin
       |> Map.keys()
-      |> Enum.reject(&(&1 == "default" or MapSet.member?(case_pins, &1)))
+      |> Enum.reject(&MapSet.member?(case_pins, &1))
       |> Enum.sort()
       |> Enum.map(&%{pin: &1, label: &1, conditions_string: ""})
 
-    default_branch =
-      if Map.has_key?(targets_by_pin, "default") do
-        [
-          %{
-            pin: "default",
-            label: "Default",
-            conditions_string: default_switch_condition(explicit_branches)
-          }
-        ]
-      else
-        []
-      end
-
-    explicit_branches ++ fallback_branches ++ default_branch
-  end
-
-  defp default_switch_condition(branches) do
-    branches
-    |> Enum.map(& &1.conditions_string)
-    |> Enum.reject(&(&1 == ""))
-    |> negate_any_condition()
+    explicit_branches ++ fallback_branches
   end
 
   defp condition_to_lua(raw_condition) do
@@ -1055,15 +1035,6 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
 
   defp negate_condition(""), do: ""
   defp negate_condition(condition), do: "not (#{condition})"
-
-  defp negate_any_condition([]), do: ""
-  defp negate_any_condition([condition]), do: negate_condition(condition)
-
-  defp negate_any_condition(conditions) do
-    joined = Enum.map_join(conditions, " or ", &"(#{&1})")
-
-    "not (#{joined})"
-  end
 
   # ---------------------------------------------------------------------------
   # Entry helpers

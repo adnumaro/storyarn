@@ -190,20 +190,6 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.DialogueEvaluatorTest do
              end)
     end
 
-    test "dialogue with no responses does not follow legacy default connection" do
-      state = make_state(%{})
-      node = make_node([])
-      connections = [make_connection(1, "default", 2)]
-
-      {:finished, finished_state} = DialogueEvaluator.evaluate(node, state, connections)
-
-      assert finished_state.status == :finished
-
-      assert Enum.any?(finished_state.console, fn entry ->
-               String.contains?(entry.message, "No outgoing connection")
-             end)
-    end
-
     test "dialogue with no responses and no output connection returns finished" do
       state = make_state(%{})
       node = make_node([])

@@ -134,8 +134,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
       }
 
       connections = [
-        conn(1, "default", 2),
-        conn(2, "default", 3)
+        conn(1, "output", 2),
+        conn(2, "output", 3)
       ]
 
       state = Engine.init(%{}, 1)
@@ -162,7 +162,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
         2 => node(2, "exit")
       }
 
-      connections = [conn(1, "default", 2)]
+      connections = [conn(1, "output", 2)]
 
       # Step once to reach a state where next step finishes
       state = Engine.init(%{}, 1)
@@ -207,7 +207,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
       }
 
       connections = [
-        conn(1, "default", 2),
+        conn(1, "output", 2),
         conn(2, "r1", 3)
       ]
 
@@ -247,7 +247,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
       }
 
       connections = [
-        conn(1, "default", 2),
+        conn(1, "output", 2),
         conn(2, "r1", 3)
       ]
 
@@ -286,9 +286,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
       }
 
       connections = [
-        conn(1, "default", 2),
-        conn(2, "default", 3),
-        conn(3, "default", 4)
+        conn(1, "output", 2),
+        conn(2, "output", 3),
+        conn(3, "output", 4)
       ]
 
       # Start at entry, step once to reach hub(2)
@@ -334,7 +334,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
         3 => node(3, "exit")
       }
 
-      parent_conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      parent_conns = [conn(1, "output", 2), conn(2, "output", 3)]
 
       # Sub-flow: entry(10) -> exit(11, caller_return)
       sub_nodes = %{
@@ -342,7 +342,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
         11 => node(11, "exit", %{"exit_mode" => "caller_return"})
       }
 
-      sub_conns = [conn(10, "default", 11)]
+      sub_conns = [conn(10, "output", 11)]
 
       # State is at exit node 11 (caller_return) in the sub-flow, with parent on call stack
       state = Engine.init(%{}, 10)
@@ -384,7 +384,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
         4 => node(4, "exit")
       }
 
-      parent_conns = [conn(1, "default", 2), conn(2, "default", 3), conn(3, "default", 4)]
+      parent_conns = [conn(1, "output", 2), conn(2, "output", 3), conn(3, "output", 4)]
 
       # Sub-flow at exit node with caller_return
       sub_nodes = %{
@@ -418,7 +418,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
         2 => node(2, "subflow", %{"referenced_flow_id" => 42})
       }
 
-      parent_conns = [conn(1, "default", 2)]
+      parent_conns = [conn(1, "output", 2)]
 
       sub_nodes = %{
         10 => node(10, "exit", %{"exit_mode" => "caller_return"})
@@ -450,7 +450,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
         3 => node(3, "exit")
       }
 
-      gp_conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      gp_conns = [conn(1, "output", 2), conn(2, "output", 3)]
 
       # Parent flow: entry(10) -> subflow_B(11) -> exit(12)
       parent_nodes = %{
@@ -459,7 +459,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
         12 => node(12, "exit")
       }
 
-      parent_conns = [conn(10, "default", 11), conn(11, "default", 12)]
+      parent_conns = [conn(10, "output", 11), conn(11, "output", 12)]
 
       # Current (child) flow at exit with caller_return
       child_nodes = %{

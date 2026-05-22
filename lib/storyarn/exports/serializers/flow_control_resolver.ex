@@ -102,12 +102,10 @@ defmodule Storyarn.Exports.Serializers.FlowControlResolver do
 
     cond do
       explicit_cases != [] ->
-        maybe_append_default_case(explicit_cases, targets_by_pin)
+        explicit_cases
 
       data["switch_mode"] == true ->
-        data
-        |> switch_cases()
-        |> maybe_append_default_case(targets_by_pin)
+        switch_cases(data)
 
       true ->
         boolean_cases(targets_by_pin)
@@ -188,14 +186,6 @@ defmodule Storyarn.Exports.Serializers.FlowControlResolver do
   end
 
   defp switch_rule_case_def(_rule), do: []
-
-  defp maybe_append_default_case(cases, targets_by_pin) do
-    if Map.has_key?(targets_by_pin, "default") and not Enum.any?(cases, &(&1["id"] == "default")) do
-      cases ++ [%{"id" => "default", "value" => "default", "label" => "Default"}]
-    else
-      cases
-    end
-  end
 
   defp boolean_cases(targets_by_pin) do
     ["true", "false"]
