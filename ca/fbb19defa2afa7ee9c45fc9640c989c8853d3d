@@ -1,0 +1,24 @@
+assets/app/modules/flows/editor/components/entities/nodes/ConditionNode.vue
+  s_89a3f1264cbda8::t_0c829485153564 196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "cafbb19defa2afa7ee9c45fc9640c989c8853d3d",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_89a3f1264cbda8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e4a48-d037-7852-a91e-119f74a3c0e1",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
