@@ -1,0 +1,140 @@
+test/storyarn_web/live/scene_live/helpers/serializer_test.exs
+  s_89a3f1264cbda8::t_e59584822ac99d 214-218,233-237,257-260
+assets/app/modules/scenes/editor/components/canvas/layers/WaypointEditorLayer.vue
+  s_89a3f1264cbda8::t_60a78bc7c7c63f 2,6
+lib/storyarn/scenes/route_points.ex
+  s_89a3f1264cbda8::t_db6ba4c92a964c 10
+  s_89a3f1264cbda8::t_59082779b77257 1-9,11-31
+assets/app/modules/scenes/canvas/composables/useConnections.ts
+  s_89a3f1264cbda8::t_59082779b77257 2,35,77,89,114,188,196,202,221
+  s_89a3f1264cbda8::t_a7dca24ca8b949 189,191-192,203,205-209,214-220,222-224,242-243
+lib/storyarn/versioning/snapshot_viewer.ex
+  s_89a3f1264cbda8::t_f31ea75c51586a 57,268-272,276
+  s_89a3f1264cbda8::t_59082779b77257 9,277
+assets/app/locales/es/scenes.json
+  s_89a3f1264cbda8::t_dc22fada718e0d 280
+  s_89a3f1264cbda8::t_5bd5f2727a26f9 190-195
+lib/storyarn_web/live/scene_live/helpers/scene_serializer.ex
+  s_89a3f1264cbda8::t_9fd6b7e451c88f 204-207
+  s_89a3f1264cbda8::t_08f97b9745fd61 203
+test/storyarn/versioning/builders/scene_builder_test.exs
+  s_89a3f1264cbda8::t_5cbe577fb5aaaf 606-655
+assets/app/modules/scenes/editor/composables/useWaypointEditor.ts
+  s_89a3f1264cbda8::t_aa297550079207 128-130,213
+  s_89a3f1264cbda8::t_d427ef2cd40af2 181-183,188,190,193-202,204
+  s_89a3f1264cbda8::t_60a78bc7c7c63f 4-6,219,234,245
+  s_89a3f1264cbda8::t_b0139e5fd3be6a 44,80-81,96,147-149,205-206,208-212,214
+  s_89a3f1264cbda8::t_ca500706cc1b9f 126-127,132,164-165,189,192
+  s_89a3f1264cbda8::t_59082779b77257 31,57,175,187,203,207
+  s_89a3f1264cbda8::t_fb060011f46d11 3,7-9
+assets/app/modules/scenes/editor/composables/useConnectionDrawing.ts
+  s_89a3f1264cbda8::t_6da62d38ac94c7 41,43,112
+  s_89a3f1264cbda8::t_8d092ef34304a5 26,48,58,63,84,95-105,107,119,123-131,133,141,147-151,156-159,164,169-190,240,245-257
+  s_89a3f1264cbda8::t_d427ef2cd40af2 132,136-140,142-146,152-155
+priv/docs/en/scene-design/04-connections-routes.md
+  s_89a3f1264cbda8::t_6da62d38ac94c7 23
+  s_89a3f1264cbda8::t_f060017bf577f7 41,54
+  s_89a3f1264cbda8::t_9614162b1057b7 25,56,64
+  s_89a3f1264cbda8::t_d1945aee8a0788 10,14,19,21-22,60-63,65,68,70
+  s_89a3f1264cbda8::t_dc22fada718e0d 5,17,24,26-29,31-36,40,43,45,47,49,51-53,66-67,69,74
+lib/storyarn_web/live/scene_live/handlers/undo_redo_handlers.ex
+  s_89a3f1264cbda8::t_731a6623c8fcf6 100-104
+test/storyarn/assets/storage/local_test.exs
+  s_89a3f1264cbda8::t_0fdd418ee9680c 2
+test/storyarn/versioning/snapshot_viewer_test.exs
+  s_89a3f1264cbda8::t_ee9f9a5f881eac 173-238
+lib/storyarn/versioning/builders/scene_builder.ex
+  s_89a3f1264cbda8::t_90d5105409dffa 1085-1087
+  s_89a3f1264cbda8::t_59082779b77257 18,248,1036,1093
+  s_89a3f1264cbda8::t_0994cc84d341dc 1409-1413
+  s_89a3f1264cbda8::t_a9e6175f5f3fb3 1089-1092,1094-1096
+  s_89a3f1264cbda8::t_e7eed2adced313 1133,1356-1359,1362-1371,1375-1384,1403-1408,1414-1424
+  s_89a3f1264cbda8::t_25678a4d3743b9 722,726-727,735-738
+  s_89a3f1264cbda8::t_5ab8e81bc551ba 1076-1077
+  s_89a3f1264cbda8::t_3c65efe9a274e9 65,67-68,224-225,239-243,247,249-257
+  s_89a3f1264cbda8::t_2cabd2e9b08843 1049-1053,1084,1088,1097-1116
+lib/storyarn/scenes/connection_crud.ex
+  s_89a3f1264cbda8::t_88aa06aa95b60e 44-45,52-53,98-101
+assets/app/modules/scenes/editor/components/panels/properties/ConnectionProperties.vue
+  s_89a3f1264cbda8::t_a360b82c50b972 97,135
+  s_89a3f1264cbda8::t_1c0128f67ff92c 4,24-27,34-50,52-61,63-64,81-96,98-134,136-143
+  s_89a3f1264cbda8::t_ab9b605d611380 12-14
+  s_89a3f1264cbda8::t_59082779b77257 5-9,51,62
+lib/storyarn_web/live/scene_live/handlers/element_handlers.ex
+  s_89a3f1264cbda8::t_5c5e36a5d58735 568-575
+  s_89a3f1264cbda8::t_436ef7622b056d 1104,1106,1110,1121-1129
+  s_89a3f1264cbda8::t_2ed8a87c2c12f8 43,566-567
+  s_89a3f1264cbda8::t_dc22fada718e0d 1111
+assets/app/modules/scenes/types/routes.ts
+  s_89a3f1264cbda8::t_fb060011f46d11 39,41-49,51-59,63
+  s_89a3f1264cbda8::t_60a78bc7c7c63f 40,50,60-62
+  s_89a3f1264cbda8::t_59082779b77257 1-38
+assets/app/locales/en/scenes.json
+  s_89a3f1264cbda8::t_5bd5f2727a26f9 190-195
+  s_89a3f1264cbda8::t_dc22fada718e0d 280
+lib/storyarn/imports/parsers/storyarn_json.ex
+  s_89a3f1264cbda8::t_1136b7a640f80d 838-840,853-857,873-875
+  s_89a3f1264cbda8::t_59082779b77257 16,842
+assets/app/modules/scenes/editor/composables/useSceneElementOptimism.ts
+  s_89a3f1264cbda8::t_e47e61cd33785a 77,79,114-115
+test/storyarn_web/live/scene_live/exploration_live_test.exs
+  s_89a3f1264cbda8::t_eeac2c468c848a 851-886
+lib/storyarn_web/live/scene_live/helpers/props_serializer.ex
+  s_89a3f1264cbda8::t_5c5e36a5d58735 452
+  s_89a3f1264cbda8::t_67badef9cae676 413,433-434,439-441,444,446,450-451,455-457,462,469,474-479,481-482
+  s_89a3f1264cbda8::t_1ba1b708912e7f 12
+  s_89a3f1264cbda8::t_87df1f930b3bce 425-426
+  s_89a3f1264cbda8::t_59082779b77257 480
+  s_89a3f1264cbda8::t_08f97b9745fd61 159-163
+lib/storyarn_web/live/version_viewer_live.ex
+  s_89a3f1264cbda8::t_3f09a47b3f29a1 308-312
+test/storyarn_web/live/scene_live/show_test.exs
+  s_89a3f1264cbda8::t_28620a9f3b9a28 2855-2876,2878-2883
+  s_89a3f1264cbda8::t_b8c4f53a145cf2 1446-1491
+  s_89a3f1264cbda8::t_d9ff754e018ea5 2877
+priv/repo/migrations/20260525141500_allow_freeform_scene_routes.exs
+  s_89a3f1264cbda8::t_020315fb54f8cb 1-22
+priv/docs/es/scene-design/04-connections-routes.md
+  s_89a3f1264cbda8::t_d1945aee8a0788 10,14,19-22,60-63,65,68,70
+  s_89a3f1264cbda8::t_f060017bf577f7 41,54
+  s_89a3f1264cbda8::t_dc22fada718e0d 5,17,24,26-34,40,43,45,47,49,51-53,55,58-59,66-67,74
+  s_89a3f1264cbda8::t_9614162b1057b7 25,56-57,64
+  s_89a3f1264cbda8::t_6da62d38ac94c7 23
+lib/storyarn/scenes/scene_connection.ex
+  s_89a3f1264cbda8::t_436ef7622b056d 132
+  s_89a3f1264cbda8::t_59082779b77257 14,144,157
+  s_89a3f1264cbda8::t_020315fb54f8cb 28-31,50-53,76-80,84-85,90,108-112,116-117,122,152-155,158-162
+assets/app/modules/scenes/editor/components/canvas/SceneCanvas.vue
+  s_89a3f1264cbda8::t_57814ec8ce0256 120
+  s_89a3f1264cbda8::t_59082779b77257 4
+  s_89a3f1264cbda8::t_19b56323b8654e 199
+lib/storyarn/exports/serializers/storyarn_json.ex
+  s_89a3f1264cbda8::t_1136b7a640f80d 340-341,348-352
+assets/app/modules/scenes/exploration/composables/usePatrols.ts
+  s_89a3f1264cbda8::t_ff7b2277cbd38f 157-159,166
+  s_89a3f1264cbda8::t_59082779b77257 3,21,156
+assets/app/modules/scenes/exploration/components/ExplorationCanvas.vue
+  s_89a3f1264cbda8::t_59082779b77257 5,46
+  s_89a3f1264cbda8::t_57814ec8ce0256 83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.1",
+  "base_commit_sha": "39e32478cc0deef6b565ab5e56e38b85ce1ba0a8",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_89a3f1264cbda8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e4a48-d037-7852-a91e-119f74a3c0e1",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
