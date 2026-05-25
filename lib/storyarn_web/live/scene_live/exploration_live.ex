@@ -1182,7 +1182,13 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
   defp evaluate_elements(elements, variables) do
     Enum.map(elements, fn el ->
-      visibility = evaluate_visibility(el.condition, el.condition_effect, variables)
+      visibility =
+        if Map.get(el, :hidden, false) do
+          :hide
+        else
+          evaluate_visibility(el.condition, el.condition_effect, variables)
+        end
+
       Map.put(el, :visibility, visibility)
     end)
   end

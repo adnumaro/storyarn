@@ -43,4 +43,4 @@ Keep routes readable. Too many waypoints can make editing harder; use enough to 
 
 ## What connections do not do
 
-Connections explain routes and relationships on the map. If a route should become locked, hidden, or change state during exploration, configure that logic on the related pins or zones with conditions and actions.
+Connections explain routes and relationships on the map. If a route should become locked, hidden, or change state during exploration, configure that logic on the related elements: conditions on pins or zones, and actions when the behavior belongs to a zone.

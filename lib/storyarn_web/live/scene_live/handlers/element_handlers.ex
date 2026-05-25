@@ -844,17 +844,18 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   defp do_update_pin(socket, pin, "flow_id", ""), do: do_update_pin_attrs(socket, pin, %{"flow_id" => nil})
 
   defp do_update_pin(socket, pin, field, value) do
+    new_attrs = %{field => value}
     prev_value = safe_field_get(pin, field)
+    demoted_leaders = demoted_leader_pins(socket.assigns.pins, pin, new_attrs)
 
-    case Scenes.update_pin(pin, %{field => value}) do
+    case Scenes.update_pin(pin, new_attrs) do
       {:ok, updated} ->
         {:noreply,
          socket
-         |> push_undo({:update_pin, pin.id, %{field => prev_value}, %{field => value}})
-         |> assign(:selected_element, updated)
-         |> assign(:pins, replace_in_list(socket.assigns.pins, updated))
+         |> push_undo(pin_update_undo_action(pin.id, %{field => prev_value}, new_attrs, demoted_leaders))
+         |> assign_synced_pins(updated, demoted_leaders)
          |> assign(:_broadcast, {:pin_updated, %{id: updated.id}})
-         |> push_event("pin_updated", serialize_pin(updated))}
+         |> push_pin_updates(updated, demoted_leaders)}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not update pin."))}
@@ -862,6 +863,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   end
 
   defp do_update_pin_attrs(socket, pin, new_attrs) do
+    demoted_leaders = demoted_leader_pins(socket.assigns.pins, pin, new_attrs)
+
     prev_attrs =
       Map.new(new_attrs, fn {key, _val} ->
         {key, safe_field_get(pin, key)}
@@ -871,15 +874,71 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
       {:ok, updated} ->
         {:noreply,
          socket
-         |> push_undo({:update_pin, pin.id, prev_attrs, new_attrs})
-         |> assign(:selected_element, updated)
-         |> assign(:pins, replace_in_list(socket.assigns.pins, updated))
+         |> push_undo(pin_update_undo_action(pin.id, prev_attrs, new_attrs, demoted_leaders))
+         |> assign_synced_pins(updated, demoted_leaders)
          |> assign(:_broadcast, {:pin_updated, %{id: updated.id}})
-         |> push_event("pin_updated", serialize_pin(updated))}
+         |> push_pin_updates(updated, demoted_leaders)}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not update pin."))}
     end
+  end
+
+  defp demoted_leader_pins(pins, updated_pin, attrs) do
+    if leader_enabled?(attrs) do
+      Enum.filter(pins, fn pin -> pin.id != updated_pin.id and pin.is_leader end)
+    else
+      []
+    end
+  end
+
+  defp leader_enabled?(attrs) do
+    Map.get(attrs, "is_leader") in [true, "true"] or Map.get(attrs, :is_leader) in [true, "true"]
+  end
+
+  defp pin_update_undo_action(pin_id, prev_attrs, new_attrs, []) do
+    {:update_pin, pin_id, prev_attrs, new_attrs}
+  end
+
+  defp pin_update_undo_action(pin_id, prev_attrs, new_attrs, demoted_leaders) do
+    demotion_actions =
+      Enum.map(demoted_leaders, fn leader ->
+        {:update_pin, leader.id, %{"is_leader" => true}, %{"is_leader" => false}}
+      end)
+
+    {:compound, [{:update_pin, pin_id, prev_attrs, new_attrs} | demotion_actions]}
+  end
+
+  defp assign_synced_pins(socket, updated, demoted_leaders) do
+    demoted_ids = MapSet.new(demoted_leaders, & &1.id)
+
+    pins =
+      socket.assigns.pins
+      |> replace_in_list(updated)
+      |> Enum.map(fn pin ->
+        if MapSet.member?(demoted_ids, pin.id), do: %{pin | is_leader: false}, else: pin
+      end)
+
+    socket
+    |> assign(:pins, pins)
+    |> maybe_sync_selected_pin(pins)
+  end
+
+  defp maybe_sync_selected_pin(%{assigns: %{selected_type: "pin", selected_element: %{id: id}}} = socket, pins) do
+    case Enum.find(pins, &(&1.id == id)) do
+      nil -> socket
+      pin -> assign(socket, :selected_element, pin)
+    end
+  end
+
+  defp maybe_sync_selected_pin(socket, _pins), do: socket
+
+  defp push_pin_updates(socket, updated, demoted_leaders) do
+    demoted_updates = Enum.map(demoted_leaders, &%{&1 | is_leader: false})
+
+    [updated | demoted_updates]
+    |> Enum.uniq_by(& &1.id)
+    |> Enum.reduce(socket, fn pin, acc -> push_event(acc, "pin_updated", serialize_pin(pin)) end)
   end
 
   defp do_update_zone_vertices(socket, %{locked: true}, _vertices), do: {:noreply, socket}

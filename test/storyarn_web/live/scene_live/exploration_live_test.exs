@@ -817,6 +817,37 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       assert pin["visibility"] == "visible"
     end
 
+    test "hidden zones and pins are hidden in exploration", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project, %{name: "Hidden Element World"})
+
+      _zone =
+        zone_fixture(scene, %{
+          "name" => "Manually Hidden Zone",
+          "hidden" => true,
+          "condition" => nil,
+          "condition_effect" => "disable"
+        })
+
+      _pin =
+        pin_fixture(scene, %{
+          "label" => "Manually Hidden Pin",
+          "hidden" => true,
+          "condition" => nil,
+          "condition_effect" => "disable"
+        })
+
+      {:ok, view, _html} = live(conn, explore_path(project, scene))
+
+      vue = get_exploration_vue(view)
+      data = vue.props["exploration-data"]
+      zone = Enum.find(data["zones"], &(&1["name"] == "Manually Hidden Zone"))
+      pin = Enum.find(data["pins"], &(&1["label"] == "Manually Hidden Pin"))
+
+      assert zone["visibility"] == "hide"
+      assert pin["visibility"] == "hide"
+    end
+
     test "zones with empty condition map are visible", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Empty Condition World"})

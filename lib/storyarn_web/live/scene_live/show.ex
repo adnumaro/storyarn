@@ -912,14 +912,25 @@ defmodule StoryarnWeb.SceneLive.Show do
     end)
   end
 
-  def handle_event("upload_pin_icon", %{"filename" => filename, "content_type" => ct, "data" => data}, socket) do
+  def handle_event("pin_icon_upload_validation_error", %{"reason" => "invalid_type"}, socket) do
+    {:noreply, put_flash(socket, :error, zone_label_icon_invalid_type_message())}
+  end
+
+  def handle_event("pin_icon_upload_validation_error", %{"reason" => "too_large"}, socket) do
+    {:noreply, put_flash(socket, :error, zone_label_icon_too_large_message())}
+  end
+
+  def handle_event("upload_pin_icon", %{"id" => id, "filename" => filename, "content_type" => ct, "data" => data}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      with %{__struct__: Scenes.ScenePin} = pin <- socket.assigns[:selected_element],
+      with %{__struct__: Scenes.ScenePin} = pin <- Scenes.get_pin(socket.assigns.scene.id, id),
+           :ok <- validate_zone_label_icon_type(filename, ct),
            [_header, base64] <- String.split(data, ",", parts: 2),
            {:ok, binary} <- Base.decode64(base64),
+           :ok <- validate_zone_label_icon_size(binary),
+           {:ok, icon_binary} <- validate_zone_label_icon_binary(ct, binary),
            {:ok, asset} <-
              Assets.upload_binary_and_create_asset(
-               binary,
+               icon_binary,
                %{filename: filename, content_type: ct},
                socket.assigns.project,
                socket.assigns.current_scope.user
@@ -930,12 +941,15 @@ defmodule StoryarnWeb.SceneLive.Show do
         broadcast_scene_change(
           {:noreply,
            socket
-           |> assign(:selected_element, updated)
+           |> maybe_update_selected_pin(updated)
            |> update_pin_in_list(updated)
            |> push_event("pin_updated", serialize_pin(updated))
            |> put_flash(:info, dgettext("scenes", "Pin icon updated."))}
         )
       else
+        {:error, message} ->
+          {:noreply, put_flash(socket, :error, message)}
+
         _ ->
           {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not upload pin icon."))}
       end
@@ -1931,6 +1945,15 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   defp maybe_update_selected_zone(socket, _zone), do: socket
+
+  defp maybe_update_selected_pin(
+         %{assigns: %{selected_type: "pin", selected_element: %{id: id}}} = socket,
+         %{id: id} = pin
+       ) do
+    assign(socket, :selected_element, pin)
+  end
+
+  defp maybe_update_selected_pin(socket, _pin), do: socket
 
   defp validate_zone_label_icon_type(filename, content_type) do
     extension = filename |> Path.extname() |> String.downcase()

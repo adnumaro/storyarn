@@ -66,6 +66,14 @@ function isZoneClickable(zone: ExplorationZone): boolean {
   return actionType === "action" && isActionClickable(zone);
 }
 
+function pinHasFlow(pin: ExplorationPin): boolean {
+  return pin.flowId !== null && pin.flowId !== undefined && pin.flowId !== "";
+}
+
+function isPinClickable(pin: ExplorationPin): boolean {
+  return !isHiddenOrDisabled(pin.visibility) && pinHasFlow(pin);
+}
+
 /**
  * Composable for exploration mode element interactions.
  * Handles zone/pin click events and show-zones visual mode.
@@ -97,7 +105,7 @@ export function useExplorationInteraction({
 
   function handlePinClick(pinId: number | string): void {
     const pin = explorationPins.value.find((p) => p.id === pinId);
-    if (!pin || isHiddenOrDisabled(pin.visibility)) {
+    if (!pin || !isPinClickable(pin)) {
       return;
     }
 
@@ -130,7 +138,7 @@ export function useExplorationInteraction({
   const clickablePinIds = computed<Set<number | string>>(() => {
     const ids = new Set<number | string>();
     for (const pin of explorationPins.value) {
-      if (!isHiddenOrDisabled(pin.visibility)) ids.add(pin.id);
+      if (isPinClickable(pin)) ids.add(pin.id);
     }
     return ids;
   });

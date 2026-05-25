@@ -1043,6 +1043,47 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       assert updated.pin_type == "character"
     end
 
+    test "syncs previous party leader when assigning a new leader", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project)
+
+      previous_leader =
+        pin_fixture(scene, %{
+          "label" => "Previous Leader",
+          "is_playable" => true,
+          "is_leader" => true
+        })
+
+      new_leader =
+        pin_fixture(scene, %{
+          "label" => "New Leader",
+          "is_playable" => true,
+          "is_leader" => false
+        })
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
+        )
+
+      render_hook(view, "update_pin", %{
+        "id" => to_string(new_leader.id),
+        "field" => "is_leader",
+        "toggle" => "true"
+      })
+
+      refute Scenes.get_pin!(previous_leader.id).is_leader
+      assert Scenes.get_pin!(new_leader.id).is_leader
+
+      scene_data = extract_scene_data(view)
+      previous_leader_data = Enum.find(scene_data["pins"], &(&1["id"] == previous_leader.id))
+      new_leader_data = Enum.find(scene_data["pins"], &(&1["id"] == new_leader.id))
+
+      assert previous_leader_data["is_leader"] == false
+      assert new_leader_data["is_leader"] == true
+    end
+
     test "rejected for viewer", %{conn: conn, user: user} do
       owner = user_fixture()
       project = owner |> project_fixture() |> Repo.preload(:workspace)
@@ -1217,6 +1258,69 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       updated = Scenes.get_zone!(zone.id)
       assert is_nil(updated.label_icon_asset_id)
+    end
+  end
+
+  describe "upload_pin_icon event" do
+    setup :register_and_log_in_user
+
+    test "stores a valid SVG icon on the pin", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project)
+      pin = pin_fixture(scene)
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}")
+
+      svg = ~s(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3"/></svg>)
+
+      render_hook(view, "upload_pin_icon", %{
+        "id" => to_string(pin.id),
+        "filename" => "pin.svg",
+        "content_type" => "image/svg+xml",
+        "data" => "data:image/svg+xml;base64,#{Base.encode64(svg)}"
+      })
+
+      updated = Scenes.get_pin!(pin.id)
+      assert updated.icon_asset_id
+    end
+
+    test "rejects files whose binary does not match the declared pin icon type", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project)
+      pin = pin_fixture(scene)
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}")
+
+      render_hook(view, "upload_pin_icon", %{
+        "id" => to_string(pin.id),
+        "filename" => "pin.png",
+        "content_type" => "image/png",
+        "data" => "data:image/png;base64,#{Base.encode64("not a png")}"
+      })
+
+      updated = Scenes.get_pin!(pin.id)
+      assert is_nil(updated.icon_asset_id)
+    end
+
+    test "rejects transparent-hostile pin icon extensions", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project)
+      pin = pin_fixture(scene)
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}")
+
+      render_hook(view, "upload_pin_icon", %{
+        "id" => to_string(pin.id),
+        "filename" => "pin.jpg",
+        "content_type" => "image/jpeg",
+        "data" => "data:image/jpeg;base64,#{Base.encode64(<<255, 216, 255, 217>>)}"
+      })
+
+      updated = Scenes.get_pin!(pin.id)
+      assert is_nil(updated.icon_asset_id)
     end
   end
 

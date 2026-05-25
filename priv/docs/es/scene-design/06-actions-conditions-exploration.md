@@ -7,7 +7,7 @@ description: "Haz interactivos los elementos con condiciones, acciones, indicado
 
 ---
 
-Las Escenas pueden ser más que mapas estáticos. Zonas y pines pueden evaluar condiciones, ejecutar instrucciones, mostrar valores de variables, navegar a escenas y lanzar flujos durante la exploración.
+Las Escenas pueden ser más que mapas estáticos. Las zonas concentran las acciones de área: ejecutar instrucciones, mostrar valores, navegar a escenas o lanzar flujos. Los pines representan puntos concretos y pueden lanzar un flujo, moverse como personajes jugables o patrullas, y evaluar reglas de visibilidad durante la exploración.
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
@@ -23,6 +23,7 @@ Las Escenas pueden ser más que mapas estáticos. Zonas y pines pueden evaluar c
 | **Mostrar** | Muestra una variable en el mapa, como valor o como nombre + valor. |
 | **Colección** | Abre una ventana con elementos recogibles, cada uno con condiciones e instrucciones opcionales. |
 | **Pin con flujo** | Lanza un flujo asociado al pin sobre la escena. |
+| **Pin jugable o patrulla** | Permite controlar un personaje en áreas transitables o mover un pin no jugable siguiendo conexiones. |
 
 Las zonas de Acción son el tipo principal para comportamiento interactivo. Úsalas cuando una parte del mapa deba abrir una escena, lanzar un flujo o modificar variables.
 
@@ -43,13 +44,14 @@ El modo exploración es una simulación a pantalla completa de la escena. Evalú
 
 Durante la exploración puedes:
 
-1. Hacer clic en zonas y pines.
+1. Hacer clic en zonas interactivas y pines con flujo.
 2. Lanzar flujos sin abandonar la escena.
-3. Navegar a escenas hijas.
-4. Ejecutar instrucciones que actualizan variables.
+3. Navegar a escenas hijas desde zonas de Acción.
+4. Ejecutar instrucciones desde zonas de Acción o Colección.
 5. Mostrar valores de variables con zonas Mostrar.
 6. Abrir colecciones de elementos.
-7. Ver elementos ocultarse o deshabilitarse según condiciones.
+7. Mover personajes jugables dentro de áreas transitables.
+8. Ver elementos ocultarse o deshabilitarse según condiciones.
 
 ## Flujos sobre la escena
 
@@ -59,4 +61,4 @@ Este es el puente principal entre diseño espacial y lógica narrativa.
 
 ## Probar interacciones
 
-Usa el modo exploración para revisar la lógica antes de compartir el mapa. Comprueba que las condiciones se evalúan como esperas, que las instrucciones actualizan las variables correctas, que las zonas transitables bloquean el movimiento fuera del área y que los flujos vuelven al estado correcto.
+Usa el modo exploración para revisar la lógica antes de compartir el mapa. Comprueba que las condiciones se evalúan como esperas, que las instrucciones actualizan las variables correctas, que las zonas transitables limitan el movimiento, que las patrullas siguen su ruta y que los flujos vuelven al estado correcto.

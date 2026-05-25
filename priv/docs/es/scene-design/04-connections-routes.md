@@ -39,4 +39,4 @@ Los waypoints permiten curvar una conexión alrededor de elementos del mapa. Ús
 
 ## Qué no hacen
 
-Las conexiones explican rutas y relaciones en el mapa. Si una ruta debe bloquearse, ocultarse o cambiar de estado durante la exploración, configura esa lógica en los pines o zonas relacionados mediante condiciones y acciones.
+Las conexiones explican rutas y relaciones en el mapa. Si una ruta debe bloquearse, ocultarse o cambiar de estado durante la exploración, configura esa lógica en los elementos relacionados: condiciones en pines o zonas, y acciones cuando el comportamiento pertenezca a una zona.

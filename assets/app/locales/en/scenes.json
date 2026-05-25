@@ -195,13 +195,19 @@
       "tooltip_placeholder": "Hover text...",
       "sheet": "Sheet",
       "sheet_placeholder": "Select sheet...",
+      "upload_icon": "Upload icon",
       "change_icon": "Change Icon",
       "flow": "Flow",
       "flow_placeholder": "Select flow...",
       "hidden_exploration": "Hidden in exploration",
       "condition": "Condition",
       "effect_hide": "Hide",
-      "effect_disable": "Disable"
+      "effect_disable": "Disable",
+      "tab_visual": "Visual",
+      "tab_behavior": "Behavior",
+      "tab_rules": "Rules",
+      "tab_settings": "Settings",
+      "no_flow_hint": "No flow assigned. This pin is not clickable in exploration."
     },
     "zone_properties": {
       "walkable": "Walkable area",

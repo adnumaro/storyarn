@@ -58,8 +58,9 @@ export function useMovement({
 
     walkableZones = zones.filter(isMovementWalkableZone);
 
-    leaderPin = pins.find((p) => p.isLeader && p.isPlayable) || null;
-    partyPins = pins.filter((p) => p.isPlayable && !p.isLeader);
+    const playablePins = pins.filter(isMovementPlayablePin);
+    leaderPin = playablePins.find((p) => p.isLeader) || null;
+    partyPins = playablePins.filter((p) => !p.isLeader);
 
     if (leaderPin) {
       leaderCurrentX = leaderPin.positionX;
@@ -369,4 +370,8 @@ export function isMovementWalkableZone(zone: ExplorationZone): boolean {
     zone.vertices.length >= 3 &&
     zone.visibility !== "hide"
   );
+}
+
+export function isMovementPlayablePin(pin: ExplorationPin): boolean {
+  return pin.isPlayable && pin.visibility !== "hide" && pin.visibility !== "disable";
 }
