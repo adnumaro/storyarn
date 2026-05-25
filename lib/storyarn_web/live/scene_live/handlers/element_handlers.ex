@@ -40,6 +40,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
 
   @connection_editable_fields ~w(
     line_style line_width color label bidirectional show_label
+    from_stop to_stop from_pause_ms to_pause_ms
   )
 
   @annotation_editable_fields ~w(text position_x position_y font_size color layer_id locked)
@@ -562,12 +563,16 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   # Connection handlers
   # ---------------------------------------------------------------------------
 
-  @doc "Creates a connection between two pins."
-  def handle_create_connection(%{"from_pin_id" => from_pin_id, "to_pin_id" => to_pin_id}, socket) do
-    attrs = %{
-      "from_pin_id" => from_pin_id,
-      "to_pin_id" => to_pin_id
-    }
+  @doc "Creates a route between pinned or free points."
+  def handle_create_connection(params, socket) do
+    attrs =
+      %{
+        "from_pin_id" => params["from_pin_id"],
+        "to_pin_id" => params["to_pin_id"],
+        "waypoints" => params["waypoints"] || []
+      }
+      |> Enum.reject(fn {_key, value} -> value in [nil, ""] end)
+      |> Map.new()
 
     case Scenes.create_connection(socket.assigns.scene.id, attrs) do
       {:ok, conn} ->
@@ -1096,18 +1101,32 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
 
   defp do_clear_connection_waypoints(socket, conn) do
     prev_waypoints = conn.waypoints || []
+    next_waypoints = straightened_connection_waypoints(conn)
 
-    case Scenes.update_connection_waypoints(conn, %{"waypoints" => []}) do
+    case Scenes.update_connection_waypoints(conn, %{"waypoints" => next_waypoints}) do
       {:ok, updated} ->
         {:noreply,
          socket
-         |> push_undo({:update_connection_waypoints, conn.id, prev_waypoints, []})
+         |> push_undo({:update_connection_waypoints, conn.id, prev_waypoints, next_waypoints})
+         |> assign(:connections, replace_in_list(socket.assigns.connections, updated))
          |> assign(:selected_element, updated)
          |> assign(:_broadcast, {:connection_updated, %{id: updated.id}})
          |> push_event("connection_updated", serialize_connection(updated))}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not clear waypoints."))}
+    end
+  end
+
+  defp straightened_connection_waypoints(%{from_pin_id: from_pin_id, to_pin_id: to_pin_id, waypoints: waypoints}) do
+    waypoints = waypoints || []
+
+    cond do
+      from_pin_id && to_pin_id -> []
+      from_pin_id -> List.wrap(List.last(waypoints))
+      to_pin_id -> Enum.take(waypoints, 1)
+      length(waypoints) <= 2 -> waypoints
+      true -> [List.first(waypoints), List.last(waypoints)]
     end
   end
 

@@ -305,7 +305,11 @@ defmodule StoryarnWeb.VersionViewerLive do
       showLabel: conn.show_label,
       waypoints: conn.waypoints,
       fromPinId: conn.from_pin_id,
-      toPinId: conn.to_pin_id
+      toPinId: conn.to_pin_id,
+      fromStop: conn.from_stop,
+      toStop: conn.to_stop,
+      fromPauseMs: conn.from_pause_ms,
+      toPauseMs: conn.to_pause_ms
     }
   end
 

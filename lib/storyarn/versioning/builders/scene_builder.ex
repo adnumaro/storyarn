@@ -15,6 +15,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
   alias Ecto.Multi
   alias Storyarn.Repo
+  alias Storyarn.Scenes.RoutePoints
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.SceneAnnotation
   alias Storyarn.Scenes.SceneConnection
@@ -61,13 +62,10 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
     connection_snapshots =
       scene.connections
-      |> Enum.filter(fn conn ->
-        Map.has_key?(pin_index_map, conn.from_pin_id) and
-          Map.has_key?(pin_index_map, conn.to_pin_id)
-      end)
+      |> Enum.filter(&snapshotable_connection?(&1, pin_index_map))
       |> Enum.sort_by(fn conn ->
-        {layer_idx, pin_idx} = Map.get(pin_index_map, conn.from_pin_id)
-        {layer_idx, pin_idx}
+        {layer_idx, pin_idx} = Map.get(pin_index_map, conn.from_pin_id, {999_999, conn.id})
+        {layer_idx, pin_idx, conn.id}
       end)
       |> Enum.map(&connection_to_snapshot(&1, pin_index_map))
 
@@ -223,8 +221,8 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   end
 
   defp connection_to_snapshot(%SceneConnection{} = conn, pin_index_map) do
-    {from_layer_idx, from_pin_idx} = Map.fetch!(pin_index_map, conn.from_pin_id)
-    {to_layer_idx, to_pin_idx} = Map.fetch!(pin_index_map, conn.to_pin_id)
+    {from_layer_idx, from_pin_idx} = optional_pin_index(pin_index_map, conn.from_pin_id)
+    {to_layer_idx, to_pin_idx} = optional_pin_index(pin_index_map, conn.to_pin_id)
 
     %{
       "original_id" => conn.id,
@@ -238,9 +236,25 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       "label" => conn.label,
       "bidirectional" => conn.bidirectional,
       "show_label" => conn.show_label,
-      "waypoints" => conn.waypoints
+      "waypoints" => conn.waypoints,
+      "from_stop" => conn.from_stop,
+      "to_stop" => conn.to_stop,
+      "from_pause_ms" => conn.from_pause_ms,
+      "to_pause_ms" => conn.to_pause_ms
     }
   end
+
+  defp snapshotable_connection?(conn, pin_index_map) do
+    RoutePoints.enough_points?(conn.from_pin_id, conn.to_pin_id, conn.waypoints) and
+      optional_pin_in_snapshot?(pin_index_map, conn.from_pin_id) and
+      optional_pin_in_snapshot?(pin_index_map, conn.to_pin_id)
+  end
+
+  defp optional_pin_in_snapshot?(_pin_index_map, nil), do: true
+  defp optional_pin_in_snapshot?(pin_index_map, pin_id), do: Map.has_key?(pin_index_map, pin_id)
+
+  defp optional_pin_index(_pin_index_map, nil), do: {nil, nil}
+  defp optional_pin_index(pin_index_map, pin_id), do: Map.fetch!(pin_index_map, pin_id)
 
   # ========== Restore Snapshot ==========
 
@@ -705,24 +719,12 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
     entries =
       connections_data
-      |> Enum.filter(fn conn ->
-        from = Map.get(pin_index_maps, conn["from_layer_index"])
-        to = Map.get(pin_index_maps, conn["to_layer_index"])
-
-        from != nil and to != nil and
-          conn["from_pin_index"] >= 0 and
-          conn["from_pin_index"] < from.count and
-          conn["to_pin_index"] >= 0 and
-          conn["to_pin_index"] < to.count
-      end)
+      |> Enum.filter(&restorable_connection?(&1, pin_index_maps))
       |> Enum.map(fn conn ->
-        from = Map.fetch!(pin_index_maps, conn["from_layer_index"])
-        to = Map.fetch!(pin_index_maps, conn["to_layer_index"])
-
         %{
           scene_id: scene_id,
-          from_pin_id: Map.fetch!(from.map, conn["from_pin_index"]),
-          to_pin_id: Map.fetch!(to.map, conn["to_pin_index"]),
+          from_pin_id: lookup_snapshot_pin(pin_index_maps, conn["from_layer_index"], conn["from_pin_index"]),
+          to_pin_id: lookup_snapshot_pin(pin_index_maps, conn["to_layer_index"], conn["to_pin_index"]),
           line_style: conn["line_style"] || "solid",
           line_width: conn["line_width"] || 2,
           color: conn["color"],
@@ -730,6 +732,10 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
           bidirectional: Map.get(conn, "bidirectional", true),
           show_label: Map.get(conn, "show_label", true),
           waypoints: conn["waypoints"] || [],
+          from_stop: Map.get(conn, "from_stop", true),
+          to_stop: Map.get(conn, "to_stop", true),
+          from_pause_ms: conn["from_pause_ms"],
+          to_pause_ms: conn["to_pause_ms"],
           inserted_at: now,
           updated_at: now
         }
@@ -1027,7 +1033,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
         to_pin_id =
           lookup_scene_pin(pin_ids_by_layer, conn["to_layer_index"], conn["to_pin_index"])
 
-        if from_pin_id && to_pin_id do
+        if RoutePoints.enough_points?(from_pin_id, to_pin_id, conn["waypoints"] || []) do
           entry =
             Map.merge(
               %{
@@ -1040,7 +1046,11 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
                 label: conn["label"],
                 bidirectional: Map.get(conn, "bidirectional", true),
                 show_label: Map.get(conn, "show_label", true),
-                waypoints: conn["waypoints"] || []
+                waypoints: conn["waypoints"] || [],
+                from_stop: Map.get(conn, "from_stop", true),
+                to_stop: Map.get(conn, "to_stop", true),
+                from_pause_ms: conn["from_pause_ms"],
+                to_pause_ms: conn["to_pause_ms"]
               },
               MaterializationHelpers.timestamps(now)
             )
@@ -1063,10 +1073,47 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     end
   end
 
+  defp lookup_scene_pin(_pin_ids_by_layer, nil, nil), do: nil
+
   defp lookup_scene_pin(pin_ids_by_layer, layer_idx, pin_idx) do
     pin_ids_by_layer
     |> Map.get(layer_idx, [])
     |> Enum.at(pin_idx)
+  end
+
+  defp restorable_connection?(conn, pin_index_maps) do
+    refs_valid? =
+      restorable_pin_ref?(pin_index_maps, conn["from_layer_index"], conn["from_pin_index"]) and
+        restorable_pin_ref?(pin_index_maps, conn["to_layer_index"], conn["to_pin_index"])
+
+    if refs_valid? do
+      from_pin_id = lookup_snapshot_pin(pin_index_maps, conn["from_layer_index"], conn["from_pin_index"])
+      to_pin_id = lookup_snapshot_pin(pin_index_maps, conn["to_layer_index"], conn["to_pin_index"])
+
+      RoutePoints.enough_points?(from_pin_id, to_pin_id, conn["waypoints"] || [])
+    else
+      false
+    end
+  end
+
+  defp restorable_pin_ref?(_pin_index_maps, nil, nil), do: true
+
+  defp restorable_pin_ref?(pin_index_maps, layer_idx, pin_idx) when is_integer(pin_idx) do
+    case Map.get(pin_index_maps, layer_idx) do
+      nil -> false
+      layer -> pin_idx >= 0 and pin_idx < layer.count
+    end
+  end
+
+  defp restorable_pin_ref?(_pin_index_maps, _layer_idx, _pin_idx), do: false
+
+  defp lookup_snapshot_pin(_pin_index_maps, nil, nil), do: nil
+
+  defp lookup_snapshot_pin(pin_index_maps, layer_idx, pin_idx) do
+    pin_index_maps
+    |> Map.fetch!(layer_idx)
+    |> Map.fetch!(:map)
+    |> Map.fetch!(pin_idx)
   end
 
   defp resolve_scene_background_asset(_asset_id, _snapshot, _project_id, opts) when not is_list(opts), do: nil
@@ -1083,7 +1130,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   @pin_compare_fields ~w(pin_type icon color opacity label shortcut hidden size flow_id tooltip sheet_id icon_asset_id condition condition_effect locked)
   @zone_compare_fields ~w(name shortcut hidden vertices fill_color border_color border_width border_style opacity target_type target_id tooltip action_type action_data label_mode label_font_size label_font_family label_font_weight label_font_style label_icon_asset_id condition condition_effect locked)
   @annotation_compare_fields ~w(text font_size color locked)
-  @connection_compare_fields ~w(line_style line_width color label bidirectional show_label)
+  @connection_compare_fields ~w(line_style line_width color label bidirectional show_label waypoints from_stop to_stop from_pause_ms to_pause_ms)
 
   @impl true
   def diff_snapshots(old_snapshot, new_snapshot) do
@@ -1306,32 +1353,35 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       old_conns
       |> Enum.with_index()
       |> Enum.map(fn {conn, idx} ->
-        from_key = {conn["from_layer_index"], conn["from_pin_index"]}
-        to_key = {conn["to_layer_index"], conn["to_pin_index"]}
-
-        case {Map.get(pin_index_remap, from_key), Map.get(pin_index_remap, to_key)} do
-          {{new_fl, new_fp}, {new_tl, new_tp}} ->
-            conn
-            |> Map.put("from_layer_index", new_fl)
-            |> Map.put("from_pin_index", new_fp)
-            |> Map.put("to_layer_index", new_tl)
-            |> Map.put("to_pin_index", new_tp)
-
-          _ ->
-            # Pin was removed — use unique sentinel to ensure this appears as removed
-            conn
-            |> Map.put("from_layer_index", {:removed, idx})
-            |> Map.put("from_pin_index", {:removed, idx})
-            |> Map.put("to_layer_index", {:removed, idx})
-            |> Map.put("to_pin_index", {:removed, idx})
-        end
+        conn
+        |> Map.put("__diff_index", idx)
+        |> remap_connection_endpoint("from", pin_index_remap, idx)
+        |> remap_connection_endpoint("to", pin_index_remap, idx)
       end)
 
-    key_fn = fn conn ->
+    indexed_new_conns =
+      new_conns
+      |> Enum.with_index()
+      |> Enum.map(fn {conn, idx} -> Map.put(conn, "__diff_index", idx) end)
+
+    original_id_key_fn = fn conn ->
+      if conn["original_id"], do: {:original_id, conn["original_id"]}
+    end
+
+    endpoint_key_fn = fn conn ->
       {conn["from_layer_index"], conn["from_pin_index"], conn["to_layer_index"], conn["to_pin_index"]}
     end
 
-    {matched, added, removed} = DiffHelpers.match_by_keys(remapped_old_conns, new_conns, [key_fn])
+    free_route_key_fn = fn conn ->
+      if free_route?(conn), do: {:free_route, conn["__diff_index"]}
+    end
+
+    {matched, added, removed} =
+      DiffHelpers.match_by_keys(remapped_old_conns, indexed_new_conns, [
+        original_id_key_fn,
+        free_route_key_fn,
+        endpoint_key_fn
+      ])
 
     {modified, _unchanged} =
       DiffHelpers.find_modified(matched, fn old, new ->
@@ -1348,6 +1398,30 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     |> append_modified_items(modified, :connection, fn _new ->
       dgettext("scenes", "Modified connection")
     end)
+  end
+
+  defp remap_connection_endpoint(conn, prefix, pin_index_remap, idx) do
+    layer_key = "#{prefix}_layer_index"
+    pin_key = "#{prefix}_pin_index"
+    layer_idx = conn[layer_key]
+    pin_idx = conn[pin_key]
+
+    {new_layer_idx, new_pin_idx} = remap_optional_connection_endpoint(layer_idx, pin_idx, pin_index_remap, prefix, idx)
+
+    conn
+    |> Map.put(layer_key, new_layer_idx)
+    |> Map.put(pin_key, new_pin_idx)
+  end
+
+  defp remap_optional_connection_endpoint(nil, nil, _pin_index_remap, _prefix, _idx), do: {nil, nil}
+
+  defp remap_optional_connection_endpoint(layer_idx, pin_idx, pin_index_remap, prefix, idx) do
+    Map.get(pin_index_remap, {layer_idx, pin_idx}, {{:removed, prefix, idx}, {:removed, prefix, idx}})
+  end
+
+  defp free_route?(conn) do
+    is_nil(conn["from_layer_index"]) and is_nil(conn["from_pin_index"]) and
+      is_nil(conn["to_layer_index"]) and is_nil(conn["to_pin_index"])
   end
 
   # Generic helpers for building change lists

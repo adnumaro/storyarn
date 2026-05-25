@@ -200,7 +200,11 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneSerializer do
       label: conn.label,
       show_label: conn.show_label,
       bidirectional: conn.bidirectional,
-      waypoints: conn.waypoints || []
+      waypoints: conn.waypoints || [],
+      from_stop: Map.get(conn, :from_stop, true),
+      to_stop: Map.get(conn, :to_stop, true),
+      from_pause_ms: Map.get(conn, :from_pause_ms),
+      to_pause_ms: Map.get(conn, :to_pause_ms)
     }
   end
 

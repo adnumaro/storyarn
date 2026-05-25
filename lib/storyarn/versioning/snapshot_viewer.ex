@@ -6,6 +6,7 @@ defmodule Storyarn.Versioning.SnapshotViewer do
   """
 
   alias Storyarn.Flows.HubColors
+  alias Storyarn.Scenes.RoutePoints
 
   @doc """
   Serializes a flow snapshot into the shape expected by the FlowCanvas JS hook.
@@ -53,7 +54,7 @@ defmodule Storyarn.Versioning.SnapshotViewer do
       |> Map.get("connections", [])
       |> Enum.with_index()
       |> Enum.map(&serialize_scene_connection(&1, pin_id_map))
-      |> Enum.filter(fn conn -> conn.from_pin_id != nil and conn.to_pin_id != nil end)
+      |> Enum.filter(&route_has_two_points?/1)
 
     build_scene_result(snapshot, asset_metadata, serialized_layers, serialized_connections)
   end
@@ -264,8 +265,16 @@ defmodule Storyarn.Versioning.SnapshotViewer do
       label: conn["label"],
       show_label: Map.get(conn, "show_label", true),
       bidirectional: Map.get(conn, "bidirectional", true),
-      waypoints: conn["waypoints"] || []
+      waypoints: conn["waypoints"] || [],
+      from_stop: Map.get(conn, "from_stop", true),
+      to_stop: Map.get(conn, "to_stop", true),
+      from_pause_ms: conn["from_pause_ms"],
+      to_pause_ms: conn["to_pause_ms"]
     }
+  end
+
+  defp route_has_two_points?(conn) do
+    RoutePoints.enough_points?(conn.from_pin_id, conn.to_pin_id, conn.waypoints)
   end
 
   defp build_scene_result(snapshot, asset_metadata, serialized_layers, serialized_connections) do

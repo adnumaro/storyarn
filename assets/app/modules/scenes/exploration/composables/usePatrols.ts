@@ -1,5 +1,6 @@
 import { onUnmounted, ref, watch, type ComputedRef, type Ref } from "vue";
 import type { Node as KonvaNode } from "konva/lib/Node";
+import type { ScenePatrolRoutePoint } from "@modules/scenes/types/routes";
 
 const PATROL_BASE_SPEED = 8; // %/s
 const ARRIVAL_THRESHOLD = 0.3; // %
@@ -10,12 +11,6 @@ interface PixelPoint {
   y: number;
 }
 
-interface RoutePoint {
-  x: number;
-  y: number;
-  isPinStop?: boolean;
-}
-
 interface PatrolPin {
   id: number | string;
   positionX: number;
@@ -23,7 +18,7 @@ interface PatrolPin {
   isPlayable: boolean;
   visibility: string;
   patrolMode: string | null;
-  patrolRoute: RoutePoint[] | null;
+  patrolRoute: ScenePatrolRoutePoint[] | null;
   patrolPauseMs: number;
   patrolSpeed: number | null;
 }
@@ -158,15 +153,17 @@ export function usePatrols({ explorationPins, percentToPixel, getPinNode }: UseP
     return true;
   }
 
-  function handleArrival(pin: PatrolPin, state: PatrolState, target: RoutePoint): void {
-    if (target.isPinStop && pin.patrolPauseMs > 0) {
+  function handleArrival(pin: PatrolPin, state: PatrolState, target: ScenePatrolRoutePoint): void {
+    const pauseMs = target.pauseMs ?? (target.isPinStop ? pin.patrolPauseMs : 0);
+
+    if ((target.isStop || target.isPinStop) && pauseMs > 0) {
       state.paused = true;
       state.pauseTimer = setTimeout(() => {
         state.paused = false;
         state.pauseTimer = null;
         advanceIndex(pin, state);
         ensureLoop();
-      }, pin.patrolPauseMs);
+      }, pauseMs);
     } else {
       advanceIndex(pin, state);
     }
@@ -241,34 +238,6 @@ export function usePatrols({ explorationPins, percentToPixel, getPinNode }: UseP
     ensureLoop();
   }
 
-  // --- Per-pin pause/resume ---
-
-  function pausePin(pinId: number | string): void {
-    const state = patrolStates[pinId];
-    if (!state) {
-      return;
-    }
-    if (state.pauseTimer) {
-      clearTimeout(state.pauseTimer);
-      state.pauseTimer = null;
-    }
-    state.moving = false;
-  }
-
-  function resumePin(pinId: number | string): void {
-    const state = patrolStates[pinId];
-    if (!state) {
-      return;
-    }
-    const pin = patrolPins.find((p) => p.id === pinId);
-    if (!pin || !pin.patrolRoute || pin.patrolRoute.length < 2) {
-      return;
-    }
-    state.moving = true;
-    state.paused = false;
-    ensureLoop();
-  }
-
   // --- Cleanup ---
 
   function cleanup(): void {
@@ -288,7 +257,5 @@ export function usePatrols({ explorationPins, percentToPixel, getPinNode }: UseP
   return {
     pause,
     resume,
-    pausePin,
-    resumePin,
   };
 }

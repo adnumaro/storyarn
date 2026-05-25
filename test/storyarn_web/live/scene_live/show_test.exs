@@ -1443,6 +1443,52 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       assert connection.to_pin_id == pin2.id
     end
 
+    test "creates free route from waypoint points", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project)
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
+        )
+
+      render_hook(view, "create_connection", %{
+        "waypoints" => [
+          %{"x" => 10.0, "y" => 15.0, "stop" => true},
+          %{"x" => 80.0, "y" => 75.0, "stop" => true}
+        ]
+      })
+
+      [connection] = Scenes.list_connections(scene.id)
+      assert is_nil(connection.from_pin_id)
+      assert is_nil(connection.to_pin_id)
+      assert length(connection.waypoints) == 2
+      assert Enum.all?(connection.waypoints, & &1["stop"])
+    end
+
+    test "creates route from pin to free endpoint", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project)
+      pin = pin_fixture(scene, %{"label" => "Start", "position_x" => 10.0, "position_y" => 10.0})
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
+        )
+
+      render_hook(view, "create_connection", %{
+        "from_pin_id" => pin.id,
+        "waypoints" => [%{"x" => 80.0, "y" => 75.0, "stop" => true}]
+      })
+
+      [connection] = Scenes.list_connections(scene.id)
+      assert connection.from_pin_id == pin.id
+      assert is_nil(connection.to_pin_id)
+      assert connection.waypoints == [%{"x" => 80.0, "y" => 75.0, "stop" => true}]
+    end
+
     test "rejects connection from pin to itself", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
@@ -2804,6 +2850,35 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       updated = Scenes.get_connection!(scene.id, connection.id)
       assert updated.waypoints == []
+    end
+
+    test "clear_connection_waypoints preserves free route endpoints", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project)
+
+      {:ok, connection} =
+        Scenes.create_connection(scene.id, %{
+          "waypoints" => [
+            %{"x" => 10.0, "y" => 10.0, "stop" => true},
+            %{"x" => 40.0, "y" => 60.0},
+            %{"x" => 90.0, "y" => 90.0, "stop" => true}
+          ]
+        })
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
+        )
+
+      render_click(view, "clear_connection_waypoints", %{"id" => to_string(connection.id)})
+
+      updated = Scenes.get_connection!(scene.id, connection.id)
+
+      assert updated.waypoints == [
+               %{"x" => 10.0, "y" => 10.0, "stop" => true},
+               %{"x" => 90.0, "y" => 90.0, "stop" => true}
+             ]
     end
 
     test "rejected for viewer", %{conn: conn, user: user} do

@@ -74,7 +74,9 @@ const EVENT_FIELD_ALIASES: Record<string, string> = {
   fill_color: "fillColor",
   flow_id: "flowId",
   font_size: "fontSize",
+  from_pause_ms: "fromPauseMs",
   from_pin_id: "fromPinId",
+  from_stop: "fromStop",
   hidden: "hidden",
   icon_asset_url: "iconAssetUrl",
   id: "id",
@@ -109,6 +111,8 @@ const EVENT_FIELD_ALIASES: Record<string, string> = {
   target_type: "targetType",
   text: "text",
   to_pin_id: "toPinId",
+  to_pause_ms: "toPauseMs",
+  to_stop: "toStop",
   vertices: "vertices",
   waypoints: "waypoints",
 };

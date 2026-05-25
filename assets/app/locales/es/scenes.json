@@ -187,7 +187,12 @@
     },
     "connection_properties": {
       "no_waypoints": "Sin puntos de ruta",
-      "straighten": "Enderezar camino"
+      "straighten": "Enderezar camino",
+      "stops": "Paradas",
+      "start_pin_stop": "Parada en pin inicial",
+      "end_pin_stop": "Parada en pin final",
+      "waypoint_stop": "Parada en waypoint {number}",
+      "pause_ms": "Pausa (ms)"
     },
     "pin_properties": {
       "shortcut": "Atajo",
@@ -272,7 +277,7 @@
       "ping_pong": "Ping-pong",
       "one_way": "Solo ida",
       "speed": "Velocidad",
-      "pause_waypoints": "Pausa en puntos de ruta (ms)",
+      "pause_waypoints": "Pausa en pines de la ruta (ms)",
       "mode_placeholder": "Seleccionar modo..."
     },
     "pin_playable": {

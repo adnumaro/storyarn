@@ -848,6 +848,42 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       assert pin["visibility"] == "hide"
     end
 
+    test "patrol route includes configurable waypoint stops", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project, %{name: "Patrol Route World"})
+
+      pin =
+        pin_fixture(scene, %{
+          "label" => "Guard",
+          "position_x" => 10.0,
+          "position_y" => 10.0,
+          "patrol_mode" => "one_way",
+          "patrol_pause_ms" => 500
+        })
+
+      {:ok, _connection} =
+        Scenes.create_connection(scene.id, %{
+          "from_pin_id" => pin.id,
+          "waypoints" => [
+            %{"x" => 30.0, "y" => 40.0, "stop" => true, "pauseMs" => 1200}
+          ]
+        })
+
+      {:ok, view, _html} = live(conn, explore_path(project, scene))
+
+      vue = get_exploration_vue(view)
+      data = vue.props["exploration-data"]
+      pin_data = Enum.find(data["pins"], &(&1["label"] == "Guard"))
+      route = pin_data["patrolRoute"]
+
+      assert length(route) == 2
+      waypoint = List.last(route)
+      assert waypoint["x"] == 30.0
+      assert waypoint["y"] == 40.0
+      assert waypoint["isStop"] == true
+      assert waypoint["pauseMs"] == 1200
+    end
+
     test "zones with empty condition map are visible", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Empty Condition World"})

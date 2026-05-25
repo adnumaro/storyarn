@@ -337,15 +337,19 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
   defp serialize_scene_connection(conn) do
     %{
       "id" => to_string(conn.id),
-      "from_pin_id" => to_string(conn.from_pin_id),
-      "to_pin_id" => to_string(conn.to_pin_id),
+      "from_pin_id" => maybe_to_string(conn.from_pin_id),
+      "to_pin_id" => maybe_to_string(conn.to_pin_id),
       "line_style" => conn.line_style,
       "line_width" => conn.line_width,
       "color" => conn.color,
       "label" => conn.label,
       "show_label" => conn.show_label,
       "bidirectional" => conn.bidirectional,
-      "waypoints" => conn.waypoints || []
+      "waypoints" => conn.waypoints || [],
+      "from_stop" => conn.from_stop,
+      "to_stop" => conn.to_stop,
+      "from_pause_ms" => conn.from_pause_ms,
+      "to_pause_ms" => conn.to_pause_ms
     }
   end
 

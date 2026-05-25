@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, toRef } from "vue";
 import type Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
+import type { ScenePatrolRoutePoint, SceneRouteConnection } from "@modules/scenes/types/routes";
 import { useLive } from "@shared/composables/useLive";
 import type { LayerData } from "../../canvas/composables/useLayerVisibility";
 import { useConnections } from "../../canvas/composables/useConnections";
@@ -42,7 +43,7 @@ interface ExplorationPin {
   isLeader: boolean;
   flowId: number | string | null;
   patrolMode: string | null;
-  patrolRoute: { x: number; y: number; isPinStop?: boolean }[] | null;
+  patrolRoute: ScenePatrolRoutePoint[] | null;
   patrolPauseMs: number;
   patrolSpeed: number | null;
   [key: string]: unknown;
@@ -76,24 +77,10 @@ interface ExplorationZone {
   [key: string]: unknown;
 }
 
-interface ExplorationConnection {
-  id: number | string;
-  fromPinId: number | string;
-  toPinId: number | string;
-  waypoints: { x: number; y: number }[] | null;
-  color: string | null;
-  lineWidth: number | null;
-  lineStyle: string | null;
-  label: string | null;
-  showLabel: boolean;
-  bidirectional: boolean;
-  [key: string]: unknown;
-}
-
 interface ExplorationData {
   zones?: ExplorationZone[];
   pins?: ExplorationPin[];
-  connections?: ExplorationConnection[];
+  connections?: SceneRouteConnection[];
 }
 
 const {

@@ -211,7 +211,11 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
         label: "Path",
         show_label: true,
         bidirectional: false,
-        waypoints: [[50, 50]]
+        waypoints: [[50, 50]],
+        from_stop: false,
+        to_stop: true,
+        from_pause_ms: 500,
+        to_pause_ms: nil
       }
 
       result = Serializer.serialize_connection(conn)
@@ -226,7 +230,11 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
                label: "Path",
                show_label: true,
                bidirectional: false,
-               waypoints: [[50, 50]]
+               waypoints: [[50, 50]],
+               from_stop: false,
+               to_stop: true,
+               from_pause_ms: 500,
+               to_pause_ms: nil
              }
     end
 
@@ -246,6 +254,10 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
 
       result = Serializer.serialize_connection(conn)
       assert result.waypoints == []
+      assert result.from_stop == true
+      assert result.to_stop == true
+      assert result.from_pause_ms == nil
+      assert result.to_pause_ms == nil
     end
   end
 

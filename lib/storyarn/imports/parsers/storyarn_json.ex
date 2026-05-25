@@ -13,6 +13,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   alias Storyarn.Localization
   alias Storyarn.Repo
   alias Storyarn.Scenes
+  alias Storyarn.Scenes.RoutePoints
   alias Storyarn.Screenplays
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
@@ -834,10 +835,11 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
     # Build valid connection attrs, filtering out those with missing pin references
     valid_attrs =
       Enum.reduce(connections, [], fn conn_data, acc ->
-        from_pin_id = Map.get(id_map, {:pin, conn_data["from_pin_id"]})
-        to_pin_id = Map.get(id_map, {:pin, conn_data["to_pin_id"]})
+        from_pin_id = remap_optional_pin_id(id_map, conn_data["from_pin_id"])
+        to_pin_id = remap_optional_pin_id(id_map, conn_data["to_pin_id"])
+        waypoints = conn_data["waypoints"] || []
 
-        if from_pin_id && to_pin_id do
+        if RoutePoints.enough_points?(from_pin_id, to_pin_id, waypoints) do
           attrs = %{
             scene_id: scene_id,
             from_pin_id: from_pin_id,
@@ -848,7 +850,11 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
             label: conn_data["label"],
             show_label: Map.get(conn_data, "show_label", true),
             bidirectional: conn_data["bidirectional"] || false,
-            waypoints: conn_data["waypoints"] || [],
+            waypoints: waypoints,
+            from_stop: Map.get(conn_data, "from_stop", true),
+            to_stop: Map.get(conn_data, "to_stop", true),
+            from_pause_ms: conn_data["from_pause_ms"],
+            to_pause_ms: conn_data["to_pause_ms"],
             inserted_at: now,
             updated_at: now
           }
@@ -863,6 +869,10 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
 
     {id_map, results}
   end
+
+  defp remap_optional_pin_id(_id_map, nil), do: nil
+  defp remap_optional_pin_id(_id_map, ""), do: nil
+  defp remap_optional_pin_id(id_map, pin_id), do: Map.get(id_map, {:pin, pin_id})
 
   defp import_annotations(scene_id, annotations, id_map) do
     now = TimeHelpers.now()

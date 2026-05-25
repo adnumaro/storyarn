@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { KonvaEventObject } from "konva/lib/Node";
 import { computed, ref, toRef } from "vue";
+import type { SceneRouteConnection } from "@modules/scenes/types/routes";
 import { useAnnotationEditing } from "../../composables/useAnnotationEditing";
 import { useAnnotations, type AnnotationConfig } from "../../composables/useAnnotations";
 import { useCanvasCreation } from "../../composables/useCanvasCreation";
@@ -74,19 +75,6 @@ interface ZoneData {
   labelIconAssetUrl?: string | null;
 }
 
-interface ConnectionData {
-  id: number | string;
-  fromPinId: number | string;
-  toPinId: number | string;
-  waypoints: { x: number; y: number }[] | null;
-  color: string | null;
-  lineWidth: number | null;
-  lineStyle: string | null;
-  label: string | null;
-  showLabel: boolean;
-  bidirectional: boolean;
-}
-
 interface AnnotationData {
   id: number | string;
   positionX: number;
@@ -129,7 +117,7 @@ const {
   sceneData: SceneDataProps | null;
   pins: PinData[];
   zones: ZoneData[];
-  connections: ConnectionData[];
+  connections: SceneRouteConnection[];
   annotations: AnnotationData[];
   layers: LayerData[];
   activeTool: string;
@@ -208,6 +196,7 @@ const {
 } = useConnectionDrawing({
   stageRef,
   stageConfig,
+  pixelToPercent,
   percentToPixel,
   activeTool: activeToolRef,
   ...editRefs,

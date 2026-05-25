@@ -1,33 +1,9 @@
 <script setup lang="ts">
+import type { RouteWaypointEditorConfigs } from "@modules/scenes/types/routes";
 import type { KonvaEventObject } from "konva/lib/Node";
 
-interface WaypointAnchorConfig {
-  x: number;
-  y: number;
-  radius: number;
-  fill: string;
-  stroke: string;
-  strokeWidth: number;
-  index: number;
-}
-
-interface MidpointAnchorConfig {
-  x: number;
-  y: number;
-  radius: number;
-  fill: string;
-  stroke: string;
-  strokeWidth: number;
-  segmentIndex: number;
-}
-
-interface WaypointEditorConfigs {
-  waypointAnchors: WaypointAnchorConfig[];
-  midpointAnchors: MidpointAnchorConfig[];
-}
-
 const { waypointEditorConfigs = null } = defineProps<{
-  waypointEditorConfigs: WaypointEditorConfigs | null;
+  waypointEditorConfigs: RouteWaypointEditorConfigs | null;
 }>();
 
 const emit = defineEmits<{

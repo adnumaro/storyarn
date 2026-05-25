@@ -187,7 +187,12 @@
     },
     "connection_properties": {
       "no_waypoints": "No waypoints",
-      "straighten": "Straighten path"
+      "straighten": "Straighten path",
+      "stops": "Stops",
+      "start_pin_stop": "Start pin stop",
+      "end_pin_stop": "End pin stop",
+      "waypoint_stop": "Waypoint {number} stop",
+      "pause_ms": "Pause (ms)"
     },
     "pin_properties": {
       "shortcut": "Shortcut",
@@ -272,7 +277,7 @@
       "ping_pong": "Ping-pong",
       "one_way": "One-way",
       "speed": "Speed",
-      "pause_waypoints": "Pause at waypoints (ms)",
+      "pause_waypoints": "Pause at pin stops (ms)",
       "mode_placeholder": "Select mode..."
     },
     "pin_playable": {

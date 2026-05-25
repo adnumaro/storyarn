@@ -97,7 +97,11 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
       "label" => el.label,
       "bidirectional" => el.bidirectional,
       "show_label" => el.show_label,
-      "waypoints" => el.waypoints || []
+      "waypoints" => el.waypoints || [],
+      "from_stop" => el.from_stop,
+      "to_stop" => el.to_stop,
+      "from_pause_ms" => el.from_pause_ms,
+      "to_pause_ms" => el.to_pause_ms
     }
   end
 

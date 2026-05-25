@@ -603,6 +603,56 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       assert Enum.any?(changes, &(&1.category == :connection && &1.action == :modified))
     end
 
+    test "does not report identical free routes as added and removed" do
+      snapshot = %{
+        "name" => "S",
+        "layers" => [],
+        "connections" => [
+          %{
+            "from_layer_index" => nil,
+            "from_pin_index" => nil,
+            "to_layer_index" => nil,
+            "to_pin_index" => nil,
+            "waypoints" => [
+              %{"x" => 10.0, "y" => 10.0},
+              %{"x" => 90.0, "y" => 90.0}
+            ]
+          }
+        ]
+      }
+
+      assert SceneBuilder.diff_snapshots(snapshot, snapshot) == []
+    end
+
+    test "detects route waypoint and stop changes as modified connection" do
+      old = %{
+        "name" => "S",
+        "layers" => [],
+        "connections" => [
+          %{
+            "from_layer_index" => nil,
+            "from_pin_index" => nil,
+            "to_layer_index" => nil,
+            "to_pin_index" => nil,
+            "waypoints" => [
+              %{"x" => 10.0, "y" => 10.0, "stop" => true, "pauseMs" => 500},
+              %{"x" => 90.0, "y" => 90.0}
+            ],
+            "from_stop" => true,
+            "to_stop" => true
+          }
+        ]
+      }
+
+      new = put_in(old, ["connections", Access.at(0), "waypoints", Access.at(0), "pauseMs"], 750)
+
+      changes = SceneBuilder.diff_snapshots(old, new)
+
+      assert Enum.any?(changes, &(&1.category == :connection && &1.action == :modified))
+      refute Enum.any?(changes, &(&1.category == :connection && &1.action == :added))
+      refute Enum.any?(changes, &(&1.category == :connection && &1.action == :removed))
+    end
+
     test "returns empty list for identical snapshots" do
       snapshot = %{
         "name" => "S",
