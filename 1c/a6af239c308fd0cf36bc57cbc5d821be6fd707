@@ -1,0 +1,76 @@
+assets/app/modules/scenes/editor/components/panels/properties/PinProperties.vue
+  s_89a3f1264cbda8::t_7b9dd45692a377 6,18-20,72,76-90
+  s_89a3f1264cbda8::t_7ba439f8bf8cbc 180,182
+  s_89a3f1264cbda8::t_0640f94a6c0942 250-253,255
+  s_89a3f1264cbda8::t_10a40dc2d4df67 3,7,35,59,115-131,142,144,148-152,154,156,165-179,191,193,238-249,254,257-258
+assets/app/locales/es/scenes.json
+  s_89a3f1264cbda8::t_3bd2eea2261a94 198,205-208,210
+  s_89a3f1264cbda8::t_c6e7bcb36a004f 209,228
+priv/docs/es/scene-design/03-pins.md
+  s_89a3f1264cbda8::t_cf2e232ae18d82 21-24
+  s_89a3f1264cbda8::t_e1cf406cf93f32 48,50-53,55,61
+  s_89a3f1264cbda8::t_580869f696a269 5,10,14,26,32-47,49,54,56-57,66,73,75
+  s_89a3f1264cbda8::t_f79aad3f0ee9b4 59,62-64,68,70,72,77
+lib/storyarn_web/live/scene_live/exploration_live.ex
+  s_89a3f1264cbda8::t_f5f3deb0d70e37 1185-1191
+assets/app/locales/en/scenes.json
+  s_89a3f1264cbda8::t_354d64e747efaa 198,205-210
+priv/docs/en/scene-design/06-actions-conditions-exploration.md
+  s_89a3f1264cbda8::t_b4c3663380f1cf 10,26,47,49-50,53-54,64
+assets/app/modules/scenes/exploration/composables/useExplorationInteraction.ts
+  s_89a3f1264cbda8::t_6380aab7209fa4 69-76,108,141
+priv/docs/es/scene-design/06-actions-conditions-exploration.md
+  s_89a3f1264cbda8::t_ddebc225fc98c4 10,26,49-50,53-54,64
+  s_89a3f1264cbda8::t_f5cef541c455e9 47
+test/storyarn_web/live/scene_live/show_test.exs
+  s_89a3f1264cbda8::t_2278d85bbde656 1046-1086
+  s_89a3f1264cbda8::t_fc2fa7b50e4739 1264-1326
+priv/docs/en/scene-design/03-pins.md
+  s_89a3f1264cbda8::t_e059394f9b0391 5,10,14,26-27,32-57,59,61-64,66,68,70,72-73,75,77
+priv/gettext/scenes.pot
+  s_89a3f1264cbda8::t_597dfe8bae486a 772-781
+priv/gettext/es/LC_MESSAGES/scenes.po
+  s_89a3f1264cbda8::t_b681b315334c44 354,359,772-780
+assets/app/modules/scenes/exploration/composables/useMovement.ts
+  s_89a3f1264cbda8::t_d2769f3c0c4342 61-63,374-376
+priv/gettext/en/LC_MESSAGES/scenes.po
+  s_89a3f1264cbda8::t_7fbab60606a772 772-781
+test/storyarn_web/live/scene_live/exploration_live_test.exs
+  s_89a3f1264cbda8::t_c7e1ffd0c9466f 820-850
+priv/docs/en/scene-design/04-connections-routes.md
+  s_89a3f1264cbda8::t_c18534f1e5269d 46
+lib/storyarn_web/live/scene_live/handlers/element_handlers.ex
+  s_89a3f1264cbda8::t_06aef7ea79d9c8 918-919
+  s_89a3f1264cbda8::t_2a3cc35e3b2cf8 847,849,851,855-856,858,866-867,877-878,880,887-917,920-941
+assets/app/test/modules/scenes/exploration/useExplorationInteraction.test.ts
+  s_89a3f1264cbda8::t_9511df9807fed9 1-4,8-48
+  s_89a3f1264cbda8::t_6146e48862e96a 5-7
+lib/storyarn_web/live/scene_live/show.ex
+  s_89a3f1264cbda8::t_37bd9e2c19c439 923
+  s_89a3f1264cbda8::t_a6fb579ebfc47a 915-922,925-926,929-930,933,944,950-952,1949-1956
+assets/app/test/modules/scenes/exploration/useMovement.test.ts
+  s_89a3f1264cbda8::t_0f177538908ee1 2-18,49-58
+priv/docs/es/scene-design/04-connections-routes.md
+  s_89a3f1264cbda8::t_a5ade46e8c3992 42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.1",
+  "base_commit_sha": "1ca6af239c308fd0cf36bc57cbc5d821be6fd707",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_89a3f1264cbda8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e4a48-d037-7852-a91e-119f74a3c0e1",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
