@@ -3406,10 +3406,9 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       assert updated_layer["fogEnabled"] == true
     end
 
-    test "update_layer_fog updates fog color and opacity", %{conn: conn, user: user} do
+    test "update_scene_fog updates global fog color and opacity", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
-      [layer | _] = Scenes.list_layers(scene.id)
 
       {:ok, view, _html} =
         live(
@@ -3417,21 +3416,23 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
-      render_click(view, "update_layer_fog", %{
-        "id" => "#{layer.id}",
+      render_click(view, "update_scene_fog", %{
         "field" => "fog_color",
         "value" => "#ff0000"
       })
 
-      render_click(view, "update_layer_fog", %{
-        "id" => "#{layer.id}",
+      render_click(view, "update_scene_fog", %{
         "field" => "fog_opacity",
         "value" => "0.5"
       })
 
-      updated = Scenes.get_layer!(scene.id, layer.id)
+      updated = Scenes.get_scene!(project.id, scene.id)
       assert updated.fog_color == "#ff0000"
       assert updated.fog_opacity == 0.5
+
+      scene_props = get_scene_canvas_vue(view).props["scene-data"]
+      assert scene_props["fogColor"] == "#ff0000"
+      assert scene_props["fogOpacity"] == 0.5
     end
 
     test "update_layer_fog rejected for viewer", %{conn: conn, user: user} do
@@ -3461,7 +3462,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       assert updated.fog_enabled == false
     end
 
-    test "layer serialization includes fog fields", %{conn: conn, user: user} do
+    test "layer serialization includes fog reveal flag", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
@@ -3474,8 +3475,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       scene_data = extract_scene_data(view)
       [layer_data | _] = scene_data["layers"]
       assert Map.has_key?(layer_data, "fog_enabled")
-      assert Map.has_key?(layer_data, "fog_color")
-      assert Map.has_key?(layer_data, "fog_opacity")
+      refute Map.has_key?(layer_data, "fog_color")
+      refute Map.has_key?(layer_data, "fog_opacity")
     end
   end
 

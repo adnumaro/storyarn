@@ -668,7 +668,9 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
       "default_center_x" => scene_data["default_center_x"],
       "default_center_y" => scene_data["default_center_y"],
       "scale_unit" => scene_data["scale_unit"],
-      "scale_value" => scene_data["scale_value"]
+      "scale_value" => scene_data["scale_value"],
+      "fog_color" => scene_data["fog_color"] || "#000000",
+      "fog_opacity" => scene_data["fog_opacity"] || 0.85
     }
 
     scene =
@@ -694,9 +696,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         "is_default" => layer_data["is_default"] || false,
         "position" => layer_data["position"] || 0,
         "visible" => Map.get(layer_data, "visible", true),
-        "fog_enabled" => layer_data["fog_enabled"] || false,
-        "fog_color" => layer_data["fog_color"],
-        "fog_opacity" => layer_data["fog_opacity"]
+        "fog_enabled" => layer_data["fog_enabled"] || false
       }
 
       layer =

@@ -3,6 +3,7 @@ import { computed, type Ref, type ComputedRef } from "vue";
 export interface LayerData {
   id: number | string;
   visible: boolean;
+  fogEnabled?: boolean;
 }
 
 /**

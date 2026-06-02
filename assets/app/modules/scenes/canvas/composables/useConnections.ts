@@ -55,6 +55,7 @@ interface LabelConfig {
 
 export interface ConnectionConfig {
   id: number | string;
+  connectedLayerIds: (number | string)[];
   points: number[];
   stroke: string;
   fill: string;
@@ -114,6 +115,7 @@ function buildConnectionConfig(
   conn: SceneRouteConnection,
   points: number[],
   pixelPath: PixelPoint[],
+  connectedLayerIds: (number | string)[],
   isSelected: boolean,
   listening: boolean,
 ): ConnectionConfig {
@@ -121,6 +123,7 @@ function buildConnectionConfig(
   const strokeWidth = conn.lineWidth || DEFAULT_WIDTH;
   return {
     id: conn.id,
+    connectedLayerIds,
     points,
     stroke: color,
     fill: color,
@@ -170,6 +173,14 @@ export function useConnections({
     for (const pin of pins.value) {
       const dims = PIN_SIZES[pin.size || "md"] || PIN_SIZES.md;
       map[pin.id] = dims.diameter / 2;
+    }
+    return map;
+  });
+
+  const pinLayerIds = computed<Record<string | number, number | string | null>>(() => {
+    const map: Record<string | number, number | string | null> = {};
+    for (const pin of pins.value) {
+      map[pin.id] = pin.layerId;
     }
     return map;
   });
@@ -233,6 +244,22 @@ export function useConnections({
     return points;
   }
 
+  function connectedLayerIds(conn: SceneRouteConnection): (number | string)[] {
+    const ids: (number | string)[] = [];
+    const fromLayerId = conn.fromPinId !== null ? pinLayerIds.value[conn.fromPinId] : null;
+    const toLayerId = conn.toPinId !== null ? pinLayerIds.value[conn.toPinId] : null;
+
+    if (fromLayerId != null) {
+      ids.push(fromLayerId);
+    }
+
+    if (toLayerId != null && !ids.some((id) => String(id) === String(toLayerId))) {
+      ids.push(toLayerId);
+    }
+
+    return ids;
+  }
+
   const connectionConfigs = computed<ConnectionConfig[]>(() => {
     const result: ConnectionConfig[] = [];
 
@@ -246,7 +273,14 @@ export function useConnections({
 
       const isSelected = selectedType?.value === "connection" && selectedId?.value === conn.id;
       result.push(
-        buildConnectionConfig(conn, points, pixelPath, isSelected, isSelectMode?.value ?? false),
+        buildConnectionConfig(
+          conn,
+          points,
+          pixelPath,
+          connectedLayerIds(conn),
+          isSelected,
+          isSelectMode?.value ?? false,
+        ),
       );
     }
 

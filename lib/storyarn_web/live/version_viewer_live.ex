@@ -224,6 +224,8 @@ defmodule StoryarnWeb.VersionViewerLive do
       defaultCenterY: viewer.default_center_y,
       scaleUnit: viewer.scale_unit,
       scaleValue: viewer.scale_value,
+      fogColor: Map.get(viewer, :fog_color, "#000000"),
+      fogOpacity: Map.get(viewer, :fog_opacity, 0.85),
       explorationDisplayMode: Map.get(viewer, :exploration_display_mode),
       backgroundUrl: viewer.background_url
     }
@@ -236,9 +238,7 @@ defmodule StoryarnWeb.VersionViewerLive do
       visible: layer.visible,
       isDefault: layer.is_default,
       position: layer.position,
-      fogEnabled: layer.fog_enabled,
-      fogColor: layer.fog_color,
-      fogOpacity: layer.fog_opacity
+      fogEnabled: layer.fog_enabled
     }
   end
 

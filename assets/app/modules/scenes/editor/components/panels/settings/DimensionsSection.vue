@@ -6,7 +6,7 @@ const { width = 1000, height = 1000 } = defineProps<{
 </script>
 
 <template>
-  <div class="pt-2 border-t border-border">
+  <div class="space-y-0.5">
     <label class="text-xs font-medium text-muted-foreground">{{
       $t("scenes.settings.dimensions")
     }}</label>

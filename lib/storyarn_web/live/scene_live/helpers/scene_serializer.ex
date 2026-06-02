@@ -22,6 +22,8 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneSerializer do
       background_url: background_url(map),
       scale_unit: map.scale_unit,
       scale_value: map.scale_value,
+      fog_color: Map.get(map, :fog_color, "#000000") || "#000000",
+      fog_opacity: Map.get(map, :fog_opacity, 0.85) || 0.85,
       can_edit: can_edit,
       boundary_vertices: boundary_vertices(map),
       layers: Enum.map(map.layers || [], &serialize_layer/1),
@@ -70,9 +72,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneSerializer do
       visible: layer.visible,
       is_default: layer.is_default,
       position: layer.position,
-      fog_enabled: layer.fog_enabled,
-      fog_color: layer.fog_color,
-      fog_opacity: layer.fog_opacity
+      fog_enabled: layer.fog_enabled
     }
   end
 

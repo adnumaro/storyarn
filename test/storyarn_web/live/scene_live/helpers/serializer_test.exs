@@ -13,9 +13,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
         visible: true,
         is_default: true,
         position: 0,
-        fog_enabled: false,
-        fog_color: "#000000",
-        fog_opacity: 0.5
+        fog_enabled: false
       }
 
       result = Serializer.serialize_layer(layer)
@@ -26,9 +24,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
                visible: true,
                is_default: true,
                position: 0,
-               fog_enabled: false,
-               fog_color: "#000000",
-               fog_opacity: 0.5
+               fog_enabled: false
              }
     end
   end
@@ -461,9 +457,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
             visible: true,
             is_default: true,
             position: 0,
-            fog_enabled: false,
-            fog_color: nil,
-            fog_opacity: nil
+            fog_enabled: false
           }
         ],
         pins: [],

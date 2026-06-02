@@ -21,6 +21,7 @@ import AnnotationLayer from "./layers/AnnotationLayer.vue";
 import BackgroundLayer from "./layers/BackgroundLayer.vue";
 import ConnectionPreviewLayer from "./layers/ConnectionPreviewLayer.vue";
 import DrawingOverlayLayer from "./layers/DrawingOverlayLayer.vue";
+import FogOverlayLayer from "./layers/FogOverlayLayer.vue";
 import PinLayer from "./layers/PinLayer.vue";
 import VertexEditorLayer from "./layers/VertexEditorLayer.vue";
 import WaypointEditorLayer from "./layers/WaypointEditorLayer.vue";
@@ -32,6 +33,8 @@ interface SceneDataProps {
   height: number;
   backgroundUrl: string | null;
   gridEnabled: boolean;
+  fogColor?: string | null;
+  fogOpacity?: number | null;
 }
 
 interface PinData {
@@ -91,6 +94,8 @@ interface LayerData {
   id: number | string;
   visible: boolean;
   name: string;
+  position?: number | null;
+  fogEnabled?: boolean;
 }
 
 interface EntityLock {
@@ -327,6 +332,60 @@ const { connectionConfigs } = useConnections({
   waypointEditOverride,
 });
 
+function clampFogOpacity(value: number | null | undefined): number {
+  if (value == null || Number.isNaN(value)) {
+    return 0.85;
+  }
+
+  return Math.min(1, Math.max(0, value));
+}
+
+const fogLayers = computed(() =>
+  layers
+    .filter((layer) => layer.visible && layer.fogEnabled)
+    .slice()
+    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0)),
+);
+
+const fogLayerIds = computed(() => new Set(fogLayers.value.map((layer) => String(layer.id))));
+
+const fogOverlayConfig = computed(() => {
+  if (fogLayers.value.length === 0) return null;
+
+  const bounds = backgroundConfig.value ?? gridRectConfig.value;
+
+  return {
+    x: bounds.x,
+    y: bounds.y,
+    width: bounds.width,
+    height: bounds.height,
+    fill: sceneData?.fogColor || "#000000",
+    opacity: clampFogOpacity(sceneData?.fogOpacity),
+  };
+});
+
+function isFogLayerElement(layerId: number | string | null): boolean {
+  return layerId != null && fogLayerIds.value.has(String(layerId));
+}
+
+const fogZoneConfigs = computed(() =>
+  zoneConfigs.value.filter((zone) => isFogLayerElement(zone.layerId)),
+);
+
+const fogPinConfigs = computed(() =>
+  pinConfigs.value.filter((pin) => isFogLayerElement(pin.layerId)),
+);
+
+const fogAnnotationConfigs = computed(() =>
+  annotationConfigs.value.filter((annotation) => isFogLayerElement(annotation.layerId)),
+);
+
+const fogConnectionConfigs = computed(() =>
+  connectionConfigs.value.filter((connection) =>
+    connection.connectedLayerIds.some((layerId) => fogLayerIds.value.has(String(layerId))),
+  ),
+);
+
 const {
   editingConnectionId: editingWaypointConnectionId,
   editingWaypoints,
@@ -524,6 +583,50 @@ const LABEL_COLOR = "#d1d5db";
         @dragmove="onDragMove"
         @dragend="onDragEnd"
       />
+
+      <!-- Fog overlay dims the scene, then redraws fog-layer content above it -->
+      <FogOverlayLayer :fog-overlay-config="fogOverlayConfig" />
+
+      <template v-if="fogOverlayConfig">
+        <ZoneConnectionLayer
+          :zone-configs="fogZoneConfigs"
+          :connection-configs="fogConnectionConfigs"
+          :selection-color="SELECTION_COLOR"
+          :label-color="LABEL_COLOR"
+          @zone-click="(id, e) => handleElementClick('zone', id, e)"
+          @zone-dblclick="handleZoneDblClick"
+          @zone-mousedown="onZoneMouseDown"
+          @connection-click="(id, e) => handleElementClick('connection', id, e)"
+          @connection-dblclick="handleConnectionDblClick"
+        />
+
+        <PinLayer
+          :pin-configs="fogPinConfigs"
+          :source-pin-id="sourcePinId"
+          :hovered-pin-id="hoveredPinId"
+          :selection-color="SELECTION_COLOR"
+          :source-highlight-color="SOURCE_HIGHLIGHT_COLOR"
+          :target-highlight-color="TARGET_HIGHLIGHT_COLOR"
+          :label-color="LABEL_COLOR"
+          :clip-circle="clipCircle"
+          @pin-click="handlePinClick"
+          @dragstart="onDragStart"
+          @dragmove="onDragMove"
+          @dragend="onDragEnd"
+        />
+
+        <AnnotationLayer
+          :annotation-configs="fogAnnotationConfigs"
+          :selection-color="SELECTION_COLOR"
+          :is-editing-annotation="isEditingAnnotation"
+          :get-display-text="getDisplayText"
+          @annotation-click="(id, e) => handleElementClick('annotation', id, e)"
+          @annotation-dblclick="handleAnnotationDblClick"
+          @dragstart="onDragStart"
+          @dragmove="onDragMove"
+          @dragend="onDragEnd"
+        />
+      </template>
 
       <!-- Vertex editor layer (zone vertex editing on dblclick) -->
       <VertexEditorLayer

@@ -313,30 +313,20 @@ defmodule Storyarn.ScenesTest do
       {:ok, layer} =
         Scenes.create_layer(scene.id, %{
           "name" => "Fog Layer",
-          "fog_enabled" => true,
-          "fog_color" => "#1a1a2e",
-          "fog_opacity" => 0.9
+          "fog_enabled" => true
         })
 
       assert layer.fog_enabled == true
-      assert layer.fog_color == "#1a1a2e"
-      assert layer.fog_opacity == 0.9
     end
 
-    test "update_layer/2 fog fields validation (opacity 0-1)" do
+    test "update_layer/2 updates fog_enabled" do
       user = user_fixture()
       project = project_fixture(user)
       scene = scene_fixture(project)
       layer = layer_fixture(scene)
 
-      {:error, changeset} = Scenes.update_layer(layer, %{"fog_opacity" => 1.5})
-      assert errors_on(changeset).fog_opacity != []
-
-      {:error, changeset} = Scenes.update_layer(layer, %{"fog_opacity" => -0.1})
-      assert errors_on(changeset).fog_opacity != []
-
-      {:ok, updated} = Scenes.update_layer(layer, %{"fog_opacity" => 0.75})
-      assert updated.fog_opacity == 0.75
+      {:ok, updated} = Scenes.update_layer(layer, %{"fog_enabled" => true})
+      assert updated.fog_enabled == true
     end
 
     test "reorder_layers/2 updates positions" do

@@ -95,6 +95,8 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       "default_center_y" => scene.default_center_y,
       "scale_unit" => scene.scale_unit,
       "scale_value" => scene.scale_value,
+      "fog_color" => scene.fog_color,
+      "fog_opacity" => scene.fog_opacity,
       "exploration_display_mode" => scene.exploration_display_mode,
       "background_asset_id" => scene.background_asset_id,
       "layers" => layer_snapshots,
@@ -142,8 +144,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       "position" => layer.position,
       "visible" => layer.visible,
       "fog_enabled" => layer.fog_enabled,
-      "fog_color" => layer.fog_color,
-      "fog_opacity" => layer.fog_opacity,
       "zones" => Enum.map(sorted_zones, &zone_to_snapshot/1),
       "pins" => Enum.map(sorted_pins, &pin_to_snapshot/1),
       "annotations" => Enum.map(sorted_annotations, &annotation_to_snapshot/1)
@@ -277,7 +277,9 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
             default_center_y: snapshot["default_center_y"],
             scale_unit: snapshot["scale_unit"],
             scale_value: snapshot["scale_value"],
-            exploration_display_mode: snapshot["exploration_display_mode"] || "fit",
+            fog_color: snapshot_default(snapshot, "fog_color", "#000000"),
+            fog_opacity: snapshot_default(snapshot, "fog_opacity", 0.85),
+            exploration_display_mode: snapshot_default(snapshot, "exploration_display_mode", "fit"),
             background_asset_id:
               resolve_scene_background_asset(snapshot["background_asset_id"], snapshot, project_id, opts),
             parent_id: MaterializationHelpers.root_parent_id(opts),
@@ -373,6 +375,8 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
         default_center_y: snapshot["default_center_y"],
         scale_unit: snapshot["scale_unit"],
         scale_value: snapshot["scale_value"],
+        fog_color: snapshot_default(snapshot, "fog_color", "#000000"),
+        fog_opacity: snapshot_default(snapshot, "fog_opacity", 0.85),
         background_asset_id:
           AssetHashResolver.resolve_asset_fk(
             snapshot["background_asset_id"],
@@ -491,8 +495,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       position: layer_data["position"] || layer_idx,
       visible: Map.get(layer_data, "visible", true),
       fog_enabled: layer_data["fog_enabled"] || false,
-      fog_color: layer_data["fog_color"] || "#000000",
-      fog_opacity: layer_data["fog_opacity"] || 0.85,
       inserted_at: now,
       updated_at: now
     }
@@ -759,9 +761,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
             is_default: layer_data["is_default"] || false,
             position: layer_data["position"] || layer_idx,
             visible: Map.get(layer_data, "visible", true),
-            fog_enabled: layer_data["fog_enabled"] || false,
-            fog_color: layer_data["fog_color"] || "#000000",
-            fog_opacity: layer_data["fog_opacity"] || 0.85
+            fog_enabled: layer_data["fog_enabled"] || false
           },
           MaterializationHelpers.timestamps(now)
         )
@@ -1124,9 +1124,11 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     end
   end
 
+  defp snapshot_default(snapshot, key, default), do: Map.get(snapshot, key) || default
+
   # ========== Diff Snapshots ==========
 
-  @layer_compare_fields ~w(name is_default visible fog_enabled fog_color fog_opacity)
+  @layer_compare_fields ~w(name is_default visible fog_enabled)
   @pin_compare_fields ~w(pin_type icon color opacity label shortcut hidden size flow_id tooltip sheet_id icon_asset_id condition condition_effect locked)
   @zone_compare_fields ~w(name shortcut hidden vertices fill_color border_color border_width border_style opacity target_type target_id tooltip action_type action_data label_mode label_font_size label_font_family label_font_weight label_font_style label_icon_asset_id condition condition_effect locked)
   @annotation_compare_fields ~w(text font_size color locked)
@@ -1176,6 +1178,13 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       ~w(scale_unit scale_value),
       :property,
       dgettext("scenes", "Changed scale settings")
+    )
+    |> DiffHelpers.check_field_group_change(
+      old_snapshot,
+      new_snapshot,
+      ~w(fog_color fog_opacity),
+      :property,
+      dgettext("scenes", "Changed fog design")
     )
     |> DiffHelpers.check_field_change(
       old_snapshot,

@@ -254,6 +254,8 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
       "default_center_y" => scene.default_center_y,
       "scale_unit" => scene.scale_unit,
       "scale_value" => scene.scale_value,
+      "fog_color" => scene.fog_color,
+      "fog_opacity" => scene.fog_opacity,
       "layers" => Enum.map(scene.layers, &serialize_layer/1),
       "pins" => Enum.map(scene.pins, &serialize_pin/1),
       "zones" => Enum.map(scene.zones, &serialize_zone/1),
@@ -269,9 +271,7 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
       "is_default" => layer.is_default,
       "position" => layer.position,
       "visible" => layer.visible,
-      "fog_enabled" => layer.fog_enabled,
-      "fog_color" => layer.fog_color,
-      "fog_opacity" => layer.fog_opacity
+      "fog_enabled" => layer.fog_enabled
     }
   end
 

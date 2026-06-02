@@ -121,9 +121,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
     %{
       "name" => layer.name,
       "visible" => layer.visible,
-      "fog_enabled" => layer.fog_enabled,
-      "fog_color" => layer.fog_color,
-      "fog_opacity" => layer.fog_opacity
+      "fog_enabled" => layer.fog_enabled
     }
   end
 
@@ -472,9 +470,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
             {:ok,
              push_event(socket, "layer_fog_changed", %{
                id: updated.id,
-               fog_enabled: updated.fog_enabled,
-               fog_color: updated.fog_color,
-               fog_opacity: updated.fog_opacity
+               fog_enabled: updated.fog_enabled
              }), {:update_layer_fog, layer_id, prev_attrs, new_attrs}}
 
           {:error, _} ->
@@ -753,9 +749,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
             {:ok,
              push_event(socket, "layer_fog_changed", %{
                id: updated.id,
-               fog_enabled: updated.fog_enabled,
-               fog_color: updated.fog_color,
-               fog_opacity: updated.fog_opacity
+               fog_enabled: updated.fog_enabled
              }), {:update_layer_fog, layer_id, prev_attrs, new_attrs}}
 
           {:error, _} ->

@@ -69,6 +69,7 @@ interface ZoneDragOverride {
 
 export interface ZoneConfig {
   id: number | string;
+  layerId: number | string | null;
   name: string;
   points: number[];
   centroidX: number;
@@ -371,16 +372,12 @@ function buildZoneConfig(
   const labelSize = calculateZoneLabelSize(zone, labelText, showEditorLabels);
   const { showText, showIcon } = labelVisibility(zone, labelText, showEditorLabels);
   const layout = zoneLabelLayout(zone, geo, labelSize);
-  const iconCanvas = resolveZoneIconCanvas(
-    zone,
-    showIcon,
-    layout.iconSize,
-    iconAssetImage,
-  );
+  const iconCanvas = resolveZoneIconCanvas(zone, showIcon, layout.iconSize, iconAssetImage);
   const textX = iconCanvas ? layout.iconX + layout.iconSize + LABEL_ICON_GAP : layout.labelX;
 
   return {
     id: zone.id,
+    layerId: zone.layerId,
     name: zone.name,
     points: geo.points,
     centroidX: geo.centroidX,

@@ -153,9 +153,7 @@ defmodule Storyarn.Versioning.SnapshotViewer do
       visible: Map.get(layer, "visible", true),
       is_default: layer["is_default"] || false,
       position: layer["position"] || layer_idx,
-      fog_enabled: layer["fog_enabled"] || false,
-      fog_color: layer["fog_color"] || "#000000",
-      fog_opacity: layer["fog_opacity"] || 0.85
+      fog_enabled: layer["fog_enabled"] || false
     }
 
     {{serialized_layer, serialized_pins, serialized_zones, serialized_annotations}, {updated_pin_map, counter}}
@@ -289,6 +287,8 @@ defmodule Storyarn.Versioning.SnapshotViewer do
       background_url: resolve_asset_url(snapshot["background_asset_id"], asset_metadata),
       scale_unit: snapshot["scale_unit"],
       scale_value: snapshot["scale_value"],
+      fog_color: snapshot["fog_color"] || "#000000",
+      fog_opacity: snapshot["fog_opacity"] || 0.85,
       can_edit: false,
       boundary_vertices: nil,
       layers: Enum.map(serialized_layers, &elem(&1, 0)),

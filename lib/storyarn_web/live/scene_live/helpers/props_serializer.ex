@@ -38,6 +38,8 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
       defaultCenterY: scene.default_center_y,
       scaleUnit: scene.scale_unit,
       scaleValue: scene.scale_value,
+      fogColor: scene.fog_color || "#000000",
+      fogOpacity: scene.fog_opacity || 0.85,
       explorationDisplayMode: scene.exploration_display_mode,
       backgroundUrl: background_url(scene)
     }
@@ -56,9 +58,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
       visible: layer.visible,
       isDefault: layer.is_default,
       position: layer.position,
-      fogEnabled: layer.fog_enabled,
-      fogColor: layer.fog_color,
-      fogOpacity: layer.fog_opacity
+      fogEnabled: layer.fog_enabled
     }
   end
 

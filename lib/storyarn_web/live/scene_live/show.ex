@@ -1189,6 +1189,12 @@ defmodule StoryarnWeb.SceneLive.Show do
     end)
   end
 
+  def handle_event("update_scene_fog", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      params |> LayerHandlers.handle_update_scene_fog(socket) |> broadcast_scene_change()
+    end)
+  end
+
   def handle_event("update_exploration_display_mode", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       params
