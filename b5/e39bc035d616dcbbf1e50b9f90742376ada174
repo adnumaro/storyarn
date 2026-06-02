@@ -1,0 +1,36 @@
+assets/app/locales/es/landing.json
+  s_89a3f1264cbda8::t_e199eea75f5a8b 129
+priv/docs/es/scene-design/01-scenes-overview.md
+  s_89a3f1264cbda8::t_96fb706b82b3e9 29
+assets/app/locales/en/landing.json
+  s_89a3f1264cbda8::t_20266c98e28ccc 129
+priv/docs/en/scene-design/05-layers-visibility.md
+  s_89a3f1264cbda8::t_aa71fa0be99e6f 5,10,21,25,34,39-40
+  s_89a3f1264cbda8::t_96149788242f31 14,36,38
+priv/docs/en/scene-design/01-scenes-overview.md
+  s_89a3f1264cbda8::t_13b47aed634b0e 29
+priv/docs/es/scene-design/05-layers-visibility.md
+  s_89a3f1264cbda8::t_f19c78690efa08 5,10,21,25,34,39-40
+  s_89a3f1264cbda8::t_96149788242f31 14,36,38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b5e39bc035d616dcbbf1e50b9f90742376ada174",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_89a3f1264cbda8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e4a48-d037-7852-a91e-119f74a3c0e1",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
