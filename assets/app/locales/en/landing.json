@@ -126,7 +126,7 @@
           "desc": "Use layers to plan progressions, visibility, and structures without flattening everything into a single saturated image.",
           "items": [
             "Layer visibility instead of a chaotic canvas.",
-            "Fog of war to communicate progression.",
+            "Fog overlays to communicate progression.",
             "Large spaces remain iterable and readable in review."
           ]
         }
