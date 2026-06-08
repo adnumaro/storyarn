@@ -88,7 +88,11 @@ defmodule Storyarn.Projects do
 
   The creating user becomes the owner of the project.
   """
-  @spec create_project(scope(), attrs()) :: {:ok, project()} | {:error, changeset()}
+  @spec create_project(scope(), attrs()) ::
+          {:ok, project()}
+          | {:error, changeset()}
+          | {:error, :not_found | :unauthorized}
+          | {:error, :limit_reached, map()}
   defdelegate create_project(scope, attrs), to: ProjectCrud
 
   @doc """

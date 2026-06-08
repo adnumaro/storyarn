@@ -74,6 +74,17 @@ defmodule StoryarnWeb.ProjectLive.Form do
       {:error, :limit_reached, _details} ->
         {:noreply, put_flash(socket, :error, dgettext("workspaces", "Project limit reached for your plan"))}
 
+      {:error, :not_found} ->
+        {:noreply, put_flash(socket, :error, dgettext("workspaces", "Workspace not found."))}
+
+      {:error, :unauthorized} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext("workspaces", "You don't have permission to create projects in this workspace.")
+         )}
+
       {:error, changeset} ->
         {:noreply, assign(socket, :form, to_form(changeset))}
     end

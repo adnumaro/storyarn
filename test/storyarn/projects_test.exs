@@ -6,7 +6,9 @@ defmodule Storyarn.ProjectsTest do
   import Storyarn.WorkspacesFixtures
 
   alias Storyarn.Projects
+  alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
+  alias Storyarn.Repo
 
   describe "projects" do
     test "list_projects/1 returns projects user has access to" do
@@ -95,6 +97,47 @@ defmodule Storyarn.ProjectsTest do
                Projects.create_project(scope, %{name: "", workspace_id: workspace.id})
 
       assert "can't be blank" in errors_on(changeset).name
+    end
+
+    test "create_project/2 rejects workspace the user cannot access" do
+      user = user_fixture()
+      owner = user_fixture()
+      scope = user_scope_fixture(user)
+      workspace = workspace_fixture(owner)
+
+      assert {:error, :not_found} =
+               Projects.create_project(scope, %{name: "Unauthorized Project", workspace_id: workspace.id})
+
+      refute Repo.get_by(Project, workspace_id: workspace.id, name: "Unauthorized Project")
+    end
+
+    test "create_project/2 rejects workspace viewers" do
+      owner = user_fixture()
+      viewer = user_fixture()
+      workspace = workspace_fixture(owner)
+      workspace_membership_fixture(workspace, viewer, "viewer")
+
+      assert {:error, :unauthorized} =
+               viewer
+               |> user_scope_fixture()
+               |> Projects.create_project(%{name: "Viewer Project", workspace_id: workspace.id})
+
+      refute Repo.get_by(Project, workspace_id: workspace.id, name: "Viewer Project")
+    end
+
+    test "create_project/2 allows workspace members" do
+      owner = user_fixture()
+      member = user_fixture()
+      workspace = workspace_fixture(owner)
+      workspace_membership_fixture(workspace, member, "member")
+
+      assert {:ok, project} =
+               member
+               |> user_scope_fixture()
+               |> Projects.create_project(%{name: "Member Project", workspace_id: workspace.id})
+
+      assert project.workspace_id == workspace.id
+      assert project.owner_id == member.id
     end
 
     test "update_project/2 updates the project" do
