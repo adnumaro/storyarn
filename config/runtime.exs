@@ -1,5 +1,23 @@
 import Config
 
+env = fn key ->
+  case System.get_env(key) do
+    value when is_binary(value) ->
+      value = String.trim(value)
+      if value == "", do: nil, else: value
+
+    _ ->
+      nil
+  end
+end
+
+required_env = fn key ->
+  env.(key) ||
+    raise """
+    environment variable #{key} is missing.
+    """
+end
+
 # config/runtime.exs is executed for all environments, including
 # during releases. It is executed after compilation and before the
 # system starts, so it is typically used to load production configuration
@@ -104,25 +122,15 @@ end
 # Rate limiting with Redis for production (multi-node support)
 # Development and test use ETS backend (started in application.ex)
 if config_env() == :prod do
-  if System.get_env("REDIS_URL") do
+  if env.("REDIS_URL") do
     config :storyarn, :rate_limiter_backend, :redis
   end
 
   # Cloak encryption key for OAuth tokens
   # Generate with: 32 |> :crypto.strong_rand_bytes() |> Base.encode64()
-  cloak_key =
-    System.get_env("CLOAK_KEY") ||
-      raise """
-      environment variable CLOAK_KEY is missing.
-      Generate one with: 32 |> :crypto.strong_rand_bytes() |> Base.encode64()
-      """
+  cloak_key = required_env.("CLOAK_KEY")
 
-  database_url =
-    System.get_env("DATABASE_URL") ||
-      raise """
-      environment variable DATABASE_URL is missing.
-      For example: ecto://USER:PASS@HOST/DATABASE
-      """
+  database_url = required_env.("DATABASE_URL")
 
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
@@ -131,46 +139,10 @@ if config_env() == :prod do
   # want to use a different value for prod and you most likely don't want
   # to check this value into version control, so we use an environment
   # variable instead.
-  secret_key_base =
-    System.get_env("SECRET_KEY_BASE") ||
-      raise """
-      environment variable SECRET_KEY_BASE is missing.
-      You can generate one by calling: mix phx.gen.secret
-      """
+  secret_key_base = required_env.("SECRET_KEY_BASE")
 
   host = System.get_env("PHX_HOST") || "example.com"
   port = String.to_integer(System.get_env("PORT") || "4000")
-
-  config :storyarn, Storyarn.Repo,
-    ssl: if(System.get_env("DATABASE_SSL") == "false", do: false, else: true),
-    url: database_url,
-    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
-    # For machines with several cores, consider starting multiple pools of `pool_size`
-    # pool_count: 4,
-    socket_options: maybe_ipv6
-
-  config :storyarn, Storyarn.Vault,
-    ciphers: [
-      default: {
-        Cloak.Ciphers.AES.GCM,
-        tag: "AES.GCM.V1", key: Base.decode64!(cloak_key), iv_length: 12
-      }
-    ]
-
-  config :storyarn, StoryarnWeb.Endpoint,
-    url: [host: host, port: 443, scheme: "https"],
-    http: [
-      # Bind on all IPv4 and IPv6 interfaces.
-      # Fly.io health checks connect via IPv4 (0.0.0.0), so we must listen on IPv4.
-      ip: {0, 0, 0, 0},
-      # Session and LiveView salts are compile-time values (used in endpoint.ex
-      # with compile_env!). They are set in config.exs and cannot be overridden
-      # at runtime. Security comes from SECRET_KEY_BASE, not these salts.
-      port: port
-    ],
-    secret_key_base: secret_key_base
-
-  config :storyarn, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
   # ## SSL Support
   #
@@ -204,67 +176,86 @@ if config_env() == :prod do
   #
   # Check `Plug.SSL` for all available options in `force_ssl`.
 
-  # Configure Resend for production email delivery
-  # Get your API key at https://resend.com
-  if resend_api_key = System.get_env("RESEND_API_KEY") do
-    config :storyarn, Storyarn.Mailer,
-      adapter: Swoosh.Adapters.Resend,
-      api_key: resend_api_key
+  # Configure Resend for production email delivery.
+  # Production must not silently fall back to Swoosh.Adapters.Local.
+  resend_api_key = required_env.("RESEND_API_KEY")
+  mailer_from_email = required_env.("MAILER_FROM_EMAIL")
+  mailer_from_name = env.("MAILER_FROM_NAME") || "Storyarn"
+
+  # S3-compatible Storage Configuration.
+  # Fly Tigris exposes AWS_* env vars; AWS_PUBLIC_URL is optional because the
+  # adapter can derive URLs from AWS_ENDPOINT_URL_S3 + BUCKET_NAME.
+  if !env.("AWS_ACCESS_KEY_ID") do
+    raise """
+    production object storage is missing.
+    Configure Fly Tigris or another S3-compatible storage provider with
+    AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, BUCKET_NAME, and
+    AWS_ENDPOINT_URL_S3. AWS_PUBLIC_URL is optional.
+    """
   end
 
-  # S3-compatible Storage Configuration
-  # Supports Cloudflare R2 (R2_* vars) and Fly Tigris (AWS_* vars)
-  {s3_access_key, s3_secret_key, s3_bucket, s3_endpoint, s3_public_url} =
-    cond do
-      System.get_env("R2_ACCESS_KEY_ID") ->
-        {
-          System.get_env("R2_ACCESS_KEY_ID"),
-          System.get_env("R2_SECRET_ACCESS_KEY") ||
-            raise("R2_SECRET_ACCESS_KEY is required when R2_ACCESS_KEY_ID is set"),
-          System.get_env("R2_BUCKET") ||
-            raise("R2_BUCKET is required when R2_ACCESS_KEY_ID is set"),
-          System.get_env("R2_ENDPOINT_URL") ||
-            raise("R2_ENDPOINT_URL is required when R2_ACCESS_KEY_ID is set"),
-          System.get_env("R2_PUBLIC_URL")
-        }
+  s3_access_key = required_env.("AWS_ACCESS_KEY_ID")
+  s3_secret_key = required_env.("AWS_SECRET_ACCESS_KEY")
+  s3_bucket = required_env.("BUCKET_NAME")
+  s3_endpoint = required_env.("AWS_ENDPOINT_URL_S3")
+  s3_public_url = env.("AWS_PUBLIC_URL")
 
-      System.get_env("AWS_ACCESS_KEY_ID") ->
-        {
-          System.get_env("AWS_ACCESS_KEY_ID"),
-          System.get_env("AWS_SECRET_ACCESS_KEY") ||
-            raise("AWS_SECRET_ACCESS_KEY is required when AWS_ACCESS_KEY_ID is set"),
-          System.get_env("BUCKET_NAME") ||
-            raise("BUCKET_NAME is required when AWS_ACCESS_KEY_ID is set"),
-          System.get_env("AWS_ENDPOINT_URL_S3") ||
-            raise("AWS_ENDPOINT_URL_S3 is required when AWS_ACCESS_KEY_ID is set"),
-          System.get_env("AWS_PUBLIC_URL")
-        }
+  %URI{host: s3_host} = URI.parse(s3_endpoint)
 
-      true ->
-        {nil, nil, nil, nil, nil}
-    end
+  config :storyarn, Storyarn.Mailer,
+    adapter: Swoosh.Adapters.Resend,
+    api_key: resend_api_key
+
+  config :storyarn, Storyarn.Repo,
+    ssl: if(System.get_env("DATABASE_SSL") == "false", do: false, else: true),
+    url: database_url,
+    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
+    # For machines with several cores, consider starting multiple pools of `pool_size`
+    # pool_count: 4,
+    socket_options: maybe_ipv6
+
+  config :storyarn, Storyarn.Vault,
+    ciphers: [
+      default: {
+        Cloak.Ciphers.AES.GCM,
+        tag: "AES.GCM.V1", key: Base.decode64!(cloak_key), iv_length: 12
+      }
+    ]
+
+  config :storyarn, StoryarnWeb.Endpoint,
+    url: [host: host, port: 443, scheme: "https"],
+    http: [
+      # Bind on all IPv4 and IPv6 interfaces.
+      # Fly.io health checks connect via IPv4 (0.0.0.0), so we must listen on IPv4.
+      ip: {0, 0, 0, 0},
+      # Session and LiveView salts are compile-time values (used in endpoint.ex
+      # with compile_env!). They are set in config.exs and cannot be overridden
+      # at runtime. Security comes from SECRET_KEY_BASE, not these salts.
+      port: port
+    ],
+    secret_key_base: secret_key_base
+
+  config :storyarn, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
   # Default "from" email address (tuple format matching notifier expectations)
-  config :storyarn,
-         :mailer_sender,
-         {System.get_env("MAILER_FROM_NAME", "Storyarn"), System.get_env("MAILER_FROM_EMAIL", "noreply@storyarn.com")}
+  config :storyarn, :mailer_sender, {mailer_from_name, mailer_from_email}
 
-  if s3_access_key do
-    %URI{host: s3_host} = URI.parse(s3_endpoint)
-
-    config :ex_aws, :s3,
-      host: s3_host,
-      scheme: "https://"
-
-    config :ex_aws,
-      access_key_id: s3_access_key,
-      secret_access_key: s3_secret_key
-
-    config :storyarn, :r2,
-      bucket: s3_bucket,
-      public_url: s3_public_url,
-      endpoint_url: s3_endpoint
-
-    config :storyarn, :storage, adapter: :r2
+  if is_nil(s3_host) do
+    raise "object storage endpoint URL must include a host"
   end
+
+  config :ex_aws, :s3,
+    host: s3_host,
+    scheme: "https://"
+
+  config :ex_aws,
+    access_key_id: s3_access_key,
+    secret_access_key: s3_secret_key
+
+  config :storyarn, :r2,
+    bucket: s3_bucket,
+    public_url: s3_public_url,
+    endpoint_url: s3_endpoint
+
+  config :storyarn, :storage, adapter: :r2
 end

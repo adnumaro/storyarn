@@ -87,7 +87,7 @@ defmodule Storyarn.MixProject do
       # Background jobs
       {:oban, "~> 2.19"},
 
-      # S3-compatible storage (Cloudflare R2)
+      # S3-compatible storage (Fly Tigris)
       {:ex_aws, "~> 2.6"},
       {:ex_aws_s3, "~> 2.5"},
 

@@ -2,7 +2,7 @@ defmodule Storyarn.Assets.Storage do
   @moduledoc """
   Behaviour for asset storage backends.
 
-  Supports both local file storage (development) and Cloudflare R2 (production).
+  Supports both local file storage (development) and S3-compatible storage (production).
   """
 
   @type key :: String.t()
