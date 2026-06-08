@@ -1,0 +1,41 @@
+config/runtime.exs
+  s_a1cc7bf414abe5::t_41e983fa4f8706 189-194,197-201
+  s_a1cc7bf414abe5::t_3f67cc1b1ca8a2 185-187
+  s_a1cc7bf414abe5::t_308ab9efb7ad7a 188
+  s_a1cc7bf414abe5::t_6e94d0695d5345 203-207
+  s_a1cc7bf414abe5::t_ff04933d3efa8c 3-20,125,131-133,142,179-184,241,243-244,246-260
+  s_a1cc7bf414abe5::t_b53a01dbaf9fc4 208-215,217-223,225-236,238
+lib/storyarn/assets/storage.ex
+  s_a1cc7bf414abe5::t_9d6f861ed885e9 5
+lib/storyarn/assets/storage/r2.ex
+  s_a1cc7bf414abe5::t_0be0fa8231ca06 3,5-6,121
+mix.exs
+  s_a1cc7bf414abe5::t_5626c8704676cf 90
+.env.example
+  s_a1cc7bf414abe5::t_00b0ede1cdd2e1 78,80-84,86-87
+  s_a1cc7bf414abe5::t_b25c0004236801 19,25-28,67,70,77,79,85
+README.md
+  s_a1cc7bf414abe5::t_b4046600214582 10-19,23-28
+  s_a1cc7bf414abe5::t_761e0b840f9aec 20-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "6fee74764dcadabeb08a1c7e25e18f57e29f455f",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_a1cc7bf414abe5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea750-4f8c-7613-b360-8e6caa03826e",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
