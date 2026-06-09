@@ -1,0 +1,165 @@
+assets/app/live/scene/show/ScenePanels.vue
+  s_a1cc7bf414abe5::t_d5164539876d4a 6-7,10-12,22,25-28,32,34-35
+test/e2e/collaboration_test.exs
+  s_a1cc7bf414abe5::t_dcd5681b7f0caa 12
+assets/app/live/sheet/sidebar/SheetSidebar.vue
+  s_a1cc7bf414abe5::t_d5164539876d4a 2,19,32
+  s_a1cc7bf414abe5::t_1bf5ba1628ec22 20-22
+assets/js/app.js
+  s_a1cc7bf414abe5::t_9adc8a771363a6 15-16,18,20-24,26-29,31,33,35-41,43-47,49-54,56,58-68,70-73,75-96
+assets/app/live/docs/show/DocsContent.vue
+  s_a1cc7bf414abe5::t_3026cc147752db 10
+assets/app/components/forms/assets/AssetUploadButton.vue
+  s_a1cc7bf414abe5::t_786c05b8b80da2 46
+  s_a1cc7bf414abe5::t_fcdcec8fe8a63d 56-62
+assets/app/live/sheet/show/SheetSurface.vue
+  s_a1cc7bf414abe5::t_d5164539876d4a 11-12,20-21,25-26,38-40,60,63,66,69
+  s_a1cc7bf414abe5::t_62087ffe4c65fb 61
+test/e2e/workspaces/projects/scenes/scenes_test.exs
+  s_a1cc7bf414abe5::t_dcd5681b7f0caa 10
+  s_a1cc7bf414abe5::t_e0335960dbd556 63-64
+  s_a1cc7bf414abe5::t_5d78f5f28f0afa 53
+  s_a1cc7bf414abe5::t_fcdcec8fe8a63d 1-9,11-52,54-62,65-69
+test/e2e/workspaces/workspace_visibility_test.exs
+  s_a1cc7bf414abe5::t_dcd5681b7f0caa 11
+assets/app/components/ui/switch/Switch.vue
+  s_a1cc7bf414abe5::t_62087ffe4c65fb 5
+  s_a1cc7bf414abe5::t_be9b4cebd29b56 13-14
+assets/app/live/scene/show/SceneSurface.vue
+  s_a1cc7bf414abe5::t_d5164539876d4a 15-16,21-26,32,40-41,48,56,91
+assets/app/live/flow/show/FlowPanels.vue
+  s_a1cc7bf414abe5::t_1bf5ba1628ec22 28
+  s_a1cc7bf414abe5::t_d5164539876d4a 10-11,14-16,26-27,35-36,44,50-51,102-103
+lib/storyarn_web/live/scene_live/index.ex
+  s_a1cc7bf414abe5::t_65b079d0318444 129-130
+assets/app/live/flow/sidebar/FlowSidebar.vue
+  s_a1cc7bf414abe5::t_1bf5ba1628ec22 20-22
+  s_a1cc7bf414abe5::t_d5164539876d4a 2,19,32
+test/e2e/workspaces/projects/sheets/sheets_test.exs
+  s_a1cc7bf414abe5::t_fcdcec8fe8a63d 18,169-192
+  s_a1cc7bf414abe5::t_dcd5681b7f0caa 10
+assets/app/modules/flows/editor/components/chrome/dock/FlowDock.vue
+  s_a1cc7bf414abe5::t_786c05b8b80da2 75
+lib/storyarn_web/live/scene_live/show.ex
+  s_a1cc7bf414abe5::t_b321f67c804879 1574-1575
+lib/storyarn_web/live/sheet_live/index.ex
+  s_a1cc7bf414abe5::t_65b079d0318444 130-131
+assets/app/live/project/dashboard/ProjectDashboard.vue
+  s_a1cc7bf414abe5::t_be9b4cebd29b56 152
+  s_a1cc7bf414abe5::t_786c05b8b80da2 154
+assets/app/modules/scenes/editor/composables/useSceneElementOptimism.ts
+  s_a1cc7bf414abe5::t_d937dccfaf4bb1 270-273,297-318
+assets/app/shared/composables/useAssetDecisionUpload.ts
+  s_a1cc7bf414abe5::t_1bf5ba1628ec22 73
+  s_a1cc7bf414abe5::t_d937dccfaf4bb1 43-46,69-72,74-76,111-112,132-133,159-160,162,171
+test/e2e/workspaces/projects/projects_test.exs
+  s_a1cc7bf414abe5::t_e34b0387303126 264,296
+  s_a1cc7bf414abe5::t_25d28b0771e866 137,251-252
+  s_a1cc7bf414abe5::t_fcdcec8fe8a63d 16-17,127-136,138-152,230-250,290-295,297-299
+  s_a1cc7bf414abe5::t_dcd5681b7f0caa 10
+assets/app/components/ui/checkbox/Checkbox.vue
+  s_a1cc7bf414abe5::t_be9b4cebd29b56 14-15
+  s_a1cc7bf414abe5::t_62087ffe4c65fb 6
+assets/app/modules/flows/editor/components/chrome/dock/DockNavigationPanel.vue
+  s_a1cc7bf414abe5::t_f67cecb85d11f3 72,88
+assets/app/modules/scenes/editor/composables/useConnectionDrawing.ts
+  s_a1cc7bf414abe5::t_4ff67a95fb8675 63-65
+assets/app/live/scene/sidebar/SceneSidebar.vue
+  s_a1cc7bf414abe5::t_d5164539876d4a 2,19-20,22,32
+  s_a1cc7bf414abe5::t_1bf5ba1628ec22 21
+priv/docs/en/world-building/02-blocks-and-variables.md
+  s_89a3f1264cbda8::t_17571c53fb6483 23,25-31,33-34
+package.json
+  s_a1cc7bf414abe5::t_7f0a2c8f747d94 95-96
+  s_a1cc7bf414abe5::t_1b02bbbe0646e4 11
+assets/app/index.ts
+  s_a1cc7bf414abe5::t_b321f67c804879 3,10-12,15-22,27-32,51
+  s_a1cc7bf414abe5::t_1b02bbbe0646e4 2,13-14,33
+  s_a1cc7bf414abe5::t_4ca0fcda9943d8 23-26
+test/e2e/workspaces/projects/flows/flows_test.exs
+  s_a1cc7bf414abe5::t_6e7924f6f08ffb 158,219-223,225,227-245,277-280,291-293
+  s_a1cc7bf414abe5::t_76276c29d1b1d1 105,147,191-215
+  s_a1cc7bf414abe5::t_e34b0387303126 75
+  s_a1cc7bf414abe5::t_cc09d0b2023fa2 224
+  s_a1cc7bf414abe5::t_dcd5681b7f0caa 10
+  s_a1cc7bf414abe5::t_fcdcec8fe8a63d 17,130-138,140-146,148-157,159-163,217-218,246-276,281-290,294-298
+  s_a1cc7bf414abe5::t_25d28b0771e866 139
+config/test.exs
+  s_a1cc7bf414abe5::t_07bd7f8a383ceb 24
+lib/storyarn_web/live_sandbox.ex
+  s_a1cc7bf414abe5::t_dcd5681b7f0caa 16-21,23-30
+assets/app/live/scene/show/SceneCompactSurface.vue
+  s_a1cc7bf414abe5::t_d5164539876d4a 5-6,18-23,34-35
+lib/storyarn_web/live/project_live/show.ex
+  s_a1cc7bf414abe5::t_fe3511636b7af7 95-96
+assets/app/test/modules/flows/components/toolbar-sections/DialogueToolbar.test.ts
+  s_a1cc7bf414abe5::t_d937dccfaf4bb1 20,28,31-39
+  s_a1cc7bf414abe5::t_1bf5ba1628ec22 29-30,83-84,95-99,112-113,117
+assets/app/modules/flows/editor/composables/flowCanvasAutoLayout.ts
+  s_a1cc7bf414abe5::t_ce990e7d0fa9c6 1
+  s_a1cc7bf414abe5::t_e91a73158fc800 16-18,21-24,26,32-33,46,48
+assets/app/live/layouts/public/Layout.vue
+  s_a1cc7bf414abe5::t_be9b4cebd29b56 3,36
+assets/app/components/ConfirmDialog.vue
+  s_a1cc7bf414abe5::t_be9b4cebd29b56 2
+assets/app/modules/sheets/components/entities/blocks/fields/NumberBlock.vue
+  s_a1cc7bf414abe5::t_be9b4cebd29b56 59
+assets/app/live/assets/dashboard/AssetsDashboard.vue
+  s_a1cc7bf414abe5::t_fcdcec8fe8a63d 227
+priv/docs/es/world-building/02-blocks-and-variables.md
+  s_89a3f1264cbda8::t_17571c53fb6483 23,25-31,33-34
+assets/app/components/ui/command/Command.vue
+  s_a1cc7bf414abe5::t_be9b4cebd29b56 4-10,16-17,24,33
+  s_a1cc7bf414abe5::t_62087ffe4c65fb 12
+assets/app/modules/sheets/components/panels/SheetShowPanels.vue
+  s_a1cc7bf414abe5::t_d5164539876d4a 6-7,9-11,18-19,27-29
+vite.config.mjs
+  s_a1cc7bf414abe5::t_1e2a52a8664942 7-36,57
+  s_a1cc7bf414abe5::t_1b02bbbe0646e4 56,58
+assets/app/modules/sheets/components/entities/blocks/fields/BooleanBlock.vue
+  s_a1cc7bf414abe5::t_d937dccfaf4bb1 43-47,176
+assets/app/modules/flows/editor/components/chrome/dock/DockNarrativePanel.vue
+  s_a1cc7bf414abe5::t_f67cecb85d11f3 60,76
+assets/app/live/flow/show/FlowSurface.vue
+  s_a1cc7bf414abe5::t_d5164539876d4a 41
+assets/app/modules/flows/editor/components/chrome/dock/DockLogicPanel.vue
+  s_a1cc7bf414abe5::t_f67cecb85d11f3 60,76
+test/test_helper.exs
+  s_a1cc7bf414abe5::t_80f8aaa08321c1 21-22,25
+assets/app/modules/scenes/editor/components/canvas/layers/PinLayer.vue
+  s_a1cc7bf414abe5::t_be9b4cebd29b56 38-49
+justfile
+  s_a1cc7bf414abe5::t_1b02bbbe0646e4 20-24,65
+  s_a1cc7bf414abe5::t_fcdcec8fe8a63d 71
+assets/app/modules/scenes/editor/components/canvas/layers/AnnotationLayer.vue
+  s_a1cc7bf414abe5::t_be9b4cebd29b56 26-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "52afb1285c888a2c622ed0feef64756b5d760a2f",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_89a3f1264cbda8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e4a48-d037-7852-a91e-119f74a3c0e1",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_a1cc7bf414abe5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea750-4f8c-7613-b360-8e6caa03826e",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
