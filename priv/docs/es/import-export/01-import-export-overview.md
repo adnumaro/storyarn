@@ -11,14 +11,14 @@ Storyarn puede exportar tu contenido narrativo a {accent}6 formatos{/accent} que
 
 ## Formatos de exportacion
 
-| Formato                   | Extension | Motor / Herramienta                    | Contenido soportado                                      |
-| ------------------------- | --------- | -------------------------------------- | -------------------------------------------------------- |
-| **Ink**                   | `.ink`    | Runtime Ink de Inkle                   | Flujos, Fichas                                           |
-| **Yarn Spinner**          | `.yarn`   | Yarn Spinner (Unity, Godot)            | Flujos, Fichas                                           |
-| **Unity Dialogue System** | `.json`   | Unity (Pixel Crushers, etc.)           | Flujos, Fichas                                           |
-| **Godot Dialogic**        | `.dtl`    | Plugin Dialogic para Godot 4           | Flujos, Fichas                                           |
-| **Unreal Engine**         | `.csv`    | Unreal Engine (Data Tables)            | Flujos, Fichas                                           |
-| **articy:draft**          | `.xml`    | Importacion XML de articy:draft        | Flujos, Fichas                                           |
+| Formato                   | Extension | Motor / Herramienta             | Contenido soportado |
+| ------------------------- | --------- | ------------------------------- | ------------------- |
+| **Ink**                   | `.ink`    | Runtime Ink de Inkle            | Flujos, Fichas      |
+| **Yarn Spinner**          | `.yarn`   | Yarn Spinner (Unity, Godot)     | Flujos, Fichas      |
+| **Unity Dialogue System** | `.json`   | Unity (Pixel Crushers, etc.)    | Flujos, Fichas      |
+| **Godot Dialogic**        | `.dtl`    | Plugin Dialogic para Godot 4    | Flujos, Fichas      |
+| **Unreal Engine**         | `.csv`    | Unreal Engine (Data Tables)     | Flujos, Fichas      |
+| **articy:draft**          | `.xml`    | Importacion XML de articy:draft | Flujos, Fichas      |
 
 Los formatos de motor se centran en flujos y fichas, que es lo que los runtimes de juego necesitan para dialogos, ramas y estado de variables. Las escenas y la localizacion tienen herramientas propias dentro de sus areas de trabajo cuando necesitas preparar contenido espacial o traducciones.
 

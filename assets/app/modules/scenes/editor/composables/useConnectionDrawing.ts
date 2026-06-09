@@ -60,7 +60,9 @@ export function useConnectionDrawing({
   const hoveredPinId = ref<number | string | null>(null);
 
   const isDrawingConnection = computed(
-    () => activeTool.value === "connector" && (sourcePinId.value !== null || sourcePoint.value !== null),
+    () =>
+      activeTool.value === "connector" &&
+      (sourcePinId.value !== null || sourcePoint.value !== null),
   );
 
   /**

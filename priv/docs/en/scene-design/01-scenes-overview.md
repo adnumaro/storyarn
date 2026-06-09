@@ -21,13 +21,13 @@ Scenes are spatial canvases for mapping a project's world. Use them for world ma
 
 ## Core pieces
 
-| Piece | What it does | Read next |
-| ----- | ------------ | --------- |
-| **Zones** | Polygonal areas on the canvas. Use them for rooms, regions, interactable areas, child-scene drill-downs, and conditional access. | [Zones and Interactive Areas](/docs/scene-design/zones) |
-| **Pins** | Point markers for locations, characters, events, objects, or custom map references. | [Pins](/docs/scene-design/pins) |
-| **Connections** | Lines between pins. Use them for paths, routes, travel links, or relationships. | [Connections and Routes](/docs/scene-design/connections-routes) |
-| **Layers** | Visibility groups for organizing canvas elements and reviewing fog overlays over the scene. | [Layers and Visibility](/docs/scene-design/layers-visibility) |
-| **Exploration** | A fullscreen player-like mode that evaluates actions, conditions, and flows opened on top of the scene. | [Actions, Conditions, and Exploration](/docs/scene-design/actions-conditions-exploration) |
+| Piece           | What it does                                                                                                                     | Read next                                                                                 |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| **Zones**       | Polygonal areas on the canvas. Use them for rooms, regions, interactable areas, child-scene drill-downs, and conditional access. | [Zones and Interactive Areas](/docs/scene-design/zones)                                   |
+| **Pins**        | Point markers for locations, characters, events, objects, or custom map references.                                              | [Pins](/docs/scene-design/pins)                                                           |
+| **Connections** | Lines between pins. Use them for paths, routes, travel links, or relationships.                                                  | [Connections and Routes](/docs/scene-design/connections-routes)                           |
+| **Layers**      | Visibility groups for organizing canvas elements and reviewing fog overlays over the scene.                                      | [Layers and Visibility](/docs/scene-design/layers-visibility)                             |
+| **Exploration** | A fullscreen player-like mode that evaluates actions, conditions, and flows opened on top of the scene.                          | [Actions, Conditions, and Exploration](/docs/scene-design/actions-conditions-exploration) |
 
 ## When to use scenes
 

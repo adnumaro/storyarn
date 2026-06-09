@@ -1,11 +1,35 @@
 import { createLiveVue, findComponent } from "live_vue";
-import type { SetupContext } from "live_vue";
-import { h } from "vue";
+import type { ComponentMap, SetupContext } from "live_vue";
+import { defineAsyncComponent, h } from "vue";
 import type { App, Component } from "vue";
 import VueKonva from "vue-konva";
 import { i18n } from "./i18n";
 
 let appCounter = 0;
+
+type ComponentLoader = () => Promise<{ default: Component }>;
+
+const componentLoaders = {
+  ...import.meta.glob<{ default: Component }>("./**/*.vue"),
+  ...import.meta.glob<{ default: Component }>("../../lib/**/*.vue"),
+} satisfies Record<string, ComponentLoader>;
+
+const asyncComponents = new Map<string, Component>();
+
+const resolveAsyncComponent = (name: string): Component => {
+  let component = asyncComponents.get(name);
+
+  if (!component) {
+    const loader = findComponent(
+      componentLoaders as unknown as ComponentMap,
+      name,
+    ) as unknown as ComponentLoader;
+    component = defineAsyncComponent(loader);
+    asyncComponents.set(name, component);
+  }
+
+  return component;
+};
 
 // Keep i18n locale synced with html lang attribute across LiveView navigations
 const syncLocale = (): void => {
@@ -24,11 +48,7 @@ observer.observe(document.documentElement, { attributes: true });
 
 export default createLiveVue({
   resolve: (name: string) => {
-    const components: Record<string, { default: Component } | Component> = {
-      ...import.meta.glob("./**/*.vue", { eager: true }),
-      ...import.meta.glob("../../lib/**/*.vue", { eager: true }),
-    };
-    return findComponent(components, name);
+    return resolveAsyncComponent(name);
   },
   setup: ({ createApp, component, props, slots, plugin, el }: SetupContext): App => {
     syncLocale();

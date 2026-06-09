@@ -9,12 +9,12 @@ description: "Use Builder view and Code view to write variable assignments for f
 
 The Instruction Editor defines assignments that write to variables. Storyarn uses the same editor anywhere runtime logic needs to change state:
 
-| Where | When instructions run |
-| ----- | --------------------- |
-| **Instruction nodes** | When the flow reaches the node. |
-| **Dialogue responses** | When the player chooses that response. |
-| **Scene zones** | When the zone action is triggered during exploration. |
-| **Scene pins** | When the pin action is triggered during exploration. |
+| Where                  | When instructions run                                 |
+| ---------------------- | ----------------------------------------------------- |
+| **Instruction nodes**  | When the flow reaches the node.                       |
+| **Dialogue responses** | When the player chooses that response.                |
+| **Scene zones**        | When the zone action is triggered during exploration. |
+| **Scene pins**         | When the pin action is triggered during exploration.  |
 
 Instructions can write literal values or copy values from another variable. Use the [Condition Editor](/docs/narrative-design/condition-editor) when you only need to check state.
 
@@ -27,10 +27,10 @@ Instructions can write literal values or copy values from another variable. Use 
 
 Every instruction set has two editing modes:
 
-| Mode | Best for | What you edit |
-| ---- | -------- | ------------- |
-| **Builder view** | Most users, readable state changes, fewer syntax mistakes | Sentence-style assignment rows. |
-| **Code view** | Technical designers, fast edits, compact multi-line updates | One assignment per line, such as `mc.jaime.gold += 100`. |
+| Mode             | Best for                                                    | What you edit                                            |
+| ---------------- | ----------------------------------------------------------- | -------------------------------------------------------- |
+| **Builder view** | Most users, readable state changes, fewer syntax mistakes   | Sentence-style assignment rows.                          |
+| **Code view**    | Technical designers, fast edits, compact multi-line updates | One assignment per line, such as `mc.jaime.gold += 100`. |
 
 Switching to Code view serializes the current assignments into text. Editing Code view parses the text back into the structured assignment data used by Storyarn.
 
@@ -54,15 +54,15 @@ A single editor can contain multiple assignments. They execute in order.
 
 ## Operations
 
-| Operation | Code view syntax | Variable types |
-| --------- | ---------------- | -------------- |
-| **Set** | `mc.jaime.health = 75` | All writable types |
-| **Add** | `mc.jaime.gold += 100` | Number |
-| **Subtract** | `mc.jaime.health -= 25` | Number |
-| **Set true** | `quest.door.unlocked = true` | Boolean |
-| **Set false** | `quest.door.unlocked = false` | Boolean |
-| **Toggle** | `toggle quest.door.unlocked` | Boolean |
-| **Clear** | `clear mc.jaime.notes` | Text and rich text |
+| Operation     | Code view syntax              | Variable types     |
+| ------------- | ----------------------------- | ------------------ |
+| **Set**       | `mc.jaime.health = 75`        | All writable types |
+| **Add**       | `mc.jaime.gold += 100`        | Number             |
+| **Subtract**  | `mc.jaime.health -= 25`       | Number             |
+| **Set true**  | `quest.door.unlocked = true`  | Boolean            |
+| **Set false** | `quest.door.unlocked = false` | Boolean            |
+| **Toggle**    | `toggle quest.door.unlocked`  | Boolean            |
+| **Clear**     | `clear mc.jaime.notes`        | Text and rich text |
 
 The available operations depend on the selected variable type. For example, a number can be set, added to, or subtracted from, while a boolean can be set true, set false, or toggled.
 

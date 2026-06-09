@@ -26,19 +26,19 @@ Los nodos de Entrada son principalmente estructurales. Úsalos como primer punto
 
 Los nodos de Salida marcan dónde termina un camino. Un flujo puede tener una salida o muchas, según cuánta información de resultado necesites exponer.
 
-| Caso | Configuración de salida |
-| ---- | ----------------------- |
-| Una conversación simple termina | Una salida terminal |
-| Una rama de misión tiene éxito o falla | Salidas separadas como `accepted`, `declined`, `completed` |
-| Un subflujo reutilizable vuelve al flujo padre | Salidas configuradas para volver al llamador |
-| Un flujo entrega la ejecución a otro flujo | Salida configurada para continuar a otro flujo |
+| Caso                                           | Configuración de salida                                    |
+| ---------------------------------------------- | ---------------------------------------------------------- |
+| Una conversación simple termina                | Una salida terminal                                        |
+| Una rama de misión tiene éxito o falla         | Salidas separadas como `accepted`, `declined`, `completed` |
+| Un subflujo reutilizable vuelve al flujo padre | Salidas configuradas para volver al llamador               |
+| Un flujo entrega la ejecución a otro flujo     | Salida configurada para continuar a otro flujo             |
 
 ## Modos de salida
 
-| Modo | Comportamiento |
-| ---- | -------------- |
-| **Terminal** | Termina la ejecución actual. |
-| **Continuar a flujo** | Entra en otro flujo después de terminar este camino. |
+| Modo                   | Comportamiento                                            |
+| ---------------------- | --------------------------------------------------------- |
+| **Terminal**           | Termina la ejecución actual.                              |
+| **Continuar a flujo**  | Entra en otro flujo después de terminar este camino.      |
 | **Volver al llamador** | Vuelve al flujo padre que entró mediante un nodo Subflow. |
 
 ## Etiquetas de resultado

@@ -20,18 +20,18 @@ Blocks are the {accent}fields{/accent} on a sheet. Each block has a type and a l
 
 Storyarn supports {accent}10 block types{/accent}:
 
-| Type             | Description                                                                        | Variable?        | Value example                           |
-| ---------------- | ---------------------------------------------------------------------------------- | ---------------- | --------------------------------------- |
-| **Text**         | Single-line or short text input with optional placeholder                          | Yes              | `"Jaime"`                               |
-| **Rich Text**    | Formatted text with bold, italic, lists, links                                     | Yes              | `"<p>A brave warrior...</p>"`           |
-| **Number**       | Numeric input with optional min, max, and step constraints                         | Yes              | `42`                                    |
-| **Boolean**      | Toggle switch. Supports two-state (true/false) or tri-state (true/false/nil) modes | Yes              | `true`                                  |
-| **Select**       | Single choice from a defined list of options                                       | Yes              | `"warrior"`                             |
-| **Multi Select** | Multiple choices from a defined list (tags)                                        | Yes              | `["fire", "ice"]`                       |
-| **Date**         | Date picker                                                                        | Yes              | `"2024-03-15"`                          |
+| Type             | Description                                                                        | Variable?        | Value example                                         |
+| ---------------- | ---------------------------------------------------------------------------------- | ---------------- | ----------------------------------------------------- |
+| **Text**         | Single-line or short text input with optional placeholder                          | Yes              | `"Jaime"`                                             |
+| **Rich Text**    | Formatted text with bold, italic, lists, links                                     | Yes              | `"<p>A brave warrior...</p>"`                         |
+| **Number**       | Numeric input with optional min, max, and step constraints                         | Yes              | `42`                                                  |
+| **Boolean**      | Toggle switch. Supports two-state (true/false) or tri-state (true/false/nil) modes | Yes              | `true`                                                |
+| **Select**       | Single choice from a defined list of options                                       | Yes              | `"warrior"`                                           |
+| **Multi Select** | Multiple choices from a defined list (tags)                                        | Yes              | `["fire", "ice"]`                                     |
+| **Date**         | Date picker                                                                        | Yes              | `"2024-03-15"`                                        |
 | **Table**        | Spreadsheet grid with typed columns and named rows                                 | Yes (cell-level) | See [Table Blocks](/docs/world-building/table-blocks) |
-| **Reference**    | Link to another sheet or flow                                                      | **No**           | --                                      |
-| **Gallery**      | Image collection from uploaded assets                                              | **No**           | --                                      |
+| **Reference**    | Link to another sheet or flow                                                      | **No**           | --                                                    |
+| **Gallery**      | Image collection from uploaded assets                                              | **No**           | --                                                    |
 
 Reference and gallery blocks are excluded from the variable system because they don't carry a meaningful runtime value.
 

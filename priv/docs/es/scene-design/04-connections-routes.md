@@ -35,10 +35,10 @@ Selecciona una conexión para editar su estilo desde la barra flotante.
 
 ## Dirección
 
-| Dirección | Significado |
-| --------- | ----------- |
+| Dirección         | Significado                                                                                                       |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------- |
 | **Bidireccional** | La ruta o relación funciona en ambos sentidos. Las patrullas pueden recorrerla en cualquiera de los dos sentidos. |
-| **Una dirección** | La ruta o relación tiene una sola dirección, desde el primer punto hasta el último punto. |
+| **Una dirección** | La ruta o relación tiene una sola dirección, desde el primer punto hasta el último punto.                         |
 
 Usa la dirección cuando la conexión deba comunicar intención: un camino de solo ida, una dependencia, el orden de una patrulla o una relación que se lee desde un lado.
 

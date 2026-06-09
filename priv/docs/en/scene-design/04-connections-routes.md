@@ -35,10 +35,10 @@ Select a connection to edit its visual style from the floating toolbar.
 
 ## Direction
 
-| Direction | Meaning |
-| --------- | ------- |
+| Direction         | Meaning                                                                                       |
+| ----------------- | --------------------------------------------------------------------------------------------- |
 | **Bidirectional** | The route or relationship works both ways. Patrol routes can traverse it in either direction. |
-| **One-way** | The route or relationship has a single direction, from the first point to the last point. |
+| **One-way**       | The route or relationship has a single direction, from the first point to the last point.     |
 
 Use direction when the connection needs to communicate intent: a one-way path, a dependency, a patrol order, or a relationship that should be read from one side.
 

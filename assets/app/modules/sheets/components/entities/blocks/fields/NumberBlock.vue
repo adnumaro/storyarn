@@ -56,6 +56,7 @@ function save(): void {
 
 function onKeydown(e: KeyboardEvent): void {
   if (e.key === "e" || e.key === "E" || e.key === "+") e.preventDefault();
+  if (e.key === "Enter") save();
 }
 </script>
 
@@ -199,7 +200,6 @@ function onKeydown(e: KeyboardEvent): void {
       :step="block.config?.step || 'any'"
       class="w-full"
       @blur="save"
-      @keydown.enter="save"
       @keydown="onKeydown"
     />
     <p v-else class="text-sm tabular-nums">{{ content ?? "\u2014" }}</p>

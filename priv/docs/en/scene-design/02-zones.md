@@ -16,12 +16,12 @@ Zones are polygonal regions drawn on top of a scene. In the editor they mark par
 
 ## Drawing zones
 
-| Tool | Use it for |
-| ---- | ---------- |
+| Tool          | Use it for                                             |
+| ------------- | ------------------------------------------------------ |
 | **Rectangle** | Rooms, buildings, interface-like panels inside the map |
-| **Triangle** | Directional markers, points of interest, map wedges |
-| **Circle** | Areas of influence, camps, approximate radii |
-| **Freeform** | Irregular rooms, paths, terrain boundaries |
+| **Triangle**  | Directional markers, points of interest, map wedges    |
+| **Circle**    | Areas of influence, camps, approximate radii           |
+| **Freeform**  | Irregular rooms, paths, terrain boundaries             |
 
 Zone vertices are stored as percentages relative to the scene dimensions. This keeps zones aligned if the background image or view size changes.
 
@@ -31,12 +31,12 @@ Double-click a zone to edit its vertices. Drag the edit points to reshape the ar
 
 The type picker defines what the zone does in exploration mode:
 
-| Type | Use |
-| ---- | --- |
-| **Action** | Creates an interaction: it can run instructions, open a scene, launch a flow, or combine several of these. Use it for doors, points of interest, map buttons, and simple state changes. |
-| **Walkable Area** | Marks where the player can move in exploration mode. |
-| **Display** | Shows the current value of a variable on the map. It can show either value only or name + value. |
-| **Collection** | Opens a collection window with collectible items. Each item can have its own condition and instructions when collected. |
+| Type              | Use                                                                                                                                                                                     |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Action**        | Creates an interaction: it can run instructions, open a scene, launch a flow, or combine several of these. Use it for doors, points of interest, map buttons, and simple state changes. |
+| **Walkable Area** | Marks where the player can move in exploration mode.                                                                                                                                    |
+| **Display**       | Shows the current value of a variable on the map. It can show either value only or name + value.                                                                                        |
+| **Collection**    | Opens a collection window with collectible items. Each item can have its own condition and instructions when collected.                                                                 |
 
 Use **Walkable Area** to define where the player can move. Use **Action** for map points that should respond to clicks with navigation, instructions, or flows.
 
@@ -44,12 +44,12 @@ Use **Walkable Area** to define where the player can move. Use **Action** for ma
 
 Zone properties are organized into tabs:
 
-| Tab | What it controls |
-| --- | ---------------- |
-| **Visual** | Text, icon, displayed variable, size, font, weight, and style. |
-| **Rules** | Availability condition and the effect when the condition is not met. |
-| **Action / Movement / Collection** | Type-specific behavior. |
-| **Settings** | Shortcut, hidden-in-exploration state, and tooltip. |
+| Tab                                | What it controls                                                     |
+| ---------------------------------- | -------------------------------------------------------------------- |
+| **Visual**                         | Text, icon, displayed variable, size, font, weight, and style.       |
+| **Rules**                          | Availability condition and the effect when the condition is not met. |
+| **Action / Movement / Collection** | Type-specific behavior.                                              |
+| **Settings**                       | Shortcut, hidden-in-exploration state, and tooltip.                  |
 
 ## Visual
 

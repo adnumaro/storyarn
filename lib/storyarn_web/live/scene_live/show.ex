@@ -1571,6 +1571,8 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   @impl true
+  def handle_info({:EXIT, _pid, :normal}, socket), do: {:noreply, socket}
+
   def handle_info({:entity_selected, "pin-sheet-" <> _, sheet_id}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       pin = socket.assigns.selected_element

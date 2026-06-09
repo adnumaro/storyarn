@@ -2,6 +2,8 @@
 import SceneCanvas from "@modules/scenes/editor/components/canvas/SceneCanvas.vue";
 import SceneDock from "@modules/scenes/editor/components/chrome/dock/SceneDock.vue";
 
+type ServerPayload = any;
+
 interface EntityLock {
   userId: number | string;
 }
@@ -13,12 +15,12 @@ interface CollaborationData {
 
 interface SceneCompactCanvas {
   id: string;
-  sceneData: unknown;
-  pins: unknown[];
-  zones: unknown[];
-  connections: unknown[];
-  annotations: unknown[];
-  layers: unknown[];
+  sceneData: ServerPayload;
+  pins: ServerPayload[];
+  zones: ServerPayload[];
+  connections: ServerPayload[];
+  annotations: ServerPayload[];
+  layers: ServerPayload[];
   activeTool: string;
   editMode: boolean;
   canEdit: boolean;
@@ -29,8 +31,8 @@ interface SceneCompactDock {
   activeTool: string;
   editMode: boolean;
   compact: boolean;
-  pendingSheet: unknown;
-  projectSheets: unknown[];
+  pendingSheet: ServerPayload;
+  projectSheets: ServerPayload[];
   workspaceSlug: string;
   projectSlug: string;
   sceneId: number | string;

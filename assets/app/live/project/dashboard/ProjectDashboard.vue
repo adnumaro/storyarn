@@ -149,8 +149,9 @@ const activityTypeKeys: Record<string, string> = {
       <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <a
           v-for="stat in statCards"
-          :key="stat.label"
+          :key="stat.key"
           :href="stat.href"
+          :data-testid="`project-stat-${stat.key}`"
           data-phx-link="redirect"
           data-phx-link-state="push"
           class="rounded-lg border border-border bg-surface p-4 space-y-2 transition-colors"

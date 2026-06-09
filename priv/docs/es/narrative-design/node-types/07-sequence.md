@@ -36,12 +36,12 @@ En Flow Player, las sequences funcionan como una composición ligera de escenari
 
 Esto permite montar secuencias visuales sin salir del flujo:
 
-| Tipo de capa | Uso habitual |
-| ------------ | ------------ |
-| **Backdrop** | Imagen principal de fondo para el beat: un interior, campo de batalla, recuerdo o frame de cinemática. |
-| **Character** | Arte de personaje colocado sobre el fondo, normalmente a la izquierda, centro o derecha. |
-| **Prop** | Objetos, pistas, inserts tipo UI o detalles de escena que deben aparecer durante la sequence. |
-| **Overlay** | Efectos a pantalla completa, iluminación, clima, viñetas o tratamientos de primer plano. |
+| Tipo de capa  | Uso habitual                                                                                           |
+| ------------- | ------------------------------------------------------------------------------------------------------ |
+| **Backdrop**  | Imagen principal de fondo para el beat: un interior, campo de batalla, recuerdo o frame de cinemática. |
+| **Character** | Arte de personaje colocado sobre el fondo, normalmente a la izquierda, centro o derecha.               |
+| **Prop**      | Objetos, pistas, inserts tipo UI o detalles de escena que deben aparecer durante la sequence.          |
+| **Overlay**   | Efectos a pantalla completa, iluminación, clima, viñetas o tratamientos de primer plano.               |
 
 La UI de diálogo permanece por encima de la composición. Las capas visuales usan coordenadas normalizadas al viewport del player, así que la misma configuración escala entre tamaños de pantalla.
 

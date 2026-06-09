@@ -11,14 +11,14 @@ Storyarn can export your narrative content to {accent}6 formats{/accent} coverin
 
 ## Export formats
 
-| Format                    | Extension | Engine / Tool                | Content supported                                        |
-| ------------------------- | --------- | ---------------------------- | -------------------------------------------------------- |
-| **Ink**                   | `.ink`    | Inkle's Ink runtime          | Flows, Sheets                                            |
-| **Yarn Spinner**          | `.yarn`   | Yarn Spinner (Unity, Godot)  | Flows, Sheets                                            |
-| **Unity Dialogue System** | `.json`   | Unity (Pixel Crushers, etc.) | Flows, Sheets                                            |
-| **Godot Dialogic**        | `.dtl`    | Godot 4 Dialogic plugin      | Flows, Sheets                                            |
-| **Unreal Engine**         | `.csv`    | Unreal Engine (Data Tables)  | Flows, Sheets                                            |
-| **articy:draft**          | `.xml`    | articy:draft XML import      | Flows, Sheets                                            |
+| Format                    | Extension | Engine / Tool                | Content supported |
+| ------------------------- | --------- | ---------------------------- | ----------------- |
+| **Ink**                   | `.ink`    | Inkle's Ink runtime          | Flows, Sheets     |
+| **Yarn Spinner**          | `.yarn`   | Yarn Spinner (Unity, Godot)  | Flows, Sheets     |
+| **Unity Dialogue System** | `.json`   | Unity (Pixel Crushers, etc.) | Flows, Sheets     |
+| **Godot Dialogic**        | `.dtl`    | Godot 4 Dialogic plugin      | Flows, Sheets     |
+| **Unreal Engine**         | `.csv`    | Unreal Engine (Data Tables)  | Flows, Sheets     |
+| **articy:draft**          | `.xml`    | articy:draft XML import      | Flows, Sheets     |
 
 Engine-specific formats focus on flows and sheets, which is what game runtimes need for dialogue, branching, and variable state. Scenes and localization have their own tools inside their work areas when you need to prepare spatial content or translations.
 

@@ -36,12 +36,12 @@ In Flow Player, sequences work like a lightweight stage composition. The active 
 
 This lets you build visual sequences without leaving the flow:
 
-| Layer kind | Typical use |
-| ---------- | ----------- |
-| **Backdrop** | Main background image for the beat, such as an interior, battlefield, memory, or cutscene frame. |
-| **Character** | Character art positioned over the backdrop, usually left, center, or right. |
-| **Prop** | Objects, clues, UI-like inserts, or scene details that should appear during the sequence. |
-| **Overlay** | Full-frame effects, lighting, weather, vignettes, or foreground treatments. |
+| Layer kind    | Typical use                                                                                      |
+| ------------- | ------------------------------------------------------------------------------------------------ |
+| **Backdrop**  | Main background image for the beat, such as an interior, battlefield, memory, or cutscene frame. |
+| **Character** | Character art positioned over the backdrop, usually left, center, or right.                      |
+| **Prop**      | Objects, clues, UI-like inserts, or scene details that should appear during the sequence.        |
+| **Overlay**   | Full-frame effects, lighting, weather, vignettes, or foreground treatments.                      |
 
 The dialogue UI remains above the stage composition. Visual layers are normalized to the player viewport, so the same setup scales across screen sizes.
 

@@ -21,7 +21,7 @@ config :phoenix_test,
   otp_app: :storyarn,
   endpoint: StoryarnWeb.Endpoint,
   playwright: [
-    assets_dir: "assets",
+    assets_dir: ".",
     browser: :chromium,
     headless: System.get_env("PLAYWRIGHT_HEADLESS", "true") in ~w(t true 1),
     ecto_sandbox_stop_owner_delay: 1000,

@@ -16,13 +16,13 @@ Scenes can be more than static maps. Zones handle area actions: running instruct
 
 ## Interaction types
 
-| Type | Behavior |
-| ---- | -------- |
-| **Action** | Runs instructions, navigates to a scene or flow, or combines both. |
-| **Walkable Area** | Marks where the player can move in exploration mode. |
-| **Display** | Shows a variable on the map, either as value only or name + value. |
-| **Collection** | Opens a collection window with collectible items, each with optional conditions and instructions. |
-| **Pin with flow** | Launches the pin's flow on top of the scene. |
+| Type                       | Behavior                                                                                           |
+| -------------------------- | -------------------------------------------------------------------------------------------------- |
+| **Action**                 | Runs instructions, navigates to a scene or flow, or combines both.                                 |
+| **Walkable Area**          | Marks where the player can move in exploration mode.                                               |
+| **Display**                | Shows a variable on the map, either as value only or name + value.                                 |
+| **Collection**             | Opens a collection window with collectible items, each with optional conditions and instructions.  |
+| **Pin with flow**          | Launches the pin's flow on top of the scene.                                                       |
 | **Playable or patrol pin** | Lets users control a character inside walkable areas or move a non-playable pin along connections. |
 
 Action zones are the primary type for interactive behavior. Use them when part of the map should open a scene, launch a flow, or change variables.

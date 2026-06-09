@@ -3,7 +3,7 @@ import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
 import { Check } from "lucide-vue-next";
 import { CheckboxIndicator, CheckboxRoot, useForwardPropsEmits, type AsTag } from "reka-ui";
-import { cn } from "../../../shared/utils/utils";
+import { cn } from "@shared/utils/utils.ts";
 
 const props = defineProps<{
   defaultValue?: boolean | "indeterminate";
@@ -11,8 +11,8 @@ const props = defineProps<{
   disabled?: boolean;
   value?: string;
   id?: string;
-  trueValue?: string;
-  falseValue?: string;
+  trueValue?: boolean;
+  falseValue?: boolean;
   asChild?: boolean;
   as?: AsTag | Component;
   name?: string;

@@ -11,12 +11,12 @@ New to Storyarn? Start by choosing the path that matches what you need to do fir
 
 ## Pick your path
 
-| If you are... | Start with | Then read |
-| ------------- | ---------- | --------- |
-| **A writer or narrative designer** creating dialogue and branching scenes | [Create a Workspace](/docs/quick-start/create-workspace) and [Your First Flow](/docs/quick-start/first-flow) | [Flows Overview](/docs/narrative-design/flows-overview), [Dialogue Nodes](/docs/narrative-design/node-types/dialogue), [Condition Nodes](/docs/narrative-design/node-types/condition) |
-| **A game designer or world builder** defining characters, items, stats, and state | [Your First Sheet](/docs/quick-start/first-sheet) | [Sheets Overview](/docs/world-building/sheets-overview), [Blocks & Variables](/docs/world-building/blocks-and-variables), [Table Blocks](/docs/world-building/table-blocks) |
-| **A developer or technical designer** preparing engine integration | [Core Workflow](/docs/welcome/core-workflow) and [Export](/docs/import-export/import-export-overview) | [Debug Mode](/docs/narrative-design/debug-mode), [Instruction Nodes](/docs/narrative-design/node-types/instruction) |
-| **A localization manager or producer** planning translation work | [Localization Overview](/docs/localization/localization-overview) | [Dialogue Nodes](/docs/narrative-design/node-types/dialogue), [Export](/docs/import-export/import-export-overview) |
+| If you are...                                                                     | Start with                                                                                                   | Then read                                                                                                                                                                             |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A writer or narrative designer** creating dialogue and branching scenes         | [Create a Workspace](/docs/quick-start/create-workspace) and [Your First Flow](/docs/quick-start/first-flow) | [Flows Overview](/docs/narrative-design/flows-overview), [Dialogue Nodes](/docs/narrative-design/node-types/dialogue), [Condition Nodes](/docs/narrative-design/node-types/condition) |
+| **A game designer or world builder** defining characters, items, stats, and state | [Your First Sheet](/docs/quick-start/first-sheet)                                                            | [Sheets Overview](/docs/world-building/sheets-overview), [Blocks & Variables](/docs/world-building/blocks-and-variables), [Table Blocks](/docs/world-building/table-blocks)           |
+| **A developer or technical designer** preparing engine integration                | [Core Workflow](/docs/welcome/core-workflow) and [Export](/docs/import-export/import-export-overview)        | [Debug Mode](/docs/narrative-design/debug-mode), [Instruction Nodes](/docs/narrative-design/node-types/instruction)                                                                   |
+| **A localization manager or producer** planning translation work                  | [Localization Overview](/docs/localization/localization-overview)                                            | [Dialogue Nodes](/docs/narrative-design/node-types/dialogue), [Export](/docs/import-export/import-export-overview)                                                                    |
 
 ## The core model
 

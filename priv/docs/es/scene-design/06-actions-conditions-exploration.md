@@ -16,13 +16,13 @@ Las Escenas pueden ser más que mapas estáticos. Las zonas concentran las accio
 
 ## Tipos de interacción
 
-| Tipo | Comportamiento |
-| ---- | -------------- |
-| **Acción** | Ejecuta instrucciones, navega a escena o flujo, o combina ambas cosas. |
-| **Área transitable** | Marca por dónde puede moverse el jugador en modo exploración. |
-| **Mostrar** | Muestra una variable en el mapa, como valor o como nombre + valor. |
-| **Colección** | Abre una ventana con elementos recogibles, cada uno con condiciones e instrucciones opcionales. |
-| **Pin con flujo** | Lanza un flujo asociado al pin sobre la escena. |
+| Tipo                       | Comportamiento                                                                                       |
+| -------------------------- | ---------------------------------------------------------------------------------------------------- |
+| **Acción**                 | Ejecuta instrucciones, navega a escena o flujo, o combina ambas cosas.                               |
+| **Área transitable**       | Marca por dónde puede moverse el jugador en modo exploración.                                        |
+| **Mostrar**                | Muestra una variable en el mapa, como valor o como nombre + valor.                                   |
+| **Colección**              | Abre una ventana con elementos recogibles, cada uno con condiciones e instrucciones opcionales.      |
+| **Pin con flujo**          | Lanza un flujo asociado al pin sobre la escena.                                                      |
 | **Pin jugable o patrulla** | Permite controlar un personaje en áreas transitables o mover un pin no jugable siguiendo conexiones. |
 
 Las zonas de Acción son el tipo principal para comportamiento interactivo. Úsalas cuando una parte del mapa deba abrir una escena, lanzar un flujo o modificar variables.

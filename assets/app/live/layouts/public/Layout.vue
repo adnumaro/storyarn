@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import type { CSSProperties } from "vue";
 import { useI18n } from "vue-i18n";
 import { BookOpen, Mail, Menu, PanelsTopLeft, Sparkles, X } from "lucide-vue-next";
 import LiveLink from "@components/navigation/LiveLink.vue";
@@ -32,7 +33,7 @@ const headerClass = computed(() => [
     "z-[120] rounded-full border border-border bg-background/70 px-5 backdrop-blur-xl shadow-[0_20px_80px_rgba(0,0,0,0.28)]",
 ]);
 
-const headerStyle = computed(() =>
+const headerStyle = computed<CSSProperties | undefined>(() =>
   isDark.value
     ? {
         position: "fixed",

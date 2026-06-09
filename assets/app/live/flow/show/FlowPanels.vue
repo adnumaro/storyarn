@@ -7,11 +7,13 @@ import FlowPreview from "@modules/flows/editor/components/panels/FlowPreview.vue
 import FlowSequenceConfigPanel from "@modules/flows/editor/components/panels/FlowSequenceConfigPanel.vue";
 import FlowVersionHistoryPanel from "@modules/flows/editor/components/panels/FlowVersionHistoryPanel.vue";
 
+type ServerPayload = any;
+
 interface FlowVersionsPanel {
   open: boolean;
-  versions: unknown[];
-  namedVersions: unknown[];
-  autoVersions: unknown[];
+  versions: ServerPayload[];
+  namedVersions: ServerPayload[];
+  autoVersions: ServerPayload[];
   hasMore: boolean;
   canNameVersion: boolean;
   currentVersionId: number | null;
@@ -21,17 +23,17 @@ interface FlowVersionsPanel {
 
 interface FlowDebugPanelState {
   open: boolean;
-  state: unknown;
-  nodes: Record<string, unknown>;
-  controls: Record<string, unknown>;
+  state: ServerPayload;
+  nodes: Record<string, ServerPayload>;
+  controls: ServerPayload;
 }
 
 interface FlowBuilderPanelState {
   open: boolean;
   nodeType: string | null;
   nodeId: number | string | null;
-  condition: unknown;
-  assignments: unknown[] | null;
+  condition: ServerPayload;
+  assignments: ServerPayload[] | null;
   switchMode: boolean | null;
   projectVariables: string;
   canEdit: boolean;
@@ -39,14 +41,14 @@ interface FlowBuilderPanelState {
 
 interface FlowPanelState {
   open: boolean;
-  data: unknown;
+  data: ServerPayload;
   canEdit: boolean;
 }
 
 interface FlowPreviewPanel {
   open: boolean;
-  currentNode: unknown;
-  responses: unknown[];
+  currentNode: ServerPayload;
+  responses: ServerPayload[];
   hasNext: boolean;
   hasHistory: boolean;
 }
@@ -97,8 +99,8 @@ const { panels } = defineProps<{
         :node-type="panels.builder.nodeType"
         :node-id="panels.builder.nodeId"
         :condition="panels.builder.condition"
-        :assignments="panels.builder.assignments"
-        :switch-mode="panels.builder.switchMode"
+        :assignments="panels.builder.assignments ?? undefined"
+        :switch-mode="panels.builder.switchMode ?? undefined"
         :project-variables="panels.builder.projectVariables"
         :can-edit="panels.builder.canEdit"
       />

@@ -28,21 +28,21 @@ Exit nodes mark where a path finishes. A flow can have one exit or many exits, d
 
 Common examples:
 
-| Use case | Exit setup |
-| -------- | ---------- |
-| A simple conversation ends | One terminal Exit node |
-| A quest branch succeeds or fails | Separate exits like `accepted`, `declined`, `completed` |
-| A reusable subflow returns to a parent flow | Exit nodes configured to return to caller |
-| A flow hands off to another flow | Exit node configured to continue to another flow |
+| Use case                                    | Exit setup                                              |
+| ------------------------------------------- | ------------------------------------------------------- |
+| A simple conversation ends                  | One terminal Exit node                                  |
+| A quest branch succeeds or fails            | Separate exits like `accepted`, `declined`, `completed` |
+| A reusable subflow returns to a parent flow | Exit nodes configured to return to caller               |
+| A flow hands off to another flow            | Exit node configured to continue to another flow        |
 
 ## Exit modes
 
 Exit nodes support three modes:
 
-| Mode | Behavior |
-| ---- | -------- |
-| **Terminal** | Ends the current run. Use it when the flow is complete. |
-| **Continue to flow** | Jumps into another flow after this path ends. Use it for explicit flow chaining. |
+| Mode                 | Behavior                                                                                          |
+| -------------------- | ------------------------------------------------------------------------------------------------- |
+| **Terminal**         | Ends the current run. Use it when the flow is complete.                                           |
+| **Continue to flow** | Jumps into another flow after this path ends. Use it for explicit flow chaining.                  |
 | **Return to caller** | Returns to the parent flow that entered through a Subflow node. Use it for reusable nested flows. |
 
 ## Outcome tags

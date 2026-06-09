@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Component } from "lucide-vue-next";
+import type { Component } from "vue";
 import {
   Dialog,
   DialogContent,

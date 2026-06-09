@@ -7,12 +7,14 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
   Run with: mix test.e2e
   """
 
-  use PhoenixTest.Playwright.Case, async: true
+  use PhoenixTest.Playwright.Case, async: false
 
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Accounts
+  alias Storyarn.Assets
+  alias Storyarn.Projects
   alias Storyarn.Repo
 
   @moduletag :e2e
@@ -122,6 +124,32 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
     end
   end
 
+  describe "project assets (authenticated)" do
+    test "uploads a real image file through the browser", %{conn: conn} do
+      user = user_fixture()
+      project = user |> project_fixture(%{name: "Upload Project"}) |> Repo.preload(:workspace)
+      filename = "e2e-upload-#{System.unique_integer([:positive])}.png"
+      image_path = tiny_png_fixture(filename)
+
+      conn
+      |> authenticate(user)
+      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
+      |> assert_has("[data-testid='asset-upload-button']")
+      |> unwrap(fn %{frame_id: frame_id} ->
+        {:ok, _} =
+          PlaywrightEx.Frame.set_input_files(frame_id,
+            selector: "[data-testid='asset-upload-input']",
+            local_paths: [image_path],
+            timeout: 10_000
+          )
+      end)
+      |> assert_has("p", text: "Asset uploaded successfully.")
+      |> assert_has("p", text: filename)
+
+      assert Enum.any?(Assets.list_assets(project.id), &(&1.filename == filename))
+    end
+  end
+
   describe "project settings (authenticated)" do
     test "owner can access settings sheet", %{conn: conn} do
       user = user_fixture()
@@ -199,6 +227,31 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       |> assert_path("/users/log-in")
     end
 
+    test "invited user can accept, authenticate, and open the project", %{conn: conn} do
+      owner = user_fixture()
+      project = owner |> project_fixture(%{name: "Invitation Flow Project"}) |> Repo.preload(:workspace)
+      invited_email = "project-invite-#{System.unique_integer([:positive])}@example.com"
+
+      {token, _invitation} =
+        create_invitation_with_token(project, owner, invited_email, "editor")
+
+      conn
+      |> visit("/projects/invitations/#{token}")
+      |> assert_path("/users/log-in")
+
+      invited_user = Accounts.get_user_by_email(invited_email)
+      assert invited_user
+
+      membership = Projects.get_membership(project.id, invited_user.id)
+      assert membership.role == "editor"
+
+      conn
+      |> authenticate(invited_user)
+      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
+      |> assert_has("[data-testid='project-stat-sheets']")
+      |> assert_has("[data-testid='project-stat-flows']")
+    end
+
     test "already accepted invitation shows invalid invitation page", %{conn: conn} do
       owner = user_fixture()
       project = project_fixture(owner)
@@ -208,7 +261,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
 
       # Accept the invitation first
       {:ok, user} = Accounts.find_or_register_confirmed_user("double-accept@example.com")
-      {:ok, _} = Storyarn.Projects.accept_invitation(invitation, user)
+      {:ok, _} = Projects.accept_invitation(invitation, user)
 
       # Already-accepted token is filtered out by verify_token_query, shows invalid page
       conn
@@ -233,5 +286,16 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       |> visit("/")
       |> assert_path("/workspaces/#{workspace.slug}")
     end
+  end
+
+  defp tiny_png_fixture(filename) do
+    path = Path.join(System.tmp_dir!(), filename)
+
+    File.write!(
+      path,
+      Base.decode64!("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==")
+    )
+
+    path
   end
 end

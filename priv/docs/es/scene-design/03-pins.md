@@ -16,12 +16,12 @@ Los pines son marcadores puntuales colocados sobre una escena. Úsalos para señ
 
 ## Tipos de pin
 
-| Tipo | Uso típico |
-| ---- | ---------- |
-| **Ubicación** | Lugares, puertas, salidas, etiquetas de mapa |
-| **Personaje** | NPCs, miembros del grupo, enemigos, encuentros sociales |
-| **Evento** | Eventos temporales, beats de misión, triggers |
-| **Personalizado** | Marcadores propios del proyecto |
+| Tipo              | Uso típico                                              |
+| ----------------- | ------------------------------------------------------- |
+| **Ubicación**     | Lugares, puertas, salidas, etiquetas de mapa            |
+| **Personaje**     | NPCs, miembros del grupo, enemigos, encuentros sociales |
+| **Evento**        | Eventos temporales, beats de misión, triggers           |
+| **Personalizado** | Marcadores propios del proyecto                         |
 
 El tipo ayuda a leer el mapa y cambia el icono por defecto, pero no decide por sí solo qué ocurre en exploración.
 

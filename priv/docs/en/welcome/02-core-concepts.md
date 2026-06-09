@@ -11,19 +11,19 @@ Storyarn connects world data, branching narrative, spatial scenes, localization,
 
 ## Project structure
 
-| Concept | Meaning | Where to learn more |
-| ------- | ------- | ------------------- |
-| **Workspace** | Your team's top-level container. It holds projects and controls workspace membership. | [Create a Workspace](/docs/quick-start/create-workspace) |
-| **Project** | A self-contained narrative workspace with its own sheets, flows, scenes, localization data, assets, and project-level members. | [Core Workflow](/docs/welcome/core-workflow) |
-| **Asset** | An uploaded media file such as an image or audio file. Assets can be referenced by sheets, flows, scenes, localization, and exports. | [Export](/docs/import-export/import-export-overview) |
+| Concept       | Meaning                                                                                                                              | Where to learn more                                      |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
+| **Workspace** | Your team's top-level container. It holds projects and controls workspace membership.                                                | [Create a Workspace](/docs/quick-start/create-workspace) |
+| **Project**   | A self-contained narrative workspace with its own sheets, flows, scenes, localization data, assets, and project-level members.       | [Core Workflow](/docs/welcome/core-workflow)             |
+| **Asset**     | An uploaded media file such as an image or audio file. Assets can be referenced by sheets, flows, scenes, localization, and exports. | [Export](/docs/import-export/import-export-overview)     |
 
 ## World data
 
-| Concept | Meaning | Where to learn more |
-| ------- | ------- | ------------------- |
-| **Sheet** | A structured data record for a character, item, location, faction, quest, or any world entity you need to track. | [Sheets Overview](/docs/world-building/sheets-overview) |
-| **Block** | A typed field inside a sheet. Blocks can store text, rich text, numbers, booleans, selects, dates, tables, references, and more. | [Blocks & Variables](/docs/world-building/blocks-and-variables) |
-| **Variable** | A runtime-readable value generated from a non-constant block. Flows use variables in conditions and instructions. | [Your First Sheet](/docs/quick-start/first-sheet) |
+| Concept      | Meaning                                                                                                                          | Where to learn more                                             |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| **Sheet**    | A structured data record for a character, item, location, faction, quest, or any world entity you need to track.                 | [Sheets Overview](/docs/world-building/sheets-overview)         |
+| **Block**    | A typed field inside a sheet. Blocks can store text, rich text, numbers, booleans, selects, dates, tables, references, and more. | [Blocks & Variables](/docs/world-building/blocks-and-variables) |
+| **Variable** | A runtime-readable value generated from a non-constant block. Flows use variables in conditions and instructions.                | [Your First Sheet](/docs/quick-start/first-sheet)               |
 
 Variables use the pattern:
 
@@ -35,23 +35,23 @@ For example, a Health block on the `mc.jaime` sheet becomes `mc.jaime.health`.
 
 ## Narrative logic
 
-| Concept | Meaning | Where to learn more |
-| ------- | ------- | ------------------- |
-| **Flow** | A visual graph that defines dialogue, branching logic, conditions, instructions, subflows, and execution paths. | [Flows Overview](/docs/narrative-design/flows-overview) |
-| **Node** | A single step inside a flow. Common node types include Dialogue, Condition, Instruction, Sequence, Subflow, Hub, Jump, Entry, and Exit. | [Your First Flow](/docs/quick-start/first-flow) |
-| **Pin** | A connection point on a node. Output pins connect to input pins to define execution order and branches. | [Flows Overview](/docs/narrative-design/flows-overview) |
+| Concept  | Meaning                                                                                                                                 | Where to learn more                                     |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| **Flow** | A visual graph that defines dialogue, branching logic, conditions, instructions, subflows, and execution paths.                         | [Flows Overview](/docs/narrative-design/flows-overview) |
+| **Node** | A single step inside a flow. Common node types include Dialogue, Condition, Instruction, Sequence, Subflow, Hub, Jump, Entry, and Exit. | [Your First Flow](/docs/quick-start/first-flow)         |
+| **Pin**  | A connection point on a node. Output pins connect to input pins to define execution order and branches.                                 | [Flows Overview](/docs/narrative-design/flows-overview) |
 
 ## Spatial design
 
-| Concept | Meaning | Where to learn more |
-| ------- | ------- | ------------------- |
-| **Scene** | A spatial map where narrative content can be explored through zones, pins, child scenes, and flow overlays. | [Scenes Overview](/docs/scene-design/scenes-overview) |
-| **Zone** | A drawn region inside a scene. Zones can evaluate conditions, run instructions, link to flows, or drill into child scenes. | [Zones and Interactive Areas](/docs/scene-design/zones) |
+| Concept   | Meaning                                                                                                                    | Where to learn more                                     |
+| --------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| **Scene** | A spatial map where narrative content can be explored through zones, pins, child scenes, and flow overlays.                | [Scenes Overview](/docs/scene-design/scenes-overview)   |
+| **Zone**  | A drawn region inside a scene. Zones can evaluate conditions, run instructions, link to flows, or drill into child scenes. | [Zones and Interactive Areas](/docs/scene-design/zones) |
 
 ## Localization
 
-| Concept | Meaning | Where to learn more |
-| ------- | ------- | ------------------- |
+| Concept             | Meaning                                                                                                                                    | Where to learn more                                               |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
 | **Localization ID** | A stable identifier used by the localization system to track extracted text across source changes, translation, review, and import/export. | [Localization Overview](/docs/localization/localization-overview) |
 
 ## How these concepts connect

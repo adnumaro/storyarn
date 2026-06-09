@@ -4,6 +4,36 @@ import tailwindcss from "@tailwindcss/vite";
 import liveVuePlugin from "live_vue/vitePlugin";
 import path from "path";
 
+const vendorChunkRules = [
+  ["vendor-tiptap", ["@tiptap", "prosemirror"]],
+  ["vendor-codemirror", ["@codemirror", "@lezer"]],
+  ["vendor-flow-layout", ["elkjs"]],
+  ["vendor-flow-vue", ["rete-vue-plugin"]],
+  ["vendor-flow-area", ["rete-area-plugin", "rete-render-utils"]],
+  [
+    "vendor-flow-plugins",
+    [
+      "rete-connection-plugin",
+      "rete-context-menu-plugin",
+      "rete-history-plugin",
+      "rete-minimap-plugin",
+    ],
+  ],
+  ["vendor-flow-core", ["/node_modules/rete/"]],
+  ["vendor-canvas", ["konva", "vue-konva", "modern-screenshot"]],
+  ["vendor-analytics", ["@sentry", "posthog-js"]],
+  ["vendor-vue", ["vue", "live_vue"]],
+];
+
+const vendorChunkFor = (id) => {
+  if (!id.includes("node_modules")) return;
+
+  return (
+    vendorChunkRules.find(([, matches]) => matches.some((match) => id.includes(match)))?.[0] ??
+    "vendor"
+  );
+};
+
 export default defineConfig({
   root: ".",
   server: {
@@ -23,6 +53,9 @@ export default defineConfig({
     ssrManifest: false,
     rollupOptions: {
       input: ["assets/js/app.js", "assets/css/app.css"],
+      output: {
+        manualChunks: vendorChunkFor,
+      },
     },
     outDir: "priv/static",
     emptyOutDir: false,

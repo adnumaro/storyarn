@@ -9,12 +9,12 @@ description: "Usa Builder view y Code view para escribir asignaciones de variabl
 
 El Editor de Instrucciones define asignaciones que escriben en variables. Storyarn usa el mismo editor en cualquier punto donde la lógica runtime necesita cambiar estado:
 
-| Dónde | Cuándo se ejecutan las instrucciones |
-| ----- | ------------------------------------ |
-| **Nodos de Instrucción** | Cuando el flujo llega al nodo. |
-| **Respuestas de diálogo** | Cuando el jugador elige esa respuesta. |
-| **Zonas de escena** | Cuando la acción de la zona se activa durante la exploración. |
-| **Pines de escena** | Cuando la acción del pin se activa durante la exploración. |
+| Dónde                     | Cuándo se ejecutan las instrucciones                          |
+| ------------------------- | ------------------------------------------------------------- |
+| **Nodos de Instrucción**  | Cuando el flujo llega al nodo.                                |
+| **Respuestas de diálogo** | Cuando el jugador elige esa respuesta.                        |
+| **Zonas de escena**       | Cuando la acción de la zona se activa durante la exploración. |
+| **Pines de escena**       | Cuando la acción del pin se activa durante la exploración.    |
 
 Las instrucciones pueden escribir valores literales o copiar valores desde otra variable. Usa el [Editor de Condiciones](/docs/narrative-design/condition-editor) cuando solo necesites comprobar estado.
 
@@ -27,10 +27,10 @@ Las instrucciones pueden escribir valores literales o copiar valores desde otra 
 
 Cada conjunto de instrucciones tiene dos modos de edición:
 
-| Modo | Mejor para | Qué editas |
-| ---- | ---------- | ---------- |
-| **Builder view** | La mayoría de usuarios, cambios de estado legibles, menos errores de sintaxis | Filas de asignación en forma de frase. |
-| **Code view** | Technical designers, edición rápida, cambios compactos en varias líneas | Una asignación por línea, como `mc.jaime.gold += 100`. |
+| Modo             | Mejor para                                                                    | Qué editas                                             |
+| ---------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------ |
+| **Builder view** | La mayoría de usuarios, cambios de estado legibles, menos errores de sintaxis | Filas de asignación en forma de frase.                 |
+| **Code view**    | Technical designers, edición rápida, cambios compactos en varias líneas       | Una asignación por línea, como `mc.jaime.gold += 100`. |
 
 Al cambiar a Code view, Storyarn serializa las asignaciones actuales como texto. Al editar Code view, el texto se parsea de vuelta al formato estructurado que usa Storyarn.
 
@@ -54,15 +54,15 @@ Un mismo editor puede contener varias asignaciones. Se ejecutan en orden.
 
 ## Operaciones
 
-| Operación | Sintaxis en Code view | Tipos de variable |
-| --------- | --------------------- | ----------------- |
-| **Establecer** | `mc.jaime.health = 75` | Todos los tipos editables |
-| **Sumar** | `mc.jaime.gold += 100` | Número |
-| **Restar** | `mc.jaime.health -= 25` | Número |
-| **Establecer verdadero** | `quest.door.unlocked = true` | Booleano |
-| **Establecer falso** | `quest.door.unlocked = false` | Booleano |
-| **Alternar** | `toggle quest.door.unlocked` | Booleano |
-| **Limpiar** | `clear mc.jaime.notes` | Texto y texto enriquecido |
+| Operación                | Sintaxis en Code view         | Tipos de variable         |
+| ------------------------ | ----------------------------- | ------------------------- |
+| **Establecer**           | `mc.jaime.health = 75`        | Todos los tipos editables |
+| **Sumar**                | `mc.jaime.gold += 100`        | Número                    |
+| **Restar**               | `mc.jaime.health -= 25`       | Número                    |
+| **Establecer verdadero** | `quest.door.unlocked = true`  | Booleano                  |
+| **Establecer falso**     | `quest.door.unlocked = false` | Booleano                  |
+| **Alternar**             | `toggle quest.door.unlocked`  | Booleano                  |
+| **Limpiar**              | `clear mc.jaime.notes`        | Texto y texto enriquecido |
 
 Las operaciones disponibles dependen del tipo de variable seleccionado. Por ejemplo, un número se puede establecer, sumar o restar, mientras que un booleano se puede establecer como verdadero, establecer como falso o alternar.
 

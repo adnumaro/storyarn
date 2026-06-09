@@ -20,10 +20,10 @@ Para los modos compartidos Builder y Code, consulta el [Editor de Condiciones](/
 
 ## Modos de salida
 
-| Modo | Úsalo cuando |
-| ---- | ------------ |
-| **Booleano** | Necesitas una rama simple Verdadero/Falso. |
-| **Switch** | Necesitas varias salidas etiquetadas y quieres que gane la primera condición coincidente. |
+| Modo         | Úsalo cuando                                                                              |
+| ------------ | ----------------------------------------------------------------------------------------- |
+| **Booleano** | Necesitas una rama simple Verdadero/Falso.                                                |
+| **Switch**   | Necesitas varias salidas etiquetadas y quieres que gane la primera condición coincidente. |
 
 El modo booleano da al nodo dos salidas: **Verdadero** y **Falso**. El flujo continúa por Verdadero cuando la condición pasa, y por Falso cuando no pasa.
 

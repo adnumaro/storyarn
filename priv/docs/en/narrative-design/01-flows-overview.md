@@ -32,18 +32,18 @@ Nodes are connected through **pins** -- small circles on the edges of each node.
 
 Storyarn has **10 node types**, each serving a distinct role in the flow graph:
 
-| Node            | Icon           | Purpose                                                                                                                                                                                                         |
-| --------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Entry**       | Play           | Where the flow starts. Auto-created with the flow, cannot be deleted. See [Entry & Exit Nodes](/docs/narrative-design/node-types/entry-exit).                                                                  |
-| **Exit**        | Arrow right    | Where the flow ends. Supports terminal, continue-to-flow, and return-to-caller modes. See [Entry & Exit Nodes](/docs/narrative-design/node-types/entry-exit).                                                   |
-| **Dialogue**    | Message square | Character speech with optional player responses. The most common node type -- see the [dedicated guide](/docs/narrative-design/node-types/dialogue).                                                                 |
-| **Condition**   | Git branch     | Branches the flow based on variable values. See [Condition Nodes](/docs/narrative-design/node-types/condition) and the [Condition Editor](/docs/narrative-design/condition-editor).                             |
-| **Instruction** | Zap            | Modifies variable values when the flow passes through. See [Instruction Nodes](/docs/narrative-design/node-types/instruction) and the [Instruction Editor](/docs/narrative-design/instruction-editor).          |
-| **Hub**         | Log in         | A named merge point where multiple paths converge. See [Hub & Jump Nodes](/docs/narrative-design/node-types/hub-jump).                                                                                         |
-| **Jump**        | Log out        | Jumps to a Hub node within the same flow. See [Hub & Jump Nodes](/docs/narrative-design/node-types/hub-jump).                                                                                                  |
-| **Subflow**     | Box            | Embeds another flow inside this one. See [Subflow Nodes](/docs/narrative-design/node-types/subflow).                                                                                                            |
-| **Sequence**    | Panels top     | Groups related nodes inside a visual container. See [Sequence Nodes](/docs/narrative-design/node-types/sequence).                                                                                              |
-| **Annotation**  | Sticky note    | Purely visual note for design intent, TODOs, or context on the canvas. See [Annotation Nodes](/docs/narrative-design/node-types/annotation).                                                                    |
+| Node            | Icon           | Purpose                                                                                                                                                                                                |
+| --------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Entry**       | Play           | Where the flow starts. Auto-created with the flow, cannot be deleted. See [Entry & Exit Nodes](/docs/narrative-design/node-types/entry-exit).                                                          |
+| **Exit**        | Arrow right    | Where the flow ends. Supports terminal, continue-to-flow, and return-to-caller modes. See [Entry & Exit Nodes](/docs/narrative-design/node-types/entry-exit).                                          |
+| **Dialogue**    | Message square | Character speech with optional player responses. The most common node type -- see the [dedicated guide](/docs/narrative-design/node-types/dialogue).                                                   |
+| **Condition**   | Git branch     | Branches the flow based on variable values. See [Condition Nodes](/docs/narrative-design/node-types/condition) and the [Condition Editor](/docs/narrative-design/condition-editor).                    |
+| **Instruction** | Zap            | Modifies variable values when the flow passes through. See [Instruction Nodes](/docs/narrative-design/node-types/instruction) and the [Instruction Editor](/docs/narrative-design/instruction-editor). |
+| **Hub**         | Log in         | A named merge point where multiple paths converge. See [Hub & Jump Nodes](/docs/narrative-design/node-types/hub-jump).                                                                                 |
+| **Jump**        | Log out        | Jumps to a Hub node within the same flow. See [Hub & Jump Nodes](/docs/narrative-design/node-types/hub-jump).                                                                                          |
+| **Subflow**     | Box            | Embeds another flow inside this one. See [Subflow Nodes](/docs/narrative-design/node-types/subflow).                                                                                                   |
+| **Sequence**    | Panels top     | Groups related nodes inside a visual container. See [Sequence Nodes](/docs/narrative-design/node-types/sequence).                                                                                      |
+| **Annotation**  | Sticky note    | Purely visual note for design intent, TODOs, or context on the canvas. See [Annotation Nodes](/docs/narrative-design/node-types/annotation).                                                           |
 
 ---
 

@@ -16,12 +16,12 @@ Pins are point markers placed on a scene. Use them for exact positions: a charac
 
 ## Pin types
 
-| Type | Typical use |
-| ---- | ----------- |
-| **Location** | Places, landmarks, doors, exits, map labels |
+| Type          | Typical use                                     |
+| ------------- | ----------------------------------------------- |
+| **Location**  | Places, landmarks, doors, exits, map labels     |
 | **Character** | NPCs, party members, enemies, social encounters |
-| **Event** | Timed events, quest beats, triggers |
-| **Custom** | Project-specific marker types |
+| **Event**     | Timed events, quest beats, triggers             |
+| **Custom**    | Project-specific marker types                   |
 
 The type helps the map stay readable and changes the default icon, but it does not decide what happens during exploration.
 

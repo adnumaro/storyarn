@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import SidebarFrame from "@shell/SidebarFrame.vue";
 import FlowTree from "@modules/flows/editor/components/chrome/tree/FlowTree.vue";
 
@@ -15,6 +16,10 @@ const {
   onDashboard?: boolean;
   sidebarProps?: Record<string, unknown>;
 }>();
+
+const flowTreeProps = computed(
+  () => sidebarProps as unknown as InstanceType<typeof FlowTree>["$props"],
+);
 </script>
 
 <template>
@@ -24,6 +29,6 @@ const {
     :dashboard-url="dashboardUrl"
     :on-dashboard="onDashboard"
   >
-    <FlowTree v-bind="sidebarProps" />
+    <FlowTree v-bind="flowTreeProps" />
   </SidebarFrame>
 </template>

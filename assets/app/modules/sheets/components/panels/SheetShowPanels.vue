@@ -3,18 +3,20 @@ import AudioTab from "@modules/sheets/components/panels/tabs/AudioTab.vue";
 import HistoryTab from "@modules/sheets/components/panels/tabs/HistoryTab.vue";
 import ReferencesTab from "@modules/sheets/components/panels/tabs/ReferencesTab.vue";
 
+type ServerPayload = any;
+
 interface SheetReferencesPanel {
-  variableUsage: unknown[];
-  backlinks: unknown[];
-  sceneAppearances: unknown[];
+  variableUsage: ServerPayload[];
+  backlinks: ServerPayload[];
+  sceneAppearances: ServerPayload[];
   workspaceSlug: string;
   projectSlug: string;
   loading: boolean;
 }
 
 interface SheetAudioPanel {
-  groupedLines: unknown[];
-  audioAssets: unknown[];
+  groupedLines: ServerPayload[];
+  audioAssets: ServerPayload[];
   workspaceSlug: string;
   projectSlug: string;
   canEdit: boolean;
@@ -22,9 +24,9 @@ interface SheetAudioPanel {
 }
 
 interface SheetHistoryPanel {
-  versions: unknown[];
-  namedVersions: unknown[];
-  autoVersions: unknown[];
+  versions: ServerPayload[];
+  namedVersions: ServerPayload[];
+  autoVersions: ServerPayload[];
   hasMore: boolean;
   canNameVersion: boolean;
   currentVersionId: number | null;

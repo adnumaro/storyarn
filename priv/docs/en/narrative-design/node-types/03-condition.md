@@ -20,10 +20,10 @@ For the shared Builder and Code editing modes, see the [Condition Editor](/docs/
 
 ## Output modes
 
-| Mode | Use it when |
-| ---- | ----------- |
-| **Boolean** | You need a simple True/False branch. |
-| **Switch** | You need multiple labeled outputs and want the first matching condition to win. |
+| Mode        | Use it when                                                                     |
+| ----------- | ------------------------------------------------------------------------------- |
+| **Boolean** | You need a simple True/False branch.                                            |
+| **Switch**  | You need multiple labeled outputs and want the first matching condition to win. |
 
 Boolean mode gives the node two outputs: **True** and **False**. The flow continues through the True output when the condition passes, and through False when it does not.
 

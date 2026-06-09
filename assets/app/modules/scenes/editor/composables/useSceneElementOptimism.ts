@@ -184,13 +184,6 @@ export function useOptimisticSceneElements<
     zone: new Map(),
   };
 
-  const listRefs = {
-    annotation: annotationItems,
-    connection: connectionItems,
-    pin: pinItems,
-    zone: zoneItems,
-  };
-
   function clearPendingValue(type: SceneElementType, id: string, field: string): void {
     const pending = pendingPatches[type].get(id);
     if (!pending) return;
@@ -274,7 +267,10 @@ export function useOptimisticSceneElements<
     id: string,
     patch: SceneElementPatch,
   ): void {
-    const pending = pendingPatches[type].get(id) || { values: {}, timers: new Map() };
+    const pending: PendingPatch = pendingPatches[type].get(id) ?? {
+      values: {},
+      timers: new Map<string, number>(),
+    };
 
     for (const [field, value] of Object.entries(patch)) {
       const existingTimer = pending.timers.get(field);
@@ -298,7 +294,28 @@ export function useOptimisticSceneElements<
     id: number | string,
     patch: SceneElementPatch,
   ): void {
-    const target = listRefs[type];
+    switch (type) {
+      case "annotation":
+        patchLocalElementList(type, annotationItems, id, patch);
+        break;
+      case "connection":
+        patchLocalElementList(type, connectionItems, id, patch);
+        break;
+      case "pin":
+        patchLocalElementList(type, pinItems, id, patch);
+        break;
+      case "zone":
+        patchLocalElementList(type, zoneItems, id, patch);
+        break;
+    }
+  }
+
+  function patchLocalElementList<T extends SceneElementData>(
+    type: SceneElementType,
+    target: Ref<T[]>,
+    id: number | string,
+    patch: SceneElementPatch,
+  ): void {
     const normalizedId = String(id);
     let matched = false;
 

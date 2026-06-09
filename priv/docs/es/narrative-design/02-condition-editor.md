@@ -9,12 +9,12 @@ description: "Usa Builder view y Code view para definir condiciones reutilizable
 
 El Editor de Condiciones define comprobaciones que leen variables y devuelven verdadero o falso. Storyarn usa el mismo editor en varios sitios:
 
-| Dónde | Qué controla la condición |
-| ----- | ------------------------- |
-| **Nodos de Condición** | Qué rama del flujo se ejecuta a continuación. |
-| **Respuestas de diálogo** | Si una respuesta del jugador está disponible. |
-| **Zonas de escena** | Si un área es visible o interactiva durante la exploración. |
-| **Pines de escena** | Si un marcador, personaje o punto interactivo es visible o interactivo durante la exploración. |
+| Dónde                     | Qué controla la condición                                                                      |
+| ------------------------- | ---------------------------------------------------------------------------------------------- |
+| **Nodos de Condición**    | Qué rama del flujo se ejecuta a continuación.                                                  |
+| **Respuestas de diálogo** | Si una respuesta del jugador está disponible.                                                  |
+| **Zonas de escena**       | Si un área es visible o interactiva durante la exploración.                                    |
+| **Pines de escena**       | Si un marcador, personaje o punto interactivo es visible o interactivo durante la exploración. |
 
 Las condiciones solo leen variables. No cambian estado. Usa el [Editor de Instrucciones](/docs/narrative-design/instruction-editor) cuando necesites escribir valores.
 
@@ -27,10 +27,10 @@ Las condiciones solo leen variables. No cambian estado. Usa el [Editor de Instru
 
 Cada condición tiene dos modos de edición:
 
-| Modo | Mejor para | Qué editas |
-| ---- | ---------- | ---------- |
-| **Builder view** | La mayoría de usuarios, lógica legible, revisión colaborativa | Bloques en forma de frase con variables, operadores, valores y grupos lógicos. |
-| **Code view** | Technical designers, edición rápida, expresiones compactas | Una expresión de texto como `mc.jaime.health > 50 && quest.door.unlocked == true`. |
+| Modo             | Mejor para                                                    | Qué editas                                                                         |
+| ---------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| **Builder view** | La mayoría de usuarios, lógica legible, revisión colaborativa | Bloques en forma de frase con variables, operadores, valores y grupos lógicos.     |
+| **Code view**    | Technical designers, edición rápida, expresiones compactas    | Una expresión de texto como `mc.jaime.health > 50 && quest.door.unlocked == true`. |
 
 Los dos modos describen la misma condición. Al cambiar a Code view, Storyarn serializa el estado actual del builder como texto. Al editar Code view, el texto se parsea de vuelta al formato estructurado que usa Storyarn.
 
@@ -38,11 +38,11 @@ Los dos modos describen la misma condición. Al cambiar a Code view, Storyarn se
 
 Builder view crea condiciones con bloques y reglas.
 
-| Nivel | Propósito |
-| ----- | --------- |
-| **Regla** | Una comparación variable/operador/valor, como `mc.jaime.health > 50`. |
-| **Bloque** | Un conjunto de reglas combinado con **Todas (AND)** o **Alguna (OR)**. |
-| **Grupo** | Un conjunto anidado de bloques seleccionados con su propia lógica **Todas** o **Alguna**. Los grupos funcionan como paréntesis. |
+| Nivel      | Propósito                                                                                                                       |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **Regla**  | Una comparación variable/operador/valor, como `mc.jaime.health > 50`.                                                           |
+| **Bloque** | Un conjunto de reglas combinado con **Todas (AND)** o **Alguna (OR)**.                                                          |
+| **Grupo**  | Un conjunto anidado de bloques seleccionados con su propia lógica **Todas** o **Alguna**. Los grupos funcionan como paréntesis. |
 
 Una condición simple se lee como una frase:
 
@@ -60,14 +60,14 @@ En builder, agrupa las comprobaciones de llave y nivel de cerradura con **Todas*
 
 ## Operadores por tipo de variable
 
-| Tipo de variable | Operadores comunes |
-| ---------------- | ------------------ |
-| **Número** | igual, no igual, mayor que, menor que, no está establecido |
-| **Texto / enriquecido** | igual, contiene, empieza con, termina con, está vacío |
-| **Booleano** | es verdadero, es falso, no está establecido |
-| **Selección** | igual, no igual, no está establecido |
-| **Selección múltiple** | contiene, no contiene, está vacío |
-| **Fecha** | igual, antes de, después de, no está establecido |
+| Tipo de variable        | Operadores comunes                                         |
+| ----------------------- | ---------------------------------------------------------- |
+| **Número**              | igual, no igual, mayor que, menor que, no está establecido |
+| **Texto / enriquecido** | igual, contiene, empieza con, termina con, está vacío      |
+| **Booleano**            | es verdadero, es falso, no está establecido                |
+| **Selección**           | igual, no igual, no está establecido                       |
+| **Selección múltiple**  | contiene, no contiene, está vacío                          |
+| **Fecha**               | igual, antes de, después de, no está establecido           |
 
 Los operadores disponibles dependen del tipo de variable seleccionado, así que el builder evita comparaciones inválidas cuando puede.
 

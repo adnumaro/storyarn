@@ -23,7 +23,18 @@ function emitAnnotationDrag(
   e: KonvaEventObject<DragEvent>,
 ): void {
   e.cancelBubble = true;
-  emit(eventName, "annotation", id, e);
+
+  switch (eventName) {
+    case "dragstart":
+      emit("dragstart", "annotation", id, e);
+      break;
+    case "dragmove":
+      emit("dragmove", "annotation", id, e);
+      break;
+    case "dragend":
+      emit("dragend", "annotation", id, e);
+      break;
+  }
 }
 </script>
 

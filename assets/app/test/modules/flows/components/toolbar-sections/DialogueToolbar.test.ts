@@ -17,7 +17,7 @@ const { default: DialogueToolbar } =
  * outside the adapter, the test will fail because the prop shape can't
  * be assumed snake_case at the consumption site. */
 
-interface RawData {
+interface RawData extends Record<string, unknown> {
   speaker_sheet_id?: number | string | null;
   location_sheet_id?: number | string | null;
   technical_id?: string;
@@ -25,7 +25,18 @@ interface RawData {
   avatar_id?: number | string | null;
 }
 
-function mountIt(nodeData: RawData = {}, sheetAvatars: unknown[] = []) {
+interface TestSheetAvatarEntry {
+  id: number;
+  name: string;
+  avatars: Array<{
+    id: number;
+    name: string;
+    asset: { url: string };
+    position: number;
+  }>;
+}
+
+function mountIt(nodeData: RawData = {}, sheetAvatars: TestSheetAvatarEntry[] = []) {
   return mount(DialogueToolbar, {
     props: { nodeData, nodeId: 42, sheetAvatars },
     global: {
@@ -69,7 +80,8 @@ describe("DialogueToolbar — camelCase adapter (F3-B)", () => {
   it("avatar override flag derives from avatar_id (camelCase locals stay correct for null / 0 / set)", () => {
     const sheetAvatars = [
       {
-        id: "sheet-1",
+        id: 1,
+        name: "Jaime",
         avatars: [
           { id: 100, name: "happy", asset: { url: "/a.png" }, position: 0 },
           { id: 200, name: "sad", asset: { url: "/b.png" }, position: 1 },
@@ -80,11 +92,11 @@ describe("DialogueToolbar — camelCase adapter (F3-B)", () => {
     // available (`v-if="speakerAvatars.length > 0"`). All cases here have a
     // matching speaker_sheet_id with two avatars — the variable is `avatar_id`.
     const cases: Array<[RawData, boolean]> = [
-      [{ speaker_sheet_id: "sheet-1" }, false],
-      [{ speaker_sheet_id: "sheet-1", avatar_id: null }, false],
-      [{ speaker_sheet_id: "sheet-1", avatar_id: 0 }, false],
-      [{ speaker_sheet_id: "sheet-1", avatar_id: "" }, false],
-      [{ speaker_sheet_id: "sheet-1", avatar_id: 100 }, true],
+      [{ speaker_sheet_id: 1 }, false],
+      [{ speaker_sheet_id: 1, avatar_id: null }, false],
+      [{ speaker_sheet_id: 1, avatar_id: 0 }, false],
+      [{ speaker_sheet_id: 1, avatar_id: "" }, false],
+      [{ speaker_sheet_id: 1, avatar_id: 100 }, true],
     ];
     for (const [data, expected] of cases) {
       const w = mountIt(data, sheetAvatars);
@@ -97,11 +109,12 @@ describe("DialogueToolbar — camelCase adapter (F3-B)", () => {
   it("falls back to location_sheet_id when speaker_sheet_id is null (legacy import data)", () => {
     const sheetAvatars = [
       {
-        id: "loc-1",
+        id: 2,
+        name: "Location",
         avatars: [{ id: 50, name: "x", asset: { url: "/c.png" }, position: 0 }],
       },
     ];
-    const w = mountIt({ location_sheet_id: "loc-1" }, sheetAvatars);
+    const w = mountIt({ location_sheet_id: 2 }, sheetAvatars);
     const picker = w.findComponent({ name: "ToolbarAvatarPicker" });
     expect(picker.exists()).toBe(true);
     expect(picker.props("avatars")).toHaveLength(1);
