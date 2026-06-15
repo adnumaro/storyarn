@@ -601,7 +601,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
                  "label" => nil,
                  "url" => "/uploads/sequence-character.png",
                  "z_index" => 100,
-                 "slot" => "right",
+                 "slot" => "bottom-right",
                  "x" => 0.75,
                  "y" => 1.0,
                  "width" => 0.38,

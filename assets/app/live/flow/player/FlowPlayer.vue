@@ -123,18 +123,20 @@ onUnmounted(() => {
       @restart="onRestart"
     />
 
-    <div class="player-main relative">
-      <PlayerVisualLayers :layers="visualLayers" />
-      <PlayerAudioTracks :tracks="audioTracks" />
+    <div class="player-main">
+      <div class="player-stage">
+        <PlayerVisualLayers :layers="visualLayers" />
+        <PlayerAudioTracks :tracks="audioTracks" />
 
-      <PlayerOutcome
-        v-if="slide.type === 'outcome'"
-        :slide="slide as OutcomeData"
-        :editor-url="editorUrl"
-        @restart="onRestart"
-      />
+        <PlayerOutcome
+          v-if="slide.type === 'outcome'"
+          :slide="slide as OutcomeData"
+          :editor-url="editorUrl"
+          @restart="onRestart"
+        />
+      </div>
 
-      <div v-else class="player-dialogue-overlay">
+      <div v-if="slide.type !== 'outcome'" class="player-dialogue-overlay">
         <div class="player-dialogue-panel">
           <PlayerSlide :slide="slide as SlideData" />
           <PlayerChoices

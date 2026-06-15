@@ -58,7 +58,7 @@ function pick(asset: AssetItem) {
     <PopoverTrigger as-child>
       <slot name="trigger" />
     </PopoverTrigger>
-    <PopoverContent :class="[popoverWidth, 'p-0']" :align="align">
+    <PopoverContent :class="[popoverWidth, 'min-w-0 overflow-hidden p-0']" :align="align">
       <Command>
         <CommandInput
           :placeholder="
@@ -83,7 +83,7 @@ function pick(asset: AssetItem) {
               v-for="asset in assets"
               :key="asset.id"
               :value="asset.filename"
-              class="hover:bg-accent hover:text-accent-foreground transition-colors"
+              class="min-w-0 hover:bg-accent hover:text-accent-foreground transition-colors"
               @select="pick(asset)"
             >
               <div class="flex items-center gap-2 min-w-0 flex-1">
@@ -97,7 +97,7 @@ function pick(asset: AssetItem) {
                   v-else-if="kind === 'audio'"
                   class="size-3.5 shrink-0 text-muted-foreground"
                 />
-                <span class="truncate text-xs">{{ asset.filename }}</span>
+                <span class="min-w-0 flex-1 truncate text-xs">{{ asset.filename }}</span>
               </div>
               <Check v-if="isSelected(asset)" class="size-3.5 shrink-0 text-primary" />
             </CommandItem>

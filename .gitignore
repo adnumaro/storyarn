@@ -66,8 +66,7 @@ node_modules/
 
 # Claude Code local settings
 .claude/settings.local.json
-priv/static/uploads/projects
-priv/static/uploads/test
+priv/static/uploads/**
 
 docs/game_references
 priv/static/images/temp

@@ -19,10 +19,7 @@ Dentro de un espacio de trabajo, crea un **proyecto**. Cada proyecto es independ
 
 Invita a compañeros de equipo por email. Reciben un enlace con token, lo aceptan, y ya están dentro — con el rol que elegiste.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Panel del espacio de trabajo — tarjetas de proyectos, avatares de miembros y el botón "Nuevo proyecto"
-</div>
+<img src="/images/docs/workspace-dashboard.webp" alt="Panel del espacio de trabajo con la tarjeta del proyecto Veilbreak Demo y el botón New Project" loading="lazy">
 
 ---
 
@@ -34,19 +31,13 @@ Cada campo en una ficha es un **bloque (block)**. Hay 10 tipos de bloques: texto
 
 Las variables siguen el patrón `{atajo_de_hoja}.{nombre_de_variable}`. Un bloque de Salud en la ficha `mc.jaime` se convierte en `mc.jaime.health`. Cambia ese valor una sola vez y cada flujo que lo comprueba ve la actualización de inmediato.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Editor de fichas — perfil de personaje con bloques de número y selección, mostrando la insignia del nombre de variable en cada campo
-</div>
+<img src="/images/docs/sheets/sheets-character.webp" alt="Ficha de personaje de Kael con banner, avatar, campos heredados, bloques numéricos y bloques de selección" loading="lazy">
 
 Las **Tablas** son cuadrículas de hoja de cálculo dentro de una ficha — perfectas para inventarios, árboles de habilidades o matrices de relaciones. Cada celda se convierte en su propia variable. Las **Fórmulas** te permiten calcular valores a partir de otras variables, incluso entre fichas distintas.
 
 Organiza las fichas en una jerarquía de árbol. Usa la **herencia de propiedades** para propagar bloques de fichas padre a hijas — crea una "Base de Personaje" con salud, nivel y facción, y cada personaje hijo hereda esos campos automáticamente, cada uno con sus propios valores.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Hoja con un bloque de tabla — columnas para nombre del objeto, cantidad y daño, con una columna de fórmula calculando el DPS total
-</div>
+<img src="/images/docs/sheets/sheets-table.webp" alt="Bloque de tabla de ficha para estadísticas de personaje con columnas de base, modificador y total de fórmula" loading="lazy">
 
 ---
 
@@ -65,10 +56,7 @@ Los **Flujos (Flows)** son grafos visuales de nodos donde tu historia toma forma
 
 Conecta nodos arrastrando entre puertos. Edita el contenido en el panel lateral. Colabora en tiempo real — ve los cursores de tus compañeros y el bloqueo automático previene ediciones conflictivas.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Editor de flujos — árbol de diálogo con un nodo de Entrada ramificándose a través de nodos de Diálogo, Condición (verdadero/falso) e Instrucción hasta dos nodos de Salida
-</div>
+<img src="/images/docs/flows/flows.webp" alt="Editor de flujos con un árbol de diálogo de Veilbreak y nodos de diálogo, hub, instrucción, salto, entrada y salida conectados" loading="lazy">
 
 ### Prueba sin salir del editor
 
@@ -83,10 +71,7 @@ El **Reproductor de Historia** es una reproducción cinematográfica a pantalla 
 
 El **Modo Depuración** es tu inspector paso a paso. Avanza nodo por nodo, observa cómo cambian las variables en tiempo real en el panel de Variables, rastrea la ruta de ejecución completa y establece puntos de interrupción. Ajusta los valores de las variables sobre la marcha y vuelve a ejecutar para probar ramas alternativas. Cuatro pestañas — Consola, Variables, Historial y Ruta — te dan visibilidad completa de lo que tu flujo está haciendo y por qué.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Modo Depuración — lienzo del flujo con un nodo activo resaltado y el panel de depuración debajo mostrando la pestaña de Variables con valores actuales y un valor modificado resaltado
-</div>
+<img src="/images/docs/flows/flows-debug.webp" alt="Modo Depuración con un nodo de diálogo activo resaltado, salida de consola, controles de respuesta y barra de depuración" loading="lazy">
 
 ---
 
@@ -98,10 +83,7 @@ Las zonas y los pines no son solo visuales — son interactivos. Adjunta **condi
 
 Haz doble clic en una zona para **profundizar** — Storyarn extrae el área de la zona de la imagen de fondo, crea una escena hija y te permite seguir haciendo zoom. Construye jerarquías de mundo completas: continente > región > ciudad > edificio > habitación.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Editor de escenas — mapa de fantasía de fondo con zonas coloreadas para regiones, pines de personajes con etiquetas y el panel de capas a la izquierda
-</div>
+<img src="/images/docs/scenes.webp" alt="Editor de escenas mostrando el mapa de Thyral con zonas coloreadas, pines de personajes, etiquetas y herramientas de escena" loading="lazy">
 
 ### Modo Exploración
 
@@ -124,10 +106,7 @@ Configura la **integración con DeepL** para traducción automática como primer
 
 Exporta traducciones como **Excel** o **CSV** para traductores profesionales. Impórtalas de vuelta cuando estén listas. El sistema detecta cambios en el texto fuente y marca automáticamente las traducciones obsoletas para revisión.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Localización — lista de idiomas con barras de progreso y el editor de traducción mostrando el texto fuente junto a la versión traducida
-</div>
+<img src="/images/docs/localization-dashboard.webp" alt="Dashboard de localización con progreso de Catalan, recuentos de palabras por hablante, progreso de doblaje y desglose de contenido" loading="lazy">
 
 ---
 

@@ -88,11 +88,11 @@ function triggerUpload() {
 </script>
 
 <template>
-  <div class="flex flex-col gap-1.5 border border-border rounded p-2">
-    <div class="flex items-center gap-2">
+  <div class="flex min-w-0 max-w-full flex-col gap-1.5 overflow-hidden rounded border border-border p-2">
+    <div class="flex min-w-0 items-center gap-2">
       <component :is="icon" class="size-3.5 opacity-70 shrink-0" />
-      <span class="text-xs font-medium flex-1">{{ label }}</span>
-      <div class="flex items-center">
+      <span class="min-w-0 flex-1 truncate text-xs font-medium">{{ label }}</span>
+      <div class="flex shrink-0 items-center">
         <Button
           v-if="canEdit"
           variant="ghost"
@@ -127,10 +127,10 @@ function triggerUpload() {
       <template #trigger>
         <Button
           variant="outline"
-          class="justify-between text-xs h-auto py-1.5"
+          class="h-auto w-full min-w-0 shrink justify-between overflow-hidden py-1.5 text-xs"
           :disabled="!canEdit"
         >
-          <span class="truncate">
+          <span class="min-w-0 flex-1 truncate text-left">
             {{ currentAsset?.filename || pickPlaceholder || $t("common.assets.image.pick") }}
           </span>
           <ImageIcon class="size-3.5 shrink-0 opacity-50" />

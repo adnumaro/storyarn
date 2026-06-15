@@ -16,7 +16,22 @@ defmodule Storyarn.Flows.SequenceVisualLayer do
   alias Storyarn.Flows.FlowNode
 
   @kinds ~w(backdrop character prop overlay)
-  @slots ~w(full left center right custom)
+  @slots [
+    "full",
+    "left",
+    "center",
+    "right",
+    "custom",
+    "top-left",
+    "top-center",
+    "top-right",
+    "middle-left",
+    "middle-center",
+    "middle-right",
+    "bottom-left",
+    "bottom-center",
+    "bottom-right"
+  ]
   @fits ~w(cover contain fill)
 
   @type t :: %__MODULE__{

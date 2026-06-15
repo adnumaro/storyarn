@@ -81,9 +81,33 @@ function layerFrameStyle(layer: PlayerVisualLayer) {
 }
 
 function layerImageStyle(layer: PlayerVisualLayer) {
+  const fit = layer.fit || "contain";
+
   return {
-    objectFit: layer.fit || "contain",
+    objectFit: fit,
+    objectPosition: layerObjectPosition(layer, fit),
   };
+}
+
+function layerObjectPosition(layer: PlayerVisualLayer, fit: string): string {
+  if (fit === "cover" || layer.slot === "full") return "center center";
+
+  const anchorX = normalized(layer.anchor_x ?? layer.anchorX, 0.5);
+  const anchorY = normalized(layer.anchor_y ?? layer.anchorY, 0.5);
+
+  return `${horizontalObjectPosition(anchorX)} ${verticalObjectPosition(anchorY)}`;
+}
+
+function horizontalObjectPosition(anchorX: number): string {
+  if (anchorX <= 0.25) return "left";
+  if (anchorX >= 0.75) return "right";
+  return "center";
+}
+
+function verticalObjectPosition(anchorY: number): string {
+  if (anchorY <= 0.25) return "top";
+  if (anchorY >= 0.75) return "bottom";
+  return "center";
 }
 </script>
 
