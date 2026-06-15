@@ -28,6 +28,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   alias Storyarn.Collaboration
   alias Storyarn.Collaboration.Presence
   alias Storyarn.Scenes
+  alias Storyarn.Shared.HtmlSanitizer
   alias Storyarn.Shared.MapUtils
   alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
   alias StoryarnWeb.Helpers.Authorize
@@ -44,6 +45,9 @@ defmodule StoryarnWeb.SceneLive.Show do
   alias StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers
 
   @lock_heartbeat_interval 10_000
+  @zone_label_icon_max_size 256 * 1024
+  @zone_label_icon_content_types ~w(image/svg+xml image/png image/gif)
+  @zone_label_icon_extensions ~w(.svg .png .gif)
 
   @impl true
   def render(%{compact: true, scene: nil} = assigns) do
@@ -312,7 +316,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     %{
       selectedType: assigns.selected_type,
       selectedElement: serialize_selected_element(assigns.selected_type, assigns.selected_element),
-      canEdit: not Map.get(assigns.selected_element || %{}, :locked, false),
+      canEdit: assigns.can_edit && not Map.get(assigns.selected_element || %{}, :locked, false),
       elementPanelOpen: assigns.right_panel == :element,
       projectSheets: prepare_project_sheets_for_vue(assigns.project_sheets),
       projectFlows: prepare_project_flows_for_vue(assigns.project_flows),
@@ -908,14 +912,25 @@ defmodule StoryarnWeb.SceneLive.Show do
     end)
   end
 
-  def handle_event("upload_pin_icon", %{"filename" => filename, "content_type" => ct, "data" => data}, socket) do
+  def handle_event("pin_icon_upload_validation_error", %{"reason" => "invalid_type"}, socket) do
+    {:noreply, put_flash(socket, :error, zone_label_icon_invalid_type_message())}
+  end
+
+  def handle_event("pin_icon_upload_validation_error", %{"reason" => "too_large"}, socket) do
+    {:noreply, put_flash(socket, :error, zone_label_icon_too_large_message())}
+  end
+
+  def handle_event("upload_pin_icon", %{"id" => id, "filename" => filename, "content_type" => ct, "data" => data}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      with %{__struct__: Scenes.ScenePin} = pin <- socket.assigns[:selected_element],
+      with %{__struct__: Scenes.ScenePin} = pin <- Scenes.get_pin(socket.assigns.scene.id, id),
+           :ok <- validate_zone_label_icon_type(filename, ct),
            [_header, base64] <- String.split(data, ",", parts: 2),
            {:ok, binary} <- Base.decode64(base64),
+           :ok <- validate_zone_label_icon_size(binary),
+           {:ok, icon_binary} <- validate_zone_label_icon_binary(ct, binary),
            {:ok, asset} <-
              Assets.upload_binary_and_create_asset(
-               binary,
+               icon_binary,
                %{filename: filename, content_type: ct},
                socket.assigns.project,
                socket.assigns.current_scope.user
@@ -926,12 +941,15 @@ defmodule StoryarnWeb.SceneLive.Show do
         broadcast_scene_change(
           {:noreply,
            socket
-           |> assign(:selected_element, updated)
+           |> maybe_update_selected_pin(updated)
            |> update_pin_in_list(updated)
            |> push_event("pin_updated", serialize_pin(updated))
            |> put_flash(:info, dgettext("scenes", "Pin icon updated."))}
         )
       else
+        {:error, message} ->
+          {:noreply, put_flash(socket, :error, message)}
+
         _ ->
           {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not upload pin icon."))}
       end
@@ -941,6 +959,54 @@ defmodule StoryarnWeb.SceneLive.Show do
   def handle_event("update_zone", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       params |> ElementHandlers.handle_update_zone(socket) |> broadcast_scene_change()
+    end)
+  end
+
+  def handle_event("zone_icon_upload_validation_error", %{"reason" => "invalid_type"}, socket) do
+    {:noreply, put_flash(socket, :error, zone_label_icon_invalid_type_message())}
+  end
+
+  def handle_event("zone_icon_upload_validation_error", %{"reason" => "too_large"}, socket) do
+    {:noreply, put_flash(socket, :error, zone_label_icon_too_large_message())}
+  end
+
+  def handle_event(
+        "upload_zone_label_icon",
+        %{"id" => id, "filename" => filename, "content_type" => ct, "data" => data},
+        socket
+      ) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      with %{__struct__: Scenes.SceneZone} = zone <- Scenes.get_zone(socket.assigns.scene.id, id),
+           :ok <- validate_zone_label_icon_type(filename, ct),
+           [_header, base64] <- String.split(data, ",", parts: 2),
+           {:ok, binary} <- Base.decode64(base64),
+           :ok <- validate_zone_label_icon_size(binary),
+           {:ok, icon_binary} <- validate_zone_label_icon_binary(ct, binary),
+           {:ok, asset} <-
+             Assets.upload_binary_and_create_asset(
+               icon_binary,
+               %{filename: filename, content_type: ct},
+               socket.assigns.project,
+               socket.assigns.current_scope.user
+             ),
+           {:ok, updated} <- Scenes.update_zone(zone, %{"label_icon_asset_id" => asset.id}) do
+        updated = Scenes.get_zone!(updated.id)
+
+        broadcast_scene_change(
+          {:noreply,
+           socket
+           |> maybe_update_selected_zone(updated)
+           |> update_zone_in_list(updated)
+           |> push_event("zone_updated", serialize_zone(updated))
+           |> put_flash(:info, dgettext("scenes", "Zone icon updated."))}
+        )
+      else
+        {:error, message} ->
+          {:noreply, put_flash(socket, :error, message)}
+
+        _ ->
+          {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not upload zone icon."))}
+      end
     end)
   end
 
@@ -1120,6 +1186,12 @@ defmodule StoryarnWeb.SceneLive.Show do
   def handle_event("update_scene_scale", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       params |> LayerHandlers.handle_update_scene_scale(socket) |> broadcast_scene_change()
+    end)
+  end
+
+  def handle_event("update_scene_fog", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      params |> LayerHandlers.handle_update_scene_fog(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1499,6 +1571,8 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   @impl true
+  def handle_info({:EXIT, _pid, :normal}, socket), do: {:noreply, socket}
+
   def handle_info({:entity_selected, "pin-sheet-" <> _, sheet_id}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       pin = socket.assigns.selected_element
@@ -1870,6 +1944,86 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   defp background_set?(%{background_asset_id: id}) when not is_nil(id), do: true
   defp background_set?(_), do: false
+
+  defp maybe_update_selected_zone(
+         %{assigns: %{selected_type: "zone", selected_element: %{id: id}}} = socket,
+         %{id: id} = zone
+       ) do
+    assign(socket, :selected_element, zone)
+  end
+
+  defp maybe_update_selected_zone(socket, _zone), do: socket
+
+  defp maybe_update_selected_pin(
+         %{assigns: %{selected_type: "pin", selected_element: %{id: id}}} = socket,
+         %{id: id} = pin
+       ) do
+    assign(socket, :selected_element, pin)
+  end
+
+  defp maybe_update_selected_pin(socket, _pin), do: socket
+
+  defp validate_zone_label_icon_type(filename, content_type) do
+    extension = filename |> Path.extname() |> String.downcase()
+
+    cond do
+      content_type not in @zone_label_icon_content_types ->
+        {:error, zone_label_icon_invalid_type_message()}
+
+      extension not in @zone_label_icon_extensions ->
+        {:error, zone_label_icon_invalid_type_message()}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_zone_label_icon_size(binary) when byte_size(binary) <= @zone_label_icon_max_size, do: :ok
+
+  defp validate_zone_label_icon_size(_binary) do
+    {:error, zone_label_icon_too_large_message()}
+  end
+
+  defp validate_zone_label_icon_binary("image/png", <<137, 80, 78, 71, 13, 10, 26, 10, _::binary>> = binary),
+    do: {:ok, binary}
+
+  defp validate_zone_label_icon_binary("image/gif", <<"GIF87a", _::binary>> = binary), do: {:ok, binary}
+  defp validate_zone_label_icon_binary("image/gif", <<"GIF89a", _::binary>> = binary), do: {:ok, binary}
+
+  defp validate_zone_label_icon_binary("image/svg+xml", binary) do
+    with true <- String.valid?(binary),
+         svg = binary |> strip_utf8_bom() |> String.trim(),
+         true <- svg_root?(svg),
+         sanitized = HtmlSanitizer.sanitize_html(svg),
+         true <- svg_root?(sanitized),
+         true <- byte_size(sanitized) <= @zone_label_icon_max_size do
+      {:ok, sanitized}
+    else
+      _ -> {:error, zone_label_icon_invalid_type_message()}
+    end
+  end
+
+  defp validate_zone_label_icon_binary(_content_type, _binary) do
+    {:error, zone_label_icon_invalid_type_message()}
+  end
+
+  defp strip_utf8_bom(<<0xEF, 0xBB, 0xBF, rest::binary>>), do: rest
+  defp strip_utf8_bom(binary), do: binary
+
+  defp svg_root?(svg) when is_binary(svg) do
+    case Floki.parse_fragment(svg) do
+      {:ok, nodes} -> nodes |> Floki.find("svg") |> Enum.any?()
+      _ -> false
+    end
+  end
+
+  defp zone_label_icon_invalid_type_message do
+    dgettext("scenes", "Only SVG, PNG, or GIF icons are allowed.")
+  end
+
+  defp zone_label_icon_too_large_message do
+    dgettext("scenes", "Icon is too large. Maximum size is 256 KB.")
+  end
 
   defp upload_error_to_message(errors) do
     cond do

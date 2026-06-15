@@ -81,19 +81,30 @@ function onConnectionDblclick(id: number | string, e: KonvaEventObject<MouseEven
           perfectDrawEnabled: false,
         }"
       />
-      <v-text
-        v-if="zone.name"
+      <v-image
+        v-if="zone.labelIconCanvas"
         :config="{
-          text: zone.name,
+          image: zone.labelIconCanvas,
+          x: zone.labelIconX,
+          y: zone.labelIconY,
+          width: zone.labelIconSize,
+          height: zone.labelIconSize,
+          listening: false,
+        }"
+      />
+      <v-text
+        v-if="zone.showLabelText && zone.labelText"
+        :config="{
+          text: zone.labelText,
           fill: labelColor,
-          fontSize: 12,
-          fontFamily: 'sans-serif',
-          fontStyle: '600',
+          fontSize: zone.labelFontSize,
+          fontFamily: zone.labelFontFamily,
+          fontStyle: zone.labelFontStyle,
           lineHeight: 1.33,
           align: 'center',
-          x: zone.labelX,
+          x: zone.labelTextX,
           y: zone.labelY,
-          width: zone.labelWidth,
+          width: zone.labelWidth - (zone.labelTextX - zone.labelX),
           height: zone.labelHeight,
           ellipsis: false,
           wrap: 'word',

@@ -70,6 +70,7 @@ interface PixelPoint {
 
 export interface AnnotationConfig {
   id: number | string;
+  layerId: number | string | null;
   x: number;
   y: number;
   text: string;
@@ -133,6 +134,7 @@ function buildAnnotationConfig(
 ): AnnotationConfig {
   return {
     id: ann.id,
+    layerId: ann.layerId,
     x: pos.x,
     y: pos.y,
     text: ann.text || "",

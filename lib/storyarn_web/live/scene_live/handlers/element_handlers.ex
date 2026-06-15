@@ -34,11 +34,13 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
     name fill_color border_color border_width border_style opacity
     shortcut hidden target_type target_id tooltip layer_id
     locked action_type action_data condition condition_effect
-    is_walkable
+    is_walkable label_mode label_font_size label_font_family
+    label_font_weight label_font_style label_icon_asset_id
   )
 
   @connection_editable_fields ~w(
     line_style line_width color label bidirectional show_label
+    from_stop to_stop from_pause_ms to_pause_ms
   )
 
   @annotation_editable_fields ~w(text position_x position_y font_size color layer_id locked)
@@ -83,6 +85,12 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
       "target_id" => zone.target_id,
       "action_type" => zone.action_type,
       "action_data" => zone.action_data,
+      "label_mode" => zone.label_mode,
+      "label_font_size" => zone.label_font_size,
+      "label_font_family" => zone.label_font_family,
+      "label_font_weight" => zone.label_font_weight,
+      "label_font_style" => zone.label_font_style,
+      "label_icon_asset_id" => zone.label_icon_asset_id,
       "condition" => zone.condition,
       "condition_effect" => zone.condition_effect,
       "is_walkable" => zone.is_walkable
@@ -341,14 +349,13 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   # ---------------------------------------------------------------------------
 
   @default_action_data %{
-    "none" => %{},
     "walkable" => %{},
-    "instruction" => %{"assignments" => []},
-    "display" => %{"variable_ref" => ""},
+    "action" => %{"assignments" => []},
+    "display" => %{"variable_ref" => "", "display_mode" => "value"},
     "collection" => %{"items" => [], "collect_all_enabled" => true, "empty_message" => ""}
   }
 
-  @doc "Changes a zone's action type (none, walkable, instruction, display) with default data."
+  @doc "Changes a zone's action type with default data."
   def handle_update_zone_action_type(%{"zone-id" => id, "action-type" => type}, socket) do
     case Scenes.get_zone(socket.assigns.scene.id, id) do
       nil ->
@@ -360,17 +367,23 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
         attrs = %{
           "action_type" => type,
           "action_data" => action_data,
-          "is_walkable" => type == "walkable"
+          "is_walkable" => type == "walkable",
+          "target_type" => if(type == "action", do: zone.target_type),
+          "target_id" => if(type == "action", do: zone.target_id),
+          "label_mode" => if(type == "display" and zone.label_mode == "none", do: "text", else: zone.label_mode)
         }
 
         do_update_zone_attrs(socket, zone, attrs)
     end
   end
 
-  @doc "Updates instruction assignments for an instruction-type zone."
+  @doc "Updates instruction assignments for an action-type zone."
   def handle_update_zone_assignments(%{"zone-id" => id, "assignments" => assignments}, socket) do
     case Scenes.get_zone(socket.assigns.scene.id, id) do
       nil ->
+        {:noreply, socket}
+
+      %{action_type: action_type} when action_type != "action" ->
         {:noreply, socket}
 
       zone ->
@@ -385,9 +398,33 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
       nil ->
         {:noreply, socket}
 
-      zone ->
-        new_data = Map.put(zone.action_data || %{}, field, value)
-        do_update_zone_attrs(socket, zone, %{"action_data" => new_data})
+      %{action_type: "display"} = zone when field in ~w(variable_ref display_mode) ->
+        update_display_zone_action_data(socket, zone, field, value)
+
+      _zone ->
+        {:noreply, socket}
+    end
+  end
+
+  defp update_display_zone_action_data(socket, _zone, "display_mode", value) when value not in ~w(value label_value) do
+    {:noreply, socket}
+  end
+
+  defp update_display_zone_action_data(socket, zone, field, value) do
+    new_data = Map.put(zone.action_data || %{}, field, value)
+    do_update_zone_attrs(socket, zone, %{"action_data" => new_data})
+  end
+
+  defp update_collection_zone(socket, zone_id, update_fn) do
+    case Scenes.get_zone(socket.assigns.scene.id, zone_id) do
+      nil ->
+        {:noreply, socket}
+
+      %{action_type: "collection"} = zone ->
+        update_fn.(zone)
+
+      _zone ->
+        {:noreply, socket}
     end
   end
 
@@ -419,38 +456,30 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
 
   @doc "Adds a new collection item to a zone's action_data."
   def handle_add_collection_item(%{"zone-id" => id}, socket) do
-    case Scenes.get_zone(socket.assigns.scene.id, id) do
-      nil ->
-        {:noreply, socket}
+    update_collection_zone(socket, id, fn zone ->
+      items = get_in(zone.action_data || %{}, ["items"]) || []
 
-      zone ->
-        items = get_in(zone.action_data || %{}, ["items"]) || []
+      new_item = %{
+        "id" => Ecto.UUID.generate(),
+        "sheet_id" => nil,
+        "label" => "",
+        "condition" => nil,
+        "instruction" => %{"assignments" => []}
+      }
 
-        new_item = %{
-          "id" => Ecto.UUID.generate(),
-          "sheet_id" => nil,
-          "label" => "",
-          "condition" => nil,
-          "instruction" => %{"assignments" => []}
-        }
-
-        new_data = Map.put(zone.action_data || %{}, "items", items ++ [new_item])
-        do_update_zone_attrs(socket, zone, %{"action_data" => new_data})
-    end
+      new_data = Map.put(zone.action_data || %{}, "items", items ++ [new_item])
+      do_update_zone_attrs(socket, zone, %{"action_data" => new_data})
+    end)
   end
 
   @doc "Removes a collection item by its UUID."
   def handle_remove_collection_item(%{"zone-id" => zone_id, "item-id" => item_id}, socket) do
-    case Scenes.get_zone(socket.assigns.scene.id, zone_id) do
-      nil ->
-        {:noreply, socket}
-
-      zone ->
-        items = get_in(zone.action_data || %{}, ["items"]) || []
-        updated_items = Enum.reject(items, &(&1["id"] == item_id))
-        new_data = Map.put(zone.action_data || %{}, "items", updated_items)
-        do_update_zone_attrs(socket, zone, %{"action_data" => new_data})
-    end
+    update_collection_zone(socket, zone_id, fn zone ->
+      items = get_in(zone.action_data || %{}, ["items"]) || []
+      updated_items = Enum.reject(items, &(&1["id"] == item_id))
+      new_data = Map.put(zone.action_data || %{}, "items", updated_items)
+      do_update_zone_attrs(socket, zone, %{"action_data" => new_data})
+    end)
   end
 
   @doc "Updates a field on a collection item (label, sheet_id)."
@@ -479,16 +508,12 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   end
 
   defp do_update_collection_item(socket, zone_id, item_id, update_fn) do
-    case Scenes.get_zone(socket.assigns.scene.id, zone_id) do
-      nil ->
-        {:noreply, socket}
-
-      zone ->
-        items = get_in(zone.action_data || %{}, ["items"]) || []
-        updated_items = update_collection_item_in_list(items, item_id, update_fn)
-        new_data = Map.put(zone.action_data || %{}, "items", updated_items)
-        do_update_zone_attrs(socket, zone, %{"action_data" => new_data})
-    end
+    update_collection_zone(socket, zone_id, fn zone ->
+      items = get_in(zone.action_data || %{}, ["items"]) || []
+      updated_items = update_collection_item_in_list(items, item_id, update_fn)
+      new_data = Map.put(zone.action_data || %{}, "items", updated_items)
+      do_update_zone_attrs(socket, zone, %{"action_data" => new_data})
+    end)
   end
 
   defp update_collection_item_in_list(items, item_id, update_fn) do
@@ -499,21 +524,17 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
 
   @doc "Updates collection-level settings (collect_all_enabled, empty_message)."
   def handle_update_collection_settings(%{"zone-id" => zone_id, "field" => field, "value" => value}, socket) do
-    case Scenes.get_zone(socket.assigns.scene.id, zone_id) do
-      nil ->
-        {:noreply, socket}
+    update_collection_zone(socket, zone_id, fn zone ->
+      parsed_value =
+        case {field, value} do
+          {"collect_all_enabled", "true"} -> true
+          {"collect_all_enabled", "false"} -> false
+          _ -> value
+        end
 
-      zone ->
-        parsed_value =
-          case {field, value} do
-            {"collect_all_enabled", "true"} -> true
-            {"collect_all_enabled", "false"} -> false
-            _ -> value
-          end
-
-        new_data = Map.put(zone.action_data || %{}, field, parsed_value)
-        do_update_zone_attrs(socket, zone, %{"action_data" => new_data})
-    end
+      new_data = Map.put(zone.action_data || %{}, field, parsed_value)
+      do_update_zone_attrs(socket, zone, %{"action_data" => new_data})
+    end)
   end
 
   # ---------------------------------------------------------------------------
@@ -542,12 +563,16 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   # Connection handlers
   # ---------------------------------------------------------------------------
 
-  @doc "Creates a connection between two pins."
-  def handle_create_connection(%{"from_pin_id" => from_pin_id, "to_pin_id" => to_pin_id}, socket) do
-    attrs = %{
-      "from_pin_id" => from_pin_id,
-      "to_pin_id" => to_pin_id
-    }
+  @doc "Creates a route between pinned or free points."
+  def handle_create_connection(params, socket) do
+    attrs =
+      %{
+        "from_pin_id" => params["from_pin_id"],
+        "to_pin_id" => params["to_pin_id"],
+        "waypoints" => params["waypoints"] || []
+      }
+      |> Enum.reject(fn {_key, value} -> value in [nil, ""] end)
+      |> Map.new()
 
     case Scenes.create_connection(socket.assigns.scene.id, attrs) do
       {:ok, conn} ->
@@ -824,17 +849,18 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   defp do_update_pin(socket, pin, "flow_id", ""), do: do_update_pin_attrs(socket, pin, %{"flow_id" => nil})
 
   defp do_update_pin(socket, pin, field, value) do
+    new_attrs = %{field => value}
     prev_value = safe_field_get(pin, field)
+    demoted_leaders = demoted_leader_pins(socket.assigns.pins, pin, new_attrs)
 
-    case Scenes.update_pin(pin, %{field => value}) do
+    case Scenes.update_pin(pin, new_attrs) do
       {:ok, updated} ->
         {:noreply,
          socket
-         |> push_undo({:update_pin, pin.id, %{field => prev_value}, %{field => value}})
-         |> assign(:selected_element, updated)
-         |> assign(:pins, replace_in_list(socket.assigns.pins, updated))
+         |> push_undo(pin_update_undo_action(pin.id, %{field => prev_value}, new_attrs, demoted_leaders))
+         |> assign_synced_pins(updated, demoted_leaders)
          |> assign(:_broadcast, {:pin_updated, %{id: updated.id}})
-         |> push_event("pin_updated", serialize_pin(updated))}
+         |> push_pin_updates(updated, demoted_leaders)}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not update pin."))}
@@ -842,6 +868,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   end
 
   defp do_update_pin_attrs(socket, pin, new_attrs) do
+    demoted_leaders = demoted_leader_pins(socket.assigns.pins, pin, new_attrs)
+
     prev_attrs =
       Map.new(new_attrs, fn {key, _val} ->
         {key, safe_field_get(pin, key)}
@@ -851,15 +879,71 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
       {:ok, updated} ->
         {:noreply,
          socket
-         |> push_undo({:update_pin, pin.id, prev_attrs, new_attrs})
-         |> assign(:selected_element, updated)
-         |> assign(:pins, replace_in_list(socket.assigns.pins, updated))
+         |> push_undo(pin_update_undo_action(pin.id, prev_attrs, new_attrs, demoted_leaders))
+         |> assign_synced_pins(updated, demoted_leaders)
          |> assign(:_broadcast, {:pin_updated, %{id: updated.id}})
-         |> push_event("pin_updated", serialize_pin(updated))}
+         |> push_pin_updates(updated, demoted_leaders)}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not update pin."))}
     end
+  end
+
+  defp demoted_leader_pins(pins, updated_pin, attrs) do
+    if leader_enabled?(attrs) do
+      Enum.filter(pins, fn pin -> pin.id != updated_pin.id and pin.is_leader end)
+    else
+      []
+    end
+  end
+
+  defp leader_enabled?(attrs) do
+    Map.get(attrs, "is_leader") in [true, "true"] or Map.get(attrs, :is_leader) in [true, "true"]
+  end
+
+  defp pin_update_undo_action(pin_id, prev_attrs, new_attrs, []) do
+    {:update_pin, pin_id, prev_attrs, new_attrs}
+  end
+
+  defp pin_update_undo_action(pin_id, prev_attrs, new_attrs, demoted_leaders) do
+    demotion_actions =
+      Enum.map(demoted_leaders, fn leader ->
+        {:update_pin, leader.id, %{"is_leader" => true}, %{"is_leader" => false}}
+      end)
+
+    {:compound, [{:update_pin, pin_id, prev_attrs, new_attrs} | demotion_actions]}
+  end
+
+  defp assign_synced_pins(socket, updated, demoted_leaders) do
+    demoted_ids = MapSet.new(demoted_leaders, & &1.id)
+
+    pins =
+      socket.assigns.pins
+      |> replace_in_list(updated)
+      |> Enum.map(fn pin ->
+        if MapSet.member?(demoted_ids, pin.id), do: %{pin | is_leader: false}, else: pin
+      end)
+
+    socket
+    |> assign(:pins, pins)
+    |> maybe_sync_selected_pin(pins)
+  end
+
+  defp maybe_sync_selected_pin(%{assigns: %{selected_type: "pin", selected_element: %{id: id}}} = socket, pins) do
+    case Enum.find(pins, &(&1.id == id)) do
+      nil -> socket
+      pin -> assign(socket, :selected_element, pin)
+    end
+  end
+
+  defp maybe_sync_selected_pin(socket, _pins), do: socket
+
+  defp push_pin_updates(socket, updated, demoted_leaders) do
+    demoted_updates = Enum.map(demoted_leaders, &%{&1 | is_leader: false})
+
+    [updated | demoted_updates]
+    |> Enum.uniq_by(& &1.id)
+    |> Enum.reduce(socket, fn pin, acc -> push_event(acc, "pin_updated", serialize_pin(pin)) end)
   end
 
   defp do_update_zone_vertices(socket, %{locked: true}, _vertices), do: {:noreply, socket}
@@ -1017,18 +1101,32 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
 
   defp do_clear_connection_waypoints(socket, conn) do
     prev_waypoints = conn.waypoints || []
+    next_waypoints = straightened_connection_waypoints(conn)
 
-    case Scenes.update_connection_waypoints(conn, %{"waypoints" => []}) do
+    case Scenes.update_connection_waypoints(conn, %{"waypoints" => next_waypoints}) do
       {:ok, updated} ->
         {:noreply,
          socket
-         |> push_undo({:update_connection_waypoints, conn.id, prev_waypoints, []})
+         |> push_undo({:update_connection_waypoints, conn.id, prev_waypoints, next_waypoints})
+         |> assign(:connections, replace_in_list(socket.assigns.connections, updated))
          |> assign(:selected_element, updated)
          |> assign(:_broadcast, {:connection_updated, %{id: updated.id}})
          |> push_event("connection_updated", serialize_connection(updated))}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not clear waypoints."))}
+    end
+  end
+
+  defp straightened_connection_waypoints(%{from_pin_id: from_pin_id, to_pin_id: to_pin_id, waypoints: waypoints}) do
+    waypoints = waypoints || []
+
+    cond do
+      from_pin_id && to_pin_id -> []
+      from_pin_id -> List.wrap(List.last(waypoints))
+      to_pin_id -> Enum.take(waypoints, 1)
+      length(waypoints) <= 2 -> waypoints
+      true -> [List.first(waypoints), List.last(waypoints)]
     end
   end
 

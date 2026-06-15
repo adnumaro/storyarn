@@ -38,7 +38,7 @@ const { surface: initialSurface } = defineProps<{
 const live = useLiveVue();
 // `v-inject` keeps this boundary alive while route diffs replace the surface payload.
 const surface = computed(
-  () => (live.vue.props.surface as FlowSurface | undefined) ?? initialSurface,
+  () => (live.vue?.props?.surface as FlowSurface | undefined) ?? initialSurface,
 );
 </script>
 

@@ -11,6 +11,7 @@ defmodule Storyarn.Scenes.SceneConnection do
   import Storyarn.Scenes.ChangesetHelpers
 
   alias Ecto.Association.NotLoaded
+  alias Storyarn.Scenes.RoutePoints
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.ScenePin
 
@@ -24,6 +25,10 @@ defmodule Storyarn.Scenes.SceneConnection do
           label: String.t() | nil,
           bidirectional: boolean(),
           waypoints: [map()] | nil,
+          from_stop: boolean(),
+          to_stop: boolean(),
+          from_pause_ms: integer() | nil,
+          to_pause_ms: integer() | nil,
           scene_id: integer() | nil,
           scene: Scene.t() | NotLoaded.t() | nil,
           from_pin_id: integer() | nil,
@@ -42,6 +47,10 @@ defmodule Storyarn.Scenes.SceneConnection do
     field :bidirectional, :boolean, default: true
     field :show_label, :boolean, default: true
     field :waypoints, {:array, :map}, default: []
+    field :from_stop, :boolean, default: true
+    field :to_stop, :boolean, default: true
+    field :from_pause_ms, :integer
+    field :to_pause_ms, :integer
 
     belongs_to :scene, Scene
     belongs_to :from_pin, ScenePin
@@ -64,15 +73,21 @@ defmodule Storyarn.Scenes.SceneConnection do
       :label,
       :bidirectional,
       :show_label,
-      :waypoints
+      :waypoints,
+      :from_stop,
+      :to_stop,
+      :from_pause_ms,
+      :to_pause_ms
     ])
-    |> validate_required([:from_pin_id, :to_pin_id])
     |> validate_inclusion(:line_style, @valid_line_styles)
     |> validate_number(:line_width, greater_than_or_equal_to: 0, less_than_or_equal_to: 10)
+    |> validate_number(:from_pause_ms, greater_than_or_equal_to: 0, less_than_or_equal_to: 30_000)
+    |> validate_number(:to_pause_ms, greater_than_or_equal_to: 0, less_than_or_equal_to: 30_000)
     |> validate_length(:label, max: 200)
     |> validate_length(:color, max: 20)
     |> validate_color(:color)
     |> validate_waypoints()
+    |> validate_route_has_two_points()
     |> validate_not_self_connection()
     |> foreign_key_constraint(:from_pin_id)
     |> foreign_key_constraint(:to_pin_id)
@@ -90,14 +105,21 @@ defmodule Storyarn.Scenes.SceneConnection do
       :label,
       :bidirectional,
       :show_label,
-      :waypoints
+      :waypoints,
+      :from_stop,
+      :to_stop,
+      :from_pause_ms,
+      :to_pause_ms
     ])
     |> validate_inclusion(:line_style, @valid_line_styles)
     |> validate_number(:line_width, greater_than_or_equal_to: 0, less_than_or_equal_to: 10)
+    |> validate_number(:from_pause_ms, greater_than_or_equal_to: 0, less_than_or_equal_to: 30_000)
+    |> validate_number(:to_pause_ms, greater_than_or_equal_to: 0, less_than_or_equal_to: 30_000)
     |> validate_length(:label, max: 200)
     |> validate_length(:color, max: 20)
     |> validate_color(:color)
     |> validate_waypoints()
+    |> validate_route_has_two_points()
   end
 
   @doc """
@@ -107,6 +129,7 @@ defmodule Storyarn.Scenes.SceneConnection do
     connection
     |> cast(attrs, [:waypoints])
     |> validate_waypoints()
+    |> validate_route_has_two_points()
   end
 
   defp validate_waypoints(changeset) do
@@ -118,7 +141,7 @@ defmodule Storyarn.Scenes.SceneConnection do
         add_error(changeset, :waypoints, "cannot have more than #{@max_waypoints} waypoints")
 
       waypoints ->
-        if Enum.all?(waypoints, &valid_waypoint?/1) do
+        if Enum.all?(waypoints, &RoutePoints.valid_waypoint?/1) do
           changeset
         else
           add_error(changeset, :waypoints, "all waypoints must have numeric x and y values")
@@ -126,9 +149,17 @@ defmodule Storyarn.Scenes.SceneConnection do
     end
   end
 
-  defp valid_waypoint?(%{"x" => x, "y" => y}) when is_number(x) and is_number(y), do: true
+  defp validate_route_has_two_points(changeset) do
+    from_pin_id = get_field(changeset, :from_pin_id)
+    to_pin_id = get_field(changeset, :to_pin_id)
+    waypoints = get_field(changeset, :waypoints) || []
 
-  defp valid_waypoint?(_), do: false
+    if RoutePoints.enough_points?(from_pin_id, to_pin_id, waypoints) do
+      changeset
+    else
+      add_error(changeset, :waypoints, "route must have at least two points")
+    end
+  end
 
   # Validates that from_pin_id and to_pin_id are different
   defp validate_not_self_connection(changeset) do

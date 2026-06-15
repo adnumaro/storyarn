@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, toRef } from "vue";
 import type Konva from "konva";
+import type { KonvaEventObject } from "konva/lib/Node";
+import type { ScenePatrolRoutePoint, SceneRouteConnection } from "@modules/scenes/types/routes";
 import { useLive } from "@shared/composables/useLive";
 import type { LayerData } from "../../canvas/composables/useLayerVisibility";
 import { useConnections } from "../../canvas/composables/useConnections";
@@ -41,7 +43,7 @@ interface ExplorationPin {
   isLeader: boolean;
   flowId: number | string | null;
   patrolMode: string | null;
-  patrolRoute: { x: number; y: number; isPinStop?: boolean }[] | null;
+  patrolRoute: ScenePatrolRoutePoint[] | null;
   patrolPauseMs: number;
   patrolSpeed: number | null;
   [key: string]: unknown;
@@ -64,28 +66,21 @@ interface ExplorationZone {
   isWalkable: boolean;
   targetType: string | null;
   targetId: number | string | null;
-  actionData: Record<string, string | number | boolean | null>;
-  [key: string]: unknown;
-}
-
-interface ExplorationConnection {
-  id: number | string;
-  fromPinId: number | string;
-  toPinId: number | string;
-  waypoints: { x: number; y: number }[] | null;
-  color: string | null;
-  lineWidth: number | null;
-  lineStyle: string | null;
-  label: string | null;
-  showLabel: boolean;
-  bidirectional: boolean;
+  actionData: Record<string, unknown> & { display_mode?: string | null };
+  displayValue?: string | null;
+  labelMode?: string | null;
+  labelFontSize?: number | null;
+  labelFontFamily?: string | null;
+  labelFontWeight?: string | null;
+  labelFontStyle?: string | null;
+  labelIconAssetUrl?: string | null;
   [key: string]: unknown;
 }
 
 interface ExplorationData {
   zones?: ExplorationZone[];
   pins?: ExplorationPin[];
-  connections?: ExplorationConnection[];
+  connections?: SceneRouteConnection[];
 }
 
 const {
@@ -210,6 +205,16 @@ function onContainerClick(e: MouseEvent) {
   }
 }
 
+function onZoneClick(zoneId: number | string, e: KonvaEventObject<MouseEvent>) {
+  e.cancelBubble = true;
+  handleZoneClick(zoneId);
+}
+
+function onPinClick(pinId: number | string, e: KonvaEventObject<MouseEvent>) {
+  e.cancelBubble = true;
+  handlePinClick(pinId);
+}
+
 // --- Click feedback rings ---
 function showClickFeedback(evt: MouseEvent, walkable: boolean) {
   const ring = document.createElement("div");
@@ -314,6 +319,9 @@ function getZoneFill(zone: { id: number | string }): { fill: string; opacity: nu
   if (!raw) return { fill: "transparent", opacity: 0 };
   const override = zoneShowOverride(raw);
   if (override) return override;
+  if (clickableZoneIds.value.has(zone.id)) {
+    return { fill: raw.fillColor || "#3b82f6", opacity: 0.001 };
+  }
   return { fill: "transparent", opacity: 0 };
 }
 
@@ -347,7 +355,7 @@ const LABEL_COLOR = "#d1d5db";
           v-for="zone in zoneConfigs"
           :key="'zone-' + zone.id"
           :config="{ listening: clickableZoneIds.has(zone.id) }"
-          @click="() => handleZoneClick(zone.id)"
+          @click="(e: KonvaEventObject<MouseEvent>) => onZoneClick(zone.id, e)"
         >
           <v-line
             :config="{
@@ -363,22 +371,34 @@ const LABEL_COLOR = "#d1d5db";
             }"
           />
           <v-text
-            v-if="zone.name"
+            v-if="zone.showLabelText && zone.labelText"
             :config="{
-              text: zone.name,
+              text: zone.labelText,
               fill: LABEL_COLOR,
-              fontSize: 12,
-              fontStyle: '600',
+              fontSize: zone.labelFontSize,
+              fontFamily: zone.labelFontFamily,
+              fontStyle: zone.labelFontStyle,
               align: 'center',
-              x: zone.centroidX - 50,
-              y: zone.centroidY - 8,
-              width: 100,
+              x: zone.labelTextX,
+              y: zone.labelY,
+              width: zone.labelWidth - (zone.labelTextX - zone.labelX),
               ellipsis: true,
               wrap: 'none',
               shadowColor: 'black',
               shadowBlur: 3,
               shadowOpacity: 0.8,
               shadowForStrokeEnabled: false,
+              listening: false,
+            }"
+          />
+          <v-image
+            v-if="zone.labelIconCanvas"
+            :config="{
+              image: zone.labelIconCanvas,
+              x: zone.labelIconX,
+              y: zone.labelIconY,
+              width: zone.labelIconSize,
+              height: zone.labelIconSize,
               listening: false,
             }"
           />
@@ -418,7 +438,7 @@ const LABEL_COLOR = "#d1d5db";
             listening: clickablePinIds.has(pin.id),
             opacity: getElementOpacity(pin.id, pinVisibility, pin.opacity ?? 1),
           }"
-          @click="() => handlePinClick(pin.id)"
+          @click="(e: KonvaEventObject<MouseEvent>) => onPinClick(pin.id, e)"
         >
           <v-image
             v-if="pin.iconCanvas"

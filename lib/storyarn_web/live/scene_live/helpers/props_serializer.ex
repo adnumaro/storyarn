@@ -7,8 +7,21 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
   use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Assets
+  alias Storyarn.Assets.Asset
+  alias Storyarn.Flows
+  alias Storyarn.Scenes.RoutePoints
 
   # ---- Scene ----
+
+  def format_display_value(value) when is_float(value) do
+    if value == trunc(value) do
+      Integer.to_string(trunc(value))
+    else
+      Flows.evaluator_format_value(value)
+    end
+  end
+
+  def format_display_value(value), do: Flows.evaluator_format_value(value)
 
   def prepare_scene_for_vue(nil), do: nil
 
@@ -25,6 +38,8 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
       defaultCenterY: scene.default_center_y,
       scaleUnit: scene.scale_unit,
       scaleValue: scene.scale_value,
+      fogColor: scene.fog_color || "#000000",
+      fogOpacity: scene.fog_opacity || 0.85,
       explorationDisplayMode: scene.exploration_display_mode,
       backgroundUrl: background_url(scene)
     }
@@ -43,9 +58,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
       visible: layer.visible,
       isDefault: layer.is_default,
       position: layer.position,
-      fogEnabled: layer.fog_enabled,
-      fogColor: layer.fog_color,
-      fogOpacity: layer.fog_opacity
+      fogEnabled: layer.fog_enabled
     }
   end
 
@@ -111,6 +124,13 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
       locked: zone.locked,
       actionType: zone.action_type,
       actionData: zone.action_data,
+      labelMode: Map.get(zone, :label_mode, "text") || "text",
+      labelFontSize: Map.get(zone, :label_font_size, 12) || 12,
+      labelFontFamily: Map.get(zone, :label_font_family, "system") || "system",
+      labelFontWeight: Map.get(zone, :label_font_weight, "600") || "600",
+      labelFontStyle: Map.get(zone, :label_font_style, "normal") || "normal",
+      labelIconAssetId: Map.get(zone, :label_icon_asset_id),
+      labelIconAssetUrl: zone_label_icon_asset_url(zone),
       condition: zone.condition,
       conditionEffect: zone.condition_effect,
       isWalkable: zone.is_walkable,
@@ -136,7 +156,11 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
       showLabel: conn.show_label,
       waypoints: conn.waypoints,
       fromPinId: conn.from_pin_id,
-      toPinId: conn.to_pin_id
+      toPinId: conn.to_pin_id,
+      fromStop: conn.from_stop,
+      toStop: conn.to_stop,
+      fromPauseMs: conn.from_pause_ms,
+      toPauseMs: conn.to_pause_ms
     }
   end
 
@@ -325,7 +349,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
   Adds visibility states, patrol routes, and filters by evaluated conditions.
   Zones and pins must have a `:visibility` virtual field pre-evaluated by the caller.
   """
-  def prepare_exploration_data_for_vue(scene, zones, pins) do
+  def prepare_exploration_data_for_vue(scene, zones, pins, variables \\ %{}) do
     connections = scene.connections || []
 
     %{
@@ -338,7 +362,10 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
       defaultCenterY: scene.default_center_y,
       zones:
         Enum.map(zones, fn z ->
-          z |> serialize_zone() |> Map.put(:visibility, to_string(z.visibility))
+          z
+          |> serialize_zone()
+          |> Map.put(:visibility, to_string(z.visibility))
+          |> maybe_put_zone_display_value(z, variables)
         end),
       pins:
         Enum.map(pins, fn p ->
@@ -355,13 +382,35 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
     }
   end
 
+  defp maybe_put_zone_display_value(serialized, %{action_type: "display", action_data: action_data}, variables)
+       when is_map(action_data) and is_map(variables) do
+    variable_ref = action_data["variable_ref"]
+
+    case display_variable_value(variables, variable_ref) do
+      {:ok, value} -> Map.put(serialized, :displayValue, format_display_value(value))
+      :error -> serialized
+    end
+  end
+
+  defp maybe_put_zone_display_value(serialized, _zone, _variables), do: serialized
+
+  defp display_variable_value(_variables, ref) when not is_binary(ref) or ref == "", do: :error
+
+  defp display_variable_value(variables, ref) do
+    case Map.get(variables, ref) do
+      %{value: value} -> {:ok, value}
+      %{"value" => value} -> {:ok, value}
+      _ -> :error
+    end
+  end
+
   # ---- Patrol Route Builder ----
 
   # Builds an ordered patrol route by traversing connections from the given pin.
   # Returns a flat list of %{x, y, isPinStop} points.
   defp build_patrol_route(pin, pins, connections) do
     pins_by_id = Map.new(pins, &{&1.id, &1})
-    start_point = %{x: pin.position_x, y: pin.position_y, isPinStop: true}
+    start_point = route_pin_point(pin, true, nil)
     traverse_route([pin.id], pin.id, pins_by_id, connections, [start_point])
   end
 
@@ -373,50 +422,64 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
         Enum.reverse(acc)
 
       [conn | _] ->
-        {waypoints, target_pin_id} = connection_traversal_data(conn, current_pin_id)
-        follow_connection(visited, target_pin_id, waypoints, pins_by_id, connections, acc)
+        {waypoints, target_pin_id, stop?, pause_ms} = connection_traversal_data(conn, current_pin_id)
+        follow_connection(visited, target_pin_id, waypoints, pins_by_id, connections, acc, stop?, pause_ms)
     end
   end
 
   defp find_unvisited_connections(connections, pin_id, visited) do
     connections
     |> Enum.filter(fn conn ->
-      (conn.from_pin_id == pin_id && conn.to_pin_id not in visited) ||
-        (conn.bidirectional && conn.to_pin_id == pin_id && conn.from_pin_id not in visited)
+      (conn.from_pin_id == pin_id && unvisited_target?(conn.to_pin_id, visited)) ||
+        (conn.bidirectional && conn.to_pin_id == pin_id && unvisited_target?(conn.from_pin_id, visited))
     end)
     |> Enum.sort_by(& &1.id)
   end
 
+  defp unvisited_target?(nil, _visited), do: true
+  defp unvisited_target?(target_pin_id, visited), do: target_pin_id not in visited
+
   defp connection_traversal_data(conn, current_pin_id) do
     if conn.from_pin_id == current_pin_id do
-      {conn.waypoints || [], conn.to_pin_id}
+      {conn.waypoints || [], conn.to_pin_id, conn.to_stop, conn.to_pause_ms}
     else
-      {Enum.reverse(conn.waypoints || []), conn.from_pin_id}
+      {Enum.reverse(conn.waypoints || []), conn.from_pin_id, conn.from_stop, conn.from_pause_ms}
     end
   end
 
-  defp follow_connection(visited, target_pin_id, waypoints, pins_by_id, connections, acc) do
-    waypoint_points =
-      Enum.map(waypoints, fn wp ->
-        %{x: wp["x"], y: wp["y"], isPinStop: false}
-      end)
+  defp follow_connection(visited, target_pin_id, waypoints, pins_by_id, connections, acc, stop?, pause_ms) do
+    waypoint_points = Enum.map(waypoints, &route_waypoint/1)
+    acc = Enum.reverse(waypoint_points, acc)
 
     case Map.get(pins_by_id, target_pin_id) do
+      nil when is_nil(target_pin_id) ->
+        Enum.reverse(acc)
+
       nil ->
         Enum.reverse(acc)
 
       target_pin ->
-        pin_point = %{x: target_pin.position_x, y: target_pin.position_y, isPinStop: true}
-        new_acc = [pin_point | Enum.reverse(waypoint_points)] ++ acc
+        pin_point = route_pin_point(target_pin, stop?, pause_ms)
 
         traverse_route(
           [target_pin_id | visited],
           target_pin_id,
           pins_by_id,
           connections,
-          new_acc
+          [pin_point | acc]
         )
     end
+  end
+
+  defp route_pin_point(pin, stop?, pause_ms) do
+    %{x: pin.position_x, y: pin.position_y, isPinStop: true, isStop: stop?, pauseMs: pause_ms}
+  end
+
+  defp route_waypoint(wp) do
+    stop? = Map.get(wp, "stop", false)
+    pause_ms = RoutePoints.waypoint_pause_ms(wp)
+
+    %{x: wp["x"], y: wp["y"], isPinStop: false, isStop: stop?, pauseMs: pause_ms}
   end
 
   # ---- Private helpers ----
@@ -434,7 +497,11 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
 
   defp pin_avatar_url(_), do: nil
 
-  defp pin_icon_asset_url(%{icon_asset: %Storyarn.Assets.Asset{} = asset}), do: Assets.display_url(asset)
+  defp pin_icon_asset_url(%{icon_asset: %Asset{} = asset}), do: Assets.display_url(asset)
 
   defp pin_icon_asset_url(_), do: nil
+
+  defp zone_label_icon_asset_url(%{label_icon_asset: %Asset{} = asset}), do: Assets.display_url(asset)
+
+  defp zone_label_icon_asset_url(_), do: nil
 end

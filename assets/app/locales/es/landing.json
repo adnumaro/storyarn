@@ -126,7 +126,7 @@
           "desc": "Utiliza capas para plantear progresiones, visibilidad y estructuras sin aplanar todo en una única imagen saturada.",
           "items": [
             "Visibilidad por capas en lugar de un lienzo caótico.",
-            "Niebla de guerra para comunicar progresión.",
+            "Overlays de niebla para comunicar progresión.",
             "Los grandes espacios se mantienen iterables y legibles en review."
           ]
         }

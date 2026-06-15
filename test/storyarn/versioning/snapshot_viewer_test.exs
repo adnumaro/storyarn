@@ -15,7 +15,7 @@ defmodule Storyarn.Versioning.SnapshotViewerTest do
           %{
             "source_node_index" => 0,
             "target_node_index" => 1,
-            "source_pin" => "default",
+            "source_pin" => "output",
             "target_pin" => "input",
             "label" => nil
           }
@@ -39,7 +39,7 @@ defmodule Storyarn.Versioning.SnapshotViewerTest do
       assert conn.id < 0
       assert conn.source_node_id == node1.id
       assert conn.target_node_id == node2.id
-      assert conn.source_pin == "default"
+      assert conn.source_pin == "output"
     end
 
     test "filters out connections with invalid node indexes" do
@@ -93,7 +93,9 @@ defmodule Storyarn.Versioning.SnapshotViewerTest do
             "zones" => [
               %{
                 "name" => "Zone A",
-                "vertices" => [[0, 0], [100, 0], [100, 100]]
+                "vertices" => [[0, 0], [100, 0], [100, 100]],
+                "action_type" => "walkable",
+                "is_walkable" => true
               }
             ],
             "annotations" => [
@@ -127,6 +129,8 @@ defmodule Storyarn.Versioning.SnapshotViewerTest do
       [zone] = result.zones
       assert zone.id < 0
       assert zone.name == "Zone A"
+      assert zone.action_type == "walkable"
+      assert zone.is_walkable == true
 
       [ann] = result.annotations
       assert ann.id < 0
@@ -164,6 +168,72 @@ defmodule Storyarn.Versioning.SnapshotViewerTest do
       assert conn.from_pin_id < 0
       assert conn.to_pin_id < 0
       assert conn.from_pin_id != conn.to_pin_id
+    end
+
+    test "keeps free scene routes and route stop metadata" do
+      snapshot = %{
+        "layers" => [],
+        "connections" => [
+          %{
+            "from_layer_index" => nil,
+            "from_pin_index" => nil,
+            "to_layer_index" => nil,
+            "to_pin_index" => nil,
+            "waypoints" => [
+              %{"x" => 10.0, "y" => 10.0, "stop" => true, "pauseMs" => 500},
+              %{"x" => 90.0, "y" => 90.0, "stop" => true}
+            ],
+            "from_stop" => false,
+            "to_stop" => true,
+            "from_pause_ms" => nil,
+            "to_pause_ms" => 1200
+          }
+        ],
+        "asset_metadata" => %{}
+      }
+
+      result = SnapshotViewer.serialize_scene(snapshot)
+
+      assert length(result.connections) == 1
+      [conn] = result.connections
+      assert is_nil(conn.from_pin_id)
+      assert is_nil(conn.to_pin_id)
+      assert length(conn.waypoints) == 2
+      assert conn.from_stop == false
+      assert conn.to_stop == true
+      assert conn.from_pause_ms == nil
+      assert conn.to_pause_ms == 1200
+    end
+
+    test "keeps pin to free scene routes" do
+      snapshot = %{
+        "layers" => [
+          %{
+            "name" => "L1",
+            "pins" => [%{"position_x" => 0, "position_y" => 0, "label" => "A"}],
+            "zones" => [],
+            "annotations" => []
+          }
+        ],
+        "connections" => [
+          %{
+            "from_layer_index" => 0,
+            "from_pin_index" => 0,
+            "to_layer_index" => nil,
+            "to_pin_index" => nil,
+            "waypoints" => [%{"x" => 60.0, "y" => 60.0}]
+          }
+        ],
+        "asset_metadata" => %{}
+      }
+
+      result = SnapshotViewer.serialize_scene(snapshot)
+
+      assert length(result.connections) == 1
+      [conn] = result.connections
+      assert conn.from_pin_id < 0
+      assert is_nil(conn.to_pin_id)
+      assert conn.waypoints == [%{"x" => 60.0, "y" => 60.0}]
     end
 
     test "resolves asset URLs from metadata" do

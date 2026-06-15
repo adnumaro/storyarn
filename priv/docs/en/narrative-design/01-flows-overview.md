@@ -19,7 +19,7 @@ The flow editor is a full-screen canvas. You create nodes from the floating tool
 
 - **Pan** by dragging the background
 - **Zoom** with the scroll wheel
-- **Select** a node by clicking it; double-click to open its primary editor (screenplay editor for dialogue, builder panel for conditions and instructions)
+- **Select** a node by clicking it; double-click to open its primary editor (focused dialogue editor for dialogue, builder panel for conditions and instructions)
 - **Multi-select** with click-drag or Shift+click
 - **Duplicate** selected nodes with the context menu or keyboard shortcut
 - **Undo/Redo** for node operations
@@ -32,18 +32,18 @@ Nodes are connected through **pins** -- small circles on the edges of each node.
 
 Storyarn has **10 node types**, each serving a distinct role in the flow graph:
 
-| Node            | Icon           | Purpose                                                                                                                                                                                                         |
-| --------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Entry**       | Play           | Where the flow starts. Auto-created with the flow, cannot be deleted. Shows which other flows reference this one via subflow nodes.                                                                             |
-| **Exit**        | Arrow right    | Where the flow ends. Supports three modes: **Terminal** (ends entirely), **Continue to flow** (chains to another flow), and **Return to caller** (returns from a subflow). Has outcome tags and color coding.   |
-| **Dialogue**    | Message square | Character speech with optional player responses. The most common node type -- see the [dedicated guide](/docs/narrative-design/dialogue-nodes).                                                                 |
-| **Condition**   | Git branch     | Branches the flow based on variable values. Visual builder with AND/OR logic -- no code required. Supports boolean mode (True/False outputs) and switch mode (multiple custom outputs).                         |
-| **Instruction** | Zap            | Modifies variable values when the flow passes through. Supports Set, Add, Subtract, Toggle, Clear, and boolean-specific operations.                                                                             |
-| **Hub**         | Log in         | A named merge point where multiple paths converge. Has a label, an ID, and a color.                                                                                                                             |
-| **Jump**        | Log out        | Jumps to a Hub node within the same flow. Select a target hub from the toolbar dropdown; a crosshair button locates it on the canvas.                                                                           |
-| **Subflow**     | Box            | Embeds another flow inside this one. Dynamic output pins are generated from the referenced flow's Exit nodes, enabling branching based on how the subflow ends. Circular references are detected and prevented. |
-| **Sequence**    | Panels top     | Groups related nodes inside a visual container. Use it to organize larger beats, configure visual layers, and attach audio tracks to a narrative sequence.                                                      |
-| **Annotation**  | Sticky note    | Purely visual note for design intent, TODOs, or context on the canvas. It does not affect flow execution or dialogue exports.                                                                                   |
+| Node            | Icon           | Purpose                                                                                                                                                                                                |
+| --------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Entry**       | Play           | Where the flow starts. Auto-created with the flow, cannot be deleted. See [Entry & Exit Nodes](/docs/narrative-design/node-types/entry-exit).                                                          |
+| **Exit**        | Arrow right    | Where the flow ends. Supports terminal, continue-to-flow, and return-to-caller modes. See [Entry & Exit Nodes](/docs/narrative-design/node-types/entry-exit).                                          |
+| **Dialogue**    | Message square | Character speech with optional player responses. The most common node type -- see the [dedicated guide](/docs/narrative-design/node-types/dialogue).                                                   |
+| **Condition**   | Git branch     | Branches the flow based on variable values. See [Condition Nodes](/docs/narrative-design/node-types/condition) and the [Condition Editor](/docs/narrative-design/condition-editor).                    |
+| **Instruction** | Zap            | Modifies variable values when the flow passes through. See [Instruction Nodes](/docs/narrative-design/node-types/instruction) and the [Instruction Editor](/docs/narrative-design/instruction-editor). |
+| **Hub**         | Log in         | A named merge point where multiple paths converge. See [Hub & Jump Nodes](/docs/narrative-design/node-types/hub-jump).                                                                                 |
+| **Jump**        | Log out        | Jumps to a Hub node within the same flow. See [Hub & Jump Nodes](/docs/narrative-design/node-types/hub-jump).                                                                                          |
+| **Subflow**     | Box            | Embeds another flow inside this one. See [Subflow Nodes](/docs/narrative-design/node-types/subflow).                                                                                                   |
+| **Sequence**    | Panels top     | Groups related nodes inside a visual container. See [Sequence Nodes](/docs/narrative-design/node-types/sequence).                                                                                      |
+| **Annotation**  | Sticky note    | Purely visual note for design intent, TODOs, or context on the canvas. See [Annotation Nodes](/docs/narrative-design/node-types/annotation).                                                           |
 
 ---
 

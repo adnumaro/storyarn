@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import SidebarFrame from "@shell/SidebarFrame.vue";
 import SceneTreePanel from "@modules/scenes/editor/components/chrome/tree/SceneTreePanel.vue";
 
@@ -15,6 +16,10 @@ const {
   onDashboard?: boolean;
   sidebarProps?: Record<string, unknown>;
 }>();
+
+const sceneTreeProps = computed(
+  () => sidebarProps as unknown as InstanceType<typeof SceneTreePanel>["$props"],
+);
 </script>
 
 <template>
@@ -24,6 +29,6 @@ const {
     :dashboard-url="dashboardUrl"
     :on-dashboard="onDashboard"
   >
-    <SceneTreePanel v-bind="sidebarProps" />
+    <SceneTreePanel v-bind="sceneTreeProps" />
   </SidebarFrame>
 </template>

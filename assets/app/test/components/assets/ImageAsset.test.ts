@@ -7,10 +7,33 @@ const ASSETS = [
   { id: 2, filename: "beta.png", url: "/b.png" },
 ];
 
+const triggerSlotStub = {
+  name: "AssetPicker",
+  template: '<div data-test="asset-picker-stub"><slot name="trigger" /></div>',
+};
+
+const buttonStub = {
+  name: "Button",
+  props: ["disabled"],
+  template: "<button :disabled='disabled'><slot /></button>",
+};
+
 function mountIt(props: Record<string, unknown> = {}) {
   return mount(ImageAsset, {
     props: { imageAssets: ASSETS, canEdit: true, label: "Background", ...props },
     shallow: true,
+  });
+}
+
+function mountWithTrigger(props: Record<string, unknown> = {}) {
+  return mount(ImageAsset, {
+    props: { imageAssets: ASSETS, canEdit: true, label: "Background", ...props },
+    global: {
+      stubs: {
+        AssetPicker: triggerSlotStub,
+        Button: buttonStub,
+      },
+    },
   });
 }
 
@@ -68,6 +91,26 @@ describe("ImageAsset", () => {
     const contain = mountIt({ assetId: 1, previewFit: "contain" });
     expect(contain.find("[style*='background-image']").attributes("style")).toContain(
       "background-size: contain",
+    );
+  });
+
+  it("allows long selected filenames to truncate inside the picker trigger", () => {
+    const longFilename =
+      "sora_image_generation_remix_01km0deh04ei89912a1evvcrdz_with_extra_suffix.webp";
+    const w = mountWithTrigger({
+      assetId: 99,
+      imageAssets: [{ id: 99, filename: longFilename, url: "/long.webp" }],
+    });
+
+    const trigger = w.find('[data-test="asset-picker-stub"] button');
+    expect(trigger.classes()).toEqual(
+      expect.arrayContaining(["w-full", "min-w-0", "shrink", "overflow-hidden"]),
+    );
+
+    const filename = trigger.find("span");
+    expect(filename.text()).toBe(longFilename);
+    expect(filename.classes()).toEqual(
+      expect.arrayContaining(["min-w-0", "flex-1", "truncate"]),
     );
   });
 });

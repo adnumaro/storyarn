@@ -1,5 +1,12 @@
 import { computed, onMounted, onUnmounted, ref, watch, type Ref } from "vue";
 import { useLive } from "@shared/composables/useLive";
+import type {
+  RouteMidpointAnchorConfig,
+  RouteWaypointAnchorConfig,
+  RouteWaypointEditorConfigs,
+  SceneRouteConnectionBase,
+  SceneRouteWaypoint,
+} from "@modules/scenes/types/routes";
 import type { KonvaEventObject } from "konva/lib/Node";
 
 const WAYPOINT_RADIUS = 6;
@@ -9,21 +16,9 @@ const WAYPOINT_STROKE = "#f97316"; // orange-500
 const MIDPOINT_FILL = "#fed7aa"; // orange-200
 const MIDPOINT_STROKE = "#ea580c"; // orange-600
 
-interface Waypoint {
-  x: number;
-  y: number;
-}
-
 interface PixelPoint {
   x: number;
   y: number;
-}
-
-interface ConnectionData {
-  id: number | string;
-  fromPinId: number | string;
-  toPinId: number | string;
-  waypoints: Waypoint[] | null;
 }
 
 interface PinData {
@@ -32,33 +27,8 @@ interface PinData {
   positionY: number;
 }
 
-interface WaypointAnchorConfig {
-  x: number;
-  y: number;
-  radius: number;
-  fill: string;
-  stroke: string;
-  strokeWidth: number;
-  index: number;
-}
-
-interface MidpointAnchorConfig {
-  x: number;
-  y: number;
-  radius: number;
-  fill: string;
-  stroke: string;
-  strokeWidth: number;
-  segmentIndex: number;
-}
-
-interface WaypointEditorConfigs {
-  waypointAnchors: WaypointAnchorConfig[];
-  midpointAnchors: MidpointAnchorConfig[];
-}
-
 interface UseWaypointEditorOpts {
-  connections: Ref<ConnectionData[]>;
+  connections: Ref<SceneRouteConnectionBase[]>;
   pins: Ref<PinData[]>;
   pixelToPercent: (pixelX: number, pixelY: number) => PixelPoint;
   percentToPixel: (pctX: number, pctY: number) => PixelPoint;
@@ -71,7 +41,7 @@ interface UseWaypointEditorOpts {
  *
  * Activated by double-clicking a connection. Shows waypoint handles (drag to reshape)
  * and midpoint handles on every segment (click to insert new waypoint).
- * Ctrl+click removes a waypoint. No minimum -- all waypoints can be removed.
+ * Ctrl+click removes a waypoint when the route would still keep at least two points.
  */
 export function useWaypointEditor({
   connections,
@@ -84,7 +54,7 @@ export function useWaypointEditor({
   const live = useLive();
 
   const editingConnectionId = ref<number | string | null>(null);
-  const editingWaypoints = ref<Waypoint[]>([]); // [{x, y}] in percent coords
+  const editingWaypoints = ref<SceneRouteWaypoint[]>([]); // [{x, y}] in percent coords
 
   const isEditing = computed(() => editingConnectionId.value !== null);
 
@@ -107,6 +77,8 @@ export function useWaypointEditor({
     editingWaypoints.value = (conn.waypoints || []).map((w) => ({
       x: w.x,
       y: w.y,
+      stop: !!w.stop,
+      pauseMs: w.pauseMs ?? w.pause_ms ?? null,
     }));
   }
 
@@ -121,7 +93,7 @@ export function useWaypointEditor({
     const node = e.target;
     const pos = pixelToPercent(node.x(), node.y());
     const wps = [...editingWaypoints.value];
-    wps[index] = { x: pos.x, y: pos.y };
+    wps[index] = { ...wps[index], x: pos.x, y: pos.y };
     editingWaypoints.value = wps;
   }
 
@@ -151,10 +123,13 @@ export function useWaypointEditor({
 
     const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
 
-    // Convert segmentIndex to waypoint insert position
-    const waypointInsertIndex = segmentIndex;
+    // If the route has no pinned start, the first full-path point is already
+    // the first waypoint, so insert after it.
+    const waypointInsertIndex = editingConnection.value?.fromPinId
+      ? segmentIndex
+      : segmentIndex + 1;
     const wps = [...editingWaypoints.value];
-    wps.splice(waypointInsertIndex, 0, mid);
+    wps.splice(waypointInsertIndex, 0, { ...mid, stop: false });
     editingWaypoints.value = wps;
     persistWaypoints();
   }
@@ -169,6 +144,9 @@ export function useWaypointEditor({
     if (nativeEvt.ctrlKey || nativeEvt.metaKey) {
       const wps = [...editingWaypoints.value];
       wps.splice(index, 1);
+      if (!routeHasEnoughPoints(wps)) {
+        return;
+      }
       editingWaypoints.value = wps;
       persistWaypoints();
     }
@@ -183,6 +161,8 @@ export function useWaypointEditor({
     const waypoints = editingWaypoints.value.map((w) => ({
       x: Math.round(w.x * 100) / 100,
       y: Math.round(w.y * 100) / 100,
+      stop: !!w.stop,
+      pauseMs: w.pauseMs ?? w.pause_ms ?? null,
     }));
     live.pushEvent("update_connection_waypoints", {
       id: String(editingConnectionId.value),
@@ -192,28 +172,51 @@ export function useWaypointEditor({
 
   // --- Full path in percent coords (from_pin + waypoints + to_pin) ---
 
-  function getFullPathPercent(): Waypoint[] | null {
+  function getFullPathPercent(): SceneRouteWaypoint[] | null {
     const conn = editingConnection.value;
     if (!conn) {
       return null;
     }
 
-    const fromPin = pins.value.find((p) => p.id === conn.fromPinId);
-    const toPin = pins.value.find((p) => p.id === conn.toPinId);
-    if (!fromPin || !toPin) {
+    const fromPin = findEndpointPin(conn.fromPinId);
+    const toPin = findEndpointPin(conn.toPinId);
+    if (endpointMissing(conn.fromPinId, fromPin) || endpointMissing(conn.toPinId, toPin)) {
       return null;
     }
 
-    return [
-      { x: fromPin.positionX, y: fromPin.positionY },
-      ...editingWaypoints.value,
-      { x: toPin.positionX, y: toPin.positionY },
-    ];
+    const path: SceneRouteWaypoint[] = [];
+    appendPinPoint(path, fromPin);
+    path.push(...editingWaypoints.value);
+    appendPinPoint(path, toPin);
+
+    return path.length >= 2 ? path : null;
+  }
+
+  function findEndpointPin(pinId: number | string | null): PinData | null {
+    return pinId === null ? null : pins.value.find((p) => p.id === pinId) || null;
+  }
+
+  function endpointMissing(pinId: number | string | null, pin: PinData | null): boolean {
+    return pinId !== null && !pin;
+  }
+
+  function appendPinPoint(path: SceneRouteWaypoint[], pin: PinData | null): void {
+    if (pin) path.push({ x: pin.positionX, y: pin.positionY });
+  }
+
+  function routeHasEnoughPoints(waypoints: SceneRouteWaypoint[]): boolean {
+    const conn = editingConnection.value;
+    if (!conn) {
+      return false;
+    }
+
+    const endpointCount = (conn.fromPinId !== null ? 1 : 0) + (conn.toPinId !== null ? 1 : 0);
+    return endpointCount + waypoints.length >= 2;
   }
 
   // --- Computed Konva configs for anchors ---
 
-  const waypointEditorConfigs = computed<WaypointEditorConfigs | null>(() => {
+  const waypointEditorConfigs = computed<RouteWaypointEditorConfigs | null>(() => {
     if (!isEditing.value) {
       return null;
     }
@@ -228,7 +231,7 @@ export function useWaypointEditor({
     const pixelWps = wps.map((w) => percentToPixel(w.x, w.y));
 
     // Waypoint anchors (draggable)
-    const waypointAnchors: WaypointAnchorConfig[] = pixelWps.map((p, i) => ({
+    const waypointAnchors: RouteWaypointAnchorConfig[] = pixelWps.map((p, i) => ({
       x: p.x,
       y: p.y,
       radius: WAYPOINT_RADIUS,
@@ -239,7 +242,7 @@ export function useWaypointEditor({
     }));
 
     // Midpoint anchors on every segment of the full path (including pin->wp and wp->pin)
-    const midpointAnchors: MidpointAnchorConfig[] = [];
+    const midpointAnchors: RouteMidpointAnchorConfig[] = [];
     for (let i = 0; i < pixelPath.length - 1; i++) {
       const a = pixelPath[i];
       const b = pixelPath[i + 1];

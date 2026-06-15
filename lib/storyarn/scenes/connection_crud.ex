@@ -41,16 +41,16 @@ defmodule Storyarn.Scenes.ConnectionCrud do
   end
 
   @doc """
-  Creates a connection between two pins.
-  Validates that both pins belong to the same map.
+  Creates a route between pinned or free points.
+  Validates that any pinned endpoints belong to the same scene.
   """
   def create_connection(scene_id, attrs) do
     attrs = Storyarn.Shared.MapUtils.stringify_keys(attrs)
     from_pin_id = attrs["from_pin_id"]
     to_pin_id = attrs["to_pin_id"]
 
-    with {:ok, _from_pin} <- validate_pin_belongs_to_map(from_pin_id, scene_id),
-         {:ok, _to_pin} <- validate_pin_belongs_to_map(to_pin_id, scene_id) do
+    with {:ok, _from_pin} <- validate_optional_pin_belongs_to_map(from_pin_id, scene_id),
+         {:ok, _to_pin} <- validate_optional_pin_belongs_to_map(to_pin_id, scene_id) do
       %SceneConnection{scene_id: scene_id}
       |> SceneConnection.create_changeset(attrs)
       |> Repo.insert()
@@ -95,7 +95,10 @@ defmodule Storyarn.Scenes.ConnectionCrud do
     SceneConnection.update_changeset(connection, attrs)
   end
 
-  defp validate_pin_belongs_to_map(pin_id, scene_id) do
+  defp validate_optional_pin_belongs_to_map(nil, _scene_id), do: {:ok, nil}
+  defp validate_optional_pin_belongs_to_map("", _scene_id), do: {:ok, nil}
+
+  defp validate_optional_pin_belongs_to_map(pin_id, scene_id) do
     case Repo.get(ScenePin, pin_id) do
       nil ->
         {:error, :pin_not_found}

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { AlertTriangle, CircleX, Download, Info, ShieldCheck } from "lucide-vue-next";
-import { computed } from "vue";
+import { computed, watch } from "vue";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Checkbox } from "@components/ui/checkbox";
@@ -78,10 +78,26 @@ const assetModeOptions = computed(() => [
 
 const sectionsSet = computed(() => new Set(sectionConfig.selected));
 const supportedSet = computed(() => new Set(sectionConfig.supported));
+const visibleFormats = computed(() =>
+  formatConfig.formats.filter((fmt) => fmt.format !== "storyarn"),
+);
+const selectedFormatVisible = computed(() =>
+  visibleFormats.value.some((fmt) => fmt.format === formatConfig.selected),
+);
 
 function setFormat(format: string) {
   live.pushEvent("set_format", { format });
 }
+
+watch(
+  () => [formatConfig.selected, visibleFormats.value.map((fmt) => fmt.format).join("|")],
+  () => {
+    if (!selectedFormatVisible.value && visibleFormats.value[0]) {
+      setFormat(visibleFormats.value[0].format);
+    }
+  },
+  { immediate: true },
+);
 
 function toggleSection(section: string) {
   live.pushEvent("toggle_section", { section });
@@ -137,7 +153,7 @@ function validationBadgeVariant(status: string) {
         @update:model-value="setFormat"
       >
         <label
-          v-for="fmt in formatConfig.formats"
+          v-for="fmt in visibleFormats"
           :key="fmt.format"
           class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2"
           :class="formatConfig.selected === fmt.format ? 'bg-muted' : ''"
@@ -148,130 +164,132 @@ function validationBadgeVariant(status: string) {
       </RadioGroup>
     </div>
 
-    <!-- Content section checkboxes -->
-    <div class="space-y-2">
-      <Label class="text-sm font-medium">{{ $t("project_settings.export.content") }}</Label>
-      <div class="flex flex-col gap-1">
-        <label
-          v-for="sec in sectionLabels"
-          :key="sec.key"
-          class="flex cursor-pointer items-center gap-3 py-1"
-        >
-          <Checkbox
-            :model-value="sectionsSet.has(sec.key)"
-            :disabled="!supportedSet.has(sec.key)"
-            @update:model-value="toggleSection(sec.key)"
-          />
-          <span class="text-sm" :class="!supportedSet.has(sec.key) ? 'opacity-40' : ''">
-            {{ sec.label }}
-            <span v-if="sectionConfig.entityCounts[sec.key]" class="text-muted-foreground">
-              ({{ sectionConfig.entityCounts[sec.key] }})
+    <template v-if="selectedFormatVisible">
+      <!-- Content section checkboxes -->
+      <div class="space-y-2">
+        <Label class="text-sm font-medium">{{ $t("project_settings.export.content") }}</Label>
+        <div class="flex flex-col gap-1">
+          <label
+            v-for="sec in sectionLabels"
+            :key="sec.key"
+            class="flex cursor-pointer items-center gap-3 py-1"
+          >
+            <Checkbox
+              :model-value="sectionsSet.has(sec.key)"
+              :disabled="!supportedSet.has(sec.key)"
+              @update:model-value="toggleSection(sec.key)"
+            />
+            <span class="text-sm" :class="!supportedSet.has(sec.key) ? 'opacity-40' : ''">
+              {{ sec.label }}
+              <span v-if="sectionConfig.entityCounts[sec.key]" class="text-muted-foreground">
+                ({{ sectionConfig.entityCounts[sec.key] }})
+              </span>
             </span>
-          </span>
-        </label>
-      </div>
-    </div>
-
-    <!-- Asset mode -->
-    <div class="space-y-2">
-      <Label class="text-sm font-medium">{{ $t("project_settings.export.assets") }}</Label>
-      <RadioGroup
-        :model-value="options.assetMode"
-        class="flex flex-col gap-1"
-        @update:model-value="setAssetMode"
-      >
-        <label
-          v-for="opt in assetModeOptions"
-          :key="opt.value"
-          class="flex cursor-pointer items-center gap-3 py-1"
-        >
-          <RadioGroupItem :value="opt.value" />
-          <span class="text-sm">{{ opt.label }}</span>
-        </label>
-      </RadioGroup>
-    </div>
-
-    <!-- Options -->
-    <div class="space-y-2">
-      <Label class="text-sm font-medium">{{ $t("project_settings.export.options") }}</Label>
-      <div class="flex flex-col gap-1">
-        <label class="flex cursor-pointer items-center gap-3 py-1">
-          <Checkbox
-            :model-value="options.validateBeforeExport"
-            @update:model-value="toggleOption('validate_before_export')"
-          />
-          <span class="text-sm">{{ $t("project_settings.export.validate_before") }}</span>
-        </label>
-        <label class="flex cursor-pointer items-center gap-3 py-1">
-          <Checkbox
-            :model-value="options.prettyPrint"
-            @update:model-value="toggleOption('pretty_print')"
-          />
-          <span class="text-sm">{{ $t("project_settings.export.pretty_print") }}</span>
-        </label>
-      </div>
-    </div>
-
-    <!-- Actions -->
-    <div class="flex items-center gap-3 pt-2">
-      <Button variant="outline" size="sm" @click="validateExport">
-        <ShieldCheck class="size-4" />
-        {{ $t("project_settings.export.validate") }}
-      </Button>
-
-      <Button size="sm" as-child>
-        <a :href="exportDownloadUrl" data-live-link-exempt="download" @click="trackExport">
-          <Download class="size-4" />
-          {{ $t("project_settings.export.download", { ext: formatConfig.extension }) }}
-        </a>
-      </Button>
-    </div>
-
-    <!-- Validation results -->
-    <div v-if="validation" class="space-y-2">
-      <Badge :variant="validationBadgeVariant(validation.status)">
-        {{ validationStatusLabel(validation.status) }}
-      </Badge>
-
-      <div v-if="validation.errors?.length" class="space-y-1">
-        <div
-          v-for="(finding, i) in validation.errors"
-          :key="'err-' + i"
-          class="flex items-start gap-2 text-sm text-destructive"
-        >
-          <CircleX class="mt-0.5 size-4 shrink-0" />
-          <span>{{ finding.message }}</span>
+          </label>
         </div>
       </div>
 
-      <div v-if="validation.warnings?.length" class="space-y-1">
-        <div
-          v-for="(finding, i) in validation.warnings"
-          :key="'warn-' + i"
-          class="flex items-start gap-2 text-sm text-yellow-600 dark:text-yellow-500"
+      <!-- Asset mode -->
+      <div class="space-y-2">
+        <Label class="text-sm font-medium">{{ $t("project_settings.export.assets") }}</Label>
+        <RadioGroup
+          :model-value="options.assetMode"
+          class="flex flex-col gap-1"
+          @update:model-value="setAssetMode"
         >
-          <AlertTriangle class="mt-0.5 size-4 shrink-0" />
-          <span>{{ finding.message }}</span>
+          <label
+            v-for="opt in assetModeOptions"
+            :key="opt.value"
+            class="flex cursor-pointer items-center gap-3 py-1"
+          >
+            <RadioGroupItem :value="opt.value" />
+            <span class="text-sm">{{ opt.label }}</span>
+          </label>
+        </RadioGroup>
+      </div>
+
+      <!-- Options -->
+      <div class="space-y-2">
+        <Label class="text-sm font-medium">{{ $t("project_settings.export.options") }}</Label>
+        <div class="flex flex-col gap-1">
+          <label class="flex cursor-pointer items-center gap-3 py-1">
+            <Checkbox
+              :model-value="options.validateBeforeExport"
+              @update:model-value="toggleOption('validate_before_export')"
+            />
+            <span class="text-sm">{{ $t("project_settings.export.validate_before") }}</span>
+          </label>
+          <label class="flex cursor-pointer items-center gap-3 py-1">
+            <Checkbox
+              :model-value="options.prettyPrint"
+              @update:model-value="toggleOption('pretty_print')"
+            />
+            <span class="text-sm">{{ $t("project_settings.export.pretty_print") }}</span>
+          </label>
         </div>
       </div>
 
-      <div v-if="validation.info?.length" class="space-y-1">
-        <div
-          v-for="(finding, i) in validation.info"
-          :key="'info-' + i"
-          class="flex items-start gap-2 text-sm text-blue-600 dark:text-blue-400"
-        >
-          <Info class="mt-0.5 size-4 shrink-0" />
-          <span>{{ finding.message }}</span>
-        </div>
+      <!-- Actions -->
+      <div class="flex items-center gap-3 pt-2">
+        <Button variant="outline" size="sm" @click="validateExport">
+          <ShieldCheck class="size-4" />
+          {{ $t("project_settings.export.validate") }}
+        </Button>
+
+        <Button size="sm" as-child>
+          <a :href="exportDownloadUrl" data-live-link-exempt="download" @click="trackExport">
+            <Download class="size-4" />
+            {{ $t("project_settings.export.download", { ext: formatConfig.extension }) }}
+          </a>
+        </Button>
       </div>
 
-      <p
-        v-if="validation.status === 'passed' && !validation.info?.length"
-        class="text-sm text-green-600 dark:text-green-400"
-      >
-        {{ $t("project_settings.export.no_issues") }}
-      </p>
-    </div>
+      <!-- Validation results -->
+      <div v-if="validation" class="space-y-2">
+        <Badge :variant="validationBadgeVariant(validation.status)">
+          {{ validationStatusLabel(validation.status) }}
+        </Badge>
+
+        <div v-if="validation.errors?.length" class="space-y-1">
+          <div
+            v-for="(finding, i) in validation.errors"
+            :key="'err-' + i"
+            class="flex items-start gap-2 text-sm text-destructive"
+          >
+            <CircleX class="mt-0.5 size-4 shrink-0" />
+            <span>{{ finding.message }}</span>
+          </div>
+        </div>
+
+        <div v-if="validation.warnings?.length" class="space-y-1">
+          <div
+            v-for="(finding, i) in validation.warnings"
+            :key="'warn-' + i"
+            class="flex items-start gap-2 text-sm text-yellow-600 dark:text-yellow-500"
+          >
+            <AlertTriangle class="mt-0.5 size-4 shrink-0" />
+            <span>{{ finding.message }}</span>
+          </div>
+        </div>
+
+        <div v-if="validation.info?.length" class="space-y-1">
+          <div
+            v-for="(finding, i) in validation.info"
+            :key="'info-' + i"
+            class="flex items-start gap-2 text-sm text-blue-600 dark:text-blue-400"
+          >
+            <Info class="mt-0.5 size-4 shrink-0" />
+            <span>{{ finding.message }}</span>
+          </div>
+        </div>
+
+        <p
+          v-if="validation.status === 'passed' && !validation.info?.length"
+          class="text-sm text-green-600 dark:text-green-400"
+        >
+          {{ $t("project_settings.export.no_issues") }}
+        </p>
+      </div>
+    </template>
   </section>
 </template>

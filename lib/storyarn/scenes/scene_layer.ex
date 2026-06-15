@@ -10,7 +10,6 @@ defmodule Storyarn.Scenes.SceneLayer do
   use Ecto.Schema
 
   import Ecto.Changeset
-  import Storyarn.Scenes.ChangesetHelpers
 
   alias Ecto.Association.NotLoaded
   alias Storyarn.Scenes.Scene
@@ -24,8 +23,6 @@ defmodule Storyarn.Scenes.SceneLayer do
           position: integer() | nil,
           visible: boolean(),
           fog_enabled: boolean(),
-          fog_color: String.t() | nil,
-          fog_opacity: float(),
           scene_id: integer() | nil,
           scene: Scene.t() | NotLoaded.t() | nil,
           zones: [SceneZone.t()] | NotLoaded.t(),
@@ -40,8 +37,6 @@ defmodule Storyarn.Scenes.SceneLayer do
     field :position, :integer, default: 0
     field :visible, :boolean, default: true
     field :fog_enabled, :boolean, default: false
-    field :fog_color, :string, default: "#000000"
-    field :fog_opacity, :float, default: 0.85
 
     belongs_to :scene, Scene
     has_many :zones, SceneZone, foreign_key: :layer_id
@@ -60,9 +55,7 @@ defmodule Storyarn.Scenes.SceneLayer do
       :is_default,
       :position,
       :visible,
-      :fog_enabled,
-      :fog_color,
-      :fog_opacity
+      :fog_enabled
     ])
     |> shared_validations()
   end
@@ -76,9 +69,7 @@ defmodule Storyarn.Scenes.SceneLayer do
       :name,
       :is_default,
       :visible,
-      :fog_enabled,
-      :fog_color,
-      :fog_opacity
+      :fog_enabled
     ])
     |> shared_validations()
   end
@@ -87,8 +78,5 @@ defmodule Storyarn.Scenes.SceneLayer do
     changeset
     |> validate_required([:name])
     |> validate_length(:name, min: 1, max: 200)
-    |> validate_number(:fog_opacity, greater_than_or_equal_to: 0, less_than_or_equal_to: 1)
-    |> validate_length(:fog_color, max: 20)
-    |> validate_color(:fog_color)
   end
 end

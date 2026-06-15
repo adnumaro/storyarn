@@ -79,8 +79,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       }
 
       connections = [
-        conn(1, "default", 2),
-        conn(2, "default", 3)
+        conn(1, "output", 2),
+        conn(2, "output", 3)
       ]
 
       state = Engine.init(%{}, 1)
@@ -106,8 +106,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       }
 
       connections = [
-        conn(1, "default", 2),
-        conn(2, "default", 3)
+        conn(1, "output", 2),
+        conn(2, "output", 3)
       ]
 
       state = Engine.init(%{}, 1)
@@ -171,7 +171,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
         2 => node(2, "hub")
       }
 
-      connections = [conn(1, "default", 2)]
+      connections = [conn(1, "output", 2)]
 
       state = Engine.init(%{}, 1)
 
@@ -201,7 +201,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
           })
       }
 
-      connections = [conn(1, "default", 2)]
+      connections = [conn(1, "output", 2)]
 
       state = Engine.init(%{}, 1)
       {:ok, state} = Engine.step(state, nodes, connections)
@@ -225,7 +225,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
         2 => node(2, "hub")
       }
 
-      connections = [conn(1, "default", 2)]
+      connections = [conn(1, "output", 2)]
 
       state = %{Engine.init(%{}, 1) | max_steps: 0}
 
@@ -256,8 +256,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       }
 
       connections = [
-        conn(1, "default", 2),
-        conn(2, "default", 3)
+        conn(1, "output", 2),
+        conn(2, "output", 3)
       ]
 
       state = Engine.init(%{}, 1)
@@ -302,9 +302,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       }
 
       connections = [
-        conn(1, "default", 2),
-        conn(2, "default", 3),
-        conn(3, "default", 4)
+        conn(1, "output", 2),
+        conn(2, "output", 3),
+        conn(3, "output", 4)
       ]
 
       state = Engine.init(%{}, 1)
@@ -350,7 +350,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       }
 
       connections = [
-        conn(1, "default", 2),
+        conn(1, "output", 2),
         conn(2, "r1", 3),
         conn(2, "r2", 4)
       ]
@@ -630,9 +630,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       }
 
       connections = [
-        conn(1, "default", 2),
-        conn(2, "default", 3),
-        conn(3, "default", 4)
+        conn(1, "output", 2),
+        conn(2, "output", 3),
+        conn(3, "output", 4)
       ]
 
       state = Engine.init(%{}, 1)
@@ -659,7 +659,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
         2 => node(2, "exit")
       }
 
-      connections = [conn(1, "default", 2)]
+      connections = [conn(1, "output", 2)]
 
       # Pre-step to reach exit node
       state = Engine.init(%{}, 1)
@@ -689,9 +689,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       }
 
       connections = [
-        conn(1, "default", 2),
-        conn(2, "default", 3),
-        conn(3, "default", 4)
+        conn(1, "output", 2),
+        conn(2, "output", 3),
+        conn(3, "output", 4)
       ]
 
       state = Engine.init(%{}, 1)
@@ -724,7 +724,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
         2 => node(2, "hub")
       }
 
-      connections = [conn(1, "default", 2)]
+      connections = [conn(1, "output", 2)]
 
       state = %{Engine.init(%{}, 1) | max_steps: 0}
 
@@ -758,7 +758,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       }
 
       connections = [
-        conn(1, "default", 2),
+        conn(1, "output", 2),
         conn(2, "r1", 3),
         conn(2, "r2", 3)
       ]
@@ -796,7 +796,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
           execution_path: [2, 1]
       }
 
-      connections = [conn(1, "default", 2)]
+      connections = [conn(1, "output", 2)]
 
       socket =
         build_socket(%{
@@ -875,8 +875,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       }
 
       connections = [
-        conn(1, "default", 2),
-        conn(2, "default", 3)
+        conn(1, "output", 2),
+        conn(2, "output", 3)
       ]
 
       socket =
@@ -936,7 +936,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
         build_socket(%{
           debug_state: state,
           debug_nodes: %{1 => node(1, "entry")},
-          debug_connections: [conn(1, "default", 2)],
+          debug_connections: [conn(1, "output", 2)],
           debug_active_tab: "console",
           debug_speed: 500,
           debug_auto_playing: false,
@@ -1122,7 +1122,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       hub2 = node_fixture(flow, %{type: "hub", data: %{"hub_id" => "h2"}})
 
       _connection =
-        connection_fixture(flow, hub1, hub2, %{source_pin: "default", target_pin: "input"})
+        connection_fixture(flow, hub1, hub2, %{source_pin: "output", target_pin: "input"})
 
       result = DebugExecutionHandlers.build_connections(flow.id)
 
@@ -1134,7 +1134,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
         end)
 
       assert matching_conn
-      assert matching_conn.source_pin == "default"
+      assert matching_conn.source_pin == "output"
       assert matching_conn.target_pin == "input"
     end
 
@@ -1165,10 +1165,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       hub = node_fixture(flow, %{type: "hub", data: %{"hub_id" => "h1", "color" => "#000"}})
 
       _conn1 =
-        connection_fixture(flow, entry, hub, %{source_pin: "default", target_pin: "input"})
+        connection_fixture(flow, entry, hub, %{source_pin: "output", target_pin: "input"})
 
       _conn2 =
-        connection_fixture(flow, hub, auto_exit, %{source_pin: "default", target_pin: "input"})
+        connection_fixture(flow, hub, auto_exit, %{source_pin: "output", target_pin: "input"})
 
       %{project: project, flow: flow, entry: entry, hub: hub, exit_node: auto_exit}
     end
@@ -1343,7 +1343,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
 
       _conn1 =
         connection_fixture(flow, entry, dialogue, %{
-          source_pin: "default",
+          source_pin: "output",
           target_pin: "input"
         })
 
@@ -1438,9 +1438,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       hub_a = node_fixture(flow, %{type: "hub", data: %{"hub_id" => "a", "color" => "#000"}})
       hub_b = node_fixture(flow, %{type: "hub", data: %{"hub_id" => "b", "color" => "#000"}})
 
-      _c1 = connection_fixture(flow, entry, hub_a, %{source_pin: "default", target_pin: "input"})
-      _c2 = connection_fixture(flow, hub_a, hub_b, %{source_pin: "default", target_pin: "input"})
-      _c3 = connection_fixture(flow, hub_b, hub_a, %{source_pin: "default", target_pin: "input"})
+      _c1 = connection_fixture(flow, entry, hub_a, %{source_pin: "output", target_pin: "input"})
+      _c2 = connection_fixture(flow, hub_a, hub_b, %{source_pin: "output", target_pin: "input"})
+      _c3 = connection_fixture(flow, hub_b, hub_a, %{source_pin: "output", target_pin: "input"})
 
       %{project: project, flow: flow}
     end

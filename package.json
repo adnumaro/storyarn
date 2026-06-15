@@ -8,6 +8,7 @@
     "lint:fix": "node_modules/.bin/oxlint --fix",
     "fmt": "node_modules/.bin/oxfmt",
     "fmt:check": "node_modules/.bin/oxfmt --check",
+    "typecheck": "node_modules/.bin/vue-tsc --noEmit --pretty false",
     "arch": "pnpm run arch:deps && pnpm run arch:live-vue && pnpm run arch:links && pnpm run arch:sessions && pnpm run arch:layouts",
     "arch:deps": "node_modules/.bin/depcruise --config .dependency-cruiser.cjs assets/app",
     "arch:live-vue": "node scripts/verify-live-vue-components.mjs",
@@ -91,6 +92,7 @@
     "playwright": "^1.60.0",
     "shadcn-vue": "^2.7.3",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.6",
+    "vue-tsc": "^3.3.4"
   }
 }

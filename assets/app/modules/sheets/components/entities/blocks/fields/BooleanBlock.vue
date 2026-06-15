@@ -40,6 +40,11 @@ function saveLabel(val: string): void {
 }
 
 const content = computed(() => block.value?.content);
+const booleanContent = computed<boolean | null>(() => {
+  if (content.value === true) return true;
+  if (content.value === false) return false;
+  return null;
+});
 const mode = computed(() => block.config?.mode || "two_state");
 
 const trueLabel = computed(() => block.config?.true_label || t("sheets.boolean_block.yes"));
@@ -168,7 +173,7 @@ function onToggle(value: boolean | null): void {
     <!-- Editable (two-state switch or tri-state cycle button) -->
     <BooleanToggle
       v-if="canEdit"
-      :value="content"
+      :value="booleanContent"
       :mode="mode"
       :true-label="trueLabel"
       :false-label="falseLabel"

@@ -313,30 +313,20 @@ defmodule Storyarn.ScenesTest do
       {:ok, layer} =
         Scenes.create_layer(scene.id, %{
           "name" => "Fog Layer",
-          "fog_enabled" => true,
-          "fog_color" => "#1a1a2e",
-          "fog_opacity" => 0.9
+          "fog_enabled" => true
         })
 
       assert layer.fog_enabled == true
-      assert layer.fog_color == "#1a1a2e"
-      assert layer.fog_opacity == 0.9
     end
 
-    test "update_layer/2 fog fields validation (opacity 0-1)" do
+    test "update_layer/2 updates fog_enabled" do
       user = user_fixture()
       project = project_fixture(user)
       scene = scene_fixture(project)
       layer = layer_fixture(scene)
 
-      {:error, changeset} = Scenes.update_layer(layer, %{"fog_opacity" => 1.5})
-      assert errors_on(changeset).fog_opacity != []
-
-      {:error, changeset} = Scenes.update_layer(layer, %{"fog_opacity" => -0.1})
-      assert errors_on(changeset).fog_opacity != []
-
-      {:ok, updated} = Scenes.update_layer(layer, %{"fog_opacity" => 0.75})
-      assert updated.fog_opacity == 0.75
+      {:ok, updated} = Scenes.update_layer(layer, %{"fog_enabled" => true})
+      assert updated.fog_enabled == true
     end
 
     test "reorder_layers/2 updates positions" do
@@ -545,23 +535,23 @@ defmodule Storyarn.ScenesTest do
       %{"x" => 30.0, "y" => 50.0}
     ]
 
-    test "default zone gets action_type none", %{scene: scene} do
+    test "default zone gets action_type action", %{scene: scene} do
       {:ok, zone} = Scenes.create_zone(scene.id, %{"name" => "Plain", "vertices" => @triangle})
 
-      assert zone.action_type == "none"
-      assert zone.action_data == %{}
+      assert zone.action_type == "action"
+      assert zone.action_data == %{"assignments" => []}
     end
 
-    test "create instruction zone with assignments", %{scene: scene} do
+    test "create action zone with assignments", %{scene: scene} do
       {:ok, zone} =
         Scenes.create_zone(scene.id, %{
           "name" => "Set HP",
           "vertices" => @triangle,
-          "action_type" => "instruction",
+          "action_type" => "action",
           "action_data" => %{"assignments" => [%{"var" => "hp", "op" => "set", "value" => 100}]}
         })
 
-      assert zone.action_type == "instruction"
+      assert zone.action_type == "action"
       assert is_list(zone.action_data["assignments"])
     end
 
@@ -578,23 +568,25 @@ defmodule Storyarn.ScenesTest do
       assert zone.action_data["variable_ref"] == "mc.jaime.health"
     end
 
-    test "create zone with action_type none", %{scene: scene} do
-      {:ok, zone} =
-        Scenes.create_zone(scene.id, %{
-          "name" => "Simple",
-          "vertices" => @triangle,
-          "action_type" => "none"
-        })
+    test "legacy action types are rejected", %{scene: scene} do
+      for action_type <- ["none", "navigate", "instruction"] do
+        {:error, changeset} =
+          Scenes.create_zone(scene.id, %{
+            "name" => "Legacy #{action_type}",
+            "vertices" => @triangle,
+            "action_type" => action_type
+          })
 
-      assert zone.action_type == "none"
+        assert "is invalid" in errors_on(changeset).action_type
+      end
     end
 
-    test "instruction requires assignments list", %{scene: scene} do
+    test "action requires assignments list", %{scene: scene} do
       {:error, changeset} =
         Scenes.create_zone(scene.id, %{
-          "name" => "Bad Instruction",
+          "name" => "Bad Action",
           "vertices" => @triangle,
-          "action_type" => "instruction",
+          "action_type" => "action",
           "action_data" => %{}
         })
 
@@ -650,22 +642,71 @@ defmodule Storyarn.ScenesTest do
 
       {:ok, updated} =
         Scenes.update_zone(zone, %{
-          "action_type" => "instruction",
+          "action_type" => "action",
           "action_data" => %{"assignments" => []}
         })
 
-      assert updated.action_type == "instruction"
+      assert updated.action_type == "action"
       assert updated.target_type == "scene"
       assert updated.target_id == 42
     end
 
-    test "list_actionable_zones returns only non-none zones", %{scene: scene} do
-      _plain = zone_fixture(scene, %{"name" => "Plain"})
+    test "non-action zones cannot have a target", %{scene: scene} do
+      for action_type <- ["display", "collection", "walkable"] do
+        action_data =
+          case action_type do
+            "display" -> %{"variable_ref" => "mc.hp"}
+            "collection" -> %{"items" => []}
+            "walkable" -> %{}
+          end
 
-      _instruction =
+        {:error, changeset} =
+          Scenes.create_zone(scene.id, %{
+            "name" => "Targeted #{action_type}",
+            "vertices" => @triangle,
+            "action_type" => action_type,
+            "action_data" => action_data,
+            "is_walkable" => action_type == "walkable",
+            "target_type" => "scene",
+            "target_id" => 42
+          })
+
+        assert "is only allowed for action zones" in errors_on(changeset).target_type
+      end
+    end
+
+    test "is_walkable is only valid for walkable zones", %{scene: scene} do
+      {:error, changeset} =
+        Scenes.create_zone(scene.id, %{
+          "name" => "Action Walkable Flag",
+          "vertices" => @triangle,
+          "action_type" => "action",
+          "action_data" => %{"assignments" => []},
+          "is_walkable" => true
+        })
+
+      assert "can only be true for walkable zones" in errors_on(changeset).is_walkable
+    end
+
+    test "walkable zones require is_walkable true", %{scene: scene} do
+      {:error, changeset} =
+        Scenes.create_zone(scene.id, %{
+          "name" => "Broken Walkable",
+          "vertices" => @triangle,
+          "action_type" => "walkable",
+          "action_data" => %{}
+        })
+
+      assert "must be true for walkable zones" in errors_on(changeset).is_walkable
+    end
+
+    test "list_actionable_zones returns only action and collection zones", %{scene: scene} do
+      _walkable = zone_fixture(scene, %{"name" => "Walk", "action_type" => "walkable", "is_walkable" => true})
+
+      _action =
         zone_fixture(scene, %{
-          "name" => "Inst",
-          "action_type" => "instruction",
+          "name" => "Act",
+          "action_type" => "action",
           "action_data" => %{"assignments" => []}
         })
 
@@ -676,10 +717,17 @@ defmodule Storyarn.ScenesTest do
           "action_data" => %{"variable_ref" => "mc.hp"}
         })
 
+      _collection =
+        zone_fixture(scene, %{
+          "name" => "Items",
+          "action_type" => "collection",
+          "action_data" => %{"items" => []}
+        })
+
       actionable = Scenes.list_actionable_zones(scene.id)
       assert length(actionable) == 2
       names = actionable |> Enum.map(& &1.name) |> Enum.sort()
-      assert names == ["Disp", "Inst"]
+      assert names == ["Act", "Items"]
     end
   end
 

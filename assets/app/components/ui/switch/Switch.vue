@@ -2,7 +2,7 @@
 import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
 import { SwitchRoot, SwitchThumb, useForwardPropsEmits, type AsTag } from "reka-ui";
-import { cn } from "../../../shared/utils/utils";
+import { cn } from "@shared/utils/utils.ts";
 
 const props = defineProps<{
   defaultValue?: boolean;
@@ -10,8 +10,8 @@ const props = defineProps<{
   disabled?: boolean;
   id?: string;
   value?: string;
-  trueValue?: string;
-  falseValue?: string;
+  trueValue?: boolean;
+  falseValue?: boolean;
   asChild?: boolean;
   as?: AsTag | Component;
   name?: string;

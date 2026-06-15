@@ -1,21 +1,27 @@
 <script setup lang="ts">
 import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
-import { ListboxRoot, useFilter, useForwardPropsEmits, type AsTag } from "reka-ui";
+import {
+  ListboxRoot,
+  useFilter,
+  useForwardPropsEmits,
+  type AcceptableValue,
+  type AsTag,
+} from "reka-ui";
 import { reactive, ref, watch } from "vue";
-import { cn } from "../../../shared/utils/utils";
+import { cn } from "@shared/utils/utils.ts";
 import { provideCommandContext } from "./context";
 
 const props = defineProps<{
-  modelValue?: string | string[];
-  defaultValue?: string | string[];
+  modelValue?: AcceptableValue | AcceptableValue[];
+  defaultValue?: AcceptableValue | AcceptableValue[];
   multiple?: boolean;
   orientation?: "horizontal" | "vertical";
   dir?: "ltr" | "rtl";
   disabled?: boolean;
   selectionBehavior?: "toggle" | "replace";
   highlightOnHover?: boolean;
-  by?: string | ((a: string, b: string) => boolean);
+  by?: string | ((a: AcceptableValue, b: AcceptableValue) => boolean);
   asChild?: boolean;
   as?: AsTag | Component;
   name?: string;
@@ -24,7 +30,7 @@ const props = defineProps<{
 }>();
 
 const emits = defineEmits<{
-  "update:modelValue": [value: string | string[]];
+  "update:modelValue": [value: AcceptableValue | AcceptableValue[]];
   highlight: [event: Event];
   entryFocus: [event: Event];
   leave: [event: Event];

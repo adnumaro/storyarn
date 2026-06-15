@@ -92,6 +92,9 @@ defmodule StoryarnWeb.ProjectLive.Show do
   def handle_params(_params, _url, socket), do: {:noreply, socket}
 
   @impl true
+  def handle_info({:EXIT, _pid, :normal}, socket), do: {:noreply, socket}
+
+  @impl true
   def handle_info({:project_restoration_started, payload}, socket),
     do: RestorationHandlers.handle_restoration_event({:project_restoration_started, payload}, socket)
 

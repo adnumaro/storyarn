@@ -7,11 +7,7 @@ const { guideBody = null } = defineProps<{
 </script>
 
 <template>
-  <div
-    v-if="guideBody"
-    class="docs-content prose prose-sm dark:prose-invert max-w-none"
-    v-html="guideBody"
-  />
+  <div v-if="guideBody" class="docs-content max-w-none" v-html="guideBody" />
 
   <div v-else class="text-center py-20">
     <BookOpen class="size-12 text-muted-foreground/30 mx-auto mb-4" />

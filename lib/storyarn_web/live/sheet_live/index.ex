@@ -127,6 +127,8 @@ defmodule StoryarnWeb.SheetLive.Index do
   # ===========================================================================
 
   # Shell-topic messages from SheetsSidebarLive:
+  def handle_info({:EXIT, _pid, :normal}, socket), do: {:noreply, socket}
+
   def handle_info({:open_sheet, sheet_id}, socket) do
     path =
       ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{sheet_id}"

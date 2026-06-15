@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Layers } from "lucide-vue-next";
+import { Layers, SlidersHorizontal } from "lucide-vue-next";
 import { computed } from "vue";
 import { useLive } from "@shared/composables/useLive.ts";
 import SceneLayerList from "./SceneLayerList.vue";
@@ -31,6 +31,11 @@ const layerListKey = computed(() => layers.map((layer) => layer.id).join(":"));
 function togglePopover(): void {
   live.pushEvent("toggle_layers_popover", {});
 }
+
+function openFogSettings(): void {
+  live.pushEvent("open_scene_settings", {});
+  live.pushEvent("toggle_layers_popover", {});
+}
 </script>
 
 <template>
@@ -58,6 +63,16 @@ function togglePopover(): void {
           :can-edit="canEdit"
           :edit-mode="editMode"
         />
+      </div>
+      <div v-if="canEdit && editMode" class="border-t border-border p-2">
+        <button
+          type="button"
+          class="w-full inline-flex items-center justify-center gap-2 h-7 px-2 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          @click="openFogSettings"
+        >
+          <SlidersHorizontal class="size-3.5" />
+          {{ $t("scenes.layers.adjust_fog_design") }}
+        </button>
       </div>
     </div>
   </div>

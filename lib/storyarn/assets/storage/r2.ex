@@ -1,8 +1,9 @@
 defmodule Storyarn.Assets.Storage.R2 do
   @moduledoc """
-  Cloudflare R2 storage adapter for production.
+  S3-compatible storage adapter for production.
 
-  R2 is S3-compatible, so we use the ExAws.S3 library.
+  The module name is historical; this adapter is used for Fly Tigris and other
+  S3-compatible providers through ExAws.S3.
   """
 
   @behaviour Storyarn.Assets.Storage
@@ -117,7 +118,7 @@ defmodule Storyarn.Assets.Storage.R2 do
   end
 
   defp bucket do
-    config()[:bucket] || raise "R2_BUCKET not configured"
+    config()[:bucket] || raise "object storage bucket not configured"
   end
 
   defp config do

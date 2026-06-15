@@ -30,29 +30,35 @@ defmodule Storyarn.Scenes.ZoneCrud do
         layer_id -> where(query, [z], z.layer_id == ^layer_id)
       end
 
-    Repo.all(query)
+    query
+    |> preload([:label_icon_asset])
+    |> Repo.all()
   end
 
   def get_zone(zone_id) do
-    Repo.get(SceneZone, zone_id)
+    SceneZone
+    |> Repo.get(zone_id)
+    |> Repo.preload(:label_icon_asset)
   end
 
   def get_zone!(zone_id) do
-    Repo.get!(SceneZone, zone_id)
+    SceneZone
+    |> Repo.get!(zone_id)
+    |> Repo.preload(:label_icon_asset)
   end
 
   @doc """
   Gets a zone by ID, scoped to a specific map. Returns `nil` if not found.
   """
   def get_zone(scene_id, zone_id) do
-    Repo.one(from(z in SceneZone, where: z.scene_id == ^scene_id and z.id == ^zone_id))
+    Repo.one(from(z in SceneZone, where: z.scene_id == ^scene_id and z.id == ^zone_id, preload: [:label_icon_asset]))
   end
 
   @doc """
   Gets a zone by ID, scoped to a specific map. Raises if not found.
   """
   def get_zone!(scene_id, zone_id) do
-    Repo.one!(from(z in SceneZone, where: z.scene_id == ^scene_id and z.id == ^zone_id))
+    Repo.one!(from(z in SceneZone, where: z.scene_id == ^scene_id and z.id == ^zone_id, preload: [:label_icon_asset]))
   end
 
   def create_zone(scene_id, attrs) do
@@ -143,11 +149,14 @@ defmodule Storyarn.Scenes.ZoneCrud do
   end
 
   @doc """
-  Lists zones with a non-none action_type, ordered by position.
+  Lists zones that perform an explicit player action, ordered by position.
   """
   def list_actionable_zones(scene_id) do
     Repo.all(
-      from(z in SceneZone, where: z.scene_id == ^scene_id and z.action_type != "none", order_by: [asc: z.position])
+      from(z in SceneZone,
+        where: z.scene_id == ^scene_id and z.action_type in ["action", "collection"],
+        order_by: [asc: z.position]
+      )
     )
   end
 

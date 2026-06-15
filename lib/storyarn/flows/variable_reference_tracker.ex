@@ -4,8 +4,8 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   Handles ALL polymorphic variable reference sources:
   - **Flow nodes** — condition rules → reads, instruction assignments → writes
-  - **Map zones** — instruction action_data → writes, display variable_ref → reads, condition → reads
-  - **Map pins** — instruction action_data → writes, display variable_ref → reads, condition → reads
+  - **Map zones** — action assignments → writes, display variable_ref → reads, condition → reads
+  - **Map pins** — flow/display references and conditions → reads
 
   Called after every node data or zone action_data save. Extracts variable
   references from the source's structured data and upserts them into the
@@ -548,7 +548,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   # Shared extraction for action_type + action_data (zones and pins)
   defp extract_action_variable_refs(element, project_id) do
     case Map.get(element, :action_type) do
-      "instruction" ->
+      "action" ->
         assignments = (Map.get(element, :action_data) || %{})["assignments"] || []
         Enum.flat_map(assignments, &extract_assignment_refs(&1, project_id))
 

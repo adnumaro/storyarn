@@ -13,15 +13,21 @@ defmodule StoryarnWeb.LiveSandbox do
   import Phoenix.LiveView
 
   def on_mount(:default, _params, _session, socket) do
-    socket =
-      assign_new(socket, :phoenix_ecto_sandbox, fn ->
-        if connected?(socket), do: get_connect_info(socket, :user_agent)
-      end)
+    sandbox_metadata =
+      if connected?(socket) do
+        get_connect_info(socket, :user_agent)
+      else
+        socket.assigns[:phoenix_ecto_sandbox]
+      end
 
-    Phoenix.Ecto.SQL.Sandbox.allow(
-      socket.assigns.phoenix_ecto_sandbox,
-      Ecto.Adapters.SQL.Sandbox
-    )
+    socket = assign(socket, :phoenix_ecto_sandbox, sandbox_metadata)
+
+    if sandbox_metadata do
+      Phoenix.Ecto.SQL.Sandbox.allow(
+        sandbox_metadata,
+        Ecto.Adapters.SQL.Sandbox
+      )
+    end
 
     {:cont, socket}
   end

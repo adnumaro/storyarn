@@ -224,6 +224,7 @@ function usageSceneHref(sceneId: number) {
         <div
           v-for="asset in assets"
           :key="asset.id"
+          :data-testid="`asset-card-${asset.id}`"
           :class="[
             'rounded-lg border shadow-sm hover:shadow-md transition-shadow cursor-pointer overflow-hidden bg-surface',
             selectedAsset && selectedAsset.id === asset.id

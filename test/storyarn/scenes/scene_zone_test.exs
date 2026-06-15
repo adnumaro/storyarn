@@ -58,6 +58,30 @@ defmodule Storyarn.Scenes.SceneZoneTest do
     end
   end
 
+  describe "display zone validation" do
+    test "accepts supported display modes" do
+      attrs =
+        valid_attrs()
+        |> Map.put(:action_type, "display")
+        |> Map.put(:action_data, %{"variable_ref" => "character.hp", "display_mode" => "label_value"})
+
+      cs = SceneZone.create_changeset(%SceneZone{}, attrs)
+      assert cs.valid?
+    end
+
+    test "rejects unsupported display modes" do
+      attrs =
+        valid_attrs()
+        |> Map.put(:action_type, "display")
+        |> Map.put(:action_data, %{"variable_ref" => "character.hp", "display_mode" => "raw"})
+
+      cs = SceneZone.create_changeset(%SceneZone{}, attrs)
+
+      refute cs.valid?
+      assert errors_on(cs)[:action_data] == ["display_mode must be value or label_value"]
+    end
+  end
+
   defp errors_on(changeset) do
     Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
       Regex.replace(~r"%{(\w+)}", msg, fn _, key ->

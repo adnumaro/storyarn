@@ -9,7 +9,7 @@ description: "Trabaja con tu equipo en tiempo real -- presencia, cursores y bloq
 
 Storyarn esta disenado para equipos. El {accent}Editor de Flujos{/accent} soporta colaboracion en tiempo real completa -- puedes ver quien esta en linea, seguir sus cursores por el lienzo y editar nodos sin conflictos gracias al bloqueo automatico.
 
-Las funciones de colaboracion estan disponibles actualmente en el Editor de Flujos, donde el lienzo interactivo y la edicion basada en nodos son los que mas se benefician de la coordinacion en tiempo real. Los demas editores (fichas, escenas, guiones) usan guardado optimista estandar.
+Las funciones de colaboracion estan disponibles actualmente en el Editor de Flujos, donde el lienzo interactivo y la edicion basada en nodos son los que mas se benefician de la coordinacion en tiempo real. Los demas editores, como fichas y escenas, usan guardado optimista estandar.
 
 ## Presencia
 

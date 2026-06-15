@@ -12,6 +12,7 @@ defmodule Storyarn.Projects.ProjectCrud do
   alias Storyarn.Repo
   alias Storyarn.Shared.NameNormalizer
   alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Workspaces
   alias Storyarn.Workspaces.Workspace
 
   @doc """
@@ -90,11 +91,21 @@ defmodule Storyarn.Projects.ProjectCrud do
   Creates a project and sets up the owner membership.
   """
   def create_project(%Scope{user: user}, attrs) do
-    workspace_id = attrs[:workspace_id] || attrs["workspace_id"]
-    workspace = Repo.get!(Workspace, workspace_id)
-
-    with :ok <- Billing.can_create_project?(workspace) do
+    with {:ok, workspace, membership} <- authorized_workspace_for_create(attrs, user),
+         true <- Workspaces.can?(membership.role, :create_project),
+         :ok <- Billing.can_create_project?(workspace) do
       do_create_project(user, attrs)
+    else
+      false -> {:error, :unauthorized}
+      {:error, :limit_reached, details} -> {:error, :limit_reached, details}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp authorized_workspace_for_create(attrs, user) do
+    case attrs[:workspace_id] || attrs["workspace_id"] do
+      nil -> {:error, :not_found}
+      workspace_id -> Workspaces.get_workspace(Scope.for_user(user), workspace_id)
     end
   end
 

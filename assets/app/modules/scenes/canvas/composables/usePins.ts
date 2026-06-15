@@ -38,6 +38,7 @@ interface PixelPoint {
 
 export interface PinConfig {
   id: number | string;
+  layerId: number | string | null;
   x: number;
   y: number;
   radius: number;
@@ -122,6 +123,7 @@ function buildPinConfig(
 ): PinConfig {
   return {
     id: pin.id,
+    layerId: pin.layerId,
     x: pos.x,
     y: pos.y,
     radius: dims.diameter / 2,

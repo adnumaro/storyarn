@@ -62,4 +62,21 @@ describe("AssetPicker", () => {
     items[1].vm.$emit("select");
     expect(w.emitted("select")![0]).toEqual([ASSETS[1]]);
   });
+
+  it("truncates long filenames inside the command item row", () => {
+    const longFilename =
+      "sora_image_generation_remix_01km0deh04ei89912a1evvcrdz_with_extra_suffix.webp";
+    const w = mountIt({
+      assets: [{ id: "long", filename: longFilename, url: "/long.webp" }],
+    });
+
+    const item = w.findComponent({ name: "CommandItem" });
+    expect(item.classes()).toContain("min-w-0");
+
+    const filename = w.find("span.truncate");
+    expect(filename.text()).toBe(longFilename);
+    expect(filename.classes()).toEqual(
+      expect.arrayContaining(["min-w-0", "flex-1", "truncate"]),
+    );
+  });
 });

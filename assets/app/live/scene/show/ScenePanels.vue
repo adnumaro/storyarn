@@ -3,11 +3,13 @@ import ElementPropertiesPanel from "@modules/scenes/editor/components/panels/Ele
 import SettingsPanel from "@modules/scenes/editor/components/panels/SettingsPanel.vue";
 import VersionHistoryPanel from "@modules/scenes/editor/components/panels/VersionHistoryPanel.vue";
 
+type ServerPayload = any;
+
 interface SceneVersionsPanel {
   open: boolean;
-  versions: unknown[];
-  namedVersions: unknown[];
-  autoVersions: unknown[];
+  versions: ServerPayload[];
+  namedVersions: ServerPayload[];
+  autoVersions: ServerPayload[];
   hasMore: boolean;
   canNameVersion: boolean;
   currentVersionId: number | null;
@@ -17,20 +19,20 @@ interface SceneVersionsPanel {
 
 interface SceneElementPanel {
   selectedType: string | null;
-  selectedElement: unknown;
+  selectedElement: ServerPayload;
   canEdit: boolean;
   elementPanelOpen: boolean;
-  projectSheets: unknown[];
-  projectFlows: unknown[];
-  projectScenes: unknown[];
-  projectVariables: unknown[];
+  projectSheets: ServerPayload[];
+  projectFlows: ServerPayload[];
+  projectScenes: ServerPayload[];
+  projectVariables: ServerPayload[];
 }
 
 interface SceneSettingsPanel {
-  scene: unknown;
+  scene: ServerPayload;
   canEdit: boolean;
-  ambientFlows: unknown[];
-  projectFlows: unknown[];
+  ambientFlows: ServerPayload[];
+  projectFlows: ServerPayload[];
   sceneSettingsOpen: boolean;
 }
 

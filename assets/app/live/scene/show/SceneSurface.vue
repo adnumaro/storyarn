@@ -12,22 +12,24 @@ import LayerListPopover from "@modules/scenes/editor/components/chrome/layers/La
 import Legend from "@modules/scenes/editor/components/chrome/layers/Legend.vue";
 import SceneCollabToast from "@modules/scenes/editor/components/collab/CollabToast.vue";
 
+type ServerPayload = any;
+
 interface SceneSurfaceCanvas {
   key: string;
   id: string;
   mountId: string;
-  sceneData: unknown;
-  pins: unknown[];
-  zones: unknown[];
-  connections: unknown[];
-  annotations: unknown[];
-  layers: unknown[];
+  sceneData: ServerPayload;
+  pins: ServerPayload[];
+  zones: ServerPayload[];
+  connections: ServerPayload[];
+  annotations: ServerPayload[];
+  layers: ServerPayload[];
   activeTool: string;
   editMode: boolean;
   canEdit: boolean;
   collaboration: {
     userId: number | string;
-    locks: Record<string, unknown>;
+    locks: Record<string, ServerPayload>;
   };
 }
 
@@ -35,15 +37,15 @@ interface SceneSurfaceDock {
   activeTool: string;
   editMode: boolean;
   compact: boolean;
-  pendingSheet: unknown;
-  projectSheets: unknown[];
+  pendingSheet: ServerPayload;
+  projectSheets: ServerPayload[];
   workspaceSlug: string;
   projectSlug: string;
   sceneId: number | string;
 }
 
 interface SceneSurfaceLayers {
-  layers: unknown[];
+  layers: ServerPayload[];
   activeLayerId: number | string | null;
   canEdit: boolean;
   editMode: boolean;
@@ -51,7 +53,7 @@ interface SceneSurfaceLayers {
 }
 
 interface SceneSurfaceLegend {
-  legendData: unknown;
+  legendData: ServerPayload;
   legendOpen: boolean;
 }
 
@@ -86,7 +88,7 @@ const { surface: initialSurface } = defineProps<{
 const liveVue = useLiveVue();
 const live = useLive();
 const surface = computed(
-  () => (liveVue.vue.props.surface as SceneSurface | undefined) ?? initialSurface,
+  () => (liveVue.vue?.props?.surface as SceneSurface | undefined) ?? initialSurface,
 );
 
 const backgroundInput = ref<HTMLInputElement | null>(null);

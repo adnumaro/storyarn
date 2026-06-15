@@ -7,7 +7,7 @@ description: "Construye un diálogo ramificado que reacciona a las estadísticas
 
 ---
 
-Los Flujos (Flows) son donde tu narrativa cobra vida. En esta guía construirás un diálogo corto que se ramifica según la ficha de personaje de la guía anterior.
+Los Flujos (Flows) son donde tu narrativa cobra vida. En esta guía construirás un diálogo corto que se ramifica según la ficha de personaje de la guía anterior, y después previsualizarás y exportarás el resultado.
 
 ## Crea el flujo
 
@@ -84,6 +84,46 @@ Haz clic en **Paso** (o pulsa `F10`) para avanzar nodo por nodo. El panel de var
 </div>
 
 Prueba a cambiar el valor de Health a `30` en la ficha de personaje y ejecutar el depurador de nuevo — el flujo tomará el camino Falso en su lugar.
+
+## Previsualiza con el Story Player
+
+El Modo Depuración explica cómo se ejecuta el flujo. El {accent}Story Player{/accent} muestra cómo se siente para un jugador.
+
+Haz clic en **Play** en la barra de herramientas del flujo para abrir el Story Player desde el nodo de Entrada. Avanza por el diálogo y confirma que:
+
+- La primera línea del NPC aparece antes de que se evalúe la condición.
+- Con `mc.jaime.health = 100`, el jugador llega a la respuesta saludable.
+- Después de cambiar Health a `30`, el jugador llega a la respuesta de la poción curativa.
+
+Usa Story Player cuando quieras revisar ritmo, texto de hablante y elecciones. Usa Modo Depuración cuando necesites inspeccionar variables, condiciones e historial de ejecución.
+
+<div class="docs-image-placeholder">
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+  El Story Player mostrando la línea de diálogo de la taberna y la rama elegida por el valor actual de Health
+</div>
+
+## Exporta el proyecto
+
+Cuando el flujo funcione, abre **Exportar** desde la barra lateral del proyecto. Para una primera exportación:
+
+1. Elige **Yarn Spinner**, **Ink**, **Unity Dialogue System**, **Godot Dialogic**, **Unreal Engine** o **articy:draft** según el runtime o engine que quieras probar.
+2. Mantén **Fichas** y **Flujos** seleccionados para que el diálogo exportado incluya los datos de variable usados por la condición.
+3. Activa **Validar antes de exportar** para detectar nodos de entrada faltantes, nodos inalcanzables, referencias rotas y traducciones faltantes.
+4. Haz clic en **Descargar**.
+
+Para este tutorial, exporta un formato de engine que te interese. El objetivo es comprobar cómo el mismo flujo sale de Storyarn para integrarse en runtime.
+
+## Checklist final
+
+Has terminado el Inicio Rápido cuando puedas confirmar todo esto:
+
+- Has creado un espacio de trabajo y un proyecto.
+- Has creado la ficha `mc.jaime`.
+- Has creado la variable `mc.jaime.health`.
+- Has usado esa variable en un nodo de Condición.
+- Has probado ambas ramas en Modo Depuración.
+- Has previsualizado el flujo en Story Player.
+- Has exportado el proyecto.
 
 ## Tipos de nodos disponibles
 

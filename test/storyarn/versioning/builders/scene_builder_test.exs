@@ -140,6 +140,77 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       assert total_pins == 2
       assert length(restored.connections) == 1
     end
+
+    test "normalizes legacy zone behavior without losing assignments", %{scene: scene} do
+      snapshot =
+        scene
+        |> SceneBuilder.build_snapshot()
+        |> Map.put("orphan_zones", [
+          %{
+            "name" => "Legacy Action",
+            "vertices" => triangle_vertices(),
+            "action_type" => "instruction",
+            "action_data" => %{"assignments" => [%{"variable" => "hero.hp", "operator" => "set", "value" => "1"}]},
+            "is_walkable" => true
+          },
+          %{
+            "name" => "Legacy Walkable",
+            "vertices" => triangle_vertices(),
+            "action_type" => "none",
+            "action_data" => %{},
+            "is_walkable" => true
+          },
+          %{
+            "name" => "Display With Target",
+            "vertices" => triangle_vertices(),
+            "target_type" => "scene",
+            "target_id" => 999_999,
+            "action_type" => "display",
+            "action_data" => %{"variable_ref" => "hero.hp"},
+            "is_walkable" => true
+          },
+          %{
+            "name" => "Unknown Type",
+            "vertices" => triangle_vertices(),
+            "action_type" => "event",
+            "action_data" => %{},
+            "is_walkable" => false
+          },
+          %{
+            "name" => "Action With Invalid Target",
+            "vertices" => triangle_vertices(),
+            "target_type" => "sheet",
+            "target_id" => 123,
+            "action_type" => "action",
+            "action_data" => %{"assignments" => []}
+          }
+        ])
+
+      {:ok, modified_scene} = Storyarn.Scenes.update_scene(scene, %{"name" => "Modified"})
+      {:ok, restored} = SceneBuilder.restore_snapshot(modified_scene, snapshot)
+
+      zones = restored.id |> Storyarn.Scenes.list_zones() |> Map.new(&{&1.name, &1})
+
+      assert zones["Legacy Action"].action_type == "action"
+      assert zones["Legacy Action"].action_data["assignments"] != []
+      refute zones["Legacy Action"].is_walkable
+
+      assert zones["Legacy Walkable"].action_type == "walkable"
+      assert zones["Legacy Walkable"].is_walkable
+
+      assert zones["Display With Target"].action_type == "display"
+      assert zones["Display With Target"].action_data["display_mode"] == "value"
+      refute zones["Display With Target"].is_walkable
+      assert is_nil(zones["Display With Target"].target_type)
+      assert is_nil(zones["Display With Target"].target_id)
+
+      assert zones["Unknown Type"].action_type == "action"
+      assert zones["Unknown Type"].action_data == %{"assignments" => []}
+
+      assert zones["Action With Invalid Target"].action_type == "action"
+      assert is_nil(zones["Action With Invalid Target"].target_type)
+      assert is_nil(zones["Action With Invalid Target"].target_id)
+    end
   end
 
   describe "instantiate_snapshot/3" do
@@ -190,6 +261,57 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       assert cloned_connection.to_pin_id in pin_ids
       assert cloned_connection.from_pin_id != pin1.id
       assert cloned_connection.to_pin_id != pin2.id
+    end
+
+    test "materializes normalized zone behavior without preserving invalid display targets", %{
+      project: project,
+      scene: scene
+    } do
+      snapshot =
+        scene
+        |> SceneBuilder.build_snapshot()
+        |> Map.put("orphan_zones", [
+          %{
+            "name" => "Materialized Display",
+            "vertices" => triangle_vertices(),
+            "target_type" => "scene",
+            "target_id" => scene.id,
+            "action_type" => "display",
+            "action_data" => %{"variable_ref" => "hero.hp"},
+            "is_walkable" => true
+          },
+          %{
+            "name" => "Materialized Unknown",
+            "vertices" => triangle_vertices(),
+            "action_type" => "event",
+            "action_data" => %{}
+          },
+          %{
+            "name" => "Materialized Invalid Target",
+            "vertices" => triangle_vertices(),
+            "target_type" => "sheet",
+            "target_id" => 123,
+            "action_type" => "action",
+            "action_data" => %{"assignments" => []}
+          }
+        ])
+
+      assert {:ok, materialized, _id_maps} =
+               SceneBuilder.instantiate_snapshot(project.id, snapshot, reset_shortcut: true)
+
+      zones = materialized.id |> Storyarn.Scenes.list_zones() |> Map.new(&{&1.name, &1})
+
+      assert zones["Materialized Display"].action_type == "display"
+      refute zones["Materialized Display"].is_walkable
+      assert is_nil(zones["Materialized Display"].target_type)
+      assert is_nil(zones["Materialized Display"].target_id)
+
+      assert zones["Materialized Unknown"].action_type == "action"
+      assert zones["Materialized Unknown"].action_data == %{"assignments" => []}
+
+      assert zones["Materialized Invalid Target"].action_type == "action"
+      assert is_nil(zones["Materialized Invalid Target"].target_type)
+      assert is_nil(zones["Materialized Invalid Target"].target_id)
     end
 
     test "materializes orphan pins and remaps explicit sheet refs across projects", %{
@@ -481,6 +603,56 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       assert Enum.any?(changes, &(&1.category == :connection && &1.action == :modified))
     end
 
+    test "does not report identical free routes as added and removed" do
+      snapshot = %{
+        "name" => "S",
+        "layers" => [],
+        "connections" => [
+          %{
+            "from_layer_index" => nil,
+            "from_pin_index" => nil,
+            "to_layer_index" => nil,
+            "to_pin_index" => nil,
+            "waypoints" => [
+              %{"x" => 10.0, "y" => 10.0},
+              %{"x" => 90.0, "y" => 90.0}
+            ]
+          }
+        ]
+      }
+
+      assert SceneBuilder.diff_snapshots(snapshot, snapshot) == []
+    end
+
+    test "detects route waypoint and stop changes as modified connection" do
+      old = %{
+        "name" => "S",
+        "layers" => [],
+        "connections" => [
+          %{
+            "from_layer_index" => nil,
+            "from_pin_index" => nil,
+            "to_layer_index" => nil,
+            "to_pin_index" => nil,
+            "waypoints" => [
+              %{"x" => 10.0, "y" => 10.0, "stop" => true, "pauseMs" => 500},
+              %{"x" => 90.0, "y" => 90.0}
+            ],
+            "from_stop" => true,
+            "to_stop" => true
+          }
+        ]
+      }
+
+      new = put_in(old, ["connections", Access.at(0), "waypoints", Access.at(0), "pauseMs"], 750)
+
+      changes = SceneBuilder.diff_snapshots(old, new)
+
+      assert Enum.any?(changes, &(&1.category == :connection && &1.action == :modified))
+      refute Enum.any?(changes, &(&1.category == :connection && &1.action == :added))
+      refute Enum.any?(changes, &(&1.category == :connection && &1.action == :removed))
+    end
+
     test "returns empty list for identical snapshots" do
       snapshot = %{
         "name" => "S",
@@ -494,5 +666,13 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
 
       assert SceneBuilder.diff_snapshots(snapshot, snapshot) == []
     end
+  end
+
+  defp triangle_vertices do
+    [
+      %{"x" => 10.0, "y" => 10.0},
+      %{"x" => 20.0, "y" => 10.0},
+      %{"x" => 15.0, "y" => 20.0}
+    ]
   end
 end

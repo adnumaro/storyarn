@@ -8,7 +8,7 @@ defmodule StoryarnWeb.E2E.WorkspaceVisibilityTest do
   Run with: mix test.e2e
   """
 
-  use PhoenixTest.Playwright.Case, async: true
+  use PhoenixTest.Playwright.Case, async: false
 
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures

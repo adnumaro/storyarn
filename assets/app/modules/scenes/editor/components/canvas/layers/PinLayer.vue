@@ -35,7 +35,18 @@ function emitPinDrag(
   e: KonvaEventObject<DragEvent>,
 ): void {
   e.cancelBubble = true;
-  emit(eventName, "pin", id, e);
+
+  switch (eventName) {
+    case "dragstart":
+      emit("dragstart", "pin", id, e);
+      break;
+    case "dragmove":
+      emit("dragmove", "pin", id, e);
+      break;
+    case "dragend":
+      emit("dragend", "pin", id, e);
+      break;
+  }
 }
 </script>
 

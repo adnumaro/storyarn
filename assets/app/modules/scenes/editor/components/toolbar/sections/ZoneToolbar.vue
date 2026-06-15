@@ -186,7 +186,7 @@ function cancelNameEdit(event: KeyboardEvent): void {
 <template>
   <!-- Action type -->
   <ToolbarActionTypePicker
-    :action-type="element.actionType || 'none'"
+    :action-type="element.actionType || 'action'"
     :disabled="element.locked"
     @update:action-type="updateActionType"
   />

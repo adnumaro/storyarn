@@ -256,8 +256,7 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluatorTest do
 
       connections = [
         make_connection(1, "case_mage", 10),
-        make_connection(1, "case_warrior", 20),
-        make_connection(1, "default", 30)
+        make_connection(1, "case_warrior", 20)
       ]
 
       state = make_state(variables)
@@ -266,7 +265,7 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluatorTest do
       assert result_state.current_node_id == 20
     end
 
-    test "follows default when no rule matches" do
+    test "finishes when no rule matches" do
       variables = %{
         "mc.class" => make_variable("rogue", type: "select", name: "class")
       }
@@ -289,23 +288,19 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluatorTest do
           }
         })
 
-      connections = [
-        make_connection(1, "case_mage", 10),
-        make_connection(1, "default", 30)
-      ]
+      connections = [make_connection(1, "case_mage", 10)]
 
       state = make_state(variables)
 
-      assert {:ok, result_state} = ConditionNodeEvaluator.evaluate(node, state, connections)
-      assert result_state.current_node_id == 30
+      assert {:finished, result_state} = ConditionNodeEvaluator.evaluate(node, state, connections)
+      assert result_state.status == :finished
 
-      # Should have a warning about default
       assert Enum.any?(result_state.console, fn entry ->
                entry.level == :warning and String.contains?(entry.message, "no case matched")
              end)
     end
 
-    test "finishes when no matching pin and no default" do
+    test "finishes when no matching pin" do
       variables = %{
         "mc.class" => make_variable("rogue", type: "select", name: "class")
       }
@@ -387,8 +382,7 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluatorTest do
 
       connections = [
         make_connection(1, "block_low", 10),
-        make_connection(1, "block_high", 20),
-        make_connection(1, "default", 30)
+        make_connection(1, "block_high", 20)
       ]
 
       state = make_state(variables)
@@ -397,7 +391,7 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluatorTest do
       assert result_state.current_node_id == 20
     end
 
-    test "follows default when no block matches" do
+    test "finishes when no block matches" do
       variables = %{
         "mc.health" => make_variable(55)
       }
@@ -444,17 +438,20 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluatorTest do
 
       connections = [
         make_connection(1, "block_low", 10),
-        make_connection(1, "block_high", 20),
-        make_connection(1, "default", 30)
+        make_connection(1, "block_high", 20)
       ]
 
       state = make_state(variables)
 
-      assert {:ok, result_state} = ConditionNodeEvaluator.evaluate(node, state, connections)
-      assert result_state.current_node_id == 30
+      assert {:finished, result_state} = ConditionNodeEvaluator.evaluate(node, state, connections)
+      assert result_state.status == :finished
+
+      assert Enum.any?(result_state.console, fn entry ->
+               entry.level == :warning and String.contains?(entry.message, "no case matched")
+             end)
     end
 
-    test "falls back to default connection when specific pin not connected" do
+    test "finishes when matching block pin is not connected" do
       variables = %{
         "mc.health" => make_variable(80)
       }
@@ -484,12 +481,15 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluatorTest do
           }
         })
 
-      # No connection for "block_high" pin, but there's a "default" fallback
-      connections = [make_connection(1, "default", 30)]
+      connections = []
       state = make_state(variables)
 
-      assert {:ok, result_state} = ConditionNodeEvaluator.evaluate(node, state, connections)
-      assert result_state.current_node_id == 30
+      assert {:finished, result_state} = ConditionNodeEvaluator.evaluate(node, state, connections)
+      assert result_state.status == :finished
+
+      assert Enum.any?(result_state.console, fn entry ->
+               entry.level == :error and String.contains?(entry.message, "No connection from pin")
+             end)
     end
 
     test "skips non-block entries in blocks list" do
@@ -506,11 +506,11 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluatorTest do
           }
         })
 
-      connections = [make_connection(1, "default", 30)]
+      connections = []
       state = make_state(variables)
 
-      assert {:ok, result_state} = ConditionNodeEvaluator.evaluate(node, state, connections)
-      assert result_state.current_node_id == 30
+      assert {:finished, result_state} = ConditionNodeEvaluator.evaluate(node, state, connections)
+      assert result_state.status == :finished
     end
   end
 end

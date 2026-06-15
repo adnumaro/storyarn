@@ -43,6 +43,7 @@ function handleFileChange(event: Event): void {
 <template>
   <div class="flex items-center px-1.5 py-1">
     <label
+      data-testid="asset-upload-button"
       :class="[
         'inline-flex items-center justify-center h-8 px-3 text-sm rounded-lg hover:bg-accent transition-colors gap-1.5 cursor-pointer',
         uploading && 'pointer-events-none opacity-50',
@@ -52,7 +53,13 @@ function handleFileChange(event: Event): void {
       <span class="hidden xl:inline">
         {{ uploading ? $t("common.assets.uploading") : $t("common.assets.upload") }}
       </span>
-      <input type="file" accept="image/*,audio/*" class="hidden" @change="handleFileChange" />
+      <input
+        type="file"
+        accept="image/*,audio/*"
+        class="hidden"
+        data-testid="asset-upload-input"
+        @change="handleFileChange"
+      />
     </label>
   </div>
 </template>

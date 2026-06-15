@@ -16,6 +16,7 @@ export interface ExplorationPin {
 
 export interface ExplorationZone {
   id: number | string;
+  actionType?: string | null;
   isWalkable: boolean;
   vertices: Vertex[] | null;
   visibility: string;

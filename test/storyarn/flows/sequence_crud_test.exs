@@ -207,7 +207,7 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       assert layer.height == 1.0
     end
 
-    test "creates a character layer with right-slot defaults" do
+    test "creates a character layer with legacy right-slot defaults" do
       %{flow: flow, project: project, user: user} = setup_flow()
       {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "s"})
       asset = Storyarn.AssetsFixtures.image_asset_fixture(project, user)
@@ -220,7 +220,7 @@ defmodule Storyarn.Flows.SequenceCrudTest do
                })
 
       assert layer.kind == "character"
-      assert layer.slot == "right"
+      assert layer.slot == "bottom-right"
       assert layer.fit == "contain"
       assert layer.x == 0.75
       assert layer.y == 1.0
@@ -228,6 +228,29 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       assert layer.height == 0.9
       assert layer.anchor_x == 0.5
       assert layer.anchor_y == 1.0
+    end
+
+    test "creates a character layer with top-right slot defaults" do
+      %{flow: flow, project: project, user: user} = setup_flow()
+      {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "s"})
+      asset = Storyarn.AssetsFixtures.image_asset_fixture(project, user)
+
+      assert {:ok, layer} =
+               Flows.create_sequence_visual_layer(seq.id, %{
+                 "kind" => "character",
+                 "slot" => "top-right",
+                 "asset_id" => asset.id
+               })
+
+      assert layer.kind == "character"
+      assert layer.slot == "top-right"
+      assert layer.fit == "contain"
+      assert layer.x == 0.75
+      assert layer.y == 0.0
+      assert layer.width == 0.38
+      assert layer.height == 0.9
+      assert layer.anchor_x == 0.5
+      assert layer.anchor_y == 0.0
     end
 
     test "lists visual layers ordered by z-index then id" do
@@ -269,7 +292,7 @@ defmodule Storyarn.Flows.SequenceCrudTest do
                Flows.update_sequence_visual_layer(layer, %{"opacity" => 0.5, "slot" => "center"})
 
       assert updated.opacity == 0.5
-      assert updated.slot == "center"
+      assert updated.slot == "middle-center"
 
       assert {:ok, _deleted} = Flows.delete_sequence_visual_layer(updated)
       assert Flows.get_sequence_visual_layer(seq.id, layer.id) == nil

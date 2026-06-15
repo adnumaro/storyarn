@@ -8,6 +8,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   alias Storyarn.Billing
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
+  alias Storyarn.Workspaces
 
   @impl true
   def mount(_params, _session, socket) do
@@ -15,7 +16,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
     workspace = socket.assigns.workspace
 
     projects = Projects.list_projects_for_workspace(workspace.id, scope)
-    can_create_project = Billing.can_create_project?(workspace) == :ok
+    can_create_project = can_create_project?(workspace, socket.assigns.membership)
 
     {:ok,
      socket
@@ -102,9 +103,24 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
       {:error, :limit_reached, _details} ->
         {:noreply, put_flash(socket, :error, dgettext("workspaces", "Project limit reached for your plan"))}
 
+      {:error, :not_found} ->
+        {:noreply, put_flash(socket, :error, dgettext("workspaces", "Workspace not found."))}
+
+      {:error, :unauthorized} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext("workspaces", "You don't have permission to create projects in this workspace.")
+         )}
+
       {:error, changeset} ->
         {:noreply, assign(socket, :project_form, to_form(changeset))}
     end
+  end
+
+  defp can_create_project?(workspace, membership) do
+    Workspaces.can?(membership.role, :create_project) and Billing.can_create_project?(workspace) == :ok
   end
 
   defp filter_projects(projects, query) when query in [nil, ""], do: projects

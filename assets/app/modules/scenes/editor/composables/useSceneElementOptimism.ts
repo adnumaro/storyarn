@@ -74,7 +74,9 @@ const EVENT_FIELD_ALIASES: Record<string, string> = {
   fill_color: "fillColor",
   flow_id: "flowId",
   font_size: "fontSize",
+  from_pause_ms: "fromPauseMs",
   from_pin_id: "fromPinId",
+  from_stop: "fromStop",
   hidden: "hidden",
   icon_asset_url: "iconAssetUrl",
   id: "id",
@@ -82,6 +84,13 @@ const EVENT_FIELD_ALIASES: Record<string, string> = {
   is_playable: "isPlayable",
   is_walkable: "isWalkable",
   label: "label",
+  label_font_family: "labelFontFamily",
+  label_font_size: "labelFontSize",
+  label_font_style: "labelFontStyle",
+  label_font_weight: "labelFontWeight",
+  label_icon_asset_id: "labelIconAssetId",
+  label_icon_asset_url: "labelIconAssetUrl",
+  label_mode: "labelMode",
   layer_id: "layerId",
   line_style: "lineStyle",
   line_width: "lineWidth",
@@ -102,6 +111,8 @@ const EVENT_FIELD_ALIASES: Record<string, string> = {
   target_type: "targetType",
   text: "text",
   to_pin_id: "toPinId",
+  to_pause_ms: "toPauseMs",
+  to_stop: "toStop",
   vertices: "vertices",
   waypoints: "waypoints",
 };
@@ -171,13 +182,6 @@ export function useOptimisticSceneElements<
     connection: new Map(),
     pin: new Map(),
     zone: new Map(),
-  };
-
-  const listRefs = {
-    annotation: annotationItems,
-    connection: connectionItems,
-    pin: pinItems,
-    zone: zoneItems,
   };
 
   function clearPendingValue(type: SceneElementType, id: string, field: string): void {
@@ -263,7 +267,10 @@ export function useOptimisticSceneElements<
     id: string,
     patch: SceneElementPatch,
   ): void {
-    const pending = pendingPatches[type].get(id) || { values: {}, timers: new Map() };
+    const pending: PendingPatch = pendingPatches[type].get(id) ?? {
+      values: {},
+      timers: new Map<string, number>(),
+    };
 
     for (const [field, value] of Object.entries(patch)) {
       const existingTimer = pending.timers.get(field);
@@ -287,7 +294,28 @@ export function useOptimisticSceneElements<
     id: number | string,
     patch: SceneElementPatch,
   ): void {
-    const target = listRefs[type];
+    switch (type) {
+      case "annotation":
+        patchLocalElementList(type, annotationItems, id, patch);
+        break;
+      case "connection":
+        patchLocalElementList(type, connectionItems, id, patch);
+        break;
+      case "pin":
+        patchLocalElementList(type, pinItems, id, patch);
+        break;
+      case "zone":
+        patchLocalElementList(type, zoneItems, id, patch);
+        break;
+    }
+  }
+
+  function patchLocalElementList<T extends SceneElementData>(
+    type: SceneElementType,
+    target: Ref<T[]>,
+    id: number | string,
+    patch: SceneElementPatch,
+  ): void {
     const normalizedId = String(id);
     let matched = false;
 

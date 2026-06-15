@@ -1,5 +1,4 @@
-import { AutoLayoutAction, buildBatchPositions, type Position } from "../services/historyPreset";
-import { runFlowAutoLayout, snapshotFlowPositions } from "../services/flowAutoLayout";
+import { AutoLayoutAction, buildBatchPositions } from "../services/historyPreset";
 import type { FlowCanvasRuntime } from "./flowCanvasRuntime";
 
 export interface FlowCanvasAutoLayoutOptions {
@@ -14,18 +13,24 @@ export async function performFlowCanvasAutoLayout(
   if (runtime.autoLayoutInProgress) return;
   if (!runtime.area || !runtime.editor) return;
 
+  const area = runtime.area;
+  const editor = runtime.editor;
+
   runtime.autoLayoutInProgress = true;
   try {
-    const { AreaExtensions } = await import("rete-area-plugin");
+    const [{ AreaExtensions }, { runFlowAutoLayout, snapshotFlowPositions }] = await Promise.all([
+      import("rete-area-plugin"),
+      import("../services/flowAutoLayout"),
+    ]);
 
-    const prevPositions = snapshotPositions(runtime);
+    const prevPositions = snapshotFlowPositions(area);
 
     runtime.loadingFromServerCount++;
     try {
       await runFlowAutoLayout(
         {
-          editor: runtime.editor,
-          area: runtime.area,
+          editor,
+          area,
         },
         {
           duration: 400,
@@ -38,9 +43,9 @@ export async function performFlowCanvasAutoLayout(
       runtime.loadingFromServerCount = Math.max(0, runtime.loadingFromServerCount - 1);
     }
 
-    await AreaExtensions.zoomAt(runtime.area, runtime.editor.getNodes());
+    await AreaExtensions.zoomAt(area, editor.getNodes());
 
-    const newPositions = snapshotPositions(runtime);
+    const newPositions = snapshotFlowPositions(area);
     runtime.hookProxy.pushEvent("batch_update_positions", {
       positions: buildBatchPositions(newPositions),
     });
@@ -56,11 +61,4 @@ export async function performFlowCanvasAutoLayout(
   } finally {
     runtime.autoLayoutInProgress = false;
   }
-}
-
-function snapshotPositions(runtime: FlowCanvasRuntime): Map<string, Position> {
-  if (!runtime.editor || !runtime.area) {
-    return new Map<string, Position>();
-  }
-  return snapshotFlowPositions(runtime.area);
 }

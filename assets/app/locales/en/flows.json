@@ -92,7 +92,7 @@
         "pick_asset": "Pick image",
         "delete": "Delete layer",
         "kind": "Type",
-        "slot": "Slot",
+        "layout": "Layout",
         "fit": "Fit",
         "opacity": "Opacity",
         "kinds": {
@@ -101,12 +101,9 @@
           "prop": "Prop",
           "overlay": "Overlay"
         },
-        "slots": {
+        "layout_modes": {
           "full": "Full",
-          "left": "Left",
-          "center": "Center",
-          "right": "Right",
-          "custom": "Custom"
+          "positioned": "Grid"
         }
       },
       "config_panel": {

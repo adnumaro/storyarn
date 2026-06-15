@@ -17,6 +17,7 @@ defmodule Storyarn.Scenes.Scene do
   use Ecto.Schema
 
   import Ecto.Changeset
+  import Storyarn.Scenes.ChangesetHelpers
 
   alias Ecto.Association.NotLoaded
   alias Storyarn.Assets.Asset
@@ -43,6 +44,8 @@ defmodule Storyarn.Scenes.Scene do
           default_center_y: float(),
           scale_unit: String.t() | nil,
           scale_value: float() | nil,
+          fog_color: String.t() | nil,
+          fog_opacity: float(),
           position: integer() | nil,
           project_id: integer() | nil,
           project: Project.t() | NotLoaded.t() | nil,
@@ -76,6 +79,8 @@ defmodule Storyarn.Scenes.Scene do
     field :position, :integer, default: 0
     field :scale_unit, :string
     field :scale_value, :float
+    field :fog_color, :string, default: "#000000"
+    field :fog_opacity, :float, default: 0.85
     field :exploration_display_mode, :string, default: "fit"
     field :deleted_at, :utc_datetime
 
@@ -120,6 +125,8 @@ defmodule Storyarn.Scenes.Scene do
       :position,
       :scale_unit,
       :scale_value,
+      :fog_color,
+      :fog_opacity,
       :exploration_display_mode
     ])
     |> HierarchicalSchema.validate_core_fields()
@@ -130,8 +137,11 @@ defmodule Storyarn.Scenes.Scene do
     |> validate_number(:default_center_x, greater_than_or_equal_to: 0, less_than_or_equal_to: 100)
     |> validate_number(:default_center_y, greater_than_or_equal_to: 0, less_than_or_equal_to: 100)
     |> validate_number(:scale_value, greater_than: 0)
+    |> validate_number(:fog_opacity, greater_than_or_equal_to: 0, less_than_or_equal_to: 1)
     |> validate_length(:scale_unit, max: 50)
+    |> validate_length(:fog_color, max: 20)
     |> validate_inclusion(:exploration_display_mode, ~w(fit scaled))
+    |> validate_color(:fog_color)
     |> validate_shortcut()
     |> foreign_key_constraint(:parent_id)
     |> foreign_key_constraint(:background_asset_id)

@@ -6,9 +6,9 @@ const POSITIONS = [
   "top-left",
   "top-center",
   "top-right",
-  "center-left",
-  "center",
-  "center-right",
+  "middle-left",
+  "middle-center",
+  "middle-right",
   "bottom-left",
   "bottom-center",
   "bottom-right",
@@ -26,8 +26,8 @@ function findGroup(wrapper: ReturnType<typeof mountIt>, modelValue: string) {
 
 describe("ImagePosition", () => {
   it("emits position-change with the new value", async () => {
-    const w = mountIt({ position: "center", fit: "cover" });
-    const positionGroup = findGroup(w, "center")!;
+    const w = mountIt({ position: "middle-center", fit: "cover" });
+    const positionGroup = findGroup(w, "middle-center")!;
 
     positionGroup.vm.$emit("update:modelValue", "top-left");
 
@@ -36,7 +36,7 @@ describe("ImagePosition", () => {
   });
 
   it("emits fit-change with the new fit value", async () => {
-    const w = mountIt({ position: "center", fit: "cover" });
+    const w = mountIt({ position: "middle-center", fit: "cover" });
     const fitGroup = findGroup(w, "cover")!;
 
     fitGroup.vm.$emit("update:modelValue", "contain");
@@ -46,8 +46,8 @@ describe("ImagePosition", () => {
   });
 
   it("ignores empty deselection from ToggleGroup type=single", () => {
-    const w = mountIt({ position: "center", fit: "cover" });
-    const positionGroup = findGroup(w, "center")!;
+    const w = mountIt({ position: "middle-center", fit: "cover" });
+    const positionGroup = findGroup(w, "middle-center")!;
     const fitGroup = findGroup(w, "cover")!;
 
     positionGroup.vm.$emit("update:modelValue", "");
@@ -58,8 +58,8 @@ describe("ImagePosition", () => {
   });
 
   it("unwraps array model-value (multi-mode payload shape)", () => {
-    const w = mountIt({ position: "center", fit: "cover" });
-    const positionGroup = findGroup(w, "center")!;
+    const w = mountIt({ position: "middle-center", fit: "cover" });
+    const positionGroup = findGroup(w, "middle-center")!;
 
     positionGroup.vm.$emit("update:modelValue", ["bottom-right"]);
 
@@ -67,7 +67,7 @@ describe("ImagePosition", () => {
   });
 
   it("renders one ToggleGroupItem per position value and per fit value", () => {
-    const w = mountIt({ position: "center", fit: "cover" });
+    const w = mountIt({ position: "middle-center", fit: "cover" });
     // reka-ui's ToggleGroupItem wraps via as-child + Primitive, so each
     // logical item registers as multiple Vue component instances. Dedupe by
     // the `value` prop to count distinct items.
@@ -84,8 +84,14 @@ describe("ImagePosition", () => {
   });
 
   it("disables both groups when canEdit is false", () => {
-    const w = mountIt({ position: "center", fit: "cover", canEdit: false });
+    const w = mountIt({ position: "middle-center", fit: "cover", canEdit: false });
     const groups = w.findAllComponents({ name: "ToggleGroup" });
     expect(groups.every((g) => g.props("disabled") === true)).toBe(true);
+  });
+
+  it("normalizes legacy center position props to middle-center", () => {
+    const w = mountIt({ position: "center", fit: "cover" });
+
+    expect(findGroup(w, "middle-center")).toBeDefined();
   });
 });

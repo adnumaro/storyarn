@@ -1,7 +1,7 @@
 %{
 title: "Core Workflow",
 category_label: "Welcome",
-order: 2,
+order: 3,
 description: "How a typical project comes together in Storyarn."
 }
 
@@ -15,14 +15,11 @@ Every team uses Storyarn differently, but here's how a typical project flows fro
 
 Create a **workspace** for your team. Every workspace has its own members with role-based access — owners manage everything, admins handle invitations, members create projects, and viewers have read-only access.
 
-Inside a workspace, create a **project**. Each project is self-contained — its own sheets, flows, scenes, screenplays, localization, and assets. Projects have their own membership too: owners configure settings, editors create content, viewers review.
+Inside a workspace, create a **project**. Each project is self-contained — its own sheets, flows, scenes, localization, and assets. Projects have their own membership too: owners configure settings, editors create content, viewers review.
 
 Invite teammates by email. They receive a token-based link, accept, and they're in — with the role you chose.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Workspace dashboard — project cards, member avatars, and the "New project" button
-</div>
+<img src="/images/docs/workspace-dashboard.webp" alt="Workspace dashboard showing the Veilbreak Demo project card and New Project button" loading="lazy">
 
 ---
 
@@ -34,19 +31,13 @@ Every field on a sheet is a **block**. There are 10 block types: text, rich text
 
 Variables follow the pattern `{sheet_shortcut}.{variable_name}`. A Health block on the sheet `mc.jaime` becomes `mc.jaime.health`. Change that value once, and every flow that checks it sees the update immediately.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Sheet editor — character profile with number and select blocks, showing the variable name badge on each field
-</div>
+<img src="/images/docs/sheets/sheets-character.webp" alt="Character sheet for Kael with banner, avatar, inherited fields, number blocks, and select blocks" loading="lazy">
 
 **Tables** are spreadsheet grids inside a sheet — perfect for inventories, skill trees, or relationship matrices. Each cell becomes its own variable. **Formulas** let you compute values from other variables, even across sheets.
 
 Organize sheets in a tree hierarchy. Use **property inheritance** to cascade blocks from parent to child sheets — create a "Character Base" with health, level, and faction, and every child character inherits those fields automatically, each with their own values.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Sheet with a table block — columns for item name, quantity, and damage, with a formula column computing total DPS
-</div>
+<img src="/images/docs/sheets/sheets-table.webp" alt="Sheet table block for character stats with base, modifier, and total formula columns" loading="lazy">
 
 ---
 
@@ -65,10 +56,7 @@ Organize sheets in a tree hierarchy. Use **property inheritance** to cascade blo
 
 Connect nodes by dragging between pins. Edit content in the side panel. Collaborate in real time — see your teammates' cursors, and automatic locking prevents conflicting edits.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Flow editor — dialogue tree with an Entry node branching through Dialogue, Condition (true/false), and Instruction nodes leading to two Exit nodes
-</div>
+<img src="/images/docs/flows/flows.webp" alt="Flow editor showing a Veilbreak dialogue tree with connected dialogue, hub, instruction, jump, entry, and exit nodes" loading="lazy">
 
 ### Test without leaving the editor
 
@@ -83,10 +71,7 @@ The **Story Player** is a full-screen cinematic playthrough. You experience your
 
 The **Debug Mode** is your step-by-step inspector. Advance node by node, watch variables change in real time in the Variables panel, trace the full execution path, and set breakpoints. Adjust variable values on the fly and re-run to test alternate branches. Four tabs — Console, Variables, History, and Path — give you complete visibility into what your flow is doing and why.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Debug Mode — flow canvas with a highlighted active node, and the debug panel below showing the Variables tab with current values and a changed-value highlight
-</div>
+<img src="/images/docs/flows/flows-debug.webp" alt="Debug Mode showing a highlighted active dialogue node, console output, response controls, and debug toolbar" loading="lazy">
 
 ---
 
@@ -98,10 +83,7 @@ Zones and pins aren't just visual — they're interactive. Attach **conditions**
 
 Double-click a zone to **drill down** — Storyarn extracts the zone's area from the background image, creates a child scene, and lets you keep zooming in. Build entire world hierarchies: continent → region → city → building → room.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Scene editor — fantasy map background with colored zones for regions, character pins with labels, and the layer panel on the left
-</div>
+<img src="/images/docs/scenes.webp" alt="Scene editor showing the Thyral map with colored zones, character pins, labels, and scene tools" loading="lazy">
 
 ### Exploration Mode
 
@@ -116,21 +98,6 @@ No other narrative design tool does this.
 
 ---
 
-## Write scripts with Screenplays
-
-**Screenplays** bring your narrative into industry-standard script format. A block-based editor with 18 element types — from scene headings and dialogue to interactive conditions, instructions, and branching responses.
-
-Screenplays **sync bidirectionally with flows**. Push changes from screenplay to flow, or pull updates from flow to screenplay. Response choices branch into **linked pages** — child screenplays that mirror your flow's branching structure.
-
-Export to **Fountain** format for Final Draft, Highland, or any compatible screenwriting tool. Import Fountain files to bring existing scripts into Storyarn.
-
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Screenplay editor — formatted script with scene heading, character name, dialogue block, and a response element with branching choices
-</div>
-
----
-
 ## Localize everything
 
 When your content is ready, the **Localization** tools extract every translatable text automatically — dialogue lines, stage directions, menu text, sheet labels, and block values.
@@ -139,10 +106,7 @@ Set up **DeepL integration** for machine translation as a first pass. Maintain a
 
 Export translations as **Excel** or **CSV** for professional translators. Import them back when done. The system detects source text changes and automatically flags stale translations for review.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Localization — language list with progress bars, and the translation editor showing source text alongside the translated version
-</div>
+<img src="/images/docs/localization-dashboard.webp" alt="Localization dashboard showing Catalan progress, word counts by speaker, voice-over progress, and content breakdown" loading="lazy">
 
 ---
 
@@ -150,9 +114,7 @@ Export translations as **Excel** or **CSV** for professional translators. Import
 
 When it's time to ship, export your entire project or individual parts:
 
-- **Storyarn JSON** — full project backup, re-importable
 - **Ink, Yarn, Unity JSON, Godot Dialogic, Unreal CSV, Articy XML** — engine-specific formats
-- **Fountain** — screenplay export
 - **Excel / CSV** — localization data
 
 Choose how to handle assets: references only, embedded (Base64), or bundled as a ZIP with an assets folder. Optional pre-export validation catches broken references, unreachable nodes, and missing translations before they reach your engine.

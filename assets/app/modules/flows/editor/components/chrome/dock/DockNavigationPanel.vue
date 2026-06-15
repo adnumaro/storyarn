@@ -69,6 +69,7 @@ defineExpose({
         <button
           type="button"
           class="dock-btn"
+          data-testid="flow-dock-navigation"
           :class="{ 'dock-btn-active': navigationNodes.some((n) => n.type === activeType) }"
         >
           <ArrowRightToLine class="size-5" />
@@ -84,6 +85,7 @@ defineExpose({
             :key="n.type"
             type="button"
             class="w-full flex items-start gap-2.5 px-2.5 py-2 rounded-lg text-sm text-start cursor-pointer hover:bg-accent transition-colors"
+            :data-testid="`flow-dock-node-${n.type}`"
             :class="{ 'bg-accent text-accent-foreground': n.type === activeType }"
             @click="addNode(n.type)"
           >

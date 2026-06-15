@@ -22,6 +22,8 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneSerializer do
       background_url: background_url(map),
       scale_unit: map.scale_unit,
       scale_value: map.scale_value,
+      fog_color: Map.get(map, :fog_color, "#000000") || "#000000",
+      fog_opacity: Map.get(map, :fog_opacity, 0.85) || 0.85,
       can_edit: can_edit,
       boundary_vertices: boundary_vertices(map),
       layers: Enum.map(map.layers || [], &serialize_layer/1),
@@ -70,9 +72,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneSerializer do
       visible: layer.visible,
       is_default: layer.is_default,
       position: layer.position,
-      fog_enabled: layer.fog_enabled,
-      fog_color: layer.fog_color,
-      fog_opacity: layer.fog_opacity
+      fog_enabled: layer.fog_enabled
     }
   end
 
@@ -136,7 +136,17 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneSerializer do
   def pin_icon_asset_url(%{icon_asset: %{url: url}}) when is_binary(url), do: url
   def pin_icon_asset_url(_), do: nil
 
+  def zone_label_icon_asset_url(%{label_icon_asset: %{url: url}}) when is_binary(url), do: url
+  def zone_label_icon_asset_url(_), do: nil
+
   def serialize_zone(zone) do
+    zone
+    |> zone_base_payload()
+    |> Map.merge(zone_visual_payload(zone))
+    |> Map.merge(zone_behavior_payload(zone))
+  end
+
+  defp zone_base_payload(zone) do
     %{
       id: zone.id,
       name: zone.name,
@@ -150,10 +160,27 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneSerializer do
       opacity: zone.opacity,
       tooltip: zone.tooltip,
       layer_id: zone.layer_id,
+      position: zone.position,
+      locked: zone.locked || false
+    }
+  end
+
+  defp zone_visual_payload(zone) do
+    %{
+      label_mode: Map.get(zone, :label_mode, "text") || "text",
+      label_font_size: Map.get(zone, :label_font_size, 12) || 12,
+      label_font_family: Map.get(zone, :label_font_family, "system") || "system",
+      label_font_weight: Map.get(zone, :label_font_weight, "600") || "600",
+      label_font_style: Map.get(zone, :label_font_style, "normal") || "normal",
+      label_icon_asset_id: Map.get(zone, :label_icon_asset_id),
+      label_icon_asset_url: zone_label_icon_asset_url(zone)
+    }
+  end
+
+  defp zone_behavior_payload(zone) do
+    %{
       target_type: zone.target_type,
       target_id: zone.target_id,
-      position: zone.position,
-      locked: zone.locked || false,
       action_type: zone.action_type,
       action_data: zone.action_data,
       condition: zone.condition,
@@ -173,7 +200,11 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneSerializer do
       label: conn.label,
       show_label: conn.show_label,
       bidirectional: conn.bidirectional,
-      waypoints: conn.waypoints || []
+      waypoints: conn.waypoints || [],
+      from_stop: Map.get(conn, :from_stop, true),
+      to_stop: Map.get(conn, :to_stop, true),
+      from_pause_ms: Map.get(conn, :from_pause_ms),
+      to_pause_ms: Map.get(conn, :to_pause_ms)
     }
   end
 
@@ -198,6 +229,15 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneSerializer do
       end)
 
     assign(socket, :pins, pins)
+  end
+
+  def update_zone_in_list(socket, updated_zone) do
+    zones =
+      Enum.map(socket.assigns.zones, fn zone ->
+        if zone.id == updated_zone.id, do: updated_zone, else: zone
+      end)
+
+    assign(socket, :zones, zones)
   end
 
   def zone_error_message(%Ecto.Changeset{} = changeset) do

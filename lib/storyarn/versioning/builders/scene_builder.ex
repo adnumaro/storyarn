@@ -15,6 +15,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
   alias Ecto.Multi
   alias Storyarn.Repo
+  alias Storyarn.Scenes.RoutePoints
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.SceneAnnotation
   alias Storyarn.Scenes.SceneConnection
@@ -61,23 +62,25 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
     connection_snapshots =
       scene.connections
-      |> Enum.filter(fn conn ->
-        Map.has_key?(pin_index_map, conn.from_pin_id) and
-          Map.has_key?(pin_index_map, conn.to_pin_id)
-      end)
+      |> Enum.filter(&snapshotable_connection?(&1, pin_index_map))
       |> Enum.sort_by(fn conn ->
-        {layer_idx, pin_idx} = Map.get(pin_index_map, conn.from_pin_id)
-        {layer_idx, pin_idx}
+        {layer_idx, pin_idx} = Map.get(pin_index_map, conn.from_pin_id, {999_999, conn.id})
+        {layer_idx, pin_idx, conn.id}
       end)
       |> Enum.map(&connection_to_snapshot(&1, pin_index_map))
 
-    # Collect asset IDs from scene + pins
+    # Collect asset IDs from scene + pins + zone label icons
     pin_asset_ids =
       sorted_layers
       |> Enum.flat_map(fn layer -> Enum.map(layer.pins, & &1.icon_asset_id) end)
       |> Kernel.++(Enum.map(orphan_pins, & &1.icon_asset_id))
 
-    asset_ids = [scene.background_asset_id | pin_asset_ids]
+    zone_asset_ids =
+      sorted_layers
+      |> Enum.flat_map(fn layer -> Enum.map(layer.zones, & &1.label_icon_asset_id) end)
+      |> Kernel.++(Enum.map(orphan_zones, & &1.label_icon_asset_id))
+
+    asset_ids = [scene.background_asset_id | pin_asset_ids ++ zone_asset_ids]
     {hash_map, metadata_map} = AssetHashResolver.resolve_hashes(asset_ids)
 
     %{
@@ -92,6 +95,8 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       "default_center_y" => scene.default_center_y,
       "scale_unit" => scene.scale_unit,
       "scale_value" => scene.scale_value,
+      "fog_color" => scene.fog_color,
+      "fog_opacity" => scene.fog_opacity,
       "exploration_display_mode" => scene.exploration_display_mode,
       "background_asset_id" => scene.background_asset_id,
       "layers" => layer_snapshots,
@@ -139,8 +144,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       "position" => layer.position,
       "visible" => layer.visible,
       "fog_enabled" => layer.fog_enabled,
-      "fog_color" => layer.fog_color,
-      "fog_opacity" => layer.fog_opacity,
       "zones" => Enum.map(sorted_zones, &zone_to_snapshot/1),
       "pins" => Enum.map(sorted_pins, &pin_to_snapshot/1),
       "annotations" => Enum.map(sorted_annotations, &annotation_to_snapshot/1)
@@ -166,6 +169,12 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       "locked" => zone.locked,
       "action_type" => zone.action_type,
       "action_data" => zone.action_data,
+      "label_mode" => zone.label_mode,
+      "label_font_size" => zone.label_font_size,
+      "label_font_family" => zone.label_font_family,
+      "label_font_weight" => zone.label_font_weight,
+      "label_font_style" => zone.label_font_style,
+      "label_icon_asset_id" => zone.label_icon_asset_id,
       "condition" => zone.condition,
       "condition_effect" => zone.condition_effect,
       "is_walkable" => zone.is_walkable
@@ -212,8 +221,8 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   end
 
   defp connection_to_snapshot(%SceneConnection{} = conn, pin_index_map) do
-    {from_layer_idx, from_pin_idx} = Map.fetch!(pin_index_map, conn.from_pin_id)
-    {to_layer_idx, to_pin_idx} = Map.fetch!(pin_index_map, conn.to_pin_id)
+    {from_layer_idx, from_pin_idx} = optional_pin_index(pin_index_map, conn.from_pin_id)
+    {to_layer_idx, to_pin_idx} = optional_pin_index(pin_index_map, conn.to_pin_id)
 
     %{
       "original_id" => conn.id,
@@ -227,9 +236,25 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       "label" => conn.label,
       "bidirectional" => conn.bidirectional,
       "show_label" => conn.show_label,
-      "waypoints" => conn.waypoints
+      "waypoints" => conn.waypoints,
+      "from_stop" => conn.from_stop,
+      "to_stop" => conn.to_stop,
+      "from_pause_ms" => conn.from_pause_ms,
+      "to_pause_ms" => conn.to_pause_ms
     }
   end
+
+  defp snapshotable_connection?(conn, pin_index_map) do
+    RoutePoints.enough_points?(conn.from_pin_id, conn.to_pin_id, conn.waypoints) and
+      optional_pin_in_snapshot?(pin_index_map, conn.from_pin_id) and
+      optional_pin_in_snapshot?(pin_index_map, conn.to_pin_id)
+  end
+
+  defp optional_pin_in_snapshot?(_pin_index_map, nil), do: true
+  defp optional_pin_in_snapshot?(pin_index_map, pin_id), do: Map.has_key?(pin_index_map, pin_id)
+
+  defp optional_pin_index(_pin_index_map, nil), do: {nil, nil}
+  defp optional_pin_index(pin_index_map, pin_id), do: Map.fetch!(pin_index_map, pin_id)
 
   # ========== Restore Snapshot ==========
 
@@ -252,7 +277,9 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
             default_center_y: snapshot["default_center_y"],
             scale_unit: snapshot["scale_unit"],
             scale_value: snapshot["scale_value"],
-            exploration_display_mode: snapshot["exploration_display_mode"] || "fit",
+            fog_color: snapshot_default(snapshot, "fog_color", "#000000"),
+            fog_opacity: snapshot_default(snapshot, "fog_opacity", 0.85),
+            exploration_display_mode: snapshot_default(snapshot, "exploration_display_mode", "fit"),
             background_asset_id:
               resolve_scene_background_asset(snapshot["background_asset_id"], snapshot, project_id, opts),
             parent_id: MaterializationHelpers.root_parent_id(opts),
@@ -348,6 +375,8 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
         default_center_y: snapshot["default_center_y"],
         scale_unit: snapshot["scale_unit"],
         scale_value: snapshot["scale_value"],
+        fog_color: snapshot_default(snapshot, "fog_color", "#000000"),
+        fog_opacity: snapshot_default(snapshot, "fog_opacity", 0.85),
         background_asset_id:
           AssetHashResolver.resolve_asset_fk(
             snapshot["background_asset_id"],
@@ -466,8 +495,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       position: layer_data["position"] || layer_idx,
       visible: Map.get(layer_data, "visible", true),
       fog_enabled: layer_data["fog_enabled"] || false,
-      fog_color: layer_data["fog_color"] || "#000000",
-      fog_opacity: layer_data["fog_opacity"] || 0.85,
       inserted_at: now,
       updated_at: now
     }
@@ -494,6 +521,8 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   end
 
   defp zone_base_attrs(d) do
+    normalized_behavior = zone_behavior_attrs(d)
+
     Map.merge(
       %{
         name: d["name"],
@@ -502,36 +531,87 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
         vertices: d["vertices"],
         fill_color: d["fill_color"],
         border_color: d["border_color"],
-        target_type: d["target_type"],
-        target_id: d["target_id"],
         tooltip: d["tooltip"],
         condition: d["condition"]
       },
-      zone_defaulted_attrs(d)
+      Map.merge(zone_defaulted_attrs(d), normalized_behavior)
     )
   end
 
   defp zone_defaulted_attrs(d) do
-    Map.merge(
-      %{
-        border_width: d["border_width"] || 2,
-        border_style: d["border_style"] || "solid",
-        opacity: d["opacity"] || 0.3,
-        position: d["position"] || 0,
-        locked: d["locked"] || false
-      },
-      zone_action_defaults(d)
-    )
+    d
+    |> zone_style_defaults()
+    |> Map.merge(zone_label_defaults(d))
   end
 
-  defp zone_action_defaults(d) do
+  defp zone_style_defaults(d) do
     %{
-      action_type: d["action_type"] || "none",
-      action_data: d["action_data"] || %{},
-      condition_effect: d["condition_effect"] || "hide",
-      is_walkable: d["is_walkable"] || false
+      border_width: d["border_width"] || 2,
+      border_style: d["border_style"] || "solid",
+      opacity: d["opacity"] || 0.3,
+      position: d["position"] || 0,
+      locked: d["locked"] || false
     }
   end
+
+  defp zone_label_defaults(d) do
+    %{
+      label_mode: d["label_mode"] || "text",
+      label_font_size: d["label_font_size"] || 12,
+      label_font_family: d["label_font_family"] || "system",
+      label_font_weight: d["label_font_weight"] || "600",
+      label_font_style: d["label_font_style"] || "normal",
+      label_icon_asset_id: d["label_icon_asset_id"]
+    }
+  end
+
+  defp zone_behavior_attrs(d) do
+    action_type = normalize_zone_action_type(d["action_type"])
+    action_data = normalize_zone_action_data(action_type, d["action_data"])
+    {target_type, target_id} = normalize_zone_target(d["target_type"], d["target_id"])
+    convert_to_walkable? = legacy_walkable_only?(action_type, action_data, target_type, target_id, d["is_walkable"])
+
+    action_type = if convert_to_walkable?, do: "walkable", else: action_type
+
+    %{
+      target_type: if(action_type == "action", do: target_type),
+      target_id: if(action_type == "action", do: target_id),
+      action_type: action_type,
+      action_data: if(action_type == "walkable", do: %{}, else: action_data),
+      condition_effect: d["condition_effect"] || "hide",
+      is_walkable: action_type == "walkable"
+    }
+  end
+
+  defp normalize_zone_action_type(type) when type in ["action", "walkable", "display", "collection"], do: type
+  defp normalize_zone_action_type(_type), do: "action"
+
+  defp normalize_zone_action_data("action", %{"assignments" => assignments} = data) when is_list(assignments), do: data
+  defp normalize_zone_action_data("action", _), do: %{"assignments" => []}
+
+  defp normalize_zone_action_data("display", %{"variable_ref" => ref} = data) when is_binary(ref) do
+    Map.put_new(data, "display_mode", "value")
+  end
+
+  defp normalize_zone_action_data("display", _), do: %{"variable_ref" => "", "display_mode" => "value"}
+
+  defp normalize_zone_action_data("collection", %{"items" => items} = data) when is_list(items), do: data
+  defp normalize_zone_action_data("collection", _), do: %{"items" => []}
+  defp normalize_zone_action_data("walkable", _), do: %{}
+  defp normalize_zone_action_data(_type, data) when is_map(data), do: data
+  defp normalize_zone_action_data(_type, _), do: %{}
+
+  defp normalize_zone_target(target_type, target_id) when target_type in ["flow", "scene"] and is_integer(target_id),
+    do: {target_type, target_id}
+
+  defp normalize_zone_target(_target_type, _target_id), do: {nil, nil}
+
+  defp legacy_walkable_only?("action", action_data, nil, nil, true) do
+    assignments = action_data["assignments"] || []
+    assignments == []
+  end
+
+  defp legacy_walkable_only?(_action_type, _action_data, _target_type, _target_id, _is_walkable), do: false
 
   defp insert_single!(repo, schema, attrs, label) do
     case repo.insert_all(schema, [attrs]) do
@@ -641,24 +721,12 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
     entries =
       connections_data
-      |> Enum.filter(fn conn ->
-        from = Map.get(pin_index_maps, conn["from_layer_index"])
-        to = Map.get(pin_index_maps, conn["to_layer_index"])
-
-        from != nil and to != nil and
-          conn["from_pin_index"] >= 0 and
-          conn["from_pin_index"] < from.count and
-          conn["to_pin_index"] >= 0 and
-          conn["to_pin_index"] < to.count
-      end)
+      |> Enum.filter(&restorable_connection?(&1, pin_index_maps))
       |> Enum.map(fn conn ->
-        from = Map.fetch!(pin_index_maps, conn["from_layer_index"])
-        to = Map.fetch!(pin_index_maps, conn["to_layer_index"])
-
         %{
           scene_id: scene_id,
-          from_pin_id: Map.fetch!(from.map, conn["from_pin_index"]),
-          to_pin_id: Map.fetch!(to.map, conn["to_pin_index"]),
+          from_pin_id: lookup_snapshot_pin(pin_index_maps, conn["from_layer_index"], conn["from_pin_index"]),
+          to_pin_id: lookup_snapshot_pin(pin_index_maps, conn["to_layer_index"], conn["to_pin_index"]),
           line_style: conn["line_style"] || "solid",
           line_width: conn["line_width"] || 2,
           color: conn["color"],
@@ -666,6 +734,10 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
           bidirectional: Map.get(conn, "bidirectional", true),
           show_label: Map.get(conn, "show_label", true),
           waypoints: conn["waypoints"] || [],
+          from_stop: Map.get(conn, "from_stop", true),
+          to_stop: Map.get(conn, "to_stop", true),
+          from_pause_ms: conn["from_pause_ms"],
+          to_pause_ms: conn["to_pause_ms"],
           inserted_at: now,
           updated_at: now
         }
@@ -689,9 +761,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
             is_default: layer_data["is_default"] || false,
             position: layer_data["position"] || layer_idx,
             visible: Map.get(layer_data, "visible", true),
-            fog_enabled: layer_data["fog_enabled"] || false,
-            fog_color: layer_data["fog_color"] || "#000000",
-            fog_opacity: layer_data["fog_opacity"] || 0.85
+            fog_enabled: layer_data["fog_enabled"] || false
           },
           MaterializationHelpers.timestamps(now)
         )
@@ -860,18 +930,31 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
   defp build_materialized_zone_attrs(zone_data, scene_id, layer_id, now, opts) do
     preserve_external_refs? = MaterializationHelpers.preserve_external_refs?(opts)
+    attrs = zone_base_attrs(zone_data)
 
-    zone_data
-    |> zone_base_attrs()
-    |> Map.merge(%{
+    Map.merge(attrs, %{
       scene_id: scene_id,
       layer_id: layer_id,
-      target_type: if(preserve_external_refs?, do: zone_data["target_type"]),
-      target_id: if(preserve_external_refs?, do: zone_data["target_id"]),
+      target_type: materialized_zone_target_type(attrs, zone_data, preserve_external_refs?),
+      target_id: materialized_zone_target_id(attrs, zone_data, preserve_external_refs?),
       inserted_at: now,
       updated_at: now
     })
   end
+
+  defp materialized_zone_target_type(%{action_type: "action"} = attrs, zone_data, true) do
+    {target_type, _target_id} = normalize_zone_target(zone_data["target_type"], zone_data["target_id"])
+    target_type || attrs.target_type
+  end
+
+  defp materialized_zone_target_type(attrs, _zone_data, _preserve_external_refs?), do: attrs.target_type
+
+  defp materialized_zone_target_id(%{action_type: "action"} = attrs, zone_data, true) do
+    {_target_type, target_id} = normalize_zone_target(zone_data["target_type"], zone_data["target_id"])
+    target_id || attrs.target_id
+  end
+
+  defp materialized_zone_target_id(attrs, _zone_data, _preserve_external_refs?), do: attrs.target_id
 
   defp insert_layer_pins_with_ids(_repo, _scene_id, _layer_id, [], _now, _snapshot, _project_id, _opts), do: {:ok, []}
 
@@ -950,7 +1033,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
         to_pin_id =
           lookup_scene_pin(pin_ids_by_layer, conn["to_layer_index"], conn["to_pin_index"])
 
-        if from_pin_id && to_pin_id do
+        if RoutePoints.enough_points?(from_pin_id, to_pin_id, conn["waypoints"] || []) do
           entry =
             Map.merge(
               %{
@@ -963,7 +1046,11 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
                 label: conn["label"],
                 bidirectional: Map.get(conn, "bidirectional", true),
                 show_label: Map.get(conn, "show_label", true),
-                waypoints: conn["waypoints"] || []
+                waypoints: conn["waypoints"] || [],
+                from_stop: Map.get(conn, "from_stop", true),
+                to_stop: Map.get(conn, "to_stop", true),
+                from_pause_ms: conn["from_pause_ms"],
+                to_pause_ms: conn["to_pause_ms"]
               },
               MaterializationHelpers.timestamps(now)
             )
@@ -986,10 +1073,47 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     end
   end
 
+  defp lookup_scene_pin(_pin_ids_by_layer, nil, nil), do: nil
+
   defp lookup_scene_pin(pin_ids_by_layer, layer_idx, pin_idx) do
     pin_ids_by_layer
     |> Map.get(layer_idx, [])
     |> Enum.at(pin_idx)
+  end
+
+  defp restorable_connection?(conn, pin_index_maps) do
+    refs_valid? =
+      restorable_pin_ref?(pin_index_maps, conn["from_layer_index"], conn["from_pin_index"]) and
+        restorable_pin_ref?(pin_index_maps, conn["to_layer_index"], conn["to_pin_index"])
+
+    if refs_valid? do
+      from_pin_id = lookup_snapshot_pin(pin_index_maps, conn["from_layer_index"], conn["from_pin_index"])
+      to_pin_id = lookup_snapshot_pin(pin_index_maps, conn["to_layer_index"], conn["to_pin_index"])
+
+      RoutePoints.enough_points?(from_pin_id, to_pin_id, conn["waypoints"] || [])
+    else
+      false
+    end
+  end
+
+  defp restorable_pin_ref?(_pin_index_maps, nil, nil), do: true
+
+  defp restorable_pin_ref?(pin_index_maps, layer_idx, pin_idx) when is_integer(pin_idx) do
+    case Map.get(pin_index_maps, layer_idx) do
+      nil -> false
+      layer -> pin_idx >= 0 and pin_idx < layer.count
+    end
+  end
+
+  defp restorable_pin_ref?(_pin_index_maps, _layer_idx, _pin_idx), do: false
+
+  defp lookup_snapshot_pin(_pin_index_maps, nil, nil), do: nil
+
+  defp lookup_snapshot_pin(pin_index_maps, layer_idx, pin_idx) do
+    pin_index_maps
+    |> Map.fetch!(layer_idx)
+    |> Map.fetch!(:map)
+    |> Map.fetch!(pin_idx)
   end
 
   defp resolve_scene_background_asset(_asset_id, _snapshot, _project_id, opts) when not is_list(opts), do: nil
@@ -1000,13 +1124,15 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     end
   end
 
+  defp snapshot_default(snapshot, key, default), do: Map.get(snapshot, key) || default
+
   # ========== Diff Snapshots ==========
 
-  @layer_compare_fields ~w(name is_default visible fog_enabled fog_color fog_opacity)
+  @layer_compare_fields ~w(name is_default visible fog_enabled)
   @pin_compare_fields ~w(pin_type icon color opacity label shortcut hidden size flow_id tooltip sheet_id icon_asset_id condition condition_effect locked)
-  @zone_compare_fields ~w(name shortcut hidden vertices fill_color border_color border_width border_style opacity target_type target_id tooltip action_type action_data condition condition_effect locked)
+  @zone_compare_fields ~w(name shortcut hidden vertices fill_color border_color border_width border_style opacity target_type target_id tooltip action_type action_data label_mode label_font_size label_font_family label_font_weight label_font_style label_icon_asset_id condition condition_effect locked)
   @annotation_compare_fields ~w(text font_size color locked)
-  @connection_compare_fields ~w(line_style line_width color label bidirectional show_label)
+  @connection_compare_fields ~w(line_style line_width color label bidirectional show_label waypoints from_stop to_stop from_pause_ms to_pause_ms)
 
   @impl true
   def diff_snapshots(old_snapshot, new_snapshot) do
@@ -1052,6 +1178,13 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       ~w(scale_unit scale_value),
       :property,
       dgettext("scenes", "Changed scale settings")
+    )
+    |> DiffHelpers.check_field_group_change(
+      old_snapshot,
+      new_snapshot,
+      ~w(fog_color fog_opacity),
+      :property,
+      dgettext("scenes", "Changed fog design")
     )
     |> DiffHelpers.check_field_change(
       old_snapshot,
@@ -1229,32 +1362,35 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       old_conns
       |> Enum.with_index()
       |> Enum.map(fn {conn, idx} ->
-        from_key = {conn["from_layer_index"], conn["from_pin_index"]}
-        to_key = {conn["to_layer_index"], conn["to_pin_index"]}
-
-        case {Map.get(pin_index_remap, from_key), Map.get(pin_index_remap, to_key)} do
-          {{new_fl, new_fp}, {new_tl, new_tp}} ->
-            conn
-            |> Map.put("from_layer_index", new_fl)
-            |> Map.put("from_pin_index", new_fp)
-            |> Map.put("to_layer_index", new_tl)
-            |> Map.put("to_pin_index", new_tp)
-
-          _ ->
-            # Pin was removed — use unique sentinel to ensure this appears as removed
-            conn
-            |> Map.put("from_layer_index", {:removed, idx})
-            |> Map.put("from_pin_index", {:removed, idx})
-            |> Map.put("to_layer_index", {:removed, idx})
-            |> Map.put("to_pin_index", {:removed, idx})
-        end
+        conn
+        |> Map.put("__diff_index", idx)
+        |> remap_connection_endpoint("from", pin_index_remap, idx)
+        |> remap_connection_endpoint("to", pin_index_remap, idx)
       end)
 
-    key_fn = fn conn ->
+    indexed_new_conns =
+      new_conns
+      |> Enum.with_index()
+      |> Enum.map(fn {conn, idx} -> Map.put(conn, "__diff_index", idx) end)
+
+    original_id_key_fn = fn conn ->
+      if conn["original_id"], do: {:original_id, conn["original_id"]}
+    end
+
+    endpoint_key_fn = fn conn ->
       {conn["from_layer_index"], conn["from_pin_index"], conn["to_layer_index"], conn["to_pin_index"]}
     end
 
-    {matched, added, removed} = DiffHelpers.match_by_keys(remapped_old_conns, new_conns, [key_fn])
+    free_route_key_fn = fn conn ->
+      if free_route?(conn), do: {:free_route, conn["__diff_index"]}
+    end
+
+    {matched, added, removed} =
+      DiffHelpers.match_by_keys(remapped_old_conns, indexed_new_conns, [
+        original_id_key_fn,
+        free_route_key_fn,
+        endpoint_key_fn
+      ])
 
     {modified, _unchanged} =
       DiffHelpers.find_modified(matched, fn old, new ->
@@ -1271,6 +1407,30 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     |> append_modified_items(modified, :connection, fn _new ->
       dgettext("scenes", "Modified connection")
     end)
+  end
+
+  defp remap_connection_endpoint(conn, prefix, pin_index_remap, idx) do
+    layer_key = "#{prefix}_layer_index"
+    pin_key = "#{prefix}_pin_index"
+    layer_idx = conn[layer_key]
+    pin_idx = conn[pin_key]
+
+    {new_layer_idx, new_pin_idx} = remap_optional_connection_endpoint(layer_idx, pin_idx, pin_index_remap, prefix, idx)
+
+    conn
+    |> Map.put(layer_key, new_layer_idx)
+    |> Map.put(pin_key, new_pin_idx)
+  end
+
+  defp remap_optional_connection_endpoint(nil, nil, _pin_index_remap, _prefix, _idx), do: {nil, nil}
+
+  defp remap_optional_connection_endpoint(layer_idx, pin_idx, pin_index_remap, prefix, idx) do
+    Map.get(pin_index_remap, {layer_idx, pin_idx}, {{:removed, prefix, idx}, {:removed, prefix, idx}})
+  end
+
+  defp free_route?(conn) do
+    is_nil(conn["from_layer_index"]) and is_nil(conn["from_pin_index"]) and
+      is_nil(conn["to_layer_index"]) and is_nil(conn["to_pin_index"])
   end
 
   # Generic helpers for building change lists
@@ -1411,7 +1571,9 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       prefix =
         dgettext("scenes", "Layer %{l}, Zone %{z}", l: layer_idx, z: zone_idx)
 
-      maybe_add_target_ref(acc, zone["target_type"], zone["target_id"], prefix <> " — target")
+      acc
+      |> maybe_add_target_ref(zone["target_type"], zone["target_id"], prefix <> " — target")
+      |> maybe_add_ref(:asset, zone["label_icon_asset_id"], prefix <> " — label icon")
     end)
   end
 
@@ -1434,7 +1596,9 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     |> Enum.reduce(refs, fn {zone, zone_idx}, acc ->
       prefix = dgettext("scenes", "Scene Zone %{z}", z: zone_idx)
 
-      maybe_add_target_ref(acc, zone["target_type"], zone["target_id"], prefix <> " — target")
+      acc
+      |> maybe_add_target_ref(zone["target_type"], zone["target_id"], prefix <> " — target")
+      |> maybe_add_ref(:asset, zone["label_icon_asset_id"], prefix <> " — label icon")
     end)
   end
 

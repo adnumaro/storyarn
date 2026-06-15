@@ -92,7 +92,7 @@
         "pick_asset": "Elegir imagen",
         "delete": "Eliminar capa",
         "kind": "Tipo",
-        "slot": "Posición",
+        "layout": "Layout",
         "fit": "Ajuste",
         "opacity": "Opacidad",
         "kinds": {
@@ -101,12 +101,9 @@
           "prop": "Objeto",
           "overlay": "Overlay"
         },
-        "slots": {
+        "layout_modes": {
           "full": "Completo",
-          "left": "Izquierda",
-          "center": "Centro",
-          "right": "Derecha",
-          "custom": "Custom"
+          "positioned": "Cuadrícula"
         }
       },
       "config_panel": {

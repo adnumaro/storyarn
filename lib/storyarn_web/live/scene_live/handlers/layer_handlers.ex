@@ -43,8 +43,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
     end
   end
 
-  def handle_update_layer_fog(%{"id" => layer_id, "field" => field} = params, socket)
-      when field in ~w(fog_enabled fog_color fog_opacity) do
+  def handle_update_layer_fog(%{"id" => layer_id, "field" => field} = params, socket) when field in ~w(fog_enabled) do
     case Scenes.get_layer(socket.assigns.scene.id, layer_id) do
       nil ->
         {:noreply, socket}
@@ -117,6 +116,23 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not update scene scale."))}
+    end
+  end
+
+  def handle_update_scene_fog(%{"field" => field} = params, socket) when field in ~w(fog_color fog_opacity) do
+    value = parse_scene_fog_field(field, extract_field_value(params, field))
+
+    case Scenes.update_scene(socket.assigns.scene, %{field => value}) do
+      {:ok, updated} ->
+        {:noreply,
+         socket
+         |> assign(:scene, updated)
+         |> assign(:scene_data, build_scene_data(updated, socket.assigns.can_edit))
+         |> schedule(:scene)
+         |> assign(:_broadcast, {:scene_settings_updated, %{}})}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not update fog design."))}
     end
   end
 
@@ -218,8 +234,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
   end
 
   defp normalize_fog_value("fog_enabled", value), do: value in ["true", true]
-  defp normalize_fog_value("fog_opacity", value), do: parse_float(value)
-  defp normalize_fog_value(_field, value), do: value
+
+  defp parse_scene_fog_field("fog_opacity", value), do: parse_float(value)
+  defp parse_scene_fog_field(_field, value), do: value
 
   defp do_update_layer_fog(socket, layer, field, value) do
     prev_value = Map.get(layer, String.to_existing_atom(field))
@@ -232,9 +249,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
          |> assign(:_broadcast, {:layer_updated, %{}})
          |> push_event("layer_fog_changed", %{
            id: updated.id,
-           fog_enabled: updated.fog_enabled,
-           fog_color: updated.fog_color,
-           fog_opacity: updated.fog_opacity
+           fog_enabled: updated.fog_enabled
          })
          |> reload_scene()}
 

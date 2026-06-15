@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import { Separator } from "@components/ui/separator";
-import type { UploadConfig } from "live_vue";
 import ExportPanel from "@modules/projects/settings/export-import/components/ExportPanel.vue";
-import ImportPanel from "@modules/projects/settings/export-import/components/ImportPanel.vue";
 
 interface FormatOption {
   format: string;
@@ -46,39 +43,8 @@ interface ExportConfig {
   downloadUrl: string;
 }
 
-interface ImportPreview {
-  counts?: Record<string, number>;
-  has_conflicts?: boolean;
-  conflicts?: Record<string, string[]>;
-}
-
-interface ImportResult {
-  assets?: unknown[];
-  sheets?: unknown[];
-  flows?: unknown[];
-  scenes?: unknown[];
-  screenplays?: unknown[];
-  localization?: unknown[];
-}
-
-interface ImportState {
-  step: string;
-  preview?: ImportPreview;
-  result?: ImportResult;
-  error?: string;
-  conflictStrategy?: string;
-}
-
-const {
-  exportConfig,
-  canEdit,
-  importState,
-  uploadConfig = null,
-} = defineProps<{
+const { exportConfig } = defineProps<{
   exportConfig: ExportConfig;
-  canEdit: boolean;
-  importState: ImportState;
-  uploadConfig?: UploadConfig | null;
 }>();
 </script>
 
@@ -91,9 +57,5 @@ const {
       :validation="exportConfig.validation"
       :export-download-url="exportConfig.downloadUrl"
     />
-
-    <Separator />
-
-    <ImportPanel :can-edit="canEdit" :import-state="importState" :upload-config="uploadConfig" />
   </div>
 </template>

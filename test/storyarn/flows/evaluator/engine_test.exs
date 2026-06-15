@@ -59,12 +59,6 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       assert EngineHelpers.find_return_connection([output_connection], 2, 99) == output_connection
     end
 
-    test "does not follow legacy default connections" do
-      default_connection = conn(2, "default", 4)
-
-      assert EngineHelpers.find_return_connection([default_connection], 2, 99) == nil
-    end
-
     test "does not follow unrelated dynamic exits after returning from another exit" do
       connections = [
         conn(2, "exit_10", 3),
@@ -84,12 +78,6 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       output_connection = conn(2, "output", 3)
 
       assert EngineHelpers.find_output_connection([output_connection], 2) == output_connection
-    end
-
-    test "does not use legacy default pins" do
-      default_connection = conn(2, "default", 3)
-
-      assert EngineHelpers.find_output_connection([default_connection], 2) == nil
     end
   end
 
@@ -869,15 +857,13 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         1 => node(1, "entry"),
         2 => node(2, "condition", %{"condition" => condition, "switch_mode" => true}),
         3 => node(3, "exit"),
-        4 => node(4, "exit"),
-        5 => node(5, "exit")
+        4 => node(4, "exit")
       }
 
       conns = [
         conn(1, "output", 2),
         conn(2, "case_1", 3),
-        conn(2, "case_2", 4),
-        conn(2, "default", 5)
+        conn(2, "case_2", 4)
       ]
 
       state = Engine.init(%{"mc.jaime.class" => var("warrior", "select")}, 1)
@@ -887,7 +873,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       assert state.current_node_id == 3
     end
 
-    test "follows default when no case matches" do
+    test "finishes when no case matches" do
       condition = %{
         "logic" => "all",
         "rules" => [
@@ -911,15 +897,14 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
 
       conns = [
         conn(1, "output", 2),
-        conn(2, "case_1", 3),
-        conn(2, "default", 4)
+        conn(2, "case_1", 3)
       ]
 
       state = Engine.init(%{"mc.jaime.class" => var("thief", "select")}, 1)
 
       {:ok, state} = Engine.step(state, nodes, conns)
-      {:ok, state} = Engine.step(state, nodes, conns)
-      assert state.current_node_id == 4
+      {:finished, state} = Engine.step(state, nodes, conns)
+      assert state.status == :finished
       assert Enum.any?(state.console, &(&1.message =~ "no case matched"))
     end
   end

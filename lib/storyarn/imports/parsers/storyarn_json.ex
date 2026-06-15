@@ -13,6 +13,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   alias Storyarn.Localization
   alias Storyarn.Repo
   alias Storyarn.Scenes
+  alias Storyarn.Scenes.RoutePoints
   alias Storyarn.Screenplays
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
@@ -667,7 +668,9 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
       "default_center_x" => scene_data["default_center_x"],
       "default_center_y" => scene_data["default_center_y"],
       "scale_unit" => scene_data["scale_unit"],
-      "scale_value" => scene_data["scale_value"]
+      "scale_value" => scene_data["scale_value"],
+      "fog_color" => scene_data["fog_color"] || "#000000",
+      "fog_opacity" => scene_data["fog_opacity"] || 0.85
     }
 
     scene =
@@ -693,9 +696,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         "is_default" => layer_data["is_default"] || false,
         "position" => layer_data["position"] || 0,
         "visible" => Map.get(layer_data, "visible", true),
-        "fog_enabled" => layer_data["fog_enabled"] || false,
-        "fog_color" => layer_data["fog_color"],
-        "fog_opacity" => layer_data["fog_opacity"]
+        "fog_enabled" => layer_data["fog_enabled"] || false
       }
 
       layer =
@@ -743,28 +744,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
 
   defp import_zones(scene_id, zones, id_map) do
     Enum.reduce(zones, {id_map, []}, fn zone_data, {map, results} ->
-      attrs = %{
-        "name" => zone_data["name"],
-        "shortcut" => zone_data["shortcut"],
-        "hidden" => zone_data["hidden"] || false,
-        "layer_id" => remap_id(map, :layer, zone_data["layer_id"]),
-        "vertices" => zone_data["vertices"] || [],
-        "fill_color" => zone_data["fill_color"],
-        "border_color" => zone_data["border_color"],
-        "border_width" => zone_data["border_width"],
-        "border_style" => zone_data["border_style"],
-        "opacity" => zone_data["opacity"],
-        "target_type" => zone_data["target_type"],
-        "target_id" => remap_target_id(map, zone_data["target_type"], zone_data["target_id"]),
-        "tooltip" => zone_data["tooltip"],
-        "position" => zone_data["position"] || 0,
-        "locked" => zone_data["locked"] || false,
-        "action_type" => zone_data["action_type"],
-        "action_data" => zone_data["action_data"] || %{},
-        "condition" => zone_data["condition"],
-        "condition_effect" => zone_data["condition_effect"],
-        "is_walkable" => zone_data["is_walkable"] || false
-      }
+      attrs = import_zone_attrs(zone_data, map)
 
       zone =
         facade_insert_or_rollback!(
@@ -776,16 +756,90 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
     end)
   end
 
+  defp import_zone_attrs(zone_data, map) do
+    zone_data
+    |> zone_base_import_attrs(map)
+    |> Map.merge(zone_visual_import_attrs(zone_data, map))
+    |> Map.merge(zone_behavior_import_attrs(zone_data, map))
+  end
+
+  defp zone_base_import_attrs(zone_data, map) do
+    %{
+      "name" => zone_data["name"],
+      "shortcut" => zone_data["shortcut"],
+      "hidden" => zone_data["hidden"] || false,
+      "layer_id" => remap_id(map, :layer, zone_data["layer_id"]),
+      "vertices" => zone_data["vertices"] || [],
+      "fill_color" => zone_data["fill_color"],
+      "border_color" => zone_data["border_color"],
+      "border_width" => zone_data["border_width"],
+      "border_style" => zone_data["border_style"],
+      "opacity" => zone_data["opacity"],
+      "tooltip" => zone_data["tooltip"],
+      "position" => zone_data["position"] || 0,
+      "locked" => zone_data["locked"] || false
+    }
+  end
+
+  defp zone_visual_import_attrs(zone_data, map) do
+    %{
+      "label_mode" => zone_data["label_mode"] || "text",
+      "label_font_size" => zone_data["label_font_size"] || 12,
+      "label_font_family" => zone_data["label_font_family"] || "system",
+      "label_font_weight" => zone_data["label_font_weight"] || "600",
+      "label_font_style" => zone_data["label_font_style"] || "normal",
+      "label_icon_asset_id" => remap_id(map, :asset, zone_data["label_icon_asset_id"])
+    }
+  end
+
+  defp zone_behavior_import_attrs(zone_data, map) do
+    action_type = zone_data["action_type"] || "action"
+
+    Map.merge(
+      %{
+        "action_type" => action_type,
+        "action_data" => zone_data["action_data"] || default_zone_action_data(action_type),
+        "condition" => zone_data["condition"],
+        "condition_effect" => zone_data["condition_effect"],
+        "is_walkable" => zone_data["is_walkable"] || false
+      },
+      zone_target_import_attrs(zone_data, map, action_type)
+    )
+  end
+
+  defp zone_target_import_attrs(zone_data, map, action_type) when action_type in [nil, "action"] do
+    case zone_data["target_type"] do
+      "flow" ->
+        %{"target_type" => nil, "target_id" => nil}
+
+      target_type ->
+        %{
+          "target_type" => target_type,
+          "target_id" => remap_target_id(map, target_type, zone_data["target_id"])
+        }
+    end
+  end
+
+  defp zone_target_import_attrs(_zone_data, _map, _action_type) do
+    %{"target_type" => nil, "target_id" => nil}
+  end
+
+  defp default_zone_action_data("action"), do: %{"assignments" => []}
+  defp default_zone_action_data("display"), do: %{"variable_ref" => "", "display_mode" => "value"}
+  defp default_zone_action_data("collection"), do: %{"items" => []}
+  defp default_zone_action_data(_action_type), do: %{}
+
   defp import_scene_connections(scene_id, connections, id_map) do
     now = TimeHelpers.now()
 
     # Build valid connection attrs, filtering out those with missing pin references
     valid_attrs =
       Enum.reduce(connections, [], fn conn_data, acc ->
-        from_pin_id = Map.get(id_map, {:pin, conn_data["from_pin_id"]})
-        to_pin_id = Map.get(id_map, {:pin, conn_data["to_pin_id"]})
+        from_pin_id = remap_optional_pin_id(id_map, conn_data["from_pin_id"])
+        to_pin_id = remap_optional_pin_id(id_map, conn_data["to_pin_id"])
+        waypoints = conn_data["waypoints"] || []
 
-        if from_pin_id && to_pin_id do
+        if RoutePoints.enough_points?(from_pin_id, to_pin_id, waypoints) do
           attrs = %{
             scene_id: scene_id,
             from_pin_id: from_pin_id,
@@ -796,7 +850,11 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
             label: conn_data["label"],
             show_label: Map.get(conn_data, "show_label", true),
             bidirectional: conn_data["bidirectional"] || false,
-            waypoints: conn_data["waypoints"] || [],
+            waypoints: waypoints,
+            from_stop: Map.get(conn_data, "from_stop", true),
+            to_stop: Map.get(conn_data, "to_stop", true),
+            from_pause_ms: conn_data["from_pause_ms"],
+            to_pause_ms: conn_data["to_pause_ms"],
             inserted_at: now,
             updated_at: now
           }
@@ -811,6 +869,10 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
 
     {id_map, results}
   end
+
+  defp remap_optional_pin_id(_id_map, nil), do: nil
+  defp remap_optional_pin_id(_id_map, ""), do: nil
+  defp remap_optional_pin_id(id_map, pin_id), do: Map.get(id_map, {:pin, pin_id})
 
   defp import_annotations(scene_id, annotations, id_map) do
     now = TimeHelpers.now()
@@ -1229,6 +1291,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
 
       # Link zone target_ids that reference flows
       for zone_data <- scene_data["zones"] || [],
+          zone_data["action_type"] in [nil, "action"],
           zone_data["target_type"] == "flow",
           target_id = remap_id(id_map, :flow, zone_data["target_id"]),
           not is_nil(target_id),

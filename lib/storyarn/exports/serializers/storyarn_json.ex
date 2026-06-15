@@ -254,6 +254,8 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
       "default_center_y" => scene.default_center_y,
       "scale_unit" => scene.scale_unit,
       "scale_value" => scene.scale_value,
+      "fog_color" => scene.fog_color,
+      "fog_opacity" => scene.fog_opacity,
       "layers" => Enum.map(scene.layers, &serialize_layer/1),
       "pins" => Enum.map(scene.pins, &serialize_pin/1),
       "zones" => Enum.map(scene.zones, &serialize_zone/1),
@@ -269,9 +271,7 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
       "is_default" => layer.is_default,
       "position" => layer.position,
       "visible" => layer.visible,
-      "fog_enabled" => layer.fog_enabled,
-      "fog_color" => layer.fog_color,
-      "fog_opacity" => layer.fog_opacity
+      "fog_enabled" => layer.fog_enabled
     }
   end
 
@@ -322,6 +322,12 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
       "locked" => zone.locked,
       "action_type" => zone.action_type,
       "action_data" => zone.action_data || %{},
+      "label_mode" => zone.label_mode,
+      "label_font_size" => zone.label_font_size,
+      "label_font_family" => zone.label_font_family,
+      "label_font_weight" => zone.label_font_weight,
+      "label_font_style" => zone.label_font_style,
+      "label_icon_asset_id" => maybe_to_string(zone.label_icon_asset_id),
       "condition" => zone.condition,
       "condition_effect" => zone.condition_effect,
       "is_walkable" => zone.is_walkable
@@ -331,15 +337,19 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
   defp serialize_scene_connection(conn) do
     %{
       "id" => to_string(conn.id),
-      "from_pin_id" => to_string(conn.from_pin_id),
-      "to_pin_id" => to_string(conn.to_pin_id),
+      "from_pin_id" => maybe_to_string(conn.from_pin_id),
+      "to_pin_id" => maybe_to_string(conn.to_pin_id),
       "line_style" => conn.line_style,
       "line_width" => conn.line_width,
       "color" => conn.color,
       "label" => conn.label,
       "show_label" => conn.show_label,
       "bidirectional" => conn.bidirectional,
-      "waypoints" => conn.waypoints || []
+      "waypoints" => conn.waypoints || [],
+      "from_stop" => conn.from_stop,
+      "to_stop" => conn.to_stop,
+      "from_pause_ms" => conn.from_pause_ms,
+      "to_pause_ms" => conn.to_pause_ms
     }
   end
 

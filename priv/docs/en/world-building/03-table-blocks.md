@@ -1,5 +1,5 @@
 %{
-title: "Tables",
+title: "Table Blocks",
 category_label: "World Building",
 order: 3,
 description: "Spreadsheet-like grids within sheets for inventories, stat matrices, and structured lists."

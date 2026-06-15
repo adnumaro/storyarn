@@ -20,7 +20,7 @@ defmodule Storyarn.Docs.Guide do
     @guides
     |> Enum.filter(&(&1.locale == locale))
     |> Enum.sort_by(fn g ->
-      {category_order(g.category), g.order}
+      {category_order(g.category), g.section_order, g.order}
     end)
   end
 
@@ -33,15 +33,21 @@ defmodule Storyarn.Docs.Guide do
   end
 
   @doc "Get a single guide by category and slug."
-  def get_guide(category, slug, locale \\ @default_locale) do
-    Enum.find(@guides, &(&1.locale == locale && &1.category == category && &1.slug == slug))
+  def get_guide(category, slug_or_path, locale \\ @default_locale) do
+    path = String.split(slug_or_path, "/", trim: true)
+
+    Enum.find(@guides, fn guide ->
+      guide.locale == locale &&
+        guide.category == category &&
+        (guide.path == path || guide.slug == slug_or_path)
+    end)
   end
 
   @doc "Get all guides in a category."
   def list_by_category(category, locale \\ @default_locale) do
     @guides
     |> Enum.filter(&(&1.locale == locale && &1.category == category))
-    |> Enum.sort_by(& &1.order)
+    |> Enum.sort_by(&{&1.section_order, &1.order})
   end
 
   @doc "Simple text search across title and body."
@@ -70,8 +76,9 @@ defmodule Storyarn.Docs.Guide do
 
   @doc "Get previous and next guides for navigation."
   def prev_next(category, slug, locale \\ @default_locale) do
+    path = String.split(slug, "/", trim: true)
     guides = list_guides(locale)
-    index = Enum.find_index(guides, &(&1.category == category && &1.slug == slug))
+    index = Enum.find_index(guides, &(&1.category == category && (&1.path == path || &1.slug == slug)))
 
     prev = if index && index > 0, do: Enum.at(guides, index - 1)
     next = if index, do: Enum.at(guides, index + 1)

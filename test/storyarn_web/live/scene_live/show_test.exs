@@ -358,6 +358,26 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       assert vue.props["scene-data"]["name"] == "Viewable Scene"
       assert vue.props["can-edit"] == false
     end
+
+    test "viewer element panel exposes can-edit false even for unlocked elements", %{conn: conn, user: user} do
+      owner = user_fixture()
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+      _membership = membership_fixture(project, user, "viewer")
+      scene = scene_fixture(project, %{name: "Viewable Scene"})
+      zone = zone_fixture(scene, %{"name" => "Unlocked Zone", "locked" => false})
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
+        )
+
+      render_hook(view, "select_element", %{"type" => "zone", "id" => zone.id})
+
+      panel = get_element_panel_vue(view)
+      assert panel.props["selected-type"] == "zone"
+      assert panel.props["can-edit"] == false
+    end
   end
 
   describe "dock and tools" do
@@ -1023,6 +1043,47 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       assert updated.pin_type == "character"
     end
 
+    test "syncs previous party leader when assigning a new leader", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project)
+
+      previous_leader =
+        pin_fixture(scene, %{
+          "label" => "Previous Leader",
+          "is_playable" => true,
+          "is_leader" => true
+        })
+
+      new_leader =
+        pin_fixture(scene, %{
+          "label" => "New Leader",
+          "is_playable" => true,
+          "is_leader" => false
+        })
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
+        )
+
+      render_hook(view, "update_pin", %{
+        "id" => to_string(new_leader.id),
+        "field" => "is_leader",
+        "toggle" => "true"
+      })
+
+      refute Scenes.get_pin!(previous_leader.id).is_leader
+      assert Scenes.get_pin!(new_leader.id).is_leader
+
+      scene_data = extract_scene_data(view)
+      previous_leader_data = Enum.find(scene_data["pins"], &(&1["id"] == previous_leader.id))
+      new_leader_data = Enum.find(scene_data["pins"], &(&1["id"] == new_leader.id))
+
+      assert previous_leader_data["is_leader"] == false
+      assert new_leader_data["is_leader"] == true
+    end
+
     test "rejected for viewer", %{conn: conn, user: user} do
       owner = user_fixture()
       project = owner |> project_fixture() |> Repo.preload(:workspace)
@@ -1134,6 +1195,132 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       unchanged = Scenes.get_zone!(zone.id)
       assert unchanged.name == "Original"
+    end
+  end
+
+  describe "upload_zone_label_icon event" do
+    setup :register_and_log_in_user
+
+    test "stores a valid SVG icon on the zone", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project)
+      zone = zone_fixture(scene)
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}")
+
+      svg = ~s(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3"/></svg>)
+
+      render_hook(view, "upload_zone_label_icon", %{
+        "id" => to_string(zone.id),
+        "filename" => "icon.svg",
+        "content_type" => "image/svg+xml",
+        "data" => "data:image/svg+xml;base64,#{Base.encode64(svg)}"
+      })
+
+      updated = Scenes.get_zone!(zone.id)
+      assert updated.label_icon_asset_id
+    end
+
+    test "rejects files whose binary does not match the declared icon type", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project)
+      zone = zone_fixture(scene)
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}")
+
+      render_hook(view, "upload_zone_label_icon", %{
+        "id" => to_string(zone.id),
+        "filename" => "icon.png",
+        "content_type" => "image/png",
+        "data" => "data:image/png;base64,#{Base.encode64("not a png")}"
+      })
+
+      updated = Scenes.get_zone!(zone.id)
+      assert is_nil(updated.label_icon_asset_id)
+    end
+
+    test "rejects transparent-hostile image extensions", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project)
+      zone = zone_fixture(scene)
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}")
+
+      render_hook(view, "upload_zone_label_icon", %{
+        "id" => to_string(zone.id),
+        "filename" => "icon.jpg",
+        "content_type" => "image/jpeg",
+        "data" => "data:image/jpeg;base64,#{Base.encode64(<<255, 216, 255, 217>>)}"
+      })
+
+      updated = Scenes.get_zone!(zone.id)
+      assert is_nil(updated.label_icon_asset_id)
+    end
+  end
+
+  describe "upload_pin_icon event" do
+    setup :register_and_log_in_user
+
+    test "stores a valid SVG icon on the pin", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project)
+      pin = pin_fixture(scene)
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}")
+
+      svg = ~s(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3"/></svg>)
+
+      render_hook(view, "upload_pin_icon", %{
+        "id" => to_string(pin.id),
+        "filename" => "pin.svg",
+        "content_type" => "image/svg+xml",
+        "data" => "data:image/svg+xml;base64,#{Base.encode64(svg)}"
+      })
+
+      updated = Scenes.get_pin!(pin.id)
+      assert updated.icon_asset_id
+    end
+
+    test "rejects files whose binary does not match the declared pin icon type", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project)
+      pin = pin_fixture(scene)
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}")
+
+      render_hook(view, "upload_pin_icon", %{
+        "id" => to_string(pin.id),
+        "filename" => "pin.png",
+        "content_type" => "image/png",
+        "data" => "data:image/png;base64,#{Base.encode64("not a png")}"
+      })
+
+      updated = Scenes.get_pin!(pin.id)
+      assert is_nil(updated.icon_asset_id)
+    end
+
+    test "rejects transparent-hostile pin icon extensions", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project)
+      pin = pin_fixture(scene)
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}")
+
+      render_hook(view, "upload_pin_icon", %{
+        "id" => to_string(pin.id),
+        "filename" => "pin.jpg",
+        "content_type" => "image/jpeg",
+        "data" => "data:image/jpeg;base64,#{Base.encode64(<<255, 216, 255, 217>>)}"
+      })
+
+      updated = Scenes.get_pin!(pin.id)
+      assert is_nil(updated.icon_asset_id)
     end
   end
 
@@ -1254,6 +1441,52 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       [connection] = conns
       assert connection.from_pin_id == pin1.id
       assert connection.to_pin_id == pin2.id
+    end
+
+    test "creates free route from waypoint points", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project)
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
+        )
+
+      render_hook(view, "create_connection", %{
+        "waypoints" => [
+          %{"x" => 10.0, "y" => 15.0, "stop" => true},
+          %{"x" => 80.0, "y" => 75.0, "stop" => true}
+        ]
+      })
+
+      [connection] = Scenes.list_connections(scene.id)
+      assert is_nil(connection.from_pin_id)
+      assert is_nil(connection.to_pin_id)
+      assert length(connection.waypoints) == 2
+      assert Enum.all?(connection.waypoints, & &1["stop"])
+    end
+
+    test "creates route from pin to free endpoint", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project)
+      pin = pin_fixture(scene, %{"label" => "Start", "position_x" => 10.0, "position_y" => 10.0})
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
+        )
+
+      render_hook(view, "create_connection", %{
+        "from_pin_id" => pin.id,
+        "waypoints" => [%{"x" => 80.0, "y" => 75.0, "stop" => true}]
+      })
+
+      [connection] = Scenes.list_connections(scene.id)
+      assert connection.from_pin_id == pin.id
+      assert is_nil(connection.to_pin_id)
+      assert connection.waypoints == [%{"x" => 80.0, "y" => 75.0, "stop" => true}]
     end
 
     test "rejects connection from pin to itself", %{conn: conn, user: user} do
@@ -2619,6 +2852,35 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       assert updated.waypoints == []
     end
 
+    test "clear_connection_waypoints preserves free route endpoints", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project)
+
+      {:ok, connection} =
+        Scenes.create_connection(scene.id, %{
+          "waypoints" => [
+            %{"x" => 10.0, "y" => 10.0, "stop" => true},
+            %{"x" => 40.0, "y" => 60.0},
+            %{"x" => 90.0, "y" => 90.0, "stop" => true}
+          ]
+        })
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
+        )
+
+      render_click(view, "clear_connection_waypoints", %{"id" => to_string(connection.id)})
+
+      updated = Scenes.get_connection!(scene.id, connection.id)
+
+      assert updated.waypoints == [
+               %{"x" => 10.0, "y" => 10.0, "stop" => true},
+               %{"x" => 90.0, "y" => 90.0, "stop" => true}
+             ]
+    end
+
     test "rejected for viewer", %{conn: conn, user: user} do
       owner = user_fixture()
       project = owner |> project_fixture() |> Repo.preload(:workspace)
@@ -3144,10 +3406,9 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       assert updated_layer["fogEnabled"] == true
     end
 
-    test "update_layer_fog updates fog color and opacity", %{conn: conn, user: user} do
+    test "update_scene_fog updates global fog color and opacity", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
-      [layer | _] = Scenes.list_layers(scene.id)
 
       {:ok, view, _html} =
         live(
@@ -3155,21 +3416,23 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
-      render_click(view, "update_layer_fog", %{
-        "id" => "#{layer.id}",
+      render_click(view, "update_scene_fog", %{
         "field" => "fog_color",
         "value" => "#ff0000"
       })
 
-      render_click(view, "update_layer_fog", %{
-        "id" => "#{layer.id}",
+      render_click(view, "update_scene_fog", %{
         "field" => "fog_opacity",
         "value" => "0.5"
       })
 
-      updated = Scenes.get_layer!(scene.id, layer.id)
+      updated = Scenes.get_scene!(project.id, scene.id)
       assert updated.fog_color == "#ff0000"
       assert updated.fog_opacity == 0.5
+
+      scene_props = get_scene_canvas_vue(view).props["scene-data"]
+      assert scene_props["fogColor"] == "#ff0000"
+      assert scene_props["fogOpacity"] == 0.5
     end
 
     test "update_layer_fog rejected for viewer", %{conn: conn, user: user} do
@@ -3199,7 +3462,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       assert updated.fog_enabled == false
     end
 
-    test "layer serialization includes fog fields", %{conn: conn, user: user} do
+    test "layer serialization includes fog reveal flag", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
@@ -3212,8 +3475,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       scene_data = extract_scene_data(view)
       [layer_data | _] = scene_data["layers"]
       assert Map.has_key?(layer_data, "fog_enabled")
-      assert Map.has_key?(layer_data, "fog_color")
-      assert Map.has_key?(layer_data, "fog_opacity")
+      refute Map.has_key?(layer_data, "fog_color")
+      refute Map.has_key?(layer_data, "fog_opacity")
     end
   end
 

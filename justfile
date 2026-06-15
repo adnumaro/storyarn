@@ -17,7 +17,11 @@ js-format:
 
 # Check JS (lint + format) with Oxlint/Oxfmt
 js-check:
-    pnpm run fmt:check && pnpm run lint
+    pnpm run fmt:check && pnpm run lint && pnpm run typecheck
+
+# Typecheck Vue SFCs and TypeScript
+js-typecheck:
+    pnpm run typecheck
 
 # Check and auto-fix JS with Oxlint/Oxfmt
 js-fix:
@@ -58,9 +62,11 @@ server:
 # Run all quality checks: Oxlint fix, Credo strict, Elixir tests, JS tests, E2E tests
 quality:
     pnpm run fmt && pnpm run lint:fix
+    pnpm run typecheck
     pnpm arch & pnpm knip
     mix format
     mix convention.check
     mix credo --strict
     mix test
+    mix test.e2e
     pnpm run test

@@ -769,6 +769,16 @@ msgstr ""
 msgid "Could not upload pin icon."
 msgstr ""
 
+#: lib/storyarn_web/live/scene_live/show.ex:2013
+#, elixir-autogen, elixir-format
+msgid "Only SVG, PNG, or GIF icons are allowed."
+msgstr ""
+
+#: lib/storyarn_web/live/scene_live/show.ex:2017
+#, elixir-autogen, elixir-format
+msgid "Icon is too large. Maximum size is 256 KB."
+msgstr ""
+
 #: lib/storyarn_web/live/scene_live/helpers/props_serializer.ex:186
 #, elixir-autogen, elixir-format
 msgid "Character"

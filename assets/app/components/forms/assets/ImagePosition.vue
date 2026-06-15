@@ -1,24 +1,27 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { Label } from "@components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@components/ui/toggle-group";
+import ImageFit from "./ImageFit.vue";
 
 const POSITIONS = [
   "top-left",
   "top-center",
   "top-right",
-  "center-left",
-  "center",
-  "center-right",
+  "middle-left",
+  "middle-center",
+  "middle-right",
   "bottom-left",
   "bottom-center",
   "bottom-right",
 ] as const;
 
+type Position = (typeof POSITIONS)[number];
+
 type Fit = "cover" | "contain" | "fill";
-const FITS: readonly Fit[] = ["cover", "contain", "fill"] as const;
 
 const {
-  position = "center",
+  position = "middle-center",
   fit = "cover",
   canEdit = false,
   positionLabel,
@@ -36,6 +39,8 @@ const emit = defineEmits<{
   "fit-change": [value: Fit];
 }>();
 
+const normalizedPosition = computed(() => normalizePosition(position));
+
 function onPositionChange(v: string | string[]) {
   // ToggleGroup type=single emits "" when clicking the active item — ignore
   // since we don't allow "no position".
@@ -44,10 +49,35 @@ function onPositionChange(v: string | string[]) {
   emit("position-change", next);
 }
 
-function onFitChange(v: string | string[]) {
-  const next = Array.isArray(v) ? v[0] : v;
-  if (!next) return;
-  emit("fit-change", next as Fit);
+function normalizePosition(value: string): Position {
+  if (value === "center-left") return "middle-left";
+  if (value === "center") return "middle-center";
+  if (value === "center-right") return "middle-right";
+  if ((POSITIONS as readonly string[]).includes(value)) return value as Position;
+  return "middle-center";
+}
+
+function positionTitle(pos: Position): string {
+  return pos
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function anchorDotClass(pos: Position): string {
+  const [row, col] = pos.split("-");
+  const xClasses: Record<string, string> = {
+    left: "left-0",
+    center: "left-1/2 -translate-x-1/2",
+    right: "right-0",
+  };
+  const yClasses: Record<string, string> = {
+    top: "top-0",
+    middle: "top-1/2 -translate-y-1/2",
+    bottom: "bottom-0",
+  };
+
+  return `${xClasses[col]} ${yClasses[row]}`;
 }
 </script>
 
@@ -61,7 +91,7 @@ function onFitChange(v: string | string[]) {
         type="single"
         variant="outline"
         size="xs"
-        :model-value="position"
+        :model-value="normalizedPosition"
         :disabled="!canEdit"
         class="grid grid-cols-3 gap-1 w-fit"
         @update:model-value="onPositionChange"
@@ -70,29 +100,28 @@ function onFitChange(v: string | string[]) {
           v-for="pos in POSITIONS"
           :key="pos"
           :value="pos"
-          class="aspect-square px-0"
-          :title="pos"
-        />
-      </ToggleGroup>
-    </div>
-
-    <div class="flex flex-col gap-1.5">
-      <Label class="text-xs text-muted-foreground">
-        {{ fitLabel || $t("common.assets.image.fit_label") }}
-      </Label>
-      <ToggleGroup
-        type="single"
-        variant="outline"
-        size="sm"
-        :model-value="fit"
-        :disabled="!canEdit"
-        class="w-full"
-        @update:model-value="onFitChange"
-      >
-        <ToggleGroupItem v-for="opt in FITS" :key="opt" :value="opt" class="flex-1 text-xs">
-          {{ $t(`common.assets.image.fit_${opt}`) }}
+          class="aspect-square px-0 grid place-items-center"
+          :title="positionTitle(pos)"
+          :aria-label="positionTitle(pos)"
+        >
+          <span class="relative block size-4 rounded border border-current/25">
+            <span
+              :class="[
+                'absolute size-1.5 rounded-full bg-current transition-all',
+                anchorDotClass(pos),
+                normalizedPosition === pos ? 'opacity-100 scale-110' : 'opacity-50 scale-90',
+              ]"
+            />
+          </span>
         </ToggleGroupItem>
       </ToggleGroup>
     </div>
+
+    <ImageFit
+      :fit="fit"
+      :can-edit="canEdit"
+      :fit-label="fitLabel"
+      @fit-change="emit('fit-change', $event)"
+    />
   </div>
 </template>

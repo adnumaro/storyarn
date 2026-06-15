@@ -670,7 +670,9 @@ defmodule Storyarn.Assets do
   defp create_variant_asset(binary_data, original, project, user, source_hash, purpose, profile) do
     case generate_variant_binary(binary_data, purpose, profile) do
       {:ok, webp_data} ->
-        upload_variant_asset(webp_data, original, project, user, source_hash, profile)
+        with :ok <- Billing.can_upload_asset_for_project?(project, byte_size(webp_data)) do
+          upload_variant_asset(webp_data, original, project, user, source_hash, profile)
+        end
 
       {:error, reason} ->
         {:error, reason}
@@ -812,7 +814,9 @@ defmodule Storyarn.Assets do
   defp do_generate_variant(binary_data, original_asset, project, user, process_fn) do
     case process_fn.(binary_data) do
       {:ok, webp_data} ->
-        upload_and_link_variant(webp_data, original_asset, project, user)
+        with :ok <- Billing.can_upload_asset_for_project?(project, byte_size(webp_data)) do
+          upload_and_link_variant(webp_data, original_asset, project, user)
+        end
 
       {:error, reason} ->
         Logger.warning("[ImageOptimization] Failed to generate WebP for asset #{original_asset.id}: #{inspect(reason)}")

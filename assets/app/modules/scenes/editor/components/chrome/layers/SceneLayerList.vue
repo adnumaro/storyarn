@@ -110,88 +110,94 @@ function isActive(layer: LayerItem): boolean {
   <div>
     <!-- Layer rows -->
     <div class="flex flex-col gap-0.5">
-      <div v-for="layer in layers" :key="layer.id" class="flex items-center group">
-        <!-- Visibility toggle -->
-        <button
-          v-if="canEdit && editMode"
-          type="button"
-          class="shrink-0 size-6 inline-flex items-center justify-center rounded hover:bg-accent"
-          :aria-label="$t('scenes.layers.toggle_visibility')"
-          :title="$t('scenes.layers.toggle_visibility')"
-          @click="toggleVisibility(layer.id)"
-        >
-          <component
-            :is="layer.visible ? Eye : EyeOff"
-            :class="['size-3', !layer.visible && 'opacity-40']"
+      <div v-for="layer in layers" :key="layer.id" class="group">
+        <div class="flex items-center">
+          <!-- Visibility toggle -->
+          <button
+            v-if="canEdit && editMode"
+            type="button"
+            class="shrink-0 size-6 inline-flex items-center justify-center rounded hover:bg-accent"
+            :aria-label="$t('scenes.layers.toggle_visibility')"
+            :title="$t('scenes.layers.toggle_visibility')"
+            @click="toggleVisibility(layer.id)"
+          >
+            <component
+              :is="layer.visible ? Eye : EyeOff"
+              :class="['size-3', !layer.visible && 'opacity-40']"
+            />
+          </button>
+
+          <!-- Rename input -->
+          <input
+            v-if="renamingLayerId === layer.id"
+            ref="renameInputRef"
+            v-model="renameValue"
+            type="text"
+            class="flex-1 min-w-0 h-7 px-2 text-xs bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-ring"
+            @blur="finishRename(layer.id)"
+            @keydown.enter="finishRename(layer.id)"
+            @keydown.escape="cancelRename"
           />
-        </button>
 
-        <!-- Rename input -->
-        <input
-          v-if="renamingLayerId === layer.id"
-          ref="renameInputRef"
-          v-model="renameValue"
-          type="text"
-          class="flex-1 min-w-0 h-7 px-2 text-xs bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-ring"
-          @blur="finishRename(layer.id)"
-          @keydown.enter="finishRename(layer.id)"
-          @keydown.escape="cancelRename"
-        />
+          <!-- Layer name button -->
+          <button
+            v-else
+            type="button"
+            :class="[
+              'flex items-center gap-1 flex-1 min-w-0 px-2 py-1 rounded-md cursor-pointer text-sm',
+              isActive(layer)
+                ? 'bg-accent text-accent-foreground font-medium'
+                : 'hover:bg-accent/50',
+            ]"
+            :title="$t('scenes.layers.set_active')"
+            @click="setActiveLayer(layer.id)"
+          >
+            <span :class="['text-xs truncate', !layer.visible && 'opacity-40 line-through']">
+              {{ layer.name }}
+            </span>
+            <CloudFog
+              v-if="layer.fogEnabled"
+              class="size-3 opacity-50 shrink-0"
+              :title="$t('scenes.layers.fog_enabled')"
+            />
+          </button>
 
-        <!-- Layer name button -->
-        <button
-          v-else
-          type="button"
-          :class="[
-            'flex items-center gap-1 flex-1 min-w-0 px-2 py-1 rounded-md cursor-pointer text-sm',
-            isActive(layer) ? 'bg-accent text-accent-foreground font-medium' : 'hover:bg-accent/50',
-          ]"
-          :title="$t('scenes.layers.set_active')"
-          @click="setActiveLayer(layer.id)"
-        >
-          <span :class="['text-xs truncate', !layer.visible && 'opacity-40 line-through']">
-            {{ layer.name }}
-          </span>
-          <CloudFog
-            v-if="layer.fogEnabled"
-            class="size-3 opacity-50 shrink-0"
-            :title="$t('scenes.layers.fog_enabled')"
-          />
-        </button>
-
-        <!-- Kebab menu -->
-        <DropdownMenu v-if="canEdit && editMode && renamingLayerId !== layer.id">
-          <DropdownMenuTrigger as-child>
-            <button
-              type="button"
-              class="shrink-0 size-5 inline-flex items-center justify-center rounded text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent hover:text-foreground"
-              :aria-label="$t('scenes.layers.layer_options')"
-              :title="$t('scenes.layers.layer_options')"
-            >
-              <EllipsisVertical class="size-3" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem class="text-xs gap-2" @select="startRename(layer)">
-              <Pencil class="size-3.5" />
-              {{ $t("scenes.layers.rename") }}
-            </DropdownMenuItem>
-            <DropdownMenuItem class="text-xs gap-2" @select="toggleFog(layer)">
-              <component :is="layer.fogEnabled ? Eye : CloudFog" class="size-3.5" />
-              {{
-                layer.fogEnabled ? $t("scenes.layers.disable_fog") : $t("scenes.layers.enable_fog")
-              }}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              class="text-xs gap-2 text-destructive"
-              :disabled="layers.length <= 1"
-              @select="requestDelete(layer)"
-            >
-              <Trash2 class="size-3.5" />
-              {{ $t("scenes.layers.delete") }}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          <!-- Kebab menu -->
+          <DropdownMenu v-if="canEdit && editMode && renamingLayerId !== layer.id">
+            <DropdownMenuTrigger as-child>
+              <button
+                type="button"
+                class="shrink-0 size-5 inline-flex items-center justify-center rounded text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent hover:text-foreground"
+                :aria-label="$t('scenes.layers.layer_options')"
+                :title="$t('scenes.layers.layer_options')"
+              >
+                <EllipsisVertical class="size-3" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem class="text-xs gap-2" @select="startRename(layer)">
+                <Pencil class="size-3.5" />
+                {{ $t("scenes.layers.rename") }}
+              </DropdownMenuItem>
+              <DropdownMenuItem class="text-xs gap-2" @select="toggleFog(layer)">
+                <component :is="layer.fogEnabled ? Eye : CloudFog" class="size-3.5" />
+                {{
+                  layer.fogEnabled
+                    ? $t("scenes.layers.disable_fog_reveal")
+                    : $t("scenes.layers.enable_fog_reveal")
+                }}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                class="text-xs gap-2 text-destructive"
+                :disabled="layers.length <= 1"
+                @select="requestDelete(layer)"
+              >
+                <Trash2 class="size-3.5" />
+                {{ $t("scenes.layers.delete") }}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </div>
 

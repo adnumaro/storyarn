@@ -28,6 +28,9 @@ defmodule StoryarnWeb.UploadController do
       false ->
         conn |> put_status(:forbidden) |> json(%{error: "forbidden"})
 
+      {:error, :limit_reached, _} ->
+        conn |> put_status(:payment_required) |> json(%{error: "storage_limit_reached"})
+
       {:error, reason} ->
         conn |> put_status(:unprocessable_entity) |> json(%{error: to_string(reason)})
     end
@@ -48,6 +51,9 @@ defmodule StoryarnWeb.UploadController do
       false ->
         conn |> put_status(:forbidden) |> json(%{error: "forbidden"})
 
+      {:error, :limit_reached, _} ->
+        conn |> put_status(:payment_required) |> json(%{error: "storage_limit_reached"})
+
       {:error, reason} ->
         conn |> put_status(:unprocessable_entity) |> json(%{error: to_string(reason)})
     end
@@ -63,7 +69,7 @@ defmodule StoryarnWeb.UploadController do
     with {:ok, project, membership} <-
            Projects.get_project_by_slugs(scope, workspace_slug, project_slug),
          true <- Projects.can?(membership.role, :edit_content),
-         binary_data = File.read!(upload.path),
+         {:ok, binary_data} <- read_upload(upload),
          :ok <- Billing.can_upload_asset_for_project?(project, byte_size(binary_data)),
          {:ok, asset} <-
            create_asset(binary_data, upload, conn.params["purpose"], project, scope.user) do
@@ -86,6 +92,17 @@ defmodule StoryarnWeb.UploadController do
 
       {:error, _reason} ->
         conn |> put_status(:unprocessable_entity) |> json(%{error: "upload_failed"})
+    end
+  end
+
+  def create(conn, _params) do
+    conn |> put_status(:unprocessable_entity) |> json(%{error: "missing_file"})
+  end
+
+  defp read_upload(%Plug.Upload{path: path}) do
+    case File.read(path) do
+      {:ok, binary_data} -> {:ok, binary_data}
+      {:error, reason} -> {:error, {:unreadable_upload, reason}}
     end
   end
 

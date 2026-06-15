@@ -6,6 +6,7 @@ defmodule Storyarn.Versioning.SnapshotViewer do
   """
 
   alias Storyarn.Flows.HubColors
+  alias Storyarn.Scenes.RoutePoints
 
   @doc """
   Serializes a flow snapshot into the shape expected by the FlowCanvas JS hook.
@@ -53,7 +54,7 @@ defmodule Storyarn.Versioning.SnapshotViewer do
       |> Map.get("connections", [])
       |> Enum.with_index()
       |> Enum.map(&serialize_scene_connection(&1, pin_id_map))
-      |> Enum.filter(fn conn -> conn.from_pin_id != nil and conn.to_pin_id != nil end)
+      |> Enum.filter(&route_has_two_points?/1)
 
     build_scene_result(snapshot, asset_metadata, serialized_layers, serialized_connections)
   end
@@ -152,9 +153,7 @@ defmodule Storyarn.Versioning.SnapshotViewer do
       visible: Map.get(layer, "visible", true),
       is_default: layer["is_default"] || false,
       position: layer["position"] || layer_idx,
-      fog_enabled: layer["fog_enabled"] || false,
-      fog_color: layer["fog_color"] || "#000000",
-      fog_opacity: layer["fog_opacity"] || 0.85
+      fog_enabled: layer["fog_enabled"] || false
     }
 
     {{serialized_layer, serialized_pins, serialized_zones, serialized_annotations}, {updated_pin_map, counter}}
@@ -194,9 +193,15 @@ defmodule Storyarn.Versioning.SnapshotViewer do
     "opacity" => 0.3,
     "position" => 0,
     "locked" => false,
-    "action_type" => "none",
-    "action_data" => %{},
-    "condition_effect" => "hide"
+    "action_type" => "action",
+    "action_data" => %{"assignments" => []},
+    "label_mode" => "text",
+    "label_font_size" => 12,
+    "label_font_family" => "system",
+    "label_font_weight" => "600",
+    "label_font_style" => "normal",
+    "condition_effect" => "hide",
+    "is_walkable" => false
   }
 
   defp serialize_zone(zone, zone_id, layer_id) do
@@ -221,8 +226,15 @@ defmodule Storyarn.Versioning.SnapshotViewer do
       locked: z["locked"],
       action_type: z["action_type"],
       action_data: z["action_data"],
+      label_mode: z["label_mode"],
+      label_font_size: z["label_font_size"],
+      label_font_family: z["label_font_family"],
+      label_font_weight: z["label_font_weight"],
+      label_font_style: z["label_font_style"],
+      label_icon_asset_id: z["label_icon_asset_id"],
       condition: z["condition"],
-      condition_effect: z["condition_effect"]
+      condition_effect: z["condition_effect"],
+      is_walkable: z["is_walkable"]
     }
   end
 
@@ -251,8 +263,16 @@ defmodule Storyarn.Versioning.SnapshotViewer do
       label: conn["label"],
       show_label: Map.get(conn, "show_label", true),
       bidirectional: Map.get(conn, "bidirectional", true),
-      waypoints: conn["waypoints"] || []
+      waypoints: conn["waypoints"] || [],
+      from_stop: Map.get(conn, "from_stop", true),
+      to_stop: Map.get(conn, "to_stop", true),
+      from_pause_ms: conn["from_pause_ms"],
+      to_pause_ms: conn["to_pause_ms"]
     }
+  end
+
+  defp route_has_two_points?(conn) do
+    RoutePoints.enough_points?(conn.from_pin_id, conn.to_pin_id, conn.waypoints)
   end
 
   defp build_scene_result(snapshot, asset_metadata, serialized_layers, serialized_connections) do
@@ -267,6 +287,8 @@ defmodule Storyarn.Versioning.SnapshotViewer do
       background_url: resolve_asset_url(snapshot["background_asset_id"], asset_metadata),
       scale_unit: snapshot["scale_unit"],
       scale_value: snapshot["scale_value"],
+      fog_color: snapshot["fog_color"] || "#000000",
+      fog_opacity: snapshot["fog_opacity"] || 0.85,
       can_edit: false,
       boundary_vertices: nil,
       layers: Enum.map(serialized_layers, &elem(&1, 0)),

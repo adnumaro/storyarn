@@ -2,7 +2,7 @@ import { computed, type ComputedRef, type Ref } from "vue";
 import type { LiveInterface } from "@shared/composables/useLive.ts";
 
 interface ExplorationActionData {
-  [key: string]: string | number | boolean | null;
+  [key: string]: unknown;
 }
 
 interface ExplorationZone {
@@ -42,14 +42,36 @@ function isHiddenOrDisabled(visibility: string): boolean {
 }
 
 function isWalkableOnly(zone: ExplorationZone): boolean {
-  const actionType = zone.actionType || "none";
-  return zone.isWalkable && !zone.targetType && ["none", "walkable"].includes(actionType);
+  const actionType = zone.actionType || "action";
+  return zone.isWalkable && !zone.targetType && actionType === "walkable";
+}
+
+function actionHasInstructions(zone: ExplorationZone): boolean {
+  const assignments = zone.actionData?.assignments;
+  return Array.isArray(assignments) && assignments.length > 0;
+}
+
+function actionHasTarget(zone: ExplorationZone): boolean {
+  return !!zone.targetType && !!zone.targetId;
+}
+
+function isActionClickable(zone: ExplorationZone): boolean {
+  return actionHasInstructions(zone) || actionHasTarget(zone);
 }
 
 function isZoneClickable(zone: ExplorationZone): boolean {
   if (isHiddenOrDisabled(zone.visibility) || isWalkableOnly(zone)) return false;
-  const actionType = zone.actionType || "none";
-  return ["instruction", "collection", "display"].includes(actionType) || !!zone.targetType;
+  const actionType = zone.actionType || "action";
+  if (actionType === "collection") return true;
+  return actionType === "action" && isActionClickable(zone);
+}
+
+function pinHasFlow(pin: ExplorationPin): boolean {
+  return pin.flowId !== null && pin.flowId !== undefined && pin.flowId !== "";
+}
+
+function isPinClickable(pin: ExplorationPin): boolean {
+  return !isHiddenOrDisabled(pin.visibility) && pinHasFlow(pin);
 }
 
 /**
@@ -68,14 +90,14 @@ export function useExplorationInteraction({
     const zone = explorationZones.value.find((z) => z.id === zoneId);
     if (!zone || !isZoneClickable(zone)) return;
 
-    const actionType = zone.actionType || "none";
+    const actionType = zone.actionType || "action";
     pushEvent("exploration_element_click", {
       element_type: "zone",
       element_id: zone.id,
       action_type: actionType,
       action_data: zone.actionData || {},
-      target_type: zone.targetType || null,
-      target_id: zone.targetId || null,
+      target_type: actionType === "action" ? zone.targetType || null : null,
+      target_id: actionType === "action" ? zone.targetId || null : null,
     });
   }
 
@@ -83,7 +105,7 @@ export function useExplorationInteraction({
 
   function handlePinClick(pinId: number | string): void {
     const pin = explorationPins.value.find((p) => p.id === pinId);
-    if (!pin || isHiddenOrDisabled(pin.visibility)) {
+    if (!pin || !isPinClickable(pin)) {
       return;
     }
 
@@ -116,7 +138,7 @@ export function useExplorationInteraction({
   const clickablePinIds = computed<Set<number | string>>(() => {
     const ids = new Set<number | string>();
     for (const pin of explorationPins.value) {
-      if (!isHiddenOrDisabled(pin.visibility)) ids.add(pin.id);
+      if (isPinClickable(pin)) ids.add(pin.id);
     }
     return ids;
   });

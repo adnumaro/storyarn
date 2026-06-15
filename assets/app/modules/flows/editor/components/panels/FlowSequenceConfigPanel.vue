@@ -7,6 +7,8 @@
  */
 import {
   Box,
+  Check,
+  ChevronDown,
   Image as ImageIcon,
   Layers,
   Music,
@@ -16,12 +18,18 @@ import {
   Wand2,
   X,
 } from "lucide-vue-next";
-import { computed, type Component } from "vue";
+import { computed, ref, type Component } from "vue";
 import { useI18n } from "vue-i18n";
 
 import AudioAsset from "../../../../../components/forms/assets/AudioAsset.vue";
 import ImageAsset from "../../../../../components/forms/assets/ImageAsset.vue";
+import ImageFit from "../../../../../components/forms/assets/ImageFit.vue";
+import ImagePosition from "../../../../../components/forms/assets/ImagePosition.vue";
 import { Button } from "../../../../../components/ui/button";
+import { Command, CommandGroup, CommandItem, CommandList } from "../../../../../components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "../../../../../components/ui/popover";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../../components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "../../../../../components/ui/toggle-group";
 import Sidebar from "../../../../../shell/Sidebar.vue";
 import { useLive } from "../../../../../shared/composables/useLive";
 
@@ -72,8 +80,21 @@ interface PanelData {
 }
 
 type VisualKind = "backdrop" | "character" | "prop" | "overlay";
-type VisualSlot = "full" | "left" | "center" | "right" | "custom";
+type PositionSlot =
+  | "top-left"
+  | "top-center"
+  | "top-right"
+  | "middle-left"
+  | "middle-center"
+  | "middle-right"
+  | "bottom-left"
+  | "bottom-center"
+  | "bottom-right";
+type VisualSlot = PositionSlot | "full" | "left" | "center" | "right" | "custom";
 type VisualFit = "cover" | "contain" | "fill";
+type LayoutMode = "full" | "positioned";
+type PositionRow = "top" | "middle" | "bottom";
+type PositionColumn = "left" | "center" | "right";
 
 const {
   open = false,
@@ -87,11 +108,21 @@ const {
 
 const live = useLive();
 const { t } = useI18n();
+const openLayerPicker = ref<string | null>(null);
 
 const TRACK_KINDS = ["music", "ambience", "sfx"] as const;
 const VISUAL_KINDS: readonly VisualKind[] = ["backdrop", "character", "prop", "overlay"];
-const VISUAL_SLOTS: readonly VisualSlot[] = ["full", "left", "center", "right", "custom"];
-const VISUAL_FITS: readonly VisualFit[] = ["cover", "contain", "fill"];
+const POSITION_SLOTS: readonly PositionSlot[] = [
+  "top-left",
+  "top-center",
+  "top-right",
+  "middle-left",
+  "middle-center",
+  "middle-right",
+  "bottom-left",
+  "bottom-center",
+  "bottom-right",
+] as const;
 
 const sequenceId = computed(() => data?.sequence_id ?? null);
 
@@ -136,7 +167,11 @@ function deleteVisualLayer(layer: SequenceVisualLayer) {
 }
 
 function setVisualSlot(layer: SequenceVisualLayer, slot: string) {
-  updateVisualLayer(layer, { slot, ...geometryForSlot(layer.kind, slot) });
+  const normalizedSlot = normalizeSlot(layer.kind, slot);
+  updateVisualLayer(layer, {
+    slot: normalizedSlot,
+    ...geometryForSlot(layer.kind, normalizedSlot),
+  });
 }
 
 function setVisualFit(layer: SequenceVisualLayer, fit: string) {
@@ -148,52 +183,120 @@ function setVisualKind(layer: SequenceVisualLayer, kind: string) {
   updateVisualLayer(layer, { kind, slot, ...geometryForSlot(kind, slot) });
 }
 
+function pickVisualKind(layer: SequenceVisualLayer, kind: VisualKind) {
+  setVisualKind(layer, kind);
+  openLayerPicker.value = null;
+}
+
 function setVisualOpacity(layer: SequenceVisualLayer, event: Event) {
   const value = Number((event.target as HTMLInputElement).value);
   if (!Number.isFinite(value)) return;
   updateVisualLayer(layer, { opacity: value / 100 });
 }
 
-function eventValue(event: Event): string {
-  return (event.target as HTMLSelectElement).value;
-}
-
 function defaultSlot(kind: string): VisualSlot {
   if (kind === "backdrop" || kind === "overlay") return "full";
-  if (kind === "character") return "center";
-  return "custom";
+  if (kind === "character") return "bottom-center";
+  return "middle-center";
+}
+
+function defaultPositionSlot(kind: string): PositionSlot {
+  return kind === "character" ? "bottom-center" : "middle-center";
+}
+
+function isPositionSlot(slot: string): slot is PositionSlot {
+  return (POSITION_SLOTS as readonly string[]).includes(slot);
+}
+
+function normalizeSlot(kind: string, slot: string | null | undefined): VisualSlot {
+  if (!slot) return defaultSlot(kind);
+  if (slot === "left") return "bottom-left";
+  if (slot === "right") return "bottom-right";
+  if (slot === "center") return kind === "character" ? "bottom-center" : "middle-center";
+  if (slot === "custom" || slot === "full" || isPositionSlot(slot)) return slot;
+  return defaultSlot(kind);
+}
+
+function positionForLayer(layer: SequenceVisualLayer): PositionSlot {
+  const slot = normalizeSlot(layer.kind, layer.slot || defaultSlot(layer.kind));
+  return isPositionSlot(slot) ? slot : defaultPositionSlot(layer.kind);
+}
+
+function layoutModeForLayer(layer: SequenceVisualLayer): LayoutMode {
+  return normalizeSlot(layer.kind, layer.slot || defaultSlot(layer.kind)) === "full"
+    ? "full"
+    : "positioned";
+}
+
+function setVisualLayoutMode(layer: SequenceVisualLayer, value: string | string[]) {
+  const mode = Array.isArray(value) ? value[0] : value;
+  if (!mode) return;
+  setVisualSlot(layer, mode === "full" ? "full" : positionForLayer(layer));
 }
 
 function geometryForSlot(kind: string, slot: string): Partial<SequenceVisualLayer> {
-  if (kind === "backdrop" || kind === "overlay" || slot === "full") {
-    return {
-      x: 0,
-      y: 0,
-      width: 1,
-      height: 1,
-      anchor_x: 0,
-      anchor_y: 0,
-      fit: kind === "backdrop" || kind === "overlay" ? "cover" : "contain",
-    };
+  if (kind === "backdrop" || slot === "full") {
+    return fullLayerGeometry(kind);
   }
 
   if (kind === "character") {
-    let x = 0.5;
-    if (slot === "left") x = 0.25;
-    if (slot === "right") x = 0.75;
-
-    const width = slot === "center" ? 0.42 : 0.38;
-    return {
-      x,
-      y: 1,
-      width,
-      height: 0.9,
-      anchor_x: 0.5,
-      anchor_y: 1,
-      fit: "contain",
-    };
+    return characterLayerGeometry(slot);
   }
 
+  if (isPositionSlot(slot)) {
+    return positionedLayerGeometry(slot);
+  }
+
+  return centeredLayerGeometry();
+}
+
+function fullLayerGeometry(kind: string): Partial<SequenceVisualLayer> {
+  return {
+    x: 0,
+    y: 0,
+    width: 1,
+    height: 1,
+    anchor_x: 0,
+    anchor_y: 0,
+    fit: fullLayerFit(kind),
+  };
+}
+
+function fullLayerFit(kind: string): VisualFit {
+  if (kind === "backdrop" || kind === "overlay") return "cover";
+  return "contain";
+}
+
+function characterLayerGeometry(slot: string): Partial<SequenceVisualLayer> {
+  const position = isPositionSlot(slot) ? slot : defaultPositionSlot("character");
+  const { row, col } = splitPositionSlot(position);
+
+  return {
+    x: characterColumnX(col),
+    y: characterRowY(row),
+    width: characterWidth(col),
+    height: 0.9,
+    anchor_x: 0.5,
+    anchor_y: characterRowY(row),
+    fit: "contain",
+  };
+}
+
+function positionedLayerGeometry(slot: PositionSlot): Partial<SequenceVisualLayer> {
+  const { row, col } = splitPositionSlot(slot);
+
+  return {
+    x: safeColumnX(col),
+    y: safeRowY(row),
+    width: 0.25,
+    height: 0.25,
+    anchor_x: 0.5,
+    anchor_y: 0.5,
+    fit: "contain",
+  };
+}
+
+function centeredLayerGeometry(): Partial<SequenceVisualLayer> {
   return {
     x: 0.5,
     y: 0.5,
@@ -203,6 +306,40 @@ function geometryForSlot(kind: string, slot: string): Partial<SequenceVisualLaye
     anchor_y: 0.5,
     fit: "contain",
   };
+}
+
+function splitPositionSlot(slot: PositionSlot): { row: PositionRow; col: PositionColumn } {
+  const [row, col] = slot.split("-") as [PositionRow, PositionColumn];
+  return { row, col };
+}
+
+function characterColumnX(col: PositionColumn): number {
+  if (col === "left") return 0.25;
+  if (col === "right") return 0.75;
+  return 0.5;
+}
+
+function safeColumnX(col: PositionColumn): number {
+  if (col === "left") return 0.2;
+  if (col === "right") return 0.8;
+  return 0.5;
+}
+
+function characterRowY(row: PositionRow): number {
+  if (row === "top") return 0;
+  if (row === "bottom") return 1;
+  return 0.5;
+}
+
+function safeRowY(row: PositionRow): number {
+  if (row === "top") return 0.2;
+  if (row === "bottom") return 0.8;
+  return 0.5;
+}
+
+function characterWidth(col: PositionColumn): number {
+  if (col === "center") return 0.42;
+  return 0.38;
 }
 
 function kindIcon(kind: string): Component {
@@ -250,6 +387,23 @@ function trackIcon(kind: string) {
   if (kind === "ambience") return Volume2;
   return Wand2;
 }
+
+function pickerKey(layer: SequenceVisualLayer, field: "kind"): string {
+  return `${field}:${layer.id}`;
+}
+
+function pickerOpen(layer: SequenceVisualLayer, field: "kind"): boolean {
+  return openLayerPicker.value === pickerKey(layer, field);
+}
+
+function setPickerOpen(layer: SequenceVisualLayer, field: "kind", open: boolean) {
+  openLayerPicker.value = open ? pickerKey(layer, field) : null;
+}
+
+function visualKindLabel(kind: string): string {
+  return t(`flows.sequences.visual_layers.kinds.${kind}`);
+}
+
 </script>
 
 <template>
@@ -266,152 +420,198 @@ function trackIcon(kind: string) {
       </div>
     </template>
 
-    <div class="flex flex-col gap-6">
-      <section class="flex flex-col gap-3">
-        <header
-          class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground"
-        >
+    <Tabs default-value="visual" class="flex min-w-0 flex-col gap-3">
+      <TabsList class="grid h-8 w-full grid-cols-2">
+        <TabsTrigger value="visual" class="gap-1.5 text-xs">
           <Layers class="size-3.5" />
           {{ $t("flows.sequences.visual_layers.title") }}
-        </header>
+        </TabsTrigger>
+        <TabsTrigger value="audio" class="gap-1.5 text-xs">
+          <Music class="size-3.5" />
+          {{ $t("flows.sequences.config_panel.audio_title") }}
+        </TabsTrigger>
+      </TabsList>
 
-        <div class="grid grid-cols-2 gap-2">
-          <ImageAsset
-            v-for="kind in VISUAL_KINDS"
-            :key="kind"
-            :label="addLayerLabel(kind)"
-            :icon="kindIcon(kind)"
-            :image-assets="data?.image_assets || []"
-            :can-edit="canEdit"
-            :pick-placeholder="$t('flows.sequences.visual_layers.pick_asset')"
-            :search-placeholder="$t('flows.sequences.config_panel.search_image')"
-            @select="(asset) => createVisualLayer(kind, asset)"
-          />
-        </div>
-
-        <div v-if="visualLayers.length > 0" class="flex flex-col gap-3">
-          <article
-            v-for="layer in visualLayers"
-            :key="layer.id"
-            class="rounded border border-border bg-muted/20 p-2 flex flex-col gap-2"
-          >
+      <TabsContent value="visual" class="mt-0">
+        <section class="flex min-w-0 flex-col gap-3">
+          <div class="grid min-w-0 grid-cols-2 gap-2">
             <ImageAsset
-              :label="layer.label || $t(`flows.sequences.visual_layers.kinds.${layer.kind}`)"
-              :icon="kindIcon(layer.kind)"
-              :asset-id="layer.asset_id"
+              v-for="kind in VISUAL_KINDS"
+              :key="kind"
+              :label="addLayerLabel(kind)"
+              :icon="kindIcon(kind)"
               :image-assets="data?.image_assets || []"
               :can-edit="canEdit"
               :pick-placeholder="$t('flows.sequences.visual_layers.pick_asset')"
               :search-placeholder="$t('flows.sequences.config_panel.search_image')"
-              :clear-title="$t('flows.sequences.visual_layers.delete')"
-              :preview-fit="layer.fit || 'contain'"
-              @select="
-                (asset) => updateVisualLayer(layer, { asset_id: asset.id, label: asset.filename })
-              "
-              @clear="deleteVisualLayer(layer)"
+              @select="(asset) => createVisualLayer(kind, asset)"
+            />
+          </div>
+
+          <div v-if="visualLayers.length > 0" class="flex min-w-0 flex-col gap-3">
+            <article
+              v-for="layer in visualLayers"
+              :key="layer.id"
+              class="flex min-w-0 flex-col gap-2 overflow-hidden rounded border border-border bg-muted/20 p-2"
             >
-              <template #header-actions>
-                <Button
-                  v-if="canEdit"
-                  variant="ghost"
-                  size="icon-xs"
-                  :title="$t('flows.sequences.visual_layers.delete')"
-                  @click="deleteVisualLayer(layer)"
-                >
-                  <X class="size-3" />
-                </Button>
-              </template>
-            </ImageAsset>
+              <ImageAsset
+                :label="layer.label || $t(`flows.sequences.visual_layers.kinds.${layer.kind}`)"
+                :icon="kindIcon(layer.kind)"
+                :asset-id="layer.asset_id"
+                :image-assets="data?.image_assets || []"
+                :can-edit="canEdit"
+                :pick-placeholder="$t('flows.sequences.visual_layers.pick_asset')"
+                :search-placeholder="$t('flows.sequences.config_panel.search_image')"
+                :clear-title="$t('flows.sequences.visual_layers.delete')"
+                :preview-fit="layer.fit || 'contain'"
+                @select="
+                  (asset) =>
+                    updateVisualLayer(layer, { asset_id: asset.id, label: asset.filename })
+                "
+                @clear="deleteVisualLayer(layer)"
+              >
+                <template #header-actions>
+                  <Button
+                    v-if="canEdit"
+                    variant="ghost"
+                    size="icon-xs"
+                    :title="$t('flows.sequences.visual_layers.delete')"
+                    @click="deleteVisualLayer(layer)"
+                  >
+                    <X class="size-3" />
+                  </Button>
+                </template>
+              </ImageAsset>
 
-            <div class="grid grid-cols-3 gap-2">
-              <label class="flex flex-col gap-1 text-[11px] text-muted-foreground">
-                {{ $t("flows.sequences.visual_layers.kind") }}
-                <select
-                  class="h-8 rounded border border-border bg-background px-2 text-xs text-foreground"
-                  :value="layer.kind"
-                  :disabled="!canEdit"
-                  @change="setVisualKind(layer, eventValue($event))"
-                >
-                  <option v-for="kind in VISUAL_KINDS" :key="kind" :value="kind">
-                    {{ $t(`flows.sequences.visual_layers.kinds.${kind}`) }}
-                  </option>
-                </select>
-              </label>
+              <div class="grid min-w-0 grid-cols-2 gap-2">
+                <div class="flex min-w-0 flex-col gap-1 text-[11px] text-muted-foreground">
+                  {{ $t("flows.sequences.visual_layers.kind") }}
+                  <Popover
+                    :open="pickerOpen(layer, 'kind')"
+                    @update:open="setPickerOpen(layer, 'kind', $event)"
+                  >
+                    <PopoverTrigger as-child>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        class="h-8 w-full min-w-0 shrink justify-between overflow-hidden px-2 text-xs font-normal"
+                        :disabled="!canEdit"
+                      >
+                        <span class="min-w-0 flex-1 truncate text-left text-foreground">
+                          {{ visualKindLabel(layer.kind) }}
+                        </span>
+                        <ChevronDown class="size-3 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      class="w-(--reka-popover-trigger-width) min-w-32 p-0"
+                      align="start"
+                      :side-offset="4"
+                    >
+                      <Command>
+                        <CommandList>
+                          <CommandGroup>
+                            <CommandItem
+                              v-for="kind in VISUAL_KINDS"
+                              :key="kind"
+                              :value="visualKindLabel(kind)"
+                              class="gap-2 text-xs"
+                              @select="pickVisualKind(layer, kind)"
+                            >
+                              <component :is="kindIcon(kind)" class="size-3.5 shrink-0" />
+                              <span class="min-w-0 flex-1 truncate">
+                                {{ visualKindLabel(kind) }}
+                              </span>
+                              <Check v-if="layer.kind === kind" class="size-3 shrink-0" />
+                            </CommandItem>
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
 
-              <label class="flex flex-col gap-1 text-[11px] text-muted-foreground">
-                {{ $t("flows.sequences.visual_layers.slot") }}
-                <select
-                  class="h-8 rounded border border-border bg-background px-2 text-xs text-foreground"
-                  :value="layer.slot || defaultSlot(layer.kind)"
-                  :disabled="!canEdit"
-                  @change="setVisualSlot(layer, eventValue($event))"
-                >
-                  <option v-for="slot in VISUAL_SLOTS" :key="slot" :value="slot">
-                    {{ $t(`flows.sequences.visual_layers.slots.${slot}`) }}
-                  </option>
-                </select>
-              </label>
+                <div class="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                  {{ $t("flows.sequences.visual_layers.layout") }}
+                  <ToggleGroup
+                    type="single"
+                    variant="outline"
+                    size="xs"
+                    :model-value="layoutModeForLayer(layer)"
+                    :disabled="!canEdit"
+                    class="w-full"
+                    @update:model-value="setVisualLayoutMode(layer, $event)"
+                  >
+                    <ToggleGroupItem value="full" class="flex-1 text-xs">
+                      {{ $t("flows.sequences.visual_layers.layout_modes.full") }}
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="positioned" class="flex-1 text-xs">
+                      {{ $t("flows.sequences.visual_layers.layout_modes.positioned") }}
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </div>
+              </div>
 
-              <label class="flex flex-col gap-1 text-[11px] text-muted-foreground">
-                {{ $t("flows.sequences.visual_layers.fit") }}
-                <select
-                  class="h-8 rounded border border-border bg-background px-2 text-xs text-foreground"
-                  :value="layer.fit || 'contain'"
-                  :disabled="!canEdit"
-                  @change="setVisualFit(layer, eventValue($event))"
-                >
-                  <option v-for="fit in VISUAL_FITS" :key="fit" :value="fit">
-                    {{ $t(`common.assets.image.fit_${fit}`) }}
-                  </option>
-                </select>
-              </label>
-            </div>
-
-            <label class="flex items-center gap-2 text-[11px] text-muted-foreground">
-              <span class="w-14">{{ $t("flows.sequences.visual_layers.opacity") }}</span>
-              <input
-                class="flex-1 accent-primary"
-                type="range"
-                min="0"
-                max="100"
-                step="1"
-                :value="Math.round((layer.opacity ?? 1) * 100)"
-                :disabled="!canEdit"
-                @input="setVisualOpacity(layer, $event)"
+              <ImagePosition
+                v-if="layoutModeForLayer(layer) === 'positioned'"
+                :position="positionForLayer(layer)"
+                :fit="layer.fit || 'contain'"
+                :can-edit="canEdit"
+                :position-label="$t('flows.sequences.config_panel.position_label')"
+                :fit-label="$t('flows.sequences.config_panel.fit_label')"
+                @position-change="(slot) => setVisualSlot(layer, slot)"
+                @fit-change="(fit) => setVisualFit(layer, fit)"
               />
-              <span class="w-8 text-right tabular-nums">
-                {{ Math.round((layer.opacity ?? 1) * 100) }}
-              </span>
-            </label>
-          </article>
-        </div>
-      </section>
 
-      <section class="flex flex-col gap-3">
-        <header
-          class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground"
-        >
-          <Music class="size-3.5" />
-          {{ $t("flows.sequences.config_panel.audio_title") }}
-        </header>
+              <ImageFit
+                v-else
+                :fit="layer.fit || 'contain'"
+                :can-edit="canEdit"
+                :fit-label="$t('flows.sequences.config_panel.fit_label')"
+                @fit-change="(fit) => setVisualFit(layer, fit)"
+              />
 
-        <AudioAsset
-          v-for="kind in TRACK_KINDS"
-          :key="kind"
-          :label="$t(`flows.sequences.tracks.${kind}`)"
-          :icon="trackIcon(kind)"
-          :asset-id="trackFor(kind)?.asset_id"
-          :volume="trackVolumePercent(kind)"
-          :audio-assets="data?.audio_assets || []"
-          :can-edit="canEdit"
-          :pick-placeholder="$t('flows.sequences.config_panel.pick_audio')"
-          :search-placeholder="$t('flows.sequences.config_panel.search_audio')"
-          :clear-title="$t('flows.sequences.config_panel.clear_track')"
-          @select="(asset) => pickTrackAsset(kind, asset)"
-          @clear="clearTrack(kind)"
-          @volume-change="(percent) => onVolumeChange(kind, percent)"
-        />
-      </section>
-    </div>
+              <label class="flex items-center gap-2 text-[11px] text-muted-foreground">
+                <span class="w-14">{{ $t("flows.sequences.visual_layers.opacity") }}</span>
+                <input
+                  class="flex-1 accent-primary"
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  :value="Math.round((layer.opacity ?? 1) * 100)"
+                  :disabled="!canEdit"
+                  @input="setVisualOpacity(layer, $event)"
+                />
+                <span class="w-8 text-right tabular-nums">
+                  {{ Math.round((layer.opacity ?? 1) * 100) }}
+                </span>
+              </label>
+            </article>
+          </div>
+        </section>
+      </TabsContent>
+
+      <TabsContent value="audio" class="mt-0">
+        <section class="flex min-w-0 flex-col gap-3">
+          <AudioAsset
+            v-for="kind in TRACK_KINDS"
+            :key="kind"
+            :label="$t(`flows.sequences.tracks.${kind}`)"
+            :icon="trackIcon(kind)"
+            :asset-id="trackFor(kind)?.asset_id"
+            :volume="trackVolumePercent(kind)"
+            :audio-assets="data?.audio_assets || []"
+            :can-edit="canEdit"
+            :pick-placeholder="$t('flows.sequences.config_panel.pick_audio')"
+            :search-placeholder="$t('flows.sequences.config_panel.search_audio')"
+            :clear-title="$t('flows.sequences.config_panel.clear_track')"
+            @select="(asset) => pickTrackAsset(kind, asset)"
+            @clear="clearTrack(kind)"
+            @volume-change="(percent) => onVolumeChange(kind, percent)"
+          />
+        </section>
+      </TabsContent>
+    </Tabs>
   </Sidebar>
 </template>

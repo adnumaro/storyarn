@@ -310,7 +310,7 @@ defmodule Storyarn.Flows.SequenceCrud do
   def create_sequence_visual_layer(sequence_id, attrs) when is_integer(sequence_id) and is_map(attrs) do
     attrs = normalize_keys(attrs)
     kind = Map.get(attrs, "kind", "prop")
-    slot = Map.get(attrs, "slot", default_slot_for_visual_kind(kind))
+    slot = normalize_visual_slot(kind, Map.get(attrs, "slot", default_slot_for_visual_kind(kind)))
 
     attrs =
       kind
@@ -329,8 +329,10 @@ defmodule Storyarn.Flows.SequenceCrud do
   @spec update_sequence_visual_layer(SequenceVisualLayer.t(), map()) ::
           {:ok, SequenceVisualLayer.t()} | {:error, Ecto.Changeset.t()}
   def update_sequence_visual_layer(%SequenceVisualLayer{} = layer, attrs) when is_map(attrs) do
+    attrs = normalize_visual_layer_update_attrs(layer, normalize_keys(attrs))
+
     layer
-    |> SequenceVisualLayer.update_changeset(normalize_keys(attrs))
+    |> SequenceVisualLayer.update_changeset(attrs)
     |> Repo.update()
   end
 
@@ -341,8 +343,41 @@ defmodule Storyarn.Flows.SequenceCrud do
 
   defp default_slot_for_visual_kind("backdrop"), do: "full"
   defp default_slot_for_visual_kind("overlay"), do: "full"
-  defp default_slot_for_visual_kind("character"), do: "center"
-  defp default_slot_for_visual_kind(_), do: "custom"
+  defp default_slot_for_visual_kind("character"), do: "bottom-center"
+  defp default_slot_for_visual_kind(_), do: "middle-center"
+
+  defp normalize_visual_slot(kind, "left"), do: normalize_visual_slot(kind, "bottom-left")
+  defp normalize_visual_slot(kind, "right"), do: normalize_visual_slot(kind, "bottom-right")
+  defp normalize_visual_slot("character", "center"), do: "bottom-center"
+  defp normalize_visual_slot(_kind, "center"), do: "middle-center"
+
+  defp normalize_visual_slot(_kind, slot)
+       when slot in [
+              "full",
+              "custom",
+              "top-left",
+              "top-center",
+              "top-right",
+              "middle-left",
+              "middle-center",
+              "middle-right",
+              "bottom-left",
+              "bottom-center",
+              "bottom-right"
+            ], do: slot
+
+  defp normalize_visual_slot(kind, _slot), do: default_slot_for_visual_kind(kind)
+
+  defp normalize_visual_layer_update_attrs(%SequenceVisualLayer{} = layer, attrs) do
+    case Map.fetch(attrs, "slot") do
+      {:ok, slot} ->
+        kind = Map.get(attrs, "kind", layer.kind)
+        Map.put(attrs, "slot", normalize_visual_slot(kind, slot))
+
+      :error ->
+        attrs
+    end
+  end
 
   defp visual_layer_defaults("backdrop", _slot) do
     %{
@@ -360,29 +395,7 @@ defmodule Storyarn.Flows.SequenceCrud do
     }
   end
 
-  defp visual_layer_defaults("character", slot) do
-    {x, width} =
-      case slot do
-        "left" -> {0.25, 0.38}
-        "right" -> {0.75, 0.38}
-        _ -> {0.5, 0.42}
-      end
-
-    %{
-      "x" => x,
-      "y" => 1.0,
-      "width" => width,
-      "height" => 0.9,
-      "anchor_x" => 0.5,
-      "anchor_y" => 1.0,
-      "fit" => "contain",
-      "z_index" => 100,
-      "opacity" => 1.0,
-      "visible" => true
-    }
-  end
-
-  defp visual_layer_defaults("overlay", _slot) do
+  defp visual_layer_defaults(kind, "full") do
     %{
       "slot" => "full",
       "x" => 0.0,
@@ -391,27 +404,94 @@ defmodule Storyarn.Flows.SequenceCrud do
       "height" => 1.0,
       "anchor_x" => 0.0,
       "anchor_y" => 0.0,
-      "fit" => "cover",
-      "z_index" => 300,
+      "fit" => if(kind in ["backdrop", "overlay"], do: "cover", else: "contain"),
+      "z_index" => visual_layer_z_index(kind),
       "opacity" => 1.0,
       "visible" => true
     }
   end
 
-  defp visual_layer_defaults(_kind, _slot) do
+  defp visual_layer_defaults("character", slot) do
+    {row, col} = position_parts(slot, "bottom-center")
+    x = column_x(col, :character)
+    y = row_y(row, :character)
+    width = if col == "center", do: 0.42, else: 0.38
+
     %{
-      "x" => 0.5,
-      "y" => 0.5,
+      "x" => x,
+      "y" => y,
+      "width" => width,
+      "height" => 0.9,
+      "anchor_x" => 0.5,
+      "anchor_y" => row_anchor_y(row),
+      "fit" => "contain",
+      "z_index" => 100,
+      "opacity" => 1.0,
+      "visible" => true
+    }
+  end
+
+  defp visual_layer_defaults(kind, slot) do
+    {row, col} = position_parts(slot, "middle-center")
+
+    %{
+      "x" => column_x(col, :safe_center),
+      "y" => row_y(row, :safe_center),
       "width" => 0.25,
       "height" => 0.25,
       "anchor_x" => 0.5,
       "anchor_y" => 0.5,
       "fit" => "contain",
-      "z_index" => 200,
+      "z_index" => visual_layer_z_index(kind),
       "opacity" => 1.0,
       "visible" => true
     }
   end
+
+  defp position_parts(slot, fallback) do
+    slot =
+      if slot in [
+           "top-left",
+           "top-center",
+           "top-right",
+           "middle-left",
+           "middle-center",
+           "middle-right",
+           "bottom-left",
+           "bottom-center",
+           "bottom-right"
+         ] do
+        slot
+      else
+        fallback
+      end
+
+    [row, col] = String.split(slot, "-", parts: 2)
+    {row, col}
+  end
+
+  defp column_x("left", :character), do: 0.25
+  defp column_x("right", :character), do: 0.75
+  defp column_x("center", :character), do: 0.5
+  defp column_x("left", :safe_center), do: 0.2
+  defp column_x("right", :safe_center), do: 0.8
+  defp column_x("center", :safe_center), do: 0.5
+
+  defp row_y("top", :character), do: 0.0
+  defp row_y("bottom", :character), do: 1.0
+  defp row_y("middle", :character), do: 0.5
+  defp row_y("top", :safe_center), do: 0.2
+  defp row_y("bottom", :safe_center), do: 0.8
+  defp row_y("middle", :safe_center), do: 0.5
+
+  defp row_anchor_y("top"), do: 0.0
+  defp row_anchor_y("bottom"), do: 1.0
+  defp row_anchor_y("middle"), do: 0.5
+
+  defp visual_layer_z_index("backdrop"), do: 0
+  defp visual_layer_z_index("character"), do: 100
+  defp visual_layer_z_index("overlay"), do: 300
+  defp visual_layer_z_index(_kind), do: 200
 
   # =========================================================================
   # Sequence tracks (audio)

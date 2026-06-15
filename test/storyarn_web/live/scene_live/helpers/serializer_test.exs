@@ -13,9 +13,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
         visible: true,
         is_default: true,
         position: 0,
-        fog_enabled: false,
-        fog_color: "#000000",
-        fog_opacity: 0.5
+        fog_enabled: false
       }
 
       result = Serializer.serialize_layer(layer)
@@ -26,9 +24,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
                visible: true,
                is_default: true,
                position: 0,
-               fog_enabled: false,
-               fog_color: "#000000",
-               fog_opacity: 0.5
+               fog_enabled: false
              }
     end
   end
@@ -41,7 +37,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
         id: 10,
         position_x: 100.0,
         position_y: 200.0,
-        pin_type: "default",
+        pin_type: "output",
         icon: "map-pin",
         color: "#ff0000",
         opacity: 1.0,
@@ -88,7 +84,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
         id: 1,
         position_x: 0.0,
         position_y: 0.0,
-        pin_type: "default",
+        pin_type: "output",
         icon: nil,
         color: nil,
         opacity: nil,
@@ -149,7 +145,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
         target_id: nil,
         position: 0,
         locked: false,
-        action_type: "navigate",
+        action_type: "action",
         action_data: %{},
         condition: nil,
         condition_effect: "hide",
@@ -211,7 +207,11 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
         label: "Path",
         show_label: true,
         bidirectional: false,
-        waypoints: [[50, 50]]
+        waypoints: [[50, 50]],
+        from_stop: false,
+        to_stop: true,
+        from_pause_ms: 500,
+        to_pause_ms: nil
       }
 
       result = Serializer.serialize_connection(conn)
@@ -226,7 +226,11 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
                label: "Path",
                show_label: true,
                bidirectional: false,
-               waypoints: [[50, 50]]
+               waypoints: [[50, 50]],
+               from_stop: false,
+               to_stop: true,
+               from_pause_ms: 500,
+               to_pause_ms: nil
              }
     end
 
@@ -246,6 +250,10 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
 
       result = Serializer.serialize_connection(conn)
       assert result.waypoints == []
+      assert result.from_stop == true
+      assert result.to_stop == true
+      assert result.from_pause_ms == nil
+      assert result.to_pause_ms == nil
     end
   end
 
@@ -449,9 +457,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
             visible: true,
             is_default: true,
             position: 0,
-            fog_enabled: false,
-            fog_color: nil,
-            fog_opacity: nil
+            fog_enabled: false
           }
         ],
         pins: [],

@@ -119,19 +119,15 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlersTest do
       assert updated.fog_enabled
     end
 
-    test "update_layer_fog changes fog color", %{conn: conn, project: project, scene: scene} do
-      layers = Scenes.list_layers(scene.id)
-      layer = hd(layers)
-
+    test "update_scene_fog changes global fog color", %{conn: conn, project: project, scene: scene} do
       {:ok, view, _html} = live(conn, show_url(project, scene))
 
-      render_click(view, "update_layer_fog", %{
-        "id" => to_string(layer.id),
+      render_click(view, "update_scene_fog", %{
         "field" => "fog_color",
         "value" => "#ff0000"
       })
 
-      updated = Scenes.get_layer(scene.id, layer.id)
+      updated = Scenes.get_scene(project.id, scene.id)
       assert updated.fog_color == "#ff0000"
     end
 

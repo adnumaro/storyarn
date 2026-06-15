@@ -40,6 +40,10 @@ interface PendingConfirmation {
   resolve: (accepted: boolean) => void;
 }
 
+interface UploadResponseBody extends Record<string, unknown> {
+  error?: unknown;
+}
+
 const uploading = ref(false);
 const progress = ref(0);
 const error = ref<string | null>(null);
@@ -60,6 +64,14 @@ function setError(message: string): void {
   clearError();
   error.value = message;
   errorDismissTimeout = setTimeout(clearError, ERROR_DISMISS_MS);
+}
+
+function errorMessage(body: UploadResponseBody, fallback: string): string {
+  return typeof body.error === "string" ? body.error : fallback;
+}
+
+function isUploadResult(body: UploadResponseBody): body is UploadResponseBody & UploadResult {
+  return typeof body.id === "number" && typeof body.url === "string";
 }
 
 function getUploadUrl(suffix = ""): string {
@@ -96,8 +108,8 @@ async function inspectUpload(
   });
 
   if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error(body.error || `Upload inspection failed (${response.status})`);
+    const body = (await response.json().catch(() => ({}))) as UploadResponseBody;
+    throw new Error(errorMessage(body, `Upload inspection failed (${response.status})`));
   }
 
   return response.json();
@@ -117,8 +129,8 @@ async function materializeUpload(
   });
 
   if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error(body.error || `Upload materialization failed (${response.status})`);
+    const body = (await response.json().catch(() => ({}))) as UploadResponseBody;
+    throw new Error(errorMessage(body, `Upload materialization failed (${response.status})`));
   }
 
   return response.json();
@@ -144,9 +156,10 @@ function uploadFile(file: File, purpose: AssetUploadPurpose): Promise<UploadResu
       const body = parseResponse(request.responseText);
 
       if (request.status >= 200 && request.status < 300) {
-        resolve(body as UploadResult);
+        if (isUploadResult(body)) resolve(body);
+        else reject(new Error("Upload response missing asset data"));
       } else {
-        reject(new Error(body.error || `Upload failed (${request.status})`));
+        reject(new Error(errorMessage(body, `Upload failed (${request.status})`)));
       }
     };
 
@@ -155,7 +168,7 @@ function uploadFile(file: File, purpose: AssetUploadPurpose): Promise<UploadResu
   });
 }
 
-function parseResponse(responseText: string): Record<string, unknown> {
+function parseResponse(responseText: string): UploadResponseBody {
   try {
     return JSON.parse(responseText || "{}");
   } catch {

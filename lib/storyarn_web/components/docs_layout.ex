@@ -101,14 +101,17 @@ defmodule StoryarnWeb.Components.DocsLayout do
 
   defp docs_guide_nav(guide) do
     category = Map.fetch!(guide, :category)
-    slug = Map.fetch!(guide, :slug)
 
     %{
       category: category,
       categoryLabel: Map.get(guide, :category_label),
-      slug: slug,
+      section: Map.get(guide, :section),
+      sectionLabel: Map.get(guide, :section_label),
+      sectionOrder: Map.get(guide, :section_order),
+      slug: Map.fetch!(guide, :slug),
+      path: Map.fetch!(guide, :path),
       title: Map.fetch!(guide, :title),
-      url: ~p"/docs/#{category}/#{slug}"
+      url: "/docs/#{Map.fetch!(guide, :url_path)}"
     }
   end
 

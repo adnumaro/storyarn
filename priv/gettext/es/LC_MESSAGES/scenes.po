@@ -351,12 +351,12 @@ msgstr "Aún no hay fichas"
 #: lib/storyarn_web/live/scene_live/helpers/scene_helpers.ex:58
 #, elixir-autogen, elixir-format
 msgid "Note"
-msgstr "No"
+msgstr "Nota"
 
 #: lib/storyarn_web/live/scene_live/helpers/scene_helpers.ex:46
 #, elixir-autogen, elixir-format
 msgid "Pin"
-msgstr "Rosa"
+msgstr "Marcador"
 
 #: lib/storyarn_web/live/scene_live/handlers/element_handlers.ex:816
 #, elixir-autogen, elixir-format
@@ -768,6 +768,16 @@ msgstr "el disparador temporizado requiere interval_ms >= 1000"
 #, elixir-autogen, elixir-format
 msgid "Could not upload pin icon."
 msgstr "No se pudo subir el icono del pin."
+
+#: lib/storyarn_web/live/scene_live/show.ex:2013
+#, elixir-autogen, elixir-format
+msgid "Only SVG, PNG, or GIF icons are allowed."
+msgstr "Solo se permiten iconos SVG, PNG o GIF."
+
+#: lib/storyarn_web/live/scene_live/show.ex:2017
+#, elixir-autogen, elixir-format
+msgid "Icon is too large. Maximum size is 256 KB."
+msgstr "El icono es demasiado grande. El máximo es 256 KB."
 
 #: lib/storyarn_web/live/scene_live/helpers/props_serializer.ex:186
 #, elixir-autogen, elixir-format

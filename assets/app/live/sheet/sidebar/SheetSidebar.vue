@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import SidebarFrame from "@shell/SidebarFrame.vue";
 import SheetTree from "@modules/sheets/components/chrome/tree/SheetTree.vue";
 
@@ -15,6 +16,10 @@ const {
   onDashboard?: boolean;
   sidebarProps?: Record<string, unknown>;
 }>();
+
+const sheetTreeProps = computed(
+  () => sidebarProps as unknown as InstanceType<typeof SheetTree>["$props"],
+);
 </script>
 
 <template>
@@ -24,6 +29,6 @@ const {
     :dashboard-url="dashboardUrl"
     :on-dashboard="onDashboard"
   >
-    <SheetTree v-bind="sidebarProps" />
+    <SheetTree v-bind="sheetTreeProps" />
   </SidebarFrame>
 </template>

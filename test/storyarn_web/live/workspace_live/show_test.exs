@@ -116,6 +116,17 @@ defmodule StoryarnWeb.WorkspaceLive.ShowTest do
       assert vue.props["membership"]["role"] == "viewer"
     end
 
+    test "passes can-create-project=false for viewer", %{conn: conn, user: user} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner, %{name: "Viewer Create Studio"})
+      _ws_membership = workspace_membership_fixture(workspace, user, "viewer")
+
+      {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+
+      vue = get_dashboard_vue(view)
+      assert vue.props["can-create-project"] == false
+    end
+
     test "member role passed to Vue", %{conn: conn, user: user} do
       owner = user_fixture()
       workspace = workspace_fixture(owner, %{name: "Member Studio"})
@@ -259,6 +270,20 @@ defmodule StoryarnWeb.WorkspaceLive.ShowTest do
       {path, _flash} = assert_redirect(view)
 
       assert path == ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}"
+    end
+
+    test "viewer cannot create project via event", %{conn: conn, user: user} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner, %{name: "Viewer Event Studio"})
+      _ws_membership = workspace_membership_fixture(workspace, user, "viewer")
+
+      {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+
+      render_hook(view, "create_project", %{
+        "project" => %{"name" => "Forbidden Project", "description" => "Should not exist"}
+      })
+
+      refute Repo.get_by(Project, workspace_id: workspace.id, name: "Forbidden Project")
     end
   end
 

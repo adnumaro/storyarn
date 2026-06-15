@@ -476,13 +476,13 @@ defmodule Storyarn.Sheets.ReferenceTracker do
         refs
       end
 
-    # Track sheet references from action_data (instruction assignments, display variable_ref)
+    # Track sheet references from action_data (action assignments, display variable_ref)
     refs = refs ++ extract_zone_action_data_refs(zone)
 
     refs
   end
 
-  defp extract_zone_action_data_refs(%{action_type: "instruction", action_data: action_data} = zone)
+  defp extract_zone_action_data_refs(%{action_type: "action", action_data: action_data} = zone)
        when is_map(action_data) do
     assignments = action_data["assignments"] || []
     project_id = get_project_id_from_scene(zone.scene_id)

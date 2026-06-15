@@ -2,7 +2,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   @moduledoc """
   Full-screen exploration mode player for maps (V2 — Vue + Konva).
 
-  Renders a map with interactive zones and pins. Clicking instruction elements
+  Renders a map with interactive zones and pins. Clicking action elements
   executes variable assignments; clicking target elements navigates to other maps
   or launches flow dialogues overlaid on the dimmed map.
 
@@ -16,8 +16,9 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
   import StoryarnWeb.SceneLive.Helpers.PropsSerializer,
     only: [
+      format_display_value: 1,
       prepare_scene_for_vue: 1,
-      prepare_exploration_data_for_vue: 3
+      prepare_exploration_data_for_vue: 4
     ]
 
   alias Storyarn.Analytics
@@ -160,7 +161,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
           |> assign(:variables, variables)
           |> assign(:zones, zones)
           |> assign(:pins, pins)
-          |> assign(:exploration_data, prepare_exploration_data_for_vue(scene, zones, pins))
+          |> assign(:exploration_data, prepare_exploration_data_for_vue(scene, zones, pins, variables))
           |> assign(:show_zones, false)
           |> assign(:flow_mode, false)
           |> assign(:active_flow, nil)
@@ -321,77 +322,54 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   # ===========================================================================
 
   def handle_event("flow_continue", _params, socket) do
-    %{engine_state: state} = socket.assigns.active_flow
-    nodes = socket.assigns.flow_nodes
-    connections = socket.assigns.flow_connections
-    sheets_map = socket.assigns.flow_sheets_map
-    project_id = socket.assigns.project.id
+    case socket.assigns.active_flow do
+      nil ->
+        {:noreply, socket}
 
-    case PlayerEngine.step_until_interactive(state, nodes, connections, advance_current_dialogue: true) do
-      {:flow_jump, new_state, target_flow_id, _skipped} ->
-        handle_exploration_flow_jump(socket, new_state, target_flow_id)
-
-      {:flow_return, new_state, _skipped} ->
-        handle_exploration_flow_return(socket, new_state)
-
-      {:finished, new_state, _skipped} ->
-        handle_flow_finished(socket, new_state)
-
-      {_status, new_state, _skipped} ->
-        case build_slide_or_advance(new_state, nodes, connections, sheets_map, project_id) do
-          {:finished, final_state} ->
-            handle_flow_finished(socket, final_state)
-
-          {:content, ready_state, _slide} ->
-            {:noreply, update_flow_slide(socket, ready_state)}
-
-          {:flow_jump, jumped_state, target_flow_id} ->
-            handle_exploration_flow_jump(socket, jumped_state, target_flow_id)
-
-          {:flow_return, returned_state} ->
-            handle_exploration_flow_return(socket, returned_state)
-        end
+      %{engine_state: state} ->
+        continue_active_flow(socket, state)
     end
   end
 
   def handle_event("choose_response", %{"id" => response_id}, socket) do
-    %{engine_state: state} = socket.assigns.active_flow
-    nodes = socket.assigns.flow_nodes
-    connections = socket.assigns.flow_connections
+    case socket.assigns.active_flow do
+      nil ->
+        {:noreply, socket}
 
-    case Flows.evaluator_choose_response(state, response_id, connections) do
-      {:ok, new_state} ->
-        case PlayerEngine.step_until_interactive(new_state, nodes, connections) do
-          {:flow_jump, stepped, target_flow_id, _} ->
-            handle_exploration_flow_jump(socket, stepped, target_flow_id)
+      %{engine_state: state} ->
+        nodes = socket.assigns.flow_nodes
+        connections = socket.assigns.flow_connections
 
-          {:flow_return, stepped, _} ->
-            handle_exploration_flow_return(socket, stepped)
+        case Flows.evaluator_choose_response(state, response_id, connections) do
+          {:ok, new_state} ->
+            new_state
+            |> PlayerEngine.step_until_interactive(nodes, connections)
+            |> handle_response_step(socket)
 
-          {:finished, stepped, _} ->
-            handle_flow_finished(socket, stepped)
-
-          {_status, stepped, _} ->
-            {:noreply, update_flow_slide(socket, stepped)}
+          {:error, _state, _reason} ->
+            {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not select that response."))}
         end
-
-      {:error, _state, _reason} ->
-        {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not select that response."))}
     end
   end
 
   def handle_event("go_back", _params, socket) do
-    %{engine_state: state} = socket.assigns.active_flow
+    case socket.assigns.active_flow do
+      nil ->
+        {:noreply, socket}
 
-    case Flows.evaluator_step_back(state) do
-      {:ok, new_state} -> {:noreply, update_flow_slide_after_back(socket, new_state)}
-      {:error, :no_history} -> {:noreply, socket}
+      %{engine_state: state} ->
+        case Flows.evaluator_step_back(state) do
+          {:ok, new_state} -> {:noreply, update_flow_slide_after_back(socket, new_state)}
+          {:error, :no_history} -> {:noreply, socket}
+        end
     end
   end
 
   def handle_event("flow_finish", _params, socket) do
-    state = socket.assigns.active_flow.engine_state
-    handle_flow_finished(socket, state)
+    case socket.assigns.active_flow do
+      nil -> {:noreply, socket}
+      %{engine_state: state} -> handle_flow_finished(socket, state)
+    end
   end
 
   # ===========================================================================
@@ -424,6 +402,54 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         {:noreply, socket}
     end
   end
+
+  defp continue_active_flow(socket, state) do
+    nodes = socket.assigns.flow_nodes
+    connections = socket.assigns.flow_connections
+    sheets_map = socket.assigns.flow_sheets_map
+    project_id = socket.assigns.project.id
+
+    state
+    |> PlayerEngine.step_until_interactive(nodes, connections, advance_current_dialogue: true)
+    |> handle_continue_step(socket, nodes, connections, sheets_map, project_id)
+  end
+
+  defp handle_continue_step(
+         {:flow_jump, new_state, target_flow_id, _skipped},
+         socket,
+         _nodes,
+         _connections,
+         _sheets_map,
+         _project_id
+       ), do: handle_exploration_flow_jump(socket, new_state, target_flow_id)
+
+  defp handle_continue_step({:flow_return, new_state, _skipped}, socket, _nodes, _connections, _sheets_map, _project_id),
+    do: handle_exploration_flow_return(socket, new_state)
+
+  defp handle_continue_step({:finished, new_state, _skipped}, socket, _nodes, _connections, _sheets_map, _project_id),
+    do: handle_flow_finished(socket, new_state)
+
+  defp handle_continue_step({_status, new_state, _skipped}, socket, nodes, connections, sheets_map, project_id) do
+    new_state
+    |> build_slide_or_advance(nodes, connections, sheets_map, project_id)
+    |> handle_built_slide(socket)
+  end
+
+  defp handle_built_slide({:finished, final_state}, socket), do: handle_flow_finished(socket, final_state)
+  defp handle_built_slide({:content, ready_state, _slide}, socket), do: {:noreply, update_flow_slide(socket, ready_state)}
+
+  defp handle_built_slide({:flow_jump, jumped_state, target_flow_id}, socket),
+    do: handle_exploration_flow_jump(socket, jumped_state, target_flow_id)
+
+  defp handle_built_slide({:flow_return, returned_state}, socket),
+    do: handle_exploration_flow_return(socket, returned_state)
+
+  defp handle_response_step({:flow_jump, stepped, target_flow_id, _}, socket),
+    do: handle_exploration_flow_jump(socket, stepped, target_flow_id)
+
+  defp handle_response_step({:flow_return, stepped, _}, socket), do: handle_exploration_flow_return(socket, stepped)
+  defp handle_response_step({:finished, stepped, _}, socket), do: handle_flow_finished(socket, stepped)
+  defp handle_response_step({_status, stepped, _}, socket), do: {:noreply, update_flow_slide(socket, stepped)}
 
   # ===========================================================================
   # Private — Session Restore Helpers
@@ -483,7 +509,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   # Private — Element Click Handling
   # ===========================================================================
 
-  defp handle_element_action(%{"action_type" => "instruction", "action_data" => action_data}, socket) do
+  defp handle_element_action(%{"action_type" => "action", "action_data" => action_data}, socket) do
     assignments = action_data["assignments"] || []
 
     case Flows.execute_instructions(assignments, socket.assigns.variables) do
@@ -955,14 +981,14 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     pins = evaluate_elements(scene_pins, new_variables)
 
     display_vars =
-      Map.new(new_variables, fn {ref, v} -> {ref, Flows.evaluator_format_value(v.value)} end)
+      Map.new(new_variables, fn {ref, v} -> {ref, format_display_value(v.value)} end)
 
     socket
     |> assign(:scene, scene)
     |> assign(:variables, new_variables)
     |> assign(:zones, zones)
     |> assign(:pins, pins)
-    |> assign(:exploration_data, prepare_exploration_data_for_vue(scene, zones, pins))
+    |> assign(:exploration_data, prepare_exploration_data_for_vue(scene, zones, pins, new_variables))
     |> check_ambient_event_triggers(old_variables, new_variables)
     |> push_event("exploration_state_updated", %{
       zones: Enum.map(zones, &%{id: &1.id, visibility: &1.visibility}),
@@ -987,7 +1013,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     Enum.map(zones, fn zone ->
       case zone.shortcut do
         nil -> zone
-        shortcut -> apply_bool_mutations(zone, shortcut, variables, ~w(hidden is_walkable))
+        shortcut -> apply_bool_mutations(zone, shortcut, variables, ~w(hidden))
       end
     end)
   end
@@ -1156,7 +1182,13 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
   defp evaluate_elements(elements, variables) do
     Enum.map(elements, fn el ->
-      visibility = evaluate_visibility(el.condition, el.condition_effect, variables)
+      visibility =
+        if Map.get(el, :hidden, false) do
+          :hide
+        else
+          evaluate_visibility(el.condition, el.condition_effect, variables)
+        end
+
       Map.put(el, :visibility, visibility)
     end)
   end

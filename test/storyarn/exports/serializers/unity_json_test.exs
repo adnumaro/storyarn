@@ -496,7 +496,7 @@ defmodule Storyarn.Exports.Serializers.UnityJSONTest do
       assert_link(false_branch, false_entry)
     end
 
-    test "switch condition exports case and default branches", %{project: project} do
+    test "switch condition exports case branches", %{project: project} do
       sheet = sheet_fixture(project, %{name: "World State"})
 
       block_fixture(sheet, %{
@@ -552,12 +552,10 @@ defmodule Storyarn.Exports.Serializers.UnityJSONTest do
 
       happy_target = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Happy path", "responses" => []}})
       sad_target = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Sad path", "responses" => []}})
-      default_target = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Fallback", "responses" => []}})
 
       connection_fixture(flow, entry, condition)
       connection_fixture(flow, condition, happy_target, %{source_pin: "happy"})
       connection_fixture(flow, condition, sad_target, %{source_pin: "sad"})
-      connection_fixture(flow, condition, default_target, %{source_pin: "default"})
 
       result = export_and_decode(project)
       entries = result |> conversation_by_title("Switch Flow") |> Map.fetch!("dialogueEntries")
@@ -565,28 +563,22 @@ defmodule Storyarn.Exports.Serializers.UnityJSONTest do
       condition_entry = entry_by_storyarn_node_id(entries, condition.id)
       happy_branch = entry_by_condition_branch_pin(entries, "happy")
       sad_branch = entry_by_condition_branch_pin(entries, "sad")
-      default_branch = entry_by_condition_branch_pin(entries, "default")
       happy_entry = entry_by_storyarn_node_id(entries, happy_target.id)
       sad_entry = entry_by_storyarn_node_id(entries, sad_target.id)
-      default_entry = entry_by_storyarn_node_id(entries, default_target.id)
 
       happy_condition = ~s(Variable["#{sheet.shortcut}.mood"] == "happy")
       sad_condition = ~s(Variable["#{sheet.shortcut}.mood"] == "sad")
 
       assert happy_branch["conditionsString"] == happy_condition
       assert sad_branch["conditionsString"] == sad_condition
-      assert default_branch["conditionsString"] == "not ((#{happy_condition}) or (#{sad_condition}))"
 
       assert field_value(happy_branch, "Storyarn Condition Branch Label") == "Happy"
       assert field_value(sad_branch, "Storyarn Condition Branch Label") == "Sad"
-      assert field_value(default_branch, "Storyarn Condition Branch Label") == "Default"
 
       assert_link(condition_entry, happy_branch)
       assert_link(condition_entry, sad_branch)
-      assert_link(condition_entry, default_branch)
       assert_link(happy_branch, happy_entry)
       assert_link(sad_branch, sad_entry)
-      assert_link(default_branch, default_entry)
     end
 
     test "instruction node exports Lua userScript", %{project: project} do

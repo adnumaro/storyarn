@@ -256,7 +256,6 @@ defmodule Storyarn.Exports.Serializers.GodotDialogic do
 
   defp render_switch_condition(node, branches, ctx, depth) do
     branches
-    |> default_branch_last()
     |> Enum.with_index()
     |> Enum.flat_map(fn {{pin, _label, _index, body}, rendered_index} ->
       render_switch_branch(node, pin, rendered_index, depth) ++
@@ -264,18 +263,10 @@ defmodule Storyarn.Exports.Serializers.GodotDialogic do
     end)
   end
 
-  defp render_switch_branch(_node, "default", 0, depth), do: ["#{indent(depth)}if true:"]
-  defp render_switch_branch(_node, "default", _index, depth), do: ["#{indent(depth)}else:"]
-
   defp render_switch_branch(node, pin, index, depth) do
     keyword = if index == 0, do: "if", else: "elif"
     expr = switch_branch_condition(node, pin) || "true"
     ["#{indent(depth)}#{keyword} #{expr}:"]
-  end
-
-  defp default_branch_last(branches) do
-    {defaults, cases} = Enum.split_with(branches, fn {pin, _label, _index, _body} -> pin == "default" end)
-    cases ++ defaults
   end
 
   # ---------------------------------------------------------------------------

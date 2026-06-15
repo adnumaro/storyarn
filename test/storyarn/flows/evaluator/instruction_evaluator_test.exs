@@ -172,20 +172,6 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.InstructionEvaluatorTest do
       assert final_state.current_node_id == "next_1"
     end
 
-    test "does not follow legacy default connections" do
-      state = make_state()
-      node = make_node(%{"assignments" => []})
-
-      connections = [
-        %{source_node_id: "inst_1", source_pin: "default", target_node_id: "next_1"}
-      ]
-
-      result = InstructionEvaluator.evaluate(node, state, connections)
-
-      assert {:finished, final_state} = result
-      assert final_state.status == :finished
-    end
-
     test "returns :finished when no output connection" do
       state = make_state()
       node = make_node(%{"assignments" => []})

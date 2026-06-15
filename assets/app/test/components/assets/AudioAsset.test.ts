@@ -25,10 +25,34 @@ const ASSETS = [
   { id: 2, filename: "beta.mp3", url: "/b.mp3" },
 ];
 
+const triggerSlotStub = {
+  name: "AssetPicker",
+  template: '<div data-test="asset-picker-stub"><slot name="trigger" /></div>',
+};
+
+const buttonStub = {
+  name: "Button",
+  props: ["disabled"],
+  template: "<button :disabled='disabled'><slot /></button>",
+};
+
 function mountIt(props: Record<string, unknown> = {}) {
   return mount(AudioAsset, {
     props: { audioAssets: ASSETS, canEdit: true, label: "Music", ...props },
     shallow: true,
+  });
+}
+
+function mountWithTrigger(props: Record<string, unknown> = {}) {
+  return mount(AudioAsset, {
+    props: { audioAssets: ASSETS, canEdit: true, label: "Music", ...props },
+    global: {
+      stubs: {
+        AssetPicker: triggerSlotStub,
+        Button: buttonStub,
+        Slider: true,
+      },
+    },
   });
 }
 
@@ -77,5 +101,25 @@ describe("AudioAsset", () => {
     // The slider receives the mirrored value via :model-value="[volumeValue]".
     const slider = w.findComponent({ name: "Slider" });
     expect(slider.props("modelValue")).toEqual([80]);
+  });
+
+  it("allows long selected filenames to truncate inside the picker trigger", () => {
+    const longFilename =
+      "atmospheric_factory_ambience_take_07_with_many_descriptive_words_and_suffix.mp3";
+    const w = mountWithTrigger({
+      assetId: 99,
+      audioAssets: [{ id: 99, filename: longFilename, url: "/long.mp3" }],
+    });
+
+    const trigger = w.find('[data-test="asset-picker-stub"] button');
+    expect(trigger.classes()).toEqual(
+      expect.arrayContaining(["w-full", "min-w-0", "shrink", "overflow-hidden"]),
+    );
+
+    const filename = trigger.find("span");
+    expect(filename.text()).toBe(longFilename);
+    expect(filename.classes()).toEqual(
+      expect.arrayContaining(["min-w-0", "flex-1", "truncate"]),
+    );
   });
 });

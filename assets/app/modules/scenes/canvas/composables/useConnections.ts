@@ -1,4 +1,5 @@
 import { computed, type ComputedRef, type Ref } from "vue";
+import type { SceneRouteConnection, SceneRouteWaypoint } from "@modules/scenes/types/routes";
 import { PIN_SIZES } from "../lib/pin-icons";
 import { useHiddenLayerIds, type LayerData } from "./useLayerVisibility";
 
@@ -21,24 +22,6 @@ interface PixelPoint {
   y: number;
 }
 
-interface Waypoint {
-  x: number;
-  y: number;
-}
-
-interface ConnectionData {
-  id: number | string;
-  fromPinId: number | string;
-  toPinId: number | string;
-  waypoints: Waypoint[] | null;
-  color: string | null;
-  lineWidth: number | null;
-  lineStyle: string | null;
-  label: string | null;
-  showLabel: boolean;
-  bidirectional: boolean;
-}
-
 interface PinData {
   id: number | string;
   positionX: number;
@@ -49,7 +32,7 @@ interface PinData {
 
 interface WaypointEditOverride {
   connectionId: number | string;
-  waypoints: Waypoint[];
+  waypoints: SceneRouteWaypoint[];
 }
 
 interface LabelConfig {
@@ -72,6 +55,7 @@ interface LabelConfig {
 
 export interface ConnectionConfig {
   id: number | string;
+  connectedLayerIds: (number | string)[];
   points: number[];
   stroke: string;
   fill: string;
@@ -91,7 +75,7 @@ export interface ConnectionConfig {
 type MaybeComputedRef<T> = Ref<T> | ComputedRef<T>;
 
 interface UseConnectionsOpts {
-  connections: MaybeComputedRef<ConnectionData[]>;
+  connections: MaybeComputedRef<SceneRouteConnection[]>;
   pins: MaybeComputedRef<PinData[]>;
   layers: MaybeComputedRef<LayerData[]>;
   percentToPixel: (pctX: number, pctY: number) => PixelPoint;
@@ -103,7 +87,7 @@ interface UseConnectionsOpts {
 }
 
 /** Build label config at the midpoint of a pixel path, or null */
-function buildLabelConfig(conn: ConnectionData, pixelPath: PixelPoint[]): LabelConfig | null {
+function buildLabelConfig(conn: SceneRouteConnection, pixelPath: PixelPoint[]): LabelConfig | null {
   if (!conn.showLabel || !conn.label) return null;
   const mid = pathMidpointAndAngle(pixelPath);
   if (!mid) return null;
@@ -128,9 +112,10 @@ function buildLabelConfig(conn: ConnectionData, pixelPath: PixelPoint[]): LabelC
 
 /** Build a single ConnectionConfig from connection data and resolved paths */
 function buildConnectionConfig(
-  conn: ConnectionData,
+  conn: SceneRouteConnection,
   points: number[],
   pixelPath: PixelPoint[],
+  connectedLayerIds: (number | string)[],
   isSelected: boolean,
   listening: boolean,
 ): ConnectionConfig {
@@ -138,6 +123,7 @@ function buildConnectionConfig(
   const strokeWidth = conn.lineWidth || DEFAULT_WIDTH;
   return {
     id: conn.id,
+    connectedLayerIds,
     points,
     stroke: color,
     fill: color,
@@ -191,6 +177,14 @@ export function useConnections({
     return map;
   });
 
+  const pinLayerIds = computed<Record<string | number, number | string | null>>(() => {
+    const map: Record<string | number, number | string | null> = {};
+    for (const pin of pins.value) {
+      map[pin.id] = pin.layerId;
+    }
+    return map;
+  });
+
   const hiddenLayerIds = useHiddenLayerIds(layers);
 
   // Pin visibility by id (true if pin's layer is visible or pin has no layer)
@@ -202,36 +196,43 @@ export function useConnections({
     return vis;
   });
 
-  function isConnectionVisible(conn: ConnectionData): boolean {
-    const fromPos = pinPositions.value[conn.fromPinId];
-    const toPos = pinPositions.value[conn.toPinId];
-    if (!fromPos || !toPos) return false;
+  function isConnectionVisible(conn: SceneRouteConnection): boolean {
+    if (buildRawPath(conn).length < 2) return false;
 
-    const fromVis = pinVisible.value[conn.fromPinId];
-    const toVis = pinVisible.value[conn.toPinId];
+    const fromVis = conn.fromPinId === null || pinVisible.value[conn.fromPinId];
+    const toVis = conn.toPinId === null || pinVisible.value[conn.toPinId];
     return fromVis || toVis;
   }
 
-  function resolveWaypoints(conn: ConnectionData): Waypoint[] {
+  function resolveWaypoints(conn: SceneRouteConnection): SceneRouteWaypoint[] {
     const override = waypointEditOverride?.value;
     if (override && override.connectionId === conn.id) return override.waypoints;
     return conn.waypoints || [];
   }
 
-  function buildPixelPath(
-    conn: ConnectionData,
-    fromPos: PixelPoint,
-    toPos: PixelPoint,
-  ): PixelPoint[] {
+  function buildRawPath(conn: SceneRouteConnection): PixelPoint[] {
+    const rawPath: PixelPoint[] = [];
     const waypoints = resolveWaypoints(conn);
-    const rawPath: PixelPoint[] = [fromPos];
+
+    if (conn.fromPinId !== null && pinPositions.value[conn.fromPinId]) {
+      rawPath.push(pinPositions.value[conn.fromPinId]);
+    }
+
     for (const wp of waypoints) {
       rawPath.push(percentToPixel(wp.x, wp.y));
     }
-    rawPath.push(toPos);
 
-    const fromRadius = pinRadii.value[conn.fromPinId] || 0;
-    const toRadius = pinRadii.value[conn.toPinId] || 0;
+    if (conn.toPinId !== null && pinPositions.value[conn.toPinId]) {
+      rawPath.push(pinPositions.value[conn.toPinId]);
+    }
+
+    return rawPath;
+  }
+
+  function buildPixelPath(conn: SceneRouteConnection): PixelPoint[] {
+    const rawPath = buildRawPath(conn);
+    const fromRadius = conn.fromPinId !== null ? pinRadii.value[conn.fromPinId] || 0 : 0;
+    const toRadius = conn.toPinId !== null ? pinRadii.value[conn.toPinId] || 0 : 0;
     return offsetEndpoints(rawPath, fromRadius, toRadius);
   }
 
@@ -243,20 +244,43 @@ export function useConnections({
     return points;
   }
 
+  function connectedLayerIds(conn: SceneRouteConnection): (number | string)[] {
+    const ids: (number | string)[] = [];
+    const fromLayerId = conn.fromPinId !== null ? pinLayerIds.value[conn.fromPinId] : null;
+    const toLayerId = conn.toPinId !== null ? pinLayerIds.value[conn.toPinId] : null;
+
+    if (fromLayerId != null) {
+      ids.push(fromLayerId);
+    }
+
+    if (toLayerId != null && !ids.some((id) => String(id) === String(toLayerId))) {
+      ids.push(toLayerId);
+    }
+
+    return ids;
+  }
+
   const connectionConfigs = computed<ConnectionConfig[]>(() => {
     const result: ConnectionConfig[] = [];
 
     for (const conn of connections.value) {
       if (!isConnectionVisible(conn)) continue;
 
-      const fromPos = pinPositions.value[conn.fromPinId];
-      const toPos = pinPositions.value[conn.toPinId];
-      const pixelPath = buildPixelPath(conn, fromPos, toPos);
+      const pixelPath = buildPixelPath(conn);
+      if (pixelPath.length < 2) continue;
+
       const points = flattenPath(pixelPath);
 
       const isSelected = selectedType?.value === "connection" && selectedId?.value === conn.id;
       result.push(
-        buildConnectionConfig(conn, points, pixelPath, isSelected, isSelectMode?.value ?? false),
+        buildConnectionConfig(
+          conn,
+          points,
+          pixelPath,
+          connectedLayerIds(conn),
+          isSelected,
+          isSelectMode?.value ?? false,
+        ),
       );
     }
 

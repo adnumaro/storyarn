@@ -23,6 +23,7 @@ interface PinData {
 interface UseConnectionDrawingOpts {
   stageRef: Ref<{ getStage: () => { getPointerPosition: () => PixelPoint | null } | null } | null>;
   stageConfig: StageConfig;
+  pixelToPercent: (pixelX: number, pixelY: number) => PixelPoint;
   percentToPixel: (pctX: number, pctY: number) => PixelPoint;
   activeTool: Ref<string>;
   editMode: Ref<boolean>;
@@ -37,13 +38,14 @@ const PREVIEW_STROKE = "#6366f1";
 /**
  * Composable for drawing connections between pins.
  *
- * State machine: idle -> source_selected -> (click target pin) -> create_connection.
+ * State machine: idle -> source_selected -> (click target pin or map point) -> create_connection.
  * While source is selected, a dashed preview line follows the cursor.
- * Escape or empty canvas click cancels.
+ * Escape cancels.
  */
 export function useConnectionDrawing({
   stageRef,
   stageConfig,
+  pixelToPercent,
   percentToPixel,
   activeTool,
   editMode,
@@ -53,11 +55,14 @@ export function useConnectionDrawing({
   const live = useLive();
 
   const sourcePinId = ref<number | string | null>(null);
+  const sourcePoint = ref<PixelPoint | null>(null);
   const cursorPos = ref<PixelPoint | null>(null);
   const hoveredPinId = ref<number | string | null>(null);
 
   const isDrawingConnection = computed(
-    () => activeTool.value === "connector" && sourcePinId.value !== null,
+    () =>
+      activeTool.value === "connector" &&
+      (sourcePinId.value !== null || sourcePoint.value !== null),
   );
 
   /**
@@ -78,7 +83,7 @@ export function useConnectionDrawing({
       e.cancelBubble = true;
     }
 
-    if (sourcePinId.value === null) {
+    if (sourcePinId.value === null && sourcePoint.value === null) {
       // First click: select source
       sourcePinId.value = pinId;
       return true;
@@ -89,42 +94,100 @@ export function useConnectionDrawing({
       return true;
     } // can't connect to self
 
-    live.pushEvent("create_connection", {
-      from_pin_id: String(sourcePinId.value),
-      to_pin_id: String(pinId),
-    });
+    if (sourcePinId.value !== null) {
+      live.pushEvent("create_connection", {
+        from_pin_id: String(sourcePinId.value),
+        to_pin_id: String(pinId),
+      });
+    } else if (sourcePoint.value) {
+      live.pushEvent("create_connection", {
+        to_pin_id: String(pinId),
+        waypoints: [routePoint(sourcePoint.value)],
+      });
+    }
 
-    sourcePinId.value = null;
-    cursorPos.value = null;
-    hoveredPinId.value = null;
+    cancel();
     return true;
   }
 
   /**
-   * Handle stage click while drawing -- cancels on empty canvas.
+   * Handle empty-canvas clicks while drawing routes with free points.
    * Returns true if handled (consumed the click).
    */
   function handleStageClickForConnection(e: KonvaEventObject<MouseEvent>): boolean {
     if (activeTool.value !== "connector") {
       return false;
     }
-    if (!sourcePinId.value) {
+    if (!editMode.value || !canEdit.value) {
+      return false;
+    }
+    const stage = e.target.getStage();
+    if (e.target !== stage) {
       return false;
     }
 
-    // Click on empty canvas = cancel
-    const stage = e.target.getStage();
-    if (e.target === stage) {
-      cancel();
+    const point = pointerPercentPoint();
+    if (!point) {
+      return false;
+    }
+
+    if (!hasSource()) {
+      sourcePoint.value = point;
       return true;
     }
-    return false;
+
+    createRouteToFreePoint(point);
+    cancel();
+    return true;
+  }
+
+  function hasSource(): boolean {
+    return sourcePinId.value !== null || sourcePoint.value !== null;
+  }
+
+  function createRouteToFreePoint(point: PixelPoint): void {
+    if (sourcePinId.value !== null) {
+      live.pushEvent("create_connection", {
+        from_pin_id: String(sourcePinId.value),
+        waypoints: [routePoint(point)],
+      });
+      return;
+    }
+
+    if (sourcePoint.value) {
+      live.pushEvent("create_connection", {
+        waypoints: [routePoint(sourcePoint.value), routePoint(point)],
+      });
+    }
   }
 
   function cancel(): void {
     sourcePinId.value = null;
+    sourcePoint.value = null;
     cursorPos.value = null;
     hoveredPinId.value = null;
+  }
+
+  function routePoint(point: PixelPoint): Record<string, number | boolean> {
+    return {
+      x: Math.round(point.x * 100) / 100,
+      y: Math.round(point.y * 100) / 100,
+      stop: true,
+    };
+  }
+
+  function pointerPercentPoint(): PixelPoint | null {
+    const stage = stageRef.value?.getStage?.();
+    if (!stage) {
+      return null;
+    }
+    const pointer = stage.getPointerPosition();
+    if (!pointer) {
+      return null;
+    }
+    const worldX = (pointer.x - stageConfig.x) / stageConfig.scaleX;
+    const worldY = (pointer.y - stageConfig.y) / stageConfig.scaleY;
+    return pixelToPercent(worldX, worldY);
   }
 
   // Track cursor + hovered pin via proximity (avoids per-pin mouseenter/mouseleave events)
@@ -176,17 +239,24 @@ export function useConnectionDrawing({
   onMounted(() => window.addEventListener("keydown", onKeyDown));
   onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
 
-  // Preview line from source pin center to cursor
+  // Preview line from source point to cursor
   const previewLine = computed<number[] | null>(() => {
     if (!isDrawingConnection.value || !cursorPos.value) {
       return null;
     }
-    const sourcePin = pins.value.find((p) => p.id === sourcePinId.value);
-    if (!sourcePin) {
-      return null;
-    }
-    const from = percentToPixel(sourcePin.positionX, sourcePin.positionY);
-    return [from.x, from.y, cursorPos.value.x, cursorPos.value.y];
+
+    const from =
+      sourcePinId.value !== null
+        ? pins.value.find((p) => p.id === sourcePinId.value)
+        : sourcePoint.value;
+
+    if (!from) return null;
+
+    const start =
+      sourcePinId.value !== null
+        ? percentToPixel((from as PinData).positionX, (from as PinData).positionY)
+        : percentToPixel((from as PixelPoint).x, (from as PixelPoint).y);
+    return [start.x, start.y, cursorPos.value.x, cursorPos.value.y];
   });
 
   return {

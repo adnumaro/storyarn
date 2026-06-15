@@ -7,12 +7,15 @@ import AmbientFlowsSection from "./settings/AmbientFlowsSection.vue";
 import BackgroundSection from "./settings/BackgroundSection.vue";
 import DimensionsSection from "./settings/DimensionsSection.vue";
 import DisplayModeSection from "./settings/DisplayModeSection.vue";
+import FogDesignSection from "./settings/FogDesignSection.vue";
 import ScaleSection from "./settings/ScaleSection.vue";
 
 interface SceneSettings {
   backgroundUrl: string | null;
   explorationDisplayMode: string;
   defaultZoom: number;
+  fogColor: string | null;
+  fogOpacity: number | null;
   scaleValue: number;
   scaleUnit: string;
   width: number;
@@ -84,6 +87,11 @@ function close(): void {
       />
       <ScaleSection :scale-value="scene.scaleValue" :scale-unit="scene.scaleUnit" />
       <DimensionsSection :width="scene.width" :height="scene.height" />
+      <FogDesignSection
+        :fog-color="scene.fogColor"
+        :fog-opacity="scene.fogOpacity"
+        :can-edit="canEdit"
+      />
       <AmbientFlowsSection
         :ambient-flows="ambientFlows"
         :project-flows="projectFlows"

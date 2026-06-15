@@ -182,35 +182,30 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneHelpers do
   # Action type helpers (shared by floating toolbar + element panel)
   # ---------------------------------------------------------------------------
 
-  def action_type_icon("none"), do: "compass"
+  def action_type_icon("action"), do: "zap"
   def action_type_icon("walkable"), do: "footprints"
-  def action_type_icon("instruction"), do: "zap"
   def action_type_icon("display"), do: "bar-chart-3"
   def action_type_icon("collection"), do: "package-open"
-  def action_type_icon(_), do: "compass"
+  def action_type_icon(_), do: "zap"
 
-  def action_type_label("none"), do: dgettext("scenes", "Navigation")
+  def action_type_label("action"), do: dgettext("scenes", "Action")
   def action_type_label("walkable"), do: dgettext("scenes", "Walkable Area")
-  def action_type_label("instruction"), do: dgettext("scenes", "Action")
   def action_type_label("display"), do: dgettext("scenes", "Display")
   def action_type_label("collection"), do: dgettext("scenes", "Collection")
-  def action_type_label(_), do: dgettext("scenes", "Navigation")
+  def action_type_label(_), do: dgettext("scenes", "Action")
 
-  def action_type_description("none"),
-    do: dgettext("scenes", "Navigate to another scene or launch a flow as overlay. Condition controls zone visibility")
+  def action_type_description("action"),
+    do: dgettext("scenes", "Runs optional variable instructions and can navigate to another scene or launch a flow")
 
   def action_type_description("walkable"),
     do: dgettext("scenes", "Defines traversable ground for character movement in exploration mode")
-
-  def action_type_description("instruction"),
-    do: dgettext("scenes", "Like Navigation, but also sets variables on click before navigating")
 
   def action_type_description("display"), do: dgettext("scenes", "Shows a variable value on the map")
 
   def action_type_description("collection"),
     do: dgettext("scenes", "Opens a collection modal with items the player can take")
 
-  def action_type_description(_), do: action_type_description("none")
+  def action_type_description(_), do: action_type_description("action")
 
   # ---------------------------------------------------------------------------
   # Element loading

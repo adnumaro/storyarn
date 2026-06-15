@@ -38,12 +38,13 @@ defmodule StoryarnWeb.DocsLive.Show do
         assign(socket, page_title: dgettext("docs", "Documentation"), guide: nil, prev: nil, next: nil)
 
       guide ->
-        push_navigate(socket, to: ~p"/docs/#{guide.category}/#{guide.slug}")
+        push_navigate(socket, to: "/docs/#{guide.url_path}")
     end
   end
 
-  defp apply_action(socket, :show, %{"category" => category, "slug" => slug}) do
+  defp apply_action(socket, :show, %{"category" => category, "path" => path}) do
     locale = socket.assigns.locale
+    slug = Enum.join(path, "/")
 
     case Docs.get_guide(category, slug, locale) do
       nil ->

@@ -1,5 +1,5 @@
 defmodule Storyarn.Assets.Storage.LocalTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias Storyarn.Assets.Storage.Local
 

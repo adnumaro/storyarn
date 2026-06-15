@@ -8,6 +8,8 @@ import SheetShowPanels from "@modules/sheets/components/panels/SheetShowPanels.v
 import SheetTabs from "@modules/sheets/components/panels/tabs/SheetTabs.vue";
 import type { Sheet } from "@modules/sheets/types";
 
+type ServerPayload = any;
+
 interface SheetSurfaceTabs {
   currentTab: string;
   canEdit: boolean;
@@ -15,13 +17,13 @@ interface SheetSurfaceTabs {
 }
 
 interface SheetSurfaceContent {
-  blocks: unknown[];
-  inheritedGroups: unknown[];
+  blocks: ServerPayload[];
+  inheritedGroups: ServerPayload[];
   workspaceSlug: string;
   projectSlug: string;
   canEdit: boolean;
-  formulaEditing: unknown;
-  blockLocks: Record<string, unknown>;
+  formulaEditing: ServerPayload;
+  blockLocks: Record<string, ServerPayload>;
   currentUserId: number | null;
 }
 
@@ -33,9 +35,9 @@ interface SheetSurface {
 interface SheetPanelsProps {
   currentTab: string;
   compact: boolean;
-  references: unknown | null;
-  audio: unknown | null;
-  history: unknown | null;
+  references: ServerPayload | null;
+  audio: ServerPayload | null;
+  history: ServerPayload | null;
 }
 
 const {
@@ -55,16 +57,16 @@ const {
 const live = useLiveVue();
 
 // Injected LiveVue boundaries stay mounted while LiveView diffs replace props.
-const sheet = computed(() => (live.vue.props.sheet as Sheet | null | undefined) ?? initialSheet);
-const canEdit = computed(() => (live.vue.props.canEdit as boolean | undefined) ?? initialCanEdit);
+const sheet = computed(() => (live.vue?.props?.sheet as Sheet | null | undefined) ?? initialSheet);
+const canEdit = computed(() => (live.vue?.props?.canEdit as boolean | undefined) ?? initialCanEdit);
 const sourceShortcut = computed(
-  () => (live.vue.props.sourceShortcut as string | null | undefined) ?? initialSourceShortcut,
+  () => (live.vue?.props?.sourceShortcut as string | null | undefined) ?? initialSourceShortcut,
 );
 const surface = computed(
-  () => (live.vue.props.surface as SheetSurface | undefined) ?? initialSurface,
+  () => (live.vue?.props?.surface as SheetSurface | undefined) ?? initialSurface,
 );
 const panels = computed(
-  () => (live.vue.props.panels as SheetPanelsProps | null | undefined) ?? initialPanels,
+  () => (live.vue?.props?.panels as SheetPanelsProps | null | undefined) ?? initialPanels,
 );
 </script>
 

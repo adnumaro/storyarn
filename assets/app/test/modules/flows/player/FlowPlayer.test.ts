@@ -150,8 +150,36 @@ describe("FlowPlayer", () => {
       const images = w.findAll(".flow-player-stage-layer-img");
       expect(images[0]!.attributes("src")).toBe("/outer.png");
       expect(images[0]!.attributes("style")).toContain("object-fit: cover");
+      expect(images[0]!.attributes("style")).toContain("object-position: center center");
       expect(images[1]!.attributes("src")).toBe("/inner.png");
       expect(images[1]!.attributes("style")).toContain("object-fit: contain");
+      expect(images[1]!.attributes("style")).toContain("object-position: center bottom");
+    });
+
+    it("renders visual layers inside the stage above the dialogue overlay", () => {
+      const w = mountPlayer({
+        visualLayers: [
+          {
+            id: 1,
+            kind: "character",
+            url: "/character.png",
+            x: 0.5,
+            y: 1,
+            width: 0.42,
+            height: 0.9,
+            anchor_x: 0.5,
+            anchor_y: 1,
+          },
+        ],
+      });
+
+      const stage = w.find(".player-stage");
+      expect(stage.exists()).toBe(true);
+      expect(stage.find(".flow-player-stage-layers").exists()).toBe(true);
+
+      const mainChildren = w.find(".player-main").element.children;
+      expect(mainChildren[0]).toBe(stage.element);
+      expect(mainChildren[1]).toBe(w.find(".player-dialogue-overlay").element);
     });
 
     it("hides visual layers when there are no layer URLs", () => {

@@ -9,6 +9,14 @@ description: "Set up your workspace and create your first project in under 5 min
 
 A {accent}workspace{/accent} is your team's home base. It holds all your projects and controls who has access to them.
 
+This Quick Start builds one small, complete project path:
+
+1. Create a workspace and project.
+2. Create a character sheet with variables.
+3. Use those variables in a branching flow.
+4. Test the flow with the Story Player and Debug Mode.
+5. Export the project so it can move into your production pipeline.
+
 ## Create your workspace
 
 After signing in, you will be redirected to your default workspace. If you don't have one yet, you will land on the **Create a new workspace** page.
@@ -24,7 +32,7 @@ Fill in the {accent}workspace name{/accent} and an optional description. A URL s
 
 From the workspace dashboard, click the **New Project** button in the top-right toolbar. A modal appears with two fields: **Project Name** and an optional **Description**.
 
-Each project is fully isolated with its own sheets, flows, scenes, and screenplays. One workspace can hold as many projects as you need.
+Each project is fully isolated with its own sheets, flows, scenes, localization, and assets. One workspace can hold as many projects as you need.
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
@@ -32,6 +40,8 @@ Each project is fully isolated with its own sheets, flows, scenes, and screenpla
 </div>
 
 After creation, you are taken directly into the project's sheet editor.
+
+For this tutorial, stay in the new project and continue with [Your First Sheet](/docs/quick-start/first-sheet). You will create the character data that the flow reads in the next step.
 
 ## Invite your team
 
