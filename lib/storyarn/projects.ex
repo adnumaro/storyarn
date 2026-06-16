@@ -102,6 +102,12 @@ defmodule Storyarn.Projects do
   defdelegate change_project(project, attrs \\ %{}), to: ProjectCrud
 
   @doc """
+  Returns a changeset for validating new project form input.
+  """
+  @spec change_new_project(project(), attrs()) :: changeset()
+  defdelegate change_new_project(project, attrs \\ %{}), to: ProjectCrud
+
+  @doc """
   Updates a project.
   """
   @spec update_project(project(), attrs()) :: {:ok, project()} | {:error, changeset()}

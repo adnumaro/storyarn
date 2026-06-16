@@ -58,7 +58,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   defp do_recover(workspace_id, snapshot_data, user_id, name) do
     now = TimeHelpers.now()
 
-    with {:ok, project} <- create_project(workspace_id, user_id, name),
+    with {:ok, project} <- create_project(workspace_id, user_id, name, snapshot_data),
          {:ok, _membership} <- create_owner_membership(project, user_id),
          {:ok, sheet_maps} <- recover_sheets(project.id, snapshot_data),
          {:ok, scene_maps} <- recover_scenes(project.id, snapshot_data, sheet_maps.sheet),
@@ -78,17 +78,38 @@ defmodule Storyarn.Versioning.ProjectRecovery do
 
   # ========== Project Creation ==========
 
-  defp create_project(workspace_id, user_id, name) do
+  defp create_project(workspace_id, user_id, name, snapshot_data) do
     slug = NameNormalizer.generate_unique_slug(Project, [workspace_id: workspace_id], name)
 
     %Project{owner_id: user_id}
-    |> Project.create_changeset(%{
-      name: name,
-      slug: slug,
-      workspace_id: workspace_id
-    })
+    |> Project.create_changeset(recovered_project_attrs(workspace_id, name, slug, snapshot_data))
     |> Repo.insert()
   end
+
+  defp recovered_project_attrs(workspace_id, name, slug, snapshot_data) do
+    snapshot_project = snapshot_data["project"] || %{}
+    project_type = snapshot_project["project_type"] || "game"
+
+    %{
+      name: name,
+      slug: slug,
+      workspace_id: workspace_id,
+      project_type: project_type,
+      project_subtype: recovered_project_subtype(project_type, snapshot_project),
+      project_type_other: recovered_project_type_other(project_type, snapshot_project)
+    }
+  end
+
+  defp recovered_project_subtype("game", snapshot_project), do: snapshot_project["project_subtype"] || "rpg"
+  defp recovered_project_subtype("film", snapshot_project), do: snapshot_project["project_subtype"] || "feature_film"
+  defp recovered_project_subtype("novel", snapshot_project), do: snapshot_project["project_subtype"] || "fantasy"
+  defp recovered_project_subtype(_project_type, snapshot_project), do: snapshot_project["project_subtype"]
+
+  defp recovered_project_type_other("other", snapshot_project) do
+    snapshot_project["project_type_other"] || "Recovered project"
+  end
+
+  defp recovered_project_type_other(_project_type, snapshot_project), do: snapshot_project["project_type_other"]
 
   defp create_owner_membership(project, user_id) do
     %ProjectMembership{}

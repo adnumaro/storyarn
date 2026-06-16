@@ -10,6 +10,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Localization
+  alias Storyarn.Projects.Project
   alias Storyarn.Repo
 
   defp settings_path(project, section \\ nil) do
@@ -39,7 +40,10 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
       vue = get_general_vue(view)
       assert vue.component == "live/project/settings/ProjectSettingsGeneral"
-      assert vue.props["project-name"] == "My Project"
+      assert vue.props["project-details"]["name"] == "My Project"
+      assert vue.props["project-details"]["type"] == "game"
+      assert vue.props["project-details"]["subtype"] == "rpg"
+      assert vue.props["project-metrics-options"]["project_types"] == ["game", "film", "novel", "other"]
       assert vue.props["source-language"]["localeCode"] == "en"
     end
 
@@ -66,7 +70,34 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       assert html =~ "updated successfully"
 
       vue = get_general_vue(view)
-      assert vue.props["project-name"] == "New Name"
+      assert vue.props["project-details"]["name"] == "New Name"
+    end
+
+    test "updates project type metadata via update_project event", %{conn: conn, user: user} do
+      project = user |> project_fixture(%{name: "Typed Project"}) |> Repo.preload(:workspace)
+
+      {:ok, view, _html} = live(conn, settings_path(project))
+
+      html =
+        render_click(view, "update_project", %{
+          "project" => %{
+            "name" => "Typed Project",
+            "description" => project.description || "",
+            "project_type" => "film",
+            "project_subtype" => "short_film",
+            "project_type_other" => ""
+          }
+        })
+
+      assert html =~ "updated successfully"
+
+      project = Repo.get!(Project, project.id)
+      assert project.project_type == "film"
+      assert project.project_subtype == "short_film"
+
+      vue = get_general_vue(view)
+      assert vue.props["project-details"]["type"] == "film"
+      assert vue.props["project-details"]["subtype"] == "short_film"
     end
 
     test "updates the project source language via change_source_language event", %{

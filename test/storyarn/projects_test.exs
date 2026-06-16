@@ -76,10 +76,19 @@ defmodule Storyarn.ProjectsTest do
       scope = user_scope_fixture(user)
       workspace = workspace_fixture(user)
 
-      attrs = %{name: "Test Project", description: "A test", workspace_id: workspace.id}
+      attrs = %{
+        name: "Test Project",
+        description: "A test",
+        workspace_id: workspace.id,
+        project_type: "game",
+        project_subtype: "rpg"
+      }
+
       assert {:ok, project} = Projects.create_project(scope, attrs)
       assert project.name == "Test Project"
       assert project.description == "A test"
+      assert project.project_type == "game"
+      assert project.project_subtype == "rpg"
       assert project.owner_id == user.id
       assert project.slug
 
@@ -97,6 +106,36 @@ defmodule Storyarn.ProjectsTest do
                Projects.create_project(scope, %{name: "", workspace_id: workspace.id})
 
       assert "can't be blank" in errors_on(changeset).name
+    end
+
+    test "create_project/2 requires subtype for known project types" do
+      user = user_fixture()
+      scope = user_scope_fixture(user)
+      workspace = workspace_fixture(user)
+
+      assert {:error, changeset} =
+               Projects.create_project(scope, %{
+                 name: "Typed Project",
+                 workspace_id: workspace.id,
+                 project_type: "game"
+               })
+
+      assert "can't be blank" in errors_on(changeset).project_subtype
+    end
+
+    test "create_project/2 requires free text for other project type" do
+      user = user_fixture()
+      scope = user_scope_fixture(user)
+      workspace = workspace_fixture(user)
+
+      assert {:error, changeset} =
+               Projects.create_project(scope, %{
+                 name: "Other Project",
+                 workspace_id: workspace.id,
+                 project_type: "other"
+               })
+
+      assert "can't be blank" in errors_on(changeset).project_type_other
     end
 
     test "create_project/2 rejects workspace the user cannot access" do
@@ -134,7 +173,12 @@ defmodule Storyarn.ProjectsTest do
       assert {:ok, project} =
                member
                |> user_scope_fixture()
-               |> Projects.create_project(%{name: "Member Project", workspace_id: workspace.id})
+               |> Projects.create_project(%{
+                 name: "Member Project",
+                 workspace_id: workspace.id,
+                 project_type: "game",
+                 project_subtype: "rpg"
+               })
 
       assert project.workspace_id == workspace.id
       assert project.owner_id == member.id

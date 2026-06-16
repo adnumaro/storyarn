@@ -263,7 +263,12 @@ defmodule StoryarnWeb.WorkspaceLive.ShowTest do
       {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
 
       render_hook(view, "create_project", %{
-        "project" => %{"name" => "New Base Project", "description" => "Starts on base"}
+        "project" => %{
+          "name" => "New Base Project",
+          "description" => "Starts on base",
+          "project_type" => "game",
+          "project_subtype" => "rpg"
+        }
       })
 
       project = Repo.get_by!(Project, workspace_id: workspace.id, name: "New Base Project")
@@ -299,7 +304,9 @@ defmodule StoryarnWeb.WorkspaceLive.ShowTest do
         {:ok, _} =
           Storyarn.Projects.create_project(scope, %{
             name: "Project #{i}",
-            workspace_id: workspace.id
+            workspace_id: workspace.id,
+            project_type: "game",
+            project_subtype: "rpg"
           })
       end
 

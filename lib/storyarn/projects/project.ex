@@ -11,6 +11,7 @@ defmodule Storyarn.Projects.Project do
 
   alias Ecto.Association.NotLoaded
   alias Storyarn.Accounts.User
+  alias Storyarn.ProductMetrics.Taxonomy
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Workspaces.Workspace
@@ -20,6 +21,9 @@ defmodule Storyarn.Projects.Project do
           name: String.t() | nil,
           slug: String.t() | nil,
           description: String.t() | nil,
+          project_type: String.t() | nil,
+          project_subtype: String.t() | nil,
+          project_type_other: String.t() | nil,
           settings: map() | nil,
           owner_id: integer() | nil,
           owner: User.t() | NotLoaded.t() | nil,
@@ -46,6 +50,9 @@ defmodule Storyarn.Projects.Project do
     field :name, :string
     field :slug, :string
     field :description, :string
+    field :project_type, :string
+    field :project_subtype, :string
+    field :project_type_other, :string
     field :settings, :map, default: %{}
     field :auto_snapshots_enabled, :boolean, default: true
     field :auto_version_flows, :boolean, default: true
@@ -76,16 +83,34 @@ defmodule Storyarn.Projects.Project do
   """
   def create_changeset(project, attrs) do
     project
-    |> cast(attrs, [:name, :slug, :description, :settings, :workspace_id])
-    |> validate_required([:name, :slug])
-    |> validate_length(:name, min: 1, max: 100)
-    |> validate_length(:description, max: 1000)
+    |> cast(attrs, [
+      :name,
+      :slug,
+      :description,
+      :project_type,
+      :project_subtype,
+      :project_type_other,
+      :settings,
+      :workspace_id
+    ])
+    |> validate_required([:name, :slug, :project_type])
+    |> validate_project_fields()
     |> validate_slug()
     |> foreign_key_constraint(:workspace_id)
     |> unique_constraint([:workspace_id, :slug])
   end
 
   defp validate_slug(changeset), do: Storyarn.Shared.Validations.validate_slug(changeset)
+
+  @doc """
+  Changeset for validating the new-project form before the slug is generated.
+  """
+  def create_form_changeset(project, attrs) do
+    project
+    |> cast(attrs, [:name, :description, :project_type, :project_subtype, :project_type_other, :settings])
+    |> validate_required([:name, :project_type])
+    |> validate_project_fields()
+  end
 
   @doc """
   Changeset for updating a project.
@@ -95,6 +120,9 @@ defmodule Storyarn.Projects.Project do
     |> cast(attrs, [
       :name,
       :description,
+      :project_type,
+      :project_subtype,
+      :project_type_other,
       :settings,
       :auto_snapshots_enabled,
       :auto_version_flows,
@@ -102,8 +130,7 @@ defmodule Storyarn.Projects.Project do
       :auto_version_sheets
     ])
     |> validate_required([:name])
-    |> validate_length(:name, min: 1, max: 100)
-    |> validate_length(:description, max: 1000)
+    |> validate_project_fields()
   end
 
   @doc """
@@ -130,4 +157,47 @@ defmodule Storyarn.Projects.Project do
       when is_binary(p) and is_binary(a), do: %{primary: p, accent: a}
 
   def theme_colors(_), do: nil
+
+  defp validate_project_fields(changeset) do
+    changeset
+    |> validate_length(:name, min: 1, max: 100)
+    |> validate_length(:description, max: 1000)
+    |> validate_length(:project_type_other, max: 120)
+    |> validate_inclusion(:project_type, Taxonomy.project_types())
+    |> validate_project_subtype()
+    |> validate_project_type_other()
+  end
+
+  defp validate_project_subtype(changeset) do
+    project_type = get_field(changeset, :project_type)
+
+    cond do
+      project_type in ["game", "film", "novel"] ->
+        changeset
+        |> validate_required([:project_subtype])
+        |> validate_change(:project_subtype, &project_subtype_error(project_type, &1, &2))
+
+      project_type == "other" ->
+        changeset
+
+      true ->
+        changeset
+    end
+  end
+
+  defp project_subtype_error(project_type, field, project_subtype) do
+    if Taxonomy.known_project_subtype?(project_type, project_subtype) do
+      []
+    else
+      [{field, "is invalid"}]
+    end
+  end
+
+  defp validate_project_type_other(changeset) do
+    if get_field(changeset, :project_type) == "other" do
+      validate_required(changeset, [:project_type_other])
+    else
+      changeset
+    end
+  end
 end

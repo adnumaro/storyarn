@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { AlertTriangle, Wrench } from "lucide-vue-next";
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import ColorPickerPopover from "@components/forms/ColorPickerPopover.vue";
 import ThemeSelector from "@components/ThemeSelector.vue";
 import { Button } from "@components/ui/button";
@@ -14,6 +14,13 @@ import {
 } from "@components/ui/dialog";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@components/ui/select";
 import { Separator } from "@components/ui/separator";
 import { Textarea } from "@components/ui/textarea";
 import { useLive } from "@shared/composables/useLive";
@@ -22,17 +29,30 @@ interface SourceLanguage {
   localeCode: string;
 }
 
+interface ProjectMetricsOptions {
+  project_types: string[];
+  project_subtypes: Record<string, string[]>;
+}
+
+interface ProjectDetails {
+  name: string;
+  description: string;
+  type: string;
+  subtype: string;
+  typeOther: string;
+}
+
 const {
-  projectName = "",
-  projectDescription = "",
+  projectDetails = { name: "", description: "", type: "", subtype: "", typeOther: "" },
+  projectMetricsOptions = { project_types: [], project_subtypes: {} },
   sourceLanguage = null,
   sourceLanguageName = "",
   themePrimary = "#00D4CC",
   themeAccent = "#E8922F",
   hasCustomTheme = false,
 } = defineProps<{
-  projectName?: string;
-  projectDescription?: string;
+  projectDetails?: ProjectDetails;
+  projectMetricsOptions?: ProjectMetricsOptions;
   sourceLanguage?: SourceLanguage | null;
   sourceLanguageName?: string;
   themePrimary?: string;
@@ -43,27 +63,59 @@ const {
 const live = useLive();
 
 // Project Details
-const projectNameLocal = ref(projectName);
-const projectDescLocal = ref(projectDescription);
+const projectNameLocal = ref(projectDetails.name);
+const projectDescLocal = ref(projectDetails.description);
+const projectTypeLocal = ref(projectDetails.type);
+const projectSubtypeLocal = ref(projectDetails.subtype);
+const projectTypeOtherLocal = ref(projectDetails.typeOther);
 
 watch(
-  () => projectName,
+  () => projectDetails,
   (v) => {
-    projectNameLocal.value = v;
+    projectNameLocal.value = v.name;
+    projectDescLocal.value = v.description;
+    projectTypeLocal.value = v.type;
+    projectSubtypeLocal.value = v.subtype;
+    projectTypeOtherLocal.value = v.typeOther;
   },
 );
-watch(
-  () => projectDescription,
-  (v) => {
-    projectDescLocal.value = v;
-  },
-);
+
+const projectSubtypeOptions = computed(() => {
+  return projectMetricsOptions.project_subtypes[projectTypeLocal.value] || [];
+});
+const requiresSubtype = computed(() => projectSubtypeOptions.value.length > 0);
+const requiresOtherType = computed(() => projectTypeLocal.value === "other");
+const canSaveProject = computed(() => {
+  const hasName = projectNameLocal.value.trim().length > 0;
+  const hasType = projectTypeLocal.value.length > 0;
+  const hasSubtype = !requiresSubtype.value || projectSubtypeLocal.value.length > 0;
+  const hasOtherType = !requiresOtherType.value || projectTypeOtherLocal.value.trim().length > 0;
+
+  return hasName && hasType && hasSubtype && hasOtherType;
+});
+
+function updateProjectType(value: string | string[]) {
+  projectTypeLocal.value = Array.isArray(value) ? value[0] || "" : value;
+  projectSubtypeLocal.value = "";
+  projectTypeOtherLocal.value = "";
+}
+
+function updateProjectSubtype(value: string | string[]) {
+  projectSubtypeLocal.value = Array.isArray(value) ? value[0] || "" : value;
+}
+
+function projectMetricLabel(group: string, value: string) {
+  return `workspace.new_project.fields.${group}.options.${value}`;
+}
 
 function saveProject() {
   live.pushEvent("update_project", {
     project: {
       name: projectNameLocal.value,
       description: projectDescLocal.value,
+      project_type: projectTypeLocal.value,
+      project_subtype: projectSubtypeLocal.value,
+      project_type_other: projectTypeOtherLocal.value,
     },
   });
 }
@@ -138,6 +190,70 @@ function confirmDeleteProject() {
           <Label for="project-name">{{ $t("project_settings.general.project_name") }}</Label>
           <Input id="project-name" v-model="projectNameLocal" required @blur="validateProject" />
         </div>
+
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div class="space-y-1.5">
+            <Label for="project-type">{{ $t("project_settings.general.project_type") }}</Label>
+            <Select
+              :model-value="projectTypeLocal"
+              required
+              @update:model-value="updateProjectType"
+            >
+              <SelectTrigger id="project-type" class="w-full">
+                <SelectValue
+                  :placeholder="$t('project_settings.general.project_type_placeholder')"
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem
+                  v-for="option in projectMetricsOptions.project_types"
+                  :key="option"
+                  :value="option"
+                >
+                  {{ $t(projectMetricLabel("project_type", option)) }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div v-if="requiresSubtype" class="space-y-1.5">
+            <Label for="project-subtype">{{ $t("project_settings.general.project_subtype") }}</Label>
+            <Select
+              :model-value="projectSubtypeLocal"
+              required
+              @update:model-value="updateProjectSubtype"
+            >
+              <SelectTrigger id="project-subtype" class="w-full">
+                <SelectValue
+                  :placeholder="$t('project_settings.general.project_subtype_placeholder')"
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem
+                  v-for="option in projectSubtypeOptions"
+                  :key="option"
+                  :value="option"
+                >
+                  {{ $t(projectMetricLabel(`project_subtype.${projectTypeLocal}`, option)) }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div v-if="requiresOtherType" class="space-y-1.5">
+            <Label for="project-type-other">{{
+              $t("project_settings.general.project_type_other")
+            }}</Label>
+            <Input
+              id="project-type-other"
+              v-model="projectTypeOtherLocal"
+              maxlength="120"
+              required
+              :placeholder="$t('project_settings.general.project_type_other_placeholder')"
+            />
+          </div>
+        </div>
+
         <div class="space-y-1.5">
           <Label for="project-description">{{ $t("project_settings.general.description") }}</Label>
           <Textarea
@@ -148,7 +264,9 @@ function confirmDeleteProject() {
           />
         </div>
         <div class="flex justify-end gap-3 pt-1">
-          <Button type="submit">{{ $t("project_settings.general.save_changes") }}</Button>
+          <Button type="submit" :disabled="!canSaveProject">
+            {{ $t("project_settings.general.save_changes") }}
+          </Button>
         </div>
       </form>
     </section>

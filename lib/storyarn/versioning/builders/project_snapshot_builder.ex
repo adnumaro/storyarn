@@ -13,6 +13,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   alias Storyarn.Localization.GlossaryEntry
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProjectLanguage
+  alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Shared.TimeHelpers
@@ -30,6 +31,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   """
   @spec build_snapshot(integer()) :: map()
   def build_snapshot(project_id) do
+    project = Repo.get!(Project, project_id)
     sheets = Sheets.list_sheets_for_export(project_id)
     flows = Flows.list_flows_for_export(project_id)
     scenes = Scenes.list_scenes_for_export(project_id)
@@ -55,6 +57,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
 
     %{
       "format_version" => 2,
+      "project" => project_to_snapshot(project),
       "entity_counts" => entity_counts,
       "sheets" =>
         Enum.map(sheets, fn sheet ->
@@ -90,6 +93,14 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
         "texts" => Enum.map(texts, &text_to_snapshot/1),
         "glossary" => Enum.map(glossary, &glossary_entry_to_snapshot/1)
       }
+    }
+  end
+
+  defp project_to_snapshot(project) do
+    %{
+      "project_type" => project.project_type,
+      "project_subtype" => project.project_subtype,
+      "project_type_other" => project.project_type_other
     }
   end
 

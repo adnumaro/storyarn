@@ -63,7 +63,9 @@ defmodule Storyarn.AnalyticsInstrumentationTest do
              Projects.create_project(scope, %{
                name: "Analytics Project",
                slug: unique_slug("analytics-project"),
-               workspace_id: workspace.id
+               workspace_id: workspace.id,
+               project_type: "game",
+               project_subtype: "rpg"
              })
 
     project_id = project.id
@@ -75,7 +77,9 @@ defmodule Storyarn.AnalyticsInstrumentationTest do
                       distinct_id: ^distinct_id,
                       properties: %{
                         "project_id" => ^project_id,
-                        "workspace_id" => ^workspace_id
+                        "workspace_id" => ^workspace_id,
+                        "project_type" => "game",
+                        "project_subtype" => "rpg"
                       }
                     }}
   end
@@ -127,7 +131,9 @@ defmodule Storyarn.AnalyticsInstrumentationTest do
       Projects.create_project(scope, %{
         name: "Analytics Project",
         slug: unique_slug("analytics-project"),
-        workspace_id: workspace.id
+        workspace_id: workspace.id,
+        project_type: "game",
+        project_subtype: "rpg"
       })
 
     project

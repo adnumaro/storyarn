@@ -6,6 +6,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   import StoryarnWeb.ProjectLive.Components.SettingsComponents
 
   alias Storyarn.Localization
+  alias Storyarn.ProductMetrics.Taxonomy
   alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
 
@@ -32,8 +33,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
         v-socket={@socket}
         v-inject="settings-layout"
         id="project-settings-general"
-        project-name={@project.name}
-        project-description={@project.description || ""}
+        project-details={serialize_project_details(@project)}
+        project-metrics-options={Taxonomy.project_options()}
         source-language={serialize_source_language(@source_language)}
         source-language-name={Localization.language_name(@source_language.locale_code)}
         theme-primary={@theme_primary}
@@ -47,6 +48,16 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   # ===========================================================================
   # Serialization helpers
   # ===========================================================================
+
+  defp serialize_project_details(project) do
+    %{
+      name: project.name,
+      description: project.description || "",
+      type: project.project_type || "",
+      subtype: project.project_subtype || "",
+      typeOther: project.project_type_other || ""
+    }
+  end
 
   defp serialize_source_language(nil), do: nil
 

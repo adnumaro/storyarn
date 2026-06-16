@@ -24,6 +24,62 @@
           "label": "Project Name",
           "placeholder": "My Narrative Project"
         },
+        "project_type": {
+          "label": "Project type",
+          "placeholder": "Select a type",
+          "options": {
+            "game": "Video game",
+            "film": "Film",
+            "novel": "Novel",
+            "other": "Other"
+          }
+        },
+        "project_subtype": {
+          "label": "Category",
+          "placeholder": "Select a category",
+          "game": {
+            "options": {
+              "crpg": "CRPG",
+              "rpg": "RPG",
+              "jrpg": "JRPG",
+              "point_click_adventure": "Point & Click Adventure",
+              "visual_novel": "Visual Novel",
+              "interactive_fiction": "Interactive Fiction",
+              "narrative_adventure": "Narrative Adventure",
+              "tabletop_rpg": "Tabletop RPG",
+              "other": "Other"
+            }
+          },
+          "film": {
+            "options": {
+              "feature_film": "Feature Film",
+              "short_film": "Short Film",
+              "series_tv": "Series / TV",
+              "documentary": "Documentary",
+              "animation": "Animation",
+              "commercial_branded": "Commercial / Branded",
+              "other": "Other"
+            }
+          },
+          "novel": {
+            "options": {
+              "choose_your_own_adventure": "Choose Your Own Adventure",
+              "interactive_novel": "Interactive Novel",
+              "fantasy": "Fantasy",
+              "science_fiction": "Science Fiction",
+              "historical": "Historical",
+              "biographical": "Biographical",
+              "mystery_thriller": "Mystery / Thriller",
+              "romance": "Romance",
+              "literary_fiction": "Literary Fiction",
+              "other": "Other"
+            }
+          }
+        },
+        "project_type_other": {
+          "label": "Type",
+          "placeholder": "Describe the project type"
+        },
         "description": {
           "label": "Description",
           "placeholder": "A brief description of your project"

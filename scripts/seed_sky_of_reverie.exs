@@ -77,6 +77,8 @@ defmodule Storyarn.Scripts.SeedSkyOfReverie do
           "accent" => "#d7b36a"
         }
       },
+      project_type: "game",
+      project_subtype: "rpg",
       workspace_id: workspace.id
     }
 

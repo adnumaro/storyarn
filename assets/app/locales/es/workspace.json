@@ -24,6 +24,62 @@
           "label": "Nombre del proyecto",
           "placeholder": "Mi Proyecto Narrativo"
         },
+        "project_type": {
+          "label": "Tipo de proyecto",
+          "placeholder": "Selecciona un tipo",
+          "options": {
+            "game": "Videojuego",
+            "film": "Film",
+            "novel": "Novela",
+            "other": "Otro"
+          }
+        },
+        "project_subtype": {
+          "label": "Categoría",
+          "placeholder": "Selecciona una categoría",
+          "game": {
+            "options": {
+              "crpg": "CRPG",
+              "rpg": "RPG",
+              "jrpg": "JRPG",
+              "point_click_adventure": "Aventura Point & Click",
+              "visual_novel": "Novela visual",
+              "interactive_fiction": "Ficción interactiva",
+              "narrative_adventure": "Aventura narrativa",
+              "tabletop_rpg": "RPG de mesa",
+              "other": "Otro"
+            }
+          },
+          "film": {
+            "options": {
+              "feature_film": "Largometraje",
+              "short_film": "Cortometraje",
+              "series_tv": "Serie / TV",
+              "documentary": "Documental",
+              "animation": "Animación",
+              "commercial_branded": "Comercial / Branded",
+              "other": "Otro"
+            }
+          },
+          "novel": {
+            "options": {
+              "choose_your_own_adventure": "Elige tu propia aventura",
+              "interactive_novel": "Novela interactiva",
+              "fantasy": "Fantasía",
+              "science_fiction": "Ciencia ficción",
+              "historical": "Histórica",
+              "biographical": "Biográfica",
+              "mystery_thriller": "Misterio / thriller",
+              "romance": "Romance",
+              "literary_fiction": "Ficción literaria",
+              "other": "Otro"
+            }
+          }
+        },
+        "project_type_other": {
+          "label": "Tipo",
+          "placeholder": "Describe el tipo de proyecto"
+        },
         "description": {
           "label": "Descripción",
           "placeholder": "Una breve descripción de tu proyecto"

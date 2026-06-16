@@ -47,7 +47,9 @@ defmodule Storyarn.Billing.LimitsTest do
         {:ok, _} =
           Storyarn.Projects.create_project(scope, %{
             name: "P#{System.unique_integer([:positive])}",
-            workspace_id: workspace.id
+            workspace_id: workspace.id,
+            project_type: "game",
+            project_subtype: "rpg"
           })
       end
 

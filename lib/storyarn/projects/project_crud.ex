@@ -122,7 +122,10 @@ defmodule Storyarn.Projects.ProjectCrud do
       {:ok, project} ->
         Analytics.track(user, "project created", %{
           project_id: project.id,
-          workspace_id: project.workspace_id
+          workspace_id: project.workspace_id,
+          project_type: project.project_type,
+          project_subtype: project.project_subtype,
+          project_type_other: project.project_type_other
         })
 
         {:ok, project}
@@ -137,6 +140,13 @@ defmodule Storyarn.Projects.ProjectCrud do
   """
   def change_project(%Project{} = project, attrs \\ %{}) do
     Project.update_changeset(project, attrs)
+  end
+
+  @doc """
+  Returns a changeset for validating new project form input.
+  """
+  def change_new_project(%Project{} = project, attrs \\ %{}) do
+    Project.create_form_changeset(project, attrs)
   end
 
   @doc """

@@ -3,6 +3,7 @@ defmodule StoryarnWeb.LandingLive.Index do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Accounts
+  alias Storyarn.ProductMetrics.Taxonomy
   alias Storyarn.RateLimiter
   alias Storyarn.Workspaces
 
@@ -17,7 +18,10 @@ defmodule StoryarnWeb.LandingLive.Index do
         {:ok, redirect_to_workspace(socket, user)}
 
       _ ->
-        {:ok, assign(socket, :page_title, gettext("Storyarn — Narrative Design Platform"))}
+        {:ok,
+         socket
+         |> assign(:page_title, gettext("Storyarn — Narrative Design Platform"))
+         |> assign(:waitlist_email, nil)}
     end
   end
 
@@ -36,37 +40,71 @@ defmodule StoryarnWeb.LandingLive.Index do
         v-inject="public-layout"
         id="landing-page"
         is-logged-in={!!@current_scope && !!@current_scope.user}
+        waitlist-options={Taxonomy.waitlist_options()}
       />
     </StoryarnWeb.Components.PublicLayout.public>
     """
   end
 
   @impl true
-  def handle_event("join_waitlist", %{"email" => email}, socket) do
+  def handle_event("join_waitlist", %{"email" => _email} = params, socket) do
     ip = socket.assigns.ip
 
     case RateLimiter.check_waitlist(ip) do
       :ok ->
-        do_join_waitlist(socket, email, ip)
+        do_join_waitlist(socket, params, ip)
 
       {:error, :rate_limited} ->
-        {:reply, %{status: "error", message: gettext("Too many requests. Please try again later.")}, socket}
+        {:reply, %{status: "error", message: gettext("Too many requests. Please try again in about 1 hour.")}, socket}
     end
   end
 
-  defp do_join_waitlist(socket, email, ip) do
-    case Accounts.join_waitlist(%{"email" => email}) do
-      {:ok, _entry} ->
+  def handle_event("save_waitlist_details", params, socket) do
+    case socket.assigns[:waitlist_email] do
+      email when is_binary(email) ->
+        case Accounts.update_waitlist_details(email, params) do
+          {:ok, _entry} ->
+            {:reply,
+             %{
+               status: "ok",
+               message: gettext("Thanks — this helps us prioritize your invite.")
+             }, socket}
+
+          {:error, _reason} ->
+            {:reply,
+             %{
+               status: "error",
+               message: gettext("We couldn't save those details. You're still on the waitlist.")
+             }, socket}
+        end
+
+      _ ->
+        {:reply,
+         %{
+           status: "error",
+           message: gettext("Join the waitlist first, then add your details.")
+         }, socket}
+    end
+  end
+
+  defp do_join_waitlist(socket, params, ip) do
+    case Accounts.join_waitlist(params) do
+      {:ok, entry} ->
         signup_info = %{
           locale: socket.assigns[:locale] || "en",
           accept_language: "unknown",
           ip: ip,
-          country: "unknown"
+          country: "unknown",
+          profession: entry.profession,
+          primary_interest: entry.primary_interest,
+          discovery_source: entry.discovery_source,
+          current_tool: entry.current_tool,
+          current_tool_other: entry.current_tool_other
         }
 
-        Accounts.notify_admin_waitlist_signup_async(email, signup_info)
+        Accounts.notify_admin_waitlist_signup_async(entry.email, signup_info)
 
-        {:reply, waitlist_success_reply(), socket}
+        {:reply, waitlist_success_reply(), assign(socket, :waitlist_email, entry.email)}
 
       {:error, _changeset} ->
         {:reply, waitlist_success_reply(), socket}

@@ -19,7 +19,7 @@ defmodule Storyarn.Analytics do
     "flow node created" => MapSet.new(~w(creation_method flow_id has_parent node_type project_id)),
     "flow player started" => MapSet.new(~w(flow_id project_id)),
     "page viewed" => MapSet.new(~w(route_family)),
-    "project created" => MapSet.new(~w(project_id workspace_id)),
+    "project created" => MapSet.new(~w(project_id project_subtype project_type project_type_other workspace_id)),
     "scene exploration started" => MapSet.new(~w(has_saved_session project_id scene_id)),
     "sequence track updated" =>
       MapSet.new(~w(changed_asset changed_volume flow_id has_asset project_id sequence_id track_kind)),

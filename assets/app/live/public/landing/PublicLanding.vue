@@ -15,8 +15,16 @@ import {
 import LandingFooter from "../PublicFooter.vue";
 import CtaWaitlist from "@modules/public/landing/sections/cta/CtaWaitlist.vue";
 
+interface WaitlistOptions {
+  professions: string[];
+  primary_interests: string[];
+  discovery_sources: string[];
+  current_tools: string[];
+}
+
 defineProps<{
   isLoggedIn?: boolean;
+  waitlistOptions: WaitlistOptions;
 }>();
 
 const workflowSteps = ["define", "write", "explore", "export"] as const;
@@ -261,7 +269,7 @@ onUnmounted(() => {
       </div>
     </section>
 
-    <CtaWaitlist />
+    <CtaWaitlist :options="waitlistOptions" />
     <LandingFooter />
   </div>
 </template>

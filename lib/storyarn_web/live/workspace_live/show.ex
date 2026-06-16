@@ -6,6 +6,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Billing
+  alias Storyarn.ProductMetrics.Taxonomy
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.Workspaces
@@ -25,7 +26,8 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
      |> assign(:projects, format_projects(projects, workspace))
      |> assign(:search_query, "")
      |> assign(:can_create_project, can_create_project)
-     |> assign(:project_form, to_form(Projects.change_project(%Project{})))}
+     |> assign(:project_form, to_form(Projects.change_new_project(%Project{})))
+     |> assign(:new_project_modal_open, false)}
   end
 
   @impl true
@@ -61,6 +63,8 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
         search-query={@search_query}
         can-create-project={@can_create_project}
         new-project-form={@project_form}
+        new-project-modal-open={@new_project_modal_open}
+        project-metrics-options={Taxonomy.project_options()}
         settings-url={~p"/users/settings/workspaces/#{@workspace.slug}/general"}
       />
     </StoryarnWeb.Components.WorkspaceLayout.workspace>
@@ -78,14 +82,8 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
      )}
   end
 
-  @impl true
-  def handle_event("validate_project", %{"project" => project_params}, socket) do
-    changeset =
-      %Project{}
-      |> Projects.change_project(project_params)
-      |> Map.put(:action, :validate)
-
-    {:noreply, assign(socket, :project_form, to_form(changeset))}
+  def handle_event("set_new_project_modal_open", %{"open" => open}, socket) do
+    {:noreply, assign(socket, :new_project_modal_open, open in [true, "true"])}
   end
 
   def handle_event("create_project", %{"project" => project_params}, socket) do

@@ -223,10 +223,10 @@ msgid "Snapshot not found"
 msgstr "Snapshot no encontrada"
 
 #: lib/storyarn_web/controllers/page_controller.ex:14
-#: lib/storyarn_web/live/landing_live/index.ex:49
+#: lib/storyarn_web/live/landing_live/index.ex:59
 #, elixir-autogen, elixir-format
-msgid "Too many requests. Please try again later."
-msgstr "Demasiadas solicitudes. Inténtalo de nuevo más tarde."
+msgid "Too many requests. Please try again in about 1 hour."
+msgstr "Demasiadas solicitudes. Inténtalo de nuevo en aproximadamente 1 hora."
 
 #: lib/storyarn_web/live/compare_live/flow.ex:104
 #: lib/storyarn_web/live/compare_live/scene.ex:104

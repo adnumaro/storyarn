@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { FolderOpen, Plus, Search, Settings } from "lucide-vue-next";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog/index.ts";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
-import type { Form } from "live_vue";
+import { useLiveVue, type Form } from "live_vue";
 import NewProjectForm from "../../project/form/ProjectNewProjectForm.vue";
 import { formatRelativeTime } from "@shared/utils/date-utils";
 
@@ -34,6 +34,14 @@ interface ProjectData {
 interface NewProjectFormValues {
   name: string;
   description: string;
+  project_type: string;
+  project_subtype: string;
+  project_type_other: string;
+}
+
+interface ProjectMetricsOptions {
+  project_types: string[];
+  project_subtypes: Record<string, string[]>;
 }
 
 const {
@@ -43,6 +51,8 @@ const {
   searchQuery = "",
   canCreateProject = false,
   newProjectForm = null,
+  newProjectModalOpen = false,
+  projectMetricsOptions = { project_types: [], project_subtypes: {} },
   settingsUrl = null,
 } = defineProps<{
   workspace: Workspace;
@@ -51,9 +61,12 @@ const {
   searchQuery?: string;
   canCreateProject?: boolean;
   newProjectForm?: Form<NewProjectFormValues> | null;
+  newProjectModalOpen?: boolean;
+  projectMetricsOptions?: ProjectMetricsOptions;
   settingsUrl?: string | null;
 }>();
 
+const live = useLiveVue();
 const localSearch = ref(searchQuery);
 
 const filteredProjects = computed(() => {
@@ -73,7 +86,19 @@ const canManage = computed(() => ["owner", "admin"].includes(membership.role));
 
 const canCreate = computed(() => ["owner", "admin", "member"].includes(membership.role));
 
-const isNewProjectModalOpen = ref(false);
+const isNewProjectModalOpen = ref(newProjectModalOpen);
+
+watch(
+  () => newProjectModalOpen,
+  (open) => {
+    isNewProjectModalOpen.value = open;
+  },
+);
+
+function setNewProjectModalOpen(open: boolean) {
+  isNewProjectModalOpen.value = open;
+  live.pushEvent("set_new_project_modal_open", { open });
+}
 </script>
 
 <template>
@@ -138,7 +163,7 @@ const isNewProjectModalOpen = ref(false);
           <Button
             v-if="canCreate && canCreateProject && newProjectForm"
             size="sm"
-            @click="isNewProjectModalOpen = true"
+            @click="setNewProjectModalOpen(true)"
           >
             <Plus class="size-4 mr-1" />
             {{ $t("workspace.dashboard.new_project") }}
@@ -234,7 +259,7 @@ const isNewProjectModalOpen = ref(false);
   </div>
 
   <!-- New Project Modal -->
-  <Dialog :open="isNewProjectModalOpen" @update:open="(val) => (isNewProjectModalOpen = val)">
+  <Dialog :open="isNewProjectModalOpen" @update:open="setNewProjectModalOpen">
     <DialogContent class="sm:max-w-106.25">
       <DialogHeader>
         <DialogTitle class="hidden">{{ $t("workspace.dashboard.new_project") }}</DialogTitle>
@@ -242,7 +267,8 @@ const isNewProjectModalOpen = ref(false);
       <NewProjectForm
         v-if="newProjectForm"
         :form="newProjectForm"
-        @cancel="isNewProjectModalOpen = false"
+        :metrics-options="projectMetricsOptions"
+        @cancel="setNewProjectModalOpen(false)"
       />
     </DialogContent>
   </Dialog>

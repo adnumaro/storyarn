@@ -20,6 +20,12 @@
     },
     "general": {
       "project_name": "Nombre del proyecto",
+      "project_type": "Tipo de proyecto",
+      "project_type_placeholder": "Selecciona un tipo",
+      "project_subtype": "Categoría",
+      "project_subtype_placeholder": "Selecciona una categoría",
+      "project_type_other": "Detalle del tipo de proyecto",
+      "project_type_other_placeholder": "Describe el tipo de proyecto",
       "description": "Descripción",
       "save_changes": "Guardar cambios",
       "source_language": "Idioma origen",

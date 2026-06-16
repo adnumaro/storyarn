@@ -20,6 +20,12 @@
     },
     "general": {
       "project_name": "Project Name",
+      "project_type": "Project type",
+      "project_type_placeholder": "Select a type",
+      "project_subtype": "Category",
+      "project_subtype_placeholder": "Select a category",
+      "project_type_other": "Project type details",
+      "project_type_other_placeholder": "Describe the project type",
       "description": "Description",
       "save_changes": "Save Changes",
       "source_language": "Source language",

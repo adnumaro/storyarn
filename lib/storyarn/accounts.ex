@@ -236,9 +236,60 @@ defmodule Storyarn.Accounts do
   Adds an email to the beta waitlist. Returns `{:ok, entry}` or `{:error, changeset}`.
   """
   def join_waitlist(attrs) do
-    %WaitlistEntry{}
-    |> WaitlistEntry.changeset(attrs)
-    |> Storyarn.Repo.insert()
+    changeset = WaitlistEntry.email_changeset(%WaitlistEntry{}, attrs)
+
+    case Storyarn.Repo.insert(changeset) do
+      {:ok, entry} ->
+        {:ok, entry}
+
+      {:error, changeset} ->
+        if email_unique_constraint_error?(changeset) do
+          get_existing_waitlist_entry(attrs, changeset)
+        else
+          {:error, changeset}
+        end
+    end
+  end
+
+  @doc """
+  Adds optional qualification details to an existing waitlist entry.
+  """
+  def update_waitlist_details(email, attrs) when is_binary(email) do
+    email =
+      email
+      |> String.trim()
+      |> String.downcase()
+
+    case Storyarn.Repo.get_by(WaitlistEntry, email: email) do
+      %WaitlistEntry{} = entry ->
+        entry
+        |> WaitlistEntry.details_changeset(attrs)
+        |> Storyarn.Repo.update()
+
+      nil ->
+        {:error, :not_found}
+    end
+  end
+
+  defp get_existing_waitlist_entry(attrs, fallback_changeset) do
+    email =
+      (attrs[:email] || attrs["email"])
+      |> String.trim()
+      |> String.downcase()
+
+    case Storyarn.Repo.get_by(WaitlistEntry, email: email) do
+      %WaitlistEntry{} = entry ->
+        {:ok, entry}
+
+      nil ->
+        {:error, fallback_changeset}
+    end
+  end
+
+  defp email_unique_constraint_error?(changeset) do
+    Enum.any?(Keyword.get_values(changeset.errors, :email), fn {_message, opts} ->
+      opts[:constraint] == :unique
+    end)
   end
 
   @doc """

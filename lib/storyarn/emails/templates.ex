@@ -247,6 +247,11 @@ defmodule Storyarn.Emails.Templates do
     language = Map.get(signup_info, :accept_language, "unknown")
     ip = Map.get(signup_info, :ip, "unknown")
     country = Map.get(signup_info, :country, "unknown")
+    profession = Map.get(signup_info, :profession, "unknown") || "unknown"
+    primary_interest = Map.get(signup_info, :primary_interest, "unknown") || "unknown"
+    discovery_source = Map.get(signup_info, :discovery_source, "unknown") || "unknown"
+    current_tool = Map.get(signup_info, :current_tool, "unknown") || "unknown"
+    current_tool_other = Map.get(signup_info, :current_tool_other, "") || ""
 
     safe_email = sanitize_for_shell(email)
     safe_locale = sanitize_for_shell(locale)
@@ -267,6 +272,11 @@ defmodule Storyarn.Emails.Templates do
       <tr><td style="color:#9ca3af;width:100px">Language</td><td>#{escape(locale)} (#{escape(language)})</td></tr>
       <tr><td style="color:#9ca3af">Region</td><td>#{escape(country)}</td></tr>
       <tr><td style="color:#9ca3af">IP</td><td>#{escape(ip)}</td></tr>
+      <tr><td style="color:#9ca3af">Profession</td><td>#{escape(profession)}</td></tr>
+      <tr><td style="color:#9ca3af">Interest</td><td>#{escape(primary_interest)}</td></tr>
+      <tr><td style="color:#9ca3af">Source</td><td>#{escape(discovery_source)}</td></tr>
+      <tr><td style="color:#9ca3af">Current tool</td><td>#{escape(current_tool)}</td></tr>
+      <tr><td style="color:#9ca3af">Tool detail</td><td>#{escape(current_tool_other)}</td></tr>
     </mj-table>
     <mj-text font-size="13px" color="#9ca3af" padding-top="16px">
       Invite with:<br/>
@@ -281,6 +291,11 @@ defmodule Storyarn.Emails.Templates do
     Language: #{locale} (#{language})
     Region: #{country}
     IP: #{ip}
+    Profession: #{profession}
+    Interest: #{primary_interest}
+    Source: #{discovery_source}
+    Current tool: #{current_tool}
+    Tool detail: #{current_tool_other}
 
     Invite with:
     fly ssh console -a storyarn-staging -C '/app/bin/storyarn rpc "Storyarn.Release.invite_waitlist_user(\\"#{safe_email}\\", \\"#{safe_locale}\\")"'

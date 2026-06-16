@@ -15,7 +15,9 @@ defmodule Storyarn.ProjectsFixtures do
   def valid_project_attributes(attrs \\ %{}) do
     Enum.into(attrs, %{
       name: unique_project_name(),
-      description: "A test project description"
+      description: "A test project description",
+      project_type: "game",
+      project_subtype: "rpg"
     })
   end
 
