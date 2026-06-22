@@ -52,7 +52,7 @@ defmodule Storyarn.FlowsFixtures do
   def connection_fixture(flow, source_node, target_node, attrs \\ %{}) do
     attrs =
       Enum.into(attrs, %{
-        source_pin: "default",
+        source_pin: "output",
         target_pin: "input"
       })
 

@@ -226,7 +226,7 @@ defmodule Storyarn.Analytics do
     sdk_config = sdk_config()
     frontend_config = frontend_config_env()
     api_key = Keyword.get(sdk_config, :api_key)
-    host = Keyword.get(sdk_config, :api_host, "https://us.i.posthog.com")
+    host = Keyword.get(sdk_config, :api_host, "https://eu.i.posthog.com")
 
     if Keyword.get(frontend_config, :frontend_enabled, false) and present?(api_key) and present?(host) do
       {:ok, %{api_key: api_key, host: String.trim_trailing(host, "/")}}

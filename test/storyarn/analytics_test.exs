@@ -108,7 +108,7 @@ defmodule Storyarn.AnalyticsTest do
     put_posthog_env(
       enable: true,
       api_key: "phc_test",
-      api_host: "https://us.i.posthog.com"
+      api_host: "https://eu.i.posthog.com"
     )
 
     Application.put_env(:storyarn, :posthog_frontend, frontend_enabled: false)
@@ -120,7 +120,7 @@ defmodule Storyarn.AnalyticsTest do
     put_posthog_env(
       enable: true,
       api_key: "phc_test",
-      api_host: "https://us.i.posthog.com/"
+      api_host: "https://eu.i.posthog.com/"
     )
 
     Application.put_env(:storyarn, :posthog_frontend,
@@ -138,7 +138,7 @@ defmodule Storyarn.AnalyticsTest do
              api_key: "phc_test",
              distinct_id: "user:42",
              error_tracking_enabled: false,
-             host: "https://us.i.posthog.com",
+             host: "https://eu.i.posthog.com",
              user_locale: "es",
              user_super_admin: false
            }
@@ -148,7 +148,7 @@ defmodule Storyarn.AnalyticsTest do
     put_posthog_env(
       enable: true,
       api_key: "phc_test",
-      api_host: "https://us.i.posthog.com"
+      api_host: "https://eu.i.posthog.com"
     )
 
     Application.put_env(:storyarn, :posthog_frontend,

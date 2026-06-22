@@ -1,18 +1,27 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
+  hasAnalyticsConsent,
   pageviewKeyForPath,
   postHogInitOptions,
+  readCookieConsent,
   routeFamilyForPath,
+  saveCookieConsent,
   sanitizeProperties,
   scrubPostHogEvent,
 } from "../../../js/utils/posthog.js";
 
+const cookieConsentKey = "storyarn:cookie-consent:v1";
+
 describe("PostHog frontend utility", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   it("enables browser error autocapture only when configured", () => {
     expect(
       postHogInitOptions({
         errorTrackingEnabled: true,
-        host: "https://us.i.posthog.com",
+        host: "https://eu.i.posthog.com",
       }).capture_exceptions,
     ).toEqual({
       capture_console_errors: false,
@@ -23,9 +32,19 @@ describe("PostHog frontend utility", () => {
     expect(
       postHogInitOptions({
         errorTrackingEnabled: false,
-        host: "https://us.i.posthog.com",
+        host: "https://eu.i.posthog.com",
       }).capture_exceptions,
     ).toBe(false);
+
+    expect(
+      postHogInitOptions({
+        errorTrackingEnabled: false,
+        host: "https://eu.i.posthog.com",
+      }),
+    ).toMatchObject({
+      cookie_expiration: 365,
+      persistence: "localStorage+cookie",
+    });
   });
 
   it("scrubs PostHog URL and referrer auto-properties before sending events", () => {
@@ -65,6 +84,8 @@ describe("PostHog frontend utility", () => {
 
   it("uses path only as a private dedupe key so same-family navigation still counts", () => {
     expect(routeFamilyForPath("/")).toBe("public_home");
+    expect(routeFamilyForPath("/privacy")).toBe("legal");
+    expect(routeFamilyForPath("/terms")).toBe("legal");
     expect(routeFamilyForPath("/workspaces/ws/projects/project/sheets/8")).toBe("sheets");
     expect(routeFamilyForPath("/workspaces/ws/projects/project/sheets/9")).toBe("sheets");
     expect(routeFamilyForPath("/workspaces/ws/projects/project/flows/1/play")).toBe("flow_player");
@@ -77,5 +98,37 @@ describe("PostHog frontend utility", () => {
     expect(pageviewKeyForPath("/workspaces/ws/projects/project/sheets/8")).not.toBe(
       pageviewKeyForPath("/workspaces/ws/projects/project/sheets/9"),
     );
+  });
+
+  it("persists analytics consent decisions", () => {
+    expect(readCookieConsent()).toBeNull();
+    expect(hasAnalyticsConsent()).toBe(false);
+
+    const accepted = saveCookieConsent({ analytics: true });
+
+    expect(accepted.analytics).toBe(true);
+    expect(readCookieConsent()).toMatchObject({ analytics: true, version: 1 });
+    expect(hasAnalyticsConsent()).toBe(true);
+
+    const rejected = saveCookieConsent({ analytics: false });
+
+    expect(rejected.analytics).toBe(false);
+    expect(readCookieConsent()).toMatchObject({ analytics: false, version: 1 });
+    expect(hasAnalyticsConsent()).toBe(false);
+  });
+
+  it("ignores expired analytics consent decisions", () => {
+    localStorage.setItem(
+      cookieConsentKey,
+      JSON.stringify({
+        analytics: true,
+        decidedAt: "2024-01-01T00:00:00.000Z",
+        expiresAt: "2024-01-02T00:00:00.000Z",
+        version: 1,
+      }),
+    );
+
+    expect(readCookieConsent()).toBeNull();
+    expect(hasAnalyticsConsent()).toBe(false);
   });
 });

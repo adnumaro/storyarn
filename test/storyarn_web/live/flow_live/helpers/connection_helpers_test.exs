@@ -20,7 +20,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpersTest do
     } do
       params = %{
         "source_node_id" => entry.id,
-        "source_pin" => "default",
+        "source_pin" => "output",
         "target_node_id" => dialogue.id,
         "target_pin" => "input"
       }
@@ -41,7 +41,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpersTest do
       # Try to connect a node to itself
       params = %{
         "source_node_id" => entry.id,
-        "source_pin" => "default",
+        "source_pin" => "output",
         "target_node_id" => entry.id,
         "target_pin" => "input"
       }

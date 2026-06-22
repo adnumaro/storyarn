@@ -354,6 +354,8 @@ defmodule StoryarnWeb.Router do
       live "/users/log-in", UserLive.Login, :new
       live "/users/confirm-access", UserLive.ConfirmAccess, :new
       live "/contact", LandingLive.Contact, :show
+      live "/privacy", LegalLive.Show, :privacy
+      live "/terms", LegalLive.Show, :terms
 
       # Project invitations (accessible with or without auth)
       live "/projects/invitations/:token", ProjectLive.Invitation, :show

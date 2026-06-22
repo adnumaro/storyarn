@@ -5,7 +5,235 @@
       "request_access": "Request access",
       "log_in": "Log in",
       "menu": "Menu",
-      "close": "Close"
+      "close": "Close",
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "cookies": "Cookies",
+      "manage_cookies": "Manage cookies"
+    },
+    "cookies": {
+      "banner_aria": "Cookie notice",
+      "banner_title": "Cookies and optional analytics",
+      "banner_description": "We use necessary technical cookies. We may also use PostHog for product analytics if you allow it.",
+      "learn_more": "Learn more",
+      "reject": "Reject analytics",
+      "configure": "Configure",
+      "accept": "Accept analytics",
+      "settings_title": "Cookie preferences",
+      "settings_description": "Technical cookies are always active. Analytics helps us understand which parts of Storyarn work and where users hit friction.",
+      "required_title": "Necessary technical cookies",
+      "required_description": "They keep sessions, security, language, theme, and basic product behavior working.",
+      "analytics_title": "Product analytics",
+      "analytics_description": "Enables PostHog frontend with persistence. We do not use autocapture, session recording, surveys, or behavioral advertising.",
+      "terms_link": "View terms of use",
+      "save": "Save preferences"
+    },
+    "legal": {
+      "last_updated": "Last updated: {date}",
+      "privacy": {
+        "eyebrow": "Privacy",
+        "title": "Privacy Policy",
+        "description": "How we process personal data, necessary cookies, and optional analytics during Storyarn early access.",
+        "controller": {
+          "title": "1. Controller and contact",
+          "identity": "The controller for the personal data described in this policy is {controllerName}, an individual operating Storyarn in early access, with contact address at {controllerAddress}.",
+          "contact_prefix": "For privacy questions, you can write to",
+          "early_access": "Storyarn is currently offered as a free early-access product. If a company is formed later, or if payments, billing, or additional business features are introduced, we will update this policy before applying those processing activities."
+        },
+        "data": {
+          "title": "2. Data we process",
+          "intro": "We may process the following categories of data depending on how you use the service:",
+          "items": {
+            "waitlist": {
+              "label": "Early-access waitlist",
+              "text": "email, profession or role, intended use, current tool or alternative being considered, how you heard about us, and any optional detail you provide."
+            },
+            "account": {
+              "label": "Account",
+              "text": "email, display name, language, access provider if you use external authentication, and data needed to maintain your session."
+            },
+            "projects": {
+              "label": "Workspaces and projects",
+              "text": "workspace names, project names, project type, narrative content, assets, settings, permissions, and activity needed to operate collaboration."
+            },
+            "technical": {
+              "label": "Technical data",
+              "text": "IP address, user agent, request identifiers, security logs, errors, and technical events needed to maintain, debug, and protect the service."
+            },
+            "analytics": {
+              "label": "Optional analytics",
+              "text": "if you accept frontend analytics, we use PostHog EU Cloud with limited product events, no autocapture, no session recording, no surveys, and no behavioral advertising."
+            }
+          }
+        },
+        "purposes": {
+          "title": "3. Purposes and legal bases",
+          "items": {
+            "access": {
+              "label": "Managing early access",
+              "text": "we use your email and answers to prioritize invitations and understand the profile of interested users. Legal basis: pre-contractual request or consent, depending on the form context."
+            },
+            "service": {
+              "label": "Providing the service",
+              "text": "we use account, session, workspace, and project data so you can create, edit, and collaborate in Storyarn. Legal basis: performance of the requested service."
+            },
+            "security": {
+              "label": "Security and abuse prevention",
+              "text": "we use logs, IP addresses, rate limits, and technical events to protect the application, investigate errors, and prevent unauthorized access. Legal basis: legitimate interest."
+            },
+            "improvement": {
+              "label": "Product improvement",
+              "text": "we use feedback, aggregate metrics, and minimized technical events to detect friction, errors, and priorities. Legal basis: legitimate interest when no non-essential storage is involved; consent when we use persistent frontend PostHog analytics."
+            },
+            "communications": {
+              "label": "Operational communications",
+              "text": "we may send emails related to your request, invitation, account, security, or relevant service changes. Legal basis: performance of the service or legitimate interest."
+            }
+          }
+        },
+        "cookies": {
+          "title": "4. Cookies, local storage, and analytics",
+          "technical": "Storyarn uses cookies and technical storage needed for sessions, security, CSRF protection, preferences, and basic functionality. These uses are needed to provide the requested service.",
+          "analytics": "Frontend analytics with PostHog only runs if you give consent. If you reject it, Storyarn does not initialize frontend PostHog for your browser.",
+          "table": {
+            "name": "Name",
+            "type": "Type",
+            "purpose": "Purpose",
+            "duration": "Duration"
+          },
+          "rows": {
+            "session": {
+              "name": "_storyarn_key",
+              "type": "Technical",
+              "purpose": "Maintains session, security, and LiveView state.",
+              "duration": "Browser session."
+            },
+            "remember": {
+              "name": "_storyarn_web_user_remember_me",
+              "type": "Optional technical",
+              "purpose": "Remembers access if the user requests it.",
+              "duration": "14 days."
+            },
+            "theme": {
+              "name": "phx:theme",
+              "type": "Preference",
+              "purpose": "Remembers light or dark theme preference.",
+              "duration": "Until deleted or changed."
+            },
+            "consent": {
+              "name": "storyarn:cookie-consent:v1",
+              "type": "Preference",
+              "purpose": "Remembers whether you accepted or rejected optional analytics.",
+              "duration": "Up to 24 months."
+            },
+            "posthog": {
+              "name": "PostHog",
+              "type": "Optional analytics",
+              "purpose": "Measures limited product events after consent.",
+              "duration": "Up to 365 days."
+            }
+          },
+          "control": "You can accept, reject, or change optional analytics at any time from cookie settings.",
+          "manage": "Manage cookie preferences"
+        },
+        "providers": {
+          "title": "5. Providers",
+          "intro": "We use providers to operate Storyarn. They act as processors or technical providers only to the extent needed to provide the service.",
+          "items": {
+            "fly": {
+              "label": "Fly.io",
+              "text": "application hosting, deployment, and runtime infrastructure."
+            },
+            "neon": {
+              "label": "Neon",
+              "text": "managed PostgreSQL database."
+            },
+            "tigris": {
+              "label": "Tigris",
+              "text": "S3-compatible storage for assets, files, and snapshots when configured."
+            },
+            "resend": {
+              "label": "Resend",
+              "text": "transactional emails and operational communications."
+            },
+            "posthog": {
+              "label": "PostHog EU Cloud",
+              "text": "product analytics and, when enabled, technical error signals. Persistent frontend analytics requires consent."
+            },
+            "sentry": {
+              "label": "Sentry",
+              "text": "error monitoring if the integration is configured in production."
+            }
+          },
+          "transfers": "We operate from Europe and prioritize European providers or regions where available. If any provider processes data outside the European Economic Area, we will apply the relevant legal safeguards, such as standard contractual clauses, adequacy decisions, or other applicable mechanisms."
+        },
+        "retention": {
+          "title": "6. Retention",
+          "main": "We keep data for as long as needed to manage early access, provide the service, maintain security, resolve incidents, or comply with legal obligations. Waitlist data is kept while the early-access program remains open or until you request deletion. Account and project data is kept while the account or workspace remains active, unless a legal obligation or legitimate need requires longer retention.",
+          "technical": "Some technical retention periods are defined by the product: the remember-me cookie lasts 14 days, cookie consent up to 24 months, frontend PostHog persistence up to 365 days, certain internal jobs are pruned after 7 days, and some deleted items or snapshots may be kept temporarily for restoration. Provider backups and logs follow their technical lifecycle."
+        },
+        "rights": {
+          "title": "7. Your rights",
+          "text_prefix": "You may request access, rectification, deletion, objection, restriction of processing, portability, or withdrawal of consent by writing to",
+          "text_suffix": "If you believe your request has not been handled properly, you may file a complaint with the competent data protection authority."
+        }
+      },
+      "terms": {
+        "eyebrow": "Terms",
+        "title": "Terms of Use and Early Access",
+        "description": "The rules that apply to Storyarn while the product is in free early access.",
+        "notice": {
+          "title": "1. Operator identity",
+          "identity": "Storyarn is currently operated by {controllerName}, an individual, with contact address at {controllerAddress}. Storyarn is not yet operated by a separate legal company.",
+          "contact_prefix": "For legal, support, or privacy matters, you can write to"
+        },
+        "beta": {
+          "title": "2. Early-access nature",
+          "text": "Storyarn is currently offered as a free early-access product. The product may change often, include errors, modify features, limit access, or become temporarily unavailable while we continue developing it.",
+          "payments": "Early access does not guarantee permanent availability, continuity of features, or indefinite maintenance of current conditions. Before introducing payments, subscriptions, billing, or a company operator, we will publish updated terms."
+        },
+        "account": {
+          "title": "3. Account, access, and minimum age",
+          "text": "You must provide truthful information when requesting access or creating an account. You are responsible for protecting your credentials and for activity under your account. We may limit, suspend, or withdraw access if we detect abuse, security risk, breach of these terms, or use incompatible with the product.",
+          "age": "Storyarn is not directed to children under 14. If you are under 14, you may only use the service with authorization from your parent or legal guardian."
+        },
+        "content": {
+          "title": "4. User content",
+          "ownership": "You keep the rights to the content you create or upload to Storyarn, including text, narrative structures, images, audio, projects, and assets.",
+          "responsibility": "By using the service, you grant us a limited license to host, process, display, and transmit that content only as needed to operate, maintain, protect, and improve Storyarn. You must have the necessary rights to the content you upload or generate.",
+          "expression": "Storyarn is a private narrative creation tool. We do not pre-review or approve user content and we do not endorse it. You are responsible for your content and for the consequences of using, publishing, or distributing it outside Storyarn."
+        },
+        "acceptable": {
+          "title": "5. Acceptable use",
+          "intro": "You may not use Storyarn to:",
+          "items": {
+            "illegal": "perform illegal activities, infringe intellectual property rights, or violate third-party rights;",
+            "malware": "upload malware, automate abuse, perform aggressive scraping, or interfere with the service;",
+            "unauthorized_access": "attempt to access accounts, workspaces, projects, or systems that are not yours;",
+            "unrelated": "use the service to host content unrelated to narrative creation, organization, or testing;",
+            "limits": "bypass technical limits, rate limits, or security measures;",
+            "minor_safety": "create, store, or distribute child exploitation content, real threats, fraud, technical abuse instructions, or any content requiring legal or safety intervention."
+          }
+        },
+        "providers": {
+          "title": "6. Third-party services",
+          "text": "Storyarn may use infrastructure, storage, email, analytics, authentication, or monitoring providers to operate the service. Details are described in the",
+          "privacy_link": "Privacy Policy"
+        },
+        "liability": {
+          "title": "7. Availability, changes, and liability",
+          "availability": "Storyarn is provided as-is during early access. We will try to keep the service stable, but we do not guarantee error-free operation, uninterrupted availability, or permanent compatibility with every workflow.",
+          "limits": "To the extent permitted by law, we are not responsible for indirect losses, loss of profit, data loss not caused by our own legal breach, or acts of users or third parties outside Storyarn. Nothing in these terms limits rights that cannot legally be limited."
+        },
+        "law": {
+          "title": "8. Governing law",
+          "text": "These terms are governed by the laws of Denmark, without limiting mandatory consumer or user protection rules that may apply in your place of residence."
+        },
+        "contact": {
+          "title": "9. Contact",
+          "text_prefix": "For questions about these terms, you can write to"
+        }
+      }
     },
     "contact": {
       "title": "Contact",

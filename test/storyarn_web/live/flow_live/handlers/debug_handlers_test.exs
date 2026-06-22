@@ -134,8 +134,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
       }
 
       connections = [
-        conn(1, "default", 2),
-        conn(2, "default", 3)
+        conn(1, "output", 2),
+        conn(2, "output", 3)
       ]
 
       state = Engine.init(%{}, 1)
@@ -162,7 +162,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
         2 => node(2, "exit")
       }
 
-      connections = [conn(1, "default", 2)]
+      connections = [conn(1, "output", 2)]
 
       # Step once to reach a state where next step finishes
       state = Engine.init(%{}, 1)
@@ -207,7 +207,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
       }
 
       connections = [
-        conn(1, "default", 2),
+        conn(1, "output", 2),
         conn(2, "r1", 3)
       ]
 
@@ -247,7 +247,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
       }
 
       connections = [
-        conn(1, "default", 2),
+        conn(1, "output", 2),
         conn(2, "r1", 3)
       ]
 

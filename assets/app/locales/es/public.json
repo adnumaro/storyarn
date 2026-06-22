@@ -5,7 +5,235 @@
       "request_access": "Solicitar acceso",
       "log_in": "Iniciar sesión",
       "menu": "Menú",
-      "close": "Cerrar"
+      "close": "Cerrar",
+      "privacy": "Privacidad",
+      "terms": "Condiciones",
+      "cookies": "Cookies",
+      "manage_cookies": "Gestionar cookies"
+    },
+    "cookies": {
+      "banner_aria": "Aviso de cookies",
+      "banner_title": "Cookies y analítica opcional",
+      "banner_description": "Usamos cookies técnicas necesarias. También podemos usar PostHog para analítica de producto si nos das permiso.",
+      "learn_more": "Más información",
+      "reject": "Rechazar analítica",
+      "configure": "Configurar",
+      "accept": "Aceptar analítica",
+      "settings_title": "Preferencias de cookies",
+      "settings_description": "Las cookies técnicas están siempre activas. La analítica nos ayuda a entender qué partes de Storyarn funcionan y dónde hay fricción.",
+      "required_title": "Cookies técnicas necesarias",
+      "required_description": "Mantienen la sesión, seguridad, idioma, tema y funcionamiento básico del producto.",
+      "analytics_title": "Analítica de producto",
+      "analytics_description": "Activa PostHog frontend con persistencia. No usamos autocaptura, grabación de sesión, encuestas ni publicidad comportamental.",
+      "terms_link": "Ver condiciones de uso",
+      "save": "Guardar preferencias"
+    },
+    "legal": {
+      "last_updated": "Última actualización: {date}",
+      "privacy": {
+        "eyebrow": "Privacidad",
+        "title": "Política de privacidad",
+        "description": "Cómo tratamos los datos personales, las cookies técnicas y la analítica opcional durante el acceso anticipado de Storyarn.",
+        "controller": {
+          "title": "1. Responsable y contacto",
+          "identity": "El responsable del tratamiento de los datos personales descritos en esta política es {controllerName}, persona física que opera Storyarn en fase de acceso anticipado, con domicilio de contacto en {controllerAddress}.",
+          "contact_prefix": "Para cualquier consulta de privacidad puedes escribir a",
+          "early_access": "Storyarn se ofrece actualmente como producto gratuito de acceso anticipado. Si más adelante se constituye una sociedad, se incorporan pagos, facturación o funcionalidades empresariales adicionales, actualizaremos esta política antes de aplicar esos tratamientos."
+        },
+        "data": {
+          "title": "2. Datos que tratamos",
+          "intro": "Podemos tratar las siguientes categorías de datos, según cómo uses el servicio:",
+          "items": {
+            "waitlist": {
+              "label": "Lista de acceso anticipado",
+              "text": "email, profesión o rol, interés de uso, herramienta actual o alternativa buscada, fuente por la que nos has conocido y cualquier detalle opcional que nos facilites."
+            },
+            "account": {
+              "label": "Cuenta",
+              "text": "email, nombre visible, idioma, proveedor de acceso si usas autenticación externa y datos necesarios para mantener la sesión."
+            },
+            "projects": {
+              "label": "Workspaces y proyectos",
+              "text": "nombres de workspaces, nombres de proyectos, tipo de proyecto, contenido narrativo, assets, configuraciones, permisos y actividad necesaria para operar la colaboración."
+            },
+            "technical": {
+              "label": "Datos técnicos",
+              "text": "dirección IP, user agent, identificadores de petición, logs de seguridad, errores y eventos técnicos necesarios para mantener, depurar y proteger el servicio."
+            },
+            "analytics": {
+              "label": "Analítica opcional",
+              "text": "si aceptas la analítica frontend, usamos PostHog EU Cloud con eventos limitados de producto, sin autocaptura, sin grabación de sesión, sin encuestas y sin publicidad comportamental."
+            }
+          }
+        },
+        "purposes": {
+          "title": "3. Finalidades y bases jurídicas",
+          "items": {
+            "access": {
+              "label": "Gestionar el acceso anticipado",
+              "text": "usamos tu email y tus respuestas para priorizar invitaciones y entender el perfil de usuarios interesados. Base jurídica: solicitud precontractual o consentimiento, según el contexto."
+            },
+            "service": {
+              "label": "Prestar el servicio",
+              "text": "usamos datos de cuenta, sesión, workspace y proyecto para permitirte crear, editar y colaborar en Storyarn. Base jurídica: ejecución del servicio solicitado."
+            },
+            "security": {
+              "label": "Seguridad y prevención de abuso",
+              "text": "usamos logs, IP, límites de peticiones y eventos técnicos para proteger la aplicación, investigar errores y evitar accesos no autorizados. Base jurídica: interés legítimo."
+            },
+            "improvement": {
+              "label": "Mejora del producto",
+              "text": "usamos feedback, métricas agregadas y eventos técnicos minimizados para detectar fricción, errores y prioridades. Base jurídica: interés legítimo cuando no implica almacenamiento no necesario; consentimiento cuando usamos PostHog frontend con persistencia."
+            },
+            "communications": {
+              "label": "Comunicaciones operativas",
+              "text": "podemos enviarte emails relacionados con tu solicitud, invitación, cuenta, seguridad o cambios relevantes del servicio. Base jurídica: ejecución del servicio o interés legítimo."
+            }
+          }
+        },
+        "cookies": {
+          "title": "4. Cookies, almacenamiento local y analítica",
+          "technical": "Storyarn usa cookies y almacenamiento técnico necesario para sesión, seguridad, protección CSRF, preferencias y funcionamiento básico. Estos usos son necesarios para prestar el servicio solicitado.",
+          "analytics": "La analítica frontend con PostHog solo se activa si das consentimiento. Si la rechazas, Storyarn no inicializa PostHog frontend para tu navegador.",
+          "table": {
+            "name": "Nombre",
+            "type": "Tipo",
+            "purpose": "Finalidad",
+            "duration": "Duración"
+          },
+          "rows": {
+            "session": {
+              "name": "_storyarn_key",
+              "type": "Técnica",
+              "purpose": "Mantener sesión, seguridad y estado de LiveView.",
+              "duration": "Sesión del navegador."
+            },
+            "remember": {
+              "name": "_storyarn_web_user_remember_me",
+              "type": "Técnica opcional",
+              "purpose": "Recordar el acceso si el usuario lo solicita.",
+              "duration": "14 días."
+            },
+            "theme": {
+              "name": "phx:theme",
+              "type": "Preferencia",
+              "purpose": "Recordar preferencia de tema claro u oscuro.",
+              "duration": "Hasta que se borre o cambie."
+            },
+            "consent": {
+              "name": "storyarn:cookie-consent:v1",
+              "type": "Preferencia",
+              "purpose": "Recordar si aceptas o rechazas la analítica opcional.",
+              "duration": "Hasta 24 meses."
+            },
+            "posthog": {
+              "name": "PostHog",
+              "type": "Analítica opcional",
+              "purpose": "Medir eventos limitados de producto tras consentimiento.",
+              "duration": "Hasta 365 días."
+            }
+          },
+          "control": "Puedes aceptar, rechazar o cambiar la analítica opcional en cualquier momento desde la configuración de cookies.",
+          "manage": "Gestionar preferencias de cookies"
+        },
+        "providers": {
+          "title": "5. Proveedores",
+          "intro": "Usamos proveedores para operar Storyarn. Actúan como encargados del tratamiento o proveedores técnicos en la medida necesaria para prestar el servicio.",
+          "items": {
+            "fly": {
+              "label": "Fly.io",
+              "text": "hosting, despliegue y ejecución de la aplicación."
+            },
+            "neon": {
+              "label": "Neon",
+              "text": "base de datos PostgreSQL gestionada."
+            },
+            "tigris": {
+              "label": "Tigris",
+              "text": "almacenamiento compatible con S3 para assets, archivos y snapshots cuando está configurado."
+            },
+            "resend": {
+              "label": "Resend",
+              "text": "envío de emails transaccionales y comunicaciones operativas."
+            },
+            "posthog": {
+              "label": "PostHog EU Cloud",
+              "text": "analítica de producto y, cuando está activado, señales de errores técnicos. La analítica frontend persistente requiere consentimiento."
+            },
+            "sentry": {
+              "label": "Sentry",
+              "text": "monitorización de errores si la integración está configurada en producción."
+            }
+          },
+          "transfers": "Operamos desde Europa y priorizamos proveedores/regiones europeas cuando están disponibles. Si algún proveedor tratase datos fuera del Espacio Económico Europeo, aplicaremos las garantías legales correspondientes, como cláusulas contractuales tipo, decisiones de adecuación u otros mecanismos aplicables."
+        },
+        "retention": {
+          "title": "6. Conservación",
+          "main": "Conservamos los datos mientras sean necesarios para gestionar el acceso anticipado, prestar el servicio, mantener la seguridad, resolver incidencias o cumplir obligaciones legales. Los datos de lista de espera se conservarán mientras el programa de acceso anticipado siga abierto o hasta que solicites su eliminación. Los datos de cuenta y proyecto se conservarán mientras la cuenta o workspace sigan activos, salvo obligación o necesidad legítima de conservarlos durante más tiempo.",
+          "technical": "Algunas retenciones técnicas están definidas por el producto: la cookie de recordar sesión dura 14 días, el consentimiento de cookies hasta 24 meses, la persistencia frontend de PostHog hasta 365 días, ciertos trabajos internos se purgan tras 7 días y algunos elementos eliminados o snapshots pueden conservarse temporalmente para restauración. Las copias de seguridad y logs de proveedores se gestionan según sus ciclos técnicos."
+        },
+        "rights": {
+          "title": "7. Tus derechos",
+          "text_prefix": "Puedes solicitar acceso, rectificación, eliminación, oposición, limitación del tratamiento, portabilidad o retirada del consentimiento escribiendo a",
+          "text_suffix": "Si consideras que no hemos atendido correctamente tu solicitud, puedes presentar una reclamación ante la autoridad de protección de datos competente."
+        }
+      },
+      "terms": {
+        "eyebrow": "Condiciones",
+        "title": "Condiciones de uso y acceso anticipado",
+        "description": "Las reglas aplicables al uso de Storyarn mientras el producto se encuentra en acceso anticipado gratuito.",
+        "notice": {
+          "title": "1. Identificación del responsable",
+          "identity": "Storyarn está operado actualmente por {controllerName}, persona física, con domicilio de contacto en {controllerAddress}. Storyarn no está operado todavía por una sociedad mercantil independiente.",
+          "contact_prefix": "Para cuestiones legales, soporte o privacidad puedes escribir a"
+        },
+        "beta": {
+          "title": "2. Naturaleza del acceso anticipado",
+          "text": "Storyarn se ofrece actualmente como producto gratuito de acceso anticipado. El producto puede cambiar con frecuencia, incluir errores, modificar funcionalidades, limitar el acceso o dejar de estar disponible temporalmente mientras seguimos desarrollándolo.",
+          "payments": "El acceso anticipado no garantiza disponibilidad permanente, continuidad de funciones ni mantenimiento indefinido de las condiciones actuales. Antes de incorporar pagos, suscripciones, facturación o una sociedad operadora, publicaremos condiciones actualizadas."
+        },
+        "account": {
+          "title": "3. Cuenta, acceso y edad mínima",
+          "text": "Debes proporcionar información veraz al solicitar acceso o crear una cuenta. Eres responsable de proteger tus credenciales y de la actividad que ocurra bajo tu cuenta. Podemos limitar, suspender o retirar el acceso si detectamos abuso, riesgo de seguridad, infracción de estas condiciones o uso incompatible con el producto.",
+          "age": "Storyarn no está dirigido a menores de 14 años. Si eres menor de 14 años, solo puedes usar el servicio con autorización de tu madre, padre o tutor legal."
+        },
+        "content": {
+          "title": "4. Contenido del usuario",
+          "ownership": "Conservas los derechos sobre el contenido que creas o subes a Storyarn, incluyendo textos, estructuras narrativas, imágenes, audio, proyectos y assets.",
+          "responsibility": "Al usar el servicio, nos concedes una licencia limitada para alojar, procesar, mostrar y transmitir ese contenido únicamente en la medida necesaria para operar, mantener, proteger y mejorar Storyarn. Debes tener los derechos necesarios sobre el contenido que subas o generes.",
+          "expression": "Storyarn es una herramienta privada de creación narrativa. No revisamos ni aprobamos previamente el contenido de los usuarios y no lo respaldamos. Eres responsable de tu contenido y de las consecuencias de su uso, publicación o distribución fuera de Storyarn."
+        },
+        "acceptable": {
+          "title": "5. Uso aceptable",
+          "intro": "No puedes usar Storyarn para:",
+          "items": {
+            "illegal": "realizar actividades ilegales, infringir derechos de propiedad intelectual o vulnerar derechos de terceros;",
+            "malware": "subir malware, automatizar abuso, hacer scraping agresivo o interferir con el servicio;",
+            "unauthorized_access": "intentar acceder a cuentas, workspaces, proyectos o sistemas ajenos;",
+            "unrelated": "usar el servicio para alojar contenido que no esté relacionado con su finalidad de creación, organización o prueba narrativa;",
+            "limits": "eludir límites técnicos, rate limits o medidas de seguridad;",
+            "minor_safety": "crear, almacenar o distribuir contenido de explotación de menores, amenazas reales, fraude, instrucciones de abuso técnico o cualquier contenido que exija intervención legal o de seguridad."
+          }
+        },
+        "providers": {
+          "title": "6. Servicios de terceros",
+          "text": "Storyarn puede usar proveedores de infraestructura, almacenamiento, email, analítica, autenticación o monitorización para operar el servicio. El detalle se describe en la",
+          "privacy_link": "Política de privacidad"
+        },
+        "liability": {
+          "title": "7. Disponibilidad, cambios y responsabilidad",
+          "availability": "Storyarn se proporciona en su estado actual durante el acceso anticipado. Intentaremos mantener el servicio estable, pero no garantizamos ausencia de errores, disponibilidad ininterrumpida ni compatibilidad permanente con todos los flujos de trabajo.",
+          "limits": "En la medida permitida por la ley, no seremos responsables de pérdidas indirectas, lucro cesante, pérdida de datos no causada por incumplimiento legal propio, ni actos de usuarios o terceros ajenos a Storyarn. Nada en estas condiciones limita derechos que no puedan limitarse legalmente."
+        },
+        "law": {
+          "title": "8. Ley aplicable",
+          "text": "Estas condiciones se rigen por las leyes de Dinamarca, sin perjuicio de las normas imperativas de protección de consumidores o usuarios que puedan aplicar en tu lugar de residencia."
+        },
+        "contact": {
+          "title": "9. Contacto",
+          "text_prefix": "Para dudas sobre estas condiciones, puedes escribir a"
+        }
+      }
     },
     "contact": {
       "title": "Contacto",

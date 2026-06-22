@@ -85,7 +85,7 @@ if config_env() != :test do
       if(posthog_error_tracking_enabled?, do: "true", else: "false")
     ) in ~w(true 1)
 
-  posthog_host = posthog_env.("POSTHOG_HOST", "https://us.i.posthog.com")
+  posthog_host = posthog_env.("POSTHOG_HOST", "https://eu.i.posthog.com")
 
   config :posthog,
     enable: posthog_configured?,

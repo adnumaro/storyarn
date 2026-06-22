@@ -1,5 +1,11 @@
 <script setup lang="ts">
+import { openCookiePreferences } from "@/js/utils/posthog";
+
 const year = new Date().getFullYear();
+
+function openCookieSettings(): void {
+  openCookiePreferences();
+}
 </script>
 
 <template>
@@ -55,10 +61,42 @@ const year = new Date().getFullYear();
 
       <!-- Bottom Edge -->
       <div
-        class="flex items-center justify-between border-t border-border/10 pt-6 text-sm text-muted-foreground/50"
+        class="flex flex-col gap-4 border-t border-border/10 pt-6 text-sm text-muted-foreground/50 sm:flex-row sm:items-center sm:justify-between"
       >
         <span>Storyarn &middot; {{ year }}</span>
-        <span>{{ $t("landing.common.badge") }}</span>
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <a
+            href="/privacy"
+            data-phx-link="redirect"
+            data-phx-link-state="push"
+            class="transition-colors hover:text-foreground"
+          >
+            {{ $t("public.layout.privacy") }}
+          </a>
+          <a
+            href="/terms"
+            data-phx-link="redirect"
+            data-phx-link-state="push"
+            class="transition-colors hover:text-foreground"
+          >
+            {{ $t("public.layout.terms") }}
+          </a>
+          <a
+            href="/privacy#cookies"
+            data-phx-link="redirect"
+            data-phx-link-state="push"
+            class="transition-colors hover:text-foreground"
+          >
+            {{ $t("public.layout.cookies") }}
+          </a>
+          <button
+            type="button"
+            class="transition-colors hover:text-foreground"
+            @click="openCookieSettings"
+          >
+            {{ $t("public.layout.manage_cookies") }}
+          </button>
+        </div>
       </div>
     </div>
   </footer>

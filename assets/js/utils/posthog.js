@@ -1,6 +1,3 @@
-import "posthog-js/dist/exception-autocapture";
-import posthog from "posthog-js/dist/module.no-external";
-
 const eventPropertyAllowlist = new Map([
   [
     "asset uploaded",
@@ -27,6 +24,7 @@ const eventPropertyAllowlist = new Map([
 
 const routeFamilies = [
   [(pathname) => pathname === "/", "public_home"],
+  [(pathname) => pathname === "/privacy" || pathname === "/terms", "legal"],
   [(pathname) => pathname.startsWith("/docs"), "docs"],
   [(pathname) => pathname.startsWith("/users/log-in"), "login"],
   [(pathname) => pathname.startsWith("/users/register"), "registration"],
@@ -72,31 +70,61 @@ const privateAutoProperties = new Set([
   "$session_entry_url",
 ]);
 
+const COOKIE_CONSENT_KEY = "storyarn:cookie-consent:v1";
+const COOKIE_CONSENT_VERSION = 1;
+const COOKIE_CONSENT_MAX_AGE_MS = 730 * 24 * 60 * 60 * 1000;
+
 let initialized = false;
+let initializing = false;
 let lastPageviewKey = null;
+let posthog = null;
+let posthogLoadPromise = null;
 
 export function initPostHog() {
-  if (initialized) return;
+  if (initialized || initializing) return;
+  if (!hasAnalyticsConsent()) return;
 
   const config = readConfig();
   if (!config) return;
 
-  initialized = true;
+  initializing = true;
 
-  posthog.init(config.apiKey, {
-    ...postHogInitOptions(config),
-    loaded: () => {
-      identifyCurrentUser();
-      capturePageview();
-    },
-  });
+  loadPostHog()
+    .then((loadedPosthog) => {
+      if (!hasAnalyticsConsent()) return;
 
-  window.addEventListener("phx:page-loading-stop", capturePageview);
-  window.addEventListener("phx:analytics", handleAnalyticsEvent);
+      posthog = loadedPosthog;
+      initialized = true;
+
+      posthog.init(config.apiKey, {
+        ...postHogInitOptions(config),
+        loaded: () => {
+          posthog.opt_in_capturing?.();
+          identifyCurrentUser();
+          capturePageview();
+        },
+      });
+
+      window.addEventListener("phx:page-loading-stop", capturePageview);
+      window.addEventListener("phx:analytics", handleAnalyticsEvent);
+    })
+    .finally(() => {
+      initializing = false;
+    });
+}
+
+async function loadPostHog() {
+  posthogLoadPromise ||= Promise.all([
+    import("posthog-js/dist/exception-autocapture"),
+    import("posthog-js/dist/module.no-external"),
+  ]).then(([, module]) => module.default || module.posthog);
+
+  return posthogLoadPromise;
 }
 
 export function capture(eventName, properties = {}) {
-  if (!initialized || typeof eventName !== "string" || eventName.length === 0) return;
+  if (!initialized || !posthog || typeof eventName !== "string" || eventName.length === 0) return;
+  if (!hasAnalyticsConsent()) return;
   if (!eventPropertyAllowlist.has(eventName)) return;
   if (posthog.has_opted_out_capturing?.()) return;
 
@@ -114,6 +142,8 @@ export function capturePageview() {
 }
 
 export function identifyCurrentUser() {
+  if (!posthog) return;
+
   const distinctId = readMeta("posthog-user-id");
   if (!distinctId) return;
 
@@ -138,6 +168,87 @@ function readConfig() {
     errorTrackingEnabled: readMeta("posthog-error-tracking-enabled") === "true",
     host,
   };
+}
+
+export function postHogConsentRequired() {
+  return readConfig() !== null;
+}
+
+export function readCookieConsent() {
+  try {
+    const rawConsent = window.localStorage.getItem(COOKIE_CONSENT_KEY);
+    if (!rawConsent) return null;
+
+    const consent = JSON.parse(rawConsent);
+    if (consent?.version !== COOKIE_CONSENT_VERSION) return null;
+    if (typeof consent.analytics !== "boolean") return null;
+    if (consentExpired(consent)) return null;
+
+    return consent;
+  } catch {
+    return null;
+  }
+}
+
+export function hasAnalyticsConsent() {
+  return readCookieConsent()?.analytics === true;
+}
+
+export function saveCookieConsent({ analytics }) {
+  const decidedAt = new Date();
+  const consent = {
+    analytics: Boolean(analytics),
+    decidedAt: decidedAt.toISOString(),
+    expiresAt: new Date(decidedAt.getTime() + COOKIE_CONSENT_MAX_AGE_MS).toISOString(),
+    version: COOKIE_CONSENT_VERSION,
+  };
+
+  try {
+    window.localStorage.setItem(COOKIE_CONSENT_KEY, JSON.stringify(consent));
+  } catch {
+    return consent;
+  }
+
+  if (consent.analytics) {
+    enablePostHogCapture();
+  } else {
+    disablePostHogCapture();
+  }
+
+  window.dispatchEvent(new CustomEvent("storyarn:cookie-consent-updated", { detail: consent }));
+
+  return consent;
+}
+
+export function openCookiePreferences() {
+  window.dispatchEvent(new CustomEvent("storyarn:open-cookie-settings"));
+}
+
+function enablePostHogCapture() {
+  if (initialized && posthog) {
+    posthog.opt_in_capturing?.();
+    capturePageview();
+  } else {
+    initPostHog();
+  }
+}
+
+function disablePostHogCapture() {
+  if (!initialized || !posthog) return;
+
+  posthog.opt_out_capturing?.();
+}
+
+function consentExpired(consent) {
+  if (typeof consent.expiresAt === "string") {
+    return Date.parse(consent.expiresAt) <= Date.now();
+  }
+
+  if (typeof consent.decidedAt === "string") {
+    return Date.parse(consent.decidedAt) + COOKIE_CONSENT_MAX_AGE_MS <= Date.now();
+  }
+
+  return true;
 }
 
 function readMeta(name) {
@@ -220,6 +331,8 @@ export function postHogInitOptions(config) {
     disable_surveys: true,
     disable_external_dependency_loading: true,
     disable_session_recording: true,
+    cookie_expiration: 365,
+    persistence: "localStorage+cookie",
     advanced_disable_decide: true,
     advanced_disable_feature_flags: true,
     advanced_disable_flags: true,
@@ -230,5 +343,8 @@ export function postHogInitOptions(config) {
 
 export function resetPostHogForTest() {
   initialized = false;
+  initializing = false;
   lastPageviewKey = null;
+  posthog = null;
+  posthogLoadPromise = null;
 }

@@ -31,7 +31,7 @@ config :phoenix_test,
 config :posthog,
   enable: true,
   enable_error_tracking: false,
-  api_host: "https://us.i.posthog.com",
+  api_host: "https://eu.i.posthog.com",
   in_app_otp_apps: [:storyarn],
   test_mode: true,
   api_key: "phc_test"

@@ -56,6 +56,13 @@ defmodule StoryarnWeb.Layouts do
         flash={@flash_messages}
         network={@network_flash}
       />
+      <.vue
+        v-component="live/public/CookieConsent"
+        v-socket={@socket}
+        id={"#{@id}-cookie-consent"}
+        privacy-url={~p"/privacy#cookies"}
+        terms-url={~p"/terms"}
+      />
     </div>
     """
   end
