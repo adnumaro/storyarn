@@ -1,0 +1,80 @@
+test/support/fixtures/flows_fixtures.ex
+  s_0c1c0daa2940bb::t_f4157d3a01e29e 55
+test/storyarn_web/live/flow_live/handlers/debug_handlers_test.exs
+  s_0c1c0daa2940bb::t_f4157d3a01e29e 137-138,165,210,250
+lib/storyarn_web/live/legal_live/show.ex
+  s_0c1c0daa2940bb::t_4cabeebe1e4e3f 1-5,9-18,21-40,43-55
+  s_0c1c0daa2940bb::t_b9156087fa8db1 6-8,19-20,41-42
+assets/app/locales/en/public.json
+  s_0c1c0daa2940bb::t_aa041e69c4c0f3 8-236
+lib/storyarn/analytics.ex
+  s_0c1c0daa2940bb::t_defad54602da92 229
+test/storyarn_web/live/flow_live/helpers/connection_helpers_test.exs
+  s_0c1c0daa2940bb::t_f4157d3a01e29e 23,44
+config/runtime.exs
+  s_0c1c0daa2940bb::t_9cefb40e2d4e01 88
+test/storyarn/analytics_test.exs
+  s_0c1c0daa2940bb::t_defad54602da92 111,123,141,151
+assets/app/live/public/CookieConsent.vue
+  s_0c1c0daa2940bb::t_2169ba2966b39d 14,91-93,139-141,190-192
+  s_0c1c0daa2940bb::t_c120c7dd9ac006 58-65,73-74,78-79
+  s_0c1c0daa2940bb::t_21c8625f838719 1-13,15-57,66-72,75-77,80-90,94-138,142-189,193-213
+assets/app/live/public/PublicFooter.vue
+  s_0c1c0daa2940bb::t_98f3cc85b686bc 2-3,5-8,64,67-83,97-99
+  s_0c1c0daa2940bb::t_691972b7ef160d 84-91
+  s_0c1c0daa2940bb::t_2169ba2966b39d 92-96
+assets/app/test/utils/posthog.test.ts
+  s_0c1c0daa2940bb::t_defad54602da92 24,35,42
+  s_0c1c0daa2940bb::t_04d7ed67b64641 1,3,6,8,13-14,16-19,102-133
+  s_0c1c0daa2940bb::t_3565931ba76338 38-41,43-47,87-88
+lib/storyarn_web/components/layouts.ex
+  s_0c1c0daa2940bb::t_4cabeebe1e4e3f 59-65
+test/storyarn_web/live/legal_live/show_test.exs
+  s_0c1c0daa2940bb::t_5c7bb17ec41071 12-13,23-24
+  s_0c1c0daa2940bb::t_17f3a65eb7f0a0 1-11,14-22,25-27
+test/storyarn_web/live/flow_live/handlers/debug_session_handlers_test.exs
+  s_0c1c0daa2940bb::t_f4157d3a01e29e 98,150,156,183
+assets/js/utils/posthog.js
+  s_0c1c0daa2940bb::t_5864e96cf76340 27
+  s_0c1c0daa2940bb::t_11223b33fa2c60 78,80-81,84,90-114,116,122,126,145-146,228,237,346,348-349
+  s_0c1c0daa2940bb::t_638a517c854e01 117-120
+  s_0c1c0daa2940bb::t_ae263a149bb830 73-76,85,127,173-227,229-236,238-253,334-335
+.env.example
+  s_0c1c0daa2940bb::t_f878c5b6f10b2a 99
+assets/app/locales/es/public.json
+  s_0c1c0daa2940bb::t_0dd0456d691f36 8-236
+test/storyarn/flows/connection_crud_test.exs
+  s_0c1c0daa2940bb::t_f4157d3a01e29e 95-96,217,235,260,271,285,291,333,350,366,382,397,412,428,445,598,659
+  s_0c1c0daa2940bb::t_0c0b6e18903999 223
+lib/storyarn_web/router.ex
+  s_0c1c0daa2940bb::t_4cabeebe1e4e3f 357-358
+test/storyarn/versioning/builders/flow_builder_test.exs
+  s_0c1c0daa2940bb::t_f4157d3a01e29e 55
+assets/app/live/public/legal/LegalPage.vue
+  s_0c1c0daa2940bb::t_28d182d018490e 1-7,15-23,27-64,66-74,77-81,83-164,166-176,179-183,185-242,244-285
+  s_0c1c0daa2940bb::t_466b83a5682ff3 8-14,24-26,65,75-76,82,165,177-178,184,243
+test/storyarn/flows_test.exs
+  s_0c1c0daa2940bb::t_f4157d3a01e29e 762,768,780,858,877,903
+test/storyarn/flows/flow_crud_test.exs
+  s_0c1c0daa2940bb::t_f4157d3a01e29e 935
+config/test.exs
+  s_0c1c0daa2940bb::t_825d97347a8ee2 34
+test/storyarn/exports/serializers/helpers_test.exs
+  s_0c1c0daa2940bb::t_f4157d3a01e29e 238
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "f811a817c939e119f1218b7f0bcc69004fc6560f",
+  "prompts": {},
+  "sessions": {
+    "s_0c1c0daa2940bb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eb14f-629c-7880-840a-59c833ac34cb",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
