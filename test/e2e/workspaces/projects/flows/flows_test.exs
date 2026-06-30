@@ -64,8 +64,9 @@ defmodule StoryarnWeb.E2E.FlowsTest do
       conn
       |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows")
-      |> click("[data-testid='create-flows']")
-      |> assert_has("[data-testid='entity-title']")
+      |> click_button("New Flow")
+      |> assert_path("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/*")
+      |> assert_has("[id^=\"flow-canvas-\"]")
     end
 
     test "shows main badge on main flow", %{conn: conn} do
@@ -77,7 +78,8 @@ defmodule StoryarnWeb.E2E.FlowsTest do
       conn
       |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows")
-      |> assert_has("span", text: "Main")
+      |> assert_has("a", text: "Primary Flow")
+      |> assert_has("[data-slot='badge']", text: "Main")
     end
   end
 
@@ -90,7 +92,7 @@ defmodule StoryarnWeb.E2E.FlowsTest do
       conn
       |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}")
-      |> assert_has("h1", text: "Story Flow")
+      |> assert_has("span", text: "Story Flow")
       |> assert_has("[id^=\"flow-canvas-\"]")
     end
 
@@ -114,18 +116,16 @@ defmodule StoryarnWeb.E2E.FlowsTest do
       conn
       |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{root_flow.id}")
-      |> assert_has("h1", text: "Root Flow")
-      |> assert_has("button[data-tip='Show panel']")
-      |> click("button[data-tip='Show panel']")
-      |> assert_has("#main-sidebar[data-open='true']")
+      |> assert_has("span", text: "Root Flow")
+      |> assert_has("body[data-main-sidebar-open='1']")
       |> assert_has(
-        "#flows-tree-container a[href='/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{branch_flow.id}']"
+        "#shell-main-sidebar a[href='/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{branch_flow.id}']"
       )
       |> click(
-        "#flows-tree-container a[href='/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{branch_flow.id}']"
+        "#shell-main-sidebar a[href='/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{branch_flow.id}']"
       )
       |> assert_path("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{branch_flow.id}")
-      |> assert_has("h1", text: "Branch Flow")
+      |> assert_has("span", text: "Branch Flow")
     end
 
     test "can create nodes from the dock and connect them", %{conn: conn} do
@@ -174,8 +174,8 @@ defmodule StoryarnWeb.E2E.FlowsTest do
       conn
       |> authenticate(viewer)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}")
-      |> assert_has("h1", text: "Shared Flow")
-      |> refute_has("[phx-click=add_node]")
+      |> assert_has("span", text: "Shared Flow")
+      |> refute_has("[data-testid='flow-dock']")
     end
 
     test "editor can see node tools in dock", %{conn: conn} do

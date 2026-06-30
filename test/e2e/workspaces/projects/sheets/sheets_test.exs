@@ -65,7 +65,7 @@ defmodule StoryarnWeb.E2E.SheetsTest do
       |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets")
       # Tree panel starts open on sheets index
-      |> assert_has("#main-sidebar[data-open='true']")
+      |> assert_has("body[data-main-sidebar-open='1']")
       |> assert_has("button", text: "New Sheet")
     end
 
@@ -103,7 +103,7 @@ defmodule StoryarnWeb.E2E.SheetsTest do
       conn
       |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}")
-      |> assert_has("span", text: "Type / to add a block")
+      |> assert_has("button", text: "Add block")
     end
 
     test "shows breadcrumb navigation to parent", %{conn: conn} do
@@ -132,7 +132,7 @@ defmodule StoryarnWeb.E2E.SheetsTest do
       |> authenticate(viewer)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}")
       |> assert_has("h1", text: "Shared Sheet")
-      |> refute_has("span", text: "Type / to add a block")
+      |> refute_has("button", text: "Add block")
     end
 
     test "editor can see and add blocks", %{conn: conn} do
@@ -145,7 +145,7 @@ defmodule StoryarnWeb.E2E.SheetsTest do
       conn
       |> authenticate(editor)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}")
-      |> assert_has("span", text: "Type / to add a block")
+      |> assert_has("button", text: "Add block")
     end
   end
 
@@ -164,7 +164,7 @@ defmodule StoryarnWeb.E2E.SheetsTest do
       conn
       |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}")
-      |> assert_has("label", text: "Description")
+      |> assert_has("span", text: "Description")
     end
 
     test "displays computed formula results in table cells", %{conn: conn} do

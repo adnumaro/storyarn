@@ -26,7 +26,7 @@ const form = useLiveForm(() => formProp, {
 
 const password = form.field("password");
 const passwordConfirmation = form.field("password_confirmation");
-const emailInput = ref<HTMLInputElement | null>(null);
+const emailInput = ref<{ focus: () => void } | null>(null);
 const emailVal = ref(userEmail);
 const showPassword = ref(false);
 const showPasswordConfirmation = ref(false);

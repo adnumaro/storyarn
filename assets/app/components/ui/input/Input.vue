@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, HTMLAttributes } from "vue";
+import { computed, HTMLAttributes, ref } from "vue";
 import { useVModel } from "@vueuse/core";
 import { cn } from "../../../shared/utils/utils";
 
@@ -20,6 +20,13 @@ const modelValue = useVModel(props, "modelValue", emits, {
 });
 
 const size = computed(() => props.size || "base");
+const inputRef = ref<HTMLInputElement | null>(null);
+
+function focus(): void {
+  inputRef.value?.focus();
+}
+
+defineExpose({ focus });
 
 const SIZES = {
   xs: "h-6 px-2 text-xs",
@@ -30,6 +37,7 @@ const SIZES = {
 
 <template>
   <input
+    ref="inputRef"
     v-model="modelValue"
     data-slot="input"
     :class="

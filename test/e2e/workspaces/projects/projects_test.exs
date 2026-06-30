@@ -57,7 +57,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       |> authenticate(user)
       |> visit("/workspaces/#{workspace.slug}")
       |> assert_has("h1", text: workspace.name)
-      |> assert_has("p", text: "No projects yet")
+      |> assert_has("h3", text: "No projects yet")
     end
 
     test "shows project list when user has projects", %{conn: conn} do
@@ -77,8 +77,8 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       conn
       |> authenticate(user)
       |> visit("/workspaces/#{workspace.slug}")
-      |> click_link("New Project")
-      |> assert_has("dialog[open] h1", text: "New Project")
+      |> click_button("New Project")
+      |> assert_has("[data-slot='dialog-content'] h2", text: "New Project")
     end
 
     test "can create a new project", %{conn: conn} do
@@ -87,9 +87,14 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
 
       conn
       |> authenticate(user)
-      |> visit("/workspaces/#{workspace.slug}/projects/new")
-      |> assert_has("h1", text: "New Project")
+      |> visit("/workspaces/#{workspace.slug}")
+      |> click_button("New Project")
+      |> assert_has("[data-slot='dialog-content'] h2", text: "New Project")
       |> fill_in("Project Name", with: "My New Story")
+      |> click("#project-type")
+      |> click("[data-slot='select-item']", "Video game")
+      |> click("#project-subtype")
+      |> click("[data-slot='select-item']", "RPG", exact: true)
       |> fill_in("Description", with: "A narrative adventure")
       |> click_button("Create Project")
       |> assert_has("p", text: "Project created successfully")
@@ -108,8 +113,8 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       conn
       |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
-      |> assert_has("p", text: "Sheets")
-      |> assert_has("p", text: "Flows")
+      |> assert_has("[data-testid='project-stat-sheets']")
+      |> assert_has("[data-testid='project-stat-flows']")
     end
 
     test "shows project settings in dropdown for owner", %{conn: conn} do
@@ -215,7 +220,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       |> assert_has("h1", text: "Invalid Invitation")
     end
 
-    test "valid token auto-accepts and redirects to login", %{conn: conn} do
+    test "valid token redirects new invitee to registration", %{conn: conn} do
       owner = user_fixture()
       project = project_fixture(owner, %{name: "Awesome Project"})
 
@@ -224,7 +229,12 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
 
       conn
       |> visit("/projects/invitations/#{token}")
-      |> assert_path("/users/log-in")
+      |> assert_path("/users/register/*")
+      |> assert_has("h1", text: "Complete your account")
+
+      invited_user = Accounts.get_user_by_email("new-invitee@example.com")
+      assert invited_user
+      refute Projects.get_membership(project.id, invited_user.id)
     end
 
     test "invited user can accept, authenticate, and open the project", %{conn: conn} do
@@ -237,6 +247,10 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
 
       conn
       |> visit("/projects/invitations/#{token}")
+      |> assert_path("/users/register/*")
+      |> fill_in("#register-password", "Password", with: "password12345")
+      |> fill_in("#register-password-confirmation", "Confirm Password", with: "password12345")
+      |> click_button("Create an account")
       |> assert_path("/users/log-in")
 
       invited_user = Accounts.get_user_by_email(invited_email)
@@ -274,7 +288,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
     test "renders landing page for unauthenticated user", %{conn: conn} do
       conn
       |> visit("/")
-      |> assert_has("h1", text: "Craft worlds.")
+      |> assert_has("h1", text: "Design interactive narratives without losing control of the world.")
     end
 
     test "authenticated user is redirected to workspace", %{conn: conn} do

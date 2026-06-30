@@ -84,7 +84,13 @@ function safeParse(json: string, fallback: Record<string, unknown> = {}): Record
     Loading...
   </div>
   <div v-show="!loading" class="w-full h-full relative">
-    <div ref="containerRef" :id="canvasId" class="w-full h-full" />
+    <div
+      ref="containerRef"
+      :id="canvasId"
+      class="w-full h-full"
+      :data-user-id="userId"
+      :data-user-color="userColor"
+    />
 
     <FlowCursors
       v-if="!readonly && area"

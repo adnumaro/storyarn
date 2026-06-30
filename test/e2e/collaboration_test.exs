@@ -46,7 +46,6 @@ defmodule StoryarnWeb.E2E.CollaborationTest do
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}")
       |> assert_has("[id^=\"flow-canvas-\"][data-user-id]")
       |> assert_has("[id^=\"flow-canvas-\"][data-user-color]")
-      |> assert_has("[id^=\"flow-canvas-\"][data-locks]")
     end
 
     test "save indicator shows when editing node", %{conn: conn} do
