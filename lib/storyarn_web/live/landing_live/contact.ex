@@ -5,7 +5,14 @@ defmodule StoryarnWeb.LandingLive.Contact do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, page_title: gettext("Contact"))}
+    {:ok,
+     assign(socket,
+       page_title: gettext("Contact"),
+       seo_description:
+         gettext(
+           "Contact Storyarn about the narrative design platform for game writers, narrative designers, and game design teams."
+         )
+     )}
   end
 
   @impl true

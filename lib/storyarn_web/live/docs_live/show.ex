@@ -35,7 +35,17 @@ defmodule StoryarnWeb.DocsLive.Show do
   defp apply_action(socket, :index, _params) do
     case Docs.first_guide(socket.assigns.locale) do
       nil ->
-        assign(socket, page_title: dgettext("docs", "Documentation"), guide: nil, prev: nil, next: nil)
+        assign(socket,
+          page_title: dgettext("docs", "Documentation"),
+          seo_description:
+            dgettext(
+              "docs",
+              "Learn how to use Storyarn for narrative design, branching dialogue, worldbuilding, scenes, localization, and game engine export."
+            ),
+          guide: nil,
+          prev: nil,
+          next: nil
+        )
 
       guide ->
         push_navigate(socket, to: "/docs/#{guide.url_path}")
@@ -57,6 +67,7 @@ defmodule StoryarnWeb.DocsLive.Show do
 
         assign(socket,
           page_title: guide.title,
+          seo_description: guide.description || docs_description(),
           guide: guide,
           prev: prev,
           next: next
@@ -127,5 +138,12 @@ defmodule StoryarnWeb.DocsLive.Show do
   defp docs_locale do
     locale = Gettext.get_locale(Storyarn.Gettext)
     if Docs.list_guides(locale) == [], do: "en", else: locale
+  end
+
+  defp docs_description do
+    dgettext(
+      "docs",
+      "Storyarn documentation for game narrative workflows, branching dialogue, worldbuilding, scenes, localization, and export."
+    )
   end
 end

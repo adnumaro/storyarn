@@ -14,6 +14,7 @@ defmodule StoryarnWeb.LegalLive.Show do
     {:ok,
      socket
      |> assign(:page_title, document.title)
+     |> assign(:seo_description, document.description)
      |> assign(:document, document.key)
      |> assign(:updated_at, @updated_at)
      |> assign(:controller_address, @controller_address)
@@ -46,8 +47,22 @@ defmodule StoryarnWeb.LegalLive.Show do
     """
   end
 
-  defp legal_document(:terms), do: %{key: "terms", title: gettext("Terms of Use")}
-  defp legal_document(_privacy), do: %{key: "privacy", title: gettext("Privacy Policy")}
+  defp legal_document(:terms) do
+    %{
+      key: "terms",
+      title: gettext("Terms of Use"),
+      description: gettext("Terms of Use for Storyarn, the narrative design platform for game projects.")
+    }
+  end
+
+  defp legal_document(_privacy) do
+    %{
+      key: "privacy",
+      title: gettext("Privacy Policy"),
+      description:
+        gettext("Privacy Policy for Storyarn, including account, waitlist, invitation, and product analytics data.")
+    }
+  end
 
   defp contact_email do
     Application.fetch_env!(:storyarn, :contact_email)

@@ -96,6 +96,10 @@ defmodule StoryarnWeb.Router do
     post "/waitlist", PageController, :join_waitlist
   end
 
+  scope "/", StoryarnWeb do
+    get "/sitemap.xml", SitemapController, :index
+  end
+
   # Other scopes may use custom stacks.
   # scope "/api", StoryarnWeb do
   #   pipe_through :api

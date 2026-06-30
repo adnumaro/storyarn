@@ -89,6 +89,47 @@ defmodule StoryarnWeb.Layouts do
     |> Analytics.frontend_config()
   end
 
+  def seo_title(assigns) do
+    page_title = assigns[:page_title]
+
+    if is_binary(page_title) && String.trim(page_title) != "" do
+      String.trim(page_title)
+    else
+      "Storyarn"
+    end
+  end
+
+  def seo_description(assigns) do
+    description = assigns[:seo_description]
+
+    if is_binary(description) && String.trim(description) != "" do
+      String.trim(description)
+    else
+      "Storyarn is a narrative design platform for video games, branching dialogue, worldbuilding, scenes, localization, debugging, and engine-ready export."
+    end
+  end
+
+  def seo_type(assigns) do
+    case assigns[:seo_type] do
+      type when is_binary(type) and type != "" -> type
+      _ -> "website"
+    end
+  end
+
+  def seo_canonical_url(assigns) do
+    case assigns[:canonical_url] do
+      url when is_binary(url) and url != "" -> url
+      _ -> assigns |> current_request_path() |> absolute_url()
+    end
+  end
+
+  def seo_image_url(assigns) do
+    case assigns[:seo_image_url] do
+      url when is_binary(url) and url != "" -> url
+      _ -> absolute_url("/images/landing/storyarn-lab-hero.webp")
+    end
+  end
+
   defp current_scope_from_assigns(%{current_scope: current_scope}), do: current_scope
 
   defp current_scope_from_assigns(%{conn: %{assigns: %{current_scope: current_scope}}}) do
@@ -100,4 +141,13 @@ defmodule StoryarnWeb.Layouts do
   end
 
   defp current_scope_from_assigns(_assigns), do: nil
+
+  defp current_request_path(%{conn: %{request_path: path}}) when is_binary(path), do: path
+  defp current_request_path(_assigns), do: "/"
+
+  defp absolute_url(path) do
+    StoryarnWeb.Endpoint.url()
+    |> URI.merge(path)
+    |> URI.to_string()
+  end
 end

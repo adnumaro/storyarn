@@ -47,7 +47,9 @@ defmodule StoryarnWeb.Plugs.NoindexRobotsTest do
 
     conn = get(conn, "/robots.txt")
 
-    assert response(conn, 200) =~ "robotstxt.org"
+    assert response(conn, 200) =~ "Allow: /"
+    assert response(conn, 200) =~ "Sitemap: https://www.storyarn.com/sitemap.xml"
+    refute response(conn, 200) =~ "Disallow: /"
   end
 
   defp restore_env(key, {:ok, value}), do: Application.put_env(:storyarn, key, value)
