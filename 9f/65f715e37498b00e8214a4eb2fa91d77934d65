@@ -1,0 +1,55 @@
+lib/storyarn_web/router.ex
+  s_0def36709c589f::t_2da7764fe69033 19
+docs/conventions/domain-patterns.md
+  s_0def36709c589f::t_811a8a8d8472fc 27
+lib/storyarn/vault.ex
+  s_0def36709c589f::t_11671c54151418 5
+mix.exs
+  s_0def36709c589f::t_2da7764fe69033 95
+vite.config.mjs
+  s_0def36709c589f::t_2da7764fe69033 24
+docs/plans/project_shell_pivot.md
+  s_0def36709c589f::t_d42f549b8f4b3b 131
+assets/app/locales/es/public.json
+  s_0def36709c589f::t_584ca94c69dd9f 49,53,168-169,216
+  s_0def36709c589f::t_a3f07112d74973 217-218
+test/storyarn_web/router_test.exs
+  s_0def36709c589f::t_c99b58f99c2e6e 36-38
+config/runtime.exs
+  s_0def36709c589f::t_95fbe3d434fd00 120
+README.md
+  s_0def36709c589f::t_2da7764fe69033 25-26
+assets/app/locales/en/public.json
+  s_0def36709c589f::t_a3f07112d74973 217-218
+  s_0def36709c589f::t_01e07567496fa6 49,53,168-169,216
+docs/plans/posthog-analytics-integration.md
+  s_0def36709c589f::t_2da7764fe69033 3,59-60,90,126,134
+assets/app/live/public/legal/LegalPage.vue
+  s_0def36709c589f::t_2da7764fe69033 31
+  s_0def36709c589f::t_e69b4c73911e0d 32-39,89-91,136-138
+  s_0def36709c589f::t_a3f07112d74973 236
+.env.example
+  s_0def36709c589f::t_2da7764fe69033 75
+  s_0def36709c589f::t_77f9689cfe9618 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.4",
+  "base_commit_sha": "9f65f715e37498b00e8214a4eb2fa91d77934d65",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_0def36709c589f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f0e8b-33c1-7da0-adb0-5de25948788a",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
