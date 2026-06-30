@@ -2,6 +2,7 @@
   "name": "storyarn-assets",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "pnpm@10.11.1",
   "type": "module",
   "scripts": {
     "lint": "node_modules/.bin/oxlint",

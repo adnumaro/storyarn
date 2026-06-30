@@ -10,6 +10,8 @@ env:
   MIX_ENV: test
   ELIXIR_VERSION: "1.19"
   OTP_VERSION: "28"
+  NODE_VERSION: "24"
+  PNPM_VERSION: "10.11.1"
 
 jobs:
   test:
@@ -51,12 +53,18 @@ jobs:
           elixir-version: ${{ env.ELIXIR_VERSION }}
           otp-version: ${{ env.OTP_VERSION }}
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: assets/package-lock.json
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Cache deps
         uses: actions/cache@v4
@@ -79,8 +87,7 @@ jobs:
         run: mix deps.get
 
       - name: Install JS dependencies
-        run: npm ci
-        working-directory: assets
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Compile (warnings as errors)
         run: mix compile --warnings-as-errors
@@ -94,9 +101,8 @@ jobs:
       - name: Run Sobelow (security)
         run: mix sobelow --config
 
-      - name: Run JS lint (Biome)
-        run: npm run check
-        working-directory: assets
+      - name: Run JS checks
+        run: pnpm run fmt:check && pnpm run lint && pnpm run typecheck
 
       - name: Run Elixir tests
         run: mix test
@@ -104,8 +110,7 @@ jobs:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/storyarn_test
 
       - name: Run JS tests (Vitest)
-        run: npm test
-        working-directory: assets
+        run: pnpm test
 
   e2e:
     name: E2E Tests (Playwright)
@@ -146,12 +151,18 @@ jobs:
           elixir-version: ${{ env.ELIXIR_VERSION }}
           otp-version: ${{ env.OTP_VERSION }}
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: assets/package-lock.json
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Cache deps
         uses: actions/cache@v4
@@ -174,12 +185,10 @@ jobs:
         run: mix deps.get
 
       - name: Install JS dependencies
-        run: npm ci
-        working-directory: assets
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Install Playwright browsers
-        run: npm exec -- playwright install chromium --with-deps
-        working-directory: assets
+        run: pnpm exec playwright install chromium --with-deps
 
       - name: Compile
         run: mix compile
@@ -233,6 +242,19 @@ jobs:
         with:
           elixir-version: ${{ env.ELIXIR_VERSION }}
           otp-version: ${{ env.OTP_VERSION }}
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Set up .NET SDK
         uses: actions/setup-dotnet@v4
@@ -306,6 +328,9 @@ jobs:
 
       - name: Install dependencies
         run: mix deps.get
+
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Compile
         run: mix compile
