@@ -1,0 +1,22 @@
+package.json
+  s_0def36709c589f::t_f73450978f6f13 5
+.github/workflows/ci.yml
+  s_0def36709c589f::t_7649e4f89770f9 13-14,56-61,65-67,90,104-105,113,154-159,163-165,188,191,246-258,332-333
+  s_0def36709c589f::t_0192210683c24b 334
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.4",
+  "base_commit_sha": "5b3c681c2286146889ba61ec089631adac9de75b",
+  "prompts": {},
+  "sessions": {
+    "s_0def36709c589f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f0e8b-33c1-7da0-adb0-5de25948788a",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
