@@ -28,7 +28,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrudTest do
       assert snapshot.project_id == project.id
       assert snapshot.version_number == 1
       assert snapshot.title == "v1"
-      assert snapshot.storage_key =~ "snapshots/project/#{snapshot.version_number}.json.gz"
+      assert snapshot.storage_key =~ ~r|snapshots/project/#{snapshot.version_number}-[a-f0-9]{16}\.json\.gz$|
       assert snapshot.snapshot_size_bytes > 0
       assert snapshot.created_by_id == user.id
       assert snapshot.entity_counts["sheets"] >= 1

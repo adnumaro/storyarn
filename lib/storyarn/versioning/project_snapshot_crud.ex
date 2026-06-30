@@ -15,11 +15,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.SnapshotStorage
+  alias Storyarn.Versioning.VersionNumberLock
 
   require Logger
 
-  # Version number uses optimistic concurrency: compute max+1, insert, retry on
-  # unique constraint violation. Matches the pattern in VersionCrud.
+  # Version number allocation is serialized per project. The retry path remains
+  # as a defensive fallback if an external writer bypasses the lock.
   @max_retries 3
 
   # ========== Create ==========
@@ -49,14 +50,20 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
       is_auto: Keyword.get(opts, :is_auto, false)
     }
 
-    store_and_insert_snapshot(params, _attempt = 1)
+    VersionNumberLock.project_snapshot(project_id, fn ->
+      store_and_insert_snapshot(params, _attempt = 1)
+    end)
   end
 
   defp store_and_insert_snapshot(params, attempt) do
     version_number = next_version_number(params.project_id)
 
     storage_key =
-      "projects/#{params.project_id}/snapshots/project/#{version_number}.json.gz"
+      SnapshotStorage.build_project_key(
+        params.project_id,
+        version_number,
+        SnapshotStorage.unique_key_suffix()
+      )
 
     case store_snapshot(storage_key, params.snapshot) do
       {:ok, size_bytes} ->

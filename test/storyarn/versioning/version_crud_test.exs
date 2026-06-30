@@ -28,7 +28,7 @@ defmodule Storyarn.Versioning.VersionCrudTest do
       assert version.project_id == project.id
       assert version.version_number == 1
       assert version.title == "v1"
-      assert version.storage_key =~ "snapshots/sheet/#{sheet.id}/1.json.gz"
+      assert version.storage_key =~ ~r|snapshots/sheet/#{sheet.id}/1-[a-f0-9]{16}\.json\.gz$|
       assert version.snapshot_size_bytes > 0
       assert version.created_by_id == user.id
     end

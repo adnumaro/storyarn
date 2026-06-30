@@ -1,5 +1,5 @@
 defmodule Storyarn.Assets.VariantGenerationTest do
-  use Storyarn.DataCase, async: true
+  use Storyarn.DataCase, async: false
 
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures

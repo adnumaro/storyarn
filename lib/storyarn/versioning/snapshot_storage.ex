@@ -4,6 +4,8 @@ defmodule Storyarn.Versioning.SnapshotStorage do
 
   Snapshots are gzipped JSON stored via the configured storage adapter (R2/Local).
   Key format: `projects/{project_id}/snapshots/{entity_type}/{entity_id}/{version_number}.json.gz`
+  or, for uniquely owned write attempts,
+  `projects/{project_id}/snapshots/{entity_type}/{entity_id}/{version_number}-{suffix}.json.gz`.
   """
 
   alias Storyarn.Assets.Storage
@@ -15,8 +17,10 @@ defmodule Storyarn.Versioning.SnapshotStorage do
   """
   @spec store_snapshot(integer(), String.t(), integer(), integer(), map()) ::
           {:ok, String.t(), integer()} | {:error, term()}
-  def store_snapshot(project_id, entity_type, entity_id, version_number, snapshot) do
-    key = build_key(project_id, entity_type, entity_id, version_number)
+  @spec store_snapshot(integer(), String.t(), integer(), integer(), map(), String.t() | nil) ::
+          {:ok, String.t(), integer()} | {:error, term()}
+  def store_snapshot(project_id, entity_type, entity_id, version_number, snapshot, suffix \\ nil) do
+    key = build_key(project_id, entity_type, entity_id, version_number, suffix)
     json = Jason.encode!(snapshot)
     compressed = :zlib.gzip(json)
     size_bytes = byte_size(compressed)
@@ -72,6 +76,16 @@ defmodule Storyarn.Versioning.SnapshotStorage do
   end
 
   @doc """
+  Returns a random hex suffix suitable for uniquely owned snapshot storage keys.
+  """
+  @spec unique_key_suffix() :: String.t()
+  def unique_key_suffix do
+    8
+    |> :crypto.strong_rand_bytes()
+    |> Base.encode16(case: :lower)
+  end
+
+  @doc """
   Generates a presigned download URL for a snapshot archive.
 
   Returns `{:ok, url}` for R2, `{:error, :not_supported}` for local storage.
@@ -85,7 +99,23 @@ defmodule Storyarn.Versioning.SnapshotStorage do
   Builds the storage key for a snapshot.
   """
   @spec build_key(integer(), String.t(), integer(), integer()) :: String.t()
-  def build_key(project_id, entity_type, entity_id, version_number) do
-    "projects/#{project_id}/snapshots/#{entity_type}/#{entity_id}/#{version_number}.json.gz"
+  @spec build_key(integer(), String.t(), integer(), integer(), String.t() | nil) :: String.t()
+  def build_key(project_id, entity_type, entity_id, version_number, suffix \\ nil) do
+    version_segment = version_segment(version_number, suffix)
+    "projects/#{project_id}/snapshots/#{entity_type}/#{entity_id}/#{version_segment}.json.gz"
   end
+
+  @doc """
+  Builds the storage key for a project-level snapshot.
+  """
+  @spec build_project_key(integer(), integer()) :: String.t()
+  @spec build_project_key(integer(), integer(), String.t() | nil) :: String.t()
+  def build_project_key(project_id, version_number, suffix \\ nil) do
+    version_segment = version_segment(version_number, suffix)
+    "projects/#{project_id}/snapshots/project/#{version_segment}.json.gz"
+  end
+
+  defp version_segment(version_number, nil), do: to_string(version_number)
+  defp version_segment(version_number, ""), do: to_string(version_number)
+  defp version_segment(version_number, suffix), do: "#{version_number}-#{suffix}"
 end

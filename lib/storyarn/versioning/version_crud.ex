@@ -15,6 +15,7 @@ defmodule Storyarn.Versioning.VersionCrud do
   alias Storyarn.Versioning.EntityVersion
   alias Storyarn.Versioning.SnapshotDiff
   alias Storyarn.Versioning.SnapshotStorage
+  alias Storyarn.Versioning.VersionNumberLock
 
   require Logger
 
@@ -51,13 +52,6 @@ defmodule Storyarn.Versioning.VersionCrud do
     is_auto = Keyword.get(opts, :is_auto, false)
     skip_diff = Keyword.get(opts, :skip_diff, false)
 
-    {change_summary, change_details} =
-      if skip_diff do
-        {nil, nil}
-      else
-        generate_change_data(entity_type, entity.id, snapshot)
-      end
-
     params = %{
       entity_type: entity_type,
       entity_id: entity.id,
@@ -66,12 +60,25 @@ defmodule Storyarn.Versioning.VersionCrud do
       snapshot: snapshot,
       title: title,
       description: description,
-      change_summary: change_summary,
-      change_details: change_details,
       is_auto: is_auto
     }
 
-    store_and_insert_version(params, _attempt = 1)
+    VersionNumberLock.entity_version(entity_type, entity.id, fn ->
+      {change_summary, change_details} =
+        if skip_diff do
+          {nil, nil}
+        else
+          generate_change_data(entity_type, entity.id, snapshot)
+        end
+
+      params =
+        Map.merge(params, %{
+          change_summary: change_summary,
+          change_details: change_details
+        })
+
+      store_and_insert_version(params, _attempt = 1)
+    end)
   end
 
   # Handles version numbering + storage + insert with retry on unique constraint race.
@@ -85,7 +92,8 @@ defmodule Storyarn.Versioning.VersionCrud do
            params.entity_type,
            params.entity_id,
            version_number,
-           params.snapshot
+           params.snapshot,
+           SnapshotStorage.unique_key_suffix()
          ) do
       {:ok, storage_key, size_bytes} ->
         case insert_version_record(params, version_number, storage_key, size_bytes) do

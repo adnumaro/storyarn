@@ -13,6 +13,16 @@ defmodule Storyarn.Versioning.SnapshotStorageTest do
       assert key == "projects/1/snapshots/sheet/42/1.json.gz"
       assert size_bytes > 0
     end
+
+    test "stores snapshots with a unique suffix when provided" do
+      snapshot = %{"name" => "Test"}
+
+      assert {:ok, key, size_bytes} =
+               SnapshotStorage.store_snapshot(1, "sheet", 42, 1, snapshot, "abc123")
+
+      assert key == "projects/1/snapshots/sheet/42/1-abc123.json.gz"
+      assert size_bytes > 0
+    end
   end
 
   describe "load_snapshot/1" do
@@ -43,6 +53,21 @@ defmodule Storyarn.Versioning.SnapshotStorageTest do
     test "builds the correct key format" do
       assert SnapshotStorage.build_key(5, "flow", 10, 3) ==
                "projects/5/snapshots/flow/10/3.json.gz"
+    end
+
+    test "builds an attempt-owned key when a suffix is provided" do
+      assert SnapshotStorage.build_key(5, "flow", 10, 3, "deadbeef") ==
+               "projects/5/snapshots/flow/10/3-deadbeef.json.gz"
+    end
+  end
+
+  describe "build_project_key/3" do
+    test "builds deterministic and attempt-owned project snapshot keys" do
+      assert SnapshotStorage.build_project_key(5, 3) ==
+               "projects/5/snapshots/project/3.json.gz"
+
+      assert SnapshotStorage.build_project_key(5, 3, "deadbeef") ==
+               "projects/5/snapshots/project/3-deadbeef.json.gz"
     end
   end
 end
