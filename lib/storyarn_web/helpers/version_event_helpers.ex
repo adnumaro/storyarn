@@ -192,11 +192,16 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpers do
   defp save_and_show_restore(socket, config, version) do
     %{project: project, current_scope: current_scope} = socket.assigns
 
-    Versioning.create_version(config.entity_type, entity(socket, config), project.id, current_scope.user.id,
-      title: dgettext("versioning", "Before restore to v%{n}", n: version.version_number)
-    )
+    case Versioning.create_version(config.entity_type, entity(socket, config), project.id, current_scope.user.id,
+           title: dgettext("versioning", "Before restore to v%{n}", n: version.version_number),
+           skip_diff: true
+         ) do
+      {:ok, _version} ->
+        VersionHistoryHelpers.show_conflict_preview(socket, config.entity_type, entity(socket, config), version, true)
 
-    VersionHistoryHelpers.show_conflict_preview(socket, config.entity_type, entity(socket, config), version, true)
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not save current state."))}
+    end
   end
 
   defp restore_version(socket, config, version, params) do
