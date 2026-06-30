@@ -86,9 +86,7 @@ function openCookieSettings(): void {
           </p>
           <p>
             {{ docText("controller.contact_prefix") }}
-            <a :href="contactHref">
-              {{ contactEmail }}
-            </a>.
+            <a :href="contactHref" data-live-link-exempt="mailto"> {{ contactEmail }} </a>.
           </p>
           <p>{{ docText("controller.early_access") }}</p>
         </section>
@@ -172,7 +170,7 @@ function openCookieSettings(): void {
           <h2>{{ docText("rights.title") }}</h2>
           <p>
             {{ docText("rights.text_prefix") }}
-            <a :href="contactHref">{{ contactEmail }}</a
+            <a :href="contactHref" data-live-link-exempt="mailto">{{ contactEmail }}</a
             >. {{ docText("rights.text_suffix") }}
           </p>
         </section>
@@ -191,7 +189,7 @@ function openCookieSettings(): void {
           </p>
           <p>
             {{ docText("notice.contact_prefix") }}
-            <a :href="contactHref">{{ contactEmail }}</a
+            <a :href="contactHref" data-live-link-exempt="mailto">{{ contactEmail }}</a
             >.
           </p>
         </section>
@@ -251,7 +249,7 @@ function openCookieSettings(): void {
           <h2>{{ docText("contact.title") }}</h2>
           <p>
             {{ docText("contact.text_prefix") }}
-            <a :href="contactHref">{{ contactEmail }}</a
+            <a :href="contactHref" data-live-link-exempt="mailto">{{ contactEmail }}</a
             >.
           </p>
         </section>
