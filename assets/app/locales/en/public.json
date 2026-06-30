@@ -46,11 +46,11 @@
           "items": {
             "waitlist": {
               "label": "Early-access waitlist",
-              "text": "email, profession or role, intended use, current tool or alternative being considered, how you heard about us, and any optional detail you provide."
+              "text": "email, profession or role, intended use, current tool or alternative being considered, how you heard about us, and any optional detail you provide. We may keep non-identifying or aggregated answers for product analytics."
             },
             "account": {
               "label": "Account",
-              "text": "email, display name, language, access provider if you use external authentication, and data needed to maintain your session."
+              "text": "email, display name, language, password authentication data, and data needed to maintain your session."
             },
             "projects": {
               "label": "Workspaces and projects",
@@ -159,18 +159,14 @@
             "posthog": {
               "label": "PostHog EU Cloud",
               "text": "product analytics and, when enabled, technical error signals. Persistent frontend analytics requires consent."
-            },
-            "sentry": {
-              "label": "Sentry",
-              "text": "error monitoring if the integration is configured in production."
             }
           },
           "transfers": "We operate from Europe and prioritize European providers or regions where available. If any provider processes data outside the European Economic Area, we will apply the relevant legal safeguards, such as standard contractual clauses, adequacy decisions, or other applicable mechanisms."
         },
         "retention": {
           "title": "6. Retention",
-          "main": "We keep data for as long as needed to manage early access, provide the service, maintain security, resolve incidents, or comply with legal obligations. Waitlist data is kept while the early-access program remains open or until you request deletion. Account and project data is kept while the account or workspace remains active, unless a legal obligation or legitimate need requires longer retention.",
-          "technical": "Some technical retention periods are defined by the product: the remember-me cookie lasts 14 days, cookie consent up to 24 months, frontend PostHog persistence up to 365 days, certain internal jobs are pruned after 7 days, and some deleted items or snapshots may be kept temporarily for restoration. Provider backups and logs follow their technical lifecycle."
+          "main": "We keep data for as long as needed to manage early access, provide the service, maintain security, resolve incidents, or comply with legal obligations. Waitlist email is kept while the early-access program remains open or until you request deletion; non-identifying or aggregated waitlist answers may be kept for product analytics. Account login data is kept while the account remains active.",
+          "technical": "Workspace, project, asset, and user-content records may be kept for up to 12 months after account, workspace, or project closure when reasonably necessary to investigate misuse, enforce these terms, protect the service, or handle legal claims. Some technical retention periods are defined by the product: the remember-me cookie lasts 14 days, cookie consent up to 24 months, frontend PostHog persistence up to 365 days, certain internal jobs are pruned after 7 days, and some deleted items or snapshots may be kept temporarily for restoration. Provider backups and logs follow their technical lifecycle."
         },
         "rights": {
           "title": "7. Your rights",
@@ -217,8 +213,9 @@
         },
         "providers": {
           "title": "6. Third-party services",
-          "text": "Storyarn may use infrastructure, storage, email, analytics, authentication, or monitoring providers to operate the service. Details are described in the",
-          "privacy_link": "Privacy Policy"
+          "text": "Storyarn may use infrastructure, storage, email, analytics, or monitoring providers to operate the service. Details are described in the",
+          "privacy_link": "Privacy Policy",
+          "compatibility": "Third-party names and trademarks, including supported export targets, are used only to describe compatibility and do not imply endorsement, sponsorship, or affiliation."
         },
         "liability": {
           "title": "7. Availability, changes, and liability",

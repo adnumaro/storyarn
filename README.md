@@ -22,8 +22,8 @@ Required in production:
   `AWS_ENDPOINT_URL_S3`; `AWS_PUBLIC_URL` is optional
 
 Optional production variables include `MAILER_FROM_NAME`, `REDIS_URL`,
-`DNS_CLUSTER_QUERY`, `SENTRY_DSN`, and PostHog settings. See `.env.example` for
-the complete list.
+`DNS_CLUSTER_QUERY`, and PostHog settings. See `.env.example` for the complete
+list.
 
 Ready to run in production? Please [check the Phoenix deployment guides](https://hexdocs.pm/phoenix/deployment.html).
 

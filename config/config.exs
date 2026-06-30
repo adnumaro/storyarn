@@ -48,14 +48,6 @@ config :posthog,
   enable_error_tracking: false,
   in_app_otp_apps: [:storyarn]
 
-# Sentry error tracking (DSN configured in runtime.exs for production)
-config :sentry,
-  client: Sentry.HackneyClient,
-  enable_source_code_context: true,
-  root_source_code_paths: [File.cwd!()],
-  environment_name: config_env(),
-  filter: Sentry.DefaultEventFilter
-
 # Oban background job processing
 config :storyarn, Oban,
   engine: Oban.Engines.Basic,
@@ -150,27 +142,6 @@ config :tailwind,
     cd: Path.expand("..", __DIR__)
   ]
 
-config :ueberauth, StoryarnWeb.OAuth.DiscordOAuth,
-  client_id: System.get_env("DISCORD_CLIENT_ID"),
-  client_secret: System.get_env("DISCORD_CLIENT_SECRET")
-
-# Ueberauth OAuth configuration
-config :ueberauth, Ueberauth,
-  providers: [
-    github: {Ueberauth.Strategy.Github, [default_scope: "user:email"]},
-    google: {Ueberauth.Strategy.Google, [default_scope: "email profile"]},
-    discord: {StoryarnWeb.OAuth.DiscordStrategy, [default_scope: "identify email"]}
-  ]
-
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
-# OAuth provider credentials (configured in runtime.exs for production)
-config :ueberauth, Ueberauth.Strategy.Github.OAuth,
-  client_id: System.get_env("GITHUB_CLIENT_ID"),
-  client_secret: System.get_env("GITHUB_CLIENT_SECRET")
-
-config :ueberauth, Ueberauth.Strategy.Google.OAuth,
-  client_id: System.get_env("GOOGLE_CLIENT_ID"),
-  client_secret: System.get_env("GOOGLE_CLIENT_SECRET")
-
 import_config "#{config_env()}.exs"

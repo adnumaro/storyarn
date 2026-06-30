@@ -33,9 +33,9 @@ defmodule StoryarnWeb.RouterTest do
       assert redirected_to(conn) =~ "/users/log-in"
     end
 
-    test "redirects to login for unauthenticated connections access", %{conn: conn} do
-      conn = get(conn, ~p"/users/settings/connections")
-      assert redirected_to(conn) =~ "/users/log-in"
+    test "connected accounts route is not exposed", %{conn: conn} do
+      conn = get(conn, "/users/settings/connections")
+      assert response(conn, 404)
     end
 
     test "redirects to login for unauthenticated project access", %{conn: conn} do
@@ -98,24 +98,6 @@ defmodule StoryarnWeb.RouterTest do
     test "workspace creation is accessible", %{conn: conn} do
       conn = get(conn, ~p"/workspaces/new")
       assert html_response(conn, 200)
-    end
-  end
-
-  # ── OAuth routes ───────────────────────────────────────────────
-
-  describe "OAuth routes" do
-    test "OAuth routes are defined in the router" do
-      # Verify path helpers resolve — proves routes exist in the router
-      assert ~p"/auth/github" == "/auth/github"
-      assert ~p"/auth/google" == "/auth/google"
-      assert ~p"/auth/discord" == "/auth/discord"
-      assert ~p"/auth/github/callback" == "/auth/github/callback"
-      assert ~p"/auth/google/callback" == "/auth/google/callback"
-    end
-
-    test "OAuth link route requires auth", %{conn: conn} do
-      conn = get(conn, ~p"/auth/github/link")
-      assert redirected_to(conn) =~ "/users/log-in"
     end
   end
 

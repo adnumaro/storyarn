@@ -21,7 +21,7 @@ const vendorChunkRules = [
   ],
   ["vendor-flow-core", ["/node_modules/rete/"]],
   ["vendor-canvas", ["konva", "vue-konva", "modern-screenshot"]],
-  ["vendor-analytics", ["@sentry", "posthog-js"]],
+  ["vendor-analytics", ["posthog-js"]],
   ["vendor-vue", ["vue", "live_vue"]],
 ];
 

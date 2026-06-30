@@ -53,11 +53,6 @@ defmodule Storyarn.MixProject do
       # Encryption for sensitive data
       {:cloak, "~> 1.1"},
       {:cloak_ecto, "~> 1.3"},
-
-      # OAuth
-      {:ueberauth, "~> 0.10"},
-      {:ueberauth_github, "~> 0.8"},
-      {:ueberauth_google, "~> 0.12"},
       {:phoenix, "~> 1.8.1"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},
@@ -97,10 +92,8 @@ defmodule Storyarn.MixProject do
       # Excel export for localization
       {:elixlsx, "~> 0.6"},
 
-      # Error tracking
-      {:sentry, "~> 12.0"},
+      # Product analytics and error tracking
       {:posthog, "~> 2.0"},
-      {:hackney, "~> 1.8"},
 
       # Email templates (MJML → HTML via Rust NIF)
       {:mjml, "~> 5.3"},

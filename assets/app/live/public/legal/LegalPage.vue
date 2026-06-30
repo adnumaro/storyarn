@@ -28,8 +28,15 @@ const contactHref = computed(() => `mailto:${contactEmail}`);
 const privacyDataItems = ["waitlist", "account", "projects", "technical", "analytics"];
 const privacyPurposeItems = ["access", "service", "security", "improvement", "communications"];
 const cookieRows = ["session", "remember", "theme", "consent", "posthog"];
-const providerRows = ["fly", "neon", "tigris", "resend", "posthog", "sentry"];
-const acceptableUseItems = ["illegal", "malware", "unauthorized_access", "unrelated", "limits", "minor_safety"];
+const providerRows = ["fly", "neon", "tigris", "resend", "posthog"];
+const acceptableUseItems = [
+  "illegal",
+  "malware",
+  "unauthorized_access",
+  "unrelated",
+  "limits",
+  "minor_safety",
+];
 
 function docText(key: string, params = {}): string {
   return t(`${documentBase.value}.${key}`, params);
@@ -79,8 +86,9 @@ function openCookieSettings(): void {
           </p>
           <p>
             {{ docText("controller.contact_prefix") }}
-            <a :href="contactHref">{{ contactEmail }}</a
-            >.
+            <a :href="contactHref">
+              {{ contactEmail }}
+            </a>.
           </p>
           <p>{{ docText("controller.early_access") }}</p>
         </section>
@@ -125,7 +133,9 @@ function openCookieSettings(): void {
               </thead>
               <tbody class="divide-y divide-border">
                 <tr v-for="row in cookieRows" :key="row">
-                  <td class="px-4 py-3 font-mono text-xs">{{ docText(`cookies.rows.${row}.name`) }}</td>
+                  <td class="px-4 py-3 font-mono text-xs">
+                    {{ docText(`cookies.rows.${row}.name`) }}
+                  </td>
                   <td class="px-4 py-3">{{ docText(`cookies.rows.${row}.type`) }}</td>
                   <td class="px-4 py-3">{{ docText(`cookies.rows.${row}.purpose`) }}</td>
                   <td class="px-4 py-3">{{ docText(`cookies.rows.${row}.duration`) }}</td>
@@ -223,6 +233,7 @@ function openCookieSettings(): void {
               {{ docText("providers.privacy_link") }}</a
             >.
           </p>
+          <p>{{ docText("providers.compatibility") }}</p>
         </section>
 
         <section class="space-y-4">

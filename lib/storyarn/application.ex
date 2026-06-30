@@ -7,11 +7,6 @@ defmodule Storyarn.Application do
 
   @impl true
   def start(_type, _args) do
-    # Install Sentry logger handler to capture errors automatically
-    :logger.add_handler(:sentry_handler, Sentry.LoggerHandler, %{
-      config: %{metadata: [:request_id, :user_id]}
-    })
-
     :ets.new(:import_staging, [:set, :public, :named_table, read_concurrency: true])
 
     children = [

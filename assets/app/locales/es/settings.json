@@ -8,7 +8,6 @@
       "items": {
         "profile": "Perfil",
         "security": "Seguridad",
-        "connected_accounts": "Cuentas conectadas",
         "workspace_general": "General",
         "workspace_members": "Miembros",
         "deleted_projects": "Proyectos eliminados"
@@ -30,28 +29,6 @@
       "email_description": "Tu correo se usa para iniciar sesión y para notificaciones.",
       "email": "Correo electrónico",
       "change_email": "Cambiar correo"
-    },
-    "connections": {
-      "title": "Cuentas conectadas",
-      "subtitle": "Vincula tus cuentas sociales para iniciar sesión de forma más fácil",
-      "not_connected": "No conectado",
-      "unlink": "Desvincular",
-      "connect": "Vincular",
-      "connected": "Conectado",
-      "set_password_first": "Establece una contraseña antes de desvincular",
-      "unlink_modal": {
-        "title": "¿Desvincular cuenta?",
-        "message": "¿Estás seguro de que deseas desvincular esta cuenta?",
-        "cancel": "Cancelar"
-      },
-      "why_connect": {
-        "title": "¿Por qué conectar cuentas?",
-        "reasons": [
-          "Inicia sesión más rápido sin escribir tu contraseña",
-          "Accede a tu cuenta incluso si olvidas tu contraseña",
-          "Mantén tu cuenta segura con múltiples métodos de autenticación"
-        ]
-      }
     },
     "security": {
       "title": "Seguridad",

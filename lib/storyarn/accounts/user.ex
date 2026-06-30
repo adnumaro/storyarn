@@ -6,8 +6,6 @@ defmodule Storyarn.Accounts.User do
 
   import Ecto.Changeset
 
-  alias Storyarn.Accounts.UserIdentity
-
   @type t :: %__MODULE__{
           id: integer() | nil,
           email: String.t() | nil,
@@ -18,7 +16,6 @@ defmodule Storyarn.Accounts.User do
           display_name: String.t() | nil,
           avatar_url: String.t() | nil,
           locale: String.t() | nil,
-          identities: [UserIdentity.t()] | Ecto.Association.NotLoaded.t(),
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -33,8 +30,6 @@ defmodule Storyarn.Accounts.User do
     field :avatar_url, :string
     field :locale, :string
     field :is_super_admin, :boolean, default: false
-
-    has_many :identities, UserIdentity
 
     timestamps(type: :utc_datetime)
   end

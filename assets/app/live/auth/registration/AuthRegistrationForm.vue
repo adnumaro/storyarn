@@ -15,7 +15,6 @@ interface SignUpFormValues {
 const { form: formProp, userEmail } = defineProps<{
   form: Form<SignUpFormValues>;
   loginUrl?: string;
-  oauthAction?: string;
   userEmail: string;
 }>();
 

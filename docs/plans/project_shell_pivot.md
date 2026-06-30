@@ -128,7 +128,7 @@ Each step must leave the app compiling and navigable. Since we're not committing
 ### Step 4 — Add new `live_session :project_scope` to router
 
 - File: `router.ex`
-- Add a new `live_session` nested under `:require_authenticated_user` with the existing auth/sentry hooks PLUS `{ProjectScope, :load_project}`. Move sheet routes in. Point them directly to `SheetLive.Index` and `SheetLive.Show` (not ProjectShellLive).
+- Add a new `live_session` nested under `:require_authenticated_user` with the existing auth hooks PLUS `{ProjectScope, :load_project}`. Move sheet routes in. Point them directly to `SheetLive.Index` and `SheetLive.Show` (not ProjectShellLive).
 - Verify: compile. At this point the pages will crash because Show/Index have the `:not_mounted_at_router` mount clause and their render still uses `<Layouts.app>` referencing assigns the new hook provides differently. But it compiles. This is the transition moment.
 
 ### Step 5 — Revert `SheetLive.Show` to route-level

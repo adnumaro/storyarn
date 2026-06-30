@@ -8,7 +8,6 @@
       "items": {
         "profile": "Profile",
         "security": "Security",
-        "connected_accounts": "Connected accounts",
         "workspace_general": "General",
         "workspace_members": "Members",
         "deleted_projects": "Deleted Projects"
@@ -30,28 +29,6 @@
       "email_description": "Your email is used for login and notifications.",
       "email": "Email",
       "change_email": "Change Email"
-    },
-    "connections": {
-      "title": "Connected Accounts",
-      "subtitle": "Link your social accounts for easier sign-in",
-      "not_connected": "Not connected",
-      "unlink": "Unlink",
-      "connect": "Connect",
-      "connected": "Connected",
-      "set_password_first": "Set a password before unlinking",
-      "unlink_modal": {
-        "title": "Unlink account?",
-        "message": "Are you sure you want to unlink this account?",
-        "cancel": "Cancel"
-      },
-      "why_connect": {
-        "title": "Why connect accounts?",
-        "reasons": [
-          "Sign in faster without typing your password",
-          "Access your account even if you forget your password",
-          "Keep your account secure with multiple authentication methods"
-        ]
-      }
     },
     "security": {
       "title": "Security",

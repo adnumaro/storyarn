@@ -6,7 +6,6 @@ defmodule Storyarn.Accounts do
   This module serves as a facade, delegating to specialized submodules:
   - `Users` - User lookups and queries
   - `Registration` - User registration with default workspace
-  - `OAuth` - OAuth identity management
   - `Sessions` - Session token management
   - `MagicLinks` - Magic link authentication
   - `Emails` - Email change operations
@@ -15,13 +14,11 @@ defmodule Storyarn.Accounts do
   """
 
   alias Storyarn.Accounts.Emails
-  alias Storyarn.Accounts.OAuth
   alias Storyarn.Accounts.Passwords
   alias Storyarn.Accounts.Profiles
   alias Storyarn.Accounts.Registration
   alias Storyarn.Accounts.Sessions
   alias Storyarn.Accounts.User
-  alias Storyarn.Accounts.UserIdentity
   alias Storyarn.Accounts.UserNotifier
   alias Storyarn.Accounts.Users
   alias Storyarn.Accounts.UserToken
@@ -33,7 +30,6 @@ defmodule Storyarn.Accounts do
   alias Storyarn.Accounts.WaitlistEntry
 
   @type user :: User.t()
-  @type user_identity :: UserIdentity.t()
   @type user_token :: UserToken.t()
   @type changeset :: Ecto.Changeset.t()
   @type attrs :: map()
@@ -89,52 +85,6 @@ defmodule Storyarn.Accounts do
   """
   @spec register_user(attrs()) :: {:ok, user()} | {:error, changeset()}
   defdelegate register_user(attrs), to: Registration
-
-  # =============================================================================
-  # OAuth
-  # =============================================================================
-
-  @doc """
-  Finds or creates a user from OAuth provider data.
-
-  If an identity with the provider+provider_id exists, returns the associated user.
-  If the email matches an existing user, links the identity to that user.
-  Otherwise, creates a new user and identity.
-  """
-  @spec find_or_create_user_from_oauth(String.t(), map()) ::
-          {:ok, user()} | {:error, changeset()}
-  def find_or_create_user_from_oauth(provider, auth) do
-    OAuth.find_or_create_user_from_oauth(provider, auth, &register_user/1)
-  end
-
-  @doc """
-  Gets an identity by provider and provider_id.
-  """
-  @spec get_identity_by_provider(String.t(), String.t()) :: user_identity() | nil
-  defdelegate get_identity_by_provider(provider, provider_id), to: OAuth
-
-  @doc """
-  Gets all identities for a user.
-  """
-  @spec list_user_identities(user()) :: [user_identity()]
-  defdelegate list_user_identities(user), to: OAuth
-
-  @doc """
-  Links an OAuth identity to an existing user.
-  """
-  @spec link_oauth_identity(user(), String.t(), map()) ::
-          {:ok, user_identity()} | {:error, changeset()}
-  defdelegate link_oauth_identity(user, provider, auth), to: OAuth
-
-  @doc """
-  Unlinks an OAuth identity from a user.
-
-  Will not unlink if it's the user's only authentication method
-  (no password and only one identity).
-  """
-  @spec unlink_oauth_identity(user(), String.t()) ::
-          {:ok, user_identity()} | {:error, :not_found | :cannot_unlink_only_auth_method}
-  defdelegate unlink_oauth_identity(user, provider), to: OAuth
 
   # =============================================================================
   # Sessions

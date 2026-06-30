@@ -7,7 +7,6 @@ defmodule StoryarnWeb.Router do
                     else: ""
                   )
 
-  @sentry_connect_src "https://*.ingest.sentry.io https://*.ingest.us.sentry.io"
   @posthog_default_connect_src "https://*.posthog.com https://*.i.posthog.com " <>
                                  "https://us.i.posthog.com https://eu.i.posthog.com"
 
@@ -17,7 +16,7 @@ defmodule StoryarnWeb.Router do
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com#{@csp_dev_extras}; " <>
       "img-src 'self' data: blob: https:; " <>
       "font-src 'self' data: https://fonts.gstatic.com#{@csp_dev_extras}; " <>
-      "connect-src 'self' ws: wss: #{@sentry_connect_src} #{posthog_connect_src()}#{@csp_dev_extras}; " <>
+      "connect-src 'self' ws: wss: #{posthog_connect_src()}#{@csp_dev_extras}; " <>
       "frame-src 'self'; " <>
       "frame-ancestors 'self'; " <>
       "base-uri 'self'; " <>
@@ -131,29 +130,11 @@ defmodule StoryarnWeb.Router do
           else: []
         ) ++
           [
-            Sentry.LiveViewHook,
             {@user_auth_hook, :mount_current_scope}
           ] do
       live "/", DocsLive.Show, :index
       live "/:category/*path", DocsLive.Show, :show
     end
-  end
-
-  ## OAuth routes
-
-  scope "/auth", StoryarnWeb do
-    pipe_through :browser
-
-    get "/:provider", OAuthController, :request
-    get "/:provider/callback", OAuthController, :callback
-  end
-
-  scope "/auth", StoryarnWeb do
-    pipe_through [:browser, :require_authenticated_user]
-
-    get "/:provider/link", OAuthController, :request
-    get "/:provider/link/callback", OAuthController, :link
-    delete "/:provider/unlink", OAuthController, :unlink
   end
 
   ## Authentication routes
@@ -195,7 +176,6 @@ defmodule StoryarnWeb.Router do
           else: []
         ) ++
           [
-            Sentry.LiveViewHook,
             {@user_auth_hook, :require_authenticated},
             {@user_auth_hook, :load_workspaces},
             {StoryarnWeb.Live.Hooks.ProjectScope, :load_project},
@@ -204,7 +184,6 @@ defmodule StoryarnWeb.Router do
       # User Settings (Linear-style)
       live "/users/settings", SettingsLive.Profile, :edit
       live "/users/settings/security", SettingsLive.Security, :edit
-      live "/users/settings/connections", SettingsLive.Connections, :edit
       live "/users/settings/confirm-email/:token", SettingsLive.Profile, :confirm_email
 
       # Workspaces
@@ -345,7 +324,6 @@ defmodule StoryarnWeb.Router do
           else: []
         ) ++
           [
-            Sentry.LiveViewHook,
             {@user_auth_hook, :mount_current_scope},
             {@user_auth_hook, :load_workspaces}
           ] do

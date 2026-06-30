@@ -24,7 +24,7 @@ lib/storyarn/{context}/
 
 | Context       | Facade                    | Key Submodules                                                                                                                                                              |
 | ------------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Accounts      | `Storyarn.Accounts`       | `Users`, `Registration`, `OAuth`, `Sessions`, `MagicLinks`, `Emails`, `Passwords`, `Profiles`                                                                               |
+| Accounts      | `Storyarn.Accounts`       | `Users`, `Registration`, `Sessions`, `MagicLinks`, `Emails`, `Passwords`, `Profiles`                                                                                        |
 | Workspaces    | `Storyarn.Workspaces`     | `WorkspaceCrud`, `Memberships`, `Invitations` (schemas: `WorkspaceMembership`, `WorkspaceInvitation`)                                                                       |
 | Projects      | `Storyarn.Projects`       | `ProjectCrud`, `Memberships`, `Invitations` (schemas: `ProjectMembership`, `ProjectInvitation`)                                                                             |
 | Sheets        | `Storyarn.Sheets`         | `SheetCrud`, `SheetQueries`, `BlockCrud`, `TableCrud`, `PropertyInheritance`, `ReferenceTracker`, `Versioning`, `TreeOperations`                                            |

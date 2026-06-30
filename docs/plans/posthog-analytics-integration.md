@@ -1,6 +1,6 @@
 # PostHog Analytics Integration Plan
 
-**Status:** phase 1 implemented, error tracking comparison enabled behind env config
+**Status:** phase 1 implemented, PostHog is the primary analytics and error signal
 **Date drafted:** 2026-05-16
 **Branch:** `feat/live-vue-sheets`
 **Scope:** minimal pre-production product analytics for the public landing page,
@@ -15,7 +15,6 @@ without leaking private narrative content.
 
 Storyarn currently has:
 
-- Sentry client initialization in `assets/js/utils/sentry.js`.
 - Root metadata in `lib/storyarn_web/components/layouts/root.html.heex`.
 - Runtime environment configuration in `config/runtime.exs`.
 - A strict CSP in `lib/storyarn_web/router.ex`.
@@ -57,9 +56,8 @@ The pre-production target is:
 
 - No session replay.
 - No autocapture across the whole app.
-- No Sentry removal. PostHog error tracking runs as a parallel opt-in signal so
-  we can compare grouping, request context, frontend exception capture, and
-  operational noise before choosing a primary error tool.
+- No second error vendor. PostHog is the single optional analytics/error signal
+  for the beta launch.
 - No feature flags or experiments.
 - No group analytics billing activation.
 - No analytics events that include story text, descriptions, slugs, asset URLs,
@@ -89,12 +87,10 @@ Recommended defaults:
 - dev disabled unless explicitly enabled; test uses `test_mode: true`
 - prod enabled only when both `POSTHOG_ENABLED=true` and
   `POSTHOG_PROJECT_API_KEY` are present
-- `POSTHOG_HOST=https://us.i.posthog.com` by default, or EU/self-hosted when
-  selected in PostHog
+- `POSTHOG_HOST=https://eu.i.posthog.com` by default
 - PostHog error tracking disabled unless `POSTHOG_ENABLED=true`, a project key
   is present, and `POSTHOG_ERROR_TRACKING_ENABLED` is not false
 - frontend exception autocapture follows `POSTHOG_FRONTEND_ERROR_TRACKING_ENABLED`
-- Sentry remains enabled independently through `SENTRY_DSN`
 - PostHog test mode drops SDK events in test unless a test adapter is explicitly
   configured for local assertions
 
@@ -127,8 +123,7 @@ The facade should:
 
 PostHog error tracking is intentionally separate from product analytics:
 
-- `PostHog.Integrations.Plug` captures request context for backend exceptions,
-  similar to `Sentry.PlugContext`.
+- `PostHog.Integrations.Plug` captures request context for backend exceptions.
 - authenticated HTTP and LiveView processes set `distinct_id = "user:<id>"` in
   PostHog context and `user_id` in Logger metadata.
 - PostHog's Logger handler captures `:error` and crash logs when enabled.
@@ -136,9 +131,8 @@ PostHog error tracking is intentionally separate from product analytics:
   rejections, but not `console.error`.
 - product analytics events do not inherit request URL/path/IP context.
 
-Use PostHog and Sentry side by side during early production traffic. Compare:
+Use PostHog during early production traffic and review:
 
-- whether PostHog groups Phoenix/LiveView errors as usefully as Sentry
 - whether stack traces and source context are sufficient
 - whether request context is useful without being too noisy
 - whether frontend errors are actionable enough without session replay
@@ -235,7 +229,6 @@ Avoid:
 
 - email
 - name
-- OAuth provider identity
 - workspace/project names
 
 If public anonymous users visit the landing page, PostHog can keep anonymous

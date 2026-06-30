@@ -103,15 +103,6 @@ if config_env() != :test do
     error_tracking_enabled: posthog_configured? and posthog_frontend_enabled? and posthog_frontend_error_tracking_enabled?
 end
 
-# Sentry error tracking
-if sentry_dsn = System.get_env("SENTRY_DSN") do
-  config :logger, :sentry,
-    level: :error,
-    metadata: [:request_id, :user_id]
-
-  config :sentry, dsn: sentry_dsn
-end
-
 # Trust X-Forwarded-For header when behind a reverse proxy (CloudFlare, AWS ELB, etc.)
 # Only enable this in production when you're certain you're behind a trusted proxy
 # Without this, rate limiting uses the direct connection IP (more secure default)
@@ -126,7 +117,7 @@ if config_env() == :prod do
     config :storyarn, :rate_limiter_backend, :redis
   end
 
-  # Cloak encryption key for OAuth tokens
+  # Cloak encryption key for sensitive database fields
   # Generate with: 32 |> :crypto.strong_rand_bytes() |> Base.encode64()
   cloak_key = required_env.("CLOAK_KEY")
 

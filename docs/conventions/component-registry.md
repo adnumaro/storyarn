@@ -30,7 +30,6 @@ These are available in ALL HEEx templates without explicit import (via `Storyarn
 | Component          | Purpose             | Key Attributes                                                             |
 | ------------------ | ------------------- | -------------------------------------------------------------------------- |
 | `<.role_badge>`    | Role indicator      | `role` (owner/admin/editor/member/viewer)                                  |
-| `<.oauth_buttons>` | OAuth login buttons | `action` (login/link), `class`                                             |
 | `<.kbd>`           | Keyboard shortcut   | `inner_block` (content slot), `size` (xs/sm/md)                            |
 | `<.empty_state>`   | Empty content state | `icon`, `title`, `inner_block` (description), `:action` slot               |
 | `<.search_input>`  | Search field        | `size` (xs/sm/md/lg), global: `name`, `value`, `placeholder`, `phx-change` |

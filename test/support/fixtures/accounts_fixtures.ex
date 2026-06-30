@@ -80,39 +80,4 @@ defmodule Storyarn.AccountsFixtures do
       set: [inserted_at: dt, authenticated_at: dt]
     )
   end
-
-  @doc """
-  Creates a mock Ueberauth.Auth struct for OAuth testing.
-  """
-  def mock_oauth_auth(provider, attrs \\ %{}) do
-    uid = attrs[:uid] || "#{provider}_#{System.unique_integer([:positive])}"
-    email = attrs[:email] || unique_user_email()
-    name = attrs[:name] || "Test User"
-
-    %Ueberauth.Auth{
-      uid: uid,
-      provider: String.to_atom(provider),
-      info: %Ueberauth.Auth.Info{
-        email: email,
-        name: name,
-        nickname: name,
-        image: "https://example.com/avatar.png"
-      },
-      credentials: %Ueberauth.Auth.Credentials{
-        token: "mock_access_token_#{System.unique_integer()}",
-        refresh_token: "mock_refresh_token_#{System.unique_integer()}",
-        expires_at: nil
-      },
-      extra: %{}
-    }
-  end
-
-  @doc """
-  Creates a user identity fixture linked to an existing user.
-  """
-  def user_identity_fixture(user, provider \\ "github", attrs \\ %{}) do
-    auth = mock_oauth_auth(provider, attrs)
-    {:ok, identity} = Accounts.link_oauth_identity(user, provider, auth)
-    identity
-  end
 end

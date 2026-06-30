@@ -17,7 +17,6 @@ defmodule Storyarn.LiveVueEncoders do
 
   # Accounts
   Protocol.derive(LiveVue.Encoder, Storyarn.Accounts.User)
-  Protocol.derive(LiveVue.Encoder, Storyarn.Accounts.UserIdentity)
   Protocol.derive(LiveVue.Encoder, Storyarn.Accounts.UserToken)
 
   # Assets

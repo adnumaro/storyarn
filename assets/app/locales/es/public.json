@@ -46,11 +46,11 @@
           "items": {
             "waitlist": {
               "label": "Lista de acceso anticipado",
-              "text": "email, profesión o rol, interés de uso, herramienta actual o alternativa buscada, fuente por la que nos has conocido y cualquier detalle opcional que nos facilites."
+              "text": "email, profesión o rol, interés de uso, herramienta actual o alternativa buscada, fuente por la que nos has conocido y cualquier detalle opcional que nos facilites. Podemos conservar respuestas no identificativas o agregadas para analítica de producto."
             },
             "account": {
               "label": "Cuenta",
-              "text": "email, nombre visible, idioma, proveedor de acceso si usas autenticación externa y datos necesarios para mantener la sesión."
+              "text": "email, nombre visible, idioma, datos de autenticación por contraseña y datos necesarios para mantener la sesión."
             },
             "projects": {
               "label": "Workspaces y proyectos",
@@ -159,18 +159,14 @@
             "posthog": {
               "label": "PostHog EU Cloud",
               "text": "analítica de producto y, cuando está activado, señales de errores técnicos. La analítica frontend persistente requiere consentimiento."
-            },
-            "sentry": {
-              "label": "Sentry",
-              "text": "monitorización de errores si la integración está configurada en producción."
             }
           },
           "transfers": "Operamos desde Europa y priorizamos proveedores/regiones europeas cuando están disponibles. Si algún proveedor tratase datos fuera del Espacio Económico Europeo, aplicaremos las garantías legales correspondientes, como cláusulas contractuales tipo, decisiones de adecuación u otros mecanismos aplicables."
         },
         "retention": {
           "title": "6. Conservación",
-          "main": "Conservamos los datos mientras sean necesarios para gestionar el acceso anticipado, prestar el servicio, mantener la seguridad, resolver incidencias o cumplir obligaciones legales. Los datos de lista de espera se conservarán mientras el programa de acceso anticipado siga abierto o hasta que solicites su eliminación. Los datos de cuenta y proyecto se conservarán mientras la cuenta o workspace sigan activos, salvo obligación o necesidad legítima de conservarlos durante más tiempo.",
-          "technical": "Algunas retenciones técnicas están definidas por el producto: la cookie de recordar sesión dura 14 días, el consentimiento de cookies hasta 24 meses, la persistencia frontend de PostHog hasta 365 días, ciertos trabajos internos se purgan tras 7 días y algunos elementos eliminados o snapshots pueden conservarse temporalmente para restauración. Las copias de seguridad y logs de proveedores se gestionan según sus ciclos técnicos."
+          "main": "Conservamos los datos mientras sean necesarios para gestionar el acceso anticipado, prestar el servicio, mantener la seguridad, resolver incidencias o cumplir obligaciones legales. El email de lista de espera se conserva mientras el programa de acceso anticipado siga abierto o hasta que solicites su eliminación; las respuestas no identificativas o agregadas pueden conservarse para analítica de producto. Los datos de inicio de sesión de cuenta se conservan mientras la cuenta siga activa.",
+          "technical": "Los registros de workspace, proyecto, assets y contenido de usuario pueden conservarse hasta 12 meses tras el cierre de una cuenta, workspace o proyecto cuando sea razonablemente necesario para investigar uso indebido, aplicar estas condiciones, proteger el servicio o gestionar reclamaciones legales. Algunas retenciones técnicas están definidas por el producto: la cookie de recordar sesión dura 14 días, el consentimiento de cookies hasta 24 meses, la persistencia frontend de PostHog hasta 365 días, ciertos trabajos internos se purgan tras 7 días y algunos elementos eliminados o snapshots pueden conservarse temporalmente para restauración. Las copias de seguridad y logs de proveedores se gestionan según sus ciclos técnicos."
         },
         "rights": {
           "title": "7. Tus derechos",
@@ -217,8 +213,9 @@
         },
         "providers": {
           "title": "6. Servicios de terceros",
-          "text": "Storyarn puede usar proveedores de infraestructura, almacenamiento, email, analítica, autenticación o monitorización para operar el servicio. El detalle se describe en la",
-          "privacy_link": "Política de privacidad"
+          "text": "Storyarn puede usar proveedores de infraestructura, almacenamiento, email, analítica o monitorización para operar el servicio. El detalle se describe en la",
+          "privacy_link": "Política de privacidad",
+          "compatibility": "Los nombres y marcas de terceros, incluidos los formatos de exportación soportados, se usan únicamente para describir compatibilidad y no implican respaldo, patrocinio ni afiliación."
         },
         "liability": {
           "title": "7. Disponibilidad, cambios y responsabilidad",
