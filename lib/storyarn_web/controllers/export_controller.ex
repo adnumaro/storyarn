@@ -21,7 +21,7 @@ defmodule StoryarnWeb.ExportController do
          opts = build_options(conn.params, format),
          {:ok, output} <- Exports.export_project(project, opts) do
       slug = NameNormalizer.slugify(project.name)
-      send_export(conn, output, slug, serializer)
+      send_export(conn, output, slug, format, serializer)
     else
       {:error, {:unknown_format, _}} ->
         conn |> put_status(:bad_request) |> text(gettext("Unknown format"))
@@ -39,7 +39,7 @@ defmodule StoryarnWeb.ExportController do
 
   # sobelow_skip ["XSS.ContentType", "XSS.SendResp"]
   # Single-file output (binary string)
-  defp send_export(conn, output, slug, serializer) when is_binary(output) do
+  defp send_export(conn, output, slug, _format, serializer) when is_binary(output) do
     ext = serializer.file_extension()
     filename = "#{slug}.#{ext}"
 
@@ -50,12 +50,32 @@ defmodule StoryarnWeb.ExportController do
   end
 
   # sobelow_skip ["XSS.ContentType", "XSS.SendResp"]
-  # Multi-file output (list of {filename, content} tuples) — send main file
-  defp send_export(conn, [{filename, content} | _rest], _slug, serializer) do
-    conn
-    |> put_resp_content_type(serializer.content_type())
-    |> put_resp_header("content-disposition", ~s(attachment; filename="#{filename}"))
-    |> send_resp(200, content)
+  # Multi-file output (list of {filename, content} tuples)
+  defp send_export(conn, files, slug, format, _serializer) when is_list(files) do
+    filename = "#{slug}-#{format}.zip"
+
+    case zip_files(filename, files) do
+      {:ok, zip_content} ->
+        conn
+        |> put_resp_content_type("application/zip", nil)
+        |> put_resp_header("content-disposition", ~s(attachment; filename="#{filename}"))
+        |> send_resp(200, zip_content)
+
+      {:error, _reason} ->
+        conn |> put_status(:unprocessable_entity) |> text(gettext("Export failed"))
+    end
+  end
+
+  defp zip_files(filename, files) do
+    entries =
+      Enum.map(files, fn {entry_filename, content} ->
+        {String.to_charlist(entry_filename), IO.iodata_to_binary(content)}
+      end)
+
+    with {:ok, {_zip_filename, zip_content}} <-
+           :zip.create(String.to_charlist(filename), entries, [:memory]) do
+      {:ok, zip_content}
+    end
   end
 
   defp parse_format(format_str) do

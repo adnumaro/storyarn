@@ -70,7 +70,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       {:ok, view, _html} = live(conn, export_url(project))
 
       assert selected_format(view) == "ink"
-      assert format_extension(view) == "ink"
+      assert format_extension(view) == "zip"
       assert download_url(view) =~ "/export/ink"
       refute download_url(view) =~ "/export/storyarn"
     end
@@ -111,14 +111,20 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       refute "Storyarn JSON" in labels
     end
 
-    test "switching format updates the download extension", %{conn: conn, project: project} do
+    test "switching format updates the displayed download extension", %{conn: conn, project: project} do
       {:ok, view, _html} = live(conn, export_url(project))
 
       render_click(view, "set_format", %{"format" => "yarn"})
 
       assert selected_format(view) == "yarn"
-      assert format_extension(view) == "yarn"
+      assert format_extension(view) == "zip"
       assert download_url(view) =~ "/export/yarn"
+
+      render_click(view, "set_format", %{"format" => "unity"})
+
+      assert selected_format(view) == "unity"
+      assert format_extension(view) == "json"
+      assert download_url(view) =~ "/export/unity"
     end
 
     test "invalid format is ignored", %{conn: conn, project: project} do
@@ -127,7 +133,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       render_click(view, "set_format", %{"format" => "nonexistent_format"})
 
       assert selected_format(view) == "ink"
-      assert format_extension(view) == "ink"
+      assert format_extension(view) == "zip"
     end
 
     test "hidden storyarn format is ignored by the page", %{conn: conn, project: project} do
@@ -136,7 +142,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       render_click(view, "set_format", %{"format" => "storyarn"})
 
       assert selected_format(view) == "ink"
-      assert format_extension(view) == "ink"
+      assert format_extension(view) == "zip"
       refute download_url(view) =~ "/export/storyarn"
     end
   end

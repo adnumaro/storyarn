@@ -26,6 +26,23 @@ defmodule StoryarnWeb.ExportControllerTest do
     end
   end
 
+  defp exportable_flow_fixture(project, attrs) do
+    flow = flow_fixture(project, attrs)
+    entry = Enum.find(Storyarn.Flows.list_nodes(flow.id), &(&1.type == "entry"))
+    exit_node = node_fixture(flow, %{type: "exit", data: %{}})
+    connection_fixture(flow, entry, exit_node)
+
+    flow
+  end
+
+  defp unzip_response(conn) do
+    assert {:ok, files} = :zip.unzip(conn.resp_body, [:memory])
+
+    Map.new(files, fn {filename, content} ->
+      {List.to_string(filename), content}
+    end)
+  end
+
   # ===========================================================================
   # Storyarn JSON format
   # ===========================================================================
@@ -72,19 +89,20 @@ defmodule StoryarnWeb.ExportControllerTest do
   # ===========================================================================
 
   describe "GET ink format" do
-    test "exports ink with text/plain content-type", %{conn: conn, project: project} do
-      flow = flow_fixture(project, %{name: "Main"})
-      entry = Enum.find(Storyarn.Flows.list_nodes(flow.id), &(&1.type == "entry"))
-      exit_node = node_fixture(flow, %{type: "exit", data: %{}})
-      connection_fixture(flow, entry, exit_node)
+    test "exports ink as zip with all generated files", %{conn: conn, project: project} do
+      exportable_flow_fixture(project, %{name: "Main"})
 
       conn = get(conn, export_url(project, "ink"))
 
       assert conn.status == 200
-      assert get_resp_header(conn, "content-type") == ["text/plain; charset=utf-8"]
+      assert get_resp_header(conn, "content-type") == ["application/zip"]
 
       [disposition] = get_resp_header(conn, "content-disposition")
-      assert disposition =~ ".ink"
+      assert disposition =~ "-ink.zip"
+
+      files = unzip_response(conn)
+      assert Enum.any?(Map.keys(files), &String.ends_with?(&1, ".ink"))
+      assert Map.has_key?(files, "metadata.json")
     end
   end
 
@@ -93,19 +111,47 @@ defmodule StoryarnWeb.ExportControllerTest do
   # ===========================================================================
 
   describe "GET yarn format" do
-    test "exports yarn with text/plain content-type", %{conn: conn, project: project} do
-      flow = flow_fixture(project, %{name: "Main"})
-      entry = Enum.find(Storyarn.Flows.list_nodes(flow.id), &(&1.type == "entry"))
-      exit_node = node_fixture(flow, %{type: "exit", data: %{}})
-      connection_fixture(flow, entry, exit_node)
+    test "exports yarn as zip with all generated files", %{conn: conn, project: project} do
+      for index <- 1..6 do
+        exportable_flow_fixture(project, %{name: "Flow #{index}"})
+      end
 
       conn = get(conn, export_url(project, "yarn"))
 
       assert conn.status == 200
-      assert get_resp_header(conn, "content-type") == ["text/plain; charset=utf-8"]
+      assert get_resp_header(conn, "content-type") == ["application/zip"]
 
       [disposition] = get_resp_header(conn, "content-disposition")
-      assert disposition =~ ".yarn"
+      assert disposition =~ "-yarn.zip"
+
+      files = unzip_response(conn)
+      yarn_files = files |> Map.keys() |> Enum.filter(&String.ends_with?(&1, ".yarn"))
+      assert length(yarn_files) == 6
+      assert Map.has_key?(files, "metadata.json")
+    end
+  end
+
+  # ===========================================================================
+  # Godot Dialogic format
+  # ===========================================================================
+
+  describe "GET godot format" do
+    test "exports godot as zip with dtl files and metadata", %{conn: conn, project: project} do
+      exportable_flow_fixture(project, %{name: "Opening"})
+      exportable_flow_fixture(project, %{name: "Ending"})
+
+      conn = get(conn, export_url(project, "godot"))
+
+      assert conn.status == 200
+      assert get_resp_header(conn, "content-type") == ["application/zip"]
+
+      [disposition] = get_resp_header(conn, "content-disposition")
+      assert disposition =~ "-godot.zip"
+
+      files = unzip_response(conn)
+      dtl_files = files |> Map.keys() |> Enum.filter(&String.ends_with?(&1, ".dtl"))
+      assert length(dtl_files) == 2
+      assert Map.has_key?(files, "metadata.json")
     end
   end
 

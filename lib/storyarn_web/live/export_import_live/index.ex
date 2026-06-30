@@ -8,6 +8,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   @all_sections ~w(sheets flows scenes screenplays localization)a
   @hidden_export_formats MapSet.new([:storyarn])
+  @archive_export_formats ~w(ink yarn godot)a
 
   @impl true
   def render(assigns) do
@@ -107,7 +108,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       # Export state
       |> assign(:formats, formats)
       |> assign(:selected_format, default_format.format)
-      |> assign(:selected_extension, default_format.extension)
+      |> assign(:selected_extension, download_extension(default_format))
       |> assign(:supported_sections, default_sections)
       |> assign(:sections, MapSet.new(@all_sections))
       |> assign(:entity_counts, %{})
@@ -153,7 +154,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         socket =
           socket
           |> assign(:selected_format, fmt_meta.format)
-          |> assign(:selected_extension, fmt_meta.extension)
+          |> assign(:selected_extension, download_extension(fmt_meta))
           |> assign(:supported_sections, fmt_meta.sections)
           |> assign(:validation_result, nil)
 
@@ -206,6 +207,9 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   defp visible_export_formats do
     Enum.reject(Exports.list_formats_with_metadata(), &MapSet.member?(@hidden_export_formats, &1.format))
   end
+
+  defp download_extension(%{format: format}) when format in @archive_export_formats, do: "zip"
+  defp download_extension(%{extension: extension}), do: extension
 
   defp build_export_options(assigns) do
     sections = assigns.sections
