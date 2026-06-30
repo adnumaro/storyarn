@@ -167,18 +167,18 @@ function projectMetricLabel(group: string, value: string) {
 
     <div class="grid gap-3 sm:grid-cols-2">
       <div class="space-y-1.5">
-        <Label for="project-type">{{ $t("workspace.new_project.fields.project_type.label") }}</Label>
-        <Select
-          :model-value="selectedProjectType"
-          required
-          @update:model-value="updateProjectType"
-        >
+        <Label for="project-type">{{
+          $t("workspace.new_project.fields.project_type.label")
+        }}</Label>
+        <Select :model-value="selectedProjectType" required @update:model-value="updateProjectType">
           <SelectTrigger
             id="project-type"
             class="w-full"
             :aria-invalid="showProjectTypeError ? 'true' : null"
           >
-            <SelectValue :placeholder="$t('workspace.new_project.fields.project_type.placeholder')" />
+            <SelectValue
+              :placeholder="$t('workspace.new_project.fields.project_type.placeholder')"
+            />
           </SelectTrigger>
           <SelectContent>
             <SelectItem
@@ -190,7 +190,10 @@ function projectMetricLabel(group: string, value: string) {
             </SelectItem>
           </SelectContent>
         </Select>
-        <p v-if="showProjectTypeError" class="text-sm text-destructive flex items-center gap-1 mt-1">
+        <p
+          v-if="showProjectTypeError"
+          class="text-sm text-destructive flex items-center gap-1 mt-1"
+        >
           {{ projectType.errorMessage.value }}
         </p>
       </div>

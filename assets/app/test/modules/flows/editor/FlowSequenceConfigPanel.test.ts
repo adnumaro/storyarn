@@ -8,9 +8,8 @@ vi.mock("@shared/composables/useLive", () => ({
   useLive: () => mockLive,
 }));
 
-const { default: FlowSequenceConfigPanel } = await import(
-  "../../../../modules/flows/editor/components/panels/FlowSequenceConfigPanel.vue"
-);
+const { default: FlowSequenceConfigPanel } =
+  await import("../../../../modules/flows/editor/components/panels/FlowSequenceConfigPanel.vue");
 
 const passthrough = { template: "<div><slot /><slot name='header' /></div>" };
 
@@ -127,9 +126,7 @@ describe("FlowSequenceConfigPanel", () => {
     expect(w.text()).toContain("Layout");
     expect(w.text()).toContain("Cover");
 
-    const settingsTabs = w
-      .findAll('[data-stub="tabs-trigger"]')
-      .map((item) => item.text().trim());
+    const settingsTabs = w.findAll('[data-stub="tabs-trigger"]').map((item) => item.text().trim());
     expect(settingsTabs).toEqual(["Visual composition", "Audio tracks"]);
 
     const options = w.findAll('[data-stub="command-item"]').map((item) => item.text());

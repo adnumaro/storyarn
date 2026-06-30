@@ -177,7 +177,6 @@ async function handleDetailsSubmit() {
     detailsSubmitting.value = false;
   }
 }
-
 </script>
 
 <template>
@@ -262,26 +261,22 @@ async function handleDetailsSubmit() {
           </DialogDescription>
         </DialogHeader>
 
-        <form id="waitlist-details-form" class="grid gap-5" @submit.prevent.stop="handleDetailsSubmit">
+        <form
+          id="waitlist-details-form"
+          class="grid gap-5"
+          @submit.prevent.stop="handleDetailsSubmit"
+        >
           <div class="grid gap-5">
             <div class="space-y-2.5">
               <Label for="waitlist-profession">{{
                 $t("landing.cta.metrics.profession.label")
               }}</Label>
-              <Select
-                :model-value="profession"
-                required
-                @update:model-value="updateProfession"
-              >
+              <Select :model-value="profession" required @update:model-value="updateProfession">
                 <SelectTrigger id="waitlist-profession" class="h-11 w-full">
                   <SelectValue :placeholder="$t('landing.cta.metrics.profession.placeholder')" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem
-                    v-for="option in options.professions"
-                    :key="option"
-                    :value="option"
-                  >
+                  <SelectItem v-for="option in options.professions" :key="option" :value="option">
                     {{ metricLabel("profession", option) }}
                   </SelectItem>
                 </SelectContent>
@@ -298,7 +293,9 @@ async function handleDetailsSubmit() {
                 @update:model-value="updatePrimaryInterest"
               >
                 <SelectTrigger id="waitlist-interest" class="h-11 w-full">
-                  <SelectValue :placeholder="$t('landing.cta.metrics.primary_interest.placeholder')" />
+                  <SelectValue
+                    :placeholder="$t('landing.cta.metrics.primary_interest.placeholder')"
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem
@@ -322,7 +319,9 @@ async function handleDetailsSubmit() {
                 @update:model-value="updateDiscoverySource"
               >
                 <SelectTrigger id="waitlist-source" class="h-11 w-full">
-                  <SelectValue :placeholder="$t('landing.cta.metrics.discovery_source.placeholder')" />
+                  <SelectValue
+                    :placeholder="$t('landing.cta.metrics.discovery_source.placeholder')"
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem
@@ -338,20 +337,12 @@ async function handleDetailsSubmit() {
 
             <div class="space-y-2.5">
               <Label for="waitlist-tool">{{ $t("landing.cta.metrics.current_tool.label") }}</Label>
-              <Select
-                :model-value="currentTool"
-                required
-                @update:model-value="updateCurrentTool"
-              >
+              <Select :model-value="currentTool" required @update:model-value="updateCurrentTool">
                 <SelectTrigger id="waitlist-tool" class="h-11 w-full">
                   <SelectValue :placeholder="$t('landing.cta.metrics.current_tool.placeholder')" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem
-                    v-for="option in options.current_tools"
-                    :key="option"
-                    :value="option"
-                  >
+                  <SelectItem v-for="option in options.current_tools" :key="option" :value="option">
                     {{ metricLabel("current_tool", option) }}
                   </SelectItem>
                 </SelectContent>

@@ -217,7 +217,9 @@ function confirmDeleteProject() {
           </div>
 
           <div v-if="requiresSubtype" class="space-y-1.5">
-            <Label for="project-subtype">{{ $t("project_settings.general.project_subtype") }}</Label>
+            <Label for="project-subtype">{{
+              $t("project_settings.general.project_subtype")
+            }}</Label>
             <Select
               :model-value="projectSubtypeLocal"
               required
@@ -229,11 +231,7 @@ function confirmDeleteProject() {
                 />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem
-                  v-for="option in projectSubtypeOptions"
-                  :key="option"
-                  :value="option"
-                >
+                <SelectItem v-for="option in projectSubtypeOptions" :key="option" :value="option">
                   {{ $t(projectMetricLabel(`project_subtype.${projectTypeLocal}`, option)) }}
                 </SelectItem>
               </SelectContent>

@@ -109,8 +109,6 @@ describe("ImageAsset", () => {
 
     const filename = trigger.find("span");
     expect(filename.text()).toBe(longFilename);
-    expect(filename.classes()).toEqual(
-      expect.arrayContaining(["min-w-0", "flex-1", "truncate"]),
-    );
+    expect(filename.classes()).toEqual(expect.arrayContaining(["min-w-0", "flex-1", "truncate"]));
   });
 });

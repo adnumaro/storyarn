@@ -139,7 +139,9 @@ onUnmounted(teardownAudio);
 </script>
 
 <template>
-  <div class="flex min-w-0 max-w-full flex-col gap-1.5 overflow-hidden rounded border border-border p-2">
+  <div
+    class="flex min-w-0 max-w-full flex-col gap-1.5 overflow-hidden rounded border border-border p-2"
+  >
     <div class="flex min-w-0 items-center gap-2">
       <component :is="icon" class="size-3.5 opacity-70 shrink-0" />
       <span class="min-w-0 flex-1 truncate text-xs font-medium">{{ label }}</span>

@@ -26,7 +26,12 @@ import ImageAsset from "../../../../../components/forms/assets/ImageAsset.vue";
 import ImageFit from "../../../../../components/forms/assets/ImageFit.vue";
 import ImagePosition from "../../../../../components/forms/assets/ImagePosition.vue";
 import { Button } from "../../../../../components/ui/button";
-import { Command, CommandGroup, CommandItem, CommandList } from "../../../../../components/ui/command";
+import {
+  Command,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from "../../../../../components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "../../../../../components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../../components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "../../../../../components/ui/toggle-group";
@@ -403,7 +408,6 @@ function setPickerOpen(layer: SequenceVisualLayer, field: "kind", open: boolean)
 function visualKindLabel(kind: string): string {
   return t(`flows.sequences.visual_layers.kinds.${kind}`);
 }
-
 </script>
 
 <template>
@@ -465,8 +469,7 @@ function visualKindLabel(kind: string): string {
                 :clear-title="$t('flows.sequences.visual_layers.delete')"
                 :preview-fit="layer.fit || 'contain'"
                 @select="
-                  (asset) =>
-                    updateVisualLayer(layer, { asset_id: asset.id, label: asset.filename })
+                  (asset) => updateVisualLayer(layer, { asset_id: asset.id, label: asset.filename })
                 "
                 @clear="deleteVisualLayer(layer)"
               >

@@ -75,8 +75,6 @@ describe("AssetPicker", () => {
 
     const filename = w.find("span.truncate");
     expect(filename.text()).toBe(longFilename);
-    expect(filename.classes()).toEqual(
-      expect.arrayContaining(["min-w-0", "flex-1", "truncate"]),
-    );
+    expect(filename.classes()).toEqual(expect.arrayContaining(["min-w-0", "flex-1", "truncate"]));
   });
 });

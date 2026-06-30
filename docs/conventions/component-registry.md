@@ -27,14 +27,14 @@ These are available in ALL HEEx templates without explicit import (via `Storyarn
 
 ### UIComponents (`ui_components.ex`)
 
-| Component          | Purpose             | Key Attributes                                                             |
-| ------------------ | ------------------- | -------------------------------------------------------------------------- |
-| `<.role_badge>`    | Role indicator      | `role` (owner/admin/editor/member/viewer)                                  |
-| `<.kbd>`           | Keyboard shortcut   | `inner_block` (content slot), `size` (xs/sm/md)                            |
-| `<.empty_state>`   | Empty content state | `icon`, `title`, `inner_block` (description), `:action` slot               |
-| `<.search_input>`  | Search field        | `size` (xs/sm/md/lg), global: `name`, `value`, `placeholder`, `phx-change` |
-| `<.avatar_group>`  | Avatar cluster      | `size` (xs/sm/md/lg), `max`, `total`, `:avatar` slot (src/alt/fallback)    |
-| `<.theme_toggle>`  | Theme switcher      | —                                                                          |
+| Component         | Purpose             | Key Attributes                                                             |
+| ----------------- | ------------------- | -------------------------------------------------------------------------- |
+| `<.role_badge>`   | Role indicator      | `role` (owner/admin/editor/member/viewer)                                  |
+| `<.kbd>`          | Keyboard shortcut   | `inner_block` (content slot), `size` (xs/sm/md)                            |
+| `<.empty_state>`  | Empty content state | `icon`, `title`, `inner_block` (description), `:action` slot               |
+| `<.search_input>` | Search field        | `size` (xs/sm/md/lg), global: `name`, `value`, `placeholder`, `phx-change` |
+| `<.avatar_group>` | Avatar cluster      | `size` (xs/sm/md/lg), `max`, `total`, `:avatar` slot (src/alt/fallback)    |
+| `<.theme_toggle>` | Theme switcher      | —                                                                          |
 
 ---
 

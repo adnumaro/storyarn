@@ -61,12 +61,15 @@ server:
 
 # Run all quality checks: Oxlint fix, Credo strict, Elixir tests, JS tests, E2E tests
 quality:
+    @just quality-lint
+    mix test
+    mix test.e2e
+    pnpm run test
+
+quality-lint:
     pnpm run fmt && pnpm run lint:fix
     pnpm run typecheck
     pnpm arch & pnpm knip
     mix format
     mix convention.check
     mix credo --strict
-    mix test
-    mix test.e2e
-    pnpm run test
