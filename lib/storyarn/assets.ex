@@ -435,6 +435,7 @@ defmodule Storyarn.Assets do
     end
   end
 
+  # sobelow_skip ["Traversal.FileModule"]
   defp do_upload_and_create_asset(path, entry, project, user, opts) do
     content = File.read!(path)
     metadata = extract_image_metadata(path, entry.client_type)

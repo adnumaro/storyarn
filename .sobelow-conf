@@ -10,6 +10,9 @@
   exit: "medium",
   format: "txt",
   ignore: [
+    # CSP is set by StoryarnWeb.Router.put_content_security_policy/2 in the
+    # browser pipeline; Sobelow does not detect the custom plug.
+    "Config.CSP",
     # HTTPS warning ignored - enabled in production via reverse proxy/load balancer
     "Config.HTTPS"
   ],

@@ -37,5 +37,6 @@ defmodule StoryarnWeb.Components.TextComponents do
 
   defp escape_segment(segment), do: segment |> html_escape() |> safe_to_string()
 
+  # sobelow_skip ["XSS.Raw"]
   defp safe_raw(html), do: html |> HtmlSanitizer.sanitize_html() |> raw()
 end

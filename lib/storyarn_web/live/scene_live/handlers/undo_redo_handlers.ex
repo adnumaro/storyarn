@@ -139,6 +139,19 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
 
   defp flash_creation_reverted(:annotation), do: dgettext("scenes", "Undo: annotation creation reverted.")
 
+  defp action_tag(:delete, :pin), do: :delete_pin
+  defp action_tag(:delete, :zone), do: :delete_zone
+  defp action_tag(:delete, :connection), do: :delete_connection
+  defp action_tag(:delete, :annotation), do: :delete_annotation
+  defp action_tag(:create, :pin), do: :create_pin
+  defp action_tag(:create, :zone), do: :create_zone
+  defp action_tag(:create, :connection), do: :create_connection
+  defp action_tag(:create, :annotation), do: :create_annotation
+  defp action_tag(:update, :pin), do: :update_pin
+  defp action_tag(:update, :zone), do: :update_zone
+  defp action_tag(:update, :connection), do: :update_connection
+  defp action_tag(:update, :annotation), do: :update_annotation
+
   # ---------------------------------------------------------------------------
   # Public dispatch
   # ---------------------------------------------------------------------------
@@ -237,7 +250,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
 
     case cfg.create.(scene_id, to_attrs(type, element)) do
       {:ok, new_el} ->
-        action_tag = :"delete_#{type}"
+        action_tag = action_tag(:delete, type)
 
         {:ok,
          socket
@@ -273,7 +286,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
       found ->
         case cfg.delete.(found) do
           {:ok, _} ->
-            action_tag = :"create_#{type}"
+            action_tag = action_tag(:create, type)
 
             {:ok,
              socket
@@ -312,7 +325,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
       element ->
         case cfg.update.(element, prev_attrs) do
           {:ok, updated} ->
-            action_tag = :"update_#{type}"
+            action_tag = action_tag(:update, type)
 
             {:ok,
              socket
@@ -529,7 +542,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
       found ->
         case cfg.delete.(found) do
           {:ok, _} ->
-            action_tag = :"delete_#{type}"
+            action_tag = action_tag(:delete, type)
 
             {:ok,
              socket
@@ -562,7 +575,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
 
     case cfg.create.(scene_id, to_attrs(type, element)) do
       {:ok, new_el} ->
-        action_tag = :"create_#{type}"
+        action_tag = action_tag(:create, type)
 
         {:ok,
          socket
@@ -597,7 +610,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
       element ->
         case cfg.update.(element, new_attrs) do
           {:ok, updated} ->
-            action_tag = :"update_#{type}"
+            action_tag = action_tag(:update, type)
 
             {:ok,
              socket

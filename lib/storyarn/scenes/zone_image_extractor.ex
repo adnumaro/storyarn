@@ -175,6 +175,7 @@ defmodule Storyarn.Scenes.ZoneImageExtractor do
     end
   end
 
+  # sobelow_skip ["Traversal.FileModule"]
   defp upload_and_create_asset(temp_path, zone_name, project) do
     filename = "#{zone_name}_extract.webp"
     content_type = "image/webp"
@@ -185,6 +186,7 @@ defmodule Storyarn.Scenes.ZoneImageExtractor do
     end
   end
 
+  # sobelow_skip ["Traversal.FileModule"]
   defp cleanup_temp(path) do
     _ = File.rm(path)
     :ok

@@ -57,6 +57,16 @@ defmodule Storyarn.Assets.Storage.LocalTest do
       path = Path.join(test_dir, key)
       assert File.read!(path) == data
     end
+
+    test "rejects traversal and absolute keys", %{test_dir: test_dir} do
+      refute File.exists?(Path.join(Path.dirname(test_dir), "escaped.txt"))
+
+      assert {:error, :invalid_key} = Local.upload("../escaped.txt", "content", "text/plain")
+      assert {:error, :invalid_key} = Local.upload("/tmp/escaped.txt", "content", "text/plain")
+      assert {:error, :invalid_key} = Local.upload("nested\\escaped.txt", "content", "text/plain")
+
+      refute File.exists?(Path.join(Path.dirname(test_dir), "escaped.txt"))
+    end
   end
 
   # =============================================================================
@@ -78,6 +88,16 @@ defmodule Storyarn.Assets.Storage.LocalTest do
       key = "nonexistent/file.txt"
       assert :ok = Local.delete(key)
     end
+
+    test "rejects traversal keys" do
+      assert {:error, :invalid_key} = Local.delete("../escaped.txt")
+    end
+  end
+
+  describe "download/1" do
+    test "rejects traversal keys" do
+      assert {:error, :invalid_key} = Local.download("../escaped.txt")
+    end
   end
 
   # =============================================================================
@@ -91,6 +111,19 @@ defmodule Storyarn.Assets.Storage.LocalTest do
 
     test "handles keys with subdirectories" do
       assert Local.get_url("a/b/c/file.txt") == "/test-uploads/a/b/c/file.txt"
+    end
+
+    test "raises for traversal keys" do
+      assert_raise ArgumentError, "invalid storage key", fn ->
+        Local.get_url("../escaped.txt")
+      end
+    end
+  end
+
+  describe "copy/2" do
+    test "rejects traversal destination keys", %{test_key: key} do
+      assert {:ok, _url} = Local.upload(key, "content", "text/plain")
+      assert {:error, :invalid_key} = Local.copy(key, "../escaped.txt")
     end
   end
 

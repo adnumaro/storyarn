@@ -48,5 +48,34 @@ defmodule StoryarnWeb.UploadControllerTest do
 
       assert %{"error" => "upload_failed"} = json_response(conn, 422)
     end
+
+    test "rejects upload paths outside the system temporary directory", %{conn: conn, user: user} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+      path = Path.join(["test", "tmp", "unsafe-upload-#{System.unique_integer([:positive])}.png"])
+
+      File.mkdir_p!(Path.dirname(path))
+      File.write!(path, "not really a png")
+
+      on_exit(fn -> File.rm(path) end)
+
+      upload = %Plug.Upload{
+        path: path,
+        filename: "unsafe.png",
+        content_type: "image/png"
+      }
+
+      conn =
+        conn
+        |> assign(:current_scope, Scope.for_user(user))
+        |> UploadController.create(%{
+          "workspace_slug" => workspace.slug,
+          "project_slug" => project.slug,
+          "purpose" => "image",
+          "file" => upload
+        })
+
+      assert %{"error" => "upload_failed"} = json_response(conn, 422)
+    end
   end
 end

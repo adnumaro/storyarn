@@ -173,6 +173,20 @@ defmodule Storyarn.Shared.TreeOperationsTest do
     end
   end
 
+  describe "batch_set_positions/3" do
+    test "rejects non-allowlisted table names before executing SQL" do
+      assert_raise ArgumentError, ~r/table must be one of/, fn ->
+        TreeOperations.batch_set_positions("sheets; DROP TABLE users;", [{1, 0}], scope: {"project_id", 1})
+      end
+    end
+
+    test "rejects non-allowlisted scope fields before executing SQL" do
+      assert_raise ArgumentError, ~r/scope_field must be one of/, fn ->
+        TreeOperations.batch_set_positions("sheets", [{1, 0}], scope: {"project_id OR true", 1})
+      end
+    end
+  end
+
   # ===========================================================================
   # update_position_only/3
   # ===========================================================================

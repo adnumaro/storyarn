@@ -99,11 +99,32 @@ defmodule StoryarnWeb.UploadController do
     conn |> put_status(:unprocessable_entity) |> json(%{error: "missing_file"})
   end
 
+  # sobelow_skip ["Traversal.FileModule"]
   defp read_upload(%Plug.Upload{path: path}) do
-    case File.read(path) do
-      {:ok, binary_data} -> {:ok, binary_data}
+    with {:ok, path} <- safe_upload_path(path),
+         {:ok, binary_data} <- File.read(path) do
+      {:ok, binary_data}
+    else
       {:error, reason} -> {:error, {:unreadable_upload, reason}}
     end
+  end
+
+  defp safe_upload_path(path) when is_binary(path) do
+    tmp_dir = Path.expand(System.tmp_dir!())
+    path = Path.expand(path)
+
+    with true <- path_inside?(path, tmp_dir),
+         true <- File.regular?(path) do
+      {:ok, path}
+    else
+      false -> {:error, :invalid_upload_path}
+    end
+  end
+
+  defp safe_upload_path(_path), do: {:error, :invalid_upload_path}
+
+  defp path_inside?(path, root) do
+    path == root or String.starts_with?(path, root <> "/")
   end
 
   defp create_asset(binary_data, upload, purpose_param, project, user) do

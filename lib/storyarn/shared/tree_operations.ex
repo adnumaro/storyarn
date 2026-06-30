@@ -53,40 +53,52 @@ defmodule Storyarn.Shared.TreeOperations do
   def batch_set_positions(_table, [], _opts), do: :ok
 
   @allowed_scope_fields ~w(project_id sheet_id flow_id scene_id workspace_id block_id)
+  @allowed_tables ~w(
+    blocks
+    flows
+    project_languages
+    scene_layers
+    scenes
+    screenplays
+    sheets
+    table_columns
+    table_rows
+  )
 
+  # sobelow_skip ["SQL.Query"]
   def batch_set_positions(table, id_position_pairs, opts) when is_list(id_position_pairs) do
     {ids, positions} = Enum.unzip(id_position_pairs)
 
     {scope_field, scope_value} = Keyword.fetch!(opts, :scope)
-
-    if scope_field not in @allowed_scope_fields do
-      raise ArgumentError,
-            "scope_field must be one of #{inspect(@allowed_scope_fields)}, got: #{inspect(scope_field)}"
-    end
+    table = validated_identifier!(table, @allowed_tables, "table")
+    scope_field = validated_identifier!(scope_field, @allowed_scope_fields, "scope_field")
 
     soft_delete = Keyword.get(opts, :soft_delete, false)
     parent_id = Keyword.get(opts, :parent_id, :skip)
+
+    quoted_table = quote_identifier(table)
 
     {where_clause, params} =
       build_where_clause(scope_field, scope_value, soft_delete, parent_id, 3)
 
     sql = """
-    UPDATE #{table}
+    UPDATE #{quoted_table}
     SET position = data.pos
     FROM unnest($1::bigint[], $2::int[]) AS data(id, pos)
-    WHERE #{table}.id = data.id#{where_clause}
+    WHERE #{quoted_table}.id = data.id#{where_clause}
     """
 
     Repo.query!(sql, [ids, positions | params])
   end
 
   defp build_where_clause(scope_field, scope_value, soft_delete, parent_id, param_start) do
+    quoted_scope_field = quote_identifier(scope_field)
     clauses = []
     params = []
     idx = param_start
 
     # Scope field
-    clauses = [" AND #{scope_field} = $#{idx}" | clauses]
+    clauses = [" AND #{quoted_scope_field} = $#{idx}" | clauses]
     params = [scope_value | params]
     idx = idx + 1
 
@@ -112,6 +124,21 @@ defmodule Storyarn.Shared.TreeOperations do
       end
 
     {clauses |> Enum.reverse() |> Enum.join(), Enum.reverse(params)}
+  end
+
+  defp validated_identifier!(identifier, allowlist, label) do
+    if identifier in allowlist do
+      identifier
+    else
+      raise ArgumentError,
+            "#{label} must be one of #{inspect(allowlist)}, got: #{inspect(identifier)}"
+    end
+  end
+
+  defp quote_identifier(identifier) do
+    escaped = String.replace(identifier, ~s("), ~s(""))
+
+    ~s("#{escaped}")
   end
 
   @doc """

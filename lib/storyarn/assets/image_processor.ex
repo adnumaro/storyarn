@@ -98,6 +98,7 @@ defmodule Storyarn.Assets.ImageProcessor do
     end
   end
 
+  # sobelow_skip ["Traversal.FileModule"]
   defp copy_if_needed(source_path, output_path) do
     if output_path != source_path, do: File.cp!(source_path, output_path)
     {:ok, output_path}
@@ -127,6 +128,7 @@ defmodule Storyarn.Assets.ImageProcessor do
   @doc """
   Extracts dimensions from image binary data.
   """
+  # sobelow_skip ["Traversal.FileModule"]
   def get_dimensions_from_binary(binary_data) do
     tmp_input = tmp_path("dimensions")
 
@@ -250,6 +252,7 @@ defmodule Storyarn.Assets.ImageProcessor do
   Returns `{:ok, webp_binary}` or `{:error, reason}`.
   """
   @spec to_webp(binary()) :: {:ok, binary()} | {:error, term()}
+  # sobelow_skip ["Traversal.FileModule"]
   def to_webp(binary_data) do
     tmp_input = tmp_path("input")
     tmp_output = tmp_path("output") <> ".webp"
@@ -276,6 +279,7 @@ defmodule Storyarn.Assets.ImageProcessor do
   """
   @spec resize_to_webp(binary(), pos_integer(), pos_integer()) ::
           {:ok, binary()} | {:error, term()}
+  # sobelow_skip ["Traversal.FileModule"]
   def resize_to_webp(binary_data, width, height) do
     tmp_input = tmp_path("input")
     tmp_output = tmp_path("output") <> ".webp"
