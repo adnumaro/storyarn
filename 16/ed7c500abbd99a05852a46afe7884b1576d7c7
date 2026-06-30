@@ -1,0 +1,24 @@
+assets/app/live/public/legal/LegalPage.vue
+  s_0def36709c589f::t_e1f0adda730dbf 89,173,192,252
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.4",
+  "base_commit_sha": "16ed7c500abbd99a05852a46afe7884b1576d7c7",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_0def36709c589f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f0e8b-33c1-7da0-adb0-5de25948788a",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
