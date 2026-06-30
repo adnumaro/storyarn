@@ -1,0 +1,46 @@
+lib/storyarn_web/router.ex
+  s_0def36709c589f::t_2c991b52093e40 99-102
+lib/storyarn_web/components/layouts/root.html.heex
+  s_0def36709c589f::t_2c991b52093e40 7-21
+test/storyarn_web/controllers/sitemap_controller_test.exs
+  s_0def36709c589f::t_240ee15b5d96eb 10-12
+  s_0def36709c589f::t_9d2e4626c417f3 1-9,13-27
+test/storyarn_web/controllers/page_controller_test.exs
+  s_0def36709c589f::t_9d2e4626c417f3 7-11
+lib/storyarn_web/live/legal_live/show.ex
+  s_0def36709c589f::t_04c66a6072ee1d 63
+  s_0def36709c589f::t_33e87b12df2a67 17,50-62,64-65
+test/storyarn_web/plugs/noindex_robots_test.exs
+  s_0def36709c589f::t_f5be46589f5886 50-52
+lib/storyarn_web/live/landing_live/contact.ex
+  s_0def36709c589f::t_33e87b12df2a67 8-15
+priv/static/robots.txt
+  s_0def36709c589f::t_2c991b52093e40 1-4
+lib/storyarn_web/components/layouts.ex
+  s_0def36709c589f::t_fbb22509a632d5 92-94,99-104,109-132,144-152
+  s_0def36709c589f::t_04c66a6072ee1d 95-98,105-108
+lib/storyarn_web/live/docs_live/show.ex
+  s_0def36709c589f::t_33e87b12df2a67 38-48,70,142-147
+  s_0def36709c589f::t_be4c935ca7879e 148
+lib/storyarn_web/controllers/sitemap_controller.ex
+  s_0def36709c589f::t_2c991b52093e40 1-65
+lib/storyarn_web/live/landing_live/index.ex
+  s_0def36709c589f::t_04c66a6072ee1d 58-60
+  s_0def36709c589f::t_2c991b52093e40 23-29,43-57,61-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.4",
+  "base_commit_sha": "ef27fd494dba72fcb3c968fda46c9272d353ec7f",
+  "prompts": {},
+  "sessions": {
+    "s_0def36709c589f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f0e8b-33c1-7da0-adb0-5de25948788a",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
