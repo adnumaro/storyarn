@@ -1,0 +1,14 @@
+justfile
+  h_46be6e61f3d9dd 64,68-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.4",
+  "base_commit_sha": "00e0d7276c6714cc376cb328ed9b7eff6d97e035",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
