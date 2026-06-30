@@ -1,0 +1,65 @@
+lib/storyarn_web/controllers/upload_controller.ex
+  s_0def36709c589f::t_219eb78923169a 114,116-118
+  s_0def36709c589f::t_4d7a4a22455862 113
+  s_0def36709c589f::t_ef47f21af74e83 102,104-107,112,115,119-129
+lib/storyarn_web/components/text_components.ex
+  s_0def36709c589f::t_b5d29f5b7b5ef6 40
+lib/storyarn/assets/storage/local.ex
+  s_0def36709c589f::t_6af9f11de09f32 11,21,29,49,79
+  s_0def36709c589f::t_fbd98a65befd21 13-14,23-25,31-36,43-45,51-53,71-76,89-132
+lib/storyarn/shared/tree_operations.ex
+  s_0def36709c589f::t_f46dab24912785 130-135
+  s_0def36709c589f::t_5b30678847d800 139-141
+  s_0def36709c589f::t_c3a592c9f807e8 56-66,73-74,79-80,85,88,95,101,129,136-138,142
+  s_0def36709c589f::t_72a08ff97e8065 68
+  s_0def36709c589f::t_517e251538eee6 67
+  s_0def36709c589f::t_48dedae9493234 143
+lib/storyarn/assets.ex
+  s_0def36709c589f::t_f2322a77d1a575 438
+lib/storyarn/assets/image_processor.ex
+  s_0def36709c589f::t_2bc4742ce877df 101,131,255,282
+justfile
+  s_465570a664484a::t_03e762504d18e6 74
+.sobelow-conf
+  s_0def36709c589f::t_c5c2b01d30a8c8 13-15
+test/storyarn_web/controllers/upload_controller_test.exs
+  s_0def36709c589f::t_6dd07d30c4c00b 51-79
+lib/storyarn_web/live/scene_live/handlers/undo_redo_handlers.ex
+  s_0def36709c589f::t_153e9eca97d1e6 142-154,253,289,328,545,578,613
+test/storyarn/shared/tree_operations_test.exs
+  s_0def36709c589f::t_0dab295bbc5560 179
+  s_0def36709c589f::t_7c84e2bb2ea8b3 176-178,180-189
+test/storyarn/assets/storage/local_test.exs
+  s_0def36709c589f::t_8d44e476a19099 60-69,91-100,115-127
+lib/storyarn/scenes/zone_image_extractor.ex
+  s_0def36709c589f::t_0be09f4c8339a3 178,189
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "e1de48bcc0bbaeddd294fb8ad90be9921be6cc71",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_0def36709c589f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f0e8b-33c1-7da0-adb0-5de25948788a",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_465570a664484a": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1782819227471",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
