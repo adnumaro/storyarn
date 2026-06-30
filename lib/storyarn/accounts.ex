@@ -260,6 +260,14 @@ defmodule Storyarn.Accounts do
   defdelegate find_or_register_confirmed_user(email), to: Registration
 
   @doc """
+  Prepares a user for workspace/project invitation acceptance.
+
+  Password users can accept immediately. New or passwordless users receive a
+  registration token and must set a password first.
+  """
+  defdelegate prepare_invitation_user(email), to: Registration
+
+  @doc """
   Delivers the waitlist invite instructions to the given user.
   """
   defdelegate deliver_waitlist_invite_instructions(user, invite_url_fun), to: Registration

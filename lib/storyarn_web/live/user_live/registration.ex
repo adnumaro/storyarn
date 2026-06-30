@@ -32,7 +32,7 @@ defmodule StoryarnWeb.UserLive.Registration do
     {:ok, redirect(socket, to: StoryarnWeb.UserAuth.signed_in_path(socket))}
   end
 
-  def mount(%{"token" => token}, _session, socket) do
+  def mount(%{"token" => token} = params, _session, socket) do
     ip =
       case get_connect_info(socket, :peer_data) do
         %{address: addr} when is_tuple(addr) -> addr |> :inet.ntoa() |> to_string()
@@ -49,6 +49,7 @@ defmodule StoryarnWeb.UserLive.Registration do
          |> assign(:invited_user, user)
          |> assign(:invite_token, token_record)
          |> assign(:client_ip, ip)
+         |> assign(:return_to, safe_return_to(params["return_to"]))
          |> assign_form(changeset)}
 
       nil ->
@@ -97,17 +98,31 @@ defmodule StoryarnWeb.UserLive.Registration do
         {:noreply,
          socket
          |> put_flash(:info, dgettext("identity", "Account created successfully! Welcome."))
-         # We cannot call typical redirect, log_in_user from socket. It's best to redirect to a POST endpoint
-         # or use the standard log_in_user hook if we can. Wait, UserAuth has `log_in_user` for controllers.
-         # For LiveViews, `push_navigate` but the cookies must be set.
-         # Standard phx.gen.auth redirects to login page with flash or handles it in `UserSessionController.create/2`.
-         # Let's redirect to `/users/log-in` with success message for now, forcing them to login immediately:
-         |> push_navigate(to: ~p"/users/log-in")}
+         |> push_navigate(to: socket.assigns.return_to || ~p"/users/log-in")}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign_form(socket, changeset)}
+
+      {:error, :stale_invite_token} ->
+        {:noreply,
+         socket
+         |> put_flash(:error, dgettext("identity", "Invalid or expired registration link."))
+         |> push_navigate(to: ~p"/")}
     end
   end
+
+  defp safe_return_to(path) when is_binary(path) do
+    uri = URI.parse(path)
+
+    cond do
+      uri.scheme || uri.host -> nil
+      not String.starts_with?(path, "/") -> nil
+      String.starts_with?(path, "//") -> nil
+      true -> path
+    end
+  end
+
+  defp safe_return_to(_path), do: nil
 
   defp assign_form(socket, %Ecto.Changeset{} = changeset) do
     form = to_form(changeset, as: "user")

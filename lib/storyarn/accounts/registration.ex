@@ -3,6 +3,8 @@ defmodule Storyarn.Accounts.Registration do
 
   use Gettext, backend: Storyarn.Gettext
 
+  import Ecto.Query, warn: false
+
   alias Storyarn.Accounts.User
   alias Storyarn.Accounts.UserToken
   alias Storyarn.Analytics
@@ -48,14 +50,38 @@ defmodule Storyarn.Accounts.Registration do
   end
 
   @doc """
-  Gets the user with the given invite token and deletes the token if found.
-  Used for gating registration.
+  Finds or creates a user for a workspace/project invitation.
+
+  Users with passwords can accept the invitation immediately. New users, and
+  existing passwordless users, must complete password setup before the invitation
+  is accepted.
+  """
+  def prepare_invitation_user(email) do
+    email = String.downcase(email)
+
+    case Repo.get_by(User, email: email) do
+      %User{hashed_password: hashed_password} = user when is_binary(hashed_password) ->
+        {:ok, {:ready, user}}
+
+      %User{} = user ->
+        create_registration_invite_token(user)
+
+      nil ->
+        with {:ok, user} <- register_user(%{"email" => email}) do
+          create_registration_invite_token(user)
+        end
+    end
+  end
+
+  @doc """
+  Gets the passwordless user with the given invite token.
+
+  Used for gating registration. The token is consumed only after password setup
+  succeeds.
   """
   def get_user_by_invite_token(token) do
     with {:ok, query} <- UserToken.verify_invite_token_query(token),
-         {user, found_token} <- Repo.one(query) do
-      # Delete token upon consumption? Wait, not upon viewing the page.
-      # They only consume it on successful save! So we just return the user and the token struct.
+         {%User{hashed_password: nil} = user, found_token} <- Repo.one(query) do
       {user, found_token}
     else
       _ -> nil
@@ -68,12 +94,19 @@ defmodule Storyarn.Accounts.Registration do
   def complete_registration(%User{} = user, token_record, attrs) do
     result =
       Repo.transact(fn ->
-        user_changeset = User.password_changeset(user, attrs, hash_password: true)
+        user_changeset =
+          user
+          |> User.confirm_changeset()
+          |> User.password_changeset(attrs, hash_password: true)
 
-        with {:ok, updated_user} <- Repo.update(user_changeset) do
-          # Consume the token immediately
-          Repo.delete!(token_record)
+        with {1, nil} <- delete_registration_invite_token(token_record, user),
+             {:ok, updated_user} <- Repo.update(user_changeset) do
+          # Consume all registration tokens for this user immediately.
+          delete_registration_invite_tokens(token_record.user_id)
           {:ok, updated_user}
+        else
+          {0, nil} -> {:error, :stale_invite_token}
+          {:error, _reason} = error -> error
         end
       end)
 
@@ -92,13 +125,12 @@ defmodule Storyarn.Accounts.Registration do
   Delivers the waitlist invite instructions to the given user.
   """
   def deliver_waitlist_invite_instructions(%User{} = user, invite_url_fun) when is_function(invite_url_fun, 1) do
-    {encoded_token, user_token} = UserToken.build_email_token(user, "invite")
-    Repo.insert!(user_token)
-
-    Storyarn.Accounts.UserNotifier.deliver_waitlist_invite(
-      user.email,
-      invite_url_fun.(encoded_token)
-    )
+    with {:ok, {:registration_required, encoded_token}} <- create_registration_invite_token(user) do
+      Storyarn.Accounts.UserNotifier.deliver_waitlist_invite(
+        user.email,
+        invite_url_fun.(encoded_token)
+      )
+    end
   end
 
   defp insert_user(attrs) do
@@ -127,5 +159,31 @@ defmodule Storyarn.Accounts.Registration do
     |> String.split("@")
     |> List.first()
     |> String.capitalize()
+  end
+
+  defp create_registration_invite_token(%User{} = user) do
+    Repo.transact(fn ->
+      delete_registration_invite_tokens(user.id)
+
+      {encoded_token, user_token} = UserToken.build_email_token(user, "invite")
+
+      with {:ok, _user_token} <- Repo.insert(user_token) do
+        {:ok, {:registration_required, encoded_token}}
+      end
+    end)
+  end
+
+  defp delete_registration_invite_token(%UserToken{} = token_record, %User{} = user) do
+    Repo.delete_all(
+      from(t in UserToken,
+        where: t.id == ^token_record.id,
+        where: t.user_id == ^user.id,
+        where: t.context == "invite"
+      )
+    )
+  end
+
+  defp delete_registration_invite_tokens(user_id) do
+    Repo.delete_all(from(t in UserToken, where: t.user_id == ^user_id and t.context == "invite"))
   end
 end

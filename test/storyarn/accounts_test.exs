@@ -88,6 +88,58 @@ defmodule Storyarn.AccountsTest do
     end
   end
 
+  describe "prepare_invitation_user/1" do
+    test "returns ready users when they already have a password" do
+      user = user_fixture()
+
+      assert {:ok, {:ready, ready_user}} = Accounts.prepare_invitation_user(user.email)
+      assert ready_user.id == user.id
+    end
+
+    test "creates a passwordless user and registration token for a new invitee" do
+      email = unique_user_email()
+
+      assert {:ok, {:registration_required, token}} = Accounts.prepare_invitation_user(email)
+      assert is_binary(token)
+
+      user = Accounts.get_user_by_email(email)
+      assert user
+      assert is_nil(user.hashed_password)
+      assert is_nil(user.confirmed_at)
+
+      assert Repo.get_by(UserToken, user_id: user.id, context: "invite")
+    end
+
+    test "creates a registration token for an existing passwordless user" do
+      user = unconfirmed_user_fixture()
+
+      assert {:ok, {:registration_required, token}} = Accounts.prepare_invitation_user(user.email)
+      assert is_binary(token)
+
+      assert Repo.get_by(UserToken, user_id: user.id, context: "invite")
+    end
+
+    test "does not complete registration with a stale invite token" do
+      email = unique_user_email()
+
+      assert {:ok, {:registration_required, _token}} = Accounts.prepare_invitation_user(email)
+
+      user = Accounts.get_user_by_email(email)
+      stale_token_record = Repo.get_by!(UserToken, user_id: user.id, context: "invite")
+
+      assert {:ok, {:registration_required, _new_token}} = Accounts.prepare_invitation_user(email)
+
+      assert {:error, :stale_invite_token} =
+               Accounts.complete_registration(user, stale_token_record, %{
+                 password: valid_user_password()
+               })
+
+      user = Accounts.get_user!(user.id)
+      assert is_nil(user.hashed_password)
+      assert Repo.get_by(UserToken, user_id: user.id, context: "invite")
+    end
+  end
+
   describe "sudo_mode?/2" do
     test "validates the authenticated_at time" do
       now = DateTime.utc_now()

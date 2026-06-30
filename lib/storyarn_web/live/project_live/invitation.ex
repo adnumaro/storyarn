@@ -2,12 +2,13 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
   @moduledoc """
   Accepts a project invitation on mount.
 
-  Creates the user account (if needed), adds the membership, marks the
-  invitation as accepted, and redirects to login.
+  Users with passwords are added as members immediately. New or passwordless
+  users are routed through password setup before the invitation is accepted.
   """
 
   use StoryarnWeb, :live_view
 
+  alias Storyarn.Accounts
   alias Storyarn.Projects
 
   @impl true
@@ -33,28 +34,41 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
   def mount(%{"token" => token}, _session, socket) do
     case Projects.get_invitation_by_token(token) do
       {:ok, invitation} ->
-        accept_and_redirect(socket, invitation)
+        accept_and_redirect(socket, invitation, token)
 
       {:error, :invalid_token} ->
         {:ok, socket}
     end
   end
 
-  defp accept_and_redirect(socket, invitation) do
-    with {:ok, user} <- Storyarn.Accounts.find_or_register_confirmed_user(invitation.email),
-         {:ok, _membership} <- Projects.accept_invitation(invitation, user) do
-      {:ok,
-       socket
-       |> put_flash(
-         :info,
-         dgettext(
-           "projects",
-           "Invitation accepted! Log in with %{email} to get started.",
-           email: invitation.email
+  defp accept_and_redirect(socket, invitation, token) do
+    case Accounts.prepare_invitation_user(invitation.email) do
+      {:ok, {:ready, user}} ->
+        accept_ready_user(socket, invitation, user)
+
+      {:ok, {:registration_required, registration_token}} ->
+        redirect_to_registration(socket, invitation, token, registration_token)
+
+      {:error, _reason} ->
+        {:ok, socket}
+    end
+  end
+
+  defp accept_ready_user(socket, invitation, user) do
+    case Projects.accept_invitation(invitation, user) do
+      {:ok, _membership} ->
+        {:ok,
+         socket
+         |> put_flash(
+           :info,
+           dgettext(
+             "projects",
+             "Invitation accepted! Log in with %{email} to get started.",
+             email: invitation.email
+           )
          )
-       )
-       |> redirect(to: ~p"/users/log-in")}
-    else
+         |> redirect(to: ~p"/users/log-in")}
+
       {:error, :already_accepted} ->
         {:ok,
          socket
@@ -70,5 +84,22 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
       {:error, _reason} ->
         {:ok, socket}
     end
+  end
+
+  defp redirect_to_registration(socket, invitation, token, registration_token) do
+    invitation_path = ~p"/projects/invitations/#{token}"
+    registration_path = ~p"/users/register/#{registration_token}?#{[return_to: invitation_path]}"
+
+    {:ok,
+     socket
+     |> put_flash(
+       :info,
+       dgettext(
+         "projects",
+         "Create a password for %{email} to accept your invitation.",
+         email: invitation.email
+       )
+     )
+     |> redirect(to: registration_path)}
   end
 end

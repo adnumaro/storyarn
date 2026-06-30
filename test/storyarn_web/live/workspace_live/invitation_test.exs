@@ -5,9 +5,12 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
   import Storyarn.AccountsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.Accounts
+  alias Storyarn.Accounts.UserToken
   alias Storyarn.Repo
   alias Storyarn.Workspaces
   alias Storyarn.Workspaces.WorkspaceInvitation
+  alias Storyarn.Workspaces.WorkspaceMembership
 
   describe "mount with valid token" do
     test "auto-accepts and redirects to login for existing user", %{conn: conn} do
@@ -24,19 +27,61 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
       assert flash["info"] =~ invitee.email
     end
 
-    test "creates user account and accepts invitation for new email", %{conn: conn} do
+    test "redirects a new invitee to password setup before accepting invitation", %{conn: conn} do
       owner = user_fixture()
       workspace = workspace_fixture(owner)
+      email = "newuser@example.com"
 
-      {encoded_token, _invitation} = create_invitation(workspace, owner, "newuser@example.com")
+      {encoded_token, invitation} = create_invitation(workspace, owner, email)
+      invitation_path = ~p"/workspaces/invitations/#{encoded_token}"
+
+      assert {:error, {:redirect, %{to: registration_path, flash: flash}}} =
+               live(conn, ~p"/workspaces/invitations/#{encoded_token}")
+
+      assert flash["info"] =~ "Create a password"
+      assert {_registration_token, ^invitation_path} = registration_redirect(registration_path)
+
+      user = Accounts.get_user_by_email(email)
+      assert user
+      assert is_nil(user.hashed_password)
+      assert Repo.get_by(UserToken, user_id: user.id, context: "invite")
+
+      invitation = Repo.get!(WorkspaceInvitation, invitation.id)
+      assert is_nil(invitation.accepted_at)
+
+      refute Repo.get_by(WorkspaceMembership, workspace_id: workspace.id, user_id: user.id)
+    end
+
+    test "accepts invitation after a new invitee creates a password", %{conn: conn} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      email = "newuser@example.com"
+      password = valid_user_password()
+
+      {encoded_token, invitation} = create_invitation(workspace, owner, email)
+      invitation_path = ~p"/workspaces/invitations/#{encoded_token}"
+
+      assert {:error, {:redirect, %{to: registration_path}}} =
+               live(conn, invitation_path)
+
+      {:ok, view, _html} = live(conn, registration_path)
+
+      assert {:error, {:live_redirect, %{to: ^invitation_path}}} =
+               render_click(view, "save", %{"user" => %{"password" => password}})
 
       assert {:error, {:redirect, %{to: "/users/log-in", flash: flash}}} =
-               live(conn, ~p"/workspaces/invitations/#{encoded_token}")
+               live(conn, invitation_path)
 
       assert flash["info"] =~ "Invitation accepted"
 
-      # Verify user was created
-      assert Storyarn.Accounts.get_user_by_email("newuser@example.com")
+      user = Accounts.get_user_by_email(email)
+      assert Accounts.get_user_by_email_and_password(email, password)
+      refute Repo.get_by(UserToken, user_id: user.id, context: "invite")
+
+      invitation = Repo.get!(WorkspaceInvitation, invitation.id)
+      assert invitation.accepted_at
+
+      assert Repo.get_by(WorkspaceMembership, workspace_id: workspace.id, user_id: user.id)
     end
 
     test "shows error for already accepted invitation", %{conn: conn} do
@@ -116,5 +161,15 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
 
     {:ok, invitation} = Repo.insert(invitation_struct)
     {encoded_token, invitation}
+  end
+
+  defp registration_redirect(path) do
+    uri = URI.parse(path)
+    assert String.starts_with?(uri.path, "/users/register/")
+
+    registration_token = String.replace_prefix(uri.path, "/users/register/", "")
+    return_to = uri.query |> URI.decode_query() |> Map.fetch!("return_to")
+
+    {registration_token, return_to}
   end
 end

@@ -5,7 +5,10 @@ defmodule StoryarnWeb.ProjectLive.InvitationTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Accounts
+  alias Storyarn.Accounts.UserToken
   alias Storyarn.Projects.ProjectInvitation
+  alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
 
   describe "mount with valid token" do
@@ -24,20 +27,65 @@ defmodule StoryarnWeb.ProjectLive.InvitationTest do
       assert flash["info"] =~ invitee.email
     end
 
-    test "creates user account and accepts invitation for new email", %{conn: conn} do
+    test "redirects a new invitee to password setup before accepting invitation", %{conn: conn} do
       owner = user_fixture()
       project = project_fixture(owner, %{name: "Cool Project"})
+      email = "newuser@example.com"
 
-      {token, _invitation} =
-        create_invitation_with_token(project, owner, "newuser@example.com", "editor")
+      {token, invitation} =
+        create_invitation_with_token(project, owner, email, "editor")
+
+      invitation_path = ~p"/projects/invitations/#{token}"
+
+      assert {:error, {:redirect, %{to: registration_path, flash: flash}}} =
+               live(conn, invitation_path)
+
+      assert flash["info"] =~ "Create a password"
+      assert {_registration_token, ^invitation_path} = registration_redirect(registration_path)
+
+      user = Accounts.get_user_by_email(email)
+      assert user
+      assert is_nil(user.hashed_password)
+      assert Repo.get_by(UserToken, user_id: user.id, context: "invite")
+
+      invitation = Repo.get!(ProjectInvitation, invitation.id)
+      assert is_nil(invitation.accepted_at)
+
+      refute Repo.get_by(ProjectMembership, project_id: project.id, user_id: user.id)
+    end
+
+    test "accepts invitation after a new invitee creates a password", %{conn: conn} do
+      owner = user_fixture()
+      project = project_fixture(owner, %{name: "Cool Project"})
+      email = "newuser@example.com"
+      password = valid_user_password()
+
+      {token, invitation} =
+        create_invitation_with_token(project, owner, email, "editor")
+
+      invitation_path = ~p"/projects/invitations/#{token}"
+
+      assert {:error, {:redirect, %{to: registration_path}}} =
+               live(conn, invitation_path)
+
+      {:ok, view, _html} = live(conn, registration_path)
+
+      assert {:error, {:live_redirect, %{to: ^invitation_path}}} =
+               render_click(view, "save", %{"user" => %{"password" => password}})
 
       assert {:error, {:redirect, %{to: "/users/log-in", flash: flash}}} =
-               live(conn, ~p"/projects/invitations/#{token}")
+               live(conn, invitation_path)
 
       assert flash["info"] =~ "Invitation accepted"
 
-      # Verify user was created
-      assert Storyarn.Accounts.get_user_by_email("newuser@example.com")
+      user = Accounts.get_user_by_email(email)
+      assert Accounts.get_user_by_email_and_password(email, password)
+      refute Repo.get_by(UserToken, user_id: user.id, context: "invite")
+
+      invitation = Repo.get!(ProjectInvitation, invitation.id)
+      assert invitation.accepted_at
+
+      assert Repo.get_by(ProjectMembership, project_id: project.id, user_id: user.id)
     end
 
     test "shows error for already accepted invitation", %{conn: conn} do
@@ -107,5 +155,15 @@ defmodule StoryarnWeb.ProjectLive.InvitationTest do
       vue = LiveVue.Test.get_vue(view, name: "live/project/invitation/ProjectInvitationResponse")
       assert vue.component == "live/project/invitation/ProjectInvitationResponse"
     end
+  end
+
+  defp registration_redirect(path) do
+    uri = URI.parse(path)
+    assert String.starts_with?(uri.path, "/users/register/")
+
+    registration_token = String.replace_prefix(uri.path, "/users/register/", "")
+    return_to = uri.query |> URI.decode_query() |> Map.fetch!("return_to")
+
+    {registration_token, return_to}
   end
 end
