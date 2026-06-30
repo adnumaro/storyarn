@@ -1,0 +1,33 @@
+test/e2e/workspaces/projects/projects_test.exs
+  s_f8a4ec3056d1e1::t_8ab788023ad31b 251-252
+  s_f8a4ec3056d1e1::t_685ddd29657359 60,80-81,94-96,116-117,223,232-237,250,253,291
+  s_f8a4ec3056d1e1::t_8586bf827a979e 90-92
+  s_f8a4ec3056d1e1::t_2ea38f627a6bdc 97
+assets/app/live/auth/registration/AuthRegistrationForm.vue
+  s_f8a4ec3056d1e1::t_078ae19054d946 29
+test/e2e/workspaces/projects/flows/flows_test.exs
+  s_f8a4ec3056d1e1::t_c35067dd239906 95,119,128,177
+  s_f8a4ec3056d1e1::t_a9bf53ecd56113 67-69,81-82,120,122,125,178
+assets/app/live/flow/show/FlowCanvas.vue
+  s_f8a4ec3056d1e1::t_fa1d0cff793635 87-93
+assets/app/components/ui/input/Input.vue
+  s_f8a4ec3056d1e1::t_d167dd02512d6b 2,23-29,40
+test/e2e/workspaces/projects/sheets/sheets_test.exs
+  s_f8a4ec3056d1e1::t_ab9a9d49a5f400 68,106,135,148,167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "f30cfc16761a515b3790d42ea8ede2313224b75a",
+  "prompts": {},
+  "sessions": {
+    "s_f8a4ec3056d1e1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f19f2-11f7-7801-acf9-348bdfab9c21",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
