@@ -1,0 +1,52 @@
+test/storyarn_web/live/project_live/invitation_test.exs
+  s_f8a4ec3056d1e1::t_b74781a0593721 8-9,11,30,33,35-54,159-167
+  s_f8a4ec3056d1e1::t_03f1c179fad39e 57-74,77,81-88
+  s_f8a4ec3056d1e1::t_b036ec15c99750 55-56
+  s_f8a4ec3056d1e1::t_e2e5953180e6c6 168
+lib/storyarn/accounts.ex
+  s_f8a4ec3056d1e1::t_30a4e2945c4a99 263-269
+  s_f8a4ec3056d1e1::t_31d3cac4057165 262
+lib/storyarn/accounts/registration.ex
+  s_f8a4ec3056d1e1::t_84559d40b8b0fe 77-80
+  s_f8a4ec3056d1e1::t_acfab8ae9e60c0 102-103,107-109,174-183
+  s_f8a4ec3056d1e1::t_6c655d62a9f9d5 6-7,53-71,73-74,84,97-100,104-105,128-133,163-173,184-188
+  s_f8a4ec3056d1e1::t_7b972e1179c06e 72
+  s_f8a4ec3056d1e1::t_9af5a6d83d0e60 75-76
+  s_f8a4ec3056d1e1::t_b769b8c300184b 101
+test/storyarn/accounts_test.exs
+  s_f8a4ec3056d1e1::t_4a9dc4f9535353 91-120,141-142
+  s_f8a4ec3056d1e1::t_36089b0779e5a5 121-140
+test/storyarn_web/live/workspace_live/invitation_test.exs
+  s_f8a4ec3056d1e1::t_45d1ca0a9637e9 8-9,13,30,33,35-36,38,41-74,77-84,165-173
+  s_f8a4ec3056d1e1::t_9d1b1d8070aa7e 174
+lib/storyarn_web/live/project_live/invitation.ex
+  s_f8a4ec3056d1e1::t_f86c4267c406c3 5-6
+  s_f8a4ec3056d1e1::t_221cdd25168e04 11,37,44-57,88-104
+  s_f8a4ec3056d1e1::t_b8a9b4727205ea 58-68,70-71
+lib/storyarn_web/live/user_live/registration.ex
+  s_f8a4ec3056d1e1::t_427650e42aeb92 105-110
+  s_f8a4ec3056d1e1::t_3c71a29953bc96 35,52,101,114-125
+  s_f8a4ec3056d1e1::t_f9f3f64668992a 126
+lib/storyarn_web/live/workspace_live/invitation.ex
+  s_f8a4ec3056d1e1::t_4421b29d505de9 11,37,44-57,94-110
+  s_f8a4ec3056d1e1::t_adfaeeb11cb107 5-6
+  s_f8a4ec3056d1e1::t_b8a9b4727205ea 58-68,70-71
+package.json
+  s_f8a4ec3056d1e1::t_4ed256f173af95 96-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "2537a29d442d4c416f8f64eaa0cf0719d3565a4a",
+  "prompts": {},
+  "sessions": {
+    "s_f8a4ec3056d1e1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f19f2-11f7-7801-acf9-348bdfab9c21",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
