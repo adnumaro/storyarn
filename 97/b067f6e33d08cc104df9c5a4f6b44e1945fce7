@@ -1,0 +1,33 @@
+fly.prod.toml
+  s_465570a664484a::t_6c87fd9da3b940 1-10,12-30
+  s_0def36709c589f::t_1851d678a670c0 11,31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.4",
+  "base_commit_sha": "97b067f6e33d08cc104df9c5a4f6b44e1945fce7",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_0def36709c589f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f0e8b-33c1-7da0-adb0-5de25948788a",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_465570a664484a": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1782819227471",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
