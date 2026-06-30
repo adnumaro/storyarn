@@ -1,0 +1,38 @@
+test/storyarn/versioning/version_crud_test.exs
+  s_f8a4ec3056d1e1::t_d9baab1863e1f7 31
+test/storyarn/versioning/project_snapshot_crud_test.exs
+  s_f8a4ec3056d1e1::t_d9baab1863e1f7 31
+lib/storyarn/versioning/project_snapshot_crud.ex
+  s_f8a4ec3056d1e1::t_9dfcf180e5d688 18,22-23,53-55
+  s_f8a4ec3056d1e1::t_ef89829b39940d 62-66
+test/storyarn/assets/variant_generation_test.exs
+  s_f8a4ec3056d1e1::t_bf51995de3ef4a 2
+lib/storyarn/versioning/snapshot_storage.ex
+  s_f8a4ec3056d1e1::t_d9baab1863e1f7 118-119
+  s_f8a4ec3056d1e1::t_9dfcf180e5d688 7-8,20-23,78-87,102-105,107-117,120
+lib/storyarn/versioning/version_number_lock.ex
+  s_f8a4ec3056d1e1::t_9dfcf180e5d688 1-9,11-15,17-41
+  s_f8a4ec3056d1e1::t_9e1a6b807f8b12 10,16
+test/storyarn/versioning/version_concurrency_test.exs
+  s_f8a4ec3056d1e1::t_e3700743008400 1-101
+lib/storyarn/versioning/version_crud.ex
+  s_f8a4ec3056d1e1::t_9dfcf180e5d688 18,66-81,95-96
+test/storyarn/versioning/snapshot_storage_test.exs
+  s_f8a4ec3056d1e1::t_d9baab1863e1f7 16-25,57-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "6eefbd3241ffda8a2add13b9f6d59de6b3501a37",
+  "prompts": {},
+  "sessions": {
+    "s_f8a4ec3056d1e1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f19f2-11f7-7801-acf9-348bdfab9c21",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
