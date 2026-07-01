@@ -1,0 +1,33 @@
+lib/storyarn/localization.ex
+  s_f8a4ec3056d1e1::t_ca9d138dc3a77a 338
+test/storyarn/localization/providers/deepl_test.exs
+  s_f8a4ec3056d1e1::t_ca9d138dc3a77a 1-7,22-39
+  s_f8a4ec3056d1e1::t_a4cbf080293276 8-21
+test/storyarn/localization_test.exs
+  s_f8a4ec3056d1e1::t_d1fab027c1a3c7 9-10,688-715
+  s_f8a4ec3056d1e1::t_a836f5136fa866 663-687,716-717
+lib/storyarn/localization/provider_config.ex
+  s_f8a4ec3056d1e1::t_ca9d138dc3a77a 22-25,68,73-98,103-107,112-115,120-122
+  s_f8a4ec3056d1e1::t_790250376ad9bd 69,99-102,108-111,116-119
+lib/storyarn/localization/providers/deepl.ex
+  s_f8a4ec3056d1e1::t_ca9d138dc3a77a 7,21,30-51,59-66,68-74,82-107,115-125
+  s_f8a4ec3056d1e1::t_c3544f5086e413 22,67
+  s_f8a4ec3056d1e1::t_6eea7d59358ba2 133-172,227-229
+  s_f8a4ec3056d1e1::t_45bde379f61586 230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "41f1705a4941cac52934ca644b9198462b1f8010",
+  "prompts": {},
+  "sessions": {
+    "s_f8a4ec3056d1e1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f19f2-11f7-7801-acf9-348bdfab9c21",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
