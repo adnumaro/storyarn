@@ -1,0 +1,25 @@
+assets/app/components/forms/ExpressionEditor.vue
+  s_f8a4ec3056d1e1::t_ca5aa78a9f1a54 10,53,59
+assets/app/shared/composables/useCodeEditor.ts
+  s_f8a4ec3056d1e1::t_5f8e4f36a6102c 27,64-74,76-78,80-82,135,140-146
+  s_f8a4ec3056d1e1::t_ea2f6fe1255db4 147
+assets/app/test/composables/useCodeEditor.test.ts
+  s_f8a4ec3056d1e1::t_37babbb1dd0cb8 1-13,15-85
+  s_f8a4ec3056d1e1::t_cc75b741993465 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "87a777d1f7c0e912dff302d363e1f70f97a11823",
+  "prompts": {},
+  "sessions": {
+    "s_f8a4ec3056d1e1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f19f2-11f7-7801-acf9-348bdfab9c21",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
