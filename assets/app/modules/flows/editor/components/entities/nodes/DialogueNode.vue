@@ -57,6 +57,10 @@ interface OutputBadge {
   color?: string;
 }
 
+const MAX_INLINE_SPEAKER_OPTIONS = 100;
+const PICKER_SEARCH_EVENT = "picker_search";
+const SHEET_ENTITY_SEARCH_PAYLOAD = { resource: "entity", kind: "sheet" };
+
 const {
   data,
   emit,
@@ -151,7 +155,16 @@ const responses = computed<LocalDialogueResponse[]>(() => dialogue.value.respons
 // Speaker list for inline edit dropdown
 const speakerOptions = computed(() => {
   const map = ctx.sheetsMap || sheetsMap || {};
-  return Object.values(map);
+  const sheets = Object.values(map);
+  const page = sheets.slice(0, MAX_INLINE_SPEAKER_OPTIONS);
+  const selectedId = dialogue.value.speakerSheetId;
+
+  if (selectedId == null || page.some((sheet) => String(sheet.id) === String(selectedId))) {
+    return page;
+  }
+
+  const selected = sheets.find((sheet) => String(sheet.id) === String(selectedId));
+  return selected ? [selected, ...page] : page;
 });
 
 let saveDebounce: ReturnType<typeof setTimeout> | undefined;
@@ -270,6 +283,8 @@ function onSpeakerSelect(id: number | string | null) {
           :options="speakerOptions"
           :selected-id="dialogue.speakerSheetId"
           :placeholder="t('flows.nodes.dialogue.no_speaker')"
+          :search-event="PICKER_SEARCH_EVENT"
+          :search-payload="SHEET_ENTITY_SEARCH_PAYLOAD"
           @update:selected-id="onSpeakerSelect"
         />
       </div>

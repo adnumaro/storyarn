@@ -33,6 +33,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.Helpers.VersionEventHelpers
   alias StoryarnWeb.Helpers.VersionHistoryHelpers
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
+  alias StoryarnWeb.Live.Shared.PickerSearch
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
   alias StoryarnWeb.Live.Shared.RestorationHandlers
 
@@ -658,6 +659,10 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   def handle_event("search_flows_more", _params, socket) do
     GenericNodeHandlers.handle_search_flows_more(socket)
+  end
+
+  def handle_event("picker_search", params, socket) do
+    {:noreply, PickerSearch.handle_search(socket, params)}
   end
 
   def handle_event("toggle_deep_search", _params, socket) do

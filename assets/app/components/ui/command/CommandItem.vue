@@ -22,11 +22,11 @@ const delegatedProps = reactiveOmit(props, "class");
 const forwarded = useForwardPropsEmits(delegatedProps, emits);
 
 const id = useId();
-const { filterState, allItems, allGroups } = useCommand();
+const { filterState, allItems, allGroups, disableFilter, filterItems } = useCommand();
 const groupContext = useCommandGroup();
 
 const isRender = computed(() => {
-  if (!filterState.search) {
+  if (disableFilter.value || !filterState.search) {
     return true;
   } else {
     const filteredCurrentItem = filterState.filtered.items.get(id);
@@ -57,9 +57,17 @@ onMounted(() => {
       allGroups.value.get(groupId)?.add(id);
     }
   }
+
+  filterItems();
 });
 onUnmounted(() => {
   allItems.value.delete(id);
+  filterState.filtered.items.delete(id);
+
+  const groupId = groupContext?.id;
+  if (groupId) allGroups.value.get(groupId)?.delete(id);
+
+  filterItems();
 });
 </script>
 

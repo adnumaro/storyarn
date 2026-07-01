@@ -24,6 +24,9 @@ const {
   uploadTitle,
   previewPosition = "center",
   previewFit = "cover",
+  searchEvent,
+  searchResultsEvent,
+  searchPayload,
   // eslint-disable-next-line vue/max-props -- Public asset-field API keeps picker labels, uploads and preview controls explicit.
 } = defineProps<{
   label?: string;
@@ -37,6 +40,9 @@ const {
   uploadTitle?: string;
   previewPosition?: string;
   previewFit?: "cover" | "contain" | "fill";
+  searchEvent?: string;
+  searchResultsEvent?: string;
+  searchPayload?: Record<string, unknown>;
 }>();
 
 const emit = defineEmits<{
@@ -124,6 +130,9 @@ function triggerUpload() {
       :assets="imageAssets"
       :selected-id="assetId"
       :search-placeholder="searchPlaceholder || $t('common.assets.image.search')"
+      :search-event="searchEvent"
+      :search-results-event="searchResultsEvent"
+      :search-payload="searchPayload"
       @select="(asset) => emit('select', asset)"
     >
       <template #trigger>

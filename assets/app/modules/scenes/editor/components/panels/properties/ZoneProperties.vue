@@ -22,6 +22,10 @@ const CONDITION_EFFECTS = [
   { id: "disable", name: "scenes.pin_properties.effect_disable" },
 ];
 
+const MAX_DISPLAY_VARIABLE_OPTIONS = 100;
+const PICKER_SEARCH_EVENT = "picker_search";
+const VARIABLE_ENTITY_SEARCH_PAYLOAD = { resource: "entity", kind: "variable" };
+
 interface ZoneActionData {
   assignments?: Assignment[];
   variable_ref?: string;
@@ -114,6 +118,22 @@ const FONT_STYLES = computed(() => [
   { id: "normal", name: "scenes.zone_properties.font_style_normal" },
   { id: "italic", name: "scenes.zone_properties.font_style_italic" },
 ]);
+
+const displayVariableOptions = computed(() => {
+  const options = projectVariables.map((variable) => ({
+    id: variable.ref || `${variable.sheet_shortcut}.${variable.variable_name}`,
+    name: variable.label || `${variable.sheet_shortcut}.${variable.variable_name}`,
+  }));
+  const page = options.slice(0, MAX_DISPLAY_VARIABLE_OPTIONS);
+  const selectedRef = element.actionData?.variable_ref;
+
+  if (!selectedRef || page.some((option) => String(option.id) === String(selectedRef))) {
+    return page;
+  }
+
+  const selected = options.find((option) => String(option.id) === String(selectedRef));
+  return selected ? [selected, ...page] : page;
+});
 
 const typeTab = computed(() => {
   switch (element.actionType) {
@@ -289,14 +309,11 @@ function selectDisplayVar(varRef: string | number | null) {
         v-if="element.actionType === 'display'"
         :label="$t('scenes.zone_properties.display_variable')"
         :placeholder="$t('scenes.zone_properties.display_variable_placeholder')"
-        :options="
-          projectVariables.map((v) => ({
-            id: v.ref || `${v.sheet_shortcut}.${v.variable_name}`,
-            name: v.label || `${v.sheet_shortcut}.${v.variable_name}`,
-          }))
-        "
+        :options="displayVariableOptions"
         :selected-id="element.actionData?.variable_ref"
         :disabled="!canEdit"
+        :search-event="PICKER_SEARCH_EVENT"
+        :search-payload="VARIABLE_ENTITY_SEARCH_PAYLOAD"
         @update:selected-id="selectDisplayVar"
       />
 

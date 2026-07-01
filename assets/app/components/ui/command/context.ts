@@ -4,6 +4,8 @@ import { createContext } from "reka-ui";
 export interface CommandContext {
   allItems: Ref<Map<string, string>>;
   allGroups: Ref<Map<string, Set<string>>>;
+  disableFilter: Ref<boolean>;
+  filterItems: () => void;
   filterState: {
     search: string;
     filtered: {

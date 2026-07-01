@@ -4,6 +4,9 @@
     "delete": "Eliminar",
     "dismiss": "Descartar",
     "no_results": "Sin resultados",
+    "searching": "Buscando...",
+    "limited_results": "Mostrando {shown} de {total} resultados",
+    "limited_matches": "Mostrando {shown} coincidencias",
     "search": "Buscar...",
     "none": "Ninguno",
     "version_history": {

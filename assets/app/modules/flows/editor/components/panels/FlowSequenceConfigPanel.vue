@@ -117,6 +117,9 @@ const openLayerPicker = ref<string | null>(null);
 
 const TRACK_KINDS = ["music", "ambience", "sfx"] as const;
 const VISUAL_KINDS: readonly VisualKind[] = ["backdrop", "character", "prop", "overlay"];
+const PICKER_SEARCH_EVENT = "picker_search";
+const IMAGE_ASSET_SEARCH_PAYLOAD = { resource: "asset", kind: "image" };
+const AUDIO_ASSET_SEARCH_PAYLOAD = { resource: "asset", kind: "audio" };
 const POSITION_SLOTS: readonly PositionSlot[] = [
   "top-left",
   "top-center",
@@ -448,6 +451,8 @@ function visualKindLabel(kind: string): string {
               :can-edit="canEdit"
               :pick-placeholder="$t('flows.sequences.visual_layers.pick_asset')"
               :search-placeholder="$t('flows.sequences.config_panel.search_image')"
+              :search-event="PICKER_SEARCH_EVENT"
+              :search-payload="IMAGE_ASSET_SEARCH_PAYLOAD"
               @select="(asset) => createVisualLayer(kind, asset)"
             />
           </div>
@@ -468,6 +473,8 @@ function visualKindLabel(kind: string): string {
                 :search-placeholder="$t('flows.sequences.config_panel.search_image')"
                 :clear-title="$t('flows.sequences.visual_layers.delete')"
                 :preview-fit="layer.fit || 'contain'"
+                :search-event="PICKER_SEARCH_EVENT"
+                :search-payload="IMAGE_ASSET_SEARCH_PAYLOAD"
                 @select="
                   (asset) => updateVisualLayer(layer, { asset_id: asset.id, label: asset.filename })
                 "
@@ -609,6 +616,8 @@ function visualKindLabel(kind: string): string {
             :pick-placeholder="$t('flows.sequences.config_panel.pick_audio')"
             :search-placeholder="$t('flows.sequences.config_panel.search_audio')"
             :clear-title="$t('flows.sequences.config_panel.clear_track')"
+            :search-event="PICKER_SEARCH_EVENT"
+            :search-payload="AUDIO_ASSET_SEARCH_PAYLOAD"
             @select="(asset) => pickTrackAsset(kind, asset)"
             @clear="clearTrack(kind)"
             @volume-change="(percent) => onVolumeChange(kind, percent)"

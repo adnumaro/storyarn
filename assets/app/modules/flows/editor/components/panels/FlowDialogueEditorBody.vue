@@ -34,6 +34,7 @@ import { useScreenplayEditor } from "../../composables/useScreenplayEditor";
 import type { Variable } from "@shared/domain/variables.ts";
 import { useI18n } from "vue-i18n";
 import { useLive } from "@shared/composables/useLive.ts";
+import { useRemotePickerSearch } from "@shared/composables/useRemotePickerSearch";
 
 export interface AudioAssetItem {
   id: number | string;
@@ -100,6 +101,9 @@ const {
 const { t } = useI18n();
 const live = useLive();
 const activeTab = ref("text");
+const PICKER_SEARCH_EVENT = "picker_search";
+const SHEET_ENTITY_SEARCH_PAYLOAD = { resource: "entity", kind: "sheet" };
+const AUDIO_ASSET_SEARCH_PAYLOAD = { resource: "asset", kind: "audio" };
 
 const nodeId = computed<number | string | null>(() => data?.nodeId ?? null);
 const speakerId = computed<number | string | null>(() => data?.speakerSheetId ?? null);
@@ -150,15 +154,30 @@ function updateSpeaker(sheetId: number | string | null): void {
 // Fullscreen-mode speaker picker (custom Popover + Command — V1 rendered
 // the speaker as plain ALL CAPS text, not an EntityCombobox with chevron).
 const speakerPickerOpen = ref(false);
+const fullscreenSpeakerSearch = useRemotePickerSearch<SheetOption>({
+  enabled: computed(() => display === "fullscreen" && speakerPickerOpen.value),
+  event: PICKER_SEARCH_EVENT,
+  payload: SHEET_ENTITY_SEARCH_PAYLOAD,
+  selectedId: speakerId,
+  limit: 100,
+});
 const speakerName = computed<string>(() => {
   const id = data?.speakerSheetId;
   if (id == null) return "";
   return (data?.allSheets ?? []).find((s) => String(s.id) === String(id))?.name ?? "";
 });
+const fullscreenSpeakerOptions = computed(() => {
+  if (!fullscreenSpeakerSearch.hasResponse.value) return speakerOptions.value;
+  return fullscreenSpeakerSearch.results.value;
+});
 function selectSpeaker(id: number | string | null): void {
   updateSpeaker(id);
   speakerPickerOpen.value = false;
 }
+
+watch(speakerPickerOpen, (isOpen) => {
+  if (!isOpen) fullscreenSpeakerSearch.query.value = "";
+});
 
 function updateStageDirections(e: Event): void {
   live.pushEvent("update_node_field", {
@@ -333,17 +352,31 @@ function parseConditionForBuilder(
                 </button>
               </PopoverTrigger>
               <PopoverContent class="p-0" :side-offset="4" align="start">
-                <Command>
-                  <CommandInput :placeholder="$t('common.search')" />
+                <Command disable-filter>
+                  <CommandInput
+                    v-model="fullscreenSpeakerSearch.query.value"
+                    :placeholder="$t('common.search')"
+                  />
                   <CommandList>
-                    <CommandEmpty>{{ $t("common.no_results") }}</CommandEmpty>
+                    <CommandEmpty v-if="!fullscreenSpeakerSearch.isSearching.value">{{
+                      $t("common.no_results")
+                    }}</CommandEmpty>
+                    <div
+                      v-if="
+                        fullscreenSpeakerSearch.isSearching.value &&
+                        fullscreenSpeakerOptions.length === 0
+                      "
+                      class="py-6 text-center text-sm text-muted-foreground"
+                    >
+                      {{ $t("common.searching") }}
+                    </div>
                     <CommandGroup>
                       <CommandItem value="__none__" @select="selectSpeaker(null)">
                         <span class="text-muted-foreground">{{ $t("common.none") }}</span>
                         <Check v-if="!data?.speakerSheetId" class="size-3 ml-auto" />
                       </CommandItem>
                       <CommandItem
-                        v-for="opt in speakerOptions"
+                        v-for="opt in fullscreenSpeakerOptions"
                         :key="opt.id"
                         :value="opt.name"
                         @select="selectSpeaker(opt.id)"
@@ -397,6 +430,8 @@ function parseConditionForBuilder(
             :selected-id="speakerId"
             :placeholder="$t('flows.dialogue_panel.no_speaker')"
             :disabled="!canEdit"
+            :search-event="PICKER_SEARCH_EVENT"
+            :search-payload="SHEET_ENTITY_SEARCH_PAYLOAD"
             @update:selected-id="updateSpeaker"
           />
 
@@ -581,6 +616,8 @@ function parseConditionForBuilder(
           :pick-placeholder="$t('flows.dialogue_panel.pick_audio')"
           :search-placeholder="$t('flows.dialogue_panel.search_audio')"
           :clear-title="$t('flows.dialogue_panel.clear_audio')"
+          :search-event="PICKER_SEARCH_EVENT"
+          :search-payload="AUDIO_ASSET_SEARCH_PAYLOAD"
           @select="selectAudio"
           @clear="clearAudio"
         />

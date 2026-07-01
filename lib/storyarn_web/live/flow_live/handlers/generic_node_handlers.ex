@@ -28,6 +28,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
+  alias StoryarnWeb.Live.Shared.PickerSearch
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 
   # Notify the sticky FlowSidebarLive that the flows tree may have changed
@@ -232,14 +233,16 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     config = Repo.get_by(SequenceConfig, flow_node_id: seq_id)
     visual_layers = Flows.list_sequence_visual_layers(seq_id)
     tracks = Flows.list_sequence_tracks(seq_id)
+    image_asset_ids = selected_asset_ids(visual_layers)
+    audio_asset_ids = selected_asset_ids(tracks)
 
     %{
       sequence_id: seq_id,
       config: serialize_sequence_config(config),
       visual_layers: Enum.map(visual_layers, &serialize_sequence_visual_layer/1),
       tracks: Enum.map(tracks, &serialize_sequence_track/1),
-      image_assets: serialize_assets(Assets.list_assets(project_id, images_only: true)),
-      audio_assets: serialize_assets(Assets.list_assets(project_id, content_type: "audio/"))
+      image_assets: PickerSearch.initial_asset_options(project_id, "image", image_asset_ids),
+      audio_assets: PickerSearch.initial_asset_options(project_id, "audio", audio_asset_ids)
     }
   end
 
@@ -285,15 +288,11 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   defp decimal_to_float(nil), do: nil
   defp decimal_to_float(%Decimal{} = d), do: Decimal.to_float(d)
 
-  defp serialize_assets(assets) do
-    Enum.map(assets, fn a ->
-      %{
-        id: a.id,
-        filename: a.filename,
-        url: a.url,
-        content_type: a.content_type
-      }
-    end)
+  defp selected_asset_ids(records) do
+    records
+    |> Enum.map(&Map.get(&1, :asset_id))
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
   end
 
   @doc """
@@ -322,8 +321,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       audioAssetId: data["audio_asset_id"],
       avatarId: data["avatar_id"],
       responses: serialize_dialogue_responses(data["responses"] || []),
-      allSheets: list_panel_sheets(project_id),
-      audioAssets: serialize_assets(Assets.list_assets(project_id, content_type: "audio/")),
+      allSheets: PickerSearch.initial_sheet_options(project_id, [data["speaker_sheet_id"]]),
+      audioAssets: PickerSearch.initial_asset_options(project_id, "audio", [data["audio_asset_id"]]),
       projectVariables: socket.assigns[:project_variables] || []
     }
   end
@@ -341,12 +340,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   end
 
   defp serialize_dialogue_responses(_), do: []
-
-  defp list_panel_sheets(project_id) do
-    project_id
-    |> Sheets.list_all_sheets()
-    |> Enum.map(&%{id: &1.id, name: &1.name})
-  end
 
   @spec handle_node_double_clicked(map(), Socket.t()) ::
           {:noreply, Socket.t()}

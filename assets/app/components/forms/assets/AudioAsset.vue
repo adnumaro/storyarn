@@ -23,6 +23,10 @@ const {
   canEdit = false,
   pickPlaceholder,
   searchPlaceholder,
+  searchEvent,
+  searchResultsEvent,
+  searchPayload,
+  // eslint-disable-next-line vue/max-props -- Public audio-field API keeps playback, upload, volume and remote picker controls explicit.
 } = defineProps<{
   label: string;
   icon?: Component;
@@ -33,6 +37,9 @@ const {
   pickPlaceholder?: string;
   searchPlaceholder?: string;
   clearTitle?: string;
+  searchEvent?: string;
+  searchResultsEvent?: string;
+  searchPayload?: Record<string, unknown>;
 }>();
 
 const emit = defineEmits<{
@@ -185,6 +192,9 @@ onUnmounted(teardownAudio);
       :assets="audioAssets"
       :selected-id="assetId"
       :search-placeholder="searchPlaceholder || $t('common.assets.audio.search')"
+      :search-event="searchEvent"
+      :search-results-event="searchResultsEvent"
+      :search-payload="searchPayload"
       @select="(asset) => emit('select', asset)"
     >
       <template #trigger>

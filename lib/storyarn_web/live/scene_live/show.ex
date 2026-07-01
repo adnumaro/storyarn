@@ -35,6 +35,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   alias StoryarnWeb.Helpers.VersionEventHelpers
   alias StoryarnWeb.Helpers.VersionHistoryHelpers
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
+  alias StoryarnWeb.Live.Shared.PickerSearch
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
   alias StoryarnWeb.Live.Shared.RestorationHandlers
   alias StoryarnWeb.SceneLive.Handlers.CanvasEventHandlers
@@ -318,12 +319,52 @@ defmodule StoryarnWeb.SceneLive.Show do
       selectedElement: serialize_selected_element(assigns.selected_type, assigns.selected_element),
       canEdit: assigns.can_edit && not Map.get(assigns.selected_element || %{}, :locked, false),
       elementPanelOpen: assigns.right_panel == :element,
-      projectSheets: prepare_project_sheets_for_vue(assigns.project_sheets),
-      projectFlows: prepare_project_flows_for_vue(assigns.project_flows),
+      projectSheets: PickerSearch.initial_sheet_options(assigns.project.id, selected_sheet_ids(assigns)),
+      projectFlows: element_panel_flow_options(assigns),
       projectScenes: prepare_project_scenes_for_vue(assigns.project_scenes),
       projectVariables: assigns.project_variables
     }
   end
+
+  defp element_panel_flow_options(%{selected_type: "zone"} = assigns) do
+    prepare_project_flows_for_vue(assigns.project_flows)
+  end
+
+  defp element_panel_flow_options(assigns) do
+    PickerSearch.initial_flow_options(assigns.project.id, selected_flow_ids(assigns))
+  end
+
+  defp selected_sheet_ids(%{selected_type: "pin", selected_element: pin}) do
+    [pin && Map.get(pin, :sheet_id)]
+  end
+
+  defp selected_sheet_ids(%{selected_type: "zone", selected_element: zone}) do
+    zone
+    |> zone_collection_sheet_ids()
+    |> Enum.uniq()
+  end
+
+  defp selected_sheet_ids(_assigns), do: []
+
+  defp selected_flow_ids(%{selected_type: "pin", selected_element: pin}) do
+    [pin && Map.get(pin, :flow_id)]
+  end
+
+  defp selected_flow_ids(_assigns), do: []
+
+  defp zone_collection_sheet_ids(nil), do: []
+
+  defp zone_collection_sheet_ids(zone) do
+    zone
+    |> Map.get(:action_data, %{})
+    |> collection_items()
+    |> Enum.map(fn item -> item["sheet_id"] || item[:sheet_id] end)
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp collection_items(%{"items" => items}) when is_list(items), do: items
+  defp collection_items(%{items: items}) when is_list(items), do: items
+  defp collection_items(_action_data), do: []
 
   defp scene_panels_settings(assigns) do
     %{
@@ -765,6 +806,10 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("search_elements", params, socket) do
     CanvasEventHandlers.handle_search_elements(params, socket)
+  end
+
+  def handle_event("picker_search", params, socket) do
+    {:noreply, PickerSearch.handle_search(socket, params)}
   end
 
   def handle_event("set_search_filter", %{"filter" => filter} = params, socket)

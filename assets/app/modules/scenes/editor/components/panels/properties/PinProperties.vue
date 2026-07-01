@@ -15,6 +15,9 @@ const CONDITION_EFFECTS = [
   { id: "disable", name: "scenes.pin_properties.effect_disable" },
 ];
 
+const PICKER_SEARCH_EVENT = "picker_search";
+const SHEET_ENTITY_SEARCH_PAYLOAD = { resource: "entity", kind: "sheet" };
+const FLOW_ENTITY_SEARCH_PAYLOAD = { resource: "entity", kind: "flow" };
 const MAX_PIN_ICON_SIZE = 256 * 1024;
 const PIN_ICON_TYPES = new Set(["image/svg+xml", "image/png", "image/gif"]);
 
@@ -135,6 +138,8 @@ function toggle(field: string, currentValue: boolean | undefined) {
         :options="projectSheets"
         :selected-id="element.sheetId"
         :disabled="!canEdit"
+        :search-event="PICKER_SEARCH_EVENT"
+        :search-payload="SHEET_ENTITY_SEARCH_PAYLOAD"
         @update:selected-id="(id) => update('sheet_id', id)"
       />
 
@@ -168,6 +173,8 @@ function toggle(field: string, currentValue: boolean | undefined) {
         :options="projectFlows"
         :selected-id="element.flowId"
         :disabled="!canEdit"
+        :search-event="PICKER_SEARCH_EVENT"
+        :search-payload="FLOW_ENTITY_SEARCH_PAYLOAD"
         @update:selected-id="(id) => update('flow_id', id)"
       />
 

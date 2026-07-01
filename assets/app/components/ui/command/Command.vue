@@ -8,7 +8,7 @@ import {
   type AcceptableValue,
   type AsTag,
 } from "reka-ui";
-import { reactive, ref, watch } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { cn } from "@shared/utils/utils.ts";
 import { provideCommandContext } from "./context";
 
@@ -26,6 +26,7 @@ const props = defineProps<{
   as?: AsTag | Component;
   name?: string;
   required?: boolean;
+  disableFilter?: boolean;
   class?: HTMLAttributes["class"];
 }>();
 
@@ -36,7 +37,7 @@ const emits = defineEmits<{
   leave: [event: Event];
 }>();
 
-const delegatedProps = reactiveOmit(props, "class");
+const delegatedProps = reactiveOmit(props, "class", "disableFilter");
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits);
 
@@ -44,6 +45,7 @@ const allItems = ref(new Map<string, string>());
 const allGroups = ref(new Map<string, Set<string>>());
 
 const { contains } = useFilter({ sensitivity: "base" });
+const disableFilter = computed(() => !!props.disableFilter);
 const filterState = reactive({
   search: "",
   filtered: {
@@ -57,7 +59,7 @@ const filterState = reactive({
 });
 
 function filterItems() {
-  if (!filterState.search) {
+  if (disableFilter.value || !filterState.search) {
     filterState.filtered.count = allItems.value.size;
     // Do nothing, each item will know to show itself because search is empty
     return;
@@ -97,6 +99,8 @@ watch(
 provideCommandContext({
   allItems,
   allGroups,
+  disableFilter,
+  filterItems,
   filterState,
 });
 </script>

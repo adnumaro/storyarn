@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Check, ChevronsUpDown } from "lucide-vue-next";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import {
   Command,
   CommandEmpty,
@@ -10,11 +10,15 @@ import {
   CommandList,
 } from "@components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
+import { useBoundedSearch } from "@shared/composables/useBoundedSearch";
+import { useRemotePickerSearch } from "@shared/composables/useRemotePickerSearch";
 
 interface EntityOption {
   id: number | string;
   name: string;
 }
+
+const MAX_RENDERED_OPTIONS = 100;
 
 const {
   options = [],
@@ -23,6 +27,10 @@ const {
   placeholder = "Select...",
   disabled = false,
   variant = "default",
+  selectedOption = null,
+  searchEvent,
+  searchResultsEvent,
+  searchPayload,
 } = defineProps<{
   options?: EntityOption[];
   selectedId?: number | string | null;
@@ -30,6 +38,10 @@ const {
   placeholder?: string;
   disabled?: boolean;
   variant?: "default" | "ghost";
+  selectedOption?: EntityOption | null;
+  searchEvent?: string;
+  searchResultsEvent?: string;
+  searchPayload?: Record<string, unknown>;
 }>();
 
 const triggerClass = computed(() => {
@@ -45,10 +57,66 @@ const emit = defineEmits<{
 const open = ref(false);
 
 const selectedName = computed(() => {
-  if (!selectedId) return null;
+  if (selectedId == null) return null;
   const id = String(selectedId);
   const opt = options.find((o) => String(o.id) === id);
-  return opt?.name || null;
+  if (opt?.name) return opt.name;
+  return selectedOption && String(selectedOption.id) === id ? selectedOption.name : null;
+});
+
+const selectedKey = computed(() => (selectedId == null ? null : String(selectedId)));
+
+const optionSearch = useBoundedSearch({
+  get items() {
+    return options;
+  },
+  limit: MAX_RENDERED_OPTIONS,
+  getText: (option) => option.name,
+  getKey: (option) => String(option.id),
+  selectedKey,
+});
+
+const remoteEnabled = computed(() => !!searchEvent);
+const remoteSearch = useRemotePickerSearch<EntityOption>({
+  enabled: computed(() => remoteEnabled.value && open.value),
+  event: computed(() => searchEvent),
+  resultsEvent: computed(() => searchResultsEvent),
+  payload: computed(() => searchPayload),
+  selectedId: computed(() => selectedId),
+  limit: MAX_RENDERED_OPTIONS,
+});
+
+const searchQuery = computed({
+  get: () => (remoteEnabled.value ? remoteSearch.query.value : optionSearch.query.value),
+  set: (value: string) => {
+    if (remoteEnabled.value) {
+      remoteSearch.query.value = value;
+    } else {
+      optionSearch.query.value = value;
+    }
+  },
+});
+
+const visibleOptions = computed(() => {
+  if (!remoteEnabled.value) return optionSearch.visibleItems.value;
+  if (!remoteSearch.hasResponse.value) return optionSearch.visibleItems.value;
+  return remoteSearch.results.value;
+});
+
+const isSearching = computed(() =>
+  remoteEnabled.value ? remoteSearch.isSearching.value : optionSearch.isSearching.value,
+);
+
+const isLimited = computed(() =>
+  remoteEnabled.value ? remoteSearch.hasMore.value : optionSearch.isLimited.value,
+);
+
+const totalOptions = computed(() =>
+  remoteEnabled.value ? visibleOptions.value.length : options.length,
+);
+
+watch(open, (isOpen) => {
+  if (!isOpen) searchQuery.value = "";
 });
 
 function select(id: number | string | null) {
@@ -80,17 +148,25 @@ function select(id: number | string | null) {
         </button>
       </PopoverTrigger>
       <PopoverContent class="p-0" :side-offset="4" align="start">
-        <Command>
-          <CommandInput :placeholder="$t('common.search')" />
+        <Command :disable-filter="remoteEnabled">
+          <CommandInput v-model="searchQuery" :placeholder="$t('common.search')" />
           <CommandList>
-            <CommandEmpty>{{ $t("common.no_results") }}</CommandEmpty>
+            <CommandEmpty v-if="!isSearching && searchQuery.trim()">{{
+              $t("common.no_results")
+            }}</CommandEmpty>
+            <div
+              v-if="isSearching && visibleOptions.length === 0"
+              class="py-6 text-center text-sm text-muted-foreground"
+            >
+              {{ $t("common.searching") }}
+            </div>
             <CommandGroup>
               <CommandItem value="__none__" @select="select(null)">
                 <span class="text-muted-foreground">{{ $t("common.none") }}</span>
-                <Check v-if="!selectedId" class="size-3 ml-auto" />
+                <Check v-if="selectedId == null" class="size-3 ml-auto" />
               </CommandItem>
               <CommandItem
-                v-for="opt in options"
+                v-for="opt in visibleOptions"
                 :key="opt.id"
                 :value="opt.name"
                 @select="select(opt.id)"
@@ -99,6 +175,22 @@ function select(id: number | string | null) {
                 <Check v-if="String(opt.id) === String(selectedId)" class="size-3 ml-auto" />
               </CommandItem>
             </CommandGroup>
+            <div
+              v-if="isLimited"
+              class="border-t border-border px-3 py-2 text-xs text-muted-foreground"
+            >
+              <template v-if="remoteEnabled || searchQuery.trim()">
+                {{ $t("common.limited_matches", { shown: visibleOptions.length }) }}
+              </template>
+              <template v-else>
+                {{
+                  $t("common.limited_results", {
+                    shown: visibleOptions.length,
+                    total: totalOptions,
+                  })
+                }}
+              </template>
+            </div>
           </CommandList>
         </Command>
       </PopoverContent>

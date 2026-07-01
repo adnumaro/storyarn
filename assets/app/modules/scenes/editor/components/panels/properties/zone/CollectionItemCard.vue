@@ -19,6 +19,9 @@ interface EntityOption {
   shortcut?: string;
 }
 
+const PICKER_SEARCH_EVENT = "picker_search";
+const SHEET_ENTITY_SEARCH_PAYLOAD = { resource: "entity", kind: "sheet" };
+
 const {
   item,
   idx,
@@ -83,6 +86,8 @@ function remove() {
       :options="projectSheets"
       :selected-id="item.sheet_id"
       :disabled="!canEdit"
+      :search-event="PICKER_SEARCH_EVENT"
+      :search-payload="SHEET_ENTITY_SEARCH_PAYLOAD"
       @update:selected-id="(id) => updateField('sheet_id', id)"
     />
 
