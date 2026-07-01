@@ -10,6 +10,9 @@ defmodule Storyarn.Localization.BatchTranslator do
 
   require Logger
 
+  @default_batch_size 100
+  @max_batch_size 500
+
   @type result :: %{
           translated: non_neg_integer(),
           failed: non_neg_integer(),
@@ -23,6 +26,7 @@ defmodule Storyarn.Localization.BatchTranslator do
   - `:source_type` - Only translate texts of this source type
   - `:status` - Only translate texts with this status (default: "pending")
   - `:limit` - Max number of texts to translate in this batch
+  - `:batch_size` - Max number of texts to load per database page
 
   Returns `{:ok, %{translated: N, failed: M, errors: []}}` or `{:error, reason}`.
   """
@@ -32,17 +36,24 @@ defmodule Storyarn.Localization.BatchTranslator do
          {:ok, source_lang} <- get_source_locale(project_id) do
       status_filter = opts[:status] || "pending"
 
-      filter_opts =
-        [locale_code: target_locale, status: status_filter]
-        |> maybe_add(:source_type, opts[:source_type])
-        |> maybe_add(:limit, opts[:limit])
+      filter_opts = maybe_add([locale_code: target_locale, status: status_filter], :source_type, opts[:source_type])
 
-      texts = TextCrud.list_texts(project_id, filter_opts)
+      max_id = TextCrud.max_text_id_for_batch_translation(project_id, filter_opts)
 
-      if texts == [] do
+      if is_nil(max_id) do
         {:ok, %{translated: 0, failed: 0, errors: []}}
       else
-        do_batch_translate(texts, source_lang, target_locale, config)
+        batch_size = normalize_batch_size(opts[:batch_size])
+        limit = normalize_limit(opts[:limit])
+        translator = Keyword.get(opts, :translator, DeepL)
+
+        translate_pages(project_id, filter_opts, source_lang, target_locale, config, translator, %{
+          after_id: 0,
+          max_id: max_id,
+          batch_size: batch_size,
+          remaining: limit,
+          result: %{translated: 0, failed: 0, errors: []}
+        })
       end
     end
   end
@@ -90,7 +101,48 @@ defmodule Storyarn.Localization.BatchTranslator do
     end
   end
 
-  defp do_batch_translate(texts, source_lang, target_locale, config) do
+  defp translate_pages(_project_id, _filter_opts, _source_lang, _target_locale, _config, _translator, %{
+         remaining: 0,
+         result: result
+       }) do
+    {:ok, result}
+  end
+
+  defp translate_pages(project_id, filter_opts, source_lang, target_locale, config, translator, state) do
+    page_limit = page_limit(state.batch_size, state.remaining)
+
+    texts =
+      TextCrud.list_texts_for_batch_translation(
+        project_id,
+        filter_opts
+        |> Keyword.put(:after_id, state.after_id)
+        |> Keyword.put(:max_id, state.max_id)
+        |> Keyword.put(:limit, page_limit)
+      )
+
+    case texts do
+      [] ->
+        {:ok, state.result}
+
+      texts ->
+        last_id = texts |> List.last() |> Map.fetch!(:id)
+
+        case do_batch_translate(texts, source_lang, target_locale, config, translator) do
+          {:ok, result} ->
+            translate_pages(project_id, filter_opts, source_lang, target_locale, config, translator, %{
+              state
+              | after_id: last_id,
+                remaining: decrement_remaining(state.remaining, length(texts)),
+                result: merge_results(state.result, result)
+            })
+
+          {:error, _reason} = error ->
+            error
+        end
+    end
+  end
+
+  defp do_batch_translate(texts, source_lang, target_locale, config, translator) do
     # Filter out nil/empty texts — track their indices
     {indexed_texts, skipped_count} =
       texts
@@ -110,7 +162,7 @@ defmodule Storyarn.Localization.BatchTranslator do
     else
       translatable_texts = Enum.map(indexed_texts, fn {text, _idx} -> text.source_text end)
 
-      case DeepL.translate(translatable_texts, source_lang, target_locale, config) do
+      case translator.translate(translatable_texts, source_lang, target_locale, config) do
         {:ok, translations} ->
           now = TimeHelpers.now()
           {translated, failed, errors} = apply_translations(indexed_texts, translations, now)
@@ -126,6 +178,14 @@ defmodule Storyarn.Localization.BatchTranslator do
           {:error, reason}
       end
     end
+  end
+
+  defp merge_results(left, right) do
+    %{
+      translated: left.translated + right.translated,
+      failed: left.failed + right.failed,
+      errors: left.errors ++ right.errors
+    }
   end
 
   defp apply_translations(indexed_texts, translations, now) do
@@ -165,4 +225,19 @@ defmodule Storyarn.Localization.BatchTranslator do
 
   defp maybe_add(opts, _key, nil), do: opts
   defp maybe_add(opts, key, value), do: Keyword.put(opts, key, value)
+
+  defp normalize_batch_size(value) when is_integer(value) and value > 0 do
+    min(value, @max_batch_size)
+  end
+
+  defp normalize_batch_size(_value), do: @default_batch_size
+
+  defp normalize_limit(value) when is_integer(value) and value >= 0, do: value
+  defp normalize_limit(_value), do: :infinity
+
+  defp page_limit(batch_size, :infinity), do: batch_size
+  defp page_limit(batch_size, remaining), do: min(batch_size, remaining)
+
+  defp decrement_remaining(:infinity, _count), do: :infinity
+  defp decrement_remaining(remaining, count), do: max(remaining - count, 0)
 end

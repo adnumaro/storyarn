@@ -54,6 +54,37 @@ defmodule Storyarn.Localization.TextCrud do
     |> Repo.one!()
   end
 
+  @doc """
+  Lists localized texts for batch translation using a stable id cursor.
+
+  This is intentionally separate from `list_texts/2`, whose default ordering is
+  optimized for UI grouping rather than mutation-safe batch processing.
+  """
+  def list_texts_for_batch_translation(project_id, opts \\ []) do
+    from(t in LocalizedText,
+      where: t.project_id == ^project_id,
+      order_by: [asc: t.id]
+    )
+    |> maybe_filter_locale(opts[:locale_code])
+    |> maybe_filter_status(opts[:status])
+    |> maybe_filter_source_type(opts[:source_type])
+    |> maybe_filter_after_id(opts[:after_id])
+    |> maybe_filter_max_id(opts[:max_id])
+    |> maybe_paginate(opts[:limit], nil)
+    |> Repo.all()
+  end
+
+  def max_text_id_for_batch_translation(project_id, opts \\ []) do
+    from(t in LocalizedText,
+      where: t.project_id == ^project_id,
+      select: max(t.id)
+    )
+    |> maybe_filter_locale(opts[:locale_code])
+    |> maybe_filter_status(opts[:status])
+    |> maybe_filter_source_type(opts[:source_type])
+    |> Repo.one()
+  end
+
   def get_text(project_id, id) do
     Repo.one(from(t in LocalizedText, where: t.id == ^id and t.project_id == ^project_id))
   end
@@ -239,6 +270,18 @@ defmodule Storyarn.Localization.TextCrud do
 
   defp maybe_filter_source_type(query, source_type) do
     where(query, [t], t.source_type == ^source_type)
+  end
+
+  defp maybe_filter_after_id(query, nil), do: query
+
+  defp maybe_filter_after_id(query, after_id) do
+    where(query, [t], t.id > ^after_id)
+  end
+
+  defp maybe_filter_max_id(query, nil), do: query
+
+  defp maybe_filter_max_id(query, max_id) do
+    where(query, [t], t.id <= ^max_id)
   end
 
   defp maybe_filter_speaker(query, nil), do: query

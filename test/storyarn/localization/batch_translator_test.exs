@@ -7,6 +7,8 @@ defmodule Storyarn.Localization.BatchTranslatorTest do
 
   alias Storyarn.Localization
   alias Storyarn.Localization.ProviderConfig
+  alias Storyarn.Localization.TextCrud
+  alias Storyarn.TestSupport.FakeTranslationProvider
 
   describe "translate_batch/3" do
     test "returns error when no provider is configured" do
@@ -56,6 +58,60 @@ defmodule Storyarn.Localization.BatchTranslatorTest do
       # This will try to call DeepL but there are no texts
       assert {:ok, %{translated: 0, failed: 0, errors: []}} =
                Localization.translate_batch(project.id, "es")
+    end
+
+    test "translates pending texts in bounded cursor pages without skipping rows" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _source = source_language_fixture(project)
+      _target = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      create_provider_config(project.id)
+      set_fake_translation_recorder()
+
+      for index <- 1..5 do
+        localized_text_fixture(project.id, text_attrs(index))
+      end
+
+      assert {:ok, %{translated: 5, failed: 0, errors: []}} =
+               Localization.translate_batch(project.id, "es",
+                 translator: FakeTranslationProvider,
+                 batch_size: 2
+               )
+
+      assert_received {:fake_translation_provider_call, ["Text 1", "Text 2"]}
+      assert_received {:fake_translation_provider_call, ["Text 3", "Text 4"]}
+      assert_received {:fake_translation_provider_call, ["Text 5"]}
+      refute_received {:fake_translation_provider_call, _texts}
+
+      assert TextCrud.count_texts(project.id, locale_code: "es", status: "pending") == 0
+      assert TextCrud.count_texts(project.id, locale_code: "es", status: "draft") == 5
+    end
+
+    test "honors total limit while loading only bounded pages" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _source = source_language_fixture(project)
+      _target = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      create_provider_config(project.id)
+      set_fake_translation_recorder()
+
+      for index <- 1..5 do
+        localized_text_fixture(project.id, text_attrs(index))
+      end
+
+      assert {:ok, %{translated: 3, failed: 0, errors: []}} =
+               Localization.translate_batch(project.id, "es",
+                 translator: FakeTranslationProvider,
+                 batch_size: 2,
+                 limit: 3
+               )
+
+      assert_received {:fake_translation_provider_call, ["Text 1", "Text 2"]}
+      assert_received {:fake_translation_provider_call, ["Text 3"]}
+      refute_received {:fake_translation_provider_call, _texts}
+
+      assert TextCrud.count_texts(project.id, locale_code: "es", status: "pending") == 2
+      assert TextCrud.count_texts(project.id, locale_code: "es", status: "draft") == 3
     end
   end
 
@@ -107,5 +163,25 @@ defmodule Storyarn.Localization.BatchTranslatorTest do
       "is_active" => true
     })
     |> Storyarn.Repo.insert!()
+  end
+
+  defp set_fake_translation_recorder do
+    Process.put(:fake_translation_provider_test_pid, self())
+  end
+
+  defp text_attrs(index) do
+    text = "Text #{index}"
+
+    %{
+      source_text: text,
+      source_text_hash: source_text_hash(text),
+      status: "pending"
+    }
+  end
+
+  defp source_text_hash(text) do
+    :sha256
+    |> :crypto.hash(text)
+    |> Base.encode16(case: :lower)
   end
 end
