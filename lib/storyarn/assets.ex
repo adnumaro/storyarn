@@ -555,21 +555,22 @@ defmodule Storyarn.Assets do
     key = generate_key(project, safe_filename)
 
     blob_hash = BlobStore.compute_hash(binary_data)
-    ext = BlobStore.ext_from_content_type(content_type)
 
-    # Blob storage is content-addressed and idempotent — orphan blobs are
-    # harmless and will be reused if the same content is uploaded again.
-    with {:ok, _blob_key} <- BlobStore.ensure_blob(project.id, blob_hash, ext, binary_data),
+    asset_attrs = %{
+      filename: safe_filename,
+      content_type: content_type,
+      size: byte_size(binary_data),
+      key: key,
+      url: Storage.get_url(key),
+      metadata: Map.get(attrs, :metadata, %{}),
+      blob_hash: blob_hash
+    }
+
+    with :ok <- validate_asset_upload_attrs(asset_attrs),
+         ext = BlobStore.ext_from_content_type(content_type),
+         {:ok, _blob_key} <- BlobStore.ensure_blob(project.id, blob_hash, ext, binary_data),
          {:ok, url} <- Storage.upload(key, binary_data, content_type) do
-      asset_attrs = %{
-        filename: safe_filename,
-        content_type: content_type,
-        size: byte_size(binary_data),
-        key: key,
-        url: url,
-        metadata: Map.get(attrs, :metadata, %{}),
-        blob_hash: blob_hash
-      }
+      asset_attrs = %{asset_attrs | url: url}
 
       case do_create_asset(project, user, asset_attrs) do
         {:ok, asset} ->
@@ -581,6 +582,12 @@ defmodule Storyarn.Assets do
           {:error, changeset}
       end
     end
+  end
+
+  defp validate_asset_upload_attrs(attrs) do
+    changeset = Asset.create_changeset(%Asset{}, attrs)
+
+    if changeset.valid?, do: :ok, else: {:error, changeset}
   end
 
   defp validate_binary_upload(binary_data, attrs, profile) do

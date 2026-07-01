@@ -1160,6 +1160,87 @@ defmodule Storyarn.AssetsTest do
     end
   end
 
+  describe "upload_binary_and_create_asset/4 validation" do
+    setup do
+      user = user_fixture()
+      project = project_fixture(user)
+      %{project: project, user: user}
+    end
+
+    test "rejects unsupported content type before writing blob storage", %{
+      project: project,
+      user: user
+    } do
+      content = "<html>not a supported asset</html>"
+      content_type = "text/html"
+      blob_key = blob_key_for(project, content, content_type)
+
+      :ok = Assets.storage_delete(blob_key)
+      on_exit(fn -> Assets.storage_delete(blob_key) end)
+
+      assert {:error, changeset} =
+               Assets.upload_binary_and_create_asset(
+                 content,
+                 %{filename: "payload.html", content_type: content_type},
+                 project,
+                 user
+               )
+
+      assert %{content_type: [_ | _]} = errors_on(changeset)
+      assert {:error, _} = Assets.storage_download(blob_key)
+      assert Assets.total_storage_size(project.id) == 0
+    end
+
+    test "rejects zero byte content before writing blob storage", %{
+      project: project,
+      user: user
+    } do
+      content = ""
+      content_type = "image/png"
+      blob_key = blob_key_for(project, content, content_type)
+
+      :ok = Assets.storage_delete(blob_key)
+      on_exit(fn -> Assets.storage_delete(blob_key) end)
+
+      assert {:error, changeset} =
+               Assets.upload_binary_and_create_asset(
+                 content,
+                 %{filename: "empty.png", content_type: content_type},
+                 project,
+                 user
+               )
+
+      assert %{size: [_ | _]} = errors_on(changeset)
+      assert {:error, _} = Assets.storage_download(blob_key)
+      assert Assets.total_storage_size(project.id) == 0
+    end
+
+    test "stores a content addressed blob for valid binary uploads", %{
+      project: project,
+      user: user
+    } do
+      content = "%PDF-1.4\nvalid upload"
+      content_type = "application/pdf"
+      blob_key = blob_key_for(project, content, content_type)
+
+      :ok = Assets.storage_delete(blob_key)
+      on_exit(fn -> Assets.storage_delete(blob_key) end)
+
+      assert {:ok, asset} =
+               Assets.upload_binary_and_create_asset(
+                 content,
+                 %{filename: "valid.pdf", content_type: content_type},
+                 project,
+                 user
+               )
+
+      on_exit(fn -> Assets.storage_delete(asset.key) end)
+
+      assert asset.blob_hash == BlobStore.compute_hash(content)
+      assert {:ok, ^content} = Assets.storage_download(blob_key)
+    end
+  end
+
   describe "blob hash deduplication" do
     setup do
       user = user_fixture()
@@ -1250,6 +1331,14 @@ defmodule Storyarn.AssetsTest do
         File.rm(tmp_path_y)
       end
     end
+  end
+
+  defp blob_key_for(project, content, content_type) do
+    BlobStore.blob_key(
+      project.id,
+      BlobStore.compute_hash(content),
+      BlobStore.ext_from_content_type(content_type)
+    )
   end
 
   describe "count_assets_by_type/1 edge cases" do
