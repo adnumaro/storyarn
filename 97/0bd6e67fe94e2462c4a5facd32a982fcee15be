@@ -1,0 +1,25 @@
+assets/app/components/forms/ColorPickerPopover.vue
+  s_f8a4ec3056d1e1::t_77a02cf58cd69d 44,55-56,58-59,63-70,72-83,118
+  s_f8a4ec3056d1e1::t_064a9dd4f85ae7 71
+assets/app/test/components/forms/ColorPickerPopover.test.ts
+  s_f8a4ec3056d1e1::t_80ec856a562bb1 69
+  s_f8a4ec3056d1e1::t_064a9dd4f85ae7 1-10,13-61,63-68,70-76,78-86
+  s_f8a4ec3056d1e1::t_eeb49eecada379 11-12
+  s_f8a4ec3056d1e1::t_cc2e14d941f108 62,77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "970bd6e67fe94e2462c4a5facd32a982fcee15be",
+  "prompts": {},
+  "sessions": {
+    "s_f8a4ec3056d1e1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f19f2-11f7-7801-acf9-348bdfab9c21",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
