@@ -13,6 +13,32 @@ defmodule StoryarnWeb.LayoutsTest do
 
   # ── flash_group/1 ───────────────────────────────────────────────────
 
+  describe "root/1" do
+    test "renders brand icon metadata for browsers and search surfaces", %{conn: conn} do
+      html =
+        rendered_to_string(
+          Layouts.root(%{
+            conn: conn,
+            inner_content: ""
+          })
+        )
+
+      assert html =~ ~s[href="/favicon.ico"]
+      assert html =~ ~s[href="/images/logos/logo-white-32.png"]
+      assert html =~ ~s[href="/images/logos/logo-white-48.png"]
+      assert html =~ ~s[sizes="48x48"]
+      assert html =~ ~s[href="/images/logos/logo-white-192.png"]
+      assert html =~ ~s[href="/images/logos/logo-white-180.png"]
+      assert html =~ ~s[rel="apple-touch-icon"]
+      assert html =~ ~s[href="/site.webmanifest"]
+      assert html =~ ~s[name="theme-color"]
+    end
+
+    test "serves the web app manifest through static paths" do
+      assert "site.webmanifest" in StoryarnWeb.static_paths()
+    end
+  end
+
   describe "flash_group/1" do
     test "renders flash group container" do
       html =

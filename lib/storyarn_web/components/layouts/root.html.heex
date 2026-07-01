@@ -37,7 +37,13 @@
         <meta name="posthog-user-super-admin" content={to_string(posthog.user_super_admin)} />
       <% end %>
     <% end %>
+    <link rel="icon" href={~p"/favicon.ico"} sizes="any" />
     <link rel="icon" href={~p"/images/logos/logo-white-32.png"} type="image/png" sizes="32x32" />
+    <link rel="icon" href={~p"/images/logos/logo-white-48.png"} type="image/png" sizes="48x48" />
+    <link rel="icon" href={~p"/images/logos/logo-white-192.png"} type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href={~p"/images/logos/logo-white-180.png"} sizes="180x180" />
+    <link rel="manifest" href={~p"/site.webmanifest"} />
+    <meta name="theme-color" content="#020617" />
     <.live_title default="Storyarn" suffix=" · Storyarn">
       {assigns[:page_title]}
     </.live_title>
