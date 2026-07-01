@@ -335,7 +335,7 @@ defmodule Storyarn.Localization do
 
   @doc "Returns a changeset for a provider config (for form rendering)."
   def change_provider_config(config \\ nil) do
-    config = config || %ProviderConfig{api_endpoint: "https://api-free.deepl.com"}
+    config = config || %ProviderConfig{api_endpoint: ProviderConfig.default_api_endpoint()}
     ProviderConfig.changeset(config, %{})
   end
 

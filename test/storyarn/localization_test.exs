@@ -6,6 +6,8 @@ defmodule Storyarn.LocalizationTest do
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Localization
+  alias Storyarn.Localization.ProviderConfig
+  alias Storyarn.Repo
 
   # =============================================================================
   # Project Languages
@@ -656,6 +658,61 @@ defmodule Storyarn.LocalizationTest do
       assert config.project_id == project.id
       assert config.provider == "deepl"
       assert config.is_active == true
+    end
+
+    test "upsert_provider_config/2 rejects non-DeepL API endpoints" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      attrs = %{
+        "is_active" => true,
+        "api_endpoint" => "https://attacker.example"
+      }
+
+      assert {:error, changeset} = Localization.upsert_provider_config(project, attrs)
+      assert "must be a supported DeepL API endpoint" in errors_on(changeset).api_endpoint
+      assert Localization.get_provider_config(project.id) == nil
+    end
+
+    test "upsert_provider_config/2 accepts DeepL Pro endpoint" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      attrs = %{
+        "is_active" => true,
+        "api_endpoint" => "https://api.deepl.com"
+      }
+
+      assert {:ok, config} = Localization.upsert_provider_config(project, attrs)
+      assert config.api_endpoint == "https://api.deepl.com"
+    end
+
+    test "upsert_provider_config/2 normalizes supported DeepL endpoints" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      attrs = %{
+        "is_active" => true,
+        "api_endpoint" => " https://api.deepl.com/ "
+      }
+
+      assert {:ok, config} = Localization.upsert_provider_config(project, attrs)
+      assert config.api_endpoint == "https://api.deepl.com"
+    end
+
+    test "upsert_provider_config/2 rejects updates when stored endpoint is unsupported" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      Repo.insert!(%ProviderConfig{
+        project_id: project.id,
+        api_endpoint: "https://attacker.example"
+      })
+
+      assert {:error, changeset} =
+               Localization.upsert_provider_config(project, %{"is_active" => false})
+
+      assert "must be a supported DeepL API endpoint" in errors_on(changeset).api_endpoint
     end
 
     test "upsert_provider_config/2 updates existing config" do

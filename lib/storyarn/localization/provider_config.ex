@@ -19,6 +19,10 @@ defmodule Storyarn.Localization.ProviderConfig do
 
   alias Storyarn.Projects.Project
 
+  @default_api_endpoint "https://api-free.deepl.com"
+  @supported_api_endpoints [@default_api_endpoint, "https://api.deepl.com"]
+  @api_endpoint_error "must be a supported DeepL API endpoint"
+
   @type t :: %__MODULE__{
           id: integer() | nil,
           project_id: integer() | nil,
@@ -61,7 +65,59 @@ defmodule Storyarn.Localization.ProviderConfig do
     ])
     |> validate_required([:provider])
     |> validate_inclusion(:provider, ["deepl"])
+    |> update_change(:api_endpoint, &normalize_api_endpoint/1)
+    |> validate_api_endpoint()
     |> unique_constraint([:project_id, :provider])
     |> foreign_key_constraint(:project_id)
   end
+
+  @doc "Returns the default DeepL API endpoint."
+  @spec default_api_endpoint() :: String.t()
+  def default_api_endpoint, do: @default_api_endpoint
+
+  @doc "Returns the supported DeepL API endpoints."
+  @spec supported_api_endpoints() :: [String.t()]
+  def supported_api_endpoints, do: @supported_api_endpoints
+
+  @doc """
+  Resolves a stored endpoint to a supported DeepL API endpoint.
+
+  Unsafe stored values return `{:error, :unsupported_api_endpoint}` so callers
+  do not send API credentials to arbitrary hosts.
+  """
+  @spec api_endpoint_or_default(t() | String.t() | nil) ::
+          {:ok, String.t()} | {:error, :unsupported_api_endpoint}
+  def api_endpoint_or_default(%__MODULE__{api_endpoint: endpoint}) do
+    api_endpoint_or_default(endpoint)
+  end
+
+  def api_endpoint_or_default(nil), do: {:ok, @default_api_endpoint}
+
+  def api_endpoint_or_default(endpoint) when is_binary(endpoint) do
+    endpoint = normalize_api_endpoint(endpoint)
+
+    cond do
+      is_nil(endpoint) -> {:ok, @default_api_endpoint}
+      endpoint in @supported_api_endpoints -> {:ok, endpoint}
+      true -> {:error, :unsupported_api_endpoint}
+    end
+  end
+
+  def api_endpoint_or_default(_endpoint), do: {:error, :unsupported_api_endpoint}
+
+  defp validate_api_endpoint(changeset) do
+    case api_endpoint_or_default(get_field(changeset, :api_endpoint)) do
+      {:ok, _endpoint} -> changeset
+      {:error, :unsupported_api_endpoint} -> add_error(changeset, :api_endpoint, @api_endpoint_error)
+    end
+  end
+
+  defp normalize_api_endpoint(endpoint) when is_binary(endpoint) do
+    case endpoint |> String.trim() |> String.trim_trailing("/") do
+      "" -> nil
+      normalized -> normalized
+    end
+  end
+
+  defp normalize_api_endpoint(endpoint), do: endpoint
 end
