@@ -24,11 +24,11 @@ defmodule StoryarnWeb.LayoutsTest do
         )
 
       assert html =~ ~s[href="/favicon.ico"]
-      assert html =~ ~s[href="/images/logos/logo-white-32.png"]
-      assert html =~ ~s[href="/images/logos/logo-white-48.png"]
+      assert html =~ ~s[href="/images/logos/logo-black-32.png"]
+      assert html =~ ~s[href="/images/logos/logo-black-48.png"]
       assert html =~ ~s[sizes="48x48"]
-      assert html =~ ~s[href="/images/logos/logo-white-192.png"]
-      assert html =~ ~s[href="/images/logos/logo-white-180.png"]
+      assert html =~ ~s[href="/images/logos/logo-black-192.png"]
+      assert html =~ ~s[href="/images/logos/logo-black-180.png"]
       assert html =~ ~s[rel="apple-touch-icon"]
       assert html =~ ~s[href="/site.webmanifest"]
       assert html =~ ~s[name="theme-color"]
