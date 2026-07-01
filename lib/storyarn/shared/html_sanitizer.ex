@@ -58,15 +58,16 @@ defmodule Storyarn.Shared.HtmlSanitizer do
 
   defp unsafe_attr?(name, value) when is_binary(name) do
     lower_name = String.downcase(name)
+    local_name = local_attr_name(lower_name)
 
     cond do
-      String.starts_with?(lower_name, "on") ->
+      String.starts_with?(lower_name, "on") or String.starts_with?(local_name, "on") ->
         true
 
-      lower_name in ~w(style srcdoc formaction) ->
+      local_name in ~w(style srcdoc formaction) ->
         true
 
-      lower_name in ~w(href src action) and is_binary(value) ->
+      local_name in ~w(href src action) and is_binary(value) ->
         not safe_uri?(value)
 
       true ->
@@ -75,6 +76,10 @@ defmodule Storyarn.Shared.HtmlSanitizer do
   end
 
   defp unsafe_attr?(_, _), do: false
+
+  defp local_attr_name(name) do
+    name |> String.split(":") |> List.last()
+  end
 
   defp safe_uri?(value) do
     trimmed = value |> String.trim() |> String.downcase()

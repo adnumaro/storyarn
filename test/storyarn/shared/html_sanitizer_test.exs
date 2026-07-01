@@ -238,6 +238,18 @@ defmodule Storyarn.Shared.HtmlSanitizerTest do
 
       refute result =~ "javascript:"
     end
+
+    test "removes namespaced SVG href with javascript: scheme" do
+      html =
+        ~s[<svg xmlns:xlink="http://www.w3.org/1999/xlink"><a xlink:href="javascript:alert(1)"><text>click</text></a></svg>]
+
+      result = HtmlSanitizer.sanitize_html(html)
+
+      assert result =~ "<svg"
+      assert result =~ "<a>click</a>"
+      refute result =~ "xlink:href"
+      refute result =~ "javascript:"
+    end
   end
 
   # ── data: URIs blocked ────────────────────────────────────────────
@@ -302,6 +314,13 @@ defmodule Storyarn.Shared.HtmlSanitizerTest do
       html = ~s[<a href="">link</a>]
       result = HtmlSanitizer.sanitize_html(html)
       assert result =~ ~s[href=""]
+    end
+
+    test "preserves safe namespaced SVG href" do
+      html = ~s[<svg><a xlink:href="#chapter-1">chapter</a></svg>]
+      result = HtmlSanitizer.sanitize_html(html)
+
+      assert result =~ ~s[xlink:href="#chapter-1"]
     end
   end
 
