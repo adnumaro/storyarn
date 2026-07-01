@@ -141,6 +141,7 @@ defmodule Storyarn.Scenes.ScenePin do
     )
     |> Validations.validate_shortcut()
     |> unique_constraint(:shortcut, name: :scene_pins_scene_id_shortcut_index)
+    |> unique_constraint(:scene_id, name: :scene_pins_single_leader_per_scene_index)
     |> validate_length(:label, max: 200)
     |> validate_length(:color, max: 20)
     |> validate_color(:color)

@@ -787,6 +787,60 @@ defmodule Storyarn.ScenesTest do
       assert pin.size == "lg"
     end
 
+    test "create_pin/2 demotes the existing leader when creating a new leader" do
+      user = user_fixture()
+      project = project_fixture(user)
+      scene = scene_fixture(project)
+
+      {:ok, previous_leader} =
+        Scenes.create_pin(scene.id, %{
+          "position_x" => 25.0,
+          "position_y" => 75.0,
+          "is_playable" => true,
+          "is_leader" => true
+        })
+
+      {:ok, new_leader} =
+        Scenes.create_pin(scene.id, %{
+          "position_x" => 50.0,
+          "position_y" => 50.0,
+          "is_playable" => true,
+          "is_leader" => true
+        })
+
+      refute Scenes.get_pin!(previous_leader.id).is_leader
+      assert Scenes.get_pin!(new_leader.id).is_leader
+
+      leaders = scene.id |> Scenes.list_pins() |> Enum.filter(& &1.is_leader)
+      assert Enum.map(leaders, & &1.id) == [new_leader.id]
+    end
+
+    test "create_pin/2 allows one leader per scene" do
+      user = user_fixture()
+      project = project_fixture(user)
+      scene_a = scene_fixture(project, %{name: "Scene A"})
+      scene_b = scene_fixture(project, %{name: "Scene B"})
+
+      {:ok, leader_a} =
+        Scenes.create_pin(scene_a.id, %{
+          "position_x" => 25.0,
+          "position_y" => 75.0,
+          "is_playable" => true,
+          "is_leader" => true
+        })
+
+      {:ok, leader_b} =
+        Scenes.create_pin(scene_b.id, %{
+          "position_x" => 50.0,
+          "position_y" => 50.0,
+          "is_playable" => true,
+          "is_leader" => true
+        })
+
+      assert Scenes.get_pin!(leader_a.id).is_leader
+      assert Scenes.get_pin!(leader_b.id).is_leader
+    end
+
     test "create_pin/2 allows positions outside 0-100 range (no clamp)" do
       user = user_fixture()
       project = project_fixture(user)

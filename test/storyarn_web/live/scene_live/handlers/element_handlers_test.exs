@@ -550,6 +550,35 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlersTest do
       assert copy.position_x > pin.position_x
     end
 
+    test "duplicating a leader pin demotes the original leader", ctx do
+      leader =
+        pin_fixture(ctx.scene, %{
+          "label" => "Leader",
+          "is_playable" => true,
+          "is_leader" => true
+        })
+
+      {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
+
+      render_hook(view, "select_element", %{"type" => "pin", "id" => leader.id})
+      render_hook(view, "duplicate_selected", %{})
+
+      pins = Scenes.list_pins(ctx.scene.id)
+      copy = Enum.find(pins, &(&1.id != leader.id))
+
+      refute Scenes.get_pin!(leader.id).is_leader
+      assert copy.is_leader
+
+      leaders = Enum.filter(pins, & &1.is_leader)
+      assert Enum.map(leaders, & &1.id) == [copy.id]
+
+      render_hook(view, "undo", %{})
+
+      pins_after_undo = Scenes.list_pins(ctx.scene.id)
+      assert Enum.map(pins_after_undo, & &1.id) == [leader.id]
+      assert Scenes.get_pin!(leader.id).is_leader
+    end
+
     test "duplicates selected zone", ctx do
       zone = zone_fixture(ctx.scene, %{"name" => "Forest"})
 
@@ -618,6 +647,38 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlersTest do
       # Position should be shifted +5
       assert_in_delta pin.position_x, 45.0, 0.01
       assert_in_delta pin.position_y, 65.0, 0.01
+    end
+
+    test "pasting a leader pin demotes the existing leader", ctx do
+      existing_leader =
+        pin_fixture(ctx.scene, %{
+          "label" => "Existing Leader",
+          "is_playable" => true,
+          "is_leader" => true
+        })
+
+      {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
+
+      render_hook(view, "paste_element", %{
+        "type" => "pin",
+        "attrs" => %{
+          "position_x" => 40.0,
+          "position_y" => 60.0,
+          "label" => "Pasted Leader",
+          "pin_type" => "location",
+          "is_playable" => true,
+          "is_leader" => true
+        }
+      })
+
+      pins = Scenes.list_pins(ctx.scene.id)
+      pasted = Enum.find(pins, &(&1.id != existing_leader.id))
+
+      refute Scenes.get_pin!(existing_leader.id).is_leader
+      assert pasted.is_leader
+
+      leaders = Enum.filter(pins, & &1.is_leader)
+      assert Enum.map(leaders, & &1.id) == [pasted.id]
     end
 
     test "pastes a zone from clipboard attrs", ctx do

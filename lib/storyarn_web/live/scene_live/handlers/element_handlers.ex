@@ -897,8 +897,27 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
     end
   end
 
+  defp demoted_leader_pins_for_create(pins, attrs) do
+    if leader_enabled?(attrs) do
+      Enum.filter(pins, & &1.is_leader)
+    else
+      []
+    end
+  end
+
   defp leader_enabled?(attrs) do
     Map.get(attrs, "is_leader") in [true, "true"] or Map.get(attrs, :is_leader) in [true, "true"]
+  end
+
+  defp pin_create_undo_action(pin, []), do: {:create_pin, pin}
+
+  defp pin_create_undo_action(pin, demoted_leaders) do
+    demotion_actions =
+      Enum.map(demoted_leaders, fn leader ->
+        {:update_pin, leader.id, %{"is_leader" => true}, %{"is_leader" => false}}
+      end)
+
+    {:compound, demotion_actions ++ [{:create_pin, pin}]}
   end
 
   defp pin_update_undo_action(pin_id, prev_attrs, new_attrs, []) do
@@ -929,6 +948,21 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
     |> maybe_sync_selected_pin(pins)
   end
 
+  defp assign_created_pin(socket, created, demoted_leaders) do
+    demoted_ids = MapSet.new(demoted_leaders, & &1.id)
+
+    pins =
+      socket.assigns.pins
+      |> Enum.map(fn pin ->
+        if MapSet.member?(demoted_ids, pin.id), do: %{pin | is_leader: false}, else: pin
+      end)
+      |> Kernel.++([created])
+
+    socket
+    |> assign(:pins, pins)
+    |> maybe_sync_selected_pin(pins)
+  end
+
   defp maybe_sync_selected_pin(%{assigns: %{selected_type: "pin", selected_element: %{id: id}}} = socket, pins) do
     case Enum.find(pins, &(&1.id == id)) do
       nil -> socket
@@ -943,6 +977,12 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
 
     [updated | demoted_updates]
     |> Enum.uniq_by(& &1.id)
+    |> Enum.reduce(socket, fn pin, acc -> push_event(acc, "pin_updated", serialize_pin(pin)) end)
+  end
+
+  defp push_demoted_leader_updates(socket, demoted_leaders) do
+    demoted_leaders
+    |> Enum.map(&%{&1 | is_leader: false})
     |> Enum.reduce(socket, fn pin, acc -> push_event(acc, "pin_updated", serialize_pin(pin)) end)
   end
 
@@ -1229,16 +1269,19 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
         "label" => pin.label <> " (copy)"
       })
 
+    demoted_leaders = demoted_leader_pins_for_create(socket.assigns.pins, attrs)
+
     case Scenes.create_pin(socket.assigns.scene.id, attrs) do
       {:ok, new_pin} ->
         {:noreply,
          socket
-         |> push_undo({:create_pin, new_pin})
-         |> assign(:pins, socket.assigns.pins ++ [new_pin])
+         |> push_undo(pin_create_undo_action(new_pin, demoted_leaders))
+         |> assign_created_pin(new_pin, demoted_leaders)
          |> assign(:selected_type, "pin")
          |> assign(:selected_element, new_pin)
          |> assign(:_broadcast, {:pin_created, %{id: new_pin.id}})
          |> push_event("pin_created", serialize_pin(new_pin))
+         |> push_demoted_leader_updates(demoted_leaders)
          |> push_event("element_selected", %{type: "pin", id: new_pin.id})
          |> put_flash(:info, dgettext("scenes", "Pin duplicated."))}
 
@@ -1349,16 +1392,19 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
         "layer_id" => socket.assigns.active_layer_id
       })
 
+    demoted_leaders = demoted_leader_pins_for_create(socket.assigns.pins, pin_attrs)
+
     case Scenes.create_pin(socket.assigns.scene.id, pin_attrs) do
       {:ok, pin} ->
         {:noreply,
          socket
-         |> push_undo({:create_pin, pin})
-         |> assign(:pins, socket.assigns.pins ++ [pin])
+         |> push_undo(pin_create_undo_action(pin, demoted_leaders))
+         |> assign_created_pin(pin, demoted_leaders)
          |> assign(:selected_type, "pin")
          |> assign(:selected_element, pin)
          |> assign(:_broadcast, {:pin_created, %{id: pin.id}})
          |> push_event("pin_created", serialize_pin(pin))
+         |> push_demoted_leader_updates(demoted_leaders)
          |> push_event("element_selected", %{type: "pin", id: pin.id})
          |> put_flash(:info, dgettext("scenes", "Pin pasted."))}
 

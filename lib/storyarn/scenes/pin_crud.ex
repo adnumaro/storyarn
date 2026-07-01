@@ -67,13 +67,21 @@ defmodule Storyarn.Scenes.PinCrud do
 
   def create_pin(scene_id, attrs) do
     position = PositionUtils.next_position(ScenePin, scene_id)
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = enforce_leader_constraints(%ScenePin{scene_id: scene_id}, attrs)
     attrs = maybe_generate_pin_shortcut(attrs, scene_id, nil)
 
     result =
-      %ScenePin{scene_id: scene_id}
-      |> ScenePin.create_changeset(Map.put(attrs, "position", position))
-      |> Repo.insert()
+      Repo.transaction(fn ->
+        pin = %ScenePin{scene_id: scene_id}
+        ensure_single_leader(pin, attrs)
+
+        case pin
+             |> ScenePin.create_changeset(Map.put(attrs, "position", position))
+             |> Repo.insert() do
+          {:ok, created_pin} -> created_pin
+          {:error, changeset} -> Repo.rollback(changeset)
+        end
+      end)
 
     case result do
       {:ok, pin} ->
@@ -171,10 +179,22 @@ defmodule Storyarn.Scenes.PinCrud do
     leader_value = attrs["is_leader"] || attrs[:is_leader]
 
     if leader_value in [true, "true"] do
-      Repo.update_all(from(p in ScenePin, where: p.scene_id == ^pin.scene_id and p.id != ^pin.id and p.is_leader == true),
-        set: [is_leader: false]
-      )
+      demote_existing_leaders(pin)
     end
+  end
+
+  defp demote_existing_leaders(%ScenePin{id: nil, scene_id: scene_id}) do
+    Repo.update_all(
+      from(p in ScenePin, where: p.scene_id == ^scene_id and p.is_leader == true),
+      set: [is_leader: false]
+    )
+  end
+
+  defp demote_existing_leaders(%ScenePin{id: id, scene_id: scene_id}) do
+    Repo.update_all(
+      from(p in ScenePin, where: p.scene_id == ^scene_id and p.id != ^id and p.is_leader == true),
+      set: [is_leader: false]
+    )
   end
 
   # Generate shortcut from label on create if label present and no shortcut in attrs

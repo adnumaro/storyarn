@@ -97,10 +97,13 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlers do
   def handle_remote_change(:pin_created, payload, socket) do
     with id when not is_nil(id) <- get_in_payload(payload, :id),
          %{} = pin <- Scenes.get_pin(socket.assigns.scene.id, id) do
+      demoted_leaders = demoted_remote_leaders(socket.assigns.pins, pin)
+
       {:noreply,
        socket
-       |> assign(:pins, socket.assigns.pins ++ [pin])
-       |> push_event("pin_created", serialize_pin(pin))}
+       |> assign(:pins, append_synced_pin(socket.assigns.pins, pin, demoted_leaders))
+       |> push_event("pin_created", serialize_pin(pin))
+       |> push_demoted_leader_updates(demoted_leaders)}
     else
       _ -> {:noreply, socket}
     end
@@ -208,10 +211,13 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlers do
         {:noreply, socket}
 
       pin ->
+        demoted_leaders = demoted_remote_leaders(socket.assigns.pins, pin)
+
         {:noreply,
          socket
-         |> update_in_list(:pins, pin)
-         |> push_event("pin_updated", serialize_pin(pin))}
+         |> assign(:pins, replace_synced_pin(socket.assigns.pins, pin, demoted_leaders))
+         |> push_event("pin_updated", serialize_pin(pin))
+         |> push_demoted_leader_updates(demoted_leaders)}
     end
   end
 
@@ -327,6 +333,44 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlers do
       end)
 
     assign(socket, key, updated_list)
+  end
+
+  defp demoted_remote_leaders(pins, %{id: id, is_leader: true}) do
+    Enum.filter(pins, fn pin -> pin.id != id and pin.is_leader end)
+  end
+
+  defp demoted_remote_leaders(_pins, _pin), do: []
+
+  defp append_synced_pin(pins, pin, demoted_leaders) do
+    pins
+    |> demote_pins(demoted_leaders)
+    |> Kernel.++([pin])
+  end
+
+  defp replace_synced_pin(pins, pin, demoted_leaders) do
+    demoted_ids = MapSet.new(demoted_leaders, & &1.id)
+
+    Enum.map(pins, fn existing ->
+      cond do
+        existing.id == pin.id -> pin
+        MapSet.member?(demoted_ids, existing.id) -> %{existing | is_leader: false}
+        true -> existing
+      end
+    end)
+  end
+
+  defp demote_pins(pins, demoted_leaders) do
+    demoted_ids = MapSet.new(demoted_leaders, & &1.id)
+
+    Enum.map(pins, fn pin ->
+      if MapSet.member?(demoted_ids, pin.id), do: %{pin | is_leader: false}, else: pin
+    end)
+  end
+
+  defp push_demoted_leader_updates(socket, demoted_leaders) do
+    demoted_leaders
+    |> Enum.map(&%{&1 | is_leader: false})
+    |> Enum.reduce(socket, fn pin, acc -> push_event(acc, "pin_updated", serialize_pin(pin)) end)
   end
 
   # Payload keys can be atoms or strings depending on the broadcast source

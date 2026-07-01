@@ -12,6 +12,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlersTest do
 
   alias Storyarn.Collaboration
   alias Storyarn.Repo
+  alias Storyarn.Scenes
 
   defp scene_url(project, scene) do
     ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
@@ -213,6 +214,67 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlersTest do
         },
         1_000
       )
+    end
+  end
+
+  describe "remote leader pin changes" do
+    setup [:register_and_log_in_user, :setup_scene]
+
+    test "pin_created remote change demotes the previous leader in the client", ctx do
+      existing_leader =
+        pin_fixture(ctx.scene, %{
+          "label" => "Existing Leader",
+          "is_playable" => true,
+          "is_leader" => true
+        })
+
+      {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
+
+      {:ok, new_leader} =
+        Scenes.create_pin(ctx.scene.id, %{
+          "position_x" => 50.0,
+          "position_y" => 50.0,
+          "is_playable" => true,
+          "is_leader" => true
+        })
+
+      Collaboration.broadcast_change({:scene, ctx.scene.id}, :pin_created, %{id: new_leader.id})
+      render(view)
+
+      new_leader_id = new_leader.id
+      existing_leader_id = existing_leader.id
+
+      assert_push_event(view, "pin_created", %{id: ^new_leader_id, is_leader: true}, 1_000)
+      assert_push_event(view, "pin_updated", %{id: ^existing_leader_id, is_leader: false}, 1_000)
+    end
+
+    test "pin_updated remote change demotes the previous leader in the client", ctx do
+      existing_leader =
+        pin_fixture(ctx.scene, %{
+          "label" => "Existing Leader",
+          "is_playable" => true,
+          "is_leader" => true
+        })
+
+      challenger =
+        pin_fixture(ctx.scene, %{
+          "label" => "New Leader",
+          "is_playable" => true,
+          "is_leader" => false
+        })
+
+      {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
+
+      {:ok, new_leader} = Scenes.update_pin(challenger, %{"is_leader" => true})
+
+      Collaboration.broadcast_change({:scene, ctx.scene.id}, :pin_updated, %{id: new_leader.id})
+      render(view)
+
+      new_leader_id = new_leader.id
+      existing_leader_id = existing_leader.id
+
+      assert_push_event(view, "pin_updated", %{id: ^new_leader_id, is_leader: true}, 1_000)
+      assert_push_event(view, "pin_updated", %{id: ^existing_leader_id, is_leader: false}, 1_000)
     end
   end
 end
