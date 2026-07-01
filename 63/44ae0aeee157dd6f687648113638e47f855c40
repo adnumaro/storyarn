@@ -1,0 +1,22 @@
+test/storyarn/shared/html_sanitizer_test.exs
+  s_f8a4ec3056d1e1::t_14408c2f6abade 241-252,318-324
+lib/storyarn/shared/html_sanitizer.ex
+  s_f8a4ec3056d1e1::t_044cc205393d55 61,64,67,70,80-82
+  s_f8a4ec3056d1e1::t_c87b236621c7d6 83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "6344ae0aeee157dd6f687648113638e47f855c40",
+  "prompts": {},
+  "sessions": {
+    "s_f8a4ec3056d1e1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f19f2-11f7-7801-acf9-348bdfab9c21",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
