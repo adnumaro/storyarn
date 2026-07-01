@@ -22,6 +22,7 @@ defmodule Storyarn.Assets do
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.ScenePin
+  alias Storyarn.Shared.HtmlSanitizer
   alias Storyarn.Shared.SearchHelpers
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.Sheet
@@ -29,6 +30,8 @@ defmodule Storyarn.Assets do
   alias Storyarn.Workspaces.Workspace
 
   require Logger
+
+  @svg_content_type "image/svg+xml"
 
   # =============================================================================
   # Type Definitions
@@ -551,6 +554,46 @@ defmodule Storyarn.Assets do
         %Project{} = project,
         user \\ nil
       ) do
+    do_upload_binary_and_create_asset(
+      binary_data,
+      %{attrs | filename: filename, content_type: content_type},
+      project,
+      user,
+      :generic
+    )
+  end
+
+  @doc """
+  Sanitizes and uploads an SVG asset from a server-controlled SVG upload flow.
+
+  Generic asset uploads must use `upload_binary_and_create_asset/4`, which
+  rejects SVG. This function exists for scene icon uploads, where SVG support is
+  intentional and the content must be sanitized before public storage.
+  """
+  @spec upload_sanitized_svg_and_create_asset(binary(), map(), project(), user() | nil) ::
+          {:ok, asset()} | {:error, term()}
+  def upload_sanitized_svg_and_create_asset(binary_data, attrs, %Project{} = project, user \\ nil) when is_map(attrs) do
+    with content_type when content_type == @svg_content_type <-
+           Map.get(attrs, :content_type, Map.get(attrs, "content_type")),
+         {:ok, sanitized_svg} <- sanitize_svg_upload(binary_data) do
+      attrs =
+        attrs
+        |> normalize_asset_attrs()
+        |> Map.put(:metadata, attrs |> upload_metadata() |> Map.put("sanitized_svg", true))
+
+      do_upload_binary_and_create_asset(sanitized_svg, attrs, project, user, :sanitized_svg)
+    else
+      _ -> {:error, :invalid_svg}
+    end
+  end
+
+  defp do_upload_binary_and_create_asset(
+         binary_data,
+         %{filename: filename, content_type: content_type} = attrs,
+         %Project{} = project,
+         user,
+         upload_kind
+       ) do
     safe_filename = sanitize_filename(filename)
     key = generate_key(project, safe_filename)
 
@@ -566,13 +609,13 @@ defmodule Storyarn.Assets do
       blob_hash: blob_hash
     }
 
-    with :ok <- validate_asset_upload_attrs(asset_attrs),
+    with :ok <- validate_asset_upload_attrs(asset_attrs, upload_kind),
          ext = BlobStore.ext_from_content_type(content_type),
          {:ok, _blob_key} <- BlobStore.ensure_blob(project.id, blob_hash, ext, binary_data),
          {:ok, url} <- Storage.upload(key, binary_data, content_type) do
       asset_attrs = %{asset_attrs | url: url}
 
-      case do_create_asset(project, user, asset_attrs) do
+      case do_create_asset(project, user, asset_attrs, upload_kind) do
         {:ok, asset} ->
           maybe_schedule_variant(binary_data, asset, project, user, attrs)
           {:ok, asset}
@@ -584,10 +627,42 @@ defmodule Storyarn.Assets do
     end
   end
 
-  defp validate_asset_upload_attrs(attrs) do
-    changeset = Asset.create_changeset(%Asset{}, attrs)
+  defp validate_asset_upload_attrs(attrs, upload_kind) do
+    changeset =
+      case upload_kind do
+        :sanitized_svg -> Asset.create_sanitized_svg_changeset(%Asset{}, attrs)
+        :generic -> Asset.create_changeset(%Asset{}, attrs)
+      end
 
     if changeset.valid?, do: :ok, else: {:error, changeset}
+  end
+
+  defp sanitize_svg_upload(binary_data) when is_binary(binary_data) do
+    with true <- String.valid?(binary_data),
+         svg = binary_data |> strip_utf8_bom() |> String.trim(),
+         true <- svg_root?(svg),
+         sanitized = HtmlSanitizer.sanitize_html(svg),
+         true <- svg_root?(sanitized) do
+      {:ok, sanitized}
+    else
+      _ -> {:error, :invalid_svg}
+    end
+  end
+
+  defp sanitize_svg_upload(_), do: {:error, :invalid_svg}
+
+  defp strip_utf8_bom(<<0xEF, 0xBB, 0xBF, rest::binary>>), do: rest
+  defp strip_utf8_bom(binary), do: binary
+
+  defp svg_root?(svg) when is_binary(svg) do
+    case Floki.parse_fragment(svg) do
+      {:ok, nodes} -> nodes |> Floki.find("svg") |> Enum.any?()
+      _ -> false
+    end
+  end
+
+  defp upload_metadata(attrs) do
+    Map.get(attrs, :metadata, Map.get(attrs, "metadata", %{})) || %{}
   end
 
   defp validate_binary_upload(binary_data, attrs, profile) do
@@ -891,8 +966,20 @@ defmodule Storyarn.Assets do
     end
   end
 
+  defp do_create_asset(project, user, attrs, :generic), do: do_create_asset(project, user, attrs)
+
+  defp do_create_asset(%Project{} = project, user, attrs, :sanitized_svg) do
+    %Asset{project_id: project.id, uploaded_by_id: uploaded_by_id(user)}
+    |> Asset.create_sanitized_svg_changeset(attrs)
+    |> Repo.insert()
+    |> track_asset_created(user, attrs)
+  end
+
   defp do_create_asset(project, nil, attrs), do: create_asset(project, attrs)
   defp do_create_asset(project, user, attrs), do: create_asset(project, user, attrs)
+
+  defp uploaded_by_id(%User{id: id}), do: id
+  defp uploaded_by_id(_), do: nil
 
   defp track_asset_created({:ok, asset}, user, attrs) do
     properties = asset_analytics_properties(asset, attrs)

@@ -94,22 +94,39 @@ defmodule Storyarn.Assets.BlobStore do
     sanitized = Storyarn.Assets.sanitize_filename(filename)
     dest_key = "projects/#{project_id}/assets/#{uuid}/#{sanitized}"
 
-    with :ok <- Storage.copy(source_key, dest_key) do
-      now = TimeHelpers.now()
+    now = TimeHelpers.now()
 
-      attrs = %{
-        filename: filename,
-        content_type: metadata["content_type"],
-        size: metadata["size"],
-        key: dest_key,
-        url: Storage.get_url(dest_key),
-        metadata: Map.drop(metadata, ["filename", "content_type", "size"]),
-        blob_hash: blob_hash
-      }
+    attrs = %{
+      filename: filename,
+      content_type: metadata["content_type"],
+      size: metadata["size"],
+      key: dest_key,
+      url: Storage.get_url(dest_key),
+      metadata: Map.drop(metadata, ["filename", "content_type", "size"]),
+      blob_hash: blob_hash
+    }
 
-      %Asset{project_id: project_id, uploaded_by_id: user_id, inserted_at: now, updated_at: now}
-      |> Asset.create_changeset(attrs)
-      |> Repo.insert()
+    asset = %Asset{
+      project_id: project_id,
+      uploaded_by_id: user_id,
+      inserted_at: now,
+      updated_at: now
+    }
+
+    changeset = restore_changeset(asset, attrs)
+
+    if changeset.valid? do
+      with :ok <- Storage.copy(source_key, dest_key) do
+        Repo.insert(changeset)
+      end
+    else
+      {:error, changeset}
     end
   end
+
+  defp restore_changeset(asset, %{content_type: "image/svg+xml", metadata: %{"sanitized_svg" => true}} = attrs) do
+    Asset.create_sanitized_svg_changeset(asset, attrs)
+  end
+
+  defp restore_changeset(asset, attrs), do: Asset.create_changeset(asset, attrs)
 end

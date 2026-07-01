@@ -4,7 +4,9 @@ defmodule Storyarn.Assets.BlobStoreTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
+  alias Storyarn.Assets.Storage
 
   setup do
     user = user_fixture()
@@ -83,5 +85,74 @@ defmodule Storyarn.Assets.BlobStoreTest do
       assert new_asset.project_id == project.id
       assert new_asset.uploaded_by_id == user.id
     end
+
+    test "rejects legacy SVG blob metadata before copying a public asset", %{
+      project: project,
+      user: user
+    } do
+      content = ~S"""
+      <svg xmlns="http://www.w3.org/2000/svg"><script>alert(document.domain)</script></svg>
+      """
+
+      hash = BlobStore.compute_hash(content)
+      {:ok, blob_key} = BlobStore.ensure_blob(project.id, hash, "svg", content)
+      asset_glob = asset_file_glob(project.id, "payload.svg")
+
+      on_exit(fn ->
+        Storage.delete(blob_key)
+        asset_glob |> Path.wildcard() |> Enum.each(&File.rm/1)
+      end)
+
+      metadata = %{
+        "filename" => "payload.svg",
+        "content_type" => "image/svg+xml",
+        "size" => byte_size(content)
+      }
+
+      assert {:error, changeset} =
+               BlobStore.create_asset_from_blob(project.id, user.id, hash, blob_key, metadata)
+
+      assert %{content_type: [_ | _]} = errors_on(changeset)
+      refute Repo.exists?(from a in Asset, where: a.project_id == ^project.id and a.blob_hash == ^hash)
+      assert Path.wildcard(asset_glob) == []
+    end
+
+    test "restores SVG blobs that were marked as sanitized", %{project: project, user: user} do
+      content = ~S"""
+      <svg xmlns="http://www.w3.org/2000/svg"><circle cx="4" cy="4" r="3"></circle></svg>
+      """
+
+      hash = BlobStore.compute_hash(content)
+      {:ok, blob_key} = BlobStore.ensure_blob(project.id, hash, "svg", content)
+
+      metadata = %{
+        "filename" => "pin.svg",
+        "content_type" => "image/svg+xml",
+        "size" => byte_size(content),
+        "sanitized_svg" => true
+      }
+
+      assert {:ok, new_asset} =
+               BlobStore.create_asset_from_blob(project.id, user.id, hash, blob_key, metadata)
+
+      on_exit(fn ->
+        Storage.delete(blob_key)
+        Storage.delete(new_asset.key)
+      end)
+
+      assert new_asset.content_type == "image/svg+xml"
+      assert new_asset.metadata["sanitized_svg"] == true
+      assert {:ok, ^content} = Storage.download(new_asset.key)
+    end
+  end
+
+  defp asset_file_glob(project_id, filename) do
+    upload_dir =
+      :storyarn
+      |> Application.get_env(:storage, [])
+      |> Keyword.fetch!(:upload_dir)
+      |> Path.expand()
+
+    Path.join([upload_dir, "projects", to_string(project_id), "assets", "*", filename])
   end
 end

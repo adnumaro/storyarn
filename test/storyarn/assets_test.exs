@@ -407,11 +407,13 @@ defmodule Storyarn.AssetsTest do
       assert "image/jpeg" in types
       assert "image/png" in types
       assert "audio/mpeg" in types
+      refute "image/svg+xml" in types
     end
 
     test "allowed_content_type?/1 returns true for valid types" do
       assert Asset.allowed_content_type?("image/jpeg")
       assert Asset.allowed_content_type?("audio/mpeg")
+      refute Asset.allowed_content_type?("image/svg+xml")
       refute Asset.allowed_content_type?("application/x-malware")
     end
   end
@@ -610,6 +612,7 @@ defmodule Storyarn.AssetsTest do
       assert Assets.allowed_content_type?("image/png")
       assert Assets.allowed_content_type?("audio/mpeg")
       assert Assets.allowed_content_type?("application/pdf")
+      refute Assets.allowed_content_type?("image/svg+xml")
       refute Assets.allowed_content_type?("application/x-evil")
       refute Assets.allowed_content_type?("text/html")
       refute Assets.allowed_content_type?("video/mp4")
@@ -1189,6 +1192,65 @@ defmodule Storyarn.AssetsTest do
       assert %{content_type: [_ | _]} = errors_on(changeset)
       assert {:error, _} = Assets.storage_download(blob_key)
       assert Assets.total_storage_size(project.id) == 0
+    end
+
+    test "rejects SVG uploads before writing blob storage", %{
+      project: project,
+      user: user
+    } do
+      content = ~S"""
+      <svg xmlns="http://www.w3.org/2000/svg"><script>alert(document.domain)</script></svg>
+      """
+
+      content_type = "image/svg+xml"
+      blob_key = blob_key_for(project, content, content_type)
+
+      :ok = Assets.storage_delete(blob_key)
+      on_exit(fn -> Assets.storage_delete(blob_key) end)
+
+      assert {:error, changeset} =
+               Assets.upload_binary_and_create_asset(
+                 content,
+                 %{filename: "payload.svg", content_type: content_type},
+                 project,
+                 user
+               )
+
+      assert %{content_type: [_ | _]} = errors_on(changeset)
+      assert {:error, _} = Assets.storage_download(blob_key)
+      assert Assets.total_storage_size(project.id) == 0
+    end
+
+    test "sanitizes explicit SVG icon uploads before public storage", %{
+      project: project,
+      user: user
+    } do
+      content = ~S"""
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <script>alert(document.domain)</script>
+        <a href="javascript:alert(1)"><circle cx="4" cy="4" r="3"/></a>
+      </svg>
+      """
+
+      assert {:ok, asset} =
+               Assets.upload_sanitized_svg_and_create_asset(
+                 content,
+                 %{filename: "pin.svg", content_type: "image/svg+xml"},
+                 project,
+                 user
+               )
+
+      on_exit(fn ->
+        Assets.storage_delete(asset.key)
+        Assets.storage_delete(BlobStore.blob_key(project.id, asset.blob_hash, "svg"))
+      end)
+
+      assert asset.content_type == "image/svg+xml"
+      assert asset.metadata["sanitized_svg"] == true
+      assert {:ok, stored_svg} = Assets.storage_download(asset.key)
+      assert stored_svg =~ "<svg"
+      refute stored_svg =~ "<script"
+      refute stored_svg =~ "javascript:"
     end
 
     test "rejects zero byte content before writing blob storage", %{

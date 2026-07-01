@@ -24,7 +24,12 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
     end
 
     test "returns hash and metadata for assets", %{project: project, user: user} do
-      asset = asset_fixture(project, user, %{filename: "test.jpg", blob_hash: "abc123"})
+      asset =
+        asset_fixture(project, user, %{
+          filename: "test.jpg",
+          blob_hash: "abc123",
+          metadata: %{"sanitized_svg" => true, "web_url" => "/uploads/stale.webp"}
+        })
 
       {hash_map, metadata_map} = AssetHashResolver.resolve_hashes([asset.id])
 
@@ -33,6 +38,8 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
       assert metadata_map[id_str]["filename"] == "test.jpg"
       assert metadata_map[id_str]["content_type"] == "image/jpeg"
       assert metadata_map[id_str]["size"] == 12_345
+      assert metadata_map[id_str]["sanitized_svg"] == true
+      refute Map.has_key?(metadata_map[id_str], "web_url")
     end
   end
 

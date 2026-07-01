@@ -929,12 +929,7 @@ defmodule StoryarnWeb.SceneLive.Show do
            :ok <- validate_zone_label_icon_size(binary),
            {:ok, icon_binary} <- validate_zone_label_icon_binary(ct, binary),
            {:ok, asset} <-
-             Assets.upload_binary_and_create_asset(
-               icon_binary,
-               %{filename: filename, content_type: ct},
-               socket.assigns.project,
-               socket.assigns.current_scope.user
-             ),
+             upload_scene_icon_asset(icon_binary, filename, ct, socket),
            {:ok, updated} <- Scenes.update_pin(pin, %{"icon_asset_id" => asset.id}) do
         updated = Scenes.preload_pin_associations(updated)
 
@@ -983,12 +978,7 @@ defmodule StoryarnWeb.SceneLive.Show do
            :ok <- validate_zone_label_icon_size(binary),
            {:ok, icon_binary} <- validate_zone_label_icon_binary(ct, binary),
            {:ok, asset} <-
-             Assets.upload_binary_and_create_asset(
-               icon_binary,
-               %{filename: filename, content_type: ct},
-               socket.assigns.project,
-               socket.assigns.current_scope.user
-             ),
+             upload_scene_icon_asset(icon_binary, filename, ct, socket),
            {:ok, updated} <- Scenes.update_zone(zone, %{"label_icon_asset_id" => asset.id}) do
         updated = Scenes.get_zone!(updated.id)
 
@@ -1976,6 +1966,24 @@ defmodule StoryarnWeb.SceneLive.Show do
       true ->
         :ok
     end
+  end
+
+  defp upload_scene_icon_asset(icon_binary, filename, "image/svg+xml", socket) do
+    Assets.upload_sanitized_svg_and_create_asset(
+      icon_binary,
+      %{filename: filename, content_type: "image/svg+xml"},
+      socket.assigns.project,
+      socket.assigns.current_scope.user
+    )
+  end
+
+  defp upload_scene_icon_asset(icon_binary, filename, content_type, socket) do
+    Assets.upload_binary_and_create_asset(
+      icon_binary,
+      %{filename: filename, content_type: content_type},
+      socket.assigns.project,
+      socket.assigns.current_scope.user
+    )
   end
 
   defp validate_zone_label_icon_size(binary) when byte_size(binary) <= @zone_label_icon_max_size, do: :ok

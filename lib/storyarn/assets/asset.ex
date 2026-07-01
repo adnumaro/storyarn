@@ -37,10 +37,11 @@ defmodule Storyarn.Assets.Asset do
   alias Storyarn.Projects.Project
 
   @allowed_content_types ~w(
-    image/jpeg image/png image/gif image/webp image/svg+xml
+    image/jpeg image/png image/gif image/webp
     audio/mpeg audio/wav audio/ogg audio/webm
     application/pdf
   )
+  @sanitized_svg_content_types ~w(image/svg+xml)
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -112,10 +113,21 @@ defmodule Storyarn.Assets.Asset do
   Changeset for creating an asset.
   """
   def create_changeset(asset, attrs) do
+    create_changeset(asset, attrs, @allowed_content_types)
+  end
+
+  @doc """
+  Changeset for SVGs that were sanitized by the server before storage.
+  """
+  def create_sanitized_svg_changeset(asset, attrs) do
+    create_changeset(asset, attrs, @sanitized_svg_content_types)
+  end
+
+  defp create_changeset(asset, attrs, allowed_content_types) do
     asset
     |> cast(attrs, [:filename, :content_type, :size, :key, :url, :metadata, :blob_hash])
     |> validate_required([:filename, :content_type, :size, :key])
-    |> validate_inclusion(:content_type, @allowed_content_types, message: "is not a supported file type")
+    |> validate_inclusion(:content_type, allowed_content_types, message: "is not a supported file type")
     |> validate_number(:size, greater_than: 0, less_than_or_equal_to: 52_428_800)
     |> unique_constraint(:key, name: :assets_project_id_key_index)
   end

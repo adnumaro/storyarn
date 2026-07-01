@@ -35,17 +35,20 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
       metadata_map =
         Map.new(assets, fn asset ->
           {to_string(asset.id),
-           %{
+           Map.merge(svg_sanitization_metadata(asset.metadata || %{}), %{
              "filename" => asset.filename,
              "content_type" => asset.content_type,
              "size" => asset.size,
              "url" => asset.url
-           }}
+           })}
         end)
 
       {hash_map, metadata_map}
     end
   end
+
+  defp svg_sanitization_metadata(%{"sanitized_svg" => true}), do: %{"sanitized_svg" => true}
+  defp svg_sanitization_metadata(_metadata), do: %{}
 
   @doc """
   Resolves an asset FK during snapshot restore.

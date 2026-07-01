@@ -5,6 +5,7 @@ defmodule StoryarnWeb.UploadControllerTest do
   import Storyarn.WorkspacesFixtures
 
   alias Storyarn.Accounts.Scope
+  alias Storyarn.Assets
   alias StoryarnWeb.UploadController
 
   describe "create/2" do
@@ -76,6 +77,47 @@ defmodule StoryarnWeb.UploadControllerTest do
         })
 
       assert %{"error" => "upload_failed"} = json_response(conn, 422)
+    end
+
+    test "rejects generic SVG uploads", %{conn: conn, user: user} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+
+      path =
+        Path.join(
+          System.tmp_dir!(),
+          "storyarn-svg-upload-#{System.unique_integer([:positive])}.svg"
+        )
+
+      File.write!(
+        path,
+        ~S"""
+        <svg xmlns="http://www.w3.org/2000/svg"><script>alert(document.domain)</script></svg>
+        """
+      )
+
+      on_exit(fn -> File.rm(path) end)
+
+      upload = %Plug.Upload{
+        path: path,
+        filename: "payload.svg",
+        content_type: "image/svg+xml"
+      }
+
+      params = %{
+        "workspace_slug" => workspace.slug,
+        "project_slug" => project.slug,
+        "file" => upload
+      }
+
+      conn =
+        conn
+        |> Map.put(:params, params)
+        |> assign(:current_scope, Scope.for_user(user))
+        |> UploadController.create(params)
+
+      assert %{"error" => "upload_failed"} = json_response(conn, 422)
+      assert Assets.list_assets(project.id) == []
     end
   end
 end
