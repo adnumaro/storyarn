@@ -1,0 +1,31 @@
+lib/storyarn_web/components/layouts/root.html.heex
+  s_465570a664484a::t_52374d8370aaa6 44
+  s_465570a664484a::t_e043b0d00085a5 43
+  s_465570a664484a::t_704850df4f0be5 41-42
+test/storyarn_web/layouts_test.exs
+  s_f8a4ec3056d1e1::t_f0ca33e3b39c5c 27-28,30-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "ff00fdb4ce09add049649615a27217075b8edfb8",
+  "prompts": {},
+  "sessions": {
+    "s_465570a664484a": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1782819227471",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_f8a4ec3056d1e1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f19f2-11f7-7801-acf9-348bdfab9c21",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
