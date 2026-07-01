@@ -97,6 +97,7 @@ defmodule StoryarnWeb.Router do
   end
 
   scope "/", StoryarnWeb do
+    get "/llms.txt", LlmsController, :index
     get "/sitemap.xml", SitemapController, :index
   end
 
