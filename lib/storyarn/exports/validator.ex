@@ -80,7 +80,7 @@ defmodule Storyarn.Exports.Validator do
   """
   def validate_with_data(project_id, %ExportOptions{} = opts) do
     flows_data = load_flows_data(project_id, opts)
-    sheets = load_sheets(project_id)
+    sheets = load_sheets(project_id, opts)
 
     findings = run_checks_with_data(project_id, opts, flows_data, sheets)
 
@@ -135,7 +135,7 @@ defmodule Storyarn.Exports.Validator do
   defp run_all_checks(project_id, opts) do
     # Load data needed for multiple checks
     flows_data = load_flows_data(project_id, opts)
-    sheets = load_sheets(project_id)
+    sheets = load_sheets(project_id, opts)
 
     checks = [
       fn -> check_missing_entry(flows_data) end,
@@ -156,12 +156,28 @@ defmodule Storyarn.Exports.Validator do
   # Data loading
   # =============================================================================
 
-  defp load_flows_data(project_id, _opts) do
+  defp load_flows_data(_project_id, %ExportOptions{include_flows: false}), do: []
+
+  defp load_flows_data(project_id, %ExportOptions{flow_ids: :all}) do
     Flows.list_flows_for_export(project_id)
   end
 
-  defp load_sheets(project_id) do
+  defp load_flows_data(_project_id, %ExportOptions{flow_ids: []}), do: []
+
+  defp load_flows_data(project_id, %ExportOptions{flow_ids: flow_ids}) do
+    Flows.list_flows_for_export(project_id, filter_ids: flow_ids)
+  end
+
+  defp load_sheets(_project_id, %ExportOptions{include_sheets: false}), do: []
+
+  defp load_sheets(project_id, %ExportOptions{sheet_ids: :all}) do
     Sheets.list_sheets_brief(project_id)
+  end
+
+  defp load_sheets(_project_id, %ExportOptions{sheet_ids: []}), do: []
+
+  defp load_sheets(project_id, %ExportOptions{sheet_ids: sheet_ids}) do
+    Sheets.list_sheets_brief(project_id, filter_ids: sheet_ids)
   end
 
   # =============================================================================

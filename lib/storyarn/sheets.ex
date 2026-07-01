@@ -851,8 +851,8 @@ defmodule Storyarn.Sheets do
   @doc "Lists all non-deleted blocks for the given sheet IDs."
   defdelegate list_blocks_for_sheet_ids(sheet_ids), to: SheetQueries
 
-  @doc "Lists brief sheet data (id, name, shortcut) for validator."
-  defdelegate list_sheets_brief(project_id), to: SheetQueries
+  @doc "Lists brief sheet data (id, name, shortcut) for validator. Opts: [filter_ids: :all | [ids]]."
+  defdelegate list_sheets_brief(project_id, opts \\ []), to: SheetQueries
 
   @doc "Lists existing sheet shortcuts for a project."
   defdelegate list_sheet_shortcuts(project_id), to: SheetQueries, as: :list_shortcuts

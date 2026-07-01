@@ -7,6 +7,7 @@ defmodule Storyarn.Exports.ValidatorTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Exports.ExportOptions
   alias Storyarn.Exports.Validator
   alias Storyarn.Exports.Validator.ValidationResult
 
@@ -427,9 +428,23 @@ defmodule Storyarn.Exports.ValidatorTest do
     end
 
     test "accepts ExportOptions", %{project: project} do
-      {:ok, opts} = Storyarn.Exports.ExportOptions.new(%{format: :storyarn})
+      {:ok, opts} = ExportOptions.new(%{format: :storyarn})
       result = Validator.validate_project(project.id, opts)
       assert %ValidationResult{} = result
+    end
+
+    test "respects export options when loading flows", %{project: project} do
+      flow = flow_fixture(project, %{name: "Excluded Broken Flow"})
+      entry = flow.id |> Storyarn.Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
+      Storyarn.Repo.delete!(entry)
+
+      result =
+        Validator.validate_project(project.id, %ExportOptions{
+          format: :storyarn,
+          include_flows: false
+        })
+
+      refute Enum.any?(result.errors, &(&1.rule == :missing_entry))
     end
 
     test "export fails when validation detects errors", %{project: project} do

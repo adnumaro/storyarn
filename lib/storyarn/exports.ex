@@ -15,7 +15,9 @@ defmodule Storyarn.Exports do
   alias Storyarn.Exports.DataCollector
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Exports.SerializerRegistry
+  alias Storyarn.Exports.SizeGuard
   alias Storyarn.Exports.Validator
+  alias Storyarn.Exports.Validator.ValidationResult
 
   @doc """
   Export a project to the specified format.
@@ -46,6 +48,7 @@ defmodule Storyarn.Exports do
   """
   def export_project(project, opts \\ %{}) do
     with {:ok, options} <- ExportOptions.new(opts),
+         :ok <- SizeGuard.ensure_within_limit(project.id, options),
          {:ok, options, preloaded} <- maybe_validate(project, options),
          {:ok, serializer} <- SerializerRegistry.get(options.format) do
       project_data = DataCollector.collect(project.id, options, preloaded)
@@ -58,7 +61,25 @@ defmodule Storyarn.Exports do
 
   Returns a `%ValidationResult{}` with errors, warnings, and info items.
   """
-  defdelegate validate_project(project_id, opts \\ %{}), to: Validator, as: :validate_project
+  def validate_project(project_id, opts \\ %{})
+
+  def validate_project(project_id, %ExportOptions{} = options) do
+    case SizeGuard.ensure_within_limit(project_id, options) do
+      :ok -> Validator.validate_project(project_id, options)
+      {:error, {:export_too_large, details}} -> export_too_large_validation_result(project_id, details)
+    end
+  end
+
+  def validate_project(project_id, opts) when is_map(opts) do
+    case ExportOptions.new(opts) do
+      {:ok, options} -> validate_project(project_id, options)
+      {:error, _reason} -> Validator.validate_project(project_id, opts)
+    end
+  end
+
+  def validate_project(project_id, _opts) do
+    validate_project(project_id, %ExportOptions{format: :storyarn})
+  end
 
   @doc """
   Count entities in a project for progress estimation.
@@ -90,4 +111,25 @@ defmodule Storyarn.Exports do
   end
 
   defp maybe_validate(_project, options), do: {:ok, options, %{}}
+
+  defp export_too_large_validation_result(project_id, details) do
+    %ValidationResult{
+      status: :errors,
+      errors: [
+        %{
+          level: :error,
+          rule: :export_too_large,
+          message: "Export is too large to validate safely",
+          violations: details.violations
+        }
+      ],
+      statistics: %{
+        project_id: project_id,
+        total_findings: 1,
+        error_count: 1,
+        warning_count: 0,
+        info_count: 0
+      }
+    }
+  end
 end

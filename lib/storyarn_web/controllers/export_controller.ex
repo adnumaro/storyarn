@@ -32,6 +32,9 @@ defmodule StoryarnWeb.ExportController do
       {:error, :not_found} ->
         conn |> put_status(:not_found) |> text(gettext("Not found"))
 
+      {:error, {:export_too_large, _details}} ->
+        conn |> put_status(413) |> text(gettext("Export is too large"))
+
       _ ->
         conn |> put_status(:unprocessable_entity) |> text(gettext("Export failed"))
     end

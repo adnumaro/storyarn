@@ -873,13 +873,15 @@ defmodule Storyarn.Sheets.SheetQueries do
   Lists brief sheet data (id, name, shortcut) for a project.
   Used by the export Validator for orphan sheet detection.
   """
-  def list_sheets_brief(project_id) do
-    Repo.all(
-      from(s in Sheet,
-        where: s.project_id == ^project_id and is_nil(s.deleted_at),
-        select: %{id: s.id, name: s.name, shortcut: s.shortcut}
-      )
+  def list_sheets_brief(project_id, opts \\ []) do
+    filter_ids = Keyword.get(opts, :filter_ids, :all)
+
+    from(s in Sheet,
+      where: s.project_id == ^project_id and is_nil(s.deleted_at),
+      select: %{id: s.id, name: s.name, shortcut: s.shortcut}
     )
+    |> maybe_filter_export_ids(filter_ids)
+    |> Repo.all()
   end
 
   @doc """
