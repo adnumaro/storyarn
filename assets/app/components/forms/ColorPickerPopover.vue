@@ -41,6 +41,7 @@ const hexInputRef = ref<ColorElement | null>(null);
 const isOpen = ref(false);
 const hasEyeDropper = ref(typeof window !== "undefined" && "EyeDropper" in window);
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingColor: string | null = null;
 
 watch(
   () => color,
@@ -51,11 +52,33 @@ watch(
 
 function pushColor(hex: string) {
   localColor.value = hex;
-  if (debounceTimer) clearTimeout(debounceTimer);
+  pendingColor = hex;
+  clearDebounceTimer();
   debounceTimer = setTimeout(() => {
-    emit("update:color", hex);
-    if (event) live.pushEvent(event, { value: hex });
+    debounceTimer = null;
+    commitPendingColor();
   }, 150);
+}
+
+function clearDebounceTimer() {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+    debounceTimer = null;
+  }
+}
+
+function commitPendingColor() {
+  if (pendingColor === null) return;
+
+  const hex = pendingColor;
+  pendingColor = null;
+  emit("update:color", hex);
+  if (event) live.pushEvent(event, { value: hex });
+}
+
+function flushPendingColor() {
+  clearDebounceTimer();
+  commitPendingColor();
 }
 
 function onPickerChanged(e: CustomEvent<{ value: string }>) {
@@ -92,7 +115,7 @@ function onPopoverOpen(open: boolean) {
 }
 
 onBeforeUnmount(() => {
-  if (debounceTimer) clearTimeout(debounceTimer);
+  flushPendingColor();
 });
 </script>
 
