@@ -24,6 +24,7 @@ export interface CodeEditorOptions {
   mode: Ref<"condition" | "instruction"> | "condition" | "instruction";
   variables: Ref<Variable[]> | Variable[];
   disabled: Ref<boolean> | boolean;
+  active?: Ref<boolean> | Readonly<Ref<boolean>> | boolean;
   placeholder?: string;
   onConditionChange?: (condition: ParsedCondition) => void;
   onAssignmentsChange?: (assignments: ParsedAssignment[]) => void;
@@ -60,9 +61,25 @@ export function useCodeEditor(
     return toValue(options.disabled);
   }
 
+  function isActive(): boolean {
+    return options.active === undefined ? true : toValue(options.active);
+  }
+
+  function clearDebounceTimer(): void {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+      debounceTimer = null;
+    }
+  }
+
   function handleChange(text: string): void {
-    if (debounceTimer) clearTimeout(debounceTimer);
+    clearDebounceTimer();
+    if (!isActive()) return;
+
     debounceTimer = setTimeout(() => {
+      debounceTimer = null;
+      if (!isActive()) return;
+
       const mode = getMode();
       const variables = getVariables();
 
@@ -115,10 +132,18 @@ export function useCodeEditor(
   });
 
   onUnmounted(() => {
-    if (debounceTimer) clearTimeout(debounceTimer);
+    clearDebounceTimer();
     view?.destroy();
     view = null;
   });
+
+  // Cancel pending code parses when the Code tab is hidden.
+  watch(
+    () => isActive(),
+    (active) => {
+      if (!active) clearDebounceTimer();
+    },
+  );
 
   // React to disabled changes
   watch(

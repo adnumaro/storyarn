@@ -7,7 +7,7 @@
  */
 
 import { AlignLeft } from "lucide-vue-next";
-import { ref, toRef, watch } from "vue";
+import { computed, ref, toRef, watch } from "vue";
 import { Button } from "@components/ui/button";
 import ConditionBuilder from "../builders/ConditionBuilder.vue";
 import InstructionBuilder from "../builders/InstructionBuilder.vue";
@@ -50,11 +50,13 @@ const emit = defineEmits<{
 
 const activeTab = ref("builder");
 const codeEditorRef = ref<HTMLDivElement | null>(null);
+const codeTabActive = computed(() => activeTab.value === "code");
 
 const { setContent, format } = useCodeEditor(codeEditorRef, {
   mode: toRef(() => mode),
   variables: toRef(() => variables),
   disabled: toRef(() => disabled),
+  active: codeTabActive,
   placeholder: mode === "condition" ? "mc.health > 50 && mc.alive" : "mc.health = 100",
   onConditionChange(parsed: ParsedCondition) {
     emit("update:condition", parsedConditionToConditionData(parsed));
