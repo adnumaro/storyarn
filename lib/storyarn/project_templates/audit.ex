@@ -10,11 +10,19 @@ defmodule Storyarn.ProjectTemplates.Audit do
   import Ecto.Query, warn: false
 
   alias Storyarn.Assets.Asset
+  alias Storyarn.Assets.Storage
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Localization.GlossaryEntry
+  alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Localization.ProjectLanguage
+  alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
+  alias Storyarn.Scenes.SceneAnnotation
+  alias Storyarn.Scenes.SceneConnection
+  alias Storyarn.Scenes.SceneLayer
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Scenes.SceneZone
   alias Storyarn.Sheets.Block
@@ -22,6 +30,7 @@ defmodule Storyarn.ProjectTemplates.Audit do
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
+  alias Storyarn.Versioning.ProjectRecovery
 
   @doc """
   Runs template-publication audit checks for a project.
@@ -30,7 +39,7 @@ defmodule Storyarn.ProjectTemplates.Audit do
   def run(project_id) do
     snapshot = ProjectSnapshotBuilder.build_snapshot(project_id)
 
-    errors =
+    static_errors =
       []
       |> Kernel.++(stale_connection_errors(project_id))
       |> Kernel.++(unsafe_subflow_pin_errors(project_id))
@@ -40,11 +49,17 @@ defmodule Storyarn.ProjectTemplates.Audit do
       |> Kernel.++(invalid_scene_zone_flow_target_errors(project_id))
       |> Kernel.++(uncopiable_asset_reference_errors(project_id))
 
+    {materialization_errors, materialization_report} =
+      materialization_audit(project_id, snapshot, static_errors)
+
+    errors = static_errors ++ materialization_errors
+
     report = %{
       "status" => if(errors == [], do: "passed", else: "failed"),
       "errors" => errors,
       "warnings" => [],
-      "entity_counts" => Map.get(snapshot, "entity_counts", %{})
+      "entity_counts" => Map.get(snapshot, "entity_counts", %{}),
+      "materialization" => materialization_report
     }
 
     if errors == [], do: {:ok, report}, else: {:error, report}
@@ -124,8 +139,10 @@ defmodule Storyarn.ProjectTemplates.Audit do
   defp remappable_exit_pin?(%{flow_id: flow_id, source_pin: "exit_" <> old_id_text}, active_node_ids_by_flow) do
     case Integer.parse(old_id_text) do
       {old_id, ""} ->
-        active_node_ids = Map.get(active_node_ids_by_flow, flow_id)
-        MapSet.member?(active_node_ids, old_id)
+        case Map.get(active_node_ids_by_flow, flow_id) do
+          %MapSet{} = active_node_ids -> MapSet.member?(active_node_ids, old_id)
+          _ -> false
+        end
 
       _ ->
         false
@@ -249,6 +266,7 @@ defmodule Storyarn.ProjectTemplates.Audit do
     |> Kernel.++(scene_pin_icon_asset_refs(project_id))
     |> Kernel.++(scene_zone_label_icon_asset_refs(project_id))
     |> Kernel.++(flow_audio_asset_refs(project_id))
+    |> Kernel.++(localized_vo_asset_refs(project_id))
   end
 
   defp sheet_banner_asset_refs(project_id) do
@@ -377,6 +395,22 @@ defmodule Storyarn.ProjectTemplates.Audit do
     |> Enum.map(&normalize_asset_ref/1)
   end
 
+  defp localized_vo_asset_refs(project_id) do
+    query =
+      from text in LocalizedText,
+        where: text.project_id == ^project_id,
+        where: not is_nil(text.vo_asset_id),
+        select: %{
+          entity_type: "localized_text",
+          entity_id: text.id,
+          field: "vo_asset_id",
+          asset_id: text.vo_asset_id,
+          raw_asset_id: text.vo_asset_id
+        }
+
+    Repo.all(query)
+  end
+
   defp normalize_asset_ref(%{asset_id: asset_id} = ref) do
     case normalize_asset_id(asset_id) do
       {:ok, id} -> %{ref | asset_id: id}
@@ -457,6 +491,392 @@ defmodule Storyarn.ProjectTemplates.Audit do
       "asset_project_id" => asset.project_id,
       "has_key" => present?(asset.key),
       "has_blob_hash" => present?(asset.blob_hash)
+    }
+  end
+
+  defp materialization_audit(_project_id, _snapshot, static_errors) when static_errors != [] do
+    {[],
+     %{
+       "status" => "skipped",
+       "reason" => "static_errors"
+     }}
+  end
+
+  defp materialization_audit(project_id, snapshot, []) do
+    source_counts = materialized_entity_counts(project_id)
+    snapshot_counts = snapshot_entity_counts(snapshot)
+
+    source_snapshot_errors =
+      count_mismatch_errors(
+        "source_snapshot_count_mismatch",
+        "source_count",
+        source_counts,
+        "snapshot_count",
+        snapshot_counts
+      )
+
+    case recover_project_in_rollback(project_id, snapshot) do
+      {:ok, recovered_counts, materialized_asset_errors} ->
+        snapshot_recovery_errors =
+          count_mismatch_errors(
+            "snapshot_recovery_count_mismatch",
+            "snapshot_count",
+            snapshot_counts,
+            "recovered_count",
+            recovered_counts
+          )
+
+        errors = source_snapshot_errors ++ snapshot_recovery_errors ++ materialized_asset_errors
+
+        {errors,
+         %{
+           "status" => if(errors == [], do: "passed", else: "failed"),
+           "source_counts" => source_counts,
+           "snapshot_counts" => snapshot_counts,
+           "recovered_counts" => recovered_counts
+         }}
+
+      {:error, reason} ->
+        error = %{
+          "type" => "template_materialization_failed",
+          "reason" => inspect(reason)
+        }
+
+        {[error],
+         %{
+           "status" => "failed",
+           "source_counts" => source_counts,
+           "snapshot_counts" => snapshot_counts,
+           "recovery_error" => inspect(reason)
+         }}
+    end
+  end
+
+  defp recover_project_in_rollback(project_id, snapshot) do
+    project = Repo.get!(Project, project_id)
+
+    {result, copied_asset_keys} =
+      project
+      |> recover_project_transaction_result(snapshot)
+      |> extract_recover_project_result()
+
+    cleanup_materialized_asset_storage(copied_asset_keys)
+
+    result
+  end
+
+  defp recover_project_transaction_result(project, snapshot) do
+    Repo.transaction(
+      fn ->
+        result =
+          with {:ok, recovered_project} <-
+                 ProjectRecovery.recover_project(project.workspace_id, snapshot, project.owner_id,
+                   name: "Template Audit #{project.id}",
+                   template_clone: true
+                 ) do
+            {:ok, materialized_entity_counts(recovered_project.id),
+             materialized_asset_reference_errors(recovered_project.id),
+             materialized_asset_storage_keys(recovered_project.id)}
+          end
+
+        Repo.rollback({:template_materialization_audit, result})
+      end,
+      timeout: to_timeout(minute: 5)
+    )
+  end
+
+  defp extract_recover_project_result({:error, {:template_materialization_audit, {:ok, counts, errors, asset_keys}}}) do
+    {{:ok, counts, errors}, asset_keys}
+  end
+
+  defp extract_recover_project_result({:error, {:template_materialization_audit, {:error, reason}}}) do
+    {{:error, reason}, []}
+  end
+
+  defp extract_recover_project_result({:error, reason}) do
+    {{:error, reason}, []}
+  end
+
+  defp extract_recover_project_result({:ok, _unexpected}) do
+    {{:error, :unexpected_materialization_audit_commit}, []}
+  end
+
+  defp materialized_asset_storage_keys(project_id) do
+    query =
+      from asset in Asset,
+        where: asset.project_id == ^project_id,
+        where: not is_nil(asset.key),
+        select: asset.key
+
+    Repo.all(query)
+  end
+
+  defp cleanup_materialized_asset_storage(asset_keys) do
+    asset_keys
+    |> Enum.uniq()
+    |> Enum.each(fn key ->
+      _ = Storage.delete(key)
+    end)
+  end
+
+  defp count_mismatch_errors(type, left_label, left_counts, right_label, right_counts) do
+    left_counts
+    |> Map.keys()
+    |> Kernel.++(Map.keys(right_counts))
+    |> Enum.uniq()
+    |> Enum.sort()
+    |> Enum.flat_map(fn key ->
+      left_value = Map.get(left_counts, key, 0)
+      right_value = Map.get(right_counts, key, 0)
+
+      if left_value == right_value do
+        []
+      else
+        [
+          %{
+            "type" => type,
+            "count_key" => key,
+            left_label => left_value,
+            right_label => right_value
+          }
+        ]
+      end
+    end)
+  end
+
+  defp materialized_entity_counts(project_id) do
+    %{
+      "sheets" => count_active_project_records(Sheet, project_id),
+      "sheet_blocks" => count_active_sheet_blocks(project_id),
+      "sheet_avatars" => count_sheet_avatars(project_id),
+      "block_gallery_images" => count_block_gallery_images(project_id),
+      "flows" => count_active_project_records(Flow, project_id),
+      "flow_nodes" => count_flow_nodes(project_id),
+      "flow_connections" => count_flow_connections(project_id),
+      "scenes" => count_active_project_records(Scene, project_id),
+      "scene_layers" => count_scene_children(SceneLayer, project_id),
+      "scene_pins" => count_scene_children(ScenePin, project_id),
+      "scene_zones" => count_scene_children(SceneZone, project_id),
+      "scene_connections" => count_scene_children(SceneConnection, project_id),
+      "scene_annotations" => count_scene_children(SceneAnnotation, project_id),
+      "languages" => count_project_records(ProjectLanguage, project_id),
+      "localized_texts" => count_project_records(LocalizedText, project_id),
+      "glossary_entries" => count_project_records(GlossaryEntry, project_id)
+    }
+  end
+
+  defp count_active_project_records(schema, project_id) do
+    query = from(record in schema, where: record.project_id == ^project_id and is_nil(record.deleted_at))
+
+    Repo.aggregate(query, :count)
+  end
+
+  defp count_project_records(schema, project_id) do
+    Repo.aggregate(from(record in schema, where: record.project_id == ^project_id), :count)
+  end
+
+  defp count_active_sheet_blocks(project_id) do
+    query =
+      from block in Block,
+        join: sheet in Sheet,
+        on: sheet.id == block.sheet_id,
+        where: sheet.project_id == ^project_id and is_nil(sheet.deleted_at),
+        where: is_nil(block.deleted_at)
+
+    Repo.aggregate(query, :count)
+  end
+
+  defp count_sheet_avatars(project_id) do
+    query =
+      from avatar in SheetAvatar,
+        join: sheet in Sheet,
+        on: sheet.id == avatar.sheet_id,
+        where: sheet.project_id == ^project_id and is_nil(sheet.deleted_at)
+
+    Repo.aggregate(query, :count)
+  end
+
+  defp count_block_gallery_images(project_id) do
+    query =
+      from gallery_image in BlockGalleryImage,
+        join: block in Block,
+        on: block.id == gallery_image.block_id,
+        join: sheet in Sheet,
+        on: sheet.id == block.sheet_id,
+        where: sheet.project_id == ^project_id and is_nil(sheet.deleted_at),
+        where: is_nil(block.deleted_at)
+
+    Repo.aggregate(query, :count)
+  end
+
+  defp count_flow_nodes(project_id) do
+    query =
+      from node in FlowNode,
+        join: flow in Flow,
+        on: flow.id == node.flow_id,
+        where: flow.project_id == ^project_id and is_nil(flow.deleted_at),
+        where: is_nil(node.deleted_at)
+
+    Repo.aggregate(query, :count)
+  end
+
+  defp count_flow_connections(project_id) do
+    query =
+      from connection in FlowConnection,
+        join: flow in Flow,
+        on: flow.id == connection.flow_id,
+        where: flow.project_id == ^project_id and is_nil(flow.deleted_at)
+
+    Repo.aggregate(query, :count)
+  end
+
+  defp count_scene_children(schema, project_id) do
+    query =
+      from record in schema,
+        join: scene in Scene,
+        on: scene.id == record.scene_id,
+        where: scene.project_id == ^project_id and is_nil(scene.deleted_at)
+
+    Repo.aggregate(query, :count)
+  end
+
+  defp snapshot_entity_counts(snapshot) do
+    sheets = snapshot["sheets"] || []
+    flows = snapshot["flows"] || []
+    scenes = snapshot["scenes"] || []
+    localization = snapshot["localization"] || %{}
+
+    sheet_snapshots = snapshots_for(sheets)
+    flow_snapshots = snapshots_for(flows)
+    scene_snapshots = snapshots_for(scenes)
+
+    %{}
+    |> Map.merge(snapshot_sheet_counts(sheets, sheet_snapshots))
+    |> Map.merge(snapshot_flow_counts(flows, flow_snapshots))
+    |> Map.merge(snapshot_scene_counts(scenes, scene_snapshots))
+    |> Map.merge(snapshot_localization_counts(localization))
+  end
+
+  defp snapshots_for(entries) do
+    Enum.map(entries, &(&1["snapshot"] || %{}))
+  end
+
+  defp snapshot_sheet_counts(sheets, sheet_snapshots) do
+    %{
+      "sheets" => length(sheets),
+      "sheet_blocks" => sum_nested_count(sheet_snapshots, "blocks"),
+      "sheet_avatars" => sum_nested_count(sheet_snapshots, "avatars"),
+      "block_gallery_images" => count_snapshot_gallery_images(sheet_snapshots)
+    }
+  end
+
+  defp snapshot_flow_counts(flows, flow_snapshots) do
+    %{
+      "flows" => length(flows),
+      "flow_nodes" => sum_nested_count(flow_snapshots, "nodes"),
+      "flow_connections" => sum_nested_count(flow_snapshots, "connections")
+    }
+  end
+
+  defp snapshot_scene_counts(scenes, scene_snapshots) do
+    %{
+      "scenes" => length(scenes),
+      "scene_layers" => count_snapshot_scene_layers(scene_snapshots),
+      "scene_pins" => count_snapshot_scene_children(scene_snapshots, "pins", "orphan_pins"),
+      "scene_zones" => count_snapshot_scene_children(scene_snapshots, "zones", "orphan_zones"),
+      "scene_connections" => sum_nested_count(scene_snapshots, "connections"),
+      "scene_annotations" => count_snapshot_scene_children(scene_snapshots, "annotations", "orphan_annotations")
+    }
+  end
+
+  defp snapshot_localization_counts(localization) do
+    %{
+      "languages" => length(localization["languages"] || []),
+      "localized_texts" => length(localization["texts"] || []),
+      "glossary_entries" => length(localization["glossary"] || [])
+    }
+  end
+
+  defp sum_nested_count(entries, key) do
+    Enum.sum(Enum.map(entries, &length(&1[key] || [])))
+  end
+
+  defp count_snapshot_gallery_images(sheet_snapshots) do
+    sheet_snapshots
+    |> Enum.flat_map(&(&1["blocks"] || []))
+    |> sum_nested_count("gallery_images")
+  end
+
+  defp count_snapshot_scene_layers(scene_snapshots) do
+    sum_nested_count(scene_snapshots, "layers")
+  end
+
+  defp count_snapshot_scene_children(scene_snapshots, layer_child_key, orphan_key) do
+    Enum.sum(
+      Enum.map(scene_snapshots, fn scene ->
+        scene
+        |> Map.get("layers", [])
+        |> sum_nested_count(layer_child_key)
+        |> Kernel.+(length(scene[orphan_key] || []))
+      end)
+    )
+  end
+
+  defp materialized_asset_reference_errors(project_id) do
+    {invalid_refs, asset_refs} =
+      project_id
+      |> referenced_asset_refs()
+      |> Enum.split_with(&is_nil(&1.asset_id))
+
+    assets_by_id = assets_by_id(Enum.map(asset_refs, & &1.asset_id))
+
+    Enum.map(invalid_refs, &materialized_invalid_asset_reference_error/1) ++
+      materialized_missing_or_cross_project_asset_errors(asset_refs, assets_by_id, project_id)
+  end
+
+  defp materialized_missing_or_cross_project_asset_errors(asset_refs, assets_by_id, project_id) do
+    Enum.flat_map(asset_refs, fn ref ->
+      case Map.get(assets_by_id, ref.asset_id) do
+        nil ->
+          [materialized_missing_asset_reference_error(ref)]
+
+        %Asset{project_id: ^project_id} ->
+          []
+
+        %Asset{} = asset ->
+          [materialized_cross_project_asset_reference_error(ref, asset)]
+      end
+    end)
+  end
+
+  defp materialized_invalid_asset_reference_error(ref) do
+    %{
+      "type" => "invalid_asset_after_materialization",
+      "entity_type" => ref.entity_type,
+      "entity_id" => ref.entity_id,
+      "field" => ref.field,
+      "raw_asset_id" => ref.raw_asset_id
+    }
+  end
+
+  defp materialized_missing_asset_reference_error(ref) do
+    %{
+      "type" => "missing_asset_after_materialization",
+      "entity_type" => ref.entity_type,
+      "entity_id" => ref.entity_id,
+      "field" => ref.field,
+      "asset_id" => ref.asset_id
+    }
+  end
+
+  defp materialized_cross_project_asset_reference_error(ref, asset) do
+    %{
+      "type" => "cross_project_asset_after_materialization",
+      "entity_type" => ref.entity_type,
+      "entity_id" => ref.entity_id,
+      "field" => ref.field,
+      "asset_id" => ref.asset_id,
+      "asset_project_id" => asset.project_id
     }
   end
 end

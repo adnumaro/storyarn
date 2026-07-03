@@ -9,6 +9,9 @@ defmodule Storyarn.ProjectTemplatesTest do
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
   alias Storyarn.FlowsFixtures
+  alias Storyarn.Localization
+  alias Storyarn.LocalizationFixtures
+  alias Storyarn.Projects.Project
   alias Storyarn.ProjectsFixtures
   alias Storyarn.ProjectTemplates
   alias Storyarn.ProjectTemplates.Audit
@@ -203,6 +206,45 @@ defmodule Storyarn.ProjectTemplatesTest do
   end
 
   describe "Audit.run/1" do
+    test "materializes a valid project in rollback and compares counts" do
+      user = AccountsFixtures.user_fixture()
+      project = ProjectsFixtures.project_fixture(user)
+      sheet = SheetsFixtures.sheet_fixture(project)
+      _block = SheetsFixtures.block_fixture(sheet)
+
+      flow = flow_fixture(project)
+      source_node = flow_node_fixture(flow, "dialogue")
+      target_node = flow_node_fixture(flow, "hub")
+      flow_connection_fixture(flow, source_node, target_node)
+
+      scene = ScenesFixtures.scene_fixture(project)
+      layer = ScenesFixtures.layer_fixture(scene)
+      _pin = ScenesFixtures.pin_fixture(scene, %{"layer_id" => layer.id})
+      _zone = ScenesFixtures.zone_fixture(scene, %{"layer_id" => layer.id})
+
+      project_count = Repo.aggregate(Project, :count)
+
+      assert {:ok, report} = Audit.run(project.id)
+      assert report["materialization"]["status"] == "passed"
+      assert report["materialization"]["source_counts"] == report["materialization"]["snapshot_counts"]
+      assert report["materialization"]["snapshot_counts"] == report["materialization"]["recovered_counts"]
+      assert Repo.aggregate(Project, :count) == project_count
+    end
+
+    test "removes copied asset files created during rollback materialization" do
+      user = AccountsFixtures.user_fixture()
+      project = ProjectsFixtures.project_fixture(user)
+      sheet = SheetsFixtures.sheet_fixture(project)
+      avatar_asset = uploaded_image_asset(project, user, "rollback-avatar.png", "rollback-avatar")
+      {:ok, _avatar} = Storyarn.Sheets.add_avatar(sheet, avatar_asset.id, %{name: "Hero"})
+
+      storage_files_before_audit = storage_files()
+
+      assert {:ok, report} = Audit.run(project.id)
+      assert report["materialization"]["status"] == "passed"
+      assert storage_files() == storage_files_before_audit
+    end
+
     test "detects a connection pointing to a soft-deleted node" do
       user = AccountsFixtures.user_fixture()
       project = ProjectsFixtures.project_fixture(user)
@@ -319,6 +361,35 @@ defmodule Storyarn.ProjectTemplatesTest do
                  error["asset_id"] == asset.id
              end)
     end
+
+    test "detects localization voice assets left cross-project after materialization" do
+      user = AccountsFixtures.user_fixture()
+      project = ProjectsFixtures.project_fixture(user)
+      flow = flow_fixture(project)
+      node = flow_node_fixture(flow, "dialogue")
+      voice_asset = uploaded_audio_asset(project, user, "line.mp3", "voice-over")
+
+      LocalizationFixtures.language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      text =
+        LocalizationFixtures.localized_text_fixture(project.id, %{
+          source_type: "flow_node",
+          source_id: node.id,
+          source_field: "text",
+          locale_code: "es"
+        })
+
+      assert {:ok, _text} = Localization.update_text(text, %{vo_asset_id: voice_asset.id, vo_status: "recorded"})
+
+      assert {:error, report} = Audit.run(project.id)
+      assert report["materialization"]["status"] == "failed"
+
+      assert Enum.any?(report["errors"], fn error ->
+               error["type"] == "cross_project_asset_after_materialization" and
+                 error["field"] == "vo_asset_id" and
+                 error["asset_id"] == voice_asset.id
+             end)
+    end
   end
 
   defp flow_fixture(project) do
@@ -365,5 +436,41 @@ defmodule Storyarn.ProjectTemplatesTest do
     end)
 
     asset
+  end
+
+  defp uploaded_audio_asset(project, user, filename, content) do
+    {:ok, asset} =
+      Assets.upload_binary_and_create_asset(
+        content,
+        %{filename: filename, content_type: "audio/mpeg"},
+        project,
+        user
+      )
+
+    on_exit(fn ->
+      Assets.storage_delete(asset.key)
+      Assets.storage_delete(BlobStore.blob_key(project.id, asset.blob_hash, "mp3"))
+    end)
+
+    asset
+  end
+
+  defp storage_files do
+    upload_dir =
+      :storyarn
+      |> Application.get_env(:storage, [])
+      |> Keyword.get(:upload_dir, "priv/static/uploads/test")
+      |> Path.expand()
+
+    if File.dir?(upload_dir) do
+      upload_dir
+      |> Path.join("**/*")
+      |> Path.wildcard()
+      |> Enum.reject(&File.dir?/1)
+      |> Enum.map(&Path.relative_to(&1, upload_dir))
+      |> Enum.sort()
+    else
+      []
+    end
   end
 end
