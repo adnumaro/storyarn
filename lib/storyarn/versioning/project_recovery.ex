@@ -24,6 +24,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.Sheet
+  alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.Builders.FlowBuilder
   alias Storyarn.Versioning.Builders.SceneBuilder
   alias Storyarn.Versioning.Builders.SheetBuilder
@@ -72,7 +73,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
       remap_scene_refs(id_maps, snapshot_data)
 
       restore_tree_hierarchy(snapshot_data, id_maps)
-      recover_localization(project.id, snapshot_data, id_maps, now)
+      recover_localization(project.id, snapshot_data, id_maps, user_id, opts, now)
 
       {:ok, project}
     end
@@ -398,14 +399,14 @@ defmodule Storyarn.Versioning.ProjectRecovery do
 
   # ========== Phase D: Localization ==========
 
-  defp recover_localization(project_id, snapshot_data, id_maps, now) do
+  defp recover_localization(project_id, snapshot_data, id_maps, user_id, opts, now) do
     case snapshot_data["localization"] do
       nil ->
         :ok
 
       localization ->
         restore_languages(project_id, Map.get(localization, "languages", []), now)
-        restore_texts(project_id, Map.get(localization, "texts", []), id_maps, now)
+        restore_texts(project_id, Map.get(localization, "texts", []), id_maps, snapshot_data, user_id, opts, now)
         restore_glossary(project_id, Map.get(localization, "glossary", []), now)
     end
   end
@@ -429,12 +430,13 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     Repo.insert_all(ProjectLanguage, entries)
   end
 
-  defp restore_texts(_project_id, [], _id_maps, _now), do: :ok
+  defp restore_texts(_project_id, [], _id_maps, _snapshot_data, _user_id, _opts, _now), do: :ok
 
-  defp restore_texts(project_id, texts, id_maps, now) do
+  defp restore_texts(project_id, texts, id_maps, snapshot_data, user_id, opts, now) do
     texts
     |> Enum.map(fn text ->
       source_id = remap_source_id(text["source_type"], text["source_id"], id_maps)
+      vo_asset_id = remap_vo_asset_id(text["vo_asset_id"], snapshot_data, project_id, user_id, opts)
 
       speaker_id =
         if text["speaker_sheet_id"], do: Map.get(id_maps.sheet, text["speaker_sheet_id"])
@@ -450,7 +452,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
         translated_text: text["translated_text"],
         status: text["status"] || "pending",
         vo_status: text["vo_status"] || "none",
-        vo_asset_id: text["vo_asset_id"],
+        vo_asset_id: vo_asset_id,
         translator_notes: text["translator_notes"],
         reviewer_notes: text["reviewer_notes"],
         speaker_sheet_id: speaker_id,
@@ -473,6 +475,16 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   defp remap_source_id("flow", old_id, id_maps), do: Map.get(id_maps.flow, old_id, old_id)
   defp remap_source_id("scene", old_id, id_maps), do: Map.get(id_maps.scene, old_id, old_id)
   defp remap_source_id(_type, old_id, _id_maps), do: old_id
+
+  defp remap_vo_asset_id(nil, _snapshot_data, _project_id, _user_id, _opts), do: nil
+
+  defp remap_vo_asset_id(asset_id, snapshot_data, project_id, user_id, opts) do
+    AssetHashResolver.resolve_asset_fk(asset_id, snapshot_data, project_id, user_id, localization_asset_opts(opts))
+  end
+
+  defp localization_asset_opts(opts) do
+    if Keyword.get(opts, :template_clone, false), do: [asset_mode: :copy], else: []
+  end
 
   defp restore_glossary(_project_id, [], _now), do: :ok
 

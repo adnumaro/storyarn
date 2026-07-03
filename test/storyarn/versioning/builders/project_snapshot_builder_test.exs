@@ -8,6 +8,9 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Assets
+  alias Storyarn.Assets.BlobStore
+  alias Storyarn.Localization
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
 
   setup do
@@ -140,7 +143,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
         translated_text: "Hola"
       })
 
-      Storyarn.Localization.create_glossary_entry(project, %{
+      Localization.create_glossary_entry(project, %{
         source_term: "Dragon",
         source_locale: "en",
         target_term: "Dragón",
@@ -165,6 +168,30 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
       assert glossary["target_term"] == "Dragón"
     end
 
+    test "includes localization voice asset metadata", %{project: project, user: user} do
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      voice_asset = uploaded_asset(project, user, "localized-line.mp3", "voice-line", "audio/mpeg")
+
+      text =
+        localized_text_fixture(project.id, %{
+          locale_code: "es",
+          source_text: "Hello",
+          translated_text: "Hola"
+        })
+
+      {:ok, _text} = Localization.update_text(text, %{vo_asset_id: voice_asset.id, vo_status: "recorded"})
+
+      snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
+      asset_id = to_string(voice_asset.id)
+
+      assert snapshot["asset_blob_hashes"][asset_id] == voice_asset.blob_hash
+      assert snapshot["asset_metadata"][asset_id]["blob_key"] =~ "projects/#{project.id}/blobs/"
+
+      [text_snapshot] = snapshot["localization"]["texts"]
+      assert text_snapshot["vo_asset_id"] == voice_asset.id
+    end
+
     test "restores localization data", %{project: project} do
       source_language_fixture(project, %{locale_code: "en", name: "English"})
       language_fixture(project, %{locale_code: "es", name: "Spanish"})
@@ -175,7 +202,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
         translated_text: "Hola"
       })
 
-      Storyarn.Localization.create_glossary_entry(project, %{
+      Localization.create_glossary_entry(project, %{
         source_term: "Dragon",
         source_locale: "en",
         target_term: "Dragón",
@@ -185,22 +212,42 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
       snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
 
       # Modify localization data
-      [text] = Storyarn.Localization.list_texts_for_export(project.id, ["es"])
-      Storyarn.Localization.update_text(text, %{translated_text: "Modified"})
+      [text] = Localization.list_texts_for_export(project.id, ["es"])
+      Localization.update_text(text, %{translated_text: "Modified"})
 
       # Restore
       {:ok, _result} = ProjectSnapshotBuilder.restore_snapshot(project.id, snapshot)
 
       # Verify localization was restored
-      languages = Storyarn.Localization.list_languages(project.id)
+      languages = Localization.list_languages(project.id)
       assert length(languages) == 2
 
-      [restored_text] = Storyarn.Localization.list_texts_for_export(project.id, ["es"])
+      [restored_text] = Localization.list_texts_for_export(project.id, ["es"])
       assert restored_text.translated_text == "Hola"
 
-      glossary = Storyarn.Localization.list_glossary_for_export(project.id)
+      glossary = Localization.list_glossary_for_export(project.id)
       assert length(glossary) == 1
       assert hd(glossary).target_term == "Dragón"
     end
+  end
+
+  defp uploaded_asset(project, user, filename, content, content_type) do
+    {:ok, asset} =
+      Assets.upload_binary_and_create_asset(
+        content,
+        %{filename: filename, content_type: content_type},
+        project,
+        user
+      )
+
+    on_exit(fn ->
+      Assets.storage_delete(asset.key)
+
+      Assets.storage_delete(
+        BlobStore.blob_key(project.id, asset.blob_hash, BlobStore.ext_from_content_type(content_type))
+      )
+    end)
+
+    asset
   end
 end

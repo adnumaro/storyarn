@@ -18,6 +18,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   alias Storyarn.Scenes
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
+  alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.Builders.FlowBuilder
   alias Storyarn.Versioning.Builders.SceneBuilder
   alias Storyarn.Versioning.Builders.SheetBuilder
@@ -45,6 +46,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
         else: Localization.list_texts_for_export(project_id, locale_codes)
 
     glossary = Localization.list_glossary_for_export(project_id)
+    {asset_blob_hashes, asset_metadata} = localization_asset_metadata(texts)
 
     entity_counts = %{
       "sheets" => length(sheets),
@@ -59,6 +61,8 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
       "format_version" => 2,
       "project" => project_to_snapshot(project),
       "entity_counts" => entity_counts,
+      "asset_blob_hashes" => asset_blob_hashes,
+      "asset_metadata" => asset_metadata,
       "sheets" =>
         Enum.map(sheets, fn sheet ->
           %{"id" => sheet.id, "snapshot" => SheetBuilder.build_snapshot(sheet)}
@@ -94,6 +98,12 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
         "glossary" => Enum.map(glossary, &glossary_entry_to_snapshot/1)
       }
     }
+  end
+
+  defp localization_asset_metadata(texts) do
+    texts
+    |> Enum.map(& &1.vo_asset_id)
+    |> AssetHashResolver.resolve_hashes()
   end
 
   defp project_to_snapshot(project) do

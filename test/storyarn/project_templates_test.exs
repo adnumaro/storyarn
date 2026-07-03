@@ -362,7 +362,7 @@ defmodule Storyarn.ProjectTemplatesTest do
              end)
     end
 
-    test "detects localization voice assets left cross-project after materialization" do
+    test "passes when localization voice assets are copied during materialization" do
       user = AccountsFixtures.user_fixture()
       project = ProjectsFixtures.project_fixture(user)
       flow = flow_fixture(project)
@@ -381,14 +381,9 @@ defmodule Storyarn.ProjectTemplatesTest do
 
       assert {:ok, _text} = Localization.update_text(text, %{vo_asset_id: voice_asset.id, vo_status: "recorded"})
 
-      assert {:error, report} = Audit.run(project.id)
-      assert report["materialization"]["status"] == "failed"
-
-      assert Enum.any?(report["errors"], fn error ->
-               error["type"] == "cross_project_asset_after_materialization" and
-                 error["field"] == "vo_asset_id" and
-                 error["asset_id"] == voice_asset.id
-             end)
+      assert {:ok, report} = Audit.run(project.id)
+      assert report["materialization"]["status"] == "passed"
+      refute Enum.any?(report["errors"], &(&1["field"] == "vo_asset_id"))
     end
   end
 

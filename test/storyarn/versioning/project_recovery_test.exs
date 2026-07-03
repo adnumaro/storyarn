@@ -4,12 +4,15 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
   import Ecto.Query, warn: false
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
+  import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Assets
+  alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
+  alias Storyarn.Localization
   alias Storyarn.Repo
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
@@ -375,10 +378,51 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
         |> Enum.map(&(&1.data || %{})["audio_asset_id"])
         |> Enum.find(& &1)
 
-      recovered_audio = Repo.get!(Storyarn.Assets.Asset, recovered_audio_id)
+      recovered_audio = Repo.get!(Asset, recovered_audio_id)
       assert recovered_audio.project_id == recovered.id
       refute recovered_audio.id == audio_asset.id
       on_exit(fn -> Assets.storage_delete(recovered_audio.key) end)
+    end
+
+    test "template clone copies localization voice assets into recovered project", %{
+      project: project,
+      workspace_id: workspace_id,
+      user: user
+    } do
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      voice_asset = uploaded_asset(project, user, "localized-line.mp3", "voice-line", "audio/mpeg")
+
+      flow = flow_fixture(project, %{name: "Localized Flow"})
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello"}})
+
+      text =
+        localized_text_fixture(project.id, %{
+          source_type: "flow_node",
+          source_id: node.id,
+          source_field: "text",
+          source_text: "Hello",
+          locale_code: "es",
+          translated_text: "Hola"
+        })
+
+      {:ok, _text} = Localization.update_text(text, %{vo_asset_id: voice_asset.id, vo_status: "recorded"})
+
+      snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
+
+      assert {:ok, recovered} =
+               ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id,
+                 name: "Template Copy",
+                 template_clone: true
+               )
+
+      [recovered_text] = Localization.list_texts_for_export(recovered.id, ["es"])
+      recovered_voice_asset = Repo.get!(Asset, recovered_text.vo_asset_id)
+
+      assert recovered_voice_asset.project_id == recovered.id
+      refute recovered_voice_asset.id == voice_asset.id
+      assert {:ok, _binary} = Assets.storage_download(recovered_voice_asset.key)
+      on_exit(fn -> Assets.storage_delete(recovered_voice_asset.key) end)
     end
   end
 
