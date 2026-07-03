@@ -14,6 +14,7 @@ defmodule Storyarn.Projects.Project do
   alias Storyarn.ProductMetrics.Taxonomy
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Projects.ProjectMembership
+  alias Storyarn.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Workspaces.Workspace
 
   @type t :: %__MODULE__{
@@ -41,6 +42,8 @@ defmodule Storyarn.Projects.Project do
           restoration_started_at: DateTime.t() | nil,
           deleted_at: DateTime.t() | nil,
           deleted_by_id: integer() | nil,
+          created_from_template_version_id: integer() | nil,
+          created_from_template_version: ProjectTemplateVersion.t() | NotLoaded.t() | nil,
           inserted_at: DateTime.t() | nil,
           last_activity_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
@@ -66,6 +69,7 @@ defmodule Storyarn.Projects.Project do
     field :deleted_at, :utc_datetime
     belongs_to :deleted_by, User
     field :last_activity_at, :utc_datetime
+    belongs_to :created_from_template_version, ProjectTemplateVersion
 
     field :snapshot_count, :integer, virtual: true, default: 0
 
