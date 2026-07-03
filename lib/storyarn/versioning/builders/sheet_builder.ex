@@ -2,8 +2,9 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   @moduledoc """
   Snapshot builder for sheets.
 
-  Captures sheet metadata (name, shortcut, avatar, banner) and all blocks
-  with their type, config, value, position, and variable settings.
+  Captures sheet metadata (name, shortcut, avatars, banner) and all blocks
+  with their type, config, value, position, variable settings, table data, and
+  gallery images.
   """
 
   @behaviour Storyarn.Versioning.SnapshotBuilder
@@ -15,6 +16,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   alias Ecto.Multi
   alias Storyarn.Repo
   alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.BlockGalleryImage
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Sheets.TableColumn
@@ -32,12 +34,14 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     sheet =
       Repo.preload(
         sheet,
-        [blocks: {active_blocks, [:table_columns, :table_rows]}, avatars: :asset],
+        [blocks: {active_blocks, [:table_columns, :table_rows, gallery_images: :asset]}, avatars: :asset],
         force: true
       )
 
+    avatar_snapshots = Enum.map(sorted_avatars(sheet.avatars), &avatar_to_snapshot/1)
+    block_snapshots = Enum.map(sheet.blocks, &block_to_snapshot/1)
     default_avatar_asset_id = default_avatar_asset_id(sheet)
-    asset_ids = [default_avatar_asset_id, sheet.banner_asset_id]
+    asset_ids = [sheet.banner_asset_id | snapshot_asset_ids(avatar_snapshots, block_snapshots)]
     {hash_map, metadata_map} = AssetHashResolver.resolve_hashes(asset_ids)
 
     %{
@@ -46,12 +50,35 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       "shortcut" => sheet.shortcut,
       "description" => sheet.description,
       "avatar_asset_id" => default_avatar_asset_id,
+      "avatars" => avatar_snapshots,
       "banner_asset_id" => sheet.banner_asset_id,
       "color" => sheet.color,
       "hidden_inherited_block_ids" => sheet.hidden_inherited_block_ids || [],
-      "blocks" => Enum.map(sheet.blocks, &block_to_snapshot/1),
+      "blocks" => block_snapshots,
       "asset_blob_hashes" => hash_map,
       "asset_metadata" => metadata_map
+    }
+  end
+
+  defp snapshot_asset_ids(avatar_snapshots, block_snapshots) do
+    avatar_ids = Enum.map(avatar_snapshots, & &1["asset_id"])
+
+    gallery_ids =
+      block_snapshots
+      |> Enum.flat_map(&Map.get(&1, "gallery_images", []))
+      |> Enum.map(& &1["asset_id"])
+
+    avatar_ids ++ gallery_ids
+  end
+
+  defp avatar_to_snapshot(%SheetAvatar{} = avatar) do
+    %{
+      "original_id" => avatar.id,
+      "asset_id" => avatar.asset_id,
+      "name" => avatar.name,
+      "notes" => avatar.notes,
+      "position" => avatar.position,
+      "is_default" => avatar.is_default
     }
   end
 
@@ -70,14 +97,38 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       "required" => block.required
     }
 
-    if block.type == "table" do
-      Map.put(base, "table_data", %{
-        "columns" => Enum.map(block.table_columns, &column_to_snapshot/1),
-        "rows" => Enum.map(block.table_rows, &row_to_snapshot/1)
-      })
-    else
-      base
-    end
+    base
+    |> maybe_put_table_data(block)
+    |> maybe_put_gallery_images(block)
+  end
+
+  defp maybe_put_table_data(snapshot, %Block{type: "table"} = block) do
+    Map.put(snapshot, "table_data", %{
+      "columns" => Enum.map(block.table_columns, &column_to_snapshot/1),
+      "rows" => Enum.map(block.table_rows, &row_to_snapshot/1)
+    })
+  end
+
+  defp maybe_put_table_data(snapshot, _block), do: snapshot
+
+  defp maybe_put_gallery_images(snapshot, %Block{type: "gallery"} = block) do
+    Map.put(
+      snapshot,
+      "gallery_images",
+      Enum.map(sorted_gallery_images(block.gallery_images), &gallery_image_to_snapshot/1)
+    )
+  end
+
+  defp maybe_put_gallery_images(snapshot, _block), do: snapshot
+
+  defp gallery_image_to_snapshot(%BlockGalleryImage{} = image) do
+    %{
+      "original_id" => image.id,
+      "asset_id" => image.asset_id,
+      "label" => image.label,
+      "description" => image.description,
+      "position" => image.position
+    }
   end
 
   defp column_to_snapshot(%TableColumn{} = col) do
@@ -108,14 +159,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     fn ->
       now = MaterializationHelpers.now()
       preserve_external_refs? = MaterializationHelpers.preserve_external_refs?(opts)
-
-      avatar_asset_id =
-        resolve_sheet_asset(
-          snapshot["avatar_asset_id"],
-          snapshot,
-          project_id,
-          preserve_external_refs?
-        )
+      avatar_entries = build_avatar_entries(snapshot, project_id, now, opts)
 
       sheet_attrs =
         Map.merge(
@@ -126,8 +170,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
             description: snapshot["description"],
             color: snapshot["color"],
             hidden_inherited_block_ids: snapshot["hidden_inherited_block_ids"] || [],
-            banner_asset_id:
-              resolve_sheet_asset(snapshot["banner_asset_id"], snapshot, project_id, preserve_external_refs?),
+            banner_asset_id: resolve_sheet_asset(snapshot["banner_asset_id"], snapshot, project_id, opts),
             parent_id: MaterializationHelpers.root_parent_id(opts),
             position: MaterializationHelpers.root_position(opts)
           },
@@ -136,7 +179,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
       with {:ok, sheet_id} <-
              MaterializationHelpers.insert_one_returning_id(Repo, Sheet, sheet_attrs),
-           :ok <- maybe_create_avatar(sheet_id, avatar_asset_id, now),
+           :ok <- insert_sheet_avatars(sheet_id, avatar_entries),
            {:ok, inserted_blocks, block_id_map} <-
              insert_sheet_blocks(sheet_id, snapshot["blocks"] || [], now),
            :ok <-
@@ -146,7 +189,8 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
                block_id_map,
                preserve_external_refs?
              ),
-           :ok <- restore_table_data(Repo, inserted_blocks, snapshot["blocks"] || [], now) do
+           :ok <- restore_table_data(Repo, inserted_blocks, snapshot["blocks"] || [], now),
+           :ok <- restore_gallery_images(Repo, inserted_blocks, snapshot, project_id, now, opts) do
         sheet =
           Sheet
           |> Repo.get!(sheet_id)
@@ -170,13 +214,8 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   end
 
   @impl true
-  def restore_snapshot(%Sheet{} = sheet, snapshot, _opts \\ []) do
-    avatar_asset_id =
-      AssetHashResolver.resolve_asset_fk(
-        snapshot["avatar_asset_id"],
-        snapshot,
-        sheet.project_id
-      )
+  def restore_snapshot(%Sheet{} = sheet, snapshot, opts \\ []) do
+    avatar_entries = build_avatar_entries(snapshot, sheet.project_id, MaterializationHelpers.now(), opts)
 
     Multi.new()
     |> Multi.update(:sheet, fn _changes ->
@@ -185,10 +224,11 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
         shortcut: snapshot["shortcut"],
         color: snapshot["color"],
         banner_asset_id:
-          AssetHashResolver.resolve_asset_fk(
+          resolve_sheet_asset(
             snapshot["banner_asset_id"],
             snapshot,
-            sheet.project_id
+            sheet.project_id,
+            opts
           )
       })
     end)
@@ -196,26 +236,16 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       from(sa in SheetAvatar, where: sa.sheet_id == ^sheet.id)
     end)
     |> Multi.run(:restore_avatar, fn _repo, _changes ->
-      if avatar_asset_id do
-        now = Storyarn.Shared.TimeHelpers.now()
-
-        Repo.insert(%SheetAvatar{
-          sheet_id: sheet.id,
-          asset_id: avatar_asset_id,
-          is_default: true,
-          position: 0,
-          inserted_at: now,
-          updated_at: now
-        })
-      else
-        {:ok, nil}
+      case insert_sheet_avatars(sheet.id, avatar_entries) do
+        :ok -> {:ok, length(avatar_entries)}
+        {:error, reason} -> {:error, reason}
       end
     end)
     |> Multi.delete_all(:delete_blocks, fn _changes ->
       from(b in Block, where: b.sheet_id == ^sheet.id)
     end)
     |> Multi.run(:restore_blocks, fn repo, _changes ->
-      restore_blocks_from_snapshot(repo, sheet.id, snapshot["blocks"] || [])
+      restore_blocks_from_snapshot(repo, sheet.id, sheet.project_id, snapshot, opts)
     end)
     |> Repo.transaction()
     |> case do
@@ -227,22 +257,29 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     end
   end
 
-  defp restore_blocks_from_snapshot(_repo, _sheet_id, []), do: {:ok, 0}
+  defp restore_blocks_from_snapshot(repo, sheet_id, project_id, snapshot, opts) do
+    blocks_data = snapshot["blocks"] || []
 
-  defp restore_blocks_from_snapshot(repo, sheet_id, blocks_data) do
-    now = MaterializationHelpers.now()
-    existing_source_ids = load_existing_source_ids(repo, blocks_data)
+    if blocks_data == [] do
+      {:ok, 0}
+    else
+      now = MaterializationHelpers.now()
+      existing_source_ids = load_existing_source_ids(repo, blocks_data)
 
-    sorted_data = Enum.sort_by(blocks_data, & &1["position"])
+      sorted_data = Enum.sort_by(blocks_data, & &1["position"])
 
-    blocks =
-      sorted_data
-      |> Enum.map(&snapshot_to_block_entry(&1, sheet_id, existing_source_ids, now))
-      |> deduplicate_variable_names(MapSet.new())
+      blocks =
+        sorted_data
+        |> Enum.map(&snapshot_to_block_entry(&1, sheet_id, existing_source_ids, now))
+        |> deduplicate_variable_names(MapSet.new())
 
-    {count, inserted} = repo.insert_all(Block, blocks, returning: [:id, :type, :position])
-    restore_table_data(repo, inserted, sorted_data, now)
-    {:ok, count}
+      {count, inserted} = repo.insert_all(Block, blocks, returning: [:id, :type, :position])
+
+      with :ok <- restore_table_data(repo, inserted, sorted_data, now),
+           :ok <- restore_gallery_images(repo, inserted, snapshot, project_id, now, opts) do
+        {:ok, count}
+      end
+    end
   end
 
   defp load_existing_source_ids(repo, blocks_data) do
@@ -362,6 +399,54 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     end
   end
 
+  defp restore_gallery_images(_repo, [], _snapshot, _project_id, _now, _opts), do: :ok
+
+  defp restore_gallery_images(repo, inserted_blocks, snapshot, project_id, now, opts) do
+    inserted_by_position = Map.new(inserted_blocks, &{&1.position, &1.id})
+
+    entries =
+      snapshot
+      |> Map.get("blocks", [])
+      |> Enum.flat_map(fn block_data ->
+        block_id = Map.get(inserted_by_position, block_data["position"])
+        gallery_image_entries(block_id, block_data, snapshot, project_id, now, opts)
+      end)
+
+    MaterializationHelpers.insert_all(repo, BlockGalleryImage, entries)
+  end
+
+  defp gallery_image_entries(nil, _block_data, _snapshot, _project_id, _now, _opts), do: []
+
+  defp gallery_image_entries(_block_id, %{"type" => type}, _snapshot, _project_id, _now, _opts) when type != "gallery",
+    do: []
+
+  defp gallery_image_entries(block_id, block_data, snapshot, project_id, now, opts) do
+    block_data
+    |> Map.get("gallery_images", [])
+    |> Enum.map(fn image_data ->
+      gallery_image_entry(image_data, block_id, snapshot, project_id, now, opts)
+    end)
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp gallery_image_entry(image_data, block_id, snapshot, project_id, now, opts) do
+    case resolve_sheet_asset(image_data["asset_id"], snapshot, project_id, opts) do
+      nil ->
+        nil
+
+      asset_id ->
+        %{
+          block_id: block_id,
+          asset_id: asset_id,
+          label: image_data["label"],
+          description: image_data["description"],
+          position: image_data["position"] || 0,
+          inserted_at: now,
+          updated_at: now
+        }
+    end
+  end
+
   defp insert_sheet_blocks(_sheet_id, [], _now), do: {:ok, [], %{}}
 
   defp insert_sheet_blocks(sheet_id, blocks_data, now) do
@@ -419,10 +504,29 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     end)
   end
 
-  defp resolve_sheet_asset(_asset_id, _snapshot, _project_id, false), do: nil
+  defp resolve_sheet_asset(asset_id, snapshot, project_id, opts) do
+    case sheet_asset_mode(opts) do
+      :drop ->
+        nil
 
-  defp resolve_sheet_asset(asset_id, snapshot, project_id, true) do
-    AssetHashResolver.resolve_asset_fk(asset_id, snapshot, project_id)
+      asset_mode ->
+        AssetHashResolver.resolve_asset_fk(asset_id, snapshot, project_id, Keyword.get(opts, :user_id),
+          asset_mode: asset_mode
+        )
+    end
+  end
+
+  defp sheet_asset_mode(opts) do
+    cond do
+      mode = Keyword.get(opts, :asset_mode) ->
+        mode
+
+      MaterializationHelpers.preserve_external_refs?(opts) ->
+        :reuse
+
+      true ->
+        :drop
+    end
   end
 
   defp default_avatar_asset_id(%{avatars: avatars}) when is_list(avatars) do
@@ -434,20 +538,70 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
   defp default_avatar_asset_id(_), do: nil
 
-  defp maybe_create_avatar(_sheet_id, nil, _now), do: :ok
+  defp sorted_avatars(avatars) when is_list(avatars) do
+    Enum.sort_by(avatars, &{&1.position || 0, &1.id || 0})
+  end
 
-  defp maybe_create_avatar(sheet_id, asset_id, now) do
-    case Repo.insert(%SheetAvatar{
-           sheet_id: sheet_id,
-           asset_id: asset_id,
-           is_default: true,
-           position: 0,
-           inserted_at: now,
-           updated_at: now
-         }) do
-      {:ok, _} -> :ok
-      {:error, reason} -> {:error, reason}
+  defp sorted_avatars(_avatars), do: []
+
+  defp sorted_gallery_images(images) when is_list(images) do
+    Enum.sort_by(images, &{&1.position || 0, &1.id || 0})
+  end
+
+  defp sorted_gallery_images(_images), do: []
+
+  defp build_avatar_entries(snapshot, project_id, now, opts) do
+    snapshot
+    |> avatar_snapshots()
+    |> Enum.map(&avatar_entry(&1, snapshot, project_id, now, opts))
+    |> Enum.reject(&is_nil/1)
+    |> ensure_default_avatar()
+  end
+
+  defp avatar_snapshots(%{"avatars" => avatars}) when is_list(avatars) and avatars != [] do
+    avatars
+  end
+
+  defp avatar_snapshots(%{"avatar_asset_id" => asset_id}) when not is_nil(asset_id) do
+    [%{"asset_id" => asset_id, "position" => 0, "is_default" => true}]
+  end
+
+  defp avatar_snapshots(_snapshot), do: []
+
+  defp avatar_entry(avatar_data, snapshot, project_id, now, opts) do
+    case resolve_sheet_asset(avatar_data["asset_id"], snapshot, project_id, opts) do
+      nil ->
+        nil
+
+      asset_id ->
+        %{
+          asset_id: asset_id,
+          name: avatar_data["name"],
+          notes: avatar_data["notes"],
+          position: avatar_data["position"] || 0,
+          is_default: avatar_data["is_default"] || false,
+          inserted_at: now,
+          updated_at: now
+        }
     end
+  end
+
+  defp ensure_default_avatar([]), do: []
+
+  defp ensure_default_avatar(entries) do
+    if Enum.any?(entries, & &1.is_default) do
+      entries
+    else
+      [first | rest] = entries
+      [%{first | is_default: true} | rest]
+    end
+  end
+
+  defp insert_sheet_avatars(_sheet_id, []), do: :ok
+
+  defp insert_sheet_avatars(sheet_id, avatar_entries) do
+    entries = Enum.map(avatar_entries, &Map.put(&1, :sheet_id, sheet_id))
+    MaterializationHelpers.insert_all(Repo, SheetAvatar, entries)
   end
 
   defp update_inherited_from_block(block_id, remapped) do
@@ -471,7 +625,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
   # ========== Diff Snapshots ==========
 
-  @block_compare_fields ~w(type config value is_constant variable_name scope required detached inherited_from_block_id table_data)
+  @block_compare_fields ~w(type config value is_constant variable_name scope required detached inherited_from_block_id table_data gallery_images)
 
   @impl true
   def diff_snapshots(old_snapshot, new_snapshot) do
@@ -503,6 +657,13 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       "avatar_asset_id",
       :property,
       dgettext("sheets", "Changed avatar")
+    )
+    |> DiffHelpers.check_field_change(
+      old_snapshot,
+      new_snapshot,
+      "avatars",
+      :property,
+      dgettext("sheets", "Changed avatars")
     )
     |> DiffHelpers.check_field_change(
       old_snapshot,
@@ -586,24 +747,41 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
   @impl true
   def scan_references(snapshot) do
-    refs = []
-
     refs =
-      refs
-      |> maybe_add_ref(:asset, snapshot["avatar_asset_id"], dgettext("sheets", "Avatar image"))
+      []
+      |> add_avatar_refs(snapshot)
       |> maybe_add_ref(:asset, snapshot["banner_asset_id"], dgettext("sheets", "Banner image"))
 
     (snapshot["blocks"] || [])
     |> Enum.with_index(1)
     |> Enum.reduce(refs, fn {block, idx}, acc ->
-      maybe_add_ref(
-        acc,
+      acc
+      |> maybe_add_ref(
         :block,
         block["inherited_from_block_id"],
         dgettext("sheets", "Block #%{n} — inherited source", n: idx)
       )
+      |> add_gallery_refs(block, idx)
     end)
   end
+
+  defp add_avatar_refs(refs, %{"avatars" => avatars}) when is_list(avatars) and avatars != [] do
+    Enum.reduce(avatars, refs, fn avatar, acc ->
+      maybe_add_ref(acc, :asset, avatar["asset_id"], dgettext("sheets", "Avatar image"))
+    end)
+  end
+
+  defp add_avatar_refs(refs, snapshot) do
+    maybe_add_ref(refs, :asset, snapshot["avatar_asset_id"], dgettext("sheets", "Avatar image"))
+  end
+
+  defp add_gallery_refs(refs, %{"gallery_images" => images}, block_index) when is_list(images) do
+    Enum.reduce(images, refs, fn image, acc ->
+      maybe_add_ref(acc, :asset, image["asset_id"], dgettext("sheets", "Block #%{n} gallery image", n: block_index))
+    end)
+  end
+
+  defp add_gallery_refs(refs, _block, _block_index), do: refs
 
   defp maybe_add_ref(refs, _type, nil, _context), do: refs
 

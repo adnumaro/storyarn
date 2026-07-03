@@ -6,6 +6,9 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Assets
+  alias Storyarn.Assets.BlobStore
+  alias Storyarn.Sheets
   alias Storyarn.Versioning.Builders.SheetBuilder
 
   setup do
@@ -48,6 +51,42 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       [block] = snapshot["blocks"]
       refute Map.has_key?(block, "id")
     end
+
+    test "captures all avatars and gallery images", %{project: project, sheet: sheet, user: user} do
+      avatar_asset = uploaded_image_asset(project, user, "default-avatar.png", "avatar-default")
+      expression_asset = uploaded_image_asset(project, user, "expression-avatar.png", "avatar-expression")
+      gallery_asset = uploaded_image_asset(project, user, "gallery-image.png", "gallery-image")
+
+      {:ok, _avatar} = Sheets.add_avatar(sheet, avatar_asset.id, %{name: "Default"})
+      {:ok, _expression} = Sheets.add_avatar(sheet, expression_asset.id, %{name: "Expression"})
+
+      gallery_block =
+        block_fixture(sheet, %{
+          type: "gallery",
+          position: 0,
+          config: %{"label" => "Concept Art"},
+          value: %{}
+        })
+
+      {:ok, gallery_image} = Sheets.add_gallery_image(gallery_block, gallery_asset.id)
+      {:ok, _gallery_image} = Sheets.update_gallery_image(gallery_image, %{label: "Gate", description: "Old gate"})
+
+      snapshot = SheetBuilder.build_snapshot(sheet)
+
+      assert Enum.map(snapshot["avatars"], & &1["asset_id"]) == [avatar_asset.id, expression_asset.id]
+
+      gallery_snapshot = Enum.find(snapshot["blocks"], &(&1["type"] == "gallery"))
+
+      assert [gallery_image_snapshot] = gallery_snapshot["gallery_images"]
+      assert gallery_image_snapshot["asset_id"] == gallery_asset.id
+      assert gallery_image_snapshot["label"] == "Gate"
+      assert gallery_image_snapshot["description"] == "Old gate"
+
+      avatar_id = to_string(avatar_asset.id)
+      gallery_id = to_string(gallery_asset.id)
+      assert snapshot["asset_blob_hashes"][avatar_id] == avatar_asset.blob_hash
+      assert snapshot["asset_metadata"][gallery_id]["blob_key"] =~ "projects/#{project.id}/blobs/"
+    end
   end
 
   describe "restore_snapshot/3" do
@@ -69,14 +108,14 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       snapshot = SheetBuilder.build_snapshot(sheet)
 
       # Modify the sheet
-      {:ok, modified_sheet} = Storyarn.Sheets.update_sheet(sheet, %{name: "Modified"})
-      Storyarn.Sheets.delete_block(hd(Storyarn.Sheets.list_blocks(sheet.id)))
+      {:ok, modified_sheet} = Sheets.update_sheet(sheet, %{name: "Modified"})
+      Sheets.delete_block(hd(Sheets.list_blocks(sheet.id)))
 
       # Restore from snapshot
       {:ok, restored} = SheetBuilder.restore_snapshot(modified_sheet, snapshot)
 
       assert restored.name == sheet.name
-      blocks = Storyarn.Sheets.list_blocks(sheet.id)
+      blocks = Sheets.list_blocks(sheet.id)
       assert length(blocks) == 2
     end
   end
@@ -107,8 +146,8 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       table_block = table_block_fixture(sheet, %{position: 2})
       column = table_column_fixture(table_block, %{name: "Score", type: "number"})
 
-      [default_row] = Storyarn.Sheets.list_table_rows(table_block.id)
-      Storyarn.Sheets.update_table_cell(default_row, column.slug, "99")
+      [default_row] = Sheets.list_table_rows(table_block.id)
+      Sheets.update_table_cell(default_row, column.slug, "99")
 
       snapshot = SheetBuilder.build_snapshot(sheet)
 
@@ -125,16 +164,67 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       assert Map.has_key?(id_maps.block, block_a.id)
       assert Map.has_key?(id_maps.block, block_b.id)
 
-      blocks = Storyarn.Sheets.list_blocks(materialized.id)
+      blocks = Sheets.list_blocks(materialized.id)
       cloned_b = Enum.find(blocks, &(&1.variable_name == "health_copy"))
       assert cloned_b.inherited_from_block_id == id_maps.block[block_a.id]
 
       cloned_table = Enum.find(blocks, &(&1.type == "table"))
       assert cloned_table
-      assert Enum.any?(Storyarn.Sheets.list_table_columns(cloned_table.id), &(&1.name == "Score"))
+      assert Enum.any?(Sheets.list_table_columns(cloned_table.id), &(&1.name == "Score"))
 
-      [cloned_row | _] = Storyarn.Sheets.list_table_rows(cloned_table.id)
+      [cloned_row | _] = Sheets.list_table_rows(cloned_table.id)
       assert cloned_row.cells["score"] == "99"
+    end
+
+    test "copies avatars and gallery image assets into destination project", %{project: project, sheet: sheet, user: user} do
+      avatar_asset = uploaded_image_asset(project, user, "hero-avatar.png", "hero-avatar")
+      expression_asset = uploaded_image_asset(project, user, "hero-expression.png", "hero-expression")
+      gallery_asset = uploaded_image_asset(project, user, "hero-gallery.png", "hero-gallery")
+
+      {:ok, _avatar} = Sheets.add_avatar(sheet, avatar_asset.id, %{name: "Default"})
+      {:ok, _expression} = Sheets.add_avatar(sheet, expression_asset.id, %{name: "Expression"})
+
+      gallery_block =
+        block_fixture(sheet, %{
+          type: "gallery",
+          position: 0,
+          config: %{"label" => "References"},
+          value: %{}
+        })
+
+      {:ok, gallery_image} = Sheets.add_gallery_image(gallery_block, gallery_asset.id)
+      {:ok, _gallery_image} = Sheets.update_gallery_image(gallery_image, %{label: "Bridge"})
+
+      destination_project = project_fixture(user)
+      snapshot = SheetBuilder.build_snapshot(sheet)
+
+      assert {:ok, materialized, _id_maps} =
+               SheetBuilder.instantiate_snapshot(destination_project.id, snapshot,
+                 asset_mode: :copy,
+                 user_id: user.id,
+                 reset_shortcut: true
+               )
+
+      avatars = Sheets.list_avatars(materialized.id)
+      assert length(avatars) == 2
+
+      source_asset_ids = [avatar_asset.id, expression_asset.id, gallery_asset.id]
+
+      Enum.each(avatars, fn avatar ->
+        assert avatar.asset.project_id == destination_project.id
+        refute avatar.asset_id in source_asset_ids
+        assert {:ok, _binary} = Assets.storage_download(avatar.asset.key)
+        on_exit(fn -> Assets.storage_delete(avatar.asset.key) end)
+      end)
+
+      [cloned_gallery_block] = Enum.filter(Sheets.list_blocks(materialized.id), &(&1.type == "gallery"))
+      [cloned_gallery_image] = Sheets.list_gallery_images(cloned_gallery_block.id)
+
+      assert cloned_gallery_image.asset.project_id == destination_project.id
+      refute cloned_gallery_image.asset_id in source_asset_ids
+      assert cloned_gallery_image.label == "Bridge"
+      assert {:ok, _binary} = Assets.storage_download(cloned_gallery_image.asset.key)
+      on_exit(fn -> Assets.storage_delete(cloned_gallery_image.asset.key) end)
     end
   end
 
@@ -143,9 +233,9 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       table_block = table_block_fixture(sheet)
       _col = table_column_fixture(table_block, %{name: "Age", type: "number"})
 
-      [default_row] = Storyarn.Sheets.list_table_rows(table_block.id)
+      [default_row] = Sheets.list_table_rows(table_block.id)
 
-      Storyarn.Sheets.update_table_cell(default_row, "age", "25")
+      Sheets.update_table_cell(default_row, "age", "25")
 
       snapshot = SheetBuilder.build_snapshot(sheet)
 
@@ -165,27 +255,27 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       table_block = table_block_fixture(sheet)
       col = table_column_fixture(table_block, %{name: "Score", type: "number"})
 
-      [default_row] = Storyarn.Sheets.list_table_rows(table_block.id)
+      [default_row] = Sheets.list_table_rows(table_block.id)
 
-      Storyarn.Sheets.update_table_cell(default_row, col.slug, "99")
+      Sheets.update_table_cell(default_row, col.slug, "99")
 
       snapshot = SheetBuilder.build_snapshot(sheet)
 
       # Modify table data
-      Storyarn.Sheets.delete_table_column(col)
+      Sheets.delete_table_column(col)
 
       # Restore
       {:ok, _restored} = SheetBuilder.restore_snapshot(sheet, snapshot)
 
       # Verify table data was restored
-      blocks = Storyarn.Sheets.list_blocks(sheet.id)
+      blocks = Sheets.list_blocks(sheet.id)
       table = Enum.find(blocks, &(&1.type == "table"))
       assert table
 
-      columns = Storyarn.Sheets.list_table_columns(table.id)
+      columns = Sheets.list_table_columns(table.id)
       assert Enum.any?(columns, &(&1.name == "Score"))
 
-      rows = Storyarn.Sheets.list_table_rows(table.id)
+      rows = Sheets.list_table_rows(table.id)
       assert rows != []
       row = hd(rows)
       assert row.cells["score"] == "99"
@@ -298,5 +388,22 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       snapshot = %{"name" => "S", "shortcut" => "s", "blocks" => []}
       assert SheetBuilder.diff_snapshots(snapshot, snapshot) == []
     end
+  end
+
+  defp uploaded_image_asset(project, user, filename, content) do
+    {:ok, asset} =
+      Assets.upload_binary_and_create_asset(
+        content,
+        %{filename: filename, content_type: "image/png"},
+        project,
+        user
+      )
+
+    on_exit(fn ->
+      Assets.storage_delete(asset.key)
+      Assets.storage_delete(BlobStore.blob_key(project.id, asset.blob_hash, "png"))
+    end)
+
+    asset
   end
 end

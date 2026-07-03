@@ -2,6 +2,8 @@ defmodule Storyarn.ProjectTemplatesTest do
   use Storyarn.DataCase, async: false
 
   alias Storyarn.AccountsFixtures
+  alias Storyarn.Assets
+  alias Storyarn.Assets.BlobStore
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
@@ -138,6 +140,9 @@ defmodule Storyarn.ProjectTemplatesTest do
       scope = AccountsFixtures.user_scope_fixture(user)
       workspace = WorkspacesFixtures.workspace_fixture(user)
       project = ProjectsFixtures.project_fixture(user, %{workspace: workspace, name: "Source Project"})
+      source_sheet = Storyarn.SheetsFixtures.sheet_fixture(project, %{name: "Hero"})
+      source_asset = uploaded_image_asset(project, user, "template-avatar.png", "template-avatar")
+      {:ok, _avatar} = Storyarn.Sheets.add_avatar(source_sheet, source_asset.id, %{name: "Default"})
 
       assert {:ok, template} = ProjectTemplates.create_template_from_project(scope, project, %{name: "Starter"})
       version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
@@ -148,6 +153,13 @@ defmodule Storyarn.ProjectTemplatesTest do
       assert cloned_project.name == "My Starter Copy"
       assert cloned_project.created_from_template_version_id == version.id
       assert cloned_project.id != project.id
+
+      [cloned_sheet] = Storyarn.Sheets.list_all_sheets(cloned_project.id)
+      [cloned_avatar] = Storyarn.Sheets.list_avatars(cloned_sheet.id)
+      assert cloned_avatar.asset.project_id == cloned_project.id
+      refute cloned_avatar.asset_id == source_asset.id
+      assert {:ok, _binary} = Assets.storage_download(cloned_avatar.asset.key)
+      on_exit(fn -> Assets.storage_delete(cloned_avatar.asset.key) end)
 
       install = Repo.one!(ProjectTemplateInstall)
       assert install.project_template_version_id == version.id
@@ -221,5 +233,22 @@ defmodule Storyarn.ProjectTemplatesTest do
       target_pin: "in"
     })
     |> Repo.insert!()
+  end
+
+  defp uploaded_image_asset(project, user, filename, content) do
+    {:ok, asset} =
+      Assets.upload_binary_and_create_asset(
+        content,
+        %{filename: filename, content_type: "image/png"},
+        project,
+        user
+      )
+
+    on_exit(fn ->
+      Assets.storage_delete(asset.key)
+      Assets.storage_delete(BlobStore.blob_key(project.id, asset.blob_hash, "png"))
+    end)
+
+    asset
   end
 end

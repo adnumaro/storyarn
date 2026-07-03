@@ -99,7 +99,10 @@ defmodule Storyarn.ProjectTemplates do
          :ok <- Billing.can_create_project?(workspace),
          {:ok, snapshot} <- SnapshotStorage.load_snapshot(version.snapshot_storage_key),
          {:ok, project} <-
-           Versioning.recover_project(workspace.id, snapshot, scope.user.id, name: install_name(attrs, version)),
+           Versioning.recover_project(workspace.id, snapshot, scope.user.id,
+             name: install_name(attrs, version),
+             template_clone: true
+           ),
          {:ok, project} <- mark_template_origin(project, version),
          {:ok, _install} <- record_install(scope, version, workspace, project) do
       {:ok, project}

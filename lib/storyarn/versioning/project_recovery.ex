@@ -38,6 +38,8 @@ defmodule Storyarn.Versioning.ProjectRecovery do
 
   ## Options
   - `:name` - Override the recovered project name (default: "{original} (Recovered)")
+  - `:template_clone` - Copy snapshot assets into the new project instead of
+    reusing source project asset IDs.
   """
   @spec recover_project(integer(), map(), integer(), keyword()) ::
           {:ok, Project.t()} | {:error, term()}
@@ -46,7 +48,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
 
     Repo.transaction(
       fn ->
-        case do_recover(workspace_id, snapshot_data, user_id, name) do
+        case do_recover(workspace_id, snapshot_data, user_id, name, opts) do
           {:ok, project} -> project
           {:error, reason} -> Repo.rollback(reason)
         end
@@ -55,14 +57,14 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     )
   end
 
-  defp do_recover(workspace_id, snapshot_data, user_id, name) do
+  defp do_recover(workspace_id, snapshot_data, user_id, name, opts) do
     now = TimeHelpers.now()
 
     with {:ok, project} <- create_project(workspace_id, user_id, name, snapshot_data),
          {:ok, _membership} <- create_owner_membership(project, user_id),
-         {:ok, sheet_maps} <- recover_sheets(project.id, snapshot_data),
-         {:ok, scene_maps} <- recover_scenes(project.id, snapshot_data, sheet_maps.sheet),
-         {:ok, flow_maps} <- recover_flows(project.id, snapshot_data, scene_maps.scene) do
+         {:ok, sheet_maps} <- recover_sheets(project.id, snapshot_data, user_id, opts),
+         {:ok, scene_maps} <- recover_scenes(project.id, snapshot_data, sheet_maps.sheet, user_id, opts),
+         {:ok, flow_maps} <- recover_flows(project.id, snapshot_data, scene_maps.scene, user_id, opts) do
       id_maps = merge_recovery_id_maps([sheet_maps, scene_maps, flow_maps])
 
       remap_sheet_refs(id_maps, snapshot_data)
@@ -119,22 +121,40 @@ defmodule Storyarn.Versioning.ProjectRecovery do
 
   # ========== Phase A: Materialize Entities ==========
 
-  defp recover_sheets(project_id, snapshot_data) do
+  defp recover_sheets(project_id, snapshot_data, user_id, opts) do
+    builder_opts = materialization_opts(user_id, opts, preserve_external_refs: false)
+
     materialize_entities(snapshot_data["sheets"] || [], :sheet, fn snapshot ->
-      SheetBuilder.instantiate_snapshot(project_id, snapshot, preserve_external_refs: false)
+      SheetBuilder.instantiate_snapshot(project_id, snapshot, builder_opts)
     end)
   end
 
-  defp recover_scenes(project_id, snapshot_data, sheet_id_map) do
+  defp recover_scenes(project_id, snapshot_data, sheet_id_map, user_id, opts) do
+    builder_opts =
+      materialization_opts(user_id, opts, external_id_maps: %{sheet: sheet_id_map})
+
     materialize_entities(snapshot_data["scenes"] || [], :scene, fn snapshot ->
-      SceneBuilder.instantiate_snapshot(project_id, snapshot, external_id_maps: %{sheet: sheet_id_map})
+      SceneBuilder.instantiate_snapshot(project_id, snapshot, builder_opts)
     end)
   end
 
-  defp recover_flows(project_id, snapshot_data, scene_id_map) do
+  defp recover_flows(project_id, snapshot_data, scene_id_map, user_id, opts) do
+    builder_opts =
+      materialization_opts(user_id, opts, external_id_maps: %{scene: scene_id_map})
+
     materialize_entities(snapshot_data["flows"] || [], :flow, fn snapshot ->
-      FlowBuilder.instantiate_snapshot(project_id, snapshot, external_id_maps: %{scene: scene_id_map})
+      FlowBuilder.instantiate_snapshot(project_id, snapshot, builder_opts)
     end)
+  end
+
+  defp materialization_opts(user_id, recovery_opts, builder_opts) do
+    builder_opts = Keyword.put(builder_opts, :user_id, user_id)
+
+    if Keyword.get(recovery_opts, :template_clone, false) do
+      Keyword.put(builder_opts, :asset_mode, :copy)
+    else
+      builder_opts
+    end
   end
 
   defp materialize_entities(entries, entity_type, instantiate_fun) do

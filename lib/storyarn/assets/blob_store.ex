@@ -85,9 +85,9 @@ defmodule Storyarn.Assets.BlobStore do
   """
   @spec create_asset_from_blob(integer(), integer() | nil, String.t(), String.t(), map()) ::
           {:ok, Asset.t()} | {:error, term()}
-  def create_asset_from_blob(project_id, user_id, blob_hash, _blob_key, metadata) do
+  def create_asset_from_blob(project_id, user_id, blob_hash, source_key, metadata) do
     ext = ext_from_content_type(metadata["content_type"])
-    source_key = blob_key(project_id, blob_hash, ext)
+    source_key = source_key || blob_key(project_id, blob_hash, ext)
 
     uuid = Ecto.UUID.generate()
     filename = metadata["filename"]
@@ -102,7 +102,7 @@ defmodule Storyarn.Assets.BlobStore do
       size: metadata["size"],
       key: dest_key,
       url: Storage.get_url(dest_key),
-      metadata: Map.drop(metadata, ["filename", "content_type", "size"]),
+      metadata: Map.drop(metadata, ["filename", "content_type", "size", "key", "url", "project_id", "blob_key"]),
       blob_hash: blob_hash
     }
 
