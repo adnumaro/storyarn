@@ -186,6 +186,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
                flow_id,
                snapshot["connections"] || [],
                Enum.map(inserted_nodes, & &1.id),
+               node_id_map,
                now
              ) do
         flow =
@@ -238,10 +239,10 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       from(n in FlowNode, where: n.flow_id == ^flow.id)
     end)
     |> Multi.run(:restore_nodes, fn repo, _changes ->
-      restore_nodes(repo, flow.id, snapshot["nodes"] || [], snapshot, flow.project_id)
+      restore_nodes(repo, flow.id, snapshot["nodes"] || [], snapshot, flow.project_id, opts)
     end)
-    |> Multi.run(:restore_connections, fn repo, %{restore_nodes: node_ids} ->
-      restore_connections(repo, flow.id, snapshot["connections"] || [], node_ids)
+    |> Multi.run(:restore_connections, fn repo, %{restore_nodes: node_data} ->
+      restore_connections(repo, flow.id, snapshot["connections"] || [], node_data.node_ids, node_data.node_id_map)
     end)
     |> Repo.transaction()
     |> case do
@@ -253,51 +254,68 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     end
   end
 
-  defp restore_nodes(_repo, _flow_id, [], _snapshot, _project_id), do: {:ok, []}
+  defp restore_nodes(_repo, _flow_id, [], _snapshot, _project_id, _opts), do: {:ok, %{node_ids: [], node_id_map: %{}}}
 
-  defp restore_nodes(repo, flow_id, nodes_data, snapshot, project_id) do
+  defp restore_nodes(repo, flow_id, nodes_data, snapshot, project_id, opts) do
     now = MaterializationHelpers.now()
+    node_ids = restore_node_ids(repo, flow_id, nodes_data, snapshot, project_id, opts, now)
 
-    # Insert nodes one-by-one to get their IDs in order
-    node_ids =
-      Enum.map(nodes_data, fn node_data ->
-        data = resolve_node_asset_refs(node_data["data"] || %{}, snapshot, project_id)
-
-        attrs = %{
-          flow_id: flow_id,
-          type: node_data["type"],
-          position_x: node_data["position_x"] || 0.0,
-          position_y: node_data["position_y"] || 0.0,
-          data: data,
-          word_count: node_data["word_count"] || 0,
-          source: node_data["source"] || "manual",
-          inserted_at: now,
-          updated_at: now
-        }
-
-        case repo.insert_all(FlowNode, [attrs], returning: [:id]) do
-          {1, [%{id: id}]} -> id
-          {0, _} -> raise "Failed to insert flow node during restore"
-        end
-      end)
-
-    {:ok, node_ids}
+    {:ok, %{node_ids: node_ids, node_id_map: restored_node_id_map(nodes_data, node_ids)}}
   end
 
-  defp resolve_node_asset_refs(data, snapshot, project_id) do
+  defp restore_node_ids(repo, flow_id, nodes_data, snapshot, project_id, opts, now) do
+    # Insert nodes one-by-one to get their IDs in order.
+    Enum.map(nodes_data, fn node_data ->
+      restore_single_node(repo, flow_id, node_data, snapshot, project_id, opts, now)
+    end)
+  end
+
+  defp restore_single_node(repo, flow_id, node_data, snapshot, project_id, opts, now) do
+    data = resolve_node_asset_refs(node_data["data"] || %{}, snapshot, project_id, opts)
+
+    attrs = %{
+      flow_id: flow_id,
+      type: node_data["type"],
+      position_x: node_data["position_x"] || 0.0,
+      position_y: node_data["position_y"] || 0.0,
+      data: data,
+      word_count: node_data["word_count"] || 0,
+      source: node_data["source"] || "manual",
+      inserted_at: now,
+      updated_at: now
+    }
+
+    case repo.insert_all(FlowNode, [attrs], returning: [:id]) do
+      {1, [%{id: id}]} -> id
+      {0, _} -> raise "Failed to insert flow node during restore"
+    end
+  end
+
+  defp restored_node_id_map(nodes_data, node_ids) do
+    nodes_data
+    |> Enum.zip(node_ids)
+    |> Enum.reduce(%{}, fn {node_data, new_id}, acc ->
+      case node_data["original_id"] do
+        nil -> acc
+        old_id -> Map.put(acc, old_id, new_id)
+      end
+    end)
+  end
+
+  defp resolve_node_asset_refs(data, snapshot, project_id, opts) do
     case data["audio_asset_id"] do
       nil ->
         data
 
       audio_id ->
-        resolved = AssetHashResolver.resolve_asset_fk(audio_id, snapshot, project_id)
+        resolved = resolve_flow_asset(audio_id, snapshot, project_id, opts)
         Map.put(data, "audio_asset_id", resolved)
     end
   end
 
-  defp restore_connections(_repo, _flow_id, [], _node_ids), do: {:ok, 0}
+  defp restore_connections(_repo, _flow_id, [], _node_ids, _node_id_map), do: {:ok, 0}
 
-  defp restore_connections(repo, flow_id, connections_data, node_ids) do
+  defp restore_connections(repo, flow_id, connections_data, node_ids, node_id_map) do
     now = MaterializationHelpers.now()
     node_count = length(node_ids)
     index_to_id = node_ids |> Enum.with_index() |> Map.new(fn {id, idx} -> {idx, id} end)
@@ -316,8 +334,8 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
           flow_id: flow_id,
           source_node_id: Map.fetch!(index_to_id, conn["source_node_index"]),
           target_node_id: Map.fetch!(index_to_id, conn["target_node_index"]),
-          source_pin: conn["source_pin"],
-          target_pin: conn["target_pin"],
+          source_pin: remap_dynamic_pin(conn["source_pin"], node_id_map),
+          target_pin: remap_dynamic_pin(conn["target_pin"], node_id_map),
           label: conn["label"],
           inserted_at: now,
           updated_at: now
@@ -350,9 +368,9 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     MaterializationHelpers.insert_all_returning(repo, FlowNode, entries, [:id])
   end
 
-  defp insert_flow_connections(_repo, _flow_id, [], _node_id_map, _now), do: {:ok, %{}}
+  defp insert_flow_connections(_repo, _flow_id, [], _node_ids, _node_id_map, _now), do: {:ok, %{}}
 
-  defp insert_flow_connections(repo, flow_id, connections_data, node_ids, now) do
+  defp insert_flow_connections(repo, flow_id, connections_data, node_ids, node_id_map, now) do
     {entries, snapshots} =
       Enum.reduce(connections_data, {[], []}, fn conn, {acc_entries, acc_snapshots} ->
         source_node_id = Enum.at(node_ids, conn["source_node_index"])
@@ -365,8 +383,8 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
                 flow_id: flow_id,
                 source_node_id: source_node_id,
                 target_node_id: target_node_id,
-                source_pin: conn["source_pin"],
-                target_pin: conn["target_pin"],
+                source_pin: remap_dynamic_pin(conn["source_pin"], node_id_map),
+                target_pin: remap_dynamic_pin(conn["target_pin"], node_id_map),
                 label: conn["label"]
               },
               MaterializationHelpers.timestamps(now)
@@ -391,12 +409,51 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   end
 
   defp resolve_materialized_node_data(data, snapshot, project_id, opts) do
-    if MaterializationHelpers.preserve_external_refs?(opts) do
-      resolve_node_asset_refs(data, snapshot, project_id)
-    else
-      Map.put(data, "audio_asset_id", nil)
+    case flow_asset_mode(opts) do
+      :drop -> Map.put(data, "audio_asset_id", nil)
+      _asset_mode -> resolve_node_asset_refs(data, snapshot, project_id, opts)
     end
   end
+
+  defp resolve_flow_asset(asset_id, snapshot, project_id, opts) do
+    case flow_asset_mode(opts) do
+      :drop ->
+        nil
+
+      asset_mode ->
+        AssetHashResolver.resolve_asset_fk(asset_id, snapshot, project_id, Keyword.get(opts, :user_id),
+          asset_mode: asset_mode
+        )
+    end
+  end
+
+  defp flow_asset_mode(opts) do
+    cond do
+      mode = Keyword.get(opts, :asset_mode) ->
+        mode
+
+      MaterializationHelpers.preserve_external_refs?(opts) ->
+        :reuse
+
+      true ->
+        :drop
+    end
+  end
+
+  defp remap_dynamic_pin("exit_" <> old_id_text = pin, node_id_map) do
+    case Integer.parse(old_id_text) do
+      {old_id, ""} ->
+        case Map.get(node_id_map, old_id) do
+          nil -> pin
+          new_id -> "exit_#{new_id}"
+        end
+
+      _ ->
+        pin
+    end
+  end
+
+  defp remap_dynamic_pin(pin, _node_id_map), do: pin
 
   # ========== Diff Snapshots ==========
 

@@ -6,6 +6,9 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Assets
+  alias Storyarn.Assets.BlobStore
+  alias Storyarn.Repo
   alias Storyarn.Versioning.Builders.SceneBuilder
 
   setup do
@@ -130,7 +133,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       assert restored.name == scene.name
 
       restored =
-        Storyarn.Repo.preload(
+        Repo.preload(
           restored,
           [:connections, {:layers, [:zones, :pins]}],
           force: true
@@ -388,6 +391,71 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       assert Enum.all?(materialized.pins, fn pin ->
                is_nil(pin.sheet_id) and is_nil(pin.flow_id)
              end)
+    end
+
+    test "copies background, pin icon, and zone label icon assets into destination project", %{
+      user: user,
+      project: project,
+      scene: scene
+    } do
+      background_asset = uploaded_image_asset(project, user, "map.png", "map-background")
+      pin_icon_asset = uploaded_image_asset(project, user, "pin.png", "pin-icon")
+      zone_icon_asset = uploaded_image_asset(project, user, "zone.png", "zone-icon")
+
+      {:ok, scene} = Storyarn.Scenes.update_scene(scene, %{"background_asset_id" => background_asset.id})
+      layer = layer_fixture(scene)
+
+      _pin =
+        pin_fixture(scene, %{
+          "label" => "Icon Pin",
+          "layer_id" => layer.id,
+          "icon_asset_id" => pin_icon_asset.id
+        })
+
+      _zone =
+        zone_fixture(scene, %{
+          "name" => "Icon Zone",
+          "layer_id" => layer.id,
+          "label_mode" => "icon",
+          "label_icon_asset_id" => zone_icon_asset.id
+        })
+
+      snapshot = SceneBuilder.build_snapshot(scene)
+      target_project = project_fixture(user)
+
+      assert {:ok, materialized, _id_maps} =
+               SceneBuilder.instantiate_snapshot(target_project.id, snapshot,
+                 asset_mode: :copy,
+                 user_id: user.id,
+                 reset_shortcut: true
+               )
+
+      materialized = Repo.preload(materialized, :background_asset, force: true)
+      assert materialized.background_asset.project_id == target_project.id
+      refute materialized.background_asset_id == background_asset.id
+      assert {:ok, _binary} = Assets.storage_download(materialized.background_asset.key)
+      on_exit(fn -> Assets.storage_delete(materialized.background_asset.key) end)
+
+      cloned_pin =
+        materialized.id
+        |> Storyarn.Scenes.list_pins()
+        |> Enum.find(&(&1.label == "Icon Pin"))
+        |> Repo.preload(:icon_asset)
+
+      assert cloned_pin.icon_asset.project_id == target_project.id
+      refute cloned_pin.icon_asset_id == pin_icon_asset.id
+      assert {:ok, _binary} = Assets.storage_download(cloned_pin.icon_asset.key)
+      on_exit(fn -> Assets.storage_delete(cloned_pin.icon_asset.key) end)
+
+      cloned_zone =
+        materialized.id
+        |> Storyarn.Scenes.list_zones()
+        |> Enum.find(&(&1.name == "Icon Zone"))
+
+      assert cloned_zone.label_icon_asset.project_id == target_project.id
+      refute cloned_zone.label_icon_asset_id == zone_icon_asset.id
+      assert {:ok, _binary} = Assets.storage_download(cloned_zone.label_icon_asset.key)
+      on_exit(fn -> Assets.storage_delete(cloned_zone.label_icon_asset.key) end)
     end
   end
 
@@ -674,5 +742,22 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       %{"x" => 20.0, "y" => 10.0},
       %{"x" => 15.0, "y" => 20.0}
     ]
+  end
+
+  defp uploaded_image_asset(project, user, filename, content) do
+    {:ok, asset} =
+      Assets.upload_binary_and_create_asset(
+        content,
+        %{filename: filename, content_type: "image/png"},
+        project,
+        user
+      )
+
+    on_exit(fn ->
+      Assets.storage_delete(asset.key)
+      Assets.storage_delete(BlobStore.blob_key(project.id, asset.blob_hash, "png"))
+    end)
+
+    asset
   end
 end

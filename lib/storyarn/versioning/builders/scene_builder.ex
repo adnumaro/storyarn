@@ -378,10 +378,11 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
         fog_color: snapshot_default(snapshot, "fog_color", "#000000"),
         fog_opacity: snapshot_default(snapshot, "fog_opacity", 0.85),
         background_asset_id:
-          AssetHashResolver.resolve_asset_fk(
+          resolve_scene_asset(
             snapshot["background_asset_id"],
             snapshot,
-            scene.project_id
+            scene.project_id,
+            opts
           )
       })
     end)
@@ -469,7 +470,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
   defp restore_single_layer(repo, scene_id, layer_data, layer_idx, now, snapshot, project_id, opts) do
     layer_id = insert_layer(repo, scene_id, layer_data, layer_idx, now)
-    insert_layer_zones(repo, scene_id, layer_id, layer_data["zones"] || [], now)
+    insert_layer_zones(repo, scene_id, layer_id, layer_data["zones"] || [], now, snapshot, project_id, opts)
 
     pin_ids =
       insert_layer_pins(
@@ -505,19 +506,25 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     end
   end
 
-  defp insert_layer_zones(_repo, _scene_id, _layer_id, [], _now), do: :ok
+  defp insert_layer_zones(_repo, _scene_id, _layer_id, [], _now, _snapshot, _project_id, _opts), do: :ok
 
-  defp insert_layer_zones(repo, scene_id, layer_id, zones_data, now) do
+  defp insert_layer_zones(repo, scene_id, layer_id, zones_data, now, snapshot, project_id, opts) do
     Enum.each(zones_data, fn zone_data ->
-      attrs = build_zone_attrs(zone_data, scene_id, layer_id, now)
+      attrs = build_zone_attrs(zone_data, scene_id, layer_id, now, snapshot, project_id, opts)
       insert_single!(repo, SceneZone, attrs, "scene zone")
     end)
   end
 
-  defp build_zone_attrs(zone_data, scene_id, layer_id, now) do
+  defp build_zone_attrs(zone_data, scene_id, layer_id, now, snapshot, project_id, opts) do
     zone_data
     |> zone_base_attrs()
-    |> Map.merge(%{scene_id: scene_id, layer_id: layer_id, inserted_at: now, updated_at: now})
+    |> Map.merge(%{
+      scene_id: scene_id,
+      layer_id: layer_id,
+      label_icon_asset_id: resolve_scene_asset(zone_data["label_icon_asset_id"], snapshot, project_id, opts),
+      inserted_at: now,
+      updated_at: now
+    })
   end
 
   defp zone_base_attrs(d) do
@@ -640,7 +647,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       scene_id: scene_id,
       layer_id: layer_id,
       sheet_id: resolve_scene_sheet_id(pin_data["sheet_id"], project_id, opts),
-      icon_asset_id: AssetHashResolver.resolve_asset_fk(pin_data["icon_asset_id"], snapshot, project_id),
+      icon_asset_id: resolve_scene_asset(pin_data["icon_asset_id"], snapshot, project_id, opts),
       inserted_at: now,
       updated_at: now
     })
@@ -784,6 +791,8 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
                  inserted_layer.id,
                  layer_data["zones"] || [],
                  now,
+                 snapshot,
+                 project_id,
                  opts
                ),
              {:ok, pin_inserted} <-
@@ -849,6 +858,8 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
              nil,
              snapshot["orphan_zones"] || [],
              now,
+             snapshot,
+             project_id,
              opts
            ),
          {:ok, pin_inserted} <-
@@ -893,7 +904,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   defp restore_orphan_entities(repo, scene_id, snapshot, project_id, opts) do
     now = MaterializationHelpers.now()
 
-    with :ok <- insert_layer_zones(repo, scene_id, nil, snapshot["orphan_zones"] || [], now),
+    with :ok <- insert_layer_zones(repo, scene_id, nil, snapshot["orphan_zones"] || [], now, snapshot, project_id, opts),
          orphan_pin_ids =
            insert_layer_pins(
              repo,
@@ -917,18 +928,18 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     end
   end
 
-  defp insert_layer_zones_with_ids(_repo, _scene_id, _layer_id, [], _now, _opts), do: {:ok, []}
+  defp insert_layer_zones_with_ids(_repo, _scene_id, _layer_id, [], _now, _snapshot, _project_id, _opts), do: {:ok, []}
 
-  defp insert_layer_zones_with_ids(repo, scene_id, layer_id, zones_data, now, opts) do
+  defp insert_layer_zones_with_ids(repo, scene_id, layer_id, zones_data, now, snapshot, project_id, opts) do
     entries =
       Enum.map(zones_data, fn zone_data ->
-        build_materialized_zone_attrs(zone_data, scene_id, layer_id, now, opts)
+        build_materialized_zone_attrs(zone_data, scene_id, layer_id, now, snapshot, project_id, opts)
       end)
 
     MaterializationHelpers.insert_all_returning(repo, SceneZone, entries, [:id])
   end
 
-  defp build_materialized_zone_attrs(zone_data, scene_id, layer_id, now, opts) do
+  defp build_materialized_zone_attrs(zone_data, scene_id, layer_id, now, snapshot, project_id, opts) do
     preserve_external_refs? = MaterializationHelpers.preserve_external_refs?(opts)
     attrs = zone_base_attrs(zone_data)
 
@@ -937,6 +948,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       layer_id: layer_id,
       target_type: materialized_zone_target_type(attrs, zone_data, preserve_external_refs?),
       target_id: materialized_zone_target_id(attrs, zone_data, preserve_external_refs?),
+      label_icon_asset_id: resolve_scene_asset(zone_data["label_icon_asset_id"], snapshot, project_id, opts),
       inserted_at: now,
       updated_at: now
     })
@@ -988,11 +1000,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
         if(preserve_external_refs?,
           do: resolve_scene_sheet_id(pin_data["sheet_id"], project_id, opts)
         ),
-      icon_asset_id:
-        if(
-          preserve_external_refs?,
-          do: AssetHashResolver.resolve_asset_fk(pin_data["icon_asset_id"], snapshot, project_id)
-        ),
+      icon_asset_id: resolve_scene_asset(pin_data["icon_asset_id"], snapshot, project_id, opts),
       inserted_at: now,
       updated_at: now
     })
@@ -1116,11 +1124,34 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     |> Map.fetch!(pin_idx)
   end
 
-  defp resolve_scene_background_asset(_asset_id, _snapshot, _project_id, opts) when not is_list(opts), do: nil
-
   defp resolve_scene_background_asset(asset_id, snapshot, project_id, opts) do
-    if MaterializationHelpers.preserve_external_refs?(opts) do
-      AssetHashResolver.resolve_asset_fk(asset_id, snapshot, project_id)
+    resolve_scene_asset(asset_id, snapshot, project_id, opts)
+  end
+
+  defp resolve_scene_asset(_asset_id, _snapshot, _project_id, opts) when not is_list(opts), do: nil
+
+  defp resolve_scene_asset(asset_id, snapshot, project_id, opts) do
+    case scene_asset_mode(opts) do
+      :drop ->
+        nil
+
+      asset_mode ->
+        AssetHashResolver.resolve_asset_fk(asset_id, snapshot, project_id, Keyword.get(opts, :user_id),
+          asset_mode: asset_mode
+        )
+    end
+  end
+
+  defp scene_asset_mode(opts) do
+    cond do
+      mode = Keyword.get(opts, :asset_mode) ->
+        mode
+
+      MaterializationHelpers.preserve_external_refs?(opts) ->
+        :reuse
+
+      true ->
+        :drop
     end
   end
 

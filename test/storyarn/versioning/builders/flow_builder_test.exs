@@ -7,6 +7,9 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures, only: [scene_fixture: 1]
 
+  alias Storyarn.Assets
+  alias Storyarn.Assets.BlobStore
+  alias Storyarn.Repo
   alias Storyarn.Versioning.Builders.FlowBuilder
 
   setup do
@@ -82,7 +85,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
 
       assert restored.name == flow.name
 
-      restored = Storyarn.Repo.preload(restored, [:nodes, :connections], force: true)
+      restored = Repo.preload(restored, [:nodes, :connections], force: true)
       # Should have the same number of non-deleted nodes
       active_nodes = Enum.reject(restored.nodes, &(&1.deleted_at != nil))
       assert length(active_nodes) == length(snapshot["nodes"])
@@ -182,6 +185,55 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
 
       assert materialized.scene_id == nil
       assert Enum.all?(materialized.nodes, &is_nil((&1.data || %{})["audio_asset_id"]))
+    end
+
+    test "copies audio assets into destination project", %{user: user, project: project, flow: flow} do
+      audio_asset = uploaded_asset(project, user, "line.mp3", "audio content", "audio/mpeg")
+
+      _node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"speaker" => "Narrator", "text" => "Hello", "audio_asset_id" => audio_asset.id}
+        })
+
+      snapshot = FlowBuilder.build_snapshot(flow)
+      target_project = project_fixture(user)
+
+      assert {:ok, materialized, _id_maps} =
+               FlowBuilder.instantiate_snapshot(target_project.id, snapshot,
+                 asset_mode: :copy,
+                 user_id: user.id,
+                 reset_shortcut: true
+               )
+
+      cloned_node = Enum.find(materialized.nodes, &(&1.data || %{})["audio_asset_id"])
+      cloned_audio_id = cloned_node.data["audio_asset_id"]
+      cloned_audio = Repo.get!(Storyarn.Assets.Asset, cloned_audio_id)
+
+      assert cloned_audio.project_id == target_project.id
+      refute cloned_audio.id == audio_asset.id
+      assert {:ok, _binary} = Assets.storage_download(cloned_audio.key)
+      on_exit(fn -> Assets.storage_delete(cloned_audio.key) end)
+    end
+
+    test "remaps dynamic exit pins to cloned node ids", %{project: project, flow: flow} do
+      subflow_node = node_fixture(flow, %{type: "subflow", position_x: 100.0, position_y: 100.0})
+      next_node = node_fixture(flow, %{type: "dialogue", position_x: 200.0, position_y: 100.0})
+
+      _connection =
+        connection_fixture(flow, subflow_node, next_node, %{
+          source_pin: "exit_#{next_node.id}",
+          target_pin: "input"
+        })
+
+      snapshot = FlowBuilder.build_snapshot(flow)
+
+      assert {:ok, materialized, id_maps} =
+               FlowBuilder.instantiate_snapshot(project.id, snapshot, reset_shortcut: true)
+
+      [cloned_connection] = materialized.connections
+      assert cloned_connection.source_pin == "exit_#{id_maps.node[next_node.id]}"
+      assert cloned_connection.target_pin == "input"
     end
   end
 
@@ -334,5 +386,25 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       changes = FlowBuilder.diff_snapshots(old, new)
       assert Enum.any?(changes, &(&1.category == :connection && &1.action == :added))
     end
+  end
+
+  defp uploaded_asset(project, user, filename, content, content_type) do
+    {:ok, asset} =
+      Assets.upload_binary_and_create_asset(
+        content,
+        %{filename: filename, content_type: content_type},
+        project,
+        user
+      )
+
+    on_exit(fn ->
+      Assets.storage_delete(asset.key)
+
+      Assets.storage_delete(
+        BlobStore.blob_key(project.id, asset.blob_hash, BlobStore.ext_from_content_type(content_type))
+      )
+    end)
+
+    asset
   end
 end

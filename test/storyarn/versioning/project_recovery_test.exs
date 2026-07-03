@@ -8,6 +8,9 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Assets
+  alias Storyarn.Assets.BlobStore
+  alias Storyarn.Repo
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
   alias Storyarn.Versioning.ProjectRecovery
@@ -217,8 +220,8 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       recovered_scene = Enum.find(recovered_scenes, &(&1.name == "World Map"))
       recovered_target_scene = Enum.find(recovered_scenes, &(&1.name == "Dungeon Map"))
 
-      recovered_flow = Storyarn.Repo.preload(recovered_flow, :nodes, force: true)
-      recovered_scene = Storyarn.Repo.preload(recovered_scene, [:pins, :zones], force: true)
+      recovered_flow = Repo.preload(recovered_flow, :nodes, force: true)
+      recovered_scene = Repo.preload(recovered_scene, [:pins, :zones], force: true)
 
       recovered_dialogue = Enum.find(recovered_flow.nodes, &(&1.type == "dialogue"))
       recovered_subflow_node = Enum.find(recovered_flow.nodes, &(&1.type == "subflow"))
@@ -259,11 +262,11 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
           config: %{"label" => "Descendant"}
         })
 
-      Storyarn.Repo.update_all(from(b in Storyarn.Sheets.Block, where: b.id == ^inherited_block.id),
+      Repo.update_all(from(b in Storyarn.Sheets.Block, where: b.id == ^inherited_block.id),
         set: [inherited_from_block_id: source_block.id]
       )
 
-      Storyarn.Repo.update_all(from(s in Sheet, where: s.id == ^child.id),
+      Repo.update_all(from(s in Sheet, where: s.id == ^child.id),
         set: [hidden_inherited_block_ids: [source_block.id]]
       )
 
@@ -281,10 +284,121 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
 
       recovered_source_block = Enum.find(parent_blocks, &(&1.variable_name == "ancestor"))
       recovered_inherited_block = Enum.find(child_blocks, &(&1.variable_name == "descendant"))
-      recovered_child = Storyarn.Repo.get!(Sheet, recovered_child.id)
+      recovered_child = Repo.get!(Sheet, recovered_child.id)
 
       assert recovered_inherited_block.inherited_from_block_id == recovered_source_block.id
       assert recovered_child.hidden_inherited_block_ids == [recovered_source_block.id]
     end
+
+    test "template clone copies scene and flow assets into recovered project", %{
+      project: project,
+      workspace_id: workspace_id,
+      user: user
+    } do
+      background_asset = uploaded_asset(project, user, "map.png", "map-background", "image/png")
+      pin_icon_asset = uploaded_asset(project, user, "pin.png", "pin-icon", "image/png")
+      zone_icon_asset = uploaded_asset(project, user, "zone.png", "zone-icon", "image/png")
+      audio_asset = uploaded_asset(project, user, "line.mp3", "audio-content", "audio/mpeg")
+
+      scene = scene_fixture(project, %{name: "Asset Scene"})
+      {:ok, scene} = Storyarn.Scenes.update_scene(scene, %{"background_asset_id" => background_asset.id})
+      layer = layer_fixture(scene)
+
+      _pin =
+        pin_fixture(scene, %{
+          "label" => "Asset Pin",
+          "layer_id" => layer.id,
+          "icon_asset_id" => pin_icon_asset.id
+        })
+
+      _zone =
+        zone_fixture(scene, %{
+          "name" => "Asset Zone",
+          "layer_id" => layer.id,
+          "label_mode" => "icon",
+          "label_icon_asset_id" => zone_icon_asset.id
+        })
+
+      flow = flow_fixture(project, %{name: "Asset Flow"})
+
+      _node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"speaker" => "Narrator", "text" => "Hello", "audio_asset_id" => audio_asset.id}
+        })
+
+      snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
+
+      assert {:ok, recovered} =
+               ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id,
+                 name: "Template Copy",
+                 template_clone: true
+               )
+
+      recovered_scene =
+        recovered.id
+        |> Storyarn.Scenes.list_scenes()
+        |> Enum.find(&(&1.name == "Asset Scene"))
+        |> Repo.preload(:background_asset)
+
+      assert recovered_scene.background_asset.project_id == recovered.id
+      refute recovered_scene.background_asset_id == background_asset.id
+      on_exit(fn -> Assets.storage_delete(recovered_scene.background_asset.key) end)
+
+      recovered_pin =
+        recovered_scene.id
+        |> Storyarn.Scenes.list_pins()
+        |> Enum.find(&(&1.label == "Asset Pin"))
+        |> Repo.preload(:icon_asset)
+
+      assert recovered_pin.icon_asset.project_id == recovered.id
+      refute recovered_pin.icon_asset_id == pin_icon_asset.id
+      on_exit(fn -> Assets.storage_delete(recovered_pin.icon_asset.key) end)
+
+      recovered_zone =
+        recovered_scene.id
+        |> Storyarn.Scenes.list_zones()
+        |> Enum.find(&(&1.name == "Asset Zone"))
+
+      assert recovered_zone.label_icon_asset.project_id == recovered.id
+      refute recovered_zone.label_icon_asset_id == zone_icon_asset.id
+      on_exit(fn -> Assets.storage_delete(recovered_zone.label_icon_asset.key) end)
+
+      recovered_flow =
+        recovered.id
+        |> Storyarn.Flows.list_flows()
+        |> Enum.find(&(&1.name == "Asset Flow"))
+        |> Repo.preload(:nodes)
+
+      recovered_audio_id =
+        recovered_flow.nodes
+        |> Enum.map(&(&1.data || %{})["audio_asset_id"])
+        |> Enum.find(& &1)
+
+      recovered_audio = Repo.get!(Storyarn.Assets.Asset, recovered_audio_id)
+      assert recovered_audio.project_id == recovered.id
+      refute recovered_audio.id == audio_asset.id
+      on_exit(fn -> Assets.storage_delete(recovered_audio.key) end)
+    end
+  end
+
+  defp uploaded_asset(project, user, filename, content, content_type) do
+    {:ok, asset} =
+      Assets.upload_binary_and_create_asset(
+        content,
+        %{filename: filename, content_type: content_type},
+        project,
+        user
+      )
+
+    on_exit(fn ->
+      Assets.storage_delete(asset.key)
+
+      Assets.storage_delete(
+        BlobStore.blob_key(project.id, asset.blob_hash, BlobStore.ext_from_content_type(content_type))
+      )
+    end)
+
+    asset
   end
 end
