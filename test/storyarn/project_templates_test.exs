@@ -4,15 +4,21 @@ defmodule Storyarn.ProjectTemplatesTest do
   alias Storyarn.AccountsFixtures
   alias Storyarn.Assets
   alias Storyarn.Assets.BlobStore
+  alias Storyarn.AssetsFixtures
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.FlowsFixtures
   alias Storyarn.ProjectsFixtures
   alias Storyarn.ProjectTemplates
   alias Storyarn.ProjectTemplates.Audit
   alias Storyarn.ProjectTemplates.ProjectTemplateInstall
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Repo
+  alias Storyarn.Scenes.Scene
+  alias Storyarn.ScenesFixtures
+  alias Storyarn.Sheets.Sheet
+  alias Storyarn.SheetsFixtures
   alias Storyarn.WorkspacesFixtures
 
   describe "create_template_from_project/3" do
@@ -140,7 +146,7 @@ defmodule Storyarn.ProjectTemplatesTest do
       scope = AccountsFixtures.user_scope_fixture(user)
       workspace = WorkspacesFixtures.workspace_fixture(user)
       project = ProjectsFixtures.project_fixture(user, %{workspace: workspace, name: "Source Project"})
-      source_sheet = Storyarn.SheetsFixtures.sheet_fixture(project, %{name: "Hero"})
+      source_sheet = SheetsFixtures.sheet_fixture(project, %{name: "Hero"})
       source_asset = uploaded_image_asset(project, user, "template-avatar.png", "template-avatar")
       {:ok, _avatar} = Storyarn.Sheets.add_avatar(source_sheet, source_asset.id, %{name: "Default"})
 
@@ -210,6 +216,109 @@ defmodule Storyarn.ProjectTemplatesTest do
       assert {:error, report} = Audit.run(project.id)
       assert [%{"type" => "stale_flow_connection"}] = report["errors"]
     end
+
+    test "passes when a subflow exit pin can be remapped" do
+      user = AccountsFixtures.user_fixture()
+      project = ProjectsFixtures.project_fixture(user)
+      flow = flow_fixture(project)
+      source_node = flow_node_fixture(flow, "subflow")
+      target_node = flow_node_fixture(flow, "hub")
+
+      flow_connection_fixture(flow, source_node, target_node, %{source_pin: "exit_#{target_node.id}"})
+
+      assert {:ok, report} = Audit.run(project.id)
+      assert report["status"] == "passed"
+    end
+
+    test "detects a subflow exit pin that cannot be remapped" do
+      user = AccountsFixtures.user_fixture()
+      project = ProjectsFixtures.project_fixture(user)
+      flow = flow_fixture(project)
+      source_node = flow_node_fixture(flow, "subflow")
+      target_node = flow_node_fixture(flow, "hub")
+
+      flow_connection_fixture(flow, source_node, target_node, %{source_pin: "exit_999999"})
+
+      assert {:error, report} = Audit.run(project.id)
+      assert [%{"type" => "unremappable_subflow_exit_pin", "source_pin" => "exit_999999"}] = report["errors"]
+    end
+
+    test "detects scene pin refs to soft-deleted sheets and flows" do
+      user = AccountsFixtures.user_fixture()
+      project = ProjectsFixtures.project_fixture(user)
+      scene = ScenesFixtures.scene_fixture(project)
+      sheet = SheetsFixtures.sheet_fixture(project)
+      flow = FlowsFixtures.flow_fixture(project)
+
+      _sheet_pin = ScenesFixtures.pin_fixture(scene, %{"sheet_id" => sheet.id})
+      _flow_pin = ScenesFixtures.pin_fixture(scene, %{"flow_id" => flow.id})
+
+      Repo.update!(Sheet.delete_changeset(sheet))
+      Repo.update!(Flow.delete_changeset(flow))
+
+      assert {:error, report} = Audit.run(project.id)
+      error_types = Enum.map(report["errors"], & &1["type"])
+
+      assert "invalid_scene_pin_sheet_ref" in error_types
+      assert "invalid_scene_pin_flow_ref" in error_types
+    end
+
+    test "detects scene zone targets pointing to soft-deleted scenes and flows" do
+      user = AccountsFixtures.user_fixture()
+      project = ProjectsFixtures.project_fixture(user)
+      scene = ScenesFixtures.scene_fixture(project)
+      target_scene = ScenesFixtures.scene_fixture(project)
+      target_flow = FlowsFixtures.flow_fixture(project)
+
+      _scene_zone =
+        ScenesFixtures.zone_fixture(scene, %{
+          "target_type" => "scene",
+          "target_id" => target_scene.id
+        })
+
+      _flow_zone =
+        ScenesFixtures.zone_fixture(scene, %{
+          "target_type" => "flow",
+          "target_id" => target_flow.id
+        })
+
+      Repo.update!(Scene.delete_changeset(target_scene))
+      Repo.update!(Flow.delete_changeset(target_flow))
+
+      assert {:error, report} = Audit.run(project.id)
+      target_types = Enum.map(report["errors"], & &1["target_type"])
+
+      assert Enum.all?(report["errors"], &(&1["type"] == "invalid_scene_zone_target_ref"))
+      assert "scene" in target_types
+      assert "flow" in target_types
+    end
+
+    test "detects referenced assets without a copyable blob" do
+      user = AccountsFixtures.user_fixture()
+      project = ProjectsFixtures.project_fixture(user)
+      scene = ScenesFixtures.scene_fixture(project)
+      flow = flow_fixture(project)
+      asset = AssetsFixtures.image_asset_fixture(project, user)
+
+      {:ok, _scene} = Storyarn.Scenes.update_scene(scene, %{"background_asset_id" => asset.id})
+      node = flow_node_fixture(flow, "dialogue")
+      Storyarn.Flows.update_node(node, %{data: %{"audio_asset_id" => asset.id}})
+
+      assert {:error, report} = Audit.run(project.id)
+
+      assert Enum.any?(report["errors"], fn error ->
+               error["type"] == "uncopiable_asset_reference" and
+                 error["field"] == "background_asset_id" and
+                 error["asset_id"] == asset.id and
+                 error["has_blob_hash"] == false
+             end)
+
+      assert Enum.any?(report["errors"], fn error ->
+               error["type"] == "uncopiable_asset_reference" and
+                 error["field"] == "data.audio_asset_id" and
+                 error["asset_id"] == asset.id
+             end)
+    end
   end
 
   defp flow_fixture(project) do
@@ -224,14 +333,20 @@ defmodule Storyarn.ProjectTemplatesTest do
     |> Repo.insert!()
   end
 
-  defp flow_connection_fixture(flow, source_node, target_node) do
+  defp flow_connection_fixture(flow, source_node, target_node, attrs \\ %{}) do
+    attrs =
+      Map.merge(
+        %{
+          source_pin: "out",
+          target_pin: "in"
+        },
+        attrs
+      )
+
     %FlowConnection{flow_id: flow.id}
-    |> FlowConnection.create_changeset(%{
-      source_node_id: source_node.id,
-      source_pin: "out",
-      target_node_id: target_node.id,
-      target_pin: "in"
-    })
+    |> FlowConnection.create_changeset(
+      Map.merge(attrs, %{source_node_id: source_node.id, target_node_id: target_node.id})
+    )
     |> Repo.insert!()
   end
 
