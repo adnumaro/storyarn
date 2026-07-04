@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlertTriangle, Wrench } from "lucide-vue-next";
+import { AlertTriangle, FileUp, Wrench } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
 import ColorPickerPopover from "@components/forms/ColorPickerPopover.vue";
 import ThemeSelector from "@components/ThemeSelector.vue";
@@ -42,6 +42,13 @@ interface ProjectDetails {
   typeOther: string;
 }
 
+interface ProjectTemplatePublication {
+  id: number;
+  name: string;
+  description: string;
+  current_version_number?: number | null;
+}
+
 const {
   projectDetails = { name: "", description: "", type: "", subtype: "", typeOther: "" },
   projectMetricsOptions = { project_types: [], project_subtypes: {} },
@@ -50,6 +57,7 @@ const {
   themePrimary = "#00D4CC",
   themeAccent = "#E8922F",
   hasCustomTheme = false,
+  projectTemplates = [],
 } = defineProps<{
   projectDetails?: ProjectDetails;
   projectMetricsOptions?: ProjectMetricsOptions;
@@ -58,6 +66,7 @@ const {
   themePrimary?: string;
   themeAccent?: string;
   hasCustomTheme?: boolean;
+  projectTemplates?: ProjectTemplatePublication[];
 }>();
 
 const live = useLive();
@@ -127,6 +136,64 @@ function validateProject() {
       description: projectDescLocal.value,
     },
   });
+}
+
+// Templates
+const showTemplateDialog = ref(false);
+const templateMode = ref<"new" | "update">("new");
+const selectedTemplateId = ref<number | null>(null);
+const templateName = ref(projectDetails.name);
+const templateDescription = ref(projectDetails.description);
+
+const selectedTemplate = computed(() => {
+  return projectTemplates.find((template) => template.id === selectedTemplateId.value) || null;
+});
+
+const canPublishTemplate = computed(() => {
+  if (templateName.value.trim().length === 0) return false;
+  if (templateMode.value === "update") return !!selectedTemplate.value;
+
+  return true;
+});
+
+function openTemplateDialog() {
+  const [firstTemplate] = projectTemplates;
+  templateMode.value = firstTemplate ? "update" : "new";
+  syncTemplateFields(firstTemplate || null);
+  showTemplateDialog.value = true;
+}
+
+function updateTemplateMode(mode: "new" | "update") {
+  templateMode.value = mode;
+  syncTemplateFields(mode === "update" ? projectTemplates[0] || null : null);
+}
+
+function updateSelectedTemplate(value: string | string[]) {
+  const rawValue = Array.isArray(value) ? value[0] || "" : value;
+  const id = Number(rawValue);
+  const template = projectTemplates.find((candidate) => candidate.id === id) || null;
+  syncTemplateFields(template);
+}
+
+function syncTemplateFields(template: ProjectTemplatePublication | null) {
+  selectedTemplateId.value = template?.id || null;
+  templateName.value = template?.name || projectDetails.name;
+  templateDescription.value = template?.description || projectDetails.description;
+}
+
+function publishTemplate() {
+  if (!canPublishTemplate.value) return;
+
+  live.pushEvent("publish_template", {
+    template: {
+      mode: templateMode.value,
+      template_id: selectedTemplateId.value,
+      name: templateName.value.trim(),
+      description: templateDescription.value,
+    },
+  });
+
+  showTemplateDialog.value = false;
 }
 
 // Theme
@@ -271,6 +338,26 @@ function confirmDeleteProject() {
 
     <Separator />
 
+    <!-- Templates -->
+    <section>
+      <div
+        class="flex flex-col gap-4 rounded-lg border border-border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div>
+          <h3 class="text-lg font-semibold mb-1">{{ $t("project_settings.general.templates") }}</h3>
+          <p class="text-sm text-muted-foreground">
+            {{ $t("project_settings.general.templates_description") }}
+          </p>
+        </div>
+        <Button type="button" class="shrink-0" @click="openTemplateDialog">
+          <FileUp class="size-4 mr-1.5" />
+          {{ $t("project_settings.general.publish_template") }}
+        </Button>
+      </div>
+    </section>
+
+    <Separator />
+
     <!-- Source Language -->
     <section class="space-y-4" v-if="sourceLanguage">
       <div>
@@ -384,6 +471,105 @@ function confirmDeleteProject() {
         </div>
       </div>
     </section>
+
+    <!-- Template Publish Dialog -->
+    <Dialog v-model:open="showTemplateDialog">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{{ $t("project_settings.general.template_dialog_title") }}</DialogTitle>
+          <DialogDescription>
+            {{ $t("project_settings.general.template_dialog_description") }}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="space-y-4">
+          <div class="grid grid-cols-2 gap-2 rounded-lg border border-border bg-muted/30 p-1">
+            <button
+              type="button"
+              data-testid="template-mode-new"
+              :class="[
+                'min-h-10 rounded-md px-3 text-sm font-medium transition',
+                templateMode === 'new'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
+              ]"
+              @click="updateTemplateMode('new')"
+            >
+              {{ $t("project_settings.general.template_new") }}
+            </button>
+            <button
+              type="button"
+              data-testid="template-mode-update"
+              :disabled="projectTemplates.length === 0"
+              :class="[
+                'min-h-10 rounded-md px-3 text-sm font-medium transition disabled:opacity-40',
+                templateMode === 'update'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
+              ]"
+              @click="updateTemplateMode('update')"
+            >
+              {{ $t("project_settings.general.template_update") }}
+            </button>
+          </div>
+
+          <div v-if="templateMode === 'update'" class="space-y-1.5">
+            <Label for="template-publication-select">
+              {{ $t("project_settings.general.template_existing") }}
+            </Label>
+            <Select
+              :model-value="selectedTemplateId ? String(selectedTemplateId) : ''"
+              @update:model-value="updateSelectedTemplate"
+            >
+              <SelectTrigger id="template-publication-select" class="w-full">
+                <SelectValue
+                  :placeholder="$t('project_settings.general.template_existing_placeholder')"
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem
+                  v-for="template in projectTemplates"
+                  :key="template.id"
+                  :value="String(template.id)"
+                >
+                  {{
+                    $t("project_settings.general.template_existing_option", {
+                      name: template.name,
+                      version: template.current_version_number || "-",
+                    })
+                  }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div class="space-y-1.5">
+            <Label for="template-name">{{ $t("project_settings.general.template_name") }}</Label>
+            <Input id="template-name" v-model="templateName" maxlength="100" />
+          </div>
+
+          <div class="space-y-1.5">
+            <Label for="template-description">{{
+              $t("project_settings.general.template_description")
+            }}</Label>
+            <Textarea id="template-description" v-model="templateDescription" :rows="3" />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" @click="showTemplateDialog = false">
+            {{ $t("project_settings.general.cancel") }}
+          </Button>
+          <Button
+            data-testid="publish-template-submit"
+            :disabled="!canPublishTemplate"
+            @click="publishTemplate"
+          >
+            {{ $t("project_settings.general.publish_template") }}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
     <!-- Repair Confirm Dialog -->
     <Dialog v-model:open="showRepairConfirm">

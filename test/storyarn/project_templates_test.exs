@@ -102,6 +102,40 @@ defmodule Storyarn.ProjectTemplatesTest do
     end
   end
 
+  describe "update_template/3" do
+    test "updates mutable metadata for an owned private template" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      project = ProjectsFixtures.project_fixture(user, %{name: "Source"})
+
+      assert {:ok, template} = ProjectTemplates.create_template_from_project(scope, project, %{name: "Starter"})
+
+      assert {:ok, updated_template} =
+               ProjectTemplates.update_template(scope, template, %{
+                 name: "Updated Starter",
+                 description: "Updated description"
+               })
+
+      assert updated_template.id == template.id
+      assert updated_template.name == "Updated Starter"
+      assert updated_template.description == "Updated description"
+      assert updated_template.current_version_id == template.current_version_id
+    end
+
+    test "rejects metadata updates from another user" do
+      owner = AccountsFixtures.user_fixture()
+      other_user = AccountsFixtures.user_fixture()
+      owner_scope = AccountsFixtures.user_scope_fixture(owner)
+      other_scope = AccountsFixtures.user_scope_fixture(other_user)
+      project = ProjectsFixtures.project_fixture(owner)
+
+      assert {:ok, template} = ProjectTemplates.create_template_from_project(owner_scope, project, %{name: "Private"})
+
+      assert {:error, :unauthorized} =
+               ProjectTemplates.update_template(other_scope, template, %{name: "Taken"})
+    end
+  end
+
   describe "template visibility" do
     test "lists own private templates and public templates only" do
       owner = AccountsFixtures.user_fixture()

@@ -8,6 +8,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   alias Storyarn.Localization
   alias Storyarn.ProductMetrics.Taxonomy
   alias Storyarn.Projects
+  alias Storyarn.ProjectTemplates
   alias StoryarnWeb.Helpers.Authorize
 
   # ===========================================================================
@@ -40,6 +41,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
         theme-primary={@theme_primary}
         theme-accent={@theme_accent}
         has-custom-theme={@has_custom_theme}
+        project-templates={serialize_project_templates(@project_templates)}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>
     """
@@ -82,6 +84,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
         |> assign(:current_workspace, project.workspace)
         |> assign(:source_language, source_language)
         |> assign(:project_form, to_form(project_changeset))
+        |> assign_project_templates()
         |> assign_theme(project)
 
       {:ok, socket}
@@ -185,6 +188,21 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
     end)
   end
 
+  def handle_event("publish_template", %{"template" => template_params}, socket) do
+    Authorize.with_authorization(socket, :manage_project, fn socket ->
+      case publish_template_from_settings(socket, template_params) do
+        {:ok, _template} ->
+          {:noreply,
+           socket
+           |> assign_project_templates()
+           |> put_flash(:info, dgettext("projects", "Template published."))}
+
+        {:error, _reason} ->
+          {:noreply, put_flash(socket, :error, dgettext("projects", "Template could not be published."))}
+      end
+    end)
+  end
+
   def handle_event("update_theme_primary", %{"color" => color}, socket) do
     {:noreply, assign(socket, :theme_primary, color)}
   end
@@ -221,6 +239,81 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   # ===========================================================================
   # Private
   # ===========================================================================
+
+  defp publish_template_from_settings(socket, %{"mode" => "new"} = params) do
+    ProjectTemplates.create_template_from_project(
+      socket.assigns.current_scope,
+      socket.assigns.project,
+      template_attrs(params)
+    )
+  end
+
+  defp publish_template_from_settings(socket, %{"mode" => "update"} = params) do
+    with {:ok, template_id} <- parse_template_id(params["template_id"]),
+         {:ok, template} <- fetch_template(socket.assigns.current_scope, template_id),
+         :ok <- ensure_project_template_source(template, socket.assigns.project),
+         {:ok, template} <-
+           ProjectTemplates.update_template(socket.assigns.current_scope, template, template_attrs(params)) do
+      ProjectTemplates.publish_new_version(socket.assigns.current_scope, template, socket.assigns.project)
+    end
+  end
+
+  defp publish_template_from_settings(_socket, _params), do: {:error, :invalid_mode}
+
+  defp template_attrs(params) do
+    %{
+      "name" => params["name"],
+      "description" => params["description"]
+    }
+  end
+
+  defp parse_template_id(value) when is_integer(value), do: {:ok, value}
+
+  defp parse_template_id(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {id, ""} -> {:ok, id}
+      _ -> {:error, :invalid_template_id}
+    end
+  end
+
+  defp parse_template_id(_value), do: {:error, :invalid_template_id}
+
+  defp fetch_template(scope, template_id) do
+    {:ok, ProjectTemplates.get_template!(scope, template_id)}
+  rescue
+    Ecto.NoResultsError -> {:error, :not_found}
+  end
+
+  defp ensure_project_template_source(%{source_project_id: project_id}, %{id: project_id}), do: :ok
+  defp ensure_project_template_source(_template, _project), do: {:error, :invalid_source_project}
+
+  defp assign_project_templates(socket) do
+    assign(
+      socket,
+      :project_templates,
+      project_templates_for_project(socket.assigns.current_scope, socket.assigns.project)
+    )
+  end
+
+  defp project_templates_for_project(scope, project) do
+    scope
+    |> ProjectTemplates.list_templates()
+    |> Enum.filter(&(&1.visibility == "private" and &1.source_project_id == project.id))
+  end
+
+  defp serialize_project_templates(templates) do
+    Enum.map(templates, fn template ->
+      %{
+        id: template.id,
+        name: template.name,
+        description: template.description || "",
+        current_version_number: version_number(template.current_version)
+      }
+    end)
+  end
+
+  defp version_number(%{version_number: version_number}), do: version_number
+  defp version_number(_version), do: nil
 
   defp do_save_theme(socket) do
     alias Storyarn.Shared.ColorUtils

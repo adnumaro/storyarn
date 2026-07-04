@@ -107,6 +107,23 @@ defmodule Storyarn.ProjectTemplates do
   end
 
   @doc """
+  Updates mutable metadata for an owned private template.
+  """
+  @spec update_template(scope(), ProjectTemplate.t(), attrs()) ::
+          {:ok, ProjectTemplate.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
+  def update_template(%Scope{} = scope, %ProjectTemplate{} = template, attrs) do
+    with :ok <- authorize_template_owner(scope, template) do
+      template
+      |> ProjectTemplate.update_changeset(attrs)
+      |> Repo.update()
+      |> case do
+        {:ok, template} -> {:ok, preload_template(template)}
+        {:error, changeset} -> {:error, changeset}
+      end
+    end
+  end
+
+  @doc """
   Creates a normal mutable project from an immutable template version.
   """
   @spec instantiate_template(scope(), ProjectTemplateVersion.t(), Workspace.t(), attrs()) ::
