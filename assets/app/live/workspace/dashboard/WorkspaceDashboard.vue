@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FolderOpen, Plus, Search, Settings } from "lucide-vue-next";
+import { FilePlus2, FolderOpen, Library, Plus, Search, Settings, Sparkles } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog/index.ts";
 import { Button } from "@components/ui/button/index.ts";
@@ -44,6 +44,15 @@ interface ProjectMetricsOptions {
   project_subtypes: Record<string, string[]>;
 }
 
+interface ProjectTemplate {
+  id: number;
+  name: string;
+  description?: string | null;
+  visibility: "private" | "public" | string;
+  version_number?: number | null;
+  entity_counts?: Record<string, number>;
+}
+
 const {
   workspace,
   membership,
@@ -52,6 +61,7 @@ const {
   canCreateProject = false,
   newProjectForm = null,
   newProjectModalOpen = false,
+  projectTemplates = [],
   projectMetricsOptions = { project_types: [], project_subtypes: {} },
   settingsUrl = null,
 } = defineProps<{
@@ -62,12 +72,16 @@ const {
   canCreateProject?: boolean;
   newProjectForm?: Form<NewProjectFormValues> | null;
   newProjectModalOpen?: boolean;
+  projectTemplates?: ProjectTemplate[];
   projectMetricsOptions?: ProjectMetricsOptions;
   settingsUrl?: string | null;
 }>();
 
 const live = useLiveVue();
 const localSearch = ref(searchQuery);
+const newProjectMode = ref<"blank" | "private" | "public">("blank");
+const selectedTemplateId = ref<number | null>(null);
+const templateProjectName = ref("");
 
 const filteredProjects = computed(() => {
   const query = localSearch.value.trim().toLowerCase();
@@ -86,6 +100,29 @@ const canManage = computed(() => ["owner", "admin"].includes(membership.role));
 
 const canCreate = computed(() => ["owner", "admin", "member"].includes(membership.role));
 
+const privateTemplates = computed(() =>
+  projectTemplates.filter((template) => template.visibility === "private"),
+);
+
+const publicTemplates = computed(() =>
+  projectTemplates.filter((template) => template.visibility === "public"),
+);
+
+const activeTemplates = computed(() => {
+  if (newProjectMode.value === "private") return privateTemplates.value;
+  if (newProjectMode.value === "public") return publicTemplates.value;
+
+  return [];
+});
+
+const selectedTemplate = computed(() => {
+  return activeTemplates.value.find((template) => template.id === selectedTemplateId.value) || null;
+});
+
+const canCreateFromTemplate = computed(() => {
+  return !!selectedTemplate.value && templateProjectName.value.trim().length > 0;
+});
+
 const isNewProjectModalOpen = ref(newProjectModalOpen);
 
 watch(
@@ -98,6 +135,42 @@ watch(
 function setNewProjectModalOpen(open: boolean) {
   isNewProjectModalOpen.value = open;
   live.pushEvent("set_new_project_modal_open", { open });
+}
+
+function setNewProjectMode(mode: "blank" | "private" | "public") {
+  newProjectMode.value = mode;
+
+  if (mode === "blank") {
+    selectedTemplateId.value = null;
+    templateProjectName.value = "";
+    return;
+  }
+
+  const [template] = mode === "private" ? privateTemplates.value : publicTemplates.value;
+  selectTemplate(template || null);
+}
+
+function selectTemplate(template: ProjectTemplate | null) {
+  selectedTemplateId.value = template?.id || null;
+  templateProjectName.value = template?.name || "";
+}
+
+function createProjectFromTemplate() {
+  if (!selectedTemplate.value || !canCreateFromTemplate.value) return;
+
+  live.pushEvent("create_project_from_template", {
+    template_id: selectedTemplate.value.id,
+    name: templateProjectName.value.trim(),
+  });
+}
+
+function templateCountLabel(template: ProjectTemplate) {
+  const counts = template.entity_counts || {};
+  const sheets = counts.sheets || 0;
+  const flows = counts.flows || 0;
+  const scenes = counts.scenes || 0;
+
+  return `${sheets} / ${flows} / ${scenes}`;
 }
 </script>
 
@@ -260,16 +333,153 @@ function setNewProjectModalOpen(open: boolean) {
 
   <!-- New Project Modal -->
   <Dialog :open="isNewProjectModalOpen" @update:open="setNewProjectModalOpen">
-    <DialogContent class="sm:max-w-106.25">
+    <DialogContent class="sm:max-w-3xl">
       <DialogHeader>
         <DialogTitle class="hidden">{{ $t("workspace.dashboard.new_project") }}</DialogTitle>
       </DialogHeader>
-      <NewProjectForm
-        v-if="newProjectForm"
-        :form="newProjectForm"
-        :metrics-options="projectMetricsOptions"
-        @cancel="setNewProjectModalOpen(false)"
-      />
+      <div class="space-y-5">
+        <div class="grid grid-cols-3 gap-2 rounded-lg border border-border bg-muted/30 p-1">
+          <button
+            type="button"
+            data-testid="new-project-mode-blank"
+            :class="[
+              'flex min-h-10 items-center justify-center gap-2 rounded-md px-3 text-sm font-medium transition',
+              newProjectMode === 'blank'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground',
+            ]"
+            @click="setNewProjectMode('blank')"
+          >
+            <FilePlus2 class="size-4" />
+            {{ $t("workspace.new_project.modes.blank") }}
+          </button>
+          <button
+            type="button"
+            data-testid="new-project-mode-private"
+            :class="[
+              'flex min-h-10 items-center justify-center gap-2 rounded-md px-3 text-sm font-medium transition',
+              newProjectMode === 'private'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground',
+            ]"
+            @click="setNewProjectMode('private')"
+          >
+            <Library class="size-4" />
+            {{ $t("workspace.new_project.modes.my_templates") }}
+          </button>
+          <button
+            type="button"
+            data-testid="new-project-mode-public"
+            :class="[
+              'flex min-h-10 items-center justify-center gap-2 rounded-md px-3 text-sm font-medium transition',
+              newProjectMode === 'public'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground',
+            ]"
+            @click="setNewProjectMode('public')"
+          >
+            <Sparkles class="size-4" />
+            {{ $t("workspace.new_project.modes.storyarn_demos") }}
+          </button>
+        </div>
+
+        <NewProjectForm
+          v-if="newProjectMode === 'blank' && newProjectForm"
+          :form="newProjectForm"
+          :metrics-options="projectMetricsOptions"
+          @cancel="setNewProjectModalOpen(false)"
+        />
+
+        <div
+          v-if="newProjectMode !== 'blank'"
+          class="grid gap-4 md:grid-cols-[minmax(0,1fr)_280px]"
+        >
+          <section class="min-h-70 rounded-lg border border-border">
+            <div v-if="activeTemplates.length > 0" class="divide-y divide-border">
+              <button
+                v-for="template in activeTemplates"
+                :key="template.id"
+                type="button"
+                :data-testid="`project-template-${template.id}`"
+                :class="[
+                  'flex w-full flex-col items-start gap-2 p-4 text-left transition hover:bg-muted/50',
+                  selectedTemplateId === template.id && 'bg-primary/10',
+                ]"
+                @click="selectTemplate(template)"
+              >
+                <span class="flex w-full items-start justify-between gap-3">
+                  <span class="min-w-0">
+                    <span class="block truncate text-sm font-semibold">{{ template.name }}</span>
+                    <span class="mt-1 line-clamp-2 block text-xs text-muted-foreground">
+                      {{
+                        template.description || $t("workspace.new_project.templates.no_description")
+                      }}
+                    </span>
+                  </span>
+                  <span class="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
+                    {{
+                      $t("workspace.new_project.templates.version", {
+                        version: template.version_number || "-",
+                      })
+                    }}
+                  </span>
+                </span>
+                <span class="text-xs text-muted-foreground">
+                  {{ $t("workspace.new_project.templates.counts") }}:
+                  {{ templateCountLabel(template) }}
+                </span>
+              </button>
+            </div>
+
+            <div
+              v-else
+              class="flex h-full min-h-70 flex-col items-center justify-center p-6 text-center"
+            >
+              <Library class="mb-3 size-8 text-muted-foreground/50" />
+              <p class="text-sm font-medium">
+                {{
+                  newProjectMode === "private"
+                    ? $t("workspace.new_project.templates.empty_private")
+                    : $t("workspace.new_project.templates.empty_public")
+                }}
+              </p>
+            </div>
+          </section>
+
+          <section class="flex flex-col rounded-lg border border-border bg-muted/30 p-4">
+            <h2 class="text-lg font-semibold">{{ $t("workspace.new_project.templates.title") }}</h2>
+            <p class="mt-1 text-sm text-muted-foreground">
+              {{ $t("workspace.new_project.templates.description") }}
+            </p>
+
+            <div class="mt-5 space-y-1.5">
+              <Label for="template-project-name">
+                {{ $t("workspace.new_project.fields.name.label") }}
+              </Label>
+              <Input
+                id="template-project-name"
+                v-model="templateProjectName"
+                :disabled="!selectedTemplate"
+                maxlength="100"
+              />
+            </div>
+
+            <div class="mt-auto flex justify-end gap-2 pt-5">
+              <Button type="button" variant="ghost" @click="setNewProjectModalOpen(false)">
+                {{ $t("workspace.new_project.cancel") }}
+              </Button>
+              <Button
+                type="button"
+                data-testid="create-project-from-template"
+                :disabled="!canCreateFromTemplate"
+                @click="createProjectFromTemplate"
+              >
+                {{ $t("workspace.new_project.templates.submit") }}
+              </Button>
+            </div>
+          </section>
+        </div>
+      </div>
     </DialogContent>
   </Dialog>
 </template>

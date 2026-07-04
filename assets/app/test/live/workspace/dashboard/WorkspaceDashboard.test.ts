@@ -26,7 +26,7 @@ const projects = [
   },
 ];
 
-function mountDashboard() {
+function mountDashboard(props = {}) {
   const live = createMockLive();
 
   const wrapper = mount(WorkspaceDashboard, {
@@ -37,10 +37,17 @@ function mountDashboard() {
       canCreateProject: true,
       newProjectForm: null,
       settingsUrl: "/settings",
+      ...props,
     },
     global: {
       provide: {
         _live_vue: live,
+      },
+      stubs: {
+        Dialog: { template: "<div><slot /></div>" },
+        DialogContent: { template: "<div><slot /></div>" },
+        DialogHeader: { template: "<div><slot /></div>" },
+        DialogTitle: { template: "<div><slot /></div>" },
       },
     },
   });
@@ -68,5 +75,30 @@ describe("WorkspaceDashboard", () => {
 
     expect(wrapper.text()).not.toContain("Alpha Game");
     expect(wrapper.text()).toContain("Beta Game");
+  });
+
+  it("creates a project from the selected private template", async () => {
+    const { live, wrapper } = mountDashboard({
+      newProjectModalOpen: true,
+      projectTemplates: [
+        {
+          id: 10,
+          name: "Starter Kit",
+          description: "A reusable setup",
+          visibility: "private",
+          version_number: 1,
+          entity_counts: { sheets: 2, flows: 1, scenes: 0 },
+        },
+      ],
+    });
+
+    await wrapper.get('[data-testid="new-project-mode-private"]').trigger("click");
+    await wrapper.get("#template-project-name").setValue("Starter Copy");
+    await wrapper.get('[data-testid="create-project-from-template"]').trigger("click");
+
+    expect(live.pushEvent).toHaveBeenCalledWith("create_project_from_template", {
+      template_id: 10,
+      name: "Starter Copy",
+    });
   });
 });

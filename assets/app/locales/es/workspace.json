@@ -19,6 +19,21 @@
       "title": "Nuevo Proyecto",
       "submit": "Crear proyecto",
       "cancel": "Cancelar",
+      "modes": {
+        "blank": "En blanco",
+        "my_templates": "Mis templates",
+        "storyarn_demos": "Demos Storyarn"
+      },
+      "templates": {
+        "title": "Crear desde template",
+        "description": "Elige una template publicada y crea un proyecto normal editable en este workspace.",
+        "submit": "Crear desde template",
+        "version": "v{version}",
+        "counts": "Fichas / flows / escenas",
+        "no_description": "Sin descripción proporcionada",
+        "empty_private": "Aún no tienes templates privadas.",
+        "empty_public": "Aún no hay demos de Storyarn disponibles."
+      },
       "fields": {
         "name": {
           "label": "Nombre del proyecto",
