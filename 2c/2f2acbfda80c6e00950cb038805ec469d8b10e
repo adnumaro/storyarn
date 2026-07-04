@@ -1,0 +1,38 @@
+lib/storyarn/project_templates.ex
+  s_05c30eca064c16::t_c717173e49f622 110-125
+  s_05c30eca064c16::t_633d848c6bf1c2 109
+assets/app/locales/en/project-settings.json
+  s_05c30eca064c16::t_178a1460b6fd2a 31-42
+assets/app/locales/es/project-settings.json
+  s_05c30eca064c16::t_64ddc7b2f984c9 31-42
+test/storyarn/project_templates_test.exs
+  s_05c30eca064c16::t_8f8b8594de0c3e 105-138
+assets/app/live/project/settings/ProjectSettingsGeneral.vue
+  s_05c30eca064c16::t_04e098c91169f0 2,45-51,60,69,141-197
+  s_05c30eca064c16::t_d4c7780b1f35e7 343-345,563-567
+  s_05c30eca064c16::t_ca6fddf96e8446 341-342,346-360,475-562,568-572
+  s_05c30eca064c16::t_5b1775c35ee688 198,573
+test/storyarn_web/live/project_settings_live/template_publication_test.exs
+  s_05c30eca064c16::t_b12cf2a6e36b3d 1-28,32-94
+  s_05c30eca064c16::t_55ed73b9315d27 29-31
+lib/storyarn_web/live/project_settings_live/general.ex
+  s_05c30eca064c16::t_55ed73b9315d27 255-256,291-295
+  s_05c30eca064c16::t_a01e5abed8d53c 11,44,87,191-205,243-254,257-290,296-316
+  s_05c30eca064c16::t_d8b94824f5a002 317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2c2f2acbfda80c6e00950cb038805ec469d8b10e",
+  "prompts": {},
+  "sessions": {
+    "s_05c30eca064c16": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f220d-6e1f-7390-9b78-95d14ea6619a",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
