@@ -58,6 +58,26 @@ defmodule Storyarn.ProjectTemplates do
   end
 
   @doc """
+  Lists recent installs for a template owned by the current user.
+  """
+  @spec list_template_installs(scope(), ProjectTemplate.t(), keyword()) :: [ProjectTemplateInstall.t()]
+  def list_template_installs(scope, template, opts \\ [])
+
+  def list_template_installs(%Scope{user: %{id: user_id}}, %ProjectTemplate{owner_id: user_id} = template, opts) do
+    limit = Keyword.get(opts, :limit, 10)
+
+    ProjectTemplateInstall
+    |> join(:inner, [install], version in assoc(install, :project_template_version))
+    |> where([_install, version], version.project_template_id == ^template.id)
+    |> order_by([install, _version], desc: install.installed_at, desc: install.id)
+    |> limit(^limit)
+    |> preload([_install, version], [:user, :workspace, :project, project_template_version: version])
+    |> Repo.all()
+  end
+
+  def list_template_installs(%Scope{}, %ProjectTemplate{}, _opts), do: []
+
+  @doc """
   Creates a private template and publishes its first immutable version.
   """
   @spec create_template_from_project(scope(), Project.t(), attrs()) ::

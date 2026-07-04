@@ -196,6 +196,10 @@ defmodule StoryarnWeb.Router do
       live "/workspaces/new", WorkspaceLive.New, :new
       live "/workspaces/:workspace_slug", WorkspaceLive.Show, :show
 
+      # Project templates
+      live "/templates", TemplateLive.Index, :index
+      live "/templates/:id", TemplateLive.Show, :show
+
       live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id/compare/:version_number",
            CompareLive.Sheet,
            :compare
