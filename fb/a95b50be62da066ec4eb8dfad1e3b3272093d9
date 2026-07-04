@@ -1,0 +1,33 @@
+assets/app/live/workspace/dashboard/WorkspaceDashboard.vue
+  s_05c30eca064c16::t_6cf1bc4cfc8045 336,340-392,397-414,416-433,438-482
+  s_05c30eca064c16::t_3e354ecd9f95b1 2,47-55,64,75,82-84,103-125,139-174
+  s_05c30eca064c16::t_b8e34f6564bf33 393-396,415,434-437
+test/storyarn_web/live/workspace_live/template_creation_test.exs
+  s_05c30eca064c16::t_2a6280594979e0 1-77
+lib/storyarn_web/live/workspace_live/show.ex
+  s_05c30eca064c16::t_9edfeeba0a4d2e 12,31,69,123-148,153-169,196-213
+  s_05c30eca064c16::t_098aa51fd8c24a 214
+assets/app/locales/en/workspace.json
+  s_05c30eca064c16::t_b97152b27b0d36 22-36
+assets/app/locales/es/workspace.json
+  s_05c30eca064c16::t_8ff6648b5072e7 22-36
+assets/app/test/live/workspace/dashboard/WorkspaceDashboard.test.ts
+  s_05c30eca064c16::t_b8c57fdaf924b5 29,40,46-51,79-102
+  s_05c30eca064c16::t_678ed14ef5b59c 103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "fba95b50be62da066ec4eb8dfad1e3b3272093d9",
+  "prompts": {},
+  "sessions": {
+    "s_05c30eca064c16": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f220d-6e1f-7390-9b78-95d14ea6619a",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
