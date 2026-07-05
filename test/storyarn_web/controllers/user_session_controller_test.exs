@@ -60,6 +60,30 @@ defmodule StoryarnWeb.UserSessionControllerTest do
       assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "Welcome back!"
     end
 
+    test "logs the user in with a validated LiveView login token", %{conn: conn, user: user} do
+      user = set_password(user)
+      login_token = StoryarnWeb.UserLoginToken.sign_user(user)
+
+      conn =
+        post(conn, ~p"/users/log-in", %{
+          "user" => %{"_login_token" => login_token}
+        })
+
+      assert get_session(conn, :user_token)
+      assert redirected_to(conn) =~ "/workspaces/"
+    end
+
+    test "rejects invalid LiveView login token as form error", %{conn: conn} do
+      conn =
+        post(conn, ~p"/users/log-in", %{
+          "user" => %{"_login_token" => "invalid"}
+        })
+
+      refute Phoenix.Flash.get(conn.assigns.flash, :error)
+      assert Phoenix.Flash.get(conn.assigns.flash, :login_error) == "Invalid email or password"
+      assert redirected_to(conn) == ~p"/users/log-in"
+    end
+
     test "confirmed access uses current user email when form email is absent", %{conn: conn, user: user} do
       stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -121, :minute)
 
@@ -76,13 +100,18 @@ defmodule StoryarnWeb.UserSessionControllerTest do
       assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "User confirmed successfully."
     end
 
-    test "redirects to login page with invalid credentials", %{conn: conn, user: user} do
+    test "redirects to login page with inline form error on invalid credentials", %{
+      conn: conn,
+      user: user
+    } do
       conn =
         post(conn, ~p"/users/log-in?mode=password", %{
           "user" => %{"email" => user.email, "password" => "invalid_password"}
         })
 
-      assert Phoenix.Flash.get(conn.assigns.flash, :error) == "Invalid email or password"
+      refute Phoenix.Flash.get(conn.assigns.flash, :error)
+      assert Phoenix.Flash.get(conn.assigns.flash, :login_error) == "Invalid email or password"
+      assert Phoenix.Flash.get(conn.assigns.flash, :email) == user.email
       assert redirected_to(conn) == ~p"/users/log-in"
     end
   end

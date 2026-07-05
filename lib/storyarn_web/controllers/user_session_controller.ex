@@ -6,6 +6,7 @@ defmodule StoryarnWeb.UserSessionController do
   alias Storyarn.Analytics
   alias Storyarn.RateLimiter
   alias StoryarnWeb.UserAuth
+  alias StoryarnWeb.UserLoginToken
 
   def create(conn, %{"_action" => "confirmed", "user" => user_params} = params) do
     params =
@@ -23,25 +24,28 @@ defmodule StoryarnWeb.UserSessionController do
   end
 
   # email + password login
+  defp create(conn, %{"user" => %{"_login_token" => login_token} = user_params}, info) do
+    case user_from_login_token(login_token) do
+      {:ok, user} ->
+        log_in_authenticated_user(conn, user, user_params, info)
+
+      :error ->
+        invalid_credentials_redirect(conn, user_params)
+    end
+  end
+
   defp create(conn, %{"user" => user_params}, info) do
-    %{"email" => email, "password" => password} = user_params
+    email = user_params["email"] || ""
+    password = user_params["password"] || ""
     ip_address = format_remote_ip(conn)
 
     case RateLimiter.check_login(ip_address) do
       :ok ->
         if user = Accounts.get_user_by_email_and_password(email, password) do
-          Analytics.identify_user(user)
-          Analytics.track(user, "user logged in", %{auth_method: "password"})
-
-          conn
-          |> put_flash(:info, info)
-          |> UserAuth.log_in_user(user, user_params)
+          log_in_authenticated_user(conn, user, user_params, info)
         else
           # In order to prevent user enumeration attacks, don't disclose whether the email is registered.
-          conn
-          |> put_flash(:error, dgettext("identity", "Invalid email or password"))
-          |> put_flash(:email, String.slice(email, 0, 160))
-          |> redirect(to: ~p"/users/log-in")
+          invalid_credentials_redirect(conn, user_params)
         end
 
       {:error, :rate_limited} ->
@@ -52,6 +56,39 @@ defmodule StoryarnWeb.UserSessionController do
         )
         |> redirect(to: ~p"/users/log-in")
     end
+  end
+
+  defp log_in_authenticated_user(conn, user, user_params, info) do
+    Analytics.identify_user(user)
+    Analytics.track(user, "user logged in", %{auth_method: "password"})
+
+    conn
+    |> put_flash(:info, info)
+    |> UserAuth.log_in_user(user, user_params)
+  end
+
+  defp invalid_credentials_redirect(conn, user_params) do
+    email = user_params["email"] || ""
+
+    conn
+    |> put_flash(:login_error, dgettext("identity", "Invalid email or password"))
+    |> put_flash(:email, String.slice(email, 0, 160))
+    |> redirect(to: ~p"/users/log-in")
+  end
+
+  defp user_from_login_token(token) do
+    with {:ok, user_id} when is_integer(user_id) <- UserLoginToken.verify(token),
+         user when not is_nil(user) <- get_user(user_id) do
+      {:ok, user}
+    else
+      _ -> :error
+    end
+  end
+
+  defp get_user(user_id) do
+    Accounts.get_user!(user_id)
+  rescue
+    Ecto.NoResultsError -> nil
   end
 
   defp confirmed_access_email(conn, user_params) do
