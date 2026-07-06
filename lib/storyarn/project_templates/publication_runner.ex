@@ -5,6 +5,7 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.Accounts.User
+  alias Storyarn.Billing
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates.Artifact
   alias Storyarn.ProjectTemplates.Audit
@@ -21,7 +22,8 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
 
   def request_template_publication(%Scope{} = scope, %Project{} = source_project, attrs) do
     with :ok <- Authorization.ensure_private_visibility(attrs),
-         {:ok, source_project} <- Authorization.authorize_source_project(scope, source_project) do
+         {:ok, source_project} <- Authorization.authorize_source_project(scope, source_project),
+         :ok <- Billing.can_create_project_template?(source_project) do
       source_project
       |> new_template_publication_changeset(scope, attrs)
       |> insert_publication_and_enqueue()
@@ -35,9 +37,10 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
         attrs
       ) do
     with :ok <- Authorization.ensure_private_visibility(attrs),
-         :ok <- Authorization.authorize_template_owner(scope, template),
+         :ok <- Authorization.authorize_template_manager(scope, template),
          {:ok, source_project} <- Authorization.authorize_source_project(scope, source_project),
-         :ok <- Authorization.ensure_template_source(template, source_project) do
+         :ok <- Authorization.ensure_template_source(template, source_project),
+         :ok <- Billing.can_create_project_template_version?(template) do
       template
       |> template_version_publication_changeset(scope, source_project, attrs)
       |> insert_publication_and_enqueue()
@@ -68,6 +71,7 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
   def create_template_from_project(%Scope{} = scope, %Project{} = source_project, attrs) do
     with :ok <- Authorization.ensure_private_visibility(attrs),
          {:ok, source_project} <- Authorization.authorize_source_project(scope, source_project),
+         :ok <- Billing.can_create_project_template?(source_project),
          {:ok, publication} <-
            source_project
            |> new_template_publication_changeset(scope, attrs)
@@ -78,9 +82,10 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
   end
 
   def publish_new_version(%Scope{} = scope, %ProjectTemplate{} = template, %Project{} = source_project) do
-    with :ok <- Authorization.authorize_template_owner(scope, template),
+    with :ok <- Authorization.authorize_template_manager(scope, template),
          {:ok, source_project} <- Authorization.authorize_source_project(scope, source_project),
          :ok <- Authorization.ensure_template_source(template, source_project),
+         :ok <- Billing.can_create_project_template_version?(template),
          {:ok, publication} <-
            template
            |> template_version_publication_changeset(scope, source_project, %{
@@ -94,9 +99,17 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
   end
 
   def update_template(%Scope{} = scope, %ProjectTemplate{} = template, attrs) do
-    with :ok <- Authorization.authorize_template_owner(scope, template) do
-      update_template_metadata(template, attrs)
+    with :ok <- Authorization.authorize_template_manager(scope, template) do
+      update_template_metadata(template, attrs, scope)
     end
+  end
+
+  def archive_template(%Scope{} = scope, %ProjectTemplate{} = template) do
+    update_template(scope, template, %{"status" => "archived"})
+  end
+
+  def unarchive_template(%Scope{} = scope, %ProjectTemplate{} = template) do
+    update_template(scope, template, %{"status" => "active"})
   end
 
   def update_template_and_publish_new_version(
@@ -105,9 +118,10 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
         %Project{} = source_project,
         attrs
       ) do
-    with :ok <- Authorization.authorize_template_owner(scope, template),
+    with :ok <- Authorization.authorize_template_manager(scope, template),
          {:ok, source_project} <- Authorization.authorize_source_project(scope, source_project),
          :ok <- Authorization.ensure_template_source(template, source_project),
+         :ok <- Billing.can_create_project_template_version?(template),
          {:ok, publication} <-
            template
            |> template_version_publication_changeset(scope, source_project, attrs)
@@ -117,12 +131,12 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
     end
   end
 
-  defp update_template_metadata(template, attrs) do
+  defp update_template_metadata(template, attrs, scope) do
     template
     |> ProjectTemplate.update_changeset(attrs)
     |> Repo.update()
     |> case do
-      {:ok, template} -> {:ok, TemplateQueries.preload_template(template)}
+      {:ok, template} -> {:ok, TemplateQueries.preload_template(template, scope)}
       {:error, changeset} -> {:error, changeset}
     end
   end
@@ -171,7 +185,8 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
         "mode" => "new",
         "status" => "queued",
         "name" => template_name(attrs, source_project),
-        "description" => template_description(attrs, source_project.description)
+        "description" => template_description(attrs, source_project.description),
+        "version_notes" => version_notes(attrs)
       }
     )
   end
@@ -188,7 +203,8 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
         "mode" => "update",
         "status" => "queued",
         "name" => template_name(attrs, template),
-        "description" => template_description(attrs, template.description)
+        "description" => template_description(attrs, template.description),
+        "version_notes" => version_notes(attrs)
       }
     )
   end
@@ -250,9 +266,10 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
   defp publish_audited_snapshot(publication, scope, source_project, template, audit_report, snapshot, opts) do
     asset_manifest = Artifact.build_asset_manifest(source_project.id)
     checksum = Artifact.checksum(%{"snapshot" => snapshot, "asset_manifest" => asset_manifest})
+    preview = Artifact.preview(snapshot, asset_manifest)
 
     with {:ok, artifact} <-
-           store_publication_artifacts(publication, snapshot, asset_manifest, checksum, audit_report),
+           store_publication_artifacts(publication, snapshot, asset_manifest, checksum, preview, audit_report),
          {:ok, publication} <-
            finalize_publication(
              publication,
@@ -276,6 +293,7 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
                publication_template_for_finalize(publication, scope, source_project, template),
              {:ok, version} <-
                create_version_from_artifacts(
+                 publication,
                  scope,
                  template,
                  source_project,
@@ -327,14 +345,18 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
 
   defp publication_template_for_finalize(
          %ProjectTemplatePublication{mode: "update"} = publication,
-         _scope,
+         scope,
          _source_project,
          %ProjectTemplate{} = template
        ) do
-    update_template_metadata(template, %{
-      "name" => publication.name,
-      "description" => publication.description
-    })
+    update_template_metadata(
+      template,
+      %{
+        "name" => publication.name,
+        "description" => publication.description
+      },
+      scope
+    )
   end
 
   defp publication_template_for_finalize(_publication, _scope, _source_project, _template) do
@@ -366,7 +388,13 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
   end
 
   defp authorize_publication_template_for_worker(scope, %ProjectTemplatePublication{mode: "new"}, source_project) do
-    {:ok, scope, source_project, nil}
+    case Billing.can_create_project_template?(source_project) do
+      :ok ->
+        {:ok, scope, source_project, nil}
+
+      {:error, :limit_reached, details} ->
+        expected_publication_error(:limit_reached, "Template limit reached for your plan.", details)
+    end
   end
 
   defp authorize_publication_template_for_worker(
@@ -377,8 +405,9 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
     template = Repo.get(ProjectTemplate, publication.project_template_id)
 
     with %ProjectTemplate{status: "active"} = template <- template,
-         :ok <- Authorization.authorize_template_owner(scope, template),
-         :ok <- Authorization.ensure_template_source(template, source_project) do
+         :ok <- Authorization.authorize_template_manager(scope, template),
+         :ok <- Authorization.ensure_template_source(template, source_project),
+         :ok <- Billing.can_create_project_template_version?(template) do
       {:ok, scope, source_project, template}
     else
       nil ->
@@ -386,6 +415,9 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
 
       %ProjectTemplate{} ->
         expected_publication_error(:template_archived, "The template is no longer active.")
+
+      {:error, :limit_reached, details} ->
+        expected_publication_error(:limit_reached, "Template version limit reached for your plan.", details)
 
       {:error, reason} ->
         expected_publication_error(:unauthorized, "You no longer have permission to publish this template.", %{
@@ -415,6 +447,7 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
       "asset_manifest_storage_key" => artifact.asset_manifest_key,
       "checksum" => artifact.checksum,
       "entity_counts" => Map.get(artifact.snapshot, "entity_counts", %{}),
+      "preview" => artifact.preview,
       "audit_report" => artifact.audit_report,
       "completed_at" => TimeHelpers.now()
     })
@@ -511,7 +544,7 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
     |> Repo.insert()
   end
 
-  defp create_version_from_artifacts(scope, template, source_project, version_number, artifact) do
+  defp create_version_from_artifacts(publication, scope, template, source_project, version_number, artifact) do
     now = TimeHelpers.now()
 
     %ProjectTemplateVersion{
@@ -524,7 +557,9 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
       snapshot_storage_key: artifact.snapshot_key,
       asset_manifest_storage_key: artifact.asset_manifest_key,
       checksum: artifact.checksum,
+      version_notes: publication.version_notes,
       entity_counts: Map.get(artifact.snapshot, "entity_counts", %{}),
+      preview: artifact.preview,
       audit_report: artifact.audit_report,
       published_at: now
     })
@@ -541,12 +576,12 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
     end
   end
 
-  defp store_publication_artifacts(publication, snapshot, asset_manifest, checksum, audit_report) do
+  defp store_publication_artifacts(publication, snapshot, asset_manifest, checksum, preview, audit_report) do
     case store_publication_artifact(publication, "snapshot", snapshot) do
       {:ok, snapshot_key} ->
         case store_publication_artifact(publication, "asset-manifest", asset_manifest) do
           {:ok, asset_manifest_key} ->
-            {:ok, publication_artifact(audit_report, snapshot, checksum, snapshot_key, asset_manifest_key)}
+            {:ok, publication_artifact(audit_report, snapshot, checksum, preview, snapshot_key, asset_manifest_key)}
 
           {:error, reason} ->
             cleanup_publication_artifacts([snapshot_key])
@@ -573,11 +608,12 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
     end)
   end
 
-  defp publication_artifact(audit_report, snapshot, checksum, snapshot_key, asset_manifest_key) do
+  defp publication_artifact(audit_report, snapshot, checksum, preview, snapshot_key, asset_manifest_key) do
     %{
       audit_report: audit_report,
       snapshot: snapshot,
       checksum: checksum,
+      preview: preview,
       snapshot_key: snapshot_key,
       asset_manifest_key: asset_manifest_key
     }
@@ -597,6 +633,19 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
 
   defp template_description(attrs, default_description) do
     Map.get(attrs, :description) || Map.get(attrs, "description") || default_description
+  end
+
+  defp version_notes(attrs) do
+    case Map.get(attrs, :version_notes) || Map.get(attrs, "version_notes") do
+      value when is_binary(value) ->
+        case String.trim(value) do
+          "" -> nil
+          notes -> notes
+        end
+
+      _other ->
+        nil
+    end
   end
 
   defp changeset_report(changeset) do

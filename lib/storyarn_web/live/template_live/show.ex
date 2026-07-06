@@ -71,19 +71,43 @@ defmodule StoryarnWeb.TemplateLive.Show do
                   </p>
                 </div>
 
+                <.form
+                  :if={@can_publish}
+                  for={@publish_form}
+                  id="publish-template-version-form"
+                  class="flex w-full flex-col gap-2 md:w-80"
+                  phx-submit="publish_new_version"
+                >
+                  <textarea
+                    id="template-version-notes"
+                    name={@publish_form[:version_notes].name}
+                    class="textarea textarea-bordered textarea-sm min-h-20"
+                    maxlength="2000"
+                    placeholder={dgettext("projects", "Version notes")}
+                    disabled={@has_active_publication}
+                  >{@publish_form[:version_notes].value}</textarea>
+                  <button
+                    id="publish-template-version-button"
+                    type="submit"
+                    class="btn btn-outline btn-sm"
+                    disabled={@has_active_publication}
+                  >
+                    <%= if @has_active_publication do %>
+                      {dgettext("projects", "Publication running")}
+                    <% else %>
+                      {dgettext("projects", "Publish new version")}
+                    <% end %>
+                  </button>
+                </.form>
+
                 <button
                   :if={@can_publish}
-                  id="publish-template-version-button"
+                  id="archive-template-button"
                   type="button"
-                  class="btn btn-outline btn-sm"
-                  phx-click="publish_new_version"
-                  disabled={@has_active_publication}
+                  class="btn btn-ghost btn-sm text-error"
+                  phx-click="archive_template"
                 >
-                  <%= if @has_active_publication do %>
-                    {dgettext("projects", "Publication running")}
-                  <% else %>
-                    {dgettext("projects", "Publish new version")}
-                  <% end %>
+                  {dgettext("projects", "Archive")}
                 </button>
               </div>
             </header>
@@ -114,6 +138,28 @@ defmodule StoryarnWeb.TemplateLive.Show do
                     <span class="font-semibold">{value}</span>
                   </span>
                 <% end %>
+              </div>
+
+              <p :if={version_notes(@current_version) != ""} class="mt-4 text-sm text-base-content/70">
+                {version_notes(@current_version)}
+              </p>
+
+              <div
+                :if={preview_groups(@current_version) != []}
+                id="template-current-preview"
+                class="mt-5 grid gap-3 md:grid-cols-3"
+              >
+                <div
+                  :for={group <- preview_groups(@current_version)}
+                  class="rounded-box border border-base-300 bg-base-200/40 p-3"
+                >
+                  <p class="text-xs font-semibold uppercase tracking-normal text-base-content/50">
+                    {group.label}
+                  </p>
+                  <ul class="mt-2 space-y-1 text-sm text-base-content/75">
+                    <li :for={item <- group.items} class="truncate">{item}</li>
+                  </ul>
+                </div>
               </div>
             </section>
 
@@ -174,7 +220,7 @@ defmodule StoryarnWeb.TemplateLive.Show do
                     <tr>
                       <th>{dgettext("projects", "Version")}</th>
                       <th>{dgettext("projects", "Published")}</th>
-                      <th>{dgettext("projects", "By")}</th>
+                      <th :if={@can_publish}>{dgettext("projects", "By")}</th>
                     </tr>
                   </thead>
                   <tbody id="template-versions">
@@ -189,12 +235,18 @@ defmodule StoryarnWeb.TemplateLive.Show do
                             {dgettext("projects", "Current")}
                           </span>
                         </div>
+                        <p
+                          :if={version_notes(version) != ""}
+                          class="mt-1 max-w-lg text-xs text-base-content/60"
+                        >
+                          {version_notes(version)}
+                        </p>
                       </td>
                       <td>{format_datetime(version.published_at)}</td>
-                      <td>{published_by_email(version)}</td>
+                      <td :if={@can_publish}>{published_by_email(version)}</td>
                     </tr>
                     <tr :if={@versions == []} id="template-versions-empty">
-                      <td colspan="3" class="text-base-content/60">
+                      <td colspan={if(@can_publish, do: "3", else: "2")} class="text-base-content/60">
                         {dgettext("projects", "No versions published yet.")}
                       </td>
                     </tr>
@@ -219,21 +271,17 @@ defmodule StoryarnWeb.TemplateLive.Show do
                 <table class="table table-sm">
                   <thead>
                     <tr>
-                      <th>{dgettext("projects", "Project")}</th>
-                      <th>{dgettext("workspaces", "Workspace")}</th>
                       <th>{dgettext("projects", "Version")}</th>
                       <th>{dgettext("projects", "Installed")}</th>
                     </tr>
                   </thead>
                   <tbody id="template-installs">
                     <tr :for={install <- @installs} id={"template-install-#{install.id}"}>
-                      <td>{install.project && install.project.name}</td>
-                      <td>{install.workspace && install.workspace.name}</td>
                       <td>{install.project_template_version.version_number}</td>
                       <td>{format_datetime(install.installed_at)}</td>
                     </tr>
                     <tr :if={@installs == []} id="template-installs-empty">
-                      <td colspan="4" class="text-base-content/60">
+                      <td colspan="2" class="text-base-content/60">
                         {dgettext("projects", "No installs yet.")}
                       </td>
                     </tr>
@@ -347,8 +395,9 @@ defmodule StoryarnWeb.TemplateLive.Show do
     end
   end
 
-  def handle_event("publish_new_version", _params, socket) do
+  def handle_event("publish_new_version", params, socket) do
     template = socket.assigns.template
+    version_notes = get_in(params, ["publication", "version_notes"])
 
     case template.source_project do
       %Project{} = source_project ->
@@ -356,17 +405,28 @@ defmodule StoryarnWeb.TemplateLive.Show do
                socket.assigns.current_scope,
                template,
                source_project,
-               %{"name" => template.name, "description" => template.description}
+               %{
+                 "name" => template.name,
+                 "description" => template.description,
+                 "version_notes" => version_notes
+               }
              ) do
           {:ok, _publication} ->
             {:noreply,
              socket
              |> put_flash(:info, dgettext("projects", "Template publication queued."))
              |> assign_template(template)
+             |> assign(:publish_form, publish_form())
              |> assign(:install_form, install_form(template, socket.assigns.installable_workspaces))}
 
           {:error, :publication_already_active} ->
             {:noreply, put_flash(socket, :error, dgettext("projects", "A template publication is already running."))}
+
+          {:error, :limit_reached, %{resource: :project_template_versions_per_template}} ->
+            {:noreply, put_flash(socket, :error, dgettext("projects", "Template version limit reached for your plan."))}
+
+          {:error, :limit_reached, _details} ->
+            {:noreply, put_flash(socket, :error, dgettext("projects", "Template limit reached for your plan."))}
 
           {:error, _reason} ->
             {:noreply, put_flash(socket, :error, dgettext("projects", "Template publication could not be queued."))}
@@ -374,6 +434,19 @@ defmodule StoryarnWeb.TemplateLive.Show do
 
       _source_project ->
         {:noreply, put_flash(socket, :error, dgettext("projects", "Template publication could not be queued."))}
+    end
+  end
+
+  def handle_event("archive_template", _params, socket) do
+    case ProjectTemplates.archive_template(socket.assigns.current_scope, socket.assigns.template) do
+      {:ok, _template} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, dgettext("projects", "Template archived."))
+         |> push_navigate(to: ~p"/templates")}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, dgettext("projects", "Template could not be archived."))}
     end
   end
 
@@ -405,7 +478,8 @@ defmodule StoryarnWeb.TemplateLive.Show do
     |> assign(:template, template)
     |> assign(:current_version, template.current_version)
     |> assign(:versions, versions)
-    |> assign(:can_publish, can_publish?(socket.assigns.current_scope, template))
+    |> assign(:can_publish, ProjectTemplates.can_manage_template?(socket.assigns.current_scope, template))
+    |> assign(:publish_form, publish_form())
     |> assign(:publications, publications)
     |> assign(:has_active_publication, Enum.any?(publications, &active_publication?/1))
     |> assign(:installs, ProjectTemplates.list_template_installs(socket.assigns.current_scope, template, limit: 10))
@@ -435,8 +509,9 @@ defmodule StoryarnWeb.TemplateLive.Show do
   defp current_version_id(%{current_version: %{id: version_id}}), do: to_string(version_id)
   defp current_version_id(_template), do: ""
 
-  defp can_publish?(%{user: %{id: user_id}}, %{owner_id: user_id, visibility: "private"}), do: true
-  defp can_publish?(_scope, _template), do: false
+  defp publish_form do
+    to_form(%{"version_notes" => ""}, as: :publication)
+  end
 
   defp active_publication?(%{status: status}), do: status in ~w(queued running retrying)
 
@@ -504,4 +579,30 @@ defmodule StoryarnWeb.TemplateLive.Show do
   end
 
   defp entity_counts(_version), do: []
+
+  defp version_notes(%{version_notes: notes}) when is_binary(notes), do: notes
+  defp version_notes(_version), do: ""
+
+  defp preview_groups(%{preview: %{} = preview}) do
+    Enum.reject(
+      [
+        preview_group(dgettext("projects", "Sheets"), Map.get(preview, "sheets", [])),
+        preview_group(dgettext("projects", "Flows"), Map.get(preview, "flows", [])),
+        preview_group(dgettext("projects", "Scenes"), Map.get(preview, "scenes", []))
+      ],
+      &(&1.items == [])
+    )
+  end
+
+  defp preview_groups(_version), do: []
+
+  defp preview_group(label, entries) do
+    %{
+      label: label,
+      items:
+        entries
+        |> Enum.map(&Map.get(&1, "name"))
+        |> Enum.reject(&is_nil/1)
+    }
+  end
 end

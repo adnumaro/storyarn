@@ -13,6 +13,7 @@ defmodule Storyarn.Workers.PublishProjectTemplateWorkerTest do
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Repo
   alias Storyarn.Workers.PublishProjectTemplateWorker
+  alias Storyarn.Workspaces.WorkspaceMembership
 
   describe "perform/1" do
     test "publishes a queued new template" do
@@ -23,7 +24,8 @@ defmodule Storyarn.Workers.PublishProjectTemplateWorkerTest do
       {:ok, publication} =
         ProjectTemplates.request_template_publication(scope, project, %{
           name: "Worker Starter",
-          description: "Created by worker"
+          description: "Created by worker",
+          version_notes: "Worker v1 notes"
         })
 
       assert :ok = perform_job(PublishProjectTemplateWorker, %{"publication_id" => publication.id})
@@ -37,6 +39,8 @@ defmodule Storyarn.Workers.PublishProjectTemplateWorkerTest do
       assert template.description == "Created by worker"
       assert template.current_version_id == version.id
       assert version.version_number == 1
+      assert version.version_notes == "Worker v1 notes"
+      assert is_map(version.preview["project"])
       assert version.snapshot_storage_key =~ "project_template_publications/#{publication.id}/snapshot-"
     end
 
@@ -51,7 +55,8 @@ defmodule Storyarn.Workers.PublishProjectTemplateWorkerTest do
       {:ok, publication} =
         ProjectTemplates.request_template_version_publication(scope, template, project, %{
           name: "Starter Updated",
-          description: "Updated by worker"
+          description: "Updated by worker",
+          version_notes: "Second version notes"
         })
 
       assert :ok = perform_job(PublishProjectTemplateWorker, %{"publication_id" => publication.id})
@@ -62,6 +67,7 @@ defmodule Storyarn.Workers.PublishProjectTemplateWorkerTest do
       assert template.name == "Starter Updated"
       assert template.description == "Updated by worker"
       assert second_version.version_number == 2
+      assert second_version.version_notes == "Second version notes"
       assert first_version_id != second_version.id
       assert Repo.get!(ProjectTemplateVersion, first_version_id).version_number == 1
     end
@@ -75,6 +81,11 @@ defmodule Storyarn.Workers.PublishProjectTemplateWorkerTest do
 
       Repo.update_all(
         from(m in ProjectMembership, where: m.project_id == ^project.id and m.user_id == ^user.id),
+        set: [role: "viewer"]
+      )
+
+      Repo.update_all(
+        from(m in WorkspaceMembership, where: m.workspace_id == ^project.workspace_id and m.user_id == ^user.id),
         set: [role: "viewer"]
       )
 

@@ -57,6 +57,7 @@ interface ProjectTemplatePublicationStatus {
   template_version_id?: number | null;
   name: string;
   description: string;
+  version_notes?: string;
   error_message?: string | null;
   inserted_at?: string | null;
   completed_at?: string | null;
@@ -159,6 +160,7 @@ const templateMode = ref<"new" | "update">("new");
 const selectedTemplateId = ref<number | null>(null);
 const templateName = ref(projectDetails.name);
 const templateDescription = ref(projectDetails.description);
+const templateVersionNotes = ref("");
 const activePublicationStatuses = new Set(["queued", "running", "retrying"]);
 
 const selectedTemplate = computed(() => {
@@ -216,6 +218,7 @@ function syncTemplateFields(template: ProjectTemplatePublication | null) {
   selectedTemplateId.value = template?.id || null;
   templateName.value = template?.name || projectDetails.name;
   templateDescription.value = template?.description || projectDetails.description;
+  templateVersionNotes.value = "";
 }
 
 function publishTemplate() {
@@ -227,6 +230,7 @@ function publishTemplate() {
       template_id: selectedTemplateId.value,
       name: templateName.value.trim(),
       description: templateDescription.value,
+      version_notes: templateVersionNotes.value,
     },
   });
 
@@ -639,6 +643,18 @@ function confirmDeleteProject() {
               $t("project_settings.general.template_description")
             }}</Label>
             <Textarea id="template-description" v-model="templateDescription" :rows="3" />
+          </div>
+
+          <div class="space-y-1.5">
+            <Label for="template-version-notes">{{
+              $t("project_settings.general.template_version_notes")
+            }}</Label>
+            <Textarea
+              id="template-version-notes"
+              v-model="templateVersionNotes"
+              :rows="3"
+              maxlength="2000"
+            />
           </div>
         </div>
 

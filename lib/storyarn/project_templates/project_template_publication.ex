@@ -33,10 +33,12 @@ defmodule Storyarn.ProjectTemplates.ProjectTemplatePublication do
           status: String.t(),
           name: String.t() | nil,
           description: String.t() | nil,
+          version_notes: String.t() | nil,
           snapshot_storage_key: String.t() | nil,
           asset_manifest_storage_key: String.t() | nil,
           checksum: String.t() | nil,
           entity_counts: map(),
+          preview: map(),
           audit_report: map(),
           error_code: String.t() | nil,
           error_message: String.t() | nil,
@@ -52,10 +54,12 @@ defmodule Storyarn.ProjectTemplates.ProjectTemplatePublication do
     field :status, :string, default: "queued"
     field :name, :string
     field :description, :string
+    field :version_notes, :string
     field :snapshot_storage_key, :string
     field :asset_manifest_storage_key, :string
     field :checksum, :string
     field :entity_counts, :map, default: %{}
+    field :preview, :map, default: %{}
     field :audit_report, :map, default: %{}
     field :error_code, :string
     field :error_message, :string
@@ -79,7 +83,7 @@ defmodule Storyarn.ProjectTemplates.ProjectTemplatePublication do
 
   def create_changeset(publication, attrs) do
     publication
-    |> cast(attrs, [:mode, :status, :name, :description])
+    |> cast(attrs, [:mode, :status, :name, :description, :version_notes])
     |> validate_required([:mode, :status, :name])
     |> validate_common()
   end
@@ -120,6 +124,7 @@ defmodule Storyarn.ProjectTemplates.ProjectTemplatePublication do
       :asset_manifest_storage_key,
       :checksum,
       :entity_counts,
+      :preview,
       :audit_report,
       :completed_at
     ])
@@ -131,6 +136,7 @@ defmodule Storyarn.ProjectTemplates.ProjectTemplatePublication do
       :asset_manifest_storage_key,
       :checksum,
       :entity_counts,
+      :preview,
       :audit_report,
       :completed_at
     ])
@@ -141,6 +147,7 @@ defmodule Storyarn.ProjectTemplates.ProjectTemplatePublication do
     changeset
     |> validate_length(:name, min: 1, max: 100)
     |> validate_length(:description, max: 1_000)
+    |> validate_length(:version_notes, max: 2_000)
     |> validate_length(:snapshot_storage_key, max: 255)
     |> validate_length(:asset_manifest_storage_key, max: 255)
     |> validate_format(:checksum, ~r/^[a-f0-9]{64}$/)
@@ -156,7 +163,7 @@ defmodule Storyarn.ProjectTemplates.ProjectTemplatePublication do
       name: :project_template_publications_active_template_unique,
       message: "already has an active publication"
     )
-    |> unique_constraint([:owner_id, :source_project_id],
+    |> unique_constraint(:source_project_id,
       name: :project_template_publications_active_new_source_unique,
       message: "already has an active publication"
     )

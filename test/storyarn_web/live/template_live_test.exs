@@ -14,6 +14,7 @@ defmodule StoryarnWeb.TemplateLiveTest do
   alias Storyarn.ProjectTemplates.ProjectTemplatePublication
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Repo
+  alias Storyarn.Workers.DeleteProjectTemplateArtifactsWorker
   alias Storyarn.Workers.PublishProjectTemplateWorker
 
   describe "index" do
@@ -33,6 +34,49 @@ defmodule StoryarnWeb.TemplateLiveTest do
       assert has_element?(view, "#template-card-#{own_template.id}")
       assert has_element?(view, "#template-card-#{public_template.id}")
       refute has_element?(view, "#template-card-#{other_private.id}")
+    end
+
+    test "archives and restores a private template from the listing", %{conn: conn, user: user, scope: scope} do
+      template = template_fixture(user, scope, %{name: "Archivable Starter"})
+
+      {:ok, view, _html} = live(conn, ~p"/templates")
+
+      assert has_element?(view, "#archive-template-#{template.id}")
+      render_click(element(view, "#archive-template-#{template.id}"))
+
+      assert has_element?(view, "#unarchive-template-#{template.id}")
+      refute has_element?(view, "#template-card-#{template.id} a[href='/templates/#{template.id}']")
+
+      render_click(element(view, "#unarchive-template-#{template.id}"))
+
+      assert has_element?(view, "#archive-template-#{template.id}")
+      assert has_element?(view, "#template-card-#{template.id} a[href='/templates/#{template.id}']")
+    end
+
+    test "permanently deletes an archived private template from the listing", %{conn: conn, user: user, scope: scope} do
+      template = template_fixture(user, scope, %{name: "Disposable Starter"})
+      version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
+      storage_keys = [version.snapshot_storage_key, version.asset_manifest_storage_key]
+      archive_template(template)
+
+      {:ok, view, _html} = live(conn, ~p"/templates")
+
+      assert has_element?(view, "#delete-template-#{template.id}")
+      render_click(element(view, "#delete-template-#{template.id}"))
+
+      assert has_element?(view, "#delete-template-confirmation-#{template.id}")
+      assert has_element?(view, "#confirm-delete-template-#{template.id}")
+
+      html = render_click(element(view, "#confirm-delete-template-#{template.id}"))
+
+      refute has_element?(view, "#template-card-#{template.id}")
+      assert html =~ "Template permanently deleted"
+      assert Repo.get(ProjectTemplate, template.id) == nil
+
+      assert_enqueued(
+        worker: DeleteProjectTemplateArtifactsWorker,
+        args: %{"storage_keys" => storage_keys}
+      )
     end
   end
 
@@ -98,13 +142,19 @@ defmodule StoryarnWeb.TemplateLiveTest do
       {:ok, view, _html} = live(conn, ~p"/templates/#{template.id}")
 
       assert has_element?(view, "#publish-template-version-button")
-      html = render_click(element(view, "#publish-template-version-button"))
+
+      html =
+        render_submit(element(view, "#publish-template-version-form"), %{
+          "publication" => %{"version_notes" => "LiveView version notes"}
+        })
+
       assert html =~ "Template publication queued"
 
       publication = Repo.get_by!(ProjectTemplatePublication, project_template_id: template.id, status: "queued")
       template = Repo.get!(ProjectTemplate, template.id)
 
       assert publication.status == "queued"
+      assert publication.version_notes == "LiveView version notes"
       assert template.current_version_id == first_version_id
       assert version_count(template.id) == 1
       assert has_element?(view, "#template-publication-#{publication.id}")
@@ -115,7 +165,32 @@ defmodule StoryarnWeb.TemplateLiveTest do
       version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
 
       assert version.version_number == 2
+      assert version.version_notes == "LiveView version notes"
       assert version_count(template.id) == 2
+    end
+
+    test "shows a plan limit error instead of crashing when version limit is reached", %{
+      conn: conn,
+      user: user,
+      scope: scope
+    } do
+      template = template_fixture(user, scope, %{name: "Version Limited Template"})
+      template = Repo.preload(template, :source_project)
+
+      insert_template_versions_to_limit(template, template.source_project, user)
+      publication_count = template_publication_count(template.id)
+
+      {:ok, view, _html} = live(conn, ~p"/templates/#{template.id}")
+
+      assert has_element?(view, "#publish-template-version-button")
+
+      html =
+        render_submit(element(view, "#publish-template-version-form"), %{
+          "publication" => %{"version_notes" => "Blocked"}
+        })
+
+      assert html =~ "Template version limit reached for your plan"
+      assert template_publication_count(template.id) == publication_count
     end
 
     test "does not render publish action for public templates", %{conn: conn} do
@@ -126,6 +201,7 @@ defmodule StoryarnWeb.TemplateLiveTest do
       {:ok, view, _html} = live(conn, ~p"/templates/#{public_template.id}")
 
       refute has_element?(view, "#publish-template-version-button")
+      refute render(view) =~ owner.email
     end
 
     test "redirects instead of crashing when the template is no longer visible on mount", %{
@@ -180,5 +256,29 @@ defmodule StoryarnWeb.TemplateLiveTest do
 
   defp version_count(template_id) do
     Repo.aggregate(from(v in ProjectTemplateVersion, where: v.project_template_id == ^template_id), :count)
+  end
+
+  defp template_publication_count(template_id) do
+    Repo.aggregate(from(p in ProjectTemplatePublication, where: p.project_template_id == ^template_id), :count)
+  end
+
+  defp insert_template_versions_to_limit(template, project, user) do
+    for version_number <- 2..20 do
+      %ProjectTemplateVersion{
+        project_template_id: template.id,
+        source_project_id: project.id,
+        published_by_id: user.id
+      }
+      |> ProjectTemplateVersion.create_changeset(%{
+        version_number: version_number,
+        snapshot_storage_key: "test/template-#{template.id}/snapshot-#{version_number}.json.gz",
+        asset_manifest_storage_key: "test/template-#{template.id}/asset-manifest-#{version_number}.json.gz",
+        checksum: String.duplicate("a", 64),
+        entity_counts: %{},
+        audit_report: %{"status" => "passed"},
+        published_at: DateTime.utc_now(:second)
+      })
+      |> Repo.insert!()
+    end
   end
 end

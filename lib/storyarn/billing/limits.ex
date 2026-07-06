@@ -13,6 +13,8 @@ defmodule Storyarn.Billing.Limits do
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
+  alias Storyarn.ProjectTemplates.ProjectTemplate
+  alias Storyarn.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Sheets.Sheet
@@ -38,6 +40,26 @@ defmodule Storyarn.Billing.Limits do
     limit = Plan.limit(plan, :projects_per_workspace)
     used = count_workspace_projects(workspace.id)
     check_limit(:projects_per_workspace, used, limit)
+  end
+
+  @doc """
+  Checks if a source project's workspace can publish another project template.
+  """
+  def can_create_project_template?(%Project{} = source_project) do
+    plan = SubscriptionCrud.plan_for_workspace_id(source_project.workspace_id)
+    limit = Plan.limit(plan, :project_templates_per_workspace)
+    used = count_workspace_project_templates(source_project.workspace_id)
+    check_limit(:project_templates_per_workspace, used, limit)
+  end
+
+  @doc """
+  Checks if a template can publish another immutable version.
+  """
+  def can_create_project_template_version?(%ProjectTemplate{} = template) do
+    plan = plan_for_template(template)
+    limit = Plan.limit(plan, :project_template_versions_per_template)
+    used = count_project_template_versions(template.id)
+    check_limit(:project_template_versions_per_template, used, limit)
   end
 
   @doc """
@@ -164,6 +186,11 @@ defmodule Storyarn.Billing.Limits do
             count_workspace_projects(workspace.id),
             Plan.limit(plan, :projects_per_workspace)
           ),
+        project_templates:
+          usage_bucket(
+            count_workspace_project_templates(workspace.id),
+            Plan.limit(plan, :project_templates_per_workspace)
+          ),
         members:
           usage_bucket(
             count_unique_workspace_users(workspace.id),
@@ -254,6 +281,37 @@ defmodule Storyarn.Billing.Limits do
   defp count_workspace_projects(workspace_id) do
     Repo.aggregate(from(p in Project, where: p.workspace_id == ^workspace_id and is_nil(p.deleted_at)), :count)
   end
+
+  defp count_workspace_project_templates(workspace_id) do
+    Repo.aggregate(
+      from(template in ProjectTemplate,
+        join: project in Project,
+        on: project.id == template.source_project_id,
+        where: project.workspace_id == ^workspace_id
+      ),
+      :count
+    )
+  end
+
+  defp count_project_template_versions(template_id) do
+    Repo.aggregate(
+      from(version in ProjectTemplateVersion, where: version.project_template_id == ^template_id),
+      :count
+    )
+  end
+
+  defp plan_for_template(%ProjectTemplate{source_project_id: source_project_id}) when is_integer(source_project_id) do
+    Project
+    |> where([project], project.id == ^source_project_id)
+    |> select([project], project.workspace_id)
+    |> Repo.one()
+    |> case do
+      workspace_id when is_integer(workspace_id) -> SubscriptionCrud.plan_for_workspace_id(workspace_id)
+      nil -> nil
+    end
+  end
+
+  defp plan_for_template(_template), do: nil
 
   @doc false
   def count_unique_workspace_users(workspace_id) do

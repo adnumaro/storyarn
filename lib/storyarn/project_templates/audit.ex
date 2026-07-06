@@ -105,11 +105,11 @@ defmodule Storyarn.ProjectTemplates.Audit do
   end
 
   defp unsafe_subflow_pin_errors(project_id) do
-    active_node_ids_by_flow = active_node_ids_by_flow(project_id)
+    active_exit_node_ids_by_flow = active_exit_node_ids_by_flow(project_id)
 
     project_id
     |> subflow_exit_pin_refs()
-    |> Enum.reject(&remappable_exit_pin?(&1, active_node_ids_by_flow))
+    |> Enum.reject(&remappable_exit_pin?(&1, active_exit_node_ids_by_flow))
     |> Enum.map(&subflow_exit_pin_error/1)
   end
 
@@ -127,6 +127,7 @@ defmodule Storyarn.ProjectTemplates.Audit do
           flow_id: f.id,
           connection_id: c.id,
           source_node_id: c.source_node_id,
+          source_node_data: source.data,
           source_pin: c.source_pin,
           target_node_id: c.target_node_id,
           target_pin: c.target_pin
@@ -135,13 +136,14 @@ defmodule Storyarn.ProjectTemplates.Audit do
     Repo.all(query)
   end
 
-  defp active_node_ids_by_flow(project_id) do
+  defp active_exit_node_ids_by_flow(project_id) do
     query =
       from n in FlowNode,
         join: f in Flow,
         on: f.id == n.flow_id,
         where: f.project_id == ^project_id and is_nil(f.deleted_at),
         where: is_nil(n.deleted_at),
+        where: n.type == "exit",
         select: {f.id, n.id}
 
     query
@@ -151,11 +153,14 @@ defmodule Storyarn.ProjectTemplates.Audit do
     end)
   end
 
-  defp remappable_exit_pin?(%{flow_id: flow_id, source_pin: "exit_" <> old_id_text}, active_node_ids_by_flow) do
+  defp remappable_exit_pin?(
+         %{source_node_data: source_node_data, source_pin: "exit_" <> old_id_text},
+         active_exit_node_ids_by_flow
+       ) do
     case Integer.parse(old_id_text) do
       {old_id, ""} ->
-        case Map.get(active_node_ids_by_flow, flow_id) do
-          %MapSet{} = active_node_ids -> MapSet.member?(active_node_ids, old_id)
+        case Map.get(active_exit_node_ids_by_flow, referenced_flow_id(source_node_data)) do
+          %MapSet{} = active_exit_node_ids -> MapSet.member?(active_exit_node_ids, old_id)
           _ -> false
         end
 
@@ -164,12 +169,26 @@ defmodule Storyarn.ProjectTemplates.Audit do
     end
   end
 
+  defp referenced_flow_id(%{"referenced_flow_id" => referenced_flow_id}) when is_integer(referenced_flow_id) do
+    referenced_flow_id
+  end
+
+  defp referenced_flow_id(%{"referenced_flow_id" => referenced_flow_id}) when is_binary(referenced_flow_id) do
+    case Integer.parse(referenced_flow_id) do
+      {id, ""} -> id
+      _ -> nil
+    end
+  end
+
+  defp referenced_flow_id(_source_node_data), do: nil
+
   defp subflow_exit_pin_error(ref) do
     %{
       "type" => "unremappable_subflow_exit_pin",
       "flow_id" => ref.flow_id,
       "connection_id" => ref.connection_id,
       "source_node_id" => ref.source_node_id,
+      "referenced_flow_id" => referenced_flow_id(ref.source_node_data),
       "source_pin" => ref.source_pin,
       "target_node_id" => ref.target_node_id,
       "target_pin" => ref.target_pin

@@ -22,7 +22,9 @@ defmodule Storyarn.ProjectTemplates.ProjectTemplateVersion do
           snapshot_storage_key: String.t() | nil,
           asset_manifest_storage_key: String.t() | nil,
           checksum: String.t() | nil,
+          version_notes: String.t() | nil,
           entity_counts: map(),
+          preview: map(),
           audit_report: map(),
           published_by_id: integer() | nil,
           published_by: User.t() | NotLoaded.t() | nil,
@@ -37,7 +39,9 @@ defmodule Storyarn.ProjectTemplates.ProjectTemplateVersion do
     field :snapshot_storage_key, :string
     field :asset_manifest_storage_key, :string
     field :checksum, :string
+    field :version_notes, :string
     field :entity_counts, :map, default: %{}
+    field :preview, :map, default: %{}
     field :audit_report, :map, default: %{}
     field :published_at, :utc_datetime
 
@@ -59,7 +63,9 @@ defmodule Storyarn.ProjectTemplates.ProjectTemplateVersion do
       :snapshot_storage_key,
       :asset_manifest_storage_key,
       :checksum,
+      :version_notes,
       :entity_counts,
+      :preview,
       :audit_report,
       :published_at
     ])
@@ -69,12 +75,14 @@ defmodule Storyarn.ProjectTemplates.ProjectTemplateVersion do
       :asset_manifest_storage_key,
       :checksum,
       :entity_counts,
+      :preview,
       :audit_report,
       :published_at
     ])
     |> validate_number(:version_number, greater_than: 0)
     |> validate_length(:snapshot_storage_key, min: 1, max: 255)
     |> validate_length(:asset_manifest_storage_key, min: 1, max: 255)
+    |> validate_length(:version_notes, max: 2_000)
     |> validate_format(:checksum, ~r/^[a-f0-9]{64}$/)
     |> foreign_key_constraint(:project_template_id)
     |> foreign_key_constraint(:source_project_id)

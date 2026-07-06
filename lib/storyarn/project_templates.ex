@@ -9,6 +9,8 @@ defmodule Storyarn.ProjectTemplates do
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.Projects.Project
+  alias Storyarn.ProjectTemplates.Authorization
+  alias Storyarn.ProjectTemplates.Deletion
   alias Storyarn.ProjectTemplates.Installation
   alias Storyarn.ProjectTemplates.ProjectTemplate
   alias Storyarn.ProjectTemplates.ProjectTemplateInstall
@@ -28,10 +30,16 @@ defmodule Storyarn.ProjectTemplates do
   defdelegate list_templates(scope, opts \\ []), to: TemplateQueries
 
   @doc """
+  Returns a paginated page of templates visible to the current user.
+  """
+  @spec paginate_templates(scope(), keyword()) :: map()
+  defdelegate paginate_templates(scope, opts \\ []), to: TemplateQueries
+
+  @doc """
   Fetches one template visible to the current user.
   """
-  @spec get_template(scope(), integer()) :: {:ok, ProjectTemplate.t()} | {:error, :not_found}
-  defdelegate get_template(scope, id), to: TemplateQueries
+  @spec get_template(scope(), integer(), keyword()) :: {:ok, ProjectTemplate.t()} | {:error, :not_found}
+  defdelegate get_template(scope, id, opts \\ []), to: TemplateQueries
 
   @doc """
   Fetches one template visible to the current user, raising when not found.
@@ -56,6 +64,18 @@ defmodule Storyarn.ProjectTemplates do
   """
   @spec list_template_publications(scope(), keyword()) :: [ProjectTemplatePublication.t()]
   defdelegate list_template_publications(scope, opts \\ []), to: TemplateQueries
+
+  @doc """
+  Returns true when the current user can manage the private template metadata.
+  """
+  @spec can_manage_template?(scope(), ProjectTemplate.t()) :: boolean()
+  defdelegate can_manage_template?(scope, template), to: Authorization
+
+  @doc """
+  Returns true when the current user can publish a template from the source project.
+  """
+  @spec can_publish_source_project?(scope(), Project.t()) :: boolean()
+  defdelegate can_publish_source_project?(scope, project), to: Authorization
 
   @doc """
   Fetches one template publication visible to the current user.
@@ -116,6 +136,33 @@ defmodule Storyarn.ProjectTemplates do
   @spec update_template(scope(), ProjectTemplate.t(), attrs()) ::
           {:ok, ProjectTemplate.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
   defdelegate update_template(scope, template, attrs), to: PublicationRunner
+
+  @doc """
+  Archives a manageable private template.
+  """
+  @spec archive_template(scope(), ProjectTemplate.t()) ::
+          {:ok, ProjectTemplate.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
+  defdelegate archive_template(scope, template), to: PublicationRunner
+
+  @doc """
+  Restores a manageable archived private template.
+  """
+  @spec unarchive_template(scope(), ProjectTemplate.t()) ::
+          {:ok, ProjectTemplate.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
+  defdelegate unarchive_template(scope, template), to: PublicationRunner
+
+  @doc """
+  Permanently deletes an archived manageable private template and enqueues storage artifact GC.
+  """
+  @spec delete_template(scope(), ProjectTemplate.t()) ::
+          {:ok, ProjectTemplate.t()} | {:error, term()}
+  defdelegate delete_template(scope, template), to: Deletion
+
+  @doc """
+  Deletes template storage artifacts. Intended for Oban workers.
+  """
+  @spec perform_template_artifact_gc([String.t()]) :: :ok | {:error, term()}
+  defdelegate perform_template_artifact_gc(storage_keys), to: Deletion
 
   @doc """
   Atomically updates template metadata and publishes a new immutable version.

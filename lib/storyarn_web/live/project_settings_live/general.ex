@@ -78,7 +78,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   def mount(_params, _session, socket) do
     %{project: project, membership: membership} = socket.assigns
 
-    if Projects.can?(membership.role, :manage_project) do
+    if can_open_general_settings?(socket.assigns.current_scope, project, membership) do
       if connected?(socket), do: ProjectTemplates.subscribe_template_publications(project)
 
       {:ok, source_language} = Localization.ensure_source_language(project)
@@ -195,9 +195,16 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   end
 
   def handle_event("publish_template", %{"template" => template_params}, socket) do
-    Authorize.with_authorization(socket, :manage_project, fn socket ->
+    if ProjectTemplates.can_publish_source_project?(socket.assigns.current_scope, socket.assigns.project) do
       {:noreply, enqueue_template_publication(socket, template_params)}
-    end)
+    else
+      {:noreply,
+       put_flash(
+         socket,
+         :error,
+         dgettext("projects", "You don't have permission to publish templates from this project.")
+       )}
+    end
   end
 
   def handle_event("update_theme_primary", %{"color" => color}, socket) do
@@ -245,6 +252,10 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   # Private
   # ===========================================================================
 
+  defp can_open_general_settings?(scope, project, membership) do
+    Projects.can?(membership.role, :manage_project) or ProjectTemplates.can_publish_source_project?(scope, project)
+  end
+
   defp publish_template_from_settings(socket, %{"mode" => "new"} = params) do
     ProjectTemplates.request_template_publication(
       socket.assigns.current_scope,
@@ -274,6 +285,14 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
         |> assign_project_templates()
         |> assign_template_publications()
         |> put_flash(:info, dgettext("projects", "Template publication queued."))
+
+      {:error, :limit_reached, details} ->
+        Logger.warning(fn ->
+          "Template publication enqueue blocked by plan limit project_id=#{socket.assigns.project.id} " <>
+            "details=#{inspect(details)}"
+        end)
+
+        put_flash(socket, :error, template_publication_error_message({:limit_reached, details}))
 
       {:error, reason} ->
         Logger.warning(fn ->
@@ -307,6 +326,14 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
     dgettext("projects", "A template publication is already running.")
   end
 
+  defp template_publication_error_message({:limit_reached, %{resource: :project_templates_per_workspace}}) do
+    dgettext("projects", "Template limit reached for your plan.")
+  end
+
+  defp template_publication_error_message({:limit_reached, %{resource: :project_template_versions_per_template}}) do
+    dgettext("projects", "Template version limit reached for your plan.")
+  end
+
   defp template_publication_error_message(_reason) do
     dgettext("projects", "Template could not be queued.")
   end
@@ -314,7 +341,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   defp template_attrs(params) do
     %{
       "name" => params["name"],
-      "description" => params["description"]
+      "description" => params["description"],
+      "version_notes" => params["version_notes"]
     }
   end
 
@@ -382,6 +410,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
         template_version_id: publication.project_template_version_id,
         name: publication.name,
         description: publication.description || "",
+        version_notes: publication.version_notes || "",
         error_message: publication.error_message,
         inserted_at: iso_datetime(publication.inserted_at),
         completed_at: iso_datetime(publication.completed_at)

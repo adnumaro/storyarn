@@ -40,6 +40,7 @@
       "template_existing_option": "{name} · v{version}",
       "template_name": "Template name",
       "template_description": "Template description",
+      "template_version_notes": "Version notes",
       "template_publication_active": "Publication running",
       "template_publication_new": "New template publication",
       "template_publication_update": "Template version publication",

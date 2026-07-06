@@ -16,6 +16,7 @@ defmodule Storyarn.ProjectTemplatesTest do
   alias Storyarn.ProjectsFixtures
   alias Storyarn.ProjectTemplates
   alias Storyarn.ProjectTemplates.Audit
+  alias Storyarn.ProjectTemplates.ProjectTemplate
   alias Storyarn.ProjectTemplates.ProjectTemplateInstall
   alias Storyarn.ProjectTemplates.ProjectTemplatePublication
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
@@ -24,6 +25,8 @@ defmodule Storyarn.ProjectTemplatesTest do
   alias Storyarn.ScenesFixtures
   alias Storyarn.Sheets.Sheet
   alias Storyarn.SheetsFixtures
+  alias Storyarn.Versioning.SnapshotStorage
+  alias Storyarn.Workers.DeleteProjectTemplateArtifactsWorker
   alias Storyarn.Workers.PublishProjectTemplateWorker
   alias Storyarn.WorkspacesFixtures
 
@@ -36,7 +39,8 @@ defmodule Storyarn.ProjectTemplatesTest do
       assert {:ok, template} =
                ProjectTemplates.create_template_from_project(scope, project, %{
                  name: "Veilbreak Demo",
-                 description: "A playable sample project"
+                 description: "A playable sample project",
+                 version_notes: "Initial public demo candidate"
                })
 
       assert template.owner_id == user.id
@@ -62,7 +66,11 @@ defmodule Storyarn.ProjectTemplatesTest do
       assert version.snapshot_storage_key =~ "project_template_publications/#{publication.id}/snapshot-"
       assert version.asset_manifest_storage_key =~ "project_template_publications/#{publication.id}/asset-manifest-"
       assert version.checksum =~ ~r/^[a-f0-9]{64}$/
+      assert version.version_notes == "Initial public demo candidate"
+      assert is_map(version.preview["project"])
       assert version.audit_report["status"] == "passed"
+      assert publication.version_notes == "Initial public demo candidate"
+      assert publication.preview == version.preview
     end
 
     test "does not allow public visibility through the normal API" do
@@ -87,7 +95,8 @@ defmodule Storyarn.ProjectTemplatesTest do
       assert {:ok, publication} =
                ProjectTemplates.request_template_publication(scope, project, %{
                  name: "Queued Starter",
-                 description: "Queued description"
+                 description: "Queued description",
+                 version_notes: "Queued v1 notes"
                })
 
       assert publication.owner_id == user.id
@@ -96,6 +105,7 @@ defmodule Storyarn.ProjectTemplatesTest do
       assert publication.mode == "new"
       assert publication.status == "queued"
       assert publication.name == "Queued Starter"
+      assert publication.version_notes == "Queued v1 notes"
       assert publication.oban_job_id
 
       assert_enqueued(
@@ -126,6 +136,34 @@ defmodule Storyarn.ProjectTemplatesTest do
                  visibility: "public"
                })
     end
+
+    test "returns limit_reached when the workspace has reached the template limit" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      project = ProjectsFixtures.project_fixture(user)
+
+      insert_project_templates_to_limit(user, project)
+
+      assert {:error, :limit_reached, %{resource: :project_templates_per_workspace, used: 10, limit: 10}} =
+               ProjectTemplates.request_template_publication(scope, project, %{name: "Blocked Starter"})
+    end
+  end
+
+  describe "request_template_version_publication/4" do
+    test "returns limit_reached when the template has reached the version limit" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      project = ProjectsFixtures.project_fixture(user)
+
+      assert {:ok, template} = ProjectTemplates.create_template_from_project(scope, project, %{name: "Version Limit"})
+
+      insert_template_versions_to_limit(template, project, user)
+
+      assert {:error, :limit_reached, %{resource: :project_template_versions_per_template, used: 20, limit: 20}} =
+               ProjectTemplates.request_template_version_publication(scope, template, project, %{
+                 name: "Blocked Version"
+               })
+    end
   end
 
   describe "perform_template_publication/2" do
@@ -133,9 +171,13 @@ defmodule Storyarn.ProjectTemplatesTest do
       user = AccountsFixtures.user_fixture()
       scope = AccountsFixtures.user_scope_fixture(user)
       project = ProjectsFixtures.project_fixture(user, %{name: "Worker Source"})
+      _sheet = SheetsFixtures.sheet_fixture(project, %{name: "Preview Hero"})
 
       assert {:ok, publication} =
-               ProjectTemplates.request_template_publication(scope, project, %{name: "Worker Starter"})
+               ProjectTemplates.request_template_publication(scope, project, %{
+                 name: "Worker Starter",
+                 version_notes: "Worker v1 notes"
+               })
 
       assert {:ok, published} = ProjectTemplates.perform_template_publication(publication.id)
 
@@ -150,6 +192,9 @@ defmodule Storyarn.ProjectTemplatesTest do
       assert template.name == "Worker Starter"
       assert template.current_version_id == version.id
       assert version.version_number == 1
+      assert version.version_notes == "Worker v1 notes"
+      assert [%{"name" => "Preview Hero"}] = version.preview["sheets"]
+      assert published.preview == version.preview
     end
 
     test "fails without creating a template when audit fails" do
@@ -308,7 +353,7 @@ defmodule Storyarn.ProjectTemplatesTest do
 
       assert report["status"] == "failed"
 
-      unchanged_template = Repo.get!(Storyarn.ProjectTemplates.ProjectTemplate, template.id)
+      unchanged_template = Repo.get!(ProjectTemplate, template.id)
       assert unchanged_template.name == "Stable Starter"
       assert unchanged_template.description == "Original"
       assert unchanged_template.current_version_id == template.current_version_id
@@ -340,6 +385,70 @@ defmodule Storyarn.ProjectTemplatesTest do
 
       refute own_template.id in visible_ids
       assert public_template.id in visible_ids
+    end
+
+    test "workspace admins can see and instantiate private templates from the source workspace" do
+      owner = AccountsFixtures.user_fixture()
+      admin = AccountsFixtures.user_fixture()
+      member = AccountsFixtures.user_fixture()
+      owner_scope = AccountsFixtures.user_scope_fixture(owner)
+      admin_scope = AccountsFixtures.user_scope_fixture(admin)
+      member_scope = AccountsFixtures.user_scope_fixture(member)
+      source_workspace = WorkspacesFixtures.workspace_fixture(owner)
+      admin_workspace = WorkspacesFixtures.workspace_fixture(admin)
+      project = ProjectsFixtures.project_fixture(owner, %{workspace: source_workspace, name: "Team Source"})
+
+      WorkspacesFixtures.workspace_membership_fixture(source_workspace, admin, "admin")
+      WorkspacesFixtures.workspace_membership_fixture(source_workspace, member, "member")
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(owner_scope, project, %{name: "Team Starter"})
+
+      admin_visible_ids = admin_scope |> ProjectTemplates.list_templates() |> Enum.map(& &1.id)
+      member_visible_ids = member_scope |> ProjectTemplates.list_templates() |> Enum.map(& &1.id)
+
+      assert template.id in admin_visible_ids
+      refute template.id in member_visible_ids
+
+      version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
+
+      assert {:ok, cloned_project} =
+               ProjectTemplates.instantiate_template(admin_scope, version, admin_workspace, %{name: "Admin Copy"})
+
+      assert cloned_project.owner_id == admin.id
+      assert cloned_project.created_from_template_version_id == version.id
+    end
+
+    test "workspace admins can enqueue publications for projects in the source workspace" do
+      owner = AccountsFixtures.user_fixture()
+      admin = AccountsFixtures.user_fixture()
+      owner_scope = AccountsFixtures.user_scope_fixture(owner)
+      admin_scope = AccountsFixtures.user_scope_fixture(admin)
+      source_workspace = WorkspacesFixtures.workspace_fixture(owner)
+      project = ProjectsFixtures.project_fixture(owner, %{workspace: source_workspace, name: "Publishable Source"})
+
+      versioned_project =
+        ProjectsFixtures.project_fixture(owner, %{workspace: source_workspace, name: "Versioned Source"})
+
+      WorkspacesFixtures.workspace_membership_fixture(source_workspace, admin, "admin")
+
+      assert {:ok, publication} =
+               ProjectTemplates.request_template_publication(admin_scope, project, %{name: "Admin Starter"})
+
+      assert publication.owner_id == admin.id
+      assert publication.requested_by_id == admin.id
+      assert publication.source_project_id == project.id
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(owner_scope, versioned_project, %{name: "Owner Starter"})
+
+      assert {:ok, version_publication} =
+               ProjectTemplates.request_template_version_publication(admin_scope, template, versioned_project, %{
+                 name: "Owner Starter Updated"
+               })
+
+      assert version_publication.project_template_id == template.id
+      assert version_publication.owner_id == admin.id
     end
 
     test "raises when fetching another user's private template" do
@@ -374,6 +483,121 @@ defmodule Storyarn.ProjectTemplatesTest do
       end
 
       assert {:error, :not_found} = ProjectTemplates.get_template(scope, template.id)
+    end
+
+    test "does not expose archived public templates to regular users" do
+      owner = AccountsFixtures.user_fixture()
+      viewer = AccountsFixtures.user_fixture()
+      owner_scope = AccountsFixtures.user_scope_fixture(owner)
+      viewer_scope = AccountsFixtures.user_scope_fixture(viewer)
+      project = ProjectsFixtures.project_fixture(owner)
+
+      assert {:ok, template} = ProjectTemplates.create_template_from_project(owner_scope, project, %{name: "Public"})
+
+      template
+      |> Ecto.Changeset.change(%{visibility: "public", owner_id: nil, status: "archived"})
+      |> Repo.update!()
+
+      assert ProjectTemplates.list_templates(viewer_scope, status: "archived") == []
+      assert {:error, :not_found} = ProjectTemplates.get_template(viewer_scope, template.id, status: "archived")
+    end
+
+    test "archives and restores manageable private templates" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      project = ProjectsFixtures.project_fixture(user)
+
+      assert {:ok, template} = ProjectTemplates.create_template_from_project(scope, project, %{name: "Archivable"})
+      assert {:ok, archived} = ProjectTemplates.archive_template(scope, template)
+      assert archived.status == "archived"
+
+      assert {:error, :not_found} = ProjectTemplates.get_template(scope, template.id)
+      assert {:ok, archived_for_management} = ProjectTemplates.get_template(scope, template.id, status: "archived")
+
+      assert {:ok, restored} = ProjectTemplates.unarchive_template(scope, archived_for_management)
+      assert restored.status == "active"
+      assert {:ok, _template} = ProjectTemplates.get_template(scope, template.id)
+    end
+  end
+
+  describe "paginate_templates/2" do
+    test "searches and paginates visible templates" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      project = ProjectsFixtures.project_fixture(user)
+
+      for index <- 1..13 do
+        insert_template_row(user, project, "Starter #{String.pad_leading(to_string(index), 2, "0")}")
+      end
+
+      insert_template_row(user, project, "Needle Campaign")
+
+      page =
+        ProjectTemplates.paginate_templates(scope,
+          visibility: "private",
+          status: "active",
+          page: 2,
+          per_page: 5
+        )
+
+      assert page.page == 2
+      assert page.per_page == 5
+      assert page.total_count == 14
+      assert page.total_pages == 3
+      assert length(page.entries) == 5
+
+      search_page =
+        ProjectTemplates.paginate_templates(scope,
+          visibility: "private",
+          status: "active",
+          search: "needle",
+          per_page: 5
+        )
+
+      assert Enum.map(search_page.entries, & &1.name) == ["Needle Campaign"]
+      assert search_page.total_count == 1
+    end
+  end
+
+  describe "delete_template/2" do
+    test "rejects hard delete while a template is active" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      project = ProjectsFixtures.project_fixture(user)
+
+      assert {:ok, template} = ProjectTemplates.create_template_from_project(scope, project, %{name: "Active"})
+
+      assert {:error, :template_must_be_archived} = ProjectTemplates.delete_template(scope, template)
+      assert {:ok, _template} = ProjectTemplates.get_template(scope, template.id)
+    end
+
+    test "deletes an archived template and enqueues artifact garbage collection" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      project = ProjectsFixtures.project_fixture(user)
+
+      assert {:ok, template} = ProjectTemplates.create_template_from_project(scope, project, %{name: "Disposable"})
+      version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
+      storage_keys = [version.snapshot_storage_key, version.asset_manifest_storage_key]
+
+      assert {:ok, archived} = ProjectTemplates.archive_template(scope, template)
+      assert {:ok, deleted} = ProjectTemplates.delete_template(scope, archived)
+
+      assert deleted.id == template.id
+      assert Repo.get(ProjectTemplate, template.id) == nil
+      assert Repo.get(ProjectTemplateVersion, version.id) == nil
+      assert Repo.get_by(ProjectTemplatePublication, project_template_id: template.id) == nil
+
+      assert_enqueued(
+        worker: DeleteProjectTemplateArtifactsWorker,
+        args: %{"storage_keys" => storage_keys}
+      )
+
+      assert :ok = perform_job(DeleteProjectTemplateArtifactsWorker, %{"storage_keys" => storage_keys})
+
+      for storage_key <- storage_keys do
+        assert {:error, _reason} = SnapshotStorage.load_snapshot(storage_key)
+      end
     end
   end
 
@@ -580,26 +804,61 @@ defmodule Storyarn.ProjectTemplatesTest do
       user = AccountsFixtures.user_fixture()
       project = ProjectsFixtures.project_fixture(user)
       flow = flow_fixture(project)
-      source_node = flow_node_fixture(flow, "subflow")
+      referenced_flow = flow_fixture(project)
+      exit_node = flow_node_fixture(referenced_flow, "exit")
+      source_node = flow_node_fixture(flow, "subflow", %{data: %{"referenced_flow_id" => referenced_flow.id}})
+      target_node = flow_node_fixture(flow, "hub")
+
+      flow_connection_fixture(flow, source_node, target_node, %{source_pin: "exit_#{exit_node.id}"})
+
+      assert {:ok, report} = Audit.run(project.id)
+      assert report["status"] == "passed"
+    end
+
+    test "detects a subflow exit pin that points to a parent-flow node" do
+      user = AccountsFixtures.user_fixture()
+      project = ProjectsFixtures.project_fixture(user)
+      flow = flow_fixture(project)
+      referenced_flow = flow_fixture(project)
+      source_node = flow_node_fixture(flow, "subflow", %{data: %{"referenced_flow_id" => referenced_flow.id}})
       target_node = flow_node_fixture(flow, "hub")
 
       flow_connection_fixture(flow, source_node, target_node, %{source_pin: "exit_#{target_node.id}"})
 
-      assert {:ok, report} = Audit.run(project.id)
-      assert report["status"] == "passed"
+      assert {:error, report} = Audit.run(project.id)
+
+      assert [
+               %{
+                 "type" => "unremappable_subflow_exit_pin",
+                 "source_pin" => "exit_" <> _,
+                 "referenced_flow_id" => referenced_flow_id
+               }
+             ] = report["errors"]
+
+      assert referenced_flow_id == referenced_flow.id
     end
 
     test "detects a subflow exit pin that cannot be remapped" do
       user = AccountsFixtures.user_fixture()
       project = ProjectsFixtures.project_fixture(user)
       flow = flow_fixture(project)
-      source_node = flow_node_fixture(flow, "subflow")
+      referenced_flow = flow_fixture(project)
+      source_node = flow_node_fixture(flow, "subflow", %{data: %{"referenced_flow_id" => referenced_flow.id}})
       target_node = flow_node_fixture(flow, "hub")
 
       flow_connection_fixture(flow, source_node, target_node, %{source_pin: "exit_999999"})
 
       assert {:error, report} = Audit.run(project.id)
-      assert [%{"type" => "unremappable_subflow_exit_pin", "source_pin" => "exit_999999"}] = report["errors"]
+
+      assert [
+               %{
+                 "type" => "unremappable_subflow_exit_pin",
+                 "source_pin" => "exit_999999",
+                 "referenced_flow_id" => referenced_flow_id
+               }
+             ] = report["errors"]
+
+      assert referenced_flow_id == referenced_flow.id
     end
 
     test "detects scene pin refs to soft-deleted sheets and flows" do
@@ -727,14 +986,18 @@ defmodule Storyarn.ProjectTemplatesTest do
   end
 
   defp flow_fixture(project) do
+    unique = System.unique_integer([:positive])
+
     %Flow{project_id: project.id}
-    |> Flow.create_changeset(%{name: "Main Flow", shortcut: "main-flow"})
+    |> Flow.create_changeset(%{name: "Main Flow #{unique}", shortcut: "main-flow-#{unique}"})
     |> Repo.insert!()
   end
 
-  defp flow_node_fixture(flow, type) do
+  defp flow_node_fixture(flow, type, attrs \\ %{}) do
+    attrs = Map.merge(%{type: type, position_x: 0.0, position_y: 0.0}, attrs)
+
     %FlowNode{flow_id: flow.id}
-    |> FlowNode.create_changeset(%{type: type, position_x: 0.0, position_y: 0.0})
+    |> FlowNode.create_changeset(attrs)
     |> Repo.insert!()
   end
 
@@ -806,5 +1069,59 @@ defmodule Storyarn.ProjectTemplatesTest do
     else
       []
     end
+  end
+
+  defp insert_template_row(user, project, name) do
+    slug =
+      name
+      |> String.downcase()
+      |> String.replace(~r/[^a-z0-9]+/, "-")
+      |> String.trim("-")
+
+    %ProjectTemplate{owner_id: user.id, source_project_id: project.id}
+    |> ProjectTemplate.create_changeset(%{
+      name: name,
+      slug: slug,
+      visibility: "private",
+      status: "active"
+    })
+    |> Repo.insert!()
+  end
+
+  defp insert_project_templates_to_limit(user, project) do
+    for index <- 1..10 do
+      %ProjectTemplate{owner_id: user.id, source_project_id: project.id}
+      |> ProjectTemplate.create_changeset(%{
+        name: "Limit Template #{index}",
+        slug: "limit-template-#{index}",
+        visibility: "private",
+        status: "active"
+      })
+      |> Repo.insert!()
+    end
+  end
+
+  defp insert_template_versions_to_limit(template, project, user) do
+    for version_number <- 2..20 do
+      insert_template_version(template, project, user, version_number)
+    end
+  end
+
+  defp insert_template_version(template, project, user, version_number) do
+    %ProjectTemplateVersion{
+      project_template_id: template.id,
+      source_project_id: project.id,
+      published_by_id: user.id
+    }
+    |> ProjectTemplateVersion.create_changeset(%{
+      version_number: version_number,
+      snapshot_storage_key: "test/template-#{template.id}/snapshot-#{version_number}.json.gz",
+      asset_manifest_storage_key: "test/template-#{template.id}/asset-manifest-#{version_number}.json.gz",
+      checksum: String.duplicate("a", 64),
+      entity_counts: %{},
+      audit_report: %{"status" => "passed"},
+      published_at: DateTime.utc_now(:second)
+    })
+    |> Repo.insert!()
   end
 end
