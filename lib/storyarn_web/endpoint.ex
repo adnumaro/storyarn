@@ -27,6 +27,7 @@ defmodule StoryarnWeb.Endpoint do
     plug Phoenix.Ecto.SQL.Sandbox
   end
 
+  plug StoryarnWeb.Plugs.CanonicalHostRedirect
   plug StoryarnWeb.Plugs.NoindexRobots
 
   # Serve at "/" the static files from "priv/static" directory.
