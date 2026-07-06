@@ -1,0 +1,121 @@
+lib/storyarn/project_templates/installation.ex
+  s_05c30eca064c16::t_f0a1b36cc09e80 54
+  s_05c30eca064c16::t_f44afedb4eee8a 1-53,55-108
+assets/app/locales/en/project-settings.json
+  s_05c30eca064c16::t_3a8a06bb37af7e 43-52
+lib/storyarn/workers/publish_project_template_worker.ex
+  s_05c30eca064c16::t_feb13dacb6fd78 1-16,18-33
+  s_05c30eca064c16::t_93887c115835a4 17
+lib/storyarn/project_templates/project_template_publication.ex
+  s_05c30eca064c16::t_f7c82c6c0dc836 1-166
+test/storyarn/project_templates_test.exs
+  s_05c30eca064c16::t_93887c115835a4 113
+  s_05c30eca064c16::t_4796f3297c6427 485-486
+  s_05c30eca064c16::t_701c625036f14b 159-161,164
+  s_05c30eca064c16::t_d2c8d5c9088da2 197-199,216-227,264-315,359-373,387,390-399,412-418,458-473,682-700
+  s_05c30eca064c16::t_3be9e17e21d74a 3,20,27,81-112,114-158,162-163,165-175,177,317
+  s_05c30eca064c16::t_29639f236c7200 50,505-506
+  s_05c30eca064c16::t_d0b9e9ee9b8143 51-56,60-63,176,316,357-358,375-376,474-484,487-504,507-522,702
+  s_05c30eca064c16::t_dd6082a44bad7c 178,318,374,701,703
+lib/storyarn/project_templates/audit.ex
+  s_05c30eca064c16::t_d3c0122857078c 42-52,80
+  s_05c30eca064c16::t_d364ab1b0e2a29 35-36,63-64,257-371,373-374
+  s_05c30eca064c16::t_883ec5c26756ab 372
+  s_05c30eca064c16::t_64cdc92115a1b1 375
+lib/storyarn_web/live/template_live/show.ex
+  s_05c30eca064c16::t_87510951a62395 80,82-86,120-154,158,355-361,364,367-369,372,376-381,409-410,441-442,464-465,468-470,472-474
+  s_05c30eca064c16::t_ab425be3c77ec7 8-9
+  s_05c30eca064c16::t_8a64a745cf06b8 19,21,30-35,382-393
+  s_05c30eca064c16::t_93887c115835a4 399-401
+  s_05c30eca064c16::t_3c4f2626386da0 155,159-165,169-205,279-296,331,365-366,398,402,407,421-429,432-436,452-463,478-479,481-485,488-492
+  s_05c30eca064c16::t_bd13c4ecafb6b7 476
+  s_05c30eca064c16::t_29639f236c7200 16-18,20,22-29
+  s_05c30eca064c16::t_67c2c77654a118 166-168
+  s_05c30eca064c16::t_29e62dec870576 156-157,437
+assets/app/test/live/project/settings/ProjectSettingsGeneral.test.ts
+  s_05c30eca064c16::t_3c1e5f26ebe6eb 1-56,58-71,75-76
+  s_05c30eca064c16::t_b5bc18906f1d8a 57,72-74
+lib/storyarn_web/live/project_settings_live/general.ex
+  s_05c30eca064c16::t_ffd775cede30c1 333
+  s_05c30eca064c16::t_404aa9c424b349 357
+  s_05c30eca064c16::t_758ef12f3d1db9 236-241
+  s_05c30eca064c16::t_67c2c77654a118 258,260-264
+  s_05c30eca064c16::t_8a21ce63b1e862 14-15,287-304
+  s_05c30eca064c16::t_2b66ad5db040b8 47,82-83,93,242,249,259,305-312,344-351,353,375-393
+  s_05c30eca064c16::t_b666da8a741d7e 199,270-286
+  s_05c30eca064c16::t_a05ca49b0c678a 243
+  s_05c30eca064c16::t_e9e5282b8522da 313
+  s_05c30eca064c16::t_fd644d7205bdab 352
+  s_05c30eca064c16::t_8ca4c812ad5593 354
+  s_05c30eca064c16::t_9b44e6e17d292e 394
+lib/storyarn_web/live/template_live/index.ex
+  s_05c30eca064c16::t_bd13c4ecafb6b7 8
+  s_05c30eca064c16::t_ab425be3c77ec7 9
+lib/storyarn/versioning/project_recovery.ex
+  s_05c30eca064c16::t_07b67beea20035 474
+test/storyarn/workers/publish_project_template_worker_test.exs
+  s_05c30eca064c16::t_a57aded147ccca 1-90
+lib/storyarn/project_templates/template_queries.ex
+  s_05c30eca064c16::t_fdea3d088403dd 1-142
+assets/app/locales/es/project-settings.json
+  s_05c30eca064c16::t_3a8a06bb37af7e 43-52
+priv/repo/migrations/20260705120000_create_project_template_publications.exs
+  s_05c30eca064c16::t_3313df5a35c2a6 43-57
+  s_05c30eca064c16::t_f7c82c6c0dc836 1-42,58-70
+test/storyarn_web/live/project_settings_live/template_publication_test.exs
+  s_05c30eca064c16::t_2f08749ed29aae 10,43,57,59-66,69,85,88,90-95
+  s_05c30eca064c16::t_c6b947cf4c05eb 87
+config/config.exs
+  s_05c30eca064c16::t_f7c82c6c0dc836 55
+lib/storyarn/project_templates/publication_runner.ex
+  s_05c30eca064c16::t_417d0eeb4ef8cc 1-30,37-101,108-597,600-624
+  s_05c30eca064c16::t_363228e88c8db8 31-36,102-107
+  s_05c30eca064c16::t_f0a1b36cc09e80 598-599
+test/e2e/templates/templates_test.exs
+  s_05c30eca064c16::t_b54bc3c7d4c152 44
+  s_05c30eca064c16::t_e1d49f62a75f1c 49-50
+  s_05c30eca064c16::t_2616c479d730f5 46-48
+  s_05c30eca064c16::t_748b2636a6041d 1-43,45,51-59
+lib/storyarn_web/live/template_live/helpers.ex
+  s_05c30eca064c16::t_bd13c4ecafb6b7 1-51
+lib/storyarn_web/live/workspace_live/show.ex
+  s_05c30eca064c16::t_3cf145eb43d674 165
+lib/storyarn/project_templates/artifact.ex
+  s_05c30eca064c16::t_9e21d5a38252c9 1-52
+assets/app/live/project/settings/ProjectSettingsGeneral.vue
+  s_05c30eca064c16::t_3c1e5f26ebe6eb 428-431,433-434
+  s_05c30eca064c16::t_a40e6ab52043e3 52-64,74,84,162,168-169,176-187,190,236-256,404,409-426,654-658
+  s_05c30eca064c16::t_b5bc18906f1d8a 170-175,432,436-440
+test/storyarn_web/live/template_live_test.exs
+  s_05c30eca064c16::t_768799bd940a9d 96,108
+  s_05c30eca064c16::t_8810fe497ad29f 53,66-93
+  s_05c30eca064c16::t_c0b83d9fca0ff9 3,14,17,94,102,107,109-112
+  s_05c30eca064c16::t_0256f4e710be21 130-157,177-178
+  s_05c30eca064c16::t_e3e865676a33bb 104
+  s_05c30eca064c16::t_873ea59be785f0 103
+  s_05c30eca064c16::t_ea13db947bfcd2 105-106
+  s_05c30eca064c16::t_c27ac7cf7b1902 179-180
+lib/storyarn/project_templates/authorization.ex
+  s_05c30eca064c16::t_363228e88c8db8 38
+  s_05c30eca064c16::t_63eeb7b83597b5 1-37,39-59
+lib/storyarn/project_templates.ex
+  s_05c30eca064c16::t_b4e07e383a60dc 12,15,17-18,28,33-38,40-46,52-71,73-78,80-85,87-91,95-98,102,106-107,111,118-127,134
+lib/storyarn/project_templates/project_template.ex
+  s_05c30eca064c16::t_f559aa88c0f06a 15,35,51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "7bc9d79ec036e321682b56d175043556d2e46f02",
+  "prompts": {},
+  "sessions": {
+    "s_05c30eca064c16": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f220d-6e1f-7390-9b78-95d14ea6619a",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
