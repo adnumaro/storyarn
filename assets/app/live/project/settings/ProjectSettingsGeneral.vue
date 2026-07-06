@@ -49,6 +49,19 @@ interface ProjectTemplatePublication {
   current_version_number?: number | null;
 }
 
+interface ProjectTemplatePublicationStatus {
+  id: number;
+  mode: "new" | "update";
+  status: "queued" | "running" | "retrying" | "published" | "failed";
+  template_id?: number | null;
+  template_version_id?: number | null;
+  name: string;
+  description: string;
+  error_message?: string | null;
+  inserted_at?: string | null;
+  completed_at?: string | null;
+}
+
 const {
   projectDetails = { name: "", description: "", type: "", subtype: "", typeOther: "" },
   projectMetricsOptions = { project_types: [], project_subtypes: {} },
@@ -58,6 +71,7 @@ const {
   themeAccent = "#E8922F",
   hasCustomTheme = false,
   projectTemplates = [],
+  projectTemplatePublications = [],
 } = defineProps<{
   projectDetails?: ProjectDetails;
   projectMetricsOptions?: ProjectMetricsOptions;
@@ -67,6 +81,7 @@ const {
   themeAccent?: string;
   hasCustomTheme?: boolean;
   projectTemplates?: ProjectTemplatePublication[];
+  projectTemplatePublications?: ProjectTemplatePublicationStatus[];
 }>();
 
 const live = useLive();
@@ -144,13 +159,35 @@ const templateMode = ref<"new" | "update">("new");
 const selectedTemplateId = ref<number | null>(null);
 const templateName = ref(projectDetails.name);
 const templateDescription = ref(projectDetails.description);
+const activePublicationStatuses = new Set(["queued", "running", "retrying"]);
 
 const selectedTemplate = computed(() => {
   return projectTemplates.find((template) => template.id === selectedTemplateId.value) || null;
 });
 
+const recentTemplatePublications = computed(() => projectTemplatePublications.slice(0, 5));
+
+const hasActiveTemplatePublication = computed(() => {
+  return projectTemplatePublications.some((publication) =>
+    activePublicationStatuses.has(publication.status),
+  );
+});
+
+const activePublicationForSelection = computed(() => {
+  return projectTemplatePublications.some((publication) => {
+    if (!activePublicationStatuses.has(publication.status)) return false;
+
+    if (templateMode.value === "new") {
+      return publication.mode === "new";
+    }
+
+    return publication.template_id === selectedTemplateId.value;
+  });
+});
+
 const canPublishTemplate = computed(() => {
   if (templateName.value.trim().length === 0) return false;
+  if (activePublicationForSelection.value) return false;
   if (templateMode.value === "update") return !!selectedTemplate.value;
 
   return true;
@@ -194,6 +231,27 @@ function publishTemplate() {
   });
 
   showTemplateDialog.value = false;
+}
+
+function publicationStatusLabel(status: ProjectTemplatePublicationStatus["status"]) {
+  return `project_settings.general.template_publication_status.${status}`;
+}
+
+function publicationDescription(publication: ProjectTemplatePublicationStatus) {
+  if (publication.status === "failed" && publication.error_message) {
+    return publication.error_message;
+  }
+
+  return publication.mode === "new"
+    ? "project_settings.general.template_publication_new"
+    : "project_settings.general.template_publication_update";
+}
+
+function publicationStatusClass(status: ProjectTemplatePublicationStatus["status"]) {
+  if (status === "published") return "border-emerald-500/30 bg-emerald-500/10 text-emerald-700";
+  if (status === "failed") return "border-destructive/30 bg-destructive/10 text-destructive";
+  if (status === "retrying") return "border-amber-500/30 bg-amber-500/10 text-amber-700";
+  return "border-sky-500/30 bg-sky-500/10 text-sky-700";
 }
 
 // Theme
@@ -343,15 +401,43 @@ function confirmDeleteProject() {
       <div
         class="flex flex-col gap-4 rounded-lg border border-border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between"
       >
-        <div>
+        <div class="min-w-0">
           <h3 class="text-lg font-semibold mb-1">{{ $t("project_settings.general.templates") }}</h3>
           <p class="text-sm text-muted-foreground">
             {{ $t("project_settings.general.templates_description") }}
           </p>
+
+          <div v-if="recentTemplatePublications.length > 0" class="mt-3 space-y-2">
+            <div
+              v-for="publication in recentTemplatePublications"
+              :key="publication.id"
+              class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
+              :data-testid="`template-publication-${publication.id}`"
+            >
+              <span
+                class="inline-flex items-center rounded-full border px-2 py-0.5 font-medium"
+                :class="publicationStatusClass(publication.status)"
+              >
+                {{ $t(publicationStatusLabel(publication.status)) }}
+              </span>
+              <span class="truncate font-medium text-foreground">{{ publication.name }}</span>
+              <span>{{ $t(publicationDescription(publication)) }}</span>
+            </div>
+          </div>
         </div>
-        <Button type="button" class="shrink-0" @click="openTemplateDialog">
+        <Button
+          type="button"
+          class="shrink-0"
+          data-testid="open-template-publication-dialog"
+          :disabled="hasActiveTemplatePublication"
+          @click="openTemplateDialog"
+        >
           <FileUp class="size-4 mr-1.5" />
-          {{ $t("project_settings.general.publish_template") }}
+          {{
+            hasActiveTemplatePublication
+              ? $t("project_settings.general.template_publication_active")
+              : $t("project_settings.general.publish_template")
+          }}
         </Button>
       </div>
     </section>
@@ -565,7 +651,11 @@ function confirmDeleteProject() {
             :disabled="!canPublishTemplate"
             @click="publishTemplate"
           >
-            {{ $t("project_settings.general.publish_template") }}
+            {{
+              activePublicationForSelection
+                ? $t("project_settings.general.template_publication_active")
+                : $t("project_settings.general.publish_template")
+            }}
           </Button>
         </DialogFooter>
       </DialogContent>

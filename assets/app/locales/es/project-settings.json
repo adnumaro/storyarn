@@ -40,6 +40,16 @@
       "template_existing_option": "{name} · v{version}",
       "template_name": "Nombre de la template",
       "template_description": "Descripción de la template",
+      "template_publication_active": "Publicación en curso",
+      "template_publication_new": "Publicación de nueva template",
+      "template_publication_update": "Publicación de nueva versión",
+      "template_publication_status": {
+        "queued": "En cola",
+        "running": "Publicando",
+        "retrying": "Reintentando",
+        "published": "Publicada",
+        "failed": "Fallida"
+      },
       "source_language": "Idioma origen",
       "source_language_description": "Define el idioma base usado para los textos fuente y los flujos de traducción en este proyecto.",
       "source_language_hint": "Para cambiar el idioma origen, usa los ajustes de localización.",

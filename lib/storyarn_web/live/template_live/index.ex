@@ -5,6 +5,8 @@ defmodule StoryarnWeb.TemplateLive.Index do
 
   use StoryarnWeb, :live_view
 
+  import StoryarnWeb.TemplateLive.Helpers
+
   alias Storyarn.ProjectTemplates
 
   @impl true
@@ -133,34 +135,4 @@ defmodule StoryarnWeb.TemplateLive.Index do
 
   defp private_templates(templates), do: Enum.filter(templates, &(&1.visibility == "private"))
   defp public_templates(templates), do: Enum.filter(templates, &(&1.visibility == "public"))
-
-  defp template_description(%{description: description}) when is_binary(description) and description != "" do
-    description
-  end
-
-  defp template_description(_template), do: dgettext("projects", "No description")
-
-  defp visibility_label("public"), do: dgettext("projects", "Public")
-  defp visibility_label(_visibility), do: dgettext("projects", "Private")
-
-  defp visibility_badge_class("public"), do: "badge-info"
-  defp visibility_badge_class(_visibility), do: "badge-outline"
-
-  defp version_label(%{version_number: version_number}) when is_integer(version_number) do
-    dgettext("projects", "Version %{version}", version: version_number)
-  end
-
-  defp version_label(_version), do: dgettext("projects", "No version")
-
-  defp format_datetime(nil), do: ""
-
-  defp format_datetime(%DateTime{} = datetime) do
-    Calendar.strftime(datetime, "%b %d, %Y")
-  end
-
-  defp format_datetime(%NaiveDateTime{} = datetime) do
-    datetime
-    |> DateTime.from_naive!("Etc/UTC")
-    |> format_datetime()
-  end
 end

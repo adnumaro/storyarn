@@ -12,6 +12,7 @@ defmodule Storyarn.ProjectTemplates.ProjectTemplate do
   alias Ecto.Association.NotLoaded
   alias Storyarn.Accounts.User
   alias Storyarn.Projects.Project
+  alias Storyarn.ProjectTemplates.ProjectTemplatePublication
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
 
   @visibilities ~w(private public)
@@ -31,6 +32,7 @@ defmodule Storyarn.ProjectTemplates.ProjectTemplate do
           visibility: String.t(),
           status: String.t(),
           versions: [ProjectTemplateVersion.t()] | NotLoaded.t(),
+          publications: [ProjectTemplatePublication.t()] | NotLoaded.t(),
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -46,6 +48,7 @@ defmodule Storyarn.ProjectTemplates.ProjectTemplate do
     belongs_to :source_project, Project
     belongs_to :current_version, ProjectTemplateVersion
     has_many :versions, ProjectTemplateVersion
+    has_many :publications, ProjectTemplatePublication
 
     timestamps(type: :utc_datetime)
   end

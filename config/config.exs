@@ -52,7 +52,7 @@ config :posthog,
 config :storyarn, Oban,
   engine: Oban.Engines.Basic,
   repo: Storyarn.Repo,
-  queues: [default: 10, snapshots: 2],
+  queues: [default: 10, snapshots: 2, templates: 1],
   plugins: [
     {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},
     {Oban.Plugins.Cron,

@@ -40,6 +40,16 @@
       "template_existing_option": "{name} · v{version}",
       "template_name": "Template name",
       "template_description": "Template description",
+      "template_publication_active": "Publication running",
+      "template_publication_new": "New template publication",
+      "template_publication_update": "Template version publication",
+      "template_publication_status": {
+        "queued": "Queued",
+        "running": "Publishing",
+        "retrying": "Retrying",
+        "published": "Published",
+        "failed": "Failed"
+      },
       "source_language": "Source language",
       "source_language_description": "Defines the base locale used for source texts and translation workflows in this project.",
       "source_language_hint": "To change the source language, use the localization settings.",

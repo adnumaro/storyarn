@@ -11,6 +11,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   alias Storyarn.ProjectTemplates
   alias StoryarnWeb.Helpers.Authorize
 
+  require Logger
+
   # ===========================================================================
   # Render
   # ===========================================================================
@@ -42,6 +44,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
         theme-accent={@theme_accent}
         has-custom-theme={@has_custom_theme}
         project-templates={serialize_project_templates(@project_templates)}
+        project-template-publications={serialize_template_publications(@template_publications)}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>
     """
@@ -76,6 +79,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
     %{project: project, membership: membership} = socket.assigns
 
     if Projects.can?(membership.role, :manage_project) do
+      if connected?(socket), do: ProjectTemplates.subscribe_template_publications(project)
+
       {:ok, source_language} = Localization.ensure_source_language(project)
       project_changeset = Projects.change_project(project)
 
@@ -85,6 +90,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
         |> assign(:source_language, source_language)
         |> assign(:project_form, to_form(project_changeset))
         |> assign_project_templates()
+        |> assign_template_publications()
         |> assign_theme(project)
 
       {:ok, socket}
@@ -190,16 +196,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
 
   def handle_event("publish_template", %{"template" => template_params}, socket) do
     Authorize.with_authorization(socket, :manage_project, fn socket ->
-      case publish_template_from_settings(socket, template_params) do
-        {:ok, _template} ->
-          {:noreply,
-           socket
-           |> assign_project_templates()
-           |> put_flash(:info, dgettext("projects", "Template published."))}
-
-        {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, dgettext("projects", "Template could not be published."))}
-      end
+      {:noreply, enqueue_template_publication(socket, template_params)}
     end)
   end
 
@@ -236,12 +233,20 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
     end)
   end
 
+  @impl true
+  def handle_info({:project_template_publication_updated, _publication}, socket) do
+    {:noreply,
+     socket
+     |> assign_project_templates()
+     |> assign_template_publications()}
+  end
+
   # ===========================================================================
   # Private
   # ===========================================================================
 
   defp publish_template_from_settings(socket, %{"mode" => "new"} = params) do
-    ProjectTemplates.create_template_from_project(
+    ProjectTemplates.request_template_publication(
       socket.assigns.current_scope,
       socket.assigns.project,
       template_attrs(params)
@@ -250,15 +255,61 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
 
   defp publish_template_from_settings(socket, %{"mode" => "update"} = params) do
     with {:ok, template_id} <- parse_template_id(params["template_id"]),
-         {:ok, template} <- fetch_template(socket.assigns.current_scope, template_id),
-         :ok <- ensure_project_template_source(template, socket.assigns.project),
-         {:ok, template} <-
-           ProjectTemplates.update_template(socket.assigns.current_scope, template, template_attrs(params)) do
-      ProjectTemplates.publish_new_version(socket.assigns.current_scope, template, socket.assigns.project)
+         {:ok, template} <- fetch_template(socket.assigns.current_scope, template_id) do
+      ProjectTemplates.request_template_version_publication(
+        socket.assigns.current_scope,
+        template,
+        socket.assigns.project,
+        template_attrs(params)
+      )
     end
   end
 
   defp publish_template_from_settings(_socket, _params), do: {:error, :invalid_mode}
+
+  defp enqueue_template_publication(socket, template_params) do
+    case publish_template_from_settings(socket, template_params) do
+      {:ok, _publication} ->
+        socket
+        |> assign_project_templates()
+        |> assign_template_publications()
+        |> put_flash(:info, dgettext("projects", "Template publication queued."))
+
+      {:error, reason} ->
+        Logger.warning(fn ->
+          "Template publication enqueue failed project_id=#{socket.assigns.project.id} " <>
+            "reason=#{inspect(template_publication_failure_summary(reason))}"
+        end)
+
+        put_flash(socket, :error, template_publication_error_message(reason))
+    end
+  end
+
+  defp template_publication_failure_summary(%{"errors" => errors, "materialization" => materialization} = report) do
+    %{
+      status: Map.get(report, "status"),
+      error_count: length(errors || []),
+      first_errors: Enum.take(errors || [], 5),
+      materialization: materialization
+    }
+  end
+
+  defp template_publication_failure_summary(%Ecto.Changeset{} = changeset) do
+    %{
+      changeset_valid?: changeset.valid?,
+      errors: changeset.errors
+    }
+  end
+
+  defp template_publication_failure_summary(reason), do: reason
+
+  defp template_publication_error_message(:publication_already_active) do
+    dgettext("projects", "A template publication is already running.")
+  end
+
+  defp template_publication_error_message(_reason) do
+    dgettext("projects", "Template could not be queued.")
+  end
 
   defp template_attrs(params) do
     %{
@@ -279,13 +330,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   defp parse_template_id(_value), do: {:error, :invalid_template_id}
 
   defp fetch_template(scope, template_id) do
-    {:ok, ProjectTemplates.get_template!(scope, template_id)}
-  rescue
-    Ecto.NoResultsError -> {:error, :not_found}
+    ProjectTemplates.get_template(scope, template_id)
   end
-
-  defp ensure_project_template_source(%{source_project_id: project_id}, %{id: project_id}), do: :ok
-  defp ensure_project_template_source(_template, _project), do: {:error, :invalid_source_project}
 
   defp assign_project_templates(socket) do
     assign(
@@ -295,9 +341,20 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
     )
   end
 
+  defp assign_template_publications(socket) do
+    assign(
+      socket,
+      :template_publications,
+      ProjectTemplates.list_template_publications(socket.assigns.current_scope,
+        source_project_id: socket.assigns.project.id,
+        limit: 10
+      )
+    )
+  end
+
   defp project_templates_for_project(scope, project) do
     scope
-    |> ProjectTemplates.list_templates()
+    |> ProjectTemplates.list_templates(source_project_id: project.id)
     |> Enum.filter(&(&1.visibility == "private" and &1.source_project_id == project.id))
   end
 
@@ -314,6 +371,26 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
 
   defp version_number(%{version_number: version_number}), do: version_number
   defp version_number(_version), do: nil
+
+  defp serialize_template_publications(publications) do
+    Enum.map(publications, fn publication ->
+      %{
+        id: publication.id,
+        mode: publication.mode,
+        status: publication.status,
+        template_id: publication.project_template_id,
+        template_version_id: publication.project_template_version_id,
+        name: publication.name,
+        description: publication.description || "",
+        error_message: publication.error_message,
+        inserted_at: iso_datetime(publication.inserted_at),
+        completed_at: iso_datetime(publication.completed_at)
+      }
+    end)
+  end
+
+  defp iso_datetime(nil), do: nil
+  defp iso_datetime(datetime), do: DateTime.to_iso8601(datetime)
 
   defp do_save_theme(socket) do
     alias Storyarn.Shared.ColorUtils

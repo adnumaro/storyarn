@@ -1,5 +1,6 @@
 defmodule StoryarnWeb.TemplateLiveTest do
   use StoryarnWeb.ConnCase, async: false
+  use Oban.Testing, repo: Storyarn.Repo
 
   import Ecto.Query
   import Phoenix.LiveViewTest
@@ -10,8 +11,10 @@ defmodule StoryarnWeb.TemplateLiveTest do
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates
   alias Storyarn.ProjectTemplates.ProjectTemplate
+  alias Storyarn.ProjectTemplates.ProjectTemplatePublication
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Repo
+  alias Storyarn.Workers.PublishProjectTemplateWorker
 
   describe "index" do
     setup :register_and_log_in_user
@@ -47,6 +50,7 @@ defmodule StoryarnWeb.TemplateLiveTest do
       render_submit(element(view, "#template-install-form"), %{
         "install" => %{
           "workspace_id" => to_string(workspace.id),
+          "version_id" => to_string(template.current_version_id),
           "name" => "Installed From Template"
         }
       })
@@ -59,14 +63,53 @@ defmodule StoryarnWeb.TemplateLiveTest do
       assert installed_project.created_from_template_version_id == template.current_version_id
     end
 
-    test "publishes a new version for an owned private template", %{conn: conn, user: user, scope: scope} do
+    test "installs a selected older template version", %{conn: conn, user: user, scope: scope} do
+      workspace = workspace_fixture(user, %{name: "Version Install Studio"})
+      template = template_fixture(user, scope, %{name: "Versioned Install Template"})
+      first_version_id = template.current_version_id
+
+      {:ok, template} = ProjectTemplates.publish_new_version(scope, template, template.source_project)
+
+      {:ok, view, _html} = live(conn, ~p"/templates/#{template.id}")
+
+      assert has_element?(view, "#template-install-version")
+      assert has_element?(view, "#template-version-#{first_version_id}")
+      assert has_element?(view, "#template-version-#{template.current_version_id}")
+
+      render_submit(element(view, "#template-install-form"), %{
+        "install" => %{
+          "workspace_id" => to_string(workspace.id),
+          "version_id" => to_string(first_version_id),
+          "name" => "Installed From Version One"
+        }
+      })
+
+      {path, _flash} = assert_redirect(view)
+      assert path =~ "/workspaces/#{workspace.slug}/projects/"
+
+      installed_project = Repo.get_by!(Project, workspace_id: workspace.id, name: "Installed From Version One")
+      assert installed_project.created_from_template_version_id == first_version_id
+    end
+
+    test "queues a new version publication for an owned private template", %{conn: conn, user: user, scope: scope} do
       template = template_fixture(user, scope, %{name: "Versioned Template"})
+      first_version_id = template.current_version_id
 
       {:ok, view, _html} = live(conn, ~p"/templates/#{template.id}")
 
       assert has_element?(view, "#publish-template-version-button")
       html = render_click(element(view, "#publish-template-version-button"))
-      assert html =~ "Template version published"
+      assert html =~ "Template publication queued"
+
+      publication = Repo.get_by!(ProjectTemplatePublication, project_template_id: template.id, status: "queued")
+      template = Repo.get!(ProjectTemplate, template.id)
+
+      assert publication.status == "queued"
+      assert template.current_version_id == first_version_id
+      assert version_count(template.id) == 1
+      assert has_element?(view, "#template-publication-#{publication.id}")
+
+      assert :ok = perform_job(PublishProjectTemplateWorker, %{"publication_id" => publication.id})
 
       template = Repo.get!(ProjectTemplate, template.id)
       version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
@@ -83,6 +126,34 @@ defmodule StoryarnWeb.TemplateLiveTest do
       {:ok, view, _html} = live(conn, ~p"/templates/#{public_template.id}")
 
       refute has_element?(view, "#publish-template-version-button")
+    end
+
+    test "redirects instead of crashing when the template is no longer visible on mount", %{
+      conn: conn,
+      user: user,
+      scope: scope
+    } do
+      template = template_fixture(user, scope, %{name: "Archived Before Mount"})
+      archive_template(template)
+
+      assert {:error, {:live_redirect, %{to: "/templates", flash: flash}}} = live(conn, ~p"/templates/#{template.id}")
+      assert flash["error"] =~ "Template not found"
+    end
+
+    test "redirects instead of crashing when a PubSub refresh cannot refetch the template", %{
+      conn: conn,
+      user: user,
+      scope: scope
+    } do
+      template = template_fixture(user, scope, %{name: "Archived After Mount"})
+
+      {:ok, view, _html} = live(conn, ~p"/templates/#{template.id}")
+
+      archive_template(template)
+      send(view.pid, {:project_template_publication_updated, %{}})
+
+      flash = assert_redirect(view, ~p"/templates")
+      assert flash["error"] =~ "Template not found"
     end
   end
 
@@ -101,6 +172,10 @@ defmodule StoryarnWeb.TemplateLiveTest do
   defp make_public(template) do
     Repo.update_all(from(t in ProjectTemplate, where: t.id == ^template.id), set: [visibility: "public"])
     ProjectTemplates.get_template!(user_scope_fixture(template.owner), template.id)
+  end
+
+  defp archive_template(template) do
+    Repo.update_all(from(t in ProjectTemplate, where: t.id == ^template.id), set: [status: "archived"])
   end
 
   defp version_count(template_id) do

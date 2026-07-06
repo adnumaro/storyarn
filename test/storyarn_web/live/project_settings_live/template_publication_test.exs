@@ -7,6 +7,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.TemplatePublicationTest do
 
   alias Storyarn.ProjectTemplates
   alias Storyarn.ProjectTemplates.ProjectTemplate
+  alias Storyarn.ProjectTemplates.ProjectTemplatePublication
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Repo
 
@@ -39,7 +40,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.TemplatePublicationTest do
       refute other_template.id in template_ids
     end
 
-    test "creates a private template from settings", %{conn: conn, user: user} do
+    test "queues a private template publication from settings", %{conn: conn, user: user} do
       project = user |> project_fixture(%{name: "Publish Source"}) |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, settings_path(project))
@@ -53,14 +54,19 @@ defmodule StoryarnWeb.ProjectSettingsLive.TemplatePublicationTest do
           }
         })
 
-      assert html =~ "Template published"
+      assert html =~ "Template publication queued"
 
-      template = Repo.get_by!(ProjectTemplate, source_project_id: project.id, name: "Settings Starter")
-      assert template.visibility == "private"
-      assert template.current_version_id
+      publication = Repo.get_by!(ProjectTemplatePublication, source_project_id: project.id, name: "Settings Starter")
+      assert publication.mode == "new"
+      assert publication.status == "queued"
+      assert publication.oban_job_id
+
+      vue = get_general_vue(view)
+      publication_ids = Enum.map(vue.props["project-template-publications"], & &1["id"])
+      assert publication.id in publication_ids
     end
 
-    test "updates an existing template publication from settings", %{conn: conn, user: user, scope: scope} do
+    test "queues an existing template publication update from settings", %{conn: conn, user: user, scope: scope} do
       project = user |> project_fixture(%{name: "Version Source"}) |> Repo.preload(:workspace)
       {:ok, template} = ProjectTemplates.create_template_from_project(scope, project, %{name: "Versioned Starter"})
 
@@ -76,15 +82,17 @@ defmodule StoryarnWeb.ProjectSettingsLive.TemplatePublicationTest do
           }
         })
 
-      assert html =~ "Template published"
+      assert html =~ "Template publication queued"
 
-      template = Repo.get!(ProjectTemplate, template.id)
-      version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
+      publication = Repo.get_by!(ProjectTemplatePublication, project_template_id: template.id, status: "queued")
+      unchanged_template = Repo.get!(ProjectTemplate, template.id)
 
-      assert template.name == "Versioned Starter Updated"
-      assert template.description == "Updated from settings"
-      assert version.version_number == 2
-      assert version_count(template.id) == 2
+      assert publication.mode == "update"
+      assert publication.status == "queued"
+      assert publication.name == "Versioned Starter Updated"
+      assert publication.description == "Updated from settings"
+      assert unchanged_template.name == "Versioned Starter"
+      assert version_count(template.id) == 1
     end
   end
 

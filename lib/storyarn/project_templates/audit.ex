@@ -32,11 +32,24 @@ defmodule Storyarn.ProjectTemplates.Audit do
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
   alias Storyarn.Versioning.ProjectRecovery
 
+  @remappable_localization_source_types ~w(flow_node block sheet flow scene)
+
   @doc """
   Runs template-publication audit checks for a project.
   """
   @spec run(integer()) :: {:ok, map()} | {:error, map()}
   def run(project_id) do
+    case run_with_snapshot(project_id) do
+      {:ok, report, _snapshot} -> {:ok, report}
+      {:error, report} -> {:error, report}
+    end
+  end
+
+  @doc """
+  Runs the audit and returns the snapshot used by the materialization check.
+  """
+  @spec run_with_snapshot(integer()) :: {:ok, map(), map()} | {:error, map()}
+  def run_with_snapshot(project_id) do
     snapshot = ProjectSnapshotBuilder.build_snapshot(project_id)
 
     static_errors =
@@ -47,6 +60,8 @@ defmodule Storyarn.ProjectTemplates.Audit do
       |> Kernel.++(invalid_scene_pin_flow_ref_errors(project_id))
       |> Kernel.++(invalid_scene_zone_scene_target_errors(project_id))
       |> Kernel.++(invalid_scene_zone_flow_target_errors(project_id))
+      |> Kernel.++(invalid_localization_source_ref_errors(project_id))
+      |> Kernel.++(unsupported_localization_source_ref_errors(project_id))
       |> Kernel.++(uncopiable_asset_reference_errors(project_id))
 
     {materialization_errors, materialization_report} =
@@ -62,7 +77,7 @@ defmodule Storyarn.ProjectTemplates.Audit do
       "materialization" => materialization_report
     }
 
-    if errors == [], do: {:ok, report}, else: {:error, report}
+    if errors == [], do: {:ok, report, snapshot}, else: {:error, report}
   end
 
   defp stale_connection_errors(project_id) do
@@ -234,6 +249,125 @@ defmodule Storyarn.ProjectTemplates.Audit do
           "zone_id" => z.id,
           "target_type" => z.target_type,
           "target_id" => z.target_id
+        }
+
+    Repo.all(query)
+  end
+
+  defp invalid_localization_source_ref_errors(project_id) do
+    []
+    |> Kernel.++(invalid_flow_node_localization_ref_errors(project_id))
+    |> Kernel.++(invalid_block_localization_ref_errors(project_id))
+    |> Kernel.++(invalid_sheet_localization_ref_errors(project_id))
+    |> Kernel.++(invalid_flow_localization_ref_errors(project_id))
+    |> Kernel.++(invalid_scene_localization_ref_errors(project_id))
+  end
+
+  defp invalid_flow_node_localization_ref_errors(project_id) do
+    query =
+      from text in LocalizedText,
+        left_join: node in FlowNode,
+        on: node.id == text.source_id and is_nil(node.deleted_at),
+        left_join: flow in Flow,
+        on: flow.id == node.flow_id and flow.project_id == ^project_id and is_nil(flow.deleted_at),
+        where: text.project_id == ^project_id and text.source_type == "flow_node",
+        where: is_nil(flow.id),
+        select: %{
+          "type" => "invalid_localization_source_ref",
+          "localized_text_id" => text.id,
+          "source_type" => text.source_type,
+          "source_id" => text.source_id,
+          "source_field" => text.source_field
+        }
+
+    Repo.all(query)
+  end
+
+  defp invalid_block_localization_ref_errors(project_id) do
+    query =
+      from text in LocalizedText,
+        left_join: block in Block,
+        on: block.id == text.source_id and is_nil(block.deleted_at),
+        left_join: sheet in Sheet,
+        on: sheet.id == block.sheet_id and sheet.project_id == ^project_id and is_nil(sheet.deleted_at),
+        where: text.project_id == ^project_id and text.source_type == "block",
+        where: is_nil(sheet.id),
+        select: %{
+          "type" => "invalid_localization_source_ref",
+          "localized_text_id" => text.id,
+          "source_type" => text.source_type,
+          "source_id" => text.source_id,
+          "source_field" => text.source_field
+        }
+
+    Repo.all(query)
+  end
+
+  defp invalid_sheet_localization_ref_errors(project_id) do
+    query =
+      from text in LocalizedText,
+        left_join: sheet in Sheet,
+        on: sheet.id == text.source_id and sheet.project_id == ^project_id and is_nil(sheet.deleted_at),
+        where: text.project_id == ^project_id and text.source_type == "sheet",
+        where: is_nil(sheet.id),
+        select: %{
+          "type" => "invalid_localization_source_ref",
+          "localized_text_id" => text.id,
+          "source_type" => text.source_type,
+          "source_id" => text.source_id,
+          "source_field" => text.source_field
+        }
+
+    Repo.all(query)
+  end
+
+  defp invalid_flow_localization_ref_errors(project_id) do
+    query =
+      from text in LocalizedText,
+        left_join: flow in Flow,
+        on: flow.id == text.source_id and flow.project_id == ^project_id and is_nil(flow.deleted_at),
+        where: text.project_id == ^project_id and text.source_type == "flow",
+        where: is_nil(flow.id),
+        select: %{
+          "type" => "invalid_localization_source_ref",
+          "localized_text_id" => text.id,
+          "source_type" => text.source_type,
+          "source_id" => text.source_id,
+          "source_field" => text.source_field
+        }
+
+    Repo.all(query)
+  end
+
+  defp invalid_scene_localization_ref_errors(project_id) do
+    query =
+      from text in LocalizedText,
+        left_join: scene in Scene,
+        on: scene.id == text.source_id and scene.project_id == ^project_id and is_nil(scene.deleted_at),
+        where: text.project_id == ^project_id and text.source_type == "scene",
+        where: is_nil(scene.id),
+        select: %{
+          "type" => "invalid_localization_source_ref",
+          "localized_text_id" => text.id,
+          "source_type" => text.source_type,
+          "source_id" => text.source_id,
+          "source_field" => text.source_field
+        }
+
+    Repo.all(query)
+  end
+
+  defp unsupported_localization_source_ref_errors(project_id) do
+    query =
+      from text in LocalizedText,
+        where: text.project_id == ^project_id,
+        where: text.source_type not in ^@remappable_localization_source_types,
+        select: %{
+          "type" => "unsupported_localization_source_ref",
+          "localized_text_id" => text.id,
+          "source_type" => text.source_type,
+          "source_id" => text.source_id,
+          "source_field" => text.source_field
         }
 
     Repo.all(query)

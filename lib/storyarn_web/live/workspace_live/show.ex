@@ -162,9 +162,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   defp parse_template_id(_value), do: {:error, :invalid_template_id}
 
   defp fetch_template(scope, template_id) do
-    {:ok, ProjectTemplates.get_template!(scope, template_id)}
-  rescue
-    Ecto.NoResultsError -> {:error, :not_found}
+    ProjectTemplates.get_template(scope, template_id)
   end
 
   defp filter_projects(projects, query) when query in [nil, ""], do: projects

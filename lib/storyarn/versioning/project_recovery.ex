@@ -471,6 +471,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp remap_source_id("flow_node", old_id, id_maps), do: Map.get(id_maps.node, old_id, old_id)
+  defp remap_source_id("block", old_id, id_maps), do: Map.get(id_maps.block, old_id, old_id)
   defp remap_source_id("sheet", old_id, id_maps), do: Map.get(id_maps.sheet, old_id, old_id)
   defp remap_source_id("flow", old_id, id_maps), do: Map.get(id_maps.flow, old_id, old_id)
   defp remap_source_id("scene", old_id, id_maps), do: Map.get(id_maps.scene, old_id, old_id)
