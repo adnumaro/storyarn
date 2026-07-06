@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useLiveForm, type Form } from "live_vue";
 import { Info } from "lucide-vue-next";
-import { computed, ref, watch } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
@@ -106,11 +106,13 @@ const csrfToken = ref(
 
 watch(
   () => triggerSubmit,
-  (val) => {
+  async (val) => {
     if (val && hiddenFormRef.value) {
+      await nextTick();
       hiddenFormRef.value.submit();
     }
   },
+  { flush: "post" },
 );
 </script>
 
@@ -127,18 +129,9 @@ watch(
     <form ref="hiddenFormRef" :action="passwordAction" method="post" class="hidden">
       <input type="hidden" name="_csrf_token" :value="csrfToken" />
       <input type="hidden" name="_method" value="put" />
-      <input
-        :name="passwordForm.field('email')?.inputAttrs?.value?.name || 'user[email]'"
-        type="hidden"
-        autocomplete="username"
-        :value="currentEmail"
-      />
-      <input :name="password.inputAttrs.value.name" type="hidden" :value="passwordValue" />
-      <input
-        :name="passwordConfirmation.inputAttrs.value.name"
-        type="hidden"
-        :value="passwordConfirmationValue"
-      />
+      <input name="user[email]" type="hidden" autocomplete="username" :value="currentEmail" />
+      <input name="user[password]" type="hidden" :value="passwordValue" />
+      <input name="user[password_confirmation]" type="hidden" :value="passwordConfirmationValue" />
     </form>
 
     <!-- Password Section -->

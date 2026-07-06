@@ -73,6 +73,22 @@ defmodule StoryarnWeb.UserSessionControllerTest do
       assert redirected_to(conn) =~ "/workspaces/"
     end
 
+    test "ignores a blank LiveView login token when credentials are present", %{conn: conn, user: user} do
+      user = set_password(user)
+
+      conn =
+        post(conn, ~p"/users/log-in", %{
+          "user" => %{
+            "_login_token" => "",
+            "email" => user.email,
+            "password" => valid_user_password()
+          }
+        })
+
+      assert get_session(conn, :user_token)
+      assert redirected_to(conn) =~ "/workspaces/"
+    end
+
     test "rejects invalid LiveView login token as form error", %{conn: conn} do
       conn =
         post(conn, ~p"/users/log-in", %{

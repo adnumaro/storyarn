@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useLiveForm, type Form } from "live_vue";
 import { ArrowRight, Info } from "lucide-vue-next";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { Label } from "@components/ui/label/index.ts";
@@ -111,11 +111,13 @@ const emailInput = ref<InstanceType<typeof Input> | null>(null);
 
 watch(
   () => triggerSubmit,
-  (value) => {
+  async (value) => {
     if (value && loginToken && hiddenFormRef.value) {
+      await nextTick();
       hiddenFormRef.value.submit();
     }
   },
+  { flush: "post" },
 );
 
 onMounted(() => {

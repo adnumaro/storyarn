@@ -23,18 +23,23 @@ defmodule StoryarnWeb.UserSessionController do
     create(conn, params, dgettext("identity", "Welcome back!"))
   end
 
-  # email + password login
-  defp create(conn, %{"user" => %{"_login_token" => login_token} = user_params}, info) do
+  # Token-backed POST used by the LiveView login form after inline validation.
+  defp create(conn, %{"user" => %{"_login_token" => login_token} = user_params}, info)
+       when is_binary(login_token) and login_token != "" do
     case user_from_login_token(login_token) do
       {:ok, user} ->
         log_in_authenticated_user(conn, user, user_params, info)
 
       :error ->
-        invalid_credentials_redirect(conn, user_params)
+        create_with_password(conn, user_params, info)
     end
   end
 
   defp create(conn, %{"user" => user_params}, info) do
+    create_with_password(conn, user_params, info)
+  end
+
+  defp create_with_password(conn, user_params, info) do
     email = user_params["email"] || ""
     password = user_params["password"] || ""
     ip_address = format_remote_ip(conn)
