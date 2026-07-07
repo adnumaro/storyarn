@@ -6,12 +6,11 @@ defmodule StoryarnWeb.LandingLive.Index do
   alias Storyarn.ProductMetrics.Taxonomy
   alias Storyarn.RateLimiter
   alias Storyarn.Workspaces
+  alias StoryarnWeb.ClientIp
 
   @impl true
   def mount(_params, _session, socket) do
-    peer = get_connect_info(socket, :peer_data)
-    ip = if peer, do: peer.address |> :inet.ntoa() |> to_string(), else: "unknown"
-    socket = assign(socket, ip: ip)
+    socket = assign(socket, ip: ClientIp.from_socket(socket))
 
     case socket.assigns do
       %{current_scope: %{user: %Accounts.User{} = user}} ->

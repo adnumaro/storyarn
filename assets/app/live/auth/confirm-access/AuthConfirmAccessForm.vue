@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ArrowRight, Shield } from "lucide-vue-next";
 import { ref } from "vue";
+import PasswordInput from "@components/forms/PasswordInput.vue";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { Label } from "@components/ui/label/index.ts";
@@ -55,10 +56,9 @@ const passwordValue = ref("");
       </div>
       <div class="space-y-1.5 mb-4">
         <Label for="confirm-password">{{ $t("auth.password") }}</Label>
-        <Input
+        <PasswordInput
           id="confirm-password"
           v-model="passwordValue"
-          type="password"
           name="user[password]"
           autocomplete="current-password"
           required

@@ -3,9 +3,10 @@ defmodule StoryarnWeb.PageController do
 
   alias Storyarn.Accounts
   alias Storyarn.RateLimiter
+  alias StoryarnWeb.ClientIp
 
   def join_waitlist(conn, %{"waitlist" => waitlist_params}) do
-    case RateLimiter.check_waitlist(format_ip(conn)) do
+    case RateLimiter.check_waitlist(ClientIp.from_conn(conn)) do
       :ok ->
         do_join_waitlist(conn, waitlist_params)
 
@@ -22,7 +23,7 @@ defmodule StoryarnWeb.PageController do
         signup_info = %{
           locale: conn.assigns[:locale] || "en",
           accept_language: List.first(get_req_header(conn, "accept-language")) || "unknown",
-          ip: format_ip(conn),
+          ip: ClientIp.from_conn(conn),
           country: List.first(get_req_header(conn, "fly-region")) || "unknown",
           profession: entry.profession,
           primary_interest: entry.primary_interest,
@@ -48,9 +49,5 @@ defmodule StoryarnWeb.PageController do
         )
         |> redirect(to: ~p"/")
     end
-  end
-
-  defp format_ip(conn) do
-    conn.remote_ip |> :inet.ntoa() |> to_string()
   end
 end

@@ -199,6 +199,9 @@ defmodule StoryarnWeb.UserAuth do
       on user_token.
       Redirects to login page if there's no logged user.
 
+    * `:redirect_if_user_is_authenticated` - Assigns current_scope and
+      redirects authenticated users away from public-only auth pages.
+
   ## Examples
 
   Use the `on_mount` lifecycle macro in LiveViews to mount or authenticate
@@ -236,6 +239,19 @@ defmodule StoryarnWeb.UserAuth do
         |> Phoenix.LiveView.redirect(to: "/users/log-in")
 
       {:halt, socket}
+    end
+  end
+
+  def on_mount(:redirect_if_user_is_authenticated, _params, session, socket) do
+    socket = mount_current_scope(socket, session)
+
+    case socket.assigns.current_scope do
+      %Scope{user: %Accounts.User{} = user} ->
+        socket = Phoenix.LiveView.redirect(socket, to: signed_in_path(user))
+        {:halt, socket}
+
+      _ ->
+        {:cont, socket}
     end
   end
 

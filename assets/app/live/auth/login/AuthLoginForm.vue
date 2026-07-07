@@ -2,6 +2,8 @@
 import { useLiveForm, type Form } from "live_vue";
 import { ArrowRight, Info } from "lucide-vue-next";
 import { computed, nextTick, onMounted, ref, watch } from "vue";
+import PasswordInput from "@components/forms/PasswordInput.vue";
+import LiveLink from "@components/navigation/LiveLink.vue";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { Label } from "@components/ui/label/index.ts";
@@ -21,6 +23,7 @@ const {
   localMailAdapter = false,
   csrfToken,
   loginAction,
+  forgotPasswordUrl,
 } = defineProps<{
   form: LoginForm;
   readonly?: boolean;
@@ -29,6 +32,7 @@ const {
   localMailAdapter?: boolean;
   csrfToken: string;
   loginAction: string;
+  forgotPasswordUrl: string;
 }>();
 
 const form = useLiveForm(() => formProp, {
@@ -190,12 +194,19 @@ onMounted(() => {
           </p>
         </div>
         <div class="space-y-1.5">
-          <Label for="login-password">{{ $t("auth.password") }}</Label>
-          <Input
+          <div class="flex items-center justify-between gap-3">
+            <Label for="login-password">{{ $t("auth.password") }}</Label>
+            <LiveLink
+              :to="forgotPasswordUrl"
+              class="text-sm font-medium text-primary transition hover:text-primary/80"
+            >
+              {{ $t("auth.sign_in.forgot_password") }}
+            </LiveLink>
+          </div>
+          <PasswordInput
             v-bind="passwordInputAttrs"
             id="login-password"
             :model-value="passwordValue"
-            type="password"
             name="user[password]"
             autocomplete="current-password"
             required

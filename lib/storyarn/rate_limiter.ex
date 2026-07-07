@@ -10,6 +10,7 @@ defmodule Storyarn.RateLimiter do
   - Login attempts: 5 per minute per IP
   - Magic link requests: 3 per minute per email
   - Registration: 3 per minute per IP
+  - Password reset: 3 per 15 minutes per IP and per email address
   - Invitations: 10 per hour per user (configured in invitation modules)
 
   ## Configuration
@@ -40,6 +41,10 @@ defmodule Storyarn.RateLimiter do
   @registration_limit 3
   @registration_window_ms 60_000
 
+  # Password reset: 3 attempts per 15 minutes per IP and per email address
+  @password_reset_limit 3
+  @password_reset_window_ms 900_000
+
   # Waitlist: 3 attempts per hour per IP
   @waitlist_limit 3
   @waitlist_window_ms 3_600_000
@@ -62,6 +67,20 @@ defmodule Storyarn.RateLimiter do
   @spec check_registration(String.t()) :: :ok | {:error, :rate_limited}
   def check_registration(ip_address) do
     check_rate("registration:#{ip_address}", @registration_window_ms, @registration_limit)
+  end
+
+  @doc """
+  Checks if a password reset request is allowed for the given IP address and email.
+
+  Returns `:ok` if allowed, `{:error, :rate_limited}` if blocked.
+  """
+  @spec check_password_reset(String.t(), String.t()) :: :ok | {:error, :rate_limited}
+  def check_password_reset(ip_address, email) do
+    normalized_email = normalize_email(email)
+
+    with :ok <- check_rate("password_reset:ip:#{ip_address}", @password_reset_window_ms, @password_reset_limit) do
+      check_rate("password_reset:email:#{normalized_email}", @password_reset_window_ms, @password_reset_limit)
+    end
   end
 
   @doc """
@@ -125,6 +144,14 @@ defmodule Storyarn.RateLimiter do
       :ok
     end
   end
+
+  defp normalize_email(email) when is_binary(email) do
+    email
+    |> String.trim()
+    |> String.downcase()
+  end
+
+  defp normalize_email(_email), do: "missing_email"
 
   defp enabled? do
     :storyarn

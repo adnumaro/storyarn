@@ -12,6 +12,7 @@ defmodule Storyarn.Accounts.UserToken do
   alias Storyarn.Shared.TokenGenerator
 
   @change_email_validity_in_days 7
+  @reset_password_validity_in_hours 24
   @session_validity_in_days 14
   @invite_validity_in_days 14
 
@@ -125,6 +126,29 @@ defmodule Storyarn.Accounts.UserToken do
         query =
           from t in by_token_and_context_query(hashed_token, context),
             where: t.inserted_at > ago(@change_email_validity_in_days, "day")
+
+        {:ok, query}
+
+      :error ->
+        :error
+    end
+  end
+
+  @doc """
+  Checks if the token is valid and returns the user found by the token, if any.
+
+  Password reset tokens are scoped to the user's current email address and expire
+  after #{@reset_password_validity_in_hours} hours.
+  """
+  def verify_reset_password_token_query(token) do
+    case TokenGenerator.decode_and_hash(token) do
+      {:ok, hashed_token} ->
+        query =
+          from t in by_token_and_context_query(hashed_token, "reset_password"),
+            join: user in assoc(t, :user),
+            where: t.inserted_at > ago(@reset_password_validity_in_hours, "hour"),
+            where: t.sent_to == user.email,
+            select: user
 
         {:ok, query}
 

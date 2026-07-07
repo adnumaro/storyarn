@@ -337,8 +337,6 @@ defmodule StoryarnWeb.Router do
             {@user_auth_hook, :load_workspaces}
           ] do
       live "/", LandingLive.Index, :index
-      live "/users/register/:token", UserLive.Registration, :new
-      live "/users/log-in", UserLive.Login, :new
       live "/users/confirm-access", UserLive.ConfirmAccess, :new
       live "/contact", LandingLive.Contact, :show
       live "/privacy", LegalLive.Show, :privacy
@@ -349,6 +347,24 @@ defmodule StoryarnWeb.Router do
 
       # Workspace invitations (accessible with or without auth)
       live "/workspaces/invitations/:token", WorkspaceLive.Invitation, :show
+    end
+
+    # Public-only authentication pages. These routes still mount current_scope
+    # for locale/session context, but authenticated users are redirected back to
+    # the app instead of seeing login, registration, or password-reset screens.
+    live_session :public_auth,
+      on_mount:
+        if(Application.compile_env(:storyarn, :sql_sandbox),
+          do: [Module.concat(["StoryarnWeb", "LiveSandbox"])],
+          else: []
+        ) ++
+          [
+            {@user_auth_hook, :redirect_if_user_is_authenticated}
+          ] do
+      live "/users/register/:token", UserLive.Registration, :new
+      live "/users/log-in", UserLive.Login, :new
+      live "/users/reset-password", UserLive.ForgotPassword, :new
+      live "/users/reset-password/:token", UserLive.ResetPassword, :edit
     end
 
     post "/users/log-in", UserSessionController, :create

@@ -9,6 +9,7 @@ function mountLoginForm() {
     props: {
       csrfToken: "csrf-token",
       loginAction: "/users/log-in",
+      forgotPasswordUrl: "/users/reset-password",
       loginToken: null,
       triggerSubmit: false,
       form: {
@@ -54,5 +55,13 @@ describe("AuthLoginForm", () => {
     await flushPromises();
 
     expect(submittedTokens).toEqual(["signed-login-token"]);
+  });
+
+  it("navigates to reset password through LiveView navigation", () => {
+    const wrapper = mountLoginForm();
+    const resetLink = wrapper.get('a[href="/users/reset-password"]');
+
+    expect(resetLink.attributes("data-phx-link")).toBe("redirect");
+    expect(resetLink.attributes("data-phx-link-state")).toBe("push");
   });
 });

@@ -2,8 +2,8 @@
 import { useLiveForm, type Form } from "live_vue";
 import { Info } from "lucide-vue-next";
 import { computed, nextTick, ref, watch } from "vue";
+import PasswordInput from "@components/forms/PasswordInput.vue";
 import { Button } from "@components/ui/button";
-import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import { Separator } from "@components/ui/separator";
 
@@ -146,11 +146,10 @@ watch(
 
         <div class="space-y-1.5">
           <Label for="security-password">{{ $t("settings.security.new_password") }}</Label>
-          <Input
+          <PasswordInput
             v-bind="passwordInputAttrs"
             id="security-password"
             :model-value="passwordValue"
-            type="password"
             autocomplete="new-password"
             required
             @update:model-value="updatePassword"
@@ -164,11 +163,10 @@ watch(
           <Label for="security-password-confirmation">{{
             $t("settings.security.confirm_password")
           }}</Label>
-          <Input
+          <PasswordInput
             v-bind="passwordConfirmationInputAttrs"
             id="security-password-confirmation"
             :model-value="passwordConfirmationValue"
-            type="password"
             autocomplete="new-password"
             @update:model-value="updatePasswordConfirmation"
           />

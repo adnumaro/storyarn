@@ -30,6 +30,9 @@ msgstr ""
 msgid "has invalid format"
 msgstr ""
 
+msgid "must have the @ sign and no spaces"
+msgstr ""
+
 ## From Ecto.Changeset.validate_subset/3
 msgid "has an invalid entry"
 msgstr ""
@@ -40,6 +43,9 @@ msgstr ""
 
 ## From Ecto.Changeset.validate_confirmation/3
 msgid "does not match confirmation"
+msgstr ""
+
+msgid "does not match password"
 msgstr ""
 
 ## From Ecto.Changeset.no_assoc_constraint/3

@@ -11,7 +11,7 @@ defmodule StoryarnWeb.Plugs.TrustedProxy do
   @behaviour Plug
 
   @impl true
-  def init(_opts), do: RemoteIp.init(headers: ~w[fly-client-ip x-forwarded-for])
+  def init(_opts), do: RemoteIp.init(headers: StoryarnWeb.ClientIp.trusted_proxy_headers())
 
   @impl true
   def call(conn, remote_ip_opts) do

@@ -5,6 +5,7 @@ defmodule StoryarnWeb.UserLive.Registration do
 
   alias Storyarn.Accounts
   alias Storyarn.RateLimiter
+  alias StoryarnWeb.ClientIp
 
   @impl true
   def render(assigns) do
@@ -28,17 +29,7 @@ defmodule StoryarnWeb.UserLive.Registration do
   end
 
   @impl true
-  def mount(_params, _session, %{assigns: %{current_scope: %{user: user}}} = socket) when not is_nil(user) do
-    {:ok, redirect(socket, to: StoryarnWeb.UserAuth.signed_in_path(socket))}
-  end
-
   def mount(%{"token" => token} = params, _session, socket) do
-    ip =
-      case get_connect_info(socket, :peer_data) do
-        %{address: addr} when is_tuple(addr) -> addr |> :inet.ntoa() |> to_string()
-        _ -> "unknown"
-      end
-
     case Accounts.get_user_by_invite_token(token) do
       {user, token_record} ->
         # We start with an empty changeset (casted so params is %{}) so no validation errors are shown on load
@@ -48,7 +39,7 @@ defmodule StoryarnWeb.UserLive.Registration do
          socket
          |> assign(:invited_user, user)
          |> assign(:invite_token, token_record)
-         |> assign(:client_ip, ip)
+         |> assign(:client_ip, ClientIp.from_socket(socket))
          |> assign(:return_to, safe_return_to(params["return_to"]))
          |> assign_form(changeset)}
 
@@ -66,7 +57,7 @@ defmodule StoryarnWeb.UserLive.Registration do
 
   @impl true
   def handle_event("save", %{"user" => user_params}, socket) do
-    case RateLimiter.check_registration(socket.assigns[:client_ip] || "unknown") do
+    case RateLimiter.check_registration(socket.assigns[:client_ip] || ClientIp.missing_peer_data()) do
       :ok ->
         do_register(socket, user_params)
 

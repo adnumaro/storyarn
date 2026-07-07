@@ -191,3 +191,34 @@ msgstr "Si no quieres unirte, simplemente ignora este correo."
 #, elixir-autogen, elixir-format
 msgid "This invitation expires in %{days} days. If you don't want to join, simply ignore this email."
 msgstr "Esta invitación caduca en %{days} días. Si no quieres unirte, simplemente ignora este correo."
+
+#: lib/storyarn/emails/templates.ex:81
+#, elixir-autogen, elixir-format
+msgid "Choose a new Storyarn password"
+msgstr "Elige una nueva contraseña de Storyarn"
+
+#: lib/storyarn/emails/templates.ex:64
+#, elixir-autogen, elixir-format
+msgid "Reset password"
+msgstr "Restablecer contraseña"
+
+#: lib/storyarn/emails/templates.ex:54
+#, elixir-autogen, elixir-format
+msgid "Reset your Storyarn password"
+msgstr "Restablece tu contraseña de Storyarn"
+
+#: lib/storyarn/emails/templates.ex:67
+#: lib/storyarn/emails/templates.ex:78
+#, elixir-autogen, elixir-format
+msgid "This link expires in 24 hours. If you didn't request this, you can ignore this email."
+msgstr "Este enlace caduca en 24 horas. Si no lo has solicitado, puedes ignorar este correo."
+
+#: lib/storyarn/emails/templates.ex:75
+#, elixir-autogen, elixir-format
+msgid "We received a request to reset your Storyarn password. Choose a new password by visiting:"
+msgstr "Hemos recibido una solicitud para restablecer tu contraseña de Storyarn. Elige una nueva contraseña visitando:"
+
+#: lib/storyarn/emails/templates.ex:61
+#, elixir-autogen, elixir-format
+msgid "We received a request to reset your Storyarn password. Click below to choose a new one."
+msgstr "Hemos recibido una solicitud para restablecer tu contraseña de Storyarn. Haz clic abajo para elegir una nueva."

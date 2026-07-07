@@ -5,6 +5,7 @@ defmodule StoryarnWeb.UserSessionController do
   alias Storyarn.Accounts
   alias Storyarn.Analytics
   alias Storyarn.RateLimiter
+  alias StoryarnWeb.ClientIp
   alias StoryarnWeb.UserAuth
   alias StoryarnWeb.UserLoginToken
 
@@ -20,7 +21,13 @@ defmodule StoryarnWeb.UserSessionController do
   end
 
   def create(conn, params) do
-    create(conn, params, dgettext("identity", "Welcome back!"))
+    if authenticated?(conn) do
+      conn
+      |> redirect(to: UserAuth.signed_in_path(conn))
+      |> halt()
+    else
+      create(conn, params, dgettext("identity", "Welcome back!"))
+    end
   end
 
   # Token-backed POST used by the LiveView login form after inline validation.
@@ -42,7 +49,7 @@ defmodule StoryarnWeb.UserSessionController do
   defp create_with_password(conn, user_params, info) do
     email = user_params["email"] || ""
     password = user_params["password"] || ""
-    ip_address = format_remote_ip(conn)
+    ip_address = ClientIp.from_conn(conn)
 
     case RateLimiter.check_login(ip_address) do
       :ok ->
@@ -106,8 +113,8 @@ defmodule StoryarnWeb.UserSessionController do
     end
   end
 
-  defp format_remote_ip(conn) do
-    conn.remote_ip |> :inet.ntoa() |> to_string()
+  defp authenticated?(conn) do
+    match?(%{current_scope: %{user: %Accounts.User{}}}, conn.assigns)
   end
 
   def update_password(conn, %{"user" => user_params} = params) do

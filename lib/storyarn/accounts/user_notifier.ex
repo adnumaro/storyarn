@@ -44,6 +44,18 @@ defmodule Storyarn.Accounts.UserNotifier do
   end
 
   @doc """
+  Deliver instructions to reset a user password.
+  """
+  def deliver_reset_password_instructions(%{email: email}, url) do
+    deliver_reset_password_instructions(email, url)
+  end
+
+  def deliver_reset_password_instructions(email, url) when is_binary(email) do
+    {subject, html, text} = Templates.reset_password(email, url)
+    deliver(email, subject, html, text)
+  end
+
+  @doc """
   Deliver admin notification about a member invitation request.
   """
   def deliver_admin_invitation_request(request_info) do

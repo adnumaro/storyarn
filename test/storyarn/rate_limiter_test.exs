@@ -51,6 +51,34 @@ defmodule Storyarn.RateLimiterTest do
     end
   end
 
+  describe "check_password_reset/2" do
+    test "blocks requests over the IP limit when enabled" do
+      with_rate_limiting_enabled(fn ->
+        ip = "test-password-reset-ip-#{System.unique_integer([:positive])}"
+
+        for index <- 1..3 do
+          assert :ok = RateLimiter.check_password_reset(ip, "user#{index}@example.com")
+        end
+
+        assert {:error, :rate_limited} =
+                 RateLimiter.check_password_reset(ip, "another-user@example.com")
+      end)
+    end
+
+    test "blocks requests over the normalized email limit when enabled" do
+      with_rate_limiting_enabled(fn ->
+        email = "Victim#{System.unique_integer([:positive])}@Example.com"
+
+        for index <- 1..3 do
+          assert :ok = RateLimiter.check_password_reset("192.0.2.#{index}", email)
+        end
+
+        assert {:error, :rate_limited} =
+                 RateLimiter.check_password_reset("192.0.2.99", String.downcase(email))
+      end)
+    end
+  end
+
   describe "check_invitation/3" do
     test "blocks requests over custom limit when enabled" do
       with_rate_limiting_enabled(fn ->

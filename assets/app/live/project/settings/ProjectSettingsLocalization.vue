@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
+import PasswordInput from "@components/forms/PasswordInput.vue";
 import { Button } from "@components/ui/button";
-import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import {
   Select,
@@ -67,9 +67,8 @@ function formatNumber(n: number | string) {
       <form @submit.prevent="saveProviderConfig" class="space-y-4">
         <div class="space-y-1.5">
           <Label for="api-key">{{ $t("project_settings.localization.api_key") }}</Label>
-          <Input
+          <PasswordInput
             id="api-key"
-            type="password"
             v-model="providerApiKey"
             :placeholder="hasApiKey ? '••••••••' : ''"
           />

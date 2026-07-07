@@ -128,3 +128,79 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Invalid or expired registration link."
 msgstr ""
+
+#: lib/storyarn_web/live/user_live/reset_password.ex:20
+#, elixir-autogen, elixir-format
+msgid "Choose a new password"
+msgstr "Elige una nueva contraseña"
+
+#: lib/storyarn_web/live/user_live/reset_password.ex:66
+#, elixir-autogen, elixir-format
+msgid "Confirm password"
+msgstr "Confirmar contraseña"
+
+#: lib/storyarn_web/live/user_live/forgot_password.ex:107
+#, elixir-autogen, elixir-format
+msgid "Could not send password reset instructions. Please try again."
+msgstr "No se han podido enviar las instrucciones para restablecer la contraseña. Inténtalo de nuevo."
+
+#: lib/storyarn_web/live/user_live/forgot_password.ex:26
+#, elixir-autogen, elixir-format
+msgid "Enter your email and we'll send you a secure password reset link."
+msgstr "Introduce tu correo y te enviaremos un enlace seguro para restablecer la contraseña."
+
+#: lib/storyarn_web/live/user_live/forgot_password.ex:43
+#, elixir-autogen, elixir-format
+msgid "Email"
+msgstr "Correo electrónico"
+
+#: lib/storyarn_web/live/user_live/forgot_password.ex:138
+#, elixir-autogen, elixir-format
+msgid "If that email belongs to an account, we'll send password reset instructions shortly."
+msgstr "Si ese correo pertenece a una cuenta, enviaremos instrucciones para restablecer la contraseña en breve."
+
+#: lib/storyarn_web/live/user_live/reset_password.ex:144
+#, elixir-autogen, elixir-format
+msgid "Invalid or expired password reset link."
+msgstr "El enlace para restablecer la contraseña es inválido o ha caducado."
+
+#: lib/storyarn_web/live/user_live/reset_password.ex:35
+#, elixir-autogen, elixir-format
+msgid "New password"
+msgstr "Nueva contraseña"
+
+#: lib/storyarn_web/live/user_live/reset_password.ex:131
+#, elixir-autogen, elixir-format
+msgid "Password reset successfully. Log in with your new password."
+msgstr "Contraseña restablecida correctamente. Inicia sesión con tu nueva contraseña."
+
+#: lib/storyarn_web/live/user_live/forgot_password.ex:23
+#, elixir-autogen, elixir-format
+msgid "Reset your password"
+msgstr "Restablecer tu contraseña"
+
+#: lib/storyarn_web/live/user_live/forgot_password.ex:65
+#, elixir-autogen, elixir-format
+msgid "Send reset link"
+msgstr "Enviar enlace de restablecimiento"
+
+#: lib/storyarn_web/live/user_live/forgot_password.ex:117
+#, elixir-autogen, elixir-format
+msgid "Too many password reset requests. Please try again later."
+msgstr "Demasiadas solicitudes para restablecer la contraseña. Inténtalo de nuevo más tarde."
+
+#: lib/storyarn_web/live/user_live/reset_password.ex:91
+#, elixir-autogen, elixir-format
+msgid "Update password"
+msgstr "Actualizar contraseña"
+
+#: lib/storyarn_web/live/user_live/reset_password.ex:23
+#, elixir-autogen, elixir-format
+msgid "Use a strong password that you don't use anywhere else."
+msgstr "Usa una contraseña segura que no utilices en ningún otro sitio."
+
+#: lib/storyarn_web/live/user_live/forgot_password.ex:72
+#: lib/storyarn_web/live/user_live/reset_password.ex:98
+#, elixir-autogen, elixir-format
+msgid "Back to log in"
+msgstr "Volver a iniciar sesión"

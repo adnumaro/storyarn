@@ -9,6 +9,7 @@ defmodule StoryarnWeb.UserLive.Login do
   alias Storyarn.Accounts
   alias Storyarn.RateLimiter
   alias Storyarn.Shared.Validations
+  alias StoryarnWeb.ClientIp
   alias StoryarnWeb.UserLoginToken
 
   @login_types %{email: :string, password: :string}
@@ -34,6 +35,7 @@ defmodule StoryarnWeb.UserLive.Login do
         local-mail-adapter={local_mail_adapter?()}
         csrf-token={Plug.CSRFProtection.get_csrf_token()}
         login-action={~p"/users/log-in"}
+        forgot-password-url={~p"/users/reset-password"}
       />
     </StoryarnWeb.Components.AuthLayout.auth>
     """
@@ -56,7 +58,7 @@ defmodule StoryarnWeb.UserLive.Login do
 
     {:ok,
      socket
-     |> assign(:client_ip, client_ip(socket))
+     |> assign(:client_ip, ClientIp.from_socket(socket))
      |> assign(:trigger_submit, false)
      |> assign(:login_token, nil)
      |> assign_form(changeset)}
@@ -151,13 +153,6 @@ defmodule StoryarnWeb.UserLive.Login do
 
   defp assign_form(socket, changeset) do
     assign(socket, :form, to_form(changeset, as: "user"))
-  end
-
-  defp client_ip(socket) do
-    case get_connect_info(socket, :peer_data) do
-      %{address: addr} when is_tuple(addr) -> addr |> :inet.ntoa() |> to_string()
-      _ -> "unknown"
-    end
   end
 
   defp local_mail_adapter? do

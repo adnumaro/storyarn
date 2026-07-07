@@ -1,11 +1,14 @@
 defmodule Storyarn.AccountsTest do
   use Storyarn.DataCase, async: true
+  use Oban.Testing, repo: Storyarn.Repo
 
+  import Ecto.Query
   import Storyarn.AccountsFixtures
 
   alias Storyarn.Accounts
   alias Storyarn.Accounts.User
   alias Storyarn.Accounts.UserToken
+  alias Storyarn.Workers.DeliverResetPasswordInstructionsWorker
 
   describe "get_user_by_email/1" do
     test "does not return the user if the email does not exist" do
@@ -185,6 +188,94 @@ defmodule Storyarn.AccountsTest do
     end
   end
 
+  describe "deliver_user_reset_password_instructions/2" do
+    setup do
+      %{user: user_fixture()}
+    end
+
+    test "queues token delivery through notification", %{user: user} do
+      assert {:ok, :queued} =
+               Accounts.deliver_user_reset_password_instructions(user, fn token ->
+                 "[TOKEN]#{token}[TOKEN]"
+               end)
+
+      assert_enqueued(
+        worker: DeliverResetPasswordInstructionsWorker,
+        args: %{"email" => user.email}
+      )
+
+      token = perform_latest_reset_password_job()
+      {:ok, decoded_token} = Base.url_decode64(token, padding: false)
+      assert user_token = Repo.get_by(UserToken, token: :crypto.hash(:sha256, decoded_token))
+      assert user_token.user_id == user.id
+      assert user_token.sent_to == user.email
+      assert user_token.context == "reset_password"
+    end
+
+    test "does not disclose missing users" do
+      assert {:ok, :queued} =
+               Accounts.deliver_user_reset_password_instructions(nil, fn token ->
+                 "https://example.com/reset/#{token}"
+               end)
+
+      refute Repo.exists?(
+               from(job in Oban.Job,
+                 where: job.worker == ^inspect(DeliverResetPasswordInstructionsWorker)
+               )
+             )
+    end
+
+    test "replaces previous reset tokens", %{user: user} do
+      _first_token = extract_reset_password_token(user)
+
+      second_token = extract_reset_password_token(user)
+
+      {:ok, second_token} = Base.url_decode64(second_token, padding: false)
+
+      assert Repo.aggregate(
+               from(token in UserToken,
+                 where: token.user_id == ^user.id and token.context == "reset_password"
+               ),
+               :count
+             ) == 1
+
+      assert Repo.get_by(UserToken, token: :crypto.hash(:sha256, second_token))
+    end
+  end
+
+  describe "get_user_by_reset_password_token/1" do
+    setup do
+      user = user_fixture()
+
+      token = extract_reset_password_token(user)
+
+      %{user: user, token: token}
+    end
+
+    test "returns the user with a valid token", %{user: user, token: token} do
+      assert reset_user = Accounts.get_user_by_reset_password_token(token)
+      assert reset_user.id == user.id
+    end
+
+    test "does not return user with invalid token" do
+      refute Accounts.get_user_by_reset_password_token("oops")
+    end
+
+    test "does not return user if token expired", %{token: token} do
+      {1, nil} = Repo.update_all(UserToken, set: [inserted_at: ~N[2020-01-01 00:00:00]])
+      refute Accounts.get_user_by_reset_password_token(token)
+    end
+
+    test "does not return user if email changed", %{user: user, token: token} do
+      {:ok, _user} =
+        user
+        |> User.email_changeset(%{email: unique_user_email()})
+        |> Repo.update()
+
+      refute Accounts.get_user_by_reset_password_token(token)
+    end
+  end
+
   describe "update_user_email/2" do
     setup do
       user = unconfirmed_user_fixture()
@@ -302,6 +393,44 @@ defmodule Storyarn.AccountsTest do
         })
 
       refute Repo.get_by(UserToken, user_id: user.id)
+    end
+  end
+
+  describe "reset_user_password/2" do
+    setup do
+      user = user_fixture()
+
+      _token = extract_reset_password_token(user)
+
+      _session_token = Accounts.generate_user_session_token(user)
+
+      %{user: user}
+    end
+
+    test "updates the password and deletes all tokens for the user", %{user: user} do
+      assert {:ok, {user, expired_tokens}} =
+               Accounts.reset_user_password(user, %{
+                 password: "new valid password",
+                 password_confirmation: "new valid password"
+               })
+
+      assert expired_tokens != []
+      assert is_nil(user.password)
+      assert Accounts.get_user_by_email_and_password(user.email, "new valid password")
+      refute Repo.get_by(UserToken, user_id: user.id)
+    end
+
+    test "validates password", %{user: user} do
+      assert {:error, changeset} =
+               Accounts.reset_user_password(user, %{
+                 password: "short",
+                 password_confirmation: "different"
+               })
+
+      assert %{
+               password: ["should be at least 12 character(s)"],
+               password_confirmation: ["does not match password"]
+             } = errors_on(changeset)
     end
   end
 
@@ -423,6 +552,42 @@ defmodule Storyarn.AccountsTest do
     test "returns error with invalid data", %{user: user} do
       assert {:error, changeset} = Accounts.update_user_profile(user, %{avatar_url: "not a url"})
       assert "must be a valid URL" in errors_on(changeset).avatar_url
+    end
+  end
+
+  defp extract_reset_password_token(user) do
+    assert {:ok, :queued} =
+             Accounts.deliver_user_reset_password_instructions(user, fn token ->
+               "[TOKEN]#{token}[TOKEN]"
+             end)
+
+    perform_latest_reset_password_job()
+  end
+
+  defp perform_latest_reset_password_job do
+    job =
+      Repo.one!(
+        from(job in Oban.Job,
+          where: job.worker == ^inspect(DeliverResetPasswordInstructionsWorker),
+          order_by: [desc: job.id],
+          limit: 1
+        )
+      )
+
+    assert :ok = perform_job(DeliverResetPasswordInstructionsWorker, job.args)
+    email = receive_delivered_email()
+
+    [_, token | _] = String.split(email.text_body, "[TOKEN]")
+    token
+  end
+
+  defp receive_delivered_email do
+    receive do
+      {:email, email} -> email
+      {:delivered_email, email} -> email
+      {:swoosh, :delivered_email, email} -> email
+    after
+      500 -> flunk("Expected reset password email to be delivered")
     end
   end
 end

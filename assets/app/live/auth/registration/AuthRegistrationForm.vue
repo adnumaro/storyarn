@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { useLiveForm, type Form } from "live_vue";
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
+import PasswordInput from "@components/forms/PasswordInput.vue";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { Label } from "@components/ui/label/index.ts";
-import { Eye, EyeOff } from "lucide-vue-next";
 
 interface SignUpFormValues {
   email: string;
@@ -28,8 +28,28 @@ const password = form.field("password");
 const passwordConfirmation = form.field("password_confirmation");
 const emailInput = ref<{ focus: () => void } | null>(null);
 const emailVal = ref(userEmail);
-const showPassword = ref(false);
-const showPasswordConfirmation = ref(false);
+
+const passwordValue = computed({
+  get: () => String(password.value.value || ""),
+  set: (value: string) => {
+    password.value.value = value;
+  },
+});
+
+const passwordConfirmationValue = computed({
+  get: () => String(passwordConfirmation.value.value || ""),
+  set: (value: string) => {
+    passwordConfirmation.value.value = value;
+  },
+});
+
+function updatePassword(value: string | number): void {
+  passwordValue.value = String(value);
+}
+
+function updatePasswordConfirmation(value: string | number): void {
+  passwordConfirmationValue.value = String(value);
+}
 
 onMounted(() => {
   emailInput.value?.focus();
@@ -69,24 +89,14 @@ onMounted(() => {
         <Label for="register-password">
           {{ $t("auth.password") }}
         </Label>
-        <div class="relative">
-          <input
-            v-bind="password.inputAttrs.value"
-            id="register-password"
-            :type="showPassword ? 'text' : 'password'"
-            autocomplete="new-password"
-            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            required
-          />
-          <button
-            type="button"
-            class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
-            @click="showPassword = !showPassword"
-          >
-            <Eye v-if="!showPassword" class="h-4 w-4" />
-            <EyeOff v-else class="h-4 w-4" />
-          </button>
-        </div>
+        <PasswordInput
+          v-bind="password.inputAttrs.value"
+          id="register-password"
+          :model-value="passwordValue"
+          autocomplete="new-password"
+          required
+          @update:model-value="updatePassword"
+        />
         <p
           v-if="password.errorMessage.value && password.isTouched.value"
           class="text-sm text-destructive mt-1"
@@ -99,24 +109,14 @@ onMounted(() => {
         <Label for="register-password-confirmation">{{
           $t("auth.sign_up.confirm_password")
         }}</Label>
-        <div class="relative">
-          <input
-            v-bind="passwordConfirmation.inputAttrs.value"
-            id="register-password-confirmation"
-            :type="showPasswordConfirmation ? 'text' : 'password'"
-            autocomplete="new-password"
-            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            required
-          />
-          <button
-            type="button"
-            class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
-            @click="showPasswordConfirmation = !showPasswordConfirmation"
-          >
-            <Eye v-if="!showPasswordConfirmation" class="h-4 w-4" />
-            <EyeOff v-else class="h-4 w-4" />
-          </button>
-        </div>
+        <PasswordInput
+          v-bind="passwordConfirmation.inputAttrs.value"
+          id="register-password-confirmation"
+          :model-value="passwordConfirmationValue"
+          autocomplete="new-password"
+          required
+          @update:model-value="updatePasswordConfirmation"
+        />
         <p
           v-if="passwordConfirmation.errorMessage.value && passwordConfirmation.isTouched.value"
           class="text-sm text-destructive mt-1"

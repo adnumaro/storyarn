@@ -48,6 +48,41 @@ defmodule Storyarn.Emails.Templates do
     {subject, Layout.render(content, preview: dgettext("emails", "Confirm your email change")), text}
   end
 
+  @doc "Password reset instructions."
+  def reset_password(email, url) do
+    subject = dgettext("emails", "Reset your Storyarn password")
+
+    content = """
+    <mj-text>
+      #{dgettext("emails", "Hi %{email},", email: escape(email))}
+    </mj-text>
+    <mj-text>
+      #{dgettext("emails", "We received a request to reset your Storyarn password. Click below to choose a new one.")}
+    </mj-text>
+    <mj-button href="#{escape(url)}" background-color="#4dd9c0" color="#0a0a0a">
+      #{dgettext("emails", "Reset password")}
+    </mj-button>
+    <mj-text font-size="13px" color="#9ca3af">
+      #{dgettext("emails", "This link expires in 24 hours. If you didn't request this, you can ignore this email.")}
+    </mj-text>
+    <mj-text font-size="13px" color="#9ca3af">
+      #{dgettext("emails", "Or copy this link: %{url}", url: escape(url))}
+    </mj-text>
+    """
+
+    text = """
+    #{dgettext("emails", "Hi %{email},", email: email)}
+
+    #{dgettext("emails", "We received a request to reset your Storyarn password. Choose a new password by visiting:")}
+
+    #{url}
+
+    #{dgettext("emails", "This link expires in 24 hours. If you didn't request this, you can ignore this email.")}
+    """
+
+    {subject, Layout.render(content, preview: dgettext("emails", "Choose a new Storyarn password")), text}
+  end
+
   @doc "Project invitation email."
   def project_invitation(_email, project_name, inviter_name, role, url, days) do
     subject =

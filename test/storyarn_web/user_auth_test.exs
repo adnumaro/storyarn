@@ -285,6 +285,32 @@ defmodule StoryarnWeb.UserAuthTest do
     end
   end
 
+  describe "on_mount :redirect_if_user_is_authenticated" do
+    test "redirects authenticated users", %{conn: conn, user: user} do
+      user_token = Accounts.generate_user_session_token(user)
+      session = conn |> put_session(:user_token, user_token) |> get_session()
+
+      socket = %LiveView.Socket{
+        endpoint: StoryarnWeb.Endpoint,
+        assigns: %{__changed__: %{}, flash: %{}}
+      }
+
+      {:halt, updated_socket} =
+        UserAuth.on_mount(:redirect_if_user_is_authenticated, %{}, session, socket)
+
+      assert updated_socket.assigns.current_scope.user.id == user.id
+    end
+
+    test "continues for unauthenticated users", %{conn: conn} do
+      session = get_session(conn)
+
+      {:cont, updated_socket} =
+        UserAuth.on_mount(:redirect_if_user_is_authenticated, %{}, session, %LiveView.Socket{})
+
+      assert updated_socket.assigns.current_scope == nil
+    end
+  end
+
   describe "on_mount :require_sudo_mode" do
     test "allows users that have authenticated in the last 10 minutes", %{conn: conn, user: user} do
       user_token = Accounts.generate_user_session_token(user)

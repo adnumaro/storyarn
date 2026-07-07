@@ -27,4 +27,15 @@ describe("AuthConfirmAccessForm", () => {
 
     expect(actionInput.attributes("value")).toBe("confirmed");
   });
+
+  it("allows toggling password visibility", async () => {
+    const wrapper = mountForm();
+    const passwordInput = wrapper.get("#confirm-password");
+
+    expect(passwordInput.attributes("type")).toBe("password");
+
+    await wrapper.get('button[aria-label="Show password"]').trigger("click");
+
+    expect(passwordInput.attributes("type")).toBe("text");
+  });
 });

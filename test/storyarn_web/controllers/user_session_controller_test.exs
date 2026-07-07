@@ -116,6 +116,18 @@ defmodule StoryarnWeb.UserSessionControllerTest do
       assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "User confirmed successfully."
     end
 
+    test "redirects authenticated users away from normal login POST", %{conn: conn, user: user} do
+      conn =
+        conn
+        |> log_in_user(user)
+        |> post(~p"/users/log-in", %{
+          "user" => %{"email" => user.email, "password" => valid_user_password()}
+        })
+
+      assert redirected_to(conn) =~ "/workspaces/"
+      refute Phoenix.Flash.get(conn.assigns.flash, :login_error)
+    end
+
     test "redirects to login page with inline form error on invalid credentials", %{
       conn: conn,
       user: user

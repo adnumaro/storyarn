@@ -155,6 +155,30 @@ defmodule Storyarn.Accounts do
           {:ok, {user(), [user_token()]}} | {:error, changeset()}
   defdelegate update_user_password(user, attrs), to: Passwords
 
+  @doc """
+  Queues reset password instructions for the given user.
+  """
+  @spec deliver_user_reset_password_instructions(user() | nil, (String.t() -> String.t())) ::
+          {:ok, :queued} | {:error, term()}
+  defdelegate deliver_user_reset_password_instructions(user, reset_password_url_fun), to: Passwords
+
+  @doc false
+  @spec decrypt_reset_password_url(String.t()) :: {:ok, String.t()} | {:error, :invalid_reset_password_url}
+  defdelegate decrypt_reset_password_url(encrypted_reset_url), to: Passwords
+
+  @doc """
+  Gets the user for a valid reset password token.
+  """
+  @spec get_user_by_reset_password_token(String.t()) :: user() | nil
+  defdelegate get_user_by_reset_password_token(token), to: Passwords
+
+  @doc """
+  Resets the user password using reset-password semantics.
+  """
+  @spec reset_user_password(user(), attrs()) ::
+          {:ok, {user(), [user_token()]}} | {:error, changeset()}
+  defdelegate reset_user_password(user, attrs), to: Passwords
+
   # =============================================================================
   # Profiles
   # =============================================================================

@@ -26,6 +26,9 @@ msgstr "debe ser aceptado"
 msgid "has invalid format"
 msgstr "tiene un formato inválido"
 
+msgid "must have the @ sign and no spaces"
+msgstr "debe incluir @ y no contener espacios"
+
 msgid "has an invalid entry"
 msgstr "tiene una entrada inválida"
 
@@ -34,6 +37,9 @@ msgstr "está reservado"
 
 msgid "does not match confirmation"
 msgstr "no coincide con la confirmación"
+
+msgid "does not match password"
+msgstr "no coincide con la contraseña"
 
 msgid "is still associated with this entry"
 msgstr "todavía está asociado con esta entrada"
