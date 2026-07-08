@@ -1,0 +1,19 @@
+lib/storyarn_web/components/workspace_layout.ex
+  s_03c6114d34deb0::t_0c91436163717c 21-26,33-35,44-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6adb5fb4bd0784044cc1907b25a3361b5a3a1ee7",
+  "prompts": {},
+  "sessions": {
+    "s_03c6114d34deb0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10c25404-f28b-4e7f-925c-e59b3a6708b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
