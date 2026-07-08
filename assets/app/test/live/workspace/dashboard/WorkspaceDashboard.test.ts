@@ -46,6 +46,7 @@ function mountDashboard(props = {}) {
       stubs: {
         Dialog: { template: "<div><slot /></div>" },
         DialogContent: { template: "<div><slot /></div>" },
+        DialogDescription: { template: "<div><slot /></div>" },
         DialogHeader: { template: "<div><slot /></div>" },
         DialogTitle: { template: "<div><slot /></div>" },
       },
@@ -79,7 +80,6 @@ describe("WorkspaceDashboard", () => {
 
   it("creates a project from the selected private template", async () => {
     const { live, wrapper } = mountDashboard({
-      newProjectModalOpen: true,
       projectTemplates: [
         {
           id: 10,

@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import { FilePlus2, FolderOpen, Library, Plus, Search, Settings, Sparkles } from "lucide-vue-next";
-import { computed, ref, watch } from "vue";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog/index.ts";
+import { computed, ref } from "vue";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@components/ui/dialog/index.ts";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
+import { Label } from "@components/ui/label/index.ts";
 import { useLiveVue, type Form } from "live_vue";
 import NewProjectForm from "../../project/form/ProjectNewProjectForm.vue";
 import { formatRelativeTime } from "@shared/utils/date-utils";
@@ -51,6 +58,8 @@ interface ProjectTemplate {
   visibility: "private" | "public" | string;
   version_number?: number | null;
   entity_counts?: Record<string, number>;
+  project_type?: string | null;
+  project_subtype?: string | null;
 }
 
 const {
@@ -60,7 +69,6 @@ const {
   searchQuery = "",
   canCreateProject = false,
   newProjectForm = null,
-  newProjectModalOpen = false,
   projectTemplates = [],
   projectMetricsOptions = { project_types: [], project_subtypes: {} },
   settingsUrl = null,
@@ -71,7 +79,6 @@ const {
   searchQuery?: string;
   canCreateProject?: boolean;
   newProjectForm?: Form<NewProjectFormValues> | null;
-  newProjectModalOpen?: boolean;
   projectTemplates?: ProjectTemplate[];
   projectMetricsOptions?: ProjectMetricsOptions;
   settingsUrl?: string | null;
@@ -123,18 +130,29 @@ const canCreateFromTemplate = computed(() => {
   return !!selectedTemplate.value && templateProjectName.value.trim().length > 0;
 });
 
-const isNewProjectModalOpen = ref(newProjectModalOpen);
+const templateNameTouched = ref(false);
 
-watch(
-  () => newProjectModalOpen,
-  (open) => {
-    isNewProjectModalOpen.value = open;
-  },
-);
+const showTemplateNameError = computed(() => {
+  return (
+    templateNameTouched.value &&
+    !!selectedTemplate.value &&
+    templateProjectName.value.trim().length === 0
+  );
+});
+
+function templateMetricKey(group: string, value: string) {
+  return `workspace.new_project.fields.${group}.options.${value}`;
+}
+
+// Modal visibility is pure client state — it never writes to the DB, broadcasts,
+// or needs to survive a reload, so it stays local instead of round-tripping to
+// the LiveView (which repainted the whole dashboard and caused a visible flash).
+// On a create validation error the LiveView only diffs `newProjectForm`; the Vue
+// instance persists, so this ref keeps the modal open.
+const isNewProjectModalOpen = ref(false);
 
 function setNewProjectModalOpen(open: boolean) {
   isNewProjectModalOpen.value = open;
-  live.pushEvent("set_new_project_modal_open", { open });
 }
 
 function setNewProjectMode(mode: "blank" | "private" | "public") {
@@ -334,8 +352,9 @@ function templateCountLabel(template: ProjectTemplate) {
   <!-- New Project Modal -->
   <Dialog :open="isNewProjectModalOpen" @update:open="setNewProjectModalOpen">
     <DialogContent class="sm:max-w-3xl">
-      <DialogHeader>
-        <DialogTitle class="hidden">{{ $t("workspace.dashboard.new_project") }}</DialogTitle>
+      <DialogHeader class="sr-only">
+        <DialogTitle>{{ $t("workspace.dashboard.new_project") }}</DialogTitle>
+        <DialogDescription>{{ $t("workspace.new_project.modal_description") }}</DialogDescription>
       </DialogHeader>
       <div class="space-y-5">
         <div class="grid grid-cols-3 gap-2 rounded-lg border border-border bg-muted/30 p-1">
@@ -424,9 +443,30 @@ function templateCountLabel(template: ProjectTemplate) {
                     }}
                   </span>
                 </span>
-                <span class="text-xs text-muted-foreground">
-                  {{ $t("workspace.new_project.templates.counts") }}:
-                  {{ templateCountLabel(template) }}
+                <span class="flex w-full flex-wrap items-center gap-2">
+                  <span
+                    v-if="template.project_type"
+                    class="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                  >
+                    {{ $t(templateMetricKey("project_type", template.project_type)) }}
+                  </span>
+                  <span
+                    v-if="template.project_type && template.project_subtype"
+                    class="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                  >
+                    {{
+                      $t(
+                        templateMetricKey(
+                          `project_subtype.${template.project_type}`,
+                          template.project_subtype,
+                        ),
+                      )
+                    }}
+                  </span>
+                  <span class="text-xs text-muted-foreground">
+                    {{ $t("workspace.new_project.templates.counts") }}:
+                    {{ templateCountLabel(template) }}
+                  </span>
                 </span>
               </button>
             </div>
@@ -461,7 +501,16 @@ function templateCountLabel(template: ProjectTemplate) {
                 v-model="templateProjectName"
                 :disabled="!selectedTemplate"
                 maxlength="100"
+                :placeholder="$t('workspace.new_project.fields.name.placeholder')"
+                :aria-invalid="showTemplateNameError ? 'true' : null"
+                @blur="templateNameTouched = true"
               />
+              <p
+                v-if="showTemplateNameError"
+                class="text-sm text-destructive flex items-center gap-1 mt-1"
+              >
+                {{ $t("workspace.new_project.fields.name.required") }}
+              </p>
             </div>
 
             <div class="mt-auto flex justify-end gap-2 pt-5">

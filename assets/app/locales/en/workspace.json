@@ -17,6 +17,7 @@
     },
     "new_project": {
       "title": "New Project",
+      "modal_description": "Create a blank project or start from a template.",
       "submit": "Create Project",
       "cancel": "Cancel",
       "modes": {
@@ -37,7 +38,8 @@
       "fields": {
         "name": {
           "label": "Project Name",
-          "placeholder": "My Narrative Project"
+          "placeholder": "My Narrative Project",
+          "required": "can't be blank"
         },
         "project_type": {
           "label": "Project type",

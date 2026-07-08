@@ -17,6 +17,7 @@
     },
     "new_project": {
       "title": "Nuevo Proyecto",
+      "modal_description": "Crea un proyecto en blanco o parte de una plantilla.",
       "submit": "Crear proyecto",
       "cancel": "Cancelar",
       "modes": {
@@ -37,7 +38,8 @@
       "fields": {
         "name": {
           "label": "Nombre del proyecto",
-          "placeholder": "Mi Proyecto Narrativo"
+          "placeholder": "Mi Proyecto Narrativo",
+          "required": "no puede estar vacío"
         },
         "project_type": {
           "label": "Tipo de proyecto",

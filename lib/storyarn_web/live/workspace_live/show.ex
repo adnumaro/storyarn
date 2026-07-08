@@ -28,8 +28,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
      |> assign(:search_query, "")
      |> assign(:can_create_project, can_create_project)
      |> assign(:project_form, to_form(Projects.change_new_project(%Project{})))
-     |> assign(:project_templates, serialize_project_templates(ProjectTemplates.list_templates(scope)))
-     |> assign(:new_project_modal_open, false)}
+     |> assign(:project_templates, serialize_project_templates(ProjectTemplates.list_templates(scope)))}
   end
 
   @impl true
@@ -65,7 +64,6 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
         search-query={@search_query}
         can-create-project={@can_create_project}
         new-project-form={@project_form}
-        new-project-modal-open={@new_project_modal_open}
         project-templates={@project_templates}
         project-metrics-options={Taxonomy.project_options()}
         settings-url={~p"/users/settings/workspaces/#{@workspace.slug}/general"}
@@ -85,8 +83,13 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
      )}
   end
 
-  def handle_event("set_new_project_modal_open", %{"open" => open}, socket) do
-    {:noreply, assign(socket, :new_project_modal_open, open in [true, "true"])}
+  def handle_event("validate_project", %{"project" => project_params}, socket) do
+    changeset =
+      %Project{}
+      |> Projects.change_new_project(project_params)
+      |> Map.put(:action, :validate)
+
+    {:noreply, assign(socket, :project_form, to_form(changeset))}
   end
 
   def handle_event("create_project", %{"project" => project_params}, socket) do
@@ -199,10 +202,18 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
         description: template.description,
         visibility: template.visibility,
         version_number: version_number(template.current_version),
-        entity_counts: entity_counts(template.current_version)
+        entity_counts: entity_counts(template.current_version),
+        project_type: preview_project_field(template.current_version, "project_type"),
+        project_subtype: preview_project_field(template.current_version, "project_subtype")
       }
     end)
   end
+
+  defp preview_project_field(%{preview: %{"project" => project}}, field) when is_map(project) do
+    Map.get(project, field)
+  end
+
+  defp preview_project_field(_version, _field), do: nil
 
   defp version_number(%{version_number: version_number}), do: version_number
   defp version_number(_version), do: nil
