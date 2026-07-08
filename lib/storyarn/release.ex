@@ -41,6 +41,29 @@ defmodule Storyarn.Release do
   @project_roles ~w(editor viewer)
   @workspace_roles ~w(admin member viewer)
 
+  @template_import_option_keys %{
+    "description" => :description,
+    "name" => :name,
+    "owner_id" => :owner_id,
+    "published_by_id" => :published_by_id,
+    "slug" => :slug,
+    "update_existing" => :update_existing,
+    "verify_user_id" => :verify_user_id,
+    "verify_workspace_id" => :verify_workspace_id,
+    "version_notes" => :version_notes,
+    "visibility" => :visibility,
+    description: :description,
+    name: :name,
+    owner_id: :owner_id,
+    published_by_id: :published_by_id,
+    slug: :slug,
+    update_existing: :update_existing,
+    verify_user_id: :verify_user_id,
+    verify_workspace_id: :verify_workspace_id,
+    version_notes: :version_notes,
+    visibility: :visibility
+  }
+
   @doc """
   Approve a member invitation request.
 
@@ -82,6 +105,59 @@ defmodule Storyarn.Release do
     end
   end
 
+  @doc """
+  Preview a portable project template bundle from a release node.
+
+  Usage from Fly SSH after the bundle is present on the machine:
+
+      fly ssh console -a storyarn -C '/app/bin/storyarn rpc "Storyarn.Release.preview_template_bundle(\\"/tmp/veilbreak.storyarn-template.tar.gz\\")"'
+  """
+  def preview_template_bundle(path) when is_binary(path) do
+    load_app()
+
+    case Storyarn.ProjectTemplates.preview_portable_template(path) do
+      {:ok, manifest} ->
+        print_template_bundle_preview(path, manifest, [])
+        manifest
+
+      {:error, reason} ->
+        raise "Could not read template bundle: #{inspect(reason)}"
+    end
+  end
+
+  @doc """
+  Import a portable project template bundle from a release node.
+
+  `opts` must be a map with only known import options. For a public demo import,
+  pass at least `visibility`, `verify_user_id`, and `verify_workspace_id`.
+
+  Usage from Fly SSH after the bundle is present on the machine:
+
+      fly ssh console -a storyarn -C '/app/bin/storyarn rpc "Storyarn.Release.import_template_bundle(\\"/tmp/veilbreak.storyarn-template.tar.gz\\", %{visibility: \\"public\\", verify_user_id: 123, verify_workspace_id: 456, update_existing: true})"'
+  """
+  def import_template_bundle(path, opts \\ %{}) when is_binary(path) and is_map(opts) do
+    load_app()
+
+    with {:ok, keyword_opts} <- template_import_options(opts),
+         {:ok, manifest} <- Storyarn.ProjectTemplates.preview_portable_template(path) do
+      print_template_bundle_preview(path, manifest, keyword_opts)
+
+      case Storyarn.ProjectTemplates.import_portable_template(path, keyword_opts) do
+        {:ok, template} ->
+          IO.puts("Imported template ##{template.id}: #{template.name}")
+          IO.puts("Visibility: #{template.visibility}")
+          IO.puts("Current version: #{template.current_version_id}")
+          template
+
+        {:error, reason} ->
+          raise "Could not import template bundle: #{inspect(reason)}"
+      end
+    else
+      {:error, reason} ->
+        raise "Could not import template bundle: #{inspect(reason)}"
+    end
+  end
+
   defp invitation_config("project", id) do
     {Storyarn.Projects, Storyarn.Projects.get_project!(id)}
   end
@@ -101,6 +177,28 @@ defmodule Storyarn.Release do
 
   defp waitlist_invitation_url(token) do
     Storyarn.Urls.base_url() <> "/users/register/" <> token
+  end
+
+  defp template_import_options(opts) do
+    Enum.reduce_while(opts, {:ok, []}, fn {key, value}, {:ok, acc} ->
+      case Map.fetch(@template_import_option_keys, key) do
+        {:ok, option_key} -> {:cont, {:ok, Keyword.put(acc, option_key, value)}}
+        :error -> {:halt, {:error, {:invalid_template_import_option, key}}}
+      end
+    end)
+  end
+
+  defp print_template_bundle_preview(path, manifest, opts) do
+    template = manifest["template"] || %{}
+
+    IO.puts("Template bundle: #{path}")
+    IO.puts("Name: #{Keyword.get(opts, :name) || template["name"]}")
+    IO.puts("Slug: #{Keyword.get(opts, :slug) || template["slug"]}")
+    IO.puts("Visibility: #{Keyword.get(opts, :visibility, "private")}")
+    IO.puts("Verify user ID: #{Keyword.get(opts, :verify_user_id) || "missing"}")
+    IO.puts("Verify workspace ID: #{Keyword.get(opts, :verify_workspace_id) || "missing"}")
+    IO.puts("Assets: #{manifest["asset_count"]}")
+    IO.puts("Checksum: #{manifest["checksum"]}")
   end
 
   defp repos do

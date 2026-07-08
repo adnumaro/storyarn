@@ -12,6 +12,8 @@ defmodule Storyarn.ProjectTemplates do
   alias Storyarn.ProjectTemplates.Authorization
   alias Storyarn.ProjectTemplates.Deletion
   alias Storyarn.ProjectTemplates.Installation
+  alias Storyarn.ProjectTemplates.PortableExport
+  alias Storyarn.ProjectTemplates.PortableImport
   alias Storyarn.ProjectTemplates.ProjectTemplate
   alias Storyarn.ProjectTemplates.ProjectTemplateInstall
   alias Storyarn.ProjectTemplates.ProjectTemplatePublication
@@ -179,4 +181,22 @@ defmodule Storyarn.ProjectTemplates do
   @spec instantiate_template(scope(), ProjectTemplateVersion.t(), Workspace.t(), attrs()) ::
           {:ok, Project.t()} | {:error, term()}
   defdelegate instantiate_template(scope, version, workspace, attrs), to: Installation
+
+  @doc """
+  Exports an audited project template bundle that can be imported into another Storyarn deployment.
+  """
+  @spec export_portable_template(pos_integer(), String.t(), keyword()) :: {:ok, map()} | {:error, term()}
+  defdelegate export_portable_template(project_id, output_path, opts \\ []), to: PortableExport, as: :export_project
+
+  @doc """
+  Reads a portable template bundle manifest without importing it.
+  """
+  @spec preview_portable_template(String.t()) :: {:ok, map()} | {:error, term()}
+  defdelegate preview_portable_template(path), to: PortableImport, as: :preview_bundle
+
+  @doc """
+  Imports a portable template bundle into this deployment.
+  """
+  @spec import_portable_template(String.t(), keyword()) :: {:ok, ProjectTemplate.t()} | {:error, term()}
+  defdelegate import_portable_template(path, opts \\ []), to: PortableImport, as: :import_bundle
 end

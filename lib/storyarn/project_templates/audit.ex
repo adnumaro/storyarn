@@ -80,6 +80,42 @@ defmodule Storyarn.ProjectTemplates.Audit do
     if errors == [], do: {:ok, report, snapshot}, else: {:error, report}
   end
 
+  @doc """
+  Verifies that an already-built template snapshot can be materialized in this deployment.
+  """
+  @spec verify_snapshot_materialization(map(), integer(), integer(), keyword()) :: {:ok, map()} | {:error, map()}
+  def verify_snapshot_materialization(snapshot, workspace_id, user_id, opts \\ []) do
+    case recover_snapshot_in_rollback(snapshot, workspace_id, user_id, opts) do
+      {:ok, recovered_counts, []} ->
+        {:ok,
+         %{
+           "status" => "passed",
+           "recovered_counts" => recovered_counts
+         }}
+
+      {:ok, recovered_counts, errors} ->
+        {:error,
+         %{
+           "status" => "failed",
+           "errors" => errors,
+           "recovered_counts" => recovered_counts
+         }}
+
+      {:error, reason} ->
+        {:error,
+         %{
+           "status" => "failed",
+           "errors" => [
+             %{
+               "type" => "template_materialization_failed",
+               "reason" => inspect(reason)
+             }
+           ],
+           "recovery_error" => inspect(reason)
+         }}
+    end
+  end
+
   defp stale_connection_errors(project_id) do
     query =
       from c in FlowConnection,
@@ -708,9 +744,13 @@ defmodule Storyarn.ProjectTemplates.Audit do
   defp recover_project_in_rollback(project_id, snapshot) do
     project = Repo.get!(Project, project_id)
 
+    recover_snapshot_in_rollback(snapshot, project.workspace_id, project.owner_id, name: "Template Audit #{project.id}")
+  end
+
+  defp recover_snapshot_in_rollback(snapshot, workspace_id, user_id, opts) do
     {result, copied_asset_keys} =
-      project
-      |> recover_project_transaction_result(snapshot)
+      snapshot
+      |> recover_project_transaction_result(workspace_id, user_id, opts)
       |> extract_recover_project_result()
 
     cleanup_materialized_asset_storage(copied_asset_keys)
@@ -718,13 +758,15 @@ defmodule Storyarn.ProjectTemplates.Audit do
     result
   end
 
-  defp recover_project_transaction_result(project, snapshot) do
+  defp recover_project_transaction_result(snapshot, workspace_id, user_id, opts) do
+    name = Keyword.get(opts, :name, "Template Materialization Audit")
+
     Repo.transaction(
       fn ->
         result =
           with {:ok, recovered_project} <-
-                 ProjectRecovery.recover_project(project.workspace_id, snapshot, project.owner_id,
-                   name: "Template Audit #{project.id}",
+                 ProjectRecovery.recover_project(workspace_id, snapshot, user_id,
+                   name: name,
                    template_clone: true
                  ) do
             {:ok, materialized_entity_counts(recovered_project.id),

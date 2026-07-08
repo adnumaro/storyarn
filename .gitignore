@@ -83,3 +83,6 @@ scripts/.env
 
 test/tmp
 node_modules
+
+# Portable template bundles (operator exports)
+*.storyarn-template.tar.gz
