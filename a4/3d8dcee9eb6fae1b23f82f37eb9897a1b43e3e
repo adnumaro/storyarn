@@ -1,0 +1,21 @@
+lib/storyarn/versioning/builders/sheet_builder.ex
+  s_03c6114d34deb0::t_cb33c1dbd5e285 467-473
+test/storyarn/versioning/project_recovery_test.exs
+  s_03c6114d34deb0::t_84e22c04aaeadf 296-335
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "a43d8dcee9eb6fae1b23f82f37eb9897a1b43e3e",
+  "prompts": {},
+  "sessions": {
+    "s_03c6114d34deb0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10c25404-f28b-4e7f-925c-e59b3a6708b6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
