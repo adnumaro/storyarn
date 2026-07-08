@@ -18,49 +18,21 @@ defmodule StoryarnWeb.Components.WorkspaceLayout do
   slot :inner_block, required: true
 
   def workspace(assigns) do
-    current_user =
-      case assigns.current_scope do
-        %{user: user} ->
-          %{
-            id: user.id,
-            email: user.email,
-            displayName: user.display_name
-          }
-
-        _ ->
-          %{id: nil, email: "", displayName: ""}
-      end
-
-    workspace_items =
-      Enum.map(assigns.workspaces, fn w ->
-        %{
-          id: w.id,
-          name: w.name,
-          slug: w.slug
-        }
-      end)
-
-    current_workspace_slug =
-      case assigns.current_workspace do
-        %{slug: slug} -> slug
-        _ -> nil
-      end
-
-    assigns =
-      assigns
-      |> assign(:current_user, current_user)
-      |> assign(:workspace_items, workspace_items)
-      |> assign(:current_workspace_slug, current_workspace_slug)
-
+    # Serialization happens inline in the attr expressions (like ProjectLayout)
+    # so LiveView change tracking works: computing these via assign/3 in the
+    # function body marks them changed on EVERY render, which re-patches the
+    # layout <.vue> element whenever the slot re-renders. LiveVue then re-syncs
+    # its injection slots and REMOUNTS every v-inject'ed child (dashboard state,
+    # open modals, and in-progress typing are lost).
     ~H"""
     <div id="layout-wrapper">
       <.vue
         v-component="live/layouts/workspace/Layout"
         v-socket={@socket}
         id="workspace-layout"
-        current-user={@current_user}
-        workspaces={@workspace_items}
-        current-workspace-slug={@current_workspace_slug}
+        current-user={serialize_current_user(@current_scope)}
+        workspaces={serialize_workspaces(@workspaces)}
+        current-workspace-slug={workspace_slug(@current_workspace)}
       />
 
       {render_slot(@inner_block)}
@@ -69,4 +41,17 @@ defmodule StoryarnWeb.Components.WorkspaceLayout do
     </div>
     """
   end
+
+  defp serialize_current_user(%{user: user}) do
+    %{id: user.id, email: user.email, displayName: user.display_name}
+  end
+
+  defp serialize_current_user(_current_scope), do: %{id: nil, email: "", displayName: ""}
+
+  defp serialize_workspaces(workspaces) do
+    Enum.map(workspaces, &%{id: &1.id, name: &1.name, slug: &1.slug})
+  end
+
+  defp workspace_slug(%{slug: slug}), do: slug
+  defp workspace_slug(_current_workspace), do: nil
 end
