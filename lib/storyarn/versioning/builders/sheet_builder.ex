@@ -464,7 +464,13 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
             is_constant: block_data["is_constant"] || false,
             variable_name: block_data["variable_name"],
             scope: block_data["scope"] || "self",
-            inherited_from_block_id: block_data["inherited_from_block_id"],
+            # Insert with nil inheritance: cross-sheet `inherited_from_block_id`
+            # references a block in another sheet whose new id isn't known yet
+            # (the FK is non-deferrable and checked at insert). The correct value
+            # is set afterward by remap_sheet_block_inheritance/4 and the global
+            # remap_block_inheritance/2 in ProjectRecovery once every sheet's
+            # blocks have new ids.
+            inherited_from_block_id: nil,
             detached: block_data["detached"] || false,
             required: block_data["required"] || false
           },

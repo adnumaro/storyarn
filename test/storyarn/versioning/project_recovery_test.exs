@@ -293,6 +293,46 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       assert recovered_child.hidden_inherited_block_ids == [recovered_source_block.id]
     end
 
+    test "recovers a snapshot whose inherited source block is absent from the target DB", %{
+      project: project,
+      workspace_id: workspace_id,
+      user: user
+    } do
+      # Mirrors a portable-template import from another environment: the snapshot
+      # references cross-sheet inheritance by ids that do not exist in the target
+      # DB. Materialization must not violate blocks_inherited_from_block_id_fkey.
+      parent = sheet_fixture(project, %{name: "Parent Sheet"})
+
+      source_block =
+        block_fixture(parent, %{type: "text", position: 0, variable_name: "ancestor"})
+
+      child = sheet_fixture(project, %{name: "Child Sheet"})
+
+      inherited_block =
+        block_fixture(child, %{type: "text", position: 0, variable_name: "descendant"})
+
+      Repo.update_all(from(b in Storyarn.Sheets.Block, where: b.id == ^inherited_block.id),
+        set: [inherited_from_block_id: source_block.id]
+      )
+
+      snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
+
+      # Remove the original blocks so the snapshot's old ids exist nowhere in the
+      # DB — exactly the state of a fresh import from an exported bundle.
+      Repo.delete_all(from(b in Storyarn.Sheets.Block, where: b.sheet_id in ^[parent.id, child.id]))
+
+      {:ok, recovered} = ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id)
+
+      recovered_sheets = Storyarn.Sheets.list_all_sheets(recovered.id)
+      recovered_parent = Enum.find(recovered_sheets, &(&1.name == "Parent Sheet"))
+      recovered_child = Enum.find(recovered_sheets, &(&1.name == "Child Sheet"))
+
+      recovered_source = Enum.find(Storyarn.Sheets.list_blocks(recovered_parent.id), &(&1.variable_name == "ancestor"))
+      recovered_inherited = Enum.find(Storyarn.Sheets.list_blocks(recovered_child.id), &(&1.variable_name == "descendant"))
+
+      assert recovered_inherited.inherited_from_block_id == recovered_source.id
+    end
+
     test "template clone copies scene and flow assets into recovered project", %{
       project: project,
       workspace_id: workspace_id,
