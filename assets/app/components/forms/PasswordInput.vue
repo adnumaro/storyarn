@@ -8,7 +8,11 @@ import { cn } from "@shared/utils/utils";
 
 defineOptions({ inheritAttrs: false });
 
-const props = defineProps<{
+const {
+  modelValue,
+  defaultValue,
+  class: className,
+} = defineProps<{
   modelValue?: string | number;
   defaultValue?: string | number;
   class?: HTMLAttributes["class"];
@@ -50,7 +54,7 @@ defineExpose({ focus });
       :model-value="modelValue"
       :default-value="defaultValue"
       :type="inputType"
-      :class="cn('pr-10', props.class)"
+      :class="cn('pr-10', className)"
       @update:model-value="updateModel"
     />
     <button
