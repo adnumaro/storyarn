@@ -1,0 +1,19 @@
+assets/app/components/forms/PasswordInput.vue
+  s_05c30eca064c16::t_e28a090a49c1df 11-15,57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "71b393096acf2fa2f817a6b383cbb7629f3d23dc",
+  "prompts": {},
+  "sessions": {
+    "s_05c30eca064c16": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f220d-6e1f-7390-9b78-95d14ea6619a",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
