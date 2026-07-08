@@ -1,0 +1,14 @@
+fly.toml
+  h_46be6e61f3d9dd 1,11,20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "7f04ed3d439d143eed9fbbd7fae33e56814934a7",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
