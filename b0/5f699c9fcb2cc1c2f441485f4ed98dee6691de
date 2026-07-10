@@ -1,0 +1,113 @@
+lib/storyarn/onboarding/tutorial_progress.ex
+  s_4a0b9957cfe7c2::t_eacdc56abf0a7a 1-69
+test/storyarn/accounts_test.exs
+  s_4a0b9957cfe7c2::t_3be04ff63361da 125-140
+assets/app/live/layouts/project/Layout.vue
+  s_4a0b9957cfe7c2::t_092ec860d63c20 3,23-27,35,43,47-51,142-143,169-175
+lib/storyarn_web/components/project_layout.ex
+  s_4a0b9957cfe7c2::t_117d00f1a918ce 12-13,30,77
+  s_4a0b9957cfe7c2::t_84d056032b453b 29
+lib/storyarn/onboarding.ex
+  s_4a0b9957cfe7c2::t_f52321c6081e71 124
+  s_4a0b9957cfe7c2::t_f3d77e77f4c0c1 16,67-68,77-78
+  s_4a0b9957cfe7c2::t_eacdc56abf0a7a 1-15,17-66,69-76,79-85,87-103,113-123,125-127
+  s_4a0b9957cfe7c2::t_c36be90a78249c 86,104-112
+lib/storyarn_web/live/flow_live/show.ex
+  s_4a0b9957cfe7c2::t_84d056032b453b 62-63
+assets/app/locales/en/onboarding.json
+  s_4a0b9957cfe7c2::t_89d253c08021b7 1-124
+lib/storyarn_web/live/settings_live/tutorials.ex
+  s_4a0b9957cfe7c2::t_117d00f1a918ce 1-94
+assets/app/locales/en/settings.json
+  s_4a0b9957cfe7c2::t_0895c8908bd464 55
+  s_4a0b9957cfe7c2::t_89d253c08021b7 11,48-54,56-59
+  s_4a0b9957cfe7c2::t_eca575563cf9ae 60-61
+lib/storyarn_web/components/settings_layout.ex
+  s_4a0b9957cfe7c2::t_84d056032b453b 25
+  s_4a0b9957cfe7c2::t_117d00f1a918ce 11-12,26-27,59-65
+test/storyarn_web/live/settings_live/tutorials_test.exs
+  s_4a0b9957cfe7c2::t_3be04ff63361da 1-55
+assets/app/test/live/account/settings/AccountSettingsTutorials.test.ts
+  s_4a0b9957cfe7c2::t_6cf80f19a06ae0 45-49,57
+  s_4a0b9957cfe7c2::t_441093b031285d 1-2,4-6,8-13,22-25,30-44,50-56,58-59
+  s_4a0b9957cfe7c2::t_66b5c52ee2ed7e 3,7,14-21,26-29
+lib/storyarn_web/live/localization_live/report.ex
+  s_4a0b9957cfe7c2::t_84d056032b453b 23-24
+assets/app/components/onboarding/onboardingGuides.ts
+  s_4a0b9957cfe7c2::t_fbddf31394e311 1-56
+lib/storyarn_web/live/shared/onboarding_helpers.ex
+  s_4a0b9957cfe7c2::t_2753ad69196817 1-24
+assets/app/live/account/settings/AccountSettingsTutorials.vue
+  s_4a0b9957cfe7c2::t_01c3dd2a4d1e88 65-71,108-110,116-119
+  s_4a0b9957cfe7c2::t_fbddf31394e311 1-64,72-107,120-127
+  s_4a0b9957cfe7c2::t_0895c8908bd464 111-115
+lib/storyarn_web/live/workspace_live/show.ex
+  s_4a0b9957cfe7c2::t_84d056032b453b 48-50
+lib/storyarn_web/live/export_import_live/index.ex
+  s_4a0b9957cfe7c2::t_84d056032b453b 23-25
+assets/app/shell/ProjectNavbarAccount.vue
+  s_4a0b9957cfe7c2::t_092ec860d63c20 2,19,24,27-28,120-126
+  s_4a0b9957cfe7c2::t_3102ee14c67afa 127
+assets/app/locales/es/settings.json
+  s_4a0b9957cfe7c2::t_0895c8908bd464 55
+  s_4a0b9957cfe7c2::t_89d253c08021b7 11,48-54,56-59
+  s_4a0b9957cfe7c2::t_ff2bf48ead6765 60-61
+lib/storyarn_web/live/hooks/onboarding.ex
+  s_4a0b9957cfe7c2::t_2753ad69196817 1-73
+lib/storyarn_web/router.ex
+  s_4a0b9957cfe7c2::t_2753ad69196817 186,193
+priv/repo/migrations/20260710120000_create_onboarding_tutorial_progress.exs
+  s_4a0b9957cfe7c2::t_eacdc56abf0a7a 1-22
+assets/app/live/layouts/settings/Layout.vue
+  s_4a0b9957cfe7c2::t_cbcf05fe5c42c7 2
+  s_4a0b9957cfe7c2::t_092ec860d63c20 7,9,24,59,68,75,92-96,187-191,295-308,317-323
+assets/app/live/layouts/workspace/Layout.vue
+  s_4a0b9957cfe7c2::t_092ec860d63c20 3-4,13,18,22-26,42-43,84-90
+assets/app/shell/WorkspaceSidebar.vue
+  s_4a0b9957cfe7c2::t_092ec860d63c20 2,21,26,29-30,144-150
+  s_4a0b9957cfe7c2::t_fc426c0574ba3b 151
+test/storyarn/onboarding_test.exs
+  s_4a0b9957cfe7c2::t_3be04ff63361da 1-94
+assets/app/test/components/onboarding/OnboardingDialog.test.ts
+  s_4a0b9957cfe7c2::t_6cf80f19a06ae0 53,66,79
+  s_4a0b9957cfe7c2::t_441093b031285d 1-2,4-6,8-16,25-33,35-52,54-65,67-78,80-87
+  s_4a0b9957cfe7c2::t_66b5c52ee2ed7e 3,7,17-24,34
+  s_4a0b9957cfe7c2::t_df1b5eef3e8051 88-99
+assets/app/components/onboarding/OnboardingDialog.vue
+  s_4a0b9957cfe7c2::t_fce5c1de0c4c4e 76,87-90,93-95,135,248
+  s_4a0b9957cfe7c2::t_01c3dd2a4d1e88 33,148-153,159-164,201-207,218,229,238-244
+  s_4a0b9957cfe7c2::t_fbddf31394e311 1-32,34-75,77-86,91-92,96-134,136-147,154-158,165-200,208-217,219-228,230-237,245-247,249-257
+lib/storyarn_web/components/workspace_layout.ex
+  s_4a0b9957cfe7c2::t_84d056032b453b 19
+  s_4a0b9957cfe7c2::t_117d00f1a918ce 12-13,20-21,41-47
+lib/storyarn_web/live/scene_live/show.ex
+  s_4a0b9957cfe7c2::t_84d056032b453b 82-83
+lib/storyarn/analytics.ex
+  s_4a0b9957cfe7c2::t_2753ad69196817 21
+assets/app/locales/es/onboarding.json
+  s_4a0b9957cfe7c2::t_89d253c08021b7 1-124
+test/storyarn_web/live/onboarding_integration_test.exs
+  s_4a0b9957cfe7c2::t_3be04ff63361da 1-111
+lib/storyarn/accounts/registration.ex
+  s_4a0b9957cfe7c2::t_f3d77e77f4c0c1 12,102
+lib/storyarn_web/live/sheet_live/show.ex
+  s_4a0b9957cfe7c2::t_84d056032b453b 63-64
+lib/storyarn/accounts/user.ex
+  s_4a0b9957cfe7c2::t_eacdc56abf0a7a 19,34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "b05f699c9fcb2cc1c2f441485f4ed98dee6691de",
+  "prompts": {},
+  "sessions": {
+    "s_4a0b9957cfe7c2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4c00-fd7d-7d20-a29e-6f01b61a5e2a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
