@@ -9,10 +9,7 @@ description: "Cómo los bloques definen tu estructura de datos y se convierten e
 
 Los bloques (blocks) son los {accent}campos{/accent} de una ficha. Cada bloque tiene un tipo y una etiqueta. A menos que se marque como constante o use un tipo que no genera variables, un bloque se convierte automáticamente en una **variable** que los flujos pueden leer y modificar.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Una ficha con varios bloques de distintos tipos: texto, número, selección, booleano, mostrando sus etiquetas y valores actuales.
-</div>
+<img src="/images/docs/sheets-character-current.png" alt="Una ficha con varios bloques de distintos tipos: texto, número, selección, booleano, mostrando sus etiquetas y valores actuales." loading="lazy">
 
 ---
 
@@ -35,10 +32,7 @@ Storyarn admite {accent}10 tipos de bloques{/accent}:
 
 Los bloques de referencia y galería se excluyen del sistema de variables porque no llevan un valor significativo en tiempo de ejecución.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  El menú selector de tipos de bloque mostrando los 10 tipos con sus iconos.
-</div>
+<img src="/images/docs/sheets-block-menu.png" alt="El menú selector de tipos de bloque mostrando los 10 tipos con sus iconos." loading="lazy">
 
 ---
 
@@ -104,7 +98,4 @@ La marca de obligatorio también se hereda: cuando un bloque padre con alcance "
 
 Los bloques pueden organizarse en una {accent}disposición multicolumna{/accent} usando grupos de columnas. Dentro de un grupo, los bloques pueden colocarse en las posiciones 0, 1 o 2, permitiendo hasta tres bloques lado a lado para disposiciones de hoja más compactas.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Una ficha con bloques organizados en disposición de dos columnas, mostrando Name y Class lado a lado, con Health y Level debajo.
-</div>
+<img src="/images/docs/sheets-character-current.png" alt="Una ficha con bloques organizados en disposición de dos columnas, mostrando Name y Class lado a lado, con Health y Level debajo." loading="lazy">

@@ -9,10 +9,7 @@ description: "Make scene elements interactive with conditions, actions, displays
 
 Scenes can be more than static maps. Zones handle area actions: running instructions, displaying values, navigating to scenes, or launching flows. Pins represent specific points and can launch a flow, move as playable characters or patrols, and evaluate visibility rules during exploration.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Exploration mode showing an interactive map with a highlighted zone and a flow dialogue on top of the scene
-</div>
+<img src="/images/docs/scenes-exploration-current.png" alt="Exploration mode showing an interactive map with pins and player controls" loading="lazy">
 
 ## Interaction types
 

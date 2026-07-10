@@ -15,10 +15,7 @@ Selecciona **Flujos** en la barra lateral y haz clic en **Nuevo Flujo**. Renómb
 
 El lienzo se abre con un nodo de {accent}Entrada (Entry){/accent} ya colocado — aquí es donde comienza la ejecución.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Un nuevo lienzo de flujo con el nodo de Entrada y el desplegable "Añadir Nodo" visible en la barra de herramientas superior derecha
-</div>
+<img src="/images/docs/flows-editor-current.png" alt="El lienzo del editor de flujos con un grafo de diálogo completo y la barra de nodos" loading="lazy">
 
 ## Añade un nodo de diálogo
 
@@ -30,10 +27,7 @@ Selecciona el nodo de Diálogo y escribe la línea del NPC directamente en el no
 
 > _"You look like you've been through a lot, traveler."_
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  El nodo de Entrada conectado a un nodo de Diálogo con la línea del NPC visible en el cuerpo del nodo
-</div>
+<img src="/images/docs/flows-editor-current.png" alt="El editor de flujos mostrando nodos de entrada, diálogo, condición y salida conectados" loading="lazy">
 
 ## Añade una condición
 
@@ -47,10 +41,7 @@ Selecciona el nodo de Condición y haz clic en el icono de ajustes en su barra f
 
 El nodo de Condición ahora tiene dos salidas: **Verdadero (True)** y **Falso (False)**.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  El panel del Constructor de Condiciones abierto a la derecha, con la variable mc.jaime.health seleccionada, operador "Mayor que" y valor 50
-</div>
+<img src="/images/docs/flows-condition-builder.png" alt="El editor de flujos mostrando un nodo de Condición con ramas Verdadero y Falso" loading="lazy">
 
 ## Ramifica la conversación
 
@@ -61,10 +52,7 @@ Añade dos nodos de Diálogo más y conéctalos a las salidas de la Condición:
 
 Añade un nodo de {accent}Salida (Exit){/accent} después de cada diálogo para terminar el flujo.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  El flujo completo: Entrada > Diálogo > Condición > dos Diálogos ramificados > dos nodos de Salida
-</div>
+<img src="/images/docs/flows-editor-current.png" alt="Un flujo ramificado completo con nodos de diálogo y lógica conectados" loading="lazy">
 
 ## Prueba con el depurador
 
@@ -78,10 +66,7 @@ El panel de depuración tiene tres pestañas:
 
 Haz clic en **Paso** (o pulsa `F10`) para avanzar nodo por nodo. El panel de variables muestra `mc.jaime.health = 100`. Como 100 > 50, el flujo toma el camino Verdadero.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  El panel de depuración abierto en la parte inferior mostrando la pestaña de Consola con la salida de ejecución, y el camino Verdadero resaltado en el lienzo
-</div>
+<img src="/images/docs/flows-debug-current.png" alt="El panel de depuración abierto en la parte inferior mostrando la pestaña de Consola y la salida de ejecución" loading="lazy">
 
 Prueba a cambiar el valor de Health a `30` en la ficha de personaje y ejecutar el depurador de nuevo — el flujo tomará el camino Falso en su lugar.
 
@@ -97,10 +82,7 @@ Haz clic en **Play** en la barra de herramientas del flujo para abrir el Story P
 
 Usa Story Player cuando quieras revisar ritmo, texto de hablante y elecciones. Usa Modo Depuración cuando necesites inspeccionar variables, condiciones e historial de ejecución.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  El Story Player mostrando la línea de diálogo de la taberna y la rama elegida por el valor actual de Health
-</div>
+<img src="/images/docs/flows-player-current.png" alt="El Story Player mostrando la línea de diálogo de la taberna y la rama elegida por el valor actual de Health" loading="lazy">
 
 ## Exporta el proyecto
 

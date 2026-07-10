@@ -9,15 +9,7 @@ description: "Mapea tu mundo con lienzos espaciales, zonas, pines, conexiones, c
 
 Las Escenas son lienzos espaciales para mapear el mundo de un proyecto. Úsalas para mapas, layouts de nivel, jerarquías de ubicaciones, exploración interactiva y espacios narrativos que necesitan algo más que un flujo lineal.
 
-<div class="docs-alert docs-alert-warning">
-  <svg class="docs-alert-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-  <p><strong>Documentación en construcción.</strong> Escenas tiene varios sistemas conectados. Esta sección los divide en páginas enfocadas para que cada concepto sea más fácil de seguir.</p>
-</div>
-
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Lienzo completo del editor de escenas con mapa de fondo, zonas, pines, rutas, panel de capas y barra inferior
-</div>
+<img src="/images/docs/scenes-editor-current.png" alt="Lienzo completo del editor de escenas con mapa de fondo, zonas, pines, herramientas y barra inferior" loading="lazy">
 
 ## Piezas principales
 

@@ -17,10 +17,7 @@ When you open a flow, every teammate working in the same flow sees your avatar a
 
 The presence system is powered by Phoenix Presence, which means it handles disconnections gracefully. If you close the tab or lose your connection, your avatar disappears automatically.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  The flow editor header showing online user avatars, each with their assigned collaboration color
-</div>
+<img src="/images/docs/flows-editor-current.png" alt="The flow editor header showing the current presence avatar and collaboration controls" loading="lazy">
 
 ## Cursor tracking
 
@@ -28,10 +25,7 @@ As you move your mouse across the flow canvas, your teammates see a {accent}live
 
 When you leave the flow (navigate away or close the tab), your cursor disappears from everyone else's canvas immediately.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  The flow canvas with two remote cursors visible, each labeled with the user's name and shown in their collaboration color
-</div>
+<img src="/images/docs/flows-editor-current.png" alt="The flow canvas where live cursors and collaboration indicators appear while teammates are connected" loading="lazy">
 
 ## Node locking
 
@@ -47,10 +41,7 @@ Key details about locking:
 
 Only the lock holder can release their own lock. This prevents race conditions where two users might try to edit the same node simultaneously.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  A flow node with a lock indicator showing another user's name and color, indicating it is currently being edited
-</div>
+<img src="/images/docs/flows-editor-current.png" alt="The flow editor with node selection and locking controls used to prevent conflicting edits" loading="lazy">
 
 ## Remote changes and toasts
 

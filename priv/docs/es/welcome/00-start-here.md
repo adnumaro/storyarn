@@ -17,6 +17,7 @@ description: "Elige la ruta más rápida por la documentación según tu rol y l
 | **Game designer o world builder** definiendo personajes, objetos, estadísticas y estado | [Tu primera ficha](/docs/quick-start/first-sheet)                                                                   | [Resumen de fichas](/docs/world-building/sheets-overview), [Bloques y variables](/docs/world-building/blocks-and-variables), [Bloques de tabla](/docs/world-building/table-blocks)            |
 | **Developer o technical designer** preparando integración con engine                    | [Flujo de trabajo principal](/docs/welcome/core-workflow) y [Exportar](/docs/import-export/import-export-overview)  | [Modo Depuración](/docs/narrative-design/debug-mode), [Nodos de instrucción](/docs/narrative-design/node-types/instruction)                                                                   |
 | **Localization manager o producer** planificando traducción                             | [Resumen de localización](/docs/localization/localization-overview)                                                 | [Nodos de diálogo](/docs/narrative-design/node-types/dialogue), [Exportar](/docs/import-export/import-export-overview)                                                                        |
+| **Producer o responsable de proyecto** gestionando equipo, recursos y recuperación      | [Dashboard del proyecto](/docs/project-management/project-dashboard)                                                | [Recursos](/docs/project-management/assets), [Ajustes del proyecto](/docs/project-management/project-settings), [Capturas y papelera](/docs/project-management/recovery-and-trash)            |
 
 ## El modelo central
 
@@ -26,6 +27,7 @@ Los proyectos de Storyarn se construyen con unos pocos conceptos conectados:
 - **Bloques** son los campos tipados dentro de una ficha. La mayoría pueden convertirse en variables.
 - **Flujos** usan nodos para construir diálogo, lógica ramificada, condiciones e instrucciones.
 - **Escenas** colocan contenido narrativo en mapas espaciales, zonas, pines y recorridos de exploración.
+- **Recursos** proporcionan la biblioteca compartida de imágenes y audio del proyecto.
 - **Localización** extrae el texto visible para traducirlo, revisarlo y exportarlo.
 - **Exportar** mueve el contenido del proyecto a formatos para engines.
 
@@ -39,4 +41,4 @@ Si estás evaluando Storyarn por primera vez, dedica tu primera sesión a esta s
 4. Construye un diálogo ramificado con [Tu primer flujo](/docs/quick-start/first-flow).
 5. Abre [Modo Depuración](/docs/narrative-design/debug-mode) cuando quieras verificar por qué se ha tomado una rama.
 
-Después, usa la barra lateral por flujo de trabajo: datos del mundo en **World Building**, diálogo y lógica en **Narrative Design**, contenido espacial en **Scene Design**, traducción en **Localization** y entrega en **Export**.
+Después, usa la barra lateral por flujo de trabajo: operaciones en **Gestión de proyectos**, datos del mundo en **World Building**, diálogo y lógica en **Narrative Design**, contenido espacial en **Scene Design**, traducción en **Localization** y entrega en **Export**.

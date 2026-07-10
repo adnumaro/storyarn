@@ -13,10 +13,7 @@ Los nodos de Condición leen variables y eligen qué camino debe seguir el flujo
 
 Para los modos compartidos Builder y Code, consulta el [Editor de Condiciones](/docs/narrative-design/condition-editor).
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Nodo de Condición seleccionado con el Editor de Condiciones abierto y ramas Verdadero/Falso conectadas
-</div>
+<img src="/images/docs/flows-condition-builder.png" alt="Nodo de Condición en el lienzo con ramas Verdadero y Falso conectadas" loading="lazy">
 
 ## Modos de salida
 
@@ -29,10 +26,7 @@ El modo booleano da al nodo dos salidas: **Verdadero** y **Falso**. El flujo con
 
 El modo switch convierte cada bloque de condición en una rama de salida. Storyarn evalúa los bloques en orden y sigue el primero que pasa. Úsalo para clase, facción, reputación, fase de misión, nivel de relación o cualquier decisión con más de dos resultados.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Nodo de Condición en modo switch con varias ramas de salida etiquetadas
-</div>
+<img src="/images/docs/flows-editor-current.png" alt="Nodo de Condición en modo switch con varias ramas de salida etiquetadas" loading="lazy">
 
 ## Condición inline o nodo
 

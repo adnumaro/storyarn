@@ -17,10 +17,7 @@ Cuando abres un flujo, cada companero de equipo trabajando en el mismo flujo ve 
 
 El sistema de presencia funciona con Phoenix Presence, lo que significa que gestiona las desconexiones de forma elegante. Si cierras la pestana o pierdes la conexion, tu avatar desaparece automaticamente.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  La cabecera del editor de flujos mostrando avatares de usuarios en linea, cada uno con su color de colaboracion asignado
-</div>
+<img src="/images/docs/flows-editor-current.png" alt="La cabecera del editor de flujos mostrando el avatar de presencia actual y los controles de colaboración" loading="lazy">
 
 ## Seguimiento de cursores
 
@@ -28,10 +25,7 @@ Mientras mueves el raton por el lienzo del flujo, tus companeros ven un {accent}
 
 Cuando abandonas el flujo (navegas a otro sitio o cierras la pestana), tu cursor desaparece del lienzo de los demas inmediatamente.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  El lienzo del flujo con dos cursores remotos visibles, cada uno etiquetado con el nombre del usuario y mostrado en su color de colaboracion
-</div>
+<img src="/images/docs/flows-editor-current.png" alt="El lienzo del flujo donde aparecen cursores en directo e indicadores de colaboración cuando hay compañeros conectados" loading="lazy">
 
 ## Bloqueo de nodos
 
@@ -47,10 +41,7 @@ Detalles clave sobre el bloqueo:
 
 Solo el titular del bloqueo puede liberarlo. Esto previene condiciones de carrera donde dos usuarios podrian intentar editar el mismo nodo simultaneamente.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Un nodo de flujo con un indicador de bloqueo mostrando el nombre de otro usuario y su color, indicando que esta siendo editado actualmente
-</div>
+<img src="/images/docs/flows-editor-current.png" alt="El editor de flujos con controles de selección y bloqueo para evitar ediciones simultáneas en conflicto" loading="lazy">
 
 ## Cambios remotos y notificaciones
 

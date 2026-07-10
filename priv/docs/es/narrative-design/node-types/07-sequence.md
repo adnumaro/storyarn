@@ -13,10 +13,7 @@ Los nodos Sequence son contenedores visuales para partes relacionadas de un fluj
 
 Las sequences también definen contexto de presentación para el Flow Player. Cuando la reproducción llega a un nodo dentro de una sequence, el player puede mostrar las capas visuales de esa sequence detrás del panel de diálogo y reproducir sus pistas de audio.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Lienzo de flujo con un nodo Sequence que contiene nodos de diálogo, condición e instrucción
-</div>
+<img src="/images/docs/flows-editor-current.png" alt="Lienzo de flujo con un nodo Sequence que contiene nodos de diálogo, condición e instrucción" loading="lazy">
 
 ## Qué contiene una sequence
 
@@ -45,10 +42,7 @@ Esto permite montar secuencias visuales sin salir del flujo:
 
 La UI de diálogo permanece por encima de la composición. Las capas visuales usan coordenadas normalizadas al viewport del player, así que la misma configuración escala entre tamaños de pantalla.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Flow Player mostrando un backdrop de sequence con capas de personaje encima y el panel de diálogo delante
-</div>
+<img src="/images/docs/flows-player-current.png" alt="Flow Player mostrando un backdrop de sequence con capas de personaje encima y el panel de diálogo delante" loading="lazy">
 
 ## Sequences padre e hijas
 

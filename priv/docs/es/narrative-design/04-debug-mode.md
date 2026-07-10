@@ -9,10 +9,7 @@ description: "Prueba y verifica tus flujos con el depurador integrado."
 
 El editor de flujos incluye un {accent}depurador{/accent} integrado que te permite simular como se ejecuta un flujo -- paso a paso, con visibilidad completa de los valores de las variables, los caminos de decision y el historial de ejecucion. Esto es algo que ninguna otra herramienta de diseno narrativo ofrece: puedes verificar toda tu logica de ramificacion sin salir del editor, sin exportar y sin un motor de juego.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  El editor de flujos con el panel de depuracion abierto en la parte inferior, mostrando la pestana de consola con registros de ejecucion
-</div>
+<img src="/images/docs/flows-debug-current.png" alt="El editor de flujos con el panel de depuracion abierto en la parte inferior, mostrando la pestana de consola con registros de ejecucion" loading="lazy">
 
 ---
 
@@ -40,10 +37,7 @@ La barra de controles se encuentra en la parte superior del panel de depuracion 
 
 Cuando el depurador llega a un **nodo de dialogo con respuestas**, se detiene y presenta las opciones disponibles como botones en la consola. Las respuestas cuyas condiciones no se cumplen aparecen en gris y deshabilitadas. Haz clic en una respuesta valida para continuar la ejecucion por ese camino.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  La barra de controles de depuracion mostrando los botones Paso, Paso atras, Reiniciar, Detener con indicador de estado y contador de pasos
-</div>
+<img src="/images/docs/flows-debug-current.png" alt="La barra de controles de depuracion mostrando los botones Paso, Paso atras, Reiniciar, Detener con indicador de estado y contador de pasos" loading="lazy">
 
 ---
 
@@ -88,10 +82,7 @@ Para evaluaciones de condiciones, la consola muestra **detalles por regla**: que
 
 Cuando el depurador esta esperando una respuesta, las opciones disponibles aparecen en la parte inferior de la pestana de consola como botones clicables.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  La pestana de Consola mostrando entradas con marcas de tiempo con detalles de reglas de condicion (variable, esperado, real, paso/fallo)
-</div>
+<img src="/images/docs/flows-debug-current.png" alt="La pestaña de Consola mostrando entradas de ejecución y resultados de condiciones" loading="lazy">
 
 ### Variables
 
@@ -114,10 +105,7 @@ La pestana de Variables incluye dos herramientas de filtrado:
 
 Los anchos de columna son **redimensionables** -- arrastra los bordes de las columnas para ajustarlos.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  La pestana de Variables mostrando una tabla con columnas Inicial, Anterior y Actual, con valores modificados resaltados
-</div>
+<img src="/images/docs/flows-debug-current.png" alt="La pestaña de Variables mostrando valores en tiempo de ejecución y los controles de depuración" loading="lazy">
 
 ### Historial
 
@@ -142,10 +130,7 @@ Una traza visual de **cada nodo visitado**, en orden de ejecucion. Cada entrada 
 
 El nodo actual se resalta en la ruta. Al depurar entre subflujos, aparecen **separadores de flujo** en la ruta mostrando marcadores "Entrando en subflujo" y "Retornando al padre", con entradas indentadas para mostrar la profundidad de la pila de llamadas.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  La pestana de Ruta mostrando la traza de ejecucion con numeros de paso, puntos de interrupcion y un separador de subflujo
-</div>
+<img src="/images/docs/flows-debug-current.png" alt="La pestaña de Ruta mostrando el trazado de ejecución en el panel de depuración" loading="lazy">
 
 ---
 

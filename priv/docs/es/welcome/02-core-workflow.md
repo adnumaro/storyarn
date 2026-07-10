@@ -19,7 +19,7 @@ Dentro de un espacio de trabajo, crea un **proyecto**. Cada proyecto es independ
 
 Invita a compañeros de equipo por email. Reciben un enlace con token, lo aceptan, y ya están dentro — con el rol que elegiste.
 
-<img src="/images/docs/workspace-dashboard.webp" alt="Panel del espacio de trabajo con la tarjeta del proyecto Veilbreak Demo y el botón New Project" loading="lazy">
+<img src="/images/docs/workspace-dashboard-current.png" alt="Panel del espacio de trabajo con la tarjeta del proyecto Veilbreak Demo y el botón New Project" loading="lazy">
 
 ---
 
@@ -27,11 +27,11 @@ Invita a compañeros de equipo por email. Reciben un enlace con token, lo acepta
 
 Empieza con las **Fichas (Sheets)** — contenedores de datos estructurados para todo el mundo de tu juego. Crea una ficha para cada personaje, objeto, ubicación, facción o misión.
 
-Cada campo en una ficha es un **bloque (block)**. Hay 10 tipos de bloques: texto, texto enriquecido, número, booleano, selección, selección múltiple, fecha, tabla, fórmula y referencia. A menos que marques un bloque como **constante**, se convierte automáticamente en una **variable** — referenciable desde flujos, condiciones y otras fichas.
+Cada campo en una ficha es un **bloque (block)**. Hay 10 tipos de bloques: texto, texto enriquecido, número, booleano, selección, selección múltiple, fecha, tabla, referencia y galería. Los bloques que admiten valores en tiempo de ejecución se convierten en **variables** salvo que los marques como constantes; los bloques de referencia y galería no son variables. Las columnas de tabla también admiten fórmulas para calcular valores de celdas.
 
 Las variables siguen el patrón `{atajo_de_hoja}.{nombre_de_variable}`. Un bloque de Salud en la ficha `mc.jaime` se convierte en `mc.jaime.health`. Cambia ese valor una sola vez y cada flujo que lo comprueba ve la actualización de inmediato.
 
-<img src="/images/docs/sheets/sheets-character.webp" alt="Ficha de personaje de Kael con banner, avatar, campos heredados, bloques numéricos y bloques de selección" loading="lazy">
+<img src="/images/docs/sheets-character-current.png" alt="Ficha de personaje de Kael con banner, avatar, campos heredados, bloques numéricos y bloques de selección" loading="lazy">
 
 Las **Tablas** son cuadrículas de hoja de cálculo dentro de una ficha — perfectas para inventarios, árboles de habilidades o matrices de relaciones. Cada celda se convierte en su propia variable. Las **Fórmulas** te permiten calcular valores a partir de otras variables, incluso entre fichas distintas.
 
@@ -56,7 +56,7 @@ Los **Flujos (Flows)** son grafos visuales de nodos donde tu historia toma forma
 
 Conecta nodos arrastrando entre puertos. Edita el contenido en el panel lateral. Colabora en tiempo real — ve los cursores de tus compañeros y el bloqueo automático previene ediciones conflictivas.
 
-<img src="/images/docs/flows/flows.webp" alt="Editor de flujos con un árbol de diálogo de Veilbreak y nodos de diálogo, hub, instrucción, salto, entrada y salida conectados" loading="lazy">
+<img src="/images/docs/flows-editor-current.png" alt="Editor de flujos con un árbol de diálogo de Veilbreak y nodos de diálogo, hub, instrucción, salto, entrada y salida conectados" loading="lazy">
 
 ### Prueba sin salir del editor
 
@@ -64,14 +64,11 @@ Aquí es donde Storyarn se destaca. Otras herramientas te obligan a exportar a u
 
 El **Reproductor de Historia** es una reproducción cinematográfica a pantalla completa. Experimentas tu flujo exactamente como lo haría un jugador — diapositivas de diálogo con avatares de los personajes, opciones de respuesta numeradas, fondos de escena atenuados detrás del texto. Avanza automáticamente a través de condiciones e instrucciones, y se detiene en las decisiones. Cambia al **modo Análisis** para ver respuestas ocultas e insignias de condiciones. Navega hacia atrás en el historial para probar caminos diferentes.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Reproductor de Historia — diapositiva de diálogo con nombre y avatar del personaje, tres opciones de respuesta numeradas y un fondo de escena atenuado detrás
-</div>
+<img src="/images/docs/flows-player-current.png" alt="Reproductor de Historia — diapositiva de diálogo con nombre y avatar del personaje, tres opciones de respuesta numeradas y un fondo de escena atenuado detrás" loading="lazy">
 
 El **Modo Depuración** es tu inspector paso a paso. Avanza nodo por nodo, observa cómo cambian las variables en tiempo real en el panel de Variables, rastrea la ruta de ejecución completa y establece puntos de interrupción. Ajusta los valores de las variables sobre la marcha y vuelve a ejecutar para probar ramas alternativas. Cuatro pestañas — Consola, Variables, Historial y Ruta — te dan visibilidad completa de lo que tu flujo está haciendo y por qué.
 
-<img src="/images/docs/flows/flows-debug.webp" alt="Modo Depuración con un nodo de diálogo activo resaltado, salida de consola, controles de respuesta y barra de depuración" loading="lazy">
+<img src="/images/docs/flows-debug-current.png" alt="Modo Depuración mostrando la barra de depuración, las pestañas de ejecución y el nodo de flujo seleccionado" loading="lazy">
 
 ---
 
@@ -83,7 +80,7 @@ Las zonas y los pines no son solo visuales — son interactivos. Adjunta **condi
 
 Haz doble clic en una zona para **profundizar** — Storyarn extrae el área de la zona de la imagen de fondo, crea una escena hija y te permite seguir haciendo zoom. Construye jerarquías de mundo completas: continente > región > ciudad > edificio > habitación.
 
-<img src="/images/docs/scenes.webp" alt="Editor de escenas mostrando el mapa de Thyral con zonas coloreadas, pines de personajes, etiquetas y herramientas de escena" loading="lazy">
+<img src="/images/docs/scenes-editor-current.png" alt="Editor de escenas mostrando el mapa de Thyral con zonas coloreadas, pines de personajes, etiquetas y herramientas de escena" loading="lazy">
 
 ### Modo Exploración
 
@@ -91,10 +88,17 @@ El **Modo Exploración** es donde todo cobra sentido. Recorre tu mundo en una vi
 
 Ninguna otra herramienta de diseño narrativo hace esto.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Modo Exploración — mapa de escena atenuado con una superposición de diálogo de flujo mostrando texto del personaje y opciones de respuesta sobre el mundo
-</div>
+<img src="/images/docs/scenes-exploration-current.png" alt="Modo Exploración mostrando el mapa de escena, pines interactivos y controles del jugador" loading="lazy">
+
+---
+
+## Gestiona los recursos
+
+Abre **Recursos (Assets)** desde la barra lateral del proyecto para subir y organizar las imágenes y audios que utiliza tu proyecto. Busca por nombre, filtra por tipo y reutiliza los recursos en fichas, fondos de escenas, secuencias de flujos, diálogos y exportaciones.
+
+<img src="/images/docs/assets-dashboard-current.png" alt="Página de Recursos del proyecto con búsqueda, filtros por tipo y tarjetas de imágenes y audios" loading="lazy">
+
+Al exportar, elige si los recursos se mantienen como referencias, se incrustan en la salida o se empaquetan junto a ella.
 
 ---
 
@@ -102,11 +106,11 @@ Ninguna otra herramienta de diseño narrativo hace esto.
 
 Cuando tu contenido esté listo, las herramientas de **Localización** extraen automáticamente cada texto traducible — líneas de diálogo, acotaciones, texto de menú, etiquetas de fichas y valores de bloques.
 
-Configura la **integración con DeepL** para traducción automática como primer paso. Mantén un **glosario** para terminología consistente entre idiomas (nombres de personajes, términos del juego, nombres propios). Haz seguimiento del progreso por idioma con informes que muestran conteos de palabras por personaje, estado de traducción y progreso de doblaje.
+Configura la **integración con DeepL** para traducción automática como primer paso. Haz seguimiento del progreso por idioma con informes que muestran conteos de palabras por personaje, estado de traducción y progreso de doblaje.
 
-Exporta traducciones como **Excel** o **CSV** para traductores profesionales. Impórtalas de vuelta cuando estén listas. El sistema detecta cambios en el texto fuente y marca automáticamente las traducciones obsoletas para revisión.
+Exporta traducciones como **Excel** o **CSV** para traductores profesionales. El sistema detecta cambios en el texto fuente y marca automáticamente las traducciones obsoletas para revisión. Storyarn no ofrece actualmente una acción para importar CSV en la interfaz del proyecto, por lo que las traducciones devueltas deben introducirse desde el editor de traducciones.
 
-<img src="/images/docs/localization-dashboard.webp" alt="Dashboard de localización con progreso de Catalan, recuentos de palabras por hablante, progreso de doblaje y desglose de contenido" loading="lazy">
+<img src="/images/docs/localization-overview-current.png" alt="Dashboard de localización con progreso de Catalan, recuentos de palabras por hablante, progreso de doblaje y desglose de contenido" loading="lazy">
 
 ---
 

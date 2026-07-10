@@ -11,11 +11,11 @@ Storyarn connects world data, branching narrative, spatial scenes, localization,
 
 ## Project structure
 
-| Concept       | Meaning                                                                                                                              | Where to learn more                                      |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
-| **Workspace** | Your team's top-level container. It holds projects and controls workspace membership.                                                | [Create a Workspace](/docs/quick-start/create-workspace) |
-| **Project**   | A self-contained narrative workspace with its own sheets, flows, scenes, localization data, assets, and project-level members.       | [Core Workflow](/docs/welcome/core-workflow)             |
-| **Asset**     | An uploaded media file such as an image or audio file. Assets can be referenced by sheets, flows, scenes, localization, and exports. | [Export](/docs/import-export/import-export-overview)     |
+| Concept       | Meaning                                                                                                                              | Where to learn more                                             |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| **Workspace** | Your team's top-level container. It holds projects and controls workspace membership.                                                | [Create a Workspace](/docs/quick-start/create-workspace)        |
+| **Project**   | A self-contained narrative workspace with its own sheets, flows, scenes, localization data, assets, and project-level members.       | [Project Dashboard](/docs/project-management/project-dashboard) |
+| **Asset**     | An uploaded media file such as an image or audio file. Assets can be referenced by sheets, flows, scenes, localization, and exports. | [Assets](/docs/project-management/assets)                       |
 
 ## World data
 
@@ -23,7 +23,7 @@ Storyarn connects world data, branching narrative, spatial scenes, localization,
 | ------------ | -------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
 | **Sheet**    | A structured data record for a character, item, location, faction, quest, or any world entity you need to track.                 | [Sheets Overview](/docs/world-building/sheets-overview)         |
 | **Block**    | A typed field inside a sheet. Blocks can store text, rich text, numbers, booleans, selects, dates, tables, references, and more. | [Blocks & Variables](/docs/world-building/blocks-and-variables) |
-| **Variable** | A runtime-readable value generated from a non-constant block. Flows use variables in conditions and instructions.                | [Your First Sheet](/docs/quick-start/first-sheet)               |
+| **Variable** | A runtime-readable value generated from a supported, non-constant block. Reference and gallery blocks are not variables.         | [Your First Sheet](/docs/quick-start/first-sheet)               |
 
 Variables use the pattern:
 

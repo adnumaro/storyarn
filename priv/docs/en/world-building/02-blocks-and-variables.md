@@ -9,10 +9,7 @@ description: "How blocks define your data structure and become variables for flo
 
 Blocks are the {accent}fields{/accent} on a sheet. Each block has a type and a label. Unless marked as a constant or using a non-variable type, a block automatically becomes a **variable** that flows can read and modify.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  A sheet with several blocks of different types: text, number, select, boolean, showing their labels and current values.
-</div>
+<img src="/images/docs/sheets-character-current.png" alt="A sheet with several blocks of different types: text, number, select, boolean, showing their labels and current values." loading="lazy">
 
 ---
 
@@ -35,10 +32,7 @@ Storyarn supports {accent}10 block types{/accent}:
 
 Reference and gallery blocks are excluded from the variable system because they don't carry a meaningful runtime value.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  The block type selector menu showing all 10 types with their icons.
-</div>
+<img src="/images/docs/sheets-block-menu.png" alt="The block type selector menu showing all 10 types with their icons." loading="lazy">
 
 ---
 
@@ -104,7 +98,4 @@ The required flag is also inherited: when a parent block with "children" scope i
 
 Blocks can be arranged in a {accent}multi-column layout{/accent} using column groups. Within a group, blocks can be placed in column positions 0, 1, or 2, allowing up to three blocks side-by-side for more compact sheet layouts.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  A sheet with blocks arranged in a two-column layout, showing Name and Class side-by-side, with Health and Level below them.
-</div>
+<img src="/images/docs/sheets-character-current.png" alt="A sheet with blocks arranged in a two-column layout, showing Name and Class side-by-side, with Health and Level below them." loading="lazy">

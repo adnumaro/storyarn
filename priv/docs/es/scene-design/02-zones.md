@@ -9,10 +9,7 @@ description: "Dibuja áreas en una escena y conviértelas en navegación, intera
 
 Las zonas son regiones poligonales dibujadas sobre una escena. En el editor sirven para delimitar partes del mapa; en modo exploración pueden comportarse como botones de mapa, áreas transitables, indicadores de variables o colecciones de elementos.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Lienzo de escena con zonas de Acción, Mostrar, Colección y Área transitable visibles en el editor
-</div>
+<img src="/images/docs/scenes-editor-current.png" alt="Lienzo de escena con zonas de Acción, Mostrar, Colección y Área transitable visibles en el editor" loading="lazy">
 
 ## Dibujar zonas
 
@@ -100,7 +97,4 @@ Cuando una variable numérica no tiene parte decimal útil, Storyarn la muestra 
 
 Las zonas Colección abren una ventana de colección. Cada elemento puede apuntar a una ficha, tener una etiqueta, evaluar una condición propia y ejecutar instrucciones al recogerlo. También puedes permitir **Recoger todo** y definir el mensaje cuando no hay elementos visibles.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Panel de propiedades de una zona Colección con elementos, condiciones por elemento y opción Recoger todo
-</div>
+<img src="/images/docs/scenes-zone-properties.png" alt="Panel de propiedades de una zona con ajustes visuales y pestañas de reglas, acciones y configuración" loading="lazy">

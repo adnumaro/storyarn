@@ -9,9 +9,9 @@ description: "Comprende cómo las fichas organizan los datos de tu juego en una 
 
 Las Fichas (Sheets) son {accent}contenedores de datos estructurados{/accent} para los datos del mundo de tu proyecto. Perfiles de personajes, catálogos de objetos, detalles de ubicaciones, registros de facciones — cualquier cosa que necesites definir y rastrear a lo largo de tu narrativa.
 
-Cada ficha contiene un conjunto de **bloques (blocks)** (campos tipados como texto, número, selección, booleano) que definen su estructura. Los bloques que no estén marcados como constantes se convierten automáticamente en **variables** que los flujos pueden leer y modificar en tiempo de ejecución.
+Cada ficha contiene un conjunto de **bloques (blocks)** (campos tipados como texto, número, selección o booleano) que definen su estructura. Los bloques con valor que no estén marcados como constantes se convierten en **variables** que los flujos pueden leer y modificar en tiempo de ejecución. Los bloques de referencia y galería no participan en el sistema de variables.
 
-<img src="/images/docs/veilbreak-sheet-editor.png" alt="Ficha de personaje de Sera Voss con banner, avatar y bloques tipados" loading="lazy">
+<img src="/images/docs/sheets-character-current.png" alt="Ficha de Kael con bloques heredados, campos de texto enriquecido, galería, tablas y propiedades propias" loading="lazy">
 
 ---
 
@@ -32,7 +32,7 @@ Los atajos deben ser únicos dentro de un proyecto. Si una ficha ya tiene variab
 
 ## Referencias de variables
 
-Los bloques de una ficha se convierten en variables con el patrón:
+Los bloques que admiten variables usan el patrón:
 
 ```
 {atajo_de_hoja}.{nombre_de_variable}
@@ -67,10 +67,7 @@ Items/
 
 Cualquier ficha puede tener tanto hijos como sus propios bloques. Las fichas padre también pueden definir propiedades heredadas que se propagan a sus hijos (ver [Herencia de propiedades](#herencia-de-propiedades) más abajo).
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  El árbol de fichas en la barra lateral mostrando fichas anidadas con controles de arrastre y jerarquía tipo carpetas.
-</div>
+<img src="/images/docs/sheets-character-current.png" alt="El árbol de fichas en la barra lateral mostrando fichas anidadas con controles de arrastre y jerarquía tipo carpetas." loading="lazy">
 
 ---
 
@@ -87,10 +84,7 @@ Las instancias hijas se mantienen sincronizadas con la definición del padre: si
 
 Las fichas también pueden **ocultar** bloques heredados específicos, evitando que se propaguen más abajo a sus propios hijos.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Una ficha padre con el alcance "Hijos" en un bloque de Health, y una ficha hija mostrando el bloque de Health heredado con su propio valor local.
-</div>
+<img src="/images/docs/sheets-character-current.png" alt="Una ficha padre con el alcance &quot;Hijos&quot; en un bloque de Health, y una ficha hija mostrando el bloque de Health heredado con su propio valor local." loading="lazy">
 
 ---
 
@@ -115,7 +109,4 @@ Storyarn registra el historial de cada ficha mediante {accent}capturas de versi�
 
 Cada versión registra quién hizo el cambio y genera un resumen de lo que cambió (bloques añadidos, eliminados o modificados).
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  El panel de historial de versiones mostrando una lista de capturas con marcas de tiempo, resúmenes de cambios y un botón de restaurar.
-</div>
+<img src="/images/docs/project-snapshots.png" alt="El panel de capturas del proyecto para crear y restaurar copias de seguridad de un momento concreto." loading="lazy">

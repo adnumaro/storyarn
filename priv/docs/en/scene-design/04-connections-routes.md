@@ -9,10 +9,7 @@ description: "Connect pins with paths, labels, direction, line styles, waypoint 
 
 Connections are route lines on the scene. Use them to show paths, travel links, patrol routes, trade routes, relationships, quest dependencies, or any association that benefits from being visible on the map.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Scene map with pinned and freeform routes using solid, dashed, and waypointed lines
-</div>
+<img src="/images/docs/scenes-editor-current.png" alt="Scene map editor with the connector tool available for pinned and freeform routes" loading="lazy">
 
 ## Creating Connections
 

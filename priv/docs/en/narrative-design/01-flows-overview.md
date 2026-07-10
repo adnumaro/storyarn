@@ -9,7 +9,7 @@ description: "Visual dialogue trees and branching narrative logic."
 
 Flows are the heart of Storyarn -- **visual node graphs** where you build branching dialogue, game logic, and interactive narratives. Each flow is a canvas of connected nodes that define how a conversation or sequence plays out, from a simple linear exchange to a sprawling quest tree with dozens of branches.
 
-<img src="/images/docs/flows/flows.png" alt="Veilbreak flow editor canvas with connected nodes and minimap" loading="lazy">
+<img src="/images/docs/flows-editor-current.png" alt="Flow editor canvas with connected dialogue, condition, instruction, hub, subflow, and exit nodes" loading="lazy">
 
 ---
 
@@ -63,10 +63,7 @@ Sequence ("Tavern encounter")
 
 Flows can be as simple as a linear conversation or as complex as an entire quest tree. Use **Hub** and **Jump** nodes to merge converging paths without duplicating dialogue. Use **Subflow** nodes to compose larger narratives from reusable flow fragments.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  A flow with hub/jump nodes showing how multiple dialogue branches converge into a single path
-</div>
+<img src="/images/docs/flows-editor-current.png" alt="A flow with hub and jump nodes showing how multiple dialogue branches converge into a single path" loading="lazy">
 
 ---
 
@@ -92,10 +89,7 @@ Toggle {accent}Analysis mode{/accent} to see hidden responses that failed their 
 
 This is not a preview. It is the actual playthrough experience, with real variable evaluation and state changes.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  The Story Player showing a dialogue with response choices and a scene backdrop
-</div>
+<img src="/images/docs/flows-player-current.png" alt="The Story Player showing a dialogue with response choices and a scene backdrop" loading="lazy">
 
 ---
 
