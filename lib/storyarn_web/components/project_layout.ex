@@ -9,6 +9,8 @@ defmodule StoryarnWeb.Components.ProjectLayout do
 
   use StoryarnWeb, :html
 
+  alias StoryarnWeb.Live.Shared.OnboardingHelpers
+
   attr :id, :string, default: "project-layout"
   attr :flash, :map, default: %{}
   attr :socket, :any, required: true
@@ -24,6 +26,8 @@ defmodule StoryarnWeb.Components.ProjectLayout do
   attr :sidebar_session, :map, default: %{}
   attr :restoration_banner, :map, default: nil
   attr :canvas_mode, :boolean, default: false
+  attr :onboarding, :map, default: %{eligible: false, guides: %{}}
+  attr :onboarding_autostart, :boolean, default: false
 
   slot :inner_block, required: true
 
@@ -70,6 +74,7 @@ defmodule StoryarnWeb.Components.ProjectLayout do
         urls={@urls}
         restoration-banner={@restoration_banner}
         canvas-mode={@canvas_mode}
+        onboarding={OnboardingHelpers.client_config(@onboarding, @active_tool, @onboarding_autostart)}
       />
 
       {render_slot(@inner_block)}

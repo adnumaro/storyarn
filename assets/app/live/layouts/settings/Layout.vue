@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import type { Component } from "vue";
 import { useI18n } from "vue-i18n";
 import {
   Archive,
+  BookOpen,
   ChevronLeft,
+  CircleHelp,
   Gauge,
   GitBranch,
   Languages,
@@ -19,6 +21,7 @@ import {
   Users,
 } from "lucide-vue-next";
 import LiveLink from "@components/navigation/LiveLink.vue";
+import OnboardingDialog from "@components/onboarding/OnboardingDialog.vue";
 import { useResponsiveSidebar } from "@shared/composables/useResponsiveSidebar";
 
 interface SettingsItem {
@@ -53,6 +56,7 @@ const {
   project = null,
   title = null,
   subtitle = null,
+  onboarding = null,
 } = defineProps<{
   currentPath: string;
   workspaces?: SettingsWorkspace[];
@@ -61,12 +65,14 @@ const {
   project?: SettingsProject | null;
   title?: string | null;
   subtitle?: string | null;
+  onboarding?: { guide: string; autoShow: boolean } | null;
 }>();
 
 const { t } = useI18n();
 
 const iconMap: Record<string, Component> = {
   archive: Archive,
+  "book-open": BookOpen,
   "chevron-left": ChevronLeft,
   gauge: Gauge,
   "git-branch": GitBranch,
@@ -83,6 +89,11 @@ const iconMap: Record<string, Component> = {
 const navIcon = (name: string): Component => iconMap[name] ?? Settings;
 
 const { sidebarOpen, toggleSidebar } = useResponsiveSidebar();
+const onboardingDialog = ref<{ openTutorial: () => void } | null>(null);
+
+function showTutorial(): void {
+  onboardingDialog.value?.openTutorial();
+}
 
 const projectSettingsBasePath = computed(() => {
   if (!workspace || !project) return null;
@@ -172,6 +183,11 @@ const sections = computed<SettingsSection[]>(() => {
           label: t("settings.nav.items.security"),
           path: "/users/settings/security",
           icon: "shield-check",
+        },
+        {
+          label: t("settings.nav.items.tutorials"),
+          path: "/users/settings/tutorials",
+          icon: "book-open",
         },
       ],
     },
@@ -276,9 +292,20 @@ const sections = computed<SettingsSection[]>(() => {
 
       <div class="flex-1 min-h-0 overflow-y-auto p-4 lg:p-8">
         <div class="max-w-3xl mx-auto">
-          <header v-if="title" class="pb-4">
-            <h1 class="text-lg font-semibold leading-8">{{ title }}</h1>
-            <p v-if="subtitle" class="text-sm text-muted-foreground">{{ subtitle }}</p>
+          <header v-if="title" class="flex items-start justify-between gap-4 pb-4">
+            <div>
+              <h1 class="text-lg font-semibold leading-8">{{ title }}</h1>
+              <p v-if="subtitle" class="text-sm text-muted-foreground">{{ subtitle }}</p>
+            </div>
+            <button
+              v-if="onboarding"
+              type="button"
+              class="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              @click="showTutorial"
+            >
+              <CircleHelp class="size-4" />
+              {{ t("onboarding.common.view_tutorial") }}
+            </button>
           </header>
 
           <div>
@@ -287,5 +314,12 @@ const sections = computed<SettingsSection[]>(() => {
         </div>
       </div>
     </main>
+
+    <OnboardingDialog
+      v-if="onboarding"
+      ref="onboardingDialog"
+      :guide-key="onboarding.guide"
+      :auto-show="onboarding.autoShow"
+    />
   </div>
 </template>

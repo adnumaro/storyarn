@@ -9,11 +9,16 @@ defmodule StoryarnWeb.Components.WorkspaceLayout do
 
   use StoryarnWeb, :html
 
+  alias StoryarnWeb.Live.Shared.OnboardingHelpers
+
   attr :flash, :map, required: true
   attr :current_scope, :map, default: nil
   attr :current_workspace, :map, default: nil
   attr :workspaces, :list, default: []
   attr :socket, :any, required: true
+  attr :onboarding, :map, default: %{eligible: false, guides: %{}}
+  attr :onboarding_guide, :atom, default: nil
+  attr :onboarding_autostart, :boolean, default: false
 
   slot :inner_block, required: true
 
@@ -33,6 +38,13 @@ defmodule StoryarnWeb.Components.WorkspaceLayout do
         current-user={serialize_current_user(@current_scope)}
         workspaces={serialize_workspaces(@workspaces)}
         current-workspace-slug={workspace_slug(@current_workspace)}
+        onboarding={
+          OnboardingHelpers.client_config(
+            @onboarding,
+            @onboarding_guide,
+            @onboarding_autostart
+          )
+        }
       />
 
       {render_slot(@inner_block)}

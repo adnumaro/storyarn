@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { PanelLeft, PanelLeftClose } from "lucide-vue-next";
+import { ref } from "vue";
+import OnboardingDialog from "@components/onboarding/OnboardingDialog.vue";
 import WorkspaceSidebar from "@shell/WorkspaceSidebar.vue";
 import type { WorkspaceItem, WorkspaceUser } from "@shell/workspaceLayoutTypes";
 import { useResponsiveSidebar } from "@shared/composables/useResponsiveSidebar";
@@ -8,13 +10,20 @@ const {
   currentUser,
   workspaces = [],
   currentWorkspaceSlug = null,
+  onboarding = null,
 } = defineProps<{
   currentUser: WorkspaceUser;
   workspaces?: WorkspaceItem[];
   currentWorkspaceSlug?: string | null;
+  onboarding?: { guide: string; autoShow: boolean } | null;
 }>();
 
 const { sidebarOpen, toggleSidebar } = useResponsiveSidebar();
+const onboardingDialog = ref<{ openTutorial: () => void } | null>(null);
+
+function showTutorial(): void {
+  onboardingDialog.value?.openTutorial();
+}
 </script>
 
 <template>
@@ -30,6 +39,8 @@ const { sidebarOpen, toggleSidebar } = useResponsiveSidebar();
         class="h-full overflow-hidden"
         :workspaces="workspaces"
         :current-workspace-slug="currentWorkspaceSlug"
+        :has-tutorial="Boolean(onboarding)"
+        @show-tutorial="showTutorial"
       />
     </aside>
 
@@ -70,5 +81,12 @@ const { sidebarOpen, toggleSidebar } = useResponsiveSidebar();
         <slot />
       </div>
     </main>
+
+    <OnboardingDialog
+      v-if="onboarding"
+      ref="onboardingDialog"
+      :guide-key="onboarding.guide"
+      :auto-show="onboarding.autoShow"
+    />
   </div>
 </template>

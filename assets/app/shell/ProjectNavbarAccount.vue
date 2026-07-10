@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LayoutDashboard, LogOut, User } from "lucide-vue-next";
+import { CircleHelp, LayoutDashboard, LogOut, User } from "lucide-vue-next";
 import { computed } from "vue";
 import {
   DropdownMenu,
@@ -16,11 +16,15 @@ const {
   currentUser,
   onlineUsers = [],
   urls,
+  hasTutorial = false,
 } = defineProps<{
   currentUser: CurrentUser;
   onlineUsers?: OnlineUser[];
   urls: ProjectNavbarAccountUrls;
+  hasTutorial?: boolean;
 }>();
+
+const emit = defineEmits<{ showTutorial: [] }>();
 
 const otherUsers = computed(() =>
   onlineUsers.filter((u) => u.userId !== currentUser.id).slice(0, 5),
@@ -112,6 +116,14 @@ function handleLogout(): void {
             <LayoutDashboard class="size-4" />
             {{ $t("layout.project_navbar_account.all_workspaces") }}
           </a>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          v-if="hasTutorial"
+          class="flex items-center gap-2"
+          @select="emit('showTutorial')"
+        >
+          <CircleHelp class="size-4" />
+          {{ $t("onboarding.common.view_tutorial") }}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem class="flex items-center gap-2" @select="handleLogout">

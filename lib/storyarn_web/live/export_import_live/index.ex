@@ -20,6 +20,9 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       current_path={@current_path}
       workspace={@workspace}
       project={@project}
+      onboarding={@onboarding}
+      onboarding_guide={:export}
+      onboarding_autostart
     >
       <:title>{dgettext("projects", "Export")}</:title>
       <:subtitle>{dgettext("projects", "Export your project data.")}</:subtitle>

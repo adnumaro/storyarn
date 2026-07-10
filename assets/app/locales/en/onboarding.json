@@ -1,0 +1,124 @@
+{
+  "onboarding": {
+    "common": {
+      "contextual_guide": "Quick orientation",
+      "step": "Step {current} of {total}",
+      "not_now": "Not now",
+      "full_guide": "Full guide",
+      "back": "Back",
+      "next": "Next",
+      "got_it": "Got it",
+      "view_tutorial": "View this tutorial"
+    },
+    "guides": {
+      "workspace": {
+        "title": "Your workspace at a glance",
+        "summary": "Workspaces keep teams and projects together while each project remains independently organized.",
+        "slides": {
+          "organize": {
+            "title": "A home for your team",
+            "description": "Use a workspace to group the projects, members, source language, and shared settings that belong to one team or production."
+          },
+          "projects": {
+            "title": "Projects contain the actual story",
+            "description": "Each project has its own sheets, flows, scenes, localization, assets, and exports. Start blank or create one from a reusable template."
+          },
+          "collaborate": {
+            "title": "Invite people with the right access",
+            "description": "Owners and admins can manage workspace members. Project roles then control who can edit or only review each production."
+          }
+        }
+      },
+      "sheets": {
+        "title": "Build a living world with Sheets",
+        "summary": "Sheets turn characters, locations, items, and game state into structured data your narrative can use.",
+        "slides": {
+          "structure": {
+            "title": "Model anything with typed blocks",
+            "description": "Combine text, numbers, choices, tables, galleries, references, and more to create a structure that fits each kind of entity."
+          },
+          "variables": {
+            "title": "Connect data to narrative logic",
+            "description": "Non-constant blocks become variables. Flows can read them in conditions and update them with instructions using stable shortcuts."
+          },
+          "inheritance": {
+            "title": "Reuse structure through inheritance",
+            "description": "Organize sheets as a tree and let parent blocks cascade to children, keeping shared definitions consistent without duplicating work."
+          }
+        }
+      },
+      "flows": {
+        "title": "Shape branching stories with Flows",
+        "summary": "Flows combine dialogue, choices, conditions, and state changes on a visual node canvas.",
+        "slides": {
+          "canvas": {
+            "title": "Connect the path of the story",
+            "description": "Create nodes from the dock and drag between their pins. Entry starts execution, while Exit defines how the flow finishes or continues."
+          },
+          "logic": {
+            "title": "Branch and change the world",
+            "description": "Condition nodes choose a path from sheet variables. Instruction nodes update those variables as the narrative progresses."
+          },
+          "test": {
+            "title": "Test without leaving the editor",
+            "description": "Use the player for the audience experience or Debug Mode to step through nodes, inspect variables, and understand every decision."
+          }
+        }
+      },
+      "scenes": {
+        "title": "Map narrative spaces with Scenes",
+        "summary": "Scenes place story logic on spatial canvases for maps, locations, routes, and interactive exploration.",
+        "slides": {
+          "canvas": {
+            "title": "Start with a spatial canvas",
+            "description": "Add a background, choose an appropriate scale, and use the scene tree to organize maps from broad worlds down to individual places."
+          },
+          "elements": {
+            "title": "Add zones, pins, routes, and layers",
+            "description": "Zones define areas, pins mark points of interest, connections describe routes, and layers control what collaborators can see."
+          },
+          "exploration": {
+            "title": "Turn the map into an experience",
+            "description": "Attach conditions, actions, child scenes, and flows to spatial elements, then test the result in fullscreen Exploration Mode."
+          }
+        }
+      },
+      "localization": {
+        "title": "Take every line to every language",
+        "summary": "Localization extracts narrative text, tracks translation progress, and keeps review and voice-over work visible.",
+        "slides": {
+          "languages": {
+            "title": "Configure source and target languages",
+            "description": "The workspace defines the source language. Add each target language from project settings before beginning translation work."
+          },
+          "sync": {
+            "title": "Sync content as the story changes",
+            "description": "Synchronization extracts translatable text from flows and sheets, preserves stable references, and detects source updates that need review."
+          },
+          "review": {
+            "title": "Translate, review, and track delivery",
+            "description": "Work manually or with DeepL, move entries through their review states, and monitor words, speakers, completion, and voice-over progress."
+          }
+        }
+      },
+      "export": {
+        "title": "Deliver production-ready narrative data",
+        "summary": "Export converts the current project into engine-friendly formats with explicit content and asset options.",
+        "slides": {
+          "format": {
+            "title": "Choose the target format",
+            "description": "Select the engine or narrative runtime first. Storyarn adapts the available content sections and file extension to that serializer."
+          },
+          "validate": {
+            "title": "Validate before delivery",
+            "description": "Run validation to catch missing entries, broken references, unreachable nodes, empty dialogue, and other production risks before download."
+          },
+          "deliver": {
+            "title": "Control content and assets",
+            "description": "Choose which project sections to include and whether assets remain references, are embedded, or are bundled alongside the exported data."
+          }
+        }
+      }
+    }
+  }
+}
