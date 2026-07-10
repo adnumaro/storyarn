@@ -115,8 +115,12 @@ defmodule Storyarn.Localization.TextExtractorTest do
       {:ok, _updated, _} = Flows.update_node_data(node, %{"text" => "Hello"})
       [text] = Localization.get_texts_for_source("flow_node", node.id)
 
-      # Mark as final
-      {:ok, _} = Localization.update_text(text, %{status: "final"})
+      # Translate and mark as final
+      {:ok, _} =
+        Localization.update_text(text, %{
+          translated_text: "Hola",
+          status: "final"
+        })
 
       # Update source text
       {:ok, _updated, _} = Flows.update_node_data(node, %{"text" => "Changed"})
@@ -1028,25 +1032,28 @@ defmodule Storyarn.Localization.TextExtractorTest do
   # =============================================================================
 
   describe "status management on source change" do
-    test "preserves non-final statuses when source text changes", %{project: project} do
+    test "moves translated drafts to review when source text changes", %{project: project} do
       flow = flow_fixture(project)
       node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello"}})
 
       {:ok, _updated, _} = Flows.update_node_data(node, %{"text" => "Hello"})
       [text] = Localization.get_texts_for_source("flow_node", node.id)
 
-      # Set to draft
-      {:ok, _} = Localization.update_text(text, %{status: "draft"})
+      {:ok, _} =
+        Localization.update_text(text, %{
+          translated_text: "Hola",
+          status: "draft"
+        })
 
       # Change source text
       {:ok, _updated, _} = Flows.update_node_data(node, %{"text" => "Changed"})
       [updated] = Localization.get_texts_for_source("flow_node", node.id)
 
-      # Draft should remain draft (not downgraded)
-      assert updated.status == "draft"
+      assert updated.status == "review"
+      assert Storyarn.Localization.LocalizedText.stale?(updated)
     end
 
-    test "preserves in_progress status when source text changes", %{project: project} do
+    test "returns untranslated workflow statuses to pending when source text changes", %{project: project} do
       flow = flow_fixture(project)
       node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello"}})
 
@@ -1058,7 +1065,7 @@ defmodule Storyarn.Localization.TextExtractorTest do
       {:ok, _updated, _} = Flows.update_node_data(node, %{"text" => "Changed"})
       [updated] = Localization.get_texts_for_source("flow_node", node.id)
 
-      assert updated.status == "in_progress"
+      assert updated.status == "pending"
     end
   end
 

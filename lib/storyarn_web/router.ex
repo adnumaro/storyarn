@@ -258,6 +258,14 @@ defmodule StoryarnWeb.Router do
            LocalizationLive.Index,
            :index
 
+      live "/workspaces/:workspace_slug/projects/:project_slug/localization/texts/:locale/:id",
+           LocalizationLive.Index,
+           :edit
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/localization/glossary/:locale",
+           LocalizationLive.Glossary,
+           :index
+
       live "/workspaces/:workspace_slug/projects/:project_slug/localization/text/:id",
            LocalizationLive.Edit,
            :edit

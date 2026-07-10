@@ -113,6 +113,59 @@ defmodule Storyarn.Localization.BatchTranslatorTest do
       assert TextCrud.count_texts(project.id, locale_code: "es", status: "pending") == 2
       assert TextCrud.count_texts(project.id, locale_code: "es", status: "draft") == 3
     end
+
+    test "reports cumulative progress after each database page" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _source = source_language_fixture(project)
+      _target = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      create_provider_config(project.id)
+      test_pid = self()
+
+      for index <- 1..3 do
+        localized_text_fixture(project.id, text_attrs(index))
+      end
+
+      assert {:ok, %{translated: 3}} =
+               Localization.translate_batch(project.id, "es",
+                 translator: FakeTranslationProvider,
+                 batch_size: 2,
+                 progress_callback: fn result -> send(test_pid, {:progress, result.translated}) end
+               )
+
+      assert_received {:progress, 2}
+      assert_received {:progress, 3}
+    end
+
+    test "stops before loading another page when cancellation is requested" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _source = source_language_fixture(project)
+      _target = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      create_provider_config(project.id)
+      test_pid = self()
+
+      for index <- 1..3 do
+        localized_text_fixture(project.id, text_attrs(index))
+      end
+
+      assert {:error, :cancelled} =
+               Localization.translate_batch(project.id, "es",
+                 translator: FakeTranslationProvider,
+                 batch_size: 2,
+                 cancelled?: fn ->
+                   Process.get(:cancel_batch, false)
+                 end,
+                 progress_callback: fn result ->
+                   send(test_pid, {:progress, result.translated})
+                   Process.put(:cancel_batch, true)
+                 end
+               )
+
+      assert_received {:progress, 2}
+      assert TextCrud.count_texts(project.id, locale_code: "es", status: "draft") == 2
+      assert TextCrud.count_texts(project.id, locale_code: "es", status: "pending") == 1
+    end
   end
 
   describe "translate_single/2" do

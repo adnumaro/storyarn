@@ -5,6 +5,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
 
   import StoryarnWeb.ProjectLive.Components.SettingsComponents
 
+  alias Storyarn.Localization
   alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
 
@@ -116,13 +117,69 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
   @impl true
   def handle_event("save_provider_config", %{"provider" => params}, socket) do
     Authorize.with_authorization(socket, :manage_project, fn socket ->
-      do_save_provider_config(socket, params)
+      save_provider_config(socket, params)
     end)
   end
 
   def handle_event("test_provider_connection", _params, socket) do
     Authorize.with_authorization(socket, :manage_project, fn socket ->
-      do_test_provider_connection(socket)
+      test_provider_connection(socket)
     end)
+  end
+
+  defp save_provider_config(socket, params) do
+    params =
+      if String.trim(params["api_key_encrypted"] || "") == "" do
+        Map.delete(params, "api_key_encrypted")
+      else
+        Map.update!(params, "api_key_encrypted", &String.trim/1)
+      end
+
+    case Localization.upsert_provider_config(socket.assigns.project, params) do
+      {:ok, config} ->
+        socket =
+          socket
+          |> assign(:provider_form, to_form(provider_changeset(config), as: "provider"))
+          |> assign(:has_api_key, not is_nil(config.api_key_encrypted))
+          |> assign(:provider_usage, nil)
+          |> put_flash(:info, dgettext("projects", "Provider settings saved."))
+
+        {:reply, %{ok: true}, socket}
+
+      {:error, changeset} ->
+        socket =
+          assign(
+            socket,
+            :provider_form,
+            changeset |> Map.put(:action, :validate) |> to_form(as: "provider")
+          )
+
+        {:reply, %{ok: false, errors: changeset_errors(changeset)}, socket}
+    end
+  end
+
+  defp test_provider_connection(socket) do
+    config = Localization.get_provider_config(socket.assigns.project.id)
+
+    if is_nil(config) or is_nil(config.api_key_encrypted) do
+      {:reply, %{ok: false, error: "no_api_key"}, socket}
+    else
+      case Localization.get_deepl_usage(config) do
+        {:ok, usage} ->
+          socket =
+            socket
+            |> assign(:provider_usage, usage)
+            |> put_flash(:info, dgettext("projects", "Connection successful."))
+
+          {:reply, %{ok: true, usage: serialize_provider_usage(usage)}, socket}
+
+        {:error, reason} ->
+          {:reply, %{ok: false, error: inspect(reason)}, socket}
+      end
+    end
+  end
+
+  defp changeset_errors(changeset) do
+    Map.new(changeset.errors, fn {field, {message, _metadata}} -> {field, message} end)
   end
 end

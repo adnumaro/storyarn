@@ -21,6 +21,7 @@ defmodule Storyarn.Localization.LocalizedText do
   alias Ecto.Association.NotLoaded
   alias Storyarn.Accounts.User
   alias Storyarn.Assets.Asset
+  alias Storyarn.Localization.HtmlHandler
   alias Storyarn.Projects.Project
   alias Storyarn.Sheets.Sheet
 
@@ -37,6 +38,7 @@ defmodule Storyarn.Localization.LocalizedText do
           source_field: String.t() | nil,
           source_text: String.t() | nil,
           source_text_hash: String.t() | nil,
+          translated_source_hash: String.t() | nil,
           locale_code: String.t() | nil,
           translated_text: String.t() | nil,
           status: String.t(),
@@ -55,6 +57,7 @@ defmodule Storyarn.Localization.LocalizedText do
           translated_by: User.t() | NotLoaded.t() | nil,
           reviewed_by_id: integer() | nil,
           reviewed_by: User.t() | NotLoaded.t() | nil,
+          lock_version: integer(),
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -65,6 +68,7 @@ defmodule Storyarn.Localization.LocalizedText do
     field :source_field, :string
     field :source_text, :string
     field :source_text_hash, :string
+    field :translated_source_hash, :string
     field :locale_code, :string
     field :translated_text, :string
     field :status, :string, default: "pending"
@@ -75,6 +79,7 @@ defmodule Storyarn.Localization.LocalizedText do
     field :machine_translated, :boolean, default: false
     field :last_translated_at, :utc_datetime
     field :last_reviewed_at, :utc_datetime
+    field :lock_version, :integer, default: 1
 
     belongs_to :project, Project
     belongs_to :vo_asset, Asset
@@ -96,6 +101,7 @@ defmodule Storyarn.Localization.LocalizedText do
       :source_field,
       :source_text,
       :source_text_hash,
+      :translated_source_hash,
       :locale_code,
       :translated_text,
       :status,
@@ -115,6 +121,10 @@ defmodule Storyarn.Localization.LocalizedText do
     |> foreign_key_constraint(:project_id)
     |> foreign_key_constraint(:vo_asset_id)
     |> foreign_key_constraint(:speaker_sheet_id)
+    |> validate_translation_present_when_final()
+    |> validate_translation_is_current_when_final()
+    |> validate_placeholders()
+    |> check_constraint(:status, name: :localized_texts_final_requires_current_translation)
   end
 
   @doc """
@@ -135,7 +145,8 @@ defmodule Storyarn.Localization.LocalizedText do
       :last_translated_at,
       :last_reviewed_at,
       :translated_by_id,
-      :reviewed_by_id
+      :reviewed_by_id,
+      :translated_source_hash
     ])
     |> validate_inclusion(:status, @valid_statuses)
     |> validate_inclusion(:vo_status, @valid_vo_statuses)
@@ -143,6 +154,11 @@ defmodule Storyarn.Localization.LocalizedText do
     |> foreign_key_constraint(:speaker_sheet_id)
     |> foreign_key_constraint(:translated_by_id)
     |> foreign_key_constraint(:reviewed_by_id)
+    |> validate_translation_present_when_final()
+    |> validate_translation_is_current_when_final()
+    |> validate_placeholders()
+    |> check_constraint(:status, name: :localized_texts_final_requires_current_translation)
+    |> optimistic_lock(:lock_version)
   end
 
   @doc """
@@ -150,6 +166,63 @@ defmodule Storyarn.Localization.LocalizedText do
   Only updates source_text, source_text_hash, word_count, and possibly status.
   """
   def source_update_changeset(text, attrs) do
-    cast(text, attrs, [:source_text, :source_text_hash, :word_count, :status, :speaker_sheet_id])
+    text
+    |> cast(attrs, [:source_text, :source_text_hash, :word_count, :status, :speaker_sheet_id])
+    |> optimistic_lock(:lock_version)
   end
+
+  @doc "Returns true when a non-empty translation belongs to an older source revision."
+  @spec stale?(t()) :: boolean()
+  def stale?(%__MODULE__{} = text) do
+    present?(text.translated_text) and text.translated_source_hash != text.source_text_hash
+  end
+
+  defp validate_translation_present_when_final(changeset) do
+    if get_field(changeset, :status) == "final" and not present?(get_field(changeset, :translated_text)) do
+      add_error(changeset, :translated_text, "can't be blank when status is final")
+    else
+      changeset
+    end
+  end
+
+  defp validate_translation_is_current_when_final(changeset) do
+    source_hash = get_field(changeset, :source_text_hash)
+    translated_hash = get_field(changeset, :translated_source_hash)
+
+    if get_field(changeset, :status) == "final" and
+         (is_nil(source_hash) or is_nil(translated_hash) or translated_hash != source_hash) do
+      add_error(changeset, :status, "cannot be final until the current source text is translated")
+    else
+      changeset
+    end
+  end
+
+  defp validate_placeholders(changeset) do
+    source_text = get_field(changeset, :source_text)
+    translated_text = get_field(changeset, :translated_text)
+
+    if present?(translated_text) do
+      case HtmlHandler.validate_placeholders(source_text, translated_text) do
+        :ok ->
+          changeset
+
+        {:error, %{missing: missing, extra: extra}} ->
+          add_error(changeset, :translated_text, placeholder_error(missing, extra))
+      end
+    else
+      changeset
+    end
+  end
+
+  defp placeholder_error(missing, extra) do
+    [
+      if(missing != [], do: "missing #{Enum.join(missing, ", ")}"),
+      if(extra != [], do: "unexpected #{Enum.join(extra, ", ")}")
+    ]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join("; ")
+  end
+
+  defp present?(value) when is_binary(value), do: String.trim(value) != ""
+  defp present?(_value), do: false
 end

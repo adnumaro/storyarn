@@ -38,6 +38,21 @@ defmodule Storyarn.Localization.GlossaryCrudTest do
       assert "can't be blank" in errors_on(changeset).target_locale
     end
 
+    test "rejects terms that would corrupt DeepL TSV dictionaries" do
+      project = project_fixture(user_fixture())
+
+      assert {:error, changeset} =
+               Localization.create_glossary_entry(project, %{
+                 source_term: "bad\tterm",
+                 source_locale: "en",
+                 target_term: "mal\nterme",
+                 target_locale: "ca"
+               })
+
+      assert "cannot contain tabs or line breaks" in errors_on(changeset).source_term
+      assert "cannot contain tabs or line breaks" in errors_on(changeset).target_term
+    end
+
     test "create_glossary_entry/2 enforces unique constraint" do
       user = user_fixture()
       project = project_fixture(user)

@@ -14,15 +14,49 @@
       "syncing": "Sincronizando...",
       "sync": "Sincronizar",
       "remove_confirm_title": "¿Eliminar idioma?",
-      "remove_confirm_description": "Se eliminará {name} y todas sus traducciones de este proyecto.",
-      "remove_confirm_button": "Eliminar"
+      "remove_confirm_description": "Se archivará {name}. Sus traducciones se conservarán y se restaurarán si vuelves a añadirlo.",
+      "remove_confirm_button": "Archivar",
+      "source_change_confirm_title": "¿Cambiar el idioma de origen?",
+      "source_change_confirm_description": "Esto cambia la dirección de traducción a {name} y reinicia todas las traducciones existentes. Continúa solo si el contenido del proyecto ya está escrito en este idioma.",
+      "source_change_confirm_button": "Cambiar y reiniciar"
     },
     "toolbar": {
       "export": "Exportar",
       "excel": "Excel (.xlsx)",
       "csv": "CSV (.csv)",
       "translating": "Traduciendo...",
-      "translate_all": "Traducir todo pendiente"
+      "translate_all": "Traducir todo pendiente",
+      "run_queued": "Traducción en cola",
+      "run_running": "Traduciendo",
+      "run_completed": "Traducción completada",
+      "run_failed": "Error de traducción",
+      "run_cancelled": "Traducción cancelada",
+      "cancel": "Cancelar traducción",
+      "glossary": "Glosario",
+      "import_csv": "Importar CSV",
+      "imported_count": "{count} importadas",
+      "import_failed": "Error de importación"
+    },
+    "glossary": {
+      "title": "Glosario de traducción",
+      "subtitle": "Mantén nombres, terminología y vocabulario narrativo consistentes en todas las traducciones.",
+      "select_language": "Idioma destino",
+      "entry_count": "{count} términos",
+      "up_to_date": "Actualizado",
+      "pending_sync": "Pendiente de sincronizar",
+      "local_only": "Glosario local",
+      "synced": "Sincronizado con DeepL",
+      "sync_deepl": "Sincronizar con DeepL",
+      "sync_success": "El glosario ya está disponible para las traducciones de DeepL.",
+      "do_not_translate": "Conservar el término original",
+      "empty_title": "Aún no hay términos",
+      "empty_description": "Añade personajes, localizaciones y terminología importante para este par de idiomas.",
+      "add_entry": "Añadir término",
+      "edit_entry": "Editar término",
+      "cancel_edit": "Cancelar",
+      "context": "Contexto o nota de uso",
+      "save_entry": "Guardar término",
+      "no_target": "Añade un idioma destino para crear un glosario."
     },
     "report": {
       "title": "Informe de localización",
@@ -40,13 +74,15 @@
       "vo_needed": "Necesario",
       "vo_recorded": "Grabado",
       "vo_approved": "Aprobado",
+      "stale_count": "{count} desactualizadas",
       "content_breakdown": "Desglose de contenido",
       "types": {
         "flow_node": "Nodos",
         "block": "Bloques",
         "sheet": "Fichas",
         "flow": "Flujos",
-        "screenplay": "Guiones"
+        "screenplay": "Guiones",
+        "scene": "Escenas"
       }
     },
     "index": {
@@ -78,7 +114,17 @@
       "th_words": "Palabras",
       "not_translated": "Sin traducir",
       "translate_deepl_title": "Traducir con DeepL",
-      "page_of": "Página {page} de {total}"
+      "page_of": "Página {page} de {total}",
+      "needs_attention": "Requieren atención",
+      "stale_translations": "Desactualizadas",
+      "stale": "Desactualizada",
+      "strings_list": "Textos de traducción",
+      "string_count": "{count} textos",
+      "previous_page": "Página anterior",
+      "next_page": "Página siguiente",
+      "translation_editor": "Editor de traducción",
+      "select_string": "Selecciona un texto para traducir",
+      "select_string_description": "Elige un texto de origen de la lista para editarlo sin salir de esta pantalla."
     },
     "edit": {
       "title": "Editar traducción",
@@ -89,6 +135,11 @@
       "translation_placeholder": "Escribe la traducción...",
       "status": "Estado",
       "select_status": "Seleccionar estado",
+      "vo_status": "Doblaje",
+      "vo_none": "No requerido",
+      "vo_needed": "Necesario",
+      "vo_recorded": "Grabado",
+      "vo_approved": "Aprobado",
       "status_pending": "Pendiente",
       "status_draft": "Borrador",
       "status_in_progress": "En progreso",
@@ -101,7 +152,25 @@
       "translating": "Traduciendo...",
       "translate_deepl": "Traducir con DeepL",
       "machine_translated": "Traducción automática",
-      "last_translated": "Última traducción: {date}"
+      "last_translated": "Última traducción: {date}",
+      "read_only": "Solo lectura",
+      "previous": "Texto anterior",
+      "next": "Texto siguiente",
+      "close": "Cerrar editor",
+      "placeholders": "Placeholders obligatorios",
+      "placeholder_error": "La traducción debe conservar todos los placeholders obligatorios.",
+      "save_idle": "Todos los cambios guardados",
+      "save_dirty": "Cambios sin guardar",
+      "save_saving": "Guardando...",
+      "save_saved": "Guardado",
+      "save_error": "Error al guardar",
+      "save_conflict": "Conflicto de edición",
+      "save_next": "Guardar y siguiente",
+      "shortcut_hint": "⌘ Enter para guardar · ⇧ ⌘ Enter para avanzar",
+      "conflict_title": "Esta traducción ha cambiado en otra sesión",
+      "conflict_description": "Carga la última versión o sobrescríbela explícitamente con tu borrador.",
+      "overwrite": "Sobrescribir",
+      "reload": "Cargar última versión"
     }
   }
 }

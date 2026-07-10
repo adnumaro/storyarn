@@ -15,6 +15,7 @@ defmodule Storyarn.Localization do
   alias Storyarn.Localization.ExportImport
   alias Storyarn.Localization.GlossaryCrud
   alias Storyarn.Localization.GlossaryEntry
+  alias Storyarn.Localization.GlossarySync
   alias Storyarn.Localization.LanguageCrud
   alias Storyarn.Localization.Languages
   alias Storyarn.Localization.LocalizedText
@@ -24,6 +25,7 @@ defmodule Storyarn.Localization do
   alias Storyarn.Localization.Reports
   alias Storyarn.Localization.TextCrud
   alias Storyarn.Localization.TextExtractor
+  alias Storyarn.Localization.TranslationRunCrud
   alias Storyarn.Projects.Project
 
   # =============================================================================
@@ -83,6 +85,11 @@ defmodule Storyarn.Localization do
   @spec change_source_language(Project.t(), String.t()) ::
           {:ok, project_language()} | {:error, term()}
   defdelegate change_source_language(project, locale_code), to: LanguageCrud
+
+  @doc "Changes the source language, optionally resetting all translations."
+  @spec change_source_language(Project.t(), String.t(), keyword()) ::
+          {:ok, project_language()} | {:error, term()}
+  defdelegate change_source_language(project, locale_code, opts), to: LanguageCrud
 
   @doc "Reorders languages by the given list of IDs."
   @spec reorder_languages(id(), [id()]) :: {:ok, any()}
@@ -209,6 +216,24 @@ defmodule Storyarn.Localization do
   @spec translate_single(id(), id()) :: {:ok, localized_text()} | {:error, term()}
   defdelegate translate_single(project_id, text_id), to: BatchTranslator
 
+  @doc "Enqueues an asynchronous translation run for a target locale."
+  defdelegate enqueue_batch_translation(project_id, target_locale, requested_by_id, opts \\ []),
+    to: TranslationRunCrud,
+    as: :enqueue
+
+  @doc "Returns the active translation run for a project and locale."
+  defdelegate get_active_translation_run(project_id, target_locale),
+    to: TranslationRunCrud,
+    as: :get_active
+
+  @doc "Returns a project-scoped translation run."
+  defdelegate get_translation_run(project_id, run_id),
+    to: TranslationRunCrud,
+    as: :get_for_project
+
+  @doc "Cancels an active translation run."
+  defdelegate cancel_translation_run(run), to: TranslationRunCrud, as: :cancel
+
   # =============================================================================
   # Export / Import
   # =============================================================================
@@ -257,6 +282,14 @@ defmodule Storyarn.Localization do
   @doc "Deletes a glossary entry."
   @spec delete_glossary_entry(glossary_entry()) :: {:ok, glossary_entry()} | {:error, changeset()}
   defdelegate delete_glossary_entry(entry), to: GlossaryCrud, as: :delete_entry
+
+  @doc "Synchronizes one project glossary pair with DeepL."
+  def sync_deepl_glossary(project_id, source_locale, target_locale, opts \\ []) do
+    GlossarySync.sync(project_id, source_locale, target_locale, opts)
+  end
+
+  @doc "Returns whether the local glossary pair matches the configured DeepL glossary."
+  defdelegate glossary_synced?(project_id, source_locale, target_locale), to: GlossarySync, as: :synced?
 
   # =============================================================================
   # Reports

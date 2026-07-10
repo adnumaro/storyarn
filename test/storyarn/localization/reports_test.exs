@@ -4,6 +4,7 @@ defmodule Storyarn.Localization.ReportsTest do
   import Storyarn.AccountsFixtures
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
 
   alias Storyarn.Localization.Reports
 
@@ -94,6 +95,24 @@ defmodule Storyarn.Localization.ReportsTest do
       stats = Reports.word_counts_by_speaker(project.id, "es")
       assert length(stats) == 1
       assert hd(stats).word_count == 10
+    end
+
+    test "includes the speaker sheet name" do
+      user = user_fixture()
+      project = project_fixture(user)
+      speaker = sheet_fixture(project, %{name: "Captain Mira"})
+
+      localized_text_fixture(project.id, %{
+        locale_code: "es",
+        source_type: "flow_node",
+        speaker_sheet_id: speaker.id,
+        word_count: 7
+      })
+
+      assert [%{speaker_name: "Captain Mira", speaker_sheet_id: speaker_id}] =
+               Reports.word_counts_by_speaker(project.id, "es")
+
+      assert speaker_id == speaker.id
     end
   end
 

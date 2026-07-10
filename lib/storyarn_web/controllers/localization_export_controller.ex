@@ -17,6 +17,7 @@ defmodule StoryarnWeb.LocalizationExportController do
         opts = [locale_code: locale]
         opts = maybe_add_filter(opts, :status, conn.params["status"])
         opts = maybe_add_filter(opts, :source_type, conn.params["source_type"])
+        opts = maybe_add_filter(opts, :search, conn.params["search"])
 
         case format do
           "xlsx" ->

@@ -22,6 +22,8 @@ defmodule StoryarnWeb.LocalizationToolbarLive do
 
   alias Storyarn.Localization
 
+  @max_import_bytes 5 * 1024 * 1024
+
   @impl true
   def mount(_params, session, socket) do
     if locale = session["locale"], do: Gettext.put_locale(Storyarn.Gettext, locale)
@@ -35,10 +37,20 @@ defmodule StoryarnWeb.LocalizationToolbarLive do
       |> assign(:selected_locale, session["selected_locale"])
       |> assign(:has_provider, session["has_provider"] || false)
       |> assign(:can_edit, session["can_edit"] || false)
+      |> assign(:filters, session["filters"] || %{})
+      |> assign(
+        :active_run,
+        Localization.get_active_translation_run(session["project_id"], session["selected_locale"])
+      )
       |> assign(:inject_target, session["inject_target"])
 
     if connected?(socket) do
       Phoenix.PubSub.subscribe(Storyarn.PubSub, shell_topic(session["project_id"]))
+
+      Phoenix.PubSub.subscribe(
+        Storyarn.PubSub,
+        Storyarn.Localization.TranslationRunCrud.topic(session["project_id"])
+      )
     end
 
     {:ok, socket, layout: false}
@@ -58,7 +70,10 @@ defmodule StoryarnWeb.LocalizationToolbarLive do
         id="localization-toolbar"
         export-csv-url={export_url(assigns, :csv)}
         export-xlsx-url={export_url(assigns, :xlsx)}
+        glossary-url={glossary_url(assigns)}
         has-provider={@has_provider}
+        can-edit={@can_edit}
+        active-run={run_props(@active_run)}
       />
     </div>
     """
@@ -74,58 +89,110 @@ defmodule StoryarnWeb.LocalizationToolbarLive do
     end
   end
 
+  def handle_event("cancel_translation_run", %{"id" => run_id}, socket) do
+    with true <- socket.assigns.can_edit,
+         {id, ""} <- Integer.parse(to_string(run_id)),
+         run when not is_nil(run) <- Localization.get_translation_run(socket.assigns.project_id, id),
+         {:ok, cancelled} <- Localization.cancel_translation_run(run) do
+      {:reply, %{ok: true}, assign(socket, :active_run, cancelled)}
+    else
+      _reason -> {:reply, %{ok: false}, socket}
+    end
+  end
+
+  def handle_event("import_csv", %{"content" => content}, socket) when is_binary(content) do
+    cond do
+      not socket.assigns.can_edit ->
+        {:reply, %{ok: false, error: "unauthorized"}, socket}
+
+      byte_size(content) > @max_import_bytes ->
+        {:reply, %{ok: false, error: "file_too_large"}, socket}
+
+      true ->
+        case Localization.import_csv(socket.assigns.project_id, content) do
+          {:ok, result} ->
+            Phoenix.PubSub.broadcast(
+              Storyarn.PubSub,
+              shell_topic(socket.assigns.project_id),
+              {:languages_changed, nil}
+            )
+
+            {:reply,
+             %{
+               ok: true,
+               updated: result.updated,
+               skipped: result.skipped,
+               errors: Enum.map(result.errors, fn {line, reason} -> %{line: line, error: inspect(reason)} end)
+             }, socket}
+
+          {:error, reason} ->
+            {:reply, %{ok: false, error: inspect(reason)}, socket}
+        end
+    end
+  end
+
   defp do_translate_batch(socket) do
     locale = socket.assigns.selected_locale
     project_id = socket.assigns.project_id
 
-    case Localization.translate_batch(project_id, locale) do
-      {:ok, %{translated: count}} ->
-        # Text data changed; piggyback on :languages_changed so Index/Report
-        # reload. (Naming is a bit loose but matches how `sync_texts` also
-        # broadcasts `:languages_changed` even though only text rows changed.)
-        Phoenix.PubSub.broadcast_from(
-          Storyarn.PubSub,
-          self(),
-          shell_topic(project_id),
-          {:languages_changed, nil}
-        )
+    user_id = socket.assigns.current_scope.user.id
 
-        msg =
-          dngettext(
-            "localization",
-            "Translated %{count} string.",
-            "Translated %{count} strings.",
-            count,
-            count: count
-          )
+    case Localization.enqueue_batch_translation(project_id, locale, user_id) do
+      {:ok, run} ->
+        {:reply, %{ok: true, runId: run.id}, assign(socket, :active_run, run)}
 
-        {:noreply, put_flash(socket, :info, msg)}
-
-      {:error, :rate_limited} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("localization", "Rate limited by DeepL. Try again later.")
-         )}
-
-      {:error, :quota_exceeded} ->
-        {:noreply, put_flash(socket, :error, dgettext("localization", "DeepL quota exceeded."))}
+      {:error, :already_running} ->
+        run = Localization.get_active_translation_run(project_id, locale)
+        {:reply, %{ok: true, runId: run && run.id}, assign(socket, :active_run, run)}
 
       {:error, reason} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("localization", "Translation failed: %{reason}", reason: inspect(reason))
-         )}
+        {:reply, %{ok: false, error: inspect(reason)}, socket}
     end
   end
 
   # ── Shell fan-in ──────────────────────────────────────────────────────────
   @impl true
   def handle_info({:active_locale, locale}, socket) do
-    {:noreply, assign(socket, :selected_locale, locale)}
+    run = Localization.get_active_translation_run(socket.assigns.project_id, locale)
+    {:noreply, assign(socket, selected_locale: locale, active_run: run)}
+  end
+
+  def handle_info({:translation_run_updated, run}, socket) do
+    socket =
+      if run.target_locale == socket.assigns.selected_locale do
+        assign(socket, :active_run, run)
+      else
+        socket
+      end
+
+    socket =
+      if run.status == "completed" do
+        Phoenix.PubSub.broadcast(
+          Storyarn.PubSub,
+          shell_topic(run.project_id),
+          {:languages_changed, nil}
+        )
+
+        put_flash(
+          socket,
+          :info,
+          dngettext(
+            "localization",
+            "Translated %{count} string.",
+            "Translated %{count} strings.",
+            run.translated_count,
+            count: run.translated_count
+          )
+        )
+      else
+        socket
+      end
+
+    {:noreply, socket}
+  end
+
+  def handle_info({:localization_filters, filters}, socket) do
+    {:noreply, assign(socket, :filters, filters)}
   end
 
   # Ignore toolbar/tree events we don't care about (main_sidebar_* go to the
@@ -137,12 +204,37 @@ defmodule StoryarnWeb.LocalizationToolbarLive do
   # ── URL helpers ───────────────────────────────────────────────────────────
   defp export_url(%{selected_locale: nil}, _format), do: nil
 
-  defp export_url(%{workspace_slug: ws, project_slug: p, selected_locale: locale}, format)
+  defp export_url(%{workspace_slug: ws, project_slug: p, selected_locale: locale, filters: filters}, format)
        when is_binary(ws) and is_binary(p) and is_binary(locale) do
-    ~p"/workspaces/#{ws}/projects/#{p}/localization/export/#{format}/#{locale}"
+    query =
+      filters
+      |> Enum.reject(fn {_key, value} -> is_nil(value) or value == "" end)
+      |> Map.new()
+
+    ~p"/workspaces/#{ws}/projects/#{p}/localization/export/#{format}/#{locale}?#{query}"
   end
 
   defp export_url(_, _), do: nil
+
+  defp glossary_url(%{selected_locale: nil}), do: nil
+
+  defp glossary_url(%{workspace_slug: ws, project_slug: project, selected_locale: locale}) do
+    ~p"/workspaces/#{ws}/projects/#{project}/localization/glossary/#{locale}"
+  end
+
+  defp run_props(nil), do: nil
+
+  defp run_props(run) do
+    %{
+      id: run.id,
+      status: run.status,
+      total: run.total_count,
+      processed: run.processed_count,
+      translated: run.translated_count,
+      failed: run.failed_count,
+      error: run.error
+    }
+  end
 
   @doc """
   Same shell topic format as sidebar LVs. Kept here to avoid cross-module

@@ -117,7 +117,10 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
       source_language = Localization.get_source_language(project.id)
       assert source_language.locale_code == "es-419"
-      assert Localization.get_language_by_locale(project.id, "en") == nil
+
+      previous_source = Localization.get_language_by_locale(project.id, "en")
+      refute previous_source.is_source
+      assert previous_source.archived_at == nil
     end
 
     test "deletes project via delete_project event", %{conn: conn, user: user} do

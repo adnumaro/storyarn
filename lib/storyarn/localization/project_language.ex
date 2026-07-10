@@ -10,6 +10,7 @@ defmodule Storyarn.Localization.ProjectLanguage do
   - `name` - Display name (e.g., "English", "Spanish")
   - `is_source` - Whether this is the source/original language
   - `position` - Sort order in the UI
+  - `archived_at` - Soft-deletion timestamp for target languages
   """
   use Ecto.Schema
 
@@ -23,6 +24,7 @@ defmodule Storyarn.Localization.ProjectLanguage do
           name: String.t() | nil,
           is_source: boolean(),
           position: integer(),
+          archived_at: DateTime.t() | nil,
           project_id: integer() | nil,
           project: Project.t() | Ecto.Association.NotLoaded.t() | nil,
           inserted_at: DateTime.t() | nil,
@@ -34,6 +36,7 @@ defmodule Storyarn.Localization.ProjectLanguage do
     field :name, :string
     field :is_source, :boolean, default: false
     field :position, :integer, default: 0
+    field :archived_at, :utc_datetime
 
     belongs_to :project, Project
 
@@ -45,7 +48,7 @@ defmodule Storyarn.Localization.ProjectLanguage do
   """
   def create_changeset(language, attrs) do
     language
-    |> cast(attrs, [:locale_code, :name, :is_source, :position])
+    |> cast(attrs, [:locale_code, :name, :is_source, :position, :archived_at])
     |> validate_required([:locale_code, :name])
     |> validate_length(:locale_code, min: 2, max: 10)
     |> validate_length(:name, min: 1, max: 100)
@@ -62,7 +65,7 @@ defmodule Storyarn.Localization.ProjectLanguage do
   """
   def update_changeset(language, attrs) do
     language
-    |> cast(attrs, [:name, :is_source, :position])
+    |> cast(attrs, [:name, :is_source, :position, :archived_at])
     |> validate_length(:name, min: 1, max: 100)
     |> unique_constraint(:project_id,
       name: :project_languages_one_source,

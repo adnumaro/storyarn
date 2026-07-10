@@ -78,7 +78,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       {:ok, view, _html} = live(conn, loc_path(project))
 
       vue = get_index_vue(view)
-      assert vue.props["has-target-languages"] == false
+      assert vue.props["capabilities"]["hasTargetLanguages"] == false
     end
 
     test "passes sidebar props with source language", %{conn: conn, user: user} do
@@ -391,7 +391,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       {:ok, view, _html} = live(conn, loc_path(project))
 
       vue = get_index_vue(view)
-      assert vue.props["has-target-languages"] == false
+      assert vue.props["capabilities"]["hasTargetLanguages"] == false
 
       sidebar = get_sidebar_live(view, project)
       render_click(sidebar, "add_target_language", %{"locale_code" => "fr"})
@@ -412,7 +412,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       render_click(sidebar, "add_target_language", %{"locale_code" => ""})
 
       vue = get_index_vue(view)
-      assert vue.props["has-target-languages"] == false
+      assert vue.props["capabilities"]["hasTargetLanguages"] == false
     end
 
     test "viewer cannot add target language", %{conn: conn, user: user} do
@@ -448,7 +448,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
       render(view)
       vue = get_index_vue(view)
-      assert vue.props["has-target-languages"] == false
+      assert vue.props["capabilities"]["hasTargetLanguages"] == false
     end
 
     test "viewer cannot remove a language", %{conn: conn, user: user} do
@@ -548,7 +548,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       {:ok, view, _html} = live(conn, loc_path(project))
 
       vue = get_index_vue(view)
-      assert vue.props["can-edit"] == false
+      assert vue.props["capabilities"]["canEdit"] == false
 
       sidebar = get_sidebar_props(view)
       assert sidebar["canEdit"] == false
@@ -619,6 +619,71 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
       vue = get_index_vue(view)
       assert Enum.any?(vue.props["texts"], fn t -> t["sourceText"] == "Filter me" end)
+    end
+  end
+
+  describe "inline translation workbench" do
+    setup :register_and_log_in_user
+
+    test "loads a canonical selected-text route and saves translation metadata", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      text = localized_text_fixture(project.id, %{source_text: "Hello {name}", locale_code: "es"})
+
+      path = loc_path(project) <> "/#{text.id}"
+      {:ok, view, _html} = live(conn, path)
+
+      selected = get_index_vue(view).props["selected-text"]
+      assert selected["id"] == text.id
+      assert selected["placeholders"] == ["{name}"]
+      assert selected["voStatus"] == "none"
+
+      render_click(view, "save_translation", %{
+        "id" => text.id,
+        "lock_version" => selected["lockVersion"],
+        "localized_text" => %{
+          "translated_text" => "Hola {name}",
+          "status" => "review",
+          "translator_notes" => "Checked in context",
+          "vo_status" => "needed"
+        }
+      })
+
+      updated = Localization.get_text!(project.id, text.id)
+      assert updated.translated_text == "Hola {name}"
+      assert updated.status == "review"
+      assert updated.translator_notes == "Checked in context"
+      assert updated.vo_status == "needed"
+      assert updated.translated_by_id == user.id
+      assert updated.translated_source_hash == updated.source_text_hash
+    end
+
+    test "does not overwrite a newer translation with a stale lock version", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      text = localized_text_fixture(project.id, %{source_text: "Hello", locale_code: "es"})
+
+      {:ok, view, _html} = live(conn, loc_path(project) <> "/#{text.id}")
+      selected = get_index_vue(view).props["selected-text"]
+
+      assert {:ok, server_version} =
+               Localization.update_text(text, %{"translated_text" => "Server version", "status" => "draft"})
+
+      assert server_version.lock_version > selected["lockVersion"]
+
+      render_click(view, "save_translation", %{
+        "id" => text.id,
+        "lock_version" => selected["lockVersion"],
+        "localized_text" => %{"translated_text" => "Stale client version", "status" => "draft"}
+      })
+
+      assert Localization.get_text!(project.id, text.id).translated_text == "Server version"
     end
   end
 

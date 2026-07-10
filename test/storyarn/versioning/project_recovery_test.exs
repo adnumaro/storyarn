@@ -14,6 +14,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Localization
   alias Storyarn.Repo
+  alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
   alias Storyarn.Versioning.ProjectRecovery
@@ -265,7 +266,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
           config: %{"label" => "Descendant"}
         })
 
-      Repo.update_all(from(b in Storyarn.Sheets.Block, where: b.id == ^inherited_block.id),
+      Repo.update_all(from(b in Block, where: b.id == ^inherited_block.id),
         set: [inherited_from_block_id: source_block.id]
       )
 
@@ -311,7 +312,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       inherited_block =
         block_fixture(child, %{type: "text", position: 0, variable_name: "descendant"})
 
-      Repo.update_all(from(b in Storyarn.Sheets.Block, where: b.id == ^inherited_block.id),
+      Repo.update_all(from(b in Block, where: b.id == ^inherited_block.id),
         set: [inherited_from_block_id: source_block.id]
       )
 
@@ -319,7 +320,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
 
       # Remove the original blocks so the snapshot's old ids exist nowhere in the
       # DB — exactly the state of a fresh import from an exported bundle.
-      Repo.delete_all(from(b in Storyarn.Sheets.Block, where: b.sheet_id in ^[parent.id, child.id]))
+      Repo.delete_all(from(b in Block, where: b.sheet_id in ^[parent.id, child.id]))
 
       {:ok, recovered} = ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id)
 
@@ -328,7 +329,9 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       recovered_child = Enum.find(recovered_sheets, &(&1.name == "Child Sheet"))
 
       recovered_source = Enum.find(Storyarn.Sheets.list_blocks(recovered_parent.id), &(&1.variable_name == "ancestor"))
-      recovered_inherited = Enum.find(Storyarn.Sheets.list_blocks(recovered_child.id), &(&1.variable_name == "descendant"))
+
+      recovered_inherited =
+        Enum.find(Storyarn.Sheets.list_blocks(recovered_child.id), &(&1.variable_name == "descendant"))
 
       assert recovered_inherited.inherited_from_block_id == recovered_source.id
     end
