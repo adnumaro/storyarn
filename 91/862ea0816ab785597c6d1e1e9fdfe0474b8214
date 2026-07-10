@@ -1,0 +1,237 @@
+priv/docs/en/world-building/02-blocks-and-variables.md
+  s_c9540dd413b9b1::t_8cd7647e6f6836 12,35,101
+priv/docs/en/welcome/00-start-here.md
+  s_c9540dd413b9b1::t_096391c70dc438 20
+  s_c9540dd413b9b1::t_15e1e8ab29e018 30,44
+priv/docs/es/localization/01-localization-overview.md
+  s_c9540dd413b9b1::t_ba37d0fb56961c 5,10,45,47,75,77,79,101
+  s_c9540dd413b9b1::t_d31a9b16a9f26d 18
+  s_c9540dd413b9b1::t_78eeefdc28aa89 20
+  s_c9540dd413b9b1::t_3d51a16ae109a4 95
+  s_c9540dd413b9b1::t_8750a0ef353838 97
+  s_c9540dd413b9b1::t_8cd7647e6f6836 49
+  s_c9540dd413b9b1::t_aabc22b9b0fdd9 81
+priv/docs/es/project-management/05-recovery-and-trash.md
+  s_c9540dd413b9b1::t_920cc6ffdccebe 1-55
+priv/docs/es/narrative-design/node-types/05-hub-jump.md
+  s_c9540dd413b9b1::t_8cd7647e6f6836 16
+priv/docs/en/quick-start/01-create-workspace.md
+  s_c9540dd413b9b1::t_8750a0ef353838 30,36
+  s_c9540dd413b9b1::t_c0885eeb09ac86 26,34
+  s_c9540dd413b9b1::t_8cd7647e6f6836 53
+  s_c9540dd413b9b1::t_e8ec3fe6fe08bd 38
+  s_c9540dd413b9b1::t_2ea2017fc88293 37
+priv/docs/en/project-management/03-templates.md
+  s_c9540dd413b9b1::t_920cc6ffdccebe 1-39
+priv/docs/es/narrative-design/node-types/08-annotation.md
+  s_c9540dd413b9b1::t_8cd7647e6f6836 14
+priv/docs/en/narrative-design/03-instruction-editor.md
+  s_c9540dd413b9b1::t_753c23b918256c 21
+priv/docs/en/localization/01-localization-overview.md
+  s_c9540dd413b9b1::t_8cd7647e6f6836 20,49
+  s_c9540dd413b9b1::t_d31a9b16a9f26d 18
+  s_c9540dd413b9b1::t_8750a0ef353838 97
+  s_c9540dd413b9b1::t_ba37d0fb56961c 5,10,45,47,75,77,79,101
+  s_c9540dd413b9b1::t_aabc22b9b0fdd9 81
+  s_c9540dd413b9b1::t_3d51a16ae109a4 95
+priv/docs/es/import-export/01-import-export-overview.md
+  s_c9540dd413b9b1::t_8cd7647e6f6836 25
+  s_c9540dd413b9b1::t_aabc22b9b0fdd9 65
+  s_c9540dd413b9b1::t_ba37d0fb56961c 71
+priv/docs/es/welcome/00-start-here.md
+  s_c9540dd413b9b1::t_15e1e8ab29e018 30,44
+  s_c9540dd413b9b1::t_096391c70dc438 20
+priv/docs/en/narrative-design/04-debug-mode.md
+  s_c9540dd413b9b1::t_aabc22b9b0fdd9 85,108,133
+  s_c9540dd413b9b1::t_8cd7647e6f6836 12,40
+priv/docs/en/narrative-design/node-types/05-hub-jump.md
+  s_c9540dd413b9b1::t_8cd7647e6f6836 16
+priv/docs/en/project-management/02-assets.md
+  s_c9540dd413b9b1::t_920cc6ffdccebe 1-48
+priv/docs/en/narrative-design/node-types/08-annotation.md
+  s_c9540dd413b9b1::t_78eeefdc28aa89 14
+priv/docs/en/narrative-design/node-types/04-instruction.md
+  s_c9540dd413b9b1::t_753c23b918256c 16
+priv/docs/en/scene-design/02-zones.md
+  s_c9540dd413b9b1::t_66f2403c1835f9 100
+  s_c9540dd413b9b1::t_ba86ca438636c9 12
+priv/docs/es/narrative-design/node-types/04-instruction.md
+  s_c9540dd413b9b1::t_753c23b918256c 16
+priv/docs/en/welcome/02-core-workflow.md
+  s_c9540dd413b9b1::t_8750a0ef353838 95-101
+  s_c9540dd413b9b1::t_66f2403c1835f9 91
+  s_c9540dd413b9b1::t_ba86ca438636c9 22,34,59,71,83,113
+  s_c9540dd413b9b1::t_e8ec3fe6fe08bd 30,109,111
+  s_c9540dd413b9b1::t_8cd7647e6f6836 67
+  s_c9540dd413b9b1::t_2f28fa6c16f7a4 92-94
+priv/docs/en/world-building/03-table-blocks.md
+  s_c9540dd413b9b1::t_0a0777059b0c4d 12,124
+  s_c9540dd413b9b1::t_961242b470e3e0 43,104
+priv/docs/es/collaboration/01-collaboration-overview.md
+  s_c9540dd413b9b1::t_aabc22b9b0fdd9 20,28,44
+priv/docs/en/narrative-design/node-types/02-dialogue.md
+  s_c9540dd413b9b1::t_753c23b918256c 14,47,80
+priv/docs/en/world-building/01-sheets-overview.md
+  s_c9540dd413b9b1::t_e8ec3fe6fe08bd 12,35
+  s_c9540dd413b9b1::t_c0885eeb09ac86 87
+  s_c9540dd413b9b1::t_3d51a16ae109a4 14
+  s_c9540dd413b9b1::t_8cd7647e6f6836 70
+  s_c9540dd413b9b1::t_961242b470e3e0 112
+priv/docs/es/narrative-design/node-types/06-subflow.md
+  s_c9540dd413b9b1::t_78eeefdc28aa89 14
+priv/docs/es/world-building/02-blocks-and-variables.md
+  s_c9540dd413b9b1::t_8cd7647e6f6836 12,35,101
+priv/docs/es/narrative-design/node-types/01-entry-exit.md
+  s_c9540dd413b9b1::t_8cd7647e6f6836 14
+priv/docs/es/narrative-design/03-instruction-editor.md
+  s_c9540dd413b9b1::t_753c23b918256c 21
+priv/docs/en/narrative-design/02-condition-editor.md
+  s_c9540dd413b9b1::t_753c23b918256c 21
+priv/docs/es/welcome/02-core-concepts.md
+  s_c9540dd413b9b1::t_e8ec3fe6fe08bd 17
+  s_c9540dd413b9b1::t_096391c70dc438 14-16,18,26
+priv/docs/en/collaboration/01-collaboration-overview.md
+  s_c9540dd413b9b1::t_aabc22b9b0fdd9 20,28,44
+priv/docs/en/narrative-design/node-types/01-entry-exit.md
+  s_c9540dd413b9b1::t_8cd7647e6f6836 14
+priv/docs/en/quick-start/02-first-sheet.md
+  s_c9540dd413b9b1::t_5a58c28351303b 18,38,58
+  s_c9540dd413b9b1::t_8cd7647e6f6836 28
+priv/docs/en/scene-design/04-connections-routes.md
+  s_c9540dd413b9b1::t_66f2403c1835f9 12
+priv/docs/es/quick-start/03-first-flow.md
+  s_c9540dd413b9b1::t_310bd1b10649fd 44
+  s_c9540dd413b9b1::t_78eeefdc28aa89 69
+  s_c9540dd413b9b1::t_8cd7647e6f6836 85
+  s_c9540dd413b9b1::t_5a58c28351303b 18,30,55
+priv/docs/es/narrative-design/01-flows-overview.md
+  s_c9540dd413b9b1::t_78eeefdc28aa89 66
+  s_c9540dd413b9b1::t_e5e78c9cb81e53 12
+  s_c9540dd413b9b1::t_8cd7647e6f6836 92
+priv/docs/es/world-building/03-table-blocks.md
+  s_c9540dd413b9b1::t_0a0777059b0c4d 12,124
+  s_c9540dd413b9b1::t_961242b470e3e0 43,104
+priv/docs/en/narrative-design/node-types/06-subflow.md
+  s_c9540dd413b9b1::t_961242b470e3e0 14
+priv/docs/en/project-management/01-project-dashboard.md
+  s_c9540dd413b9b1::t_71f4c6b7dc997f 31
+  s_c9540dd413b9b1::t_920cc6ffdccebe 1-30,32-45
+priv/docs/en/narrative-design/01-flows-overview.md
+  s_c9540dd413b9b1::t_961242b470e3e0 66
+  s_c9540dd413b9b1::t_e5e78c9cb81e53 12
+  s_c9540dd413b9b1::t_8cd7647e6f6836 92
+priv/docs/en/narrative-design/node-types/03-condition.md
+  s_c9540dd413b9b1::t_753c23b918256c 16
+  s_c9540dd413b9b1::t_ba86ca438636c9 29
+priv/docs/es/welcome/01-what-is-storyarn.md
+  s_c9540dd413b9b1::t_d31a9b16a9f26d 50
+  s_c9540dd413b9b1::t_47b9fc6c1cb660 14,34,40,46,52
+  s_c9540dd413b9b1::t_e8ec3fe6fe08bd 32
+test/storyarn_web/live/docs_live/show_test.exs
+  s_c9540dd413b9b1::t_863778720a664c 19-20,126-147
+priv/docs/es/scene-design/04-connections-routes.md
+  s_c9540dd413b9b1::t_66f2403c1835f9 12
+priv/docs/es/scene-design/02-zones.md
+  s_c9540dd413b9b1::t_66f2403c1835f9 100
+  s_c9540dd413b9b1::t_ba86ca438636c9 12
+priv/docs/es/scene-design/06-actions-conditions-exploration.md
+  s_c9540dd413b9b1::t_78eeefdc28aa89 12
+priv/docs/es/project-management/02-assets.md
+  s_c9540dd413b9b1::t_920cc6ffdccebe 1-48
+priv/docs/es/quick-start/02-first-sheet.md
+  s_c9540dd413b9b1::t_5a58c28351303b 18,38,58
+  s_c9540dd413b9b1::t_78eeefdc28aa89 28
+priv/docs/en/welcome/02-core-concepts.md
+  s_c9540dd413b9b1::t_096391c70dc438 14-16
+  s_c9540dd413b9b1::t_e8ec3fe6fe08bd 17-18
+  s_c9540dd413b9b1::t_d31a9b16a9f26d 26
+priv/docs/es/quick-start/01-create-workspace.md
+  s_c9540dd413b9b1::t_e8ec3fe6fe08bd 38
+  s_c9540dd413b9b1::t_c0885eeb09ac86 26,34
+  s_c9540dd413b9b1::t_78eeefdc28aa89 53
+  s_c9540dd413b9b1::t_8750a0ef353838 30,36
+  s_c9540dd413b9b1::t_d3ef6ae88201fa 37
+priv/docs/es/scene-design/05-layers-visibility.md
+  s_c9540dd413b9b1::t_8cd7647e6f6836 12
+priv/docs/en/scene-design/05-layers-visibility.md
+  s_c9540dd413b9b1::t_8cd7647e6f6836 12
+priv/docs/es/project-management/01-project-dashboard.md
+  s_c9540dd413b9b1::t_71f4c6b7dc997f 31
+  s_c9540dd413b9b1::t_920cc6ffdccebe 1-30,32-45
+priv/docs/en/scene-design/01-scenes-overview.md
+  s_c9540dd413b9b1::t_78eeefdc28aa89 12
+priv/docs/en/quick-start/03-first-flow.md
+  s_c9540dd413b9b1::t_5a58c28351303b 18,30,55
+  s_c9540dd413b9b1::t_310bd1b10649fd 44
+  s_c9540dd413b9b1::t_8cd7647e6f6836 69,85
+priv/docs/es/scene-design/03-pins.md
+  s_c9540dd413b9b1::t_ba86ca438636c9 12
+priv/docs/es/welcome/02-core-workflow.md
+  s_c9540dd413b9b1::t_8750a0ef353838 95-101
+  s_c9540dd413b9b1::t_66f2403c1835f9 91
+  s_c9540dd413b9b1::t_ba86ca438636c9 22,34,59,71,83,113
+  s_c9540dd413b9b1::t_e8ec3fe6fe08bd 30,109,111
+  s_c9540dd413b9b1::t_8cd7647e6f6836 67
+  s_c9540dd413b9b1::t_47019335218687 92-94
+priv/docs/es/project-management/03-templates.md
+  s_c9540dd413b9b1::t_920cc6ffdccebe 1-39
+priv/docs/en/scene-design/03-pins.md
+  s_c9540dd413b9b1::t_ba86ca438636c9 12
+priv/docs/en/welcome/01-what-is-storyarn.md
+  s_c9540dd413b9b1::t_d31a9b16a9f26d 50
+  s_c9540dd413b9b1::t_47b9fc6c1cb660 14,34,40,46,52
+  s_c9540dd413b9b1::t_e8ec3fe6fe08bd 32
+priv/docs/es/world-building/01-sheets-overview.md
+  s_c9540dd413b9b1::t_c0885eeb09ac86 87
+  s_c9540dd413b9b1::t_e8ec3fe6fe08bd 12,35
+  s_c9540dd413b9b1::t_8cd7647e6f6836 70
+  s_c9540dd413b9b1::t_961242b470e3e0 112
+  s_c9540dd413b9b1::t_3d51a16ae109a4 14
+priv/docs/en/import-export/01-import-export-overview.md
+  s_c9540dd413b9b1::t_aabc22b9b0fdd9 65
+  s_c9540dd413b9b1::t_ba37d0fb56961c 71
+  s_c9540dd413b9b1::t_8cd7647e6f6836 25
+priv/docs/en/scene-design/06-actions-conditions-exploration.md
+  s_c9540dd413b9b1::t_78eeefdc28aa89 12
+priv/docs/en/narrative-design/node-types/07-sequence.md
+  s_c9540dd413b9b1::t_8cd7647e6f6836 45
+  s_c9540dd413b9b1::t_961242b470e3e0 16
+lib/storyarn/docs/guide.ex
+  s_c9540dd413b9b1::t_98a2215fc6b0d4 91-98
+priv/docs/es/narrative-design/02-condition-editor.md
+  s_c9540dd413b9b1::t_753c23b918256c 21
+priv/docs/es/narrative-design/node-types/07-sequence.md
+  s_c9540dd413b9b1::t_8cd7647e6f6836 16,45
+priv/docs/es/scene-design/01-scenes-overview.md
+  s_c9540dd413b9b1::t_78eeefdc28aa89 12
+priv/docs/es/narrative-design/node-types/03-condition.md
+  s_c9540dd413b9b1::t_753c23b918256c 16
+  s_c9540dd413b9b1::t_8cd7647e6f6836 29
+priv/docs/en/project-management/05-recovery-and-trash.md
+  s_c9540dd413b9b1::t_920cc6ffdccebe 2-5,10,12-13,15,17,19,21,23-25,27,29,31,33,35,37,39,41-46,48,50,52-55
+priv/docs/es/narrative-design/04-debug-mode.md
+  s_c9540dd413b9b1::t_8cd7647e6f6836 12,40
+  s_c9540dd413b9b1::t_aabc22b9b0fdd9 85,108,133
+priv/docs/en/project-management/04-project-settings.md
+  s_c9540dd413b9b1::t_920cc6ffdccebe 1-55
+priv/docs/es/project-management/04-project-settings.md
+  s_c9540dd413b9b1::t_920cc6ffdccebe 1-55
+priv/docs/es/narrative-design/node-types/02-dialogue.md
+  s_c9540dd413b9b1::t_753c23b918256c 14,47,80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "91862ea0816ab785597c6d1e1e9fdfe0474b8214",
+  "prompts": {},
+  "sessions": {
+    "s_c9540dd413b9b1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4bf8-a263-75c0-823d-4dae08eadf72",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
