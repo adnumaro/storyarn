@@ -1,0 +1,35 @@
+assets/app/components/onboarding/OnboardingDialog.vue
+  s_4a0b9957cfe7c2::t_13e72a1d6eedb4 2,48-63,90,98,136,138,141-143
+  s_4a0b9957cfe7c2::t_f9c5111bdd3b61 144
+priv/gettext/settings.pot
+  s_4a0b9957cfe7c2::t_8b26de6b3bb12e 48-52
+priv/gettext/es/LC_MESSAGES/settings.po
+  s_4a0b9957cfe7c2::t_8b26de6b3bb12e 48-52
+priv/gettext/en/LC_MESSAGES/settings.po
+  s_4a0b9957cfe7c2::t_8b26de6b3bb12e 48-52
+assets/app/test/components/onboarding/OnboardingDialog.test.ts
+  s_4a0b9957cfe7c2::t_13e72a1d6eedb4 3,10,47-48,50-52,67-68,86-122,124-128,141
+  s_4a0b9957cfe7c2::t_f9d265b9703c77 2,45,123
+test/storyarn/onboarding_test.exs
+  s_4a0b9957cfe7c2::t_13e72a1d6eedb4 8,30,32-44
+  s_4a0b9957cfe7c2::t_d19cc17e53394c 31
+  s_4a0b9957cfe7c2::t_ad2a4252d957d8 45
+lib/storyarn/onboarding.ex
+  s_4a0b9957cfe7c2::t_13e72a1d6eedb4 55,100-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "29b26e2e85cc45332bb8a64a37073893f96daf32",
+  "prompts": {},
+  "sessions": {
+    "s_4a0b9957cfe7c2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4c00-fd7d-7d20-a29e-6f01b61a5e2a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
