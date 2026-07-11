@@ -146,13 +146,7 @@ function templateMetricKey(group: string, value: string) {
   return `workspace.new_project.fields.${group}.options.${value}`;
 }
 
-// Keep the interaction instant in Vue while mirroring the value in LiveView.
-// Validation updates the form assign and can remount this root component, so the
-// server-backed prop restores the open modal instead of resetting it to closed.
-const isNewProjectModalOpen = ref(newProjectModalOpen);
-
 function setNewProjectModalOpen(open: boolean) {
-  isNewProjectModalOpen.value = open;
   live.pushEvent("set_new_project_modal_open", { open });
 }
 
@@ -352,7 +346,7 @@ function templateCountLabel(template: ProjectTemplate) {
   </div>
 
   <!-- New Project Modal -->
-  <Dialog :open="isNewProjectModalOpen" @update:open="setNewProjectModalOpen">
+  <Dialog :open="newProjectModalOpen" @update:open="setNewProjectModalOpen">
     <DialogContent class="sm:max-w-3xl">
       <DialogHeader class="sr-only">
         <DialogTitle>{{ $t("workspace.dashboard.new_project") }}</DialogTitle>

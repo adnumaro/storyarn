@@ -85,15 +85,6 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
      )}
   end
 
-  def handle_event("validate_project", %{"project" => project_params}, socket) do
-    changeset =
-      %Project{}
-      |> Projects.change_new_project(project_params)
-      |> Map.put(:action, :validate)
-
-    {:noreply, assign(socket, :project_form, to_form(changeset))}
-  end
-
   def handle_event("set_new_project_modal_open", %{"open" => open}, socket) when is_boolean(open) do
     {:noreply, assign(socket, :new_project_modal_open, open)}
   end
