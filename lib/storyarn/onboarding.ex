@@ -52,7 +52,7 @@ defmodule Storyarn.Onboarding do
     guides =
       Map.new(tutorials(), fn tutorial ->
         progress = Map.get(progress_by_tutorial, tutorial)
-        state = tutorial_state(progress, eligible)
+        state = tutorial_state(progress, eligible, guide_version(tutorial))
 
         {Atom.to_string(tutorial), %{state: state, version: guide_version(tutorial)}}
       end)
@@ -97,10 +97,12 @@ defmodule Storyarn.Onboarding do
     end
   end
 
-  defp tutorial_state(%TutorialProgress{completed_at: %DateTime{}}, _eligible), do: :completed
-  defp tutorial_state(%TutorialProgress{completed_at: nil}, _eligible), do: :pending
-  defp tutorial_state(nil, true), do: :pending
-  defp tutorial_state(nil, false), do: :inactive
+  defp tutorial_state(%TutorialProgress{completed_at: %DateTime{}, guide_version: version}, _eligible, current_version)
+       when version == current_version, do: :completed
+
+  defp tutorial_state(%TutorialProgress{}, _eligible, _current_version), do: :pending
+  defp tutorial_state(nil, true, _current_version), do: :pending
+  defp tutorial_state(nil, false, _current_version), do: :inactive
 
   defp restart_tutorials(_user, [], progress), do: Enum.reverse(progress)
 

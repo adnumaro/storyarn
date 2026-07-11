@@ -45,3 +45,8 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Security Settings"
 msgstr ""
+
+#: lib/storyarn_web/live/settings_live/tutorials.ex:17
+#, elixir-autogen, elixir-format
+msgid "Tutorial Settings"
+msgstr ""

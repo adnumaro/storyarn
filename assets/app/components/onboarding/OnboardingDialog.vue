@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { ArrowLeft, ArrowRight, BookOpen, Check, PackageCheck, Sparkles } from "lucide-vue-next";
 import { useI18n } from "vue-i18n";
 import { Button } from "@components/ui/button";
@@ -45,6 +45,22 @@ const slideDescriptionKey = computed(
   () => `onboarding.guides.${guideKey}.slides.${slideKey.value}.description`,
 );
 
+function tutorialSnoozed(guideKey: OnboardingGuideKey): boolean {
+  try {
+    return Boolean(window.sessionStorage.getItem(sessionKey(guideKey)));
+  } catch {
+    return false;
+  }
+}
+
+function markTutorialSnoozed(guideKey: OnboardingGuideKey): void {
+  try {
+    window.sessionStorage.setItem(sessionKey(guideKey), "1");
+  } catch {
+    // Session storage is an optional convenience and must never block the tutorial flow.
+  }
+}
+
 function track(action: "opened" | "snoozed" | "docs_opened"): void {
   if (!typedGuideKey.value) return;
 
@@ -71,7 +87,7 @@ function openTutorial(): void {
 function snooze(): void {
   if (!typedGuideKey.value) return;
 
-  window.sessionStorage.setItem(sessionKey(typedGuideKey.value), "1");
+  markTutorialSnoozed(typedGuideKey.value);
   track("snoozed");
   closeIntentionally();
 }
@@ -79,7 +95,7 @@ function snooze(): void {
 function finish(): void {
   if (!typedGuideKey.value) return;
 
-  window.sessionStorage.setItem(sessionKey(typedGuideKey.value), "1");
+  markTutorialSnoozed(typedGuideKey.value);
   live.pushEvent("complete_onboarding_tutorial", {
     tutorial: typedGuideKey.value,
     source: openSource.value,
@@ -117,12 +133,15 @@ function nextStep(): void {
   step.value = Math.min((guide.value?.slides.length ?? 1) - 1, step.value + 1);
 }
 
-onMounted(() => {
+function maybeAutoShow(): void {
   if (!autoShow || !typedGuideKey.value) return;
-  if (window.sessionStorage.getItem(sessionKey(typedGuideKey.value))) return;
+  if (tutorialSnoozed(typedGuideKey.value)) return;
 
   show("auto");
-});
+}
+
+onMounted(maybeAutoShow);
+watch([typedGuideKey, () => autoShow], maybeAutoShow);
 
 defineExpose({ openTutorial });
 </script>

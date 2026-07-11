@@ -5,6 +5,7 @@ defmodule Storyarn.OnboardingTest do
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.Onboarding
+  alias Storyarn.Onboarding.TutorialProgress
   alias Storyarn.Repo
 
   describe "summary/1" do
@@ -25,6 +26,22 @@ defmodule Storyarn.OnboardingTest do
 
       assert summary.eligible
       assert Enum.all?(summary.guides, fn {_key, guide} -> guide.state == :pending end)
+    end
+
+    test "makes a completed guide pending when its stored version differs" do
+      user = onboarding_user_fixture()
+
+      Repo.insert!(%TutorialProgress{
+        user_id: user.id,
+        tutorial: :workspace,
+        guide_version: Onboarding.guide_version(:workspace) + 1,
+        completed_at: DateTime.utc_now(:second)
+      })
+
+      summary = Onboarding.summary(Scope.for_user(user))
+
+      assert summary.guides["workspace"].state == :pending
+      assert summary.guides["workspace"].version == Onboarding.guide_version(:workspace)
     end
   end
 
