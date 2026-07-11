@@ -194,7 +194,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
              content_type: content_type,
              size: byte_size(binary_data)
            }),
-         {:ok, _dimensions} <- ImageProcessor.get_dimensions_from_binary(binary_data) do
+         {:ok, ^content_type} <- ImageProcessor.content_type_from_binary(binary_data) do
       :ok
     else
       _ -> {:error, :invalid_banner_upload}

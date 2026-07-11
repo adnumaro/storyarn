@@ -41,6 +41,32 @@ defmodule Storyarn.Assets.ImageProcessorTest do
     end
   end
 
+  describe "content_type_from_binary/1" do
+    test "detects the actual image format from binary data" do
+      assert {:ok, "image/jpeg"} =
+               @test_image_path
+               |> File.read!()
+               |> ImageProcessor.content_type_from_binary()
+
+      assert {:ok, "image/png"} =
+               "test/fixtures/images/quadrant_map.png"
+               |> File.read!()
+               |> ImageProcessor.content_type_from_binary()
+
+      assert {:ok, "image/webp"} =
+               "test/fixtures/images/snapshots/strait_island.webp"
+               |> File.read!()
+               |> ImageProcessor.content_type_from_binary()
+
+      gif_data = Base.decode64!("R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==")
+      assert {:ok, "image/gif"} = ImageProcessor.content_type_from_binary(gif_data)
+    end
+
+    test "rejects non-image binary data" do
+      assert {:error, _reason} = ImageProcessor.content_type_from_binary("not an image")
+    end
+  end
+
   describe "generate_thumbnail/2" do
     test "creates thumbnail with default size" do
       output = Path.join(@test_output_dir, "thumb.jpg")

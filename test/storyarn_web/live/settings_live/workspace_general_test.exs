@@ -291,6 +291,24 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
       assert html =~ "Invalid file data or upload failed."
       assert Workspaces.get_workspace!(workspace.id).banner_url == nil
     end
+
+    test "rejects image bytes whose real format differs from the claimed MIME", %{
+      conn: conn,
+      workspace: workspace
+    } do
+      {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/general")
+      jpeg_data = File.read!("test/fixtures/images/test_image.jpg")
+
+      html =
+        render_click(view, "upload_workspace_banner", %{
+          "filename" => "mislabeled.png",
+          "content_type" => "image/png",
+          "data" => "data:image/png;base64,#{Base.encode64(jpeg_data)}"
+        })
+
+      assert html =~ "Invalid file data or upload failed."
+      assert Workspaces.get_workspace!(workspace.id).banner_url == nil
+    end
   end
 
   describe "delete event" do

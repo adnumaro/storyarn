@@ -18,6 +18,13 @@ defmodule Storyarn.Assets.ImageProcessor do
   @default_quality 85
 
   @webp_types ~w(image/webp image/jpeg)
+  @content_type_by_loader %{
+    "jpegload" => "image/jpeg",
+    "pngload" => "image/png",
+    "gifload" => "image/gif",
+    "nsgifload" => "image/gif",
+    "webpload" => "image/webp"
+  }
   @avatar_max_width 500
   @avatar_max_height 500
   @banner_max_width 1920
@@ -139,6 +146,25 @@ defmodule Storyarn.Assets.ImageProcessor do
       File.rm(tmp_input)
     end
   end
+
+  @doc """
+  Detects the actual content type of binary image data using libvips.
+
+  Only formats accepted by the image upload policy are returned.
+  """
+  @spec content_type_from_binary(binary()) :: {:ok, String.t()} | {:error, term()}
+  def content_type_from_binary(binary_data) when is_binary(binary_data) do
+    with {:ok, image} <- Image.open(binary_data),
+         {:ok, loader} <- Vix.Vips.Image.header_value(image, "vips-loader"),
+         content_type when is_binary(content_type) <- content_type_for_loader(loader) do
+      {:ok, content_type}
+    else
+      {:error, reason} -> {:error, format_error(reason)}
+      _ -> {:error, "Unsupported image format"}
+    end
+  end
+
+  def content_type_from_binary(_binary_data), do: {:error, "Invalid image data"}
 
   @doc """
   Processes an image: generates thumbnail and extracts metadata.
@@ -301,6 +327,14 @@ defmodule Storyarn.Assets.ImageProcessor do
   end
 
   # Private helpers
+
+  defp content_type_for_loader(loader) when is_binary(loader) do
+    loader
+    |> String.replace_suffix("_buffer", "")
+    |> then(&Map.get(@content_type_by_loader, &1))
+  end
+
+  defp content_type_for_loader(_loader), do: nil
 
   defp thumbnail_path(source_path) do
     dir = Path.dirname(source_path)
