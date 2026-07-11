@@ -5,6 +5,7 @@ defmodule StoryarnWeb.PrivateMediaControllerTest do
   import Storyarn.AssetsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
+  import StoryarnWeb.PrivateDownloadAssertions
 
   alias Storyarn.Assets.Storage
   alias Storyarn.Repo
@@ -270,23 +271,5 @@ defmodule StoryarnWeb.PrivateMediaControllerTest do
   defp project_file_path(project_id, key) do
     encoded_key = Base.url_encode64(key, padding: false)
     "/media/projects/#{project_id}/files/#{encoded_key}"
-  end
-
-  defp assert_direct_private_response(conn, body) do
-    assert get_resp_header(conn, "location") == []
-    assert get_resp_header(conn, "accept-ranges") == ["bytes"]
-    assert get_resp_header(conn, "cache-control") == ["private, no-store, no-transform"]
-    assert get_resp_header(conn, "content-security-policy") == ["sandbox; default-src 'none'"]
-    assert get_resp_header(conn, "cross-origin-resource-policy") == ["same-origin"]
-    assert get_resp_header(conn, "x-content-type-options") == ["nosniff"]
-    assert get_resp_header(conn, "content-length") == [Integer.to_string(byte_size(body))]
-    assert_no_external_storage_response(conn)
-  end
-
-  defp assert_no_external_storage_response(conn) do
-    response = conn |> then(&inspect({&1.resp_headers, &1.resp_body})) |> String.downcase()
-
-    refute response =~ "storage.dev"
-    refute response =~ "x-amz-"
   end
 end

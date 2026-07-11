@@ -59,6 +59,31 @@ defmodule StoryarnWeb.PrivateMediaTest do
     refute PrivateMedia.project_media_key?(7, "projects/7/assets/../snapshot.json.gz")
   end
 
+  test "storage keys reject empty, malformed, and traversing paths" do
+    assert PrivateMedia.valid_storage_key?("projects/7/assets/image.png")
+
+    refute PrivateMedia.valid_storage_key?("")
+    refute PrivateMedia.valid_storage_key?("/projects/7/assets/image.png")
+    refute PrivateMedia.valid_storage_key?("projects//7/assets/image.png")
+    refute PrivateMedia.valid_storage_key?("projects/7/assets/./image.png")
+    refute PrivateMedia.valid_storage_key?("projects/7/assets/../image.png")
+    refute PrivateMedia.valid_storage_key?("projects/7/assets\\image.png")
+    refute PrivateMedia.valid_storage_key?("projects/7/assets/image.png" <> <<0>>)
+    refute PrivateMedia.valid_storage_key?(<<255>>)
+    refute PrivateMedia.valid_storage_key?(nil)
+  end
+
+  test "project snapshot keys are limited to project snapshot archives" do
+    assert PrivateMedia.project_snapshot_key?(7, "projects/7/snapshots/project/42.json.gz")
+
+    refute PrivateMedia.project_snapshot_key?(7, "projects/8/snapshots/project/42.json.gz")
+    refute PrivateMedia.project_snapshot_key?(7, "projects/7/snapshots/project/42.json")
+    refute PrivateMedia.project_snapshot_key?(7, "projects/7/snapshots/assets/42.json.gz")
+    refute PrivateMedia.project_snapshot_key?(7, "projects/7/snapshots/project/../42.json.gz")
+    refute PrivateMedia.project_snapshot_key?(7, <<255>>)
+    refute PrivateMedia.project_snapshot_key?(7, nil)
+  end
+
   describe "project_snapshot_asset_url/2" do
     test "uses the current snapshot key" do
       key = "projects/7/blobs/banner.png"

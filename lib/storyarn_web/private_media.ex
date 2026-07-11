@@ -72,16 +72,36 @@ defmodule StoryarnWeb.PrivateMedia do
     scoped_project_key?(project_id, key, ["assets", "blobs"])
   end
 
+  @doc false
+  @spec project_snapshot_key?(integer(), String.t()) :: boolean()
+  def project_snapshot_key?(project_id, key) when is_integer(project_id) and is_binary(key) do
+    valid_storage_key?(key) and
+      String.starts_with?(key, "projects/#{project_id}/snapshots/project/") and
+      String.ends_with?(key, ".json.gz")
+  end
+
+  def project_snapshot_key?(_project_id, _key), do: false
+
+  @doc false
+  @spec valid_storage_key?(term()) :: boolean()
+  def valid_storage_key?(key) when is_binary(key) do
+    key != "" and
+      String.valid?(key) and
+      not String.contains?(key, [<<0>>, "\\"]) and
+      Enum.all?(String.split(key, "/"), &(&1 not in ["", ".", ".."]))
+  end
+
+  def valid_storage_key?(_key), do: false
+
   defp scoped_project_key?(project_id, key, namespaces) when is_integer(project_id) and is_binary(key) do
     prefix = "projects/#{project_id}/"
 
-    with true <- String.valid?(key),
+    with true <- valid_storage_key?(key),
          true <- String.starts_with?(key, prefix),
          relative_key = String.replace_prefix(key, prefix, ""),
          [namespace | path_segments] <- String.split(relative_key, "/"),
          true <- namespace in namespaces,
-         true <- path_segments != [],
-         true <- valid_key_segments?([namespace | path_segments]) do
+         true <- path_segments != [] do
       true
     else
       _ -> false
@@ -89,13 +109,6 @@ defmodule StoryarnWeb.PrivateMedia do
   end
 
   defp scoped_project_key?(_project_id, _key, _namespaces), do: false
-
-  defp valid_key_segments?(segments) do
-    Enum.all?(segments, fn segment ->
-      segment not in ["", ".", ".."] and
-        not String.contains?(segment, [<<0>>, "\\"])
-    end)
-  end
 
   defp project_url_from_key(project_id, key) when is_binary(key) do
     if project_media_key?(project_id, key) do

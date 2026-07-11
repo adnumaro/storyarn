@@ -58,7 +58,6 @@ defmodule StoryarnWeb.PrivateMediaController do
 
   defp decode_project_key(encoded_key, project_id) do
     with {:ok, key} <- Base.url_decode64(encoded_key, padding: false),
-         true <- valid_storage_key?(key),
          true <- PrivateMedia.project_media_key?(project_id, key) do
       {:ok, key}
     else
@@ -67,22 +66,13 @@ defmodule StoryarnWeb.PrivateMediaController do
   end
 
   defp validate_workspace_banner_key(key, workspace_slug) do
-    if valid_storage_key?(key) and
+    if PrivateMedia.valid_storage_key?(key) and
          String.starts_with?(key, "workspaces/#{workspace_slug}/banner/") do
       :ok
     else
       {:error, :invalid_key}
     end
   end
-
-  defp valid_storage_key?(key) when is_binary(key) do
-    key != "" and
-      String.valid?(key) and
-      not String.contains?(key, [<<0>>, "\\"]) and
-      Enum.all?(String.split(key, "/"), &(&1 not in ["", ".", ".."]))
-  end
-
-  defp valid_storage_key?(_key), do: false
 
   defp parse_positive_integer(value) do
     case Integer.parse(value) do
