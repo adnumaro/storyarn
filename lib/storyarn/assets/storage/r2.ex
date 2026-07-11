@@ -8,6 +8,8 @@ defmodule Storyarn.Assets.Storage.R2 do
 
   @behaviour Storyarn.Assets.Storage
 
+  @stream_chunk_size 1_048_576
+
   @impl true
   def upload(key, data, content_type) do
     bucket = bucket()
@@ -30,6 +32,32 @@ defmodule Storyarn.Assets.Storage.R2 do
       {:error, reason} -> {:error, reason}
     end
   end
+
+  @impl true
+  def stat(key) do
+    case bucket() |> ExAws.S3.head_object(key) |> ExAws.request() do
+      {:ok, %{headers: headers}} ->
+        with {:ok, size} <- integer_header(headers, "content-length") do
+          {:ok,
+           %{
+             size: size,
+             etag: header(headers, "etag"),
+             content_type: header(headers, "content-type")
+           }}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @impl true
+  def stream(key, offset, length, opts) when is_integer(offset) and offset >= 0 and is_integer(length) and length >= 0 do
+    etag = Keyword.get(opts, :etag)
+    {:ok, range_stream(key, offset, length, etag)}
+  end
+
+  def stream(_key, _offset, _length, _opts), do: {:error, :invalid_range}
 
   @impl true
   def delete(key) do
@@ -88,36 +116,6 @@ defmodule Storyarn.Assets.Storage.R2 do
   end
 
   @impl true
-  def presigned_download_url(key, opts) do
-    bucket = bucket()
-    expires_in = Keyword.get(opts, :expires_in, 3600)
-    filename = Keyword.get(opts, :filename)
-    cache_control = Keyword.get(opts, :cache_control)
-
-    presign_opts = [
-      expires_in: expires_in,
-      virtual_host: false
-    ]
-
-    query_params =
-      []
-      |> maybe_add_download_filename(filename)
-      |> maybe_add_cache_control(cache_control)
-
-    presign_opts =
-      if query_params == [],
-        do: presign_opts,
-        else: Keyword.put(presign_opts, :query_params, query_params)
-
-    config = ExAws.Config.new(:s3)
-
-    case ExAws.S3.presigned_url(config, :get, bucket, key, presign_opts) do
-      {:ok, url} -> {:ok, url}
-      {:error, reason} -> {:error, reason}
-    end
-  end
-
-  @impl true
   def key_from_url(url) when is_binary(url) do
     uri = URI.parse(url)
 
@@ -131,17 +129,62 @@ defmodule Storyarn.Assets.Storage.R2 do
 
   def key_from_url(_url), do: {:error, :invalid_url}
 
-  defp maybe_add_download_filename(query_params, nil), do: query_params
+  defp range_stream(_key, _offset, 0, _etag), do: []
 
-  defp maybe_add_download_filename(query_params, filename) do
-    disposition = "attachment; filename=\"#{filename}\""
-    [{"response-content-disposition", disposition} | query_params]
+  defp range_stream(key, offset, length, etag) do
+    {offset, length}
+    |> Stream.unfold(fn
+      {_offset, 0} ->
+        nil
+
+      {chunk_offset, remaining} ->
+        chunk_length = min(remaining, @stream_chunk_size)
+        last_byte = chunk_offset + chunk_length - 1
+        bounds = {chunk_offset, last_byte, chunk_length}
+        {bounds, {last_byte + 1, remaining - chunk_length}}
+    end)
+    |> Stream.map(fn {first_byte, last_byte, expected_length} ->
+      download_range(key, first_byte, last_byte, expected_length, etag)
+    end)
   end
 
-  defp maybe_add_cache_control(query_params, nil), do: query_params
+  defp download_range(key, first_byte, last_byte, expected_length, etag) do
+    request_opts = maybe_put_if_match([range: "bytes=#{first_byte}-#{last_byte}"], etag)
 
-  defp maybe_add_cache_control(query_params, cache_control) do
-    [{"response-cache-control", cache_control} | query_params]
+    case bucket() |> ExAws.S3.get_object(key, request_opts) |> ExAws.request() do
+      {:ok, %{body: body}} when byte_size(body) == expected_length ->
+        {:ok, body}
+
+      {:ok, %{body: body}} ->
+        {:error, {:unexpected_length, byte_size(body), expected_length}}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp maybe_put_if_match(opts, nil), do: opts
+  defp maybe_put_if_match(opts, etag), do: Keyword.put(opts, :if_match, etag)
+
+  defp integer_header(headers, name) do
+    case header(headers, name) do
+      nil ->
+        {:error, {:missing_header, name}}
+
+      value ->
+        case Integer.parse(value) do
+          {integer, ""} when integer >= 0 -> {:ok, integer}
+          _ -> {:error, {:invalid_header, name}}
+        end
+    end
+  end
+
+  defp header(headers, name) do
+    Enum.find_value(headers, fn {header_name, value} ->
+      if String.downcase(to_string(header_name)) == name do
+        value |> List.wrap() |> List.first() |> to_string()
+      end
+    end)
   end
 
   defp key_from_path(uri, path) do

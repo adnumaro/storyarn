@@ -10,6 +10,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneHelpers do
 
   alias Storyarn.Scenes
   alias Storyarn.Shared.MapUtils
+  alias StoryarnWeb.PrivateMedia
 
   @element_icons %{
     "pin" => "map-pin",
@@ -171,7 +172,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneHelpers do
 
   def sheet_avatar_url(%{avatars: avatars}) when is_list(avatars) do
     case Enum.find(avatars, & &1.is_default) || List.first(avatars) do
-      %{asset: %{url: url}} when is_binary(url) -> url
+      %{asset: %{} = asset} -> PrivateMedia.asset_url(asset)
       _ -> nil
     end
   end

@@ -46,7 +46,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.PropsSerializerTest do
         10 => [
           %{
             id: 100,
-            asset: %{url: "/uploads/hero.png"},
+            asset: %{id: 501, url: "/uploads/hero.png"},
             label: "Hero",
             description: "Portrait"
           }
@@ -92,7 +92,12 @@ defmodule StoryarnWeb.SheetLive.Helpers.PropsSerializerTest do
                %{
                  block: %{
                    gallery_images: [
-                     %{id: 100, url: "/uploads/hero.png", label: "Hero", description: "Portrait"}
+                     %{
+                       id: 100,
+                       url: "/media/assets/501",
+                       label: "Hero",
+                       description: "Portrait"
+                     }
                    ]
                  }
                },

@@ -64,6 +64,7 @@ defmodule Storyarn.Assets.Storage.LocalTest do
       assert {:error, :invalid_key} = Local.upload("../escaped.txt", "content", "text/plain")
       assert {:error, :invalid_key} = Local.upload("/tmp/escaped.txt", "content", "text/plain")
       assert {:error, :invalid_key} = Local.upload("nested\\escaped.txt", "content", "text/plain")
+      assert {:error, :invalid_key} = Local.upload(<<255>>, "content", "text/plain")
 
       refute File.exists?(Path.join(Path.dirname(test_dir), "escaped.txt"))
     end
@@ -97,6 +98,23 @@ defmodule Storyarn.Assets.Storage.LocalTest do
   describe "download/1" do
     test "rejects traversal keys" do
       assert {:error, :invalid_key} = Local.download("../escaped.txt")
+    end
+  end
+
+  describe "stat/1 and stream/4" do
+    test "returns object metadata and streams only the requested byte range", %{test_key: key} do
+      assert {:ok, _url} = Local.upload(key, "0123456789", "text/plain")
+
+      assert {:ok, %{size: 10, etag: nil, content_type: "text/plain"}} = Local.stat(key)
+      assert {:ok, stream} = Local.stream(key, 2, 4, [])
+      assert Enum.to_list(stream) == [{:ok, "2345"}]
+    end
+
+    test "reports an unexpected length instead of reading past the file", %{test_key: key} do
+      assert {:ok, _url} = Local.upload(key, "0123456789", "text/plain")
+      assert {:ok, stream} = Local.stream(key, 8, 4, [])
+
+      assert Enum.to_list(stream) == [{:error, {:unexpected_length, 2, 4}}]
     end
   end
 

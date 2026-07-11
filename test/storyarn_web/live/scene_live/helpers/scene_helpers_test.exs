@@ -288,8 +288,11 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneHelpersTest do
 
   describe "sheet_avatar_url/1" do
     test "extracts url from default avatar" do
-      sheet = %{avatars: [%{is_default: true, asset: %{url: "https://cdn.test/avatar.png"}}]}
-      assert SceneHelpers.sheet_avatar_url(sheet) == "https://cdn.test/avatar.png"
+      sheet = %{
+        avatars: [%{is_default: true, asset: %{id: 601, url: "https://cdn.test/avatar.png"}}]
+      }
+
+      assert SceneHelpers.sheet_avatar_url(sheet) == "/media/assets/601"
     end
 
     test "returns nil for empty avatars" do
