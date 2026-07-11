@@ -1,0 +1,30 @@
+lib/storyarn_web/live/project_settings_live/localization.ex
+  s_4d55fc24eec452::t_ec23d7176cb6a8 184
+test/support/controllable_glossary_provider.ex
+  s_4d55fc24eec452::t_ec23d7176cb6a8 1-24
+assets/app/live/localization/texts/LocalizationTextsIndex.vue
+  s_4d55fc24eec452::t_ec23d7176cb6a8 280-281,285
+lib/storyarn/localization/glossary_sync.ex
+  s_4d55fc24eec452::t_ec23d7176cb6a8 125,131-135,137-139,141-145,149-163,186
+test/storyarn/localization/glossary_sync_test.exs
+  s_4d55fc24eec452::t_873ffd22ab87b5 8-10,147-190
+assets/app/test/live/localization/LocalizationActions.test.ts
+  s_4d55fc24eec452::t_ec23d7176cb6a8 2,11-13
+  s_4d55fc24eec452::t_53b9653826aaa8 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "c5a30e9be88f193188f3c9953661b72d900eb310",
+  "prompts": {},
+  "sessions": {
+    "s_4d55fc24eec452": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4c03-02e0-7b82-91e5-dd81573e6238",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
