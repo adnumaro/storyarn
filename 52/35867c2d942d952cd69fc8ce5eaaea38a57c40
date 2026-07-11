@@ -1,0 +1,40 @@
+lib/storyarn_web/private_media.ex
+  s_ccf9a52adedaa7::t_8960b394e130f5 78-80
+  s_ccf9a52adedaa7::t_12b04886e99502 75-76,81-95,99,104
+  s_ccf9a52adedaa7::t_ebc079511d6cbb 77
+test/storyarn_web/controllers/snapshot_download_controller_test.exs
+  s_ccf9a52adedaa7::t_bffdf55dfccf7f 7
+lib/storyarn_web/private_download/range.ex
+  s_ccf9a52adedaa7::t_9a54ac203322d4 1-144
+test/storyarn_web/controllers/private_media_controller_test.exs
+  s_ccf9a52adedaa7::t_bffdf55dfccf7f 8
+lib/storyarn_web/controllers/snapshot_download_controller.ex
+  s_ccf9a52adedaa7::t_12b04886e99502 10,26
+test/storyarn_web/private_media_test.exs
+  s_ccf9a52adedaa7::t_8960b394e130f5 83
+  s_ccf9a52adedaa7::t_12b04886e99502 62-82,84-86
+test/storyarn_web/private_download/range_test.exs
+  s_ccf9a52adedaa7::t_9a54ac203322d4 1-107
+lib/storyarn_web/controllers/private_media_controller.ex
+  s_ccf9a52adedaa7::t_12b04886e99502 69
+test/support/private_download_assertions.ex
+  s_ccf9a52adedaa7::t_bffdf55dfccf7f 1-24
+lib/storyarn_web/private_download.ex
+  s_ccf9a52adedaa7::t_9a54ac203322d4 13,42-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "5235867c2d942d952cd69fc8ce5eaaea38a57c40",
+  "prompts": {},
+  "sessions": {
+    "s_ccf9a52adedaa7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f502f-c24c-7312-9232-f8a754c49ffd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
