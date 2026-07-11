@@ -1,0 +1,27 @@
+lib/storyarn/assets/image_processor.ex
+  s_ccf9a52adedaa7::t_9b5aba9ae6d9c3 21-27,150-168,331-337
+  s_ccf9a52adedaa7::t_dca45b995c94f0 338
+test/storyarn_web/live/settings_live/workspace_general_test.exs
+  s_ccf9a52adedaa7::t_9b5aba9ae6d9c3 294-311
+lib/storyarn_web/live/settings_live/workspace_general.ex
+  s_ccf9a52adedaa7::t_9b5aba9ae6d9c3 197
+test/storyarn/assets/image_processor_test.exs
+  s_ccf9a52adedaa7::t_9b5aba9ae6d9c3 44-59,63-69
+  s_ccf9a52adedaa7::t_c8f6f5c30489fe 60-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "a5f1efb00bedc7b2bf2b2105fd7da9945b38ce7f",
+  "prompts": {},
+  "sessions": {
+    "s_ccf9a52adedaa7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f502f-c24c-7312-9232-f8a754c49ffd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
