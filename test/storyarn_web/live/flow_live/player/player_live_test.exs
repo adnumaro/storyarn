@@ -15,6 +15,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
 
   alias Storyarn.Flows
   alias Storyarn.Repo
+  alias StoryarnWeb.PrivateMedia
 
   # ===========================================================================
   # Helpers
@@ -581,7 +582,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
                  "sequence_depth" => 0,
                  "kind" => "backdrop",
                  "label" => nil,
-                 "url" => "/uploads/sequence-bg.png",
+                 "url" => PrivateMedia.asset_url(backdrop_asset),
                  "z_index" => 0,
                  "slot" => "full",
                  "x" => 0.0,
@@ -599,7 +600,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
                  "sequence_depth" => 1,
                  "kind" => "character",
                  "label" => nil,
-                 "url" => "/uploads/sequence-character.png",
+                 "url" => PrivateMedia.asset_url(character_asset),
                  "z_index" => 100,
                  "slot" => "bottom-right",
                  "x" => 0.75,
@@ -671,7 +672,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
                  "sequence_id" => parent_sequence.id,
                  "kind" => "music",
                  "position" => 0,
-                 "url" => "/uploads/parent-theme.mp3",
+                 "url" => PrivateMedia.asset_url(parent_audio),
                  "volume" => 0.5,
                  "content_type" => "audio/mpeg",
                  "filename" => parent_audio.filename,
@@ -682,7 +683,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
                  "sequence_id" => child_sequence.id,
                  "kind" => "ambience",
                  "position" => 0,
-                 "url" => "/uploads/child-ambient.mp3",
+                 "url" => PrivateMedia.asset_url(child_audio),
                  "volume" => 0.25,
                  "content_type" => "audio/mpeg",
                  "filename" => child_audio.filename,

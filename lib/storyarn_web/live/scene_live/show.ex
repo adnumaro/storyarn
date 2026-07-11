@@ -38,6 +38,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   alias StoryarnWeb.Live.Shared.PickerSearch
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
   alias StoryarnWeb.Live.Shared.RestorationHandlers
+  alias StoryarnWeb.PrivateMedia
   alias StoryarnWeb.SceneLive.Handlers.CanvasEventHandlers
   alias StoryarnWeb.SceneLive.Handlers.CollaborationHandlers
   alias StoryarnWeb.SceneLive.Handlers.ElementHandlers
@@ -1968,7 +1969,7 @@ defmodule StoryarnWeb.SceneLive.Show do
            socket
            |> assign(:scene, updated)
            |> assign(:_broadcast, {:layer_updated, %{}})
-           |> push_event("background_changed", %{url: asset.url})
+           |> push_event("background_changed", %{url: PrivateMedia.asset_url(asset)})
            |> put_flash(:info, dgettext("scenes", "Background image updated."))}
         )
 

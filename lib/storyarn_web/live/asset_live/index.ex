@@ -8,6 +8,7 @@ defmodule StoryarnWeb.AssetLive.Index do
   alias Storyarn.Collaboration
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
+  alias StoryarnWeb.PrivateMedia
 
   @empty_asset_usages %{
     flow_nodes: [],
@@ -398,7 +399,7 @@ defmodule StoryarnWeb.AssetLive.Index do
       filename: asset.filename,
       contentType: asset.content_type,
       size: asset.size,
-      url: asset.url,
+      url: PrivateMedia.asset_url(asset),
       insertedAt: asset.inserted_at
     }
   end

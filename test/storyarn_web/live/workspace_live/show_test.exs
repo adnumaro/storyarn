@@ -138,7 +138,7 @@ defmodule StoryarnWeb.WorkspaceLive.ShowTest do
       assert vue.props["membership"]["role"] == "member"
     end
 
-    test "passes workspace banner_url to Vue", %{conn: conn, user: user} do
+    test "passes the private workspace banner route to Vue", %{conn: conn, user: user} do
       workspace =
         workspace_fixture(user, %{
           name: "Banner Studio",
@@ -148,7 +148,9 @@ defmodule StoryarnWeb.WorkspaceLive.ShowTest do
       {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
 
       vue = get_dashboard_vue(view)
-      assert vue.props["workspace"]["banner_url"] == "https://example.com/banner.jpg"
+
+      assert vue.props["workspace"]["banner_url"] ==
+               "/media/workspaces/#{workspace.slug}/banner"
     end
 
     test "passes workspace description to Vue", %{conn: conn, user: user} do

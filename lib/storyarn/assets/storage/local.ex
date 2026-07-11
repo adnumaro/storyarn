@@ -67,6 +67,24 @@ defmodule Storyarn.Assets.Storage.Local do
     {:error, :not_supported}
   end
 
+  @impl true
+  def key_from_url(url) when is_binary(url) do
+    public_path = config()[:public_path] || "/uploads"
+    path = URI.parse(url).path || ""
+    prefix = String.trim_trailing(public_path, "/") <> "/"
+
+    if String.starts_with?(path, prefix) do
+      case validate_key(String.replace_prefix(path, prefix, "")) do
+        {:ok, key} -> {:ok, key}
+        {:error, :invalid_key} -> {:error, :invalid_url}
+      end
+    else
+      {:error, :invalid_url}
+    end
+  end
+
+  def key_from_url(_url), do: {:error, :invalid_url}
+
   defp file_path(key) do
     with {:ok, key} <- validate_key(key) do
       upload_dir = upload_dir()

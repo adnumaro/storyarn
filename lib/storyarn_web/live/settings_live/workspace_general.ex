@@ -4,9 +4,11 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   """
   use StoryarnWeb, :live_view
 
+  alias Storyarn.Assets
   alias Storyarn.Localization
   alias Storyarn.Workspaces
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.PrivateMedia
 
   @impl true
   def mount(_params, _session, socket) do
@@ -49,7 +51,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
         id="workspace-settings-general"
         workspace-name={@workspace.name || ""}
         workspace-description={@workspace.description || ""}
-        workspace-banner-url={@workspace.banner_url || ""}
+        workspace-banner-url={PrivateMedia.workspace_banner_url(@workspace) || ""}
         source-locale={@workspace.source_locale || ""}
         language-options={
           Enum.map(Localization.language_options_for_select(), fn {k, v} -> [k, v] end)
@@ -96,7 +98,8 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
     Authorize.with_authorization(socket, :manage_workspace, fn socket ->
       with [_header, base64_data] <- String.split(data, ",", parts: 2),
            {:ok, binary_data} <- Base.decode64(base64_data),
-           key = "workspaces/#{socket.assigns.workspace.slug}/banner/#{filename}",
+           safe_filename = Assets.sanitize_filename(filename),
+           key = "workspaces/#{socket.assigns.workspace.slug}/banner/#{safe_filename}",
            {:ok, url} <- Storyarn.Assets.Storage.upload(key, binary_data, content_type),
            {:ok, workspace} <-
              Workspaces.update_workspace(socket.assigns.workspace, %{banner_url: url}) do

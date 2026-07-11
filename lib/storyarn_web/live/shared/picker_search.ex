@@ -14,6 +14,7 @@ defmodule StoryarnWeb.Live.Shared.PickerSearch do
   alias Storyarn.Assets.Asset
   alias Storyarn.Flows
   alias Storyarn.Sheets
+  alias StoryarnWeb.PrivateMedia
 
   @asset_limit 80
   @entity_limit 100
@@ -284,7 +285,7 @@ defmodule StoryarnWeb.Live.Shared.PickerSearch do
     %{
       id: asset.id,
       filename: asset.filename,
-      url: Asset.display_url(asset),
+      url: PrivateMedia.asset_url(asset),
       content_type: asset.content_type
     }
   end

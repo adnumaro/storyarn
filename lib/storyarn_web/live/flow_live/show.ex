@@ -36,6 +36,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.Live.Shared.PickerSearch
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
   alias StoryarnWeb.Live.Shared.RestorationHandlers
+  alias StoryarnWeb.PrivateMedia
 
   # Node types are now rendered by flow_dock.ex
   @lock_heartbeat_interval 10_000
@@ -1469,7 +1470,7 @@ defmodule StoryarnWeb.FlowLive.Show do
                     id: a.id,
                     name: a.name,
                     position: a.position,
-                    asset: %{url: a.asset && a.asset.url}
+                    asset: %{url: PrivateMedia.asset_url(a.asset)}
                   }
                 end),
               else: []

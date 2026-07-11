@@ -120,6 +120,18 @@ defmodule Storyarn.Assets.Storage.LocalTest do
     end
   end
 
+  describe "key_from_url/1" do
+    test "extracts a valid key from a persisted local URL" do
+      assert Local.key_from_url("/test-uploads/project/image.png") ==
+               {:ok, "project/image.png"}
+    end
+
+    test "rejects another path and traversal" do
+      assert Local.key_from_url("/other/project/image.png") == {:error, :invalid_url}
+      assert Local.key_from_url("/test-uploads/../private.txt") == {:error, :invalid_url}
+    end
+  end
+
   describe "copy/2" do
     test "rejects traversal destination keys", %{test_key: key} do
       assert {:ok, _url} = Local.upload(key, "content", "text/plain")

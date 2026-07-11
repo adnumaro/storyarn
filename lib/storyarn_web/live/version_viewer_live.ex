@@ -9,6 +9,7 @@ defmodule StoryarnWeb.VersionViewerLive do
   alias Storyarn.Scenes
   alias Storyarn.Sheets
   alias Storyarn.Versioning
+  alias StoryarnWeb.PrivateMedia
 
   @impl true
   def render(%{entity_type: :flow} = assigns) do
@@ -130,7 +131,7 @@ defmodule StoryarnWeb.VersionViewerLive do
 
     socket
     |> assign(:flow_data, Versioning.serialize_flow(snapshot))
-    |> assign(:variable_map, flow_variable_map(referenced_sheets))
+    |> assign(:variable_map, flow_variable_map(referenced_sheets, socket.assigns.project.id))
     |> assign(:toolbar_data, flow_toolbar_data(referenced_sheets))
   end
 
@@ -156,14 +157,14 @@ defmodule StoryarnWeb.VersionViewerLive do
     end
   end
 
-  defp flow_variable_map(referenced_sheets) do
+  defp flow_variable_map(referenced_sheets, project_id) do
     Map.new(referenced_sheets, fn {id, sheet} ->
       {to_string(id),
        %{
          id: sheet["id"],
          name: sheet["name"],
-         avatar_url: sheet["avatar_url"],
-         banner_url: sheet["banner_url"],
+         avatar_url: PrivateMedia.project_url_from_stored(project_id, sheet["avatar_url"]),
+         banner_url: PrivateMedia.project_url_from_stored(project_id, sheet["banner_url"]),
          color: sheet["color"],
          avatars: [],
          gallery_images: []
@@ -390,9 +391,16 @@ defmodule StoryarnWeb.VersionViewerLive do
   defp snapshot_asset_url(nil, _snapshot), do: nil
 
   defp snapshot_asset_url(asset_id, snapshot) do
-    snapshot
-    |> Map.get("asset_metadata", %{})
-    |> Map.get(to_string(asset_id), %{})
-    |> Map.get("url")
+    metadata =
+      snapshot
+      |> Map.get("asset_metadata", %{})
+      |> Map.get(to_string(asset_id), %{})
+
+    with project_id when is_integer(project_id) <- metadata["project_id"],
+         key when is_binary(key) <- metadata["key"] do
+      PrivateMedia.project_file_url(project_id, key)
+    else
+      _ -> nil
+    end
   end
 end

@@ -12,6 +12,7 @@ defmodule StoryarnWeb.UploadController do
   alias Storyarn.Assets.UploadPolicy
   alias Storyarn.Billing
   alias Storyarn.Projects
+  alias StoryarnWeb.PrivateMedia
 
   def inspect_upload(conn, %{"workspace_slug" => workspace_slug, "project_slug" => project_slug}) do
     scope = conn.assigns.current_scope
@@ -160,7 +161,7 @@ defmodule StoryarnWeb.UploadController do
   defp upload_response(asset, meta \\ %{}) do
     %{
       id: asset.id,
-      url: asset.url,
+      url: PrivateMedia.asset_url(asset),
       reused: Map.get(meta, :reused, false),
       action: meta |> Map.get(:action) |> maybe_to_string()
     }

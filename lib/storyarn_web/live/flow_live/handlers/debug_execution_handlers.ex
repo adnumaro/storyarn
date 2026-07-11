@@ -13,6 +13,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
   alias Storyarn.Flows
   alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Repo
+  alias StoryarnWeb.PrivateMedia
 
   @doc "Advances the debugger by one step. May trigger cross-flow navigation."
   def handle_debug_step(socket) do
@@ -386,7 +387,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
       id: layer.id,
       kind: layer.kind,
       label: layer.label,
-      url: Storyarn.Assets.display_url(layer.asset),
+      url: PrivateMedia.asset_url(layer.asset),
       z_index: layer.z_index,
       slot: layer.slot,
       x: layer.x,
@@ -406,7 +407,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
       id: track.id,
       kind: track.kind,
       position: track.position || 0,
-      url: Storyarn.Assets.display_url(track.asset),
+      url: PrivateMedia.asset_url(track.asset),
       volume: serialize_volume(track.volume),
       content_type: track.asset && track.asset.content_type,
       filename: track.asset && track.asset.filename

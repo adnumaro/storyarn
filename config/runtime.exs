@@ -174,8 +174,9 @@ if config_env() == :prod do
   mailer_from_name = env.("MAILER_FROM_NAME") || "Storyarn"
 
   # S3-compatible Storage Configuration.
-  # Fly Tigris exposes AWS_* env vars; AWS_PUBLIC_URL is optional because the
-  # adapter can derive URLs from AWS_ENDPOINT_URL_S3 + BUCKET_NAME.
+  # Fly Tigris exposes AWS_* env vars. Buckets remain private: browser delivery
+  # goes through authenticated Storyarn routes and short-lived signed URLs.
+  # AWS_PUBLIC_URL is optional and retained only for compatible URL parsing.
   if !env.("AWS_ACCESS_KEY_ID") do
     raise """
     production object storage is missing.

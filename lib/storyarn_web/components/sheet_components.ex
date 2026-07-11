@@ -6,6 +6,7 @@ defmodule StoryarnWeb.Components.SheetComponents do
 
   alias Storyarn.Assets
   alias Storyarn.Assets.Asset
+  alias StoryarnWeb.PrivateMedia
 
   @avatar_sizes %{
     "sm" => "size-4",
@@ -44,7 +45,7 @@ defmodule StoryarnWeb.Components.SheetComponents do
     ~H"""
     <img
       :if={@has_avatar}
-      src={Assets.display_url(@avatar_asset)}
+      src={PrivateMedia.asset_url(@avatar_asset)}
       alt={@name || "Sheet avatar"}
       class={["rounded object-cover", @size_class]}
     />

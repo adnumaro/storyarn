@@ -119,6 +119,17 @@ defmodule Storyarn.Assets do
   defp maybe_offset(query, offset), do: offset(query, ^offset)
 
   @doc """
+  Gets a single asset by ID.
+
+  This lookup does not perform authorization. Callers must authorize access to
+  the asset's project before exposing the asset or its storage key.
+  """
+  @spec get_asset(integer()) :: asset() | nil
+  def get_asset(asset_id) do
+    Repo.get(Asset, asset_id)
+  end
+
+  @doc """
   Gets a single asset by ID within a project.
 
   Returns `nil` if the asset doesn't exist or doesn't belong to the project.

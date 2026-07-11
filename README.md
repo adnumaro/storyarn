@@ -19,7 +19,7 @@ Required in production:
 - Email: `RESEND_API_KEY`, `MAILER_FROM_EMAIL`
 - Storage: Fly Tigris or another S3-compatible provider with
   `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `BUCKET_NAME`,
-  `AWS_ENDPOINT_URL_S3`; `AWS_PUBLIC_URL` is optional
+  `AWS_ENDPOINT_URL_S3`; keep the bucket private (`AWS_PUBLIC_URL` is optional)
 
 Optional production variables include `MAILER_FROM_NAME`, `REDIS_URL`,
 `DNS_CLUSTER_QUERY`, and PostHog settings. See `.env.example` for the complete

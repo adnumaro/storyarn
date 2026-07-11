@@ -92,28 +92,87 @@ defmodule Storyarn.Assets.Storage.R2 do
     bucket = bucket()
     expires_in = Keyword.get(opts, :expires_in, 3600)
     filename = Keyword.get(opts, :filename)
+    cache_control = Keyword.get(opts, :cache_control)
 
     presign_opts = [
       expires_in: expires_in,
       virtual_host: false
     ]
 
-    presign_opts =
-      if filename do
-        disposition = "attachment; filename=\"#{filename}\""
+    query_params =
+      []
+      |> maybe_add_download_filename(filename)
+      |> maybe_add_cache_control(cache_control)
 
-        Keyword.put(presign_opts, :query_params, [
-          {"response-content-disposition", disposition}
-        ])
-      else
-        presign_opts
-      end
+    presign_opts =
+      if query_params == [],
+        do: presign_opts,
+        else: Keyword.put(presign_opts, :query_params, query_params)
 
     config = ExAws.Config.new(:s3)
 
     case ExAws.S3.presigned_url(config, :get, bucket, key, presign_opts) do
       {:ok, url} -> {:ok, url}
       {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @impl true
+  def key_from_url(url) when is_binary(url) do
+    uri = URI.parse(url)
+
+    with path when is_binary(path) <- uri.path,
+         {:ok, key} <- key_from_path(uri, path) do
+      {:ok, URI.decode(key)}
+    else
+      _ -> {:error, :invalid_url}
+    end
+  end
+
+  def key_from_url(_url), do: {:error, :invalid_url}
+
+  defp maybe_add_download_filename(query_params, nil), do: query_params
+
+  defp maybe_add_download_filename(query_params, filename) do
+    disposition = "attachment; filename=\"#{filename}\""
+    [{"response-content-disposition", disposition} | query_params]
+  end
+
+  defp maybe_add_cache_control(query_params, nil), do: query_params
+
+  defp maybe_add_cache_control(query_params, cache_control) do
+    [{"response-cache-control", cache_control} | query_params]
+  end
+
+  defp key_from_path(uri, path) do
+    endpoint = URI.parse(config()[:endpoint_url] || "")
+    public_url = URI.parse(config()[:public_url] || "")
+
+    cond do
+      same_origin?(uri, endpoint) ->
+        strip_path_prefix(path, "/#{bucket()}/")
+
+      public_url.host && same_origin?(uri, public_url) ->
+        public_prefix = String.trim_trailing(public_url.path || "", "/") <> "/"
+        strip_path_prefix(path, public_prefix)
+
+      true ->
+        {:error, :invalid_url}
+    end
+  end
+
+  defp same_origin?(%URI{scheme: scheme, host: host, port: port}, %URI{} = expected) do
+    scheme == expected.scheme and host == expected.host and port == expected.port
+  end
+
+  defp strip_path_prefix(path, prefix) do
+    if String.starts_with?(path, prefix) do
+      case String.replace_prefix(path, prefix, "") do
+        "" -> {:error, :invalid_url}
+        key -> {:ok, key}
+      end
+    else
+      {:error, :invalid_url}
     end
   end
 

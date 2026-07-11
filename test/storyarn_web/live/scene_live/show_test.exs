@@ -12,6 +12,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Versioning
+  alias StoryarnWeb.PrivateMedia
 
   # Reads the SceneCanvas Vue component and builds a composite scene_data map
   # whose keys match the V1 data-scene JSON shape (snake_case). This keeps all
@@ -239,7 +240,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
         )
 
       scene_data = extract_scene_data(view)
-      assert scene_data["background_url"] == "https://example.com/bg.png"
+      assert scene_data["background_url"] == PrivateMedia.asset_url(asset)
     end
 
     test "renders without error when no background asset", %{conn: conn, user: user} do
@@ -2618,7 +2619,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       scene_data = extract_scene_data(view)
       [pin_data] = scene_data["pins"]
       assert pin_data["sheet_id"] == sheet.id
-      assert pin_data["sheet_avatar_url"] == "https://example.com/avatar.png"
+      assert pin_data["sheet_avatar_url"] == PrivateMedia.asset_url(avatar)
     end
 
     test "pin serialization handles sheet without avatar", %{conn: conn, user: user} do
@@ -3309,7 +3310,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
-      assert html =~ "castle-icon.png"
+      assert html =~ PrivateMedia.asset_url(asset)
     end
 
     test "pin serialization handles nil icon_asset_id", %{conn: conn, user: user} do
