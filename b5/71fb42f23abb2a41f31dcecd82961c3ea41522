@@ -1,0 +1,94 @@
+test/storyarn_web/controllers/private_media_controller_test.exs
+  s_ccf9a52adedaa7::t_ab1bedfc9734a3 185-202,287,289-290
+  s_ccf9a52adedaa7::t_3b7f64543a1649 30-67,69,80-81,117-118,133,144-145,156-165,215,226,269-277,281-286,288,291
+  s_ccf9a52adedaa7::t_db5b142692f7c1 75,111
+  s_ccf9a52adedaa7::t_ac1bffba572276 82,166-184,279-280
+  s_ccf9a52adedaa7::t_450e56509a4a8d 68,278
+  s_ccf9a52adedaa7::t_f7409731334ddc 147-155
+  s_ccf9a52adedaa7::t_d21230898783a9 84-107
+  s_ccf9a52adedaa7::t_1f39bf911c8d32 29
+  s_ccf9a52adedaa7::t_321d60710828c1 83
+  s_ccf9a52adedaa7::t_10970234b8066e 146
+lib/storyarn_web/live/flow_live/helpers/form_helpers.ex
+  s_ccf9a52adedaa7::t_aa3886fc3429a0 68
+lib/storyarn/assets/storage.ex
+  s_ccf9a52adedaa7::t_4fe4bfbf851fe3 12-16,22-24,56-72
+test/storyarn_web/live/scene_live/helpers/scene_helpers_test.exs
+  s_ccf9a52adedaa7::t_3e9dc3e4077cab 291-295
+lib/storyarn_web/controllers/private_media_controller.ex
+  s_ccf9a52adedaa7::t_f7409731334ddc 80
+  s_ccf9a52adedaa7::t_5527ee1222031d 18
+  s_ccf9a52adedaa7::t_450e56509a4a8d 19
+  s_ccf9a52adedaa7::t_6805e8ee06ec4f 11-12,50-51,62
+lib/storyarn_web/live/scene_live/helpers/scene_helpers.ex
+  s_ccf9a52adedaa7::t_dafb88086e16ff 13,175
+test/storyarn/assets/storage/r2_test.exs
+  s_ccf9a52adedaa7::t_49c9aa44820d67 8-11,19-77,110-124
+test/storyarn_web/live/flow_live/helpers/form_helpers_test.exs
+  s_ccf9a52adedaa7::t_3e9dc3e4077cab 89,92,103-104
+lib/storyarn/assets/storage/local.ex
+  s_ccf9a52adedaa7::t_4fe4bfbf851fe3 10-11,30-38,40-46,118-128,142-170
+  s_ccf9a52adedaa7::t_4c6a1f59f6d52e 39
+  s_ccf9a52adedaa7::t_aa3886fc3429a0 129-141
+  s_ccf9a52adedaa7::t_f7409731334ddc 194-196
+  s_ccf9a52adedaa7::t_67914eabf0762d 171
+lib/storyarn_web/live/scene_live/helpers/scene_serializer.ex
+  s_ccf9a52adedaa7::t_aa3886fc3429a0 12,38,130,137,140
+lib/storyarn_web/private_media.ex
+  s_ccf9a52adedaa7::t_aa3886fc3429a0 6,20,25,36,63,70,76-77,85-90,101
+  s_ccf9a52adedaa7::t_f7409731334ddc 78-79
+  s_ccf9a52adedaa7::t_4c6a1f59f6d52e 80
+  s_ccf9a52adedaa7::t_450e56509a4a8d 64-69,71-75,82,91
+  s_ccf9a52adedaa7::t_5527ee1222031d 81,83-84,92-98
+  s_ccf9a52adedaa7::t_0f914f03e8edaa 99
+test/storyarn_web/live/scene_live/helpers/serializer_test.exs
+  s_ccf9a52adedaa7::t_3e9dc3e4077cab 52-54,74,315-316,338-340,344,366-367,453,477
+test/storyarn_web/live/sheet_live/helpers/props_serializer_test.exs
+  s_ccf9a52adedaa7::t_3e9dc3e4077cab 49,95-100
+lib/storyarn_web/controllers/snapshot_download_controller.ex
+  s_ccf9a52adedaa7::t_5527ee1222031d 24-25,59-60,62-70,72-73
+  s_ccf9a52adedaa7::t_aa3886fc3429a0 9,14-15,20,22,28-33,35-36,42
+  s_ccf9a52adedaa7::t_f7409731334ddc 71
+  s_ccf9a52adedaa7::t_0f0182cd840024 43-44
+test/storyarn/assets/storage/local_test.exs
+  s_ccf9a52adedaa7::t_f7409731334ddc 67
+  s_ccf9a52adedaa7::t_49c9aa44820d67 104-120
+lib/storyarn/assets/storage/r2.ex
+  s_ccf9a52adedaa7::t_4c6a1f59f6d52e 55,135-136,152
+  s_ccf9a52adedaa7::t_4fe4bfbf851fe3 11-12,36-54,56-61,132-134,137-151,154-163,166-180,182-187
+test/storyarn_web/private_media_test.exs
+  s_ccf9a52adedaa7::t_d21230898783a9 27-30,50-59
+  s_ccf9a52adedaa7::t_8b38617026413d 60-61
+lib/storyarn_web/private_download.ex
+  s_ccf9a52adedaa7::t_e302bd23f360f3 124-129
+  s_ccf9a52adedaa7::t_ab1bedfc9734a3 52-59,116-123,130-136
+  s_ccf9a52adedaa7::t_4c6a1f59f6d52e 13-14,19-20
+  s_ccf9a52adedaa7::t_3a6d492f6161f1 1-12,15-18,35-40,47-51,60-115,137-179,181-191,195-211,213-230,232-233,235,237-241
+  s_ccf9a52adedaa7::t_5527ee1222031d 41-46
+  s_ccf9a52adedaa7::t_450e56509a4a8d 192,231,234,236
+  s_ccf9a52adedaa7::t_1f39bf911c8d32 180
+  s_ccf9a52adedaa7::t_6551e402b6ee55 21-29,31-34,193-194,212
+  s_ccf9a52adedaa7::t_d5de452c77a82d 30
+test/storyarn_web/controllers/snapshot_download_controller_test.exs
+  s_ccf9a52adedaa7::t_d21230898783a9 112-133
+  s_ccf9a52adedaa7::t_ac1bffba572276 190-191
+  s_ccf9a52adedaa7::t_3b7f64543a1649 8,26,31,42,57,66-102,104-106,137,142,146,149-170,172,176,179-188,192-197,199,202
+  s_ccf9a52adedaa7::t_450e56509a4a8d 103,189
+  s_ccf9a52adedaa7::t_ab1bedfc9734a3 198,200-201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "b571fb42f23abb2a41f31dcecd82961c3ea41522",
+  "prompts": {},
+  "sessions": {
+    "s_ccf9a52adedaa7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f502f-c24c-7312-9232-f8a754c49ffd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
