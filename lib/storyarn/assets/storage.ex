@@ -19,6 +19,7 @@ defmodule Storyarn.Assets.Storage do
   @callback copy(source_key :: key, dest_key :: key) :: :ok | {:error, term()}
   @callback presigned_download_url(key, opts :: keyword()) ::
               {:ok, url} | {:error, term()}
+  @callback key_from_url(url) :: {:ok, key} | {:error, :invalid_url}
 
   @doc """
   Returns the configured storage adapter.
@@ -54,7 +55,10 @@ defmodule Storyarn.Assets.Storage do
   end
 
   @doc """
-  Gets the public URL for a file.
+  Gets the storage URL persisted alongside a file.
+
+  Private object-storage URLs must never be sent directly to browsers. Web
+  surfaces use `StoryarnWeb.PrivateMedia` so access is authorized first.
   """
   def get_url(key) do
     adapter().get_url(key)
@@ -83,8 +87,19 @@ defmodule Storyarn.Assets.Storage do
   Options:
   - `:expires_in` — URL validity in seconds (default: 3600)
   - `:filename` — suggested download filename for Content-Disposition
+  - `:cache_control` — response Cache-Control override
   """
   def presigned_download_url(key, opts \\ []) do
     adapter().presigned_download_url(key, opts)
+  end
+
+  @doc """
+  Extracts a storage key from a URL previously returned by the adapter.
+
+  This is used only to migrate legacy persisted URLs into the authenticated
+  delivery path. It does not authorize access to the resulting key.
+  """
+  def key_from_url(url) do
+    adapter().key_from_url(url)
   end
 end

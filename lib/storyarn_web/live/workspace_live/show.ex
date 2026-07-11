@@ -11,6 +11,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates
   alias Storyarn.Workspaces
+  alias StoryarnWeb.PrivateMedia
 
   @impl true
   def mount(_params, _session, socket) do
@@ -59,7 +60,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
           %{
             name: @workspace.name,
             description: @workspace.description,
-            banner_url: @workspace.banner_url
+            banner_url: PrivateMedia.workspace_banner_url(@workspace)
           }
         }
         class="container mx-auto h-dvw h-full"

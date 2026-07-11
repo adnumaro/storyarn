@@ -11,7 +11,7 @@ defmodule Storyarn.Assets.Asset do
     * `content_type` - MIME type (e.g., "image/png", "audio/mp3")
     * `size` - File size in bytes
     * `key` - Storage key/path in the bucket
-    * `url` - Public URL for accessing the asset
+    * `url` - Persisted storage URL (not a browser authorization boundary)
     * `metadata` - Additional metadata (e.g., width, height for images, thumbnail_key)
 
   ## Metadata Examples

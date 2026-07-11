@@ -10,6 +10,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AudioDataHelpers do
   alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Flows
+  alias StoryarnWeb.PrivateMedia
 
   def load_audio_data(socket) do
     %{sheet: sheet, project: project} = socket.assigns
@@ -128,7 +129,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AudioDataHelpers do
     %{
       id: asset.id,
       filename: asset.filename,
-      url: asset.url,
+      url: PrivateMedia.asset_url(asset),
       contentType: asset.content_type
     }
   end

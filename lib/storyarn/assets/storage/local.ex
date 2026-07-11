@@ -2,7 +2,7 @@ defmodule Storyarn.Assets.Storage.Local do
   @moduledoc """
   Local file storage adapter for development.
 
-  Stores files in priv/static/uploads and serves them via the static plug.
+  Stores files in priv/static/uploads and serves them through authenticated media routes.
   """
 
   @behaviour Storyarn.Assets.Storage
@@ -66,6 +66,24 @@ defmodule Storyarn.Assets.Storage.Local do
   def presigned_download_url(_key, _opts) do
     {:error, :not_supported}
   end
+
+  @impl true
+  def key_from_url(url) when is_binary(url) do
+    public_path = config()[:public_path] || "/uploads"
+    path = URI.parse(url).path || ""
+    prefix = String.trim_trailing(public_path, "/") <> "/"
+
+    if String.starts_with?(path, prefix) do
+      case validate_key(String.replace_prefix(path, prefix, "")) do
+        {:ok, key} -> {:ok, key}
+        {:error, :invalid_key} -> {:error, :invalid_url}
+      end
+    else
+      {:error, :invalid_url}
+    end
+  end
+
+  def key_from_url(_url), do: {:error, :invalid_url}
 
   defp file_path(key) do
     with {:ok, key} <- validate_key(key) do

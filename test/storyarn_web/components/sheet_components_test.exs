@@ -9,6 +9,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
 
   alias Storyarn.Repo
   alias StoryarnWeb.Components.SheetComponents
+  alias StoryarnWeb.PrivateMedia
 
   # =============================================================================
   # sheet_avatar/1
@@ -42,7 +43,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
         )
 
       assert html =~ "<img"
-      assert html =~ asset.url
+      assert html =~ PrivateMedia.asset_url(asset)
       assert html =~ "Test Character"
       assert html =~ "rounded"
     end

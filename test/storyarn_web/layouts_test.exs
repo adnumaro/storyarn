@@ -34,6 +34,7 @@ defmodule StoryarnWeb.LayoutsTest do
 
     test "serves the web app manifest through static paths" do
       assert "site.webmanifest" in StoryarnWeb.static_paths()
+      refute "uploads" in StoryarnWeb.static_paths()
     end
   end
 

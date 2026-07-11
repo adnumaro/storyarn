@@ -9,6 +9,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
 
   alias Storyarn.Repo
   alias Storyarn.Sheets
+  alias StoryarnWeb.PrivateMedia
 
   defp get_sidebar_live(view, project) do
     find_live_child(view, "sidebar-sheets-#{project.id}")
@@ -104,7 +105,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
         |> prop(:sheetsTree)
         |> find_tree_node(sheet.id)
 
-      assert prop(after_node, :avatar_url) == asset.url
+      assert prop(after_node, :avatar_url) == PrivateMedia.asset_url(asset)
     end
 
     test "renders sheet for editor member", %{conn: conn, user: user} do

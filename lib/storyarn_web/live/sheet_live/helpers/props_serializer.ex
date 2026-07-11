@@ -3,8 +3,8 @@ defmodule StoryarnWeb.SheetLive.Helpers.PropsSerializer do
   Pure functions to serialize Elixir data structures into component-ready props.
   """
 
-  alias Storyarn.Assets
   alias Storyarn.Sheets
+  alias StoryarnWeb.PrivateMedia
 
   def prepare_sheet_for_vue(nil), do: nil
 
@@ -17,7 +17,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.PropsSerializer do
           |> Enum.map(fn a ->
             %{
               id: a.id,
-              url: Assets.display_url(a.asset),
+              url: PrivateMedia.asset_url(a.asset),
               name: a.name,
               notes: a.notes,
               is_default: a.is_default
@@ -104,12 +104,12 @@ defmodule StoryarnWeb.SheetLive.Helpers.PropsSerializer do
 
   # Private
 
-  defp banner_url(%{banner_asset: %{} = asset}), do: Assets.display_url(asset)
+  defp banner_url(%{banner_asset: %{} = asset}), do: PrivateMedia.asset_url(asset)
   defp banner_url(_), do: nil
 
   defp extract_avatar_url(%{avatars: avatars}) when is_list(avatars) do
     case Enum.find(avatars, & &1.is_default) || List.first(avatars) do
-      %{asset: %{url: url}} when is_binary(url) -> url
+      %{asset: asset} -> PrivateMedia.asset_url(asset)
       _ -> nil
     end
   end
@@ -189,7 +189,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.PropsSerializer do
   defp serialize_gallery_image(gallery_image) do
     %{
       id: gallery_image.id,
-      url: Assets.display_url(gallery_image.asset),
+      url: PrivateMedia.asset_url(gallery_image.asset),
       label: gallery_image.label,
       description: gallery_image.description
     }

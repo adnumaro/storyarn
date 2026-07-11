@@ -4,9 +4,14 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   """
   use StoryarnWeb, :live_view
 
+  alias Storyarn.Assets
+  alias Storyarn.Assets.ImageProcessor
+  alias Storyarn.Assets.Storage
+  alias Storyarn.Assets.UploadPolicy
   alias Storyarn.Localization
   alias Storyarn.Workspaces
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.PrivateMedia
 
   @impl true
   def mount(_params, _session, socket) do
@@ -49,7 +54,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
         id="workspace-settings-general"
         workspace-name={@workspace.name || ""}
         workspace-description={@workspace.description || ""}
-        workspace-banner-url={@workspace.banner_url || ""}
+        workspace-banner-url={PrivateMedia.workspace_banner_url(@workspace) || ""}
         source-locale={@workspace.source_locale || ""}
         language-options={
           Enum.map(Localization.language_options_for_select(), fn {k, v} -> [k, v] end)
@@ -94,10 +99,15 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
         socket
       ) do
     Authorize.with_authorization(socket, :manage_workspace, fn socket ->
-      with [_header, base64_data] <- String.split(data, ",", parts: 2),
+      with [header, base64_data] <- split_banner_data(data),
+           {:ok, profile} <- UploadPolicy.profile_for(:banner),
+           :ok <- validate_banner_metadata(profile, filename, content_type, header),
+           :ok <- UploadPolicy.validate_base64_size(profile, base64_data),
            {:ok, binary_data} <- Base.decode64(base64_data),
-           key = "workspaces/#{socket.assigns.workspace.slug}/banner/#{filename}",
-           {:ok, url} <- Storyarn.Assets.Storage.upload(key, binary_data, content_type),
+           :ok <- validate_banner_binary(profile, binary_data, content_type),
+           safe_filename = Assets.sanitize_filename(filename),
+           key = "workspaces/#{socket.assigns.workspace.slug}/banner/#{safe_filename}",
+           {:ok, url} <- Storage.upload(key, binary_data, content_type),
            {:ok, workspace} <-
              Workspaces.update_workspace(socket.assigns.workspace, %{banner_url: url}) do
         {:noreply,
@@ -155,6 +165,39 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
          :error,
          dgettext("workspaces", "Only the workspace owner can delete the workspace.")
        )}
+    end
+  end
+
+  defp split_banner_data(data) when is_binary(data), do: String.split(data, ",", parts: 2)
+  defp split_banner_data(_data), do: []
+
+  defp validate_banner_metadata(profile, filename, content_type, header)
+       when is_binary(filename) and is_binary(content_type) and is_binary(header) do
+    safe_filename = Assets.sanitize_filename(filename)
+
+    with true <- String.trim(filename) != "",
+         true <- safe_filename not in ["", ".", ".."],
+         true <- header == "data:#{content_type};base64",
+         true <- MIME.from_path(safe_filename) == content_type,
+         :ok <- UploadPolicy.validate(profile, %{content_type: content_type, size: 0}) do
+      :ok
+    else
+      _ -> {:error, :invalid_banner_upload}
+    end
+  end
+
+  defp validate_banner_metadata(_profile, _filename, _content_type, _header), do: {:error, :invalid_banner_upload}
+
+  defp validate_banner_binary(profile, binary_data, content_type) do
+    with :ok <-
+           UploadPolicy.validate(profile, %{
+             content_type: content_type,
+             size: byte_size(binary_data)
+           }),
+         {:ok, ^content_type} <- ImageProcessor.content_type_from_binary(binary_data) do
+      :ok
+    else
+      _ -> {:error, :invalid_banner_upload}
     end
   end
 end

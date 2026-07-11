@@ -6,10 +6,10 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
 
   use Gettext, backend: Storyarn.Gettext
 
-  alias Storyarn.Assets
   alias Storyarn.Assets.Asset
   alias Storyarn.Flows
   alias Storyarn.Scenes.RoutePoints
+  alias StoryarnWeb.PrivateMedia
 
   # ---- Scene ----
 
@@ -485,23 +485,23 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
   # ---- Private helpers ----
 
   defp background_url(%{background_asset: %Ecto.Association.NotLoaded{}}), do: nil
-  defp background_url(%{background_asset: %{} = asset}), do: Assets.display_url(asset)
+  defp background_url(%{background_asset: %{} = asset}), do: PrivateMedia.asset_url(asset)
   defp background_url(_), do: nil
 
   defp pin_avatar_url(%{sheet: %{avatars: avatars}}) when is_list(avatars) do
     case Enum.find(avatars, & &1.is_default) || List.first(avatars) do
-      %{asset: asset} -> Assets.display_url(asset)
+      %{asset: asset} -> PrivateMedia.asset_url(asset)
       _ -> nil
     end
   end
 
   defp pin_avatar_url(_), do: nil
 
-  defp pin_icon_asset_url(%{icon_asset: %Asset{} = asset}), do: Assets.display_url(asset)
+  defp pin_icon_asset_url(%{icon_asset: %Asset{} = asset}), do: PrivateMedia.asset_url(asset)
 
   defp pin_icon_asset_url(_), do: nil
 
-  defp zone_label_icon_asset_url(%{label_icon_asset: %Asset{} = asset}), do: Assets.display_url(asset)
+  defp zone_label_icon_asset_url(%{label_icon_asset: %Asset{} = asset}), do: PrivateMedia.asset_url(asset)
 
   defp zone_label_icon_asset_url(_), do: nil
 end

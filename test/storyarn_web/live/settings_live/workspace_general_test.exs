@@ -5,6 +5,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
   import Storyarn.AccountsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.Assets.Storage
   alias Storyarn.Workspaces
 
   defp get_general_vue(view) do
@@ -199,6 +200,114 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
         render_click(view, "save", %{"workspace" => %{"name" => "Admin Updated Name"}})
 
       assert result =~ "Workspace updated successfully."
+    end
+  end
+
+  describe "upload_workspace_banner event" do
+    setup %{conn: conn} do
+      user = user_fixture()
+      workspace = workspace_fixture(user)
+      %{conn: log_in_user(conn, user), workspace: workspace}
+    end
+
+    test "uploads an allowed image with a matching extension", %{
+      conn: conn,
+      workspace: workspace
+    } do
+      {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/general")
+      image_data = File.read!("test/fixtures/images/test_image.jpg")
+
+      html =
+        render_click(view, "upload_workspace_banner", %{
+          "filename" => "banner.jpg",
+          "content_type" => "image/jpeg",
+          "data" => "data:image/jpeg;base64,#{Base.encode64(image_data)}"
+        })
+
+      assert html =~ "Banner uploaded successfully."
+      banner_url = Workspaces.get_workspace!(workspace.id).banner_url
+      assert {:ok, key} = Storage.key_from_url(banner_url)
+      on_exit(fn -> Storage.delete(key) end)
+    end
+
+    test "rejects an empty filename", %{conn: conn, workspace: workspace} do
+      {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/general")
+
+      html =
+        render_click(view, "upload_workspace_banner", %{
+          "filename" => "",
+          "content_type" => "image/png",
+          "data" => "data:image/png;base64,#{Base.encode64("not an image")}"
+        })
+
+      assert html =~ "Invalid file data or upload failed."
+      assert Workspaces.get_workspace!(workspace.id).banner_url == nil
+    end
+
+    test "rejects a client-supplied non-image content type", %{conn: conn, workspace: workspace} do
+      {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/general")
+
+      html =
+        render_click(view, "upload_workspace_banner", %{
+          "filename" => "payload.html",
+          "content_type" => "text/html",
+          "data" => "data:text/html;base64,#{Base.encode64("<script>alert(1)</script>")}"
+        })
+
+      assert html =~ "Invalid file data or upload failed."
+      assert Workspaces.get_workspace!(workspace.id).banner_url == nil
+    end
+
+    test "rejects a filename whose extension disagrees with its content type", %{
+      conn: conn,
+      workspace: workspace
+    } do
+      {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/general")
+
+      html =
+        render_click(view, "upload_workspace_banner", %{
+          "filename" => "payload.html",
+          "content_type" => "image/png",
+          "data" => "data:image/png;base64,#{Base.encode64("not an image")}"
+        })
+
+      assert html =~ "Invalid file data or upload failed."
+      assert Workspaces.get_workspace!(workspace.id).banner_url == nil
+    end
+
+    test "rejects non-image bytes renamed with an allowed extension", %{
+      conn: conn,
+      workspace: workspace
+    } do
+      {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/general")
+
+      html =
+        render_click(view, "upload_workspace_banner", %{
+          "filename" => "fake.png",
+          "content_type" => "image/png",
+          "data" => "data:image/png;base64,#{Base.encode64("not an image")}"
+        })
+
+      assert html =~ "Invalid file data or upload failed."
+      assert Workspaces.get_workspace!(workspace.id).banner_url == nil
+    end
+
+    test "rejects image bytes whose real format differs from the claimed MIME", %{
+      conn: conn,
+      workspace: workspace
+    } do
+      {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/general")
+      jpeg_data = File.read!("test/fixtures/images/test_image.jpg")
+
+      html =
+        render_click(view, "upload_workspace_banner", %{
+          "filename" => "mislabeled.png",
+          "content_type" => "image/png",
+          "data" => "data:image/png;base64,#{Base.encode64(jpeg_data)}"
+        })
+
+      assert html =~ "Invalid file data or upload failed."
+      assert Workspaces.get_workspace!(workspace.id).banner_url == nil
     end
   end
 

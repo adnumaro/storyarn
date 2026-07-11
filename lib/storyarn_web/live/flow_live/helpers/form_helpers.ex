@@ -10,6 +10,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
   import Phoenix.Component, only: [to_form: 2]
 
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
+  alias StoryarnWeb.PrivateMedia
 
   @doc """
   Builds a form from node data for the properties panel.
@@ -54,7 +55,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
     |> Enum.map(fn a ->
       %{
         id: a.id,
-        url: a.asset && a.asset.url,
+        url: PrivateMedia.asset_url(a.asset),
         name: a.name,
         is_default: a.is_default
       }
@@ -74,7 +75,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
     |> Enum.map(fn gi ->
       %{
         id: gi.id,
-        url: gi.asset && gi.asset.url,
+        url: PrivateMedia.asset_url(gi.asset),
         label: gi.label || (gi.asset && gi.asset.filename)
       }
     end)

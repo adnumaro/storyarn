@@ -19,7 +19,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
   alias Phoenix.LiveView.Socket
   alias Storyarn.Analytics
-  alias Storyarn.Assets
   alias Storyarn.Flows
   alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Repo
@@ -30,6 +29,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
   alias StoryarnWeb.Live.Shared.PickerSearch
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
+  alias StoryarnWeb.PrivateMedia
 
   # Notify the sticky FlowSidebarLive that the flows tree may have changed
   # (flow rename / shortcut change). Show itself no longer owns :flows_tree.
@@ -262,7 +262,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       kind: layer.kind,
       label: layer.label,
       asset_id: layer.asset_id,
-      url: Assets.display_url(layer.asset),
+      url: PrivateMedia.asset_url(layer.asset),
       z_index: layer.z_index,
       slot: layer.slot,
       x: layer.x,

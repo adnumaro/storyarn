@@ -15,6 +15,7 @@ defmodule StoryarnWeb.Router do
       "script-src 'self'#{@csp_dev_extras}; " <>
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com#{@csp_dev_extras}; " <>
       "img-src 'self' data: blob: https:; " <>
+      "media-src 'self' blob: https:; " <>
       "font-src 'self' data: https://fonts.gstatic.com#{@csp_dev_extras}; " <>
       "connect-src 'self' ws: wss: #{posthog_connect_src()}#{@csp_dev_extras}; " <>
       "frame-src 'self'; " <>
@@ -143,6 +144,14 @@ defmodule StoryarnWeb.Router do
   end
 
   ## Authentication routes
+
+  scope "/", StoryarnWeb do
+    pipe_through [:browser, :require_authenticated_user]
+
+    get "/media/assets/:id", PrivateMediaController, :asset
+    get "/media/projects/:project_id/files/:encoded_key", PrivateMediaController, :project_file
+    get "/media/workspaces/:workspace_slug/banner", PrivateMediaController, :workspace_banner
+  end
 
   scope "/", StoryarnWeb do
     pipe_through [:browser, :require_authenticated_user, :sudo_return_to]
