@@ -9,16 +9,22 @@ defmodule Storyarn.Assets.Storage do
   @type url :: String.t()
   @type content_type :: String.t()
   @type binary_data :: binary()
+  @type object_stat :: %{
+          size: non_neg_integer(),
+          etag: String.t() | nil,
+          content_type: String.t() | nil
+        }
 
   @callback upload(key, binary_data, content_type) :: {:ok, url} | {:error, term()}
   @callback delete(key) :: :ok | {:error, term()}
   @callback get_url(key) :: url
   @callback download(key) :: {:ok, binary_data} | {:error, term()}
+  @callback stat(key) :: {:ok, object_stat} | {:error, term()}
+  @callback stream(key, non_neg_integer(), non_neg_integer(), opts :: keyword()) ::
+              {:ok, Enumerable.t()} | {:error, term()}
   @callback presigned_upload_url(key, content_type, opts :: keyword()) ::
               {:ok, url, map()} | {:error, term()}
   @callback copy(source_key :: key, dest_key :: key) :: :ok | {:error, term()}
-  @callback presigned_download_url(key, opts :: keyword()) ::
-              {:ok, url} | {:error, term()}
   @callback key_from_url(url) :: {:ok, key} | {:error, :invalid_url}
 
   @doc """
@@ -45,6 +51,23 @@ defmodule Storyarn.Assets.Storage do
   """
   def download(key) do
     adapter().download(key)
+  end
+
+  @doc """
+  Returns private object metadata without exposing a storage URL.
+  """
+  def stat(key) do
+    adapter().stat(key)
+  end
+
+  @doc """
+  Streams a byte window from private storage in bounded chunks.
+
+  Stream elements are `{:ok, binary}` or `{:error, reason}`. Object-storage
+  adapters sign each request server-side; no bearer URL is returned to callers.
+  """
+  def stream(key, offset, length, opts \\ []) do
+    adapter().stream(key, offset, length, opts)
   end
 
   @doc """
@@ -79,18 +102,6 @@ defmodule Storyarn.Assets.Storage do
   """
   def copy(source_key, dest_key) do
     adapter().copy(source_key, dest_key)
-  end
-
-  @doc """
-  Generates a presigned URL for direct download.
-
-  Options:
-  - `:expires_in` — URL validity in seconds (default: 3600)
-  - `:filename` — suggested download filename for Content-Disposition
-  - `:cache_control` — response Cache-Control override
-  """
-  def presigned_download_url(key, opts \\ []) do
-    adapter().presigned_download_url(key, opts)
   end
 
   @doc """

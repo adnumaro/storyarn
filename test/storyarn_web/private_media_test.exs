@@ -24,6 +24,10 @@ defmodule StoryarnWeb.PrivateMediaTest do
     test "returns nil without an asset" do
       assert PrivateMedia.asset_url(nil) == nil
     end
+
+    test "never falls back to a persisted storage URL" do
+      assert PrivateMedia.asset_url(%{url: "https://t3.storage.dev/private/image.png"}) == nil
+    end
   end
 
   test "project_file_url/2 encodes the storage key" do
@@ -41,6 +45,43 @@ defmodule StoryarnWeb.PrivateMediaTest do
              PrivateMedia.project_file_url(7, "projects/7/assets/image.png")
 
     assert PrivateMedia.project_url_from_stored(8, stored_url) == nil
+  end
+
+  test "project media keys are limited to non-empty asset and blob paths" do
+    assert PrivateMedia.project_asset_key?(7, "projects/7/assets/uuid/image.png")
+    refute PrivateMedia.project_asset_key?(7, "projects/7/blobs/hash.png")
+
+    assert PrivateMedia.project_media_key?(7, "projects/7/assets/uuid/image.png")
+    assert PrivateMedia.project_media_key?(7, "projects/7/blobs/hash.png")
+    refute PrivateMedia.project_media_key?(7, "projects/7/assets")
+    refute PrivateMedia.project_media_key?(7, "projects/7/snapshots/project/1.json.gz")
+    refute PrivateMedia.project_media_key?(7, "projects/8/assets/uuid/image.png")
+    refute PrivateMedia.project_media_key?(7, "projects/7/assets/../snapshot.json.gz")
+  end
+
+  test "storage keys reject empty, malformed, and traversing paths" do
+    assert PrivateMedia.valid_storage_key?("projects/7/assets/image.png")
+
+    refute PrivateMedia.valid_storage_key?("")
+    refute PrivateMedia.valid_storage_key?("/projects/7/assets/image.png")
+    refute PrivateMedia.valid_storage_key?("projects//7/assets/image.png")
+    refute PrivateMedia.valid_storage_key?("projects/7/assets/./image.png")
+    refute PrivateMedia.valid_storage_key?("projects/7/assets/../image.png")
+    refute PrivateMedia.valid_storage_key?("projects/7/assets\\image.png")
+    refute PrivateMedia.valid_storage_key?("projects/7/assets/image.png" <> <<0>>)
+    refute PrivateMedia.valid_storage_key?(<<255>>)
+    refute PrivateMedia.valid_storage_key?(nil)
+  end
+
+  test "project snapshot keys are limited to project snapshot archives" do
+    assert PrivateMedia.project_snapshot_key?(7, "projects/7/snapshots/project/42.json.gz")
+
+    refute PrivateMedia.project_snapshot_key?(7, "projects/8/snapshots/project/42.json.gz")
+    refute PrivateMedia.project_snapshot_key?(7, "projects/7/snapshots/project/42.json")
+    refute PrivateMedia.project_snapshot_key?(7, "projects/7/snapshots/assets/42.json.gz")
+    refute PrivateMedia.project_snapshot_key?(7, "projects/7/snapshots/project/../42.json.gz")
+    refute PrivateMedia.project_snapshot_key?(7, <<255>>)
+    refute PrivateMedia.project_snapshot_key?(7, nil)
   end
 
   describe "project_snapshot_asset_url/2" do

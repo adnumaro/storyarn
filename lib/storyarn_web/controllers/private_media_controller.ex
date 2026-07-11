@@ -8,14 +8,15 @@ defmodule StoryarnWeb.PrivateMediaController do
   alias Storyarn.Assets.Storage
   alias Storyarn.Projects
   alias Storyarn.Workspaces
-
-  @signed_url_ttl_seconds 60
+  alias StoryarnWeb.PrivateDownload
+  alias StoryarnWeb.PrivateMedia
 
   def asset(conn, %{"id" => asset_id_param}) do
     with {:ok, asset_id} <- parse_positive_integer(asset_id_param),
          %Asset{} = asset <- Assets.get_asset(asset_id),
          {:ok, _project, _membership} <-
-           Projects.get_project(conn.assigns.current_scope, asset.project_id) do
+           Projects.get_project(conn.assigns.current_scope, asset.project_id),
+         true <- PrivateMedia.project_asset_key?(asset.project_id, asset.key) do
       deliver(conn, asset.key, asset.content_type)
     else
       _ -> not_found(conn)
@@ -46,31 +47,9 @@ defmodule StoryarnWeb.PrivateMediaController do
   end
 
   defp deliver(conn, key, content_type) do
-    case Storage.presigned_download_url(key,
-           expires_in: @signed_url_ttl_seconds,
-           cache_control: "private, no-store"
-         ) do
-      {:ok, url} ->
+    case PrivateDownload.send(conn, key, content_type: content_type) do
+      {:ok, conn} ->
         conn
-        |> put_resp_header("cache-control", "private, no-store")
-        |> redirect(external: url)
-
-      {:error, :not_supported} ->
-        stream_local(conn, key, content_type)
-
-      {:error, _reason} ->
-        not_found(conn)
-    end
-  end
-
-  # sobelow_skip ["XSS.ContentType", "XSS.SendResp"]
-  defp stream_local(conn, key, content_type) do
-    case Storage.download(key) do
-      {:ok, data} ->
-        conn
-        |> put_resp_header("cache-control", "private, no-store")
-        |> put_resp_content_type(content_type)
-        |> send_resp(:ok, data)
 
       {:error, _reason} ->
         not_found(conn)
@@ -79,8 +58,7 @@ defmodule StoryarnWeb.PrivateMediaController do
 
   defp decode_project_key(encoded_key, project_id) do
     with {:ok, key} <- Base.url_decode64(encoded_key, padding: false),
-         true <- valid_storage_key?(key),
-         true <- String.starts_with?(key, "projects/#{project_id}/") do
+         true <- PrivateMedia.project_media_key?(project_id, key) do
       {:ok, key}
     else
       _ -> {:error, :invalid_key}
@@ -88,21 +66,13 @@ defmodule StoryarnWeb.PrivateMediaController do
   end
 
   defp validate_workspace_banner_key(key, workspace_slug) do
-    if valid_storage_key?(key) and
+    if PrivateMedia.valid_storage_key?(key) and
          String.starts_with?(key, "workspaces/#{workspace_slug}/banner/") do
       :ok
     else
       {:error, :invalid_key}
     end
   end
-
-  defp valid_storage_key?(key) when is_binary(key) do
-    key != "" and
-      not String.contains?(key, [<<0>>, "\\"]) and
-      Enum.all?(String.split(key, "/"), &(&1 not in ["", ".", ".."]))
-  end
-
-  defp valid_storage_key?(_key), do: false
 
   defp parse_positive_integer(value) do
     case Integer.parse(value) do

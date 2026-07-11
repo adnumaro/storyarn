@@ -86,10 +86,10 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpersTest do
               position: 0,
               is_default: true,
               name: nil,
-              asset: %{url: "https://cdn.test/jaime.png"}
+              asset: %{id: 501, url: "https://cdn.test/jaime.png"}
             }
           ],
-          banner_asset: %{url: "https://cdn.test/jaime-banner.png"}
+          banner_asset: %{id: 502, url: "https://cdn.test/jaime-banner.png"}
         },
         %{id: 2, name: "Anya", color: "#00ff00", avatars: [], banner_asset: nil}
       ]
@@ -100,8 +100,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpersTest do
 
       assert result["1"].id == 1
       assert result["1"].name == "Jaime"
-      assert result["1"].avatar_url == "https://cdn.test/jaime.png"
-      assert result["1"].banner_url == "https://cdn.test/jaime-banner.png"
+      assert result["1"].avatar_url == "/media/assets/501"
+      assert result["1"].banner_url == "/media/assets/502"
       assert result["1"].color == "#ff0000"
 
       assert result["2"] == %{

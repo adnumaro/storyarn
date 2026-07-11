@@ -3,7 +3,7 @@ defmodule StoryarnWeb.PrivateMedia do
   Builds same-origin URLs for private workspace and project media.
 
   The target controller authenticates the current user and authorizes access
-  before issuing a short-lived storage URL.
+  before streaming the object. Storage URLs are never exposed to the browser.
   """
 
   use StoryarnWeb, :verified_routes
@@ -17,12 +17,12 @@ defmodule StoryarnWeb.PrivateMedia do
   def asset_url(%Asset{} = asset) do
     case preferred_asset_id(asset) do
       id when is_integer(id) -> ~p"/media/assets/#{id}"
-      _ -> asset.url
+      _ -> nil
     end
   end
 
   def asset_url(%{id: id}) when is_integer(id), do: ~p"/media/assets/#{id}"
-  def asset_url(%{url: url}) when is_binary(url), do: url
+  def asset_url(_asset), do: nil
 
   @spec project_file_url(integer(), String.t()) :: String.t()
   def project_file_url(project_id, key) when is_integer(project_id) and is_binary(key) do
@@ -33,7 +33,7 @@ defmodule StoryarnWeb.PrivateMedia do
   @spec project_url_from_stored(integer(), String.t() | nil) :: String.t() | nil
   def project_url_from_stored(project_id, url) when is_integer(project_id) and is_binary(url) do
     with {:ok, key} <- Storage.key_from_url(url),
-         true <- String.starts_with?(key, "projects/#{project_id}/") do
+         true <- project_media_key?(project_id, key) do
       project_file_url(project_id, key)
     else
       _ -> nil
@@ -60,8 +60,58 @@ defmodule StoryarnWeb.PrivateMedia do
 
   def workspace_banner_url(_workspace), do: nil
 
+  @doc false
+  @spec project_asset_key?(integer(), String.t()) :: boolean()
+  def project_asset_key?(project_id, key) do
+    scoped_project_key?(project_id, key, ["assets"])
+  end
+
+  @doc false
+  @spec project_media_key?(integer(), String.t()) :: boolean()
+  def project_media_key?(project_id, key) do
+    scoped_project_key?(project_id, key, ["assets", "blobs"])
+  end
+
+  @doc false
+  @spec project_snapshot_key?(integer(), String.t()) :: boolean()
+  def project_snapshot_key?(project_id, key) when is_integer(project_id) and is_binary(key) do
+    valid_storage_key?(key) and
+      String.starts_with?(key, "projects/#{project_id}/snapshots/project/") and
+      String.ends_with?(key, ".json.gz")
+  end
+
+  def project_snapshot_key?(_project_id, _key), do: false
+
+  @doc false
+  @spec valid_storage_key?(term()) :: boolean()
+  def valid_storage_key?(key) when is_binary(key) do
+    key != "" and
+      String.valid?(key) and
+      not String.contains?(key, [<<0>>, "\\"]) and
+      Enum.all?(String.split(key, "/"), &(&1 not in ["", ".", ".."]))
+  end
+
+  def valid_storage_key?(_key), do: false
+
+  defp scoped_project_key?(project_id, key, namespaces) when is_integer(project_id) and is_binary(key) do
+    prefix = "projects/#{project_id}/"
+
+    with true <- valid_storage_key?(key),
+         true <- String.starts_with?(key, prefix),
+         relative_key = String.replace_prefix(key, prefix, ""),
+         [namespace | path_segments] <- String.split(relative_key, "/"),
+         true <- namespace in namespaces,
+         true <- path_segments != [] do
+      true
+    else
+      _ -> false
+    end
+  end
+
+  defp scoped_project_key?(_project_id, _key, _namespaces), do: false
+
   defp project_url_from_key(project_id, key) when is_binary(key) do
-    if String.starts_with?(key, "projects/#{project_id}/") do
+    if project_media_key?(project_id, key) do
       project_file_url(project_id, key)
     end
   end

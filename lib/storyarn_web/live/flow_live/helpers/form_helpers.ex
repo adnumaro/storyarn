@@ -65,7 +65,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
 
   defp build_avatars(_), do: []
 
-  defp extract_asset_url(%{url: url}) when is_binary(url), do: url
+  defp extract_asset_url(%{} = asset), do: PrivateMedia.asset_url(asset)
   defp extract_asset_url(_), do: nil
 
   defp build_gallery_images(nil), do: []

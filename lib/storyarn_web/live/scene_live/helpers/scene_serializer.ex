@@ -9,6 +9,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneSerializer do
   import Phoenix.Component, only: [assign: 3]
 
   alias Storyarn.Scenes
+  alias StoryarnWeb.PrivateMedia
 
   def build_scene_data(map, can_edit) do
     %{
@@ -34,7 +35,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneSerializer do
     }
   end
 
-  def background_url(%{background_asset: %{url: url}}) when is_binary(url), do: url
+  def background_url(%{background_asset: %{} = asset}), do: PrivateMedia.asset_url(asset)
   def background_url(_), do: nil
 
   def reload_scene(socket) do
@@ -126,17 +127,17 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneSerializer do
 
   def pin_avatar_url(%{sheet: %{avatars: avatars}}) when is_list(avatars) do
     case Enum.find(avatars, & &1.is_default) || List.first(avatars) do
-      %{asset: %{url: url}} when is_binary(url) -> url
+      %{asset: %{} = asset} -> PrivateMedia.asset_url(asset)
       _ -> nil
     end
   end
 
   def pin_avatar_url(_), do: nil
 
-  def pin_icon_asset_url(%{icon_asset: %{url: url}}) when is_binary(url), do: url
+  def pin_icon_asset_url(%{icon_asset: %{} = asset}), do: PrivateMedia.asset_url(asset)
   def pin_icon_asset_url(_), do: nil
 
-  def zone_label_icon_asset_url(%{label_icon_asset: %{url: url}}) when is_binary(url), do: url
+  def zone_label_icon_asset_url(%{label_icon_asset: %{} = asset}), do: PrivateMedia.asset_url(asset)
   def zone_label_icon_asset_url(_), do: nil
 
   def serialize_zone(zone) do

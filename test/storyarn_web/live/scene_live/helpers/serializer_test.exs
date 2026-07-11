@@ -49,7 +49,9 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
         layer_id: 1,
         flow_id: 5,
         sheet_id: 3,
-        sheet: %{avatars: [%{is_default: true, asset: %{url: "https://cdn.test/avatar.png"}}]},
+        sheet: %{
+          avatars: [%{is_default: true, asset: %{id: 701, url: "https://cdn.test/avatar.png"}}]
+        },
         icon_asset: nil,
         position: 0,
         locked: false,
@@ -69,7 +71,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
       assert result.shortcut == "castle"
       assert result.hidden == false
       assert result.flow_id == 5
-      assert result.avatar_url == "https://cdn.test/avatar.png"
+      assert result.avatar_url == "/media/assets/701"
       assert result.icon_asset_url == nil
       assert result.locked == false
       assert result.is_playable == true
@@ -310,8 +312,8 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
 
   describe "background_url/1" do
     test "extracts url from background_asset" do
-      scene = %{background_asset: %{url: "https://cdn.test/bg.png"}}
-      assert Serializer.background_url(scene) == "https://cdn.test/bg.png"
+      scene = %{background_asset: %{id: 702, url: "https://cdn.test/bg.png"}}
+      assert Serializer.background_url(scene) == "/media/assets/702"
     end
 
     test "returns nil for nil background_asset" do
@@ -333,11 +335,13 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
     test "extracts url from nested sheet avatar" do
       pin = %{
         sheet: %{
-          avatars: [%{is_default: true, asset: %{url: "https://cdn.test/avatar.png"}}]
+          avatars: [
+            %{is_default: true, asset: %{id: 703, url: "https://cdn.test/avatar.png"}}
+          ]
         }
       }
 
-      assert Serializer.pin_avatar_url(pin) == "https://cdn.test/avatar.png"
+      assert Serializer.pin_avatar_url(pin) == "/media/assets/703"
     end
 
     test "returns nil for nil sheet" do
@@ -359,8 +363,8 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
 
   describe "pin_icon_asset_url/1" do
     test "extracts url from icon_asset" do
-      pin = %{icon_asset: %{url: "https://cdn.test/icon.png"}}
-      assert Serializer.pin_icon_asset_url(pin) == "https://cdn.test/icon.png"
+      pin = %{icon_asset: %{id: 704, url: "https://cdn.test/icon.png"}}
+      assert Serializer.pin_icon_asset_url(pin) == "/media/assets/704"
     end
 
     test "returns nil for nil icon_asset" do
@@ -446,7 +450,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
         default_zoom: 1.0,
         default_center_x: 960.0,
         default_center_y: 540.0,
-        background_asset: %{url: "https://cdn.test/bg.png"},
+        background_asset: %{id: 705, url: "https://cdn.test/bg.png"},
         scale_unit: "meters",
         scale_value: 10.0,
         parent_id: nil,
@@ -470,7 +474,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
 
       assert result.id == 1
       assert result.name == "Main Scene"
-      assert result.background_url == "https://cdn.test/bg.png"
+      assert result.background_url == "/media/assets/705"
       assert result.can_edit == true
       assert length(result.layers) == 1
       assert hd(result.layers).name == "BG"
