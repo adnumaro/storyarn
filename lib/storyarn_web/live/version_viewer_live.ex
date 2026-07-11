@@ -145,7 +145,7 @@ defmodule StoryarnWeb.VersionViewerLive do
     blocks = Versioning.serialize_sheet(snapshot)
 
     socket
-    |> assign(:sheet, sheet_header(snapshot))
+    |> assign(:sheet, sheet_header(snapshot, socket.assigns.project.id))
     |> assign(:surface, sheet_surface(socket.assigns, blocks))
   end
 
@@ -328,19 +328,19 @@ defmodule StoryarnWeb.VersionViewerLive do
     }
   end
 
-  defp sheet_header(snapshot) do
+  defp sheet_header(snapshot, project_id) do
     %{
       id: snapshot["original_id"] || -1,
       name: snapshot["name"],
       shortcut: snapshot["shortcut"],
       color: snapshot["color"],
-      bannerUrl: snapshot_asset_url(snapshot["banner_asset_id"], snapshot),
-      avatars: sheet_avatars(snapshot)
+      bannerUrl: snapshot_asset_url(snapshot["banner_asset_id"], snapshot, project_id),
+      avatars: sheet_avatars(snapshot, project_id)
     }
   end
 
-  defp sheet_avatars(snapshot) do
-    case snapshot_asset_url(snapshot["avatar_asset_id"], snapshot) do
+  defp sheet_avatars(snapshot, project_id) do
+    case snapshot_asset_url(snapshot["avatar_asset_id"], snapshot, project_id) do
       nil -> []
       url -> [%{id: "snapshot-default-avatar", url: url, name: nil, is_default: true}]
     end
@@ -388,19 +388,14 @@ defmodule StoryarnWeb.VersionViewerLive do
     }
   end
 
-  defp snapshot_asset_url(nil, _snapshot), do: nil
+  defp snapshot_asset_url(nil, _snapshot, _project_id), do: nil
 
-  defp snapshot_asset_url(asset_id, snapshot) do
+  defp snapshot_asset_url(asset_id, snapshot, project_id) do
     metadata =
       snapshot
       |> Map.get("asset_metadata", %{})
       |> Map.get(to_string(asset_id), %{})
 
-    with project_id when is_integer(project_id) <- metadata["project_id"],
-         key when is_binary(key) <- metadata["key"] do
-      PrivateMedia.project_file_url(project_id, key)
-    else
-      _ -> nil
-    end
+    PrivateMedia.project_snapshot_asset_url(project_id, metadata)
   end
 end

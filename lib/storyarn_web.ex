@@ -17,7 +17,7 @@ defmodule StoryarnWeb do
   those modules here.
   """
 
-  def static_paths, do: ~w(assets fonts images uploads videos favicon.ico robots.txt site.webmanifest)
+  def static_paths, do: ~w(assets fonts images videos favicon.ico robots.txt site.webmanifest)
 
   def router do
     quote do

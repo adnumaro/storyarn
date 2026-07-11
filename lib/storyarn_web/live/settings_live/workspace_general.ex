@@ -5,6 +5,8 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Assets
+  alias Storyarn.Assets.Storage
+  alias Storyarn.Assets.UploadPolicy
   alias Storyarn.Localization
   alias Storyarn.Workspaces
   alias StoryarnWeb.Helpers.Authorize
@@ -96,11 +98,20 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
         socket
       ) do
     Authorize.with_authorization(socket, :manage_workspace, fn socket ->
-      with [_header, base64_data] <- String.split(data, ",", parts: 2),
+      with [header, base64_data] <- String.split(data, ",", parts: 2),
+           {:ok, profile} <- UploadPolicy.profile_for(:banner),
            {:ok, binary_data} <- Base.decode64(base64_data),
+           :ok <-
+             validate_banner_upload(
+               profile,
+               filename,
+               content_type,
+               header,
+               byte_size(binary_data)
+             ),
            safe_filename = Assets.sanitize_filename(filename),
            key = "workspaces/#{socket.assigns.workspace.slug}/banner/#{safe_filename}",
-           {:ok, url} <- Storyarn.Assets.Storage.upload(key, binary_data, content_type),
+           {:ok, url} <- Storage.upload(key, binary_data, content_type),
            {:ok, workspace} <-
              Workspaces.update_workspace(socket.assigns.workspace, %{banner_url: url}) do
         {:noreply,
@@ -160,4 +171,21 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
        )}
     end
   end
+
+  defp validate_banner_upload(profile, filename, content_type, header, size)
+       when is_binary(filename) and is_binary(content_type) and is_binary(header) do
+    safe_filename = Assets.sanitize_filename(filename)
+
+    with true <- String.trim(filename) != "",
+         true <- safe_filename not in ["", ".", ".."],
+         true <- header == "data:#{content_type};base64",
+         true <- MIME.from_path(safe_filename) == content_type,
+         :ok <- UploadPolicy.validate(profile, %{content_type: content_type, size: size}) do
+      :ok
+    else
+      _ -> {:error, :invalid_banner_upload}
+    end
+  end
+
+  defp validate_banner_upload(_profile, _filename, _content_type, _header, _size), do: {:error, :invalid_banner_upload}
 end

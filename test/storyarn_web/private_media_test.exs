@@ -43,6 +43,33 @@ defmodule StoryarnWeb.PrivateMediaTest do
     assert PrivateMedia.project_url_from_stored(8, stored_url) == nil
   end
 
+  describe "project_snapshot_asset_url/2" do
+    test "uses the current snapshot key" do
+      key = "projects/7/blobs/banner.png"
+
+      assert PrivateMedia.project_snapshot_asset_url(7, %{
+               "key" => key,
+               "url" => "/uploads/test/projects/7/assets/old.png"
+             }) == PrivateMedia.project_file_url(7, key)
+    end
+
+    test "falls back to the legacy stored URL for older snapshots" do
+      stored_url = "/uploads/test/projects/7/assets/legacy-banner.png"
+
+      assert PrivateMedia.project_snapshot_asset_url(7, %{"url" => stored_url}) ==
+               PrivateMedia.project_file_url(7, "projects/7/assets/legacy-banner.png")
+    end
+
+    test "rejects metadata belonging to another project" do
+      metadata = %{
+        "key" => "projects/8/blobs/private.png",
+        "url" => "/uploads/test/projects/8/assets/private.png"
+      }
+
+      assert PrivateMedia.project_snapshot_asset_url(7, metadata) == nil
+    end
+  end
+
   test "workspace_banner_url/1 hides the persisted storage URL" do
     workspace = %{
       slug: "writers-room",

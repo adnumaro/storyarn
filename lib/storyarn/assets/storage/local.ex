@@ -2,7 +2,7 @@ defmodule Storyarn.Assets.Storage.Local do
   @moduledoc """
   Local file storage adapter for development.
 
-  Stores files in priv/static/uploads and serves them via the static plug.
+  Stores files in priv/static/uploads and serves them through authenticated media routes.
   """
 
   @behaviour Storyarn.Assets.Storage

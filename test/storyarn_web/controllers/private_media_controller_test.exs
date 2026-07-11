@@ -96,6 +96,20 @@ defmodule StoryarnWeb.PrivateMediaControllerTest do
     end
   end
 
+  describe "legacy /uploads path" do
+    test "does not expose local storage through Plug.Static" do
+      key = "projects/999/private/#{Ecto.UUID.generate()}.png"
+      body = "private static file"
+      {:ok, public_path} = Storage.upload(key, body, "image/png")
+      on_exit(fn -> Storage.delete(key) end)
+
+      conn = get(build_conn(), public_path)
+
+      assert conn.status == 404
+      refute conn.resp_body == body
+    end
+  end
+
   defp stored_asset_fixture(project, user) do
     key = "projects/#{project.id}/assets/#{Ecto.UUID.generate()}/private.png"
     body = "private image #{key}"
