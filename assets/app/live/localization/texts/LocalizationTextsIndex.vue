@@ -117,6 +117,7 @@ const conflictText = ref<SelectedText | null>(null);
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 let autosaveTimeout: ReturnType<typeof setTimeout> | null = null;
 let savedTimeout: ReturnType<typeof setTimeout> | null = null;
+let pendingSave: { id: number; snapshot: string } | null = null;
 
 const statusOptions = computed(() => [
   { key: "pending", label: "localization.index.status_pending" },
@@ -189,7 +190,15 @@ watch(search, (value) => {
 
 watch(
   () => selectedText,
-  (text) => hydrateEditor(text),
+  (text) => {
+    const activeSave = pendingSave;
+    const hasNewerLocalEdit =
+      activeSave !== null &&
+      activeSave.id === text?.id &&
+      currentSnapshot.value !== activeSave.snapshot;
+
+    if (!hasNewerLocalEdit) hydrateEditor(text);
+  },
   { immediate: true },
 );
 
@@ -268,9 +277,19 @@ function scheduleAutosave(): void {
   autosaveTimeout = setTimeout(() => saveTranslation(), 900);
 }
 
-function saveTranslation(advance = false, onSuccess?: () => void): void {
-  if (!selectedText || !canEdit.value || saveState.value === "saving" || placeholderIssue.value)
+function saveBlocked(): boolean {
+  return (
+    !selectedText || !canEdit.value || saveState.value === "saving" || !!placeholderIssue.value
+  );
+}
+
+function saveTranslation(advance = false, onSuccess?: () => void, onFailure?: () => void): void {
+  if (saveBlocked()) {
+    onFailure?.();
     return;
+  }
+
+  if (!selectedText) return;
   if (autosaveTimeout) clearTimeout(autosaveTimeout);
 
   if (!dirty.value && !advance) {
@@ -280,6 +299,8 @@ function saveTranslation(advance = false, onSuccess?: () => void): void {
 
   saveState.value = "saving";
   saveError.value = "";
+  const request = { id: selectedText.id, snapshot: currentSnapshot.value };
+  pendingSave = request;
 
   live.pushEvent(
     "save_translation",
@@ -293,31 +314,56 @@ function saveTranslation(advance = false, onSuccess?: () => void): void {
         vo_status: voStatus.value,
       },
     },
-    (response: SaveResponse) => handleSaveResponse(response, advance, onSuccess),
+    (response: SaveResponse) =>
+      handleSaveResponse(response, request, advance, onSuccess, onFailure),
+    () => {
+      pendingSave = null;
+      handleSaveError({ error: "save_failed" });
+      onFailure?.();
+    },
   );
 }
 
 function handleSaveResponse(
   response: SaveResponse,
+  request: { id: number; snapshot: string },
   advance: boolean,
   onSuccess?: () => void,
+  onFailure?: () => void,
 ): void {
+  pendingSave = null;
+
   if (response?.ok) {
-    handleSaveSuccess(response.text, advance, onSuccess);
+    handleSaveSuccess(response.text, request, advance, onSuccess, onFailure);
   } else if (response?.conflict && response.text) {
     handleSaveConflict(response.text);
+    onFailure?.();
   } else {
     handleSaveError(response);
+    onFailure?.();
   }
 }
 
 function handleSaveSuccess(
   savedText: SelectedText | undefined,
+  request: { id: number; snapshot: string },
   advance: boolean,
   onSuccess?: () => void,
+  onFailure?: () => void,
 ): void {
+  const hasNewerLocalEdit =
+    selectedText?.id === request.id && currentSnapshot.value !== request.snapshot;
+
+  if (hasNewerLocalEdit) {
+    if (savedText) localLockVersion.value = savedText.lockVersion;
+    lastSavedSnapshot.value = request.snapshot;
+    saveState.value = "dirty";
+    saveTranslation(advance, onSuccess, onFailure);
+    return;
+  }
+
   if (savedText) hydrateEditor(savedText);
-  lastSavedSnapshot.value = currentSnapshot.value;
+  lastSavedSnapshot.value = request.snapshot;
   saveState.value = "saved";
   if (savedTimeout) clearTimeout(savedTimeout);
   savedTimeout = setTimeout(() => (saveState.value = "idle"), 1800);
@@ -373,17 +419,27 @@ function translateSingle(id: number): void {
   translating.value = true;
 
   const translate = () => {
-    live.pushEvent("translate_single", { id }, (response: SaveResponse) => {
-      translating.value = false;
-      if (response?.ok && response.text) hydrateEditor(response.text);
-      else if (!response?.ok) {
+    live.pushEvent(
+      "translate_single",
+      { id },
+      (response: SaveResponse) => {
+        translating.value = false;
+        if (response?.ok && response.text) hydrateEditor(response.text);
+        else if (!response?.ok) {
+          saveState.value = "error";
+          saveError.value = response?.error || "translation_failed";
+        }
+      },
+      () => {
+        translating.value = false;
         saveState.value = "error";
-        saveError.value = response?.error || "translation_failed";
-      }
-    });
+        saveError.value = "translation_failed";
+      },
+    );
   };
 
-  if (dirty.value && selectedText?.id === id) saveTranslation(false, translate);
+  if (dirty.value && selectedText)
+    saveTranslation(false, translate, () => (translating.value = false));
   else translate();
 }
 
@@ -572,6 +628,7 @@ function difference(left: Map<string, number>, right: Map<string, number>): stri
             <button
               v-if="canEdit && hasProvider"
               type="button"
+              :data-testid="`localization-translate-${text.id}`"
               class="btn btn-ghost btn-xs btn-square mt-1 opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
               :aria-label="$t('localization.index.translate_deepl_title')"
               :disabled="translating"

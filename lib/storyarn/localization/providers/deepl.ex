@@ -214,7 +214,7 @@ defmodule Storyarn.Localization.Providers.DeepL do
   end
 
   defp translate_chunks([], acc, _base_body, _api_key, _base_url) do
-    {:ok, acc}
+    {:ok, acc |> Enum.reverse() |> List.flatten()}
   end
 
   defp translate_chunks([chunk | chunks], acc, base_body, api_key, base_url) do
@@ -222,7 +222,7 @@ defmodule Storyarn.Localization.Providers.DeepL do
 
     case do_translate(body, api_key, base_url) do
       {:ok, translations} ->
-        translate_chunks(chunks, acc ++ translations, base_body, api_key, base_url)
+        translate_chunks(chunks, [translations | acc], base_body, api_key, base_url)
 
       {:error, _} = error ->
         error

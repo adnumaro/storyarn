@@ -90,6 +90,11 @@ function saveProviderConfig() {
           : "save_failed";
       }
     },
+    () => {
+      saving.value = false;
+      connectionState.value = "error";
+      connectionError.value = "save_failed";
+    },
   );
 }
 
@@ -110,6 +115,11 @@ function testProviderConnection() {
         connectionState.value = "error";
         connectionError.value = response?.error || "connection_failed";
       }
+    },
+    () => {
+      testing.value = false;
+      connectionState.value = "error";
+      connectionError.value = "connection_failed";
     },
   );
 }
@@ -223,6 +233,7 @@ function formatNumber(n: number | string) {
           <Button
             v-if="hasApiKey"
             type="button"
+            data-testid="localization-test-connection"
             variant="outline"
             :disabled="testing || saving"
             @click="testProviderConnection"
@@ -230,7 +241,11 @@ function formatNumber(n: number | string) {
             <LoaderCircle v-if="testing" class="size-4 animate-spin" />
             {{ $t("project_settings.localization.test_connection") }}
           </Button>
-          <Button type="submit" :disabled="saving || testing">
+          <Button
+            type="submit"
+            data-testid="localization-save-provider"
+            :disabled="saving || testing"
+          >
             <LoaderCircle v-if="saving" class="size-4 animate-spin" />
             {{ $t("project_settings.localization.save") }}
           </Button>

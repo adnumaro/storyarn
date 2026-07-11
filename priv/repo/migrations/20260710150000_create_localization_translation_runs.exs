@@ -34,5 +34,27 @@ defmodule Storyarn.Repo.Migrations.CreateLocalizationTranslationRuns do
              where: "status IN ('queued', 'running')",
              name: :localization_translation_runs_one_active
            )
+
+    create constraint(:localization_translation_runs, :localization_runs_total_count_non_negative,
+             check: "total_count >= 0"
+           )
+
+    create constraint(
+             :localization_translation_runs,
+             :localization_runs_processed_count_non_negative,
+             check: "processed_count >= 0"
+           )
+
+    create constraint(
+             :localization_translation_runs,
+             :localization_runs_translated_count_non_negative,
+             check: "translated_count >= 0"
+           )
+
+    create constraint(
+             :localization_translation_runs,
+             :localization_runs_failed_count_non_negative,
+             check: "failed_count >= 0"
+           )
   end
 end

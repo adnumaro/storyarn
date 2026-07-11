@@ -104,8 +104,52 @@ defmodule Storyarn.Localization.GlossarySyncTest do
     assert Localization.glossary_synced?(project.id, "en", "es")
   end
 
+  test "retains the remote glossary id when deletion fails so cleanup can be retried", %{
+    project: project
+  } do
+    {:ok, entry} =
+      Localization.create_glossary_entry(project, %{
+        source_term: "sword",
+        source_locale: "en",
+        target_term: "espada",
+        target_locale: "es"
+      })
+
+    expect_create("glossary-1")
+    assert {:ok, _config} = Localization.sync_deepl_glossary(project.id, "en", "es")
+    assert {:ok, _entry} = Localization.delete_glossary_entry(entry)
+
+    Req.Test.expect(__MODULE__, fn conn ->
+      assert conn.method == "DELETE"
+      assert conn.request_path == "/v3/glossaries/glossary-1"
+      conn |> Plug.Conn.put_status(500) |> Req.Test.json(%{message: "temporary failure"})
+    end)
+
+    assert {:error, {:api_error, 500, _body}} =
+             Localization.sync_deepl_glossary(project.id, "en", "es")
+
+    config = Localization.get_provider_config(project.id)
+    assert config.deepl_glossary_ids["EN-ES"] == "glossary-1"
+
+    Req.Test.expect(__MODULE__, fn conn ->
+      assert conn.method == "DELETE"
+      assert conn.request_path == "/v3/glossaries/glossary-1"
+      Plug.Conn.send_resp(conn, 204, "")
+    end)
+
+    assert {:ok, config} = Localization.sync_deepl_glossary(project.id, "en", "es")
+    refute Map.has_key?(config.deepl_glossary_ids, "EN-ES")
+  end
+
   defp expect_create(glossary_id) do
     Req.Test.expect(__MODULE__, fn conn ->
+      assert conn.method == "POST"
+      assert conn.request_path == "/v3/glossaries"
+
+      {body, conn} = read_json(conn)
+      assert [%{"entries" => entries, "entries_format" => "tsv"}] = body["dictionaries"]
+      assert is_binary(entries)
+
       conn
       |> Plug.Conn.put_status(201)
       |> Req.Test.json(%{glossary_id: glossary_id})

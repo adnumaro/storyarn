@@ -268,18 +268,32 @@ defmodule Storyarn.Localization.ExportImport do
   end
 
   defp split_csv_records(content) do
-    {records, current, _quoted?} =
-      content
-      |> String.graphemes()
-      |> Enum.reduce({[], "", false}, fn
-        "\"", {records, current, quoted?} -> {records, current <> "\"", not quoted?}
-        "\n", {records, current, false} -> {[String.trim_trailing(current, "\r") | records], "", false}
-        char, {records, current, quoted?} -> {records, current <> char, quoted?}
-      end)
+    {records, current} = do_split_csv_records(content, [], [], false)
 
-    [String.trim_trailing(current, "\r") | records]
+    [csv_record(current) | records]
     |> Enum.reverse()
     |> Enum.reject(&(String.trim(&1) == ""))
+  end
+
+  defp do_split_csv_records("", records, current, _quoted?), do: {records, current}
+
+  defp do_split_csv_records("\"" <> rest, records, current, quoted?) do
+    do_split_csv_records(rest, records, ["\"" | current], not quoted?)
+  end
+
+  defp do_split_csv_records("\n" <> rest, records, current, false) do
+    do_split_csv_records(rest, [csv_record(current) | records], [], false)
+  end
+
+  defp do_split_csv_records(<<char::utf8, rest::binary>>, records, current, quoted?) do
+    do_split_csv_records(rest, records, [<<char::utf8>> | current], quoted?)
+  end
+
+  defp csv_record(current) do
+    current
+    |> Enum.reverse()
+    |> IO.iodata_to_binary()
+    |> String.trim_trailing("\r")
   end
 
   defp parse_csv_line(line) do

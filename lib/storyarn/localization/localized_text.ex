@@ -108,7 +108,8 @@ defmodule Storyarn.Localization.LocalizedText do
       :vo_status,
       :speaker_sheet_id,
       :word_count,
-      :machine_translated
+      :machine_translated,
+      :last_translated_at
     ])
     |> validate_required([:source_type, :source_id, :source_field, :locale_code])
     |> validate_inclusion(:source_type, @valid_source_types)
@@ -174,7 +175,9 @@ defmodule Storyarn.Localization.LocalizedText do
   @doc "Returns true when a non-empty translation belongs to an older source revision."
   @spec stale?(t()) :: boolean()
   def stale?(%__MODULE__{} = text) do
-    present?(text.translated_text) and text.translated_source_hash != text.source_text_hash
+    present?(text.translated_text) and
+      (is_nil(text.translated_source_hash) or is_nil(text.source_text_hash) or
+         text.translated_source_hash != text.source_text_hash)
   end
 
   defp validate_translation_present_when_final(changeset) do

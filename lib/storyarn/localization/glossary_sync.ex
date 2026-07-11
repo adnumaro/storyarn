@@ -1,26 +1,22 @@
 defmodule Storyarn.Localization.GlossarySync do
   @moduledoc false
 
+  import Ecto.Query, warn: false
+
   alias Storyarn.Localization.GlossaryCrud
   alias Storyarn.Localization.ProviderConfig
   alias Storyarn.Localization.Providers.DeepL
   alias Storyarn.Repo
 
   @hashes_key "glossary_hashes"
+  @pending_deletions_key "pending_glossary_deletions"
 
   def sync(project_id, source_locale, target_locale, opts \\ []) do
     provider = Keyword.get(opts, :provider, DeepL)
 
     case Repo.get_by(ProviderConfig, project_id: project_id, provider: "deepl") do
       %ProviderConfig{is_active: true, api_key_encrypted: key} = config when not is_nil(key) ->
-        entries = glossary_entries(project_id, source_locale, target_locale)
-        pair = pair_key(source_locale, target_locale)
-
-        if entries == [] do
-          remove_remote_glossary(config, pair, provider)
-        else
-          replace_remote_glossary(config, pair, source_locale, target_locale, entries, provider)
-        end
+        sync_config(config, project_id, source_locale, target_locale, provider)
 
       _config ->
         {:error, :no_provider_configured}
@@ -35,12 +31,14 @@ defmodule Storyarn.Localization.GlossarySync do
       %ProviderConfig{} = config ->
         stored_id = Map.get(config.deepl_glossary_ids || %{}, pair)
         stored_hash = get_in(config.settings || %{}, [@hashes_key, pair])
+        pending_deletions = Map.get(config.settings || %{}, @pending_deletions_key, [])
 
-        if entries == [] do
-          is_nil(stored_id)
-        else
-          is_binary(stored_id) and stored_hash == entries_hash(entries)
-        end
+        pending_deletions == [] and
+          if entries == [] do
+            is_nil(stored_id)
+          else
+            is_binary(stored_id) and stored_hash == entries_hash(entries)
+          end
 
       nil ->
         false
@@ -72,39 +70,117 @@ defmodule Storyarn.Localization.GlossarySync do
 
     case provider.create_glossary(name, source_locale, target_locale, entries, config) do
       {:ok, new_id} ->
-        case persist_pair(config, pair, new_id, entries_hash(entries)) do
-          {:ok, updated} ->
-            maybe_delete(provider, old_id, config)
-            {:ok, updated}
-
-          {:error, _reason} = error ->
-            maybe_delete(provider, new_id, config)
-            error
-        end
+        persist_replacement(config, pair, old_id, new_id, entries, provider)
 
       {:error, _reason} = error ->
         error
     end
   end
 
+  defp sync_config(config, project_id, source_locale, target_locale, provider) do
+    with {:ok, config} <- retry_pending_deletions(config, provider) do
+      entries = glossary_entries(project_id, source_locale, target_locale)
+      pair = pair_key(source_locale, target_locale)
+      sync_entries(config, pair, source_locale, target_locale, entries, provider)
+    end
+  end
+
+  defp sync_entries(config, pair, _source_locale, _target_locale, [], provider) do
+    remove_remote_glossary(config, pair, provider)
+  end
+
+  defp sync_entries(config, pair, source_locale, target_locale, entries, provider) do
+    replace_remote_glossary(config, pair, source_locale, target_locale, entries, provider)
+  end
+
+  defp persist_replacement(config, pair, old_id, new_id, entries, provider) do
+    case persist_pair(config, pair, new_id, entries_hash(entries)) do
+      {:ok, updated} ->
+        finish_replacement(updated, old_id, provider)
+
+      {:error, _reason} = error ->
+        maybe_delete(provider, new_id, config)
+        error
+    end
+  end
+
+  defp finish_replacement(updated, old_id, provider) do
+    case maybe_delete(provider, old_id, updated) do
+      :ok -> {:ok, updated}
+      {:error, _reason} = error -> track_failed_cleanup(updated, old_id, error)
+    end
+  end
+
+  defp track_failed_cleanup(updated, old_id, error) do
+    case persist_pending_deletion(updated, old_id, true) do
+      {:ok, _config} -> error
+      {:error, persist_reason} -> {:error, {:cleanup_tracking_failed, persist_reason}}
+    end
+  end
+
   defp remove_remote_glossary(config, pair, provider) do
     old_id = Map.get(config.deepl_glossary_ids || %{}, pair)
 
-    with {:ok, updated} <- persist_pair(config, pair, nil, nil) do
-      maybe_delete(provider, old_id, config)
-      {:ok, updated}
+    with :ok <- maybe_delete(provider, old_id, config) do
+      persist_pair(config, pair, nil, nil)
     end
   end
 
   defp persist_pair(config, pair, glossary_id, hash) do
-    glossary_ids = put_or_delete(config.deepl_glossary_ids || %{}, pair, glossary_id)
-    settings = config.settings || %{}
-    hashes = settings |> Map.get(@hashes_key, %{}) |> put_or_delete(pair, hash)
-    settings = Map.put(settings, @hashes_key, hashes)
+    Repo.transaction(fn ->
+      current =
+        Repo.one!(from(c in ProviderConfig, where: c.id == ^config.id, lock: "FOR UPDATE"))
 
-    config
-    |> ProviderConfig.changeset(%{deepl_glossary_ids: glossary_ids, settings: settings})
-    |> Repo.update()
+      glossary_ids = put_or_delete(current.deepl_glossary_ids || %{}, pair, glossary_id)
+      settings = current.settings || %{}
+      hashes = settings |> Map.get(@hashes_key, %{}) |> put_or_delete(pair, hash)
+      settings = Map.put(settings, @hashes_key, hashes)
+
+      current
+      |> ProviderConfig.changeset(%{deepl_glossary_ids: glossary_ids, settings: settings})
+      |> Repo.update!()
+    end)
+  end
+
+  defp retry_pending_deletions(config, provider) do
+    config.settings
+    |> Kernel.||(%{})
+    |> Map.get(@pending_deletions_key, [])
+    |> Enum.reduce_while({:ok, config}, fn glossary_id, {:ok, current} ->
+      retry_pending_deletion(current, glossary_id, provider)
+    end)
+  end
+
+  defp retry_pending_deletion(config, glossary_id, provider) do
+    with :ok <- maybe_delete(provider, glossary_id, config),
+         {:ok, updated} <- persist_pending_deletion(config, glossary_id, false) do
+      {:cont, {:ok, updated}}
+    else
+      {:error, _reason} = error -> {:halt, error}
+    end
+  end
+
+  defp persist_pending_deletion(config, nil, _pending?), do: {:ok, config}
+
+  defp persist_pending_deletion(config, glossary_id, pending?) do
+    Repo.transaction(fn ->
+      current = Repo.one!(from(c in ProviderConfig, where: c.id == ^config.id, lock: "FOR UPDATE"))
+      settings = current.settings || %{}
+      pending = Map.get(settings, @pending_deletions_key, [])
+
+      pending =
+        if pending? do
+          Enum.uniq([glossary_id | pending])
+        else
+          List.delete(pending, glossary_id)
+        end
+
+      settings = Map.put(settings, @pending_deletions_key, pending)
+
+      current
+      |> ProviderConfig.changeset(%{settings: settings})
+      |> Repo.update!()
+    end)
   end
 
   defp put_or_delete(map, key, nil), do: Map.delete(map, key)

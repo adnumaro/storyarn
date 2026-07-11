@@ -174,10 +174,16 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
           {:reply, %{ok: true, usage: serialize_provider_usage(usage)}, socket}
 
         {:error, reason} ->
-          {:reply, %{ok: false, error: inspect(reason)}, socket}
+          {:reply, %{ok: false, error: provider_connection_error(reason)}, socket}
       end
     end
   end
+
+  defp provider_connection_error({:api_error, status, _body}) when status in [401, 403], do: "invalid_api_key"
+
+  defp provider_connection_error({:api_error, 429, _body}), do: "rate_limited"
+  defp provider_connection_error(:unsupported_api_endpoint), do: "unsupported_api_endpoint"
+  defp provider_connection_error(_reason), do: "connection_failed"
 
   defp changeset_errors(changeset) do
     Map.new(changeset.errors, fn {field, {message, _metadata}} -> {field, message} end)

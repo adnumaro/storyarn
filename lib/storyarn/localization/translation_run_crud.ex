@@ -10,6 +10,8 @@ defmodule Storyarn.Localization.TranslationRunCrud do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Workers.LocalizationBatchTranslationWorker
 
+  @active_statuses ~w(queued running)
+
   def enqueue(project_id, target_locale, requested_by_id, opts \\ []) do
     text_status = opts[:status] || "pending"
     source_type = opts[:source_type]
@@ -70,14 +72,28 @@ defmodule Storyarn.Localization.TranslationRunCrud do
     |> Repo.update()
   end
 
+  def transition_active(run_id, attrs) when is_map(attrs) do
+    updates = attrs |> Map.put(:updated_at, TimeHelpers.now()) |> Map.to_list()
+
+    from(r in TranslationRun, where: r.id == ^run_id and r.status in @active_statuses)
+    |> Repo.update_all(set: updates)
+    |> case do
+      {1, _rows} -> {:ok, get(run_id)}
+      {0, _rows} -> {:error, :inactive}
+    end
+  end
+
   def cancel(%TranslationRun{status: status} = run) when status in ["queued", "running"] do
     now = TimeHelpers.now()
 
     with {:ok, cancelled} <-
-           update_run(run, %{status: "cancelled", cancelled_at: now, completed_at: now}),
+           transition_active(run.id, %{status: "cancelled", cancelled_at: now, completed_at: now}),
          :ok <- cancel_oban_job(run.oban_job_id) do
       broadcast(cancelled)
       {:ok, cancelled}
+    else
+      {:error, :inactive} -> {:ok, get(run.id) || run}
+      {:error, _reason} = error -> error
     end
   end
 

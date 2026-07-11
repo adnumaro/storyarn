@@ -7,6 +7,7 @@ defmodule Storyarn.Localization.LanguageCrud do
   alias Storyarn.Localization.LocalizableWords
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProjectLanguage
+  alias Storyarn.Localization.TranslationRunCrud
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
@@ -70,6 +71,7 @@ defmodule Storyarn.Localization.LanguageCrud do
         archived
         |> ProjectLanguage.update_changeset(%{
           "archived_at" => nil,
+          "is_source" => Map.get(attrs, "is_source", archived.is_source),
           "name" => attrs["name"] || archived.name,
           "position" => attrs["position"] || next_position(project.id)
         })
@@ -96,9 +98,13 @@ defmodule Storyarn.Localization.LanguageCrud do
     if language.is_source do
       {:error, :source_language}
     else
-      language
-      |> ProjectLanguage.update_changeset(%{"archived_at" => Storyarn.Shared.TimeHelpers.now()})
-      |> Repo.update()
+      with {:ok, archived} <-
+             language
+             |> ProjectLanguage.update_changeset(%{"archived_at" => Storyarn.Shared.TimeHelpers.now()})
+             |> Repo.update(),
+           :ok <- cancel_active_translation_run(archived) do
+        {:ok, archived}
+      end
     end
   end
 
@@ -200,6 +206,13 @@ defmodule Storyarn.Localization.LanguageCrud do
     )
     |> Repo.one!()
     |> Kernel.+(1)
+  end
+
+  defp cancel_active_translation_run(language) do
+    case TranslationRunCrud.get_active(language.project_id, language.locale_code) do
+      nil -> :ok
+      run -> run |> TranslationRunCrud.cancel() |> then(fn {:ok, _run} -> :ok end)
+    end
   end
 
   defp current_source_or_rollback(project_id) do

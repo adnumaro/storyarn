@@ -67,6 +67,23 @@ defmodule Storyarn.LocalizationTest do
       assert lang.is_source == true
     end
 
+    test "add_language/2 preserves is_source when restoring an archived locale" do
+      user = user_fixture()
+      project = project_fixture(user)
+      archived = language_fixture(project, %{locale_code: "en", name: "English"})
+      assert {:ok, _archived} = Localization.remove_language(archived)
+
+      assert {:ok, restored} =
+               Localization.add_language(project, %{
+                 locale_code: "en",
+                 name: "English",
+                 is_source: true
+               })
+
+      assert restored.is_source
+      assert restored.archived_at == nil
+    end
+
     test "add_language/2 validates required fields" do
       user = user_fixture()
       project = project_fixture(user)
@@ -275,6 +292,34 @@ defmodule Storyarn.LocalizationTest do
       assert text.status == "pending"
       assert text.word_count == 2
       assert text.project_id == project.id
+    end
+
+    test "create_text/2 records the translation timestamp for prefilled translations" do
+      project = project_fixture(user_fixture())
+
+      assert {:ok, text} =
+               Localization.create_text(project.id, %{
+                 source_type: "flow_node",
+                 source_id: 43,
+                 source_field: "text",
+                 source_text: "Hello",
+                 source_text_hash: hash("Hello"),
+                 locale_code: "es",
+                 translated_text: "Hola"
+               })
+
+      assert text.last_translated_at
+      assert text.status == "draft"
+    end
+
+    test "stale?/1 treats missing freshness hashes as stale" do
+      text = %LocalizedText{
+        translated_text: "Hola",
+        source_text_hash: nil,
+        translated_source_hash: nil
+      }
+
+      assert LocalizedText.stale?(text)
     end
 
     test "create_text/2 validates required fields" do

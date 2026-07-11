@@ -9,6 +9,7 @@ defmodule Storyarn.Localization.TranslationRun do
   alias Storyarn.Projects.Project
 
   @statuses ~w(queued running completed failed cancelled)
+  @text_statuses ~w(pending draft in_progress review final)
 
   schema "localization_translation_runs" do
     field :target_locale, :string
@@ -42,6 +43,7 @@ defmodule Storyarn.Localization.TranslationRun do
     ])
     |> validate_required([:target_locale, :text_status])
     |> validate_length(:target_locale, min: 2, max: 10)
+    |> validate_inclusion(:text_status, @text_statuses)
     |> unique_constraint([:project_id, :target_locale],
       name: :localization_translation_runs_one_active,
       message: "already has an active translation run"

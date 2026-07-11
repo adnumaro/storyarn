@@ -74,11 +74,13 @@ defmodule Storyarn.Localization do
   defdelegate update_language(language, attrs), to: LanguageCrud
 
   @doc "Removes a language from a project."
-  @spec remove_language(project_language()) :: {:ok, project_language()} | {:error, changeset()}
+  @spec remove_language(project_language()) ::
+          {:ok, project_language()} | {:error, changeset() | :source_language}
   defdelegate remove_language(language), to: LanguageCrud
 
   @doc "Sets a language as the source language (unsets any existing source)."
-  @spec set_source_language(project_language()) :: {:ok, project_language()}
+  @spec set_source_language(project_language()) ::
+          {:ok, project_language()} | {:error, :translations_exist | :no_source_language}
   defdelegate set_source_language(language), to: LanguageCrud
 
   @doc "Changes the project source language to the given locale code."

@@ -119,25 +119,18 @@ defmodule StoryarnWeb.LocalizationLive.Glossary do
   end
 
   def handle_event("sync_glossary", _params, socket) do
-    with_edit_permission(socket, fn ->
-      case Localization.sync_deepl_glossary(
-             socket.assigns.project.id,
-             socket.assigns.source_language.locale_code,
-             socket.assigns.selected_locale
-           ) do
-        {:ok, _config} -> {:reply, %{ok: true}, load_entries(socket)}
-        {:error, reason} -> {:reply, %{ok: false, error: inspect(reason)}, socket}
-      end
-    end)
+    with_edit_permission(socket, fn -> sync_glossary(socket) end)
   end
 
   @impl true
   def handle_info({:languages_changed, _payload}, socket) do
     target_languages = Localization.get_target_languages(socket.assigns.project.id)
+    selected_locale = normalize_selected_locale(socket.assigns.selected_locale, target_languages)
 
     {:noreply,
      socket
      |> assign(:target_languages, target_languages)
+     |> assign(:selected_locale, selected_locale)
      |> assign(:has_provider, Localization.has_active_provider?(socket.assigns.project.id))
      |> load_entries()}
   end
@@ -173,6 +166,21 @@ defmodule StoryarnWeb.LocalizationLive.Glossary do
     case result do
       {:ok, entry} -> {:reply, %{ok: true, entry: serialize_entry(entry)}, load_entries(socket)}
       {:error, %Ecto.Changeset{} = changeset} -> {:reply, %{ok: false, errors: changeset_errors(changeset)}, socket}
+      {:error, reason} -> {:reply, %{ok: false, error: inspect(reason)}, socket}
+    end
+  end
+
+  defp sync_glossary(%{assigns: %{selected_locale: nil}} = socket) do
+    {:reply, %{ok: false, error: "target_locale_required"}, socket}
+  end
+
+  defp sync_glossary(socket) do
+    case Localization.sync_deepl_glossary(
+           socket.assigns.project.id,
+           socket.assigns.source_language.locale_code,
+           socket.assigns.selected_locale
+         ) do
+      {:ok, _config} -> {:reply, %{ok: true}, load_entries(socket)}
       {:error, reason} -> {:reply, %{ok: false, error: inspect(reason)}, socket}
     end
   end
@@ -240,4 +248,8 @@ defmodule StoryarnWeb.LocalizationLive.Glossary do
   end
 
   defp parse_id(_value), do: :error
+
+  defp normalize_selected_locale(locale, target_languages) do
+    if Enum.any?(target_languages, &(&1.locale_code == locale)), do: locale
+  end
 end

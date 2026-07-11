@@ -53,6 +53,8 @@
       "empty_description": "Añade personajes, localizaciones y terminología importante para este par de idiomas.",
       "add_entry": "Añadir término",
       "edit_entry": "Editar término",
+      "edit_action": "Editar término",
+      "delete_action": "Eliminar término",
       "cancel_edit": "Cancelar",
       "context": "Contexto o nota de uso",
       "save_entry": "Guardar término",

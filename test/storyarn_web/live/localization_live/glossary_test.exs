@@ -77,4 +77,30 @@ defmodule StoryarnWeb.LocalizationLive.GlossaryTest do
 
     assert Localization.list_glossary_entries(project.id) == []
   end
+
+  test "sync remains stable when the route has no valid target locale", %{conn: conn, user: user} do
+    project = user |> project_fixture() |> Repo.preload(:workspace)
+    _source = source_language_fixture(project, %{locale_code: "en", name: "English"})
+
+    {:ok, view, _html} = live(conn, glossary_path(project, "unknown"))
+
+    render_hook(view, "sync_glossary", %{})
+    assert get_glossary_vue(view).props["selected-locale"] == nil
+  end
+
+  test "clears a selected locale after that target language is archived", %{conn: conn, user: user} do
+    project = user |> project_fixture() |> Repo.preload(:workspace)
+    _source = source_language_fixture(project, %{locale_code: "en", name: "English"})
+    target = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+    {:ok, view, _html} = live(conn, glossary_path(project))
+    assert get_glossary_vue(view).props["selected-locale"] == "es"
+
+    assert {:ok, _archived} = Localization.remove_language(target)
+    send(view.pid, {:languages_changed, nil})
+    render(view)
+
+    assert get_glossary_vue(view).props["selected-locale"] == nil
+    assert get_glossary_vue(view).props["entries"] == []
+  end
 end

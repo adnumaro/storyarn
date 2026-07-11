@@ -30,6 +30,20 @@ defmodule Storyarn.Localization.ReportsTest do
       assert_in_delta progress.percentage, 66.7, 0.1
     end
 
+    test "does not count blank translations as stale" do
+      project = project_fixture(user_fixture())
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      text = localized_text_fixture(project.id, %{locale_code: "es"})
+
+      Storyarn.Repo.update_all(
+        from(t in Storyarn.Localization.LocalizedText, where: t.id == ^text.id),
+        set: [translated_text: "", translated_source_hash: nil]
+      )
+
+      assert [%{stale: 0}] = Reports.progress_by_language(project.id)
+    end
+
     test "excludes source language from results" do
       user = user_fixture()
       project = project_fixture(user)

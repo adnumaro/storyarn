@@ -685,6 +685,24 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
       assert Localization.get_text!(project.id, text.id).translated_text == "Server version"
     end
+
+    test "rejects saves for a text outside the selected locale", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      _spanish = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      _french = language_fixture(project, %{locale_code: "fr", name: "French"})
+      spanish_text = localized_text_fixture(project.id, %{locale_code: "es"})
+      french_text = localized_text_fixture(project.id, %{locale_code: "fr"})
+
+      {:ok, view, _html} = live(conn, loc_path(project) <> "/#{spanish_text.id}")
+
+      render_click(view, "save_translation", %{
+        "id" => french_text.id,
+        "lock_version" => french_text.lock_version,
+        "localized_text" => %{"translated_text" => "Crafted write", "status" => "draft"}
+      })
+
+      assert Localization.get_text!(project.id, french_text.id).translated_text == nil
+    end
   end
 
   describe "Authentication" do

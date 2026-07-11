@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { FilePlus2, FolderOpen, Library, Plus, Search, Settings, Sparkles } from "lucide-vue-next";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import {
   Dialog,
   DialogContent,
@@ -91,6 +91,14 @@ const localSearch = ref(searchQuery);
 const newProjectMode = ref<"blank" | "private" | "public">("blank");
 const selectedTemplateId = ref<number | null>(null);
 const templateProjectName = ref("");
+const localNewProjectModalOpen = ref(newProjectModalOpen);
+
+watch(
+  () => newProjectModalOpen,
+  (open) => {
+    localNewProjectModalOpen.value = open;
+  },
+);
 
 const filteredProjects = computed(() => {
   const query = localSearch.value.trim().toLowerCase();
@@ -147,6 +155,7 @@ function templateMetricKey(group: string, value: string) {
 }
 
 function setNewProjectModalOpen(open: boolean) {
+  localNewProjectModalOpen.value = open;
   live.pushEvent("set_new_project_modal_open", { open });
 }
 
@@ -346,7 +355,7 @@ function templateCountLabel(template: ProjectTemplate) {
   </div>
 
   <!-- New Project Modal -->
-  <Dialog :open="newProjectModalOpen" @update:open="setNewProjectModalOpen">
+  <Dialog :open="localNewProjectModalOpen" @update:open="setNewProjectModalOpen">
     <DialogContent class="sm:max-w-3xl">
       <DialogHeader class="sr-only">
         <DialogTitle>{{ $t("workspace.dashboard.new_project") }}</DialogTitle>

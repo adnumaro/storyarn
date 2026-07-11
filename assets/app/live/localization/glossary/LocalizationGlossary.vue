@@ -251,10 +251,20 @@ function resetForm(): void {
                 <span v-else class="block truncate">{{ entry.targetTerm }}</span>
               </div>
               <div v-if="canEdit" class="flex justify-end gap-1">
-                <Button variant="ghost" size="icon-sm" @click="editEntry(entry)">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  :aria-label="$t('localization.glossary.edit_action')"
+                  @click="editEntry(entry)"
+                >
                   <Pencil class="size-3.5" />
                 </Button>
-                <Button variant="ghost" size="icon-sm" @click="deleteEntry(entry)">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  :aria-label="$t('localization.glossary.delete_action')"
+                  @click="deleteEntry(entry)"
+                >
                   <Trash2 class="size-3.5 text-error" />
                 </Button>
               </div>

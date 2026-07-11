@@ -53,6 +53,8 @@
       "empty_description": "Add character names, locations, and important terminology for this language pair.",
       "add_entry": "Add term",
       "edit_entry": "Edit term",
+      "edit_action": "Edit term",
+      "delete_action": "Delete term",
       "cancel_edit": "Cancel",
       "context": "Context or usage note",
       "save_entry": "Save term",

@@ -44,7 +44,12 @@ function mountDashboard(props = {}) {
         _live_vue: live,
       },
       stubs: {
-        Dialog: { template: "<div><slot /></div>" },
+        Dialog: {
+          props: ["open"],
+          emits: ["update:open"],
+          template:
+            '<div data-testid="new-project-dialog" :data-open="String(open)"><button data-testid="dialog-close" @click="$emit(\'update:open\', false)" /><slot /></div>',
+        },
         DialogContent: { template: "<div><slot /></div>" },
         DialogDescription: { template: "<div><slot /></div>" },
         DialogHeader: { template: "<div><slot /></div>" },
@@ -84,7 +89,20 @@ describe("WorkspaceDashboard", () => {
 
     await wrapper.get('[data-testid="new-project-open"]').trigger("click");
 
+    expect(wrapper.get('[data-testid="new-project-dialog"]').attributes("data-open")).toBe("true");
     expect(live.pushEvent).toHaveBeenCalledWith("set_new_project_modal_open", { open: true });
+  });
+
+  it("closes the new project modal optimistically", async () => {
+    const { live, wrapper } = mountDashboard({
+      newProjectForm: {},
+      newProjectModalOpen: true,
+    });
+
+    await wrapper.get('[data-testid="dialog-close"]').trigger("click");
+
+    expect(wrapper.get('[data-testid="new-project-dialog"]').attributes("data-open")).toBe("false");
+    expect(live.pushEvent).toHaveBeenCalledWith("set_new_project_modal_open", { open: false });
   });
 
   it("creates a project from the selected private template", async () => {

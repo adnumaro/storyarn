@@ -64,7 +64,17 @@ async function importCsv(event: Event): Promise<void> {
 
   importing.value = true;
   importResult.value = null;
-  const content = await file.text();
+  let content: string;
+
+  try {
+    content = await file.text();
+  } catch {
+    importing.value = false;
+    input.value = "";
+    importResult.value = { ok: false, error: "import_failed" };
+    return;
+  }
+
   live.pushEvent(
     "import_csv",
     { content },

@@ -403,7 +403,8 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   defp save_translation(socket, id, lock_version, params) do
     with {:ok, text_id} <- parse_id(id),
          {:ok, expected_lock} <- parse_id(lock_version),
-         text when not is_nil(text) <- Localization.get_text(socket.assigns.project.id, text_id) do
+         text when not is_nil(text) <- Localization.get_text(socket.assigns.project.id, text_id),
+         true <- text.locale_code == socket.assigns.selected_locale do
       save_with_lock(socket, text_id, text, expected_lock, params)
     else
       _reason -> {:reply, %{ok: false, error: "text_not_found"}, socket}

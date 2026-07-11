@@ -36,6 +36,7 @@ defmodule Storyarn.Localization.Reports do
       from(t in LocalizedText,
         where:
           t.project_id == ^project_id and not is_nil(t.translated_text) and
+            fragment("btrim(?) <> ''", t.translated_text) and
             (is_nil(t.translated_source_hash) or t.translated_source_hash != t.source_text_hash),
         group_by: t.locale_code,
         select: {t.locale_code, count(t.id)}

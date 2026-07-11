@@ -166,7 +166,7 @@ defmodule StoryarnWeb.LocalizationToolbarLive do
       end
 
     socket =
-      if run.status == "completed" do
+      if run.status == "completed" and run.target_locale == socket.assigns.selected_locale do
         Phoenix.PubSub.broadcast(
           Storyarn.PubSub,
           shell_topic(run.project_id),
