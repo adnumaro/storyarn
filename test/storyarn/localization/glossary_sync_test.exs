@@ -5,6 +5,9 @@ defmodule Storyarn.Localization.GlossarySyncTest do
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Localization
+  alias Storyarn.Localization.ProviderConfig
+  alias Storyarn.Repo
+  alias Storyarn.TestSupport.ControllableGlossaryProvider
 
   setup do
     Req.Test.verify_on_exit!()
@@ -139,6 +142,50 @@ defmodule Storyarn.Localization.GlossarySyncTest do
 
     assert {:ok, config} = Localization.sync_deepl_glossary(project.id, "en", "es")
     refute Map.has_key?(config.deepl_glossary_ids, "EN-ES")
+  end
+
+  test "an empty sync does not remove a newer mapping persisted concurrently", %{project: project} do
+    config = Localization.get_provider_config(project.id)
+
+    config
+    |> ProviderConfig.changeset(%{deepl_glossary_ids: %{"EN-ES" => "old-glossary"}})
+    |> Repo.update!()
+
+    Application.put_env(:storyarn, ControllableGlossaryProvider, coordinator: self())
+    on_exit(fn -> Application.delete_env(:storyarn, ControllableGlossaryProvider) end)
+
+    empty_sync =
+      Task.async(fn ->
+        Localization.sync_deepl_glossary(project.id, "en", "es", provider: ControllableGlossaryProvider)
+      end)
+
+    assert_receive {:glossary_delete_started, empty_pid, "old-glossary"}
+
+    {:ok, _entry} =
+      Localization.create_glossary_entry(project, %{
+        source_term: "sword",
+        source_locale: "en",
+        target_term: "espada",
+        target_locale: "es"
+      })
+
+    replacement_sync =
+      Task.async(fn ->
+        Localization.sync_deepl_glossary(project.id, "en", "es", provider: ControllableGlossaryProvider)
+      end)
+
+    assert_receive {:glossary_created, replacement_pid, "new-glossary"}
+    assert_receive {:glossary_delete_started, ^replacement_pid, "old-glossary"}
+    assert Localization.get_provider_config(project.id).deepl_glossary_ids["EN-ES"] == "new-glossary"
+
+    send(empty_pid, {:continue_glossary_delete, "old-glossary"})
+    assert {:ok, empty_result} = Task.await(empty_sync)
+    assert empty_result.deepl_glossary_ids["EN-ES"] == "new-glossary"
+
+    send(replacement_pid, {:continue_glossary_delete, "old-glossary"})
+    assert {:ok, replacement_result} = Task.await(replacement_sync)
+    assert replacement_result.deepl_glossary_ids["EN-ES"] == "new-glossary"
+    assert Localization.get_provider_config(project.id).deepl_glossary_ids["EN-ES"] == "new-glossary"
   end
 
   defp expect_create(glossary_id) do

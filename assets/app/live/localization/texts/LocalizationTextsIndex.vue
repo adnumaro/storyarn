@@ -277,19 +277,16 @@ function scheduleAutosave(): void {
   autosaveTimeout = setTimeout(() => saveTranslation(), 900);
 }
 
-function saveBlocked(): boolean {
-  return (
-    !selectedText || !canEdit.value || saveState.value === "saving" || !!placeholderIssue.value
-  );
+function saveAllowed(text: SelectedText | null | undefined): text is SelectedText {
+  return !!text && canEdit.value && saveState.value !== "saving" && !placeholderIssue.value;
 }
 
 function saveTranslation(advance = false, onSuccess?: () => void, onFailure?: () => void): void {
-  if (saveBlocked()) {
+  if (!saveAllowed(selectedText)) {
     onFailure?.();
     return;
   }
 
-  if (!selectedText) return;
   if (autosaveTimeout) clearTimeout(autosaveTimeout);
 
   if (!dirty.value && !advance) {

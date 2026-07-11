@@ -181,6 +181,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
 
   defp provider_connection_error({:api_error, status, _body}) when status in [401, 403], do: "invalid_api_key"
 
+  defp provider_connection_error(:invalid_api_key), do: "invalid_api_key"
   defp provider_connection_error({:api_error, 429, _body}), do: "rate_limited"
   defp provider_connection_error(:unsupported_api_endpoint), do: "unsupported_api_endpoint"
   defp provider_connection_error(_reason), do: "connection_failed"

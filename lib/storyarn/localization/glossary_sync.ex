@@ -122,24 +122,43 @@ defmodule Storyarn.Localization.GlossarySync do
     old_id = Map.get(config.deepl_glossary_ids || %{}, pair)
 
     with :ok <- maybe_delete(provider, old_id, config) do
-      persist_pair(config, pair, nil, nil)
+      persist_pair_if_current(config, pair, old_id, nil, nil)
     end
   end
 
   defp persist_pair(config, pair, glossary_id, hash) do
     Repo.transaction(fn ->
-      current =
-        Repo.one!(from(c in ProviderConfig, where: c.id == ^config.id, lock: "FOR UPDATE"))
-
-      glossary_ids = put_or_delete(current.deepl_glossary_ids || %{}, pair, glossary_id)
-      settings = current.settings || %{}
-      hashes = settings |> Map.get(@hashes_key, %{}) |> put_or_delete(pair, hash)
-      settings = Map.put(settings, @hashes_key, hashes)
-
-      current
-      |> ProviderConfig.changeset(%{deepl_glossary_ids: glossary_ids, settings: settings})
-      |> Repo.update!()
+      config.id
+      |> lock_config!()
+      |> update_pair!(pair, glossary_id, hash)
     end)
+  end
+
+  defp persist_pair_if_current(config, pair, expected_id, glossary_id, hash) do
+    Repo.transaction(fn ->
+      current = lock_config!(config.id)
+
+      if Map.get(current.deepl_glossary_ids || %{}, pair) == expected_id do
+        update_pair!(current, pair, glossary_id, hash)
+      else
+        current
+      end
+    end)
+  end
+
+  defp lock_config!(config_id) do
+    Repo.one!(from(c in ProviderConfig, where: c.id == ^config_id, lock: "FOR UPDATE"))
+  end
+
+  defp update_pair!(config, pair, glossary_id, hash) do
+    glossary_ids = put_or_delete(config.deepl_glossary_ids || %{}, pair, glossary_id)
+    settings = config.settings || %{}
+    hashes = settings |> Map.get(@hashes_key, %{}) |> put_or_delete(pair, hash)
+    settings = Map.put(settings, @hashes_key, hashes)
+
+    config
+    |> ProviderConfig.changeset(%{deepl_glossary_ids: glossary_ids, settings: settings})
+    |> Repo.update!()
   end
 
   defp retry_pending_deletions(config, provider) do
@@ -164,7 +183,7 @@ defmodule Storyarn.Localization.GlossarySync do
 
   defp persist_pending_deletion(config, glossary_id, pending?) do
     Repo.transaction(fn ->
-      current = Repo.one!(from(c in ProviderConfig, where: c.id == ^config.id, lock: "FOR UPDATE"))
+      current = lock_config!(config.id)
       settings = current.settings || %{}
       pending = Map.get(settings, @pending_deletions_key, [])
 

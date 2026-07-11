@@ -1,5 +1,5 @@
 import { flushPromises, mount } from "@vue/test-utils";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import LocalizationToolbar from "../../../live/localization/toolbar/LocalizationToolbar.vue";
 import ProjectSettingsLocalization from "../../../live/project/settings/ProjectSettingsLocalization.vue";
 import { createMockLive } from "../../setup";
@@ -7,6 +7,10 @@ import { createMockLive } from "../../setup";
 function liveGlobal(live: ReturnType<typeof createMockLive>) {
   return { config: { globalProperties: { $live: live } as never } };
 }
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("localization action failures", () => {
   it("re-enables provider actions when the LiveView push throws", async () => {
