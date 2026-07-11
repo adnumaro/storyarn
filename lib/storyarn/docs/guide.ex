@@ -88,12 +88,13 @@ defmodule Storyarn.Docs.Guide do
 
   defp category_order("welcome"), do: 0
   defp category_order("quick-start"), do: 1
-  defp category_order("world-building"), do: 2
-  defp category_order("narrative-design"), do: 3
-  defp category_order("screenwriting"), do: 4
-  defp category_order("scene-design"), do: 5
-  defp category_order("localization"), do: 6
-  defp category_order("collaboration"), do: 7
-  defp category_order("import-export"), do: 8
+  defp category_order("project-management"), do: 2
+  defp category_order("world-building"), do: 3
+  defp category_order("narrative-design"), do: 4
+  defp category_order("screenwriting"), do: 5
+  defp category_order("scene-design"), do: 6
+  defp category_order("localization"), do: 7
+  defp category_order("collaboration"), do: 8
+  defp category_order("import-export"), do: 9
   defp category_order(_), do: 99
 end

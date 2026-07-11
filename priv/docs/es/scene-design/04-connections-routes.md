@@ -9,10 +9,7 @@ description: "Conecta pines con caminos, etiquetas, dirección, estilos de líne
 
 Las conexiones son líneas de ruta sobre la escena. Úsalas para caminos, enlaces de viaje, rutas de patrulla, rutas comerciales, relaciones, dependencias de misión o cualquier asociación que convenga ver en el mapa.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Mapa con rutas ancladas a pines y rutas libres usando líneas sólidas, discontinuas y trazados con waypoints
-</div>
+<img src="/images/docs/scenes-editor-current.png" alt="Editor de mapas con la herramienta de conexión disponible para rutas ancladas y libres" loading="lazy">
 
 ## Crear Conexiones
 

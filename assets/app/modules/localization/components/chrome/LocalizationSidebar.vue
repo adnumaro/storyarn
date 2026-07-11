@@ -57,15 +57,28 @@ const sourcePickerOpen = ref(false);
 const addPickerOpen = ref(false);
 const deleteDialogOpen = ref(false);
 const pendingDeleteLanguage = ref<Language | null>(null);
+const sourceChangeDialogOpen = ref(false);
+const pendingSourceLanguage = ref<LanguageOption | null>(null);
 const syncing = ref(false);
 
 function textsUrl(localeCode: string): string {
   return `/workspaces/${workspaceSlug}/projects/${projectSlug}/localization/texts/${localeCode}`;
 }
 
-function changeSourceLanguage(localeCode: string): void {
+function requestSourceLanguage(option: LanguageOption): void {
   sourcePickerOpen.value = false;
-  live.pushEvent("change_source_language", { locale_code: localeCode });
+  pendingSourceLanguage.value = option;
+  sourceChangeDialogOpen.value = true;
+}
+
+function confirmSourceLanguage(): void {
+  if (pendingSourceLanguage.value) {
+    live.pushEvent("change_source_language", {
+      locale_code: pendingSourceLanguage.value.value,
+      reset_translations: true,
+    });
+  }
+  pendingSourceLanguage.value = null;
 }
 
 function addTargetLanguage(localeCode: string): void {
@@ -148,7 +161,7 @@ function flagUrl(flagCode: string | null): string | null {
                   :key="opt.value"
                   :value="opt.label"
                   class="gap-2"
-                  @select="changeSourceLanguage(opt.value)"
+                  @select="requestSourceLanguage(opt)"
                 >
                   <img
                     v-if="flagUrl(opt.flagCode)"
@@ -328,6 +341,20 @@ function flagUrl(flagCode: string | null): string | null {
       variant="destructive"
       :icon="Trash2"
       @confirm="confirmRemove"
+    />
+
+    <ConfirmDialog
+      v-model:open="sourceChangeDialogOpen"
+      :title="$t('localization.sidebar.source_change_confirm_title')"
+      :description="
+        $t('localization.sidebar.source_change_confirm_description', {
+          name: pendingSourceLanguage?.label ?? '',
+        })
+      "
+      :confirm-text="$t('localization.sidebar.source_change_confirm_button')"
+      variant="destructive"
+      :icon="Languages"
+      @confirm="confirmSourceLanguage"
     />
   </div>
 </template>

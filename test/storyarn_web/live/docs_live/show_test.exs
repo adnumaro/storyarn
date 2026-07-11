@@ -16,9 +16,8 @@ defmodule StoryarnWeb.DocsLive.ShowTest do
 
       content = LiveVue.Test.get_vue(view, name: "live/docs/show/DocsContent")
       assert content.props["guide-body"] =~ "narrative design platform"
-      assert content.props["guide-body"] =~ "/images/docs/project-dashboard.webp"
-      assert content.props["guide-body"] =~ "/images/docs/scenes.webp"
-      refute content.props["guide-body"] =~ "veilbreak-"
+      assert content.props["guide-body"] =~ "/images/docs/project-dashboard-current.png"
+      assert content.props["guide-body"] =~ "/images/docs/scenes-dashboard.png"
     end
 
     test "renders start here as the first welcome guide", %{conn: conn} do
@@ -122,6 +121,28 @@ defmodule StoryarnWeb.DocsLive.ShowTest do
       content = LiveVue.Test.get_vue(view, name: "live/docs/show/DocsContent")
       assert content.props["guide-body"] =~ "Dialogue responses"
       assert content.props["guide-body"] =~ "/docs/narrative-design/instruction-editor"
+    end
+
+    test "renders project management guides in navigation order", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/docs/project-management/project-dashboard")
+
+      layout = LiveVue.Test.get_vue(view, name: "live/layouts/docs/Layout")
+      docs = layout.props["docs"]
+
+      assert Enum.any?(docs["categories"], &(&1["label"] == "Project Management"))
+
+      project_management_guides =
+        docs["guides"]
+        |> Enum.filter(&(&1["category"] == "project-management"))
+        |> Enum.map(& &1["title"])
+
+      assert project_management_guides == [
+               "Project Dashboard",
+               "Assets",
+               "Project Templates",
+               "Project Settings",
+               "Snapshots and Trash"
+             ]
     end
 
     test "updates search props from the LiveVue layout event", %{conn: conn} do

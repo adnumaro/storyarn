@@ -23,23 +23,19 @@ After signing in, you will be redirected to your default workspace. If you don't
 
 Fill in the {accent}workspace name{/accent} and an optional description. A URL slug is generated automatically from the name. Click **Create Workspace** to proceed.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  The "Create a new workspace" form with name and description fields
-</div>
+<img src="/images/docs/workspace-new.png" alt="The &quot;Create a new workspace&quot; form with name and description fields" loading="lazy">
 
 ## Create a project
 
-From the workspace dashboard, click the **New Project** button in the top-right toolbar. A modal appears with two fields: **Project Name** and an optional **Description**.
+From the workspace dashboard, click the **New Project** button in the top-right toolbar. The project dialog lets you start from a blank project, one of your templates, or a Storyarn demo, then enter a **Project Name** and optional **Description**.
 
 Each project is fully isolated with its own sheets, flows, scenes, localization, and assets. One workspace can hold as many projects as you need.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  The workspace dashboard showing the project grid and the "New Project" button in the toolbar
-</div>
+<img src="/images/docs/workspace-dashboard-current.png" alt="The workspace dashboard showing the project grid and the &quot;New Project&quot; button in the toolbar" loading="lazy">
 
-After creation, you are taken directly into the project's sheet editor.
+<img src="/images/docs/project-new.png" alt="The New Project dialog with Blank, My templates, and Storyarn demos choices" loading="lazy">
+
+After creation, you are taken to the project dashboard. Open **Sheets** from the project sidebar to continue.
 
 For this tutorial, stay in the new project and continue with [Your First Sheet](/docs/quick-start/first-sheet). You will create the character data that the flow reads in the next step.
 
@@ -54,10 +50,7 @@ Go to **Settings > Workspaces > [Your Workspace] > Members** and click **Invite*
 
 Invitations expire after 7 days and can be revoked anytime.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  The workspace members settings page with the invite form, member list, and pending invitations
-</div>
+<img src="/images/docs/workspace-members.png" alt="The workspace members settings page with the invite form, member list, and pending invitations" loading="lazy">
 
 ## Project-level access
 

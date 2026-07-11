@@ -191,6 +191,8 @@ defmodule StoryarnWeb.LocalizationLive.Report do
         localeCode: lang.locale_code,
         name: lang.name,
         final: lang.final,
+        review: lang.review,
+        stale: lang.stale,
         total: lang.total,
         percentage: lang.percentage
       }
@@ -207,6 +209,7 @@ defmodule StoryarnWeb.LocalizationLive.Report do
     Enum.map(stats, fn stat ->
       %{
         speakerSheetId: stat.speaker_sheet_id,
+        speakerName: stat.speaker_name,
         lineCount: stat.line_count,
         wordCount: stat.word_count
       }

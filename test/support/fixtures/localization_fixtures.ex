@@ -55,6 +55,13 @@ defmodule Storyarn.LocalizationFixtures do
         word_count: 2
       })
 
+    attrs =
+      if attrs[:status] == "final" do
+        Map.put_new(attrs, :translated_text, attrs[:source_text] || "Translated text")
+      else
+        attrs
+      end
+
     {:ok, text} = Localization.create_text(project_id, attrs)
     text
   end

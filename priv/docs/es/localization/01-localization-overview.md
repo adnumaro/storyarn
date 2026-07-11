@@ -2,12 +2,12 @@
 title: "Vista general de Localización",
 category_label: "Localización",
 order: 1,
-description: "Traduce tu proyecto a múltiples idiomas con extracción automática, DeepL y glosarios."
+description: "Traduce tu proyecto a múltiples idiomas con extracción automática, DeepL, revisión e informes."
 }
 
 ---
 
-El sistema de localizacion de Storyarn te da control total sobre la traduccion de tu contenido narrativo -- desde lineas de dialogo y opciones de respuesta hasta nombres de fichas y etiquetas de bloques. Gestiona la {accent}extraccion automatica de texto{/accent}, traduccion automatica via DeepL, aplicacion de glosarios, seguimiento de doblaje y reportes de progreso detallados.
+El sistema de localización de Storyarn permite traducir el contenido narrativo, desde líneas de diálogo y opciones de respuesta hasta nombres de fichas y etiquetas de bloques. Gestiona la {accent}extracción automática de texto{/accent}, traducción automática mediante DeepL, seguimiento de doblaje e informes de progreso detallados.
 
 ## Como funciona
 
@@ -15,12 +15,9 @@ El flujo de trabajo de localizacion tiene cuatro etapas, cada una disenada para 
 
 ### 1. Configura tus idiomas
 
-Abre **Localizacion** en la barra lateral de tu proyecto. El idioma fuente de tu proyecto se detecta automaticamente desde la configuracion de tu espacio de trabajo y se muestra como una insignia principal. Anade idiomas destino desde una lista curada de {accent}45 idiomas soportados{/accent} que cubren todos los mercados principales de localizacion de juegos -- desde ingles, espanol y japones hasta arabe, tailandes y chino (simplificado/tradicional).
+Abre **Localización** en la barra lateral del proyecto. Si todavía no existe un idioma fuente, Storyarn lo inicializa a partir del idioma predeterminado del espacio de trabajo. El idioma fuente aparece en la barra lateral y puede cambiarse desde allí. Añade idiomas destino desde una lista de {accent}45 idiomas compatibles{/accent}, desde inglés, español y japonés hasta árabe, tailandés y chino simplificado o tradicional.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  La pagina principal de localizacion mostrando la insignia del idioma fuente, chips de idiomas destino con botones de eliminar y el desplegable de Agregar idioma
-</div>
+<img src="/images/docs/localization-overview-current.png" alt="La página principal de localización mostrando el idioma fuente, los idiomas destino y el botón Agregar idioma" loading="lazy">
 
 ### 2. Extrae el contenido traducible
 
@@ -45,14 +42,11 @@ Tienes tres vias para completar las traducciones:
 
 **Integracion con DeepL** -- Conecta tu clave API de DeepL en la configuracion del proyecto para activar la traduccion automatica. Puedes traducir una entrada individual (haz clic en el icono de destello) o traducir por lotes todos los textos pendientes de un idioma con un solo clic.
 
-Internamente, la traduccion de DeepL es {accent}compatible con HTML{/accent}: el texto enriquecido de los nodos de dialogo se envia con `tag_handling: "html"` para que el formato se preserve. Los marcadores de posicion de variables como `{character_name}` se envuelven en `<span translate="no">` antes de enviar y se desenvuelven despues -- asi vuelven intactos. Las solicitudes por lotes se dividen en grupos de 50 textos (el limite por solicitud de DeepL). Tus entradas de glosario se aplican automaticamente durante la traduccion.
+Internamente, la traducción de DeepL es {accent}compatible con HTML{/accent}: el texto enriquecido de los nodos de diálogo se envía con `tag_handling: "html"` para conservar el formato. Los marcadores de variables como `{character_name}` se envuelven en `<span translate="no">` antes de enviarse y se desenvuelven después para que vuelvan intactos. Las solicitudes por lotes se dividen en grupos de 50 textos, el límite por solicitud de DeepL.
 
-**Exportar para traductores externos** -- Descarga un archivo Excel (.xlsx) o CSV filtrado por idioma, estado o tipo de fuente. Envialo a tu equipo de traduccion y luego importa el archivo completado de vuelta. La importacion empareja filas por ID y actualiza traducciones y estados.
+**Exportar para traductores externos** -- Descarga un archivo Excel (.xlsx) o CSV filtrado por idioma, estado o tipo de fuente. Envíalo a tu equipo de traducción y conserva la columna ID para mantener cada fila identificada. Storyarn no ofrece actualmente una importación CSV en la interfaz del proyecto; las traducciones devueltas deben introducirse desde el editor de traducciones.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  La tabla de traducciones mostrando texto fuente, traduccion, insignias de estado, conteos de palabras y botones de accion (editar, traducir con DeepL)
-</div>
+<img src="/images/docs/localization-texts-current.png" alt="La tabla de traducciones mostrando texto fuente, traduccion, insignias de estado, conteos de palabras y botones de accion (editar, traducir con DeepL)" loading="lazy">
 
 ### 4. Revisa y finaliza
 
@@ -78,24 +72,13 @@ Filtra la tabla de traducciones por idioma, estado y tipo de fuente. Busca tanto
 - Insignia de estado
 - Conteo de palabras
 
-## Glosario
+## Configuración de DeepL
 
-El glosario asegura {accent}terminologia consistente{/accent} en todas las traducciones. Cada entrada mapea un termino fuente a un termino destino para un par de idiomas especifico.
+Abre **Ajustes del proyecto > Localización** para introducir una clave API de DeepL, elegir el nivel Free o Pro, probar la conexión y consultar el uso del proveedor. Al guardar el proveedor se habilitan las acciones de traducción individual y por lotes en el espacio de Localización.
 
-| Campo                              | Proposito                                                                         |
-| ---------------------------------- | --------------------------------------------------------------------------------- |
-| **Termino fuente**                 | El termino en tu idioma fuente                                                    |
-| **Termino destino**                | La traduccion requerida                                                           |
-| **Idioma fuente / Idioma destino** | El par de idiomas al que aplica esta entrada                                      |
-| **Contexto**                       | Notas de uso para traductores                                                     |
-| **No traducir**                    | Cuando esta habilitado, el termino se mantiene tal cual (nombres propios, marcas) |
+La gestión y sincronización de glosarios no están expuestas actualmente en la aplicación, por lo que no forman parte del flujo de trabajo soportado del proyecto.
 
-Las entradas del glosario se aplican automaticamente durante la traduccion con DeepL mediante la API de Glosarios de DeepL. Al traducir manualmente, el glosario sirve como referencia.
-
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  La interfaz de gestion de glosarios mostrando una lista de pares de terminos con notas de contexto
-</div>
+<img src="/images/docs/localization-settings.png" alt="Configuración de Localización del proyecto con la clave API de DeepL y el selector de nivel de API" loading="lazy">
 
 ## Reportes
 
@@ -109,10 +92,10 @@ El reporte de localizacion te da una vista panoramica del progreso de traduccion
 
 **Desglose de contenido** -- Ve cuantas entradas de texto provienen de cada tipo de fuente (nodos de flujo, bloques, fichas, flujos) para un idioma dado.
 
-<img src="/images/docs/veilbreak-localization-dashboard.png" alt="Informe de localización de Veilbreak con progreso por idioma, recuento de palabras y estado de doblaje" loading="lazy">
+<img src="/images/docs/localization-overview-current.png" alt="Informe de localización con idiomas de origen y destino, progreso de traducción, palabras por hablante y estado de doblaje" loading="lazy">
 
-## Exportar e importar
+## Exportar traducciones
 
 **Exportar** -- Descarga traducciones como Excel (.xlsx) o CSV, filtrado por idioma. La exportacion incluye: ID, tipo de fuente, ID de fuente, campo de fuente, locale, texto fuente (HTML eliminado), traduccion, estado, conteo de palabras, flag de traduccion automatica y notas del traductor/revisor (solo Excel).
 
-**Importar** -- Sube un archivo CSV con como minimo una columna de ID. El importador empareja cada fila con una entrada de texto existente por ID, luego actualiza la traduccion y/o el estado. Estados validos para importacion: `pending`, `draft`, `in_progress`, `review`, `final`. Las filas con traducciones vacias o estados no reconocidos se omiten. La importacion reporta cuantas entradas se actualizaron, se omitieron y cualquier error encontrado.
+La columna ID exportada identifica la fila de texto localizado existente. Consérvala sin cambios al intercambiar archivos con traductores. El espacio de Localización no ofrece actualmente una acción para importar CSV, por lo que las traducciones completadas deben introducirse desde el editor de traducciones antes de reflejarse en el proyecto.

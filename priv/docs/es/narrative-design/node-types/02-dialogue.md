@@ -11,10 +11,7 @@ description: "Diálogo de personajes, respuestas del jugador y configuración de
 
 Los nodos de Dialogo (Dialogue) son el tipo de nodo mas comun. Representan **lo que dice un personaje** y opcionalmente **lo que el jugador puede responder**. Cada nodo de dialogo puede ser tan simple como una unica linea de texto o tan completo como un beat narrativo configurado con hablante, acotaciones, audio y respuestas ramificadas.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Un nodo de dialogo seleccionado en el editor de flujos con el panel lateral abierto mostrando todos los campos
-</div>
+<img src="/images/docs/flows-dialogue-editor.png" alt="Lienzo del editor de flujos con nodos de diálogo, tarjetas de hablante y ramas de respuesta" loading="lazy">
 
 ---
 
@@ -47,10 +44,7 @@ Haz doble clic en un nodo de dialogo (o haz clic en el boton de configuracion en
 
 Si la ficha de personaje del hablante tiene una galeria con imagenes, aparece un selector de imagenes en la barra de herramientas. Puedes seleccionar una imagen para reemplazar el retrato predeterminado del hablante para esta linea de dialogo especifica -- util para mostrar diferentes expresiones o poses.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  El selector de imagen personalizada en la barra de herramientas del dialogo mostrando imagenes de la galeria del personaje
-</div>
+<img src="/images/docs/flows-dialogue-editor.png" alt="Lienzo del editor de flujos mostrando nodos de diálogo con ilustraciones de personajes" loading="lazy">
 
 ---
 
@@ -83,10 +77,7 @@ Cada respuesta tambien puede llevar **instrucciones** que modifican variables cu
 
 Esto mantiene la logica simple cerca del dialogo sin necesitar un nodo de instruccion separado despues de cada rama de respuesta. Para casos complejos con multiples cambios de variables o logica compartida, usa un nodo de instruccion dedicado en su lugar.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Un nodo de dialogo con multiples respuestas, una mostrando un indicador de condicion y otra con una instruccion
-</div>
+<img src="/images/docs/flows-dialogue-editor.png" alt="Lienzo del editor de flujos mostrando nodos de diálogo conectados y rutas de respuesta" loading="lazy">
 
 ---
 

@@ -9,9 +9,9 @@ description: "Understand how sheets organize your game data into a living databa
 
 Sheets are {accent}structured data containers{/accent} for your project's world data. Character profiles, item catalogs, location details, faction rosters -- anything you need to define and track across your narrative.
 
-Each sheet holds a set of **blocks** (typed fields like text, number, select, boolean) that define its structure. Blocks that aren't marked as constants automatically become **variables** that flows can read and modify at runtime.
+Each sheet holds a set of **blocks** (typed fields like text, number, select, boolean) that define its structure. Value-carrying blocks that aren't marked as constants become **variables** that flows can read and modify at runtime. Reference and gallery blocks do not participate in the variable system.
 
-<img src="/images/docs/veilbreak-sheet-editor.png" alt="Sera Voss character sheet with banner, avatar, and typed blocks" loading="lazy">
+<img src="/images/docs/sheets-character-current.png" alt="Kael character sheet with inherited blocks, rich-text fields, gallery, tables, and own properties" loading="lazy">
 
 ---
 
@@ -32,7 +32,7 @@ Shortcuts must be unique within a project. If a sheet already has variables refe
 
 ## Variable references
 
-Blocks on a sheet become variables with the pattern:
+Blocks that support variables use the pattern:
 
 ```
 {sheet_shortcut}.{variable_name}
@@ -67,10 +67,7 @@ Items/
 
 Any sheet can have both children and its own blocks. Parent sheets can also define inherited properties that cascade to their children (see [Property Inheritance](#property-inheritance) below).
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  The sidebar sheet tree showing nested sheets with drag handles and folder-like hierarchy.
-</div>
+<img src="/images/docs/sheets-character-current.png" alt="The sidebar sheet tree showing nested sheets with drag handles and folder-like hierarchy." loading="lazy">
 
 ---
 
@@ -87,10 +84,7 @@ Child instances stay synced with the parent definition: if you change the label,
 
 Sheets can also **hide** specific inherited blocks, preventing them from cascading further down to their own children.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  A parent sheet with scope set to "Children" on a Health block, and a child sheet showing the inherited Health block with its own local value.
-</div>
+<img src="/images/docs/sheets-character-current.png" alt="A parent sheet with scope set to &quot;Children&quot; on a Health block, and a child sheet showing the inherited Health block with its own local value." loading="lazy">
 
 ---
 
@@ -115,7 +109,4 @@ Storyarn tracks the history of each sheet through {accent}version snapshots{/acc
 
 Each version records who made the change and generates a summary of what changed (blocks added, removed, or modified).
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  The version history panel showing a list of snapshots with timestamps, change summaries, and a restore button.
-</div>
+<img src="/images/docs/project-snapshots.png" alt="The project snapshots panel for creating and restoring point-in-time backups." loading="lazy">

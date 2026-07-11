@@ -9,7 +9,7 @@ description: "Árboles de diálogo visuales y lógica narrativa ramificada."
 
 Los Flujos (Flows) son el corazón de Storyarn -- **grafos de nodos visuales** donde construyes diálogos ramificados, lógica de juego y narrativas interactivas. Cada flujo es un lienzo de nodos conectados que define cómo se desarrolla una conversación o secuencia, desde un intercambio lineal simple hasta un árbol de misiones extenso con decenas de ramas.
 
-<img src="/images/docs/flows/flows.png" alt="Lienzo del editor de flujos de Veilbreak con nodos conectados y minimapa" loading="lazy">
+<img src="/images/docs/flows-editor-current.png" alt="Lienzo del editor de flujos con nodos de diálogo, condición, instrucción, hub, subflow y salida conectados" loading="lazy">
 
 ---
 
@@ -63,10 +63,7 @@ Sequence ("Tavern encounter")
 
 Los flujos pueden ser tan simples como una conversacion lineal o tan complejos como un arbol de misiones completo. Usa nodos **Hub** y **Salto** para fusionar caminos convergentes sin duplicar dialogos. Usa nodos **Subflujo** para componer narrativas mas grandes a partir de fragmentos de flujo reutilizables.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Un flujo con nodos hub/salto mostrando como multiples ramas de dialogo convergen en un solo camino
-</div>
+<img src="/images/docs/flows-editor-current.png" alt="Un flujo con nodos hub y salto mostrando cómo múltiples ramas de diálogo convergen en un solo camino" loading="lazy">
 
 ---
 
@@ -92,10 +89,7 @@ Activa el {accent}Modo de analisis{/accent} para ver respuestas ocultas que no c
 
 Esto no es una vista previa. Es la experiencia real de reproduccion, con evaluacion de variables y cambios de estado reales.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  El Story Player mostrando un dialogo con opciones de respuesta y un fondo de escena
-</div>
+<img src="/images/docs/flows-player-current.png" alt="El Story Player mostrando un dialogo con opciones de respuesta y un fondo de escena" loading="lazy">
 
 ---
 

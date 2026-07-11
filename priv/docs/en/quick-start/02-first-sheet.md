@@ -15,10 +15,7 @@ Open your project and select **Sheets** in the sidebar. Click the **New Sheet** 
 
 A new sheet is created with a default name. Click on the title to rename it -- for example, "Jaime". The {accent}shortcut{/accent} (shown below the name) auto-generates from the sheet name. You can edit it manually -- for a character, something like `mc.jaime` works well because it creates a readable namespace for all variables on this sheet.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  A new sheet with the title "Jaime" and the shortcut "mc.jaime" visible below the name
-</div>
+<img src="/images/docs/sheets-character-current.png" alt="The Kael character sheet with its title, shortcut, banner, avatar, and inherited content" loading="lazy">
 
 ## Add blocks
 
@@ -28,10 +25,7 @@ Click the **+** button at the bottom of the sheet to open the block menu. Blocks
 
 **Structured Data** -- Table, Gallery
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  The block type menu showing Basic Blocks and Structured Data categories
-</div>
+<img src="/images/docs/sheets-block-menu.png" alt="The block type menu showing Basic Blocks and Structured Data categories" loading="lazy">
 
 Try adding these blocks to your character sheet:
 
@@ -41,10 +35,7 @@ Try adding these blocks to your character sheet:
 
 3. Choose **Boolean** and label it "Is Alive". Toggle it on. This creates `mc.jaime.is_alive`.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  The sheet with Health (number), Class (select), and Is Alive (boolean) blocks filled in
-</div>
+<img src="/images/docs/sheets-character-current.png" alt="A populated character sheet showing block labels, values, and inherited fields" loading="lazy">
 
 ## Constants vs. variables
 
@@ -64,10 +55,7 @@ Every non-constant block becomes a variable with the format `{sheet_shortcut}.{v
 
 The {accent}variable name{/accent} auto-generates from the block label (lowercased, spaces become underscores). You can customize it in the block's advanced config.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  The block config popover showing the variable name field and the "is constant" toggle
-</div>
+<img src="/images/docs/sheets-character-current.png" alt="The character sheet with its block content and the Content, References, Audio, and History tabs" loading="lazy">
 
 ## Checkpoint
 

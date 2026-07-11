@@ -22,10 +22,7 @@ Storyarn puede exportar tu contenido narrativo a {accent}6 formatos{/accent} que
 
 Los formatos de motor se centran en flujos y fichas, que es lo que los runtimes de juego necesitan para dialogos, ramas y estado de variables. Las escenas y la localizacion tienen herramientas propias dentro de sus areas de trabajo cuando necesitas preparar contenido espacial o traducciones.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  La pagina de exportacion mostrando el selector de formato, casillas de seleccion de contenido y opciones de modo de recursos
-</div>
+<img src="/images/docs/export-panel-current.png" alt="La pagina de exportacion mostrando el selector de formato, casillas de seleccion de contenido y opciones de modo de recursos" loading="lazy">
 
 ## Como exportar
 
@@ -65,13 +62,10 @@ Antes de descargar, puedes ejecutar la validacion para detectar problemas que ca
 
 - Fichas huerfanas sin referencias desde ningun flujo o escena
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Resultados de validacion mostrando una mezcla de errores (referencias rotas), advertencias (nodos huerfanos, dialogos vacios) e informacion (fichas sin referencias)
-</div>
+<img src="/images/docs/export-validation-current.png" alt="Resultados de validación con advertencias sobre nodos desconectados, diálogos vacíos, hablantes faltantes, textos sin traducir y fichas sin referencias" loading="lazy">
 
 ## Otras vias de exportacion
 
 Mas alla de la pagina principal de Exportar, Storyarn ofrece funciones de exportacion especializadas en otras areas:
 
-**Exportacion de localizacion** -- Desde la pagina de Localizacion, exporta traducciones como Excel (.xlsx) o CSV filtrado por idioma. Importa archivos CSV traducidos de vuelta con emparejamiento por ID. Consulta la [Vista general de Localizacion](/docs/localization/localization-overview) para mas detalles.
+**Exportación de localización** -- Desde la página de Localización puedes exportar traducciones como Excel (.xlsx) o CSV filtrado por idioma. Conserva la columna ID sin cambios para mantener cada fila identificada. La interfaz actual admite exportación, pero no ofrece importación CSV; las traducciones devueltas deben introducirse desde el editor de traducciones. Consulta la [Vista general de Localización](/docs/localization/localization-overview) para obtener más detalles.

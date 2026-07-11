@@ -45,6 +45,23 @@ defmodule Storyarn.Localization.HtmlHandlerTest do
     end
   end
 
+  describe "placeholders/1 and validate_placeholders/2" do
+    test "preserves placeholder multiplicity" do
+      assert HtmlHandler.placeholders("{name} meets {name} with {item}") == ["{name}", "{name}", "{item}"]
+
+      assert :ok =
+               HtmlHandler.validate_placeholders(
+                 "{name} meets {name} with {item}",
+                 "{name} encuentra a {name} con {item}"
+               )
+    end
+
+    test "reports missing and unexpected placeholders" do
+      assert {:error, %{missing: ["{item}"], extra: ["{other}"]}} =
+               HtmlHandler.validate_placeholders("Hello {name} {item}", "Hola {name} {other}")
+    end
+  end
+
   describe "html?/1" do
     test "detects HTML content" do
       assert HtmlHandler.html?("<p>Hello</p>")

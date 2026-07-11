@@ -9,10 +9,7 @@ description: "Cuadrículas tipo hoja de cálculo dentro de las fichas para inven
 
 Las Tablas son un tipo de bloque que incrusta una {accent}cuadrícula tipo hoja de cálculo{/accent} dentro de una ficha. Cada tabla tiene columnas tipadas, filas con nombre y referencias a variables a nivel de celda. Úsalas para inventarios, tablas de estadísticas, matrices de relaciones, árboles de habilidades o catálogos de tiendas.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Un bloque de tabla mostrando una cuadrícula de inventario con columnas para Item (texto), Quantity (número), Equipped (booleano) y una columna de fórmula calculando el peso.
-</div>
+<img src="/images/docs/sheets/sheets-table.webp" alt="Un bloque de tabla mostrando una cuadrícula de inventario con columnas para Item (texto), Quantity (número), Equipped (booleano) y una columna de fórmula calculando el peso." loading="lazy">
 
 ---
 
@@ -43,10 +40,7 @@ Las columnas de tabla admiten {accent}8 tipos{/accent}:
 
 Estos reflejan los tipos de bloques regulares, excepto que las tablas usan texto plano en lugar de texto enriquecido y añaden el tipo de columna de fórmula.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  El selector de tipos de columna mostrando los 8 tipos disponibles.
-</div>
+<img src="/images/docs/sheets-block-menu.png" alt="El menú de bloques mostrando el tipo Tabla junto a los bloques básicos." loading="lazy">
 
 ---
 
@@ -107,10 +101,7 @@ Una columna de fórmula "Modifier" en una tabla de estadísticas con la expresi�
 
 El modificador se recalcula cada vez que los valores vinculados cambian.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Configuración de una columna de fórmula mostrando el editor de expresiones con vinculaciones de símbolos: "a" vinculado a la columna "Value" de la misma fila, y la vista previa en LaTeX de la fórmula renderizada.
-</div>
+<img src="/images/docs/sheets/sheets-table.webp" alt="Un bloque de tabla con columnas tipadas y valores calculados." loading="lazy">
 
 ---
 
@@ -130,7 +121,4 @@ Cuando un bloque de tabla tiene el alcance configurado como "hijos", la estructu
 
 Las vinculaciones de fórmulas que referencian la ficha padre se reescriben automáticamente para apuntar a la ficha hija. Por ejemplo, si una ficha padre `main` tiene una vinculación de fórmula a `main.combat.attack`, la ficha hija `seven` obtiene la vinculación reescrita a `seven.combat.attack` (asumiendo que el bloque `combat` también fue heredado).
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  El bloque de tabla heredado de una ficha padre y la instancia de la misma tabla en una ficha hija, mostrando estructura idéntica pero valores de celdas diferentes.
-</div>
+<img src="/images/docs/sheets/sheets-table.webp" alt="El bloque de tabla heredado de una ficha padre y la instancia de la misma tabla en una ficha hija, mostrando estructura idéntica pero valores de celdas diferentes." loading="lazy">

@@ -13,10 +13,7 @@ Sequence nodes are visual containers for related parts of a flow. Use them to gr
 
 Sequences also define presentation context for Flow Player. When playback reaches a node inside a sequence, the player can show that sequence's visual layers behind the dialogue panel and play its sequence-level audio tracks.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Flow canvas with a Sequence node containing dialogue, condition, and instruction nodes
-</div>
+<img src="/images/docs/flows-editor-current.png" alt="Flow canvas with a Sequence node containing dialogue, condition, and instruction nodes" loading="lazy">
 
 ## What a sequence contains
 
@@ -45,10 +42,7 @@ This lets you build visual sequences without leaving the flow:
 
 The dialogue UI remains above the stage composition. Visual layers are normalized to the player viewport, so the same setup scales across screen sizes.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Flow Player showing a sequence backdrop with character layers over it and the dialogue panel in front
-</div>
+<img src="/images/docs/flows-player-current.png" alt="Flow Player showing a sequence backdrop with character layers over it and the dialogue panel in front" loading="lazy">
 
 ## Parent and child sequences
 

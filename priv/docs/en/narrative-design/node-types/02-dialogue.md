@@ -11,10 +11,7 @@ description: "Character speech, player responses, and dialogue configuration."
 
 Dialogue nodes are the most common node type. They represent **what a character says** and optionally **what the player can respond**. Each dialogue node can be as simple as a single line of text or as rich as a fully configured narrative beat with speaker, stage directions, audio, and branching responses.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  A dialogue node selected in the flow editor with the side panel open showing all fields
-</div>
+<img src="/images/docs/flows-dialogue-editor.png" alt="Flow editor canvas showing dialogue nodes with speaker cards and response branches" loading="lazy">
 
 ---
 
@@ -47,10 +44,7 @@ Double-click a dialogue node (or click the settings button in the toolbar) to op
 
 If the speaker's character sheet has a gallery with images, an image picker appears in the toolbar. You can select an image to override the default speaker portrait for this specific dialogue line -- useful for showing different expressions or poses.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  The image override picker in the dialogue toolbar showing character gallery images
-</div>
+<img src="/images/docs/flows-dialogue-editor.png" alt="Flow editor canvas showing dialogue nodes with character artwork" loading="lazy">
 
 ---
 
@@ -83,10 +77,7 @@ Each response can also carry **instructions** that modify variables when that re
 
 This keeps simple logic close to the dialogue without needing a separate instruction node after each response branch. For complex cases with multiple variable changes or shared logic, use a dedicated instruction node instead.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  A dialogue node with multiple responses, one showing a condition indicator and another with an instruction
-</div>
+<img src="/images/docs/flows-dialogue-editor.png" alt="Flow editor canvas showing connected dialogue nodes and response paths" loading="lazy">
 
 ---
 

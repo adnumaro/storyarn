@@ -28,6 +28,7 @@ defmodule Storyarn.Localization.ExportImport do
       "Source ID",
       "Source Field",
       "Locale",
+      "Source Hash",
       "Source Text",
       "Translation",
       "Status",
@@ -45,8 +46,9 @@ defmodule Storyarn.Localization.ExportImport do
           text.source_id,
           text.source_field,
           text.locale_code,
-          strip_html(text.source_text),
-          strip_html(text.translated_text),
+          text.source_text_hash,
+          spreadsheet_safe(strip_html(text.source_text)),
+          spreadsheet_safe(strip_html(text.translated_text)),
           text.status,
           text.word_count || 0,
           if(text.machine_translated, do: "Yes", else: "No"),
@@ -80,7 +82,7 @@ defmodule Storyarn.Localization.ExportImport do
     texts = TextCrud.list_texts(project_id, opts)
 
     header =
-      "ID,Source Type,Source ID,Source Field,Locale,Source Text,Translation,Status,Word Count,Machine Translated"
+      "ID,Source Type,Source ID,Source Field,Locale,Source Hash,Source Text,Translation,Status,Word Count,Machine Translated"
 
     rows =
       Enum.map(texts, fn text ->
@@ -91,8 +93,9 @@ defmodule Storyarn.Localization.ExportImport do
             text.source_id,
             text.source_field,
             text.locale_code,
-            csv_escape(strip_html(text.source_text)),
-            csv_escape(strip_html(text.translated_text)),
+            text.source_text_hash,
+            csv_escape(spreadsheet_safe(strip_html(text.source_text))),
+            csv_escape(spreadsheet_safe(strip_html(text.translated_text))),
             text.status,
             text.word_count || 0,
             if(text.machine_translated, do: "Yes", else: "No")
@@ -119,7 +122,7 @@ defmodule Storyarn.Localization.ExportImport do
   """
   @spec import_csv(integer(), String.t()) :: {:ok, map()} | {:error, term()}
   def import_csv(project_id, csv_content) do
-    lines = String.split(csv_content, ~r/\r?\n/, trim: true)
+    lines = split_csv_records(csv_content)
 
     case lines do
       [header_line | data_lines] ->
@@ -127,6 +130,7 @@ defmodule Storyarn.Localization.ExportImport do
         id_col = find_column_index(headers, "ID")
         translation_col = find_column_index(headers, "Translation")
         status_col = find_column_index(headers, "Status")
+        source_hash_col = find_column_index(headers, "Source Hash")
 
         if id_col do
           {updated, skipped, errors} =
@@ -134,7 +138,15 @@ defmodule Storyarn.Localization.ExportImport do
             |> Enum.with_index(2)
             |> Enum.reduce(
               {0, 0, []},
-              &reduce_csv_row(&1, &2, project_id, id_col, translation_col, status_col)
+              &reduce_csv_row(
+                &1,
+                &2,
+                project_id,
+                id_col,
+                translation_col,
+                status_col,
+                source_hash_col
+              )
             )
 
           {:ok, %{updated: updated, skipped: skipped, errors: Enum.reverse(errors)}}
@@ -151,26 +163,37 @@ defmodule Storyarn.Localization.ExportImport do
   # Private
   # =============================================================================
 
-  defp reduce_csv_row({line, line_num}, {upd, skip, errs}, project_id, id_col, translation_col, status_col) do
+  defp reduce_csv_row(
+         {line, line_num},
+         {upd, skip, errs},
+         project_id,
+         id_col,
+         translation_col,
+         status_col,
+         source_hash_col
+       ) do
     fields = parse_csv_line(line)
     id = Enum.at(fields, id_col)
     translation = if translation_col, do: Enum.at(fields, translation_col)
     status = if status_col, do: Enum.at(fields, status_col)
+    source_hash = if source_hash_col, do: Enum.at(fields, source_hash_col)
 
-    case import_row(project_id, id, translation, status) do
+    case import_row(project_id, id, translation, status, source_hash) do
       :ok -> {upd + 1, skip, errs}
       :skip -> {upd, skip + 1, errs}
       {:error, reason} -> {upd, skip, [{line_num, reason} | errs]}
     end
   end
 
-  defp import_row(project_id, id_str, translation, status) do
+  defp import_row(project_id, id_str, translation, status, source_hash) do
     with {id, ""} <- Integer.parse(id_str || ""),
-         text when not is_nil(text) <- TextCrud.get_text(project_id, id) do
-      attrs = build_import_attrs(translation, status)
+         text when not is_nil(text) <- TextCrud.get_text(project_id, id),
+         :ok <- validate_source_hash(text, source_hash) do
+      attrs = build_import_attrs(remove_spreadsheet_escape(translation), status)
       apply_import_attrs(text, attrs)
     else
       nil -> {:error, :text_not_found}
+      {:error, reason} -> {:error, reason}
       :error -> {:error, :invalid_id}
       _ -> :skip
     end
@@ -207,6 +230,33 @@ defmodule Storyarn.Localization.ExportImport do
 
   defp strip_html(text), do: Storyarn.Shared.HtmlUtils.strip_html(text)
 
+  defp validate_source_hash(_text, nil), do: :ok
+  defp validate_source_hash(_text, ""), do: :ok
+
+  defp validate_source_hash(text, source_hash) do
+    if String.trim(source_hash) == text.source_text_hash, do: :ok, else: {:error, :stale_source}
+  end
+
+  defp spreadsheet_safe(nil), do: ""
+
+  defp spreadsheet_safe(text) do
+    if String.starts_with?(text, ["=", "+", "-", "@"]) do
+      "'" <> text
+    else
+      text
+    end
+  end
+
+  defp remove_spreadsheet_escape("'" <> rest = value) do
+    if String.starts_with?(rest, ["=", "+", "-", "@"]) do
+      rest
+    else
+      value
+    end
+  end
+
+  defp remove_spreadsheet_escape(value), do: value
+
   defp csv_escape(nil), do: ""
 
   defp csv_escape(text) do
@@ -215,6 +265,35 @@ defmodule Storyarn.Localization.ExportImport do
     else
       text
     end
+  end
+
+  defp split_csv_records(content) do
+    {records, current} = do_split_csv_records(content, [], [], false)
+
+    [csv_record(current) | records]
+    |> Enum.reverse()
+    |> Enum.reject(&(String.trim(&1) == ""))
+  end
+
+  defp do_split_csv_records("", records, current, _quoted?), do: {records, current}
+
+  defp do_split_csv_records("\"" <> rest, records, current, quoted?) do
+    do_split_csv_records(rest, records, ["\"" | current], not quoted?)
+  end
+
+  defp do_split_csv_records("\n" <> rest, records, current, false) do
+    do_split_csv_records(rest, [csv_record(current) | records], [], false)
+  end
+
+  defp do_split_csv_records(<<char::utf8, rest::binary>>, records, current, quoted?) do
+    do_split_csv_records(rest, records, [<<char::utf8>> | current], quoted?)
+  end
+
+  defp csv_record(current) do
+    current
+    |> Enum.reverse()
+    |> IO.iodata_to_binary()
+    |> String.trim_trailing("\r")
   end
 
   defp parse_csv_line(line) do

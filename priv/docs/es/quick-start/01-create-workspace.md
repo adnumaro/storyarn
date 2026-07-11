@@ -23,23 +23,19 @@ Después de iniciar sesión, serás redirigido a tu espacio de trabajo predeterm
 
 Rellena el {accent}nombre del espacio de trabajo{/accent} y una descripción opcional. Un slug de URL se genera automáticamente a partir del nombre. Haz clic en **Crear espacio de trabajo** para continuar.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  El formulario "Crear un nuevo espacio de trabajo" con los campos de nombre y descripción
-</div>
+<img src="/images/docs/workspace-new.png" alt="El formulario &quot;Crear un nuevo espacio de trabajo&quot; con los campos de nombre y descripción" loading="lazy">
 
 ## Crea un proyecto
 
-Desde el panel del espacio de trabajo, haz clic en el botón **Nuevo Proyecto** en la barra de herramientas superior derecha. Aparece un modal con dos campos: **Nombre del Proyecto** y una **Descripción** opcional.
+Desde el panel del espacio de trabajo, haz clic en el botón **Nuevo Proyecto** en la barra de herramientas superior derecha. El diálogo permite empezar desde un proyecto vacío, una de tus plantillas o una demo de Storyarn, y después introducir el **Nombre del proyecto** y una **Descripción** opcional.
 
 Cada proyecto está completamente aislado, con sus propias fichas, flujos, escenas, localización y recursos. Un espacio de trabajo puede contener tantos proyectos como necesites.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  El panel del espacio de trabajo mostrando la cuadrícula de proyectos y el botón "Nuevo Proyecto" en la barra de herramientas
-</div>
+<img src="/images/docs/workspace-dashboard-current.png" alt="El panel del espacio de trabajo mostrando la cuadrícula de proyectos y el botón &quot;Nuevo Proyecto&quot; en la barra de herramientas" loading="lazy">
 
-Después de crearlo, entrarás directamente al editor de fichas del proyecto.
+<img src="/images/docs/project-new.png" alt="El diálogo Nuevo Proyecto con las opciones Proyecto vacío, Mis plantillas y Demos de Storyarn" loading="lazy">
+
+Después de crearlo, llegarás al dashboard del proyecto. Abre **Fichas** desde la barra lateral del proyecto para continuar.
 
 Para este tutorial, quédate en el nuevo proyecto y continúa con [Tu primera ficha](/docs/quick-start/first-sheet). Crearás los datos de personaje que el flujo leerá en el siguiente paso.
 
@@ -54,10 +50,7 @@ Ve a **Ajustes > Espacios de trabajo > [Tu Espacio] > Miembros** y haz clic en *
 
 Las invitaciones expiran después de 7 días y pueden revocarse en cualquier momento.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  La página de miembros del espacio de trabajo con el formulario de invitación, la lista de miembros y las invitaciones pendientes
-</div>
+<img src="/images/docs/workspace-members.png" alt="La página de miembros del espacio de trabajo con el formulario de invitación y la lista de miembros" loading="lazy">
 
 ## Acceso a nivel de proyecto
 

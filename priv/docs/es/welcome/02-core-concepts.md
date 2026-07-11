@@ -11,11 +11,11 @@ Storyarn conecta datos de mundo, narrativa ramificada, escenas espaciales, local
 
 ## Estructura del proyecto
 
-| Concepto      | Significado                                                                                                                               | Dónde leer más                                                    |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| **Workspace** | El contenedor principal de tu equipo. Contiene proyectos y controla la membresía del espacio de trabajo.                                  | [Crear un espacio de trabajo](/docs/quick-start/create-workspace) |
-| **Project**   | Un espacio narrativo independiente con sus propias fichas, flujos, escenas, datos de localización, recursos y miembros de proyecto.       | [Flujo de trabajo principal](/docs/welcome/core-workflow)         |
-| **Asset**     | Un archivo multimedia subido, como una imagen o audio. Los assets pueden usarse en fichas, flujos, escenas, localización y exportaciones. | [Exportar](/docs/import-export/import-export-overview)            |
+| Concepto      | Significado                                                                                                                               | Dónde leer más                                                       |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| **Workspace** | El contenedor principal de tu equipo. Contiene proyectos y controla la membresía del espacio de trabajo.                                  | [Crear un espacio de trabajo](/docs/quick-start/create-workspace)    |
+| **Project**   | Un espacio narrativo independiente con sus propias fichas, flujos, escenas, datos de localización, recursos y miembros de proyecto.       | [Dashboard del proyecto](/docs/project-management/project-dashboard) |
+| **Asset**     | Un archivo multimedia subido, como una imagen o audio. Los assets pueden usarse en fichas, flujos, escenas, localización y exportaciones. | [Recursos](/docs/project-management/assets)                          |
 
 ## Datos del mundo
 
@@ -23,7 +23,7 @@ Storyarn conecta datos de mundo, narrativa ramificada, escenas espaciales, local
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | **Sheet**    | Un registro de datos estructurados para un personaje, objeto, ubicación, facción, misión o cualquier entidad del mundo que necesites seguir.                  | [Resumen de fichas](/docs/world-building/sheets-overview)        |
 | **Block**    | Un campo tipado dentro de una ficha. Los bloques pueden guardar texto, texto enriquecido, números, booleanos, selecciones, fechas, tablas, referencias y más. | [Bloques y variables](/docs/world-building/blocks-and-variables) |
-| **Variable** | Un valor legible en runtime generado desde un bloque no constante. Los flujos usan variables en condiciones e instrucciones.                                  | [Tu primera ficha](/docs/quick-start/first-sheet)                |
+| **Variable** | Un valor legible en runtime generado desde un bloque compatible y no constante. Los bloques de referencia y galería no son variables.                         | [Tu primera ficha](/docs/quick-start/first-sheet)                |
 
 Las variables usan este patrón:
 

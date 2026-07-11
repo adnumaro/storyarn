@@ -9,10 +9,7 @@ description: "Coloca marcadores puntuales para personajes, ubicaciones, eventos,
 
 Los pines son marcadores puntuales colocados sobre una escena. Úsalos para señalar posiciones exactas: un personaje, una entrada, un objeto de misión, un punto de interés, un evento o una referencia personalizada.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Escena con pines de ubicación, personaje y evento, con un pin jugable y una ruta de patrulla
-</div>
+<img src="/images/docs/scenes-pin-properties.png" alt="Panel de propiedades de un pin de escena con controles visuales, de comportamiento, reglas y ajustes" loading="lazy">
 
 ## Tipos de pin
 

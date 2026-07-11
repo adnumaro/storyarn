@@ -9,10 +9,7 @@ description: "Draw areas on a scene and turn them into navigation, actions, disp
 
 Zones are polygonal regions drawn on top of a scene. In the editor they mark parts of the map; in exploration mode they can behave as map buttons, walkable areas, variable displays, or item collections.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Scene canvas with Action, Display, Collection, and Walkable Area zones visible in the editor
-</div>
+<img src="/images/docs/scenes-editor-current.png" alt="Scene canvas with Action, Display, Collection, and Walkable Area zones visible in the editor" loading="lazy">
 
 ## Drawing zones
 
@@ -100,7 +97,4 @@ When a numeric variable has no useful decimal part, Storyarn renders it as an in
 
 Collection zones open a collection window. Each item can point to a sheet, have a label, evaluate its own condition, and run instructions when collected. You can also enable **Collect all** and define the message shown when no items are visible.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Properties panel for a Collection zone with items, per-item conditions, and Collect all enabled
-</div>
+<img src="/images/docs/scenes-zone-properties.png" alt="Zone properties panel with visual settings and tabs for rules, actions, and configuration" loading="lazy">

@@ -18,10 +18,7 @@ The Condition Editor defines checks that read variables and return true or false
 
 Conditions only read variables. They do not change state. Use the [Instruction Editor](/docs/narrative-design/instruction-editor) when you need to write values.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Condition Editor showing Builder and Code tabs with a variable condition selected
-</div>
+<img src="/images/docs/flows-condition-builder.png" alt="Flow editor canvas with a condition node and its branching connections" loading="lazy">
 
 ## Editing modes
 

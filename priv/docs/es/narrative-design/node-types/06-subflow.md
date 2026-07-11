@@ -11,10 +11,7 @@ description: "Reutiliza un flujo dentro de otro y ramifica desde sus resultados 
 
 Los nodos Subflow permiten que un flujo llame a otro. Son la herramienta principal para componer sistemas narrativos grandes a partir de piezas pequeñas y reutilizables.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Flujo padre con un nodo Subflow cuyos pines de salida vienen de los nodos de Salida del flujo referenciado
-</div>
+<img src="/images/docs/flows-editor-current.png" alt="Flujo padre con un nodo Subflow cuyos pines de salida vienen de los nodos de Salida del flujo referenciado" loading="lazy">
 
 ## Cómo se ejecutan
 

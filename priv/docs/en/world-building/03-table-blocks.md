@@ -9,10 +9,7 @@ description: "Spreadsheet-like grids within sheets for inventories, stat matrice
 
 Tables are a block type that embeds a {accent}spreadsheet grid{/accent} inside a sheet. Each table has typed columns, named rows, and cell-level variable references. Use them for inventories, stat tables, relationship matrices, skill trees, or shop catalogs.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  A table block showing an inventory grid with columns for Item (text), Quantity (number), Equipped (boolean), and a formula column calculating weight.
-</div>
+<img src="/images/docs/sheets/sheets-table.webp" alt="A table block showing an inventory grid with columns for Item (text), Quantity (number), Equipped (boolean), and a formula column calculating weight." loading="lazy">
 
 ---
 
@@ -43,10 +40,7 @@ Table columns support {accent}8 types{/accent}:
 
 These mirror the regular block types, except tables use plain text instead of rich text and add the formula column type.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  The column type selector showing all 8 available types.
-</div>
+<img src="/images/docs/sheets-block-menu.png" alt="The sheet block menu showing the Table type alongside the basic block types." loading="lazy">
 
 ---
 
@@ -107,10 +101,7 @@ A "Modifier" formula column on a stats table with the expression `floor((a - 10)
 
 The modifier is recomputed whenever the bound values change.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  A formula column configuration showing the expression editor with symbol bindings: "a" bound to same-row "Value" column, and the rendered LaTeX preview of the formula.
-</div>
+<img src="/images/docs/sheets/sheets-table.webp" alt="A table block with typed columns and calculated values." loading="lazy">
 
 ---
 
@@ -130,7 +121,4 @@ When a table block has scope set to "children", the entire table structure (colu
 
 Formula bindings that reference the parent sheet are automatically rewritten to point to the child sheet. For example, if a parent sheet `main` has a formula binding to `main.combat.attack`, the child sheet `seven` gets the binding rewritten to `seven.combat.attack` (assuming the `combat` block was also inherited).
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  A parent sheet's inherited table block and a child sheet's instance of the same table, showing identical structure but different cell values.
-</div>
+<img src="/images/docs/sheets/sheets-table.webp" alt="A parent sheet's inherited table block and a child sheet's instance of the same table, showing identical structure but different cell values." loading="lazy">

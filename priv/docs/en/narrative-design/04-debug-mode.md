@@ -9,10 +9,7 @@ description: "Test and verify your flows with the built-in debugger."
 
 The flow editor includes a built-in {accent}debugger{/accent} that lets you simulate how a flow executes -- step by step, with full visibility into variable values, decision paths, and execution history. This is something no other narrative design tool offers: you can verify your entire branching logic without leaving the editor, without exporting, and without a game engine.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  The flow editor with the debug panel open at the bottom, showing the console tab with execution logs
-</div>
+<img src="/images/docs/flows-debug-current.png" alt="The flow editor with the debug panel open at the bottom, showing the console tab with execution logs" loading="lazy">
 
 ---
 
@@ -40,10 +37,7 @@ The control bar sits at the top of the debug panel with the following actions:
 
 When the debugger reaches a **dialogue node with responses**, it stops and presents the available choices as buttons in the console. Responses whose conditions are not met appear greyed out and disabled. Click a valid response to continue execution along that path.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  The debug controls bar showing Step, Step Back, Reset, Stop buttons with status badge and step counter
-</div>
+<img src="/images/docs/flows-debug-current.png" alt="The debug controls bar showing Step, Step Back, Reset, Stop buttons with status badge and step counter" loading="lazy">
 
 ---
 
@@ -88,10 +82,7 @@ For condition evaluations, the console shows **per-rule details**: which variabl
 
 When the debugger is waiting for a response, the available choices appear at the bottom of the console tab as clickable buttons.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  The Console tab showing timestamped entries with condition rule details (variable, expected, actual, pass/fail)
-</div>
+<img src="/images/docs/flows-debug-current.png" alt="The Console tab showing timestamped execution entries and condition results" loading="lazy">
 
 ### Variables
 
@@ -114,10 +105,7 @@ The Variables tab includes two filtering tools:
 
 Column widths are **resizable** -- drag the column borders to adjust them.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  The Variables tab showing a table with Initial, Previous, and Current columns, with changed values highlighted
-</div>
+<img src="/images/docs/flows-debug-current.png" alt="The Variables tab showing runtime values and the debug panel controls" loading="lazy">
 
 ### History
 
@@ -142,10 +130,7 @@ A visual trace of **every node visited**, in execution order. Each entry shows:
 
 The current node is highlighted in the path. When debugging across subflows, **flow separators** appear in the path showing "Entering sub-flow" and "Returned to parent" markers, with entries indented to show the call depth.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  The Path tab showing the execution trace with step numbers, breakpoint dots, and a sub-flow separator
-</div>
+<img src="/images/docs/flows-debug-current.png" alt="The Path tab showing the execution trace inside the debug panel" loading="lazy">
 
 ---
 

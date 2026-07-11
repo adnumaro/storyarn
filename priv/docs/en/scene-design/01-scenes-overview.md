@@ -9,15 +9,7 @@ description: "Map your world with spatial canvases, zones, pins, connections, la
 
 Scenes are spatial canvases for mapping a project's world. Use them for world maps, level layouts, location hierarchies, interactive exploration maps, and narrative spaces that need more than a linear flow graph.
 
-<div class="docs-alert docs-alert-warning">
-  <svg class="docs-alert-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-  <p><strong>Documentation in progress.</strong> Scenes have several connected systems. This section breaks them into focused pages so each concept is easier to follow.</p>
-</div>
-
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Full scene editor canvas with a background map, zones, pins, routes, layers panel, and bottom toolbar
-</div>
+<img src="/images/docs/scenes-editor-current.png" alt="Full scene editor canvas with a background map, zones, pins, tools, and bottom toolbar" loading="lazy">
 
 ## Core pieces
 

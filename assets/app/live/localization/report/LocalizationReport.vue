@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { Box, Clapperboard, FileText, GitBranch, MessageSquare, Square } from "lucide-vue-next";
+import {
+  Box,
+  Clapperboard,
+  FileText,
+  GitBranch,
+  MapPinned,
+  MessageSquare,
+  Square,
+} from "lucide-vue-next";
 import type { Component } from "vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
@@ -28,6 +36,8 @@ interface LanguageProgress {
   localeCode: string;
   name: string;
   final: number;
+  review: number;
+  stale: number;
   total: number;
   percentage: number;
 }
@@ -39,6 +49,7 @@ interface TargetLanguage {
 
 interface SpeakerStat {
   speakerSheetId: number | null;
+  speakerName: string | null;
   lineCount: number;
   wordCount: number;
 }
@@ -102,6 +113,7 @@ function typeIcon(type: string) {
     sheet: FileText,
     flow: GitBranch,
     screenplay: Clapperboard,
+    scene: MapPinned,
   };
   return icons[type] || Box;
 }
@@ -112,6 +124,7 @@ const typeKeys: Record<string, string> = {
   sheet: "localization.report.types.sheet",
   flow: "localization.report.types.flow",
   screenplay: "localization.report.types.screenplay",
+  scene: "localization.report.types.scene",
 };
 </script>
 
@@ -148,6 +161,9 @@ const typeKeys: Record<string, string> = {
           <span class="text-xs text-muted-foreground w-24 text-right">
             {{ lang.final }}/{{ lang.total }}
           </span>
+          <Badge v-if="lang.stale" variant="destructive" class="shrink-0">
+            {{ $t("localization.report.stale_count", { count: lang.stale }) }}
+          </Badge>
         </div>
       </div>
     </section>
@@ -195,7 +211,8 @@ const typeKeys: Record<string, string> = {
           <TableBody>
             <TableRow v-for="stat in speakerStats" :key="stat.speakerSheetId || 'none'">
               <TableCell>
-                <span v-if="stat.speakerSheetId">{{
+                <span v-if="stat.speakerName">{{ stat.speakerName }}</span>
+                <span v-else-if="stat.speakerSheetId">{{
                   $t("localization.report.speaker_id", { id: stat.speakerSheetId })
                 }}</span>
                 <span v-else class="text-muted-foreground italic">{{

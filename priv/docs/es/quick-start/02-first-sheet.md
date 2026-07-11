@@ -15,10 +15,7 @@ Abre tu proyecto y selecciona **Fichas** en la barra lateral. Haz clic en el bot
 
 Se crea una nueva hoja con un nombre predeterminado. Haz clic en el título para renombrarlo — por ejemplo, "Jaime". El {accent}atajo (shortcut){/accent} (que se muestra debajo del nombre) se genera automáticamente a partir del nombre de la ficha. Puedes editarlo manualmente — para un personaje, algo como `mc.jaime` funciona bien porque crea un espacio de nombres legible para todas las variables de esta hoja.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Una nueva hoja con el título "Jaime" y el atajo "mc.jaime" visible debajo del nombre
-</div>
+<img src="/images/docs/sheets-character-current.png" alt="La ficha de personaje Kael con título, atajo, banner, avatar y contenido heredado" loading="lazy">
 
 ## Añade bloques
 
@@ -28,10 +25,7 @@ Haz clic en el botón **+** en la parte inferior de la ficha para abrir el menú
 
 **Datos Estructurados** -- Tabla, Galería
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  El menú de tipos de bloque mostrando las categorías Bloques Básicos y Datos Estructurados
-</div>
+<img src="/images/docs/sheets-block-menu.png" alt="El menú de tipos de bloque mostrando las categorías Bloques Básicos y Datos Estructurados" loading="lazy">
 
 Prueba a añadir estos bloques a tu hoja de personaje:
 
@@ -41,10 +35,7 @@ Prueba a añadir estos bloques a tu hoja de personaje:
 
 3. Elige **Booleano** y etiquétalo como "Is Alive". Actívalo. Esto crea `mc.jaime.is_alive`.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  La hoja con los bloques Health (número), Class (selección) e Is Alive (booleano) rellenados
-</div>
+<img src="/images/docs/sheets-character-current.png" alt="Una ficha de personaje con etiquetas de bloques, valores y campos heredados" loading="lazy">
 
 ## Constantes vs. variables
 
@@ -64,10 +55,7 @@ Cada bloque no constante se convierte en una variable con el formato `{atajo_de_
 
 El {accent}nombre de variable{/accent} se genera automáticamente a partir de la etiqueta del bloque (en minúsculas, los espacios se convierten en guiones bajos). Puedes personalizarlo en la configuración avanzada del bloque.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  El popover de configuración del bloque mostrando el campo de nombre de variable y el interruptor "es constante"
-</div>
+<img src="/images/docs/sheets-character-current.png" alt="La ficha de personaje con su contenido y las pestañas Contenido, Referencias, Audio e Historial" loading="lazy">
 
 ## Punto de control
 

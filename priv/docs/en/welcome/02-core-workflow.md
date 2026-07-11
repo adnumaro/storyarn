@@ -19,7 +19,7 @@ Inside a workspace, create a **project**. Each project is self-contained — its
 
 Invite teammates by email. They receive a token-based link, accept, and they're in — with the role you chose.
 
-<img src="/images/docs/workspace-dashboard.webp" alt="Workspace dashboard showing the Veilbreak Demo project card and New Project button" loading="lazy">
+<img src="/images/docs/workspace-dashboard-current.png" alt="Workspace dashboard showing the Veilbreak Demo project card and New Project button" loading="lazy">
 
 ---
 
@@ -27,11 +27,11 @@ Invite teammates by email. They receive a token-based link, accept, and they're 
 
 Start with **Sheets** — structured data containers for your entire game world. Create a sheet for each character, item, location, faction, or quest.
 
-Every field on a sheet is a **block**. There are 10 block types: text, rich text, number, boolean, select, multi-select, date, table, formula, and reference. Unless you mark a block as a **constant**, it automatically becomes a **variable** — referenceable from flows, conditions, and other sheets.
+Every field on a sheet is a **block**. There are 10 block types: text, rich text, number, boolean, select, multi-select, date, table, reference, and gallery. Blocks that support runtime values become **variables** unless you mark them as constants; reference and gallery blocks are not variables. Table columns also support formulas for computed cell values.
 
 Variables follow the pattern `{sheet_shortcut}.{variable_name}`. A Health block on the sheet `mc.jaime` becomes `mc.jaime.health`. Change that value once, and every flow that checks it sees the update immediately.
 
-<img src="/images/docs/sheets/sheets-character.webp" alt="Character sheet for Kael with banner, avatar, inherited fields, number blocks, and select blocks" loading="lazy">
+<img src="/images/docs/sheets-character-current.png" alt="Character sheet for Kael with banner, avatar, inherited fields, number blocks, and select blocks" loading="lazy">
 
 **Tables** are spreadsheet grids inside a sheet — perfect for inventories, skill trees, or relationship matrices. Each cell becomes its own variable. **Formulas** let you compute values from other variables, even across sheets.
 
@@ -56,7 +56,7 @@ Organize sheets in a tree hierarchy. Use **property inheritance** to cascade blo
 
 Connect nodes by dragging between pins. Edit content in the side panel. Collaborate in real time — see your teammates' cursors, and automatic locking prevents conflicting edits.
 
-<img src="/images/docs/flows/flows.webp" alt="Flow editor showing a Veilbreak dialogue tree with connected dialogue, hub, instruction, jump, entry, and exit nodes" loading="lazy">
+<img src="/images/docs/flows-editor-current.png" alt="Flow editor showing a Veilbreak dialogue tree with connected dialogue, hub, instruction, jump, entry, and exit nodes" loading="lazy">
 
 ### Test without leaving the editor
 
@@ -64,14 +64,11 @@ This is where Storyarn pulls ahead. Other tools make you export to a game engine
 
 The **Story Player** is a full-screen cinematic playthrough. You experience your flow exactly as a player would — dialogue slides with speaker avatars, numbered response choices, scene backdrops dimming behind the text. Auto-advances through conditions and instructions, stops at choices. Switch to **Analysis mode** to see hidden responses and condition badges. Navigate back through history to try different paths.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Story Player — dialogue slide with speaker name and avatar, three numbered response choices, and a dimmed scene backdrop behind
-</div>
+<img src="/images/docs/flows-player-current.png" alt="Story Player — dialogue slide with speaker name and avatar, three numbered response choices, and a dimmed scene backdrop behind" loading="lazy">
 
 The **Debug Mode** is your step-by-step inspector. Advance node by node, watch variables change in real time in the Variables panel, trace the full execution path, and set breakpoints. Adjust variable values on the fly and re-run to test alternate branches. Four tabs — Console, Variables, History, and Path — give you complete visibility into what your flow is doing and why.
 
-<img src="/images/docs/flows/flows-debug.webp" alt="Debug Mode showing a highlighted active dialogue node, console output, response controls, and debug toolbar" loading="lazy">
+<img src="/images/docs/flows-debug-current.png" alt="Debug Mode showing the debug toolbar, execution tabs, and the selected flow node" loading="lazy">
 
 ---
 
@@ -83,7 +80,7 @@ Zones and pins aren't just visual — they're interactive. Attach **conditions**
 
 Double-click a zone to **drill down** — Storyarn extracts the zone's area from the background image, creates a child scene, and lets you keep zooming in. Build entire world hierarchies: continent → region → city → building → room.
 
-<img src="/images/docs/scenes.webp" alt="Scene editor showing the Thyral map with colored zones, character pins, labels, and scene tools" loading="lazy">
+<img src="/images/docs/scenes-editor-current.png" alt="Scene editor showing the Thyral map with colored zones, character pins, labels, and scene tools" loading="lazy">
 
 ### Exploration Mode
 
@@ -91,10 +88,17 @@ The **Exploration Mode** is where everything comes together. Walk through your w
 
 No other narrative design tool does this.
 
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Exploration Mode — dimmed scene map with a flow dialogue overlay showing speaker text and response choices on top of the world
-</div>
+<img src="/images/docs/scenes-exploration-current.png" alt="Exploration Mode showing the scene map, interactive pins, and player controls" loading="lazy">
+
+---
+
+## Manage assets
+
+Open **Assets** from the project sidebar to upload and organize the images and audio used by your project. Search by filename, filter by type, and reuse assets in sheets, scene backgrounds, flow sequences, dialogue, and exports.
+
+<img src="/images/docs/assets-dashboard-current.png" alt="Project Assets page with search, type filters, and image and audio asset cards" loading="lazy">
+
+When exporting, choose whether assets remain references, are embedded in the output, or are bundled alongside it.
 
 ---
 
@@ -102,11 +106,11 @@ No other narrative design tool does this.
 
 When your content is ready, the **Localization** tools extract every translatable text automatically — dialogue lines, stage directions, menu text, sheet labels, and block values.
 
-Set up **DeepL integration** for machine translation as a first pass. Maintain a **glossary** for consistent terminology across languages (character names, game terms, proper nouns). Track progress per language with reports that show word counts by speaker, translation status, and voice-over progress.
+Set up **DeepL integration** for machine translation as a first pass. Track progress per language with reports that show word counts by speaker, translation status, and voice-over progress.
 
-Export translations as **Excel** or **CSV** for professional translators. Import them back when done. The system detects source text changes and automatically flags stale translations for review.
+Export translations as **Excel** or **CSV** for professional translators. The system detects source text changes and automatically flags stale translations for review. Storyarn does not currently provide a CSV import action in the project UI, so returned translations must be entered through the translation editor.
 
-<img src="/images/docs/localization-dashboard.webp" alt="Localization dashboard showing Catalan progress, word counts by speaker, voice-over progress, and content breakdown" loading="lazy">
+<img src="/images/docs/localization-overview-current.png" alt="Localization dashboard showing Catalan progress, word counts by speaker, voice-over progress, and content breakdown" loading="lazy">
 
 ---
 
