@@ -1,0 +1,108 @@
+test/storyarn_web/live/localization_live/glossary_test.exs
+  s_4d55fc24eec452::t_28e6a2442dddc2 80-105
+assets/app/live/localization/toolbar/LocalizationToolbar.vue
+  s_4d55fc24eec452::t_c324c20948c4a3 67-77
+lib/storyarn_web/live/project_settings_live/localization.ex
+  s_4d55fc24eec452::t_24113ac9145570 177,182-187
+lib/storyarn/localization/providers/deepl.ex
+  s_4d55fc24eec452::t_b193524c017333 217,225
+lib/storyarn_web/live/localization_toolbar_live.ex
+  s_4d55fc24eec452::t_24113ac9145570 169
+lib/storyarn/localization/localized_text.ex
+  s_4d55fc24eec452::t_b193524c017333 111-112,178-180
+lib/storyarn/workers/localization_batch_translation_worker.ex
+  s_4d55fc24eec452::t_2989f8b818a85c 7,15,24,28-44,54,58,60,64-66,68-70,74-84,86-87,98-109,111-113,118-148
+  s_4d55fc24eec452::t_d4a722726166ec 149
+test/storyarn_web/live/localization_live/index_test.exs
+  s_4d55fc24eec452::t_387845fd51ab1c 688-705
+lib/storyarn_web/live/localization_live/glossary.ex
+  s_4d55fc24eec452::t_b193524c017333 128,133,186,251-254
+  s_4d55fc24eec452::t_29907df322e924 122,173-183
+  s_4d55fc24eec452::t_125c551193a103 184-185
+  s_4d55fc24eec452::t_f968207db9cc42 187
+test/storyarn/localization_test.exs
+  s_4d55fc24eec452::t_a9b2b741438def 70-86
+  s_4d55fc24eec452::t_387845fd51ab1c 297-324
+assets/app/test/live/workspace/dashboard/WorkspaceDashboard.test.ts
+  s_4d55fc24eec452::t_32468a60d1e938 49-51,96-105
+  s_4d55fc24eec452::t_10f6e767417321 47-48,52,92
+  s_4d55fc24eec452::t_7c213deb578d02 106-107
+assets/app/live/project/settings/ProjectSettingsLocalization.vue
+  s_4d55fc24eec452::t_d56632b9861ff4 236,244-248
+  s_4d55fc24eec452::t_c324c20948c4a3 93-97,119-123
+assets/app/live/localization/texts/LocalizationTextsIndex.vue
+  s_4d55fc24eec452::t_4f9b1c0c8cde08 194,196-198,284
+  s_4d55fc24eec452::t_38fd1856f32649 280-283,285,290,323,442
+  s_4d55fc24eec452::t_5a748c7638619d 120,193,195,199-201,286-288,332,334-335,337,340,343,349,352,354-364,366,422-434,436
+  s_4d55fc24eec452::t_3cfcd41e3951be 291-292,302-303,317-322,329,437-438,441,631
+test/storyarn/localization/glossary_sync_test.exs
+  s_4d55fc24eec452::t_b193524c017333 146-152
+  s_4d55fc24eec452::t_53dfae999bfe09 107-143
+assets/app/shared/composables/useLive.ts
+  s_4d55fc24eec452::t_c324c20948c4a3 17,35,38,64,73
+test/storyarn/localization/reports_test.exs
+  s_4d55fc24eec452::t_387845fd51ab1c 33-46
+assets/app/locales/es/localization.json
+  s_4d55fc24eec452::t_c324c20948c4a3 56-57
+lib/storyarn_web/live/localization_live/index.ex
+  s_4d55fc24eec452::t_24113ac9145570 406-407
+test/support/fake_translation_provider.ex
+  s_4d55fc24eec452::t_a9b2b741438def 9-23,32
+assets/app/locales/en/localization.json
+  s_4d55fc24eec452::t_c324c20948c4a3 56-57
+assets/app/live/workspace/dashboard/WorkspaceDashboard.vue
+  s_4d55fc24eec452::t_c324c20948c4a3 3,94-101,158,358
+test/storyarn/workers/localization_batch_translation_worker_test.exs
+  s_4d55fc24eec452::t_387845fd51ab1c 67-74
+  s_4d55fc24eec452::t_a9b2b741438def 22,25,85-155
+lib/storyarn/localization.ex
+  s_4d55fc24eec452::t_24113ac9145570 77-78,82-83
+lib/storyarn/localization/language_crud.ex
+  s_4d55fc24eec452::t_24113ac9145570 10,74,101-107,211-215
+  s_4d55fc24eec452::t_598043f076c32b 216-217
+assets/app/live/localization/glossary/LocalizationGlossary.vue
+  s_4d55fc24eec452::t_c324c20948c4a3 254-259,262-267
+lib/storyarn/localization/translation_run_crud.ex
+  s_4d55fc24eec452::t_2989f8b818a85c 13-14,75-85,90,94-96
+lib/storyarn/localization/export_import.ex
+  s_4d55fc24eec452::t_b193524c017333 271,273,278-297
+  s_4d55fc24eec452::t_720790a19c936f 298
+assets/app/test/live/localization/LocalizationActions.test.ts
+  s_4d55fc24eec452::t_72636780c872a3 1-7,9-13,15-24,26-28,31,33-53
+  s_4d55fc24eec452::t_38fd1856f32649 8,14
+  s_4d55fc24eec452::t_d56632b9861ff4 25,29-30,32
+lib/storyarn/localization/translation_run.ex
+  s_4d55fc24eec452::t_24113ac9145570 12,46
+lib/storyarn/localization/glossary_sync.ex
+  s_4d55fc24eec452::t_c324c20948c4a3 4-5,131
+  s_4d55fc24eec452::t_b193524c017333 130,132-139,181-182
+  s_4d55fc24eec452::t_29907df322e924 19,73,80-119,125,149,151-159
+  s_4d55fc24eec452::t_4855e85695e4bd 34,36-41,124
+  s_4d55fc24eec452::t_53dfae999bfe09 12,140-148,150,160-180,183
+  s_4d55fc24eec452::t_456f8ab02e7d7c 120
+assets/app/test/live/localization/LocalizationTextsIndex.test.ts
+  s_4d55fc24eec452::t_30a1065a7b53f1 134,161-162,166
+  s_4d55fc24eec452::t_38fd1856f32649 73,93,127
+  s_4d55fc24eec452::t_a6ac03306f7afc 1-72,74-92,94-126,128-133,135-160,163-165,167-168
+priv/repo/migrations/20260710150000_create_localization_translation_runs.exs
+  s_4d55fc24eec452::t_b193524c017333 37-52
+  s_4d55fc24eec452::t_150ae3c5067e83 53-58
+lib/storyarn/localization/reports.ex
+  s_4d55fc24eec452::t_b193524c017333 39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "622ad5f582e5b58c5d58fc3bfac746c543197415",
+  "prompts": {},
+  "sessions": {
+    "s_4d55fc24eec452": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4c03-02e0-7b82-91e5-dd81573e6238",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
