@@ -215,12 +215,13 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
       workspace: workspace
     } do
       {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/general")
+      image_data = File.read!("test/fixtures/images/test_image.jpg")
 
       html =
         render_click(view, "upload_workspace_banner", %{
-          "filename" => "banner.png",
-          "content_type" => "image/png",
-          "data" => "data:image/png;base64,#{Base.encode64("image bytes")}"
+          "filename" => "banner.jpg",
+          "content_type" => "image/jpeg",
+          "data" => "data:image/jpeg;base64,#{Base.encode64(image_data)}"
         })
 
       assert html =~ "Banner uploaded successfully."
@@ -266,6 +267,23 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
       html =
         render_click(view, "upload_workspace_banner", %{
           "filename" => "payload.html",
+          "content_type" => "image/png",
+          "data" => "data:image/png;base64,#{Base.encode64("not an image")}"
+        })
+
+      assert html =~ "Invalid file data or upload failed."
+      assert Workspaces.get_workspace!(workspace.id).banner_url == nil
+    end
+
+    test "rejects non-image bytes renamed with an allowed extension", %{
+      conn: conn,
+      workspace: workspace
+    } do
+      {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/general")
+
+      html =
+        render_click(view, "upload_workspace_banner", %{
+          "filename" => "fake.png",
           "content_type" => "image/png",
           "data" => "data:image/png;base64,#{Base.encode64("not an image")}"
         })

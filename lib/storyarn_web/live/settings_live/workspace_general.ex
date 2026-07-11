@@ -5,6 +5,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Assets
+  alias Storyarn.Assets.ImageProcessor
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.UploadPolicy
   alias Storyarn.Localization
@@ -98,17 +99,12 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
         socket
       ) do
     Authorize.with_authorization(socket, :manage_workspace, fn socket ->
-      with [header, base64_data] <- String.split(data, ",", parts: 2),
+      with [header, base64_data] <- split_banner_data(data),
            {:ok, profile} <- UploadPolicy.profile_for(:banner),
+           :ok <- validate_banner_metadata(profile, filename, content_type, header),
+           :ok <- UploadPolicy.validate_base64_size(profile, base64_data),
            {:ok, binary_data} <- Base.decode64(base64_data),
-           :ok <-
-             validate_banner_upload(
-               profile,
-               filename,
-               content_type,
-               header,
-               byte_size(binary_data)
-             ),
+           :ok <- validate_banner_binary(profile, binary_data, content_type),
            safe_filename = Assets.sanitize_filename(filename),
            key = "workspaces/#{socket.assigns.workspace.slug}/banner/#{safe_filename}",
            {:ok, url} <- Storage.upload(key, binary_data, content_type),
@@ -172,7 +168,10 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
     end
   end
 
-  defp validate_banner_upload(profile, filename, content_type, header, size)
+  defp split_banner_data(data) when is_binary(data), do: String.split(data, ",", parts: 2)
+  defp split_banner_data(_data), do: []
+
+  defp validate_banner_metadata(profile, filename, content_type, header)
        when is_binary(filename) and is_binary(content_type) and is_binary(header) do
     safe_filename = Assets.sanitize_filename(filename)
 
@@ -180,12 +179,25 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
          true <- safe_filename not in ["", ".", ".."],
          true <- header == "data:#{content_type};base64",
          true <- MIME.from_path(safe_filename) == content_type,
-         :ok <- UploadPolicy.validate(profile, %{content_type: content_type, size: size}) do
+         :ok <- UploadPolicy.validate(profile, %{content_type: content_type, size: 0}) do
       :ok
     else
       _ -> {:error, :invalid_banner_upload}
     end
   end
 
-  defp validate_banner_upload(_profile, _filename, _content_type, _header, _size), do: {:error, :invalid_banner_upload}
+  defp validate_banner_metadata(_profile, _filename, _content_type, _header), do: {:error, :invalid_banner_upload}
+
+  defp validate_banner_binary(profile, binary_data, content_type) do
+    with :ok <-
+           UploadPolicy.validate(profile, %{
+             content_type: content_type,
+             size: byte_size(binary_data)
+           }),
+         {:ok, _dimensions} <- ImageProcessor.get_dimensions_from_binary(binary_data) do
+      :ok
+    else
+      _ -> {:error, :invalid_banner_upload}
+    end
+  end
 end

@@ -81,6 +81,24 @@ defmodule Storyarn.Assets.UploadPolicy do
     end
   end
 
+  @doc """
+  Rejects Base64 payloads that cannot decode within the profile file-size limit.
+
+  This check is intentionally performed before decoding so oversized LiveView
+  events do not allocate a second, decoded binary in the LiveView process.
+  """
+  @spec validate_base64_size(profile(), binary()) :: :ok | {:error, :too_large}
+  def validate_base64_size(%{max_file_size: max_file_size}, encoded_data)
+      when is_integer(max_file_size) and is_binary(encoded_data) do
+    max_encoded_size = 4 * div(max_file_size + 2, 3)
+
+    if byte_size(encoded_data) <= max_encoded_size,
+      do: :ok,
+      else: {:error, :too_large}
+  end
+
+  def validate_base64_size(_profile, _encoded_data), do: {:error, :too_large}
+
   @spec normalize_metadata(map()) :: {:ok, map()} | {:error, atom()}
   def normalize_metadata(attrs) do
     with {:ok, source_hash} <- fetch_hash(attrs),
