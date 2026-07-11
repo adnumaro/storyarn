@@ -96,7 +96,20 @@
       "test_connection": "Test Connection",
       "save": "Save",
       "usage_prefix": "Usage: ",
-      "usage_characters": " characters"
+      "usage_characters": " characters",
+      "configured": "Configured",
+      "not_configured": "Setup required",
+      "provider_description": "Use your own DeepL API account for individual and batch translations.",
+      "api_key_help": "Find your API key",
+      "api_key_preserved": "Leave this field empty to keep the encrypted key already stored.",
+      "api_key_required": "The key is encrypted before it is stored.",
+      "tier_help": "Choose the endpoint that matches your DeepL API subscription.",
+      "connection_success": "Connection successful. Usage information is up to date.",
+      "connection_error": "DeepL connection failed: {error}",
+      "usage_title": "Character usage",
+      "usage_description": "Current billing-period usage reported by DeepL.",
+      "used": "used",
+      "limit": "limit"
     },
     "snapshots": {
       "restoration_in_progress": "A restoration is in progress. Please wait for it to complete.",

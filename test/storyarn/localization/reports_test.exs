@@ -4,6 +4,7 @@ defmodule Storyarn.Localization.ReportsTest do
   import Storyarn.AccountsFixtures
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
 
   alias Storyarn.Localization.Reports
 
@@ -27,6 +28,20 @@ defmodule Storyarn.Localization.ReportsTest do
       assert progress.total == 3
       assert progress.final == 2
       assert_in_delta progress.percentage, 66.7, 0.1
+    end
+
+    test "does not count blank translations as stale" do
+      project = project_fixture(user_fixture())
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      text = localized_text_fixture(project.id, %{locale_code: "es"})
+
+      Storyarn.Repo.update_all(
+        from(t in Storyarn.Localization.LocalizedText, where: t.id == ^text.id),
+        set: [translated_text: "", translated_source_hash: nil]
+      )
+
+      assert [%{stale: 0}] = Reports.progress_by_language(project.id)
     end
 
     test "excludes source language from results" do
@@ -94,6 +109,24 @@ defmodule Storyarn.Localization.ReportsTest do
       stats = Reports.word_counts_by_speaker(project.id, "es")
       assert length(stats) == 1
       assert hd(stats).word_count == 10
+    end
+
+    test "includes the speaker sheet name" do
+      user = user_fixture()
+      project = project_fixture(user)
+      speaker = sheet_fixture(project, %{name: "Captain Mira"})
+
+      localized_text_fixture(project.id, %{
+        locale_code: "es",
+        source_type: "flow_node",
+        speaker_sheet_id: speaker.id,
+        word_count: 7
+      })
+
+      assert [%{speaker_name: "Captain Mira", speaker_sheet_id: speaker_id}] =
+               Reports.word_counts_by_speaker(project.id, "es")
+
+      assert speaker_id == speaker.id
     end
   end
 

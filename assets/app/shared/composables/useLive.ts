@@ -14,6 +14,7 @@ export interface LiveInterface {
     event: string,
     payload?: Record<string, unknown>,
     callback?: (reply: Record<string, unknown>) => void,
+    onError?: (error: unknown) => void,
   ) => void;
   handleEvent: (event: string, callback: (payload: Record<string, unknown>) => void) => void;
   upload: (name: string, files: FileList) => void;
@@ -31,8 +32,10 @@ export function useLive(): LiveInterface {
         event: string,
         payload?: Record<string, unknown>,
         callback?: (reply: Record<string, unknown>) => void,
+        onError?: (error: unknown) => void,
       ) => {
         console.warn(`[useLive] pushEvent("${event}") called outside LiveView`, payload);
+        onError?.(new Error("LiveView is unavailable"));
         callback?.({});
       },
       handleEvent: (event: string, _callback: (payload: Record<string, unknown>) => void) => {
@@ -58,6 +61,7 @@ export function useLive(): LiveInterface {
       event: string,
       payload: Record<string, unknown> = {},
       callback?: (reply: Record<string, unknown>) => void,
+      onError?: (error: unknown) => void,
     ) => {
       try {
         $live.pushEvent(event, payload, callback);
@@ -66,6 +70,7 @@ export function useLive(): LiveInterface {
           `[useLive] pushEvent("${event}") dropped:`,
           err instanceof Error ? err.message : err,
         );
+        onError?.(err);
       }
     },
 

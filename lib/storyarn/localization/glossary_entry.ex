@@ -19,6 +19,9 @@ defmodule Storyarn.Localization.GlossaryEntry do
 
   alias Storyarn.Projects.Project
 
+  @term_format ~r/^[^\t\r\n]*$/u
+  @term_format_error "cannot contain tabs or line breaks"
+
   @type t :: %__MODULE__{
           id: integer() | nil,
           project_id: integer() | nil,
@@ -60,6 +63,8 @@ defmodule Storyarn.Localization.GlossaryEntry do
       :do_not_translate
     ])
     |> validate_required([:source_term, :source_locale, :target_locale])
+    |> validate_format(:source_term, @term_format, message: @term_format_error)
+    |> validate_format(:target_term, @term_format, message: @term_format_error)
     |> validate_length(:source_locale, min: 2, max: 10)
     |> validate_length(:target_locale, min: 2, max: 10)
     |> unique_constraint([:project_id, :source_term, :source_locale, :target_locale],
@@ -72,6 +77,8 @@ defmodule Storyarn.Localization.GlossaryEntry do
   Changeset for updating a glossary entry.
   """
   def update_changeset(entry, attrs) do
-    cast(entry, attrs, [:target_term, :context, :do_not_translate])
+    entry
+    |> cast(attrs, [:target_term, :context, :do_not_translate])
+    |> validate_format(:target_term, @term_format, message: @term_format_error)
   end
 end

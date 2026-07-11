@@ -9,6 +9,7 @@ defmodule Storyarn.Localization.Providers.DeepL do
   require Logger
 
   @max_texts_per_request 50
+  @max_request_body_bytes 120 * 1024
 
   # =============================================================================
   # TranslationProvider callbacks
@@ -28,10 +29,9 @@ defmodule Storyarn.Localization.Providers.DeepL do
     api_key = config.api_key_encrypted
 
     with {:ok, base_url} <- ProviderConfig.api_endpoint_or_default(config) do
-      case Req.get("#{base_url}/v2/usage",
-             headers: [{"Authorization", "DeepL-Auth-Key #{api_key}"}],
-             retry: :transient,
-             max_retries: 2
+      case Req.get(
+             "#{base_url}/v2/usage",
+             request_options(api_key)
            ) do
         {:ok, %{status: 200, body: body}} ->
           {:ok,
@@ -57,11 +57,9 @@ defmodule Storyarn.Localization.Providers.DeepL do
     api_key = config.api_key_encrypted
 
     with {:ok, base_url} <- ProviderConfig.api_endpoint_or_default(config) do
-      case Req.get("#{base_url}/v2/languages",
-             headers: [{"Authorization", "DeepL-Auth-Key #{api_key}"}],
-             params: [type: "target"],
-             retry: :transient,
-             max_retries: 2
+      case Req.get(
+             "#{base_url}/v2/languages",
+             request_options(api_key, params: [type: "target"])
            ) do
         {:ok, %{status: 200, body: body}} ->
           {:ok, Enum.map(body, &language_from_response/1)}
@@ -80,21 +78,24 @@ defmodule Storyarn.Localization.Providers.DeepL do
     api_key = config.api_key_encrypted
 
     with {:ok, base_url} <- ProviderConfig.api_endpoint_or_default(config) do
-      # DeepL expects TSV format for entries
       entries_tsv =
         Enum.map_join(entries, "\n", fn {source, target} -> "#{source}\t#{target}" end)
 
-      case Req.post("#{base_url}/v2/glossaries",
-             headers: [{"Authorization", "DeepL-Auth-Key #{api_key}"}],
-             json: %{
-               name: name,
-               source_lang: normalize_lang(source_lang),
-               target_lang: normalize_lang(target_lang),
-               entries: entries_tsv,
-               entries_format: "tsv"
-             },
-             retry: :transient,
-             max_retries: 2
+      body = %{
+        name: name,
+        dictionaries: [
+          %{
+            source_lang: normalize_glossary_lang(source_lang),
+            target_lang: normalize_glossary_lang(target_lang),
+            entries: entries_tsv,
+            entries_format: "tsv"
+          }
+        ]
+      }
+
+      case Req.post(
+             "#{base_url}/v3/glossaries",
+             request_options(api_key, json: body)
            ) do
         {:ok, %{status: 201, body: body}} ->
           {:ok, body["glossary_id"]}
@@ -113,10 +114,9 @@ defmodule Storyarn.Localization.Providers.DeepL do
     api_key = config.api_key_encrypted
 
     with {:ok, base_url} <- ProviderConfig.api_endpoint_or_default(config) do
-      case Req.delete("#{base_url}/v2/glossaries/#{glossary_id}",
-             headers: [{"Authorization", "DeepL-Auth-Key #{api_key}"}],
-             retry: :transient,
-             max_retries: 2
+      case Req.delete(
+             "#{base_url}/v3/glossaries/#{glossary_id}",
+             request_options(api_key)
            ) do
         {:ok, %{status: 204}} -> :ok
         {:ok, %{status: 404}} -> :ok
@@ -130,62 +130,136 @@ defmodule Storyarn.Localization.Providers.DeepL do
   # Private
   # =============================================================================
 
+  defp translate_with_endpoint([], _source_lang, _target_lang, _config, _api_key, _base_url, _opts), do: {:ok, []}
+
   defp translate_with_endpoint(texts, source_lang, target_lang, config, api_key, base_url, opts) do
-    has_html = Enum.any?(texts, &HtmlHandler.html?/1)
-
     texts
-    |> preprocess_texts(has_html)
-    |> Enum.chunk_every(@max_texts_per_request)
-    |> translate_chunks([], source_lang, target_lang, api_key, base_url,
-      glossary_id: get_glossary_id(config, source_lang, target_lang),
-      tag_handling: if(has_html, do: "html"),
-      formality: opts[:formality]
-    )
-    |> postprocess_translations(has_html)
+    |> Enum.with_index()
+    |> Enum.chunk_by(fn {text, _index} -> handling_mode(text) end)
+    |> Enum.reduce_while({:ok, []}, fn segment, {:ok, acc} ->
+      case translate_segment(segment, source_lang, target_lang, config, api_key, base_url, opts) do
+        {:ok, translations} -> {:cont, {:ok, acc ++ translations}}
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
   end
 
-  defp preprocess_texts(texts, true), do: Enum.map(texts, &HtmlHandler.pre_translate/1)
-  defp preprocess_texts(texts, false), do: texts
+  defp translate_segment(segment, source_lang, target_lang, config, api_key, base_url, opts) do
+    mode = segment |> hd() |> elem(0) |> handling_mode()
 
-  defp translate_chunks([], acc, _source_lang, _target_lang, _api_key, _base_url, _opts) do
-    {:ok, acc}
+    entries =
+      Enum.map(segment, fn {text, index} ->
+        %{original: text, prepared: preprocess_text(text, mode), index: index}
+      end)
+
+    base_body =
+      %{
+        target_lang: normalize_lang(target_lang)
+      }
+      |> maybe_put(:source_lang, if(source_lang, do: normalize_lang(source_lang)))
+      |> maybe_put(:tag_handling, if(mode == :html, do: "html"))
+      |> maybe_put(:glossary_id, get_glossary_id(config, source_lang, target_lang))
+      |> maybe_put(:formality, opts[:formality] || config_setting(config, "formality"))
+      |> maybe_put(:model_type, opts[:model_type] || config_setting(config, "model_type"))
+
+    with {:ok, chunks} <- chunk_entries(entries, base_body),
+         {:ok, translations} <- translate_chunks(chunks, [], base_body, api_key, base_url) do
+      validate_translations(entries, translations, mode)
+    end
   end
 
-  defp translate_chunks([chunk | chunks], acc, source_lang, target_lang, api_key, base_url, opts) do
-    case do_translate(chunk, source_lang, target_lang, api_key, base_url, opts) do
+  defp handling_mode(text) do
+    if HtmlHandler.html?(text) or HtmlHandler.placeholders(text) != [], do: :html, else: :plain
+  end
+
+  defp preprocess_text(text, :html), do: HtmlHandler.pre_translate(text)
+  defp preprocess_text(text, :plain), do: text
+
+  defp chunk_entries(entries, base_body) do
+    entries
+    |> Enum.reduce_while({:ok, [], []}, fn entry, {:ok, chunks, current} ->
+      candidate = current ++ [entry]
+
+      cond do
+        chunk_fits?(candidate, base_body) ->
+          {:cont, {:ok, chunks, candidate}}
+
+        current == [] ->
+          {:halt, {:error, {:text_too_large, entry.index}}}
+
+        chunk_fits?([entry], base_body) ->
+          {:cont, {:ok, [current | chunks], [entry]}}
+
+        true ->
+          {:halt, {:error, {:text_too_large, entry.index}}}
+      end
+    end)
+    |> case do
+      {:ok, chunks, []} -> {:ok, Enum.reverse(chunks)}
+      {:ok, chunks, current} -> {:ok, Enum.reverse([current | chunks])}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp chunk_fits?(entries, base_body) do
+    length(entries) <= @max_texts_per_request and
+      request_body_size(entries, base_body) <= @max_request_body_bytes
+  end
+
+  defp request_body_size(entries, base_body) do
+    base_body
+    |> Map.put(:text, Enum.map(entries, & &1.prepared))
+    |> Jason.encode_to_iodata!()
+    |> IO.iodata_length()
+  end
+
+  defp translate_chunks([], acc, _base_body, _api_key, _base_url) do
+    {:ok, acc |> Enum.reverse() |> List.flatten()}
+  end
+
+  defp translate_chunks([chunk | chunks], acc, base_body, api_key, base_url) do
+    body = Map.put(base_body, :text, Enum.map(chunk, & &1.prepared))
+
+    case do_translate(body, api_key, base_url) do
       {:ok, translations} ->
-        translate_chunks(chunks, acc ++ translations, source_lang, target_lang, api_key, base_url, opts)
+        translate_chunks(chunks, [translations | acc], base_body, api_key, base_url)
 
       {:error, _} = error ->
         error
     end
   end
 
-  defp postprocess_translations({:ok, translations}, true) do
-    {:ok,
-     Enum.map(translations, fn translation ->
-       %{translation | text: HtmlHandler.post_translate(translation.text)}
-     end)}
+  defp validate_translations(entries, translations, mode) when length(entries) == length(translations) do
+    entries
+    |> Enum.zip(translations)
+    |> Enum.reduce_while({:ok, []}, fn {entry, translation}, {:ok, acc} ->
+      translated_text = postprocess_text(translation.text, mode)
+
+      case HtmlHandler.validate_placeholders(entry.original, translated_text) do
+        :ok ->
+          {:cont, {:ok, [%{translation | text: translated_text} | acc]}}
+
+        {:error, details} ->
+          {:halt, {:error, {:placeholder_mismatch, entry.index, details}}}
+      end
+    end)
+    |> case do
+      {:ok, results} -> {:ok, Enum.reverse(results)}
+      {:error, _reason} = error -> error
+    end
   end
 
-  defp postprocess_translations(result, _has_html), do: result
+  defp validate_translations(entries, translations, _mode) do
+    {:error, {:unexpected_translation_count, length(entries), length(translations)}}
+  end
 
-  defp do_translate(texts, source_lang, target_lang, api_key, base_url, opts) do
-    body =
-      %{
-        text: texts,
-        target_lang: normalize_lang(target_lang)
-      }
-      |> maybe_put(:source_lang, if(source_lang, do: normalize_lang(source_lang)))
-      |> maybe_put(:tag_handling, opts[:tag_handling])
-      |> maybe_put(:glossary_id, opts[:glossary_id])
-      |> maybe_put(:formality, opts[:formality])
+  defp postprocess_text(text, :html), do: HtmlHandler.post_translate(text)
+  defp postprocess_text(text, :plain), do: text
 
-    case Req.post("#{base_url}/v2/translate",
-           headers: [{"Authorization", "DeepL-Auth-Key #{api_key}"}],
-           json: body,
-           retry: :transient,
-           max_retries: 2
+  defp do_translate(body, api_key, base_url) do
+    case Req.post(
+           "#{base_url}/v2/translate",
+           request_options(api_key, json: body)
          ) do
       {:ok, %{status: 200, body: %{"translations" => translations}}} ->
         results =
@@ -225,12 +299,33 @@ defmodule Storyarn.Localization.Providers.DeepL do
   defp get_glossary_id(_config, _source_lang, _target_lang), do: nil
 
   defp language_from_response(lang) do
-    %{code: lang["language"], name: lang["name"]}
+    %{
+      code: lang["language"],
+      name: lang["name"],
+      supports_formality: Map.get(lang, "supports_formality", false)
+    }
   end
 
   # DeepL uses uppercase language codes (EN, ES, JA) or with region (EN-US, PT-BR)
   defp normalize_lang(code) when is_binary(code) do
     String.upcase(code)
+  end
+
+  defp normalize_glossary_lang(code) when is_binary(code) do
+    code
+    |> String.split("-", parts: 2)
+    |> hd()
+    |> String.downcase()
+  end
+
+  defp config_setting(%ProviderConfig{settings: settings}, key) when is_map(settings), do: settings[key]
+  defp config_setting(_config, _key), do: nil
+
+  defp request_options(api_key, extra \\ []) do
+    defaults =
+      Keyword.merge([headers: [{"Authorization", "DeepL-Auth-Key #{api_key}"}], retry: :transient, max_retries: 2], extra)
+
+    Keyword.merge(defaults, Application.get_env(:storyarn, :deepl_req_options, []))
   end
 
   defp maybe_put(map, _key, nil), do: map

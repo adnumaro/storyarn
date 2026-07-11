@@ -6,6 +6,7 @@ defmodule Storyarn.Localization.TextCrud do
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
+  alias Storyarn.Shared.TimeHelpers
 
   # =============================================================================
   # Queries
@@ -123,14 +124,27 @@ defmodule Storyarn.Localization.TextCrud do
   Returns `%{total: integer, pending: integer, draft: integer, in_progress: integer, review: integer, final: integer}`.
   """
   def get_progress(project_id, locale_code) do
-    from(t in LocalizedText,
-      where: t.project_id == ^project_id and t.locale_code == ^locale_code,
-      group_by: t.status,
-      select: {t.status, count(t.id)}
-    )
-    |> Repo.all()
-    |> Map.new()
-    |> then(fn counts ->
+    counts =
+      from(t in LocalizedText,
+        where: t.project_id == ^project_id and t.locale_code == ^locale_code,
+        group_by: t.status,
+        select: {t.status, count(t.id)}
+      )
+      |> Repo.all()
+      |> Map.new()
+
+    stale =
+      Repo.one!(
+        from(t in LocalizedText,
+          where:
+            t.project_id == ^project_id and t.locale_code == ^locale_code and
+              not is_nil(t.translated_text) and t.translated_text != "" and
+              (is_nil(t.translated_source_hash) or t.translated_source_hash != t.source_text_hash),
+          select: count(t.id)
+        )
+      )
+
+    then(counts, fn counts ->
       total =
         counts |> Map.values() |> Enum.sum()
 
@@ -140,7 +154,8 @@ defmodule Storyarn.Localization.TextCrud do
         draft: Map.get(counts, "draft", 0),
         in_progress: Map.get(counts, "in_progress", 0),
         review: Map.get(counts, "review", 0),
-        final: Map.get(counts, "final", 0)
+        final: Map.get(counts, "final", 0),
+        stale: stale
       }
     end)
   end
@@ -150,7 +165,7 @@ defmodule Storyarn.Localization.TextCrud do
   # =============================================================================
 
   def create_text(project_id, attrs) do
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = attrs |> MapUtils.stringify_keys() |> prepare_create_translation_attrs()
 
     %LocalizedText{project_id: project_id}
     |> LocalizedText.create_changeset(attrs)
@@ -158,11 +173,11 @@ defmodule Storyarn.Localization.TextCrud do
   end
 
   def update_text(%LocalizedText{} = text, attrs) do
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = attrs |> MapUtils.stringify_keys() |> prepare_translation_attrs(text)
 
     text
     |> LocalizedText.update_changeset(attrs)
-    |> Repo.update()
+    |> Repo.update(stale_error_field: :lock_version)
   end
 
   @doc """
@@ -228,8 +243,7 @@ defmodule Storyarn.Localization.TextCrud do
     new_hash = attrs["source_text_hash"]
 
     if new_hash && new_hash != existing.source_text_hash do
-      # Source text changed — update source and possibly downgrade status
-      new_status = if existing.status == "final", do: "review", else: existing.status
+      new_status = if present?(existing.translated_text), do: "review", else: "pending"
 
       existing
       |> LocalizedText.source_update_changeset(%{
@@ -239,7 +253,7 @@ defmodule Storyarn.Localization.TextCrud do
         "speaker_sheet_id" => attrs["speaker_sheet_id"],
         "status" => new_status
       })
-      |> Repo.update()
+      |> Repo.update(stale_error_field: :lock_version)
     else
       # Hash unchanged — no update needed (but update speaker if changed)
       if attrs["speaker_sheet_id"] == existing.speaker_sheet_id do
@@ -249,7 +263,7 @@ defmodule Storyarn.Localization.TextCrud do
         |> LocalizedText.source_update_changeset(%{
           "speaker_sheet_id" => attrs["speaker_sheet_id"]
         })
-        |> Repo.update()
+        |> Repo.update(stale_error_field: :lock_version)
       end
     end
   end
@@ -336,7 +350,10 @@ defmodule Storyarn.Localization.TextCrud do
     alias Storyarn.Localization.ProjectLanguage
 
     Repo.all(
-      from(l in ProjectLanguage, where: l.project_id == ^project_id and l.is_source == false, select: l.locale_code)
+      from(l in ProjectLanguage,
+        where: l.project_id == ^project_id and l.is_source == false and is_nil(l.archived_at),
+        select: l.locale_code
+      )
     )
   end
 
@@ -379,7 +396,7 @@ defmodule Storyarn.Localization.TextCrud do
 
   On conflict (same source_type/source_id/source_field/locale_code):
   - Updates source_text, source_text_hash, word_count, speaker_sheet_id
-  - Downgrades status from "final" to "review" if source_text_hash changed
+  - Marks any existing translation as needing review when source_text_hash changes
 
   Returns the total number of entries processed.
   """
@@ -387,7 +404,7 @@ defmodule Storyarn.Localization.TextCrud do
   def batch_upsert_texts(_project_id, []), do: 0
 
   def batch_upsert_texts(project_id, entries) when is_list(entries) do
-    now = Storyarn.Shared.TimeHelpers.now()
+    now = TimeHelpers.now()
 
     rows =
       Enum.map(entries, fn attrs ->
@@ -435,10 +452,13 @@ defmodule Storyarn.Localization.TextCrud do
     speaker_sheet_id = EXCLUDED.speaker_sheet_id,
     status = CASE
       WHEN localized_texts.source_text_hash IS DISTINCT FROM EXCLUDED.source_text_hash
-        AND localized_texts.status = 'final'
+        AND NULLIF(BTRIM(localized_texts.translated_text), '') IS NULL
+      THEN 'pending'
+      WHEN localized_texts.source_text_hash IS DISTINCT FROM EXCLUDED.source_text_hash
       THEN 'review'
       ELSE localized_texts.status
     END,
+    lock_version = localized_texts.lock_version + 1,
     updated_at = EXCLUDED.updated_at
   WHERE localized_texts.source_text_hash IS DISTINCT FROM EXCLUDED.source_text_hash
     OR localized_texts.speaker_sheet_id IS DISTINCT FROM EXCLUDED.speaker_sheet_id
@@ -497,4 +517,67 @@ defmodule Storyarn.Localization.TextCrud do
       Repo.insert_all(LocalizedText, chunk, on_conflict: :nothing)
     end)
   end
+
+  defp prepare_translation_attrs(attrs, text) do
+    attrs = Map.delete(attrs, "translated_source_hash")
+
+    case Map.fetch(attrs, "translated_text") do
+      :error ->
+        maybe_mark_reviewed(attrs)
+
+      {:ok, translated_text} when is_binary(translated_text) ->
+        if present?(translated_text) do
+          attrs
+          |> Map.put("translated_source_hash", text.source_text_hash)
+          |> promote_pending_to_draft()
+          |> Map.put_new("machine_translated", false)
+          |> Map.put("last_translated_at", TimeHelpers.now())
+          |> maybe_mark_reviewed()
+        else
+          attrs
+          |> Map.put("translated_text", nil)
+          |> Map.put("translated_source_hash", nil)
+          |> Map.put("status", "pending")
+          |> Map.put("machine_translated", false)
+        end
+
+      {:ok, _translated_text} ->
+        attrs
+        |> Map.put("translated_text", nil)
+        |> Map.put("translated_source_hash", nil)
+        |> Map.put("status", "pending")
+        |> Map.put("machine_translated", false)
+    end
+  end
+
+  defp prepare_create_translation_attrs(attrs) do
+    attrs = Map.delete(attrs, "translated_source_hash")
+
+    case Map.get(attrs, "translated_text") do
+      translated_text when is_binary(translated_text) ->
+        if present?(translated_text) do
+          attrs
+          |> Map.put("translated_source_hash", attrs["source_text_hash"])
+          |> promote_pending_to_draft()
+          |> Map.put_new("last_translated_at", TimeHelpers.now())
+        else
+          Map.put(attrs, "translated_text", nil)
+        end
+
+      _translated_text ->
+        attrs
+    end
+  end
+
+  defp maybe_mark_reviewed(%{"status" => "final"} = attrs) do
+    Map.put_new(attrs, "last_reviewed_at", TimeHelpers.now())
+  end
+
+  defp maybe_mark_reviewed(attrs), do: attrs
+
+  defp promote_pending_to_draft(%{"status" => "pending"} = attrs), do: Map.put(attrs, "status", "draft")
+  defp promote_pending_to_draft(attrs), do: Map.put_new(attrs, "status", "draft")
+
+  defp present?(value) when is_binary(value), do: String.trim(value) != ""
+  defp present?(_value), do: false
 end

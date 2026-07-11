@@ -27,6 +27,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
      |> assign(:projects, format_projects(projects, workspace))
      |> assign(:search_query, "")
      |> assign(:can_create_project, can_create_project)
+     |> assign(:new_project_modal_open, false)
      |> assign(:project_form, to_form(Projects.change_new_project(%Project{})))
      |> assign(:project_templates, serialize_project_templates(ProjectTemplates.list_templates(scope)))}
   end
@@ -63,6 +64,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
         projects={@projects}
         search-query={@search_query}
         can-create-project={@can_create_project}
+        new-project-modal-open={@new_project_modal_open}
         new-project-form={@project_form}
         project-templates={@project_templates}
         project-metrics-options={Taxonomy.project_options()}
@@ -83,13 +85,8 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
      )}
   end
 
-  def handle_event("validate_project", %{"project" => project_params}, socket) do
-    changeset =
-      %Project{}
-      |> Projects.change_new_project(project_params)
-      |> Map.put(:action, :validate)
-
-    {:noreply, assign(socket, :project_form, to_form(changeset))}
+  def handle_event("set_new_project_modal_open", %{"open" => open}, socket) when is_boolean(open) do
+    {:noreply, assign(socket, :new_project_modal_open, open)}
   end
 
   def handle_event("create_project", %{"project" => project_params}, socket) do

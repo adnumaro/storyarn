@@ -6,6 +6,7 @@ defmodule Storyarn.Localization.Reports do
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Repo
+  alias Storyarn.Sheets.Sheet
 
   @doc """
   Returns progress per language for a project.
@@ -15,7 +16,7 @@ defmodule Storyarn.Localization.Reports do
     languages =
       Repo.all(
         from(l in ProjectLanguage,
-          where: l.project_id == ^project_id and l.is_source == false,
+          where: l.project_id == ^project_id and l.is_source == false and is_nil(l.archived_at),
           order_by: [asc: l.position, asc: l.name]
         )
       )
@@ -31,16 +32,31 @@ defmodule Storyarn.Localization.Reports do
       |> Enum.group_by(&elem(&1, 0), fn {_locale, status, count} -> {status, count} end)
       |> Map.new(fn {locale, pairs} -> {locale, Map.new(pairs)} end)
 
+    stale_by_locale =
+      from(t in LocalizedText,
+        where:
+          t.project_id == ^project_id and not is_nil(t.translated_text) and
+            fragment("btrim(?) <> ''", t.translated_text) and
+            (is_nil(t.translated_source_hash) or t.translated_source_hash != t.source_text_hash),
+        group_by: t.locale_code,
+        select: {t.locale_code, count(t.id)}
+      )
+      |> Repo.all()
+      |> Map.new()
+
     Enum.map(languages, fn lang ->
       stats = Map.get(counts_by_locale, lang.locale_code, %{})
       total = Enum.reduce(stats, 0, fn {_status, count}, acc -> acc + count end)
       final = Map.get(stats, "final", 0)
+      review = Map.get(stats, "review", 0)
 
       %{
         locale_code: lang.locale_code,
         name: lang.name,
         total: total,
         final: final,
+        review: review,
+        stale: Map.get(stale_by_locale, lang.locale_code, 0),
         percentage: if(total > 0, do: Float.round(final / total * 100, 1), else: 0.0)
       }
     end)
@@ -53,10 +69,13 @@ defmodule Storyarn.Localization.Reports do
   def word_counts_by_speaker(project_id, locale_code) do
     Repo.all(
       from(t in LocalizedText,
+        left_join: s in Sheet,
+        on: s.id == t.speaker_sheet_id and is_nil(s.deleted_at),
         where: t.project_id == ^project_id and t.locale_code == ^locale_code and t.source_type == "flow_node",
-        group_by: t.speaker_sheet_id,
+        group_by: [t.speaker_sheet_id, s.name],
         select: %{
           speaker_sheet_id: t.speaker_sheet_id,
+          speaker_name: s.name,
           word_count: coalesce(sum(t.word_count), 0),
           line_count: count(t.id)
         },

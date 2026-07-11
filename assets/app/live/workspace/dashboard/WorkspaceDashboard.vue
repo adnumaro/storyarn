@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { FilePlus2, FolderOpen, Library, Plus, Search, Settings, Sparkles } from "lucide-vue-next";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import {
   Dialog,
   DialogContent,
@@ -68,6 +68,7 @@ const {
   projects = [],
   searchQuery = "",
   canCreateProject = false,
+  newProjectModalOpen = false,
   newProjectForm = null,
   projectTemplates = [],
   projectMetricsOptions = { project_types: [], project_subtypes: {} },
@@ -78,6 +79,7 @@ const {
   projects?: ProjectData[];
   searchQuery?: string;
   canCreateProject?: boolean;
+  newProjectModalOpen?: boolean;
   newProjectForm?: Form<NewProjectFormValues> | null;
   projectTemplates?: ProjectTemplate[];
   projectMetricsOptions?: ProjectMetricsOptions;
@@ -89,6 +91,14 @@ const localSearch = ref(searchQuery);
 const newProjectMode = ref<"blank" | "private" | "public">("blank");
 const selectedTemplateId = ref<number | null>(null);
 const templateProjectName = ref("");
+const localNewProjectModalOpen = ref(newProjectModalOpen);
+
+watch(
+  () => newProjectModalOpen,
+  (open) => {
+    localNewProjectModalOpen.value = open;
+  },
+);
 
 const filteredProjects = computed(() => {
   const query = localSearch.value.trim().toLowerCase();
@@ -144,15 +154,9 @@ function templateMetricKey(group: string, value: string) {
   return `workspace.new_project.fields.${group}.options.${value}`;
 }
 
-// Modal visibility is pure client state — it never writes to the DB, broadcasts,
-// or needs to survive a reload, so it stays local instead of round-tripping to
-// the LiveView (which repainted the whole dashboard and caused a visible flash).
-// On a create validation error the LiveView only diffs `newProjectForm`; the Vue
-// instance persists, so this ref keeps the modal open.
-const isNewProjectModalOpen = ref(false);
-
 function setNewProjectModalOpen(open: boolean) {
-  isNewProjectModalOpen.value = open;
+  localNewProjectModalOpen.value = open;
+  live.pushEvent("set_new_project_modal_open", { open });
 }
 
 function setNewProjectMode(mode: "blank" | "private" | "public") {
@@ -253,6 +257,7 @@ function templateCountLabel(template: ProjectTemplate) {
 
           <Button
             v-if="canCreate && canCreateProject && newProjectForm"
+            data-testid="new-project-open"
             size="sm"
             @click="setNewProjectModalOpen(true)"
           >
@@ -350,7 +355,7 @@ function templateCountLabel(template: ProjectTemplate) {
   </div>
 
   <!-- New Project Modal -->
-  <Dialog :open="isNewProjectModalOpen" @update:open="setNewProjectModalOpen">
+  <Dialog :open="localNewProjectModalOpen" @update:open="setNewProjectModalOpen">
     <DialogContent class="sm:max-w-3xl">
       <DialogHeader class="sr-only">
         <DialogTitle>{{ $t("workspace.dashboard.new_project") }}</DialogTitle>

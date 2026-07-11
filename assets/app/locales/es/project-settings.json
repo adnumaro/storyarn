@@ -96,7 +96,20 @@
       "test_connection": "Probar conexión",
       "save": "Guardar",
       "usage_prefix": "Uso: ",
-      "usage_characters": " caracteres"
+      "usage_characters": " caracteres",
+      "configured": "Configurado",
+      "not_configured": "Configuración pendiente",
+      "provider_description": "Usa tu propia cuenta de DeepL API para traducciones individuales y por lotes.",
+      "api_key_help": "Buscar mi clave API",
+      "api_key_preserved": "Deja este campo vacío para conservar la clave cifrada que ya está guardada.",
+      "api_key_required": "La clave se cifra antes de almacenarla.",
+      "tier_help": "Elige el endpoint que corresponda con tu suscripción de DeepL API.",
+      "connection_success": "Conexión correcta. La información de uso está actualizada.",
+      "connection_error": "La conexión con DeepL ha fallado: {error}",
+      "usage_title": "Uso de caracteres",
+      "usage_description": "Uso del periodo de facturación actual comunicado por DeepL.",
+      "used": "usados",
+      "limit": "límite"
     },
     "snapshots": {
       "restoration_in_progress": "Hay una restauración en curso. Espera a que se complete.",

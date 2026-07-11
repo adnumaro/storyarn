@@ -25,6 +25,7 @@ defmodule Storyarn.Localization.ExportImportTest do
       {:ok, csv} = Localization.export_csv(project.id, locale_code: "es")
 
       assert String.contains?(csv, "ID,Source Type,Source ID")
+      assert String.contains?(csv, "Source Hash")
       assert String.contains?(csv, "Hello world")
       assert String.contains?(csv, "flow_node")
     end
@@ -241,6 +242,29 @@ defmodule Storyarn.Localization.ExportImportTest do
       {:ok, result} = Localization.import_csv(project.id, csv)
       assert result.updated == 1
     end
+
+    test "rejects a row exported from an older source revision" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      text = localized_text_fixture(project.id, %{source_text: "Current source", locale_code: "es"})
+      csv = "ID,Source Hash,Translation,Status\n#{text.id},old-hash,Traducción,draft"
+
+      assert {:ok, %{updated: 0, errors: [{2, :stale_source}]}} =
+               Localization.import_csv(project.id, csv)
+
+      assert is_nil(Localization.get_text!(project.id, text.id).translated_text)
+    end
+
+    test "imports quoted translations containing line breaks" do
+      user = user_fixture()
+      project = project_fixture(user)
+      text = localized_text_fixture(project.id, %{source_text: "Hello", locale_code: "es"})
+
+      csv = "ID,Translation,Status\n#{text.id},\"Hola\nmundo\",draft"
+      assert {:ok, %{updated: 1}} = Localization.import_csv(project.id, csv)
+      assert Localization.get_text!(project.id, text.id).translated_text == "Hola\nmundo"
+    end
   end
 
   describe "export_csv/2 with special characters" do
@@ -285,6 +309,26 @@ defmodule Storyarn.Localization.ExportImportTest do
       assert is_binary(csv)
       lines = String.split(csv, "\n", trim: true)
       assert length(lines) == 2
+    end
+
+    test "neutralizes spreadsheet formulas and restores them on import" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      text =
+        localized_text_fixture(project.id, %{
+          source_text: "Formula",
+          translated_text: "=SUM(1,2)",
+          status: "draft",
+          locale_code: "es"
+        })
+
+      {:ok, csv} = Localization.export_csv(project.id, locale_code: "es")
+      assert csv =~ "'=SUM(1,2)"
+
+      import = "ID,Translation,Status\n#{text.id},\"'=SUM(1,2)\",draft"
+      assert {:ok, %{updated: 1}} = Localization.import_csv(project.id, import)
+      assert Localization.get_text!(project.id, text.id).translated_text == "=SUM(1,2)"
     end
   end
 end

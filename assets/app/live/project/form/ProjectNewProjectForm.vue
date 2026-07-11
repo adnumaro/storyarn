@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useLiveForm, useLiveVue, type Form, type FormField } from "live_vue";
+import { useLiveForm, type Form, type FormField } from "live_vue";
 import { computed } from "vue";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
@@ -45,9 +45,7 @@ const emit = defineEmits<{
 }>();
 
 const form = useLiveForm(() => formProp, {
-  changeEvent: "validate_project",
   submitEvent: "create_project",
-  debounceInMiliseconds: 300,
 });
 
 const name = form.field("name");
@@ -92,10 +90,8 @@ const canSubmit = computed(() => {
   );
 });
 
-// Server errors (from the real-time "validate_project" round-trip) show once a
-// field is touched (blur, or any submit — useLiveForm marks all fields touched
-// on submit). The local-invalid guard hides the message instantly as soon as
-// the user fixes the field, without waiting for the debounced server response.
+// Server errors are returned on submit. Local guards keep the submit action
+// disabled while the user edits, without remounting the modal on every change.
 const showNameError = computed(() => {
   return name.isTouched.value && isNameLocallyInvalid.value && name.errorMessage.value;
 });
@@ -132,28 +128,12 @@ const showProjectTypeOtherError = computed(() => {
   );
 });
 
-const live = useLiveVue();
-
 function updateField(field: FormField<string>, val: string | number) {
   field.value.value = String(val);
 }
 
-// useLiveForm's changeEvent only fires when a value CHANGES, so a field that is
-// focused and blurred while still empty would never get server errors. Blur
-// marks the field touched and forces one validate round-trip so the server's
-// error message (e.g. "can't be blank") is present.
-function touchAndValidate(field: FormField<string>) {
+function touchField(field: FormField<string>) {
   field.blur();
-
-  live.pushEvent("validate_project", {
-    project: {
-      name: nameValue.value,
-      description: descriptionValue.value,
-      project_type: selectedProjectType.value,
-      project_subtype: subtypeValue.value,
-      project_type_other: projectTypeOtherValue.value,
-    },
-  });
 }
 
 function updateSelectField(field: FormField<string>, val: string | string[]) {
@@ -183,7 +163,7 @@ function projectMetricLabel(group: string, value: string) {
         name="project[name]"
         :model-value="name.value.value as string"
         @update:model-value="(v) => updateField(name, v)"
-        @blur="touchAndValidate(name)"
+        @blur="touchField(name)"
         :placeholder="$t('workspace.new_project.fields.name.placeholder')"
         required
         :aria-invalid="showNameError ? 'true' : null"
@@ -267,7 +247,7 @@ function projectMetricLabel(group: string, value: string) {
           name="project[project_type_other]"
           :model-value="projectTypeOther.value.value as string"
           @update:model-value="(v) => updateField(projectTypeOther, v)"
-          @blur="touchAndValidate(projectTypeOther)"
+          @blur="touchField(projectTypeOther)"
           :placeholder="$t('workspace.new_project.fields.project_type_other.placeholder')"
           maxlength="120"
           required
@@ -291,7 +271,7 @@ function projectMetricLabel(group: string, value: string) {
         name="project[description]"
         :model-value="description.value.value as string"
         @update:model-value="(v) => updateField(description, v)"
-        @blur="touchAndValidate(description)"
+        @blur="touchField(description)"
         :placeholder="$t('workspace.new_project.fields.description.placeholder')"
         :rows="4"
         :aria-invalid="showDescriptionError ? 'true' : null"

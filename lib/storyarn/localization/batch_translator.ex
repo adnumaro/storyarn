@@ -52,6 +52,8 @@ defmodule Storyarn.Localization.BatchTranslator do
           max_id: max_id,
           batch_size: batch_size,
           remaining: limit,
+          cancelled?: Keyword.get(opts, :cancelled?, fn -> false end),
+          progress_callback: Keyword.get(opts, :progress_callback, fn _result -> :ok end),
           result: %{translated: 0, failed: 0, errors: []}
         })
       end
@@ -109,6 +111,14 @@ defmodule Storyarn.Localization.BatchTranslator do
   end
 
   defp translate_pages(project_id, filter_opts, source_lang, target_locale, config, translator, state) do
+    if state.cancelled?.() do
+      {:error, :cancelled}
+    else
+      translate_next_page(project_id, filter_opts, source_lang, target_locale, config, translator, state)
+    end
+  end
+
+  defp translate_next_page(project_id, filter_opts, source_lang, target_locale, config, translator, state) do
     page_limit = page_limit(state.batch_size, state.remaining)
 
     texts =
@@ -129,11 +139,14 @@ defmodule Storyarn.Localization.BatchTranslator do
 
         case do_batch_translate(texts, source_lang, target_locale, config, translator) do
           {:ok, result} ->
+            merged_result = merge_results(state.result, result)
+            state.progress_callback.(merged_result)
+
             translate_pages(project_id, filter_opts, source_lang, target_locale, config, translator, %{
               state
               | after_id: last_id,
                 remaining: decrement_remaining(state.remaining, length(texts)),
-                result: merge_results(state.result, result)
+                result: merged_result
             })
 
           {:error, _reason} = error ->

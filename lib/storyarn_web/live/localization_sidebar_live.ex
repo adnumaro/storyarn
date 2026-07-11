@@ -69,14 +69,24 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
 
   def handle_event("add_target_language", %{"locale_code" => ""}, socket), do: {:noreply, socket}
 
-  def handle_event("change_source_language", %{"locale_code" => code}, socket) do
+  def handle_event("change_source_language", %{"locale_code" => code} = params, socket) do
     with_edit(socket, fn socket ->
-      case Localization.change_source_language(socket.assigns.project, code) do
+      opts = if params["reset_translations"] == true, do: [reset_translations: true], else: []
+
+      case Localization.change_source_language(socket.assigns.project, code, opts) do
         {:ok, _language} ->
           {:noreply,
            socket
            |> reload_and_broadcast()
            |> put_flash(:info, dgettext("localization", "Source language updated."))}
+
+        {:error, :translations_exist} ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             dgettext("localization", "Changing the source language requires resetting translations.")
+           )}
 
         {:error, _reason} ->
           {:noreply,

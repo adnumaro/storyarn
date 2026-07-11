@@ -6,6 +6,7 @@ defmodule Storyarn.LocalizationTest do
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Localization
+  alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProviderConfig
   alias Storyarn.Repo
 
@@ -64,6 +65,23 @@ defmodule Storyarn.LocalizationTest do
         Localization.add_language(project, %{locale_code: "en", name: "English", is_source: true})
 
       assert lang.is_source == true
+    end
+
+    test "add_language/2 preserves is_source when restoring an archived locale" do
+      user = user_fixture()
+      project = project_fixture(user)
+      archived = language_fixture(project, %{locale_code: "en", name: "English"})
+      assert {:ok, _archived} = Localization.remove_language(archived)
+
+      assert {:ok, restored} =
+               Localization.add_language(project, %{
+                 locale_code: "en",
+                 name: "English",
+                 is_source: true
+               })
+
+      assert restored.is_source
+      assert restored.archived_at == nil
     end
 
     test "add_language/2 validates required fields" do
@@ -179,7 +197,7 @@ defmodule Storyarn.LocalizationTest do
       assert old.is_source == false
     end
 
-    test "change_source_language/2 replaces the current source with a new locale" do
+    test "change_source_language/2 keeps the previous source as a target" do
       user = user_fixture()
       project = project_fixture(user)
       _en = source_language_fixture(project)
@@ -189,7 +207,7 @@ defmodule Storyarn.LocalizationTest do
       assert new_source.locale_code == "en-US"
       assert new_source.is_source == true
       assert Localization.get_source_language(project.id).locale_code == "en-US"
-      assert Localization.get_language_by_locale(project.id, "en") == nil
+      refute Localization.get_language_by_locale(project.id, "en").is_source
     end
 
     test "change_source_language/2 promotes an existing target language" do
@@ -203,7 +221,33 @@ defmodule Storyarn.LocalizationTest do
       assert new_source.locale_code == "es"
       assert new_source.is_source == true
       assert Localization.get_source_language(project.id).locale_code == "es"
-      assert Localization.get_language_by_locale(project.id, "en") == nil
+      refute Localization.get_language_by_locale(project.id, "en").is_source
+    end
+
+    test "change_source_language/2 refuses to relabel translated content" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _en = source_language_fixture(project)
+      _es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      _text = localized_text_fixture(project.id)
+
+      assert {:error, :translations_exist} = Localization.change_source_language(project, "es")
+      assert Localization.get_source_language(project.id).locale_code == "en"
+    end
+
+    test "change_source_language/3 resets and rebuilds translations after explicit confirmation" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _en = source_language_fixture(project)
+      _es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      text = localized_text_fixture(project.id)
+
+      assert {:ok, new_source} =
+               Localization.change_source_language(project, "es", reset_translations: true)
+
+      assert new_source.is_source
+      assert Localization.get_source_language(project.id).locale_code == "es"
+      assert Localization.get_text(project.id, text.id) == nil
     end
 
     test "reorder_languages/2 updates positions" do
@@ -248,6 +292,34 @@ defmodule Storyarn.LocalizationTest do
       assert text.status == "pending"
       assert text.word_count == 2
       assert text.project_id == project.id
+    end
+
+    test "create_text/2 records the translation timestamp for prefilled translations" do
+      project = project_fixture(user_fixture())
+
+      assert {:ok, text} =
+               Localization.create_text(project.id, %{
+                 source_type: "flow_node",
+                 source_id: 43,
+                 source_field: "text",
+                 source_text: "Hello",
+                 source_text_hash: hash("Hello"),
+                 locale_code: "es",
+                 translated_text: "Hola"
+               })
+
+      assert text.last_translated_at
+      assert text.status == "draft"
+    end
+
+    test "stale?/1 treats missing freshness hashes as stale" do
+      text = %LocalizedText{
+        translated_text: "Hola",
+        source_text_hash: nil,
+        translated_source_hash: nil
+      }
+
+      assert LocalizedText.stale?(text)
     end
 
     test "create_text/2 validates required fields" do
@@ -431,6 +503,20 @@ defmodule Storyarn.LocalizationTest do
       assert updated.translated_text == "Hola mundo"
       assert updated.status == "draft"
       assert updated.machine_translated == true
+      assert updated.translated_source_hash == updated.source_text_hash
+    end
+
+    test "a new non-empty translation leaves pending and becomes a draft" do
+      project = project_fixture(user_fixture())
+      text = localized_text_fixture(project.id)
+
+      assert {:ok, updated} =
+               Localization.update_text(text, %{
+                 translated_text: "Hola mundo",
+                 status: "pending"
+               })
+
+      assert updated.status == "draft"
     end
 
     test "upsert_text/2 creates when not exists" do
@@ -489,7 +575,8 @@ defmodule Storyarn.LocalizationTest do
           source_text: "Original",
           source_text_hash: hash("Original"),
           locale_code: "es",
-          status: "final"
+          status: "final",
+          translated_text: "Original traducido"
         })
 
       # Manually set to final (simulating workflow completion)
@@ -506,6 +593,60 @@ defmodule Storyarn.LocalizationTest do
         })
 
       assert updated.status == "review"
+      assert LocalizedText.stale?(updated)
+    end
+
+    test "upsert_text/2 invalidates draft translations when source changes" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      text =
+        localized_text_fixture(project.id, %{
+          source_id: 100,
+          source_text: "Original {name}",
+          source_text_hash: hash("Original {name}")
+        })
+
+      {:ok, translated} =
+        Localization.update_text(text, %{translated_text: "Traducido {name}", status: "draft"})
+
+      {:ok, updated} =
+        Localization.upsert_text(project.id, %{
+          source_type: "flow_node",
+          source_id: 100,
+          source_field: "text",
+          source_text: "Changed {name}",
+          source_text_hash: hash("Changed {name}"),
+          locale_code: "es",
+          word_count: 2
+        })
+
+      assert updated.status == "review"
+      assert updated.translated_source_hash == translated.translated_source_hash
+      assert LocalizedText.stale?(updated)
+    end
+
+    test "update_text/2 rejects missing placeholders" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      text =
+        localized_text_fixture(project.id, %{
+          source_text: "Hello {name}",
+          source_text_hash: hash("Hello {name}")
+        })
+
+      assert {:error, changeset} = Localization.update_text(text, %{translated_text: "Hola"})
+      assert "missing {name}" in errors_on(changeset).translated_text
+    end
+
+    test "update_text/2 rejects final status for an empty translation" do
+      user = user_fixture()
+      project = project_fixture(user)
+      text = localized_text_fixture(project.id)
+
+      assert {:error, changeset} = Localization.update_text(text, %{status: "final"})
+      assert "can't be blank when status is final" in errors_on(changeset).translated_text
     end
 
     test "upsert_text/2 does not update when hash is unchanged" do
@@ -611,7 +752,10 @@ defmodule Storyarn.LocalizationTest do
           source_type: "flow_node",
           source_id: 3,
           source_field: "text",
+          source_text: "Complete",
+          source_text_hash: hash("Complete"),
           locale_code: "es",
+          translated_text: "Completo",
           status: "final"
         })
 
