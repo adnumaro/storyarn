@@ -49,6 +49,7 @@ function mountDashboard(props = {}) {
         DialogDescription: { template: "<div><slot /></div>" },
         DialogHeader: { template: "<div><slot /></div>" },
         DialogTitle: { template: "<div><slot /></div>" },
+        NewProjectForm: { template: "<div />" },
       },
     },
   });
@@ -76,6 +77,14 @@ describe("WorkspaceDashboard", () => {
 
     expect(wrapper.text()).not.toContain("Alpha Game");
     expect(wrapper.text()).toContain("Beta Game");
+  });
+
+  it("syncs new project modal visibility with LiveView", async () => {
+    const { live, wrapper } = mountDashboard({ newProjectForm: {} });
+
+    await wrapper.get('[data-testid="new-project-open"]').trigger("click");
+
+    expect(live.pushEvent).toHaveBeenCalledWith("set_new_project_modal_open", { open: true });
   });
 
   it("creates a project from the selected private template", async () => {

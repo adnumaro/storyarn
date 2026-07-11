@@ -257,6 +257,28 @@ defmodule StoryarnWeb.WorkspaceLive.ShowTest do
       assert Enum.any?(vue.props["projects"], fn p -> p["project"]["id"] == project.id end)
     end
 
+    test "keeps the new project modal open while validating", %{conn: conn, user: user} do
+      workspace = workspace_fixture(user, %{name: "Validation Studio"})
+
+      {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+
+      assert get_dashboard_vue(view).props["new-project-modal-open"] == false
+
+      render_hook(view, "set_new_project_modal_open", %{"open" => true})
+
+      render_hook(view, "validate_project", %{
+        "project" => %{
+          "name" => "New Project",
+          "description" => "",
+          "project_type" => "",
+          "project_subtype" => "",
+          "project_type_other" => ""
+        }
+      })
+
+      assert get_dashboard_vue(view).props["new-project-modal-open"] == true
+    end
+
     test "create project navigates to project base route", %{conn: conn, user: user} do
       workspace = workspace_fixture(user, %{name: "Create Studio"})
 

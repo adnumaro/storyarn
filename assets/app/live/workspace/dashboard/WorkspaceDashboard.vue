@@ -68,6 +68,7 @@ const {
   projects = [],
   searchQuery = "",
   canCreateProject = false,
+  newProjectModalOpen = false,
   newProjectForm = null,
   projectTemplates = [],
   projectMetricsOptions = { project_types: [], project_subtypes: {} },
@@ -78,6 +79,7 @@ const {
   projects?: ProjectData[];
   searchQuery?: string;
   canCreateProject?: boolean;
+  newProjectModalOpen?: boolean;
   newProjectForm?: Form<NewProjectFormValues> | null;
   projectTemplates?: ProjectTemplate[];
   projectMetricsOptions?: ProjectMetricsOptions;
@@ -144,15 +146,14 @@ function templateMetricKey(group: string, value: string) {
   return `workspace.new_project.fields.${group}.options.${value}`;
 }
 
-// Modal visibility is pure client state — it never writes to the DB, broadcasts,
-// or needs to survive a reload, so it stays local instead of round-tripping to
-// the LiveView (which repainted the whole dashboard and caused a visible flash).
-// On a create validation error the LiveView only diffs `newProjectForm`; the Vue
-// instance persists, so this ref keeps the modal open.
-const isNewProjectModalOpen = ref(false);
+// Keep the interaction instant in Vue while mirroring the value in LiveView.
+// Validation updates the form assign and can remount this root component, so the
+// server-backed prop restores the open modal instead of resetting it to closed.
+const isNewProjectModalOpen = ref(newProjectModalOpen);
 
 function setNewProjectModalOpen(open: boolean) {
   isNewProjectModalOpen.value = open;
+  live.pushEvent("set_new_project_modal_open", { open });
 }
 
 function setNewProjectMode(mode: "blank" | "private" | "public") {
@@ -253,6 +254,7 @@ function templateCountLabel(template: ProjectTemplate) {
 
           <Button
             v-if="canCreate && canCreateProject && newProjectForm"
+            data-testid="new-project-open"
             size="sm"
             @click="setNewProjectModalOpen(true)"
           >
