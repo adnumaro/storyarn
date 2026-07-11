@@ -46,6 +46,9 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
       current_scope={@current_scope}
       current_workspace={@current_workspace}
       workspaces={@workspaces}
+      onboarding={@onboarding}
+      onboarding_guide={:workspace}
+      onboarding_autostart
     >
       <.vue
         v-component="live/workspace/dashboard/WorkspaceDashboard"

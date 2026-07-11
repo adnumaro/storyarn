@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from "vue";
+import OnboardingDialog from "@components/onboarding/OnboardingDialog.vue";
 import ProjectNavbarContext from "@shell/ProjectNavbarContext.vue";
 import ProjectNavbarAccount from "@shell/ProjectNavbarAccount.vue";
 import type { CurrentUser, OnlineUser, ProjectLayoutUrls } from "@shell/projectNavbarTypes";
@@ -19,6 +20,11 @@ interface RestorationBanner {
   userEmail?: string;
 }
 
+interface OnboardingConfig {
+  guide: string;
+  autoShow: boolean;
+}
+
 const {
   chrome,
   currentUser,
@@ -26,6 +32,7 @@ const {
   urls,
   restorationBanner = null,
   canvasMode = false,
+  onboarding = null,
 } = defineProps<{
   chrome: ProjectChrome;
   currentUser: CurrentUser;
@@ -33,9 +40,15 @@ const {
   urls: ProjectLayoutUrls;
   restorationBanner?: RestorationBanner | null;
   canvasMode?: boolean;
+  onboarding?: OnboardingConfig | null;
 }>();
 
 const sidebarOpen = ref(chrome.hasTree && chrome.mainSidebarOpen);
+const onboardingDialog = ref<{ openTutorial: () => void } | null>(null);
+
+function showTutorial(): void {
+  onboardingDialog.value?.openTutorial();
+}
 
 let desktopSidebarQuery: MediaQueryList | null = null;
 function syncDesktopSidebar(query: MediaQueryList | MediaQueryListEvent): void {
@@ -126,6 +139,8 @@ onUnmounted(() => {
                 :current-user="currentUser"
                 :online-users="onlineUsers"
                 :urls="urls"
+                :has-tutorial="Boolean(onboarding)"
+                @show-tutorial="showTutorial"
               />
             </div>
           </div>
@@ -151,5 +166,12 @@ onUnmounted(() => {
         <slot name="panels" />
       </main>
     </div>
+
+    <OnboardingDialog
+      v-if="onboarding"
+      ref="onboardingDialog"
+      :guide-key="onboarding.guide"
+      :auto-show="onboarding.autoShow"
+    />
   </div>
 </template>

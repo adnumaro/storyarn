@@ -8,6 +8,7 @@
       "items": {
         "profile": "Profile",
         "security": "Security",
+        "tutorials": "Tutorials",
         "workspace_general": "General",
         "workspace_members": "Members",
         "deleted_projects": "Deleted Projects"
@@ -42,6 +43,20 @@
         "title": "Active Sessions",
         "description": "You are currently logged in on this device.",
         "coming_soon": "Session management coming soon."
+      }
+    },
+    "tutorials": {
+      "title": "Tutorials",
+      "subtitle": "Review the contextual guides or choose which ones should appear again on your next visit.",
+      "restart_all": "Restart all",
+      "progress": "{completed} of {total} tutorials completed",
+      "read_guide": "Read guide",
+      "show_again": "Show again",
+      "show_again_for": "Show {tutorial} again",
+      "states": {
+        "inactive": "Not started",
+        "pending": "Ready to show",
+        "completed": "Completed"
       }
     },
     "workspace": {

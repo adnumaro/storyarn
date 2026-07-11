@@ -60,6 +60,8 @@ defmodule StoryarnWeb.SheetLive.Show do
       is_super_admin={@is_super_admin}
       online_users={@online_users}
       restoration_banner={@restoration_banner}
+      onboarding={@onboarding}
+      onboarding_autostart
       sidebar_module={StoryarnWeb.SheetsSidebarLive}
       sidebar_session={
         %{

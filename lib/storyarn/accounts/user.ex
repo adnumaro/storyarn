@@ -16,6 +16,7 @@ defmodule Storyarn.Accounts.User do
           display_name: String.t() | nil,
           avatar_url: String.t() | nil,
           locale: String.t() | nil,
+          onboarding_started_at: DateTime.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -30,6 +31,7 @@ defmodule Storyarn.Accounts.User do
     field :avatar_url, :string
     field :locale, :string
     field :is_super_admin, :boolean, default: false
+    field :onboarding_started_at, :utc_datetime
 
     timestamps(type: :utc_datetime)
   end

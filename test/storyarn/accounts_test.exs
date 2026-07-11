@@ -122,6 +122,22 @@ defmodule Storyarn.AccountsTest do
       assert Repo.get_by(UserToken, user_id: user.id, context: "invite")
     end
 
+    test "starts onboarding when an invited user completes registration" do
+      email = unique_user_email()
+
+      assert {:ok, {:registration_required, _token}} = Accounts.prepare_invitation_user(email)
+
+      user = Accounts.get_user_by_email(email)
+      token_record = Repo.get_by!(UserToken, user_id: user.id, context: "invite")
+
+      assert {:ok, registered_user} =
+               Accounts.complete_registration(user, token_record, %{
+                 password: valid_user_password()
+               })
+
+      assert registered_user.onboarding_started_at
+    end
+
     test "does not complete registration with a stale invite token" do
       email = unique_user_email()
 

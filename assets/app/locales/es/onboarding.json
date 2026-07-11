@@ -1,0 +1,124 @@
+{
+  "onboarding": {
+    "common": {
+      "contextual_guide": "Orientación rápida",
+      "step": "Paso {current} de {total}",
+      "not_now": "Ahora no",
+      "full_guide": "Guía completa",
+      "back": "Atrás",
+      "next": "Siguiente",
+      "got_it": "Entendido",
+      "view_tutorial": "Ver este tutorial"
+    },
+    "guides": {
+      "workspace": {
+        "title": "Tu espacio de trabajo de un vistazo",
+        "summary": "Los espacios reúnen equipos y proyectos, mientras cada proyecto mantiene su propia organización.",
+        "slides": {
+          "organize": {
+            "title": "El hogar de tu equipo",
+            "description": "Usa un espacio para agrupar los proyectos, miembros, idioma de origen y ajustes compartidos de un equipo o producción."
+          },
+          "projects": {
+            "title": "Los proyectos contienen la historia",
+            "description": "Cada proyecto tiene sus propias fichas, flujos, escenas, localización, recursos y exportaciones. Empieza vacío o desde una plantilla reutilizable."
+          },
+          "collaborate": {
+            "title": "Invita con el acceso adecuado",
+            "description": "Propietarios y administradores gestionan los miembros del espacio. Los roles del proyecto controlan después quién edita o solo revisa cada producción."
+          }
+        }
+      },
+      "sheets": {
+        "title": "Construye un mundo vivo con Fichas",
+        "summary": "Las fichas convierten personajes, lugares, objetos y estado de juego en datos estructurados para tu narrativa.",
+        "slides": {
+          "structure": {
+            "title": "Modela cualquier cosa con bloques tipados",
+            "description": "Combina texto, números, opciones, tablas, galerías, referencias y más para crear la estructura apropiada de cada entidad."
+          },
+          "variables": {
+            "title": "Conecta los datos con la lógica narrativa",
+            "description": "Los bloques no constantes se convierten en variables. Los flujos pueden leerlas en condiciones y actualizarlas con instrucciones mediante atajos estables."
+          },
+          "inheritance": {
+            "title": "Reutiliza estructura mediante herencia",
+            "description": "Organiza fichas como un árbol y propaga bloques de los padres a sus hijos para mantener definiciones comunes sin duplicar trabajo."
+          }
+        }
+      },
+      "flows": {
+        "title": "Da forma a historias ramificadas con Flujos",
+        "summary": "Los flujos combinan diálogo, elecciones, condiciones y cambios de estado en un canvas visual de nodos.",
+        "slides": {
+          "canvas": {
+            "title": "Conecta el recorrido de la historia",
+            "description": "Crea nodos desde el dock y arrastra entre sus conectores. Entry inicia la ejecución y Exit define cómo termina o continúa el flujo."
+          },
+          "logic": {
+            "title": "Ramifica y transforma el mundo",
+            "description": "Los nodos Condition eligen una ruta usando variables de fichas. Los nodos Instruction actualizan esas variables mientras avanza la narrativa."
+          },
+          "test": {
+            "title": "Prueba sin salir del editor",
+            "description": "Usa el player para vivir la experiencia final o Debug Mode para avanzar nodo a nodo, inspeccionar variables y comprender cada decisión."
+          }
+        }
+      },
+      "scenes": {
+        "title": "Mapea espacios narrativos con Escenas",
+        "summary": "Las escenas sitúan la lógica narrativa en canvas espaciales para mapas, lugares, rutas y exploración interactiva.",
+        "slides": {
+          "canvas": {
+            "title": "Empieza con un canvas espacial",
+            "description": "Añade un fondo, elige una escala adecuada y usa el árbol para organizar mapas desde grandes mundos hasta lugares concretos."
+          },
+          "elements": {
+            "title": "Añade zonas, pins, rutas y capas",
+            "description": "Las zonas definen áreas, los pins marcan puntos de interés, las conexiones describen rutas y las capas controlan lo que ve el equipo."
+          },
+          "exploration": {
+            "title": "Convierte el mapa en una experiencia",
+            "description": "Asocia condiciones, acciones, escenas hijas y flujos a elementos espaciales y prueba el resultado en el modo Exploración a pantalla completa."
+          }
+        }
+      },
+      "localization": {
+        "title": "Lleva cada línea a todos los idiomas",
+        "summary": "Localización extrae el texto narrativo, controla el avance de traducción y mantiene visibles la revisión y el trabajo de voz.",
+        "slides": {
+          "languages": {
+            "title": "Configura idiomas de origen y destino",
+            "description": "El espacio define el idioma de origen. Añade los idiomas de destino desde los ajustes del proyecto antes de empezar a traducir."
+          },
+          "sync": {
+            "title": "Sincroniza cuando cambie la historia",
+            "description": "La sincronización extrae texto traducible de flujos y fichas, conserva referencias estables y detecta cambios de origen que requieren revisión."
+          },
+          "review": {
+            "title": "Traduce, revisa y controla la entrega",
+            "description": "Trabaja manualmente o con DeepL, mueve entradas por sus estados de revisión y controla palabras, personajes, avance y grabación de voz."
+          }
+        }
+      },
+      "export": {
+        "title": "Entrega datos narrativos listos para producción",
+        "summary": "Exportar convierte el proyecto actual en formatos para motores con opciones explícitas de contenido y recursos.",
+        "slides": {
+          "format": {
+            "title": "Elige el formato de destino",
+            "description": "Selecciona primero el motor o runtime narrativo. Storyarn adapta las secciones disponibles y la extensión al serializador elegido."
+          },
+          "validate": {
+            "title": "Valida antes de entregar",
+            "description": "Ejecuta la validación para detectar entradas ausentes, referencias rotas, nodos inalcanzables, diálogos vacíos y otros riesgos antes de descargar."
+          },
+          "deliver": {
+            "title": "Controla contenido y recursos",
+            "description": "Elige qué secciones incluir y si los recursos quedan como referencias, se incrustan o se agrupan junto a los datos exportados."
+          }
+        }
+      }
+    }
+  }
+}

@@ -8,6 +8,7 @@
       "items": {
         "profile": "Perfil",
         "security": "Seguridad",
+        "tutorials": "Tutoriales",
         "workspace_general": "General",
         "workspace_members": "Miembros",
         "deleted_projects": "Proyectos eliminados"
@@ -42,6 +43,20 @@
         "title": "Sesiones activas",
         "description": "Actualmente has iniciado sesión en este dispositivo.",
         "coming_soon": "La gestión de sesiones estará disponible pronto."
+      }
+    },
+    "tutorials": {
+      "title": "Tutoriales",
+      "subtitle": "Consulta las guías contextuales o elige cuáles deben aparecer de nuevo en tu próxima visita.",
+      "restart_all": "Reiniciar todos",
+      "progress": "{completed} de {total} tutoriales completados",
+      "read_guide": "Leer guía",
+      "show_again": "Mostrar de nuevo",
+      "show_again_for": "Mostrar de nuevo {tutorial}",
+      "states": {
+        "inactive": "No iniciado",
+        "pending": "Listo para mostrar",
+        "completed": "Completado"
       }
     },
     "workspace": {

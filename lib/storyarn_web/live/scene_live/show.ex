@@ -79,6 +79,8 @@ defmodule StoryarnWeb.SceneLive.Show do
       is_super_admin={@is_super_admin}
       online_users={@online_users}
       restoration_banner={@restoration_banner}
+      onboarding={@onboarding}
+      onboarding_autostart
       canvas_mode={true}
       sidebar_module={StoryarnWeb.SceneSidebarLive}
       sidebar_session={

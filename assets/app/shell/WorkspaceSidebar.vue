@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LayoutDashboard, User, Briefcase, LogOut } from "lucide-vue-next";
+import { Briefcase, CircleHelp, LayoutDashboard, LogOut, User } from "lucide-vue-next";
 import { computed } from "vue";
 import {
   DropdownMenu,
@@ -18,11 +18,15 @@ const {
   currentUser,
   workspaces = [],
   currentWorkspaceSlug = null,
+  hasTutorial = false,
 } = defineProps<{
   currentUser: WorkspaceUser;
   workspaces?: WorkspaceItem[];
   currentWorkspaceSlug?: string | null;
+  hasTutorial?: boolean;
 }>();
+
+const emit = defineEmits<{ showTutorial: [] }>();
 
 const displayName = computed(
   () => currentUser.displayName || currentUser.email?.split("@")[0] || "",
@@ -136,6 +140,14 @@ const handleLogout = () => {
               <LayoutDashboard class="size-4" />
               {{ t("workspace.sidebar.all_workspaces") }}
             </a>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            v-if="hasTutorial"
+            class="flex items-center gap-2"
+            @select="emit('showTutorial')"
+          >
+            <CircleHelp class="size-4" />
+            {{ t("onboarding.common.view_tutorial") }}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem

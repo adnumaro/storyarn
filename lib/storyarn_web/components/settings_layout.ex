@@ -8,6 +8,8 @@ defmodule StoryarnWeb.Components.SettingsLayout do
 
   use StoryarnWeb, :html
 
+  alias StoryarnWeb.Live.Shared.OnboardingHelpers
+
   attr :flash, :map, required: true, doc: "the map of flash messages"
   attr :socket, :any, required: true, doc: "the LiveView socket (needed for LiveVue)"
   attr :current_scope, :map, required: true, doc: "the current scope"
@@ -20,6 +22,9 @@ defmodule StoryarnWeb.Components.SettingsLayout do
     doc: "MapSet of workspace slugs where user has WorkspaceMembership"
 
   attr :current_path, :string, required: true, doc: "current settings path for nav highlighting"
+  attr :onboarding, :map, default: %{eligible: false, guides: %{}}
+  attr :onboarding_guide, :atom, default: nil
+  attr :onboarding_autostart, :boolean, default: false
 
   slot :title
   slot :subtitle
@@ -51,6 +56,13 @@ defmodule StoryarnWeb.Components.SettingsLayout do
         project={@settings_project}
         title={@title_text}
         subtitle={@subtitle_text}
+        onboarding={
+          OnboardingHelpers.client_config(
+            @onboarding,
+            @onboarding_guide,
+            @onboarding_autostart
+          )
+        }
       />
 
       {render_slot(@inner_block)}

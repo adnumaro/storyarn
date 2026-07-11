@@ -183,12 +183,14 @@ defmodule StoryarnWeb.Router do
           [
             {@user_auth_hook, :require_authenticated},
             {@user_auth_hook, :load_workspaces},
+            {StoryarnWeb.Live.Hooks.Onboarding, :load_onboarding},
             {StoryarnWeb.Live.Hooks.ProjectScope, :load_project},
             {StoryarnWeb.Live.Hooks.WorkspaceScope, :load_workspace}
           ] do
       # User Settings (Linear-style)
       live "/users/settings", SettingsLive.Profile, :edit
       live "/users/settings/security", SettingsLive.Security, :edit
+      live "/users/settings/tutorials", SettingsLive.Tutorials, :edit
       live "/users/settings/confirm-email/:token", SettingsLive.Profile, :confirm_email
 
       # Workspaces
