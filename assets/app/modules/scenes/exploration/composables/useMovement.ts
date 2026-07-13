@@ -45,7 +45,6 @@ export function useMovement({
   let leaderPath: PixelPoint[] = [];
 
   let partyPositions: PartyPosition[] = []; // [{id, x, y}]
-  let partyTargets: PartyPosition[] = []; // [{id, x, y}]
   let partyPaths: PixelPoint[][] = [];
   let partyMoving = false;
 
@@ -77,7 +76,6 @@ export function useMovement({
       x: p.positionX,
       y: p.positionY,
     }));
-    partyTargets = partyPositions.map((p) => ({ ...p }));
     partyPaths = partyPositions.map(() => []);
   }
 
@@ -159,11 +157,9 @@ export function useMovement({
     const perpY = ndx;
 
     const numParty = partyPins.length;
-    const nextTargets: PartyPosition[] = [];
     const nextPaths: PixelPoint[][] = [];
 
     for (let i = 0; i < partyPins.length; i++) {
-      const pin = partyPins[i];
       const position = partyPositions[i];
       const offset = (i - (numParty - 1) / 2) * PARTY_SPREAD;
       const formationTarget = {
@@ -176,13 +172,10 @@ export function useMovement({
         { x: leaderTargetX, y: leaderTargetY },
         walkableZones,
       );
-      const destination = path?.[path.length - 1] || position;
 
-      nextTargets.push({ id: pin.id, x: destination.x, y: destination.y });
       nextPaths.push(path || []);
     }
 
-    partyTargets = nextTargets;
     partyPaths = nextPaths;
     partyMoving = partyPaths.some((path) => path.length > 0);
   }
@@ -403,7 +396,6 @@ export function useMovement({
         if (idx >= 0) {
           partyPositions[idx].x = p.x;
           partyPositions[idx].y = p.y;
-          partyTargets[idx] = { ...partyTargets[idx], x: p.x, y: p.y };
           partyPaths[idx] = [];
           updatePinPosition(p.id, p.x, p.y);
         }
