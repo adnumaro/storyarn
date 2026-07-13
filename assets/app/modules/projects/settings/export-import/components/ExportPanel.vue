@@ -31,45 +31,17 @@ import { Switch } from "@components/ui/switch";
 import { useI18n } from "vue-i18n";
 import { useLive } from "@shared/composables/useLive";
 import { capture } from "@/js/utils/posthog";
+import type {
+  ExportOptions,
+  FormatConfig,
+  FormatOption,
+  LocalizationMode,
+  LocalizationPolicy,
+  SectionConfig,
+  ValidationResult,
+} from "../types";
 
 const { t } = useI18n();
-
-interface FormatOption {
-  format: string;
-  label: string;
-  localizationMode: string;
-  extension?: string;
-}
-
-interface FormatConfig {
-  selected: string;
-  formats: FormatOption[];
-  extension: string;
-}
-
-interface SectionConfig {
-  selected: string[];
-  supported: string[];
-  entityCounts: Record<string, number>;
-}
-
-interface ExportOptions {
-  assetMode: string;
-  localizationPolicy: string;
-  validateBeforeExport: boolean;
-  prettyPrint: boolean;
-}
-
-interface ValidationFinding {
-  message: string;
-}
-
-interface ValidationResult {
-  status: string;
-  errors?: ValidationFinding[];
-  warnings?: ValidationFinding[];
-  info?: ValidationFinding[];
-}
 
 interface FormatVisual {
   icon: Component;
@@ -157,10 +129,12 @@ const assetModeOptions = computed(() => [
   },
 ]);
 
-const localizationPolicyOptions = computed(() => [
-  { value: "release", label: t("project_settings.export.localization_release") },
-  { value: "preview", label: t("project_settings.export.localization_preview") },
-]);
+const localizationPolicyOptions = computed<Array<{ value: LocalizationPolicy; label: string }>>(
+  () => [
+    { value: "release", label: t("project_settings.export.localization_release") },
+    { value: "preview", label: t("project_settings.export.localization_preview") },
+  ],
+);
 
 const sectionsSet = computed(() => new Set(sectionConfig.selected));
 const supportedSet = computed(() => new Set(sectionConfig.supported));
@@ -244,10 +218,12 @@ function setAssetMode(mode: string) {
 }
 
 function setLocalizationPolicy(policy: string) {
-  live.pushEvent("set_localization_policy", { policy });
+  if (policy === "release" || policy === "preview") {
+    live.pushEvent("set_localization_policy", { policy });
+  }
 }
 
-function localizationModeLabel(mode: string) {
+function localizationModeLabel(mode: LocalizationMode) {
   return t(`project_settings.export.localization_modes.${mode}`);
 }
 

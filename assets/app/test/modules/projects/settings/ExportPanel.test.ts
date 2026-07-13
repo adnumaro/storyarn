@@ -1,6 +1,7 @@
 import { mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockLive } from "../../../setup";
+import type { ExportPanelProps } from "../../../../modules/projects/settings/export-import/types";
 
 const mockLive = createMockLive();
 
@@ -11,7 +12,7 @@ vi.mock("@shared/composables/useLive", () => ({
 const { default: ExportPanel } =
   await import("../../../../modules/projects/settings/export-import/components/ExportPanel.vue");
 
-function baseProps() {
+function baseProps(): ExportPanelProps {
   return {
     formatConfig: {
       selected: "ink",

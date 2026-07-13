@@ -1180,6 +1180,19 @@ defmodule Storyarn.Flows.FlowCrudTest do
       assert counts[flow.id] == 4
     end
 
+    test "counts localized exit labels from the denormalized node total" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project, %{name: "Intro", description: ""})
+
+      node_fixture(flow, %{
+        type: "exit",
+        data: %{"label" => "Return to the village"}
+      })
+
+      assert Flows.flow_word_counts(project.id)[flow.id] == 4
+    end
+
     test "returns empty map for project with no flows" do
       user = user_fixture()
       project = project_fixture(user)

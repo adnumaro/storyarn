@@ -17,6 +17,7 @@ defmodule Storyarn.ProjectTemplates.Audit do
   alias Storyarn.Localization.GlossaryEntry
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProjectLanguage
+  alias Storyarn.Localization.SourceContract
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
@@ -31,8 +32,6 @@ defmodule Storyarn.ProjectTemplates.Audit do
   alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
   alias Storyarn.Versioning.ProjectRecovery
-
-  @remappable_localization_source_types ~w(flow_node block sheet)
 
   @doc """
   Runs template-publication audit checks for a project.
@@ -381,10 +380,12 @@ defmodule Storyarn.ProjectTemplates.Audit do
   end
 
   defp unsupported_localization_source_ref_errors(project_id) do
+    source_types = SourceContract.source_types()
+
     query =
       from text in LocalizedText,
         where: text.project_id == ^project_id,
-        where: text.source_type not in ^@remappable_localization_source_types,
+        where: text.source_type not in ^source_types,
         select: %{
           "type" => "unsupported_localization_source_ref",
           "localized_text_id" => text.id,

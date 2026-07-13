@@ -213,19 +213,6 @@ defmodule Storyarn.Localization.LocalizedText do
     |> optimistic_lock(:lock_version)
   end
 
-  @doc "Changeset for archiving or reactivating a source without losing translation work."
-  def lifecycle_changeset(text, attrs) do
-    text
-    |> cast(attrs, [:archived_at, :archive_reason])
-    |> validate_inclusion(:archive_reason, [
-      "source_deleted",
-      "source_field_removed",
-      "source_not_runtime",
-      "version_replaced"
-    ])
-    |> optimistic_lock(:lock_version)
-  end
-
   @doc "Returns true when a non-empty translation belongs to an older source revision."
   @spec stale?(t()) :: boolean()
   def stale?(%__MODULE__{} = text) do

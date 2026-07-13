@@ -403,32 +403,90 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   defp insert_flow_nodes(_repo, _flow_id, [], _snapshot, _project_id, _now, _opts), do: {:ok, []}
 
   defp insert_flow_nodes(repo, flow_id, nodes_data, snapshot, project_id, now, opts) do
-    insert_snapshot_nodes(nodes_data, fn node_data ->
-      data = resolve_materialized_node_data(node_data["data"] || %{}, snapshot, project_id, opts)
-      data = rekey_conflicting_dialogue(repo, project_id, node_data["type"], data)
-      insert_snapshot_node(repo, flow_id, node_data, data, now)
-    end)
+    used_localization_ids = existing_dialogue_localization_ids(repo, project_id)
+
+    {prepared_nodes, _used_localization_ids} =
+      Enum.map_reduce(nodes_data, used_localization_ids, fn node_data, used_ids ->
+        data = resolve_materialized_node_data(node_data["data"] || %{}, snapshot, project_id, opts)
+        {data, used_ids} = ensure_unique_dialogue_id(node_data["type"], data, used_ids)
+        {{node_data, data}, used_ids}
+      end)
+
+    changesets =
+      Enum.map(prepared_nodes, fn {node_data, data} ->
+        materialized_node_changeset(flow_id, node_data, data, now)
+      end)
+
+    case Enum.find(changesets, &(not &1.valid?)) do
+      nil -> insert_materialized_nodes(repo, changesets)
+      invalid_changeset -> {:error, invalid_changeset}
+    end
   end
 
-  defp rekey_conflicting_dialogue(repo, project_id, "dialogue", %{"localization_id" => localization_id} = data)
-       when is_binary(localization_id) and localization_id != "" do
-    if dialogue_localization_id_exists?(repo, project_id, localization_id),
-      do: Map.put(data, "localization_id", "dialogue_#{Ecto.UUID.generate()}"),
-      else: data
-  end
-
-  defp rekey_conflicting_dialogue(_repo, _project_id, _type, data), do: data
-
-  defp dialogue_localization_id_exists?(repo, project_id, localization_id) do
-    repo.exists?(
-      from(node in FlowNode,
-        join: flow in Flow,
-        on: flow.id == node.flow_id,
-        where:
-          flow.project_id == ^project_id and node.type == "dialogue" and
-            fragment("?->>'localization_id' = ?", node.data, ^localization_id)
-      )
+  defp existing_dialogue_localization_ids(repo, project_id) do
+    from(node in FlowNode,
+      join: flow in Flow,
+      on: flow.id == node.flow_id,
+      where: flow.project_id == ^project_id and node.type == "dialogue",
+      select: fragment("?->>'localization_id'", node.data)
     )
+    |> repo.all()
+    |> Enum.reject(&is_nil/1)
+    |> MapSet.new()
+  end
+
+  defp ensure_unique_dialogue_id("dialogue", %{"localization_id" => localization_id} = data, used_ids)
+       when is_binary(localization_id) and localization_id != "" do
+    if MapSet.member?(used_ids, localization_id) do
+      new_id = unused_dialogue_id(used_ids)
+      {Map.put(data, "localization_id", new_id), MapSet.put(used_ids, new_id)}
+    else
+      {data, MapSet.put(used_ids, localization_id)}
+    end
+  end
+
+  defp ensure_unique_dialogue_id(_type, data, used_ids), do: {data, used_ids}
+
+  defp unused_dialogue_id(used_ids) do
+    candidate = "dialogue_#{Ecto.UUID.generate()}"
+    if MapSet.member?(used_ids, candidate), do: unused_dialogue_id(used_ids), else: candidate
+  end
+
+  defp materialized_node_changeset(flow_id, node_data, data, now) do
+    FlowNode.materialize_changeset(%FlowNode{flow_id: flow_id, inserted_at: now, updated_at: now}, %{
+      type: node_data["type"],
+      position_x: node_data["position_x"] || 0.0,
+      position_y: node_data["position_y"] || 0.0,
+      data: data,
+      word_count: node_data["word_count"] || 0,
+      source: node_data["source"] || "manual"
+    })
+  end
+
+  defp insert_materialized_nodes(repo, changesets) do
+    entries =
+      Enum.map(changesets, fn changeset ->
+        changeset
+        |> Ecto.Changeset.apply_changes()
+        |> Map.from_struct()
+        |> Map.take([
+          :flow_id,
+          :type,
+          :position_x,
+          :position_y,
+          :data,
+          :word_count,
+          :source,
+          :parent_id,
+          :inserted_at,
+          :updated_at
+        ])
+      end)
+
+    case repo.insert_all(FlowNode, entries, returning: [:id]) do
+      {count, nodes} when count == length(entries) -> {:ok, nodes}
+      other -> {:error, {:node_materialization_failed, other}}
+    end
   end
 
   defp insert_flow_connections(_repo, _flow_id, [], _node_ids, _node_id_map, _now), do: {:ok, %{}}

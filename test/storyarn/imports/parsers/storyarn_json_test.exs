@@ -83,6 +83,20 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       assert "project" in missing
     end
 
+    test "accepts explicit null flow collections without crashing" do
+      assert {:ok, _data} =
+               minimal_import_data()
+               |> Map.put("flows", nil)
+               |> Jason.encode!()
+               |> Imports.parse_file()
+
+      assert {:ok, _data} =
+               minimal_import_data()
+               |> put_in(["flows", Access.at(0), "nodes"], nil)
+               |> Jason.encode!()
+               |> Imports.parse_file()
+    end
+
     test "rejects locale codes that could escape an export directory" do
       data = minimal_import_data()
       data = put_in(data, ["localization"], %{"source_language" => "../../secrets", "languages" => []})

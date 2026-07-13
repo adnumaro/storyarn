@@ -74,12 +74,19 @@ defmodule Storyarn.Localization.LanguageCrud do
   # =============================================================================
 
   def add_language(%Project{} = project, attrs) do
+    case add_language_with_count(project, attrs) do
+      {:ok, %{language: language}} -> {:ok, language}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def add_language_with_count(%Project{} = project, attrs) do
     attrs = MapUtils.stringify_keys(attrs)
 
     Repo.transaction(fn ->
       with {:ok, language} <- persist_language(project, attrs),
-           :ok <- collect_existing_sources(project.id, language) do
-        language
+           {:ok, count} <- collect_existing_sources(project.id, language) do
+        %{language: language, extracted_count: count}
       else
         {:error, reason} -> Repo.rollback(reason)
       end
@@ -112,13 +119,10 @@ defmodule Storyarn.Localization.LanguageCrud do
     |> Repo.insert()
   end
 
-  defp collect_existing_sources(_project_id, %ProjectLanguage{is_source: true}), do: :ok
+  defp collect_existing_sources(_project_id, %ProjectLanguage{is_source: true}), do: {:ok, 0}
 
   defp collect_existing_sources(project_id, %ProjectLanguage{is_source: false}) do
-    case LocalizableWords.extract_all(project_id) do
-      {:ok, _count} -> :ok
-      {:error, reason} -> {:error, reason}
-    end
+    LocalizableWords.extract_all(project_id)
   end
 
   def update_language(%ProjectLanguage{} = language, attrs) do

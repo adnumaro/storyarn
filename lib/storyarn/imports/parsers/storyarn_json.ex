@@ -243,8 +243,9 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   defp validate_dialogue_ids(data) do
     dialogue_nodes =
       data
-      |> Map.get("flows", [])
-      |> Enum.flat_map(&Map.get(&1, "nodes", []))
+      |> Map.get("flows")
+      |> Kernel.||([])
+      |> Enum.flat_map(fn flow -> Map.get(flow, "nodes") || [] end)
       |> Enum.filter(&(&1["type"] == "dialogue"))
 
     invalid = Enum.flat_map(dialogue_nodes, &dialogue_id_errors/1) ++ duplicate_dialogue_id_errors(dialogue_nodes)
@@ -1269,6 +1270,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
 
   defp import_localized_texts(project_id, strings, id_map) do
     now = TimeHelpers.now()
+    runtime_sources = load_runtime_localization_sources(strings, id_map)
 
     # Build all text attrs from the nested strings/translations structure
     valid_attrs =
@@ -1284,7 +1286,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
              not SourceContract.field?(source_type, source_field) do
           acc
         else
-          source_runtime? = runtime_localization_source?(source_type, source_id, source_field)
+          source_runtime? = runtime_localization_source?(runtime_sources, source_type, source_id, source_field)
           build_translation_attrs(acc, entry, translations, project_id, source_id, id_map, now, source_runtime?)
         end
       end)
@@ -1376,22 +1378,39 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
 
   defp imported_archive_reason(_translation, true), do: nil
 
-  defp runtime_localization_source?("flow_node", source_id, source_field) do
-    source = Repo.get(FlowNode, source_id)
-    SourceContract.localizable_source_field?("flow_node", source, source_field)
+  defp load_runtime_localization_sources(strings, id_map) do
+    ids_by_type =
+      Enum.reduce(strings, %{}, fn entry, acc ->
+        source_type = entry["source_type"]
+        source_id = remap_source_id(id_map, source_type, entry["source_id"])
+
+        if source_type in SourceContract.source_types() and not is_nil(source_id) do
+          Map.update(acc, source_type, MapSet.new([source_id]), &MapSet.put(&1, source_id))
+        else
+          acc
+        end
+      end)
+
+    %{
+      "flow_node" => load_sources(FlowNode, ids_by_type["flow_node"]),
+      "block" => load_sources(Storyarn.Sheets.Block, ids_by_type["block"]),
+      "sheet" => load_sources(Storyarn.Sheets.Sheet, ids_by_type["sheet"])
+    }
   end
 
-  defp runtime_localization_source?("block", source_id, source_field) do
-    source = Repo.get(Storyarn.Sheets.Block, source_id)
-    SourceContract.localizable_source_field?("block", source, source_field)
+  defp load_sources(_schema, nil), do: %{}
+
+  defp load_sources(schema, ids) do
+    schema
+    |> where([source], source.id in ^MapSet.to_list(ids))
+    |> Repo.all()
+    |> Map.new(&{&1.id, &1})
   end
 
-  defp runtime_localization_source?("sheet", source_id, source_field) do
-    source = Repo.get(Storyarn.Sheets.Sheet, source_id)
-    SourceContract.localizable_source_field?("sheet", source, source_field)
+  defp runtime_localization_source?(sources, source_type, source_id, source_field) do
+    source = get_in(sources, [source_type, source_id])
+    SourceContract.localizable_source_field?(source_type, source, source_field)
   end
-
-  defp runtime_localization_source?(_source_type, _source_id, _source_field), do: false
 
   defp present_translation?(value) when is_binary(value), do: String.trim(value) != ""
   defp present_translation?(_value), do: false

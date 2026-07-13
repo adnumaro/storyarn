@@ -21,17 +21,10 @@ defmodule Storyarn.Flows.NodeCreate do
     with :ok <- Billing.can_create_item?(project) do
       attrs = stringify_keys(attrs)
 
-      result =
-        case attrs["type"] do
-          "entry" -> create_entry_node(flow, attrs)
-          "hub" -> create_hub_node(flow, attrs)
-          "subflow" -> validate_and_insert_subflow(flow, attrs)
-          _ -> insert_node(flow, attrs)
-        end
+      result = Repo.transaction(fn -> create_and_extract_node(flow, attrs) end)
 
       case result do
-        {:ok, node} ->
-          Localization.extract_flow_node(node)
+        {:ok, _node} ->
           Storyarn.Collaboration.broadcast_dashboard_change(flow.project_id, :flows)
 
         _ ->
@@ -39,6 +32,24 @@ defmodule Storyarn.Flows.NodeCreate do
       end
 
       result
+    end
+  end
+
+  defp create_and_extract_node(flow, attrs) do
+    with {:ok, node} <- create_node_by_type(flow, attrs),
+         :ok <- Localization.extract_flow_node(node) do
+      node
+    else
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp create_node_by_type(flow, attrs) do
+    case attrs["type"] do
+      "entry" -> create_entry_node(flow, attrs)
+      "hub" -> create_hub_node(flow, attrs)
+      "subflow" -> validate_and_insert_subflow(flow, attrs)
+      _ -> insert_node(flow, attrs)
     end
   end
 

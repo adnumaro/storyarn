@@ -34,7 +34,7 @@ defmodule Storyarn.Localization.SourceContract do
 
   @doc "Returns the localization roles that a serializer can address at runtime."
   @spec export_content_roles(atom()) :: [String.t()]
-  def export_content_roles(format), do: Map.get(@engine_content_roles, format, @content_roles)
+  def export_content_roles(format), do: Map.get(@engine_content_roles, format, [])
 
   @spec exported_content_role?(atom(), term()) :: boolean()
   def exported_content_role?(format, content_role), do: content_role in export_content_roles(format)

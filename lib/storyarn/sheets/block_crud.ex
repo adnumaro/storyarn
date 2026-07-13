@@ -120,7 +120,12 @@ defmodule Storyarn.Sheets.BlockCrud do
       {:ok, updated_block} ->
         handle_scope_change(updated_block, old_scope)
         maybe_sync_definition(updated_block, old_scope)
-        Localization.extract_block_tree(updated_block.id)
+
+        if old_scope == "children" or updated_block.scope == "children" do
+          Localization.extract_block_tree(updated_block.id)
+        else
+          Localization.extract_block(updated_block)
+        end
 
       _ ->
         :ok

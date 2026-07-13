@@ -2,6 +2,7 @@ defmodule Storyarn.Localization.ExportPolicy do
   @moduledoc "Central release/preview eligibility rules for engine localization exports."
 
   alias Storyarn.Exports.ExportOptions
+  alias Storyarn.Shared.MapUtils
 
   @spec text_eligible?(map(), ExportOptions.t() | atom()) :: boolean()
   def text_eligible?(text, %ExportOptions{localization_policy: policy}), do: text_eligible?(text, policy)
@@ -32,12 +33,7 @@ defmodule Storyarn.Localization.ExportPolicy do
       not is_nil(attr(text, :vo_asset_id)) and is_nil(attr(text, :archived_at))
   end
 
-  defp attr(record, field) do
-    case Map.fetch(record, field) do
-      {:ok, value} -> value
-      :error -> Map.get(record, to_string(field))
-    end
-  end
+  defp attr(record, field), do: MapUtils.get_flexible(record, field)
 
   defp present?(value) when is_binary(value), do: String.trim(value) != ""
   defp present?(_value), do: false

@@ -8,6 +8,8 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Accounts.User
+  alias Storyarn.Assets.Asset
   alias Storyarn.Flows
   alias Storyarn.Localization
   alias Storyarn.Localization.GlossaryEntry
@@ -19,6 +21,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   alias Storyarn.Scenes
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
+  alias Storyarn.Sheets.Sheet
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.Builders.FlowBuilder
   alias Storyarn.Versioning.Builders.SceneBuilder
@@ -339,14 +342,21 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   defp restore_texts(_project_id, [], _id_maps, _now), do: :ok
 
   defp restore_texts(project_id, texts, id_maps, now) do
+    context = localization_restore_context(project_id, texts, id_maps)
+
     texts
     |> Enum.flat_map(fn text ->
       metadata = SourceContract.field_metadata(text["source_type"], text["source_field"])
       source_id = remap_localization_source_id(text, id_maps)
 
-      if is_nil(metadata) or is_nil(source_id) do
+      if is_nil(metadata) or is_nil(source_id) or not MapSet.member?(context.locales, text["locale_code"]) do
         []
       else
+        vo_asset_id = valid_id(text["vo_asset_id"], context.assets)
+        speaker_sheet_id = text["speaker_sheet_id"] |> remap_optional_id(id_maps.sheet) |> valid_id(context.sheets)
+        translated_source_hash = translated_source_hash(text)
+        archived_at = parse_datetime(text["archived_at"])
+
         [
           %{
             project_id: project_id,
@@ -355,25 +365,25 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
             source_field: text["source_field"],
             source_text: text["source_text"],
             source_text_hash: text["source_text_hash"],
-            translated_source_hash: translated_source_hash(text),
+            translated_source_hash: translated_source_hash,
             locale_code: text["locale_code"],
             translated_text: text["translated_text"],
-            status: text["status"] || "pending",
-            vo_status: if(metadata.vo_eligible, do: text["vo_status"] || "none", else: "none"),
-            vo_asset_id: if(metadata.vo_eligible, do: text["vo_asset_id"]),
+            status: restored_status(text, translated_source_hash),
+            vo_status: restored_vo_status(text["vo_status"], metadata.vo_eligible, vo_asset_id),
+            vo_asset_id: if(metadata.vo_eligible, do: vo_asset_id),
             translator_notes: text["translator_notes"],
             reviewer_notes: text["reviewer_notes"],
-            speaker_sheet_id: if(metadata.content_role == "dialogue", do: text["speaker_sheet_id"]),
+            speaker_sheet_id: if(metadata.content_role == "dialogue", do: speaker_sheet_id),
             word_count: text["word_count"],
             content_role: metadata.content_role,
             vo_eligible: metadata.vo_eligible,
             machine_translated: text["machine_translated"] || false,
             last_translated_at: parse_datetime(text["last_translated_at"]),
             last_reviewed_at: parse_datetime(text["last_reviewed_at"]),
-            translated_by_id: text["translated_by_id"],
-            reviewed_by_id: text["reviewed_by_id"],
-            archived_at: parse_datetime(text["archived_at"]),
-            archive_reason: text["archive_reason"],
+            translated_by_id: valid_id(text["translated_by_id"], context.users),
+            reviewed_by_id: valid_id(text["reviewed_by_id"], context.users),
+            archived_at: archived_at,
+            archive_reason: restored_archive_reason(text["archive_reason"], archived_at),
             inserted_at: now,
             updated_at: now
           }
@@ -383,6 +393,63 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
     |> Enum.chunk_every(500)
     |> Enum.each(fn chunk -> Repo.insert_all(LocalizedText, chunk) end)
   end
+
+  defp localization_restore_context(project_id, texts, id_maps) do
+    speaker_ids =
+      texts
+      |> Enum.map(&remap_optional_id(&1["speaker_sheet_id"], id_maps.sheet))
+      |> Enum.reject(&is_nil/1)
+
+    %{
+      locales:
+        from(language in ProjectLanguage, where: language.project_id == ^project_id, select: language.locale_code)
+        |> Repo.all()
+        |> MapSet.new(),
+      assets: project_entity_ids(Asset, project_id, Enum.map(texts, & &1["vo_asset_id"])),
+      sheets: project_entity_ids(Sheet, project_id, speaker_ids),
+      users: existing_entity_ids(User, Enum.flat_map(texts, &[&1["translated_by_id"], &1["reviewed_by_id"]]))
+    }
+  end
+
+  defp project_entity_ids(schema, project_id, ids) do
+    ids = ids |> Enum.reject(&is_nil/1) |> Enum.uniq()
+
+    from(record in schema, where: record.project_id == ^project_id and record.id in ^ids, select: record.id)
+    |> Repo.all()
+    |> MapSet.new()
+  end
+
+  defp existing_entity_ids(schema, ids) do
+    ids = ids |> Enum.reject(&is_nil/1) |> Enum.uniq()
+    from(record in schema, where: record.id in ^ids, select: record.id) |> Repo.all() |> MapSet.new()
+  end
+
+  defp remap_optional_id(nil, _id_map), do: nil
+  defp remap_optional_id(id, id_map), do: Map.get(id_map, id)
+
+  defp valid_id(nil, _valid_ids), do: nil
+  defp valid_id(id, valid_ids), do: if(MapSet.member?(valid_ids, id), do: id)
+
+  defp restored_status(text, translated_source_hash) do
+    translated? = is_binary(text["translated_text"]) and String.trim(text["translated_text"]) != ""
+    current? = translated? and not is_nil(text["source_text_hash"]) and translated_source_hash == text["source_text_hash"]
+
+    case text["status"] do
+      "final" when not current? -> if(translated?, do: "review", else: "pending")
+      status when status in ~w(pending draft in_progress review final) -> status
+      _invalid -> if(translated?, do: "draft", else: "pending")
+    end
+  end
+
+  defp restored_vo_status(_status, false, _asset_id), do: "none"
+  defp restored_vo_status(status, true, nil) when status in ~w(recorded approved), do: "needed"
+  defp restored_vo_status(status, true, _asset_id) when status in ~w(none needed recorded approved), do: status
+  defp restored_vo_status(_status, true, _asset_id), do: "none"
+
+  defp restored_archive_reason(reason, %DateTime{})
+       when reason in ~w(source_deleted source_field_removed source_not_runtime version_replaced), do: reason
+
+  defp restored_archive_reason(_reason, _archived_at), do: nil
 
   defp remap_localization_source_id(%{"source_type" => "flow_node", "source_id" => old_id}, id_maps),
     do: Map.get(id_maps.node, old_id)

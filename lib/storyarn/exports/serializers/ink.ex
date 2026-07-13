@@ -19,6 +19,7 @@ defmodule Storyarn.Exports.Serializers.Ink do
   alias Storyarn.Exports.LocalizationCatalog
   alias Storyarn.Exports.Serializers.GraphTraversal
   alias Storyarn.Exports.Serializers.Helpers
+  alias Storyarn.Localization.SourceContract
 
   @impl true
   def content_type, do: "text/plain"
@@ -452,8 +453,7 @@ defmodule Storyarn.Exports.Serializers.Ink do
       Map.new(sheets, fn sheet ->
         props =
           sheet.blocks
-          |> Enum.reject(& &1.is_constant)
-          |> Enum.filter(&(is_binary(&1.variable_name) and &1.variable_name != ""))
+          |> Enum.filter(&SourceContract.exported_block?/1)
           |> Map.new(fn block ->
             {block.variable_name, Helpers.infer_default_value(block)}
           end)

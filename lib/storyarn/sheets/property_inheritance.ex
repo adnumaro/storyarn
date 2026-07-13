@@ -342,19 +342,31 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   """
   @spec recalculate_on_move(Sheet.t()) :: {:ok, integer()}
   def recalculate_on_move(%Sheet{} = sheet) do
+    case recalculate_on_move_with_sheet_ids(sheet) do
+      {:ok, %{count: count}} -> {:ok, count}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @spec recalculate_on_move_with_sheet_ids(Sheet.t()) ::
+          {:ok, %{count: integer(), sheet_ids: [integer()]}} | {:error, term()}
+  def recalculate_on_move_with_sheet_ids(%Sheet{} = sheet) do
     fn ->
       total = recalculate_sheet_inheritance(sheet.id)
 
       # Cascade to all descendants (parents before children)
       descendant_ids = get_descendant_sheet_ids(sheet.id)
 
-      Enum.reduce(descendant_ids, total, fn descendant_id, acc ->
-        acc + recalculate_sheet_inheritance(descendant_id)
-      end)
+      count =
+        Enum.reduce(descendant_ids, total, fn descendant_id, acc ->
+          acc + recalculate_sheet_inheritance(descendant_id)
+        end)
+
+      %{count: count, sheet_ids: [sheet.id | descendant_ids]}
     end
     |> Repo.transaction()
     |> case do
-      {:ok, count} -> {:ok, count}
+      {:ok, result} -> {:ok, result}
       {:error, reason} -> {:error, reason}
     end
   end

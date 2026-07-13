@@ -272,5 +272,15 @@ defmodule StoryarnWeb.ExportControllerTest do
       preview_files = unzip_response(preview_conn)
       assert preview_files["localization.es.csv"] =~ "Hola"
     end
+
+    test "rejects unknown localization policies instead of silently exporting release data", %{
+      conn: conn,
+      project: project
+    } do
+      conn = get(conn, export_url(project, "ink", %{"localization_policy" => "typo"}))
+
+      assert conn.status == 400
+      assert conn.resp_body == "Invalid localization policy"
+    end
   end
 end

@@ -602,9 +602,14 @@ defmodule Storyarn.Localization.TextCrud do
         {_source_type, _ids}, acc -> acc
       end)
 
-    Enum.map(texts, fn text ->
-      source_ref = Map.fetch!(refs, {text.source_type, text.source_id})
-      %{text | localization_key: RuntimeKey.key(text.source_type, source_ref, text.source_field)}
+    Enum.flat_map(texts, fn text ->
+      case Map.fetch(refs, {text.source_type, text.source_id}) do
+        {:ok, source_ref} when is_binary(source_ref) and source_ref != "" ->
+          [%{text | localization_key: RuntimeKey.key(text.source_type, source_ref, text.source_field)}]
+
+        _missing_or_invalid_source ->
+          []
+      end
     end)
   end
 
@@ -622,7 +627,11 @@ defmodule Storyarn.Localization.TextCrud do
       select: {node.id, fragment("?->>'localization_id'", node.data)}
     )
     |> Repo.all()
-    |> Map.new(fn {id, source_ref} -> {{"flow_node", id}, source_ref} end)
+    |> Enum.flat_map(fn
+      {id, source_ref} when is_binary(source_ref) and source_ref != "" -> [{{"flow_node", id}, source_ref}]
+      _invalid_source -> []
+    end)
+    |> Map.new()
   end
 
   defp block_runtime_refs(ids) do
@@ -635,9 +644,13 @@ defmodule Storyarn.Localization.TextCrud do
       select: {block.id, sheet.shortcut, block.variable_name}
     )
     |> Repo.all()
-    |> Map.new(fn {id, sheet_shortcut, variable_name} ->
-      {{"block", id}, RuntimeKey.qualified_block_ref!(sheet_shortcut, variable_name)}
+    |> Enum.flat_map(fn {id, sheet_shortcut, variable_name} ->
+      case safe_qualified_block_ref(sheet_shortcut, variable_name) do
+        nil -> []
+        source_ref -> [{{"block", id}, source_ref}]
+      end
     end)
+    |> Map.new()
   end
 
   defp sheet_runtime_refs(ids) do
@@ -648,7 +661,17 @@ defmodule Storyarn.Localization.TextCrud do
       select: {sheet.id, sheet.shortcut}
     )
     |> Repo.all()
-    |> Map.new(fn {id, source_ref} -> {{"sheet", id}, source_ref} end)
+    |> Enum.flat_map(fn
+      {id, source_ref} when is_binary(source_ref) and source_ref != "" -> [{{"sheet", id}, source_ref}]
+      _invalid_source -> []
+    end)
+    |> Map.new()
+  end
+
+  defp safe_qualified_block_ref(sheet_shortcut, variable_name) do
+    RuntimeKey.qualified_block_ref!(sheet_shortcut, variable_name)
+  rescue
+    ArgumentError -> nil
   end
 
   defp stale_lock_error?(%Ecto.Changeset{errors: errors}), do: Keyword.has_key?(errors, :lock_version)

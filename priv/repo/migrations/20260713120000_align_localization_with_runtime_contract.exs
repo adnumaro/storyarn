@@ -45,14 +45,24 @@ defmodule Storyarn.Repo.Migrations.AlignLocalizationWithRuntimeContract do
     execute("""
     DELETE FROM localized_texts
     WHERE locale_code !~ '^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$'
+       OR locale_code ~ E'[\\r\\n]'
        OR char_length(locale_code) > 35
     """)
 
     execute("""
     DELETE FROM project_languages
     WHERE locale_code !~ '^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$'
+       OR locale_code ~ E'[\\r\\n]'
        OR char_length(locale_code) > 35
     """)
+
+    alter table(:localized_texts) do
+      modify :locale_code, :string, size: 35, null: false
+    end
+
+    alter table(:project_languages) do
+      modify :locale_code, :string, size: 35, null: false
+    end
 
     execute("""
     DELETE FROM localized_texts
@@ -168,12 +178,12 @@ defmodule Storyarn.Repo.Migrations.AlignLocalizationWithRuntimeContract do
 
     create constraint(:localized_texts, :localized_texts_locale_code_safe,
              check:
-               "locale_code ~ '^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$' AND char_length(locale_code) <= 35"
+               "locale_code ~ '^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$' AND locale_code !~ E'[\\r\\n]' AND char_length(locale_code) <= 35"
            )
 
     create constraint(:project_languages, :project_languages_locale_code_safe,
              check:
-               "locale_code ~ '^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$' AND char_length(locale_code) <= 35"
+               "locale_code ~ '^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$' AND locale_code !~ E'[\\r\\n]' AND char_length(locale_code) <= 35"
            )
 
     create index(:localized_texts, [:project_id, :locale_code, :status],
@@ -184,9 +194,60 @@ defmodule Storyarn.Repo.Migrations.AlignLocalizationWithRuntimeContract do
     create index(:localized_texts, [:project_id, :archived_at],
              name: :localized_texts_archive_index
            )
+
+    execute("""
+    CREATE OR REPLACE FUNCTION enforce_dialogue_localization_id_unique()
+    RETURNS trigger AS $$
+    DECLARE
+      dialogue_project_id bigint;
+      dialogue_localization_id text;
+    BEGIN
+      IF NEW.type <> 'dialogue' THEN
+        RETURN NEW;
+      END IF;
+
+      dialogue_localization_id := NULLIF(NEW.data->>'localization_id', '');
+      IF dialogue_localization_id IS NULL THEN
+        RETURN NEW;
+      END IF;
+
+      SELECT project_id INTO dialogue_project_id FROM flows WHERE id = NEW.flow_id;
+      IF dialogue_project_id IS NULL THEN
+        RETURN NEW;
+      END IF;
+
+      PERFORM pg_advisory_xact_lock(4717000000000 + dialogue_project_id);
+
+      IF EXISTS (
+        SELECT 1
+        FROM flow_nodes AS node
+        JOIN flows AS flow ON flow.id = node.flow_id
+        WHERE flow.project_id = dialogue_project_id
+          AND node.type = 'dialogue'
+          AND node.data->>'localization_id' = dialogue_localization_id
+          AND node.id IS DISTINCT FROM NEW.id
+      ) THEN
+        RAISE EXCEPTION 'dialogue localization_id must be unique within the project'
+          USING ERRCODE = '23505',
+                CONSTRAINT = 'flow_nodes_dialogue_localization_id_unique';
+      END IF;
+
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+    execute("""
+    CREATE TRIGGER flow_nodes_dialogue_localization_id_unique
+    BEFORE INSERT OR UPDATE OF type, data, flow_id ON flow_nodes
+    FOR EACH ROW EXECUTE FUNCTION enforce_dialogue_localization_id_unique()
+    """)
   end
 
   def down do
+    execute("DROP TRIGGER IF EXISTS flow_nodes_dialogue_localization_id_unique ON flow_nodes")
+    execute("DROP FUNCTION IF EXISTS enforce_dialogue_localization_id_unique()")
+
     drop index(:localized_texts, [:project_id, :archived_at],
            name: :localized_texts_archive_index
          )
@@ -209,6 +270,11 @@ defmodule Storyarn.Repo.Migrations.AlignLocalizationWithRuntimeContract do
       remove :archived_at
       remove :vo_eligible
       remove :content_role
+      modify :locale_code, :string, size: 10, null: false
+    end
+
+    alter table(:project_languages) do
+      modify :locale_code, :string, size: 10, null: false
     end
   end
 end

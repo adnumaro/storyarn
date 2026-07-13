@@ -8,7 +8,7 @@ defmodule Storyarn.Localization.LocaleCode do
   filename component.
   """
 
-  @format ~r/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/
+  @format ~r/\A[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*\z/
   @max_length 35
 
   @spec valid?(term()) :: boolean()
@@ -17,6 +17,15 @@ defmodule Storyarn.Localization.LocaleCode do
   end
 
   def valid?(_locale_code), do: false
+
+  @spec ensure_safe!(term()) :: String.t()
+  def ensure_safe!(locale_code) do
+    if valid?(locale_code) do
+      locale_code
+    else
+      raise ArgumentError, "invalid localization locale for export: #{inspect(locale_code)}"
+    end
+  end
 
   @spec format() :: Regex.t()
   def format, do: @format

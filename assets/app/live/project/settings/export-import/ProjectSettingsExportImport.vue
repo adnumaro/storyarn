@@ -1,50 +1,6 @@
 <script setup lang="ts">
 import ExportPanel from "@modules/projects/settings/export-import/components/ExportPanel.vue";
-
-interface FormatOption {
-  format: string;
-  label: string;
-  localizationMode: string;
-  extension?: string;
-}
-
-interface FormatConfig {
-  selected: string;
-  formats: FormatOption[];
-  extension: string;
-}
-
-interface SectionConfig {
-  selected: string[];
-  supported: string[];
-  entityCounts: Record<string, number>;
-}
-
-interface ExportOptions {
-  assetMode: string;
-  localizationPolicy: string;
-  validateBeforeExport: boolean;
-  prettyPrint: boolean;
-}
-
-interface ValidationFinding {
-  message: string;
-}
-
-interface ValidationResult {
-  status: string;
-  errors?: ValidationFinding[];
-  warnings?: ValidationFinding[];
-  info?: ValidationFinding[];
-}
-
-interface ExportConfig {
-  formatConfig: FormatConfig;
-  sectionConfig: SectionConfig;
-  options: ExportOptions;
-  validation: ValidationResult | null;
-  downloadUrl: string;
-}
+import type { ExportConfig } from "@modules/projects/settings/export-import/types";
 
 const { exportConfig } = defineProps<{
   exportConfig: ExportConfig;

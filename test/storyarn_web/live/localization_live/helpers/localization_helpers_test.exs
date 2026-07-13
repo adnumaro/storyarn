@@ -155,9 +155,5 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpersTest do
     test "excluded types use the generic icon" do
       assert LocalizationHelpers.source_type_icon("unknown") == "box"
     end
-
-    test "unknown returns box" do
-      assert LocalizationHelpers.source_type_icon("custom") == "box"
-    end
   end
 end

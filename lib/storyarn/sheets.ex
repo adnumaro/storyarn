@@ -241,12 +241,9 @@ defmodule Storyarn.Sheets do
     with :ok <- SheetCrud.validate_parent(sheet, new_parent_id),
          {:ok, moved_sheet} <-
            TreeOperations.move_sheet_to_position(sheet, new_parent_id, new_position),
-         {:ok, _count} <- PropertyInheritance.recalculate_on_move(moved_sheet) do
-      Enum.each(
-        [moved_sheet.id | PropertyInheritance.get_descendant_sheet_ids(moved_sheet.id)],
-        &Localization.extract_sheet_blocks/1
-      )
-
+         {:ok, %{sheet_ids: affected_sheet_ids}} <-
+           PropertyInheritance.recalculate_on_move_with_sheet_ids(moved_sheet),
+         :ok <- Localization.extract_sheet_blocks_for_sheets(affected_sheet_ids) do
       {:ok, moved_sheet}
     end
   end

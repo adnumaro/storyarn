@@ -16,7 +16,17 @@ msgstr ""
 msgid "Documentation"
 msgstr ""
 
-#: lib/storyarn_web/live/docs_live/show.ex:52
+#: lib/storyarn_web/live/docs_live/show.ex:62
 #, elixir-autogen, elixir-format
 msgid "Guide not found"
+msgstr ""
+
+#: lib/storyarn_web/live/docs_live/show.ex:41
+#, elixir-autogen, elixir-format
+msgid "Learn how to use Storyarn for narrative design, branching dialogue, worldbuilding, scenes, localization, and game engine export."
+msgstr ""
+
+#: lib/storyarn_web/live/docs_live/show.ex:144
+#, elixir-autogen, elixir-format
+msgid "Storyarn documentation for game narrative workflows, branching dialogue, worldbuilding, scenes, localization, and export."
 msgstr ""

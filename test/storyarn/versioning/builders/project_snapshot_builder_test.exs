@@ -89,6 +89,35 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
     end
   end
 
+  describe "localization restore integrity" do
+    test "drops stale auxiliary foreign keys from snapshot rows", %{project: project} do
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      assert {:ok, _count} = Localization.extract_all(project.id)
+
+      snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
+
+      localization =
+        update_in(snapshot, ["localization", "texts"], fn texts ->
+          Enum.map(texts, fn text ->
+            Map.merge(text, %{
+              "vo_asset_id" => 9_999_991,
+              "speaker_sheet_id" => 9_999_992,
+              "translated_by_id" => 9_999_993,
+              "reviewed_by_id" => 9_999_994
+            })
+          end)
+        end)
+
+      assert {:ok, _result} = ProjectSnapshotBuilder.restore_snapshot(project.id, localization)
+
+      assert Enum.all?(Localization.list_all_texts(project.id), fn text ->
+               is_nil(text.vo_asset_id) and is_nil(text.speaker_sheet_id) and
+                 is_nil(text.translated_by_id) and is_nil(text.reviewed_by_id)
+             end)
+    end
+  end
+
   describe "restore_snapshot/2" do
     test "restores modified entities", %{project: project, sheet: sheet} do
       snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)

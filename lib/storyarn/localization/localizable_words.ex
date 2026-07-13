@@ -14,6 +14,8 @@ defmodule Storyarn.Localization.LocalizableWords do
   alias Storyarn.Sheets.Sheet
 
   @inventory_lock_namespace 4_716_000_000_000
+  @flow_node_lock_namespace 4_718_000_000_000
+  @block_lock_namespace 4_719_000_000_000
 
   # =============================================================================
   # Public — Runtime Word Counts
@@ -22,12 +24,15 @@ defmodule Storyarn.Localization.LocalizableWords do
   @doc "Returns per-flow counts for player-facing runtime text."
   @spec flow_word_counts(integer()) :: %{integer() => non_neg_integer()}
   def flow_word_counts(project_id) do
-    project_id
-    |> project_flow_nodes()
-    |> Enum.group_by(& &1.flow_id)
-    |> Map.new(fn {flow_id, nodes} ->
-      {flow_id, nodes |> Enum.flat_map(&flow_node_source_fields/1) |> count_fields()}
-    end)
+    from(node in FlowNode,
+      join: flow in Flow,
+      on: flow.id == node.flow_id,
+      where: flow.project_id == ^project_id and is_nil(flow.deleted_at) and is_nil(node.deleted_at),
+      group_by: node.flow_id,
+      select: {node.flow_id, coalesce(sum(node.word_count), 0)}
+    )
+    |> Repo.all()
+    |> Map.new()
   end
 
   @doc "Returns per-sheet counts for exported sheet names and textual runtime variables."
@@ -86,22 +91,36 @@ defmodule Storyarn.Localization.LocalizableWords do
     end
   end
 
-  @spec extract_flow_node(FlowNode.t()) :: :ok
+  @spec extract_flow_node(FlowNode.t()) :: :ok | {:error, term()}
   def extract_flow_node(%FlowNode{} = node) do
-    with project_id when not is_nil(project_id) <- flow_project_id(node.flow_id) do
-      with_inventory_lock(project_id, fn -> reconcile_flow_node(project_id, node.id) end)
-    end
+    case_result =
+      case flow_project_id(node.flow_id) do
+        nil ->
+          :ok
 
-    :ok
+        project_id ->
+          with_source_lock(project_id, @flow_node_lock_namespace, node.id, fn ->
+            reconcile_flow_node(project_id, node.id)
+          end)
+      end
+
+    normalize_lock_result(case_result)
   end
 
-  @spec extract_block(Block.t()) :: :ok
+  @spec extract_block(Block.t()) :: :ok | {:error, term()}
   def extract_block(%Block{} = block) do
-    with project_id when not is_nil(project_id) <- sheet_project_id(block.sheet_id) do
-      with_inventory_lock(project_id, fn -> reconcile_block(project_id, block.id) end)
-    end
+    case_result =
+      case sheet_project_id(block.sheet_id) do
+        nil ->
+          :ok
 
-    :ok
+        project_id ->
+          with_source_lock(project_id, @block_lock_namespace, block.id, fn ->
+            reconcile_block(project_id, block.id)
+          end)
+      end
+
+    normalize_lock_result(case_result)
   end
 
   defp reconcile_flow_node(project_id, node_id) do
@@ -173,6 +192,27 @@ defmodule Storyarn.Localization.LocalizableWords do
     |> Enum.each(&extract_block/1)
 
     :ok
+  end
+
+  @spec extract_sheet_blocks_for_sheets([integer()]) :: :ok | {:error, term()}
+  def extract_sheet_blocks_for_sheets([]), do: :ok
+
+  def extract_sheet_blocks_for_sheets(sheet_ids) do
+    case sheet_project_id(List.first(sheet_ids)) do
+      nil ->
+        :ok
+
+      project_id ->
+        project_id
+        |> with_inventory_lock(fn ->
+          from(block in Block, where: block.sheet_id in ^sheet_ids)
+          |> Repo.all()
+          |> Enum.each(&reconcile_block(project_id, &1.id))
+
+          :ok
+        end)
+        |> normalize_lock_result()
+    end
   end
 
   @spec extract_block_tree(integer()) :: :ok
@@ -348,6 +388,18 @@ defmodule Storyarn.Localization.LocalizableWords do
       fun.()
     end)
   end
+
+  defp with_source_lock(project_id, source_namespace, source_id, fun) when is_function(fun, 0) do
+    Repo.transaction(fn ->
+      Repo.query!("SELECT pg_advisory_xact_lock_shared($1::bigint)", [@inventory_lock_namespace + project_id])
+      Repo.query!("SELECT pg_advisory_xact_lock($1::bigint)", [source_namespace + source_id])
+      fun.()
+    end)
+  end
+
+  defp normalize_lock_result({:ok, _result}), do: :ok
+  defp normalize_lock_result({:error, reason}), do: {:error, reason}
+  defp normalize_lock_result(:ok), do: :ok
 
   defp with_source_project_lock(nil, _fun), do: :ok
   defp with_source_project_lock(project_id, fun), do: with_inventory_lock(project_id, fun)

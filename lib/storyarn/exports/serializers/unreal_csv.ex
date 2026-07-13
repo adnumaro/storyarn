@@ -145,7 +145,7 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
       menu_text,
       localization_key_if_present(menu_text, ctx.node, "menu_text"),
       stage,
-      localization_key_if_present(data["stage_directions"], ctx.node, "stage_directions"),
+      localization_key_if_present(stage, ctx.node, "stage_directions"),
       0,
       if(responses == [], do: next_lines, else: ""),
       condition,

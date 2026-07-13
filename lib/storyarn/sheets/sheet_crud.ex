@@ -187,8 +187,9 @@ defmodule Storyarn.Sheets.SheetCrud do
         |> Repo.update()
 
       with {:ok, moved_sheet} <- result,
-           {:ok, _count} <- PropertyInheritance.recalculate_on_move(moved_sheet) do
-        extract_inherited_runtime_blocks(moved_sheet)
+           {:ok, %{sheet_ids: affected_sheet_ids}} <-
+             PropertyInheritance.recalculate_on_move_with_sheet_ids(moved_sheet),
+           :ok <- Localization.extract_sheet_blocks_for_sheets(affected_sheet_ids) do
         {:ok, moved_sheet}
       end
     end
@@ -240,10 +241,6 @@ defmodule Storyarn.Sheets.SheetCrud do
 
   defp get_descendant_ids(sheet_id) do
     PropertyInheritance.get_descendant_sheet_ids(sheet_id)
-  end
-
-  defp extract_inherited_runtime_blocks(sheet) do
-    Enum.each([sheet.id | get_descendant_ids(sheet.id)], &Localization.extract_sheet_blocks/1)
   end
 
   defp descendant?(potential_descendant_id, ancestor_id) do

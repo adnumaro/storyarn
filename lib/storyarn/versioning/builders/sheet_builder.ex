@@ -173,7 +173,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
   defp instantiate_sheet_snapshot(project_id, snapshot, opts) do
     now = MaterializationHelpers.now()
-    blocks = Map.get(snapshot, "blocks", [])
+    blocks = snapshot["blocks"] || []
     avatar_entries = build_avatar_entries(snapshot, project_id, now, opts)
 
     with {:ok, sheet_id} <-

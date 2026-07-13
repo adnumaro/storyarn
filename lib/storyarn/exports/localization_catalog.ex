@@ -7,6 +7,7 @@ defmodule Storyarn.Exports.LocalizationCatalog do
   alias Storyarn.Localization.LocaleCode
   alias Storyarn.Localization.RuntimeKey
   alias Storyarn.Localization.SourceContract
+  alias Storyarn.Shared.MapUtils
 
   @doc "Returns the stable key shared by engine content and external catalogs."
   @spec key(term(), term(), term()) :: String.t()
@@ -157,7 +158,7 @@ defmodule Storyarn.Exports.LocalizationCatalog do
 
       %{
         key: key(text),
-        locale: safe_locale!(attr(text, :locale_code)),
+        locale: LocaleCode.ensure_safe!(attr(text, :locale_code)),
         text: normalize_translation(attr(text, :translated_text)),
         source_type: source_type,
         source_id: source_id,
@@ -192,16 +193,5 @@ defmodule Storyarn.Exports.LocalizationCatalog do
   defp normalize_translation(nil), do: ""
   defp normalize_translation(value), do: value |> to_string() |> Helpers.strip_html()
 
-  defp safe_locale!(locale) do
-    if LocaleCode.valid?(locale),
-      do: locale,
-      else: raise(ArgumentError, "invalid localization locale for export: #{inspect(locale)}")
-  end
-
-  defp attr(record, field) do
-    case Map.fetch(record, field) do
-      {:ok, value} -> value
-      :error -> Map.get(record, to_string(field))
-    end
-  end
+  defp attr(record, field), do: MapUtils.get_flexible(record, field)
 end

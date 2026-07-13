@@ -203,8 +203,9 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
       connection_fixture(flow, dialogue, run_dialogue, %{source_pin: "response_run"})
 
       source = yarn_source(export_files(project))
-      assert source =~ "-> Fight #line:storyarn_node_#{dialogue.id}_response_fight\n    You fight."
-      assert source =~ "-> Run #line:storyarn_node_#{dialogue.id}_response_run\n    You run."
+      assert [_, dialogue_line_id] = Regex.run(~r/Pick a path\. #line:(\S+)/, source)
+      assert source =~ "-> Fight #line:#{dialogue_line_id}_response_fight\n    You fight."
+      assert source =~ "-> Run #line:#{dialogue_line_id}_response_run\n    You run."
 
       assert YarnCompiler.valid?(source),
              "ysc rejected choice branches:\n#{inspect(YarnCompiler.validate(source))}"

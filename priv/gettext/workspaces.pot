@@ -11,33 +11,33 @@
 msgid ""
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:176
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:175
 #, elixir-autogen, elixir-format
 msgid "Cannot change the owner's role."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:206
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:205
 #, elixir-autogen, elixir-format
 msgid "Cannot remove the workspace owner."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:150
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:159
 #, elixir-autogen, elixir-format
 msgid "Failed to delete workspace."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:179
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:178
 #, elixir-autogen, elixir-format
 msgid "Failed to update role."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:159
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:189
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:158
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:188
 #, elixir-autogen, elixir-format
 msgid "Member not found."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:201
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:200
 #, elixir-autogen, elixir-format
 msgid "Member removed."
 msgstr ""
@@ -47,42 +47,42 @@ msgstr ""
 msgid "New Workspace"
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:86
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:85
 #, elixir-autogen, elixir-format
 msgid "Only the workspace owner can change member roles."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:157
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:166
 #, elixir-autogen, elixir-format
 msgid "Only the workspace owner can delete the workspace."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:100
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:99
 #, elixir-autogen, elixir-format
 msgid "Only the workspace owner can remove members."
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/show.ex:97
+#: lib/storyarn_web/live/workspace_live/show.ex:111
 #, elixir-autogen, elixir-format
 msgid "Project created successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:171
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:170
 #, elixir-autogen, elixir-format
 msgid "Role updated successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:60
+#: lib/storyarn_web/live/workspace_live/invitation.ex:77
 #, elixir-autogen, elixir-format
 msgid "This invitation has already been accepted."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:22
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:21
 #, elixir-autogen, elixir-format
 msgid "Workspace Members"
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:21
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:25
 #, elixir-autogen, elixir-format
 msgid "Workspace Settings"
 msgstr ""
@@ -92,50 +92,54 @@ msgstr ""
 msgid "Workspace created successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:146
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:155
 #, elixir-autogen, elixir-format
 msgid "Workspace deleted."
 msgstr ""
 
 #: lib/storyarn_web/live/hooks/workspace_scope.ex:58
+#: lib/storyarn_web/live/project_live/form.ex:80
+#: lib/storyarn_web/live/workspace_live/show.ex:120
 #, elixir-autogen, elixir-format
 msgid "Workspace not found."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:83
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:87
 #, elixir-autogen, elixir-format
 msgid "Workspace updated successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:41
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:29
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:31
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:40
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:33
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:30
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to manage this workspace."
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:69
+#: lib/storyarn_web/live/workspace_live/invitation.ex:86
 #, elixir-autogen, elixir-format
 msgid "You're already a member of this workspace."
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:47
+#: lib/storyarn_web/live/workspace_live/invitation.ex:64
 #, elixir-autogen, elixir-format
 msgid "Invitation accepted! Log in with %{email} to get started."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:144
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:143
 #, elixir-autogen, elixir-format
 msgid "Invitation request sent. An admin will review it shortly."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:149
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:148
 #, elixir-autogen, elixir-format
 msgid "Invalid role."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/form.ex:75
-#: lib/storyarn_web/live/workspace_live/show.ex:103
+#: lib/storyarn_web/live/project_live/form.ex:77
+#: lib/storyarn_web/live/template_live/show.ex:436
+#: lib/storyarn_web/live/workspace_live/show.ex:117
+#: lib/storyarn_web/live/workspace_live/show.ex:156
 #, elixir-autogen, elixir-format
 msgid "Project limit reached for your plan"
 msgstr ""
@@ -145,78 +149,99 @@ msgstr ""
 msgid "You have reached the workspace limit for your plan."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:130
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:139
 #, elixir-autogen, elixir-format
 msgid "Banner removed successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:108
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:117
 #, elixir-autogen, elixir-format
 msgid "Banner uploaded successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:115
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:124
 #, elixir-autogen, elixir-format
 msgid "Invalid file data or upload failed."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:183
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:182
 #, elixir-autogen, elixir-format
 msgid "%{count} day ago"
 msgid_plural "%{count} days ago"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:180
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:179
 #, elixir-autogen, elixir-format
 msgid "%{count} hour ago"
 msgid_plural "%{count} hours ago"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:177
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:176
 #, elixir-autogen, elixir-format
 msgid "%{count} minute ago"
 msgid_plural "%{count} minutes ago"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:77
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:76
 #, elixir-autogen, elixir-format
 msgid "Deleted %{time_ago}"
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:27
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:26
 #, elixir-autogen, elixir-format
 msgid "Deleted Projects"
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:158
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:157
 #, elixir-autogen, elixir-format
 msgid "Project recovered as '%{name}'"
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:166
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:165
 #, elixir-autogen, elixir-format
 msgid "Recovery failed: %{reason}"
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:137
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:136
 #, elixir-autogen, elixir-format
 msgid "Recovery started. This may take a moment..."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:144
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:143
 #, elixir-autogen, elixir-format
 msgid "Workspace project limit reached. Upgrade your plan to recover this project."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:80
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:79
 #, elixir-autogen, elixir-format
 msgid "by %{email}"
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:174
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:173
 #, elixir-autogen, elixir-format
 msgid "just now"
+msgstr ""
+
+#: lib/storyarn_web/live/workspace_live/invitation.ex:103
+#, elixir-autogen, elixir-format
+msgid "Create a password for %{email} to accept your invitation."
+msgstr ""
+
+#: lib/storyarn_web/live/template_live/show.ex:343
+#, elixir-autogen, elixir-format
+msgid "Workspace"
+msgstr ""
+
+#: lib/storyarn_web/live/template_live/index.ex:52
+#, elixir-autogen, elixir-format
+msgid "Workspaces"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/form.ex:87
+#: lib/storyarn_web/live/workspace_live/show.ex:127
+#, elixir-autogen, elixir-format
+msgid "You don't have permission to create projects in this workspace."
 msgstr ""

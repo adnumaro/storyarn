@@ -11,16 +11,6 @@
 msgid ""
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/profile.ex:127
-#, elixir-autogen, elixir-format
-msgid "A link to confirm your email change has been sent to the new address."
-msgstr ""
-
-#: lib/storyarn_web/live/settings_live/connections.ex:19
-#, elixir-autogen, elixir-format
-msgid "Connected Accounts"
-msgstr ""
-
 #: lib/storyarn_web/live/settings_live/profile.ex:23
 #, elixir-autogen, elixir-format
 msgid "Email change link is invalid or it has expired."
@@ -31,17 +21,17 @@ msgstr ""
 msgid "Email changed successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/profile.ex:38
+#: lib/storyarn_web/live/settings_live/profile.ex:37
 #, elixir-autogen, elixir-format
 msgid "Profile Settings"
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/profile.ex:96
+#: lib/storyarn_web/live/settings_live/profile.ex:93
 #, elixir-autogen, elixir-format
 msgid "Profile updated successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/security.ex:19
+#: lib/storyarn_web/live/settings_live/security.ex:18
 #, elixir-autogen, elixir-format
 msgid "Security Settings"
 msgstr ""

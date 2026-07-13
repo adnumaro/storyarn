@@ -69,8 +69,13 @@ defmodule Storyarn.Localization do
   defdelegate get_target_languages(project_id), to: LanguageCrud
 
   @doc "Adds a new language to a project."
-  @spec add_language(Project.t(), attrs()) :: {:ok, project_language()} | {:error, changeset()}
+  @spec add_language(Project.t(), attrs()) :: {:ok, project_language()} | {:error, term()}
   defdelegate add_language(project, attrs), to: LanguageCrud
+
+  @doc "Adds a language and reports how many localization rows were reconciled."
+  @spec add_language_with_count(Project.t(), attrs()) ::
+          {:ok, %{language: project_language(), extracted_count: non_neg_integer()}} | {:error, term()}
+  defdelegate add_language_with_count(project, attrs), to: LanguageCrud
 
   @doc "Updates a project language."
   @spec update_language(project_language(), attrs()) ::
@@ -194,6 +199,10 @@ defmodule Storyarn.Localization do
   @doc "Extracts runtime texts for every active block in a sheet."
   @spec extract_sheet_blocks(id()) :: :ok
   defdelegate extract_sheet_blocks(sheet_id), to: TextExtractor
+
+  @doc "Extracts runtime texts for blocks in several sheets under one inventory lock."
+  @spec extract_sheet_blocks_for_sheets([id()]) :: :ok | {:error, term()}
+  defdelegate extract_sheet_blocks_for_sheets(sheet_ids), to: TextExtractor
 
   @doc "Extracts runtime texts for a block definition and its active inherited instances."
   @spec extract_block_tree(id()) :: :ok

@@ -88,6 +88,7 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodec do
       reviewed_by_id = valid_id(row["reviewed_by_id"], context.users)
       speaker_sheet_id = valid_id(row["speaker_sheet_id"], context.sheets)
       status = normalize_status(row)
+      archived_at = parse_datetime(row["archived_at"])
 
       [
         %{
@@ -114,8 +115,8 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodec do
           last_reviewed_at: parse_datetime(row["last_reviewed_at"]),
           translated_by_id: translated_by_id,
           reviewed_by_id: reviewed_by_id,
-          archived_at: nil,
-          archive_reason: nil,
+          archived_at: archived_at,
+          archive_reason: normalize_archive_reason(row["archive_reason"], archived_at),
           lock_version: 1,
           inserted_at: now,
           updated_at: now
@@ -181,6 +182,11 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodec do
   defp normalize_vo_status(status, true, _asset_id) when status in ~w(none needed recorded approved), do: status
   defp normalize_vo_status(_status, true, _asset_id), do: "none"
 
+  defp normalize_archive_reason(reason, %DateTime{})
+       when reason in ~w(source_deleted source_field_removed source_not_runtime version_replaced), do: reason
+
+  defp normalize_archive_reason(_reason, _archived_at), do: nil
+
   defp valid_id(nil, _valid_ids), do: nil
   defp valid_id(id, valid_ids), do: if(MapSet.member?(valid_ids, id), do: id)
 
@@ -220,7 +226,9 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodec do
       "last_translated_at" => text.last_translated_at,
       "last_reviewed_at" => text.last_reviewed_at,
       "translated_by_id" => text.translated_by_id,
-      "reviewed_by_id" => text.reviewed_by_id
+      "reviewed_by_id" => text.reviewed_by_id,
+      "archived_at" => text.archived_at,
+      "archive_reason" => text.archive_reason
     }
   end
 end

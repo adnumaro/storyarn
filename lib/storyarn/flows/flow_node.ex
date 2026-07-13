@@ -30,7 +30,6 @@ defmodule Storyarn.Flows.FlowNode do
   use Ecto.Schema
 
   import Ecto.Changeset
-  import Ecto.Query, warn: false
 
   alias Ecto.Association.NotLoaded
   alias Storyarn.Flows.Flow
@@ -43,7 +42,6 @@ defmodule Storyarn.Flows.FlowNode do
 
   @node_types ~w(annotation dialogue hub condition instruction jump entry exit subflow sequence)
   @valid_sources ~w(manual screenplay_sync)
-  @localization_id_lock_namespace 4_717_000_000_000
 
   @type node_type ::
           :annotation
@@ -116,7 +114,7 @@ defmodule Storyarn.Flows.FlowNode do
     |> validate_inclusion(:type, @node_types)
     |> validate_inclusion(:source, @valid_sources)
     |> validate_dialogue_runtime_ids()
-    |> prepare_changes(&validate_unique_dialogue_localization_id/1)
+    |> dialogue_localization_id_constraint()
     |> foreign_key_constraint(:flow_id)
     |> foreign_key_constraint(:parent_id)
   end
@@ -129,7 +127,7 @@ defmodule Storyarn.Flows.FlowNode do
     |> validate_inclusion(:type, @node_types)
     |> validate_inclusion(:source, @valid_sources)
     |> validate_dialogue_runtime_ids()
-    |> prepare_changes(&validate_unique_dialogue_localization_id/1)
+    |> dialogue_localization_id_constraint()
     |> foreign_key_constraint(:flow_id)
     |> foreign_key_constraint(:parent_id)
   end
@@ -145,7 +143,7 @@ defmodule Storyarn.Flows.FlowNode do
     |> validate_required([:type])
     |> validate_inclusion(:type, @node_types)
     |> validate_dialogue_runtime_ids()
-    |> prepare_changes(&validate_unique_dialogue_localization_id/1)
+    |> dialogue_localization_id_constraint()
     |> foreign_key_constraint(:parent_id)
   end
 
@@ -183,7 +181,7 @@ defmodule Storyarn.Flows.FlowNode do
     node
     |> cast(attrs, [:data])
     |> validate_dialogue_runtime_ids()
-    |> prepare_changes(&validate_unique_dialogue_localization_id/1)
+    |> dialogue_localization_id_constraint()
   end
 
   @doc """
@@ -200,7 +198,7 @@ defmodule Storyarn.Flows.FlowNode do
     node
     |> change(deleted_at: nil)
     |> validate_dialogue_runtime_ids()
-    |> prepare_changes(&validate_unique_dialogue_localization_id/1)
+    |> dialogue_localization_id_constraint()
   end
 
   defp ensure_dialogue_runtime_ids(attrs, node) when is_map(attrs) do
@@ -301,50 +299,12 @@ defmodule Storyarn.Flows.FlowNode do
     end
   end
 
-  defp validate_unique_dialogue_localization_id(changeset) do
-    localization_id = changeset |> get_field(:data, %{}) |> Map.get("localization_id")
-
-    if get_field(changeset, :type) == "dialogue" and RuntimeKey.valid_dialogue_id?(localization_id) do
-      project_id =
-        changeset.repo.one(
-          from(flow in Flow,
-            where: flow.id == ^get_field(changeset, :flow_id),
-            select: flow.project_id
-          )
-        )
-
-      if project_id do
-        changeset.repo.query!("SELECT pg_advisory_xact_lock($1::bigint)", [
-          @localization_id_lock_namespace + project_id
-        ])
-      end
-
-      if project_id && duplicate_localization_id?(changeset, project_id, localization_id) do
-        add_error(changeset, :data, "localization_id must be unique within the project")
-      else
-        changeset
-      end
-    else
-      changeset
-    end
+  defp dialogue_localization_id_constraint(changeset) do
+    unique_constraint(changeset, :data,
+      name: :flow_nodes_dialogue_localization_id_unique,
+      message: "localization_id must be unique within the project"
+    )
   end
-
-  defp duplicate_localization_id?(changeset, project_id, localization_id) do
-    query =
-      from(node in __MODULE__,
-        join: flow in Flow,
-        on: flow.id == node.flow_id,
-        where:
-          flow.project_id == ^project_id and node.type == "dialogue" and
-            fragment("?->>'localization_id' = ?", node.data, ^localization_id)
-      )
-
-    query = exclude_current_node(query, get_field(changeset, :id))
-    changeset.repo.exists?(query)
-  end
-
-  defp exclude_current_node(query, nil), do: query
-  defp exclude_current_node(query, node_id), do: where(query, [node], node.id != ^node_id)
 
   defp attr(attrs, field), do: Map.get(attrs, field, Map.get(attrs, to_string(field)))
 
