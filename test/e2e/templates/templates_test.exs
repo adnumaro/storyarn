@@ -6,6 +6,7 @@ defmodule StoryarnWeb.E2E.TemplatesTest do
   """
 
   use PhoenixTest.Playwright.Case, async: false
+  use Oban.Testing, repo: Storyarn.Repo
 
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
@@ -13,7 +14,9 @@ defmodule StoryarnWeb.E2E.TemplatesTest do
   alias Storyarn.Accounts
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates
+  alias Storyarn.ProjectTemplates.ProjectTemplateInstall
   alias Storyarn.Repo
+  alias Storyarn.Workers.InstallProjectTemplateWorker
 
   @moduletag :e2e
 
@@ -35,13 +38,35 @@ defmodule StoryarnWeb.E2E.TemplatesTest do
         description: "Browser install fixture"
       })
 
-    conn
-    |> authenticate(user)
-    |> visit("/templates/#{template.id}")
-    |> assert_has("#template-install-form")
-    |> assert_has("#template-install-version")
-    |> click_button("Create from template")
-    |> assert_path("/workspaces/*/projects/*")
+    session =
+      conn
+      |> authenticate(user)
+      |> visit("/templates/#{template.id}")
+      |> assert_has("body .phx-connected")
+      |> assert_has("#template-install-form")
+      |> assert_has("#template-install-version")
+      |> click_button("Create from template")
+      |> assert_has("#template-active-installations")
+
+    installation =
+      Repo.get_by!(ProjectTemplateInstall,
+        user_id: user.id,
+        project_template_version_id: template.current_version_id
+      )
+
+    assert_enqueued(
+      worker: InstallProjectTemplateWorker,
+      args: %{"installation_id" => installation.id}
+    )
+
+    assert_has(session, "#template-active-installation-#{installation.id}")
+
+    assert :ok =
+             perform_job(InstallProjectTemplateWorker, %{
+               "installation_id" => installation.id
+             })
+
+    assert_path(session, "/workspaces/*/projects/*")
 
     installed_project =
       Repo.get_by!(Project, owner_id: user.id, created_from_template_version_id: template.current_version_id)
