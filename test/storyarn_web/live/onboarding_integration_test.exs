@@ -12,10 +12,7 @@ defmodule StoryarnWeb.OnboardingIntegrationTest do
   alias Storyarn.Repo
 
   setup %{conn: conn} do
-    user =
-      user_fixture()
-      |> Ecto.Changeset.change(onboarding_started_at: DateTime.utc_now(:second))
-      |> Repo.update!()
+    user = user_fixture()
 
     %{conn: log_in_user(conn, user), user: user}
   end

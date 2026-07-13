@@ -8,6 +8,8 @@
       "back": "Atrás",
       "next": "Siguiente",
       "got_it": "Entendido",
+      "dont_show_again": "No volver a mostrar este tutorial",
+      "dont_show_again_hint": "Déjalo sin marcar para volver a verlo en una futura sesión del navegador.",
       "view_tutorial": "Ver este tutorial"
     },
     "guides": {

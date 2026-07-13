@@ -10,7 +10,7 @@ defmodule StoryarnWeb.Live.Hooks.Onboarding do
   alias Storyarn.Onboarding
   alias Storyarn.Onboarding.TutorialProgress
 
-  @interaction_actions ~w(opened snoozed docs_opened)
+  @interaction_actions ~w(opened snoozed finished docs_opened)
   @interaction_sources ~w(auto manual settings)
 
   def on_mount(:load_onboarding, _params, _session, socket) do

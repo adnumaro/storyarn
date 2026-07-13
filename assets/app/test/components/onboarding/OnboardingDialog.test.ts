@@ -80,11 +80,38 @@ describe("OnboardingDialog", () => {
     );
   });
 
-  it("completes the tutorial after the final step", async () => {
+  it("finishes the tutorial for the session without opting out", async () => {
     const { live, wrapper } = mountDialog();
 
     wrapper.vm.openTutorial();
     await nextTick();
+    await wrapper.get('[data-testid="onboarding-next"]').trigger("click");
+    await wrapper.get('[data-testid="onboarding-next"]').trigger("click");
+    await wrapper.get('[data-testid="onboarding-finish"]').trigger("click");
+
+    expect(window.sessionStorage.getItem(sessionKey("flows"))).toBe("1");
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "onboarding_tutorial_interaction",
+      {
+        tutorial: "flows",
+        action: "finished",
+        source: "manual",
+      },
+      undefined,
+    );
+    expect(live.pushEvent).not.toHaveBeenCalledWith(
+      "complete_onboarding_tutorial",
+      expect.anything(),
+      undefined,
+    );
+  });
+
+  it("opts out permanently only when the checkbox is selected", async () => {
+    const { live, wrapper } = mountDialog();
+
+    wrapper.vm.openTutorial();
+    await nextTick();
+    await wrapper.get('[data-testid="onboarding-dont-show-again"]').trigger("click");
     await wrapper.get('[data-testid="onboarding-next"]').trigger("click");
     await wrapper.get('[data-testid="onboarding-next"]').trigger("click");
     await wrapper.get('[data-testid="onboarding-finish"]').trigger("click");
@@ -126,6 +153,7 @@ describe("OnboardingDialog", () => {
 
     wrapper.vm.openTutorial();
     await nextTick();
+    await wrapper.get('[data-testid="onboarding-dont-show-again"]').trigger("click");
     await wrapper.get('[data-testid="onboarding-next"]').trigger("click");
     await wrapper.get('[data-testid="onboarding-next"]').trigger("click");
     await wrapper.get('[data-testid="onboarding-finish"]').trigger("click");

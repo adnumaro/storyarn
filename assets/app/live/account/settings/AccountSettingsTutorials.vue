@@ -14,7 +14,7 @@ import {
 
 interface TutorialItem {
   key: string;
-  state: "inactive" | "pending" | "completed";
+  state: "pending" | "completed";
 }
 
 const { tutorials = [] } = defineProps<{ tutorials?: TutorialItem[] }>();
@@ -46,8 +46,7 @@ function docsUrl(key: string): string {
 
 function stateIcon(state: TutorialItem["state"]) {
   if (state === "completed") return CheckCircle2;
-  if (state === "pending") return Clock3;
-  return BookOpen;
+  return Clock3;
 }
 </script>
 

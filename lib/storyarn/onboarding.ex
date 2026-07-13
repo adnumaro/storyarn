@@ -2,9 +2,9 @@ defmodule Storyarn.Onboarding do
   @moduledoc """
   Context for contextual, per-user onboarding tutorials.
 
-  New users enter the automatic onboarding cohort when they complete
-  registration. Existing users remain inactive until they explicitly restart a
-  tutorial from account settings.
+  Every authenticated user starts with each tutorial pending. A tutorial only
+  stops opening automatically after the user explicitly chooses not to see it
+  again. Account settings can restart any hidden tutorial.
   """
 
   import Ecto.Query, warn: false
@@ -24,9 +24,8 @@ defmodule Storyarn.Onboarding do
     export: 1
   }
 
-  @type tutorial_state :: :inactive | :pending | :completed
+  @type tutorial_state :: :pending | :completed
   @type summary :: %{
-          eligible: boolean(),
           guides: %{String.t() => %{state: tutorial_state(), version: pos_integer()}}
         }
 
@@ -47,17 +46,15 @@ defmodule Storyarn.Onboarding do
       |> Repo.all()
       |> Map.new(&{&1.tutorial, &1})
 
-    eligible = not is_nil(user.onboarding_started_at)
-
     guides =
       Map.new(tutorials(), fn tutorial ->
         progress = Map.get(progress_by_tutorial, tutorial)
-        state = tutorial_state(progress, eligible, guide_version(tutorial))
+        state = tutorial_state(progress, guide_version(tutorial))
 
         {Atom.to_string(tutorial), %{state: state, version: guide_version(tutorial)}}
       end)
 
-    %{eligible: eligible, guides: guides}
+    %{guides: guides}
   end
 
   @doc "Marks a tutorial as completed for the current user."
@@ -70,7 +67,7 @@ defmodule Storyarn.Onboarding do
     end
   end
 
-  @doc "Restarts one tutorial without enabling the remaining inactive guides."
+  @doc "Restarts one tutorial without changing the remaining guides."
   @spec restart_tutorial(Scope.t(), atom() | String.t()) ::
           {:ok, TutorialProgress.t()} | {:error, :invalid_tutorial | Ecto.Changeset.t()}
   def restart_tutorial(%Scope{user: %User{} = user}, tutorial) do
@@ -97,12 +94,11 @@ defmodule Storyarn.Onboarding do
     end
   end
 
-  defp tutorial_state(%TutorialProgress{completed_at: %DateTime{}, guide_version: version}, _eligible, current_version)
+  defp tutorial_state(%TutorialProgress{completed_at: %DateTime{}, guide_version: version}, current_version)
        when version == current_version, do: :completed
 
-  defp tutorial_state(%TutorialProgress{}, _eligible, _current_version), do: :pending
-  defp tutorial_state(nil, true, _current_version), do: :pending
-  defp tutorial_state(nil, false, _current_version), do: :inactive
+  defp tutorial_state(%TutorialProgress{}, _current_version), do: :pending
+  defp tutorial_state(nil, _current_version), do: :pending
 
   defp restart_tutorials(_user, [], progress), do: Enum.reverse(progress)
 

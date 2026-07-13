@@ -9,7 +9,6 @@ defmodule Storyarn.Accounts.Registration do
   alias Storyarn.Accounts.UserToken
   alias Storyarn.Analytics
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Workspaces
 
   @doc """
@@ -99,7 +98,6 @@ defmodule Storyarn.Accounts.Registration do
           user
           |> User.confirm_changeset()
           |> User.password_changeset(attrs, hash_password: true)
-          |> Ecto.Changeset.put_change(:onboarding_started_at, TimeHelpers.now())
 
         with {1, nil} <- delete_registration_invite_token(token_record, user),
              {:ok, updated_user} <- Repo.update(user_changeset) do
