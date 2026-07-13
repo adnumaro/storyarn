@@ -218,8 +218,24 @@
     },
     "export": {
       "title": "Exportar",
+      "workspace_title": "Prepara la exportación",
+      "workspace_description": "Crea un paquete listo para el motor con solo el contenido que necesita tu build.",
+      "format_count": "{count} destinos disponibles",
       "format": "Formato",
+      "choose_format": "Elige un destino",
+      "choose_format_description": "Cada formato adapta el proyecto a un runtime narrativo específico.",
+      "format_descriptions": {
+        "ink": "Scripts narrativos para el runtime de código abierto de Inkle.",
+        "yarn": "Archivos de diálogo listos para proyectos con Yarn Spinner.",
+        "unity": "Datos de conversaciones estructurados para Unity Dialogue System.",
+        "godot": "Líneas temporales de Dialogic listas para añadir a Godot.",
+        "unreal": "Tablas de diálogo portables para Unreal Engine.",
+        "articy": "Datos XML para pipelines de producción con articy:draft."
+      },
       "content": "Contenido",
+      "content_description": "Incluye las áreas del proyecto que debe recibir esta build.",
+      "selected_count": "{count} seleccionadas",
+      "section_count": "{count} secciones",
       "sections": {
         "sheets": "Fichas",
         "flows": "Flujos",
@@ -227,18 +243,64 @@
         "screenplays": "Guiones",
         "localization": "Localización"
       },
+      "section_descriptions": {
+        "sheets": "Personajes, objetos y datos estructurados.",
+        "flows": "Grafos de diálogo, decisiones y lógica.",
+        "scenes": "Escenas interactivas y sus conexiones.",
+        "screenplays": "Guiones y elementos de screenplay.",
+        "localization": "Idiomas, traducciones y entradas del glosario."
+      },
+      "not_supported": "No disponible",
+      "select_content_warning": "Selecciona al menos un tipo de contenido compatible para crear la exportación.",
+      "output_settings": "Ajustes de salida",
+      "output_settings_description": "Controla cómo se genera y empaqueta el resultado.",
       "assets": "Recursos",
-      "asset_references": "Solo referencias (URLs en la salida)",
-      "asset_embedded": "Incrustados (Base64 — archivo más grande)",
-      "asset_bundled": "Empaquetados (ZIP con carpeta de recursos)",
+      "assets_description": "Elige cómo viajan las imágenes, audios y otros archivos vinculados.",
+      "asset_modes": {
+        "references": {
+          "title": "Referencias",
+          "description": "Mantiene las URLs para crear el paquete más ligero."
+        },
+        "embedded": {
+          "title": "Incrustados",
+          "description": "Guarda los archivos como Base64 dentro de los datos."
+        },
+        "bundled": {
+          "title": "Empaquetados",
+          "description": "Añade los originales en una carpeta de recursos separada."
+        }
+      },
       "options": "Opciones",
       "validate_before": "Validar antes de exportar",
+      "validate_before_description": "Detiene la descarga si el proyecto contiene problemas bloqueantes.",
       "pretty_print": "Formato legible",
+      "pretty_print_description": "Indenta el JSON generado para facilitar su revisión y versionado.",
+      "summary": "Resumen de exportación",
+      "download_file": "Archivo de descarga",
+      "entities": "Elementos",
+      "preflight": "Comprobación previa",
+      "enabled": "Activada",
+      "disabled": "Desactivada",
       "validate": "Validar",
+      "validating": "Validando…",
       "download": "Descargar .{ext}",
+      "download_note": "El proyecto no se modifica. La exportación crea un archivo local nuevo.",
       "passed": "Correcto",
       "warnings": "Advertencias",
       "errors": "Errores",
+      "validation_titles": {
+        "passed": "Todo listo para exportar",
+        "warnings": "La exportación está disponible con advertencias",
+        "errors": "Resuelve los problemas bloqueantes"
+      },
+      "validation_descriptions": {
+        "passed": "El contenido seleccionado ha superado todas las comprobaciones.",
+        "warnings": "Revisa {warnings} advertencias antes de compartir esta build.",
+        "errors": "Corrige {errors} errores y revisa {warnings} advertencias antes de exportar."
+      },
+      "error_findings": "Problemas bloqueantes",
+      "warning_findings": "Advertencias",
+      "info_findings": "Información adicional",
       "no_issues": "No se encontraron problemas. El proyecto está listo para exportar."
     }
   }

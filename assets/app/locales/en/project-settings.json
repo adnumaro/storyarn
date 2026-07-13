@@ -218,8 +218,24 @@
     },
     "export": {
       "title": "Export",
+      "workspace_title": "Prepare your export",
+      "workspace_description": "Create an engine-ready package with only the content your build needs.",
+      "format_count": "{count} export targets",
       "format": "Format",
+      "choose_format": "Choose a destination",
+      "choose_format_description": "Each format adapts your project to a specific narrative runtime.",
+      "format_descriptions": {
+        "ink": "Narrative scripts for Inkle's open-source runtime.",
+        "yarn": "Dialogue files ready for Yarn Spinner projects.",
+        "unity": "Structured conversation data for Unity Dialogue System.",
+        "godot": "Dialogic timelines ready to add to a Godot project.",
+        "unreal": "Portable dialogue tables for Unreal Engine.",
+        "articy": "XML data for articy:draft production pipelines."
+      },
       "content": "Content",
+      "content_description": "Include the project areas this build should receive.",
+      "selected_count": "{count} selected",
+      "section_count": "{count} sections",
       "sections": {
         "sheets": "Sheets",
         "flows": "Flows",
@@ -227,18 +243,64 @@
         "screenplays": "Screenplays",
         "localization": "Localization"
       },
+      "section_descriptions": {
+        "sheets": "Characters, objects, and structured data.",
+        "flows": "Dialogue graphs, choices, and logic.",
+        "scenes": "Interactive scenes and their connections.",
+        "screenplays": "Scripts and screenplay elements.",
+        "localization": "Languages, translations, and glossary entries."
+      },
+      "not_supported": "Unavailable",
+      "select_content_warning": "Select at least one supported content type to create an export.",
+      "output_settings": "Output settings",
+      "output_settings_description": "Control how the generated package is assembled.",
       "assets": "Assets",
-      "asset_references": "References only (URLs in output)",
-      "asset_embedded": "Embedded (Base64 — larger file)",
-      "asset_bundled": "Bundled (ZIP with assets folder)",
+      "assets_description": "Choose how linked images, audio, and other files travel with the export.",
+      "asset_modes": {
+        "references": {
+          "title": "References",
+          "description": "Keep URLs in the output for the smallest package."
+        },
+        "embedded": {
+          "title": "Embedded",
+          "description": "Store files as Base64 inside the generated data."
+        },
+        "bundled": {
+          "title": "Bundled",
+          "description": "Add original files in a separate assets folder."
+        }
+      },
       "options": "Options",
       "validate_before": "Validate before export",
+      "validate_before_description": "Stop the download when blocking project issues are found.",
       "pretty_print": "Pretty print output",
+      "pretty_print_description": "Indent generated JSON so it is easier to inspect and version.",
+      "summary": "Export summary",
+      "download_file": "Download file",
+      "entities": "Items",
+      "preflight": "Preflight check",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
       "validate": "Validate",
+      "validating": "Validating…",
       "download": "Download .{ext}",
+      "download_note": "Your project is not modified. Exporting creates a new local file.",
       "passed": "Passed",
       "warnings": "Warnings",
       "errors": "Errors",
+      "validation_titles": {
+        "passed": "Ready to export",
+        "warnings": "Export is available with warnings",
+        "errors": "Resolve blocking issues"
+      },
+      "validation_descriptions": {
+        "passed": "The selected content passed every preflight check.",
+        "warnings": "Review {warnings} warnings before sharing this build.",
+        "errors": "Fix {errors} errors and review {warnings} warnings before exporting."
+      },
+      "error_findings": "Blocking issues",
+      "warning_findings": "Warnings",
+      "info_findings": "Additional information",
       "no_issues": "No issues found. Project is ready for export."
     }
   }
