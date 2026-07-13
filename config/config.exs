@@ -52,14 +52,15 @@ config :posthog,
 config :storyarn, Oban,
   engine: Oban.Engines.Basic,
   repo: Storyarn.Repo,
-  queues: [default: 10, snapshots: 2, templates: 1, localization: 2],
+  queues: [default: 10, snapshots: 2, templates: 1, template_installs: 2, localization: 2],
   plugins: [
     {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},
     {Oban.Plugins.Cron,
      crontab: [
        {"0 3 * * *", Storyarn.Workers.DailySnapshotWorker},
        {"0 4 * * *", Storyarn.Workers.SnapshotRetentionWorker},
-       {"0 * * * *", Storyarn.Workers.TrashRetentionWorker}
+       {"0 * * * *", Storyarn.Workers.TrashRetentionWorker},
+       {"* * * * *", Storyarn.Workers.RetryStorageCleanupRequestsWorker}
      ]}
   ]
 

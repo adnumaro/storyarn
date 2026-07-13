@@ -1136,8 +1136,12 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
         nil
 
       asset_mode ->
-        AssetHashResolver.resolve_asset_fk(asset_id, snapshot, project_id, Keyword.get(opts, :user_id),
-          asset_mode: asset_mode
+        AssetHashResolver.resolve_asset_fk(
+          asset_id,
+          snapshot,
+          project_id,
+          Keyword.get(opts, :user_id),
+          MaterializationHelpers.asset_resolution_opts(opts, asset_mode)
         )
     end
   end

@@ -114,6 +114,16 @@ defmodule StoryarnWeb.TelemetryTest do
       assert Enum.all?(db_metrics, &(&1.unit == :millisecond))
     end
 
+    # -- Project template installation metrics --
+
+    test "includes template installation throughput and duration metrics" do
+      names = metric_names()
+
+      assert [:storyarn, :project_template, :installation, :requested, :count] in names
+      assert [:storyarn, :project_template, :installation, :stop, :count] in names
+      assert [:storyarn, :project_template, :installation, :stop, :duration] in names
+    end
+
     # -- VM metrics --
 
     test "includes VM memory metric with kilobyte unit" do
@@ -141,8 +151,8 @@ defmodule StoryarnWeb.TelemetryTest do
     test "defines exactly the expected number of metrics" do
       metrics = Telemetry.metrics()
 
-      # 9 Phoenix (endpoint 2 + router 3 + socket 2 + channel 2) + 5 DB + 4 VM = 18
-      assert length(metrics) == 18
+      # 9 Phoenix + 5 DB + 3 template installation + 4 VM = 21
+      assert length(metrics) == 21
     end
   end
 

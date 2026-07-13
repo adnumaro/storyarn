@@ -95,6 +95,11 @@ defmodule Storyarn.Projects do
           | {:error, :limit_reached, map()}
   defdelegate create_project(scope, attrs), to: ProjectCrud
 
+  @doc false
+  @spec lock_and_check_workspace_capacity(integer()) ::
+          :ok | {:error, :not_found} | {:error, :limit_reached, map()}
+  defdelegate lock_and_check_workspace_capacity(workspace_id), to: ProjectCrud
+
   @doc """
   Returns a changeset for tracking project changes.
   """

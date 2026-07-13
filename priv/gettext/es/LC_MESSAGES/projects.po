@@ -492,3 +492,61 @@ msgstr "set_if_unset emite un set incondicional en Dialogic (no hay sintaxis de 
 #, elixir-autogen, elixir-format
 msgid "set_if_unset emits unconditional set in Yarn (no null type)"
 msgstr "set_if_unset emite un set incondicional en Yarn (no hay tipo null)"
+
+#: lib/storyarn_web/live/template_live/show.ex
+#: lib/storyarn_web/live/workspace_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Template installation started."
+msgstr "La instalación de la template ha comenzado."
+
+#: lib/storyarn_web/live/template_live/show.ex
+#: lib/storyarn_web/live/workspace_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Your project is ready."
+msgstr "Tu proyecto está listo."
+
+#: lib/storyarn_web/live/template_live/show.ex
+#: lib/storyarn_web/live/workspace_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Template installation failed. Reference: %{reference}"
+msgstr "La instalación de la template ha fallado. Referencia: %{reference}"
+
+#: lib/storyarn_web/live/template_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Starting installation…"
+msgstr "Iniciando instalación…"
+
+#: lib/storyarn_web/live/template_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Installation in progress"
+msgstr "Instalación en curso"
+
+#: lib/storyarn_web/live/template_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Installation reference: %{reference}"
+msgstr "Referencia de instalación: %{reference}"
+
+#: lib/storyarn_web/live/template_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Waiting to start…"
+msgstr "Esperando para comenzar…"
+
+#: lib/storyarn_web/live/template_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Verifying template integrity…"
+msgstr "Verificando la integridad de la template…"
+
+#: lib/storyarn_web/live/template_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Copying project content and assets…"
+msgstr "Copiando el contenido y los assets del proyecto…"
+
+#: lib/storyarn_web/live/template_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Retrying after a temporary issue…"
+msgstr "Reintentando tras un problema temporal…"
+
+#: lib/storyarn_web/live/template_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Creating project…"
+msgstr "Creando proyecto…"

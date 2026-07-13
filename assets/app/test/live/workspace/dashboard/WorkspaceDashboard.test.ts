@@ -1,5 +1,5 @@
 import { mount } from "@vue/test-utils";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import WorkspaceDashboard from "../../../../live/workspace/dashboard/WorkspaceDashboard.vue";
 import { createMockLive } from "../../../setup";
 
@@ -107,25 +107,150 @@ describe("WorkspaceDashboard", () => {
 
   it("creates a project from the selected private template", async () => {
     const { live, wrapper } = mountDashboard({
-      projectTemplates: [
-        {
-          id: 10,
-          name: "Starter Kit",
-          description: "A reusable setup",
-          visibility: "private",
-          version_number: 1,
-          entity_counts: { sheets: 2, flows: 1, scenes: 0 },
-        },
-      ],
+      templateCreation: {
+        templates: [
+          {
+            id: 10,
+            name: "Starter Kit",
+            description: "A reusable setup",
+            visibility: "private",
+            version_number: 1,
+            entity_counts: { sheets: 2, flows: 1, scenes: 0 },
+          },
+        ],
+        installations: [],
+      },
     });
 
     await wrapper.get('[data-testid="new-project-mode-private"]').trigger("click");
     await wrapper.get("#template-project-name").setValue("Starter Copy");
+    vi.mocked(live.pushEvent).mockImplementation((_event, _payload, callback) =>
+      callback?.({ status: "queued" }),
+    );
     await wrapper.get('[data-testid="create-project-from-template"]').trigger("click");
 
-    expect(live.pushEvent).toHaveBeenCalledWith("create_project_from_template", {
-      template_id: 10,
-      name: "Starter Copy",
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "create_project_from_template",
+      {
+        template_id: 10,
+        name: "Starter Copy",
+      },
+      expect.any(Function),
+    );
+    expect(wrapper.get('[data-testid="new-project-dialog"]').attributes("data-open")).toBe("false");
+  });
+
+  it("shows durable template installations in the project grid", () => {
+    const { wrapper } = mountDashboard({
+      projects: [],
+      templateCreation: {
+        templates: [],
+        installations: [
+          {
+            id: 42,
+            project_name: "Storyarn Demo",
+            status: "running",
+            stage: "materializing",
+            template_id: 10,
+            template_version_id: 11,
+          },
+        ],
+      },
     });
+
+    expect(wrapper.get('[data-testid="template-installation-42"]').text()).toContain(
+      "Storyarn Demo",
+    );
+    expect(wrapper.text()).not.toContain("No projects yet");
+  });
+
+  it("shows durable failure feedback with a safe installation reference", () => {
+    const { wrapper } = mountDashboard({
+      projects: [],
+      templateCreation: {
+        templates: [],
+        installations: [
+          {
+            id: 43,
+            project_name: "Broken Demo",
+            status: "failed",
+            stage: "failed",
+            template_id: 10,
+            template_version_id: 11,
+          },
+        ],
+      },
+    });
+
+    const feedback = wrapper.get('[data-testid="template-installation-43"]');
+    expect(feedback.text()).toContain("Broken Demo");
+    expect(feedback.text()).toContain("Creation failed");
+    expect(feedback.text()).toContain("Installation #43");
+    expect(feedback.find(".animate-spin").exists()).toBe(false);
+  });
+
+  it("allows another named project from a template that is already installing", async () => {
+    const { live, wrapper } = mountDashboard({
+      templateCreation: {
+        templates: [
+          {
+            id: 10,
+            name: "Starter Kit",
+            visibility: "private",
+            version_number: 1,
+          },
+        ],
+        installations: [
+          {
+            id: 42,
+            project_name: "First Copy",
+            status: "running",
+            stage: "materializing",
+            template_id: 10,
+            template_version_id: 11,
+          },
+        ],
+      },
+    });
+
+    await wrapper.get('[data-testid="new-project-mode-private"]').trigger("click");
+    await wrapper.get("#template-project-name").setValue("Second Copy");
+
+    const submit = wrapper.get('[data-testid="create-project-from-template"]');
+    expect(submit.attributes()).not.toHaveProperty("disabled");
+
+    await submit.trigger("click");
+
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "create_project_from_template",
+      { template_id: 10, name: "Second Copy" },
+      expect.any(Function),
+    );
+  });
+
+  it("prevents duplicate submissions while the request is pending", async () => {
+    const { live, wrapper } = mountDashboard({
+      templateCreation: {
+        templates: [
+          {
+            id: 10,
+            name: "Starter Kit",
+            visibility: "private",
+            version_number: 1,
+          },
+        ],
+        installations: [],
+      },
+    });
+
+    await wrapper.get('[data-testid="new-project-mode-private"]').trigger("click");
+    await wrapper.get('[data-testid="create-project-from-template"]').trigger("click");
+    await wrapper.get('[data-testid="create-project-from-template"]').trigger("click");
+
+    expect(live.pushEvent).toHaveBeenCalledTimes(1);
+    expect(wrapper.get('[data-testid="create-project-from-template"]').attributes()).toHaveProperty(
+      "disabled",
+    );
+    expect(wrapper.text()).toContain("Starting");
   });
 });

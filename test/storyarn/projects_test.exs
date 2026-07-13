@@ -184,6 +184,26 @@ defmodule Storyarn.ProjectsTest do
       assert project.owner_id == member.id
     end
 
+    test "create_project/2 rechecks workspace capacity immediately before inserting" do
+      user = user_fixture()
+      scope = user_scope_fixture(user)
+      workspace = workspace_fixture(user)
+
+      for name <- ["Capacity One", "Capacity Two", "Capacity Three"] do
+        project_fixture(user, %{workspace: workspace, name: name})
+      end
+
+      assert {:error, :limit_reached, %{resource: :projects_per_workspace, used: 3, limit: 3}} =
+               Projects.create_project(scope, %{
+                 name: "Over Capacity",
+                 workspace_id: workspace.id,
+                 project_type: "game",
+                 project_subtype: "rpg"
+               })
+
+      refute Repo.get_by(Project, workspace_id: workspace.id, name: "Over Capacity")
+    end
+
     test "update_project/2 updates the project" do
       user = user_fixture()
       project = project_fixture(user)
