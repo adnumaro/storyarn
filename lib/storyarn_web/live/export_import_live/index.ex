@@ -182,14 +182,23 @@ defmodule StoryarnWeb.ExportImportLive.Index do
             do: MapSet.delete(sections, section),
             else: MapSet.put(sections, section)
 
-        {:noreply, assign(socket, :sections, sections)}
+        {:noreply,
+         socket
+         |> assign(:sections, sections)
+         |> assign(:validation_result, nil)}
     end
   end
 
   def handle_event("set_asset_mode", %{"mode" => mode_str}, socket) do
     case Enum.find(@valid_asset_modes, &(to_string(&1) == mode_str)) do
-      nil -> {:noreply, socket}
-      mode -> {:noreply, assign(socket, :asset_mode, mode)}
+      nil ->
+        {:noreply, socket}
+
+      mode ->
+        {:noreply,
+         socket
+         |> assign(:asset_mode, mode)
+         |> assign(:validation_result, nil)}
     end
   end
 
@@ -201,11 +210,17 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   end
 
   def handle_event("toggle_option", %{"option" => "validate_before_export"}, socket) do
-    {:noreply, assign(socket, :validate_before_export, !socket.assigns.validate_before_export)}
+    {:noreply,
+     socket
+     |> assign(:validate_before_export, !socket.assigns.validate_before_export)
+     |> assign(:validation_result, nil)}
   end
 
   def handle_event("toggle_option", %{"option" => "pretty_print"}, socket) do
-    {:noreply, assign(socket, :pretty_print, !socket.assigns.pretty_print)}
+    {:noreply,
+     socket
+     |> assign(:pretty_print, !socket.assigns.pretty_print)
+     |> assign(:validation_result, nil)}
   end
 
   def handle_event("validate_export", _params, socket) do

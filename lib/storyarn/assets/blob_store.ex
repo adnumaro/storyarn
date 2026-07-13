@@ -11,8 +11,11 @@ defmodule Storyarn.Assets.BlobStore do
 
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.Storage
+  alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
+
+  require Logger
 
   @doc """
   Generates the storage key for a blob.
@@ -83,9 +86,9 @@ defmodule Storyarn.Assets.BlobStore do
   Uses the blob content to populate a new asset with a fresh storage key,
   while preserving the original metadata (filename, content_type, size).
   """
-  @spec create_asset_from_blob(integer(), integer() | nil, String.t(), String.t(), map()) ::
+  @spec create_asset_from_blob(integer(), integer() | nil, String.t(), String.t(), map(), keyword()) ::
           {:ok, Asset.t()} | {:error, term()}
-  def create_asset_from_blob(project_id, user_id, blob_hash, source_key, metadata) do
+  def create_asset_from_blob(project_id, user_id, blob_hash, source_key, metadata, opts \\ []) do
     ext = ext_from_content_type(metadata["content_type"])
     source_key = source_key || blob_key(project_id, blob_hash, ext)
 
@@ -115,12 +118,26 @@ defmodule Storyarn.Assets.BlobStore do
 
     changeset = restore_changeset(asset, attrs)
 
-    if changeset.valid? do
-      with :ok <- Storage.copy(source_key, dest_key) do
-        Repo.insert(changeset)
-      end
-    else
-      {:error, changeset}
+    if changeset.valid?,
+      do: copy_and_insert_asset(changeset, source_key, dest_key, opts),
+      else: {:error, changeset}
+  end
+
+  defp copy_and_insert_asset(changeset, source_key, dest_key, opts) do
+    with :ok <- Storage.copy(source_key, dest_key) do
+      track_copy(opts, dest_key)
+      insert_copied_asset(changeset, dest_key, opts)
+    end
+  end
+
+  defp insert_copied_asset(changeset, dest_key, opts) do
+    case Repo.insert(changeset) do
+      {:ok, asset} ->
+        {:ok, asset}
+
+      {:error, reason} ->
+        compensate_failed_insert(opts, dest_key)
+        {:error, reason}
     end
   end
 
@@ -129,4 +146,40 @@ defmodule Storyarn.Assets.BlobStore do
   end
 
   defp restore_changeset(asset, attrs), do: Asset.create_changeset(asset, attrs)
+
+  defp track_copy(opts, dest_key) do
+    case Keyword.get(opts, :asset_copy_tracker) do
+      reference when is_reference(reference) -> StorageCompensation.track(reference, dest_key)
+      _reference -> :ok
+    end
+  end
+
+  defp untrack_copy(opts, dest_key) do
+    case Keyword.get(opts, :asset_copy_tracker) do
+      reference when is_reference(reference) -> StorageCompensation.untrack(reference, dest_key)
+      _reference -> :ok
+    end
+  end
+
+  defp compensate_failed_insert(opts, dest_key) do
+    case Storage.delete(dest_key) do
+      :ok ->
+        untrack_copy(opts, dest_key)
+
+      {:error, reason} ->
+        Logger.warning("Could not delete asset after database insert failure error=#{safe_error(reason)}")
+        enqueue_untracked_cleanup(opts, dest_key)
+    end
+  end
+
+  defp enqueue_untracked_cleanup(opts, dest_key) do
+    case Keyword.get(opts, :asset_copy_tracker) do
+      reference when is_reference(reference) -> :ok
+      _reference -> StorageCompensation.enqueue_cleanup([dest_key])
+    end
+  end
+
+  defp safe_error(reason) when is_atom(reason), do: reason
+  defp safe_error({reason, _details}) when is_atom(reason), do: reason
+  defp safe_error(_reason), do: :unexpected_error
 end

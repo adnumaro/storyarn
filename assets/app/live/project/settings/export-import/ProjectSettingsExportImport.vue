@@ -5,6 +5,7 @@ interface FormatOption {
   format: string;
   label: string;
   localizationMode: string;
+  extension?: string;
 }
 
 interface FormatConfig {

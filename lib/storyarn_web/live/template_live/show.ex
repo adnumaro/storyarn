@@ -17,7 +17,10 @@ defmodule StoryarnWeb.TemplateLive.Show do
       {:ok, template} ->
         installable_workspaces = installable_workspaces(socket.assigns.current_scope)
 
-        if connected?(socket), do: ProjectTemplates.subscribe_template_publications(template)
+        if connected?(socket) do
+          ProjectTemplates.subscribe_template_publications(template)
+          ProjectTemplates.subscribe_user_installations(socket.assigns.current_scope)
+        end
 
         {:ok,
          socket
@@ -300,6 +303,36 @@ defmodule StoryarnWeb.TemplateLive.Show do
                 {dgettext("projects", "Create project")}
               </h2>
 
+              <div
+                :if={@active_installations != []}
+                id="template-active-installations"
+                class="mt-4 space-y-3"
+                aria-live="polite"
+              >
+                <article
+                  :for={installation <- @active_installations}
+                  id={"template-active-installation-#{installation.id}"}
+                  class="rounded-box border border-primary/30 bg-primary/5 p-4"
+                >
+                  <div class="flex items-start gap-3">
+                    <span class="loading loading-spinner loading-sm mt-0.5 text-primary"></span>
+                    <div class="min-w-0">
+                      <p class="truncate text-sm font-semibold text-base-content">
+                        {installation.project_name}
+                      </p>
+                      <p class="mt-1 text-xs text-base-content/65">
+                        {installation_stage_label(installation.stage)}
+                      </p>
+                      <p class="mt-2 text-xs text-base-content/50">
+                        {dgettext("projects", "Installation reference: %{reference}",
+                          reference: installation.id
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </article>
+              </div>
+
               <.form
                 for={@install_form}
                 id="template-install-form"
@@ -312,7 +345,7 @@ defmodule StoryarnWeb.TemplateLive.Show do
                     id="template-install-workspace"
                     name={@install_form[:workspace_id].name}
                     class="select select-bordered w-full"
-                    disabled={@installable_workspaces == []}
+                    disabled={@installable_workspaces == [] or @has_active_installation}
                   >
                     <option
                       :for={workspace <- @installable_workspaces}
@@ -330,7 +363,7 @@ defmodule StoryarnWeb.TemplateLive.Show do
                     id="template-install-version"
                     name={@install_form[:version_id].name}
                     class="select select-bordered w-full"
-                    disabled={@versions == []}
+                    disabled={@versions == [] or @has_active_installation}
                   >
                     <option
                       :for={version <- @versions}
@@ -352,6 +385,7 @@ defmodule StoryarnWeb.TemplateLive.Show do
                     class="input input-bordered w-full"
                     maxlength="100"
                     required
+                    disabled={@has_active_installation}
                   />
                 </label>
 
@@ -359,9 +393,18 @@ defmodule StoryarnWeb.TemplateLive.Show do
                   id="template-install-submit"
                   type="submit"
                   class="btn btn-primary w-full"
-                  disabled={@installable_workspaces == [] or is_nil(@current_version)}
+                  disabled={
+                    @installable_workspaces == [] or is_nil(@current_version) or
+                      @has_active_installation
+                  }
+                  phx-disable-with={dgettext("projects", "Starting installation…")}
                 >
-                  {dgettext("projects", "Create from template")}
+                  <%= if @has_active_installation do %>
+                    <span class="loading loading-spinner loading-sm"></span>
+                    {dgettext("projects", "Installation in progress")}
+                  <% else %>
+                    {dgettext("projects", "Create from template")}
+                  <% end %>
                 </button>
               </.form>
             </section>
@@ -377,12 +420,17 @@ defmodule StoryarnWeb.TemplateLive.Show do
     with {:ok, workspace_id} <- parse_workspace_id(install_params["workspace_id"]),
          {:ok, workspace, _membership} <- Workspaces.get_workspace(socket.assigns.current_scope, workspace_id),
          {:ok, version} <- fetch_install_version(socket, install_params["version_id"]),
-         {:ok, project} <-
-           ProjectTemplates.instantiate_template(socket.assigns.current_scope, version, workspace, install_params) do
+         {:ok, _installation} <-
+           ProjectTemplates.request_template_instantiation(
+             socket.assigns.current_scope,
+             version,
+             workspace,
+             Map.put(install_params, "source", "template_show")
+           ) do
       {:noreply,
        socket
-       |> put_flash(:info, dgettext("projects", "Project created successfully."))
-       |> push_navigate(to: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}")}
+       |> refresh_active_installations()
+       |> put_flash(:info, dgettext("projects", "Template installation started."))}
     else
       {:error, :limit_reached, _details} ->
         {:noreply, put_flash(socket, :error, dgettext("workspaces", "Project limit reached for your plan"))}
@@ -467,6 +515,33 @@ defmodule StoryarnWeb.TemplateLive.Show do
     end
   end
 
+  def handle_info({:project_template_installation_updated, installation}, socket) do
+    if installation_for_template?(installation, socket.assigns.template.id) do
+      socket = refresh_active_installations(socket)
+
+      case installation.status do
+        "completed" ->
+          {:noreply,
+           socket
+           |> put_flash(:info, dgettext("projects", "Your project is ready."))
+           |> push_navigate(to: ~p"/workspaces/#{installation.workspace.slug}/projects/#{installation.project.slug}")}
+
+        "failed" ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             dgettext("projects", "Template installation failed. Reference: %{reference}", reference: installation.id)
+           )}
+
+        _status ->
+          {:noreply, socket}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
   defp assign_template(socket, template) do
     versions = ProjectTemplates.list_template_versions(socket.assigns.current_scope, template)
 
@@ -483,7 +558,31 @@ defmodule StoryarnWeb.TemplateLive.Show do
     |> assign(:publications, publications)
     |> assign(:has_active_publication, Enum.any?(publications, &active_publication?/1))
     |> assign(:installs, ProjectTemplates.list_template_installs(socket.assigns.current_scope, template, limit: 10))
+    |> assign_active_installations(template)
   end
+
+  defp assign_active_installations(socket, template) do
+    installations =
+      ProjectTemplates.list_active_template_installations(socket.assigns.current_scope, template)
+
+    socket
+    |> assign(:active_installations, installations)
+    |> assign(:has_active_installation, installations != [])
+  end
+
+  defp refresh_active_installations(socket) do
+    assign_active_installations(socket, socket.assigns.template)
+  end
+
+  defp installation_for_template?(installation, template_id) do
+    installation.project_template_version.project_template_id == template_id
+  end
+
+  defp installation_stage_label("queued"), do: dgettext("projects", "Waiting to start…")
+  defp installation_stage_label("verifying"), do: dgettext("projects", "Verifying template integrity…")
+  defp installation_stage_label("materializing"), do: dgettext("projects", "Copying project content and assets…")
+  defp installation_stage_label("retrying"), do: dgettext("projects", "Retrying after a temporary issue…")
+  defp installation_stage_label(_stage), do: dgettext("projects", "Creating project…")
 
   defp installable_workspaces(scope) do
     scope

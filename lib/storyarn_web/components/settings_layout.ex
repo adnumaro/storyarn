@@ -22,7 +22,7 @@ defmodule StoryarnWeb.Components.SettingsLayout do
     doc: "MapSet of workspace slugs where user has WorkspaceMembership"
 
   attr :current_path, :string, required: true, doc: "current settings path for nav highlighting"
-  attr :onboarding, :map, default: %{eligible: false, guides: %{}}
+  attr :onboarding, :map, default: %{guides: %{}}
   attr :onboarding_guide, :atom, default: nil
   attr :onboarding_autostart, :boolean, default: false
 

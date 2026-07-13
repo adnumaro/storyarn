@@ -6,6 +6,7 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Assets.BlobStore
+  alias Storyarn.Versioning.Builders.AssetCopyError
   alias Storyarn.Versioning.Builders.AssetHashResolver
 
   setup do
@@ -97,6 +98,40 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
       snapshot = %{"asset_blob_hashes" => %{}, "asset_metadata" => %{}}
       result = AssetHashResolver.resolve_asset_fk(asset.id, snapshot, project.id)
       assert is_nil(result)
+    end
+
+    test "returns nil for malformed snapshot asset metadata", %{project: project, user: user} do
+      asset_id = 999_991
+
+      snapshot = %{
+        "asset_blob_hashes" => %{to_string(asset_id) => "abc123"},
+        "asset_metadata" => %{
+          to_string(asset_id) => %{"filename" => "broken.png", "content_type" => nil}
+        }
+      }
+
+      assert nil ==
+               AssetHashResolver.resolve_asset_fk(asset_id, snapshot, project.id, user.id, asset_mode: :copy)
+    end
+
+    test "raises the domain error for malformed metadata in strict mode", %{project: project, user: user} do
+      asset_id = 999_992
+
+      snapshot = %{
+        "asset_blob_hashes" => %{to_string(asset_id) => "abc123"},
+        "asset_metadata" => %{to_string(asset_id) => %{"content_type" => "image/png"}}
+      }
+
+      error =
+        assert_raise AssetCopyError, fn ->
+          AssetHashResolver.resolve_asset_fk(asset_id, snapshot, project.id, user.id,
+            asset_mode: :copy,
+            asset_error_mode: :strict
+          )
+        end
+
+      assert error.asset_id == asset_id
+      assert error.reason == :missing_asset_metadata
     end
   end
 end

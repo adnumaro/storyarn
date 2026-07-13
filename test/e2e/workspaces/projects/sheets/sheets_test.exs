@@ -12,27 +12,12 @@ defmodule StoryarnWeb.E2E.SheetsTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
+  import StoryarnWeb.E2EHelpers
 
-  alias Storyarn.Accounts
   alias Storyarn.Repo
   alias Storyarn.Sheets
 
   @moduletag :e2e
-
-  @session_options [
-    store: :cookie,
-    key: "_storyarn_key",
-    signing_salt: Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_signing_salt]),
-    encryption_salt: Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_encryption_salt])
-  ]
-
-  # Authenticate by injecting a signed session cookie directly.
-  # This avoids the phx-trigger-action race condition from the magic link login flow.
-  defp authenticate(conn, user) do
-    token = Accounts.generate_user_session_token(user)
-
-    add_session_cookie(conn, [value: %{user_token: token}], @session_options)
-  end
 
   describe "sheets list (authenticated)" do
     test "shows empty state when project has no sheets", %{conn: conn} do

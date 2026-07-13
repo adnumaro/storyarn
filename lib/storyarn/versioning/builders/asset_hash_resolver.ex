@@ -14,6 +14,7 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Repo
+  alias Storyarn.Versioning.Builders.AssetCopyError
 
   @doc """
   Given a list of asset IDs, batch-loads their blob hashes and metadata.
@@ -97,20 +98,46 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
 
   defp recreate_from_blob(asset_id, snapshot, project_id, user_id, opts) do
     id_str = to_string(asset_id)
+    blob_hashes = Map.get(snapshot, "asset_blob_hashes", %{})
+    asset_metadata = Map.get(snapshot, "asset_metadata", %{})
 
-    with blob_hash when is_binary(blob_hash) <- snapshot["asset_blob_hashes"][id_str],
-         metadata when is_map(metadata) <- snapshot["asset_metadata"][id_str],
+    with {:ok, blob_hash} <- fetch_blob_hash(blob_hashes, id_str),
+         {:ok, metadata} <- fetch_asset_metadata(asset_metadata, id_str),
          {:ok, new_asset} <- create_from_blob(project_id, user_id, blob_hash, metadata, opts) do
       new_asset.id
     else
-      _ -> nil
+      {:error, reason} -> handle_copy_error(asset_id, reason, opts)
     end
   end
 
   defp create_from_blob(project_id, user_id, blob_hash, metadata, opts) do
     ext = BlobStore.ext_from_content_type(metadata["content_type"])
     source_key = source_storage_key(project_id, blob_hash, ext, metadata, opts)
-    BlobStore.create_asset_from_blob(project_id, user_id, blob_hash, source_key, metadata)
+    BlobStore.create_asset_from_blob(project_id, user_id, blob_hash, source_key, metadata, opts)
+  end
+
+  defp fetch_blob_hash(blob_hashes, id) do
+    case Map.get(blob_hashes, id) do
+      blob_hash when is_binary(blob_hash) -> {:ok, blob_hash}
+      _blob_hash -> {:error, :missing_blob_hash}
+    end
+  end
+
+  defp fetch_asset_metadata(asset_metadata, id) do
+    case Map.get(asset_metadata, id) do
+      %{"filename" => filename, "content_type" => content_type} = metadata
+      when is_binary(filename) and is_binary(content_type) ->
+        {:ok, metadata}
+
+      _metadata ->
+        {:error, :missing_asset_metadata}
+    end
+  end
+
+  defp handle_copy_error(asset_id, reason, opts) do
+    if Keyword.get(opts, :asset_error_mode, :tolerant) == :strict do
+      raise AssetCopyError, asset_id: asset_id, reason: reason
+    end
   end
 
   defp source_storage_key(project_id, blob_hash, ext, metadata, opts) do

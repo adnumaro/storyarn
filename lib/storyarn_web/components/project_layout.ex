@@ -26,7 +26,7 @@ defmodule StoryarnWeb.Components.ProjectLayout do
   attr :sidebar_session, :map, default: %{}
   attr :restoration_banner, :map, default: nil
   attr :canvas_mode, :boolean, default: false
-  attr :onboarding, :map, default: %{eligible: false, guides: %{}}
+  attr :onboarding, :map, default: %{guides: %{}}
   attr :onboarding_autostart, :boolean, default: false
 
   slot :inner_block, required: true

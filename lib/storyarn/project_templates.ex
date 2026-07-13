@@ -183,6 +183,35 @@ defmodule Storyarn.ProjectTemplates do
   defdelegate instantiate_template(scope, version, workspace, attrs), to: Installation
 
   @doc """
+  Requests asynchronous creation of a project from an immutable template version.
+  """
+  @spec request_template_instantiation(scope(), ProjectTemplateVersion.t(), Workspace.t(), attrs()) ::
+          {:ok, ProjectTemplateInstall.t()} | {:error, term()}
+  defdelegate request_template_instantiation(scope, version, workspace, attrs), to: Installation
+
+  @doc """
+  Runs a queued template installation. Intended for Oban workers.
+  """
+  @spec perform_template_installation(integer(), keyword()) ::
+          {:ok, ProjectTemplateInstall.t()} | {:error, term()}
+  defdelegate perform_template_installation(installation_id, opts \\ []), to: Installation
+
+  @spec list_active_workspace_installations(scope(), Workspace.t()) :: [ProjectTemplateInstall.t()]
+  defdelegate list_active_workspace_installations(scope, workspace), to: Installation
+
+  @doc """
+  Lists active and recently failed installations for durable workspace feedback.
+  """
+  @spec list_workspace_installation_feedback(scope(), Workspace.t()) :: [ProjectTemplateInstall.t()]
+  defdelegate list_workspace_installation_feedback(scope, workspace), to: Installation
+
+  @spec list_active_template_installations(scope(), ProjectTemplate.t()) :: [ProjectTemplateInstall.t()]
+  defdelegate list_active_template_installations(scope, template), to: Installation
+
+  defdelegate subscribe_workspace_installations(workspace), to: Installation
+  defdelegate subscribe_user_installations(scope), to: Installation
+
+  @doc """
   Exports an audited project template bundle that can be imported into another Storyarn deployment.
   """
   @spec export_portable_template(pos_integer(), String.t(), keyword()) :: {:ok, map()} | {:error, term()}

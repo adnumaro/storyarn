@@ -21,6 +21,12 @@ defmodule Storyarn.Analytics do
     "onboarding tutorial interacted" => MapSet.new(~w(action guide source)),
     "page viewed" => MapSet.new(~w(route_family)),
     "project created" => MapSet.new(~w(project_id project_subtype project_type project_type_other workspace_id)),
+    "project template installation requested" =>
+      MapSet.new(~w(installation_id source template_id template_version_id visibility workspace_id)),
+    "project template installation completed" =>
+      MapSet.new(~w(duration_bucket error_code installation_id project_id source template_version_id workspace_id)),
+    "project template installation failed" =>
+      MapSet.new(~w(duration_bucket error_code installation_id project_id source template_version_id workspace_id)),
     "scene exploration started" => MapSet.new(~w(has_saved_session project_id scene_id)),
     "sequence track updated" =>
       MapSet.new(~w(changed_asset changed_volume flow_id has_asset project_id sequence_id track_kind)),

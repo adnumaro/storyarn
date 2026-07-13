@@ -21,6 +21,10 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
     projects = Projects.list_projects_for_workspace(workspace.id, scope)
     can_create_project = can_create_project?(workspace, socket.assigns.membership)
 
+    if connected?(socket) do
+      ProjectTemplates.subscribe_workspace_installations(workspace)
+    end
+
     {:ok,
      socket
      |> assign(:page_title, workspace.name)
@@ -30,7 +34,11 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
      |> assign(:can_create_project, can_create_project)
      |> assign(:new_project_modal_open, false)
      |> assign(:project_form, to_form(Projects.change_new_project(%Project{})))
-     |> assign(:project_templates, serialize_project_templates(ProjectTemplates.list_templates(scope)))}
+     |> assign(:project_templates, serialize_project_templates(ProjectTemplates.list_templates(scope)))
+     |> assign(
+       :template_installations,
+       serialize_template_installations(ProjectTemplates.list_workspace_installation_feedback(scope, workspace))
+     )}
   end
 
   @impl true
@@ -70,7 +78,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
         can-create-project={@can_create_project}
         new-project-modal-open={@new_project_modal_open}
         new-project-form={@project_form}
-        project-templates={@project_templates}
+        template-creation={%{templates: @project_templates, installations: @template_installations}}
         project-metrics-options={Taxonomy.project_options()}
         settings-url={~p"/users/settings/workspaces/#{@workspace.slug}/general"}
       />
@@ -128,26 +136,57 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
     with {:ok, template_id} <- parse_template_id(template_params["template_id"]),
          {:ok, template} <- fetch_template(socket.assigns.current_scope, template_id),
          %{current_version: version} when not is_nil(version) <- template,
-         {:ok, project} <-
-           ProjectTemplates.instantiate_template(
+         {:ok, installation} <-
+           ProjectTemplates.request_template_instantiation(
              socket.assigns.current_scope,
              version,
              socket.assigns.workspace,
-             template_params
+             Map.put(template_params, "source", "workspace_dashboard")
            ) do
       socket =
         socket
-        |> put_flash(:info, dgettext("workspaces", "Project created successfully."))
-        |> push_navigate(to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{project.slug}")
+        |> assign(:new_project_modal_open, false)
+        |> refresh_template_installations()
+        |> put_flash(:info, dgettext("projects", "Template installation started."))
 
-      {:noreply, socket}
+      {:reply, %{status: "queued", installation_id: installation.id}, socket}
     else
       {:error, :limit_reached, _details} ->
-        {:noreply, put_flash(socket, :error, dgettext("workspaces", "Project limit reached for your plan"))}
+        {:reply, %{status: "error"},
+         put_flash(socket, :error, dgettext("workspaces", "Project limit reached for your plan"))}
 
       _reason ->
-        {:noreply, put_flash(socket, :error, dgettext("projects", "Template could not be installed."))}
+        {:reply, %{status: "error"}, put_flash(socket, :error, dgettext("projects", "Template could not be installed."))}
     end
+  end
+
+  @impl true
+  def handle_info({:project_template_installation_updated, installation}, socket) do
+    socket = refresh_template_installations(socket)
+    own_installation? = installation.user_id == socket.assigns.current_scope.user.id
+
+    socket =
+      case {installation.status, own_installation?} do
+        {"completed", true} ->
+          socket
+          |> refresh_projects()
+          |> put_flash(:info, dgettext("projects", "Your project is ready."))
+
+        {"completed", false} ->
+          refresh_projects(socket)
+
+        {"failed", true} ->
+          put_flash(
+            socket,
+            :error,
+            dgettext("projects", "Template installation failed. Reference: %{reference}", reference: installation.id)
+          )
+
+        {_status, _own_installation?} ->
+          socket
+      end
+
+    {:noreply, socket}
   end
 
   defp can_create_project?(workspace, membership) do
@@ -191,6 +230,38 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
           updated_at: datetime_to_iso8601(project.last_activity_at || project.updated_at)
         },
         href: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}"
+      }
+    end)
+  end
+
+  defp refresh_projects(socket) do
+    projects = Projects.list_projects_for_workspace(socket.assigns.workspace.id, socket.assigns.current_scope)
+    filtered = filter_projects(projects, socket.assigns.search_query)
+
+    socket
+    |> assign(:all_projects, projects)
+    |> assign(:projects, format_projects(filtered, socket.assigns.workspace))
+  end
+
+  defp refresh_template_installations(socket) do
+    installations =
+      ProjectTemplates.list_workspace_installation_feedback(
+        socket.assigns.current_scope,
+        socket.assigns.workspace
+      )
+
+    assign(socket, :template_installations, serialize_template_installations(installations))
+  end
+
+  defp serialize_template_installations(installations) do
+    Enum.map(installations, fn installation ->
+      %{
+        id: installation.id,
+        project_name: installation.project_name,
+        status: installation.status,
+        stage: installation.stage,
+        template_version_id: installation.project_template_version_id,
+        template_id: installation.project_template_version.project_template_id
       }
     end)
   end

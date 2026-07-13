@@ -27,6 +27,7 @@ defmodule Storyarn.ProjectTemplatesTest do
   alias Storyarn.SheetsFixtures
   alias Storyarn.Versioning.SnapshotStorage
   alias Storyarn.Workers.DeleteProjectTemplateArtifactsWorker
+  alias Storyarn.Workers.InstallProjectTemplateWorker
   alias Storyarn.Workers.PublishProjectTemplateWorker
   alias Storyarn.WorkspacesFixtures
 
@@ -726,7 +727,9 @@ defmodule Storyarn.ProjectTemplatesTest do
       scope = AccountsFixtures.user_scope_fixture(user)
       workspace = WorkspacesFixtures.workspace_fixture(user)
       source_project = ProjectsFixtures.project_fixture(user, %{workspace: workspace, name: "Rollback Source"})
-      _sheet = SheetsFixtures.sheet_fixture(source_project)
+      sheet = SheetsFixtures.sheet_fixture(source_project)
+      avatar_asset = uploaded_image_asset(source_project, user, "late-failure.png", "late-failure")
+      {:ok, _avatar} = Storyarn.Sheets.add_avatar(sheet, avatar_asset.id, %{name: "Hero"})
 
       assert {:ok, template} =
                ProjectTemplates.create_template_from_project(scope, source_project, %{name: "Rollback Starter"})
@@ -736,6 +739,7 @@ defmodule Storyarn.ProjectTemplatesTest do
 
       project_count = Repo.aggregate(Project, :count)
       install_count = Repo.aggregate(ProjectTemplateInstall, :count)
+      storage_files_before_install = storage_files()
 
       assert {:error, %Ecto.Changeset{} = changeset} =
                ProjectTemplates.instantiate_template(scope, %{version | project_template: template}, workspace, %{
@@ -745,6 +749,236 @@ defmodule Storyarn.ProjectTemplatesTest do
       refute changeset.valid?
       assert Repo.aggregate(Project, :count) == project_count
       assert Repo.aggregate(ProjectTemplateInstall, :count) == install_count
+      assert storage_files() == storage_files_before_install
+    end
+  end
+
+  describe "request_template_instantiation/4" do
+    test "queues idempotently and completes the project and installation together" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      workspace = WorkspacesFixtures.workspace_fixture(user)
+      source_project = ProjectsFixtures.project_fixture(user, %{name: "Async Source"})
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(scope, source_project, %{
+                 name: "Async Starter"
+               })
+
+      version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
+
+      assert {:ok, installation} =
+               ProjectTemplates.request_template_instantiation(scope, version, workspace, %{
+                 name: "Async Copy",
+                 source: "workspace_dashboard"
+               })
+
+      assert installation.status == "queued"
+      assert installation.stage == "queued"
+      assert installation.oban_job_id
+
+      assert {:ok, duplicate} =
+               ProjectTemplates.request_template_instantiation(scope, version, workspace, %{
+                 name: "Async Copy",
+                 source: "workspace_dashboard"
+               })
+
+      assert duplicate.id == installation.id
+      assert Repo.aggregate(ProjectTemplateInstall, :count) == 1
+
+      assert_enqueued(
+        worker: InstallProjectTemplateWorker,
+        args: %{"installation_id" => installation.id}
+      )
+
+      assert :ok =
+               perform_job(InstallProjectTemplateWorker, %{
+                 "installation_id" => installation.id
+               })
+
+      completed = Repo.get!(ProjectTemplateInstall, installation.id)
+      project = Repo.get!(Project, completed.project_id)
+
+      assert completed.status == "completed"
+      assert completed.stage == "completed"
+      assert completed.installed_at
+      assert project.name == "Async Copy"
+      assert project.created_from_template_version_id == version.id
+
+      assert :ok =
+               perform_job(InstallProjectTemplateWorker, %{
+                 "installation_id" => installation.id
+               })
+
+      assert Repo.aggregate(Project, :count) == 2
+    end
+
+    test "records an integrity failure without creating a project" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      workspace = WorkspacesFixtures.workspace_fixture(user)
+      source_project = ProjectsFixtures.project_fixture(user, %{name: "Broken Async Source"})
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(scope, source_project, %{
+                 name: "Broken Async Starter"
+               })
+
+      version =
+        ProjectTemplateVersion
+        |> Repo.get!(template.current_version_id)
+        |> Ecto.Changeset.change(checksum: String.duplicate("0", 64))
+        |> Repo.update!()
+
+      project_count = Repo.aggregate(Project, :count)
+
+      assert {:ok, installation} =
+               ProjectTemplates.request_template_instantiation(scope, version, workspace, %{
+                 name: "Must Not Exist",
+                 source: "template_show"
+               })
+
+      assert :ok =
+               perform_job(InstallProjectTemplateWorker, %{
+                 "installation_id" => installation.id
+               })
+
+      failed = Repo.get!(ProjectTemplateInstall, installation.id)
+      assert failed.status == "failed"
+      assert failed.stage == "failed"
+      assert failed.error_code == "checksum_mismatch"
+      assert failed.completed_at
+      assert Repo.aggregate(Project, :count) == project_count
+    end
+
+    test "records missing template asset blobs as a permanent failure" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      workspace = WorkspacesFixtures.workspace_fixture(user)
+      source_project = ProjectsFixtures.project_fixture(user, %{name: "Asset Source"})
+      sheet = SheetsFixtures.sheet_fixture(source_project)
+      asset = uploaded_image_asset(source_project, user, "missing-blob.png", "missing-blob")
+      {:ok, _avatar} = Storyarn.Sheets.add_avatar(sheet, asset.id, %{name: "Hero"})
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(scope, source_project, %{
+                 name: "Asset Starter"
+               })
+
+      version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
+      :ok = Assets.storage_delete(BlobStore.blob_key(source_project.id, asset.blob_hash, "png"))
+      project_count = Repo.aggregate(Project, :count)
+
+      assert {:ok, installation} =
+               ProjectTemplates.request_template_instantiation(scope, version, workspace, %{
+                 name: "Missing Asset Copy",
+                 source: "workspace_dashboard"
+               })
+
+      assert :ok =
+               perform_job(InstallProjectTemplateWorker, %{
+                 "installation_id" => installation.id
+               })
+
+      failed = Repo.get!(ProjectTemplateInstall, installation.id)
+      assert failed.status == "failed"
+      assert failed.error_code == "asset_copy_failed"
+      assert Repo.aggregate(Project, :count) == project_count
+    end
+
+    test "persists retry progress for transient storage failures before failing the last attempt" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      workspace = WorkspacesFixtures.workspace_fixture(user)
+      source_project = ProjectsFixtures.project_fixture(user, %{name: "Retry Source"})
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(scope, source_project, %{
+                 name: "Retry Starter"
+               })
+
+      version =
+        ProjectTemplateVersion
+        |> Repo.get!(template.current_version_id)
+        |> Ecto.Changeset.change(snapshot_storage_key: "missing/template-snapshot.json.gz")
+        |> Repo.update!()
+
+      assert {:ok, installation} =
+               ProjectTemplates.request_template_instantiation(scope, version, workspace, %{
+                 name: "Retry Copy",
+                 source: "template_show"
+               })
+
+      assert {:error, _reason} =
+               ProjectTemplates.perform_template_installation(installation.id,
+                 attempt: 1,
+                 max_attempts: 2
+               )
+
+      retrying = Repo.get!(ProjectTemplateInstall, installation.id)
+      assert retrying.status == "retrying"
+      assert retrying.stage == "retrying"
+      assert retrying.error_report == %{"attempt" => 1, "max_attempts" => 2}
+
+      assert {:ok, failed} =
+               ProjectTemplates.perform_template_installation(installation.id,
+                 attempt: 2,
+                 max_attempts: 2
+               )
+
+      assert failed.status == "failed"
+      assert failed.error_code
+      assert failed.completed_at
+    end
+
+    test "rechecks workspace capacity when queued installations start" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      workspace = WorkspacesFixtures.workspace_fixture(user)
+      source_project = ProjectsFixtures.project_fixture(user, %{workspace: workspace, name: "Capacity Source"})
+
+      _existing_project =
+        ProjectsFixtures.project_fixture(user, %{workspace: workspace, name: "Capacity Existing"})
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(scope, source_project, %{
+                 name: "Capacity Starter"
+               })
+
+      version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
+
+      assert {:ok, first_installation} =
+               ProjectTemplates.request_template_instantiation(scope, version, workspace, %{
+                 name: "Capacity First",
+                 source: "workspace_dashboard"
+               })
+
+      assert {:ok, second_installation} =
+               ProjectTemplates.request_template_instantiation(scope, version, workspace, %{
+                 name: "Capacity Second",
+                 source: "workspace_dashboard"
+               })
+
+      assert :ok =
+               perform_job(InstallProjectTemplateWorker, %{
+                 "installation_id" => first_installation.id
+               })
+
+      assert :ok =
+               perform_job(InstallProjectTemplateWorker, %{
+                 "installation_id" => second_installation.id
+               })
+
+      failed = Repo.get!(ProjectTemplateInstall, second_installation.id)
+      assert failed.status == "failed"
+      assert failed.error_code == "limit_reached"
+
+      assert Repo.aggregate(
+               from(project in Project,
+                 where: project.workspace_id == ^workspace.id and is_nil(project.deleted_at)
+               ),
+               :count
+             ) == 3
     end
   end
 
