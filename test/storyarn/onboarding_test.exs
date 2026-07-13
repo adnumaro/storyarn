@@ -17,20 +17,23 @@ defmodule Storyarn.OnboardingTest do
       assert Enum.all?(summary.guides, fn {_key, guide} -> guide.state == :pending end)
     end
 
-    test "makes a completed guide pending when its stored version differs" do
+    test "makes legacy completions pending because they predate explicit opt-out" do
       user = user_fixture()
 
-      Repo.insert!(%TutorialProgress{
-        user_id: user.id,
-        tutorial: :workspace,
-        guide_version: Onboarding.guide_version(:workspace) + 1,
-        completed_at: DateTime.utc_now(:second)
-      })
+      Enum.each(Onboarding.tutorials(), fn tutorial ->
+        Repo.insert!(%TutorialProgress{
+          user_id: user.id,
+          tutorial: tutorial,
+          guide_version: 1,
+          completed_at: DateTime.utc_now(:second)
+        })
+      end)
 
       summary = Onboarding.summary(Scope.for_user(user))
 
-      assert summary.guides["workspace"].state == :pending
-      assert summary.guides["workspace"].version == Onboarding.guide_version(:workspace)
+      assert Enum.all?(summary.guides, fn {_key, guide} ->
+               guide.state == :pending and guide.version == 2
+             end)
     end
   end
 

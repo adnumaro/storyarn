@@ -15,13 +15,16 @@ defmodule Storyarn.Onboarding do
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
 
+  # Version 1 completions predate the explicit opt-out checkbox. Keeping the
+  # current guides on version 2 makes those legacy finishes pending again while
+  # preserving version 2 completions as explicit opt-outs.
   @guide_versions %{
-    workspace: 1,
-    sheets: 1,
-    flows: 1,
-    scenes: 1,
-    localization: 1,
-    export: 1
+    workspace: 2,
+    sheets: 2,
+    flows: 2,
+    scenes: 2,
+    localization: 2,
+    export: 2
   }
 
   @type tutorial_state :: :pending | :completed
