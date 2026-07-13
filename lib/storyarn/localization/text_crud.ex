@@ -564,16 +564,22 @@ defmodule Storyarn.Localization.TextCrud do
         |> maybe_filter_export_parent_ids(:sheet, export_option(opts, :sheet_ids, :all))
         |> Repo.all()
 
+      localizable_block_types = SourceContract.localizable_block_types()
+
       block_ids =
-        Repo.all(
-          from(b in Block,
-            where:
-              b.sheet_id in ^sheet_ids and is_nil(b.deleted_at) and
-                b.type in ^SourceContract.localizable_block_types() and b.is_constant == false and
-                not is_nil(b.variable_name) and fragment("BTRIM(?) <> ''", b.variable_name),
-            select: b.id
-          )
+        from(b in Block,
+          where: b.sheet_id in ^sheet_ids and b.type in ^localizable_block_types,
+          select: %{
+            id: b.id,
+            type: b.type,
+            is_constant: b.is_constant,
+            variable_name: b.variable_name,
+            deleted_at: b.deleted_at
+          }
         )
+        |> Repo.all()
+        |> Enum.filter(&SourceContract.localizable_block?/1)
+        |> Enum.map(& &1.id)
 
       {sheet_ids, block_ids}
     else

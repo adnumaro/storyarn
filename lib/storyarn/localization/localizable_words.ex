@@ -46,14 +46,22 @@ defmodule Storyarn.Localization.LocalizableWords do
         join: sheet in Sheet,
         on: sheet.id == block.sheet_id,
         where:
-          sheet.project_id == ^project_id and is_nil(sheet.deleted_at) and is_nil(block.deleted_at) and
-            block.type in ^localizable_block_types and block.is_constant == false and
-            not is_nil(block.variable_name) and fragment("btrim(?) <> ''", block.variable_name),
-        group_by: block.sheet_id,
-        select: {block.sheet_id, coalesce(sum(block.word_count), 0)}
+          sheet.project_id == ^project_id and is_nil(sheet.deleted_at) and
+            block.type in ^localizable_block_types,
+        select: %{
+          sheet_id: block.sheet_id,
+          type: block.type,
+          is_constant: block.is_constant,
+          variable_name: block.variable_name,
+          deleted_at: block.deleted_at,
+          word_count: block.word_count
+        }
       )
       |> Repo.all()
-      |> Map.new()
+      |> Enum.filter(&SourceContract.localizable_block?/1)
+      |> Enum.reduce(%{}, fn block, counts ->
+        Map.update(counts, block.sheet_id, block.word_count, &(&1 + block.word_count))
+      end)
 
     project_id
     |> runtime_sheets()

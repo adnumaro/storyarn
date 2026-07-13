@@ -8,6 +8,7 @@ defmodule Storyarn.Sheets.SheetStatsTest do
 
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Repo
+  alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.BlockGalleryImage
   alias Storyarn.Sheets.SheetStats
 
@@ -192,8 +193,20 @@ defmodule Storyarn.Sheets.SheetStatsTest do
         value: %{"content" => "not exported"}
       })
 
-      Repo.update_all(from(block in Storyarn.Sheets.Block, where: block.id == ^runtime_block.id),
+      whitespace_block =
+        block_fixture(sheet, %{
+          type: "text",
+          is_constant: false,
+          variable_name: "temporary_name",
+          value: %{"content" => "also not exported"}
+        })
+
+      Repo.update_all(from(block in Block, where: block.id == ^runtime_block.id),
         set: [word_count: 17]
+      )
+
+      Repo.update_all(from(block in Block, where: block.id == ^whitespace_block.id),
+        set: [variable_name: "\t\n", word_count: 99]
       )
 
       counts = SheetStats.sheet_word_counts(project.id)
