@@ -187,6 +187,28 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       render_click(view, "set_format", %{"format" => "yarn"})
       assert export_config(view)["validation"] == nil
     end
+
+    test "changing export settings clears stale validation results", %{
+      conn: conn,
+      project: project
+    } do
+      {:ok, view, _html} = live(conn, export_url(project))
+
+      render_click(view, "validate_export", %{})
+      assert validation_status(view)
+      render_click(view, "toggle_section", %{"section" => "sheets"})
+      assert export_config(view)["validation"] == nil
+
+      render_click(view, "validate_export", %{})
+      assert validation_status(view)
+      render_click(view, "set_asset_mode", %{"mode" => "embedded"})
+      assert export_config(view)["validation"] == nil
+
+      render_click(view, "validate_export", %{})
+      assert validation_status(view)
+      render_click(view, "toggle_option", %{"option" => "validate_before_export"})
+      assert export_config(view)["validation"] == nil
+    end
   end
 
   describe "validation and counts" do
