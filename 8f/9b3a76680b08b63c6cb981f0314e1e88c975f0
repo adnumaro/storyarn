@@ -1,0 +1,29 @@
+assets/app/locales/en/project-settings.json
+  s_d42906e733bf4a::t_e2b80165f5b78d 221-223,225-234,236-238,246-256,258-272,275,277-283,285,287,291-303
+assets/app/locales/es/project-settings.json
+  s_d42906e733bf4a::t_bbf55cfdadbc1d 221-223,225-234,236-238,246-256,258-272,275,277-283,285,287,291-303
+assets/app/modules/projects/settings/export-import/components/ExportPanel.vue
+  s_d42906e733bf4a::t_e4c7f6b56e03ff 2-26,30,40,72-75,91-134,138-155,161,164-188,190-215,218,222,232,244-251,257-258,271-293,298-301,303-328,332-334,337-345,347-350,352-375,378-546,549-557,559-649,651-661,663-666,668-688,692-709,712-741,745,747,749-752
+assets/app/test/modules/projects/settings/ExportPanel.test.ts
+  s_d42906e733bf4a::t_2012266bea7667 1-120
+lib/storyarn_web/live/export_import_live/index.ex
+  s_d42906e733bf4a::t_91bede9b24a6fe 181-184,190-197,202-205,209-212
+test/storyarn_web/live/export_import_live/index_test.exs
+  s_d42906e733bf4a::t_73362d6b1f95ee 190-211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "8f9b3a76680b08b63c6cb981f0314e1e88c975f0",
+  "prompts": {},
+  "sessions": {
+    "s_d42906e733bf4a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b46-cc54-7ae3-aa54-4180b4093d70",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
