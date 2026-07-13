@@ -1,0 +1,30 @@
+assets/app/test/modules/scenes/exploration/useMovement.test.ts
+  s_951d62daa7f103::t_b9a11a5c4b2f48 3,7,63-100
+  s_951d62daa7f103::t_1e1087526c9b4f 101-102
+assets/app/modules/scenes/exploration/composables/useMovement.ts
+  s_951d62daa7f103::t_aaafe4732f5bd7 49,81,162-167,169,173-187,282-283,287-308,311-324,328-332,334-337,339-342,344-345,366,407,433-449
+  s_951d62daa7f103::t_b7eea39e174cf8 450-451
+assets/app/modules/scenes/exploration/lib/walkablePath.ts
+  s_951d62daa7f103::t_f6507eb2766bb1 55-60,142-149,152-156,226-252,275,283-285,303-304,325-338,340,342-343,349,353-360,362-368
+  s_951d62daa7f103::t_7b00b7c7f3d6a1 150-151
+  s_951d62daa7f103::t_006e30f20e8604 253-272,293,300
+  s_951d62daa7f103::t_e29194c568937e 297,371,395
+assets/app/test/modules/scenes/exploration/walkablePath.test.ts
+  s_951d62daa7f103::t_0f8bb98bb52bfd 108-120,145-165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "d1d33450a8f74c26861f5eaded2baa46dfa2cf1a",
+  "prompts": {},
+  "sessions": {
+    "s_951d62daa7f103": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5a41-a57b-7b91-b5e9-959efa29907b",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
