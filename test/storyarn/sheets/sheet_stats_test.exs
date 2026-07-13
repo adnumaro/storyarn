@@ -172,6 +172,35 @@ defmodule Storyarn.Sheets.SheetStatsTest do
       assert counts[sheet.id] == 3
     end
 
+    test "uses denormalized runtime block counts and excludes editor-only text", %{
+      project: project
+    } do
+      sheet = sheet_fixture(project, %{name: "Hero"})
+
+      runtime_block =
+        block_fixture(sheet, %{
+          type: "rich_text",
+          is_constant: false,
+          variable_name: "biography",
+          value: %{"content" => "ignored during read"}
+        })
+
+      block_fixture(sheet, %{
+        type: "text",
+        is_constant: true,
+        variable_name: "editor_note",
+        value: %{"content" => "not exported"}
+      })
+
+      Repo.update_all(from(block in Storyarn.Sheets.Block, where: block.id == ^runtime_block.id),
+        set: [word_count: 17]
+      )
+
+      counts = SheetStats.sheet_word_counts(project.id)
+
+      assert counts[sheet.id] == 18
+    end
+
     test "counts sheet name words even without blocks", %{project: project} do
       sheet = sheet_fixture(project, %{name: "Combat Stats"})
 

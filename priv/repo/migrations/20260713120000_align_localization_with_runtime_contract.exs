@@ -174,6 +174,10 @@ defmodule Storyarn.Repo.Migrations.AlignLocalizationWithRuntimeContract do
              check: "vo_eligible = true OR (vo_status = 'none' AND vo_asset_id IS NULL)"
            )
 
+    create constraint(:localized_texts, :localized_texts_vo_status_valid,
+             check: "vo_status IN ('none', 'needed', 'recorded', 'approved')"
+           )
+
     create constraint(:localized_texts, :localized_texts_archive_reason_valid,
              check:
                "archive_reason IS NULL OR archive_reason IN ('source_deleted', 'source_field_removed', 'source_not_runtime', 'version_replaced')"
@@ -262,6 +266,7 @@ defmodule Storyarn.Repo.Migrations.AlignLocalizationWithRuntimeContract do
     drop constraint(:localized_texts, :localized_texts_archive_reason_valid)
     drop constraint(:localized_texts, :localized_texts_locale_code_safe)
     drop constraint(:project_languages, :project_languages_locale_code_safe)
+    drop constraint(:localized_texts, :localized_texts_vo_status_valid)
     drop constraint(:localized_texts, :localized_texts_vo_requires_eligible_source)
     drop constraint(:localized_texts, :localized_texts_source_metadata_runtime)
     drop constraint(:localized_texts, :localized_texts_source_field_runtime)

@@ -17,8 +17,6 @@ defmodule Storyarn.Sheets.BlockCrud do
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
 
-  require Logger
-
   # =============================================================================
   # Query Operations
   # =============================================================================
@@ -107,30 +105,23 @@ defmodule Storyarn.Sheets.BlockCrud do
   def update_block(%Block{} = block, attrs) do
     old_scope = block.scope
 
-    result =
-      block
-      |> Block.update_changeset(attrs)
-      |> maybe_sync_variable_name(block)
-      |> ensure_unique_variable_name(block.sheet_id, block.id)
-      |> Repo.update()
+    Repo.transaction(fn ->
+      changeset =
+        block
+        |> Block.update_changeset(attrs)
+        |> maybe_sync_variable_name(block)
+        |> ensure_unique_variable_name(block.sheet_id, block.id)
+        |> put_block_word_count()
 
-    # Handle scope changes
-    case result do
-      {:ok, updated_block} ->
-        handle_scope_change(updated_block, old_scope)
-        maybe_sync_definition(updated_block, old_scope)
-
-        if old_scope == "children" or updated_block.scope == "children" do
-          Localization.extract_block_tree(updated_block.id)
-        else
-          Localization.extract_block(updated_block)
-        end
-
-      _ ->
-        :ok
-    end
-
-    result
+      with {:ok, updated_block} <- Repo.update(changeset),
+           :ok <- handle_scope_change(updated_block, old_scope),
+           :ok <- maybe_sync_definition(updated_block, old_scope),
+           :ok <- extract_updated_block(updated_block, old_scope) do
+        updated_block
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
   end
 
   defp block_word_count(block_type, value) when block_type in ~w(text rich_text), do: WordCount.for_block_value(value)
@@ -172,12 +163,17 @@ defmodule Storyarn.Sheets.BlockCrud do
 
   defp maybe_propagate_to_descendants(_result, _sheet_id), do: :ok
 
+  defp put_block_word_count(changeset) do
+    type = Ecto.Changeset.get_field(changeset, :type)
+    value = Ecto.Changeset.get_field(changeset, :value)
+    Ecto.Changeset.put_change(changeset, :word_count, block_word_count(type, value))
+  end
+
   # Sync definition to instances if scope remained "children"
   defp maybe_sync_definition(%Block{scope: "children"} = updated_block, "children") do
-    case PropertyInheritance.sync_definition_change(updated_block) do
-      {:ok, _} -> :ok
-      {:error, reason} -> Logger.error("Failed to sync definition change: #{inspect(reason)}")
-    end
+    updated_block
+    |> PropertyInheritance.sync_definition_change()
+    |> normalize_side_effect()
   end
 
   defp maybe_sync_definition(_block, _old_scope), do: :ok
@@ -189,10 +185,24 @@ defmodule Storyarn.Sheets.BlockCrud do
 
   defp handle_scope_change(%Block{scope: "self"} = block, "children") do
     # Scope changed from "children" to "self" - remove all inherited instances
-    PropertyInheritance.delete_inherited_instances(block)
+    block
+    |> PropertyInheritance.delete_inherited_instances()
+    |> normalize_side_effect()
   end
 
   defp handle_scope_change(_block, _old_scope), do: :ok
+
+  defp extract_updated_block(updated_block, old_scope) do
+    if old_scope == "children" or updated_block.scope == "children" do
+      Localization.extract_block_tree(updated_block.id)
+    else
+      Localization.extract_block(updated_block)
+    end
+  end
+
+  defp normalize_side_effect({:ok, _result}), do: :ok
+  defp normalize_side_effect({:error, reason}), do: {:error, reason}
+  defp normalize_side_effect(:ok), do: :ok
 
   def update_block_value(%Block{} = block, value) do
     word_count =
@@ -214,10 +224,15 @@ defmodule Storyarn.Sheets.BlockCrud do
 
       {:ok, :done}
     end)
+    |> Ecto.Multi.run(:localization, fn _repo, %{block: updated_block} ->
+      case Localization.extract_block(updated_block) do
+        :ok -> {:ok, :done}
+        {:error, reason} -> {:error, reason}
+      end
+    end)
     |> Repo.transaction()
     |> case do
       {:ok, %{block: updated_block}} ->
-        Localization.extract_block(updated_block)
         broadcast_block_change(updated_block)
         {:ok, updated_block}
 
@@ -230,32 +245,30 @@ defmodule Storyarn.Sheets.BlockCrud do
   end
 
   def update_block_config(%Block{} = block, config) do
-    result =
-      block
-      |> Block.config_changeset(%{config: config})
-      |> maybe_sync_variable_name(block)
-      |> ensure_unique_variable_name(block.sheet_id, block.id)
-      |> Repo.update()
+    Repo.transaction(fn ->
+      changeset =
+        block
+        |> Block.config_changeset(%{config: config})
+        |> maybe_sync_variable_name(block)
+        |> ensure_unique_variable_name(block.sheet_id, block.id)
 
-    # Sync definition change to inherited instances
-    case result do
-      {:ok, %{scope: "children"} = updated_block} ->
-        case PropertyInheritance.sync_definition_change(updated_block) do
-          {:ok, _} -> :ok
-          {:error, reason} -> Logger.error("Failed to sync config change: #{inspect(reason)}")
-        end
-
-        Localization.extract_block_tree(updated_block.id)
-
-      {:ok, updated_block} ->
-        Localization.extract_block(updated_block)
-
-      _ ->
-        :ok
-    end
-
-    result
+      with {:ok, updated_block} <- Repo.update(changeset),
+           :ok <- maybe_sync_config_definition(updated_block),
+           :ok <- extract_updated_block(updated_block, block.scope) do
+        updated_block
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
   end
+
+  defp maybe_sync_config_definition(%Block{scope: "children"} = updated_block) do
+    updated_block
+    |> PropertyInheritance.sync_definition_change()
+    |> normalize_side_effect()
+  end
+
+  defp maybe_sync_config_definition(_updated_block), do: :ok
 
   @doc """
   Soft-deletes a block by setting deleted_at timestamp.
@@ -303,25 +316,24 @@ defmodule Storyarn.Sheets.BlockCrud do
   If the block has scope "children", also restores its inherited instances.
   """
   def restore_block(%Block{} = block) do
-    result =
-      block
-      |> Block.restore_changeset()
-      |> Repo.update()
-
-    case result do
-      {:ok, restored_block} when restored_block.scope == "children" ->
-        PropertyInheritance.restore_inherited_instances(restored_block)
-        Localization.extract_block_tree(restored_block.id)
-
-      {:ok, restored_block} ->
-        Localization.extract_block(restored_block)
-
-      _ ->
-        :ok
-    end
-
-    result
+    Repo.transaction(fn ->
+      with {:ok, restored_block} <- block |> Block.restore_changeset() |> Repo.update(),
+           :ok <- maybe_restore_inherited_instances(block),
+           :ok <- extract_updated_block(restored_block, block.scope) do
+        restored_block
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
   end
+
+  defp maybe_restore_inherited_instances(%Block{scope: "children"} = deleted_block) do
+    deleted_block
+    |> PropertyInheritance.restore_inherited_instances()
+    |> normalize_side_effect()
+  end
+
+  defp maybe_restore_inherited_instances(_deleted_block), do: :ok
 
   @doc """
   Recreates a block from a snapshot (for undo/redo).
@@ -348,14 +360,28 @@ defmodule Storyarn.Sheets.BlockCrud do
           column_index: Map.get(snapshot, :column_index, 0)
         }
 
-        %Block{sheet_id: sheet.id}
-        |> Block.create_changeset(attrs)
-        |> Repo.insert()
+        insert_block_from_snapshot(sheet, snapshot, attrs)
 
       _active_block ->
         # Block exists and is active — shouldn't happen in normal undo/redo
         {:error, :block_already_exists}
     end
+  end
+
+  defp insert_block_from_snapshot(sheet, snapshot, attrs) do
+    Repo.transaction(fn ->
+      changeset =
+        %Block{sheet_id: sheet.id}
+        |> Block.create_changeset(attrs)
+        |> Ecto.Changeset.put_change(:word_count, block_word_count(snapshot.type, snapshot.value))
+
+      with {:ok, block} <- Repo.insert(changeset),
+           :ok <- extract_updated_block(block, block.scope) do
+        block
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
   end
 
   @doc """

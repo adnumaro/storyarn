@@ -786,6 +786,19 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
       # Soft-delete the parent block (also soft-deletes instances)
       {:ok, deleted_block} = Sheets.delete_block(block)
 
+      # Restoring later must compare instances with the original deletion time,
+      # not the wall clock at restoration time.
+      old_deleted_at = DateTime.add(deleted_block.deleted_at, -3_600, :second)
+
+      Repo.update_all(
+        from(candidate in Block,
+          where: candidate.id == ^block.id or candidate.inherited_from_block_id == ^block.id
+        ),
+        set: [deleted_at: old_deleted_at]
+      )
+
+      deleted_block = Repo.get!(Block, block.id)
+
       # Verify instances are gone
       child_blocks_after_delete = Sheets.list_blocks(child.id)
       refute Enum.any?(child_blocks_after_delete, &(&1.inherited_from_block_id == block.id))

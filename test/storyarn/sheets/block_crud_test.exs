@@ -5,6 +5,7 @@ defmodule Storyarn.Sheets.BlockCrudTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.BlockCrud
@@ -410,6 +411,18 @@ defmodule Storyarn.Sheets.BlockCrudTest do
       block = block_fixture(sheet)
       {:ok, updated} = Sheets.update_block(block, %{is_constant: true})
       assert updated.is_constant == true
+    end
+
+    test "keeps the denormalized word count in sync", %{sheet: sheet} do
+      block = block_fixture(sheet, %{value: %{"content" => "one"}})
+
+      assert {:ok, updated} =
+               Sheets.update_block(block, %{
+                 type: "rich_text",
+                 value: %{"content" => "<p>one two three</p>"}
+               })
+
+      assert updated.word_count == 3
     end
 
     test "rejects invalid block type on update", %{sheet: sheet} do
@@ -885,6 +898,7 @@ defmodule Storyarn.Sheets.BlockCrudTest do
       {:ok, created} = Sheets.create_block_from_snapshot(sheet, snapshot)
       assert created.type == "text"
       assert created.config["label"] == "Restored"
+      assert created.word_count == 1
     end
 
     test "returns error when block already exists and is active", %{sheet: sheet} do

@@ -39,13 +39,21 @@ defmodule Storyarn.Localization.LocalizableWords do
   @doc "Returns per-sheet counts for exported sheet names and textual runtime variables."
   @spec sheet_word_counts(integer()) :: %{integer() => non_neg_integer()}
   def sheet_word_counts(project_id) do
+    localizable_block_types = SourceContract.localizable_block_types()
+
     block_counts =
-      project_id
-      |> load_project_blocks()
-      |> Enum.group_by(& &1.sheet_id)
-      |> Map.new(fn {sheet_id, blocks} ->
-        {sheet_id, blocks |> Enum.flat_map(&block_source_fields/1) |> count_fields()}
-      end)
+      from(block in Block,
+        join: sheet in Sheet,
+        on: sheet.id == block.sheet_id,
+        where:
+          sheet.project_id == ^project_id and is_nil(sheet.deleted_at) and is_nil(block.deleted_at) and
+            block.type in ^localizable_block_types and block.is_constant == false and
+            not is_nil(block.variable_name) and fragment("btrim(?) <> ''", block.variable_name),
+        group_by: block.sheet_id,
+        select: {block.sheet_id, coalesce(sum(block.word_count), 0)}
+      )
+      |> Repo.all()
+      |> Map.new()
 
     project_id
     |> runtime_sheets()
@@ -432,6 +440,7 @@ defmodule Storyarn.Localization.LocalizableWords do
     )
   end
 
+  defp normalize_lock_result({:ok, {:error, reason}}), do: {:error, reason}
   defp normalize_lock_result({:ok, _result}), do: :ok
   defp normalize_lock_result({:error, reason}), do: {:error, reason}
   defp normalize_lock_result(:ok), do: :ok

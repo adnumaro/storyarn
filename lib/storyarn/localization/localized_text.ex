@@ -30,6 +30,7 @@ defmodule Storyarn.Localization.LocalizedText do
 
   @valid_statuses ~w(pending draft in_progress review final)
   @valid_vo_statuses ~w(none needed recorded approved)
+  @valid_archive_reasons ~w(source_deleted source_field_removed source_not_runtime version_replaced)
   @valid_source_types SourceContract.source_types()
   @valid_content_roles SourceContract.content_roles()
 
@@ -149,6 +150,7 @@ defmodule Storyarn.Localization.LocalizedText do
     |> validate_placeholders()
     |> check_constraint(:status, name: :localized_texts_final_requires_current_translation)
     |> check_constraint(:content_role, name: :localized_texts_source_metadata_runtime)
+    |> check_constraint(:vo_status, name: :localized_texts_vo_status_valid)
     |> check_constraint(:vo_status, name: :localized_texts_vo_requires_eligible_source)
   end
 
@@ -184,6 +186,7 @@ defmodule Storyarn.Localization.LocalizedText do
     |> validate_translation_is_current_when_final()
     |> validate_placeholders()
     |> check_constraint(:status, name: :localized_texts_final_requires_current_translation)
+    |> check_constraint(:vo_status, name: :localized_texts_vo_status_valid)
     |> check_constraint(:vo_status, name: :localized_texts_vo_requires_eligible_source)
     |> optimistic_lock(:lock_version)
   end
@@ -207,10 +210,14 @@ defmodule Storyarn.Localization.LocalizedText do
       :archive_reason
     ])
     |> validate_inclusion(:content_role, @valid_content_roles)
+    |> validate_inclusion(:vo_status, @valid_vo_statuses)
+    |> validate_inclusion(:archive_reason, @valid_archive_reasons)
     |> validate_runtime_source_metadata()
     |> validate_vo_eligibility()
     |> check_constraint(:content_role, name: :localized_texts_source_metadata_runtime)
+    |> check_constraint(:vo_status, name: :localized_texts_vo_status_valid)
     |> check_constraint(:vo_status, name: :localized_texts_vo_requires_eligible_source)
+    |> check_constraint(:archive_reason, name: :localized_texts_archive_reason_valid)
     |> optimistic_lock(:lock_version)
   end
 
@@ -248,14 +255,22 @@ defmodule Storyarn.Localization.LocalizedText do
         get_field(changeset, :source_field)
       )
 
-    if metadata &&
-         (get_field(changeset, :content_role) != metadata.content_role or
-            get_field(changeset, :vo_eligible) != metadata.vo_eligible) do
+    case metadata do
+      nil ->
+        changeset
+
+      metadata ->
+        changeset
+        |> maybe_add_runtime_metadata_error(:content_role, metadata.content_role)
+        |> maybe_add_runtime_metadata_error(:vo_eligible, metadata.vo_eligible)
+    end
+  end
+
+  defp maybe_add_runtime_metadata_error(changeset, field, expected) do
+    if get_field(changeset, field) == expected do
       changeset
-      |> add_error(:content_role, "does not match the runtime source field")
-      |> add_error(:vo_eligible, "does not match the runtime source field")
     else
-      changeset
+      add_error(changeset, field, "does not match the runtime source field")
     end
   end
 

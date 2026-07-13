@@ -125,7 +125,10 @@ defmodule Storyarn.Localization.LanguageCrud do
   defp collect_existing_sources(_project_id, %ProjectLanguage{is_source: true}), do: {:ok, 0}
 
   defp collect_existing_sources(project_id, %ProjectLanguage{is_source: false} = language) do
-    LocalizableWords.extract_locale(project_id, language.locale_code)
+    case LocalizableWords.extract_locale(project_id, language.locale_code) do
+      {:ok, count} -> {:ok, count}
+      {:error, reason} -> {:error, {:localization_sync_failed, reason}}
+    end
   end
 
   def update_language(%ProjectLanguage{} = language, attrs) do

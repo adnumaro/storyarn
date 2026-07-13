@@ -359,6 +359,52 @@ defmodule Storyarn.LocalizationTest do
       assert LocalizedText.stale?(text)
     end
 
+    test "source updates report runtime metadata errors only on mismatched fields" do
+      text = %LocalizedText{
+        source_type: "flow_node",
+        source_field: "text",
+        content_role: "dialogue",
+        vo_eligible: true,
+        vo_status: "none"
+      }
+
+      role_changeset =
+        LocalizedText.source_update_changeset(text, %{
+          content_role: "menu",
+          vo_eligible: true
+        })
+
+      assert errors_on(role_changeset).content_role == ["does not match the runtime source field"]
+      refute Map.has_key?(errors_on(role_changeset), :vo_eligible)
+
+      eligibility_changeset =
+        LocalizedText.source_update_changeset(text, %{
+          content_role: "dialogue",
+          vo_eligible: false
+        })
+
+      assert errors_on(eligibility_changeset).vo_eligible == ["does not match the runtime source field"]
+      refute Map.has_key?(errors_on(eligibility_changeset), :content_role)
+    end
+
+    test "source updates validate voice-over status and archive reason" do
+      text = %LocalizedText{
+        source_type: "flow_node",
+        source_field: "text",
+        content_role: "dialogue",
+        vo_eligible: true,
+        vo_status: "none"
+      }
+
+      vo_changeset = LocalizedText.source_update_changeset(text, %{vo_status: "invalid"})
+      assert errors_on(vo_changeset).vo_status == ["is invalid"]
+
+      archive_changeset =
+        LocalizedText.source_update_changeset(text, %{archive_reason: "invalid"})
+
+      assert errors_on(archive_changeset).archive_reason == ["is invalid"]
+    end
+
     test "create_text/2 validates required fields" do
       user = user_fixture()
       project = project_fixture(user)

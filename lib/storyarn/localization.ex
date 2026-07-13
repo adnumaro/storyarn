@@ -39,6 +39,7 @@ defmodule Storyarn.Localization do
   @type id :: integer()
   @type changeset :: Ecto.Changeset.t()
   @type attrs :: map()
+  @type language_add_error :: changeset() | {:localization_sync_failed, term()}
 
   # =============================================================================
   # Project Languages
@@ -69,12 +70,13 @@ defmodule Storyarn.Localization do
   defdelegate get_target_languages(project_id), to: LanguageCrud
 
   @doc "Adds a new language to a project."
-  @spec add_language(Project.t(), attrs()) :: {:ok, project_language()} | {:error, term()}
+  @spec add_language(Project.t(), attrs()) :: {:ok, project_language()} | {:error, language_add_error()}
   defdelegate add_language(project, attrs), to: LanguageCrud
 
   @doc "Adds a language and reports how many localization rows were reconciled."
   @spec add_language_with_count(Project.t(), attrs()) ::
-          {:ok, %{language: project_language(), extracted_count: non_neg_integer()}} | {:error, term()}
+          {:ok, %{language: project_language(), extracted_count: non_neg_integer()}}
+          | {:error, language_add_error()}
   defdelegate add_language_with_count(project, attrs), to: LanguageCrud
 
   @doc "Updates a project language."
