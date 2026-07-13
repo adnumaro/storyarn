@@ -311,26 +311,26 @@ function validationIconClass(status: string) {
         </div>
         <span class="badge badge-outline badge-sm whitespace-nowrap">
           {{
-            $t("project_settings.export.format_count", {
-              count: visibleFormats.length,
-            })
+            $t(
+              "project_settings.export.format_count",
+              { count: visibleFormats.length },
+              visibleFormats.length,
+            )
           }}
         </span>
       </header>
 
-      <fieldset class="space-y-3 p-5">
-        <div>
-          <legend class="text-sm font-semibold">
-            {{ $t("project_settings.export.choose_format") }}
-          </legend>
-          <p class="mt-1 text-xs text-base-content/50">
-            {{ $t("project_settings.export.choose_format_description") }}
-          </p>
-        </div>
+      <fieldset id="export-format-options" class="p-5">
+        <legend class="text-sm font-semibold">
+          {{ $t("project_settings.export.choose_format") }}
+        </legend>
+        <p class="mt-1 text-xs text-base-content/50">
+          {{ $t("project_settings.export.choose_format_description") }}
+        </p>
 
         <RadioGroup
           :model-value="formatConfig.selected"
-          class="grid gap-2 sm:grid-cols-2"
+          class="mt-3 grid gap-2 sm:grid-cols-2"
           @update:model-value="setFormat"
         >
           <label
@@ -392,9 +392,11 @@ function validationIconClass(status: string) {
               </div>
               <span class="badge badge-primary badge-outline badge-sm whitespace-nowrap">
                 {{
-                  $t("project_settings.export.selected_count", {
-                    count: includedSections.length,
-                  })
+                  $t(
+                    "project_settings.export.selected_count",
+                    { count: includedSections.length },
+                    includedSections.length,
+                  )
                 }}
               </span>
             </div>
@@ -455,18 +457,20 @@ function validationIconClass(status: string) {
               </p>
             </div>
 
-            <fieldset v-if="assetsSupported" class="space-y-3 border-b border-base-300 p-5">
-              <div>
-                <legend class="text-sm font-medium">
-                  {{ $t("project_settings.export.assets") }}
-                </legend>
-                <p class="mt-1 text-xs text-base-content/50">
-                  {{ $t("project_settings.export.assets_description") }}
-                </p>
-              </div>
+            <fieldset
+              v-if="assetsSupported"
+              id="export-asset-mode-options"
+              class="border-b border-base-300 p-5"
+            >
+              <legend class="text-sm font-medium">
+                {{ $t("project_settings.export.assets") }}
+              </legend>
+              <p class="mt-1 text-xs text-base-content/50">
+                {{ $t("project_settings.export.assets_description") }}
+              </p>
               <RadioGroup
                 :model-value="options.assetMode"
-                class="grid gap-2 sm:grid-cols-3"
+                class="mt-3 grid gap-2 sm:grid-cols-3"
                 @update:model-value="setAssetMode"
               >
                 <label
@@ -577,9 +581,11 @@ function validationIconClass(status: string) {
                 <dt class="text-base-content/50">{{ $t("project_settings.export.content") }}</dt>
                 <dd class="font-medium">
                   {{
-                    $t("project_settings.export.section_count", {
-                      count: includedSections.length,
-                    })
+                    $t(
+                      "project_settings.export.section_count",
+                      { count: includedSections.length },
+                      includedSections.length,
+                    )
                   }}
                 </dd>
               </div>

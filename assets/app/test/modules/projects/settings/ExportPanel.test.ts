@@ -1,7 +1,15 @@
 import { mount } from "@vue/test-utils";
-import { describe, expect, it, vi } from "vitest";
-import ExportPanel from "../../../../modules/projects/settings/export-import/components/ExportPanel.vue";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockLive } from "../../../setup";
+
+const mockLive = createMockLive();
+
+vi.mock("@shared/composables/useLive", () => ({
+  useLive: () => mockLive,
+}));
+
+const { default: ExportPanel } =
+  await import("../../../../modules/projects/settings/export-import/components/ExportPanel.vue");
 
 function baseProps() {
   return {
@@ -29,20 +37,16 @@ function baseProps() {
 }
 
 function mountPanel(props = baseProps()) {
-  const live = createMockLive();
-  const wrapper = mount(ExportPanel, {
-    props,
-    global: {
-      config: {
-        globalProperties: { $live: live } as never,
-      },
-    },
-  });
+  const wrapper = mount(ExportPanel, { props });
 
-  return { live, wrapper };
+  return { live: mockLive, wrapper };
 }
 
 describe("ExportPanel", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("summarizes only content supported by the selected format", () => {
     const { wrapper } = mountPanel();
 
@@ -52,12 +56,35 @@ describe("ExportPanel", () => {
     expect(wrapper.get('[data-testid="export-section-sheets"]').text()).toContain("2");
   });
 
+  it("uses singular count labels", () => {
+    const props = baseProps();
+    props.formatConfig.formats = [props.formatConfig.formats[0]];
+    props.sectionConfig.selected = ["sheets"];
+    const { wrapper } = mountPanel(props);
+
+    expect(wrapper.get("#export-workspace").text()).toContain("1 export target");
+    expect(wrapper.get("#export-workspace").text()).not.toContain("1 export targets");
+    expect(wrapper.get('[data-testid="export-summary"]').text()).toContain("1 section");
+    expect(wrapper.get('[data-testid="export-summary"]').text()).not.toContain("1 sections");
+  });
+
+  it("associates legends with the format and asset radio groups", () => {
+    const props = baseProps();
+    props.formatConfig.selected = "unity";
+    props.formatConfig.extension = "json";
+    props.sectionConfig.supported = ["sheets", "flows", "localization", "assets"];
+    const { wrapper } = mountPanel(props);
+
+    expect(wrapper.get("#export-format-options > legend").text()).toContain("Choose a destination");
+    expect(wrapper.get("#export-asset-mode-options > legend").text()).toContain("Assets");
+  });
+
   it("sends format changes through LiveView", async () => {
     const { live, wrapper } = mountPanel();
 
     await wrapper.get('[data-testid="export-format-unity"] [role="radio"]').trigger("click");
 
-    expect(live.pushEvent).toHaveBeenCalledWith("set_format", { format: "unity" }, undefined);
+    expect(live.pushEvent).toHaveBeenCalledWith("set_format", { format: "unity" });
   });
 
   it("shows progress while the preflight validation is running", async () => {
@@ -66,7 +93,12 @@ describe("ExportPanel", () => {
     await wrapper.get('[data-testid="validate-export"]').trigger("click");
 
     expect(wrapper.get('[data-testid="validate-export"]').text()).toContain("Validating");
-    expect(live.pushEvent).toHaveBeenCalledWith("validate_export", {}, expect.any(Function));
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "validate_export",
+      {},
+      expect.any(Function),
+      expect.any(Function),
+    );
 
     const callback = vi.mocked(live.pushEvent).mock.calls[0]?.[2];
     callback?.({});
