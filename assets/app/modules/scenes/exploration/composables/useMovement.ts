@@ -46,6 +46,7 @@ export function useMovement({
 
   let partyPositions: PartyPosition[] = []; // [{id, x, y}]
   let partyTargets: PartyPosition[] = []; // [{id, x, y}]
+  let partyPaths: PixelPoint[][] = [];
   let partyMoving = false;
 
   let frameId: number | null = null;
@@ -77,6 +78,7 @@ export function useMovement({
       y: p.positionY,
     }));
     partyTargets = partyPositions.map((p) => ({ ...p }));
+    partyPaths = partyPositions.map(() => []);
   }
 
   // Re-init when data changes
@@ -157,15 +159,32 @@ export function useMovement({
     const perpY = ndx;
 
     const numParty = partyPins.length;
-    partyTargets = partyPins.map((p, i) => {
+    const nextTargets: PartyPosition[] = [];
+    const nextPaths: PixelPoint[][] = [];
+
+    for (let i = 0; i < partyPins.length; i++) {
+      const pin = partyPins[i];
+      const position = partyPositions[i];
       const offset = (i - (numParty - 1) / 2) * PARTY_SPREAD;
-      return {
-        id: p.id,
+      const formationTarget = {
         x: leaderTargetX - ndx * PARTY_SPREAD + perpX * offset,
         y: leaderTargetY - ndy * PARTY_SPREAD + perpY * offset,
       };
-    });
-    partyMoving = true;
+      const path = findPartyWalkablePath(
+        position,
+        formationTarget,
+        { x: leaderTargetX, y: leaderTargetY },
+        walkableZones,
+      );
+      const destination = path?.[path.length - 1] || position;
+
+      nextTargets.push({ id: pin.id, x: destination.x, y: destination.y });
+      nextPaths.push(path || []);
+    }
+
+    partyTargets = nextTargets;
+    partyPaths = nextPaths;
+    partyMoving = partyPaths.some((path) => path.length > 0);
   }
 
   // --- Animation loop ---
@@ -260,37 +279,70 @@ export function useMovement({
 
     for (let i = 0; i < partyPositions.length; i++) {
       const pos = partyPositions[i];
-      const target = partyTargets[i];
-      if (!target) {
+      const path = partyPaths[i];
+      if (!path || path.length === 0) {
         continue;
       }
 
-      const dx = target.x - pos.x;
-      const dy = target.y - pos.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-
-      if (dist < ARRIVAL_THRESHOLD) {
-        pos.x = target.x;
-        pos.y = target.y;
-        updatePinPosition(pos.id, pos.x, pos.y);
-        continue;
+      if (stepPartyMember(pos, path, speed)) {
+        anyMoving = true;
       }
-
-      const ratio = Math.min(speed / dist, 1);
-      const nextX = pos.x + dx * ratio;
-      const nextY = pos.y + dy * ratio;
-
-      // Party members skip walkable check (follow leader)
-      pos.x = nextX;
-      pos.y = nextY;
-      updatePinPosition(pos.id, pos.x, pos.y);
-      anyMoving = true;
     }
 
     if (!anyMoving) {
       partyMoving = false;
     }
     return anyMoving;
+  }
+
+  function stepPartyMember(
+    position: PartyPosition,
+    path: PixelPoint[],
+    movementBudget: number,
+  ): boolean {
+    let remainingStep = movementBudget;
+
+    while (path.length > 0) {
+      const waypoint = path[0];
+      const dx = waypoint.x - position.x;
+      const dy = waypoint.y - position.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < ARRIVAL_THRESHOLD || dist <= remainingStep) {
+        position.x = waypoint.x;
+        position.y = waypoint.y;
+        path.shift();
+        updatePinPosition(position.id, position.x, position.y);
+
+        if (path.length === 0) {
+          return false;
+        }
+        if (dist >= remainingStep) {
+          return true;
+        }
+
+        remainingStep -= dist;
+        continue;
+      }
+
+      const ratio = remainingStep / dist;
+      const next = {
+        x: position.x + dx * ratio,
+        y: position.y + dy * ratio,
+      };
+
+      if (!isPointInWalkableArea(next, walkableZones)) {
+        path.length = 0;
+        return false;
+      }
+
+      position.x = next.x;
+      position.y = next.y;
+      updatePinPosition(position.id, position.x, position.y);
+      return true;
+    }
+
+    return false;
   }
 
   // --- Konva position update ---
@@ -311,6 +363,7 @@ export function useMovement({
       leaderMoving.value = false;
       leaderPath = [];
       partyMoving = false;
+      partyPaths = partyPaths.map(() => []);
       if (frameId) {
         cancelAnimationFrame(frameId);
         frameId = null;
@@ -351,6 +404,7 @@ export function useMovement({
           partyPositions[idx].x = p.x;
           partyPositions[idx].y = p.y;
           partyTargets[idx] = { ...partyTargets[idx], x: p.x, y: p.y };
+          partyPaths[idx] = [];
           updatePinPosition(p.id, p.x, p.y);
         }
       }
@@ -374,6 +428,25 @@ export function useMovement({
     getPositions,
     restorePositions,
   };
+}
+
+/**
+ * Routes a party member to its formation position. If that offset lies
+ * outside the walkable union, the leader destination is used as a safe
+ * fallback instead of allowing a direct segment through blocked space.
+ */
+export function findPartyWalkablePath(
+  start: PixelPoint,
+  formationTarget: PixelPoint,
+  leaderTarget: PixelPoint,
+  walkableZones: readonly ExplorationZone[],
+): PixelPoint[] | null {
+  const formationPath = findShortestWalkablePath(start, formationTarget, walkableZones);
+  if (formationPath) {
+    return formationPath;
+  }
+
+  return findShortestWalkablePath(start, leaderTarget, walkableZones);
 }
 
 export function isMovementWalkableZone(zone: ExplorationZone): boolean {

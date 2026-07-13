@@ -4,11 +4,6 @@ const EPSILON = 1e-7;
 
 type WalkablePolygon = Pick<ExplorationZone, "vertices">;
 
-interface GraphEdge {
-  to: number;
-  distance: number;
-}
-
 function cross(a: PixelPoint, b: PixelPoint): number {
   return a.x * b.y - a.y * b.x;
 }
@@ -57,6 +52,12 @@ function collinearIntersectionParameters(
 
 function pointOnSegment(point: PixelPoint, start: PixelPoint, end: PixelPoint): boolean {
   const segment = subtract(end, start);
+  const lengthSquared = dot(segment, segment);
+
+  if (lengthSquared <= EPSILON * EPSILON) {
+    return pointsEqual(point, start);
+  }
+
   const offset = subtract(point, start);
 
   if (Math.abs(cross(segment, offset)) > EPSILON) {
@@ -64,7 +65,6 @@ function pointOnSegment(point: PixelPoint, start: PixelPoint, end: PixelPoint): 
   }
 
   const projection = dot(offset, segment);
-  const lengthSquared = dot(segment, segment);
   return projection >= -EPSILON && projection <= lengthSquared + EPSILON;
 }
 
@@ -139,6 +139,21 @@ function polygonEdges(vertices: Vertex[]): [Vertex, Vertex][] {
   return vertices.map((vertex, index) => [vertex, vertices[(index + 1) % vertices.length]]);
 }
 
+function boundingBoxesOverlap(
+  firstStart: PixelPoint,
+  firstEnd: PixelPoint,
+  secondStart: PixelPoint,
+  secondEnd: PixelPoint,
+): boolean {
+  return (
+    Math.max(Math.min(firstStart.x, firstEnd.x), Math.min(secondStart.x, secondEnd.x)) <=
+      Math.min(Math.max(firstStart.x, firstEnd.x), Math.max(secondStart.x, secondEnd.x)) +
+        EPSILON &&
+    Math.max(Math.min(firstStart.y, firstEnd.y), Math.min(secondStart.y, secondEnd.y)) <=
+      Math.min(Math.max(firstStart.y, firstEnd.y), Math.max(secondStart.y, secondEnd.y)) + EPSILON
+  );
+}
+
 function segmentBoundaryParameters(
   start: PixelPoint,
   end: PixelPoint,
@@ -208,8 +223,56 @@ export function isSegmentInWalkableArea(
   );
 }
 
+function addUniqueCandidate(
+  candidate: PixelPoint,
+  candidates: PixelPoint[],
+  buckets: Map<string, PixelPoint[]>,
+): void {
+  const bucketX = Math.floor(candidate.x / EPSILON);
+  const bucketY = Math.floor(candidate.y / EPSILON);
+
+  for (let offsetX = -1; offsetX <= 1; offsetX++) {
+    for (let offsetY = -1; offsetY <= 1; offsetY++) {
+      const nearby = buckets.get(`${bucketX + offsetX}:${bucketY + offsetY}`) || [];
+      if (nearby.some((point) => pointsEqual(point, candidate))) {
+        return;
+      }
+    }
+  }
+
+  const key = `${bucketX}:${bucketY}`;
+  const bucket = buckets.get(key);
+  if (bucket) {
+    bucket.push(candidate);
+  } else {
+    buckets.set(key, [candidate]);
+  }
+  candidates.push(candidate);
+}
+
+function collectEdgeIntersections(
+  firstEdges: [Vertex, Vertex][],
+  secondEdges: [Vertex, Vertex][],
+  candidates: PixelPoint[],
+  buckets: Map<string, PixelPoint[]>,
+): void {
+  for (const [start, end] of firstEdges) {
+    for (const [edgeStart, edgeEnd] of secondEdges) {
+      if (!boundingBoxesOverlap(start, end, edgeStart, edgeEnd)) {
+        continue;
+      }
+
+      const parameters = segmentIntersectionParameters(start, end, edgeStart, edgeEnd);
+      for (const parameter of parameters) {
+        addUniqueCandidate(pointAt(start, end, parameter), candidates, buckets);
+      }
+    }
+  }
+}
+
 function collectCandidateVertices(polygons: readonly WalkablePolygon[]): PixelPoint[] {
   const candidates: PixelPoint[] = [];
+  const buckets = new Map<string, PixelPoint[]>();
   const edgesByPolygon: [Vertex, Vertex][][] = [];
 
   for (const polygon of polygons) {
@@ -217,7 +280,9 @@ function collectCandidateVertices(polygons: readonly WalkablePolygon[]): PixelPo
       continue;
     }
 
-    candidates.push(...polygon.vertices);
+    for (const vertex of polygon.vertices) {
+      addUniqueCandidate(vertex, candidates, buckets);
+    }
     edgesByPolygon.push(polygonEdges(polygon.vertices));
   }
 
@@ -225,66 +290,23 @@ function collectCandidateVertices(polygons: readonly WalkablePolygon[]): PixelPo
   // the shortest path when several walkable polygons overlap.
   for (let first = 0; first < edgesByPolygon.length; first++) {
     for (let second = first + 1; second < edgesByPolygon.length; second++) {
-      for (const [start, end] of edgesByPolygon[first]) {
-        for (const [edgeStart, edgeEnd] of edgesByPolygon[second]) {
-          const parameters = segmentIntersectionParameters(start, end, edgeStart, edgeEnd);
-          candidates.push(...parameters.map((parameter) => pointAt(start, end, parameter)));
-        }
-      }
+      collectEdgeIntersections(edgesByPolygon[first], edgesByPolygon[second], candidates, buckets);
     }
   }
 
-  return candidates.filter(
-    (candidate, index) => candidates.findIndex((other) => pointsEqual(candidate, other)) === index,
-  );
+  return candidates;
 }
 
-function buildVisibilityGraph(
-  nodes: PixelPoint[],
-  polygons: readonly WalkablePolygon[],
-): GraphEdge[][] {
-  const graph = nodes.map<GraphEdge[]>(() => []);
-
-  for (let first = 0; first < nodes.length; first++) {
-    for (let second = first + 1; second < nodes.length; second++) {
-      if (!isSegmentInWalkableArea(nodes[first], nodes[second], polygons)) {
-        continue;
-      }
-
-      const edgeDistance = distance(nodes[first], nodes[second]);
-      graph[first].push({ to: second, distance: edgeDistance });
-      graph[second].push({ to: first, distance: edgeDistance });
-    }
-  }
-
-  return graph;
-}
-
-function closestUnvisitedNode(distances: number[], visited: boolean[]): number {
+function closestUnvisitedNode(scores: number[], visited: boolean[]): number {
   let closest = -1;
 
-  for (let index = 0; index < distances.length; index++) {
-    if (!visited[index] && (closest === -1 || distances[index] < distances[closest])) {
+  for (let index = 0; index < scores.length; index++) {
+    if (!visited[index] && (closest === -1 || scores[index] < scores[closest])) {
       closest = index;
     }
   }
 
   return closest;
-}
-
-function relaxGraphEdges(
-  current: number,
-  graph: GraphEdge[][],
-  distances: number[],
-  previous: number[],
-): void {
-  for (const edge of graph[current]) {
-    const nextDistance = distances[current] + edge.distance;
-    if (nextDistance + EPSILON < distances[edge.to]) {
-      distances[edge.to] = nextDistance;
-      previous[edge.to] = current;
-    }
-  }
 }
 
 function reconstructGraphPath(previous: number[], target: number): number[] | null {
@@ -300,31 +322,53 @@ function reconstructGraphPath(previous: number[], target: number): number[] | nu
   return path.reverse();
 }
 
-function shortestGraphPath(graph: GraphEdge[][], target: number): number[] | null {
-  const distances = graph.map(() => Number.POSITIVE_INFINITY);
-  const previous = graph.map(() => -1);
-  const visited = graph.map(() => false);
+/**
+ * Runs A* over the implicit visibility graph. Edges are checked only while a
+ * node is expanded, avoiding the eager O(n²) graph construction for routes
+ * that reach the target after visiting a small portion of the candidates.
+ */
+function shortestVisiblePath(
+  nodes: PixelPoint[],
+  polygons: readonly WalkablePolygon[],
+): number[] | null {
+  const target = 1;
+  const distances = nodes.map(() => Number.POSITIVE_INFINITY);
+  const scores = nodes.map(() => Number.POSITIVE_INFINITY);
+  const previous = nodes.map(() => -1);
+  const visited = nodes.map(() => false);
   distances[0] = 0;
+  scores[0] = distance(nodes[0], nodes[target]);
 
-  for (let iteration = 0; iteration < graph.length; iteration++) {
-    const current = closestUnvisitedNode(distances, visited);
+  for (let iteration = 0; iteration < nodes.length; iteration++) {
+    const current = closestUnvisitedNode(scores, visited);
 
     if (current === -1 || !Number.isFinite(distances[current])) {
       break;
     }
     if (current === target) {
-      break;
+      return reconstructGraphPath(previous, target);
     }
 
     visited[current] = true;
-    relaxGraphEdges(current, graph, distances, previous);
+    for (let next = 0; next < nodes.length; next++) {
+      if (
+        next === current ||
+        visited[next] ||
+        !isSegmentInWalkableArea(nodes[current], nodes[next], polygons)
+      ) {
+        continue;
+      }
+
+      const nextDistance = distances[current] + distance(nodes[current], nodes[next]);
+      if (nextDistance + EPSILON < distances[next]) {
+        distances[next] = nextDistance;
+        scores[next] = nextDistance + distance(nodes[next], nodes[target]);
+        previous[next] = current;
+      }
+    }
   }
 
-  if (!Number.isFinite(distances[target])) {
-    return null;
-  }
-
-  return reconstructGraphPath(previous, target);
+  return null;
 }
 
 /**
@@ -348,8 +392,7 @@ export function findShortestWalkablePath(
     (point) => !pointsEqual(point, start) && !pointsEqual(point, target),
   );
   const nodes = [{ ...start }, { ...target }, ...candidates];
-  const graph = buildVisibilityGraph(nodes, polygons);
-  const path = shortestGraphPath(graph, 1);
+  const path = shortestVisiblePath(nodes, polygons);
 
   return path?.map((index) => ({ ...nodes[index] })) ?? null;
 }

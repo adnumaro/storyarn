@@ -105,6 +105,19 @@ describe("walkable pathfinding", () => {
     expect(isSegmentInWalkableArea({ x: 0, y: 1 }, { x: 0, y: 9 }, [polygon])).toBe(true);
   });
 
+  it("does not treat a repeated adjacent vertex as containing every point", () => {
+    const polygon = zone([
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: 10, y: 0 },
+      { x: 10, y: 10 },
+      { x: 0, y: 10 },
+    ]);
+
+    expect(isPointInWalkableArea({ x: 50, y: 50 }, [polygon])).toBe(false);
+    expect(isSegmentInWalkableArea({ x: 1, y: 1 }, { x: 50, y: 50 }, [polygon])).toBe(false);
+  });
+
   it("crosses between overlapping walkable polygons", () => {
     const left = zone(
       [
@@ -127,6 +140,27 @@ describe("walkable pathfinding", () => {
 
     expect(findShortestWalkablePath({ x: 1, y: 1 }, { x: 9, y: 9 }, [left, right])).toEqual([
       { x: 9, y: 9 },
+    ]);
+  });
+
+  it("deduplicates candidates from many overlapping polygons", () => {
+    const vertices = [
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: 10, y: 10 },
+      { x: 7, y: 10 },
+      { x: 7, y: 3 },
+      { x: 3, y: 3 },
+      { x: 3, y: 10 },
+      { x: 0, y: 10 },
+    ];
+    const polygons = Array.from({ length: 40 }, (_, index) => zone(vertices, `zone-${index}`));
+    const target = { x: 9, y: 8 };
+
+    expect(findShortestWalkablePath({ x: 1, y: 8 }, target, polygons)).toEqual([
+      { x: 3, y: 3 },
+      { x: 7, y: 3 },
+      target,
     ]);
   });
 });
