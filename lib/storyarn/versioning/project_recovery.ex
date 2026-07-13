@@ -524,13 +524,15 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp finalize_asset_copies({:error, _reason} = result, tracker, true) do
-    StorageCompensation.cleanup(tracker)
-    result
+    case StorageCompensation.cleanup(tracker) do
+      :ok -> result
+      {:error, cleanup_reason} -> {:error, cleanup_reason}
+    end
   end
 
   defp finalize_asset_copies(result, _tracker, false), do: result
 
-  defp cleanup_owned_asset_copies(tracker, true), do: StorageCompensation.cleanup(tracker)
+  defp cleanup_owned_asset_copies(tracker, true), do: StorageCompensation.cleanup!(tracker)
   defp cleanup_owned_asset_copies(_tracker, false), do: :ok
 
   defp restore_glossary(_project_id, [], _now), do: :ok

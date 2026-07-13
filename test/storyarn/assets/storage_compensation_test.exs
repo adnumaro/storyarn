@@ -1,8 +1,10 @@
 defmodule Storyarn.Assets.StorageCompensationTest do
-  use ExUnit.Case, async: true
+  use Storyarn.DataCase, async: true
 
   import ExUnit.CaptureLog
 
+  alias Storyarn.Assets.StorageCleanupPersistenceError
+  alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageCompensation
 
   test "retries cleanup job persistence before returning an error" do
@@ -27,34 +29,57 @@ defmodule Storyarn.Assets.StorageCompensationTest do
     assert log =~ "retrying"
   end
 
-  test "retains failed keys when neither deletion nor job persistence succeeds" do
+  test "persists failed keys in the fallback outbox when job persistence fails" do
+    tracker = StorageCompensation.new()
+    storage_key = "projects/1/assets/copy/file.png"
+    :ok = StorageCompensation.track(tracker, storage_key)
+
+    assert :ok =
+             StorageCompensation.cleanup(tracker,
+               enqueue_fun: fn _keys -> {:error, :oban_unavailable} end,
+               delete_fun: fn keys -> {:error, keys} end
+             )
+
+    assert %StorageCleanupRequest{storage_keys: [^storage_key]} = Repo.one(StorageCleanupRequest)
+  end
+
+  test "propagates failed keys when no durable cleanup path is available" do
     tracker = StorageCompensation.new()
     storage_key = "projects/1/assets/copy/file.png"
     :ok = StorageCompensation.track(tracker, storage_key)
 
     log =
       capture_log(fn ->
-        assert {:error, {:storage_cleanup_not_persisted, :database_unavailable}} =
+        assert {:error,
+                {:storage_cleanup_not_persisted,
+                 %{
+                   failed_keys: [^storage_key],
+                   enqueue_error: :oban_unavailable,
+                   persistence_error: :database_unavailable
+                 }}} =
                  StorageCompensation.cleanup(tracker,
-                   enqueue_fun: fn _keys -> {:error, :database_unavailable} end,
+                   enqueue_fun: fn _keys -> {:error, :oban_unavailable} end,
+                   persist_fun: fn _keys -> {:error, :database_unavailable} end,
                    delete_fun: fn keys -> {:error, keys} end
                  )
       end)
 
     assert log =~ "could not be completed or persisted"
 
-    parent = self()
+    assert :ok = StorageCompensation.cleanup(tracker)
+  end
 
-    assert :ok =
-             StorageCompensation.cleanup(tracker,
-               enqueue_fun: fn keys ->
-                 send(parent, {:retained_keys, keys})
-                 :ok
-               end,
-               delete_fun: fn _keys -> :ok end
-             )
+  test "cleanup! raises when the cleanup cannot be completed or persisted" do
+    tracker = StorageCompensation.new()
+    :ok = StorageCompensation.track(tracker, "projects/1/assets/copy/file.png")
 
-    assert_receive {:retained_keys, [^storage_key]}
+    assert_raise StorageCleanupPersistenceError, fn ->
+      StorageCompensation.cleanup!(tracker,
+        enqueue_fun: fn _keys -> {:error, :oban_unavailable} end,
+        persist_fun: fn _keys -> {:error, :database_unavailable} end,
+        delete_fun: fn keys -> {:error, keys} end
+      )
+    end
   end
 
   test "persists cleanup before attempting an opportunistic delete" do

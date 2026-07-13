@@ -312,23 +312,31 @@ defmodule Storyarn.ProjectTemplates.Installation do
         )
 
       case result do
-        {:ok, _project} -> StorageCompensation.discard(tracker)
-        {:error, _reason} -> StorageCompensation.cleanup(tracker)
-      end
+        {:ok, _project} ->
+          StorageCompensation.discard(tracker)
+          result
 
-      result
+        {:error, _reason} ->
+          cleanup_result(tracker, result)
+      end
     rescue
       error in AssetCopyError ->
-        StorageCompensation.cleanup(tracker)
-        {:error, {:asset_copy_failed, error.reason}}
+        cleanup_result(tracker, {:error, {:asset_copy_failed, error.reason}})
 
       error ->
-        StorageCompensation.cleanup(tracker)
+        StorageCompensation.cleanup!(tracker)
         reraise error, __STACKTRACE__
     catch
       kind, reason ->
-        StorageCompensation.cleanup(tracker)
+        StorageCompensation.cleanup!(tracker)
         :erlang.raise(kind, reason, __STACKTRACE__)
+    end
+  end
+
+  defp cleanup_result(tracker, result) do
+    case StorageCompensation.cleanup(tracker) do
+      :ok -> result
+      {:error, cleanup_reason} -> {:error, cleanup_reason}
     end
   end
 
