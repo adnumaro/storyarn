@@ -1,0 +1,38 @@
+assets/app/locales/es/project-settings.json
+  s_d42906e733bf4a::t_a8dc44ec101063 223,237-238
+assets/app/locales/en/project-settings.json
+  s_d42906e733bf4a::t_a8dc44ec101063 223,237-238
+assets/app/modules/projects/settings/export-import/components/ExportPanel.vue
+  s_7e3a11176a371e::t_4b0aca29ca889f 324-329,333,465-470,473
+  s_7e3a11176a371e::t_5dff8b70a0e253 323,460-464
+  s_d42906e733bf4a::t_a8dc44ec101063 314-318,395-399,584-588
+assets/app/test/modules/projects/settings/ExportPanel.test.ts
+  s_d42906e733bf4a::t_a8dc44ec101063 60,62-64,67-68
+  s_7e3a11176a371e::t_4b0aca29ca889f 98-101
+  s_7e3a11176a371e::t_5dff8b70a0e253 2,5-13,40,42,46-49,59,61,65-66,69-81
+  s_7e3a11176a371e::t_47788ca85bcdb7 87,96-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "5785e0850f6a8d8043fad973d6ec1f17f468b9f7",
+  "prompts": {},
+  "sessions": {
+    "s_7e3a11176a371e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5c0a-6a80-77b1-bf8b-a1dc3201bd0f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_d42906e733bf4a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b46-cc54-7ae3-aa54-4180b4093d70",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
