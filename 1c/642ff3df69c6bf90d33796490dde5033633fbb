@@ -1,0 +1,43 @@
+lib/storyarn/versioning/project_recovery.ex
+  s_41724a46c80f80::t_87b4904b951633 527-530,535
+lib/storyarn/assets/storage_cleanup_persistence_error.ex
+  s_41724a46c80f80::t_e1fe96dab14ba7 1-10
+lib/storyarn/project_templates/installation.ex
+  s_41724a46c80f80::t_87b4904b951633 315-317,319-321,324,327,331,336-339
+  s_41724a46c80f80::t_2f06b932bbf0ce 340-342
+config/config.exs
+  s_41724a46c80f80::t_e1fe96dab14ba7 62-63
+lib/storyarn/assets/storage_cleanup_request.ex
+  s_41724a46c80f80::t_e1fe96dab14ba7 1-18
+test/storyarn/assets/storage_compensation_test.exs
+  s_41724a46c80f80::t_b78e35159fe92c 2,6-7,32-46,53-59,61-62,69-70,72-74,76-82
+lib/storyarn/workers/retry_storage_cleanup_requests_worker.ex
+  s_41724a46c80f80::t_e1fe96dab14ba7 1-34
+test/storyarn/workers/retry_storage_cleanup_requests_worker_test.exs
+  s_41724a46c80f80::t_b78e35159fe92c 1-22
+lib/storyarn/assets/storage_compensation.ex
+  s_41724a46c80f80::t_640c9c661953ce 39,103,109-116,265-281
+  s_41724a46c80f80::t_87b4904b951633 76,118,130,132,136,138-139,155,165-173,175,200-233,236-263,329-340
+  s_41724a46c80f80::t_1284d6dff2bbb7 102,129,154
+  s_41724a46c80f80::t_e1fe96dab14ba7 4-5,7-9,16,42-43,50-65,101,104-108,117,137,142-149,156-164,234-235,264,282-328,342,344,350-353,364
+  s_41724a46c80f80::t_f25fa0f8400cee 119
+  s_41724a46c80f80::t_0a2c7c9dea8ed1 341
+priv/repo/migrations/20260713110000_add_durable_storage_cleanup_requests.exs
+  s_41724a46c80f80::t_e1fe96dab14ba7 1-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "1c642ff3df69c6bf90d33796490dde5033633fbb",
+  "prompts": {},
+  "sessions": {
+    "s_41724a46c80f80": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5a38-779f-79c2-8a43-ddadb649de77",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
