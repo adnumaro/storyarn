@@ -14,7 +14,9 @@ defmodule Storyarn.Repo.Migrations.AddDurableStorageCleanupRequests do
 
     create index(:storage_cleanup_requests, [:inserted_at, :id])
 
-    create index(:project_template_installs, [:workspace_id, :status, :completed_at, :id],
+    create index(
+             :project_template_installs,
+             [:workspace_id, :status, desc: :completed_at, desc: :id],
              name: :template_installs_workspace_failure_feedback_idx
            )
   end
