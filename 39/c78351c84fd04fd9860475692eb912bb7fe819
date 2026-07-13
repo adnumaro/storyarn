@@ -1,0 +1,24 @@
+lib/storyarn/localization/localizable_words.ex
+  s_359e3629a7f34d::t_9360a3cf648ffd 49-58,61-64
+test/storyarn/sheets/sheet_stats_test.exs
+  s_359e3629a7f34d::t_9360a3cf648ffd 196-204,208-209
+  s_359e3629a7f34d::t_d7dd16bc048231 11,210-211
+lib/storyarn/localization/text_crud.ex
+  s_359e3629a7f34d::t_9360a3cf648ffd 567-568,570-578,580-582
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "39c78351c84fd04fd9860475692eb912bb7fe819",
+  "prompts": {},
+  "sessions": {
+    "s_359e3629a7f34d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5ace-abae-7bf1-92e7-5a472db20c74",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
