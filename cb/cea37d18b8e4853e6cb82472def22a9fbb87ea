@@ -1,0 +1,23 @@
+assets/app/modules/scenes/exploration/lib/walkablePath.ts
+  s_951d62daa7f103::t_37a9ebe27910c4 1-355
+assets/app/modules/scenes/exploration/composables/useMovement.ts
+  s_951d62daa7f103::t_8f9d93beb78e9e 2,4,45,97-108,110-112,117,120,202,204-226,229-231,233-242,245-249,312
+assets/app/test/modules/scenes/exploration/walkablePath.test.ts
+  s_951d62daa7f103::t_37a9ebe27910c4 1-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "cbcea37d18b8e4853e6cb82472def22a9fbb87ea",
+  "prompts": {},
+  "sessions": {
+    "s_951d62daa7f103": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5a41-a57b-7b91-b5e9-959efa29907b",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
