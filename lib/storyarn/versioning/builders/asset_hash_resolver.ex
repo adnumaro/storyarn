@@ -125,8 +125,12 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
 
   defp fetch_asset_metadata(asset_metadata, id) do
     case Map.get(asset_metadata, id) do
-      metadata when is_map(metadata) -> {:ok, metadata}
-      _metadata -> {:error, :missing_asset_metadata}
+      %{"filename" => filename, "content_type" => content_type} = metadata
+      when is_binary(filename) and is_binary(content_type) ->
+        {:ok, metadata}
+
+      _metadata ->
+        {:error, :missing_asset_metadata}
     end
   end
 

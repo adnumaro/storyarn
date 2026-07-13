@@ -92,13 +92,27 @@ defmodule Storyarn.Projects.ProjectCrud do
   """
   def create_project(%Scope{user: user}, attrs) do
     with {:ok, workspace, membership} <- authorized_workspace_for_create(attrs, user),
-         true <- Workspaces.can?(membership.role, :create_project),
-         :ok <- Billing.can_create_project?(workspace) do
-      do_create_project(user, attrs)
+         true <- Workspaces.can?(membership.role, :create_project) do
+      do_create_project(user, workspace.id, attrs)
     else
       false -> {:error, :unauthorized}
-      {:error, :limit_reached, details} -> {:error, :limit_reached, details}
       {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc false
+  @spec lock_and_check_workspace_capacity(integer()) ::
+          :ok | {:error, :not_found} | {:error, :limit_reached, map()}
+  def lock_and_check_workspace_capacity(workspace_id) do
+    workspace =
+      Workspace
+      |> where([workspace], workspace.id == ^workspace_id)
+      |> lock("FOR UPDATE")
+      |> Repo.one()
+
+    case workspace do
+      %Workspace{} -> Billing.can_create_project?(workspace)
+      nil -> {:error, :not_found}
     end
   end
 
@@ -109,10 +123,11 @@ defmodule Storyarn.Projects.ProjectCrud do
     end
   end
 
-  defp do_create_project(user, attrs) do
+  defp do_create_project(user, workspace_id, attrs) do
     result =
       Repo.transact(fn ->
-        with {:ok, project} <- insert_project(user, attrs),
+        with :ok <- normalize_capacity_result(lock_and_check_workspace_capacity(workspace_id)),
+             {:ok, project} <- insert_project(user, attrs),
              {:ok, _membership} <- create_owner_membership(project, user) do
           {:ok, project}
         end
@@ -130,10 +145,21 @@ defmodule Storyarn.Projects.ProjectCrud do
 
         {:ok, project}
 
+      {:error, {:limit_reached, details}} ->
+        {:error, :limit_reached, details}
+
       error ->
         error
     end
   end
+
+  defp normalize_capacity_result(:ok), do: :ok
+
+  defp normalize_capacity_result({:error, :limit_reached, details}) do
+    {:error, {:limit_reached, details}}
+  end
+
+  defp normalize_capacity_result({:error, reason}), do: {:error, reason}
 
   @doc """
   Returns a changeset for tracking project changes.

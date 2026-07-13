@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  CircleAlert,
   FilePlus2,
   FolderOpen,
   Library,
@@ -178,10 +179,7 @@ const canCreateFromTemplate = computed(() => {
   return (
     !!selectedTemplate.value &&
     templateProjectName.value.trim().length > 0 &&
-    !templateSubmissionPending.value &&
-    !templateInstallations.value.some(
-      (installation) => installation.template_id === selectedTemplate.value?.id,
-    )
+    !templateSubmissionPending.value
   );
 });
 
@@ -378,20 +376,42 @@ function templateCountLabel(template: ProjectTemplate) {
           v-for="installation in filteredTemplateInstallations"
           :key="`template-installation-${installation.id}`"
           :data-testid="`template-installation-${installation.id}`"
-          class="relative flex min-h-44 flex-col overflow-hidden rounded-xl border border-primary/30 bg-card p-5 shadow-sm"
+          :class="[
+            'relative flex min-h-44 flex-col overflow-hidden rounded-xl border bg-card p-5 shadow-sm',
+            installation.status === 'failed'
+              ? 'border-destructive/40 bg-destructive/5'
+              : 'border-primary/30',
+          ]"
           aria-live="polite"
         >
-          <div class="absolute inset-x-0 top-0 h-0.5 overflow-hidden bg-primary/10">
+          <div
+            v-if="installation.status !== 'failed'"
+            class="absolute inset-x-0 top-0 h-0.5 overflow-hidden bg-primary/10"
+          >
             <div class="h-full w-1/2 animate-pulse rounded-full bg-primary" />
           </div>
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
-              <p class="text-xs font-medium uppercase tracking-wide text-primary">
-                {{ $t("workspace.new_project.templates.installing") }}
+              <p
+                :class="[
+                  'text-xs font-medium uppercase tracking-wide',
+                  installation.status === 'failed' ? 'text-destructive' : 'text-primary',
+                ]"
+              >
+                {{
+                  installation.status === "failed"
+                    ? $t("workspace.new_project.templates.failed")
+                    : $t("workspace.new_project.templates.installing")
+                }}
               </p>
               <h3 class="mt-1 truncate text-lg font-semibold">{{ installation.project_name }}</h3>
             </div>
-            <Loader2 class="size-5 shrink-0 animate-spin text-primary" aria-hidden="true" />
+            <CircleAlert
+              v-if="installation.status === 'failed'"
+              class="size-5 shrink-0 text-destructive"
+              aria-hidden="true"
+            />
+            <Loader2 v-else class="size-5 shrink-0 animate-spin text-primary" aria-hidden="true" />
           </div>
           <p class="mt-3 text-sm text-muted-foreground">
             {{ installationStageLabel(installation) }}

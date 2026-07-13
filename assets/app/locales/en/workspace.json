@@ -31,12 +31,14 @@
         "submit": "Create from template",
         "submitting": "Starting…",
         "installing": "Creating project",
+        "failed": "Creation failed",
         "reference": "Installation #{id}",
         "stages": {
           "queued": "Waiting for an available worker…",
           "verifying": "Verifying the template…",
           "materializing": "Copying project content and assets…",
-          "retrying": "A temporary issue occurred. Retrying automatically…"
+          "retrying": "A temporary issue occurred. Retrying automatically…",
+          "failed": "The project could not be created. Try again or contact support with this reference."
         },
         "version": "v{version}",
         "counts": "Sheets / flows / scenes",

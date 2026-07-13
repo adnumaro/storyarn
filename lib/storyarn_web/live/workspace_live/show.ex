@@ -37,7 +37,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
      |> assign(:project_templates, serialize_project_templates(ProjectTemplates.list_templates(scope)))
      |> assign(
        :template_installations,
-       serialize_template_installations(ProjectTemplates.list_active_workspace_installations(scope, workspace))
+       serialize_template_installations(ProjectTemplates.list_workspace_installation_feedback(scope, workspace))
      )}
   end
 
@@ -245,7 +245,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
 
   defp refresh_template_installations(socket) do
     installations =
-      ProjectTemplates.list_active_workspace_installations(
+      ProjectTemplates.list_workspace_installation_feedback(
         socket.assigns.current_scope,
         socket.assigns.workspace
       )

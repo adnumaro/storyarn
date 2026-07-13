@@ -199,6 +199,12 @@ defmodule Storyarn.ProjectTemplates do
   @spec list_active_workspace_installations(scope(), Workspace.t()) :: [ProjectTemplateInstall.t()]
   defdelegate list_active_workspace_installations(scope, workspace), to: Installation
 
+  @doc """
+  Lists active and recently failed installations for durable workspace feedback.
+  """
+  @spec list_workspace_installation_feedback(scope(), Workspace.t()) :: [ProjectTemplateInstall.t()]
+  defdelegate list_workspace_installation_feedback(scope, workspace), to: Installation
+
   @spec list_active_template_installations(scope(), ProjectTemplate.t()) :: [ProjectTemplateInstall.t()]
   defdelegate list_active_template_installations(scope, template), to: Installation
 

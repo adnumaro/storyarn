@@ -12,6 +12,7 @@ defmodule StoryarnWeb.WorkspaceLive.TemplateCreationTest do
   alias Storyarn.ProjectTemplates
   alias Storyarn.ProjectTemplates.ProjectTemplate
   alias Storyarn.ProjectTemplates.ProjectTemplateInstall
+  alias Storyarn.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Repo
   alias Storyarn.Workers.InstallProjectTemplateWorker
 
@@ -96,6 +97,44 @@ defmodule StoryarnWeb.WorkspaceLive.TemplateCreationTest do
       )
 
       refute render(view) =~ "Template installation failed"
+    end
+
+    test "shows a recent failed installation after the workspace is reloaded", %{
+      conn: conn,
+      user: user,
+      scope: scope
+    } do
+      workspace = workspace_fixture(user, %{name: "Failed Installation Studio"})
+      template = template_fixture(user, scope, %{name: "Broken Starter"})
+
+      version =
+        ProjectTemplateVersion
+        |> Repo.get!(template.current_version_id)
+        |> Ecto.Changeset.change(checksum: String.duplicate("0", 64))
+        |> Repo.update!()
+
+      assert {:ok, installation} =
+               ProjectTemplates.request_template_instantiation(scope, version, workspace, %{
+                 name: "Broken Copy",
+                 source: "workspace_dashboard"
+               })
+
+      assert :ok =
+               perform_job(InstallProjectTemplateWorker, %{
+                 "installation_id" => installation.id
+               })
+
+      {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+
+      failed_installation =
+        view
+        |> get_dashboard_vue()
+        |> then(& &1.props["template-creation"]["installations"])
+        |> Enum.find(&(&1["id"] == installation.id))
+
+      assert failed_installation["status"] == "failed"
+      assert failed_installation["stage"] == "failed"
+      assert failed_installation["project_name"] == "Broken Copy"
     end
   end
 

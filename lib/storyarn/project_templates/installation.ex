@@ -7,6 +7,7 @@ defmodule Storyarn.ProjectTemplates.Installation do
   alias Storyarn.Analytics
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Billing
+  alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates.Artifact
   alias Storyarn.ProjectTemplates.Authorization
@@ -25,6 +26,8 @@ defmodule Storyarn.ProjectTemplates.Installation do
   require Logger
 
   @active_statuses ProjectTemplateInstall.active_statuses()
+  @recent_failure_retention_seconds 86_400
+  @recent_failure_limit 10
   @permanent_errors ~w(
     archived
     checksum_mismatch
@@ -114,6 +117,38 @@ defmodule Storyarn.ProjectTemplates.Installation do
         |> order_by([install], asc: install.inserted_at, asc: install.id)
         |> preload([:project_template_version])
         |> Repo.all()
+
+      _error ->
+        []
+    end
+  end
+
+  @spec list_workspace_installation_feedback(Scope.t(), Workspace.t()) :: [ProjectTemplateInstall.t()]
+  def list_workspace_installation_feedback(%Scope{} = scope, %Workspace{} = workspace) do
+    case Workspaces.authorize(scope, workspace.id, :read) do
+      {:ok, _workspace, _membership} ->
+        active_installations =
+          ProjectTemplateInstall
+          |> where([install], install.workspace_id == ^workspace.id and install.status in ^@active_statuses)
+          |> order_by([install], asc: install.inserted_at, asc: install.id)
+          |> preload([:project_template_version])
+          |> Repo.all()
+
+        failed_since = DateTime.add(TimeHelpers.now(), -@recent_failure_retention_seconds, :second)
+
+        recent_failures =
+          ProjectTemplateInstall
+          |> where(
+            [install],
+            install.workspace_id == ^workspace.id and install.status == "failed" and
+              install.completed_at >= ^failed_since
+          )
+          |> order_by([install], desc: install.completed_at, desc: install.id)
+          |> limit(^@recent_failure_limit)
+          |> preload([:project_template_version])
+          |> Repo.all()
+
+        active_installations ++ recent_failures
 
       _error ->
         []
@@ -298,25 +333,12 @@ defmodule Storyarn.ProjectTemplates.Installation do
   end
 
   defp instantiate_template_under_workspace_lock(scope, version, workspace, attrs, snapshot, opts) do
-    with :ok <- lock_and_check_workspace_capacity(workspace.id),
+    with :ok <- Projects.lock_and_check_workspace_capacity(workspace.id),
          {:ok, project} <- do_instantiate_template(scope, version, workspace, attrs, snapshot, opts) do
       project
     else
       {:error, :limit_reached, details} -> Repo.rollback({:limit_reached, details})
       {:error, reason} -> Repo.rollback(reason)
-    end
-  end
-
-  defp lock_and_check_workspace_capacity(workspace_id) do
-    workspace =
-      Workspace
-      |> where([workspace], workspace.id == ^workspace_id)
-      |> lock("FOR UPDATE")
-      |> Repo.one()
-
-    case workspace do
-      %Workspace{} -> Billing.can_create_project?(workspace)
-      nil -> {:error, :not_found}
     end
   end
 

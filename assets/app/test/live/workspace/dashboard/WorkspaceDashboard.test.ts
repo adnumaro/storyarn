@@ -164,6 +164,70 @@ describe("WorkspaceDashboard", () => {
     expect(wrapper.text()).not.toContain("No projects yet");
   });
 
+  it("shows durable failure feedback with a safe installation reference", () => {
+    const { wrapper } = mountDashboard({
+      projects: [],
+      templateCreation: {
+        templates: [],
+        installations: [
+          {
+            id: 43,
+            project_name: "Broken Demo",
+            status: "failed",
+            stage: "failed",
+            template_id: 10,
+            template_version_id: 11,
+          },
+        ],
+      },
+    });
+
+    const feedback = wrapper.get('[data-testid="template-installation-43"]');
+    expect(feedback.text()).toContain("Broken Demo");
+    expect(feedback.text()).toContain("Creation failed");
+    expect(feedback.text()).toContain("Installation #43");
+    expect(feedback.find(".animate-spin").exists()).toBe(false);
+  });
+
+  it("allows another named project from a template that is already installing", async () => {
+    const { live, wrapper } = mountDashboard({
+      templateCreation: {
+        templates: [
+          {
+            id: 10,
+            name: "Starter Kit",
+            visibility: "private",
+            version_number: 1,
+          },
+        ],
+        installations: [
+          {
+            id: 42,
+            project_name: "First Copy",
+            status: "running",
+            stage: "materializing",
+            template_id: 10,
+            template_version_id: 11,
+          },
+        ],
+      },
+    });
+
+    await wrapper.get('[data-testid="new-project-mode-private"]').trigger("click");
+    await wrapper.get("#template-project-name").setValue("Second Copy");
+
+    const submit = wrapper.get('[data-testid="create-project-from-template"]');
+    expect(submit.attributes()).not.toHaveProperty("disabled");
+
+    await submit.trigger("click");
+
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "create_project_from_template",
+      { template_id: 10, name: "Second Copy" },
+      expect.any(Function),
+    );
+  });
+
   it("prevents duplicate submissions while the request is pending", async () => {
     const { live, wrapper } = mountDashboard({
       templateCreation: {

@@ -31,12 +31,14 @@
         "submit": "Crear desde template",
         "submitting": "Iniciando…",
         "installing": "Creando proyecto",
+        "failed": "Error de creación",
         "reference": "Instalación #{id}",
         "stages": {
           "queued": "Esperando un proceso disponible…",
           "verifying": "Verificando la template…",
           "materializing": "Copiando el contenido y los assets…",
-          "retrying": "Ha ocurrido un problema temporal. Reintentando automáticamente…"
+          "retrying": "Ha ocurrido un problema temporal. Reintentando automáticamente…",
+          "failed": "No se pudo crear el proyecto. Inténtalo de nuevo o contacta con soporte usando esta referencia."
         },
         "version": "v{version}",
         "counts": "Fichas / flows / escenas",

@@ -19,12 +19,22 @@ defmodule Storyarn.Repo.Migrations.HardenProjectTemplateInstallations do
     end
 
     execute """
+    UPDATE project_template_installs
+    SET started_at = inserted_at,
+        completed_at = installed_at
+    """
+
+    execute """
     UPDATE project_template_installs AS installs
-    SET project_name = projects.name,
-        started_at = installs.inserted_at,
-        completed_at = installs.installed_at
+    SET project_name = projects.name
     FROM projects
     WHERE projects.id = installs.project_id
+    """
+
+    execute """
+    UPDATE project_template_installs
+    SET project_name = 'Deleted project'
+    WHERE project_name IS NULL
     """
 
     alter table(:project_template_installs) do
