@@ -3,6 +3,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
 
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures, except: [connection_fixture: 3, connection_fixture: 4]
+  import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
   import Storyarn.ScreenplaysFixtures
@@ -11,6 +12,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
   alias Storyarn.Exports
   alias Storyarn.Flows
   alias Storyarn.Imports
+  alias Storyarn.Localization
 
   # =============================================================================
   # Setup
@@ -80,6 +82,81 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       assert "export_version" in missing
       assert "project" in missing
     end
+
+    test "rejects locale codes that could escape an export directory" do
+      data = minimal_import_data()
+      data = put_in(data, ["localization"], %{"source_language" => "../../secrets", "languages" => []})
+
+      assert {:error, {:invalid_locale_codes, ["../../secrets"]}} =
+               data |> Jason.encode!() |> Imports.parse_file()
+    end
+
+    test "rejects dialogue responses without a stable response id" do
+      data =
+        minimal_import_data([
+          dialogue_import_node("welcome", [%{"text" => "Continue"}])
+        ])
+
+      assert {:error, {:invalid_dialogue_ids, errors}} =
+               data |> Jason.encode!() |> Imports.parse_file()
+
+      assert Enum.any?(errors, &(&1.field == "response.id"))
+    end
+
+    test "rejects duplicate dialogue localization ids" do
+      data =
+        minimal_import_data([
+          dialogue_import_node("shared_dialogue", []),
+          dialogue_import_node("shared_dialogue", [])
+        ])
+
+      assert {:error, {:invalid_dialogue_ids, errors}} =
+               data |> Jason.encode!() |> Imports.parse_file()
+
+      assert Enum.any?(errors, &(&1.reason == "duplicate" and &1.value == "shared_dialogue"))
+    end
+
+    test "rejects malformed nested localization values without crashing" do
+      data =
+        put_in(minimal_import_data(), ["localization"], %{
+          "languages" => ["es"],
+          "strings" => [%{"translations" => ["not", "a", "map"]}],
+          "glossary" => []
+        })
+
+      assert {:error, {:invalid_field_types, fields}} =
+               data |> Jason.encode!() |> Imports.parse_file()
+
+      assert "localization.languages[0]" in fields
+      assert "localization.strings[0].translations" in fields
+    end
+
+    test "rejects malformed dialogue data without crashing" do
+      data =
+        minimal_import_data([
+          %{"id" => Ecto.UUID.generate(), "type" => "dialogue", "data" => "invalid"}
+        ])
+
+      assert {:error, {:invalid_field_types, [field]}} =
+               data |> Jason.encode!() |> Imports.parse_file()
+
+      assert field == "flows[0].nodes[0].data"
+    end
+
+    test "rejects malformed translation payloads without crashing" do
+      data =
+        put_in(minimal_import_data(), ["localization"], %{
+          "languages" => [],
+          "strings" => [%{"translations" => %{"es" => "not-a-translation-object"}}],
+          "glossary" => [%{"translations" => %{"es" => %{"invalid" => true}}}]
+        })
+
+      assert {:error, {:invalid_field_types, fields}} =
+               data |> Jason.encode!() |> Imports.parse_file()
+
+      assert "localization.strings[0].translations.es" in fields
+      assert "localization.glossary[0].translations.es" in fields
+    end
   end
 
   # =============================================================================
@@ -88,6 +165,13 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
 
   describe "execute — entity count validation" do
     setup [:setup_projects]
+
+    test "rejects malformed nested structures even when parse is bypassed", %{target: target} do
+      data = put_in(minimal_import_data(), ["flows"], [%{"nodes" => ["invalid"]}])
+
+      assert {:error, {:invalid_field_types, fields}} = Imports.execute(target, data)
+      assert "flows[0].nodes[0]" in fields
+    end
 
     test "rejects import with too many sheets", %{target: target} do
       # Build data that exceeds the sheets limit (1000)
@@ -286,6 +370,105 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       assert sp_with_data.elements != []
     end
 
+    test "remaps localized sheet names to the imported sheet ID", %{source: source, target: target} do
+      source_language_fixture(source, %{locale_code: "en", name: "English"})
+      language_fixture(source, %{locale_code: "es", name: "Spanish"})
+      sheet = sheet_fixture(source, %{name: "Localized Hero"})
+      [text] = Localization.get_texts_for_source("sheet", sheet.id)
+      assert {:ok, _text} = Localization.update_text(text, %{translated_text: "Héroe", status: "final"})
+
+      assert {:ok, json} =
+               Exports.export_project(source, %{format: :storyarn, validate_before_export: false})
+
+      assert {:ok, parsed} = Imports.parse_file(json)
+      assert {:ok, _result} = Imports.execute(target, parsed.data)
+
+      imported_sheet = Enum.find(Storyarn.Sheets.list_all_sheets(target.id), &(&1.name == "Localized Hero"))
+      refute imported_sheet.id == sheet.id
+
+      assert [%{translated_text: "Héroe", status: "final"}] =
+               Localization.get_texts_for_source("sheet", imported_sheet.id)
+    end
+
+    test "round-trips archived languages and their translations", %{source: source, target: target} do
+      flow = flow_fixture(source, %{name: "Archived locale flow"})
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Remember me", "responses" => []}})
+      source_language_fixture(source, %{locale_code: "en", name: "English"})
+      spanish = language_fixture(source, %{locale_code: "es", name: "Spanish"})
+
+      [text] = Localization.get_texts_for_source("flow_node", node.id)
+      assert {:ok, _text} = Localization.update_text(text, %{translated_text: "Recuérdame", status: "final"})
+      assert {:ok, archived_language} = Localization.remove_language(spanish)
+
+      assert {:ok, json} =
+               Exports.export_project(source, %{format: :storyarn, validate_before_export: false})
+
+      assert {:ok, parsed} = Imports.parse_file(json)
+      assert {:ok, result} = Imports.execute(target, parsed.data)
+
+      imported_language =
+        target.id
+        |> Localization.list_languages_for_backup()
+        |> Enum.find(&(&1.locale_code == "es"))
+
+      assert imported_language.archived_at == archived_language.archived_at
+
+      imported_flow = Enum.find(result.flows, &(&1.name == "Archived locale flow"))
+      imported_node = imported_flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "dialogue"))
+
+      assert [%{translated_text: "Recuérdame", status: "final"}] =
+               Localization.get_texts_for_source("flow_node", imported_node.id)
+    end
+
+    test "rekeys an imported dialogue that collides without losing its translation", %{
+      source: source,
+      target: target
+    } do
+      source_language_fixture(source, %{locale_code: "en", name: "English"})
+      language_fixture(source, %{locale_code: "es", name: "Spanish"})
+
+      source_flow = flow_fixture(source, %{name: "Collision Source"})
+
+      source_node =
+        node_fixture(source_flow, %{
+          type: "dialogue",
+          data: %{
+            "localization_id" => "shared_import_dialogue",
+            "text" => "Imported line",
+            "responses" => []
+          }
+        })
+
+      [source_text] = Localization.get_texts_for_source("flow_node", source_node.id)
+      assert {:ok, _text} = Localization.update_text(source_text, %{translated_text: "Línea importada", status: "final"})
+
+      target_flow = flow_fixture(target, %{name: "Existing Target"})
+
+      existing_node =
+        node_fixture(target_flow, %{
+          type: "dialogue",
+          data: %{
+            "localization_id" => "shared_import_dialogue",
+            "text" => "Existing line",
+            "responses" => []
+          }
+        })
+
+      assert {:ok, json} =
+               Exports.export_project(source, %{format: :storyarn, validate_before_export: false})
+
+      assert {:ok, parsed} = Imports.parse_file(json)
+      assert {:ok, result} = Imports.execute(target, parsed.data, conflict_strategy: :rename)
+
+      imported_flow = Enum.find(result.flows, &(&1.name == "Collision Source"))
+      imported_node = imported_flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "dialogue"))
+
+      refute imported_node.data["localization_id"] == existing_node.data["localization_id"]
+
+      assert [%{translated_text: "Línea importada", status: "final"}] =
+               Localization.get_texts_for_source("flow_node", imported_node.id)
+    end
+
     test "remaps node flow references after all flows are imported", %{source: source, target: target} do
       referenced_flow = flow_fixture(source, %{name: "Referenced Flow"})
       source_flow = flow_fixture(source, %{name: "Source Flow"})
@@ -319,5 +502,25 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       assert imported_subflow.data["referenced_flow_id"] == imported_referenced_flow.id
       assert imported_exit.data["target_id"] == imported_referenced_flow.id
     end
+  end
+
+  defp minimal_import_data(nodes \\ []) do
+    %{
+      "storyarn_version" => "1.0.0",
+      "export_version" => "1.0.0",
+      "project" => %{},
+      "sheets" => [],
+      "flows" => [%{"id" => "flow-1", "nodes" => nodes}],
+      "scenes" => [],
+      "screenplays" => []
+    }
+  end
+
+  defp dialogue_import_node(localization_id, responses) do
+    %{
+      "id" => Ecto.UUID.generate(),
+      "type" => "dialogue",
+      "data" => %{"localization_id" => localization_id, "text" => "Hello", "responses" => responses}
+    }
   end
 end

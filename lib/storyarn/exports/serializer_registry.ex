@@ -68,7 +68,8 @@ defmodule Storyarn.Exports.SerializerRegistry do
         label: module.format_label(),
         extension: module.file_extension(),
         content_type: module.content_type(),
-        sections: module.supported_sections()
+        sections: module.supported_sections(),
+        localization_mode: module.localization_mode()
       }
     end)
   end

@@ -90,7 +90,7 @@ defmodule Storyarn.Localization.ReportsTest do
       assert stat.line_count == 2
     end
 
-    test "only counts flow_node source type" do
+    test "only counts spoken dialogue roles" do
       user = user_fixture()
       project = project_fixture(user)
 
@@ -102,13 +102,21 @@ defmodule Storyarn.Localization.ReportsTest do
 
       localized_text_fixture(project.id, %{
         locale_code: "es",
-        source_type: "sheet",
+        source_type: "flow_node",
+        source_field: "stage_directions",
         word_count: 20
+      })
+
+      localized_text_fixture(project.id, %{
+        locale_code: "es",
+        source_type: "flow_node",
+        source_field: "response.accept.text",
+        word_count: 5
       })
 
       stats = Reports.word_counts_by_speaker(project.id, "es")
       assert length(stats) == 1
-      assert hd(stats).word_count == 10
+      assert hd(stats).word_count == 15
     end
 
     test "includes the speaker sheet name" do
@@ -144,7 +152,8 @@ defmodule Storyarn.Localization.ReportsTest do
       localized_text_fixture(project.id, %{
         locale_code: "es",
         source_type: "flow_node",
-        vo_status: "needed"
+        source_field: "stage_directions",
+        vo_status: "none"
       })
 
       localized_text_fixture(project.id, %{
@@ -156,7 +165,7 @@ defmodule Storyarn.Localization.ReportsTest do
       result = Reports.vo_progress(project.id, "es")
 
       assert result.none == 1
-      assert result.needed == 2
+      assert result.needed == 1
       assert result.recorded == 0
       assert result.approved == 0
     end
@@ -178,12 +187,17 @@ defmodule Storyarn.Localization.ReportsTest do
 
       localized_text_fixture(project.id, %{locale_code: "es", source_type: "flow_node"})
       localized_text_fixture(project.id, %{locale_code: "es", source_type: "flow_node"})
-      localized_text_fixture(project.id, %{locale_code: "es", source_type: "sheet"})
+
+      localized_text_fixture(project.id, %{
+        locale_code: "es",
+        source_type: "block",
+        source_field: "value.content"
+      })
 
       counts = Reports.counts_by_source_type(project.id, "es")
 
       assert counts["flow_node"] == 2
-      assert counts["sheet"] == 1
+      assert counts["block"] == 1
     end
 
     test "returns empty map when no texts exist" do

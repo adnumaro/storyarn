@@ -13,6 +13,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   alias Storyarn.Localization.GlossaryEntry
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProjectLanguage
+  alias Storyarn.Localization.SourceContract
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes
@@ -37,13 +38,13 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
     flows = Flows.list_flows_for_export(project_id)
     scenes = Scenes.list_scenes_for_export(project_id)
 
-    languages = Localization.list_languages(project_id)
+    languages = Localization.list_languages_for_backup(project_id)
     locale_codes = Enum.map(languages, & &1.locale_code)
 
     texts =
       if locale_codes == [],
         do: [],
-        else: Localization.list_texts_for_export(project_id, locale_codes)
+        else: Localization.list_texts_for_backup(project_id, locale_codes)
 
     glossary = Localization.list_glossary_for_export(project_id)
     {asset_blob_hashes, asset_metadata} = localization_asset_metadata(texts)
@@ -156,7 +157,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
             )
         }
 
-        restore_localization(project_id, snapshot)
+        restore_localization(project_id, snapshot, collect_localization_id_maps(results))
 
         %{
           restored: count_restored(results),
@@ -175,6 +176,9 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
       entity_id = entry["id"]
 
       case restore_fn.(entity_id, entry["snapshot"]) do
+        {:ok, _entity, id_maps} ->
+          {:restored, entity_id, id_maps}
+
         {:ok, _entity} ->
           {:restored, entity_id}
 
@@ -192,14 +196,14 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   defp restore_sheet(sheet_id, snapshot, project_id) do
     case Sheets.get_sheet(project_id, sheet_id) do
       nil -> {:error, :not_found}
-      sheet -> SheetBuilder.restore_snapshot(sheet, snapshot)
+      sheet -> SheetBuilder.restore_snapshot(sheet, snapshot, return_id_maps: true)
     end
   end
 
   defp restore_flow(flow_id, snapshot, project_id) do
     case Flows.get_flow(project_id, flow_id) do
       nil -> {:error, :not_found}
-      flow -> FlowBuilder.restore_snapshot(flow, snapshot)
+      flow -> FlowBuilder.restore_snapshot(flow, snapshot, return_id_maps: true)
     end
   end
 
@@ -213,7 +217,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   defp count_restored(results) do
     Enum.sum(
       for {_key, entries} <- results do
-        Enum.count(entries, fn {status, _} -> status == :restored end)
+        Enum.count(entries, &(elem(&1, 0) == :restored))
       end
     )
   end
@@ -221,9 +225,24 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   defp count_skipped(results) do
     Enum.sum(
       for {_key, entries} <- results do
-        Enum.count(entries, fn {status, _} -> status == :skipped end)
+        Enum.count(entries, &(elem(&1, 0) == :skipped))
       end
     )
+  end
+
+  defp collect_localization_id_maps(results) do
+    results
+    |> Map.values()
+    |> List.flatten()
+    |> Enum.reduce(%{sheet: %{}, block: %{}, node: %{}}, fn
+      {:restored, _entity_id, id_maps}, acc ->
+        Map.merge(acc, Map.take(id_maps, [:sheet, :block, :node]), fn _key, left, right ->
+          Map.merge(left, right)
+        end)
+
+      _result, acc ->
+        acc
+    end)
   end
 
   # ========== Localization Snapshots ==========
@@ -233,7 +252,8 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
       "locale_code" => language.locale_code,
       "name" => language.name,
       "is_source" => language.is_source,
-      "position" => language.position
+      "position" => language.position,
+      "archived_at" => language.archived_at
     }
   end
 
@@ -244,6 +264,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
       "source_field" => text.source_field,
       "source_text" => text.source_text,
       "source_text_hash" => text.source_text_hash,
+      "translated_source_hash" => text.translated_source_hash,
       "locale_code" => text.locale_code,
       "translated_text" => text.translated_text,
       "status" => text.status,
@@ -253,11 +274,15 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
       "reviewer_notes" => text.reviewer_notes,
       "speaker_sheet_id" => text.speaker_sheet_id,
       "word_count" => text.word_count,
+      "content_role" => text.content_role,
+      "vo_eligible" => text.vo_eligible,
       "machine_translated" => text.machine_translated,
       "last_translated_at" => text.last_translated_at,
       "last_reviewed_at" => text.last_reviewed_at,
       "translated_by_id" => text.translated_by_id,
-      "reviewed_by_id" => text.reviewed_by_id
+      "reviewed_by_id" => text.reviewed_by_id,
+      "archived_at" => text.archived_at,
+      "archive_reason" => text.archive_reason
     }
   end
 
@@ -274,7 +299,11 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
 
   # ========== Localization Restore ==========
 
-  defp restore_localization(project_id, snapshot) do
+  defp restore_localization(_project_id, %{"localization" => nil}, _id_maps), do: :ok
+
+  defp restore_localization(_project_id, snapshot, _id_maps) when not is_map_key(snapshot, "localization"), do: :ok
+
+  defp restore_localization(project_id, snapshot, id_maps) do
     localization = snapshot["localization"]
     now = TimeHelpers.now()
 
@@ -283,7 +312,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
     Repo.delete_all(from(g in GlossaryEntry, where: g.project_id == ^project_id))
     Repo.delete_all(from(l in ProjectLanguage, where: l.project_id == ^project_id))
     restore_languages(project_id, Map.get(localization, "languages", []), now)
-    restore_texts(project_id, Map.get(localization, "texts", []), now)
+    restore_texts(project_id, Map.get(localization, "texts", []), id_maps, now)
     restore_glossary(project_id, Map.get(localization, "glossary", []), now)
   end
 
@@ -298,6 +327,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
           name: lang["name"],
           is_source: lang["is_source"] || false,
           position: lang["position"] || 0,
+          archived_at: parse_datetime(lang["archived_at"]),
           inserted_at: now,
           updated_at: now
         }
@@ -306,38 +336,83 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
     Repo.insert_all(ProjectLanguage, entries)
   end
 
-  defp restore_texts(_project_id, [], _now), do: :ok
+  defp restore_texts(_project_id, [], _id_maps, _now), do: :ok
 
-  defp restore_texts(project_id, texts, now) do
+  defp restore_texts(project_id, texts, id_maps, now) do
     texts
-    |> Enum.map(fn text ->
-      %{
-        project_id: project_id,
-        source_type: text["source_type"],
-        source_id: text["source_id"],
-        source_field: text["source_field"],
-        source_text: text["source_text"],
-        source_text_hash: text["source_text_hash"],
-        locale_code: text["locale_code"],
-        translated_text: text["translated_text"],
-        status: text["status"] || "pending",
-        vo_status: text["vo_status"] || "none",
-        vo_asset_id: text["vo_asset_id"],
-        translator_notes: text["translator_notes"],
-        reviewer_notes: text["reviewer_notes"],
-        speaker_sheet_id: text["speaker_sheet_id"],
-        word_count: text["word_count"],
-        machine_translated: text["machine_translated"] || false,
-        last_translated_at: text["last_translated_at"],
-        last_reviewed_at: text["last_reviewed_at"],
-        translated_by_id: text["translated_by_id"],
-        reviewed_by_id: text["reviewed_by_id"],
-        inserted_at: now,
-        updated_at: now
-      }
+    |> Enum.flat_map(fn text ->
+      metadata = SourceContract.field_metadata(text["source_type"], text["source_field"])
+      source_id = remap_localization_source_id(text, id_maps)
+
+      if is_nil(metadata) or is_nil(source_id) do
+        []
+      else
+        [
+          %{
+            project_id: project_id,
+            source_type: text["source_type"],
+            source_id: source_id,
+            source_field: text["source_field"],
+            source_text: text["source_text"],
+            source_text_hash: text["source_text_hash"],
+            translated_source_hash: translated_source_hash(text),
+            locale_code: text["locale_code"],
+            translated_text: text["translated_text"],
+            status: text["status"] || "pending",
+            vo_status: if(metadata.vo_eligible, do: text["vo_status"] || "none", else: "none"),
+            vo_asset_id: if(metadata.vo_eligible, do: text["vo_asset_id"]),
+            translator_notes: text["translator_notes"],
+            reviewer_notes: text["reviewer_notes"],
+            speaker_sheet_id: if(metadata.content_role == "dialogue", do: text["speaker_sheet_id"]),
+            word_count: text["word_count"],
+            content_role: metadata.content_role,
+            vo_eligible: metadata.vo_eligible,
+            machine_translated: text["machine_translated"] || false,
+            last_translated_at: parse_datetime(text["last_translated_at"]),
+            last_reviewed_at: parse_datetime(text["last_reviewed_at"]),
+            translated_by_id: text["translated_by_id"],
+            reviewed_by_id: text["reviewed_by_id"],
+            archived_at: parse_datetime(text["archived_at"]),
+            archive_reason: text["archive_reason"],
+            inserted_at: now,
+            updated_at: now
+          }
+        ]
+      end
     end)
     |> Enum.chunk_every(500)
     |> Enum.each(fn chunk -> Repo.insert_all(LocalizedText, chunk) end)
+  end
+
+  defp remap_localization_source_id(%{"source_type" => "flow_node", "source_id" => old_id}, id_maps),
+    do: Map.get(id_maps.node, old_id)
+
+  defp remap_localization_source_id(%{"source_type" => "block", "source_id" => old_id}, id_maps),
+    do: Map.get(id_maps.block, old_id)
+
+  defp remap_localization_source_id(%{"source_type" => "sheet", "source_id" => old_id}, id_maps),
+    do: Map.get(id_maps.sheet, old_id)
+
+  defp remap_localization_source_id(_text, _id_maps), do: nil
+
+  defp parse_datetime(nil), do: nil
+  defp parse_datetime(%DateTime{} = datetime), do: datetime
+
+  defp parse_datetime(value) when is_binary(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, datetime, _offset} -> datetime
+      _ -> nil
+    end
+  end
+
+  defp parse_datetime(_value), do: nil
+
+  defp translated_source_hash(%{"translated_source_hash" => hash}) when is_binary(hash), do: hash
+
+  defp translated_source_hash(text) do
+    if is_binary(text["translated_text"]) and String.trim(text["translated_text"]) != "" do
+      text["source_text_hash"]
+    end
   end
 
   defp restore_glossary(_project_id, [], _now), do: :ok

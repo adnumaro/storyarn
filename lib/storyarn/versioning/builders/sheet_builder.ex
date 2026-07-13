@@ -14,6 +14,8 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   import Ecto.Query, warn: false
 
   alias Ecto.Multi
+  alias Storyarn.Localization
+  alias Storyarn.Localization.TextCrud
   alias Storyarn.Repo
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.BlockGalleryImage
@@ -23,6 +25,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   alias Storyarn.Sheets.TableRow
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.DiffHelpers
+  alias Storyarn.Versioning.LocalizationSnapshotCodec
   alias Storyarn.Versioning.MaterializationHelpers
 
   # ========== Build Snapshot ==========
@@ -44,6 +47,12 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     asset_ids = [sheet.banner_asset_id | snapshot_asset_ids(avatar_snapshots, block_snapshots)]
     {hash_map, metadata_map} = AssetHashResolver.resolve_hashes(asset_ids)
 
+    localization =
+      LocalizationSnapshotCodec.capture(sheet.project_id, %{
+        "sheet" => [sheet.id],
+        "block" => Enum.map(sheet.blocks, & &1.id)
+      })
+
     %{
       "original_id" => sheet.id,
       "name" => sheet.name,
@@ -56,7 +65,8 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       "hidden_inherited_block_ids" => sheet.hidden_inherited_block_ids || [],
       "blocks" => block_snapshots,
       "asset_blob_hashes" => hash_map,
-      "asset_metadata" => metadata_map
+      "asset_metadata" => metadata_map,
+      "localization" => localization
     }
   end
 
@@ -156,67 +166,97 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
   @impl true
   def instantiate_snapshot(project_id, snapshot, opts \\ []) do
-    fn ->
-      now = MaterializationHelpers.now()
-      preserve_external_refs? = MaterializationHelpers.preserve_external_refs?(opts)
-      avatar_entries = build_avatar_entries(snapshot, project_id, now, opts)
-
-      sheet_attrs =
-        Map.merge(
-          %{
-            project_id: project_id,
-            name: snapshot["name"],
-            shortcut: MaterializationHelpers.root_shortcut(snapshot, opts),
-            description: snapshot["description"],
-            color: snapshot["color"],
-            hidden_inherited_block_ids: snapshot["hidden_inherited_block_ids"] || [],
-            banner_asset_id: resolve_sheet_asset(snapshot["banner_asset_id"], snapshot, project_id, opts),
-            parent_id: MaterializationHelpers.root_parent_id(opts),
-            position: MaterializationHelpers.root_position(opts)
-          },
-          MaterializationHelpers.timestamps(now)
-        )
-
-      with {:ok, sheet_id} <-
-             MaterializationHelpers.insert_one_returning_id(Repo, Sheet, sheet_attrs),
-           :ok <- insert_sheet_avatars(sheet_id, avatar_entries),
-           {:ok, inserted_blocks, block_id_map} <-
-             insert_sheet_blocks(sheet_id, snapshot["blocks"] || [], now),
-           :ok <-
-             remap_sheet_block_inheritance(
-               inserted_blocks,
-               snapshot["blocks"] || [],
-               block_id_map,
-               preserve_external_refs?
-             ),
-           :ok <- restore_table_data(Repo, inserted_blocks, snapshot["blocks"] || [], now),
-           :ok <- restore_gallery_images(Repo, inserted_blocks, snapshot, project_id, now, opts) do
-        sheet =
-          Sheet
-          |> Repo.get!(sheet_id)
-          |> Repo.preload([:banner_asset, :blocks, avatars: :asset], force: true)
-
-        id_maps = %{
-          sheet: MaterializationHelpers.root_id_map(snapshot, sheet_id),
-          block: block_id_map
-        }
-
-        {sheet, id_maps}
-      else
-        {:error, reason} -> Repo.rollback(reason)
-      end
-    end
+    fn -> instantiate_sheet_snapshot(project_id, snapshot, opts) end
     |> Repo.transaction()
-    |> case do
-      {:ok, {sheet, id_maps}} -> {:ok, sheet, id_maps}
-      {:error, reason} -> {:error, reason}
+    |> finalize_sheet_instantiation(project_id)
+  end
+
+  defp instantiate_sheet_snapshot(project_id, snapshot, opts) do
+    now = MaterializationHelpers.now()
+    blocks = Map.get(snapshot, "blocks", [])
+    avatar_entries = build_avatar_entries(snapshot, project_id, now, opts)
+
+    with {:ok, sheet_id} <-
+           MaterializationHelpers.insert_one_returning_id(
+             Repo,
+             Sheet,
+             sheet_snapshot_attrs(project_id, snapshot, opts, now)
+           ),
+         :ok <- insert_sheet_avatars(sheet_id, avatar_entries),
+         {:ok, inserted_blocks, block_id_map} <- insert_sheet_blocks(sheet_id, blocks, now),
+         :ok <-
+           remap_sheet_block_inheritance(
+             inserted_blocks,
+             blocks,
+             block_id_map,
+             MaterializationHelpers.preserve_external_refs?(opts)
+           ),
+         :ok <- restore_table_data(Repo, inserted_blocks, blocks, now),
+         :ok <- restore_gallery_images(Repo, inserted_blocks, snapshot, project_id, now, opts) do
+      complete_sheet_instantiation(project_id, snapshot, sheet_id, block_id_map)
+    else
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp sheet_snapshot_attrs(project_id, snapshot, opts, now) do
+    Map.merge(
+      %{
+        project_id: project_id,
+        name: snapshot["name"],
+        shortcut: MaterializationHelpers.root_shortcut(snapshot, opts),
+        description: snapshot["description"],
+        color: snapshot["color"],
+        hidden_inherited_block_ids: snapshot["hidden_inherited_block_ids"] || [],
+        banner_asset_id: resolve_sheet_asset(snapshot["banner_asset_id"], snapshot, project_id, opts),
+        parent_id: MaterializationHelpers.root_parent_id(opts),
+        position: MaterializationHelpers.root_position(opts)
+      },
+      MaterializationHelpers.timestamps(now)
+    )
+  end
+
+  defp complete_sheet_instantiation(project_id, snapshot, sheet_id, block_id_map) do
+    sheet =
+      Sheet
+      |> Repo.get!(sheet_id)
+      |> Repo.preload([:banner_asset, :blocks, avatars: :asset], force: true)
+
+    id_maps = %{
+      sheet: MaterializationHelpers.root_id_map(snapshot, sheet_id),
+      block: block_id_map
+    }
+
+    case LocalizationSnapshotCodec.restore(project_id, Map.get(snapshot, "localization", []), id_maps) do
+      :ok -> {sheet, id_maps}
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp finalize_sheet_instantiation(result, project_id) do
+    case result do
+      {:ok, {sheet, id_maps}} ->
+        Localization.extract_sheet_blocks(sheet.id)
+        Localization.sync_sheet_names(project_id)
+        {:ok, sheet, id_maps}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
   @impl true
   def restore_snapshot(%Sheet{} = sheet, snapshot, opts \\ []) do
     avatar_entries = build_avatar_entries(snapshot, sheet.project_id, MaterializationHelpers.now(), opts)
+    localization_rows = Map.get(snapshot, "localization", [])
 
+    sheet
+    |> build_sheet_restore_multi(snapshot, opts, avatar_entries, localization_rows)
+    |> Repo.transaction()
+    |> finalize_sheet_restore(snapshot, opts)
+  end
+
+  defp build_sheet_restore_multi(sheet, snapshot, opts, avatar_entries, localization_rows) do
     Multi.new()
     |> Multi.update(:sheet, fn _changes ->
       Sheet.update_changeset(sheet, %{
@@ -232,36 +272,80 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
           )
       })
     end)
+    |> Multi.run(:archive_localization, fn _repo, _changes -> archive_sheet_localization(sheet.id) end)
     |> Multi.delete_all(:delete_avatars, fn _changes ->
       from(sa in SheetAvatar, where: sa.sheet_id == ^sheet.id)
     end)
-    |> Multi.run(:restore_avatar, fn _repo, _changes ->
-      case insert_sheet_avatars(sheet.id, avatar_entries) do
-        :ok -> {:ok, length(avatar_entries)}
-        {:error, reason} -> {:error, reason}
-      end
-    end)
+    |> Multi.run(:restore_avatar, fn _repo, _changes -> restore_sheet_avatars(sheet.id, avatar_entries) end)
     |> Multi.delete_all(:delete_blocks, fn _changes ->
       from(b in Block, where: b.sheet_id == ^sheet.id)
     end)
     |> Multi.run(:restore_blocks, fn repo, _changes ->
       restore_blocks_from_snapshot(repo, sheet.id, sheet.project_id, snapshot, opts)
     end)
-    |> Repo.transaction()
-    |> case do
-      {:ok, %{sheet: updated_sheet}} ->
-        {:ok, Repo.preload(updated_sheet, [:banner_asset, :blocks, avatars: :asset], force: true)}
+    |> Multi.run(:restore_localization, fn _repo, %{restore_blocks: block_data} ->
+      id_maps = %{
+        sheet: MaterializationHelpers.root_id_map(snapshot, sheet.id),
+        block: block_data.block_id_map
+      }
+
+      restore_sheet_localization(sheet.project_id, localization_rows, id_maps)
+    end)
+  end
+
+  defp archive_sheet_localization(sheet_id) do
+    block_ids = Repo.all(from(b in Block, where: b.sheet_id == ^sheet_id, select: b.id))
+    TextCrud.archive_texts_for_sources("block", block_ids, "version_replaced")
+    TextCrud.archive_texts_for_source("sheet", sheet_id, "version_replaced")
+    {:ok, length(block_ids)}
+  end
+
+  defp restore_sheet_avatars(sheet_id, avatar_entries) do
+    case insert_sheet_avatars(sheet_id, avatar_entries) do
+      :ok -> {:ok, length(avatar_entries)}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp restore_sheet_localization(project_id, rows, id_maps) do
+    case LocalizationSnapshotCodec.restore(project_id, rows, id_maps) do
+      :ok -> {:ok, length(rows)}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp finalize_sheet_restore(result, snapshot, opts) do
+    case result do
+      {:ok, %{sheet: updated_sheet, restore_blocks: block_data}} ->
+        Localization.extract_sheet_blocks(updated_sheet.id)
+        Localization.sync_sheet_names(updated_sheet.project_id)
+
+        restored_sheet =
+          Repo.preload(updated_sheet, [:banner_asset, :blocks, avatars: :asset], force: true)
+
+        sheet_restore_result(restored_sheet, block_data, snapshot, Keyword.get(opts, :return_id_maps, false))
 
       {:error, _op, reason, _changes} ->
         {:error, reason}
     end
   end
 
+  defp sheet_restore_result(restored_sheet, _block_data, _snapshot, false), do: {:ok, restored_sheet}
+
+  defp sheet_restore_result(restored_sheet, block_data, snapshot, true) do
+    id_maps = %{
+      sheet: MaterializationHelpers.root_id_map(snapshot, restored_sheet.id),
+      block: block_data.block_id_map
+    }
+
+    {:ok, restored_sheet, id_maps}
+  end
+
   defp restore_blocks_from_snapshot(repo, sheet_id, project_id, snapshot, opts) do
     blocks_data = snapshot["blocks"] || []
 
     if blocks_data == [] do
-      {:ok, 0}
+      {:ok, %{count: 0, block_id_map: %{}}}
     else
       now = MaterializationHelpers.now()
       existing_source_ids = load_existing_source_ids(repo, blocks_data)
@@ -274,10 +358,11 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
         |> deduplicate_variable_names(MapSet.new())
 
       {count, inserted} = repo.insert_all(Block, blocks, returning: [:id, :type, :position])
+      block_id_map = MaterializationHelpers.build_id_map(sorted_data, inserted)
 
       with :ok <- restore_table_data(repo, inserted, sorted_data, now),
            :ok <- restore_gallery_images(repo, inserted, snapshot, project_id, now, opts) do
-        {:ok, count}
+        {:ok, %{count: count, block_id_map: block_id_map}}
       end
     end
   end

@@ -29,7 +29,7 @@ defmodule Storyarn.Exports.ValidatorTest do
     setup [:setup_project]
 
     test "passes validation for empty project", %{project: project} do
-      result = Validator.validate_project(project.id)
+      result = Validator.validate_project(project.id, %ExportOptions{format: :unity})
       assert %ValidationResult{status: :passed} = result
       assert result.errors == []
       assert result.warnings == []
@@ -296,7 +296,7 @@ defmodule Storyarn.Exports.ValidatorTest do
           status: "pending"
         })
 
-      result = Validator.validate_project(project.id)
+      result = Validator.validate_project(project.id, %ExportOptions{format: :unity})
       translation_warnings = Enum.filter(result.warnings, &(&1.rule == :missing_translations))
       assert length(translation_warnings) == 1
       assert hd(translation_warnings).locale == "es"
@@ -325,9 +325,62 @@ defmodule Storyarn.Exports.ValidatorTest do
           status: "final"
         })
 
-      result = Validator.validate_project(project.id)
+      result = Validator.validate_project(project.id, %ExportOptions{format: :unity})
       translation_warnings = Enum.filter(result.warnings, &(&1.rule == :missing_translations))
       assert translation_warnings == []
+    end
+
+    test "checks only localization sources selected for the engine export", %{project: project} do
+      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      _es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      included_flow = flow_fixture(project, %{name: "Included"})
+      excluded_flow = flow_fixture(project, %{name: "Excluded"})
+      node_fixture(included_flow, %{type: "dialogue", data: %{"text" => "Included pending"}})
+      node_fixture(excluded_flow, %{type: "dialogue", data: %{"text" => "Excluded pending"}})
+
+      result =
+        Validator.validate_project(project.id, %ExportOptions{
+          format: :yarn,
+          flow_ids: [included_flow.id],
+          include_sheets: false
+        })
+
+      assert [%{total_count: 1, excluded_count: 1}] =
+               Enum.filter(result.warnings, &(&1.rule == :missing_translations))
+    end
+
+    test "does not apply engine readiness to disabled localization or native full-state backups", %{
+      project: project
+    } do
+      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      _es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      flow = flow_fixture(project)
+      node_fixture(flow, %{type: "dialogue", data: %{"text" => "Pending"}})
+
+      disabled =
+        Validator.validate_project(project.id, %ExportOptions{format: :unity, include_localization: false})
+
+      native = Validator.validate_project(project.id, %ExportOptions{format: :storyarn})
+
+      refute Enum.any?(disabled.warnings, &(&1.rule == :missing_translations))
+      refute Enum.any?(native.warnings, &(&1.rule == :missing_translations))
+    end
+
+    test "checks only target locales selected for export", %{project: project} do
+      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      _es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      _fr = language_fixture(project, %{locale_code: "fr", name: "French"})
+      flow = flow_fixture(project)
+      node_fixture(flow, %{type: "dialogue", data: %{"text" => "Pending"}})
+
+      result =
+        Validator.validate_project(project.id, %ExportOptions{
+          format: :unity,
+          languages: ["es"]
+        })
+
+      assert [%{locale: "es"}] = Enum.filter(result.warnings, &(&1.rule == :missing_translations))
     end
   end
 

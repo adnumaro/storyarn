@@ -94,6 +94,7 @@ defmodule Storyarn.Exports.SerializerRegistryTest do
         assert is_binary(entry.extension)
         assert is_binary(entry.content_type)
         assert is_list(entry.sections)
+        assert entry.localization_mode in [:full_state, :embedded, :external_catalog]
       end
     end
 
@@ -104,6 +105,21 @@ defmodule Storyarn.Exports.SerializerRegistryTest do
       assert is_binary(storyarn.label)
       assert storyarn.extension == "json"
       assert storyarn.content_type == "application/json"
+      assert storyarn.localization_mode == :full_state
+    end
+
+    test "describes how every engine consumes localization" do
+      modes = Map.new(SerializerRegistry.list_with_metadata(), &{&1.format, &1.localization_mode})
+
+      assert modes == %{
+               storyarn: :full_state,
+               ink: :external_catalog,
+               yarn: :external_catalog,
+               unity: :embedded,
+               godot: :external_catalog,
+               unreal: :external_catalog,
+               articy: :external_catalog
+             }
     end
 
     test "display order matches: storyarn, ink, yarn, unity, godot, unreal, articy" do

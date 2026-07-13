@@ -218,30 +218,9 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
   end
 
   defp on_target_language_added(socket) do
-    count = extract_text_count(socket.assigns.project.id)
-
     socket
     |> reload_and_broadcast()
-    |> put_flash(:info, language_added_message(count))
-  end
-
-  defp extract_text_count(project_id) do
-    case Localization.extract_all(project_id) do
-      {:ok, count} -> count
-      {:error, _} -> 0
-    end
-  end
-
-  defp language_added_message(0), do: dgettext("localization", "Language added.")
-
-  defp language_added_message(count) do
-    dngettext(
-      "localization",
-      "Language added. Extracted %{count} text.",
-      "Language added. Extracted %{count} texts.",
-      count,
-      count: count
-    )
+    |> put_flash(:info, dgettext("localization", "Language added."))
   end
 
   defp remove_language(socket, id) do

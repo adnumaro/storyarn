@@ -1376,8 +1376,19 @@ defmodule Storyarn.Exports.Serializers.InkTest do
       connection_fixture(flow, dialogue, run_dialogue, %{source_pin: "response_run"})
 
       source = ink_source(export_ink(project))
-      assert source =~ "+ [Fight]\n    You fight.\n    -> END"
-      assert source =~ "+ [Run]\n    You run.\n    -> END"
+      dialogue_key = dialogue.data["localization_id"]
+      fight_key = fight_dialogue.data["localization_id"]
+      run_key = run_dialogue.data["localization_id"]
+
+      assert source =~
+               "+ [Fight] #storyarn_loc:flow_node.#{dialogue_key}.response.fight.text\n" <>
+                 "    You fight. #storyarn_loc:flow_node.#{fight_key}.text\n" <>
+                 "    -> END"
+
+      assert source =~
+               "+ [Run] #storyarn_loc:flow_node.#{dialogue_key}.response.run.text\n" <>
+                 "    You run. #storyarn_loc:flow_node.#{run_key}.text\n" <>
+                 "    -> END"
     end
 
     test "hub with connected dialogue produces stitch section", %{project: project} do

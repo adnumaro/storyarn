@@ -8,9 +8,16 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   - Import execution with ID remapping and conflict resolution
   """
 
+  import Ecto.Query, warn: false
+
   alias Storyarn.Assets
   alias Storyarn.Flows
+  alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowNode
   alias Storyarn.Localization
+  alias Storyarn.Localization.LocaleCode
+  alias Storyarn.Localization.RuntimeKey
+  alias Storyarn.Localization.SourceContract
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Scenes.RoutePoints
@@ -44,7 +51,8 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   def parse(binary) when is_binary(binary) do
     with {:ok, data} <- decode_json(binary),
          :ok <- validate_structure(data),
-         :ok <- validate_types(data) do
+         :ok <- validate_types(data),
+         :ok <- validate_runtime_identifiers(data) do
       {:ok, data}
     end
   end
@@ -89,9 +97,198 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
           |> Enum.map(&"localization.#{&1}")
       end
 
-    case bad ++ bad_loc do
+    bad_nested =
+      invalid_entity_entries(data) ++
+        invalid_flow_entries(data) ++
+        invalid_localization_entries(data)
+
+    case bad ++ bad_loc ++ bad_nested do
       [] -> :ok
-      fields -> {:error, {:invalid_field_types, fields}}
+      fields -> {:error, {:invalid_field_types, Enum.uniq(fields)}}
+    end
+  end
+
+  defp invalid_entity_entries(data) do
+    Enum.flat_map(@array_keys, fn key ->
+      case data[key] do
+        entries when is_list(entries) ->
+          entries
+          |> Enum.with_index()
+          |> Enum.flat_map(fn
+            {entry, _index} when is_map(entry) -> []
+            {_entry, index} -> ["#{key}[#{index}]"]
+          end)
+
+        _other ->
+          []
+      end
+    end)
+  end
+
+  defp invalid_flow_entries(data) do
+    case data["flows"] do
+      flows when is_list(flows) ->
+        flows
+        |> Enum.with_index()
+        |> Enum.flat_map(fn
+          {flow, flow_index} when is_map(flow) -> invalid_flow_nodes(flow, flow_index)
+          {_flow, _flow_index} -> []
+        end)
+
+      _other ->
+        []
+    end
+  end
+
+  defp invalid_flow_nodes(flow, flow_index) do
+    case flow["nodes"] do
+      nil ->
+        []
+
+      nodes when is_list(nodes) ->
+        nodes
+        |> Enum.with_index()
+        |> Enum.flat_map(fn
+          {node, node_index} when is_map(node) -> invalid_flow_node_data(node, flow_index, node_index)
+          {_node, node_index} -> ["flows[#{flow_index}].nodes[#{node_index}]"]
+        end)
+
+      _other ->
+        ["flows[#{flow_index}].nodes"]
+    end
+  end
+
+  defp invalid_flow_node_data(%{"type" => "dialogue", "data" => data}, _flow_index, _node_index) when is_map(data), do: []
+
+  defp invalid_flow_node_data(%{"type" => "dialogue"}, flow_index, node_index),
+    do: ["flows[#{flow_index}].nodes[#{node_index}].data"]
+
+  defp invalid_flow_node_data(_node, _flow_index, _node_index), do: []
+
+  defp invalid_localization_entries(data) do
+    case data["localization"] do
+      localization when is_map(localization) ->
+        Enum.flat_map(~w(languages strings glossary), &invalid_localization_collection(localization, &1))
+
+      _other ->
+        []
+    end
+  end
+
+  defp invalid_localization_collection(localization, key) do
+    case localization[key] do
+      entries when is_list(entries) ->
+        entries
+        |> Enum.with_index()
+        |> Enum.flat_map(&invalid_localization_entry(&1, key))
+
+      _other ->
+        []
+    end
+  end
+
+  defp invalid_localization_entry({entry, index}, key) when is_map(entry) do
+    translations = entry["translations"]
+
+    cond do
+      key not in ["strings", "glossary"] or is_nil(translations) ->
+        []
+
+      not is_map(translations) ->
+        ["localization.#{key}[#{index}].translations"]
+
+      true ->
+        invalid_translation_values(translations, key, index)
+    end
+  end
+
+  defp invalid_localization_entry({_entry, index}, key), do: ["localization.#{key}[#{index}]"]
+
+  defp invalid_translation_values(translations, "strings", index) do
+    Enum.flat_map(translations, fn
+      {_locale, translation} when is_map(translation) -> []
+      {locale, _translation} -> ["localization.strings[#{index}].translations.#{locale}"]
+    end)
+  end
+
+  defp invalid_translation_values(translations, "glossary", index) do
+    Enum.flat_map(translations, fn
+      {_locale, target_term} when is_binary(target_term) -> []
+      {locale, _target_term} -> ["localization.glossary[#{index}].translations.#{locale}"]
+    end)
+  end
+
+  defp validate_runtime_identifiers(data) do
+    with :ok <- validate_locale_codes(data) do
+      validate_dialogue_ids(data)
+    end
+  end
+
+  defp validate_locale_codes(data) do
+    localization = data["localization"] || %{}
+
+    locale_codes =
+      [localization["source_language"]] ++
+        Enum.map(localization["languages"] || [], & &1["locale_code"]) ++
+        Enum.flat_map(localization["strings"] || [], &Map.keys(&1["translations"] || %{})) ++
+        Enum.flat_map(localization["glossary"] || [], fn entry ->
+          [entry["source_locale"] | Map.keys(entry["translations"] || %{})]
+        end)
+
+    invalid = locale_codes |> Enum.reject(&(is_nil(&1) or LocaleCode.valid?(&1))) |> Enum.uniq() |> Enum.sort()
+
+    if invalid == [], do: :ok, else: {:error, {:invalid_locale_codes, invalid}}
+  end
+
+  defp validate_dialogue_ids(data) do
+    dialogue_nodes =
+      data
+      |> Map.get("flows", [])
+      |> Enum.flat_map(&Map.get(&1, "nodes", []))
+      |> Enum.filter(&(&1["type"] == "dialogue"))
+
+    invalid = Enum.flat_map(dialogue_nodes, &dialogue_id_errors/1) ++ duplicate_dialogue_id_errors(dialogue_nodes)
+
+    if invalid == [], do: :ok, else: {:error, {:invalid_dialogue_ids, invalid}}
+  end
+
+  defp duplicate_dialogue_id_errors(nodes) do
+    nodes
+    |> Enum.map(&get_in(&1, ["data", "localization_id"]))
+    |> Enum.filter(&RuntimeKey.valid_dialogue_id?/1)
+    |> Enum.frequencies()
+    |> Enum.filter(fn {_id, count} -> count > 1 end)
+    |> Enum.map(fn {id, _count} -> %{field: "localization_id", value: id, reason: "duplicate"} end)
+  end
+
+  defp dialogue_id_errors(node) do
+    data = node["data"] || %{}
+    responses = data["responses"] || []
+
+    errors =
+      if RuntimeKey.valid_dialogue_id?(data["localization_id"]),
+        do: [],
+        else: [%{node_id: node["id"], field: "localization_id"}]
+
+    if is_list(responses) do
+      response_ids =
+        Enum.map(responses, fn
+          response when is_map(response) -> response["id"]
+          _response -> nil
+        end)
+
+      cond do
+        not Enum.all?(response_ids, &RuntimeKey.valid_response_id?/1) ->
+          [%{node_id: node["id"], field: "response.id"} | errors]
+
+        length(response_ids) != length(Enum.uniq(response_ids)) ->
+          [%{node_id: node["id"], field: "response.id", reason: "duplicate"} | errors]
+
+        true ->
+          errors
+      end
+    else
+      [%{node_id: node["id"], field: "responses"} | errors]
     end
   end
 
@@ -105,15 +302,19 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   Returns entity counts and detected shortcut conflicts.
   """
   def preview(project_id, data) do
-    counts = count_import_entities(data)
-    conflicts = detect_conflicts(project_id, data)
+    with :ok <- validate_structure(data),
+         :ok <- validate_types(data),
+         :ok <- validate_runtime_identifiers(data) do
+      counts = count_import_entities(data)
+      conflicts = detect_conflicts(project_id, data)
 
-    {:ok,
-     %{
-       counts: counts,
-       conflicts: conflicts,
-       has_conflicts: conflicts != %{}
-     }}
+      {:ok,
+       %{
+         counts: counts,
+         conflicts: conflicts,
+         has_conflicts: conflicts != %{}
+       }}
+    end
   end
 
   defp count_import_entities(data) do
@@ -182,7 +383,10 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   def execute(project, data, opts \\ []) do
     strategy = Keyword.get(opts, :conflict_strategy, :skip)
 
-    with :ok <- validate_entity_counts(data) do
+    with :ok <- validate_structure(data),
+         :ok <- validate_types(data),
+         :ok <- validate_runtime_identifiers(data),
+         :ok <- validate_entity_counts(data) do
       existing_shortcuts = preload_existing_shortcuts(project.id)
 
       Repo.transaction(
@@ -524,20 +728,25 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
       facade_insert_or_rollback!(Flows.import_flow(project.id, attrs), {:flow, flow_data["name"]})
 
     map = Map.put(map, {:flow, flow_data["id"]}, flow.id)
-    {map, _} = import_nodes(flow.id, flow_data["nodes"] || [], map)
+    {map, _} = import_nodes(project.id, flow.id, flow_data["nodes"] || [], map)
     {map, _} = import_flow_connections(flow.id, flow_data["connections"] || [], map)
 
     {map, flow}
   end
 
-  defp import_nodes(flow_id, nodes, id_map) do
+  defp import_nodes(project_id, flow_id, nodes, id_map) do
     Enum.reduce(nodes, {id_map, []}, fn node_data, {map, results} ->
+      data =
+        node_data["data"]
+        |> remap_node_data(map)
+        |> rekey_conflicting_import_dialogue(project_id, node_data["type"])
+
       attrs = %{
         "type" => node_data["type"],
         "position_x" => node_data["position_x"] || 0.0,
         "position_y" => node_data["position_y"] || 0.0,
         "source" => node_data["source"],
-        "data" => remap_node_data(node_data["data"], map)
+        "data" => data
       }
 
       node =
@@ -545,6 +754,27 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
 
       {Map.put(map, {:node, node_data["id"]}, node.id), [node | results]}
     end)
+  end
+
+  defp rekey_conflicting_import_dialogue(%{"localization_id" => localization_id} = data, project_id, "dialogue")
+       when is_binary(localization_id) and localization_id != "" do
+    if dialogue_localization_id_exists?(project_id, localization_id),
+      do: Map.put(data, "localization_id", "dialogue_#{Ecto.UUID.generate()}"),
+      else: data
+  end
+
+  defp rekey_conflicting_import_dialogue(data, _project_id, _type), do: data
+
+  defp dialogue_localization_id_exists?(project_id, localization_id) do
+    Repo.exists?(
+      from(node in FlowNode,
+        join: flow in Flow,
+        on: flow.id == node.flow_id,
+        where:
+          flow.project_id == ^project_id and node.type == "dialogue" and
+            fragment("?->>'localization_id' = ?", node.data, ^localization_id)
+      )
+    )
   end
 
   # Remap DB IDs inside node data and clean serializer-added fields.
@@ -1023,7 +1253,8 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         "locale_code" => lang_data["locale_code"],
         "name" => lang_data["name"],
         "is_source" => lang_data["is_source"] || false,
-        "position" => lang_data["position"] || 0
+        "position" => lang_data["position"] || 0,
+        "archived_at" => parse_datetime(lang_data["archived_at"])
       }
 
       lang =
@@ -1043,22 +1274,31 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
     valid_attrs =
       Enum.reduce(strings, [], fn entry, acc ->
         translations = entry["translations"] || %{}
-        remapped_source_id = remap_source_id(id_map, entry["source_type"], entry["source_id"])
+        source_type = entry["source_type"]
+        source_field = entry["source_field"]
+        remapped_source_id = remap_source_id(id_map, source_type, entry["source_id"])
         # Skip texts whose source entity was not imported (avoid cross-project ID links)
         source_id = remapped_source_id
 
-        if is_nil(source_id) do
+        if is_nil(source_id) or
+             not SourceContract.field?(source_type, source_field) do
           acc
         else
-          build_translation_attrs(acc, entry, translations, project_id, source_id, id_map, now)
+          source_runtime? = runtime_localization_source?(source_type, source_id, source_field)
+          build_translation_attrs(acc, entry, translations, project_id, source_id, id_map, now, source_runtime?)
         end
       end)
 
     Localization.bulk_import_texts(Enum.reverse(valid_attrs))
   end
 
-  defp build_translation_attrs(acc, entry, translations, project_id, source_id, id_map, now) do
+  defp build_translation_attrs(acc, entry, translations, project_id, source_id, id_map, now, source_runtime?) do
+    metadata = SourceContract.field_metadata(entry["source_type"], entry["source_field"])
+
     Enum.reduce(translations, acc, fn {locale_code, translation}, inner_acc ->
+      translated_source_hash = imported_translation_hash(translation, entry["source_text_hash"])
+      vo_asset_id = if(metadata.vo_eligible, do: remap_id(id_map, :asset, translation["vo_asset_id"]))
+
       attrs = %{
         project_id: project_id,
         source_type: entry["source_type"],
@@ -1066,18 +1306,26 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         source_field: entry["source_field"],
         source_text: entry["source_text"],
         source_text_hash: entry["source_text_hash"],
-        speaker_sheet_id: remap_id(id_map, :sheet, entry["speaker_sheet_id"]),
+        translated_source_hash: translated_source_hash,
+        speaker_sheet_id:
+          if(metadata.content_role == "dialogue",
+            do: remap_id(id_map, :sheet, entry["speaker_sheet_id"])
+          ),
         locale_code: locale_code,
         translated_text: translation["translated_text"],
-        status: translation["status"] || "pending",
-        vo_status: translation["vo_status"] || "none",
-        vo_asset_id: remap_id(id_map, :asset, translation["vo_asset_id"]),
+        status: imported_status(translation, entry["source_text_hash"], translated_source_hash),
+        vo_status: imported_vo_status(translation["vo_status"], metadata.vo_eligible, vo_asset_id),
+        vo_asset_id: vo_asset_id,
         translator_notes: translation["translator_notes"],
         reviewer_notes: translation["reviewer_notes"],
         word_count: translation["word_count"],
+        content_role: metadata.content_role,
+        vo_eligible: metadata.vo_eligible,
         machine_translated: translation["machine_translated"] || false,
         last_translated_at: parse_datetime(translation["last_translated_at"]),
         last_reviewed_at: parse_datetime(translation["last_reviewed_at"]),
+        archived_at: imported_archived_at(translation, source_runtime?, now),
+        archive_reason: imported_archive_reason(translation, source_runtime?),
         translated_by_id: nil,
         reviewed_by_id: nil,
         inserted_at: now,
@@ -1087,6 +1335,66 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
       [attrs | inner_acc]
     end)
   end
+
+  defp imported_translation_hash(%{"translated_source_hash" => hash}, _source_hash) when is_binary(hash), do: hash
+
+  defp imported_translation_hash(translation, source_hash) do
+    if is_binary(translation["translated_text"]) and
+         String.trim(translation["translated_text"]) != "" do
+      source_hash
+    end
+  end
+
+  defp imported_status(%{"status" => "final"} = translation, source_hash, translated_hash) do
+    if present_translation?(translation["translated_text"]) and not is_nil(source_hash) and
+         translated_hash == source_hash do
+      "final"
+    else
+      if(present_translation?(translation["translated_text"]), do: "review", else: "pending")
+    end
+  end
+
+  defp imported_status(translation, _source_hash, _translated_hash) do
+    case translation["status"] do
+      status when status in ~w(pending draft in_progress review final) -> status
+      _status -> if(present_translation?(translation["translated_text"]), do: "draft", else: "pending")
+    end
+  end
+
+  defp imported_vo_status(_status, false, _asset_id), do: "none"
+  defp imported_vo_status(status, true, nil) when status in ~w(recorded approved), do: "needed"
+  defp imported_vo_status(status, true, _asset_id) when status in ~w(none needed recorded approved), do: status
+  defp imported_vo_status(_status, true, _asset_id), do: "none"
+
+  defp imported_archived_at(translation, true, _now), do: parse_datetime(translation["archived_at"])
+  defp imported_archived_at(_translation, false, now), do: now
+
+  defp imported_archive_reason(_translation, false), do: "source_not_runtime"
+
+  defp imported_archive_reason(%{"archive_reason" => reason}, true)
+       when reason in ["source_deleted", "source_field_removed", "source_not_runtime", "version_replaced"], do: reason
+
+  defp imported_archive_reason(_translation, true), do: nil
+
+  defp runtime_localization_source?("flow_node", source_id, source_field) do
+    source = Repo.get(FlowNode, source_id)
+    SourceContract.localizable_source_field?("flow_node", source, source_field)
+  end
+
+  defp runtime_localization_source?("block", source_id, source_field) do
+    source = Repo.get(Storyarn.Sheets.Block, source_id)
+    SourceContract.localizable_source_field?("block", source, source_field)
+  end
+
+  defp runtime_localization_source?("sheet", source_id, source_field) do
+    source = Repo.get(Storyarn.Sheets.Sheet, source_id)
+    SourceContract.localizable_source_field?("sheet", source, source_field)
+  end
+
+  defp runtime_localization_source?(_source_type, _source_id, _source_field), do: false
+
+  defp present_translation?(value) when is_binary(value), do: String.trim(value) != ""
+  defp present_translation?(_value), do: false
 
   defp import_glossary(project_id, glossary_entries) do
     now = TimeHelpers.now()
@@ -1157,10 +1465,6 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   defp remap_source_id(map, "flow_node", old_id), do: Map.get(map, {:node, old_id})
   defp remap_source_id(map, "block", old_id), do: Map.get(map, {:block, old_id})
   defp remap_source_id(map, "sheet", old_id), do: Map.get(map, {:sheet, old_id})
-  defp remap_source_id(map, "flow", old_id), do: Map.get(map, {:flow, old_id})
-  defp remap_source_id(map, "scene", old_id), do: Map.get(map, {:scene, old_id})
-  defp remap_source_id(map, "screenplay", old_id), do: Map.get(map, {:screenplay, old_id})
-  defp remap_source_id(map, "screenplay_element", old_id), do: Map.get(map, {:element, old_id})
   defp remap_source_id(_map, _source_type, _old_id), do: nil
 
   defp remap_target_id(_map, nil, _target_id), do: nil
@@ -1345,7 +1649,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   end
 
   defp link_existing_node_import_data(node_id, remapped_fields) do
-    case Repo.get(Storyarn.Flows.FlowNode, node_id) do
+    case Repo.get(FlowNode, node_id) do
       nil ->
         :ok
 

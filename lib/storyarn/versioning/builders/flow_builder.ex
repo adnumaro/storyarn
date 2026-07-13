@@ -16,11 +16,14 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Localization
+  alias Storyarn.Localization.TextCrud
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Sheets
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.DiffHelpers
+  alias Storyarn.Versioning.LocalizationSnapshotCodec
   alias Storyarn.Versioning.MaterializationHelpers
 
   # ========== Build Snapshot ==========
@@ -60,6 +63,11 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
     referenced_sheets = build_referenced_sheets(sorted_nodes, flow.project_id)
 
+    localization =
+      LocalizationSnapshotCodec.capture(flow.project_id, %{
+        "flow_node" => Enum.map(sorted_nodes, & &1.id)
+      })
+
     %{
       "original_id" => flow.id,
       "name" => flow.name,
@@ -72,7 +80,8 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       "connections" => connection_snapshots,
       "asset_blob_hashes" => hash_map,
       "asset_metadata" => metadata_map,
-      "referenced_sheets" => referenced_sheets
+      "referenced_sheets" => referenced_sheets,
+      "localization" => localization
     }
   end
 
@@ -146,74 +155,90 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   @impl true
   def instantiate_snapshot(project_id, snapshot, opts \\ []) do
-    fn ->
-      now = MaterializationHelpers.now()
-
-      flow_attrs =
-        Map.merge(
-          %{
-            project_id: project_id,
-            name: snapshot["name"],
-            shortcut: MaterializationHelpers.root_shortcut(snapshot, opts),
-            description: snapshot["description"],
-            is_main: snapshot["is_main"] || false,
-            settings: snapshot["settings"] || %{},
-            scene_id:
-              MaterializationHelpers.resolve_project_external_ref(snapshot["scene_id"], Scene, :scene, project_id, opts),
-            parent_id: MaterializationHelpers.root_parent_id(opts),
-            position: MaterializationHelpers.root_position(opts)
-          },
-          MaterializationHelpers.timestamps(now)
-        )
-
-      with {:ok, flow_id} <-
-             MaterializationHelpers.insert_one_returning_id(Repo, Flow, flow_attrs),
-           {:ok, inserted_nodes} <-
-             insert_flow_nodes(
-               Repo,
-               flow_id,
-               snapshot["nodes"] || [],
-               snapshot,
-               project_id,
-               now,
-               opts
-             ),
-           node_id_map =
-             MaterializationHelpers.build_id_map(snapshot["nodes"] || [], inserted_nodes),
-           {:ok, connection_id_map} <-
-             insert_flow_connections(
-               Repo,
-               flow_id,
-               snapshot["connections"] || [],
-               Enum.map(inserted_nodes, & &1.id),
-               node_id_map,
-               now
-             ) do
-        flow =
-          Flow
-          |> Repo.get!(flow_id)
-          |> Repo.preload([:nodes, :connections], force: true)
-
-        id_maps = %{
-          flow: MaterializationHelpers.root_id_map(snapshot, flow_id),
-          node: node_id_map,
-          connection: connection_id_map
-        }
-
-        {flow, id_maps}
-      else
-        {:error, reason} -> Repo.rollback(reason)
-      end
-    end
+    fn -> instantiate_flow_snapshot(project_id, snapshot, opts) end
     |> Repo.transaction()
-    |> case do
-      {:ok, {flow, id_maps}} -> {:ok, flow, id_maps}
-      {:error, reason} -> {:error, reason}
+    |> finalize_flow_instantiation()
+  end
+
+  defp instantiate_flow_snapshot(project_id, snapshot, opts) do
+    now = MaterializationHelpers.now()
+    nodes = Map.get(snapshot, "nodes", [])
+    connections = Map.get(snapshot, "connections", [])
+
+    with {:ok, flow_id} <-
+           MaterializationHelpers.insert_one_returning_id(
+             Repo,
+             Flow,
+             flow_snapshot_attrs(project_id, snapshot, opts, now)
+           ),
+         {:ok, inserted_nodes} <- insert_flow_nodes(Repo, flow_id, nodes, snapshot, project_id, now, opts),
+         node_id_map = MaterializationHelpers.build_id_map(nodes, inserted_nodes),
+         {:ok, connection_id_map} <-
+           insert_flow_connections(
+             Repo,
+             flow_id,
+             connections,
+             Enum.map(inserted_nodes, & &1.id),
+             node_id_map,
+             now
+           ) do
+      complete_flow_instantiation(project_id, snapshot, flow_id, node_id_map, connection_id_map)
+    else
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp flow_snapshot_attrs(project_id, snapshot, opts, now) do
+    Map.merge(
+      %{
+        project_id: project_id,
+        name: snapshot["name"],
+        shortcut: MaterializationHelpers.root_shortcut(snapshot, opts),
+        description: snapshot["description"],
+        is_main: snapshot["is_main"] || false,
+        settings: snapshot["settings"] || %{},
+        scene_id:
+          MaterializationHelpers.resolve_project_external_ref(snapshot["scene_id"], Scene, :scene, project_id, opts),
+        parent_id: MaterializationHelpers.root_parent_id(opts),
+        position: MaterializationHelpers.root_position(opts)
+      },
+      MaterializationHelpers.timestamps(now)
+    )
+  end
+
+  defp complete_flow_instantiation(project_id, snapshot, flow_id, node_id_map, connection_id_map) do
+    flow =
+      Flow
+      |> Repo.get!(flow_id)
+      |> Repo.preload([:nodes, :connections], force: true)
+
+    id_maps = %{
+      flow: MaterializationHelpers.root_id_map(snapshot, flow_id),
+      node: node_id_map,
+      connection: connection_id_map
+    }
+
+    case LocalizationSnapshotCodec.restore(project_id, Map.get(snapshot, "localization", []), id_maps) do
+      :ok -> {flow, id_maps}
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp finalize_flow_instantiation(result) do
+    case result do
+      {:ok, {flow, id_maps}} ->
+        Localization.extract_flow_nodes(flow.id)
+        {:ok, flow, id_maps}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
   @impl true
   def restore_snapshot(%Flow{} = flow, snapshot, opts \\ []) do
+    localization_rows = Map.get(snapshot, "localization", [])
+
     Multi.new()
     |> Multi.update(:flow, fn _changes ->
       Flow.update_changeset(flow, %{
@@ -232,6 +257,11 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
           )
       })
     end)
+    |> Multi.run(:archive_localization, fn _repo, _changes ->
+      node_ids = Repo.all(from(n in FlowNode, where: n.flow_id == ^flow.id, select: n.id))
+      TextCrud.archive_texts_for_sources("flow_node", node_ids, "version_replaced")
+      {:ok, length(node_ids)}
+    end)
     |> Multi.delete_all(:delete_connections, fn _changes ->
       from(c in FlowConnection, where: c.flow_id == ^flow.id)
     end)
@@ -244,10 +274,29 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     |> Multi.run(:restore_connections, fn repo, %{restore_nodes: node_data} ->
       restore_connections(repo, flow.id, snapshot["connections"] || [], node_data.node_ids, node_data.node_id_map)
     end)
+    |> Multi.run(:restore_localization, fn _repo, %{restore_nodes: node_data} ->
+      case LocalizationSnapshotCodec.restore(flow.project_id, localization_rows, %{node: node_data.node_id_map}) do
+        :ok -> {:ok, length(localization_rows)}
+        {:error, reason} -> {:error, reason}
+      end
+    end)
     |> Repo.transaction()
     |> case do
-      {:ok, %{flow: updated_flow}} ->
-        {:ok, Repo.preload(updated_flow, [:nodes, :connections], force: true)}
+      {:ok, %{flow: updated_flow, restore_nodes: node_data}} ->
+        Localization.extract_flow_nodes(updated_flow.id)
+
+        restored_flow = Repo.preload(updated_flow, [:nodes, :connections], force: true)
+
+        if Keyword.get(opts, :return_id_maps, false) do
+          id_maps = %{
+            flow: MaterializationHelpers.root_id_map(snapshot, updated_flow.id),
+            node: node_data.node_id_map
+          }
+
+          {:ok, restored_flow, id_maps}
+        else
+          {:ok, restored_flow}
+        end
 
       {:error, _op, reason, _changes} ->
         {:error, reason}
@@ -258,37 +307,42 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   defp restore_nodes(repo, flow_id, nodes_data, snapshot, project_id, opts) do
     now = MaterializationHelpers.now()
-    node_ids = restore_node_ids(repo, flow_id, nodes_data, snapshot, project_id, opts, now)
 
-    {:ok, %{node_ids: node_ids, node_id_map: restored_node_id_map(nodes_data, node_ids)}}
+    with {:ok, nodes} <-
+           insert_snapshot_nodes(nodes_data, fn node_data ->
+             data = resolve_node_asset_refs(node_data["data"] || %{}, snapshot, project_id, opts)
+             insert_snapshot_node(repo, flow_id, node_data, data, now)
+           end) do
+      node_ids = Enum.map(nodes, & &1.id)
+      {:ok, %{node_ids: node_ids, node_id_map: restored_node_id_map(nodes_data, node_ids)}}
+    end
   end
 
-  defp restore_node_ids(repo, flow_id, nodes_data, snapshot, project_id, opts, now) do
-    # Insert nodes one-by-one to get their IDs in order.
-    Enum.map(nodes_data, fn node_data ->
-      restore_single_node(repo, flow_id, node_data, snapshot, project_id, opts, now)
+  defp insert_snapshot_nodes(nodes_data, insert_fun) do
+    nodes_data
+    |> Enum.reduce_while({:ok, []}, fn node_data, {:ok, nodes} ->
+      case insert_fun.(node_data) do
+        {:ok, node} -> {:cont, {:ok, [node | nodes]}}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
     end)
+    |> case do
+      {:ok, nodes} -> {:ok, Enum.reverse(nodes)}
+      error -> error
+    end
   end
 
-  defp restore_single_node(repo, flow_id, node_data, snapshot, project_id, opts, now) do
-    data = resolve_node_asset_refs(node_data["data"] || %{}, snapshot, project_id, opts)
-
-    attrs = %{
-      flow_id: flow_id,
+  defp insert_snapshot_node(repo, flow_id, node_data, data, now) do
+    %FlowNode{flow_id: flow_id, inserted_at: now, updated_at: now}
+    |> FlowNode.materialize_changeset(%{
       type: node_data["type"],
       position_x: node_data["position_x"] || 0.0,
       position_y: node_data["position_y"] || 0.0,
       data: data,
       word_count: node_data["word_count"] || 0,
-      source: node_data["source"] || "manual",
-      inserted_at: now,
-      updated_at: now
-    }
-
-    case repo.insert_all(FlowNode, [attrs], returning: [:id]) do
-      {1, [%{id: id}]} -> id
-      {0, _} -> raise "Failed to insert flow node during restore"
-    end
+      source: node_data["source"] || "manual"
+    })
+    |> repo.insert()
   end
 
   defp restored_node_id_map(nodes_data, node_ids) do
@@ -349,23 +403,32 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   defp insert_flow_nodes(_repo, _flow_id, [], _snapshot, _project_id, _now, _opts), do: {:ok, []}
 
   defp insert_flow_nodes(repo, flow_id, nodes_data, snapshot, project_id, now, opts) do
-    entries =
-      Enum.map(nodes_data, fn node_data ->
-        Map.merge(
-          %{
-            flow_id: flow_id,
-            type: node_data["type"],
-            position_x: node_data["position_x"] || 0.0,
-            position_y: node_data["position_y"] || 0.0,
-            data: resolve_materialized_node_data(node_data["data"] || %{}, snapshot, project_id, opts),
-            word_count: node_data["word_count"] || 0,
-            source: node_data["source"] || "manual"
-          },
-          MaterializationHelpers.timestamps(now)
-        )
-      end)
+    insert_snapshot_nodes(nodes_data, fn node_data ->
+      data = resolve_materialized_node_data(node_data["data"] || %{}, snapshot, project_id, opts)
+      data = rekey_conflicting_dialogue(repo, project_id, node_data["type"], data)
+      insert_snapshot_node(repo, flow_id, node_data, data, now)
+    end)
+  end
 
-    MaterializationHelpers.insert_all_returning(repo, FlowNode, entries, [:id])
+  defp rekey_conflicting_dialogue(repo, project_id, "dialogue", %{"localization_id" => localization_id} = data)
+       when is_binary(localization_id) and localization_id != "" do
+    if dialogue_localization_id_exists?(repo, project_id, localization_id),
+      do: Map.put(data, "localization_id", "dialogue_#{Ecto.UUID.generate()}"),
+      else: data
+  end
+
+  defp rekey_conflicting_dialogue(_repo, _project_id, _type, data), do: data
+
+  defp dialogue_localization_id_exists?(repo, project_id, localization_id) do
+    repo.exists?(
+      from(node in FlowNode,
+        join: flow in Flow,
+        on: flow.id == node.flow_id,
+        where:
+          flow.project_id == ^project_id and node.type == "dialogue" and
+            fragment("?->>'localization_id' = ?", node.data, ^localization_id)
+      )
+    )
   end
 
   defp insert_flow_connections(_repo, _flow_id, [], _node_ids, _node_id_map, _now), do: {:ok, %{}}

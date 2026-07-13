@@ -48,6 +48,10 @@ defmodule Storyarn.Localization do
   @spec list_languages(id()) :: [project_language()]
   defdelegate list_languages(project_id), to: LanguageCrud
 
+  @doc "Lists active and archived languages for native backups."
+  @spec list_languages_for_backup(id()) :: [project_language()]
+  defdelegate list_languages_for_backup(project_id), to: LanguageCrud
+
   @doc "Gets a single language by ID within a project."
   @spec get_language(id(), id()) :: project_language() | nil
   defdelegate get_language(project_id, language_id), to: LanguageCrud
@@ -129,9 +133,16 @@ defmodule Storyarn.Localization do
   @spec get_texts_for_source(String.t(), id()) :: [localized_text()]
   defdelegate get_texts_for_source(source_type, source_id), to: TextCrud
 
+  @doc "Gets source texts including archived rows for lifecycle and restore operations."
+  def list_all_texts(project_id, opts \\ []),
+    do: TextCrud.list_texts(project_id, Keyword.put(opts, :include_archived, true))
+
   @doc "Gets translation progress stats for a project and locale."
   @spec get_progress(id(), String.t()) :: map()
   defdelegate get_progress(project_id, locale_code), to: TextCrud
+
+  @doc "Returns localization export readiness counts grouped by target locale."
+  defdelegate export_readiness_by_locale(project_id, locale_codes, opts \\ []), to: TextCrud
 
   @doc "Creates a new localized text."
   @spec create_text(id(), attrs()) :: {:ok, localized_text()} | {:error, changeset()}
@@ -145,19 +156,25 @@ defmodule Storyarn.Localization do
   @spec upsert_text(id(), attrs()) :: {:ok, localized_text()} | {:error, changeset()}
   defdelegate upsert_text(project_id, attrs), to: TextCrud
 
-  @doc "Deletes all localized texts for a source entity."
+  @doc "Archives all localized texts for a source entity."
   @spec delete_texts_for_source(String.t(), id()) :: {non_neg_integer(), nil}
   defdelegate delete_texts_for_source(source_type, source_id), to: TextCrud
 
-  @doc "Deletes all localized texts for a specific source field."
+  @doc "Archives all localized texts for a specific source field."
   @spec delete_texts_for_source_field(String.t(), id(), String.t()) :: {non_neg_integer(), nil}
   defdelegate delete_texts_for_source_field(source_type, source_id, source_field), to: TextCrud
+
+  @doc "Permanently deletes all localized texts for a source entity."
+  defdelegate purge_texts_for_source(source_type, source_id), to: TextCrud
+
+  @doc "Permanently deletes localized texts for several source entities."
+  defdelegate purge_texts_for_sources(source_type, source_ids), to: TextCrud
 
   # =============================================================================
   # Text Extraction
   # =============================================================================
 
-  @doc "Extracts all localizable texts for a project (flows, nodes, sheets, blocks, scenes)."
+  @doc "Reconciles all runtime-localizable texts for a project."
   @spec extract_all(id()) :: {:ok, non_neg_integer()}
   defdelegate extract_all(project_id), to: TextExtractor
 
@@ -165,45 +182,45 @@ defmodule Storyarn.Localization do
   @spec extract_flow_node(struct()) :: :ok
   defdelegate extract_flow_node(node), to: TextExtractor
 
-  @doc "Extracts localizable texts from a flow after its metadata is updated. No-op if nil."
-  @spec extract_flow(struct() | nil) :: :ok
-  def extract_flow(nil), do: :ok
-  defdelegate extract_flow(flow), to: TextExtractor
-
-  @doc "Extracts localizable texts from a block after its value or config is updated. No-op if nil."
+  @doc "Extracts localizable runtime text from a block after its value is updated. No-op if nil."
   @spec extract_block(struct() | nil) :: :ok
   def extract_block(nil), do: :ok
   defdelegate extract_block(block), to: TextExtractor
 
-  @doc "Extracts localizable texts from a sheet after its metadata is updated. No-op if nil."
-  @spec extract_sheet(struct() | nil) :: :ok
-  def extract_sheet(nil), do: :ok
-  defdelegate extract_sheet(sheet), to: TextExtractor
+  @doc "Extracts runtime texts for every active node in a flow."
+  @spec extract_flow_nodes(id()) :: :ok
+  defdelegate extract_flow_nodes(flow_id), to: TextExtractor
 
-  @doc "Extracts localizable texts from a scene after its content changes. No-op if nil."
-  @spec extract_scene(struct() | nil) :: :ok
-  def extract_scene(nil), do: :ok
-  defdelegate extract_scene(scene), to: TextExtractor
+  @doc "Extracts runtime texts for every active block in a sheet."
+  @spec extract_sheet_blocks(id()) :: :ok
+  defdelegate extract_sheet_blocks(sheet_id), to: TextExtractor
 
-  @doc "Cleans up localized texts when a flow node is deleted."
+  @doc "Extracts runtime texts for a block definition and its active inherited instances."
+  @spec extract_block_tree(id()) :: :ok
+  defdelegate extract_block_tree(block_id), to: TextExtractor
+
+  @doc "Synchronizes active sheet names emitted as runtime actors by engine serializers."
+  defdelegate sync_sheet_names(project_id), to: TextExtractor
+
+  @doc "Archives localized texts when a flow node is deleted."
   @spec delete_flow_node_texts(id()) :: :ok
   defdelegate delete_flow_node_texts(node_id), to: TextExtractor
 
-  @doc "Cleans up localized texts when a flow is deleted."
-  @spec delete_flow_texts(id()) :: :ok
-  defdelegate delete_flow_texts(flow_id), to: TextExtractor
+  @doc "Archives node texts when one or more flows are deleted."
+  @spec delete_flow_node_texts_for_flows([id()]) :: :ok
+  defdelegate delete_flow_node_texts_for_flows(flow_ids), to: TextExtractor
 
-  @doc "Cleans up localized texts when a block is deleted."
+  @doc "Archives localized texts when a block is deleted."
   @spec delete_block_texts(id()) :: :ok
   defdelegate delete_block_texts(block_id), to: TextExtractor
 
-  @doc "Cleans up localized texts when a sheet is deleted."
-  @spec delete_sheet_texts(id()) :: :ok
-  defdelegate delete_sheet_texts(sheet_id), to: TextExtractor
+  @doc "Archives a block and all inherited instance texts when it is deleted."
+  @spec delete_block_tree_texts(id()) :: :ok
+  defdelegate delete_block_tree_texts(block_id), to: TextExtractor
 
-  @doc "Cleans up localized texts when a scene is deleted."
-  @spec delete_scene_texts(id()) :: :ok
-  defdelegate delete_scene_texts(scene_id), to: TextExtractor
+  @doc "Archives block texts when one or more sheets are deleted."
+  @spec delete_block_texts_for_sheets([id()]) :: :ok
+  defdelegate delete_block_texts_for_sheets(sheet_ids), to: TextExtractor
 
   # =============================================================================
   # Translation
@@ -382,16 +399,12 @@ defmodule Storyarn.Localization do
   # =============================================================================
 
   @doc "Lists localized texts for export, filtered by locale codes."
-  defdelegate list_texts_for_export(project_id, locale_codes), to: TextCrud
+  defdelegate list_texts_for_export(project_id, locale_codes, opts \\ []), to: TextCrud
+  defdelegate list_texts_for_backup(project_id, locale_codes), to: TextCrud
+  defdelegate count_texts_for_export(project_id, locale_codes, opts), to: TextCrud
 
   @doc "Lists target (non-source) locale codes for a project."
   defdelegate list_target_locale_codes(project_id), to: TextCrud
-
-  @doc "Counts distinct source entries for a project."
-  defdelegate count_distinct_source_entries(project_id), to: TextCrud
-
-  @doc "Counts pending/draft texts grouped by locale."
-  defdelegate count_pending_by_locale(project_id, languages), to: TextCrud
 
   @doc "Bulk-inserts localized texts from a list of attr maps."
   defdelegate bulk_import_texts(attrs_list), to: TextCrud

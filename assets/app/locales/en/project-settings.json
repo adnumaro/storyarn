@@ -231,6 +231,15 @@
       "asset_references": "References only (URLs in output)",
       "asset_embedded": "Embedded (Base64 — larger file)",
       "asset_bundled": "Bundled (ZIP with assets folder)",
+      "localization_policy": "Localization quality",
+      "localization_release": "Release — final, current translations and approved voice-over only",
+      "localization_preview": "Preview — include drafts and recorded voice-over with warnings",
+      "localization_modes": {
+        "embedded": "Embedded localization",
+        "external_catalog": "Localization catalogs",
+        "full_state": "Full localization state",
+        "none": "No localization"
+      },
       "options": "Options",
       "validate_before": "Validate before export",
       "pretty_print": "Pretty print output",

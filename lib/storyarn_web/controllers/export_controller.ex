@@ -103,6 +103,7 @@ defmodule StoryarnWeb.ExportController do
       include_scenes: params["scenes"] != "false",
       include_screenplays: params["screenplays"] != "false",
       include_localization: params["localization"] != "false",
+      localization_policy: parse_localization_policy(params["localization_policy"]),
       include_assets: parse_asset_mode(params["assets"])
     }
   end
@@ -110,4 +111,7 @@ defmodule StoryarnWeb.ExportController do
   defp parse_asset_mode("embedded"), do: :embedded
   defp parse_asset_mode("bundled"), do: :bundled
   defp parse_asset_mode(_), do: :references
+
+  defp parse_localization_policy("preview"), do: :preview
+  defp parse_localization_policy(_), do: :release
 end

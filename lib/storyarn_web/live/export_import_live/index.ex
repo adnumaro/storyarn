@@ -8,7 +8,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   @all_sections ~w(sheets flows scenes screenplays localization)a
   @hidden_export_formats MapSet.new([:storyarn])
-  @archive_export_formats ~w(ink yarn godot)a
+  @archive_export_formats ~w(ink yarn godot unreal articy)a
 
   @impl true
   def render(assigns) do
@@ -46,6 +46,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
             },
             options: %{
               assetMode: to_string(@asset_mode),
+              localizationPolicy: to_string(@localization_policy),
               validateBeforeExport: @validate_before_export,
               prettyPrint: @pretty_print
             },
@@ -68,7 +69,8 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         format: to_string(fmt.format),
         label: fmt.label,
         extension: fmt.extension,
-        sections: Enum.map(fmt.sections, &to_string/1)
+        sections: Enum.map(fmt.sections, &to_string/1),
+        localizationMode: to_string(fmt.localization_mode)
       }
     end)
   end
@@ -120,6 +122,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         {:ok, %{entity_counts_async: Exports.count_entities(project.id, opts)}}
       end)
       |> assign(:asset_mode, :references)
+      |> assign(:localization_policy, :release)
       |> assign(:validate_before_export, true)
       |> assign(:pretty_print, true)
       |> assign(:validation_result, nil)
@@ -146,6 +149,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   # ===========================================================================
 
   @valid_asset_modes ~w(references embedded bundled)a
+  @valid_localization_policies ~w(release preview)a
 
   @impl true
   def handle_event("set_format", %{"format" => format_str}, socket) do
@@ -189,6 +193,13 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     end
   end
 
+  def handle_event("set_localization_policy", %{"policy" => policy_str}, socket) do
+    case Enum.find(@valid_localization_policies, &(to_string(&1) == policy_str)) do
+      nil -> {:noreply, socket}
+      policy -> {:noreply, assign(socket, :localization_policy, policy)}
+    end
+  end
+
   def handle_event("toggle_option", %{"option" => "validate_before_export"}, socket) do
     {:noreply, assign(socket, :validate_before_export, !socket.assigns.validate_before_export)}
   end
@@ -226,6 +237,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       include_scenes: MapSet.member?(sections, :scenes),
       include_screenplays: MapSet.member?(sections, :screenplays),
       include_localization: MapSet.member?(sections, :localization),
+      localization_policy: assigns.localization_policy,
       include_assets: assigns.asset_mode
     }
   end
@@ -255,6 +267,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       |> maybe_add("scenes", "false", not MapSet.member?(sections, :scenes))
       |> maybe_add("screenplays", "false", not MapSet.member?(sections, :screenplays))
       |> maybe_add("localization", "false", not MapSet.member?(sections, :localization))
+      |> maybe_add("localization_policy", "preview", assigns.localization_policy == :preview)
       |> maybe_add("assets", to_string(assigns.asset_mode), assigns.asset_mode != :references)
 
     URI.encode_query(params)

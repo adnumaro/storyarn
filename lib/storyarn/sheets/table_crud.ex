@@ -5,7 +5,6 @@ defmodule Storyarn.Sheets.TableCrud do
 
   alias Ecto.Multi
   alias Storyarn.Flows
-  alias Storyarn.Localization
   alias Storyarn.Repo
   alias Storyarn.Shared.NameNormalizer
   alias Storyarn.Shared.TimeHelpers
@@ -71,7 +70,6 @@ defmodule Storyarn.Sheets.TableCrud do
       |> Repo.transaction()
       |> case do
         {:ok, %{column: column}} ->
-          Block |> Repo.get(block_id) |> Localization.extract_block()
           {:ok, column}
 
         {:error, :column, changeset, _} ->
@@ -146,7 +144,6 @@ defmodule Storyarn.Sheets.TableCrud do
     |> Repo.transaction()
     |> case do
       {:ok, %{column: column}} ->
-        Block |> Repo.get(column.block_id) |> Localization.extract_block()
         {:ok, column}
 
       {:error, :column, changeset, _} ->
@@ -179,7 +176,6 @@ defmodule Storyarn.Sheets.TableCrud do
     |> Repo.transaction()
     |> case do
       {:ok, %{column: column}} ->
-        Block |> Repo.get(column.block_id) |> Localization.extract_block()
         {:ok, column}
 
       {:error, :check_last, :last_column, _} ->
@@ -322,7 +318,6 @@ defmodule Storyarn.Sheets.TableCrud do
       |> Repo.transaction()
       |> case do
         {:ok, %{row: row}} ->
-          Block |> Repo.get(block_id) |> Localization.extract_block()
           {:ok, row}
 
         {:error, :row, changeset, _} ->
@@ -361,7 +356,6 @@ defmodule Storyarn.Sheets.TableCrud do
     |> Repo.transaction()
     |> case do
       {:ok, %{row: row}} ->
-        Block |> Repo.get(row.block_id) |> Localization.extract_block()
         {:ok, row}
 
       {:error, :row, changeset, _} ->
@@ -404,7 +398,6 @@ defmodule Storyarn.Sheets.TableCrud do
     |> Repo.transaction()
     |> case do
       {:ok, %{row: row}} ->
-        Block |> Repo.get(row.block_id) |> Localization.extract_block()
         {:ok, row}
 
       {:error, :check_last, :last_row, _} ->

@@ -25,6 +25,9 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
   def supported_sections, do: [:sheets, :flows, :scenes, :screenplays, :localization, :assets]
 
   @impl true
+  def localization_mode, do: :full_state
+
+  @impl true
   def serialize(project_data, %ExportOptions{} = opts) do
     result =
       %{
@@ -416,7 +419,9 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
     %{
       "locale_code" => lang.locale_code,
       "name" => lang.name,
-      "is_source" => lang.is_source
+      "is_source" => lang.is_source,
+      "position" => lang.position,
+      "archived_at" => maybe_to_iso8601(lang.archived_at)
     }
   end
 
@@ -431,6 +436,7 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
           {t.locale_code,
            %{
              "translated_text" => t.translated_text,
+             "translated_source_hash" => t.translated_source_hash,
              "status" => t.status,
              "vo_status" => t.vo_status,
              "vo_asset_id" => maybe_to_string(t.vo_asset_id),
@@ -439,7 +445,9 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
              "word_count" => t.word_count,
              "machine_translated" => t.machine_translated,
              "last_translated_at" => maybe_to_iso8601(t.last_translated_at),
-             "last_reviewed_at" => maybe_to_iso8601(t.last_reviewed_at)
+             "last_reviewed_at" => maybe_to_iso8601(t.last_reviewed_at),
+             "archived_at" => maybe_to_iso8601(t.archived_at),
+             "archive_reason" => t.archive_reason
            }}
         end)
 
@@ -450,6 +458,8 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
         "source_text" => first.source_text,
         "source_text_hash" => first.source_text_hash,
         "speaker_sheet_id" => maybe_to_string(first.speaker_sheet_id),
+        "content_role" => first.content_role,
+        "vo_eligible" => first.vo_eligible,
         "translations" => translations
       }
     end)

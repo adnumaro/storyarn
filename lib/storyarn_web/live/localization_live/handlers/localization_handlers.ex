@@ -130,27 +130,8 @@ defmodule StoryarnWeb.LocalizationLive.Handlers.LocalizationHandlers do
            "is_source" => false
          }) do
       {:ok, _lang} ->
-        count =
-          case Localization.extract_all(socket.assigns.project.id) do
-            {:ok, c} -> c
-            {:error, _} -> 0
-          end
-
         socket = reload_languages(socket)
-
-        msg =
-          if count > 0,
-            do:
-              dngettext(
-                "localization",
-                "Language added. Extracted %{count} text.",
-                "Language added. Extracted %{count} texts.",
-                count,
-                count: count
-              ),
-            else: dgettext("localization", "Language added.")
-
-        {:noreply, put_flash(socket, :info, msg)}
+        {:noreply, put_flash(socket, :info, dgettext("localization", "Language added."))}
 
       {:error, _changeset} ->
         {:noreply, put_flash(socket, :error, dgettext("localization", "Failed to add language."))}

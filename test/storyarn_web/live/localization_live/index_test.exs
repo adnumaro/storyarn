@@ -259,6 +259,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
         localized_text_fixture(project.id, %{
           source_text: "Block text",
           source_type: "block",
+          source_field: "value.content",
           locale_code: "es"
         })
 

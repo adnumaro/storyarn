@@ -104,20 +104,28 @@ defmodule Storyarn.Exports.Serializers.HelpersTest do
 
   describe "infer_default_value/1" do
     test "returns number default" do
+      assert Helpers.infer_default_value(%{type: "number", value: %{"content" => 42}}) == 42
       assert Helpers.infer_default_value(%{type: "number", value: %{"number" => 42}}) == 42
       assert Helpers.infer_default_value(%{type: "number", value: %{}}) == 0
     end
 
     test "returns boolean default" do
+      assert Helpers.infer_default_value(%{type: "boolean", value: %{"content" => true}}) == true
       assert Helpers.infer_default_value(%{type: "boolean", value: %{"boolean" => true}}) == true
       assert Helpers.infer_default_value(%{type: "boolean", value: %{}}) == false
     end
 
     test "returns string default for text types" do
+      assert Helpers.infer_default_value(%{type: "text", value: %{"content" => "hi"}}) == "hi"
       assert Helpers.infer_default_value(%{type: "text", value: %{"text" => "hi"}}) == "hi"
     end
 
     test "strips HTML from rich_text default" do
+      assert Helpers.infer_default_value(%{
+               type: "rich_text",
+               value: %{"content" => "<p>hi</p>"}
+             }) == "hi"
+
       assert Helpers.infer_default_value(%{
                type: "rich_text",
                value: %{"rich_text" => "<p>hi</p>"}

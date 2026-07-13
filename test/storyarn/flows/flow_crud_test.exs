@@ -1129,8 +1129,7 @@ defmodule Storyarn.Flows.FlowCrudTest do
       })
 
       counts = Flows.flow_word_counts(project.id)
-      # Flow name: "Intro" = 1, dialogue text = 2, menu text = 2
-      assert counts[flow.id] == 5
+      assert counts[flow.id] == 4
     end
 
     test "strips HTML before counting words" do
@@ -1144,8 +1143,7 @@ defmodule Storyarn.Flows.FlowCrudTest do
       })
 
       counts = Flows.flow_word_counts(project.id)
-      # Flow name: "Intro" = 1, dialogue text = 3
-      assert counts[flow.id] == 4
+      assert counts[flow.id] == 3
     end
 
     test "counts response texts" do
@@ -1165,8 +1163,7 @@ defmodule Storyarn.Flows.FlowCrudTest do
       })
 
       counts = Flows.flow_word_counts(project.id)
-      # Flow name: "Intro" = 1, prompt = 2, responses = 4
-      assert counts[flow.id] == 7
+      assert counts[flow.id] == 6
     end
 
     test "counts stage_directions words" do
@@ -1180,8 +1177,7 @@ defmodule Storyarn.Flows.FlowCrudTest do
       })
 
       counts = Flows.flow_word_counts(project.id)
-      # Flow name: "Intro" = 1, stage directions = 4
-      assert counts[flow.id] == 5
+      assert counts[flow.id] == 4
     end
 
     test "returns empty map for project with no flows" do

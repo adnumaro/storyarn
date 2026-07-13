@@ -32,7 +32,7 @@ defmodule Storyarn.ProjectTemplates.Audit do
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
   alias Storyarn.Versioning.ProjectRecovery
 
-  @remappable_localization_source_types ~w(flow_node block sheet flow scene)
+  @remappable_localization_source_types ~w(flow_node block sheet)
 
   @doc """
   Runs template-publication audit checks for a project.
@@ -314,8 +314,6 @@ defmodule Storyarn.ProjectTemplates.Audit do
     |> Kernel.++(invalid_flow_node_localization_ref_errors(project_id))
     |> Kernel.++(invalid_block_localization_ref_errors(project_id))
     |> Kernel.++(invalid_sheet_localization_ref_errors(project_id))
-    |> Kernel.++(invalid_flow_localization_ref_errors(project_id))
-    |> Kernel.++(invalid_scene_localization_ref_errors(project_id))
   end
 
   defp invalid_flow_node_localization_ref_errors(project_id) do
@@ -325,7 +323,9 @@ defmodule Storyarn.ProjectTemplates.Audit do
         on: node.id == text.source_id and is_nil(node.deleted_at),
         left_join: flow in Flow,
         on: flow.id == node.flow_id and flow.project_id == ^project_id and is_nil(flow.deleted_at),
-        where: text.project_id == ^project_id and text.source_type == "flow_node",
+        where:
+          text.project_id == ^project_id and text.source_type == "flow_node" and
+            is_nil(text.archived_at),
         where: is_nil(flow.id),
         select: %{
           "type" => "invalid_localization_source_ref",
@@ -345,7 +345,9 @@ defmodule Storyarn.ProjectTemplates.Audit do
         on: block.id == text.source_id and is_nil(block.deleted_at),
         left_join: sheet in Sheet,
         on: sheet.id == block.sheet_id and sheet.project_id == ^project_id and is_nil(sheet.deleted_at),
-        where: text.project_id == ^project_id and text.source_type == "block",
+        where:
+          text.project_id == ^project_id and text.source_type == "block" and
+            is_nil(text.archived_at),
         where: is_nil(sheet.id),
         select: %{
           "type" => "invalid_localization_source_ref",
@@ -363,44 +365,10 @@ defmodule Storyarn.ProjectTemplates.Audit do
       from text in LocalizedText,
         left_join: sheet in Sheet,
         on: sheet.id == text.source_id and sheet.project_id == ^project_id and is_nil(sheet.deleted_at),
-        where: text.project_id == ^project_id and text.source_type == "sheet",
+        where:
+          text.project_id == ^project_id and text.source_type == "sheet" and
+            is_nil(text.archived_at),
         where: is_nil(sheet.id),
-        select: %{
-          "type" => "invalid_localization_source_ref",
-          "localized_text_id" => text.id,
-          "source_type" => text.source_type,
-          "source_id" => text.source_id,
-          "source_field" => text.source_field
-        }
-
-    Repo.all(query)
-  end
-
-  defp invalid_flow_localization_ref_errors(project_id) do
-    query =
-      from text in LocalizedText,
-        left_join: flow in Flow,
-        on: flow.id == text.source_id and flow.project_id == ^project_id and is_nil(flow.deleted_at),
-        where: text.project_id == ^project_id and text.source_type == "flow",
-        where: is_nil(flow.id),
-        select: %{
-          "type" => "invalid_localization_source_ref",
-          "localized_text_id" => text.id,
-          "source_type" => text.source_type,
-          "source_id" => text.source_id,
-          "source_field" => text.source_field
-        }
-
-    Repo.all(query)
-  end
-
-  defp invalid_scene_localization_ref_errors(project_id) do
-    query =
-      from text in LocalizedText,
-        left_join: scene in Scene,
-        on: scene.id == text.source_id and scene.project_id == ^project_id and is_nil(scene.deleted_at),
-        where: text.project_id == ^project_id and text.source_type == "scene",
-        where: is_nil(scene.id),
         select: %{
           "type" => "invalid_localization_source_ref",
           "localized_text_id" => text.id,

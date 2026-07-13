@@ -68,11 +68,8 @@ defmodule Storyarn.Projects.DashboardTest do
 
       stats = Dashboard.project_stats(project.id)
 
-      # Flow name: "Act One" (2) — metadata
-      # Dialogue 1: "Hello beautiful world" (3) + "Choose wisely" (2) + "Yes please" (2) + "No thanks" (2) = 9
-      # Dialogue 2: "One two" (2) — denormalized word_count
-      # Total: 2 + 9 + 2 = 13
-      assert stats.total_word_count == 13
+      # Only player-facing runtime text contributes to localization volume.
+      assert stats.total_word_count == 11
     end
 
     test "matches sheet dashboard words when the project only has sheets", %{project: project} do
@@ -102,11 +99,11 @@ defmodule Storyarn.Projects.DashboardTest do
       stats = Dashboard.project_stats(project.id)
       sheet_words = project.id |> Storyarn.Sheets.sheet_word_counts() |> Map.values() |> Enum.sum()
 
-      assert sheet_words == 21
+      assert sheet_words == 3
       assert stats.total_word_count == sheet_words
     end
 
-    test "counts scene words from nested scene content", %{project: project} do
+    test "excludes scene editor content from localization words", %{project: project} do
       scene = scene_fixture(project, %{name: "World Map", description: "Capital city"})
       layer = layer_fixture(scene, %{"name" => "Upper City"})
 
@@ -133,11 +130,9 @@ defmodule Storyarn.Projects.DashboardTest do
       annotation_fixture(scene, %{"text" => "Secret route", "layer_id" => layer.id})
       Storyarn.ScenesFixtures.connection_fixture(scene, pin_1, pin_2, %{"label" => "Patrol path"})
 
-      scene_words = project.id |> Storyarn.Scenes.scene_word_counts() |> Map.values() |> Enum.sum()
       stats = Dashboard.project_stats(project.id)
 
-      assert scene_words == 22
-      assert stats.total_word_count == scene_words
+      assert stats.total_word_count == 0
     end
   end
 

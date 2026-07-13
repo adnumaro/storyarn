@@ -317,6 +317,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
       status: text.status,
       translatorNotes: text.translator_notes || "",
       voStatus: text.vo_status || "none",
+      voEligible: text.vo_eligible,
       machineTranslated: text.machine_translated || false,
       lastTranslatedAt: text.last_translated_at && DateTime.to_iso8601(text.last_translated_at),
       stale: LocalizedText.stale?(text),

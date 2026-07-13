@@ -106,6 +106,8 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
     end
 
     test "skips soft-deleted entities", %{project: project, sheet: sheet} do
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      language_fixture(project, %{locale_code: "es", name: "Spanish"})
       snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
 
       # Soft-delete an entity
@@ -114,6 +116,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
       # Restore should skip the deleted entity
       assert {:ok, result} = ProjectSnapshotBuilder.restore_snapshot(project.id, snapshot)
       assert result.skipped >= 1
+      assert Localization.get_texts_for_source("sheet", sheet.id) == []
     end
 
     test "leaves entities not in snapshot untouched", %{project: project} do
@@ -137,11 +140,12 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
       source_language_fixture(project, %{locale_code: "en", name: "English"})
       language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
-      localized_text_fixture(project.id, %{
-        locale_code: "es",
-        source_text: "Hello",
-        translated_text: "Hola"
-      })
+      text =
+        localized_text_fixture(project.id, %{
+          locale_code: "es",
+          source_text: "Hello",
+          translated_text: "Hola"
+        })
 
       Localization.create_glossary_entry(project, %{
         source_term: "Dragon",
@@ -153,15 +157,25 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
       snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
 
       assert snapshot["entity_counts"]["languages"] == 2
-      assert snapshot["entity_counts"]["localized_texts"] == 1
+
+      assert snapshot["entity_counts"]["localized_texts"] ==
+               length(snapshot["localization"]["texts"])
+
+      assert snapshot["entity_counts"]["localized_texts"] >= 3
       assert snapshot["entity_counts"]["glossary_entries"] == 1
 
       assert length(snapshot["localization"]["languages"]) == 2
-      assert length(snapshot["localization"]["texts"]) == 1
       assert length(snapshot["localization"]["glossary"]) == 1
 
-      [text] = snapshot["localization"]["texts"]
-      assert text["translated_text"] == "Hola"
+      text_snapshot =
+        Enum.find(snapshot["localization"]["texts"], fn entry ->
+          entry["source_type"] == text.source_type and entry["source_id"] == text.source_id and
+            entry["source_field"] == text.source_field
+        end)
+
+      assert text_snapshot["translated_text"] == "Hola"
+      assert text_snapshot["content_role"] == "dialogue"
+      assert text_snapshot["vo_eligible"]
 
       [glossary] = snapshot["localization"]["glossary"]
       assert glossary["source_term"] == "Dragon"
@@ -188,19 +202,27 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
       assert snapshot["asset_blob_hashes"][asset_id] == voice_asset.blob_hash
       assert snapshot["asset_metadata"][asset_id]["blob_key"] =~ "projects/#{project.id}/blobs/"
 
-      [text_snapshot] = snapshot["localization"]["texts"]
+      text_snapshot =
+        Enum.find(snapshot["localization"]["texts"], fn entry ->
+          entry["source_type"] == text.source_type and entry["source_id"] == text.source_id and
+            entry["source_field"] == text.source_field
+        end)
+
       assert text_snapshot["vo_asset_id"] == voice_asset.id
     end
 
-    test "restores localization data", %{project: project} do
+    test "restores localization data", %{project: project, flow: flow} do
       source_language_fixture(project, %{locale_code: "en", name: "English"})
       language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
-      localized_text_fixture(project.id, %{
-        locale_code: "es",
-        source_text: "Hello",
-        translated_text: "Hola"
-      })
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Hello", "responses" => []}
+        })
+
+      text = Localization.get_text_by_source("flow_node", node.id, "text", "es")
+      {:ok, text} = Localization.update_text(text, %{translated_text: "Hola"})
 
       Localization.create_glossary_entry(project, %{
         source_term: "Dragon",
@@ -212,7 +234,6 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
       snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
 
       # Modify localization data
-      [text] = Localization.list_texts_for_export(project.id, ["es"])
       Localization.update_text(text, %{translated_text: "Modified"})
 
       # Restore
@@ -222,12 +243,66 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
       languages = Localization.list_languages(project.id)
       assert length(languages) == 2
 
-      [restored_text] = Localization.list_texts_for_export(project.id, ["es"])
+      restored_text =
+        project.id
+        |> Localization.list_texts_for_export(["es"])
+        |> Enum.find(fn entry ->
+          entry.source_type == text.source_type and entry.source_field == text.source_field and
+            entry.source_text == "Hello"
+        end)
+
       assert restored_text.translated_text == "Hola"
+      assert restored_text.content_role == "dialogue"
+      assert restored_text.vo_eligible
 
       glossary = Localization.list_glossary_for_export(project.id)
       assert length(glossary) == 1
       assert hd(glossary).target_term == "Dragón"
+    end
+
+    test "remaps localization when project restore replaces node and block IDs", %{
+      project: project,
+      sheet: sheet,
+      flow: flow
+    } do
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Versioned line", "responses" => []}})
+
+      block =
+        block_fixture(sheet, %{
+          type: "text",
+          variable_name: "versioned_bio",
+          value: %{"content" => "Versioned bio"}
+        })
+
+      [node_text] = Localization.get_texts_for_source("flow_node", node.id)
+      [block_text] = Localization.get_texts_for_source("block", block.id)
+
+      assert {:ok, _node_text} =
+               Localization.update_text(node_text, %{translated_text: "Línea versionada", status: "final"})
+
+      assert {:ok, _block_text} =
+               Localization.update_text(block_text, %{translated_text: "Biografía versionada", status: "final"})
+
+      snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
+      assert {:ok, _result} = ProjectSnapshotBuilder.restore_snapshot(project.id, snapshot)
+
+      restored_flow = Storyarn.Flows.get_flow(project.id, flow.id)
+      restored_node = Enum.find(restored_flow.nodes, &((&1.data || %{})["text"] == "Versioned line"))
+      restored_block = Enum.find(Storyarn.Sheets.list_blocks(sheet.id), &(&1.variable_name == "versioned_bio"))
+      refute restored_node.id == node.id
+      refute restored_block.id == block.id
+
+      assert [%{translated_text: "Línea versionada", status: "final"}] =
+               Localization.get_texts_for_source("flow_node", restored_node.id)
+
+      assert [%{translated_text: "Biografía versionada", status: "final"}] =
+               Localization.get_texts_for_source("block", restored_block.id)
+
+      assert Localization.get_texts_for_source("flow_node", node.id) == []
+      assert Localization.get_texts_for_source("block", block.id) == []
     end
   end
 

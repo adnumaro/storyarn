@@ -24,7 +24,10 @@ defmodule Storyarn.Exports.Serializers.ArticyXML do
 
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Exports.ExpressionTranspiler
+  alias Storyarn.Exports.LocalizationCatalog
   alias Storyarn.Exports.Serializers.Helpers
+  alias Storyarn.Localization.RuntimeKey
+  alias Storyarn.Localization.SourceContract
 
   # UUID v5 namespace for deterministic GUID generation
   @storyarn_namespace "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
@@ -39,7 +42,10 @@ defmodule Storyarn.Exports.Serializers.ArticyXML do
   def format_label, do: "articy:draft (XML)"
 
   @impl true
-  def supported_sections, do: [:flows, :sheets]
+  def supported_sections, do: [:flows, :sheets, :localization]
+
+  @impl true
+  def localization_mode, do: :external_catalog
 
   @impl true
   def serialize(project_data, %ExportOptions{} = opts) do
@@ -74,7 +80,10 @@ defmodule Storyarn.Exports.Serializers.ArticyXML do
       |> List.flatten()
       |> Enum.join("\n")
 
-    {:ok, xml}
+    project_name = Helpers.shortcut_to_identifier(project.slug || "storyarn")
+    localization_files = LocalizationCatalog.files(Map.get(project_data, :localization), opts, :generic)
+
+    {:ok, [{"#{project_name}.xml", xml} | localization_files]}
   end
 
   @impl true
@@ -146,7 +155,9 @@ defmodule Storyarn.Exports.Serializers.ArticyXML do
           articy_type = variable_type_to_articy(Helpers.infer_variable_type(block))
           value = Helpers.infer_default_value(block)
 
-          ~s(            <Property Name="#{escape_xml(block.variable_name)}" Type="#{articy_type}">#{escape_xml(to_string(value))}</Property>)
+          localization_key = block_localization_key(block, sheet.shortcut)
+
+          ~s(            <Property Name="#{escape_xml(block.variable_name)}" Type="#{articy_type}" LocalizationKey="#{escape_xml(localization_key)}">#{escape_xml(to_string(value))}</Property>)
         end)
 
       prop_section =
@@ -158,7 +169,7 @@ defmodule Storyarn.Exports.Serializers.ArticyXML do
 
       [
         ~s(      <Entity Type="Character" Id="#{guid}" TechnicalName="#{escape_xml(sheet.shortcut)}">),
-        ~s(        <DisplayName>#{escape_xml(sheet.name)}</DisplayName>)
+        ~s(        <DisplayName LocalizationKey="#{LocalizationCatalog.for_sheet(sheet, "name")}">#{escape_xml(sheet.name)}</DisplayName>)
         | prop_section
       ] ++ [~s(      </Entity>)]
     end)
@@ -199,40 +210,18 @@ defmodule Storyarn.Exports.Serializers.ArticyXML do
     guid = generate_guid("node:#{node.id}")
     speaker = Helpers.speaker_shortcut(data, speaker_map) || ""
     text = Helpers.dialogue_text(data)
-    menu_text = data["menu_text"] || ""
+    menu_text = Helpers.strip_html(data["menu_text"] || "")
     stage = Helpers.strip_html(data["stage_directions"] || "")
 
     responses = Helpers.dialogue_responses(data)
 
-    response_xml =
-      Enum.map(responses, fn resp ->
-        resp_guid = generate_guid("resp:#{resp["id"]}")
-        resp_text = Helpers.strip_html(resp["text"] || "")
-
-        resp_condition =
-          case Helpers.extract_condition(resp["condition"]) do
-            nil -> nil
-            cond -> transpile_or_nil(cond, :articy, :condition)
-          end
-
-        cond_line =
-          if resp_condition,
-            do: [~s(            <Condition>#{escape_xml(resp_condition)}</Condition>)],
-            else: []
-
-        [
-          ~s(          <DialogueFragment Id="#{resp_guid}" Speaker="" TechnicalName="resp_#{resp["id"]}">),
-          ~s(            <Text>#{escape_xml(resp_text)}</Text>)
-        ] ++
-          cond_line ++
-          [~s(          </DialogueFragment>)]
-      end)
+    response_xml = Enum.map(responses, &build_articy_response(node, &1))
 
     [
       ~s(          <DialogueFragment Id="#{guid}" Speaker="#{escape_xml(speaker)}" TechnicalName="dlg_#{node.id}">),
-      ~s(            <Text>#{escape_xml(text)}</Text>),
-      ~s(            <MenuText>#{escape_xml(menu_text)}</MenuText>),
-      ~s(            <StageDirections>#{escape_xml(stage)}</StageDirections>),
+      ~s(            <Text LocalizationKey="#{LocalizationCatalog.for_flow_node(node, "text")}">#{escape_xml(text)}</Text>),
+      ~s(            <MenuText LocalizationKey="#{localization_key_if_present(menu_text, node, "menu_text")}">#{escape_xml(menu_text)}</MenuText>),
+      ~s(            <StageDirections LocalizationKey="#{localization_key_if_present(stage, node, "stage_directions")}">#{escape_xml(stage)}</StageDirections>),
       ~s(          </DialogueFragment>)
     ] ++ List.flatten(response_xml)
   end
@@ -304,6 +293,42 @@ defmodule Storyarn.Exports.Serializers.ArticyXML do
   end
 
   defp build_articy_node(_node, _speaker_map), do: []
+
+  defp build_articy_response(node, response) do
+    response_id = Map.fetch!(response, "id")
+    dialogue_id = RuntimeKey.dialogue_id!(node.data || %{})
+    response_guid = generate_guid("resp:#{dialogue_id}:#{response_id}")
+    response_text = Helpers.strip_html(response["text"] || "")
+    localization_key = LocalizationCatalog.for_flow_node(node, "response.#{response_id}.text")
+
+    condition_lines = articy_response_condition_lines(response["condition"])
+
+    [
+      ~s(          <DialogueFragment Id="#{response_guid}" Speaker="" TechnicalName="resp_#{escape_xml(dialogue_id)}_#{escape_xml(response_id)}">),
+      ~s(            <Text LocalizationKey="#{localization_key}">#{escape_xml(response_text)}</Text>)
+    ] ++
+      condition_lines ++
+      [~s(          </DialogueFragment>)]
+  end
+
+  defp articy_response_condition_lines(condition) do
+    with parsed when not is_nil(parsed) <- Helpers.extract_condition(condition),
+         expression when not is_nil(expression) <- transpile_or_nil(parsed, :articy, :condition) do
+      [~s(            <Condition>#{escape_xml(expression)}</Condition>)]
+    else
+      _missing_condition -> []
+    end
+  end
+
+  defp block_localization_key(block, sheet_shortcut) do
+    if SourceContract.localizable_block?(block),
+      do: LocalizationCatalog.for_block(block, sheet_shortcut, "value.content"),
+      else: ""
+  end
+
+  defp localization_key_if_present(value, node, source_field) when is_binary(value) do
+    if String.trim(value) == "", do: "", else: LocalizationCatalog.for_flow_node(node, source_field)
+  end
 
   # ---------------------------------------------------------------------------
   # Connections

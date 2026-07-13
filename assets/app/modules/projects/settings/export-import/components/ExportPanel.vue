@@ -15,6 +15,7 @@ const { t } = useI18n();
 interface FormatOption {
   format: string;
   label: string;
+  localizationMode: string;
 }
 
 interface FormatConfig {
@@ -31,6 +32,7 @@ interface SectionConfig {
 
 interface ExportOptions {
   assetMode: string;
+  localizationPolicy: string;
   validateBeforeExport: boolean;
   prettyPrint: boolean;
 }
@@ -76,6 +78,11 @@ const assetModeOptions = computed(() => [
   { value: "bundled", label: t("project_settings.export.asset_bundled") },
 ]);
 
+const localizationPolicyOptions = computed(() => [
+  { value: "release", label: t("project_settings.export.localization_release") },
+  { value: "preview", label: t("project_settings.export.localization_preview") },
+]);
+
 const sectionsSet = computed(() => new Set(sectionConfig.selected));
 const supportedSet = computed(() => new Set(sectionConfig.supported));
 const visibleFormats = computed(() =>
@@ -105,6 +112,14 @@ function toggleSection(section: string) {
 
 function setAssetMode(mode: string) {
   live.pushEvent("set_asset_mode", { mode });
+}
+
+function setLocalizationPolicy(policy: string) {
+  live.pushEvent("set_localization_policy", { policy });
+}
+
+function localizationModeLabel(mode: string) {
+  return t(`project_settings.export.localization_modes.${mode}`);
 }
 
 function toggleOption(option: string) {
@@ -159,7 +174,12 @@ function validationBadgeVariant(status: string) {
           :class="formatConfig.selected === fmt.format ? 'bg-muted' : ''"
         >
           <RadioGroupItem :value="fmt.format" />
-          <span class="text-sm">{{ fmt.label }}</span>
+          <span class="flex min-w-0 flex-1 items-center justify-between gap-3 text-sm">
+            <span>{{ fmt.label }}</span>
+            <span class="text-xs text-muted-foreground">
+              {{ localizationModeLabel(fmt.localizationMode) }}
+            </span>
+          </span>
         </label>
       </RadioGroup>
     </div>
@@ -187,6 +207,29 @@ function validationBadgeVariant(status: string) {
             </span>
           </label>
         </div>
+      </div>
+
+      <div
+        v-if="supportedSet.has('localization') && sectionsSet.has('localization')"
+        class="space-y-2"
+      >
+        <Label class="text-sm font-medium">
+          {{ $t("project_settings.export.localization_policy") }}
+        </Label>
+        <RadioGroup
+          :model-value="options.localizationPolicy"
+          class="flex flex-col gap-1"
+          @update:model-value="setLocalizationPolicy"
+        >
+          <label
+            v-for="policy in localizationPolicyOptions"
+            :key="policy.value"
+            class="flex cursor-pointer items-center gap-3 py-1"
+          >
+            <RadioGroupItem :value="policy.value" />
+            <span class="text-sm">{{ policy.label }}</span>
+          </label>
+        </RadioGroup>
       </div>
 
       <!-- Asset mode -->

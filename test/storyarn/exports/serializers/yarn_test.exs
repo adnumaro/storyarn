@@ -3,6 +3,7 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
 
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
+  import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
@@ -11,6 +12,7 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
   alias Storyarn.Exports.Serializers.Helpers
   alias Storyarn.Exports.Serializers.Yarn
   alias Storyarn.Flows
+  alias Storyarn.Localization
   alias Storyarn.Repo
 
   # =============================================================================
@@ -155,6 +157,75 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
       assert source =~ "==="
     end
 
+    test "different valid localization IDs remain readable and collision-resistant", %{project: project} do
+      flow = project |> flow_fixture(%{name: "Stable IDs"}) |> reload_flow()
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      first =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "First", "localization_id" => "hello-world", "responses" => []}
+        })
+
+      second =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Second", "localization_id" => "hello_world", "responses" => []}
+        })
+
+      connection_fixture(flow, entry, first)
+      connection_fixture(flow, first, second)
+
+      source = yarn_source(export_yarn(project))
+      ids = Regex.scan(~r/#line:(storyarn_hello_world(?:_[a-f0-9]{10})?)/, source, capture: :all_but_first)
+
+      assert length(ids) == 2
+      assert ids |> List.flatten() |> Enum.uniq() |> length() == 2
+    end
+
+    test "rejects duplicate explicit localization IDs before producing invalid Yarn", %{project: project} do
+      flow = flow_fixture(project, %{name: "Duplicate IDs"})
+
+      node_fixture(flow, %{
+        type: "dialogue",
+        data: %{"text" => "First", "localization_id" => "shared-id", "responses" => []}
+      })
+
+      assert {:error, changeset} =
+               Flows.create_node(flow, %{
+                 type: "dialogue",
+                 data: %{"text" => "Second", "localization_id" => "shared-id", "responses" => []}
+               })
+
+      assert "localization_id must be unique within the project" in errors_on(changeset).data
+    end
+
+    test "emits Yarn line catalogs keyed by the exact runtime line ID", %{project: project} do
+      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      _es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      flow = project |> flow_fixture(%{name: "Localized Yarn"}) |> reload_flow()
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+      dialogue = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello", "responses" => []}})
+      connection_fixture(flow, entry, dialogue)
+
+      [text] = Localization.get_texts_for_source("flow_node", dialogue.id)
+      assert {:ok, _text} = Localization.update_text(text, %{translated_text: "Hola", status: "final"})
+
+      files = export_yarn(project)
+      source = yarn_source(files)
+
+      assert {"localization.es.csv", catalog} = List.keyfind(files, "localization.es.csv", 0)
+      [catalog_row] = catalog |> String.split("\n", trim: true) |> Enum.drop(1)
+      [line_id, "Hola"] = String.split(catalog_row, ",", parts: 2)
+
+      assert source =~ "Hello #line:#{line_id}"
+
+      assert {"localization-manifest.json", manifest_json} =
+               List.keyfind(files, "localization-manifest.json", 0)
+
+      assert Jason.decode!(manifest_json)["policy"] == "release"
+    end
+
     test "dialogue includes line tag", %{project: project} do
       flow = flow_fixture(project, %{name: "Test Flow"})
       flow = reload_flow(flow)
@@ -259,8 +330,8 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
       connection_fixture(flow, dialogue, run_dialogue, %{source_pin: "response_run"})
 
       source = yarn_source(export_yarn(project))
-      assert source =~ ~r/-> Fight #line:line_\d+\n    You fight\./
-      assert source =~ ~r/-> Run #line:line_\d+\n    You run\./
+      assert source =~ ~r/-> Fight #line:[^\n]+_response_fight\n    You fight\./
+      assert source =~ ~r/-> Run #line:[^\n]+_response_run\n    You run\./
     end
   end
 

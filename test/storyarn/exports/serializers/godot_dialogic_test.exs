@@ -1237,7 +1237,7 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
       assert has_line_matching?(source, ~r/^jump subflow_#{subflow.id}\/$/)
     end
 
-    test "response falls back to menu_text when text is nil", %{project: project} do
+    test "response does not read the removed menu_text fallback", %{project: project} do
       flow = flow_fixture(project, %{name: "Menu Text Flow"})
       flow = reload_flow(flow)
       entry = Enum.find(flow.nodes, &(&1.type == "entry"))
@@ -1263,7 +1263,7 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
       connection_fixture(flow, entry, dialogue)
 
       source = dtl_source(export_dialogic(project))
-      assert has_line?(source, "- Go back")
+      refute source =~ "Go back"
     end
 
     test "instruction with set numeric value", %{project: project} do

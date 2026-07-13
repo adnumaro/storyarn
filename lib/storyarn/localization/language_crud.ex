@@ -26,6 +26,16 @@ defmodule Storyarn.Localization.LanguageCrud do
     )
   end
 
+  @doc "Lists active and archived languages for native backup and version snapshots."
+  def list_languages_for_backup(project_id) do
+    Repo.all(
+      from(l in ProjectLanguage,
+        where: l.project_id == ^project_id,
+        order_by: [asc: l.position, asc: l.name]
+      )
+    )
+  end
+
   def get_language(project_id, language_id) do
     Repo.one(
       from(l in ProjectLanguage,
@@ -66,23 +76,48 @@ defmodule Storyarn.Localization.LanguageCrud do
   def add_language(%Project{} = project, attrs) do
     attrs = MapUtils.stringify_keys(attrs)
 
+    Repo.transaction(fn ->
+      with {:ok, language} <- persist_language(project, attrs),
+           :ok <- collect_existing_sources(project.id, language) do
+        language
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+  end
+
+  defp persist_language(project, attrs) do
     case get_archived_language_by_locale(project.id, attrs["locale_code"]) do
-      %ProjectLanguage{} = archived ->
-        archived
-        |> ProjectLanguage.update_changeset(%{
-          "archived_at" => nil,
-          "is_source" => Map.get(attrs, "is_source", archived.is_source),
-          "name" => attrs["name"] || archived.name,
-          "position" => attrs["position"] || next_position(project.id)
-        })
-        |> Repo.update()
+      %ProjectLanguage{} = archived -> reactivate_language(archived, project.id, attrs)
+      nil -> insert_language(project.id, attrs)
+    end
+  end
 
-      nil ->
-        position = attrs["position"] || next_position(project.id)
+  defp reactivate_language(archived, project_id, attrs) do
+    archived
+    |> ProjectLanguage.update_changeset(%{
+      "archived_at" => nil,
+      "is_source" => Map.get(attrs, "is_source", archived.is_source),
+      "name" => attrs["name"] || archived.name,
+      "position" => attrs["position"] || next_position(project_id)
+    })
+    |> Repo.update()
+  end
 
-        %ProjectLanguage{project_id: project.id}
-        |> ProjectLanguage.create_changeset(Map.put(attrs, "position", position))
-        |> Repo.insert()
+  defp insert_language(project_id, attrs) do
+    position = attrs["position"] || next_position(project_id)
+
+    %ProjectLanguage{project_id: project_id}
+    |> ProjectLanguage.create_changeset(Map.put(attrs, "position", position))
+    |> Repo.insert()
+  end
+
+  defp collect_existing_sources(_project_id, %ProjectLanguage{is_source: true}), do: :ok
+
+  defp collect_existing_sources(project_id, %ProjectLanguage{is_source: false}) do
+    case LocalizableWords.extract_all(project_id) do
+      {:ok, _count} -> :ok
+      {:error, reason} -> {:error, reason}
     end
   end
 

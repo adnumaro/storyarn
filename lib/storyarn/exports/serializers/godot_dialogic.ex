@@ -16,6 +16,7 @@ defmodule Storyarn.Exports.Serializers.GodotDialogic do
 
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Exports.ExpressionTranspiler
+  alias Storyarn.Exports.LocalizationCatalog
   alias Storyarn.Exports.Serializers.GraphTraversal
   alias Storyarn.Exports.Serializers.Helpers
 
@@ -29,10 +30,13 @@ defmodule Storyarn.Exports.Serializers.GodotDialogic do
   def format_label, do: "Godot Dialogic (.dtl)"
 
   @impl true
-  def supported_sections, do: [:flows, :sheets]
+  def supported_sections, do: [:flows, :sheets, :localization]
 
   @impl true
-  def serialize(project_data, %ExportOptions{} = _opts) do
+  def localization_mode, do: :external_catalog
+
+  @impl true
+  def serialize(project_data, %ExportOptions{} = opts) do
     sheets = project_data.sheets || []
     flows = project_data.flows || []
     variables = Helpers.collect_variables(sheets)
@@ -49,7 +53,8 @@ defmodule Storyarn.Exports.Serializers.GodotDialogic do
 
     metadata = build_metadata(project_data.project, sheets, variables, flows)
 
-    {:ok, dtl_files ++ [{"metadata.json", Jason.encode!(metadata, pretty: true)}]}
+    localization_files = LocalizationCatalog.files(Map.get(project_data, :localization), opts, :godot)
+    {:ok, dtl_files ++ [{"metadata.json", Jason.encode!(metadata, pretty: true)}] ++ localization_files}
   end
 
   @impl true
@@ -115,21 +120,23 @@ defmodule Storyarn.Exports.Serializers.GodotDialogic do
         ["#{indent(depth)}# [Stage: #{stage_dirs}]"]
       end
 
-    [dialogue_line] ++ stage_line
+    [localization_comment(node, "text"), dialogue_line] ++ stage_line
   end
 
   defp render_instruction({:choices_start, _node}, _ctx, _depth), do: []
 
-  defp render_instruction({:choices, _node, branches}, ctx, depth) do
+  defp render_instruction({:choices, node, branches}, ctx, depth) do
+    ctx = Map.put(ctx, :choice_owner, node)
+
     Enum.flat_map(branches, fn {response, index, body} ->
       render_instruction({:choice, response, index}, ctx, depth) ++
         render_instructions(body, ctx, depth + 1)
     end)
   end
 
-  defp render_instruction({:choice, resp, _idx}, _ctx, depth) do
+  defp render_instruction({:choice, resp, index}, ctx, depth) do
     text =
-      (resp["text"] || resp["menu_text"] || "")
+      (resp["text"] || "")
       |> Helpers.strip_html()
       |> escape_dtl_text()
 
@@ -157,7 +164,7 @@ defmodule Storyarn.Exports.Serializers.GodotDialogic do
           []
       end
 
-    [choice_line | assign_lines]
+    Enum.reject([response_localization_comment(ctx[:choice_owner], resp, index), choice_line | assign_lines], &is_nil/1)
   end
 
   defp render_instruction({:choices_end, _node}, _ctx, _depth), do: []
@@ -245,6 +252,17 @@ defmodule Storyarn.Exports.Serializers.GodotDialogic do
   end
 
   defp render_instruction(_, _ctx, _depth), do: []
+
+  defp localization_comment(node, source_field) do
+    "# storyarn-loc:#{LocalizationCatalog.for_flow_node(node, source_field)}"
+  end
+
+  defp response_localization_comment(nil, _response, _index), do: nil
+
+  defp response_localization_comment(node, response, _index) do
+    response_id = Map.fetch!(response, "id")
+    localization_comment(node, "response.#{response_id}.text")
+  end
 
   defp render_boolean_condition(node, branches, ctx, depth) do
     render_instruction({:condition_start, node}, ctx, depth) ++

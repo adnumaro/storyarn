@@ -423,9 +423,19 @@ msgstr ""
 msgid "Export your project data or import from a file."
 msgstr ""
 
-#: lib/storyarn/exports/validator.ex:465
+#: lib/storyarn/exports/validator.ex:502
 #, elixir-autogen, elixir-format
-msgid "%{pending} of %{total} strings are untranslated for locale \"%{locale}\""
+msgid "%{excluded} of %{total} strings are not release-ready for locale \"%{locale}\""
+msgstr ""
+
+#: lib/storyarn/exports/validator.ex:533
+#, elixir-autogen, elixir-format
+msgid "%{missing} of %{total} strings have no preview translation for locale \"%{locale}\""
+msgstr ""
+
+#: lib/storyarn/exports/validator.ex:559
+#, elixir-autogen, elixir-format
+msgid "Preview export includes %{count} non-final or outdated strings for locale \"%{locale}\""
 msgstr ""
 
 #: lib/storyarn/exports/validator.ex:201

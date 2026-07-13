@@ -5,9 +5,11 @@ defmodule Storyarn.SheetsTest do
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures
+  import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Localization
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Sheet
 
@@ -1021,6 +1023,25 @@ defmodule Storyarn.SheetsTest do
       {:ok, _} = Sheets.permanently_delete_sheet(sheet)
 
       assert Sheets.count_versions(sheet.id) == 0
+    end
+
+    test "purges only the deleted sheet localization and preserves detached descendants" do
+      user = user_fixture()
+      project = project_fixture(user)
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      parent = sheet_fixture(project, %{name: "Parent"})
+      child = sheet_fixture(project, %{name: "Child", parent_id: parent.id})
+
+      assert Enum.any?(Localization.list_all_texts(project.id), &(&1.source_id == parent.id))
+      assert Enum.any?(Localization.list_all_texts(project.id), &(&1.source_id == child.id))
+
+      assert {:ok, _deleted} = Sheets.permanently_delete_sheet(parent)
+
+      texts = Localization.list_all_texts(project.id)
+      refute Enum.any?(texts, &(&1.source_type == "sheet" and &1.source_id == parent.id))
+      assert Enum.any?(texts, &(&1.source_type == "sheet" and &1.source_id == child.id))
+      assert Sheets.get_sheet(project.id, child.id).parent_id == nil
     end
   end
 

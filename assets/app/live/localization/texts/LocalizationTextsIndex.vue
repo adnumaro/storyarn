@@ -59,6 +59,7 @@ interface SelectedText {
   status: string;
   translatorNotes: string;
   voStatus: string;
+  voEligible: boolean;
   machineTranslated: boolean;
   lastTranslatedAt: string | null;
   stale: boolean;
@@ -536,8 +537,6 @@ function difference(left: Map<string, number>, right: Map<string, number>): stri
           <SelectItem value="flow_node">{{ $t("localization.index.type_flow_node") }}</SelectItem>
           <SelectItem value="block">{{ $t("localization.index.type_block") }}</SelectItem>
           <SelectItem value="sheet">{{ $t("localization.index.type_sheet") }}</SelectItem>
-          <SelectItem value="flow">{{ $t("localization.index.type_flow") }}</SelectItem>
-          <SelectItem value="scene">{{ $t("localization.index.type_scene") }}</SelectItem>
         </SelectContent>
       </Select>
 
@@ -834,10 +833,7 @@ function difference(left: Map<string, number>, right: Map<string, number>): stri
             </p>
 
             <div
-              :class="[
-                'grid gap-3',
-                selectedText.sourceType === 'flow_node' ? 'sm:grid-cols-3' : 'sm:grid-cols-2',
-              ]"
+              :class="['grid gap-3', selectedText.voEligible ? 'sm:grid-cols-3' : 'sm:grid-cols-2']"
             >
               <div class="space-y-1.5">
                 <label class="text-xs font-medium text-base-content/60">{{
@@ -859,7 +855,7 @@ function difference(left: Map<string, number>, right: Map<string, number>): stri
                   </SelectContent>
                 </Select>
               </div>
-              <div v-if="selectedText.sourceType === 'flow_node'" class="space-y-1.5">
+              <div v-if="selectedText.voEligible" class="space-y-1.5">
                 <label class="text-xs font-medium text-base-content/60">{{
                   $t("localization.edit.vo_status")
                 }}</label>

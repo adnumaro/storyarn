@@ -136,17 +136,24 @@ defmodule Storyarn.Exports.DataCollector do
     do: %{languages: [], strings: [], glossary: []}
 
   defp maybe_load(:localization, project_id, opts) do
-    languages = Localization.list_languages(project_id)
+    languages =
+      if opts.format == :storyarn,
+        do: Localization.list_languages_for_backup(project_id),
+        else: Localization.list_languages(project_id)
 
     locale_codes =
       case opts.languages do
         :all -> Enum.map(languages, & &1.locale_code)
-        codes -> codes
+        codes -> requested_locale_codes(codes, languages)
       end
 
     %{
       languages: languages,
-      strings: Localization.list_texts_for_export(project_id, locale_codes),
+      strings:
+        if(opts.format == :storyarn,
+          do: Localization.list_texts_for_backup(project_id, locale_codes),
+          else: Localization.list_texts_for_export(project_id, locale_codes, opts)
+        ),
       glossary: Localization.list_glossary_for_export(project_id)
     }
   end
@@ -155,6 +162,16 @@ defmodule Storyarn.Exports.DataCollector do
 
   defp maybe_load(:assets, project_id, _opts) do
     Assets.list_assets_for_export(project_id)
+  end
+
+  defp requested_locale_codes(:all, languages), do: Enum.map(languages, & &1.locale_code)
+
+  defp requested_locale_codes(codes, languages) do
+    available = MapSet.new(languages, & &1.locale_code)
+
+    codes
+    |> Enum.filter(&MapSet.member?(available, &1))
+    |> Enum.uniq()
   end
 
   # -- Counters --
@@ -282,27 +299,33 @@ defmodule Storyarn.Exports.DataCollector do
 
   defp count_languages(_project_id, %{include_localization: false}), do: 0
 
-  defp count_languages(project_id, _opts) do
-    Repo.aggregate(from(l in ProjectLanguage, where: l.project_id == ^project_id), :count)
+  defp count_languages(project_id, opts) do
+    query = from(l in ProjectLanguage, where: l.project_id == ^project_id)
+    query = if opts.format == :storyarn, do: query, else: where(query, [l], is_nil(l.archived_at))
+    Repo.aggregate(query, :count)
   end
 
   defp count_localized_texts(_project_id, %{include_localization: false}), do: 0
 
   defp count_localized_texts(project_id, opts) do
-    case opts.languages do
-      :all ->
-        Localization.count_texts(project_id)
+    if opts.format == :storyarn do
+      case opts.languages do
+        :all ->
+          Localization.count_texts(project_id, include_archived: true)
 
-      [] ->
-        0
+        [] ->
+          0
 
-      locale_codes ->
-        Repo.aggregate(
-          from(lt in LocalizedText,
-            where: lt.project_id == ^project_id and lt.locale_code in ^locale_codes
-          ),
-          :count
-        )
+        locale_codes ->
+          Repo.aggregate(
+            from(lt in LocalizedText, where: lt.project_id == ^project_id and lt.locale_code in ^locale_codes),
+            :count
+          )
+      end
+    else
+      active_languages = Localization.list_languages(project_id)
+      locale_codes = requested_locale_codes(opts.languages, active_languages)
+      Localization.count_texts_for_export(project_id, locale_codes, opts)
     end
   end
 

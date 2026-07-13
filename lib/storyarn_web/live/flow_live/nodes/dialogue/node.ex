@@ -17,6 +17,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
   import Phoenix.LiveView, only: [push_event: 3]
 
   alias Storyarn.Flows
+  alias Storyarn.Localization.RuntimeKey
   alias StoryarnWeb.FlowLive.Helpers.NodeDataHelpers
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
 
@@ -35,7 +36,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
       "menu_text" => "",
       "audio_asset_id" => nil,
       "technical_id" => "",
-      "localization_id" => generate_localization_id(),
+      "localization_id" => RuntimeKey.new_dialogue_id(),
       "avatar_id" => nil,
       "responses" => []
     }
@@ -68,7 +69,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
   def duplicate_data_cleanup(data) do
     data
     |> Map.put("technical_id", "")
-    |> Map.put("localization_id", generate_localization_id())
+    |> Map.put("localization_id", RuntimeKey.new_dialogue_id())
   end
 
   # -- Response event handlers --
@@ -78,7 +79,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
     # Pre-read to check if we need to migrate connections
     node = Flows.get_node!(socket.assigns.flow.id, node_id)
     responses = node.data["responses"] || []
-    new_id = "r#{length(responses) + 1}_#{:erlang.unique_integer([:positive])}"
+    new_id = RuntimeKey.new_response_id()
     first_response? = responses == []
 
     # If this is the first response, migrate existing "output" connections to new response ID
@@ -300,16 +301,5 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
     flow_part = if flow_part == "", do: "dlg", else: flow_part
     speaker_part = if speaker_part == "", do: "narrator", else: speaker_part
     "#{flow_part}_#{speaker_part}_#{speaker_count}"
-  end
-
-  defp generate_localization_id do
-    suffix =
-      [:positive]
-      |> :erlang.unique_integer()
-      |> Integer.to_string(16)
-      |> String.downcase()
-      |> String.slice(0, 6)
-
-    "dialogue.#{suffix}"
   end
 end

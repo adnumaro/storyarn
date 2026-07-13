@@ -124,16 +124,12 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpersTest do
       assert LocalizationHelpers.source_type_label("block") == "Block"
     end
 
-    test "sheet" do
-      assert LocalizationHelpers.source_type_label("sheet") == "Sheet"
+    test "sheet runtime name" do
+      assert LocalizationHelpers.source_type_label("sheet") == "Sheet name"
     end
 
-    test "flow" do
-      assert LocalizationHelpers.source_type_label("flow") == "Flow"
-    end
-
-    test "screenplay" do
-      assert LocalizationHelpers.source_type_label("screenplay") == "Screenplay"
+    test "excluded types have no localization-specific label" do
+      assert LocalizationHelpers.source_type_label("unknown") == "unknown"
     end
 
     test "unknown returns itself" do
@@ -152,16 +148,12 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpersTest do
       assert LocalizationHelpers.source_type_icon("block") == "square"
     end
 
-    test "sheet returns file-text" do
-      assert LocalizationHelpers.source_type_icon("sheet") == "file-text"
+    test "sheet runtime name returns user-round" do
+      assert LocalizationHelpers.source_type_icon("sheet") == "user-round"
     end
 
-    test "flow returns git-branch" do
-      assert LocalizationHelpers.source_type_icon("flow") == "git-branch"
-    end
-
-    test "screenplay returns clapperboard" do
-      assert LocalizationHelpers.source_type_icon("screenplay") == "clapperboard"
+    test "excluded types use the generic icon" do
+      assert LocalizationHelpers.source_type_icon("unknown") == "box"
     end
 
     test "unknown returns box" do

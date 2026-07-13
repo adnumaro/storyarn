@@ -6,6 +6,7 @@ defmodule Storyarn.Flows.NodeCreate do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.NodeCrud
+  alias Storyarn.Localization
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
@@ -29,7 +30,8 @@ defmodule Storyarn.Flows.NodeCreate do
         end
 
       case result do
-        {:ok, _node} ->
+        {:ok, node} ->
+          Localization.extract_flow_node(node)
           Storyarn.Collaboration.broadcast_dashboard_change(flow.project_id, :flows)
 
         _ ->

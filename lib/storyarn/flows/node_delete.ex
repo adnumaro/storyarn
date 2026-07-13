@@ -25,8 +25,9 @@ defmodule Storyarn.Flows.NodeDelete do
       {:ok, _, _} ->
         project_id = Repo.one(from(f in Storyarn.Flows.Flow, where: f.id == ^node.flow_id, select: f.project_id))
 
-        if project_id,
-          do: Storyarn.Collaboration.broadcast_dashboard_change(project_id, :flows)
+        if project_id do
+          Storyarn.Collaboration.broadcast_dashboard_change(project_id, :flows)
+        end
 
       _ ->
         :ok
@@ -42,7 +43,13 @@ defmodule Storyarn.Flows.NodeDelete do
   def restore_node(flow_id, node_id) do
     case Repo.get(FlowNode, node_id) do
       %FlowNode{flow_id: ^flow_id, deleted_at: deleted_at} = node when not is_nil(deleted_at) ->
-        node |> FlowNode.restore_changeset() |> Repo.update()
+        node
+        |> FlowNode.restore_changeset()
+        |> Repo.update()
+        |> tap(fn
+          {:ok, restored_node} -> Localization.extract_flow_node(restored_node)
+          _ -> :ok
+        end)
 
       %FlowNode{flow_id: ^flow_id, deleted_at: nil} ->
         {:ok, :already_active}

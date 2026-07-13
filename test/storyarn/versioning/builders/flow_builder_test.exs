@@ -4,11 +4,13 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures
+  import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures, only: [scene_fixture: 1]
 
   alias Storyarn.Assets
   alias Storyarn.Assets.BlobStore
+  alias Storyarn.Localization
   alias Storyarn.Repo
   alias Storyarn.Versioning.Builders.FlowBuilder
 
@@ -91,6 +93,39 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       assert length(active_nodes) == length(snapshot["nodes"])
       assert length(restored.connections) == 1
     end
+
+    test "restores translations after flow node IDs are replaced", %{project: project, flow: flow} do
+      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      _es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello", "responses" => []}})
+      [text] = Localization.get_texts_for_source("flow_node", node.id)
+
+      assert {:ok, _translated} =
+               Localization.update_text(text, %{
+                 translated_text: "Hola",
+                 status: "final",
+                 translator_notes: "Versioned note"
+               })
+
+      snapshot = FlowBuilder.build_snapshot(flow)
+      assert [%{"translated_text" => "Hola"}] = snapshot["localization"]
+
+      assert {:ok, restored} = FlowBuilder.restore_snapshot(flow, snapshot)
+      restored_node = Enum.find(restored.nodes, &(&1.type == "dialogue"))
+      refute restored_node.id == node.id
+
+      assert [restored_text] = Localization.get_texts_for_source("flow_node", restored_node.id)
+      assert restored_text.translated_text == "Hola"
+      assert restored_text.status == "final"
+      assert restored_text.translator_notes == "Versioned note"
+
+      assert [%{archived_at: archived_at, archive_reason: "version_replaced"}] =
+               project.id
+               |> Localization.list_all_texts(source_type: "flow_node")
+               |> Enum.filter(&(&1.source_id == node.id))
+
+      assert archived_at
+    end
   end
 
   describe "instantiate_snapshot/3" do
@@ -122,6 +157,30 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       assert cloned_connection.target_node_id in node_ids
       assert cloned_connection.source_node_id != node_a.id
       assert cloned_connection.target_node_id != node_b.id
+
+      cloned_dialogue = Enum.find(materialized.nodes, &(&1.type == "dialogue"))
+      refute cloned_dialogue.data["localization_id"] == node_a.data["localization_id"]
+    end
+
+    test "rejects a dialogue snapshot without the current runtime identity", %{project: project, flow: flow} do
+      snapshot = FlowBuilder.build_snapshot(flow)
+
+      invalid_dialogue = %{
+        "original_id" => 99_999,
+        "type" => "dialogue",
+        "position_x" => 10.0,
+        "position_y" => 20.0,
+        "data" => %{"text" => "No identity", "responses" => []},
+        "word_count" => 2,
+        "source" => "manual"
+      }
+
+      snapshot = Map.put(snapshot, "nodes", [invalid_dialogue | snapshot["nodes"]])
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               FlowBuilder.instantiate_snapshot(project.id, snapshot, reset_shortcut: true)
+
+      assert "must contain a valid localization_id" in errors_on(changeset).data
     end
 
     test "remaps external scene refs with explicit id maps", %{

@@ -1,13 +1,5 @@
 <script setup lang="ts">
-import {
-  Box,
-  Clapperboard,
-  FileText,
-  GitBranch,
-  MapPinned,
-  MessageSquare,
-  Square,
-} from "lucide-vue-next";
+import { Box, MessageSquare, Square, UserRound } from "lucide-vue-next";
 import type { Component } from "vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
@@ -110,10 +102,7 @@ function typeIcon(type: string) {
   const icons: Record<string, Component> = {
     flow_node: MessageSquare,
     block: Square,
-    sheet: FileText,
-    flow: GitBranch,
-    screenplay: Clapperboard,
-    scene: MapPinned,
+    sheet: UserRound,
   };
   return icons[type] || Box;
 }
@@ -122,9 +111,6 @@ const typeKeys: Record<string, string> = {
   flow_node: "localization.report.types.flow_node",
   block: "localization.report.types.block",
   sheet: "localization.report.types.sheet",
-  flow: "localization.report.types.flow",
-  screenplay: "localization.report.types.screenplay",
-  scene: "localization.report.types.scene",
 };
 </script>
 

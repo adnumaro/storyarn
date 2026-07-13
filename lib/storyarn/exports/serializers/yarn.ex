@@ -16,8 +16,12 @@ defmodule Storyarn.Exports.Serializers.Yarn do
 
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Exports.ExpressionTranspiler
+  alias Storyarn.Exports.LocalizationCatalog
   alias Storyarn.Exports.Serializers.GraphTraversal
   alias Storyarn.Exports.Serializers.Helpers
+  alias Storyarn.Localization.ExportPolicy
+  alias Storyarn.Localization.LocaleCode
+  alias Storyarn.Localization.RuntimeKey
 
   @impl true
   def content_type, do: "text/plain"
@@ -29,12 +33,22 @@ defmodule Storyarn.Exports.Serializers.Yarn do
   def format_label, do: "Yarn Spinner (.yarn)"
 
   @impl true
-  def supported_sections, do: [:flows, :sheets]
+  def supported_sections, do: [:flows, :sheets, :localization]
 
   @impl true
-  def serialize(project_data, %ExportOptions{} = _opts) do
-    sheets = project_data.sheets || []
+  def localization_mode, do: :external_catalog
+
+  @impl true
+  def serialize(project_data, %ExportOptions{} = opts) do
     flows = project_data.flows || []
+
+    with :ok <- validate_line_ids(flows) do
+      do_serialize(project_data, opts, flows)
+    end
+  end
+
+  defp do_serialize(project_data, opts, flows) do
+    sheets = project_data.sheets || []
     variables = Helpers.collect_variables(sheets)
     speaker_map = Helpers.build_speaker_map(sheets)
     flow_shortcuts_by_id = flow_shortcuts_by_id(flows)
@@ -63,7 +77,9 @@ defmodule Storyarn.Exports.Serializers.Yarn do
 
     metadata = build_metadata(project_data.project, sheets, variables, flows)
 
-    {:ok, yarn_files ++ [{"metadata.json", Jason.encode!(metadata, pretty: true)}]}
+    localization_files = build_localization_files(project_data, flows, opts)
+
+    {:ok, yarn_files ++ [{"metadata.json", Jason.encode!(metadata, pretty: true)}] ++ localization_files}
   end
 
   @impl true
@@ -179,7 +195,7 @@ defmodule Storyarn.Exports.Serializers.Yarn do
 
   defp render_instruction_stream([], _ctx, _line_counter, _depth), do: []
 
-  defp render_instruction_stream([{:choices_start, _node} | rest], ctx, line_counter, depth) do
+  defp render_instruction_stream([{:choices_start, node} | rest], ctx, line_counter, depth) do
     {choice_instructions, rest} =
       Enum.split_while(rest, fn
         {:choices_end, _node} -> false
@@ -192,7 +208,7 @@ defmodule Storyarn.Exports.Serializers.Yarn do
         tail -> tail
       end
 
-    render_choice_instructions(choice_instructions, ctx, line_counter, depth) ++
+    render_choice_instructions(choice_instructions, Map.put(ctx, :choice_owner, node), line_counter, depth) ++
       render_instruction_stream(rest, ctx, line_counter, depth)
   end
 
@@ -233,7 +249,8 @@ defmodule Storyarn.Exports.Serializers.Yarn do
     data = node.data || %{}
     text = data |> Helpers.dialogue_text() |> escape_yarn_text()
     speaker = Helpers.speaker_name(data, ctx.speaker_map)
-    line_id = next_line_id(line_counter)
+
+    line_id = dialogue_line_id(node, line_counter)
 
     line =
       if speaker do
@@ -247,13 +264,13 @@ defmodule Storyarn.Exports.Serializers.Yarn do
 
   defp render_instruction({:choices_start, _node}, _ctx, _lc, _depth), do: []
 
-  defp render_instruction({:choices, _node, branches}, ctx, line_counter, depth) do
-    render_choice_branches(branches, ctx, line_counter, depth)
+  defp render_instruction({:choices, node, branches}, ctx, line_counter, depth) do
+    render_choice_branches(branches, Map.put(ctx, :choice_owner, node), line_counter, depth)
   end
 
-  defp render_instruction({:choice, resp, _idx}, _ctx, line_counter, depth) do
-    text = (resp["text"] || resp["menu_text"] || "") |> Helpers.strip_html() |> escape_yarn_text()
-    line_id = next_line_id(line_counter)
+  defp render_instruction({:choice, resp, index}, ctx, line_counter, depth) do
+    text = (resp["text"] || "") |> Helpers.strip_html() |> escape_yarn_text()
+    line_id = response_line_id(ctx[:choice_owner], resp, index, line_counter)
     condition = build_yarn_condition(resp["condition"])
 
     choice_line =
@@ -414,10 +431,93 @@ defmodule Storyarn.Exports.Serializers.Yarn do
   defp indent(0), do: ""
   defp indent(n), do: String.duplicate("    ", n)
 
-  defp next_line_id(counter) do
-    :counters.add(counter, 1, 1)
-    n = :counters.get(counter, 1)
-    "line_#{String.pad_leading(to_string(n), 4, "0")}"
+  defp stable_line_id(value, prefix \\ "storyarn") do
+    sanitize_line_id("#{prefix}_#{value}")
+  end
+
+  defp sanitize_line_id(value) do
+    normalized =
+      value
+      |> String.replace(~r/[^A-Za-z0-9_]/u, "_")
+      |> String.replace(~r/_+/, "_")
+      |> String.trim("_")
+      |> case do
+        "" -> "line"
+        safe -> safe
+      end
+
+    if normalized == value do
+      normalized
+    else
+      hash = :sha256 |> :crypto.hash(value) |> Base.encode16(case: :lower) |> binary_part(0, 10)
+      "#{normalized}_#{hash}"
+    end
+  end
+
+  defp dialogue_line_id(node, _line_counter) do
+    data = node.data || %{}
+    stable_line_id(RuntimeKey.dialogue_id!(data))
+  end
+
+  defp response_line_id(node, resp, _index, line_counter) do
+    response_id = Map.fetch!(resp, "id")
+    sanitize_line_id("#{dialogue_line_id(node, line_counter)}_response_#{response_id}")
+  end
+
+  defp validate_line_ids(flows) do
+    counter = :counters.new(1, [:atomics])
+    dialogue_nodes = flows |> Enum.flat_map(&(&1.nodes || [])) |> Enum.filter(&(&1.type == "dialogue"))
+
+    if Enum.all?(dialogue_nodes, &valid_dialogue_runtime_ids?/1) do
+      duplicates =
+        flows
+        |> Enum.flat_map(&flow_line_ids(&1, counter))
+        |> Enum.frequencies()
+        |> Enum.filter(fn {_id, count} -> count > 1 end)
+        |> Enum.map(&elem(&1, 0))
+        |> Enum.sort()
+
+      if duplicates == [], do: :ok, else: {:error, {:duplicate_localization_ids, duplicates}}
+    else
+      {:error, :invalid_localization_ids}
+    end
+  end
+
+  defp valid_dialogue_runtime_ids?(node) do
+    data = node.data || %{}
+    responses = data["responses"] || []
+
+    if is_list(responses) do
+      response_ids =
+        Enum.map(responses, fn
+          response when is_map(response) -> response["id"]
+          _response -> nil
+        end)
+
+      RuntimeKey.valid_dialogue_id?(data["localization_id"]) and
+        Enum.all?(response_ids, &RuntimeKey.valid_response_id?/1) and
+        length(response_ids) == length(Enum.uniq(response_ids))
+    else
+      false
+    end
+  end
+
+  defp flow_line_ids(flow, counter) do
+    flow.nodes
+    |> Kernel.||([])
+    |> Enum.filter(&(&1.type == "dialogue"))
+    |> Enum.flat_map(&node_line_ids(&1, counter))
+  end
+
+  defp node_line_ids(node, counter) do
+    response_ids =
+      node.data
+      |> Kernel.||(%{})
+      |> Map.get("responses", [])
+      |> Enum.with_index()
+      |> Enum.map(fn {response, index} -> response_line_id(node, response, index, counter) end)
+
+    [dialogue_line_id(node, counter) | response_ids]
   end
 
   defp build_yarn_condition(nil), do: nil
@@ -430,6 +530,100 @@ defmodule Storyarn.Exports.Serializers.Yarn do
       {:ok, expr, _} when expr != "" -> expr
       _ -> nil
     end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Localization catalogs
+  # ---------------------------------------------------------------------------
+
+  defp build_localization_files(_project_data, _flows, %{include_localization: false}), do: []
+
+  defp build_localization_files(project_data, flows, opts) do
+    localization = Map.get(project_data, :localization) || %{languages: [], strings: []}
+
+    source_locales =
+      localization.languages
+      |> Enum.filter(&localization_attr(&1, :is_source))
+      |> MapSet.new(&localization_attr(&1, :locale_code))
+
+    nodes =
+      flows
+      |> Enum.flat_map(&(&1.nodes || []))
+      |> Map.new(&{to_string(&1.id), &1})
+
+    catalog_files =
+      localization.strings
+      |> Enum.reject(&MapSet.member?(source_locales, localization_attr(&1, :locale_code)))
+      |> Enum.filter(fn text ->
+        LocalizationCatalog.text_supported?(text, opts) and ExportPolicy.text_eligible?(text, opts)
+      end)
+      |> Enum.group_by(&localization_attr(&1, :locale_code))
+      |> Enum.sort_by(&elem(&1, 0))
+      |> Enum.flat_map(fn {locale, texts} ->
+        maybe_add_catalog([], "localization.#{safe_locale!(locale)}.csv", build_yarn_line_rows(texts, nodes))
+      end)
+
+    catalog_files ++ LocalizationCatalog.manifest_files(localization, opts)
+  end
+
+  defp build_yarn_line_rows(texts, nodes) do
+    counter = :counters.new(1, [:atomics])
+
+    texts
+    |> Enum.flat_map(&yarn_line_row(&1, nodes, counter))
+    |> Enum.sort_by(&List.first/1)
+  end
+
+  defp yarn_line_row(text, nodes, counter) do
+    node = Map.get(nodes, text |> localization_attr(:source_id) |> to_string())
+    translated_text = text |> localization_attr(:translated_text) |> Helpers.strip_html()
+
+    case {node, localization_attr(text, :source_field)} do
+      {%{type: "dialogue"} = dialogue, "text"} ->
+        [[dialogue_line_id(dialogue, counter), translated_text]]
+
+      {%{type: "dialogue"} = dialogue, "response." <> rest} ->
+        yarn_response_row(dialogue, rest, translated_text, counter)
+
+      _other ->
+        []
+    end
+  end
+
+  defp yarn_response_row(node, field_suffix, translated_text, counter) do
+    response_id = String.replace_suffix(field_suffix, ".text", "")
+
+    case find_response(node, response_id) do
+      nil -> []
+      {response, index} -> [[response_line_id(node, response, index, counter), translated_text]]
+    end
+  end
+
+  defp find_response(node, response_id) do
+    node.data
+    |> Kernel.||(%{})
+    |> Map.get("responses", [])
+    |> Enum.with_index()
+    |> Enum.find(fn {response, _index} -> response["id"] == response_id end)
+  end
+
+  defp maybe_add_catalog(files, _filename, []), do: files
+
+  defp maybe_add_catalog(files, filename, rows) do
+    files ++ [{filename, Helpers.build_csv(["id", "text"], rows)}]
+  end
+
+  defp localization_attr(record, field) do
+    case Map.fetch(record, field) do
+      {:ok, value} -> value
+      :error -> Map.get(record, to_string(field))
+    end
+  end
+
+  defp safe_locale!(locale) do
+    if LocaleCode.valid?(locale),
+      do: locale,
+      else: raise(ArgumentError, "invalid localization locale for export: #{inspect(locale)}")
   end
 
   # ---------------------------------------------------------------------------

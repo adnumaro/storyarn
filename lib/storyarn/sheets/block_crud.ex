@@ -94,8 +94,12 @@ defmodule Storyarn.Sheets.BlockCrud do
     result = insert_block_in_transaction(sheet, enriched_attrs, word_count)
 
     case result do
-      {:ok, _} -> broadcast_sheet_change(sheet)
-      _ -> :ok
+      {:ok, block} ->
+        Localization.extract_block_tree(block.id)
+        broadcast_sheet_change(sheet)
+
+      _ ->
+        :ok
     end
 
     result
@@ -116,6 +120,7 @@ defmodule Storyarn.Sheets.BlockCrud do
       {:ok, updated_block} ->
         handle_scope_change(updated_block, old_scope)
         maybe_sync_definition(updated_block, old_scope)
+        Localization.extract_block_tree(updated_block.id)
 
       _ ->
         :ok
@@ -230,7 +235,7 @@ defmodule Storyarn.Sheets.BlockCrud do
           {:error, reason} -> Logger.error("Failed to sync config change: #{inspect(reason)}")
         end
 
-        Localization.extract_block(updated_block)
+        Localization.extract_block_tree(updated_block.id)
 
       {:ok, updated_block} ->
         Localization.extract_block(updated_block)
@@ -249,7 +254,7 @@ defmodule Storyarn.Sheets.BlockCrud do
     Repo.transaction(fn ->
       # Clean up references and localization texts before soft-deleting
       References.delete_block_references(block.id)
-      Localization.delete_block_texts(block.id)
+      Localization.delete_block_tree_texts(block.id)
 
       # If this is a parent block with scope: "children", soft-delete all instances
       if block.scope == "children" do
@@ -272,8 +277,15 @@ defmodule Storyarn.Sheets.BlockCrud do
   Permanently deletes a block from the database.
   """
   def permanently_delete_block(%Block{} = block) do
-    References.delete_block_references(block.id)
-    Repo.delete(block)
+    Repo.transaction(fn ->
+      References.delete_block_references(block.id)
+      Localization.purge_texts_for_source("block", block.id)
+
+      case Repo.delete(block) do
+        {:ok, deleted} -> deleted
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
+    end)
   end
 
   @doc """
@@ -289,6 +301,10 @@ defmodule Storyarn.Sheets.BlockCrud do
     case result do
       {:ok, restored_block} when restored_block.scope == "children" ->
         PropertyInheritance.restore_inherited_instances(restored_block)
+        Localization.extract_block_tree(restored_block.id)
+
+      {:ok, restored_block} ->
+        Localization.extract_block(restored_block)
 
       _ ->
         :ok

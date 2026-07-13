@@ -5,6 +5,7 @@ defmodule Storyarn.Exports.Serializers.Helpers do
   Provides variable collection from sheets, HTML stripping, speaker lookup,
   identifier sanitization, CSV escaping, and flow graph indexing.
   """
+  alias Storyarn.Localization.SourceContract
 
   # ---------------------------------------------------------------------------
   # Variable collection from sheets
@@ -24,8 +25,7 @@ defmodule Storyarn.Exports.Serializers.Helpers do
   def collect_variables(sheets) when is_list(sheets) do
     Enum.flat_map(sheets, fn sheet ->
       sheet.blocks
-      |> Enum.reject(& &1.is_constant)
-      |> Enum.filter(&(is_binary(&1.variable_name) and &1.variable_name != ""))
+      |> Enum.filter(&SourceContract.exported_block?/1)
       |> Enum.map(fn block ->
         %{
           sheet_shortcut: sheet.shortcut,
@@ -55,20 +55,26 @@ defmodule Storyarn.Exports.Serializers.Helpers do
   @doc """
   Extracts a reasonable default value from a block.
   """
+  def infer_default_value(%{type: "number", value: %{"content" => val}}) when is_number(val), do: val
   def infer_default_value(%{type: "number", value: %{"number" => val}}) when is_number(val), do: val
 
   def infer_default_value(%{type: "number"}), do: 0
 
+  def infer_default_value(%{type: "boolean", value: %{"content" => val}}) when is_boolean(val), do: val
   def infer_default_value(%{type: "boolean", value: %{"boolean" => val}}) when is_boolean(val), do: val
 
   def infer_default_value(%{type: "boolean"}), do: false
 
+  def infer_default_value(%{type: "text", value: %{"content" => val}}) when is_binary(val), do: val
   def infer_default_value(%{type: "text", value: %{"text" => val}}) when is_binary(val), do: val
 
+  def infer_default_value(%{type: "rich_text", value: %{"content" => val}}) when is_binary(val), do: strip_html(val)
   def infer_default_value(%{type: "rich_text", value: %{"rich_text" => val}}) when is_binary(val), do: strip_html(val)
 
+  def infer_default_value(%{type: "select", value: %{"content" => val}}) when is_binary(val), do: val
   def infer_default_value(%{type: "select", value: %{"select" => val}}) when is_binary(val), do: val
 
+  def infer_default_value(%{type: "date", value: %{"content" => val}}) when is_binary(val), do: val
   def infer_default_value(%{type: "date", value: %{"date" => val}}) when is_binary(val), do: val
 
   def infer_default_value(_), do: ""

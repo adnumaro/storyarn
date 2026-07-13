@@ -12,6 +12,7 @@ defmodule Storyarn.Sheets do
   """
 
   alias Storyarn.Accounts.User
+  alias Storyarn.Localization
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.References
@@ -239,8 +240,13 @@ defmodule Storyarn.Sheets do
   def move_sheet_to_position(%Sheet{} = sheet, new_parent_id, new_position) do
     with :ok <- SheetCrud.validate_parent(sheet, new_parent_id),
          {:ok, moved_sheet} <-
-           TreeOperations.move_sheet_to_position(sheet, new_parent_id, new_position) do
-      PropertyInheritance.recalculate_on_move(moved_sheet)
+           TreeOperations.move_sheet_to_position(sheet, new_parent_id, new_position),
+         {:ok, _count} <- PropertyInheritance.recalculate_on_move(moved_sheet) do
+      Enum.each(
+        [moved_sheet.id | PropertyInheritance.get_descendant_sheet_ids(moved_sheet.id)],
+        &Localization.extract_sheet_blocks/1
+      )
+
       {:ok, moved_sheet}
     end
   end

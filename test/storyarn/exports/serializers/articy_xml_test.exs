@@ -31,7 +31,8 @@ defmodule Storyarn.Exports.Serializers.ArticyXMLTest do
   defp export_xml(project, opts \\ nil) do
     opts = opts || default_opts()
     project_data = DataCollector.collect(project.id, opts)
-    {:ok, xml} = ArticyXML.serialize(project_data, opts)
+    {:ok, files} = ArticyXML.serialize(project_data, opts)
+    {_filename, xml} = Enum.find(files, fn {filename, _content} -> String.ends_with?(filename, ".xml") end)
     xml
   end
 
@@ -203,7 +204,7 @@ defmodule Storyarn.Exports.Serializers.ArticyXMLTest do
       assert xml =~ "<Entity"
       assert xml =~ ~s(Type="Character")
       assert xml =~ ~s(TechnicalName="#{sheet.shortcut}")
-      assert xml =~ "<DisplayName>Jaime</DisplayName>"
+      assert xml =~ ~s(<DisplayName LocalizationKey="sheet.#{sheet.shortcut}.name">Jaime</DisplayName>)
     end
 
     test "entity properties from blocks", %{project: project} do
@@ -267,7 +268,9 @@ defmodule Storyarn.Exports.Serializers.ArticyXMLTest do
       xml = export_xml(project)
       assert xml =~ "<DialogueFragment"
       assert xml =~ ~s(Speaker="#{sheet.shortcut}")
-      assert xml =~ "<Text>Hello world!</Text>"
+
+      assert xml =~
+               ~s(<Text LocalizationKey="flow_node.#{dialogue.data["localization_id"]}.text">Hello world!</Text>)
     end
 
     test "condition node becomes Condition element", %{project: project} do

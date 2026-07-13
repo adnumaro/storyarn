@@ -4,6 +4,7 @@ import ExportPanel from "@modules/projects/settings/export-import/components/Exp
 interface FormatOption {
   format: string;
   label: string;
+  localizationMode: string;
 }
 
 interface FormatConfig {
@@ -20,6 +21,7 @@ interface SectionConfig {
 
 interface ExportOptions {
   assetMode: string;
+  localizationPolicy: string;
   validateBeforeExport: boolean;
   prettyPrint: boolean;
 }
