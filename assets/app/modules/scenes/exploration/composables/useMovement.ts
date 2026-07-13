@@ -1,6 +1,7 @@
 import { onUnmounted, ref, watch, type ComputedRef, type Ref } from "vue";
-import type { ExplorationPin, ExplorationZone, PartyPosition, PixelPoint, Vertex } from "../types";
+import type { ExplorationPin, ExplorationZone, PartyPosition, PixelPoint } from "../types";
 import type { Node as KonvaNode } from "konva/lib/Node";
+import { findShortestWalkablePath, isPointInWalkableArea } from "../lib/walkablePath";
 
 // --- Constants (matching V1 exactly) ---
 const MOVEMENT_SPEED = 15; // %/s
@@ -41,6 +42,7 @@ export function useMovement({
   let leaderCurrentY = 0;
   let leaderTargetX = 0;
   let leaderTargetY = 0;
+  let leaderPath: PixelPoint[] = [];
 
   let partyPositions: PartyPosition[] = []; // [{id, x, y}]
   let partyTargets: PartyPosition[] = []; // [{id, x, y}]
@@ -82,28 +84,6 @@ export function useMovement({
     immediate: true,
   });
 
-  // --- Point-in-polygon (ray-casting) ---
-
-  function isPointInPolygon(x: number, y: number, vertices: Vertex[]): boolean {
-    let inside = false;
-    for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
-      const xi = vertices[i].x;
-      const yi = vertices[i].y;
-      const xj = vertices[j].x;
-      const yj = vertices[j].y;
-
-      const intersect = yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
-      if (intersect) {
-        inside = !inside;
-      }
-    }
-    return inside;
-  }
-
-  function isPointInWalkableArea(x: number, y: number): boolean {
-    return walkableZones.some((z) => z.vertices && isPointInPolygon(x, y, z.vertices));
-  }
-
   // --- Stage click handler ---
 
   function handleStageClick(pctX: number, pctY: number): "walkable" | "blocked" | null {
@@ -114,18 +94,30 @@ export function useMovement({
       return null;
     }
 
-    const walkable = isPointInWalkableArea(pctX, pctY);
-    if (walkable) {
-      startMovement(pctX, pctY);
+    const target = { x: pctX, y: pctY };
+    if (!isPointInWalkableArea(target, walkableZones)) {
+      return "blocked";
     }
-    return walkable ? "walkable" : "blocked";
+
+    const path = findShortestWalkablePath(
+      { x: leaderCurrentX, y: leaderCurrentY },
+      target,
+      walkableZones,
+    );
+    if (!path) {
+      return "blocked";
+    }
+
+    startMovement(pctX, pctY, path);
+    return "walkable";
   }
 
   // --- Movement start ---
 
-  function startMovement(targetX: number, targetY: number) {
+  function startMovement(targetX: number, targetY: number, path: PixelPoint[]) {
     leaderTargetX = targetX;
     leaderTargetY = targetY;
+    leaderPath = path;
     leaderMoving.value = true;
 
     // Start party following after delay
@@ -207,36 +199,57 @@ export function useMovement({
   // --- Leader step ---
 
   function stepLeader(dt: number): boolean {
-    const dx = leaderTargetX - leaderCurrentX;
-    const dy = leaderTargetY - leaderCurrentY;
-    const dist = Math.sqrt(dx * dx + dy * dy);
+    let remainingStep = MOVEMENT_SPEED * dt;
 
-    if (dist < ARRIVAL_THRESHOLD) {
-      leaderCurrentX = leaderTargetX;
-      leaderCurrentY = leaderTargetY;
-      if (leaderPin) {
-        updatePinPosition(leaderPin.id, leaderCurrentX, leaderCurrentY);
+    while (leaderPath.length > 0) {
+      const waypoint = leaderPath[0];
+      const dx = waypoint.x - leaderCurrentX;
+      const dy = waypoint.y - leaderCurrentY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < ARRIVAL_THRESHOLD || dist <= remainingStep) {
+        leaderCurrentX = waypoint.x;
+        leaderCurrentY = waypoint.y;
+        leaderPath.shift();
+        updateLeaderPosition();
+
+        if (leaderPath.length === 0) {
+          leaderMoving.value = false;
+          return false;
+        }
+
+        if (dist >= remainingStep) {
+          return true;
+        }
+
+        remainingStep -= dist;
+        continue;
       }
-      leaderMoving.value = false;
-      return false;
+
+      const ratio = remainingStep / dist;
+      const nextX = leaderCurrentX + dx * ratio;
+      const nextY = leaderCurrentY + dy * ratio;
+
+      if (!isPointInWalkableArea({ x: nextX, y: nextY }, walkableZones)) {
+        leaderPath = [];
+        leaderMoving.value = false;
+        return false;
+      }
+
+      leaderCurrentX = nextX;
+      leaderCurrentY = nextY;
+      updateLeaderPosition();
+      return true;
     }
 
-    const step = MOVEMENT_SPEED * dt;
-    const ratio = Math.min(step / dist, 1);
-    const nextX = leaderCurrentX + dx * ratio;
-    const nextY = leaderCurrentY + dy * ratio;
+    leaderMoving.value = false;
+    return false;
+  }
 
-    if (!isPointInWalkableArea(nextX, nextY)) {
-      leaderMoving.value = false;
-      return false;
-    }
-
-    leaderCurrentX = nextX;
-    leaderCurrentY = nextY;
+  function updateLeaderPosition() {
     if (leaderPin) {
       updatePinPosition(leaderPin.id, leaderCurrentX, leaderCurrentY);
     }
-    return true;
   }
 
   // --- Party step ---
@@ -296,6 +309,7 @@ export function useMovement({
   watch(flowMode, (active) => {
     if (active && leaderMoving.value) {
       leaderMoving.value = false;
+      leaderPath = [];
       partyMoving = false;
       if (frameId) {
         cancelAnimationFrame(frameId);
