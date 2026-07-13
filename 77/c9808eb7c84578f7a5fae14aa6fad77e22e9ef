@@ -1,0 +1,35 @@
+test/e2e/collaboration_test.exs
+  s_4a0b9957cfe7c2::t_9bc17344ab19a8 17
+test/e2e/workspaces/projects/sheets/sheets_test.exs
+  s_4a0b9957cfe7c2::t_9bc17344ab19a8 15
+test/support/e2e_helpers.ex
+  s_4a0b9957cfe7c2::t_9bc17344ab19a8 1-35
+test/e2e/workspaces/projects/flows/flows_test.exs
+  s_4a0b9957cfe7c2::t_9bc17344ab19a8 15
+test/e2e/workspaces/workspace_visibility_test.exs
+  s_4a0b9957cfe7c2::t_9bc17344ab19a8 16
+test/e2e/workspaces/projects/scenes/scenes_test.exs
+  s_4a0b9957cfe7c2::t_9bc17344ab19a8 15
+test/e2e/templates/templates_test.exs
+  s_4a0b9957cfe7c2::t_9bc17344ab19a8 12
+test/e2e/onboarding_test.exs
+  s_4a0b9957cfe7c2::t_9bc17344ab19a8 1-82
+test/e2e/workspaces/projects/projects_test.exs
+  s_4a0b9957cfe7c2::t_9bc17344ab19a8 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "77c9808eb7c84578f7a5fae14aa6fad77e22e9ef",
+  "prompts": {},
+  "sessions": {
+    "s_4a0b9957cfe7c2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4c00-fd7d-7d20-a29e-6f01b61a5e2a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
