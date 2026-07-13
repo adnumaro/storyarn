@@ -29,6 +29,15 @@
         "title": "Crear desde template",
         "description": "Elige una template publicada y crea un proyecto normal editable en este workspace.",
         "submit": "Crear desde template",
+        "submitting": "Iniciando…",
+        "installing": "Creando proyecto",
+        "reference": "Instalación #{id}",
+        "stages": {
+          "queued": "Esperando un proceso disponible…",
+          "verifying": "Verificando la template…",
+          "materializing": "Copiando el contenido y los assets…",
+          "retrying": "Ha ocurrido un problema temporal. Reintentando automáticamente…"
+        },
         "version": "v{version}",
         "counts": "Fichas / flows / escenas",
         "no_description": "Sin descripción proporcionada",

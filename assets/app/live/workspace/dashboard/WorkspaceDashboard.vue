@@ -1,6 +1,16 @@
 <script setup lang="ts">
-import { FilePlus2, FolderOpen, Library, Plus, Search, Settings, Sparkles } from "lucide-vue-next";
+import {
+  FilePlus2,
+  FolderOpen,
+  Library,
+  Loader2,
+  Plus,
+  Search,
+  Settings,
+  Sparkles,
+} from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import {
   Dialog,
   DialogContent,
@@ -62,6 +72,20 @@ interface ProjectTemplate {
   project_subtype?: string | null;
 }
 
+interface TemplateInstallation {
+  id: number;
+  project_name: string;
+  status: "queued" | "running" | "retrying" | string;
+  stage: "queued" | "verifying" | "materializing" | "retrying" | string;
+  template_id: number;
+  template_version_id: number;
+}
+
+interface TemplateCreationData {
+  templates: ProjectTemplate[];
+  installations: TemplateInstallation[];
+}
+
 const {
   workspace,
   membership,
@@ -70,7 +94,7 @@ const {
   canCreateProject = false,
   newProjectModalOpen = false,
   newProjectForm = null,
-  projectTemplates = [],
+  templateCreation = { templates: [], installations: [] },
   projectMetricsOptions = { project_types: [], project_subtypes: {} },
   settingsUrl = null,
 } = defineProps<{
@@ -81,16 +105,20 @@ const {
   canCreateProject?: boolean;
   newProjectModalOpen?: boolean;
   newProjectForm?: Form<NewProjectFormValues> | null;
-  projectTemplates?: ProjectTemplate[];
+  templateCreation?: TemplateCreationData;
   projectMetricsOptions?: ProjectMetricsOptions;
   settingsUrl?: string | null;
 }>();
 
 const live = useLiveVue();
+const { t } = useI18n();
+const projectTemplates = computed(() => templateCreation.templates);
+const templateInstallations = computed(() => templateCreation.installations);
 const localSearch = ref(searchQuery);
 const newProjectMode = ref<"blank" | "private" | "public">("blank");
 const selectedTemplateId = ref<number | null>(null);
 const templateProjectName = ref("");
+const templateSubmissionPending = ref(false);
 const localNewProjectModalOpen = ref(newProjectModalOpen);
 
 watch(
@@ -113,16 +141,26 @@ const filteredProjects = computed(() => {
   });
 });
 
+const filteredTemplateInstallations = computed(() => {
+  const query = localSearch.value.trim().toLowerCase();
+
+  if (!query) return templateInstallations.value;
+
+  return templateInstallations.value.filter((installation) =>
+    installation.project_name.toLowerCase().includes(query),
+  );
+});
+
 const canManage = computed(() => ["owner", "admin"].includes(membership.role));
 
 const canCreate = computed(() => ["owner", "admin", "member"].includes(membership.role));
 
 const privateTemplates = computed(() =>
-  projectTemplates.filter((template) => template.visibility === "private"),
+  projectTemplates.value.filter((template) => template.visibility === "private"),
 );
 
 const publicTemplates = computed(() =>
-  projectTemplates.filter((template) => template.visibility === "public"),
+  projectTemplates.value.filter((template) => template.visibility === "public"),
 );
 
 const activeTemplates = computed(() => {
@@ -137,7 +175,14 @@ const selectedTemplate = computed(() => {
 });
 
 const canCreateFromTemplate = computed(() => {
-  return !!selectedTemplate.value && templateProjectName.value.trim().length > 0;
+  return (
+    !!selectedTemplate.value &&
+    templateProjectName.value.trim().length > 0 &&
+    !templateSubmissionPending.value &&
+    !templateInstallations.value.some(
+      (installation) => installation.template_id === selectedTemplate.value?.id,
+    )
+  );
 });
 
 const templateNameTouched = ref(false);
@@ -180,10 +225,26 @@ function selectTemplate(template: ProjectTemplate | null) {
 function createProjectFromTemplate() {
   if (!selectedTemplate.value || !canCreateFromTemplate.value) return;
 
-  live.pushEvent("create_project_from_template", {
-    template_id: selectedTemplate.value.id,
-    name: templateProjectName.value.trim(),
-  });
+  templateSubmissionPending.value = true;
+
+  live.pushEvent(
+    "create_project_from_template",
+    {
+      template_id: selectedTemplate.value.id,
+      name: templateProjectName.value.trim(),
+    },
+    (response: { status?: string }) => {
+      templateSubmissionPending.value = false;
+
+      if (response.status === "queued") {
+        localNewProjectModalOpen.value = false;
+      }
+    },
+  );
+}
+
+function installationStageLabel(installation: TemplateInstallation) {
+  return t(`workspace.new_project.templates.stages.${installation.stage}`);
 }
 
 function templateCountLabel(template: ProjectTemplate) {
@@ -282,7 +343,11 @@ function templateCountLabel(template: ProjectTemplate) {
     <div class="flex-1">
       <!-- Empty states -->
       <div
-        v-if="filteredProjects.length === 0 && !localSearch"
+        v-if="
+          filteredProjects.length === 0 &&
+          filteredTemplateInstallations.length === 0 &&
+          !localSearch
+        "
         class="flex flex-col items-center justify-center py-12 text-center h-full"
       >
         <FolderOpen class="size-12 text-muted-foreground/40 mb-4" />
@@ -295,7 +360,9 @@ function templateCountLabel(template: ProjectTemplate) {
       </div>
 
       <div
-        v-if="filteredProjects.length === 0 && localSearch"
+        v-else-if="
+          filteredProjects.length === 0 && filteredTemplateInstallations.length === 0 && localSearch
+        "
         class="flex flex-col items-center justify-center py-12 text-center h-full"
       >
         <Search class="size-12 text-muted-foreground/40 mb-4" />
@@ -307,6 +374,33 @@ function templateCountLabel(template: ProjectTemplate) {
 
       <!-- Projects Grid -->
       <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mt-4">
+        <article
+          v-for="installation in filteredTemplateInstallations"
+          :key="`template-installation-${installation.id}`"
+          :data-testid="`template-installation-${installation.id}`"
+          class="relative flex min-h-44 flex-col overflow-hidden rounded-xl border border-primary/30 bg-card p-5 shadow-sm"
+          aria-live="polite"
+        >
+          <div class="absolute inset-x-0 top-0 h-0.5 overflow-hidden bg-primary/10">
+            <div class="h-full w-1/2 animate-pulse rounded-full bg-primary" />
+          </div>
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-xs font-medium uppercase tracking-wide text-primary">
+                {{ $t("workspace.new_project.templates.installing") }}
+              </p>
+              <h3 class="mt-1 truncate text-lg font-semibold">{{ installation.project_name }}</h3>
+            </div>
+            <Loader2 class="size-5 shrink-0 animate-spin text-primary" aria-hidden="true" />
+          </div>
+          <p class="mt-3 text-sm text-muted-foreground">
+            {{ installationStageLabel(installation) }}
+          </p>
+          <p class="mt-auto pt-5 text-xs text-muted-foreground">
+            {{ $t("workspace.new_project.templates.reference", { id: installation.id }) }}
+          </p>
+        </article>
+
         <a
           v-for="projectData in filteredProjects"
           :key="projectData.project.id"
@@ -504,7 +598,7 @@ function templateCountLabel(template: ProjectTemplate) {
               <Input
                 id="template-project-name"
                 v-model="templateProjectName"
-                :disabled="!selectedTemplate"
+                :disabled="!selectedTemplate || templateSubmissionPending"
                 maxlength="100"
                 :placeholder="$t('workspace.new_project.fields.name.placeholder')"
                 :aria-invalid="showTemplateNameError ? 'true' : null"
@@ -519,7 +613,12 @@ function templateCountLabel(template: ProjectTemplate) {
             </div>
 
             <div class="mt-auto flex justify-end gap-2 pt-5">
-              <Button type="button" variant="ghost" @click="setNewProjectModalOpen(false)">
+              <Button
+                type="button"
+                variant="ghost"
+                :disabled="templateSubmissionPending"
+                @click="setNewProjectModalOpen(false)"
+              >
                 {{ $t("workspace.new_project.cancel") }}
               </Button>
               <Button
@@ -528,7 +627,16 @@ function templateCountLabel(template: ProjectTemplate) {
                 :disabled="!canCreateFromTemplate"
                 @click="createProjectFromTemplate"
               >
-                {{ $t("workspace.new_project.templates.submit") }}
+                <Loader2
+                  v-if="templateSubmissionPending"
+                  class="mr-2 size-4 animate-spin"
+                  aria-hidden="true"
+                />
+                {{
+                  templateSubmissionPending
+                    ? $t("workspace.new_project.templates.submitting")
+                    : $t("workspace.new_project.templates.submit")
+                }}
               </Button>
             </div>
           </section>

@@ -492,3 +492,61 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "set_if_unset emits unconditional set in Yarn (no null type)"
 msgstr ""
+
+#: lib/storyarn_web/live/template_live/show.ex
+#: lib/storyarn_web/live/workspace_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Template installation started."
+msgstr "Template installation started."
+
+#: lib/storyarn_web/live/template_live/show.ex
+#: lib/storyarn_web/live/workspace_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Your project is ready."
+msgstr "Your project is ready."
+
+#: lib/storyarn_web/live/template_live/show.ex
+#: lib/storyarn_web/live/workspace_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Template installation failed. Reference: %{reference}"
+msgstr "Template installation failed. Reference: %{reference}"
+
+#: lib/storyarn_web/live/template_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Starting installation…"
+msgstr "Starting installation…"
+
+#: lib/storyarn_web/live/template_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Installation in progress"
+msgstr "Installation in progress"
+
+#: lib/storyarn_web/live/template_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Installation reference: %{reference}"
+msgstr "Installation reference: %{reference}"
+
+#: lib/storyarn_web/live/template_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Waiting to start…"
+msgstr "Waiting to start…"
+
+#: lib/storyarn_web/live/template_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Verifying template integrity…"
+msgstr "Verifying template integrity…"
+
+#: lib/storyarn_web/live/template_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Copying project content and assets…"
+msgstr "Copying project content and assets…"
+
+#: lib/storyarn_web/live/template_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Retrying after a temporary issue…"
+msgstr "Retrying after a temporary issue…"
+
+#: lib/storyarn_web/live/template_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Creating project…"
+msgstr "Creating project…"

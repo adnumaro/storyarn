@@ -123,6 +123,7 @@ defmodule Storyarn.ProjectTemplates.TemplateQueries do
       ProjectTemplateInstall
       |> join(:inner, [install], version in assoc(install, :project_template_version))
       |> where([_install, version], version.project_template_id == ^template.id)
+      |> where([install], install.status == "completed" and not is_nil(install.installed_at))
       |> order_by([install, _version], desc: install.installed_at, desc: install.id)
       |> limit(^limit)
       |> preload([_install, version], project_template_version: version)

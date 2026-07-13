@@ -76,6 +76,18 @@ defmodule StoryarnWeb.Telemetry do
         description: "The time the connection spent waiting before being checked out for the query"
       ),
 
+      # Project template installation metrics
+      sum("storyarn.project_template.installation.requested.count",
+        tags: [:source, :visibility]
+      ),
+      sum("storyarn.project_template.installation.stop.count",
+        tags: [:status, :source, :error_code]
+      ),
+      summary("storyarn.project_template.installation.stop.duration",
+        tags: [:status, :source, :error_code],
+        unit: {:native, :millisecond}
+      ),
+
       # VM Metrics
       summary("vm.memory.total", unit: {:byte, :kilobyte}),
       summary("vm.total_run_queue_lengths.total"),

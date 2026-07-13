@@ -10,6 +10,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Localization.GlossaryEntry
@@ -46,16 +47,31 @@ defmodule Storyarn.Versioning.ProjectRecovery do
           {:ok, Project.t()} | {:error, term()}
   def recover_project(workspace_id, snapshot_data, user_id, opts \\ []) do
     name = Keyword.get(opts, :name, "Recovered Project")
+    {tracker, owns_tracker?} = asset_copy_tracker(opts)
+    opts = Keyword.put(opts, :asset_copy_tracker, tracker)
 
-    Repo.transaction(
-      fn ->
-        case do_recover(workspace_id, snapshot_data, user_id, name, opts) do
-          {:ok, project} -> project
-          {:error, reason} -> Repo.rollback(reason)
-        end
-      end,
-      timeout: to_timeout(minute: 5)
-    )
+    try do
+      result =
+        Repo.transaction(
+          fn ->
+            case do_recover(workspace_id, snapshot_data, user_id, name, opts) do
+              {:ok, project} -> project
+              {:error, reason} -> Repo.rollback(reason)
+            end
+          end,
+          timeout: to_timeout(minute: 5)
+        )
+
+      finalize_asset_copies(result, tracker, owns_tracker?)
+    rescue
+      error ->
+        cleanup_owned_asset_copies(tracker, owns_tracker?)
+        reraise error, __STACKTRACE__
+    catch
+      kind, reason ->
+        cleanup_owned_asset_copies(tracker, owns_tracker?)
+        :erlang.raise(kind, reason, __STACKTRACE__)
+    end
   end
 
   defp do_recover(workspace_id, snapshot_data, user_id, name, opts) do
@@ -149,7 +165,11 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp materialization_opts(user_id, recovery_opts, builder_opts) do
-    builder_opts = Keyword.put(builder_opts, :user_id, user_id)
+    builder_opts =
+      recovery_opts
+      |> Keyword.take([:asset_copy_tracker, :asset_error_mode])
+      |> Keyword.merge(builder_opts)
+      |> Keyword.put(:user_id, user_id)
 
     if Keyword.get(recovery_opts, :template_clone, false) do
       Keyword.put(builder_opts, :asset_mode, :copy)
@@ -484,8 +504,34 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp localization_asset_opts(opts) do
-    if Keyword.get(opts, :template_clone, false), do: [asset_mode: :copy], else: []
+    asset_mode = if Keyword.get(opts, :template_clone, false), do: :copy, else: :reuse
+
+    opts
+    |> Keyword.take([:asset_copy_tracker, :asset_error_mode])
+    |> Keyword.put(:asset_mode, asset_mode)
   end
+
+  defp asset_copy_tracker(opts) do
+    case Keyword.get(opts, :asset_copy_tracker) do
+      reference when is_reference(reference) -> {reference, false}
+      _reference -> {StorageCompensation.new(), true}
+    end
+  end
+
+  defp finalize_asset_copies({:ok, _project} = result, tracker, true) do
+    StorageCompensation.discard(tracker)
+    result
+  end
+
+  defp finalize_asset_copies({:error, _reason} = result, tracker, true) do
+    StorageCompensation.cleanup(tracker)
+    result
+  end
+
+  defp finalize_asset_copies(result, _tracker, false), do: result
+
+  defp cleanup_owned_asset_copies(tracker, true), do: StorageCompensation.cleanup(tracker)
+  defp cleanup_owned_asset_copies(_tracker, false), do: :ok
 
   defp restore_glossary(_project_id, [], _now), do: :ok
 

@@ -492,3 +492,61 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "set_if_unset emits unconditional set in Yarn (no null type)"
 msgstr ""
+
+#: lib/storyarn_web/live/template_live/show.ex
+#: lib/storyarn_web/live/workspace_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Template installation started."
+msgstr ""
+
+#: lib/storyarn_web/live/template_live/show.ex
+#: lib/storyarn_web/live/workspace_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Your project is ready."
+msgstr ""
+
+#: lib/storyarn_web/live/template_live/show.ex
+#: lib/storyarn_web/live/workspace_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Template installation failed. Reference: %{reference}"
+msgstr ""
+
+#: lib/storyarn_web/live/template_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Starting installation…"
+msgstr ""
+
+#: lib/storyarn_web/live/template_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Installation in progress"
+msgstr ""
+
+#: lib/storyarn_web/live/template_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Installation reference: %{reference}"
+msgstr ""
+
+#: lib/storyarn_web/live/template_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Waiting to start…"
+msgstr ""
+
+#: lib/storyarn_web/live/template_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Verifying template integrity…"
+msgstr ""
+
+#: lib/storyarn_web/live/template_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Copying project content and assets…"
+msgstr ""
+
+#: lib/storyarn_web/live/template_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Retrying after a temporary issue…"
+msgstr ""
+
+#: lib/storyarn_web/live/template_live/show.ex
+#, elixir-autogen, elixir-format
+msgid "Creating project…"
+msgstr ""

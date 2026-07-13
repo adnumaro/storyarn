@@ -11,10 +11,12 @@ defmodule StoryarnWeb.TemplateLiveTest do
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates
   alias Storyarn.ProjectTemplates.ProjectTemplate
+  alias Storyarn.ProjectTemplates.ProjectTemplateInstall
   alias Storyarn.ProjectTemplates.ProjectTemplatePublication
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Repo
   alias Storyarn.Workers.DeleteProjectTemplateArtifactsWorker
+  alias Storyarn.Workers.InstallProjectTemplateWorker
   alias Storyarn.Workers.PublishProjectTemplateWorker
 
   describe "index" do
@@ -83,7 +85,11 @@ defmodule StoryarnWeb.TemplateLiveTest do
   describe "show" do
     setup :register_and_log_in_user
 
-    test "installs a template into a workspace", %{conn: conn, user: user, scope: scope} do
+    test "queues a template installation and navigates when it completes", %{
+      conn: conn,
+      user: user,
+      scope: scope
+    } do
       workspace = workspace_fixture(user, %{name: "Install Studio"})
       template = template_fixture(user, scope, %{name: "Installable Template"})
 
@@ -91,17 +97,27 @@ defmodule StoryarnWeb.TemplateLiveTest do
 
       assert has_element?(view, "#template-install-form")
 
-      render_submit(element(view, "#template-install-form"), %{
-        "install" => %{
-          "workspace_id" => to_string(workspace.id),
-          "version_id" => to_string(template.current_version_id),
-          "name" => "Installed From Template"
-        }
-      })
+      html =
+        render_submit(element(view, "#template-install-form"), %{
+          "install" => %{
+            "workspace_id" => to_string(workspace.id),
+            "version_id" => to_string(template.current_version_id),
+            "name" => "Installed From Template"
+          }
+        })
+
+      installation = Repo.get_by!(ProjectTemplateInstall, workspace_id: workspace.id, status: "queued")
+      assert html =~ "Template installation started"
+      assert has_element?(view, "#template-active-installation-#{installation.id}")
+
+      assert :ok =
+               perform_job(InstallProjectTemplateWorker, %{
+                 "installation_id" => installation.id
+               })
 
       {path, flash} = assert_redirect(view)
       assert path =~ "/workspaces/#{workspace.slug}/projects/"
-      assert flash["info"] =~ "Project created"
+      assert flash["info"] =~ "project is ready"
 
       installed_project = Repo.get_by!(Project, workspace_id: workspace.id, name: "Installed From Template")
       assert installed_project.created_from_template_version_id == template.current_version_id
@@ -127,6 +143,13 @@ defmodule StoryarnWeb.TemplateLiveTest do
           "name" => "Installed From Version One"
         }
       })
+
+      installation = Repo.get_by!(ProjectTemplateInstall, workspace_id: workspace.id, status: "queued")
+
+      assert :ok =
+               perform_job(InstallProjectTemplateWorker, %{
+                 "installation_id" => installation.id
+               })
 
       {path, _flash} = assert_redirect(view)
       assert path =~ "/workspaces/#{workspace.slug}/projects/"

@@ -30,6 +30,13 @@ defmodule Storyarn.Versioning.MaterializationHelpers do
   @spec preserve_external_refs?(keyword()) :: boolean()
   def preserve_external_refs?(opts), do: Keyword.get(opts, :preserve_external_refs, true)
 
+  @spec asset_resolution_opts(keyword(), atom()) :: keyword()
+  def asset_resolution_opts(opts, asset_mode) do
+    opts
+    |> Keyword.take([:asset_copy_tracker, :asset_error_mode])
+    |> Keyword.put(:asset_mode, asset_mode)
+  end
+
   @spec resolve_project_external_ref(
           integer() | nil,
           module(),
