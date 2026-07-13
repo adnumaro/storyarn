@@ -4,11 +4,9 @@ defmodule Storyarn.Scenes.PinCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Flows
-  alias Storyarn.Localization
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Scenes.PositionUtils
-  alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets
@@ -88,7 +86,6 @@ defmodule Storyarn.Scenes.PinCrud do
         project_id = Scenes.get_scene_project_id(scene_id)
         Sheets.update_scene_pin_references(pin)
         Flows.update_scene_pin_references(pin, project_id: project_id)
-        Scene |> Repo.get(scene_id) |> Localization.extract_scene()
 
       _ ->
         :ok
@@ -116,7 +113,6 @@ defmodule Storyarn.Scenes.PinCrud do
         project_id = Scenes.get_scene_project_id(pin.scene_id)
         Sheets.update_scene_pin_references(updated_pin)
         Flows.update_scene_pin_references(updated_pin, project_id: project_id)
-        Scene |> Repo.get(pin.scene_id) |> Localization.extract_scene()
 
       _ ->
         :ok
@@ -145,15 +141,6 @@ defmodule Storyarn.Scenes.PinCrud do
           {:error, changeset} -> Repo.rollback(changeset)
         end
       end)
-
-    case result do
-      {:ok, _} ->
-        scene = Repo.get(Scene, pin.scene_id)
-        if scene, do: Localization.extract_scene(scene)
-
-      _ ->
-        :ok
-    end
 
     result
   end

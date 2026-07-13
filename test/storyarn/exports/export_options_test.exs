@@ -18,6 +18,7 @@ defmodule Storyarn.Exports.ExportOptionsTest do
       assert opts.include_scenes == true
       assert opts.include_screenplays == true
       assert opts.include_localization == true
+      assert opts.localization_policy == :release
       assert opts.include_assets == :references
       assert opts.languages == :all
       assert opts.flow_ids == :all
@@ -73,6 +74,19 @@ defmodule Storyarn.Exports.ExportOptionsTest do
                  "format" => "storyarn",
                  "include_assets" => "not_a_real_asset_mode_xyz"
                })
+    end
+
+    test "accepts release and preview localization policies" do
+      assert {:ok, %{localization_policy: :release}} =
+               ExportOptions.new(%{format: :unity, localization_policy: :release})
+
+      assert {:ok, %{localization_policy: :preview}} =
+               ExportOptions.new(%{"format" => "unity", "localization_policy" => "preview"})
+    end
+
+    test "rejects an unknown localization policy" do
+      assert {:error, {:invalid_localization_policy, :unsafe}} =
+               ExportOptions.new(%{format: :unity, localization_policy: :unsafe})
     end
   end
 

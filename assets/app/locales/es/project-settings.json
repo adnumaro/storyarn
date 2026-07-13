@@ -270,6 +270,15 @@
           "description": "Añade los originales en una carpeta de recursos separada."
         }
       },
+      "localization_policy": "Política de localización",
+      "localization_release": "Release — solo traducciones finales y actuales, y doblaje aprobado",
+      "localization_preview": "Preview — incluye borradores y doblaje grabado con advertencias",
+      "localization_modes": {
+        "embedded": "Localización integrada",
+        "external_catalog": "Catálogos de localización",
+        "full_state": "Estado completo de localización",
+        "none": "Sin localización"
+      },
       "options": "Opciones",
       "validate_before": "Validar antes de exportar",
       "validate_before_description": "Detiene la descarga si el proyecto contiene problemas bloqueantes.",

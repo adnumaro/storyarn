@@ -3,7 +3,6 @@ defmodule Storyarn.Scenes.SceneStats do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Localization.LocalizableWords
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.SceneConnection
@@ -52,11 +51,6 @@ defmodule Storyarn.Scenes.SceneStats do
       )
     )
   end
-
-  @doc """
-  Returns per-scene counts for all localizable words in each scene.
-  """
-  defdelegate scene_word_counts(project_id), to: LocalizableWords
 
   # ===========================================================================
   # Issue Detection

@@ -3,11 +3,13 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
 
   import Ecto.Query, warn: false
   import Storyarn.AccountsFixtures
+  import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Assets
   alias Storyarn.Assets.BlobStore
+  alias Storyarn.Localization
   alias Storyarn.Sheets
   alias Storyarn.Versioning.Builders.SheetBuilder
 
@@ -117,6 +119,50 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       assert restored.name == sheet.name
       blocks = Sheets.list_blocks(sheet.id)
       assert length(blocks) == 2
+    end
+
+    test "restores block and sheet-name translations after block IDs are replaced", %{
+      project: project,
+      sheet: sheet
+    } do
+      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      _es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      block =
+        block_fixture(sheet, %{
+          type: "text",
+          variable_name: "bio",
+          value: %{"content" => "A hero"}
+        })
+
+      :ok = Localization.sync_sheet_names(project.id)
+      [block_text] = Localization.get_texts_for_source("block", block.id)
+      [sheet_text] = Localization.get_texts_for_source("sheet", sheet.id)
+
+      assert {:ok, _block_text} =
+               Localization.update_text(block_text, %{
+                 translated_text: "Un héroe",
+                 status: "final",
+                 reviewer_notes: "Versioned block"
+               })
+
+      assert {:ok, _sheet_text} =
+               Localization.update_text(sheet_text, %{translated_text: "Personaje", status: "final"})
+
+      snapshot = SheetBuilder.build_snapshot(sheet)
+      assert length(snapshot["localization"]) == 2
+
+      assert {:ok, restored} = SheetBuilder.restore_snapshot(sheet, snapshot)
+      [restored_block] = Enum.filter(restored.blocks, &(&1.type == "text"))
+      refute restored_block.id == block.id
+
+      assert [restored_block_text] = Localization.get_texts_for_source("block", restored_block.id)
+      assert restored_block_text.translated_text == "Un héroe"
+      assert restored_block_text.status == "final"
+      assert restored_block_text.reviewer_notes == "Versioned block"
+
+      assert [%{translated_text: "Personaje", status: "final"}] =
+               Localization.get_texts_for_source("sheet", restored.id)
     end
   end
 

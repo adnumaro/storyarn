@@ -124,18 +124,12 @@ defmodule StoryarnWeb.LocalizationLive.Handlers.LocalizationHandlers do
   defp do_add_target_language(socket, code) do
     name = Localization.language_name(code)
 
-    case Localization.add_language(socket.assigns.project, %{
+    case Localization.add_language_with_count(socket.assigns.project, %{
            "locale_code" => code,
            "name" => name,
            "is_source" => false
          }) do
-      {:ok, _lang} ->
-        count =
-          case Localization.extract_all(socket.assigns.project.id) do
-            {:ok, c} -> c
-            {:error, _} -> 0
-          end
-
+      {:ok, %{extracted_count: count}} ->
         socket = reload_languages(socket)
 
         msg =

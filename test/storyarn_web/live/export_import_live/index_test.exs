@@ -90,6 +90,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
 
       options = export_config(view)["options"]
       assert options["assetMode"] == "references"
+      assert options["localizationPolicy"] == "release"
       assert options["validateBeforeExport"] == true
       assert options["prettyPrint"] == true
       assert export_config(view)["validation"] == nil
@@ -109,6 +110,8 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       assert "Unreal Engine (CSV)" in labels
       assert "articy:draft (XML)" in labels
       refute "Storyarn JSON" in labels
+
+      assert Enum.all?(visible_formats(view), &(&1["localizationMode"] in ~w(embedded external_catalog)))
     end
 
     test "switching format updates the displayed download extension", %{conn: conn, project: project} do
@@ -176,6 +179,29 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       render_click(view, "set_asset_mode", %{"mode" => "invalid"})
 
       assert export_config(view)["options"]["assetMode"] == "references"
+    end
+
+    test "localization policy is validated and included in the download URL", %{conn: conn, project: project} do
+      {:ok, view, _html} = live(conn, export_url(project))
+
+      render_click(view, "set_localization_policy", %{"policy" => "preview"})
+
+      assert export_config(view)["options"]["localizationPolicy"] == "preview"
+      assert download_url(view) =~ "localization_policy=preview"
+
+      render_click(view, "set_localization_policy", %{"policy" => "unsafe"})
+
+      assert export_config(view)["options"]["localizationPolicy"] == "preview"
+    end
+
+    test "switching localization policy clears validation result", %{conn: conn, project: project} do
+      {:ok, view, _html} = live(conn, export_url(project))
+
+      render_click(view, "validate_export", %{})
+      assert validation_status(view)
+
+      render_click(view, "set_localization_policy", %{"policy" => "preview"})
+      assert export_config(view)["validation"] == nil
     end
 
     test "switching format clears validation result", %{conn: conn, project: project} do

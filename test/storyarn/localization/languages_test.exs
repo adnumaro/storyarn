@@ -57,6 +57,11 @@ defmodule Storyarn.Localization.LanguagesTest do
       assert lang.region == :americas
     end
 
+    test "matches the canonical lowercase storage form" do
+      assert Languages.get("en-us").code == "en-US"
+      assert Languages.get("zh-hans").code == "zh-Hans"
+    end
+
     test "returns nil for unknown code" do
       assert Languages.get("xx") == nil
     end
@@ -77,6 +82,7 @@ defmodule Storyarn.Localization.LanguagesTest do
 
     test "returns name for variant code" do
       assert Languages.name("pt-BR") == "Portuguese (Brazil)"
+      assert Languages.name("pt-br") == "Portuguese (Brazil)"
     end
 
     test "falls back to code for unknown code" do
@@ -118,6 +124,14 @@ defmodule Storyarn.Localization.LanguagesTest do
       assert "de" in codes
     end
 
+    test "excludes regional codes using their canonical lowercase form" do
+      options = Languages.options_for_select(exclude: ["en-us", "zh-hans"])
+      codes = Enum.map(options, fn {_, code} -> code end)
+
+      refute "en-US" in codes
+      refute "zh-Hans" in codes
+    end
+
     test "empty exclude returns all" do
       all_options = Languages.options_for_select()
       excluded_options = Languages.options_for_select(exclude: [])
@@ -134,6 +148,14 @@ defmodule Storyarn.Localization.LanguagesTest do
       all_options = Languages.options_for_select()
       options = Languages.options_for_select(exclude: ["xx", "yy", "zz"])
       assert length(all_options) == length(options)
+    end
+  end
+
+  describe "flag_code/1" do
+    test "supports canonical lowercase regional codes" do
+      assert Languages.flag_code("en-us") == "us"
+      assert Languages.flag_code("zh-hans") == "cn"
+      assert Languages.flag_code("zh-hant") == "tw"
     end
   end
 end

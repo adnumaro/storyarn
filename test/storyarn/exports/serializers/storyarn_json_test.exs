@@ -463,8 +463,11 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSONTest do
       entry = hd(strings)
       assert entry["source_type"] == "flow_node"
       assert entry["source_field"] == "text"
+      assert entry["content_role"] == "dialogue"
+      assert entry["vo_eligible"]
       assert is_map(entry["translations"])
       assert entry["translations"]["es"]["translated_text"] == "Hola"
+      assert entry["translations"]["es"]["translated_source_hash"]
     end
   end
 

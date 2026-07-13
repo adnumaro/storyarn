@@ -16,6 +16,10 @@ defmodule Storyarn.Flows.NodeUpdate do
     node
     |> FlowNode.update_changeset(attrs)
     |> Repo.update()
+    |> tap(fn
+      {:ok, updated_node} -> Localization.extract_flow_node(updated_node)
+      _error -> :ok
+    end)
   end
 
   def update_node_position(%FlowNode{} = node, attrs) do

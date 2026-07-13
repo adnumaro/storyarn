@@ -18,7 +18,7 @@ defmodule StoryarnWeb.ExportController do
          {:ok, serializer} <- Exports.get_serializer(format),
          {:ok, project, _membership} <-
            Projects.get_project_by_slugs(conn.assigns.current_scope, workspace_slug, project_slug),
-         opts = build_options(conn.params, format),
+         {:ok, opts} <- build_options(conn.params, format),
          {:ok, output} <- Exports.export_project(project, opts) do
       slug = NameNormalizer.slugify(project.name)
       send_export(conn, output, slug, format, serializer)
@@ -28,6 +28,9 @@ defmodule StoryarnWeb.ExportController do
 
       :error ->
         conn |> put_status(:bad_request) |> text(gettext("Invalid format"))
+
+      {:error, :invalid_localization_policy} ->
+        conn |> put_status(:bad_request) |> text(gettext("Invalid localization policy"))
 
       {:error, :not_found} ->
         conn |> put_status(:not_found) |> text(gettext("Not found"))
@@ -94,20 +97,29 @@ defmodule StoryarnWeb.ExportController do
   end
 
   defp build_options(params, format) do
-    %{
-      format: format,
-      validate_before_export: params["validate"] != "false",
-      pretty_print: params["pretty"] != "false",
-      include_sheets: params["sheets"] != "false",
-      include_flows: params["flows"] != "false",
-      include_scenes: params["scenes"] != "false",
-      include_screenplays: params["screenplays"] != "false",
-      include_localization: params["localization"] != "false",
-      include_assets: parse_asset_mode(params["assets"])
-    }
+    with {:ok, localization_policy} <- parse_localization_policy(params["localization_policy"]) do
+      {:ok,
+       %{
+         format: format,
+         validate_before_export: params["validate"] != "false",
+         pretty_print: params["pretty"] != "false",
+         include_sheets: params["sheets"] != "false",
+         include_flows: params["flows"] != "false",
+         include_scenes: params["scenes"] != "false",
+         include_screenplays: params["screenplays"] != "false",
+         include_localization: params["localization"] != "false",
+         localization_policy: localization_policy,
+         include_assets: parse_asset_mode(params["assets"])
+       }}
+    end
   end
 
   defp parse_asset_mode("embedded"), do: :embedded
   defp parse_asset_mode("bundled"), do: :bundled
   defp parse_asset_mode(_), do: :references
+
+  defp parse_localization_policy(nil), do: {:ok, :release}
+  defp parse_localization_policy("release"), do: {:ok, :release}
+  defp parse_localization_policy("preview"), do: {:ok, :preview}
+  defp parse_localization_policy(_policy), do: {:error, :invalid_localization_policy}
 end

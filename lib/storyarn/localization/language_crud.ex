@@ -4,6 +4,7 @@ defmodule Storyarn.Localization.LanguageCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Localization.Languages
+  alias Storyarn.Localization.LocaleCode
   alias Storyarn.Localization.LocalizableWords
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProjectLanguage
@@ -26,6 +27,16 @@ defmodule Storyarn.Localization.LanguageCrud do
     )
   end
 
+  @doc "Lists active and archived languages for native backup and version snapshots."
+  def list_languages_for_backup(project_id) do
+    Repo.all(
+      from(l in ProjectLanguage,
+        where: l.project_id == ^project_id,
+        order_by: [asc: l.position, asc: l.name]
+      )
+    )
+  end
+
   def get_language(project_id, language_id) do
     Repo.one(
       from(l in ProjectLanguage,
@@ -35,6 +46,8 @@ defmodule Storyarn.Localization.LanguageCrud do
   end
 
   def get_language_by_locale(project_id, locale_code) do
+    locale_code = LocaleCode.normalize(locale_code)
+
     Repo.one(
       from(l in ProjectLanguage,
         where: l.project_id == ^project_id and l.locale_code == ^locale_code and is_nil(l.archived_at)
@@ -64,25 +77,57 @@ defmodule Storyarn.Localization.LanguageCrud do
   # =============================================================================
 
   def add_language(%Project{} = project, attrs) do
+    case add_language_with_count(project, attrs) do
+      {:ok, %{language: language}} -> {:ok, language}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def add_language_with_count(%Project{} = project, attrs) do
     attrs = MapUtils.stringify_keys(attrs)
 
+    Repo.transaction(fn ->
+      with {:ok, language} <- persist_language(project, attrs),
+           {:ok, count} <- collect_existing_sources(project.id, language) do
+        %{language: language, extracted_count: count}
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+  end
+
+  defp persist_language(project, attrs) do
     case get_archived_language_by_locale(project.id, attrs["locale_code"]) do
-      %ProjectLanguage{} = archived ->
-        archived
-        |> ProjectLanguage.update_changeset(%{
-          "archived_at" => nil,
-          "is_source" => Map.get(attrs, "is_source", archived.is_source),
-          "name" => attrs["name"] || archived.name,
-          "position" => attrs["position"] || next_position(project.id)
-        })
-        |> Repo.update()
+      %ProjectLanguage{} = archived -> reactivate_language(archived, project.id, attrs)
+      nil -> insert_language(project.id, attrs)
+    end
+  end
 
-      nil ->
-        position = attrs["position"] || next_position(project.id)
+  defp reactivate_language(archived, project_id, attrs) do
+    archived
+    |> ProjectLanguage.update_changeset(%{
+      "archived_at" => nil,
+      "is_source" => Map.get(attrs, "is_source", archived.is_source),
+      "name" => attrs["name"] || archived.name,
+      "position" => attrs["position"] || next_position(project_id)
+    })
+    |> Repo.update()
+  end
 
-        %ProjectLanguage{project_id: project.id}
-        |> ProjectLanguage.create_changeset(Map.put(attrs, "position", position))
-        |> Repo.insert()
+  defp insert_language(project_id, attrs) do
+    position = attrs["position"] || next_position(project_id)
+
+    %ProjectLanguage{project_id: project_id}
+    |> ProjectLanguage.create_changeset(Map.put(attrs, "position", position))
+    |> Repo.insert()
+  end
+
+  defp collect_existing_sources(_project_id, %ProjectLanguage{is_source: true}), do: {:ok, 0}
+
+  defp collect_existing_sources(project_id, %ProjectLanguage{is_source: false} = language) do
+    case LocalizableWords.extract_locale(project_id, language.locale_code) do
+      {:ok, count} -> {:ok, count}
+      {:error, reason} -> {:error, {:localization_sync_failed, reason}}
     end
   end
 
@@ -126,6 +171,7 @@ defmodule Storyarn.Localization.LanguageCrud do
   available as a target. Existing translations require an explicit reset.
   """
   def change_source_language(%Project{} = project, locale_code, opts \\ []) when is_binary(locale_code) do
+    locale_code = LocaleCode.normalize(locale_code)
     reset_translations? = Keyword.get(opts, :reset_translations, false)
 
     fn -> change_source_in_transaction(project.id, locale_code, reset_translations?) end
@@ -288,6 +334,8 @@ defmodule Storyarn.Localization.LanguageCrud do
   defp get_archived_language_by_locale(_project_id, nil), do: nil
 
   defp get_archived_language_by_locale(project_id, locale_code) do
+    locale_code = LocaleCode.normalize(locale_code)
+
     Repo.one(
       from(l in ProjectLanguage,
         where: l.project_id == ^project_id and l.locale_code == ^locale_code and not is_nil(l.archived_at)

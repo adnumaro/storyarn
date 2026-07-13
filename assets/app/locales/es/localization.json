@@ -10,7 +10,7 @@
       "remove_language": "Eliminar idioma",
       "add_language": "Añadir idioma",
       "all_added": "Todos los idiomas disponibles ya están añadidos.",
-      "sync_title": "Re-extraer todo el contenido traducible de flujos, fichas y bloques",
+      "sync_title": "Reconciliar todos los textos de runtime exportados a los motores",
       "syncing": "Sincronizando...",
       "sync": "Sincronizar",
       "remove_confirm_title": "¿Eliminar idioma?",
@@ -81,10 +81,7 @@
       "types": {
         "flow_node": "Nodos",
         "block": "Bloques",
-        "sheet": "Fichas",
-        "flow": "Flujos",
-        "screenplay": "Guiones",
-        "scene": "Escenas"
+        "sheet": "Nombres de ficha"
       }
     },
     "index": {
@@ -104,9 +101,7 @@
       "all_types": "Todos los tipos",
       "type_flow_node": "Nodo de flujo",
       "type_block": "Bloque",
-      "type_sheet": "Ficha",
-      "type_flow": "Flujo",
-      "type_scene": "Escena",
+      "type_sheet": "Nombre de ficha",
       "search_placeholder": "Buscar en fuente o traducción...",
       "no_results": "No se encontraron traducciones con estos filtros.",
       "th_type": "Tipo",

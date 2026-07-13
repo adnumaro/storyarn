@@ -10,7 +10,7 @@
       "remove_language": "Remove language",
       "add_language": "Add language",
       "all_added": "All available languages are already added.",
-      "sync_title": "Re-extract all translatable content from flows, sheets, and blocks",
+      "sync_title": "Reconcile all runtime strings exported to game engines",
       "syncing": "Syncing...",
       "sync": "Sync",
       "remove_confirm_title": "Remove language?",
@@ -81,10 +81,7 @@
       "types": {
         "flow_node": "Nodes",
         "block": "Blocks",
-        "sheet": "Sheets",
-        "flow": "Flows",
-        "screenplay": "Screenplays",
-        "scene": "Scenes"
+        "sheet": "Sheet names"
       }
     },
     "index": {
@@ -104,9 +101,7 @@
       "all_types": "All types",
       "type_flow_node": "Flow node",
       "type_block": "Block",
-      "type_sheet": "Sheet",
-      "type_flow": "Flow",
-      "type_scene": "Scene",
+      "type_sheet": "Sheet name",
       "search_placeholder": "Search in source or translation...",
       "no_results": "No translations found matching your filters.",
       "th_type": "Type",

@@ -462,10 +462,35 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       [recovered_text] = Localization.list_texts_for_export(recovered.id, ["es"])
       recovered_voice_asset = Repo.get!(Asset, recovered_text.vo_asset_id)
 
+      assert recovered_text.content_role == "dialogue"
+      assert recovered_text.vo_eligible
       assert recovered_voice_asset.project_id == recovered.id
       refute recovered_voice_asset.id == voice_asset.id
       assert {:ok, _binary} = Assets.storage_download(recovered_voice_asset.key)
       on_exit(fn -> Assets.storage_delete(recovered_voice_asset.key) end)
+    end
+
+    test "restores archived language state instead of making the locale active again", %{
+      project: project,
+      workspace_id: workspace_id,
+      user: user
+    } do
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      spanish = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      assert {:ok, archived_spanish} = Localization.remove_language(spanish)
+
+      snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
+
+      assert {:ok, recovered} =
+               ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id, name: "Recovered archived locale")
+
+      recovered_spanish =
+        recovered.id
+        |> Localization.list_languages_for_backup()
+        |> Enum.find(&(&1.locale_code == "es"))
+
+      assert recovered_spanish.archived_at == archived_spanish.archived_at
+      refute Enum.any?(Localization.list_languages(recovered.id), &(&1.locale_code == "es"))
     end
   end
 

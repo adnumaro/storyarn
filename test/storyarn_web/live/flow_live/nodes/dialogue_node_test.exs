@@ -43,7 +43,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.NodeTest do
       assert data["audio_asset_id"] == nil
       assert data["technical_id"] == ""
       assert is_binary(data["localization_id"])
-      assert data["localization_id"] =~ "dialogue."
+      assert data["localization_id"] =~ "dialogue_"
       assert data["responses"] == []
     end
 
@@ -131,7 +131,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.NodeTest do
 
       assert result["technical_id"] == ""
       assert result["localization_id"] != original_loc_id
-      assert result["localization_id"] =~ "dialogue."
+      assert result["localization_id"] =~ "dialogue_"
       assert result["text"] == "Keep this"
     end
   end
@@ -152,7 +152,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.NodeTest do
 
       response = hd(updated.data["responses"])
       assert is_binary(response["id"])
-      assert response["id"] =~ "r1_"
+      assert response["id"] =~ "response_"
       assert is_binary(response["text"])
       assert response["condition"] == nil
       assert response["instruction"] == nil

@@ -635,11 +635,13 @@ defmodule Storyarn.ProjectTemplatesTest do
 
       [cloned_sheet] = Storyarn.Sheets.list_all_sheets(cloned_project.id)
       [cloned_block] = Storyarn.Sheets.list_blocks(cloned_sheet.id)
-      [cloned_text] = Localization.list_texts_for_export(cloned_project.id, ["es"])
+      cloned_texts = Localization.list_texts_for_export(cloned_project.id, ["es"])
+      cloned_text = Enum.find(cloned_texts, &(&1.source_type == "block"))
 
       assert cloned_text.source_type == "block"
       assert cloned_text.source_id == cloned_block.id
       refute cloned_text.source_id == source_block.id
+      assert Enum.any?(cloned_texts, &(&1.source_type == "sheet" and &1.source_id == cloned_sheet.id))
 
       [cloned_avatar] = Storyarn.Sheets.list_avatars(cloned_sheet.id)
       assert cloned_avatar.asset.project_id == cloned_project.id

@@ -11,8 +11,10 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
 
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Exports.ExpressionTranspiler
+  alias Storyarn.Exports.LocalizationCatalog
   alias Storyarn.Exports.Serializers.FlowControlResolver
   alias Storyarn.Exports.Serializers.Helpers
+  alias Storyarn.Localization.ExportPolicy
 
   @text_type 0
   @boolean_type 2
@@ -44,6 +46,9 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
   def supported_sections, do: [:flows, :sheets, :localization, :assets]
 
   @impl true
+  def localization_mode, do: :embedded
+
+  @impl true
   def serialize(project_data, %ExportOptions{} = opts) do
     sheets = Map.get(project_data, :sheets, []) || []
     flows = Map.get(project_data, :flows, []) || []
@@ -53,7 +58,7 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
     actor_id_map = build_actor_id_map(sheets)
     conversation_id_map = build_conversation_id_map(flows)
     assets_by_id = build_asset_id_map(assets)
-    localization_index = build_localization_index(Map.get(project_data, :localization))
+    localization_index = build_localization_index(Map.get(project_data, :localization), opts)
 
     result = %{
       "version" => "1.0",
@@ -61,11 +66,20 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
       "description" => database_description(project, opts),
       "globalUserScript" => "",
       "emphasisSettings" => default_emphasis_settings(),
-      "actors" => build_actors(sheets, actor_id_map, assets_by_id),
+      "actors" => build_actors(sheets, actor_id_map, assets_by_id, localization_index),
       "items" => [],
       "locations" => [],
-      "variables" => build_variables(variables),
-      "conversations" => build_conversations(flows, actor_id_map, conversation_id_map, localization_index, assets_by_id),
+      "variables" => build_variables(variables, localization_index),
+      "conversations" =>
+        build_conversations(
+          flows,
+          actor_id_map,
+          conversation_id_map,
+          localization_index,
+          assets_by_id,
+          opts.localization_policy
+        ),
+      "storyarnLocalization" => LocalizationCatalog.manifest(Map.get(project_data, :localization), opts),
       "syncInfo" => sync_info(),
       "templateJson" => template_json()
     }
@@ -153,12 +167,12 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
   # Localization
   # ---------------------------------------------------------------------------
 
-  defp build_localization_index(%{languages: languages, strings: strings}) do
+  defp build_localization_index(%{languages: languages, strings: strings}, opts) do
     source_locale_codes = source_locale_codes(languages)
 
     strings
     |> Enum.reject(fn text -> MapSet.member?(source_locale_codes, localization_attr(text, :locale_code)) end)
-    |> Enum.filter(&(localized_translation(&1) != "" or not blank?(localization_attr(&1, :vo_asset_id))))
+    |> Enum.filter(&(ExportPolicy.text_eligible?(&1, opts) or ExportPolicy.voiceover_eligible?(&1, opts)))
     |> Enum.group_by(fn text ->
       {
         localization_attr(text, :source_type),
@@ -168,7 +182,7 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
     end)
   end
 
-  defp build_localization_index(_localization), do: %{}
+  defp build_localization_index(_localization, _opts), do: %{}
 
   defp source_locale_codes(languages) do
     languages
@@ -180,7 +194,7 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
     plan.localization_index
     |> Map.get({"flow_node", to_string(node.id), source_field}, [])
     |> Enum.sort_by(&localization_attr(&1, :locale_code))
-    |> Enum.filter(&(localized_translation(&1) != ""))
+    |> Enum.filter(&ExportPolicy.text_eligible?(&1, plan.localization_policy))
     |> Enum.map(fn text ->
       localization_field("#{field_title} #{localization_attr(text, :locale_code)}", localized_translation(text))
     end)
@@ -190,6 +204,7 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
     plan.localization_index
     |> Map.get({"flow_node", to_string(node.id), source_field}, [])
     |> Enum.sort_by(&localization_attr(&1, :locale_code))
+    |> Enum.filter(&ExportPolicy.voiceover_eligible?(&1, plan.localization_policy))
     |> Enum.flat_map(fn text ->
       locale = localization_attr(text, :locale_code)
 
@@ -231,8 +246,8 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
     |> Map.new(fn {sheet, idx} -> {to_string(sheet.id), idx} end)
   end
 
-  defp build_actors(sheets, actor_id_map, assets_by_id) do
-    [player_actor() | Enum.map(sheets, &sheet_actor(&1, actor_id_map, assets_by_id))]
+  defp build_actors(sheets, actor_id_map, assets_by_id, localization_index) do
+    [player_actor() | Enum.map(sheets, &sheet_actor(&1, actor_id_map, assets_by_id, localization_index))]
   end
 
   defp player_actor do
@@ -246,7 +261,7 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
     ])
   end
 
-  defp sheet_actor(sheet, actor_id_map, assets_by_id) do
+  defp sheet_actor(sheet, actor_id_map, assets_by_id, localization_index) do
     portrait_asset = sheet_portrait_asset(sheet, assets_by_id)
 
     actor_asset(
@@ -259,8 +274,26 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
         text_field("Display Name", sheet.name),
         text_field("Storyarn Sheet ID", sheet.id),
         text_field("Storyarn Shortcut", sheet.shortcut)
-      ] ++ asset_reference_fields("Storyarn Portrait", portrait_asset)
+      ] ++
+        localized_actor_fields(sheet, localization_index) ++
+        asset_reference_fields("Storyarn Portrait", portrait_asset)
     )
+  end
+
+  defp localized_actor_fields(sheet, localization_index) do
+    localization_index
+    |> Map.get({"sheet", to_string(sheet.id), "name"}, [])
+    |> Enum.sort_by(&localization_attr(&1, :locale_code))
+    |> Enum.filter(&(localized_translation(&1) != ""))
+    |> Enum.flat_map(fn text ->
+      locale = localization_attr(text, :locale_code)
+      translation = localized_translation(text)
+
+      [
+        localization_field("Name #{locale}", translation),
+        localization_field("Display Name #{locale}", translation)
+      ]
+    end)
   end
 
   defp sheet_portrait_asset(%{avatars: avatars}, assets_by_id) when is_list(avatars) do
@@ -299,20 +332,41 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
   # Variables
   # ---------------------------------------------------------------------------
 
-  defp build_variables(variables) do
+  defp build_variables(variables, localization_index) do
     variables
     |> Enum.with_index(1)
     |> Enum.map(fn {var, id} ->
-      asset(id, [
-        text_field("Name", var.full_ref),
-        text_field("Initial Value", format_initial_value(var.default)),
-        text_field("Description", ""),
-        text_field("Storyarn Sheet Shortcut", var.sheet_shortcut),
-        text_field("Storyarn Variable Name", var.variable_name),
-        text_field("Storyarn Variable Type", var.type)
-      ])
+      fields =
+        [
+          text_field("Name", var.full_ref),
+          text_field("Initial Value", format_initial_value(var.default)),
+          text_field("Description", ""),
+          text_field("Storyarn Sheet Shortcut", var.sheet_shortcut),
+          text_field("Storyarn Variable Name", var.variable_name),
+          text_field("Storyarn Variable Type", var.type)
+        ] ++ localized_variable_fields(var, localization_index)
+
+      asset(id, fields)
     end)
   end
+
+  defp localized_variable_fields(%{block: %{id: block_id, type: type}}, localization_index)
+       when type in ["text", "rich_text"] do
+    localization_index
+    |> Map.get({"block", to_string(block_id), "value.content"}, [])
+    |> Enum.sort_by(&localization_attr(&1, :locale_code))
+    |> Enum.filter(&(localized_translation(&1) != ""))
+    |> Enum.map(fn text ->
+      value =
+        if type == "rich_text",
+          do: Helpers.strip_html(localized_translation(text)),
+          else: localized_translation(text)
+
+      localization_field("Initial Value #{localization_attr(text, :locale_code)}", value)
+    end)
+  end
+
+  defp localized_variable_fields(_var, _localization_index), do: []
 
   # ---------------------------------------------------------------------------
   # Conversations
@@ -324,7 +378,14 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
     |> Map.new(fn {flow, idx} -> {to_string(flow.id), idx} end)
   end
 
-  defp build_conversations(flows, actor_id_map, conversation_id_map, localization_index, assets_by_id) do
+  defp build_conversations(
+         flows,
+         actor_id_map,
+         conversation_id_map,
+         localization_index,
+         assets_by_id,
+         localization_policy
+       ) do
     root_entry_id_map = build_root_entry_id_map(flows)
     flow_id_by_shortcut = FlowControlResolver.flow_id_by_shortcut(flows)
 
@@ -338,7 +399,8 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
           flow_id_by_shortcut: flow_id_by_shortcut,
           root_entry_id_map: root_entry_id_map,
           localization_index: localization_index,
-          assets_by_id: assets_by_id
+          assets_by_id: assets_by_id,
+          localization_policy: localization_policy
         })
 
       %{
@@ -442,7 +504,8 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
       flow_id_by_shortcut: Map.fetch!(references, :flow_id_by_shortcut),
       root_entry_id_map: Map.fetch!(references, :root_entry_id_map),
       localization_index: Map.fetch!(references, :localization_index),
-      assets_by_id: Map.fetch!(references, :assets_by_id)
+      assets_by_id: Map.fetch!(references, :assets_by_id),
+      localization_policy: Map.fetch!(references, :localization_policy)
     }
   end
 
@@ -505,6 +568,7 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
     }) ++
       localized_text_fields(plan, node, "menu_text", "Menu Text") ++
       localized_text_fields(plan, node, "text", "Dialogue Text") ++
+      localized_text_fields(plan, node, "stage_directions", "Description") ++
       voiceover_fields(audio_asset) ++
       localized_voiceover_fields(plan, node, "text") ++
       [
@@ -525,6 +589,7 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
       sequence: "",
       description: ""
     }) ++
+      localized_text_fields(plan, node, "label", "Dialogue Text") ++
       [
         text_field("Storyarn Exit Mode", data["exit_mode"] || "terminal"),
         text_field("Storyarn Outcome Tags", Enum.join(data["outcome_tags"] || [], ",")),
@@ -679,7 +744,6 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
     |> dialogue_responses()
     |> Enum.map(fn response ->
       response_id = response_entry_id!(plan, node, response)
-      menu_text = response["menu_text"] || response["text"] || ""
       dialogue_text = response["text"] || ""
 
       localized_response_fields =
@@ -694,11 +758,11 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
         conversation_id: plan.conversation_id,
         fields:
           [
-            text_field("Title", Helpers.strip_html(menu_text)),
+            text_field("Title", Helpers.strip_html(dialogue_text)),
             text_field("Description", ""),
             actor_ref_field("Actor", @player_actor_id),
             actor_ref_field("Conversant", dialogue_actor_id),
-            text_field("Menu Text", Helpers.strip_html(menu_text)),
+            text_field("Menu Text", Helpers.strip_html(dialogue_text)),
             text_field("Dialogue Text", Helpers.strip_html(dialogue_text)),
             text_field("Sequence", ""),
             text_field("Storyarn Node ID", node.id),

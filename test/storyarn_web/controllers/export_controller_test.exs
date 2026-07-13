@@ -3,9 +3,11 @@ defmodule StoryarnWeb.ExportControllerTest do
 
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
+  import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Localization
   alias Storyarn.Repo
 
   setup :register_and_log_in_user
@@ -238,6 +240,47 @@ defmodule StoryarnWeb.ExportControllerTest do
       assert conn.status == 200
       assert {:ok, data} = Jason.decode(conn.resp_body)
       assert Map.has_key?(data, "metadata")
+    end
+
+    test "localization_policy=preview includes draft translations excluded from release", %{
+      conn: conn,
+      project: project
+    } do
+      flow = flow_fixture(project, %{name: "Localized flow"})
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello", "responses" => []}})
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      [text] = Localization.get_texts_for_source("flow_node", node.id)
+      assert {:ok, _text} = Localization.update_text(text, %{translated_text: "Hola", status: "draft"})
+
+      release_conn =
+        get(conn, export_url(project, "ink", %{"validate" => "false"}))
+
+      release_files = unzip_response(release_conn)
+      refute Map.has_key?(release_files, "localization.es.csv")
+
+      preview_conn =
+        get(
+          conn,
+          export_url(project, "ink", %{
+            "validate" => "false",
+            "localization_policy" => "preview"
+          })
+        )
+
+      preview_files = unzip_response(preview_conn)
+      assert preview_files["localization.es.csv"] =~ "Hola"
+    end
+
+    test "rejects unknown localization policies instead of silently exporting release data", %{
+      conn: conn,
+      project: project
+    } do
+      conn = get(conn, export_url(project, "ink", %{"localization_policy" => "typo"}))
+
+      assert conn.status == 400
+      assert conn.resp_body == "Invalid localization policy"
     end
   end
 end

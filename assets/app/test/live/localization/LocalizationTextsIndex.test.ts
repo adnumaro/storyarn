@@ -19,6 +19,7 @@ const selectedText = {
   status: "pending",
   translatorNotes: "",
   voStatus: "none",
+  voEligible: true,
   machineTranslated: false,
   lastTranslatedAt: null,
   stale: false,

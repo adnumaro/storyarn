@@ -18,7 +18,9 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
 
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Exports.ExpressionTranspiler
+  alias Storyarn.Exports.LocalizationCatalog
   alias Storyarn.Exports.Serializers.Helpers
+  alias Storyarn.Localization.SourceContract
 
   @impl true
   def content_type, do: "text/csv"
@@ -30,10 +32,13 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
   def format_label, do: "Unreal Engine (CSV)"
 
   @impl true
-  def supported_sections, do: [:flows, :sheets]
+  def supported_sections, do: [:flows, :sheets, :localization]
 
   @impl true
-  def serialize(project_data, %ExportOptions{} = _opts) do
+  def localization_mode, do: :external_catalog
+
+  @impl true
+  def serialize(project_data, %ExportOptions{} = opts) do
     sheets = project_data.sheets || []
     flows = project_data.flows || []
     variables = Helpers.collect_variables(sheets)
@@ -44,13 +49,14 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
     variables_csv = build_variables_csv(variables)
     metadata = build_metadata(flows, sheets, variables, speaker_map)
 
-    {:ok,
-     [
-       {"DT_DialogueLines.csv", dialogue_csv},
-       {"DT_Characters.csv", characters_csv},
-       {"DT_Variables.csv", variables_csv},
-       {"Conversations.json", Jason.encode!(metadata, pretty: true)}
-     ]}
+    files = [
+      {"DT_DialogueLines.csv", dialogue_csv},
+      {"DT_Characters.csv", characters_csv},
+      {"DT_Variables.csv", variables_csv},
+      {"Conversations.json", Jason.encode!(metadata, pretty: true)}
+    ]
+
+    {:ok, files ++ LocalizationCatalog.files(Map.get(project_data, :localization), opts, :unreal)}
   end
 
   @impl true
@@ -71,7 +77,9 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
       "Text",
       "TextKey",
       "MenuText",
+      "MenuTextKey",
       "StageDirections",
+      "StageDirectionsKey",
       "Sequence",
       "NextLines",
       "Conditions",
@@ -114,7 +122,7 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
     data = node.data || %{}
     row_name = node_row_map[node.id] || ""
 
-    row_context = %{data: data, conv_id: conv_id, row_name: row_name, next_lines: next_lines}
+    row_context = %{data: data, conv_id: conv_id, row_name: row_name, next_lines: next_lines, node: node}
     build_typed_rows(node.type, row_context, speaker_map)
   end
 
@@ -122,6 +130,7 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
     %{data: data, conv_id: conv_id, row_name: row_name, next_lines: next_lines} = ctx
     speaker = Helpers.speaker_shortcut(data, speaker_map)
     text = Helpers.dialogue_text(data)
+    menu_text = Helpers.strip_html(data["menu_text"] || "")
     stage = Helpers.strip_html(data["stage_directions"] || "")
     responses = Helpers.dialogue_responses(data)
     condition = maybe_transpile_condition(data["condition"])
@@ -132,16 +141,18 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
       "dialogue",
       speaker || "",
       text,
-      String.downcase(row_name),
-      data["menu_text"] || "",
+      LocalizationCatalog.for_flow_node(ctx.node, "text"),
+      menu_text,
+      localization_key_if_present(menu_text, ctx.node, "menu_text"),
       stage,
+      localization_key_if_present(stage, ctx.node, "stage_directions"),
       0,
       if(responses == [], do: next_lines, else: ""),
       condition,
       ""
     ]
 
-    response_rows = build_response_rows(responses, row_name, conv_id, next_lines)
+    response_rows = build_response_rows(responses, ctx.node, row_name, conv_id, next_lines)
     [main_row | response_rows]
   end
 
@@ -188,6 +199,8 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
         "",
         "",
         "",
+        "",
+        "",
         0,
         "",
         "",
@@ -199,16 +212,18 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
   defp build_typed_rows(_type, _ctx, _speaker_map), do: []
 
   defp simple_row(ctx, type, text, conditions, script) do
-    [ctx.row_name, ctx.conv_id, type, "", text, "", "", "", 0, ctx.next_lines, conditions, script]
+    [ctx.row_name, ctx.conv_id, type, "", text, "", "", "", "", "", 0, ctx.next_lines, conditions, script]
   end
 
-  defp build_response_rows(responses, row_name, conv_id, next_lines) do
+  defp build_response_rows(responses, node, row_name, conv_id, next_lines) do
     responses
-    |> Enum.with_index(1)
-    |> Enum.map(fn {resp, idx} ->
-      resp_name = "#{row_name}_R#{idx}"
+    |> Enum.with_index()
+    |> Enum.map(fn {resp, index} ->
+      resp_name = "#{row_name}_R#{index + 1}"
       resp_text = Helpers.strip_html(resp["text"] || "")
       resp_condition = maybe_transpile_condition(resp["condition"])
+      response_id = Map.fetch!(resp, "id")
+      localization_key = LocalizationCatalog.for_flow_node(node, "response.#{response_id}.text")
 
       resp_script =
         case resp["instruction_assignments"] do
@@ -222,8 +237,10 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
         "response",
         "",
         resp_text,
-        String.downcase(resp_name),
-        Helpers.strip_html(resp["menu_text"] || resp["text"] || ""),
+        localization_key,
+        resp_text,
+        localization_key,
+        "",
         "",
         0,
         next_lines,
@@ -245,7 +262,7 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
   # ---------------------------------------------------------------------------
 
   defp build_characters_csv(sheets) do
-    headers = ["Name", "DisplayName", "ShortcutId", "Properties"]
+    headers = ["Name", "DisplayName", "DisplayNameKey", "ShortcutId", "Properties", "PropertyLocalizationKeys"]
 
     rows =
       Enum.map(sheets, fn sheet ->
@@ -258,9 +275,25 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
           end)
 
         props_json = Jason.encode!(props)
+
+        localization_keys =
+          sheet.blocks
+          |> Enum.filter(&SourceContract.localizable_block?/1)
+          |> Map.new(fn block ->
+            {block.variable_name, LocalizationCatalog.for_block(block, sheet.shortcut, "value.content")}
+          end)
+          |> Jason.encode!()
+
         char_name = "CHAR_#{Helpers.shortcut_to_identifier(sheet.shortcut)}"
 
-        [char_name, sheet.name, sheet.shortcut, props_json]
+        [
+          char_name,
+          sheet.name,
+          LocalizationCatalog.for_sheet(sheet, "name"),
+          sheet.shortcut,
+          props_json,
+          localization_keys
+        ]
       end)
 
     Helpers.build_csv(headers, rows)
@@ -271,7 +304,7 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
   # ---------------------------------------------------------------------------
 
   defp build_variables_csv(variables) do
-    headers = ["Name", "VariableId", "Type", "DefaultValue", "SheetShortcut", "VariableName"]
+    headers = ["Name", "VariableId", "Type", "DefaultValue", "DefaultValueKey", "SheetShortcut", "VariableName"]
 
     rows =
       Enum.map(variables, fn var ->
@@ -282,6 +315,7 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
           var.full_ref,
           to_string(var.type),
           to_string(var.default),
+          variable_localization_key(var),
           var.sheet_shortcut,
           var.variable_name
         ]
@@ -375,4 +409,16 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
       _ -> ""
     end
   end
+
+  defp variable_localization_key(%{block: block, sheet_shortcut: sheet_shortcut}) do
+    if SourceContract.localizable_block?(block),
+      do: LocalizationCatalog.for_block(block, sheet_shortcut, "value.content"),
+      else: ""
+  end
+
+  defp localization_key_if_present(value, node, source_field) when is_binary(value) do
+    if String.trim(value) == "", do: "", else: LocalizationCatalog.for_flow_node(node, source_field)
+  end
+
+  defp localization_key_if_present(_value, _node, _source_field), do: ""
 end

@@ -3,11 +3,13 @@ defmodule Storyarn.Exports.DataCollectorTest do
 
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
+  import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Exports.DataCollector
   alias Storyarn.Exports.ExportOptions
+  alias Storyarn.Localization
 
   # ===========================================================================
   # Setup
@@ -112,6 +114,86 @@ defmodule Storyarn.Exports.DataCollectorTest do
       sheet_ids = Enum.map(data.sheets, & &1.id)
       assert sheet.id in sheet_ids
       refute deleted_sheet.id in sheet_ids
+    end
+
+    test "engine localization contains only sources selected for export", %{project: project} do
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      included_flow = flow_fixture(project, %{name: "Included Flow"})
+      excluded_flow = flow_fixture(project, %{name: "Excluded Flow"})
+      included_node = node_fixture(included_flow, %{type: "dialogue", data: %{"text" => "Included line"}})
+      excluded_node = node_fixture(excluded_flow, %{type: "dialogue", data: %{"text" => "Excluded line"}})
+
+      included_sheet = sheet_fixture(project, %{name: "Included Actor"})
+      excluded_sheet = sheet_fixture(project, %{name: "Excluded Actor"})
+
+      included_block =
+        block_fixture(included_sheet, %{
+          type: "text",
+          variable_name: "included_bio",
+          value: %{"content" => "Included bio"}
+        })
+
+      excluded_block =
+        block_fixture(excluded_sheet, %{
+          type: "text",
+          variable_name: "excluded_bio",
+          value: %{"content" => "Excluded bio"}
+        })
+
+      opts = %ExportOptions{
+        format: :unity,
+        flow_ids: [included_flow.id],
+        sheet_ids: [included_sheet.id]
+      }
+
+      data = DataCollector.collect(project.id, opts)
+      source_keys = MapSet.new(data.localization.strings, &{&1.source_type, &1.source_id})
+
+      assert source_keys ==
+               MapSet.new([
+                 {"flow_node", included_node.id},
+                 {"sheet", included_sheet.id},
+                 {"block", included_block.id}
+               ])
+
+      refute MapSet.member?(source_keys, {"flow_node", excluded_node.id})
+      refute MapSet.member?(source_keys, {"sheet", excluded_sheet.id})
+      refute MapSet.member?(source_keys, {"block", excluded_block.id})
+
+      counts = DataCollector.count_entities(project.id, opts)
+      assert counts.localized_texts == length(data.localization.strings)
+    end
+
+    test "engine localization is empty when flow and sheet sections are disabled", %{project: project} do
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      flow = flow_fixture(project)
+      node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hidden line"}})
+      sheet_fixture(project, %{name: "Hidden actor"})
+
+      opts = %ExportOptions{format: :unity, include_flows: false, include_sheets: false}
+      data = DataCollector.collect(project.id, opts)
+
+      assert data.localization.strings == []
+      assert DataCollector.count_entities(project.id, opts).localized_texts == 0
+    end
+
+    test "explicit language filters cannot re-enable an archived engine locale", %{project: project} do
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      spanish = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      flow = flow_fixture(project)
+      node_fixture(flow, %{type: "dialogue", data: %{"text" => "Visible line", "responses" => []}})
+
+      assert {:ok, _archived} = Localization.remove_language(spanish)
+
+      opts = %ExportOptions{format: :ink, languages: ["es"]}
+      data = DataCollector.collect(project.id, opts)
+
+      refute Enum.any?(data.localization.languages, &(&1.locale_code == "es"))
+      assert data.localization.strings == []
+      assert DataCollector.count_entities(project.id, opts).localized_texts == 0
     end
   end
 

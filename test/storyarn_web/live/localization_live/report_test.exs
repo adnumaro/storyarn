@@ -218,7 +218,7 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
       _text =
         localized_text_fixture(project.id, %{
           source_type: "block",
-          source_field: "label",
+          source_field: "value.content",
           locale_code: "es"
         })
 
@@ -227,57 +227,6 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
       vue = get_report_vue(view)
       type_counts = vue.props["type-counts"]
       assert Map.has_key?(type_counts, "block")
-    end
-
-    test "type-counts includes sheet", %{conn: conn, user: user} do
-      project = user |> project_fixture() |> Repo.preload(:workspace)
-      _lang = language_fixture(project, %{locale_code: "es", name: "Spanish"})
-
-      _text =
-        localized_text_fixture(project.id, %{
-          source_type: "sheet",
-          source_field: "name",
-          locale_code: "es"
-        })
-
-      {:ok, view, _html} = live(conn, report_url(project))
-
-      vue = get_report_vue(view)
-      assert Map.has_key?(vue.props["type-counts"], "sheet")
-    end
-
-    test "type-counts includes flow", %{conn: conn, user: user} do
-      project = user |> project_fixture() |> Repo.preload(:workspace)
-      _lang = language_fixture(project, %{locale_code: "es", name: "Spanish"})
-
-      _text =
-        localized_text_fixture(project.id, %{
-          source_type: "flow",
-          source_field: "name",
-          locale_code: "es"
-        })
-
-      {:ok, view, _html} = live(conn, report_url(project))
-
-      vue = get_report_vue(view)
-      assert Map.has_key?(vue.props["type-counts"], "flow")
-    end
-
-    test "type-counts includes screenplay", %{conn: conn, user: user} do
-      project = user |> project_fixture() |> Repo.preload(:workspace)
-      _lang = language_fixture(project, %{locale_code: "es", name: "Spanish"})
-
-      _text =
-        localized_text_fixture(project.id, %{
-          source_type: "screenplay",
-          source_field: "name",
-          locale_code: "es"
-        })
-
-      {:ok, view, _html} = live(conn, report_url(project))
-
-      vue = get_report_vue(view)
-      assert Map.has_key?(vue.props["type-counts"], "screenplay")
     end
 
     test "type-counts includes multiple source types", %{conn: conn, user: user} do
@@ -294,7 +243,7 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
       _text2 =
         localized_text_fixture(project.id, %{
           source_type: "block",
-          source_field: "label",
+          source_field: "value.content",
           locale_code: "es"
         })
 

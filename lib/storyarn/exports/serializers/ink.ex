@@ -16,8 +16,10 @@ defmodule Storyarn.Exports.Serializers.Ink do
 
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Exports.ExpressionTranspiler
+  alias Storyarn.Exports.LocalizationCatalog
   alias Storyarn.Exports.Serializers.GraphTraversal
   alias Storyarn.Exports.Serializers.Helpers
+  alias Storyarn.Localization.SourceContract
 
   @impl true
   def content_type, do: "text/plain"
@@ -29,10 +31,13 @@ defmodule Storyarn.Exports.Serializers.Ink do
   def format_label, do: "Ink (.ink)"
 
   @impl true
-  def supported_sections, do: [:flows, :sheets]
+  def supported_sections, do: [:flows, :sheets, :localization]
 
   @impl true
-  def serialize(project_data, %ExportOptions{} = _opts) do
+  def localization_mode, do: :external_catalog
+
+  @impl true
+  def serialize(project_data, %ExportOptions{} = opts) do
     sheets = project_data.sheets || []
     flows = project_data.flows || []
     variables = Helpers.collect_variables(sheets)
@@ -56,11 +61,12 @@ defmodule Storyarn.Exports.Serializers.Ink do
 
     metadata = build_metadata(project_data.project, sheets, variables)
 
-    {:ok,
-     [
-       {"#{project_name}.ink", ink_source},
-       {"metadata.json", Jason.encode!(metadata, pretty: true)}
-     ]}
+    files = [
+      {"#{project_name}.ink", ink_source},
+      {"metadata.json", Jason.encode!(metadata, pretty: true)}
+    ]
+
+    {:ok, files ++ LocalizationCatalog.files(Map.get(project_data, :localization), opts, :generic)}
   end
 
   @impl true
@@ -153,7 +159,7 @@ defmodule Storyarn.Exports.Serializers.Ink do
 
   defp render_instruction_stream([], _ctx, _depth), do: []
 
-  defp render_instruction_stream([{:choices_start, _node} | rest], ctx, depth) do
+  defp render_instruction_stream([{:choices_start, node} | rest], ctx, depth) do
     {choice_instructions, rest} =
       Enum.split_while(rest, fn
         {:choices_end, _node} -> false
@@ -166,7 +172,7 @@ defmodule Storyarn.Exports.Serializers.Ink do
         tail -> tail
       end
 
-    render_choice_instructions(choice_instructions, ctx, depth) ++
+    render_choice_instructions(choice_instructions, Map.put(ctx, :choice_owner, node), depth) ++
       render_instruction_stream(rest, ctx, depth)
   end
 
@@ -224,9 +230,9 @@ defmodule Storyarn.Exports.Serializers.Ink do
 
     line =
       if speaker && shortcut != "" do
-        "#{indent(depth)}#{text} #speaker:#{shortcut}"
+        "#{indent(depth)}#{text} #speaker:#{shortcut} #{localization_tag(node, "text")}"
       else
-        "#{indent(depth)}#{text}"
+        "#{indent(depth)}#{text} #{localization_tag(node, "text")}"
       end
 
     stage = data["stage_directions"]
@@ -240,12 +246,12 @@ defmodule Storyarn.Exports.Serializers.Ink do
 
   defp render_instruction({:choices_start, _node}, _ctx, _depth), do: []
 
-  defp render_instruction({:choices, _node, branches}, ctx, depth) do
-    render_choice_branches(branches, ctx, depth)
+  defp render_instruction({:choices, node, branches}, ctx, depth) do
+    render_choice_branches(branches, Map.put(ctx, :choice_owner, node), depth)
   end
 
-  defp render_instruction({:choice, resp, _idx}, _ctx, depth) do
-    text = (resp["text"] || resp["menu_text"] || "") |> Helpers.strip_html() |> escape_ink_text()
+  defp render_instruction({:choice, resp, index}, ctx, depth) do
+    text = (resp["text"] || "") |> Helpers.strip_html() |> escape_ink_text()
     condition = build_condition_prefix(resp["condition"])
 
     choice_line =
@@ -254,6 +260,8 @@ defmodule Storyarn.Exports.Serializers.Ink do
       else
         "#{indent(depth)}+ [#{text}]"
       end
+
+    choice_line = choice_line <> response_localization_tag(ctx[:choice_owner], resp, index)
 
     # Response-level instructions
     assign_lines =
@@ -378,6 +386,17 @@ defmodule Storyarn.Exports.Serializers.Ink do
     Regex.replace(~r/(^|\n)(\s*)([-=*+])/, text, "\\1\\2\\\\\\3")
   end
 
+  defp localization_tag(node, source_field) do
+    "#storyarn_loc:#{LocalizationCatalog.for_flow_node(node, source_field)}"
+  end
+
+  defp response_localization_tag(nil, _response, _index), do: ""
+
+  defp response_localization_tag(node, response, _index) do
+    response_id = Map.fetch!(response, "id")
+    " #{localization_tag(node, "response.#{response_id}.text")}"
+  end
+
   defp terminal_line(%{is_tunnel: true}, depth), do: "#{indent(depth)}->->"
   defp terminal_line(_ctx, depth), do: "#{indent(depth)}-> END"
 
@@ -434,8 +453,7 @@ defmodule Storyarn.Exports.Serializers.Ink do
       Map.new(sheets, fn sheet ->
         props =
           sheet.blocks
-          |> Enum.reject(& &1.is_constant)
-          |> Enum.filter(&(is_binary(&1.variable_name) and &1.variable_name != ""))
+          |> Enum.filter(&SourceContract.exported_block?/1)
           |> Map.new(fn block ->
             {block.variable_name, Helpers.infer_default_value(block)}
           end)

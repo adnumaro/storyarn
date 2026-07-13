@@ -130,17 +130,12 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers do
   @spec source_type_label(String.t()) :: String.t()
   def source_type_label("flow_node"), do: dgettext("localization", "Node")
   def source_type_label("block"), do: dgettext("localization", "Block")
-  def source_type_label("sheet"), do: dgettext("localization", "Sheet")
-  def source_type_label("flow"), do: dgettext("localization", "Flow")
-  def source_type_label("scene"), do: dgettext("localization", "Scene")
-  def source_type_label("screenplay"), do: dgettext("localization", "Screenplay")
+  def source_type_label("sheet"), do: dgettext("localization", "Sheet name")
   def source_type_label(other), do: other
 
   @spec source_type_icon(String.t()) :: String.t()
   def source_type_icon("flow_node"), do: "message-square"
   def source_type_icon("block"), do: "square"
-  def source_type_icon("sheet"), do: "file-text"
-  def source_type_icon("flow"), do: "git-branch"
-  def source_type_icon("screenplay"), do: "clapperboard"
+  def source_type_icon("sheet"), do: "user-round"
   def source_type_icon(_), do: "box"
 end

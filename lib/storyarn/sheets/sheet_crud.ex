@@ -43,8 +43,13 @@ defmodule Storyarn.Sheets.SheetCrud do
       end
 
       case result do
-        {:ok, _} -> Collaboration.broadcast_dashboard_change(project.id, :sheets)
-        _ -> :ok
+        {:ok, sheet} ->
+          Localization.extract_sheet_blocks(sheet.id)
+          Localization.sync_sheet_names(project.id)
+          Collaboration.broadcast_dashboard_change(project.id, :sheets)
+
+        _ ->
+          :ok
       end
 
       result
@@ -61,7 +66,7 @@ defmodule Storyarn.Sheets.SheetCrud do
       |> Repo.update()
 
     case result do
-      {:ok, updated_sheet} -> Localization.extract_sheet(updated_sheet)
+      {:ok, updated_sheet} -> Localization.sync_sheet_names(updated_sheet.project_id)
       _ -> :ok
     end
 
@@ -96,13 +101,11 @@ defmodule Storyarn.Sheets.SheetCrud do
 
       if descendant_ids != [] do
         Repo.update_all(from(s in Sheet, where: s.id in ^descendant_ids), set: [deleted_at: now])
-
-        # Clean up localization texts for descendants
-        Enum.each(descendant_ids, &Localization.delete_sheet_texts/1)
       end
 
-      # Clean up localization texts for this sheet
-      Localization.delete_sheet_texts(sheet.id)
+      Localization.delete_block_texts_for_sheets([sheet.id | descendant_ids])
+
+      Enum.each([sheet.id | descendant_ids], &Localization.delete_texts_for_source("sheet", &1))
 
       # Soft delete the sheet itself
       sheet
@@ -139,22 +142,32 @@ defmodule Storyarn.Sheets.SheetCrud do
     end)
     |> Repo.transaction()
     |> case do
-      {:ok, %{sheet: sheet}} -> {:ok, sheet}
-      {:error, _op, changeset, _changes} -> {:error, changeset}
+      {:ok, %{sheet: sheet}} ->
+        Localization.extract_sheet_blocks(sheet.id)
+        Localization.sync_sheet_names(sheet.project_id)
+        {:ok, sheet}
+
+      {:error, _op, changeset, _changes} ->
+        {:error, changeset}
     end
   end
 
   @doc """
-  Permanently deletes a sheet and all its descendants.
+  Permanently deletes a sheet. Descendants are retained and detached by the
+  database parent foreign key.
   Use with caution - this cannot be undone.
   """
   def permanently_delete_sheet(%Sheet{} = sheet) do
     Repo.transaction(fn ->
+      block_ids = Repo.all(from(b in Storyarn.Sheets.Block, where: b.sheet_id == ^sheet.id, select: b.id))
+
       # Delete all versions first
       Repo.delete_all(from(v in EntityVersion, where: v.entity_type == "sheet" and v.entity_id == ^sheet.id))
 
       # Delete references where this sheet is the target
       References.delete_target_references("sheet", sheet.id)
+      Localization.purge_texts_for_sources("block", block_ids)
+      Localization.purge_texts_for_source("sheet", sheet.id)
 
       # Delete the sheet (blocks cascade via FK)
       case Repo.delete(sheet) do
@@ -166,19 +179,23 @@ defmodule Storyarn.Sheets.SheetCrud do
 
   def move_sheet(%Sheet{} = sheet, parent_id, position \\ nil) do
     with :ok <- validate_parent(sheet, parent_id) do
-      position = position || next_position(sheet.project_id, parent_id)
+      Repo.transaction(fn -> move_sheet_transaction(sheet, parent_id, position) end)
+    end
+  end
 
-      result =
-        sheet
-        |> Sheet.move_changeset(%{parent_id: parent_id, position: position})
-        |> Repo.update()
+  defp move_sheet_transaction(sheet, parent_id, position) do
+    position = position || next_position(sheet.project_id, parent_id)
 
-      # Recalculate inherited blocks for the moved sheet
-      with {:ok, moved_sheet} <- result do
-        PropertyInheritance.recalculate_on_move(moved_sheet)
-      end
-
-      result
+    with {:ok, moved_sheet} <-
+           sheet
+           |> Sheet.move_changeset(%{parent_id: parent_id, position: position})
+           |> Repo.update(),
+         {:ok, %{sheet_ids: affected_sheet_ids}} <-
+           PropertyInheritance.recalculate_on_move_with_sheet_ids(moved_sheet),
+         :ok <- Localization.extract_sheet_blocks_for_sheets(affected_sheet_ids) do
+      moved_sheet
+    else
+      {:error, reason} -> Repo.rollback(reason)
     end
   end
 

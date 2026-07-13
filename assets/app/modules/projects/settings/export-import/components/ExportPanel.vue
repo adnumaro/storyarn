@@ -31,43 +31,17 @@ import { Switch } from "@components/ui/switch";
 import { useI18n } from "vue-i18n";
 import { useLive } from "@shared/composables/useLive";
 import { capture } from "@/js/utils/posthog";
+import type {
+  ExportOptions,
+  FormatConfig,
+  FormatOption,
+  LocalizationMode,
+  LocalizationPolicy,
+  SectionConfig,
+  ValidationResult,
+} from "../types";
 
 const { t } = useI18n();
-
-interface FormatOption {
-  format: string;
-  label: string;
-  extension?: string;
-}
-
-interface FormatConfig {
-  selected: string;
-  formats: FormatOption[];
-  extension: string;
-}
-
-interface SectionConfig {
-  selected: string[];
-  supported: string[];
-  entityCounts: Record<string, number>;
-}
-
-interface ExportOptions {
-  assetMode: string;
-  validateBeforeExport: boolean;
-  prettyPrint: boolean;
-}
-
-interface ValidationFinding {
-  message: string;
-}
-
-interface ValidationResult {
-  status: string;
-  errors?: ValidationFinding[];
-  warnings?: ValidationFinding[];
-  info?: ValidationFinding[];
-}
 
 interface FormatVisual {
   icon: Component;
@@ -155,6 +129,13 @@ const assetModeOptions = computed(() => [
   },
 ]);
 
+const localizationPolicyOptions = computed<Array<{ value: LocalizationPolicy; label: string }>>(
+  () => [
+    { value: "release", label: t("project_settings.export.localization_release") },
+    { value: "preview", label: t("project_settings.export.localization_preview") },
+  ],
+);
+
 const sectionsSet = computed(() => new Set(sectionConfig.selected));
 const supportedSet = computed(() => new Set(sectionConfig.supported));
 const visibleFormats = computed(() =>
@@ -234,6 +215,16 @@ function toggleSection(section: string) {
 
 function setAssetMode(mode: string) {
   live.pushEvent("set_asset_mode", { mode });
+}
+
+function setLocalizationPolicy(policy: string) {
+  if (policy === "release" || policy === "preview") {
+    live.pushEvent("set_localization_policy", { policy });
+  }
+}
+
+function localizationModeLabel(mode: LocalizationMode) {
+  return t(`project_settings.export.localization_modes.${mode}`);
 }
 
 function toggleOption(option: string) {
@@ -369,6 +360,9 @@ function validationIconClass(status: string) {
               <span class="mt-1 block text-xs leading-relaxed text-base-content/50">
                 {{ formatDescription(format.format) }}
               </span>
+              <span class="badge badge-ghost badge-sm mt-2">
+                {{ localizationModeLabel(format.localizationMode) }}
+              </span>
             </span>
             <Check
               v-if="formatConfig.selected === format.format"
@@ -456,6 +450,44 @@ function validationIconClass(status: string) {
                 {{ $t("project_settings.export.output_settings_description") }}
               </p>
             </div>
+
+            <fieldset
+              v-if="supportedSet.has('localization') && sectionsSet.has('localization')"
+              id="export-localization-policy-options"
+              class="border-b border-base-300 p-5"
+            >
+              <legend class="text-sm font-medium">
+                {{ $t("project_settings.export.localization_policy") }}
+              </legend>
+              <RadioGroup
+                :model-value="options.localizationPolicy"
+                class="mt-3 grid gap-2 sm:grid-cols-2"
+                @update:model-value="setLocalizationPolicy"
+              >
+                <label
+                  v-for="policy in localizationPolicyOptions"
+                  :key="policy.value"
+                  :data-testid="`export-localization-${policy.value}`"
+                  :class="[
+                    'relative flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors focus-within:ring-2 focus-within:ring-primary/30',
+                    options.localizationPolicy === policy.value
+                      ? 'border-primary/45 bg-primary/5'
+                      : 'border-base-300 hover:bg-base-200/40',
+                  ]"
+                >
+                  <RadioGroupItem
+                    :value="policy.value"
+                    :aria-label="policy.label"
+                    class="absolute size-px opacity-0"
+                  />
+                  <span class="text-sm leading-relaxed">{{ policy.label }}</span>
+                  <Check
+                    v-if="options.localizationPolicy === policy.value"
+                    class="ml-auto mt-0.5 size-3.5 shrink-0 text-primary"
+                  />
+                </label>
+              </RadioGroup>
+            </fieldset>
 
             <fieldset
               v-if="assetsSupported"
@@ -596,6 +628,21 @@ function validationIconClass(status: string) {
               <div v-if="assetsSupported" class="flex items-center justify-between gap-3">
                 <dt class="text-base-content/50">{{ $t("project_settings.export.assets") }}</dt>
                 <dd class="truncate font-medium">{{ selectedAssetMode.label }}</dd>
+              </div>
+              <div
+                v-if="supportedSet.has('localization') && sectionsSet.has('localization')"
+                class="flex items-center justify-between gap-3"
+              >
+                <dt class="text-base-content/50">
+                  {{ $t("project_settings.export.localization_policy") }}
+                </dt>
+                <dd class="truncate font-medium">
+                  {{
+                    localizationPolicyOptions.find(
+                      (policy) => policy.value === options.localizationPolicy,
+                    )?.label
+                  }}
+                </dd>
               </div>
               <div class="flex items-center justify-between gap-3">
                 <dt class="text-base-content/50">{{ $t("project_settings.export.preflight") }}</dt>

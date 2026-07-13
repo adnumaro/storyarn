@@ -826,6 +826,7 @@ defmodule Storyarn.Exports.Serializers.UnityJSONTest do
           data: %{
             "text" => "<p>Hello</p>",
             "menu_text" => "Talk",
+            "stage_directions" => "Smiles",
             "responses" => []
           }
         })
@@ -863,6 +864,17 @@ defmodule Storyarn.Exports.Serializers.UnityJSONTest do
           status: "final"
         })
 
+      _stage_directions =
+        localized_text_fixture(project.id, %{
+          source_type: "flow_node",
+          source_id: dialogue.id,
+          source_field: "stage_directions",
+          source_text: "Smiles",
+          locale_code: "es",
+          translated_text: "Sonríe",
+          status: "final"
+        })
+
       _unrelated_text =
         localized_text_fixture(project.id, %{
           source_type: "flow_node",
@@ -880,14 +892,111 @@ defmodule Storyarn.Exports.Serializers.UnityJSONTest do
 
       assert field_value(dialogue_entry, "Dialogue Text") == "Hello"
       assert field_value(dialogue_entry, "Menu Text") == "Talk"
+      assert field_value(dialogue_entry, "Description") == "Smiles"
       assert field_value(dialogue_entry, "Dialogue Text es") == "Hola"
       assert field_value(dialogue_entry, "Menu Text es") == "Hablar"
+      assert field_value(dialogue_entry, "Description es") == "Sonríe"
       assert field(dialogue_entry, "Dialogue Text es")["type"] == 4
       assert field(dialogue_entry, "Dialogue Text es")["typeString"] == "CustomFieldType_Localization"
       assert field(dialogue_entry, "Menu Text es")["type"] == 4
       assert field(dialogue_entry, "Menu Text es")["typeString"] == "CustomFieldType_Localization"
       refute maybe_field(dialogue_entry, "Dialogue Text en")
       refute maybe_field(dialogue_entry, "Dialogue Text fr")
+    end
+
+    test "release excludes drafts and their voice while preview includes them and reports the policy", %{
+      project: project,
+      user: user
+    } do
+      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      _es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      voice = audio_asset_fixture(project, user, %{filename: "draft_es.ogg"})
+      flow = project |> flow_fixture(%{name: "Preview Localization"}) |> reload_flow()
+      dialogue = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello", "responses" => []}})
+      [text] = Localization.get_texts_for_source("flow_node", dialogue.id)
+
+      assert {:ok, _text} =
+               Localization.update_text(text, %{
+                 translated_text: "Borrador",
+                 status: "draft",
+                 vo_asset_id: voice.id,
+                 vo_status: "approved"
+               })
+
+      release = export_and_decode(project)
+
+      release_entry =
+        release
+        |> conversation_by_title("Preview Localization")
+        |> Map.fetch!("dialogueEntries")
+        |> entry_by_storyarn_node_id(dialogue.id)
+
+      refute maybe_field(release_entry, "Dialogue Text es")
+      refute maybe_field(release_entry, "VoiceOverFile es")
+      assert release["storyarnLocalization"]["policy"] == "release"
+      assert release["storyarnLocalization"]["excludedStrings"] == 1
+
+      %ExportOptions{} = preview_opts = default_opts()
+      preview_opts = %{preview_opts | localization_policy: :preview}
+      preview = export_and_decode(project, preview_opts)
+
+      preview_entry =
+        preview
+        |> conversation_by_title("Preview Localization")
+        |> Map.fetch!("dialogueEntries")
+        |> entry_by_storyarn_node_id(dialogue.id)
+
+      assert field_value(preview_entry, "Dialogue Text es") == "Borrador"
+      assert field_value(preview_entry, "VoiceOverFile es") == "draft_es"
+      assert preview["storyarnLocalization"]["policy"] == "preview"
+      assert preview["storyarnLocalization"]["warnings"] != []
+    end
+
+    test "sheet actor names are localized because all sheets are emitted as engine actors", %{project: project} do
+      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      _es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      sheet = sheet_fixture(project, %{name: "Hero"})
+      [text] = Localization.get_texts_for_source("sheet", sheet.id)
+      assert {:ok, _text} = Localization.update_text(text, %{translated_text: "Héroe", status: "final"})
+
+      actor = project |> export_and_decode() |> actor_by_name("Hero")
+      assert field_value(actor, "Name es") == "Héroe"
+      assert field_value(actor, "Display Name es") == "Héroe"
+    end
+
+    test "exit entries export localized runtime labels", %{project: project} do
+      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      _es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      flow = project |> flow_fixture(%{name: "Localized Exit"}) |> reload_flow()
+
+      exit_node =
+        node_fixture(flow, %{
+          type: "exit",
+          data: %{"label" => "Continue", "exit_mode" => "terminal"}
+        })
+
+      _exit_text =
+        localized_text_fixture(project.id, %{
+          source_type: "flow_node",
+          source_id: exit_node.id,
+          source_field: "label",
+          source_text: "Continue",
+          locale_code: "es",
+          translated_text: "Continuar",
+          status: "final"
+        })
+
+      entries =
+        project
+        |> export_and_decode()
+        |> conversation_by_title("Localized Exit")
+        |> Map.fetch!("dialogueEntries")
+
+      exit_entry = entry_by_storyarn_node_id(entries, exit_node.id)
+
+      assert field_value(exit_entry, "Dialogue Text") == "Continue"
+      assert field_value(exit_entry, "Dialogue Text es") == "Continuar"
     end
 
     test "response entries add localized menu and dialogue text fields", %{project: project} do
@@ -930,6 +1039,37 @@ defmodule Storyarn.Exports.Serializers.UnityJSONTest do
       assert field(response_entry, "Dialogue Text es")["typeString"] == "CustomFieldType_Localization"
     end
 
+    test "text block variables expose localized initial values", %{project: project} do
+      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      _es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      sheet = sheet_fixture(project, %{name: "Quest"})
+
+      block =
+        block_fixture(sheet, %{
+          type: "text",
+          variable_name: "title",
+          value: %{"content" => "The Journey"}
+        })
+
+      _translated_value =
+        localized_text_fixture(project.id, %{
+          source_type: "block",
+          source_id: block.id,
+          source_field: "value.content",
+          source_text: "The Journey",
+          locale_code: "es",
+          translated_text: "El viaje",
+          status: "final"
+        })
+
+      result = export_and_decode(project)
+      variable = Enum.find(result["variables"], &(field_value(&1, "Storyarn Variable Name") == "title"))
+
+      assert field_value(variable, "Initial Value") == "The Journey"
+      assert field_value(variable, "Initial Value es") == "El viaje"
+      assert field(variable, "Initial Value es")["typeString"] == "CustomFieldType_Localization"
+    end
+
     test "localized voice over assets become localized VoiceOverFile fields", %{project: project, user: user} do
       _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
       _es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
@@ -955,7 +1095,8 @@ defmodule Storyarn.Exports.Serializers.UnityJSONTest do
           status: "final"
         })
 
-      {:ok, _dialogue_text} = Localization.update_text(dialogue_text, %{vo_asset_id: voice.id})
+      {:ok, _dialogue_text} =
+        Localization.update_text(dialogue_text, %{vo_asset_id: voice.id, vo_status: "approved"})
 
       result = export_and_decode(project)
       entries = result |> conversation_by_title("Localized Voice") |> Map.fetch!("dialogueEntries")

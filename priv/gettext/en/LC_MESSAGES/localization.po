@@ -44,11 +44,6 @@ msgstr ""
 msgid "Final"
 msgstr ""
 
-#: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:134
-#, elixir-autogen, elixir-format
-msgid "Flow"
-msgstr ""
-
 #: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:117
 #, elixir-autogen, elixir-format
 msgid "In Progress"
@@ -95,14 +90,9 @@ msgstr ""
 msgid "Review"
 msgstr ""
 
-#: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:136
-#, elixir-autogen, elixir-format
-msgid "Screenplay"
-msgstr ""
-
 #: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:133
 #, elixir-autogen, elixir-format
-msgid "Sheet"
+msgid "Sheet name"
 msgstr ""
 
 #: lib/storyarn_web/live/localization_live/handlers/localization_handlers.ex:74
@@ -166,11 +156,6 @@ msgstr ""
 #: lib/storyarn_web/live/localization_sidebar_live.ex:136
 #, elixir-autogen, elixir-format
 msgid "Could not update the source language."
-msgstr ""
-
-#: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:135
-#, elixir-autogen, elixir-format
-msgid "Scene"
 msgstr ""
 
 #: lib/storyarn_web/live/localization_live/handlers/localization_handlers.ex:31

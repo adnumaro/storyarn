@@ -16,6 +16,7 @@ defmodule Storyarn.Exports.ExportOptions do
           include_scenes: boolean(),
           include_screenplays: boolean(),
           include_localization: boolean(),
+          localization_policy: :release | :preview,
           include_assets: :references | :embedded | :bundled,
           languages: [String.t()] | :all,
           flow_ids: [integer()] | :all,
@@ -33,6 +34,7 @@ defmodule Storyarn.Exports.ExportOptions do
             include_scenes: true,
             include_screenplays: true,
             include_localization: true,
+            localization_policy: :release,
             include_assets: :references,
             languages: :all,
             flow_ids: :all,
@@ -43,6 +45,7 @@ defmodule Storyarn.Exports.ExportOptions do
 
   @valid_formats ~w(storyarn ink yarn unity godot unreal articy)a
   @valid_asset_modes ~w(references embedded bundled)a
+  @valid_localization_policies ~w(release preview)a
 
   @doc """
   Create a new ExportOptions struct from a map of attributes.
@@ -62,7 +65,8 @@ defmodule Storyarn.Exports.ExportOptions do
     format = to_atom(attrs[:format] || attrs["format"] || :storyarn)
 
     with :ok <- validate_format(format),
-         :ok <- validate_asset_mode(attrs) do
+         :ok <- validate_asset_mode(attrs),
+         :ok <- validate_localization_policy(attrs) do
       opts = %__MODULE__{
         format: format,
         version: attrs[:version] || attrs["version"] || "1.0.0",
@@ -71,6 +75,7 @@ defmodule Storyarn.Exports.ExportOptions do
         include_scenes: get_bool(attrs, :include_scenes, true),
         include_screenplays: get_bool(attrs, :include_screenplays, true),
         include_localization: get_bool(attrs, :include_localization, true),
+        localization_policy: to_atom(attrs[:localization_policy] || attrs["localization_policy"] || :release),
         include_assets: to_atom(attrs[:include_assets] || attrs["include_assets"] || :references),
         languages: get_list_or_all(attrs, :languages),
         flow_ids: get_ids_or_all(attrs, :flow_ids),
@@ -114,6 +119,16 @@ defmodule Storyarn.Exports.ExportOptions do
       :ok
     else
       {:error, {:invalid_asset_mode, mode}}
+    end
+  end
+
+  defp validate_localization_policy(attrs) do
+    policy = to_atom(attrs[:localization_policy] || attrs["localization_policy"] || :release)
+
+    if policy in @valid_localization_policies do
+      :ok
+    else
+      {:error, {:invalid_localization_policy, policy}}
     end
   end
 

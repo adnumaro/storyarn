@@ -44,11 +44,6 @@ msgstr "No se pudo añadir el idioma."
 msgid "Final"
 msgstr "Final"
 
-#: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:134
-#, elixir-autogen, elixir-format
-msgid "Flow"
-msgstr "Flujos"
-
 #: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:117
 #, elixir-autogen, elixir-format
 msgid "In Progress"
@@ -95,15 +90,10 @@ msgstr "DeepL ha limitado las peticiones. Inténtalo más tarde."
 msgid "Review"
 msgstr "Previsualización:"
 
-#: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:136
-#, elixir-autogen, elixir-format
-msgid "Screenplay"
-msgstr "Guión"
-
 #: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:133
 #, elixir-autogen, elixir-format
-msgid "Sheet"
-msgstr "Fichas"
+msgid "Sheet name"
+msgstr "Nombre de ficha"
 
 #: lib/storyarn_web/live/localization_live/handlers/localization_handlers.ex:74
 #: lib/storyarn_web/live/localization_sidebar_live.ex:220
@@ -167,11 +157,6 @@ msgstr "Error al sincronizar."
 #, elixir-autogen, elixir-format
 msgid "Could not update the source language."
 msgstr "No se pudo actualizar el idioma de origen."
-
-#: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:135
-#, elixir-autogen, elixir-format
-msgid "Scene"
-msgstr "Escena"
 
 #: lib/storyarn_web/live/localization_live/handlers/localization_handlers.ex:31
 #: lib/storyarn_web/live/localization_sidebar_live.ex:129

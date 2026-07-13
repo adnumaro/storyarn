@@ -8,6 +8,7 @@ defmodule Storyarn.Sheets.SheetStatsTest do
 
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Repo
+  alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.BlockGalleryImage
   alias Storyarn.Sheets.SheetStats
 
@@ -155,7 +156,7 @@ defmodule Storyarn.Sheets.SheetStatsTest do
 
       counts = SheetStats.sheet_word_counts(project.id)
 
-      assert counts[sheet.id] == 29
+      assert counts[sheet.id] == 3
     end
 
     test "strips HTML before counting", %{project: project} do
@@ -169,8 +170,48 @@ defmodule Storyarn.Sheets.SheetStatsTest do
 
       counts = SheetStats.sheet_word_counts(project.id)
 
-      # 1 (sheet name "Test") + 1 (label "Body") + 2 (rich_text) = 4
-      assert counts[sheet.id] == 4
+      assert counts[sheet.id] == 3
+    end
+
+    test "uses denormalized runtime block counts and excludes editor-only text", %{
+      project: project
+    } do
+      sheet = sheet_fixture(project, %{name: "Hero"})
+
+      runtime_block =
+        block_fixture(sheet, %{
+          type: "rich_text",
+          is_constant: false,
+          variable_name: "biography",
+          value: %{"content" => "ignored during read"}
+        })
+
+      block_fixture(sheet, %{
+        type: "text",
+        is_constant: true,
+        variable_name: "editor_note",
+        value: %{"content" => "not exported"}
+      })
+
+      whitespace_block =
+        block_fixture(sheet, %{
+          type: "text",
+          is_constant: false,
+          variable_name: "temporary_name",
+          value: %{"content" => "also not exported"}
+        })
+
+      Repo.update_all(from(block in Block, where: block.id == ^runtime_block.id),
+        set: [word_count: 17]
+      )
+
+      Repo.update_all(from(block in Block, where: block.id == ^whitespace_block.id),
+        set: [variable_name: "\t\n", word_count: 99]
+      )
+
+      counts = SheetStats.sheet_word_counts(project.id)
+
+      assert counts[sheet.id] == 18
     end
 
     test "counts sheet name words even without blocks", %{project: project} do
@@ -178,7 +219,6 @@ defmodule Storyarn.Sheets.SheetStatsTest do
 
       counts = SheetStats.sheet_word_counts(project.id)
 
-      # 2 words in "Combat Stats"
       assert counts[sheet.id] == 2
     end
 
@@ -199,8 +239,7 @@ defmodule Storyarn.Sheets.SheetStatsTest do
 
       counts = SheetStats.sheet_word_counts(project.id)
 
-      # 1 (sheet name "Main") + 1 (label "Table") + 1 (auto "Value") + 2 (auto "Row 1") + 6 manual rows = 11
-      assert counts[sheet.id] == 11
+      assert counts[sheet.id] == 1
     end
 
     test "includes table row names from inherited table blocks", %{project: project} do
@@ -229,10 +268,8 @@ defmodule Storyarn.Sheets.SheetStatsTest do
 
       counts = SheetStats.sheet_word_counts(project.id)
 
-      # Parent: 1 (name) + 1 (label "Table") + 1 (auto "Value") + 2 (auto "Row 1") + 1 ("STR") = 6
-      assert counts[parent_sheet.id] == 6
-      # Child: 1 (name) + 1 (label "Table") + 1 (auto "Value") + 2 (auto "Row 1") + 1 ("DEX") = 6
-      assert counts[child_sheet.id] == 6
+      assert counts[parent_sheet.id] == 1
+      assert counts[child_sheet.id] == 1
     end
   end
 

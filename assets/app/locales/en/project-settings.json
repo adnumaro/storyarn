@@ -270,6 +270,15 @@
           "description": "Add original files in a separate assets folder."
         }
       },
+      "localization_policy": "Localization quality",
+      "localization_release": "Release — final, current translations and approved voice-over only",
+      "localization_preview": "Preview — include drafts and recorded voice-over with warnings",
+      "localization_modes": {
+        "embedded": "Embedded localization",
+        "external_catalog": "Localization catalogs",
+        "full_state": "Full localization state",
+        "none": "No localization"
+      },
       "options": "Options",
       "validate_before": "Validate before export",
       "validate_before_description": "Stop the download when blocking project issues are found.",

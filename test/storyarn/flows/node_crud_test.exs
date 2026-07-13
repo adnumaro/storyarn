@@ -1874,7 +1874,11 @@ defmodule Storyarn.Flows.NodeCrudTest do
         FlowNode.data_changeset(node, %{data: %{"text" => "updated"}})
 
       assert changeset.valid?
-      assert Ecto.Changeset.get_change(changeset, :data) == %{"text" => "updated"}
+
+      assert Ecto.Changeset.get_change(changeset, :data) == %{
+               "localization_id" => node.data["localization_id"],
+               "text" => "updated"
+             }
     end
   end
 

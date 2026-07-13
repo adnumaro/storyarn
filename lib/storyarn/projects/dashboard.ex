@@ -19,7 +19,6 @@ defmodule Storyarn.Projects.Dashboard do
   alias Storyarn.Localization
   alias Storyarn.Repo
   alias Storyarn.Scenes
-  alias Storyarn.Shared.HtmlUtils
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.Sheet
@@ -206,8 +205,8 @@ defmodule Storyarn.Projects.Dashboard do
     )
   end
 
-  # Reuse per-context counters where available so project totals stay aligned with
-  # the dashboards users see inside each tool.
+  # Runtime word volume follows the same contract as localization and engine
+  # exports. Scenes and screenplays are editor-only and intentionally excluded.
   defp count_total_words(project_id) do
     flow_words =
       project_id
@@ -221,45 +220,7 @@ defmodule Storyarn.Projects.Dashboard do
       |> Map.values()
       |> Enum.sum()
 
-    scene_words =
-      project_id
-      |> Scenes.scene_word_counts()
-      |> Map.values()
-      |> Enum.sum()
-
-    screenplay_words =
-      project_id
-      |> collect_screenplay_metadata()
-      |> List.flatten()
-      |> Enum.reject(&(is_nil(&1) or &1 == ""))
-      |> Enum.map(&HtmlUtils.word_count/1)
-      |> Enum.sum()
-
-    flow_words + sheet_words + scene_words + screenplay_words
-  end
-
-  # -- Screenplay metadata: names, descriptions, element content
-
-  defp collect_screenplay_metadata(project_id) do
-    screenplay_texts =
-      Repo.all(
-        from(sp in "screenplays",
-          where: sp.project_id == ^project_id and is_nil(sp.deleted_at),
-          select: [sp.name, sp.description]
-        )
-      )
-
-    element_texts =
-      Repo.all(
-        from(e in "screenplay_elements",
-          join: sp in "screenplays",
-          on: e.screenplay_id == sp.id,
-          where: sp.project_id == ^project_id and is_nil(sp.deleted_at),
-          select: e.content
-        )
-      )
-
-    screenplay_texts ++ element_texts
+    flow_words + sheet_words
   end
 
   # ---------------------------------------------------------------------------

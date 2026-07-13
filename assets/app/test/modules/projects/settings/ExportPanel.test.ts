@@ -1,6 +1,7 @@
 import { mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockLive } from "../../../setup";
+import type { ExportPanelProps } from "../../../../modules/projects/settings/export-import/types";
 
 const mockLive = createMockLive();
 
@@ -11,13 +12,23 @@ vi.mock("@shared/composables/useLive", () => ({
 const { default: ExportPanel } =
   await import("../../../../modules/projects/settings/export-import/components/ExportPanel.vue");
 
-function baseProps() {
+function baseProps(): ExportPanelProps {
   return {
     formatConfig: {
       selected: "ink",
       formats: [
-        { format: "ink", label: "Ink (.ink)", extension: "ink" },
-        { format: "unity", label: "Unity Dialogue System (JSON)", extension: "json" },
+        {
+          format: "ink",
+          label: "Ink (.ink)",
+          extension: "ink",
+          localizationMode: "external_catalog",
+        },
+        {
+          format: "unity",
+          label: "Unity Dialogue System (JSON)",
+          extension: "json",
+          localizationMode: "embedded",
+        },
       ],
       extension: "zip",
     },
@@ -28,6 +39,7 @@ function baseProps() {
     },
     options: {
       assetMode: "references",
+      localizationPolicy: "release",
       validateBeforeExport: true,
       prettyPrint: true,
     },
@@ -85,6 +97,27 @@ describe("ExportPanel", () => {
     await wrapper.get('[data-testid="export-format-unity"] [role="radio"]').trigger("click");
 
     expect(live.pushEvent).toHaveBeenCalledWith("set_format", { format: "unity" });
+  });
+
+  it("shows each format localization mode and updates the localization policy", async () => {
+    const props = baseProps();
+    props.sectionConfig.supported = ["sheets", "flows", "localization"];
+    const { live, wrapper } = mountPanel(props);
+
+    expect(wrapper.get('[data-testid="export-format-ink"]').text()).toContain(
+      "Localization catalogs",
+    );
+    expect(wrapper.get('[data-testid="export-format-unity"]').text()).toContain(
+      "Embedded localization",
+    );
+
+    await wrapper
+      .get('[data-testid="export-localization-preview"] [role="radio"]')
+      .trigger("click");
+
+    expect(live.pushEvent).toHaveBeenCalledWith("set_localization_policy", {
+      policy: "preview",
+    });
   });
 
   it("shows progress while the preflight validation is running", async () => {

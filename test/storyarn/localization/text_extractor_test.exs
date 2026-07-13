@@ -6,11 +6,13 @@ defmodule Storyarn.Localization.TextExtractorTest do
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
+  import Storyarn.ScreenplaysFixtures
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Flows
   alias Storyarn.Localization
   alias Storyarn.Localization.TextExtractor
+  alias Storyarn.Repo
   alias Storyarn.Sheets
 
   setup do
@@ -29,7 +31,7 @@ defmodule Storyarn.Localization.TextExtractorTest do
   # =============================================================================
 
   describe "flow node extraction — dialogue" do
-    test "creates localized_text rows when dialogue node data is saved", %{project: project} do
+    test "creates localized_text rows as soon as a dialogue node is created", %{project: project} do
       flow = flow_fixture(project)
 
       node =
@@ -44,18 +46,6 @@ defmodule Storyarn.Localization.TextExtractorTest do
               %{"id" => "r2", "text" => "No"}
             ]
           }
-        })
-
-      # Update node data to trigger extraction
-      {:ok, _updated, _} =
-        Flows.update_node_data(node, %{
-          "text" => "<p>Hello world</p>",
-          "stage_directions" => "walks slowly",
-          "menu_text" => "Greet",
-          "responses" => [
-            %{"id" => "r1", "text" => "Yes"},
-            %{"id" => "r2", "text" => "No"}
-          ]
         })
 
       texts = Localization.get_texts_for_source("flow_node", node.id)
@@ -78,6 +68,16 @@ defmodule Storyarn.Localization.TextExtractorTest do
       text_entry = Enum.find(texts, &(&1.source_field == "text"))
       assert text_entry.source_text == "<p>Hello world</p>"
       assert text_entry.word_count == 2
+      assert text_entry.content_role == "dialogue"
+      assert text_entry.vo_eligible
+
+      stage_entry = Enum.find(texts, &(&1.source_field == "stage_directions"))
+      assert stage_entry.content_role == "stage_direction"
+      refute stage_entry.vo_eligible
+
+      response_entry = Enum.find(texts, &(&1.source_field == "response.r1.text"))
+      assert response_entry.content_role == "response"
+      assert response_entry.vo_eligible
     end
 
     test "does not create rows when no target languages configured", %{user: user} do
@@ -119,13 +119,37 @@ defmodule Storyarn.Localization.TextExtractorTest do
       {:ok, _} =
         Localization.update_text(text, %{
           translated_text: "Hola",
-          status: "final"
+          status: "final",
+          vo_status: "approved"
         })
 
       # Update source text
       {:ok, _updated, _} = Flows.update_node_data(node, %{"text" => "Changed"})
       [updated_text] = Localization.get_texts_for_source("flow_node", node.id)
       assert updated_text.status == "review"
+      assert updated_text.vo_status == "needed"
+    end
+
+    test "invalidates recorded voice when the translated line changes", %{project: project} do
+      flow = flow_fixture(project)
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello"}})
+      [text] = Localization.get_texts_for_source("flow_node", node.id)
+
+      assert {:ok, voiced} =
+               Localization.update_text(text, %{
+                 translated_text: "Hola",
+                 status: "final",
+                 vo_status: "approved"
+               })
+
+      assert {:ok, updated} =
+               Localization.update_text(voiced, %{
+                 translated_text: "Buenas",
+                 status: "draft",
+                 vo_status: "approved"
+               })
+
+      assert updated.vo_status == "needed"
     end
 
     test "cleans up removed response fields", %{project: project} do
@@ -174,10 +198,37 @@ defmodule Storyarn.Localization.TextExtractorTest do
       node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello"}})
 
       {:ok, _updated, _} = Flows.update_node_data(node, %{"text" => "Hello"})
-      assert length(Localization.get_texts_for_source("flow_node", node.id)) == 1
+      [text] = Localization.get_texts_for_source("flow_node", node.id)
+
+      assert {:ok, translated} =
+               Localization.update_text(text, %{
+                 translated_text: "Hola",
+                 status: "final",
+                 translator_notes: "Keep the greeting concise"
+               })
 
       {:ok, _deleted, _} = Flows.delete_node(node)
       assert Localization.get_texts_for_source("flow_node", node.id) == []
+
+      assert [archived] =
+               Localization.list_all_texts(project.id,
+                 source_type: "flow_node",
+                 locale_code: "es"
+               )
+
+      assert archived.id == translated.id
+      assert archived.archived_at
+      assert archived.archive_reason == "source_deleted"
+
+      assert {:ok, _restored} = Flows.restore_node(flow.id, node.id)
+
+      assert [restored] = Localization.get_texts_for_source("flow_node", node.id)
+      assert restored.id == translated.id
+      assert restored.source_text == "Hello"
+      assert restored.translated_text == "Hola"
+      assert restored.status == "final"
+      assert restored.translator_notes == "Keep the greeting concise"
+      assert restored.archived_at == nil
     end
 
     test "skips blank and whitespace-only text fields", %{project: project} do
@@ -263,19 +314,21 @@ defmodule Storyarn.Localization.TextExtractorTest do
           type: "dialogue",
           data: %{
             "text" => "Hello traveler",
-            "speaker_sheet_id" => sheet.id
+            "speaker_sheet_id" => sheet.id,
+            "responses" => [%{"id" => "ask_name", "text" => "Who are you?"}]
           }
         })
 
       {:ok, _updated, _} =
         Flows.update_node_data(node, %{
           "text" => "Hello traveler",
-          "speaker_sheet_id" => sheet.id
+          "speaker_sheet_id" => sheet.id,
+          "responses" => [%{"id" => "ask_name", "text" => "Who are you?"}]
         })
 
       texts = Localization.get_texts_for_source("flow_node", node.id)
-      assert length(texts) == 1
-      assert hd(texts).speaker_sheet_id == sheet.id
+      assert length(texts) == 2
+      assert Enum.all?(texts, &(&1.speaker_sheet_id == sheet.id))
     end
 
     test "handles dialogue with empty responses list", %{project: project} do
@@ -427,7 +480,7 @@ defmodule Storyarn.Localization.TextExtractorTest do
   # =============================================================================
 
   describe "block extraction — text block" do
-    test "extracts label and content from text block", %{project: project} do
+    test "extracts only the exported runtime value from a text block", %{project: project} do
       {:ok, sheet} = Sheets.create_sheet(project, %{name: "Character"})
 
       block =
@@ -437,24 +490,42 @@ defmodule Storyarn.Localization.TextExtractorTest do
           value: %{"content" => "A brave warrior from the north"}
         })
 
-      {:ok, _} =
-        Sheets.update_block_value(block, %{"content" => "A brave warrior from the north"})
-
       texts = Localization.get_texts_for_source("block", block.id)
-      assert length(texts) == 2
+      assert length(texts) == 1
 
       fields = MapSet.new(texts, & &1.source_field)
-      assert "config.label" in fields
       assert "value.content" in fields
-
-      label_text = Enum.find(texts, &(&1.source_field == "config.label"))
-      assert label_text.source_text == "Biography"
 
       content_text = Enum.find(texts, &(&1.source_field == "value.content"))
       assert content_text.source_text == "A brave warrior from the north"
+      assert content_text.content_role == "runtime_value"
+      refute content_text.vo_eligible
     end
 
-    test "text block with empty content only extracts label", %{project: project} do
+    test "tracks only non-constant text blocks emitted as runtime variables", %{project: project} do
+      {:ok, sheet} = Sheets.create_sheet(project, %{name: "Character"})
+
+      block =
+        block_fixture(sheet, %{
+          type: "text",
+          variable_name: "biography",
+          is_constant: true,
+          value: %{"content" => "A hidden editor value"}
+        })
+
+      assert Localization.get_texts_for_source("block", block.id) == []
+
+      assert {:ok, runtime_block} = Sheets.update_block(block, %{is_constant: false})
+      assert [%{source_text: "A hidden editor value"}] = Localization.get_texts_for_source("block", block.id)
+
+      assert {:ok, _constant_block} = Sheets.update_block(runtime_block, %{is_constant: true})
+      assert Localization.get_texts_for_source("block", block.id) == []
+
+      assert [%{archive_reason: "source_not_runtime"}] =
+               Localization.list_all_texts(project.id, source_type: "block")
+    end
+
+    test "text block with empty content produces no runtime strings", %{project: project} do
       {:ok, sheet} = Sheets.create_sheet(project, %{name: "Character"})
 
       block =
@@ -467,13 +538,12 @@ defmodule Storyarn.Localization.TextExtractorTest do
       {:ok, _} = Sheets.update_block_value(block, %{"content" => ""})
 
       texts = Localization.get_texts_for_source("block", block.id)
-      assert length(texts) == 1
-      assert hd(texts).source_field == "config.label"
+      assert texts == []
     end
   end
 
-  describe "block extraction — select block" do
-    test "extracts label, placeholder, and option labels from select block", %{project: project} do
+  describe "block extraction — editor-only configuration" do
+    test "does not extract labels, placeholders, or select options", %{project: project} do
       {:ok, sheet} = Sheets.create_sheet(project, %{name: "Character"})
 
       block =
@@ -482,146 +552,13 @@ defmodule Storyarn.Localization.TextExtractorTest do
           config: %{
             "label" => "Class",
             "placeholder" => "Choose...",
-            "options" => [
-              %{"key" => "warrior", "label" => "Warrior"},
-              %{"key" => "mage", "label" => "Mage"},
-              %{"key" => "rogue", "label" => "Rogue"}
-            ]
+            "options" => [%{"key" => "warrior", "label" => "Warrior"}]
           }
         })
 
-      # Trigger extraction via config update
-      {:ok, _} =
-        Sheets.update_block_config(block, %{
-          "label" => "Class",
-          "placeholder" => "Choose...",
-          "options" => [
-            %{"key" => "warrior", "label" => "Warrior"},
-            %{"key" => "mage", "label" => "Mage"},
-            %{"key" => "rogue", "label" => "Rogue"}
-          ]
-        })
+      {:ok, _} = Sheets.update_block_config(block, block.config)
 
-      texts = Localization.get_texts_for_source("block", block.id)
-
-      # Should have: config.label + config.placeholder + 3 option labels = 5
-      assert length(texts) == 5
-
-      fields = MapSet.new(texts, & &1.source_field)
-      assert "config.label" in fields
-      assert "config.placeholder" in fields
-      assert "config.options.warrior" in fields
-      assert "config.options.mage" in fields
-      assert "config.options.rogue" in fields
-    end
-
-    test "select block skips options with blank labels", %{project: project} do
-      {:ok, sheet} = Sheets.create_sheet(project, %{name: "Character"})
-
-      block =
-        block_fixture(sheet, %{
-          type: "select",
-          config: %{
-            "label" => "Class",
-            "options" => [
-              %{"key" => "warrior", "label" => "Warrior"},
-              %{"key" => "empty", "label" => ""},
-              %{"key" => "nil_label", "label" => nil}
-            ]
-          }
-        })
-
-      {:ok, _} =
-        Sheets.update_block_config(block, %{
-          "label" => "Class",
-          "options" => [
-            %{"key" => "warrior", "label" => "Warrior"},
-            %{"key" => "empty", "label" => ""},
-            %{"key" => "nil_label", "label" => nil}
-          ]
-        })
-
-      texts = Localization.get_texts_for_source("block", block.id)
-
-      # config.label + warrior option = 2
-      assert length(texts) == 2
-
-      fields = MapSet.new(texts, & &1.source_field)
-      assert "config.label" in fields
-      assert "config.options.warrior" in fields
-    end
-
-    test "select block with empty options list only extracts label", %{project: project} do
-      {:ok, sheet} = Sheets.create_sheet(project, %{name: "Character"})
-
-      block =
-        block_fixture(sheet, %{
-          type: "select",
-          config: %{"label" => "Class", "options" => []}
-        })
-
-      {:ok, _} = Sheets.update_block_config(block, %{"label" => "Class", "options" => []})
-
-      texts = Localization.get_texts_for_source("block", block.id)
-      assert length(texts) == 1
-      assert hd(texts).source_field == "config.label"
-    end
-  end
-
-  describe "block extraction — other block types" do
-    test "number block extracts label and placeholder", %{project: project} do
-      {:ok, sheet} = Sheets.create_sheet(project, %{name: "Character"})
-
-      block =
-        block_fixture(sheet, %{
-          type: "number",
-          config: %{"label" => "Health", "placeholder" => "0"},
-          value: %{"content" => 100}
-        })
-
-      {:ok, _} = Sheets.update_block_config(block, %{"label" => "Health", "placeholder" => "0"})
-
-      texts = Localization.get_texts_for_source("block", block.id)
-      assert length(texts) == 2
-
-      fields = MapSet.new(texts, & &1.source_field)
-      assert "config.label" in fields
-      assert "config.placeholder" in fields
-    end
-
-    test "boolean block extracts only label", %{project: project} do
-      {:ok, sheet} = Sheets.create_sheet(project, %{name: "Character"})
-
-      block =
-        block_fixture(sheet, %{
-          type: "boolean",
-          config: %{"label" => "Is Alive", "mode" => "two_state"}
-        })
-
-      {:ok, _} =
-        Sheets.update_block_config(block, %{"label" => "Is Alive", "mode" => "two_state"})
-
-      texts = Localization.get_texts_for_source("block", block.id)
-      assert length(texts) == 1
-      assert hd(texts).source_field == "config.label"
-      assert hd(texts).source_text == "Is Alive"
-    end
-
-    test "date block extracts only label", %{project: project} do
-      {:ok, sheet} = Sheets.create_sheet(project, %{name: "Event"})
-
-      block =
-        block_fixture(sheet, %{
-          type: "date",
-          config: %{"label" => "Birth Date"}
-        })
-
-      {:ok, _} = Sheets.update_block_config(block, %{"label" => "Birth Date"})
-
-      texts = Localization.get_texts_for_source("block", block.id)
-      assert length(texts) == 1
-      assert hd(texts).source_field == "config.label"
-      assert hd(texts).source_text == "Birth Date"
+      assert Localization.get_texts_for_source("block", block.id) == []
     end
   end
 
@@ -638,10 +575,87 @@ defmodule Storyarn.Localization.TextExtractorTest do
 
       # Trigger extraction
       {:ok, _} = Sheets.update_block_value(block, %{"content" => "A hero"})
-      assert Localization.get_texts_for_source("block", block.id) != []
+      [text] = Localization.get_texts_for_source("block", block.id)
 
-      {:ok, _} = Sheets.delete_block(block)
+      assert {:ok, translated} =
+               Localization.update_text(text, %{
+                 translated_text: "Un héroe",
+                 status: "final",
+                 reviewer_notes: "Approved terminology"
+               })
+
+      {:ok, deleted_block} = Sheets.delete_block(block)
       assert Localization.get_texts_for_source("block", block.id) == []
+
+      assert {:ok, _restored} = Sheets.restore_block(deleted_block)
+
+      assert [restored] = Localization.get_texts_for_source("block", block.id)
+      assert restored.id == translated.id
+      assert restored.source_text == "A hero"
+      assert restored.translated_text == "Un héroe"
+      assert restored.status == "final"
+      assert restored.reviewer_notes == "Approved terminology"
+    end
+
+    test "permanently deleting an archived block purges its localization history", %{project: project} do
+      {:ok, sheet} = Sheets.create_sheet(project, %{name: "Character"})
+
+      block =
+        block_fixture(sheet, %{
+          type: "text",
+          variable_name: "bio",
+          value: %{"content" => "A hero"}
+        })
+
+      assert Localization.get_texts_for_source("block", block.id) != []
+      assert {:ok, deleted} = Sheets.delete_block(block)
+      assert Localization.list_all_texts(project.id, source_type: "block") != []
+
+      assert {:ok, _deleted} = Sheets.permanently_delete_block(deleted)
+      assert Localization.list_all_texts(project.id, source_type: "block") == []
+    end
+  end
+
+  describe "tree lifecycle cleanup" do
+    test "deleting a flow tree removes all runtime strings and restoring the root re-extracts its nodes", %{
+      project: project
+    } do
+      parent = flow_fixture(project, %{name: "Parent"})
+      child = flow_fixture(project, %{name: "Child", parent_id: parent.id})
+      parent_node = node_fixture(parent, %{type: "dialogue", data: %{"text" => "Parent line"}})
+      child_node = node_fixture(child, %{type: "dialogue", data: %{"text" => "Child line"}})
+
+      assert Localization.get_texts_for_source("flow_node", parent_node.id) != []
+      assert Localization.get_texts_for_source("flow_node", child_node.id) != []
+
+      assert {:ok, deleted_parent} = Flows.delete_flow(parent)
+      assert Localization.get_texts_for_source("flow_node", parent_node.id) == []
+      assert Localization.get_texts_for_source("flow_node", child_node.id) == []
+
+      assert {:ok, _restored_parent} = Flows.restore_flow(deleted_parent)
+      assert Localization.get_texts_for_source("flow_node", parent_node.id) != []
+      assert Localization.get_texts_for_source("flow_node", child_node.id) == []
+    end
+
+    test "deleting a sheet tree removes all runtime strings and restoring the root re-extracts its blocks", %{
+      project: project
+    } do
+      parent = sheet_fixture(project, %{name: "Parent"})
+      child = sheet_fixture(project, %{name: "Child", parent_id: parent.id})
+
+      parent_block = block_fixture(parent, %{type: "text", value: %{"content" => "Parent value"}})
+      child_block = block_fixture(child, %{type: "text", value: %{"content" => "Child value"}})
+
+      assert Localization.get_texts_for_source("block", parent_block.id) != []
+      assert Localization.get_texts_for_source("block", child_block.id) != []
+
+      assert {:ok, deleted_parent} = Sheets.delete_sheet(parent)
+      assert Localization.get_texts_for_source("block", parent_block.id) == []
+      assert Localization.get_texts_for_source("block", child_block.id) == []
+
+      assert {:ok, _restored_parent} = Sheets.restore_sheet(deleted_parent)
+      assert Localization.get_texts_for_source("block", parent_block.id) != []
+      assert Localization.get_texts_for_source("block", child_block.id) == []
     end
   end
 
@@ -649,163 +663,38 @@ defmodule Storyarn.Localization.TextExtractorTest do
   # Sheet Extraction
   # =============================================================================
 
-  describe "sheet extraction" do
-    test "creates localized_text rows when sheet is updated", %{project: project} do
+  describe "sheet actor names and editor metadata exclusion" do
+    test "extracts sheet names but not descriptions", %{project: project} do
       {:ok, sheet} = Sheets.create_sheet(project, %{name: "Character"})
 
       {:ok, _updated} =
         Sheets.update_sheet(sheet, %{name: "Hero", description: "The main character"})
 
-      texts = Localization.get_texts_for_source("sheet", sheet.id)
-      assert length(texts) == 2
-
-      fields = MapSet.new(texts, & &1.source_field)
-      assert "name" in fields
-      assert "description" in fields
+      assert [%{source_field: "name", source_text: "Hero", content_role: "speaker_name"}] =
+               Localization.get_texts_for_source("sheet", sheet.id)
     end
 
-    test "cleans up texts when sheet is deleted", %{project: project} do
-      {:ok, sheet} = Sheets.create_sheet(project, %{name: "Character"})
-      {:ok, _updated} = Sheets.update_sheet(sheet, %{name: "Hero"})
-
-      assert length(Localization.get_texts_for_source("sheet", sheet.id)) == 1
-
-      {:ok, _} = Sheets.delete_sheet(sheet)
-      assert Localization.get_texts_for_source("sheet", sheet.id) == []
-    end
-
-    test "sheet with only name extracts one field", %{project: project} do
-      {:ok, sheet} = Sheets.create_sheet(project, %{name: "Character"})
-      {:ok, _updated} = Sheets.update_sheet(sheet, %{name: "Hero"})
-
-      texts = Localization.get_texts_for_source("sheet", sheet.id)
-      assert length(texts) == 1
-      assert hd(texts).source_field == "name"
-      assert hd(texts).source_text == "Hero"
-    end
-
-    test "sheet with blank name and blank description produces no texts", %{project: project} do
-      {:ok, sheet} = Sheets.create_sheet(project, %{name: "Temp"})
-
-      # Update to empty values - name can't be blank per changeset, but description can be nil
-      {:ok, _updated} = Sheets.update_sheet(sheet, %{name: "X", description: nil})
-
-      texts = Localization.get_texts_for_source("sheet", sheet.id)
-      # Should have at least name "X"
-      assert length(texts) == 1
-      assert hd(texts).source_field == "name"
-    end
-  end
-
-  # =============================================================================
-  # Flow Metadata Extraction
-  # =============================================================================
-
-  describe "flow metadata extraction" do
-    test "creates localized_text rows when flow is updated", %{project: project} do
+    test "does not extract flow names or descriptions", %{project: project} do
       flow = flow_fixture(project)
 
       {:ok, _updated} =
         Flows.update_flow(flow, %{name: "Chapter 1", description: "Opening scene"})
 
-      texts = Localization.get_texts_for_source("flow", flow.id)
-      assert length(texts) == 2
-
-      fields = MapSet.new(texts, & &1.source_field)
-      assert "name" in fields
-      assert "description" in fields
-    end
-
-    test "cleans up texts when flow is deleted", %{project: project} do
-      flow = flow_fixture(project)
-      {:ok, _updated} = Flows.update_flow(flow, %{name: "Chapter 1"})
-
-      assert Localization.get_texts_for_source("flow", flow.id) != []
-
-      {:ok, _} = Flows.delete_flow(flow)
       assert Localization.get_texts_for_source("flow", flow.id) == []
     end
 
-    test "flow with only name extracts one field", %{project: project} do
-      flow = flow_fixture(project)
-      {:ok, _updated} = Flows.update_flow(flow, %{name: "Chapter 1", description: nil})
-
-      texts = Localization.get_texts_for_source("flow", flow.id)
-      assert length(texts) == 1
-      assert hd(texts).source_field == "name"
-    end
-
-    test "flow with name and description extracts both", %{project: project} do
-      flow = flow_fixture(project)
-
-      {:ok, _updated} =
-        Flows.update_flow(flow, %{name: "Chapter 1", description: "The beginning"})
-
-      texts = Localization.get_texts_for_source("flow", flow.id)
-      assert length(texts) == 2
-
-      name_text = Enum.find(texts, &(&1.source_field == "name"))
-      desc_text = Enum.find(texts, &(&1.source_field == "description"))
-
-      assert name_text.source_text == "Chapter 1"
-      assert desc_text.source_text == "The beginning"
-    end
-  end
-
-  # =============================================================================
-  # Scene Extraction
-  # =============================================================================
-
-  describe "scene extraction" do
-    test "extracts scene texts from scene content and nested elements", %{project: project} do
+    test "does not extract scenes", %{project: project} do
       scene = scene_fixture(project, %{name: "World Map", description: "Main hub"})
-      layer = layer_fixture(scene, %{"name" => "Upper City"})
+      assert Localization.get_texts_for_source("scene", scene.id) == []
+    end
 
-      zone =
-        zone_fixture(scene, %{
-          "name" => "Market Square",
-          "tooltip" => "Crowded at noon",
-          "layer_id" => layer.id
-        })
+    test "does not extract screenplays or screenplay elements", %{project: project} do
+      screenplay = screenplay_fixture(project, %{name: "Hidden Draft"})
+      element = element_fixture(screenplay, %{type: "dialogue", content: "Not runtime content"})
 
-      pin_1 =
-        pin_fixture(scene, %{
-          "label" => "Clock Tower",
-          "tooltip" => "Visible everywhere",
-          "layer_id" => layer.id
-        })
-
-      pin_2 =
-        pin_fixture(scene, %{
-          "label" => "West Gate",
-          "tooltip" => "",
-          "layer_id" => layer.id
-        })
-
-      annotation =
-        annotation_fixture(scene, %{
-          "text" => "Secret route",
-          "layer_id" => layer.id
-        })
-
-      connection =
-        Storyarn.ScenesFixtures.connection_fixture(scene, pin_1, pin_2, %{
-          "label" => "Patrol path"
-        })
-
-      texts = Localization.get_texts_for_source("scene", scene.id)
-      fields = MapSet.new(texts, & &1.source_field)
-
-      assert "name" in fields
-      assert "description" in fields
-      assert "layer.#{layer.id}.name" in fields
-      assert "zone.#{zone.id}.name" in fields
-      assert "zone.#{zone.id}.tooltip" in fields
-      assert "pin.#{pin_1.id}.label" in fields
-      assert "pin.#{pin_1.id}.tooltip" in fields
-      assert "pin.#{pin_2.id}.label" in fields
-      assert "annotation.#{annotation.id}.text" in fields
-      assert "connection.#{connection.id}.label" in fields
+      assert {:ok, _count} = Localization.extract_all(project.id)
+      assert Localization.get_texts_for_source("screenplay", screenplay.id) == []
+      assert Localization.get_texts_for_source("screenplay_element", element.id) == []
     end
   end
 
@@ -847,8 +736,8 @@ defmodule Storyarn.Localization.TextExtractorTest do
 
       texts = Localization.get_texts_for_source("block", block.id)
 
-      # 2 fields (config.label, value.content) x 2 locales (es, fr) = 4
-      assert length(texts) == 4
+      # One exported runtime value x two locales.
+      assert length(texts) == 2
 
       locales = MapSet.new(texts, & &1.locale_code)
       assert "es" in locales
@@ -867,7 +756,17 @@ defmodule Storyarn.Localization.TextExtractorTest do
       assert {:ok, 0} = TextExtractor.extract_all(project_no_langs.id)
     end
 
-    test "extracts texts from flows, nodes, sheets, and blocks", %{project: project} do
+    test "extract_locale/2 reconciles only the requested target locale", %{project: project} do
+      flow = flow_fixture(project)
+      _node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello"}})
+      _french = language_fixture(project, %{locale_code: "fr", name: "French"})
+
+      assert {:ok, 1} = TextExtractor.extract_locale(project.id, "fr")
+
+      assert [%{locale_code: "fr"}] = Localization.list_texts(project.id, locale_code: "fr")
+    end
+
+    test "extracts only runtime text from nodes and blocks", %{project: project} do
       # Create a flow with a dialogue node
       flow = flow_fixture(project, %{name: "Main Flow", description: "The main story"})
 
@@ -889,13 +788,7 @@ defmodule Storyarn.Localization.TextExtractorTest do
 
       {:ok, count} = TextExtractor.extract_all(project.id)
 
-      # flow: name + description = 2 texts (1 locale each)
-      # node: text = 1 text
-      # sheet: name = 1 text
-      # block: config.label + value.content = 2 texts
-      # Total = 6 (each x 1 locale = 6)
-      # Note: The fixture also creates entry/exit nodes automatically for the flow
-      assert count >= 6
+      assert count == 3
     end
 
     test "is idempotent — running twice does not duplicate entries", %{project: project} do
@@ -913,7 +806,8 @@ defmodule Storyarn.Localization.TextExtractorTest do
       assert count1 == count2
 
       # Verify no duplicates in the actual records
-      all_flow_texts = Localization.get_texts_for_source("flow", flow.id)
+      [node] = Enum.filter(Flows.get_flow(project.id, flow.id).nodes, &(&1.type == "dialogue"))
+      all_flow_texts = Localization.get_texts_for_source("flow_node", node.id)
 
       unique_fields =
         all_flow_texts
@@ -933,7 +827,7 @@ defmodule Storyarn.Localization.TextExtractorTest do
       assert count == 0
     end
 
-    test "extract_all processes multiple flows and sheets", %{project: project} do
+    test "extract_all processes multiple flows and exported sheet actor names", %{project: project} do
       # Two flows
       flow1 = flow_fixture(project, %{name: "Flow One"})
       flow2 = flow_fixture(project, %{name: "Flow Two"})
@@ -947,8 +841,47 @@ defmodule Storyarn.Localization.TextExtractorTest do
 
       {:ok, count} = TextExtractor.extract_all(project.id)
 
-      # At minimum: 2 flow names + 2 node texts + 2 sheet names = 6
-      assert count >= 6
+      assert count == 4
+    end
+
+    test "extract_all removes valid-looking rows whose source no longer exists", %{project: project} do
+      orphan_id = System.unique_integer([:positive])
+
+      assert {:ok, _orphan} =
+               Localization.create_text(project.id, %{
+                 source_type: "flow_node",
+                 source_id: orphan_id,
+                 source_field: "text",
+                 source_text: "Orphaned line",
+                 locale_code: "es"
+               })
+
+      assert {:ok, 0} = TextExtractor.extract_all(project.id)
+      assert Localization.get_texts_for_source("flow_node", orphan_id) == []
+    end
+
+    test "bulk reconciliation invalidates voice when source text changed outside normal callbacks", %{
+      project: project
+    } do
+      flow = flow_fixture(project)
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Original line"}})
+      [text] = Localization.get_texts_for_source("flow_node", node.id)
+
+      assert {:ok, _text} =
+               Localization.update_text(text, %{
+                 translated_text: "Línea original",
+                 status: "final",
+                 vo_status: "approved"
+               })
+
+      node
+      |> Ecto.Changeset.change(data: %{"text" => "Changed outside callback"})
+      |> Repo.update!()
+
+      assert {:ok, _count} = TextExtractor.extract_all(project.id)
+      [updated] = Localization.get_texts_for_source("flow_node", node.id)
+      assert updated.status == "review"
+      assert updated.vo_status == "needed"
     end
   end
 
@@ -1105,25 +1038,33 @@ defmodule Storyarn.Localization.TextExtractorTest do
     end
   end
 
-  describe "delete_sheet_texts/1" do
-    test "removes all texts for a sheet ID", %{project: project} do
+  describe "delete_block_texts_for_sheets/1" do
+    test "removes block texts for a sheet", %{project: project} do
       {:ok, sheet} = Sheets.create_sheet(project, %{name: "Character"})
-      {:ok, _} = Sheets.update_sheet(sheet, %{name: "Hero"})
-      assert Localization.get_texts_for_source("sheet", sheet.id) != []
 
-      assert :ok = TextExtractor.delete_sheet_texts(sheet.id)
-      assert Localization.get_texts_for_source("sheet", sheet.id) == []
+      block =
+        block_fixture(sheet, %{
+          type: "text",
+          value: %{"content" => "Hero"}
+        })
+
+      {:ok, _} = Sheets.update_block_value(block, %{"content" => "Hero"})
+      assert Localization.get_texts_for_source("block", block.id) != []
+
+      assert :ok = TextExtractor.delete_block_texts_for_sheets([sheet.id])
+      assert Localization.get_texts_for_source("block", block.id) == []
     end
   end
 
-  describe "delete_flow_texts/1" do
-    test "removes all texts for a flow ID", %{project: project} do
+  describe "delete_flow_node_texts_for_flows/1" do
+    test "removes all node texts for a flow", %{project: project} do
       flow = flow_fixture(project)
-      {:ok, _} = Flows.update_flow(flow, %{name: "Chapter 1"})
-      assert Localization.get_texts_for_source("flow", flow.id) != []
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello"}})
+      {:ok, _updated, _} = Flows.update_node_data(node, %{"text" => "Hello"})
+      assert Localization.get_texts_for_source("flow_node", node.id) != []
 
-      assert :ok = TextExtractor.delete_flow_texts(flow.id)
-      assert Localization.get_texts_for_source("flow", flow.id) == []
+      assert :ok = TextExtractor.delete_flow_node_texts_for_flows([flow.id])
+      assert Localization.get_texts_for_source("flow_node", node.id) == []
     end
   end
 end

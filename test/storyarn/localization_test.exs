@@ -2,8 +2,10 @@ defmodule Storyarn.LocalizationTest do
   use Storyarn.DataCase, async: true
 
   import Storyarn.AccountsFixtures
+  import Storyarn.FlowsFixtures
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
 
   alias Storyarn.Localization
   alias Storyarn.Localization.LocalizedText
@@ -24,6 +26,15 @@ defmodule Storyarn.LocalizationTest do
 
       assert length(languages) == 1
       assert hd(languages).id == lang.id
+    end
+
+    test "add_language/2 stores locale codes in canonical lowercase" do
+      project = project_fixture(user_fixture())
+
+      assert {:ok, language} =
+               Localization.add_language(project, %{locale_code: "PT-BR", name: "Portuguese"})
+
+      assert language.locale_code == "pt-br"
     end
 
     test "list_languages/1 returns empty list for project without languages" do
@@ -65,6 +76,27 @@ defmodule Storyarn.LocalizationTest do
         Localization.add_language(project, %{locale_code: "en", name: "English", is_source: true})
 
       assert lang.is_source == true
+    end
+
+    test "add_language/2 immediately extracts existing runtime sources for a target locale" do
+      user = user_fixture()
+      project = project_fixture(user)
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      flow = flow_fixture(project)
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Existing line"}})
+      sheet = sheet_fixture(project, %{name: "Existing actor"})
+
+      assert Localization.get_texts_for_source("flow_node", node.id) == []
+      assert Localization.get_texts_for_source("sheet", sheet.id) == []
+
+      assert {:ok, _language} =
+               Localization.add_language(project, %{locale_code: "es", name: "Spanish"})
+
+      assert [%{locale_code: "es", source_text: "Existing line"}] =
+               Localization.get_texts_for_source("flow_node", node.id)
+
+      assert [%{locale_code: "es", source_text: "Existing actor"}] =
+               Localization.get_texts_for_source("sheet", sheet.id)
     end
 
     test "add_language/2 preserves is_source when restoring an archived locale" do
@@ -204,9 +236,12 @@ defmodule Storyarn.LocalizationTest do
 
       {:ok, new_source} = Localization.change_source_language(project, "en-US")
 
-      assert new_source.locale_code == "en-US"
+      assert new_source.locale_code == "en-us"
       assert new_source.is_source == true
-      assert Localization.get_source_language(project.id).locale_code == "en-US"
+      assert Localization.get_source_language(project.id).locale_code == "en-us"
+      assert Localization.get_language_by_locale(project.id, "EN-US").id == new_source.id
+      assert {:ok, same_source} = Localization.change_source_language(project, "EN-us")
+      assert same_source.id == new_source.id
       refute Localization.get_language_by_locale(project.id, "en").is_source
     end
 
@@ -291,6 +326,8 @@ defmodule Storyarn.LocalizationTest do
       assert text.locale_code == "es"
       assert text.status == "pending"
       assert text.word_count == 2
+      assert text.content_role == "dialogue"
+      assert text.vo_eligible
       assert text.project_id == project.id
     end
 
@@ -322,6 +359,52 @@ defmodule Storyarn.LocalizationTest do
       assert LocalizedText.stale?(text)
     end
 
+    test "source updates report runtime metadata errors only on mismatched fields" do
+      text = %LocalizedText{
+        source_type: "flow_node",
+        source_field: "text",
+        content_role: "dialogue",
+        vo_eligible: true,
+        vo_status: "none"
+      }
+
+      role_changeset =
+        LocalizedText.source_update_changeset(text, %{
+          content_role: "menu",
+          vo_eligible: true
+        })
+
+      assert errors_on(role_changeset).content_role == ["does not match the runtime source field"]
+      refute Map.has_key?(errors_on(role_changeset), :vo_eligible)
+
+      eligibility_changeset =
+        LocalizedText.source_update_changeset(text, %{
+          content_role: "dialogue",
+          vo_eligible: false
+        })
+
+      assert errors_on(eligibility_changeset).vo_eligible == ["does not match the runtime source field"]
+      refute Map.has_key?(errors_on(eligibility_changeset), :content_role)
+    end
+
+    test "source updates validate voice-over status and archive reason" do
+      text = %LocalizedText{
+        source_type: "flow_node",
+        source_field: "text",
+        content_role: "dialogue",
+        vo_eligible: true,
+        vo_status: "none"
+      }
+
+      vo_changeset = LocalizedText.source_update_changeset(text, %{vo_status: "invalid"})
+      assert errors_on(vo_changeset).vo_status == ["is invalid"]
+
+      archive_changeset =
+        LocalizedText.source_update_changeset(text, %{archive_reason: "invalid"})
+
+      assert errors_on(archive_changeset).archive_reason == ["is invalid"]
+    end
+
     test "create_text/2 validates required fields" do
       user = user_fixture()
       project = project_fixture(user)
@@ -334,19 +417,90 @@ defmodule Storyarn.LocalizationTest do
       assert "can't be blank" in errors_on(changeset).locale_code
     end
 
-    test "create_text/2 validates source_type inclusion" do
+    test "create_text/2 excludes non-runtime source types" do
       user = user_fixture()
       project = project_fixture(user)
 
+      for source_type <- ["flow", "scene", "screenplay"] do
+        {:error, changeset} =
+          Localization.create_text(project.id, %{
+            source_type: source_type,
+            source_id: 1,
+            source_field: "text",
+            locale_code: "es"
+          })
+
+        assert "is invalid" in errors_on(changeset).source_type
+      end
+    end
+
+    test "create_text/2 accepts only the runtime sheet name field" do
+      project = project_fixture(user_fixture())
+
+      assert {:ok, text} =
+               Localization.create_text(project.id, %{
+                 source_type: "sheet",
+                 source_id: 1,
+                 source_field: "name",
+                 source_text: "Hero",
+                 locale_code: "es"
+               })
+
+      assert text.content_role == "speaker_name"
+
+      assert {:error, changeset} =
+               Localization.create_text(project.id, %{
+                 source_type: "sheet",
+                 source_id: 1,
+                 source_field: "description",
+                 locale_code: "es"
+               })
+
+      assert "is not part of the runtime localization contract" in errors_on(changeset).source_field
+    end
+
+    test "create_text/2 rejects fields outside the runtime source contract" do
+      project = project_fixture(user_fixture())
+
       {:error, changeset} =
         Localization.create_text(project.id, %{
-          source_type: "invalid",
+          source_type: "block",
           source_id: 1,
-          source_field: "text",
+          source_field: "config.label",
           locale_code: "es"
         })
 
-      assert "is invalid" in errors_on(changeset).source_type
+      assert "is not part of the runtime localization contract" in errors_on(changeset).source_field
+    end
+
+    test "voice-over state is rejected for non-spoken fields" do
+      project = project_fixture(user_fixture())
+
+      {:error, changeset} =
+        Localization.create_text(project.id, %{
+          source_type: "flow_node",
+          source_id: 1,
+          source_field: "stage_directions",
+          locale_code: "es",
+          vo_status: "needed"
+        })
+
+      assert "is only available for spoken dialogue and responses" in errors_on(changeset).vo_status
+    end
+
+    test "voice-over assets report their own field for non-spoken sources" do
+      project = project_fixture(user_fixture())
+
+      assert {:ok, text} =
+               Localization.create_text(project.id, %{
+                 source_type: "flow_node",
+                 source_id: 1,
+                 source_field: "stage_directions",
+                 locale_code: "es"
+               })
+
+      assert {:error, changeset} = Localization.update_text(text, %{vo_asset_id: 123_456})
+      assert "is only available for spoken dialogue and responses" in errors_on(changeset).vo_asset_id
     end
 
     test "create_text/2 enforces unique composite key" do
@@ -534,6 +688,8 @@ defmodule Storyarn.LocalizationTest do
         })
 
       assert text.source_text == "New text"
+      assert text.content_role == "dialogue"
+      assert text.vo_eligible
     end
 
     test "upsert_text/2 updates source_text when hash changes" do

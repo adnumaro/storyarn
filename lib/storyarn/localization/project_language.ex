@@ -16,6 +16,7 @@ defmodule Storyarn.Localization.ProjectLanguage do
 
   import Ecto.Changeset
 
+  alias Storyarn.Localization.LocaleCode
   alias Storyarn.Projects.Project
 
   @type t :: %__MODULE__{
@@ -49,8 +50,10 @@ defmodule Storyarn.Localization.ProjectLanguage do
   def create_changeset(language, attrs) do
     language
     |> cast(attrs, [:locale_code, :name, :is_source, :position, :archived_at])
+    |> update_change(:locale_code, &LocaleCode.normalize/1)
     |> validate_required([:locale_code, :name])
-    |> validate_length(:locale_code, min: 2, max: 10)
+    |> validate_length(:locale_code, min: 2, max: LocaleCode.max_length())
+    |> validate_format(:locale_code, LocaleCode.format())
     |> validate_length(:name, min: 1, max: 100)
     |> unique_constraint([:project_id, :locale_code])
     |> unique_constraint(:project_id,

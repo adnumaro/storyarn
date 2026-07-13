@@ -458,41 +458,116 @@ defmodule Storyarn.Exports.Validator do
   # Check: missing_translations (warning)
   # =============================================================================
 
-  defp check_missing_translations(project_id, _opts) do
-    languages = Localization.list_target_locale_codes(project_id)
+  defp check_missing_translations(_project_id, %ExportOptions{include_localization: false}), do: []
+  defp check_missing_translations(_project_id, %ExportOptions{format: :storyarn}), do: []
+
+  defp check_missing_translations(project_id, opts) do
+    languages =
+      project_id
+      |> Localization.list_target_locale_codes()
+      |> selected_locales(opts.languages)
 
     if languages == [] do
       []
     else
-      do_check_missing_translations(project_id, languages)
+      do_check_missing_translations(project_id, languages, opts)
     end
   end
 
-  defp do_check_missing_translations(project_id, languages) do
-    total_sources = Localization.count_distinct_source_entries(project_id)
-    pending_by_locale = Localization.count_pending_by_locale(project_id, languages)
+  defp selected_locales(locales, :all), do: locales
+  defp selected_locales(locales, selected), do: Enum.filter(locales, &(&1 in selected))
 
-    languages
-    |> Enum.filter(&(Map.get(pending_by_locale, &1, 0) > 0))
-    |> Enum.map(fn locale ->
-      pending = Map.get(pending_by_locale, locale, 0)
+  defp do_check_missing_translations(project_id, languages, opts) do
+    readiness = Localization.export_readiness_by_locale(project_id, languages, opts)
 
-      %{
-        level: :warning,
-        rule: :missing_translations,
-        message:
-          dgettext(
-            "projects",
-            "%{pending} of %{total} strings are untranslated for locale \"%{locale}\"",
-            pending: pending,
-            total: total_sources,
-            locale: locale
-          ),
-        locale: locale,
-        pending_count: pending,
-        total_count: total_sources
-      }
+    Enum.flat_map(languages, fn locale ->
+      counts = Map.get(readiness, locale, %{total: 0, preview_ready: 0, release_ready: 0})
+      localization_findings(locale, counts, opts.localization_policy)
     end)
+  end
+
+  defp localization_findings(locale, counts, :release) do
+    excluded = counts.total - counts.release_ready
+
+    if excluded == 0 do
+      []
+    else
+      [
+        %{
+          level: :warning,
+          rule: :missing_translations,
+          message:
+            dgettext(
+              "projects",
+              "%{excluded} of %{total} strings are not release-ready for locale \"%{locale}\"",
+              excluded: excluded,
+              total: counts.total,
+              locale: locale
+            ),
+          locale: locale,
+          pending_count: excluded,
+          excluded_count: excluded,
+          ready_count: counts.release_ready,
+          total_count: counts.total,
+          localization_policy: :release
+        }
+      ]
+    end
+  end
+
+  defp localization_findings(locale, counts, :preview) do
+    missing = counts.total - counts.preview_ready
+    non_release = counts.preview_ready - counts.release_ready
+
+    missing_findings =
+      if missing == 0 do
+        []
+      else
+        [
+          %{
+            level: :warning,
+            rule: :missing_translations,
+            message:
+              dgettext(
+                "projects",
+                "%{missing} of %{total} strings have no preview translation for locale \"%{locale}\"",
+                missing: missing,
+                total: counts.total,
+                locale: locale
+              ),
+            locale: locale,
+            pending_count: missing,
+            excluded_count: missing,
+            ready_count: counts.preview_ready,
+            total_count: counts.total,
+            localization_policy: :preview
+          }
+        ]
+      end
+
+    preview_findings =
+      if non_release == 0 do
+        []
+      else
+        [
+          %{
+            level: :info,
+            rule: :preview_localization,
+            message:
+              dgettext(
+                "projects",
+                "Preview export includes %{count} non-final or outdated strings for locale \"%{locale}\"",
+                count: non_release,
+                locale: locale
+              ),
+            locale: locale,
+            non_release_count: non_release,
+            localization_policy: :preview
+          }
+        ]
+      end
+
+    missing_findings ++ preview_findings
   end
 
   # =============================================================================

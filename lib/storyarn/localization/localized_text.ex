@@ -9,7 +9,8 @@ defmodule Storyarn.Localization.LocalizedText do
   identifies a translation. The `source_type` + `source_id` point to the origin entity,
   and `source_field` identifies which field within that entity.
 
-  Source types: `"flow_node"`, `"block"`, `"sheet"`, `"flow"`, `"scene"`, `"screenplay"`
+  Source types: `"flow_node"`, `"block"`, and runtime speaker `"sheet"` names. The accepted fields and their
+  runtime roles are defined by `Storyarn.Localization.SourceContract`.
 
   Status workflow: pending → draft → in_progress → review → final
   When source text changes on a `final` entry, status downgrades to `review`.
@@ -22,12 +23,16 @@ defmodule Storyarn.Localization.LocalizedText do
   alias Storyarn.Accounts.User
   alias Storyarn.Assets.Asset
   alias Storyarn.Localization.HtmlHandler
+  alias Storyarn.Localization.LocaleCode
+  alias Storyarn.Localization.SourceContract
   alias Storyarn.Projects.Project
   alias Storyarn.Sheets.Sheet
 
   @valid_statuses ~w(pending draft in_progress review final)
   @valid_vo_statuses ~w(none needed recorded approved)
-  @valid_source_types ~w(flow_node block sheet flow scene screenplay)
+  @valid_archive_reasons ~w(source_deleted source_field_removed source_not_runtime version_replaced)
+  @valid_source_types SourceContract.source_types()
+  @valid_content_roles SourceContract.content_roles()
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -50,6 +55,8 @@ defmodule Storyarn.Localization.LocalizedText do
           speaker_sheet_id: integer() | nil,
           speaker_sheet: Sheet.t() | NotLoaded.t() | nil,
           word_count: integer() | nil,
+          content_role: String.t(),
+          vo_eligible: boolean(),
           machine_translated: boolean(),
           last_translated_at: DateTime.t() | nil,
           last_reviewed_at: DateTime.t() | nil,
@@ -58,6 +65,9 @@ defmodule Storyarn.Localization.LocalizedText do
           reviewed_by_id: integer() | nil,
           reviewed_by: User.t() | NotLoaded.t() | nil,
           lock_version: integer(),
+          archived_at: DateTime.t() | nil,
+          archive_reason: String.t() | nil,
+          localization_key: String.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -76,10 +86,15 @@ defmodule Storyarn.Localization.LocalizedText do
     field :translator_notes, :string
     field :reviewer_notes, :string
     field :word_count, :integer
+    field :content_role, :string, default: "runtime_value"
+    field :vo_eligible, :boolean, default: false
     field :machine_translated, :boolean, default: false
     field :last_translated_at, :utc_datetime
     field :last_reviewed_at, :utc_datetime
     field :lock_version, :integer, default: 1
+    field :archived_at, :utc_datetime
+    field :archive_reason, :string
+    field :localization_key, :string, virtual: true
 
     belongs_to :project, Project
     belongs_to :vo_asset, Asset
@@ -108,14 +123,22 @@ defmodule Storyarn.Localization.LocalizedText do
       :vo_status,
       :speaker_sheet_id,
       :word_count,
+      :content_role,
+      :vo_eligible,
       :machine_translated,
       :last_translated_at
     ])
+    |> update_change(:locale_code, &LocaleCode.normalize/1)
     |> validate_required([:source_type, :source_id, :source_field, :locale_code])
     |> validate_inclusion(:source_type, @valid_source_types)
+    |> validate_runtime_source_field()
+    |> validate_inclusion(:content_role, @valid_content_roles)
+    |> validate_runtime_source_metadata()
     |> validate_inclusion(:status, @valid_statuses)
     |> validate_inclusion(:vo_status, @valid_vo_statuses)
-    |> validate_length(:locale_code, min: 2, max: 10)
+    |> validate_vo_eligibility()
+    |> validate_length(:locale_code, min: 2, max: LocaleCode.max_length())
+    |> validate_format(:locale_code, LocaleCode.format())
     |> unique_constraint([:source_type, :source_id, :source_field, :locale_code],
       name: :localized_texts_source_locale_unique
     )
@@ -126,6 +149,9 @@ defmodule Storyarn.Localization.LocalizedText do
     |> validate_translation_is_current_when_final()
     |> validate_placeholders()
     |> check_constraint(:status, name: :localized_texts_final_requires_current_translation)
+    |> check_constraint(:content_role, name: :localized_texts_source_metadata_runtime)
+    |> check_constraint(:vo_status, name: :localized_texts_vo_status_valid)
+    |> check_constraint(:vo_status, name: :localized_texts_vo_requires_eligible_source)
   end
 
   @doc """
@@ -151,6 +177,7 @@ defmodule Storyarn.Localization.LocalizedText do
     ])
     |> validate_inclusion(:status, @valid_statuses)
     |> validate_inclusion(:vo_status, @valid_vo_statuses)
+    |> validate_vo_eligibility()
     |> foreign_key_constraint(:vo_asset_id)
     |> foreign_key_constraint(:speaker_sheet_id)
     |> foreign_key_constraint(:translated_by_id)
@@ -159,6 +186,8 @@ defmodule Storyarn.Localization.LocalizedText do
     |> validate_translation_is_current_when_final()
     |> validate_placeholders()
     |> check_constraint(:status, name: :localized_texts_final_requires_current_translation)
+    |> check_constraint(:vo_status, name: :localized_texts_vo_status_valid)
+    |> check_constraint(:vo_status, name: :localized_texts_vo_requires_eligible_source)
     |> optimistic_lock(:lock_version)
   end
 
@@ -168,7 +197,27 @@ defmodule Storyarn.Localization.LocalizedText do
   """
   def source_update_changeset(text, attrs) do
     text
-    |> cast(attrs, [:source_text, :source_text_hash, :word_count, :status, :speaker_sheet_id])
+    |> cast(attrs, [
+      :source_text,
+      :source_text_hash,
+      :word_count,
+      :status,
+      :speaker_sheet_id,
+      :content_role,
+      :vo_eligible,
+      :vo_status,
+      :archived_at,
+      :archive_reason
+    ])
+    |> validate_inclusion(:content_role, @valid_content_roles)
+    |> validate_inclusion(:vo_status, @valid_vo_statuses)
+    |> validate_inclusion(:archive_reason, @valid_archive_reasons)
+    |> validate_runtime_source_metadata()
+    |> validate_vo_eligibility()
+    |> check_constraint(:content_role, name: :localized_texts_source_metadata_runtime)
+    |> check_constraint(:vo_status, name: :localized_texts_vo_status_valid)
+    |> check_constraint(:vo_status, name: :localized_texts_vo_requires_eligible_source)
+    |> check_constraint(:archive_reason, name: :localized_texts_archive_reason_valid)
     |> optimistic_lock(:lock_version)
   end
 
@@ -186,6 +235,59 @@ defmodule Storyarn.Localization.LocalizedText do
     else
       changeset
     end
+  end
+
+  defp validate_runtime_source_field(changeset) do
+    source_type = get_field(changeset, :source_type)
+    source_field = get_field(changeset, :source_field)
+
+    if SourceContract.field?(source_type, source_field) do
+      changeset
+    else
+      add_error(changeset, :source_field, "is not part of the runtime localization contract")
+    end
+  end
+
+  defp validate_runtime_source_metadata(changeset) do
+    metadata =
+      SourceContract.field_metadata(
+        get_field(changeset, :source_type),
+        get_field(changeset, :source_field)
+      )
+
+    case metadata do
+      nil ->
+        changeset
+
+      metadata ->
+        changeset
+        |> maybe_add_runtime_metadata_error(:content_role, metadata.content_role)
+        |> maybe_add_runtime_metadata_error(:vo_eligible, metadata.vo_eligible)
+    end
+  end
+
+  defp maybe_add_runtime_metadata_error(changeset, field, expected) do
+    if get_field(changeset, field) == expected do
+      changeset
+    else
+      add_error(changeset, field, "does not match the runtime source field")
+    end
+  end
+
+  defp validate_vo_eligibility(changeset) do
+    if get_field(changeset, :vo_eligible) == false do
+      changeset
+      |> maybe_add_ineligible_vo_error(:vo_status, get_field(changeset, :vo_status) != "none")
+      |> maybe_add_ineligible_vo_error(:vo_asset_id, not is_nil(get_field(changeset, :vo_asset_id)))
+    else
+      changeset
+    end
+  end
+
+  defp maybe_add_ineligible_vo_error(changeset, _field, false), do: changeset
+
+  defp maybe_add_ineligible_vo_error(changeset, field, true) do
+    add_error(changeset, field, "is only available for spoken dialogue and responses")
   end
 
   defp validate_translation_is_current_when_final(changeset) do

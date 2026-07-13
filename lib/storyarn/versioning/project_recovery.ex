@@ -16,6 +16,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   alias Storyarn.Localization.GlossaryEntry
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProjectLanguage
+  alias Storyarn.Localization.SourceContract
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
@@ -442,6 +443,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
           name: lang["name"],
           is_source: lang["is_source"] || false,
           position: lang["position"] || 0,
+          archived_at: parse_datetime(lang["archived_at"]),
           inserted_at: now,
           updated_at: now
         }
@@ -453,49 +455,138 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   defp restore_texts(_project_id, [], _id_maps, _snapshot_data, _user_id, _opts, _now), do: :ok
 
   defp restore_texts(project_id, texts, id_maps, snapshot_data, user_id, opts, now) do
+    context = %{project_id: project_id, snapshot_data: snapshot_data, user_id: user_id, opts: opts, now: now}
+
     texts
-    |> Enum.map(fn text ->
-      source_id = remap_source_id(text["source_type"], text["source_id"], id_maps)
-      vo_asset_id = remap_vo_asset_id(text["vo_asset_id"], snapshot_data, project_id, user_id, opts)
-
-      speaker_id =
-        if text["speaker_sheet_id"], do: Map.get(id_maps.sheet, text["speaker_sheet_id"])
-
-      %{
-        project_id: project_id,
-        source_type: text["source_type"],
-        source_id: source_id,
-        source_field: text["source_field"],
-        source_text: text["source_text"],
-        source_text_hash: text["source_text_hash"],
-        locale_code: text["locale_code"],
-        translated_text: text["translated_text"],
-        status: text["status"] || "pending",
-        vo_status: text["vo_status"] || "none",
-        vo_asset_id: vo_asset_id,
-        translator_notes: text["translator_notes"],
-        reviewer_notes: text["reviewer_notes"],
-        speaker_sheet_id: speaker_id,
-        word_count: text["word_count"],
-        machine_translated: text["machine_translated"] || false,
-        last_translated_at: text["last_translated_at"],
-        last_reviewed_at: text["last_reviewed_at"],
-        translated_by_id: nil,
-        reviewed_by_id: nil,
-        inserted_at: now,
-        updated_at: now
-      }
-    end)
+    |> Enum.flat_map(&recovered_text_attrs(&1, id_maps, context))
     |> Enum.chunk_every(500)
     |> Enum.each(fn chunk -> Repo.insert_all(LocalizedText, chunk) end)
   end
 
-  defp remap_source_id("flow_node", old_id, id_maps), do: Map.get(id_maps.node, old_id, old_id)
-  defp remap_source_id("block", old_id, id_maps), do: Map.get(id_maps.block, old_id, old_id)
-  defp remap_source_id("sheet", old_id, id_maps), do: Map.get(id_maps.sheet, old_id, old_id)
-  defp remap_source_id("flow", old_id, id_maps), do: Map.get(id_maps.flow, old_id, old_id)
-  defp remap_source_id("scene", old_id, id_maps), do: Map.get(id_maps.scene, old_id, old_id)
-  defp remap_source_id(_type, old_id, _id_maps), do: old_id
+  defp recovered_text_attrs(text, id_maps, context) do
+    metadata = SourceContract.field_metadata(text["source_type"], text["source_field"])
+    source_id = remap_source_id(text["source_type"], text["source_id"], id_maps)
+
+    if is_nil(metadata) or is_nil(source_id) do
+      []
+    else
+      [recovered_text_map(text, metadata, source_id, id_maps, context)]
+    end
+  end
+
+  defp recovered_text_map(text, metadata, source_id, id_maps, context) do
+    translated_source_hash = translated_source_hash(text)
+    vo_asset_id = recovered_vo_asset_id(text, metadata, context)
+
+    %{
+      project_id: context.project_id,
+      source_type: text["source_type"],
+      source_id: source_id,
+      source_field: text["source_field"],
+      source_text: text["source_text"],
+      source_text_hash: text["source_text_hash"],
+      translated_source_hash: translated_source_hash,
+      locale_code: text["locale_code"],
+      translated_text: text["translated_text"],
+      status: recovered_status(text, translated_source_hash),
+      vo_status: recovered_vo_status(text, metadata, vo_asset_id),
+      vo_asset_id: vo_asset_id,
+      translator_notes: text["translator_notes"],
+      reviewer_notes: text["reviewer_notes"],
+      speaker_sheet_id: recovered_speaker_id(text, metadata, id_maps),
+      word_count: text["word_count"],
+      content_role: metadata.content_role,
+      vo_eligible: metadata.vo_eligible,
+      machine_translated: text["machine_translated"] || false,
+      last_translated_at: parse_datetime(text["last_translated_at"]),
+      last_reviewed_at: parse_datetime(text["last_reviewed_at"]),
+      translated_by_id: nil,
+      reviewed_by_id: nil,
+      archived_at: parse_datetime(text["archived_at"]),
+      archive_reason: recovered_archive_reason(text["archive_reason"]),
+      inserted_at: context.now,
+      updated_at: context.now
+    }
+  end
+
+  defp recovered_vo_status(_text, %{vo_eligible: false}, _asset_id), do: "none"
+
+  defp recovered_vo_status(text, %{vo_eligible: true}, asset_id) do
+    status = text["vo_status"] || "none"
+
+    cond do
+      is_nil(asset_id) and status in ~w(recorded approved) -> "needed"
+      status in ~w(none needed recorded approved) -> status
+      true -> "none"
+    end
+  end
+
+  defp recovered_vo_asset_id(text, %{vo_eligible: true}, context) do
+    remap_vo_asset_id(
+      text["vo_asset_id"],
+      context.snapshot_data,
+      context.project_id,
+      context.user_id,
+      context.opts
+    )
+  end
+
+  defp recovered_vo_asset_id(_text, %{vo_eligible: false}, _context), do: nil
+
+  defp recovered_speaker_id(text, %{content_role: "dialogue"}, id_maps) do
+    Map.get(id_maps.sheet, text["speaker_sheet_id"])
+  end
+
+  defp recovered_speaker_id(_text, _metadata, _id_maps), do: nil
+
+  defp remap_source_id("block", old_id, id_maps), do: Map.get(id_maps.block, old_id)
+  defp remap_source_id("sheet", old_id, id_maps), do: Map.get(id_maps.sheet, old_id)
+  defp remap_source_id("flow_node", old_id, id_maps), do: Map.get(id_maps.node, old_id)
+  defp remap_source_id(_type, _old_id, _id_maps), do: nil
+
+  defp parse_datetime(nil), do: nil
+  defp parse_datetime(%DateTime{} = datetime), do: datetime
+
+  defp parse_datetime(value) when is_binary(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, datetime, _offset} -> datetime
+      _ -> nil
+    end
+  end
+
+  defp parse_datetime(_value), do: nil
+
+  defp translated_source_hash(%{"translated_source_hash" => hash}) when is_binary(hash), do: hash
+
+  defp translated_source_hash(text) do
+    if is_binary(text["translated_text"]) and String.trim(text["translated_text"]) != "" do
+      text["source_text_hash"]
+    end
+  end
+
+  defp recovered_status(%{"status" => "final"} = text, translated_hash) do
+    if present_translation?(text["translated_text"]) and not is_nil(text["source_text_hash"]) and
+         translated_hash == text["source_text_hash"] do
+      "final"
+    else
+      if(present_translation?(text["translated_text"]), do: "review", else: "pending")
+    end
+  end
+
+  defp recovered_status(text, _translated_hash) do
+    case text["status"] do
+      status when status in ~w(pending draft in_progress review final) -> status
+      _status -> if(present_translation?(text["translated_text"]), do: "draft", else: "pending")
+    end
+  end
+
+  defp recovered_archive_reason(reason)
+       when reason in ["source_deleted", "source_field_removed", "source_not_runtime", "version_replaced"], do: reason
+
+  defp recovered_archive_reason(_reason), do: nil
+
+  defp present_translation?(value) when is_binary(value), do: String.trim(value) != ""
+  defp present_translation?(_value), do: false
 
   defp remap_vo_asset_id(nil, _snapshot_data, _project_id, _user_id, _opts), do: nil
 

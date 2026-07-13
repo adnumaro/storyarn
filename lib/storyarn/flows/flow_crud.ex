@@ -263,11 +263,6 @@ defmodule Storyarn.Flows.FlowCrud do
       |> Flow.update_changeset(attrs)
       |> Repo.update()
 
-    case result do
-      {:ok, updated_flow} -> Localization.extract_flow(updated_flow)
-      _ -> :ok
-    end
-
     result
   end
 
@@ -303,15 +298,15 @@ defmodule Storyarn.Flows.FlowCrud do
   def delete_flow(%Flow{} = flow) do
     result =
       Repo.transaction(fn ->
-        # Clean up localization texts
-        Localization.delete_flow_texts(flow.id)
+        # Remove runtime strings for the flow before it leaves the active export graph.
+        Localization.delete_flow_node_texts_for_flows([flow.id])
 
         # Soft delete the flow + sweep referenced_flow_id refs atomically
         case Trashable.soft_delete(flow) do
           {:ok, deleted_flow} ->
             # Also soft-delete all children recursively
             SoftDelete.soft_delete_children(Flow, flow.project_id, flow.id,
-              pre_delete: &Localization.delete_flow_texts(&1.id)
+              pre_delete: &Localization.delete_flow_node_texts_for_flows([&1.id])
             )
 
             deleted_flow
@@ -339,14 +334,29 @@ defmodule Storyarn.Flows.FlowCrud do
   Use with caution - this cannot be undone.
   """
   def hard_delete_flow(%Flow{} = flow) do
-    Repo.delete(flow)
+    Repo.transaction(fn ->
+      node_ids = Repo.all(from(n in FlowNode, where: n.flow_id == ^flow.id, select: n.id))
+      Localization.purge_texts_for_sources("flow_node", node_ids)
+
+      case Repo.delete(flow) do
+        {:ok, deleted} -> deleted
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
+    end)
   end
 
   @doc """
   Restores a soft-deleted flow. Trash refs (`referenced_flow_id` pointers
   from subflow + exit nodes) are re-applied conservatively via `Trashable`.
   """
-  def restore_flow(%Flow{} = flow), do: Trashable.restore(flow)
+  def restore_flow(%Flow{} = flow) do
+    flow
+    |> Trashable.restore()
+    |> tap(fn
+      {:ok, restored_flow} -> Localization.extract_flow_nodes(restored_flow.id)
+      _ -> :ok
+    end)
+  end
 
   @doc """
   Lists all soft-deleted flows for a project (trash).

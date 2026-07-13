@@ -15,6 +15,15 @@ defmodule Storyarn.Shared.MapUtils do
     end)
   end
 
+  @doc "Reads an atom field from maps that may use atom or string keys."
+  @spec get_flexible(map(), atom()) :: term()
+  def get_flexible(map, field) when is_map(map) and is_atom(field) do
+    case Map.fetch(map, field) do
+      {:ok, value} -> value
+      :error -> Map.get(map, Atom.to_string(field))
+    end
+  end
+
   @doc """
   Parses a value to an integer, returning nil for empty/unparseable values.
   """

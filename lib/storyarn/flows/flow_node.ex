@@ -37,6 +37,7 @@ defmodule Storyarn.Flows.FlowNode do
   alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Flows.SequenceTrack
   alias Storyarn.Flows.SequenceVisualLayer
+  alias Storyarn.Localization.RuntimeKey
   alias Storyarn.Shared.TimeHelpers
 
   @node_types ~w(annotation dialogue hub condition instruction jump entry exit subflow sequence)
@@ -105,11 +106,28 @@ defmodule Storyarn.Flows.FlowNode do
   Changeset for creating a new node.
   """
   def create_changeset(node, attrs) do
+    attrs = ensure_dialogue_runtime_ids(attrs, nil)
+
     node
     |> cast(attrs, [:type, :position_x, :position_y, :data, :source, :parent_id])
     |> validate_required([:type])
     |> validate_inclusion(:type, @node_types)
     |> validate_inclusion(:source, @valid_sources)
+    |> validate_dialogue_runtime_ids()
+    |> dialogue_localization_id_constraint()
+    |> foreign_key_constraint(:flow_id)
+    |> foreign_key_constraint(:parent_id)
+  end
+
+  @doc "Strict changeset for materializing a node from a current snapshot."
+  def materialize_changeset(node, attrs) do
+    node
+    |> cast(attrs, [:type, :position_x, :position_y, :data, :word_count, :source, :parent_id])
+    |> validate_required([:type])
+    |> validate_inclusion(:type, @node_types)
+    |> validate_inclusion(:source, @valid_sources)
+    |> validate_dialogue_runtime_ids()
+    |> dialogue_localization_id_constraint()
     |> foreign_key_constraint(:flow_id)
     |> foreign_key_constraint(:parent_id)
   end
@@ -118,10 +136,14 @@ defmodule Storyarn.Flows.FlowNode do
   Changeset for updating a node.
   """
   def update_changeset(node, attrs) do
+    attrs = ensure_dialogue_runtime_ids(attrs, node)
+
     node
     |> cast(attrs, [:type, :position_x, :position_y, :data, :parent_id])
     |> validate_required([:type])
     |> validate_inclusion(:type, @node_types)
+    |> validate_dialogue_runtime_ids()
+    |> dialogue_localization_id_constraint()
     |> foreign_key_constraint(:parent_id)
   end
 
@@ -154,7 +176,12 @@ defmodule Storyarn.Flows.FlowNode do
   Used for editing node properties.
   """
   def data_changeset(node, attrs) do
-    cast(node, attrs, [:data])
+    attrs = ensure_dialogue_runtime_ids(attrs, node)
+
+    node
+    |> cast(attrs, [:data])
+    |> validate_dialogue_runtime_ids()
+    |> dialogue_localization_id_constraint()
   end
 
   @doc """
@@ -168,6 +195,139 @@ defmodule Storyarn.Flows.FlowNode do
   Changeset for restoring a soft-deleted node by clearing deleted_at.
   """
   def restore_changeset(node) do
-    change(node, deleted_at: nil)
+    node
+    |> change(deleted_at: nil)
+    |> validate_dialogue_runtime_ids()
+    |> dialogue_localization_id_constraint()
+  end
+
+  defp ensure_dialogue_runtime_ids(attrs, node) when is_map(attrs) do
+    type = attr(attrs, :type) || (node && node.type)
+    data = attr(attrs, :data) || existing_data(node)
+
+    if type == "dialogue" and is_map(data) do
+      put_attr(attrs, :data, normalize_dialogue_runtime_ids(data, existing_localization_id(node)))
+    else
+      attrs
+    end
+  end
+
+  defp normalize_dialogue_runtime_ids(data, existing_id) do
+    data
+    |> ensure_localization_id(existing_id)
+    |> ensure_response_ids()
+  end
+
+  defp ensure_localization_id(data, existing_id) do
+    case map_value(data, "localization_id") do
+      value when value not in [nil, ""] -> put_string_key(data, "localization_id", value)
+      _missing -> put_string_key(data, "localization_id", reusable_id(existing_id, &RuntimeKey.new_dialogue_id/0))
+    end
+  end
+
+  defp ensure_response_ids(data) do
+    case map_value(data, "responses") do
+      responses when is_list(responses) ->
+        responses = Enum.map(responses, &ensure_response_id/1)
+        put_string_key(data, "responses", responses)
+
+      missing_or_invalid ->
+        if map_has_key?(data, "responses"),
+          do: put_string_key(data, "responses", missing_or_invalid),
+          else: data
+    end
+  end
+
+  defp ensure_response_id(response) when is_map(response) do
+    case map_value(response, "id") do
+      value when value not in [nil, ""] -> put_string_key(response, "id", value)
+      _missing -> put_string_key(response, "id", RuntimeKey.new_response_id())
+    end
+  end
+
+  defp ensure_response_id(response), do: response
+
+  defp reusable_id(existing_id, generator) do
+    if RuntimeKey.valid_dialogue_id?(existing_id), do: existing_id, else: generator.()
+  end
+
+  defp existing_localization_id(%__MODULE__{data: data}) when is_map(data), do: data["localization_id"]
+  defp existing_localization_id(_node), do: nil
+
+  defp existing_data(%__MODULE__{data: data}) when is_map(data), do: data
+  defp existing_data(_node), do: %{}
+
+  defp validate_dialogue_runtime_ids(changeset) do
+    if get_field(changeset, :type) == "dialogue" do
+      data = get_field(changeset, :data) || %{}
+      changeset |> validate_localization_id(data) |> validate_response_ids(data)
+    else
+      changeset
+    end
+  end
+
+  defp validate_localization_id(changeset, data) do
+    if RuntimeKey.valid_dialogue_id?(data["localization_id"]) do
+      changeset
+    else
+      add_error(changeset, :data, "must contain a valid localization_id")
+    end
+  end
+
+  defp validate_response_ids(changeset, data) do
+    responses = data["responses"] || []
+
+    if is_list(responses) do
+      ids =
+        Enum.map(responses, fn
+          response when is_map(response) -> response["id"]
+          _response -> nil
+        end)
+
+      cond do
+        not Enum.all?(ids, &RuntimeKey.valid_response_id?/1) ->
+          add_error(changeset, :data, "every response must contain a valid id")
+
+        length(ids) != length(Enum.uniq(ids)) ->
+          add_error(changeset, :data, "response ids must be unique")
+
+        true ->
+          changeset
+      end
+    else
+      add_error(changeset, :data, "responses must be a list")
+    end
+  end
+
+  defp dialogue_localization_id_constraint(changeset) do
+    unique_constraint(changeset, :data,
+      name: :flow_nodes_dialogue_localization_id_unique,
+      message: "localization_id must be unique within the project"
+    )
+  end
+
+  defp attr(attrs, field), do: Map.get(attrs, field, Map.get(attrs, to_string(field)))
+
+  defp map_value(map, key), do: Map.get(map, key, Map.get(map, atom_key(key)))
+
+  defp map_has_key?(map, key), do: Map.has_key?(map, key) or Map.has_key?(map, atom_key(key))
+
+  defp put_string_key(map, key, value) do
+    map
+    |> Map.delete(atom_key(key))
+    |> Map.put(key, value)
+  end
+
+  defp atom_key("localization_id"), do: :localization_id
+  defp atom_key("responses"), do: :responses
+  defp atom_key("id"), do: :id
+
+  defp put_attr(attrs, field, value) do
+    cond do
+      Map.has_key?(attrs, field) -> Map.put(attrs, field, value)
+      Map.has_key?(attrs, to_string(field)) -> Map.put(attrs, to_string(field), value)
+      Enum.any?(Map.keys(attrs), &is_atom/1) -> Map.put(attrs, field, value)
+      true -> Map.put(attrs, to_string(field), value)
+    end
   end
 end
