@@ -1,0 +1,24 @@
+test/e2e/templates/templates_test.exs
+  s_41724a46c80f80::t_a716797ad101f9 45,49
+  s_41724a46c80f80::t_16f1e4fa3e84f2 41-44,46-48
+  s_41724a46c80f80::t_f95a166e62eae9 51,53-55,63,68
+  s_41724a46c80f80::t_80dbd4629c7770 69
+  s_41724a46c80f80::t_6a8d04ab9ccc8b 9,17,19,50,52,56,62,64-67
+  s_41724a46c80f80::t_1222f60305b209 57-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "98d96a2b3f1280f42b7437b84897932f2af5aa7a",
+  "prompts": {},
+  "sessions": {
+    "s_41724a46c80f80": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5a38-779f-79c2-8a43-ddadb649de77",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
