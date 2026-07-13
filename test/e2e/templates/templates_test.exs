@@ -9,20 +9,13 @@ defmodule StoryarnWeb.E2E.TemplatesTest do
 
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
+  import StoryarnWeb.E2EHelpers
 
-  alias Storyarn.Accounts
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates
   alias Storyarn.Repo
 
   @moduletag :e2e
-
-  @session_options [
-    store: :cookie,
-    key: "_storyarn_key",
-    signing_salt: Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_signing_salt]),
-    encryption_salt: Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_encryption_salt])
-  ]
 
   test "creates a mutable project from a template in a real browser", %{conn: conn} do
     user = user_fixture()
@@ -49,11 +42,5 @@ defmodule StoryarnWeb.E2E.TemplatesTest do
     assert installed_project.id != source_project.id
     assert installed_project.name == "E2E Starter"
     assert installed_project.created_from_template_version_id == template.current_version_id
-  end
-
-  defp authenticate(conn, user) do
-    token = Accounts.generate_user_session_token(user)
-
-    add_session_cookie(conn, [value: %{user_token: token}], @session_options)
   end
 end
