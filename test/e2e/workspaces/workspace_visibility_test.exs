@@ -13,22 +13,9 @@ defmodule StoryarnWeb.E2E.WorkspaceVisibilityTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
-
-  alias Storyarn.Accounts
+  import StoryarnWeb.E2EHelpers
 
   @moduletag :e2e
-
-  @session_options [
-    store: :cookie,
-    key: "_storyarn_key",
-    signing_salt: Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_signing_salt]),
-    encryption_salt: Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_encryption_salt])
-  ]
-
-  defp authenticate(conn, user) do
-    token = Accounts.generate_user_session_token(user)
-    add_session_cookie(conn, [value: %{user_token: token}], @session_options)
-  end
 
   setup do
     owner = user_fixture()

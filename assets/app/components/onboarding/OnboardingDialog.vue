@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { ArrowLeft, ArrowRight, BookOpen, Check, PackageCheck, Sparkles } from "lucide-vue-next";
 import { useI18n } from "vue-i18n";
 import { Button } from "@components/ui/button";
+import { Checkbox } from "@components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +28,7 @@ const { t } = useI18n();
 const live = useLive();
 const open = ref(false);
 const step = ref(0);
+const dontShowAgain = ref(false);
 const openSource = ref<"auto" | "manual">("manual");
 const closingIntentionally = ref(false);
 
@@ -61,7 +63,7 @@ function markTutorialSnoozed(guideKey: OnboardingGuideKey): void {
   }
 }
 
-function track(action: "opened" | "snoozed" | "docs_opened"): void {
+function track(action: "opened" | "snoozed" | "finished" | "docs_opened"): void {
   if (!typedGuideKey.value) return;
 
   live.pushEvent("onboarding_tutorial_interaction", {
@@ -75,6 +77,7 @@ function show(source: "auto" | "manual"): void {
   if (!guide.value) return;
 
   step.value = 0;
+  dontShowAgain.value = false;
   openSource.value = source;
   open.value = true;
   track("opened");
@@ -84,23 +87,29 @@ function openTutorial(): void {
   show("manual");
 }
 
-function snooze(): void {
+function dismiss(action: "snoozed" | "finished"): void {
   if (!typedGuideKey.value) return;
 
   markTutorialSnoozed(typedGuideKey.value);
-  track("snoozed");
+
+  if (dontShowAgain.value) {
+    live.pushEvent("complete_onboarding_tutorial", {
+      tutorial: typedGuideKey.value,
+      source: openSource.value,
+    });
+  } else {
+    track(action);
+  }
+
   closeIntentionally();
 }
 
-function finish(): void {
-  if (!typedGuideKey.value) return;
+function snooze(): void {
+  dismiss("snoozed");
+}
 
-  markTutorialSnoozed(typedGuideKey.value);
-  live.pushEvent("complete_onboarding_tutorial", {
-    tutorial: typedGuideKey.value,
-    source: openSource.value,
-  });
-  closeIntentionally();
+function finish(): void {
+  dismiss("finished");
 }
 
 function closeIntentionally(): void {
@@ -213,6 +222,26 @@ defineExpose({ openTutorial });
               index <= step ? 'bg-primary' : 'bg-muted',
             ]"
           />
+        </div>
+
+        <div class="flex items-start gap-3 rounded-xl border border-border/70 bg-muted/30 p-3">
+          <Checkbox
+            id="onboarding-dont-show-again"
+            v-model="dontShowAgain"
+            data-testid="onboarding-dont-show-again"
+            class="mt-0.5"
+          />
+          <div class="space-y-0.5">
+            <label
+              for="onboarding-dont-show-again"
+              class="cursor-pointer text-sm font-medium leading-none text-foreground"
+            >
+              {{ t("onboarding.common.dont_show_again") }}
+            </label>
+            <p class="text-xs leading-relaxed text-muted-foreground">
+              {{ t("onboarding.common.dont_show_again_hint") }}
+            </p>
+          </div>
         </div>
 
         <div class="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">

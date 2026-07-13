@@ -2,9 +2,9 @@ defmodule Storyarn.Onboarding.TutorialProgress do
   @moduledoc """
   Per-user progress for a contextual onboarding tutorial.
 
-  A row with no `completed_at` timestamp represents a tutorial that was
-  explicitly restarted and should be shown again. Users in the onboarding
-  cohort do not need rows until they complete or restart a tutorial.
+  Missing rows and rows without `completed_at` represent tutorials that should
+  be shown. A completed timestamp records the user's explicit choice not to see
+  that tutorial automatically again.
   """
 
   use Ecto.Schema

@@ -8,6 +8,8 @@
       "back": "Back",
       "next": "Next",
       "got_it": "Got it",
+      "dont_show_again": "Don't show this tutorial again",
+      "dont_show_again_hint": "Leave this unchecked to see the tutorial again in a future browser session.",
       "view_tutorial": "View this tutorial"
     },
     "guides": {

@@ -54,7 +54,6 @@
       "show_again": "Show again",
       "show_again_for": "Show {tutorial} again",
       "states": {
-        "inactive": "Not started",
         "pending": "Ready to show",
         "completed": "Completed"
       }

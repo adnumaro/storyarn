@@ -9,39 +9,31 @@ defmodule Storyarn.OnboardingTest do
   alias Storyarn.Repo
 
   describe "summary/1" do
-    test "keeps existing users inactive by default" do
+    test "makes every guide pending for every user by default" do
       user = user_fixture()
 
       summary = Onboarding.summary(Scope.for_user(user))
 
-      refute summary.eligible
-      assert summary.guides["workspace"].state == :inactive
-      assert summary.guides["export"].state == :inactive
-    end
-
-    test "makes every guide pending for a newly onboarded user" do
-      user = onboarding_user_fixture()
-
-      summary = Onboarding.summary(Scope.for_user(user))
-
-      assert summary.eligible
       assert Enum.all?(summary.guides, fn {_key, guide} -> guide.state == :pending end)
     end
 
-    test "makes a completed guide pending when its stored version differs" do
-      user = onboarding_user_fixture()
+    test "makes legacy completions pending because they predate explicit opt-out" do
+      user = user_fixture()
 
-      Repo.insert!(%TutorialProgress{
-        user_id: user.id,
-        tutorial: :workspace,
-        guide_version: Onboarding.guide_version(:workspace) + 1,
-        completed_at: DateTime.utc_now(:second)
-      })
+      Enum.each(Onboarding.tutorials(), fn tutorial ->
+        Repo.insert!(%TutorialProgress{
+          user_id: user.id,
+          tutorial: tutorial,
+          guide_version: 1,
+          completed_at: DateTime.utc_now(:second)
+        })
+      end)
 
       summary = Onboarding.summary(Scope.for_user(user))
 
-      assert summary.guides["workspace"].state == :pending
-      assert summary.guides["workspace"].version == Onboarding.guide_version(:workspace)
+      assert Enum.all?(summary.guides, fn {_key, guide} ->
+               guide.state == :pending and guide.version == 2
+             end)
     end
   end
 
@@ -56,7 +48,7 @@ defmodule Storyarn.OnboardingTest do
 
       summary = Onboarding.summary(scope)
       assert summary.guides["sheets"].state == :completed
-      assert summary.guides["flows"].state == :inactive
+      assert summary.guides["flows"].state == :pending
 
       assert {:ok, restarted} = Onboarding.restart_tutorial(scope, :sheets)
       assert restarted.tutorial == :sheets
@@ -64,10 +56,10 @@ defmodule Storyarn.OnboardingTest do
 
       summary = Onboarding.summary(scope)
       assert summary.guides["sheets"].state == :pending
-      assert summary.guides["flows"].state == :inactive
+      assert summary.guides["flows"].state == :pending
     end
 
-    test "restarts all tutorials independently of cohort eligibility" do
+    test "restarts all tutorials" do
       user = user_fixture()
       scope = Scope.for_user(user)
 
@@ -75,7 +67,6 @@ defmodule Storyarn.OnboardingTest do
       assert length(progress) == 6
 
       summary = Onboarding.summary(scope)
-      refute summary.eligible
       assert Enum.all?(summary.guides, fn {_key, guide} -> guide.state == :pending end)
     end
 
@@ -92,7 +83,7 @@ defmodule Storyarn.OnboardingTest do
                :completed
 
       assert Onboarding.summary(Scope.for_user(second_user)).guides["workspace"].state ==
-               :inactive
+               :pending
     end
 
     test "rejects unknown client keys without creating atoms" do
@@ -101,11 +92,5 @@ defmodule Storyarn.OnboardingTest do
       assert {:error, :invalid_tutorial} =
                Onboarding.complete_tutorial(scope, "not-a-real-tutorial")
     end
-  end
-
-  defp onboarding_user_fixture do
-    user_fixture()
-    |> change(onboarding_started_at: DateTime.utc_now(:second))
-    |> Repo.update!()
   end
 end

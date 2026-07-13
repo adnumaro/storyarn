@@ -16,7 +16,7 @@ defmodule StoryarnWeb.Components.WorkspaceLayout do
   attr :current_workspace, :map, default: nil
   attr :workspaces, :list, default: []
   attr :socket, :any, required: true
-  attr :onboarding, :map, default: %{eligible: false, guides: %{}}
+  attr :onboarding, :map, default: %{guides: %{}}
   attr :onboarding_guide, :atom, default: nil
   attr :onboarding_autostart, :boolean, default: false
 

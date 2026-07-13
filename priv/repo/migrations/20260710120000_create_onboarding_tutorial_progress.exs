@@ -2,10 +2,6 @@ defmodule Storyarn.Repo.Migrations.CreateOnboardingTutorialProgress do
   use Ecto.Migration
 
   def change do
-    alter table(:users) do
-      add :onboarding_started_at, :utc_datetime
-    end
-
     create table(:onboarding_tutorial_progress) do
       add :tutorial, :string, null: false
       add :guide_version, :integer, null: false, default: 1

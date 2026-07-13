@@ -8,7 +8,7 @@ import type { LiveInterface } from "../../../../shared/composables/useLive";
 
 const tutorials = [
   { key: "workspace", state: "completed" as const },
-  { key: "flows", state: "inactive" as const },
+  { key: "flows", state: "pending" as const },
 ];
 
 function livePlugin(live: LiveInterface) {
