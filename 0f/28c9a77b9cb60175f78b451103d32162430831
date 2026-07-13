@@ -1,0 +1,22 @@
+test/storyarn/onboarding_test.exs
+  s_4a0b9957cfe7c2::t_6b9234739df386 20,23-30,34-36
+lib/storyarn/onboarding.ex
+  s_4a0b9957cfe7c2::t_1d91286b260d03 18-20
+  s_4a0b9957cfe7c2::t_b469711c113371 22-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "0f28c9a77b9cb60175f78b451103d32162430831",
+  "prompts": {},
+  "sessions": {
+    "s_4a0b9957cfe7c2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4c00-fd7d-7d20-a29e-6f01b61a5e2a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
