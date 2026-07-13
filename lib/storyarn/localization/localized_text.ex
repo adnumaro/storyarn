@@ -127,6 +127,7 @@ defmodule Storyarn.Localization.LocalizedText do
       :machine_translated,
       :last_translated_at
     ])
+    |> update_change(:locale_code, &LocaleCode.normalize/1)
     |> validate_required([:source_type, :source_id, :source_field, :locale_code])
     |> validate_inclusion(:source_type, @valid_source_types)
     |> validate_runtime_source_field()
@@ -259,12 +260,19 @@ defmodule Storyarn.Localization.LocalizedText do
   end
 
   defp validate_vo_eligibility(changeset) do
-    if get_field(changeset, :vo_eligible) == false and
-         (get_field(changeset, :vo_status) != "none" or not is_nil(get_field(changeset, :vo_asset_id))) do
-      add_error(changeset, :vo_status, "is only available for spoken dialogue and responses")
+    if get_field(changeset, :vo_eligible) == false do
+      changeset
+      |> maybe_add_ineligible_vo_error(:vo_status, get_field(changeset, :vo_status) != "none")
+      |> maybe_add_ineligible_vo_error(:vo_asset_id, not is_nil(get_field(changeset, :vo_asset_id)))
     else
       changeset
     end
+  end
+
+  defp maybe_add_ineligible_vo_error(changeset, _field, false), do: changeset
+
+  defp maybe_add_ineligible_vo_error(changeset, field, true) do
+    add_error(changeset, field, "is only available for spoken dialogue and responses")
   end
 
   defp validate_translation_is_current_when_final(changeset) do

@@ -736,46 +736,62 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   end
 
   defp import_nodes(project_id, flow_id, nodes, id_map) do
-    Enum.reduce(nodes, {id_map, []}, fn node_data, {map, results} ->
-      data =
-        node_data["data"]
-        |> remap_node_data(map)
-        |> rekey_conflicting_import_dialogue(project_id, node_data["type"])
+    existing_dialogue_ids = load_dialogue_localization_ids(project_id)
 
-      attrs = %{
-        "type" => node_data["type"],
-        "position_x" => node_data["position_x"] || 0.0,
-        "position_y" => node_data["position_y"] || 0.0,
-        "source" => node_data["source"],
-        "data" => data
-      }
+    {id_map, results, _dialogue_ids} =
+      Enum.reduce(nodes, {id_map, [], existing_dialogue_ids}, fn node_data, {map, results, dialogue_ids} ->
+        {data, dialogue_ids} =
+          node_data["data"]
+          |> remap_node_data(map)
+          |> rekey_conflicting_import_dialogue(node_data["type"], dialogue_ids)
 
-      node =
-        facade_insert_or_rollback!(Flows.import_node(flow_id, attrs), {:node, node_data["type"]})
+        attrs = %{
+          "type" => node_data["type"],
+          "position_x" => node_data["position_x"] || 0.0,
+          "position_y" => node_data["position_y"] || 0.0,
+          "source" => node_data["source"],
+          "data" => data
+        }
 
-      {Map.put(map, {:node, node_data["id"]}, node.id), [node | results]}
-    end)
+        node =
+          facade_insert_or_rollback!(Flows.import_node(flow_id, attrs), {:node, node_data["type"]})
+
+        {Map.put(map, {:node, node_data["id"]}, node.id), [node | results], dialogue_ids}
+      end)
+
+    {id_map, results}
   end
 
-  defp rekey_conflicting_import_dialogue(%{"localization_id" => localization_id} = data, project_id, "dialogue")
+  defp rekey_conflicting_import_dialogue(%{"localization_id" => localization_id} = data, "dialogue", used_ids)
        when is_binary(localization_id) and localization_id != "" do
-    if dialogue_localization_id_exists?(project_id, localization_id),
-      do: Map.put(data, "localization_id", "dialogue_#{Ecto.UUID.generate()}"),
-      else: data
+    localization_id =
+      if MapSet.member?(used_ids, localization_id),
+        do: unique_dialogue_localization_id(used_ids),
+        else: localization_id
+
+    {Map.put(data, "localization_id", localization_id), MapSet.put(used_ids, localization_id)}
   end
 
-  defp rekey_conflicting_import_dialogue(data, _project_id, _type), do: data
+  defp rekey_conflicting_import_dialogue(data, _type, used_ids), do: {data, used_ids}
 
-  defp dialogue_localization_id_exists?(project_id, localization_id) do
-    Repo.exists?(
-      from(node in FlowNode,
-        join: flow in Flow,
-        on: flow.id == node.flow_id,
-        where:
-          flow.project_id == ^project_id and node.type == "dialogue" and
-            fragment("?->>'localization_id' = ?", node.data, ^localization_id)
-      )
+  defp load_dialogue_localization_ids(project_id) do
+    from(node in FlowNode,
+      join: flow in Flow,
+      on: flow.id == node.flow_id,
+      where: flow.project_id == ^project_id and node.type == "dialogue",
+      select: fragment("?->>'localization_id'", node.data)
     )
+    |> Repo.all()
+    |> Enum.reject(&is_nil/1)
+    |> MapSet.new()
+  end
+
+  defp unique_dialogue_localization_id(used_ids) do
+    candidate = "dialogue_#{Ecto.UUID.generate()}"
+
+    if MapSet.member?(used_ids, candidate),
+      do: unique_dialogue_localization_id(used_ids),
+      else: candidate
   end
 
   # Remap DB IDs inside node data and clean serializer-added fields.

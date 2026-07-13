@@ -270,7 +270,7 @@
           "description": "Añade los originales en una carpeta de recursos separada."
         }
       },
-      "localization_policy": "Calidad de localización",
+      "localization_policy": "Política de localización",
       "localization_release": "Release — solo traducciones finales y actuales, y doblaje aprobado",
       "localization_preview": "Preview — incluye borradores y doblaje grabado con advertencias",
       "localization_modes": {

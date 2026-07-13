@@ -35,4 +35,23 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodecTest do
 
     assert restored_at
   end
+
+  test "restore deduplicates rows that remap onto the same runtime source key" do
+    project = project_fixture(user_fixture())
+    source_language_fixture(project, %{locale_code: "en", name: "English"})
+    language_fixture(project, %{locale_code: "es", name: "Spanish"})
+    flow = flow_fixture(project)
+    source_a = node_fixture(flow, %{type: "dialogue", data: %{"text" => "First", "responses" => []}})
+    source_b = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Second", "responses" => []}})
+    target = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Target", "responses" => []}})
+
+    rows = LocalizationSnapshotCodec.capture(project.id, %{"flow_node" => [source_a.id, source_b.id]})
+
+    assert :ok =
+             LocalizationSnapshotCodec.restore(project.id, rows, %{
+               node: %{source_a.id => target.id, source_b.id => target.id}
+             })
+
+    assert [_one_text] = Localization.get_texts_for_source("flow_node", target.id)
+  end
 end

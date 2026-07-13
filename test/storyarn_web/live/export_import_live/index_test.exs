@@ -194,6 +194,16 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       assert export_config(view)["options"]["localizationPolicy"] == "preview"
     end
 
+    test "switching localization policy clears validation result", %{conn: conn, project: project} do
+      {:ok, view, _html} = live(conn, export_url(project))
+
+      render_click(view, "validate_export", %{})
+      assert validation_status(view)
+
+      render_click(view, "set_localization_policy", %{"policy" => "preview"})
+      assert export_config(view)["validation"] == nil
+    end
+
     test "switching format clears validation result", %{conn: conn, project: project} do
       {:ok, view, _html} = live(conn, export_url(project))
 

@@ -94,8 +94,7 @@ defmodule Storyarn.Sheets.BlockCrud do
     result = insert_block_in_transaction(sheet, enriched_attrs, word_count)
 
     case result do
-      {:ok, block} ->
-        Localization.extract_block_tree(block.id)
+      {:ok, _block} ->
         broadcast_sheet_change(sheet)
 
       _ ->
@@ -139,21 +138,27 @@ defmodule Storyarn.Sheets.BlockCrud do
   defp block_word_count(_block_type, _value), do: 0
 
   defp insert_block_in_transaction(sheet, attrs, word_count) do
-    Repo.transaction(fn ->
-      case %Block{sheet_id: sheet.id}
-           |> Block.create_changeset(attrs)
-           |> Ecto.Changeset.put_change(:word_count, word_count)
-           |> ensure_unique_variable_name(sheet.id, nil)
-           |> Repo.insert() do
-        {:ok, block} ->
-          maybe_create_default_table_structure({:ok, block})
-          maybe_propagate_to_descendants({:ok, block}, sheet.id)
-          block
+    Repo.transaction(fn -> insert_block(sheet, attrs, word_count) end)
+  end
 
-        {:error, changeset} ->
-          Repo.rollback(changeset)
-      end
-    end)
+  defp insert_block(sheet, attrs, word_count) do
+    case %Block{sheet_id: sheet.id}
+         |> Block.create_changeset(attrs)
+         |> Ecto.Changeset.put_change(:word_count, word_count)
+         |> ensure_unique_variable_name(sheet.id, nil)
+         |> Repo.insert() do
+      {:ok, block} ->
+        maybe_create_default_table_structure({:ok, block})
+        maybe_propagate_to_descendants({:ok, block}, sheet.id)
+
+        case Localization.extract_block_tree(block.id) do
+          :ok -> block
+          {:error, reason} -> Repo.rollback(reason)
+        end
+
+      {:error, changeset} ->
+        Repo.rollback(changeset)
+    end
   end
 
   defp maybe_propagate_to_descendants({:ok, block}, sheet_id)

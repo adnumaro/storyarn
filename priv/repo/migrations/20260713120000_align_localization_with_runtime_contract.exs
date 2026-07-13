@@ -56,6 +56,9 @@ defmodule Storyarn.Repo.Migrations.AlignLocalizationWithRuntimeContract do
        OR char_length(locale_code) > 35
     """)
 
+    execute("UPDATE localized_texts SET locale_code = lower(locale_code)")
+    execute("UPDATE project_languages SET locale_code = lower(locale_code)")
+
     alter table(:localized_texts) do
       modify :locale_code, :string, size: 35, null: false
     end
@@ -178,12 +181,12 @@ defmodule Storyarn.Repo.Migrations.AlignLocalizationWithRuntimeContract do
 
     create constraint(:localized_texts, :localized_texts_locale_code_safe,
              check:
-               "locale_code ~ '^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$' AND locale_code !~ E'[\\r\\n]' AND char_length(locale_code) <= 35"
+               "locale_code ~ '^[a-z]{2,3}(-[a-z0-9]{2,8})*$' AND locale_code !~ E'[\\r\\n]' AND char_length(locale_code) <= 35"
            )
 
     create constraint(:project_languages, :project_languages_locale_code_safe,
              check:
-               "locale_code ~ '^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$' AND locale_code !~ E'[\\r\\n]' AND char_length(locale_code) <= 35"
+               "locale_code ~ '^[a-z]{2,3}(-[a-z0-9]{2,8})*$' AND locale_code !~ E'[\\r\\n]' AND char_length(locale_code) <= 35"
            )
 
     create index(:localized_texts, [:project_id, :locale_code, :status],

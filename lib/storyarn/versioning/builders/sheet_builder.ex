@@ -228,16 +228,22 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     }
 
     case LocalizationSnapshotCodec.restore(project_id, Map.get(snapshot, "localization", []), id_maps) do
-      :ok -> {sheet, id_maps}
-      {:error, reason} -> Repo.rollback(reason)
+      :ok ->
+        with :ok <- Localization.extract_sheet_blocks(sheet.id),
+             :ok <- Localization.sync_sheet_names(project_id) do
+          {sheet, id_maps}
+        else
+          {:error, reason} -> Repo.rollback(reason)
+        end
+
+      {:error, reason} ->
+        Repo.rollback(reason)
     end
   end
 
-  defp finalize_sheet_instantiation(result, project_id) do
+  defp finalize_sheet_instantiation(result, _project_id) do
     case result do
       {:ok, {sheet, id_maps}} ->
-        Localization.extract_sheet_blocks(sheet.id)
-        Localization.sync_sheet_names(project_id)
         {:ok, sheet, id_maps}
 
       {:error, reason} ->
@@ -291,6 +297,12 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
       restore_sheet_localization(sheet.project_id, localization_rows, id_maps)
     end)
+    |> Multi.run(:reconcile_localization, fn _repo, %{sheet: updated_sheet} ->
+      with :ok <- Localization.extract_sheet_blocks(updated_sheet.id),
+           :ok <- Localization.sync_sheet_names(updated_sheet.project_id) do
+        {:ok, :reconciled}
+      end
+    end)
   end
 
   defp archive_sheet_localization(sheet_id) do
@@ -317,9 +329,6 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   defp finalize_sheet_restore(result, snapshot, opts) do
     case result do
       {:ok, %{sheet: updated_sheet, restore_blocks: block_data}} ->
-        Localization.extract_sheet_blocks(updated_sheet.id)
-        Localization.sync_sheet_names(updated_sheet.project_id)
-
         restored_sheet =
           Repo.preload(updated_sheet, [:banner_asset, :blocks, avatars: :asset], force: true)
 

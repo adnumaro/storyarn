@@ -75,7 +75,7 @@ defmodule Storyarn.Localization.Languages do
     %{code: "zh-Hant", name: "Chinese (Traditional)", native: "繁體中文", region: :asia}
   ]
 
-  @languages_by_code Map.new(@languages, &{&1.code, &1})
+  @languages_by_code Map.new(@languages, &{String.downcase(&1.code), &1})
 
   @flag_overrides %{
     "ar" => "sa",
@@ -115,8 +115,8 @@ defmodule Storyarn.Localization.Languages do
     "tr" => "tr",
     "uk" => "ua",
     "vi" => "vn",
-    "zh-Hans" => "cn",
-    "zh-Hant" => "tw"
+    "zh-hans" => "cn",
+    "zh-hant" => "tw"
   }
 
   @short_label_overrides %{
@@ -129,12 +129,13 @@ defmodule Storyarn.Localization.Languages do
 
   @doc "Returns a single language map by code, or nil."
   @spec get(String.t()) :: language() | nil
-  def get(code), do: Map.get(@languages_by_code, code)
+  def get(code) when is_binary(code), do: Map.get(@languages_by_code, String.downcase(code))
+  def get(_code), do: nil
 
   @doc "Returns the display name for a code, falling back to the code itself."
   @spec name(String.t()) :: String.t()
   def name(code) do
-    case Map.get(@languages_by_code, code) do
+    case get(code) do
       %{name: name} -> name
       nil -> code
     end
@@ -143,13 +144,16 @@ defmodule Storyarn.Localization.Languages do
   @doc "Returns the ISO alpha-2 country code used for a locale flag, or nil when there is no good flag."
   @spec flag_code(String.t()) :: String.t() | nil
   def flag_code(code) do
-    region_flag_code(code) || Map.get(@flag_overrides, code)
+    normalized_code = String.downcase(code)
+    region_flag_code(normalized_code) || Map.get(@flag_overrides, normalized_code)
   end
 
   @doc "Returns a compact fallback label for a locale when there is no flag."
   @spec short_label(String.t()) :: String.t()
   def short_label(code) do
-    Map.get(@short_label_overrides, code) ||
+    normalized_code = String.downcase(code)
+
+    Map.get(@short_label_overrides, normalized_code) ||
       code
       |> String.split("-", parts: 2)
       |> hd()
@@ -170,10 +174,10 @@ defmodule Storyarn.Localization.Languages do
   @spec options_for_select(keyword()) :: [{String.t(), String.t()}]
   def options_for_select(opts \\ []) do
     exclude = Keyword.get(opts, :exclude, [])
-    exclude_set = MapSet.new(exclude)
+    exclude_set = MapSet.new(exclude, &String.downcase/1)
 
     @languages
-    |> Enum.reject(&MapSet.member?(exclude_set, &1.code))
+    |> Enum.reject(&MapSet.member?(exclude_set, String.downcase(&1.code)))
     |> Enum.map(&{"#{&1.name} (#{&1.code})", &1.code})
   end
 

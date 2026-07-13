@@ -204,8 +204,14 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   def handle_event("set_localization_policy", %{"policy" => policy_str}, socket) do
     case Enum.find(@valid_localization_policies, &(to_string(&1) == policy_str)) do
-      nil -> {:noreply, socket}
-      policy -> {:noreply, assign(socket, :localization_policy, policy)}
+      nil ->
+        {:noreply, socket}
+
+      policy ->
+        {:noreply,
+         socket
+         |> assign(:localization_policy, policy)
+         |> assign(:validation_result, nil)}
     end
   end
 

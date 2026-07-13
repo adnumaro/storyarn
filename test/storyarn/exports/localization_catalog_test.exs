@@ -65,6 +65,23 @@ defmodule Storyarn.Exports.LocalizationCatalogTest do
     end
   end
 
+  test "embedded manifest is omitted when localization is disabled" do
+    opts = %ExportOptions{format: :ink, include_localization: false}
+    assert LocalizationCatalog.manifest(localization(), opts) == nil
+  end
+
+  test "source locale exclusion is case-insensitive through canonical locale codes" do
+    data =
+      localization()
+      |> put_in([:languages, Access.at(0), :locale_code], "EN")
+      |> update_in([:strings], fn strings ->
+        [%{hd(strings) | locale_code: "en"} | strings]
+      end)
+
+    files = LocalizationCatalog.files(data, options(:release), :generic)
+    refute Enum.any?(files, fn {name, _content} -> name == "localization.en.csv" end)
+  end
+
   defp manifest(files) do
     {"localization-manifest.json", json} = List.keyfind(files, "localization-manifest.json", 0)
     Jason.decode!(json)

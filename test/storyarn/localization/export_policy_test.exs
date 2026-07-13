@@ -40,6 +40,16 @@ defmodule Storyarn.Localization.ExportPolicyTest do
     refute ExportPolicy.voiceover_eligible?(%{voice | translated_text: nil}, preview)
   end
 
+  test "unknown policies fail with an explicit contract error" do
+    assert_raise ArgumentError, ~r/unknown localization export policy/, fn ->
+      ExportPolicy.text_eligible?(text(status: "final"), :unknown)
+    end
+
+    assert_raise ArgumentError, ~r/unknown localization export policy/, fn ->
+      ExportPolicy.voiceover_eligible?(text(status: "final"), nil)
+    end
+  end
+
   defp text(overrides) do
     Map.merge(
       %{

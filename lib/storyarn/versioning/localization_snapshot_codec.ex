@@ -65,7 +65,10 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodec do
     context = restore_context(project_id, rows)
     now = TimeHelpers.now()
 
-    entries = Enum.flat_map(rows, &restore_entry(&1, project_id, id_maps, context, now))
+    entries =
+      rows
+      |> Enum.flat_map(&restore_entry(&1, project_id, id_maps, context, now))
+      |> deduplicate_entries()
 
     case Repo.insert_all(LocalizedText, entries,
            on_conflict: {:replace, @replace_fields},
@@ -74,6 +77,13 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodec do
       {count, _} when count == length(entries) -> :ok
       other -> {:error, {:localization_restore_failed, other}}
     end
+  end
+
+  defp deduplicate_entries(entries) do
+    entries
+    |> Enum.reverse()
+    |> Enum.uniq_by(&{&1.source_type, &1.source_id, &1.source_field, &1.locale_code})
+    |> Enum.reverse()
   end
 
   defp restore_entry(row, project_id, id_maps, context, now) do

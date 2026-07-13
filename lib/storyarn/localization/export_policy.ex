@@ -19,6 +19,10 @@ defmodule Storyarn.Localization.ExportPolicy do
     present?(attr(text, :translated_text)) and is_nil(attr(text, :archived_at))
   end
 
+  def text_eligible?(_text, policy) do
+    raise ArgumentError, "unknown localization export policy: #{inspect(policy)}"
+  end
+
   @spec voiceover_eligible?(map(), ExportOptions.t() | atom()) :: boolean()
   def voiceover_eligible?(text, %ExportOptions{localization_policy: policy}), do: voiceover_eligible?(text, policy)
 
@@ -31,6 +35,10 @@ defmodule Storyarn.Localization.ExportPolicy do
     text_eligible?(text, :preview) and attr(text, :vo_eligible) == true and
       attr(text, :vo_status) in ["recorded", "approved"] and
       not is_nil(attr(text, :vo_asset_id)) and is_nil(attr(text, :archived_at))
+  end
+
+  def voiceover_eligible?(_text, policy) do
+    raise ArgumentError, "unknown localization export policy: #{inspect(policy)}"
   end
 
   defp attr(record, field), do: MapUtils.get_flexible(record, field)

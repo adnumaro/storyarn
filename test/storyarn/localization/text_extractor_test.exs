@@ -756,6 +756,16 @@ defmodule Storyarn.Localization.TextExtractorTest do
       assert {:ok, 0} = TextExtractor.extract_all(project_no_langs.id)
     end
 
+    test "extract_locale/2 reconciles only the requested target locale", %{project: project} do
+      flow = flow_fixture(project)
+      _node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello"}})
+      _french = language_fixture(project, %{locale_code: "fr", name: "French"})
+
+      assert {:ok, 1} = TextExtractor.extract_locale(project.id, "fr")
+
+      assert [%{locale_code: "fr"}] = Localization.list_texts(project.id, locale_code: "fr")
+    end
+
     test "extracts only runtime text from nodes and blocks", %{project: project} do
       # Create a flow with a dialogue node
       flow = flow_fixture(project, %{name: "Main Flow", description: "The main story"})

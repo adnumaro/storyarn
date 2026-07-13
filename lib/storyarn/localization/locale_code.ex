@@ -18,10 +18,15 @@ defmodule Storyarn.Localization.LocaleCode do
 
   def valid?(_locale_code), do: false
 
+  @doc "Returns the canonical lowercase representation used for storage and filenames."
+  @spec normalize(term()) :: term()
+  def normalize(locale_code) when is_binary(locale_code), do: String.downcase(locale_code)
+  def normalize(locale_code), do: locale_code
+
   @spec ensure_safe!(term()) :: String.t()
   def ensure_safe!(locale_code) do
     if valid?(locale_code) do
-      locale_code
+      normalize(locale_code)
     else
       raise ArgumentError, "invalid localization locale for export: #{inspect(locale_code)}"
     end

@@ -51,13 +51,10 @@ defmodule Storyarn.Localization.SourceContract do
   def field_metadata("block", "value.content"), do: metadata("runtime_value", false)
   def field_metadata("sheet", "name"), do: metadata("speaker_name", false)
 
-  def field_metadata("flow_node", "response." <> rest) do
-    case String.split(rest, ".") do
-      [response_id, "text"] ->
-        if RuntimeKey.valid_response_id?(response_id), do: metadata("response", true)
-
-      _ ->
-        nil
+  def field_metadata("flow_node", source_field) do
+    case parse_response_field(source_field) do
+      {:ok, _response_id} -> metadata("response", true)
+      :error -> nil
     end
   end
 
@@ -91,19 +88,18 @@ defmodule Storyarn.Localization.SourceContract do
   def localizable_source_field?("flow_node", %{type: "exit", deleted_at: nil}, "label"), do: true
   def localizable_source_field?(_source_type, _source, _source_field), do: false
 
-  defp response_field?(data, "response." <> rest) when is_map(data) do
-    case String.split(rest, ".") do
-      [response_id, "text"] ->
-        RuntimeKey.valid_response_id?(response_id) and
-          data
-          |> Map.get("responses")
-          |> response_list()
-          |> Enum.any?(fn
-            %{"id" => ^response_id} -> true
-            _response -> false
-          end)
+  defp response_field?(data, source_field) when is_map(data) do
+    case parse_response_field(source_field) do
+      {:ok, response_id} ->
+        data
+        |> Map.get("responses")
+        |> response_list()
+        |> Enum.any?(fn
+          %{"id" => ^response_id} -> true
+          _response -> false
+        end)
 
-      _parts ->
+      :error ->
         false
     end
   end
@@ -112,6 +108,18 @@ defmodule Storyarn.Localization.SourceContract do
 
   defp response_list(responses) when is_list(responses), do: responses
   defp response_list(_responses), do: []
+
+  defp parse_response_field("response." <> rest) do
+    case String.split(rest, ".") do
+      [response_id, "text"] ->
+        if RuntimeKey.valid_response_id?(response_id), do: {:ok, response_id}, else: :error
+
+      _parts ->
+        :error
+    end
+  end
+
+  defp parse_response_field(_source_field), do: :error
 
   defp metadata(content_role, vo_eligible) do
     %{content_role: content_role, vo_eligible: vo_eligible}

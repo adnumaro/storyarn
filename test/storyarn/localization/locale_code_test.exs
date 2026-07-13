@@ -13,10 +13,16 @@ defmodule Storyarn.Localization.LocaleCodeTest do
 
   test "unsafe locale filenames are rejected centrally" do
     assert LocaleCode.ensure_safe!("es-419") == "es-419"
+    assert LocaleCode.ensure_safe!("PT-BR") == "pt-br"
 
     assert_raise ArgumentError, fn ->
       LocaleCode.ensure_safe!("../../secrets")
     end
+  end
+
+  test "case variants normalize to one storage and filename representation" do
+    assert LocaleCode.normalize("en-US") == "en-us"
+    assert LocaleCode.normalize("EN-us") == "en-us"
   end
 
   test "unknown serializers fail closed for localization content roles" do

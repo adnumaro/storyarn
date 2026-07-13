@@ -129,7 +129,9 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpersTest do
     end
 
     test "excluded types have no localization-specific label" do
-      assert LocalizationHelpers.source_type_label("unknown") == "unknown"
+      assert LocalizationHelpers.source_type_label("screenplay") == "screenplay"
+      assert LocalizationHelpers.source_type_label("scene") == "scene"
+      assert LocalizationHelpers.source_type_label("flow") == "flow"
     end
 
     test "unknown returns itself" do

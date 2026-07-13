@@ -4,6 +4,7 @@ defmodule Storyarn.Localization.TextExtractor do
   alias Storyarn.Localization.LocalizableWords
 
   defdelegate extract_all(project_id), to: LocalizableWords
+  defdelegate extract_locale(project_id, locale_code), to: LocalizableWords
   defdelegate extract_flow_node(node), to: LocalizableWords
   defdelegate extract_block(block), to: LocalizableWords
   defdelegate extract_flow_nodes(flow_id), to: LocalizableWords

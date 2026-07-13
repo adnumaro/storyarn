@@ -4,6 +4,7 @@ defmodule Storyarn.Localization.LanguageCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Localization.Languages
+  alias Storyarn.Localization.LocaleCode
   alias Storyarn.Localization.LocalizableWords
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProjectLanguage
@@ -45,6 +46,8 @@ defmodule Storyarn.Localization.LanguageCrud do
   end
 
   def get_language_by_locale(project_id, locale_code) do
+    locale_code = LocaleCode.normalize(locale_code)
+
     Repo.one(
       from(l in ProjectLanguage,
         where: l.project_id == ^project_id and l.locale_code == ^locale_code and is_nil(l.archived_at)
@@ -121,8 +124,8 @@ defmodule Storyarn.Localization.LanguageCrud do
 
   defp collect_existing_sources(_project_id, %ProjectLanguage{is_source: true}), do: {:ok, 0}
 
-  defp collect_existing_sources(project_id, %ProjectLanguage{is_source: false}) do
-    LocalizableWords.extract_all(project_id)
+  defp collect_existing_sources(project_id, %ProjectLanguage{is_source: false} = language) do
+    LocalizableWords.extract_locale(project_id, language.locale_code)
   end
 
   def update_language(%ProjectLanguage{} = language, attrs) do
@@ -165,6 +168,7 @@ defmodule Storyarn.Localization.LanguageCrud do
   available as a target. Existing translations require an explicit reset.
   """
   def change_source_language(%Project{} = project, locale_code, opts \\ []) when is_binary(locale_code) do
+    locale_code = LocaleCode.normalize(locale_code)
     reset_translations? = Keyword.get(opts, :reset_translations, false)
 
     fn -> change_source_in_transaction(project.id, locale_code, reset_translations?) end
@@ -327,6 +331,8 @@ defmodule Storyarn.Localization.LanguageCrud do
   defp get_archived_language_by_locale(_project_id, nil), do: nil
 
   defp get_archived_language_by_locale(project_id, locale_code) do
+    locale_code = LocaleCode.normalize(locale_code)
+
     Repo.one(
       from(l in ProjectLanguage,
         where: l.project_id == ^project_id and l.locale_code == ^locale_code and not is_nil(l.archived_at)

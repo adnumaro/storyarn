@@ -179,19 +179,23 @@ defmodule Storyarn.Sheets.SheetCrud do
 
   def move_sheet(%Sheet{} = sheet, parent_id, position \\ nil) do
     with :ok <- validate_parent(sheet, parent_id) do
-      position = position || next_position(sheet.project_id, parent_id)
+      Repo.transaction(fn -> move_sheet_transaction(sheet, parent_id, position) end)
+    end
+  end
 
-      result =
-        sheet
-        |> Sheet.move_changeset(%{parent_id: parent_id, position: position})
-        |> Repo.update()
+  defp move_sheet_transaction(sheet, parent_id, position) do
+    position = position || next_position(sheet.project_id, parent_id)
 
-      with {:ok, moved_sheet} <- result,
-           {:ok, %{sheet_ids: affected_sheet_ids}} <-
-             PropertyInheritance.recalculate_on_move_with_sheet_ids(moved_sheet),
-           :ok <- Localization.extract_sheet_blocks_for_sheets(affected_sheet_ids) do
-        {:ok, moved_sheet}
-      end
+    with {:ok, moved_sheet} <-
+           sheet
+           |> Sheet.move_changeset(%{parent_id: parent_id, position: position})
+           |> Repo.update(),
+         {:ok, %{sheet_ids: affected_sheet_ids}} <-
+           PropertyInheritance.recalculate_on_move_with_sheet_ids(moved_sheet),
+         :ok <- Localization.extract_sheet_blocks_for_sheets(affected_sheet_ids) do
+      moved_sheet
+    else
+      {:error, reason} -> Repo.rollback(reason)
     end
   end
 

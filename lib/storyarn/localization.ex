@@ -183,6 +183,10 @@ defmodule Storyarn.Localization do
   @spec extract_all(id()) :: {:ok, non_neg_integer()}
   defdelegate extract_all(project_id), to: TextExtractor
 
+  @doc "Reconciles runtime-localizable texts for one target locale."
+  @spec extract_locale(id(), String.t()) :: {:ok, non_neg_integer()} | {:error, term()}
+  defdelegate extract_locale(project_id, locale_code), to: TextExtractor
+
   @doc "Extracts localizable texts from a flow node after its data is updated."
   @spec extract_flow_node(struct()) :: :ok
   defdelegate extract_flow_node(node), to: TextExtractor
@@ -193,11 +197,11 @@ defmodule Storyarn.Localization do
   defdelegate extract_block(block), to: TextExtractor
 
   @doc "Extracts runtime texts for every active node in a flow."
-  @spec extract_flow_nodes(id()) :: :ok
+  @spec extract_flow_nodes(id()) :: :ok | {:error, term()}
   defdelegate extract_flow_nodes(flow_id), to: TextExtractor
 
   @doc "Extracts runtime texts for every active block in a sheet."
-  @spec extract_sheet_blocks(id()) :: :ok
+  @spec extract_sheet_blocks(id()) :: :ok | {:error, term()}
   defdelegate extract_sheet_blocks(sheet_id), to: TextExtractor
 
   @doc "Extracts runtime texts for blocks in several sheets under one inventory lock."
@@ -205,7 +209,7 @@ defmodule Storyarn.Localization do
   defdelegate extract_sheet_blocks_for_sheets(sheet_ids), to: TextExtractor
 
   @doc "Extracts runtime texts for a block definition and its active inherited instances."
-  @spec extract_block_tree(id()) :: :ok
+  @spec extract_block_tree(id()) :: :ok | {:error, term()}
   defdelegate extract_block_tree(block_id), to: TextExtractor
 
   @doc "Synchronizes active sheet names emitted as runtime actors by engine serializers."
@@ -410,7 +414,7 @@ defmodule Storyarn.Localization do
   @doc "Lists localized texts for export, filtered by locale codes."
   defdelegate list_texts_for_export(project_id, locale_codes, opts \\ []), to: TextCrud
   defdelegate list_texts_for_backup(project_id, locale_codes), to: TextCrud
-  defdelegate count_texts_for_export(project_id, locale_codes, opts), to: TextCrud
+  defdelegate count_texts_for_export(project_id, locale_codes, opts \\ []), to: TextCrud
 
   @doc "Lists target (non-source) locale codes for a project."
   defdelegate list_target_locale_codes(project_id), to: TextCrud

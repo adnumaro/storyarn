@@ -28,6 +28,15 @@ defmodule Storyarn.LocalizationTest do
       assert hd(languages).id == lang.id
     end
 
+    test "add_language/2 stores locale codes in canonical lowercase" do
+      project = project_fixture(user_fixture())
+
+      assert {:ok, language} =
+               Localization.add_language(project, %{locale_code: "PT-BR", name: "Portuguese"})
+
+      assert language.locale_code == "pt-br"
+    end
+
     test "list_languages/1 returns empty list for project without languages" do
       user = user_fixture()
       project = project_fixture(user)
@@ -227,9 +236,12 @@ defmodule Storyarn.LocalizationTest do
 
       {:ok, new_source} = Localization.change_source_language(project, "en-US")
 
-      assert new_source.locale_code == "en-US"
+      assert new_source.locale_code == "en-us"
       assert new_source.is_source == true
-      assert Localization.get_source_language(project.id).locale_code == "en-US"
+      assert Localization.get_source_language(project.id).locale_code == "en-us"
+      assert Localization.get_language_by_locale(project.id, "EN-US").id == new_source.id
+      assert {:ok, same_source} = Localization.change_source_language(project, "EN-us")
+      assert same_source.id == new_source.id
       refute Localization.get_language_by_locale(project.id, "en").is_source
     end
 
@@ -428,6 +440,21 @@ defmodule Storyarn.LocalizationTest do
         })
 
       assert "is only available for spoken dialogue and responses" in errors_on(changeset).vo_status
+    end
+
+    test "voice-over assets report their own field for non-spoken sources" do
+      project = project_fixture(user_fixture())
+
+      assert {:ok, text} =
+               Localization.create_text(project.id, %{
+                 source_type: "flow_node",
+                 source_id: 1,
+                 source_field: "stage_directions",
+                 locale_code: "es"
+               })
+
+      assert {:error, changeset} = Localization.update_text(text, %{vo_asset_id: 123_456})
+      assert "is only available for spoken dialogue and responses" in errors_on(changeset).vo_asset_id
     end
 
     test "create_text/2 enforces unique composite key" do

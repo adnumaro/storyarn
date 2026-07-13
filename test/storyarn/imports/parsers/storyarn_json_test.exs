@@ -483,6 +483,49 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
                Localization.get_texts_for_source("flow_node", imported_node.id)
     end
 
+    test "rekeys a dialogue that collides with a deleted target node", %{
+      source: source,
+      target: target
+    } do
+      source_flow = flow_fixture(source, %{name: "Deleted Collision Source"})
+
+      _source_node =
+        node_fixture(source_flow, %{
+          type: "dialogue",
+          data: %{
+            "localization_id" => "deleted_target_dialogue",
+            "text" => "Imported line",
+            "responses" => []
+          }
+        })
+
+      target_flow = flow_fixture(target, %{name: "Deleted Target"})
+
+      existing_node =
+        node_fixture(target_flow, %{
+          type: "dialogue",
+          data: %{
+            "localization_id" => "deleted_target_dialogue",
+            "text" => "Deleted line",
+            "responses" => []
+          }
+        })
+
+      assert {:ok, deleted_node, _meta} = Flows.delete_node(existing_node)
+      assert deleted_node.deleted_at
+
+      assert {:ok, json} =
+               Exports.export_project(source, %{format: :storyarn, validate_before_export: false})
+
+      assert {:ok, parsed} = Imports.parse_file(json)
+      assert {:ok, result} = Imports.execute(target, parsed.data, conflict_strategy: :rename)
+
+      imported_flow = Enum.find(result.flows, &(&1.name == "Deleted Collision Source"))
+      imported_node = imported_flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "dialogue"))
+
+      refute imported_node.data["localization_id"] == deleted_node.data["localization_id"]
+    end
+
     test "remaps node flow references after all flows are imported", %{source: source, target: target} do
       referenced_flow = flow_fixture(source, %{name: "Referenced Flow"})
       source_flow = flow_fixture(source, %{name: "Source Flow"})

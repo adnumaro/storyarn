@@ -238,13 +238,20 @@ defmodule Storyarn.Sheets do
   @spec move_sheet_to_position(sheet(), id() | nil, integer()) ::
           {:ok, sheet()} | {:error, validation_error() | term()}
   def move_sheet_to_position(%Sheet{} = sheet, new_parent_id, new_position) do
-    with :ok <- SheetCrud.validate_parent(sheet, new_parent_id),
-         {:ok, moved_sheet} <-
+    with :ok <- SheetCrud.validate_parent(sheet, new_parent_id) do
+      Repo.transaction(fn -> move_sheet_to_position_transaction(sheet, new_parent_id, new_position) end)
+    end
+  end
+
+  defp move_sheet_to_position_transaction(sheet, new_parent_id, new_position) do
+    with {:ok, moved_sheet} <-
            TreeOperations.move_sheet_to_position(sheet, new_parent_id, new_position),
          {:ok, %{sheet_ids: affected_sheet_ids}} <-
            PropertyInheritance.recalculate_on_move_with_sheet_ids(moved_sheet),
          :ok <- Localization.extract_sheet_blocks_for_sheets(affected_sheet_ids) do
-      {:ok, moved_sheet}
+      moved_sheet
+    else
+      {:error, reason} -> Repo.rollback(reason)
     end
   end
 

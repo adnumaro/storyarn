@@ -187,7 +187,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       render_click(sidebar, "change_source_language", %{"locale_code" => "en-US"})
 
       source_language = Localization.get_source_language(project.id)
-      assert source_language.locale_code == "en-US"
+      assert source_language.locale_code == "en-us"
     end
 
     test "viewer cannot change source language", %{conn: conn, user: user} do

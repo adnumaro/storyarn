@@ -6,6 +6,7 @@ defmodule Storyarn.Localization.LocalizableWords do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Localization.LanguageCrud
+  alias Storyarn.Localization.LocaleCode
   alias Storyarn.Localization.SourceContract
   alias Storyarn.Localization.TextCrud
   alias Storyarn.Repo
@@ -13,9 +14,9 @@ defmodule Storyarn.Localization.LocalizableWords do
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.Sheet
 
-  @inventory_lock_namespace 4_716_000_000_000
-  @flow_node_lock_namespace 4_718_000_000_000
-  @block_lock_namespace 4_719_000_000_000
+  @inventory_lock_namespace "storyarn:localization:inventory"
+  @flow_node_lock_namespace "storyarn:localization:flow_node"
+  @block_lock_namespace "storyarn:localization:block"
 
   # =============================================================================
   # Public — Runtime Word Counts
@@ -69,14 +70,24 @@ defmodule Storyarn.Localization.LocalizableWords do
     with_inventory_lock(project_id, fn -> reconcile_current_inventory(project_id) end)
   end
 
+  @doc "Adds or reactivates the current runtime inventory for one target locale."
+  @spec extract_locale(integer(), String.t()) :: {:ok, non_neg_integer()} | {:error, term()}
+  def extract_locale(project_id, locale_code) do
+    locale_code = LocaleCode.ensure_safe!(locale_code)
+
+    with_inventory_lock(project_id, fn ->
+      entries =
+        for source <- runtime_sources(project_id) do
+          source_to_entry(source, locale_code)
+        end
+
+      TextCrud.batch_upsert_texts(project_id, entries)
+    end)
+  end
+
   defp reconcile_current_inventory(project_id) do
     target_locales = get_target_locales(project_id)
-    flow_nodes = project_flow_nodes(project_id)
-
-    sources =
-      build_sources(flow_nodes, "flow_node", &flow_node_source_fields/1) ++
-        build_sources(load_project_blocks(project_id), "block", &block_source_fields/1) ++
-        build_sources(runtime_sheets(project_id), "sheet", &speaker_source_fields/1)
+    sources = runtime_sources(project_id)
 
     entries =
       for source <- sources, locale <- target_locales do
@@ -152,9 +163,10 @@ defmodule Storyarn.Localization.LocalizableWords do
   end
 
   @doc "Synchronizes active sheet names because engine serializers emit sheets as runtime actors."
-  @spec sync_sheet_names(integer()) :: :ok
+  @spec sync_sheet_names(integer()) :: :ok | {:error, term()}
   def sync_sheet_names(project_id) do
-    with_inventory_lock(project_id, fn ->
+    project_id
+    |> with_inventory_lock(fn ->
       sources = build_sources(runtime_sheets(project_id), "sheet", &speaker_source_fields/1)
       locales = get_target_locales(project_id)
 
@@ -172,27 +184,30 @@ defmodule Storyarn.Localization.LocalizableWords do
 
       :ok
     end)
-
-    :ok
+    |> normalize_lock_result()
   end
 
-  @spec extract_flow_nodes(integer()) :: :ok
+  @spec extract_flow_nodes(integer()) :: :ok | {:error, term()}
   def extract_flow_nodes(flow_id) do
-    from(n in FlowNode, where: n.flow_id == ^flow_id and is_nil(n.deleted_at))
-    |> Repo.all()
-    |> Enum.each(&extract_flow_node/1)
+    case flow_project_id(flow_id) do
+      nil ->
+        :ok
 
-    :ok
+      project_id ->
+        project_id
+        |> with_inventory_lock(fn ->
+          from(n in FlowNode, where: n.flow_id == ^flow_id)
+          |> Repo.all()
+          |> Enum.each(&reconcile_flow_node(project_id, &1.id))
+
+          :ok
+        end)
+        |> normalize_lock_result()
+    end
   end
 
-  @spec extract_sheet_blocks(integer()) :: :ok
-  def extract_sheet_blocks(sheet_id) do
-    from(b in Block, where: b.sheet_id == ^sheet_id and is_nil(b.deleted_at))
-    |> Repo.all()
-    |> Enum.each(&extract_block/1)
-
-    :ok
-  end
+  @spec extract_sheet_blocks(integer()) :: :ok | {:error, term()}
+  def extract_sheet_blocks(sheet_id), do: extract_sheet_blocks_for_sheets([sheet_id])
 
   @spec extract_sheet_blocks_for_sheets([integer()]) :: :ok | {:error, term()}
   def extract_sheet_blocks_for_sheets([]), do: :ok
@@ -215,17 +230,23 @@ defmodule Storyarn.Localization.LocalizableWords do
     end
   end
 
-  @spec extract_block_tree(integer()) :: :ok
+  @spec extract_block_tree(integer()) :: :ok | {:error, term()}
   def extract_block_tree(block_id) do
-    from(b in Block,
-      where:
-        (b.id == ^block_id or b.inherited_from_block_id == ^block_id) and
-          is_nil(b.deleted_at)
-    )
-    |> Repo.all()
-    |> Enum.each(&extract_block/1)
+    case block_project_id(block_id) do
+      nil ->
+        :ok
 
-    :ok
+      project_id ->
+        project_id
+        |> with_inventory_lock(fn ->
+          from(b in Block, where: b.id == ^block_id or b.inherited_from_block_id == ^block_id)
+          |> Repo.all()
+          |> Enum.each(&reconcile_block(project_id, &1.id))
+
+          :ok
+        end)
+        |> normalize_lock_result()
+    end
   end
 
   @spec delete_flow_node_texts(integer()) :: :ok
@@ -384,17 +405,31 @@ defmodule Storyarn.Localization.LocalizableWords do
 
   defp with_inventory_lock(project_id, fun) when is_function(fun, 0) do
     Repo.transaction(fn ->
-      Repo.query!("SELECT pg_advisory_xact_lock($1::bigint)", [@inventory_lock_namespace + project_id])
+      lock_exclusive!(@inventory_lock_namespace, project_id)
       fun.()
     end)
   end
 
   defp with_source_lock(project_id, source_namespace, source_id, fun) when is_function(fun, 0) do
     Repo.transaction(fn ->
-      Repo.query!("SELECT pg_advisory_xact_lock_shared($1::bigint)", [@inventory_lock_namespace + project_id])
-      Repo.query!("SELECT pg_advisory_xact_lock($1::bigint)", [source_namespace + source_id])
+      lock_shared!(@inventory_lock_namespace, project_id)
+      lock_exclusive!(source_namespace, source_id)
       fun.()
     end)
+  end
+
+  defp lock_exclusive!(namespace, id) do
+    Repo.query!(
+      "SELECT pg_advisory_xact_lock(hashtextextended(concat($1::text, ':', $2::text), 0))",
+      [namespace, to_string(id)]
+    )
+  end
+
+  defp lock_shared!(namespace, id) do
+    Repo.query!(
+      "SELECT pg_advisory_xact_lock_shared(hashtextextended(concat($1::text, ':', $2::text), 0))",
+      [namespace, to_string(id)]
+    )
   end
 
   defp normalize_lock_result({:ok, _result}), do: :ok
@@ -433,6 +468,12 @@ defmodule Storyarn.Localization.LocalizableWords do
         order_by: [asc: n.id]
       )
     )
+  end
+
+  defp runtime_sources(project_id) do
+    build_sources(project_flow_nodes(project_id), "flow_node", &flow_node_source_fields/1) ++
+      build_sources(load_project_blocks(project_id), "block", &block_source_fields/1) ++
+      build_sources(runtime_sheets(project_id), "sheet", &speaker_source_fields/1)
   end
 
   defp load_project_blocks(project_id) do

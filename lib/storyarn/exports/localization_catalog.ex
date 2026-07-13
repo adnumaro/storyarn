@@ -107,6 +107,7 @@ defmodule Storyarn.Exports.LocalizationCatalog do
   end
 
   @doc "Builds localization policy metadata for embedded serializers."
+  def manifest(_localization, %ExportOptions{include_localization: false}), do: nil
   def manifest(nil, _opts), do: nil
 
   def manifest(localization, opts) do
@@ -175,10 +176,10 @@ defmodule Storyarn.Exports.LocalizationCatalog do
     source_locales =
       languages
       |> Enum.filter(&(attr(&1, :is_source) == true))
-      |> MapSet.new(&attr(&1, :locale_code))
+      |> MapSet.new(&(&1 |> attr(:locale_code) |> LocaleCode.ensure_safe!()))
 
     strings
-    |> Enum.reject(&MapSet.member?(source_locales, attr(&1, :locale_code)))
+    |> Enum.reject(&MapSet.member?(source_locales, &1 |> attr(:locale_code) |> LocaleCode.ensure_safe!()))
     |> Enum.filter(fn text -> is_nil(attr(text, :archived_at)) and text_supported?(text, opts) end)
   end
 
