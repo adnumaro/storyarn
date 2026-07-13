@@ -1,0 +1,19 @@
+priv/repo/migrations/20260713110000_add_durable_storage_cleanup_requests.exs
+  s_41724a46c80f80::t_08d03880181cfa 17-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "5dc8c991340b5bd4768ad32c52cce13850048adc",
+  "prompts": {},
+  "sessions": {
+    "s_41724a46c80f80": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5a38-779f-79c2-8a43-ddadb649de77",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
