@@ -1,0 +1,56 @@
+test/storyarn/onboarding_test.exs
+  s_4a0b9957cfe7c2::t_51d62f1e2ae8ba 12,21,48,56,59,83
+assets/app/live/account/settings/AccountSettingsTutorials.vue
+  s_4a0b9957cfe7c2::t_51d62f1e2ae8ba 17,49
+assets/app/locales/es/onboarding.json
+  s_4a0b9957cfe7c2::t_9f96397c590114 11-12
+test/storyarn_web/live/settings_live/tutorials_test.exs
+  s_4a0b9957cfe7c2::t_51d62f1e2ae8ba 7-9,27,31-33,36,39-41,46
+lib/storyarn/onboarding.ex
+  s_4a0b9957cfe7c2::t_461a7b28c744ed 5-7,27,52,57,70,97,100-101
+assets/app/test/components/onboarding/OnboardingDialog.test.ts
+  s_4a0b9957cfe7c2::t_100c917857ca1c 83,92-118,156
+lib/storyarn_web/live/hooks/onboarding.ex
+  s_4a0b9957cfe7c2::t_9f96397c590114 13
+lib/storyarn_web/components/settings_layout.ex
+  s_4a0b9957cfe7c2::t_461a7b28c744ed 25
+assets/app/test/live/account/settings/AccountSettingsTutorials.test.ts
+  s_4a0b9957cfe7c2::t_51d62f1e2ae8ba 11
+assets/app/components/onboarding/OnboardingDialog.vue
+  s_4a0b9957cfe7c2::t_9f96397c590114 6,31,66,80,90,94-103,107-109,111-112,227-244
+  s_c9540dd413b9b1::t_6e595a2da9df44 245-246
+test/storyarn_web/live/onboarding_integration_test.exs
+  s_4a0b9957cfe7c2::t_51d62f1e2ae8ba 15
+lib/storyarn_web/components/project_layout.ex
+  s_4a0b9957cfe7c2::t_461a7b28c744ed 29
+assets/app/locales/en/onboarding.json
+  s_4a0b9957cfe7c2::t_9f96397c590114 11-12
+lib/storyarn/onboarding/tutorial_progress.ex
+  s_4a0b9957cfe7c2::t_461a7b28c744ed 5-7
+lib/storyarn_web/components/workspace_layout.ex
+  s_4a0b9957cfe7c2::t_461a7b28c744ed 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "ac1bcd39c9997ab403c0d48a87b792aea380c3a8",
+  "prompts": {},
+  "sessions": {
+    "s_4a0b9957cfe7c2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4c00-fd7d-7d20-a29e-6f01b61a5e2a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_c9540dd413b9b1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4bf8-a263-75c0-823d-4dae08eadf72",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
