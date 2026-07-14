@@ -1,0 +1,57 @@
+lib/storyarn/accounts/user.ex
+  s_78c875f28a54f0::t_43052d1625b3b9 117
+priv/gettext/emails.pot
+  s_78c875f28a54f0::t_ca4005c8c37d30 106-107,127-128
+lib/storyarn/accounts/registration.ex
+  s_78c875f28a54f0::t_43052d1625b3b9 23,33,156-165
+  s_3cb2d6b0d2b40c::t_f78dbf27b26089 166-167
+assets/app/test/components/navigation/LiveLink.test.ts
+  s_78c875f28a54f0::t_184f1f962e11ae 37
+priv/gettext/en/LC_MESSAGES/emails.po
+  s_78c875f28a54f0::t_ca4005c8c37d30 14,19,24,29,34,39,44,49,54-55,60-61,78-79,84-87,99-101,106-107,127-128,133-134,139-140,145-146,150-180
+priv/gettext/es/LC_MESSAGES/emails.po
+  s_78c875f28a54f0::t_ca4005c8c37d30 14,19,24,29,34,39,44,49,54-55,60-61,78-79,84-87,99-101,106-107,127-128,133-134,139-140,145-146,151,156,161,166-167,172,177
+assets/app/test/live/public/landing/PublicLanding.test.ts
+  s_78c875f28a54f0::t_46857d244b553f 14,43-56
+  s_78c875f28a54f0::t_ebff670917a77a 7-13
+  s_3cb2d6b0d2b40c::t_524b40d17fe3c6 57
+assets/app/test/shared/navigation/historyScroll.test.ts
+  s_78c875f28a54f0::t_8b9c2c9e262376 1,11,13,15,32-55,57-63
+  s_78c875f28a54f0::t_e5b5f6a0ff843f 56
+assets/app/live/layouts/public/Layout.vue
+  s_78c875f28a54f0::t_46857d244b553f 16-17,19
+test/storyarn_web/live/user_live/registration_test.exs
+  s_78c875f28a54f0::t_43052d1625b3b9 68-82
+assets/app/shared/navigation/historyScroll.ts
+  s_78c875f28a54f0::t_e5b5f6a0ff843f 105-107,169,175
+  s_78c875f28a54f0::t_8b9c2c9e262376 3-10,16,23-32,40-103,109-110,112-124,129,134-143,148-149,151-154,156,161,166,170-171,173,176
+  s_78c875f28a54f0::t_961a32358c6046 104
+assets/app/live/public/landing/PublicLanding.vue
+  s_78c875f28a54f0::t_46857d244b553f 27,70,78-79
+assets/app/live/layouts/docs/Layout.vue
+  s_78c875f28a54f0::t_8b9c2c9e262376 2,15,87-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c80bf185012df41d8c961ae081b1974435cf7875",
+  "prompts": {},
+  "sessions": {
+    "s_3cb2d6b0d2b40c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b4a-b042-7412-8d10-5e6b95b13ee5",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_78c875f28a54f0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6091-5fe4-7632-bb01-72ea75f0d306",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
