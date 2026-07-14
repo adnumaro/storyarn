@@ -1,0 +1,19 @@
+mix.exs
+  s_e3ccbe741be9d9::t_c02dc19fe52f04 133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "5f5d5d9a9447807116e655cd413530ae3c9213c9",
+  "prompts": {},
+  "sessions": {
+    "s_e3ccbe741be9d9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f60aa-604b-77d1-8115-9b7b5aa18f9b",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
