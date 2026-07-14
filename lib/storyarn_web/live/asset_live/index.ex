@@ -18,6 +18,8 @@ defmodule StoryarnWeb.AssetLive.Index do
     scene_pin_icons: []
   }
 
+  @assets_per_page 48
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -65,6 +67,9 @@ defmodule StoryarnWeb.AssetLive.Index do
         can-edit={@can_edit}
         workspace-slug={@workspace.slug}
         project-slug={@project.slug}
+        page={@asset_page}
+        total-pages={@asset_total_pages}
+        total-count={@asset_total_count}
       />
     </StoryarnWeb.Components.ProjectLayout.project>
     """
@@ -88,6 +93,9 @@ defmodule StoryarnWeb.AssetLive.Index do
       socket
       |> assign(:filter, "all")
       |> assign(:search, "")
+      |> assign(:asset_page, 1)
+      |> assign(:asset_total_pages, 1)
+      |> assign(:asset_total_count, 0)
       |> assign(:type_counts, type_counts)
       |> assign(:selected_asset, nil)
       |> assign(:asset_usages, @empty_asset_usages)
@@ -117,6 +125,7 @@ defmodule StoryarnWeb.AssetLive.Index do
      socket
      |> assign(:filter, filter)
      |> assign(:search, search)
+     |> assign(:asset_page, 1)
      |> clear_selected_asset()
      |> load_assets()}
   end
@@ -140,6 +149,7 @@ defmodule StoryarnWeb.AssetLive.Index do
     {:noreply,
      socket
      |> assign(:filter, type)
+     |> assign(:asset_page, 1)
      |> clear_selected_asset()
      |> load_assets()}
   end
@@ -148,6 +158,7 @@ defmodule StoryarnWeb.AssetLive.Index do
     {:noreply,
      socket
      |> assign(:search, search)
+     |> assign(:asset_page, 1)
      |> clear_selected_asset()
      |> load_assets()}
   end
@@ -166,6 +177,16 @@ defmodule StoryarnWeb.AssetLive.Index do
      socket
      |> assign(:selected_asset, nil)
      |> assign(:asset_usages, @empty_asset_usages)}
+  end
+
+  def handle_event("change_asset_page", %{"page" => page}, socket) do
+    page = parse_page(page)
+
+    {:noreply,
+     socket
+     |> assign(:asset_page, page)
+     |> clear_selected_asset()
+     |> load_assets()}
   end
 
   def handle_event("confirm_delete_asset", _params, socket) do
@@ -331,8 +352,33 @@ defmodule StoryarnWeb.AssetLive.Index do
   defp load_assets(socket) do
     project_id = socket.assigns.project.id
     opts = filter_opts(socket.assigns.filter) ++ search_opts(socket.assigns.search)
-    assign(socket, :assets, Assets.list_assets(project_id, opts))
+    total_count = Assets.count_assets(project_id, opts)
+    total_pages = max(div(total_count + @assets_per_page - 1, @assets_per_page), 1)
+    page = socket.assigns.asset_page |> max(1) |> min(total_pages)
+
+    assets =
+      Assets.list_assets(
+        project_id,
+        opts ++ [limit: @assets_per_page, offset: (page - 1) * @assets_per_page]
+      )
+
+    socket
+    |> assign(:assets, assets)
+    |> assign(:asset_page, page)
+    |> assign(:asset_total_pages, total_pages)
+    |> assign(:asset_total_count, total_count)
   end
+
+  defp parse_page(page) when is_integer(page), do: page
+
+  defp parse_page(page) when is_binary(page) do
+    case Integer.parse(page) do
+      {parsed, ""} -> parsed
+      _ -> 1
+    end
+  end
+
+  defp parse_page(_page), do: 1
 
   defp delete_asset_files(asset) do
     Assets.storage_delete(asset.key)

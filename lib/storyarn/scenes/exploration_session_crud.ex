@@ -51,10 +51,11 @@ defmodule Storyarn.Scenes.ExplorationSessionCrud do
   Deletes an exploration session (new game).
   """
   def delete_session(user_id, project_id) do
-    case Repo.get_by(ExplorationSession, user_id: user_id, project_id: project_id) do
-      nil -> {:ok, nil}
-      session -> Repo.delete(session)
-    end
+    Repo.delete_all(
+      from(session in ExplorationSession, where: session.user_id == ^user_id and session.project_id == ^project_id)
+    )
+
+    {:ok, nil}
   end
 
   @doc """

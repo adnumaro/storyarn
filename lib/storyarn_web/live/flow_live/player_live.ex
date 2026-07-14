@@ -55,7 +55,13 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   # ===========================================================================
 
   @impl true
-  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug, "id" => flow_id}, _session, socket) do
+  def mount(
+        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug, "id" => flow_id} = params,
+        _session,
+        socket
+      ) do
+    socket = assign(socket, :player_session_id, params["player_session"] || Ecto.UUID.generate())
+
     case Projects.get_project_by_slugs(socket.assigns.current_scope, workspace_slug, project_slug) do
       {:ok, project, _membership} ->
         mount_player(socket, project, flow_id)
@@ -156,8 +162,9 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
 
   defp do_restore_player_session(socket, project) do
     user_id = socket.assigns.current_scope.user.id
+    session_id = socket.assigns.player_session_id
 
-    case Flows.debug_session_take({user_id, project.id}) do
+    case Flows.debug_session_take({:player, user_id, project.id, session_id}) do
       nil ->
         nil
 
@@ -423,10 +430,11 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   defp store_and_navigate_player(socket, state, nodes, connections, flow_id) do
     %{workspace: ws, project: proj, sheets_map: sheets_map, player_mode: mode} = socket.assigns
     user_id = socket.assigns.current_scope.user.id
+    session_id = socket.assigns.player_session_id
 
     target_flow = Flows.get_flow_brief(proj.id, flow_id)
 
-    Flows.debug_session_store({user_id, proj.id}, %{
+    Flows.debug_session_store({:player, user_id, proj.id, session_id}, %{
       engine_state: state,
       nodes: nodes,
       connections: connections,
@@ -439,7 +447,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
 
     {:noreply,
      push_navigate(socket,
-       to: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/flows/#{flow_id}/play"
+       to: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/flows/#{flow_id}/play?player_session=#{session_id}"
      )}
   end
 

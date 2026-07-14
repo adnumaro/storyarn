@@ -19,10 +19,23 @@ defmodule Storyarn.Workers.DailySnapshotWorker do
 
   require Logger
 
+  @batch_size 100
+
   @impl Oban.Worker
   def perform(%Oban.Job{}) do
-    Enum.each(Projects.list_projects_with_auto_snapshots(), &process_project/1)
+    process_batches(nil)
     :ok
+  end
+
+  defp process_batches(after_id) do
+    projects = Projects.list_projects_with_auto_snapshots(after_id: after_id, limit: @batch_size)
+    Enum.each(projects, &process_project/1)
+
+    case List.last(projects) do
+      nil -> :ok
+      project when length(projects) == @batch_size -> process_batches(project.id)
+      _project -> :ok
+    end
   end
 
   defp process_project(project) do

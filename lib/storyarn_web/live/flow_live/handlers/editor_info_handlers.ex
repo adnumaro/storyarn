@@ -17,10 +17,17 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers do
   alias Storyarn.Sheets
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
 
-  @spec handle_reset_save_status(Socket.t()) ::
+  @spec handle_reset_save_status(Socket.t(), reference()) ::
           {:noreply, Socket.t()}
-  def handle_reset_save_status(socket) do
-    {:noreply, assign(socket, :save_status, :idle)}
+  def handle_reset_save_status(socket, token) do
+    if socket.assigns[:save_status_reset_token] == token do
+      {:noreply,
+       socket
+       |> assign(:save_status, :idle)
+       |> assign(:save_status_reset_token, nil)}
+    else
+      {:noreply, socket}
+    end
   end
 
   @spec handle_flow_refresh(Socket.t()) ::

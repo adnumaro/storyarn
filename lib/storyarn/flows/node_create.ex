@@ -17,23 +17,34 @@ defmodule Storyarn.Flows.NodeCreate do
 
   def create_node(%Flow{} = flow, attrs) do
     project = Repo.get!(Project, flow.project_id)
+    attrs = stringify_keys(attrs)
 
-    with :ok <- Billing.can_create_item?(project) do
-      attrs = stringify_keys(attrs)
+    result =
+      fn ->
+        locked_project = Repo.one!(from(p in Project, where: p.id == ^project.id, lock: "FOR UPDATE"))
 
-      result = Repo.transaction(fn -> create_and_extract_node(flow, attrs) end)
-
-      case result do
-        {:ok, _node} ->
-          Storyarn.Collaboration.broadcast_dashboard_change(flow.project_id, :flows)
-
-        _ ->
-          :ok
+        case Billing.can_create_item?(locked_project) do
+          :ok -> create_and_extract_node(flow, attrs)
+          {:error, reason, details} -> Repo.rollback({reason, details})
+        end
       end
+      |> Repo.transaction()
+      |> normalize_item_limit_result()
 
-      result
+    case result do
+      {:ok, _node} ->
+        Storyarn.Collaboration.broadcast_dashboard_change(flow.project_id, :flows)
+
+      _ ->
+        :ok
     end
+
+    result
   end
+
+  defp normalize_item_limit_result({:error, {:limit_reached, details}}), do: {:error, :limit_reached, details}
+
+  defp normalize_item_limit_result(result), do: result
 
   defp create_and_extract_node(flow, attrs) do
     with {:ok, node} <- create_node_by_type(flow, attrs),

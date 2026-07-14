@@ -64,17 +64,27 @@ defmodule Storyarn.Assets.BlobStore do
   @spec ensure_blob(integer(), String.t(), String.t(), binary()) ::
           {:ok, String.t()} | {:error, term()}
   def ensure_blob(project_id, hash, ext, binary_data) do
+    case ensure_blob_with_status(project_id, hash, ext, binary_data) do
+      {:ok, key, _created?} -> {:ok, key}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc "Uploads a blob if needed and reports whether this call created it."
+  @spec ensure_blob_with_status(integer(), String.t(), String.t(), binary()) ::
+          {:ok, String.t(), boolean()} | {:error, term()}
+  def ensure_blob_with_status(project_id, hash, ext, binary_data) do
     key = blob_key(project_id, hash, ext)
 
     case Storage.download(key) do
       {:ok, _existing} ->
-        {:ok, key}
+        {:ok, key, false}
 
       {:error, _} ->
         content_type = MIME.type(ext)
 
         case Storage.upload(key, binary_data, content_type) do
-          {:ok, _url} -> {:ok, key}
+          {:ok, _url} -> {:ok, key, true}
           {:error, reason} -> {:error, reason}
         end
     end

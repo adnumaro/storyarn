@@ -251,9 +251,23 @@ defmodule Storyarn.Projects.ProjectCrud do
   @doc """
   Lists all projects with auto snapshots enabled (for daily cron job).
   """
-  def list_projects_with_auto_snapshots do
-    Repo.all(from(p in Project, where: p.auto_snapshots_enabled == true and is_nil(p.deleted_at)))
+  def list_projects_with_auto_snapshots(opts \\ []) do
+    after_id = Keyword.get(opts, :after_id)
+    limit = Keyword.get(opts, :limit)
+
+    Project
+    |> where([p], p.auto_snapshots_enabled == true and is_nil(p.deleted_at))
+    |> order_by([p], asc: p.id)
+    |> maybe_after_project_id(after_id)
+    |> maybe_limit(limit)
+    |> Repo.all()
   end
+
+  defp maybe_after_project_id(query, nil), do: query
+  defp maybe_after_project_id(query, after_id), do: where(query, [p], p.id > ^after_id)
+
+  defp maybe_limit(query, nil), do: query
+  defp maybe_limit(query, limit), do: limit(query, ^limit)
 
   @doc """
   Checks if auto-versioning is enabled for a given entity type in a project.

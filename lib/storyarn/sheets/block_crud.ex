@@ -76,8 +76,6 @@ defmodule Storyarn.Sheets.BlockCrud do
   # =============================================================================
 
   def create_block(%Sheet{} = sheet, attrs) do
-    position = attrs[:position] || next_block_position(sheet.id)
-
     block_type = attrs[:type] || attrs["type"]
     config = attrs[:config] || Block.default_config(block_type)
     value = attrs[:value] || Block.default_value(block_type)
@@ -85,7 +83,6 @@ defmodule Storyarn.Sheets.BlockCrud do
 
     enriched_attrs =
       attrs
-      |> Map.put(:position, position)
       |> Map.put_new(:config, config)
       |> Map.put_new(:value, value)
 
@@ -129,7 +126,11 @@ defmodule Storyarn.Sheets.BlockCrud do
   defp block_word_count(_block_type, _value), do: 0
 
   defp insert_block_in_transaction(sheet, attrs, word_count) do
-    Repo.transaction(fn -> insert_block(sheet, attrs, word_count) end)
+    Repo.transaction(fn ->
+      Repo.one!(from(s in Sheet, where: s.id == ^sheet.id, lock: "FOR UPDATE"))
+      position = attrs[:position] || attrs["position"] || next_block_position(sheet.id)
+      insert_block(sheet, Map.put(attrs, :position, position), word_count)
+    end)
   end
 
   defp insert_block(sheet, attrs, word_count) do

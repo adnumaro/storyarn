@@ -66,14 +66,35 @@ defmodule Storyarn.Collaboration.Locks do
   Gets the current lock holder for an entity, if any.
   """
   def get_lock(scope, entity_id) do
-    GenServer.call(__MODULE__, {:get_lock, scope, entity_id})
+    key = {scope, entity_id}
+    now = System.monotonic_time(:millisecond)
+
+    case :ets.lookup(@table_name, key) do
+      [{^key, %{expires_at: expires_at} = lock_info}] when expires_at > now ->
+        {:ok, lock_info}
+
+      _expired_or_missing ->
+        {:error, :not_locked}
+    end
   end
 
   @doc """
   Gets all locks for a scope.
   """
   def list_locks(scope) do
-    GenServer.call(__MODULE__, {:list_locks, scope})
+    now = System.monotonic_time(:millisecond)
+
+    :ets.foldl(
+      fn
+        {{^scope, entity_id}, %{expires_at: expires_at} = lock_info}, acc when expires_at > now ->
+          Map.put(acc, entity_id, lock_info)
+
+        _, acc ->
+          acc
+      end,
+      %{},
+      @table_name
+    )
   end
 
   @doc """
@@ -140,18 +161,21 @@ defmodule Storyarn.Collaboration.Locks do
   end
 
   def handle_call({:release_all, scope, user_id}, _from, state) do
-    :ets.foldl(
-      fn
-        {{^scope, entity_id} = key, %{user_id: ^user_id} = lock_info}, _acc ->
-          :ets.delete(@table_name, key)
-          broadcast_lock_released(scope, entity_id, lock_info)
+    released =
+      :ets.foldl(
+        fn
+          {{^scope, entity_id} = key, %{user_id: ^user_id} = lock_info}, acc ->
+            :ets.delete(@table_name, key)
+            [{scope, entity_id, lock_info} | acc]
 
-        _, acc ->
-          acc
-      end,
-      nil,
-      @table_name
-    )
+          _, acc ->
+            acc
+        end,
+        [],
+        @table_name
+      )
+
+    broadcast_released_async(released)
 
     {:reply, :ok, state}
   end
@@ -173,47 +197,6 @@ defmodule Storyarn.Collaboration.Locks do
       [] ->
         {:reply, {:error, :not_lock_holder}, state}
     end
-  end
-
-  def handle_call({:get_lock, scope, entity_id}, _from, state) do
-    key = {scope, entity_id}
-    now = System.monotonic_time(:millisecond)
-
-    case :ets.lookup(@table_name, key) do
-      [{^key, lock_info}] ->
-        if lock_info.expires_at > now do
-          {:reply, {:ok, lock_info}, state}
-        else
-          :ets.delete(@table_name, key)
-          {:reply, {:error, :not_locked}, state}
-        end
-
-      [] ->
-        {:reply, {:error, :not_locked}, state}
-    end
-  end
-
-  def handle_call({:list_locks, scope}, _from, state) do
-    now = System.monotonic_time(:millisecond)
-
-    locks =
-      :ets.foldl(
-        fn
-          {{^scope, entity_id}, lock_info}, acc ->
-            if lock_info.expires_at > now do
-              Map.put(acc, entity_id, lock_info)
-            else
-              acc
-            end
-
-          _, acc ->
-            acc
-        end,
-        %{},
-        @table_name
-      )
-
-    {:reply, locks, state}
   end
 
   def handle_call(:clear_all, _from, state) do
@@ -284,20 +267,7 @@ defmodule Storyarn.Collaboration.Locks do
         @table_name
       )
 
-    # Notify subscribers about expired locks
-    # Uses PubSub directly to avoid circular dependency with Collaboration facade
-    for {{scope, entity_id}, lock_info} <- expired do
-      Phoenix.PubSub.broadcast(
-        Storyarn.PubSub,
-        "#{elem(scope, 0)}:#{elem(scope, 1)}:locks",
-        {:lock_change, :lock_expired,
-         %{
-           entity_id: entity_id,
-           user_id: lock_info.user_id,
-           user_email: lock_info.user_email
-         }}
-      )
-    end
+    broadcast_expired_async(expired)
 
     length(expired)
   end
@@ -313,6 +283,39 @@ defmodule Storyarn.Collaboration.Locks do
          user_email: lock_info.user_email
        }}
     )
+  end
+
+  defp broadcast_released_async([]), do: :ok
+
+  defp broadcast_released_async(released) do
+    Task.Supervisor.start_child(Storyarn.TaskSupervisor, fn ->
+      Enum.each(released, fn {scope, entity_id, lock_info} ->
+        broadcast_lock_released(scope, entity_id, lock_info)
+      end)
+    end)
+
+    :ok
+  end
+
+  defp broadcast_expired_async([]), do: :ok
+
+  defp broadcast_expired_async(expired) do
+    Task.Supervisor.start_child(Storyarn.TaskSupervisor, fn ->
+      Enum.each(expired, fn {{scope, entity_id}, lock_info} ->
+        Phoenix.PubSub.broadcast(
+          Storyarn.PubSub,
+          "#{elem(scope, 0)}:#{elem(scope, 1)}:locks",
+          {:lock_change, :lock_expired,
+           %{
+             entity_id: entity_id,
+             user_id: lock_info.user_id,
+             user_email: lock_info.user_email
+           }}
+        )
+      end)
+    end)
+
+    :ok
   end
 
   defp schedule_cleanup do

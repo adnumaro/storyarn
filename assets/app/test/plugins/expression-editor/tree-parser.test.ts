@@ -80,6 +80,15 @@ describe("parseCondition", () => {
     expect(condition.rules[0].sheet).toBe("mc");
     expect(condition.rules[0].variable).toBe("health");
   });
+
+  it("generates stable IDs for identical parses", () => {
+    const first = parseCondition("mc.health > 50 && mc.alive");
+    const second = parseCondition("mc.health > 50 && mc.alive");
+
+    expect(second.condition.rules.map((rule) => rule.id)).toEqual(
+      first.condition.rules.map((rule) => rule.id),
+    );
+  });
 });
 
 describe("parseAssignments", () => {
@@ -143,5 +152,14 @@ describe("parseAssignments", () => {
   it("reports syntax errors with positions", () => {
     const { errors } = parseAssignments("mc.health = ");
     expect(errors.length).toBeGreaterThanOrEqual(0);
+  });
+
+  it("generates stable IDs for identical parses", () => {
+    const first = parseAssignments("mc.hp = 100\nmc.mana += 50");
+    const second = parseAssignments("mc.hp = 100\nmc.mana += 50");
+
+    expect(second.assignments.map((assignment) => assignment.id)).toEqual(
+      first.assignments.map((assignment) => assignment.id),
+    );
   });
 });

@@ -124,15 +124,16 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
   Creates a workspace with owner membership (for internal use).
   """
   def create_workspace_with_owner(%User{} = user, attrs) do
-    with :ok <- Billing.can_create_workspace?(user) do
-      do_create_workspace_with_owner(user, attrs)
-    end
+    do_create_workspace_with_owner(user, attrs)
   end
 
   defp do_create_workspace_with_owner(user, attrs) do
     result =
       Repo.transact(fn ->
-        with {:ok, workspace} <- insert_workspace(user, attrs),
+        locked_user = Repo.one!(from(u in User, where: u.id == ^user.id, lock: "FOR UPDATE"))
+
+        with :ok <- normalize_workspace_capacity(Billing.can_create_workspace?(locked_user)),
+             {:ok, workspace} <- insert_workspace(user, attrs),
              {:ok, _membership} <- create_owner_membership(workspace, user),
              {:ok, _subscription} <- Billing.create_subscription(workspace) do
           {:ok, workspace}
@@ -144,10 +145,17 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
         Analytics.track(user, "workspace created", %{workspace_id: workspace.id})
         {:ok, workspace}
 
+      {:error, {:limit_reached, details}} ->
+        {:error, :limit_reached, details}
+
       error ->
         error
     end
   end
+
+  defp normalize_workspace_capacity(:ok), do: :ok
+
+  defp normalize_workspace_capacity({:error, :limit_reached, details}), do: {:error, {:limit_reached, details}}
 
   @doc """
   Returns a changeset for tracking workspace changes.

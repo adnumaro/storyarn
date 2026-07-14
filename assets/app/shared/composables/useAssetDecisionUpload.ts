@@ -44,27 +44,7 @@ interface UploadResponseBody extends Record<string, unknown> {
   error?: unknown;
 }
 
-const uploading = ref(false);
-const progress = ref(0);
-const error = ref<string | null>(null);
 const ERROR_DISMISS_MS = 6000;
-
-let errorDismissTimeout: ReturnType<typeof setTimeout> | null = null;
-
-function clearError(): void {
-  error.value = null;
-
-  if (errorDismissTimeout) {
-    clearTimeout(errorDismissTimeout);
-    errorDismissTimeout = null;
-  }
-}
-
-function setError(message: string): void {
-  clearError();
-  error.value = message;
-  errorDismissTimeout = setTimeout(clearError, ERROR_DISMISS_MS);
-}
 
 function errorMessage(body: UploadResponseBody, fallback: string): string {
   return typeof body.error === "string" ? body.error : fallback;
@@ -136,7 +116,11 @@ async function materializeUpload(
   return response.json();
 }
 
-function uploadFile(file: File, purpose: AssetUploadPurpose): Promise<UploadResult> {
+function uploadFile(
+  file: File,
+  purpose: AssetUploadPurpose,
+  onProgress: (progress: number) => void,
+): Promise<UploadResult> {
   return new Promise((resolve, reject) => {
     const form = new FormData();
     form.append("file", file);
@@ -148,7 +132,7 @@ function uploadFile(file: File, purpose: AssetUploadPurpose): Promise<UploadResu
 
     request.upload.onprogress = (event) => {
       if (event.lengthComputable) {
-        progress.value = Math.round((event.loaded / event.total) * 100);
+        onProgress(Math.round((event.loaded / event.total) * 100));
       }
     };
 
@@ -222,10 +206,29 @@ function formatBytes(size: number): string {
 }
 
 export function useAssetDecisionUpload() {
+  const uploading = ref(false);
+  const progress = ref(0);
+  const error = ref<string | null>(null);
   const dialog = ref<AssetUploadDialogState | null>(null);
+  let errorDismissTimeout: ReturnType<typeof setTimeout> | null = null;
   let pendingConfirmation: PendingConfirmation | null = null;
 
   const busy = computed(() => uploading.value);
+
+  function clearError(): void {
+    error.value = null;
+
+    if (errorDismissTimeout) {
+      clearTimeout(errorDismissTimeout);
+      errorDismissTimeout = null;
+    }
+  }
+
+  function setError(message: string): void {
+    clearError();
+    error.value = message;
+    errorDismissTimeout = setTimeout(clearError, ERROR_DISMISS_MS);
+  }
 
   async function uploadWithDecision(
     file: File,
@@ -257,7 +260,9 @@ export function useAssetDecisionUpload() {
         return materializeUpload(purpose, metadata);
       }
 
-      return await uploadFile(file, purpose);
+      return await uploadFile(file, purpose, (value) => {
+        progress.value = value;
+      });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
       return null;

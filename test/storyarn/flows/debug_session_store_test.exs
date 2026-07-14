@@ -36,5 +36,16 @@ defmodule Storyarn.Flows.DebugSessionStoreTest do
 
       assert DebugSessionStore.take(key) == %{version: 2}
     end
+
+    test "browser-session tokens isolate tabs for the same user and project" do
+      first_tab = {:debug, 7, 11, "tab-one"}
+      second_tab = {:debug, 7, 11, "tab-two"}
+
+      DebugSessionStore.store(first_tab, %{tab: :first})
+      DebugSessionStore.store(second_tab, %{tab: :second})
+
+      assert DebugSessionStore.take(first_tab) == %{tab: :first}
+      assert DebugSessionStore.take(second_tab) == %{tab: :second}
+    end
   end
 end

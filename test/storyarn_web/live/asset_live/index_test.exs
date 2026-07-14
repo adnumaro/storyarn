@@ -86,6 +86,30 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       assert "theme.mp3" in filenames
     end
 
+    test "paginates the asset grid without loading the full project collection", %{
+      conn: conn,
+      user: user,
+      project: project
+    } do
+      Enum.each(1..49, fn index ->
+        image_asset_fixture(project, user, %{filename: "asset-#{index}.png"})
+      end)
+
+      {:ok, view, _html} = live(conn, assets_path(project))
+
+      first_page = get_assets_vue(view)
+      assert length(first_page.props["assets"]) == 48
+      assert first_page.props["page"] == 1
+      assert first_page.props["total-pages"] == 2
+      assert first_page.props["total-count"] == 49
+
+      render_click(view, "change_asset_page", %{"page" => "2"})
+
+      second_page = get_assets_vue(view)
+      assert length(second_page.props["assets"]) == 1
+      assert second_page.props["page"] == 2
+    end
+
     test "passes type-counts for each filter tab", %{
       conn: conn,
       user: user,

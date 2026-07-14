@@ -109,7 +109,7 @@ let idCounter = 0;
 
 function generateId(prefix: string): string {
   idCounter += 1;
-  return `${prefix}_${Date.now()}_${idCounter}`;
+  return `${prefix}_${idCounter}`;
 }
 
 // -- Helpers --
@@ -218,6 +218,7 @@ export function parseAssignments(
   text: string,
   knownVariables?: Variable[],
 ): { assignments: ParsedAssignment[]; errors: ParseError[] } {
+  idCounter = 0;
   if (!text || !text.trim()) return { assignments: [], errors: [] };
 
   const knownLookup = buildKnownLookup(knownVariables);
@@ -393,6 +394,7 @@ export function parseCondition(
   text: string,
   knownVariables?: Variable[],
 ): { condition: ParsedCondition; errors: ParseError[] } {
+  idCounter = 0;
   if (!text || !text.trim()) return { condition: { logic: "all", rules: [] }, errors: [] };
 
   const knownLookup = buildKnownLookup(knownVariables);

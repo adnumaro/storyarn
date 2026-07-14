@@ -577,17 +577,20 @@ defmodule Storyarn.Sheets.PropertyInheritance do
 
   # Cleans orphaned hidden_inherited_block_ids on sheets referencing the parent block
   defp cleanup_hidden_block_ids(parent_block_id) do
-    from(s in Sheet,
-      where: ^parent_block_id in s.hidden_inherited_block_ids
-    )
-    |> Repo.all()
-    |> Enum.each(fn sheet ->
-      updated_ids = List.delete(sheet.hidden_inherited_block_ids, parent_block_id)
+    now = TimeHelpers.now()
 
-      sheet
-      |> Ecto.Changeset.change(%{hidden_inherited_block_ids: updated_ids})
-      |> Repo.update!()
-    end)
+    Repo.update_all(
+      from(s in Sheet,
+        where: ^parent_block_id in s.hidden_inherited_block_ids,
+        update: [
+          set: [
+            hidden_inherited_block_ids: fragment("array_remove(?, ?)", s.hidden_inherited_block_ids, ^parent_block_id),
+            updated_at: ^now
+          ]
+        ]
+      ),
+      []
+    )
   end
 
   # Loads children-scope blocks for an ancestor (used in inherit_blocks_for_new_sheet)
@@ -670,13 +673,22 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     {source_columns, source_rows} = load_table_structure(parent_block.id)
     instances = list_non_detached_instances(parent_block.id)
 
+    instance_ids = Enum.map(instances, & &1.id)
+
+    instances_with_columns =
+      from(c in TableColumn,
+        where: c.block_id in ^instance_ids,
+        distinct: true,
+        select: c.block_id
+      )
+      |> Repo.all()
+      |> MapSet.new()
+
     # Only load rewrite context if any formula cells with variable bindings exist
     rewrite_ctx = build_rewrite_context_if_needed(parent_block, source_rows, instances)
 
     for instance <- instances do
-      existing_count = Repo.one(from(c in TableColumn, where: c.block_id == ^instance.id, select: count()))
-
-      if existing_count == 0 do
+      if not MapSet.member?(instances_with_columns, instance.id) do
         rows = maybe_rewrite_rows(source_rows, instance, rewrite_ctx)
         insert_table_structure(instance.id, source_columns, rows)
       end

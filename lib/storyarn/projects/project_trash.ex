@@ -89,11 +89,16 @@ defmodule Storyarn.Projects.ProjectTrash do
   @doc """
   Lists all deleted project items with project retention fields for cleanup jobs.
   """
-  @spec list_deleted_items_for_retention() :: [map()]
-  def list_deleted_items_for_retention do
+  @spec list_deleted_items_for_retention(keyword()) :: [map()]
+  def list_deleted_items_for_retention(opts \\ []) do
+    cursor = Keyword.get(opts, :after)
+    limit = Keyword.get(opts, :limit, @max_per_page)
+
     Repo.all(
       from(i in deleted_items_query(),
+        where: ^retention_cursor_filter(cursor),
         order_by: [asc: i.deleted_at, asc: i.type, asc: i.id],
+        limit: ^limit,
         select: %{
           id: i.id,
           type: i.type,
@@ -104,6 +109,17 @@ defmodule Storyarn.Projects.ProjectTrash do
           workspace_id: i.workspace_id
         }
       )
+    )
+  end
+
+  defp retention_cursor_filter(nil), do: dynamic(true)
+
+  defp retention_cursor_filter({deleted_at, type, id}) do
+    dynamic(
+      [i],
+      i.deleted_at > ^deleted_at or
+        (i.deleted_at == ^deleted_at and i.type > ^type) or
+        (i.deleted_at == ^deleted_at and i.type == ^type and i.id > ^id)
     )
   end
 
