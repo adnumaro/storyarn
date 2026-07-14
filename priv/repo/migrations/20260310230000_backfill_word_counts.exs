@@ -44,14 +44,14 @@ defmodule Storyarn.Repo.Migrations.BackfillWordCounts do
     from(n in "flow_nodes",
       join: f in "flows",
       on: n.flow_id == f.id,
-      where: is_nil(n.deleted_at) and is_nil(f.deleted_at) and n.type == "dialogue",
-      select: {n.id, n.data}
+      where: is_nil(n.deleted_at) and is_nil(f.deleted_at) and n.type in ["dialogue", "exit"],
+      select: {n.id, n.type, n.data}
     )
     |> Repo.stream(max_rows: @batch_size)
     |> Stream.chunk_every(@batch_size)
     |> Enum.each(fn batch ->
-      Enum.each(batch, fn {id, data} ->
-        wc = WordCount.for_node_data(decode_value(data))
+      Enum.each(batch, fn {id, type, data} ->
+        wc = WordCount.for_node_data(type, decode_value(data))
 
         if wc > 0 do
           from(n in "flow_nodes", where: n.id == ^id)

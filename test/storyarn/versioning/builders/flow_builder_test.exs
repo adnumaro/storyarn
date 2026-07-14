@@ -31,6 +31,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       assert snapshot["description"] == flow.description
       assert is_list(snapshot["nodes"])
       assert is_list(snapshot["connections"])
+      refute Enum.any?(snapshot["nodes"], &Map.has_key?(&1, "word_count"))
     end
 
     test "captures nodes sorted deterministically", %{flow: flow} do
@@ -47,7 +48,14 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
     end
 
     test "captures connections with index references", %{flow: flow} do
-      n1 = node_fixture(flow, %{type: "dialogue", position_x: 100.0, position_y: 100.0})
+      n1 =
+        node_fixture(flow, %{
+          type: "dialogue",
+          position_x: 100.0,
+          position_y: 100.0,
+          data: %{"text" => "One two three", "responses" => []}
+        })
+
       n2 = node_fixture(flow, %{type: "hub", position_x: 200.0, position_y: 100.0})
       _conn = connection_fixture(flow, n1, n2)
 
@@ -73,7 +81,14 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
 
   describe "restore_snapshot/3" do
     test "restores flow with nodes and connections", %{flow: flow} do
-      n1 = node_fixture(flow, %{type: "dialogue", position_x: 100.0, position_y: 100.0})
+      n1 =
+        node_fixture(flow, %{
+          type: "dialogue",
+          position_x: 100.0,
+          position_y: 100.0,
+          data: %{"text" => "One two three", "responses" => []}
+        })
+
       n2 = node_fixture(flow, %{type: "hub", position_x: 200.0, position_y: 100.0})
       _conn = connection_fixture(flow, n1, n2)
 
@@ -92,6 +107,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       active_nodes = Enum.reject(restored.nodes, &(&1.deleted_at != nil))
       assert length(active_nodes) == length(snapshot["nodes"])
       assert length(restored.connections) == 1
+      assert Enum.find(active_nodes, &(&1.type == "dialogue")).word_count == 3
     end
 
     test "restores translations after flow node IDs are replaced", %{project: project, flow: flow} do
@@ -130,7 +146,14 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
 
   describe "instantiate_snapshot/3" do
     test "materializes a new flow and remaps connection node ids", %{project: project, flow: flow} do
-      node_a = node_fixture(flow, %{type: "dialogue", position_x: 100.0, position_y: 100.0})
+      node_a =
+        node_fixture(flow, %{
+          type: "dialogue",
+          position_x: 100.0,
+          position_y: 100.0,
+          data: %{"text" => "One two three", "responses" => []}
+        })
+
       node_b = node_fixture(flow, %{type: "hub", position_x: 200.0, position_y: 100.0})
       connection = connection_fixture(flow, node_a, node_b)
 
@@ -160,6 +183,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
 
       cloned_dialogue = Enum.find(materialized.nodes, &(&1.type == "dialogue"))
       refute cloned_dialogue.data["localization_id"] == node_a.data["localization_id"]
+      assert cloned_dialogue.word_count == 3
     end
 
     test "rejects a dialogue snapshot without the current runtime identity", %{project: project, flow: flow} do
@@ -171,7 +195,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
         "position_x" => 10.0,
         "position_y" => 20.0,
         "data" => %{"text" => "No identity", "responses" => []},
-        "word_count" => 2,
         "source" => "manual"
       }
 

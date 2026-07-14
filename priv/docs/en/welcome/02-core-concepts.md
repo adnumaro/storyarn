@@ -56,4 +56,4 @@ For example, a Health block on the `mc.jaime` sheet becomes `mc.jaime.health`.
 
 ## How these concepts connect
 
-Sheets define the world state. Blocks on sheets become variables. Flows read those variables through condition nodes and change them through instruction nodes. Scenes place flows in a spatial context. Localization extracts the player-facing text from those systems. Export moves the result into engine-specific formats.
+Sheets define the world state. Blocks on sheets become variables. Flows read those variables through condition nodes and change them through instruction nodes. Scenes place flows in a spatial context. Localization extracts the player-facing runtime text from Flows and Sheets; Scenes remain spatial editor content. Export moves the result into engine-specific formats.

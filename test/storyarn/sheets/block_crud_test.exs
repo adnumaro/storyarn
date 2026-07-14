@@ -5,6 +5,7 @@ defmodule Storyarn.Sheets.BlockCrudTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Collaboration
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
@@ -423,6 +424,21 @@ defmodule Storyarn.Sheets.BlockCrudTest do
                })
 
       assert updated.word_count == 3
+    end
+
+    test "updates localizable totals and invalidates dashboards when eligibility changes", %{
+      project: project,
+      sheet: sheet
+    } do
+      block = block_fixture(sheet, %{value: %{"content" => "one two three"}})
+      before_count = Sheets.sheet_word_counts(project.id)[sheet.id]
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      assert {:ok, updated} = Sheets.update_block(block, %{is_constant: true})
+
+      assert updated.is_constant
+      assert Sheets.sheet_word_counts(project.id)[sheet.id] == before_count - 3
+      assert_received {:dashboard_invalidate, :sheets}
     end
 
     test "rejects invalid block type on update", %{sheet: sheet} do
@@ -953,13 +969,14 @@ defmodule Storyarn.Sheets.BlockCrudTest do
         Sheets.import_block(sheet.id, %{
           type: "text",
           config: %{"label" => "Imported"},
-          value: %{"content" => ""},
+          value: %{"content" => "Imported runtime words"},
           variable_name: "imported",
           position: 0
         })
 
       assert block.type == "text"
       assert block.config["label"] == "Imported"
+      assert block.word_count == 3
     end
 
     test "does not auto-deduplicate variable names (relies on DB constraint)", %{sheet: sheet} do

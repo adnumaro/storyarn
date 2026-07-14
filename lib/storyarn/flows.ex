@@ -954,7 +954,7 @@ defmodule Storyarn.Flows do
   @doc "Returns per-flow node stats for a project. %{flow_id => %{node_count, dialogue_count, condition_count}}."
   defdelegate flow_stats_for_project(project_id), to: FlowStats
 
-  @doc "Returns per-flow word counts from dialogue nodes. %{flow_id => word_count}."
+  @doc "Returns per-flow localizable word counts from runtime flow-node fields. %{flow_id => word_count}."
   defdelegate flow_word_counts(project_id), to: FlowStats
 
   @doc "Detects issues in flows for a project. Returns [%{flow_id, flow_name, issue_type, count}]."

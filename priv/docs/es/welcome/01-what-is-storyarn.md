@@ -11,7 +11,7 @@ Storyarn es una **plataforma de diseño narrativo** para diseñadores de juegos 
 
 Ya sea que estés construyendo un RPG, una novela visual o un juego de aventuras, Storyarn te da las herramientas para diseñar tu historia de forma visual y colaborativa.
 
-<img src="/images/docs/project-dashboard-current.png" alt="Dashboard del proyecto con métricas, advertencias y actividad reciente" loading="lazy">
+<img src="/images/docs/project-dashboard-current.png" alt="Dashboard del proyecto con fichas, variables, flujos, líneas de diálogo, escenas, palabras localizables, avisos, progreso de localización y actividad reciente" loading="lazy">
 
 ---
 
@@ -21,7 +21,7 @@ Existen herramientas que hacen parte de lo que Storyarn hace. Hojas de cálculo 
 
 **Mereces algo mejor.** Si alguna vez sentiste que tus herramientas narrativas te frenan — demasiado torpes, demasiado fragmentadas, demasiado difíciles de aprender — Storyarn fue creado para ti.
 
-Una sola plataforma. Todo conectado. Define las estadísticas de un personaje en una **Hoja (Sheet)**, referéncialas en un **Flujo (Flow)** para crear diálogos ramificados, coloca esa ubicación en un mapa de **Escena (Scene)** y tradúcelo todo con las herramientas de **Localización**. Cambia un valor una sola vez y cada flujo que lo comprueba refleja la actualización de inmediato.
+Una sola plataforma. Todo conectado. Define las estadísticas de un personaje en una **Hoja (Sheet)**, referéncialas en un **Flujo (Flow)** para crear diálogos ramificados, coloca esa ubicación en un mapa de **Escena (Scene)** y traduce el texto visible para el jugador de Flujos y Fichas con las herramientas de **Localización**. Cambia un valor una sola vez y cada flujo que lo comprueba refleja la actualización de inmediato.
 
 ---
 
@@ -49,7 +49,7 @@ Mapas interactivos para tu mundo. Dibuja zonas, coloca pines de personajes y con
 
 Extrae automáticamente cada línea de diálogo. Traduce mediante la integración con DeepL, revisa cada texto localizado con un flujo de estados definido y sigue el progreso por idioma mediante informes detallados.
 
-<img src="/images/docs/localization-overview-current.png" alt="Dashboard de localización con progreso por idioma, recuento de palabras y estado de doblaje" loading="lazy">
+<img src="/images/docs/localization-overview-current.png" alt="Dashboard de localización con progreso de catalán, palabras por hablante, estado de doblaje y un desglose runtime limitado a nodos de flujo, bloques y nombres de fichas" loading="lazy">
 
 ---
 

@@ -89,23 +89,15 @@ defmodule Storyarn.Sheets.BlockCrud do
       |> Map.put_new(:config, config)
       |> Map.put_new(:value, value)
 
-    result = insert_block_in_transaction(sheet, enriched_attrs, word_count)
-
-    case result do
-      {:ok, _block} ->
-        broadcast_sheet_change(sheet)
-
-      _ ->
-        :ok
-    end
-
-    result
+    sheet
+    |> insert_block_in_transaction(enriched_attrs, word_count)
+    |> broadcast_block_result()
   end
 
   def update_block(%Block{} = block, attrs) do
     old_scope = block.scope
 
-    Repo.transaction(fn ->
+    fn ->
       changeset =
         block
         |> Block.update_changeset(attrs)
@@ -121,7 +113,9 @@ defmodule Storyarn.Sheets.BlockCrud do
       else
         {:error, reason} -> Repo.rollback(reason)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_block_result()
   end
 
   defp block_word_count(block_type, value) when block_type in ~w(text rich_text), do: WordCount.for_block_value(value)
@@ -245,7 +239,7 @@ defmodule Storyarn.Sheets.BlockCrud do
   end
 
   def update_block_config(%Block{} = block, config) do
-    Repo.transaction(fn ->
+    fn ->
       changeset =
         block
         |> Block.config_changeset(%{config: config})
@@ -259,7 +253,9 @@ defmodule Storyarn.Sheets.BlockCrud do
       else
         {:error, reason} -> Repo.rollback(reason)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_block_result()
   end
 
   defp maybe_sync_config_definition(%Block{scope: "children"} = updated_block) do
@@ -274,7 +270,7 @@ defmodule Storyarn.Sheets.BlockCrud do
   Soft-deletes a block by setting deleted_at timestamp.
   """
   def delete_block(%Block{} = block) do
-    Repo.transaction(fn ->
+    fn ->
       # Clean up references and localization texts before soft-deleting
       References.delete_block_references(block.id)
       Localization.delete_block_tree_texts(block.id)
@@ -287,20 +283,21 @@ defmodule Storyarn.Sheets.BlockCrud do
       case block |> Block.delete_changeset() |> Repo.update() do
         {:ok, deleted_block} ->
           maybe_dissolve_column_group(deleted_block.sheet_id, deleted_block.column_group_id)
-          broadcast_block_change(deleted_block)
           deleted_block
 
         {:error, changeset} ->
           Repo.rollback(changeset)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_block_result()
   end
 
   @doc """
   Permanently deletes a block from the database.
   """
   def permanently_delete_block(%Block{} = block) do
-    Repo.transaction(fn ->
+    fn ->
       References.delete_block_references(block.id)
       Localization.purge_texts_for_source("block", block.id)
 
@@ -308,7 +305,9 @@ defmodule Storyarn.Sheets.BlockCrud do
         {:ok, deleted} -> deleted
         {:error, changeset} -> Repo.rollback(changeset)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_block_result()
   end
 
   @doc """
@@ -316,7 +315,7 @@ defmodule Storyarn.Sheets.BlockCrud do
   If the block has scope "children", also restores its inherited instances.
   """
   def restore_block(%Block{} = block) do
-    Repo.transaction(fn ->
+    fn ->
       with {:ok, restored_block} <- block |> Block.restore_changeset() |> Repo.update(),
            :ok <- maybe_restore_inherited_instances(block),
            :ok <- extract_updated_block(restored_block, block.scope) do
@@ -324,7 +323,9 @@ defmodule Storyarn.Sheets.BlockCrud do
       else
         {:error, reason} -> Repo.rollback(reason)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_block_result()
   end
 
   defp maybe_restore_inherited_instances(%Block{scope: "children"} = deleted_block) do
@@ -369,7 +370,7 @@ defmodule Storyarn.Sheets.BlockCrud do
   end
 
   defp insert_block_from_snapshot(sheet, snapshot, attrs) do
-    Repo.transaction(fn ->
+    fn ->
       changeset =
         %Block{sheet_id: sheet.id}
         |> Block.create_changeset(attrs)
@@ -381,7 +382,9 @@ defmodule Storyarn.Sheets.BlockCrud do
       else
         {:error, reason} -> Repo.rollback(reason)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_block_result()
   end
 
   @doc """
@@ -393,7 +396,7 @@ defmodule Storyarn.Sheets.BlockCrud do
   def duplicate_block(%Block{} = block) do
     sheet_id = block.sheet_id
 
-    Repo.transaction(fn ->
+    fn ->
       # Shift all blocks after the original position by +1
       Repo.update_all(
         from(b in Block, where: b.sheet_id == ^sheet_id and b.position > ^block.position and is_nil(b.deleted_at)),
@@ -412,12 +415,15 @@ defmodule Storyarn.Sheets.BlockCrud do
       }
 
       sheet = Repo.get!(Sheet, sheet_id)
+      word_count = block_word_count(block.type, block.value)
 
-      case create_block(sheet, attrs) do
+      case insert_block_in_transaction(sheet, attrs, word_count) do
         {:ok, new_block} -> new_block
-        {:error, changeset} -> Repo.rollback(changeset)
+        {:error, reason} -> Repo.rollback(reason)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_block_result()
   end
 
   @doc """
@@ -486,10 +492,22 @@ defmodule Storyarn.Sheets.BlockCrud do
     # Fall back to auto-generated name from label when input is cleared
     normalized = normalized || default_variable_name(block)
 
-    block
-    |> Block.variable_changeset(%{variable_name: normalized})
-    |> ensure_unique_variable_name(block.sheet_id, block.id)
-    |> Repo.update()
+    fn -> update_variable_name_transaction(block, normalized) end
+    |> Repo.transaction()
+    |> broadcast_block_result()
+  end
+
+  defp update_variable_name_transaction(block, variable_name) do
+    with {:ok, updated_block} <-
+           block
+           |> Block.variable_changeset(%{variable_name: variable_name})
+           |> ensure_unique_variable_name(block.sheet_id, block.id)
+           |> Repo.update(),
+         :ok <- Localization.extract_block(updated_block) do
+      updated_block
+    else
+      {:error, reason} -> Repo.rollback(reason)
+    end
   end
 
   defp default_variable_name(block) do
@@ -773,15 +791,18 @@ defmodule Storyarn.Sheets.BlockCrud do
   # Dashboard broadcast helpers
   # =============================================================================
 
-  defp broadcast_sheet_change(%Sheet{} = sheet) do
-    Collaboration.broadcast_dashboard_change(sheet.project_id, :sheets)
-  end
-
   defp broadcast_block_change(%Block{} = block) do
     project_id = Repo.one(from(s in Sheet, where: s.id == ^block.sheet_id, select: s.project_id))
 
     if project_id, do: Collaboration.broadcast_dashboard_change(project_id, :sheets)
   end
+
+  defp broadcast_block_result({:ok, %Block{} = block} = result) do
+    broadcast_block_change(block)
+    result
+  end
+
+  defp broadcast_block_result(result), do: result
 
   # =============================================================================
   # Import helpers (raw insert, no side effects)
@@ -793,8 +814,12 @@ defmodule Storyarn.Sheets.BlockCrud do
   Returns `{:ok, block}` or `{:error, changeset}`.
   """
   def import_block(sheet_id, attrs) do
+    type = attrs[:type] || attrs["type"]
+    value = attrs[:value] || attrs["value"]
+
     %Block{sheet_id: sheet_id}
     |> Block.create_changeset(attrs)
+    |> Ecto.Changeset.put_change(:word_count, block_word_count(type, value))
     |> Repo.insert()
   end
 end

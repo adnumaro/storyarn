@@ -3,6 +3,8 @@ defmodule Storyarn.Flows.NodeDelete do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Collaboration
+  alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Localization
   alias Storyarn.References
@@ -23,10 +25,10 @@ defmodule Storyarn.Flows.NodeDelete do
 
     case result do
       {:ok, _, _} ->
-        project_id = Repo.one(from(f in Storyarn.Flows.Flow, where: f.id == ^node.flow_id, select: f.project_id))
+        project_id = Repo.one(from(f in Flow, where: f.id == ^node.flow_id, select: f.project_id))
 
         if project_id do
-          Storyarn.Collaboration.broadcast_dashboard_change(project_id, :flows)
+          Collaboration.broadcast_dashboard_change(project_id, :flows)
         end
 
       _ ->
@@ -43,13 +45,7 @@ defmodule Storyarn.Flows.NodeDelete do
   def restore_node(flow_id, node_id) do
     case Repo.get(FlowNode, node_id) do
       %FlowNode{flow_id: ^flow_id, deleted_at: deleted_at} = node when not is_nil(deleted_at) ->
-        node
-        |> FlowNode.restore_changeset()
-        |> Repo.update()
-        |> tap(fn
-          {:ok, restored_node} -> Localization.extract_flow_node(restored_node)
-          _ -> :ok
-        end)
+        restore_deleted_node(node, flow_id)
 
       %FlowNode{flow_id: ^flow_id, deleted_at: nil} ->
         {:ok, :already_active}
@@ -58,6 +54,28 @@ defmodule Storyarn.Flows.NodeDelete do
         {:error, :not_found}
     end
   end
+
+  defp restore_deleted_node(node, flow_id) do
+    result = Repo.transaction(fn -> restore_node_transaction(node) end)
+    maybe_broadcast_restore(result, flow_id)
+    result
+  end
+
+  defp restore_node_transaction(node) do
+    with {:ok, restored_node} <- node |> FlowNode.restore_changeset() |> Repo.update(),
+         :ok <- Localization.extract_flow_node(restored_node) do
+      restored_node
+    else
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp maybe_broadcast_restore({:ok, _restored_node}, flow_id) do
+    project_id = Repo.one(from(f in Flow, where: f.id == ^flow_id, select: f.project_id))
+    if project_id, do: Collaboration.broadcast_dashboard_change(project_id, :flows)
+  end
+
+  defp maybe_broadcast_restore(_result, _flow_id), do: :ok
 
   defp last_exit_node?(node) do
     Repo.aggregate(

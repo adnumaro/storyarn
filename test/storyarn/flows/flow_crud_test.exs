@@ -7,6 +7,7 @@ defmodule Storyarn.Flows.FlowCrudTest do
   import Storyarn.ScenesFixtures
 
   alias Storyarn.Flows
+  alias Storyarn.Repo
 
   # ===========================================================================
   # Setup helpers
@@ -445,7 +446,7 @@ defmodule Storyarn.Flows.FlowCrudTest do
       # Clear the shortcut first
       flow
       |> Ecto.Changeset.change(%{shortcut: nil})
-      |> Storyarn.Repo.update!()
+      |> Repo.update!()
 
       flow_without_shortcut = %{flow | shortcut: nil}
       {:ok, updated} = Flows.update_flow(flow_without_shortcut, %{name: "New Name"})
@@ -895,6 +896,7 @@ defmodule Storyarn.Flows.FlowCrudTest do
 
       assert node.type == "dialogue"
       assert node.flow_id == flow.id
+      assert node.word_count == 2
     end
   end
 
@@ -1193,6 +1195,20 @@ defmodule Storyarn.Flows.FlowCrudTest do
       assert Flows.flow_word_counts(project.id)[flow.id] == 4
     end
 
+    test "ignores denormalized counts on node types outside the localization contract" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project, %{name: "Intro", description: ""})
+
+      node = node_fixture(flow, %{type: "condition", data: %{"expression" => "true"}})
+
+      node
+      |> Ecto.Changeset.change(%{word_count: 99})
+      |> Repo.update!()
+
+      assert Flows.flow_word_counts(project.id)[flow.id] == 0
+    end
+
     test "returns empty map for project with no flows" do
       user = user_fixture()
       project = project_fixture(user)
@@ -1260,7 +1276,7 @@ defmodule Storyarn.Flows.FlowCrudTest do
 
       target
       |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
-      |> Storyarn.Repo.update!()
+      |> Repo.update!()
 
       issues = Flows.detect_flow_issues(project.id)
       dead_end = Enum.filter(issues, &(&1.issue_type == :dead_end_nodes))

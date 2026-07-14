@@ -20,6 +20,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   alias Storyarn.Localization.TextCrud
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
+  alias Storyarn.Shared.WordCount
   alias Storyarn.Sheets
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.DiffHelpers
@@ -92,7 +93,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       "position_x" => node.position_x,
       "position_y" => node.position_y,
       "data" => node.data,
-      "word_count" => node.word_count,
       "source" => node.source
     }
   end
@@ -339,7 +339,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       position_x: node_data["position_x"] || 0.0,
       position_y: node_data["position_y"] || 0.0,
       data: data,
-      word_count: node_data["word_count"] || 0,
+      word_count: WordCount.for_node_data(node_data["type"], data),
       source: node_data["source"] || "manual"
     })
     |> repo.insert()
@@ -458,7 +458,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       position_x: node_data["position_x"] || 0.0,
       position_y: node_data["position_y"] || 0.0,
       data: data,
-      word_count: node_data["word_count"] || 0,
+      word_count: WordCount.for_node_data(node_data["type"], data),
       source: node_data["source"] || "manual"
     })
   end
@@ -583,7 +583,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   # ========== Diff Snapshots ==========
 
   # Fields excluded from node comparison (canvas position is noise)
-  @node_ignore_fields ["position_x", "position_y", "word_count", "original_id"]
+  @node_ignore_fields ["position_x", "position_y", "original_id"]
 
   @impl true
   def diff_snapshots(old_snapshot, new_snapshot) do

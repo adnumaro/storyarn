@@ -16,9 +16,9 @@ The cards at the top summarize:
 - **Sheets** and exposed **Variables**.
 - **Flows** and dialogue lines.
 - **Scenes**.
-- Total project word count.
+- Total localizable word count: the same player-facing flow and sheet text included by the runtime export contract.
 
-The Sheets, Variables, Flows, Dialogue, and Scenes cards open their corresponding workspaces. The word-count card is informational.
+The Sheets, Variables, Flows, Dialogue, and Scenes cards open their corresponding workspaces. The localizable-word card is informational. It excludes scenes, screenplays, and editor-only labels or descriptions.
 
 ## Narrative breakdown
 

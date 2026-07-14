@@ -12,6 +12,7 @@ defmodule Storyarn.Sheets do
   """
 
   alias Storyarn.Accounts.User
+  alias Storyarn.Collaboration
   alias Storyarn.Localization
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
@@ -239,7 +240,9 @@ defmodule Storyarn.Sheets do
           {:ok, sheet()} | {:error, validation_error() | term()}
   def move_sheet_to_position(%Sheet{} = sheet, new_parent_id, new_position) do
     with :ok <- SheetCrud.validate_parent(sheet, new_parent_id) do
-      Repo.transaction(fn -> move_sheet_to_position_transaction(sheet, new_parent_id, new_position) end)
+      fn -> move_sheet_to_position_transaction(sheet, new_parent_id, new_position) end
+      |> Repo.transaction()
+      |> broadcast_sheet_dashboard_result(sheet.project_id)
     end
   end
 
@@ -273,8 +276,18 @@ defmodule Storyarn.Sheets do
   @doc """
   Propagates an inheritable block to selected descendant sheets.
   """
-  defdelegate propagate_to_descendants(parent_block, selected_sheet_ids),
-    to: PropertyInheritance
+  def propagate_to_descendants(%Block{} = parent_block, selected_sheet_ids) do
+    fn ->
+      {:ok, count} = PropertyInheritance.propagate_to_descendants(parent_block, selected_sheet_ids)
+
+      case Localization.extract_block_tree(parent_block.id) do
+        :ok -> count
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end
+    |> Repo.transaction()
+    |> broadcast_block_dashboard_result(parent_block)
+  end
 
   @doc """
   Detaches an inherited block, making it a local copy.
@@ -284,7 +297,20 @@ defmodule Storyarn.Sheets do
   @doc """
   Re-attaches a previously detached block.
   """
-  defdelegate reattach_block(block), to: PropertyInheritance
+  def reattach_block(%Block{} = block) do
+    fn -> reattach_block_transaction(block) end
+    |> Repo.transaction()
+    |> broadcast_block_dashboard_result(block)
+  end
+
+  defp reattach_block_transaction(block) do
+    with {:ok, updated_block} <- PropertyInheritance.reattach_block(block),
+         :ok <- Localization.extract_block(updated_block) do
+      updated_block
+    else
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
 
   @doc """
   Hides an ancestor block from this sheet's children.
@@ -937,7 +963,7 @@ defmodule Storyarn.Sheets do
   @doc "Returns per-sheet block and variable counts. %{sheet_id => %{block_count, variable_count}}."
   defdelegate sheet_stats_for_project(project_id), to: SheetStats
 
-  @doc "Returns per-sheet word counts from text/rich_text blocks. %{sheet_id => word_count}."
+  @doc "Returns per-sheet localizable word counts from runtime sheet fields. %{sheet_id => word_count}."
   defdelegate sheet_word_counts(project_id), to: SheetStats
 
   @doc "Returns MapSet of block IDs with at least one variable reference."
@@ -945,4 +971,22 @@ defmodule Storyarn.Sheets do
 
   @doc "Detects issues in sheets. Returns [%{issue_type, sheet_id, sheet_name, ...}]."
   defdelegate detect_sheet_issues(project_id, referenced_ids \\ nil), to: SheetStats
+
+  defp broadcast_sheet_dashboard_result({:ok, _value} = result, project_id) do
+    Collaboration.broadcast_dashboard_change(project_id, :sheets)
+    result
+  end
+
+  defp broadcast_sheet_dashboard_result(result, _project_id), do: result
+
+  defp broadcast_block_dashboard_result({:ok, _value} = result, %Block{} = block) do
+    case Repo.get(Sheet, block.sheet_id) do
+      %Sheet{project_id: project_id} -> Collaboration.broadcast_dashboard_change(project_id, :sheets)
+      nil -> :ok
+    end
+
+    result
+  end
+
+  defp broadcast_block_dashboard_result(result, _block), do: result
 end

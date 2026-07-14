@@ -70,7 +70,7 @@ defmodule Storyarn.Sheets.SheetCrud do
       _ -> :ok
     end
 
-    result
+    broadcast_dashboard_result(result, sheet.project_id)
   end
 
   @doc """
@@ -78,21 +78,14 @@ defmodule Storyarn.Sheets.SheetCrud do
   Also soft deletes all descendant sheets.
   """
   def delete_sheet(%Sheet{} = sheet) do
-    result = trash_sheet(sheet)
-
-    case result do
-      {:ok, _} -> Collaboration.broadcast_dashboard_change(sheet.project_id, :sheets)
-      _ -> :ok
-    end
-
-    result
+    trash_sheet(sheet)
   end
 
   @doc """
   Soft deletes a sheet and all its descendants (moves to trash).
   """
   def trash_sheet(%Sheet{} = sheet) do
-    Repo.transaction(fn ->
+    fn ->
       # Get all descendant IDs before deleting
       descendant_ids = get_descendant_ids(sheet.id)
 
@@ -111,7 +104,9 @@ defmodule Storyarn.Sheets.SheetCrud do
       sheet
       |> Sheet.delete_changeset()
       |> Repo.update!()
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_dashboard_result(sheet.project_id)
   end
 
   @doc """
@@ -150,6 +145,7 @@ defmodule Storyarn.Sheets.SheetCrud do
       {:error, _op, changeset, _changes} ->
         {:error, changeset}
     end
+    |> broadcast_dashboard_result(sheet.project_id)
   end
 
   @doc """
@@ -158,7 +154,7 @@ defmodule Storyarn.Sheets.SheetCrud do
   Use with caution - this cannot be undone.
   """
   def permanently_delete_sheet(%Sheet{} = sheet) do
-    Repo.transaction(fn ->
+    fn ->
       block_ids = Repo.all(from(b in Storyarn.Sheets.Block, where: b.sheet_id == ^sheet.id, select: b.id))
 
       # Delete all versions first
@@ -174,12 +170,16 @@ defmodule Storyarn.Sheets.SheetCrud do
         {:ok, deleted} -> deleted
         {:error, changeset} -> Repo.rollback(changeset)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_dashboard_result(sheet.project_id)
   end
 
   def move_sheet(%Sheet{} = sheet, parent_id, position \\ nil) do
     with :ok <- validate_parent(sheet, parent_id) do
-      Repo.transaction(fn -> move_sheet_transaction(sheet, parent_id, position) end)
+      fn -> move_sheet_transaction(sheet, parent_id, position) end
+      |> Repo.transaction()
+      |> broadcast_dashboard_result(sheet.project_id)
     end
   end
 
@@ -276,6 +276,13 @@ defmodule Storyarn.Sheets.SheetCrud do
       check_backlinks_fn: &(References.count_backlinks("sheet", &1.id) > 0)
     )
   end
+
+  defp broadcast_dashboard_result({:ok, _value} = result, project_id) do
+    Collaboration.broadcast_dashboard_change(project_id, :sheets)
+    result
+  end
+
+  defp broadcast_dashboard_result(result, _project_id), do: result
 
   # =============================================================================
   # Import helpers (raw insert, no side effects)

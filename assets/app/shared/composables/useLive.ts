@@ -7,7 +7,7 @@
  *   live.handleEvent("pin_updated", (payload) => { ... })
  */
 
-import { getCurrentInstance } from "vue";
+import { getCurrentInstance, inject } from "vue";
 
 export interface LiveInterface {
   pushEvent: (
@@ -21,9 +21,13 @@ export interface LiveInterface {
 }
 
 export function useLive(): LiveInterface {
+  // LiveVue replaces this injection for components teleported with `v-inject`,
+  // so events keep targeting the LiveView that owns the injected component.
+  // The app-global hook belongs to the host Vue tree and is only a fallback.
+  const injectedLive = inject<LiveInterface | undefined>("_live_vue", undefined);
   const instance = getCurrentInstance();
   const globalProps = instance?.appContext.config.globalProperties;
-  const $live = globalProps?.$live as LiveInterface | undefined;
+  const $live = injectedLive ?? (globalProps?.$live as LiveInterface | undefined);
 
   if (!$live) {
     // Return a no-op stub when used outside LiveView (e.g., Storybook)

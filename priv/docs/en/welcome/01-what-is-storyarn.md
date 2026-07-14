@@ -11,7 +11,7 @@ Storyarn is a **narrative design platform** for game designers and interactive s
 
 Whether you're building an RPG, a visual novel, or an adventure game, Storyarn gives you the tools to design your story visually and collaboratively.
 
-<img src="/images/docs/project-dashboard-current.png" alt="Project dashboard with metrics, warnings, and recent activity" loading="lazy">
+<img src="/images/docs/project-dashboard-current.png" alt="Project dashboard with sheets, variables, flows, dialogue lines, scenes, localizable words, warnings, localization progress, and recent activity" loading="lazy">
 
 ---
 
@@ -21,7 +21,7 @@ There are tools out there that do some of what Storyarn does. Spreadsheets for c
 
 **You deserve better.** If you've ever felt that your narrative tools are holding you back — too clunky, too fragmented, too painful to learn — Storyarn was built for you.
 
-One platform. Everything connected. Define a character's stats in a **Sheet**, reference them in a **Flow** to create branching dialogue, place that location on a **Scene** map, and translate it all with the **Localization** tools. Change a value once, and every flow that checks it reflects the update immediately.
+One platform. Everything connected. Define a character's stats in a **Sheet**, reference them in a **Flow** to create branching dialogue, place that location on a **Scene** map, and translate the player-facing Flow and Sheet text with the **Localization** tools. Change a value once, and every flow that checks it reflects the update immediately.
 
 ---
 
@@ -49,7 +49,7 @@ Interactive maps for your world. Draw zones, place character pins, and connect l
 
 Extract every line of dialogue automatically. Translate with DeepL integration, review each localized string through a defined status workflow, and track progress per language with detailed reports.
 
-<img src="/images/docs/localization-overview-current.png" alt="Localization dashboard with language progress, word counts, and voice-over status" loading="lazy">
+<img src="/images/docs/localization-overview-current.png" alt="Localization dashboard with Catalan progress, speaker word counts, voice-over status, and a runtime source breakdown limited to flow nodes, blocks, and sheet names" loading="lazy">
 
 ---
 

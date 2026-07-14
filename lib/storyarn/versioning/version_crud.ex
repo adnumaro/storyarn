@@ -10,6 +10,7 @@ defmodule Storyarn.Versioning.VersionCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Collaboration
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.EntityVersion
@@ -362,6 +363,7 @@ defmodule Storyarn.Versioning.VersionCrud do
             entity.id
           )
 
+          broadcast_dashboard_change(entity_type, updated_entity.project_id)
           {:ok, updated_entity}
 
         error ->
@@ -396,6 +398,14 @@ defmodule Storyarn.Versioning.VersionCrud do
       skip_diff: true
     )
   end
+
+  defp broadcast_dashboard_change("flow", project_id), do: Collaboration.broadcast_dashboard_change(project_id, :flows)
+
+  defp broadcast_dashboard_change("sheet", project_id), do: Collaboration.broadcast_dashboard_change(project_id, :sheets)
+
+  defp broadcast_dashboard_change("scene", project_id), do: Collaboration.broadcast_dashboard_change(project_id, :scenes)
+
+  defp broadcast_dashboard_change(_entity_type, _project_id), do: :ok
 
   @doc """
   Loads a version's snapshot from storage.

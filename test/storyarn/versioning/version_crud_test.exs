@@ -5,6 +5,7 @@ defmodule Storyarn.Versioning.VersionCrudTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Collaboration
   alias Storyarn.Versioning
   alias Storyarn.Versioning.EntityVersion
 
@@ -286,7 +287,9 @@ defmodule Storyarn.Versioning.VersionCrudTest do
       {:ok, version} =
         Versioning.create_version("sheet", sheet, project.id, user.id, title: "v1")
 
+      :ok = Collaboration.subscribe_dashboard(project.id)
       {:ok, _restored} = Versioning.restore_version("sheet", sheet, version)
+      assert_received {:dashboard_invalidate, :sheets}
 
       # Should only have the original version
       versions = Versioning.list_versions("sheet", sheet.id)

@@ -7,7 +7,7 @@ description: "Translate your project into multiple languages with extraction, De
 
 ---
 
-Storyarn's localization system gives you control over translating your narrative content -- from dialogue lines and response options to sheet names and block labels. It handles {accent}automatic text extraction{/accent}, machine translation via DeepL, voice-over tracking, and detailed progress reports.
+Storyarn's localization system gives you control over the player-facing text sent to engine exports -- from dialogue lines and response options to sheet names and textual runtime variables. It handles {accent}automatic text extraction{/accent}, machine translation via DeepL, voice-over tracking, and detailed progress reports.
 
 ## How it works
 
@@ -17,18 +17,19 @@ The localization workflow has four stages, each designed to minimize manual effo
 
 Open **Localization** in your project sidebar. If the project has no source language yet, Storyarn initializes it from the workspace default. The source language is shown in the sidebar and can be changed there. Add target languages from a curated list of {accent}45 supported languages{/accent} covering major game localization markets -- from English, Spanish, and Japanese to Arabic, Thai, and Chinese (Simplified/Traditional).
 
-<img src="/images/docs/localization-overview-current.png" alt="The localization index page showing the source language badge, target language chips with remove buttons, and the Add Language dropdown" loading="lazy">
+<img src="/images/docs/localization-overview-current.png" alt="Localization report with the English source language, Catalan target language, translation progress, speaker word counts, voice-over status, and runtime source breakdown" loading="lazy">
 
 ### 2. Extract translatable content
 
-Click **Sync** to scan your entire project and extract every piece of translatable text. The extractor pulls content from four source types:
+Click **Sync** to reconcile localization with the project's current runtime export contract. The extractor pulls content from three source types:
 
-| Source         | What gets extracted                                                                    |
-| -------------- | -------------------------------------------------------------------------------------- |
-| **Flow nodes** | Dialogue text, stage directions, menu text, individual response texts, and exit labels |
-| **Sheets**     | Sheet name, sheet description                                                          |
-| **Blocks**     | Block labels, text content values, select option labels                                |
-| **Flows**      | Flow name, flow description                                                            |
+| Source         | What gets extracted                                                                                            |
+| -------------- | -------------------------------------------------------------------------------------------------------------- |
+| **Flow nodes** | Dialogue text, stage directions, menu text, individual response texts, and exit labels                         |
+| **Sheets**     | The name of each active sheet, used as a runtime actor or speaker name                                         |
+| **Blocks**     | `value.content` from active, non-constant text or rich-text blocks that have a non-empty runtime variable name |
+
+Scenes and screenplays are not part of localization. Flow names and descriptions, sheet descriptions, and editor metadata such as block labels, placeholders, and option labels are also excluded because they are not emitted as player-facing text by the engine export contract.
 
 Each extracted text gets a SHA-256 hash of its source content. When you re-sync, Storyarn detects changes -- if the source text has been modified since the last translation, the system can flag it for re-translation. Extraction is idempotent: running it multiple times never creates duplicates thanks to upsert logic.
 
@@ -44,9 +45,9 @@ You have three paths to get translations done:
 
 Under the hood, DeepL translation is {accent}HTML-aware{/accent}: rich text from dialogue nodes is sent with `tag_handling: "html"` so formatting is preserved. Variable placeholders like `{character_name}` are wrapped in `<span translate="no">` before sending, then unwrapped after -- so they come back untouched. Batch requests are chunked into groups of 50 texts (DeepL's per-request limit).
 
-**Export for external translators** -- Download an Excel (.xlsx) or CSV file filtered by language, status, or source type. Send it to your translation team and keep the ID column unchanged so every row remains traceable. Storyarn does not currently expose CSV import in the project UI; returned translations must be entered through the translation editor.
+**Round-trip with external translators** -- Download an Excel (.xlsx) or CSV file filtered by language, status, or source type. Send it to your translation team, keep the ID column unchanged, and preserve the Source Hash column so Storyarn can reject rows whose source changed after export. The **Import CSV** action accepts the returned CSV and updates the matching translations and statuses.
 
-<img src="/images/docs/localization-texts-current.png" alt="The translation table showing source text, translation, status badges, word counts, and action buttons (edit, translate with DeepL)" loading="lazy">
+<img src="/images/docs/localization-texts-current.png" alt="The Catalan translation workspace showing progress, filters, and runtime strings from blocks, flow nodes, and sheet names with translations, statuses, and word counts" loading="lazy">
 
 ### 4. Review and finalize
 
@@ -66,7 +67,7 @@ Machine translations are automatically set to **Draft** status. If the source te
 
 Filter the translation table by language, status, and source type. Search across both source and translated text. The table is paginated (50 entries per page) and shows:
 
-- Source type icon (flow node, block, sheet, flow)
+- Source type icon (flow node, block, or sheet)
 - Source text (HTML-stripped for preview)
 - Current translation with a "MT" badge if machine-translated
 - Status badge
@@ -76,7 +77,7 @@ Filter the translation table by language, status, and source type. Search across
 
 Open **Project Settings > Localization** to enter a DeepL API key, choose the Free or Pro API tier, test the connection, and review provider usage. Saving a provider enables individual and batch translation actions in the Localization workspace.
 
-Glossary management and glossary synchronization are not currently exposed in the application, so they are not part of the supported project workflow.
+Open **Glossary** from the Localization toolbar to maintain source and target terms, contextual notes, and terms that must not be translated. With an active DeepL provider, you can synchronize the glossary for the selected language pair and use it during machine translation.
 
 <img src="/images/docs/localization-settings.png" alt="Project Localization settings showing the DeepL API key and API tier controls" loading="lazy">
 
@@ -90,7 +91,7 @@ The localization report gives you a bird's-eye view of your translation progress
 
 **Voice-over progress** -- Track VO status across four stages: none, needed, recorded, and approved. Each text entry from dialogue nodes has its own VO status independent of the translation status.
 
-**Content breakdown** -- See how many text entries come from each source type (flow nodes, blocks, sheets, flows) for a given language.
+**Content breakdown** -- See how many text entries come from each source type (flow nodes, blocks, and sheets) for a given language.
 
 <img src="/images/docs/localization-overview-current.png" alt="Localization report with source and target languages, translation progress, speaker word counts, and voice-over status" loading="lazy">
 
@@ -98,4 +99,4 @@ The localization report gives you a bird's-eye view of your translation progress
 
 **Export** -- Download translations as Excel (.xlsx) or CSV, filtered by language. The export includes: ID, source type, source ID, source field, locale, source text (HTML-stripped), translation, status, word count, machine-translated flag, and translator/reviewer notes (Excel only).
 
-The exported ID column identifies the existing localized-text row. Keep it unchanged when exchanging files with translators. The current Localization workspace does not expose a CSV upload action, so completed translations must be entered through the translation editor before they are reflected in the project.
+The exported ID column identifies the existing localized-text row. Keep it unchanged when exchanging files with translators. For the safest round-trip, also preserve **Source Hash**: CSV import validates it and reports stale rows instead of applying translations to source text that has changed. Imports are limited to 5 MB and can update the Translation and Status columns.

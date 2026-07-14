@@ -45,6 +45,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       assert block["type"] == "number"
       assert block["config"]["label"] == "Health"
       assert block["value"]["content"] == "100"
+      refute Map.has_key?(block, "word_count")
     end
 
     test "excludes block IDs from snapshot", %{sheet: sheet} do
@@ -97,7 +98,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
         block_fixture(sheet, %{
           type: "text",
           config: %{"label" => "Name"},
-          value: %{"content" => "Alice"}
+          value: %{"content" => "Alice brave hero"}
         })
 
       _b2 =
@@ -119,6 +120,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       assert restored.name == sheet.name
       blocks = Sheets.list_blocks(sheet.id)
       assert length(blocks) == 2
+      assert Enum.find(blocks, &(&1.type == "text")).word_count == 3
     end
 
     test "restores block and sheet-name translations after block IDs are replaced", %{
@@ -174,7 +176,8 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
           type: "text",
           position: 0,
           variable_name: "health",
-          config: %{"label" => "Health"}
+          config: %{"label" => "Health"},
+          value: %{"content" => "One two three"}
         })
 
       block_b =
@@ -211,6 +214,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       assert Map.has_key?(id_maps.block, block_b.id)
 
       blocks = Sheets.list_blocks(materialized.id)
+      assert Enum.find(blocks, &(&1.variable_name == "health")).word_count == 3
       cloned_b = Enum.find(blocks, &(&1.variable_name == "health_copy"))
       assert cloned_b.inherited_from_block_id == id_maps.block[block_a.id]
 

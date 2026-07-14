@@ -20,6 +20,7 @@ defmodule Storyarn.Flows.FlowCrud do
   alias Storyarn.Shared.SoftDelete
   alias Storyarn.Shared.Trashable
   alias Storyarn.Shared.TreeOperations, as: SharedTree
+  alias Storyarn.Shared.WordCount
   alias Storyarn.Sheets
   alias Storyarn.Shortcuts
 
@@ -213,6 +214,7 @@ defmodule Storyarn.Flows.FlowCrud do
         |> Repo.update()
       end)
       |> Repo.transaction()
+      |> broadcast_flow_dashboard_result(project.id)
     end
   end
 
@@ -223,7 +225,9 @@ defmodule Storyarn.Flows.FlowCrud do
 
   def create_flow(%Project{} = project, attrs) do
     with :ok <- Billing.can_create_item?(project) do
-      do_create_flow(project, attrs)
+      project
+      |> do_create_flow(attrs)
+      |> broadcast_flow_dashboard_result(project.id)
     end
   end
 
@@ -244,8 +248,6 @@ defmodule Storyarn.Flows.FlowCrud do
         {:ok, flow} ->
           insert_default_node!(flow.id, "entry", 100.0, 300.0, %{})
           insert_default_node!(flow.id, "exit", 500.0, 300.0, default_exit_data())
-
-          Collaboration.broadcast_dashboard_change(project.id, :flows)
           flow
 
         {:error, changeset} ->
@@ -334,7 +336,7 @@ defmodule Storyarn.Flows.FlowCrud do
   Use with caution - this cannot be undone.
   """
   def hard_delete_flow(%Flow{} = flow) do
-    Repo.transaction(fn ->
+    fn ->
       node_ids = Repo.all(from(n in FlowNode, where: n.flow_id == ^flow.id, select: n.id))
       Localization.purge_texts_for_sources("flow_node", node_ids)
 
@@ -342,7 +344,9 @@ defmodule Storyarn.Flows.FlowCrud do
         {:ok, deleted} -> deleted
         {:error, changeset} -> Repo.rollback(changeset)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_flow_dashboard_result(flow.project_id)
   end
 
   @doc """
@@ -356,6 +360,7 @@ defmodule Storyarn.Flows.FlowCrud do
       {:ok, restored_flow} -> Localization.extract_flow_nodes(restored_flow.id)
       _ -> :ok
     end)
+    |> broadcast_flow_dashboard_result(flow.project_id)
   end
 
   @doc """
@@ -666,8 +671,12 @@ defmodule Storyarn.Flows.FlowCrud do
   Returns `{:ok, node}` or `{:error, changeset}`.
   """
   def import_node(flow_id, attrs) do
+    type = attrs[:type] || attrs["type"]
+    data = attrs[:data] || attrs["data"]
+
     %FlowNode{flow_id: flow_id}
     |> FlowNode.create_changeset(attrs)
+    |> Ecto.Changeset.put_change(:word_count, WordCount.for_node_data(type, data))
     |> Repo.insert()
   end
 
@@ -693,4 +702,11 @@ defmodule Storyarn.Flows.FlowCrud do
   defp maybe_filter_export_ids(query, ids) when is_list(ids) do
     from(q in query, where: q.id in ^ids)
   end
+
+  defp broadcast_flow_dashboard_result({:ok, _value} = result, project_id) do
+    Collaboration.broadcast_dashboard_change(project_id, :flows)
+    result
+  end
+
+  defp broadcast_flow_dashboard_result(result, _project_id), do: result
 end

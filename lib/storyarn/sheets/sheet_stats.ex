@@ -76,13 +76,12 @@ defmodule Storyarn.Sheets.SheetStats do
   end
 
   @doc """
-  Returns per-sheet word counts including:
-  - Sheet names and descriptions
-  - Text/rich_text block content words (from denormalized `word_count` column)
-  - Block labels and placeholders
-  - Select/multi_select option values
-  - Table column and row names
-  - Gallery image labels and descriptions
+  Returns per-sheet localizable word counts from the runtime export contract:
+  - Active sheet names
+  - `value.content` for active, exported text/rich_text variables
+
+  Editor-only descriptions, labels, placeholders, options, table metadata, and
+  gallery metadata are excluded.
 
   Returns `%{sheet_id => word_count}`.
   """

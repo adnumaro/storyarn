@@ -9,6 +9,7 @@ defmodule Storyarn.SheetsTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Collaboration
   alias Storyarn.Localization
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Sheet
@@ -1198,6 +1199,18 @@ defmodule Storyarn.SheetsTest do
       {:ok, updated} = Sheets.update_sheet(sheet, %{name: "New Name"})
 
       assert updated.shortcut == "new-name"
+    end
+
+    test "renaming a sheet updates localizable words and invalidates dashboards" do
+      user = user_fixture()
+      project = project_fixture(user)
+      {:ok, sheet} = Sheets.create_sheet(project, %{name: "Hero"})
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      assert {:ok, updated} = Sheets.update_sheet(sheet, %{name: "Main Hero"})
+
+      assert Sheets.sheet_word_counts(project.id)[updated.id] == 2
+      assert_received {:dashboard_invalidate, :sheets}
     end
 
     test "does not regenerate when explicit shortcut provided" do

@@ -17,6 +17,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   alias Storyarn.Localization
   alias Storyarn.Localization.TextCrud
   alias Storyarn.Repo
+  alias Storyarn.Shared.WordCount
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.BlockGalleryImage
   alias Storyarn.Sheets.Sheet
@@ -424,6 +425,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       position: block_data["position"],
       config: block_data["config"] || %{},
       value: block_data["value"] || %{},
+      word_count: block_word_count(block_data["type"], block_data["value"] || %{}),
       is_constant: block_data["is_constant"] || false,
       variable_name: block_data["variable_name"],
       scope: block_data["scope"] || "self",
@@ -434,6 +436,9 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       updated_at: now
     }
   end
+
+  defp block_word_count(type, value) when type in ~w(text rich_text), do: WordCount.for_block_value(value)
+  defp block_word_count(_type, _value), do: 0
 
   defp restore_table_data(_repo, [], _sorted_data, _now), do: :ok
 
@@ -546,31 +551,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   defp insert_sheet_blocks(sheet_id, blocks_data, now) do
     sorted_data = Enum.sort_by(blocks_data, & &1["position"])
 
-    entries =
-      Enum.map(sorted_data, fn block_data ->
-        Map.merge(
-          %{
-            sheet_id: sheet_id,
-            type: block_data["type"],
-            position: block_data["position"],
-            config: block_data["config"] || %{},
-            value: block_data["value"] || %{},
-            is_constant: block_data["is_constant"] || false,
-            variable_name: block_data["variable_name"],
-            scope: block_data["scope"] || "self",
-            # Insert with nil inheritance: cross-sheet `inherited_from_block_id`
-            # references a block in another sheet whose new id isn't known yet
-            # (the FK is non-deferrable and checked at insert). The correct value
-            # is set afterward by remap_sheet_block_inheritance/4 and the global
-            # remap_block_inheritance/2 in ProjectRecovery once every sheet's
-            # blocks have new ids.
-            inherited_from_block_id: nil,
-            detached: block_data["detached"] || false,
-            required: block_data["required"] || false
-          },
-          MaterializationHelpers.timestamps(now)
-        )
-      end)
+    entries = Enum.map(sorted_data, &materialized_block_entry(&1, sheet_id, now))
 
     case MaterializationHelpers.insert_all_returning(Repo, Block, entries, [:id, :position]) do
       {:ok, inserted_blocks} ->
@@ -579,6 +560,32 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       {:error, reason} ->
         {:error, reason}
     end
+  end
+
+  defp materialized_block_entry(block_data, sheet_id, now) do
+    Map.merge(
+      %{
+        sheet_id: sheet_id,
+        type: block_data["type"],
+        position: block_data["position"],
+        config: block_data["config"] || %{},
+        value: block_data["value"] || %{},
+        word_count: block_word_count(block_data["type"], block_data["value"] || %{}),
+        is_constant: block_data["is_constant"] || false,
+        variable_name: block_data["variable_name"],
+        scope: block_data["scope"] || "self",
+        # Insert with nil inheritance: cross-sheet `inherited_from_block_id`
+        # references a block in another sheet whose new id isn't known yet
+        # (the FK is non-deferrable and checked at insert). The correct value
+        # is set afterward by remap_sheet_block_inheritance/4 and the global
+        # remap_block_inheritance/2 in ProjectRecovery once every sheet's
+        # blocks have new ids.
+        inherited_from_block_id: nil,
+        detached: block_data["detached"] || false,
+        required: block_data["required"] || false
+      },
+      MaterializationHelpers.timestamps(now)
+    )
   end
 
   defp remap_sheet_block_inheritance(inserted_blocks, blocks_data, block_id_map, preserve_external_refs?) do

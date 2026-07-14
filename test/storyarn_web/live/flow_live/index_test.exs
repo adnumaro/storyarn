@@ -99,8 +99,9 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
       vue = get_dashboard_vue(view)
       stats = vue.props["stats"]
       assert is_map(stats)
+      assert stats["word_count"] == 2
       table_data = vue.props["table-data"]
-      assert Enum.any?(table_data, fn row -> row["name"] == "Main Story" end)
+      assert Enum.any?(table_data, fn row -> row["name"] == "Main Story" and row["word_count"] == 2 end)
     end
 
     test "sort_flows event toggles table order", %{conn: conn, user: user} do

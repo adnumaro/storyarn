@@ -12,13 +12,13 @@
         "blocks": "Blocks",
         "variables": "Variables",
         "vars_in_use": "Vars in use",
-        "words": "Words"
+        "words": "Localizable words"
       },
       "columns": {
         "name": "Name",
         "blocks": "Blocks",
         "variables": "Variables",
-        "words": "Words",
+        "words": "Localizable words",
         "modified": "Modified"
       },
       "total_sheets": "{n} sheet | {n} sheets"

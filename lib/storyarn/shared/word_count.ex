@@ -19,34 +19,31 @@ defmodule Storyarn.Shared.WordCount do
   def for_node_data(_type, nil), do: 0
 
   def for_node_data("dialogue", data) when is_map(data) do
-    base = [data["text"], data["menu_text"], data["stage_directions"]]
+    base = [
+      field(data, "text", :text),
+      field(data, "menu_text", :menu_text),
+      field(data, "stage_directions", :stage_directions)
+    ]
 
     response_texts =
-      case data["responses"] do
-        rs when is_list(rs) -> Enum.map(rs, & &1["text"])
+      case field(data, "responses", :responses) do
+        responses when is_list(responses) -> Enum.map(responses, &response_text/1)
         _ -> []
       end
 
     (base ++ response_texts)
-    |> Enum.reject(&(is_nil(&1) or &1 == ""))
+    |> Enum.filter(&is_binary/1)
     |> Enum.map(&HtmlUtils.word_count/1)
     |> Enum.sum()
   end
 
   def for_node_data("exit", data) when is_map(data) do
     data
-    |> Map.get("label")
-    |> HtmlUtils.word_count()
+    |> field("label", :label)
+    |> text_word_count()
   end
 
   def for_node_data(_type, _data), do: 0
-
-  # Backward-compatible arity-1 clause for dialogue-only callers
-  @doc false
-  @spec for_node_data(map() | nil) :: non_neg_integer()
-  def for_node_data(nil), do: 0
-  def for_node_data(data) when is_map(data), do: for_node_data("dialogue", data)
-  def for_node_data(_), do: 0
 
   @doc """
   Computes word count for a sheet block's value map.
@@ -57,8 +54,10 @@ defmodule Storyarn.Shared.WordCount do
   @spec for_block_value(map() | nil) :: non_neg_integer()
   def for_block_value(nil), do: 0
 
-  def for_block_value(%{"content" => content}) when is_binary(content) and content != "" do
-    HtmlUtils.word_count(content)
+  def for_block_value(value) when is_map(value) do
+    value
+    |> field("content", :content)
+    |> text_word_count()
   end
 
   def for_block_value(_), do: 0
@@ -76,4 +75,19 @@ defmodule Storyarn.Shared.WordCount do
   def for_name(name) when is_binary(name) do
     name |> String.split(~r/\s+/, trim: true) |> length()
   end
+
+  defp response_text(response) when is_map(response), do: field(response, "text", :text)
+  defp response_text(_response), do: nil
+
+  # Persistence gives us string-keyed JSON maps, while public context APIs also
+  # accept atom-keyed maps before their changesets normalize the payload.
+  defp field(map, string_key, atom_key) do
+    case Map.fetch(map, string_key) do
+      {:ok, value} -> value
+      :error -> Map.get(map, atom_key)
+    end
+  end
+
+  defp text_word_count(text) when is_binary(text), do: HtmlUtils.word_count(text)
+  defp text_word_count(_text), do: 0
 end

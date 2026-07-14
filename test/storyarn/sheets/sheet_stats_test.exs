@@ -110,7 +110,7 @@ defmodule Storyarn.Sheets.SheetStatsTest do
   end
 
   describe "sheet_word_counts/1" do
-    test "counts all sheet texts included in the project dashboard", %{
+    test "counts only sheet names and exported textual runtime values", %{
       project: project,
       user: user
     } do
@@ -222,7 +222,7 @@ defmodule Storyarn.Sheets.SheetStatsTest do
       assert counts[sheet.id] == 2
     end
 
-    test "counts table row and column names from table blocks", %{project: project} do
+    test "excludes table row and column names", %{project: project} do
       alias Storyarn.Sheets.TableRow
 
       sheet = sheet_fixture(project, %{name: "Main"})
@@ -242,7 +242,7 @@ defmodule Storyarn.Sheets.SheetStatsTest do
       assert counts[sheet.id] == 1
     end
 
-    test "includes table row names from inherited table blocks", %{project: project} do
+    test "excludes table row names from inherited table blocks", %{project: project} do
       alias Storyarn.Sheets.TableRow
 
       parent_sheet = sheet_fixture(project, %{name: "Parent"})
