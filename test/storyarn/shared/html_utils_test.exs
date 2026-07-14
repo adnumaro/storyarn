@@ -73,6 +73,27 @@ defmodule Storyarn.Shared.HtmlUtilsTest do
     end
   end
 
+  describe "add_heading_ids/1" do
+    test "normalizes inline HTML consistently" do
+      html = "<h2>Hello <code>World &amp; friends</code></h2>"
+
+      assert HtmlUtils.add_heading_ids(html) ==
+               ~s(<h2 id="hello-world-friends">Hello <code>World &amp; friends</code></h2>)
+    end
+
+    test "preserves Unicode letters and numbers" do
+      assert HtmlUtils.add_heading_ids("<h2>Cómo diseñar 日本語 2</h2>") ==
+               ~s(<h2 id="cómo-diseñar-日本語-2">Cómo diseñar 日本語 2</h2>)
+    end
+
+    test "suffixes duplicate and empty heading IDs deterministically" do
+      html = "<h2>Setup</h2><h3>Setup</h3><h2>🎮</h2><h2>🎮</h2>"
+
+      assert HtmlUtils.add_heading_ids(html) ==
+               ~s(<h2 id="setup">Setup</h2><h3 id="setup-2">Setup</h3><h2 id="section">🎮</h2><h2 id="section-2">🎮</h2>)
+    end
+  end
+
   # ===========================================================================
   # strip_and_truncate/2
   # ===========================================================================

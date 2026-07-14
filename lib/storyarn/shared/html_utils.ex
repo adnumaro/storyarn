@@ -5,6 +5,8 @@ defmodule Storyarn.Shared.HtmlUtils do
   Consolidates strip_html implementations used across the codebase.
   """
 
+  @heading_regex ~r/<(h[23])>\n?(.*?)<\/\1>/s
+
   @doc """
   Strips HTML tags and decodes common entities, returning plain text.
 
@@ -73,6 +75,59 @@ defmodule Storyarn.Shared.HtmlUtils do
 
   def word_count(text) when is_binary(text) do
     text |> strip_html() |> String.split(~r/\s+/, trim: true) |> length()
+  end
+
+  @doc """
+  Adds stable, unique IDs to h2 and h3 elements for anchor linking.
+
+  IDs retain Unicode letters and numbers. Repeated headings receive a
+  deterministic numeric suffix, and headings without usable text fall back to
+  `section`.
+  """
+  @spec add_heading_ids(String.t()) :: String.t()
+  def add_heading_ids(body) when is_binary(body) do
+    {chunks, offset, _counts} =
+      @heading_regex
+      |> Regex.scan(body, return: :index)
+      |> Enum.reduce({[], 0, %{}}, &replace_heading(body, &1, &2))
+
+    tail = binary_part(body, offset, byte_size(body) - offset)
+    IO.iodata_to_binary([Enum.reverse(chunks), tail])
+  end
+
+  defp replace_heading(
+         body,
+         [{match_start, match_length}, {tag_start, tag_length}, {content_start, content_length}],
+         {chunks, offset, counts}
+       ) do
+    prefix = binary_part(body, offset, match_start - offset)
+    tag = binary_part(body, tag_start, tag_length)
+    content = binary_part(body, content_start, content_length)
+    {id, counts} = unique_heading_id(content, counts)
+    heading = ["<", tag, " id=\"", id, "\">", content, "</", tag, ">"]
+
+    {[[prefix, heading] | chunks], match_start + match_length, counts}
+  end
+
+  defp unique_heading_id(content, counts) do
+    base_id = heading_id(content)
+    occurrence = Map.get(counts, base_id, 0) + 1
+    id = if occurrence == 1, do: base_id, else: "#{base_id}-#{occurrence}"
+
+    {id, Map.put(counts, base_id, occurrence)}
+  end
+
+  defp heading_id(content) do
+    content
+    |> strip_html()
+    |> String.downcase()
+    |> String.replace(~r/[^\p{L}\p{N}\s-]/u, "")
+    |> String.trim()
+    |> String.replace(~r/\s+/u, "-")
+    |> case do
+      "" -> "section"
+      id -> id
+    end
   end
 
   # Decodes common HTML entities

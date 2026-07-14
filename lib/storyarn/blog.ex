@@ -9,6 +9,9 @@ defmodule Storyarn.Blog do
 
   alias Storyarn.Blog.Post
 
-  defdelegate list_posts(locale \\ "en"), to: Post
-  defdelegate get_post(slug, locale \\ "en"), to: Post
+  def list_posts, do: Post.list_posts()
+  defdelegate list_posts(locale), to: Post
+
+  def get_post(slug), do: Post.get_post(slug)
+  defdelegate get_post(slug, locale), to: Post
 end
