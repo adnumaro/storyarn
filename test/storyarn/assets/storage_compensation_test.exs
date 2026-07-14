@@ -3,6 +3,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
 
   import ExUnit.CaptureLog
 
+  alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCleanupPersistenceError
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageCompensation
@@ -118,5 +119,25 @@ defmodule Storyarn.Assets.StorageCompensationTest do
              )
 
     assert_receive {:cleanup_enqueued, [^storage_key]}
+  end
+
+  test "persists failed immediate cleanup when queue insertion also fails" do
+    storage_key = "projects/1/blobs/persisted-orphan.png"
+
+    assert :ok =
+             StorageCompensation.delete_or_enqueue(storage_key,
+               delete_fun: fn ^storage_key -> {:error, :temporarily_unavailable} end,
+               enqueue_fun: fn [^storage_key] -> {:error, :oban_unavailable} end
+             )
+
+    assert %StorageCleanupRequest{storage_keys: [^storage_key]} = Repo.one(StorageCleanupRequest)
+  end
+
+  test "accepts blob keys for deletion retries" do
+    storage_key = "projects/1/blobs/#{System.unique_integer([:positive])}.png"
+    assert {:ok, _url} = Storage.upload(storage_key, "blob", "image/png")
+
+    assert :ok = StorageCompensation.delete_storage_keys([storage_key])
+    assert {:error, :enoent} = Storage.download(storage_key)
   end
 end

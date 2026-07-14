@@ -102,11 +102,21 @@ defmodule Storyarn.Assets.StorageCompensation do
   @spec delete_or_enqueue(String.t(), keyword()) :: :ok | {:error, term()}
   def delete_or_enqueue(storage_key, opts \\ []) when is_binary(storage_key) do
     delete_fun = Keyword.get(opts, :delete_fun, &Storage.delete/1)
-    enqueue_fun = Keyword.get(opts, :enqueue_fun, &enqueue_cleanup/1)
 
-    case delete_fun.(storage_key) do
-      :ok -> :ok
-      {:error, _reason} -> enqueue_fun.([storage_key])
+    case call_single_delete(delete_fun, storage_key) do
+      :ok ->
+        :ok
+
+      {:error, _reason} ->
+        tracker = new()
+        :ok = track(tracker, storage_key)
+
+        cleanup_opts =
+          opts
+          |> Keyword.delete(:delete_fun)
+          |> Keyword.put(:delete_fun, fn storage_keys -> retry_delete(storage_keys, delete_fun) end)
+
+        cleanup(tracker, cleanup_opts)
     end
   end
 
@@ -367,10 +377,32 @@ defmodule Storyarn.Assets.StorageCompensation do
   end
 
   defp valid_storage_key?(storage_key) when is_binary(storage_key) do
-    String.starts_with?(storage_key, "projects/") and String.contains?(storage_key, "/assets/")
+    String.starts_with?(storage_key, "projects/") and
+      (String.contains?(storage_key, "/assets/") or String.contains?(storage_key, "/blobs/"))
   end
 
   defp valid_storage_key?(_storage_key), do: false
+
+  defp retry_delete(storage_keys, delete_fun) do
+    failed_keys =
+      Enum.filter(storage_keys, fn storage_key ->
+        call_single_delete(delete_fun, storage_key) != :ok
+      end)
+
+    if failed_keys == [], do: :ok, else: {:error, failed_keys}
+  end
+
+  defp call_single_delete(delete_fun, storage_key) do
+    case delete_fun.(storage_key) do
+      :ok -> :ok
+      {:error, _reason} = error -> error
+      _result -> {:error, :unexpected_delete_result}
+    end
+  rescue
+    _error -> {:error, :delete_exception}
+  catch
+    _kind, _reason -> {:error, :delete_failure}
+  end
 
   defp safe_error(reason) when is_atom(reason), do: reason
   defp safe_error(%module{}), do: module
