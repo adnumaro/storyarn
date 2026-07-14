@@ -232,7 +232,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
         updates =
           source
           |> build_reattach_updates()
-          |> Map.put(:word_count, inherited_word_count(source.type, block.value))
+          |> Map.put(:word_count, WordCount.for_block(source.type, block.value))
 
         block
         |> Ecto.Changeset.change(updates)
@@ -717,9 +717,6 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     unique = BlockCrud.find_unique_variable_name(base_name, taken_names)
     {unique, MapSet.put(taken_names, unique)}
   end
-
-  defp inherited_word_count(type, value) when type in ~w(text rich_text), do: WordCount.for_block_value(value)
-  defp inherited_word_count(_type, _value), do: 0
 
   # =============================================================================
   # Table Structure Inheritance

@@ -52,7 +52,9 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
     word_count =
       flow.nodes
       |> Enum.filter(&(&1.type in localizable_node_types))
-      |> Enum.sum_by(&WordCount.for_node_data(&1.type, &1.data))
+      |> Enum.reduce(0, fn node, total ->
+        total + WordCount.for_node_data(node.type, node.data)
+      end)
 
     error_nodes =
       flow_data.nodes

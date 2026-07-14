@@ -79,7 +79,7 @@ defmodule Storyarn.Sheets.BlockCrud do
     block_type = attrs[:type] || attrs["type"]
     config = attrs[:config] || Block.default_config(block_type)
     value = attrs[:value] || Block.default_value(block_type)
-    word_count = block_word_count(block_type, value)
+    word_count = WordCount.for_block(block_type, value)
 
     enriched_attrs =
       attrs
@@ -114,10 +114,6 @@ defmodule Storyarn.Sheets.BlockCrud do
     |> Repo.transaction()
     |> broadcast_block_result()
   end
-
-  defp block_word_count(block_type, value) when block_type in ~w(text rich_text), do: WordCount.for_block_value(value)
-
-  defp block_word_count(_block_type, _value), do: 0
 
   defp insert_block_in_transaction(sheet, attrs, word_count) do
     Repo.transaction(fn ->
@@ -161,7 +157,7 @@ defmodule Storyarn.Sheets.BlockCrud do
   defp put_block_word_count(changeset) do
     type = Ecto.Changeset.get_field(changeset, :type)
     value = Ecto.Changeset.get_field(changeset, :value)
-    Ecto.Changeset.put_change(changeset, :word_count, block_word_count(type, value))
+    Ecto.Changeset.put_change(changeset, :word_count, WordCount.for_block(type, value))
   end
 
   # Sync definition to instances if scope remained "children"
@@ -200,10 +196,7 @@ defmodule Storyarn.Sheets.BlockCrud do
   defp normalize_side_effect(:ok), do: :ok
 
   def update_block_value(%Block{} = block, value) do
-    word_count =
-      if block.type in ~w(text rich_text),
-        do: WordCount.for_block_value(value),
-        else: 0
+    word_count = WordCount.for_block(block.type, value)
 
     Ecto.Multi.new()
     |> Ecto.Multi.update(
@@ -375,7 +368,7 @@ defmodule Storyarn.Sheets.BlockCrud do
       changeset =
         %Block{sheet_id: sheet.id}
         |> Block.create_changeset(attrs)
-        |> Ecto.Changeset.put_change(:word_count, block_word_count(snapshot.type, snapshot.value))
+        |> Ecto.Changeset.put_change(:word_count, WordCount.for_block(snapshot.type, snapshot.value))
 
       with {:ok, block} <- Repo.insert(changeset),
            :ok <- extract_updated_block(block, block.scope) do
@@ -416,7 +409,7 @@ defmodule Storyarn.Sheets.BlockCrud do
       }
 
       sheet = Repo.get!(Sheet, sheet_id)
-      word_count = block_word_count(block.type, block.value)
+      word_count = WordCount.for_block(block.type, block.value)
 
       case insert_block_in_transaction(sheet, attrs, word_count) do
         {:ok, new_block} -> new_block
@@ -820,7 +813,7 @@ defmodule Storyarn.Sheets.BlockCrud do
 
     %Block{sheet_id: sheet_id}
     |> Block.create_changeset(attrs)
-    |> Ecto.Changeset.put_change(:word_count, block_word_count(type, value))
+    |> Ecto.Changeset.put_change(:word_count, WordCount.for_block(type, value))
     |> Repo.insert()
   end
 end

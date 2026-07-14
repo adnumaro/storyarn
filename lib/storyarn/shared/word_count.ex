@@ -63,6 +63,15 @@ defmodule Storyarn.Shared.WordCount do
   def for_block_value(_), do: 0
 
   @doc """
+  Computes word count for a sheet block based on its type and value.
+
+  Text and rich-text blocks use their content. All other block types return 0.
+  """
+  @spec for_block(String.t() | nil, map() | nil) :: non_neg_integer()
+  def for_block(type, value) when type in ["text", "rich_text"], do: for_block_value(value)
+  def for_block(_type, _value), do: 0
+
+  @doc """
   Computes word count for a plain-text name (sheet name, table row name, etc.).
 
   Splits on whitespace and returns the number of words.

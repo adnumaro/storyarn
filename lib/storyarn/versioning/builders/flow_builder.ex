@@ -582,8 +582,8 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   # ========== Diff Snapshots ==========
 
-  # Fields excluded from node comparison (canvas position is noise)
-  @node_ignore_fields ["position_x", "position_y", "original_id"]
+  # Fields excluded from node comparison (canvas position and denormalized counts are noise)
+  @node_ignore_fields ["position_x", "position_y", "original_id", "word_count"]
 
   @impl true
   def diff_snapshots(old_snapshot, new_snapshot) do

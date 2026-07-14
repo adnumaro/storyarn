@@ -68,4 +68,4 @@ Before downloading, you can run validation to catch issues that would cause prob
 
 Beyond the main Export page, Storyarn offers specialized export features in other areas:
 
-**Localization exchange** -- From the Localization page, export translations as Excel (.xlsx) or CSV filtered by language. Keep the exported ID and Source Hash columns unchanged, then use **Import CSV** to apply returned Translation and Status values. Source hashes prevent stale files from overwriting translations after source content changes. See the [Localization Overview](/docs/localization/localization-overview) for details.
+**Localization exchange** -- From the Localization page, export translations as Excel (.xlsx) or CSV filtered by language. For an editable round trip, choose CSV, keep the exported ID and Source Hash columns unchanged, then use **Import CSV** to apply returned Translation and Status values. Excel exports are currently export-only. Source hashes prevent stale files from overwriting translations after source content changes. See the [Localization Overview](/docs/localization/localization-overview) for details.

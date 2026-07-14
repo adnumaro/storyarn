@@ -35,7 +35,11 @@ defmodule Storyarn.Dashboards.Cache do
 
     case :ets.lookup(@table, key) do
       [{^key, result, expires_at, ^generation}] when expires_at > now ->
-        result
+        if cache_generation(project_id, scope) == generation do
+          result
+        else
+          fetch(project_id, scope, compute_fn)
+        end
 
       _ ->
         compute_and_cache(project_id, scope, key, generation, compute_fn)

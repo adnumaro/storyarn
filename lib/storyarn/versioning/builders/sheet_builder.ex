@@ -425,7 +425,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       position: block_data["position"],
       config: block_data["config"] || %{},
       value: block_data["value"] || %{},
-      word_count: block_word_count(block_data["type"], block_data["value"] || %{}),
+      word_count: WordCount.for_block(block_data["type"], block_data["value"] || %{}),
       is_constant: block_data["is_constant"] || false,
       variable_name: block_data["variable_name"],
       scope: block_data["scope"] || "self",
@@ -436,9 +436,6 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       updated_at: now
     }
   end
-
-  defp block_word_count(type, value) when type in ~w(text rich_text), do: WordCount.for_block_value(value)
-  defp block_word_count(_type, _value), do: 0
 
   defp restore_table_data(_repo, [], _sorted_data, _now), do: :ok
 
@@ -570,7 +567,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
         position: block_data["position"],
         config: block_data["config"] || %{},
         value: block_data["value"] || %{},
-        word_count: block_word_count(block_data["type"], block_data["value"] || %{}),
+        word_count: WordCount.for_block(block_data["type"], block_data["value"] || %{}),
         is_constant: block_data["is_constant"] || false,
         variable_name: block_data["variable_name"],
         scope: block_data["scope"] || "self",

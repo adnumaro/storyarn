@@ -85,7 +85,7 @@ defmodule Storyarn.Sheets.SheetCrud do
       _ -> :ok
     end
 
-    broadcast_dashboard_result(result, sheet.project_id)
+    Collaboration.broadcast_dashboard_result(result, sheet.project_id, :sheets)
   end
 
   @doc """
@@ -121,7 +121,7 @@ defmodule Storyarn.Sheets.SheetCrud do
       |> Repo.update!()
     end
     |> Repo.transaction()
-    |> broadcast_dashboard_result(sheet.project_id)
+    |> Collaboration.broadcast_dashboard_result(sheet.project_id, :sheets)
   end
 
   @doc """
@@ -160,7 +160,7 @@ defmodule Storyarn.Sheets.SheetCrud do
       {:error, _op, changeset, _changes} ->
         {:error, changeset}
     end
-    |> broadcast_dashboard_result(sheet.project_id)
+    |> Collaboration.broadcast_dashboard_result(sheet.project_id, :sheets)
   end
 
   @doc """
@@ -187,7 +187,7 @@ defmodule Storyarn.Sheets.SheetCrud do
       end
     end
     |> Repo.transaction()
-    |> broadcast_dashboard_result(sheet.project_id)
+    |> Collaboration.broadcast_dashboard_result(sheet.project_id, :sheets)
   end
 
   def move_sheet(%Sheet{} = sheet, parent_id, position \\ nil) do
@@ -201,7 +201,7 @@ defmodule Storyarn.Sheets.SheetCrud do
       end
     end
     |> Repo.transaction()
-    |> broadcast_dashboard_result(sheet.project_id)
+    |> Collaboration.broadcast_dashboard_result(sheet.project_id, :sheets)
   end
 
   defp move_sheet_transaction(sheet, parent_id, position) do
@@ -297,13 +297,6 @@ defmodule Storyarn.Sheets.SheetCrud do
       check_backlinks_fn: &(References.count_backlinks("sheet", &1.id) > 0)
     )
   end
-
-  defp broadcast_dashboard_result({:ok, _value} = result, project_id) do
-    Collaboration.broadcast_dashboard_change(project_id, :sheets)
-    result
-  end
-
-  defp broadcast_dashboard_result(result, _project_id), do: result
 
   # =============================================================================
   # Import helpers (raw insert, no side effects)

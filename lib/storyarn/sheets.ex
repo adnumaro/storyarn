@@ -260,7 +260,7 @@ defmodule Storyarn.Sheets do
       end
     end
     |> Repo.transaction()
-    |> broadcast_sheet_dashboard_result(sheet.project_id)
+    |> Collaboration.broadcast_dashboard_result(sheet.project_id, :sheets)
   end
 
   defp move_sheet_to_position_transaction(sheet, new_parent_id, new_position) do
@@ -988,13 +988,6 @@ defmodule Storyarn.Sheets do
 
   @doc "Detects issues in sheets. Returns [%{issue_type, sheet_id, sheet_name, ...}]."
   defdelegate detect_sheet_issues(project_id, referenced_ids \\ nil), to: SheetStats
-
-  defp broadcast_sheet_dashboard_result({:ok, _value} = result, project_id) do
-    Collaboration.broadcast_dashboard_change(project_id, :sheets)
-    result
-  end
-
-  defp broadcast_sheet_dashboard_result(result, _project_id), do: result
 
   defp broadcast_block_dashboard_result({:ok, _value} = result, %Block{} = block) do
     case Repo.get(Sheet, block.sheet_id) do

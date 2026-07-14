@@ -448,6 +448,22 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       assert changes == []
     end
 
+    test "ignores legacy denormalized word counts" do
+      current_node = %{
+        "type" => "dialogue",
+        "original_id" => 1,
+        "data" => %{"text" => "Hi"},
+        "position_x" => 0,
+        "position_y" => 0
+      }
+
+      legacy_node = Map.put(current_node, "word_count", 1)
+      old = %{"name" => "F", "nodes" => [legacy_node], "connections" => []}
+      new = %{"name" => "F", "nodes" => [current_node], "connections" => []}
+
+      assert FlowBuilder.diff_snapshots(old, new) == []
+    end
+
     test "returns empty list for identical snapshots" do
       snapshot = %{"name" => "F", "shortcut" => "f", "nodes" => [], "connections" => []}
       assert FlowBuilder.diff_snapshots(snapshot, snapshot) == []
