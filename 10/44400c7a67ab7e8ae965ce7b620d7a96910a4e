@@ -1,0 +1,31 @@
+lib/storyarn/blog/post_builder.ex
+  s_3cb2d6b0d2b40c::t_e26f3303dddb7d 4-6,11,78
+lib/storyarn/blog.ex
+  s_3cb2d6b0d2b40c::t_e26f3303dddb7d 12-16
+assets/js/utils/posthog.js
+  s_3cb2d6b0d2b40c::t_e26f3303dddb7d 28
+lib/storyarn/docs/guide_builder.ex
+  s_3cb2d6b0d2b40c::t_e26f3303dddb7d 4-5,64,73
+test/storyarn/shared/html_utils_test.exs
+  s_3cb2d6b0d2b40c::t_e26f3303dddb7d 76-96
+assets/app/test/utils/posthog.test.ts
+  s_3cb2d6b0d2b40c::t_e26f3303dddb7d 89,91
+lib/storyarn/shared/html_utils.ex
+  s_3cb2d6b0d2b40c::t_e26f3303dddb7d 8-9,80-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "1044400c7a67ab7e8ae965ce7b620d7a96910a4e",
+  "prompts": {},
+  "sessions": {
+    "s_3cb2d6b0d2b40c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b4a-b042-7412-8d10-5e6b95b13ee5",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
