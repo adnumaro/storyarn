@@ -1,7 +1,7 @@
 defmodule StoryarnWeb.SitemapControllerTest do
   use StoryarnWeb.ConnCase, async: true
 
-  test "GET /sitemap.xml lists public marketing and docs pages", %{conn: conn} do
+  test "GET /sitemap.xml lists public marketing, blog, and docs pages", %{conn: conn} do
     conn = get(conn, ~p"/sitemap.xml")
     body = response(conn, 200)
 
@@ -9,6 +9,8 @@ defmodule StoryarnWeb.SitemapControllerTest do
     assert body =~ "<urlset"
     assert body =~ ~r"<loc>http://localhost:\d+/docs/welcome/what-is-storyarn</loc>"
     assert body =~ ~r"<loc>http://localhost:\d+/docs/narrative-design/flows-overview</loc>"
+    assert body =~ ~r"<loc>http://localhost:\d+/blog</loc>"
+    assert body =~ ~r"<loc>http://localhost:\d+/blog/test-branching-dialogue-before-export</loc>"
     assert body =~ ~r"<loc>http://localhost:\d+/contact</loc>"
     refute body =~ "/users/log-in"
     refute body =~ "/projects/invitations"

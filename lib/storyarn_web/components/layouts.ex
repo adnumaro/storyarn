@@ -130,6 +130,29 @@ defmodule StoryarnWeb.Layouts do
     end
   end
 
+  def seo_published_time(assigns) do
+    case assigns[:seo_published_on] do
+      %Date{} = date -> Date.to_iso8601(date)
+      %DateTime{} = datetime -> DateTime.to_iso8601(datetime)
+      value when is_binary(value) and value != "" -> value
+      _ -> nil
+    end
+  end
+
+  def seo_article_author(assigns) do
+    case assigns[:seo_article_author] do
+      author when is_binary(author) and author != "" -> author
+      _ -> nil
+    end
+  end
+
+  def seo_article_tags(assigns) do
+    case assigns[:seo_article_tags] do
+      tags when is_list(tags) -> Enum.filter(tags, &is_binary/1)
+      _ -> []
+    end
+  end
+
   defp current_scope_from_assigns(%{current_scope: current_scope}), do: current_scope
 
   defp current_scope_from_assigns(%{conn: %{assigns: %{current_scope: current_scope}}}) do

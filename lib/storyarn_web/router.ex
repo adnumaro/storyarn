@@ -358,6 +358,8 @@ defmodule StoryarnWeb.Router do
       live "/", LandingLive.Index, :index
       live "/users/confirm-access", UserLive.ConfirmAccess, :new
       live "/contact", LandingLive.Contact, :show
+      live "/blog", BlogLive.Index, :index
+      live "/blog/:slug", BlogLive.Show, :show
       live "/privacy", LegalLive.Show, :privacy
       live "/terms", LegalLive.Show, :terms
 
