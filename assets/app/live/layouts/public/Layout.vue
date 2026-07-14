@@ -13,8 +13,10 @@ void Promise.all([
   import("../docs/Layout.vue"),
   import("../../auth/login/AuthLoginForm.vue"),
   import("../../auth/registration/AuthRegistrationForm.vue"),
+  import("../../auth/reset-password/AuthForgotPasswordForm.vue"),
+  import("../../auth/reset-password/AuthResetPasswordForm.vue"),
   import("../../docs/show/DocsContent.vue"),
-]);
+]).catch(() => undefined);
 
 interface PublicLayoutUrls {
   home: string;

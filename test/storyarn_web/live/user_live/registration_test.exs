@@ -65,6 +65,21 @@ defmodule StoryarnWeb.UserLive.RegistrationTest do
       assert form["errors"]["email"]
       assert form["errors"]["password"]
     end
+
+    test "validates bcrypt's byte limit before submit", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/users/register")
+      password = String.duplicate("😀", 19)
+
+      render_click(view, "validate", %{
+        "user" => %{
+          "email" => unique_user_email(),
+          "password" => password,
+          "password_confirmation" => password
+        }
+      })
+
+      assert get_registration_vue(view).props["form"]["errors"]["password"]
+    end
   end
 
   describe "invited registration" do

@@ -20,15 +20,7 @@ defmodule Storyarn.Accounts.Registration do
   this cross-context operation should move to a Service module.
   """
   def register_user(attrs) do
-    Repo.transact(fn ->
-      with {:ok, user} <- insert_user(attrs),
-           {:ok, _workspace} <- create_default_workspace(user) do
-        {:ok, user}
-      else
-        {:error, :limit_reached, _details} -> {:error, :workspace_limit_reached}
-        {:error, _} = error -> error
-      end
-    end)
+    register_with_default_workspace(attrs, &insert_user/1)
   end
 
   @doc """
@@ -38,16 +30,7 @@ defmodule Storyarn.Accounts.Registration do
   up is the account verification step currently exposed by the product.
   """
   def register_user_with_password(attrs) do
-    result =
-      Repo.transact(fn ->
-        with {:ok, user} <- insert_public_user(attrs),
-             {:ok, _workspace} <- create_default_workspace(user) do
-          {:ok, user}
-        else
-          {:error, :limit_reached, _details} -> {:error, :workspace_limit_reached}
-          {:error, _} = error -> error
-        end
-      end)
+    result = register_with_default_workspace(attrs, &insert_public_user/1)
 
     case result do
       {:ok, user} ->
@@ -168,6 +151,18 @@ defmodule Storyarn.Accounts.Registration do
     |> User.registration_changeset(attrs)
     |> User.confirm_changeset()
     |> Repo.insert()
+  end
+
+  defp register_with_default_workspace(attrs, insert_user) do
+    Repo.transact(fn ->
+      with {:ok, user} <- insert_user.(attrs),
+           {:ok, _workspace} <- create_default_workspace(user) do
+        {:ok, user}
+      else
+        {:error, :limit_reached, _details} -> {:error, :workspace_limit_reached}
+        {:error, _} = error -> error
+      end
+    end)
   end
 
   defp create_default_workspace(user) do

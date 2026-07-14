@@ -34,6 +34,7 @@ describe("LiveLink", () => {
       id: "landing-view",
       position: 0,
       scroll: 0,
+      storyarnScroll: { target: "window", top: 0 },
     });
   });
 

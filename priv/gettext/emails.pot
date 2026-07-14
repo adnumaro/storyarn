@@ -103,8 +103,8 @@ msgstr ""
 msgid "Or copy this link: %{url}"
 msgstr ""
 
-#: lib/storyarn/emails/templates.ex:86
-#: lib/storyarn/emails/templates.ex:134
+#: lib/storyarn/emails/templates.ex:121
+#: lib/storyarn/emails/templates.ex:169
 #, elixir-autogen, elixir-format
 msgid "This invitation expires in %{days} days."
 msgstr ""
@@ -124,8 +124,8 @@ msgstr ""
 msgid "You requested to change your email address. Confirm by visiting:"
 msgstr ""
 
-#: lib/storyarn/emails/templates.ex:64
-#: lib/storyarn/emails/templates.ex:112
+#: lib/storyarn/emails/templates.ex:99
+#: lib/storyarn/emails/templates.ex:147
 #, elixir-autogen, elixir-format
 msgid "Click the button below to accept. You'll be redirected to the login page where you can sign in with this email address."
 msgstr ""

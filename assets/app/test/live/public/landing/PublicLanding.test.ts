@@ -4,10 +4,14 @@ import PublicLanding from "../../../../live/public/landing/PublicLanding.vue";
 
 beforeEach(() => {
   window.history.replaceState({ scroll: 0 }, "", window.location.href);
-  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
-    callback(0);
-    return 1;
-  });
+  vi.stubGlobal(
+    "requestAnimationFrame",
+    vi.fn((callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    }),
+  );
+  vi.stubGlobal("cancelAnimationFrame", vi.fn());
   vi.stubGlobal(
     "matchMedia",
     vi.fn(() => ({ matches: false }) as MediaQueryList),
@@ -35,5 +39,20 @@ describe("PublicLanding", () => {
     expect(document.documentElement.style.scrollBehavior).toBe("smooth");
 
     wrapper.unmount();
+  });
+
+  it("cancels a pending scroll restoration when the landing unmounts", () => {
+    vi.mocked(window.requestAnimationFrame).mockImplementation(() => 42);
+
+    const wrapper = shallowMount(PublicLanding, {
+      props: {
+        registrationUrl: "/users/register",
+      },
+    });
+
+    wrapper.unmount();
+
+    expect(window.cancelAnimationFrame).toHaveBeenCalledWith(42);
+    expect(window.scrollTo).not.toHaveBeenCalled();
   });
 });

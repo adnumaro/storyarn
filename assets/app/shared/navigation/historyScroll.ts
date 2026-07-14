@@ -1,14 +1,33 @@
 const PENDING_HISTORY_SCROLL_KEY = "storyarn:pending-history-scroll";
 const HISTORY_SCROLL_KEY_PREFIX = "storyarn:history-scroll:";
+const MAX_REMEMBERED_HISTORY_SCROLLS = 50;
+
+export type HistoryScrollTarget = "window" | "docs-main";
+
+interface HistoryScrollPosition {
+  target: HistoryScrollTarget;
+  top: number;
+}
 
 interface HistoryStateWithScroll {
   id?: unknown;
   position?: unknown;
   scroll?: unknown;
+  storyarnScroll?: unknown;
 }
 
 function finiteScroll(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function scrollPosition(value: unknown): HistoryScrollPosition | null {
+  if (!value || typeof value !== "object") return null;
+
+  const { target, top } = value as Partial<HistoryScrollPosition>;
+  const finiteTop = finiteScroll(top);
+  if ((target !== "window" && target !== "docs-main") || finiteTop === null) return null;
+
+  return { target, top: finiteTop };
 }
 
 function historyEntryKey(state: HistoryStateWithScroll | null): string | null {
@@ -18,54 +37,141 @@ function historyEntryKey(state: HistoryStateWithScroll | null): string | null {
   return `${HISTORY_SCROLL_KEY_PREFIX}${state.id}:${position}`;
 }
 
-function rememberedHistoryScroll(state: HistoryStateWithScroll | null): number | null {
-  const key = historyEntryKey(state);
-  if (!key) return null;
+function storageGet(key: string): string | null {
+  try {
+    return window.sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
 
-  const value = window.sessionStorage.getItem(key);
-  return value === null ? null : finiteScroll(Number(value));
+function storageRemove(key: string): void {
+  try {
+    window.sessionStorage.removeItem(key);
+  } catch {
+    // Scroll restoration is best effort and must never interrupt navigation.
+  }
+}
+
+function rememberedStorageKeys(): string[] {
+  const keys: string[] = [];
+
+  try {
+    for (let index = 0; index < window.sessionStorage.length; index += 1) {
+      const key = window.sessionStorage.key(index);
+      if (key?.startsWith(HISTORY_SCROLL_KEY_PREFIX)) keys.push(key);
+    }
+  } catch {
+    return [];
+  }
+
+  return keys;
+}
+
+function pruneRememberedHistoryScrolls(currentKey: string): void {
+  const staleKeys = rememberedStorageKeys().filter((key) => key !== currentKey);
+  const excess = Math.max(0, staleKeys.length - MAX_REMEMBERED_HISTORY_SCROLLS + 1);
+
+  for (const key of staleKeys.slice(0, excess)) storageRemove(key);
+}
+
+function storageSet(key: string, value: string): void {
+  try {
+    window.sessionStorage.setItem(key, value);
+  } catch {
+    // A long-lived tab can exhaust its quota. Drop only our bounded history
+    // cache and retry once so other session data remains untouched.
+    for (const rememberedKey of rememberedStorageKeys()) storageRemove(rememberedKey);
+
+    try {
+      window.sessionStorage.setItem(key, value);
+    } catch {
+      // Native history state remains as the fallback when storage is unavailable.
+    }
+  }
+}
+
+function parseStoredPosition(value: string | null): HistoryScrollPosition | null {
+  if (value === null) return null;
+
+  try {
+    return scrollPosition(JSON.parse(value));
+  } catch {
+    const legacyScroll = finiteScroll(Number(value));
+    return legacyScroll === null ? null : { target: "window", top: legacyScroll };
+  }
+}
+
+function rememberedHistoryScroll(
+  state: HistoryStateWithScroll | null,
+): HistoryScrollPosition | null {
+  const key = historyEntryKey(state);
+  return key ? parseStoredPosition(storageGet(key)) : null;
+}
+
+function stateHistoryScroll(state: HistoryStateWithScroll | null): HistoryScrollPosition | null {
+  const explicitPosition = scrollPosition(state?.storyarnScroll);
+  if (explicitPosition) return explicitPosition;
+
+  const windowScroll = finiteScroll(state?.scroll);
+  return windowScroll === null ? null : { target: "window", top: windowScroll };
+}
+
+function currentScrollPosition(): HistoryScrollPosition {
+  const docsMain = document.getElementById("docs-main");
+  if (docsMain instanceof HTMLElement) return { target: "docs-main", top: docsMain.scrollTop };
+
+  return { target: "window", top: window.scrollY };
 }
 
 export function rememberCurrentHistoryScroll(): void {
   const state = (window.history.state || {}) as HistoryStateWithScroll;
-  const scroll = window.scrollY;
+  const position = currentScrollPosition();
   const key = historyEntryKey(state);
 
   // A click starts a new forward navigation, so any unconsumed popstate value
   // belongs to an older traversal and must not leak into the next page.
-  window.sessionStorage.removeItem(PENDING_HISTORY_SCROLL_KEY);
-  if (key) window.sessionStorage.setItem(key, String(scroll));
-  window.history.replaceState({ ...state, scroll }, "", window.location.href);
+  storageRemove(PENDING_HISTORY_SCROLL_KEY);
+
+  if (key) {
+    pruneRememberedHistoryScrolls(key);
+    storageSet(key, JSON.stringify(position));
+  }
+
+  const nextState = { ...state, storyarnScroll: position };
+  if (position.target === "window") nextState.scroll = position.top;
+  window.history.replaceState(nextState, "", window.location.href);
 }
 
 export function capturePendingHistoryScroll(state: unknown): void {
   const historyState = state as HistoryStateWithScroll | null;
-  const scroll = rememberedHistoryScroll(historyState) ?? finiteScroll(historyState?.scroll);
+  const key = historyEntryKey(historyState);
+  const position = rememberedHistoryScroll(historyState) ?? stateHistoryScroll(historyState);
 
-  if (scroll === null) {
-    window.sessionStorage.removeItem(PENDING_HISTORY_SCROLL_KEY);
+  if (key) storageRemove(key);
+
+  if (position === null) {
+    storageRemove(PENDING_HISTORY_SCROLL_KEY);
   } else {
-    window.sessionStorage.setItem(PENDING_HISTORY_SCROLL_KEY, String(scroll));
+    storageSet(PENDING_HISTORY_SCROLL_KEY, JSON.stringify(position));
   }
 }
 
 export function clearPendingHistoryScroll(): void {
-  window.sessionStorage.removeItem(PENDING_HISTORY_SCROLL_KEY);
+  storageRemove(PENDING_HISTORY_SCROLL_KEY);
 }
 
 export function clearRememberedHistoryScroll(state: unknown): void {
   const key = historyEntryKey(state as HistoryStateWithScroll | null);
-  if (key) window.sessionStorage.removeItem(key);
+  if (key) storageRemove(key);
 }
 
-export function consumeHistoryScroll(fallback = 0): number {
-  const pendingScroll = window.sessionStorage.getItem(PENDING_HISTORY_SCROLL_KEY);
-  window.sessionStorage.removeItem(PENDING_HISTORY_SCROLL_KEY);
+export function consumeHistoryScroll(fallback = 0, target: HistoryScrollTarget = "window"): number {
+  const pendingPosition = parseStoredPosition(storageGet(PENDING_HISTORY_SCROLL_KEY));
+  storageRemove(PENDING_HISTORY_SCROLL_KEY);
 
-  if (pendingScroll !== null) {
-    const parsedScroll = Number(pendingScroll);
-    if (Number.isFinite(parsedScroll)) return parsedScroll;
-  }
+  if (pendingPosition?.target === target) return pendingPosition.top;
 
-  return finiteScroll((window.history.state as HistoryStateWithScroll | null)?.scroll) ?? fallback;
+  const statePosition = stateHistoryScroll(window.history.state as HistoryStateWithScroll | null);
+  return statePosition?.target === target ? statePosition.top : fallback;
 }

@@ -24,6 +24,7 @@ defineProps<{
 
 const workflowSteps = ["define", "write", "explore", "export"] as const;
 const initialScrollPosition = consumeHistoryScroll();
+let restoreScrollFrame: number | undefined;
 
 const pillars = [
   {
@@ -66,7 +67,7 @@ onMounted(() => {
   // LiveView restores history scroll before this async Vue surface has its
   // full height. Restore once more after mount so browser scroll anchoring
   // cannot turn a small auth-page offset into a jump down the landing page.
-  window.requestAnimationFrame(() => {
+  restoreScrollFrame = window.requestAnimationFrame(() => {
     document.documentElement.style.scrollBehavior = "auto";
     window.scrollTo(0, initialScrollPosition);
     document.documentElement.style.scrollBehavior = "smooth";
@@ -74,6 +75,8 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  if (restoreScrollFrame !== undefined) window.cancelAnimationFrame(restoreScrollFrame);
+
   const stored = localStorage.getItem("phx:theme");
   const shouldBeDark = stored
     ? stored === "dark"
