@@ -1,0 +1,40 @@
+test/storyarn/assets/storage/r2_test.exs
+  s_64e0193747a7fa::t_de02a85941e967 81-90
+lib/storyarn/sheets/sheet_crud.ex
+  s_64e0193747a7fa::t_85bbf3d938ef7b 196-204
+lib/storyarn/sheets/property_inheritance.ex
+  s_64e0193747a7fa::t_85bbf3d938ef7b 70-72,132-164,166
+  s_64e0193747a7fa::t_5b76ef488cdcdf 165,167-168
+lib/storyarn/assets/storage_compensation.ex
+  s_64e0193747a7fa::t_85bbf3d938ef7b 101-112
+lib/storyarn/projects/project_trash.ex
+  s_64e0193747a7fa::t_85bbf3d938ef7b 90-93
+lib/storyarn/assets.ex
+  s_64e0193747a7fa::t_85bbf3d938ef7b 17,683,688
+assets/js/app.js
+  s_64e0193747a7fa::t_85bbf3d938ef7b 21-23
+lib/storyarn/sheets.ex
+  s_64e0193747a7fa::t_85bbf3d938ef7b 14-15,235-244,252-260
+test/storyarn/assets/storage_compensation_test.exs
+  s_64e0193747a7fa::t_de02a85941e967 106-121
+test/storyarn/sheets/property_inheritance_concurrency_test.exs
+  s_64e0193747a7fa::t_de02a85941e967 8-11,65-211
+lib/storyarn/assets/storage/r2.ex
+  s_64e0193747a7fa::t_85bbf3d938ef7b 34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "f08e1e76a950c71a5ba0e9e3a1badb9e9d447ab5",
+  "prompts": {},
+  "sessions": {
+    "s_64e0193747a7fa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f60f5-6db9-7d70-8a23-0715e021d381",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
