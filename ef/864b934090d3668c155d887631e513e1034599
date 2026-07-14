@@ -1,0 +1,284 @@
+lib/storyarn/sheets.ex
+  s_64e0193747a7fa::t_c6d2d58a465624 14-15,236-245,253-260,263
+  s_64e0193747a7fa::t_4efaacd4993666 262
+lib/storyarn/flows/flow_crud.ex
+  s_64e0193747a7fa::t_c6d2d58a465624 202-213,215-222,224-225,227,236-238,242-243,245-249,251-254,267-269,272-274
+  s_64e0193747a7fa::t_b9d3cce4c84643 275
+lib/storyarn/sheets/property_inheritance.ex
+  s_64e0193747a7fa::t_c6d2d58a465624 70-81,83-84,86-166,634,636-647,734-744,749
+lib/storyarn/sheets/sheet_crud.ex
+  s_64e0193747a7fa::t_c6d2d58a465624 26-56,58-62,64-66,68-70,194-201
+  s_64e0193747a7fa::t_05ac235c86a9bc 203-204
+assets/app/components/navigation/LiveLink.vue
+  s_64e0193747a7fa::t_982986c5d454d2 2-3,24-33,37-43
+assets/app/live/assets/dashboard/AssetsDashboard.vue
+  s_64e0193747a7fa::t_da9e95275d7366 2-14,79-81,89-91,170-174,438-469
+assets/app/live/auth/login/AuthLoginForm.vue
+  s_64e0193747a7fa::t_2c91e4fb80189e 27,37,231-240
+assets/app/live/auth/registration/AuthRegistrationForm.vue
+  s_64e0193747a7fa::t_f7291212d9114a 5,16-26,35,39-45,61-133,151,154,158,164,167,172-190,198,206-208,220,228-230,237,240-247
+assets/app/live/layouts/docs/Layout.vue
+  s_64e0193747a7fa::t_a5b70d5ac2929a 2,15,87-103
+assets/app/live/layouts/public/Layout.vue
+  s_64e0193747a7fa::t_6ac6afe3e17f10 5,8-20,24,27,124-129,147-148,157-158,241-248,269-270,278,280-281
+assets/app/live/public/PublicFooter.vue
+  s_64e0193747a7fa::t_6d54ea25451443 53-59
+assets/app/live/public/landing/PublicLanding.vue
+  s_64e0193747a7fa::t_7eb66a20063513 16-18,22,26-27,66-74,78-79,121-123,128,281
+assets/app/locales/en/auth.json
+  s_64e0193747a7fa::t_65b395a0d2cc2b 16-18,21-24,26-28
+assets/app/locales/en/common.json
+  s_64e0193747a7fa::t_430fd94dd8c482 147-150
+assets/app/locales/en/landing.json
+  s_64e0193747a7fa::t_400fdd1c12e887 4,10,18,177,179-181
+assets/app/locales/en/public.json
+  s_64e0193747a7fa::t_37659e47df7591 5,48-49,168
+assets/app/locales/es/auth.json
+  s_64e0193747a7fa::t_809355ef45b36e 16-18,21-24,26-28
+assets/app/locales/es/common.json
+  s_64e0193747a7fa::t_87848af74c140e 147-150
+assets/app/locales/es/landing.json
+  s_64e0193747a7fa::t_059ed9b8021263 4,10,18,177,179-181
+assets/app/locales/es/public.json
+  s_64e0193747a7fa::t_c66392766c00b5 5,48-49,168
+assets/app/modules/public/landing/sections/cta/CtaSignup.vue
+  s_64e0193747a7fa::t_61c270415b8509 2-3,7,15,18,27,29-35,37-57,59-61
+assets/app/plugins/expression-editor/tree-parser.ts
+  s_64e0193747a7fa::t_2f8cec23103cf9 112,221,397
+assets/app/shared/composables/useAssetDecisionUpload.ts
+  s_64e0193747a7fa::t_6745d353004653 119-123,135,209-211,213,218-232,263-265
+assets/app/shared/navigation/historyScroll.ts
+  s_64e0193747a7fa::t_9597303e454929 1-183
+assets/app/test/components/navigation/LiveLink.test.ts
+  s_64e0193747a7fa::t_223fe58f536a44 1-55
+assets/app/test/composables/useAssetDecisionUpload.test.ts
+  s_64e0193747a7fa::t_bc44ddfec2d175 1-15
+assets/app/test/live/auth/login/AuthLoginForm.test.ts
+  s_64e0193747a7fa::t_c0a10b70eb79e8 13,68-75
+assets/app/test/live/auth/registration/AuthRegistrationForm.test.ts
+  s_64e0193747a7fa::t_ca7e978eac29f4 1-50
+assets/app/test/live/public/landing/PublicLanding.test.ts
+  s_64e0193747a7fa::t_d507842f73262a 1-58
+assets/app/test/plugins/expression-editor/tree-parser.test.ts
+  s_64e0193747a7fa::t_77c59a813036cb 83-91,156-164
+assets/app/test/shared/navigation/historyScroll.test.ts
+  s_64e0193747a7fa::t_e952859d5e8aaa 1-70
+assets/app/test/utils/posthog.test.ts
+  s_64e0193747a7fa::t_e839452c0d9f26 89-91
+assets/js/app.js
+  s_64e0193747a7fa::t_00bd419a8bdd97 13-16,23-27,31,40-46
+assets/js/utils/posthog.js
+  s_64e0193747a7fa::t_2e19ed009843fb 27
+config/dev.exs
+  s_64e0193747a7fa::t_2bd847a890876d 91
+lib/storyarn/accounts.ex
+  s_64e0193747a7fa::t_34ddc430b5b07f 87-98
+lib/storyarn/accounts/registration.ex
+  s_64e0193747a7fa::t_8e6d62249db991 23-38,40-50,149-167
+lib/storyarn/accounts/user.ex
+  s_64e0193747a7fa::t_629368069e9920 54-65,117
+lib/storyarn/assets.ex
+  s_64e0193747a7fa::t_273a3ca1904e58 17,73,446,507-512,542-550,578-586,607-609,637-655,657-658,663-714,841,1227-1233
+lib/storyarn/assets/blob_store.ex
+  s_64e0193747a7fa::t_22e054c8adc95f 67-71,73-77,79-81
+lib/storyarn/assets/storage.ex
+  s_64e0193747a7fa::t_22be0ede9d8168 19-20,51-59
+lib/storyarn/assets/storage/local.ex
+  s_64e0193747a7fa::t_6a3b9d18468acf 22-34
+lib/storyarn/assets/storage/r2.ex
+  s_64e0193747a7fa::t_3a477a4cb5a868 28-38
+lib/storyarn/assets/storage_compensation.ex
+  s_64e0193747a7fa::t_fa52983f297f8a 16-17,103-130,388-389,394-425
+lib/storyarn/billing.ex
+  s_64e0193747a7fa::t_30daa134601982 31
+lib/storyarn/billing/limits.ex
+  s_64e0193747a7fa::t_731fecd99ae64e 113-120,125,278-287
+lib/storyarn/blog.ex
+  s_64e0193747a7fa::t_eb065aaaa1234e 1,3,5-7,9-16
+lib/storyarn/blog/post.ex
+  s_64e0193747a7fa::t_4a9b83ad43c1df 1-4,6-11,13-21,24-28
+lib/storyarn/blog/post_builder.ex
+  s_64e0193747a7fa::t_aabdccdcccbc33 1,4-27,30-38,41-45,48-50,53-63,66-73,76-79
+lib/storyarn/collaboration/locks.ex
+  s_64e0193747a7fa::t_b38f4111bfec69 69-78,85-97,164-169,171-178,270,288-325
+lib/storyarn/docs/guide_builder.ex
+  s_64e0193747a7fa::t_1cdaed69d49ba2 4-5,64,68
+lib/storyarn/emails/templates.ex
+  s_64e0193747a7fa::t_84886fa9bc968a 9
+lib/storyarn/flows/debug_session_store.ex
+  s_64e0193747a7fa::t_461e1359670051 9-10
+lib/storyarn/flows/node_create.ex
+  s_64e0193747a7fa::t_c40e7d29342922 20,22-24,26-29,31-36,38-39,41-42,45-48
+lib/storyarn/localization/text_crud.ex
+  s_64e0193747a7fa::t_76136156e46bc8 719-727
+lib/storyarn/product_metrics/taxonomy.ex
+  s_64e0193747a7fa::t_bda30765c3e6cb 3
+lib/storyarn/projects.ex
+  s_64e0193747a7fa::t_ec088f87fdb0a6 154-155,177-179
+lib/storyarn/projects/project_crud.ex
+  s_64e0193747a7fa::t_a28793302916db 254-263,266-271
+lib/storyarn/projects/project_trash.ex
+  s_64e0193747a7fa::t_53701b247e322e 90-93,95-106,109-110,112,126-164
+lib/storyarn/scenes/annotation_crud.ex
+  s_64e0193747a7fa::t_ea325135309343 25-31
+lib/storyarn/scenes/exploration_session_crud.ex
+  s_64e0193747a7fa::t_08a384cef27c55 54-58
+lib/storyarn/scenes/layer_crud.ex
+  s_64e0193747a7fa::t_b216fae2b2bb94 32-38
+lib/storyarn/scenes/pin_crud.ex
+  s_64e0193747a7fa::t_aa4ef56e6f0ce5 71-72,76-78
+lib/storyarn/scenes/position_utils.ex
+  s_64e0193747a7fa::t_f241eb9ee3e685 9-21
+lib/storyarn/scenes/scene_crud.ex
+  s_64e0193747a7fa::t_c039b6c898abb6 239,241-243,245-246,248-249,253-254,256-263,279-281,284-287
+lib/storyarn/scenes/zone_crud.ex
+  s_64e0193747a7fa::t_e8dc83c20c6561 66-73
+lib/storyarn/shared/html_utils.ex
+  s_64e0193747a7fa::t_1df1fe3dffac47 8-13,84-218
+lib/storyarn/sheets/block_crud.ex
+  s_64e0193747a7fa::t_c322171e84134a 123-127
+lib/storyarn/sheets/table_crud.ex
+  s_64e0193747a7fa::t_545351a22ca0c3 41,45-50,52-53,55-56,58-64,69-70,80-82,292-308,310-311,313-316,318-321,331-333,569-575
+lib/storyarn/workers/daily_snapshot_worker.ex
+  s_64e0193747a7fa::t_6e2869cd486822 22-23,26,30-40
+lib/storyarn/workers/snapshot_retention_worker.ex
+  s_64e0193747a7fa::t_c0f16a857bf804 24-25,28,32-50,53-55
+lib/storyarn/workers/trash_retention_worker.ex
+  s_64e0193747a7fa::t_aae34ff903ff8a 35-36,40-45,49-64
+lib/storyarn/workspaces/workspace_crud.ex
+  s_64e0193747a7fa::t_aae860658682d3 127,133-136,148-150,156-159
+lib/storyarn_web.ex
+  s_64e0193747a7fa::t_e4d7de720a1013 93
+lib/storyarn_web/components/auth_layout.ex
+  s_64e0193747a7fa::t_85482b5849b65b 23
+lib/storyarn_web/components/docs_layout.ex
+  s_64e0193747a7fa::t_fe88d21661dd9e 31
+lib/storyarn_web/components/icon_components.ex
+  s_64e0193747a7fa::t_f7b04d33c05ca4 1-66
+lib/storyarn_web/components/layouts.ex
+  s_64e0193747a7fa::t_a3633a7adcaaa0 121,133-164,180-181,186-194
+lib/storyarn_web/components/layouts/root.html.heex
+  s_64e0193747a7fa::t_5fdbb4a8ab5170 15-26
+lib/storyarn_web/components/public_layout.ex
+  s_64e0193747a7fa::t_f28a410ee2ab3f 22-25,35-64,74-179,184,187
+lib/storyarn_web/controllers/llms_controller.ex
+  s_64e0193747a7fa::t_b1341baecfcbb9 4,16,18,46,53-70
+lib/storyarn_web/controllers/sitemap_controller.ex
+  s_64e0193747a7fa::t_50d3c991e26ca0 4,10,25,43-48
+lib/storyarn_web/helpers/save_status_timer.ex
+  s_64e0193747a7fa::t_d6eadd354df009 5-7,10-12
+lib/storyarn_web/live/asset_live/index.ex
+  s_64e0193747a7fa::t_7cdebcd612d08b 21-22,70-72,96-98,128,152,161,182-191,355-378,381-382
+lib/storyarn_web/live/blog_live/index.ex
+  s_64e0193747a7fa::t_c2e7c909625dad 1-112
+lib/storyarn_web/live/blog_live/show.ex
+  s_64e0193747a7fa::t_ecc3b0ad3fab5e 1-166
+lib/storyarn_web/live/flow_live/handlers/debug_execution_handlers.ex
+  s_64e0193747a7fa::t_6c3eb280aa3c4e 155,171,174
+lib/storyarn_web/live/flow_live/handlers/editor_info_handlers.ex
+  s_64e0193747a7fa::t_1ba3f4147a868d 20,22-30
+lib/storyarn_web/live/flow_live/player_live.ex
+  s_64e0193747a7fa::t_c53f755101b538 58-69,170-172,174,440-441,445,458,466-473
+lib/storyarn_web/live/flow_live/show.ex
+  s_64e0193747a7fa::t_46afcadcdda900 177,195,210,254,256,1373-1374,1378-1385
+lib/storyarn_web/live/landing_live/index.ex
+  s_64e0193747a7fa::t_3472ec2dcc421c 23,71
+lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex
+  s_64e0193747a7fa::t_71cb16c6e558af 19-21,24,47,51,104-107,109-113
+lib/storyarn_web/live/user_live/forgot_password.ex
+  s_64e0193747a7fa::t_6982f93a2bd60a 15-16
+lib/storyarn_web/live/user_live/login.ex
+  s_64e0193747a7fa::t_a786838e4f24f4 15-16,41
+lib/storyarn_web/live/user_live/registration.ex
+  s_64e0193747a7fa::t_4778a752fc27e1 10-11,26-27,43,58-67,88,95,110-117,121-136
+lib/storyarn_web/live/user_live/reset_password.ex
+  s_64e0193747a7fa::t_9676211dc3cb68 10-11
+lib/storyarn_web/router.ex
+  s_64e0193747a7fa::t_4b0c4b2f2b6f02 336-337,341-345,352-355
+posthog-setup-report.md
+  s_64e0193747a7fa::t_e7fa859625b6ee 4
+priv/blog/en/2026-07-14-test-branching-dialogue-before-export.md
+  s_64e0193747a7fa::t_f9c59907f94f5e 1-181
+priv/gettext/en/LC_MESSAGES/emails.po
+  s_64e0193747a7fa::t_cd4adecae52c1c 14,19,24,29,34,39,44,49,54-55,60-61,78-79,84-87,98-101,103,107,109,112,114,117,119,122,124,127-128,130,133-134,136,139-140,142,145,148,151,153,156,158,161,163,166-167,169,172,174,177,179
+priv/gettext/es/LC_MESSAGES/emails.po
+  s_64e0193747a7fa::t_8e57afb8d62465 14,19,24,29,34,39,44,49,54-55,60-61,78-79,84-87,99-101,106-107,127-128,133-134,139-140,145-146,151,156,161,166-167,172,177
+scripts/verify-live-sessions.mjs
+  s_64e0193747a7fa::t_a7a6418a35a8bf 51-69,75
+test/e2e/blog_test.exs
+  s_64e0193747a7fa::t_5f202546df324d 1-36
+test/storyarn/assets/blob_store_test.exs
+  s_64e0193747a7fa::t_03c19a978aaeb8 62-70
+test/storyarn/assets/storage/local_test.exs
+  s_64e0193747a7fa::t_4f825f7e402856 73-83
+test/storyarn/assets/storage/r2_test.exs
+  s_64e0193747a7fa::t_b458e50d120ef7 60-92
+test/storyarn/assets/storage_compensation_test.exs
+  s_64e0193747a7fa::t_aa24b24cc132cc 6,107-190
+test/storyarn/assets/upload_decision_test.exs
+  s_64e0193747a7fa::t_65b186f7e0b3b3 12,100-179
+test/storyarn/assets_test.exs
+  s_64e0193747a7fa::t_734b2a4a5009ce 4,69-84
+test/storyarn/billing/limits_test.exs
+  s_64e0193747a7fa::t_fa1a9c2e13980f 116-144
+test/storyarn/blog_test.exs
+  s_64e0193747a7fa::t_077d7b0ee40845 1-45
+test/storyarn/collaboration/locks_test.exs
+  s_64e0193747a7fa::t_c334027aa1644c 133-147
+test/storyarn/flows/debug_session_store_test.exs
+  s_64e0193747a7fa::t_1297751506cd54 39-49
+test/storyarn/projects/soft_delete_test.exs
+  s_64e0193747a7fa::t_709fce8800f78d 6,10,132-179
+test/storyarn/scenes/position_utils_test.exs
+  s_64e0193747a7fa::t_f05c5acb0936ea 8,24-49
+test/storyarn/shared/html_utils_test.exs
+  s_64e0193747a7fa::t_121848e27b3a8a 76-145
+test/storyarn/sheets/property_inheritance_concurrency_test.exs
+  s_64e0193747a7fa::t_98b39ce4fe4b48 1-212
+test/storyarn/sheets/table_crud_test.exs
+  s_64e0193747a7fa::t_4906d32c168aeb 8,104-112
+test/storyarn_web/controllers/llms_controller_test.exs
+  s_64e0193747a7fa::t_2593087ad6905c 15,21-25
+test/storyarn_web/controllers/sitemap_controller_test.exs
+  s_64e0193747a7fa::t_262243010f27fb 4,12-13
+test/storyarn_web/helpers/save_status_timer_test.exs
+  s_64e0193747a7fa::t_32fed97f37dcf0 4,8-12,16,19-20,24,27-28,32-33,35
+test/storyarn_web/layouts_test.exs
+  s_64e0193747a7fa::t_8c4021165cf0c5 102-116
+test/storyarn_web/live/asset_live/index_test.exs
+  s_64e0193747a7fa::t_ab20634e510eec 89-112
+test/storyarn_web/live/blog_live/index_test.exs
+  s_64e0193747a7fa::t_9bc68d0078ecd1 1-49
+test/storyarn_web/live/blog_live/show_test.exs
+  s_64e0193747a7fa::t_49e7260f1af7d9 1-72
+test/storyarn_web/live/flow_live/handlers/debug_execution_handlers_test.exs
+  s_64e0193747a7fa::t_976fd7e25e0036 45,955,975
+test/storyarn_web/live/flow_live/handlers/debug_handlers_test.exs
+  s_64e0193747a7fa::t_3b7c25c42fe0b1 38,372,410,442,488
+test/storyarn_web/live/flow_live/handlers/editor_info_handlers_test.exs
+  s_64e0193747a7fa::t_2b2dd296f3f051 59,62,64-65,67,70,73-75,77,79-80,425,435
+test/storyarn_web/live/landing_live/index_test.exs
+  s_64e0193747a7fa::t_b38f5cadba51e9 12-14,17-24
+test/storyarn_web/live/user_live/auth_redirect_test.exs
+  s_64e0193747a7fa::t_cdcc4a0c3aa8ec 20-24
+test/storyarn_web/live/user_live/login_test.exs
+  s_64e0193747a7fa::t_0ebfcfb96ed51b 19,74-75,77-78
+test/storyarn_web/live/user_live/registration_test.exs
+  s_64e0193747a7fa::t_8d53c6bf55b603 1-5,8-13,16-38,40-91,93-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "ef864b934090d3668c155d887631e513e1034599",
+  "prompts": {},
+  "sessions": {
+    "s_64e0193747a7fa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f60f5-6db9-7d70-8a23-0715e021d381",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
