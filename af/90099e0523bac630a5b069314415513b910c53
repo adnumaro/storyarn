@@ -1,0 +1,47 @@
+lib/storyarn/dashboards/cache.ex
+  s_64e0193747a7fa::t_c88a75ca23778b 38-42
+lib/storyarn/sheets.ex
+  s_64e0193747a7fa::t_c88a75ca23778b 263
+lib/storyarn/sheets/sheet_crud.ex
+  s_64e0193747a7fa::t_c88a75ca23778b 88,124,163,190,204
+lib/storyarn/collaboration.ex
+  s_64e0193747a7fa::t_c88a75ca23778b 325-335
+priv/docs/en/import-export/01-import-export-overview.md
+  s_64e0193747a7fa::t_c88a75ca23778b 71
+priv/repo/migrations/20260714120000_backfill_exit_node_word_counts.exs
+  s_64e0193747a7fa::t_c88a75ca23778b 1-36
+lib/storyarn/versioning/builders/sheet_builder.ex
+  s_64e0193747a7fa::t_c88a75ca23778b 428,570
+lib/storyarn/shared/word_count.ex
+  s_64e0193747a7fa::t_c88a75ca23778b 66-73
+  s_64e0193747a7fa::t_224b58a80ed719 65
+lib/storyarn/versioning/builders/flow_builder.ex
+  s_64e0193747a7fa::t_873c7dfd20317f 585
+  s_64e0193747a7fa::t_c88a75ca23778b 586
+test/storyarn/shared/word_count_test.exs
+  s_64e0193747a7fa::t_c88a75ca23778b 21-32,39-43
+test/storyarn/versioning/builders/flow_builder_test.exs
+  s_64e0193747a7fa::t_c88a75ca23778b 451-466
+lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+  s_64e0193747a7fa::t_c88a75ca23778b 55-57
+lib/storyarn/sheets/block_crud.ex
+  s_64e0193747a7fa::t_c88a75ca23778b 82,160,199,371,412,816
+lib/storyarn/sheets/property_inheritance.ex
+  s_64e0193747a7fa::t_c88a75ca23778b 235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "af90099e0523bac630a5b069314415513b910c53",
+  "prompts": {},
+  "sessions": {
+    "s_64e0193747a7fa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f60f5-6db9-7d70-8a23-0715e021d381",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
