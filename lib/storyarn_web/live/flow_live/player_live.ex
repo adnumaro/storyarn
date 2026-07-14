@@ -60,10 +60,12 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
         _session,
         socket
       ) do
+    session_id = params["player_session"] || Ecto.UUID.generate()
+
     socket =
       socket
-      |> assign(:player_session_id, params["player_session"] || Ecto.UUID.generate())
-      |> assign(:player_tab_id, player_tab_id(socket))
+      |> assign(:player_session_id, session_id)
+      |> assign(:player_tab_id, player_tab_id(socket, session_id))
 
     case Projects.get_project_by_slugs(socket.assigns.current_scope, workspace_slug, project_slug) do
       {:ok, project, _membership} ->
@@ -461,11 +463,11 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   # Private helpers
   # ===========================================================================
 
-  defp player_tab_id(socket) do
+  defp player_tab_id(socket, fallback) do
     if connected?(socket) do
       socket
       |> get_connect_params()
-      |> then(&Map.get(&1 || %{}, "player_tab_id", Ecto.UUID.generate()))
+      |> then(&Map.get(&1 || %{}, "player_tab_id", fallback))
     end
   end
 
