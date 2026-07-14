@@ -3,9 +3,11 @@ defmodule Storyarn.Projects.SoftDeleteTest do
 
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
   import Storyarn.WorkspacesFixtures
 
   alias Storyarn.Projects
+  alias Storyarn.Sheets
 
   describe "soft delete" do
     test "delete_project/2 sets deleted_at and deleted_by_id" do
@@ -124,6 +126,54 @@ defmodule Storyarn.Projects.SoftDeleteTest do
       project = project_fixture(user, %{workspace: workspace})
 
       assert Projects.get_deleted_project(workspace.id, project.id) == nil
+    end
+  end
+
+  describe "list_deleted_items_for_retention/1" do
+    test "uses a stable cursor to page through deleted items" do
+      project = project_fixture()
+      first_sheet = sheet_fixture(project)
+      second_sheet = sheet_fixture(project)
+
+      assert {:ok, _deleted} = Sheets.delete_sheet(first_sheet)
+      assert {:ok, _deleted} = Sheets.delete_sheet(second_sheet)
+
+      assert [first_page_item] = Projects.list_deleted_items_for_retention(limit: 1)
+
+      cursor = {first_page_item.deleted_at, first_page_item.type, first_page_item.id}
+
+      assert [second_page_item] =
+               Projects.list_deleted_items_for_retention(limit: 1, after: cursor)
+
+      refute second_page_item.id == first_page_item.id
+
+      final_cursor =
+        {second_page_item.deleted_at, second_page_item.type, second_page_item.id}
+
+      assert Projects.list_deleted_items_for_retention(limit: 1, after: final_cursor) == []
+    end
+
+    test "normalizes invalid limits and caps oversized batches" do
+      project = project_fixture()
+      sheet = sheet_fixture(project)
+      assert {:ok, _deleted} = Sheets.delete_sheet(sheet)
+
+      assert length(Projects.list_deleted_items_for_retention(limit: nil)) == 1
+      assert length(Projects.list_deleted_items_for_retention(limit: -10)) == 1
+      assert length(Projects.list_deleted_items_for_retention(limit: 10_000)) == 1
+    end
+
+    test "keeps a cleanup run bounded to its starting cutoff" do
+      project = project_fixture()
+      first_sheet = sheet_fixture(project)
+      second_sheet = sheet_fixture(project)
+
+      assert {:ok, _deleted} = Sheets.delete_sheet(first_sheet)
+      cutoff = Projects.deleted_items_retention_cutoff()
+      assert {:ok, _deleted} = Sheets.delete_sheet(second_sheet)
+
+      assert [item] = Projects.list_deleted_items_for_retention(through: cutoff)
+      assert item.id == first_sheet.id
     end
   end
 

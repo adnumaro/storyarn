@@ -716,6 +716,15 @@ defmodule Storyarn.Localization.TextCrud do
   def batch_upsert_texts(_project_id, []), do: 0
 
   def batch_upsert_texts(project_id, entries) when is_list(entries) do
+    if Repo.in_transaction?() do
+      do_batch_upsert_texts(project_id, entries)
+    else
+      {:ok, count} = Repo.transaction(fn -> do_batch_upsert_texts(project_id, entries) end)
+      count
+    end
+  end
+
+  defp do_batch_upsert_texts(project_id, entries) do
     now = TimeHelpers.now()
 
     rows =

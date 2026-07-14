@@ -18,13 +18,13 @@ const eventPropertyAllowlist = new Map([
   ["project imported", new Set(["has_conflicts"])],
   ["user logged in", new Set(["auth_method"])],
   ["user signed up", new Set(["auth_method"])],
-  ["waitlist joined", new Set()],
   ["workspace created", new Set(["workspace_id"])],
 ]);
 
 const routeFamilies = [
   [(pathname) => pathname === "/", "public_home"],
   [(pathname) => pathname === "/privacy" || pathname === "/terms", "legal"],
+  [(pathname) => pathname === "/blog" || pathname.startsWith("/blog/"), "blog"],
   [(pathname) => pathname.startsWith("/docs"), "docs"],
   [(pathname) => pathname.startsWith("/users/log-in"), "login"],
   [(pathname) => pathname.startsWith("/users/register"), "registration"],

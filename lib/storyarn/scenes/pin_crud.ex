@@ -64,21 +64,18 @@ defmodule Storyarn.Scenes.PinCrud do
   end
 
   def create_pin(scene_id, attrs) do
-    position = PositionUtils.next_position(ScenePin, scene_id)
     attrs = enforce_leader_constraints(%ScenePin{scene_id: scene_id}, attrs)
     attrs = maybe_generate_pin_shortcut(attrs, scene_id, nil)
 
     result =
-      Repo.transaction(fn ->
+      PositionUtils.with_scene_lock(scene_id, fn ->
+        position = PositionUtils.next_position(ScenePin, scene_id)
         pin = %ScenePin{scene_id: scene_id}
         ensure_single_leader(pin, attrs)
 
-        case pin
-             |> ScenePin.create_changeset(Map.put(attrs, "position", position))
-             |> Repo.insert() do
-          {:ok, created_pin} -> created_pin
-          {:error, changeset} -> Repo.rollback(changeset)
-        end
+        pin
+        |> ScenePin.create_changeset(Map.put(attrs, "position", position))
+        |> Repo.insert()
       end)
 
     case result do

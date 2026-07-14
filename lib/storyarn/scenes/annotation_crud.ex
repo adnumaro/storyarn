@@ -20,12 +20,15 @@ defmodule Storyarn.Scenes.AnnotationCrud do
   end
 
   def create_annotation(scene_id, attrs) do
-    position = PositionUtils.next_position(SceneAnnotation, scene_id)
     attrs = Storyarn.Shared.MapUtils.stringify_keys(attrs)
 
-    %SceneAnnotation{scene_id: scene_id}
-    |> SceneAnnotation.create_changeset(Map.put(attrs, "position", position))
-    |> Repo.insert()
+    PositionUtils.with_scene_lock(scene_id, fn ->
+      position = PositionUtils.next_position(SceneAnnotation, scene_id)
+
+      %SceneAnnotation{scene_id: scene_id}
+      |> SceneAnnotation.create_changeset(Map.put(attrs, "position", position))
+      |> Repo.insert()
+    end)
   end
 
   def update_annotation(%SceneAnnotation{} = annotation, attrs) do

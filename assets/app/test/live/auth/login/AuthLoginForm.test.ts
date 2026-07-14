@@ -10,6 +10,7 @@ function mountLoginForm() {
       csrfToken: "csrf-token",
       loginAction: "/users/log-in",
       forgotPasswordUrl: "/users/reset-password",
+      registerUrl: "/users/register",
       loginToken: null,
       triggerSubmit: false,
       form: {
@@ -63,5 +64,13 @@ describe("AuthLoginForm", () => {
 
     expect(resetLink.attributes("data-phx-link")).toBe("redirect");
     expect(resetLink.attributes("data-phx-link-state")).toBe("push");
+  });
+
+  it("links new users to public registration", () => {
+    const wrapper = mountLoginForm();
+    const registrationLink = wrapper.get('a[href="/users/register"]');
+
+    expect(registrationLink.attributes("data-phx-link")).toBe("redirect");
+    expect(registrationLink.attributes("data-phx-link-state")).toBe("push");
   });
 });

@@ -7,6 +7,8 @@ defmodule StoryarnWeb.UserLive.Registration do
   alias Storyarn.RateLimiter
   alias StoryarnWeb.ClientIp
 
+  on_mount {StoryarnWeb.UserAuth, :redirect_if_user_is_authenticated}
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -21,7 +23,8 @@ defmodule StoryarnWeb.UserLive.Registration do
         v-inject="auth-layout"
         id="registration-vue"
         form={@form}
-        user-email={@invited_user.email}
+        user-email={@registration_user.email}
+        invited={!!@invite_token}
         login-url={~p"/users/log-in"}
       />
     </StoryarnWeb.Components.AuthLayout.auth>
@@ -37,7 +40,7 @@ defmodule StoryarnWeb.UserLive.Registration do
 
         {:ok,
          socket
-         |> assign(:invited_user, user)
+         |> assign(:registration_user, user)
          |> assign(:invite_token, token_record)
          |> assign(:client_ip, ClientIp.from_socket(socket))
          |> assign(:return_to, safe_return_to(params["return_to"]))
@@ -52,7 +55,16 @@ defmodule StoryarnWeb.UserLive.Registration do
   end
 
   def mount(_params, _session, socket) do
-    {:ok, redirect(socket, to: ~p"/")}
+    user = %Accounts.User{}
+    changeset = Ecto.Changeset.cast(user, %{}, [])
+
+    {:ok,
+     socket
+     |> assign(:registration_user, user)
+     |> assign(:invite_token, nil)
+     |> assign(:client_ip, ClientIp.from_socket(socket))
+     |> assign(:return_to, nil)
+     |> assign_form(changeset)}
   end
 
   @impl true
@@ -73,18 +85,14 @@ defmodule StoryarnWeb.UserLive.Registration do
   end
 
   def handle_event("validate", %{"user" => user_params}, socket) do
-    user = socket.assigns.invited_user
-    changeset = Accounts.change_user_password(user, user_params, hash_password: false)
+    changeset = registration_changeset(socket, user_params, hash_password: false, validate_unique: false)
     {:noreply, assign_form(socket, Map.put(changeset, :action, :validate))}
   end
 
   # Private helpers
 
   defp do_register(socket, user_params) do
-    user = socket.assigns.invited_user
-    token_record = socket.assigns.invite_token
-
-    case Accounts.complete_registration(user, token_record, user_params) do
+    case register(socket, user_params) do
       {:ok, _updated_user} ->
         {:noreply,
          socket
@@ -99,7 +107,31 @@ defmodule StoryarnWeb.UserLive.Registration do
          socket
          |> put_flash(:error, dgettext("identity", "Invalid or expired registration link."))
          |> push_navigate(to: ~p"/")}
+
+      {:error, :workspace_limit_reached} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext("identity", "We couldn't create your workspace. Please try again.")
+         )}
     end
+  end
+
+  defp register(%{assigns: %{invite_token: nil}}, user_params) do
+    Accounts.register_user_with_password(user_params)
+  end
+
+  defp register(%{assigns: %{registration_user: user, invite_token: token_record}}, user_params) do
+    Accounts.complete_registration(user, token_record, user_params)
+  end
+
+  defp registration_changeset(%{assigns: %{invite_token: nil, registration_user: user}}, user_params, opts) do
+    Accounts.change_user_registration(user, user_params, opts)
+  end
+
+  defp registration_changeset(%{assigns: %{registration_user: user}}, user_params, opts) do
+    Accounts.change_user_password(user, user_params, opts)
   end
 
   defp safe_return_to(path) when is_binary(path) do

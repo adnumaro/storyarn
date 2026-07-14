@@ -86,6 +86,9 @@ describe("PostHog frontend utility", () => {
     expect(routeFamilyForPath("/")).toBe("public_home");
     expect(routeFamilyForPath("/privacy")).toBe("legal");
     expect(routeFamilyForPath("/terms")).toBe("legal");
+    expect(routeFamilyForPath("/blog")).toBe("blog");
+    expect(routeFamilyForPath("/blog/test-branching-dialogue-before-export")).toBe("blog");
+    expect(routeFamilyForPath("/blogger")).toBe("other");
     expect(routeFamilyForPath("/workspaces/ws/projects/project/sheets/8")).toBe("sheets");
     expect(routeFamilyForPath("/workspaces/ws/projects/project/sheets/9")).toBe("sheets");
     expect(routeFamilyForPath("/workspaces/ws/projects/project/flows/1/play")).toBe("flow_player");

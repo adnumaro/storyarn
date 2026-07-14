@@ -199,23 +199,32 @@ defmodule Storyarn.Flows.FlowCrud do
   Returns `{:ok, %{flow: flow, node: node}}` or `{:error, step, reason, changes}`.
   """
   def create_linked_flow(%Project{} = project, %Flow{} = parent_flow, %FlowNode{} = node, opts \\ []) do
-    with :ok <- Billing.can_create_item?(project) do
-      name = opts[:name] || derive_linked_flow_name(parent_flow, node)
+    name = opts[:name] || derive_linked_flow_name(parent_flow, node)
 
-      Ecto.Multi.new()
-      |> Ecto.Multi.run(:flow, fn _repo, _ ->
-        do_create_flow(project, %{name: name, parent_id: parent_flow.id})
-      end)
-      |> Ecto.Multi.run(:node, fn _repo, %{flow: new_flow} ->
-        new_data = Map.put(node.data, "referenced_flow_id", new_flow.id)
+    Ecto.Multi.new()
+    |> Ecto.Multi.run(:flow, fn _repo, _ ->
+      case do_create_flow(project, %{name: name, parent_id: parent_flow.id}) do
+        {:ok, flow} -> {:ok, flow}
+        {:error, :limit_reached, details} -> {:error, {:limit_reached, details}}
+        {:error, reason} -> {:error, reason}
+      end
+    end)
+    |> Ecto.Multi.run(:node, fn _repo, %{flow: new_flow} ->
+      new_data = Map.put(node.data, "referenced_flow_id", new_flow.id)
 
-        node
-        |> FlowNode.data_changeset(%{data: new_data})
-        |> Repo.update()
-      end)
-      |> Repo.transaction()
-      |> broadcast_flow_dashboard_result(project.id)
+      node
+      |> FlowNode.data_changeset(%{data: new_data})
+      |> Repo.update()
+    end)
+    |> Repo.transaction()
+    |> case do
+      {:error, :flow, {:limit_reached, details}, _changes} ->
+        {:error, :limit_reached, details}
+
+      result ->
+        result
     end
+    |> broadcast_flow_dashboard_result(project.id)
   end
 
   defp derive_linked_flow_name(parent_flow, node) do
@@ -224,24 +233,26 @@ defmodule Storyarn.Flows.FlowCrud do
   end
 
   def create_flow(%Project{} = project, attrs) do
-    with :ok <- Billing.can_create_item?(project) do
-      project
-      |> do_create_flow(attrs)
-      |> broadcast_flow_dashboard_result(project.id)
-    end
+    project
+    |> do_create_flow(attrs)
+    |> broadcast_flow_dashboard_result(project.id)
   end
 
   defp do_create_flow(%Project{} = project, attrs) do
-    attrs = stringify_keys(attrs)
+    fn ->
+      locked_project = Repo.one!(from(p in Project, where: p.id == ^project.id, lock: "FOR UPDATE"))
 
-    # Auto-generate shortcut from name if not provided
-    attrs = maybe_generate_shortcut(attrs, project.id, nil)
+      # A flow consumes quota for the flow plus its entry and exit nodes.
+      case Billing.can_create_items?(locked_project, 3) do
+        :ok -> :ok
+        {:error, reason, details} -> Repo.rollback({reason, details})
+      end
 
-    # Auto-assign position if not provided
-    parent_id = attrs["parent_id"]
-    attrs = maybe_assign_position(attrs, project.id, parent_id)
+      attrs = stringify_keys(attrs)
+      attrs = maybe_generate_shortcut(attrs, project.id, nil)
+      parent_id = attrs["parent_id"]
+      attrs = maybe_assign_position(attrs, project.id, parent_id)
 
-    Repo.transaction(fn ->
       case %Flow{project_id: project.id}
            |> Flow.create_changeset(attrs)
            |> Repo.insert() do
@@ -253,8 +264,14 @@ defmodule Storyarn.Flows.FlowCrud do
         {:error, changeset} ->
           Repo.rollback(changeset)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> normalize_item_limit_result()
   end
+
+  defp normalize_item_limit_result({:error, {:limit_reached, details}}), do: {:error, :limit_reached, details}
+
+  defp normalize_item_limit_result(result), do: result
 
   def update_flow(%Flow{} = flow, attrs) do
     # Auto-generate shortcut if flow has no shortcut and name is being updated

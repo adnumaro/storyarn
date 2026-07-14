@@ -27,13 +27,15 @@ defmodule Storyarn.Scenes.LayerCrud do
   end
 
   def create_layer(scene_id, attrs) do
-    # Auto-assign position
-    position = PositionUtils.next_position(SceneLayer, scene_id)
     attrs = Storyarn.Shared.MapUtils.stringify_keys(attrs)
 
-    %SceneLayer{scene_id: scene_id}
-    |> SceneLayer.create_changeset(Map.put(attrs, "position", position))
-    |> Repo.insert()
+    PositionUtils.with_scene_lock(scene_id, fn ->
+      position = PositionUtils.next_position(SceneLayer, scene_id)
+
+      %SceneLayer{scene_id: scene_id}
+      |> SceneLayer.create_changeset(Map.put(attrs, "position", position))
+      |> Repo.insert()
+    end)
   end
 
   def update_layer(%SceneLayer{} = layer, attrs) do

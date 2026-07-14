@@ -38,33 +38,36 @@ defmodule Storyarn.Sheets.TableCrud do
   Creates a new column on a table block.
   Auto-generates slug, auto-assigns position, and adds empty cell to all existing rows.
   """
-  def create_column(%Block{id: block_id, type: "table"} = block, attrs) do
+  def create_column(%Block{id: block_id, type: "table"}, attrs) do
     # Formula columns are always constant (computed, not referenceable as variables)
     attrs = maybe_force_formula_constant(attrs)
-    position = attrs[:position] || next_column_position(block_id)
-    existing_slugs = list_column_slugs(block_id)
-
-    changeset = TableColumn.create_changeset(%TableColumn{block_id: block_id}, Map.put(attrs, :position, position))
-
-    slug = Ecto.Changeset.get_field(changeset, :slug)
-    unique_slug = ensure_unique_slug(slug, existing_slugs)
-
-    changeset =
-      if unique_slug == slug do
-        changeset
-      else
-        Ecto.Changeset.put_change(changeset, :slug, unique_slug)
-      end
 
     result =
       Multi.new()
-      |> Multi.insert(:column, changeset)
+      |> Multi.run(:block, fn _repo, _changes -> lock_active_table(block_id) end)
+      |> Multi.run(:column, fn _repo, _changes ->
+        position = attrs[:position] || next_column_position(block_id)
+        existing_slugs = list_column_slugs(block_id)
+
+        changeset =
+          TableColumn.create_changeset(%TableColumn{block_id: block_id}, Map.put(attrs, :position, position))
+
+        slug = Ecto.Changeset.get_field(changeset, :slug)
+        unique_slug = ensure_unique_slug(slug, existing_slugs)
+
+        changeset =
+          if unique_slug == slug,
+            do: changeset,
+            else: Ecto.Changeset.put_change(changeset, :slug, unique_slug)
+
+        Repo.insert(changeset)
+      end)
       |> Multi.run(:add_cells, fn _repo, %{column: column} ->
         add_cell_to_all_rows(block_id, column.slug)
         {:ok, :done}
       end)
-      |> Multi.run(:sync_children, fn _repo, %{column: column} ->
-        sync_column_to_children(block, column, :create)
+      |> Multi.run(:sync_children, fn _repo, %{block: locked_block, column: column} ->
+        sync_column_to_children(locked_block, column, :create)
         {:ok, :done}
       end)
       |> Repo.transaction()
@@ -74,6 +77,9 @@ defmodule Storyarn.Sheets.TableCrud do
 
         {:error, :column, changeset, _} ->
           {:error, changeset}
+
+        {:error, :block, reason, _} ->
+          {:error, reason}
       end
 
     result
@@ -283,36 +289,36 @@ defmodule Storyarn.Sheets.TableCrud do
   Creates a new row on a table block.
   Auto-generates slug, auto-assigns position, initializes cells for all columns.
   """
-  def create_row(%Block{id: block_id, type: "table"} = block, attrs) do
-    position = attrs[:position] || next_row_position(block_id)
-    existing_slugs = list_row_slugs(block_id)
-
-    # Initialize cells for all existing columns
-    column_slugs = list_column_slugs(block_id)
-    default_cells = Map.new(column_slugs, fn slug -> {slug, nil} end)
-    cells = Map.merge(default_cells, attrs[:cells] || %{})
-
-    changeset =
-      TableRow.create_changeset(
-        %TableRow{block_id: block_id},
-        attrs |> Map.put(:position, position) |> Map.put(:cells, cells)
-      )
-
-    slug = Ecto.Changeset.get_field(changeset, :slug)
-    unique_slug = ensure_unique_slug(slug, existing_slugs)
-
-    changeset =
-      if unique_slug == slug do
-        changeset
-      else
-        Ecto.Changeset.put_change(changeset, :slug, unique_slug)
-      end
-
+  def create_row(%Block{id: block_id, type: "table"}, attrs) do
     result =
       Multi.new()
-      |> Multi.insert(:row, changeset)
-      |> Multi.run(:sync_children, fn _repo, %{row: row} ->
-        sync_row_to_children(block, row, :create)
+      |> Multi.run(:block, fn _repo, _changes -> lock_active_table(block_id) end)
+      |> Multi.run(:row, fn _repo, _changes ->
+        position = attrs[:position] || next_row_position(block_id)
+        existing_slugs = list_row_slugs(block_id)
+
+        column_slugs = list_column_slugs(block_id)
+        default_cells = Map.new(column_slugs, fn slug -> {slug, nil} end)
+        cells = Map.merge(default_cells, attrs[:cells] || %{})
+
+        changeset =
+          TableRow.create_changeset(
+            %TableRow{block_id: block_id},
+            attrs |> Map.put(:position, position) |> Map.put(:cells, cells)
+          )
+
+        slug = Ecto.Changeset.get_field(changeset, :slug)
+        unique_slug = ensure_unique_slug(slug, existing_slugs)
+
+        changeset =
+          if unique_slug == slug,
+            do: changeset,
+            else: Ecto.Changeset.put_change(changeset, :slug, unique_slug)
+
+        Repo.insert(changeset)
+      end)
+      |> Multi.run(:sync_children, fn _repo, %{block: locked_block, row: row} ->
+        sync_row_to_children(locked_block, row, :create)
         {:ok, :done}
       end)
       |> Repo.transaction()
@@ -322,6 +328,9 @@ defmodule Storyarn.Sheets.TableCrud do
 
         {:error, :row, changeset, _} ->
           {:error, changeset}
+
+        {:error, :block, reason, _} ->
+          {:error, reason}
       end
 
     result
@@ -555,6 +564,13 @@ defmodule Storyarn.Sheets.TableCrud do
         set: [name: row.name, slug: row.slug]
       )
     end)
+  end
+
+  defp lock_active_table(block_id) do
+    case Repo.one(from(b in Block, where: b.id == ^block_id, lock: "FOR UPDATE")) do
+      %Block{type: "table", deleted_at: nil} = block -> {:ok, block}
+      _block -> {:error, :inactive_table}
+    end
   end
 
   defp sync_row_to_children_plain(parent_block, row) do

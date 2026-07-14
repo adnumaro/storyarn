@@ -51,6 +51,18 @@ defmodule Storyarn.Accounts.User do
     |> validate_email(opts)
   end
 
+  @doc """
+  A user changeset for public registration.
+
+  It validates both the email and password while allowing callers to disable
+  password hashing during live validation.
+  """
+  def registration_changeset(user, attrs, opts \\ []) do
+    user
+    |> email_changeset(attrs, validate_unique: Keyword.get(opts, :validate_unique, true))
+    |> password_changeset(attrs, hash_password: Keyword.get(opts, :hash_password, true))
+  end
+
   defp validate_email(changeset, opts) do
     changeset =
       changeset
@@ -102,6 +114,7 @@ defmodule Storyarn.Accounts.User do
     changeset
     |> validate_required([:password])
     |> validate_length(:password, min: 12, max: 72)
+    |> validate_length(:password, max: 72, count: :bytes)
     # Examples of additional password validation:
     # |> validate_format(:password, ~r/[a-z]/, message: "at least one lower case character")
     # |> validate_format(:password, ~r/[A-Z]/, message: "at least one upper case character")
@@ -115,8 +128,6 @@ defmodule Storyarn.Accounts.User do
 
     if hash_password? && password && changeset.valid? do
       changeset
-      # If using Bcrypt, then further validate it is at most 72 bytes long
-      |> validate_length(:password, max: 72, count: :bytes)
       # Hashing could be done with `Ecto.Changeset.prepare_changes/2`, but that
       # would keep the database transaction open longer and hurt performance.
       |> put_change(:hashed_password, Bcrypt.hash_pwd_salt(password))

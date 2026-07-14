@@ -1,6 +1,7 @@
 defmodule StoryarnWeb.LlmsController do
   use StoryarnWeb, :controller
 
+  alias Storyarn.Blog
   alias Storyarn.Docs
 
   @summary "Storyarn is a narrative design platform for video games, branching dialogue, " <>
@@ -12,8 +13,9 @@ defmodule StoryarnWeb.LlmsController do
                    "and are intentionally omitted."
 
   @product_links [
-    {"Storyarn", "/", "Product overview and waitlist."},
+    {"Storyarn", "/", "Product overview and open registration."},
     {"Documentation", "/docs", "Public product documentation and workflow guides."},
+    {"Blog", "/blog", "Practical articles about narrative design and production workflows."},
     {"Contact", "/contact", "Contact Storyarn."}
   ]
 
@@ -41,10 +43,29 @@ defmodule StoryarnWeb.LlmsController do
       "## Product\n\n",
       link_list(@product_links),
       "\n",
+      blog_section(),
       docs_sections(),
       "## Optional\n\n",
       link_list(@optional_links)
     ]
+  end
+
+  defp blog_section do
+    posts = Blog.list_posts("en")
+
+    if posts == [] do
+      []
+    else
+      [
+        "## Articles\n\n",
+        Enum.map(posts, &post_link/1),
+        "\n"
+      ]
+    end
+  end
+
+  defp post_link(post) do
+    link_item(post.title, "/blog/#{post.slug}", post.description)
   end
 
   defp docs_sections do

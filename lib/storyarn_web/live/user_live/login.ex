@@ -12,6 +12,8 @@ defmodule StoryarnWeb.UserLive.Login do
   alias StoryarnWeb.ClientIp
   alias StoryarnWeb.UserLoginToken
 
+  on_mount {StoryarnWeb.UserAuth, :redirect_if_user_is_authenticated}
+
   @login_types %{email: :string, password: :string}
   @login_fields Map.keys(@login_types)
 
@@ -36,6 +38,7 @@ defmodule StoryarnWeb.UserLive.Login do
         csrf-token={Plug.CSRFProtection.get_csrf_token()}
         login-action={~p"/users/log-in"}
         forgot-password-url={~p"/users/reset-password"}
+        register-url={~p"/users/register"}
       />
     </StoryarnWeb.Components.AuthLayout.auth>
     """

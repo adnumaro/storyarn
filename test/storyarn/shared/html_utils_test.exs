@@ -73,6 +73,76 @@ defmodule Storyarn.Shared.HtmlUtilsTest do
     end
   end
 
+  describe "add_heading_ids/1" do
+    test "normalizes inline HTML consistently" do
+      html = "<h2>Hello <code>World &amp; friends</code></h2>"
+
+      assert HtmlUtils.add_heading_ids(html) ==
+               ~s(<h2 id="hello-world-friends">Hello <code>World &amp; friends</code></h2>)
+    end
+
+    test "preserves Unicode letters and numbers" do
+      assert HtmlUtils.add_heading_ids("<h2>Cómo diseñar 日本語 2</h2>") ==
+               ~s(<h2 id="cómo-diseñar-日本語-2">Cómo diseñar 日本語 2</h2>)
+    end
+
+    test "suffixes duplicate and empty heading IDs deterministically" do
+      html = "<h2>Setup</h2><h3>Setup</h3><h2>🎮</h2><h2>🎮</h2>"
+
+      assert HtmlUtils.add_heading_ids(html) ==
+               ~s(<h2 id="setup">Setup</h2><h3 id="setup-2">Setup</h3><h2 id="section">🎮</h2><h2 id="section-2">🎮</h2>)
+    end
+
+    test "preserves opening-tag attributes and explicit IDs" do
+      html =
+        ~s(<h2 class="title">Generated</h2><h3 class="title" id='custom'>Custom</h3>)
+
+      normalized = HtmlUtils.add_heading_ids(html)
+
+      assert normalized ==
+               ~s(<h2 id="generated" class="title">Generated</h2><h3 class="title" id='custom'>Custom</h3>)
+
+      assert HtmlUtils.heading_outline(normalized) == [
+               %{level: 2, id: "generated", text: "Generated"},
+               %{level: 3, id: "custom", text: "Custom"}
+             ]
+    end
+
+    test "replaces an empty explicit ID without duplicating the attribute" do
+      assert HtmlUtils.add_heading_ids(~s(<h2 class="title" id="">Fallback</h2>)) ==
+               ~s(<h2 class="title" id="fallback">Fallback</h2>)
+    end
+
+    test "does not treat id-like text inside another attribute value as an ID" do
+      html =
+        ~s(<h2 data-note="id=fake">Real heading</h2><h3 title="contains id='also-fake'">Next</h3>)
+
+      normalized = HtmlUtils.add_heading_ids(html)
+
+      assert normalized ==
+               ~s(<h2 id="real-heading" data-note="id=fake">Real heading</h2><h3 id="next" title="contains id='also-fake'">Next</h3>)
+
+      assert HtmlUtils.heading_outline(normalized) == [
+               %{level: 2, id: "real-heading", text: "Real heading"},
+               %{level: 3, id: "next", text: "Next"}
+             ]
+    end
+
+    test "reserves explicit IDs before assigning generated IDs" do
+      html =
+        ~s(<h2>Setup</h2><h2 id="setup">Explicit setup</h2><h3>Setup</h3><h3 id="setup-2">Explicit suffix</h3>)
+
+      normalized = HtmlUtils.add_heading_ids(html)
+
+      assert normalized ==
+               ~s(<h2 id="setup-3">Setup</h2><h2 id="setup">Explicit setup</h2><h3 id="setup-4">Setup</h3><h3 id="setup-2">Explicit suffix</h3>)
+
+      assert normalized
+             |> HtmlUtils.heading_outline()
+             |> Enum.map(& &1.id) == ["setup-3", "setup", "setup-4", "setup-2"]
+    end
+  end
+
   # ===========================================================================
   # strip_and_truncate/2
   # ===========================================================================

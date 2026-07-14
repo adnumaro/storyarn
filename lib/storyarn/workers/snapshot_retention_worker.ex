@@ -21,15 +21,37 @@ defmodule Storyarn.Workers.SnapshotRetentionWorker do
 
   require Logger
 
+  @batch_size 100
+
   @impl Oban.Worker
   def perform(%Oban.Job{}) do
-    Enum.each(list_deleted_project_ids(), &process_project/1)
+    process_batches(nil)
     :ok
   end
 
-  defp list_deleted_project_ids do
-    Repo.all(from(p in Project, where: not is_nil(p.deleted_at), select: {p.id, p.workspace_id}))
+  defp process_batches(after_id) do
+    projects = list_deleted_project_ids(after_id)
+    Enum.each(projects, &process_project/1)
+
+    case List.last(projects) do
+      nil -> :ok
+      {project_id, _workspace_id} when length(projects) == @batch_size -> process_batches(project_id)
+      _project -> :ok
+    end
   end
+
+  defp list_deleted_project_ids(after_id) do
+    Project
+    |> where([p], not is_nil(p.deleted_at))
+    |> maybe_after_id(after_id)
+    |> order_by([p], asc: p.id)
+    |> limit(^@batch_size)
+    |> select([p], {p.id, p.workspace_id})
+    |> Repo.all()
+  end
+
+  defp maybe_after_id(query, nil), do: query
+  defp maybe_after_id(query, after_id), do: where(query, [p], p.id > ^after_id)
 
   defp process_project({project_id, workspace_id}) do
     retention_days = get_retention_days(workspace_id)

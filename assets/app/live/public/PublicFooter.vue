@@ -51,6 +51,13 @@ function openCookieSettings(): void {
             >{{ $t("landing.common.links.docs") }}</a
           >
           <a
+            href="/blog"
+            data-phx-link="redirect"
+            data-phx-link-state="push"
+            class="transition-colors hover:text-foreground"
+            >{{ $t("landing.common.links.blog") }}</a
+          >
+          <a
             href="/contact"
             data-live-link-exempt="controller"
             class="transition-colors hover:text-foreground"

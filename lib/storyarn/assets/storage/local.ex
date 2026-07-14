@@ -21,6 +21,19 @@ defmodule Storyarn.Assets.Storage.Local do
 
   @impl true
   # sobelow_skip ["Traversal.FileModule"]
+  def put_if_absent(key, data, _content_type) do
+    with {:ok, path} <- file_path(key),
+         :ok <- ensure_directory(path) do
+      case File.write(path, data, [:binary, :exclusive]) do
+        :ok -> {:ok, get_url(key), true}
+        {:error, :eexist} -> {:ok, get_url(key), false}
+        {:error, reason} -> {:error, reason}
+      end
+    end
+  end
+
+  @impl true
+  # sobelow_skip ["Traversal.FileModule"]
   def download(key) do
     with {:ok, path} <- file_path(key) do
       File.read(path)

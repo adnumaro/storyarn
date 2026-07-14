@@ -1,12 +1,13 @@
 {
   "landing": {
     "common": {
-      "badge": "Beta privada",
+      "badge": "Beta pública",
       "links": {
         "features": "Características",
         "discover": "Descubrir",
         "workflow": "Flujo de trabajo",
         "docs": "Docs",
+        "blog": "Blog",
         "contact": "Contacto"
       }
     },
@@ -14,7 +15,7 @@
       "hero": {
         "title": "Diseña narrativas interactivas sin perder el control del mundo.",
         "desc": "Storyarn conecta fichas, diálogos, escenas, localización y exportación para que cada decisión narrativa viva en un único proyecto trazable.",
-        "primary_cta": "Solicitar acceso"
+        "primary_cta": "Crear cuenta"
       },
       "features": {
         "title": "Una base de producción para equipos narrativos.",
@@ -173,86 +174,11 @@
       }
     },
     "cta": {
+      "eyebrow": "Registro abierto",
       "title": "Empieza a construir tu próxima narrativa",
-      "desc": "Estamos incorporando a un pequeño grupo de diseñadores narrativos y estudios de juegos. Únete a la lista de espera — te contactaremos cuando tu plaza esté disponible.",
-      "placeholder": "tu{'@'}estudio.com",
-      "btn": "Solicitar acceso anticipado",
-      "submitting": "Enviando...",
-      "success": "Ya estás en la lista. Te avisaremos cuando tu plaza esté disponible.",
-      "error": "No se ha podido enviar. Inténtalo de nuevo.",
-      "details_success": "Gracias — esto nos ayuda a priorizar tu invitación.",
-      "details_error": "No se han podido guardar esos datos. Sigues en la lista.",
-      "footer": "Sin spam. Solo te escribiremos cuando sea el momento.",
-      "details_modal": {
-        "title": "Ayúdanos a priorizar tu invitación",
-        "desc": "Estos datos son opcionales para el acceso, pero nos ayudan a entender qué estás construyendo y qué herramienta podrías estar reemplazando.",
-        "save": "Guardar detalles",
-        "saving": "Guardando..."
-      },
-      "metrics": {
-        "email": {
-          "label": "Email"
-        },
-        "profession": {
-          "label": "¿Qué rol encaja mejor contigo?",
-          "placeholder": "Selecciona tu rol",
-          "options": {
-            "narrative_designer": "Diseñador narrativo",
-            "game_designer": "Diseñador de juego",
-            "writer": "Escritor",
-            "screenwriter": "Guionista",
-            "developer": "Desarrollador",
-            "producer": "Productor",
-            "student": "Estudiante",
-            "other": "Otro"
-          }
-        },
-        "primary_interest": {
-          "label": "¿Qué estás construyendo?",
-          "placeholder": "Selecciona un caso de uso",
-          "options": {
-            "game_narrative": "Narrativa de videojuego",
-            "interactive_fiction": "Ficción interactiva",
-            "worldbuilding": "Worldbuilding",
-            "screenplay_film": "Guion / cine",
-            "novel_writing": "Escritura de novela",
-            "team_collaboration": "Colaboración en equipo",
-            "other": "Otro"
-          }
-        },
-        "discovery_source": {
-          "label": "¿Cómo has conocido Storyarn?",
-          "placeholder": "Selecciona una fuente",
-          "options": {
-            "search": "Búsqueda",
-            "x_twitter": "X / Twitter",
-            "reddit": "Reddit",
-            "discord": "Discord",
-            "youtube": "YouTube",
-            "friend_colleague": "Amigo / colega",
-            "article_blog": "Artículo / blog",
-            "other": "Otro"
-          }
-        },
-        "current_tool": {
-          "label": "¿Buscas reemplazar otra herramienta?",
-          "placeholder": "Selecciona una opción",
-          "options": {
-            "none": "No / ahora mismo no",
-            "articy_draft": "articy:draft",
-            "arcweave": "Arcweave",
-            "twine": "Twine",
-            "notion": "Notion",
-            "miro_figjam": "Miro / FigJam",
-            "final_draft_celtx": "Final Draft / Celtx",
-            "other": "Otra"
-          }
-        },
-        "current_tool_other": {
-          "label": "Nombre de la herramienta",
-          "placeholder": "¿Qué herramienta?"
-        }
-      }
+      "desc": "El registro está abierto. Crea tu cuenta y empieza a conectar worldbuilding, diálogos, escenas, localización y exportación en un único workspace.",
+      "btn": "Crear cuenta",
+      "footer": "Gratis durante el acceso anticipado. No necesitas invitación."
     },
     "footer": {
       "tagline": "Diseña personajes, diálogos, mundos y localización en un solo proyecto conectado. Creado para equipos narrativos que publican historias interactivas."

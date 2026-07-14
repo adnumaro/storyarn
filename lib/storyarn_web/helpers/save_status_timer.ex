@@ -2,12 +2,14 @@ defmodule StoryarnWeb.Helpers.SaveStatusTimer do
   @moduledoc "Schedules a delayed reset of the save status indicator for LiveViews."
 
   @doc """
-  Schedules a `:reset_save_status` message after `timeout_ms` milliseconds.
-  Returns the socket unchanged (for piping).
+  Schedules a tokenized reset message after `timeout_ms` milliseconds.
+
+  The token is stored on the socket so an older timer cannot clear a newer save.
   """
   def schedule_reset(socket, timeout_ms \\ 4000) do
-    Process.send_after(self(), :reset_save_status, timeout_ms)
-    socket
+    token = make_ref()
+    Process.send_after(self(), {:reset_save_status, token}, timeout_ms)
+    Phoenix.Component.assign(socket, :save_status_reset_token, token)
   end
 
   @doc """

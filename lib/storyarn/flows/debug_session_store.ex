@@ -6,7 +6,8 @@ defmodule Storyarn.Flows.DebugSessionStore do
   to a different flow URL, which triggers a full remount. This Agent preserves the
   debug state across that remount via a one-shot store/take pattern.
 
-  Keys are `{user_id, project_id}` tuples so each user gets their own slot.
+  Keys include a browser-session token in addition to user and project IDs, so
+  two tabs cannot consume or overwrite each other's navigation state.
 
   Entries expire after 5 minutes and are cleaned up lazily on each `store/2` call.
   """

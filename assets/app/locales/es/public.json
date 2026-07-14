@@ -2,7 +2,7 @@
   "public": {
     "layout": {
       "dashboard": "Panel",
-      "request_access": "Solicitar acceso",
+      "create_account": "Crear cuenta",
       "log_in": "Iniciar sesión",
       "menu": "Menú",
       "close": "Cerrar",
@@ -45,8 +45,8 @@
           "intro": "Podemos tratar las siguientes categorías de datos, según cómo uses el servicio:",
           "items": {
             "waitlist": {
-              "label": "Lista de acceso anticipado",
-              "text": "email, profesión o rol, interés de uso, herramienta actual o alternativa buscada, fuente por la que nos has conocido y cualquier detalle opcional que nos facilites. Podemos conservar respuestas no identificativas o agregadas para analítica de producto."
+              "label": "Antigua lista de acceso anticipado",
+              "text": "Para quienes se apuntaron antes de abrir el registro: email, profesión o rol, interés de uso, herramienta actual o alternativa buscada, fuente por la que conocieron Storyarn y cualquier detalle opcional facilitado. Podemos conservar respuestas no identificativas o agregadas para analítica de producto."
             },
             "account": {
               "label": "Cuenta",
@@ -165,7 +165,7 @@
         },
         "retention": {
           "title": "6. Conservación",
-          "main": "Conservamos los datos mientras sean necesarios para gestionar el acceso anticipado, prestar el servicio, mantener la seguridad, resolver incidencias o cumplir obligaciones legales. El email de lista de espera se conserva mientras el programa de acceso anticipado siga abierto o hasta que solicites su eliminación; las respuestas no identificativas o agregadas pueden conservarse para analítica de producto. Los datos de inicio de sesión de cuenta se conservan mientras la cuenta siga activa.",
+          "main": "Conservamos los datos mientras sean necesarios para gestionar el acceso anticipado, prestar el servicio, mantener la seguridad, resolver incidencias o cumplir obligaciones legales. El email histórico de la lista de espera se conserva solo mientras sea necesario para documentar el antiguo programa de acceso anticipado o hasta que solicites su eliminación; las respuestas no identificativas o agregadas pueden conservarse para analítica de producto. Los datos de inicio de sesión de cuenta se conservan mientras la cuenta siga activa.",
           "technical": "Los registros de workspace, proyecto, assets y contenido de usuario pueden conservarse hasta 12 meses tras el cierre de una cuenta, workspace o proyecto cuando sea razonablemente necesario para investigar uso indebido, aplicar estas condiciones, proteger el servicio o gestionar reclamaciones legales. Algunas retenciones técnicas están definidas por el producto: la cookie de recordar sesión dura 14 días, el consentimiento de cookies hasta 24 meses, la persistencia frontend de PostHog hasta 365 días, ciertos trabajos internos se purgan tras 7 días y algunos elementos eliminados o snapshots pueden conservarse temporalmente para restauración. Las copias de seguridad y logs de proveedores se gestionan según sus ciclos técnicos."
         },
         "rights": {

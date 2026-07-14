@@ -113,6 +113,35 @@ defmodule Storyarn.Billing.LimitsTest do
       assert :ok = Billing.can_create_item?(project)
     end
 
+    test "reserves every item created by a compound operation", %{user: user, workspace: workspace} do
+      project = project_fixture(user, workspace: workspace)
+      {:ok, flow} = Storyarn.Flows.create_flow(project, %{name: "Existing"})
+      now = DateTime.utc_now(:second)
+
+      entries =
+        for i <- 1..695 do
+          %{
+            flow_id: flow.id,
+            type: "dialogue",
+            position_x: i * 1.0,
+            position_y: 0.0,
+            data: %{},
+            inserted_at: now,
+            updated_at: now
+          }
+        end
+
+      Storyarn.Repo.insert_all(FlowNode, entries)
+
+      assert Billing.count_project_items(project.id) == 698
+      assert :ok = Billing.can_create_item?(project)
+
+      assert {:error, :limit_reached, %{resource: :items_per_project}} =
+               Storyarn.Flows.create_flow(project, %{name: "Needs three slots"})
+
+      assert Billing.count_project_items(project.id) == 698
+    end
+
     test "counts all item types: flows, nodes, sheets, scenes", %{
       user: user,
       workspace: workspace

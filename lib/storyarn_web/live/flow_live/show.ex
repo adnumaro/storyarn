@@ -174,7 +174,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   # ===========================================================================
 
   @impl true
-  def mount(_params, _session, socket) do
+  def mount(params, _session, socket) do
     %{project: project, can_edit: can_edit} = socket.assigns
 
     if connected?(socket) do
@@ -192,6 +192,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     socket =
       socket
       |> assign(:can_edit, can_edit)
+      |> assign(:debug_session_id, params["debug_session"] || Ecto.UUID.generate())
       |> assign(:compact, false)
       |> assign(:loading, true)
       |> assign(:restoration_banner, restoration_banner)
@@ -206,6 +207,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:flow_error_nodes, [])
       |> assign(:flow_info_nodes, [])
       |> assign(:save_status, :idle)
+      |> assign(:save_status_reset_token, nil)
       |> assign(:selected_node, nil)
       |> assign(:node_form, nil)
       |> assign(:editing_mode, nil)
@@ -249,8 +251,9 @@ defmodule StoryarnWeb.FlowLive.Show do
   defp maybe_restore_debug_session(socket) do
     user_id = socket.assigns.current_scope.user.id
     project_id = socket.assigns.project.id
+    session_id = socket.assigns.debug_session_id
 
-    case Flows.debug_session_take({user_id, project_id}) do
+    case Flows.debug_session_take({:debug, user_id, project_id, session_id}) do
       nil ->
         socket
 
@@ -1367,13 +1370,19 @@ defmodule StoryarnWeb.FlowLive.Show do
     end
   end
 
-  def handle_info(:reset_save_status, socket) do
-    EditorInfoHandlers.handle_reset_save_status(socket)
+  def handle_info({:reset_save_status, token}, socket) do
+    EditorInfoHandlers.handle_reset_save_status(socket, token)
   end
 
   def handle_info({:load_node_select_data, node}, socket) do
-    socket = NodeTypeRegistry.on_select(node.type, node, socket)
-    {:noreply, assign(socket, :node_select_loading, false)}
+    case socket.assigns[:selected_node] do
+      %{id: selected_id} when selected_id == node.id ->
+        socket = NodeTypeRegistry.on_select(node.type, node, socket)
+        {:noreply, assign(socket, :node_select_loading, false)}
+
+      _stale_selection ->
+        {:noreply, socket}
+    end
   end
 
   def handle_info({:node_updated, updated_node}, socket), do: EditorInfoHandlers.handle_node_updated(updated_node, socket)

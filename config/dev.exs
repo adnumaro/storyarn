@@ -88,6 +88,7 @@ config :storyarn, StoryarnWeb.Endpoint,
     patterns: [
       ~r"priv/static/(?!uploads/).*(js|css|png|jpeg|jpg|gif|svg)$",
       ~r"priv/gettext/.*(po)$",
+      ~r"priv/blog/.*\.md$",
       ~r"lib/storyarn_web/(?:controllers|live|components|router)/?.*\.(ex|heex)$"
     ]
   ]

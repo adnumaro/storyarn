@@ -24,6 +24,7 @@ const {
   csrfToken,
   loginAction,
   forgotPasswordUrl,
+  registerUrl,
 } = defineProps<{
   form: LoginForm;
   readonly?: boolean;
@@ -33,6 +34,7 @@ const {
   csrfToken: string;
   loginAction: string;
   forgotPasswordUrl: string;
+  registerUrl: string;
 }>();
 
 const form = useLiveForm(() => formProp, {
@@ -226,5 +228,15 @@ onMounted(() => {
         {{ $t("auth.sign_in.submit") }} <ArrowRight class="ml-1" />
       </Button>
     </form>
+
+    <p class="text-center text-sm text-muted-foreground">
+      {{ $t("auth.sign_in.no_account") }}
+      <LiveLink
+        :to="registerUrl"
+        class="font-semibold text-primary transition hover:text-primary/80"
+      >
+        {{ $t("auth.sign_in.create_account") }}
+      </LiveLink>
+    </p>
   </div>
 </template>

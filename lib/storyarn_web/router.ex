@@ -92,12 +92,6 @@ defmodule StoryarnWeb.Router do
   defp csp_port_suffix(_scheme, port), do: ":#{port}"
 
   scope "/", StoryarnWeb do
-    pipe_through :browser
-
-    post "/waitlist", PageController, :join_waitlist
-  end
-
-  scope "/", StoryarnWeb do
     get "/llms.txt", LlmsController, :index
     get "/sitemap.xml", SitemapController, :index
   end
@@ -121,25 +115,6 @@ defmodule StoryarnWeb.Router do
 
       live_dashboard "/dashboard", metrics: StoryarnWeb.Telemetry
       forward "/mailbox", Plug.Swoosh.MailboxPreview
-    end
-  end
-
-  ## Documentation (public, isolated context)
-
-  scope "/docs", StoryarnWeb do
-    pipe_through [:browser]
-
-    live_session :docs,
-      on_mount:
-        if(Application.compile_env(:storyarn, :sql_sandbox),
-          do: [Module.concat(["StoryarnWeb", "LiveSandbox"])],
-          else: []
-        ) ++
-          [
-            {@user_auth_hook, :mount_current_scope}
-          ] do
-      live "/", DocsLive.Show, :index
-      live "/:category/*path", DocsLive.Show, :show
     end
   end
 
@@ -358,28 +333,26 @@ defmodule StoryarnWeb.Router do
       live "/", LandingLive.Index, :index
       live "/users/confirm-access", UserLive.ConfirmAccess, :new
       live "/contact", LandingLive.Contact, :show
+      live "/blog", BlogLive.Index, :index
+      live "/blog/:slug", BlogLive.Show, :show
       live "/privacy", LegalLive.Show, :privacy
       live "/terms", LegalLive.Show, :terms
+
+      # Public documentation works with or without authentication and shares
+      # the landing live_session so navigation does not require a full reload.
+      live "/docs", DocsLive.Show, :index
+      live "/docs/:category/*path", DocsLive.Show, :show
 
       # Project invitations (accessible with or without auth)
       live "/projects/invitations/:token", ProjectLive.Invitation, :show
 
       # Workspace invitations (accessible with or without auth)
       live "/workspaces/invitations/:token", WorkspaceLive.Invitation, :show
-    end
 
-    # Public-only authentication pages. These routes still mount current_scope
-    # for locale/session context, but authenticated users are redirected back to
-    # the app instead of seeing login, registration, or password-reset screens.
-    live_session :public_auth,
-      on_mount:
-        if(Application.compile_env(:storyarn, :sql_sandbox),
-          do: [Module.concat(["StoryarnWeb", "LiveSandbox"])],
-          else: []
-        ) ++
-          [
-            {@user_auth_hook, :redirect_if_user_is_authenticated}
-          ] do
+      # Public-only authentication pages share this live_session with the
+      # landing page so LiveView can navigate without a full page reload. Each
+      # auth LiveView redirects signed-in users with its own on_mount hook.
+      live "/users/register", UserLive.Registration, :new
       live "/users/register/:token", UserLive.Registration, :new
       live "/users/log-in", UserLive.Login, :new
       live "/users/reset-password", UserLive.ForgotPassword, :new

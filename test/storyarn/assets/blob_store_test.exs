@@ -59,6 +59,15 @@ defmodule Storyarn.Assets.BlobStoreTest do
       assert key1 == key2
       assert key1 == BlobStore.blob_key(project.id, hash, "png")
     end
+
+    test "reports creation ownership without replacing existing bytes", %{project: project} do
+      first = "first content"
+      hash = BlobStore.compute_hash(first)
+
+      assert {:ok, key, true} = BlobStore.ensure_blob_with_status(project.id, hash, "png", first)
+      assert {:ok, ^key, false} = BlobStore.ensure_blob_with_status(project.id, hash, "png", "replacement")
+      assert {:ok, ^first} = Storage.download(key)
+    end
   end
 
   describe "create_asset_from_blob/5" do

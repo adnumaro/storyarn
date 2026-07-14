@@ -5,6 +5,12 @@ defmodule Storyarn.Shared.HtmlUtils do
   Consolidates strip_html implementations used across the codebase.
   """
 
+  @heading_regex ~r/<(h[23])([^>]*)>\n?(.*?)<\/\1>/s
+  # Skip complete quoted attribute values before looking for an actual `id`
+  # token. Without this, text such as `data-note="id=fake"` is mistaken for
+  # the heading's own ID.
+  @id_attribute_regex ~r/(?:(?:"[^"]*"|'[^']*')(*SKIP)(*F))|(?:^|\s)id\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/iu
+
   @doc """
   Strips HTML tags and decodes common entities, returning plain text.
 
@@ -73,6 +79,141 @@ defmodule Storyarn.Shared.HtmlUtils do
 
   def word_count(text) when is_binary(text) do
     text |> strip_html() |> String.split(~r/\s+/, trim: true) |> length()
+  end
+
+  @doc """
+  Adds stable, unique IDs to h2 and h3 elements for anchor linking.
+
+  IDs retain Unicode letters and numbers. Repeated headings receive a
+  deterministic numeric suffix, and headings without usable text fall back to
+  `section`.
+  """
+  @spec add_heading_ids(String.t()) :: String.t()
+  def add_heading_ids(body) when is_binary(body) do
+    state = %{counts: %{}, used_ids: explicit_heading_ids(body)}
+
+    {chunks, offset, _state} =
+      @heading_regex
+      |> Regex.scan(body, return: :index)
+      |> Enum.reduce({[], 0, state}, &replace_heading(body, &1, &2))
+
+    tail = binary_part(body, offset, byte_size(body) - offset)
+    IO.iodata_to_binary([Enum.reverse(chunks), tail])
+  end
+
+  defp replace_heading(
+         body,
+         [
+           {match_start, match_length},
+           {tag_start, tag_length},
+           {attributes_start, attributes_length},
+           {content_start, content_length}
+         ],
+         {chunks, offset, state}
+       ) do
+    prefix = binary_part(body, offset, match_start - offset)
+    tag = binary_part(body, tag_start, tag_length)
+    attributes = binary_part(body, attributes_start, attributes_length)
+    content = binary_part(body, content_start, content_length)
+    {attributes, state} = ensure_heading_id(attributes, content, state)
+    heading = ["<", tag, attributes, ">", content, "</", tag, ">"]
+
+    {[[prefix, heading] | chunks], match_start + match_length, state}
+  end
+
+  @doc """
+  Extracts the h2/h3 outline from HTML after IDs have been assigned.
+
+  Opening-tag attributes may appear in any order and IDs may use double,
+  single, or unquoted attribute syntax.
+  """
+  @spec heading_outline(String.t()) :: [%{level: 2 | 3, id: String.t(), text: String.t()}]
+  def heading_outline(body) when is_binary(body) do
+    @heading_regex
+    |> Regex.scan(body)
+    |> Enum.flat_map(fn [_, tag, attributes, content] ->
+      case id_attribute(attributes) do
+        {:ok, id} when id != "" ->
+          [%{level: if(tag == "h2", do: 2, else: 3), id: id, text: strip_html(content)}]
+
+        _ ->
+          []
+      end
+    end)
+  end
+
+  defp ensure_heading_id(attributes, content, state) do
+    case id_attribute(attributes) do
+      {:ok, id} when id != "" ->
+        {attributes, state}
+
+      existing_id ->
+        {id, state} = unique_heading_id(content, state)
+        {put_heading_id(attributes, existing_id, id), state}
+    end
+  end
+
+  defp explicit_heading_ids(body) do
+    @heading_regex
+    |> Regex.scan(body)
+    |> Enum.reduce(MapSet.new(), fn [_, _tag, attributes, _content], ids ->
+      case id_attribute(attributes) do
+        {:ok, id} when id != "" -> MapSet.put(ids, id)
+        _ -> ids
+      end
+    end)
+  end
+
+  defp put_heading_id(attributes, {:ok, ""}, id) do
+    Regex.replace(@id_attribute_regex, attributes, " id=\"#{id}\"", global: false)
+  end
+
+  defp put_heading_id(attributes, :error, id), do: ~s( id="#{id}") <> attributes
+
+  defp id_attribute(attributes) do
+    case Regex.run(@id_attribute_regex, attributes, capture: :all_but_first) do
+      captures when is_list(captures) ->
+        {:ok, Enum.find(captures, "", &(&1 not in [nil, ""]))}
+
+      nil ->
+        :error
+    end
+  end
+
+  defp unique_heading_id(content, state) do
+    base_id = heading_id(content)
+    occurrence = Map.get(state.counts, base_id, 0) + 1
+
+    reserve_heading_id(base_id, occurrence, state)
+  end
+
+  defp reserve_heading_id(base_id, occurrence, state) do
+    id = if occurrence == 1, do: base_id, else: "#{base_id}-#{occurrence}"
+
+    if MapSet.member?(state.used_ids, id) do
+      reserve_heading_id(base_id, occurrence + 1, state)
+    else
+      state = %{
+        state
+        | counts: Map.put(state.counts, base_id, occurrence),
+          used_ids: MapSet.put(state.used_ids, id)
+      }
+
+      {id, state}
+    end
+  end
+
+  defp heading_id(content) do
+    content
+    |> strip_html()
+    |> String.downcase()
+    |> String.replace(~r/[^\p{L}\p{N}\s-]/u, "")
+    |> String.trim()
+    |> String.replace(~r/\s+/u, "-")
+    |> case do
+      "" -> "section"
+      id -> id
+    end
   end
 
   # Decodes common HTML entities

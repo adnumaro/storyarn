@@ -10,16 +10,25 @@ import { Socket } from "phoenix";
 import { LiveSocket } from "phoenix_live_view";
 import topbar from "topbar";
 import liveVueApp from "../app";
+import {
+  capturePendingHistoryScroll,
+  clearPendingHistoryScroll,
+} from "../app/shared/navigation/historyScroll";
 import { initPostHog } from "./utils/posthog";
 
 if (!window.__storyarnAppInitialized) {
   window.__storyarnAppInitialized = true;
 
   const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
+  // Kept in this page's JS realm so duplicated tabs never inherit the token.
+  // LiveView navigation reuses the realm, preserving cross-flow player handoffs.
+  const playerTabId =
+    crypto.randomUUID?.() ??
+    Array.from(crypto.getRandomValues(new Uint32Array(4)), (value) => value.toString(16)).join("-");
 
   const liveSocket = new LiveSocket("/live", Socket, {
     longPollFallbackMs: 2500,
-    params: { _csrf_token: csrfToken },
+    params: { _csrf_token: csrfToken, player_tab_id: playerTabId },
     hooks: getHooks(liveVueApp),
   });
 
@@ -27,6 +36,13 @@ if (!window.__storyarnAppInitialized) {
   topbar.config({ barColors: { 0: "#29d" }, shadowColor: "rgba(0, 0, 0, .3)" });
   window.addEventListener("phx:page-loading-start", () => topbar.show(300));
   window.addEventListener("phx:page-loading-stop", () => topbar.hide());
+
+  // Capture the target history entry before LiveView replaces the current DOM.
+  // Async Vue routes can otherwise trigger scroll anchoring and overwrite it.
+  window.addEventListener("popstate", (event) => capturePendingHistoryScroll(event.state));
+  window.addEventListener("phx:navigate", (event) => {
+    if (!event.detail?.pop) clearPendingHistoryScroll();
+  });
 
   liveSocket.connect();
 

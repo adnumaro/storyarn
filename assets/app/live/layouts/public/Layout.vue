@@ -2,14 +2,29 @@
 import { computed, ref } from "vue";
 import type { CSSProperties } from "vue";
 import { useI18n } from "vue-i18n";
-import { BookOpen, Mail, Menu, PanelsTopLeft, Sparkles, X } from "lucide-vue-next";
+import { BookOpen, Mail, Menu, Newspaper, PanelsTopLeft, Sparkles, X } from "lucide-vue-next";
 import LiveLink from "@components/navigation/LiveLink.vue";
+
+// These are the next screens for anonymous visitors. Warming their route
+// chunks while the public layout is visible avoids an empty async-component
+// frame after LiveView has already replaced the landing page.
+void Promise.all([
+  import("../auth/Layout.vue"),
+  import("../docs/Layout.vue"),
+  import("../../auth/login/AuthLoginForm.vue"),
+  import("../../auth/registration/AuthRegistrationForm.vue"),
+  import("../../auth/reset-password/AuthForgotPasswordForm.vue"),
+  import("../../auth/reset-password/AuthResetPasswordForm.vue"),
+  import("../../docs/show/DocsContent.vue"),
+]).catch(() => undefined);
 
 interface PublicLayoutUrls {
   home: string;
   docs: string;
+  blog: string;
   contact: string;
   login: string;
+  register: string;
   workspaces: string;
 }
 
@@ -107,6 +122,12 @@ function scrollToPanel(panelIndex: number, targetId: string): void {
               {{ t("landing.common.links.docs") }}
             </LiveLink>
             <LiveLink
+              :to="urls.blog"
+              class="inline-flex items-center justify-center rounded-md px-4 py-2.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
+            >
+              {{ t("landing.common.links.blog") }}
+            </LiveLink>
+            <LiveLink
               :to="urls.contact"
               class="inline-flex items-center justify-center rounded-md px-4 py-2.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
             >
@@ -123,8 +144,8 @@ function scrollToPanel(panelIndex: number, targetId: string): void {
               {{ t("public.layout.dashboard") }}
             </LiveLink>
             <template v-else>
-              <a
-                href="#waitlist"
+              <LiveLink
+                :to="urls.register"
                 class="inline-flex items-center justify-center rounded-md px-5 py-2.5 text-sm font-bold text-teal-950 transition-all hover:scale-105"
                 style="
                   background: linear-gradient(135deg, oklch(78% 0.14 185), oklch(68% 0.12 210));
@@ -132,10 +153,9 @@ function scrollToPanel(panelIndex: number, targetId: string): void {
                     0 0 20px rgba(34, 211, 238, 0.4),
                     inset 0 1px 0 rgba(255, 255, 255, 0.3);
                 "
-                @click.prevent="scrollToPanel(3, 'waitlist')"
               >
-                {{ t("public.layout.request_access") }}
-              </a>
+                {{ t("public.layout.create_account") }}
+              </LiveLink>
               <LiveLink
                 :to="urls.login"
                 class="inline-flex items-center justify-center rounded-md px-4 py-2.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
@@ -219,6 +239,14 @@ function scrollToPanel(panelIndex: number, targetId: string): void {
                 {{ t("landing.common.links.docs") }}
               </LiveLink>
               <LiveLink
+                :to="urls.blog"
+                class="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-foreground transition-colors hover:bg-accent"
+                @click="closeMobileNav"
+              >
+                <Newspaper class="size-5 text-foreground/45" />
+                {{ t("landing.common.links.blog") }}
+              </LiveLink>
+              <LiveLink
                 :to="urls.contact"
                 class="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-foreground transition-colors hover:bg-accent"
                 @click="closeMobileNav"
@@ -238,8 +266,8 @@ function scrollToPanel(panelIndex: number, targetId: string): void {
                 {{ t("public.layout.dashboard") }}
               </LiveLink>
               <template v-else>
-                <a
-                  href="#waitlist"
+                <LiveLink
+                  :to="urls.register"
                   class="inline-flex w-full items-center justify-center rounded-xl px-4 py-2.5 text-sm font-bold text-teal-950 transition-all hover:scale-105"
                   style="
                     background: linear-gradient(135deg, oklch(78% 0.14 185), oklch(68% 0.12 210));
@@ -247,10 +275,10 @@ function scrollToPanel(panelIndex: number, targetId: string): void {
                       0 0 20px rgba(34, 211, 238, 0.4),
                       inset 0 1px 0 rgba(255, 255, 255, 0.3);
                   "
-                  @click.prevent="scrollToPanel(3, 'waitlist')"
+                  @click="closeMobileNav"
                 >
-                  {{ t("public.layout.request_access") }}
-                </a>
+                  {{ t("public.layout.create_account") }}
+                </LiveLink>
                 <LiveLink
                   :to="urls.login"
                   class="btn-block inline-flex items-center justify-center rounded-2xl px-3 py-2 text-sm transition-colors hover:bg-accent"
