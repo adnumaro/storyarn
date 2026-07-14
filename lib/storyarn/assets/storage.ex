@@ -16,6 +16,8 @@ defmodule Storyarn.Assets.Storage do
         }
 
   @callback upload(key, binary_data, content_type) :: {:ok, url} | {:error, term()}
+  @callback put_if_absent(key, binary_data, content_type) ::
+              {:ok, url, created? :: boolean()} | {:error, term()}
   @callback delete(key) :: :ok | {:error, term()}
   @callback get_url(key) :: url
   @callback download(key) :: {:ok, binary_data} | {:error, term()}
@@ -44,6 +46,15 @@ defmodule Storyarn.Assets.Storage do
   """
   def upload(key, data, content_type) do
     adapter().upload(key, data, content_type)
+  end
+
+  @doc """
+  Stores an object only when the key does not already exist.
+
+  The returned boolean identifies which caller owns cleanup of the object.
+  """
+  def put_if_absent(key, data, content_type) do
+    adapter().put_if_absent(key, data, content_type)
   end
 
   @doc """

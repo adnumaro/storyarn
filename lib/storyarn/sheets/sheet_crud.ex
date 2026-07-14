@@ -23,36 +23,51 @@ defmodule Storyarn.Sheets.SheetCrud do
   # =============================================================================
 
   def create_sheet(%Project{} = project, attrs) do
-    with :ok <- Billing.can_create_item?(project) do
-      # Normalize keys to strings for changeset
-      attrs = stringify_keys(attrs)
-      parent_id = attrs["parent_id"]
-      position = attrs["position"] || next_position(project.id, parent_id)
+    result =
+      Repo.transaction(fn ->
+        # A project row is the serialization point for both quota accounting and
+        # sibling position allocation.
+        locked_project = Repo.one!(from(p in Project, where: p.id == ^project.id, lock: "FOR UPDATE"))
 
-      # Auto-generate shortcut from name if not provided
-      attrs = maybe_generate_shortcut(attrs, project.id, nil)
+        case Billing.can_create_item?(locked_project) do
+          :ok -> :ok
+          {:error, reason, details} -> Repo.rollback({reason, details})
+        end
 
-      result =
-        %Sheet{project_id: project.id}
-        |> Sheet.create_changeset(Map.put(attrs, "position", position))
-        |> Repo.insert()
+        # Normalize keys to strings for changeset
+        attrs = stringify_keys(attrs)
+        parent_id = attrs["parent_id"]
+        position = attrs["position"] || next_position(project.id, parent_id)
 
-      # Auto-inherit blocks from ancestor chain
-      with {:ok, sheet} <- result do
-        PropertyInheritance.inherit_blocks_for_new_sheet(sheet)
-      end
+        # Auto-generate shortcut from name if not provided
+        attrs = maybe_generate_shortcut(attrs, project.id, nil)
 
-      case result do
-        {:ok, sheet} ->
-          Localization.extract_sheet_blocks(sheet.id)
-          Localization.sync_sheet_names(project.id)
-          Collaboration.broadcast_dashboard_change(project.id, :sheets)
+        sheet_result =
+          %Sheet{project_id: project.id}
+          |> Sheet.create_changeset(Map.put(attrs, "position", position))
+          |> Repo.insert()
 
-        _ ->
-          :ok
-      end
+        with {:ok, sheet} <- sheet_result,
+             {:ok, _count} <- PropertyInheritance.inherit_blocks_for_new_sheet(sheet) do
+          sheet
+        else
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
 
-      result
+    case result do
+      {:ok, sheet} ->
+        Localization.extract_sheet_blocks(sheet.id)
+        Localization.sync_sheet_names(project.id)
+        Collaboration.broadcast_dashboard_change(project.id, :sheets)
+
+      _ ->
+        :ok
+    end
+
+    case result do
+      {:error, {:limit_reached, details}} -> {:error, :limit_reached, details}
+      other -> other
     end
   end
 
@@ -178,9 +193,15 @@ defmodule Storyarn.Sheets.SheetCrud do
   end
 
   def move_sheet(%Sheet{} = sheet, parent_id, position \\ nil) do
-    with :ok <- validate_parent(sheet, parent_id) do
-      Repo.transaction(fn -> move_sheet_transaction(sheet, parent_id, position) end)
-    end
+    Repo.transaction(fn ->
+      Repo.one!(from(p in Project, where: p.id == ^sheet.project_id, lock: "FOR UPDATE"))
+      current_sheet = Repo.get!(Sheet, sheet.id)
+
+      case validate_parent(current_sheet, parent_id) do
+        :ok -> move_sheet_transaction(current_sheet, parent_id, position)
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
   end
 
   defp move_sheet_transaction(sheet, parent_id, position) do

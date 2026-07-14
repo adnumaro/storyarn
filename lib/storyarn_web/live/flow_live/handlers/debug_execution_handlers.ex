@@ -152,6 +152,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
     project_id = socket.assigns.project.id
     workspace_slug = socket.assigns.workspace.slug
     project_slug = socket.assigns.project.slug
+    session_id = socket.assigns.debug_session_id
 
     debug_assigns = %{
       debug_state: socket.assigns.debug_state,
@@ -167,10 +168,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
       debug_step_limit_reached: socket.assigns[:debug_step_limit_reached] || false
     }
 
-    Flows.debug_session_store({user_id, project_id}, debug_assigns)
+    Flows.debug_session_store({:debug, user_id, project_id, session_id}, debug_assigns)
 
     path =
-      ~p"/workspaces/#{workspace_slug}/projects/#{project_slug}/flows/#{target_flow_id}"
+      ~p"/workspaces/#{workspace_slug}/projects/#{project_slug}/flows/#{target_flow_id}?debug_session=#{session_id}"
 
     {:navigating, push_patch(socket, to: path)}
   end

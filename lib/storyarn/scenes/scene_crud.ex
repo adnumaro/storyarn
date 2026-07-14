@@ -236,30 +236,32 @@ defmodule Storyarn.Scenes.SceneCrud do
   Auto-assigns position if not provided.
   """
   def create_scene(%Project{} = project, attrs) do
-    with :ok <- Billing.can_create_item?(project) do
-      result = do_create_scene(project, attrs)
+    result = do_create_scene(project, attrs)
 
-      case result do
-        {:ok, _scene} ->
-          Collaboration.broadcast_dashboard_change(project.id, :scenes)
+    case result do
+      {:ok, _scene} ->
+        Collaboration.broadcast_dashboard_change(project.id, :scenes)
 
-        _ ->
-          :ok
-      end
-
-      result
+      _ ->
+        :ok
     end
+
+    result
   end
 
   defp do_create_scene(project, attrs) do
-    # Auto-generate shortcut from name if not provided
-    attrs = maybe_generate_shortcut(attrs, project.id, nil)
+    fn ->
+      locked_project = Repo.one!(from(p in Project, where: p.id == ^project.id, lock: "FOR UPDATE"))
 
-    # Auto-assign position if not provided
-    parent_id = attrs["parent_id"]
-    attrs = maybe_assign_position(attrs, project.id, parent_id)
+      case Billing.can_create_item?(locked_project) do
+        :ok -> :ok
+        {:error, reason, details} -> Repo.rollback({reason, details})
+      end
 
-    Repo.transaction(fn ->
+      attrs = maybe_generate_shortcut(attrs, project.id, nil)
+      parent_id = attrs["parent_id"]
+      attrs = maybe_assign_position(attrs, project.id, parent_id)
+
       case %Scene{project_id: project.id}
            |> Scene.create_changeset(attrs)
            |> Repo.insert() do
@@ -274,8 +276,14 @@ defmodule Storyarn.Scenes.SceneCrud do
         {:error, changeset} ->
           Repo.rollback(changeset)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> normalize_item_limit_result()
   end
+
+  defp normalize_item_limit_result({:error, {:limit_reached, details}}), do: {:error, :limit_reached, details}
+
+  defp normalize_item_limit_result(result), do: result
 
   @doc """
   Updates a scene. Regenerates shortcut if name changes.

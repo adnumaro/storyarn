@@ -26,6 +26,17 @@ defmodule Storyarn.Assets.Storage.R2 do
   end
 
   @impl true
+  def put_if_absent(key, data, content_type) do
+    request = ExAws.S3.put_object(bucket(), key, data, content_type: content_type, if_none_match: "*")
+
+    case ExAws.request(request) do
+      {:ok, _response} -> {:ok, get_url(key), true}
+      {:error, {:http_error, 412, _response}} -> {:ok, get_url(key), false}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @impl true
   def download(key) do
     case bucket() |> ExAws.S3.get_object(key) |> ExAws.request() do
       {:ok, %{body: body}} -> {:ok, body}

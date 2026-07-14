@@ -20,10 +20,15 @@ if (!window.__storyarnAppInitialized) {
   window.__storyarnAppInitialized = true;
 
   const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
+  // Kept in this page's JS realm so duplicated tabs never inherit the token.
+  // LiveView navigation reuses the realm, preserving cross-flow player handoffs.
+  const playerTabId =
+    crypto.randomUUID?.() ??
+    Array.from(crypto.getRandomValues(new Uint32Array(4)), (value) => value.toString(16)).join("-");
 
   const liveSocket = new LiveSocket("/live", Socket, {
     longPollFallbackMs: 2500,
-    params: { _csrf_token: csrfToken },
+    params: { _csrf_token: csrfToken, player_tab_id: playerTabId },
     hooks: getHooks(liveVueApp),
   });
 

@@ -14,6 +14,7 @@ defmodule Storyarn.Assets do
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.ImageProcessor
   alias Storyarn.Assets.Storage
+  alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Assets.UploadPolicy
   alias Storyarn.Billing
   alias Storyarn.Flows.Flow
@@ -69,7 +70,7 @@ defmodule Storyarn.Assets do
     |> apply_images_only_filter(opts)
     |> apply_search_filter(opts)
     |> apply_pagination(opts)
-    |> order_by([a], desc: a.inserted_at)
+    |> order_by([a], desc: a.inserted_at, desc: a.id)
     |> Repo.all()
   end
 
@@ -442,11 +443,7 @@ defmodule Storyarn.Assets do
         ) ::
           {:ok, asset()} | {:error, term()}
   def upload_and_create_asset(path, entry, %Project{} = project, %User{} = user, opts \\ []) do
-    workspace = Repo.get!(Workspace, project.workspace_id)
-
-    with :ok <- Billing.can_upload_asset?(workspace, entry.client_size) do
-      do_upload_and_create_asset(path, entry, project, user, opts)
-    end
+    do_upload_and_create_asset(path, entry, project, user, opts)
   end
 
   # sobelow_skip ["Traversal.FileModule"]
@@ -507,6 +504,12 @@ defmodule Storyarn.Assets do
   @spec materialize_upload_variant(project(), user() | nil, map()) ::
           {:ok, asset(), map()} | {:error, term()}
   def materialize_upload_variant(%Project{} = project, user, attrs) do
+    with_workspace_upload_lock(project, fn _workspace ->
+      do_materialize_upload_variant(project, user, attrs)
+    end)
+  end
+
+  defp do_materialize_upload_variant(project, user, attrs) do
     purpose = attrs |> Map.get("purpose", Map.get(attrs, :purpose)) |> UploadPolicy.parse_purpose()
     source_hash = Map.get(attrs, "hash") || Map.get(attrs, :hash)
 
@@ -536,8 +539,15 @@ defmodule Storyarn.Assets do
     purpose = attrs |> Map.get(:purpose, Map.get(attrs, "purpose")) |> UploadPolicy.parse_purpose()
 
     with {:ok, profile} <- UploadPolicy.profile_for(purpose),
-         :ok <- validate_binary_upload(binary_data, attrs, profile),
-         {:ok, original} <- ensure_original_asset(binary_data, attrs, project, user) do
+         :ok <- validate_binary_upload(binary_data, attrs, profile) do
+      with_workspace_upload_lock(project, fn _workspace ->
+        ensure_and_materialize_asset(binary_data, attrs, project, user, purpose, profile)
+      end)
+    end
+  end
+
+  defp ensure_and_materialize_asset(binary_data, attrs, project, user, purpose, profile) do
+    with {:ok, original} <- ensure_original_asset(binary_data, attrs, project, user) do
       materialize_asset_for_purpose(binary_data, original, project, user, purpose, profile)
     end
   end
@@ -565,13 +575,15 @@ defmodule Storyarn.Assets do
         %Project{} = project,
         user \\ nil
       ) do
-    do_upload_binary_and_create_asset(
-      binary_data,
-      %{attrs | filename: filename, content_type: content_type},
-      project,
-      user,
-      :generic
-    )
+    with_upload_capacity(project, byte_size(binary_data), fn ->
+      do_upload_binary_and_create_asset(
+        binary_data,
+        %{attrs | filename: filename, content_type: content_type},
+        project,
+        user,
+        :generic
+      )
+    end)
   end
 
   @doc """
@@ -592,7 +604,9 @@ defmodule Storyarn.Assets do
         |> normalize_asset_attrs()
         |> Map.put(:metadata, attrs |> upload_metadata() |> Map.put("sanitized_svg", true))
 
-      do_upload_binary_and_create_asset(sanitized_svg, attrs, project, user, :sanitized_svg)
+      with_upload_capacity(project, byte_size(sanitized_svg), fn ->
+        do_upload_binary_and_create_asset(sanitized_svg, attrs, project, user, :sanitized_svg)
+      end)
     else
       _ -> {:error, :invalid_svg}
     end
@@ -620,21 +634,81 @@ defmodule Storyarn.Assets do
       blob_hash: blob_hash
     }
 
-    with :ok <- validate_asset_upload_attrs(asset_attrs, upload_kind),
-         ext = BlobStore.ext_from_content_type(content_type),
-         {:ok, _blob_key} <- BlobStore.ensure_blob(project.id, blob_hash, ext, binary_data),
-         {:ok, url} <- Storage.upload(key, binary_data, content_type) do
-      asset_attrs = %{asset_attrs | url: url}
+    with :ok <- validate_asset_upload_attrs(asset_attrs, upload_kind) do
+      ext = BlobStore.ext_from_content_type(content_type)
 
-      case do_create_asset(project, user, asset_attrs, upload_kind) do
-        {:ok, asset} ->
-          maybe_schedule_variant(binary_data, asset, project, user, attrs)
-          {:ok, asset}
+      case BlobStore.ensure_blob_with_status(project.id, blob_hash, ext, binary_data) do
+        {:ok, blob_key, blob_created?} ->
+          persist_uploaded_asset(
+            %{
+              binary_data: binary_data,
+              content_type: content_type,
+              key: key,
+              blob_key: blob_key,
+              blob_created?: blob_created?
+            },
+            asset_attrs,
+            attrs,
+            project,
+            user,
+            upload_kind
+          )
 
-        {:error, changeset} ->
-          Storage.delete(key)
-          {:error, changeset}
+        {:error, reason} ->
+          {:error, reason}
       end
+    end
+  end
+
+  defp persist_uploaded_asset(upload, asset_attrs, attrs, project, user, upload_kind) do
+    case Storage.upload(upload.key, upload.binary_data, upload.content_type) do
+      {:ok, url} ->
+        case do_create_asset(project, user, %{asset_attrs | url: url}, upload_kind) do
+          {:ok, asset} ->
+            maybe_schedule_variant(upload.binary_data, asset, project, user, attrs)
+            {:ok, asset}
+
+          {:error, changeset} ->
+            cleanup_failed_upload(upload.key, upload.blob_key, upload.blob_created?)
+            {:error, changeset}
+        end
+
+      {:error, reason} ->
+        cleanup_new_blob(upload.blob_key, upload.blob_created?)
+        {:error, reason}
+    end
+  end
+
+  defp cleanup_failed_upload(asset_key, blob_key, blob_created?) do
+    StorageCompensation.delete_or_enqueue(asset_key)
+    cleanup_new_blob(blob_key, blob_created?)
+  end
+
+  defp cleanup_new_blob(_blob_key, false), do: :ok
+  defp cleanup_new_blob(blob_key, true), do: StorageCompensation.delete_or_enqueue(blob_key)
+
+  defp with_upload_capacity(%Project{} = project, file_size, fun) when is_function(fun, 0) do
+    with_workspace_upload_lock(project, fn workspace ->
+      capacity_checked_upload(workspace, file_size, fun)
+    end)
+  end
+
+  defp capacity_checked_upload(workspace, file_size, fun) do
+    case Billing.can_upload_asset?(workspace, file_size) do
+      :ok -> fun.()
+      {:error, _reason, _details} = error -> error
+    end
+  end
+
+  defp with_workspace_upload_lock(%Project{} = project, fun) when is_function(fun, 1) do
+    fn ->
+      workspace = Repo.one!(from(w in Workspace, where: w.id == ^project.workspace_id, lock: "FOR UPDATE"))
+      fun.(workspace)
+    end
+    |> Repo.transaction()
+    |> case do
+      {:ok, success} -> success
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -764,9 +838,7 @@ defmodule Storyarn.Assets do
   defp create_variant_asset(binary_data, original, project, user, source_hash, purpose, profile) do
     case generate_variant_binary(binary_data, purpose, profile) do
       {:ok, webp_data} ->
-        with :ok <- Billing.can_upload_asset_for_project?(project, byte_size(webp_data)) do
-          upload_variant_asset(webp_data, original, project, user, source_hash, profile)
-        end
+        upload_variant_asset(webp_data, original, project, user, source_hash, profile)
 
       {:error, reason} ->
         {:error, reason}
@@ -1152,9 +1224,13 @@ defmodule Storyarn.Assets do
   @doc """
   Counts all assets for a project.
   """
-  @spec count_assets(integer()) :: non_neg_integer()
-  def count_assets(project_id) do
-    Repo.aggregate(from(a in Asset, where: a.project_id == ^project_id), :count)
+  @spec count_assets(integer(), list_opts()) :: non_neg_integer()
+  def count_assets(project_id, opts \\ []) do
+    from(a in Asset, where: a.project_id == ^project_id)
+    |> apply_content_type_filter(opts)
+    |> apply_images_only_filter(opts)
+    |> apply_search_filter(opts)
+    |> Repo.aggregate(:count)
   end
 
   # =============================================================================

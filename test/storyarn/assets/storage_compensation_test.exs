@@ -3,6 +3,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
 
   import ExUnit.CaptureLog
 
+  alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCleanupPersistenceError
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageCompensation
@@ -102,5 +103,89 @@ defmodule Storyarn.Assets.StorageCompensationTest do
 
     assert_receive {:cleanup_persisted, [^storage_key]}
     assert_receive {:delete_attempted, [^storage_key]}
+  end
+
+  test "enqueues durable cleanup when an immediate delete fails" do
+    storage_key = "projects/1/blobs/orphan.png"
+    parent = self()
+
+    assert :ok =
+             StorageCompensation.delete_or_enqueue(storage_key,
+               delete_fun: fn ^storage_key -> {:error, :temporarily_unavailable} end,
+               delete_retry_delay_ms: 0,
+               enqueue_fun: fn keys ->
+                 send(parent, {:cleanup_enqueued, keys})
+                 :ok
+               end
+             )
+
+    assert_receive {:cleanup_enqueued, [^storage_key]}
+  end
+
+  test "does not enqueue cleanup when an immediate deletion retry succeeds" do
+    storage_key = "projects/1/blobs/recovered-orphan.png"
+    parent = self()
+    {:ok, attempts} = Agent.start_link(fn -> 0 end)
+
+    delete_fun = fn ^storage_key ->
+      attempt = Agent.get_and_update(attempts, &{&1 + 1, &1 + 1})
+      if attempt == 1, do: {:error, :temporarily_unavailable}, else: :ok
+    end
+
+    assert :ok =
+             StorageCompensation.delete_or_enqueue(storage_key,
+               delete_fun: delete_fun,
+               delete_retry_delay_ms: 0,
+               enqueue_fun: fn keys ->
+                 send(parent, {:cleanup_enqueued, keys})
+                 :ok
+               end
+             )
+
+    assert Agent.get(attempts, & &1) == 2
+    refute_receive {:cleanup_enqueued, _keys}
+  end
+
+  test "treats nonpositive delete attempts as one before enqueuing" do
+    storage_key = "projects/1/blobs/no-retries-orphan.png"
+    parent = self()
+    {:ok, attempts} = Agent.start_link(fn -> 0 end)
+
+    assert :ok =
+             StorageCompensation.delete_or_enqueue(storage_key,
+               delete_fun: fn ^storage_key ->
+                 Agent.update(attempts, &(&1 + 1))
+                 {:error, :temporarily_unavailable}
+               end,
+               delete_attempts: 0,
+               enqueue_fun: fn keys ->
+                 send(parent, {:cleanup_enqueued, keys})
+                 :ok
+               end
+             )
+
+    assert Agent.get(attempts, & &1) == 1
+    assert_receive {:cleanup_enqueued, [^storage_key]}
+  end
+
+  test "persists failed immediate cleanup when queue insertion also fails" do
+    storage_key = "projects/1/blobs/persisted-orphan.png"
+
+    assert :ok =
+             StorageCompensation.delete_or_enqueue(storage_key,
+               delete_fun: fn ^storage_key -> {:error, :temporarily_unavailable} end,
+               delete_retry_delay_ms: 0,
+               enqueue_fun: fn [^storage_key] -> {:error, :oban_unavailable} end
+             )
+
+    assert %StorageCleanupRequest{storage_keys: [^storage_key]} = Repo.one(StorageCleanupRequest)
+  end
+
+  test "accepts blob keys for deletion retries" do
+    storage_key = "projects/1/blobs/#{System.unique_integer([:positive])}.png"
+    assert {:ok, _url} = Storage.upload(storage_key, "blob", "image/png")
+
+    assert :ok = StorageCompensation.delete_storage_keys([storage_key])
+    assert {:error, :enoent} = Storage.download(storage_key)
   end
 end

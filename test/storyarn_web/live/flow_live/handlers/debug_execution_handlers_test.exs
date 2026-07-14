@@ -42,6 +42,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       debug_var_filter: "",
       debug_var_changed_only: false,
       debug_step_limit_reached: false,
+      debug_session_id: "test-debug-session",
       current_scope: %{user: %{id: 1}},
       project: %{id: 1, slug: "test-project"},
       workspace: %{slug: "test-workspace"},
@@ -951,7 +952,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       assert result_socket.redirected
 
       # Verify ETS has the stored session
-      stored = DebugSessionStore.take({1, 1})
+      stored = DebugSessionStore.take({:debug, 1, 1, "test-debug-session"})
       assert stored
       assert stored.debug_state == state
       assert stored.debug_speed == 500
@@ -971,7 +972,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
 
       {:navigating, _result} = DebugExecutionHandlers.store_and_navigate(socket, 42)
 
-      stored = DebugSessionStore.take({1, 1})
+      stored = DebugSessionStore.take({:debug, 1, 1, "test-debug-session"})
       assert stored.debug_editing_var == nil
     end
   end

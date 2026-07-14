@@ -5,6 +5,7 @@ defmodule Storyarn.Sheets.TableCrudTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Repo
   alias Storyarn.Sheets
 
   defp setup_table(_context) do
@@ -99,6 +100,15 @@ defmodule Storyarn.Sheets.TableCrudTest do
     test "rejects invalid column type", %{block: block} do
       {:error, changeset} = Sheets.create_table_column(block, %{name: "Bad", type: "rich_text"})
       assert errors_on(changeset)[:type]
+    end
+
+    test "rejects a stale struct when the block is no longer an active table", %{block: block} do
+      block |> Ecto.Changeset.change(type: "text") |> Repo.update!()
+
+      assert {:error, :inactive_table} =
+               Sheets.create_table_column(block, %{name: "Stale", type: "text"})
+
+      assert length(Sheets.list_table_columns(block.id)) == 1
     end
   end
 

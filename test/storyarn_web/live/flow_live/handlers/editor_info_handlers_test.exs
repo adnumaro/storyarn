@@ -56,24 +56,28 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
   end
 
   # ============================================================================
-  # Unit tests: handle_reset_save_status/1
+  # Unit tests: handle_reset_save_status/2
   # ============================================================================
 
-  describe "handle_reset_save_status/1" do
+  describe "handle_reset_save_status/2" do
     test "assigns save_status to :idle" do
-      socket = build_socket(%{save_status: :saved})
+      token = make_ref()
+      socket = build_socket(%{save_status: :saved, save_status_reset_token: token})
 
-      {:noreply, result} = EditorInfoHandlers.handle_reset_save_status(socket)
+      {:noreply, result} = EditorInfoHandlers.handle_reset_save_status(socket, token)
 
       assert result.assigns.save_status == :idle
+      assert result.assigns.save_status_reset_token == nil
     end
 
-    test "is idempotent when already idle" do
-      socket = build_socket(%{save_status: :idle})
+    test "ignores a stale timer token" do
+      current_token = make_ref()
+      socket = build_socket(%{save_status: :saved, save_status_reset_token: current_token})
 
-      {:noreply, result} = EditorInfoHandlers.handle_reset_save_status(socket)
+      {:noreply, result} = EditorInfoHandlers.handle_reset_save_status(socket, make_ref())
 
-      assert result.assigns.save_status == :idle
+      assert result.assigns.save_status == :saved
+      assert result.assigns.save_status_reset_token == current_token
     end
   end
 
@@ -418,7 +422,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
       %{project: project, flow: flow}
     end
 
-    test "resets save status when :reset_save_status message received",
+    test "handles a tokenized reset message",
          %{conn: conn, project: project, flow: flow} do
       {:ok, view, _html} =
         live(
@@ -428,8 +432,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
 
       load_flow(view)
 
-      # Send the :reset_save_status message directly to the LiveView process
-      send(view.pid, :reset_save_status)
+      send(view.pid, {:reset_save_status, make_ref()})
 
       # Give the LiveView time to process the message
       render(view)

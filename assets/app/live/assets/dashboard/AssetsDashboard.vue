@@ -1,5 +1,17 @@
 <script setup lang="ts">
-import { File, GitBranch, Image, Link, MapPin, Music, Trash2, User, X } from "lucide-vue-next";
+import {
+  ChevronLeft,
+  ChevronRight,
+  File,
+  GitBranch,
+  Image,
+  Link,
+  MapPin,
+  Music,
+  Trash2,
+  User,
+  X,
+} from "lucide-vue-next";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { Badge } from "@components/ui/badge/index.ts";
@@ -64,6 +76,9 @@ const {
   canEdit = false,
   workspaceSlug,
   projectSlug,
+  page = 1,
+  totalPages = 1,
+  totalCount = 0,
 } = defineProps<{
   assets?: Asset[];
   selectedAsset?: Asset | null;
@@ -71,6 +86,9 @@ const {
   canEdit?: boolean;
   workspaceSlug: string;
   projectSlug: string;
+  page?: number;
+  totalPages?: number;
+  totalCount?: number;
 }>();
 
 const live = useLive();
@@ -147,6 +165,11 @@ function confirmDelete() {
 
 function cancelDelete() {
   showDeleteConfirm.value = false;
+}
+
+function changePage(nextPage: number) {
+  if (nextPage < 1 || nextPage > totalPages || nextPage === page) return;
+  live.pushEvent("change_asset_page", { page: nextPage });
 }
 
 function isImage(asset: Asset) {
@@ -409,6 +432,38 @@ function usageSceneHref(sceneId: number) {
             {{ $t("common.assets.delete_asset") }}
           </Button>
         </div>
+      </div>
+    </div>
+
+    <div
+      v-if="totalPages > 1"
+      class="mt-6 flex items-center justify-between gap-4 border-t border-border pt-4"
+    >
+      <p class="text-sm text-muted-foreground">
+        {{ $t("common.assets.total_count", { count: totalCount }) }}
+      </p>
+      <div class="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          :disabled="page <= 1"
+          :aria-label="$t('common.assets.previous_page')"
+          @click="changePage(page - 1)"
+        >
+          <ChevronLeft class="size-4" />
+        </Button>
+        <span class="min-w-24 text-center text-sm text-muted-foreground">
+          {{ $t("common.assets.page_of", { page, total: totalPages }) }}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          :disabled="page >= totalPages"
+          :aria-label="$t('common.assets.next_page')"
+          @click="changePage(page + 1)"
+        >
+          <ChevronRight class="size-4" />
+        </Button>
       </div>
     </div>
 

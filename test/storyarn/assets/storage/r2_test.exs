@@ -57,6 +57,39 @@ defmodule Storyarn.Assets.Storage.R2Test do
     end
   end
 
+  describe "put_if_absent/3" do
+    test "uses a conditional PUT and reports creation ownership" do
+      Req.Test.expect(__MODULE__, fn conn ->
+        assert conn.method == "PUT"
+        assert Plug.Conn.get_req_header(conn, "if-none-match") == ["*"]
+        Plug.Conn.send_resp(conn, 200, "")
+      end)
+
+      assert {:ok, "https://t3.storage.dev/private-bucket/projects/1/blobs/hash.png", true} =
+               R2.put_if_absent("projects/1/blobs/hash.png", "content", "image/png")
+    end
+
+    test "treats a failed precondition as an existing object" do
+      Req.Test.expect(__MODULE__, fn conn ->
+        assert Plug.Conn.get_req_header(conn, "if-none-match") == ["*"]
+        Plug.Conn.send_resp(conn, 412, "")
+      end)
+
+      assert {:ok, "https://t3.storage.dev/private-bucket/projects/1/blobs/hash.png", false} =
+               R2.put_if_absent("projects/1/blobs/hash.png", "content", "image/png")
+    end
+
+    test "surfaces a conflict instead of claiming the object exists" do
+      Req.Test.expect(__MODULE__, fn conn ->
+        assert Plug.Conn.get_req_header(conn, "if-none-match") == ["*"]
+        Plug.Conn.send_resp(conn, 409, "conflict")
+      end)
+
+      assert {:error, {:http_error, 409, _response}} =
+               R2.put_if_absent("projects/1/blobs/hash.png", "content", "image/png")
+    end
+  end
+
   describe "stream/4" do
     test "downloads a signed byte range without exposing presigned query parameters" do
       Req.Test.expect(__MODULE__, fn conn ->

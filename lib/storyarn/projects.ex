@@ -151,8 +151,8 @@ defmodule Storyarn.Projects do
   @doc """
   Lists all projects with auto snapshots enabled.
   """
-  @spec list_projects_with_auto_snapshots() :: [project()]
-  defdelegate list_projects_with_auto_snapshots(), to: ProjectCrud
+  @spec list_projects_with_auto_snapshots(keyword()) :: [project()]
+  defdelegate list_projects_with_auto_snapshots(opts \\ []), to: ProjectCrud
   defdelegate auto_versioning_enabled?(project_id, entity_type), to: ProjectCrud
 
   # =============================================================================
@@ -174,8 +174,9 @@ defmodule Storyarn.Projects do
   @doc """
   Lists deleted project-level entities with retention metadata for cleanup jobs.
   """
-  @spec list_deleted_items_for_retention() :: [map()]
-  defdelegate list_deleted_items_for_retention(), to: ProjectTrash
+  @spec list_deleted_items_for_retention(keyword()) :: [map()]
+  defdelegate list_deleted_items_for_retention(opts \\ []), to: ProjectTrash
+  defdelegate deleted_items_retention_cutoff(), to: ProjectTrash
 
   # =============================================================================
   # Restoration Lock

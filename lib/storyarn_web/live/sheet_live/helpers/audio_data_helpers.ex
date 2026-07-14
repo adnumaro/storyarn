@@ -16,9 +16,12 @@ defmodule StoryarnWeb.SheetLive.Helpers.AudioDataHelpers do
     %{sheet: sheet, project: project} = socket.assigns
     nodes = Flows.list_dialogue_nodes_by_speaker(project.id, sheet.id)
 
+    audio_assets = Assets.list_assets(project.id, content_type: "audio/")
+    audio_assets_by_id = Map.new(audio_assets, &{&1.id, &1})
+
     voice_lines =
       Enum.map(nodes, fn node ->
-        audio_asset = resolve_audio_asset(project.id, node.data["audio_asset_id"])
+        audio_asset = resolve_audio_asset(audio_assets_by_id, node.data["audio_asset_id"])
 
         %{
           nodeId: node.id,
@@ -41,14 +44,11 @@ defmodule StoryarnWeb.SheetLive.Helpers.AudioDataHelpers do
         }
       end)
 
-    audio_assets =
-      project.id
-      |> Assets.list_assets(content_type: "audio/")
-      |> Enum.map(&serialize_audio_asset/1)
+    serialized_audio_assets = Enum.map(audio_assets, &serialize_audio_asset/1)
 
     assign(socket, :audio_data, %{
       grouped_lines: grouped_lines,
-      audio_assets: audio_assets
+      audio_assets: serialized_audio_assets
     })
   end
 
@@ -101,11 +101,16 @@ defmodule StoryarnWeb.SheetLive.Helpers.AudioDataHelpers do
     end
   end
 
-  defp resolve_audio_asset(_project_id, nil), do: nil
-  defp resolve_audio_asset(_project_id, ""), do: nil
+  defp resolve_audio_asset(_assets_by_id, nil), do: nil
+  defp resolve_audio_asset(_assets_by_id, ""), do: nil
 
-  defp resolve_audio_asset(project_id, asset_id) do
-    Assets.get_asset(project_id, asset_id)
+  defp resolve_audio_asset(assets_by_id, asset_id) when is_integer(asset_id), do: Map.get(assets_by_id, asset_id)
+
+  defp resolve_audio_asset(assets_by_id, asset_id) do
+    case Integer.parse(to_string(asset_id)) do
+      {parsed_id, ""} -> Map.get(assets_by_id, parsed_id)
+      _ -> nil
+    end
   end
 
   defp validate_audio_content_type(content_type) do

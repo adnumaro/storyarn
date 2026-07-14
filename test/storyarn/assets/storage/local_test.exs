@@ -70,6 +70,17 @@ defmodule Storyarn.Assets.Storage.LocalTest do
     end
   end
 
+  describe "put_if_absent/3" do
+    test "creates once without overwriting an existing object", %{test_key: key, test_dir: test_dir} do
+      expected_url = "/test-uploads/#{key}"
+      assert {:ok, ^expected_url, true} = Local.put_if_absent(key, "first", "text/plain")
+
+      assert {:ok, ^expected_url, false} = Local.put_if_absent(key, "second", "text/plain")
+
+      assert File.read!(Path.join(test_dir, key)) == "first"
+    end
+  end
+
   # =============================================================================
   # delete/1
   # =============================================================================

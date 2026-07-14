@@ -1,6 +1,7 @@
 defmodule Storyarn.AssetsTest do
   use Storyarn.DataCase, async: true
 
+  import Ecto.Query
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
   import Storyarn.ProjectsFixtures
@@ -63,6 +64,22 @@ defmodule Storyarn.AssetsTest do
 
       assets = Assets.list_assets(project.id, search: "")
       assert length(assets) == 1
+    end
+
+    test "list_assets/2 keeps offset pagination stable when timestamps match", %{
+      project: project,
+      user: user
+    } do
+      assets = for _ <- 1..3, do: asset_fixture(project, user)
+      timestamp = ~U[2026-01-01 12:00:00Z]
+      ids = Enum.map(assets, & &1.id)
+
+      Repo.update_all(from(a in Asset, where: a.id in ^ids), set: [inserted_at: timestamp])
+
+      first_page = Assets.list_assets(project.id, limit: 2, offset: 0)
+      second_page = Assets.list_assets(project.id, limit: 2, offset: 2)
+
+      assert Enum.map(first_page ++ second_page, & &1.id) == Enum.sort(ids, :desc)
     end
 
     test "get_asset/2 returns asset by id", %{project: project, user: user} do

@@ -13,6 +13,8 @@ defmodule Storyarn.Assets.StorageCompensation do
 
   @enqueue_attempts 3
   @enqueue_retry_delay_ms 25
+  @delete_attempts 3
+  @delete_retry_delay_ms 25
   @persisted_cleanup_batch_size 100
 
   @spec new() :: reference()
@@ -95,6 +97,34 @@ defmodule Storyarn.Assets.StorageCompensation do
 
       storage_keys ->
         enqueue_with_retry(storage_keys, insert_fun, attempts, retry_delay_ms)
+    end
+  end
+
+  @doc "Deletes one storage object, scheduling durable cleanup if the delete fails."
+  @spec delete_or_enqueue(String.t(), keyword()) :: :ok | {:error, term()}
+  def delete_or_enqueue(storage_key, opts \\ []) when is_binary(storage_key) do
+    delete_fun = Keyword.get(opts, :delete_fun, &Storage.delete/1)
+
+    delete_attempts =
+      opts |> Keyword.get(:delete_attempts, @delete_attempts) |> normalize_delete_attempts()
+
+    delete_retry_delay_ms =
+      opts |> Keyword.get(:delete_retry_delay_ms, @delete_retry_delay_ms) |> normalize_delete_retry_delay()
+
+    case delete_with_retry(storage_key, delete_fun, delete_attempts, delete_retry_delay_ms) do
+      :ok ->
+        :ok
+
+      {:error, _reason} ->
+        tracker = new()
+        :ok = track(tracker, storage_key)
+
+        cleanup_opts =
+          opts
+          |> Keyword.drop([:delete_fun, :delete_attempts, :delete_retry_delay_ms])
+          |> Keyword.put(:delete_fun, fn storage_keys -> {:error, storage_keys} end)
+
+        cleanup(tracker, cleanup_opts)
     end
   end
 
@@ -355,10 +385,43 @@ defmodule Storyarn.Assets.StorageCompensation do
   end
 
   defp valid_storage_key?(storage_key) when is_binary(storage_key) do
-    String.starts_with?(storage_key, "projects/") and String.contains?(storage_key, "/assets/")
+    String.starts_with?(storage_key, "projects/") and
+      (String.contains?(storage_key, "/assets/") or String.contains?(storage_key, "/blobs/"))
   end
 
   defp valid_storage_key?(_storage_key), do: false
+
+  defp normalize_delete_attempts(attempts) when is_integer(attempts) and attempts > 0, do: attempts
+  defp normalize_delete_attempts(_attempts), do: 1
+
+  defp normalize_delete_retry_delay(delay_ms) when is_integer(delay_ms) and delay_ms >= 0, do: delay_ms
+  defp normalize_delete_retry_delay(_delay_ms), do: @delete_retry_delay_ms
+
+  defp delete_with_retry(storage_key, delete_fun, attempts, retry_delay_ms) when attempts > 0 do
+    case call_single_delete(delete_fun, storage_key) do
+      :ok ->
+        :ok
+
+      {:error, _reason} = error when attempts == 1 ->
+        error
+
+      {:error, _reason} ->
+        Process.sleep(retry_delay_ms)
+        delete_with_retry(storage_key, delete_fun, attempts - 1, retry_delay_ms * 2)
+    end
+  end
+
+  defp call_single_delete(delete_fun, storage_key) do
+    case delete_fun.(storage_key) do
+      :ok -> :ok
+      {:error, _reason} = error -> error
+      _result -> {:error, :unexpected_delete_result}
+    end
+  rescue
+    _error -> {:error, :delete_exception}
+  catch
+    _kind, _reason -> {:error, :delete_failure}
+  end
 
   defp safe_error(reason) when is_atom(reason), do: reason
   defp safe_error(%module{}), do: module
