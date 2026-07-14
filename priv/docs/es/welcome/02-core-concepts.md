@@ -56,4 +56,4 @@ Por ejemplo, un bloque Health en la ficha `mc.jaime` se convierte en `mc.jaime.h
 
 ## Cómo se conectan
 
-Las fichas definen el estado del mundo. Los bloques de las fichas se convierten en variables. Los flujos leen esas variables mediante nodos de condición y las modifican mediante nodos de instrucción. Las escenas colocan los flujos en un contexto espacial. Localización extrae el texto visible para el jugador. Exportar mueve el resultado a formatos específicos de engine.
+Las fichas definen el estado del mundo. Los bloques de las fichas se convierten en variables. Los flujos leen esas variables mediante nodos de condición y las modifican mediante nodos de instrucción. Las escenas colocan los flujos en un contexto espacial. Localización extrae de Flujos y Fichas el texto de runtime visible para el jugador; las Escenas siguen siendo contenido espacial del editor. Exportar mueve el resultado a formatos específicos de engine.

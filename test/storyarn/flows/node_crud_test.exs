@@ -5,6 +5,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Collaboration
   alias Storyarn.Flows
 
   # ===========================================================================
@@ -630,6 +631,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
         })
 
       assert node.type == "dialogue"
+      assert node.word_count == 1
     end
 
     test "defaults position to 0.0 when not specified" do
@@ -676,6 +678,25 @@ defmodule Storyarn.Flows.NodeCrudTest do
 
       assert updated.position_x == 999.0
       assert updated.position_y == 888.0
+    end
+
+    test "recomputes localizable words and invalidates dashboards when data changes" do
+      %{project: project, flow: flow} = create_project_and_flow()
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "One"}})
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      assert {:ok, updated} =
+               Flows.update_node(node, %{
+                 data: %{
+                   "text" => "One two",
+                   "stage_directions" => "Walks away",
+                   "responses" => [%{"id" => "r1", "text" => "Not yet"}]
+                 }
+               })
+
+      assert updated.word_count == 6
+      assert Flows.flow_word_counts(project.id)[flow.id] == 6
+      assert_received {:dashboard_invalidate, :flows}
     end
   end
 
@@ -1144,16 +1165,18 @@ defmodule Storyarn.Flows.NodeCrudTest do
   end
 
   describe "restore_node/2" do
-    test "restores a soft-deleted node" do
-      %{flow: flow} = create_project_and_flow()
+    test "restores a soft-deleted node and invalidates dashboards" do
+      %{project: project, flow: flow} = create_project_and_flow()
       node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Restored!"}})
 
       {:ok, _deleted, _meta} = Flows.delete_node(node)
       assert Flows.get_node(flow.id, node.id) == nil
+      :ok = Collaboration.subscribe_dashboard(project.id)
 
       {:ok, restored} = Flows.restore_node(flow.id, node.id)
       assert restored.deleted_at == nil
       assert restored.data["text"] == "Restored!"
+      assert_received {:dashboard_invalidate, :flows}
     end
 
     test "returns :already_active for non-deleted node" do

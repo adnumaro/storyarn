@@ -16,8 +16,9 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
 
   alias Phoenix.LiveView.Socket
   alias Storyarn.Flows
+  alias Storyarn.Localization.SourceContract
   alias Storyarn.Shared.HtmlUtils
-  alias StoryarnWeb.FlowLive.Helpers.NodeDataHelpers
+  alias Storyarn.Shared.WordCount
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
 
   @doc """
@@ -46,14 +47,13 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
   @spec assign_flow_stats(Socket.t(), map(), map()) ::
           Socket.t()
   def assign_flow_stats(socket, flow, flow_data) do
+    localizable_node_types = SourceContract.localizable_flow_node_types()
+
     word_count =
       flow.nodes
-      |> Enum.filter(&(&1.type == "dialogue"))
-      |> Enum.reduce(0, fn node, acc ->
-        acc +
-          NodeDataHelpers.word_count(node.data["text"]) +
-          NodeDataHelpers.word_count(node.data["stage_directions"]) +
-          response_word_count(node.data["responses"])
+      |> Enum.filter(&(&1.type in localizable_node_types))
+      |> Enum.reduce(0, fn node, total ->
+        total + WordCount.for_node_data(node.type, node.data)
       end)
 
     error_nodes =
@@ -70,14 +70,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
     |> assign(:flow_word_count, word_count)
     |> assign(:flow_error_nodes, error_nodes)
     |> assign(:flow_info_nodes, info_nodes)
-  end
-
-  defp response_word_count(nil), do: 0
-
-  defp response_word_count(responses) when is_list(responses) do
-    Enum.reduce(responses, 0, fn r, acc ->
-      acc + NodeDataHelpers.word_count(r["text"])
-    end)
   end
 
   defp node_health_payload(_node, []), do: nil

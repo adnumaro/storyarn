@@ -136,7 +136,7 @@
         "flows": "Flows",
         "dialogue_lines": "Dialogue Lines",
         "scenes": "Scenes",
-        "words": "Words"
+        "words": "Localizable words"
       },
       "activity_types": {
         "sheet": "Sheet",

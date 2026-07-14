@@ -9,6 +9,10 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
   alias Storyarn.Repo
   alias Storyarn.Sheets
 
+  defp get_dashboard_vue(view) do
+    LiveVue.Test.get_vue(view, name: "live/sheet/dashboard/SheetDashboard")
+  end
+
   defp get_sidebar_live(view, project) do
     find_live_child(view, "sidebar-sheets-#{project.id}")
   end
@@ -28,6 +32,34 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
 
       assert path == "/workspaces"
       assert flash["error"] =~ "access"
+    end
+
+    test "exposes the exact localizable word total to the dashboard", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      sheet = sheet_fixture(project, %{name: "Main Hero"})
+
+      block_fixture(sheet, %{
+        type: "rich_text",
+        value: %{"content" => "<p>Brave northern explorer</p>"}
+      })
+
+      block_fixture(sheet, %{
+        type: "text",
+        is_constant: true,
+        value: %{"content" => "Editor only words"}
+      })
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets")
+
+      await_async(view)
+
+      vue = get_dashboard_vue(view)
+      assert vue.props["stats"]["word_count"] == 5
+
+      assert Enum.any?(vue.props["table-data"], fn row ->
+               row["name"] == "Main Hero" and row["word_count"] == 5
+             end)
     end
   end
 

@@ -31,15 +31,37 @@ defmodule Storyarn.Dashboards.CacheTest do
 
       Cache.invalidate(project_id)
 
-      # Allow the async cast to process
-      Process.sleep(10)
-
       # Should recompute
       result_a = Cache.fetch(project_id, :scope_a, fn -> :a_new end)
       result_b = Cache.fetch(project_id, :scope_b, fn -> :b_new end)
 
       assert result_a == :a_new
       assert result_b == :b_new
+    end
+
+    test "does not reinsert a value computed before invalidation", %{project_id: project_id} do
+      parent = self()
+
+      task =
+        Task.async(fn ->
+          Cache.fetch(project_id, :scope, fn ->
+            send(parent, {:compute_started, self()})
+
+            receive do
+              {:computed_value, value} -> value
+            end
+          end)
+        end)
+
+      assert_receive {:compute_started, task_pid}
+      assert :ok = Cache.invalidate(project_id)
+      send(task_pid, {:computed_value, :stale})
+
+      assert_receive {:compute_started, ^task_pid}
+      send(task_pid, {:computed_value, :fresh})
+
+      assert Task.await(task) == :fresh
+      assert Cache.fetch(project_id, :scope, fn -> :unexpected end) == :fresh
     end
   end
 

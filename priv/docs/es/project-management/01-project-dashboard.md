@@ -16,9 +16,9 @@ Las tarjetas superiores resumen:
 - **Fichas** y **Variables** expuestas.
 - **Flujos** y líneas de diálogo.
 - **Escenas**.
-- Recuento total de palabras del proyecto.
+- Recuento total de palabras localizables: el mismo texto visible para el jugador de flujos y fichas que incluye el contrato de exportación runtime.
 
-Las tarjetas de Fichas, Variables, Flujos, Diálogo y Escenas abren sus espacios de trabajo. La tarjeta de palabras es informativa.
+Las tarjetas de Fichas, Variables, Flujos, Diálogo y Escenas abren sus espacios de trabajo. La tarjeta de palabras localizables es informativa. Excluye escenas, guiones y etiquetas o descripciones exclusivas del editor.
 
 ## Desglose narrativo
 

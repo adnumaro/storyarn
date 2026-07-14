@@ -14,6 +14,7 @@ defmodule Storyarn.Sheets do
   import Ecto.Query, warn: false
 
   alias Storyarn.Accounts.User
+  alias Storyarn.Collaboration
   alias Storyarn.Localization
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
@@ -249,7 +250,7 @@ defmodule Storyarn.Sheets do
   @spec move_sheet_to_position(sheet(), id() | nil, integer()) ::
           {:ok, sheet()} | {:error, validation_error() | term()}
   def move_sheet_to_position(%Sheet{} = sheet, new_parent_id, new_position) do
-    Repo.transaction(fn ->
+    fn ->
       Repo.one!(from(p in Project, where: p.id == ^sheet.project_id, lock: "FOR UPDATE"))
       current_sheet = Repo.get!(Sheet, sheet.id)
 
@@ -257,7 +258,9 @@ defmodule Storyarn.Sheets do
         :ok -> move_sheet_to_position_transaction(current_sheet, new_parent_id, new_position)
         {:error, reason} -> Repo.rollback(reason)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> Collaboration.broadcast_dashboard_result(sheet.project_id, :sheets)
   end
 
   defp move_sheet_to_position_transaction(sheet, new_parent_id, new_position) do
@@ -290,8 +293,18 @@ defmodule Storyarn.Sheets do
   @doc """
   Propagates an inheritable block to selected descendant sheets.
   """
-  defdelegate propagate_to_descendants(parent_block, selected_sheet_ids),
-    to: PropertyInheritance
+  def propagate_to_descendants(%Block{} = parent_block, selected_sheet_ids) do
+    fn ->
+      {:ok, count} = PropertyInheritance.propagate_to_descendants(parent_block, selected_sheet_ids)
+
+      case Localization.extract_block_tree(parent_block.id) do
+        :ok -> count
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end
+    |> Repo.transaction()
+    |> broadcast_block_dashboard_result(parent_block)
+  end
 
   @doc """
   Detaches an inherited block, making it a local copy.
@@ -301,7 +314,20 @@ defmodule Storyarn.Sheets do
   @doc """
   Re-attaches a previously detached block.
   """
-  defdelegate reattach_block(block), to: PropertyInheritance
+  def reattach_block(%Block{} = block) do
+    fn -> reattach_block_transaction(block) end
+    |> Repo.transaction()
+    |> broadcast_block_dashboard_result(block)
+  end
+
+  defp reattach_block_transaction(block) do
+    with {:ok, updated_block} <- PropertyInheritance.reattach_block(block),
+         :ok <- Localization.extract_block(updated_block) do
+      updated_block
+    else
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
 
   @doc """
   Hides an ancestor block from this sheet's children.
@@ -954,7 +980,7 @@ defmodule Storyarn.Sheets do
   @doc "Returns per-sheet block and variable counts. %{sheet_id => %{block_count, variable_count}}."
   defdelegate sheet_stats_for_project(project_id), to: SheetStats
 
-  @doc "Returns per-sheet word counts from text/rich_text blocks. %{sheet_id => word_count}."
+  @doc "Returns per-sheet localizable word counts from runtime sheet fields. %{sheet_id => word_count}."
   defdelegate sheet_word_counts(project_id), to: SheetStats
 
   @doc "Returns MapSet of block IDs with at least one variable reference."
@@ -962,4 +988,15 @@ defmodule Storyarn.Sheets do
 
   @doc "Detects issues in sheets. Returns [%{issue_type, sheet_id, sheet_name, ...}]."
   defdelegate detect_sheet_issues(project_id, referenced_ids \\ nil), to: SheetStats
+
+  defp broadcast_block_dashboard_result({:ok, _value} = result, %Block{} = block) do
+    case Repo.get(Sheet, block.sheet_id) do
+      %Sheet{project_id: project_id} -> Collaboration.broadcast_dashboard_change(project_id, :sheets)
+      nil -> :ok
+    end
+
+    result
+  end
+
+  defp broadcast_block_dashboard_result(result, _block), do: result
 end

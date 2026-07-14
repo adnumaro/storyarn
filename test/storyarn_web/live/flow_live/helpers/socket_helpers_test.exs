@@ -76,6 +76,24 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpersTest do
       assert length(result.assigns.flow_data.nodes) >= 2
     end
 
+    test "uses the localization contract for the editor word count", %{flow: flow, socket: socket} do
+      node_fixture(flow, %{
+        type: "dialogue",
+        data: %{
+          "text" => "Dialogue words",
+          "stage_directions" => "Walks away",
+          "menu_text" => "Choose wisely",
+          "responses" => [%{"id" => "response-1", "text" => "Response words"}]
+        }
+      })
+
+      node_fixture(flow, %{type: "exit", data: %{"label" => "Leave now"}})
+
+      result = SocketHelpers.reload_flow_data(socket)
+
+      assert result.assigns.flow_word_count == 10
+    end
+
     test "reports multiple health reasons for dialogue nodes", %{flow: flow, socket: socket} do
       dialogue =
         node_fixture(flow, %{

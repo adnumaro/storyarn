@@ -85,7 +85,7 @@ defmodule Storyarn.Sheets.SheetCrud do
       _ -> :ok
     end
 
-    result
+    Collaboration.broadcast_dashboard_result(result, sheet.project_id, :sheets)
   end
 
   @doc """
@@ -93,21 +93,14 @@ defmodule Storyarn.Sheets.SheetCrud do
   Also soft deletes all descendant sheets.
   """
   def delete_sheet(%Sheet{} = sheet) do
-    result = trash_sheet(sheet)
-
-    case result do
-      {:ok, _} -> Collaboration.broadcast_dashboard_change(sheet.project_id, :sheets)
-      _ -> :ok
-    end
-
-    result
+    trash_sheet(sheet)
   end
 
   @doc """
   Soft deletes a sheet and all its descendants (moves to trash).
   """
   def trash_sheet(%Sheet{} = sheet) do
-    Repo.transaction(fn ->
+    fn ->
       # Get all descendant IDs before deleting
       descendant_ids = get_descendant_ids(sheet.id)
 
@@ -126,7 +119,9 @@ defmodule Storyarn.Sheets.SheetCrud do
       sheet
       |> Sheet.delete_changeset()
       |> Repo.update!()
-    end)
+    end
+    |> Repo.transaction()
+    |> Collaboration.broadcast_dashboard_result(sheet.project_id, :sheets)
   end
 
   @doc """
@@ -165,6 +160,7 @@ defmodule Storyarn.Sheets.SheetCrud do
       {:error, _op, changeset, _changes} ->
         {:error, changeset}
     end
+    |> Collaboration.broadcast_dashboard_result(sheet.project_id, :sheets)
   end
 
   @doc """
@@ -173,7 +169,7 @@ defmodule Storyarn.Sheets.SheetCrud do
   Use with caution - this cannot be undone.
   """
   def permanently_delete_sheet(%Sheet{} = sheet) do
-    Repo.transaction(fn ->
+    fn ->
       block_ids = Repo.all(from(b in Storyarn.Sheets.Block, where: b.sheet_id == ^sheet.id, select: b.id))
 
       # Delete all versions first
@@ -189,11 +185,13 @@ defmodule Storyarn.Sheets.SheetCrud do
         {:ok, deleted} -> deleted
         {:error, changeset} -> Repo.rollback(changeset)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> Collaboration.broadcast_dashboard_result(sheet.project_id, :sheets)
   end
 
   def move_sheet(%Sheet{} = sheet, parent_id, position \\ nil) do
-    Repo.transaction(fn ->
+    fn ->
       Repo.one!(from(p in Project, where: p.id == ^sheet.project_id, lock: "FOR UPDATE"))
       current_sheet = Repo.get!(Sheet, sheet.id)
 
@@ -201,7 +199,9 @@ defmodule Storyarn.Sheets.SheetCrud do
         :ok -> move_sheet_transaction(current_sheet, parent_id, position)
         {:error, reason} -> Repo.rollback(reason)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> Collaboration.broadcast_dashboard_result(sheet.project_id, :sheets)
   end
 
   defp move_sheet_transaction(sheet, parent_id, position) do

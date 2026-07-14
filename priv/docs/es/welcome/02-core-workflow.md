@@ -102,15 +102,15 @@ Al exportar, elige si los recursos se mantienen como referencias, se incrustan e
 
 ---
 
-## Localiza todo
+## Localiza el texto de runtime
 
-Cuando tu contenido esté listo, las herramientas de **Localización** extraen automáticamente cada texto traducible — líneas de diálogo, acotaciones, texto de menú, etiquetas de fichas y valores de bloques.
+Cuando tu contenido esté listo, las herramientas de **Localización** extraen automáticamente el texto visible para el jugador definido por el contrato de exportación para motores: líneas de diálogo, acotaciones, texto de menú, etiquetas de respuestas y salidas, nombres de fichas activas y valores de variables exportadas de texto o texto enriquecido. Las escenas, los guiones y los metadatos exclusivos del editor quedan excluidos.
 
 Configura la **integración con DeepL** para traducción automática como primer paso. Haz seguimiento del progreso por idioma con informes que muestran conteos de palabras por personaje, estado de traducción y progreso de doblaje.
 
-Exporta traducciones como **Excel** o **CSV** para traductores profesionales. El sistema detecta cambios en el texto fuente y marca automáticamente las traducciones obsoletas para revisión. Storyarn no ofrece actualmente una acción para importar CSV en la interfaz del proyecto, por lo que las traducciones devueltas deben introducirse desde el editor de traducciones.
+Exporta traducciones como **Excel** o **CSV** para traductores profesionales e importa el CSV devuelto desde la misma barra de herramientas. Conserva las columnas ID y Source Hash: el sistema detecta cambios en el texto fuente, rechaza filas obsoletas durante la importación y marca las traducciones existentes para revisión.
 
-<img src="/images/docs/localization-overview-current.png" alt="Dashboard de localización con progreso de Catalan, recuentos de palabras por hablante, progreso de doblaje y desglose de contenido" loading="lazy">
+<img src="/images/docs/localization-overview-current.png" alt="Dashboard de localización con progreso de catalán, recuentos de palabras por hablante, progreso de doblaje y desglose de nodos de flujo, bloques y nombres de fichas" loading="lazy">
 
 ---
 

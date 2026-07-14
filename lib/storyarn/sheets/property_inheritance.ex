@@ -12,6 +12,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   alias Storyarn.Repo
   alias Storyarn.Shared.NameNormalizer
   alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Shared.WordCount
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.BlockCrud
   alias Storyarn.Sheets.EntityReference
@@ -228,7 +229,10 @@ defmodule Storyarn.Sheets.PropertyInheritance do
         {:error, :source_not_found}
 
       source ->
-        updates = build_reattach_updates(source)
+        updates =
+          source
+          |> build_reattach_updates()
+          |> Map.put(:word_count, WordCount.for_block(source.type, block.value))
 
         block
         |> Ecto.Changeset.change(updates)
@@ -584,7 +588,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
 
     if type_changed? do
       Keyword.update!(base, :set, fn sets ->
-        sets ++ [type: parent_block.type, value: Block.default_value(parent_block.type)]
+        sets ++ [type: parent_block.type, value: Block.default_value(parent_block.type), word_count: 0]
       end)
     else
       base
@@ -696,6 +700,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
       inherited_from_block_id: parent_block.id,
       detached: false,
       required: parent_block.required,
+      word_count: 0,
       column_group_id: nil,
       column_index: 0,
       sheet_id: sheet_id,

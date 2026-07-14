@@ -14,7 +14,7 @@
         "nodes": "Nodes",
         "dialogue": "Dialogue",
         "conditions": "Conditions",
-        "words": "Words",
+        "words": "Localizable words",
         "modified": "Modified"
       }
     },

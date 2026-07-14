@@ -102,15 +102,15 @@ When exporting, choose whether assets remain references, are embedded in the out
 
 ---
 
-## Localize everything
+## Localize runtime text
 
-When your content is ready, the **Localization** tools extract every translatable text automatically — dialogue lines, stage directions, menu text, sheet labels, and block values.
+When your content is ready, the **Localization** tools extract player-facing text from the engine export contract automatically — dialogue lines, stage directions, menu text, response and exit labels, active sheet names, and exported text or rich-text variable values. Scenes, screenplays, and editor-only metadata are excluded.
 
 Set up **DeepL integration** for machine translation as a first pass. Track progress per language with reports that show word counts by speaker, translation status, and voice-over progress.
 
-Export translations as **Excel** or **CSV** for professional translators. The system detects source text changes and automatically flags stale translations for review. Storyarn does not currently provide a CSV import action in the project UI, so returned translations must be entered through the translation editor.
+Export translations as **Excel** or **CSV** for professional translators, then import the returned CSV from the same toolbar. Keep the ID and Source Hash columns intact: the system detects source text changes, rejects stale import rows, and flags existing translations for review.
 
-<img src="/images/docs/localization-overview-current.png" alt="Localization dashboard showing Catalan progress, word counts by speaker, voice-over progress, and content breakdown" loading="lazy">
+<img src="/images/docs/localization-overview-current.png" alt="Localization dashboard showing Catalan progress, word counts by speaker, voice-over progress, and a breakdown of flow nodes, blocks, and sheet names" loading="lazy">
 
 ---
 

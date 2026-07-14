@@ -9,6 +9,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
   import Storyarn.ScreenplaysFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Collaboration
   alias Storyarn.Exports
   alias Storyarn.Flows
   alias Storyarn.Imports
@@ -337,12 +338,14 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
     setup [:setup_projects, :setup_with_data]
 
     test "imports all entity types", %{target: target, parsed: parsed} do
+      :ok = Collaboration.subscribe_dashboard(target.id)
       {:ok, result} = Imports.execute(target, parsed.data)
 
       assert result.sheets != []
       assert result.flows != []
       assert result.scenes != []
       assert result.screenplays != []
+      assert_received {:dashboard_invalidate, :all}
     end
 
     test "preserves sheet blocks", %{target: target, parsed: parsed} do
@@ -354,6 +357,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
 
       hero_with_blocks = Storyarn.Repo.preload(hero, :blocks)
       assert hero_with_blocks.blocks != []
+      assert Enum.find(hero_with_blocks.blocks, &(&1.type == "text")).word_count == 1
     end
 
     test "preserves flow nodes and connections", %{target: target, parsed: parsed} do
@@ -364,6 +368,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
 
       # At least entry + dialogue nodes
       assert Enum.count(flow_with_data.nodes) >= 2
+      assert Enum.find(flow_with_data.nodes, &(&1.type == "dialogue")).word_count == 1
     end
 
     test "preserves scene sub-entities", %{target: target, parsed: parsed} do

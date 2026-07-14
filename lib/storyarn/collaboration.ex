@@ -322,6 +322,17 @@ defmodule Storyarn.Collaboration do
     )
   end
 
+  @doc """
+  Broadcasts a dashboard change after a successful operation and returns the
+  operation result unchanged.
+  """
+  def broadcast_dashboard_result({:ok, _value} = result, project_id, scope) do
+    broadcast_dashboard_change(project_id, scope)
+    result
+  end
+
+  def broadcast_dashboard_result(result, _project_id, _scope), do: result
+
   @doc false
   def dashboard_topic(project_id), do: "project:#{project_id}:dashboard"
 end

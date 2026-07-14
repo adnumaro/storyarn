@@ -11,6 +11,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   import Ecto.Query, warn: false
 
   alias Storyarn.Assets
+  alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
@@ -390,44 +391,52 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
          :ok <- validate_entity_counts(data) do
       existing_shortcuts = preload_existing_shortcuts(project.id)
 
-      Repo.transaction(
-        fn ->
-          id_map = %{}
+      result =
+        Repo.transaction(
+          fn ->
+            id_map = %{}
 
-          {id_map, asset_results} = import_assets(project.id, data, id_map)
+            {id_map, asset_results} = import_assets(project.id, data, id_map)
 
-          {id_map, sheet_results} =
-            import_sheets(project, data, id_map, strategy, existing_shortcuts)
+            {id_map, sheet_results} =
+              import_sheets(project, data, id_map, strategy, existing_shortcuts)
 
-          {id_map, scene_results} =
-            import_scenes(project, data, id_map, strategy, existing_shortcuts)
+            {id_map, scene_results} =
+              import_scenes(project, data, id_map, strategy, existing_shortcuts)
 
-          {id_map, flow_results} =
-            import_flows(project, data, id_map, strategy, existing_shortcuts)
+            {id_map, flow_results} =
+              import_flows(project, data, id_map, strategy, existing_shortcuts)
 
-          # Pass 3: link scene→flow references now that flows exist in id_map
-          link_scene_flow_references(data, id_map)
+            # Pass 3: link scene→flow references now that flows exist in id_map
+            link_scene_flow_references(data, id_map)
 
-          # Pass 4: link node→flow references (referenced_flow_id, target_id)
-          # now that all flows exist in id_map
-          link_node_flow_references(data, id_map)
+            # Pass 4: link node→flow references (referenced_flow_id, target_id)
+            # now that all flows exist in id_map
+            link_node_flow_references(data, id_map)
 
-          {id_map, screenplay_results} =
-            import_screenplays(project, data, id_map, strategy, existing_shortcuts)
+            {id_map, screenplay_results} =
+              import_screenplays(project, data, id_map, strategy, existing_shortcuts)
 
-          {_id_map, loc_results} = import_localization(project.id, data, id_map)
+            {_id_map, loc_results} = import_localization(project.id, data, id_map)
 
-          %{
-            assets: asset_results,
-            sheets: sheet_results,
-            flows: flow_results,
-            scenes: scene_results,
-            screenplays: screenplay_results,
-            localization: loc_results
-          }
-        end,
-        timeout: to_timeout(minute: 5)
-      )
+            %{
+              assets: asset_results,
+              sheets: sheet_results,
+              flows: flow_results,
+              scenes: scene_results,
+              screenplays: screenplay_results,
+              localization: loc_results
+            }
+          end,
+          timeout: to_timeout(minute: 5)
+        )
+
+      case result do
+        {:ok, _result} -> Collaboration.broadcast_dashboard_change(project.id, :all)
+        _error -> :ok
+      end
+
+      result
     end
   end
 

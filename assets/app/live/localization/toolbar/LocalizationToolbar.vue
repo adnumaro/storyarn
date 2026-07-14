@@ -1,5 +1,15 @@
 <script setup lang="ts">
-import { BookOpenText, Download, Languages, LoaderCircle, Upload, X } from "lucide-vue-next";
+import {
+  BookOpenText,
+  CircleCheck,
+  CircleX,
+  Download,
+  Languages,
+  LoaderCircle,
+  TriangleAlert,
+  Upload,
+  X,
+} from "lucide-vue-next";
 import { computed, ref } from "vue";
 import { Button } from "@components/ui/button";
 import {
@@ -38,8 +48,27 @@ const live = useLive();
 const translating = ref(false);
 const importing = ref(false);
 const importInput = ref<HTMLInputElement | null>(null);
-const importResult = ref<{ ok: boolean; updated?: number; error?: string } | null>(null);
+
+type ImportRowError = { line: number; error: string };
+type ImportResult = {
+  ok: boolean;
+  updated?: number;
+  skipped?: number;
+  errors?: ImportRowError[];
+  error?: string;
+};
+
+const maxVisibleImportErrors = 20;
+const importResult = ref<ImportResult | null>(null);
 const active = computed(() => activeRun && ["queued", "running"].includes(activeRun.status));
+const importErrors = computed(() => importResult.value?.errors || []);
+const importIssueCount = computed(
+  () => (importResult.value?.skipped || 0) + importErrors.value.length,
+);
+const visibleImportErrors = computed(() => importErrors.value.slice(0, maxVisibleImportErrors));
+const hiddenImportErrorCount = computed(() =>
+  Math.max(0, importErrors.value.length - maxVisibleImportErrors),
+);
 const progress = computed(() => {
   if (!activeRun || activeRun.total === 0) return 0;
   return Math.min(100, Math.round((activeRun.processed / activeRun.total) * 100));
@@ -78,14 +107,43 @@ async function importCsv(event: Event): Promise<void> {
   live.pushEvent(
     "import_csv",
     { content },
-    (response: { ok?: boolean; updated?: number; error?: string }) => {
+    (response: Record<string, unknown>) => {
+      const result = response as ImportResult;
       importing.value = false;
       input.value = "";
-      importResult.value = response?.ok
-        ? { ok: true, updated: response.updated || 0 }
-        : { ok: false, error: response?.error || "import_failed" };
+      importResult.value = result.ok
+        ? {
+            ok: true,
+            updated: result.updated || 0,
+            skipped: result.skipped || 0,
+            errors: result.errors || [],
+          }
+        : { ok: false, error: result.error || "import_failed" };
+    },
+    () => {
+      importing.value = false;
+      input.value = "";
+      importResult.value = { ok: false, error: "import_failed" };
     },
   );
+}
+
+function importRowErrorKey(error: string): string {
+  const code = error.replace(/^:/, "");
+
+  if (["stale_source", "invalid_id", "text_not_found"].includes(code)) {
+    return `localization.toolbar.import_error_${code}`;
+  }
+
+  return "localization.toolbar.import_error_unknown";
+}
+
+function importFailureKey(error?: string): string {
+  if (error === "file_too_large" || error === "unauthorized") {
+    return `localization.toolbar.import_${error}`;
+  }
+
+  return "localization.toolbar.import_failed";
 }
 </script>
 
@@ -163,16 +221,131 @@ async function importCsv(event: Event): Promise<void> {
       <Upload v-else class="size-4" />
       <span class="hidden xl:inline">{{ $t("localization.toolbar.import_csv") }}</span>
     </Button>
-    <span
-      v-if="importResult"
-      :class="['hidden text-xs lg:inline', importResult.ok ? 'text-success' : 'text-error']"
-      role="status"
+    <details
+      v-if="importResult?.ok && importIssueCount > 0"
+      class="dropdown dropdown-end"
+      data-testid="localization-import-result"
     >
-      {{
-        importResult.ok
-          ? $t("localization.toolbar.imported_count", { count: importResult.updated })
-          : $t("localization.toolbar.import_failed")
-      }}
+      <summary class="btn btn-ghost btn-sm gap-1.5 text-warning">
+        <TriangleAlert class="size-4 shrink-0" />
+        <span class="hidden lg:inline">
+          {{
+            $t("localization.toolbar.imported_with_issues", {
+              count: importResult.updated,
+              issues: importIssueCount,
+            })
+          }}
+        </span>
+        <span class="sr-only lg:hidden">
+          {{
+            $t("localization.toolbar.imported_with_issues", {
+              count: importResult.updated,
+              issues: importIssueCount,
+            })
+          }}
+        </span>
+      </summary>
+      <span class="sr-only" role="status" aria-live="polite">
+        {{
+          $t("localization.toolbar.imported_with_issues", {
+            count: importResult.updated,
+            issues: importIssueCount,
+          })
+        }}
+      </span>
+
+      <div
+        class="dropdown-content z-50 mt-2 w-80 rounded-box border border-base-300 bg-base-100 p-3 shadow-xl"
+      >
+        <p class="font-semibold text-base-content">
+          {{ $t("localization.toolbar.import_summary_title") }}
+        </p>
+        <dl class="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+          <div class="rounded-lg bg-success/10 px-2 py-2">
+            <dt class="text-base-content/60">
+              {{ $t("localization.toolbar.import_summary_updated") }}
+            </dt>
+            <dd class="mt-0.5 font-semibold tabular-nums text-success">
+              {{ importResult.updated || 0 }}
+            </dd>
+          </div>
+          <div class="rounded-lg bg-base-200 px-2 py-2">
+            <dt class="text-base-content/60">
+              {{ $t("localization.toolbar.import_summary_skipped") }}
+            </dt>
+            <dd class="mt-0.5 font-semibold tabular-nums">
+              {{ importResult.skipped || 0 }}
+            </dd>
+          </div>
+          <div class="rounded-lg bg-error/10 px-2 py-2">
+            <dt class="text-base-content/60">
+              {{ $t("localization.toolbar.import_summary_errors") }}
+            </dt>
+            <dd class="mt-0.5 font-semibold tabular-nums text-error">
+              {{ importErrors.length }}
+            </dd>
+          </div>
+        </dl>
+
+        <p v-if="(importResult.skipped || 0) > 0" class="mt-3 text-xs text-base-content/60">
+          {{ $t("localization.toolbar.import_skipped_help") }}
+        </p>
+
+        <div v-if="importErrors.length > 0" class="mt-3 border-t border-base-300 pt-2">
+          <p class="mb-1.5 text-xs font-medium text-base-content/70">
+            {{ $t("localization.toolbar.import_error_details") }}
+          </p>
+          <div class="max-h-52 space-y-1 overflow-y-auto pr-1">
+            <div
+              v-for="rowError in visibleImportErrors"
+              :key="`${rowError.line}-${rowError.error}`"
+              class="flex gap-2 rounded-md bg-error/5 px-2 py-1.5 text-xs"
+            >
+              <span class="shrink-0 font-medium tabular-nums text-error">
+                {{ $t("localization.toolbar.import_error_line", { line: rowError.line }) }}
+              </span>
+              <span class="text-base-content/70">
+                {{ $t(importRowErrorKey(rowError.error)) }}
+              </span>
+            </div>
+          </div>
+          <p v-if="hiddenImportErrorCount > 0" class="mt-2 text-xs text-base-content/50">
+            {{
+              $t("localization.toolbar.import_more_errors", {
+                count: hiddenImportErrorCount,
+              })
+            }}
+          </p>
+        </div>
+      </div>
+    </details>
+
+    <span
+      v-else-if="importResult?.ok"
+      class="flex items-center gap-1 text-xs text-success"
+      role="status"
+      aria-live="polite"
+      data-testid="localization-import-result"
+    >
+      <CircleCheck class="size-4 shrink-0" />
+      <span class="hidden lg:inline">
+        {{ $t("localization.toolbar.imported_count", { count: importResult.updated }) }}
+      </span>
+      <span class="sr-only lg:hidden">
+        {{ $t("localization.toolbar.imported_count", { count: importResult.updated }) }}
+      </span>
+    </span>
+
+    <span
+      v-else-if="importResult"
+      class="flex items-center gap-1 text-xs text-error"
+      role="status"
+      aria-live="polite"
+      data-testid="localization-import-result"
+    >
+      <CircleX class="size-4 shrink-0" />
+      <span class="hidden lg:inline">{{ $t(importFailureKey(importResult.error)) }}</span>
+      <span class="sr-only lg:hidden">{{ $t(importFailureKey(importResult.error)) }}</span>
     </span>
 
     <Button

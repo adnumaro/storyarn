@@ -25,10 +25,14 @@ defmodule Storyarn.Localization.LocalizableWords do
   @doc "Returns per-flow counts for player-facing runtime text."
   @spec flow_word_counts(integer()) :: %{integer() => non_neg_integer()}
   def flow_word_counts(project_id) do
+    localizable_node_types = SourceContract.localizable_flow_node_types()
+
     from(node in FlowNode,
       join: flow in Flow,
       on: flow.id == node.flow_id,
-      where: flow.project_id == ^project_id and is_nil(flow.deleted_at) and is_nil(node.deleted_at),
+      where:
+        flow.project_id == ^project_id and is_nil(flow.deleted_at) and is_nil(node.deleted_at) and
+          node.type in ^localizable_node_types,
       group_by: node.flow_id,
       select: {node.flow_id, coalesce(sum(node.word_count), 0)}
     )

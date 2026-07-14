@@ -11,6 +11,7 @@ defmodule Storyarn.Localization.SourceContract do
 
   @source_types ~w(flow_node block sheet)
   @content_roles ~w(dialogue stage_direction menu response exit runtime_value speaker_name)
+  @localizable_flow_node_types ~w(dialogue exit)
   @localizable_block_types ~w(text rich_text)
 
   @engine_content_roles %{
@@ -31,6 +32,9 @@ defmodule Storyarn.Localization.SourceContract do
 
   @spec localizable_block_types() :: [String.t()]
   def localizable_block_types, do: @localizable_block_types
+
+  @spec localizable_flow_node_types() :: [String.t()]
+  def localizable_flow_node_types, do: @localizable_flow_node_types
 
   @doc "Returns the localization roles that a serializer can address at runtime."
   @spec export_content_roles(atom()) :: [String.t()]

@@ -68,4 +68,4 @@ Antes de descargar, puedes ejecutar la validacion para detectar problemas que ca
 
 Mas alla de la pagina principal de Exportar, Storyarn ofrece funciones de exportacion especializadas en otras areas:
 
-**Exportación de localización** -- Desde la página de Localización puedes exportar traducciones como Excel (.xlsx) o CSV filtrado por idioma. Conserva la columna ID sin cambios para mantener cada fila identificada. La interfaz actual admite exportación, pero no ofrece importación CSV; las traducciones devueltas deben introducirse desde el editor de traducciones. Consulta la [Vista general de Localización](/docs/localization/localization-overview) para obtener más detalles.
+**Intercambio de localización** -- Desde la página de Localización puedes exportar traducciones como Excel (.xlsx) o CSV filtrado por idioma. Conserva las columnas ID y Source Hash sin cambios y utiliza **Importar CSV** para aplicar los valores devueltos de Translation y Status. El hash evita que un archivo obsoleto sobrescriba traducciones después de cambiar el contenido fuente. Consulta la [Vista general de Localización](/docs/localization/localization-overview) para obtener más detalles.

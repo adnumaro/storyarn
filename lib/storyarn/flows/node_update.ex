@@ -3,6 +3,7 @@ defmodule Storyarn.Flows.NodeUpdate do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Collaboration
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.NodeCrud
@@ -13,14 +14,31 @@ defmodule Storyarn.Flows.NodeUpdate do
   alias Storyarn.Shared.WordCount
 
   def update_node(%FlowNode{} = node, attrs) do
-    node
-    |> FlowNode.update_changeset(attrs)
-    |> Repo.update()
-    |> tap(fn
-      {:ok, updated_node} -> Localization.extract_flow_node(updated_node)
-      _error -> :ok
-    end)
+    result = Repo.transaction(fn -> update_node_transaction(node, attrs) end)
+
+    maybe_broadcast_dashboard(result, node)
+    result
   end
+
+  defp update_node_transaction(node, attrs) do
+    changeset = FlowNode.update_changeset(node, attrs)
+    type = Ecto.Changeset.get_field(changeset, :type)
+    data = Ecto.Changeset.get_field(changeset, :data)
+
+    changeset
+    |> Ecto.Changeset.put_change(:word_count, WordCount.for_node_data(type, data))
+    |> Repo.update()
+    |> extract_updated_node_or_rollback()
+  end
+
+  defp extract_updated_node_or_rollback({:ok, updated_node}) do
+    case Localization.extract_flow_node(updated_node) do
+      :ok -> updated_node
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp extract_updated_node_or_rollback({:error, changeset}), do: Repo.rollback(changeset)
 
   def update_node_position(%FlowNode{} = node, attrs) do
     node
@@ -95,12 +113,20 @@ defmodule Storyarn.Flows.NodeUpdate do
   end
 
   defp maybe_broadcast_dashboard({:ok, _, _}, node) do
-    project_id = Repo.one(from(f in Flow, where: f.id == ^node.flow_id, select: f.project_id))
+    broadcast_dashboard(node)
+  end
 
-    if project_id, do: Storyarn.Collaboration.broadcast_dashboard_change(project_id, :flows)
+  defp maybe_broadcast_dashboard({:ok, _}, node) do
+    broadcast_dashboard(node)
   end
 
   defp maybe_broadcast_dashboard(_, _), do: :ok
+
+  defp broadcast_dashboard(node) do
+    project_id = Repo.one(from(f in Flow, where: f.id == ^node.flow_id, select: f.project_id))
+
+    if project_id, do: Collaboration.broadcast_dashboard_change(project_id, :flows)
+  end
 
   def change_node(%FlowNode{} = node, attrs \\ %{}) do
     FlowNode.update_changeset(node, attrs)
