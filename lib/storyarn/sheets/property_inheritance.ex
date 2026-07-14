@@ -66,53 +66,76 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     if child_sheet_ids == [] do
       {:ok, 0}
     else
-      now = TimeHelpers.now()
+      fn ->
+        child_sheet_ids = child_sheet_ids |> Enum.uniq() |> Enum.sort()
 
-      # Batch check which sheets already have instances for this parent block
-      existing_sheet_ids =
-        from(b in Block,
-          where:
-            b.inherited_from_block_id == ^parent_block.id and
-              b.sheet_id in ^child_sheet_ids and
-              is_nil(b.deleted_at),
-          select: b.sheet_id
+        # A destination sheet is the serialization point shared with direct
+        # block creation. Lock every destination in deterministic order.
+        Repo.all(
+          from(s in Sheet,
+            where: s.id in ^child_sheet_ids,
+            order_by: [asc: s.id],
+            lock: "FOR UPDATE"
+          )
         )
-        |> Repo.all()
-        |> MapSet.new()
 
-      sheets_to_create = Enum.reject(child_sheet_ids, &MapSet.member?(existing_sheet_ids, &1))
-
-      entries =
-        Enum.map(sheets_to_create, fn sheet_id ->
-          position = next_block_position(sheet_id)
-          variable_name = derive_unique_variable_name(parent_block, sheet_id)
-
-          %{
-            type: parent_block.type,
-            config: parent_block.config,
-            value: Block.default_value(parent_block.type),
-            position: position,
-            is_constant: parent_block.is_constant,
-            variable_name: variable_name,
-            scope: "self",
-            inherited_from_block_id: parent_block.id,
-            detached: false,
-            required: parent_block.required,
-            column_group_id: nil,
-            column_index: 0,
-            sheet_id: sheet_id,
-            inserted_at: now,
-            updated_at: now
-          }
-        end)
-
-      if entries == [] do
-        {:ok, 0}
-      else
-        {count, _} = Repo.insert_all(Block, entries)
-        copy_table_structure_to_instances(parent_block)
-        {:ok, count}
+        do_create_inherited_instances(parent_block, child_sheet_ids)
       end
+      |> Repo.transaction()
+      |> case do
+        {:ok, count} -> {:ok, count}
+        {:error, reason} -> {:error, reason}
+      end
+    end
+  end
+
+  defp do_create_inherited_instances(parent_block, child_sheet_ids) do
+    now = TimeHelpers.now()
+
+    # Batch check which sheets already have instances for this parent block
+    existing_sheet_ids =
+      from(b in Block,
+        where:
+          b.inherited_from_block_id == ^parent_block.id and
+            b.sheet_id in ^child_sheet_ids and
+            is_nil(b.deleted_at),
+        select: b.sheet_id
+      )
+      |> Repo.all()
+      |> MapSet.new()
+
+    sheets_to_create = Enum.reject(child_sheet_ids, &MapSet.member?(existing_sheet_ids, &1))
+
+    entries =
+      Enum.map(sheets_to_create, fn sheet_id ->
+        position = next_block_position(sheet_id)
+        variable_name = derive_unique_variable_name(parent_block, sheet_id)
+
+        %{
+          type: parent_block.type,
+          config: parent_block.config,
+          value: Block.default_value(parent_block.type),
+          position: position,
+          is_constant: parent_block.is_constant,
+          variable_name: variable_name,
+          scope: "self",
+          inherited_from_block_id: parent_block.id,
+          detached: false,
+          required: parent_block.required,
+          column_group_id: nil,
+          column_index: 0,
+          sheet_id: sheet_id,
+          inserted_at: now,
+          updated_at: now
+        }
+      end)
+
+    if entries == [] do
+      0
+    else
+      {count, _} = Repo.insert_all(Block, entries)
+      copy_table_structure_to_instances(parent_block)
+      count
     end
   end
 

@@ -61,10 +61,10 @@ defmodule Storyarn.Scenes.ZoneCrud do
 
   def create_zone(scene_id, attrs) do
     attrs = MapUtils.stringify_keys(attrs)
-    attrs = maybe_generate_zone_shortcut(attrs, scene_id, nil)
 
     result =
       PositionUtils.with_scene_lock(scene_id, fn ->
+        attrs = maybe_generate_zone_shortcut(attrs, scene_id, nil)
         position = PositionUtils.next_position(SceneZone, scene_id)
 
         %SceneZone{scene_id: scene_id}

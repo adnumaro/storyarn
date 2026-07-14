@@ -130,6 +130,21 @@ defmodule Storyarn.Collaboration.LocksTest do
       assert {:ok, lock} = Locks.get_lock({:flow, 2}, @node_id)
       assert lock.user_id == 1
     end
+
+    test "does not crash the lock server when the task supervisor is unavailable" do
+      user = make_user(1)
+      {:ok, _} = Locks.acquire(@scope, @node_id, user)
+      supervisor = Process.whereis(Storyarn.TaskSupervisor)
+      Process.unregister(Storyarn.TaskSupervisor)
+
+      try do
+        assert :ok = Locks.release_all(@scope, user.id)
+        assert Process.alive?(Process.whereis(Locks))
+        assert {:error, :not_locked} = Locks.get_lock(@scope, @node_id)
+      after
+        Process.register(supervisor, Storyarn.TaskSupervisor)
+      end
+    end
   end
 
   describe "refresh/3" do

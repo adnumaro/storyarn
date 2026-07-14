@@ -194,7 +194,10 @@ defmodule Storyarn.Sheets.SheetCrud do
 
   def move_sheet(%Sheet{} = sheet, parent_id, position \\ nil) do
     with :ok <- validate_parent(sheet, parent_id) do
-      Repo.transaction(fn -> move_sheet_transaction(sheet, parent_id, position) end)
+      Repo.transaction(fn ->
+        Repo.one!(from(p in Project, where: p.id == ^sheet.project_id, lock: "FOR UPDATE"))
+        move_sheet_transaction(sheet, parent_id, position)
+      end)
     end
   end
 

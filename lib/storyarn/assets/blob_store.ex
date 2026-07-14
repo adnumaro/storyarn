@@ -76,17 +76,9 @@ defmodule Storyarn.Assets.BlobStore do
   def ensure_blob_with_status(project_id, hash, ext, binary_data) do
     key = blob_key(project_id, hash, ext)
 
-    case Storage.download(key) do
-      {:ok, _existing} ->
-        {:ok, key, false}
-
-      {:error, _} ->
-        content_type = MIME.type(ext)
-
-        case Storage.upload(key, binary_data, content_type) do
-          {:ok, _url} -> {:ok, key, true}
-          {:error, reason} -> {:error, reason}
-        end
+    case Storage.put_if_absent(key, binary_data, MIME.type(ext)) do
+      {:ok, _url, created?} -> {:ok, key, created?}
+      {:error, reason} -> {:error, reason}
     end
   end
 

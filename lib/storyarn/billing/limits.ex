@@ -110,11 +110,19 @@ defmodule Storyarn.Billing.Limits do
   Checks if a project can have another item (flow node, sheet, flow, or scene).
   """
   def can_create_item?(project) do
+    can_create_items?(project, 1)
+  end
+
+  @doc """
+  Checks whether a project has room for a compound operation that creates
+  multiple billable items atomically.
+  """
+  def can_create_items?(project, count) when is_integer(count) and count > 0 do
     workspace_id = project.workspace_id
     plan = SubscriptionCrud.plan_for_workspace_id(workspace_id)
     limit = Plan.limit(plan, :items_per_project)
     used = count_project_items(project.id)
-    check_limit(:items_per_project, used, limit)
+    check_capacity(:items_per_project, used, limit, count)
   end
 
   @doc """
@@ -264,6 +272,16 @@ defmodule Storyarn.Billing.Limits do
   defp check_limit(_resource, used, limit) when used < limit, do: :ok
 
   defp check_limit(resource, used, limit) do
+    {:error, :limit_reached, %{resource: resource, used: used, limit: limit}}
+  end
+
+  defp check_capacity(resource, used, nil, _requested) do
+    {:error, :limit_reached, %{resource: resource, used: used, limit: 0}}
+  end
+
+  defp check_capacity(_resource, used, limit, requested) when used + requested <= limit, do: :ok
+
+  defp check_capacity(resource, used, limit, _requested) do
     {:error, :limit_reached, %{resource: resource, used: used, limit: limit}}
   end
 

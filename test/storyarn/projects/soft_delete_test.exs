@@ -152,6 +152,29 @@ defmodule Storyarn.Projects.SoftDeleteTest do
 
       assert Projects.list_deleted_items_for_retention(limit: 1, after: final_cursor) == []
     end
+
+    test "normalizes invalid limits and caps oversized batches" do
+      project = project_fixture()
+      sheet = sheet_fixture(project)
+      assert {:ok, _deleted} = Sheets.delete_sheet(sheet)
+
+      assert length(Projects.list_deleted_items_for_retention(limit: nil)) == 1
+      assert length(Projects.list_deleted_items_for_retention(limit: -10)) == 1
+      assert length(Projects.list_deleted_items_for_retention(limit: 10_000)) == 1
+    end
+
+    test "keeps a cleanup run bounded to its starting cutoff" do
+      project = project_fixture()
+      first_sheet = sheet_fixture(project)
+      second_sheet = sheet_fixture(project)
+
+      assert {:ok, _deleted} = Sheets.delete_sheet(first_sheet)
+      cutoff = Projects.deleted_items_retention_cutoff()
+      assert {:ok, _deleted} = Sheets.delete_sheet(second_sheet)
+
+      assert [item] = Projects.list_deleted_items_for_retention(through: cutoff)
+      assert item.id == first_sheet.id
+    end
   end
 
   describe "permanently_delete_project/1" do

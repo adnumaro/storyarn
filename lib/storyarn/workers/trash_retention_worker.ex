@@ -37,12 +37,17 @@ defmodule Storyarn.Workers.TrashRetentionWorker do
   @impl Oban.Worker
   def perform(%Oban.Job{}) do
     now = TimeHelpers.now()
-    process_batches(nil, now)
+
+    case Projects.deleted_items_retention_cutoff() do
+      nil -> :ok
+      cutoff -> process_batches(nil, cutoff, now)
+    end
+
     :ok
   end
 
-  defp process_batches(cursor, now) do
-    items = Projects.list_deleted_items_for_retention(after: cursor, limit: @batch_size)
+  defp process_batches(cursor, cutoff, now) do
+    items = Projects.list_deleted_items_for_retention(after: cursor, through: cutoff, limit: @batch_size)
     Enum.each(items, &process_item(&1, now))
 
     case List.last(items) do
@@ -50,7 +55,7 @@ defmodule Storyarn.Workers.TrashRetentionWorker do
         :ok
 
       item when length(items) == @batch_size ->
-        process_batches({item.deleted_at, item.type, item.id}, now)
+        process_batches({item.deleted_at, item.type, item.id}, cutoff, now)
 
       _item ->
         :ok

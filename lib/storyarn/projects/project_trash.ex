@@ -92,11 +92,19 @@ defmodule Storyarn.Projects.ProjectTrash do
   @spec list_deleted_items_for_retention(keyword()) :: [map()]
   def list_deleted_items_for_retention(opts \\ []) do
     cursor = Keyword.get(opts, :after)
-    limit = Keyword.get(opts, :limit, @max_per_page)
+    through = Keyword.get(opts, :through)
+
+    limit =
+      opts
+      |> Keyword.get(:limit, @max_per_page)
+      |> normalize_positive_integer(@max_per_page)
+      |> max(1)
+      |> min(@max_per_page)
 
     Repo.all(
       from(i in deleted_items_query(),
         where: ^retention_cursor_filter(cursor),
+        where: ^retention_cutoff_filter(through),
         order_by: [asc: i.deleted_at, asc: i.type, asc: i.id],
         limit: ^limit,
         select: %{
@@ -112,6 +120,23 @@ defmodule Storyarn.Projects.ProjectTrash do
     )
   end
 
+  @doc """
+  Returns the newest retention cursor visible at the start of a cleanup run.
+
+  Passing this cursor back as `:through` gives a finite, stable keyset even if
+  users keep moving more items to trash while the worker is running.
+  """
+  @spec deleted_items_retention_cutoff() :: {DateTime.t(), item_type(), integer()} | nil
+  def deleted_items_retention_cutoff do
+    Repo.one(
+      from(i in deleted_items_query(),
+        order_by: [desc: i.deleted_at, desc: i.type, desc: i.id],
+        limit: 1,
+        select: {i.deleted_at, i.type, i.id}
+      )
+    )
+  end
+
   defp retention_cursor_filter(nil), do: dynamic(true)
 
   defp retention_cursor_filter({deleted_at, type, id}) do
@@ -120,6 +145,17 @@ defmodule Storyarn.Projects.ProjectTrash do
       i.deleted_at > ^deleted_at or
         (i.deleted_at == ^deleted_at and i.type > ^type) or
         (i.deleted_at == ^deleted_at and i.type == ^type and i.id > ^id)
+    )
+  end
+
+  defp retention_cutoff_filter(nil), do: dynamic(true)
+
+  defp retention_cutoff_filter({deleted_at, type, id}) do
+    dynamic(
+      [i],
+      i.deleted_at < ^deleted_at or
+        (i.deleted_at == ^deleted_at and i.type < ^type) or
+        (i.deleted_at == ^deleted_at and i.type == ^type and i.id <= ^id)
     )
   end
 

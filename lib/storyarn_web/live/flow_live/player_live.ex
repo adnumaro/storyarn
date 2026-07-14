@@ -60,7 +60,10 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
         _session,
         socket
       ) do
-    socket = assign(socket, :player_session_id, params["player_session"] || Ecto.UUID.generate())
+    socket =
+      socket
+      |> assign(:player_session_id, params["player_session"] || Ecto.UUID.generate())
+      |> assign(:player_tab_id, player_tab_id(socket))
 
     case Projects.get_project_by_slugs(socket.assigns.current_scope, workspace_slug, project_slug) do
       {:ok, project, _membership} ->
@@ -164,7 +167,9 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
     user_id = socket.assigns.current_scope.user.id
     session_id = socket.assigns.player_session_id
 
-    case Flows.debug_session_take({:player, user_id, project.id, session_id}) do
+    tab_id = socket.assigns.player_tab_id
+
+    case Flows.debug_session_take({:player, user_id, project.id, session_id, tab_id}) do
       nil ->
         nil
 
@@ -431,10 +436,11 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
     %{workspace: ws, project: proj, sheets_map: sheets_map, player_mode: mode} = socket.assigns
     user_id = socket.assigns.current_scope.user.id
     session_id = socket.assigns.player_session_id
+    tab_id = socket.assigns.player_tab_id
 
     target_flow = Flows.get_flow_brief(proj.id, flow_id)
 
-    Flows.debug_session_store({:player, user_id, proj.id, session_id}, %{
+    Flows.debug_session_store({:player, user_id, proj.id, session_id, tab_id}, %{
       engine_state: state,
       nodes: nodes,
       connections: connections,
@@ -454,6 +460,14 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   # ===========================================================================
   # Private helpers
   # ===========================================================================
+
+  defp player_tab_id(socket) do
+    if connected?(socket) do
+      socket
+      |> get_connect_params()
+      |> then(&Map.get(&1 || %{}, "player_tab_id", Ecto.UUID.generate()))
+    end
+  end
 
   defp update_slide(socket, new_state) do
     %{nodes: nodes, sheets_map: sheets_map, project: project} = socket.assigns

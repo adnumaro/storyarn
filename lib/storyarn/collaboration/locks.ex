@@ -288,19 +288,17 @@ defmodule Storyarn.Collaboration.Locks do
   defp broadcast_released_async([]), do: :ok
 
   defp broadcast_released_async(released) do
-    Task.Supervisor.start_child(Storyarn.TaskSupervisor, fn ->
+    start_broadcast_task(fn ->
       Enum.each(released, fn {scope, entity_id, lock_info} ->
         broadcast_lock_released(scope, entity_id, lock_info)
       end)
     end)
-
-    :ok
   end
 
   defp broadcast_expired_async([]), do: :ok
 
   defp broadcast_expired_async(expired) do
-    Task.Supervisor.start_child(Storyarn.TaskSupervisor, fn ->
+    start_broadcast_task(fn ->
       Enum.each(expired, fn {{scope, entity_id}, lock_info} ->
         Phoenix.PubSub.broadcast(
           Storyarn.PubSub,
@@ -314,8 +312,15 @@ defmodule Storyarn.Collaboration.Locks do
         )
       end)
     end)
+  end
 
-    :ok
+  defp start_broadcast_task(fun) do
+    case Task.Supervisor.start_child(Storyarn.TaskSupervisor, fun) do
+      {:ok, _pid} -> :ok
+      {:error, _reason} -> :ok
+    end
+  catch
+    :exit, _reason -> :ok
   end
 
   defp schedule_cleanup do

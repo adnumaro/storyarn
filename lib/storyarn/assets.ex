@@ -69,7 +69,7 @@ defmodule Storyarn.Assets do
     |> apply_images_only_filter(opts)
     |> apply_search_filter(opts)
     |> apply_pagination(opts)
-    |> order_by([a], desc: a.inserted_at)
+    |> order_by([a], desc: a.inserted_at, desc: a.id)
     |> Repo.all()
   end
 
@@ -539,7 +539,7 @@ defmodule Storyarn.Assets do
 
     with {:ok, profile} <- UploadPolicy.profile_for(purpose),
          :ok <- validate_binary_upload(binary_data, attrs, profile) do
-      with_upload_capacity(project, byte_size(binary_data), fn ->
+      with_workspace_upload_lock(project, fn _workspace ->
         ensure_and_materialize_asset(binary_data, attrs, project, user, purpose, profile)
       end)
     end
@@ -702,19 +702,14 @@ defmodule Storyarn.Assets do
   defp with_workspace_upload_lock(%Project{} = project, fun) when is_function(fun, 1) do
     fn ->
       workspace = Repo.one!(from(w in Workspace, where: w.id == ^project.workspace_id, lock: "FOR UPDATE"))
-      workspace |> fun.() |> rollback_upload_error()
+      fun.(workspace)
     end
     |> Repo.transaction()
     |> case do
       {:ok, success} -> success
-      {:error, {reason, details}} -> {:error, reason, details}
       {:error, reason} -> {:error, reason}
     end
   end
-
-  defp rollback_upload_error({:error, reason}), do: Repo.rollback(reason)
-  defp rollback_upload_error({:error, reason, details}), do: Repo.rollback({reason, details})
-  defp rollback_upload_error(success), do: success
 
   defp validate_asset_upload_attrs(attrs, upload_kind) do
     changeset =
@@ -842,9 +837,7 @@ defmodule Storyarn.Assets do
   defp create_variant_asset(binary_data, original, project, user, source_hash, purpose, profile) do
     case generate_variant_binary(binary_data, purpose, profile) do
       {:ok, webp_data} ->
-        with :ok <- Billing.can_upload_asset_for_project?(project, byte_size(webp_data)) do
-          upload_variant_asset(webp_data, original, project, user, source_hash, profile)
-        end
+        upload_variant_asset(webp_data, original, project, user, source_hash, profile)
 
       {:error, reason} ->
         {:error, reason}

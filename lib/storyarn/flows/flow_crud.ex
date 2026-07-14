@@ -238,7 +238,8 @@ defmodule Storyarn.Flows.FlowCrud do
     fn ->
       locked_project = Repo.one!(from(p in Project, where: p.id == ^project.id, lock: "FOR UPDATE"))
 
-      case Billing.can_create_item?(locked_project) do
+      # A flow consumes quota for the flow plus its entry and exit nodes.
+      case Billing.can_create_items?(locked_project, 3) do
         :ok -> :ok
         {:error, reason, details} -> Repo.rollback({reason, details})
       end

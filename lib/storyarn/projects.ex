@@ -176,6 +176,7 @@ defmodule Storyarn.Projects do
   """
   @spec list_deleted_items_for_retention(keyword()) :: [map()]
   defdelegate list_deleted_items_for_retention(opts \\ []), to: ProjectTrash
+  defdelegate deleted_items_retention_cutoff(), to: ProjectTrash
 
   # =============================================================================
   # Restoration Lock
