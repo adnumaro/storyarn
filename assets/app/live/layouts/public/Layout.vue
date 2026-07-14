@@ -2,7 +2,7 @@
 import { computed, ref } from "vue";
 import type { CSSProperties } from "vue";
 import { useI18n } from "vue-i18n";
-import { BookOpen, Mail, Menu, PanelsTopLeft, Sparkles, X } from "lucide-vue-next";
+import { BookOpen, Mail, Menu, Newspaper, PanelsTopLeft, Sparkles, X } from "lucide-vue-next";
 import LiveLink from "@components/navigation/LiveLink.vue";
 
 // These are the next screens for anonymous visitors. Warming their route
@@ -21,6 +21,7 @@ void Promise.all([
 interface PublicLayoutUrls {
   home: string;
   docs: string;
+  blog: string;
   contact: string;
   login: string;
   register: string;
@@ -119,6 +120,12 @@ function scrollToPanel(panelIndex: number, targetId: string): void {
               class="inline-flex items-center justify-center rounded-md px-4 py-2.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
             >
               {{ t("landing.common.links.docs") }}
+            </LiveLink>
+            <LiveLink
+              :to="urls.blog"
+              class="inline-flex items-center justify-center rounded-md px-4 py-2.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
+            >
+              {{ t("landing.common.links.blog") }}
             </LiveLink>
             <LiveLink
               :to="urls.contact"
@@ -230,6 +237,14 @@ function scrollToPanel(panelIndex: number, targetId: string): void {
               >
                 <BookOpen class="size-5 text-foreground/45" />
                 {{ t("landing.common.links.docs") }}
+              </LiveLink>
+              <LiveLink
+                :to="urls.blog"
+                class="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-foreground transition-colors hover:bg-accent"
+                @click="closeMobileNav"
+              >
+                <Newspaper class="size-5 text-foreground/45" />
+                {{ t("landing.common.links.blog") }}
               </LiveLink>
               <LiveLink
                 :to="urls.contact"

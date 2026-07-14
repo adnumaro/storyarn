@@ -1,11 +1,13 @@
 defmodule StoryarnWeb.SitemapController do
   use StoryarnWeb, :controller
 
+  alias Storyarn.Blog
   alias Storyarn.Docs
 
   @static_paths [
     "/",
     "/contact",
+    "/blog",
     "/docs",
     "/privacy",
     "/terms"
@@ -20,7 +22,7 @@ defmodule StoryarnWeb.SitemapController do
 
   defp sitemap_xml do
     urls =
-      (@static_paths ++ docs_paths())
+      (@static_paths ++ blog_paths() ++ docs_paths())
       |> Enum.uniq()
       |> Enum.map(&url_entry/1)
 
@@ -36,6 +38,12 @@ defmodule StoryarnWeb.SitemapController do
     "en"
     |> Docs.list_guides()
     |> Enum.map(&"/docs/#{&1.url_path}")
+  end
+
+  defp blog_paths do
+    "en"
+    |> Blog.list_posts()
+    |> Enum.map(&"/blog/#{&1.slug}")
   end
 
   defp url_entry(path) do
