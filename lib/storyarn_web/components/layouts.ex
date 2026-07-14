@@ -118,7 +118,7 @@ defmodule StoryarnWeb.Layouts do
 
   def seo_canonical_url(assigns) do
     case assigns[:canonical_url] do
-      url when is_binary(url) and url != "" -> url
+      url when is_binary(url) and url != "" -> absolute_url(url)
       _ -> assigns |> current_request_path() |> absolute_url()
     end
   end
@@ -139,9 +139,11 @@ defmodule StoryarnWeb.Layouts do
     end
   end
 
-  def seo_article_author(assigns) do
-    case assigns[:seo_article_author] do
-      author when is_binary(author) and author != "" -> author
+  def seo_modified_time(assigns) do
+    case assigns[:seo_modified_on] do
+      %Date{} = date -> Date.to_iso8601(date)
+      %DateTime{} = datetime -> DateTime.to_iso8601(datetime)
+      value when is_binary(value) and value != "" -> value
       _ -> nil
     end
   end
@@ -150,6 +152,13 @@ defmodule StoryarnWeb.Layouts do
     case assigns[:seo_article_tags] do
       tags when is_list(tags) -> Enum.filter(tags, &is_binary/1)
       _ -> []
+    end
+  end
+
+  def seo_json_ld(assigns) do
+    case assigns[:seo_json_ld] do
+      data when is_map(data) -> {:safe, data |> Jason.encode!() |> escape_json_ld()}
+      _ -> nil
     end
   end
 
@@ -168,9 +177,19 @@ defmodule StoryarnWeb.Layouts do
   defp current_request_path(%{conn: %{request_path: path}}) when is_binary(path), do: path
   defp current_request_path(_assigns), do: "/"
 
-  defp absolute_url(path) do
+  @doc false
+  def absolute_url(path) do
     StoryarnWeb.Endpoint.url()
     |> URI.merge(path)
     |> URI.to_string()
+  end
+
+  defp escape_json_ld(json) do
+    json
+    |> String.replace("&", "\\u0026")
+    |> String.replace("<", "\\u003c")
+    |> String.replace(">", "\\u003e")
+    |> String.replace("\u2028", "\\u2028")
+    |> String.replace("\u2029", "\\u2029")
   end
 end

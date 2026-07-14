@@ -99,4 +99,19 @@ defmodule StoryarnWeb.LayoutsTest do
       assert vue.props["network"]["reconnecting"] == "Attempting to reconnect"
     end
   end
+
+  describe "SEO helpers" do
+    test "normalizes explicit canonical paths to absolute URLs" do
+      assert Layouts.seo_canonical_url(%{canonical_url: "/blog"}) ==
+               Layouts.absolute_url("/blog")
+    end
+
+    test "serializes JSON-LD without allowing a script boundary" do
+      headline = "</script><script>alert('xss')</script>"
+
+      assert {:safe, json} = Layouts.seo_json_ld(%{seo_json_ld: %{"headline" => headline}})
+      refute json =~ "</script>"
+      assert Jason.decode!(json)["headline"] == headline
+    end
+  end
 end

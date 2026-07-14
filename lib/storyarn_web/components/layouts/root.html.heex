@@ -15,10 +15,15 @@
     <%= if published_time = seo_published_time(assigns) do %>
       <meta property="article:published_time" content={published_time} />
     <% end %>
-    <%= if article_author = seo_article_author(assigns) do %>
-      <meta property="article:author" content={article_author} />
+    <%= if modified_time = seo_modified_time(assigns) do %>
+      <meta property="article:modified_time" content={modified_time} />
     <% end %>
     <meta :for={tag <- seo_article_tags(assigns)} property="article:tag" content={tag} />
+    <%= if json_ld = seo_json_ld(assigns) do %>
+      <script id="seo-structured-data" type="application/ld+json">
+        <%= json_ld %>
+      </script>
+    <% end %>
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={seo_title(assigns)} />
     <meta name="twitter:description" content={seo_description(assigns)} />

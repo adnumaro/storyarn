@@ -5,18 +5,24 @@ defmodule StoryarnWeb.BlogLive.Index do
 
   alias Storyarn.Blog
 
+  @blog_locale "en"
+
   @impl true
   def mount(_params, _session, socket) do
+    Gettext.put_locale(Storyarn.Gettext, @blog_locale)
+
     {:ok,
      socket
      |> assign(
+       locale: @blog_locale,
        page_title: gettext("Storyarn Blog"),
+       canonical_url: Layouts.absolute_url(~p"/blog"),
        seo_description:
          gettext(
            "Practical articles about branching dialogue, narrative design, worldbuilding, localization, testing, and game engine export."
          )
      )
-     |> stream(:posts, Blog.list_posts())}
+     |> stream(:posts, Blog.list_posts(@blog_locale))}
   end
 
   @impl true
@@ -47,6 +53,12 @@ defmodule StoryarnWeb.BlogLive.Index do
           </div>
 
           <div id="blog-posts" phx-update="stream" class="mt-16 grid gap-6 lg:grid-cols-2">
+            <div
+              id="blog-empty-state"
+              class="hidden only:block rounded-3xl border border-border/70 bg-card/60 p-9 text-muted-foreground"
+            >
+              No published articles yet.
+            </div>
             <article
               :for={{dom_id, post} <- @streams.posts}
               id={dom_id}
@@ -69,8 +81,8 @@ defmodule StoryarnWeb.BlogLive.Index do
 
               <h2 class="mt-5 text-2xl font-semibold leading-tight tracking-tight text-balance sm:text-3xl">
                 <.link
-                  navigate={~p"/blog/#{post.slug}"}
-                  class="after:absolute after:inset-0 focus:outline-none"
+                  href={~p"/blog/#{post.slug}"}
+                  class="after:absolute after:inset-0 focus:outline-none focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
                 >
                   {post.title}
                 </.link>

@@ -2,6 +2,7 @@ defmodule Storyarn.Blog.PostBuilder do
   @moduledoc false
 
   @minutes_per_word 200
+  @default_image "/images/landing/storyarn-lab-hero.webp"
 
   def build(filename, attrs, body) do
     {locale, published_on, slug} = publication_data!(filename)
@@ -14,11 +15,37 @@ defmodule Storyarn.Blog.PostBuilder do
       title: Map.fetch!(attrs, :title),
       description: Map.fetch!(attrs, :description),
       author: Map.get(attrs, :author, "Storyarn Team"),
+      author_url: Map.get(attrs, :author_url, "/"),
+      image: Map.get(attrs, :image, @default_image),
       tags: Map.get(attrs, :tags, []),
       published_on: published_on,
+      updated_on: updated_on!(attrs[:updated_on], published_on),
       reading_time: reading_time(body),
       body: body
     }
+  end
+
+  defp updated_on!(value, published_on) do
+    updated_on = date_attribute!(value, published_on, :updated_on)
+
+    if Date.before?(updated_on, published_on) do
+      raise ArgumentError,
+            "blog post updated_on cannot be earlier than its publication date"
+    end
+
+    updated_on
+  end
+
+  defp date_attribute!(nil, default, _attribute), do: default
+  defp date_attribute!(%Date{} = date, _default, _attribute), do: date
+
+  defp date_attribute!(value, _default, _attribute) when is_binary(value) do
+    Date.from_iso8601!(value)
+  end
+
+  defp date_attribute!(value, _default, attribute) do
+    raise ArgumentError,
+          "blog post #{attribute} must be an ISO date, got: #{inspect(value)}"
   end
 
   defp publication_data!(filename) do

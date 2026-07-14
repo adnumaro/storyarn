@@ -74,24 +74,24 @@ defmodule StoryarnWeb.Components.PublicLayout do
   defp native_public_header(assigns) do
     ~H"""
     <header class="fixed top-5 left-1/2 z-[120] flex h-16 w-[min(calc(100%-48px),1280px)] -translate-x-1/2 items-center rounded-full border border-border bg-background/80 px-5 shadow-[0_20px_80px_rgba(0,0,0,0.28)] backdrop-blur-xl">
-      <.link navigate={@urls.home} class="flex shrink-0 items-center" aria-label="Storyarn home">
+      <.link href={@urls.home} class="flex shrink-0 items-center" aria-label="Storyarn home">
         <img src={~p"/images/logos/logo-name-white.png"} alt="Storyarn" class="h-10.5 w-auto" />
       </.link>
 
       <nav class="ml-8 hidden items-center gap-1 xl:flex" aria-label="Primary navigation">
         <a href="/#features-section" class="btn btn-ghost btn-sm font-medium">Features</a>
         <a href="/#discover" class="btn btn-ghost btn-sm font-medium">Discover</a>
-        <.link navigate={@urls.docs} class="btn btn-ghost btn-sm font-medium">Docs</.link>
-        <.link navigate={@urls.blog} class="btn btn-ghost btn-sm font-medium">Blog</.link>
-        <.link navigate={@urls.contact} class="btn btn-ghost btn-sm font-medium">Contact</.link>
+        <.link href={@urls.docs} class="btn btn-ghost btn-sm font-medium">Docs</.link>
+        <.link href={@urls.blog} class="btn btn-ghost btn-sm font-medium">Blog</.link>
+        <.link href={@urls.contact} class="btn btn-ghost btn-sm font-medium">Contact</.link>
       </nav>
 
       <div class="ml-auto hidden items-center gap-2 xl:flex">
         <%= if @signed_in do %>
-          <.link navigate={@urls.workspaces} class="btn btn-ghost btn-sm">Dashboard</.link>
+          <.link href={@urls.workspaces} class="btn btn-ghost btn-sm">Dashboard</.link>
         <% else %>
           <a href="/#waitlist" class="btn btn-primary btn-sm rounded-full px-5">Request access</a>
-          <.link navigate={@urls.login} class="btn btn-ghost btn-sm">Log in</.link>
+          <.link href={@urls.login} class="btn btn-ghost btn-sm">Log in</.link>
         <% end %>
       </div>
 
@@ -106,17 +106,17 @@ defmodule StoryarnWeb.Components.PublicLayout do
         <ul class="menu dropdown-content z-[130] mt-3 w-64 rounded-2xl border border-border bg-background p-3 shadow-2xl">
           <li><a href="/#features-section"><.icon name="sparkles" class="size-4" /> Features</a></li>
           <li><a href="/#discover"><.icon name="panels-top-left" class="size-4" /> Discover</a></li>
-          <li><.link navigate={@urls.docs}><.icon name="book-open" class="size-4" /> Docs</.link></li>
-          <li><.link navigate={@urls.blog}><.icon name="newspaper" class="size-4" /> Blog</.link></li>
+          <li><.link href={@urls.docs}><.icon name="book-open" class="size-4" /> Docs</.link></li>
+          <li><.link href={@urls.blog}><.icon name="newspaper" class="size-4" /> Blog</.link></li>
           <li>
-            <.link navigate={@urls.contact}><.icon name="mail" class="size-4" /> Contact</.link>
+            <.link href={@urls.contact}><.icon name="mail" class="size-4" /> Contact</.link>
           </li>
           <li class="mt-2 border-t border-border pt-2">
             <%= if @signed_in do %>
-              <.link navigate={@urls.workspaces}>Dashboard</.link>
+              <.link href={@urls.workspaces}>Dashboard</.link>
             <% else %>
               <a href="/#waitlist">Request access</a>
-              <.link navigate={@urls.login}>Log in</.link>
+              <.link href={@urls.login}>Log in</.link>
             <% end %>
           </li>
         </ul>
@@ -143,15 +143,29 @@ defmodule StoryarnWeb.Components.PublicLayout do
           class="flex flex-wrap gap-x-5 gap-y-3 text-sm text-muted-foreground"
           aria-label="Footer navigation"
         >
-          <.link navigate={~p"/docs"} class="transition-colors hover:text-foreground">Docs</.link>
-          <.link navigate={~p"/blog"} class="transition-colors hover:text-foreground">Blog</.link>
-          <.link navigate={~p"/contact"} class="transition-colors hover:text-foreground">
+          <.link href={~p"/docs"} class="transition-colors hover:text-foreground">Docs</.link>
+          <.link href={~p"/blog"} class="transition-colors hover:text-foreground">Blog</.link>
+          <.link href={~p"/contact"} class="transition-colors hover:text-foreground">
             Contact
           </.link>
-          <.link navigate={~p"/privacy"} class="transition-colors hover:text-foreground">
+          <.link href={~p"/privacy"} class="transition-colors hover:text-foreground">
             Privacy
           </.link>
-          <.link navigate={~p"/terms"} class="transition-colors hover:text-foreground">Terms</.link>
+          <.link href={~p"/terms"} class="transition-colors hover:text-foreground">Terms</.link>
+          <.link
+            href={~p"/privacy#cookies"}
+            class="transition-colors hover:text-foreground"
+          >
+            Cookies
+          </.link>
+          <button
+            id="public-manage-cookies"
+            type="button"
+            phx-click={JS.dispatch("storyarn:open-cookie-settings", bubbles: true)}
+            class="transition-colors hover:text-foreground"
+          >
+            Manage cookies
+          </button>
         </nav>
       </div>
     </footer>

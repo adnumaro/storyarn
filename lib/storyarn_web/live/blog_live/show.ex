@@ -6,24 +6,35 @@ defmodule StoryarnWeb.BlogLive.Show do
   alias Storyarn.Blog
   alias Storyarn.Shared.HtmlSanitizer
 
+  @blog_locale "en"
+
   @impl true
-  def mount(_params, _session, socket), do: {:ok, socket}
+  def mount(_params, _session, socket) do
+    Gettext.put_locale(Storyarn.Gettext, @blog_locale)
+    {:ok, assign(socket, :locale, @blog_locale)}
+  end
 
   @impl true
   def handle_params(%{"slug" => slug}, _uri, socket) do
-    case Blog.get_post(slug) do
+    case Blog.get_post(slug, @blog_locale) do
       nil ->
         raise Ecto.NoResultsError, queryable: "blog_posts"
 
       post ->
+        canonical_url = Layouts.absolute_url(~p"/blog/#{post.slug}")
+        image_url = Layouts.absolute_url(post.image)
+
         {:noreply,
          assign(socket,
            page_title: post.title,
+           canonical_url: canonical_url,
            seo_description: post.description,
+           seo_image_url: image_url,
            seo_type: "article",
            seo_published_on: post.published_on,
-           seo_article_author: post.author,
+           seo_modified_on: post.updated_on,
            seo_article_tags: post.tags,
+           seo_json_ld: structured_data(post, canonical_url, image_url),
            post: post
          )}
     end
@@ -39,14 +50,18 @@ defmodule StoryarnWeb.BlogLive.Show do
       theme="dark"
       native
     >
-      <article id="blog-post" class="relative overflow-hidden px-6 pb-24 pt-36 sm:pt-44">
+      <article
+        id="blog-post"
+        lang={@post.locale}
+        class="relative overflow-hidden px-6 pb-24 pt-36 sm:pt-44"
+      >
         <div class="pointer-events-none absolute inset-x-0 top-0 -z-0 h-[34rem] bg-[radial-gradient(circle_at_50%_0%,rgba(45,212,191,0.12),transparent_62%)]">
         </div>
 
         <div class="relative z-10 mx-auto w-full max-w-3xl">
           <.link
             id="blog-back-link"
-            navigate={~p"/blog"}
+            href={~p"/blog"}
             class="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             <.icon name="arrow-left" class="size-4" /> Back to the blog
@@ -109,4 +124,36 @@ defmodule StoryarnWeb.BlogLive.Show do
   end
 
   defp format_date(date), do: Calendar.strftime(date, "%B %-d, %Y")
+
+  defp structured_data(post, canonical_url, image_url) do
+    organization_url = Layouts.absolute_url(~p"/")
+
+    %{
+      "@context" => "https://schema.org",
+      "@type" => "BlogPosting",
+      "author" => %{
+        "@type" => "Organization",
+        "name" => post.author,
+        "url" => Layouts.absolute_url(post.author_url)
+      },
+      "dateModified" => Date.to_iso8601(post.updated_on),
+      "datePublished" => Date.to_iso8601(post.published_on),
+      "description" => post.description,
+      "headline" => post.title,
+      "image" => [image_url],
+      "inLanguage" => post.locale,
+      "keywords" => post.tags,
+      "mainEntityOfPage" => %{"@id" => canonical_url, "@type" => "WebPage"},
+      "publisher" => %{
+        "@type" => "Organization",
+        "logo" => %{
+          "@type" => "ImageObject",
+          "url" => Layouts.absolute_url(~p"/images/logos/favicon-192.png")
+        },
+        "name" => "Storyarn",
+        "url" => organization_url
+      },
+      "url" => canonical_url
+    }
+  end
 end

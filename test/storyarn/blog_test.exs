@@ -14,6 +14,9 @@ defmodule Storyarn.BlogTest do
     assert post.title == "How to Test Branching Dialogue Before Exporting It to Your Game Engine"
     assert post.description =~ "testing branching dialogue"
     assert post.author == "Storyarn Team"
+    assert post.author_url == "/"
+    assert post.image == "/images/landing/storyarn-lab-hero.webp"
+    assert post.updated_on == post.published_on
     assert "Narrative design" in post.tags
     assert post.reading_time >= 1
   end
@@ -28,5 +31,15 @@ defmodule Storyarn.BlogTest do
   test "returns nil for an unknown slug or locale" do
     assert Blog.get_post("missing") == nil
     assert Blog.get_post(@slug, "es") == nil
+  end
+
+  test "rejects an updated date earlier than publication" do
+    assert_raise ArgumentError, ~r/updated_on cannot be earlier/, fn ->
+      Storyarn.Blog.PostBuilder.build(
+        "priv/blog/en/2026-07-14-test-post.md",
+        %{title: "Test post", description: "Description", updated_on: "2026-07-13"},
+        "<p>Body</p>"
+      )
+    end
   end
 end
