@@ -1,0 +1,19 @@
+lib/storyarn_web/live/flow_live/player_live.ex
+  s_64e0193747a7fa::t_04c185ef9b5cfa 63-64,67-68,466,470
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "7f8e08fa156a7419c49b35318df4c02450546964",
+  "prompts": {},
+  "sessions": {
+    "s_64e0193747a7fa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f60f5-6db9-7d70-8a23-0715e021d381",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
