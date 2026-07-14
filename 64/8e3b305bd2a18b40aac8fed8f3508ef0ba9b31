@@ -1,0 +1,111 @@
+lib/storyarn_web/components/public_layout.ex
+  s_3cb2d6b0d2b40c::t_d7ba4306a1aa60 35-41,43,96-98,123,187
+test/storyarn/shared/html_utils_test.exs
+  s_3cb2d6b0d2b40c::t_d7ba4306a1aa60 115-143
+lib/storyarn_web/live/blog_live/show.ex
+  s_3cb2d6b0d2b40c::t_2456c1c534bfff 111,114-115,118-124
+lib/storyarn/shared/html_utils.ex
+  s_3cb2d6b0d2b40c::t_d7ba4306a1aa60 9-12,93-95,98,112,118,121,145,148,151-152,156-166,183,185-190,193-203
+test/storyarn_web/live/blog_live/show_test.exs
+  s_3cb2d6b0d2b40c::t_2456c1c534bfff 47-49
+assets/app/components/navigation/LiveLink.vue
+  s_3cb2d6b0d2b40c::t_0209161a124836 2-3,24-33,37-43
+assets/app/live/auth/login/AuthLoginForm.vue
+  s_3cb2d6b0d2b40c::t_42505a568e9469 27,37,231-240
+assets/app/live/auth/registration/AuthRegistrationForm.vue
+  s_3cb2d6b0d2b40c::t_caa35177c4e913 5,16-26,35,39-45,61-133,151,154,158,164,167,172-190,198,206-208,220,228-230,237,240-247
+assets/app/live/layouts/docs/Layout.vue
+  s_3cb2d6b0d2b40c::t_095f180448aefb 2,15,87-103
+assets/app/live/layouts/public/Layout.vue
+  s_3cb2d6b0d2b40c::t_35813d83ad6a37 8-20,27,147-148,157-158,269-270,278,280-281
+assets/app/live/public/landing/PublicLanding.vue
+  s_3cb2d6b0d2b40c::t_1d43881abaa32b 16-18,22,26-27,66-74,78-79,121-123,128,281
+assets/app/locales/en/auth.json
+  s_3cb2d6b0d2b40c::t_83fdacfd5a383f 16-18,21-24,26-28
+assets/app/locales/en/landing.json
+  s_3cb2d6b0d2b40c::t_d9c600a7f51af6 4,18,177,179-181
+assets/app/locales/en/public.json
+  s_3cb2d6b0d2b40c::t_afa2bb6fd7aa0d 5,48-49,168
+assets/app/locales/es/auth.json
+  s_3cb2d6b0d2b40c::t_49ee7a8fae67dc 16-18,21-24,26-28
+assets/app/locales/es/landing.json
+  s_3cb2d6b0d2b40c::t_2a7e5996acccc7 4,18,177,179-181
+assets/app/locales/es/public.json
+  s_3cb2d6b0d2b40c::t_00fdd4a2e9454e 5,48-49,168
+assets/app/modules/public/landing/sections/cta/CtaSignup.vue
+  s_3cb2d6b0d2b40c::t_d98c40b51b5dfb 2-3,7,15,18,27,29-35,37-57,59-61
+assets/app/shared/navigation/historyScroll.ts
+  s_3cb2d6b0d2b40c::t_a0a8e56cc049d9 1-183
+assets/app/test/components/navigation/LiveLink.test.ts
+  s_3cb2d6b0d2b40c::t_a6c82ab426c886 1-55
+assets/app/test/live/auth/login/AuthLoginForm.test.ts
+  s_3cb2d6b0d2b40c::t_c38f267830f4d0 13,68-75
+assets/app/test/live/auth/registration/AuthRegistrationForm.test.ts
+  s_3cb2d6b0d2b40c::t_2a6f71f50e0b24 1-50
+assets/app/test/live/public/landing/PublicLanding.test.ts
+  s_3cb2d6b0d2b40c::t_4b9f308681efcf 1-58
+assets/app/test/shared/navigation/historyScroll.test.ts
+  s_3cb2d6b0d2b40c::t_e6b325c6218705 1-70
+assets/js/app.js
+  s_3cb2d6b0d2b40c::t_fd75df5e4c5486 13-16,35-41
+lib/storyarn/accounts.ex
+  s_3cb2d6b0d2b40c::t_0df4280108c23b 87-98
+lib/storyarn/accounts/registration.ex
+  s_3cb2d6b0d2b40c::t_1eea436a91697f 23-38,40-50,149-167
+lib/storyarn/accounts/user.ex
+  s_3cb2d6b0d2b40c::t_433903f9a6b251 54-65,117
+lib/storyarn/emails/templates.ex
+  s_3cb2d6b0d2b40c::t_6f91125275fef0 9
+lib/storyarn/product_metrics/taxonomy.ex
+  s_3cb2d6b0d2b40c::t_9857465a26802e 3
+lib/storyarn_web/components/auth_layout.ex
+  s_3cb2d6b0d2b40c::t_12efb245e1baed 23
+lib/storyarn_web/components/docs_layout.ex
+  s_3cb2d6b0d2b40c::t_befdf511df9eaa 31
+lib/storyarn_web/controllers/llms_controller.ex
+  s_3cb2d6b0d2b40c::t_61f99e8130e16c 16
+lib/storyarn_web/live/landing_live/index.ex
+  s_3cb2d6b0d2b40c::t_be22e58ed4b0a2 23,71
+lib/storyarn_web/live/user_live/forgot_password.ex
+  s_3cb2d6b0d2b40c::t_67f799bfbef7a8 15-16
+lib/storyarn_web/live/user_live/login.ex
+  s_3cb2d6b0d2b40c::t_7a4773ac57c9d6 15-16,41
+lib/storyarn_web/live/user_live/registration.ex
+  s_3cb2d6b0d2b40c::t_91d6365be2127e 10-11,26-27,43,58-67,88,95,110-117,121-136
+lib/storyarn_web/live/user_live/reset_password.ex
+  s_3cb2d6b0d2b40c::t_e2a1a5650357d7 10-11
+lib/storyarn_web/router.ex
+  s_3cb2d6b0d2b40c::t_a877983f087699 341-345,352-355
+posthog-setup-report.md
+  s_3cb2d6b0d2b40c::t_cabc9629b7f74d 4
+priv/gettext/en/LC_MESSAGES/emails.po
+  s_3cb2d6b0d2b40c::t_759bade3788641 14,19,24,29,34,39,44,49,54-55,60-61,78-79,84-87,98-101,103,107,109,112,114,117,119,122,124,127-128,130,133-134,136,139-140,142,145,148,151,153,156,158,161,163,166-167,169,172,174,177,179
+priv/gettext/es/LC_MESSAGES/emails.po
+  s_3cb2d6b0d2b40c::t_e111ab9f73ccf8 14,19,24,29,34,39,44,49,54-55,60-61,78-79,84-87,99-101,106-107,127-128,133-134,139-140,145-146,151,156,161,166-167,172,177
+scripts/verify-live-sessions.mjs
+  s_3cb2d6b0d2b40c::t_3ab16474125de5 51-69,75
+test/storyarn_web/live/landing_live/index_test.exs
+  s_3cb2d6b0d2b40c::t_3f087ac0086131 12-14,17-24
+test/storyarn_web/live/user_live/auth_redirect_test.exs
+  s_3cb2d6b0d2b40c::t_7d277e811ab4f6 20-24
+test/storyarn_web/live/user_live/login_test.exs
+  s_3cb2d6b0d2b40c::t_b0bd9b229bb553 19,74-75,77-78
+test/storyarn_web/live/user_live/registration_test.exs
+  s_3cb2d6b0d2b40c::t_45f0a2f92494eb 1-5,8-13,16-38,40-91,93-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "648e3b305bd2a18b40aac8fed8f3508ef0ba9b31",
+  "prompts": {},
+  "sessions": {
+    "s_3cb2d6b0d2b40c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b4a-b042-7412-8d10-5e6b95b13ee5",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
