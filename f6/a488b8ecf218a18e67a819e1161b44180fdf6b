@@ -1,0 +1,23 @@
+test/storyarn/assets/storage_compensation_test.exs
+  s_64e0193747a7fa::t_902142f50dd9cb 149-170
+lib/storyarn/assets/storage_compensation.ex
+  s_64e0193747a7fa::t_902142f50dd9cb 108-112,394-398
+  s_64e0193747a7fa::t_0bcb59fd4f60f8 107
+  s_64e0193747a7fa::t_a3a6edf556903e 399
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "f6a488b8ecf218a18e67a819e1161b44180fdf6b",
+  "prompts": {},
+  "sessions": {
+    "s_64e0193747a7fa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f60f5-6db9-7d70-8a23-0715e021d381",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
