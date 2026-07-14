@@ -12,7 +12,7 @@ defmodule StoryarnWeb.LlmsController do
                    "and are intentionally omitted."
 
   @product_links [
-    {"Storyarn", "/", "Product overview and waitlist."},
+    {"Storyarn", "/", "Product overview and open registration."},
     {"Documentation", "/docs", "Public product documentation and workflow guides."},
     {"Contact", "/contact", "Contact Storyarn."}
   ]

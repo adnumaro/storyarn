@@ -2,7 +2,7 @@
   "public": {
     "layout": {
       "dashboard": "Dashboard",
-      "request_access": "Request access",
+      "create_account": "Create account",
       "log_in": "Log in",
       "menu": "Menu",
       "close": "Close",
@@ -45,8 +45,8 @@
           "intro": "We may process the following categories of data depending on how you use the service:",
           "items": {
             "waitlist": {
-              "label": "Early-access waitlist",
-              "text": "email, profession or role, intended use, current tool or alternative being considered, how you heard about us, and any optional detail you provide. We may keep non-identifying or aggregated answers for product analytics."
+              "label": "Former early-access waitlist",
+              "text": "For people who joined before open registration: email, profession or role, intended use, current tool or alternative considered, how they heard about us, and any optional detail provided. We may keep non-identifying or aggregated answers for product analytics."
             },
             "account": {
               "label": "Account",
@@ -165,7 +165,7 @@
         },
         "retention": {
           "title": "6. Retention",
-          "main": "We keep data for as long as needed to manage early access, provide the service, maintain security, resolve incidents, or comply with legal obligations. Waitlist email is kept while the early-access program remains open or until you request deletion; non-identifying or aggregated waitlist answers may be kept for product analytics. Account login data is kept while the account remains active.",
+          "main": "We keep data for as long as needed to manage early access, provide the service, maintain security, resolve incidents, or comply with legal obligations. Historical waitlist email is kept only while needed to document the former early-access program or until you request deletion; non-identifying or aggregated waitlist answers may be kept for product analytics. Account login data is kept while the account remains active.",
           "technical": "Workspace, project, asset, and user-content records may be kept for up to 12 months after account, workspace, or project closure when reasonably necessary to investigate misuse, enforce these terms, protect the service, or handle legal claims. Some technical retention periods are defined by the product: the remember-me cookie lasts 14 days, cookie consent up to 24 months, frontend PostHog persistence up to 365 days, certain internal jobs are pruned after 7 days, and some deleted items or snapshots may be kept temporarily for restoration. Provider backups and logs follow their technical lifecycle."
         },
         "rights": {

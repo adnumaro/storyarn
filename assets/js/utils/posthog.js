@@ -18,7 +18,6 @@ const eventPropertyAllowlist = new Map([
   ["project imported", new Set(["has_conflicts"])],
   ["user logged in", new Set(["auth_method"])],
   ["user signed up", new Set(["auth_method"])],
-  ["waitlist joined", new Set()],
   ["workspace created", new Set(["workspace_id"])],
 ]);
 

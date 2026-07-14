@@ -20,7 +20,7 @@ defmodule StoryarnWeb.Components.AuthLayout do
 
   def auth(assigns) do
     ~H"""
-    <div id="auth-layout-wrapper">
+    <div id="auth-layout-wrapper" class="min-h-screen bg-background text-foreground">
       <.vue v-component="live/layouts/auth/Layout" v-socket={@socket} id="auth-layout" />
 
       {render_slot(@inner_block)}

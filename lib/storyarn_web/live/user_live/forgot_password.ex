@@ -12,6 +12,8 @@ defmodule StoryarnWeb.UserLive.ForgotPassword do
 
   require Logger
 
+  on_mount {StoryarnWeb.UserAuth, :redirect_if_user_is_authenticated}
+
   @request_types %{email: :string}
 
   @impl true
