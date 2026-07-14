@@ -1,0 +1,90 @@
+assets/app/locales/en/landing.json
+  s_3cb2d6b0d2b40c::t_a4f9648a016160 10
+lib/storyarn/blog/post_builder.ex
+  s_3cb2d6b0d2b40c::t_6db0a100f1fb67 1-84
+  s_3cb2d6b0d2b40c::t_f0d49000d67f67 85
+lib/storyarn_web/components/icon_components.ex
+  s_3cb2d6b0d2b40c::t_cfa9a62bb85b75 1-45
+  s_3cb2d6b0d2b40c::t_ae39c2c6b62980 46-66
+lib/storyarn/blog.ex
+  s_3cb2d6b0d2b40c::t_6db0a100f1fb67 1-14
+test/storyarn_web/live/blog_live/index_test.exs
+  s_3cb2d6b0d2b40c::t_c2182b9977b15a 1-21
+assets/app/live/layouts/public/Layout.vue
+  s_3cb2d6b0d2b40c::t_a4f9648a016160 5,11,110-115,228-234
+  s_6ce2be7da793bc::t_01ed8241178a70 235
+lib/storyarn_web/components/layouts/root.html.heex
+  s_3cb2d6b0d2b40c::t_a4f9648a016160 15-21
+lib/storyarn_web/components/layouts.ex
+  s_3cb2d6b0d2b40c::t_a4f9648a016160 133-155
+lib/storyarn_web/live/blog_live/index.ex
+  s_3cb2d6b0d2b40c::t_dbcb0c3b5fdc0c 1-88
+  s_3cb2d6b0d2b40c::t_316dc9c11b1293 89-99
+lib/storyarn_web/components/public_layout.ex
+  s_3cb2d6b0d2b40c::t_dbcb0c3b5fdc0c 22-25,36-58,60-61,71-152,157
+  s_3cb2d6b0d2b40c::t_3c8b187eac7acb 153-156,158-160,165
+lib/storyarn_web/controllers/sitemap_controller.ex
+  s_3cb2d6b0d2b40c::t_a4f9648a016160 4,10,25,43-45
+  s_3cb2d6b0d2b40c::t_f66c57fbdb9069 46-48
+lib/storyarn_web/controllers/llms_controller.ex
+  s_3cb2d6b0d2b40c::t_a4f9648a016160 4,18,46,53-68
+  s_3cb2d6b0d2b40c::t_fe146a3b29a7b8 69-70
+test/storyarn_web/controllers/sitemap_controller_test.exs
+  s_3cb2d6b0d2b40c::t_c2182b9977b15a 4,12-13
+lib/storyarn_web/live/blog_live/show.ex
+  s_3cb2d6b0d2b40c::t_79c22715fabe04 27,85
+  s_3cb2d6b0d2b40c::t_dbcb0c3b5fdc0c 1-15,17-26,28-56,60,66-74,79-84,86-88,95-98,102-112
+  s_3cb2d6b0d2b40c::t_0227f525d584d7 16,57-59,61-65,75-78,89-94,99-101
+lib/storyarn/blog/post.ex
+  s_3cb2d6b0d2b40c::t_6db0a100f1fb67 1-28
+assets/js/utils/posthog.js
+  s_3cb2d6b0d2b40c::t_a4f9648a016160 28
+assets/app/live/public/PublicFooter.vue
+  s_3cb2d6b0d2b40c::t_a4f9648a016160 54-59
+  s_6ce2be7da793bc::t_d76a5c9cf33628 53
+test/storyarn/blog_test.exs
+  s_3cb2d6b0d2b40c::t_c2182b9977b15a 1-23,25-32
+  s_3cb2d6b0d2b40c::t_0227f525d584d7 24
+test/storyarn_web/live/blog_live/show_test.exs
+  s_3cb2d6b0d2b40c::t_c2182b9977b15a 1-13,20-33
+  s_3cb2d6b0d2b40c::t_5b96208db670b2 15-18
+  s_3cb2d6b0d2b40c::t_73f4392030fe90 14,19
+test/storyarn_web/controllers/llms_controller_test.exs
+  s_3cb2d6b0d2b40c::t_c2182b9977b15a 15,21-25
+lib/storyarn_web.ex
+  s_3cb2d6b0d2b40c::t_cfa9a62bb85b75 93
+priv/blog/en/2026-07-14-test-branching-dialogue-before-export.md
+  s_3cb2d6b0d2b40c::t_6db0a100f1fb67 1-181
+assets/app/locales/es/landing.json
+  s_3cb2d6b0d2b40c::t_a4f9648a016160 10
+config/dev.exs
+  s_3cb2d6b0d2b40c::t_a4f9648a016160 91
+lib/storyarn_web/router.ex
+  s_3cb2d6b0d2b40c::t_dbcb0c3b5fdc0c 361-362
+assets/app/test/utils/posthog.test.ts
+  s_3cb2d6b0d2b40c::t_c2182b9977b15a 89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "439528df66a936d3e87f8028dfb71e78b1218b45",
+  "prompts": {},
+  "sessions": {
+    "s_3cb2d6b0d2b40c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b4a-b042-7412-8d10-5e6b95b13ee5",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_6ce2be7da793bc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b48-ed5a-71b3-916d-5a5630eac623",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
