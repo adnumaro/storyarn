@@ -1,0 +1,149 @@
+lib/storyarn_web/components/docs_layout.ex
+  s_78c875f28a54f0::t_5d61a5d0375068 31
+lib/storyarn_web/router.ex
+  s_78c875f28a54f0::t_70d4f451ba42c0 353
+  s_78c875f28a54f0::t_3577055d34dc1d 350-352
+  s_64e0193747a7fa::t_6c644b3631c70b 339-342
+  s_78c875f28a54f0::t_e9f43856dd46e6 343
+assets/app/modules/public/landing/sections/cta/CtaSignup.vue
+  s_78c875f28a54f0::t_acd75f743fd9bf 1-66
+assets/app/live/auth/registration/AuthRegistrationForm.vue
+  s_78c875f28a54f0::t_df0b1a9ba001b8 158,237,240
+  s_78c875f28a54f0::t_d2c1ce3437ecbd 18-22
+  s_78c875f28a54f0::t_b922782c97662b 130-133
+  s_78c875f28a54f0::t_a3c4a9b2ab9f05 182
+  s_78c875f28a54f0::t_a58b51dff55ede 5,24-26,35,39-45,151,154,164,167,172-173,175-181,183,187-190,241-247
+  s_78c875f28a54f0::t_e3bddfbc1ad586 16-17,23,61-128,174,184-186,198,206-208,220,228-230
+  s_78c875f28a54f0::t_d7f64b0b59b93e 129
+lib/storyarn/emails/templates.ex
+  s_78c875f28a54f0::t_ac75cbda8672dd 9
+lib/storyarn_web/live/user_live/forgot_password.ex
+  s_78c875f28a54f0::t_db1410c438473e 15
+  s_78c875f28a54f0::t_9a285bad76a966 16
+test/storyarn_web/live/landing_live/index_test.exs
+  s_78c875f28a54f0::t_e3bddfbc1ad586 13
+  s_78c875f28a54f0::t_18328f714dc593 12,14,17-23
+  s_78c875f28a54f0::t_eae45e344d4cb3 24
+lib/storyarn_web/live/user_live/login.ex
+  s_78c875f28a54f0::t_a58b51dff55ede 41
+  s_78c875f28a54f0::t_db1410c438473e 15
+  s_78c875f28a54f0::t_232501d46d1ffc 16
+test/storyarn_web/live/user_live/registration_test.exs
+  s_78c875f28a54f0::t_e3bddfbc1ad586 25-26
+  s_78c875f28a54f0::t_18328f714dc593 1-7,10-24,27-46,51-82
+  s_78c875f28a54f0::t_a35c8e74e3c391 8-9,47-50
+scripts/verify-live-sessions.mjs
+  s_78c875f28a54f0::t_a5477b34a30fbc 75
+  s_78c875f28a54f0::t_5d61a5d0375068 51-69
+lib/storyarn/product_metrics/taxonomy.ex
+  s_78c875f28a54f0::t_ac75cbda8672dd 3
+assets/app/locales/es/public.json
+  s_78c875f28a54f0::t_ef190c9a163a26 48-49,168
+  s_78c875f28a54f0::t_b922782c97662b 5
+test/storyarn_web/live/user_live/login_test.exs
+  s_78c875f28a54f0::t_18328f714dc593 19,74-75,77-78
+assets/app/locales/es/auth.json
+  s_78c875f28a54f0::t_b922782c97662b 16-18,21-24,26-28
+assets/app/locales/en/landing.json
+  s_78c875f28a54f0::t_b922782c97662b 4,17,176,178-180
+lib/storyarn_web/components/auth_layout.ex
+  s_78c875f28a54f0::t_e3bddfbc1ad586 23
+priv/gettext/emails.pot
+  s_78c875f28a54f0::t_a3c4a9b2ab9f05 106-107,127-128
+lib/storyarn/accounts/registration.ex
+  s_78c875f28a54f0::t_70d4f451ba42c0 34-69,166-169,171
+  s_78c875f28a54f0::t_9ea156c32414a7 170
+  s_78c875f28a54f0::t_b16b3f906717f9 172
+assets/app/live/auth/login/AuthLoginForm.vue
+  s_78c875f28a54f0::t_a58b51dff55ede 27,37,231-240
+lib/storyarn_web/live/user_live/reset_password.ex
+  s_78c875f28a54f0::t_db1410c438473e 10
+  s_78c875f28a54f0::t_f23b56fc1fc765 11
+assets/app/test/shared/navigation/historyScroll.test.ts
+  s_78c875f28a54f0::t_090e54fbf1dd77 1-4,6,8-9,12-13,15,17-20,29-33
+  s_78c875f28a54f0::t_ad793c7479c715 10-11,16
+  s_78c875f28a54f0::t_fb397fc1abac31 5,7,14,21-28
+lib/storyarn_web/components/public_layout.ex
+  s_78c875f28a54f0::t_e3bddfbc1ad586 31-37
+  s_78c875f28a54f0::t_acd75f743fd9bf 63
+lib/storyarn_web/controllers/llms_controller.ex
+  s_78c875f28a54f0::t_b922782c97662b 15
+assets/app/live/layouts/public/Layout.vue
+  s_78c875f28a54f0::t_5d61a5d0375068 13,16
+  s_78c875f28a54f0::t_a58b51dff55ede 24,138-139,148-149,252-253,261,263-264
+  s_78c875f28a54f0::t_e3bddfbc1ad586 8-12,14-15,17-18
+lib/storyarn_web/live/user_live/registration.ex
+  s_78c875f28a54f0::t_18328f714dc593 110-117
+  s_78c875f28a54f0::t_e3bddfbc1ad586 59,67
+  s_78c875f28a54f0::t_70d4f451ba42c0 26-27,43,58,60-66,88,95,121-134
+  s_78c875f28a54f0::t_db1410c438473e 10
+  s_78c875f28a54f0::t_a3c4a9b2ab9f05 135-136
+  s_78c875f28a54f0::t_08fa4f6fc01abc 11
+assets/app/test/live/auth/registration/AuthRegistrationForm.test.ts
+  s_78c875f28a54f0::t_6c58f120da22be 1-50
+posthog-setup-report.md
+  s_78c875f28a54f0::t_a1f7bd82d5f35c 4
+assets/app/components/navigation/LiveLink.vue
+  s_78c875f28a54f0::t_fb397fc1abac31 2-3,32
+  s_78c875f28a54f0::t_4f1643910445d6 24-31,33,37-43
+assets/app/test/components/navigation/LiveLink.test.ts
+  s_78c875f28a54f0::t_fb397fc1abac31 4,10,18-22,32-37
+  s_78c875f28a54f0::t_ce30c97901f3bb 7,12,27,47
+  s_78c875f28a54f0::t_4f1643910445d6 1-3,5-6,8-9,11,13-17,23-26,28-31,38-46,48-54
+assets/app/locales/en/auth.json
+  s_78c875f28a54f0::t_b922782c97662b 16-18,21-24,26-28
+test/storyarn_web/live/user_live/auth_redirect_test.exs
+  s_78c875f28a54f0::t_18328f714dc593 20-24
+assets/app/live/public/landing/PublicLanding.vue
+  s_78c875f28a54f0::t_fa1255455e689e 65-69,71-73
+  s_78c875f28a54f0::t_acd75f743fd9bf 16-17,22,118-120,125,278
+  s_78c875f28a54f0::t_7fca0617348573 70
+  s_78c875f28a54f0::t_090e54fbf1dd77 18,26
+lib/storyarn/accounts.ex
+  s_78c875f28a54f0::t_70d4f451ba42c0 87-98
+lib/storyarn/accounts/user.ex
+  s_78c875f28a54f0::t_70d4f451ba42c0 54-65
+assets/app/test/live/auth/login/AuthLoginForm.test.ts
+  s_78c875f28a54f0::t_a3c4a9b2ab9f05 75
+  s_78c875f28a54f0::t_18328f714dc593 13,68-74
+assets/app/locales/en/public.json
+  s_78c875f28a54f0::t_b922782c97662b 5
+  s_78c875f28a54f0::t_ef190c9a163a26 48-49,168
+assets/app/shared/navigation/historyScroll.ts
+  s_78c875f28a54f0::t_a0de8be61fcfcc 34-36
+  s_78c875f28a54f0::t_090e54fbf1dd77 1,3-4,7-13,41,44-53,59-71
+  s_78c875f28a54f0::t_fb397fc1abac31 2,5-6,14-33,37-40,42-43,54-58
+assets/app/locales/es/landing.json
+  s_78c875f28a54f0::t_b922782c97662b 4,17,176,178-180
+assets/app/test/live/public/landing/PublicLanding.test.ts
+  s_78c875f28a54f0::t_bfe3b30caebb59 1-39
+assets/js/app.js
+  s_78c875f28a54f0::t_090e54fbf1dd77 13-16,35-40
+  s_78c875f28a54f0::t_0275f1e5528732 41
+lib/storyarn_web/live/landing_live/index.ex
+  s_78c875f28a54f0::t_acd75f743fd9bf 23,71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c05344219382933f068d2c9a678f0d7e7b6363a9",
+  "prompts": {},
+  "sessions": {
+    "s_64e0193747a7fa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f60f5-6db9-7d70-8a23-0715e021d381",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": null
+    },
+    "s_78c875f28a54f0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6091-5fe4-7632-bb01-72ea75f0d306",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
