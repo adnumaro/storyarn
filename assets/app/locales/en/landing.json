@@ -1,7 +1,7 @@
 {
   "landing": {
     "common": {
-      "badge": "Private beta",
+      "badge": "Open beta",
       "links": {
         "features": "Features",
         "discover": "Discover",
@@ -15,7 +15,7 @@
       "hero": {
         "title": "Design interactive narratives without losing control of the world.",
         "desc": "Storyarn connects sheets, dialogue, scenes, localization, and export so every narrative decision lives in one traceable project.",
-        "primary_cta": "Request access"
+        "primary_cta": "Create your account"
       },
       "features": {
         "title": "A production base for narrative teams.",
@@ -174,86 +174,11 @@
       }
     },
     "cta": {
+      "eyebrow": "Registration is open",
       "title": "Start building your next narrative",
-      "desc": "We are onboarding a small group of narrative designers and game studios. Join the waitlist — we'll contact you when your slot becomes available.",
-      "placeholder": "you{'@'}studio.com",
-      "btn": "Request early access",
-      "submitting": "Sending...",
-      "success": "You're on the list. We'll reach out when your spot is ready.",
-      "error": "We couldn't submit this. Try again.",
-      "details_success": "Thanks — this helps us prioritize your invite.",
-      "details_error": "We couldn't save those details. You're still on the waitlist.",
-      "footer": "No spam. We'll only write when the time comes.",
-      "details_modal": {
-        "title": "Help us prioritize your invite",
-        "desc": "These details are optional for access, but they help us understand what you're building and what you may be replacing.",
-        "save": "Save details",
-        "saving": "Saving..."
-      },
-      "metrics": {
-        "email": {
-          "label": "Email"
-        },
-        "profession": {
-          "label": "What best describes you?",
-          "placeholder": "Select your role",
-          "options": {
-            "narrative_designer": "Narrative Designer",
-            "game_designer": "Game Designer",
-            "writer": "Writer",
-            "screenwriter": "Screenwriter",
-            "developer": "Developer",
-            "producer": "Producer",
-            "student": "Student",
-            "other": "Other"
-          }
-        },
-        "primary_interest": {
-          "label": "What are you building?",
-          "placeholder": "Select a use case",
-          "options": {
-            "game_narrative": "Game narrative",
-            "interactive_fiction": "Interactive fiction",
-            "worldbuilding": "Worldbuilding",
-            "screenplay_film": "Screenplay / film",
-            "novel_writing": "Novel writing",
-            "team_collaboration": "Team collaboration",
-            "other": "Other"
-          }
-        },
-        "discovery_source": {
-          "label": "How did you hear about Storyarn?",
-          "placeholder": "Select a source",
-          "options": {
-            "search": "Search",
-            "x_twitter": "X / Twitter",
-            "reddit": "Reddit",
-            "discord": "Discord",
-            "youtube": "YouTube",
-            "friend_colleague": "Friend / colleague",
-            "article_blog": "Article / blog",
-            "other": "Other"
-          }
-        },
-        "current_tool": {
-          "label": "Are you replacing another tool?",
-          "placeholder": "Select one",
-          "options": {
-            "none": "No / not currently",
-            "articy_draft": "articy:draft",
-            "arcweave": "Arcweave",
-            "twine": "Twine",
-            "notion": "Notion",
-            "miro_figjam": "Miro / FigJam",
-            "final_draft_celtx": "Final Draft / Celtx",
-            "other": "Other"
-          }
-        },
-        "current_tool_other": {
-          "label": "Tool name",
-          "placeholder": "Which tool?"
-        }
-      }
+      "desc": "Registration is open. Create your account and start connecting worldbuilding, dialogue, scenes, localization, and export in one workspace.",
+      "btn": "Create your account",
+      "footer": "Free during early access. No invitation required."
     },
     "footer": {
       "tagline": "Design characters, dialogues, worlds, and localization in a single connected project. Built for narrative teams shipping interactive stories."

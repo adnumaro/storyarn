@@ -7,6 +7,8 @@ defmodule StoryarnWeb.UserLive.ResetPassword do
   alias Storyarn.Accounts.User
   alias StoryarnWeb.UserAuth
 
+  on_mount {UserAuth, :redirect_if_user_is_authenticated}
+
   @impl true
   def render(assigns) do
     ~H"""

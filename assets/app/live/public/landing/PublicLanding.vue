@@ -13,21 +13,18 @@ import {
   Table2,
 } from "lucide-vue-next";
 import LandingFooter from "../PublicFooter.vue";
-import CtaWaitlist from "@modules/public/landing/sections/cta/CtaWaitlist.vue";
-
-interface WaitlistOptions {
-  professions: string[];
-  primary_interests: string[];
-  discovery_sources: string[];
-  current_tools: string[];
-}
+import LiveLink from "@components/navigation/LiveLink.vue";
+import CtaSignup from "@modules/public/landing/sections/cta/CtaSignup.vue";
+import { consumeHistoryScroll } from "@app/shared/navigation/historyScroll";
 
 defineProps<{
   isLoggedIn?: boolean;
-  waitlistOptions: WaitlistOptions;
+  registrationUrl: string;
 }>();
 
 const workflowSteps = ["define", "write", "explore", "export"] as const;
+const initialScrollPosition = consumeHistoryScroll();
+let restoreScrollFrame: number | undefined;
 
 const pillars = [
   {
@@ -66,9 +63,20 @@ const operations = [
 onMounted(() => {
   document.documentElement.classList.add("dark");
   document.documentElement.style.scrollBehavior = "smooth";
+
+  // LiveView restores history scroll before this async Vue surface has its
+  // full height. Restore once more after mount so browser scroll anchoring
+  // cannot turn a small auth-page offset into a jump down the landing page.
+  restoreScrollFrame = window.requestAnimationFrame(() => {
+    document.documentElement.style.scrollBehavior = "auto";
+    window.scrollTo(0, initialScrollPosition);
+    document.documentElement.style.scrollBehavior = "smooth";
+  });
 });
 
 onUnmounted(() => {
+  if (restoreScrollFrame !== undefined) window.cancelAnimationFrame(restoreScrollFrame);
+
   const stored = localStorage.getItem("phx:theme");
   const shouldBeDark = stored
     ? stored === "dark"
@@ -110,13 +118,14 @@ onUnmounted(() => {
             {{ $t("landing.v2.hero.desc") }}
           </p>
           <div class="mt-8 flex flex-wrap gap-3">
-            <a
-              href="#waitlist"
+            <LiveLink
+              id="hero-registration-link"
+              :to="registrationUrl"
               class="inline-flex h-11 items-center justify-center rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-primary/90"
             >
               {{ $t("landing.v2.hero.primary_cta") }}
               <ArrowRight class="ml-2 size-4" />
-            </a>
+            </LiveLink>
             <a
               href="#workflow"
               class="inline-flex h-11 items-center justify-center rounded-md border border-border bg-background/70 px-5 text-sm font-semibold text-foreground transition hover:bg-accent"
@@ -269,7 +278,7 @@ onUnmounted(() => {
       </div>
     </section>
 
-    <CtaWaitlist :options="waitlistOptions" />
+    <CtaSignup :registration-url="registrationUrl" />
     <LandingFooter />
   </div>
 </template>

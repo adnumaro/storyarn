@@ -32,12 +32,15 @@ defmodule StoryarnWeb.Components.PublicLayout do
       |> assign(:public_layout_signed_in, signed_in?(assigns.current_scope))
 
     ~H"""
-    <div id="public-layout-wrapper">
+    <div
+      id="public-layout-wrapper"
+      class={[
+        "min-h-screen bg-background text-foreground",
+        @theme == "dark" && "dark"
+      ]}
+    >
       <%= if @native do %>
-        <div class={[
-          "flex min-h-screen w-full flex-col bg-background text-foreground",
-          @theme == "dark" && "dark"
-        ]}>
+        <div class="flex min-h-screen w-full flex-col">
           <.native_public_header
             urls={@public_layout_urls}
             signed_in={@public_layout_signed_in}
@@ -90,7 +93,9 @@ defmodule StoryarnWeb.Components.PublicLayout do
         <%= if @signed_in do %>
           <.link href={@urls.workspaces} class="btn btn-ghost btn-sm">Dashboard</.link>
         <% else %>
-          <a href="/#waitlist" class="btn btn-primary btn-sm rounded-full px-5">Request access</a>
+          <.link href={@urls.register} class="btn btn-primary btn-sm rounded-full px-5">
+            Create account
+          </.link>
           <.link href={@urls.login} class="btn btn-ghost btn-sm">Log in</.link>
         <% end %>
       </div>
@@ -115,7 +120,7 @@ defmodule StoryarnWeb.Components.PublicLayout do
             <%= if @signed_in do %>
               <.link href={@urls.workspaces}>Dashboard</.link>
             <% else %>
-              <a href="/#waitlist">Request access</a>
+              <.link href={@urls.register}>Create account</.link>
               <.link href={@urls.login}>Log in</.link>
             <% end %>
           </li>
@@ -179,6 +184,7 @@ defmodule StoryarnWeb.Components.PublicLayout do
       blog: ~p"/blog",
       contact: ~p"/contact",
       login: ~p"/users/log-in",
+      register: ~p"/users/register",
       workspaces: ~p"/workspaces"
     }
   end

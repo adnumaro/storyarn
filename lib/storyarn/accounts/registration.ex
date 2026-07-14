@@ -20,15 +20,34 @@ defmodule Storyarn.Accounts.Registration do
   this cross-context operation should move to a Service module.
   """
   def register_user(attrs) do
-    Repo.transact(fn ->
-      with {:ok, user} <- insert_user(attrs),
-           {:ok, _workspace} <- create_default_workspace(user) do
+    register_with_default_workspace(attrs, &insert_user/1)
+  end
+
+  @doc """
+  Registers a public user with a password and creates a default workspace.
+
+  Public registrations are confirmed immediately because password-based sign
+  up is the account verification step currently exposed by the product.
+  """
+  def register_user_with_password(attrs) do
+    result = register_with_default_workspace(attrs, &insert_public_user/1)
+
+    case result do
+      {:ok, user} ->
+        Analytics.identify_user(user)
+        Analytics.track(user, "user signed up", %{auth_method: "password"})
         {:ok, user}
-      else
-        {:error, :limit_reached, _details} -> {:error, :workspace_limit_reached}
-        {:error, _} = error -> error
-      end
-    end)
+
+      error ->
+        error
+    end
+  end
+
+  @doc """
+  Returns a changeset for public user registration.
+  """
+  def change_user_registration(%User{} = user, attrs \\ %{}, opts \\ []) do
+    User.registration_changeset(user, attrs, opts)
   end
 
   @doc """
@@ -121,22 +140,29 @@ defmodule Storyarn.Accounts.Registration do
     end
   end
 
-  @doc """
-  Delivers the waitlist invite instructions to the given user.
-  """
-  def deliver_waitlist_invite_instructions(%User{} = user, invite_url_fun) when is_function(invite_url_fun, 1) do
-    with {:ok, {:registration_required, encoded_token}} <- create_registration_invite_token(user) do
-      Storyarn.Accounts.UserNotifier.deliver_waitlist_invite(
-        user.email,
-        invite_url_fun.(encoded_token)
-      )
-    end
-  end
-
   defp insert_user(attrs) do
     %User{}
     |> User.email_changeset(attrs)
     |> Repo.insert()
+  end
+
+  defp insert_public_user(attrs) do
+    %User{}
+    |> User.registration_changeset(attrs)
+    |> User.confirm_changeset()
+    |> Repo.insert()
+  end
+
+  defp register_with_default_workspace(attrs, insert_user) do
+    Repo.transact(fn ->
+      with {:ok, user} <- insert_user.(attrs),
+           {:ok, _workspace} <- create_default_workspace(user) do
+        {:ok, user}
+      else
+        {:error, :limit_reached, _details} -> {:error, :workspace_limit_reached}
+        {:error, _} = error -> error
+      end
+    end)
   end
 
   defp create_default_workspace(user) do

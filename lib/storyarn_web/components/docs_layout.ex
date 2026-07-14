@@ -28,7 +28,7 @@ defmodule StoryarnWeb.Components.DocsLayout do
     assigns = assign(assigns, :docs_layout, docs_layout_props(assigns))
 
     ~H"""
-    <div id="docs-layout-wrapper">
+    <div id="docs-layout-wrapper" class="h-screen overflow-hidden bg-surface text-foreground">
       <.vue
         v-component="live/layouts/docs/Layout"
         v-socket={@socket}

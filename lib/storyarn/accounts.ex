@@ -27,8 +27,6 @@ defmodule Storyarn.Accounts do
   # Type Definitions
   # =============================================================================
 
-  alias Storyarn.Accounts.WaitlistEntry
-
   @type user :: User.t()
   @type user_token :: UserToken.t()
   @type changeset :: Ecto.Changeset.t()
@@ -85,6 +83,18 @@ defmodule Storyarn.Accounts do
   """
   @spec register_user(attrs()) :: {:ok, user()} | {:error, changeset()}
   defdelegate register_user(attrs), to: Registration
+
+  @doc """
+  Registers a public user with a password and creates a default workspace.
+  """
+  @spec register_user_with_password(attrs()) :: {:ok, user()} | {:error, changeset()}
+  defdelegate register_user_with_password(attrs), to: Registration
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for public registration.
+  """
+  @spec change_user_registration(user(), attrs(), keyword()) :: changeset()
+  defdelegate change_user_registration(user, attrs \\ %{}, opts \\ []), to: Registration
 
   # =============================================================================
   # Sessions
@@ -204,68 +214,6 @@ defmodule Storyarn.Accounts do
   @spec sudo_mode?(user(), integer()) :: boolean()
   defdelegate sudo_mode?(user, minutes \\ -20), to: Profiles
 
-  ## Waitlist
-
-  @doc """
-  Adds an email to the beta waitlist. Returns `{:ok, entry}` or `{:error, changeset}`.
-  """
-  def join_waitlist(attrs) do
-    changeset = WaitlistEntry.email_changeset(%WaitlistEntry{}, attrs)
-
-    case Storyarn.Repo.insert(changeset) do
-      {:ok, entry} ->
-        {:ok, entry}
-
-      {:error, changeset} ->
-        if email_unique_constraint_error?(changeset) do
-          get_existing_waitlist_entry(attrs, changeset)
-        else
-          {:error, changeset}
-        end
-    end
-  end
-
-  @doc """
-  Adds optional qualification details to an existing waitlist entry.
-  """
-  def update_waitlist_details(email, attrs) when is_binary(email) do
-    email =
-      email
-      |> String.trim()
-      |> String.downcase()
-
-    case Storyarn.Repo.get_by(WaitlistEntry, email: email) do
-      %WaitlistEntry{} = entry ->
-        entry
-        |> WaitlistEntry.details_changeset(attrs)
-        |> Storyarn.Repo.update()
-
-      nil ->
-        {:error, :not_found}
-    end
-  end
-
-  defp get_existing_waitlist_entry(attrs, fallback_changeset) do
-    email =
-      (attrs[:email] || attrs["email"])
-      |> String.trim()
-      |> String.downcase()
-
-    case Storyarn.Repo.get_by(WaitlistEntry, email: email) do
-      %WaitlistEntry{} = entry ->
-        {:ok, entry}
-
-      nil ->
-        {:error, fallback_changeset}
-    end
-  end
-
-  defp email_unique_constraint_error?(changeset) do
-    Enum.any?(Keyword.get_values(changeset.errors, :email), fn {_message, opts} ->
-      opts[:constraint] == :unique
-    end)
-  end
-
   @doc """
   Gets the user with the given invite token and deletes the token if found.
   Used for gating registration.
@@ -292,39 +240,9 @@ defmodule Storyarn.Accounts do
   defdelegate prepare_invitation_user(email), to: Registration
 
   @doc """
-  Delivers the waitlist invite instructions to the given user.
-  """
-  defdelegate deliver_waitlist_invite_instructions(user, invite_url_fun), to: Registration
-
-  @doc """
   Notifies the admin about a member invitation request.
   """
   def notify_admin_invitation_request(request_info) do
     UserNotifier.deliver_admin_invitation_request(request_info)
-  end
-
-  @doc """
-  Notifies the admin about a new waitlist signup.
-  """
-  def notify_admin_waitlist_signup(email, signup_info \\ %{}) do
-    UserNotifier.deliver_admin_waitlist_notification(email, signup_info)
-  end
-
-  @doc """
-  Notifies the admin about a new waitlist signup without blocking the caller.
-  """
-  def notify_admin_waitlist_signup_async(email, signup_info \\ %{}) do
-    case Process.whereis(Storyarn.TaskSupervisor) do
-      nil ->
-        notify_admin_waitlist_signup(email, signup_info)
-        :ok
-
-      _pid ->
-        Task.Supervisor.start_child(Storyarn.TaskSupervisor, fn ->
-          notify_admin_waitlist_signup(email, signup_info)
-        end)
-
-        :ok
-    end
   end
 end

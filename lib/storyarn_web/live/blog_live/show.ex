@@ -108,13 +108,20 @@ defmodule StoryarnWeb.BlogLive.Show do
               Build and test the flow in one connected workspace.
             </h2>
             <p class="mt-3 leading-7 text-muted-foreground">
-              Explore Storyarn's documentation or join the early-access list to bring your narrative workflow together.
+              Explore Storyarn's documentation or create an account to bring your narrative workflow together.
             </p>
             <div class="mt-6 flex flex-wrap gap-3">
-              <.link navigate={~p"/docs"} class="btn btn-primary rounded-full">
+              <%!-- Full requests keep root-level canonical and social metadata in sync when leaving the article. --%>
+              <.link id="blog-docs-cta" href={~p"/docs"} class="btn btn-primary rounded-full">
                 Explore the docs
               </.link>
-              <a href="/#waitlist" class="btn btn-ghost rounded-full">Request access</a>
+              <.link
+                id="blog-register-cta"
+                href={~p"/users/register"}
+                class="btn btn-ghost rounded-full"
+              >
+                Create account
+              </.link>
             </div>
           </aside>
         </div>

@@ -44,6 +44,9 @@ defmodule StoryarnWeb.BlogLive.ShowTest do
     assert has_element?(view, ~s|#blog-post-content a[href="/docs/narrative-design/debug-mode"]|)
     assert has_element?(view, ~s|#blog-back-link[href="/blog"]|)
     refute has_element?(view, "#blog-back-link[data-phx-link]")
+    assert has_element?(view, ~s|#blog-docs-cta[href="/docs"]|)
+    refute has_element?(view, "#blog-docs-cta[data-phx-link]")
+    assert has_element?(view, ~s|#blog-register-cta[href="/users/register"]|)
 
     assert html =~ "A practical pre-export checklist"
     assert html =~ ~s(property="og:type" content="article")

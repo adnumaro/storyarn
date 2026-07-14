@@ -16,6 +16,7 @@ defmodule StoryarnWeb.UserLive.LoginTest do
       assert vue.component == "live/auth/login/AuthLoginForm"
       assert vue.props["login-action"] == "/users/log-in"
       assert vue.props["forgot-password-url"] == "/users/reset-password"
+      assert vue.props["register-url"] == "/users/register"
       assert is_map(vue.props["form"])
       assert vue.props["trigger-submit"] == false
     end
@@ -70,11 +71,11 @@ defmodule StoryarnWeb.UserLive.LoginTest do
   end
 
   describe "login navigation" do
-    test "login page does not link to registration in beta mode", %{conn: conn} do
-      {:ok, _lv, html} = live(conn, ~p"/users/log-in")
+    test "login page links to public registration", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/users/log-in")
 
-      refute html =~ "Sign up"
-      refute html =~ "Register"
+      vue = get_login_vue(view)
+      assert vue.props["register-url"] == "/users/register"
     end
   end
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import {
   ArrowLeft,
@@ -12,6 +12,7 @@ import {
 } from "lucide-vue-next";
 import LiveLink from "@components/navigation/LiveLink.vue";
 import ThemeSelector from "@components/ThemeSelector.vue";
+import { consumeHistoryScroll } from "@app/shared/navigation/historyScroll";
 import { useLive } from "@shared/composables/useLive";
 import { useMediaQuery } from "@shared/composables/useMediaQuery";
 
@@ -83,6 +84,23 @@ const searchQuery = ref(docs.value.search.query);
 const sidebarVisible = ref(docs.value.sidebarOpen);
 const desktopSidebar = useMediaQuery("(min-width: 1024px)");
 const sidebarInteractive = computed(() => sidebarVisible.value || desktopSidebar.value);
+let restoreScrollFrame: number | undefined;
+
+function restoreDocsScroll(): void {
+  if (restoreScrollFrame !== undefined) window.cancelAnimationFrame(restoreScrollFrame);
+
+  const scrollTop = consumeHistoryScroll(0, "docs-main");
+  restoreScrollFrame = window.requestAnimationFrame(() => {
+    document.getElementById("docs-main")?.scrollTo({ top: scrollTop });
+  });
+}
+
+onMounted(restoreDocsScroll);
+onUnmounted(() => {
+  if (restoreScrollFrame !== undefined) window.cancelAnimationFrame(restoreScrollFrame);
+});
+
+watch(() => docs.value.guide?.url, restoreDocsScroll);
 
 watch(
   () => docs.value.search.query,

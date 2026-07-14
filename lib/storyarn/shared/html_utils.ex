@@ -6,7 +6,10 @@ defmodule Storyarn.Shared.HtmlUtils do
   """
 
   @heading_regex ~r/<(h[23])([^>]*)>\n?(.*?)<\/\1>/s
-  @id_attribute_regex ~r/(?:^|\s)id\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/iu
+  # Skip complete quoted attribute values before looking for an actual `id`
+  # token. Without this, text such as `data-note="id=fake"` is mistaken for
+  # the heading's own ID.
+  @id_attribute_regex ~r/(?:(?:"[^"]*"|'[^']*')(*SKIP)(*F))|(?:^|\s)id\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/iu
 
   @doc """
   Strips HTML tags and decodes common entities, returning plain text.
@@ -87,10 +90,12 @@ defmodule Storyarn.Shared.HtmlUtils do
   """
   @spec add_heading_ids(String.t()) :: String.t()
   def add_heading_ids(body) when is_binary(body) do
-    {chunks, offset, _counts} =
+    state = %{counts: %{}, used_ids: explicit_heading_ids(body)}
+
+    {chunks, offset, _state} =
       @heading_regex
       |> Regex.scan(body, return: :index)
-      |> Enum.reduce({[], 0, %{}}, &replace_heading(body, &1, &2))
+      |> Enum.reduce({[], 0, state}, &replace_heading(body, &1, &2))
 
     tail = binary_part(body, offset, byte_size(body) - offset)
     IO.iodata_to_binary([Enum.reverse(chunks), tail])
@@ -104,16 +109,16 @@ defmodule Storyarn.Shared.HtmlUtils do
            {attributes_start, attributes_length},
            {content_start, content_length}
          ],
-         {chunks, offset, counts}
+         {chunks, offset, state}
        ) do
     prefix = binary_part(body, offset, match_start - offset)
     tag = binary_part(body, tag_start, tag_length)
     attributes = binary_part(body, attributes_start, attributes_length)
     content = binary_part(body, content_start, content_length)
-    {attributes, counts} = ensure_heading_id(attributes, content, counts)
+    {attributes, state} = ensure_heading_id(attributes, content, state)
     heading = ["<", tag, attributes, ">", content, "</", tag, ">"]
 
-    {[[prefix, heading] | chunks], match_start + match_length, counts}
+    {[[prefix, heading] | chunks], match_start + match_length, state}
   end
 
   @doc """
@@ -137,15 +142,26 @@ defmodule Storyarn.Shared.HtmlUtils do
     end)
   end
 
-  defp ensure_heading_id(attributes, content, counts) do
+  defp ensure_heading_id(attributes, content, state) do
     case id_attribute(attributes) do
       {:ok, id} when id != "" ->
-        {attributes, Map.update(counts, id, 1, &(&1 + 1))}
+        {attributes, state}
 
       existing_id ->
-        {id, counts} = unique_heading_id(content, counts)
-        {put_heading_id(attributes, existing_id, id), counts}
+        {id, state} = unique_heading_id(content, state)
+        {put_heading_id(attributes, existing_id, id), state}
     end
+  end
+
+  defp explicit_heading_ids(body) do
+    @heading_regex
+    |> Regex.scan(body)
+    |> Enum.reduce(MapSet.new(), fn [_, _tag, attributes, _content], ids ->
+      case id_attribute(attributes) do
+        {:ok, id} when id != "" -> MapSet.put(ids, id)
+        _ -> ids
+      end
+    end)
   end
 
   defp put_heading_id(attributes, {:ok, ""}, id) do
@@ -164,12 +180,27 @@ defmodule Storyarn.Shared.HtmlUtils do
     end
   end
 
-  defp unique_heading_id(content, counts) do
+  defp unique_heading_id(content, state) do
     base_id = heading_id(content)
-    occurrence = Map.get(counts, base_id, 0) + 1
+    occurrence = Map.get(state.counts, base_id, 0) + 1
+
+    reserve_heading_id(base_id, occurrence, state)
+  end
+
+  defp reserve_heading_id(base_id, occurrence, state) do
     id = if occurrence == 1, do: base_id, else: "#{base_id}-#{occurrence}"
 
-    {id, Map.put(counts, base_id, occurrence)}
+    if MapSet.member?(state.used_ids, id) do
+      reserve_heading_id(base_id, occurrence + 1, state)
+    else
+      state = %{
+        state
+        | counts: Map.put(state.counts, base_id, occurrence),
+          used_ids: MapSet.put(state.used_ids, id)
+      }
+
+      {id, state}
+    end
   end
 
   defp heading_id(content) do

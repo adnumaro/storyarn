@@ -112,6 +112,35 @@ defmodule Storyarn.Shared.HtmlUtilsTest do
       assert HtmlUtils.add_heading_ids(~s(<h2 class="title" id="">Fallback</h2>)) ==
                ~s(<h2 class="title" id="fallback">Fallback</h2>)
     end
+
+    test "does not treat id-like text inside another attribute value as an ID" do
+      html =
+        ~s(<h2 data-note="id=fake">Real heading</h2><h3 title="contains id='also-fake'">Next</h3>)
+
+      normalized = HtmlUtils.add_heading_ids(html)
+
+      assert normalized ==
+               ~s(<h2 id="real-heading" data-note="id=fake">Real heading</h2><h3 id="next" title="contains id='also-fake'">Next</h3>)
+
+      assert HtmlUtils.heading_outline(normalized) == [
+               %{level: 2, id: "real-heading", text: "Real heading"},
+               %{level: 3, id: "next", text: "Next"}
+             ]
+    end
+
+    test "reserves explicit IDs before assigning generated IDs" do
+      html =
+        ~s(<h2>Setup</h2><h2 id="setup">Explicit setup</h2><h3>Setup</h3><h3 id="setup-2">Explicit suffix</h3>)
+
+      normalized = HtmlUtils.add_heading_ids(html)
+
+      assert normalized ==
+               ~s(<h2 id="setup-3">Setup</h2><h2 id="setup">Explicit setup</h2><h3 id="setup-4">Setup</h3><h3 id="setup-2">Explicit suffix</h3>)
+
+      assert normalized
+             |> HtmlUtils.heading_outline()
+             |> Enum.map(& &1.id) == ["setup-3", "setup", "setup-4", "setup-2"]
+    end
   end
 
   # ===========================================================================
