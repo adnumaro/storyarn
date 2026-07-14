@@ -13,6 +13,8 @@ defmodule Storyarn.Assets.StorageCompensation do
 
   @enqueue_attempts 3
   @enqueue_retry_delay_ms 25
+  @delete_attempts 3
+  @delete_retry_delay_ms 25
   @persisted_cleanup_batch_size 100
 
   @spec new() :: reference()
@@ -102,8 +104,10 @@ defmodule Storyarn.Assets.StorageCompensation do
   @spec delete_or_enqueue(String.t(), keyword()) :: :ok | {:error, term()}
   def delete_or_enqueue(storage_key, opts \\ []) when is_binary(storage_key) do
     delete_fun = Keyword.get(opts, :delete_fun, &Storage.delete/1)
+    delete_attempts = Keyword.get(opts, :delete_attempts, @delete_attempts)
+    delete_retry_delay_ms = Keyword.get(opts, :delete_retry_delay_ms, @delete_retry_delay_ms)
 
-    case call_single_delete(delete_fun, storage_key) do
+    case delete_with_retry(storage_key, delete_fun, delete_attempts, delete_retry_delay_ms) do
       :ok ->
         :ok
 
@@ -113,8 +117,8 @@ defmodule Storyarn.Assets.StorageCompensation do
 
         cleanup_opts =
           opts
-          |> Keyword.delete(:delete_fun)
-          |> Keyword.put(:delete_fun, fn storage_keys -> retry_delete(storage_keys, delete_fun) end)
+          |> Keyword.drop([:delete_fun, :delete_attempts, :delete_retry_delay_ms])
+          |> Keyword.put(:delete_fun, fn storage_keys -> {:error, storage_keys} end)
 
         cleanup(tracker, cleanup_opts)
     end
@@ -383,13 +387,18 @@ defmodule Storyarn.Assets.StorageCompensation do
 
   defp valid_storage_key?(_storage_key), do: false
 
-  defp retry_delete(storage_keys, delete_fun) do
-    failed_keys =
-      Enum.filter(storage_keys, fn storage_key ->
-        call_single_delete(delete_fun, storage_key) != :ok
-      end)
+  defp delete_with_retry(storage_key, delete_fun, attempts, retry_delay_ms) when attempts > 0 do
+    case call_single_delete(delete_fun, storage_key) do
+      :ok ->
+        :ok
 
-    if failed_keys == [], do: :ok, else: {:error, failed_keys}
+      {:error, _reason} = error when attempts == 1 ->
+        error
+
+      {:error, _reason} ->
+        Process.sleep(retry_delay_ms)
+        delete_with_retry(storage_key, delete_fun, attempts - 1, retry_delay_ms * 2)
+    end
   end
 
   defp call_single_delete(delete_fun, storage_key) do
