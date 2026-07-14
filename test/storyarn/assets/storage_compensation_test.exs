@@ -146,6 +146,28 @@ defmodule Storyarn.Assets.StorageCompensationTest do
     refute_receive {:cleanup_enqueued, _keys}
   end
 
+  test "treats nonpositive delete attempts as one before enqueuing" do
+    storage_key = "projects/1/blobs/no-retries-orphan.png"
+    parent = self()
+    {:ok, attempts} = Agent.start_link(fn -> 0 end)
+
+    assert :ok =
+             StorageCompensation.delete_or_enqueue(storage_key,
+               delete_fun: fn ^storage_key ->
+                 Agent.update(attempts, &(&1 + 1))
+                 {:error, :temporarily_unavailable}
+               end,
+               delete_attempts: 0,
+               enqueue_fun: fn keys ->
+                 send(parent, {:cleanup_enqueued, keys})
+                 :ok
+               end
+             )
+
+    assert Agent.get(attempts, & &1) == 1
+    assert_receive {:cleanup_enqueued, [^storage_key]}
+  end
+
   test "persists failed immediate cleanup when queue insertion also fails" do
     storage_key = "projects/1/blobs/persisted-orphan.png"
 

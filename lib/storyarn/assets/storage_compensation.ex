@@ -104,8 +104,12 @@ defmodule Storyarn.Assets.StorageCompensation do
   @spec delete_or_enqueue(String.t(), keyword()) :: :ok | {:error, term()}
   def delete_or_enqueue(storage_key, opts \\ []) when is_binary(storage_key) do
     delete_fun = Keyword.get(opts, :delete_fun, &Storage.delete/1)
-    delete_attempts = Keyword.get(opts, :delete_attempts, @delete_attempts)
-    delete_retry_delay_ms = Keyword.get(opts, :delete_retry_delay_ms, @delete_retry_delay_ms)
+
+    delete_attempts =
+      opts |> Keyword.get(:delete_attempts, @delete_attempts) |> normalize_delete_attempts()
+
+    delete_retry_delay_ms =
+      opts |> Keyword.get(:delete_retry_delay_ms, @delete_retry_delay_ms) |> normalize_delete_retry_delay()
 
     case delete_with_retry(storage_key, delete_fun, delete_attempts, delete_retry_delay_ms) do
       :ok ->
@@ -386,6 +390,12 @@ defmodule Storyarn.Assets.StorageCompensation do
   end
 
   defp valid_storage_key?(_storage_key), do: false
+
+  defp normalize_delete_attempts(attempts) when is_integer(attempts) and attempts > 0, do: attempts
+  defp normalize_delete_attempts(_attempts), do: 1
+
+  defp normalize_delete_retry_delay(delay_ms) when is_integer(delay_ms) and delay_ms >= 0, do: delay_ms
+  defp normalize_delete_retry_delay(_delay_ms), do: @delete_retry_delay_ms
 
   defp delete_with_retry(storage_key, delete_fun, attempts, retry_delay_ms) when attempts > 0 do
     case call_single_delete(delete_fun, storage_key) do
