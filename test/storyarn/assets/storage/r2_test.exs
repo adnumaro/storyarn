@@ -78,6 +78,16 @@ defmodule Storyarn.Assets.Storage.R2Test do
       assert {:ok, "https://t3.storage.dev/private-bucket/projects/1/blobs/hash.png", false} =
                R2.put_if_absent("projects/1/blobs/hash.png", "content", "image/png")
     end
+
+    test "surfaces a conflict instead of claiming the object exists" do
+      Req.Test.expect(__MODULE__, fn conn ->
+        assert Plug.Conn.get_req_header(conn, "if-none-match") == ["*"]
+        Plug.Conn.send_resp(conn, 409, "conflict")
+      end)
+
+      assert {:error, {:http_error, 409, _response}} =
+               R2.put_if_absent("projects/1/blobs/hash.png", "content", "image/png")
+    end
   end
 
   describe "stream/4" do

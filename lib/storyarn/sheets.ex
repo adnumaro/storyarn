@@ -11,6 +11,8 @@ defmodule Storyarn.Sheets do
   - `TreeOperations` - Tree reordering and movement operations
   """
 
+  import Ecto.Query, warn: false
+
   alias Storyarn.Accounts.User
   alias Storyarn.Localization
   alias Storyarn.Projects
@@ -230,7 +232,16 @@ defmodule Storyarn.Sheets do
   Reorders sheets within a parent container.
   """
   @spec reorder_sheets(id(), id() | nil, [id()]) :: {:ok, [sheet()]} | {:error, term()}
-  defdelegate reorder_sheets(project_id, parent_id, sheet_ids), to: TreeOperations
+  def reorder_sheets(project_id, parent_id, sheet_ids) do
+    Repo.transaction(fn ->
+      Repo.one!(from(p in Project, where: p.id == ^project_id, lock: "FOR UPDATE"))
+
+      case TreeOperations.reorder_sheets(project_id, parent_id, sheet_ids) do
+        {:ok, sheets} -> sheets
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+  end
 
   @doc """
   Moves a sheet to a new parent at a specific position, reordering siblings as needed.
@@ -238,9 +249,15 @@ defmodule Storyarn.Sheets do
   @spec move_sheet_to_position(sheet(), id() | nil, integer()) ::
           {:ok, sheet()} | {:error, validation_error() | term()}
   def move_sheet_to_position(%Sheet{} = sheet, new_parent_id, new_position) do
-    with :ok <- SheetCrud.validate_parent(sheet, new_parent_id) do
-      Repo.transaction(fn -> move_sheet_to_position_transaction(sheet, new_parent_id, new_position) end)
-    end
+    Repo.transaction(fn ->
+      Repo.one!(from(p in Project, where: p.id == ^sheet.project_id, lock: "FOR UPDATE"))
+      current_sheet = Repo.get!(Sheet, sheet.id)
+
+      case SheetCrud.validate_parent(current_sheet, new_parent_id) do
+        :ok -> move_sheet_to_position_transaction(current_sheet, new_parent_id, new_position)
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
   end
 
   defp move_sheet_to_position_transaction(sheet, new_parent_id, new_position) do

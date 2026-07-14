@@ -67,19 +67,9 @@ defmodule Storyarn.Sheets.PropertyInheritance do
       {:ok, 0}
     else
       fn ->
-        child_sheet_ids = child_sheet_ids |> Enum.uniq() |> Enum.sort()
-
-        # A destination sheet is the serialization point shared with direct
-        # block creation. Lock every destination in deterministic order.
-        Repo.all(
-          from(s in Sheet,
-            where: s.id in ^child_sheet_ids,
-            order_by: [asc: s.id],
-            lock: "FOR UPDATE"
-          )
-        )
-
-        do_create_inherited_instances(parent_block, child_sheet_ids)
+        child_sheet_ids = Enum.uniq(child_sheet_ids)
+        locked_parent_block = lock_inheritance_scope(parent_block, child_sheet_ids)
+        do_create_inherited_instances(locked_parent_block, child_sheet_ids)
       end
       |> Repo.transaction()
       |> case do
@@ -136,6 +126,43 @@ defmodule Storyarn.Sheets.PropertyInheritance do
       {count, _} = Repo.insert_all(Block, entries)
       copy_table_structure_to_instances(parent_block)
       count
+    end
+  end
+
+  defp lock_inheritance_scope(parent_block, child_sheet_ids) do
+    source_sheet = Repo.get!(Sheet, parent_block.sheet_id)
+
+    parent_by_id =
+      from(s in Sheet, where: s.project_id == ^source_sheet.project_id, select: {s.id, s.parent_id})
+      |> Repo.all()
+      |> Map.new()
+
+    [source_sheet.id | child_sheet_ids]
+    |> Enum.uniq()
+    |> Enum.sort_by(&hierarchy_path(&1, parent_by_id))
+    |> Enum.each(fn sheet_id ->
+      Repo.one!(from(s in Sheet, where: s.id == ^sheet_id, lock: "FOR UPDATE"))
+    end)
+
+    Repo.one!(from(b in Block, where: b.id == ^parent_block.id, lock: "FOR UPDATE"))
+  end
+
+  defp hierarchy_path(sheet_id, parent_by_id) do
+    build_hierarchy_path(sheet_id, parent_by_id, MapSet.new(), [])
+  end
+
+  defp build_hierarchy_path(nil, _parent_by_id, _seen, path), do: path
+
+  defp build_hierarchy_path(sheet_id, parent_by_id, seen, path) do
+    if MapSet.member?(seen, sheet_id) do
+      [sheet_id | path]
+    else
+      build_hierarchy_path(
+        Map.get(parent_by_id, sheet_id),
+        parent_by_id,
+        MapSet.put(seen, sheet_id),
+        [sheet_id | path]
+      )
     end
   end
 

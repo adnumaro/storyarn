@@ -31,7 +31,7 @@ defmodule Storyarn.Assets.Storage.R2 do
 
     case ExAws.request(request) do
       {:ok, _response} -> {:ok, get_url(key), true}
-      {:error, {:http_error, status, _response}} when status in [409, 412] -> {:ok, get_url(key), false}
+      {:error, {:http_error, 412, _response}} -> {:ok, get_url(key), false}
       {:error, reason} -> {:error, reason}
     end
   end

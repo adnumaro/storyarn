@@ -87,7 +87,10 @@ defmodule Storyarn.Projects.ProjectTrash do
   end
 
   @doc """
-  Lists all deleted project items with project retention fields for cleanup jobs.
+  Lists one bounded keyset page of deleted project items for cleanup jobs.
+
+  Use `:after` to continue from a prior page and `:through` to keep a stable
+  high-water mark. The page size defaults to and is capped at 100 items.
   """
   @spec list_deleted_items_for_retention(keyword()) :: [map()]
   def list_deleted_items_for_retention(opts \\ []) do

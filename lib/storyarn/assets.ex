@@ -14,6 +14,7 @@ defmodule Storyarn.Assets do
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.ImageProcessor
   alias Storyarn.Assets.Storage
+  alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Assets.UploadPolicy
   alias Storyarn.Billing
   alias Storyarn.Flows.Flow
@@ -679,12 +680,12 @@ defmodule Storyarn.Assets do
   end
 
   defp cleanup_failed_upload(asset_key, blob_key, blob_created?) do
-    Storage.delete(asset_key)
+    StorageCompensation.delete_or_enqueue(asset_key)
     cleanup_new_blob(blob_key, blob_created?)
   end
 
   defp cleanup_new_blob(_blob_key, false), do: :ok
-  defp cleanup_new_blob(blob_key, true), do: Storage.delete(blob_key)
+  defp cleanup_new_blob(blob_key, true), do: StorageCompensation.delete_or_enqueue(blob_key)
 
   defp with_upload_capacity(%Project{} = project, file_size, fun) when is_function(fun, 0) do
     with_workspace_upload_lock(project, fn workspace ->

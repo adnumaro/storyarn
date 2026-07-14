@@ -103,4 +103,20 @@ defmodule Storyarn.Assets.StorageCompensationTest do
     assert_receive {:cleanup_persisted, [^storage_key]}
     assert_receive {:delete_attempted, [^storage_key]}
   end
+
+  test "enqueues durable cleanup when an immediate delete fails" do
+    storage_key = "projects/1/blobs/orphan.png"
+    parent = self()
+
+    assert :ok =
+             StorageCompensation.delete_or_enqueue(storage_key,
+               delete_fun: fn ^storage_key -> {:error, :temporarily_unavailable} end,
+               enqueue_fun: fn keys ->
+                 send(parent, {:cleanup_enqueued, keys})
+                 :ok
+               end
+             )
+
+    assert_receive {:cleanup_enqueued, [^storage_key]}
+  end
 end

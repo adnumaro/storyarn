@@ -18,7 +18,9 @@ if (!window.__storyarnAppInitialized) {
   const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
   // Kept in this page's JS realm so duplicated tabs never inherit the token.
   // LiveView navigation reuses the realm, preserving cross-flow player handoffs.
-  const playerTabId = crypto.randomUUID();
+  const playerTabId =
+    crypto.randomUUID?.() ??
+    Array.from(crypto.getRandomValues(new Uint32Array(4)), (value) => value.toString(16)).join("-");
 
   const liveSocket = new LiveSocket("/live", Socket, {
     longPollFallbackMs: 2500,

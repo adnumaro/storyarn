@@ -98,6 +98,18 @@ defmodule Storyarn.Assets.StorageCompensation do
     end
   end
 
+  @doc "Deletes one storage object, scheduling durable cleanup if the delete fails."
+  @spec delete_or_enqueue(String.t(), keyword()) :: :ok | {:error, term()}
+  def delete_or_enqueue(storage_key, opts \\ []) when is_binary(storage_key) do
+    delete_fun = Keyword.get(opts, :delete_fun, &Storage.delete/1)
+    enqueue_fun = Keyword.get(opts, :enqueue_fun, &enqueue_cleanup/1)
+
+    case delete_fun.(storage_key) do
+      :ok -> :ok
+      {:error, _reason} -> enqueue_fun.([storage_key])
+    end
+  end
+
   @spec retry_persisted_cleanup_requests(pos_integer()) :: :ok | {:error, non_neg_integer()}
   def retry_persisted_cleanup_requests(limit \\ @persisted_cleanup_batch_size) when is_integer(limit) and limit > 0 do
     cleanup_requests =
