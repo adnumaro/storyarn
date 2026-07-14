@@ -5,7 +5,8 @@ defmodule Storyarn.Shared.HtmlUtils do
   Consolidates strip_html implementations used across the codebase.
   """
 
-  @heading_regex ~r/<(h[23])>\n?(.*?)<\/\1>/s
+  @heading_regex ~r/<(h[23])([^>]*)>\n?(.*?)<\/\1>/s
+  @id_attribute_regex ~r/(?:^|\s)id\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/iu
 
   @doc """
   Strips HTML tags and decodes common entities, returning plain text.
@@ -97,16 +98,70 @@ defmodule Storyarn.Shared.HtmlUtils do
 
   defp replace_heading(
          body,
-         [{match_start, match_length}, {tag_start, tag_length}, {content_start, content_length}],
+         [
+           {match_start, match_length},
+           {tag_start, tag_length},
+           {attributes_start, attributes_length},
+           {content_start, content_length}
+         ],
          {chunks, offset, counts}
        ) do
     prefix = binary_part(body, offset, match_start - offset)
     tag = binary_part(body, tag_start, tag_length)
+    attributes = binary_part(body, attributes_start, attributes_length)
     content = binary_part(body, content_start, content_length)
-    {id, counts} = unique_heading_id(content, counts)
-    heading = ["<", tag, " id=\"", id, "\">", content, "</", tag, ">"]
+    {attributes, counts} = ensure_heading_id(attributes, content, counts)
+    heading = ["<", tag, attributes, ">", content, "</", tag, ">"]
 
     {[[prefix, heading] | chunks], match_start + match_length, counts}
+  end
+
+  @doc """
+  Extracts the h2/h3 outline from HTML after IDs have been assigned.
+
+  Opening-tag attributes may appear in any order and IDs may use double,
+  single, or unquoted attribute syntax.
+  """
+  @spec heading_outline(String.t()) :: [%{level: 2 | 3, id: String.t(), text: String.t()}]
+  def heading_outline(body) when is_binary(body) do
+    @heading_regex
+    |> Regex.scan(body)
+    |> Enum.flat_map(fn [_, tag, attributes, content] ->
+      case id_attribute(attributes) do
+        {:ok, id} when id != "" ->
+          [%{level: if(tag == "h2", do: 2, else: 3), id: id, text: strip_html(content)}]
+
+        _ ->
+          []
+      end
+    end)
+  end
+
+  defp ensure_heading_id(attributes, content, counts) do
+    case id_attribute(attributes) do
+      {:ok, id} when id != "" ->
+        {attributes, Map.update(counts, id, 1, &(&1 + 1))}
+
+      existing_id ->
+        {id, counts} = unique_heading_id(content, counts)
+        {put_heading_id(attributes, existing_id, id), counts}
+    end
+  end
+
+  defp put_heading_id(attributes, {:ok, ""}, id) do
+    Regex.replace(@id_attribute_regex, attributes, " id=\"#{id}\"", global: false)
+  end
+
+  defp put_heading_id(attributes, :error, id), do: ~s( id="#{id}") <> attributes
+
+  defp id_attribute(attributes) do
+    case Regex.run(@id_attribute_regex, attributes, capture: :all_but_first) do
+      captures when is_list(captures) ->
+        {:ok, Enum.find(captures, "", &(&1 not in [nil, ""]))}
+
+      nil ->
+        :error
+    end
   end
 
   defp unique_heading_id(content, counts) do

@@ -80,6 +80,7 @@ defmodule StoryarnWeb.BlogLive.Index do
               </div>
 
               <h2 class="mt-5 text-2xl font-semibold leading-tight tracking-tight text-balance sm:text-3xl">
+                <%!-- A full request is intentional: canonical, Open Graph, and JSON-LD tags live outside the LiveView tree and must be replaced for the article. --%>
                 <.link
                   href={~p"/blog/#{post.slug}"}
                   class="after:absolute after:inset-0 focus:outline-none focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"

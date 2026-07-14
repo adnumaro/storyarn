@@ -92,6 +92,26 @@ defmodule Storyarn.Shared.HtmlUtilsTest do
       assert HtmlUtils.add_heading_ids(html) ==
                ~s(<h2 id="setup">Setup</h2><h3 id="setup-2">Setup</h3><h2 id="section">🎮</h2><h2 id="section-2">🎮</h2>)
     end
+
+    test "preserves opening-tag attributes and explicit IDs" do
+      html =
+        ~s(<h2 class="title">Generated</h2><h3 class="title" id='custom'>Custom</h3>)
+
+      normalized = HtmlUtils.add_heading_ids(html)
+
+      assert normalized ==
+               ~s(<h2 id="generated" class="title">Generated</h2><h3 class="title" id='custom'>Custom</h3>)
+
+      assert HtmlUtils.heading_outline(normalized) == [
+               %{level: 2, id: "generated", text: "Generated"},
+               %{level: 3, id: "custom", text: "Custom"}
+             ]
+    end
+
+    test "replaces an empty explicit ID without duplicating the attribute" do
+      assert HtmlUtils.add_heading_ids(~s(<h2 class="title" id="">Fallback</h2>)) ==
+               ~s(<h2 class="title" id="fallback">Fallback</h2>)
+    end
   end
 
   # ===========================================================================
