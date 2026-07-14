@@ -19,6 +19,13 @@ Implemented LiveVue layout boundaries:
 - `assets/app/live/layouts/workspace/Layout.vue`
 - `assets/app/live/layouts/project/Layout.vue`
 
+The public route family is the intentional exception. Marketing, blog, legal,
+and invitation routes use one server-rendered HEEx shell composed from
+`PublicLayout`, `PublicHeader`, and `PublicFooter`. Page-specific marketing
+content can still use LiveVue inside that shell. The landing, contact, and legal
+page components are resolved eagerly so LiveView navigation never exposes an
+empty async-component frame.
+
 Implemented architecture checks:
 
 - `npm run arch:live-vue` validates canonical public LiveVue component names.
@@ -186,17 +193,25 @@ Routes:
 
 - landing
 - contact
+- blog
+- legal pages
 - public invitations
 
 Recommended pattern:
 
-- LiveVue layout boundary, not sticky by default.
-- Page boundary rendered or injected into `live/layouts/public/Layout`.
-- Public navigation, footer, theme handling, and public chrome live in Vue.
+- One SSR HEEx shell rendered by `PublicLayout`.
+- `PublicHeader` and `PublicFooter` are the only owners of public chrome.
+- Internal links use LiveView navigation and all routes stay in the shared
+  `live_session :current_user`.
+- LiveVue remains available for page content, but pages do not inject into a
+  second Vue layout.
 
 Reason:
 
-Public pages have limited server-backed chrome. Persisting the layout across LiveView navigation is optional and not a first-order need.
+The public shell must be present in initial HTML for SEO and must remain visually
+stable while navigating between server-rendered blog content and LiveVue
+marketing content. A second asynchronous Vue layout caused duplicate chrome and
+visible empty frames.
 
 ### Auth Layout
 
@@ -590,7 +605,8 @@ Completed:
 
 - migrate auth layout
 - migrate docs layout as a thin Elixir data boundary plus `live/layouts/docs/Layout`
-- migrate public layout as a thin Elixir data boundary plus `live/layouts/public/Layout`
+- migrate the public family to the shared SSR `PublicLayout` shell
+- eagerly resolve landing, contact, and legal page content to avoid empty frames
 
 Remaining:
 

@@ -1,0 +1,53 @@
+## Blog interface translations.
+msgid ""
+msgstr ""
+
+msgid "%{count} min read"
+msgid_plural "%{count} min read"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "Back to the journal"
+msgstr ""
+
+msgid "Bring the whole narrative into one connected project."
+msgstr ""
+
+msgid "By %{author}"
+msgstr ""
+
+msgid "Create your Storyarn account"
+msgstr ""
+
+msgid "Featured story"
+msgstr ""
+
+msgid "Inside Storyarn"
+msgstr ""
+
+msgid "More from the journal"
+msgstr ""
+
+msgid "Narrative Design Journal"
+msgstr ""
+
+msgid "No published articles yet."
+msgstr ""
+
+msgid "Notes on building a connected narrative design platform."
+msgstr ""
+
+msgid "Product decisions, narrative production problems, and what we are learning while Storyarn grows."
+msgstr ""
+
+msgid "Product thinking, narrative design practice, and lessons from building Storyarn as a connected workspace for interactive stories."
+msgstr ""
+
+msgid "Read the story"
+msgstr ""
+
+msgid "Registration is open, Storyarn is free during early access, and no invitation is required."
+msgstr ""
+
+msgid "Storyarn is in open beta"
+msgstr ""

@@ -1,0 +1,71 @@
+## Traducciones del shell publico.
+msgid ""
+msgstr ""
+"Language: es\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Blog"
+msgstr "Blog"
+
+msgid "Close"
+msgstr "Cerrar"
+
+msgid "Contact"
+msgstr "Contacto"
+
+msgid "Cookies"
+msgstr "Cookies"
+
+msgid "Create account"
+msgstr "Crear cuenta"
+
+msgid "Dashboard"
+msgstr "Panel"
+
+msgid "Design characters, dialogues, worlds, and localization in a single connected project. Built for narrative teams shipping interactive stories."
+msgstr "Diseña personajes, diálogos, mundos y localización en un solo proyecto conectado. Creado para equipos narrativos que publican historias interactivas."
+
+msgid "Discover"
+msgstr "Descubrir"
+
+msgid "Docs"
+msgstr "Docs"
+
+msgid "Features"
+msgstr "Características"
+
+msgid "Footer navigation"
+msgstr "Navegación del pie"
+
+msgid "Log in"
+msgstr "Iniciar sesión"
+
+msgid "Manage cookies"
+msgstr "Gestionar cookies"
+
+msgid "Menu"
+msgstr "Menú"
+
+msgid "Mobile navigation"
+msgstr "Navegación móvil"
+
+msgid "Mobile navigation links"
+msgstr "Enlaces de navegación móvil"
+
+msgid "Open beta"
+msgstr "Beta pública"
+
+msgid "Primary navigation"
+msgstr "Navegación principal"
+
+msgid "Privacy"
+msgstr "Privacidad"
+
+msgid "Storyarn home"
+msgstr "Inicio de Storyarn"
+
+msgid "Terms"
+msgstr "Condiciones"
+
+msgid "Workflow"
+msgstr "Flujo de trabajo"

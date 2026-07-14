@@ -162,6 +162,58 @@ defmodule StoryarnWeb.Layouts do
     end
   end
 
+  @doc false
+  def live_seo_metadata(assigns) do
+    %{
+      locale: seo_locale(assigns),
+      title: seo_title(assigns),
+      description: seo_description(assigns),
+      canonical_url: explicit_canonical_url(assigns),
+      type: seo_type(assigns),
+      image_url: seo_image_url(assigns),
+      published_time: seo_published_time(assigns),
+      modified_time: seo_modified_time(assigns),
+      article_tags: seo_article_tags(assigns),
+      json_ld: seo_json_ld_data(assigns)
+    }
+  end
+
+  attr :metadata, :map, required: true
+
+  def live_seo(assigns) do
+    ~H"""
+    <div
+      id="live-seo-metadata"
+      phx-hook="SeoMetadata"
+      data-metadata={Jason.encode!(@metadata)}
+      hidden
+      aria-hidden="true"
+    >
+    </div>
+    """
+  end
+
+  defp seo_locale(assigns) do
+    case assigns[:locale] do
+      locale when is_binary(locale) and locale != "" -> locale
+      _ -> "en"
+    end
+  end
+
+  defp explicit_canonical_url(assigns) do
+    case assigns[:canonical_url] do
+      url when is_binary(url) and url != "" -> absolute_url(url)
+      _ -> nil
+    end
+  end
+
+  defp seo_json_ld_data(assigns) do
+    case assigns[:seo_json_ld] do
+      data when is_map(data) -> data
+      _ -> nil
+    end
+  end
+
   defp current_scope_from_assigns(%{current_scope: current_scope}), do: current_scope
 
   defp current_scope_from_assigns(%{conn: %{assigns: %{current_scope: current_scope}}}) do

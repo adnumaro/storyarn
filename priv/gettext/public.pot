@@ -1,0 +1,69 @@
+## Public marketing shell translations.
+msgid ""
+msgstr ""
+
+msgid "Blog"
+msgstr ""
+
+msgid "Close"
+msgstr ""
+
+msgid "Contact"
+msgstr ""
+
+msgid "Cookies"
+msgstr ""
+
+msgid "Create account"
+msgstr ""
+
+msgid "Dashboard"
+msgstr ""
+
+msgid "Design characters, dialogues, worlds, and localization in a single connected project. Built for narrative teams shipping interactive stories."
+msgstr ""
+
+msgid "Discover"
+msgstr ""
+
+msgid "Docs"
+msgstr ""
+
+msgid "Features"
+msgstr ""
+
+msgid "Footer navigation"
+msgstr ""
+
+msgid "Log in"
+msgstr ""
+
+msgid "Manage cookies"
+msgstr ""
+
+msgid "Menu"
+msgstr ""
+
+msgid "Mobile navigation"
+msgstr ""
+
+msgid "Mobile navigation links"
+msgstr ""
+
+msgid "Open beta"
+msgstr ""
+
+msgid "Primary navigation"
+msgstr ""
+
+msgid "Privacy"
+msgstr ""
+
+msgid "Storyarn home"
+msgstr ""
+
+msgid "Terms"
+msgstr ""
+
+msgid "Workflow"
+msgstr ""

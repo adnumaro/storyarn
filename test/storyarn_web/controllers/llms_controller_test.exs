@@ -21,7 +21,7 @@ defmodule StoryarnWeb.LlmsControllerTest do
     assert body =~ ~r"\[Blog\]\(http://localhost:\d+/blog\)"
 
     assert body =~
-             ~r"\[How to Test Branching Dialogue Before Exporting It to Your Game Engine\]\(http://localhost:\d+/blog/test-branching-dialogue-before-export\)"
+             ~r"\[Introducing Storyarn: A Connected Narrative Design Platform\]\(http://localhost:\d+/blog/introducing-storyarn\)"
 
     assert body =~ ~r"\[What is Storyarn\?\]\(http://localhost:\d+/docs/welcome/what-is-storyarn\)"
     assert body =~ ~r"\[Flows Overview\]\(http://localhost:\d+/docs/narrative-design/flows-overview\)"

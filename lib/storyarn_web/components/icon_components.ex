@@ -37,7 +37,8 @@ defmodule StoryarnWeb.Components.IconComponents do
       "M22 5h-4",
       "M4 17v2",
       "M5 18H3"
-    ]
+    ],
+    "x" => ["M18 6 6 18", "m6 6 12 12"]
   }
 
   attr :name, :string, required: true

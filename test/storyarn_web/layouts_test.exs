@@ -113,5 +113,49 @@ defmodule StoryarnWeb.LayoutsTest do
       refute json =~ "</script>"
       assert Jason.decode!(json)["headline"] == headline
     end
+
+    test "builds the metadata payload used during LiveView navigation" do
+      metadata =
+        Layouts.live_seo_metadata(%{
+          locale: "en",
+          page_title: "Article title",
+          seo_description: "Article description",
+          canonical_url: "/blog/article",
+          seo_type: "article",
+          seo_image_url: "https://example.test/article.png",
+          seo_published_on: ~D[2026-07-14],
+          seo_modified_on: ~D[2026-07-15],
+          seo_article_tags: ["Storyarn"],
+          seo_json_ld: %{"@type" => "BlogPosting"}
+        })
+
+      assert metadata.locale == "en"
+      assert metadata.title == "Article title"
+      assert metadata.canonical_url == Layouts.absolute_url("/blog/article")
+      assert metadata.type == "article"
+      assert metadata.published_time == "2026-07-14"
+      assert metadata.modified_time == "2026-07-15"
+      assert metadata.article_tags == ["Storyarn"]
+      assert metadata.json_ld == %{"@type" => "BlogPosting"}
+    end
+
+    test "renders a hidden SEO hook with JSON metadata" do
+      metadata = %{locale: "en", title: "Storyarn Journal", type: "website"}
+      html = render_component(&Layouts.live_seo/1, metadata: metadata)
+      document = LazyHTML.from_fragment(html)
+      hook = LazyHTML.query(document, "#live-seo-metadata")
+
+      assert LazyHTML.attribute(hook, "phx-hook") == ["SeoMetadata"]
+      assert LazyHTML.attribute(hook, "hidden") == [""]
+
+      assert hook
+             |> LazyHTML.attribute("data-metadata")
+             |> List.first()
+             |> Jason.decode!() == %{
+               "locale" => "en",
+               "title" => "Storyarn Journal",
+               "type" => "website"
+             }
+    end
   end
 end

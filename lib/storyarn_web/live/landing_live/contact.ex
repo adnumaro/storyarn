@@ -17,17 +17,19 @@ defmodule StoryarnWeb.LandingLive.Contact do
 
   @impl true
   def render(assigns) do
+    assigns = assign(assigns, :seo_metadata, Layouts.live_seo_metadata(assigns))
+
     ~H"""
     <StoryarnWeb.Components.PublicLayout.public
       flash={@flash}
       socket={@socket}
+      seo_metadata={@seo_metadata}
       current_scope={@current_scope}
       theme="dark"
     >
       <.vue
         v-component="live/public/contact/PublicContact"
         v-socket={@socket}
-        v-inject="public-layout"
         id="contact-page"
         class="flex flex-1 flex-col"
         contact-email={contact_email()}

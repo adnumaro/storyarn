@@ -13,8 +13,11 @@ import liveVueApp from "../app";
 import {
   capturePendingHistoryScroll,
   clearPendingHistoryScroll,
+  rememberCurrentHistoryScroll,
 } from "../app/shared/navigation/historyScroll";
 import { initPostHog } from "./utils/posthog";
+import { preloadPublicRouteTargets } from "./utils/preload_public_routes";
+import { SeoMetadata } from "./utils/seo_metadata";
 
 if (!window.__storyarnAppInitialized) {
   window.__storyarnAppInitialized = true;
@@ -29,13 +32,16 @@ if (!window.__storyarnAppInitialized) {
   const liveSocket = new LiveSocket("/live", Socket, {
     longPollFallbackMs: 2500,
     params: { _csrf_token: csrfToken, player_tab_id: playerTabId },
-    hooks: getHooks(liveVueApp),
+    hooks: { ...getHooks(liveVueApp), SeoMetadata },
   });
 
   // Progress bar
   topbar.config({ barColors: { 0: "#29d" }, shadowColor: "rgba(0, 0, 0, .3)" });
   window.addEventListener("phx:page-loading-start", () => topbar.show(300));
-  window.addEventListener("phx:page-loading-stop", () => topbar.hide());
+  window.addEventListener("phx:page-loading-stop", () => {
+    topbar.hide();
+    preloadPublicRouteTargets();
+  });
 
   // Capture the target history entry before LiveView replaces the current DOM.
   // Async Vue routes can otherwise trigger scroll anchoring and overwrite it.
@@ -43,8 +49,23 @@ if (!window.__storyarnAppInitialized) {
   window.addEventListener("phx:navigate", (event) => {
     if (!event.detail?.pop) clearPendingHistoryScroll();
   });
+  window.addEventListener(
+    "click",
+    (event) => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+        return;
+      }
+
+      const link = event.target.closest?.(
+        'a[data-phx-link="redirect"][data-phx-link-state="push"]',
+      );
+      if (link) rememberCurrentHistoryScroll();
+    },
+    true,
+  );
 
   liveSocket.connect();
+  preloadPublicRouteTargets();
 
   window.liveSocket = liveSocket;
 

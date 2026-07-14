@@ -13,16 +13,18 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
 
   @impl true
   def render(assigns) do
+    assigns = assign(assigns, :seo_metadata, Layouts.live_seo_metadata(assigns))
+
     ~H"""
     <StoryarnWeb.Components.PublicLayout.public
       flash={@flash}
       socket={@socket}
+      seo_metadata={@seo_metadata}
       current_scope={@current_scope}
     >
       <.vue
         v-component="live/project/invitation/ProjectInvitationResponse"
         v-socket={@socket}
-        v-inject="public-layout"
         id="project-invitation"
         homepage-url={~p"/"}
       />

@@ -11,6 +11,7 @@ defmodule StoryarnWeb.Components.AuthLayout do
 
   attr :flash, :map, required: true, doc: "the map of flash messages"
   attr :socket, :any, required: true, doc: "the LiveView socket (needed for LiveVue)"
+  attr :seo_metadata, :map, required: true, doc: "metadata synchronized into the document head"
 
   attr :current_scope, :map,
     default: nil,
@@ -21,6 +22,7 @@ defmodule StoryarnWeb.Components.AuthLayout do
   def auth(assigns) do
     ~H"""
     <div id="auth-layout-wrapper" class="min-h-screen bg-background text-foreground">
+      <Layouts.live_seo metadata={@seo_metadata} />
       <.vue v-component="live/layouts/auth/Layout" v-socket={@socket} id="auth-layout" />
 
       {render_slot(@inner_block)}

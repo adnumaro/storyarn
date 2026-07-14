@@ -26,12 +26,16 @@ defmodule StoryarnWeb.LandingLive.Index do
 
   @impl true
   def render(assigns) do
+    assigns = assign(assigns, :seo_metadata, Layouts.live_seo_metadata(assigns))
+
     ~H"""
     <StoryarnWeb.Components.PublicLayout.public
       flash={@flash}
       socket={@socket}
+      seo_metadata={@seo_metadata}
       current_scope={@current_scope}
       theme="dark"
+      landing
     >
       <section id="landing-seo-summary" class="sr-only" aria-label={gettext("Storyarn overview")}>
         <h1>{gettext("Storyarn: narrative design platform for video games")}</h1>
@@ -65,7 +69,6 @@ defmodule StoryarnWeb.LandingLive.Index do
       <.vue
         v-component="live/public/landing/PublicLanding"
         v-socket={@socket}
-        v-inject="public-layout"
         id="landing-page"
         is-logged-in={!!@current_scope && !!@current_scope.user}
         registration-url={~p"/users/register"}

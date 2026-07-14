@@ -11,11 +11,14 @@ defmodule StoryarnWeb.UserLive.ResetPassword do
 
   @impl true
   def render(assigns) do
+    assigns = assign(assigns, :seo_metadata, Layouts.live_seo_metadata(assigns))
+
     ~H"""
     <StoryarnWeb.Components.AuthLayout.auth
       flash={@flash}
       current_scope={@current_scope}
       socket={@socket}
+      seo_metadata={@seo_metadata}
     >
       <.vue
         v-component="live/auth/reset-password/AuthResetPasswordForm"

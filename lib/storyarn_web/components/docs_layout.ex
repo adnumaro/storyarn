@@ -11,6 +11,7 @@ defmodule StoryarnWeb.Components.DocsLayout do
 
   attr :flash, :map, required: true
   attr :socket, :any, required: true
+  attr :seo_metadata, :map, required: true
   attr :current_scope, :map, default: nil
   attr :categories, :list, required: true
   attr :guides, :list, required: true
@@ -29,6 +30,7 @@ defmodule StoryarnWeb.Components.DocsLayout do
 
     ~H"""
     <div id="docs-layout-wrapper" class="h-screen overflow-hidden bg-surface text-foreground">
+      <Layouts.live_seo metadata={@seo_metadata} />
       <.vue
         v-component="live/layouts/docs/Layout"
         v-socket={@socket}

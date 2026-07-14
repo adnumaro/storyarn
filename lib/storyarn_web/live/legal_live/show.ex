@@ -24,17 +24,19 @@ defmodule StoryarnWeb.LegalLive.Show do
 
   @impl true
   def render(assigns) do
+    assigns = assign(assigns, :seo_metadata, Layouts.live_seo_metadata(assigns))
+
     ~H"""
     <StoryarnWeb.Components.PublicLayout.public
       flash={@flash}
       socket={@socket}
+      seo_metadata={@seo_metadata}
       current_scope={@current_scope}
       theme="dark"
     >
       <.vue
         v-component="live/public/legal/LegalPage"
         v-socket={@socket}
-        v-inject="public-layout"
         id={"legal-#{@document}-page"}
         class="flex flex-1 flex-col"
         document={@document}

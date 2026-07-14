@@ -3,7 +3,6 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { Cookie, FileText, ShieldCheck, SlidersHorizontal } from "lucide-vue-next";
 import { Button } from "@components/ui/button";
-import LandingFooter from "../PublicFooter.vue";
 
 const {
   contactEmail,
@@ -53,7 +52,7 @@ function openCookieSettings(): void {
 
 <template>
   <div class="min-h-screen bg-background pt-28 text-foreground">
-    <main class="mx-auto w-[min(calc(100%-48px),960px)] pb-24">
+    <div class="mx-auto w-[min(calc(100%-48px),960px)] pb-24">
       <section class="border-b border-border pb-10">
         <div
           class="mb-5 inline-flex items-center gap-2 rounded-md border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-semibold uppercase text-primary"
@@ -254,9 +253,7 @@ function openCookieSettings(): void {
           </p>
         </section>
       </article>
-    </main>
-
-    <LandingFooter />
+    </div>
   </div>
 </template>
 

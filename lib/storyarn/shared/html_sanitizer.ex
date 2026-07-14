@@ -8,7 +8,7 @@ defmodule Storyarn.Shared.HtmlSanitizer do
   Allowlisted tags cover TipTap output, rich-text formatting, and documentation content.
   """
 
-  @allowed_tags ~w(p br em strong b i u s span a img ul ol li blockquote code pre sub sup del h1 h2 h3 h4 h5 h6 div table thead tbody tfoot tr th td caption svg path line circle polygon polyline rect ellipse g)
+  @allowed_tags ~w(p br em strong b i u s span a img ul ol li blockquote code pre sub sup del h1 h2 h3 h4 h5 h6 div figure figcaption table thead tbody tfoot tr th td caption svg path line circle polygon polyline rect ellipse g)
   @safe_uri_schemes ~w(http: https: mailto: tel: #)
 
   @doc """

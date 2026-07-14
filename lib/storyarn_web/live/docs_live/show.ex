@@ -108,10 +108,13 @@ defmodule StoryarnWeb.DocsLive.Show do
 
   @impl true
   def render(assigns) do
+    assigns = assign(assigns, :seo_metadata, Layouts.live_seo_metadata(assigns))
+
     ~H"""
     <StoryarnWeb.Components.DocsLayout.docs
       flash={@flash}
       socket={@socket}
+      seo_metadata={@seo_metadata}
       current_scope={@current_scope}
       categories={@categories}
       guides={@guides}

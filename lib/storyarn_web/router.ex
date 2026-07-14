@@ -320,6 +320,9 @@ defmodule StoryarnWeb.Router do
   scope "/", StoryarnWeb do
     pipe_through [:browser]
 
+    get "/blog/test-branching-dialogue-before-export", BlogRedirectController, :legacy_post
+    get "/blog/why-we-are-building-storyarn", BlogRedirectController, :legacy_post
+
     live_session :current_user,
       on_mount:
         if(Application.compile_env(:storyarn, :sql_sandbox),

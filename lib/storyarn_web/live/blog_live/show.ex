@@ -6,17 +6,16 @@ defmodule StoryarnWeb.BlogLive.Show do
   alias Storyarn.Blog
   alias Storyarn.Shared.HtmlSanitizer
 
-  @blog_locale "en"
+  @post_locale "en"
 
   @impl true
   def mount(_params, _session, socket) do
-    Gettext.put_locale(Storyarn.Gettext, @blog_locale)
-    {:ok, assign(socket, :locale, @blog_locale)}
+    {:ok, socket}
   end
 
   @impl true
   def handle_params(%{"slug" => slug}, _uri, socket) do
-    case Blog.get_post(slug, @blog_locale) do
+    case Blog.get_post(slug, @post_locale) do
       nil ->
         raise Ecto.NoResultsError, queryable: "blog_posts"
 
@@ -26,7 +25,7 @@ defmodule StoryarnWeb.BlogLive.Show do
 
         {:noreply,
          assign(socket,
-           page_title: post.title,
+           page_title: post.seo_title,
            canonical_url: canonical_url,
            seo_description: post.description,
            seo_image_url: image_url,
@@ -42,87 +41,109 @@ defmodule StoryarnWeb.BlogLive.Show do
 
   @impl true
   def render(assigns) do
+    assigns = assign(assigns, :seo_metadata, Layouts.live_seo_metadata(assigns))
+
     ~H"""
     <StoryarnWeb.Components.PublicLayout.public
       flash={@flash}
       socket={@socket}
+      seo_metadata={@seo_metadata}
       current_scope={@current_scope}
       theme="dark"
-      native
     >
       <article
         id="blog-post"
         lang={@post.locale}
-        class="relative overflow-hidden px-6 pb-24 pt-36 sm:pt-44"
+        class="relative overflow-hidden pb-28 pt-36 sm:pt-44"
       >
-        <div class="pointer-events-none absolute inset-x-0 top-0 -z-0 h-[34rem] bg-[radial-gradient(circle_at_50%_0%,rgba(45,212,191,0.12),transparent_62%)]">
+        <div class="pointer-events-none absolute inset-x-0 top-0 h-[42rem] bg-[radial-gradient(circle_at_50%_0%,rgba(45,212,191,0.15),transparent_58%)]">
         </div>
 
-        <div class="relative z-10 mx-auto w-full max-w-3xl">
+        <header class="relative mx-auto w-full max-w-4xl px-6 text-center">
           <.link
             id="blog-back-link"
-            href={~p"/blog"}
+            navigate={~p"/blog"}
+            lang={@locale}
             class="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
-            <.icon name="arrow-left" class="size-4" /> Back to the blog
+            <.icon name="arrow-left" class="size-4" /> {dgettext("blog", "Back to the journal")}
           </.link>
 
-          <header class="mt-10 border-b border-border/70 pb-10">
-            <div class="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-              <time datetime={Date.to_iso8601(@post.published_on)}>
-                {format_date(@post.published_on)}
-              </time>
-              <span aria-hidden="true">·</span>
-              <span>
-                {ngettext("%{count} min read", "%{count} min read", @post.reading_time,
-                  count: @post.reading_time
-                )}
-              </span>
-            </div>
+          <div class="mt-10 flex flex-wrap items-center justify-center gap-3 text-sm text-muted-foreground">
+            <span class="font-semibold uppercase tracking-[0.14em] text-primary">Storyarn</span>
+            <span aria-hidden="true">·</span>
+            <time datetime={Date.to_iso8601(@post.published_on)}>
+              {format_date(@post.published_on)}
+            </time>
+            <span aria-hidden="true">·</span>
+            <span lang={@locale}>
+              {reading_time(@post.reading_time)}
+            </span>
+          </div>
 
-            <h1 class="mt-6 text-4xl font-bold leading-[1.08] tracking-[-0.04em] text-balance sm:text-6xl">
-              {@post.title}
-            </h1>
-            <p class="mt-6 text-xl leading-8 text-muted-foreground">{@post.description}</p>
+          <h1 class="mt-7 text-4xl font-bold leading-[1.04] tracking-[-0.045em] text-balance sm:text-6xl lg:text-7xl">
+            {@post.title}
+          </h1>
+          <p class="mx-auto mt-7 max-w-3xl text-xl leading-8 text-muted-foreground">
+            {@post.description}
+          </p>
 
-            <div class="mt-7 flex flex-wrap items-center gap-3">
-              <span class="text-sm font-medium text-foreground">By {@post.author}</span>
-              <span
-                :for={tag <- @post.tags}
-                class="badge badge-outline border-border/80 text-muted-foreground"
-              >
-                {tag}
-              </span>
-            </div>
-          </header>
+          <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <span lang={@locale} class="text-sm font-medium text-foreground">
+              {dgettext("blog", "By %{author}", author: @post.author)}
+            </span>
+            <span
+              :for={tag <- @post.tags}
+              class="badge badge-outline border-border/80 text-muted-foreground"
+            >
+              {tag}
+            </span>
+          </div>
+        </header>
 
-          <div id="blog-post-content" class="docs-content mt-10 max-w-none">
+        <figure class="relative mx-auto mt-14 w-[min(calc(100%-48px),1152px)] overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-[0_32px_120px_rgba(0,0,0,0.34)]">
+          <img
+            id="blog-post-hero"
+            src={@post.image}
+            alt={@post.image_alt}
+            class="aspect-video w-full object-cover object-left-top"
+            loading="eager"
+            fetchpriority="high"
+          />
+        </figure>
+
+        <div class="relative mx-auto mt-16 w-full max-w-3xl px-6">
+          <div id="blog-post-content" class="blog-content">
             {raw(HtmlSanitizer.sanitize_html(@post.body))}
           </div>
 
-          <aside class="mt-16 rounded-3xl border border-primary/20 bg-primary/5 p-7 sm:p-9">
+          <aside
+            lang={@locale}
+            class="mt-20 overflow-hidden rounded-3xl border border-primary/20 bg-[radial-gradient(circle_at_100%_0%,rgba(45,212,191,0.16),transparent_45%),rgba(45,212,191,0.04)] p-8 sm:p-10"
+          >
             <p class="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
-              Keep exploring
+              {dgettext("blog", "Storyarn is in open beta")}
             </p>
-            <h2 class="mt-3 text-2xl font-semibold tracking-tight">
-              Build and test the flow in one connected workspace.
+            <h2 class="mt-4 text-3xl font-semibold leading-tight tracking-[-0.025em] text-balance">
+              {dgettext("blog", "Bring the whole narrative into one connected project.")}
             </h2>
-            <p class="mt-3 leading-7 text-muted-foreground">
-              Explore Storyarn's documentation or create an account to bring your narrative workflow together.
+            <p class="mt-4 max-w-xl leading-7 text-muted-foreground">
+              {dgettext(
+                "blog",
+                "Registration is open, Storyarn is free during early access, and no invitation is required."
+              )}
             </p>
-            <div class="mt-6 flex flex-wrap gap-3">
-              <%!-- Full requests keep root-level canonical and social metadata in sync when leaving the article. --%>
-              <.link id="blog-docs-cta" href={~p"/docs"} class="btn btn-primary rounded-full">
-                Explore the docs
-              </.link>
-              <.link
-                id="blog-register-cta"
-                href={~p"/users/register"}
-                class="btn btn-ghost rounded-full"
-              >
-                Create account
-              </.link>
-            </div>
+            <.link
+              id="blog-register-cta"
+              navigate={~p"/users/register"}
+              class="btn btn-primary mt-7 rounded-full px-6"
+            >
+              {dgettext("blog", "Create your Storyarn account")}
+              <.icon
+                name="arrow-right"
+                class="size-4"
+              />
+            </.link>
           </aside>
         </div>
       </article>
@@ -131,6 +152,10 @@ defmodule StoryarnWeb.BlogLive.Show do
   end
 
   defp format_date(date), do: Calendar.strftime(date, "%B %-d, %Y")
+
+  defp reading_time(count) do
+    dngettext("blog", "%{count} min read", "%{count} min read", count, count: count)
+  end
 
   defp structured_data(post, canonical_url, image_url) do
     organization_url = Layouts.absolute_url(~p"/")

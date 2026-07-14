@@ -10,7 +10,7 @@ defmodule StoryarnWeb.SitemapControllerTest do
     assert body =~ ~r"<loc>http://localhost:\d+/docs/welcome/what-is-storyarn</loc>"
     assert body =~ ~r"<loc>http://localhost:\d+/docs/narrative-design/flows-overview</loc>"
     assert body =~ ~r"<loc>http://localhost:\d+/blog</loc>"
-    assert body =~ ~r"<loc>http://localhost:\d+/blog/test-branching-dialogue-before-export</loc>"
+    assert body =~ ~r"<loc>http://localhost:\d+/blog/introducing-storyarn</loc>"
     assert body =~ ~r"<loc>http://localhost:\d+/contact</loc>"
     refute body =~ "/users/log-in"
     refute body =~ "/projects/invitations"

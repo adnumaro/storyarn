@@ -1,0 +1,55 @@
+## Traducciones de la interfaz del blog.
+msgid ""
+msgstr ""
+"Language: es\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "%{count} min read"
+msgid_plural "%{count} min read"
+msgstr[0] "%{count} min de lectura"
+msgstr[1] "%{count} min de lectura"
+
+msgid "Back to the journal"
+msgstr "Volver al diario"
+
+msgid "Bring the whole narrative into one connected project."
+msgstr "Reúne toda la narrativa en un único proyecto conectado."
+
+msgid "By %{author}"
+msgstr "Por %{author}"
+
+msgid "Create your Storyarn account"
+msgstr "Crea tu cuenta de Storyarn"
+
+msgid "Featured story"
+msgstr "Artículo destacado"
+
+msgid "Inside Storyarn"
+msgstr "Dentro de Storyarn"
+
+msgid "More from the journal"
+msgstr "Más artículos del diario"
+
+msgid "Narrative Design Journal"
+msgstr "Diario de diseño narrativo"
+
+msgid "No published articles yet."
+msgstr "Todavía no hay artículos publicados."
+
+msgid "Notes on building a connected narrative design platform."
+msgstr "Notas sobre cómo construimos una plataforma de diseño narrativo conectada."
+
+msgid "Product decisions, narrative production problems, and what we are learning while Storyarn grows."
+msgstr "Decisiones de producto, problemas de producción narrativa y lo que aprendemos mientras Storyarn crece."
+
+msgid "Product thinking, narrative design practice, and lessons from building Storyarn as a connected workspace for interactive stories."
+msgstr "Decisiones de producto, prácticas de diseño narrativo y aprendizajes al construir Storyarn como un espacio conectado para historias interactivas."
+
+msgid "Read the story"
+msgstr "Leer el artículo"
+
+msgid "Registration is open, Storyarn is free during early access, and no invitation is required."
+msgstr "El registro está abierto, Storyarn es gratuito durante el acceso anticipado y no hace falta invitación."
+
+msgid "Storyarn is in open beta"
+msgstr "Storyarn está en beta pública"

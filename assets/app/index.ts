@@ -4,17 +4,37 @@ import { defineAsyncComponent, h } from "vue";
 import type { App, Component } from "vue";
 import VueKonva from "vue-konva";
 import { i18n } from "./i18n";
+import PublicContact from "./live/public/contact/PublicContact.vue";
+import PublicLanding from "./live/public/landing/PublicLanding.vue";
+import LegalPage from "./live/public/legal/LegalPage.vue";
 
 let appCounter = 0;
 
 type ComponentLoader = () => Promise<{ default: Component }>;
 
 const componentLoaders = {
-  ...import.meta.glob<{ default: Component }>("./**/*.vue"),
+  ...import.meta.glob<{ default: Component }>([
+    "./**/*.vue",
+    "!./live/public/contact/PublicContact.vue",
+    "!./live/public/landing/PublicLanding.vue",
+    "!./live/public/legal/LegalPage.vue",
+    "!./components/navigation/LiveLink.vue",
+    "!./components/ui/button/Button.vue",
+    "!./modules/public/landing/sections/cta/CtaSignup.vue",
+  ]),
   ...import.meta.glob<{ default: Component }>("../../lib/**/*.vue"),
 } satisfies Record<string, ComponentLoader>;
 
 const asyncComponents = new Map<string, Component>();
+
+// These pages share the SSR public shell and are common navigation targets.
+// Resolving them synchronously prevents an empty async-component frame while
+// LiveView moves between the journal and the marketing pages.
+const eagerPublicComponents = new Map<string, Component>([
+  ["live/public/contact/PublicContact", PublicContact],
+  ["live/public/landing/PublicLanding", PublicLanding],
+  ["live/public/legal/LegalPage", LegalPage],
+]);
 
 const resolveAsyncComponent = (name: string): Component => {
   let component = asyncComponents.get(name);
@@ -48,7 +68,7 @@ observer.observe(document.documentElement, { attributes: true });
 
 export default createLiveVue({
   resolve: (name: string) => {
-    return resolveAsyncComponent(name);
+    return eagerPublicComponents.get(name) ?? resolveAsyncComponent(name);
   },
   setup: ({ createApp, component, props, slots, plugin, el }: SetupContext): App => {
     syncLocale();
