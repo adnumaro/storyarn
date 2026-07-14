@@ -95,7 +95,13 @@ function parseStoredPosition(value: string | null): HistoryScrollPosition | null
   if (value === null) return null;
 
   try {
-    return scrollPosition(JSON.parse(value));
+    const parsed = JSON.parse(value);
+    const legacyScroll = finiteScroll(parsed);
+
+    return (
+      scrollPosition(parsed) ??
+      (legacyScroll === null ? null : { target: "window", top: legacyScroll })
+    );
   } catch {
     const legacyScroll = finiteScroll(Number(value));
     return legacyScroll === null ? null : { target: "window", top: legacyScroll };

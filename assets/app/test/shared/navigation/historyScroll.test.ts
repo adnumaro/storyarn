@@ -51,6 +51,12 @@ describe("historyScroll", () => {
     ).toEqual([]);
   });
 
+  it("restores numeric scroll entries stored before positions included a target", () => {
+    window.sessionStorage.setItem("storyarn:pending-history-scroll", JSON.stringify(275));
+
+    expect(consumeHistoryScroll()).toBe(275);
+  });
+
   it("does not interrupt navigation when session storage rejects writes", () => {
     Object.defineProperty(window, "scrollY", { configurable: true, value: 120 });
     window.history.replaceState({ id: "landing-view", position: 0 }, "", window.location.href);
