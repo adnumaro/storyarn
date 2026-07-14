@@ -21,7 +21,7 @@ defmodule Storyarn.Repo.Migrations.BackfillExitNodeWordCounts do
       Enum.each(batch, fn {id, data} ->
         word_count = WordCount.for_node_data("exit", decode_value(data))
 
-        from(n in "flow_nodes", where: n.id == ^id)
+        from(n in "flow_nodes", where: n.id == ^id and n.data == ^data)
         |> Repo.update_all(set: [word_count: word_count])
       end)
     end)
