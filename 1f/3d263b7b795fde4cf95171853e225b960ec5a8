@@ -1,0 +1,172 @@
+assets/js/utils/seo_metadata.js
+  s_3cb2d6b0d2b40c::t_fc544c2ecad0d3 90,138-144,149-152
+  s_3cb2d6b0d2b40c::t_31b19af3a2616a 1-89,91-137,145-148,153-154
+priv/gettext/public.pot
+  s_3cb2d6b0d2b40c::t_d6964b31a99f99 50-52
+  s_3cb2d6b0d2b40c::t_d16562166b9c41 1-49,53-69
+test/storyarn_web/live/blog_live/index_test.exs
+  s_3cb2d6b0d2b40c::t_50e4ad8501b2e3 59-63
+  s_3cb2d6b0d2b40c::t_aeaa09cea1e97d 13-14,36-37,39,41-44
+  s_3cb2d6b0d2b40c::t_54a18905bb184a 12,33,38,46-47,70,73,76-80
+  s_3cb2d6b0d2b40c::t_d8bc1e5891c271 48-50,52-58
+  s_3cb2d6b0d2b40c::t_b421ac67941cd9 51,64-67
+  s_3cb2d6b0d2b40c::t_4991bcc59cf240 45
+priv/gettext/en/LC_MESSAGES/public.po
+  s_3cb2d6b0d2b40c::t_d16562166b9c41 1-51,55-71
+  s_3cb2d6b0d2b40c::t_d6964b31a99f99 52-54
+lib/storyarn_web/live/user_live/reset_password.ex
+  s_3cb2d6b0d2b40c::t_5e2a522755ec47 14-15,21
+assets/app/live/public/legal/LegalPage.vue
+  s_3cb2d6b0d2b40c::t_ddc9fca2223dc9 55,256
+test/storyarn/shared/html_sanitizer_test.exs
+  s_3cb2d6b0d2b40c::t_d7cf081ec77cc2 35-45
+priv/gettext/en/LC_MESSAGES/blog.po
+  s_3cb2d6b0d2b40c::t_d6964b31a99f99 1-55
+lib/storyarn_web/components/public_mobile_navigation.ex
+  s_3cb2d6b0d2b40c::t_ca71c47f7a054c 1-15,17-21,36-38,40-41,43,48,52,54,58,60,64-65,67-69,72-73,75-77,79,82-85,87-93,95-97,100,102-103,108-111,123,136-148,157,162,168
+  s_3cb2d6b0d2b40c::t_50e4ad8501b2e3 29-32,104,106,133
+  s_3cb2d6b0d2b40c::t_2a88dee924dd73 16,22-24,26-27,80,107,112,114-119,121-122,127-132,134-135
+  s_3cb2d6b0d2b40c::t_14900eafa49e8b 25,39,57,66,70,74,78,86,94,101
+  s_3cb2d6b0d2b40c::t_8a2815af72272b 149-156,158-161,163-167,169
+lib/storyarn_web/live/blog_live/index.ex
+  s_3cb2d6b0d2b40c::t_26411b66b46373 24,44-45,48-50,52-53,56,62,111,123,151-153,156,174
+  s_3cb2d6b0d2b40c::t_2c724447e4611b 80-83
+  s_3cb2d6b0d2b40c::t_6ce6d579360903 8,12-14,19,22-23,25-27,29,51,54,57-58,64-70,72-78,84-88,94,96,99,102-104,106,108-110,119,122,124-150,154-155,157-158,162,164-173,175-177,185-188
+  s_3cb2d6b0d2b40c::t_453a1149ed9bc1 91,115-118,159-161,163
+  s_3cb2d6b0d2b40c::t_847e2f97754956 59-60
+  s_3cb2d6b0d2b40c::t_3f6420df490d87 34-35,40
+lib/storyarn_web/live/user_live/confirm_access.ex
+  s_3cb2d6b0d2b40c::t_5e2a522755ec47 16-17,23
+priv/gettext/es/LC_MESSAGES/blog.po
+  s_3cb2d6b0d2b40c::t_d6964b31a99f99 1-55
+assets/app/index.ts
+  s_3cb2d6b0d2b40c::t_a9ddbc4b5675d0 7-9,30-38,71
+  s_3cb2d6b0d2b40c::t_87539d1e8e27f4 16-20,23-24
+  s_3cb2d6b0d2b40c::t_4ad3692c8d0fa5 21-22
+lib/storyarn_web/live/landing_live/contact.ex
+  s_3cb2d6b0d2b40c::t_3f6420df490d87 20-21,26
+lib/storyarn_web/live/user_live/forgot_password.ex
+  s_3cb2d6b0d2b40c::t_5e2a522755ec47 21-22,28
+lib/storyarn_web/live/user_live/login.ex
+  s_3cb2d6b0d2b40c::t_5e2a522755ec47 22-23,29
+lib/storyarn_web/components/docs_layout.ex
+  s_3cb2d6b0d2b40c::t_810f6ef6f5368f 14
+  s_3cb2d6b0d2b40c::t_5beb43859a341a 33
+assets/app/live/public/landing/PublicLanding.vue
+  s_3cb2d6b0d2b40c::t_ddc9fca2223dc9 71-77
+assets/css/app.css
+  s_3cb2d6b0d2b40c::t_b14bdafd77533f 698-786,789-801,821-831,834-838
+  s_3cb2d6b0d2b40c::t_b3895b807ba98d 787-788,802-820,832-833
+assets/js/utils/preload_public_routes.js
+  s_3cb2d6b0d2b40c::t_fc544c2ecad0d3 1-15
+lib/storyarn_web/live/project_live/invitation.ex
+  s_3cb2d6b0d2b40c::t_3f6420df490d87 16-17,22
+lib/storyarn_web/live/workspace_live/invitation.ex
+  s_3cb2d6b0d2b40c::t_3f6420df490d87 16-17,22
+lib/storyarn_web/live/user_live/registration.ex
+  s_3cb2d6b0d2b40c::t_5e2a522755ec47 14-15,21
+test/storyarn_web/live/blog_live/show_test.exs
+  s_3cb2d6b0d2b40c::t_e5b8523186c299 17-19,58-60,63,65-69,73
+  s_3cb2d6b0d2b40c::t_728835677bd606 6,29-37,53-57,70-72,87-96
+  s_3cb2d6b0d2b40c::t_ea2d19889dc012 97-98
+lib/storyarn/blog/post_builder.ex
+  s_3cb2d6b0d2b40c::t_003f77761c751b 11,82-128
+  s_3cb2d6b0d2b40c::t_d7cf081ec77cc2 18
+  s_3cb2d6b0d2b40c::t_6ad88c731115ed 23
+lib/storyarn_web/components/icon_components.ex
+  s_3cb2d6b0d2b40c::t_ca71c47f7a054c 40-41
+test/storyarn/blog_test.exs
+  s_3cb2d6b0d2b40c::t_0540db84d1d862 6,14,16-18,20,34-35,39-40
+  s_3cb2d6b0d2b40c::t_9c0e7fa89a479d 15,19,23-24,26,28,31,36,38,41-42
+test/storyarn_web/layouts_test.exs
+  s_3cb2d6b0d2b40c::t_fdaed88deab6e1 116-159
+test/storyarn_web/controllers/blog_redirect_controller_test.exs
+  s_3cb2d6b0d2b40c::t_2a88dee924dd73 1-14
+lib/storyarn_web/components/public_layout.ex
+  s_3cb2d6b0d2b40c::t_a8d90db1d233bd 3,5-7,43,47,52-55,57-58,61-62,78-79
+  s_3cb2d6b0d2b40c::t_6683a7dc6c215b 12-14,48-51,59-60
+  s_3cb2d6b0d2b40c::t_810f6ef6f5368f 17
+  s_3cb2d6b0d2b40c::t_6647ac80121d41 27,29
+lib/storyarn_web/components/public_navigation.ex
+  s_3cb2d6b0d2b40c::t_ca71c47f7a054c 1-28
+lib/storyarn_web/components/public_footer.ex
+  s_3cb2d6b0d2b40c::t_ca71c47f7a054c 1-2,4,6-7,9-29,31-33,36-38,41-42,45-50,52-58,60-66,68,74-79,86,88-94,96-101,104-105
+  s_3cb2d6b0d2b40c::t_14900eafa49e8b 30,34-35,43,51,59,67,69-73,81-85,87,95
+  s_3cb2d6b0d2b40c::t_d9c579cba56b66 106-109
+test/storyarn_web/controllers/llms_controller_test.exs
+  s_3cb2d6b0d2b40c::t_0540db84d1d862 24
+priv/gettext/blog.pot
+  s_3cb2d6b0d2b40c::t_d6964b31a99f99 1-53
+assets/app/test/utils/seo_metadata.test.ts
+  s_3cb2d6b0d2b40c::t_7d44a317994061 1-26,28-30,32-38,40-49,52-53,60-96
+  s_3cb2d6b0d2b40c::t_0540db84d1d862 27,31,39,50-51,54-59
+lib/storyarn_web/components/layouts.ex
+  s_3cb2d6b0d2b40c::t_76f80933bbe990 165-216
+lib/storyarn/shared/html_sanitizer.ex
+  s_3cb2d6b0d2b40c::t_d7cf081ec77cc2 11
+lib/storyarn_web/router.ex
+  s_3cb2d6b0d2b40c::t_2a88dee924dd73 323-325
+test/storyarn_web/live/landing_live/contact_test.exs
+  s_3cb2d6b0d2b40c::t_15c41967d7848b 12-21
+lib/storyarn_web/controllers/blog_redirect_controller.ex
+  s_3cb2d6b0d2b40c::t_2a88dee924dd73 1-11
+test/storyarn_web/controllers/sitemap_controller_test.exs
+  s_3cb2d6b0d2b40c::t_0540db84d1d862 13
+lib/storyarn_web/components/auth_layout.ex
+  s_3cb2d6b0d2b40c::t_810f6ef6f5368f 14
+  s_3cb2d6b0d2b40c::t_2de604b8aa2b71 25
+assets/js/app.js
+  s_3cb2d6b0d2b40c::t_fc544c2ecad0d3 16,19,41-44,52-65,68
+  s_3cb2d6b0d2b40c::t_31b19af3a2616a 20,35
+lib/storyarn_web/live/blog_live/show.ex
+  s_3cb2d6b0d2b40c::t_26411b66b46373 59,62,65,72-78,81-91,99-116,127,130,136-140,146
+  s_3cb2d6b0d2b40c::t_453a1149ed9bc1 66,79,120-123,141-142
+  s_3cb2d6b0d2b40c::t_2c724447e4611b 92
+  s_3cb2d6b0d2b40c::t_847e2f97754956 57,94-98,133-134
+  s_3cb2d6b0d2b40c::t_10c9101812b9e0 9,13,18,28,69,80,93,125,128,131-132,143-145,156-158
+  s_3cb2d6b0d2b40c::t_3f6420df490d87 44-45,50
+  s_3cb2d6b0d2b40c::t_431334aa493051 159
+priv/gettext/es/LC_MESSAGES/public.po
+  s_3cb2d6b0d2b40c::t_d6964b31a99f99 52-54
+  s_3cb2d6b0d2b40c::t_d16562166b9c41 1-51,55-71
+test/e2e/blog_test.exs
+  s_3cb2d6b0d2b40c::t_8ad0e52596d971 12,21-22,29,43,57,95-114,125-126
+  s_3cb2d6b0d2b40c::t_e1839affcfb9f7 115-124
+  s_3cb2d6b0d2b40c::t_0767d92fe3307b 3,13-14,18-20,23-28,30-38,40-42,44-56,58-63,65-70,84-94,127
+  s_3cb2d6b0d2b40c::t_dd3248e07c653f 64
+test/storyarn_web/live/landing_live/index_test.exs
+  s_3cb2d6b0d2b40c::t_15c41967d7848b 14-18,20,26-29
+lib/storyarn_web/components/public_header.ex
+  s_3cb2d6b0d2b40c::t_ca71c47f7a054c 1-25,31-43,48-53,55-61,63,69-72,74-76,81-89,91,93-119
+  s_3cb2d6b0d2b40c::t_14900eafa49e8b 26-30,44-47,54,62,64-68,73,77-80,90
+  s_3cb2d6b0d2b40c::t_2a88dee924dd73 92
+lib/storyarn_web/live/landing_live/index.ex
+  s_3cb2d6b0d2b40c::t_fc6787ce3f836c 38
+  s_3cb2d6b0d2b40c::t_3f6420df490d87 29-30,35
+assets/app/test/utils/posthog.test.ts
+  s_3cb2d6b0d2b40c::t_0540db84d1d862 90
+lib/storyarn_web/live/legal_live/show.ex
+  s_3cb2d6b0d2b40c::t_3f6420df490d87 27-28,33
+lib/storyarn_web/live/docs_live/show.ex
+  s_3cb2d6b0d2b40c::t_5e2a522755ec47 111-112,117
+priv/blog/en/2026-07-14-introducing-storyarn.md
+  s_3cb2d6b0d2b40c::t_9cdb42befd1ae2 2-4,6-8,13,15,17,19,21,23,25,27,29,31,33,35,37,39,41,43,45,47,49-52,54,56,58,60,62,64,66-69,71,73,75,77,79,81,83,85-88,90,92,94,96,98,100,102,104,106
+docs/plans/live-vue-layout-architecture.md
+  s_3cb2d6b0d2b40c::t_a9ddbc4b5675d0 22-28,196-197,202-207,211-214,608-609
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "1f3d263b7b795fde4cf95171853e225b960ec5a8",
+  "prompts": {},
+  "sessions": {
+    "s_3cb2d6b0d2b40c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b4a-b042-7412-8d10-5e6b95b13ee5",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
