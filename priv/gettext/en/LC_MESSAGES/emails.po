@@ -73,22 +73,6 @@ msgstr ""
 msgid "Confirm your email change"
 msgstr ""
 
-#: lib/storyarn/emails/templates.ex:162
-#, elixir-autogen, elixir-format
-msgid "Get started"
-msgstr ""
-
-#: lib/storyarn/emails/templates.ex:174
-#, elixir-autogen, elixir-format
-msgid "Get started:"
-msgstr ""
-
-#: lib/storyarn/emails/templates.ex:156
-#: lib/storyarn/emails/templates.ex:172
-#, elixir-autogen, elixir-format
-msgid "Great news — your spot on the Storyarn waitlist has been activated. You now have full access to the platform."
-msgstr ""
-
 #: lib/storyarn/emails/templates.ex:22
 #: lib/storyarn/emails/templates.ex:39
 #, elixir-autogen, elixir-format
@@ -109,21 +93,11 @@ msgstr ""
 msgid "If you didn't request this change, please ignore this email."
 msgstr ""
 
-#: lib/storyarn/emails/templates.ex:165
-#, elixir-autogen, elixir-format
-msgid "Just click the button above — you'll be able to log in with this email address (%{email})."
-msgstr ""
-
 #: lib/storyarn/emails/templates.ex:34
 #: lib/storyarn/emails/templates.ex:73
 #: lib/storyarn/emails/templates.ex:121
 #, elixir-autogen, elixir-format
 msgid "Or copy this link: %{url}"
-msgstr ""
-
-#: lib/storyarn/emails/templates.ex:159
-#, elixir-autogen, elixir-format
-msgid "Storyarn is a narrative design platform for game developers and interactive storytellers. Create character sheets, design dialogue flows, map worlds, and manage localization."
 msgstr ""
 
 #: lib/storyarn/emails/templates.ex:86
@@ -137,11 +111,6 @@ msgstr ""
 msgid "Update your email address"
 msgstr ""
 
-#: lib/storyarn/emails/templates.ex:176
-#, elixir-autogen, elixir-format
-msgid "You can log in with this email address (%{email})."
-msgstr ""
-
 #: lib/storyarn/emails/templates.ex:25
 #, elixir-autogen, elixir-format
 msgid "You requested to change your email address. Click below to confirm the change."
@@ -150,22 +119,6 @@ msgstr ""
 #: lib/storyarn/emails/templates.ex:41
 #, elixir-autogen, elixir-format
 msgid "You requested to change your email address. Confirm by visiting:"
-msgstr ""
-
-#: lib/storyarn/emails/templates.ex:153
-#: lib/storyarn/emails/templates.ex:170
-#, elixir-autogen, elixir-format
-msgid "You're in!"
-msgstr ""
-
-#: lib/storyarn/emails/templates.ex:149
-#, elixir-autogen, elixir-format
-msgid "You're in! Welcome to Storyarn"
-msgstr ""
-
-#: lib/storyarn/emails/templates.ex:179
-#, elixir-autogen, elixir-format
-msgid "Your Storyarn access is ready"
 msgstr ""
 
 #: lib/storyarn/emails/templates.ex:64

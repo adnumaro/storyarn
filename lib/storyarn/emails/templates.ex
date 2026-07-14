@@ -6,7 +6,7 @@ defmodule Storyarn.Emails.Templates do
 
   User-facing templates use Gettext so they render in the caller's locale
   (set by `StoryarnWeb.Plugs.Locale` from the Accept-Language header).
-  Admin-only templates (e.g. `admin_waitlist_signup`) stay in English.
+  Admin-only templates stay in English.
   """
 
   use Gettext, backend: Storyarn.Gettext
@@ -179,41 +179,6 @@ defmodule Storyarn.Emails.Templates do
     {subject, Layout.render(content, preview: preview), text}
   end
 
-  @doc "Waitlist invitation email — sent when a waitlist user gets access."
-  def waitlist_invite(email, login_url) do
-    subject = dgettext("emails", "You're in! Welcome to Storyarn")
-
-    content = """
-    <mj-text font-size="18px" font-weight="600" color="#f9fafb">
-      #{dgettext("emails", "You're in!")}
-    </mj-text>
-    <mj-text>
-      #{dgettext("emails", "Great news — your spot on the Storyarn waitlist has been activated. You now have full access to the platform.")}
-    </mj-text>
-    <mj-text>
-      #{dgettext("emails", "Storyarn is a narrative design platform for game developers and interactive storytellers. Create character sheets, design dialogue flows, map worlds, and manage localization.")}
-    </mj-text>
-    <mj-button href="#{escape(login_url)}" background-color="#4dd9c0" color="#0a0a0a">
-      #{dgettext("emails", "Get started")}
-    </mj-button>
-    <mj-text font-size="13px" color="#9ca3af">
-      #{dgettext("emails", "Just click the button above — you'll be able to log in with this email address (%{email}).", email: escape(email))}
-    </mj-text>
-    """
-
-    text = """
-    #{dgettext("emails", "You're in!")}
-
-    #{dgettext("emails", "Great news — your spot on the Storyarn waitlist has been activated. You now have full access to the platform.")}
-
-    #{dgettext("emails", "Get started:")} #{login_url}
-
-    #{dgettext("emails", "You can log in with this email address (%{email}).", email: email)}
-    """
-
-    {subject, Layout.render(content, preview: dgettext("emails", "Your Storyarn access is ready")), text}
-  end
-
   # --- Admin-only templates (no Gettext, always English) ---
 
   @doc "Admin notification when a user requests to invite someone to a project or workspace."
@@ -274,69 +239,6 @@ defmodule Storyarn.Emails.Templates do
     """
 
     {subject, Layout.render(content, preview: "Invitation request: #{invitee_email}"), text}
-  end
-
-  @doc "Admin notification when someone joins the waitlist."
-  def admin_waitlist_signup(email, signup_info \\ %{}) do
-    locale = Map.get(signup_info, :locale, "unknown")
-    language = Map.get(signup_info, :accept_language, "unknown")
-    ip = Map.get(signup_info, :ip, "unknown")
-    country = Map.get(signup_info, :country, "unknown")
-    profession = Map.get(signup_info, :profession, "unknown") || "unknown"
-    primary_interest = Map.get(signup_info, :primary_interest, "unknown") || "unknown"
-    discovery_source = Map.get(signup_info, :discovery_source, "unknown") || "unknown"
-    current_tool = Map.get(signup_info, :current_tool, "unknown") || "unknown"
-    current_tool_other = Map.get(signup_info, :current_tool_other, "") || ""
-
-    safe_email = sanitize_for_shell(email)
-    safe_locale = sanitize_for_shell(locale)
-
-    subject = "New waitlist signup: #{email}"
-
-    content = """
-    <mj-text font-size="18px" font-weight="600" color="#f9fafb">
-      New Waitlist Signup
-    </mj-text>
-    <mj-text>
-      Someone just signed up for the Storyarn waitlist:
-    </mj-text>
-    <mj-text font-size="16px" font-weight="500" color="#d4a24c">
-      #{escape(email)}
-    </mj-text>
-    <mj-table font-size="13px" color="#d1d5db" cellpadding="4px">
-      <tr><td style="color:#9ca3af;width:100px">Language</td><td>#{escape(locale)} (#{escape(language)})</td></tr>
-      <tr><td style="color:#9ca3af">Region</td><td>#{escape(country)}</td></tr>
-      <tr><td style="color:#9ca3af">IP</td><td>#{escape(ip)}</td></tr>
-      <tr><td style="color:#9ca3af">Profession</td><td>#{escape(profession)}</td></tr>
-      <tr><td style="color:#9ca3af">Interest</td><td>#{escape(primary_interest)}</td></tr>
-      <tr><td style="color:#9ca3af">Source</td><td>#{escape(discovery_source)}</td></tr>
-      <tr><td style="color:#9ca3af">Current tool</td><td>#{escape(current_tool)}</td></tr>
-      <tr><td style="color:#9ca3af">Tool detail</td><td>#{escape(current_tool_other)}</td></tr>
-    </mj-table>
-    <mj-text font-size="13px" color="#9ca3af" padding-top="16px">
-      Invite with:<br/>
-      <code>fly ssh console -a storyarn-staging -C '/app/bin/storyarn rpc "Storyarn.Release.invite_waitlist_user(\\"#{escape(safe_email)}\\", \\"#{escape(safe_locale)}\\")"'</code>
-    </mj-text>
-    """
-
-    text = """
-    New Waitlist Signup
-
-    Email: #{email}
-    Language: #{locale} (#{language})
-    Region: #{country}
-    IP: #{ip}
-    Profession: #{profession}
-    Interest: #{primary_interest}
-    Source: #{discovery_source}
-    Current tool: #{current_tool}
-    Tool detail: #{current_tool_other}
-
-    Invite with:
-    fly ssh console -a storyarn-staging -C '/app/bin/storyarn rpc "Storyarn.Release.invite_waitlist_user(\\"#{safe_email}\\", \\"#{safe_locale}\\")"'
-    """
-
-    {subject, Layout.render(content, preview: "New waitlist signup: #{email}"), text}
   end
 
   defp escape(text) when is_binary(text) do

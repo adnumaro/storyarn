@@ -18,26 +18,6 @@ defmodule Storyarn.Release do
     {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, to: version))
   end
 
-  @doc """
-  Send a waitlist invitation email to the given address.
-
-  Usage from Fly SSH (uses rpc to run inside the live node):
-    fly ssh console -a storyarn-staging -C '/app/bin/storyarn rpc "Storyarn.Release.invite_waitlist_user(\"user@example.com\")"'
-    fly ssh console -a storyarn-staging -C '/app/bin/storyarn rpc "Storyarn.Release.invite_waitlist_user(\"user@example.com\", \"es\")"'
-  """
-  def invite_waitlist_user(email, locale \\ "en") when is_binary(email) do
-    Gettext.put_locale(Storyarn.Gettext, locale)
-
-    case Storyarn.Accounts.find_or_register_confirmed_user(email) do
-      {:ok, user} ->
-        deliver_waitlist_invitation(user, email)
-
-      {:error, reason} ->
-        IO.puts("Failed to create user: #{inspect(reason)}")
-        raise "Cannot invite #{email}: user creation failed"
-    end
-  end
-
   @project_roles ~w(editor viewer)
   @workspace_roles ~w(admin member viewer)
 
@@ -164,19 +144,6 @@ defmodule Storyarn.Release do
 
   defp invitation_config("workspace", id) do
     {Storyarn.Workspaces, Storyarn.Workspaces.get_workspace!(id)}
-  end
-
-  defp deliver_waitlist_invitation(user, email) do
-    IO.puts("User account ready for #{email}")
-
-    case Storyarn.Accounts.deliver_waitlist_invite_instructions(user, &waitlist_invitation_url/1) do
-      {:ok, _} -> IO.puts("Invitation sent to #{email}")
-      {:error, reason} -> IO.puts("Failed to send: #{inspect(reason)}")
-    end
-  end
-
-  defp waitlist_invitation_url(token) do
-    Storyarn.Urls.base_url() <> "/users/register/" <> token
   end
 
   defp template_import_options(opts) do

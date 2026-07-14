@@ -51,6 +51,18 @@ defmodule Storyarn.Accounts.User do
     |> validate_email(opts)
   end
 
+  @doc """
+  A user changeset for public registration.
+
+  It validates both the email and password while allowing callers to disable
+  password hashing during live validation.
+  """
+  def registration_changeset(user, attrs, opts \\ []) do
+    user
+    |> email_changeset(attrs, validate_unique: Keyword.get(opts, :validate_unique, true))
+    |> password_changeset(attrs, hash_password: Keyword.get(opts, :hash_password, true))
+  end
+
   defp validate_email(changeset, opts) do
     changeset =
       changeset

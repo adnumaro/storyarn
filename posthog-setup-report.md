@@ -1,7 +1,7 @@
 <wizard-report>
 # PostHog post-wizard report
 
-The wizard has completed a deep integration of PostHog analytics into Storyarn. The project already had a sophisticated privacy-safe analytics infrastructure (backend `Storyarn.Analytics` + frontend `assets/js/utils/posthog.js` with a strict property allowlist). The integration extended this foundation with 5 new events covering key user journeys: landing page conversion, onboarding activation, flow player engagement, and project data portability.
+The wizard has completed a deep integration of PostHog analytics into Storyarn. The project already had a sophisticated privacy-safe analytics infrastructure (backend `Storyarn.Analytics` + frontend `assets/js/utils/posthog.js` with a strict property allowlist). The integration extended this foundation with 4 new events covering key user journeys: flow player engagement and project data portability.
 
 **Files changed:**
 
@@ -13,7 +13,6 @@ The wizard has completed a deep integration of PostHog analytics into Storyarn. 
 | `assets/app/modules/flows/player/components/PlayerOutcome.vue`                  | Track `flow player completed` on outcome mount                                                                                          |
 | `assets/app/modules/projects/settings/export-import/components/ExportPanel.vue` | Track `project exported` on download click                                                                                              |
 | `assets/app/modules/projects/settings/export-import/components/ImportPanel.vue` | Track `project imported` when step reaches `done`                                                                                       |
-| `assets/app/modules/public/landing/sections/cta/CtaWaitlist.vue`                | Track `waitlist joined` after form submit                                                                                               |
 | `.env`                                                                          | Set `POSTHOG_PROJECT_API_KEY`, `POSTHOG_HOST`, `POSTHOG_ENABLED`, `POSTHOG_FRONTEND_ENABLED`, `POSTHOG_FRONTEND_ERROR_TRACKING_ENABLED` |
 
 **Events added:**
@@ -24,7 +23,6 @@ The wizard has completed a deep integration of PostHog analytics into Storyarn. 
 | `flow player completed` | User reaches an outcome node (end of a flow) | `PlayerOutcome.vue` | `step_count`, `choices_made`            |
 | `project exported`      | User downloads a project export file         | `ExportPanel.vue`   | `format`, `asset_mode`, `section_count` |
 | `project imported`      | User successfully completes a project import | `ImportPanel.vue`   | `has_conflicts`                         |
-| `waitlist joined`       | Visitor submits email on the landing page    | `CtaWaitlist.vue`   | —                                       |
 
 **Pre-existing events (unchanged):**
 
@@ -43,7 +41,6 @@ We've built some insights and a dashboard for you to keep an eye on user behavio
 
 - [Analytics basics dashboard](/dashboard/686438)
 - [New signups over time](/insights/uT0tQ9R9) — weekly unique users who sign up
-- [Waitlist sign-ups](/insights/Pgl8UKjd) — landing page CTA conversions
 - [Activation funnel: signup → project → player](/insights/Gs0aHEHi) — 3-step conversion funnel showing drop-off between signup, first project, and first flow play
 - [Flow player: started vs completed](/insights/uCX2KZ1J) — session start vs outcome reached, revealing flow completion rate
 - [Project exports and imports](/insights/vTOakzfm) — power-user data portability activity

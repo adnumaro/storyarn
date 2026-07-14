@@ -28,7 +28,13 @@ defmodule StoryarnWeb.Components.PublicLayout do
       |> assign(:public_layout_signed_in, signed_in?(assigns.current_scope))
 
     ~H"""
-    <div id="public-layout-wrapper">
+    <div
+      id="public-layout-wrapper"
+      class={[
+        "min-h-screen bg-background text-foreground",
+        @theme == "dark" && "dark"
+      ]}
+    >
       <.vue
         v-component="live/layouts/public/Layout"
         v-socket={@socket}
@@ -54,6 +60,7 @@ defmodule StoryarnWeb.Components.PublicLayout do
       docs: ~p"/docs",
       contact: ~p"/contact",
       login: ~p"/users/log-in",
+      register: ~p"/users/register",
       workspaces: ~p"/workspaces"
     }
   end

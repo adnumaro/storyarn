@@ -10,6 +10,10 @@ import { Socket } from "phoenix";
 import { LiveSocket } from "phoenix_live_view";
 import topbar from "topbar";
 import liveVueApp from "../app";
+import {
+  capturePendingHistoryScroll,
+  clearPendingHistoryScroll,
+} from "../app/shared/navigation/historyScroll";
 import { initPostHog } from "./utils/posthog";
 
 if (!window.__storyarnAppInitialized) {
@@ -27,6 +31,13 @@ if (!window.__storyarnAppInitialized) {
   topbar.config({ barColors: { 0: "#29d" }, shadowColor: "rgba(0, 0, 0, .3)" });
   window.addEventListener("phx:page-loading-start", () => topbar.show(300));
   window.addEventListener("phx:page-loading-stop", () => topbar.hide());
+
+  // Capture the target history entry before LiveView replaces the current DOM.
+  // Async Vue routes can otherwise trigger scroll anchoring and overwrite it.
+  window.addEventListener("popstate", (event) => capturePendingHistoryScroll(event.state));
+  window.addEventListener("phx:navigate", (event) => {
+    if (!event.detail?.pop) clearPendingHistoryScroll();
+  });
 
   liveSocket.connect();
 

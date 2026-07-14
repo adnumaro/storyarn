@@ -17,6 +17,11 @@ defmodule StoryarnWeb.UserLive.AuthRedirectTest do
       assert to =~ "/workspaces/"
     end
 
+    test "redirects authenticated users away from public registration", %{conn: conn} do
+      assert {:error, {:redirect, %{to: to}}} = live(conn, ~p"/users/register")
+      assert to =~ "/workspaces/"
+    end
+
     test "keeps confirm access available for authenticated users", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/users/confirm-access")
 

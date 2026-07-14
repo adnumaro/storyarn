@@ -73,22 +73,6 @@ msgstr ""
 msgid "Confirm your email change"
 msgstr ""
 
-#: lib/storyarn/emails/templates.ex:197
-#, elixir-autogen, elixir-format
-msgid "Get started"
-msgstr ""
-
-#: lib/storyarn/emails/templates.ex:209
-#, elixir-autogen, elixir-format
-msgid "Get started:"
-msgstr ""
-
-#: lib/storyarn/emails/templates.ex:191
-#: lib/storyarn/emails/templates.ex:207
-#, elixir-autogen, elixir-format
-msgid "Great news — your spot on the Storyarn waitlist has been activated. You now have full access to the platform."
-msgstr ""
-
 #: lib/storyarn/emails/templates.ex:22
 #: lib/storyarn/emails/templates.ex:39
 #: lib/storyarn/emails/templates.ex:57
@@ -111,11 +95,6 @@ msgstr ""
 msgid "If you didn't request this change, please ignore this email."
 msgstr ""
 
-#: lib/storyarn/emails/templates.ex:200
-#, elixir-autogen, elixir-format
-msgid "Just click the button above — you'll be able to log in with this email address (%{email})."
-msgstr ""
-
 #: lib/storyarn/emails/templates.ex:34
 #: lib/storyarn/emails/templates.ex:69
 #: lib/storyarn/emails/templates.ex:108
@@ -124,13 +103,8 @@ msgstr ""
 msgid "Or copy this link: %{url}"
 msgstr ""
 
-#: lib/storyarn/emails/templates.ex:194
-#, elixir-autogen, elixir-format
-msgid "Storyarn is a narrative design platform for game developers and interactive storytellers. Create character sheets, design dialogue flows, map worlds, and manage localization."
-msgstr ""
-
-#: lib/storyarn/emails/templates.ex:121
-#: lib/storyarn/emails/templates.ex:169
+#: lib/storyarn/emails/templates.ex:86
+#: lib/storyarn/emails/templates.ex:134
 #, elixir-autogen, elixir-format
 msgid "This invitation expires in %{days} days."
 msgstr ""
@@ -138,11 +112,6 @@ msgstr ""
 #: lib/storyarn/emails/templates.ex:18
 #, elixir-autogen, elixir-format
 msgid "Update your email address"
-msgstr ""
-
-#: lib/storyarn/emails/templates.ex:211
-#, elixir-autogen, elixir-format
-msgid "You can log in with this email address (%{email})."
 msgstr ""
 
 #: lib/storyarn/emails/templates.ex:25
@@ -155,24 +124,8 @@ msgstr ""
 msgid "You requested to change your email address. Confirm by visiting:"
 msgstr ""
 
-#: lib/storyarn/emails/templates.ex:188
-#: lib/storyarn/emails/templates.ex:205
-#, elixir-autogen, elixir-format
-msgid "You're in!"
-msgstr ""
-
-#: lib/storyarn/emails/templates.ex:184
-#, elixir-autogen, elixir-format
-msgid "You're in! Welcome to Storyarn"
-msgstr ""
-
-#: lib/storyarn/emails/templates.ex:214
-#, elixir-autogen, elixir-format
-msgid "Your Storyarn access is ready"
-msgstr ""
-
-#: lib/storyarn/emails/templates.ex:99
-#: lib/storyarn/emails/templates.ex:147
+#: lib/storyarn/emails/templates.ex:64
+#: lib/storyarn/emails/templates.ex:112
 #, elixir-autogen, elixir-format
 msgid "Click the button below to accept. You'll be redirected to the login page where you can sign in with this email address."
 msgstr ""
