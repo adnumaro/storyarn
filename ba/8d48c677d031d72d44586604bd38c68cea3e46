@@ -1,0 +1,21 @@
+test/storyarn_web/plugs/locale_test.exs
+  s_3cb2d6b0d2b40c::t_56fc1c476365a0 46-61
+lib/storyarn_web/plugs/locale.ex
+  s_3cb2d6b0d2b40c::t_56fc1c476365a0 163,165-191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "ba8d48c677d031d72d44586604bd38c68cea3e46",
+  "prompts": {},
+  "sessions": {
+    "s_3cb2d6b0d2b40c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b4a-b042-7412-8d10-5e6b95b13ee5",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
