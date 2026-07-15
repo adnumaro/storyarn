@@ -81,6 +81,21 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
          |> put_flash(:info, dgettext("projects", "You're already a member of this project."))
          |> redirect(to: ~p"/users/log-in")}
 
+      {:error, :limit_reached, _details} ->
+        {:ok,
+         socket
+         |> put_flash(
+           :error,
+           dgettext(
+             "projects",
+             "This invitation cannot be accepted while the workspace is at its member limit. Ask an owner or admin to free a seat, then try this invitation again."
+           )
+         )
+         |> redirect(to: ~p"/")}
+
+      {:error, :invitation_unavailable} ->
+        {:ok, socket}
+
       {:error, _reason} ->
         {:ok, socket}
     end

@@ -124,16 +124,6 @@ msgstr "Ya eres miembro de este espacio de trabajo."
 msgid "Invitation accepted! Log in with %{email} to get started."
 msgstr "¡Invitación aceptada! Inicia sesión con %{email} para empezar."
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:144
-#, elixir-autogen, elixir-format
-msgid "Invitation request sent. An admin will review it shortly."
-msgstr "Solicitud de invitación enviada. Un administrador la revisará en breve."
-
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:149
-#, elixir-autogen, elixir-format
-msgid "Invalid role."
-msgstr "Rol no válido."
-
 #: lib/storyarn_web/live/project_live/form.ex:75
 #: lib/storyarn_web/live/workspace_live/show.ex:103
 #, elixir-autogen, elixir-format
@@ -220,3 +210,53 @@ msgstr "por %{email}"
 #, elixir-autogen, elixir-format
 msgid "just now"
 msgstr "ahora mismo"
+
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:166
+#, elixir-autogen, elixir-format
+msgid "An invitation has already been sent to this email."
+msgstr "Ya se ha enviado una invitación a este correo."
+
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:184
+#, elixir-autogen, elixir-format
+msgid "Could not send invitation."
+msgstr "No se ha podido enviar la invitación."
+
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:140
+#, elixir-autogen, elixir-format
+msgid "Enter a valid email address and role."
+msgstr "Introduce una dirección de correo y un rol válidos."
+
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:149
+#, elixir-autogen, elixir-format
+msgid "Invitation queued for delivery."
+msgstr "Invitación en cola para su envío."
+
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:223
+#, elixir-autogen, elixir-format
+msgid "Invitation revoked."
+msgstr "Invitación revocada."
+
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:226
+#, elixir-autogen, elixir-format
+msgid "Invitation not found."
+msgstr "No se ha encontrado la invitación."
+
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:180
+#, elixir-autogen, elixir-format
+msgid "Member limit reached for your plan."
+msgstr "Has alcanzado el límite de miembros de tu plan."
+
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:157
+#, elixir-autogen, elixir-format
+msgid "This person is already a member of this workspace."
+msgstr "Esta persona ya es miembro de este espacio de trabajo."
+
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:175
+#, elixir-autogen, elixir-format
+msgid "Too many invitations have been sent. Try again later."
+msgstr "Se han enviado demasiadas invitaciones. Inténtalo de nuevo más tarde."
+
+#: lib/storyarn_web/live/workspace_live/invitation.ex:97
+#, elixir-autogen, elixir-format
+msgid "This invitation cannot be accepted while the workspace is at its member limit. Ask an owner or admin to free a seat, then try this invitation again."
+msgstr "Esta invitación no se puede aceptar mientras el espacio de trabajo esté en su límite de miembros. Pide a un propietario o administrador que libere una plaza y vuelve a intentarlo con esta invitación."

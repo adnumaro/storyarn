@@ -115,6 +115,23 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
 
       assert flash["info"] =~ "already a member"
     end
+
+    test "explains when a legacy invitation can no longer fit the plan", %{conn: conn} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      invitee = user_fixture()
+      existing_member = user_fixture()
+
+      {encoded_token, invitation} = create_invitation(workspace, owner, invitee.email)
+      workspace_membership_fixture(workspace, existing_member, "viewer")
+
+      assert {:error, {:redirect, %{to: "/", flash: flash}}} =
+               live(conn, ~p"/workspaces/invitations/#{encoded_token}")
+
+      assert flash["error"] =~ "at its member limit"
+      refute Repo.get_by(WorkspaceMembership, workspace_id: workspace.id, user_id: invitee.id)
+      assert is_nil(Repo.get!(WorkspaceInvitation, invitation.id).accepted_at)
+    end
   end
 
   describe "mount with invalid token" do

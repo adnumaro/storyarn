@@ -78,14 +78,18 @@
       "delete": "Eliminar"
     },
     "members": {
-      "request_title": "Solicitar invitación de miembro",
-      "request_description": "Las solicitudes de invitación son revisadas por un administrador antes de enviarse.",
+      "invite_title": "Invitar a un miembro del proyecto",
+      "invite_description": "Envía una invitación directamente a la persona con la que quieres colaborar.",
       "email": "Dirección de correo",
       "email_placeholder": "colega{'@'}ejemplo.com",
       "role": "Rol",
       "role_editor": "Editor",
       "role_viewer": "Lector",
-      "submit": "Solicitar invitación"
+      "submit": "Enviar invitación",
+      "pending_title": "Invitaciones pendientes",
+      "pending_description": "Las invitaciones pendientes reservan una plaza hasta que se aceptan, revocan o caducan.",
+      "expires": "Caduca el {date}",
+      "revoke": "Revocar"
     },
     "localization": {
       "provider_title": "Proveedor de traducción (DeepL)",

@@ -7,6 +7,7 @@ defmodule Storyarn.ProjectsTest do
 
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
+  alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
 
@@ -216,9 +217,21 @@ defmodule Storyarn.ProjectsTest do
       user = user_fixture()
       project = project_fixture(user)
 
+      assert {:ok, invitation} =
+               Projects.create_invitation(project, user, "pending-before-delete@example.com", "editor")
+
       assert {:ok, deleted} = Projects.delete_project(project, user.id)
       assert deleted.deleted_at
       assert deleted.deleted_by_id == user.id
+      refute Repo.get(ProjectInvitation, invitation.id)
+
+      assert {:error, :not_found} =
+               Projects.create_invitation(
+                 deleted,
+                 user,
+                 "after-delete@example.com",
+                 "editor"
+               )
 
       # Project still exists in DB but is filtered from normal queries
       scope = Storyarn.Accounts.Scope.for_user(user)
@@ -311,7 +324,7 @@ defmodule Storyarn.ProjectsTest do
       assert length(invitations) == 1
     end
 
-    test "create_invitation/4 creates invitation and sends email" do
+    test "create_invitation/4 creates an invitation and queues delivery" do
       owner = user_fixture()
       project = project_fixture(owner)
       email = unique_user_email()
@@ -330,6 +343,123 @@ defmodule Storyarn.ProjectsTest do
       # Call with 3 args to exercise the default role argument (line 33)
       assert {:ok, invitation} = Projects.create_invitation(project, owner, email)
       assert invitation.role == "editor"
+    end
+
+    test "create_invitation/4 reserves the remaining plan seat while pending" do
+      owner = user_fixture()
+      project = project_fixture(owner)
+
+      assert {:ok, _invitation} =
+               Projects.create_invitation(project, owner, "first@example.com", "editor")
+
+      assert {:error, :limit_reached, %{resource: :members_per_workspace, used: 2, limit: 2}} =
+               Projects.create_invitation(project, owner, "second@example.com", "viewer")
+    end
+
+    test "the same email can join another project without consuming another workspace seat" do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      first_project = project_fixture(owner, %{workspace: workspace})
+      second_project = project_fixture(owner, %{workspace: workspace})
+      email = "shared-collaborator@example.com"
+      invitee = user_fixture(%{email: email})
+
+      assert {:ok, first_invitation} =
+               Projects.create_invitation(first_project, owner, email, "editor")
+
+      assert {:ok, _membership} = Projects.accept_invitation(first_invitation, invitee)
+
+      assert {:ok, second_invitation} =
+               Projects.create_invitation(second_project, owner, String.upcase(email), "viewer")
+
+      assert {:ok, second_membership} =
+               Projects.accept_invitation(second_invitation, invitee)
+
+      assert second_membership.role == "viewer"
+
+      assert {:error, :limit_reached, %{used: 2, limit: 2}} =
+               Projects.create_invitation(
+                 second_project,
+                 owner,
+                 "different-collaborator@example.com",
+                 "viewer"
+               )
+    end
+
+    test "renews an expired project invitation with a new identity" do
+      owner = user_fixture()
+      project = project_fixture(owner)
+      email = "renew-project-expired@example.com"
+      {old_token, invitation} = ProjectInvitation.build_invitation(project, owner, email)
+
+      expired_invitation =
+        invitation
+        |> Map.put(:expires_at, DateTime.add(DateTime.utc_now(:second), -1, :day))
+        |> Repo.insert!()
+
+      assert {:ok, renewed_invitation} =
+               Projects.create_invitation(project, owner, email, "viewer")
+
+      refute renewed_invitation.id == expired_invitation.id
+      assert renewed_invitation.role == "viewer"
+      assert is_nil(renewed_invitation.accepted_at)
+      assert {:error, :invalid_token} = Projects.get_invitation_by_token(old_token)
+    end
+
+    test "renews an accepted project invitation after membership removal" do
+      owner = user_fixture()
+      invitee = user_fixture()
+      project = project_fixture(owner)
+
+      assert {:ok, invitation} =
+               Projects.create_invitation(project, owner, invitee.email, "editor")
+
+      assert {:ok, membership} = Projects.accept_invitation(invitation, invitee)
+      Repo.delete!(membership)
+
+      assert {:ok, renewed_invitation} =
+               Projects.create_invitation(project, owner, invitee.email, "viewer")
+
+      refute renewed_invitation.id == invitation.id
+      assert renewed_invitation.role == "viewer"
+      assert is_nil(renewed_invitation.accepted_at)
+
+      assert {:error, stale_changeset} =
+               Projects.accept_invitation(invitation, invitee)
+
+      assert errors_on(stale_changeset).id
+    end
+
+    test "rejects invalid invitation data in context calls" do
+      owner = user_fixture()
+      project = project_fixture(owner)
+
+      assert {:error, email_changeset} =
+               Projects.create_invitation(
+                 project,
+                 owner,
+                 "invalid email #{System.unique_integer()}@example.com",
+                 "editor"
+               )
+
+      assert errors_on(email_changeset).email
+
+      assert {:error, role_changeset} =
+               Projects.create_invitation(
+                 project,
+                 owner,
+                 "valid@example.com",
+                 "owner"
+               )
+
+      assert "is invalid" in errors_on(role_changeset).role
+
+      too_long_email = String.duplicate("a", 149) <> "@example.com"
+
+      assert {:error, length_changeset} =
+               Projects.create_invitation(project, owner, too_long_email, "editor")
+
+      assert errors_on(length_changeset).email
     end
 
     test "create_invitation/4 returns error for existing member" do
@@ -389,6 +519,29 @@ defmodule Storyarn.ProjectsTest do
         Projects.create_invitation(project, owner, "other@example.com", "editor")
 
       assert {:error, :email_mismatch} = Projects.accept_invitation(invitation, wrong_user)
+    end
+
+    test "accept_invitation/2 rechecks a stale user's current email" do
+      owner = user_fixture()
+      project = project_fixture(owner)
+      invitee = user_fixture()
+
+      {:ok, invitation} =
+        Projects.create_invitation(project, owner, invitee.email, "editor")
+
+      stale_invitee = invitee
+
+      invitee
+      |> Ecto.Changeset.change(email: unique_user_email())
+      |> Repo.update!()
+
+      assert {:error, :email_mismatch} =
+               Projects.accept_invitation(invitation, stale_invitee)
+
+      refute Repo.get_by(ProjectMembership,
+               project_id: project.id,
+               user_id: invitee.id
+             )
     end
 
     test "accept_invitation/2 returns error for existing member" do

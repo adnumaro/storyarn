@@ -96,13 +96,13 @@ defmodule Storyarn.Emails.Templates do
       #{dgettext("emails", "<strong>%{inviter}</strong> has invited you to join <strong>%{project}</strong> on Storyarn as <strong>%{role}</strong>.", inviter: escape(inviter_name), project: escape(project_name), role: escape(role))}
     </mj-text>
     <mj-text>
-      #{dgettext("emails", "Click the button below to accept. You'll be redirected to the login page where you can sign in with this email address.")}
+      #{dgettext("emails", "Click the button below to accept. You can then sign in or create a password for this email address.")}
     </mj-text>
     <mj-button href="#{escape(url)}" background-color="#4dd9c0" color="#0a0a0a">
       #{dgettext("emails", "Accept invitation")}
     </mj-button>
     <mj-text font-size="13px" color="#9ca3af">
-      #{dgettext("emails", "This invitation expires in %{days} days. If you don't want to join, simply ignore this email.", days: days)}
+      #{invitation_expiry_notice(days)}
     </mj-text>
     <mj-text font-size="13px" color="#9ca3af">
       #{dgettext("emails", "Or copy this link: %{url}", url: escape(url))}
@@ -114,11 +114,11 @@ defmodule Storyarn.Emails.Templates do
 
     #{dgettext("emails", "%{inviter} has invited you to join \"%{project}\" on Storyarn as %{role}.", inviter: inviter_name, project: project_name, role: role)}
 
-    #{dgettext("emails", "Click the link below to accept. You'll be redirected to the login page where you can sign in with this email address.")}
+    #{dgettext("emails", "Click the link below to accept. You can then sign in or create a password for this email address.")}
 
     #{dgettext("emails", "Accept by visiting:")} #{url}
 
-    #{dgettext("emails", "This invitation expires in %{days} days.", days: days)}
+    #{invitation_expiry_short(days)}
     #{dgettext("emails", "If you don't want to join, simply ignore this email.")}
     """
 
@@ -144,13 +144,13 @@ defmodule Storyarn.Emails.Templates do
       #{dgettext("emails", "<strong>%{inviter}</strong> has invited you to join the <strong>%{workspace}</strong> workspace on Storyarn as <strong>%{role}</strong>.", inviter: escape(inviter_name), workspace: escape(workspace_name), role: escape(role))}
     </mj-text>
     <mj-text>
-      #{dgettext("emails", "Click the button below to accept. You'll be redirected to the login page where you can sign in with this email address.")}
+      #{dgettext("emails", "Click the button below to accept. You can then sign in or create a password for this email address.")}
     </mj-text>
     <mj-button href="#{escape(url)}" background-color="#4dd9c0" color="#0a0a0a">
       #{dgettext("emails", "Accept invitation")}
     </mj-button>
     <mj-text font-size="13px" color="#9ca3af">
-      #{dgettext("emails", "This invitation expires in %{days} days. If you don't want to join, simply ignore this email.", days: days)}
+      #{invitation_expiry_notice(days)}
     </mj-text>
     <mj-text font-size="13px" color="#9ca3af">
       #{dgettext("emails", "Or copy this link: %{url}", url: escape(url))}
@@ -162,11 +162,11 @@ defmodule Storyarn.Emails.Templates do
 
     #{dgettext("emails", "%{inviter} has invited you to join the \"%{workspace}\" workspace on Storyarn as %{role}.", inviter: inviter_name, workspace: workspace_name, role: role)}
 
-    #{dgettext("emails", "Click the link below to accept. You'll be redirected to the login page where you can sign in with this email address.")}
+    #{dgettext("emails", "Click the link below to accept. You can then sign in or create a password for this email address.")}
 
     #{dgettext("emails", "Accept by visiting:")} #{url}
 
-    #{dgettext("emails", "This invitation expires in %{days} days.", days: days)}
+    #{invitation_expiry_short(days)}
     #{dgettext("emails", "If you don't want to join, simply ignore this email.")}
     """
 
@@ -179,66 +179,24 @@ defmodule Storyarn.Emails.Templates do
     {subject, Layout.render(content, preview: preview), text}
   end
 
-  # --- Admin-only templates (no Gettext, always English) ---
+  defp invitation_expiry_notice(days) do
+    dngettext(
+      "emails",
+      "This invitation expires in %{count} day. If you don't want to join, simply ignore this email.",
+      "This invitation expires in %{count} days. If you don't want to join, simply ignore this email.",
+      days,
+      count: days
+    )
+  end
 
-  @doc "Admin notification when a user requests to invite someone to a project or workspace."
-  def admin_invitation_request(request_info) do
-    invitee_email = Map.fetch!(request_info, :invitee_email)
-    requester_email = Map.fetch!(request_info, :requester_email)
-    type = Map.fetch!(request_info, :type)
-    entity_name = Map.fetch!(request_info, :entity_name)
-    entity_id = Map.fetch!(request_info, :entity_id)
-    role = Map.fetch!(request_info, :role)
-    locale = Map.get(request_info, :locale, "en")
-
-    type_label = if type == "project", do: "Project", else: "Workspace"
-
-    # Sanitize values for shell command safety — strip anything that could break out of quotes
-    safe_email = sanitize_for_shell(invitee_email)
-    safe_role = sanitize_for_shell(role)
-    safe_locale = sanitize_for_shell(locale)
-
-    safe_requester = sanitize_for_shell(requester_email)
-
-    command =
-      ~s|fly ssh console -a storyarn-staging -C '/app/bin/storyarn rpc "Storyarn.Release.invite_member(\\"#{safe_email}\\", \\"#{type}\\", #{entity_id}, \\"#{safe_role}\\", \\"#{safe_locale}\\", \\"#{safe_requester}\\")"'|
-
-    subject = "Member invitation request: #{invitee_email} → #{entity_name}"
-
-    content = """
-    <mj-text font-size="18px" font-weight="600" color="#f9fafb">
-      Member Invitation Request
-    </mj-text>
-    <mj-text>
-      A user has requested to invite someone to their #{String.downcase(type_label)}:
-    </mj-text>
-    <mj-table font-size="13px" color="#d1d5db" cellpadding="4px">
-      <tr><td style="color:#9ca3af;width:120px">Invitee</td><td><strong>#{escape(invitee_email)}</strong></td></tr>
-      <tr><td style="color:#9ca3af">Requested by</td><td>#{escape(requester_email)}</td></tr>
-      <tr><td style="color:#9ca3af">#{type_label}</td><td>#{escape(entity_name)} (ID: #{entity_id})</td></tr>
-      <tr><td style="color:#9ca3af">Role</td><td>#{escape(role)}</td></tr>
-      <tr><td style="color:#9ca3af">Locale</td><td>#{escape(locale)}</td></tr>
-    </mj-table>
-    <mj-text font-size="13px" color="#9ca3af" padding-top="16px">
-      Accept with:<br/>
-      <code>#{escape(command)}</code>
-    </mj-text>
-    """
-
-    text = """
-    Member Invitation Request
-
-    Invitee: #{invitee_email}
-    Requested by: #{requester_email}
-    #{type_label}: #{entity_name} (ID: #{entity_id})
-    Role: #{role}
-    Locale: #{locale}
-
-    Accept with:
-    #{command}
-    """
-
-    {subject, Layout.render(content, preview: "Invitation request: #{invitee_email}"), text}
+  defp invitation_expiry_short(days) do
+    dngettext(
+      "emails",
+      "This invitation expires in %{count} day.",
+      "This invitation expires in %{count} days.",
+      days,
+      count: days
+    )
   end
 
   defp escape(text) when is_binary(text) do
@@ -250,11 +208,4 @@ defmodule Storyarn.Emails.Templates do
   end
 
   defp escape(text), do: escape(to_string(text))
-
-  # Strip shell-dangerous characters from values embedded in CLI commands
-  defp sanitize_for_shell(text) when is_binary(text) do
-    String.replace(text, ~r/[^a-zA-Z0-9@._\-+]/, "")
-  end
-
-  defp sanitize_for_shell(text), do: sanitize_for_shell(to_string(text))
 end

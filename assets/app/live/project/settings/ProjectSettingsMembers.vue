@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Trash2 } from "lucide-vue-next";
+import { Clock3, Loader2, Trash2, X } from "lucide-vue-next";
 import { ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
@@ -21,24 +22,63 @@ interface ProjectMember {
   role: string;
 }
 
-const { members = [], currentUserId = null } = defineProps<{
+interface PendingInvitation {
+  id: number;
+  email: string;
+  role: string;
+  expires_at: string;
+}
+
+const {
+  members = [],
+  pendingInvitations = [],
+  currentUserId = null,
+} = defineProps<{
   members?: ProjectMember[];
+  pendingInvitations?: PendingInvitation[];
   currentUserId?: number | null;
 }>();
 
 const live = useLive();
+const { locale } = useI18n({ useScope: "global" });
 
 const inviteEmail = ref("");
 const inviteRole = ref("editor");
+const invitationPending = ref(false);
+const revokingInvitationId = ref<number | null>(null);
+
+live.handleEvent("invitation_sent", () => {
+  inviteEmail.value = "";
+  inviteRole.value = "editor";
+});
 
 function sendInvitation() {
-  live.pushEvent("send_invitation", {
-    invite: {
-      email: inviteEmail.value,
-      role: inviteRole.value,
+  if (invitationPending.value) return;
+
+  invitationPending.value = true;
+  live.pushEvent(
+    "send_invitation",
+    {
+      invite: {
+        email: inviteEmail.value,
+        role: inviteRole.value,
+      },
     },
-  });
-  inviteEmail.value = "";
+    () => (invitationPending.value = false),
+    () => (invitationPending.value = false),
+  );
+}
+
+function revokeInvitation(id: number) {
+  if (revokingInvitationId.value !== null) return;
+
+  revokingInvitationId.value = id;
+  live.pushEvent(
+    "revoke_invitation",
+    { id: String(id) },
+    () => (revokingInvitationId.value = null),
+    () => (revokingInvitationId.value = null),
+  );
 }
 
 function removeMember(id: number) {
@@ -52,6 +92,10 @@ function memberDisplayName(member: ProjectMember) {
 function memberInitials(member: ProjectMember) {
   const name = member.display_name || member.email;
   return name.substring(0, 2).toUpperCase();
+}
+
+function formatExpiry(expiresAt: string) {
+  return new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(new Date(expiresAt));
 }
 
 type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
@@ -102,11 +146,11 @@ const roleBadgeVariant: Record<string, BadgeVariant> = {
     </div>
 
     <div class="rounded-lg border border-border bg-muted/30 p-4">
-      <h4 class="font-medium mb-3">{{ $t("project_settings.members.request_title") }}</h4>
+      <h4 class="font-medium mb-3">{{ $t("project_settings.members.invite_title") }}</h4>
       <p class="text-sm text-muted-foreground mb-3">
-        {{ $t("project_settings.members.request_description") }}
+        {{ $t("project_settings.members.invite_description") }}
       </p>
-      <form @submit.prevent="sendInvitation">
+      <form id="project-invite-form" @submit.prevent="sendInvitation">
         <div class="flex gap-3 items-end">
           <div class="flex-1 space-y-1.5">
             <Label for="invite-email">{{ $t("project_settings.members.email") }}</Label>
@@ -115,13 +159,14 @@ const roleBadgeVariant: Record<string, BadgeVariant> = {
               type="email"
               v-model="inviteEmail"
               :placeholder="$t('project_settings.members.email_placeholder')"
+              maxlength="160"
               required
             />
           </div>
           <div class="w-32 space-y-1.5">
             <Label for="invite-role">{{ $t("project_settings.members.role") }}</Label>
             <Select v-model="inviteRole">
-              <SelectTrigger>
+              <SelectTrigger id="invite-role">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -136,9 +181,65 @@ const roleBadgeVariant: Record<string, BadgeVariant> = {
           </div>
         </div>
         <div class="flex justify-end gap-3 pt-4">
-          <Button type="submit">{{ $t("project_settings.members.submit") }}</Button>
+          <Button type="submit" :disabled="invitationPending">
+            <Loader2 v-if="invitationPending" class="size-4 animate-spin" aria-hidden="true" />
+            {{ $t("project_settings.members.submit") }}
+          </Button>
         </div>
       </form>
     </div>
+
+    <section
+      v-if="pendingInvitations.length > 0"
+      id="project-pending-invitations"
+      class="space-y-3"
+    >
+      <div>
+        <h4 class="font-medium">{{ $t("project_settings.members.pending_title") }}</h4>
+        <p class="text-sm text-muted-foreground">
+          {{ $t("project_settings.members.pending_description") }}
+        </p>
+      </div>
+
+      <div
+        v-for="invitation in pendingInvitations"
+        :key="invitation.id"
+        class="flex flex-col gap-3 rounded-lg border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div class="min-w-0">
+          <p class="truncate font-medium">{{ invitation.email }}</p>
+          <div class="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <Badge variant="outline">
+              {{ $t("project_settings.members.role_" + invitation.role) }}
+            </Badge>
+            <span class="inline-flex items-center gap-1">
+              <Clock3 class="size-3.5" />
+              {{
+                $t("project_settings.members.expires", {
+                  date: formatExpiry(invitation.expires_at),
+                })
+              }}
+            </span>
+          </div>
+        </div>
+        <Button
+          :id="`revoke-project-invitation-${invitation.id}`"
+          type="button"
+          variant="ghost"
+          size="sm"
+          class="text-destructive hover:text-destructive"
+          :disabled="revokingInvitationId !== null"
+          @click="revokeInvitation(invitation.id)"
+        >
+          <Loader2
+            v-if="revokingInvitationId === invitation.id"
+            class="size-4 animate-spin"
+            aria-hidden="true"
+          />
+          <X v-else class="size-4" aria-hidden="true" />
+          {{ $t("project_settings.members.revoke") }}
+        </Button>
+      </div>
+    </section>
   </div>
 </template>
