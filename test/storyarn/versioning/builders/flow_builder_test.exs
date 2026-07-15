@@ -11,6 +11,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
   alias Storyarn.Assets
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Localization
+  alias Storyarn.Localization.RuntimeKey
   alias Storyarn.Repo
   alias Storyarn.Versioning.Builders.FlowBuilder
 
@@ -186,7 +187,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       assert cloned_dialogue.word_count == 3
     end
 
-    test "rejects a dialogue snapshot without the current runtime identity", %{project: project, flow: flow} do
+    test "materializes a legacy dialogue snapshot without a runtime identity", %{project: project, flow: flow} do
       snapshot = FlowBuilder.build_snapshot(flow)
 
       invalid_dialogue = %{
@@ -200,10 +201,59 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
 
       snapshot = Map.put(snapshot, "nodes", [invalid_dialogue | snapshot["nodes"]])
 
-      assert {:error, %Ecto.Changeset{} = changeset} =
+      assert {:ok, materialized, _id_maps} =
                FlowBuilder.instantiate_snapshot(project.id, snapshot, reset_shortcut: true)
 
-      assert "must contain a valid localization_id" in errors_on(changeset).data
+      legacy_dialogue = Enum.find(materialized.nodes, &(&1.data["text"] == "No identity"))
+      assert RuntimeKey.valid_dialogue_id?(legacy_dialogue.data["localization_id"])
+    end
+
+    test "keeps legacy response connections aligned when ids are normalized", %{project: project, flow: flow} do
+      snapshot = FlowBuilder.build_snapshot(flow)
+
+      legacy_nodes = [
+        %{
+          "original_id" => 99_998,
+          "type" => "dialogue",
+          "position_x" => 10.0,
+          "position_y" => 20.0,
+          "data" => %{
+            "localization_id" => "legacy.dialogue",
+            "text" => "Choose",
+            "responses" => [%{"id" => "legacy.choice", "text" => "Continue"}]
+          },
+          "source" => "manual"
+        },
+        %{
+          "original_id" => 99_999,
+          "type" => "hub",
+          "position_x" => 30.0,
+          "position_y" => 40.0,
+          "data" => %{},
+          "source" => "manual"
+        }
+      ]
+
+      legacy_connection = %{
+        "original_id" => 88_888,
+        "source_node_index" => 0,
+        "target_node_index" => 1,
+        "source_pin" => "legacy.choice",
+        "target_pin" => "input",
+        "label" => nil
+      }
+
+      snapshot = Map.merge(snapshot, %{"nodes" => legacy_nodes, "connections" => [legacy_connection]})
+
+      assert {:ok, materialized, _id_maps} =
+               FlowBuilder.instantiate_snapshot(project.id, snapshot, reset_shortcut: true)
+
+      dialogue = Enum.find(materialized.nodes, &(&1.type == "dialogue"))
+      [response] = dialogue.data["responses"]
+      [connection] = materialized.connections
+
+      assert response["id"] == "legacy_choice"
+      assert connection.source_pin == response["id"]
     end
 
     test "remaps external scene refs with explicit id maps", %{

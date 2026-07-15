@@ -23,6 +23,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   alias Storyarn.Shared.WordCount
   alias Storyarn.Sheets
   alias Storyarn.Versioning.Builders.AssetHashResolver
+  alias Storyarn.Versioning.Builders.FlowSnapshotNormalizer
   alias Storyarn.Versioning.DiffHelpers
   alias Storyarn.Versioning.LocalizationSnapshotCodec
   alias Storyarn.Versioning.MaterializationHelpers
@@ -155,6 +156,8 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   @impl true
   def instantiate_snapshot(project_id, snapshot, opts \\ []) do
+    snapshot = FlowSnapshotNormalizer.normalize(snapshot)
+
     fn -> instantiate_flow_snapshot(project_id, snapshot, opts) end
     |> Repo.transaction()
     |> finalize_flow_instantiation()
@@ -237,6 +240,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   @impl true
   def restore_snapshot(%Flow{} = flow, snapshot, opts \\ []) do
+    snapshot = FlowSnapshotNormalizer.normalize(snapshot)
     localization_rows = Map.get(snapshot, "localization", [])
 
     Multi.new()

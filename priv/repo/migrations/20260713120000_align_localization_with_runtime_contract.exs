@@ -3,13 +3,129 @@ defmodule Storyarn.Repo.Migrations.AlignLocalizationWithRuntimeContract do
 
   def up do
     execute("""
-    UPDATE flow_nodes
-    SET data = jsonb_set(
-      COALESCE(data, '{}'::jsonb),
-      '{localization_id}',
-      to_jsonb('dialogue_' || md5(random()::text || clock_timestamp()::text || id::text))
+    WITH ranked_dialogues AS (
+      SELECT node.id,
+             node.data->>'localization_id' AS localization_id,
+             row_number() OVER (
+               PARTITION BY flow.project_id, node.data->>'localization_id'
+               ORDER BY node.id
+             ) AS duplicate_rank
+      FROM flow_nodes AS node
+      JOIN flows AS flow ON flow.id = node.flow_id
+      WHERE node.type = 'dialogue'
+    ),
+    dialogues_to_rekey AS (
+      SELECT id
+      FROM ranked_dialogues
+      WHERE localization_id IS NULL
+         OR localization_id !~ '^[A-Za-z0-9_-]{1,100}$'
+         OR duplicate_rank > 1
     )
-    WHERE type = 'dialogue'
+    UPDATE flow_nodes AS node
+    SET data = jsonb_set(
+      COALESCE(node.data, '{}'::jsonb),
+      '{localization_id}',
+      to_jsonb('dialogue_' || md5('legacy:' || node.id::text))
+    )
+    FROM dialogues_to_rekey
+    WHERE node.id = dialogues_to_rekey.id
+    """)
+
+    execute("""
+    CREATE TEMP TABLE storyarn_runtime_response_ids (
+      node_id bigint NOT NULL,
+      ordinality bigint NOT NULL,
+      old_id text,
+      new_id text NOT NULL,
+      response jsonb NOT NULL,
+      PRIMARY KEY (node_id, ordinality)
+    ) ON COMMIT DROP
+    """)
+
+    execute("""
+    INSERT INTO storyarn_runtime_response_ids (node_id, ordinality, old_id, new_id, response)
+    SELECT node.id,
+           response.ordinality,
+           response.value->>'id',
+           CASE
+             WHEN response.value->>'id' ~ '^[A-Za-z0-9_-]{1,100}$'
+              AND response.duplicate_rank = 1
+             THEN response.value->>'id'
+             ELSE 'response_' || md5('legacy:' || node.id::text || ':' || response.ordinality::text)
+           END,
+           response.value
+    FROM flow_nodes AS node
+    CROSS JOIN LATERAL (
+      SELECT entry.value,
+             entry.ordinality,
+             row_number() OVER (
+               PARTITION BY entry.value->>'id'
+               ORDER BY entry.ordinality
+             ) AS duplicate_rank
+      FROM jsonb_array_elements(
+        CASE
+          WHEN jsonb_typeof(node.data->'responses') = 'array' THEN node.data->'responses'
+          ELSE '[]'::jsonb
+        END
+      ) WITH ORDINALITY AS entry(value, ordinality)
+      WHERE jsonb_typeof(entry.value) = 'object'
+    ) AS response
+    WHERE node.type = 'dialogue'
+    """)
+
+    execute("""
+    WITH response_remaps AS (
+      SELECT DISTINCT ON (mapping.node_id, mapping.old_id)
+             mapping.node_id,
+             mapping.old_id,
+             mapping.new_id
+      FROM storyarn_runtime_response_ids AS mapping
+      WHERE mapping.old_id IS NOT NULL
+        AND mapping.old_id <> mapping.new_id
+        AND NOT EXISTS (
+          SELECT 1
+          FROM storyarn_runtime_response_ids AS preserved
+          WHERE preserved.node_id = mapping.node_id
+            AND preserved.old_id = mapping.old_id
+            AND preserved.new_id = preserved.old_id
+        )
+      ORDER BY mapping.node_id, mapping.old_id, mapping.ordinality
+    )
+    UPDATE flow_connections AS connection
+    SET source_pin = CASE
+      WHEN connection.source_pin = remap.old_id THEN remap.new_id
+      WHEN connection.source_pin = 'resp_' || remap.old_id THEN 'resp_' || remap.new_id
+      ELSE connection.source_pin
+    END
+    FROM response_remaps AS remap
+    WHERE connection.source_node_id = remap.node_id
+      AND connection.source_pin IN (remap.old_id, 'resp_' || remap.old_id)
+    """)
+
+    execute("""
+    WITH response_remaps AS (
+      SELECT DISTINCT ON (mapping.node_id, mapping.old_id)
+             mapping.node_id,
+             mapping.old_id,
+             mapping.new_id
+      FROM storyarn_runtime_response_ids AS mapping
+      WHERE mapping.old_id IS NOT NULL
+        AND mapping.old_id <> mapping.new_id
+        AND NOT EXISTS (
+          SELECT 1
+          FROM storyarn_runtime_response_ids AS preserved
+          WHERE preserved.node_id = mapping.node_id
+            AND preserved.old_id = mapping.old_id
+            AND preserved.new_id = preserved.old_id
+        )
+      ORDER BY mapping.node_id, mapping.old_id, mapping.ordinality
+    )
+    UPDATE localized_texts AS localized_text
+    SET source_field = 'response.' || remap.new_id || '.text'
+    FROM response_remaps AS remap
+    WHERE localized_text.source_type = 'flow_node'
+      AND localized_text.source_id = remap.node_id
+      AND localized_text.source_field = 'response.' || remap.old_id || '.text'
     """)
 
     execute("""
@@ -20,21 +136,11 @@ defmodule Storyarn.Repo.Migrations.AlignLocalizationWithRuntimeContract do
       COALESCE(
         (
           SELECT jsonb_agg(
-            response.value || jsonb_build_object(
-              'id',
-              'response_' || md5(
-                random()::text || clock_timestamp()::text || node.id::text || response.ordinality::text
-              )
-            )
-            ORDER BY response.ordinality
+            mapping.response || jsonb_build_object('id', mapping.new_id)
+            ORDER BY mapping.ordinality
           )
-          FROM jsonb_array_elements(
-            CASE
-              WHEN jsonb_typeof(node.data->'responses') = 'array' THEN node.data->'responses'
-              ELSE '[]'::jsonb
-            END
-          ) WITH ORDINALITY AS response(value, ordinality)
-          WHERE jsonb_typeof(response.value) = 'object'
+          FROM storyarn_runtime_response_ids AS mapping
+          WHERE mapping.node_id = node.id
         ),
         '[]'::jsonb
       )

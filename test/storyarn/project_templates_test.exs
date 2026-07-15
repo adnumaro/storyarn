@@ -11,10 +11,12 @@ defmodule Storyarn.ProjectTemplatesTest do
   alias Storyarn.Flows.FlowNode
   alias Storyarn.FlowsFixtures
   alias Storyarn.Localization
+  alias Storyarn.Localization.RuntimeKey
   alias Storyarn.LocalizationFixtures
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectsFixtures
   alias Storyarn.ProjectTemplates
+  alias Storyarn.ProjectTemplates.Artifact
   alias Storyarn.ProjectTemplates.Audit
   alias Storyarn.ProjectTemplates.ProjectTemplate
   alias Storyarn.ProjectTemplates.ProjectTemplateInstall
@@ -654,6 +656,62 @@ defmodule Storyarn.ProjectTemplatesTest do
       assert install.user_id == user.id
       assert install.workspace_id == workspace.id
       assert install.project_id == cloned_project.id
+    end
+
+    test "instantiates a legacy stored template snapshot without dialogue runtime ids" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      workspace = WorkspacesFixtures.workspace_fixture(user)
+      source_project = ProjectsFixtures.project_fixture(user, %{name: "Legacy Template Source"})
+      source_flow = FlowsFixtures.flow_fixture(source_project)
+
+      _dialogue =
+        FlowsFixtures.node_fixture(source_flow, %{
+          type: "dialogue",
+          data: %{"text" => "Legacy dialogue", "responses" => []}
+        })
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(scope, source_project, %{
+                 name: "Legacy Snapshot Starter"
+               })
+
+      version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
+      assert {:ok, snapshot} = SnapshotStorage.load_snapshot(version.snapshot_storage_key)
+      assert {:ok, asset_manifest} = SnapshotStorage.load_snapshot(version.asset_manifest_storage_key)
+
+      legacy_snapshot =
+        Map.update!(snapshot, "flows", fn flows ->
+          Enum.map(flows, fn flow_entry ->
+            update_in(flow_entry, ["snapshot", "nodes"], fn nodes ->
+              Enum.map(nodes, fn
+                %{"type" => "dialogue", "data" => data} = node ->
+                  Map.put(node, "data", Map.delete(data, "localization_id"))
+
+                node ->
+                  node
+              end)
+            end)
+          end)
+        end)
+
+      assert {:ok, _size} = SnapshotStorage.store_raw(version.snapshot_storage_key, legacy_snapshot)
+
+      version =
+        version
+        |> Ecto.Changeset.change(
+          checksum: Artifact.checksum(%{"snapshot" => legacy_snapshot, "asset_manifest" => asset_manifest})
+        )
+        |> Repo.update!()
+
+      assert {:ok, cloned_project} =
+               ProjectTemplates.instantiate_template(scope, version, workspace, %{name: "Legacy Snapshot Copy"})
+
+      [cloned_flow] = Storyarn.Flows.list_flows(cloned_project.id)
+      cloned_flow = Repo.preload(cloned_flow, :nodes)
+      cloned_dialogue = Enum.find(cloned_flow.nodes, &(&1.type == "dialogue"))
+
+      assert RuntimeKey.valid_dialogue_id?(cloned_dialogue.data["localization_id"])
     end
 
     test "allows any user to instantiate a public version" do

@@ -24,6 +24,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.Builders.FlowBuilder
+  alias Storyarn.Versioning.Builders.FlowSnapshotNormalizer
   alias Storyarn.Versioning.Builders.SceneBuilder
   alias Storyarn.Versioning.Builders.SheetBuilder
 
@@ -134,6 +135,8 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   @spec restore_snapshot(integer(), map(), keyword()) ::
           {:ok, map()} | {:error, term()}
   def restore_snapshot(project_id, snapshot, _opts \\ []) do
+    snapshot = FlowSnapshotNormalizer.normalize_project(snapshot)
+
     Repo.transaction(
       fn ->
         results = %{
