@@ -12,6 +12,12 @@ defmodule Storyarn.Imports.SourceBundle do
   @max_expanded_bytes 50_000_000
   @max_entries 500
   @max_expansion_ratio 200
+  @max_zip_comment_bytes 65_535
+  @max_central_directory_bytes 2_000_000
+  @max_zip_entry_name_bytes 1_024
+  @zip_eocd_bytes 22
+  @zip64_sentinel_16 0xFFFF
+  @zip64_sentinel_32 0xFFFFFFFF
   @allowed_extensions MapSet.new([".yarn", ".yarnproject", ".csv", ".json"])
   @archive_extensions MapSet.new([".zip", ".tar", ".gz", ".tgz", ".7z", ".rar"])
 
@@ -57,7 +63,8 @@ defmodule Storyarn.Imports.SourceBundle do
   end
 
   defp open_zip(binary) do
-    with {:ok, entries} <- list_zip(binary),
+    with :ok <- preflight_zip(binary),
+         {:ok, entries} <- list_zip(binary),
          :ok <- validate_entry_count(entries),
          {:ok, selected} <- validate_entries(entries),
          {:ok, extracted} <- extract_selected(binary, selected),
@@ -66,6 +73,239 @@ defmodule Storyarn.Imports.SourceBundle do
       {:ok, %__MODULE__{kind: :archive, files: files}}
     end
   end
+
+  defp preflight_zip(binary) do
+    with {:ok, eocd} <- find_eocd(binary),
+         :ok <- validate_eocd(binary, eocd) do
+      validate_central_directory(binary, eocd)
+    end
+  end
+
+  defp find_eocd(binary) do
+    binary_size = byte_size(binary)
+    tail_size = min(binary_size, @zip_eocd_bytes + @max_zip_comment_bytes)
+    tail_offset = binary_size - tail_size
+    tail = binary_part(binary, tail_offset, tail_size)
+
+    candidates =
+      tail
+      |> :binary.matches(<<0x50, 0x4B, 0x05, 0x06>>)
+      |> Enum.map(fn {relative_offset, _length} -> tail_offset + relative_offset end)
+      |> Enum.filter(&complete_eocd?(binary, &1))
+
+    case candidates do
+      [offset] -> parse_eocd(binary, offset)
+      _other -> {:error, :invalid_archive}
+    end
+  end
+
+  defp complete_eocd?(binary, offset) do
+    if offset + @zip_eocd_bytes <= byte_size(binary) do
+      <<comment_length::little-unsigned-integer-size(16)>> = binary_part(binary, offset + 20, 2)
+      offset + @zip_eocd_bytes + comment_length == byte_size(binary)
+    else
+      false
+    end
+  end
+
+  defp parse_eocd(binary, offset) do
+    size = byte_size(binary) - offset
+
+    case binary_part(binary, offset, size) do
+      <<0x50, 0x4B, 0x05, 0x06, disk_number::little-unsigned-integer-size(16),
+        central_directory_disk::little-unsigned-integer-size(16), entries_on_disk::little-unsigned-integer-size(16),
+        total_entries::little-unsigned-integer-size(16), central_directory_size::little-unsigned-integer-size(32),
+        central_directory_offset::little-unsigned-integer-size(32), comment_length::little-unsigned-integer-size(16),
+        _comment::binary-size(comment_length)>> ->
+        {:ok,
+         %{
+           offset: offset,
+           disk_number: disk_number,
+           central_directory_disk: central_directory_disk,
+           entries_on_disk: entries_on_disk,
+           total_entries: total_entries,
+           central_directory_size: central_directory_size,
+           central_directory_offset: central_directory_offset
+         }}
+
+      _other ->
+        {:error, :invalid_archive}
+    end
+  end
+
+  defp validate_eocd(binary, eocd) do
+    with :ok <- validate_no_zip64(binary, eocd),
+         :ok <- validate_single_disk(eocd),
+         :ok <- validate_eocd_entry_count(eocd) do
+      validate_central_directory_bounds(eocd)
+    end
+  end
+
+  defp validate_no_zip64(binary, eocd) do
+    if zip64_locator?(binary, eocd.offset) or zip64_eocd_values?(eocd),
+      do: {:error, :invalid_archive},
+      else: :ok
+  end
+
+  defp validate_single_disk(%{disk_number: 0, central_directory_disk: 0}), do: :ok
+  defp validate_single_disk(_eocd), do: {:error, :invalid_archive}
+
+  defp validate_eocd_entry_count(%{entries_on_disk: count, total_entries: count}) when count > @max_entries,
+    do: {:error, :archive_too_many_entries}
+
+  defp validate_eocd_entry_count(%{entries_on_disk: count, total_entries: count}), do: :ok
+  defp validate_eocd_entry_count(_eocd), do: {:error, :invalid_archive}
+
+  defp validate_central_directory_bounds(%{central_directory_size: size}) when size > @max_central_directory_bytes,
+    do: {:error, :invalid_archive}
+
+  defp validate_central_directory_bounds(%{
+         offset: eocd_offset,
+         central_directory_offset: directory_offset,
+         central_directory_size: directory_size
+       })
+       when directory_offset + directory_size == eocd_offset, do: :ok
+
+  defp validate_central_directory_bounds(_eocd), do: {:error, :invalid_archive}
+
+  defp zip64_locator?(binary, eocd_offset) when eocd_offset >= 20 do
+    binary_part(binary, eocd_offset - 20, 4) == <<0x50, 0x4B, 0x06, 0x07>>
+  end
+
+  defp zip64_locator?(_binary, _eocd_offset), do: false
+
+  defp zip64_eocd_values?(eocd) do
+    eocd.entries_on_disk == @zip64_sentinel_16 or
+      eocd.total_entries == @zip64_sentinel_16 or
+      eocd.central_directory_size == @zip64_sentinel_32 or
+      eocd.central_directory_offset == @zip64_sentinel_32
+  end
+
+  defp validate_central_directory(_binary, %{total_entries: 0, central_directory_size: 0}), do: :ok
+
+  defp validate_central_directory(binary, eocd) do
+    directory =
+      binary_part(binary, eocd.central_directory_offset, eocd.central_directory_size)
+
+    validate_central_entries(
+      directory,
+      eocd.total_entries,
+      binary,
+      eocd.central_directory_offset
+    )
+  rescue
+    ArgumentError -> {:error, :invalid_archive}
+  end
+
+  defp validate_central_entries(directory, 0, _archive, _central_directory_offset) do
+    validate_central_directory_signature(directory)
+  end
+
+  defp validate_central_entries(
+         <<0x50, 0x4B, 0x01, 0x02, _version_made_by::little-unsigned-integer-size(16),
+           _version_needed::little-unsigned-integer-size(16), _flags::little-unsigned-integer-size(16),
+           _compression_method::little-unsigned-integer-size(16), _modified_time::little-unsigned-integer-size(16),
+           _modified_date::little-unsigned-integer-size(16), _crc32::little-unsigned-integer-size(32),
+           compressed_size::little-unsigned-integer-size(32), uncompressed_size::little-unsigned-integer-size(32),
+           name_length::little-unsigned-integer-size(16), extra_length::little-unsigned-integer-size(16),
+           comment_length::little-unsigned-integer-size(16), disk_start::little-unsigned-integer-size(16),
+           _internal_attrs::little-unsigned-integer-size(16), _external_attrs::little-unsigned-integer-size(32),
+           local_header_offset::little-unsigned-integer-size(32), rest::binary>>,
+         remaining_entries,
+         archive,
+         central_directory_offset
+       )
+       when remaining_entries > 0 do
+    metadata = %{
+      compressed_size: compressed_size,
+      uncompressed_size: uncompressed_size,
+      name_length: name_length,
+      extra_length: extra_length,
+      comment_length: comment_length,
+      disk_start: disk_start,
+      local_header_offset: local_header_offset
+    }
+
+    with :ok <- validate_central_metadata_lengths(metadata, rest),
+         :ok <- validate_central_storage_fields(metadata),
+         :ok <- validate_local_header_reference(metadata, archive, central_directory_offset),
+         {:ok, extra, remaining} <- take_central_metadata(rest, metadata),
+         :ok <- validate_extra_fields(extra) do
+      validate_central_entries(
+        remaining,
+        remaining_entries - 1,
+        archive,
+        central_directory_offset
+      )
+    end
+  end
+
+  defp validate_central_entries(_directory, _remaining, _archive, _central_directory_offset),
+    do: {:error, :invalid_archive}
+
+  defp validate_central_directory_signature(<<>>), do: :ok
+
+  defp validate_central_directory_signature(
+         <<0x50, 0x4B, 0x05, 0x05, signature_size::little-unsigned-integer-size(16),
+           _signature::binary-size(signature_size)>>
+       ), do: :ok
+
+  defp validate_central_directory_signature(_directory), do: {:error, :invalid_archive}
+
+  defp validate_central_metadata_lengths(%{name_length: length}, _rest)
+       when length == 0 or length > @max_zip_entry_name_bytes, do: {:error, :invalid_archive}
+
+  defp validate_central_metadata_lengths(metadata, rest) do
+    metadata_size = metadata.name_length + metadata.extra_length + metadata.comment_length
+
+    if metadata_size <= byte_size(rest), do: :ok, else: {:error, :invalid_archive}
+  end
+
+  defp validate_central_storage_fields(%{compressed_size: @zip64_sentinel_32}), do: {:error, :invalid_archive}
+
+  defp validate_central_storage_fields(%{uncompressed_size: @zip64_sentinel_32}), do: {:error, :invalid_archive}
+
+  defp validate_central_storage_fields(%{local_header_offset: @zip64_sentinel_32}), do: {:error, :invalid_archive}
+
+  defp validate_central_storage_fields(%{disk_start: @zip64_sentinel_16}), do: {:error, :invalid_archive}
+
+  defp validate_central_storage_fields(%{disk_start: 0}), do: :ok
+  defp validate_central_storage_fields(_metadata), do: {:error, :invalid_archive}
+
+  defp validate_local_header_reference(metadata, archive, central_directory_offset) do
+    if valid_local_header?(archive, metadata.local_header_offset, central_directory_offset),
+      do: :ok,
+      else: {:error, :invalid_archive}
+  end
+
+  defp take_central_metadata(rest, metadata) do
+    <<_name::binary-size(metadata.name_length), extra::binary-size(metadata.extra_length),
+      _comment::binary-size(metadata.comment_length), remaining::binary>> = rest
+
+    {:ok, extra, remaining}
+  end
+
+  defp valid_local_header?(archive, offset, central_directory_offset) do
+    offset + 30 <= central_directory_offset and
+      binary_part(archive, offset, 4) == <<0x50, 0x4B, 0x03, 0x04>>
+  rescue
+    ArgumentError -> false
+  end
+
+  defp validate_extra_fields(<<>>), do: :ok
+
+  defp validate_extra_fields(
+         <<field_id::little-unsigned-integer-size(16), field_size::little-unsigned-integer-size(16), rest::binary>>
+       )
+       when field_size <= byte_size(rest) do
+    <<_field::binary-size(field_size), remaining::binary>> = rest
+
+    if field_id == 0x0001,
+      do: {:error, :invalid_archive},
+      else: validate_extra_fields(remaining)
+  end
+
+  defp validate_extra_fields(_extra), do: {:error, :invalid_archive}
 
   defp list_zip(binary) do
     case :zip.list_dir(binary) do

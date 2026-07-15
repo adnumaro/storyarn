@@ -3,9 +3,13 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
 
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
+  import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Accounts.Scope
+  alias Storyarn.Imports
   alias Storyarn.Repo
+  alias StoryarnWeb.ExportImportLive.Index
 
   defp get_settings_layout(view) do
     LiveVue.Test.get_vue(view, name: "live/layouts/settings/Layout")
@@ -58,6 +62,67 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       assert is_map(props["upload-config"])
       assert import_state(view)["step"] == "upload"
       assert import_state(view)["conflictStrategy"] == "rename"
+    end
+
+    test "shows materialized counts and ignores stale import broadcasts", %{
+      project: project,
+      user: user
+    } do
+      _existing = flow_fixture(project, %{name: "Start"})
+      scope = Scope.for_user(user)
+
+      assert {:ok, ready, preview} =
+               Imports.prepare_import(
+                 scope,
+                 project,
+                 "project.yarn",
+                 "title: Start\n---\nHello\n===\n"
+               )
+
+      assert {:ok, queued} = Imports.enqueue_import(scope, ready.id, :skip)
+      assert queued.status == "queued"
+      assert {:ok, completed} = Imports.perform_import(queued.id, attempt: 1, max_attempts: 3)
+
+      socket = %Phoenix.LiveView.Socket{
+        assigns: %{
+          __changed__: %{},
+          current_scope: scope,
+          import_state: %{
+            step: "queued",
+            attempt_id: queued.id,
+            preview: %{
+              counts: Map.new(preview.counts, fn {key, value} -> {to_string(key), value} end),
+              conflicts: %{},
+              has_conflicts: false
+            },
+            error: nil,
+            conflict_strategy: "skip",
+            warning_codes: [],
+            status: "queued"
+          }
+        }
+      }
+
+      assert {:noreply, completed_socket} =
+               Index.handle_info(
+                 {:project_import_updated, completed},
+                 socket
+               )
+
+      completed_state = completed_socket.assigns.import_state
+      assert completed_state.step == "done"
+      assert completed_state.preview.counts == completed.counts
+      assert completed.counts["flows"] == 0
+      assert completed.counts["nodes"] == 0
+
+      assert {:noreply, after_stale_socket} =
+               Index.handle_info(
+                 {:project_import_updated, queued},
+                 completed_socket
+               )
+
+      assert after_stale_socket.assigns.import_state.step == "done"
+      assert after_stale_socket.assigns.import_state.preview.counts == completed.counts
     end
 
     test "does not expose Storyarn JSON as a visible export format", %{conn: conn, project: project} do

@@ -55,12 +55,37 @@ defmodule Storyarn.Imports.Error do
       exception_module: Map.get(metadata, :exception_module, "none")
     }
 
-    if ErrorDeduplicator.record(safe_metadata) do
-      :telemetry.execute([:storyarn, :import, :error], %{count: 1}, safe_metadata)
-    end
+    safe_metadata
+    |> reportable?()
+    |> maybe_emit(safe_metadata)
 
     :ok
   end
+
+  # Error reporting must never replace the error that the import pipeline is
+  # already handling. If the bounded cache is restarting, unavailable, or
+  # unresponsive, prefer one duplicate metric over losing the signal.
+  defp reportable?(safe_metadata) do
+    case ErrorDeduplicator.record(safe_metadata) do
+      false -> false
+      _fresh_or_unexpected -> true
+    end
+  rescue
+    _exception -> true
+  catch
+    :exit, _reason -> true
+    _kind, _reason -> true
+  end
+
+  defp maybe_emit(true, safe_metadata) do
+    :telemetry.execute([:storyarn, :import, :error], %{count: 1}, safe_metadata)
+  rescue
+    _exception -> :ok
+  catch
+    _kind, _reason -> :ok
+  end
+
+  defp maybe_emit(false, _safe_metadata), do: :ok
 
   defp safe_code(reason) when is_atom(reason), do: to_string(reason)
   defp safe_code({reason, _details}) when is_atom(reason), do: to_string(reason)

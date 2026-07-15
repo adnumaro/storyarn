@@ -28,7 +28,10 @@ defmodule Storyarn.Imports.ImportIssue do
       source: Keyword.get(opts, :source),
       line: Keyword.get(opts, :line),
       column: Keyword.get(opts, :column),
-      context: Keyword.get(opts, :context, %{})
+      context: normalize_context(Keyword.get(opts, :context, %{}))
     }
   end
+
+  defp normalize_context(context) when is_map(context), do: context
+  defp normalize_context(_context), do: %{}
 end

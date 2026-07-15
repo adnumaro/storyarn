@@ -24,14 +24,14 @@ defmodule Storyarn.Imports.PlanStorage do
     if ImportPlan.error?(plan) do
       {:error, :import_plan_has_errors}
     else
-      payload = %{
-        "format" => to_string(plan.format),
-        "parser_version" => plan.parser_version,
-        "source_kind" => to_string(plan.source_kind),
-        "data" => plan.data
-      }
-
-      with {:ok, json} <- Jason.encode(payload),
+      with {:ok, source_kind} <- encode_source_kind(plan.source_kind),
+           payload = %{
+             "format" => to_string(plan.format),
+             "parser_version" => plan.parser_version,
+             "source_kind" => source_kind,
+             "data" => plan.data
+           },
+           {:ok, json} <- Jason.encode(payload),
            compressed = :zlib.gzip(json),
            {:ok, encrypted} <- Vault.encrypt(compressed),
            {:ok, _private_url} <- Storage.upload(key, encrypted, "application/octet-stream") do
@@ -84,6 +84,17 @@ defmodule Storyarn.Imports.PlanStorage do
   defp decode_format("yarn"), do: {:ok, :yarn}
   defp decode_format(_format), do: {:error, :invalid_import_plan}
 
+  # Older callers could omit source_kind. Treat those plans as single-file
+  # imports, matching decode_plan/1's backwards-compatible default.
+  defp encode_source_kind(nil), do: {:ok, "file"}
+  defp encode_source_kind(:file), do: {:ok, "file"}
+  defp encode_source_kind(:archive), do: {:ok, "archive"}
+  defp encode_source_kind(_source_kind), do: {:error, :invalid_import_plan}
+
+  # The previous encoder serialized nil as an empty string. Accept that value
+  # when loading already-stored plans, while writing only the canonical value.
+  defp decode_source_kind(nil), do: {:ok, :file}
+  defp decode_source_kind(""), do: {:ok, :file}
   defp decode_source_kind("file"), do: {:ok, :file}
   defp decode_source_kind("archive"), do: {:ok, :archive}
   defp decode_source_kind(_source_kind), do: {:error, :invalid_import_plan}

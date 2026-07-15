@@ -67,7 +67,7 @@ const hasUploadEntries = computed(() => {
   return (upload?.entries.value?.length ?? 0) > 0;
 });
 
-const previewCountRows = computed(() => {
+const entityCountRows = computed(() => {
   if (!importState.preview?.counts) return [];
   const counts = importState.preview.counts;
   const rows = [
@@ -166,7 +166,7 @@ function formatFileSize(bytes: number) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            <TableRow v-for="row in previewCountRows" :key="row.entity">
+            <TableRow v-for="row in entityCountRows" :key="row.entity">
               <TableCell class="capitalize">{{ row.entity }}</TableCell>
               <TableCell class="text-right">{{ row.count }}</TableCell>
             </TableRow>
@@ -244,7 +244,7 @@ function formatFileSize(bytes: number) {
           <span>{{ $t("project_settings.import.success") }}</span>
         </div>
 
-        <Table v-if="previewCountRows.length">
+        <Table v-if="entityCountRows.length">
           <TableHeader>
             <TableRow>
               <TableHead>{{ $t("project_settings.import.th_entity") }}</TableHead>
@@ -254,7 +254,7 @@ function formatFileSize(bytes: number) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            <TableRow v-for="row in previewCountRows" :key="row.entity">
+            <TableRow v-for="row in entityCountRows" :key="row.entity">
               <TableCell class="capitalize">{{ row.entity }}</TableCell>
               <TableCell class="text-right">{{ row.count }}</TableCell>
             </TableRow>

@@ -302,7 +302,13 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   @impl true
   def handle_info({:project_import_updated, %ProjectImportAttempt{} = attempt}, socket) do
     if socket.assigns.import_state.attempt_id == attempt.id do
-      {:noreply, assign_import_attempt(socket, attempt)}
+      # PubSub delivery is not ordered across the enqueue caller and Oban
+      # worker. Reload the durable attempt so a late queued/running message
+      # cannot move a completed import back to an in-progress UI state.
+      case Imports.get_import_attempt(socket.assigns.current_scope, attempt.id) do
+        {:ok, current_attempt} -> {:noreply, assign_import_attempt(socket, current_attempt)}
+        {:error, _reason} -> {:noreply, socket}
+      end
     else
       {:noreply, socket}
     end
@@ -461,10 +467,22 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         _status -> "error"
       end
 
+    preview =
+      if step == "done" do
+        Map.put(
+          state.preview || %{counts: %{}, conflicts: %{}, has_conflicts: false},
+          :counts,
+          stringify_map_keys(attempt.counts)
+        )
+      else
+        state.preview
+      end
+
     state = %{
       state
       | step: step,
         status: attempt.status,
+        preview: preview,
         error: if(step == "error", do: attempt.error_message || generic_import_error())
     }
 

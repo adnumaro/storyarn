@@ -468,7 +468,16 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
       {id_map, screenplay_results} =
         import_screenplays(project, data, id_map, strategy, existing_shortcuts)
 
-      {_id_map, loc_results} = import_localization(project.id, data, id_map)
+      {id_map, loc_results} = import_localization(project.id, data, id_map)
+
+      counts = %{
+        assets: length(asset_results),
+        sheets: length(sheet_results),
+        flows: length(flow_results),
+        nodes: imported_entity_count(id_map, :node),
+        scenes: length(scene_results),
+        screenplays: length(screenplay_results)
+      }
 
       {:ok,
        %{
@@ -477,9 +486,17 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
          flows: flow_results,
          scenes: scene_results,
          screenplays: screenplay_results,
-         localization: loc_results
+         localization: loc_results,
+         counts: counts
        }}
     end
+  end
+
+  defp imported_entity_count(id_map, entity_type) do
+    Enum.count(id_map, fn
+      {{^entity_type, _source_id}, _runtime_id} -> true
+      _entry -> false
+    end)
   end
 
   # =============================================================================

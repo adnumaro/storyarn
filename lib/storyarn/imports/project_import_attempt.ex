@@ -114,12 +114,13 @@ defmodule Storyarn.Imports.ProjectImportAttempt do
     |> validate_common()
   end
 
-  def completed_changeset(attempt, now) do
+  def completed_changeset(attempt, now, counts) do
     attempt
     |> change(
       status: "completed",
       stage: "completed",
       completed_at: now,
+      counts: counts,
       user_id: nil,
       idempotency_key: nil,
       error_code: nil,

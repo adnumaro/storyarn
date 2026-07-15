@@ -310,6 +310,7 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
   end
 
   defp compile_items([], incoming, state), do: {incoming, state}
+  defp compile_items(_items, [], state), do: {[], state}
 
   defp compile_items([{:line, text, meta}, {:options, options, option_meta} | rest], incoming, state) do
     {outgoing, state} = compile_dialogue_with_options(text, meta, options, option_meta, incoming, state)

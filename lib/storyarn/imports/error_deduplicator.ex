@@ -10,15 +10,16 @@ defmodule Storyarn.Imports.ErrorDeduplicator do
   use GenServer
 
   @default_ttl_ms to_timeout(minute: 5)
+  @default_call_timeout_ms 100
   @max_entries 10_000
 
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  @spec record(map()) :: boolean()
-  def record(metadata) when is_map(metadata) do
-    GenServer.call(__MODULE__, {:record, fingerprint(metadata)})
+  @spec record(map(), timeout()) :: boolean()
+  def record(metadata, timeout \\ @default_call_timeout_ms) when is_map(metadata) do
+    GenServer.call(__MODULE__, {:record, fingerprint(metadata)}, timeout)
   end
 
   @impl true

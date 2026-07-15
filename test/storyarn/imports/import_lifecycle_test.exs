@@ -84,6 +84,32 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert Enum.count(Flows.list_flows(ctx.project.id), &(&1.name == "Start")) == 1
   end
 
+  test "persists actual materialized counts after skip conflicts", ctx do
+    _existing = Storyarn.FlowsFixtures.flow_fixture(ctx.project, %{name: "Start"})
+
+    assert {:ok, ready, preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert preview.counts.flows == 1
+    assert preview.counts.nodes > 0
+    assert ready.counts["flows"] == 1
+
+    assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :skip)
+    assert {:ok, completed} = Imports.perform_import(queued.id, attempt: 1, max_attempts: 3)
+
+    assert completed.counts == %{
+             "assets" => 0,
+             "flows" => 0,
+             "nodes" => 0,
+             "scenes" => 0,
+             "screenplays" => 0,
+             "sheets" => 0
+           }
+
+    assert Repo.get!(ProjectImportAttempt, completed.id).counts == completed.counts
+    assert Enum.count(Flows.list_flows(ctx.project.id), &(&1.name == "Start")) == 1
+  end
+
   test "rolls back materialization when the attempt cannot complete atomically", ctx do
     assert {:ok, ready, _preview} =
              Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
@@ -208,6 +234,89 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
 
     assert lock_order == [:project, :membership, :attempt]
     refute_receive {^marker, _unexpected_lock}
+  end
+
+  test "locks authorization before the attempt when cancelling", ctx do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    handler_id = "import-cancel-lock-order-#{System.unique_integer([:positive])}"
+    marker = make_ref()
+    parent = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :repo, :query],
+        fn _event, _measurements, %{query: query}, {pid, ref} ->
+          if self() == pid do
+            lock =
+              cond do
+                String.contains?(query, ~s(FROM "projects")) and String.contains?(query, "FOR SHARE") ->
+                  :project
+
+                String.contains?(query, ~s(FROM "project_memberships")) and
+                    String.contains?(query, "FOR SHARE") ->
+                  :membership
+
+                String.contains?(query, ~s(FROM "project_import_attempts")) and
+                    String.contains?(query, "FOR UPDATE") ->
+                  :attempt
+
+                true ->
+                  nil
+              end
+
+            if lock, do: send(pid, {ref, lock})
+          end
+        end,
+        {parent, marker}
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
+    assert {:ok, expired} = Imports.cancel_import(ctx.scope, ready.id)
+    assert expired.status == "expired"
+
+    lock_order =
+      Enum.map(1..3, fn _index ->
+        assert_receive {^marker, lock}
+        lock
+      end)
+
+    assert lock_order == [:project, :membership, :attempt]
+    refute_receive {^marker, _unexpected_lock}
+  end
+
+  test "rechecks edit authorization at the cancellation boundary", ctx do
+    editor = user_fixture()
+    membership = membership_fixture(ctx.project, editor, "editor")
+    editor_scope = Scope.for_user(editor)
+
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(editor_scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert {:error, :unauthorized} =
+             Imports.cancel_import(editor_scope, ready.id,
+               before_cancel_transaction: fn ->
+                 assert {:ok, _membership} = Storyarn.Projects.remove_member(membership)
+               end
+             )
+
+    assert Repo.get!(ProjectImportAttempt, ready.id).status == "ready"
+    assert {:ok, _plan} = PlanStorage.load(ready.plan_storage_key)
+    assert {:ok, _expired} = Imports.cancel_import(ctx.scope, ready.id)
+  end
+
+  test "does not disclose cancellable attempts to project non-members", ctx do
+    outsider_scope = Scope.for_user(user_fixture())
+
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert {:error, :not_found} = Imports.cancel_import(outsider_scope, ready.id)
+    assert Repo.get!(ProjectImportAttempt, ready.id).status == "ready"
+    assert {:ok, _expired} = Imports.cancel_import(ctx.scope, ready.id)
   end
 
   test "rechecks and locks authorization at the materialization boundary", ctx do

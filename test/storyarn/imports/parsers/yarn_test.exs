@@ -118,6 +118,98 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       assert rule["value"] == "Tom and Jerry"
     end
 
+    test "supports compact symbolic boolean operators without splitting string literals" do
+      source = """
+      title: Start
+      ---
+      <<declare $first = true>>
+      <<declare $second = false>>
+      <<declare $label = "first&&second||third">>
+      <<if $first&&$second>>
+        Both
+      <<elseif $first||$second>>
+        Either
+      <<elseif $label == "first&&second||third">>
+        Literal
+      <<endif>>
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("project.yarn", source)
+      refute ImportPlan.error?(plan)
+
+      [flow] = plan.data["flows"]
+
+      assert Enum.map(Enum.filter(flow["nodes"], &(&1["type"] == "condition")), fn node ->
+               node["data"]["condition"]["logic"]
+             end) == ["all", "any", "all"]
+    end
+
+    test "rejects symbolic boolean operators with an empty operand" do
+      Enum.each(["$flag&&", "&&$flag", "$flag||", "||$flag"], fn condition ->
+        source = """
+        title: Start
+        ---
+        <<declare $flag = true>>
+        <<if #{condition}>>
+          Hidden
+        <<endif>>
+        ===
+        """
+
+        assert {:ok, plan} = raw_yarn_plan(source)
+        assert Enum.any?(plan.issues, &(&1.code == :unsupported_yarn_condition))
+        assert {:error, :import_plan_has_errors} = Imports.parse_file("project.yarn", source)
+      end)
+    end
+
+    test "does not split boolean operator words embedded in variable names" do
+      source = """
+      title: Start
+      ---
+      <<declare $candy = true>>
+      <<declare $origin = false>>
+      <<if $candy>>
+        Candy
+      <<elseif $origin>>
+        Origin
+      <<endif>>
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("project.yarn", source)
+      [flow] = plan.data["flows"]
+
+      variables =
+        flow["nodes"]
+        |> Enum.filter(&(&1["type"] == "condition"))
+        |> Enum.map(fn node ->
+          [rule] = node["data"]["condition"]["blocks"] |> List.first() |> Map.fetch!("rules")
+          rule["variable"]
+        end)
+
+      assert variables == ["candy", "origin"]
+    end
+
+    test "normalizes symbolic boolean negation" do
+      source = """
+      title: Start
+      ---
+      <<declare $flag = false>>
+      <<if !$flag>>
+        Visible
+      <<endif>>
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("project.yarn", source)
+      [flow] = plan.data["flows"]
+      condition = Enum.find(flow["nodes"], &(&1["type"] == "condition"))["data"]["condition"]
+      [rule] = condition["blocks"] |> List.first() |> Map.fetch!("rules")
+      assert rule["operator"] == "is_false"
+      assert rule["variable"] == "flag"
+    end
+
     test "rejects unsupported block conditions and keeps their fallback closed" do
       source = """
       title: Start
@@ -408,6 +500,105 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       assert {:error, :invalid_yarn_command} = Imports.parse_file("project.yarn", source)
     end
 
+    test "does not materialize dialogue after terminal commands" do
+      sources = [
+        """
+        title: Start
+        ---
+        <<stop>>
+        Unreachable
+        ===
+        """,
+        """
+        title: Start
+        ---
+        <<return>>
+        Unreachable
+        ===
+        """,
+        """
+        title: Start
+        ---
+        <<jump End>>
+        Unreachable
+        ===
+        title: End
+        ---
+        Done
+        ===
+        """
+      ]
+
+      Enum.each(sources, fn source ->
+        assert {:ok, plan} = Imports.parse_file("project.yarn", source)
+
+        refute Enum.any?(plan.data["flows"], fn flow ->
+                 Enum.any?(flow["nodes"], fn node ->
+                   node["type"] == "dialogue" and node["data"]["text"] == "Unreachable"
+                 end)
+               end)
+      end)
+    end
+
+    test "does not materialize tails after condition or option branches all terminate" do
+      source = """
+      title: Start
+      ---
+      <<declare $flag = true>>
+      <<if $flag>>
+        <<stop>>
+      <<else>>
+        <<return>>
+      <<endif>>
+      Unreachable after conditional
+      ===
+      title: Choices
+      ---
+      Choose
+      -> Stop
+          <<stop>>
+      -> Return
+          <<return>>
+      Unreachable after options
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("project.yarn", source)
+
+      dialogue_texts =
+        plan.data["flows"]
+        |> Enum.flat_map(& &1["nodes"])
+        |> Enum.filter(&(&1["type"] == "dialogue"))
+        |> Enum.map(& &1["data"]["text"])
+
+      refute "Unreachable after conditional" in dialogue_texts
+      refute "Unreachable after options" in dialogue_texts
+    end
+
+    test "preserves Yarn blank and comment option-boundary indentation" do
+      cases = [
+        {"    \n", [["First", "Second"]]},
+        {"\n", [["First"], ["Second"]]},
+        {"    // indented comment\n", [["First", "Second"]]},
+        {"// unindented comment\n", [["First"], ["Second"]]}
+      ]
+
+      Enum.each(cases, fn {separator, expected_response_groups} ->
+        source =
+          "title: Start\n---\nChoose\n-> First\n#{separator}    Branch line\n-> Second\n    Second line\n===\n"
+
+        assert {:ok, plan} = Imports.parse_file("project.yarn", source)
+        [flow] = plan.data["flows"]
+
+        response_groups =
+          flow["nodes"]
+          |> Enum.filter(fn node -> node["type"] == "dialogue" and node["data"]["responses"] != [] end)
+          |> Enum.map(fn node -> Enum.map(node["data"]["responses"], & &1["text"]) end)
+
+        assert response_groups == expected_response_groups
+      end)
+    end
+
     test "rejects unsupported state changes and missing control-flow targets" do
       source = """
       title: Start
@@ -471,6 +662,58 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
     test "rejects Yarn documents with excessive statement counts before normalization" do
       lines = Enum.map_join(1..5_001, "\n", &"Dialogue line #{&1}")
       source = "title: Start\n---\n#{lines}\n===\n"
+
+      assert {:error, :yarn_statement_limit_exceeded} =
+               Imports.parse_file("project.yarn", source)
+    end
+
+    test "rejects excessive Yarn document counts during source preflight" do
+      source =
+        Enum.map_join(1..501, "\n", fn index ->
+          "title: Node #{index}\n---\nLine\n==="
+        end)
+
+      assert {:error, :yarn_document_limit_exceeded} =
+               Imports.parse_file("project.yarn", source)
+    end
+
+    test "rejects excessive total statements during source preflight" do
+      source =
+        Enum.map_join(1..21, "\n", fn document_index ->
+          statement_count = if document_index == 21, do: 1, else: 5_000
+          lines = Enum.map_join(1..statement_count, "\n", &"Line #{document_index}-#{&1}")
+          "title: Node #{document_index}\n---\n#{lines}\n==="
+        end)
+
+      assert {:error, :yarn_statement_limit_exceeded} =
+               Imports.parse_file("project.yarn", source)
+    end
+
+    test "counts every sibling option against the per-document budget" do
+      options = Enum.map_join(1..5_001, "\n", &"-> Option #{&1}")
+
+      source = "title: Start\n---\nChoose\n#{options}\n==="
+
+      assert {:error, :yarn_statement_limit_exceeded} =
+               Imports.parse_file("project.yarn", source)
+    end
+
+    test "bounds ignored and header lines before allocating parser line maps" do
+      source = String.duplicate("\n", 125_001) <> "title: Start\n---\nHello\n==="
+
+      assert {:error, :yarn_statement_limit_exceeded} =
+               Imports.parse_file("project.yarn", source)
+    end
+
+    test "scans very long indentation without grapheme-list amplification" do
+      source = "title: Start\n---\n" <> String.duplicate(" ", 50_000) <> "Hello\n==="
+
+      assert {:ok, plan} = Imports.parse_file("project.yarn", source)
+      refute ImportPlan.error?(plan)
+    end
+
+    test "rejects a single oversized line before regex and indentation parsing" do
+      source = "title: Start\n---\n" <> String.duplicate(" ", 100_001) <> "Hello\n==="
 
       assert {:error, :yarn_statement_limit_exceeded} =
                Imports.parse_file("project.yarn", source)

@@ -216,9 +216,15 @@ defmodule Storyarn.Imports do
   @spec cancel_import(Scope.t(), pos_integer()) ::
           {:ok, ProjectImportAttempt.t()} | {:error, term()}
   def cancel_import(%Scope{} = scope, attempt_id) do
+    cancel_import(scope, attempt_id, [])
+  end
+
+  @doc false
+  def cancel_import(%Scope{} = scope, attempt_id, opts) when is_list(opts) do
     with %ProjectImportAttempt{} = attempt <- Repo.get(ProjectImportAttempt, attempt_id),
          {:ok, _project, _membership} <- Projects.authorize(scope, attempt.project_id, :edit_content),
-         {:ok, expired} <- cancel_ready_attempt(attempt.id) do
+         :ok <- run_before_cancel_transaction(opts),
+         {:ok, expired} <- cancel_ready_attempt(attempt.id, attempt.project_id, scope.user.id) do
       cleanup_plan(expired)
       broadcast(expired)
       {:ok, expired}
@@ -228,17 +234,24 @@ defmodule Storyarn.Imports do
     end
   end
 
-  defp cancel_ready_attempt(attempt_id) do
+  defp cancel_ready_attempt(attempt_id, project_id, user_id) do
     Repo.transact(fn ->
-      attempt_id
-      |> lock_cancel_attempt()
-      |> transition_cancelled_attempt()
+      with {:ok, :authorized} <- authorize_edit_locked(Repo, project_id, user_id),
+           %ProjectImportAttempt{} = attempt <- lock_cancel_attempt(attempt_id, project_id) do
+        transition_cancelled_attempt(attempt)
+      else
+        nil -> {:error, :not_found}
+        {:error, reason} -> {:error, reason}
+      end
     end)
   end
 
-  defp lock_cancel_attempt(attempt_id) do
+  defp lock_cancel_attempt(attempt_id, project_id) do
     ProjectImportAttempt
-    |> where([candidate], candidate.id == ^attempt_id)
+    |> where(
+      [candidate],
+      candidate.id == ^attempt_id and candidate.project_id == ^project_id
+    )
     |> lock("FOR UPDATE")
     |> Repo.one()
   end
@@ -254,7 +267,6 @@ defmodule Storyarn.Imports do
   end
 
   defp transition_cancelled_attempt(%ProjectImportAttempt{}), do: {:error, :import_not_cancellable}
-  defp transition_cancelled_attempt(nil), do: {:error, :not_found}
 
   @doc false
   @spec expire_stale_imports() :: {:ok, non_neg_integer()}
@@ -463,7 +475,7 @@ defmodule Storyarn.Imports do
 
     Multi.new()
     |> Multi.run(:authorization, fn repo, _changes ->
-      authorize_prepare_locked(repo, project.id, scope.user.id)
+      authorize_edit_locked(repo, project.id, scope.user.id)
     end)
     |> Multi.insert(:attempt, attempt_changeset)
     |> Multi.run(:retain_plan, fn repo, _changes ->
@@ -512,7 +524,7 @@ defmodule Storyarn.Imports do
   defp normalize_existing_ready_attempt({:ok, attempt}), do: {:existing, attempt}
   defp normalize_existing_ready_attempt(error), do: error
 
-  defp authorize_prepare_locked(repo, project_id, user_id) do
+  defp authorize_edit_locked(repo, project_id, user_id) do
     with %Project{} <-
            Project
            |> where([project], project.id == ^project_id and is_nil(project.deleted_at))
@@ -678,12 +690,12 @@ defmodule Storyarn.Imports do
   defp materialize_locked_attempt(%{status: status} = attempt, project, plan, opts)
        when status in ["queued", "running", "retrying"] do
     with {:ok, running} <- mark_running(attempt),
-         {:ok, _result} <-
+         {:ok, result} <-
            StoryarnJSONParser.materialize_in_transaction(project, plan,
              conflict_strategy: strategy_atom(running.conflict_strategy)
            ),
          :ok <- run_before_attempt_completion(opts),
-         {:ok, completed} <- complete_attempt(running),
+         {:ok, completed} <- complete_attempt(running, result.counts),
          :ok <- mark_plan_cleanup_pending(completed.plan_storage_key) do
       {:ok, {:materialized, completed}}
     end
@@ -759,9 +771,20 @@ defmodule Storyarn.Imports do
     end
   end
 
-  defp complete_attempt(attempt) do
+  defp run_before_cancel_transaction(opts) do
+    case Keyword.get(opts, :before_cancel_transaction) do
+      nil ->
+        :ok
+
+      callback when is_function(callback, 0) ->
+        callback.()
+        :ok
+    end
+  end
+
+  defp complete_attempt(attempt, counts) do
     attempt
-    |> ProjectImportAttempt.completed_changeset(TimeHelpers.now())
+    |> ProjectImportAttempt.completed_changeset(TimeHelpers.now(), stringify_keys(counts))
     |> Repo.update()
   end
 

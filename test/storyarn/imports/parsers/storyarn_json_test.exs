@@ -279,7 +279,11 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       existing = sheet_fixture(target, %{name: "Hero"})
 
       # Import with skip strategy
-      {:ok, _result} = Imports.execute(target, parsed, conflict_strategy: :skip)
+      {:ok, result} = Imports.execute(target, parsed, conflict_strategy: :skip)
+
+      assert result.counts.sheets == 0
+      assert result.counts.flows == 1
+      assert result.counts.nodes >= 2
 
       # Should still have only one "Hero" sheet (the original)
       sheets = Storyarn.Sheets.list_all_sheets(target.id)

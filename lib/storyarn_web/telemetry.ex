@@ -107,6 +107,16 @@ defmodule StoryarnWeb.Telemetry do
       sum("storyarn.import.error.count",
         tags: [:format, :parser_version, :phase, :error_code, :exception_module]
       ),
+      sum("storyarn.import.expiration.stop.expired_count",
+        tags: [:status, :error_code]
+      ),
+      sum("storyarn.import.expiration.stop.failure_count",
+        tags: [:status, :error_code]
+      ),
+      summary("storyarn.import.expiration.stop.duration",
+        tags: [:status, :error_code],
+        unit: {:native, :millisecond}
+      ),
 
       # VM Metrics
       summary("vm.memory.total", unit: {:byte, :kilobyte}),

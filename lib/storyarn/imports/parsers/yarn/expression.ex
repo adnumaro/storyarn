@@ -152,6 +152,9 @@ defmodule Storyarn.Imports.Parsers.Yarn.Expression do
       captures = Regex.run(~r/^not\s+(\$[A-Za-z_][A-Za-z0-9_.]*)$/i, expression, capture: :all_but_first) ->
         build_rule(List.first(captures), "is_false", nil)
 
+      captures = Regex.run(~r/^!\s*(\$[A-Za-z_][A-Za-z0-9_.]*)$/, expression, capture: :all_but_first) ->
+        build_rule(List.first(captures), "is_false", nil)
+
       Regex.match?(~r/^\$[A-Za-z_][A-Za-z0-9_.]*$/, expression) ->
         build_rule(expression, "is_true", nil)
 
@@ -245,17 +248,15 @@ defmodule Storyarn.Imports.Parsers.Yarn.Expression do
   defp split_logic(expression, operator) do
     regex =
       case operator do
-        :and -> ~r/^\s+(?:and|&&)\s+/i
-        :or -> ~r/^\s+(?:or|\|\|)\s+/i
+        :and -> ~r/^(?:\s*&&\s*|\s+and\s+)/i
+        :or -> ~r/^(?:\s*\|\|\s*|\s+or\s+)/i
       end
 
     do_split_logic(expression, regex, [], [], false, false, 0)
   end
 
   defp do_split_logic("", _regex, current, parts, _quoted?, _escaped?, _depth) do
-    [logic_part(current) | parts]
-    |> Enum.reject(&(&1 == ""))
-    |> Enum.reverse()
+    Enum.reverse([logic_part(current) | parts])
   end
 
   defp do_split_logic(rest, regex, current, parts, false, false, 0) do
