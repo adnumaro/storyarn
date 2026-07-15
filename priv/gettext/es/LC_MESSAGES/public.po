@@ -4,68 +4,242 @@ msgstr ""
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+#: lib/storyarn_web/components/public_footer.ex:73
+#: lib/storyarn_web/components/public_header.ex:68
+#: lib/storyarn_web/components/public_mobile_navigation.ex:94
+#, elixir-autogen
 msgid "Blog"
 msgstr "Blog"
 
+#: lib/storyarn_web/components/public_mobile_navigation.ex:60
+#, elixir-autogen
 msgid "Close"
 msgstr "Cerrar"
 
+#: lib/storyarn_web/components/public_footer.ex:76
+#: lib/storyarn_web/components/public_header.ex:70
+#: lib/storyarn_web/components/public_mobile_navigation.ex:98
+#: lib/storyarn_web/live/landing_live/contact.ex:13
+#, elixir-autogen
 msgid "Contact"
 msgstr "Contacto"
 
+#: lib/storyarn_web/components/public_footer.ex:91
+#, elixir-autogen
 msgid "Cookies"
 msgstr "Cookies"
 
+#: lib/storyarn_web/components/public_header.ex:86
+#: lib/storyarn_web/components/public_mobile_navigation.ex:123
+#, elixir-autogen
 msgid "Create account"
 msgstr "Crear cuenta"
 
+#: lib/storyarn_web/components/public_header.ex:82
+#: lib/storyarn_web/components/public_mobile_navigation.ex:115
+#, elixir-autogen
 msgid "Dashboard"
 msgstr "Panel"
 
+#: lib/storyarn_web/components/public_footer.ex:34
+#, elixir-autogen
 msgid "Design characters, dialogues, worlds, and localization in a single connected project. Built for narrative teams shipping interactive stories."
 msgstr "Diseña personajes, diálogos, mundos y localización en un solo proyecto conectado. Creado para equipos narrativos que publican historias interactivas."
 
+#: lib/storyarn_web/components/public_footer.ex:59
+#: lib/storyarn_web/components/public_header.ex:65
+#: lib/storyarn_web/components/public_mobile_navigation.ex:86
+#, elixir-autogen
 msgid "Discover"
 msgstr "Descubrir"
 
+#: lib/storyarn_web/components/public_footer.ex:70
+#: lib/storyarn_web/components/public_header.ex:67
+#: lib/storyarn_web/components/public_mobile_navigation.ex:90
+#, elixir-autogen
 msgid "Docs"
 msgstr "Docs"
 
+#: lib/storyarn_web/components/public_footer.ex:51
+#: lib/storyarn_web/components/public_header.ex:57
+#: lib/storyarn_web/components/public_mobile_navigation.ex:76
+#, elixir-autogen
 msgid "Features"
 msgstr "Características"
 
+#: lib/storyarn_web/components/public_footer.ex:43
+#, elixir-autogen
 msgid "Footer navigation"
 msgstr "Navegación del pie"
 
+#: lib/storyarn_web/components/public_header.ex:89
+#: lib/storyarn_web/components/public_mobile_navigation.ex:130
+#, elixir-autogen
 msgid "Log in"
 msgstr "Iniciar sesión"
 
+#: lib/storyarn_web/components/public_footer.ex:99
+#, elixir-autogen
 msgid "Manage cookies"
 msgstr "Gestionar cookies"
 
+#: lib/storyarn_web/components/public_header.ex:99
+#, elixir-autogen
 msgid "Menu"
 msgstr "Menú"
 
+#: lib/storyarn_web/components/public_mobile_navigation.ex:28
+#, elixir-autogen
 msgid "Mobile navigation"
 msgstr "Navegación móvil"
 
+#: lib/storyarn_web/components/public_mobile_navigation.ex:67
+#, elixir-autogen
 msgid "Mobile navigation links"
 msgstr "Enlaces de navegación móvil"
 
+#: lib/storyarn_web/components/public_footer.ex:30
+#, elixir-autogen
 msgid "Open beta"
 msgstr "Beta pública"
 
+#: lib/storyarn_web/components/public_header.ex:49
+#, elixir-autogen
 msgid "Primary navigation"
 msgstr "Navegación principal"
 
+#: lib/storyarn_web/components/public_footer.ex:85
+#, elixir-autogen
 msgid "Privacy"
 msgstr "Privacidad"
 
+#: lib/storyarn_web/components/public_header.ex:32
+#: lib/storyarn_web/components/public_mobile_navigation.ex:43
+#, elixir-autogen
 msgid "Storyarn home"
 msgstr "Inicio de Storyarn"
 
+#: lib/storyarn_web/components/public_footer.ex:88
+#, elixir-autogen
 msgid "Terms"
 msgstr "Condiciones"
 
+#: lib/storyarn_web/components/public_footer.ex:67
+#, elixir-autogen
 msgid "Workflow"
 msgstr "Flujo de trabajo"
+
+#: lib/storyarn_web/components/public_language_switcher.ex:20
+#, elixir-autogen, elixir-format
+msgid "Page language"
+msgstr "Idioma de la página"
+
+#: lib/storyarn_web/live/landing_live/index.ex:68
+#, elixir-autogen, elixir-format
+msgid "Branching dialogue and narrative flow editor"
+msgstr "Editor de diálogos ramificados y flujos narrativos"
+
+#: lib/storyarn_web/live/landing_live/contact.ex:16
+#, elixir-autogen, elixir-format
+msgid "Contact Storyarn about the narrative design platform for game writers, narrative designers, and game design teams."
+msgstr "Contacta con Storyarn acerca de la plataforma de diseño narrativo para guionistas, diseñadores narrativos y equipos de desarrollo de videojuegos."
+
+#: lib/storyarn_web/live/landing_live/index.ex:82
+#, elixir-autogen, elixir-format
+msgid "Debugging and player preview for interactive narrative logic"
+msgstr "Depuración y vista previa del jugador para la lógica narrativa interactiva"
+
+#: lib/storyarn_web/live/landing_live/index.ex:84
+#, elixir-autogen, elixir-format
+msgid "Export for common game engines and narrative runtimes"
+msgstr "Exportación para motores de juego y runtimes narrativos habituales"
+
+#: lib/storyarn_web/live/landing_live/index.ex:66
+#, elixir-autogen, elixir-format
+msgid "Game design platform features"
+msgstr "Funcionalidades de la plataforma de diseño de videojuegos"
+
+#: lib/storyarn_web/live/landing_live/index.ex:94
+#, elixir-autogen, elixir-format
+msgid "Game engine export"
+msgstr "Exportación a motores de juego"
+
+#: lib/storyarn_web/live/landing_live/index.ex:79
+#, elixir-autogen, elixir-format
+msgid "Localization workflow for game dialogue and story content"
+msgstr "Flujo de localización para diálogos y contenido narrativo de videojuegos"
+
+#: lib/storyarn_web/live/landing_live/index.ex:91
+#, elixir-autogen, elixir-format
+msgid "Narrative design flows"
+msgstr "Flujos de diseño narrativo"
+
+#: lib/storyarn_web/live/legal_live/show.ex:88
+#, elixir-autogen, elixir-format
+msgid "Privacy Policy"
+msgstr "Política de privacidad"
+
+#: lib/storyarn_web/live/legal_live/show.ex:90
+#, elixir-autogen, elixir-format
+msgid "Privacy Policy for Storyarn, including account, waitlist, invitation, and product analytics data."
+msgstr "Política de privacidad de Storyarn, incluidos los datos de cuentas, lista de espera, invitaciones y analítica de producto."
+
+#: lib/storyarn_web/live/landing_live/index.ex:76
+#, elixir-autogen, elixir-format
+msgid "Scene maps for spatial narrative design and exploration"
+msgstr "Mapas de escenas para el diseño narrativo espacial y la exploración"
+
+#: lib/storyarn_web/live/landing_live/index.ex:86
+#, elixir-autogen, elixir-format
+msgid "Storyarn documentation"
+msgstr "Documentación de Storyarn"
+
+#: lib/storyarn_web/live/landing_live/index.ex:26
+#, elixir-autogen, elixir-format
+msgid "Storyarn is a narrative design platform and video game design platform for branching dialogue, worldbuilding, scenes, localization, debugging, and engine-ready export."
+msgstr "Storyarn es una plataforma de diseño narrativo y de videojuegos para crear diálogos ramificados, construir mundos, diseñar escenas, localizar contenido, depurar y exportar proyectos listos para el motor."
+
+#: lib/storyarn_web/live/landing_live/index.ex:55
+#, elixir-autogen, elixir-format
+msgid "Storyarn is a video game design platform for narrative designers, game designers, writers, and small studios. It connects worldbuilding sheets, branching dialogue flows, scenes, localization, debugging, and export in one production-ready workspace."
+msgstr "Storyarn es una plataforma de diseño de videojuegos para diseñadores narrativos, game designers, guionistas y pequeños estudios. Conecta fichas de construcción de mundos, flujos de diálogo ramificados, escenas, localización, depuración y exportación en un espacio de trabajo preparado para producción."
+
+#: lib/storyarn_web/live/landing_live/index.ex:51
+#, elixir-autogen, elixir-format
+msgid "Storyarn overview"
+msgstr "Descripción general de Storyarn"
+
+#: lib/storyarn_web/live/landing_live/index.ex:23
+#, elixir-autogen, elixir-format
+msgid "Storyarn — Narrative Design Platform for Video Games"
+msgstr "Storyarn — Plataforma de diseño narrativo para videojuegos"
+
+#: lib/storyarn_web/live/landing_live/index.ex:53
+#, elixir-autogen, elixir-format
+msgid "Storyarn: narrative design platform for video games"
+msgstr "Storyarn: plataforma de diseño narrativo para videojuegos"
+
+#: lib/storyarn_web/live/legal_live/show.ex:75
+#, elixir-autogen, elixir-format
+msgid "Terms of Use"
+msgstr "Condiciones de uso"
+
+#: lib/storyarn_web/live/legal_live/show.ex:77
+#, elixir-autogen, elixir-format
+msgid "Terms of Use for Storyarn, the narrative design platform for game projects."
+msgstr "Condiciones de uso de Storyarn, la plataforma de diseño narrativo para proyectos de videojuegos."
+
+#: lib/storyarn_web/live/landing_live/index.ex:61
+#, elixir-autogen, elixir-format
+msgid "Use Storyarn to design interactive stories, test game narrative logic, manage dialogue and variables, map worlds with scenes, localize content, and export to Yarn Spinner, Ink, Godot Dialogic, Unity, and Unreal."
+msgstr "Utiliza Storyarn para diseñar historias interactivas, probar la lógica narrativa, gestionar diálogos y variables, crear mapas de mundos con escenas, localizar contenido y exportar a Yarn Spinner, Ink, Godot Dialogic, Unity y Unreal."
+
+#: lib/storyarn_web/live/landing_live/index.ex:88
+#, elixir-autogen, elixir-format
+msgid "What is Storyarn?"
+msgstr "¿Qué es Storyarn?"
+
+#: lib/storyarn_web/live/landing_live/index.ex:70
+#, elixir-autogen, elixir-format
+msgid "Worldbuilding sheets for characters, places, items, factions, and quests"
+msgstr "Fichas de construcción de mundos para personajes, lugares, objetos, facciones y misiones"

@@ -10,10 +10,16 @@ defmodule StoryarnWeb.WorkspaceLive.Invitation do
 
   alias Storyarn.Accounts
   alias Storyarn.Workspaces
+  alias StoryarnWeb.PublicURLs
 
   @impl true
   def render(assigns) do
-    assigns = assign(assigns, :seo_metadata, Layouts.live_seo_metadata(assigns))
+    assigns =
+      assign(
+        assigns,
+        :seo_metadata,
+        assigns |> Map.put(:seo_robots, "noindex, follow") |> Layouts.live_seo_metadata()
+      )
 
     ~H"""
     <StoryarnWeb.Components.PublicLayout.public
@@ -26,7 +32,7 @@ defmodule StoryarnWeb.WorkspaceLive.Invitation do
         v-component="live/workspace/invitation/WorkspaceInvitationResponse"
         v-socket={@socket}
         id="workspace-invitation"
-        homepage-url={~p"/"}
+        homepage-url={PublicURLs.home_path(@locale)}
       />
     </StoryarnWeb.Components.PublicLayout.public>
     """

@@ -9,6 +9,7 @@ defmodule StoryarnWeb.UserLive.ForgotPassword do
   alias Storyarn.RateLimiter
   alias Storyarn.Shared.Validations
   alias StoryarnWeb.ClientIp
+  alias StoryarnWeb.PublicURLs
 
   require Logger
 
@@ -33,7 +34,7 @@ defmodule StoryarnWeb.UserLive.ForgotPassword do
         v-inject="auth-layout"
         id="forgot-password-vue"
         form={@form}
-        login-url={~p"/users/log-in"}
+        login-url={PublicURLs.locale_handoff_path(~p"/users/log-in", @locale)}
         instructions-sent={@instructions_sent}
         request-error={@request_error}
       />
@@ -90,7 +91,15 @@ defmodule StoryarnWeb.UserLive.ForgotPassword do
       :ok ->
         user = Accounts.get_user_by_email(email)
 
-        case Accounts.deliver_user_reset_password_instructions(user, &url(~p"/users/reset-password/#{&1}")) do
+        reset_url = fn token ->
+          reset_path = ~p"/users/reset-password/#{token}"
+
+          reset_path
+          |> PublicURLs.locale_handoff_path(socket.assigns.locale)
+          |> then(&Phoenix.VerifiedRoutes.unverified_url(socket, &1))
+        end
+
+        case Accounts.deliver_user_reset_password_instructions(user, reset_url) do
           {:ok, _email} ->
             :ok
 

@@ -74,6 +74,17 @@ config :storyarn, Storyarn.Gettext,
 # Production uses Resend API (configured in runtime.exs)
 config :storyarn, Storyarn.Mailer, adapter: Swoosh.Adapters.Local
 
+# Public, indexable locales are deliberately configured separately from
+# Gettext. A locale can be available inside the authenticated application
+# before its landing page, docs, legal copy, and editorial content are ready
+# to be published under a canonical URL.
+config :storyarn, Storyarn.Publication.Locales,
+  default_locale: "en",
+  locales: [
+    %{gettext_locale: "en", language_tag: "en", path_segment: "en"},
+    %{gettext_locale: "es", language_tag: "es", path_segment: "es"}
+  ]
+
 # Cloak encryption configuration
 # Development key - NEVER use in production!
 # Generate production key with: 32 |> :crypto.strong_rand_bytes() |> Base.encode64()
@@ -134,6 +145,8 @@ config :swoosh, :api_client, Swoosh.ApiClient.Req
 
 # Configure tailwind (the version is required)
 config :tailwind,
+  # Import environment specific config. This must remain at the bottom
+  # of this file so it overrides the configuration defined above.
   version: "4.1.7",
   storyarn: [
     args: ~w(
@@ -143,6 +156,4 @@ config :tailwind,
     cd: Path.expand("..", __DIR__)
   ]
 
-# Import environment specific config. This must remain at the bottom
-# of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

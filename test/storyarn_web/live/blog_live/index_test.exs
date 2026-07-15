@@ -9,6 +9,7 @@ defmodule StoryarnWeb.BlogLive.IndexTest do
     document = LazyHTML.from_document(html)
 
     assert has_element?(view, "#blog-index")
+    assert has_element?(view, ~s|#blog-index[lang="en"]|)
     assert has_element?(view, ~s|#blog-featured-post[lang="en"]|)
     assert has_element?(view, "#public-header")
     assert has_element?(view, "#public-footer")
@@ -45,6 +46,23 @@ defmodule StoryarnWeb.BlogLive.IndexTest do
 
     assert has_element?(view, "#blog-index h1", "Notes on building a connected narrative design platform")
     assert has_element?(view, "#blog-featured-post h2", "Introducing Storyarn")
+    assert has_element?(view, ~s|#public-language-switcher-en[aria-current="page"]|)
+    assert has_element?(view, ~s|#public-language-switcher-es[href="/es/blog"]|)
+
+    assert LazyHTML.attribute(
+             LazyHTML.query(document, ~s|link[rel="alternate"][hreflang="en"]|),
+             "href"
+           ) == [StoryarnWeb.Layouts.absolute_url("/blog")]
+
+    assert LazyHTML.attribute(
+             LazyHTML.query(document, ~s|link[rel="alternate"][hreflang="es"]|),
+             "href"
+           ) == [StoryarnWeb.Layouts.absolute_url("/es/blog")]
+
+    assert LazyHTML.attribute(
+             LazyHTML.query(document, ~s|link[rel="alternate"][hreflang="x-default"]|),
+             "href"
+           ) == [StoryarnWeb.Layouts.absolute_url("/blog")]
 
     assert has_element?(
              view,
@@ -65,18 +83,50 @@ defmodule StoryarnWeb.BlogLive.IndexTest do
              view,
              ~s|#public-mobile-menu-close[phx-click*="pop_focus"][phx-click*="flash-group"]|
            )
+
+    assert has_element?(
+             view,
+             ~s|#public-mobile-language-switcher-es[phx-click*="pop_focus"][phx-click*="overflow-hidden"]|
+           )
   end
 
-  test "keeps the Spanish public shell while marking English editorial content", %{conn: conn} do
+  test "the unprefixed blog URL is fully English regardless of the session", %{conn: conn} do
     conn = init_test_session(conn, %{locale: "es"})
 
     {:ok, view, html} = live(conn, ~p"/blog")
 
     document = LazyHTML.from_document(html)
-    assert LazyHTML.attribute(LazyHTML.query(document, "html"), "lang") == ["es"]
-    assert has_element?(view, "#public-header", "Características")
-    assert has_element?(view, "#public-header", "Crear cuenta")
-    assert has_element?(view, "#blog-index h1", "Notas sobre cómo construimos")
+    assert LazyHTML.attribute(LazyHTML.query(document, "html"), "lang") == ["en"]
+    assert has_element?(view, "#public-header", "Features")
+    assert has_element?(view, "#public-header", "Create account")
+    assert has_element?(view, "#blog-index h1", "Notes on building a connected")
     assert has_element?(view, ~s|#blog-featured-post[lang="en"]|)
+  end
+
+  test "renders the localized Spanish index from its canonical URL", %{conn: conn} do
+    conn = init_test_session(conn, %{locale: "en"})
+
+    {:ok, view, html} = live(conn, "/es/blog")
+    document = LazyHTML.from_document(html)
+
+    assert LazyHTML.attribute(LazyHTML.query(document, "html"), "lang") == ["es"]
+    assert has_element?(view, ~s|#blog-index[lang="es"]|)
+    assert has_element?(view, "#public-header", "Características")
+    assert has_element?(view, ~s|#public-header a[href="/es/blog"]|)
+    assert has_element?(view, "#blog-index h1", "Notas sobre cómo construimos")
+    assert has_element?(view, "#blog-featured-post h2", "Presentamos Storyarn")
+
+    assert has_element?(
+             view,
+             ~s|#blog-featured-post a[href="/es/blog/presentamos-storyarn"]|
+           )
+
+    assert has_element?(view, "#blog-featured-post time", "14 de julio de 2026")
+    assert has_element?(view, ~s|#public-language-switcher-es[aria-current="page"]|)
+    assert has_element?(view, ~s|#public-language-switcher-en[href="/blog"]|)
+
+    assert LazyHTML.attribute(LazyHTML.query(document, ~s|link[rel="canonical"]|), "href") == [
+             StoryarnWeb.Layouts.absolute_url("/es/blog")
+           ]
   end
 end

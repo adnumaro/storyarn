@@ -9,12 +9,14 @@ const {
   controllerAddress,
   controllerName,
   document: legalDocument,
+  privacyUrl,
   updatedAt,
 } = defineProps<{
   contactEmail: string;
   controllerAddress: string;
   controllerName: string;
   document: "privacy" | "terms";
+  privacyUrl: string;
   updatedAt: string;
 }>();
 
@@ -226,7 +228,7 @@ function openCookieSettings(): void {
           <h2>{{ docText("providers.title") }}</h2>
           <p>
             {{ docText("providers.text") }}
-            <a href="/privacy" data-phx-link="redirect" data-phx-link-state="push">
+            <a :href="privacyUrl" data-phx-link="redirect" data-phx-link-state="push">
               {{ docText("providers.privacy_link") }}</a
             >.
           </p>

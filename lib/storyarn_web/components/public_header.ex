@@ -3,6 +3,7 @@ defmodule StoryarnWeb.Components.PublicHeader do
 
   use StoryarnWeb, :html
 
+  alias StoryarnWeb.Components.PublicLanguageSwitcher
   alias StoryarnWeb.Components.PublicMobileNavigation
   alias StoryarnWeb.Components.PublicNavigation
 
@@ -10,6 +11,8 @@ defmodule StoryarnWeb.Components.PublicHeader do
   attr :landing, :boolean, required: true
   attr :signed_in, :boolean, required: true
   attr :urls, :map, required: true
+  attr :current_locale, :string, required: true
+  attr :language_links, :list, default: []
 
   def header(assigns) do
     ~H"""
@@ -69,6 +72,12 @@ defmodule StoryarnWeb.Components.PublicHeader do
           </nav>
 
           <div class="flex flex-none items-center gap-2">
+            <PublicLanguageSwitcher.switcher
+              id="public-language-switcher"
+              current_locale={@current_locale}
+              links={@language_links}
+              compact
+            />
             <.link :if={@signed_in} navigate={@urls.workspaces} class={nav_link_class()}>
               {dgettext("public", "Dashboard")}
             </.link>
@@ -102,6 +111,8 @@ defmodule StoryarnWeb.Components.PublicHeader do
       landing={@landing}
       signed_in={@signed_in}
       urls={@urls}
+      current_locale={@current_locale}
+      language_links={@language_links}
     />
     """
   end

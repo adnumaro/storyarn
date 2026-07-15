@@ -1,4 +1,5 @@
 %{
+translation_key: "introducing-storyarn",
 title: "Introducing Storyarn: A Connected Narrative Design Platform",
 seo_title: "Introducing Storyarn: Narrative Design Platform",
 description: "Storyarn is a narrative design platform that keeps world data, branching dialogue, scenes, testing, localization, and export in one connected project.",
@@ -16,7 +17,7 @@ Storyarn is a narrative design platform for teams building interactive stories. 
 
 Registration is open, no invitation is required, and Storyarn is free during early access.
 
-This first post is not a tutorial. It is the product decision behind the platform: an interactive story is not a stack of documents. It is a system, and the connections inside that system deserve to be first-class parts of the creative work.
+This first post is not a tutorial. It explains the product decision behind the platform: interactive stories are often created across several capable tools, but the story still has to behave as one system. Storyarn is built around the connections that are hardest to preserve when worldbuilding, dialogue, state, scenes, localization, and implementation live in different places.
 
 ## The problem is not writing the line
 
@@ -26,17 +27,17 @@ The response only appears when that character trusts the player. Choosing it cha
 
 Writing the sentence is the smallest part of that decision.
 
-In a typical production workflow, the character may be described in one document, the trust value kept in a spreadsheet, the conversation drawn in a graph, the location stored in a map, and the translated text managed in another file. An engineer eventually receives identifiers and conditions that have travelled through all of them.
+Teams do not lack specialist tools. A character and its setting may be developed in Notion or World Anvil. The conversation may be designed in Arcweave or articy:draft, or implemented with Yarn Spinner or Ink. State may be represented in the narrative tool and again in the engine, while localization moves through its own workflow. Some teams rely on one of these tools; others combine them deliberately because each solves a different part of the problem.
 
-Every tool can be good at its own job and the workflow can still be fragile. The threshold changes in the spreadsheet but not in the dialogue. The source line changes after translation. The map shows a location that no reachable branch can reveal. A graph remains syntactically valid while pointing at an idea the rest of the project has already abandoned.
+That is not a sign of an outdated process, and it does not make any of those tools inadequate. The fragility appears at the boundaries. A condition is renamed in the dialogue but not in the engine integration. A character decision changes in the world bible while an older assumption survives in a branch. A location exists in the setting, yet no reachable path reveals it. A translator receives a line without the state or context that gives it meaning.
 
-Teams usually bridge those gaps with naming conventions, internal wikis, review meetings, and people who remember where every decision was copied. That memory works until a project grows, a deadline compresses, or the person carrying the context needs to focus elsewhere.
+Teams preserve these connections with stable identifiers, naming conventions, integration code, documentation, reviews, and people who know where every dependency crosses a tool boundary. That coordination works, but it becomes more expensive as the project grows and more disciplines depend on the same decisions.
 
 Storyarn starts in that gap between tools.
 
 ## A connected narrative model
 
-The central idea is straightforward: the character, the trust value, the conversation, the location, and the localized line should not be five unrelated representations of the same story decision.
+The central idea is straightforward: the character, the trust value, the conversation, the location, and the localized line should not become five representations that the team has to reconcile continually by hand.
 
 In Storyarn they can belong to the same model.
 
@@ -48,18 +49,18 @@ The connection is the product.
 
 <figure>
   <img src="/images/docs/project-dashboard-current.png" alt="Storyarn project dashboard bringing world data, flows, scenes, localization, validation, and activity into one project" loading="lazy">
-  <figcaption>A project is treated as one narrative system, not as a folder of unrelated files.</figcaption>
+  <figcaption>A project is treated as one narrative system, not as one more layer added to a chain of specialist tools.</figcaption>
 </figure>
 
 This changes the questions a team can ask. Not only “where is this line?”, but “what makes it available?”, “what does it change?”, “where can the player encounter it?”, “which translation came from it?”, and “will the exported project still carry those relationships?”
 
-It also keeps the creative intent close to the work. The graph does not need a separate paragraph explaining what a condition was supposed to mean. The world document does not have to duplicate the state that the dialogue actually uses. The handoff does not begin by reconstructing the model from filenames and conventions.
+It also keeps the creative intent close to the work. The graph does not need a separate paragraph explaining what a condition was supposed to mean. Worldbuilding context and executable state should not be allowed to drift apart. The handoff does not begin by reconstructing the model from identifiers, exports, and private conventions.
 
 ## Follow one decision through the project
 
 Return to the hidden location.
 
-The character’s trust value lives on a structured Sheet rather than inside an isolated note. The conversation checks that exact value. If the requirement is met, the response becomes available; choosing it can update the quest and reveal the location. The scene gives the location a place in the world, and the dialogue keeps its source identity as it moves into localization.
+The character’s trust value is defined once as structured data in Storyarn. The conversation checks that exact value. If the requirement is met, the response becomes available; choosing it can update the quest and reveal the location. The scene gives the location a place in the world, and the dialogue keeps its source identity as it moves into localization.
 
 The important point is not that Storyarn has a sheet editor, a node canvas, and a map. It is that the same decision can travel through all three without being translated into a new private convention at every boundary.
 
@@ -70,7 +71,7 @@ The important point is not that Storyarn has a sheet editor, a node canvas, and 
 
 That does not remove complexity. Branching narrative has state, dependencies, reusable structures, delayed consequences, and edge cases. Hiding those things would make the tool feel simpler while making production less reliable.
 
-Storyarn’s job is to keep that complexity visible and navigable. A writer can stay with the conversation while a narrative designer inspects its rules. A localization team can see the source context. An engineer can receive a coherent model instead of a collection of files whose relationships only existed in someone’s head.
+Storyarn’s job is to keep that complexity visible and navigable. A writer can stay with the conversation while a narrative designer inspects its rules. A localization team can see the source context. An engineer can receive a coherent model instead of several exports whose relationships have to be reconstructed during integration.
 
 Different disciplines do not need identical interfaces. They do need to be looking at the same story.
 
@@ -99,7 +100,9 @@ Storyarn can already structure worlds, build and run branching Flows, map narrat
 
 That is why we are opening it now.
 
-We want to learn where narrative teams still have to leave the platform. Which spreadsheet remains indispensable? Which relationship cannot be expressed? Which handoff still requires a private explanation? Which part of a writer’s process feels constrained instead of supported?
+We want to learn where narrative teams still have to leave the platform. Which specialist tool still owns a crucial part of the workflow? Which relationship cannot be expressed? Which connection becomes awkward when work crosses a tool boundary? Which handoff still loses context? Which part of a writer’s process feels constrained instead of supported?
+
+We do not expect Storyarn to replace every tool a team values. We want to reduce how much of the narrative model has to be reconstructed whenever work moves from one tool to another.
 
 Storyarn is being built for narrative designers, game writers, world builders, localization teams, and small studios that need more than a dialogue editor without wanting their creative process buried beneath enterprise machinery.
 

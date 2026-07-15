@@ -3,32 +3,27 @@ defmodule StoryarnWeb.DocsLive.Show do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Docs
+  alias Storyarn.Publication.Locales, as: PublicLocales
   alias Storyarn.Shared.HtmlSanitizer
+  alias StoryarnWeb.PublicURLs
 
   @impl true
   def mount(_params, _session, socket) do
-    locale = docs_locale()
-    categories = Docs.list_categories(locale)
-    guides = Docs.list_guides(locale)
-
-    # All categories start expanded
-    expanded =
-      MapSet.new(categories, fn {cat, _label} -> cat end)
-
     {:ok,
      assign(socket,
-       locale: locale,
-       categories: categories,
-       guides: guides,
+       docs_locale: nil,
+       categories: [],
+       guides: [],
        search_query: "",
        search_results: nil,
        sidebar_open: true,
-       expanded_categories: expanded
+       expanded_categories: MapSet.new()
      )}
   end
 
   @impl true
   def handle_params(params, _uri, socket) do
+    socket = prepare_locale(socket, socket.assigns.locale)
     {:noreply, apply_action(socket, socket.assigns.live_action, params)}
   end
 
@@ -48,7 +43,7 @@ defmodule StoryarnWeb.DocsLive.Show do
         )
 
       guide ->
-        push_navigate(socket, to: "/docs/#{guide.url_path}")
+        push_navigate(socket, to: PublicURLs.docs_path(socket.assigns.locale, guide))
     end
   end
 
@@ -58,16 +53,22 @@ defmodule StoryarnWeb.DocsLive.Show do
 
     case Docs.get_guide(category, slug, locale) do
       nil ->
-        socket
-        |> put_flash(:error, dgettext("docs", "Guide not found"))
-        |> push_navigate(to: ~p"/docs")
+        raise Ecto.NoResultsError, queryable: "docs_guides"
 
       guide ->
         {prev, next} = Docs.prev_next(category, slug, locale)
+        canonical_url = Layouts.absolute_url(PublicURLs.docs_path(locale, guide))
+        description = guide.description || docs_description()
+        locale_paths = guide_locale_paths(category, slug)
 
         assign(socket,
           page_title: guide.title,
-          seo_description: guide.description || docs_description(),
+          canonical_url: canonical_url,
+          seo_description: description,
+          seo_type: "article",
+          seo_alternate_links: PublicURLs.alternate_links(locale_paths),
+          seo_json_ld: structured_data(guide, locale, canonical_url, description),
+          language_links: PublicURLs.language_links(locale_paths),
           guide: guide,
           prev: prev,
           next: next
@@ -125,6 +126,8 @@ defmodule StoryarnWeb.DocsLive.Show do
       prev={@prev}
       next={@next}
       sidebar_open={@sidebar_open}
+      locale={@locale}
+      language_links={@language_links}
     >
       <.vue
         v-component="live/docs/show/DocsContent"
@@ -137,10 +140,51 @@ defmodule StoryarnWeb.DocsLive.Show do
     """
   end
 
-  # Use current Gettext locale if docs exist for it, otherwise fall back to English.
-  defp docs_locale do
-    locale = Gettext.get_locale(Storyarn.Gettext)
-    if Docs.list_guides(locale) == [], do: "en", else: locale
+  defp prepare_locale(socket, locale) do
+    if socket.assigns.docs_locale == locale do
+      socket
+    else
+      categories = Docs.list_categories(locale)
+
+      if categories == [] do
+        raise Ecto.NoResultsError, queryable: "docs_locales"
+      end
+
+      assign(socket,
+        docs_locale: locale,
+        categories: categories,
+        guides: Docs.list_guides(locale),
+        search_query: "",
+        search_results: nil,
+        expanded_categories: MapSet.new(categories, fn {category, _label} -> category end)
+      )
+    end
+  end
+
+  defp guide_locale_paths(category, slug) do
+    Enum.flat_map(PublicLocales.locales(), fn locale ->
+      case Docs.get_guide(category, slug, locale) do
+        nil -> []
+        guide -> [{locale, PublicURLs.docs_path(locale, guide)}]
+      end
+    end)
+  end
+
+  defp structured_data(guide, locale, canonical_url, description) do
+    %{
+      "@context" => "https://schema.org",
+      "@type" => "TechArticle",
+      "description" => description,
+      "headline" => guide.title,
+      "inLanguage" => PublicLocales.language_tag(locale),
+      "mainEntityOfPage" => %{"@id" => canonical_url, "@type" => "WebPage"},
+      "publisher" => %{
+        "@type" => "Organization",
+        "name" => "Storyarn",
+        "url" => Layouts.absolute_url(PublicURLs.home_path(PublicLocales.default_locale()))
+      },
+      "url" => canonical_url
+    }
   end
 
   defp docs_description do

@@ -4,29 +4,39 @@ defmodule StoryarnWeb.BlogLive.Index do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Blog
-
-  @post_locale "en"
+  alias Storyarn.Publication.Locales, as: PublicLocales
+  alias StoryarnWeb.BlogFormatting
+  alias StoryarnWeb.BlogURLs
 
   @impl true
-  def mount(_params, _session, socket) do
-    posts = Blog.list_posts(@post_locale)
+  def mount(_params, _session, socket), do: {:ok, socket}
+
+  @impl true
+  def handle_params(_params, uri, socket) do
+    locale = BlogURLs.locale_from_uri(uri) || raise Ecto.NoResultsError, queryable: "blog_locales"
+    Gettext.put_locale(Storyarn.Gettext, locale)
+
+    posts = Blog.list_posts(locale)
     featured_post = List.first(posts)
     remaining_posts = Enum.drop(posts, 1)
 
-    {:ok,
+    {:noreply,
      socket
      |> assign(
+       locale: locale,
        page_title: dgettext("blog", "Narrative Design Journal"),
-       canonical_url: Layouts.absolute_url(~p"/blog"),
+       canonical_url: Layouts.absolute_url(BlogURLs.index_path(locale)),
        seo_description:
          dgettext(
            "blog",
            "Product thinking, narrative design practice, and lessons from building Storyarn as a connected workspace for interactive stories."
          ),
+       seo_alternate_links: BlogURLs.index_alternate_links(),
+       language_links: BlogURLs.index_language_links(),
        featured_post: featured_post,
        has_more_posts: remaining_posts != []
      )
-     |> stream(:posts, remaining_posts)}
+     |> stream(:posts, remaining_posts, reset: true)}
   end
 
   @impl true
@@ -39,9 +49,14 @@ defmodule StoryarnWeb.BlogLive.Index do
       socket={@socket}
       seo_metadata={@seo_metadata}
       current_scope={@current_scope}
+      language_links={@language_links}
       theme="dark"
     >
-      <section id="blog-index" class="relative overflow-hidden px-6 pb-28 pt-36 sm:pt-44">
+      <section
+        id="blog-index"
+        lang={PublicLocales.language_tag(@locale)}
+        class="relative overflow-hidden px-6 pb-28 pt-36 sm:pt-44"
+      >
         <div class="pointer-events-none absolute inset-x-0 top-0 h-[38rem] bg-[radial-gradient(circle_at_18%_0%,rgba(45,212,191,0.16),transparent_44%),radial-gradient(circle_at_82%_8%,rgba(56,189,248,0.1),transparent_40%)]">
         </div>
 
@@ -72,28 +87,30 @@ defmodule StoryarnWeb.BlogLive.Index do
           <article
             :if={@featured_post}
             id="blog-featured-post"
-            lang={@featured_post.locale}
+            lang={PublicLocales.language_tag(@featured_post.locale)}
             class="group relative mt-16 grid overflow-hidden rounded-[2rem] border border-border/70 bg-card/70 shadow-[0_30px_100px_rgba(0,0,0,0.24)] transition duration-300 hover:-translate-y-1 hover:border-primary/40 lg:grid-cols-[1.02fr_0.98fr]"
           >
             <div class="flex flex-col justify-center p-8 sm:p-12 lg:p-14">
               <div class="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                 <span
-                  lang={@locale}
+                  lang={PublicLocales.language_tag(@locale)}
                   class="font-semibold uppercase tracking-[0.14em] text-primary"
                 >
                   {dgettext("blog", "Featured story")}
                 </span>
                 <span aria-hidden="true">·</span>
                 <time datetime={Date.to_iso8601(@featured_post.published_on)}>
-                  {format_date(@featured_post.published_on)}
+                  {BlogFormatting.format_date(@featured_post.published_on, @locale)}
                 </time>
                 <span aria-hidden="true">·</span>
-                <span lang={@locale}>{reading_time(@featured_post.reading_time)}</span>
+                <span lang={PublicLocales.language_tag(@locale)}>
+                  {reading_time(@featured_post.reading_time)}
+                </span>
               </div>
 
               <h2 class="mt-6 text-3xl font-semibold leading-[1.12] tracking-[-0.035em] text-balance sm:text-5xl">
                 <.link
-                  navigate={~p"/blog/#{@featured_post.slug}"}
+                  navigate={BlogURLs.post_path(@featured_post)}
                   class="after:absolute after:inset-0 focus:outline-none focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
                 >
                   {@featured_post.title}
@@ -113,7 +130,7 @@ defmodule StoryarnWeb.BlogLive.Index do
                   </span>
                 </div>
                 <span
-                  lang={@locale}
+                  lang={PublicLocales.language_tag(@locale)}
                   class="inline-flex items-center gap-2 text-sm font-semibold text-primary transition-transform group-hover:translate-x-1"
                 >
                   {dgettext("blog", "Read the story")} <.icon name="arrow-right" class="size-4" />
@@ -145,7 +162,7 @@ defmodule StoryarnWeb.BlogLive.Index do
               <article
                 :for={{dom_id, post} <- @streams.posts}
                 id={dom_id}
-                lang={post.locale}
+                lang={PublicLocales.language_tag(post.locale)}
                 class="group relative overflow-hidden rounded-2xl border border-border/70 bg-card/65 transition duration-300 hover:-translate-y-1 hover:border-primary/40"
               >
                 <img
@@ -157,14 +174,16 @@ defmodule StoryarnWeb.BlogLive.Index do
                 <div class="p-7">
                   <div class="flex items-center gap-2 text-xs text-muted-foreground">
                     <time datetime={Date.to_iso8601(post.published_on)}>
-                      {format_date(post.published_on)}
+                      {BlogFormatting.format_date(post.published_on, @locale)}
                     </time>
                     <span aria-hidden="true">·</span>
-                    <span lang={@locale}>{reading_time(post.reading_time)}</span>
+                    <span lang={PublicLocales.language_tag(@locale)}>
+                      {reading_time(post.reading_time)}
+                    </span>
                   </div>
                   <h3 class="mt-4 text-2xl font-semibold leading-tight tracking-tight">
                     <.link
-                      navigate={~p"/blog/#{post.slug}"}
+                      navigate={BlogURLs.post_path(post)}
                       class="after:absolute after:inset-0 focus:outline-none focus-visible:outline-2 focus-visible:outline-primary"
                     >
                       {post.title}
@@ -180,8 +199,6 @@ defmodule StoryarnWeb.BlogLive.Index do
     </StoryarnWeb.Components.PublicLayout.public>
     """
   end
-
-  defp format_date(date), do: Calendar.strftime(date, "%B %-d, %Y")
 
   defp reading_time(count) do
     dngettext("blog", "%{count} min read", "%{count} min read", count, count: count)

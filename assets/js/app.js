@@ -16,7 +16,6 @@ import {
   rememberCurrentHistoryScroll,
 } from "../app/shared/navigation/historyScroll";
 import { initPostHog } from "./utils/posthog";
-import { preloadPublicRouteTargets } from "./utils/preload_public_routes";
 import { SeoMetadata } from "./utils/seo_metadata";
 
 if (!window.__storyarnAppInitialized) {
@@ -40,7 +39,6 @@ if (!window.__storyarnAppInitialized) {
   window.addEventListener("phx:page-loading-start", () => topbar.show(300));
   window.addEventListener("phx:page-loading-stop", () => {
     topbar.hide();
-    preloadPublicRouteTargets();
   });
 
   // Capture the target history entry before LiveView replaces the current DOM.
@@ -65,7 +63,6 @@ if (!window.__storyarnAppInitialized) {
   );
 
   liveSocket.connect();
-  preloadPublicRouteTargets();
 
   window.liveSocket = liveSocket;
 

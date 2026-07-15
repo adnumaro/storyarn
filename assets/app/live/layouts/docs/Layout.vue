@@ -6,6 +6,7 @@ import {
   ArrowRight,
   ChevronDown,
   ChevronRight,
+  Languages,
   PanelLeft,
   Search,
   X,
@@ -58,8 +59,17 @@ interface DocsLayoutUrls {
   login: string;
 }
 
+interface DocsLanguageLink {
+  locale: string;
+  languageTag: string;
+  label: string;
+  path: string;
+}
+
 interface DocsLayoutProps {
   signedIn: boolean;
+  currentLocale: string;
+  languageLinks: DocsLanguageLink[];
   urls: DocsLayoutUrls;
   sidebarOpen: boolean;
   categories: DocsCategory[];
@@ -331,6 +341,42 @@ function resultsLabel(count: number): string {
         </div>
 
         <div class="flex-none flex items-center gap-2">
+          <details
+            v-if="docs.languageLinks.length > 1"
+            id="docs-language-switcher"
+            class="dropdown dropdown-end"
+          >
+            <summary
+              class="btn btn-ghost btn-xs list-none gap-1.5"
+              :aria-label="$t('docs.page_language')"
+            >
+              <Languages class="size-3.5" />
+              <span>{{ docs.currentLocale.toUpperCase() }}</span>
+            </summary>
+            <ul
+              class="menu dropdown-content z-50 mt-2 w-40 rounded-box border border-border bg-base-100 p-2 shadow-xl"
+            >
+              <li v-for="link in docs.languageLinks" :key="link.locale">
+                <span
+                  v-if="link.locale === docs.currentLocale"
+                  :lang="link.languageTag"
+                  aria-current="page"
+                  class="active font-semibold"
+                >
+                  {{ link.label }}
+                </span>
+                <LiveLink
+                  v-else
+                  :to="link.path"
+                  :lang="link.languageTag"
+                  :hreflang="link.languageTag"
+                >
+                  {{ link.label }}
+                </LiveLink>
+              </li>
+            </ul>
+          </details>
+
           <ThemeSelector
             size="xs"
             :labels="{

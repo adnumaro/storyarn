@@ -5,6 +5,7 @@ defmodule StoryarnWeb.UserLive.ResetPassword do
 
   alias Storyarn.Accounts
   alias Storyarn.Accounts.User
+  alias StoryarnWeb.PublicURLs
   alias StoryarnWeb.UserAuth
 
   on_mount {UserAuth, :redirect_if_user_is_authenticated}
@@ -26,7 +27,7 @@ defmodule StoryarnWeb.UserLive.ResetPassword do
         v-inject="auth-layout"
         id="reset-password-vue"
         form={@form}
-        login-url={~p"/users/log-in"}
+        login-url={PublicURLs.locale_handoff_path(~p"/users/log-in", @locale)}
         reset-complete={@reset_complete}
       />
     </StoryarnWeb.Components.AuthLayout.auth>

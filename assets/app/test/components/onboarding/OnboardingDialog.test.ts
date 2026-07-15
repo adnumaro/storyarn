@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { nextTick, type App } from "vue";
 import OnboardingDialog from "../../../components/onboarding/OnboardingDialog.vue";
 import { sessionKey } from "../../../components/onboarding/onboardingGuides";
-import { createMockLive } from "../../setup";
+import { createMockLive, setTestLocale } from "../../setup";
 import type { LiveInterface } from "../../../shared/composables/useLive";
 
 const dialogStubs = {
@@ -41,7 +41,17 @@ function mountDialog(props: { guideKey?: string; autoShow?: boolean } = {}) {
 }
 
 describe("OnboardingDialog", () => {
-  beforeEach(() => window.sessionStorage.clear());
+  beforeEach(() => {
+    window.sessionStorage.clear();
+    document.documentElement.lang = "en";
+    setTestLocale("en");
+    document.documentElement.dataset.publicDefaultLocale = "en";
+    document.documentElement.dataset.publicLocales = "en,es";
+    document.documentElement.dataset.publicLocaleConfig = JSON.stringify([
+      { gettext_locale: "en", language_tag: "en", path_segment: "en" },
+      { gettext_locale: "es", language_tag: "es", path_segment: "es" },
+    ]);
+  });
   afterEach(() => vi.restoreAllMocks());
 
   it("tracks an automatic opening when the guide is not snoozed", async () => {
@@ -173,5 +183,18 @@ describe("OnboardingDialog", () => {
     const { wrapper } = mountDialog({ guideKey: "unknown" });
 
     expect(wrapper.find("section").exists()).toBe(false);
+  });
+
+  it("opens the guide in the current published public locale", async () => {
+    document.documentElement.lang = "es";
+    setTestLocale("es");
+    const { wrapper } = mountDialog();
+
+    wrapper.vm.openTutorial();
+    await nextTick();
+
+    expect(wrapper.get('[data-testid="onboarding-full-guide"]').attributes("href")).toBe(
+      "/es/docs/narrative-design/flows-overview",
+    );
   });
 });

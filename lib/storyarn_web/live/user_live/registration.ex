@@ -6,6 +6,7 @@ defmodule StoryarnWeb.UserLive.Registration do
   alias Storyarn.Accounts
   alias Storyarn.RateLimiter
   alias StoryarnWeb.ClientIp
+  alias StoryarnWeb.PublicURLs
 
   on_mount {StoryarnWeb.UserAuth, :redirect_if_user_is_authenticated}
 
@@ -28,7 +29,7 @@ defmodule StoryarnWeb.UserLive.Registration do
         form={@form}
         user-email={@registration_user.email}
         invited={!!@invite_token}
-        login-url={~p"/users/log-in"}
+        login-url={PublicURLs.locale_handoff_path(~p"/users/log-in", @locale)}
       />
     </StoryarnWeb.Components.AuthLayout.auth>
     """
@@ -53,7 +54,7 @@ defmodule StoryarnWeb.UserLive.Registration do
         {:ok,
          socket
          |> put_flash(:error, dgettext("identity", "Invalid or expired registration link."))
-         |> redirect(to: ~p"/")}
+         |> redirect(to: PublicURLs.home_path(socket.assigns.locale))}
     end
   end
 
@@ -83,7 +84,7 @@ defmodule StoryarnWeb.UserLive.Registration do
            :error,
            dgettext("identity", "Too many registration attempts. Please try again later.")
          )
-         |> push_navigate(to: ~p"/")}
+         |> push_navigate(to: PublicURLs.home_path(socket.assigns.locale))}
     end
   end
 
@@ -100,7 +101,11 @@ defmodule StoryarnWeb.UserLive.Registration do
         {:noreply,
          socket
          |> put_flash(:info, dgettext("identity", "Account created successfully! Welcome."))
-         |> push_navigate(to: socket.assigns.return_to || ~p"/users/log-in")}
+         |> push_navigate(
+           to:
+             socket.assigns.return_to ||
+               PublicURLs.locale_handoff_path(~p"/users/log-in", socket.assigns.locale)
+         )}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign_form(socket, changeset)}
@@ -109,7 +114,7 @@ defmodule StoryarnWeb.UserLive.Registration do
         {:noreply,
          socket
          |> put_flash(:error, dgettext("identity", "Invalid or expired registration link."))
-         |> push_navigate(to: ~p"/")}
+         |> push_navigate(to: PublicURLs.home_path(socket.assigns.locale))}
 
       {:error, :workspace_limit_reached} ->
         {:noreply,

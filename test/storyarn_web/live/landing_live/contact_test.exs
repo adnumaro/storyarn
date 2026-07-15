@@ -20,4 +20,28 @@ defmodule StoryarnWeb.LandingLive.ContactTest do
 
     refute html =~ ~s(data-inject="public-layout")
   end
+
+  test "renders Spanish contact at its own canonical URL", %{conn: conn} do
+    conn = init_test_session(conn, %{locale: "en"})
+    {:ok, view, _html} = live(conn, "/es/contact")
+
+    assert has_element?(view, ~s|#public-header a[href="/es"]|)
+    assert has_element?(view, ~s|#public-header a[href="/es/docs"]|)
+    assert has_element?(view, ~s|#public-language-switcher-es[aria-current="page"]|)
+    assert has_element?(view, ~s|#public-language-switcher-en[href="/contact"]|)
+
+    metadata = seo_metadata(view)
+    assert metadata["locale"] == "es"
+    assert URI.parse(metadata["canonical_url"]).path == "/es/contact"
+  end
+
+  defp seo_metadata(view) do
+    view
+    |> render()
+    |> LazyHTML.from_fragment()
+    |> LazyHTML.query("#live-seo-metadata")
+    |> LazyHTML.attribute("data-metadata")
+    |> List.first()
+    |> Jason.decode!()
+  end
 end

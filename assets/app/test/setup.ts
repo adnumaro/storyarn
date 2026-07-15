@@ -42,6 +42,10 @@ const i18n = createI18n({
 });
 config.global.plugins.push(i18n);
 
+export function setTestLocale(locale: string): void {
+  (i18n.global.locale as unknown as { value: string }).value = locale;
+}
+
 /**
  * Create a mock LiveInterface with vi.fn() spies on all methods.
  * Pass initial props to pre-populate the reactive props object.

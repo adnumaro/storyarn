@@ -1,6 +1,8 @@
 defmodule Storyarn.Docs.GuideBuilder do
   @moduledoc false
 
+  alias Storyarn.Publication.HtmlLinkLocalizer
+  alias Storyarn.Publication.Locales
   alias Storyarn.Shared.HtmlUtils
 
   def build(filename, attrs, body) do
@@ -10,12 +12,13 @@ defmodule Storyarn.Docs.GuideBuilder do
       |> Path.split()
 
     [locale, category | doc_parts] = docs_parts(parts)
+    validate_public_locale!(locale)
     raw_slug = List.last(doc_parts)
     section_parts = Enum.drop(doc_parts, -1)
     slug = String.replace(raw_slug, ~r/^\d+-/, "")
     path = section_parts ++ [slug]
 
-    body = post_process(body)
+    body = post_process(body, locale)
     toc = extract_toc(body)
 
     %{
@@ -58,10 +61,17 @@ defmodule Storyarn.Docs.GuideBuilder do
   defp section_order([]), do: 0
   defp section_order(_parts), do: 1
 
-  defp post_process(body) do
+  defp post_process(body, locale) do
     body
     |> String.replace(~r/\{accent\}(.*?)\{\/accent\}/s, "<span class=\"docs-accent\">\\1</span>")
     |> HtmlUtils.add_heading_ids()
+    |> HtmlLinkLocalizer.localize_navigation(locale)
+  end
+
+  defp validate_public_locale!(locale) do
+    if !Locales.valid?(locale) do
+      raise ArgumentError, "docs locale must be published publicly, got: #{inspect(locale)}"
+    end
   end
 
   # Extract h2/h3 headings into a TOC list: [{level, id, text}, ...]

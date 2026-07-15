@@ -3,16 +3,22 @@ defmodule StoryarnWeb.LandingLive.Contact do
 
   use StoryarnWeb, :live_view
 
+  alias StoryarnWeb.PublicSEO
+
   @impl true
-  def mount(_params, _session, socket) do
-    {:ok,
-     assign(socket,
-       page_title: gettext("Contact"),
-       seo_description:
-         gettext(
-           "Contact Storyarn about the narrative design platform for game writers, narrative designers, and game design teams."
-         )
-     )}
+  def mount(_params, _session, socket), do: {:ok, socket}
+
+  @impl true
+  def handle_params(_params, _uri, socket) do
+    title = dgettext("public", "Contact")
+
+    description =
+      dgettext(
+        "public",
+        "Contact Storyarn about the narrative design platform for game writers, narrative designers, and game design teams."
+      )
+
+    {:noreply, assign(socket, PublicSEO.static_page_metadata(socket.assigns.locale, :contact, title, description))}
   end
 
   @impl true
@@ -25,6 +31,7 @@ defmodule StoryarnWeb.LandingLive.Contact do
       socket={@socket}
       seo_metadata={@seo_metadata}
       current_scope={@current_scope}
+      language_links={@language_links}
       theme="dark"
     >
       <.vue

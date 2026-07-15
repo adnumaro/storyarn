@@ -11,17 +11,17 @@
 msgid ""
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:82
+#: lib/storyarn_web/components/layouts.ex:85
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:81
+#: lib/storyarn_web/components/layouts.ex:84
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:80
+#: lib/storyarn_web/components/layouts.ex:83
 #, elixir-autogen, elixir-format
 msgid "We can't find the internet"
 msgstr ""
@@ -87,18 +87,6 @@ msgstr ""
 msgid "Unknown format"
 msgstr ""
 
-#: lib/storyarn_web/live/landing_live/contact.ex:10
-#, elixir-autogen, elixir-format
-msgid "Contact"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_controller.ex:40
-#: lib/storyarn_web/controllers/page_controller.ex:48
-#: lib/storyarn_web/live/landing_live/index.ex:149
-#, elixir-autogen, elixir-format
-msgid "You're on the list! We'll reach out when your spot is ready."
-msgstr ""
-
 #: lib/storyarn_web/live/flow_live/index.ex:355
 #, elixir-autogen, elixir-format
 msgid "Issue detected"
@@ -108,7 +96,7 @@ msgstr ""
 #: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:466
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:181
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:257
-#: lib/storyarn_web/live/flow_live/show.ex:1660
+#: lib/storyarn_web/live/flow_live/show.ex:1669
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:95
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:112
 #, elixir-autogen, elixir-format
@@ -148,12 +136,12 @@ msgstr ""
 msgid "Auto-snapshot"
 msgstr ""
 
-#: lib/storyarn/versioning/version_crud.ex:485
+#: lib/storyarn/versioning/version_crud.ex:495
 #, elixir-autogen, elixir-format
 msgid "Changes from previous version"
 msgstr ""
 
-#: lib/storyarn/versioning/version_crud.ex:472
+#: lib/storyarn/versioning/version_crud.ex:482
 #, elixir-autogen, elixir-format
 msgid "Initial version"
 msgstr ""
@@ -189,12 +177,6 @@ msgstr ""
 msgid "Snapshot not found"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_controller.ex:15
-#: lib/storyarn_web/live/landing_live/index.ex:92
-#, elixir-autogen, elixir-format
-msgid "Too many requests. Please try again in about 1 hour."
-msgstr ""
-
 #: lib/storyarn_web/live/compare_live/flow.ex:103
 #: lib/storyarn_web/live/compare_live/scene.ex:103
 #: lib/storyarn_web/live/compare_live/sheet.ex:104
@@ -212,39 +194,9 @@ msgstr ""
 msgid "You don't have permission to edit."
 msgstr ""
 
-#: lib/storyarn_web/live/landing_live/index.ex:56
-#, elixir-autogen, elixir-format
-msgid "Branching dialogue and narrative flow editor"
-msgstr ""
-
-#: lib/storyarn_web/live/landing_live/contact.ex:12
-#, elixir-autogen, elixir-format
-msgid "Contact Storyarn about the narrative design platform for game writers, narrative designers, and game design teams."
-msgstr ""
-
-#: lib/storyarn_web/live/landing_live/index.ex:62
-#, elixir-autogen, elixir-format
-msgid "Debugging and player preview for interactive narrative logic"
-msgstr ""
-
-#: lib/storyarn_web/live/landing_live/index.ex:63
-#, elixir-autogen, elixir-format
-msgid "Export for common game engines and narrative runtimes"
-msgstr ""
-
 #: lib/storyarn_web/controllers/export_controller.ex:39
 #, elixir-autogen, elixir-format
 msgid "Export is too large"
-msgstr ""
-
-#: lib/storyarn_web/live/landing_live/index.ex:54
-#, elixir-autogen, elixir-format
-msgid "Game design platform features"
-msgstr ""
-
-#: lib/storyarn_web/live/landing_live/index.ex:68
-#, elixir-autogen, elixir-format
-msgid "Game engine export"
 msgstr ""
 
 #: lib/storyarn_web/controllers/export_controller.ex:33
@@ -252,102 +204,7 @@ msgstr ""
 msgid "Invalid localization policy"
 msgstr ""
 
-#: lib/storyarn_web/live/landing_live/index.ex:119
-#, elixir-autogen, elixir-format
-msgid "Join the waitlist first, then add your details."
-msgstr ""
-
-#: lib/storyarn_web/live/landing_live/index.ex:61
-#, elixir-autogen, elixir-format
-msgid "Localization workflow for game dialogue and story content"
-msgstr ""
-
 #: lib/storyarn_web/controllers/private_media_controller.ex:87
 #, elixir-autogen, elixir-format
 msgid "Media not found"
-msgstr ""
-
-#: lib/storyarn_web/live/landing_live/index.ex:67
-#, elixir-autogen, elixir-format
-msgid "Narrative design flows"
-msgstr ""
-
-#: lib/storyarn_web/live/legal_live/show.ex:61
-#, elixir-autogen, elixir-format
-msgid "Privacy Policy"
-msgstr ""
-
-#: lib/storyarn_web/live/legal_live/show.ex:63
-#, elixir-autogen, elixir-format
-msgid "Privacy Policy for Storyarn, including account, waitlist, invitation, and product analytics data."
-msgstr ""
-
-#: lib/storyarn_web/live/landing_live/index.ex:60
-#, elixir-autogen, elixir-format
-msgid "Scene maps for spatial narrative design and exploration"
-msgstr ""
-
-#: lib/storyarn_web/live/landing_live/index.ex:65
-#, elixir-autogen, elixir-format
-msgid "Storyarn documentation"
-msgstr ""
-
-#: lib/storyarn_web/live/landing_live/index.ex:25
-#, elixir-autogen, elixir-format
-msgid "Storyarn is a narrative design platform and video game design platform for branching dialogue, worldbuilding, scenes, localization, debugging, and engine-ready export."
-msgstr ""
-
-#: lib/storyarn_web/live/landing_live/index.ex:45
-#, elixir-autogen, elixir-format
-msgid "Storyarn is a video game design platform for narrative designers, game designers, writers, and small studios. It connects worldbuilding sheets, branching dialogue flows, scenes, localization, debugging, and export in one production-ready workspace."
-msgstr ""
-
-#: lib/storyarn_web/live/landing_live/index.ex:42
-#, elixir-autogen, elixir-format
-msgid "Storyarn overview"
-msgstr ""
-
-#: lib/storyarn_web/live/landing_live/index.ex:22
-#, elixir-autogen, elixir-format
-msgid "Storyarn — Narrative Design Platform for Video Games"
-msgstr ""
-
-#: lib/storyarn_web/live/landing_live/index.ex:43
-#, elixir-autogen, elixir-format
-msgid "Storyarn: narrative design platform for video games"
-msgstr ""
-
-#: lib/storyarn_web/live/legal_live/show.ex:53
-#, elixir-autogen, elixir-format
-msgid "Terms of Use"
-msgstr ""
-
-#: lib/storyarn_web/live/legal_live/show.ex:54
-#, elixir-autogen, elixir-format
-msgid "Terms of Use for Storyarn, the narrative design platform for game projects."
-msgstr ""
-
-#: lib/storyarn_web/live/landing_live/index.ex:104
-#, elixir-autogen, elixir-format
-msgid "Thanks — this helps us prioritize your invite."
-msgstr ""
-
-#: lib/storyarn_web/live/landing_live/index.ex:50
-#, elixir-autogen, elixir-format
-msgid "Use Storyarn to design interactive stories, test game narrative logic, manage dialogue and variables, map worlds with scenes, localize content, and export to Yarn Spinner, Ink, Godot Dialogic, Unity, and Unreal."
-msgstr ""
-
-#: lib/storyarn_web/live/landing_live/index.ex:111
-#, elixir-autogen, elixir-format
-msgid "We couldn't save those details. You're still on the waitlist."
-msgstr ""
-
-#: lib/storyarn_web/live/landing_live/index.ex:66
-#, elixir-autogen, elixir-format
-msgid "What is Storyarn?"
-msgstr ""
-
-#: lib/storyarn_web/live/landing_live/index.ex:58
-#, elixir-autogen, elixir-format
-msgid "Worldbuilding sheets for characters, places, items, factions, and quests"
 msgstr ""

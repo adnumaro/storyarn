@@ -9,8 +9,11 @@ defmodule StoryarnWeb.Components.PublicLayout do
 
   use StoryarnWeb, :html
 
+  alias Storyarn.Publication.Locales, as: PublicLocales
+  alias StoryarnWeb.BlogURLs
   alias StoryarnWeb.Components.PublicFooter
   alias StoryarnWeb.Components.PublicHeader
+  alias StoryarnWeb.PublicURLs
 
   attr :flash, :map, required: true, doc: "the map of flash messages"
   attr :socket, :any, required: true, doc: "the LiveView socket (needed for LiveVue)"
@@ -28,12 +31,19 @@ defmodule StoryarnWeb.Components.PublicLayout do
     default: false,
     doc: "whether the current route owns the landing-page section anchors"
 
+  attr :language_links, :list,
+    default: [],
+    doc: "equivalent localized URLs for the current public page"
+
   slot :inner_block, required: true
 
   def public(assigns) do
+    content_locale = Map.get(assigns.seo_metadata, :content_locale, assigns.seo_metadata.locale)
+
     assigns =
       assigns
-      |> assign(:public_layout_urls, public_layout_urls())
+      |> assign(:public_layout_locale, content_locale)
+      |> assign(:public_layout_urls, public_layout_urls(content_locale))
       |> assign(:public_layout_signed_in, signed_in?(assigns.current_scope))
 
     ~H"""
@@ -50,6 +60,8 @@ defmodule StoryarnWeb.Components.PublicLayout do
         landing={@landing}
         signed_in={@public_layout_signed_in}
         urls={@public_layout_urls}
+        current_locale={@public_layout_locale}
+        language_links={@language_links}
       />
 
       <main id="public-main" class="flex min-h-0 flex-1 flex-col">
@@ -61,7 +73,12 @@ defmodule StoryarnWeb.Components.PublicLayout do
         urls={@public_layout_urls}
       />
 
-      <Layouts.flash_group flash={@flash} socket={@socket} />
+      <Layouts.flash_group
+        flash={@flash}
+        socket={@socket}
+        privacy_url={@public_layout_urls.privacy <> "#cookies"}
+        terms_url={@public_layout_urls.terms}
+      />
     </div>
     """
   end
@@ -69,16 +86,18 @@ defmodule StoryarnWeb.Components.PublicLayout do
   defp signed_in?(%{user: user}) when not is_nil(user), do: true
   defp signed_in?(_current_scope), do: false
 
-  defp public_layout_urls do
+  defp public_layout_urls(locale) do
+    locale = PublicLocales.normalize(locale)
+
     %{
-      home: ~p"/",
-      docs: ~p"/docs",
-      blog: ~p"/blog",
-      contact: ~p"/contact",
-      privacy: ~p"/privacy",
-      terms: ~p"/terms",
-      login: ~p"/users/log-in",
-      register: ~p"/users/register",
+      home: PublicURLs.home_path(locale),
+      docs: PublicURLs.docs_index_path(locale),
+      blog: BlogURLs.index_path(locale),
+      contact: PublicURLs.contact_path(locale),
+      privacy: PublicURLs.privacy_path(locale),
+      terms: PublicURLs.terms_path(locale),
+      login: PublicURLs.locale_handoff_path(~p"/users/log-in", locale),
+      register: PublicURLs.locale_handoff_path(~p"/users/register", locale),
       workspaces: ~p"/workspaces"
     }
   end

@@ -118,11 +118,13 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
   end
 
   describe "mount with invalid token" do
-    test "renders error page for invalid token", %{conn: conn} do
+    test "renders error page with a locale-aware homepage for invalid token", %{conn: conn} do
+      conn = init_test_session(conn, %{locale: "es"})
       {:ok, view, _html} = live(conn, ~p"/workspaces/invitations/invalidtoken123")
 
       vue = LiveVue.Test.get_vue(view, name: "live/workspace/invitation/WorkspaceInvitationResponse")
       assert vue.component == "live/workspace/invitation/WorkspaceInvitationResponse"
+      assert vue.props["homepage-url"] == "/es"
     end
 
     test "renders error page for expired invitation", %{conn: conn} do

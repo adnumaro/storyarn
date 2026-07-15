@@ -4,9 +4,11 @@ defmodule StoryarnWeb.BlogLive.Show do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Blog
+  alias Storyarn.Publication.Locales, as: PublicLocales
   alias Storyarn.Shared.HtmlSanitizer
-
-  @post_locale "en"
+  alias StoryarnWeb.BlogFormatting
+  alias StoryarnWeb.BlogURLs
+  alias StoryarnWeb.PublicURLs
 
   @impl true
   def mount(_params, _session, socket) do
@@ -14,17 +16,21 @@ defmodule StoryarnWeb.BlogLive.Show do
   end
 
   @impl true
-  def handle_params(%{"slug" => slug}, _uri, socket) do
-    case Blog.get_post(slug, @post_locale) do
+  def handle_params(%{"slug" => slug}, uri, socket) do
+    locale = BlogURLs.locale_from_uri(uri) || raise Ecto.NoResultsError, queryable: "blog_locales"
+    Gettext.put_locale(Storyarn.Gettext, locale)
+
+    case Blog.get_post(slug, locale) do
       nil ->
         raise Ecto.NoResultsError, queryable: "blog_posts"
 
       post ->
-        canonical_url = Layouts.absolute_url(~p"/blog/#{post.slug}")
+        canonical_url = Layouts.absolute_url(BlogURLs.post_path(post))
         image_url = Layouts.absolute_url(post.image)
 
         {:noreply,
          assign(socket,
+           locale: locale,
            page_title: post.seo_title,
            canonical_url: canonical_url,
            seo_description: post.description,
@@ -33,7 +39,9 @@ defmodule StoryarnWeb.BlogLive.Show do
            seo_published_on: post.published_on,
            seo_modified_on: post.updated_on,
            seo_article_tags: post.tags,
+           seo_alternate_links: BlogURLs.post_alternate_links(post),
            seo_json_ld: structured_data(post, canonical_url, image_url),
+           language_links: BlogURLs.post_language_links(post),
            post: post
          )}
     end
@@ -49,34 +57,37 @@ defmodule StoryarnWeb.BlogLive.Show do
       socket={@socket}
       seo_metadata={@seo_metadata}
       current_scope={@current_scope}
+      language_links={@language_links}
       theme="dark"
     >
       <article
         id="blog-post"
-        lang={@post.locale}
+        lang={PublicLocales.language_tag(@post.locale)}
         class="relative overflow-hidden pb-28 pt-36 sm:pt-44"
       >
         <div class="pointer-events-none absolute inset-x-0 top-0 h-[42rem] bg-[radial-gradient(circle_at_50%_0%,rgba(45,212,191,0.15),transparent_58%)]">
         </div>
 
         <header class="relative mx-auto w-full max-w-4xl px-6 text-center">
-          <.link
-            id="blog-back-link"
-            navigate={~p"/blog"}
-            lang={@locale}
-            class="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <.icon name="arrow-left" class="size-4" /> {dgettext("blog", "Back to the journal")}
-          </.link>
+          <div class="flex items-center justify-start">
+            <.link
+              id="blog-back-link"
+              navigate={BlogURLs.index_path(@post.locale)}
+              lang={PublicLocales.language_tag(@locale)}
+              class="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <.icon name="arrow-left" class="size-4" /> {dgettext("blog", "Back to the journal")}
+            </.link>
+          </div>
 
           <div class="mt-10 flex flex-wrap items-center justify-center gap-3 text-sm text-muted-foreground">
             <span class="font-semibold uppercase tracking-[0.14em] text-primary">Storyarn</span>
             <span aria-hidden="true">·</span>
             <time datetime={Date.to_iso8601(@post.published_on)}>
-              {format_date(@post.published_on)}
+              {BlogFormatting.format_date(@post.published_on, @locale)}
             </time>
             <span aria-hidden="true">·</span>
-            <span lang={@locale}>
+            <span lang={PublicLocales.language_tag(@locale)}>
               {reading_time(@post.reading_time)}
             </span>
           </div>
@@ -89,7 +100,10 @@ defmodule StoryarnWeb.BlogLive.Show do
           </p>
 
           <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <span lang={@locale} class="text-sm font-medium text-foreground">
+            <span
+              lang={PublicLocales.language_tag(@locale)}
+              class="text-sm font-medium text-foreground"
+            >
               {dgettext("blog", "By %{author}", author: @post.author)}
             </span>
             <span
@@ -118,7 +132,7 @@ defmodule StoryarnWeb.BlogLive.Show do
           </div>
 
           <aside
-            lang={@locale}
+            lang={PublicLocales.language_tag(@locale)}
             class="mt-20 overflow-hidden rounded-3xl border border-primary/20 bg-[radial-gradient(circle_at_100%_0%,rgba(45,212,191,0.16),transparent_45%),rgba(45,212,191,0.04)] p-8 sm:p-10"
           >
             <p class="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
@@ -135,7 +149,7 @@ defmodule StoryarnWeb.BlogLive.Show do
             </p>
             <.link
               id="blog-register-cta"
-              navigate={~p"/users/register"}
+              navigate={PublicURLs.locale_handoff_path(~p"/users/register", @locale)}
               class="btn btn-primary mt-7 rounded-full px-6"
             >
               {dgettext("blog", "Create your Storyarn account")}
@@ -150,8 +164,6 @@ defmodule StoryarnWeb.BlogLive.Show do
     </StoryarnWeb.Components.PublicLayout.public>
     """
   end
-
-  defp format_date(date), do: Calendar.strftime(date, "%B %-d, %Y")
 
   defp reading_time(count) do
     dngettext("blog", "%{count} min read", "%{count} min read", count, count: count)
@@ -173,7 +185,7 @@ defmodule StoryarnWeb.BlogLive.Show do
       "description" => post.description,
       "headline" => post.title,
       "image" => [image_url],
-      "inLanguage" => post.locale,
+      "inLanguage" => PublicLocales.language_tag(post.locale),
       "keywords" => post.tags,
       "mainEntityOfPage" => %{"@id" => canonical_url, "@type" => "WebPage"},
       "publisher" => %{

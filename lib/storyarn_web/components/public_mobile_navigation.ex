@@ -4,12 +4,15 @@ defmodule StoryarnWeb.Components.PublicMobileNavigation do
   use StoryarnWeb, :html
 
   alias Phoenix.LiveView.JS
+  alias StoryarnWeb.Components.PublicLanguageSwitcher
   alias StoryarnWeb.Components.PublicNavigation
 
   attr :dark, :boolean, required: true
   attr :landing, :boolean, required: true
   attr :signed_in, :boolean, required: true
   attr :urls, :map, required: true
+  attr :current_locale, :string, required: true
+  attr :language_links, :list, default: []
 
   def navigation(assigns) do
     ~H"""
@@ -97,6 +100,12 @@ defmodule StoryarnWeb.Components.PublicMobileNavigation do
             </nav>
 
             <div class="mt-auto grid gap-3 border-t border-border pt-5">
+              <PublicLanguageSwitcher.switcher
+                id="public-mobile-language-switcher"
+                current_locale={@current_locale}
+                links={@language_links}
+                on_navigate={close()}
+              />
               <.link
                 :if={@signed_in}
                 navigate={@urls.workspaces}

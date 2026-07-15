@@ -1,5 +1,6 @@
 const managedMetaTags = [
   ['meta[name="description"]', "name", "description", "description"],
+  ['meta[name="robots"]', "name", "robots", "robots"],
   ['meta[property="og:type"]', "property", "og:type", "type"],
   ['meta[property="og:title"]', "property", "og:title", "title"],
   ['meta[property="og:description"]', "property", "og:description", "description"],
@@ -69,6 +70,47 @@ function syncCanonical(value) {
   upsertMeta('meta[property="og:url"]', "property", "og:url", url);
 }
 
+function alternateUrl(value) {
+  const explicitUrl = nonEmptyString(value);
+  if (!explicitUrl) return null;
+
+  try {
+    const url = new URL(explicitUrl, window.location.origin);
+    if (!["http:", "https:"].includes(url.protocol)) return null;
+
+    url.search = "";
+    url.hash = "";
+    return url.href;
+  } catch {
+    return null;
+  }
+}
+
+function syncAlternateLinks(links) {
+  document.head
+    .querySelectorAll('link[rel="alternate"][data-seo-managed="hreflang"]')
+    .forEach((element) => element.remove());
+
+  if (!Array.isArray(links)) return;
+
+  const seen = new Set();
+
+  for (const link of links) {
+    const hreflang = nonEmptyString(link?.hreflang);
+    const href = alternateUrl(link?.href);
+
+    if (!hreflang || !href || seen.has(hreflang)) continue;
+    seen.add(hreflang);
+
+    const element = document.createElement("link");
+    element.setAttribute("rel", "alternate");
+    element.setAttribute("hreflang", hreflang);
+    element.setAttribute("href", href);
+    element.dataset.seoManaged = "hreflang";
+    document.head.append(element);
+  }
+}
+
 function syncArticleTags(tags) {
   document.head.querySelectorAll('meta[property="article:tag"]').forEach((element) => {
     element.remove();
@@ -111,11 +153,22 @@ export function syncSeoMetadata(metadata) {
   const locale = nonEmptyString(metadata.locale);
   if (locale) document.documentElement.lang = locale;
 
+  if (Object.hasOwn(metadata, "content_locale")) {
+    const contentLocale = nonEmptyString(metadata.content_locale);
+
+    if (contentLocale) {
+      document.documentElement.dataset.gettextLocale = contentLocale;
+    } else {
+      delete document.documentElement.dataset.gettextLocale;
+    }
+  }
+
   for (const [selector, attribute, attributeValue, key] of managedMetaTags) {
     upsertMeta(selector, attribute, attributeValue, metadata[key]);
   }
 
   syncCanonical(metadata.canonical_url);
+  syncAlternateLinks(metadata.alternate_links);
 
   for (const [selector, property, key] of optionalArticleMetaTags) {
     upsertMeta(selector, "property", property, metadata[key]);

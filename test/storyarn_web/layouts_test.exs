@@ -3,6 +3,8 @@ defmodule StoryarnWeb.LayoutsTest do
 
   import Phoenix.LiveViewTest
 
+  alias StoryarnWeb.Components.AuthLayout
+  alias StoryarnWeb.Components.PublicLanguageSwitcher
   alias StoryarnWeb.Layouts
 
   # ── Helpers ──────────────────────────────────────────────────────────
@@ -30,6 +32,8 @@ defmodule StoryarnWeb.LayoutsTest do
       assert html =~ ~s[rel="apple-touch-icon"]
       assert html =~ ~s[href="/site.webmanifest"]
       assert html =~ ~s[name="theme-color"]
+      assert html =~ ~s[data-public-default-locale="en"]
+      assert html =~ ~s[data-public-locales="en,es"]
     end
 
     test "serves the web app manifest through static paths" do
@@ -100,10 +104,80 @@ defmodule StoryarnWeb.LayoutsTest do
     end
   end
 
+  describe "public language switcher" do
+    test "compact labels expose BCP 47 tags instead of Gettext locale names" do
+      html =
+        render_component(&PublicLanguageSwitcher.switcher/1,
+          id: "regional-language-switcher",
+          current_locale: "pt_BR",
+          compact: true,
+          links: [
+            %{
+              locale: "pt_BR",
+              language_tag: "pt-BR",
+              label: "Português (Brasil)",
+              path: "/pt-br"
+            },
+            %{
+              locale: "zh_Hant",
+              language_tag: "zh-Hant",
+              label: "繁體中文",
+              path: "/zh-hant"
+            }
+          ]
+        )
+
+      document = LazyHTML.from_fragment(html)
+      current = LazyHTML.query(document, "#regional-language-switcher-pt_BR")
+      alternative = LazyHTML.query(document, "#regional-language-switcher-zh_Hant")
+
+      assert current |> LazyHTML.text() |> String.trim() == "pt-BR"
+      assert alternative |> LazyHTML.text() |> String.trim() == "zh-Hant"
+      assert LazyHTML.attribute(alternative, "hreflang") == ["zh-Hant"]
+    end
+  end
+
   describe "SEO helpers" do
     test "normalizes explicit canonical paths to absolute URLs" do
       assert Layouts.seo_canonical_url(%{canonical_url: "/blog"}) ==
                Layouts.absolute_url("/blog")
+    end
+
+    test "marks authentication and invitation paths as non-indexable" do
+      assert Layouts.seo_robots(%{conn: %{request_path: "/users/log-in"}}) == "noindex, follow"
+
+      assert Layouts.seo_robots(%{
+               conn: %{request_path: "/projects/invitations/secret-token"}
+             }) == "noindex, follow"
+
+      assert Layouts.seo_robots(%{conn: %{request_path: "/es/blog"}}) == nil
+    end
+
+    test "auth layout preserves a stronger robots policy" do
+      metadata =
+        Layouts.live_seo_metadata(%{
+          locale: "en",
+          seo_robots: "noindex, nofollow"
+        })
+
+      html =
+        render_component(&AuthLayout.auth/1,
+          flash: %{},
+          socket: mock_socket(),
+          seo_metadata: metadata,
+          inner_block: []
+        )
+
+      robots =
+        html
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.query("#live-seo-metadata")
+        |> LazyHTML.attribute("data-metadata")
+        |> List.first()
+        |> Jason.decode!()
+        |> Map.fetch!("robots")
+
+      assert robots == "noindex, nofollow"
     end
 
     test "serializes JSON-LD without allowing a script boundary" do
@@ -126,6 +200,11 @@ defmodule StoryarnWeb.LayoutsTest do
           seo_published_on: ~D[2026-07-14],
           seo_modified_on: ~D[2026-07-15],
           seo_article_tags: ["Storyarn"],
+          seo_robots: "noindex, follow",
+          seo_alternate_links: [
+            %{hreflang: "en", href: "/blog/article?source=test#top"},
+            %{hreflang: "es", href: "/es/blog/articulo"}
+          ],
           seo_json_ld: %{"@type" => "BlogPosting"}
         })
 
@@ -136,7 +215,60 @@ defmodule StoryarnWeb.LayoutsTest do
       assert metadata.published_time == "2026-07-14"
       assert metadata.modified_time == "2026-07-15"
       assert metadata.article_tags == ["Storyarn"]
+      assert metadata.robots == "noindex, follow"
+
+      assert metadata.alternate_links == [
+               %{hreflang: "en", href: Layouts.absolute_url("/blog/article")},
+               %{hreflang: "es", href: Layouts.absolute_url("/es/blog/articulo")}
+             ]
+
       assert metadata.json_ld == %{"@type" => "BlogPosting"}
+    end
+
+    test "normalizes and rejects malformed SEO alternate links" do
+      assert Layouts.seo_alternate_links(%{
+               seo_alternate_links: [
+                 %{hreflang: " en ", href: " /blog/article?source=test#top "},
+                 %{hreflang: "en", href: "/blog/duplicate"},
+                 %{hreflang: "", href: "/es/blog/articulo"},
+                 %{hreflang: "es", href: "javascript:alert(1)"},
+                 %{hreflang: nil, href: "/fr/blog/article"}
+               ]
+             }) == [
+               %{hreflang: "en", href: Layouts.absolute_url("/blog/article")}
+             ]
+    end
+
+    test "renders alternate links in the server document head", %{conn: conn} do
+      html =
+        rendered_to_string(
+          Layouts.root(%{
+            conn: conn,
+            inner_content: "",
+            seo_alternate_links: [
+              %{hreflang: "en", href: "/blog/article"},
+              %{hreflang: "es", href: "/es/blog/articulo"},
+              %{hreflang: "x-default", href: "/blog/article"}
+            ]
+          })
+        )
+
+      document = LazyHTML.from_document(html)
+
+      assert LazyHTML.attribute(
+               LazyHTML.query(document, ~s|link[rel="alternate"][hreflang="es"]|),
+               "href"
+             ) == [Layouts.absolute_url("/es/blog/articulo")]
+
+      assert LazyHTML.attribute(
+               LazyHTML.query(document, ~s|link[rel="alternate"][hreflang="en"]|),
+               "href"
+             ) == [Layouts.absolute_url("/blog/article")]
+
+      assert LazyHTML.attribute(
+               LazyHTML.query(document, ~s|link[rel="alternate"][hreflang="x-default"]|),
+               "href"
+             ) == [Layouts.absolute_url("/blog/article")]
     end
 
     test "renders a hidden SEO hook with JSON metadata" do

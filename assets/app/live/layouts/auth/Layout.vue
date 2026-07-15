@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import LiveLink from "@components/navigation/LiveLink.vue";
+
+const { homeUrl = "/" } = defineProps<{ homeUrl?: string }>();
 </script>
 
 <template>
   <div id="auth-layout-shell" class="min-h-screen flex flex-col">
     <header class="navbar px-4 sm:px-6 lg:px-8">
       <div class="flex-1">
-        <LiveLink to="/" class="flex items-center gap-2">
+        <LiveLink :to="homeUrl" class="flex items-center gap-2">
           <img
             :src="'/images/logos/logo-black-48.png'"
             alt="Storyarn"
