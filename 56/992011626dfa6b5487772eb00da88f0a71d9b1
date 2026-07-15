@@ -1,0 +1,385 @@
+assets/app/index.ts
+  s_3cb2d6b0d2b40c::t_b11fbf35ed934e 25-28
+  s_3cb2d6b0d2b40c::t_e4d5e0fbe7d45f 7-12,16,29-35,48-51,53-59
+  s_3cb2d6b0d2b40c::t_959e88085d4e07 84
+assets/app/live/account/settings/AccountSettingsTutorials.vue
+  s_3cb2d6b0d2b40c::t_5bf1aa5a06b779 10,23,45-46
+lib/storyarn/publication/locales.ex
+  s_3cb2d6b0d2b40c::t_2708e032978a87 1-139
+  s_3cb2d6b0d2b40c::t_50f020e1bbaa6c 140
+assets/app/test/utils/posthog.test.ts
+  s_3cb2d6b0d2b40c::t_3a5249f22e6e6e 5,19,79,85-100
+  s_3cb2d6b0d2b40c::t_7699f805d78f6b 109-110,118
+  s_3cb2d6b0d2b40c::t_201ead67f8b6ce 111-114
+  s_3cb2d6b0d2b40c::t_a3536f52f22e60 115-116
+lib/storyarn_web/blog_formatting.ex
+  s_3cb2d6b0d2b40c::t_c0087f23a958ae 4,6-13,16-27
+  s_3cb2d6b0d2b40c::t_c4361f30005fda 1-3,5,14-15,28
+test/storyarn_web/layouts_test.exs
+  s_3cb2d6b0d2b40c::t_65b0c76a9c1af6 7,107-133,136
+  s_3cb2d6b0d2b40c::t_2f7218bf622528 6,154-180
+  s_3cb2d6b0d2b40c::t_5bf1aa5a06b779 35-36
+  s_3cb2d6b0d2b40c::t_eff86bbfe06180 134-135
+  s_3cb2d6b0d2b40c::t_9efddee860ea0a 146-153,181-182,203,218
+  s_3cb2d6b0d2b40c::t_14d9d74fa7f8f0 263-271
+  s_3cb2d6b0d2b40c::t_80bfa88aa0d967 137,204-207,219-224,228-262,272
+  s_3cb2d6b0d2b40c::t_3654279e69f451 138-139
+  s_3cb2d6b0d2b40c::t_3f4327606cbbfa 273
+test/storyarn_web/controllers/public_locale_redirect_controller_test.exs
+  s_3cb2d6b0d2b40c::t_a6b95ae68a5fbb 1-27
+test/storyarn_web/public_urls_test.exs
+  s_3cb2d6b0d2b40c::t_3060228d61ee3e 5-7,51-54
+  s_3cb2d6b0d2b40c::t_a0f46b412bfaa9 142-143
+  s_3cb2d6b0d2b40c::t_26497645345c9b 124-136
+  s_3cb2d6b0d2b40c::t_a6b95ae68a5fbb 1-4,8-50,55,64-123,137-141,144-161
+  s_3cb2d6b0d2b40c::t_03cdf35077c705 56-63
+priv/gettext/es/LC_MESSAGES/blog.po
+  s_3cb2d6b0d2b40c::t_575b8dddbba4f5 7-9,15-16,20-21,25-26,30-31,35-36,40-41,45-46,50-51,55-56,60-61,65-66,70-71,75-76,80-81,85-86,89-153
+lib/storyarn_web/live/blog_live/index.ex
+  s_3cb2d6b0d2b40c::t_c4361f30005fda 8-9,11-12,15-19,23,26,28,34-35,39,55-56,58-59,103,113,177
+  s_3cb2d6b0d2b40c::t_3c8a03a04a56fd 52
+  s_3cb2d6b0d2b40c::t_781da2c41b069b 7,57,90,96,106-108,133,165,180
+  s_3cb2d6b0d2b40c::t_155bc446b91986 181-182,186
+assets/app/i18n.ts
+  s_3cb2d6b0d2b40c::t_959e88085d4e07 29
+test/storyarn_web/live/workspace_live/invitation_test.exs
+  s_3cb2d6b0d2b40c::t_1d2c34310ff6cb 121-122,127
+assets/js/utils/posthog.js
+  s_3cb2d6b0d2b40c::t_3a5249f22e6e6e 15,149-158
+  s_3cb2d6b0d2b40c::t_a3536f52f22e60 31
+  s_3cb2d6b0d2b40c::t_f19e12341456f0 61
+  s_3cb2d6b0d2b40c::t_201ead67f8b6ce 60,62,324-326
+  s_3cb2d6b0d2b40c::t_a2454bbde1c8d4 27-30,32-33
+lib/storyarn_web/components/layouts/root.html.heex
+  s_3cb2d6b0d2b40c::t_dc557df15d6936 15-21
+  s_3cb2d6b0d2b40c::t_7fda9930d2d95c 44-45
+  s_3cb2d6b0d2b40c::t_959e88085d4e07 3-4,7
+  s_3cb2d6b0d2b40c::t_5bf1aa5a06b779 2,5-6,8
+lib/storyarn/publication/html_link_localizer.ex
+  s_3cb2d6b0d2b40c::t_af93319405ae2a 1-59
+priv/blog/es/2026-07-14-presentamos-storyarn.md
+  s_3cb2d6b0d2b40c::t_c589f49bccb6d5 1-7,9-43,45-64,66-81,83,85-109
+  s_3cb2d6b0d2b40c::t_a3536f52f22e60 82,84
+  s_3cb2d6b0d2b40c::t_575b8dddbba4f5 8,44,65
+test/storyarn_web/live/blog_live/show_test.exs
+  s_3cb2d6b0d2b40c::t_06c46607a9eac4 67
+  s_3cb2d6b0d2b40c::t_8c04225279544f 72-74,79-80,82,96,102-115,117-118,120-125,132-154,162-171
+  s_3cb2d6b0d2b40c::t_0675bc539f9e7e 77,81,126-131
+  s_3cb2d6b0d2b40c::t_970ed3a700bb49 78
+assets/js/utils/seo_metadata.js
+  s_3cb2d6b0d2b40c::t_959e88085d4e07 165
+  s_3cb2d6b0d2b40c::t_3a5249f22e6e6e 156-164
+  s_3cb2d6b0d2b40c::t_7fda9930d2d95c 3,79,81-82,105-109
+  s_3cb2d6b0d2b40c::t_dc557df15d6936 73-78,80,83-104,110-113,171
+priv/gettext/es/LC_MESSAGES/public.po
+  s_3cb2d6b0d2b40c::t_22cf29d18be12e 7-10,14-15,19-21,23,27-28,32,34,38,40,44-45,49-52,56-59,63-66,70-71,75,77,81-82,86-87,91-92,96-97,101-102,106-107,111-112,116-118,122-123,127-128,131,133-135
+  s_3cb2d6b0d2b40c::t_670d9b8f8c47cf 22,33,39,76,132,136-245
+assets/app/live/layouts/docs/Layout.vue
+  s_3cb2d6b0d2b40c::t_b65f1997ad2e58 9,62-63,65-68,71-72,344-361,363-370,373-379
+  s_3cb2d6b0d2b40c::t_959e88085d4e07 64,362,371-372
+test/storyarn_web/live/landing_live/index_test.exs
+  s_3cb2d6b0d2b40c::t_06c46607a9eac4 28
+  s_3cb2d6b0d2b40c::t_256d624ceae549 32-34,36-37,39,41-69
+  s_3cb2d6b0d2b40c::t_80bfa88aa0d967 31,35,38,40
+  s_3cb2d6b0d2b40c::t_03cdf35077c705 12
+lib/storyarn_web/components/auth_layout.ex
+  s_3cb2d6b0d2b40c::t_2f7218bf622528 26
+  s_3cb2d6b0d2b40c::t_6871c372e381e4 12-14,27-32,37-42,46-51
+  s_3cb2d6b0d2b40c::t_7fda9930d2d95c 33
+lib/storyarn_web/components/docs_layout.ex
+  s_3cb2d6b0d2b40c::t_03cdf35077c705 73
+  s_3cb2d6b0d2b40c::t_959e88085d4e07 134
+  s_3cb2d6b0d2b40c::t_ea286db766fe6b 12-13,27-28,47-52,62,67-68,70-71,77-78,83-84,102,104,106,113,115,127-133,135-136
+test/e2e/blog_test.exs
+  s_3cb2d6b0d2b40c::t_d7c1d2756cdc2e 91,96,109,140,148,159,168,176
+  s_3cb2d6b0d2b40c::t_c94633244486eb 149
+  s_3cb2d6b0d2b40c::t_1876a06448fb52 13,87-90,93-95,97,104-108,111-115,134-135,251-256,284
+  s_3cb2d6b0d2b40c::t_0675bc539f9e7e 92,110,141,145-146
+  s_3cb2d6b0d2b40c::t_e4d5e0fbe7d45f 151
+  s_3cb2d6b0d2b40c::t_2930ff391c020f 224-235
+  s_3cb2d6b0d2b40c::t_1f56943755104c 125-133,152-158,160-167,169-175,275-283,285-286
+  s_3cb2d6b0d2b40c::t_0e6195a9cbabbd 137-139,142-144,177-178
+  s_3cb2d6b0d2b40c::t_2f7218bf622528 33,47,98-103,116-124,136,147,150,183-185,257-274
+  s_6ce2be7da793bc::t_f84c045f28d20a 236-250
+lib/storyarn_web/live/docs_live/show.ex
+  s_3cb2d6b0d2b40c::t_69a574b53c1d06 6
+  s_3cb2d6b0d2b40c::t_959e88085d4e07 179
+  s_3cb2d6b0d2b40c::t_27686d7a067b9c 8,14-16,20,26,46,56,60-62,66-71,129-130,143-178,180-187
+lib/storyarn_web/components/public_mobile_navigation.ex
+  s_3cb2d6b0d2b40c::t_2f7218bf622528 107
+  s_3cb2d6b0d2b40c::t_8d7daeeee04f4c 7,14-15,103-106,108
+lib/storyarn_web/public_urls.ex
+  s_3cb2d6b0d2b40c::t_03cdf35077c705 60-62,64-66,68-74
+  s_3cb2d6b0d2b40c::t_f19e12341456f0 90-92,140-143,149,152-153,155-156
+  s_3cb2d6b0d2b40c::t_af93319405ae2a 12,104,111-112,116-117,130,139,144-146,150-151
+  s_3cb2d6b0d2b40c::t_0e06d05d051950 16,63,67,174-179
+  s_3cb2d6b0d2b40c::t_74882effdfccf8 1-10,14-15,17-21,23-24,26-27,29-30,32-35,37-41,43-49,51,53-57,59,75-89,93-103,105-110,113-115,118-129,131-136,147-148,157-173,180-181
+  s_3cb2d6b0d2b40c::t_69a574b53c1d06 11,154
+  s_3cb2d6b0d2b40c::t_26497645345c9b 13,22,25,28,31,36,42,50,52,58
+  s_3cb2d6b0d2b40c::t_64b34f2804aef8 137-138
+lib/storyarn_web/live/user_live/reset_password.ex
+  s_3cb2d6b0d2b40c::t_bfddec1f90ff04 8,30
+test/storyarn_web/live/user_live/registration_test.exs
+  s_3cb2d6b0d2b40c::t_1d2c34310ff6cb 63,65-71
+  s_3cb2d6b0d2b40c::t_a0f46b412bfaa9 23,45,56-59
+  s_3cb2d6b0d2b40c::t_6871c372e381e4 27-29,60-62
+  s_3cb2d6b0d2b40c::t_f58810142034fc 64
+assets/app/live/layouts/auth/Layout.vue
+  s_3cb2d6b0d2b40c::t_6871c372e381e4 3-4,11
+test/storyarn_web/public_locale_test.exs
+  s_3cb2d6b0d2b40c::t_82e253627effbd 8,15-18,29,40
+  s_3cb2d6b0d2b40c::t_93910c8d8b6b5c 1-7,9-14,19-28,30-39,41-42
+test/storyarn_web/live/user_live/login_test.exs
+  s_3cb2d6b0d2b40c::t_a0f46b412bfaa9 17-19,78-87
+lib/storyarn/blog.ex
+  s_3cb2d6b0d2b40c::t_3fd77257506177 12-13,17-18,24-25
+  s_3cb2d6b0d2b40c::t_ba854280389a05 14-16
+test/storyarn_web/live/project_live/invitation_test.exs
+  s_3cb2d6b0d2b40c::t_1d2c34310ff6cb 127-128,133
+lib/storyarn/docs/guide_builder.ex
+  s_3cb2d6b0d2b40c::t_af93319405ae2a 15,68,71-73
+  s_3cb2d6b0d2b40c::t_d3840f754e7ae9 21,64,70,74
+  s_3cb2d6b0d2b40c::t_f786faee1e4dc0 4-5,69
+test/storyarn_web/live/legal_live/show_test.exs
+  s_3cb2d6b0d2b40c::t_8ff1afb8ba78b6 12,28-52
+lib/storyarn_web/controllers/llms_controller.ex
+  s_3cb2d6b0d2b40c::t_65b0c76a9c1af6 44
+  s_3cb2d6b0d2b40c::t_40acd6a5be7fde 115
+  s_3cb2d6b0d2b40c::t_781da2c41b069b 127,129
+  s_3cb2d6b0d2b40c::t_72457555897698 6,8,33,35,39-43,45-73,76-92,95-114,116-123,126,128,130
+  s_3cb2d6b0d2b40c::t_69a574b53c1d06 7
+priv/gettext/blog.pot
+  s_3cb2d6b0d2b40c::t_a2454bbde1c8d4 18-19
+  s_3cb2d6b0d2b40c::t_0e2d52b7e8f9c0 5-7,13-14,23-24,28-29,33-34,38-39,43-44,48-49,53-54,58-59,63-64,68-69,73-74,78-79,83-84,87-151
+assets/app/live/public/legal/LegalPage.vue
+  s_3cb2d6b0d2b40c::t_064ea446633704 12,19,231
+lib/storyarn_web/plugs/locale.ex
+  s_3cb2d6b0d2b40c::t_0e6195a9cbabbd 35-39,41
+  s_3cb2d6b0d2b40c::t_f78d9a5bd72a30 45-47,51,53-55,57-58,60-63
+  s_3cb2d6b0d2b40c::t_3fd77257506177 7-11
+  s_3cb2d6b0d2b40c::t_69a574b53c1d06 15-16
+  s_3cb2d6b0d2b40c::t_eadbd7516f4247 20-27,87,94,99-178
+  s_3cb2d6b0d2b40c::t_6d12ccc4e0fd2d 6,17,19,32,50,52,56,59
+  s_3cb2d6b0d2b40c::t_965dc75f62cc5f 64
+priv/gettext/es/LC_MESSAGES/docs.po
+  s_3cb2d6b0d2b40c::t_8a074839d7e65b 14,19,21-27
+lib/storyarn_web/live/landing_live/contact.ex
+  s_3cb2d6b0d2b40c::t_3ec64edca76937 6-10,12,14-15,18-20,34
+  s_3cb2d6b0d2b40c::t_131b321c31f53f 13,16-17,21
+lib/storyarn/blog/post.ex
+  s_3cb2d6b0d2b40c::t_c0e87166849f41 13,41,48,56
+  s_3cb2d6b0d2b40c::t_a3536f52f22e60 72
+  s_3cb2d6b0d2b40c::t_c01c75b32b091e 15-27
+  s_3cb2d6b0d2b40c::t_3fd77257506177 28-32,34-38,49-50,63-65,67-71,73-74
+  s_3cb2d6b0d2b40c::t_ba854280389a05 33,39-40,42-47,51-52,66
+  s_6ce2be7da793bc::t_2b3a736c7a4371 14
+lib/storyarn_web/live/project_live/invitation.ex
+  s_3cb2d6b0d2b40c::t_7fda9930d2d95c 17-22
+  s_3cb2d6b0d2b40c::t_1d2c34310ff6cb 13,35
+lib/storyarn_web/live/user_live/forgot_password.ex
+  s_3cb2d6b0d2b40c::t_0e06d05d051950 95-97
+  s_3cb2d6b0d2b40c::t_6e7ef69d235b8d 99
+  s_3cb2d6b0d2b40c::t_bfddec1f90ff04 12,37,94,98,100-102
+priv/gettext/es/LC_MESSAGES/default.po
+  s_3cb2d6b0d2b40c::t_85013ea74d2877 69,99,132,181,196-210
+  s_3cb2d6b0d2b40c::t_2d7764e8a4a32e 14,19,24,70,80,90,96-98,100-101,131,133,139,144,149,159-160,165,170,175,180,182,192
+lib/storyarn/publication/path_localizer.ex
+  s_3cb2d6b0d2b40c::t_af93319405ae2a 1-79
+lib/storyarn_web/components/public_header.ex
+  s_3cb2d6b0d2b40c::t_8d7daeeee04f4c 6,14-15,75-80,114-115
+lib/storyarn_web/live/blog_live/show.ex
+  s_3cb2d6b0d2b40c::t_c4361f30005fda 9-10,19-23,28,33,42,44,73-75,77-81,87
+  s_3cb2d6b0d2b40c::t_03cdf35077c705 11
+  s_3cb2d6b0d2b40c::t_781da2c41b069b 65,76,90,103
+  s_3cb2d6b0d2b40c::t_959e88085d4e07 7
+  s_3cb2d6b0d2b40c::t_3c8a03a04a56fd 60,72
+  s_3cb2d6b0d2b40c::t_ccb6fa3dd1f658 104-106,135,152,188
+assets/app/locales/en/docs.json
+  s_3cb2d6b0d2b40c::t_b65f1997ad2e58 16
+lib/storyarn_web/controllers/sitemap_controller.ex
+  s_3cb2d6b0d2b40c::t_a2454bbde1c8d4 29,58,60-61,65-67,77-79,91,97,102-108
+  s_3cb2d6b0d2b40c::t_40acd6a5be7fde 46,51,59
+  s_3cb2d6b0d2b40c::t_72457555897698 7,9,20-24,35-45,47-50,52-55,62-64,68-76,82-88,118,120,122
+  s_3cb2d6b0d2b40c::t_14f50896668085 119
+  s_3cb2d6b0d2b40c::t_69a574b53c1d06 6
+  s_3cb2d6b0d2b40c::t_853961cab8eb8d 89-90
+  s_3cb2d6b0d2b40c::t_04e9ec62ca958d 109-111
+priv/gettext/en/LC_MESSAGES/blog.po
+  s_3cb2d6b0d2b40c::t_a2454bbde1c8d4 20-21
+  s_3cb2d6b0d2b40c::t_68c07e04dd1c20 7-9,15-16,25-26,30-31,35-36,40-41,45-46,50-51,55-56,60-61,65-66,70-71,75-76,80-81,85-86,89-153
+test/storyarn/blog_test.exs
+  s_3cb2d6b0d2b40c::t_ba854280389a05 34-50,61
+  s_3cb2d6b0d2b40c::t_907591ebbbcef9 5,93-94,96-105,107-120,122-141,143-163,167-173,187,202,205-221
+  s_3cb2d6b0d2b40c::t_8c04225279544f 13-15,51-60,62-64,75-78,83-92,95,189-194,199-201,204
+  s_3cb2d6b0d2b40c::t_c039a04221b6fd 106,121,142,164-166,174-177
+  s_3cb2d6b0d2b40c::t_d7414a11d7ff39 178-179,203,222
+assets/app/components/onboarding/onboardingGuides.ts
+  s_3cb2d6b0d2b40c::t_5bf1aa5a06b779 57-60,67,86
+  s_3cb2d6b0d2b40c::t_959e88085d4e07 61-66,68-85
+assets/app/test/setup.ts
+  s_3cb2d6b0d2b40c::t_a9ff4903136487 46
+  s_3cb2d6b0d2b40c::t_e6637e194f6e58 45,47-48
+lib/storyarn_web/blog_urls.ex
+  s_3cb2d6b0d2b40c::t_3fd77257506177 1-10,13,21,23-24,26-29,36-40,44-48,52-54,58-61,66-68,74-75
+  s_3cb2d6b0d2b40c::t_5bf1aa5a06b779 16,41,49,55,63,69-73
+  s_3cb2d6b0d2b40c::t_781da2c41b069b 31-35
+  s_3cb2d6b0d2b40c::t_bf5c1044e38e68 22,25,30,42-43,50-51,56-57,62,64-65
+  s_3cb2d6b0d2b40c::t_69a574b53c1d06 11
+  s_3cb2d6b0d2b40c::t_26497645345c9b 12,14-15,17-19
+  s_3cb2d6b0d2b40c::t_c01c75b32b091e 20
+  s_3cb2d6b0d2b40c::t_35739ec0e8fed1 76-78
+assets/app/test/utils/seo_metadata.test.ts
+  s_3cb2d6b0d2b40c::t_7699f805d78f6b 8-18,35-41,59-66,78-85,120-127,148-185
+  s_3cb2d6b0d2b40c::t_9efddee860ea0a 128-133,146-147,238
+  s_3cb2d6b0d2b40c::t_3a5249f22e6e6e 23,50,71,134-145
+  s_3cb2d6b0d2b40c::t_1c6756c651ab41 1,199-237
+lib/storyarn/blog/post_builder.ex
+  s_3cb2d6b0d2b40c::t_c01c75b32b091e 14,18,21,86,88-90
+  s_3cb2d6b0d2b40c::t_3fd77257506177 10,48-56
+  s_3cb2d6b0d2b40c::t_af93319405ae2a 15,85,87
+  s_3cb2d6b0d2b40c::t_4b7a23900300cb 4-5,57-58
+assets/app/locales/es/docs.json
+  s_3cb2d6b0d2b40c::t_b65f1997ad2e58 16
+test/storyarn_web/live/landing_live/contact_test.exs
+  s_3cb2d6b0d2b40c::t_74e30130483b1e 23-46
+test/storyarn_web/live/blog_live/index_test.exs
+  s_3cb2d6b0d2b40c::t_8c04225279544f 12,51-65,93,99-111,113,115,117-124,127-130
+  s_3cb2d6b0d2b40c::t_0675bc539f9e7e 49-50,125-126
+  s_3cb2d6b0d2b40c::t_2f7218bf622528 86-90
+test/storyarn/publication/locales_test.exs
+  s_3cb2d6b0d2b40c::t_16cea50763afd4 1-4,7-62,67,84-128,130,132-136,138-142,147-152,154-180,182-218
+  s_3cb2d6b0d2b40c::t_8b8c51dd0d7733 5-6,153
+  s_3cb2d6b0d2b40c::t_1224c06cacd4ee 181
+  s_3cb2d6b0d2b40c::t_ba854280389a05 129,131,137,143-146
+  s_3cb2d6b0d2b40c::t_d9a3e261814bbb 63-66,68-83
+lib/storyarn_web/live/workspace_live/invitation.ex
+  s_3cb2d6b0d2b40c::t_1d2c34310ff6cb 13,35
+  s_3cb2d6b0d2b40c::t_7fda9930d2d95c 17-22
+assets/app/components/onboarding/OnboardingDialog.vue
+  s_3cb2d6b0d2b40c::t_5bf1aa5a06b779 17,28,37-39,267
+test/storyarn_web/live/user_live/password_reset_test.exs
+  s_3cb2d6b0d2b40c::t_a0f46b412bfaa9 34,56,177,204
+lib/storyarn_web/components/public_layout.ex
+  s_3cb2d6b0d2b40c::t_959e88085d4e07 41-42,45
+  s_3cb2d6b0d2b40c::t_03cdf35077c705 98-99
+  s_3cb2d6b0d2b40c::t_5bf1aa5a06b779 89-90
+  s_3cb2d6b0d2b40c::t_8d7daeeee04f4c 12-13,16,34-36,63-64,76-80,93,95-97
+  s_3cb2d6b0d2b40c::t_bfddcf79516934 94
+  s_3cb2d6b0d2b40c::t_c902fbde0ba4f1 37,46,81,91,100
+lib/storyarn_web/live/legal_live/show.ex
+  s_3cb2d6b0d2b40c::t_2a42a2152d2f81 30,73,86
+  s_3cb2d6b0d2b40c::t_3ec64edca76937 6-8,23-29,31-41,52,65
+  s_3cb2d6b0d2b40c::t_131b321c31f53f 75-80,88,90-93
+assets/app/test/components/onboarding/OnboardingDialog.test.ts
+  s_3cb2d6b0d2b40c::t_959e88085d4e07 50-53
+  s_3cb2d6b0d2b40c::t_e6637e194f6e58 6,47,190
+  s_3cb2d6b0d2b40c::t_5bf1aa5a06b779 44-46,48-49,54,187-189,191-199
+test/storyarn_web/plugs/locale_test.exs
+  s_3cb2d6b0d2b40c::t_0e6195a9cbabbd 211-246,282
+  s_3cb2d6b0d2b40c::t_eadbd7516f4247 82-141
+  s_3cb2d6b0d2b40c::t_bf5f3d5c909d7b 28,40,51,62,73,145,157,169,181,192,203,247-281
+assets/app/test/live/account/settings/AccountSettingsTutorials.test.ts
+  s_3cb2d6b0d2b40c::t_1c3dac317996ea 75-76
+  s_3cb2d6b0d2b40c::t_959e88085d4e07 42-45
+  s_3cb2d6b0d2b40c::t_e6637e194f6e58 6,39,72
+  s_3cb2d6b0d2b40c::t_5bf1aa5a06b779 36-38,40-41,46,69-71,73-74,77
+lib/storyarn_web/router.ex
+  s_3cb2d6b0d2b40c::t_a3536f52f22e60 372
+  s_3cb2d6b0d2b40c::t_da81954e912bcf 347-349,359,370,378,381-384,400
+  s_3cb2d6b0d2b40c::t_69a574b53c1d06 30-32,331-346,351,362-363,365-369,371,373,377,379-380,385-399
+  s_3cb2d6b0d2b40c::t_1cc864182cb419 4-5,401
+lib/storyarn_web/live/user_live/registration.ex
+  s_3cb2d6b0d2b40c::t_bfddec1f90ff04 9,32,104-108
+  s_3cb2d6b0d2b40c::t_1d2c34310ff6cb 57,87,117
+test/storyarn_web/controllers/sitemap_controller_test.exs
+  s_3cb2d6b0d2b40c::t_2f4bcddfcaf226 4-6,11,14-47,49-53,55-56,58-59,61-78,90-107
+  s_3cb2d6b0d2b40c::t_80bfa88aa0d967 13,48,54,57,60
+lib/storyarn_web/controllers/public_locale_redirect_controller.ex
+  s_3cb2d6b0d2b40c::t_69a574b53c1d06 6-7
+  s_3cb2d6b0d2b40c::t_64b34f2804aef8 1-5,8-17
+lib/storyarn_web/live/landing_live/index.ex
+  s_3cb2d6b0d2b40c::t_03cdf35077c705 31,103
+  s_3cb2d6b0d2b40c::t_131b321c31f53f 23,26-27,48-53,55-56,61-62,66,68-80,82,84,86,88,91,94
+  s_3cb2d6b0d2b40c::t_3ec64edca76937 7-8,17,21-22,24-25,28-30,32-33,44,89,92,95
+  s_3cb2d6b0d2b40c::t_eabf0e6ce891d4 87,90,93
+test/storyarn_web/live/docs_live/show_test.exs
+  s_3cb2d6b0d2b40c::t_a0f46b412bfaa9 176-181,183
+  s_3cb2d6b0d2b40c::t_d50f71df5c01be 160-175,182,184-214
+lib/storyarn_web/components/layouts.ex
+  s_3cb2d6b0d2b40c::t_959e88085d4e07 200,232-235,238
+  s_3cb2d6b0d2b40c::t_a406c66b406532 29-30,66-67,256,263
+  s_3cb2d6b0d2b40c::t_69a574b53c1d06 11
+  s_3cb2d6b0d2b40c::t_7fda9930d2d95c 161-176,210,287-291
+  s_3cb2d6b0d2b40c::t_dc557df15d6936 177-189,211,262,265-270
+  s_3cb2d6b0d2b40c::t_c01c75b32b091e 257-261,264
+  s_3cb2d6b0d2b40c::t_43b1981e4d315f 271
+  s_3cb2d6b0d2b40c::t_78e05a61a6fa4f 292
+test/storyarn/docs/guide_builder_test.exs
+  s_3cb2d6b0d2b40c::t_907591ebbbcef9 1-3,5,16-61,63-83,87-93,98-118
+  s_3cb2d6b0d2b40c::t_3be74b3a5bb2e0 4,6-15
+  s_3cb2d6b0d2b40c::t_c039a04221b6fd 62,84-86,94-97
+lib/storyarn_web/components/public_language_switcher.ex
+  s_3cb2d6b0d2b40c::t_959e88085d4e07 26,41-42
+  s_3cb2d6b0d2b40c::t_8d7daeeee04f4c 1-9,11-25,27,29,34,36-40,44,50,52-57
+  s_3cb2d6b0d2b40c::t_2f7218bf622528 10,28,43,45
+  s_3cb2d6b0d2b40c::t_65b0c76a9c1af6 30-33,35,46-49,51
+lib/storyarn_web/live/user_live/login.ex
+  s_3cb2d6b0d2b40c::t_bfddec1f90ff04 13,43-45
+lib/storyarn_web/public_locale.ex
+  s_3cb2d6b0d2b40c::t_0a207ae2c65df5 18-22,27,30,33-38,42,44-51,54-55
+  s_3cb2d6b0d2b40c::t_64b34f2804aef8 23
+  s_3cb2d6b0d2b40c::t_0543f2e1bd636e 5-7,14
+  s_3cb2d6b0d2b40c::t_69a574b53c1d06 13
+  s_3cb2d6b0d2b40c::t_06c46607a9eac4 16-17,26,28,52-53,57-59
+  s_3cb2d6b0d2b40c::t_da81954e912bcf 1-4,8-12,15,24-25,29,31-32,39-41,43,56,60-65
+test/storyarn_web/controllers/llms_controller_test.exs
+  s_3cb2d6b0d2b40c::t_65b0c76a9c1af6 4-5,24-26
+  s_3cb2d6b0d2b40c::t_2f4bcddfcaf226 6,16-21,29,31,39-44,46,48-50,56-77
+  s_3cb2d6b0d2b40c::t_80bfa88aa0d967 36-38
+  s_3cb2d6b0d2b40c::t_b467a9aa72110b 27
+priv/blog/en/2026-07-14-introducing-storyarn.md
+  s_3cb2d6b0d2b40c::t_c589f49bccb6d5 2,20,30,32,34,40,52,57,63,74,103-105
+lib/storyarn_web/public_seo.ex
+  s_3cb2d6b0d2b40c::t_959e88085d4e07 33
+  s_3cb2d6b0d2b40c::t_a4dba3df4f99ff 1-3,6-9,11-32,34-43
+  s_3cb2d6b0d2b40c::t_39bb59bf0cedf3 5
+  s_3cb2d6b0d2b40c::t_69a574b53c1d06 4,10
+config/config.exs
+  s_3cb2d6b0d2b40c::t_a15b3cd1723a78 77-87,148-149
+priv/gettext/default.pot
+  s_3cb2d6b0d2b40c::t_99f8724ac66674 14,19,24,99,139,144
+priv/gettext/docs.pot
+  s_3cb2d6b0d2b40c::t_54f9ed75cb2a92 14,19,24
+priv/gettext/en/LC_MESSAGES/default.po
+  s_3cb2d6b0d2b40c::t_99a7a774191dfd 14,19,24,69-70,80,90,96-101,131-133,139,144,149,159-160,165,170,175,180-182,184,187,189,192-194,197,199,202,204-209
+priv/gettext/en/LC_MESSAGES/docs.po
+  s_3cb2d6b0d2b40c::t_a2007882a968a0 14,19,21-26
+priv/gettext/en/LC_MESSAGES/public.po
+  s_3cb2d6b0d2b40c::t_42bbf0cc8ce3ce 7-10,14-15,19-23,27-28,32-34,38-40,44-45,49-52,56-59,63-66,70-71,75-77,81-82,86-87,91-92,96-97,101-102,106-107,111-112,116-118,122-123,127-128,131-245
+priv/gettext/public.pot
+  s_3cb2d6b0d2b40c::t_ff5ced604cf864 5-8,12-13,17-21,25-26,30-32,36-38,42-43,47-50,54-57,61-64,68-69,73-75,79-80,84-85,89-90,94-95,99-100,104-105,109-110,114-116,120-121,125-126,129-243
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "56992011626dfa6b5487772eb00da88f0a71d9b1",
+  "prompts": {},
+  "sessions": {
+    "s_3cb2d6b0d2b40c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b4a-b042-7412-8d10-5e6b95b13ee5",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_6ce2be7da793bc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b48-ed5a-71b3-916d-5a5630eac623",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
