@@ -1,0 +1,55 @@
+test/storyarn/gettext_test.exs
+  s_3cb2d6b0d2b40c::t_571157a0e47497 1-17
+test/storyarn_web/public_urls_test.exs
+  s_3cb2d6b0d2b40c::t_f51615e88dcf39 100-103
+lib/storyarn_web/components/public_mobile_navigation.ex
+  s_3cb2d6b0d2b40c::t_d1561c8236f199 29-30
+assets/app/test/utils/public_mobile_navigation.test.ts
+  s_3cb2d6b0d2b40c::t_d1561c8236f199 1-46,48-73,75-79,86,92,104,106,116,128-129
+  s_3cb2d6b0d2b40c::t_00ae9395898ad1 47,74,80-85,87-91,93-103,105,107-115,117-127
+assets/app/index.ts
+  s_3cb2d6b0d2b40c::t_d1561c8236f199 7,30,55
+test/storyarn_web/live/blog_live/index_test.exs
+  s_3cb2d6b0d2b40c::t_00ae9395898ad1 74,77
+  s_3cb2d6b0d2b40c::t_4e68aeeaa07121 78
+test/storyarn_web/plugs/locale_test.exs
+  s_3cb2d6b0d2b40c::t_e60a2799311c38 69-76
+  s_3cb2d6b0d2b40c::t_f51615e88dcf39 184-222
+  s_3cb2d6b0d2b40c::t_28009dedd6b2d6 13-20,77-78
+  s_3cb2d6b0d2b40c::t_bb362c4ba7624f 21-36
+  s_3cb2d6b0d2b40c::t_148af57a0d14d4 37-68
+priv/gettext/es/LC_MESSAGES/default.po
+  s_3cb2d6b0d2b40c::t_571157a0e47497 200,205,210
+assets/js/utils/public_mobile_navigation.js
+  s_3cb2d6b0d2b40c::t_00ae9395898ad1 3-4,7-10,16-21,23,30,32
+  s_3cb2d6b0d2b40c::t_d1561c8236f199 1-2,5-6,11-15,22,24-29,31,33-34
+lib/storyarn_web/plugs/locale.ex
+  s_3cb2d6b0d2b40c::t_148af57a0d14d4 20-22,128,133,136-137,144,146,150,152-170,172-175,177-180,182-188,190,194-196,262,264,267-268
+  s_3cb2d6b0d2b40c::t_bb362c4ba7624f 199-200,211-218
+  s_3cb2d6b0d2b40c::t_e60a2799311c38 147,171,181,189,193,201-208
+  s_3cb2d6b0d2b40c::t_28009dedd6b2d6 101-110,112-113,115,130,132,145,263
+  s_3cb2d6b0d2b40c::t_f51615e88dcf39 117-127,129,134-135,138-142,148-149,151,176,191-192,197-198,210,225
+  s_3cb2d6b0d2b40c::t_f8f471836f4f03 100,111,114,116
+assets/js/app.js
+  s_3cb2d6b0d2b40c::t_d1561c8236f199 19,35
+lib/storyarn_web/blog_urls.ex
+  s_3cb2d6b0d2b40c::t_f51615e88dcf39 25-28
+assets/js/utils/posthog.js
+  s_3cb2d6b0d2b40c::t_a3c2018b3ca829 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "4c21b6496554b8259b6cae1b44484979787b6113",
+  "prompts": {},
+  "sessions": {
+    "s_3cb2d6b0d2b40c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b4a-b042-7412-8d10-5e6b95b13ee5",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
