@@ -455,7 +455,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
       {id_map, scene_results} =
         import_scenes(project, data, id_map, strategy, existing_shortcuts)
 
-      {id_map, flow_results} =
+      {id_map, flow_results, node_count} =
         import_flows(project, data, id_map, strategy, existing_shortcuts)
 
       # Pass 3: link scene→flow references now that flows exist in id_map
@@ -468,13 +468,13 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
       {id_map, screenplay_results} =
         import_screenplays(project, data, id_map, strategy, existing_shortcuts)
 
-      {id_map, loc_results} = import_localization(project.id, data, id_map)
+      {_id_map, loc_results} = import_localization(project.id, data, id_map)
 
       counts = %{
         assets: length(asset_results),
         sheets: length(sheet_results),
         flows: length(flow_results),
-        nodes: imported_entity_count(id_map, :node),
+        nodes: node_count,
         scenes: length(scene_results),
         screenplays: length(screenplay_results)
       }
@@ -490,13 +490,6 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
          counts: counts
        }}
     end
-  end
-
-  defp imported_entity_count(id_map, entity_type) do
-    Enum.count(id_map, fn
-      {{^entity_type, _source_id}, _runtime_id} -> true
-      _entry -> false
-    end)
   end
 
   # =============================================================================
@@ -752,14 +745,14 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
     flows = data["flows"] || []
 
     if flows == [],
-      do: {id_map, []},
+      do: {id_map, [], 0},
       else: do_import_flows(project, flows, id_map, strategy, existing_shortcuts)
   end
 
   defp do_import_flows(project, flows, id_map, strategy, existing_shortcuts) do
     # Pass 1: create flows without parent_id
-    {id_map, flow_records} =
-      Enum.reduce(flows, {id_map, []}, fn flow_data, {map, records} ->
+    {id_map, flow_records, node_count} =
+      Enum.reduce(flows, {id_map, [], 0}, fn flow_data, {map, records, node_count} ->
         case resolve_shortcut(
                flow_data["shortcut"],
                strategy,
@@ -768,18 +761,18 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
                existing_shortcuts
              ) do
           :skip ->
-            {map, records}
+            {map, records, node_count}
 
           shortcut ->
-            {map, flow} = create_flow_record(project, flow_data, shortcut, map)
-            {map, [{flow, flow_data} | records]}
+            {map, flow, imported_node_count} = create_flow_record(project, flow_data, shortcut, map)
+            {map, [{flow, flow_data} | records], node_count + imported_node_count}
         end
       end)
 
     # Pass 2: set parent_id
     link_parent_ids(flow_records, id_map, :flow)
 
-    {id_map, Enum.map(flow_records, fn {flow, _} -> flow end)}
+    {id_map, Enum.map(flow_records, fn {flow, _} -> flow end), node_count}
   end
 
   defp create_flow_record(project, flow_data, shortcut, map) do
@@ -797,10 +790,10 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
       facade_insert_or_rollback!(Flows.import_flow(project.id, attrs), {:flow, flow_data["name"]})
 
     map = Map.put(map, {:flow, flow_data["id"]}, flow.id)
-    {map, _} = import_nodes(project.id, flow.id, flow_data["nodes"] || [], map)
+    {map, node_results} = import_nodes(project.id, flow.id, flow_data["nodes"] || [], map)
     {map, _} = import_flow_connections(flow.id, flow_data["connections"] || [], map)
 
-    {map, flow}
+    {map, flow, length(node_results)}
   end
 
   defp import_nodes(project_id, flow_id, nodes, id_map) do

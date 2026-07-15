@@ -217,6 +217,33 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       assert details.sheets.count == 1001
       assert details.sheets.limit == 1000
     end
+
+    test "counts every inserted node when source IDs are duplicated", %{target: target} do
+      source_id = Ecto.UUID.generate()
+
+      nodes = [
+        %{
+          "id" => source_id,
+          "type" => "annotation",
+          "source" => "manual",
+          "data" => %{"text" => "First"}
+        },
+        %{
+          "id" => source_id,
+          "type" => "annotation",
+          "source" => "manual",
+          "data" => %{"text" => "Second"}
+        }
+      ]
+
+      data = put_in(minimal_import_data(nodes), ["flows", Access.at(0), "name"], "Imported flow")
+
+      assert {:ok, result} = Imports.execute(target, storyarn_plan(data))
+      assert result.counts.nodes == 2
+
+      assert [flow] = result.flows
+      assert flow.id |> Flows.list_nodes() |> length() == 2
+    end
   end
 
   # =============================================================================
