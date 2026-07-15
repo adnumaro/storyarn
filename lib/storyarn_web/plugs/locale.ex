@@ -160,20 +160,35 @@ defmodule StoryarnWeb.Plugs.Locale do
           direct_language_range_matches_locale?(language_range, normalized_locale)
       end)
       |> best_preference()
+      |> tag_preference(:direct, normalized_locale)
 
-    case direct_preference do
-      nil ->
-        preferences
-        |> Enum.filter(fn {language_range, _quality, _index} ->
-          language_range != "*" and
-            fallback_language_range_matches_locale?(language_range, normalized_locale)
-        end)
-        |> best_fallback_preference()
-        |> tag_preference(:fallback, normalized_locale)
+    fallback_preference =
+      preferences
+      |> Enum.filter(fn {language_range, _quality, _index} ->
+        language_range != "*" and
+          fallback_language_range_matches_locale?(language_range, normalized_locale)
+      end)
+      |> best_fallback_preference()
+      |> tag_preference(:fallback, normalized_locale)
 
-      preference ->
-        tag_preference(preference, :direct, normalized_locale)
-    end
+    choose_locale_preference(direct_preference, fallback_preference)
+  end
+
+  defp choose_locale_preference(nil, fallback_preference), do: fallback_preference
+  defp choose_locale_preference(direct_preference, nil), do: direct_preference
+
+  # An explicit direct exclusion must not be re-enabled by a regional fallback.
+  defp choose_locale_preference(
+         {_language_range, quality, _index, _match_rank, _match_distance} = direct_preference,
+         _fallback_preference
+       )
+       when quality == 0, do: direct_preference
+
+  defp choose_locale_preference(
+         {_direct_range, direct_quality, _direct_index, _direct_rank, _direct_distance} = direct_preference,
+         {_fallback_range, fallback_quality, _fallback_index, _fallback_rank, _fallback_distance} = fallback_preference
+       ) do
+    if fallback_quality > direct_quality, do: fallback_preference, else: direct_preference
   end
 
   defp tag_preference(nil, _match_type, _normalized_locale), do: nil

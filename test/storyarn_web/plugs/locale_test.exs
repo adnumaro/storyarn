@@ -43,6 +43,22 @@ defmodule StoryarnWeb.Plugs.LocaleTest do
              ) == "en"
     end
 
+    test "compares a positive regional fallback with a lower-quality base preference" do
+      assert Locale.negotiate_accept_language(
+               "en-US;q=0.9,en;q=0.1,es;q=0.8",
+               ["en", "es"],
+               "en"
+             ) == "en"
+    end
+
+    test "does not let a regional fallback override an explicit base exclusion" do
+      assert Locale.negotiate_accept_language(
+               "en;q=0,en-US;q=0.9,es;q=0.8",
+               ["en", "es"],
+               "en"
+             ) == "es"
+    end
+
     test "prefers an exact regional locale over its base locale" do
       assert Locale.negotiate_accept_language(
                "pt-BR",
