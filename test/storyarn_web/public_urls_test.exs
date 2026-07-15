@@ -97,6 +97,10 @@ defmodule StoryarnWeb.PublicURLsTest do
       assert PublicURLs.locale_from_uri("https://storyarn.com/es/docs?from=blog#top") == "es"
       assert PublicURLs.locale_from_uri("/blog?utm_source=test") == "en"
     end
+
+    test "returns nil when a blog URI has no path" do
+      assert BlogURLs.locale_from_uri("https://storyarn.com") == nil
+    end
   end
 
   describe "localize_path/2" do

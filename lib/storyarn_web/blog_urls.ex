@@ -22,7 +22,10 @@ defmodule StoryarnWeb.BlogURLs do
   def post_path(locale, slug), do: PublicURLs.blog_post_path(locale, slug)
 
   def locale_from_uri(uri) when is_binary(uri) do
-    uri |> URI.parse() |> Map.get(:path, "") |> locale_from_path()
+    case URI.parse(uri).path do
+      path when is_binary(path) -> locale_from_path(path)
+      _other -> nil
+    end
   end
 
   def locale_from_path(path) when is_binary(path) do

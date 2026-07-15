@@ -197,14 +197,14 @@ msgstr "No tienes permiso para editar."
 #: lib/storyarn_web/controllers/export_controller.ex:39
 #, elixir-autogen, elixir-format
 msgid "Export is too large"
-msgstr ""
+msgstr "La exportación es demasiado grande"
 
 #: lib/storyarn_web/controllers/export_controller.ex:33
 #, elixir-autogen, elixir-format
 msgid "Invalid localization policy"
-msgstr ""
+msgstr "Política de localización no válida"
 
 #: lib/storyarn_web/controllers/private_media_controller.ex:87
 #, elixir-autogen, elixir-format
 msgid "Media not found"
-msgstr ""
+msgstr "Archivo multimedia no encontrado"

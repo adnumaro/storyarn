@@ -30,11 +30,6 @@ defmodule StoryarnWeb.PublicLocale do
     {:cont, install(socket, initial_locale, preferred_locale)}
   end
 
-  def on_mount({:set_locale, locale}, _params, _session, socket) do
-    preferred_locale = socket.assigns[:locale] || PublicLocales.default_locale()
-    {:cont, install(socket, locale, preferred_locale)}
-  end
-
   defp public_locale_from_mount(socket, session) do
     case get_connect_info(socket, :uri) do
       %URI{} = uri -> PublicURLs.locale_from_uri(uri)

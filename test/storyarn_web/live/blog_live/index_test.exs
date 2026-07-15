@@ -71,8 +71,10 @@ defmodule StoryarnWeb.BlogLive.IndexTest do
 
     assert has_element?(
              view,
-             ~s|#public-mobile-navigation[role="dialog"][aria-modal="true"][aria-hidden="true"][phx-window-keydown]|
+             ~s|#public-mobile-navigation[role="dialog"][aria-modal="true"][aria-hidden="true"][phx-hook="PublicMobileNavigation"][data-close*="pop_focus"][data-close*="overflow-hidden"]|
            )
+
+    refute has_element?(view, "#public-mobile-navigation[phx-window-keydown]")
 
     assert has_element?(
              view,

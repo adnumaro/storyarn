@@ -4,6 +4,7 @@ import { defineAsyncComponent, h } from "vue";
 import type { App, Component } from "vue";
 import VueKonva from "vue-konva";
 import { i18n } from "./i18n";
+import AuthConfirmAccessForm from "./live/auth/confirm-access/AuthConfirmAccessForm.vue";
 import AuthForgotPasswordForm from "./live/auth/reset-password/AuthForgotPasswordForm.vue";
 import AuthResetPasswordForm from "./live/auth/reset-password/AuthResetPasswordForm.vue";
 import AuthLoginForm from "./live/auth/login/AuthLoginForm.vue";
@@ -26,6 +27,7 @@ const componentLoaders = {
     "!./components/ThemeSelector.vue",
     "!./components/ui/input/Input.vue",
     "!./components/ui/label/Label.vue",
+    "!./live/auth/confirm-access/AuthConfirmAccessForm.vue",
     "!./live/auth/login/AuthLoginForm.vue",
     "!./live/auth/registration/AuthRegistrationForm.vue",
     "!./live/auth/reset-password/AuthForgotPasswordForm.vue",
@@ -50,6 +52,7 @@ const asyncComponents = new Map<string, Component>();
 // synchronously keeps the current LiveView frame populated on a cold cache;
 // a background dynamic import alone cannot guarantee that.
 const eagerPublicComponents = new Map<string, Component>([
+  ["live/auth/confirm-access/AuthConfirmAccessForm", AuthConfirmAccessForm],
   ["live/auth/login/AuthLoginForm", AuthLoginForm],
   ["live/auth/registration/AuthRegistrationForm", AuthRegistrationForm],
   ["live/auth/reset-password/AuthForgotPasswordForm", AuthForgotPasswordForm],

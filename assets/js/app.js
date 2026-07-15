@@ -16,6 +16,7 @@ import {
   rememberCurrentHistoryScroll,
 } from "../app/shared/navigation/historyScroll";
 import { initPostHog } from "./utils/posthog";
+import { PublicMobileNavigation } from "./utils/public_mobile_navigation";
 import { SeoMetadata } from "./utils/seo_metadata";
 
 if (!window.__storyarnAppInitialized) {
@@ -31,7 +32,7 @@ if (!window.__storyarnAppInitialized) {
   const liveSocket = new LiveSocket("/live", Socket, {
     longPollFallbackMs: 2500,
     params: { _csrf_token: csrfToken, player_tab_id: playerTabId },
-    hooks: { ...getHooks(liveVueApp), SeoMetadata },
+    hooks: { ...getHooks(liveVueApp), PublicMobileNavigation, SeoMetadata },
   });
 
   // Progress bar

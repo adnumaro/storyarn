@@ -26,8 +26,8 @@ defmodule StoryarnWeb.Components.PublicMobileNavigation do
       aria-modal="true"
       aria-hidden="true"
       aria-label={dgettext("public", "Mobile navigation")}
-      phx-window-keydown={close()}
-      phx-key="Escape"
+      data-close={close()}
+      phx-hook="PublicMobileNavigation"
     >
       <.focus_wrap
         id="public-mobile-navigation-focus-wrap"

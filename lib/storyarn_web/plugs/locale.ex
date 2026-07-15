@@ -17,6 +17,9 @@ defmodule StoryarnWeb.Plugs.Locale do
 
   @locales Gettext.known_locales(Storyarn.Gettext)
   @default_locale PublicLocales.default_locale()
+  @direct_match_rank 0
+  @fallback_match_rank 1
+  @wildcard_match_rank 2
   @normalized_locales Enum.map(@locales, fn locale ->
                         normalized =
                           locale
@@ -94,23 +97,132 @@ defmodule StoryarnWeb.Plugs.Locale do
   defp parse_accept_language(""), do: nil
 
   defp parse_accept_language(header) do
-    header
-    |> String.split(",")
+    do_negotiate_accept_language(header, @normalized_locales, @default_locale)
+  end
+
+  @doc false
+  def negotiate_accept_language(header, locales, default_locale)
+      when is_binary(header) and is_list(locales) and is_binary(default_locale) do
+    normalized_locales =
+      Enum.map(locales, fn locale ->
+        {locale, normalize_language_tag(locale)}
+      end)
+
+    do_negotiate_accept_language(header, normalized_locales, default_locale)
+  end
+
+  defp do_negotiate_accept_language("", _normalized_locales, _default_locale), do: nil
+
+  defp do_negotiate_accept_language(header, normalized_locales, default_locale) do
+    preferences =
+      header
+      |> String.split(",")
+      |> Enum.with_index()
+      |> Enum.map(&parse_language_preference/1)
+      |> Enum.reject(&is_nil/1)
+
+    wildcard_preference =
+      preferences
+      |> Enum.filter(fn {language_range, _quality, _index} -> language_range == "*" end)
+      |> best_preference()
+      |> tag_preference(:wildcard, nil)
+
+    normalized_locales
     |> Enum.with_index()
-    |> Enum.map(&parse_language_preference/1)
-    |> Enum.reject(&is_nil/1)
-    |> Enum.sort_by(fn {_language_range, quality, index} -> {-quality, index} end)
-    |> Enum.find_value(fn {language_range, _quality, _index} ->
-      match_known_locale(language_range)
+    |> Enum.map(fn {{locale, normalized_locale}, locale_index} ->
+      explicit_preference = preference_for_locale(preferences, normalized_locale)
+
+      case explicit_preference || wildcard_preference do
+        {_language_range, quality, index, match_rank, match_distance} when quality > 0 ->
+          {locale, quality, match_rank, match_distance, index, locale_index}
+
+        _other ->
+          nil
+      end
     end)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.sort_by(fn {locale, quality, match_rank, match_distance, index, locale_index} ->
+      default_rank = if locale == default_locale, do: 0, else: 1
+      {-quality, match_rank, match_distance, index, default_rank, locale_index}
+    end)
+    |> List.first()
+    |> case do
+      {locale, _quality, _match_rank, _match_distance, _index, _locale_index} -> locale
+      nil -> nil
+    end
+  end
+
+  defp preference_for_locale(preferences, normalized_locale) do
+    direct_preference =
+      preferences
+      |> Enum.filter(fn {language_range, _quality, _index} ->
+        language_range != "*" and
+          direct_language_range_matches_locale?(language_range, normalized_locale)
+      end)
+      |> best_preference()
+
+    case direct_preference do
+      nil ->
+        preferences
+        |> Enum.filter(fn {language_range, _quality, _index} ->
+          language_range != "*" and
+            fallback_language_range_matches_locale?(language_range, normalized_locale)
+        end)
+        |> best_fallback_preference()
+        |> tag_preference(:fallback, normalized_locale)
+
+      preference ->
+        tag_preference(preference, :direct, normalized_locale)
+    end
+  end
+
+  defp tag_preference(nil, _match_type, _normalized_locale), do: nil
+
+  defp tag_preference({language_range, quality, index}, :fallback, normalized_locale) do
+    distance =
+      language_range_specificity(language_range) -
+        language_range_specificity(normalized_locale)
+
+    {language_range, quality, index, @fallback_match_rank, distance}
+  end
+
+  defp tag_preference({language_range, quality, index}, :direct, _normalized_locale) do
+    {language_range, quality, index, @direct_match_rank, 0}
+  end
+
+  defp tag_preference({language_range, quality, index}, :wildcard, _normalized_locale) do
+    {language_range, quality, index, @wildcard_match_rank, 0}
+  end
+
+  defp best_preference(preferences) do
+    preferences
+    |> Enum.sort_by(fn {language_range, quality, index} ->
+      {-language_range_specificity(language_range), -quality, index}
+    end)
+    |> List.first()
+  end
+
+  defp best_fallback_preference(preferences) do
+    preferences
+    |> Enum.sort_by(fn {language_range, quality, index} ->
+      {-quality, index, -language_range_specificity(language_range)}
+    end)
+    |> List.first()
+  end
+
+  defp language_range_specificity("*"), do: 0
+
+  defp language_range_specificity(language_range) do
+    language_range
+    |> String.split("-")
+    |> length()
   end
 
   defp parse_language_preference({preference, index}) do
     case String.split(preference, ";", trim: true) do
       [language_range | parameters] ->
         with language_range when language_range != "" <- normalize_language_tag(language_range),
-             {:ok, quality} <- parse_quality(parameters),
-             true <- quality > 0 do
+             {:ok, quality} <- parse_quality(parameters) do
           {language_range, quality, index}
         else
           _ -> nil
@@ -147,29 +259,13 @@ defmodule StoryarnWeb.Plugs.Locale do
     end
   end
 
-  defp match_known_locale("*"), do: @default_locale
-
-  defp match_known_locale(language_range) do
-    exact_locale(language_range) || base_locale(language_range)
+  defp direct_language_range_matches_locale?(language_range, normalized_locale) do
+    language_range == normalized_locale or
+      String.starts_with?(normalized_locale, language_range <> "-")
   end
 
-  defp exact_locale(language_range) do
-    Enum.find_value(@normalized_locales, fn
-      {locale, ^language_range} -> locale
-      _ -> nil
-    end)
-  end
-
-  defp base_locale(language_range) do
-    base_language = language_range |> String.split("-", parts: 2) |> List.first()
-
-    Enum.find_value(@normalized_locales, fn
-      {locale, ^base_language} -> locale
-      _ -> nil
-    end) ||
-      Enum.find_value(@normalized_locales, fn {locale, normalized_locale} ->
-        if String.starts_with?(normalized_locale, base_language <> "-"), do: locale
-      end)
+  defp fallback_language_range_matches_locale?(language_range, normalized_locale) do
+    String.starts_with?(language_range, normalized_locale <> "-")
   end
 
   defp normalize_language_tag(language_tag) do
