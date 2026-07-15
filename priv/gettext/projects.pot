@@ -16,7 +16,7 @@ msgstr ""
 msgid "All variable references are up to date."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:368
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:390
 #, elixir-autogen, elixir-format
 msgid "Cannot remove the project owner."
 msgstr ""
@@ -57,12 +57,12 @@ msgstr ""
 msgid "Localization"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:372
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:394
 #, elixir-autogen, elixir-format
 msgid "Member not found."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:359
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:381
 #, elixir-autogen, elixir-format
 msgid "Member removed."
 msgstr ""
@@ -74,7 +74,7 @@ msgstr ""
 
 #: lib/storyarn_web/live/project_settings_live/general.ex:114
 #: lib/storyarn_web/live/project_settings_live/localization.ex:107
-#: lib/storyarn_web/live/project_settings_live/members.ex:91
+#: lib/storyarn_web/live/project_settings_live/members.ex:104
 #: lib/storyarn_web/live/project_settings_live/snapshots.ex:107
 #: lib/storyarn_web/live/project_settings_live/usage_limits.ex:112
 #: lib/storyarn_web/live/project_settings_live/version_control.ex:110
@@ -110,7 +110,7 @@ msgstr[1] ""
 msgid "Save"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:75
+#: lib/storyarn_web/live/project_live/invitation.ex:76
 #, elixir-autogen, elixir-format
 msgid "This invitation has already been accepted."
 msgstr ""
@@ -168,7 +168,8 @@ msgstr ""
 
 #: lib/storyarn_web/live/project_settings_live/general.ex:102
 #: lib/storyarn_web/live/project_settings_live/localization.ex:95
-#: lib/storyarn_web/live/project_settings_live/members.ex:79
+#: lib/storyarn_web/live/project_settings_live/members.ex:92
+#: lib/storyarn_web/live/project_settings_live/members.ex:149
 #: lib/storyarn_web/live/project_settings_live/snapshots.ex:95
 #: lib/storyarn_web/live/project_settings_live/usage_limits.ex:100
 #: lib/storyarn_web/live/project_settings_live/version_control.ex:98
@@ -176,7 +177,7 @@ msgstr ""
 msgid "You don't have permission to manage this project."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:81
+#: lib/storyarn_web/live/project_live/invitation.ex:82
 #, elixir-autogen, elixir-format
 msgid "You're already a member of this project."
 msgstr ""
@@ -201,7 +202,7 @@ msgstr ""
 msgid "Theme saved."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:64
+#: lib/storyarn_web/live/project_live/invitation.ex:65
 #, elixir-autogen, elixir-format
 msgid "Invitation accepted! Log in with %{email} to get started."
 msgstr ""
@@ -211,12 +212,12 @@ msgstr ""
 msgid "General"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/members.ex:27
+#: lib/storyarn_web/live/project_settings_live/members.ex:26
 #, elixir-autogen, elixir-format
 msgid "Manage project members and invitations"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/members.ex:26
+#: lib/storyarn_web/live/project_settings_live/members.ex:25
 #, elixir-autogen, elixir-format
 msgid "Members"
 msgstr ""
@@ -537,7 +538,7 @@ msgstr ""
 msgid "Clear"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:97
+#: lib/storyarn_web/live/project_live/invitation.ex:106
 #, elixir-autogen, elixir-format
 msgid "Create a password for %{email} to accept your invitation."
 msgstr ""
@@ -897,12 +898,12 @@ msgstr ""
 msgid "You don't have permission to publish templates from this project."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:323
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:327
 #, elixir-autogen, elixir-format
 msgid "An invitation has already been sent to this email."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:341
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:345
 #, elixir-autogen, elixir-format
 msgid "Could not send invitation."
 msgstr ""
@@ -912,7 +913,7 @@ msgstr ""
 msgid "Enter a valid email address and role."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:306
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:310
 #, elixir-autogen, elixir-format
 msgid "Invitation queued for delivery."
 msgstr ""
@@ -927,22 +928,22 @@ msgstr ""
 msgid "Invitation not found."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:337
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:341
 #, elixir-autogen, elixir-format
 msgid "Member limit reached for your plan."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:314
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:318
 #, elixir-autogen, elixir-format
 msgid "This person is already a member of this project."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:332
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:336
 #, elixir-autogen, elixir-format
 msgid "Too many invitations have been sent. Try again later."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:91
+#: lib/storyarn_web/live/project_live/invitation.ex:89
 #, elixir-autogen, elixir-format
 msgid "This invitation cannot be accepted while the workspace is at its member limit. Ask an owner or admin to free a seat, then try this invitation again."
 msgstr ""

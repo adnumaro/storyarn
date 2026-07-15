@@ -73,8 +73,9 @@ describe("ProjectSettingsMembers", () => {
       ],
     });
 
-    expect(wrapper.get("#project-pending-invitations").text()).toContain("pending@example.com");
-    expect(wrapper.find("#invite-role").exists()).toBe(true);
+    const pendingInvitation = wrapper.get("#project-pending-invitation-42");
+    expect(pendingInvitation.text()).toContain("pending@example.com");
+    expect(pendingInvitation.get('[data-slot="badge"]').text()).toBe("Viewer");
 
     await wrapper.get("#revoke-project-invitation-42").trigger("click");
     await wrapper.get("#revoke-project-invitation-42").trigger("click");

@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { Clock3, Loader2, Trash2, X } from "lucide-vue-next";
-import { ref } from "vue";
-import { useI18n } from "vue-i18n";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
@@ -13,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@components/ui/select";
-import { useLive } from "@shared/composables/useLive";
+import { useMemberInvitations } from "@shared/composables/useMemberInvitations";
 
 interface ProjectMember {
   id: number;
@@ -39,47 +37,16 @@ const {
   currentUserId?: number | null;
 }>();
 
-const live = useLive();
-const { locale } = useI18n({ useScope: "global" });
-
-const inviteEmail = ref("");
-const inviteRole = ref("editor");
-const invitationPending = ref(false);
-const revokingInvitationId = ref<number | null>(null);
-
-live.handleEvent("invitation_sent", () => {
-  inviteEmail.value = "";
-  inviteRole.value = "editor";
-});
-
-function sendInvitation() {
-  if (invitationPending.value) return;
-
-  invitationPending.value = true;
-  live.pushEvent(
-    "send_invitation",
-    {
-      invite: {
-        email: inviteEmail.value,
-        role: inviteRole.value,
-      },
-    },
-    () => (invitationPending.value = false),
-    () => (invitationPending.value = false),
-  );
-}
-
-function revokeInvitation(id: number) {
-  if (revokingInvitationId.value !== null) return;
-
-  revokingInvitationId.value = id;
-  live.pushEvent(
-    "revoke_invitation",
-    { id: String(id) },
-    () => (revokingInvitationId.value = null),
-    () => (revokingInvitationId.value = null),
-  );
-}
+const {
+  live,
+  inviteEmail,
+  inviteRole,
+  invitationPending,
+  revokingInvitationId,
+  sendInvitation,
+  revokeInvitation,
+  formatExpiry,
+} = useMemberInvitations("editor");
 
 function removeMember(id: number) {
   live.pushEvent("remove_member", { id: String(id) });
@@ -92,10 +59,6 @@ function memberDisplayName(member: ProjectMember) {
 function memberInitials(member: ProjectMember) {
   const name = member.display_name || member.email;
   return name.substring(0, 2).toUpperCase();
-}
-
-function formatExpiry(expiresAt: string) {
-  return new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(new Date(expiresAt));
 }
 
 type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
@@ -204,6 +167,7 @@ const roleBadgeVariant: Record<string, BadgeVariant> = {
       <div
         v-for="invitation in pendingInvitations"
         :key="invitation.id"
+        :id="`project-pending-invitation-${invitation.id}`"
         class="flex flex-col gap-3 rounded-lg border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
       >
         <div class="min-w-0">

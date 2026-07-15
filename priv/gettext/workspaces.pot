@@ -11,12 +11,12 @@
 msgid ""
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:210
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:272
 #, elixir-autogen, elixir-format
 msgid "Cannot change the owner's role."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:240
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:302
 #, elixir-autogen, elixir-format
 msgid "Cannot remove the workspace owner."
 msgstr ""
@@ -26,18 +26,18 @@ msgstr ""
 msgid "Failed to delete workspace."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:213
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:275
 #, elixir-autogen, elixir-format
 msgid "Failed to update role."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:193
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:223
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:255
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:285
 #, elixir-autogen, elixir-format
 msgid "Member not found."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:235
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:297
 #, elixir-autogen, elixir-format
 msgid "Member removed."
 msgstr ""
@@ -47,7 +47,7 @@ msgstr ""
 msgid "New Workspace"
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:90
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:93
 #, elixir-autogen, elixir-format
 msgid "Only the workspace owner can change member roles."
 msgstr ""
@@ -57,7 +57,7 @@ msgstr ""
 msgid "Only the workspace owner can delete the workspace."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:104
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:107
 #, elixir-autogen, elixir-format
 msgid "Only the workspace owner can remove members."
 msgstr ""
@@ -67,12 +67,12 @@ msgstr ""
 msgid "Project created successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:205
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:267
 #, elixir-autogen, elixir-format
 msgid "Role updated successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:77
+#: lib/storyarn_web/live/workspace_live/invitation.ex:78
 #, elixir-autogen, elixir-format
 msgid "This invitation has already been accepted."
 msgstr ""
@@ -111,17 +111,18 @@ msgstr ""
 
 #: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:40
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:33
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:32
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:33
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:135
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to manage this workspace."
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:86
+#: lib/storyarn_web/live/workspace_live/invitation.ex:87
 #, elixir-autogen, elixir-format
 msgid "You're already a member of this workspace."
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:64
+#: lib/storyarn_web/live/workspace_live/invitation.ex:65
 #, elixir-autogen, elixir-format
 msgid "Invitation accepted! Log in with %{email} to get started."
 msgstr ""
@@ -215,7 +216,7 @@ msgstr ""
 msgid "just now"
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:103
+#: lib/storyarn_web/live/workspace_live/invitation.ex:112
 #, elixir-autogen, elixir-format
 msgid "Create a password for %{email} to accept your invitation."
 msgstr ""
@@ -236,52 +237,52 @@ msgstr ""
 msgid "You don't have permission to create projects in this workspace."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:166
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:210
 #, elixir-autogen, elixir-format
 msgid "An invitation has already been sent to this email."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:184
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:228
 #, elixir-autogen, elixir-format
 msgid "Could not send invitation."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:140
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:180
 #, elixir-autogen, elixir-format
 msgid "Enter a valid email address and role."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:149
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:193
 #, elixir-autogen, elixir-format
 msgid "Invitation queued for delivery."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:223
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:242
 #, elixir-autogen, elixir-format
 msgid "Invitation revoked."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:226
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:245
 #, elixir-autogen, elixir-format
 msgid "Invitation not found."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:180
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:224
 #, elixir-autogen, elixir-format
 msgid "Member limit reached for your plan."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:157
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:201
 #, elixir-autogen, elixir-format
 msgid "This person is already a member of this workspace."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:175
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:219
 #, elixir-autogen, elixir-format
 msgid "Too many invitations have been sent. Try again later."
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:97
+#: lib/storyarn_web/live/workspace_live/invitation.ex:95
 #, elixir-autogen, elixir-format
 msgid "This invitation cannot be accepted while the workspace is at its member limit. Ask an owner or admin to free a seat, then try this invitation again."
 msgstr ""

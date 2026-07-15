@@ -103,8 +103,7 @@ msgstr ""
 msgid "Or copy this link: %{url}"
 msgstr ""
 
-#: lib/storyarn/emails/templates.ex:121
-#: lib/storyarn/emails/templates.ex:192
+#: lib/storyarn/emails/templates.ex:193
 #, elixir-autogen, elixir-format
 msgid "This invitation expires in %{count} day."
 msgid_plural "This invitation expires in %{count} days."
@@ -144,8 +143,7 @@ msgstr ""
 msgid "If you don't want to join, simply ignore this email."
 msgstr ""
 
-#: lib/storyarn/emails/templates.ex:105
-#: lib/storyarn/emails/templates.ex:182
+#: lib/storyarn/emails/templates.ex:183
 #, elixir-autogen, elixir-format
 msgid "This invitation expires in %{count} day. If you don't want to join, simply ignore this email."
 msgid_plural "This invitation expires in %{count} days. If you don't want to join, simply ignore this email."

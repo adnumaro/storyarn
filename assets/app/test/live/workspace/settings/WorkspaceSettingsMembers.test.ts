@@ -93,8 +93,9 @@ describe("WorkspaceSettingsMembers", () => {
       ],
     });
 
-    expect(wrapper.get("#workspace-pending-invitations").text()).toContain("pending@example.com");
-    expect(wrapper.find("#invite-role").exists()).toBe(true);
+    const pendingInvitation = wrapper.get("#workspace-pending-invitation-84");
+    expect(pendingInvitation.text()).toContain("pending@example.com");
+    expect(pendingInvitation.get('[data-slot="badge"]').text()).toBe("Viewer");
 
     await wrapper.get("#revoke-workspace-invitation-84").trigger("click");
     await wrapper.get("#revoke-workspace-invitation-84").trigger("click");
