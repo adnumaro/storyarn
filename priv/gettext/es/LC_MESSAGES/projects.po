@@ -560,3 +560,28 @@ msgstr "Reintentando tras un problema temporal…"
 #, elixir-autogen, elixir-format
 msgid "Creating project…"
 msgstr "Creando proyecto…"
+
+#: lib/storyarn_web/live/export_import_live/index.ex:30
+#, elixir-autogen, elixir-format
+msgid "Import & Export"
+msgstr "Importar y exportar"
+
+#: lib/storyarn_web/live/export_import_live/index.ex:32
+#, elixir-autogen, elixir-format
+msgid "Move narrative content into or out of this project."
+msgstr "Mueve contenido narrativo hacia o desde este proyecto."
+
+#: lib/storyarn_web/live/export_import_live/index.ex:524
+#, elixir-autogen, elixir-format
+msgid "The selected Yarn project is invalid or exceeds the import safety limits."
+msgstr "El proyecto Yarn seleccionado no es válido o supera los límites de seguridad de importación."
+
+#: lib/storyarn_web/live/export_import_live/index.ex:530
+#, elixir-autogen, elixir-format
+msgid "The import could not be completed. No project content was changed."
+msgstr "No se pudo completar la importación. No se modificó el contenido del proyecto."
+
+#: lib/storyarn_web/live/export_import_live/index.ex:500
+#, elixir-autogen, elixir-format
+msgid "This Yarn project uses narrative logic that Storyarn cannot import safely. No project content was changed."
+msgstr "Este proyecto de Yarn usa lógica narrativa que Storyarn no puede importar de forma segura. No se modificó el contenido del proyecto."

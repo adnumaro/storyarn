@@ -8,6 +8,8 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   - Import execution with ID remapping and conflict resolution
   """
 
+  @behaviour Storyarn.Imports.Parser
+
   import Ecto.Query, warn: false
 
   alias Storyarn.Assets
@@ -15,6 +17,9 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   alias Storyarn.Flows
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Imports.ImportPlan
+  alias Storyarn.Imports.Parser
+  alias Storyarn.Imports.SourceBundle
   alias Storyarn.Localization
   alias Storyarn.Localization.LocaleCode
   alias Storyarn.Localization.RuntimeKey
@@ -27,6 +32,12 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   alias Storyarn.Sheets
 
   @required_top_keys ~w(storyarn_version export_version project)
+
+  @impl Parser
+  def format, do: :storyarn
+
+  @impl Parser
+  def parser_version, do: "1"
 
   @max_entity_counts %{
     sheets: 1_000,
@@ -55,6 +66,19 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
          :ok <- validate_types(data),
          :ok <- validate_runtime_identifiers(data) do
       {:ok, data}
+    end
+  end
+
+  @impl Parser
+  def parse(%SourceBundle{kind: kind, files: [%{content: binary}]}) do
+    with {:ok, data} <- parse(binary) do
+      {:ok,
+       %ImportPlan{
+         format: format(),
+         parser_version: parser_version(),
+         source_kind: kind,
+         data: data
+       }}
     end
   end
 
@@ -382,7 +406,39 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
 
   Uses a database transaction. Returns `{:ok, result}` or `{:error, reason}`.
   """
-  def execute(project, data, opts \\ []) do
+  def execute(project, plan, opts \\ [])
+
+  def execute(project, %ImportPlan{} = plan, opts) do
+    result =
+      Repo.transact(
+        fn -> materialize_in_transaction(project, plan, opts) end,
+        timeout: to_timeout(minute: 5)
+      )
+
+    case result do
+      {:ok, _result} -> Collaboration.broadcast_dashboard_change(project.id, :all)
+      _error -> :ok
+    end
+
+    result
+  end
+
+  def execute(_project, data, _opts) when is_map(data), do: {:error, :import_plan_required}
+
+  @doc false
+  def materialize_in_transaction(project, plan, opts \\ [])
+
+  def materialize_in_transaction(project, %ImportPlan{data: data} = plan, opts) do
+    cond do
+      not Repo.in_transaction?() -> {:error, :import_transaction_required}
+      ImportPlan.error?(plan) -> {:error, :import_plan_has_errors}
+      true -> do_materialize_in_transaction(project, data, opts)
+    end
+  end
+
+  def materialize_in_transaction(_project, data, _opts) when is_map(data), do: {:error, :import_plan_required}
+
+  defp do_materialize_in_transaction(project, data, opts) do
     strategy = Keyword.get(opts, :conflict_strategy, :skip)
 
     with :ok <- validate_structure(data),
@@ -390,53 +446,39 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
          :ok <- validate_runtime_identifiers(data),
          :ok <- validate_entity_counts(data) do
       existing_shortcuts = preload_existing_shortcuts(project.id)
+      id_map = %{}
+      {id_map, asset_results} = import_assets(project.id, data, id_map)
 
-      result =
-        Repo.transaction(
-          fn ->
-            id_map = %{}
+      {id_map, sheet_results} =
+        import_sheets(project, data, id_map, strategy, existing_shortcuts)
 
-            {id_map, asset_results} = import_assets(project.id, data, id_map)
+      {id_map, scene_results} =
+        import_scenes(project, data, id_map, strategy, existing_shortcuts)
 
-            {id_map, sheet_results} =
-              import_sheets(project, data, id_map, strategy, existing_shortcuts)
+      {id_map, flow_results} =
+        import_flows(project, data, id_map, strategy, existing_shortcuts)
 
-            {id_map, scene_results} =
-              import_scenes(project, data, id_map, strategy, existing_shortcuts)
+      # Pass 3: link scene→flow references now that flows exist in id_map
+      link_scene_flow_references(data, id_map)
 
-            {id_map, flow_results} =
-              import_flows(project, data, id_map, strategy, existing_shortcuts)
+      # Pass 4: link node→flow references (referenced_flow_id, target_id)
+      # now that all flows exist in id_map
+      link_node_flow_references(data, id_map)
 
-            # Pass 3: link scene→flow references now that flows exist in id_map
-            link_scene_flow_references(data, id_map)
+      {id_map, screenplay_results} =
+        import_screenplays(project, data, id_map, strategy, existing_shortcuts)
 
-            # Pass 4: link node→flow references (referenced_flow_id, target_id)
-            # now that all flows exist in id_map
-            link_node_flow_references(data, id_map)
+      {_id_map, loc_results} = import_localization(project.id, data, id_map)
 
-            {id_map, screenplay_results} =
-              import_screenplays(project, data, id_map, strategy, existing_shortcuts)
-
-            {_id_map, loc_results} = import_localization(project.id, data, id_map)
-
-            %{
-              assets: asset_results,
-              sheets: sheet_results,
-              flows: flow_results,
-              scenes: scene_results,
-              screenplays: screenplay_results,
-              localization: loc_results
-            }
-          end,
-          timeout: to_timeout(minute: 5)
-        )
-
-      case result do
-        {:ok, _result} -> Collaboration.broadcast_dashboard_change(project.id, :all)
-        _error -> :ok
-      end
-
-      result
+      {:ok,
+       %{
+         assets: asset_results,
+         sheets: sheet_results,
+         flows: flow_results,
+         scenes: scene_results,
+         screenplays: screenplay_results,
+         localization: loc_results
+       }}
     end
   end
 

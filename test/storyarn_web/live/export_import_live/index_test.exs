@@ -16,6 +16,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
   end
 
   defp export_config(view), do: get_export_vue(view).props["export-config"]
+  defp import_state(view), do: get_export_vue(view).props["import-state"]
   defp format_config(view), do: export_config(view)["formatConfig"]
   defp selected_format(view), do: format_config(view)["selected"]
   defp format_extension(view), do: format_config(view)["extension"]
@@ -35,26 +36,28 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
   end
 
-  describe "export page" do
-    test "renders as Export, not Import & Export", %{conn: conn, project: project} do
-      {:ok, view, html} = live(conn, export_url(project))
+  describe "import and export page" do
+    test "renders the combined import and export workspace", %{conn: conn, project: project} do
+      {:ok, view, _html} = live(conn, export_url(project))
 
       settings_layout = get_settings_layout(view)
-      assert settings_layout.props["title"] == "Export"
-      assert settings_layout.props["subtitle"] == "Export your project data."
-      refute html =~ "Import & Export"
-      refute html =~ "Export & Import"
+      assert settings_layout.props["title"] == "Import & Export"
+
+      assert String.trim(settings_layout.props["subtitle"]) ==
+               "Move narrative content into or out of this project."
     end
 
-    test "does not expose the importer through props or hidden form", %{conn: conn, project: project} do
-      {:ok, view, html} = live(conn, export_url(project))
+    test "exposes a bounded Yarn upload and empty import state to editors", %{
+      conn: conn,
+      project: project
+    } do
+      {:ok, view, _html} = live(conn, export_url(project))
 
       props = get_export_vue(view).props
-      refute Map.has_key?(props, "import-state")
-      refute Map.has_key?(props, "upload-config")
-      refute Map.has_key?(props, "can-edit")
-      refute html =~ "id=\"import-form\""
-      refute html =~ "phx-submit=\"parse_import\""
+      assert props["can-edit"] == true
+      assert is_map(props["upload-config"])
+      assert import_state(view)["step"] == "upload"
+      assert import_state(view)["conflictStrategy"] == "rename"
     end
 
     test "does not expose Storyarn JSON as a visible export format", %{conn: conn, project: project} do
@@ -290,7 +293,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       assert error_msg =~ "access"
     end
 
-    test "viewer can access export without importer props", %{conn: conn} do
+    test "viewer can export but receives a read-only importer", %{conn: conn} do
       viewer = user_fixture()
       conn = log_in_user(conn, viewer)
 
@@ -301,7 +304,9 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       {:ok, view, html} = live(conn, export_url(project))
 
       assert html =~ "Export"
-      refute Map.has_key?(get_export_vue(view).props, "upload-config")
+      assert get_export_vue(view).props["can-edit"] == false
+      assert get_export_vue(view).props["upload-config"] == nil
+      assert import_state(view)["step"] == "upload"
       assert download_url(view) =~ "/export/ink"
     end
   end

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useLiveUpload, type UploadConfig } from "live_vue";
-import { AlertTriangle, CheckCircle, Eye, Lock, Upload } from "lucide-vue-next";
-import { computed, toRef, watch } from "vue";
+import { AlertTriangle, CheckCircle, Clock3, Eye, Lock, Upload } from "lucide-vue-next";
+import { computed, toRef } from "vue";
 import { Button } from "@components/ui/button";
 import { Label } from "@components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group";
@@ -15,7 +15,6 @@ import {
 } from "@components/ui/table";
 import { useI18n } from "vue-i18n";
 import { useLive } from "@shared/composables/useLive";
-import { capture } from "@/js/utils/posthog";
 
 const { t } = useI18n();
 
@@ -25,21 +24,13 @@ interface ImportPreview {
   conflicts?: Record<string, string[]>;
 }
 
-interface ImportResult {
-  assets?: unknown[];
-  sheets?: unknown[];
-  flows?: unknown[];
-  scenes?: unknown[];
-  screenplays?: unknown[];
-  localization?: unknown[];
-}
-
 interface ImportState {
   step: string;
-  preview?: ImportPreview;
-  result?: ImportResult;
-  error?: string;
+  preview?: ImportPreview | null;
+  error?: string | null;
   conflictStrategy?: string;
+  warningCodes?: string[];
+  status?: string | null;
 }
 
 const {
@@ -90,34 +81,6 @@ const previewCountRows = computed(() => {
   return rows.filter((r) => r.count > 0);
 });
 
-const importResultRows = computed(() => {
-  if (!importState.result) return [];
-  const result = importState.result;
-  const rows = [
-    { entity: t("project_settings.import.entities.assets"), items: result.assets },
-    { entity: t("project_settings.import.entities.sheets"), items: result.sheets },
-    { entity: t("project_settings.import.entities.flows"), items: result.flows },
-    { entity: t("project_settings.import.entities.scenes"), items: result.scenes },
-    { entity: t("project_settings.import.entities.screenplays"), items: result.screenplays },
-    { entity: t("project_settings.import.entities.localization"), items: result.localization },
-  ];
-  return rows.filter(
-    (r) =>
-      r.items != null &&
-      !(Array.isArray(r.items) && r.items.length === 0) &&
-      !(typeof r.items === "object" && Object.keys(r.items).length === 0),
-  );
-});
-
-watch(
-  () => importState.step,
-  (step) => {
-    if (step === "done") {
-      capture("project imported", { has_conflicts: importState.preview?.has_conflicts ?? false });
-    }
-  },
-);
-
 // --- Event handlers ---
 function executeImport() {
   live.pushEvent("execute_import", {});
@@ -141,26 +104,34 @@ function formatFileSize(bytes: number) {
   if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${bytes} B`;
 }
-
-function formatImportCount(items: unknown[] | Record<string, string | number> | string | number) {
-  if (Array.isArray(items)) return items.length;
-  if (typeof items === "object") return JSON.stringify(items);
-  return String(items);
-}
 </script>
 
 <template>
-  <section class="space-y-4">
-    <h2 class="text-lg font-semibold">{{ $t("project_settings.import.title") }}</h2>
+  <section class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm sm:p-6">
+    <div class="mb-5 space-y-1">
+      <h2 class="text-lg font-semibold">{{ $t("project_settings.import.title") }}</h2>
+      <p class="text-sm text-base-content/65">
+        {{ $t("project_settings.import.description") }}
+      </p>
+    </div>
 
     <template v-if="canEdit">
       <!-- Step: Upload -->
       <div v-if="importState.step === 'upload'" class="space-y-3">
         <div class="space-y-2">
           <Label>{{ $t("project_settings.import.select_file") }}</Label>
-          <Button variant="outline" size="sm" @click="upload?.showFilePicker()">
+          <Button
+            id="yarn-import-file-picker"
+            variant="outline"
+            size="sm"
+            class="transition-transform hover:-translate-y-0.5"
+            @click="upload?.showFilePicker()"
+          >
             {{ $t("project_settings.import.choose_file") }}
           </Button>
+          <p class="text-xs text-base-content/55">
+            {{ $t("project_settings.import.file_help") }}
+          </p>
         </div>
 
         <div v-for="entry in upload?.entries.value" :key="entry.ref" class="text-sm">
@@ -171,7 +142,12 @@ function formatImportCount(items: unknown[] | Record<string, string | number> | 
           </div>
         </div>
 
-        <Button size="sm" :disabled="!hasUploadEntries" @click="handleUploadSubmit">
+        <Button
+          id="yarn-import-preview"
+          size="sm"
+          :disabled="!hasUploadEntries"
+          @click="handleUploadSubmit"
+        >
           <Eye class="size-4" />
           {{ $t("project_settings.import.upload_preview") }}
         </Button>
@@ -196,6 +172,11 @@ function formatImportCount(items: unknown[] | Record<string, string | number> | 
             </TableRow>
           </TableBody>
         </Table>
+
+        <div v-if="(importState.warningCodes?.length ?? 0) > 0" class="alert alert-warning text-sm">
+          <AlertTriangle class="size-5 shrink-0" />
+          <span>{{ $t("project_settings.import.compatibility_warnings") }}</span>
+        </div>
 
         <!-- Conflicts -->
         <div v-if="importState.preview?.has_conflicts" class="space-y-2">
@@ -231,13 +212,26 @@ function formatImportCount(items: unknown[] | Record<string, string | number> | 
         </div>
 
         <div class="flex items-center gap-2">
-          <Button size="sm" @click="executeImport">
+          <Button id="yarn-import-confirm" size="sm" @click="executeImport">
             <Upload class="size-4" />
             {{ $t("project_settings.import.import_button") }}
           </Button>
           <Button variant="ghost" size="sm" @click="resetImport">
             {{ $t("project_settings.import.cancel") }}
           </Button>
+        </div>
+      </div>
+
+      <!-- Step: Queued / running -->
+      <div v-if="importState.step === 'queued'" class="space-y-3">
+        <div class="alert border-info/25 bg-info/10 text-sm text-info-content">
+          <Clock3 class="size-5 shrink-0 animate-pulse" />
+          <div>
+            <p class="font-medium">{{ $t("project_settings.import.processing") }}</p>
+            <p class="text-xs opacity-75">
+              {{ $t("project_settings.import.processing_description") }}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -250,7 +244,7 @@ function formatImportCount(items: unknown[] | Record<string, string | number> | 
           <span>{{ $t("project_settings.import.success") }}</span>
         </div>
 
-        <Table v-if="importResultRows.length">
+        <Table v-if="previewCountRows.length">
           <TableHeader>
             <TableRow>
               <TableHead>{{ $t("project_settings.import.th_entity") }}</TableHead>
@@ -260,9 +254,9 @@ function formatImportCount(items: unknown[] | Record<string, string | number> | 
             </TableRow>
           </TableHeader>
           <TableBody>
-            <TableRow v-for="row in importResultRows" :key="row.entity">
+            <TableRow v-for="row in previewCountRows" :key="row.entity">
               <TableCell class="capitalize">{{ row.entity }}</TableCell>
-              <TableCell class="text-right">{{ formatImportCount(row.items ?? []) }}</TableCell>
+              <TableCell class="text-right">{{ row.count }}</TableCell>
             </TableRow>
           </TableBody>
         </Table>

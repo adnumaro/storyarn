@@ -7,6 +7,14 @@
 # General application configuration
 import Config
 
+# Keep every object-storage socket phase bounded well below the import-plan
+# reservation lease. The importer also wraps the whole PUT in a wall-clock
+# deadline because a send timeout only limits individual blocked writes.
+config :ex_aws, :req_opts,
+  receive_timeout: 60_000,
+  pool_timeout: 10_000,
+  connect_options: [timeout: 30_000, transport_opts: [send_timeout: 60_000]]
+
 config :ex_aws, :s3,
   scheme: "https://",
   region: "auto"
@@ -25,7 +33,12 @@ config :live_vue,
 # Configures Elixir's Logger
 config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",
-  metadata: [:request_id, :user_id]
+  metadata: [:request_id]
+
+# Yarn Spinner source files are plain text but have no IANA-registered media
+# type. Register the extension so LiveView uploads can keep an explicit accept
+# list; server-side format and archive validation remains authoritative.
+config :mime, :types, %{"text/x-yarn-spinner" => ["yarn"]}
 
 # Filter sensitive parameters from logs
 config :phoenix, :filter_parameters, ["password", "secret", "token", "api_key", "_csrf_token"]
@@ -52,7 +65,7 @@ config :posthog,
 config :storyarn, Oban,
   engine: Oban.Engines.Basic,
   repo: Storyarn.Repo,
-  queues: [default: 10, snapshots: 2, templates: 1, template_installs: 2, localization: 2],
+  queues: [default: 10, snapshots: 2, templates: 1, template_installs: 2, localization: 2, imports: 2],
   plugins: [
     {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},
     {Oban.Plugins.Cron,
@@ -60,6 +73,7 @@ config :storyarn, Oban,
        {"0 3 * * *", Storyarn.Workers.DailySnapshotWorker},
        {"0 4 * * *", Storyarn.Workers.SnapshotRetentionWorker},
        {"0 * * * *", Storyarn.Workers.TrashRetentionWorker},
+       {"*/15 * * * *", Storyarn.Workers.ExpireProjectImportsWorker},
        {"* * * * *", Storyarn.Workers.RetryStorageCleanupRequestsWorker}
      ]}
   ]
@@ -101,6 +115,15 @@ config :storyarn, StoryarnWeb.Endpoint,
   session_encryption_salt: "cV3kP8mQ"
 
 config :storyarn, :admin_email, "adan@storyarn.com"
+
+config :storyarn,
+       :import_idempotency_secret,
+       :crypto.mac(
+         :hmac,
+         :sha256,
+         Base.decode64!("dGhpc2lzYWRldmVsb3BtZW50a2V5b25seTMyYnl0ZXM="),
+         "storyarn/import-idempotency/v1"
+       )
 
 # Email sender configuration (name and email address for outgoing emails)
 config :storyarn, :mailer_sender, {"Storyarn", "noreply@storyarn.com"}

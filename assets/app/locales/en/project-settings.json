@@ -14,7 +14,7 @@
         "localization": "Localization",
         "members": "Members",
         "snapshots": "Snapshots",
-        "import_export": "Export",
+        "import_export": "Import & Export",
         "trash": "Trash"
       }
     },
@@ -214,6 +214,41 @@
         "near_limit": "Near limit",
         "limit_reached": "Limit reached",
         "no_limit": "No limit"
+      }
+    },
+    "import": {
+      "title": "Import from Yarn Spinner",
+      "description": "Bring an existing .yarn file or Yarn project archive into Storyarn. Review the preview before anything is changed.",
+      "select_file": "Yarn project",
+      "choose_file": "Choose .yarn or .zip",
+      "file_help": "Maximum 50 MB. Archives are inspected for unsafe paths and expansion before extraction.",
+      "upload_preview": "Validate and preview",
+      "preview_title": "Import preview",
+      "th_entity": "Content type",
+      "th_count": "Found",
+      "th_imported": "Imported",
+      "conflicts_title": "Existing shortcuts were found",
+      "conflict_strategy": "When content already exists",
+      "strategy_skip": "Skip existing content",
+      "strategy_overwrite": "Overwrite existing content",
+      "strategy_rename": "Keep both by renaming imported content",
+      "compatibility_warnings": "Some Yarn-specific commands, markup, or dynamic text cannot be converted exactly. They are preserved visibly and flagged for review.",
+      "import_button": "Start import",
+      "cancel": "Cancel",
+      "processing": "Import in progress",
+      "processing_description": "You can leave this page. The encrypted import plan is processed in the background.",
+      "success": "The Yarn project was imported successfully.",
+      "import_another": "Import another project",
+      "try_again": "Try another file",
+      "no_permission": "You need content editing permission to import into this project.",
+      "entities": {
+        "sheets": "Sheets and characters",
+        "flows": "Flows",
+        "nodes": "Flow nodes",
+        "scenes": "Scenes",
+        "screenplays": "Screenplays",
+        "assets": "Assets",
+        "localization": "Localization"
       }
     },
     "export": {

@@ -48,8 +48,8 @@ The project member list shows each member and their current role. Project invita
 
 Workspace membership and project membership are separate. A person must be able to access the workspace before project-level access is useful. See [Create a Workspace](/docs/quick-start/create-workspace#project-level-access).
 
-## Export
+## Import and Export
 
-The Export page configures engine format, included sections, asset handling, formatting, and pre-export validation. See the dedicated [Export guide](/docs/import-export/import-export-overview).
+The Import & Export page can preview and import Yarn Spinner `.yarn` files or project ZIPs. It also configures export engine format, included sections, asset handling, formatting, and pre-export validation. Importing requires content-editing permission. See the dedicated [Import and Export guide](/docs/import-export/import-export-overview).
 
 Snapshots and Trash are covered separately in [Snapshots and Trash](/docs/project-management/recovery-and-trash).

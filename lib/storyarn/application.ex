@@ -7,12 +7,11 @@ defmodule Storyarn.Application do
 
   @impl true
   def start(_type, _args) do
-    :ets.new(:import_staging, [:set, :public, :named_table, read_concurrency: true])
-
     children = [
       StoryarnWeb.Telemetry,
       Storyarn.Repo,
       Storyarn.Vault,
+      Storyarn.Imports.ErrorDeduplicator,
       Storyarn.RateLimiter.child_spec_for_backend(),
       {DNSCluster, query: Application.get_env(:storyarn, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Storyarn.PubSub},
