@@ -26,7 +26,7 @@ for (const path in localesModules) {
 
 export const i18n = createI18n({
   legacy: false,
-  locale: document.documentElement.lang || "en",
+  locale: document.documentElement.dataset.gettextLocale || document.documentElement.lang || "en",
   fallbackLocale: "en",
   messages,
 });

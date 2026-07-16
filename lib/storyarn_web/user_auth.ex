@@ -34,6 +34,10 @@ defmodule StoryarnWeb.UserAuth do
   # token. This can be set to a value greater than `@max_cookie_age_in_days` to disable
   # the reissuing of tokens completely.
   @session_reissue_age_in_days 7
+  @sudo_mode_minutes -20
+  @sudo_grant_max_age 20 * 60
+  @sudo_grant_salt "storyarn sudo access grant"
+  @sudo_grant_param "sudo_grant"
 
   @doc """
   Logs the user in.
@@ -46,6 +50,7 @@ defmodule StoryarnWeb.UserAuth do
 
     conn
     |> create_or_extend_session(user, params)
+    |> delete_session(:user_return_to)
     |> redirect(to: user_return_to || signed_in_path(user))
   end
 
@@ -255,15 +260,35 @@ defmodule StoryarnWeb.UserAuth do
     end
   end
 
-  def on_mount(:require_sudo_mode, _params, session, socket) do
+  def on_mount(:require_sudo_mode, params, session, socket) do
+    on_mount({:require_sudo_mode, "/users/settings"}, params, session, socket)
+  end
+
+  def on_mount({:require_sudo_mode, return_to_provider}, params, session, socket) do
     socket = mount_current_scope(socket, session)
 
-    if Accounts.sudo_mode?(socket.assigns.current_scope.user, -120) do
-      {:cont, socket}
-    else
-      socket = Phoenix.LiveView.redirect(socket, to: "/users/confirm-access")
+    user = socket.assigns.current_scope.user
+    session_token = session["user_token"]
+    supplied_grant = params[@sudo_grant_param]
 
-      {:halt, socket}
+    case authorize_sudo(user, session_token, supplied_grant) do
+      {:ok, valid_grant} ->
+        {:cont,
+         Phoenix.Component.assign(socket,
+           sudo_grant: valid_grant,
+           sudo_session_token: session_token
+         )}
+
+      :error ->
+        return_to = resolve_sudo_return_to(return_to_provider, params, socket)
+
+        socket =
+          Phoenix.LiveView.push_navigate(socket,
+            to: sudo_confirmation_path(return_to),
+            replace: true
+          )
+
+        {:halt, socket}
     end
   end
 
@@ -345,16 +370,84 @@ defmodule StoryarnWeb.UserAuth do
 
   def signed_in_path(_), do: "/"
 
-  @doc """
-  Plug that stores the current path as user_return_to for sudo mode re-authentication.
+  @doc "Returns whether the user's most recent authentication is inside the web sudo window."
+  def sudo_mode?(user), do: Accounts.sudo_mode?(user, @sudo_mode_minutes)
 
-  Only stores for settings paths to avoid overwriting return_to for normal login flow.
-  """
-  def store_sudo_return_to(%{method: "GET", request_path: "/users/settings" <> _} = conn, _opts) do
-    put_session(conn, :user_return_to, current_path(conn))
+  @doc "Issues a 20-minute sudo grant bound to one user and one session token."
+  def issue_sudo_grant(%Accounts.User{id: user_id}, session_token, opts \\ []) when is_binary(session_token) do
+    payload = {:sudo_grant, user_id, session_fingerprint(session_token)}
+    token_opts = [max_age: @sudo_grant_max_age] ++ Keyword.take(opts, [:signed_at])
+
+    Phoenix.Token.sign(StoryarnWeb.Endpoint, @sudo_grant_salt, payload, token_opts)
   end
 
-  def store_sudo_return_to(conn, _opts), do: conn
+  @doc "Authorizes sudo mode using either recent authentication or a valid signed grant."
+  def authorize_sudo(%Accounts.User{} = user, session_token, grant) when is_binary(session_token) do
+    scope = Scope.for_user(user)
+
+    if Accounts.session_token_active?(scope, session_token) do
+      cond do
+        signed_sudo_grant_matches?(grant, user, session_token) -> {:ok, grant}
+        sudo_mode?(user) -> {:ok, nil}
+        true -> :error
+      end
+    else
+      :error
+    end
+  end
+
+  def authorize_sudo(_user, _session_token, _grant), do: :error
+
+  @doc "Returns whether the supplied signed grant is valid for this active session."
+  def sudo_grant_valid?(%Accounts.User{} = user, session_token, grant) when is_binary(session_token) do
+    Accounts.session_token_active?(Scope.for_user(user), session_token) and
+      signed_sudo_grant_matches?(grant, user, session_token)
+  end
+
+  def sudo_grant_valid?(_user, _session_token, _grant), do: false
+
+  @doc "Adds or replaces the sudo grant query parameter on a local settings path."
+  def with_sudo_grant(path, grant) when is_binary(path) and is_binary(grant) do
+    path = safe_sudo_return_to(path) || "/users/settings"
+    put_sudo_grant_query(path, grant)
+  rescue
+    ArgumentError -> put_sudo_grant_query("/users/settings", grant)
+  end
+
+  def with_sudo_grant(path, _grant), do: path
+
+  defp put_sudo_grant_query(path, grant) do
+    uri = URI.parse(path)
+
+    query =
+      uri.query
+      |> decode_query()
+      |> Map.put(@sudo_grant_param, grant)
+      |> URI.encode_query()
+
+    URI.to_string(%{uri | query: query})
+  end
+
+  @doc """
+  Returns a settings path when it is safe to use as a sudo-mode return target.
+
+  Sudo re-authentication only accepts local paths inside `/users/settings`.
+  """
+  def safe_sudo_return_to(return_to) when is_binary(return_to) do
+    uri = URI.parse(return_to)
+
+    if safe_sudo_uri?(uri, return_to), do: return_to
+  rescue
+    ArgumentError -> nil
+  end
+
+  def safe_sudo_return_to(_return_to), do: nil
+
+  @doc "Returns the confirm-access path for a validated settings destination."
+  def sudo_confirmation_path(return_to) do
+    return_to = safe_sudo_return_to(return_to) || "/users/settings"
+    "/users/confirm-access?" <> URI.encode_query(%{"return_to" => return_to})
+  end
 
   @doc """
   Plug for routes that require the user to be authenticated.
@@ -376,4 +469,60 @@ defmodule StoryarnWeb.UserAuth do
   end
 
   defp maybe_store_return_to(conn), do: conn
+
+  defp resolve_sudo_return_to(return_to, _params, _socket) when is_binary(return_to) do
+    safe_sudo_return_to(return_to) || "/users/settings"
+  end
+
+  defp resolve_sudo_return_to(provider, params, socket) when is_atom(provider) do
+    live_action = socket.assigns[:live_action]
+
+    params
+    |> provider.sudo_return_to(live_action)
+    |> safe_sudo_return_to()
+    |> Kernel.||("/users/settings")
+  end
+
+  defp safe_sudo_uri?(%URI{scheme: nil, host: nil, userinfo: nil, path: path}, return_to) when is_binary(path) do
+    String.starts_with?(return_to, "/") and
+      not String.starts_with?(return_to, "//") and
+      settings_path?(path) and
+      not unsafe_decoded_path?(path)
+  end
+
+  defp safe_sudo_uri?(_uri, _return_to), do: false
+
+  defp settings_path?(path) do
+    path == "/users/settings" or String.starts_with?(path, "/users/settings/")
+  end
+
+  defp unsafe_decoded_path?(path) do
+    decoded_path = URI.decode(path)
+
+    String.contains?(decoded_path, ["\\", "\0", "\r", "\n"]) or
+      decoded_path
+      |> String.split("/", trim: true)
+      |> Enum.any?(&(&1 in [".", ".."]))
+  end
+
+  defp signed_sudo_grant_matches?(grant, %Accounts.User{id: user_id}, session_token) when is_binary(grant) do
+    expected_fingerprint = session_fingerprint(session_token)
+
+    case Phoenix.Token.verify(StoryarnWeb.Endpoint, @sudo_grant_salt, grant, max_age: @sudo_grant_max_age) do
+      {:ok, {:sudo_grant, ^user_id, fingerprint}}
+      when is_binary(fingerprint) and byte_size(fingerprint) == byte_size(expected_fingerprint) ->
+        Plug.Crypto.secure_compare(fingerprint, expected_fingerprint)
+
+      _ ->
+        false
+    end
+  end
+
+  defp signed_sudo_grant_matches?(_grant, _user, _session_token), do: false
+
+  defp session_fingerprint(session_token), do: :crypto.hash(:sha256, session_token)
+
+  defp decode_query(nil), do: %{}
+  defp decode_query(""), do: %{}
+  defp decode_query(query), do: URI.decode_query(query)
 end

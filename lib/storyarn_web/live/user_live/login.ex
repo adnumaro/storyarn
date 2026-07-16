@@ -10,6 +10,7 @@ defmodule StoryarnWeb.UserLive.Login do
   alias Storyarn.RateLimiter
   alias Storyarn.Shared.Validations
   alias StoryarnWeb.ClientIp
+  alias StoryarnWeb.PublicURLs
   alias StoryarnWeb.UserLoginToken
 
   on_mount {StoryarnWeb.UserAuth, :redirect_if_user_is_authenticated}
@@ -19,11 +20,14 @@ defmodule StoryarnWeb.UserLive.Login do
 
   @impl true
   def render(assigns) do
+    assigns = assign(assigns, :seo_metadata, Layouts.live_seo_metadata(assigns))
+
     ~H"""
     <StoryarnWeb.Components.AuthLayout.auth
       flash={@flash}
       current_scope={@current_scope}
       socket={@socket}
+      seo_metadata={@seo_metadata}
     >
       <.vue
         v-component="live/auth/login/AuthLoginForm"
@@ -36,9 +40,9 @@ defmodule StoryarnWeb.UserLive.Login do
         login-token={@login_token}
         local-mail-adapter={local_mail_adapter?()}
         csrf-token={Plug.CSRFProtection.get_csrf_token()}
-        login-action={~p"/users/log-in"}
-        forgot-password-url={~p"/users/reset-password"}
-        register-url={~p"/users/register"}
+        login-action={PublicURLs.locale_handoff_path(~p"/users/log-in", @locale)}
+        forgot-password-url={PublicURLs.locale_handoff_path(~p"/users/reset-password", @locale)}
+        register-url={PublicURLs.locale_handoff_path(~p"/users/register", @locale)}
       />
     </StoryarnWeb.Components.AuthLayout.auth>
     """

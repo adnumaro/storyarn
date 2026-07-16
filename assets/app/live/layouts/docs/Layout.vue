@@ -11,6 +11,8 @@ import {
   X,
 } from "lucide-vue-next";
 import LiveLink from "@components/navigation/LiveLink.vue";
+import LanguagePicker from "@components/language/LanguagePicker.vue";
+import type { LanguagePickerOption } from "@components/language/types";
 import ThemeSelector from "@components/ThemeSelector.vue";
 import { consumeHistoryScroll } from "@app/shared/navigation/historyScroll";
 import { useLive } from "@shared/composables/useLive";
@@ -58,8 +60,19 @@ interface DocsLayoutUrls {
   login: string;
 }
 
+interface DocsLanguageLink {
+  locale: string;
+  languageTag: string;
+  label: string;
+  flagCode: string | null;
+  shortLabel: string;
+  path: string;
+}
+
 interface DocsLayoutProps {
   signedIn: boolean;
+  currentLocale: string;
+  languageLinks: DocsLanguageLink[];
   urls: DocsLayoutUrls;
   sidebarOpen: boolean;
   categories: DocsCategory[];
@@ -146,6 +159,16 @@ const guidesByCategory = computed(() => {
 });
 
 const searchResultsVisible = computed(() => docs.value.search.results !== null);
+const languagePickerOptions = computed<LanguagePickerOption[]>(() =>
+  docs.value.languageLinks.map((link) => ({
+    value: link.locale,
+    label: link.label,
+    languageTag: link.languageTag,
+    flagCode: link.flagCode,
+    shortLabel: link.shortLabel,
+    href: link.path,
+  })),
+);
 
 function rootGuidesFor(categoryId: string): DocsGuideNav[] {
   return guidesByCategory.value.get(categoryId)?.root ?? [];
@@ -331,6 +354,22 @@ function resultsLabel(count: number): string {
         </div>
 
         <div class="flex-none flex items-center gap-2">
+          <LanguagePicker
+            v-if="docs.languageLinks.length > 1"
+            id="docs-language-switcher"
+            :model-value="docs.currentLocale"
+            :options="languagePickerOptions"
+            :label="$t('docs.page_language')"
+            mode="navigate"
+            :appearance="{
+              compact: true,
+              searchable: false,
+              align: 'end',
+              triggerVariant: 'outline',
+              triggerSize: 'sm',
+            }"
+          />
+
           <ThemeSelector
             size="xs"
             :labels="{

@@ -15,14 +15,8 @@ import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import { Separator } from "@components/ui/separator";
 import { Textarea } from "@components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@components/ui/select";
+import LanguagePicker from "@components/language/LanguagePicker.vue";
+import type { LanguagePickerOption } from "@components/language/types";
 
 import { useLive } from "@shared/composables/useLive";
 
@@ -38,7 +32,7 @@ const {
   workspaceDescription?: string;
   workspaceBannerUrl?: string;
   sourceLocale?: string;
-  languageOptions?: [string, string][];
+  languageOptions?: LanguagePickerOption[];
   isOwner?: boolean;
 }>();
 
@@ -48,7 +42,7 @@ const live = useLive();
 const localName = ref(workspaceName);
 const localDescription = ref(workspaceDescription);
 const localBannerUrl = ref(workspaceBannerUrl);
-const localSourceLocale = ref(sourceLocale);
+const localSourceLocale = ref(sourceLocale.toLowerCase());
 
 watch(
   () => workspaceName,
@@ -71,7 +65,7 @@ watch(
 watch(
   () => sourceLocale,
   (v) => {
-    localSourceLocale.value = v;
+    localSourceLocale.value = v.toLowerCase();
   },
 );
 
@@ -133,7 +127,7 @@ function confirmDeleteWorkspace() {
 
     <!-- General Settings -->
     <section>
-      <form @submit.prevent="saveWorkspace" class="space-y-5">
+      <form id="workspace-settings-form" class="space-y-5" @submit.prevent="saveWorkspace">
         <div class="space-y-1.5">
           <Label for="workspace-name">{{ $t("settings.workspace.general.fields.name") }}</Label>
           <Input id="workspace-name" v-model="localName" required />
@@ -195,21 +189,21 @@ function confirmDeleteWorkspace() {
         </div>
 
         <div class="space-y-1.5">
-          <Label for="source-locale">{{
+          <Label for="source-locale-trigger">{{
             $t("settings.workspace.general.fields.source_language")
           }}</Label>
-          <Select v-model="localSourceLocale">
-            <SelectTrigger id="source-locale">
-              <SelectValue :placeholder="$t('settings.workspace.general.fields.select_language')" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem v-for="opt in languageOptions" :key="opt[1]" :value="opt[1]">
-                  {{ opt[0] }}
-                </SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+          <LanguagePicker
+            id="source-locale"
+            v-model="localSourceLocale"
+            :options="languageOptions"
+            :label="$t('settings.workspace.general.fields.source_language')"
+            :text="{
+              placeholder: $t('settings.workspace.general.fields.select_language'),
+              searchPlaceholder: $t('localization.sidebar.search_languages'),
+              emptyLabel: $t('localization.sidebar.no_matches'),
+            }"
+            :appearance="{ triggerClass: 'w-full' }"
+          />
           <p class="text-xs text-muted-foreground mt-1">
             {{ $t("settings.workspace.general.fields.source_language_hint") }}
           </p>

@@ -10,22 +10,31 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
 
   alias Storyarn.Accounts
   alias Storyarn.Projects
+  alias Storyarn.Publication.Locales, as: PublicLocales
   alias StoryarnWeb.Live.Shared.InvitationHelpers
+  alias StoryarnWeb.PublicURLs
 
   @impl true
   def render(assigns) do
+    assigns =
+      assign(
+        assigns,
+        :seo_metadata,
+        assigns |> Map.put(:seo_robots, "noindex, follow") |> Layouts.live_seo_metadata()
+      )
+
     ~H"""
     <StoryarnWeb.Components.PublicLayout.public
       flash={@flash}
       socket={@socket}
+      seo_metadata={@seo_metadata}
       current_scope={@current_scope}
     >
       <.vue
         v-component="live/project/invitation/ProjectInvitationResponse"
         v-socket={@socket}
-        v-inject="public-layout"
         id="project-invitation"
-        homepage-url={~p"/"}
+        homepage-url={public_home_path(@locale)}
       />
     </StoryarnWeb.Components.PublicLayout.public>
     """
@@ -90,7 +99,7 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
             "projects",
             "This invitation cannot be accepted while the workspace is at its member limit. Ask an owner or admin to free a seat, then try this invitation again."
           ),
-          ~p"/"
+          public_home_path(socket.assigns.locale)
         )
     end
   end
@@ -110,5 +119,11 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
        )
      )
      |> redirect(to: registration_path)}
+  end
+
+  defp public_home_path(locale) do
+    locale
+    |> PublicLocales.normalize()
+    |> PublicURLs.home_path()
   end
 end

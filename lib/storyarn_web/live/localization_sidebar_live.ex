@@ -20,6 +20,7 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
   alias Storyarn.Localization
   alias Storyarn.Localization.Languages
   alias Storyarn.Projects
+  alias StoryarnWeb.LanguagePickerOption
 
   @impl true
   def mount(_params, session, socket) do
@@ -332,14 +333,7 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
     }
   end
 
-  defp serialize_language_option({label, value}) do
-    %{
-      label: label,
-      value: value,
-      flagCode: Languages.flag_code(value),
-      shortLabel: Languages.short_label(value)
-    }
-  end
+  defp serialize_language_option({_label, value}), do: LanguagePickerOption.from_code(value)
 
   @doc """
   Shared shell topic for cross-LV PubSub. Same format as the sheets sidebar

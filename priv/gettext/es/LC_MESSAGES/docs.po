@@ -11,12 +11,17 @@ msgstr ""
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn_web/live/docs_live/show.ex:39
+#: lib/storyarn_web/live/docs_live/show.ex:34
 #, elixir-autogen, elixir-format
 msgid "Documentation"
 msgstr "Documentación"
 
-#: lib/storyarn_web/live/docs_live/show.ex:52
+#: lib/storyarn_web/live/docs_live/show.ex:36
 #, elixir-autogen, elixir-format
-msgid "Guide not found"
-msgstr "Guía no encontrada"
+msgid "Learn how to use Storyarn for narrative design, branching dialogue, worldbuilding, scenes, localization, and game engine export."
+msgstr "Aprende a utilizar Storyarn para diseñar narrativas, crear diálogos ramificados y mundos, trabajar con escenas, localizar contenido y exportar a motores de juego."
+
+#: lib/storyarn_web/live/docs_live/show.ex:191
+#, elixir-autogen, elixir-format
+msgid "Storyarn documentation for game narrative workflows, branching dialogue, worldbuilding, scenes, localization, and export."
+msgstr "Documentación de Storyarn sobre flujos de trabajo narrativos para videojuegos, diálogos ramificados, construcción de mundos, escenas, localización y exportación."

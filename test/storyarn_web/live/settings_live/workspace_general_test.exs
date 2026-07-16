@@ -136,7 +136,22 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
       assert vue.props["workspace-name"] == workspace.name
       assert vue.props["workspace-description"] == "My test description"
       assert vue.props["source-locale"] == workspace.source_locale
-      assert is_list(vue.props["language-options"])
+
+      assert %{
+               "flagCode" => "gb",
+               "label" => "English",
+               "languageTag" => "en",
+               "shortLabel" => "EN",
+               "value" => "en"
+             } in vue.props["language-options"]
+
+      assert %{
+               "flagCode" => "br",
+               "label" => "Portuguese (Brazil)",
+               "languageTag" => "pt-BR",
+               "shortLabel" => "PT",
+               "value" => "pt-br"
+             } in vue.props["language-options"]
     end
   end
 

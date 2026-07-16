@@ -4,6 +4,7 @@ defmodule StoryarnWeb.LocalizationLive.Report do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Localization
+  alias StoryarnWeb.LanguagePickerOption
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 
   @impl true
@@ -201,7 +202,7 @@ defmodule StoryarnWeb.LocalizationLive.Report do
 
   defp serialize_languages(languages) do
     Enum.map(languages, fn lang ->
-      %{localeCode: lang.locale_code, name: lang.name}
+      LanguagePickerOption.from_code(lang.locale_code, label: lang.name)
     end)
   end
 

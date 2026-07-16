@@ -122,32 +122,45 @@ defmodule StoryarnWeb.ProjectLive.InvitationTest do
       assert flash["info"] =~ "already a member"
     end
 
-    test "explains when a legacy invitation can no longer fit the plan", %{conn: conn} do
+    test "explains when a legacy invitation can no longer fit the plan and preserves the locale", %{
+      conn: conn
+    } do
       owner = user_fixture()
       project = project_fixture(owner)
       invitee = user_fixture()
       existing_member = user_fixture()
+      conn = init_test_session(conn, %{locale: "es"})
 
       {token, invitation} =
         create_invitation_with_token(project, owner, invitee.email, "editor")
 
       membership_fixture(project, existing_member, "viewer")
 
-      assert {:error, {:redirect, %{to: "/", flash: flash}}} =
+      assert {:error, {:redirect, %{to: "/es", flash: flash}}} =
                live(conn, ~p"/projects/invitations/#{token}")
 
-      assert flash["error"] =~ "at its member limit"
+      assert flash["error"] =~ "límite de miembros"
       refute Repo.get_by(ProjectMembership, project_id: project.id, user_id: invitee.id)
       assert is_nil(Repo.get!(ProjectInvitation, invitation.id).accepted_at)
     end
   end
 
   describe "mount with invalid token" do
-    test "renders error page for invalid token", %{conn: conn} do
+    test "renders error page with a locale-aware homepage for invalid token", %{conn: conn} do
+      conn = init_test_session(conn, %{locale: "es"})
       {:ok, view, _html} = live(conn, ~p"/projects/invitations/invalid-token")
 
       vue = LiveVue.Test.get_vue(view, name: "live/project/invitation/ProjectInvitationResponse")
       assert vue.component == "live/project/invitation/ProjectInvitationResponse"
+      assert vue.props["homepage-url"] == "/es"
+    end
+
+    test "falls back to the public default homepage for an unpublished locale", %{conn: conn} do
+      conn = init_test_session(conn, %{locale: "fr"})
+      {:ok, view, _html} = live(conn, ~p"/projects/invitations/invalid-token")
+
+      vue = LiveVue.Test.get_vue(view, name: "live/project/invitation/ProjectInvitationResponse")
+      assert vue.props["homepage-url"] == "/"
     end
 
     test "renders error page for expired invitation", %{conn: conn} do

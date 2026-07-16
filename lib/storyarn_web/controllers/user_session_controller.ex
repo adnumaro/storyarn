@@ -5,20 +5,10 @@ defmodule StoryarnWeb.UserSessionController do
   alias Storyarn.Accounts
   alias Storyarn.Analytics
   alias Storyarn.RateLimiter
+  alias Storyarn.Shared.TimeHelpers
   alias StoryarnWeb.ClientIp
   alias StoryarnWeb.UserAuth
   alias StoryarnWeb.UserLoginToken
-
-  def create(conn, %{"_action" => "confirmed", "user" => user_params} = params) do
-    params =
-      put_in(
-        params,
-        ["user", "email"],
-        confirmed_access_email(conn, user_params)
-      )
-
-    create(conn, params, dgettext("identity", "User confirmed successfully."))
-  end
 
   def create(conn, params) do
     if authenticated?(conn) do
@@ -103,45 +93,52 @@ defmodule StoryarnWeb.UserSessionController do
     Ecto.NoResultsError -> nil
   end
 
-  defp confirmed_access_email(conn, user_params) do
-    case user_params["email"] do
-      email when is_binary(email) and email != "" ->
-        email
-
-      _ ->
-        get_in(conn.assigns, [:current_scope, Access.key(:user), Access.key(:email)]) || ""
-    end
-  end
-
   defp authenticated?(conn) do
     match?(%{current_scope: %{user: %Accounts.User{}}}, conn.assigns)
   end
 
   def update_password(conn, %{"user" => user_params} = params) do
     user = conn.assigns.current_scope.user
+    session_token = get_session(conn, :user_token)
+    sudo_grant = params["sudo_grant"]
 
-    if Accounts.sudo_mode?(user) do
-      case Accounts.update_user_password(user, user_params) do
-        {:ok, {_user, expired_tokens}} ->
-          # disconnect all existing LiveViews with old sessions
-          UserAuth.disconnect_sessions(expired_tokens)
+    case UserAuth.authorize_sudo(user, session_token, sudo_grant) do
+      {:ok, valid_grant} ->
+        update_password(conn, user, user_params, valid_grant)
 
-          conn
-          |> put_session(:user_return_to, ~p"/users/settings/security")
-          |> create(params, dgettext("identity", "Password updated successfully!"))
+      :error ->
+        conn
+        |> put_flash(
+          :error,
+          dgettext("identity", "Please re-authenticate to change your password.")
+        )
+        |> redirect(to: UserAuth.sudo_confirmation_path(~p"/users/settings/security"))
+    end
+  end
 
-        {:error, changeset} ->
-          conn
-          |> put_flash(:error, dgettext("identity", "Failed to update password."))
-          |> render(:new, changeset: changeset)
-      end
-    else
-      conn
-      |> put_flash(
-        :error,
-        dgettext("identity", "Please re-authenticate to change your password.")
-      )
-      |> redirect(to: ~p"/users/settings/security")
+  defp update_password(conn, user, user_params, valid_grant) do
+    case Accounts.update_user_password(user, user_params) do
+      {:ok, {updated_user, expired_tokens}} ->
+        # disconnect all existing LiveViews with old sessions
+        UserAuth.disconnect_sessions(expired_tokens)
+
+        # The password was already authorized and persisted. Start the
+        # replacement session directly instead of re-entering the public
+        # login flow, whose IP rate limit could otherwise strand the user
+        # after all of their previous sessions have been revoked.
+        updated_user = %{updated_user | authenticated_at: TimeHelpers.now()}
+
+        conn
+        |> put_session(:user_return_to, ~p"/users/settings/security")
+        |> put_flash(:info, dgettext("identity", "Password updated successfully!"))
+        |> UserAuth.log_in_user(updated_user, user_params)
+
+      {:error, _changeset} ->
+        return_to = UserAuth.with_sudo_grant(~p"/users/settings/security", valid_grant)
+
+        conn
+        |> put_flash(:error, dgettext("identity", "Failed to update password."))
+        |> redirect(to: return_to)
     end
   end
 

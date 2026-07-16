@@ -1,11 +1,14 @@
 defmodule StoryarnWeb.Router do
   use StoryarnWeb, :router
 
+  alias Storyarn.Publication.Locales
+
   # Content Security Policy
   @csp_dev_extras if(Mix.env() == :dev,
                     do: " http://localhost:5173 'unsafe-inline' 'unsafe-eval'",
                     else: ""
                   )
+  @csp_dev_asset_origin if(Mix.env() == :dev, do: " http://localhost:5173", else: "")
 
   @posthog_default_connect_src "https://*.posthog.com https://*.i.posthog.com " <>
                                  "https://us.i.posthog.com https://eu.i.posthog.com"
@@ -14,7 +17,7 @@ defmodule StoryarnWeb.Router do
     "default-src 'self'; " <>
       "script-src 'self'#{@csp_dev_extras}; " <>
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com#{@csp_dev_extras}; " <>
-      "img-src 'self' data: blob: https:; " <>
+      "img-src 'self' data: blob: https:#{@csp_dev_asset_origin}; " <>
       "media-src 'self' blob: https:; " <>
       "font-src 'self' data: https://fonts.gstatic.com#{@csp_dev_extras}; " <>
       "connect-src 'self' ws: wss: #{posthog_connect_src()}#{@csp_dev_extras}; " <>
@@ -25,6 +28,9 @@ defmodule StoryarnWeb.Router do
   end
 
   @user_auth_hook Module.concat(["StoryarnWeb", "UserAuth"])
+  @default_public_locale Locales.default_locale()
+  @default_public_segment Locales.path_segment(@default_public_locale)
+  @localized_public_routes Locales.localized_routes()
 
   pipeline :browser do
     plug :accepts, ["html"]
@@ -41,10 +47,6 @@ defmodule StoryarnWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
-  end
-
-  pipeline :sudo_return_to do
-    plug :store_sudo_return_to
   end
 
   defp put_content_security_policy(conn, _opts) do
@@ -125,7 +127,7 @@ defmodule StoryarnWeb.Router do
   end
 
   scope "/", StoryarnWeb do
-    pipe_through [:browser, :require_authenticated_user, :sudo_return_to]
+    pipe_through [:browser, :require_authenticated_user]
 
     post "/workspaces/:workspace_slug/projects/:project_slug/upload",
          UploadController,
@@ -172,6 +174,10 @@ defmodule StoryarnWeb.Router do
       live "/users/settings/security", SettingsLive.Security, :edit
       live "/users/settings/tutorials", SettingsLive.Tutorials, :edit
       live "/users/settings/confirm-email/:token", SettingsLive.Profile, :confirm_email
+
+      # Sudo re-authentication belongs to the authenticated app session so
+      # settings can navigate to it without a document reload.
+      live "/users/confirm-access", UserLive.ConfirmAccess, :new
 
       # Workspaces
       live "/workspaces", WorkspaceLive.Index, :index
@@ -316,7 +322,30 @@ defmodule StoryarnWeb.Router do
   scope "/", StoryarnWeb do
     pipe_through [:browser]
 
+    get "/blog/test-branching-dialogue-before-export", BlogRedirectController, :legacy_post
+    get "/blog/why-we-are-building-storyarn", BlogRedirectController, :legacy_post
+
+    # The default locale is canonical without a prefix. These explicit aliases
+    # preserve old or manually-entered `/en/...` links without exposing a
+    # catch-all locale route that could shadow authentication or invitations.
+    get "/#{@default_public_segment}", PublicLocaleRedirectController, :default_locale
+    get "/#{@default_public_segment}/contact", PublicLocaleRedirectController, :default_locale
+    get "/#{@default_public_segment}/privacy", PublicLocaleRedirectController, :default_locale
+    get "/#{@default_public_segment}/terms", PublicLocaleRedirectController, :default_locale
+    get "/#{@default_public_segment}/docs", PublicLocaleRedirectController, :default_locale
+
+    get "/#{@default_public_segment}/docs/:category/*path",
+        PublicLocaleRedirectController,
+        :default_locale
+
+    get "/#{@default_public_segment}/blog", PublicLocaleRedirectController, :default_locale
+
+    get "/#{@default_public_segment}/blog/:slug",
+        PublicLocaleRedirectController,
+        :default_locale
+
     live_session :current_user,
+      session: {StoryarnWeb.PublicLocale, :session, []},
       on_mount:
         if(Application.compile_env(:storyarn, :sql_sandbox),
           do: [Module.concat(["StoryarnWeb", "LiveSandbox"])],
@@ -324,20 +353,48 @@ defmodule StoryarnWeb.Router do
         ) ++
           [
             {@user_auth_hook, :mount_current_scope},
+            {StoryarnWeb.PublicLocale, :set_locale},
             {@user_auth_hook, :load_workspaces}
           ] do
-      live "/", LandingLive.Index, :index
-      live "/users/confirm-access", UserLive.ConfirmAccess, :new
-      live "/contact", LandingLive.Contact, :show
-      live "/blog", BlogLive.Index, :index
-      live "/blog/:slug", BlogLive.Show, :show
-      live "/privacy", LegalLive.Show, :privacy
-      live "/terms", LegalLive.Show, :terms
+      live "/", LandingLive.Index, :index, private: %{public_locale: @default_public_locale}
+
+      live "/contact", LandingLive.Contact, :show, private: %{public_locale: @default_public_locale}
+
+      live "/blog", BlogLive.Index, :index, private: %{public_locale: @default_public_locale}
+
+      live "/blog/:slug", BlogLive.Show, :show, private: %{public_locale: @default_public_locale}
+
+      live "/privacy", LegalLive.Show, :privacy, private: %{public_locale: @default_public_locale}
+
+      live "/terms", LegalLive.Show, :terms, private: %{public_locale: @default_public_locale}
 
       # Public documentation works with or without authentication and shares
       # the landing live_session so navigation does not require a full reload.
-      live "/docs", DocsLive.Show, :index
-      live "/docs/:category/*path", DocsLive.Show, :show
+      live "/docs", DocsLive.Show, :index, private: %{public_locale: @default_public_locale}
+
+      live "/docs/:category/*path", DocsLive.Show, :show, private: %{public_locale: @default_public_locale}
+
+      # Locale-prefixed public pages belong to this existing session because
+      # they work with or without authentication and must retain LiveView
+      # navigation plus the current_scope assign. Do not create another
+      # `:current_user` live_session.
+      for {locale, path_segment} <- @localized_public_routes do
+        live "/#{path_segment}", LandingLive.Index, :index, private: %{public_locale: locale}
+
+        live "/#{path_segment}/contact", LandingLive.Contact, :show, private: %{public_locale: locale}
+
+        live "/#{path_segment}/blog", BlogLive.Index, :index, private: %{public_locale: locale}
+
+        live "/#{path_segment}/blog/:slug", BlogLive.Show, :show, private: %{public_locale: locale}
+
+        live "/#{path_segment}/privacy", LegalLive.Show, :privacy, private: %{public_locale: locale}
+
+        live "/#{path_segment}/terms", LegalLive.Show, :terms, private: %{public_locale: locale}
+
+        live "/#{path_segment}/docs", DocsLive.Show, :index, private: %{public_locale: locale}
+
+        live "/#{path_segment}/docs/:category/*path", DocsLive.Show, :show, private: %{public_locale: locale}
+      end
 
       # Project invitations (accessible with or without auth)
       live "/projects/invitations/:token", ProjectLive.Invitation, :show
@@ -361,10 +418,6 @@ defmodule StoryarnWeb.Router do
 
   defp fetch_current_scope_for_user(conn, opts) do
     StoryarnWeb.UserAuth.fetch_current_scope_for_user(conn, opts)
-  end
-
-  defp store_sudo_return_to(conn, opts) do
-    StoryarnWeb.UserAuth.store_sudo_return_to(conn, opts)
   end
 
   defp require_authenticated_user(conn, opts) do

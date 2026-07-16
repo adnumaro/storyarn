@@ -7,6 +7,7 @@ import { Button } from "@components/ui/button";
 import { useLive } from "@shared/composables/useLive";
 import {
   isOnboardingGuideKey,
+  localizedPublicUrl,
   onboardingGuides,
   onboardingGuideKeys,
   sessionKey,
@@ -19,7 +20,7 @@ interface TutorialItem {
 
 const { tutorials = [] } = defineProps<{ tutorials?: TutorialItem[] }>();
 
-const { t } = useI18n();
+const { locale, t } = useI18n();
 const live = useLive();
 
 const completedCount = computed(
@@ -41,7 +42,8 @@ function restartAll(): void {
 }
 
 function docsUrl(key: string): string {
-  return isOnboardingGuideKey(key) ? onboardingGuides[key].docsUrl : "/docs";
+  const path = isOnboardingGuideKey(key) ? onboardingGuides[key].docsUrl : "/docs";
+  return localizedPublicUrl(path, locale.value);
 }
 
 function stateIcon(state: TutorialItem["state"]) {

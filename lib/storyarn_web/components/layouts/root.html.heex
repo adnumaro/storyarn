@@ -1,11 +1,24 @@
 <!DOCTYPE html>
-<html lang={assigns[:locale] || "en"}>
+<html
+  lang={PublicLocales.language_tag(assigns[:locale] || PublicLocales.default_locale())}
+  data-gettext-locale={assigns[:locale] || PublicLocales.default_locale()}
+  data-public-default-locale={PublicLocales.default_locale()}
+  data-public-locales={Enum.join(PublicLocales.locales(), ",")}
+  data-public-locale-config={Jason.encode!(PublicLocales.descriptors())}
+>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content={get_csrf_token()} />
     <meta name="description" content={seo_description(assigns)} />
     <link rel="canonical" href={seo_canonical_url(assigns)} />
+    <link
+      :for={alternate <- seo_alternate_links(assigns)}
+      rel="alternate"
+      hreflang={alternate.hreflang}
+      href={alternate.href}
+      data-seo-managed="hreflang"
+    />
     <meta property="og:site_name" content="Storyarn" />
     <meta property="og:type" content={seo_type(assigns)} />
     <meta property="og:title" content={seo_title(assigns)} />
@@ -28,8 +41,8 @@
     <meta name="twitter:title" content={seo_title(assigns)} />
     <meta name="twitter:description" content={seo_description(assigns)} />
     <meta name="twitter:image" content={seo_image_url(assigns)} />
-    <%= if Application.get_env(:storyarn, :noindex, false) do %>
-      <meta name="robots" content="noindex, nofollow" />
+    <%= if robots = seo_robots(assigns) do %>
+      <meta name="robots" content={robots} />
     <% end %>
     <%= if posthog = posthog_frontend_config(assigns) do %>
       <meta name="posthog-enabled" content="true" />

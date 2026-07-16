@@ -157,5 +157,64 @@ defmodule StoryarnWeb.DocsLive.ShowTest do
       assert is_list(search["results"])
       assert Enum.any?(search["results"], &(&1["title"] =~ "Flow"))
     end
+
+    test "renders Spanish docs with localized navigation and canonical metadata", %{conn: conn} do
+      conn = init_test_session(conn, %{locale: "en"})
+      {:ok, view, _html} = live(conn, "/es/docs/narrative-design/condition-editor")
+
+      layout = LiveVue.Test.get_vue(view, name: "live/layouts/docs/Layout")
+      docs = layout.props["docs"]
+
+      assert docs["currentLocale"] == "es"
+      assert docs["urls"]["home"] == "/es"
+      assert docs["urls"]["docs"] == "/es/docs"
+      assert docs["guide"]["title"] == "Editor de Condiciones"
+      assert docs["guide"]["url"] == "/es/docs/narrative-design/condition-editor"
+
+      assert docs["languageLinks"] == [
+               %{
+                 "flagCode" => "gb",
+                 "label" => "English",
+                 "languageTag" => "en",
+                 "locale" => "en",
+                 "path" => "/docs/narrative-design/condition-editor",
+                 "shortLabel" => "EN"
+               },
+               %{
+                 "flagCode" => "es",
+                 "label" => "Español",
+                 "languageTag" => "es",
+                 "locale" => "es",
+                 "path" => "/es/docs/narrative-design/condition-editor",
+                 "shortLabel" => "ES"
+               }
+             ]
+
+      content = LiveVue.Test.get_vue(view, name: "live/docs/show/DocsContent")
+
+      assert content.props["guide-body"] =~
+               ~s(href="/es/docs/narrative-design/instruction-editor")
+
+      metadata = seo_metadata(view)
+      assert metadata["locale"] == "es"
+      assert URI.parse(metadata["canonical_url"]).path == "/es/docs/narrative-design/condition-editor"
+      assert Enum.map(metadata["alternate_links"], & &1["hreflang"]) == ["en", "es", "x-default"]
+    end
+
+    test "does not serve an English guide under a missing Spanish URL", %{conn: conn} do
+      assert_raise Ecto.NoResultsError, fn ->
+        live(conn, "/es/docs/not-a-category/not-a-guide")
+      end
+    end
+  end
+
+  defp seo_metadata(view) do
+    view
+    |> render()
+    |> LazyHTML.from_fragment()
+    |> LazyHTML.query("#live-seo-metadata")
+    |> LazyHTML.attribute("data-metadata")
+    |> List.first()
+    |> Jason.decode!()
   end
 end

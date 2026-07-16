@@ -2,6 +2,8 @@ import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import type { App } from "vue";
 import ProjectSettingsGeneral from "../../../../live/project/settings/ProjectSettingsGeneral.vue";
+import ConfirmDialog from "../../../../components/ConfirmDialog.vue";
+import LanguagePicker from "../../../../components/language/LanguagePicker.vue";
 import { createMockLive } from "../../../setup";
 import type { LiveInterface } from "../../../../shared/composables/useLive";
 
@@ -29,7 +31,7 @@ function mountGeneral(props = {}, live: LiveInterface = createMockLive()) {
         project_subtypes: {},
       },
       sourceLanguage: null,
-      sourceLanguageName: "",
+      sourceLanguageOptions: [],
       projectTemplates: [],
       projectTemplatePublications: [],
       ...props,
@@ -110,6 +112,50 @@ describe("ProjectSettingsGeneral template publication", () => {
           version_notes: "First release notes",
         }),
       },
+      undefined,
+    );
+  });
+});
+
+describe("ProjectSettingsGeneral source language", () => {
+  it("requires confirmation before resetting translations", async () => {
+    const live = createMockLive();
+    const english = {
+      value: "en",
+      localeCode: "en",
+      label: "English",
+      languageTag: "en",
+      flagCode: "gb",
+      shortLabel: "EN",
+    };
+    const spanish = {
+      value: "es",
+      label: "Spanish",
+      languageTag: "es",
+      flagCode: "es",
+      shortLabel: "ES",
+    };
+    const wrapper = mountGeneral(
+      { sourceLanguage: english, sourceLanguageOptions: [english, spanish] },
+      live,
+    );
+
+    wrapper.findComponent(LanguagePicker).vm.$emit("select", spanish);
+    await wrapper.vm.$nextTick();
+
+    const confirmation = wrapper.findComponent(ConfirmDialog);
+    expect(confirmation.props("open")).toBe(true);
+    expect(live.pushEvent).not.toHaveBeenCalledWith(
+      "change_source_language",
+      expect.anything(),
+      expect.anything(),
+    );
+
+    confirmation.vm.$emit("confirm");
+
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "change_source_language",
+      { locale_code: "es", reset_translations: true },
       undefined,
     );
   });

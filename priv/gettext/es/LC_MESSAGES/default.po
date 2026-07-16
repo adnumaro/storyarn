@@ -11,54 +11,20 @@ msgstr ""
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn_web/components/core_components.ex:183
-#, elixir-autogen, elixir-format
-msgid "Actions"
-msgstr "Acciones"
-
-#: lib/storyarn_web/components/layouts.ex:50
-#: lib/storyarn_web/components/layouts.ex:64
-#: lib/storyarn_web/components/project_layout.ex:89
-#: lib/storyarn_web/components/project_layout.ex:103
-#: lib/storyarn_web/components/workspace_layout.ex:83
-#: lib/storyarn_web/components/workspace_layout.ex:97
+#: lib/storyarn_web/components/layouts.ex:85
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
 msgstr "Intentando reconectar"
 
-#: lib/storyarn_web/components/layouts.ex:58
-#: lib/storyarn_web/components/project_layout.ex:96
-#: lib/storyarn_web/components/workspace_layout.ex:90
+#: lib/storyarn_web/components/layouts.ex:84
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
 msgstr "¡Algo salió mal!"
 
-#: lib/storyarn_web/components/layouts.ex:44
-#: lib/storyarn_web/components/project_layout.ex:82
-#: lib/storyarn_web/components/workspace_layout.ex:76
+#: lib/storyarn_web/components/layouts.ex:83
 #, elixir-autogen, elixir-format
 msgid "We can't find the internet"
 msgstr "No podemos encontrar la conexión a internet"
-
-#: lib/storyarn_web/components/core_components.ex:94
-#, elixir-autogen, elixir-format
-msgid "close"
-msgstr "cerrar"
-
-#: lib/storyarn_web/components/ui_components.ex:98
-#, elixir-autogen, elixir-format
-msgid "Continue with Discord"
-msgstr "Continuar con Discord"
-
-#: lib/storyarn_web/components/ui_components.ex:65
-#, elixir-autogen, elixir-format
-msgid "Continue with GitHub"
-msgstr "Continuar con GitHub"
-
-#: lib/storyarn_web/components/ui_components.ex:89
-#, elixir-autogen, elixir-format
-msgid "Continue with Google"
-msgstr "Continuar con Google"
 
 #: lib/storyarn_web/components/collaboration_components.ex:71
 #, elixir-autogen, elixir-format
@@ -100,7 +66,8 @@ msgstr "hizo un cambio"
 msgid "moved a node"
 msgstr "movió un nodo"
 
-#: lib/storyarn_web/controllers/export_controller.ex:36
+#: lib/storyarn_web/controllers/export_controller.ex:42
+#: lib/storyarn_web/controllers/export_controller.ex:71
 #, elixir-autogen, elixir-format
 msgid "Export failed"
 msgstr "Error al exportar"
@@ -110,7 +77,7 @@ msgstr "Error al exportar"
 msgid "Invalid format"
 msgstr "Formato no válido"
 
-#: lib/storyarn_web/controllers/export_controller.ex:33
+#: lib/storyarn_web/controllers/export_controller.ex:36
 #, elixir-autogen, elixir-format
 msgid "Not found"
 msgstr "No encontrado"
@@ -120,31 +87,18 @@ msgstr "No encontrado"
 msgid "Unknown format"
 msgstr "Formato desconocido"
 
-#: lib/storyarn_web/live/landing_live/contact.ex:10
-#, elixir-autogen, elixir-format
-msgid "Contact"
-msgstr "Contacto"
-
-#: lib/storyarn_web/controllers/page_controller.ex:34
-#: lib/storyarn_web/controllers/page_controller.ex:42
-#: lib/storyarn_web/live/landing_live/index.ex:69
-#: lib/storyarn_web/live/landing_live/index.ex:77
-#, elixir-autogen, elixir-format
-msgid "You're on the list! We'll reach out when your spot is ready."
-msgstr "¡Estás en la lista! Te contactaremos cuando tu plaza esté lista."
-
-#: lib/storyarn_web/live/flow_live/index.ex:351
+#: lib/storyarn_web/live/flow_live/index.ex:355
 #, elixir-autogen, elixir-format
 msgid "Issue detected"
 msgstr "Problema detectado"
 
 #: lib/storyarn_web/live/flow_live/form.ex:57
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:433
-#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:153
-#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:227
-#: lib/storyarn_web/live/flow_live/show.ex:1736
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:127
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:144
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:466
+#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:181
+#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:257
+#: lib/storyarn_web/live/flow_live/show.ex:1669
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:95
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:112
 #, elixir-autogen, elixir-format
 msgid "Item limit reached for your plan"
 msgstr "Límite de elementos alcanzado para tu plan"
@@ -174,25 +128,25 @@ msgstr "actualizó un nodo"
 msgid "updated the flow"
 msgstr "actualizó el flujo"
 
-#: lib/storyarn_web/live/compare_live/flow.ex:80
-#: lib/storyarn_web/live/compare_live/scene.ex:80
-#: lib/storyarn_web/live/compare_live/sheet.ex:81
+#: lib/storyarn_web/live/compare_live/flow.ex:79
+#: lib/storyarn_web/live/compare_live/scene.ex:79
+#: lib/storyarn_web/live/compare_live/sheet.ex:80
 #: lib/storyarn_web/live/version_viewer_live.ex:156
 #, elixir-autogen, elixir-format
 msgid "Auto-snapshot"
 msgstr "Auto-snapshot"
 
-#: lib/storyarn/versioning/version_crud.ex:477
+#: lib/storyarn/versioning/version_crud.ex:495
 #, elixir-autogen, elixir-format
 msgid "Changes from previous version"
 msgstr "Cambios respecto a la versión anterior"
 
-#: lib/storyarn/versioning/version_crud.ex:464
+#: lib/storyarn/versioning/version_crud.ex:482
 #, elixir-autogen, elixir-format
 msgid "Initial version"
 msgstr "Versión inicial"
 
-#: lib/storyarn_web/controllers/snapshot_download_controller.ex:41
+#: lib/storyarn_web/controllers/snapshot_download_controller.ex:50
 #, elixir-autogen, elixir-format
 msgid "Invalid snapshot ID"
 msgstr "ID de snapshot no válido"
@@ -202,50 +156,55 @@ msgstr "ID de snapshot no válido"
 msgid "No changes detected"
 msgstr "No se detectaron cambios"
 
-#: lib/storyarn_web/controllers/snapshot_download_controller.ex:35
+#: lib/storyarn_web/controllers/snapshot_download_controller.ex:41
+#: lib/storyarn_web/controllers/snapshot_download_controller.ex:44
 #, elixir-autogen, elixir-format
 msgid "Project not found"
 msgstr "Proyecto no encontrado"
 
-#: lib/storyarn_web/live/compare_live/sheet.ex:65
+#: lib/storyarn_web/live/compare_live/sheet.ex:64
 #, elixir-autogen, elixir-format
 msgid "Sheet not found"
 msgstr "Ficha no encontrada"
 
-#: lib/storyarn_web/controllers/snapshot_download_controller.ex:61
+#: lib/storyarn_web/controllers/snapshot_download_controller.ex:37
 #, elixir-autogen, elixir-format
 msgid "Snapshot file not found"
 msgstr "Archivo de snapshot no encontrado"
 
-#: lib/storyarn_web/controllers/snapshot_download_controller.ex:38
+#: lib/storyarn_web/controllers/snapshot_download_controller.ex:47
 #, elixir-autogen, elixir-format
 msgid "Snapshot not found"
 msgstr "Snapshot no encontrada"
 
-#: lib/storyarn_web/controllers/page_controller.ex:14
-#: lib/storyarn_web/live/landing_live/index.ex:59
-#, elixir-autogen, elixir-format
-msgid "Too many requests. Please try again in about 1 hour."
-msgstr "Demasiadas solicitudes. Inténtalo de nuevo en aproximadamente 1 hora."
-
-#: lib/storyarn_web/live/compare_live/flow.ex:104
-#: lib/storyarn_web/live/compare_live/scene.ex:104
-#: lib/storyarn_web/live/compare_live/sheet.ex:105
+#: lib/storyarn_web/live/compare_live/flow.ex:103
+#: lib/storyarn_web/live/compare_live/scene.ex:103
+#: lib/storyarn_web/live/compare_live/sheet.ex:104
 #, elixir-autogen, elixir-format
 msgid "Version not found"
 msgstr "Versión no encontrada"
-
-#: lib/storyarn_web/live/landing_live/index.ex:21
-#, elixir-autogen, elixir-format
-msgid "Storyarn — Narrative Design Platform"
-msgstr "Storyarn — Plataforma de diseño narrativo"
 
 #: lib/storyarn_web/components/collaboration_components.ex:82
 #, elixir-autogen, elixir-format
 msgid "Someone"
 msgstr "Alguien"
 
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:254
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:157
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to edit."
 msgstr "No tienes permiso para editar."
+
+#: lib/storyarn_web/controllers/export_controller.ex:39
+#, elixir-autogen, elixir-format
+msgid "Export is too large"
+msgstr "La exportación es demasiado grande"
+
+#: lib/storyarn_web/controllers/export_controller.ex:33
+#, elixir-autogen, elixir-format
+msgid "Invalid localization policy"
+msgstr "Política de localización no válida"
+
+#: lib/storyarn_web/controllers/private_media_controller.ex:87
+#, elixir-autogen, elixir-format
+msgid "Media not found"
+msgstr "Archivo multimedia no encontrado"

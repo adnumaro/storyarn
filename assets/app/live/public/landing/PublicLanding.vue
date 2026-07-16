@@ -12,7 +12,6 @@ import {
   PackageCheck,
   Table2,
 } from "lucide-vue-next";
-import LandingFooter from "../PublicFooter.vue";
 import LiveLink from "@components/navigation/LiveLink.vue";
 import CtaSignup from "@modules/public/landing/sections/cta/CtaSignup.vue";
 import { consumeHistoryScroll } from "@app/shared/navigation/historyScroll";
@@ -69,7 +68,13 @@ onMounted(() => {
   // cannot turn a small auth-page offset into a jump down the landing page.
   restoreScrollFrame = window.requestAnimationFrame(() => {
     document.documentElement.style.scrollBehavior = "auto";
-    window.scrollTo(0, initialScrollPosition);
+    const hashTarget = window.location.hash
+      ? document.getElementById(decodeURIComponent(window.location.hash.slice(1)))
+      : null;
+
+    if (hashTarget) hashTarget.scrollIntoView({ block: "start" });
+    else window.scrollTo(0, initialScrollPosition);
+
     document.documentElement.style.scrollBehavior = "smooth";
   });
 });
@@ -279,6 +284,5 @@ onUnmounted(() => {
     </section>
 
     <CtaSignup :registration-url="registrationUrl" />
-    <LandingFooter />
   </div>
 </template>

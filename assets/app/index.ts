@@ -4,17 +4,75 @@ import { defineAsyncComponent, h } from "vue";
 import type { App, Component } from "vue";
 import VueKonva from "vue-konva";
 import { i18n } from "./i18n";
+import AuthConfirmAccessForm from "./live/auth/confirm-access/AuthConfirmAccessForm.vue";
+import AuthForgotPasswordForm from "./live/auth/reset-password/AuthForgotPasswordForm.vue";
+import AuthResetPasswordForm from "./live/auth/reset-password/AuthResetPasswordForm.vue";
+import AuthLoginForm from "./live/auth/login/AuthLoginForm.vue";
+import AuthRegistrationForm from "./live/auth/registration/AuthRegistrationForm.vue";
+import AuthLayout from "./live/layouts/auth/Layout.vue";
+import DocsLayout from "./live/layouts/docs/Layout.vue";
+import PublicContact from "./live/public/contact/PublicContact.vue";
+import PublicLanding from "./live/public/landing/PublicLanding.vue";
+import LegalPage from "./live/public/legal/LegalPage.vue";
+import DocsContent from "./live/docs/show/DocsContent.vue";
 
 let appCounter = 0;
+
+const injectionLayoutComponents = new Set([
+  "live/layouts/auth/Layout",
+  "live/layouts/compare/Layout",
+  "live/layouts/docs/Layout",
+  "live/layouts/project/Layout",
+  "live/layouts/settings/Layout",
+  "live/layouts/workspace/Layout",
+]);
 
 type ComponentLoader = () => Promise<{ default: Component }>;
 
 const componentLoaders = {
-  ...import.meta.glob<{ default: Component }>("./**/*.vue"),
+  ...import.meta.glob<{ default: Component }>([
+    "./**/*.vue",
+    "!./components/forms/PasswordInput.vue",
+    "!./components/ThemeSelector.vue",
+    "!./components/ui/input/Input.vue",
+    "!./components/ui/label/Label.vue",
+    "!./live/auth/confirm-access/AuthConfirmAccessForm.vue",
+    "!./live/auth/login/AuthLoginForm.vue",
+    "!./live/auth/registration/AuthRegistrationForm.vue",
+    "!./live/auth/reset-password/AuthForgotPasswordForm.vue",
+    "!./live/auth/reset-password/AuthResetPasswordForm.vue",
+    "!./live/docs/show/DocsContent.vue",
+    "!./live/layouts/auth/Layout.vue",
+    "!./live/layouts/docs/Layout.vue",
+    "!./live/public/contact/PublicContact.vue",
+    "!./live/public/landing/PublicLanding.vue",
+    "!./live/public/legal/LegalPage.vue",
+    "!./components/navigation/LiveLink.vue",
+    "!./components/ui/button/Button.vue",
+    "!./modules/public/landing/sections/cta/CtaSignup.vue",
+  ]),
   ...import.meta.glob<{ default: Component }>("../../lib/**/*.vue"),
 } satisfies Record<string, ComponentLoader>;
 
 const asyncComponents = new Map<string, Component>();
+
+// These are the complete public, docs, and authentication surfaces reachable
+// from public navigation. Resolving both their layouts and page components
+// synchronously keeps the current LiveView frame populated on a cold cache;
+// a background dynamic import alone cannot guarantee that.
+const eagerPublicComponents = new Map<string, Component>([
+  ["live/auth/confirm-access/AuthConfirmAccessForm", AuthConfirmAccessForm],
+  ["live/auth/login/AuthLoginForm", AuthLoginForm],
+  ["live/auth/registration/AuthRegistrationForm", AuthRegistrationForm],
+  ["live/auth/reset-password/AuthForgotPasswordForm", AuthForgotPasswordForm],
+  ["live/auth/reset-password/AuthResetPasswordForm", AuthResetPasswordForm],
+  ["live/docs/show/DocsContent", DocsContent],
+  ["live/layouts/auth/Layout", AuthLayout],
+  ["live/layouts/docs/Layout", DocsLayout],
+  ["live/public/contact/PublicContact", PublicContact],
+  ["live/public/landing/PublicLanding", PublicLanding],
+  ["live/public/legal/LegalPage", LegalPage],
+]);
 
 const resolveAsyncComponent = (name: string): Component => {
   let component = asyncComponents.get(name);
@@ -35,7 +93,7 @@ const resolveAsyncComponent = (name: string): Component => {
 const syncLocale = (): void => {
   if (i18n.global && i18n.global.locale) {
     (i18n.global.locale as unknown as { value: string }).value =
-      document.documentElement.lang || "en";
+      document.documentElement.dataset.gettextLocale || document.documentElement.lang || "en";
   }
 };
 
@@ -48,7 +106,7 @@ observer.observe(document.documentElement, { attributes: true });
 
 export default createLiveVue({
   resolve: (name: string) => {
-    return resolveAsyncComponent(name);
+    return eagerPublicComponents.get(name) ?? resolveAsyncComponent(name);
   },
   setup: ({ createApp, component, props, slots, plugin, el }: SetupContext): App => {
     syncLocale();
@@ -66,6 +124,15 @@ export default createLiveVue({
     app.use(VueKonva);
     app.use(i18n);
     app.mount(el);
+
+    // Vue marks mount containers with a client-only data-v-app attribute.
+    // LiveView owns hook attributes, so its next patch would remove that marker
+    // and invoke LiveVue's updated hook. On injection layouts this needlessly
+    // re-syncs the slot and remounts the focused page component.
+    if (injectionLayoutComponents.has(el.getAttribute("data-name") ?? "")) {
+      el.removeAttribute("data-v-app");
+    }
+
     return app;
   },
 });

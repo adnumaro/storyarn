@@ -14,6 +14,7 @@ import {
 import { useLive } from "@shared/composables/useLive";
 import {
   isOnboardingGuideKey,
+  localizedPublicUrl,
   onboardingGuides,
   sessionKey,
   type OnboardingGuideKey,
@@ -24,7 +25,7 @@ const { guideKey, autoShow = false } = defineProps<{
   autoShow?: boolean;
 }>();
 
-const { t } = useI18n();
+const { locale, t } = useI18n();
 const live = useLive();
 const open = ref(false);
 const step = ref(0);
@@ -33,6 +34,9 @@ const openSource = ref<"auto" | "manual">("manual");
 const closingIntentionally = ref(false);
 
 const guide = computed(() => (isOnboardingGuideKey(guideKey) ? onboardingGuides[guideKey] : null));
+const guideDocsUrl = computed(() =>
+  guide.value ? localizedPublicUrl(guide.value.docsUrl, locale.value) : "/docs",
+);
 const typedGuideKey = computed<OnboardingGuideKey | null>(() =>
   isOnboardingGuideKey(guideKey) ? guideKey : null,
 );
@@ -260,7 +264,7 @@ defineExpose({ openTutorial });
               type="button"
               variant="ghost"
               size="sm"
-              :href="guide.docsUrl"
+              :href="guideDocsUrl"
               target="_blank"
               rel="noreferrer"
               data-testid="onboarding-full-guide"

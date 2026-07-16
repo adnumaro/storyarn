@@ -20,10 +20,13 @@ defmodule StoryarnWeb.UserLive.RegistrationTest do
       vue = get_registration_vue(view)
 
       assert vue.props["invited"] == false
-      assert vue.props["login-url"] == "/users/log-in"
+      assert vue.props["login-url"] == "/users/log-in?locale=en"
       assert vue.props["user-email"] == nil
       assert vue.props["form"]["errors"] == %{}
       assert has_element?(view, "#auth-layout-wrapper.min-h-screen")
+
+      layout = LiveVue.Test.get_vue(view, name: "live/layouts/auth/Layout")
+      assert layout.props["home-url"] == "/"
     end
 
     test "creates a confirmed password user and default workspace", %{conn: conn} do
@@ -39,7 +42,7 @@ defmodule StoryarnWeb.UserLive.RegistrationTest do
         }
       })
 
-      assert_redirect(view, "/users/log-in")
+      assert_redirect(view, "/users/log-in?locale=en")
 
       user = Accounts.get_user_by_email_and_password(email, password)
       assert user.confirmed_at
@@ -48,6 +51,22 @@ defmodule StoryarnWeb.UserLive.RegistrationTest do
       assert Enum.all?(Onboarding.summary(Scope.for_user(user)).guides, fn {_key, guide} ->
                guide.state == :pending
              end)
+    end
+
+    test "keeps an explicit Spanish handoff", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/users/register?locale=es")
+
+      assert get_registration_vue(view).props["login-url"] == "/users/log-in?locale=es"
+
+      layout = LiveVue.Test.get_vue(view, name: "live/layouts/auth/Layout")
+      assert layout.props["home-url"] == "/es"
+    end
+
+    test "returns an invalid Spanish invitation to the Spanish landing", %{conn: conn} do
+      assert {:error, {:redirect, %{to: "/es", flash: flash}}} =
+               live(conn, ~p"/users/register/invalid-token?locale=es")
+
+      assert flash["error"] =~ "Invalid or expired registration link"
     end
 
     test "keeps validation errors in the public form", %{conn: conn} do

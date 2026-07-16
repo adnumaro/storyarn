@@ -5,17 +5,21 @@ defmodule StoryarnWeb.UserLive.ResetPassword do
 
   alias Storyarn.Accounts
   alias Storyarn.Accounts.User
+  alias StoryarnWeb.PublicURLs
   alias StoryarnWeb.UserAuth
 
   on_mount {UserAuth, :redirect_if_user_is_authenticated}
 
   @impl true
   def render(assigns) do
+    assigns = assign(assigns, :seo_metadata, Layouts.live_seo_metadata(assigns))
+
     ~H"""
     <StoryarnWeb.Components.AuthLayout.auth
       flash={@flash}
       current_scope={@current_scope}
       socket={@socket}
+      seo_metadata={@seo_metadata}
     >
       <.vue
         v-component="live/auth/reset-password/AuthResetPasswordForm"
@@ -23,7 +27,7 @@ defmodule StoryarnWeb.UserLive.ResetPassword do
         v-inject="auth-layout"
         id="reset-password-vue"
         form={@form}
-        login-url={~p"/users/log-in"}
+        login-url={PublicURLs.locale_handoff_path(~p"/users/log-in", @locale)}
         reset-complete={@reset_complete}
       />
     </StoryarnWeb.Components.AuthLayout.auth>

@@ -8,6 +8,7 @@ defmodule StoryarnWeb.Layouts do
 
   alias Phoenix.LiveView.JS
   alias Storyarn.Analytics
+  alias Storyarn.Publication.Locales, as: PublicLocales
 
   # Embed all files in layouts/* within this module.
   # The default root.html.heex file contains the HTML
@@ -25,6 +26,8 @@ defmodule StoryarnWeb.Layouts do
   attr :flash, :map, required: true, doc: "the map of flash messages"
   attr :socket, :any, required: true, doc: "the LiveView socket (needed for LiveVue events)"
   attr :id, :string, default: "flash-group", doc: "the optional id of flash container"
+  attr :privacy_url, :string, default: "/privacy#cookies"
+  attr :terms_url, :string, default: "/terms"
 
   def flash_group(assigns) do
     assigns =
@@ -60,8 +63,8 @@ defmodule StoryarnWeb.Layouts do
         v-component="live/public/CookieConsent"
         v-socket={@socket}
         id={"#{@id}-cookie-consent"}
-        privacy-url={~p"/privacy#cookies"}
-        terms-url={~p"/terms"}
+        privacy-url={@privacy_url}
+        terms-url={@terms_url}
       />
     </div>
     """
@@ -155,12 +158,116 @@ defmodule StoryarnWeb.Layouts do
     end
   end
 
+  def seo_robots(assigns) do
+    cond do
+      Application.get_env(:storyarn, :noindex, false) ->
+        "noindex, nofollow"
+
+      is_binary(assigns[:seo_robots]) and String.trim(assigns[:seo_robots]) != "" ->
+        String.trim(assigns[:seo_robots])
+
+      non_indexable_path?(current_request_path(assigns)) ->
+        "noindex, follow"
+
+      true ->
+        nil
+    end
+  end
+
+  def seo_alternate_links(assigns) do
+    case assigns[:seo_alternate_links] do
+      links when is_list(links) ->
+        links
+        |> Enum.map(&normalize_alternate_link/1)
+        |> Enum.reject(&is_nil/1)
+        |> Enum.uniq_by(& &1.hreflang)
+
+      _other ->
+        []
+    end
+  end
+
   def seo_json_ld(assigns) do
     case assigns[:seo_json_ld] do
       data when is_map(data) -> {:safe, data |> Jason.encode!() |> escape_json_ld()}
       _ -> nil
     end
   end
+
+  @doc false
+  def live_seo_metadata(assigns) do
+    %{
+      content_locale: content_locale(assigns),
+      locale: seo_locale(assigns),
+      title: seo_title(assigns),
+      description: seo_description(assigns),
+      canonical_url: explicit_canonical_url(assigns),
+      type: seo_type(assigns),
+      image_url: seo_image_url(assigns),
+      published_time: seo_published_time(assigns),
+      modified_time: seo_modified_time(assigns),
+      article_tags: seo_article_tags(assigns),
+      robots: seo_robots(assigns),
+      alternate_links: seo_alternate_links(assigns),
+      json_ld: seo_json_ld_data(assigns)
+    }
+  end
+
+  attr :metadata, :map, required: true
+
+  def live_seo(assigns) do
+    ~H"""
+    <div
+      id="live-seo-metadata"
+      phx-hook="SeoMetadata"
+      data-metadata={Jason.encode!(@metadata)}
+      hidden
+      aria-hidden="true"
+    >
+    </div>
+    """
+  end
+
+  defp seo_locale(assigns) do
+    assigns |> content_locale() |> PublicLocales.language_tag()
+  end
+
+  defp content_locale(assigns) do
+    case assigns[:locale] do
+      locale when is_binary(locale) and locale != "" -> locale
+      _ -> PublicLocales.default_locale()
+    end
+  end
+
+  defp explicit_canonical_url(assigns) do
+    case assigns[:canonical_url] do
+      url when is_binary(url) and url != "" -> absolute_url(url)
+      _ -> nil
+    end
+  end
+
+  defp seo_json_ld_data(assigns) do
+    case assigns[:seo_json_ld] do
+      data when is_map(data) -> data
+      _ -> nil
+    end
+  end
+
+  defp normalize_alternate_link(%{hreflang: hreflang, href: href}) when is_binary(hreflang) and is_binary(href) do
+    hreflang = String.trim(hreflang)
+    href = String.trim(href)
+
+    with true <- hreflang != "" and href != "",
+         %URI{scheme: scheme, host: host} = uri when scheme in ["http", "https"] and host != nil <-
+           href |> absolute_url() |> URI.parse() do
+      normalized_href = URI.to_string(%{uri | query: nil, fragment: nil})
+      %{hreflang: hreflang, href: normalized_href}
+    else
+      _other -> nil
+    end
+  end
+
+  defp normalize_alternate_link(_link), do: nil
 
   defp current_scope_from_assigns(%{current_scope: current_scope}), do: current_scope
 
@@ -176,6 +283,12 @@ defmodule StoryarnWeb.Layouts do
 
   defp current_request_path(%{conn: %{request_path: path}}) when is_binary(path), do: path
   defp current_request_path(_assigns), do: "/"
+
+  defp non_indexable_path?(path) do
+    String.starts_with?(path, "/users/") or
+      String.starts_with?(path, "/workspaces") or
+      String.starts_with?(path, "/projects/invitations/")
+  end
 
   @doc false
   def absolute_url(path) do

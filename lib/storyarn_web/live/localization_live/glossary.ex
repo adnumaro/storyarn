@@ -5,6 +5,7 @@ defmodule StoryarnWeb.LocalizationLive.Glossary do
 
   alias Storyarn.Localization
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.LanguagePickerOption
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 
   @impl true
@@ -212,7 +213,9 @@ defmodule StoryarnWeb.LocalizationLive.Glossary do
     end
   end
 
-  defp serialize_language(language), do: %{localeCode: language.locale_code, name: language.name}
+  defp serialize_language(language) do
+    LanguagePickerOption.from_code(language.locale_code, label: language.name)
+  end
 
   defp serialize_entry(entry) do
     %{

@@ -6,6 +6,7 @@ defmodule Storyarn.AccountsTest do
   import Storyarn.AccountsFixtures
 
   alias Storyarn.Accounts
+  alias Storyarn.Accounts.Scope
   alias Storyarn.Accounts.User
   alias Storyarn.Accounts.UserToken
   alias Storyarn.Workers.DeliverResetPasswordInstructionsWorker
@@ -486,6 +487,81 @@ defmodule Storyarn.AccountsTest do
       dt = ~N[2020-01-01 00:00:00]
       {1, nil} = Repo.update_all(UserToken, set: [inserted_at: dt, authenticated_at: dt])
       refute Accounts.get_user_by_session_token(token)
+    end
+  end
+
+  describe "reauthenticate_user_session/3" do
+    test "validates only the requested active token without elevating any session" do
+      stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+      user = %{user_fixture() | authenticated_at: stale_authenticated_at}
+      token = Accounts.generate_user_session_token(user)
+      other_token = Accounts.generate_user_session_token(user)
+      original_token = Repo.get_by!(UserToken, token: token)
+      original_other_token = Repo.get_by!(UserToken, token: other_token)
+
+      refute Accounts.sudo_mode?(user)
+
+      assert {:ok, reauthenticated_user} =
+               Accounts.reauthenticate_user_session(
+                 Scope.for_user(user),
+                 token,
+                 valid_user_password()
+               )
+
+      refute Accounts.sudo_mode?(reauthenticated_user)
+      assert reauthenticated_user.authenticated_at == stale_authenticated_at
+
+      assert {session_user, _inserted_at} = Accounts.get_user_by_session_token(token)
+      assert session_user.id == user.id
+      refute Accounts.sudo_mode?(session_user)
+      assert Repo.get_by!(UserToken, token: token) == original_token
+      assert Repo.get_by!(UserToken, token: other_token) == original_other_token
+    end
+
+    test "rejects invalid credentials without changing the timestamp" do
+      stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+      user = %{user_fixture() | authenticated_at: stale_authenticated_at}
+      token = Accounts.generate_user_session_token(user)
+
+      assert {:error, :invalid_credentials} =
+               Accounts.reauthenticate_user_session(Scope.for_user(user), token, "wrong password")
+
+      assert {session_user, _inserted_at} = Accounts.get_user_by_session_token(token)
+      assert session_user.authenticated_at == stale_authenticated_at
+    end
+
+    test "rejects a token owned by another user or an unknown token" do
+      user = user_fixture()
+      other_user = user_fixture()
+      token = Accounts.generate_user_session_token(other_user)
+
+      assert {:error, :invalid_session} =
+               Accounts.reauthenticate_user_session(
+                 Scope.for_user(user),
+                 token,
+                 valid_user_password()
+               )
+
+      assert {:error, :invalid_session} =
+               Accounts.reauthenticate_user_session(
+                 Scope.for_user(user),
+                 "unknown-token",
+                 valid_user_password()
+               )
+    end
+
+    test "does not revive an expired token" do
+      user = user_fixture()
+      token = Accounts.generate_user_session_token(user)
+      expired_at = DateTime.add(DateTime.utc_now(:second), -15, :day)
+      {1, nil} = Repo.update_all(UserToken, set: [inserted_at: expired_at])
+
+      assert {:error, :invalid_session} =
+               Accounts.reauthenticate_user_session(
+                 Scope.for_user(user),
+                 token,
+                 valid_user_password()
+               )
     end
   end
 

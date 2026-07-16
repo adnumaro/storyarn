@@ -69,7 +69,7 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
       {:ok, view, _html} = live(conn, report_url(project))
 
       vue = get_report_vue(view)
-      target_codes = Enum.map(vue.props["target-languages"], & &1["localeCode"])
+      target_codes = Enum.map(vue.props["target-languages"], & &1["value"])
       assert "es" in target_codes
     end
 
@@ -80,7 +80,17 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
       {:ok, view, _html} = live(conn, report_url(project))
 
       vue = get_report_vue(view)
-      assert [%{"localeCode" => "es"}] = vue.props["target-languages"]
+
+      assert [
+               %{
+                 "value" => "es",
+                 "label" => "Spanish",
+                 "languageTag" => "es",
+                 "flagCode" => "es",
+                 "shortLabel" => "ES"
+               }
+             ] = vue.props["target-languages"]
+
       assert vue.props["selected-locale"] == "es"
     end
   end

@@ -9,8 +9,12 @@ defmodule StoryarnWeb.Components.DocsLayout do
 
   use StoryarnWeb, :html
 
+  alias Storyarn.Localization.Languages
+  alias StoryarnWeb.PublicURLs
+
   attr :flash, :map, required: true
   attr :socket, :any, required: true
+  attr :seo_metadata, :map, required: true
   attr :current_scope, :map, default: nil
   attr :categories, :list, required: true
   attr :guides, :list, required: true
@@ -21,6 +25,8 @@ defmodule StoryarnWeb.Components.DocsLayout do
   attr :prev, :map, default: nil
   attr :next, :map, default: nil
   attr :sidebar_open, :boolean, default: false
+  attr :locale, :string, required: true
+  attr :language_links, :list, default: []
 
   slot :inner_block, required: true
 
@@ -29,6 +35,7 @@ defmodule StoryarnWeb.Components.DocsLayout do
 
     ~H"""
     <div id="docs-layout-wrapper" class="h-screen overflow-hidden bg-surface text-foreground">
+      <Layouts.live_seo metadata={@seo_metadata} />
       <.vue
         v-component="live/layouts/docs/Layout"
         v-socket={@socket}
@@ -38,7 +45,12 @@ defmodule StoryarnWeb.Components.DocsLayout do
 
       {render_slot(@inner_block)}
 
-      <Layouts.flash_group flash={@flash} socket={@socket} />
+      <Layouts.flash_group
+        flash={@flash}
+        socket={@socket}
+        privacy_url={PublicURLs.privacy_path(@locale) <> "#cookies"}
+        terms_url={PublicURLs.terms_path(@locale)}
+      />
     </div>
     """
   end
@@ -48,27 +60,29 @@ defmodule StoryarnWeb.Components.DocsLayout do
       if is_nil(assigns.search_results) do
         nil
       else
-        Enum.map(assigns.search_results, &docs_guide_nav/1)
+        Enum.map(assigns.search_results, &docs_guide_nav(&1, assigns.locale))
       end
 
     %{
       signedIn: signed_in?(assigns.current_scope),
+      currentLocale: assigns.locale,
+      languageLinks: Enum.map(assigns.language_links, &language_link/1),
       urls: %{
-        home: ~p"/",
-        docs: ~p"/docs",
+        home: PublicURLs.home_path(assigns.locale),
+        docs: PublicURLs.docs_index_path(assigns.locale),
         workspaces: ~p"/workspaces",
-        login: ~p"/users/log-in"
+        login: PublicURLs.locale_handoff_path(~p"/users/log-in", assigns.locale)
       },
       sidebarOpen: assigns.sidebar_open,
       categories: Enum.map(assigns.categories, &docs_category(&1, assigns.expanded_categories)),
-      guides: Enum.map(assigns.guides, &docs_guide_nav/1),
-      guide: docs_guide(assigns.guide),
+      guides: Enum.map(assigns.guides, &docs_guide_nav(&1, assigns.locale)),
+      guide: docs_guide(assigns.guide, assigns.locale),
       search: %{
         query: assigns.search_query,
         results: search_results
       },
-      prev: docs_guide_nav(assigns.prev),
-      next: docs_guide_nav(assigns.next)
+      prev: docs_guide_nav(assigns.prev, assigns.locale),
+      next: docs_guide_nav(assigns.next, assigns.locale)
     }
   end
 
@@ -86,20 +100,20 @@ defmodule StoryarnWeb.Components.DocsLayout do
   defp expanded?(id, %MapSet{} = expanded_categories), do: MapSet.member?(expanded_categories, id)
   defp expanded?(_id, _expanded_categories), do: false
 
-  defp docs_guide(nil), do: nil
+  defp docs_guide(nil, _locale), do: nil
 
-  defp docs_guide(guide) do
+  defp docs_guide(guide, locale) do
     guide
-    |> docs_guide_nav()
+    |> docs_guide_nav(locale)
     |> Map.merge(%{
       description: Map.get(guide, :description),
       toc: Enum.map(Map.get(guide, :toc, []), &docs_toc_entry/1)
     })
   end
 
-  defp docs_guide_nav(nil), do: nil
+  defp docs_guide_nav(nil, _locale), do: nil
 
-  defp docs_guide_nav(guide) do
+  defp docs_guide_nav(guide, locale) do
     category = Map.fetch!(guide, :category)
 
     %{
@@ -111,7 +125,18 @@ defmodule StoryarnWeb.Components.DocsLayout do
       slug: Map.fetch!(guide, :slug),
       path: Map.fetch!(guide, :path),
       title: Map.fetch!(guide, :title),
-      url: "/docs/#{Map.fetch!(guide, :url_path)}"
+      url: PublicURLs.docs_path(locale, guide)
+    }
+  end
+
+  defp language_link(link) do
+    %{
+      locale: link.locale,
+      languageTag: link.language_tag,
+      label: link.label,
+      flagCode: Languages.flag_code(link.language_tag),
+      shortLabel: Languages.short_label(link.language_tag),
+      path: link.path
     }
   end
 

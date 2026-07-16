@@ -123,6 +123,20 @@ defmodule Storyarn.Localization.Languages do
     "es-419" => "LA"
   }
 
+  @supported_flag_codes @flag_overrides
+                        |> Map.values()
+                        |> Kernel.++(
+                          @languages
+                          |> Enum.map(fn %{code: code} ->
+                            case String.split(String.downcase(code), "-", parts: 2) do
+                              [_language, region] when byte_size(region) == 2 -> region
+                              _ -> nil
+                            end
+                          end)
+                          |> Enum.reject(&is_nil/1)
+                        )
+                        |> MapSet.new()
+
   @doc "Returns all languages sorted by name."
   @spec all() :: [language()]
   def all, do: @languages
@@ -145,7 +159,9 @@ defmodule Storyarn.Localization.Languages do
   @spec flag_code(String.t()) :: String.t() | nil
   def flag_code(code) do
     normalized_code = String.downcase(code)
-    region_flag_code(normalized_code) || Map.get(@flag_overrides, normalized_code)
+    candidate = region_flag_code(normalized_code) || Map.get(@flag_overrides, normalized_code)
+
+    if MapSet.member?(@supported_flag_codes, candidate), do: candidate
   end
 
   @doc "Returns a compact fallback label for a locale when there is no flag."

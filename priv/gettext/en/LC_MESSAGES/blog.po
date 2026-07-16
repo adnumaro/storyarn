@@ -1,0 +1,153 @@
+## Blog interface translations.
+msgid ""
+msgstr ""
+"Language: en\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: lib/storyarn_web/live/blog_live/index.ex:204
+#: lib/storyarn_web/live/blog_live/show.ex:169
+#, elixir-autogen
+msgid "%{count} min read"
+msgid_plural "%{count} min read"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/live/blog_live/show.ex:79
+#, elixir-autogen
+msgid "Back to the journal"
+msgstr ""
+
+#: lib/storyarn_web/live/blog_live/show.ex:142
+#, elixir-autogen
+msgid "Bring the whole narrative into one connected project."
+msgstr ""
+
+#: lib/storyarn_web/live/blog_live/show.ex:107
+#, elixir-autogen
+msgid "By %{author}"
+msgstr ""
+
+#: lib/storyarn_web/live/blog_live/show.ex:155
+#, elixir-autogen
+msgid "Create your Storyarn account"
+msgstr ""
+
+#: lib/storyarn_web/live/blog_live/index.ex:99
+#, elixir-autogen
+msgid "Featured story"
+msgstr ""
+
+#: lib/storyarn_web/live/blog_live/index.ex:66
+#, elixir-autogen
+msgid "Inside Storyarn"
+msgstr ""
+
+#: lib/storyarn_web/live/blog_live/index.ex:155
+#, elixir-autogen
+msgid "More from the journal"
+msgstr ""
+
+#: lib/storyarn_web/live/blog_live/index.ex:27
+#, elixir-autogen
+msgid "Narrative Design Journal"
+msgstr ""
+
+#: lib/storyarn_web/live/blog_live/index.ex:84
+#, elixir-autogen
+msgid "No published articles yet."
+msgstr ""
+
+#: lib/storyarn_web/live/blog_live/index.ex:69
+#, elixir-autogen
+msgid "Notes on building a connected narrative design platform."
+msgstr ""
+
+#: lib/storyarn_web/live/blog_live/index.ex:72
+#, elixir-autogen
+msgid "Product decisions, narrative production problems, and what we are learning while Storyarn grows."
+msgstr ""
+
+#: lib/storyarn_web/live/blog_live/index.ex:30
+#, elixir-autogen
+msgid "Product thinking, narrative design practice, and lessons from building Storyarn as a connected workspace for interactive stories."
+msgstr ""
+
+#: lib/storyarn_web/live/blog_live/index.ex:136
+#, elixir-autogen
+msgid "Read the story"
+msgstr ""
+
+#: lib/storyarn_web/live/blog_live/show.ex:145
+#, elixir-autogen
+msgid "Registration is open, Storyarn is free during early access, and no invitation is required."
+msgstr ""
+
+#: lib/storyarn_web/live/blog_live/show.ex:139
+#, elixir-autogen
+msgid "Storyarn is in open beta"
+msgstr ""
+
+#: lib/storyarn_web/blog_formatting.ex:8
+#, elixir-autogen, elixir-format
+msgid "%{month} %{day}, %{year}"
+msgstr ""
+
+#: lib/storyarn_web/blog_formatting.ex:19
+#, elixir-autogen, elixir-format
+msgid "April"
+msgstr ""
+
+#: lib/storyarn_web/blog_formatting.ex:23
+#, elixir-autogen, elixir-format
+msgid "August"
+msgstr ""
+
+#: lib/storyarn_web/blog_formatting.ex:27
+#, elixir-autogen, elixir-format
+msgid "December"
+msgstr ""
+
+#: lib/storyarn_web/blog_formatting.ex:17
+#, elixir-autogen, elixir-format
+msgid "February"
+msgstr ""
+
+#: lib/storyarn_web/blog_formatting.ex:16
+#, elixir-autogen, elixir-format
+msgid "January"
+msgstr ""
+
+#: lib/storyarn_web/blog_formatting.ex:22
+#, elixir-autogen, elixir-format
+msgid "July"
+msgstr ""
+
+#: lib/storyarn_web/blog_formatting.ex:21
+#, elixir-autogen, elixir-format
+msgid "June"
+msgstr ""
+
+#: lib/storyarn_web/blog_formatting.ex:18
+#, elixir-autogen, elixir-format
+msgid "March"
+msgstr ""
+
+#: lib/storyarn_web/blog_formatting.ex:20
+#, elixir-autogen, elixir-format
+msgid "May"
+msgstr ""
+
+#: lib/storyarn_web/blog_formatting.ex:26
+#, elixir-autogen, elixir-format
+msgid "November"
+msgstr ""
+
+#: lib/storyarn_web/blog_formatting.ex:25
+#, elixir-autogen, elixir-format
+msgid "October"
+msgstr ""
+
+#: lib/storyarn_web/blog_formatting.ex:24
+#, elixir-autogen, elixir-format
+msgid "September"
+msgstr ""

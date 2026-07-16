@@ -10,6 +10,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   alias Storyarn.Projects
   alias Storyarn.ProjectTemplates
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.LanguagePickerOption
 
   require Logger
 
@@ -39,7 +40,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
         project-details={serialize_project_details(@project)}
         project-metrics-options={Taxonomy.project_options()}
         source-language={serialize_source_language(@source_language)}
-        source-language-name={Localization.language_name(@source_language.locale_code)}
+        source-language-options={LanguagePickerOption.all()}
         theme-primary={@theme_primary}
         theme-accent={@theme_accent}
         has-custom-theme={@has_custom_theme}
@@ -67,7 +68,9 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   defp serialize_source_language(nil), do: nil
 
   defp serialize_source_language(lang) do
-    %{localeCode: lang.locale_code}
+    lang.locale_code
+    |> LanguagePickerOption.from_code(label: lang.name || Localization.language_name(lang.locale_code))
+    |> Map.put(:localeCode, lang.locale_code)
   end
 
   # ===========================================================================
@@ -151,9 +154,11 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
     end)
   end
 
-  def handle_event("change_source_language", %{"locale_code" => locale_code}, socket) do
+  def handle_event("change_source_language", %{"locale_code" => locale_code} = params, socket) do
     Authorize.with_authorization(socket, :manage_project, fn socket ->
-      case Localization.change_source_language(socket.assigns.project, locale_code) do
+      opts = if reset_translations?(params), do: [reset_translations: true], else: []
+
+      case Localization.change_source_language(socket.assigns.project, locale_code, opts) do
         {:ok, source_language} ->
           {:noreply,
            socket
@@ -255,6 +260,9 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   defp can_open_general_settings?(scope, project, membership) do
     Projects.can?(membership.role, :manage_project) or ProjectTemplates.can_publish_source_project?(scope, project)
   end
+
+  defp reset_translations?(%{"reset_translations" => value}) when value in [true, "true"], do: true
+  defp reset_translations?(_params), do: false
 
   defp publish_template_from_settings(socket, %{"mode" => "new"} = params) do
     ProjectTemplates.request_template_publication(

@@ -8,9 +8,9 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   alias Storyarn.Assets.ImageProcessor
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.UploadPolicy
-  alias Storyarn.Localization
   alias Storyarn.Workspaces
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.LanguagePickerOption
   alias StoryarnWeb.PrivateMedia
 
   @impl true
@@ -56,9 +56,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
         workspace-description={@workspace.description || ""}
         workspace-banner-url={PrivateMedia.workspace_banner_url(@workspace) || ""}
         source-locale={@workspace.source_locale || ""}
-        language-options={
-          Enum.map(Localization.language_options_for_select(), fn {k, v} -> [k, v] end)
-        }
+        language-options={LanguagePickerOption.all()}
         is-owner={@membership.role == "owner"}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>

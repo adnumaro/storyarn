@@ -32,6 +32,17 @@ defmodule Storyarn.Shared.HtmlSanitizerTest do
       assert result =~ "<pre><code>code</code></pre>"
     end
 
+    test "preserves editorial figures and captions" do
+      html =
+        ~s[<figure class="editorial"><img src="/images/example.png" alt="Example"><figcaption>Product context</figcaption></figure>]
+
+      result = HtmlSanitizer.sanitize_html(html)
+
+      assert result =~ ~s[<figure class="editorial">]
+      assert result =~ ~s[<img src="/images/example.png" alt="Example"/>]
+      assert result =~ "<figcaption>Product context</figcaption>"
+    end
+
     test "preserves list tags" do
       html = "<ul><li>one</li><li>two</li></ul><ol><li>three</li></ol>"
       result = HtmlSanitizer.sanitize_html(html)

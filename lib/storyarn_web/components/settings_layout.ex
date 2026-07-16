@@ -22,6 +22,7 @@ defmodule StoryarnWeb.Components.SettingsLayout do
     doc: "MapSet of workspace slugs where user has WorkspaceMembership"
 
   attr :current_path, :string, required: true, doc: "current settings path for nav highlighting"
+  attr :sudo_grant, :string, default: nil, doc: "validated grant for sensitive settings links"
   attr :onboarding, :map, default: %{guides: %{}}
   attr :onboarding_guide, :atom, default: nil
   attr :onboarding_autostart, :boolean, default: false
@@ -31,18 +32,10 @@ defmodule StoryarnWeb.Components.SettingsLayout do
   slot :inner_block, required: true
 
   def settings(assigns) do
-    assigns =
-      assigns
-      |> assign(:settings_workspaces, settings_workspaces(assigns.workspaces))
-      |> assign(
-        :settings_managed_workspace_slugs,
-        settings_managed_workspace_slugs(assigns.managed_workspace_slugs)
-      )
-      |> assign(:settings_workspace, settings_workspace(assigns.workspace))
-      |> assign(:settings_project, settings_project(assigns.project))
-      |> assign(:title_text, slot_to_text(assigns.title))
-      |> assign(:subtitle_text, slot_to_text(assigns.subtitle))
-
+    # Keep serialization in the attribute expressions so HEEx can track the
+    # original assign dependencies. Deriving assigns in this function body
+    # marks the LiveVue boundary as changed whenever its injected page rerenders;
+    # LiveVue then remounts that page and drops input focus and local form state.
     ~H"""
     <div id="settings-layout-wrapper">
       <.vue
@@ -50,12 +43,13 @@ defmodule StoryarnWeb.Components.SettingsLayout do
         v-socket={@socket}
         id="settings-layout"
         current-path={@current_path}
-        workspaces={@settings_workspaces}
-        managed-workspace-slugs={@settings_managed_workspace_slugs}
-        workspace={@settings_workspace}
-        project={@settings_project}
-        title={@title_text}
-        subtitle={@subtitle_text}
+        sudo-grant={@sudo_grant}
+        workspaces={settings_workspaces(@workspaces)}
+        managed-workspace-slugs={settings_managed_workspace_slugs(@managed_workspace_slugs)}
+        workspace={settings_workspace(@workspace)}
+        project={settings_project(@project)}
+        title={slot_to_text(@title)}
+        subtitle={slot_to_text(@subtitle)}
         onboarding={
           OnboardingHelpers.client_config(
             @onboarding,

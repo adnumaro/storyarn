@@ -31,7 +31,7 @@ defmodule StoryarnWeb.UserLive.PasswordResetTest do
       vue = get_forgot_password_vue(view)
 
       assert vue.component == "live/auth/reset-password/AuthForgotPasswordForm"
-      assert vue.props["login-url"] == "/users/log-in"
+      assert vue.props["login-url"] == "/users/log-in?locale=en"
       assert vue.props["form"]["name"] == "password_reset"
       assert vue.props["instructions-sent"] == false
       assert vue.props["request-error"] == nil
@@ -53,6 +53,7 @@ defmodule StoryarnWeb.UserLive.PasswordResetTest do
 
       vue = get_forgot_password_vue(view)
       assert vue.props["form"]["errors"]["email"] == ["debe incluir @ y no contener espacios"]
+      assert vue.props["login-url"] == "/users/log-in?locale=es"
     end
 
     test "queues instructions for an existing user without disclosing account existence", %{conn: conn} do
@@ -173,7 +174,7 @@ defmodule StoryarnWeb.UserLive.PasswordResetTest do
       vue = get_reset_password_vue(view)
 
       assert vue.component == "live/auth/reset-password/AuthResetPasswordForm"
-      assert vue.props["login-url"] == "/users/log-in"
+      assert vue.props["login-url"] == "/users/log-in?locale=en"
       assert vue.props["form"]["name"] == "user"
       assert vue.props["reset-complete"] == false
     end
@@ -200,6 +201,7 @@ defmodule StoryarnWeb.UserLive.PasswordResetTest do
       vue = get_reset_password_vue(view)
       assert vue.props["form"]["errors"]["password"] == ["debería tener al menos 12 caracteres"]
       assert vue.props["form"]["errors"]["password_confirmation"] == ["no coincide con la contraseña"]
+      assert vue.props["login-url"] == "/users/log-in?locale=es"
     end
 
     test "updates the password and renders a persistent success state", %{

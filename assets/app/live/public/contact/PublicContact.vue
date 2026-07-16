@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { ArrowUpRight, Mail, MessageCircle } from "lucide-vue-next";
-import LandingFooter from "../PublicFooter.vue";
 
 const { contactEmail } = defineProps<{
   contactEmail: string;
@@ -65,7 +64,5 @@ const contactHref = computed(() => `mailto:${contactEmail}`);
         </article>
       </div>
     </section>
-
-    <LandingFooter class="mt-auto" />
   </div>
 </template>

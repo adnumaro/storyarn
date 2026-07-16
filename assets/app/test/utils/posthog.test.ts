@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   hasAnalyticsConsent,
   pageviewKeyForPath,
+  pageviewProperties,
   postHogInitOptions,
   readCookieConsent,
   routeFamilyForPath,
@@ -15,6 +16,7 @@ const cookieConsentKey = "storyarn:cookie-consent:v1";
 describe("PostHog frontend utility", () => {
   beforeEach(() => {
     localStorage.clear();
+    delete document.documentElement.dataset.gettextLocale;
   });
 
   it("enables browser error autocapture only when configured", () => {
@@ -74,12 +76,28 @@ describe("PostHog frontend utility", () => {
 
     expect(
       sanitizeProperties("page viewed", {
+        content_locale: "es",
         email: "owner@example.com",
         route_family: "sheets",
         sheet_id: 42,
         url: "/workspaces/private-workspace",
       }),
-    ).toEqual({ route_family: "sheets" });
+    ).toEqual({ content_locale: "es", route_family: "sheets" });
+  });
+
+  it("adds the current Gettext content locale to pageview properties", () => {
+    document.documentElement.dataset.gettextLocale = " es ";
+
+    expect(pageviewProperties("/es/blog/presentamos-storyarn")).toEqual({
+      content_locale: "es",
+      route_family: "blog",
+    });
+
+    delete document.documentElement.dataset.gettextLocale;
+
+    expect(pageviewProperties("/blog/introducing-storyarn")).toEqual({
+      route_family: "blog",
+    });
   });
 
   it("uses path only as a private dedupe key so same-family navigation still counts", () => {
@@ -87,8 +105,17 @@ describe("PostHog frontend utility", () => {
     expect(routeFamilyForPath("/privacy")).toBe("legal");
     expect(routeFamilyForPath("/terms")).toBe("legal");
     expect(routeFamilyForPath("/blog")).toBe("blog");
-    expect(routeFamilyForPath("/blog/test-branching-dialogue-before-export")).toBe("blog");
+    expect(routeFamilyForPath("/blog/introducing-storyarn")).toBe("blog");
+    expect(routeFamilyForPath("/es/blog")).toBe("blog");
+    expect(routeFamilyForPath("/es/blog/presentamos-storyarn")).toBe("blog");
+    expect(routeFamilyForPath("/es")).toBe("public_home");
+    expect(routeFamilyForPath("/es/privacy")).toBe("legal");
+    expect(routeFamilyForPath("/es/terms")).toBe("legal");
+    expect(routeFamilyForPath("/es/docs/welcome/start-here")).toBe("docs");
+    expect(routeFamilyForPath("/fil/blog")).toBe("blog");
+    expect(routeFamilyForPath("/zh-Hant/blog/introducing-storyarn")).toBe("blog");
     expect(routeFamilyForPath("/blogger")).toBe("other");
+    expect(routeFamilyForPath("/es/blogger")).toBe("other");
     expect(routeFamilyForPath("/workspaces/ws/projects/project/sheets/8")).toBe("sheets");
     expect(routeFamilyForPath("/workspaces/ws/projects/project/sheets/9")).toBe("sheets");
     expect(routeFamilyForPath("/workspaces/ws/projects/project/flows/1/play")).toBe("flow_player");

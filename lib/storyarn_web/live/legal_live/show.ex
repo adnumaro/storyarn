@@ -3,19 +3,17 @@ defmodule StoryarnWeb.LegalLive.Show do
 
   use StoryarnWeb, :live_view
 
+  alias StoryarnWeb.PublicSEO
+  alias StoryarnWeb.PublicURLs
+
   @controller_address "Grådybet 73B, 6700 Esbjerg, Denmark"
   @controller_name "Adrián Nuhacet Martin Rodriguez"
   @updated_at "2026-06-21"
 
   @impl true
   def mount(_params, _session, socket) do
-    document = legal_document(socket.assigns.live_action)
-
     {:ok,
      socket
-     |> assign(:page_title, document.title)
-     |> assign(:seo_description, document.description)
-     |> assign(:document, document.key)
      |> assign(:updated_at, @updated_at)
      |> assign(:controller_address, @controller_address)
      |> assign(:controller_name, @controller_name)
@@ -23,18 +21,40 @@ defmodule StoryarnWeb.LegalLive.Show do
   end
 
   @impl true
+  def handle_params(_params, _uri, socket) do
+    document = legal_document(socket.assigns.live_action)
+
+    metadata =
+      PublicSEO.static_page_metadata(
+        socket.assigns.locale,
+        document.page,
+        document.title,
+        document.description
+      )
+
+    {:noreply,
+     socket
+     |> assign(metadata)
+     |> assign(:document, document.key)
+     |> assign(:privacy_url, PublicURLs.privacy_path(socket.assigns.locale))}
+  end
+
+  @impl true
   def render(assigns) do
+    assigns = assign(assigns, :seo_metadata, Layouts.live_seo_metadata(assigns))
+
     ~H"""
     <StoryarnWeb.Components.PublicLayout.public
       flash={@flash}
       socket={@socket}
+      seo_metadata={@seo_metadata}
       current_scope={@current_scope}
+      language_links={@language_links}
       theme="dark"
     >
       <.vue
         v-component="live/public/legal/LegalPage"
         v-socket={@socket}
-        v-inject="public-layout"
         id={"legal-#{@document}-page"}
         class="flex flex-1 flex-col"
         document={@document}
@@ -42,6 +62,7 @@ defmodule StoryarnWeb.LegalLive.Show do
         controller-address={@controller_address}
         controller-name={@controller_name}
         contact-email={@contact_email}
+        privacy-url={@privacy_url}
       />
     </StoryarnWeb.Components.PublicLayout.public>
     """
@@ -49,18 +70,27 @@ defmodule StoryarnWeb.LegalLive.Show do
 
   defp legal_document(:terms) do
     %{
+      page: :terms,
       key: "terms",
-      title: gettext("Terms of Use"),
-      description: gettext("Terms of Use for Storyarn, the narrative design platform for game projects.")
+      title: dgettext("public", "Terms of Use"),
+      description:
+        dgettext(
+          "public",
+          "Terms of Use for Storyarn, the narrative design platform for game projects."
+        )
     }
   end
 
   defp legal_document(_privacy) do
     %{
+      page: :privacy,
       key: "privacy",
-      title: gettext("Privacy Policy"),
+      title: dgettext("public", "Privacy Policy"),
       description:
-        gettext("Privacy Policy for Storyarn, including account, waitlist, invitation, and product analytics data.")
+        dgettext(
+          "public",
+          "Privacy Policy for Storyarn, including account, waitlist, invitation, and product analytics data."
+        )
     }
   end
 

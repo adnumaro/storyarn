@@ -16,6 +16,8 @@ defmodule StoryarnWeb.Components.IconComponents do
       "M3 18a1 1 0 0 1-1-1V5a2 2 0 0 1 2-2h5a3 3 0 0 1 3 3v15a3 3 0 0 0-3-3Z",
       "M21 18a1 1 0 0 0 1-1V5a2 2 0 0 0-2-2h-5a3 3 0 0 0-3 3v15a3 3 0 0 1 3-3Z"
     ],
+    "check" => ["M20 6 9 17l-5-5"],
+    "chevron-down" => ["m6 9 6 6 6-6"],
     "mail" => [
       "m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7",
       "M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"
@@ -37,7 +39,8 @@ defmodule StoryarnWeb.Components.IconComponents do
       "M22 5h-4",
       "M4 17v2",
       "M5 18H3"
-    ]
+    ],
+    "x" => ["M18 6 6 18", "m6 6 12 12"]
   }
 
   attr :name, :string, required: true

@@ -80,6 +80,7 @@
       "subtitle": "Progreso de traducción y estadísticas",
       "progress_by_language": "Progreso por idioma",
       "no_targets_configured": "No hay idiomas destino configurados.",
+      "select_language": "Idioma destino",
       "word_counts_by_speaker": "Recuento de palabras por personaje",
       "speaker_header": "Personaje",
       "lines_header": "Líneas",

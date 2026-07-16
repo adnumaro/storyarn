@@ -98,6 +98,17 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       sidebar = get_sidebar_props(view)
       values = Enum.map(sidebar["addLanguageOptions"], & &1["value"])
       refute "en" in values
+
+      expected_option = %{
+        "flagCode" => "us",
+        "label" => "English (US)",
+        "languageTag" => "en-US",
+        "shortLabel" => "EN",
+        "value" => "en-us"
+      }
+
+      assert expected_option in sidebar["sourceLanguageOptions"]
+      assert expected_option in sidebar["addLanguageOptions"]
     end
 
     test "passes flag codes for source and target locales", %{conn: conn, user: user} do

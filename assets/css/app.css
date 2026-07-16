@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "katex/dist/katex.min.css";
+@import "./language-flags.css";
 @import "./player.css";
 @import "./screenplay.css";
 
@@ -694,5 +695,146 @@
 
   .docs-image-placeholder svg {
     @apply size-5 shrink-0 opacity-50;
+  }
+
+  /* Editorial blog typography. Kept separate from the denser documentation rhythm. */
+  .blog-content {
+    color: hsl(var(--foreground) / 0.84);
+    font-size: 1.075rem;
+    line-height: 1.85;
+  }
+
+  .blog-content > :first-child {
+    margin-top: 0;
+  }
+
+  .blog-content p + p {
+    margin-top: 1.6rem;
+  }
+
+  .blog-content h2 {
+    margin: 5rem 0 1.5rem;
+    scroll-margin-top: 8rem;
+    color: hsl(var(--foreground));
+    font-size: 2.15rem;
+    font-weight: 700;
+    letter-spacing: -0.035em;
+    line-height: 1.15;
+  }
+
+  .blog-content h3 {
+    margin: 3.5rem 0 1.25rem;
+    color: hsl(var(--foreground));
+    font-size: 1.5rem;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+
+  .blog-content strong {
+    color: hsl(var(--foreground));
+    font-weight: 700;
+  }
+
+  .blog-content a {
+    color: hsl(var(--primary));
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-color: hsl(var(--primary) / 0.4);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+    transition:
+      color 150ms ease,
+      text-decoration-color 150ms ease;
+  }
+
+  .blog-content a:hover {
+    color: hsl(var(--foreground));
+    text-decoration-color: hsl(var(--foreground) / 0.55);
+  }
+
+  .blog-content a:focus-visible {
+    border-radius: 0.25rem;
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 3px;
+  }
+
+  .blog-content ul,
+  .blog-content ol {
+    display: grid;
+    gap: 0.75rem;
+    margin: 1.75rem 0;
+    padding-left: 1.5rem;
+  }
+
+  .blog-content ul {
+    list-style: disc;
+  }
+
+  .blog-content ol {
+    list-style: decimal;
+  }
+
+  .blog-content blockquote {
+    margin: 2.5rem 0;
+    border-left: 3px solid hsl(var(--primary));
+    padding: 0.5rem 0 0.5rem 1.5rem;
+    color: hsl(var(--foreground));
+    font-size: 1.25rem;
+    font-weight: 500;
+    line-height: 1.65;
+  }
+
+  .blog-content > img,
+  .blog-content figure {
+    position: relative;
+    left: 50%;
+    width: min(72rem, calc(100vw - 3rem));
+    max-width: none;
+    height: auto;
+    margin: 3.5rem 0;
+    transform: translateX(-50%);
+    border: 1px solid hsl(var(--border) / 0.8);
+    border-radius: 1.25rem;
+    background: hsl(var(--card));
+    box-shadow: 0 28px 90px rgb(0 0 0 / 0.25);
+  }
+
+  .blog-content figure {
+    overflow: hidden;
+  }
+
+  .blog-content figure img {
+    width: 100%;
+    height: auto;
+    margin: 0;
+  }
+
+  .blog-content figcaption {
+    border-top: 1px solid hsl(var(--border) / 0.65);
+    padding: 0.85rem 1.1rem 1rem;
+    color: hsl(var(--muted-foreground));
+    font-size: 0.875rem;
+    line-height: 1.55;
+    text-align: center;
+  }
+
+  @media (max-width: 640px) {
+    .blog-content {
+      font-size: 1rem;
+      line-height: 1.8;
+    }
+
+    .blog-content h2 {
+      margin-top: 4rem;
+      font-size: 1.8rem;
+    }
+
+    .blog-content > img,
+    .blog-content figure {
+      width: calc(100vw - 2rem);
+      margin: 2.5rem 0;
+      border-radius: 0.9rem;
+    }
   }
 }

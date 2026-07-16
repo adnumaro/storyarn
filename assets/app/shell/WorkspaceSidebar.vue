@@ -102,6 +102,7 @@ const handleLogout = () => {
       <DropdownMenu>
         <DropdownMenuTrigger as-child>
           <button
+            id="workspace-user-menu-trigger"
             class="flex items-center gap-2 w-full p-2 rounded-md hover:bg-accent transition-colors text-left group"
           >
             <UserAvatar
@@ -121,6 +122,7 @@ const handleLogout = () => {
         <DropdownMenuContent align="end" :side-offset="4" class="w-full min-w-56">
           <DropdownMenuItem as-child>
             <a
+              id="workspace-account-settings-link"
               href="/users/settings"
               data-phx-link="redirect"
               data-phx-link-state="push"

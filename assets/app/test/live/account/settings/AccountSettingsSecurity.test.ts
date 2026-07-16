@@ -4,7 +4,7 @@ import { nextTick } from "vue";
 import AccountSettingsSecurity from "../../../../live/account/settings/AccountSettingsSecurity.vue";
 import { createMockLive } from "../../../setup";
 
-function mountSecurity() {
+function mountSecurity(props: Record<string, unknown> = {}) {
   return mount(AccountSettingsSecurity, {
     props: {
       currentEmail: "ada@example.com",
@@ -22,6 +22,7 @@ function mountSecurity() {
         },
         valid: false,
       },
+      ...props,
     },
     global: {
       provide: {
@@ -56,6 +57,13 @@ describe("AccountSettingsSecurity", () => {
     );
 
     const wrapper = mountSecurity();
+    const hiddenForm = wrapper.get('form[action="/users/update-password"]');
+
+    expect(hiddenForm.attributes("method")).toBe("post");
+    expect(
+      wrapper.find('form[action="/users/update-password"] input[name="_method"]').exists(),
+    ).toBe(false);
+    expect(hiddenForm.get('input[name="_csrf_token"]').attributes("name")).toBe("_csrf_token");
 
     await wrapper.get("#security-password").setValue("new-password-123");
     await wrapper.get("#security-password-confirmation").setValue("new-password-123");
@@ -68,11 +76,23 @@ describe("AccountSettingsSecurity", () => {
     expect(submittedValues).toEqual([
       {
         _csrf_token: "",
-        _method: "put",
         "user[email]": "ada@example.com",
         "user[password]": "new-password-123",
         "user[password_confirmation]": "new-password-123",
       },
     ]);
+  });
+
+  it("includes a validated sudo grant in the password POST", () => {
+    const wrapper = mountSecurity({ sudoGrant: "signed-session-grant" });
+
+    const hiddenForm = wrapper.get('form[action="/users/update-password"]');
+    const grantInput = wrapper.get('input[name="sudo_grant"]');
+    expect(hiddenForm.attributes("method")).toBe("post");
+    expect(
+      wrapper.find('form[action="/users/update-password"] input[name="_method"]').exists(),
+    ).toBe(false);
+    expect(hiddenForm.get('input[name="_csrf_token"]').attributes("name")).toBe("_csrf_token");
+    expect(grantInput.attributes("value")).toBe("signed-session-grant");
   });
 });

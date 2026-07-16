@@ -12,7 +12,7 @@ const eventPropertyAllowlist = new Map([
   ],
   ["flow player completed", new Set(["step_count", "choices_made"])],
   ["flow player started", new Set(["project_id"])],
-  ["page viewed", new Set(["route_family"])],
+  ["page viewed", new Set(["content_locale", "route_family"])],
   ["project created", new Set(["project_id", "workspace_id"])],
   ["project exported", new Set(["format", "asset_mode", "section_count"])],
   ["project imported", new Set(["has_conflicts"])],
@@ -50,6 +50,9 @@ const routeFamilies = [
   [(pathname) => pathname.includes("/projects"), "project_dashboard"],
   [(pathname) => pathname.startsWith("/workspaces"), "workspace"],
 ];
+
+const localizedPublicPathPattern =
+  /^\/[a-z]{2,3}(?:-[a-z0-9]{2,8})*(?<path>\/(?:contact|privacy|terms|docs|blog)(?:\/.*)?|)$/i;
 
 const privateAutoProperties = new Set([
   "$current_url",
@@ -132,13 +135,21 @@ export function capture(eventName, properties = {}) {
 }
 
 export function capturePageview() {
-  const routeFamily = routeFamilyForPath(window.location.pathname);
   const pageviewKey = pageviewKeyForPath(window.location.pathname);
 
   if (pageviewKey === lastPageviewKey) return;
 
   lastPageviewKey = pageviewKey;
-  capture("page viewed", { route_family: routeFamily });
+  capture("page viewed", pageviewProperties(window.location.pathname));
+}
+
+export function pageviewProperties(pathname) {
+  const contentLocale = document.documentElement.dataset.gettextLocale?.trim();
+
+  return {
+    ...(contentLocale ? { content_locale: contentLocale } : {}),
+    route_family: routeFamilyForPath(pathname),
+  };
 }
 
 export function identifyCurrentUser() {
@@ -304,7 +315,9 @@ function isAllowedValue(value) {
 }
 
 export function routeFamilyForPath(pathname) {
-  const match = routeFamilies.find(([matches]) => matches(pathname));
+  const localizedMatch = pathname.match(localizedPublicPathPattern);
+  const normalizedPath = localizedMatch ? localizedMatch.groups?.path || "/" : pathname;
+  const match = routeFamilies.find(([matches]) => matches(normalizedPath));
   return match?.[1] || "other";
 }
 

@@ -1,24 +1,80 @@
 <script setup lang="ts">
-import { ArrowRight, Shield } from "lucide-vue-next";
-import { ref } from "vue";
+import { ArrowRight, LoaderCircle, Shield } from "lucide-vue-next";
+import { onBeforeUnmount, ref, watch } from "vue";
 import PasswordInput from "@components/forms/PasswordInput.vue";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { Label } from "@components/ui/label/index.ts";
+import { useLive } from "@shared/composables/useLive.ts";
 
-const {
-  email,
-  loginAction,
-  backUrl = "/workspaces",
-  csrfToken,
-} = defineProps<{
+const { email, backUrl } = defineProps<{
   email: string;
-  loginAction: string;
-  backUrl?: string;
-  csrfToken: string;
+  backUrl: string;
 }>();
 
+const errorCodes = ["invalid_password", "rate_limited", "session_expired"] as const;
+type ErrorCode = (typeof errorCodes)[number];
+
+const live = useLive();
 const passwordValue = ref("");
+const errorCode = ref<ErrorCode | null>(null);
+const submitting = ref(false);
+const confirmationTimeoutMs = 10_000;
+let confirmationTimeout: ReturnType<typeof setTimeout> | undefined;
+let nextAttemptId = 0;
+let activeAttemptId: number | null = null;
+
+watch(passwordValue, () => {
+  errorCode.value = null;
+});
+
+function replyError(reply: unknown): ErrorCode | null {
+  if (reply === null || typeof reply !== "object") return null;
+
+  const error = (reply as Record<string, unknown>).error;
+  return typeof error === "string" && errorCodes.includes(error as ErrorCode)
+    ? (error as ErrorCode)
+    : null;
+}
+
+function finishSubmission(attemptId: number, error: ErrorCode | null): void {
+  if (activeAttemptId !== attemptId) return;
+
+  if (confirmationTimeout !== undefined) clearTimeout(confirmationTimeout);
+  confirmationTimeout = undefined;
+  activeAttemptId = null;
+  submitting.value = false;
+  errorCode.value = error;
+}
+
+onBeforeUnmount(() => {
+  if (confirmationTimeout !== undefined) clearTimeout(confirmationTimeout);
+  confirmationTimeout = undefined;
+  activeAttemptId = null;
+});
+
+function confirmAccess(): void {
+  if (submitting.value || passwordValue.value.length === 0) return;
+
+  const attemptId = ++nextAttemptId;
+  activeAttemptId = attemptId;
+  submitting.value = true;
+  errorCode.value = null;
+  confirmationTimeout = setTimeout(() => {
+    finishSubmission(attemptId, "session_expired");
+  }, confirmationTimeoutMs);
+
+  live.pushEvent(
+    "confirm_access",
+    { password: passwordValue.value },
+    (reply) => {
+      finishSubmission(attemptId, replyError(reply));
+    },
+    () => {
+      finishSubmission(attemptId, "session_expired");
+    },
+  );
+}
 </script>
 
 <template>
@@ -39,9 +95,7 @@ const passwordValue = ref("");
       </div>
     </div>
 
-    <form :action="loginAction" method="post">
-      <input type="hidden" name="_csrf_token" :value="csrfToken" />
-      <input type="hidden" name="_action" value="confirmed" />
+    <form id="confirm-access-form" :aria-busy="submitting" @submit.prevent="confirmAccess">
       <div class="space-y-1.5 mb-4">
         <Label for="confirm-email">{{ $t("auth.email") }}</Label>
         <Input
@@ -61,17 +115,30 @@ const passwordValue = ref("");
           v-model="passwordValue"
           name="user[password]"
           autocomplete="current-password"
+          :aria-invalid="Boolean(errorCode)"
+          :aria-describedby="errorCode ? 'confirm-password-error' : undefined"
           required
           autofocus
         />
+        <p
+          v-if="errorCode"
+          id="confirm-password-error"
+          role="alert"
+          class="text-sm font-medium text-destructive"
+        >
+          {{ $t(`auth.confirm_access.errors.${errorCode}`) }}
+        </p>
       </div>
-      <Button type="submit" class="w-full">
-        {{ $t("auth.confirm_access.submit") }} <ArrowRight class="ml-1" />
+      <Button type="submit" class="w-full" :disabled="submitting">
+        {{ $t("auth.confirm_access.submit") }}
+        <LoaderCircle v-if="submitting" class="ml-1 size-4 animate-spin" />
+        <ArrowRight v-else class="ml-1 size-4" />
       </Button>
     </form>
 
     <div class="text-center">
       <a
+        id="confirm-access-back-link"
         :href="backUrl"
         data-phx-link="redirect"
         data-phx-link-state="push"
