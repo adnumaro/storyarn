@@ -1,0 +1,398 @@
+assets/app/modules/localization/components/chrome/LocalizationSidebar.vue
+  s_3cb2d6b0d2b40c::t_ff333db431d45b 117-125,223-232
+  s_3cb2d6b0d2b40c::t_2aa25c05f2ced3 3,7-9,34-35,45,48-59,64,79-80,110-115,126-134,136,196-199,218-221,233-236
+  s_3cb2d6b0d2b40c::t_9265a4f83f66d5 116,222
+assets/app/test/live/localization/LocalizationGlossary.test.ts
+  s_3cb2d6b0d2b40c::t_94e08652ff9402 1-70
+test/storyarn_web/live/localization_live/report_test.exs
+  s_3cb2d6b0d2b40c::t_d0d66fd0426995 72,83-93
+test/storyarn_web/live/settings_live/profile_test.exs
+  s_3cb2d6b0d2b40c::t_e5aca2fb48f443 64-74
+  s_3cb2d6b0d2b40c::t_b1e2931bbd2f1c 83,118-138
+  s_3cb2d6b0d2b40c::t_ac845a6550d060 84-100
+  s_3cb2d6b0d2b40c::t_fd1e46e68ba372 33-50
+  s_3cb2d6b0d2b40c::t_1c058f06eb7334 62-63
+  s_3cb2d6b0d2b40c::t_d198516332d3e4 75-77,80-82
+  s_4ec54d1685d1db::t_a0b279d77b2585 8,78-79
+test/e2e/settings_form_focus_test.exs
+  s_3cb2d6b0d2b40c::t_4c85be4aa412db 23,37,45-46,65-70
+  s_3cb2d6b0d2b40c::t_aa553f8df53132 16-17,21,24-27,35,38-41,47,49,51-52,56-57,62-64
+  s_3cb2d6b0d2b40c::t_a5aa9827dadb2d 1-15,18-20,22,28-34,36,42-44,48,50,53-55,58-61,71-72
+assets/app/locales/en/project-settings.json
+  s_3cb2d6b0d2b40c::t_cb6d2dad73478d 56
+lib/storyarn_web/language_picker_option.ex
+  s_3cb2d6b0d2b40c::t_205499a8e2d7ca 1-48
+test/storyarn/rate_limiter_test.exs
+  s_3cb2d6b0d2b40c::t_75239e5887a8eb 42-57
+lib/storyarn_web/live/project_settings_live/general.ex
+  s_3cb2d6b0d2b40c::t_205499a8e2d7ca 13,43,71-73,157,159-161,264-265
+  s_3cb2d6b0d2b40c::t_fbd0e58494ce0a 266
+lib/storyarn/localization/languages.ex
+  s_3cb2d6b0d2b40c::t_a6a8be5a064d7d 126-139,162-164
+assets/app/live/layouts/docs/Layout.vue
+  s_3cb2d6b0d2b40c::t_159c0ead6bc9b1 14-15,67-68,162-171,357,360-361,363,371
+  s_3cb2d6b0d2b40c::t_9265a4f83f66d5 362
+  s_3cb2d6b0d2b40c::t_ff333db431d45b 364-370
+lib/storyarn_web/components/public_language_switcher.ex
+  s_3cb2d6b0d2b40c::t_9db8bbda2118d8 7-8,16,20,26-28,33,36,47-48,50-51,53-57,63-68,74-75,78,81-83,95,113,115,118-126,128-130,132-133,135-146
+  s_3cb2d6b0d2b40c::t_1ce51ddb23b8d8 19,31-32,44
+  s_3cb2d6b0d2b40c::t_461eb22579c26d 6,17-18,21-25,29-30,39-43,45,49,79-80
+  s_3cb2d6b0d2b40c::t_8b069636ec5913 58-62,70-73
+  s_3cb2d6b0d2b40c::t_dbeae052f3a882 52
+  s_3cb2d6b0d2b40c::t_1548486368e610 127,131,134
+  s_3cb2d6b0d2b40c::t_5d9c90450a713c 76-77,84-94,96-112,114
+assets/app/test/setup.ts
+  s_3cb2d6b0d2b40c::t_27082e7a4528e5 50-56
+  s_3cb2d6b0d2b40c::t_786f98ddc81d4c 49,57-59
+lib/storyarn/rate_limiter.ex
+  s_3cb2d6b0d2b40c::t_4b3d9f9e2a5556 11,41-46,65-68
+  s_3cb2d6b0d2b40c::t_9bed1ac921a0e1 69-70
+assets/app/live/workspace/settings/WorkspaceSettingsGeneral.vue
+  s_3cb2d6b0d2b40c::t_cb6d2dad73478d 45,68
+  s_3cb2d6b0d2b40c::t_6b1baf34dce376 18-19,35,195-198,206
+  s_3cb2d6b0d2b40c::t_bf9198e7d40ad6 130
+  s_3cb2d6b0d2b40c::t_9265a4f83f66d5 199
+  s_3cb2d6b0d2b40c::t_ff333db431d45b 200-205
+  s_3cb2d6b0d2b40c::t_dbeae052f3a882 192
+assets/app/live/account/settings/AccountSettingsProfile.vue
+  s_3cb2d6b0d2b40c::t_46222ac87a8aa4 23-28,39
+  s_3cb2d6b0d2b40c::t_9265a4f83f66d5 131
+  s_3cb2d6b0d2b40c::t_ff333db431d45b 132
+  s_3cb2d6b0d2b40c::t_765f54b455c5df 8-9,16,18,29-38,40-43,126-130,133
+  s_3cb2d6b0d2b40c::t_bf9198e7d40ad6 140-142
+assets/css/language-flags.css
+  s_3cb2d6b0d2b40c::t_eef826d680e274 1-2,4-9,56-183
+  s_3cb2d6b0d2b40c::t_354efb669ae8b0 3,10-55
+assets/app/test/live/workspace/settings/WorkspaceSettingsGeneral.test.ts
+  s_3cb2d6b0d2b40c::t_786f98ddc81d4c 1-41,43-57
+  s_3cb2d6b0d2b40c::t_bf9198e7d40ad6 42
+assets/app/live/layouts/settings/Layout.vue
+  s_3cb2d6b0d2b40c::t_1c8cacd6bba862 60,70,100-110,194-198,201,263,265
+assets/app/live/localization/glossary/LocalizationGlossary.vue
+  s_3cb2d6b0d2b40c::t_94e08652ff9402 13-14,45-46,67,74-75,167-182,205-207,291,301
+test/storyarn_web/live/localization_live/index_test.exs
+  s_3cb2d6b0d2b40c::t_90aef9406f309c 101-111
+assets/app/components/language/types.ts
+  s_3cb2d6b0d2b40c::t_9a8c48412240f4 1-8
+priv/blog/en/2026-07-14-introducing-storyarn.md
+  s_3cb2d6b0d2b40c::t_a0f45078f97393 7,31,33-35,39
+  s_3cb2d6b0d2b40c::t_6201a4f9526a76 90
+assets/app/test/live/account/settings/AccountSettingsSecurity.test.ts
+  s_3cb2d6b0d2b40c::t_b1e2931bbd2f1c 60-62,89,91
+  s_3cb2d6b0d2b40c::t_4dd9a0fab77843 66,95
+  s_3cb2d6b0d2b40c::t_656daed790fc20 63-65,92-94
+  s_3cb2d6b0d2b40c::t_b8c93d319b903e 7,25,85-88,90,96
+  s_3cb2d6b0d2b40c::t_e0e5965c06a530 97
+assets/app/locales/es/localization.json
+  s_3cb2d6b0d2b40c::t_8554a7012b1646 83
+assets/app/live/auth/confirm-access/AuthConfirmAccessForm.vue
+  s_3cb2d6b0d2b40c::t_b355611953a73c 3,22-23,31-34,38-39,43-44,46-47,49-51,54,63,65
+  s_3cb2d6b0d2b40c::t_d3ca8730afc148 2,8,10,15-18,20-21,26-30,35-37,48,55-58,61-62,66-70,72-73,75-77,98,118-119,123-130,132-135
+  s_3cb2d6b0d2b40c::t_fd04ce0e0fad8d 24-25,40-42,45,52-53,59-60,64,71,74
+  s_3194498e925661::t_e9406f854ce3dc 12,141
+test/storyarn_web/live/localization_live/glossary_test.exs
+  s_3cb2d6b0d2b40c::t_94e08652ff9402 30-47
+lib/storyarn/accounts.ex
+  s_3cb2d6b0d2b40c::t_0b427c9ed2d77b 121-123
+  s_3cb2d6b0d2b40c::t_f573419225997b 20
+  s_3cb2d6b0d2b40c::t_a6a8be5a064d7d 120,128
+  s_3cb2d6b0d2b40c::t_2e846972bb466e 118-119
+  s_3cb2d6b0d2b40c::t_8b1d91503cd052 124-127
+assets/css/app.css
+  s_3cb2d6b0d2b40c::t_eef826d680e274 4
+assets/app/test/components/language/LanguagePicker.test.ts
+  s_3cb2d6b0d2b40c::t_084888e4a92d9a 1-24,32-56,60-66,68,71-73,83-85,87-94,97-98
+  s_3cb2d6b0d2b40c::t_461eb22579c26d 57-59
+  s_3cb2d6b0d2b40c::t_b092a87ccdbf92 67
+  s_3cb2d6b0d2b40c::t_a6f75896aa0f78 25-31,74-82
+  s_3cb2d6b0d2b40c::t_ff333db431d45b 86
+  s_3cb2d6b0d2b40c::t_faf35f67dc4773 69-70
+  s_3cb2d6b0d2b40c::t_5d9c90450a713c 95-96
+lib/storyarn_web/live/settings_live/workspace_general.ex
+  s_3cb2d6b0d2b40c::t_205499a8e2d7ca 13,59
+lib/storyarn_web/live/settings_live/security.ex
+  s_3cb2d6b0d2b40c::t_454b4bc320cf36 10,80-82,84,92
+  s_3cb2d6b0d2b40c::t_a62f3c9d848b33 41,52,72-79
+  s_3cb2d6b0d2b40c::t_3d52815bc65fcd 11-13
+  s_3cb2d6b0d2b40c::t_972b5e955ec08a 85-87,89-91
+  s_1f401b22c79847::t_7119d2933f2351 8,88
+test/storyarn_web/live/docs_live/show_test.exs
+  s_3cb2d6b0d2b40c::t_fd1e46e68ba372 176,180-181,184,188-189
+test/storyarn_web/live/user_live/auth_redirect_test.exs
+  s_3cb2d6b0d2b40c::t_5707dbcfcdd9f6 2,8,41,53,114-131
+  s_3cb2d6b0d2b40c::t_166d72d63baf1e 35,50
+  s_3cb2d6b0d2b40c::t_023a4bd6cc2ea1 27-28,38-40,44,55-59,63-70,74,78-79,94-96,99-101,104,106-109
+  s_3cb2d6b0d2b40c::t_3263961362c9e2 60-61,71-73,75-77,80-93,105,112-113
+  s_3cb2d6b0d2b40c::t_cfe4130bbd2218 110
+  s_3cb2d6b0d2b40c::t_ac5838e0ef76db 29-34
+  s_3cb2d6b0d2b40c::t_cfcb344e325802 36-37
+  s_3cb2d6b0d2b40c::t_8fd1d0d86097ad 42-43
+  s_3cb2d6b0d2b40c::t_77e1ebc6577087 45-49
+  s_3cb2d6b0d2b40c::t_87dc6b0ee3f390 51-52
+  s_3cb2d6b0d2b40c::t_1171a58baa805e 54
+  s_3cb2d6b0d2b40c::t_356ea3f2b210f3 62
+  s_3cb2d6b0d2b40c::t_a1dd5695f30405 111
+assets/app/locales/en/auth.json
+  s_3cb2d6b0d2b40c::t_d3ca8730afc148 34-39
+assets/app/locales/en/localization.json
+  s_3cb2d6b0d2b40c::t_8554a7012b1646 83
+lib/storyarn_web/live/blog_live/show.ex
+  s_3cb2d6b0d2b40c::t_a0f45078f97393 135,151-154,156-163
+  s_3cb2d6b0d2b40c::t_6201a4f9526a76 155
+lib/storyarn_web/router.ex
+  s_3cb2d6b0d2b40c::t_8ed99b3ee54b58 134
+  s_3cb2d6b0d2b40c::t_c85dce9d3bad52 11,20
+  s_3cb2d6b0d2b40c::t_d7718d80c157d7 182-185
+assets/app/index.ts
+  s_3cb2d6b0d2b40c::t_3056554a8da655 129-131,133-134
+  s_3cb2d6b0d2b40c::t_5cf442c5019280 21-29,132
+  s_3cb2d6b0d2b40c::t_0a2d5fd09e4212 127-128,135
+lib/storyarn_web/live/localization_live/report.ex
+  s_3cb2d6b0d2b40c::t_d0d66fd0426995 7,205
+lib/storyarn/accounts/user_token.ex
+  s_3cb2d6b0d2b40c::t_cbcb28ef9e961c 84,86-87
+  s_3cb2d6b0d2b40c::t_0b427c9ed2d77b 85,88-94
+  s_3cb2d6b0d2b40c::t_7c080e663301d5 83
+assets/app/locales/es/auth.json
+  s_3cb2d6b0d2b40c::t_d3ca8730afc148 34-39
+assets/app/components/language/LanguageFlag.vue
+  s_3cb2d6b0d2b40c::t_9a8c48412240f4 1-31,33-36,38-39,41-43
+  s_3cb2d6b0d2b40c::t_354efb669ae8b0 32,37,40
+test/storyarn_web/live/project_live/settings_test.exs
+  s_3cb2d6b0d2b40c::t_fd1e46e68ba372 8,48-64,143-181
+  s_3cb2d6b0d2b40c::t_ff62609a6c14b7 182
+lib/storyarn_web/controllers/user_session_controller.ex
+  s_3cb2d6b0d2b40c::t_46781794a7b558 105-141
+  s_3cb2d6b0d2b40c::t_689edcf64670d9 8
+  s_3cb2d6b0d2b40c::t_2e15ff9934cfe9 102-103
+lib/storyarn_web/live/user_live/confirm_access.ex
+  s_3cb2d6b0d2b40c::t_cbcb28ef9e961c 8-10
+  s_3cb2d6b0d2b40c::t_d3e81e11e005a5 67-69,86-87,89,95-98
+  s_3cb2d6b0d2b40c::t_454b4bc320cf36 54-56,61
+  s_3cb2d6b0d2b40c::t_d3ca8730afc148 15-19,44,46,58-60,62-66,70-85,88,90-94,101-102
+  s_3cb2d6b0d2b40c::t_f704998bf14b17 57
+  s_3cb2d6b0d2b40c::t_cc65e1aff98c5d 37
+test/storyarn/blog_test.exs
+  s_3cb2d6b0d2b40c::t_a0f45078f97393 33,80-81,84,97-99,102
+  s_3cb2d6b0d2b40c::t_6201a4f9526a76 8-12,83,101,109-116
+  s_3cb2d6b0d2b40c::t_a42c4de8a25049 82,100
+  s_3cb2d6b0d2b40c::t_e6693403ea05cc 117-118
+test/storyarn_web/live/settings_live/security_test.exs
+  s_3cb2d6b0d2b40c::t_208a8ab5e9400e 13-16,91-117,119,121-127,129-130
+  s_3cb2d6b0d2b40c::t_e5aca2fb48f443 70-85
+  s_3cb2d6b0d2b40c::t_582f60974ac225 68-69
+  s_3cb2d6b0d2b40c::t_6ac5dbe41a3c63 86-90
+  s_3cb2d6b0d2b40c::t_bd8e47facc9d46 118
+  s_3cb2d6b0d2b40c::t_79dfac27abd3ef 120
+  s_3cb2d6b0d2b40c::t_9d3e4acdf5d553 128
+  s_1f401b22c79847::t_9c869b4ce3c304 7-8
+priv/blog/es/2026-07-14-presentamos-storyarn.md
+  s_3cb2d6b0d2b40c::t_a0f45078f97393 7,31,33-35,39
+  s_3cb2d6b0d2b40c::t_6201a4f9526a76 90
+test/storyarn/accounts_test.exs
+  s_3cb2d6b0d2b40c::t_29089397a80f87 494,498,500,504,511-512,516-518
+  s_3cb2d6b0d2b40c::t_a6a8be5a064d7d 495-497,501-502,513-515,531-532,534-536,552,565-567
+  s_3cb2d6b0d2b40c::t_0b427c9ed2d77b 9,493,499,503,505-510,519-530,533,537-551,553-564
+lib/storyarn_web/live/settings_live/profile.ex
+  s_3cb2d6b0d2b40c::t_205499a8e2d7ca 9-10,73,147-157
+  s_3cb2d6b0d2b40c::t_b1e2931bbd2f1c 13,106-111
+  s_3cb2d6b0d2b40c::t_a62f3c9d848b33 11,18,37-38,65,93-103,130-136,158
+  s_3cb2d6b0d2b40c::t_4438fc92d57329 14-17
+  s_3cb2d6b0d2b40c::t_ec9b2368f22ea8 19-20
+  s_3cb2d6b0d2b40c::t_0fd97ca6318561 137
+assets/app/test/live/project/settings/ProjectSettingsGeneral.test.ts
+  s_3cb2d6b0d2b40c::t_084888e4a92d9a 5-6,34,119-158,160
+  s_3cb2d6b0d2b40c::t_1c5d88fbf2f94b 159
+  s_3cb2d6b0d2b40c::t_25bccee9643f1f 161-162
+lib/storyarn_web/user_auth.ex
+  s_3cb2d6b0d2b40c::t_e5aca2fb48f443 37
+  s_3cb2d6b0d2b40c::t_5e6f197a0859a0 380,388,405,414-422,431,443,511,514
+  s_3cb2d6b0d2b40c::t_331b79c82c8545 38-40,53,263-267,270-272,274-291,376-379,381-387,389-404,406-413,423-430,432-433,453,478,487,494,500,509-510,512-513,515-530
+  s_3cb2d6b0d2b40c::t_10185aee854513 441
+  s_3cb2d6b0d2b40c::t_bd833d08e17e90 439-440
+  s_3cb2d6b0d2b40c::t_74128110a74a41 442
+  s_3cb2d6b0d2b40c::t_5f550154b106b4 444
+  s_3cb2d6b0d2b40c::t_9a092bc5364359 450-452
+  s_3cb2d6b0d2b40c::t_07284f9b373ce5 475-477
+  s_3cb2d6b0d2b40c::t_1b740536cacc85 479-481,484-486
+  s_3cb2d6b0d2b40c::t_1868d8cf131965 488-493
+  s_3cb2d6b0d2b40c::t_92890005eb4703 495-499
+  s_3cb2d6b0d2b40c::t_0575b9bed02c61 501-503,506-508
+  s_1f401b22c79847::t_d79db71cca91fe 435,437,447-449,482-483,504-505
+test/storyarn_web/live/settings_live/workspace_general_test.exs
+  s_3cb2d6b0d2b40c::t_fd1e46e68ba372 139-154
+test/e2e/blog_test.exs
+  s_3cb2d6b0d2b40c::t_b82a8cdb58e9ed 109,116,130,138-149,152-153,165-166,170-176,321-331,356-361,363-374,376-381,383-392,394-395
+  s_3cb2d6b0d2b40c::t_6201a4f9526a76 151,154-160,162-164,167-169,332-333,341-355,362,375,382
+  s_3cb2d6b0d2b40c::t_fa65d1b29ca592 150
+  s_3cb2d6b0d2b40c::t_005b65c2fdf0f8 334-340
+  s_3cb2d6b0d2b40c::t_be7e2c19f09c12 161
+  s_3cb2d6b0d2b40c::t_aa4e05e647fc0d 92,111,182,191
+  s_3cb2d6b0d2b40c::t_46222ac87a8aa4 192
+  s_3cb2d6b0d2b40c::t_9550ac5557d12d 193
+  s_3cb2d6b0d2b40c::t_7901e2cb09debd 393
+  s_3cb2d6b0d2b40c::t_08acaa14d23ecf 396
+assets/app/test/components/language/LanguageFlag.test.ts
+  s_3cb2d6b0d2b40c::t_354efb669ae8b0 24-32
+  s_3cb2d6b0d2b40c::t_084888e4a92d9a 1-11,13-23,33
+  s_3cb2d6b0d2b40c::t_631d8775581ce8 12
+assets/app/test/live/auth/confirm-access/AuthConfirmAccessForm.test.ts
+  s_3cb2d6b0d2b40c::t_126fa9464c60c1 2,4-5,7,11-16,22,30-49,65-80
+  s_3cb2d6b0d2b40c::t_b355611953a73c 84-116,118-119,160-163
+  s_3cb2d6b0d2b40c::t_49a8e980219ea9 129
+  s_3cb2d6b0d2b40c::t_fd04ce0e0fad8d 117,120-128,130-159
+  s_3cb2d6b0d2b40c::t_6fc58a74850a02 81-83
+  s_1db48ab2757886::t_6eb703ae483cd7 52
+lib/storyarn_web/live/localization_sidebar_live.ex
+  s_3cb2d6b0d2b40c::t_90aef9406f309c 23,336
+assets/app/locales/es/project-settings.json
+  s_3cb2d6b0d2b40c::t_cb6d2dad73478d 56
+lib/storyarn_web/components/settings_layout.ex
+  s_3cb2d6b0d2b40c::t_a62f3c9d848b33 25,46
+  s_3cb2d6b0d2b40c::t_b54da5de77f0b2 35-38,47-52
+lib/storyarn_web/components/docs_layout.ex
+  s_3cb2d6b0d2b40c::t_205499a8e2d7ca 12,137-138
+lib/storyarn_web/components/icon_components.ex
+  s_3cb2d6b0d2b40c::t_12be64c29d571f 19-20
+assets/app/live/localization/report/LocalizationReport.vue
+  s_3cb2d6b0d2b40c::t_d0d66fd0426995 6-7,55,153-154,156,158-168
+  s_3cb2d6b0d2b40c::t_8554a7012b1646 157
+test/e2e/settings_reauthentication_test.exs
+  s_3cb2d6b0d2b40c::t_e5aca2fb48f443 23
+  s_3cb2d6b0d2b40c::t_53ffb0416ac587 82-83
+  s_3cb2d6b0d2b40c::t_55b04a0e62649f 84
+  s_3cb2d6b0d2b40c::t_1bb505a5acce76 62-66
+  s_3cb2d6b0d2b40c::t_b1e2931bbd2f1c 13-15,21,25,70-81,85-95,124
+  s_3cb2d6b0d2b40c::t_023a4bd6cc2ea1 57-60,69
+  s_3cb2d6b0d2b40c::t_1311fbded968c1 10-12
+  s_3cb2d6b0d2b40c::t_392c83be7a7599 16-20
+  s_3cb2d6b0d2b40c::t_0af02b71c8a699 22
+  s_3cb2d6b0d2b40c::t_1125ba4f0a66ec 24
+  s_3cb2d6b0d2b40c::t_3380f11c7c50e9 26-28,54-56
+  s_3cb2d6b0d2b40c::t_bd7449f2684fb3 61
+  s_3cb2d6b0d2b40c::t_a1de448d6b7c78 67-68
+  s_3cb2d6b0d2b40c::t_a54346c03c6d5b 96-98,121-123
+  s_3cb2d6b0d2b40c::t_a48f21988e8b37 125
+  s_3cb2d6b0d2b40c::t_00169b3d792b8e 1-9,29-53,99-120
+assets/app/test/live/account/settings/AccountSettingsProfile.test.ts
+  s_3cb2d6b0d2b40c::t_bf9198e7d40ad6 79
+  s_3cb2d6b0d2b40c::t_786f98ddc81d4c 2-3,5-12,22-37,41,61-78,80-88
+  s_3cb2d6b0d2b40c::t_704072447b95ec 89
+test/storyarn_web/controllers/user_session_controller_test.exs
+  s_3cb2d6b0d2b40c::t_700456459f0704 171-172,176-177,181-203,232-249,304
+  s_3cb2d6b0d2b40c::t_46781794a7b558 204-231
+  s_3cb2d6b0d2b40c::t_689edcf64670d9 2,6-7,165-167,169-170,173-174,250-303
+  s_3cb2d6b0d2b40c::t_e5aca2fb48f443 136-163
+  s_3cb2d6b0d2b40c::t_d33fc7ae47499e 8-9
+  s_3cb2d6b0d2b40c::t_eb50cd567053ec 135
+  s_3cb2d6b0d2b40c::t_d70c04193a6096 164
+  s_3cb2d6b0d2b40c::t_bc80f39e7bd4be 168
+  s_3cb2d6b0d2b40c::t_e27d1764eeaecc 175
+  s_3cb2d6b0d2b40c::t_965a4bc48655fb 178-180
+  s_3cb2d6b0d2b40c::t_6a100888ba243f 305-306
+lib/storyarn/accounts/sessions.ex
+  s_3cb2d6b0d2b40c::t_33a7452457ef2b 37
+  s_3cb2d6b0d2b40c::t_5e6f197a0859a0 39-40,42,44
+  s_3cb2d6b0d2b40c::t_0b427c9ed2d77b 6-7,38,43,48-50,58
+  s_3cb2d6b0d2b40c::t_a6a8be5a064d7d 30,36,45-47
+  s_3cb2d6b0d2b40c::t_31279556f68e31 31-35,41,51-57,59-60
+  s_3cb2d6b0d2b40c::t_8a9bf8277e93f3 61
+assets/app/components/language/LanguagePicker.vue
+  s_3cb2d6b0d2b40c::t_7ade6714798616 18-54,62-71,74,81,87
+  s_3cb2d6b0d2b40c::t_5d9c90450a713c 176-177,204-205
+  s_3cb2d6b0d2b40c::t_9a8c48412240f4 1-17,55-61,72-73,75,79-80,82-86,88-106,108-141,143-158,162-175,178-203,206-208
+  s_3cb2d6b0d2b40c::t_a6f75896aa0f78 159-161
+  s_3cb2d6b0d2b40c::t_415baab65501c8 142
+  s_3cb2d6b0d2b40c::t_461eb22579c26d 76-78,107
+test/storyarn_web/live/blog_live/show_test.exs
+  s_3cb2d6b0d2b40c::t_497b5ecbc2325a 41
+  s_3cb2d6b0d2b40c::t_a42c4de8a25049 75,132
+  s_3cb2d6b0d2b40c::t_a0f45078f97393 70,73-74,76-78,80,130-131,133-142,144
+  s_3cb2d6b0d2b40c::t_6201a4f9526a76 79,143
+  s_3cb2d6b0d2b40c::t_fa65d1b29ca592 81,145
+lib/storyarn_web/live/localization_live/glossary.ex
+  s_3cb2d6b0d2b40c::t_94e08652ff9402 8,216-218
+test/storyarn_web/layouts_test.exs
+  s_3cb2d6b0d2b40c::t_aa4e05e647fc0d 108,138,188-189
+  s_3cb2d6b0d2b40c::t_1f76cea5bf76fd 190
+  s_3cb2d6b0d2b40c::t_1548486368e610 126-131,142,167-170,172-187
+  s_3cb2d6b0d2b40c::t_461eb22579c26d 191-194
+  s_3cb2d6b0d2b40c::t_509325b5bde818 139,195-197
+  s_3cb2d6b0d2b40c::t_1ce51ddb23b8d8 137,143-165
+  s_3cb2d6b0d2b40c::t_8b069636ec5913 171
+  s_3cb2d6b0d2b40c::t_5c161e1c8737fa 166
+assets/app/live/account/settings/AccountSettingsSecurity.vue
+  s_3cb2d6b0d2b40c::t_a62f3c9d848b33 21,27,133
+test/storyarn/localization/languages_test.exs
+  s_3cb2d6b0d2b40c::t_6bc6bbb9a13568 181-182,188
+  s_3cb2d6b0d2b40c::t_ccee9c656c523c 183-185
+  s_3cb2d6b0d2b40c::t_a6a8be5a064d7d 162-165,201
+  s_3cb2d6b0d2b40c::t_1548486368e610 6-7,166-180,186-187,189-200
+assets/app/test/live/localization/LocalizationReport.test.ts
+  s_3cb2d6b0d2b40c::t_d0d66fd0426995 1-47,49-52,58-59
+  s_3cb2d6b0d2b40c::t_067dbbdfdc94d2 53-57
+  s_3cb2d6b0d2b40c::t_f9798492b52ea6 48
+assets/app/live/project/settings/ProjectSettingsGeneral.vue
+  s_3cb2d6b0d2b40c::t_9265a4f83f66d5 489
+  s_3cb2d6b0d2b40c::t_ff333db431d45b 490-494
+  s_3cb2d6b0d2b40c::t_31283fde5f9e47 2,5-7,31,73,83,92-109
+  s_3cb2d6b0d2b40c::t_fce81cf716c4b6 483-488,495-496,719-731
+  s_3cb2d6b0d2b40c::t_4b3f3c7713fb4a 732
+test/storyarn_web/user_auth_test.exs
+  s_3cb2d6b0d2b40c::t_e5aca2fb48f443 384-392
+  s_3cb2d6b0d2b40c::t_b82629a250dfd3 433
+  s_3cb2d6b0d2b40c::t_83df824e39b84d 346-347,349-351,357-380,394,401,409-432,434-456
+  s_3cb2d6b0d2b40c::t_588b6c2cff0cbb 67,329-332,345,348,352-356,381-383,393,395-400,402-408
+assets/app/shell/WorkspaceSidebar.vue
+  s_3cb2d6b0d2b40c::t_86ba0edad0079f 105,125
+test/support/e2e_helpers.ex
+  s_3cb2d6b0d2b40c::t_e2e9f68e04208c 21-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "3cadb48dd9302148e6bcfce71460ede886505a93",
+  "prompts": {},
+  "sessions": {
+    "s_1db48ab2757886": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6a89-fa0c-75a3-a1dd-7e1b0e972a9b",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_1f401b22c79847": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6a89-c3fd-7532-ade0-6a75ecfff089",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_3194498e925661": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6a89-e1ee-7ab2-a7f5-8cac47990a8e",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_3cb2d6b0d2b40c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b4a-b042-7412-8d10-5e6b95b13ee5",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_4ec54d1685d1db": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6aaf-8892-74f1-a276-d84810d2242b",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
