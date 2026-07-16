@@ -10,6 +10,7 @@ defmodule Storyarn.ProjectTemplates.Installation do
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates.Artifact
+  alias Storyarn.ProjectTemplates.Audit
   alias Storyarn.ProjectTemplates.Authorization
   alias Storyarn.ProjectTemplates.ProjectTemplate
   alias Storyarn.ProjectTemplates.ProjectTemplateInstall
@@ -31,6 +32,7 @@ defmodule Storyarn.ProjectTemplates.Installation do
   @permanent_errors ~w(
     archived
     checksum_mismatch
+    incompatible_template_snapshot
     limit_reached
     missing_asset_manifest
     missing_checksum
@@ -273,8 +275,20 @@ defmodule Storyarn.ProjectTemplates.Installation do
   defp load_verified_template_snapshot(version) do
     with {:ok, snapshot} <- SnapshotStorage.load_snapshot(version.snapshot_storage_key),
          {:ok, asset_manifest} <- load_template_asset_manifest(version),
-         :ok <- verify_template_checksum(version, snapshot, asset_manifest) do
+         :ok <- verify_template_checksum(version, snapshot, asset_manifest),
+         :ok <- validate_template_snapshot(snapshot) do
       {:ok, snapshot}
+    end
+  end
+
+  defp validate_template_snapshot(snapshot) do
+    case Audit.validate_snapshot_integrity(snapshot) do
+      :ok ->
+        :ok
+
+      {:error, errors} ->
+        Logger.warning("Rejected incompatible stored template snapshot: #{inspect(errors)}")
+        {:error, :incompatible_template_snapshot}
     end
   end
 
@@ -482,6 +496,10 @@ defmodule Storyarn.ProjectTemplates.Installation do
 
   defp permanent_error_message(:archived), do: "This template is no longer available."
   defp permanent_error_message(:checksum_mismatch), do: "The template failed its integrity check."
+
+  defp permanent_error_message(:incompatible_template_snapshot),
+    do: "This template version is incompatible and must be republished."
+
   defp permanent_error_message(:limit_reached), do: "The workspace project limit has been reached."
   defp permanent_error_message(:missing_asset_manifest), do: "The template asset manifest is unavailable."
   defp permanent_error_message(:missing_checksum), do: "The template integrity information is unavailable."

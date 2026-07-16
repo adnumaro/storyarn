@@ -89,6 +89,132 @@ defmodule Storyarn.Versioning.Builders.FlowSnapshotNormalizerTest do
     assert hd(normalized["connections"])["source_pin"] == "shared_response"
   end
 
+  test "reserves valid ids before assigning sanitized legacy ids" do
+    snapshot = %{
+      "nodes" => [
+        %{
+          "original_id" => 23,
+          "type" => "dialogue",
+          "data" => %{
+            "localization_id" => "stable.id",
+            "responses" => [
+              %{"id" => "stable.response", "text" => "Legacy"},
+              %{"id" => "stable_response", "text" => "Current"}
+            ]
+          }
+        },
+        %{
+          "original_id" => 24,
+          "type" => "dialogue",
+          "data" => %{"localization_id" => "stable_id", "responses" => []}
+        },
+        %{"original_id" => 25, "type" => "hub", "data" => %{}}
+      ],
+      "connections" => [
+        %{"source_node_index" => 0, "target_node_index" => 2, "source_pin" => "stable.response"}
+      ]
+    }
+
+    normalized = FlowSnapshotNormalizer.normalize(snapshot)
+    [legacy_dialogue, current_dialogue | _rest] = normalized["nodes"]
+    [legacy_response, current_response] = legacy_dialogue["data"]["responses"]
+
+    assert legacy_dialogue["data"]["localization_id"] =~ "dialogue_legacy_"
+    assert current_dialogue["data"]["localization_id"] == "stable_id"
+    assert legacy_response["id"] =~ "response_legacy_"
+    assert current_response["id"] == "stable_response"
+    assert hd(normalized["connections"])["source_pin"] == legacy_response["id"]
+  end
+
+  test "prefers an exact response id before interpreting the resp_ prefix" do
+    snapshot = %{
+      "nodes" => [
+        %{
+          "original_id" => 26,
+          "type" => "dialogue",
+          "data" => %{
+            "localization_id" => "dialogue_26",
+            "responses" => [%{"id" => "resp_bad.choice", "text" => "Continue"}]
+          }
+        },
+        %{"original_id" => 27, "type" => "hub", "data" => %{}}
+      ],
+      "connections" => [
+        %{"source_node_index" => 0, "target_node_index" => 1, "source_pin" => "resp_bad.choice"},
+        %{"source_node_index" => 0, "target_node_index" => 1, "source_pin" => "resp_resp_bad.choice"}
+      ]
+    }
+
+    normalized = FlowSnapshotNormalizer.normalize(snapshot)
+    [dialogue | _rest] = normalized["nodes"]
+    [response] = dialogue["data"]["responses"]
+
+    assert response["id"] == "resp_bad_choice"
+
+    assert Enum.map(normalized["connections"], & &1["source_pin"]) == [
+             "resp_bad_choice",
+             "resp_resp_bad_choice"
+           ]
+  end
+
+  test "reserves direct and prefixed connection ids per source node" do
+    snapshot = %{
+      "nodes" => [
+        response_dialogue_node(28, "dialogue_28", "foo.bar"),
+        response_dialogue_node(29, "dialogue_29", "bar.baz"),
+        response_dialogue_node(30, "dialogue_30", "free.id"),
+        %{"original_id" => 31, "type" => "hub", "data" => %{}}
+      ],
+      "connections" => [
+        %{"source_node_index" => 0, "target_node_index" => 3, "source_pin" => "foo.bar"},
+        %{"source_node_index" => 0, "target_node_index" => 3, "source_pin" => "foo_bar"},
+        %{"source_node_index" => 0, "target_node_index" => 3, "source_pin" => "free_id"},
+        %{"source_node_index" => 1, "target_node_index" => 3, "source_pin" => "resp_bar_baz"},
+        %{"source_node_index" => 1, "target_node_index" => 3, "source_pin" => "bar.baz"},
+        %{"source_node_index" => 2, "target_node_index" => 3, "source_pin" => "free.id"}
+      ]
+    }
+
+    normalized = FlowSnapshotNormalizer.normalize(snapshot)
+    [first_dialogue, second_dialogue, third_dialogue | _rest] = normalized["nodes"]
+    [first_response] = first_dialogue["data"]["responses"]
+    [second_response] = second_dialogue["data"]["responses"]
+    [third_response] = third_dialogue["data"]["responses"]
+
+    assert first_response["id"] =~ "response_legacy_"
+    assert second_response["id"] =~ "response_legacy_"
+    assert third_response["id"] == "free_id"
+
+    assert Enum.map(normalized["connections"], & &1["source_pin"]) == [
+             first_response["id"],
+             "foo_bar",
+             "free_id",
+             "resp_bar_baz",
+             second_response["id"],
+             "free_id"
+           ]
+  end
+
+  test "reserves response ids referenced only by flow localization" do
+    snapshot = %{
+      "nodes" => [response_dialogue_node(32, "dialogue_32", "choice.one")],
+      "localization" => [
+        flow_node_localization_row(32, "response.choice_one.text"),
+        flow_node_localization_row(32, "response.choice.one.text")
+      ]
+    }
+
+    normalized = FlowSnapshotNormalizer.normalize(snapshot)
+    response_id = get_in(normalized, ["nodes", Access.at(0), "data", "responses", Access.at(0), "id"])
+
+    assert response_id =~ "response_legacy_"
+
+    assert Enum.map(normalized["localization"], & &1["source_field"]) == [
+             "response.choice_one.text",
+             "response.#{response_id}.text"
+           ]
+  end
+
   test "normalization is deterministic and idempotent" do
     snapshot = %{
       "nodes" => [
@@ -106,6 +232,29 @@ defmodule Storyarn.Versioning.Builders.FlowSnapshotNormalizerTest do
 
     assert normalized == FlowSnapshotNormalizer.normalize(snapshot)
     assert normalized == FlowSnapshotNormalizer.normalize(normalized)
+  end
+
+  test "generated dialogue ids stay stable when a node with an original id moves" do
+    dialogue = %{
+      "original_id" => 31,
+      "type" => "dialogue",
+      "data" => %{"text" => "Legacy", "responses" => []}
+    }
+
+    first_snapshot = %{"nodes" => [dialogue]}
+    moved_snapshot = %{"nodes" => [%{"type" => "hub", "data" => %{}}, dialogue]}
+
+    first_id =
+      first_snapshot
+      |> FlowSnapshotNormalizer.normalize()
+      |> get_in(["nodes", Access.at(0), "data", "localization_id"])
+
+    moved_id =
+      moved_snapshot
+      |> FlowSnapshotNormalizer.normalize()
+      |> get_in(["nodes", Access.at(1), "data", "localization_id"])
+
+    assert first_id == moved_id
   end
 
   test "normalizes flow and top-level localization inside project snapshots" do
@@ -147,5 +296,121 @@ defmodule Storyarn.Versioning.Builders.FlowSnapshotNormalizerTest do
 
     assert get_in(normalized, ["localization", "texts", Access.at(0), "source_field"]) ==
              "response.choice_41.text"
+  end
+
+  test "reserves response ids referenced only by project localization" do
+    snapshot = %{
+      "flows" => [
+        %{
+          "id" => 42,
+          "snapshot" => %{
+            "nodes" => [response_dialogue_node(43, "dialogue_43", "project.choice")]
+          }
+        }
+      ],
+      "localization" => %{
+        "texts" => [
+          flow_node_localization_row(43, "response.project_choice.text"),
+          flow_node_localization_row(43, "response.project.choice.text")
+        ]
+      }
+    }
+
+    normalized = FlowSnapshotNormalizer.normalize_project(snapshot)
+
+    response_id =
+      get_in(normalized, [
+        "flows",
+        Access.at(0),
+        "snapshot",
+        "nodes",
+        Access.at(0),
+        "data",
+        "responses",
+        Access.at(0),
+        "id"
+      ])
+
+    assert response_id =~ "response_legacy_"
+
+    assert Enum.map(normalized["localization"]["texts"], & &1["source_field"]) == [
+             "response.project_choice.text",
+             "response.#{response_id}.text"
+           ]
+  end
+
+  test "coordinates dialogue ids across project flows without adding localization" do
+    snapshot = %{
+      "flows" => [
+        project_flow_entry(50, 51, "shared.dialogue"),
+        project_flow_entry(52, 53, "shared_dialogue"),
+        project_flow_entry(54, 55, "shared_dialogue")
+      ]
+    }
+
+    normalized = FlowSnapshotNormalizer.normalize_project(snapshot)
+
+    dialogue_ids =
+      Enum.map(normalized["flows"], fn flow_entry ->
+        get_in(flow_entry, ["snapshot", "nodes", Access.at(0), "data", "localization_id"])
+      end)
+
+    assert [legacy_id, "shared_dialogue", duplicate_id] = dialogue_ids
+    assert legacy_id =~ "dialogue_legacy_"
+    assert duplicate_id =~ "dialogue_legacy_"
+    assert legacy_id != duplicate_id
+    refute Map.has_key?(normalized, "localization")
+    assert normalized == FlowSnapshotNormalizer.normalize_project(normalized)
+  end
+
+  test "preserves malformed collections instead of raising or inventing defaults" do
+    flow_snapshot = %{
+      "nodes" => [42],
+      "connections" => ["malformed"],
+      "localization" => :malformed
+    }
+
+    project_snapshot = %{
+      "flows" => [nil, %{"snapshot" => nil}, %{"snapshot" => flow_snapshot}],
+      "localization" => %{"texts" => nil}
+    }
+
+    assert FlowSnapshotNormalizer.normalize(%{"nodes" => nil}) == %{"nodes" => nil}
+    assert FlowSnapshotNormalizer.normalize_project(%{"flows" => nil}) == %{"flows" => nil}
+    assert FlowSnapshotNormalizer.normalize_project(project_snapshot) == project_snapshot
+  end
+
+  defp project_flow_entry(flow_id, node_id, localization_id) do
+    %{
+      "id" => flow_id,
+      "snapshot" => %{
+        "nodes" => [
+          %{
+            "original_id" => node_id,
+            "type" => "dialogue",
+            "data" => %{"localization_id" => localization_id, "responses" => []}
+          }
+        ]
+      }
+    }
+  end
+
+  defp response_dialogue_node(node_id, localization_id, response_id) do
+    %{
+      "original_id" => node_id,
+      "type" => "dialogue",
+      "data" => %{
+        "localization_id" => localization_id,
+        "responses" => [%{"id" => response_id, "text" => "Continue"}]
+      }
+    }
+  end
+
+  defp flow_node_localization_row(node_id, source_field) do
+    %{
+      "source_type" => "flow_node",
+      "source_id" => node_id,
+      "source_field" => source_field
+    }
   end
 end
