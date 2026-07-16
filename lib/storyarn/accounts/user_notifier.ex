@@ -56,15 +56,6 @@ defmodule Storyarn.Accounts.UserNotifier do
   end
 
   @doc """
-  Deliver admin notification about a member invitation request.
-  """
-  def deliver_admin_invitation_request(request_info) do
-    admin_email = Application.get_env(:storyarn, :admin_email, "adan@storyarn.com")
-    {subject, html, text} = Templates.admin_invitation_request(request_info)
-    deliver(admin_email, subject, html, text)
-  end
-
-  @doc """
   Deliver project/workspace invitation email.
   """
   def deliver_invitation(email, type, entity_name, role, url, days) do

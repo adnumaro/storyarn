@@ -9,14 +9,14 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   use Gettext, backend: Storyarn.Gettext
 
   import Phoenix.Component, only: [assign: 3, to_form: 2]
-  import Phoenix.LiveView, only: [put_flash: 3]
+  import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
 
-  alias Storyarn.Accounts
   alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Localization
   alias Storyarn.Projects
+  alias Storyarn.Shared.Validations
   alias Storyarn.Versioning
   alias Storyarn.Workers.RestoreProjectWorker
 
@@ -26,13 +26,18 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   # Form changesets
   # ---------------------------------------------------------------------------
 
+  @project_invite_roles ~w(editor viewer)
+
   def invite_changeset(params) do
     types = %{email: :string, role: :string}
     defaults = %{email: "", role: "editor"}
 
     {defaults, types}
     |> Ecto.Changeset.cast(params, Map.keys(types))
+    |> Ecto.Changeset.update_change(:email, &String.trim/1)
     |> Ecto.Changeset.validate_required([:email, :role])
+    |> Validations.validate_email_format()
+    |> Ecto.Changeset.validate_inclusion(:role, @project_invite_roles)
   end
 
   def get_provider_config(project_id) do
@@ -271,38 +276,90 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
     end
   end
 
-  @project_invite_roles ~w(editor viewer)
-
   def do_send_invitation(socket, invite_params) do
-    role = invite_params["role"]
+    changeset = invite_changeset(invite_params)
 
-    if role in @project_invite_roles do
+    if changeset.valid? do
       project = socket.assigns.project
       user = socket.assigns.current_scope.user
+      email = Ecto.Changeset.get_field(changeset, :email)
+      role = Ecto.Changeset.get_field(changeset, :role)
 
-      request_info = %{
-        invitee_email: String.downcase(invite_params["email"]),
-        requester_email: user.email,
-        type: "project",
-        entity_name: project.name,
-        entity_id: project.id,
-        role: role,
-        locale: Gettext.get_locale(Storyarn.Gettext)
-      }
-
-      Accounts.notify_admin_invitation_request(request_info)
-
-      socket =
-        socket
-        |> assign(:invite_form, to_form(invite_changeset(%{}), as: "invite"))
-        |> put_flash(
-          :info,
-          dgettext("projects", "Invitation request sent. An admin will review it shortly.")
-        )
-
-      {:noreply, socket}
+      project
+      |> Projects.create_invitation(user, email, role)
+      |> handle_project_invitation_result(socket)
     else
-      {:noreply, put_flash(socket, :error, dgettext("projects", "Invalid role."))}
+      {:noreply,
+       socket
+       |> assign(:invite_form, to_form(%{changeset | action: :validate}, as: "invite"))
+       |> put_flash(
+         :error,
+         dgettext("projects", "Enter a valid email address and role.")
+       )}
+    end
+  end
+
+  defp handle_project_invitation_result({:ok, _invitation}, socket) do
+    pending_invitations = Projects.list_pending_invitations(socket.assigns.project.id)
+
+    {:noreply,
+     socket
+     |> assign(:invite_form, to_form(invite_changeset(%{}), as: "invite"))
+     |> assign(:pending_invitations, pending_invitations)
+     |> push_event("invitation_sent", %{})
+     |> put_flash(:info, dgettext("projects", "Invitation queued for delivery."))}
+  end
+
+  defp handle_project_invitation_result({:error, :already_member}, socket) do
+    {:noreply,
+     put_flash(
+       socket,
+       :error,
+       dgettext("projects", "This person is already a member of this project.")
+     )}
+  end
+
+  defp handle_project_invitation_result({:error, :already_invited}, socket) do
+    {:noreply,
+     put_flash(
+       socket,
+       :error,
+       dgettext("projects", "An invitation has already been sent to this email.")
+     )}
+  end
+
+  defp handle_project_invitation_result({:error, :rate_limited}, socket) do
+    {:noreply,
+     put_flash(
+       socket,
+       :error,
+       dgettext("projects", "Too many invitations have been sent. Try again later.")
+     )}
+  end
+
+  defp handle_project_invitation_result({:error, :limit_reached, %{resource: :members_per_workspace}}, socket) do
+    {:noreply, put_flash(socket, :error, dgettext("projects", "Member limit reached for your plan."))}
+  end
+
+  defp handle_project_invitation_result({:error, _reason}, socket) do
+    {:noreply, put_flash(socket, :error, dgettext("projects", "Could not send invitation."))}
+  end
+
+  def do_revoke_invitation(socket, id) do
+    project_id = socket.assigns.project.id
+
+    with {invitation_id, ""} <- Integer.parse(to_string(id)),
+         %{project_id: ^project_id} = invitation <- Projects.get_pending_invitation(invitation_id),
+         {:ok, _invitation} <- Projects.revoke_invitation(invitation) do
+      pending_invitations = Projects.list_pending_invitations(project_id)
+
+      {:noreply,
+       socket
+       |> assign(:pending_invitations, pending_invitations)
+       |> put_flash(:info, dgettext("projects", "Invitation revoked."))}
+    else
+      _ ->
+        {:noreply, put_flash(socket, :error, dgettext("projects", "Invitation not found."))}
     end
   end
 

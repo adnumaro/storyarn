@@ -10,6 +10,7 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
 
   alias Storyarn.Accounts
   alias Storyarn.Projects
+  alias StoryarnWeb.Live.Shared.InvitationHelpers
 
   @impl true
   def render(assigns) do
@@ -81,8 +82,16 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
          |> put_flash(:info, dgettext("projects", "You're already a member of this project."))
          |> redirect(to: ~p"/users/log-in")}
 
-      {:error, _reason} ->
-        {:ok, socket}
+      error ->
+        InvitationHelpers.handle_acceptance_error(
+          socket,
+          error,
+          dgettext(
+            "projects",
+            "This invitation cannot be accepted while the workspace is at its member limit. Ask an owner or admin to free a seat, then try this invitation again."
+          ),
+          ~p"/"
+        )
     end
   end
 

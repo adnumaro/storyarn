@@ -121,6 +121,25 @@ defmodule StoryarnWeb.ProjectLive.InvitationTest do
 
       assert flash["info"] =~ "already a member"
     end
+
+    test "explains when a legacy invitation can no longer fit the plan", %{conn: conn} do
+      owner = user_fixture()
+      project = project_fixture(owner)
+      invitee = user_fixture()
+      existing_member = user_fixture()
+
+      {token, invitation} =
+        create_invitation_with_token(project, owner, invitee.email, "editor")
+
+      membership_fixture(project, existing_member, "viewer")
+
+      assert {:error, {:redirect, %{to: "/", flash: flash}}} =
+               live(conn, ~p"/projects/invitations/#{token}")
+
+      assert flash["error"] =~ "at its member limit"
+      refute Repo.get_by(ProjectMembership, project_id: project.id, user_id: invitee.id)
+      assert is_nil(Repo.get!(ProjectInvitation, invitation.id).accepted_at)
+    end
   end
 
   describe "mount with invalid token" do

@@ -90,21 +90,17 @@ defmodule Storyarn.Workspaces.InvitationsTest do
       assert invitation.invited_by.id == owner.id
     end
 
-    test "returns multiple pending invitations" do
+    test "a pending invitation reserves the remaining plan seat" do
       %{owner: owner, workspace: workspace} = create_workspace_and_owner()
 
       {:ok, _inv1} =
         Workspaces.create_invitation(workspace, owner, "first@example.com", "member")
 
-      {:ok, _inv2} =
-        Workspaces.create_invitation(workspace, owner, "second@example.com", "member")
+      assert {:error, :limit_reached, %{resource: :members_per_workspace, used: 2, limit: 2}} =
+               Workspaces.create_invitation(workspace, owner, "second@example.com", "member")
 
       invitations = Workspaces.list_pending_invitations(workspace.id)
-      assert length(invitations) == 2
-
-      emails = Enum.map(invitations, & &1.email)
-      assert "first@example.com" in emails
-      assert "second@example.com" in emails
+      assert Enum.map(invitations, & &1.email) == ["first@example.com"]
     end
   end
 
@@ -195,6 +191,44 @@ defmodule Storyarn.Workspaces.InvitationsTest do
                Workspaces.create_invitation(workspace, owner, String.upcase(email), "admin")
     end
 
+    test "stale revoke and accept calls return errors instead of raising" do
+      %{owner: owner, workspace: workspace} = create_workspace_and_owner()
+      invitee = user_fixture()
+
+      assert {:ok, invitation} =
+               Workspaces.create_invitation(workspace, owner, invitee.email, "member")
+
+      assert {:ok, _invitation} = Workspaces.revoke_invitation(invitation)
+      assert {:error, revoke_changeset} = Workspaces.revoke_invitation(invitation)
+      assert errors_on(revoke_changeset).id
+
+      assert {:error, accept_changeset} =
+               Workspaces.accept_invitation(invitation, invitee)
+
+      assert errors_on(accept_changeset).id
+    end
+
+    test "hard-deleted workspaces return errors for stale create and accept calls" do
+      %{owner: owner, workspace: workspace} = create_workspace_and_owner()
+      invitee = user_fixture()
+
+      assert {:ok, invitation} =
+               Workspaces.create_invitation(workspace, owner, invitee.email, "member")
+
+      Repo.delete!(workspace)
+
+      assert {:error, :not_found} =
+               Workspaces.create_invitation(
+                 workspace,
+                 owner,
+                 "after-delete@example.com",
+                 "member"
+               )
+
+      assert {:error, :invitation_unavailable} =
+               Workspaces.accept_invitation(invitation, invitee)
+    end
+
     test "preloads workspace and invited_by on created invitation" do
       %{owner: owner, workspace: workspace} = create_workspace_and_owner()
       email = unique_user_email()
@@ -202,6 +236,69 @@ defmodule Storyarn.Workspaces.InvitationsTest do
       {:ok, invitation} = Workspaces.create_invitation(workspace, owner, email, "member")
       assert invitation.workspace.id == workspace.id
       assert invitation.invited_by.id == owner.id
+    end
+
+    test "renews an expired invitation for the same email" do
+      %{owner: owner, workspace: workspace} = create_workspace_and_owner()
+      email = "renew-expired@example.com"
+
+      {old_token, invitation} =
+        WorkspaceInvitation.build_invitation(workspace, owner, email)
+
+      expired_invitation = %{invitation | expires_at: expired_datetime()}
+      expired_invitation = Repo.insert!(expired_invitation)
+
+      assert {:ok, renewed_invitation} =
+               Workspaces.create_invitation(workspace, owner, email, "admin")
+
+      refute renewed_invitation.id == expired_invitation.id
+      assert renewed_invitation.role == "admin"
+      assert is_nil(renewed_invitation.accepted_at)
+      assert DateTime.after?(renewed_invitation.expires_at, DateTime.utc_now(:second))
+      refute renewed_invitation.token == expired_invitation.token
+      assert {:error, :invalid_token} = Workspaces.get_invitation_by_token(old_token)
+    end
+
+    test "renews an accepted invitation after the former member is removed" do
+      %{owner: owner, workspace: workspace} = create_workspace_and_owner()
+      invitee = user_fixture()
+
+      assert {:ok, invitation} =
+               Workspaces.create_invitation(workspace, owner, invitee.email, "member")
+
+      assert {:ok, membership} = Workspaces.accept_invitation(invitation, invitee)
+      Repo.delete!(membership)
+
+      assert {:ok, renewed_invitation} =
+               Workspaces.create_invitation(workspace, owner, invitee.email, "viewer")
+
+      refute renewed_invitation.id == invitation.id
+      assert renewed_invitation.role == "viewer"
+      assert is_nil(renewed_invitation.accepted_at)
+    end
+
+    test "normalizes emails and rejects invalid roles in context calls" do
+      %{owner: owner, workspace: workspace} = create_workspace_and_owner()
+
+      assert {:ok, invitation} =
+               Workspaces.create_invitation(
+                 workspace,
+                 owner,
+                 "  MIXED@example.com  ",
+                 "member"
+               )
+
+      assert invitation.email == "mixed@example.com"
+
+      assert {:error, changeset} =
+               Workspaces.create_invitation(
+                 workspace,
+                 owner,
+                 "invalid-role@example.com",
+                 "owner"
+               )
+
+      assert "is invalid" in errors_on(changeset).role
     end
   end
 

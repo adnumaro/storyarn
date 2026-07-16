@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { Trash2, UserPlus } from "lucide-vue-next";
-import { ref } from "vue";
+import { Clock3, Loader2, Trash2, UserPlus, X } from "lucide-vue-next";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
@@ -12,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@components/ui/select";
-import { useLive } from "@shared/composables/useLive";
+import { useMemberInvitations } from "@shared/composables/useMemberInvitations";
 
 interface WorkspaceMember {
   id: number;
@@ -21,31 +20,37 @@ interface WorkspaceMember {
   role: string;
 }
 
+interface PendingInvitation {
+  id: number;
+  email: string;
+  role: string;
+  expires_at: string;
+}
+
 const {
   members = [],
+  pendingInvitations = [],
   currentUserId = null,
+  canInvite = false,
   canManage = false,
 } = defineProps<{
   members?: WorkspaceMember[];
+  pendingInvitations?: PendingInvitation[];
   currentUserId?: number | null;
+  canInvite?: boolean;
   canManage?: boolean;
 }>();
 
-const live = useLive();
-
-const inviteEmail = ref("");
-const inviteRole = ref("member");
-
-function sendInvitation() {
-  live.pushEvent("send_invitation", {
-    invite: {
-      email: inviteEmail.value,
-      role: inviteRole.value,
-    },
-  });
-  inviteEmail.value = "";
-  inviteRole.value = "member";
-}
+const {
+  live,
+  inviteEmail,
+  inviteRole,
+  invitationPending,
+  revokingInvitationId,
+  sendInvitation,
+  revokeInvitation,
+  formatExpiry,
+} = useMemberInvitations("member");
 
 function removeMember(id: number) {
   live.pushEvent("remove_member", { id: String(id) });
@@ -86,7 +91,7 @@ const roleBadgeVariant: Record<string, BadgeVariant> = {
 
     <!-- Invite Member Card -->
     <section
-      v-if="canManage"
+      v-if="canInvite"
       class="border border-border/80 bg-card shadow-sm rounded-xl overflow-hidden"
     >
       <div class="px-6 py-5 border-b border-border/50 bg-muted/10 flex flex-col gap-1">
@@ -100,6 +105,7 @@ const roleBadgeVariant: Record<string, BadgeVariant> = {
       </div>
       <div class="p-6">
         <form
+          id="workspace-invite-form"
           @submit.prevent="sendInvitation"
           class="flex flex-col sm:flex-row gap-4 items-start sm:items-end"
         >
@@ -114,6 +120,7 @@ const roleBadgeVariant: Record<string, BadgeVariant> = {
               type="email"
               v-model="inviteEmail"
               :placeholder="$t('settings.workspace.members.invitation.email_placeholder')"
+              maxlength="160"
               required
               class="bg-background"
             />
@@ -125,7 +132,7 @@ const roleBadgeVariant: Record<string, BadgeVariant> = {
               >{{ $t("settings.workspace.members.invitation.role") }}</Label
             >
             <Select v-model="inviteRole">
-              <SelectTrigger class="w-full h-10! bg-background mb-0">
+              <SelectTrigger id="invite-role" class="w-full h-10! bg-background mb-0">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -143,11 +150,66 @@ const roleBadgeVariant: Record<string, BadgeVariant> = {
           </div>
           <Button
             type="submit"
+            :disabled="invitationPending"
             class="w-full sm:w-auto h-10 px-6 font-medium shadow-sm transition-transform active:scale-[0.98]"
           >
+            <Loader2 v-if="invitationPending" class="size-4 animate-spin" aria-hidden="true" />
             {{ $t("settings.workspace.members.invitation.submit") }}
           </Button>
         </form>
+      </div>
+    </section>
+
+    <section v-if="canInvite && pendingInvitations.length > 0" id="workspace-pending-invitations">
+      <h3 class="mb-1 text-lg font-semibold">
+        {{ $t("settings.workspace.members.pending_title") }}
+      </h3>
+      <p class="mb-4 text-sm text-muted-foreground">
+        {{ $t("settings.workspace.members.pending_description") }}
+      </p>
+      <div
+        class="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/80 bg-card shadow-sm"
+      >
+        <div
+          v-for="invitation in pendingInvitations"
+          :key="invitation.id"
+          :id="`workspace-pending-invitation-${invitation.id}`"
+          class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div class="min-w-0">
+            <p class="truncate font-medium">{{ invitation.email }}</p>
+            <div class="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <Badge variant="outline">
+                {{ $t("settings.workspace.members.roles." + invitation.role) }}
+              </Badge>
+              <span class="inline-flex items-center gap-1">
+                <Clock3 class="size-3.5" />
+                {{
+                  $t("settings.workspace.members.expires", {
+                    date: formatExpiry(invitation.expires_at),
+                  })
+                }}
+              </span>
+            </div>
+          </div>
+          <Button
+            :id="`revoke-workspace-invitation-${invitation.id}`"
+            type="button"
+            variant="ghost"
+            size="sm"
+            class="text-destructive hover:text-destructive"
+            :disabled="revokingInvitationId !== null"
+            @click="revokeInvitation(invitation.id)"
+          >
+            <Loader2
+              v-if="revokingInvitationId === invitation.id"
+              class="size-4 animate-spin"
+              aria-hidden="true"
+            />
+            <X v-else class="size-4" aria-hidden="true" />
+            {{ $t("settings.workspace.members.revoke") }}
+          </Button>
+        </div>
       </div>
     </section>
 

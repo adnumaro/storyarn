@@ -104,10 +104,12 @@ msgid "Or copy this link: %{url}"
 msgstr ""
 
 #: lib/storyarn/emails/templates.ex:121
-#: lib/storyarn/emails/templates.ex:169
+#: lib/storyarn/emails/templates.ex:192
 #, elixir-autogen, elixir-format
-msgid "This invitation expires in %{days} days."
-msgstr ""
+msgid "This invitation expires in %{count} day."
+msgid_plural "This invitation expires in %{count} days."
+msgstr[0] ""
+msgstr[1] ""
 
 #: lib/storyarn/emails/templates.ex:18
 #, elixir-autogen, elixir-format
@@ -127,14 +129,14 @@ msgstr ""
 #: lib/storyarn/emails/templates.ex:99
 #: lib/storyarn/emails/templates.ex:147
 #, elixir-autogen, elixir-format
-msgid "Click the button below to accept. You'll be redirected to the login page where you can sign in with this email address."
-msgstr ""
+msgid "Click the button below to accept. You can then sign in or create a password for this email address."
+msgstr "Click the button below to accept. You can then sign in or create a password for this email address."
 
 #: lib/storyarn/emails/templates.ex:117
 #: lib/storyarn/emails/templates.ex:165
 #, elixir-autogen, elixir-format
-msgid "Click the link below to accept. You'll be redirected to the login page where you can sign in with this email address."
-msgstr ""
+msgid "Click the link below to accept. You can then sign in or create a password for this email address."
+msgstr "Click the link below to accept. You can then sign in or create a password for this email address."
 
 #: lib/storyarn/emails/templates.ex:122
 #: lib/storyarn/emails/templates.ex:170
@@ -143,10 +145,12 @@ msgid "If you don't want to join, simply ignore this email."
 msgstr ""
 
 #: lib/storyarn/emails/templates.ex:105
-#: lib/storyarn/emails/templates.ex:153
+#: lib/storyarn/emails/templates.ex:182
 #, elixir-autogen, elixir-format
-msgid "This invitation expires in %{days} days. If you don't want to join, simply ignore this email."
-msgstr ""
+msgid "This invitation expires in %{count} day. If you don't want to join, simply ignore this email."
+msgid_plural "This invitation expires in %{count} days. If you don't want to join, simply ignore this email."
+msgstr[0] ""
+msgstr[1] ""
 
 #: lib/storyarn/emails/templates.ex:83
 #, elixir-autogen, elixir-format

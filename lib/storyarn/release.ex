@@ -45,9 +45,9 @@ defmodule Storyarn.Release do
   }
 
   @doc """
-  Approve a member invitation request.
+  Create a member invitation from a release node.
 
-  Creates an invitation record and sends the invitation email to the invitee.
+  Creates an invitation record and queues the invitation email for delivery.
   The invitee must click the acceptance link to create their account and join.
 
   Usage from Fly SSH (uses rpc to run inside the live node):
@@ -71,13 +71,17 @@ defmodule Storyarn.Release do
 
     case context_module.create_admin_invitation(entity, email, role, inviter_name: inviter_name) do
       {:ok, _invitation} ->
-        IO.puts("Invitation created and email sent to #{email} as #{role} to #{type} ##{entity_id}")
+        IO.puts("Invitation created and email queued for #{email} as #{role} to #{type} ##{entity_id}")
 
       {:error, :already_member} ->
         IO.puts("#{email} is already a member of this #{type}")
 
       {:error, :already_invited} ->
         IO.puts("#{email} already has a pending invitation for this #{type}")
+
+      {:error, :limit_reached, details} ->
+        IO.puts("Failed to create invitation: member limit reached (#{inspect(details)})")
+        raise "Cannot create invitation: member limit reached"
 
       {:error, reason} ->
         IO.puts("Failed to create invitation: #{inspect(reason)}")
