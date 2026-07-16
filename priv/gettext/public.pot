@@ -127,7 +127,8 @@ msgstr ""
 msgid "Workflow"
 msgstr ""
 
-#: lib/storyarn_web/components/public_language_switcher.ex:20
+#: lib/storyarn_web/components/public_language_switcher.ex:18
+#: lib/storyarn_web/components/public_language_switcher.ex:77
 #, elixir-autogen, elixir-format
 msgid "Page language"
 msgstr ""

@@ -110,6 +110,10 @@
           "role": "Role",
           "submit": "Send Invite"
         },
+        "pending_title": "Pending invitations",
+        "pending_description": "Pending invitations reserve a member seat until accepted, revoked, or expired.",
+        "expires": "Expires {date}",
+        "revoke": "Revoke",
         "active_members": "Active Members",
         "no_members": "No members found.",
         "remove_member": "Remove member"

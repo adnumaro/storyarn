@@ -40,6 +40,7 @@ defmodule Storyarn.Shared.InvitationSchema do
         |> cast(attrs, [:email, :role, @__parent_key, :invited_by_id])
         |> validate_required([:email, :role, @__parent_key])
         |> Validations.validate_email_format()
+        |> validate_length(:email, max: 160)
         |> validate_inclusion(:role, unquote(allowed_roles))
         |> foreign_key_constraint(@__parent_key)
         |> foreign_key_constraint(:invited_by_id)

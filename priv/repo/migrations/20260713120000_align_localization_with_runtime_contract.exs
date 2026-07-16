@@ -1,63 +1,14 @@
+Code.require_file(Path.expand("../migration_helpers/runtime_localization_repair.exs", __DIR__))
+
 defmodule Storyarn.Repo.Migrations.AlignLocalizationWithRuntimeContract do
   use Ecto.Migration
 
+  alias Storyarn.Repo.Migrations.RuntimeLocalizationRepair
+
   def up do
-    execute("""
-    UPDATE flow_nodes
-    SET data = jsonb_set(
-      COALESCE(data, '{}'::jsonb),
-      '{localization_id}',
-      to_jsonb('dialogue_' || md5(random()::text || clock_timestamp()::text || id::text))
-    )
-    WHERE type = 'dialogue'
-    """)
-
-    execute("""
-    UPDATE flow_nodes AS node
-    SET data = jsonb_set(
-      COALESCE(node.data, '{}'::jsonb),
-      '{responses}',
-      COALESCE(
-        (
-          SELECT jsonb_agg(
-            response.value || jsonb_build_object(
-              'id',
-              'response_' || md5(
-                random()::text || clock_timestamp()::text || node.id::text || response.ordinality::text
-              )
-            )
-            ORDER BY response.ordinality
-          )
-          FROM jsonb_array_elements(
-            CASE
-              WHEN jsonb_typeof(node.data->'responses') = 'array' THEN node.data->'responses'
-              ELSE '[]'::jsonb
-            END
-          ) WITH ORDINALITY AS response(value, ordinality)
-          WHERE jsonb_typeof(response.value) = 'object'
-        ),
-        '[]'::jsonb
-      )
-    )
-    WHERE node.type = 'dialogue'
-    """)
-
-    execute("""
-    DELETE FROM localized_texts
-    WHERE locale_code !~ '^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$'
-       OR locale_code ~ E'[\\r\\n]'
-       OR char_length(locale_code) > 35
-    """)
-
-    execute("""
-    DELETE FROM project_languages
-    WHERE locale_code !~ '^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$'
-       OR locale_code ~ E'[\\r\\n]'
-       OR char_length(locale_code) > 35
-    """)
-
-    execute("UPDATE localized_texts SET locale_code = lower(locale_code)")
-    execute("UPDATE project_languages SET locale_code = lower(locale_code)")
+    execute(RuntimeLocalizationRepair.lock_sql())
+    Enum.each(RuntimeLocalizationRepair.runtime_id_sql(), &execute/1)
+    Enum.each(RuntimeLocalizationRepair.locale_sql(), &execute/1)
 
     alter table(:localized_texts) do
       modify :locale_code, :string, size: 35, null: false

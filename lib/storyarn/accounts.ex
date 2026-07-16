@@ -20,7 +20,6 @@ defmodule Storyarn.Accounts do
   alias Storyarn.Accounts.Scope
   alias Storyarn.Accounts.Sessions
   alias Storyarn.Accounts.User
-  alias Storyarn.Accounts.UserNotifier
   alias Storyarn.Accounts.Users
   alias Storyarn.Accounts.UserToken
 
@@ -250,11 +249,4 @@ defmodule Storyarn.Accounts do
   registration token and must set a password first.
   """
   defdelegate prepare_invitation_user(email), to: Registration
-
-  @doc """
-  Notifies the admin about a member invitation request.
-  """
-  def notify_admin_invitation_request(request_info) do
-    UserNotifier.deliver_admin_invitation_request(request_info)
-  end
 end

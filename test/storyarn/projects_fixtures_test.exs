@@ -163,6 +163,20 @@ defmodule Storyarn.ProjectsFixturesTest do
   end
 
   describe "extract_invitation_token/1" do
+    test "returns the token queued for durable delivery" do
+      owner = user_fixture()
+      project = project_fixture(owner)
+      email = unique_user_email()
+
+      token =
+        extract_invitation_token(fn ->
+          Storyarn.Projects.create_invitation(project, owner, email, "editor")
+        end)
+
+      assert {:ok, invitation} = Storyarn.Projects.get_invitation_by_token(token)
+      assert invitation.email == String.downcase(email)
+    end
+
     test "returns error when function returns error" do
       result = extract_invitation_token(fn -> {:error, :some_reason} end)
       assert result == {:error, :some_reason}

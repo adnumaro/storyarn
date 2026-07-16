@@ -5,6 +5,9 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   alias Storyarn.Exports
   alias Storyarn.Exports.ExportOptions
+  alias Storyarn.Imports
+  alias Storyarn.Imports.ProjectImportAttempt
+  alias StoryarnWeb.Helpers.Authorize
 
   @all_sections ~w(sheets flows scenes screenplays localization)a
   @hidden_export_formats MapSet.new([:storyarn])
@@ -24,14 +27,19 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       onboarding_guide={:export}
       onboarding_autostart
     >
-      <:title>{dgettext("projects", "Export")}</:title>
-      <:subtitle>{dgettext("projects", "Export your project data.")}</:subtitle>
+      <:title>{dgettext("projects", "Import & Export")}</:title>
+      <:subtitle>
+        {dgettext("projects", "Move narrative content into or out of this project.")}
+      </:subtitle>
 
       <.vue
         v-component="live/project/settings/export-import/ProjectSettingsExportImport"
         v-socket={@socket}
         v-inject="settings-layout"
         id="export-import-vue"
+        can-edit={@can_edit}
+        import-state={serialize_import_state(@import_state)}
+        upload-config={if(@can_edit, do: @uploads.import_file, else: nil)}
         export-config={
           %{
             formatConfig: %{
@@ -96,6 +104,18 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     %{message: finding.message}
   end
 
+  defp serialize_import_state(state) do
+    %{
+      step: state.step,
+      attemptId: state.attempt_id,
+      preview: state.preview,
+      error: state.error,
+      conflictStrategy: state.conflict_strategy,
+      warningCodes: state.warning_codes,
+      status: state.status
+    }
+  end
+
   # ===========================================================================
   # Lifecycle
   # ===========================================================================
@@ -126,6 +146,16 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       |> assign(:validate_before_export, true)
       |> assign(:pretty_print, true)
       |> assign(:validation_result, nil)
+      # Import state. Files are consumed from LiveView's bounded temporary
+      # upload and are never written under their client-provided filename.
+      |> assign(:import_state, empty_import_state())
+      |> allow_upload(:import_file,
+        accept: [".yarn", ".zip"],
+        max_entries: 1,
+        max_file_size: 50_000_000
+      )
+
+    if connected?(socket), do: Imports.subscribe_project_imports(project)
 
     {:ok, socket}
   end
@@ -236,6 +266,55 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   end
 
   # ===========================================================================
+  # Events — Import
+  # ===========================================================================
+
+  def handle_event("validate_upload", _params, socket), do: {:noreply, socket}
+
+  def handle_event("parse_import", _params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      results = consume_import_upload(socket)
+      {:noreply, apply_prepare_result(socket, List.first(results))}
+    end)
+  end
+
+  def handle_event("set_strategy", %{"strategy" => strategy}, socket) when strategy in ~w(skip overwrite rename) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      {:noreply, update_import_state(socket, &Map.put(&1, :conflict_strategy, strategy))}
+    end)
+  end
+
+  def handle_event("set_strategy", _params, socket), do: {:noreply, socket}
+
+  def handle_event("execute_import", _params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      execute_ready_import(socket, socket.assigns.import_state)
+    end)
+  end
+
+  def handle_event("reset_import", _params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      maybe_cancel_ready_import(socket)
+      {:noreply, assign(socket, :import_state, empty_import_state())}
+    end)
+  end
+
+  @impl true
+  def handle_info({:project_import_updated, %ProjectImportAttempt{} = attempt}, socket) do
+    if socket.assigns.import_state.attempt_id == attempt.id do
+      # PubSub delivery is not ordered across the enqueue caller and Oban
+      # worker. Reload the durable attempt so a late queued/running message
+      # cannot move a completed import back to an in-progress UI state.
+      case Imports.get_import_attempt(socket.assigns.current_scope, attempt.id) do
+        {:ok, current_attempt} -> {:noreply, assign_import_attempt(socket, current_attempt)}
+        {:error, _reason} -> {:noreply, socket}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  # ===========================================================================
   # Helpers — Export
   # ===========================================================================
 
@@ -296,4 +375,176 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   defp maybe_add(params, key, value, true), do: [{key, value} | params]
   defp maybe_add(params, _key, _value, false), do: params
+
+  # ===========================================================================
+  # Helpers — Import
+  # ===========================================================================
+
+  defp empty_import_state do
+    %{
+      step: "upload",
+      attempt_id: nil,
+      preview: nil,
+      error: nil,
+      conflict_strategy: "rename",
+      warning_codes: [],
+      status: nil
+    }
+  end
+
+  defp consume_import_upload(socket) do
+    consume_uploaded_entries(socket, :import_file, fn %{path: path}, entry ->
+      prepare_uploaded_entry(socket, path, entry.client_name)
+    end)
+  end
+
+  defp prepare_uploaded_entry(socket, path, client_name) do
+    case File.read(path) do
+      {:ok, binary} ->
+        {:ok,
+         Imports.prepare_import(
+           socket.assigns.current_scope,
+           socket.assigns.project,
+           client_name,
+           binary
+         )}
+
+      {:error, _reason} ->
+        {:ok, {:error, :upload_unavailable}}
+    end
+  end
+
+  defp execute_ready_import(socket, %{step: "preview", attempt_id: attempt_id} = state) when is_integer(attempt_id) do
+    case Imports.enqueue_import(socket.assigns.current_scope, attempt_id, state.conflict_strategy) do
+      {:ok, attempt} -> {:noreply, assign_import_attempt(socket, attempt)}
+      {:error, reason} -> {:noreply, assign_import_error(socket, reason)}
+    end
+  end
+
+  defp execute_ready_import(socket, _state), do: {:noreply, socket}
+
+  defp apply_prepare_result(socket, {:ok, attempt, preview}) do
+    step = if attempt.status == "ready", do: "preview", else: "queued"
+
+    state = %{
+      step: step,
+      attempt_id: attempt.id,
+      preview: serialize_preview(preview),
+      error: nil,
+      conflict_strategy: "rename",
+      warning_codes: attempt.warning_codes,
+      status: attempt.status
+    }
+
+    assign(socket, :import_state, state)
+  end
+
+  defp apply_prepare_result(socket, {:error, reason}), do: assign_import_error(socket, reason)
+  defp apply_prepare_result(socket, nil), do: assign_import_error(socket, :upload_unavailable)
+
+  defp serialize_preview(preview) do
+    %{
+      counts: stringify_map_keys(preview.counts),
+      conflicts: stringify_conflicts(preview.conflicts),
+      has_conflicts: preview.has_conflicts
+    }
+  end
+
+  defp stringify_map_keys(map), do: Map.new(map, fn {key, value} -> {to_string(key), value} end)
+
+  defp stringify_conflicts(conflicts) do
+    Map.new(conflicts, fn {key, values} -> {to_string(key), values} end)
+  end
+
+  defp assign_import_attempt(socket, attempt) do
+    state = socket.assigns.import_state
+
+    step =
+      case attempt.status do
+        "ready" -> "preview"
+        status when status in ["queued", "running", "retrying"] -> "queued"
+        "completed" -> "done"
+        _status -> "error"
+      end
+
+    preview =
+      if step == "done" do
+        Map.put(
+          state.preview || %{counts: %{}, conflicts: %{}, has_conflicts: false},
+          :counts,
+          stringify_map_keys(attempt.counts)
+        )
+      else
+        state.preview
+      end
+
+    state = %{
+      state
+      | step: step,
+        status: attempt.status,
+        preview: preview,
+        error: if(step == "error", do: attempt.error_message || generic_import_error())
+    }
+
+    assign(socket, :import_state, state)
+  end
+
+  defp assign_import_error(socket, reason) do
+    state = %{
+      socket.assigns.import_state
+      | step: "error",
+        error: import_error_message(reason),
+        status: "failed"
+    }
+
+    assign(socket, :import_state, state)
+  end
+
+  defp update_import_state(socket, fun) do
+    assign(socket, :import_state, fun.(socket.assigns.import_state))
+  end
+
+  defp maybe_cancel_ready_import(socket) do
+    case socket.assigns.import_state do
+      %{attempt_id: attempt_id, status: "ready"} when is_integer(attempt_id) ->
+        Imports.cancel_import(socket.assigns.current_scope, attempt_id)
+
+      _other ->
+        :ok
+    end
+  end
+
+  defp import_error_message(reason) when reason in [:duplicate_yarn_node_title, :import_plan_has_errors] do
+    dgettext(
+      "projects",
+      "This Yarn project uses narrative logic that Storyarn cannot import safely. No project content was changed."
+    )
+  end
+
+  defp import_error_message(reason)
+       when reason in [
+              :archive_entry_too_large,
+              :archive_expansion_ratio_exceeded,
+              :archive_missing_yarn_files,
+              :archive_too_large,
+              :archive_too_many_entries,
+              :duplicate_archive_entry,
+              :file_too_large,
+              :invalid_archive,
+              :invalid_archive_path,
+              :invalid_text_encoding,
+              :nested_archive_not_allowed,
+              :unsupported_archive_entry,
+              :unsupported_import_format,
+              :yarn_document_limit_exceeded,
+              :yarn_statement_limit_exceeded
+            ] do
+    dgettext("projects", "The selected Yarn project is invalid or exceeds the import safety limits.")
+  end
+
+  defp import_error_message(_reason), do: generic_import_error()
+
+  defp generic_import_error do
+    dgettext("projects", "The import could not be completed. No project content was changed.")
+  end
 end

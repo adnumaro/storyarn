@@ -19,6 +19,16 @@ defmodule Storyarn.Exports.RoundTripTest do
 
   alias Storyarn.Exports
   alias Storyarn.Imports
+  alias Storyarn.Imports.ImportPlan
+
+  defp storyarn_plan(data) do
+    %ImportPlan{
+      format: :storyarn,
+      parser_version: "1",
+      source_kind: :file,
+      data: data
+    }
+  end
 
   # =============================================================================
   # Setup
@@ -139,7 +149,7 @@ defmodule Storyarn.Exports.RoundTripTest do
 
       # Step 2: Import into target project
       assert {:ok, parsed} = Imports.parse_file(json1)
-      assert {:ok, _result} = Imports.execute(target, parsed.data)
+      assert {:ok, _result} = Imports.execute(target, parsed)
 
       # Step 3: Re-export target project
       assert {:ok, json2} = Exports.export_project(target, export_opts)
@@ -158,7 +168,7 @@ defmodule Storyarn.Exports.RoundTripTest do
       data = Jason.decode!(json)
 
       {:ok, parsed} = Imports.parse_file(json)
-      {:ok, _result} = Imports.execute(target, parsed.data)
+      {:ok, _result} = Imports.execute(target, parsed)
 
       {:ok, json2} = Exports.export_project(target, export_opts)
       data2 = Jason.decode!(json2)
@@ -224,7 +234,7 @@ defmodule Storyarn.Exports.RoundTripTest do
 
       {:ok, parsed} = Imports.parse_file(json)
 
-      {:ok, preview} = Imports.preview(target.id, parsed.data)
+      {:ok, preview} = Imports.preview(target.id, parsed)
 
       assert preview.counts.sheets > 0
       assert preview.counts.flows > 0
@@ -254,7 +264,9 @@ defmodule Storyarn.Exports.RoundTripTest do
         "screenplays" => []
       }
 
-      assert {:error, {:entity_limits_exceeded, details}} = Imports.execute(project, data)
+      assert {:error, {:entity_limits_exceeded, details}} =
+               Imports.execute(project, storyarn_plan(data))
+
       assert details.sheets.count == 1_001
       assert details.sheets.limit == 1_000
     end

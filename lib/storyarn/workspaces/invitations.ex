@@ -27,6 +27,12 @@ defmodule Storyarn.Workspaces.Invitations do
   def create_admin_invitation(%Workspace{} = workspace, email, role, opts \\ []),
     do: InvitationOperations.create_admin_invitation(@config, workspace, email, role, opts)
 
+  @doc false
+  def deliver_invitation_email(token, opts \\ []), do: InvitationOperations.deliver_invitation_email(@config, token, opts)
+
+  @doc false
+  def cancel_invitation_delivery(token), do: InvitationOperations.cancel_invitation_delivery(@config, token)
+
   def get_invitation_by_token(token), do: InvitationOperations.get_invitation_by_token(@config, token)
 
   def accept_invitation(%WorkspaceInvitation{} = invitation, user),

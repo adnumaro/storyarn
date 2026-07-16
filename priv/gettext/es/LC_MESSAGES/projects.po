@@ -202,20 +202,10 @@ msgstr "Tema guardado."
 msgid "Invitation accepted! Log in with %{email} to get started."
 msgstr "¡Invitación aceptada! Inicia sesión con %{email} para empezar."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:300
-#, elixir-autogen, elixir-format
-msgid "Invitation request sent. An admin will review it shortly."
-msgstr "Solicitud de invitación enviada. Un administrador la revisará en breve."
-
 #: lib/storyarn_web/live/project_settings_live/general.ex:28
 #, elixir-autogen, elixir-format
 msgid "General"
 msgstr "General"
-
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:305
-#, elixir-autogen, elixir-format
-msgid "Invalid role."
-msgstr "Rol no válido."
 
 #: lib/storyarn_web/live/project_settings_live/members.ex:28
 #, elixir-autogen, elixir-format
@@ -560,3 +550,78 @@ msgstr "Reintentando tras un problema temporal…"
 #, elixir-autogen, elixir-format
 msgid "Creating project…"
 msgstr "Creando proyecto…"
+
+#: lib/storyarn_web/live/export_import_live/index.ex:30
+#, elixir-autogen, elixir-format
+msgid "Import & Export"
+msgstr "Importar y exportar"
+
+#: lib/storyarn_web/live/export_import_live/index.ex:32
+#, elixir-autogen, elixir-format
+msgid "Move narrative content into or out of this project."
+msgstr "Mueve contenido narrativo hacia o desde este proyecto."
+
+#: lib/storyarn_web/live/export_import_live/index.ex:524
+#, elixir-autogen, elixir-format
+msgid "The selected Yarn project is invalid or exceeds the import safety limits."
+msgstr "El proyecto Yarn seleccionado no es válido o supera los límites de seguridad de importación."
+
+#: lib/storyarn_web/live/export_import_live/index.ex:530
+#, elixir-autogen, elixir-format
+msgid "The import could not be completed. No project content was changed."
+msgstr "No se pudo completar la importación. No se modificó el contenido del proyecto."
+
+#: lib/storyarn_web/live/export_import_live/index.ex:500
+#, elixir-autogen, elixir-format
+msgid "This Yarn project uses narrative logic that Storyarn cannot import safely. No project content was changed."
+msgstr "Este proyecto de Yarn usa lógica narrativa que Storyarn no puede importar de forma segura. No se modificó el contenido del proyecto."
+
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:323
+#, elixir-autogen, elixir-format
+msgid "An invitation has already been sent to this email."
+msgstr "Ya se ha enviado una invitación a este correo."
+
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:341
+#, elixir-autogen, elixir-format
+msgid "Could not send invitation."
+msgstr "No se ha podido enviar la invitación."
+
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:297
+#, elixir-autogen, elixir-format
+msgid "Enter a valid email address and role."
+msgstr "Introduce una dirección de correo y un rol válidos."
+
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:306
+#, elixir-autogen, elixir-format
+msgid "Invitation queued for delivery."
+msgstr "Invitación en cola para su envío."
+
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:359
+#, elixir-autogen, elixir-format
+msgid "Invitation revoked."
+msgstr "Invitación revocada."
+
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:362
+#, elixir-autogen, elixir-format
+msgid "Invitation not found."
+msgstr "No se ha encontrado la invitación."
+
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:337
+#, elixir-autogen, elixir-format
+msgid "Member limit reached for your plan."
+msgstr "Has alcanzado el límite de miembros de tu plan."
+
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:314
+#, elixir-autogen, elixir-format
+msgid "This person is already a member of this project."
+msgstr "Esta persona ya es miembro de este proyecto."
+
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:332
+#, elixir-autogen, elixir-format
+msgid "Too many invitations have been sent. Try again later."
+msgstr "Se han enviado demasiadas invitaciones. Inténtalo de nuevo más tarde."
+
+#: lib/storyarn_web/live/project_live/invitation.ex:91
+#, elixir-autogen, elixir-format
+msgid "This invitation cannot be accepted while the workspace is at its member limit. Ask an owner or admin to free a seat, then try this invitation again."
+msgstr "Esta invitación no se puede aceptar mientras el espacio de trabajo esté en su límite de miembros. Pide a un propietario o administrador que libere una plaza y vuelve a intentarlo con esta invitación."

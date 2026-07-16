@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 
 #: lib/storyarn_web/live/blog_live/index.ex:204
-#: lib/storyarn_web/live/blog_live/show.ex:169
+#: lib/storyarn_web/live/blog_live/show.ex:172
 #, elixir-autogen
 msgid "%{count} min read"
 msgid_plural "%{count} min read"
@@ -15,7 +15,7 @@ msgstr[1] ""
 msgid "Back to the journal"
 msgstr ""
 
-#: lib/storyarn_web/live/blog_live/show.ex:142
+#: lib/storyarn_web/live/blog_live/show.ex:143
 #, elixir-autogen
 msgid "Bring the whole narrative into one connected project."
 msgstr ""
@@ -25,7 +25,7 @@ msgstr ""
 msgid "By %{author}"
 msgstr ""
 
-#: lib/storyarn_web/live/blog_live/show.ex:155
+#: lib/storyarn_web/live/blog_live/show.ex:157
 #, elixir-autogen
 msgid "Create your Storyarn account"
 msgstr ""
@@ -75,12 +75,12 @@ msgstr ""
 msgid "Read the story"
 msgstr ""
 
-#: lib/storyarn_web/live/blog_live/show.ex:145
+#: lib/storyarn_web/live/blog_live/show.ex:146
 #, elixir-autogen
 msgid "Registration is open, Storyarn is free during early access, and no invitation is required."
 msgstr ""
 
-#: lib/storyarn_web/live/blog_live/show.ex:139
+#: lib/storyarn_web/live/blog_live/show.ex:140
 #, elixir-autogen
 msgid "Storyarn is in open beta"
 msgstr ""

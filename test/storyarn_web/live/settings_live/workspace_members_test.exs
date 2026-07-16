@@ -5,6 +5,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembersTest do
   import Storyarn.AccountsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.Repo
   alias Storyarn.Workspaces
 
   defp get_members_vue(view) do
@@ -23,7 +24,9 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembersTest do
 
       vue = get_members_vue(view)
       assert vue.component == "live/workspace/settings/WorkspaceSettingsMembers"
+      assert vue.props["can-invite"] == true
       assert vue.props["can-manage"] == true
+      assert vue.props["pending-invitations"] == []
     end
 
     test "renders Vue for admin with can-manage=false", %{conn: conn} do
@@ -40,6 +43,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembersTest do
 
       vue = get_members_vue(view)
       assert vue.component == "live/workspace/settings/WorkspaceSettingsMembers"
+      assert vue.props["can-invite"] == true
       assert vue.props["can-manage"] == false
     end
 
@@ -118,7 +122,11 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembersTest do
       %{conn: log_in_user(conn, user), user: user, workspace: workspace}
     end
 
-    test "sends invitation request to admin", %{conn: conn, workspace: workspace} do
+    test "sends invitation directly to the workspace member", %{
+      conn: conn,
+      user: user,
+      workspace: workspace
+    } do
       {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/members")
 
       result =
@@ -126,23 +134,123 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembersTest do
           "invite" => %{"email" => "newmember@example.com", "role" => "member"}
         })
 
-      assert result =~ "Invitation request sent"
+      assert result =~ "Invitation queued for delivery"
+      assert_push_event(view, "invitation_sent", %{})
+
+      assert [invitation] = Workspaces.list_pending_invitations(workspace.id)
+      assert invitation.email == "newmember@example.com"
+      assert invitation.invited_by_id == user.id
+
+      vue = get_members_vue(view)
+
+      assert [%{"id" => invitation_id, "email" => "newmember@example.com"}] =
+               vue.props["pending-invitations"]
+
+      assert invitation_id == invitation.id
     end
 
-    test "sends invitation request with different roles", %{conn: conn, workspace: workspace} do
+    test "revokes a pending invitation and releases its seat", %{
+      conn: conn,
+      workspace: workspace
+    } do
       {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/members")
 
-      for {email, role} <- [
-            {"admin@example.com", "admin"},
-            {"viewer@example.com", "viewer"}
-          ] do
-        result =
-          render_click(view, "send_invitation", %{
-            "invite" => %{"email" => email, "role" => role}
-          })
+      render_click(view, "send_invitation", %{
+        "invite" => %{"email" => "revoke@example.com", "role" => "member"}
+      })
 
-        assert result =~ "Invitation request sent"
-      end
+      [invitation] = Workspaces.list_pending_invitations(workspace.id)
+
+      result =
+        render_click(view, "revoke_invitation", %{"id" => to_string(invitation.id)})
+
+      assert result =~ "Invitation revoked"
+      assert Workspaces.list_pending_invitations(workspace.id) == []
+      assert get_members_vue(view).props["pending-invitations"] == []
+
+      assert render_click(view, "send_invitation", %{
+               "invite" => %{"email" => "replacement@example.com", "role" => "member"}
+             }) =~ "Invitation queued for delivery"
+    end
+
+    test "does not revoke an invitation from another workspace", %{
+      conn: conn,
+      workspace: workspace
+    } do
+      other_owner = user_fixture()
+      other_workspace = workspace_fixture(other_owner)
+
+      assert {:ok, other_invitation} =
+               Workspaces.create_invitation(
+                 other_workspace,
+                 other_owner,
+                 "other-workspace@example.com",
+                 "member"
+               )
+
+      {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/members")
+
+      result =
+        render_click(view, "revoke_invitation", %{"id" => to_string(other_invitation.id)})
+
+      assert result =~ "Invitation not found"
+      assert [%{id: invitation_id}] = Workspaces.list_pending_invitations(other_workspace.id)
+      assert invitation_id == other_invitation.id
+    end
+
+    test "an admin removed after mount cannot send a direct invitation", %{
+      conn: conn,
+      workspace: workspace
+    } do
+      admin = user_fixture()
+      admin_membership = workspace_membership_fixture(workspace, admin, "admin")
+
+      {:ok, view, _html} =
+        conn
+        |> log_in_user(admin)
+        |> live(~p"/users/settings/workspaces/#{workspace.slug}/members")
+
+      Repo.delete!(admin_membership)
+
+      result =
+        render_click(view, "send_invitation", %{
+          "invite" => %{"email" => "privilege-recovery@example.com", "role" => "admin"}
+        })
+
+      assert result =~ "permission to manage this workspace"
+      assert Workspaces.list_pending_invitations(workspace.id) == []
+    end
+
+    test "an admin downgraded after mount cannot revoke a direct invitation", %{
+      conn: conn,
+      user: owner,
+      workspace: workspace
+    } do
+      assert {:ok, invitation} =
+               Workspaces.create_invitation(
+                 workspace,
+                 owner,
+                 "still-invited@example.com",
+                 "member"
+               )
+
+      admin = user_fixture()
+      admin_membership = workspace_membership_fixture(workspace, admin, "admin")
+
+      {:ok, view, _html} =
+        conn
+        |> log_in_user(admin)
+        |> live(~p"/users/settings/workspaces/#{workspace.slug}/members")
+
+      assert {:ok, _membership} =
+               Workspaces.update_member_role(admin_membership, "member")
+
+      result =
+        render_click(view, "revoke_invitation", %{"id" => to_string(invitation.id)})
+
+      assert result =~ "permission to manage this workspace"
+      assert [%{id: invitation_id}] = Workspaces.list_pending_invitations(workspace.id)
+      assert invitation_id == invitation.id
     end
   end
 

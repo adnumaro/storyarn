@@ -10,6 +10,8 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
 
   alias Storyarn.Accounts
   alias Storyarn.Projects
+  alias Storyarn.Publication.Locales, as: PublicLocales
+  alias StoryarnWeb.Live.Shared.InvitationHelpers
   alias StoryarnWeb.PublicURLs
 
   @impl true
@@ -32,7 +34,7 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
         v-component="live/project/invitation/ProjectInvitationResponse"
         v-socket={@socket}
         id="project-invitation"
-        homepage-url={PublicURLs.home_path(@locale)}
+        homepage-url={public_home_path(@locale)}
       />
     </StoryarnWeb.Components.PublicLayout.public>
     """
@@ -89,8 +91,16 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
          |> put_flash(:info, dgettext("projects", "You're already a member of this project."))
          |> redirect(to: ~p"/users/log-in")}
 
-      {:error, _reason} ->
-        {:ok, socket}
+      error ->
+        InvitationHelpers.handle_acceptance_error(
+          socket,
+          error,
+          dgettext(
+            "projects",
+            "This invitation cannot be accepted while the workspace is at its member limit. Ask an owner or admin to free a seat, then try this invitation again."
+          ),
+          public_home_path(socket.assigns.locale)
+        )
     end
   end
 
@@ -109,5 +119,11 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
        )
      )
      |> redirect(to: registration_path)}
+  end
+
+  defp public_home_path(locale) do
+    locale
+    |> PublicLocales.normalize()
+    |> PublicURLs.home_path()
   end
 end

@@ -13,6 +13,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
   alias Storyarn.Exports
   alias Storyarn.Flows
   alias Storyarn.Imports
+  alias Storyarn.Imports.ImportPlan
   alias Storyarn.Localization
 
   # =============================================================================
@@ -24,6 +25,15 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
     source = project_fixture(user)
     target = project_fixture(user)
     %{user: user, source: source, target: target}
+  end
+
+  defp storyarn_plan(data) do
+    %ImportPlan{
+      format: :storyarn,
+      parser_version: "1",
+      source_kind: :file,
+      data: data
+    }
   end
 
   defp setup_with_data(%{source: source} = context) do
@@ -184,7 +194,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
     test "rejects malformed nested structures even when parse is bypassed", %{target: target} do
       data = put_in(minimal_import_data(), ["flows"], [%{"nodes" => ["invalid"]}])
 
-      assert {:error, {:invalid_field_types, fields}} = Imports.execute(target, data)
+      assert {:error, {:invalid_field_types, fields}} = Imports.execute(target, storyarn_plan(data))
       assert "flows[0].nodes[0]" in fields
     end
 
@@ -202,10 +212,37 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
         "screenplays" => []
       }
 
-      assert {:error, {:entity_limits_exceeded, details}} = Imports.execute(target, data)
+      assert {:error, {:entity_limits_exceeded, details}} = Imports.execute(target, storyarn_plan(data))
       assert Map.has_key?(details, :sheets)
       assert details.sheets.count == 1001
       assert details.sheets.limit == 1000
+    end
+
+    test "counts every inserted node when source IDs are duplicated", %{target: target} do
+      source_id = Ecto.UUID.generate()
+
+      nodes = [
+        %{
+          "id" => source_id,
+          "type" => "annotation",
+          "source" => "manual",
+          "data" => %{"text" => "First"}
+        },
+        %{
+          "id" => source_id,
+          "type" => "annotation",
+          "source" => "manual",
+          "data" => %{"text" => "Second"}
+        }
+      ]
+
+      data = put_in(minimal_import_data(nodes), ["flows", Access.at(0), "name"], "Imported flow")
+
+      assert {:ok, result} = Imports.execute(target, storyarn_plan(data))
+      assert result.counts.nodes == 2
+
+      assert [flow] = result.flows
+      assert flow.id |> Flows.list_nodes() |> length() == 2
     end
   end
 
@@ -217,7 +254,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
     setup [:setup_projects, :setup_with_data]
 
     test "returns entity counts", %{target: target, parsed: parsed} do
-      {:ok, preview} = Imports.preview(target.id, parsed.data)
+      {:ok, preview} = Imports.preview(target.id, parsed)
 
       assert preview.counts.sheets == 1
       assert preview.counts.flows == 1
@@ -226,13 +263,13 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
     end
 
     test "returns node counts in preview", %{target: target, parsed: parsed} do
-      {:ok, preview} = Imports.preview(target.id, parsed.data)
+      {:ok, preview} = Imports.preview(target.id, parsed)
       # 1 auto-created entry node + 1 dialogue = 2
       assert preview.counts.nodes >= 2
     end
 
     test "detects no conflicts in empty target", %{target: target, parsed: parsed} do
-      {:ok, preview} = Imports.preview(target.id, parsed.data)
+      {:ok, preview} = Imports.preview(target.id, parsed)
       assert preview.has_conflicts == false
       assert preview.conflicts == %{}
     end
@@ -250,7 +287,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
 
       {:ok, source_parsed} = Imports.parse_file(source_json)
 
-      {:ok, preview} = Imports.preview(target.id, source_parsed.data)
+      {:ok, preview} = Imports.preview(target.id, source_parsed)
       assert preview.has_conflicts == true
       # Should detect conflicts in at least some schemas
       assert map_size(preview.conflicts) > 0
@@ -269,7 +306,11 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       existing = sheet_fixture(target, %{name: "Hero"})
 
       # Import with skip strategy
-      {:ok, _result} = Imports.execute(target, parsed.data, conflict_strategy: :skip)
+      {:ok, result} = Imports.execute(target, parsed, conflict_strategy: :skip)
+
+      assert result.counts.sheets == 0
+      assert result.counts.flows == 1
+      assert result.counts.nodes >= 2
 
       # Should still have only one "Hero" sheet (the original)
       sheets = Storyarn.Sheets.list_all_sheets(target.id)
@@ -291,7 +332,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       sheet_fixture(target, %{name: "Hero"})
 
       # Import with rename strategy
-      {:ok, _result} = Imports.execute(target, parsed.data, conflict_strategy: :rename)
+      {:ok, _result} = Imports.execute(target, parsed, conflict_strategy: :rename)
 
       # Should now have two "Hero" sheets, one with modified shortcut
       sheets = Storyarn.Sheets.list_all_sheets(target.id)
@@ -316,7 +357,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       existing = sheet_fixture(target, %{name: "Hero"})
 
       # Import with overwrite strategy
-      {:ok, _result} = Imports.execute(target, parsed.data, conflict_strategy: :overwrite)
+      {:ok, _result} = Imports.execute(target, parsed, conflict_strategy: :overwrite)
 
       # The existing sheet should be soft-deleted
       reloaded = Storyarn.Repo.get(Storyarn.Sheets.Sheet, existing.id)
@@ -339,7 +380,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
 
     test "imports all entity types", %{target: target, parsed: parsed} do
       :ok = Collaboration.subscribe_dashboard(target.id)
-      {:ok, result} = Imports.execute(target, parsed.data)
+      {:ok, result} = Imports.execute(target, parsed)
 
       assert result.sheets != []
       assert result.flows != []
@@ -349,7 +390,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
     end
 
     test "preserves sheet blocks", %{target: target, parsed: parsed} do
-      {:ok, _result} = Imports.execute(target, parsed.data)
+      {:ok, _result} = Imports.execute(target, parsed)
 
       sheets = Storyarn.Sheets.list_all_sheets(target.id)
       hero = Enum.find(sheets, &(&1.name == "Hero"))
@@ -361,7 +402,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
     end
 
     test "preserves flow nodes and connections", %{target: target, parsed: parsed} do
-      {:ok, result} = Imports.execute(target, parsed.data)
+      {:ok, result} = Imports.execute(target, parsed)
 
       flow = hd(result.flows)
       flow_with_data = Storyarn.Repo.preload(flow, [:nodes, :connections])
@@ -372,7 +413,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
     end
 
     test "preserves scene sub-entities", %{target: target, parsed: parsed} do
-      {:ok, result} = Imports.execute(target, parsed.data)
+      {:ok, result} = Imports.execute(target, parsed)
 
       scene = hd(result.scenes)
       scene_with_data = Storyarn.Repo.preload(scene, [:pins, :layers])
@@ -381,7 +422,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
     end
 
     test "preserves screenplay elements", %{target: target, parsed: parsed} do
-      {:ok, result} = Imports.execute(target, parsed.data)
+      {:ok, result} = Imports.execute(target, parsed)
 
       sp = hd(result.screenplays)
       sp_with_data = Storyarn.Repo.preload(sp, :elements)
@@ -400,7 +441,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
                Exports.export_project(source, %{format: :storyarn, validate_before_export: false})
 
       assert {:ok, parsed} = Imports.parse_file(json)
-      assert {:ok, _result} = Imports.execute(target, parsed.data)
+      assert {:ok, _result} = Imports.execute(target, parsed)
 
       imported_sheet = Enum.find(Storyarn.Sheets.list_all_sheets(target.id), &(&1.name == "Localized Hero"))
       refute imported_sheet.id == sheet.id
@@ -423,7 +464,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
                Exports.export_project(source, %{format: :storyarn, validate_before_export: false})
 
       assert {:ok, parsed} = Imports.parse_file(json)
-      assert {:ok, result} = Imports.execute(target, parsed.data)
+      assert {:ok, result} = Imports.execute(target, parsed)
 
       imported_language =
         target.id
@@ -477,7 +518,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
                Exports.export_project(source, %{format: :storyarn, validate_before_export: false})
 
       assert {:ok, parsed} = Imports.parse_file(json)
-      assert {:ok, result} = Imports.execute(target, parsed.data, conflict_strategy: :rename)
+      assert {:ok, result} = Imports.execute(target, parsed, conflict_strategy: :rename)
 
       imported_flow = Enum.find(result.flows, &(&1.name == "Collision Source"))
       imported_node = imported_flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "dialogue"))
@@ -523,7 +564,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
                Exports.export_project(source, %{format: :storyarn, validate_before_export: false})
 
       assert {:ok, parsed} = Imports.parse_file(json)
-      assert {:ok, result} = Imports.execute(target, parsed.data, conflict_strategy: :rename)
+      assert {:ok, result} = Imports.execute(target, parsed, conflict_strategy: :rename)
 
       imported_flow = Enum.find(result.flows, &(&1.name == "Deleted Collision Source"))
       imported_node = imported_flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "dialogue"))
@@ -551,7 +592,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
         Exports.export_project(source, %{format: :storyarn, validate_before_export: false})
 
       {:ok, parsed} = Imports.parse_file(json)
-      {:ok, _result} = Imports.execute(target, parsed.data)
+      {:ok, _result} = Imports.execute(target, parsed)
 
       imported_flows = Flows.list_flows(target.id)
       imported_referenced_flow = Enum.find(imported_flows, &(&1.name == "Referenced Flow"))

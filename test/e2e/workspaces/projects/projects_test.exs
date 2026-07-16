@@ -182,7 +182,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       conn
       |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/members")
-      |> assert_has("h4", text: "Request member invitation")
+      |> assert_has("h4", text: "Invite a project member")
       |> assert_has("input[type=email]")
     end
 

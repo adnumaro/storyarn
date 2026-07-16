@@ -8,6 +8,7 @@ defmodule Storyarn.Projects.ProjectCrud do
   alias Storyarn.Billing
   alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.Project
+  alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
   alias Storyarn.Shared.NameNormalizer
@@ -202,9 +203,28 @@ defmodule Storyarn.Projects.ProjectCrud do
   Soft-deletes a project by setting deleted_at and deleted_by_id.
   """
   def delete_project(%Project{} = project, user_id) do
-    project
-    |> Project.soft_delete_changeset(%{deleted_at: TimeHelpers.now(), deleted_by_id: user_id})
-    |> Repo.update()
+    Repo.transact(fn ->
+      result =
+        project
+        |> Project.soft_delete_changeset(%{
+          deleted_at: TimeHelpers.now(),
+          deleted_by_id: user_id
+        })
+        |> Repo.update()
+
+      case result do
+        {:ok, deleted_project} ->
+          ProjectInvitation
+          |> where([invitation], invitation.project_id == ^project.id)
+          |> where([invitation], is_nil(invitation.accepted_at))
+          |> Repo.delete_all()
+
+          {:ok, deleted_project}
+
+        error ->
+          error
+      end
+    end)
   end
 
   @doc """

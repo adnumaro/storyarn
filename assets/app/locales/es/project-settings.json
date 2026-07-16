@@ -14,7 +14,7 @@
         "localization": "Localización",
         "members": "Miembros",
         "snapshots": "Snapshots",
-        "import_export": "Exportar",
+        "import_export": "Importar y exportar",
         "trash": "Papelera"
       }
     },
@@ -78,14 +78,18 @@
       "delete": "Eliminar"
     },
     "members": {
-      "request_title": "Solicitar invitación de miembro",
-      "request_description": "Las solicitudes de invitación son revisadas por un administrador antes de enviarse.",
+      "invite_title": "Invitar a un miembro del proyecto",
+      "invite_description": "Envía una invitación directamente a la persona con la que quieres colaborar.",
       "email": "Dirección de correo",
       "email_placeholder": "colega{'@'}ejemplo.com",
       "role": "Rol",
       "role_editor": "Editor",
       "role_viewer": "Lector",
-      "submit": "Solicitar invitación"
+      "submit": "Enviar invitación",
+      "pending_title": "Invitaciones pendientes",
+      "pending_description": "Las invitaciones pendientes reservan una plaza hasta que se aceptan, revocan o caducan.",
+      "expires": "Caduca el {date}",
+      "revoke": "Revocar"
     },
     "localization": {
       "provider_title": "Proveedor de traducción (DeepL)",
@@ -214,6 +218,41 @@
         "near_limit": "Cerca del límite",
         "limit_reached": "Límite alcanzado",
         "no_limit": "Sin límite"
+      }
+    },
+    "import": {
+      "title": "Importar desde Yarn Spinner",
+      "description": "Trae a Storyarn un archivo .yarn o un proyecto de Yarn existente. Revisa el resumen antes de modificar el proyecto.",
+      "select_file": "Proyecto Yarn",
+      "choose_file": "Elegir .yarn o .zip",
+      "file_help": "Máximo 50 MB. Los archivos comprimidos se inspeccionan antes de extraerlos para evitar rutas o expansiones inseguras.",
+      "upload_preview": "Validar y previsualizar",
+      "preview_title": "Resumen de importación",
+      "th_entity": "Tipo de contenido",
+      "th_count": "Encontrados",
+      "th_imported": "Importados",
+      "conflicts_title": "Se encontraron atajos existentes",
+      "conflict_strategy": "Cuando el contenido ya existe",
+      "strategy_skip": "Omitir el contenido existente",
+      "strategy_overwrite": "Sobrescribir el contenido existente",
+      "strategy_rename": "Conservar ambos renombrando lo importado",
+      "compatibility_warnings": "Algunos comandos, marcas o textos dinámicos específicos de Yarn no se pueden convertir exactamente. Se conservan de forma visible y se marcan para revisión.",
+      "import_button": "Iniciar importación",
+      "cancel": "Cancelar",
+      "processing": "Importación en curso",
+      "processing_description": "Puedes salir de esta página. El plan cifrado se procesa en segundo plano.",
+      "success": "El proyecto Yarn se ha importado correctamente.",
+      "import_another": "Importar otro proyecto",
+      "try_again": "Probar otro archivo",
+      "no_permission": "Necesitas permiso para editar contenido e importar en este proyecto.",
+      "entities": {
+        "sheets": "Fichas y personajes",
+        "flows": "Flujos",
+        "nodes": "Nodos de flujo",
+        "scenes": "Escenas",
+        "screenplays": "Guiones",
+        "assets": "Recursos",
+        "localization": "Localización"
       }
     },
     "export": {

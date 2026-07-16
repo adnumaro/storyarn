@@ -3,9 +3,13 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
 
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
+  import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Accounts.Scope
+  alias Storyarn.Imports
   alias Storyarn.Repo
+  alias StoryarnWeb.ExportImportLive.Index
 
   defp get_settings_layout(view) do
     LiveVue.Test.get_vue(view, name: "live/layouts/settings/Layout")
@@ -16,6 +20,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
   end
 
   defp export_config(view), do: get_export_vue(view).props["export-config"]
+  defp import_state(view), do: get_export_vue(view).props["import-state"]
   defp format_config(view), do: export_config(view)["formatConfig"]
   defp selected_format(view), do: format_config(view)["selected"]
   defp format_extension(view), do: format_config(view)["extension"]
@@ -35,26 +40,89 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
   end
 
-  describe "export page" do
-    test "renders as Export, not Import & Export", %{conn: conn, project: project} do
-      {:ok, view, html} = live(conn, export_url(project))
+  describe "import and export page" do
+    test "renders the combined import and export workspace", %{conn: conn, project: project} do
+      {:ok, view, _html} = live(conn, export_url(project))
 
       settings_layout = get_settings_layout(view)
-      assert settings_layout.props["title"] == "Export"
-      assert settings_layout.props["subtitle"] == "Export your project data."
-      refute html =~ "Import & Export"
-      refute html =~ "Export & Import"
+      assert settings_layout.props["title"] == "Import & Export"
+
+      assert String.trim(settings_layout.props["subtitle"]) ==
+               "Move narrative content into or out of this project."
     end
 
-    test "does not expose the importer through props or hidden form", %{conn: conn, project: project} do
-      {:ok, view, html} = live(conn, export_url(project))
+    test "exposes a bounded Yarn upload and empty import state to editors", %{
+      conn: conn,
+      project: project
+    } do
+      {:ok, view, _html} = live(conn, export_url(project))
 
       props = get_export_vue(view).props
-      refute Map.has_key?(props, "import-state")
-      refute Map.has_key?(props, "upload-config")
-      refute Map.has_key?(props, "can-edit")
-      refute html =~ "id=\"import-form\""
-      refute html =~ "phx-submit=\"parse_import\""
+      assert props["can-edit"] == true
+      assert is_map(props["upload-config"])
+      assert import_state(view)["step"] == "upload"
+      assert import_state(view)["conflictStrategy"] == "rename"
+    end
+
+    test "shows materialized counts and ignores stale import broadcasts", %{
+      project: project,
+      user: user
+    } do
+      _existing = flow_fixture(project, %{name: "Start"})
+      scope = Scope.for_user(user)
+
+      assert {:ok, ready, preview} =
+               Imports.prepare_import(
+                 scope,
+                 project,
+                 "project.yarn",
+                 "title: Start\n---\nHello\n===\n"
+               )
+
+      assert {:ok, queued} = Imports.enqueue_import(scope, ready.id, :skip)
+      assert queued.status == "queued"
+      assert {:ok, completed} = Imports.perform_import(queued.id, attempt: 1, max_attempts: 3)
+
+      socket = %Phoenix.LiveView.Socket{
+        assigns: %{
+          __changed__: %{},
+          current_scope: scope,
+          import_state: %{
+            step: "queued",
+            attempt_id: queued.id,
+            preview: %{
+              counts: Map.new(preview.counts, fn {key, value} -> {to_string(key), value} end),
+              conflicts: %{},
+              has_conflicts: false
+            },
+            error: nil,
+            conflict_strategy: "skip",
+            warning_codes: [],
+            status: "queued"
+          }
+        }
+      }
+
+      assert {:noreply, completed_socket} =
+               Index.handle_info(
+                 {:project_import_updated, completed},
+                 socket
+               )
+
+      completed_state = completed_socket.assigns.import_state
+      assert completed_state.step == "done"
+      assert completed_state.preview.counts == completed.counts
+      assert completed.counts["flows"] == 0
+      assert completed.counts["nodes"] == 0
+
+      assert {:noreply, after_stale_socket} =
+               Index.handle_info(
+                 {:project_import_updated, queued},
+                 completed_socket
+               )
+
+      assert after_stale_socket.assigns.import_state.step == "done"
+      assert after_stale_socket.assigns.import_state.preview.counts == completed.counts
     end
 
     test "does not expose Storyarn JSON as a visible export format", %{conn: conn, project: project} do
@@ -290,7 +358,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       assert error_msg =~ "access"
     end
 
-    test "viewer can access export without importer props", %{conn: conn} do
+    test "viewer can export but receives a read-only importer", %{conn: conn} do
       viewer = user_fixture()
       conn = log_in_user(conn, viewer)
 
@@ -301,7 +369,9 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       {:ok, view, html} = live(conn, export_url(project))
 
       assert html =~ "Export"
-      refute Map.has_key?(get_export_vue(view).props, "upload-config")
+      assert get_export_vue(view).props["can-edit"] == false
+      assert get_export_vue(view).props["upload-config"] == nil
+      assert import_state(view)["step"] == "upload"
       assert download_url(view) =~ "/export/ink"
     end
   end

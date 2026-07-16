@@ -9,7 +9,9 @@ defmodule StoryarnWeb.WorkspaceLive.Invitation do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Accounts
+  alias Storyarn.Publication.Locales, as: PublicLocales
   alias Storyarn.Workspaces
+  alias StoryarnWeb.Live.Shared.InvitationHelpers
   alias StoryarnWeb.PublicURLs
 
   @impl true
@@ -32,7 +34,7 @@ defmodule StoryarnWeb.WorkspaceLive.Invitation do
         v-component="live/workspace/invitation/WorkspaceInvitationResponse"
         v-socket={@socket}
         id="workspace-invitation"
-        homepage-url={PublicURLs.home_path(@locale)}
+        homepage-url={public_home_path(@locale)}
       />
     </StoryarnWeb.Components.PublicLayout.public>
     """
@@ -95,8 +97,16 @@ defmodule StoryarnWeb.WorkspaceLive.Invitation do
          )
          |> redirect(to: ~p"/users/log-in")}
 
-      {:error, _reason} ->
-        {:ok, socket}
+      error ->
+        InvitationHelpers.handle_acceptance_error(
+          socket,
+          error,
+          dgettext(
+            "workspaces",
+            "This invitation cannot be accepted while the workspace is at its member limit. Ask an owner or admin to free a seat, then try this invitation again."
+          ),
+          public_home_path(socket.assigns.locale)
+        )
     end
   end
 
@@ -115,5 +125,11 @@ defmodule StoryarnWeb.WorkspaceLive.Invitation do
        )
      )
      |> redirect(to: registration_path)}
+  end
+
+  defp public_home_path(locale) do
+    locale
+    |> PublicLocales.normalize()
+    |> PublicURLs.home_path()
   end
 end
