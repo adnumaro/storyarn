@@ -8,6 +8,8 @@ defmodule Storyarn.Billing.LimitsTest do
   alias Storyarn.Assets.Asset
   alias Storyarn.Billing
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Projects.ProjectInvitation
+  alias Storyarn.Repo
 
   setup do
     user = user_fixture()
@@ -29,7 +31,7 @@ defmodule Storyarn.Billing.LimitsTest do
           email: "nows#{System.unique_integer([:positive])}@test.com",
           confirmed_at: DateTime.utc_now(:second)
         })
-        |> Storyarn.Repo.insert!()
+        |> Repo.insert!()
 
       assert :ok = Billing.can_create_workspace?(user)
     end
@@ -93,6 +95,24 @@ defmodule Storyarn.Billing.LimitsTest do
       assert :ok = Billing.can_invite_member?(project)
     end
 
+    test "counts a pending project invitation toward the member limit", %{
+      user: user,
+      workspace: workspace
+    } do
+      project = project_fixture(user, workspace: workspace)
+
+      assert {:ok, _invitation} =
+               Storyarn.Projects.create_invitation(
+                 project,
+                 user,
+                 "pending@example.com",
+                 "editor"
+               )
+
+      assert {:error, :limit_reached, %{resource: :members_per_workspace, used: 2, limit: 2}} =
+               Billing.can_invite_member?(project)
+    end
+
     test "blocks at limit for project (checks workspace limits)", %{
       user: user,
       workspace: workspace
@@ -104,6 +124,34 @@ defmodule Storyarn.Billing.LimitsTest do
 
       assert {:error, :limit_reached, %{resource: :members_per_workspace}} =
                Billing.can_invite_member?(project)
+    end
+
+    test "ignores legacy invitations and memberships from soft-deleted projects", %{
+      user: user,
+      workspace: workspace
+    } do
+      project = project_fixture(user, workspace: workspace)
+
+      {_token, invitation} =
+        ProjectInvitation.build_invitation(
+          project,
+          user,
+          "legacy-deleted-project@example.com",
+          "editor"
+        )
+
+      Repo.insert!(invitation)
+
+      assert {:error, :limit_reached, %{used: 2, limit: 2}} =
+               Billing.can_invite_member?(workspace)
+
+      project
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
+      |> Repo.update!()
+
+      assert :ok = Billing.can_invite_member?(workspace)
+      assert Billing.count_unique_workspace_users(workspace.id) == 1
+      assert Billing.usage(workspace).members.used == 1
     end
   end
 
@@ -131,7 +179,7 @@ defmodule Storyarn.Billing.LimitsTest do
           }
         end
 
-      Storyarn.Repo.insert_all(FlowNode, entries)
+      Repo.insert_all(FlowNode, entries)
 
       assert Billing.count_project_items(project.id) == 698
       assert :ok = Billing.can_create_item?(project)
@@ -180,7 +228,7 @@ defmodule Storyarn.Billing.LimitsTest do
           position_y: 0.0,
           data: %{}
         })
-        |> Storyarn.Repo.insert!()
+        |> Repo.insert!()
       end
 
       assert {:error, :limit_reached, %{resource: :items_per_project}} =
@@ -200,8 +248,8 @@ defmodule Storyarn.Billing.LimitsTest do
       # Soft-delete sheet and scene
       now = DateTime.utc_now(:second)
 
-      sheet |> Ecto.Changeset.change(deleted_at: now) |> Storyarn.Repo.update!()
-      scene |> Ecto.Changeset.change(deleted_at: now) |> Storyarn.Repo.update!()
+      sheet |> Ecto.Changeset.change(deleted_at: now) |> Repo.update!()
+      scene |> Ecto.Changeset.change(deleted_at: now) |> Repo.update!()
 
       # Should be 3 now (1 flow + 2 nodes)
       assert Billing.count_project_items(project.id) == 3
@@ -238,7 +286,7 @@ defmodule Storyarn.Billing.LimitsTest do
         project_id: project.id,
         uploaded_by_id: user.id
       })
-      |> Storyarn.Repo.insert!()
+      |> Repo.insert!()
 
       # 200MB existing + 60MB new = 260MB > 250MB limit
       assert {:error, :limit_reached, %{resource: :storage_bytes_per_workspace, used: used}} =
@@ -275,7 +323,7 @@ defmodule Storyarn.Billing.LimitsTest do
           }
         end
 
-      Storyarn.Repo.insert_all(FlowNode, entries)
+      Repo.insert_all(FlowNode, entries)
 
       %{project: project, flow: flow}
     end
@@ -290,7 +338,7 @@ defmodule Storyarn.Billing.LimitsTest do
       flow: flow
     } do
       # Get an existing node to link
-      [node | _] = Storyarn.Repo.all(FlowNode)
+      [node | _] = Repo.all(FlowNode)
 
       assert {:error, :limit_reached, %{resource: :items_per_project}} =
                Storyarn.Flows.create_linked_flow(project, flow, node)
@@ -325,7 +373,7 @@ defmodule Storyarn.Billing.LimitsTest do
     test "blocks at limit", %{user: user, workspace: workspace} do
       project = project_fixture(user, workspace: workspace)
       sheet = Storyarn.SheetsFixtures.sheet_fixture(project)
-      sheet = Storyarn.Repo.preload(sheet, :blocks, force: true)
+      sheet = Repo.preload(sheet, :blocks, force: true)
 
       # Create 10 named versions to reach the limit
       for i <- 1..10 do
@@ -340,7 +388,7 @@ defmodule Storyarn.Billing.LimitsTest do
     test "counts promoted auto-snapshots toward limit", %{user: user, workspace: workspace} do
       project = project_fixture(user, workspace: workspace)
       sheet = Storyarn.SheetsFixtures.sheet_fixture(project)
-      sheet = Storyarn.Repo.preload(sheet, :blocks, force: true)
+      sheet = Repo.preload(sheet, :blocks, force: true)
 
       # Create 9 named + 1 promoted = 10
       for i <- 1..9 do
@@ -397,7 +445,7 @@ defmodule Storyarn.Billing.LimitsTest do
         project_id: project.id,
         uploaded_by_id: user.id
       })
-      |> Storyarn.Repo.insert!()
+      |> Repo.insert!()
 
       # 1 byte upload should succeed (used + new = limit exactly)
       assert :ok = Billing.can_upload_asset?(workspace, 1)
@@ -443,6 +491,24 @@ defmodule Storyarn.Billing.LimitsTest do
       assert usage.members.limit == 2
       assert usage.storage_bytes.used == 0
       assert usage.storage_bytes.limit == 250 * 1024 * 1024
+    end
+
+    test "reports pending invitations as occupied member seats", %{
+      user: user,
+      workspace: workspace
+    } do
+      project = project_fixture(user, workspace: workspace)
+
+      assert {:ok, _invitation} =
+               Storyarn.Projects.create_invitation(
+                 project,
+                 user,
+                 "pending-usage@example.com",
+                 "editor"
+               )
+
+      assert Billing.usage(workspace).members == %{used: 2, limit: 2}
+      assert Billing.project_limits_usage(project).workspace.members == %{used: 2, limit: 2}
     end
   end
 end

@@ -28,7 +28,7 @@ msgstr[1] ""
 msgid "Before restore to project snapshot v%{number}"
 msgstr ""
 
-#: lib/storyarn/versioning/version_crud.ex:380
+#: lib/storyarn/versioning/version_crud.ex:382
 #: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:174
 #, elixir-autogen, elixir-format
 msgid "Before restore to v%{number}"
@@ -80,7 +80,7 @@ msgstr ""
 msgid "Restored from project snapshot v%{number}"
 msgstr ""
 
-#: lib/storyarn/versioning/version_crud.ex:394
+#: lib/storyarn/versioning/version_crud.ex:396
 #, elixir-autogen, elixir-format
 msgid "Restored from v%{number}"
 msgstr ""

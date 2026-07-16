@@ -12,13 +12,16 @@ defmodule Storyarn.Billing.Limits do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Projects.Project
+  alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.ProjectTemplates.ProjectTemplate
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
+  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Workspaces.Workspace
+  alias Storyarn.Workspaces.WorkspaceInvitation
   alias Storyarn.Workspaces.WorkspaceMembership
 
   @doc """
@@ -74,6 +77,36 @@ defmodule Storyarn.Billing.Limits do
 
   def can_invite_member?(%Project{} = project) do
     check_member_limit(project.workspace_id)
+  end
+
+  @doc """
+  Checks whether inviting an email would consume another workspace member slot.
+
+  Emails that already occupy a slot through a membership or active invitation
+  may be invited to another project without consuming additional capacity.
+  """
+  def can_invite_member?(%Workspace{} = workspace, email) when is_binary(email) do
+    check_member_limit(workspace.id, email)
+  end
+
+  def can_invite_member?(%Project{} = project, email) when is_binary(email) do
+    check_member_limit(project.workspace_id, email)
+  end
+
+  @doc """
+  Checks whether an invitation can be converted into a membership.
+
+  Unlike `can_invite_member?/2`, this only counts existing memberships. The
+  invitation being accepted already reserves its candidate's slot, while this
+  check protects legacy or externally-created invitations from exceeding the
+  plan when they are accepted.
+  """
+  def can_accept_member?(%Workspace{} = workspace, email) when is_binary(email) do
+    check_membership_limit(workspace.id, email)
+  end
+
+  def can_accept_member?(%Project{} = project, email) when is_binary(email) do
+    check_membership_limit(project.workspace_id, email)
   end
 
   @doc """
@@ -201,7 +234,7 @@ defmodule Storyarn.Billing.Limits do
           ),
         members:
           usage_bucket(
-            count_unique_workspace_users(workspace.id),
+            count_occupied_workspace_member_slots(workspace.id),
             Plan.limit(plan, :members_per_workspace)
           ),
         storage_bytes:
@@ -236,7 +269,7 @@ defmodule Storyarn.Billing.Limits do
         limit: Plan.limit(plan, :projects_per_workspace)
       },
       members: %{
-        used: count_unique_workspace_users(workspace.id),
+        used: count_occupied_workspace_member_slots(workspace.id),
         limit: Plan.limit(plan, :members_per_workspace)
       },
       storage_bytes: %{
@@ -288,8 +321,31 @@ defmodule Storyarn.Billing.Limits do
   defp check_member_limit(workspace_id) do
     plan = SubscriptionCrud.plan_for_workspace_id(workspace_id)
     limit = Plan.limit(plan, :members_per_workspace)
-    used = count_unique_workspace_users(workspace_id)
+    used = count_occupied_workspace_member_slots(workspace_id)
     check_limit(:members_per_workspace, used, limit)
+  end
+
+  defp check_member_limit(workspace_id, email) do
+    normalized_email = email |> String.trim() |> String.downcase()
+
+    if workspace_member_slot_occupied?(workspace_id, normalized_email) do
+      :ok
+    else
+      check_member_limit(workspace_id)
+    end
+  end
+
+  defp check_membership_limit(workspace_id, email) do
+    normalized_email = email |> String.trim() |> String.downcase()
+
+    if workspace_membership_slot_occupied?(workspace_id, normalized_email) do
+      :ok
+    else
+      plan = SubscriptionCrud.plan_for_workspace_id(workspace_id)
+      limit = Plan.limit(plan, :members_per_workspace)
+      used = count_workspace_membership_slots(workspace_id)
+      check_limit(:members_per_workspace, used, limit)
+    end
   end
 
   defp count_user_workspaces(user_id) do
@@ -345,13 +401,84 @@ defmodule Storyarn.Billing.Limits do
       from(pm in ProjectMembership,
         join: p in Project,
         on: pm.project_id == p.id,
-        where: p.workspace_id == ^workspace_id,
+        where: p.workspace_id == ^workspace_id and is_nil(p.deleted_at),
         select: pm.user_id
       )
 
     union_query = union(wm_query, ^pm_query)
 
     Repo.one(from(u in subquery(union_query), select: count(u.user_id)))
+  end
+
+  defp count_occupied_workspace_member_slots(workspace_id) do
+    occupied_slots = occupied_workspace_member_slots_query(workspace_id)
+
+    Repo.one(from(slot in subquery(occupied_slots), select: count(slot.email)))
+  end
+
+  defp count_workspace_membership_slots(workspace_id) do
+    membership_slots = workspace_membership_slots_query(workspace_id)
+
+    Repo.one(from(slot in subquery(membership_slots), select: count(slot.email)))
+  end
+
+  defp workspace_member_slot_occupied?(workspace_id, email) do
+    occupied_slots = occupied_workspace_member_slots_query(workspace_id)
+
+    Repo.exists?(from(slot in subquery(occupied_slots), where: slot.email == ^email))
+  end
+
+  defp workspace_membership_slot_occupied?(workspace_id, email) do
+    membership_slots = workspace_membership_slots_query(workspace_id)
+
+    Repo.exists?(from(slot in subquery(membership_slots), where: slot.email == ^email))
+  end
+
+  defp workspace_membership_slots_query(workspace_id) do
+    workspace_members =
+      from(m in WorkspaceMembership,
+        join: user in assoc(m, :user),
+        where: m.workspace_id == ^workspace_id,
+        select: %{email: fragment("lower(?)", user.email)}
+      )
+
+    project_members =
+      from(m in ProjectMembership,
+        join: project in Project,
+        on: m.project_id == project.id,
+        join: user in assoc(m, :user),
+        where: project.workspace_id == ^workspace_id and is_nil(project.deleted_at),
+        select: %{email: fragment("lower(?)", user.email)}
+      )
+
+    union(workspace_members, ^project_members)
+  end
+
+  defp occupied_workspace_member_slots_query(workspace_id) do
+    now = TimeHelpers.now()
+
+    workspace_invitations =
+      from(invitation in WorkspaceInvitation,
+        where: invitation.workspace_id == ^workspace_id,
+        where: is_nil(invitation.accepted_at),
+        where: invitation.expires_at > ^now,
+        select: %{email: fragment("lower(?)", invitation.email)}
+      )
+
+    project_invitations =
+      from(invitation in ProjectInvitation,
+        join: project in Project,
+        on: invitation.project_id == project.id,
+        where: project.workspace_id == ^workspace_id and is_nil(project.deleted_at),
+        where: is_nil(invitation.accepted_at),
+        where: invitation.expires_at > ^now,
+        select: %{email: fragment("lower(?)", invitation.email)}
+      )
+
+    workspace_id
+    |> workspace_membership_slots_query()
+    |> union(^workspace_invitations)
+    |> union(^project_invitations)
   end
 
   @doc false

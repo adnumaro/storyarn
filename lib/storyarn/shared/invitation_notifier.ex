@@ -7,15 +7,17 @@ defmodule Storyarn.Shared.InvitationNotifier do
 
     - `parent_assoc` — atom key to fetch parent name (e.g., `:project` or `:workspace`)
     - `template` — function name in `Storyarn.Emails.Templates` (e.g., `:project_invitation`)
-    - `invitation_schema` — for `validity_in_days/0`
   """
 
   import Swoosh.Email
 
   alias Storyarn.Emails.Templates
   alias Storyarn.Mailer
+  alias Storyarn.Shared.TimeHelpers
 
   require Logger
+
+  @seconds_per_day 86_400
 
   @doc """
   Delivers an invitation email using the config's template function.
@@ -31,7 +33,7 @@ defmodule Storyarn.Shared.InvitationNotifier do
         end
       end)
 
-    days = config.invitation_schema.validity_in_days()
+    days = remaining_days(invitation.expires_at)
 
     {subject, html, text} =
       apply(Templates, config.template, [
@@ -44,6 +46,11 @@ defmodule Storyarn.Shared.InvitationNotifier do
       ])
 
     deliver(invitation.email, subject, html, text)
+  end
+
+  defp remaining_days(expires_at) do
+    remaining_seconds = DateTime.diff(expires_at, TimeHelpers.now(), :second)
+    div(max(remaining_seconds, 1) + @seconds_per_day - 1, @seconds_per_day)
   end
 
   defp deliver(recipient, subject, html_body, text_body) do

@@ -202,19 +202,9 @@ msgstr ""
 msgid "Invitation accepted! Log in with %{email} to get started."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:300
-#, elixir-autogen, elixir-format
-msgid "Invitation request sent. An admin will review it shortly."
-msgstr ""
-
 #: lib/storyarn_web/live/project_settings_live/general.ex:28
 #, elixir-autogen, elixir-format
 msgid "General"
-msgstr ""
-
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:305
-#, elixir-autogen, elixir-format
-msgid "Invalid role."
 msgstr ""
 
 #: lib/storyarn_web/live/project_settings_live/members.ex:28
@@ -560,3 +550,53 @@ msgstr "Retrying after a temporary issue…"
 #, elixir-autogen, elixir-format
 msgid "Creating project…"
 msgstr "Creating project…"
+
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:323
+#, elixir-autogen, elixir-format
+msgid "An invitation has already been sent to this email."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:341
+#, elixir-autogen, elixir-format
+msgid "Could not send invitation."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:297
+#, elixir-autogen, elixir-format
+msgid "Enter a valid email address and role."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:306
+#, elixir-autogen, elixir-format
+msgid "Invitation queued for delivery."
+msgstr "Invitation queued for delivery."
+
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:359
+#, elixir-autogen, elixir-format
+msgid "Invitation revoked."
+msgstr "Invitation revoked."
+
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:362
+#, elixir-autogen, elixir-format
+msgid "Invitation not found."
+msgstr "Invitation not found."
+
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:337
+#, elixir-autogen, elixir-format
+msgid "Member limit reached for your plan."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:314
+#, elixir-autogen, elixir-format
+msgid "This person is already a member of this project."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:332
+#, elixir-autogen, elixir-format
+msgid "Too many invitations have been sent. Try again later."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/invitation.ex:91
+#, elixir-autogen, elixir-format
+msgid "This invitation cannot be accepted while the workspace is at its member limit. Ask an owner or admin to free a seat, then try this invitation again."
+msgstr ""

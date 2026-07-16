@@ -78,14 +78,18 @@
       "delete": "Delete"
     },
     "members": {
-      "request_title": "Request member invitation",
-      "request_description": "Invitation requests are reviewed by an admin before being sent.",
+      "invite_title": "Invite a project member",
+      "invite_description": "Send an invitation directly to the person you want to collaborate with.",
       "email": "Email address",
       "email_placeholder": "colleague{'@'}example.com",
       "role": "Role",
       "role_editor": "Editor",
       "role_viewer": "Viewer",
-      "submit": "Request Invitation"
+      "submit": "Send Invitation",
+      "pending_title": "Pending invitations",
+      "pending_description": "Pending invitations reserve a member seat until accepted, revoked, or expired.",
+      "expires": "Expires {date}",
+      "revoke": "Revoke"
     },
     "localization": {
       "provider_title": "Translation Provider (DeepL)",

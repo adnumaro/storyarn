@@ -11,7 +11,7 @@
 msgid ""
 msgstr ""
 
-#: lib/storyarn/accounts/registration.ex:154
+#: lib/storyarn/accounts/registration.ex:180
 #, elixir-autogen, elixir-format
 msgid "%{name}'s workspace"
 msgstr ""
@@ -22,7 +22,7 @@ msgid "Failed to update password."
 msgstr ""
 
 #: lib/storyarn_web/controllers/user_session_controller.ex:86
-#: lib/storyarn_web/live/user_live/login.ex:131
+#: lib/storyarn_web/live/user_live/login.ex:134
 #, elixir-autogen, elixir-format
 msgid "Invalid email or password"
 msgstr ""
@@ -43,12 +43,12 @@ msgid "Please re-authenticate to change your password."
 msgstr ""
 
 #: lib/storyarn_web/controllers/user_session_controller.ex:67
-#: lib/storyarn_web/live/user_live/login.ex:116
+#: lib/storyarn_web/live/user_live/login.ex:119
 #, elixir-autogen, elixir-format
 msgid "Too many login attempts. Please try again later."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:69
+#: lib/storyarn_web/live/user_live/registration.ex:81
 #, elixir-autogen, elixir-format
 msgid "Too many registration attempts. Please try again later."
 msgstr ""
@@ -70,23 +70,28 @@ msgstr ""
 msgid "You must log in to access this page."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:91
+#: lib/storyarn_web/live/user_live/registration.ex:99
 #, elixir-autogen, elixir-format
 msgid "Account created successfully! Welcome."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:49
-#: lib/storyarn_web/live/user_live/registration.ex:100
+#: lib/storyarn_web/live/user_live/registration.ex:52
+#: lib/storyarn_web/live/user_live/registration.ex:108
 #, elixir-autogen, elixir-format
 msgid "Invalid or expired registration link."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/reset_password.ex:93
+#: lib/storyarn_web/live/user_live/reset_password.ex:95
 #, elixir-autogen, elixir-format
 msgid "Invalid or expired password reset link."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/forgot_password.ex:106
+#: lib/storyarn_web/live/user_live/forgot_password.ex:108
 #, elixir-autogen, elixir-format
 msgid "Too many password reset requests. Please try again later."
+msgstr ""
+
+#: lib/storyarn_web/live/user_live/registration.ex:116
+#, elixir-autogen, elixir-format
+msgid "We couldn't create your workspace. Please try again."
 msgstr ""

@@ -283,27 +283,28 @@ defmodule Storyarn.Projects do
   defdelegate list_pending_invitations(project_id), to: Invitations
 
   @doc """
-  Creates an invitation and sends the invitation email.
-
-  Note: Email delivery is best-effort. If the email fails to send,
-  the invitation still exists in the database. Consider implementing
-  a "resend invitation" feature for failed deliveries.
+  Creates an invitation and queues its email for durable delivery.
 
   Returns `{:ok, invitation}` on success.
   Returns `{:error, :already_member}` if the email is already a member.
   Returns `{:error, :already_invited}` if a pending invitation exists.
   Returns `{:error, :rate_limited}` if too many invitations have been sent.
+  Returns `{:error, :limit_reached, details}` if the plan has no free member seats.
+  Returns `{:error, :not_found}` if the project is no longer active.
   """
   @spec create_invitation(project(), user(), String.t(), role()) ::
           {:ok, invitation()}
-          | {:error, :already_member | :already_invited | :rate_limited | changeset()}
+          | {:error, :already_member | :already_invited | :rate_limited | :not_found | changeset()}
+          | {:error, :limit_reached, map()}
   defdelegate create_invitation(project, invited_by, email, role \\ "editor"), to: Invitations
 
   @doc """
   Creates an admin-initiated invitation (no rate limit, no invited_by user).
   """
   @spec create_admin_invitation(project(), String.t(), String.t(), keyword()) ::
-          {:ok, invitation()} | {:error, :already_member | changeset()}
+          {:ok, invitation()}
+          | {:error, :already_member | :already_invited | :not_found | changeset()}
+          | {:error, :limit_reached, map()}
   defdelegate create_admin_invitation(project, email, role, opts \\ []), to: Invitations
 
   @doc """
@@ -322,10 +323,19 @@ defmodule Storyarn.Projects do
   Returns `{:error, :already_member}` if the user is already a member.
   Returns `{:error, :already_accepted}` if the invitation was already accepted.
   Returns `{:error, :expired}` if the invitation has expired.
+  Returns `{:error, :limit_reached, details}` if the workspace has no free member seat.
+  Returns `{:error, :invitation_unavailable}` if the invitation or account disappeared while accepting.
   """
   @spec accept_invitation(invitation(), user()) ::
           {:ok, membership()}
-          | {:error, :email_mismatch | :already_member | :already_accepted | :expired | changeset()}
+          | {:error,
+             :email_mismatch
+             | :already_member
+             | :already_accepted
+             | :expired
+             | :invitation_unavailable
+             | changeset()}
+          | {:error, :limit_reached, map()}
   defdelegate accept_invitation(invitation, user), to: Invitations
 
   @doc """
@@ -333,6 +343,12 @@ defmodule Storyarn.Projects do
   """
   @spec revoke_invitation(invitation()) :: {:ok, invitation()} | {:error, changeset()}
   defdelegate revoke_invitation(invitation), to: Invitations
+
+  @doc """
+  Gets a pending invitation by ID.
+  """
+  @spec get_pending_invitation(integer()) :: invitation() | nil
+  defdelegate get_pending_invitation(id), to: Invitations
 
   # =============================================================================
   # Dashboard

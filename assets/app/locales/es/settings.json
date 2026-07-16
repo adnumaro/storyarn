@@ -110,6 +110,10 @@
           "role": "Rol",
           "submit": "Enviar invitación"
         },
+        "pending_title": "Invitaciones pendientes",
+        "pending_description": "Las invitaciones pendientes reservan una plaza hasta que se aceptan, revocan o caducan.",
+        "expires": "Caduca el {date}",
+        "revoke": "Revocar",
         "active_members": "Miembros activos",
         "no_members": "No se han encontrado miembros.",
         "remove_member": "Eliminar miembro"
