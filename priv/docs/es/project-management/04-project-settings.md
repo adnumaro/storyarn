@@ -48,8 +48,8 @@ La lista muestra cada miembro del proyecto y su rol. Las invitaciones de proyect
 
 La membresía del espacio de trabajo y la del proyecto son independientes. Una persona debe poder acceder al espacio antes de que el permiso de proyecto resulte útil. Consulta [Crear un espacio de trabajo](/docs/quick-start/create-workspace#acceso-a-nivel-de-proyecto).
 
-## Exportación
+## Importación y exportación
 
-La página de Exportación configura el formato para el motor, las secciones incluidas, el tratamiento de recursos, el formato de salida y la validación previa. Consulta la guía de [Exportación](/docs/import-export/import-export-overview).
+La página Importar y exportar permite previsualizar e importar archivos `.yarn` o proyectos ZIP de Yarn Spinner. También configura el formato de exportación para el motor, las secciones incluidas, el tratamiento de recursos, el formato de salida y la validación previa. La importación requiere permiso para editar contenido. Consulta la guía de [Importación y exportación](/docs/import-export/import-export-overview).
 
 Las capturas y la papelera se explican en [Capturas y papelera](/docs/project-management/recovery-and-trash).

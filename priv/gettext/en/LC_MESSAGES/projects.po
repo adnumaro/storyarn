@@ -551,6 +551,31 @@ msgstr "Retrying after a temporary issue…"
 msgid "Creating project…"
 msgstr "Creating project…"
 
+#: lib/storyarn_web/live/export_import_live/index.ex:30
+#, elixir-autogen, elixir-format
+msgid "Import & Export"
+msgstr "Import & Export"
+
+#: lib/storyarn_web/live/export_import_live/index.ex:32
+#, elixir-autogen, elixir-format
+msgid "Move narrative content into or out of this project."
+msgstr "Move narrative content into or out of this project."
+
+#: lib/storyarn_web/live/export_import_live/index.ex:524
+#, elixir-autogen, elixir-format
+msgid "The selected Yarn project is invalid or exceeds the import safety limits."
+msgstr "The selected Yarn project is invalid or exceeds the import safety limits."
+
+#: lib/storyarn_web/live/export_import_live/index.ex:530
+#, elixir-autogen, elixir-format
+msgid "The import could not be completed. No project content was changed."
+msgstr "The import could not be completed. No project content was changed."
+
+#: lib/storyarn_web/live/export_import_live/index.ex:500
+#, elixir-autogen, elixir-format
+msgid "This Yarn project uses narrative logic that Storyarn cannot import safely. No project content was changed."
+msgstr "This Yarn project uses narrative logic that Storyarn cannot import safely. No project content was changed."
+
 #: lib/storyarn_web/live/project_live/components/settings_components.ex:323
 #, elixir-autogen, elixir-format
 msgid "An invitation has already been sent to this email."

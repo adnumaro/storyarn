@@ -88,6 +88,36 @@ defmodule StoryarnWeb.Telemetry do
         unit: {:native, :millisecond}
       ),
 
+      # Project import metrics. Tags are deliberately low-cardinality and must
+      # never include filenames, content, user IDs, or project IDs.
+      sum("storyarn.import.prepare.stop.count",
+        tags: [:format, :source_kind, :status, :error_code, :parser_version]
+      ),
+      summary("storyarn.import.prepare.stop.duration",
+        tags: [:format, :source_kind, :status, :error_code, :parser_version],
+        unit: {:native, :millisecond}
+      ),
+      sum("storyarn.import.execute.stop.count",
+        tags: [:format, :source_kind, :status, :error_code, :parser_version]
+      ),
+      summary("storyarn.import.execute.stop.duration",
+        tags: [:format, :source_kind, :status, :error_code, :parser_version],
+        unit: {:native, :millisecond}
+      ),
+      sum("storyarn.import.error.count",
+        tags: [:format, :parser_version, :phase, :error_code, :exception_module]
+      ),
+      sum("storyarn.import.expiration.stop.expired_count",
+        tags: [:status, :error_code]
+      ),
+      sum("storyarn.import.expiration.stop.failure_count",
+        tags: [:status, :error_code]
+      ),
+      summary("storyarn.import.expiration.stop.duration",
+        tags: [:status, :error_code],
+        unit: {:native, :millisecond}
+      ),
+
       # VM Metrics
       summary("vm.memory.total", unit: {:byte, :kilobyte}),
       summary("vm.total_run_queue_lengths.total"),

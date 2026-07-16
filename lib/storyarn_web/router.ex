@@ -52,15 +52,11 @@ defmodule StoryarnWeb.Router do
   end
 
   defp put_posthog_user_context(%{assigns: %{current_scope: %{user: %{id: user_id}}}} = conn, _opts) do
-    Logger.metadata(user_id: user_id)
     PostHog.set_context(%{distinct_id: "user:#{user_id}"})
     conn
   end
 
-  defp put_posthog_user_context(conn, _opts) do
-    Logger.metadata(user_id: nil)
-    conn
-  end
+  defp put_posthog_user_context(conn, _opts), do: conn
 
   defp posthog_connect_src do
     posthog_host =

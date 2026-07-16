@@ -579,16 +579,6 @@ msgstr ""
 msgid "Delete this template permanently? This cannot be undone."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:27
-#, elixir-autogen, elixir-format
-msgid "Export"
-msgstr ""
-
-#: lib/storyarn_web/live/export_import_live/index.ex:28
-#, elixir-autogen, elixir-format
-msgid "Export your project data."
-msgstr ""
-
 #: lib/storyarn_web/live/template_live/helpers.ex:25
 #, elixir-autogen, elixir-format
 msgid "Failed"
@@ -896,6 +886,31 @@ msgstr ""
 #: lib/storyarn_web/live/project_settings_live/general.ex:205
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to publish templates from this project."
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:30
+#, elixir-autogen, elixir-format
+msgid "Import & Export"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:32
+#, elixir-autogen, elixir-format
+msgid "Move narrative content into or out of this project."
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:524
+#, elixir-autogen, elixir-format
+msgid "The selected Yarn project is invalid or exceeds the import safety limits."
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:530
+#, elixir-autogen, elixir-format
+msgid "The import could not be completed. No project content was changed."
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:500
+#, elixir-autogen, elixir-format
+msgid "This Yarn project uses narrative logic that Storyarn cannot import safely. No project content was changed."
 msgstr ""
 
 #: lib/storyarn_web/live/project_live/components/settings_components.ex:327

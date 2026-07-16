@@ -96,7 +96,7 @@ if config_env() != :test do
     enable_source_code_context: true,
     global_properties: %{environment: to_string(config_env())},
     in_app_otp_apps: [:storyarn],
-    metadata: [:request_id, :user_id]
+    metadata: [:request_id]
 
   config :storyarn, :posthog_frontend,
     frontend_enabled: posthog_configured? and posthog_frontend_enabled?,
@@ -120,6 +120,7 @@ if config_env() == :prod do
   # Cloak encryption key for sensitive database fields
   # Generate with: 32 |> :crypto.strong_rand_bytes() |> Base.encode64()
   cloak_key = required_env.("CLOAK_KEY")
+  decoded_cloak_key = Base.decode64!(cloak_key)
 
   database_url = required_env.("DATABASE_URL")
 
@@ -210,7 +211,7 @@ if config_env() == :prod do
     ciphers: [
       default: {
         Cloak.Ciphers.AES.GCM,
-        tag: "AES.GCM.V1", key: Base.decode64!(cloak_key), iv_length: 12
+        tag: "AES.GCM.V1", key: decoded_cloak_key, iv_length: 12
       }
     ]
 
@@ -228,6 +229,10 @@ if config_env() == :prod do
     secret_key_base: secret_key_base
 
   config :storyarn, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
+
+  config :storyarn,
+         :import_idempotency_secret,
+         :crypto.mac(:hmac, :sha256, decoded_cloak_key, "storyarn/import-idempotency/v1")
 
   # Default "from" email address (tuple format matching notifier expectations)
   config :storyarn, :mailer_sender, {mailer_from_name, mailer_from_email}
