@@ -1,0 +1,157 @@
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_6ce2be7da793bc::t_0eda0d7df4efa9 578-627
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_6ce2be7da793bc::t_0eda0d7df4efa9 578-627
+priv/gettext/projects.pot
+  s_6ce2be7da793bc::t_0eda0d7df4efa9 14,19,24,29,45,50,60,65,70,77,95,101,113,171-172,180,205,215,220,235,250,255,260,290,295,300,305,310-311,541,915-964
+assets/app/live/project/settings/ProjectSettingsMembers.vue
+  s_6ce2be7da793bc::t_73b89aa26b46d8 2,14,23-34,36,40-49,112,114,116,125,132,147-150,154-207
+assets/app/live/workspace/settings/WorkspaceSettingsMembers.vue
+  s_6ce2be7da793bc::t_6f41117df67fe0 2,14,23-29,32,34,38,40,44-53,94,108,123,135,153,156,163-215
+assets/app/locales/en/project-settings.json
+  s_6ce2be7da793bc::t_4ad11406b21c0e 81-82,88-92
+assets/app/locales/en/settings.json
+  s_6ce2be7da793bc::t_26defe732ab4ed 113-116
+assets/app/locales/es/project-settings.json
+  s_6ce2be7da793bc::t_f5220c097f55a4 81-82,88-92
+assets/app/locales/es/settings.json
+  s_6ce2be7da793bc::t_4fa9ea4d06c15e 113-116
+assets/app/shared/composables/useMemberInvitations.ts
+  s_6ce2be7da793bc::t_f3c5c5b58bd7b2 1-63
+assets/app/test/live/project/settings/ProjectSettingsMembers.test.ts
+  s_6ce2be7da793bc::t_727b96315c4452 1-89
+assets/app/test/live/workspace/settings/WorkspaceSettingsMembers.test.ts
+  s_6ce2be7da793bc::t_a83d5cea5d66d0 1-109
+lib/storyarn/billing.ex
+  s_6ce2be7da793bc::t_fd424867eb52da 28-29
+lib/storyarn/billing/limits.ex
+  s_6ce2be7da793bc::t_269551ba249d9e 15,21,24,82-111,237,272,324,328-350,404,413-483
+lib/storyarn/emails/templates.ex
+  s_6ce2be7da793bc::t_6ea20e292a515a 99,105,117,121,147,153,165,169,182-190,192-199
+lib/storyarn/project_templates/audit.ex
+  s_6ce2be7da793bc::t_65d375e727a7ce 17-19,68,79,91-93,95-103,105-114,120-128,134-320,630-631,761-800,1065-1068,1146-1169,1181-1184,1198-1201,1214-1215,1218-1223,1247,1250-1258
+lib/storyarn/project_templates/installation.ex
+  s_6ce2be7da793bc::t_808ca6b4c1313c 13,35,278-279,284-294,499-502
+lib/storyarn/projects.ex
+  s_6ce2be7da793bc::t_8dd2195c015c7c 286,292-293,297-298,305-307,326-327,331-338,347-352
+lib/storyarn/projects/invitations.ex
+  s_6ce2be7da793bc::t_69324adbc021ec 30-35,42-43
+lib/storyarn/projects/project_crud.ex
+  s_6ce2be7da793bc::t_de7185d5296cc7 11,206-227
+lib/storyarn/release.ex
+  s_6ce2be7da793bc::t_d221adb3596d07 48,50,74,82-85
+lib/storyarn/shared/invitation_notifier.ex
+  s_6ce2be7da793bc::t_595fb35127f924 16,20-21,36,51-55
+lib/storyarn/shared/invitation_operations.ex
+  s_6ce2be7da793bc::t_6ec0fa110d462e 19,21,24,27-28,38,40,45,51,61-62,64-69,71-74,76-80,90,104,111-129,140,171,176-177,182-224,239-309,315-396,399-430,448
+lib/storyarn/shared/invitation_schema.ex
+  s_6ce2be7da793bc::t_95c52596d1bc1a 43
+lib/storyarn/versioning/builders/flow_builder.ex
+  s_6ce2be7da793bc::t_d6624e89632b14 19-21,29,38-42,65,67-70,100,106-146,150-177,236-237,256-258,264,297-300,327,363-370,383-388,415-421,463-653,665,667,682-683,688-689,789,791,798-799,806-807,867,880,960-961,964,986-1002,1006-1011,1124-1142,1152-1201
+lib/storyarn/versioning/builders/flow_snapshot_normalizer.ex
+  s_6ce2be7da793bc::t_3e2a70f0923b16 1-478
+lib/storyarn/versioning/builders/project_snapshot_builder.ex
+  s_6ce2be7da793bc::t_9081bfb1c7c81e 27,138-139
+lib/storyarn/versioning/project_recovery.ex
+  s_6ce2be7da793bc::t_ba33904444aaae 31,51
+lib/storyarn/workers/deliver_invitation_worker.ex
+  s_6ce2be7da793bc::t_48c10a03995a14 1-88
+lib/storyarn/workspaces.ex
+  s_6ce2be7da793bc::t_4cf82f2a8dc3fa 210,216-217,221-222,229-231,250-251,255-262
+lib/storyarn/workspaces/invitations.ex
+  s_6ce2be7da793bc::t_957664940fde16 30-35
+lib/storyarn_web/live/project_live/components/settings_components.ex
+  s_6ce2be7da793bc::t_4e66fb09972c39 12,19,29-30,37,39-40,280,282,285-354,356-359,361-362
+lib/storyarn_web/live/project_live/invitation.ex
+  s_6ce2be7da793bc::t_726bf0b8fa48d5 13,85-94
+lib/storyarn_web/live/project_settings_live/members.ex
+  s_6ce2be7da793bc::t_49428cfe644313 34,56-66,77,83,116,122,126-152
+lib/storyarn_web/live/settings_live/workspace_members.ex
+  s_6ce2be7da793bc::t_880b117d67012c 7,9-10,18,26,45,47-48,68,70,79,112-117,120-139,151-160,163,165,168-169,171-183,185-186,188-212,214-242,244-245
+lib/storyarn_web/live/shared/invitation_helpers.ex
+  s_6ce2be7da793bc::t_67ef3de705633e 1-27
+lib/storyarn_web/live/workspace_live/invitation.ex
+  s_6ce2be7da793bc::t_1ce1c3c12ecf2d 13,91-100
+priv/gettext/assets.pot
+  s_6ce2be7da793bc::t_1a78aef4637593 14,19,24,29,34-35,40,45,50,55
+priv/gettext/default.pot
+  s_6ce2be7da793bc::t_2aa4eeaa31ffc2 104,144,149,202,212,217,227,232,242,252,267,272,277,282,287,292,297,312,314,317,319,322,324,327-328,330-337,340,342
+priv/gettext/emails.pot
+  s_6ce2be7da793bc::t_c433643b525549 106,108-111,131,137,146,148-151
+priv/gettext/en/LC_MESSAGES/emails.po
+  s_6ce2be7da793bc::t_bfd44eda033621 107,109-112,132-133,138-139,148,150-153
+priv/gettext/en/LC_MESSAGES/workspaces.po
+  s_6ce2be7da793bc::t_5efaa1c360ec23 213-262
+priv/gettext/es/LC_MESSAGES/emails.po
+  s_6ce2be7da793bc::t_30da9a39ebf93b 107,109-112,132-133,138-139,148,150-153
+priv/gettext/es/LC_MESSAGES/workspaces.po
+  s_6ce2be7da793bc::t_f533395e26f37d 213-262
+priv/gettext/flows.pot
+  s_6ce2be7da793bc::t_03e482cabc38de 52,111-112,151,183,193,198,203,213,223,228,233,238,243,248,253,258,263,268,415,432,453,458,463,468
+priv/gettext/identity.pot
+  s_6ce2be7da793bc::t_03d05a3f728a5b 14,25,46,51,73,78-79,84,89,93-97
+priv/gettext/sheets.pot
+  s_6ce2be7da793bc::t_5f8314986c7cea 14,19,24,100,231,236,241-242,247,252,257,262,267,272,277,330,335
+priv/gettext/versioning.pot
+  s_6ce2be7da793bc::t_9c606eb5f39a57 31,83
+priv/gettext/workspaces.pot
+  s_6ce2be7da793bc::t_325f9da4f1b4b1 14,19,29,34-35,40,50,60,70,75,80,114-115,120,125,219,239-288
+priv/repo/migration_helpers/runtime_localization_repair.exs
+  s_6ce2be7da793bc::t_5d90f1413a9c82 1-527
+priv/repo/migrations/20260713120000_align_localization_with_runtime_contract.exs
+  s_6ce2be7da793bc::t_6f8c1d498f0454 1-2,6,8-11
+priv/repo/migrations/20260716100000_repair_runtime_localization_backfill.exs
+  s_6ce2be7da793bc::t_aa1dffd8fbbc5d 1-17
+test/e2e/workspaces/projects/projects_test.exs
+  s_6ce2be7da793bc::t_c6cacb84b94d0c 185
+test/storyarn/billing/limits_test.exs
+  s_6ce2be7da793bc::t_7849b0b6c0152a 11-12,34,98-115,128-155,182,231,251-252,289,326,341,376,391,448,495-512
+test/storyarn/project_templates/audit_sequence_test.exs
+  s_6ce2be7da793bc::t_9680efaa61ad11 1-110
+test/storyarn/project_templates_test.exs
+  s_6ce2be7da793bc::t_8a59908a441978 14,19,661-763
+test/storyarn/projects_fixtures_test.exs
+  s_6ce2be7da793bc::t_d696286163526d 166-179
+test/storyarn/projects_test.exs
+  s_6ce2be7da793bc::t_6499adf792edb3 10,220-222,226-234,327,348-464,524-546
+test/storyarn/repo/migrations/runtime_localization_repair_test.exs
+  s_6ce2be7da793bc::t_b7ff618f383789 1-215
+test/storyarn/shared/invitation_concurrency_test.exs
+  s_6ce2be7da793bc::t_0c557839332bc3 1-233
+test/storyarn/versioning/builders/flow_builder_test.exs
+  s_6ce2be7da793bc::t_afaa3298c72686 2,12,14-17,19,80,86-151,170,217-271,316,330-374,377-382,391,411,429,469,477-544,564-626,682-696
+test/storyarn/versioning/builders/flow_snapshot_normalizer_test.exs
+  s_6ce2be7da793bc::t_f9939f154ca9bf 1-416
+test/storyarn/workers/deliver_invitation_worker_test.exs
+  s_6ce2be7da793bc::t_f0507ba97df6cd 1-195
+test/storyarn/workspaces/invitations_test.exs
+  s_6ce2be7da793bc::t_f04e1dd4593d2e 93,99-100,103,194-231,240-302
+test/storyarn_web/live/project_live/invitation_test.exs
+  s_6ce2be7da793bc::t_024e858354d58c 124-142
+test/storyarn_web/live/project_live/settings_test.exs
+  s_6ce2be7da793bc::t_ad6333c59f9ebe 11,14,16,159,169-274,334-353
+test/storyarn_web/live/settings_live/workspace_members_test.exs
+  s_6ce2be7da793bc::t_8c4a19f5bdd19d 8,27,29,46,125-129,137-173,176-190,193-253
+test/storyarn_web/live/workspace_live/invitation_test.exs
+  s_6ce2be7da793bc::t_4b47dc9c4f97a0 118-134
+test/support/failing_mailer_adapter.ex
+  s_6ce2be7da793bc::t_c0f9b367938caa 1-11
+test/support/fixtures/projects_fixtures.ex
+  s_6ce2be7da793bc::t_bc8440670374b0 7-8,13-15,60,87,94,96-97,110-112,119-135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "73a8a5431897ea6e24619ac20f1820591b2f56a7",
+  "prompts": {},
+  "sessions": {
+    "s_6ce2be7da793bc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b48-ed5a-71b3-916d-5a5630eac623",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
