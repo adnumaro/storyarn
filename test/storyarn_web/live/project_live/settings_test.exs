@@ -5,6 +5,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures
+  import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
@@ -44,7 +45,23 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       assert vue.props["project-details"]["type"] == "game"
       assert vue.props["project-details"]["subtype"] == "rpg"
       assert vue.props["project-metrics-options"]["project_types"] == ["game", "film", "novel", "other"]
-      assert vue.props["source-language"]["localeCode"] == "en"
+
+      assert vue.props["source-language"] == %{
+               "flagCode" => "gb",
+               "label" => "English",
+               "languageTag" => "en",
+               "localeCode" => "en",
+               "shortLabel" => "EN",
+               "value" => "en"
+             }
+
+      assert %{
+               "flagCode" => "us",
+               "label" => "English (US)",
+               "languageTag" => "en-US",
+               "shortLabel" => "EN",
+               "value" => "en-us"
+             } in vue.props["source-language-options"]
     end
 
     test "redirects non-owner", %{conn: conn, user: user} do
@@ -121,6 +138,46 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       previous_source = Localization.get_language_by_locale(project.id, "en")
       refute previous_source.is_source
       assert previous_source.archived_at == nil
+    end
+
+    test "resets translations only after explicit confirmation when changing source language", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      text = localized_text_fixture(project.id)
+
+      {:ok, view, _html} = live(conn, settings_path(project))
+
+      html =
+        render_click(view, "change_source_language", %{
+          "locale_code" => "es",
+          "reset_translations" => true
+        })
+
+      assert html =~ "Source language updated."
+      assert Localization.get_source_language(project.id).locale_code == "es"
+      assert Localization.get_text(project.id, text.id) == nil
+    end
+
+    test "does not coerce arbitrary reset values when changing source language", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      text = localized_text_fixture(project.id)
+
+      {:ok, view, _html} = live(conn, settings_path(project))
+
+      html =
+        render_click(view, "change_source_language", %{
+          "locale_code" => "es",
+          "reset_translations" => "yes"
+        })
+
+      assert html =~ "Could not update the source language."
+      assert Localization.get_source_language(project.id).locale_code == "en"
+      assert Localization.get_text(project.id, text.id)
     end
 
     test "deletes project via delete_project event", %{conn: conn, user: user} do

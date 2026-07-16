@@ -81,6 +81,18 @@ defmodule Storyarn.Accounts.UserToken do
   end
 
   @doc """
+  Returns the lookup query for one unexpired session token owned by a user.
+
+  Sudo re-authentication uses it to verify that the session bound into a signed
+  grant is still active, without modifying the primary token.
+  """
+  def valid_session_token_query(token, user_id) do
+    from session_token in by_token_and_context_query(token, "session"),
+      where: session_token.user_id == ^user_id,
+      where: session_token.inserted_at > ago(@session_validity_in_days, "day")
+  end
+
+  @doc """
   Builds a token and its hash to be delivered to the user's email.
 
   The non-hashed token is sent to the user email while the

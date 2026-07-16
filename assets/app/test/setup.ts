@@ -46,6 +46,17 @@ export function setTestLocale(locale: string): void {
   (i18n.global.locale as unknown as { value: string }).value = locale;
 }
 
+export function registerTestLocale(locale: string): void {
+  const globalI18n = i18n.global as unknown as {
+    availableLocales: string[];
+    setLocaleMessage: (targetLocale: string, messages: JsonLocale) => void;
+  };
+
+  if (!globalI18n.availableLocales.includes(locale)) {
+    globalI18n.setLocaleMessage(locale, {});
+  }
+}
+
 /**
  * Create a mock LiveInterface with vi.fn() spies on all methods.
  * Pass initial props to pre-populate the reactive props object.

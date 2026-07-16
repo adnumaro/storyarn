@@ -1,7 +1,11 @@
 defmodule StoryarnWeb.UserSessionControllerTest do
-  use StoryarnWeb.ConnCase, async: true
+  use StoryarnWeb.ConnCase, async: false
 
   import Storyarn.AccountsFixtures
+
+  alias Storyarn.Accounts
+  alias Storyarn.RateLimiter
+  alias StoryarnWeb.UserAuth
 
   setup do
     %{unconfirmed_user: unconfirmed_user_fixture(), user: user_fixture()}
@@ -100,22 +104,6 @@ defmodule StoryarnWeb.UserSessionControllerTest do
       assert redirected_to(conn) == ~p"/users/log-in"
     end
 
-    test "confirmed access uses current user email when form email is absent", %{conn: conn, user: user} do
-      stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -121, :minute)
-
-      conn =
-        conn
-        |> log_in_user(user, token_authenticated_at: stale_authenticated_at)
-        |> put_session(:user_return_to, "/users/settings")
-        |> post(~p"/users/log-in", %{
-          "_action" => "confirmed",
-          "user" => %{"password" => valid_user_password()}
-        })
-
-      assert redirected_to(conn) == "/users/settings"
-      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "User confirmed successfully."
-    end
-
     test "redirects authenticated users away from normal login POST", %{conn: conn, user: user} do
       conn =
         conn
@@ -141,6 +129,178 @@ defmodule StoryarnWeb.UserSessionControllerTest do
       assert Phoenix.Flash.get(conn.assigns.flash, :login_error) == "Invalid email or password"
       assert Phoenix.Flash.get(conn.assigns.flash, :email) == user.email
       assert redirected_to(conn) == ~p"/users/log-in"
+    end
+  end
+
+  describe "POST /users/update-password" do
+    test "accepts the same twenty-minute sudo window as the settings LiveView", %{
+      conn: conn,
+      user: user
+    } do
+      authenticated_at = DateTime.add(DateTime.utc_now(:second), -19, :minute)
+      new_password = valid_user_password() <> " changed"
+
+      conn =
+        conn
+        |> log_in_user(user, token_authenticated_at: authenticated_at)
+        |> post(~p"/users/update-password", %{
+          "user" => %{
+            "email" => user.email,
+            "password" => new_password,
+            "password_confirmation" => new_password
+          }
+        })
+
+      assert redirected_to(conn) == "/users/settings/security"
+      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "Password updated successfully!"
+      assert Accounts.get_user_by_email_and_password(user.email, new_password)
+    end
+
+    test "goes directly to confirmation when the sudo window has expired", %{
+      conn: conn,
+      user: user
+    } do
+      authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+
+      conn =
+        conn
+        |> log_in_user(user, token_authenticated_at: authenticated_at)
+        |> post(~p"/users/update-password", %{
+          "user" => %{
+            "email" => user.email,
+            "password" => valid_user_password(),
+            "password_confirmation" => valid_user_password()
+          }
+        })
+
+      assert redirected_to(conn) ==
+               UserAuth.sudo_confirmation_path("/users/settings/security")
+
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~
+               "Please re-authenticate to change your password."
+    end
+
+    test "accepts a signed grant bound to the stale current session", %{conn: conn, user: user} do
+      authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+      new_password = valid_user_password() <> " granted"
+      conn = log_in_user(conn, user, token_authenticated_at: authenticated_at)
+      session_token = get_session(conn, :user_token)
+      grant = UserAuth.issue_sudo_grant(user, session_token)
+
+      conn =
+        post(conn, ~p"/users/update-password", %{
+          "sudo_grant" => grant,
+          "user" => %{
+            "email" => user.email,
+            "password" => new_password,
+            "password_confirmation" => new_password
+          }
+        })
+
+      assert redirected_to(conn) == "/users/settings/security"
+      assert Accounts.get_user_by_email_and_password(user.email, new_password)
+    end
+
+    test "redirects an invalid granted password POST without revoking the session", %{
+      conn: conn,
+      user: user
+    } do
+      authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+      conn = log_in_user(conn, user, token_authenticated_at: authenticated_at)
+      session_token = get_session(conn, :user_token)
+      grant = UserAuth.issue_sudo_grant(user, session_token)
+
+      conn =
+        post(conn, ~p"/users/update-password", %{
+          "sudo_grant" => grant,
+          "user" => %{
+            "email" => user.email,
+            "password" => "short",
+            "password_confirmation" => "different"
+          }
+        })
+
+      assert redirected_to(conn) ==
+               UserAuth.with_sudo_grant(~p"/users/settings/security", grant)
+
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "Failed to update password."
+      assert get_session(conn, :user_token) == session_token
+      assert Accounts.get_user_by_session_token(session_token)
+      assert Accounts.get_user_by_email_and_password(user.email, valid_user_password())
+    end
+
+    test "rejects a grant issued for another session", %{conn: conn, user: user} do
+      authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+      conn = log_in_user(conn, user, token_authenticated_at: authenticated_at)
+      other_session_token = Accounts.generate_user_session_token(user)
+      grant = UserAuth.issue_sudo_grant(user, other_session_token)
+
+      conn =
+        post(conn, ~p"/users/update-password", %{
+          "sudo_grant" => grant,
+          "user" => %{
+            "email" => user.email,
+            "password" => valid_user_password(),
+            "password_confirmation" => valid_user_password()
+          }
+        })
+
+      assert redirected_to(conn) ==
+               UserAuth.sudo_confirmation_path("/users/settings/security")
+    end
+
+    test "replaces the session after a password change even when login is rate limited", %{
+      conn: conn,
+      user: user
+    } do
+      original_rate_limiter_config = Application.get_env(:storyarn, RateLimiter)
+      Application.put_env(:storyarn, RateLimiter, enabled: true)
+
+      on_exit(fn ->
+        Application.put_env(:storyarn, RateLimiter, original_rate_limiter_config || [])
+      end)
+
+      unique_ip = System.unique_integer([:positive])
+      third_octet = rem(div(unique_ip, 254), 254) + 1
+      fourth_octet = rem(unique_ip, 254) + 1
+      remote_ip = {192, 0, third_octet, fourth_octet}
+      ip_address = remote_ip |> :inet.ntoa() |> to_string()
+
+      for _ <- 1..5, do: assert(:ok = RateLimiter.check_login(ip_address))
+      assert {:error, :rate_limited} = RateLimiter.check_login(ip_address)
+
+      authenticated_at = DateTime.add(DateTime.utc_now(:second), -19, :minute)
+      new_password = valid_user_password() <> " replacement"
+
+      conn =
+        conn
+        |> Map.put(:remote_ip, remote_ip)
+        |> log_in_user(user, token_authenticated_at: authenticated_at)
+
+      old_session_token = get_session(conn, :user_token)
+
+      conn =
+        post(conn, ~p"/users/update-password", %{
+          "user" => %{
+            "email" => user.email,
+            "password" => new_password,
+            "password_confirmation" => new_password
+          }
+        })
+
+      new_session_token = get_session(conn, :user_token)
+
+      assert redirected_to(conn) == "/users/settings/security"
+      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "Password updated successfully!"
+      assert Accounts.get_user_by_email_and_password(user.email, new_password)
+      refute new_session_token == old_session_token
+      refute Accounts.get_user_by_session_token(old_session_token)
+
+      assert {session_user, _inserted_at} =
+               Accounts.get_user_by_session_token(new_session_token)
+
+      assert UserAuth.sudo_mode?(session_user)
+      assert {:error, :rate_limited} = RateLimiter.check_login(ip_address)
     end
   end
 

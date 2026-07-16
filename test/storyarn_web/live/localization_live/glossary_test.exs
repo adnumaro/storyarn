@@ -27,7 +27,24 @@ defmodule StoryarnWeb.LocalizationLive.GlossaryTest do
     {:ok, view, _html} = live(conn, glossary_path(project))
     vue = get_glossary_vue(view)
 
-    assert vue.props["source-language"]["localeCode"] == "en"
+    assert vue.props["source-language"] == %{
+             "value" => "en",
+             "label" => "English",
+             "languageTag" => "en",
+             "flagCode" => "gb",
+             "shortLabel" => "EN"
+           }
+
+    assert vue.props["target-languages"] == [
+             %{
+               "value" => "es",
+               "label" => "Spanish",
+               "languageTag" => "es",
+               "flagCode" => "es",
+               "shortLabel" => "ES"
+             }
+           ]
+
     assert vue.props["selected-locale"] == "es"
     assert vue.props["entries"] == []
   end

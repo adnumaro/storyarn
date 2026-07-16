@@ -5,32 +5,42 @@ import { useI18n } from "vue-i18n";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@components/ui/select";
+import LanguagePicker from "@components/language/LanguagePicker.vue";
+import type { LanguagePickerOption } from "@components/language/types";
 
 interface ProfileFormValues {
   display_name: string;
   locale: string | null;
 }
 
-const { profileForm: profileFormProp } = defineProps<{
+const { profileForm: profileFormProp, localeOptions: localeOptionsProp = [] } = defineProps<{
   profileForm: Form<ProfileFormValues>;
+  localeOptions?: LanguagePickerOption[];
 }>();
 
 const { availableLocales, locale: currentLocale, t } = useI18n({ useScope: "global" });
 
-const localeOptions = computed(() =>
-  availableLocales.map((value) => ({
-    value,
-    label: t(`settings.profile.languages.${value}`),
-  })),
-);
+function fallbackFlagCode(locale: string): string | null {
+  if (locale === "en") return "gb";
+  if (locale === "es") return "es";
+  return null;
+}
+
+const localeOptions = computed<LanguagePickerOption[]>(() => {
+  const metadata = new Map(localeOptionsProp.map((option) => [option.value, option]));
+
+  return availableLocales.map((value) => {
+    const option = metadata.get(value);
+
+    return {
+      value,
+      label: t(`settings.profile.languages.${value}`),
+      languageTag: option?.languageTag ?? value.replace("_", "-"),
+      flagCode: option?.flagCode ?? fallbackFlagCode(value),
+      shortLabel: option?.shortLabel ?? value.slice(0, 2).toUpperCase(),
+    };
+  });
+});
 
 const fallbackLocale = computed(() =>
   localeOptions.value.some((option) => option.value === currentLocale.value)
@@ -80,11 +90,6 @@ const selectedLocale = computed({
     locale.value.value = normalizeLocale(value);
   },
 });
-
-function updateLocale(value: string | string[]): void {
-  const nextValue = Array.isArray(value) ? value[0] : value;
-  selectedLocale.value = normalizeLocale(nextValue);
-}
 </script>
 
 <template>
@@ -118,34 +123,23 @@ function updateLocale(value: string | string[]): void {
         </div>
 
         <div class="space-y-1.5">
-          <Label for="profile-locale">{{ $t("settings.profile.language") }}</Label>
-          <Select
-            :model-value="selectedLocale"
-            :name="locale.inputAttrs.value.name"
-            @update:model-value="updateLocale"
-          >
-            <SelectTrigger id="profile-locale" class="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem
-                  v-for="option in localeOptions"
-                  :key="option.value"
-                  :value="option.value"
-                >
-                  {{ option.label }}
-                </SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+          <Label for="profile-locale-trigger">{{ $t("settings.profile.language") }}</Label>
+          <LanguagePicker
+            id="profile-locale"
+            v-model="selectedLocale"
+            :options="localeOptions"
+            :label="$t('settings.profile.language')"
+            :appearance="{ searchable: false, triggerClass: 'w-full' }"
+          />
           <p v-if="locale.errorMessage.value" class="text-sm text-destructive mt-1">
             {{ locale.errorMessage.value }}
           </p>
         </div>
 
         <div class="flex justify-end gap-3">
-          <Button @click="profileForm.submit()"> {{ $t("settings.profile.save_profile") }} </Button>
+          <Button id="profile-save-button" @click="profileForm.submit()">
+            {{ $t("settings.profile.save_profile") }}
+          </Button>
         </div>
       </div>
     </section>

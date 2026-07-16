@@ -1,0 +1,183 @@
+/* Curated 1x1 flags used by Storyarn's language catalog. */
+.storyarn-language-flag .fi {
+  display: none;
+  width: 100%;
+  height: 100%;
+  line-height: 1;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+/* Only these classes have bundled assets. Unknown codes leave the short label visible. */
+.storyarn-language-flag .fi-bg,
+.storyarn-language-flag .fi-br,
+.storyarn-language-flag .fi-cn,
+.storyarn-language-flag .fi-cz,
+.storyarn-language-flag .fi-de,
+.storyarn-language-flag .fi-dk,
+.storyarn-language-flag .fi-ee,
+.storyarn-language-flag .fi-es,
+.storyarn-language-flag .fi-es-ct,
+.storyarn-language-flag .fi-fi,
+.storyarn-language-flag .fi-fr,
+.storyarn-language-flag .fi-gb,
+.storyarn-language-flag .fi-gr,
+.storyarn-language-flag .fi-hr,
+.storyarn-language-flag .fi-hu,
+.storyarn-language-flag .fi-id,
+.storyarn-language-flag .fi-il,
+.storyarn-language-flag .fi-in,
+.storyarn-language-flag .fi-it,
+.storyarn-language-flag .fi-jp,
+.storyarn-language-flag .fi-kr,
+.storyarn-language-flag .fi-lt,
+.storyarn-language-flag .fi-lv,
+.storyarn-language-flag .fi-my,
+.storyarn-language-flag .fi-nl,
+.storyarn-language-flag .fi-no,
+.storyarn-language-flag .fi-ph,
+.storyarn-language-flag .fi-pl,
+.storyarn-language-flag .fi-pt,
+.storyarn-language-flag .fi-ro,
+.storyarn-language-flag .fi-rs,
+.storyarn-language-flag .fi-ru,
+.storyarn-language-flag .fi-sa,
+.storyarn-language-flag .fi-se,
+.storyarn-language-flag .fi-si,
+.storyarn-language-flag .fi-sk,
+.storyarn-language-flag .fi-th,
+.storyarn-language-flag .fi-tr,
+.storyarn-language-flag .fi-tw,
+.storyarn-language-flag .fi-ua,
+.storyarn-language-flag .fi-us,
+.storyarn-language-flag .fi-vn {
+  display: block;
+}
+
+.storyarn-language-flag .fi-bg {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/bg.svg");
+}
+.storyarn-language-flag .fi-br {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/br.svg");
+}
+.storyarn-language-flag .fi-cn {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/cn.svg");
+}
+.storyarn-language-flag .fi-cz {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/cz.svg");
+}
+.storyarn-language-flag .fi-de {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/de.svg");
+}
+.storyarn-language-flag .fi-dk {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/dk.svg");
+}
+.storyarn-language-flag .fi-ee {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/ee.svg");
+}
+.storyarn-language-flag .fi-es {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/es.svg");
+}
+.storyarn-language-flag .fi-es-ct {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/es-ct.svg");
+}
+.storyarn-language-flag .fi-fi {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/fi.svg");
+}
+.storyarn-language-flag .fi-fr {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/fr.svg");
+}
+.storyarn-language-flag .fi-gb {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/gb.svg");
+}
+.storyarn-language-flag .fi-gr {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/gr.svg");
+}
+.storyarn-language-flag .fi-hr {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/hr.svg");
+}
+.storyarn-language-flag .fi-hu {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/hu.svg");
+}
+.storyarn-language-flag .fi-id {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/id.svg");
+}
+.storyarn-language-flag .fi-il {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/il.svg");
+}
+.storyarn-language-flag .fi-in {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/in.svg");
+}
+.storyarn-language-flag .fi-it {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/it.svg");
+}
+.storyarn-language-flag .fi-jp {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/jp.svg");
+}
+.storyarn-language-flag .fi-kr {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/kr.svg");
+}
+.storyarn-language-flag .fi-lt {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/lt.svg");
+}
+.storyarn-language-flag .fi-lv {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/lv.svg");
+}
+.storyarn-language-flag .fi-my {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/my.svg");
+}
+.storyarn-language-flag .fi-nl {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/nl.svg");
+}
+.storyarn-language-flag .fi-no {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/no.svg");
+}
+.storyarn-language-flag .fi-ph {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/ph.svg");
+}
+.storyarn-language-flag .fi-pl {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/pl.svg");
+}
+.storyarn-language-flag .fi-pt {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/pt.svg");
+}
+.storyarn-language-flag .fi-ro {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/ro.svg");
+}
+.storyarn-language-flag .fi-rs {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/rs.svg");
+}
+.storyarn-language-flag .fi-ru {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/ru.svg");
+}
+.storyarn-language-flag .fi-sa {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/sa.svg");
+}
+.storyarn-language-flag .fi-se {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/se.svg");
+}
+.storyarn-language-flag .fi-si {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/si.svg");
+}
+.storyarn-language-flag .fi-sk {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/sk.svg");
+}
+.storyarn-language-flag .fi-th {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/th.svg");
+}
+.storyarn-language-flag .fi-tr {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/tr.svg");
+}
+.storyarn-language-flag .fi-tw {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/tw.svg");
+}
+.storyarn-language-flag .fi-ua {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/ua.svg");
+}
+.storyarn-language-flag .fi-us {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/us.svg");
+}
+.storyarn-language-flag .fi-vn {
+  background-image: url("../../node_modules/flag-icons/flags/1x1/vn.svg");
+}

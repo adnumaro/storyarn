@@ -8,6 +8,7 @@ defmodule StoryarnWeb.Router do
                     do: " http://localhost:5173 'unsafe-inline' 'unsafe-eval'",
                     else: ""
                   )
+  @csp_dev_asset_origin if(Mix.env() == :dev, do: " http://localhost:5173", else: "")
 
   @posthog_default_connect_src "https://*.posthog.com https://*.i.posthog.com " <>
                                  "https://us.i.posthog.com https://eu.i.posthog.com"
@@ -16,7 +17,7 @@ defmodule StoryarnWeb.Router do
     "default-src 'self'; " <>
       "script-src 'self'#{@csp_dev_extras}; " <>
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com#{@csp_dev_extras}; " <>
-      "img-src 'self' data: blob: https:; " <>
+      "img-src 'self' data: blob: https:#{@csp_dev_asset_origin}; " <>
       "media-src 'self' blob: https:; " <>
       "font-src 'self' data: https://fonts.gstatic.com#{@csp_dev_extras}; " <>
       "connect-src 'self' ws: wss: #{posthog_connect_src()}#{@csp_dev_extras}; " <>
@@ -46,10 +47,6 @@ defmodule StoryarnWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
-  end
-
-  pipeline :sudo_return_to do
-    plug :store_sudo_return_to
   end
 
   defp put_content_security_policy(conn, _opts) do
@@ -134,7 +131,7 @@ defmodule StoryarnWeb.Router do
   end
 
   scope "/", StoryarnWeb do
-    pipe_through [:browser, :require_authenticated_user, :sudo_return_to]
+    pipe_through [:browser, :require_authenticated_user]
 
     post "/workspaces/:workspace_slug/projects/:project_slug/upload",
          UploadController,
@@ -181,6 +178,10 @@ defmodule StoryarnWeb.Router do
       live "/users/settings/security", SettingsLive.Security, :edit
       live "/users/settings/tutorials", SettingsLive.Tutorials, :edit
       live "/users/settings/confirm-email/:token", SettingsLive.Profile, :confirm_email
+
+      # Sudo re-authentication belongs to the authenticated app session so
+      # settings can navigate to it without a document reload.
+      live "/users/confirm-access", UserLive.ConfirmAccess, :new
 
       # Workspaces
       live "/workspaces", WorkspaceLive.Index, :index
@@ -361,7 +362,6 @@ defmodule StoryarnWeb.Router do
           ] do
       live "/", LandingLive.Index, :index, private: %{public_locale: @default_public_locale}
 
-      live "/users/confirm-access", UserLive.ConfirmAccess, :new
       live "/contact", LandingLive.Contact, :show, private: %{public_locale: @default_public_locale}
 
       live "/blog", BlogLive.Index, :index, private: %{public_locale: @default_public_locale}
@@ -422,10 +422,6 @@ defmodule StoryarnWeb.Router do
 
   defp fetch_current_scope_for_user(conn, opts) do
     StoryarnWeb.UserAuth.fetch_current_scope_for_user(conn, opts)
-  end
-
-  defp store_sudo_return_to(conn, opts) do
-    StoryarnWeb.UserAuth.store_sudo_return_to(conn, opts)
   end
 
   defp require_authenticated_user(conn, opts) do

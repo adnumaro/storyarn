@@ -89,6 +89,7 @@ defmodule StoryarnWeb.E2E.BlogTest do
     |> visit("/blog")
     |> assert_has("body .phx-connected")
     |> evaluate(navigation_blank_observer_expression())
+    |> click("#public-language-switcher-trigger")
     |> click("#public-language-switcher-es")
     |> assert_path("/es/blog")
     |> assert_has("html[lang='es']")
@@ -105,13 +106,14 @@ defmodule StoryarnWeb.E2E.BlogTest do
     |> click("#blog-featured-post a[href='#{@spanish_article_path}']")
     |> assert_path(@spanish_article_path)
     |> assert_has("#blog-post[lang='es']")
-    |> assert_has("#blog-post-content", text: "Notion o World Anvil")
+    |> assert_has("#blog-post-content", text: "World Anvil se centra en organizar y presentar")
     |> evaluate("window.__publicNavigationBlank", fn value -> assert value == false end)
+    |> click("#public-language-switcher-trigger")
     |> click("#public-language-switcher-en")
     |> assert_path(@article_path)
     |> assert_has("html[lang='en']")
     |> assert_has("#blog-post[lang='en']")
-    |> assert_has("#blog-post-content", text: "Notion or World Anvil")
+    |> assert_has("#blog-post-content", text: "World Anvil focuses on organizing and presenting")
     |> evaluate("window.__publicNavigationBlank", fn value -> assert value == false end)
     |> evaluate(localized_metadata_expression(), fn metadata ->
       assert metadata["canonicalPath"] == @article_path
@@ -125,7 +127,7 @@ defmodule StoryarnWeb.E2E.BlogTest do
     |> evaluate(history_navigation_expression("back"))
     |> assert_path(@spanish_article_path)
     |> assert_has("html[lang='es']")
-    |> assert_has("#blog-post-content", text: "Notion o World Anvil")
+    |> assert_has("#blog-post-content", text: "World Anvil se centra en organizar y presentar")
     |> evaluate("window.__publicNavigationBlank", fn value -> assert value == false end)
     |> evaluate(history_navigation_expression("forward"))
     |> assert_path(@article_path)
@@ -133,11 +135,51 @@ defmodule StoryarnWeb.E2E.BlogTest do
     |> evaluate("window.__publicNavigationBlank", fn value -> assert value == false end)
   end
 
+  test "renders the localized article CTA as a separated button and loads the debugger image", %{
+    conn: conn
+  } do
+    conn
+    |> visit(@spanish_article_path)
+    |> assert_has("body .phx-connected")
+    |> assert_has("#blog-signup-card")
+    |> assert_has("#blog-register-cta", text: "Crea tu cuenta de Storyarn")
+    |> evaluate(cta_layout_expression(), fn metrics ->
+      assert metrics["display"] == "inline-flex"
+      assert metrics["height"] >= 44
+      assert metrics["contentGap"] >= 24
+      refute metrics["backgroundColor"] in ["rgba(0, 0, 0, 0)", "transparent"]
+      assert metrics["contrastRatio"] >= 4.5
+      assert metrics["iconCenterDelta"] <= 1
+    end)
+    |> unwrap(fn %{frame_id: frame_id} ->
+      assert {:ok, _} =
+               PlaywrightEx.Frame.hover(frame_id,
+                 selector: "#blog-register-cta",
+                 timeout: 10_000
+               )
+    end)
+    |> evaluate("new Promise((resolve) => window.setTimeout(resolve, 250))")
+    |> evaluate(cta_layout_expression(), fn metrics ->
+      assert metrics["contrastRatio"] >= 4.5
+    end)
+    |> evaluate(debug_image_expression(), fn image ->
+      assert image["complete"] == true
+      assert image["naturalWidth"] > 0
+      assert image["naturalHeight"] > 0
+      assert_in_delta image["aspectRatio"], 16 / 9, 0.01
+    end)
+    |> click("#blog-register-cta")
+    |> assert_path("/users/register")
+    |> assert_has("html[lang='es']")
+    |> evaluate("window.location.search", fn search -> assert search == "?locale=es" end)
+  end
+
   test "localized article links preserve the URL-authoritative locale", %{conn: conn} do
     conn
     |> visit("/blog")
     |> assert_has("body .phx-connected")
     |> evaluate(cross_surface_blank_observer_expression())
+    |> click("#public-language-switcher-trigger")
     |> click("#public-language-switcher-es")
     |> assert_path("/es/blog")
     |> click("#blog-featured-post a[href='#{@spanish_article_path}']")
@@ -146,9 +188,9 @@ defmodule StoryarnWeb.E2E.BlogTest do
     |> assert_path("/es/docs/world-building/sheets-overview")
     |> assert_has("html[lang='es']")
     |> evaluate("window.__crossSurfaceNavigationBlank", fn value -> assert value == false end)
-    |> click("#docs-language-switcher summary")
-    |> assert_has("#docs-language-switcher [aria-current='page'][lang='es']")
-    |> assert_has("#docs-language-switcher a[href='/docs/world-building/sheets-overview'][hreflang='en']")
+    |> click("#docs-language-switcher-trigger")
+    |> assert_has("#docs-language-switcher-es[aria-current='page'][lang='es']")
+    |> assert_has("#docs-language-switcher-en[href='/docs/world-building/sheets-overview'][hreflang='en']")
   end
 
   test "hands Spanish off to auth and returns to the localized landing without reloading", %{conn: conn} do
@@ -272,6 +314,82 @@ defmodule StoryarnWeb.E2E.BlogTest do
         return node ? JSON.parse(node.textContent).inLanguage ?? null : null;
       })(),
       liveSeoCount: document.querySelectorAll('#live-seo-metadata').length,
+    })
+    """
+  end
+
+  defp cta_layout_expression do
+    """
+    (() => {
+      const card = document.querySelector('#blog-signup-card');
+      const copy = card.querySelector('p:last-of-type');
+      const cta = document.querySelector('#blog-register-cta');
+      const icon = cta.querySelector('svg');
+      const copyRect = copy.getBoundingClientRect();
+      const ctaRect = cta.getBoundingClientRect();
+      const iconRect = icon.getBoundingClientRect();
+      const styles = getComputedStyle(cta);
+
+      const relativeLuminance = (color) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1;
+        canvas.height = 1;
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        context.fillStyle = color;
+        context.fillRect(0, 0, 1, 1);
+        const channels = Array.from(context.getImageData(0, 0, 1, 1).data.slice(0, 3));
+        const linear = channels.map((channel) => {
+          const value = channel / 255;
+          return value <= 0.04045
+            ? value / 12.92
+            : Math.pow((value + 0.055) / 1.055, 2.4);
+        });
+
+        return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+      };
+
+      const foreground = relativeLuminance(styles.color);
+      const background = relativeLuminance(styles.backgroundColor);
+      const contrastRatio =
+        (Math.max(foreground, background) + 0.05) /
+        (Math.min(foreground, background) + 0.05);
+
+      return {
+        display: styles.display,
+        height: ctaRect.height,
+        contentGap: ctaRect.top - copyRect.bottom,
+        backgroundColor: styles.backgroundColor,
+        contrastRatio,
+        iconCenterDelta: Math.abs(
+          (iconRect.top + iconRect.height / 2) - (ctaRect.top + ctaRect.height / 2)
+        ),
+      };
+    })()
+    """
+  end
+
+  defp debug_image_expression do
+    """
+    new Promise((resolve) => {
+      const image = document.querySelector(
+        '#blog-post-content img[src="/images/blog/introducing-storyarn-debug-active-node.png"]'
+      );
+
+      const readDimensions = () => resolve({
+        complete: image.complete,
+        naturalWidth: image.naturalWidth,
+        naturalHeight: image.naturalHeight,
+        aspectRatio: image.naturalWidth / image.naturalHeight,
+      });
+
+      image.scrollIntoView({ block: 'center' });
+
+      if (image.complete) {
+        requestAnimationFrame(readDimensions);
+      } else {
+        image.addEventListener('load', readDimensions, { once: true });
+        image.addEventListener('error', readDimensions, { once: true });
+      }
     })
     """
   end

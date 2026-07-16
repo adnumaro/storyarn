@@ -3,6 +3,8 @@ defmodule Storyarn.Localization.LanguagesTest do
 
   alias Storyarn.Localization.Languages
 
+  @language_flags_css Path.expand("../../../assets/css/language-flags.css", __DIR__)
+
   describe "all/0" do
     test "returns a non-empty list of languages" do
       languages = Languages.all()
@@ -156,6 +158,46 @@ defmodule Storyarn.Localization.LanguagesTest do
       assert Languages.flag_code("en-us") == "us"
       assert Languages.flag_code("zh-hans") == "cn"
       assert Languages.flag_code("zh-hant") == "tw"
+    end
+
+    test "falls back when a regional flag is not part of the curated assets" do
+      assert Languages.flag_code("de-DE") == "de"
+      refute Languages.flag_code("en-CA")
+    end
+
+    test "only returns flags backed by the curated CSS selectors and assets" do
+      css = File.read!(@language_flags_css)
+
+      [display_selectors, _background_rules] =
+        Regex.split(~r/\{\s*display:\s*block;\s*\}/, css, parts: 2)
+
+      displayed_flags =
+        ~r/\.storyarn-language-flag \.fi-([a-z]{2}(?:-[a-z]{2})?)/
+        |> Regex.scan(display_selectors, capture: :all_but_first)
+        |> List.flatten()
+        |> MapSet.new()
+
+      background_pairs =
+        Regex.scan(
+          ~r/\.storyarn-language-flag \.fi-([a-z]{2}(?:-[a-z]{2})?)\s*\{\s*background-image:\s*url\("[^"]*\/([a-z]{2}(?:-[a-z]{2})?)\.svg"\);\s*\}/,
+          css,
+          capture: :all_but_first
+        )
+
+      background_flags =
+        MapSet.new(background_pairs, fn [selector, asset] ->
+          assert selector == asset
+          selector
+        end)
+
+      returned_flags =
+        Languages.all()
+        |> Enum.map(&Languages.flag_code(&1.code))
+        |> Enum.reject(&is_nil/1)
+        |> MapSet.new()
+
+      assert displayed_flags == returned_flags
+      assert background_flags == returned_flags
     end
   end
 end

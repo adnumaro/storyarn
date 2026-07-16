@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { AlertTriangle, FileUp, Wrench } from "lucide-vue-next";
+import { AlertTriangle, FileUp, Languages, Wrench } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
 import ColorPickerPopover from "@components/forms/ColorPickerPopover.vue";
+import ConfirmDialog from "@components/ConfirmDialog.vue";
+import LanguagePicker from "@components/language/LanguagePicker.vue";
+import type { LanguagePickerOption } from "@components/language/types";
 import ThemeSelector from "@components/ThemeSelector.vue";
 import { Button } from "@components/ui/button";
 import {
@@ -25,7 +28,7 @@ import { Separator } from "@components/ui/separator";
 import { Textarea } from "@components/ui/textarea";
 import { useLive } from "@shared/composables/useLive";
 
-interface SourceLanguage {
+interface SourceLanguage extends LanguagePickerOption {
   localeCode: string;
 }
 
@@ -67,7 +70,7 @@ const {
   projectDetails = { name: "", description: "", type: "", subtype: "", typeOther: "" },
   projectMetricsOptions = { project_types: [], project_subtypes: {} },
   sourceLanguage = null,
-  sourceLanguageName = "",
+  sourceLanguageOptions = [],
   themePrimary = "#00D4CC",
   themeAccent = "#E8922F",
   hasCustomTheme = false,
@@ -77,7 +80,7 @@ const {
   projectDetails?: ProjectDetails;
   projectMetricsOptions?: ProjectMetricsOptions;
   sourceLanguage?: SourceLanguage | null;
-  sourceLanguageName?: string;
+  sourceLanguageOptions?: LanguagePickerOption[];
   themePrimary?: string;
   themeAccent?: string;
   hasCustomTheme?: boolean;
@@ -86,6 +89,24 @@ const {
 }>();
 
 const live = useLive();
+const sourceChangeDialogOpen = ref(false);
+const pendingSourceLanguage = ref<LanguagePickerOption | null>(null);
+
+function requestSourceLanguage(option: LanguagePickerOption): void {
+  pendingSourceLanguage.value = option;
+  sourceChangeDialogOpen.value = true;
+}
+
+function confirmSourceLanguage(): void {
+  if (pendingSourceLanguage.value) {
+    live.pushEvent("change_source_language", {
+      locale_code: pendingSourceLanguage.value.value,
+      reset_translations: true,
+    });
+  }
+
+  pendingSourceLanguage.value = null;
+}
 
 // Project Details
 const projectNameLocal = ref(projectDetails.name);
@@ -459,20 +480,20 @@ function confirmDeleteProject() {
         </p>
       </div>
 
-      <div class="rounded-lg border border-border bg-muted/30 p-4 space-y-4">
-        <div class="rounded-lg border border-border bg-card p-3">
-          <div class="flex items-center gap-3">
-            <div
-              class="size-8 rounded-md bg-muted flex items-center justify-center text-xs font-bold"
-            >
-              {{ sourceLanguage.localeCode?.substring(0, 2).toUpperCase() }}
-            </div>
-            <div class="min-w-0">
-              <div class="truncate text-sm font-semibold">{{ sourceLanguageName }}</div>
-              <div class="text-xs text-muted-foreground">{{ sourceLanguage.localeCode }}</div>
-            </div>
-          </div>
-        </div>
+      <div class="max-w-xl rounded-lg border border-border bg-muted/30 p-4 space-y-4">
+        <LanguagePicker
+          id="project-source-language-picker"
+          :model-value="sourceLanguage.value"
+          :selected-option="sourceLanguage"
+          :options="sourceLanguageOptions"
+          :label="$t('project_settings.general.source_language')"
+          :text="{
+            searchPlaceholder: $t('localization.sidebar.search_languages'),
+            emptyLabel: $t('localization.sidebar.no_matches'),
+          }"
+          :appearance="{ triggerClass: 'w-full' }"
+          @select="requestSourceLanguage"
+        />
 
         <p class="text-xs text-muted-foreground">
           {{ $t("project_settings.general.source_language_hint") }}
@@ -694,6 +715,20 @@ function confirmDeleteProject() {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <ConfirmDialog
+      v-model:open="sourceChangeDialogOpen"
+      :title="$t('localization.sidebar.source_change_confirm_title')"
+      :description="
+        $t('localization.sidebar.source_change_confirm_description', {
+          name: pendingSourceLanguage?.label ?? '',
+        })
+      "
+      :confirm-text="$t('localization.sidebar.source_change_confirm_button')"
+      variant="destructive"
+      :icon="Languages"
+      @confirm="confirmSourceLanguage"
+    />
 
     <!-- Delete Confirm Dialog -->
     <Dialog v-model:open="showDeleteConfirm">

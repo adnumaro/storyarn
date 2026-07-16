@@ -18,11 +18,13 @@ const {
   currentEmail,
   triggerSubmit = false,
   passwordAction,
+  sudoGrant = null,
 } = defineProps<{
   passwordForm: Form<PasswordFormValues>;
   currentEmail: string;
   triggerSubmit?: boolean;
   passwordAction: string;
+  sudoGrant?: string | null;
 }>();
 
 const passwordForm = useLiveForm(() => passwordFormProp, {
@@ -128,7 +130,7 @@ watch(
     <!-- Hidden form for password action POST -->
     <form ref="hiddenFormRef" :action="passwordAction" method="post" class="hidden">
       <input type="hidden" name="_csrf_token" :value="csrfToken" />
-      <input type="hidden" name="_method" value="put" />
+      <input v-if="sudoGrant" type="hidden" name="sudo_grant" :value="sudoGrant" />
       <input name="user[email]" type="hidden" autocomplete="username" :value="currentEmail" />
       <input name="user[password]" type="hidden" :value="passwordValue" />
       <input name="user[password_confirmation]" type="hidden" :value="passwordConfirmationValue" />

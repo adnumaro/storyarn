@@ -4,8 +4,14 @@ defmodule StoryarnWeb.SettingsLive.SecurityTest do
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
 
+  alias StoryarnWeb.UserAuth
+
   defp get_security_vue(view) do
     LiveVue.Test.get_vue(view, name: "live/account/settings/AccountSettingsSecurity")
+  end
+
+  defp get_settings_layout_vue(view) do
+    LiveVue.Test.get_vue(view, name: "live/layouts/settings/Layout")
   end
 
   describe "Security settings page" do
@@ -58,6 +64,69 @@ defmodule StoryarnWeb.SettingsLive.SecurityTest do
       assert {:redirect, %{to: path, flash: flash}} = redirect
       assert path == ~p"/users/log-in"
       assert %{"error" => "You must log in to access this page."} = flash
+    end
+
+    test "preserves the security destination when sudo mode has expired", %{conn: conn} do
+      stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+
+      conn =
+        log_in_user(conn, user_fixture(), token_authenticated_at: stale_authenticated_at)
+
+      assert {:error, {:live_redirect, %{to: to}}} =
+               live(conn, ~p"/users/settings/security")
+
+      assert to == UserAuth.sudo_confirmation_path(~p"/users/settings/security")
+    end
+
+    test "keeps the page and password action inside the shared twenty-minute sudo window", %{
+      conn: conn
+    } do
+      user = user_fixture()
+      authenticated_at = DateTime.add(DateTime.utc_now(:second), -19, :minute)
+
+      {:ok, view, _html} =
+        conn
+        |> log_in_user(user, token_authenticated_at: authenticated_at)
+        |> live(~p"/users/settings/security")
+
+      password = valid_user_password() <> " changed"
+
+      render_click(view, "update_password", %{
+        "user" => %{
+          "email" => user.email,
+          "password" => password,
+          "password_confirmation" => password
+        }
+      })
+
+      assert get_security_vue(view).props["trigger-submit"] == true
+    end
+
+    test "preserves a session-bound grant through the layout and password form", %{conn: conn} do
+      user = user_fixture()
+      stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+      conn = log_in_user(conn, user, token_authenticated_at: stale_authenticated_at)
+      session_token = get_session(conn, :user_token)
+      grant = UserAuth.issue_sudo_grant(user, session_token)
+      path = UserAuth.with_sudo_grant(~p"/users/settings/security", grant)
+
+      assert {:ok, view, _html} = live(conn, path)
+      assert get_settings_layout_vue(view).props["sudo-grant"] == grant
+
+      security_vue = get_security_vue(view)
+      assert security_vue.props["sudo-grant"] == grant
+
+      password = valid_user_password() <> " changed"
+
+      render_click(view, "update_password", %{
+        "user" => %{
+          "email" => user.email,
+          "password" => password,
+          "password_confirmation" => password
+        }
+      })
+
+      assert get_security_vue(view).props["trigger-submit"] == true
     end
   end
 

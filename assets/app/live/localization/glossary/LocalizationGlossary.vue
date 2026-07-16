@@ -10,23 +10,13 @@ import {
   Trash2,
 } from "lucide-vue-next";
 import { computed, ref } from "vue";
+import LanguagePicker from "@components/language/LanguagePicker.vue";
+import type { LanguagePickerOption } from "@components/language/types";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@components/ui/select";
 import { Textarea } from "@components/ui/textarea";
 import { useLive } from "@shared/composables/useLive.ts";
 import DashboardContent from "@shell/DashboardContent.vue";
-
-interface Language {
-  localeCode: string;
-  name: string;
-}
 
 interface GlossaryEntry {
   id: number;
@@ -52,8 +42,8 @@ const {
   synced = false,
   backUrl = null,
 } = defineProps<{
-  sourceLanguage: Language;
-  targetLanguages?: Language[];
+  sourceLanguage: LanguagePickerOption;
+  targetLanguages?: LanguagePickerOption[];
   selectedLocale?: string | null;
   entries?: GlossaryEntry[];
   canEdit?: boolean;
@@ -74,16 +64,15 @@ const feedback = ref<"idle" | "saved" | "synced" | "error">("idle");
 const errorMessage = ref("");
 
 const selectedLanguage = computed(
-  () => targetLanguages.find((language) => language.localeCode === selectedLocale) ?? null,
+  () => targetLanguages.find((language) => language.value === selectedLocale) ?? null,
 );
 
 const formReady = computed(
   () => sourceTerm.value.trim() !== "" && (doNotTranslate.value || targetTerm.value.trim() !== ""),
 );
 
-function changeLocale(value: string | string[]): void {
-  const locale = Array.isArray(value) ? value[0] : value;
-  if (locale) live.pushEvent("change_locale", { locale });
+function changeLocale(language: LanguagePickerOption): void {
+  live.pushEvent("change_locale", { locale: language.value });
 }
 
 function saveEntry(): void {
@@ -175,20 +164,22 @@ function resetForm(): void {
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
-          <Select :model-value="selectedLocale || undefined" @update:model-value="changeLocale">
-            <SelectTrigger class="w-52">
-              <SelectValue :placeholder="$t('localization.glossary.select_language')" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem
-                v-for="language in targetLanguages"
-                :key="language.localeCode"
-                :value="language.localeCode"
-              >
-                {{ language.name }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          <LanguagePicker
+            id="localization-glossary-language-picker"
+            :model-value="selectedLocale"
+            :options="targetLanguages"
+            :label="$t('localization.glossary.select_language')"
+            :text="{
+              placeholder: $t('localization.glossary.select_language'),
+              searchPlaceholder: $t('localization.sidebar.search_languages'),
+              emptyLabel: $t('localization.sidebar.no_matches'),
+            }"
+            :appearance="{
+              align: 'end',
+              triggerClass: 'w-52',
+            }"
+            @select="changeLocale"
+          />
           <Button
             v-if="canEdit && hasProvider && selectedLocale"
             variant="outline"
@@ -211,7 +202,9 @@ function resetForm(): void {
         <section class="overflow-hidden rounded-xl border border-base-300 bg-base-100 shadow-sm">
           <div class="flex items-center justify-between border-b border-base-300 px-4 py-3">
             <div>
-              <h2 class="font-semibold">{{ sourceLanguage.name }} → {{ selectedLanguage.name }}</h2>
+              <h2 class="font-semibold">
+                {{ sourceLanguage.label }} → {{ selectedLanguage.label }}
+              </h2>
               <p class="text-xs text-base-content/50">
                 {{ $t("localization.glossary.entry_count", { count: entries.length }) }}
               </p>
@@ -295,7 +288,7 @@ function resetForm(): void {
           <div class="mt-4 space-y-3">
             <label class="form-control gap-1.5">
               <span class="text-xs font-medium text-base-content/60">{{
-                sourceLanguage.name
+                sourceLanguage.label
               }}</span>
               <Input v-model="sourceTerm" :disabled="!!editingId" />
             </label>
@@ -305,7 +298,7 @@ function resetForm(): void {
             </label>
             <label class="form-control gap-1.5">
               <span class="text-xs font-medium text-base-content/60">{{
-                selectedLanguage.name
+                selectedLanguage.label
               }}</span>
               <Input v-model="targetTerm" :disabled="doNotTranslate" />
             </label>

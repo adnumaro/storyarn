@@ -4,6 +4,7 @@ title: "Presentamos Storyarn: una plataforma conectada para el diseño narrativo
 seo_title: "Storyarn: plataforma de diseño narrativo",
 description: "Storyarn conecta construcción de mundos, narrativa ramificada, escenas, pruebas, localización y exportación dentro de un mismo proyecto.",
 author: "Equipo de Storyarn",
+updated_on: "2026-07-15",
 image: "/images/docs/project-dashboard-current.png",
 image_alt: "Panel de un proyecto de Storyarn con fichas, flujos, escenas, progreso de localización, avisos y actividad reciente",
 tags: ["Storyarn", "Diseño narrativo", "Desarrollo de videojuegos"]
@@ -27,13 +28,15 @@ La respuesta solo aparece cuando ese personaje confía lo suficiente en el jugad
 
 Escribir la frase es la parte más pequeña de esa decisión.
 
-A los equipos no les faltan herramientas especializadas. El personaje y su mundo pueden desarrollarse en Notion o World Anvil. La conversación puede diseñarse en Arcweave o articy:draft, o implementarse con Yarn Spinner o Ink. El estado puede estar representado en la herramienta narrativa y de nuevo en el motor, mientras la localización sigue su propio flujo. Algunos equipos eligen una sola herramienta; otros las combinan deliberadamente porque cada una resuelve una parte distinta del problema.
+A los equipos no les faltan herramientas capaces, y sus fronteras no son absolutas. World Anvil se centra en organizar y presentar el mundo narrativo, mientras Notion puede adaptarse como wiki o base de conocimiento del proyecto. articy:draft y Arcweave cubren un espacio mucho más amplio del diseño narrativo: datos estructurados, flujos interactivos, lógica, pruebas, localización e integración con motores. Yarn Spinner e Ink se acercan al problema desde el scripting narrativo y su ejecución dentro del juego. Algunos equipos resuelven gran parte del proceso con una sola plataforma; otros combinan varias deliberadamente según su producción y la forma en que prefieren trabajar.
 
-Eso no convierte el proceso en anticuado ni significa que esas herramientas sean insuficientes. La fragilidad aparece en las conexiones. Una condición cambia de nombre en el diálogo, pero no en la integración con el motor. Una decisión sobre el personaje evoluciona en la biblia del mundo mientras una rama conserva una premisa anterior. La ubicación existe en el mundo, pero ninguna ruta alcanzable llega a revelarla. Una persona encargada de la traducción recibe la frase sin el estado o el contexto que le da sentido.
+Storyarn no parte de que esas herramientas sean insuficientes. Aborda el mismo problema desde otra experiencia de producto: mantener mundo, narrativa, estado, escenas y localización conectados y navegables dentro de un entorno web común. La fragilidad que queremos reducir aparece cuando esas relaciones cruzan fronteras entre herramientas o deben reconstruirse durante la integración.
+
+Esas conexiones se vuelven frágiles cuando una condición cambia de nombre en el diálogo, pero no en la integración con el motor. Una decisión sobre el personaje evoluciona en la biblia del mundo mientras una rama conserva una premisa anterior. La ubicación existe en el mundo, pero ninguna ruta alcanzable llega a revelarla. Una persona encargada de la traducción recibe la frase sin el estado o el contexto que le da sentido.
 
 Los equipos mantienen esas conexiones mediante identificadores estables, convenciones de nombres, código de integración, documentación, revisiones y personas que saben dónde cruza cada dependencia de una herramienta a otra. Esa coordinación funciona, pero se vuelve más costosa a medida que el proyecto crece y más disciplinas dependen de las mismas decisiones.
 
-Storyarn nace justo en ese espacio entre herramientas.
+Storyarn es otra respuesta a ese problema de continuidad.
 
 ## Un modelo narrativo conectado
 
@@ -84,7 +87,7 @@ El [Story Player](/docs/narrative-design/flows-overview#story-player) de Storyar
 Son dos tipos de información distintos. Story Player ayuda al equipo a valorar ritmo, decisiones y contexto. Modo Depuración permite comprender el comportamiento del sistema.
 
 <figure>
-  <img src="/images/docs/flows-debug-current.png" alt="Modo de depuración de Storyarn con la ruta narrativa activa, la consola de ejecución y las variables del proyecto" loading="lazy">
+  <img src="/images/blog/introducing-storyarn-debug-active-node.png" alt="Modo de depuración de Storyarn con un nodo de diálogo activo, la ruta ejecutada y el historial de pasos de la consola" loading="lazy">
   <figcaption>La narrativa puede jugarse e inspeccionarse mientras todo el contexto de diseño sigue disponible.</figcaption>
 </figure>
 

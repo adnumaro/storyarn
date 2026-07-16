@@ -17,6 +17,7 @@ defmodule Storyarn.Accounts do
   alias Storyarn.Accounts.Passwords
   alias Storyarn.Accounts.Profiles
   alias Storyarn.Accounts.Registration
+  alias Storyarn.Accounts.Scope
   alias Storyarn.Accounts.Sessions
   alias Storyarn.Accounts.User
   alias Storyarn.Accounts.UserNotifier
@@ -113,6 +114,17 @@ defmodule Storyarn.Accounts do
   """
   @spec get_user_by_session_token(binary()) :: {user(), DateTime.t()} | nil
   defdelegate get_user_by_session_token(token), to: Sessions
+
+  @doc """
+  Re-authenticates the scoped user's active session without elevating the session token.
+  """
+  @spec reauthenticate_user_session(Scope.t(), binary(), String.t()) ::
+          {:ok, user()} | {:error, :invalid_credentials | :invalid_session}
+  defdelegate reauthenticate_user_session(current_scope, token, password), to: Sessions
+
+  @doc "Returns whether the token is an active session owned by the scoped user."
+  @spec session_token_active?(Scope.t(), binary()) :: boolean()
+  defdelegate session_token_active?(current_scope, token), to: Sessions
 
   @doc """
   Deletes the signed token with the given context.

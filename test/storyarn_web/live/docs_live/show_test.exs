@@ -173,16 +173,20 @@ defmodule StoryarnWeb.DocsLive.ShowTest do
 
       assert docs["languageLinks"] == [
                %{
+                 "flagCode" => "gb",
                  "label" => "English",
                  "languageTag" => "en",
                  "locale" => "en",
-                 "path" => "/docs/narrative-design/condition-editor"
+                 "path" => "/docs/narrative-design/condition-editor",
+                 "shortLabel" => "EN"
                },
                %{
+                 "flagCode" => "es",
                  "label" => "Español",
                  "languageTag" => "es",
                  "locale" => "es",
-                 "path" => "/es/docs/narrative-design/condition-editor"
+                 "path" => "/es/docs/narrative-design/condition-editor",
+                 "shortLabel" => "ES"
                }
              ]
 

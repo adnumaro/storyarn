@@ -18,6 +18,15 @@ import DocsContent from "./live/docs/show/DocsContent.vue";
 
 let appCounter = 0;
 
+const injectionLayoutComponents = new Set([
+  "live/layouts/auth/Layout",
+  "live/layouts/compare/Layout",
+  "live/layouts/docs/Layout",
+  "live/layouts/project/Layout",
+  "live/layouts/settings/Layout",
+  "live/layouts/workspace/Layout",
+]);
+
 type ComponentLoader = () => Promise<{ default: Component }>;
 
 const componentLoaders = {
@@ -115,6 +124,15 @@ export default createLiveVue({
     app.use(VueKonva);
     app.use(i18n);
     app.mount(el);
+
+    // Vue marks mount containers with a client-only data-v-app attribute.
+    // LiveView owns hook attributes, so its next patch would remove that marker
+    // and invoke LiveVue's updated hook. On injection layouts this needlessly
+    // re-syncs the slot and remounts the focused page component.
+    if (injectionLayoutComponents.has(el.getAttribute("data-name") ?? "")) {
+      el.removeAttribute("data-v-app");
+    }
+
     return app;
   },
 });

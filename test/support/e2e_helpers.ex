@@ -18,6 +18,10 @@ defmodule StoryarnWeb.E2EHelpers do
     prepare_onboarding(user, Keyword.get(opts, :onboarding, :completed))
     token = Accounts.generate_user_session_token(user)
 
+    if authenticated_at = opts[:token_authenticated_at] do
+      Storyarn.AccountsFixtures.override_token_authenticated_at(token, authenticated_at)
+    end
+
     add_session_cookie(conn, [value: %{user_token: token}], @session_options)
   end
 

@@ -105,7 +105,7 @@ defmodule StoryarnWeb.LayoutsTest do
   end
 
   describe "public language switcher" do
-    test "compact labels expose BCP 47 tags instead of Gettext locale names" do
+    test "compact trigger and options expose language metadata" do
       html =
         render_component(&PublicLanguageSwitcher.switcher/1,
           id: "regional-language-switcher",
@@ -123,16 +123,78 @@ defmodule StoryarnWeb.LayoutsTest do
               language_tag: "zh-Hant",
               label: "繁體中文",
               path: "/zh-hant"
+            },
+            %{
+              locale: "en_CA",
+              language_tag: "en-CA",
+              label: "English (Canada)",
+              path: "/en-ca"
             }
           ]
         )
 
       document = LazyHTML.from_fragment(html)
+      switcher = LazyHTML.query(document, "#regional-language-switcher")
+      trigger = LazyHTML.query(document, "#regional-language-switcher-trigger")
+      language_list = LazyHTML.query(document, "#regional-language-switcher > ul")
       current = LazyHTML.query(document, "#regional-language-switcher-pt_BR")
       alternative = LazyHTML.query(document, "#regional-language-switcher-zh_Hant")
+      fallback = LazyHTML.query(document, "#regional-language-switcher-en_CA")
 
-      assert current |> LazyHTML.text() |> String.trim() == "pt-BR"
-      assert alternative |> LazyHTML.text() |> String.trim() == "zh-Hant"
+      click_away_commands =
+        switcher
+        |> LazyHTML.attribute("phx-click-away")
+        |> List.first()
+        |> Jason.decode!()
+
+      escape_commands =
+        switcher
+        |> LazyHTML.attribute("phx-window-keydown")
+        |> List.first()
+        |> Jason.decode!()
+
+      assert LazyHTML.attribute(switcher, "phx-key") == ["Escape"]
+
+      assert click_away_commands == [
+               ["remove_attr", %{"attr" => "open", "to" => "#regional-language-switcher"}]
+             ]
+
+      assert escape_commands == [
+               ["remove_attr", %{"attr" => "open", "to" => "#regional-language-switcher"}],
+               ["focus", %{"to" => "#regional-language-switcher-trigger"}]
+             ]
+
+      assert trigger
+             |> LazyHTML.query(".truncate")
+             |> LazyHTML.text()
+             |> String.trim() == "PT"
+
+      assert current
+             |> LazyHTML.query(".min-w-0.flex-1")
+             |> LazyHTML.text()
+             |> String.trim() == "Português (Brasil)"
+
+      assert alternative
+             |> LazyHTML.query(".min-w-0.flex-1")
+             |> LazyHTML.text()
+             |> String.trim() == "繁體中文"
+
+      assert fallback
+             |> LazyHTML.query(".storyarn-language-flag-label")
+             |> LazyHTML.text()
+             |> String.trim() == "EN"
+
+      refute html =~ "fi-ca"
+
+      assert LazyHTML.attribute(trigger, "title") == ["Português (Brasil)"]
+
+      assert LazyHTML.attribute(trigger, "aria-label") == [
+               "Page language: Português (Brasil)"
+             ]
+
+      assert LazyHTML.attribute(language_list, "aria-label") == ["Page language"]
+      assert LazyHTML.attribute(current, "role") == []
+      assert LazyHTML.attribute(alternative, "role") == []
       assert LazyHTML.attribute(alternative, "hreflang") == ["zh-Hant"]
     end
   end

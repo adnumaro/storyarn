@@ -5,8 +5,12 @@ defmodule StoryarnWeb.SettingsLive.Security do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Accounts
+  alias StoryarnWeb.UserAuth
 
-  on_mount {StoryarnWeb.UserAuth, :require_sudo_mode}
+  on_mount {UserAuth, {:require_sudo_mode, __MODULE__}}
+
+  @doc false
+  def sudo_return_to(_params, _live_action), do: ~p"/users/settings/security"
 
   @impl true
   def mount(_params, _session, socket) do
@@ -34,6 +38,7 @@ defmodule StoryarnWeb.SettingsLive.Security do
       workspaces={@workspaces}
       managed_workspace_slugs={@managed_workspace_slugs}
       current_path={@current_path}
+      sudo_grant={@sudo_grant}
     >
       <.vue
         v-component="live/account/settings/AccountSettingsSecurity"
@@ -44,6 +49,7 @@ defmodule StoryarnWeb.SettingsLive.Security do
         current-email={@current_email}
         trigger-submit={@trigger_submit}
         password-action={~p"/users/update-password"}
+        sudo-grant={@sudo_grant}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>
     """
@@ -62,14 +68,28 @@ defmodule StoryarnWeb.SettingsLive.Security do
 
   def handle_event("update_password", %{"user" => user_params}, socket) do
     user = socket.assigns.current_scope.user
-    true = Accounts.sudo_mode?(user)
 
-    case Accounts.change_user_password(user, user_params) do
-      %{valid?: true} = changeset ->
-        {:noreply, assign(socket, trigger_submit: true, password_form: to_form(changeset))}
+    if match?(
+         {:ok, _grant},
+         UserAuth.authorize_sudo(
+           user,
+           socket.assigns.sudo_session_token,
+           socket.assigns.sudo_grant
+         )
+       ) do
+      case Accounts.change_user_password(user, user_params) do
+        %{valid?: true} = changeset ->
+          {:noreply, assign(socket, trigger_submit: true, password_form: to_form(changeset))}
 
-      changeset ->
-        {:noreply, assign(socket, password_form: to_form(changeset, action: :insert))}
+        changeset ->
+          {:noreply, assign(socket, password_form: to_form(changeset, action: :insert))}
+      end
+    else
+      {:noreply,
+       push_navigate(socket,
+         to: UserAuth.sudo_confirmation_path(~p"/users/settings/security"),
+         replace: true
+       )}
     end
   end
 end

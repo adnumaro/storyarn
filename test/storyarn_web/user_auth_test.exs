@@ -64,6 +64,7 @@ defmodule StoryarnWeb.UserAuthTest do
     test "redirects to the configured path", %{conn: conn, user: user} do
       conn = conn |> put_session(:user_return_to, "/hello") |> UserAuth.log_in_user(user)
       assert redirected_to(conn) == "/hello"
+      refute get_session(conn, :user_return_to)
     end
 
     test "writes a cookie if remember_me is configured", %{conn: conn, user: user} do
@@ -325,7 +326,10 @@ defmodule StoryarnWeb.UserAuthTest do
                UserAuth.on_mount(:require_sudo_mode, %{}, session, socket)
     end
 
-    test "redirects when authentication is too old", %{conn: conn, user: user} do
+    test "live-navigates to confirmation with the requested destination when authentication is too old", %{
+      conn: conn,
+      user: user
+    } do
       three_hours_ago = :second |> DateTime.utc_now() |> DateTime.add(-3, :hour)
       user = %{user | authenticated_at: three_hours_ago}
       user_token = Accounts.generate_user_session_token(user)
@@ -338,8 +342,118 @@ defmodule StoryarnWeb.UserAuthTest do
         assigns: %{__changed__: %{}, flash: %{}}
       }
 
-      assert {:halt, _updated_socket} =
-               UserAuth.on_mount(:require_sudo_mode, %{}, session, socket)
+      assert {:halt, updated_socket} =
+               UserAuth.on_mount(
+                 {:require_sudo_mode, "/users/settings/security"},
+                 %{},
+                 session,
+                 socket
+               )
+
+      assert {:live, :redirect, %{kind: :replace, to: to}} = updated_socket.redirected
+
+      assert to ==
+               UserAuth.sudo_confirmation_path("/users/settings/security")
+    end
+
+    test "accepts and assigns a grant bound to the stale session", %{conn: conn, user: user} do
+      stale_user = %{user | authenticated_at: DateTime.add(DateTime.utc_now(:second), -21, :minute)}
+      user_token = Accounts.generate_user_session_token(stale_user)
+      grant = UserAuth.issue_sudo_grant(stale_user, user_token)
+      session = conn |> put_session(:user_token, user_token) |> get_session()
+
+      socket = %LiveView.Socket{
+        endpoint: StoryarnWeb.Endpoint,
+        assigns: %{__changed__: %{}, flash: %{}}
+      }
+
+      assert {:cont, updated_socket} =
+               UserAuth.on_mount(
+                 {:require_sudo_mode, "/users/settings/security"},
+                 %{"sudo_grant" => grant},
+                 session,
+                 socket
+               )
+
+      assert updated_socket.assigns.sudo_grant == grant
+      assert updated_socket.assigns.sudo_session_token == user_token
+    end
+  end
+
+  describe "sudo return targets" do
+    test "uses one twenty-minute sudo window across the web authentication flow", %{user: user} do
+      assert UserAuth.sudo_mode?(%{
+               user
+               | authenticated_at: DateTime.add(DateTime.utc_now(:second), -19, :minute)
+             })
+
+      refute UserAuth.sudo_mode?(%{
+               user
+               | authenticated_at: DateTime.add(DateTime.utc_now(:second), -21, :minute)
+             })
+    end
+
+    test "accepts local settings destinations and query strings" do
+      assert UserAuth.safe_sudo_return_to("/users/settings") == "/users/settings"
+
+      assert UserAuth.safe_sudo_return_to("/users/settings/security?tab=sessions") ==
+               "/users/settings/security?tab=sessions"
+    end
+
+    test "rejects external, protocol-relative, ambiguous and traversing destinations" do
+      refute UserAuth.safe_sudo_return_to("https://example.com/users/settings")
+      refute UserAuth.safe_sudo_return_to("//example.com/users/settings")
+      refute UserAuth.safe_sudo_return_to("/users/settingsevil")
+      refute UserAuth.safe_sudo_return_to("/users/settings/%2e%2e/workspaces")
+      refute UserAuth.safe_sudo_return_to("/workspaces/example")
+    end
+
+    test "issues a grant that is valid only for its active user session", %{user: user} do
+      stale_user = %{user | authenticated_at: DateTime.add(DateTime.utc_now(:second), -21, :minute)}
+      session_token = Accounts.generate_user_session_token(stale_user)
+      another_session_token = Accounts.generate_user_session_token(stale_user)
+      other_user = %{user_fixture() | authenticated_at: stale_user.authenticated_at}
+      other_user_token = Accounts.generate_user_session_token(other_user)
+
+      grant = UserAuth.issue_sudo_grant(stale_user, session_token)
+
+      assert UserAuth.sudo_grant_valid?(stale_user, session_token, grant)
+      assert {:ok, ^grant} = UserAuth.authorize_sudo(stale_user, session_token, grant)
+      refute UserAuth.sudo_grant_valid?(stale_user, another_session_token, grant)
+      refute UserAuth.sudo_grant_valid?(other_user, other_user_token, grant)
+      assert :error = UserAuth.authorize_sudo(stale_user, another_session_token, grant)
+      assert :error = UserAuth.authorize_sudo(other_user, other_user_token, grant)
+    end
+
+    test "rejects expired or revoked grants", %{user: user} do
+      stale_user = %{user | authenticated_at: DateTime.add(DateTime.utc_now(:second), -21, :minute)}
+      session_token = Accounts.generate_user_session_token(stale_user)
+
+      expired_grant =
+        UserAuth.issue_sudo_grant(stale_user, session_token, signed_at: System.system_time(:second) - 20 * 60 - 1)
+
+      refute UserAuth.sudo_grant_valid?(stale_user, session_token, expired_grant)
+
+      active_grant = UserAuth.issue_sudo_grant(stale_user, session_token)
+      :ok = Accounts.delete_user_session_token(session_token)
+
+      refute UserAuth.sudo_grant_valid?(stale_user, session_token, active_grant)
+      assert :error = UserAuth.authorize_sudo(stale_user, session_token, active_grant)
+    end
+
+    test "adds the grant to sensitive paths without losing existing query values", %{user: user} do
+      session_token = Accounts.generate_user_session_token(user)
+      grant = UserAuth.issue_sudo_grant(user, session_token)
+
+      path =
+        UserAuth.with_sudo_grant(
+          "/users/settings/security?tab=sessions&sudo_grant=obsolete",
+          grant
+        )
+
+      uri = URI.parse(path)
+      assert uri.path == "/users/settings/security"
+      assert URI.decode_query(uri.query) == %{"sudo_grant" => grant, "tab" => "sessions"}
     end
   end
 

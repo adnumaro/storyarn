@@ -8,6 +8,7 @@ defmodule Storyarn.RateLimiter do
   ## Rate Limits
 
   - Login attempts: 5 per minute per IP
+  - Sudo re-authentication attempts: 5 per minute per user and IP
   - Magic link requests: 3 per minute per email
   - Registration: 3 per minute per IP
   - Password reset: 3 per 15 minutes per IP and per email address
@@ -37,6 +38,12 @@ defmodule Storyarn.RateLimiter do
   @login_limit 5
   @login_window_ms 60_000
 
+  # Sudo re-authentication: 5 attempts per minute per user and IP. Keeping this
+  # bucket separate prevents normal login traffic (or another user behind the
+  # same NAT) from locking an authenticated user out of protected settings.
+  @sudo_limit 5
+  @sudo_window_ms 60_000
+
   # Registration: 3 attempts per minute per IP
   @registration_limit 3
   @registration_window_ms 60_000
@@ -53,6 +60,12 @@ defmodule Storyarn.RateLimiter do
   @spec check_login(String.t()) :: :ok | {:error, :rate_limited}
   def check_login(ip_address) do
     check_rate("login:#{ip_address}", @login_window_ms, @login_limit)
+  end
+
+  @doc "Checks whether a sudo re-authentication attempt is allowed."
+  @spec check_sudo(pos_integer(), String.t()) :: :ok | {:error, :rate_limited}
+  def check_sudo(user_id, ip_address) when is_integer(user_id) and user_id > 0 do
+    check_rate("sudo:#{user_id}:#{ip_address}", @sudo_window_ms, @sudo_limit)
   end
 
   @doc """

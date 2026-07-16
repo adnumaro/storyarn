@@ -38,7 +38,7 @@ defmodule StoryarnWeb.BlogLive.ShowTest do
     assert LazyHTML.attribute(
              LazyHTML.query(document, ~s|meta[property="article:modified_time"]|),
              "content"
-           ) == ["2026-07-14"]
+           ) == ["2026-07-15"]
 
     assert LazyHTML.attribute(LazyHTML.query(document, ~s|meta[property="article:author"]|), "content") ==
              []
@@ -67,10 +67,18 @@ defmodule StoryarnWeb.BlogLive.ShowTest do
              ~s|#blog-register-cta[href="/users/register?locale=en"][data-phx-link="redirect"]|
            )
 
+    assert has_element?(view, "#blog-signup-card")
     assert has_element?(view, "#blog-post h1", "Introducing Storyarn")
     assert has_element?(view, "#blog-post-content", "Writing the sentence is the smallest part")
-    assert has_element?(view, "#blog-post-content", "Notion or World Anvil")
-    assert has_element?(view, "#blog-post-content", "Yarn Spinner or Ink")
+    assert has_element?(view, "#blog-post-content", "World Anvil focuses on organizing and presenting")
+    assert has_element?(view, "#blog-post-content", "articy:draft and Arcweave cover a much broader")
+    assert has_element?(view, "#blog-post-content", "Yarn Spinner and Ink")
+
+    assert has_element?(
+             view,
+             ~s|#blog-post-content img[src="/images/blog/introducing-storyarn-debug-active-node.png"][alt*="active dialogue node"]|
+           )
+
     refute has_element?(view, "#blog-post-content", "spreadsheet")
     refute has_element?(view, "#blog-post-content", "A practical pre-export checklist")
     refute has_element?(view, "#blog-post-content ol")
@@ -119,8 +127,22 @@ defmodule StoryarnWeb.BlogLive.ShowTest do
     assert has_element?(view, "#blog-back-link", "Volver al diario")
     assert has_element?(view, ~s|#blog-back-link[href="/es/blog"]|)
     assert has_element?(view, "#blog-post time", "14 de julio de 2026")
-    assert has_element?(view, "#blog-post-content", "Notion o World Anvil")
-    assert has_element?(view, "#blog-post-content", "Yarn Spinner o Ink")
+    assert has_element?(view, "#blog-post-content", "World Anvil se centra en organizar y presentar")
+    assert has_element?(view, "#blog-post-content", "articy:draft y Arcweave cubren un espacio mucho más amplio")
+    assert has_element?(view, "#blog-post-content", "Yarn Spinner e Ink")
+    assert has_element?(view, "#blog-signup-card")
+
+    assert has_element?(
+             view,
+             ~s|#blog-register-cta[href="/users/register?locale=es"][data-phx-link="redirect"]|,
+             "Crea tu cuenta de Storyarn"
+           )
+
+    assert has_element?(
+             view,
+             ~s|#blog-post-content img[src="/images/blog/introducing-storyarn-debug-active-node.png"][alt*="nodo de diálogo activo"]|
+           )
+
     refute has_element?(view, "#blog-post-content", "spreadsheet")
     refute has_element?(view, "#blog-post-content ol")
     assert has_element?(view, ~s|#public-language-switcher-es[aria-current="page"]|)

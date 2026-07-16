@@ -3,15 +3,10 @@ import { Box, MessageSquare, Square, UserRound } from "lucide-vue-next";
 import type { Component } from "vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
+import LanguagePicker from "@components/language/LanguagePicker.vue";
+import type { LanguagePickerOption } from "@components/language/types";
 import { Badge } from "@components/ui/badge";
 import { Progress } from "@components/ui/progress";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@components/ui/select";
 import {
   Table,
   TableBody,
@@ -32,11 +27,6 @@ interface LanguageProgress {
   stale: number;
   total: number;
   percentage: number;
-}
-
-interface TargetLanguage {
-  localeCode: string;
-  name: string;
 }
 
 interface SpeakerStat {
@@ -62,7 +52,7 @@ const {
   typeCounts = {},
 } = defineProps<{
   languageProgress?: LanguageProgress[];
-  targetLanguages?: TargetLanguage[];
+  targetLanguages?: LanguagePickerOption[];
   selectedLocale?: string | null;
   speakerStats?: SpeakerStat[];
   voProgress?: VoProgress;
@@ -160,23 +150,22 @@ const typeKeys: Record<string, string> = {
         <h3 class="text-base font-semibold">
           {{ $t("localization.report.word_counts_by_speaker") }}
         </h3>
-        <Select
+        <LanguagePicker
+          id="localization-report-language-picker"
           :model-value="selectedLocale"
-          @update:model-value="(v: string | string[]) => changeLocale(Array.isArray(v) ? v[0] : v)"
-        >
-          <SelectTrigger class="w-40 h-8">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem
-              v-for="lang in targetLanguages"
-              :key="lang.localeCode"
-              :value="lang.localeCode"
-            >
-              {{ lang.name }}
-            </SelectItem>
-          </SelectContent>
-        </Select>
+          :options="targetLanguages"
+          :label="$t('localization.report.select_language')"
+          :text="{
+            searchPlaceholder: $t('localization.sidebar.search_languages'),
+            emptyLabel: $t('localization.sidebar.no_matches'),
+          }"
+          :appearance="{
+            align: 'end',
+            triggerSize: 'sm',
+            triggerClass: 'w-48',
+          }"
+          @update:model-value="changeLocale"
+        />
       </div>
 
       <div class="rounded-lg border border-border bg-surface overflow-hidden">

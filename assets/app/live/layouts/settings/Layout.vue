@@ -57,6 +57,7 @@ const {
   title = null,
   subtitle = null,
   onboarding = null,
+  sudoGrant = null,
 } = defineProps<{
   currentPath: string;
   workspaces?: SettingsWorkspace[];
@@ -66,6 +67,7 @@ const {
   title?: string | null;
   subtitle?: string | null;
   onboarding?: { guide: string; autoShow: boolean } | null;
+  sudoGrant?: string | null;
 }>();
 
 const { t } = useI18n();
@@ -93,6 +95,17 @@ const onboardingDialog = ref<{ openTutorial: () => void } | null>(null);
 
 function showTutorial(): void {
   onboardingDialog.value?.openTutorial();
+}
+
+function sensitiveSettingsPath(path: string): string {
+  if (!sudoGrant) return path;
+
+  const query = new URLSearchParams({ sudo_grant: sudoGrant });
+  return `${path}?${query.toString()}`;
+}
+
+function routePath(path: string): string {
+  return path.split("?", 1)[0] ?? path;
 }
 
 const projectSettingsBasePath = computed(() => {
@@ -178,10 +191,14 @@ const sections = computed<SettingsSection[]>(() => {
     {
       label: t("settings.nav.sections.account"),
       items: [
-        { label: t("settings.nav.items.profile"), path: "/users/settings", icon: "user" },
+        {
+          label: t("settings.nav.items.profile"),
+          path: sensitiveSettingsPath("/users/settings"),
+          icon: "user",
+        },
         {
           label: t("settings.nav.items.security"),
-          path: "/users/settings/security",
+          path: sensitiveSettingsPath("/users/settings/security"),
           icon: "shield-check",
         },
         {
@@ -243,9 +260,9 @@ const sections = computed<SettingsSection[]>(() => {
                 :to="item.path"
                 :class="[
                   'flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-colors',
-                  currentPath === item.path &&
+                  currentPath === routePath(item.path) &&
                     'bg-black/5 dark:bg-white/10 font-medium text-foreground',
-                  currentPath !== item.path &&
+                  currentPath !== routePath(item.path) &&
                     'text-foreground/80 hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground',
                 ]"
               >

@@ -3,6 +3,8 @@ defmodule Storyarn.Accounts.Sessions do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Accounts.Scope
+  alias Storyarn.Accounts.User
   alias Storyarn.Accounts.UserToken
   alias Storyarn.Repo
 
@@ -24,6 +26,38 @@ defmodule Storyarn.Accounts.Sessions do
     {:ok, query} = UserToken.verify_session_token_query(token)
     Repo.one(query)
   end
+
+  @doc """
+  Re-authenticates one active session without changing its sudo timestamp.
+
+  Sudo elevation is represented by a separate, short-lived signed grant in the
+  web layer. Keeping the primary token unchanged ensures another browser holding
+  a copy of it does not inherit the password confirmation.
+  """
+  def reauthenticate_user_session(%Scope{user: %User{} = user}, token, password)
+      when is_binary(token) and is_binary(password) do
+    if session_token_active?(%Scope{user: user}, token) do
+      if User.valid_password?(user, password),
+        do: {:ok, user},
+        else: {:error, :invalid_credentials}
+    else
+      {:error, :invalid_session}
+    end
+  end
+
+  def reauthenticate_user_session(_scope, _token, password) do
+    User.valid_password?(nil, password)
+    {:error, :invalid_credentials}
+  end
+
+  @doc false
+  def session_token_active?(%Scope{user: %User{id: user_id}}, token) when is_binary(token) do
+    token
+    |> UserToken.valid_session_token_query(user_id)
+    |> Repo.exists?()
+  end
+
+  def session_token_active?(_scope, _token), do: false
 
   @doc """
   Deletes the signed token with the given context.

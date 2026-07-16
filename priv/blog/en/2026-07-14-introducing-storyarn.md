@@ -4,6 +4,7 @@ title: "Introducing Storyarn: A Connected Narrative Design Platform",
 seo_title: "Introducing Storyarn: Narrative Design Platform",
 description: "Storyarn is a narrative design platform that keeps world data, branching dialogue, scenes, testing, localization, and export in one connected project.",
 author: "Storyarn Team",
+updated_on: "2026-07-15",
 image: "/images/docs/project-dashboard-current.png",
 image_alt: "Storyarn project dashboard showing sheets, flows, scenes, localization progress, warnings, and recent activity in one connected project",
 tags: ["Storyarn", "Narrative design", "Game development"]
@@ -27,13 +28,15 @@ The response only appears when that character trusts the player. Choosing it cha
 
 Writing the sentence is the smallest part of that decision.
 
-Teams do not lack specialist tools. A character and its setting may be developed in Notion or World Anvil. The conversation may be designed in Arcweave or articy:draft, or implemented with Yarn Spinner or Ink. State may be represented in the narrative tool and again in the engine, while localization moves through its own workflow. Some teams rely on one of these tools; others combine them deliberately because each solves a different part of the problem.
+Teams do not lack capable tools, and their boundaries are not absolute. World Anvil focuses on organizing and presenting the narrative world, while Notion can be adapted into a project wiki or knowledge base. articy:draft and Arcweave cover a much broader part of narrative design: structured data, interactive flows, logic, testing, localization, and engine integration. Yarn Spinner and Ink approach the problem through narrative scripting and execution inside the game. Some teams solve most of the workflow with one platform; others deliberately combine several according to their production and preferred way of working.
 
-That is not a sign of an outdated process, and it does not make any of those tools inadequate. The fragility appears at the boundaries. A condition is renamed in the dialogue but not in the engine integration. A character decision changes in the world bible while an older assumption survives in a branch. A location exists in the setting, yet no reachable path reveals it. A translator receives a line without the state or context that gives it meaning.
+Storyarn does not begin from the assumption that those tools are inadequate. It approaches the same problem through a different product experience: keeping world data, narrative, state, scenes, and localization connected and navigable in one shared web environment. The fragility we want to reduce appears when those relationships cross tool boundaries or have to be reconstructed during integration.
+
+Those connections become fragile when a condition is renamed in the dialogue but not in the engine integration. A character decision changes in the world bible while an older assumption survives in a branch. A location exists in the setting, yet no reachable path reveals it. A translator receives a line without the state or context that gives it meaning.
 
 Teams preserve these connections with stable identifiers, naming conventions, integration code, documentation, reviews, and people who know where every dependency crosses a tool boundary. That coordination works, but it becomes more expensive as the project grows and more disciplines depend on the same decisions.
 
-Storyarn starts in that gap between tools.
+Storyarn is another response to that continuity problem.
 
 ## A connected narrative model
 
@@ -84,7 +87,7 @@ Storyarn’s [Story Player](/docs/narrative-design/flows-overview#story-player) 
 Those are different kinds of feedback. The Story Player helps a team judge pacing, choice, and context. The Debugger helps it understand behavior.
 
 <figure>
-  <img src="/images/docs/flows-debug-current.png" alt="Storyarn debug mode showing the active narrative path, execution console, and live project variables" loading="lazy">
+  <img src="/images/blog/introducing-storyarn-debug-active-node.png" alt="Storyarn debug mode showing the active dialogue node, executed path, and console step history" loading="lazy">
   <figcaption>The narrative can be played and inspected while the full design context is still available.</figcaption>
 </figure>
 

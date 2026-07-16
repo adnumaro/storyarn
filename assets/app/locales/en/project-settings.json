@@ -53,7 +53,7 @@
       },
       "source_language": "Source language",
       "source_language_description": "Defines the base locale used for source texts and translation workflows in this project.",
-      "source_language_hint": "To change the source language, use the localization settings.",
+      "source_language_hint": "Changing the source language resets all existing translations and requires confirmation.",
       "appearance": "Appearance",
       "theme_system": "System",
       "theme_light": "Light",

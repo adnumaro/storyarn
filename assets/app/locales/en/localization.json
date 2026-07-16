@@ -80,6 +80,7 @@
       "subtitle": "Translation progress and statistics",
       "progress_by_language": "Progress by Language",
       "no_targets_configured": "No target languages configured.",
+      "select_language": "Target language",
       "word_counts_by_speaker": "Word Counts by Speaker",
       "speaker_header": "Speaker",
       "lines_header": "Lines",

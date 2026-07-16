@@ -9,6 +9,7 @@ defmodule StoryarnWeb.Components.DocsLayout do
 
   use StoryarnWeb, :html
 
+  alias Storyarn.Localization.Languages
   alias StoryarnWeb.PublicURLs
 
   attr :flash, :map, required: true
@@ -133,6 +134,8 @@ defmodule StoryarnWeb.Components.DocsLayout do
       locale: link.locale,
       languageTag: link.language_tag,
       label: link.label,
+      flagCode: Languages.flag_code(link.language_tag),
+      shortLabel: Languages.short_label(link.language_tag),
       path: link.path
     }
   end

@@ -5,6 +5,11 @@ defmodule Storyarn.BlogTest do
   alias Storyarn.Blog.PostBuilder
 
   @slug "introducing-storyarn"
+  @debug_image_path Path.expand(
+                      "../../priv/static/images/blog/introducing-storyarn-debug-active-node.png",
+                      __DIR__
+                    )
+  @debug_image_sha256 "79d6ab45511ed09be891ce1b89644faabea2ae64893ea5022df39c675b924814"
 
   test "lists published posts with editorial metadata" do
     [post | _] = Blog.list_posts()
@@ -25,7 +30,7 @@ defmodule Storyarn.BlogTest do
     assert post.author_url == "/"
     assert post.image == "/images/docs/project-dashboard-current.png"
     assert post.image_alt =~ "Storyarn project dashboard"
-    assert post.updated_on == post.published_on
+    assert post.updated_on == ~D[2026-07-15]
     assert "Storyarn" in post.tags
     assert "Narrative design" in post.tags
     assert post.reading_time >= 5
@@ -72,9 +77,11 @@ defmodule Storyarn.BlogTest do
     assert post.body =~ ~s(data-phx-link="redirect")
     assert post.body =~ "<figure>"
     assert post.body =~ "<figcaption>"
-    assert post.body =~ "Notion or World Anvil"
-    assert post.body =~ "Arcweave or articy:draft"
-    assert post.body =~ "Yarn Spinner or Ink"
+    assert post.body =~ "World Anvil focuses on organizing and presenting"
+    assert post.body =~ "articy:draft and Arcweave cover a much broader"
+    assert post.body =~ "Yarn Spinner and Ink"
+    assert post.body =~ ~s(src="/images/blog/introducing-storyarn-debug-active-node.png")
+    assert post.body =~ "active dialogue node"
     refute String.contains?(String.downcase(post.body), "spreadsheet")
     refute post.body =~ ~r/<h[23][^>]*>\s*\d+[.\s]/
     refute post.body =~ "<ol>"
@@ -87,13 +94,26 @@ defmodule Storyarn.BlogTest do
     assert post.translation_key == "introducing-storyarn"
     assert post.author == "Equipo de Storyarn"
     assert post.body =~ ~s(<h2 id="el-problema-no-es-escribir-la-frase">)
-    assert post.body =~ "Notion o World Anvil"
-    assert post.body =~ "Arcweave o articy:draft"
-    assert post.body =~ "Yarn Spinner o Ink"
+    assert post.updated_on == ~D[2026-07-15]
+    assert post.body =~ "World Anvil se centra en organizar y presentar"
+    assert post.body =~ "articy:draft y Arcweave cubren un espacio mucho más amplio"
+    assert post.body =~ "Yarn Spinner e Ink"
+    assert post.body =~ ~s(src="/images/blog/introducing-storyarn-debug-active-node.png")
+    assert post.body =~ "un nodo de diálogo activo"
     assert post.body =~ ~s(href="/es/docs/narrative-design/debug-mode")
     assert post.body =~ ~s(data-phx-link="redirect")
     refute String.contains?(String.downcase(post.body), "spreadsheet")
     refute post.body =~ "<ol>"
+  end
+
+  test "ships the visually approved debugger image used by both translations" do
+    digest =
+      @debug_image_path
+      |> File.read!()
+      |> then(&:crypto.hash(:sha256, &1))
+      |> Base.encode16(case: :lower)
+
+    assert digest == @debug_image_sha256
   end
 
   test "localizes safe public links while preserving query strings and fragments" do

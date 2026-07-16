@@ -39,6 +39,22 @@ defmodule Storyarn.RateLimiterTest do
     end
   end
 
+  describe "check_sudo/2" do
+    test "uses a bucket separate from login and from other users" do
+      with_rate_limiting_enabled(fn ->
+        ip = "test-sudo-#{System.unique_integer([:positive])}"
+        user_id = System.unique_integer([:positive])
+        other_user_id = System.unique_integer([:positive])
+
+        for _ <- 1..5, do: assert(:ok = RateLimiter.check_sudo(user_id, ip))
+
+        assert {:error, :rate_limited} = RateLimiter.check_sudo(user_id, ip)
+        assert :ok = RateLimiter.check_sudo(other_user_id, ip)
+        assert :ok = RateLimiter.check_login(ip)
+      end)
+    end
+  end
+
   describe "check_registration/1" do
     test "blocks requests over the limit when enabled" do
       with_rate_limiting_enabled(fn ->
