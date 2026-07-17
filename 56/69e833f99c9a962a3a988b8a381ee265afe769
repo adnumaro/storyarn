@@ -1,0 +1,144 @@
+lib/storyarn/versioning/project_recovery.ex
+  s_b941eebfdd72f8::t_8d57719fbd9240 17,287,303,309,349-353
+  s_b941eebfdd72f8::t_dc56232cda50b8 354
+test/storyarn/versioning/project_recovery_test.exs
+  s_b941eebfdd72f8::t_b9d61f57c0ca34 302-349
+AGENTS.md
+  s_b941eebfdd72f8::t_f7ef80cc730a65 478
+assets/app/components/toolbar/ToolbarColorPicker.vue
+  s_b941eebfdd72f8::t_9431a14560e565 25-28,55,57-59,63,69-76
+assets/app/live/flow/dashboard/FlowDashboard.vue
+  s_b941eebfdd72f8::t_22d26b03090db0 10,71,366,371-375,377-378,381-385
+assets/app/live/flow/show/FlowHeader.vue
+  s_b941eebfdd72f8::t_294a0616a1d2a6 3,32,41,62,81-83,91-94,108-109,235,239,242,244-256,258,267,273-301,303-306,321,327-328,330-333
+assets/app/locales/en/flows.json
+  s_b941eebfdd72f8::t_1205ebb7a3d1e9 45
+assets/app/locales/es/flows.json
+  s_b941eebfdd72f8::t_b702bdb7850c1b 45
+assets/app/modules/flows/editor/components/entities/toolbar/sections/HubToolbar.vue
+  s_b941eebfdd72f8::t_7496fa74496b72 3,14,33-36,65
+assets/app/modules/flows/editor/composables/useFlowCanvas.ts
+  s_b941eebfdd72f8::t_9c450f7e09b8c9 15-20,43-81,588
+assets/app/modules/flows/editor/lib/node-configs.ts
+  s_b941eebfdd72f8::t_acf7e1a20861ef 32-35,110-118,120-129,152-160,165-171
+assets/app/test/components/toolbar/ToolbarColorPicker.test.ts
+  s_b941eebfdd72f8::t_bb8b8fed63dfb9 1-48
+assets/app/test/live/flow/dashboard/FlowDashboard.test.ts
+  s_b941eebfdd72f8::t_e8ac8ea3526f6f 1-69
+assets/app/test/live/flow/show/FlowHeader.test.ts
+  s_b941eebfdd72f8::t_921be500b75fe8 1-124
+assets/app/test/modules/flows/components/toolbar-sections/HubToolbar.test.ts
+  s_b941eebfdd72f8::t_b47416832d1f39 1-61
+assets/app/test/modules/flows/editor/hubColorPropagation.test.ts
+  s_b941eebfdd72f8::t_bcf34d5cd16aeb 1-59
+assets/app/test/modules/flows/editor/node-configs.test.ts
+  s_b941eebfdd72f8::t_b657163c9acbeb 1-89
+lib/storyarn/flows.ex
+  s_b941eebfdd72f8::t_b896b451472dc5 354-361,690,693-714,723,728-731,757-810,813-818,831-832,838-846,866,875,884-885,955-981,988,993,1000-1015
+lib/storyarn/flows/evaluator/node_evaluators/condition_node_evaluator.ex
+  s_b941eebfdd72f8::t_32d1a048281e74 168-177,179-192
+lib/storyarn/flows/flow_connection.ex
+  s_b941eebfdd72f8::t_744fb1860bc3c9 72-74,76-78
+lib/storyarn/flows/flow_node.ex
+  s_b941eebfdd72f8::t_e9118e43c1cc6b 37,110,123,125-126,142,182,207-218,236-256,360
+lib/storyarn/flows/health_checker.ex
+  s_b941eebfdd72f8::t_00f63928ed40e6 1-323
+lib/storyarn/flows/hub_colors.ex
+  s_b941eebfdd72f8::t_e0a7f3953fce78 5-7,11-22,28-32,34-47
+lib/storyarn/flows/node_connection_rules.ex
+  s_b941eebfdd72f8::t_c5e8b1b6203a8a 12,20,33-121
+lib/storyarn/flows/node_crud.ex
+  s_b941eebfdd72f8::t_79a22a87f65ed4 366,368-374,377-384,386-391,393-398
+lib/storyarn/imports/parsers/storyarn_json.ex
+  s_b941eebfdd72f8::t_9db8143516b597 807,895-900,1291-1292,1297
+lib/storyarn/screenplays/node_mapping.ex
+  s_b941eebfdd72f8::t_c2c27a98cd8c5f 210
+lib/storyarn/screenplays/reverse_node_mapping.ex
+  s_b941eebfdd72f8::t_1bdf813c2b86c6 180-183
+lib/storyarn/screenplays/screenplay_element.ex
+  s_b941eebfdd72f8::t_f08e432ccd0add 46,125,139,163-182
+lib/storyarn/versioning/snapshot_viewer.ex
+  s_b941eebfdd72f8::t_1f7e6f09bc2029 99
+lib/storyarn_web/live/flow_live/handlers/collaboration_event_handlers.ex
+  s_b941eebfdd72f8::t_04c802ac0fe3f2 18,124
+lib/storyarn_web/live/flow_live/helpers/connection_helpers.ex
+  s_b941eebfdd72f8::t_0335278994527e 12,39-40,76-81,85
+lib/storyarn_web/live/flow_live/helpers/node_helpers.ex
+  s_b941eebfdd72f8::t_2405881f86c57f 359
+lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+  s_b941eebfdd72f8::t_affe2e87201512 19,28,45,59,63-72,75-76,79-81,87,89-90,93,95-96,98,100,102-145
+lib/storyarn_web/live/flow_live/nodes/hub/node.ex
+  s_b941eebfdd72f8::t_3171d7c0545bd2 24,32
+lib/storyarn_web/live/flow_live/show.ex
+  s_b941eebfdd72f8::t_616af2afff2170 102,209,966-977
+priv/blog/en/2026-07-17-version-control-branching-narratives.md
+  s_b941eebfdd72f8::t_09124466d0122a 1-68
+priv/blog/es/2026-07-17-control-versiones-narrativa-ramificada.md
+  s_b941eebfdd72f8::t_bab3a1fdc3e1dc 1-68
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_b941eebfdd72f8::t_048eccf6dbb48b 452-541
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_b941eebfdd72f8::t_0b490519db5080 452-541
+priv/gettext/flows.pot
+  s_b941eebfdd72f8::t_0235ec0cee02af 488-577
+priv/repo/migrations/20260717120400_normalize_hub_node_colors.exs
+  s_b941eebfdd72f8::t_5de615bb17b54d 1-39
+priv/static/images/blog/version-control-branching-narratives.svg
+  s_b941eebfdd72f8::t_2caa6ef7b4009e 1-115
+test/e2e/blog_test.exs
+  s_b941eebfdd72f8::t_8e9cb0fc88cae3 12-14,35-36,97,110-112,119-121,135-137,149,186
+test/storyarn/blog_test.exs
+  s_b941eebfdd72f8::t_7191daf16b6fc4 8-9,17,41-63,134-176
+test/storyarn/flows/connection_crud_test.exs
+  s_b941eebfdd72f8::t_a2ce0711859528 489-524
+test/storyarn/flows/evaluator/condition_node_evaluator_test.exs
+  s_b941eebfdd72f8::t_8df34d1436f5b4 303-344,380-413
+test/storyarn/flows/evaluator/engine_test.exs
+  s_b941eebfdd72f8::t_1efc61faa3f9af 169
+test/storyarn/flows/flow_node_test.exs
+  s_b941eebfdd72f8::t_528b3f261ea2e1 73-144
+test/storyarn/flows/health_checker_test.exs
+  s_b941eebfdd72f8::t_974db489744d7e 1-353
+test/storyarn/flows/hub_colors_test.exs
+  s_b941eebfdd72f8::t_684a5b122badd6 12-14,17-26,29-30,33-53,56-59
+test/storyarn/flows/node_connection_rules_test.exs
+  s_b941eebfdd72f8::t_84546ca36c176d 1-66
+test/storyarn/flows/node_crud_test.exs
+  s_b941eebfdd72f8::t_43721079edba50 253,259,274-286,879,886,890,1515,1522-1525,1554-1569
+test/storyarn/flows_test.exs
+  s_b941eebfdd72f8::t_c6c94b19bc4c8a 468,473,487,496,595
+test/storyarn/imports/parsers/storyarn_json_test.exs
+  s_b941eebfdd72f8::t_663c9aaab5bc2e 433-479
+test/storyarn/screenplay_element_test.exs
+  s_b941eebfdd72f8::t_3ba40359e2071f 1-71
+test/storyarn/versioning/snapshot_viewer_test.exs
+  s_b941eebfdd72f8::t_0d2592b25a37c2 58-70,80
+test/storyarn_web/live/blog_live/index_test.exs
+  s_b941eebfdd72f8::t_013c5fdd2f4f49 34,39-44,53,111,125,129,132-133
+test/storyarn_web/live/blog_live/show_test.exs
+  s_b941eebfdd72f8::t_42cafbf6cc5cec 179-247
+test/storyarn_web/live/flow_live/handlers/editor_info_handlers_test.exs
+  s_b941eebfdd72f8::t_e96acecf8113be 600
+test/storyarn_web/live/flow_live/helpers/connection_helpers_test.exs
+  s_b941eebfdd72f8::t_6ec3e7ea590ec6 77-80
+test/storyarn_web/live/flow_live/helpers/socket_helpers_test.exs
+  s_b941eebfdd72f8::t_5faa3cec447a8d 106-113
+test/storyarn_web/live/flow_live/show_test.exs
+  s_b941eebfdd72f8::t_bc443bd4e52914 40-67,123-201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "5669e833f99c9a962a3a988b8a381ee265afe769",
+  "prompts": {},
+  "sessions": {
+    "s_b941eebfdd72f8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6745-3a9e-7150-9871-f841a8054198",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
