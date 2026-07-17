@@ -1,0 +1,25 @@
+test/storyarn/screenplay_element_test.exs
+  s_40fa5143e834ff::t_eaa1b6bcafcedd 30-48
+lib/storyarn/screenplays/screenplay_element.ex
+  s_40fa5143e834ff::t_eaa1b6bcafcedd 166-168
+test/storyarn/flows/flow_node_test.exs
+  s_40fa5143e834ff::t_0d85ebef218a74 108-133
+lib/storyarn/flows/flow_node.ex
+  s_40fa5143e834ff::t_0d85ebef218a74 241-242,249-256
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "9944fe0221289b2c2d1fbc9573b26272c758d169",
+  "prompts": {},
+  "sessions": {
+    "s_40fa5143e834ff": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6f80-71e3-7f72-8246-69fcb30b0d6c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
