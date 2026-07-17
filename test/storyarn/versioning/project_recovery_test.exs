@@ -29,6 +29,19 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
   end
 
   describe "recover_project/4" do
+    test "requires external transactions to provide a storage tracker", %{
+      project: project,
+      workspace_id: workspace_id,
+      user: user
+    } do
+      snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
+
+      assert {:ok, {:error, :asset_copy_tracker_required_in_transaction}} =
+               Repo.transaction(fn ->
+                 ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id)
+               end)
+    end
+
     test "creates a new project from snapshot data", %{
       project: project,
       workspace_id: workspace_id,

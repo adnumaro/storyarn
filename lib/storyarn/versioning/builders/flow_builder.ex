@@ -235,9 +235,11 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   def instantiate_snapshot(project_id, snapshot, opts \\ []) do
     snapshot = FlowSnapshotNormalizer.normalize(snapshot)
 
-    fn -> instantiate_flow_snapshot(project_id, snapshot, opts) end
-    |> Repo.transaction()
-    |> finalize_flow_instantiation()
+    MaterializationHelpers.with_asset_copy_tracker(opts, fn tracked_opts ->
+      fn -> instantiate_flow_snapshot(project_id, snapshot, tracked_opts) end
+      |> Repo.transaction(timeout: :infinity)
+      |> finalize_flow_instantiation()
+    end)
   end
 
   defp instantiate_flow_snapshot(project_id, snapshot, opts) do
@@ -325,6 +327,13 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   @impl true
   def restore_snapshot(%Flow{} = flow, snapshot, opts \\ []) do
     snapshot = FlowSnapshotNormalizer.normalize(snapshot)
+
+    MaterializationHelpers.with_asset_copy_tracker(opts, fn tracked_opts ->
+      restore_flow_snapshot(flow, snapshot, tracked_opts)
+    end)
+  end
+
+  defp restore_flow_snapshot(flow, snapshot, opts) do
     localization_rows = Map.get(snapshot, "localization", [])
 
     Multi.new()
@@ -375,7 +384,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
         {:error, reason} -> {:error, reason}
       end
     end)
-    |> Repo.transaction()
+    |> Repo.transaction(timeout: :infinity)
     |> case do
       {:ok, %{flow: updated_flow, restore_nodes: node_data}} ->
         Localization.extract_flow_nodes(updated_flow.id)

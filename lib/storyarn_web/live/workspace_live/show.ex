@@ -174,7 +174,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
       {:reply, %{status: "ok"}, assign_template_installation_feedback(socket)}
     else
       _error ->
-        {:reply, %{status: "error"}, socket}
+        {:reply, %{status: "error"}, assign_template_installation_feedback(socket)}
     end
   end
 

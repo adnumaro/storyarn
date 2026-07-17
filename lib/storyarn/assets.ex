@@ -15,6 +15,7 @@ defmodule Storyarn.Assets do
   alias Storyarn.Assets.ImageProcessor
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCompensation
+  alias Storyarn.Assets.StorageKeyLock
   alias Storyarn.Assets.UploadPolicy
   alias Storyarn.Billing
   alias Storyarn.Flows.Flow
@@ -33,6 +34,8 @@ defmodule Storyarn.Assets do
   require Logger
 
   @svg_content_type "image/svg+xml"
+  @upload_tracker_process_key {__MODULE__, :upload_storage_tracker}
+  @post_commit_variant_jobs_process_key {__MODULE__, :post_commit_variant_jobs}
 
   # =============================================================================
   # Type Definitions
@@ -167,15 +170,19 @@ defmodule Storyarn.Assets do
   @doc """
   Creates an asset record.
 
-  This only creates the database record. The actual file upload should be
-  handled separately using the storage service.
+  This only creates the database record and is intended for records whose
+  storage lifecycle is managed elsewhere. Callers must use a fresh,
+  globally-unique key and must not split a compensatable storage upload from
+  this insert; use `upload_binary_and_create_asset/4` for that atomic lifecycle.
   """
   @spec create_asset(project(), user(), attrs()) :: {:ok, asset()} | {:error, changeset()}
   def create_asset(%Project{} = project, %User{} = user, attrs) do
-    %Asset{project_id: project.id, uploaded_by_id: user.id}
-    |> Asset.create_changeset(attrs)
-    |> Repo.insert()
-    |> track_asset_created(user, attrs)
+    with_asset_storage_key_lock(attrs, fn ->
+      %Asset{project_id: project.id, uploaded_by_id: user.id}
+      |> Asset.create_changeset(attrs)
+      |> Repo.insert()
+      |> track_asset_created(user, attrs)
+    end)
   end
 
   @doc """
@@ -183,10 +190,12 @@ defmodule Storyarn.Assets do
   """
   @spec create_asset(project(), attrs()) :: {:ok, asset()} | {:error, changeset()}
   def create_asset(%Project{} = project, attrs) do
-    %Asset{project_id: project.id}
-    |> Asset.create_changeset(attrs)
-    |> Repo.insert()
-    |> track_asset_created(nil, attrs)
+    with_asset_storage_key_lock(attrs, fn ->
+      %Asset{project_id: project.id}
+      |> Asset.create_changeset(attrs)
+      |> Repo.insert()
+      |> track_asset_created(nil, attrs)
+    end)
   end
 
   @doc """
@@ -636,56 +645,83 @@ defmodule Storyarn.Assets do
 
     with :ok <- validate_asset_upload_attrs(asset_attrs, upload_kind) do
       ext = BlobStore.ext_from_content_type(content_type)
+      blob_key = BlobStore.blob_key(project.id, blob_hash, ext)
 
-      case BlobStore.ensure_blob_with_status(project.id, blob_hash, ext, binary_data) do
-        {:ok, blob_key, blob_created?} ->
-          persist_uploaded_asset(
-            %{
-              binary_data: binary_data,
-              content_type: content_type,
-              key: key,
-              blob_key: blob_key,
-              blob_created?: blob_created?
-            },
-            asset_attrs,
-            attrs,
-            project,
-            user,
-            upload_kind
-          )
+      upload_context = %{
+        binary_data: binary_data,
+        content_type: content_type,
+        key: key,
+        asset_attrs: asset_attrs,
+        attrs: attrs,
+        project: project,
+        user: user,
+        upload_kind: upload_kind
+      }
 
-        {:error, reason} ->
-          {:error, reason}
-      end
+      StorageKeyLock.with_project_blob_lock(blob_key, fn ->
+        ensure_upload_blob(blob_key, blob_hash, ext, upload_context)
+      end)
     end
   end
 
-  defp persist_uploaded_asset(upload, asset_attrs, attrs, project, user, upload_kind) do
-    case Storage.upload(upload.key, upload.binary_data, upload.content_type) do
-      {:ok, url} ->
-        case do_create_asset(project, user, %{asset_attrs | url: url}, upload_kind) do
-          {:ok, asset} ->
-            maybe_schedule_variant(upload.binary_data, asset, project, user, attrs)
-            {:ok, asset}
+  defp ensure_upload_blob(blob_key, blob_hash, ext, context) do
+    case BlobStore.ensure_blob_with_status(context.project.id, blob_hash, ext, context.binary_data) do
+      {:ok, blob_key, blob_created?} ->
+        track_new_upload_blob(blob_key, blob_created?)
 
-          {:error, changeset} ->
-            cleanup_failed_upload(upload.key, upload.blob_key, upload.blob_created?)
-            {:error, changeset}
-        end
+        persist_uploaded_asset(
+          %{
+            binary_data: context.binary_data,
+            content_type: context.content_type,
+            key: context.key,
+            blob_key: blob_key,
+            blob_created?: blob_created?
+          },
+          context.asset_attrs,
+          context.attrs,
+          context.project,
+          context.user,
+          context.upload_kind
+        )
+
+      {:error, {:invalid_existing_blob, invalid_blob_key, reason}} ->
+        track_force_upload_storage_key(invalid_blob_key)
+        {:error, reason}
 
       {:error, reason} ->
-        cleanup_new_blob(upload.blob_key, upload.blob_created?)
+        # Storage errors may have an ambiguous remote outcome (for example,
+        # a lost R2 response after the object was accepted). Conservatively
+        # retain cleanup ownership even when creation status is unknown.
+        track_upload_storage_key(blob_key)
         {:error, reason}
     end
   end
 
-  defp cleanup_failed_upload(asset_key, blob_key, blob_created?) do
-    StorageCompensation.delete_or_enqueue(asset_key)
-    cleanup_new_blob(blob_key, blob_created?)
+  defp persist_uploaded_asset(upload, asset_attrs, attrs, project, user, upload_kind) do
+    StorageKeyLock.with_storage_key_lock(upload.key, fn ->
+      track_upload_storage_key(upload.key)
+
+      case Storage.upload(upload.key, upload.binary_data, upload.content_type) do
+        {:ok, url} ->
+          persist_uploaded_asset_record(upload, asset_attrs, attrs, project, user, upload_kind, url)
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end)
   end
 
-  defp cleanup_new_blob(_blob_key, false), do: :ok
-  defp cleanup_new_blob(blob_key, true), do: StorageCompensation.delete_or_enqueue(blob_key)
+  defp persist_uploaded_asset_record(upload, asset_attrs, attrs, project, user, upload_kind, url) do
+    case do_create_asset(project, user, %{asset_attrs | url: url}, upload_kind) do
+      {:ok, asset} ->
+        retain_successful_upload(upload)
+        maybe_schedule_variant(upload.binary_data, asset, project, user, attrs)
+        {:ok, asset}
+
+      {:error, changeset} ->
+        {:error, changeset}
+    end
+  end
 
   defp with_upload_capacity(%Project{} = project, file_size, fun) when is_function(fun, 0) do
     with_workspace_upload_lock(project, fn workspace ->
@@ -701,14 +737,102 @@ defmodule Storyarn.Assets do
   end
 
   defp with_workspace_upload_lock(%Project{} = project, fun) when is_function(fun, 1) do
-    fn ->
-      workspace = Repo.one!(from(w in Workspace, where: w.id == ^project.workspace_id, lock: "FOR UPDATE"))
-      fun.(workspace)
+    case Process.get(@upload_tracker_process_key) do
+      tracker when is_reference(tracker) ->
+        project
+        |> workspace_upload_transaction(fun)
+        |> unwrap_workspace_upload_transaction()
+
+      _tracker ->
+        if Repo.in_transaction?(),
+          do: {:error, :asset_upload_transaction_owner_required},
+          else: with_owned_upload_tracker(project, fun)
     end
-    |> Repo.transaction()
-    |> case do
-      {:ok, success} -> success
-      {:error, reason} -> {:error, reason}
+  end
+
+  defp with_owned_upload_tracker(project, fun) do
+    tracker = StorageCompensation.new()
+    Process.put(@upload_tracker_process_key, tracker)
+    Process.put(@post_commit_variant_jobs_process_key, [])
+
+    try do
+      case workspace_upload_transaction(project, fun) do
+        {:ok, result} ->
+          finalized_result = finalize_committed_upload_transaction(tracker, result)
+          schedule_post_commit_variant_jobs()
+          finalized_result
+
+        {:error, reason} ->
+          finalize_failed_upload_transaction(tracker, {:error, reason})
+      end
+    rescue
+      error ->
+        StorageCompensation.cleanup!(tracker)
+        reraise error, __STACKTRACE__
+    catch
+      kind, reason ->
+        StorageCompensation.cleanup!(tracker)
+        :erlang.raise(kind, reason, __STACKTRACE__)
+    after
+      Process.delete(@upload_tracker_process_key)
+      Process.delete(@post_commit_variant_jobs_process_key)
+    end
+  end
+
+  defp workspace_upload_transaction(project, fun) do
+    Repo.transaction(
+      fn ->
+        workspace = Repo.one!(from(w in Workspace, where: w.id == ^project.workspace_id, lock: "FOR UPDATE"))
+        fun.(workspace)
+      end,
+      timeout: :infinity
+    )
+  end
+
+  defp unwrap_workspace_upload_transaction({:ok, result}), do: result
+  defp unwrap_workspace_upload_transaction({:error, reason}), do: {:error, reason}
+
+  defp finalize_committed_upload_transaction(tracker, result) do
+    case StorageCompensation.cleanup_unretained(tracker) do
+      :ok -> result
+      {:error, cleanup_reason} -> {:error, {:storage_cleanup_failed, result, cleanup_reason}}
+    end
+  end
+
+  defp finalize_failed_upload_transaction(tracker, error) do
+    case StorageCompensation.cleanup(tracker) do
+      :ok -> error
+      {:error, cleanup_reason} -> {:error, {:storage_cleanup_failed, error, cleanup_reason}}
+    end
+  end
+
+  defp track_new_upload_blob(_blob_key, false), do: :ok
+  defp track_new_upload_blob(blob_key, true), do: track_upload_storage_key(blob_key)
+
+  defp retain_successful_upload(upload) do
+    retain_upload_storage_key(upload.key)
+    if upload.blob_created?, do: retain_upload_storage_key(upload.blob_key)
+    :ok
+  end
+
+  defp track_upload_storage_key(storage_key) do
+    case Process.get(@upload_tracker_process_key) do
+      tracker when is_reference(tracker) -> StorageCompensation.track(tracker, storage_key)
+      _tracker -> raise "asset upload storage tracker is not initialized"
+    end
+  end
+
+  defp track_force_upload_storage_key(storage_key) do
+    case Process.get(@upload_tracker_process_key) do
+      tracker when is_reference(tracker) -> StorageCompensation.track_force_delete(tracker, storage_key)
+      _tracker -> raise "asset upload storage tracker is not initialized"
+    end
+  end
+
+  defp retain_upload_storage_key(storage_key) do
+    case Process.get(@upload_tracker_process_key) do
+      tracker when is_reference(tracker) -> StorageCompensation.retain_after_commit(tracker, storage_key)
+      _tracker -> raise "asset upload storage tracker is not initialized"
     end
   end
 
@@ -943,8 +1067,34 @@ defmodule Storyarn.Assets do
     skip = Map.get(attrs, :skip_variants, false)
 
     if purpose && !skip do
-      schedule_variant_generation(binary_data, asset, project, user, purpose)
+      queue_variant_generation(binary_data, asset, project, user, purpose)
     end
+  end
+
+  defp queue_variant_generation(binary_data, asset, project, user, purpose) do
+    case Process.get(@post_commit_variant_jobs_process_key) do
+      jobs when is_list(jobs) ->
+        Process.put(
+          @post_commit_variant_jobs_process_key,
+          [{binary_data, asset, project, user, purpose} | jobs]
+        )
+
+        :ok
+
+      _jobs ->
+        schedule_variant_generation(binary_data, asset, project, user, purpose)
+    end
+  end
+
+  defp schedule_post_commit_variant_jobs do
+    jobs = Process.get(@post_commit_variant_jobs_process_key, [])
+    Process.put(@post_commit_variant_jobs_process_key, [])
+
+    jobs
+    |> Enum.reverse()
+    |> Enum.each(fn {binary_data, asset, project, user, purpose} ->
+      schedule_variant_generation(binary_data, asset, project, user, purpose)
+    end)
   end
 
   defp schedule_variant_generation(binary_data, asset, project, user, purpose) do
@@ -1157,7 +1307,9 @@ defmodule Storyarn.Assets do
   @doc """
   Uploads a file to storage.
 
-  Delegates to `Storyarn.Assets.Storage.upload/3`.
+  This is a low-level storage operation and does not create or reserve an
+  `Asset` row. Use `upload_binary_and_create_asset/4` whenever the object will
+  be adopted by the database so compensation cannot race the separate insert.
   """
   defdelegate storage_upload(key, data, content_type), to: Storage, as: :upload
 
@@ -1243,8 +1395,20 @@ defmodule Storyarn.Assets do
   """
   @spec import_asset(integer(), attrs()) :: {:ok, asset()} | {:error, changeset()}
   def import_asset(project_id, attrs) do
-    %Asset{project_id: project_id}
-    |> Asset.create_changeset(attrs)
-    |> Repo.insert()
+    with_asset_storage_key_lock(attrs, fn ->
+      %Asset{project_id: project_id}
+      |> Asset.create_changeset(attrs)
+      |> Repo.insert()
+    end)
+  end
+
+  defp with_asset_storage_key_lock(attrs, fun) when is_map(attrs) and is_function(fun, 0) do
+    case Map.get(attrs, :key, Map.get(attrs, "key")) do
+      storage_key when is_binary(storage_key) ->
+        StorageKeyLock.with_storage_key_lock(storage_key, fun)
+
+      _storage_key ->
+        fun.()
+    end
   end
 end

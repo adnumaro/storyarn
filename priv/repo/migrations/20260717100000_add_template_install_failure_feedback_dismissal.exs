@@ -7,28 +7,54 @@ defmodule Storyarn.Repo.Migrations.AddTemplateInstallFailureFeedbackDismissal do
       add :feedback_dismissed_at, :utc_datetime
     end
 
-    # Older releases could leave an active project attached to an installation
-    # that later became failed. Soft-delete only projects whose recorded template
-    # origin matches that failed installation; this avoids touching an arbitrary
-    # project if a historical project_id is corrupt. Soft deletion preserves normal
-    # project recovery/retention, and any completed installation also preserves it.
+    # Older releases could leave a partial project attached to a failed
+    # installation. Soft-delete it only when every tenant and provenance field
+    # agrees with the failed installation and no successful/current install or
+    # template publication has adopted the project. The conservative exclusions
+    # deliberately prefer an orphaned historical row over deleting a project
+    # whose ownership is ambiguous.
+    execute """
+    LOCK TABLE project_templates,
+               project_template_versions,
+               project_template_publications
+    IN SHARE ROW EXCLUSIVE MODE
+    """
+
     execute """
     WITH failed_projects AS (
       SELECT DISTINCT ON (failed.project_id)
              failed.project_id,
              failed.project_template_version_id,
-             failed.user_id
+             failed.user_id,
+             failed.workspace_id
       FROM project_template_installs AS failed
-      JOIN projects AS origin_project
-        ON origin_project.id = failed.project_id
-       AND origin_project.created_from_template_version_id = failed.project_template_version_id
+      JOIN projects AS project
+        ON project.id = failed.project_id
+       AND project.workspace_id = failed.workspace_id
+       AND project.owner_id = failed.user_id
+       AND project.created_from_template_version_id = failed.project_template_version_id
       WHERE failed.status = 'failed'
         AND failed.project_id IS NOT NULL
         AND NOT EXISTS (
           SELECT 1
-          FROM project_template_installs AS completed
-          WHERE completed.project_id = failed.project_id
-            AND completed.status = 'completed'
+          FROM project_template_installs AS other_install
+          WHERE other_install.project_id = failed.project_id
+            AND other_install.status != 'failed'
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM project_templates AS template
+          WHERE template.source_project_id = failed.project_id
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM project_template_versions AS version
+          WHERE version.source_project_id = failed.project_id
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM project_template_publications AS publication
+          WHERE publication.source_project_id = failed.project_id
         )
       ORDER BY failed.project_id,
                failed.completed_at DESC NULLS LAST,
@@ -40,10 +66,15 @@ defmodule Storyarn.Repo.Migrations.AddTemplateInstallFailureFeedbackDismissal do
         updated_at = CURRENT_TIMESTAMP
     FROM failed_projects
     WHERE project.id = failed_projects.project_id
-      AND project.created_from_template_version_id = failed_projects.project_template_version_id
+      AND project.workspace_id = failed_projects.workspace_id
+      AND project.owner_id = failed_projects.user_id
+      AND project.created_from_template_version_id =
+          failed_projects.project_template_version_id
       AND project.deleted_at IS NULL
     """
 
+    # Failed installations cannot own a project after this migration. Historical
+    # failures are marked dismissed because they predate the transient modal.
     execute """
     UPDATE project_template_installs
     SET feedback_dismissed_at = COALESCE(completed_at, updated_at),

@@ -14,6 +14,9 @@ defmodule Storyarn.Assets.Storage do
           etag: String.t() | nil,
           content_type: String.t() | nil
         }
+  @type conditional_copy_cleanup_error ::
+          {:conditional_copy_cleanup_required, destination_created? :: boolean(), pending_cleanup_key :: key(),
+           cleanup_reason :: term()}
 
   @callback upload(key, binary_data, content_type) :: {:ok, url} | {:error, term()}
   @callback put_if_absent(key, binary_data, content_type) ::
@@ -121,6 +124,12 @@ defmodule Storyarn.Assets.Storage do
   Copies an object only when the destination key does not already exist.
 
   The returned boolean identifies which caller owns cleanup of the destination.
+
+  An adapter that atomically publishes the destination but cannot remove an
+  intermediate object returns
+  `{:error, {:conditional_copy_cleanup_required, created?, cleanup_key, reason}}`.
+  The caller must hand `cleanup_key` to durable compensation and must also
+  compensate the destination when `created?` is true.
   """
   def copy_if_absent(source_key, dest_key) do
     adapter().copy_if_absent(source_key, dest_key)

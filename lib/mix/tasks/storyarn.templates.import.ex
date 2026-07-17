@@ -67,6 +67,7 @@ defmodule Mix.Tasks.Storyarn.Templates.Import do
             Mix.shell().info("Imported template ##{template.id}: #{template.name}")
             Mix.shell().info("Visibility: #{template.visibility}")
             Mix.shell().info("Current version: #{template.current_version_id}")
+            Mix.shell().info("Editable source project: #{template.source_project_id}")
 
           {:error, reason} ->
             Mix.raise("Could not import template bundle: #{inspect(reason)}")

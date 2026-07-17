@@ -242,6 +242,26 @@ describe("WorkspaceDashboard", () => {
     expect(feedback.text()).not.toContain("The installation could not be completed");
   });
 
+  it("explains an invalid sequence exit with the specific recoverable action", () => {
+    const { wrapper } = mountDashboard({
+      templateCreation: {
+        templates: [],
+        installations: [],
+        failures: [
+          {
+            id: 46,
+            project_name: "Legacy Sequence",
+            error_code: "unremappable_subflow_exit_pin",
+          },
+        ],
+      },
+    });
+
+    const feedback = wrapper.get('[data-testid="template-installation-failure-dialog"]');
+    expect(feedback.text()).toContain("invalid sequence exit");
+    expect(feedback.text()).toContain("must be republished");
+  });
+
   it("allows another named project from a template that is already installing", async () => {
     const { live, wrapper } = mountDashboard({
       templateCreation: {

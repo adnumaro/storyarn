@@ -1,5 +1,6 @@
 defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
   use Storyarn.DataCase, async: false
+  use Oban.Testing, repo: Storyarn.Repo
 
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
@@ -12,13 +13,16 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Flows
+  alias Storyarn.Flows.Flow
   alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Flows.SequenceTrack
   alias Storyarn.Flows.SequenceVisualLayer
   alias Storyarn.Localization
   alias Storyarn.Localization.RuntimeKey
   alias Storyarn.Repo
+  alias Storyarn.Versioning.Builders.AssetCopyError
   alias Storyarn.Versioning.Builders.FlowBuilder
+  alias Storyarn.Workers.DeleteStorageObjectsWorker
 
   setup do
     user = user_fixture()
@@ -471,7 +475,108 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       assert cloned_audio.project_id == target_project.id
       refute cloned_audio.id == audio_asset.id
       assert {:ok, _binary} = Assets.storage_download(cloned_audio.key)
-      on_exit(fn -> Assets.storage_delete(cloned_audio.key) end)
+
+      cloned_blob_key =
+        BlobStore.blob_key(
+          target_project.id,
+          cloned_audio.blob_hash,
+          BlobStore.ext_from_content_type(cloned_audio.content_type)
+        )
+
+      assert {:ok, "audio content"} = Assets.storage_download(cloned_blob_key)
+
+      on_exit(fn ->
+        Assets.storage_delete(cloned_audio.key)
+        Assets.storage_delete(cloned_blob_key)
+      end)
+    end
+
+    test "durably cleans copied assets when materialization rolls back", %{
+      user: user,
+      project: project,
+      flow: flow
+    } do
+      audio = uploaded_asset(project, user, "copied-before-failure.mp3", "copied audio", "audio/mpeg")
+      broken_track_asset = uploaded_asset(project, user, "broken-track.mp3", "broken audio", "audio/mpeg")
+
+      _node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"speaker" => "Narrator", "text" => "Hello", "audio_asset_id" => audio.id}
+        })
+
+      {:ok, sequence} =
+        Flows.create_sequence(flow.id, %{
+          "name" => "Broken copy",
+          "width" => 720.0,
+          "height" => 420.0
+        })
+
+      {:ok, _track} =
+        Flows.upsert_sequence_track(sequence.id, "music", %{
+          "asset_id" => broken_track_asset.id
+        })
+
+      snapshot =
+        flow
+        |> FlowBuilder.build_snapshot()
+        |> put_in(["asset_metadata", to_string(broken_track_asset.id)], %{})
+
+      target_project = project_fixture(user)
+
+      assert_raise AssetCopyError, fn ->
+        FlowBuilder.instantiate_snapshot(target_project.id, snapshot,
+          asset_mode: :copy,
+          asset_error_mode: :strict,
+          user_id: user.id,
+          reset_shortcut: true
+        )
+      end
+
+      refute Repo.exists?(from asset in Asset, where: asset.project_id == ^target_project.id)
+      assert [cleanup_job] = all_enqueued(worker: DeleteStorageObjectsWorker)
+
+      cleanup_keys = cleanup_job.args["storage_keys"]
+
+      copied_blob_key =
+        BlobStore.blob_key(
+          target_project.id,
+          audio.blob_hash,
+          BlobStore.ext_from_content_type(audio.content_type)
+        )
+
+      copied_asset_key =
+        Enum.find(cleanup_keys, &String.starts_with?(&1, "projects/#{target_project.id}/assets/"))
+
+      assert copied_blob_key in cleanup_keys
+      assert is_binary(copied_asset_key)
+
+      on_exit(fn -> Enum.each(cleanup_keys, &Assets.storage_delete/1) end)
+
+      Repo.delete!(target_project)
+      assert :ok = perform_job(DeleteStorageObjectsWorker, cleanup_job.args)
+      assert {:error, :enoent} = Assets.storage_download(copied_asset_key)
+      assert {:error, :enoent} = Assets.storage_download(copied_blob_key)
+    end
+
+    test "rejects an untracked copy inside an existing transaction before writing", %{
+      user: user,
+      project: project,
+      flow: flow
+    } do
+      snapshot = FlowBuilder.build_snapshot(flow)
+      flow_count = Repo.aggregate(Flow, :count)
+
+      assert {:ok, {:error, :asset_copy_tracker_required_in_transaction}} =
+               Repo.transaction(fn ->
+                 FlowBuilder.instantiate_snapshot(project.id, snapshot,
+                   asset_mode: :copy,
+                   user_id: user.id,
+                   reset_shortcut: true
+                 )
+               end)
+
+      assert Repo.aggregate(Flow, :count) == flow_count
     end
 
     test "copies nested sequence resources and remaps their parent and assets", %{
@@ -536,9 +641,28 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       assert cloned_audio.project_id == target_project.id
       assert cloned_image.project_id == target_project.id
 
+      cloned_audio_blob_key =
+        BlobStore.blob_key(
+          target_project.id,
+          cloned_audio.blob_hash,
+          BlobStore.ext_from_content_type(cloned_audio.content_type)
+        )
+
+      cloned_image_blob_key =
+        BlobStore.blob_key(
+          target_project.id,
+          cloned_image.blob_hash,
+          BlobStore.ext_from_content_type(cloned_image.content_type)
+        )
+
+      assert {:ok, "clone audio"} = Assets.storage_download(cloned_audio_blob_key)
+      assert {:ok, "clone image"} = Assets.storage_download(cloned_image_blob_key)
+
       on_exit(fn ->
         Assets.storage_delete(cloned_audio.key)
         Assets.storage_delete(cloned_image.key)
+        Assets.storage_delete(cloned_audio_blob_key)
+        Assets.storage_delete(cloned_image_blob_key)
       end)
     end
 

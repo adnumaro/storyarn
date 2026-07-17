@@ -150,6 +150,47 @@ defmodule StoryarnWeb.WorkspaceLive.TemplateCreationTest do
       {:ok, reloaded_view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
       assert get_dashboard_vue(reloaded_view).props["template-creation"]["failures"] == []
     end
+
+    test "removes stale failure feedback if workspace access is revoked before dismissal", %{
+      conn: conn,
+      user: user,
+      scope: scope
+    } do
+      workspace_owner = user_fixture()
+      workspace = workspace_fixture(workspace_owner, %{name: "Revoked Installation Studio"})
+      membership = workspace_membership_fixture(workspace, user, "member")
+      template = template_fixture(user, scope, %{name: "Revoked Starter"})
+
+      installation =
+        Repo.insert!(%ProjectTemplateInstall{
+          project_template_version_id: template.current_version_id,
+          user_id: user.id,
+          workspace_id: workspace.id,
+          status: "failed",
+          stage: "failed",
+          project_name: "Revoked Copy",
+          source: "workspace_dashboard",
+          error_code: "test_failure",
+          error_message: "Test failure",
+          completed_at: DateTime.utc_now(:second)
+        })
+
+      {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+
+      assert Enum.any?(
+               get_dashboard_vue(view).props["template-creation"]["failures"],
+               &(&1["id"] == installation.id)
+             )
+
+      Repo.delete!(membership)
+
+      render_hook(view, "dismiss_template_installation_failure", %{
+        "installation_id" => installation.id
+      })
+
+      assert get_dashboard_vue(view).props["template-creation"]["failures"] == []
+      refute Repo.get!(ProjectTemplateInstall, installation.id).feedback_dismissed_at
+    end
   end
 
   defp template_fixture(user, scope, attrs) do

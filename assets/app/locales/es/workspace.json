@@ -51,7 +51,8 @@
           "missing_asset_manifest": "El manifiesto de assets de la template no está disponible.",
           "missing_checksum": "La información de integridad de la template no está disponible.",
           "not_found": "La template o el workspace ya no están disponibles.",
-          "unauthorized": "Ya no tienes permiso para instalar esta template."
+          "unauthorized": "Ya no tienes permiso para instalar esta template.",
+          "unremappable_subflow_exit_pin": "Esta versión de la template contiene una salida de secuencia inválida y debe volver a publicarse."
         },
         "version": "v{version}",
         "counts": "Fichas / flows / escenas",

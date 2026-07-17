@@ -7,8 +7,6 @@ defmodule Storyarn.Assets.Storage.Local do
 
   @behaviour Storyarn.Assets.Storage
 
-  require Logger
-
   @stream_chunk_size 1_048_576
 
   @impl true
@@ -94,10 +92,12 @@ defmodule Storyarn.Assets.Storage.Local do
   def copy_if_absent(source_key, dest_key) do
     with {:ok, source_path} <- file_path(source_key),
          {:ok, dest_path} <- file_path(dest_key),
+         temporary_key = temporary_copy_key(dest_key),
+         {:ok, temporary_path} <- file_path(temporary_key),
          :ok <- ensure_directory(dest_path),
          {:ok, result} <-
            File.open(source_path, [:read, :binary], fn source ->
-             copy_open_source_if_absent(source, dest_path)
+             copy_open_source_if_absent(source, dest_path, temporary_path, temporary_key)
            end) do
       result
     end
@@ -145,17 +145,15 @@ defmodule Storyarn.Assets.Storage.Local do
   end
 
   # sobelow_skip ["Traversal.FileModule"]
-  defp copy_open_source_if_absent(source, dest_path) do
-    temporary_path = temporary_copy_path(dest_path)
-
+  defp copy_open_source_if_absent(source, dest_path, temporary_path, temporary_key) do
     case File.open(temporary_path, [:write, :binary, :exclusive], fn destination ->
            {:copy_result, copy_chunks(source, destination)}
          end) do
       {:ok, {:copy_result, :ok}} ->
-        publish_temporary_copy(temporary_path, dest_path)
+        publish_temporary_copy(temporary_path, temporary_key, dest_path)
 
       {:ok, {:copy_result, {:error, reason}}} ->
-        cleanup_partial_copy(temporary_path, reason)
+        cleanup_partial_copy(temporary_path, temporary_key, reason)
 
       {:error, reason} ->
         {:error, reason}
@@ -179,46 +177,57 @@ defmodule Storyarn.Assets.Storage.Local do
   end
 
   # sobelow_skip ["Traversal.FileModule"]
-  defp publish_temporary_copy(temporary_path, dest_path) do
+  defp publish_temporary_copy(temporary_path, temporary_key, dest_path) do
     case File.ln(temporary_path, dest_path) do
       :ok ->
-        discard_temporary_copy(temporary_path)
-        {:ok, true}
+        finish_conditional_copy(temporary_path, temporary_key, true)
 
       {:error, :eexist} ->
-        discard_temporary_copy(temporary_path)
-        {:ok, false}
+        finish_conditional_copy(temporary_path, temporary_key, false)
 
       {:error, reason} ->
-        cleanup_partial_copy(temporary_path, reason)
+        cleanup_partial_copy(temporary_path, temporary_key, reason)
     end
   end
 
-  defp temporary_copy_path(dest_path) do
+  defp temporary_copy_key(dest_key) do
     suffix = 12 |> :crypto.strong_rand_bytes() |> Base.url_encode64(padding: false)
-    "#{dest_path}.storyarn-copy-#{suffix}"
+    "#{dest_key}.storyarn-copy-#{suffix}"
   end
 
   # sobelow_skip ["Traversal.FileModule"]
-  defp discard_temporary_copy(temporary_path) do
-    case File.rm(temporary_path) do
+  defp finish_conditional_copy(temporary_path, temporary_key, destination_created?) do
+    case remove_temporary_copy(temporary_path) do
       :ok ->
-        :ok
+        {:ok, destination_created?}
 
       {:error, :enoent} ->
-        :ok
+        {:ok, destination_created?}
 
       {:error, reason} ->
-        Logger.warning("Could not remove local conditional-copy temporary file error=#{inspect(reason)}")
+        {:error, {:conditional_copy_cleanup_required, destination_created?, temporary_key, reason}}
     end
   end
 
   # sobelow_skip ["Traversal.FileModule"]
-  defp cleanup_partial_copy(temporary_path, copy_reason) do
-    case File.rm(temporary_path) do
-      :ok -> {:error, copy_reason}
-      {:error, :enoent} -> {:error, copy_reason}
-      {:error, cleanup_reason} -> {:error, {:copy_failed_cleanup_failed, copy_reason, cleanup_reason}}
+  defp cleanup_partial_copy(temporary_path, temporary_key, copy_reason) do
+    case remove_temporary_copy(temporary_path) do
+      :ok ->
+        {:error, copy_reason}
+
+      {:error, :enoent} ->
+        {:error, copy_reason}
+
+      {:error, cleanup_reason} ->
+        cleanup_failure = {:copy_failed, copy_reason, cleanup_reason}
+        {:error, {:conditional_copy_cleanup_required, false, temporary_key, cleanup_failure}}
+    end
+  end
+
+  defp remove_temporary_copy(path) do
+    case config()[:conditional_copy_file_rm] do
+      remove when is_function(remove, 1) -> remove.(path)
+      _other -> File.rm(path)
     end
   end
 

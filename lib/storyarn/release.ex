@@ -134,6 +134,7 @@ defmodule Storyarn.Release do
           IO.puts("Imported template ##{template.id}: #{template.name}")
           IO.puts("Visibility: #{template.visibility}")
           IO.puts("Current version: #{template.current_version_id}")
+          IO.puts("Editable source project: #{template.source_project_id}")
           template
 
         {:error, reason} ->

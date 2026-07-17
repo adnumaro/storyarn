@@ -12,6 +12,7 @@ defmodule Storyarn.Assets.BlobStore do
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCompensation
+  alias Storyarn.Assets.StorageKeyLock
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
 
@@ -76,9 +77,32 @@ defmodule Storyarn.Assets.BlobStore do
   def ensure_blob_with_status(project_id, hash, ext, binary_data) do
     key = blob_key(project_id, hash, ext)
 
+    StorageKeyLock.with_project_blob_lock(key, fn ->
+      do_ensure_blob_with_status(key, hash, ext, binary_data)
+    end)
+  end
+
+  defp do_ensure_blob_with_status(key, hash, ext, binary_data) do
+    if compute_hash(binary_data) == hash do
+      put_blob_if_absent(key, hash, ext, binary_data)
+    else
+      {:error, :blob_hash_mismatch}
+    end
+  end
+
+  defp put_blob_if_absent(key, hash, ext, binary_data) do
     case Storage.put_if_absent(key, binary_data, MIME.type(ext)) do
-      {:ok, _url, created?} -> {:ok, key, created?}
+      {:ok, _url, true} -> {:ok, key, true}
+      {:ok, _url, false} -> verify_existing_blob(key, hash)
       {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp verify_existing_blob(key, hash) do
+    case verify_stored_blob(key, hash) do
+      :ok -> {:ok, key, false}
+      {:error, :blob_hash_mismatch} -> {:error, {:invalid_existing_blob, key, :blob_hash_mismatch}}
+      {:error, reason} -> {:error, {:existing_blob_verification_failed, key, reason}}
     end
   end
 
@@ -92,6 +116,30 @@ defmodule Storyarn.Assets.BlobStore do
   @spec create_asset_from_blob(integer(), integer() | nil, String.t(), String.t(), map(), keyword()) ::
           {:ok, Asset.t()} | {:error, term()}
   def create_asset_from_blob(project_id, user_id, blob_hash, source_key, metadata, opts \\ []) do
+    case asset_copy_tracker(opts) do
+      {:ok, tracker, owns_tracker?} ->
+        opts = Keyword.put(opts, :asset_copy_tracker, tracker)
+
+        try do
+          project_id
+          |> do_create_asset_from_blob(user_id, blob_hash, source_key, metadata, opts)
+          |> finalize_owned_asset_copies(tracker, owns_tracker?)
+        rescue
+          error ->
+            cleanup_owned_asset_copies(tracker, owns_tracker?)
+            reraise error, __STACKTRACE__
+        catch
+          kind, reason ->
+            cleanup_owned_asset_copies(tracker, owns_tracker?)
+            :erlang.raise(kind, reason, __STACKTRACE__)
+        end
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp do_create_asset_from_blob(project_id, user_id, blob_hash, source_key, metadata, opts) do
     ext = ext_from_content_type(metadata["content_type"])
     source_key = source_key || blob_key(project_id, blob_hash, ext)
 
@@ -121,10 +169,47 @@ defmodule Storyarn.Assets.BlobStore do
 
     changeset = restore_changeset(asset, attrs)
 
-    if changeset.valid?,
-      do: materialize_and_insert_asset(changeset, project_id, blob_hash, ext, source_key, dest_key, opts),
-      else: {:error, changeset}
+    if changeset.valid? do
+      project_id
+      |> blob_key(blob_hash, ext)
+      |> StorageKeyLock.with_project_blob_lock(fn ->
+        materialize_and_insert_asset(changeset, project_id, blob_hash, ext, source_key, dest_key, opts)
+      end)
+    else
+      {:error, changeset}
+    end
   end
+
+  defp asset_copy_tracker(opts) do
+    case Keyword.get(opts, :asset_copy_tracker) do
+      tracker when is_reference(tracker) ->
+        {:ok, tracker, false}
+
+      _tracker ->
+        if Repo.in_transaction?(),
+          do: {:error, :asset_copy_tracker_required_in_transaction},
+          else: {:ok, StorageCompensation.new(), true}
+    end
+  end
+
+  defp finalize_owned_asset_copies({:ok, _asset} = result, tracker, true) do
+    case StorageCompensation.cleanup_unretained(tracker) do
+      :ok -> result
+      {:error, cleanup_reason} -> {:error, {:storage_cleanup_failed, cleanup_reason}}
+    end
+  end
+
+  defp finalize_owned_asset_copies({:error, _reason} = result, tracker, true) do
+    case StorageCompensation.cleanup(tracker) do
+      :ok -> result
+      {:error, cleanup_reason} -> {:error, {:storage_cleanup_failed, elem(result, 1), cleanup_reason}}
+    end
+  end
+
+  defp finalize_owned_asset_copies(result, _tracker, false), do: result
+
+  defp cleanup_owned_asset_copies(tracker, true), do: StorageCompensation.cleanup!(tracker)
+  defp cleanup_owned_asset_copies(_tracker, false), do: :ok
 
   defp materialize_and_insert_asset(changeset, project_id, blob_hash, ext, source_key, dest_key, opts) do
     with {:ok, destination_blob_key, blob_created?} <-
@@ -132,7 +217,9 @@ defmodule Storyarn.Assets.BlobStore do
       owned_keys = owned_storage_keys(dest_key, destination_blob_key, blob_created?)
       Enum.each(owned_keys, &track_copy(opts, &1))
 
-      copy_and_insert_asset(changeset, destination_blob_key, dest_key, owned_keys, opts)
+      StorageKeyLock.with_storage_key_lock(dest_key, fn ->
+        copy_and_insert_asset(changeset, destination_blob_key, dest_key, owned_keys, opts)
+      end)
     end
   end
 
@@ -158,7 +245,25 @@ defmodule Storyarn.Assets.BlobStore do
       {:ok, created?} ->
         verify_copied_blob(destination_blob_key, blob_hash, created?, opts)
 
+      {:error,
+       {:conditional_copy_cleanup_required, destination_created?, pending_cleanup_key, _cleanup_reason} =
+           reason}
+      when is_boolean(destination_created?) and is_binary(pending_cleanup_key) ->
+        owned_keys =
+          if destination_created?,
+            do: [destination_blob_key, pending_cleanup_key],
+            else: [pending_cleanup_key]
+
+        Enum.each(owned_keys, &track_copy(opts, &1))
+        compensate_failed_materialization(opts, owned_keys)
+        {:error, reason}
+
       {:error, reason} ->
+        # A remote conditional copy can succeed server-side while its response
+        # is lost. Track the deterministic destination conservatively; deferred
+        # cleanup retains it for committed projects and removes it after a
+        # destination-project rollback.
+        track_copy(opts, destination_blob_key)
         {:error, reason}
     end
   end
@@ -176,6 +281,10 @@ defmodule Storyarn.Assets.BlobStore do
     case verification do
       {:result, :ok} ->
         {:ok, destination_blob_key, created?}
+
+      {:result, {:error, :blob_hash_mismatch} = error} ->
+        compensate_invalid_blob(opts, destination_blob_key)
+        error
 
       {:result, {:error, reason}} ->
         compensate_created_blob(created?, opts, destination_blob_key)
@@ -200,6 +309,24 @@ defmodule Storyarn.Assets.BlobStore do
   defp compensate_created_blob(true, opts, destination_blob_key) do
     track_copy(opts, destination_blob_key)
     compensate_failed_materialization(opts, [destination_blob_key])
+  end
+
+  defp compensate_invalid_blob(opts, destination_blob_key) do
+    case Keyword.get(opts, :asset_copy_tracker) do
+      reference when is_reference(reference) ->
+        StorageCompensation.track_force_delete(reference, destination_blob_key)
+
+        case StorageCompensation.delete_force_tracked_or_enqueue(reference, destination_blob_key) do
+          :ok ->
+            :ok
+
+          {:error, reason} ->
+            Logger.warning("Could not delete or hand off verified-invalid blob error=#{safe_error(reason)}")
+        end
+
+      _reference ->
+        raise "asset copy storage tracker is not initialized"
+    end
   end
 
   defp verify_stored_blob(storage_key, expected_hash) do
@@ -258,6 +385,7 @@ defmodule Storyarn.Assets.BlobStore do
 
     case outcome do
       {:success, asset} ->
+        retain_copied_asset(opts, owned_keys)
         {:ok, asset}
 
       {:failure, reason} ->
@@ -287,6 +415,16 @@ defmodule Storyarn.Assets.BlobStore do
     end
   end
 
+  defp retain_copied_asset(opts, owned_keys) do
+    case Keyword.get(opts, :asset_copy_tracker) do
+      reference when is_reference(reference) ->
+        Enum.each(owned_keys, &StorageCompensation.retain_after_commit(reference, &1))
+
+      _reference ->
+        :ok
+    end
+  end
+
   defp compensate_failed_materialization(opts, owned_keys) do
     case Keyword.get(opts, :asset_copy_tracker) do
       reference when is_reference(reference) ->
@@ -299,12 +437,14 @@ defmodule Storyarn.Assets.BlobStore do
 
   defp compensate_tracked_materialization(reference, owned_keys) do
     Enum.each(owned_keys, fn storage_key ->
-      case Storage.delete(storage_key) do
+      case StorageCompensation.delete_tracked_or_enqueue(reference, storage_key) do
         :ok ->
-          StorageCompensation.untrack(reference, storage_key)
+          :ok
 
         {:error, reason} ->
-          Logger.warning("Could not delete tracked asset after materialization failure error=#{safe_error(reason)}")
+          Logger.warning(
+            "Could not delete or hand off tracked asset after materialization failure error=#{safe_error(reason)}"
+          )
       end
     end)
   end

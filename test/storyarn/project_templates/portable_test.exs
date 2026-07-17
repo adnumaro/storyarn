@@ -1,5 +1,6 @@
 defmodule Storyarn.ProjectTemplates.PortableTest do
   use Storyarn.DataCase, async: false
+  use Oban.Testing, repo: Storyarn.Repo
 
   alias Mix.Tasks.Storyarn.Templates.Export, as: ExportTask
   alias Mix.Tasks.Storyarn.Templates.Import, as: ImportTask
@@ -20,6 +21,7 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
   alias Storyarn.Sheets
   alias Storyarn.SheetsFixtures
   alias Storyarn.Versioning.SnapshotStorage
+  alias Storyarn.Workers.DeleteProjectTemplateArtifactsWorker
   alias Storyarn.WorkspacesFixtures
 
   describe "portable template bundles" do
@@ -56,7 +58,8 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
     test "imports a public bundle and instantiates a mutable project with copied assets" do
       %{project: project, asset: source_asset} = portable_source_project()
       output_path = bundle_path()
-      installer = AccountsFixtures.user_fixture()
+      installer = AccountsFixtures.set_super_admin(AccountsFixtures.user_fixture())
+
       scope = AccountsFixtures.user_scope_fixture(installer)
       workspace = WorkspacesFixtures.workspace_fixture(installer)
 
@@ -82,9 +85,16 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
       assert template.visibility == "public"
       assert is_nil(template.owner_id)
       refute template.id == private_template.id
+      assert %Project{id: source_project_id} = template.source_project
+      assert template.source_project_id == source_project_id
+      assert template.source_project.owner_id == installer.id
+      assert is_nil(template.source_project.created_from_template_version_id)
+      assert ProjectTemplates.can_manage_template?(scope, template)
+      register_project_asset_cleanup(template.source_project)
 
       version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
       register_template_artifact_cleanup(version)
+      assert version.source_project_id == source_project_id
       assert version.audit_report["import_materialization"]["status"] == "passed"
 
       assert {:ok, imported_snapshot} = SnapshotStorage.load_snapshot(version.snapshot_storage_key)
@@ -116,13 +126,103 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
       on_exit(fn -> Assets.storage_delete(cloned_asset.key) end)
     end
 
+    test "imports an editable source and publishes version 2 on the same private template" do
+      %{project: project} = portable_source_project()
+      output_path = bundle_path()
+      editor = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(editor)
+      workspace = WorkspacesFixtures.workspace_fixture(editor)
+
+      on_exit(fn -> File.rm(output_path) end)
+
+      assert {:ok, _export} =
+               ProjectTemplates.export_portable_template(project.id, output_path,
+                 name: "Editable Veilbreak",
+                 slug: "editable-veilbreak"
+               )
+
+      assert {:ok, imported_template} =
+               ProjectTemplates.import_portable_template(output_path,
+                 visibility: "private",
+                 owner_id: editor.id,
+                 verify_user_id: editor.id,
+                 verify_workspace_id: workspace.id
+               )
+
+      source_project = imported_template.source_project
+      assert %Project{} = source_project
+      assert source_project.owner_id == editor.id
+      assert is_nil(source_project.created_from_template_version_id)
+      register_project_asset_cleanup(source_project)
+
+      version_1 = Repo.get!(ProjectTemplateVersion, imported_template.current_version_id)
+      register_template_artifact_cleanup(version_1)
+      assert version_1.source_project_id == source_project.id
+
+      assert {:ok, republished_template} =
+               ProjectTemplates.publish_new_version(
+                 scope,
+                 imported_template,
+                 source_project
+               )
+
+      assert republished_template.id == imported_template.id
+      refute republished_template.current_version_id == version_1.id
+
+      version_2 = Repo.get!(ProjectTemplateVersion, republished_template.current_version_id)
+      register_template_artifact_cleanup(version_2)
+      assert version_2.version_number == 2
+      assert version_2.source_project_id == source_project.id
+    end
+
+    test "deleting an imported template also garbage-collects its imported blobs" do
+      %{project: project} = portable_source_project()
+      output_path = bundle_path()
+      editor = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(editor)
+      workspace = WorkspacesFixtures.workspace_fixture(editor)
+
+      on_exit(fn -> File.rm(output_path) end)
+
+      assert {:ok, _export} =
+               ProjectTemplates.export_portable_template(project.id, output_path,
+                 name: "Disposable Import",
+                 slug: "disposable-import"
+               )
+
+      assert {:ok, template} =
+               ProjectTemplates.import_portable_template(output_path,
+                 visibility: "private",
+                 owner_id: editor.id,
+                 verify_user_id: editor.id,
+                 verify_workspace_id: workspace.id
+               )
+
+      register_project_asset_cleanup(template.source_project)
+
+      version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
+
+      assert {:ok, %{"assets" => [%{"key" => imported_blob_key}]}} =
+               SnapshotStorage.load_snapshot(version.asset_manifest_storage_key)
+
+      on_exit(fn -> Assets.storage_delete(imported_blob_key) end)
+
+      assert {:ok, archived} = ProjectTemplates.archive_template(scope, template)
+      assert {:ok, _deleted} = ProjectTemplates.delete_template(scope, archived)
+
+      assert [job] = all_enqueued(worker: DeleteProjectTemplateArtifactsWorker)
+      assert imported_blob_key in job.args["storage_keys"]
+      assert :ok = perform_job(DeleteProjectTemplateArtifactsWorker, job.args)
+      assert {:error, :enoent} = Assets.storage_download(imported_blob_key)
+    end
+
     test "repairs a homogeneous legacy sequence bundle through preview, import, and installation" do
       %{project: project} = portable_source_project()
       flow = FlowsFixtures.flow_fixture(project)
       {:ok, sequence} = Flows.create_sequence(flow.id, %{"name" => "Legacy sequence"})
       output_path = bundle_path()
       legacy_path = bundle_path()
-      installer = AccountsFixtures.user_fixture()
+      installer = AccountsFixtures.set_super_admin(AccountsFixtures.user_fixture())
       scope = AccountsFixtures.user_scope_fixture(installer)
       workspace = WorkspacesFixtures.workspace_fixture(installer)
 
@@ -205,6 +305,7 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
 
       version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
       register_template_artifact_cleanup(version)
+      register_project_asset_cleanup(template.source_project)
 
       assert {:ok, imported_asset_manifest} =
                SnapshotStorage.load_snapshot(version.asset_manifest_storage_key)
@@ -476,6 +577,43 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
                )
     end
 
+    test "rejects a private import whose owner would not own the source project" do
+      %{project: project} = portable_source_project()
+      output_path = bundle_path()
+      %{user: verify_user, workspace: verify_workspace} = verification_scope()
+      different_owner = AccountsFixtures.user_fixture()
+
+      on_exit(fn -> File.rm(output_path) end)
+
+      assert {:ok, _export} = ProjectTemplates.export_portable_template(project.id, output_path)
+
+      assert {:error, :private_template_owner_must_match_verify_user} =
+               ProjectTemplates.import_portable_template(output_path,
+                 visibility: "private",
+                 owner_id: different_owner.id,
+                 verify_user_id: verify_user.id,
+                 verify_workspace_id: verify_workspace.id
+               )
+    end
+
+    test "rejects a public import whose editable source could not be managed later" do
+      %{project: project} = portable_source_project()
+      output_path = bundle_path()
+      user = AccountsFixtures.user_fixture()
+      workspace = WorkspacesFixtures.workspace_fixture(user)
+
+      on_exit(fn -> File.rm(output_path) end)
+
+      assert {:ok, _export} = ProjectTemplates.export_portable_template(project.id, output_path)
+
+      assert {:error, :public_template_source_requires_super_admin} =
+               ProjectTemplates.import_portable_template(output_path,
+                 visibility: "public",
+                 verify_user_id: user.id,
+                 verify_workspace_id: workspace.id
+               )
+    end
+
     test "rejects invalid visibility before uploading artifacts" do
       %{project: project} = portable_source_project()
       output_path = bundle_path()
@@ -513,6 +651,45 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
                  verify_user_id: verify_user.id,
                  verify_workspace_id: verify_workspace.id
                )
+    end
+
+    test "update_existing repairs a legacy public template by materializing its editable source" do
+      %{project: project} = portable_source_project()
+      output_path = bundle_path()
+      %{user: verify_user, workspace: verify_workspace} = verification_scope()
+      scope = AccountsFixtures.user_scope_fixture(verify_user)
+      existing = public_template_with_slug!("veilbreak-demo")
+
+      on_exit(fn -> File.rm(output_path) end)
+
+      assert {:ok, _export} =
+               ProjectTemplates.export_portable_template(project.id, output_path,
+                 name: "Veilbreak Demo",
+                 slug: "veilbreak-demo"
+               )
+
+      assert {:ok, template} =
+               ProjectTemplates.import_portable_template(output_path,
+                 visibility: "public",
+                 update_existing: true,
+                 verify_user_id: verify_user.id,
+                 verify_workspace_id: verify_workspace.id
+               )
+
+      assert template.id == existing.id
+      assert %Project{} = template.source_project
+      assert template.source_project_id == template.source_project.id
+      assert ProjectTemplates.can_manage_template?(scope, template)
+      register_project_asset_cleanup(template.source_project)
+
+      version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
+      assert version.source_project_id == template.source_project_id
+      register_template_artifact_cleanup(version)
+
+      assert {:ok, %{"assets" => assets}} =
+               SnapshotStorage.load_snapshot(version.asset_manifest_storage_key)
+
+      Enum.each(assets, fn %{"key" => key} -> on_exit(fn -> Assets.storage_delete(key) end) end)
     end
 
     test "rejects export for a soft-deleted project" do
@@ -592,7 +769,7 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
   end
 
   defp verification_scope do
-    user = AccountsFixtures.user_fixture()
+    user = AccountsFixtures.set_super_admin(AccountsFixtures.user_fixture())
     workspace = WorkspacesFixtures.workspace_fixture(user)
     %{user: user, workspace: workspace}
   end
@@ -627,5 +804,24 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
       Assets.storage_delete(version.snapshot_storage_key)
       Assets.storage_delete(version.asset_manifest_storage_key)
     end)
+  end
+
+  defp register_project_asset_cleanup(project) do
+    storage_keys =
+      project.id
+      |> Assets.list_assets()
+      |> Enum.flat_map(fn asset ->
+        [
+          asset.key,
+          BlobStore.blob_key(
+            project.id,
+            asset.blob_hash,
+            BlobStore.ext_from_content_type(asset.content_type)
+          )
+        ]
+      end)
+      |> Enum.uniq()
+
+    on_exit(fn -> Enum.each(storage_keys, &Assets.storage_delete/1) end)
   end
 end

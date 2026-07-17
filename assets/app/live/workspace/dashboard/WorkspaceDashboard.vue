@@ -272,6 +272,7 @@ const localizedTemplateFailureCodes = new Set([
   "missing_checksum",
   "not_found",
   "unauthorized",
+  "unremappable_subflow_exit_pin",
 ]);
 
 function templateFailureMessage(failure: TemplateInstallationFailure) {

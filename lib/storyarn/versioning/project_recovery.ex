@@ -50,9 +50,25 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   @spec recover_project(integer(), map(), integer(), keyword()) ::
           {:ok, Project.t()} | {:error, term()}
   def recover_project(workspace_id, snapshot_data, user_id, opts \\ []) do
+    case asset_copy_tracker(opts) do
+      {:ok, tracker, owns_tracker?} ->
+        recover_project_with_tracker(
+          workspace_id,
+          snapshot_data,
+          user_id,
+          opts,
+          tracker,
+          owns_tracker?
+        )
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp recover_project_with_tracker(workspace_id, snapshot_data, user_id, opts, tracker, owns_tracker?) do
     snapshot_data = FlowSnapshotNormalizer.normalize_project(snapshot_data)
     name = Keyword.get(opts, :name, "Recovered Project")
-    {tracker, owns_tracker?} = asset_copy_tracker(opts)
     opts = Keyword.put(opts, :asset_copy_tracker, tracker)
 
     try do
@@ -64,7 +80,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
               {:error, reason} -> Repo.rollback(reason)
             end
           end,
-          timeout: to_timeout(minute: 5)
+          timeout: :infinity
         )
 
       finalize_asset_copies(result, tracker, owns_tracker?)
@@ -694,14 +710,21 @@ defmodule Storyarn.Versioning.ProjectRecovery do
 
   defp asset_copy_tracker(opts) do
     case Keyword.get(opts, :asset_copy_tracker) do
-      reference when is_reference(reference) -> {reference, false}
-      _reference -> {StorageCompensation.new(), true}
+      reference when is_reference(reference) ->
+        {:ok, reference, false}
+
+      _reference ->
+        if Repo.in_transaction?(),
+          do: {:error, :asset_copy_tracker_required_in_transaction},
+          else: {:ok, StorageCompensation.new(), true}
     end
   end
 
   defp finalize_asset_copies({:ok, _project} = result, tracker, true) do
-    StorageCompensation.discard(tracker)
-    result
+    case StorageCompensation.cleanup_unretained(tracker) do
+      :ok -> result
+      {:error, cleanup_reason} -> {:error, cleanup_reason}
+    end
   end
 
   defp finalize_asset_copies({:error, _reason} = result, tracker, true) do

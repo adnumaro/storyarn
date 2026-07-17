@@ -10,6 +10,7 @@ defmodule StoryarnWeb.TemplateLive.Show do
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates
   alias Storyarn.Workspaces
+  alias Storyarn.Workspaces.Workspace
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
@@ -27,7 +28,7 @@ defmodule StoryarnWeb.TemplateLive.Show do
          |> assign_new(:current_workspace, fn -> nil end)
          |> assign_new(:workspaces, fn -> [] end)
          |> assign(:dismissed_installation_failure_ids, MapSet.new())
-         |> assign(:installation_failure_flash_id, nil)
+         |> assign(:installation_failure, nil)
          |> assign_template(template)
          |> assign(:installable_workspaces, installable_workspaces)
          |> assign(:install_form, install_form(template, installable_workspaces))}
@@ -413,6 +414,29 @@ defmodule StoryarnWeb.TemplateLive.Show do
           </aside>
         </div>
       </main>
+
+      <div
+        :if={@installation_failure}
+        id="template-installation-failure-toast"
+        class="toast toast-end bottom-20 z-[2000] w-full max-w-sm"
+        aria-live="polite"
+      >
+        <div role="alert" class="alert alert-error items-start border border-error/40 shadow-lg">
+          <p class="min-w-0 flex-1 text-sm">
+            {installation_failure_message(@installation_failure.id)}
+          </p>
+          <button
+            id="dismiss-template-installation-failure"
+            type="button"
+            class="btn btn-ghost btn-xs btn-square shrink-0"
+            phx-click="dismiss_template_installation_failure"
+            phx-value-installation_id={@installation_failure.id}
+            aria-label={dgettext("projects", "Dismiss installation failure")}
+          >
+            <.icon name="x" class="size-4" />
+          </button>
+        </div>
+      </div>
     </StoryarnWeb.Components.WorkspaceLayout.workspace>
     """
   end
@@ -442,6 +466,27 @@ defmodule StoryarnWeb.TemplateLive.Show do
 
       _other ->
         {:noreply, put_flash(socket, :error, dgettext("projects", "Template could not be installed."))}
+    end
+  end
+
+  def handle_event("dismiss_template_installation_failure", %{"installation_id" => installation_id}, socket) do
+    with {:ok, installation_id} <- parse_installation_id(installation_id),
+         %{
+           id: ^installation_id,
+           workspace: %Workspace{} = workspace
+         } <- socket.assigns.installation_failure,
+         {:ok, _installation} <-
+           ProjectTemplates.dismiss_installation_failure(
+             socket.assigns.current_scope,
+             workspace,
+             installation_id
+           ) do
+      {:noreply,
+       socket
+       |> remember_dismissed_installation_failure(installation_id)
+       |> refresh_pending_installation_failures()}
+    else
+      _error -> {:noreply, refresh_pending_installation_failures(socket)}
     end
   end
 
@@ -537,17 +582,15 @@ defmodule StoryarnWeb.TemplateLive.Show do
   end
 
   defp apply_installation_update(socket, %{status: "failed", feedback_dismissed_at: nil} = installation) do
-    if pending_installation_failure?(socket, installation) do
-      socket
-      |> assign(:installation_failure_flash_id, installation.id)
-      |> put_flash(:error, installation_failure_message(installation.id))
-    else
-      remember_dismissed_installation_failure(socket, installation.id)
-    end
+    if dismissed_installation_failure?(socket, installation.id),
+      do: socket,
+      else: refresh_pending_installation_failures(socket)
   end
 
   defp apply_installation_update(socket, %{status: "failed"} = installation) do
-    remember_dismissed_installation_failure(socket, installation.id)
+    socket
+    |> remember_dismissed_installation_failure(installation.id)
+    |> refresh_pending_installation_failures()
   end
 
   defp apply_installation_update(socket, _installation), do: socket
@@ -569,6 +612,7 @@ defmodule StoryarnWeb.TemplateLive.Show do
     |> assign(:has_active_publication, Enum.any?(publications, &active_publication?/1))
     |> assign(:installs, ProjectTemplates.list_template_installs(socket.assigns.current_scope, template, limit: 10))
     |> assign_active_installations(template)
+    |> assign_pending_installation_failures(template)
   end
 
   defp assign_active_installations(socket, template) do
@@ -584,6 +628,28 @@ defmodule StoryarnWeb.TemplateLive.Show do
     assign_active_installations(socket, socket.assigns.template)
   end
 
+  defp assign_pending_installation_failures(socket, template) do
+    failures =
+      ProjectTemplates.list_pending_template_installation_failures(
+        socket.assigns.current_scope,
+        template
+      )
+
+    visible_failure =
+      Enum.find(
+        failures,
+        &(not dismissed_installation_failure?(socket, &1.id))
+      )
+
+    socket
+    |> assign(:installation_failures, failures)
+    |> assign(:installation_failure, visible_failure)
+  end
+
+  defp refresh_pending_installation_failures(socket) do
+    assign_pending_installation_failures(socket, socket.assigns.template)
+  end
+
   defp installation_for_template?(installation, template_id) do
     installation.project_template_version.project_template_id == template_id
   end
@@ -591,20 +657,6 @@ defmodule StoryarnWeb.TemplateLive.Show do
   defp dismissed_installation_failure?(socket, installation_id) do
     MapSet.member?(socket.assigns.dismissed_installation_failure_ids, installation_id)
   end
-
-  defp pending_installation_failure?(socket, %{
-         id: installation_id,
-         workspace: %Storyarn.Workspaces.Workspace{} = workspace
-       }) do
-    not dismissed_installation_failure?(socket, installation_id) and
-      ProjectTemplates.pending_installation_failure?(
-        socket.assigns.current_scope,
-        workspace,
-        installation_id
-      )
-  end
-
-  defp pending_installation_failure?(_socket, _installation), do: false
 
   defp remember_dismissed_installation_failure(socket, installation_id) do
     socket =
@@ -614,17 +666,9 @@ defmodule StoryarnWeb.TemplateLive.Show do
         &MapSet.put(&1, installation_id)
       )
 
-    if socket.assigns.installation_failure_flash_id == installation_id do
-      current_error = Phoenix.Flash.get(socket.assigns.flash, :error)
-      socket = assign(socket, :installation_failure_flash_id, nil)
-
-      if current_error == installation_failure_message(installation_id) do
-        clear_flash(socket, :error)
-      else
-        socket
-      end
-    else
-      socket
+    case socket.assigns.installation_failure do
+      %{id: ^installation_id} -> assign(socket, :installation_failure, nil)
+      _installation -> socket
     end
   end
 
@@ -680,6 +724,17 @@ defmodule StoryarnWeb.TemplateLive.Show do
   end
 
   defp parse_workspace_id(_value), do: {:error, :invalid_workspace}
+
+  defp parse_installation_id(value) when is_integer(value), do: {:ok, value}
+
+  defp parse_installation_id(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {id, ""} -> {:ok, id}
+      _other -> {:error, :invalid_installation}
+    end
+  end
+
+  defp parse_installation_id(_value), do: {:error, :invalid_installation}
 
   defp fetch_install_version(socket, value) when is_binary(value) and value != "" do
     with {version_id, ""} <- Integer.parse(value),

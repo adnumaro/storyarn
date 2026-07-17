@@ -208,6 +208,45 @@ defmodule Storyarn.Assets.Storage.LocalTest do
       assert Path.wildcard(Path.join(test_dir, destination_key) <> ".storyarn-copy-*") == []
     end
 
+    test "reports a durable cleanup key when a published temporary link cannot be removed",
+         %{test_dir: test_dir} do
+      source_key = "cleanup/source.bin"
+      destination_key = "cleanup/destination.bin"
+      configure_conditional_copy_remove(fn _path -> {:error, :eacces} end)
+
+      assert {:ok, _url} = Local.upload(source_key, "source", "application/octet-stream")
+
+      assert {:error, {:conditional_copy_cleanup_required, true, temporary_key, :eacces}} =
+               Local.copy_if_absent(source_key, destination_key)
+
+      assert String.starts_with?(temporary_key, destination_key <> ".storyarn-copy-")
+      assert File.read!(Path.join(test_dir, destination_key)) == "source"
+      assert File.read!(Path.join(test_dir, temporary_key)) == "source"
+
+      assert :ok = Local.delete(temporary_key)
+      refute File.exists?(Path.join(test_dir, temporary_key))
+      assert File.read!(Path.join(test_dir, destination_key)) == "source"
+    end
+
+    test "does not claim an existing destination when temporary cleanup is pending",
+         %{test_dir: test_dir} do
+      source_key = "cleanup-existing/source.bin"
+      destination_key = "cleanup-existing/destination.bin"
+      configure_conditional_copy_remove(fn _path -> {:error, :ebusy} end)
+
+      assert {:ok, _url} = Local.upload(source_key, "source", "application/octet-stream")
+      assert {:ok, _url} = Local.upload(destination_key, "existing", "application/octet-stream")
+
+      assert {:error, {:conditional_copy_cleanup_required, false, temporary_key, :ebusy}} =
+               Local.copy_if_absent(source_key, destination_key)
+
+      assert File.read!(Path.join(test_dir, destination_key)) == "existing"
+      assert File.read!(Path.join(test_dir, temporary_key)) == "source"
+
+      assert :ok = Local.delete(temporary_key)
+      assert File.read!(Path.join(test_dir, destination_key)) == "existing"
+    end
+
     test "does not create a destination when the source is missing", %{test_dir: test_dir} do
       destination_key = "missing/destination.bin"
 
@@ -220,6 +259,15 @@ defmodule Storyarn.Assets.Storage.LocalTest do
       assert {:error, :invalid_key} = Local.copy_if_absent("../source.txt", "safe/destination.txt")
       assert {:error, :invalid_key} = Local.copy_if_absent(key, "../destination.txt")
     end
+  end
+
+  defp configure_conditional_copy_remove(remove) do
+    config =
+      :storyarn
+      |> Application.get_env(:storage, [])
+      |> Keyword.put(:conditional_copy_file_rm, remove)
+
+    Application.put_env(:storyarn, :storage, config)
   end
 
   # =============================================================================

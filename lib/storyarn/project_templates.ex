@@ -206,6 +206,13 @@ defmodule Storyarn.ProjectTemplates do
   defdelegate list_pending_workspace_installation_failures(scope, workspace), to: Installation
 
   @doc """
+  Lists the current user's pending failed installations for one template.
+  """
+  @spec list_pending_template_installation_failures(scope(), ProjectTemplate.t()) ::
+          [ProjectTemplateInstall.t()]
+  defdelegate list_pending_template_installation_failures(scope, template), to: Installation
+
+  @doc """
   Returns whether one failed installation still needs acknowledgement by the current user.
   """
   @spec pending_installation_failure?(scope(), Workspace.t(), integer()) :: boolean()

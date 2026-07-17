@@ -51,7 +51,8 @@
           "missing_asset_manifest": "The template asset manifest is unavailable.",
           "missing_checksum": "The template integrity information is unavailable.",
           "not_found": "The template or workspace is no longer available.",
-          "unauthorized": "You no longer have permission to install this template."
+          "unauthorized": "You no longer have permission to install this template.",
+          "unremappable_subflow_exit_pin": "This template version contains an invalid sequence exit and must be republished."
         },
         "version": "v{version}",
         "counts": "Sheets / flows / scenes",

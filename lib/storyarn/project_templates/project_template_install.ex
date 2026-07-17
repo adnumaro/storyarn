@@ -145,6 +145,7 @@ defmodule Storyarn.ProjectTemplates.ProjectTemplateInstall do
       :error_report,
       :completed_at
     ])
+    |> change(project_id: nil, installed_at: nil)
     |> validate_required([:status, :stage, :error_code, :completed_at])
     |> validate_common()
   end

@@ -5,8 +5,11 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.Accounts.User
+  alias Storyarn.Assets.StorageCompensation
+  alias Storyarn.Assets.StorageKeyLock
   alias Storyarn.Billing
   alias Storyarn.Projects.Project
+  alias Storyarn.Projects.ProjectMembership
   alias Storyarn.ProjectTemplates.Artifact
   alias Storyarn.ProjectTemplates.Audit
   alias Storyarn.ProjectTemplates.Authorization
@@ -19,6 +22,8 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.SnapshotStorage
   alias Storyarn.Workers.PublishProjectTemplateWorker
+  alias Storyarn.Workspaces.Workspace
+  alias Storyarn.Workspaces.WorkspaceMembership
 
   def request_template_publication(%Scope{} = scope, %Project{} = source_project, attrs) do
     with :ok <- Authorization.ensure_private_visibility(attrs),
@@ -48,6 +53,12 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
   end
 
   def perform_template_publication(publication_id, opts \\ []) do
+    StorageKeyLock.with_session_lock("project-template-publication:#{publication_id}", fn ->
+      perform_locked_template_publication(publication_id, opts)
+    end)
+  end
+
+  defp perform_locked_template_publication(publication_id, opts) do
     publication =
       ProjectTemplatePublication
       |> Repo.get!(publication_id)
@@ -248,9 +259,25 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
 
   defp run_template_publication(publication, opts) do
     with {:ok, publication} <- mark_publication_running(publication),
-         {:ok, scope, source_project, template} <- authorize_publication_for_worker(publication),
-         {:ok, audit_report, snapshot} <- Audit.run_with_snapshot(source_project.id) do
-      publish_audited_snapshot(publication, scope, source_project, template, audit_report, snapshot, opts)
+         {:ok, _scope, source_project, _template} <- authorize_publication_for_worker(publication),
+         {:ok, prepared_snapshot, asset_manifest} <-
+           capture_publication_source(source_project.id),
+         :ok <-
+           run_publication_hook(opts, :after_source_capture, %{
+             publication: publication,
+             prepared_snapshot: prepared_snapshot,
+             asset_manifest: asset_manifest
+           }),
+         {:ok, audit_report, snapshot} <-
+           Audit.run_prepared_snapshot(prepared_snapshot) do
+      publish_audited_snapshot(
+        publication,
+        source_project,
+        audit_report,
+        snapshot,
+        asset_manifest,
+        opts
+      )
     else
       {:error, {:expected, code, message, report}} ->
         fail_publication(publication, code, message, report)
@@ -263,62 +290,369 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
     end
   end
 
-  defp publish_audited_snapshot(publication, scope, source_project, template, audit_report, snapshot, opts) do
-    asset_manifest = Artifact.build_asset_manifest(source_project.id)
+  defp capture_publication_source(project_id) do
+    fn ->
+      if !Application.get_env(:storyarn, :sql_sandbox, false) do
+        Repo.query!("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+      end
+
+      prepared_snapshot = Audit.prepare_snapshot(project_id)
+      asset_manifest = Artifact.build_asset_manifest(project_id)
+
+      {prepared_snapshot, asset_manifest}
+    end
+    |> Repo.transaction(timeout: :infinity)
+    |> case do
+      {:ok, {prepared_snapshot, asset_manifest}} ->
+        {:ok, prepared_snapshot, asset_manifest}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp publish_audited_snapshot(publication, source_project, audit_report, snapshot, asset_manifest, opts) do
     checksum = Artifact.checksum(%{"snapshot" => snapshot, "asset_manifest" => asset_manifest})
     preview = Artifact.preview(snapshot, asset_manifest)
 
     with {:ok, artifact} <-
            store_publication_artifacts(publication, snapshot, asset_manifest, checksum, preview, audit_report),
+         :ok <-
+           run_publication_hook(opts, :before_finalize, %{
+             publication: publication,
+             artifact: artifact
+           }),
          {:ok, publication} <-
            finalize_publication(
              publication,
-             scope,
-             source_project,
-             template,
+             source_project.id,
              artifact
            ) do
       broadcast_publication(publication)
       {:ok, publication}
     else
+      {:error, {:expected, code, message, report}} ->
+        fail_publication(publication, code, message, report)
+
       {:error, reason} ->
         handle_unexpected_publication_error(publication, reason, opts)
     end
   end
 
-  defp finalize_publication(publication, scope, source_project, template, artifact) do
-    result =
-      Repo.transact(fn ->
-        with {:ok, template} <-
-               publication_template_for_finalize(publication, scope, source_project, template),
-             {:ok, version} <-
-               create_version_from_artifacts(
-                 publication,
-                 scope,
-                 template,
-                 source_project,
-                 publication_version_number(publication, template),
-                 artifact
-               ),
-             {:ok, template} <- set_current_version(template, version),
-             {:ok, publication} <-
-               mark_publication_published(
-                 publication,
-                 template,
-                 version,
-                 artifact
-               ) do
-          {:ok, preload_publication(publication)}
+  defp run_publication_hook(opts, name, payload) do
+    case Keyword.get(opts, name) do
+      nil ->
+        :ok
+
+      hook when is_function(hook, 1) ->
+        case hook.(payload) do
+          :ok -> :ok
+          {:error, _reason} = error -> error
+          _result -> {:error, {:invalid_publication_hook_result, name}}
         end
-      end)
 
-    case result do
-      {:ok, publication} ->
-        {:ok, publication}
+      _invalid_hook ->
+        {:error, {:invalid_publication_hook, name}}
+    end
+  end
 
-      {:error, %Ecto.Changeset{} = changeset} ->
-        cleanup_publication_artifacts(artifact_keys(artifact))
+  defp finalize_publication(publication, source_project_id, artifact) do
+    result =
+      Repo.transact(
+        fn ->
+          finalize_publication_transaction(publication.id, source_project_id, artifact)
+        end,
+        timeout: :infinity
+      )
 
+    finalize_publication_result(result, publication, artifact)
+  rescue
+    error ->
+      cleanup_publication_artifacts!(artifact_keys(artifact))
+      reraise error, __STACKTRACE__
+  catch
+    kind, reason ->
+      cleanup_publication_artifacts!(artifact_keys(artifact))
+      :erlang.raise(kind, reason, __STACKTRACE__)
+  end
+
+  defp finalize_publication_transaction(publication_id, source_project_id, artifact) do
+    with_publication_storage_locks(artifact, fn ->
+      persist_finalized_publication(publication_id, source_project_id, artifact)
+    end)
+  end
+
+  defp persist_finalized_publication(publication_id, source_project_id, artifact) do
+    with {:ok, publication, scope, source_project, pending_template} <-
+           lock_and_authorize_publication_for_finalize(publication_id, source_project_id),
+         {:ok, template} <-
+           publication_template_for_finalize(publication, scope, source_project, pending_template),
+         {:ok, version} <-
+           create_version_from_artifacts(
+             publication,
+             scope,
+             template,
+             source_project,
+             publication_version_number(publication, template),
+             artifact
+           ),
+         {:ok, template} <- set_current_version(template, version),
+         {:ok, publication} <-
+           mark_publication_published(
+             publication,
+             template,
+             version,
+             artifact
+           ) do
+      {:ok, preload_publication(publication)}
+    end
+  end
+
+  defp lock_and_authorize_publication_for_finalize(publication_id, expected_source_project_id) do
+    with %ProjectTemplatePublication{} = candidate <-
+           Repo.get(ProjectTemplatePublication, publication_id),
+         true <- candidate.source_project_id == expected_source_project_id,
+         %User{} = user <- lock_publication_user(candidate.requested_by_id),
+         {:ok, workspace_id} <- source_workspace_id(expected_source_project_id),
+         %Workspace{} <- lock_source_workspace(workspace_id),
+         %Project{} = source_project <-
+           lock_source_project(expected_source_project_id, workspace_id),
+         :ok <- lock_source_authorization_memberships(source_project, user),
+         {:ok, template} <- lock_publication_template(candidate),
+         %ProjectTemplatePublication{} = publication <-
+           lock_finalizing_publication(candidate.id),
+         :ok <- ensure_finalizing_publication_identity(publication, candidate),
+         scope = Scope.for_user(user),
+         :ok <-
+           reauthorize_publication_for_finalize(
+             scope,
+             publication,
+             source_project,
+             template
+           ) do
+      {:ok, publication, scope, source_project, template}
+    else
+      nil ->
+        expected_publication_error(
+          :publication_context_not_found,
+          "The publication context no longer exists."
+        )
+
+      false ->
+        expected_publication_error(
+          :publication_context_changed,
+          "The publication source changed before it could be finalized."
+        )
+
+      {:error, {:expected, _code, _message, _report}} = error ->
+        error
+
+      {:error, reason} ->
+        expected_publication_error(
+          :unauthorized,
+          "You no longer have permission to publish this project.",
+          %{"reason" => inspect(reason)}
+        )
+    end
+  end
+
+  defp lock_publication_user(user_id) do
+    User
+    |> where([user], user.id == ^user_id)
+    |> lock("FOR SHARE")
+    |> Repo.one()
+  end
+
+  defp source_workspace_id(source_project_id) do
+    case Repo.one(
+           from project in Project,
+             where: project.id == ^source_project_id and is_nil(project.deleted_at),
+             select: project.workspace_id
+         ) do
+      workspace_id when is_integer(workspace_id) ->
+        {:ok, workspace_id}
+
+      nil ->
+        expected_publication_error(
+          :source_project_not_found,
+          "The source project no longer exists."
+        )
+    end
+  end
+
+  defp lock_source_workspace(workspace_id) do
+    Workspace
+    |> where([workspace], workspace.id == ^workspace_id)
+    |> lock("FOR UPDATE")
+    |> Repo.one()
+  end
+
+  defp lock_source_project(source_project_id, workspace_id) do
+    Project
+    |> where(
+      [project],
+      project.id == ^source_project_id and project.workspace_id == ^workspace_id and
+        is_nil(project.deleted_at)
+    )
+    |> lock("FOR SHARE")
+    |> Repo.one()
+  end
+
+  defp lock_source_authorization_memberships(source_project, user) do
+    ProjectMembership
+    |> where(
+      [membership],
+      membership.project_id == ^source_project.id and membership.user_id == ^user.id
+    )
+    |> lock("FOR SHARE")
+    |> Repo.all()
+
+    WorkspaceMembership
+    |> where(
+      [membership],
+      membership.workspace_id == ^source_project.workspace_id and
+        membership.user_id == ^user.id
+    )
+    |> lock("FOR SHARE")
+    |> Repo.all()
+
+    :ok
+  end
+
+  defp lock_publication_template(%ProjectTemplatePublication{mode: "new", project_template_id: nil}), do: {:ok, nil}
+
+  defp lock_publication_template(%ProjectTemplatePublication{mode: "update", project_template_id: template_id})
+       when is_integer(template_id) do
+    case ProjectTemplate
+         |> where([template], template.id == ^template_id)
+         |> lock("FOR UPDATE")
+         |> Repo.one() do
+      %ProjectTemplate{} = template ->
+        {:ok, template}
+
+      nil ->
+        expected_publication_error(
+          :template_not_found,
+          "The template no longer exists."
+        )
+    end
+  end
+
+  defp lock_publication_template(_publication) do
+    expected_publication_error(
+      :invalid_publication_mode,
+      "The publication is no longer valid."
+    )
+  end
+
+  defp lock_finalizing_publication(publication_id) do
+    ProjectTemplatePublication
+    |> where([publication], publication.id == ^publication_id)
+    |> lock("FOR UPDATE")
+    |> Repo.one()
+  end
+
+  defp ensure_finalizing_publication_identity(publication, candidate) do
+    if publication.status in ["running", "retrying"] and
+         publication.mode == candidate.mode and
+         publication.source_project_id == candidate.source_project_id and
+         publication.project_template_id == candidate.project_template_id and
+         publication.requested_by_id == candidate.requested_by_id do
+      :ok
+    else
+      expected_publication_error(
+        :publication_context_changed,
+        "The publication changed before it could be finalized."
+      )
+    end
+  end
+
+  defp reauthorize_publication_for_finalize(scope, %ProjectTemplatePublication{mode: "new"}, source_project, nil) do
+    with {:ok, _source_project} <-
+           Authorization.authorize_source_project(scope, source_project),
+         :ok <- Billing.can_create_project_template?(source_project) do
+      :ok
+    else
+      {:error, :limit_reached, details} ->
+        expected_publication_error(
+          :limit_reached,
+          "Template limit reached for your plan.",
+          details
+        )
+
+      {:error, reason} ->
+        expected_publication_error(
+          :unauthorized,
+          "You no longer have permission to publish this project.",
+          %{"reason" => inspect(reason)}
+        )
+    end
+  end
+
+  defp reauthorize_publication_for_finalize(
+         scope,
+         %ProjectTemplatePublication{mode: "update"},
+         source_project,
+         %ProjectTemplate{status: "active"} = template
+       ) do
+    with {:ok, _source_project} <-
+           Authorization.authorize_source_project(scope, source_project),
+         :ok <- Authorization.authorize_template_manager(scope, template),
+         :ok <- Authorization.ensure_template_source(template, source_project),
+         :ok <- Billing.can_create_project_template_version?(template) do
+      :ok
+    else
+      {:error, :limit_reached, details} ->
+        expected_publication_error(
+          :limit_reached,
+          "Template version limit reached for your plan.",
+          details
+        )
+
+      {:error, reason} ->
+        expected_publication_error(
+          :unauthorized,
+          "You no longer have permission to publish this template.",
+          %{"reason" => inspect(reason)}
+        )
+    end
+  end
+
+  defp reauthorize_publication_for_finalize(
+         _scope,
+         %ProjectTemplatePublication{mode: "update"},
+         _source_project,
+         %ProjectTemplate{}
+       ) do
+    expected_publication_error(
+      :template_archived,
+      "The template is no longer active."
+    )
+  end
+
+  defp reauthorize_publication_for_finalize(_scope, _publication, _source_project, _template) do
+    expected_publication_error(
+      :invalid_publication_mode,
+      "The publication is no longer valid."
+    )
+  end
+
+  defp with_publication_storage_locks(artifact, fun) do
+    artifact
+    |> artifact_keys()
+    |> Enum.uniq()
+    |> Enum.sort(:desc)
+    |> Enum.reduce(fun, fn storage_key, continuation ->
+      fn -> StorageKeyLock.with_storage_key_lock(storage_key, continuation) end
+    end)
+    |> then(& &1.())
+  end
+
+  defp finalize_publication_result({:ok, publication}, _pending_publication, _artifact), do: {:ok, publication}
+
+  defp finalize_publication_result({:error, %Ecto.Changeset{} = changeset}, publication, artifact) do
+    case cleanup_publication_artifacts(artifact_keys(artifact)) do
+      :ok ->
         fail_publication(
           publication,
           :validation_failed,
@@ -326,9 +660,15 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
           changeset_report(changeset)
         )
 
-      {:error, reason} ->
-        cleanup_publication_artifacts(artifact_keys(artifact))
-        {:error, reason}
+      {:error, cleanup_reason} ->
+        {:error, {:publication_artifact_cleanup_failed, changeset, cleanup_reason}}
+    end
+  end
+
+  defp finalize_publication_result({:error, reason}, _publication, artifact) do
+    case cleanup_publication_artifacts(artifact_keys(artifact)) do
+      :ok -> {:error, reason}
+      {:error, cleanup_reason} -> {:error, {:publication_artifact_cleanup_failed, reason, cleanup_reason}}
     end
   end
 
@@ -572,7 +912,7 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
 
     case SnapshotStorage.store_raw(key, data) do
       {:ok, _size_bytes} -> {:ok, key}
-      {:error, reason} -> {:error, reason}
+      {:error, reason} -> {:error, reason, key}
     end
   end
 
@@ -583,13 +923,12 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
           {:ok, asset_manifest_key} ->
             {:ok, publication_artifact(audit_report, snapshot, checksum, preview, snapshot_key, asset_manifest_key)}
 
-          {:error, reason} ->
-            cleanup_publication_artifacts([snapshot_key])
-            {:error, reason}
+          {:error, reason, asset_manifest_key} ->
+            cleanup_publication_error(reason, [asset_manifest_key, snapshot_key])
         end
 
-      {:error, reason} ->
-        {:error, reason}
+      {:error, reason, snapshot_key} ->
+        cleanup_publication_error(reason, [snapshot_key])
     end
   end
 
@@ -600,12 +939,39 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
   end
 
   defp cleanup_publication_artifacts(keys) when is_list(keys) do
-    Enum.each(keys, fn key ->
-      case SnapshotStorage.delete_snapshot(key) do
-        :ok -> :ok
-        {:error, _reason} -> :ok
-      end
-    end)
+    failures =
+      keys
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+      |> Enum.reduce([], fn key, failures ->
+        case StorageCompensation.delete_or_enqueue(key) do
+          :ok -> failures
+          {:error, reason} -> [{key, reason} | failures]
+        end
+      end)
+
+    case Enum.reverse(failures) do
+      [] -> :ok
+      failures -> {:error, failures}
+    end
+  end
+
+  defp cleanup_publication_artifacts!(keys) do
+    case cleanup_publication_artifacts(keys) do
+      :ok ->
+        :ok
+
+      {:error, reason} ->
+        raise Storyarn.Assets.StorageCleanupPersistenceError,
+          reason: {:publication_artifact_cleanup_failed, reason}
+    end
+  end
+
+  defp cleanup_publication_error(reason, keys) do
+    case cleanup_publication_artifacts(keys) do
+      :ok -> {:error, reason}
+      {:error, cleanup_reason} -> {:error, {:publication_artifact_cleanup_failed, reason, cleanup_reason}}
+    end
   end
 
   defp publication_artifact(audit_report, snapshot, checksum, preview, snapshot_key, asset_manifest_key) do
