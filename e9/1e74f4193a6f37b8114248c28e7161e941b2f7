@@ -1,0 +1,220 @@
+test/storyarn/assets_test.exs
+  s_7d17843f59d188::t_21b3306fb3e736 1198-1199,1225-1226,1262,1281-1282,1305-1306
+lib/storyarn/workers/daily_snapshot_worker.ex
+  s_7d17843f59d188::t_9742f950be5fbb 9
+  s_7d17843f59d188::t_5a07ff3bda85b8 74-88,90-91
+lib/storyarn/projects.ex
+  s_7d17843f59d188::t_09e7aedb1d80c1 195
+test/storyarn/versioning/restore_policy_test.exs
+  s_7d17843f59d188::t_d756e4f0046046 16,19,21,137-144,148-186
+  s_7d17843f59d188::t_d086c2ad8fbb7e 58-65,68,84-106,216-266
+  s_7d17843f59d188::t_b95348dd0b730c 116,194,196,199,201,204,206,268-270
+  s_7d17843f59d188::t_e2e15c439cd4e2 82
+  s_7d17843f59d188::t_293f8b8dce4051 11
+  s_7d17843f59d188::t_547d4e001168f4 1-10,12-15,17-18,20,22-57,66-67,69-81,83,107-115,117-136,145-147,187-193,195,197-198,200,202-203,205,207-215,267,296
+  s_7d17843f59d188::t_e4787d565c2f36 271-295
+assets/app/modules/scenes/editor/components/panels/VersionHistoryPanel.vue
+  s_7d17843f59d188::t_6c5d7ebd3bf432 16,27,66
+lib/storyarn/versioning.ex
+  s_7d17843f59d188::t_b92cc1b9edff86 21,110-124,163-167
+test/support/storage_test_helpers.ex
+  s_7d17843f59d188::t_9e2a309843ea41 1-34
+test/storyarn/project_templates/portable_test.exs
+  s_7d17843f59d188::t_21b3306fb3e736 359
+assets/app/live/workspace/settings/WorkspaceSettingsDeletedProjects.vue
+  s_7d17843f59d188::t_a567590771e1f7 41,47,57,62,69,119-123,142-148,177-183
+  s_7d17843f59d188::t_c26a9362d7ccf7 192
+test/storyarn_web/live/restore_containment_test.exs
+  s_7d17843f59d188::t_1761b86f4d19d9 1-52,54-69,71-85,87-107,109-110,112-133,135,139-217,219-248
+  s_7d17843f59d188::t_a36cfefd60f68a 53,70,86,108,111,134,136-138,218
+lib/storyarn_web/live/project_settings_live/snapshots.ex
+  s_7d17843f59d188::t_8f84084d83f012 42,88-91
+test/storyarn/versioning/project_recovery_test.exs
+  s_7d17843f59d188::t_21b3306fb3e736 557
+lib/storyarn_web/live/scene_live/show.ex
+  s_7d17843f59d188::t_60d049317b1675 33,316-318
+assets/app/modules/sheets/components/panels/tabs/HistoryTab.vue
+  s_7d17843f59d188::t_6c5d7ebd3bf432 13,23,37
+lib/storyarn_web/live/sheet_live/show.ex
+  s_7d17843f59d188::t_60d049317b1675 21,276-278
+lib/storyarn/versioning/restore_policy.ex
+  s_7d17843f59d188::t_bfa9c16e6daef5 12,16-20,24-28,30,38-39,42,44-45,65
+  s_7d17843f59d188::t_efb2a7f8a2e37a 10,63
+  s_7d17843f59d188::t_5a07ff3bda85b8 21,31-37,54-60,66-72
+  s_7d17843f59d188::t_9f15b8e4abe98f 46-53,61-62,64
+  s_7d17843f59d188::t_51a2020c3c8b10 1-9,11,13-15,22-23,29,40-41,43,73-74
+assets/app/live/flow/show/FlowPanels.vue
+  s_7d17843f59d188::t_6c5d7ebd3bf432 21,84
+test/storyarn/workers/recover_project_worker_test.exs
+  s_7d17843f59d188::t_4c635e8e742b0b 2,10-11,13,17-27,40,61-62,78-146
+assets/app/live/project/settings/ProjectSettingsSnapshots.vue
+  s_7d17843f59d188::t_a567590771e1f7 35,42,66,220-221,245
+  s_7d17843f59d188::t_d9ff835643b396 231
+lib/storyarn/assets/storage_compensation.ex
+  s_7d17843f59d188::t_66f18e9ab130f5 203
+  s_7d17843f59d188::t_8b9a217e416f70 115-118
+  s_7d17843f59d188::t_5b4e98b13dc666 41,75,88,105-114
+  s_7d17843f59d188::t_448438420bc7f4 400-430,433-448
+test/storyarn/project_templates_test.exs
+  s_7d17843f59d188::t_0c54f062a233ec 978,1378,1395
+  s_7d17843f59d188::t_9df63a563480a7 974-977,979
+test/storyarn/workers/trash_retention_worker_test.exs
+  s_7d17843f59d188::t_72a88b38a29256 30,37,49-74
+  s_7d17843f59d188::t_3f1e63acdcc1ea 1-29,31-36,38-48,75-76
+test/storyarn_web/controllers/private_media_controller_test.exs
+  s_7d17843f59d188::t_6442ad49825892 128,175,193
+test/storyarn/versioning/builders/scene_builder_test.exs
+  s_7d17843f59d188::t_cc9cb1365c5138 131,195
+  s_7d17843f59d188::t_21b3306fb3e736 132,194,196,761
+lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex
+  s_7d17843f59d188::t_bbe768e6467aa0 68-70,76-78,84-86,92-94,102-106
+  s_7d17843f59d188::t_6792b477a481e3 79,107-116
+  s_7d17843f59d188::t_d76d23439e8242 117
+config/config.exs
+  s_7d17843f59d188::t_8b9a217e416f70 92
+  s_7d17843f59d188::t_cfd2ab78371819 13-15,70-71,152
+  s_7d17843f59d188::t_9742f950be5fbb 68-69,150-151
+  s_7d17843f59d188::t_5a07ff3bda85b8 16,81-83,91,126-134
+  s_7d17843f59d188::t_2c2948e7b13ed2 89-90
+  s_b941eebfdd72f8::t_77ccdf37a10f72 135
+test/storyarn/workers/daily_snapshot_worker_test.exs
+  s_7d17843f59d188::t_72a88b38a29256 142
+  s_7d17843f59d188::t_3f1e63acdcc1ea 2,5,9,13-27,97-141,143-146
+lib/storyarn_web/helpers/version_event_helpers.ex
+  s_7d17843f59d188::t_03566fbebadf27 86
+  s_7d17843f59d188::t_50976f93b47462 53-60,66,68,72,80,82,87-92,100,102,106,127-131
+  s_7d17843f59d188::t_6792b477a481e3 61,132-141
+  s_7d17843f59d188::t_a13ef8aa795b13 142
+test/support/data_case.ex
+  s_7d17843f59d188::t_9e2a309843ea41 28
+test/storyarn/versioning/builders/flow_builder_test.exs
+  s_7d17843f59d188::t_21b3306fb3e736 174,203-204,251-252,828
+  s_7d17843f59d188::t_cc9cb1365c5138 173,202,250
+lib/storyarn/versioning/project_recovery.ex
+  s_7d17843f59d188::t_fb283c15e9c068 35,53-66
+test/storyarn/assets/blob_store_test.exs
+  s_7d17843f59d188::t_21b3306fb3e736 111,148
+assets/app/test/components/versioning/RestoreContainment.test.ts
+  s_7d17843f59d188::t_ade6fb08cb99f8 126-127
+  s_7d17843f59d188::t_a902ab5f2757ec 1-69,77-94,102-125,128-163
+  s_7d17843f59d188::t_4745f3aad1db2c 70-76,95-101
+docs/conventions/domain-patterns.md
+  s_7d17843f59d188::t_0c1492d7940270 298-300,308-310
+lib/storyarn_web/live/project_live/components/settings_components.ex
+  s_7d17843f59d188::t_31b3a378b10296 214-228,262,286-289
+  s_7d17843f59d188::t_2156852c4c9537 237-239,241-244,246-254,256-261,263-282,290
+  s_b941eebfdd72f8::t_33961e0a873481 291
+assets/app/components/versioning/history/VersionHistory.vue
+  s_7d17843f59d188::t_6c5d7ebd3bf432 36,46,51,162-163,321-322,453,463
+assets/app/modules/flows/editor/components/panels/FlowVersionHistoryPanel.vue
+  s_7d17843f59d188::t_6c5d7ebd3bf432 16,27,64
+.env.example
+  s_7d17843f59d188::t_51a2020c3c8b10 88-89,91,93,97-98
+  s_7d17843f59d188::t_2c2948e7b13ed2 99
+  s_7d17843f59d188::t_bfa9c16e6daef5 94-96
+  s_7d17843f59d188::t_5a07ff3bda85b8 100-101
+  s_7d17843f59d188::t_9742f950be5fbb 90,92
+test/storyarn/workers/restore_project_worker_test.exs
+  s_7d17843f59d188::t_09e7aedb1d80c1 10,12,17,22,96,100,114-138
+  s_7d17843f59d188::t_4c635e8e742b0b 2,16,18-21,23-26,84-95,97-99,101-113
+assets/app/live/scene/show/ScenePanels.vue
+  s_7d17843f59d188::t_6c5d7ebd3bf432 17,63
+test/storyarn/workers/retry_storage_cleanup_requests_worker_test.exs
+  s_7d17843f59d188::t_ec420493c3c62e 2
+config/runtime.exs
+  s_7d17843f59d188::t_51a2020c3c8b10 50-51,66-67
+  s_7d17843f59d188::t_2c2948e7b13ed2 57,61
+  s_7d17843f59d188::t_5a07ff3bda85b8 52-56,62-65
+  s_7d17843f59d188::t_cfd2ab78371819 58-60
+lib/storyarn/versioning/builders/project_snapshot_builder.ex
+  s_7d17843f59d188::t_9f15b8e4abe98f 30,138-178,205,207-217,221,223-233,237,239-242
+  s_7d17843f59d188::t_10d084015c4734 243-247
+lib/storyarn/workers/recover_project_worker.ex
+  s_7d17843f59d188::t_b6f262ad76740a 14,24-31,33-35,37-39
+test/storyarn/versioning/builders/sheet_builder_test.exs
+  s_7d17843f59d188::t_cc9cb1365c5138 118,158,321
+  s_7d17843f59d188::t_21b3306fb3e736 119,159-160,322,458
+test/storyarn/assets/storage_test.exs
+  s_7d17843f59d188::t_65ea902c5fae79 95-125
+docs/features/version-control/CONTAINMENT_ROLLOUT.md
+  s_7d17843f59d188::t_9ce3cf2053aa62 1-55,61-65,92-97
+  s_7d17843f59d188::t_5fb5b96d93406d 56-60,66-91
+lib/storyarn/versioning/builders/scene_builder.ex
+  s_7d17843f59d188::t_1ed7904eef761f 28
+  s_7d17843f59d188::t_25b56466b40693 366-375
+test/storyarn/assets/storage_compensation_test.exs
+  s_7d17843f59d188::t_0c1492d7940270 263
+  s_7d17843f59d188::t_ec420493c3c62e 2-3,11-12,189-225,228-236,244,246-248,250-253,257-258,260-261,288
+  s_7d17843f59d188::t_44e4bdc4021bda 112,129,153,175,187,237-243,245,249,254-256,259,262,264-287,289-291
+lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex
+  s_7d17843f59d188::t_a1dd11058ea3b8 35-39,71,106,108-123,125,132,134-142,183-230,232-238
+  s_7d17843f59d188::t_cb65c2df250176 107,133,231,239-250
+  s_7d17843f59d188::t_d7189cb3b6477d 10
+lib/storyarn_web/live/flow_live/show.ex
+  s_7d17843f59d188::t_60d049317b1675 12,1568-1570
+lib/storyarn/workers/trash_retention_worker.ex
+  s_7d17843f59d188::t_9742f950be5fbb 6-7
+  s_7d17843f59d188::t_5a07ff3bda85b8 39-40,42-45,120-129
+assets/app/components/versioning/history/useVersionHistory.ts
+  s_7d17843f59d188::t_6c5d7ebd3bf432 45,71,78,168,174,182,190
+lib/storyarn/assets/storage.ex
+  s_7d17843f59d188::t_172d82e50e30db 118,157-169,186-193,195
+  s_7d17843f59d188::t_728f59cf1b74fe 93-117,170-185,194
+  s_7d17843f59d188::t_9742f950be5fbb 8-9,87-90
+test/storyarn/versioning/builders/project_snapshot_builder_test.exs
+  s_7d17843f59d188::t_21b3306fb3e736 350
+lib/storyarn/versioning/project_snapshot_crud.ex
+  s_7d17843f59d188::t_9f15b8e4abe98f 17,233-234
+test/storyarn_web/helpers/version_event_helpers_test.exs
+  s_7d17843f59d188::t_a36cfefd60f68a 12,19,24,106,110,154-182
+  s_7d17843f59d188::t_9620669d982800 2,18,20-23,25-28,98-105,107-109,111-152
+  s_7d17843f59d188::t_4109e8a35c4458 153
+lib/storyarn/projects/project_crud.ex
+  s_7d17843f59d188::t_09e7aedb1d80c1 348-351
+lib/storyarn/workers/restore_project_worker.ex
+  s_7d17843f59d188::t_b6f262ad76740a 21-40,45-50,52-55
+assets/app/modules/sheets/components/panels/SheetShowPanels.vue
+  s_7d17843f59d188::t_6c5d7ebd3bf432 34,92
+lib/storyarn/workers/snapshot_retention_worker.ex
+  s_7d17843f59d188::t_5a07ff3bda85b8 75-77,79-80
+  s_7d17843f59d188::t_2c2948e7b13ed2 5,8-10,29,74
+test/storyarn/workers/snapshot_retention_worker_test.exs
+  s_7d17843f59d188::t_290ccb68428ab9 2,15-31,62-63,89,107,110,120-150
+test/support/conn_case.ex
+  s_7d17843f59d188::t_6442ad49825892 29
+lib/storyarn/versioning/version_crud.ex
+  s_7d17843f59d188::t_5a07ff3bda85b8 350
+  s_7d17843f59d188::t_9f15b8e4abe98f 17,346-347,349,351,355
+lib/storyarn/versioning/builders/sheet_builder.ex
+  s_7d17843f59d188::t_1ed7904eef761f 31
+  s_7d17843f59d188::t_25b56466b40693 258-267
+lib/storyarn/versioning/builders/flow_builder.ex
+  s_7d17843f59d188::t_1ed7904eef761f 33
+  s_7d17843f59d188::t_25b56466b40693 328-337
+config/test.exs
+  s_7d17843f59d188::t_af3597b702b373 63-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "e91e74f4193a6f37b8114248c28e7161e941b2f7",
+  "prompts": {},
+  "sessions": {
+    "s_7d17843f59d188": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fbf-1c01-7451-82e0-8923d01cb5fe",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_b941eebfdd72f8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6745-3a9e-7150-9871-f841a8054198",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
