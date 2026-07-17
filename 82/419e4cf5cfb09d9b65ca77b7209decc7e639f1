@@ -1,0 +1,96 @@
+assets/app/test/live/flow/show/FlowHeader.test.ts
+  s_ffe14fbb6196e9::t_e8b75ca3cb68aa 8-22,122
+  s_ffe14fbb6196e9::t_a09724ff9beb8a 1-7,23-121,123-124
+assets/app/modules/flows/editor/lib/node-configs.ts
+  s_ffe14fbb6196e9::t_af4ef3a1f9d239 110-118,120-129
+  s_ffe14fbb6196e9::t_b40588bc478950 32-35
+  s_ffe14fbb6196e9::t_c6625853e7eab5 163
+  s_ffe14fbb6196e9::t_a46be87936ba9a 152-162,168-174
+test/storyarn_web/live/flow_live/helpers/socket_helpers_test.exs
+  s_ffe14fbb6196e9::t_7f5780019e70a6 106-113
+assets/app/test/live/flow/dashboard/FlowDashboard.test.ts
+  s_ffe14fbb6196e9::t_a09724ff9beb8a 1-69
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_ffe14fbb6196e9::t_564ab7a399ac82 452-541
+assets/app/live/flow/dashboard/FlowDashboard.vue
+  s_ffe14fbb6196e9::t_2ea764e8c8c7ad 10,71,366,371-375,377-378,381-385
+test/storyarn/flows/evaluator/condition_node_evaluator_test.exs
+  s_ffe14fbb6196e9::t_036d1ee9efae0c 300,303-341
+  s_ffe14fbb6196e9::t_2bc91a3e43cd76 301-302
+assets/app/live/flow/show/FlowHeader.vue
+  s_ffe14fbb6196e9::t_2ea764e8c8c7ad 3,41,62,81-83,91-94,235,239,242,244-256,258,267,275,280-299,321
+  s_ffe14fbb6196e9::t_cff19f5ed567e8 32,108-109,273-274,276-279,300-301,303-306,327-328,330-333
+lib/storyarn/flows/flow_connection.ex
+  s_ffe14fbb6196e9::t_675f5b29f03465 72-74,76-78
+assets/app/locales/en/flows.json
+  s_ffe14fbb6196e9::t_2ea764e8c8c7ad 45
+test/storyarn_web/live/flow_live/show_test.exs
+  s_ffe14fbb6196e9::t_7f5780019e70a6 40-67
+test/storyarn/flows/node_crud_test.exs
+  s_ffe14fbb6196e9::t_c2604b2b0f78f1 1502,1509-1512,1541-1555
+  s_ffe14fbb6196e9::t_af009f85edf78d 1556
+lib/storyarn_web/live/flow_live/helpers/connection_helpers.ex
+  s_ffe14fbb6196e9::t_c9a3b4eca1bda9 12,39-40,76-81
+  s_ffe14fbb6196e9::t_028e849f24ab3d 85
+test/storyarn/flows/health_checker_test.exs
+  s_ffe14fbb6196e9::t_ee510f42afc325 19-28,32,37-39,41-51,53,55-62,64-139,330-342
+  s_ffe14fbb6196e9::t_0e6fece6ea2b33 63
+  s_ffe14fbb6196e9::t_c81b529795383c 1-18,140-153,155-158,160-273,275-277,279-329,343-353
+  s_ffe14fbb6196e9::t_d85f3de56e013b 29-31,33-36,40,52,54
+  s_ffe14fbb6196e9::t_6fcf84b7b88f31 154,159,274,278
+test/storyarn_web/live/flow_live/helpers/connection_helpers_test.exs
+  s_ffe14fbb6196e9::t_7f5780019e70a6 77-80
+test/storyarn/flows/connection_crud_test.exs
+  s_ffe14fbb6196e9::t_50e79898a204d5 489-511
+  s_ffe14fbb6196e9::t_2f6b8f462a0320 512-524
+assets/app/locales/es/flows.json
+  s_ffe14fbb6196e9::t_2ea764e8c8c7ad 45
+lib/storyarn/flows/node_connection_rules.ex
+  s_ffe14fbb6196e9::t_c13e109fa69ab2 12,20,46
+  s_ffe14fbb6196e9::t_26dc139bc9ce5d 72
+  s_ffe14fbb6196e9::t_a3fdd7a1f9371e 33-45,47-71,73-121
+test/storyarn/flows/node_connection_rules_test.exs
+  s_ffe14fbb6196e9::t_e71c4372218831 1-63
+assets/app/test/modules/flows/editor/node-configs.test.ts
+  s_ffe14fbb6196e9::t_c6625853e7eab5 1-77
+lib/storyarn_web/live/flow_live/handlers/collaboration_event_handlers.ex
+  s_ffe14fbb6196e9::t_e70a2c1a654a93 18,124
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_ffe14fbb6196e9::t_564ab7a399ac82 452-541
+priv/gettext/flows.pot
+  s_ffe14fbb6196e9::t_564ab7a399ac82 488-577
+lib/storyarn/flows/evaluator/node_evaluators/condition_node_evaluator.ex
+  s_ffe14fbb6196e9::t_68ed43368d7017 168-177,179-192
+lib/storyarn/flows/health_checker.ex
+  s_ffe14fbb6196e9::t_fcefc420e83cbe 92
+  s_ffe14fbb6196e9::t_32c519f352d101 1-54,61,63-67,69-72,77,79-83,85-89,94,96-100,102-105,112-323
+  s_ffe14fbb6196e9::t_6ec883eefa982b 55-60,62,68,73-76,78,84,90-91,93,95,101,106-111
+lib/storyarn/flows/node_crud.ex
+  s_ffe14fbb6196e9::t_cbbb41d1172348 366,368-374,377-384,386-391,393-398
+lib/storyarn_web/live/flow_live/show.ex
+  s_ffe14fbb6196e9::t_2ea764e8c8c7ad 102,209
+lib/storyarn/flows.ex
+  s_ffe14fbb6196e9::t_2a7f33328fd127 801-802,878-879,949-975,982,987,994-1008
+  s_ffe14fbb6196e9::t_7df4f5e75196b6 684,687-708,717,722-725,751-753,756-800,825-826,832-840
+  s_ffe14fbb6196e9::t_fc178f744ff4ba 804,807,810-812
+  s_ffe14fbb6196e9::t_da3e9731c774f7 808-809
+  s_ffe14fbb6196e9::t_f2dee068d28428 754-755,803,1009
+lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+  s_ffe14fbb6196e9::t_3097ee7377596d 19,28,45,59,63-72,75-76,79-81,87,89-90,93,95-96,98,100,102-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "82419e4cf5cfb09d9b65ca77b7209decc7e639f1",
+  "prompts": {},
+  "sessions": {
+    "s_ffe14fbb6196e9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fc0-ea1e-7e53-8445-9003aac1cc19",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
