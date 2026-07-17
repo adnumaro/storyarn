@@ -1,0 +1,42 @@
+test/storyarn/screenplay_element_test.exs
+  s_40fa5143e834ff::t_181f9d145ee1ab 1-41
+test/storyarn_web/live/flow_live/show_test.exs
+  s_40fa5143e834ff::t_c2952dc9426c3c 135-170
+lib/storyarn/flows/hub_colors.ex
+  s_40fa5143e834ff::t_181f9d145ee1ab 11-22
+  s_40fa5143e834ff::t_3a1ce273f56788 5-7
+  s_40fa5143e834ff::t_4638f2e02d933f 31-33
+test/storyarn/imports/parsers/storyarn_json_test.exs
+  s_40fa5143e834ff::t_47be5cefb79c99 433-459
+assets/app/test/components/toolbar/ToolbarColorPicker.test.ts
+  s_40fa5143e834ff::t_c2952dc9426c3c 1-31
+lib/storyarn/screenplays/screenplay_element.ex
+  s_40fa5143e834ff::t_181f9d145ee1ab 125,139,163-178
+  s_40fa5143e834ff::t_be351f12113d62 46,179
+test/storyarn/flows/flow_node_test.exs
+  s_40fa5143e834ff::t_181f9d145ee1ab 73-85
+lib/storyarn_web/live/flow_live/show.ex
+  s_40fa5143e834ff::t_c2952dc9426c3c 964-975
+assets/app/components/toolbar/ToolbarColorPicker.vue
+  s_40fa5143e834ff::t_c2952dc9426c3c 58
+test/storyarn/flows/hub_colors_test.exs
+  s_40fa5143e834ff::t_181f9d145ee1ab 21-32,44-48
+test/storyarn/versioning/snapshot_viewer_test.exs
+  s_40fa5143e834ff::t_181f9d145ee1ab 70-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "1989d5c8b22d4a25bc1b26e0c3a3886fb1c01867",
+  "prompts": {},
+  "sessions": {
+    "s_40fa5143e834ff": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6f80-71e3-7f72-8246-69fcb30b0d6c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
