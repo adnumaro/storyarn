@@ -1499,16 +1499,17 @@ defmodule Storyarn.Flows.NodeCrudTest do
       assert result["referenced_flow_name"] == "Referenced Flow"
     end
 
-    test "returns data unchanged when referenced flow does not exist" do
+    test "marks stale when referenced flow does not exist" do
       data = %{
         "exit_mode" => "flow_reference",
         "referenced_flow_id" => "999999"
       }
 
-      # When Repo.get returns nil, the with clause falls through to
-      # the nil -> data branch, returning data unchanged (not stale-marked)
       result = Flows.NodeCrud.resolve_exit_data(data)
-      assert result == data
+
+      assert result["stale_reference"] == true
+      assert result["referenced_flow_name"] == nil
+      assert result["referenced_flow_shortcut"] == nil
     end
 
     test "marks stale when referenced flow is soft-deleted" do
@@ -1536,6 +1537,22 @@ defmodule Storyarn.Flows.NodeCrudTest do
 
       result = Flows.NodeCrud.resolve_exit_data(data)
       assert result == data
+    end
+
+    test "marks a reference outside the current project as stale" do
+      %{project: project} = create_project_and_flow()
+      %{project: other_project} = create_project_and_flow()
+      target_flow = flow_fixture(other_project, %{name: "Other Project Flow"})
+
+      data = %{
+        "exit_mode" => "flow_reference",
+        "referenced_flow_id" => to_string(target_flow.id)
+      }
+
+      result = Flows.NodeCrud.resolve_exit_data(data, project.id)
+
+      assert result["stale_reference"] == true
+      assert result["referenced_flow_name"] == nil
     end
   end
 

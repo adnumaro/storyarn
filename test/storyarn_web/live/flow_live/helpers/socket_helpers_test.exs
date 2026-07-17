@@ -103,12 +103,14 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpersTest do
 
       result = SocketHelpers.reload_flow_data(socket)
 
-      info_node = Enum.find(result.assigns.flow_info_nodes, &(&1.id == dialogue.id))
-      error_node = Enum.find(result.assigns.flow_error_nodes, &(&1.id == dialogue.id))
+      warning_node = Enum.find(result.assigns.flow_warning_nodes, &(&1.id == dialogue.id))
 
-      assert "Not reachable from any entry node" in info_node.reasons
-      assert "No outgoing connection" in info_node.reasons
-      assert error_node.reasons == ["Missing dialogue text"]
+      assert "Missing dialogue text" in warning_node.reasons
+      assert "Missing dialogue speaker" in warning_node.reasons
+      assert "Not reachable from any entry node" in warning_node.reasons
+      assert "No outgoing connection" in warning_node.reasons
+      refute Enum.any?(result.assigns.flow_error_nodes, &(&1.id == dialogue.id))
+      refute Enum.any?(result.assigns.flow_info_nodes, &(&1.id == dialogue.id))
     end
   end
 end

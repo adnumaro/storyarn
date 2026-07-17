@@ -15,6 +15,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
   alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
+  alias StoryarnWeb.FlowLive.Helpers.SocketHelpers
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: SharedCollab
 
   @spec handle_cursor_moved(map(), Socket.t()) ::
@@ -118,13 +119,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
 
   def handle_remote_change(action, payload, socket) do
     # No echo guard needed — broadcast_from already prevents self-delivery
-    flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
-    flow_data = Flows.serialize_for_canvas(flow)
-
     socket =
       socket
-      |> assign(:flow, flow)
-      |> assign(:flow_data, flow_data)
+      |> SocketHelpers.reload_flow_data()
       |> CollaborationHelpers.push_remote_change_event(action, payload)
       |> CollaborationHelpers.show_collab_toast(action, payload)
 

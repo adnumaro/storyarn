@@ -74,6 +74,10 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpersTest do
       refute Enum.any?(connections, fn c ->
                c.source_node_id == entry.id && c.target_node_id == dialogue.id
              end)
+
+      warning_node = Enum.find(result.assigns.flow_warning_nodes, &(&1.id == entry.id))
+
+      assert "No outgoing connection" in warning_node.reasons
     end
 
     test "handles non-existent connection gracefully", %{

@@ -16,8 +16,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
 
   alias Phoenix.LiveView.Socket
   alias Storyarn.Flows
+  alias Storyarn.Flows.HealthChecker
   alias Storyarn.Localization.SourceContract
-  alias Storyarn.Shared.HtmlUtils
   alias Storyarn.Shared.WordCount
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
 
@@ -25,7 +25,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
   Reloads flow data from the database and updates socket assigns.
 
   Refreshes `:flow`, `:flow_data`, `:flow_hubs`, `:flow_word_count`,
-  `:flow_error_nodes`, and `:flow_info_nodes`.
+  `:flow_error_nodes`, `:flow_warning_nodes`, and `:flow_info_nodes`.
   """
   @spec reload_flow_data(Socket.t()) :: Socket.t()
   def reload_flow_data(socket) do
@@ -42,7 +42,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
   end
 
   @doc """
-  Computes flow-level stats (word count, error/info nodes) and assigns them to the socket.
+  Computes flow-level stats and health findings grouped by severity.
   """
   @spec assign_flow_stats(Socket.t(), map(), map()) ::
           Socket.t()
@@ -56,76 +56,91 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
         total + WordCount.for_node_data(node.type, node.data)
       end)
 
-    error_nodes =
-      flow_data.nodes
-      |> Enum.map(fn n -> node_health_payload(n, error_reasons(n)) end)
-      |> Enum.reject(&is_nil/1)
-
-    info_nodes =
-      flow_data.nodes
-      |> Enum.map(fn n -> node_health_payload(n, info_reasons(n)) end)
-      |> Enum.reject(&is_nil/1)
+    findings = HealthChecker.check(flow_data)
 
     socket
     |> assign(:flow_word_count, word_count)
-    |> assign(:flow_error_nodes, error_nodes)
-    |> assign(:flow_info_nodes, info_nodes)
+    |> assign(:flow_error_nodes, health_payloads(findings, :error))
+    |> assign(:flow_warning_nodes, health_payloads(findings, :warning))
+    |> assign(:flow_info_nodes, health_payloads(findings, :info))
   end
 
-  defp node_health_payload(_node, []), do: nil
+  defp health_payloads(findings, severity) do
+    findings
+    |> Enum.filter(&(&1.severity == severity))
+    |> Enum.chunk_by(&{&1.node_id, &1.node_type})
+    |> Enum.map(&health_payload/1)
+  end
 
-  defp node_health_payload(node, reasons) do
+  defp health_payload([finding | _] = findings) do
+    reasons = Enum.map(findings, &finding_message/1)
+
     %{
-      id: node.id,
-      type: node.type,
-      label: node_short_label(node),
+      id: finding.node_id,
+      type: finding.node_type || "flow",
+      label: health_label(finding),
       reason: Enum.join(reasons, " · "),
       reasons: reasons
     }
   end
 
-  defp error_reasons(%{data: data, type: type}) do
-    []
-    |> maybe_add_reason(data["has_stale_refs"] == true, dgettext("flows", "Stale variable reference"))
-    |> maybe_add_reason(data["has_type_warnings"] == true, dgettext("flows", "Variable type warning"))
-    |> maybe_add_reason(
-      type == "subflow" && data["stale_reference"] == true,
-      dgettext("flows", "Stale subflow reference")
-    )
-    |> maybe_add_reason(
-      type == "subflow" && !data["referenced_flow_id"],
-      dgettext("flows", "Missing subflow reference")
-    )
-    |> maybe_add_reason(
-      type == "dialogue" && dialogue_text_empty?(data),
-      dgettext("flows", "Missing dialogue text")
-    )
-    |> maybe_add_reason(
-      type == "dialogue" && has_response_warnings?(data["responses"]),
-      dgettext("flows", "Response assignment type warning")
-    )
-  end
+  defp health_label(%{node_id: nil}), do: dgettext("flows", "Flow")
 
-  defp info_reasons(%{data: data}) do
-    []
-    |> maybe_add_reason(data["unreachable"] == true, dgettext("flows", "Not reachable from any entry node"))
-    |> maybe_add_reason(data["dead_end"] == true, dgettext("flows", "No outgoing connection"))
-  end
-
-  defp maybe_add_reason(reasons, true, reason), do: reasons ++ [reason]
-  defp maybe_add_reason(reasons, false, _reason), do: reasons
-
-  defp dialogue_text_empty?(data) do
-    data |> Map.get("text") |> HtmlUtils.strip_html() == ""
-  end
-
-  defp has_response_warnings?(nil), do: false
-
-  defp has_response_warnings?(responses) when is_list(responses) do
-    Enum.any?(responses, &(&1["has_type_warnings"] == true))
-  end
-
-  defp node_short_label(%{id: id, type: type}) do
+  defp health_label(%{node_id: id, node_type: type}) do
     dgettext("flows", "%{type} #%{id}", type: NodeTypeRegistry.label(type), id: id)
   end
+
+  defp finding_message(%{code: :missing_entry}), do: dgettext("flows", "Missing entry node")
+
+  defp finding_message(%{code: :multiple_entries, details: %{count: count}}),
+    do: dgettext("flows", "Flow has %{count} entry nodes", count: count)
+
+  defp finding_message(%{code: :stale_variable_reference}), do: dgettext("flows", "Stale variable reference")
+
+  defp finding_message(%{code: :missing_subflow_reference}), do: dgettext("flows", "Missing subflow reference")
+
+  defp finding_message(%{code: :stale_subflow_reference}), do: dgettext("flows", "Stale subflow reference")
+
+  defp finding_message(%{code: :missing_jump_target}), do: dgettext("flows", "Missing jump target")
+  defp finding_message(%{code: :stale_jump_target}), do: dgettext("flows", "Jump target does not exist")
+
+  defp finding_message(%{code: :missing_exit_flow_reference}), do: dgettext("flows", "Missing exit flow reference")
+
+  defp finding_message(%{code: :stale_exit_flow_reference}), do: dgettext("flows", "Exit flow reference does not exist")
+
+  defp finding_message(%{code: :invalid_output_pins, details: %{pins: pins}}),
+    do: dgettext("flows", "Invalid output connection pin(s): %{pins}", pins: Enum.join(pins, ", "))
+
+  defp finding_message(%{code: :invalid_input_pins, details: %{pins: pins}}),
+    do: dgettext("flows", "Invalid input connection pin(s): %{pins}", pins: Enum.join(pins, ", "))
+
+  defp finding_message(%{code: :variable_type_mismatch}), do: dgettext("flows", "Variable type warning")
+
+  defp finding_message(%{code: :response_type_mismatch}), do: dgettext("flows", "Response assignment type warning")
+
+  defp finding_message(%{code: :missing_dialogue_text}), do: dgettext("flows", "Missing dialogue text")
+
+  defp finding_message(%{code: :missing_dialogue_speaker}), do: dgettext("flows", "Missing dialogue speaker")
+
+  defp finding_message(%{code: :empty_dialogue_response}), do: dgettext("flows", "Empty dialogue response")
+
+  defp finding_message(%{code: :incomplete_response_condition}), do: dgettext("flows", "Incomplete response condition")
+
+  defp finding_message(%{code: :incomplete_response_assignment}), do: dgettext("flows", "Incomplete response assignment")
+
+  defp finding_message(%{code: :incomplete_condition}), do: dgettext("flows", "Incomplete condition")
+
+  defp finding_message(%{code: :incomplete_instruction_assignment}),
+    do: dgettext("flows", "Incomplete instruction assignment")
+
+  defp finding_message(%{code: :unreachable_node}), do: dgettext("flows", "Not reachable from any entry node")
+
+  defp finding_message(%{code: :no_outgoing_connection}), do: dgettext("flows", "No outgoing connection")
+
+  defp finding_message(%{code: :missing_output_connections, details: %{pins: pins}}),
+    do: dgettext("flows", "Output(s) without connection: %{pins}", pins: Enum.join(pins, ", "))
+
+  defp finding_message(%{code: :empty_instruction}), do: dgettext("flows", "No instruction assignments")
+
+  defp finding_message(%{code: :empty_condition}), do: dgettext("flows", "Condition has no rules")
 end

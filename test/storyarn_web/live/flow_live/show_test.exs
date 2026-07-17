@@ -37,6 +37,34 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       assert panels.props["panels"]["debug"]["open"] == false
     end
 
+    test "passes incomplete dialogue findings to the warning section",
+         %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Warnings Flow"})
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "<p><br></p>", "responses" => []}
+        })
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      render_async(view, 2000)
+
+      header = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowHeader")
+      health = header.props["flow-health"]
+      warning_node = Enum.find(health["warningNodes"], &(&1["id"] == dialogue.id))
+
+      assert "Missing dialogue text" in warning_node["reasons"]
+      assert "Missing dialogue speaker" in warning_node["reasons"]
+      refute Enum.any?(health["errorNodes"], &(&1["id"] == dialogue.id))
+    end
+
     test "compact route keeps the canvas boundary mounted while data loads",
          %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)

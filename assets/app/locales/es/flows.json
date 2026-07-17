@@ -42,6 +42,7 @@
       "word_count": "{count} palabra en este flujo | {count} palabras en este flujo",
       "flow_health": "Revisar estado del flujo",
       "errors": "Errores",
+      "warnings": "Advertencias",
       "info": "Info",
       "looks_great": "Este flujo se ve bien",
       "saving": "Guardando",

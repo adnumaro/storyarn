@@ -300,6 +300,48 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluatorTest do
              end)
     end
 
+    test "follows the default pin when no rule matches" do
+      variables = %{
+        "mc.class" => make_variable("rogue", type: "select", name: "class")
+      }
+
+      node =
+        make_node(1, %{
+          "switch_mode" => true,
+          "condition" => %{
+            "logic" => "all",
+            "rules" => [
+              %{
+                "id" => "case_mage",
+                "sheet" => "mc",
+                "variable" => "class",
+                "operator" => "equals",
+                "value" => "mage",
+                "label" => "Mage"
+              }
+            ]
+          }
+        })
+
+      connections = [
+        make_connection(1, "case_mage", 10),
+        make_connection(1, "default", 20)
+      ]
+
+      state = make_state(variables)
+
+      assert {:ok, result_state} = ConditionNodeEvaluator.evaluate(node, state, connections)
+      assert result_state.current_node_id == 20
+
+      assert Enum.any?(result_state.console, fn entry ->
+               entry.level == :info and entry.message == "Switch → default"
+             end)
+
+      refute Enum.any?(result_state.console, fn entry ->
+               entry.level == :warning and String.contains?(entry.message, "no case matched")
+             end)
+    end
+
     test "finishes when no matching pin" do
       variables = %{
         "mc.class" => make_variable("rogue", type: "select", name: "class")
