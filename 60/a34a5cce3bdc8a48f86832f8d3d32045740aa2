@@ -1,0 +1,120 @@
+lib/storyarn_web/live/template_live/show.ex
+  s_b941eebfdd72f8::t_cea3e158a4aa6d 594,599,604-607
+  s_b941eebfdd72f8::t_46f66d312e9f10 618-625,629-637
+  s_b941eebfdd72f8::t_b099c845a67d63 29-30,591-593,608-617,626-628
+  s_b941eebfdd72f8::t_d84677b4fd3941 521-527,529-543,545,549-553
+  s_b941eebfdd72f8::t_7af5def447ce82 595-598,600-603
+  s_b941eebfdd72f8::t_6c50a1179c4912 554
+  s_b941eebfdd72f8::t_e7a4c4870df1fc 638
+test/storyarn/assets/blob_store_test.exs
+  s_b941eebfdd72f8::t_31866ed305d7a7 181-268
+lib/storyarn/assets/storage.ex
+  s_b941eebfdd72f8::t_b4e1a8b745d899 30-31,120-126
+  s_b941eebfdd72f8::t_7abd10405e7109 127-128
+lib/storyarn/project_templates/portable_import.ex
+  s_b941eebfdd72f8::t_eff943d6a213ec 251-257
+test/storyarn/assets/storage/local_test.exs
+  s_b941eebfdd72f8::t_40ab14993a9841 184-185,207-208
+  s_b941eebfdd72f8::t_300a3d0913d8dd 171-183,186-206,209-224
+lib/storyarn/assets/storage_compensation.ex
+  s_b941eebfdd72f8::t_b4e1a8b745d899 131-139
+  s_b941eebfdd72f8::t_a6f0941cd8c369 140-156
+lib/storyarn/project_templates.ex
+  s_b941eebfdd72f8::t_7af5def447ce82 209-213,218-219
+  s_b941eebfdd72f8::t_7dabb6e4735b97 208
+lib/storyarn/project_templates/legacy_snapshot_repair.ex
+  s_b941eebfdd72f8::t_3a7b500094da21 35-49,52-61,410-411,543,861-867,869-870,876-890
+  s_b941eebfdd72f8::t_fecb1d659211d9 395-397,409,414-418,421-429,434-438,442-447,452-457,468,472
+  s_b941eebfdd72f8::t_eff943d6a213ec 12,16-17,19-24,50-51,66,320,327,365,373,375-394,398-408,412-413,419-420,430-433,439-441,448-451,458-467,469-471,473-482,484-485,488-542
+  s_7d17843f59d188::t_e53ca214335f31 891
+lib/storyarn/assets/blob_store.ex
+  s_b941eebfdd72f8::t_ecb9e399b56588 130,140-141,144,152,203,205-238,291-293,295,297,300-304,306-309
+  s_b941eebfdd72f8::t_a6f0941cd8c369 167-177,180-181,183,188-202,296
+  s_b941eebfdd72f8::t_b4e1a8b745d899 131,139,142-143,145-151,156-159,166,178,182
+  s_b941eebfdd72f8::t_6b691a23bc1875 184-187
+  s_b941eebfdd72f8::t_6056194436fd00 245-263,266-273
+  s_7d17843f59d188::t_9134464bfd869e 179,204
+lib/storyarn/assets/storage/r2.ex
+  s_b941eebfdd72f8::t_40ab14993a9841 103,116-124,128-129,133,136,141
+  s_b941eebfdd72f8::t_b4e1a8b745d899 109-110,113,115,138-139,142,269-289
+  s_b941eebfdd72f8::t_a6f0941cd8c369 11,111-112,114,125-127,130-132,134-135,137,140
+  s_b941eebfdd72f8::t_3a49cdd506b964 108
+  s_b941eebfdd72f8::t_bf2caef47414d2 290
+test/storyarn_web/live/template_live_test.exs
+  s_b941eebfdd72f8::t_9397a0afd431d5 235-280
+  s_b941eebfdd72f8::t_35fcee2aaf8b6b 156-164,173,175-180,198-214,221-234,281-299,302,306,309,445-459
+  s_b941eebfdd72f8::t_a8b87a3b84f3be 150-155,165-172,174,181-197,215-220,300-301,303-305,307-308,310-311
+  s_b941eebfdd72f8::t_77fc71c084c6b4 460-461
+lib/storyarn/versioning/project_recovery.ex
+  s_b941eebfdd72f8::t_48ac5262a8fc97 94-95,97-101,250-255,323,325-329,339-341,344-350,352-354
+test/storyarn/versioning/project_recovery_test.exs
+  s_b941eebfdd72f8::t_e7a79764945c5b 245,267,272-296,326-373,694-705
+test/storyarn/assets/storage/r2_test.exs
+  s_b941eebfdd72f8::t_300a3d0913d8dd 6-13,101-196
+  s_b941eebfdd72f8::t_724fd5f3e50b6f 197-198,200-226
+  s_b941eebfdd72f8::t_9f6c7ca84f4b98 199
+test/storyarn/project_templates/portable_test.exs
+  s_b941eebfdd72f8::t_57c510aaeed206 143-151,153-154,162,183-184,319,323,328,350-364,366-368
+  s_b941eebfdd72f8::t_52f0389bc21b44 320-322,324-327,329-349,365,369-371
+lib/storyarn/assets/storage/local.ex
+  s_b941eebfdd72f8::t_b4e1a8b745d899 93-96,103-105,147-148,152-153,156,159-177,213-216,219-223
+  s_b941eebfdd72f8::t_ef2d2771936709 97-102,154,157
+  s_b941eebfdd72f8::t_f0f9fadee995e8 149-151,155,158,178-197,199-212,217-218
+  s_b941eebfdd72f8::t_c86e28a1bb931f 198
+  s_b941eebfdd72f8::t_473c0430c066ba 10-11,92,224
+test/storyarn/assets/storage_test.exs
+  s_b941eebfdd72f8::t_300a3d0913d8dd 77-90
+test/storyarn/project_templates/legacy_snapshot_repair_test.exs
+  s_b941eebfdd72f8::t_52f0389bc21b44 153-178,288-321
+  s_b941eebfdd72f8::t_57c510aaeed206 179-287,516-535,547-557
+lib/storyarn/project_templates/installation.ex
+  s_b941eebfdd72f8::t_7af5def447ce82 149,151-168,170-171
+  s_b941eebfdd72f8::t_46f66d312e9f10 150,548-555,570-571
+  s_b941eebfdd72f8::t_9503692da53497 177,179
+  s_b941eebfdd72f8::t_b099c845a67d63 137
+  s_b941eebfdd72f8::t_8df11edff63a2b 572
+lib/storyarn/release.ex
+  s_b941eebfdd72f8::t_3a7b500094da21 6,8,167,176,181-185
+lib/storyarn/project_templates/audit.ex
+  s_b941eebfdd72f8::t_ecb9e399b56588 14
+  s_b941eebfdd72f8::t_a6f0941cd8c369 1050
+test/storyarn/assets/storage_compensation_test.exs
+  s_b941eebfdd72f8::t_300a3d0913d8dd 184-232
+lib/mix/tasks/storyarn.templates.import.ex
+  s_b941eebfdd72f8::t_042d0bcc758032 100
+  s_b941eebfdd72f8::t_3a7b500094da21 34,91,105-109
+priv/repo/migrations/20260717100000_add_template_install_failure_feedback_dismissal.exs
+  s_b941eebfdd72f8::t_4c6ce0990158db 11-14,19,22-24,43
+  s_b941eebfdd72f8::t_b099c845a67d63 49-50
+  s_b941eebfdd72f8::t_46f66d312e9f10 2,10,15-18,20-21,25-42,44-45
+  s_b941eebfdd72f8::t_5f3d184bd17651 46
+test/storyarn/project_templates_test.exs
+  s_b941eebfdd72f8::t_9397a0afd431d5 993-1044,1050-1070,1072-1074
+  s_b941eebfdd72f8::t_a8b87a3b84f3be 1075-1086,1088-1112,1151-1152
+  s_b941eebfdd72f8::t_95de9aeff2d327 1087,1113-1150
+  s_b941eebfdd72f8::t_2ac14981cf1ba6 1045-1049,1071
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "60a34a5cce3bdc8a48f86832f8d3d32045740aa2",
+  "prompts": {},
+  "sessions": {
+    "s_7d17843f59d188": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fbf-1c01-7451-82e0-8923d01cb5fe",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_b941eebfdd72f8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6745-3a9e-7150-9871-f841a8054198",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
