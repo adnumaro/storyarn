@@ -163,6 +163,9 @@ defmodule Storyarn.Screenplays.ScreenplayElement do
 
   defp normalize_hub_marker_color(changeset) do
     case {get_field(changeset, :type), get_field(changeset, :data)} do
+      {"hub_marker", nil} ->
+        put_change(changeset, :data, %{"color" => HubColors.default_hex()})
+
       {"hub_marker", data} when is_map(data) ->
         color = Map.get(data, "color", Map.get(data, :color))
 

@@ -105,6 +105,32 @@ defmodule Storyarn.Flows.FlowNodeTest do
       assert Ecto.Changeset.get_field(data_changeset, :data)["color"] == "#be185d"
     end
 
+    test "preserves the existing color when update data omits it" do
+      node = %FlowNode{
+        type: "hub",
+        data: %{
+          "hub_id" => "checkpoint",
+          "label" => "Checkpoint",
+          "color" => "#3b82f6"
+        }
+      }
+
+      update_changeset =
+        FlowNode.update_changeset(node, %{
+          "data" => %{"label" => "Updated checkpoint"}
+        })
+
+      data_changeset =
+        FlowNode.data_changeset(node, %{
+          data: %{hub_id: "updated-checkpoint"}
+        })
+
+      assert update_changeset.valid?
+      assert data_changeset.valid?
+      assert Ecto.Changeset.get_field(update_changeset, :data)["color"] == "#3b82f6"
+      assert Ecto.Changeset.get_field(data_changeset, :data)["color"] == "#3b82f6"
+    end
+
     test "materializes legacy named colors as their original hex values" do
       changeset =
         FlowNode.materialize_changeset(%FlowNode{}, %{

@@ -238,12 +238,21 @@ defmodule Storyarn.Flows.FlowNode do
     data = attr(attrs, :data) || existing_data(node)
 
     if type == "hub" and is_map(data) do
-      data = put_string_key(data, "color", resolver.(map_value(data, "color")))
+      color = hub_color_value(data, node)
+      data = put_string_key(data, "color", resolver.(color))
       put_attr(attrs, :data, data)
     else
       attrs
     end
   end
+
+  defp hub_color_value(data, %__MODULE__{type: "hub", data: existing_data}) when is_map(existing_data) do
+    if map_has_key?(data, "color"),
+      do: map_value(data, "color"),
+      else: map_value(existing_data, "color")
+  end
+
+  defp hub_color_value(data, _node), do: map_value(data, "color")
 
   defp ensure_localization_id(data, existing_id) do
     case map_value(data, "localization_id") do

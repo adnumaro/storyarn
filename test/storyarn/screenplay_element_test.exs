@@ -27,6 +27,25 @@ defmodule Storyarn.Screenplays.ScreenplayElementTest do
       assert Ecto.Changeset.get_field(changeset, :data)["color"] == "#be185d"
     end
 
+    test "defaults nil data in create and update changesets" do
+      create_changeset =
+        ScreenplayElement.create_changeset(%ScreenplayElement{}, %{
+          type: "hub_marker",
+          data: nil
+        })
+
+      update_changeset =
+        ScreenplayElement.update_changeset(
+          %ScreenplayElement{type: "hub_marker", data: nil},
+          %{content: "Checkpoint"}
+        )
+
+      for changeset <- [create_changeset, update_changeset] do
+        assert changeset.valid?
+        assert Ecto.Changeset.get_field(changeset, :data) == %{"color" => "#be185d"}
+      end
+    end
+
     test "preserves valid hex colors" do
       changeset =
         ScreenplayElement.create_changeset(%ScreenplayElement{}, %{
