@@ -62,7 +62,7 @@ defmodule Storyarn.Flows.NodeConnectionRules do
     condition = data["condition"] || %{}
 
     case condition do
-      %{"blocks" => blocks} when is_list(blocks) and blocks != [] ->
+      %{"blocks" => blocks} when is_list(blocks) ->
         dynamic_pin_ids(blocks) ++ ["default"]
 
       %{"rules" => rules} when is_list(rules) and rules != [] ->

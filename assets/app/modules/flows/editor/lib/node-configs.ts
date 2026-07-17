@@ -152,10 +152,7 @@ function dialogueNeedsRebuild(oldData: NodeData | null, newData: NodeData): bool
 function conditionDynamicOutputs(data: NodeData | null): string[] | null {
   if (!data?.switch_mode) return null;
 
-  const cases =
-    data.condition?.blocks && data.condition.blocks.length > 0
-      ? data.condition.blocks
-      : data.condition?.rules || [];
+  const cases = data.condition?.blocks ?? data.condition?.rules ?? [];
   const caseIds = cases.flatMap((item) =>
     item.id === null || item.id === undefined ? [] : [String(item.id)],
   );

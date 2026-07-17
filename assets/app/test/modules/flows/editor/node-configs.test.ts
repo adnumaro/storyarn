@@ -43,6 +43,18 @@ describe("condition dynamic outputs", () => {
     ).toEqual(["block-a", "block-b", "default"]);
   });
 
+  it("does not expose legacy rule outputs when an empty blocks list is present", () => {
+    expect(
+      createDynamicOutputs(
+        "condition",
+        switchData({
+          blocks: [],
+          rules: [{ id: "legacy-rule" }],
+        }),
+      ),
+    ).toEqual(["default"]);
+  });
+
   it("exposes only the default output when a switch has no cases", () => {
     expect(createDynamicOutputs("condition", switchData())).toEqual(["default"]);
   });

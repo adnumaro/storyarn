@@ -35,7 +35,10 @@ defmodule Storyarn.Flows.NodeConnectionRulesTest do
 
       assert NodeConnectionRules.output_pins("condition", %{
                "switch_mode" => true,
-               "condition" => %{"blocks" => []}
+               "condition" => %{
+                 "blocks" => [],
+                 "rules" => [%{"id" => "legacy-case"}]
+               }
              }) == ["default"]
     end
 
