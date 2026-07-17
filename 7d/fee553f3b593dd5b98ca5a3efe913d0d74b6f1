@@ -1,0 +1,27 @@
+test/storyarn/flows/evaluator/condition_node_evaluator_test.exs
+  s_ffe14fbb6196e9::t_35b66a2a8cd7e5 380-413
+test/storyarn/flows/node_connection_rules_test.exs
+  s_ffe14fbb6196e9::t_35b66a2a8cd7e5 38-41
+assets/app/modules/flows/editor/lib/node-configs.ts
+  s_ffe14fbb6196e9::t_35b66a2a8cd7e5 155
+assets/app/test/modules/flows/editor/node-configs.test.ts
+  s_ffe14fbb6196e9::t_35b66a2a8cd7e5 46-57
+lib/storyarn/flows/node_connection_rules.ex
+  s_ffe14fbb6196e9::t_35b66a2a8cd7e5 65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "7dfee553f3b593dd5b98ca5a3efe913d0d74b6f1",
+  "prompts": {},
+  "sessions": {
+    "s_ffe14fbb6196e9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fc0-ea1e-7e53-8445-9003aac1cc19",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
