@@ -134,7 +134,7 @@ defmodule Storyarn.ProjectTemplates.Installation do
           install.workspace_id == ^workspace.id and install.user_id == ^user_id and
             install.status == "failed" and is_nil(install.feedback_dismissed_at)
         )
-        |> order_by([install], asc: install.completed_at, asc: install.id)
+        |> order_by([install], desc: install.completed_at, desc: install.id)
         |> limit(^@pending_failure_limit)
         |> preload([:project_template_version])
         |> Repo.all()
@@ -146,15 +146,37 @@ defmodule Storyarn.ProjectTemplates.Installation do
 
   def list_pending_workspace_installation_failures(%Scope{}, %Workspace{}), do: []
 
+  @spec pending_installation_failure?(Scope.t(), Workspace.t(), integer()) :: boolean()
+  def pending_installation_failure?(%Scope{user: %{id: user_id}} = scope, %Workspace{} = workspace, installation_id)
+      when is_integer(installation_id) do
+    case Workspaces.authorize(scope, workspace.id, :view) do
+      {:ok, _workspace, _membership} ->
+        Repo.exists?(
+          from install in ProjectTemplateInstall,
+            where:
+              install.id == ^installation_id and install.workspace_id == ^workspace.id and
+                install.user_id == ^user_id and install.status == "failed" and
+                is_nil(install.feedback_dismissed_at)
+        )
+
+      _error ->
+        false
+    end
+  end
+
+  def pending_installation_failure?(%Scope{}, %Workspace{}, _installation_id), do: false
+
   @spec dismiss_installation_failure(Scope.t(), Workspace.t(), integer()) ::
-          {:ok, ProjectTemplateInstall.t()} | {:error, :not_found | :unauthorized}
+          {:ok, ProjectTemplateInstall.t()}
+          | {:error, :not_found | :unauthorized | Ecto.Changeset.t()}
   def dismiss_installation_failure(%Scope{user: %{id: user_id}} = scope, %Workspace{} = workspace, installation_id)
       when is_integer(installation_id) do
     with {:ok, _workspace, _membership} <- Workspaces.authorize(scope, workspace.id, :view),
          {:ok, {install, changed?}} <-
            dismiss_installation_failure_transaction(installation_id, workspace.id, user_id) do
+      install = preload_install(install)
       if changed?, do: broadcast_install(install)
-      {:ok, preload_install(install)}
+      {:ok, install}
     end
   end
 
@@ -523,6 +545,14 @@ defmodule Storyarn.ProjectTemplates.Installation do
   defp classify_error({:asset_copy_failed, _reason}),
     do: {"asset_copy_failed", "A template asset could not be copied.", true}
 
+  defp classify_error({:unremappable_subflow_exit_pin, _details}) do
+    {
+      "unremappable_subflow_exit_pin",
+      permanent_error_message(:unremappable_subflow_exit_pin),
+      true
+    }
+  end
+
   defp classify_error(reason) when reason in @permanent_errors do
     {to_string(reason), permanent_error_message(reason), true}
   end
@@ -536,6 +566,9 @@ defmodule Storyarn.ProjectTemplates.Installation do
 
   defp permanent_error_message(:incompatible_template_snapshot),
     do: "This template version is incompatible and must be republished."
+
+  defp permanent_error_message(:unremappable_subflow_exit_pin),
+    do: "This template version contains an invalid subflow exit and must be republished."
 
   defp permanent_error_message(:limit_reached), do: "The workspace project limit has been reached."
   defp permanent_error_message(:missing_asset_manifest), do: "The template asset manifest is unavailable."

@@ -248,8 +248,13 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
     end
   end
 
-  defp put_repair_preview(manifest, nil), do: manifest
-  defp put_repair_preview(manifest, report), do: Map.put(manifest, "legacy_snapshot_repair", report)
+  defp put_repair_preview(manifest, nil), do: Map.delete(manifest, "legacy_snapshot_repair")
+
+  defp put_repair_preview(manifest, report) do
+    manifest
+    |> Map.delete("legacy_snapshot_repair")
+    |> Map.put("legacy_snapshot_repair", report)
+  end
 
   defp upload_bundle_assets(bundle, plan) do
     bundle.files

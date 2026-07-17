@@ -26,6 +26,8 @@ defmodule StoryarnWeb.TemplateLive.Show do
          socket
          |> assign_new(:current_workspace, fn -> nil end)
          |> assign_new(:workspaces, fn -> [] end)
+         |> assign(:dismissed_installation_failure_ids, MapSet.new())
+         |> assign(:installation_failure_flash_id, nil)
          |> assign_template(template)
          |> assign(:installable_workspaces, installable_workspaces)
          |> assign(:install_form, install_form(template, installable_workspaces))}
@@ -516,31 +518,39 @@ defmodule StoryarnWeb.TemplateLive.Show do
   end
 
   def handle_info({:project_template_installation_updated, installation}, socket) do
-    if installation_for_template?(installation, socket.assigns.template.id) do
-      socket = refresh_active_installations(socket)
-
-      case {installation.status, installation.feedback_dismissed_at} do
-        {"completed", _dismissed_at} ->
-          {:noreply,
-           socket
-           |> put_flash(:info, dgettext("projects", "Your project is ready."))
-           |> push_navigate(to: ~p"/workspaces/#{installation.workspace.slug}/projects/#{installation.project.slug}")}
-
-        {"failed", nil} ->
-          {:noreply,
-           put_flash(
-             socket,
-             :error,
-             dgettext("projects", "Template installation failed. Reference: %{reference}", reference: installation.id)
-           )}
-
-        {_status, _dismissed_at} ->
-          {:noreply, socket}
+    socket =
+      if installation_for_template?(installation, socket.assigns.template.id) do
+        socket
+        |> refresh_active_installations()
+        |> apply_installation_update(installation)
+      else
+        socket
       end
+
+    {:noreply, socket}
+  end
+
+  defp apply_installation_update(socket, %{status: "completed"} = installation) do
+    socket
+    |> put_flash(:info, dgettext("projects", "Your project is ready."))
+    |> push_navigate(to: ~p"/workspaces/#{installation.workspace.slug}/projects/#{installation.project.slug}")
+  end
+
+  defp apply_installation_update(socket, %{status: "failed", feedback_dismissed_at: nil} = installation) do
+    if pending_installation_failure?(socket, installation) do
+      socket
+      |> assign(:installation_failure_flash_id, installation.id)
+      |> put_flash(:error, installation_failure_message(installation.id))
     else
-      {:noreply, socket}
+      remember_dismissed_installation_failure(socket, installation.id)
     end
   end
+
+  defp apply_installation_update(socket, %{status: "failed"} = installation) do
+    remember_dismissed_installation_failure(socket, installation.id)
+  end
+
+  defp apply_installation_update(socket, _installation), do: socket
 
   defp assign_template(socket, template) do
     versions = ProjectTemplates.list_template_versions(socket.assigns.current_scope, template)
@@ -576,6 +586,54 @@ defmodule StoryarnWeb.TemplateLive.Show do
 
   defp installation_for_template?(installation, template_id) do
     installation.project_template_version.project_template_id == template_id
+  end
+
+  defp dismissed_installation_failure?(socket, installation_id) do
+    MapSet.member?(socket.assigns.dismissed_installation_failure_ids, installation_id)
+  end
+
+  defp pending_installation_failure?(socket, %{
+         id: installation_id,
+         workspace: %Storyarn.Workspaces.Workspace{} = workspace
+       }) do
+    not dismissed_installation_failure?(socket, installation_id) and
+      ProjectTemplates.pending_installation_failure?(
+        socket.assigns.current_scope,
+        workspace,
+        installation_id
+      )
+  end
+
+  defp pending_installation_failure?(_socket, _installation), do: false
+
+  defp remember_dismissed_installation_failure(socket, installation_id) do
+    socket =
+      update(
+        socket,
+        :dismissed_installation_failure_ids,
+        &MapSet.put(&1, installation_id)
+      )
+
+    if socket.assigns.installation_failure_flash_id == installation_id do
+      current_error = Phoenix.Flash.get(socket.assigns.flash, :error)
+      socket = assign(socket, :installation_failure_flash_id, nil)
+
+      if current_error == installation_failure_message(installation_id) do
+        clear_flash(socket, :error)
+      else
+        socket
+      end
+    else
+      socket
+    end
+  end
+
+  defp installation_failure_message(installation_id) do
+    dgettext(
+      "projects",
+      "Template installation failed. Reference: %{reference}",
+      reference: installation_id
+    )
   end
 
   defp installation_stage_label("queued"), do: dgettext("projects", "Waiting to start…")

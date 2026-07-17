@@ -8,6 +8,7 @@ defmodule Storyarn.Assets.Storage.R2 do
 
   @behaviour Storyarn.Assets.Storage
 
+  @conditional_copy_attempts 3
   @stream_chunk_size 1_048_576
 
   @impl true
@@ -99,10 +100,45 @@ defmodule Storyarn.Assets.Storage.R2 do
     bucket = bucket()
 
     case bucket |> ExAws.S3.put_object_copy(dest_key, bucket, source_key) |> ExAws.request() do
-      {:ok, _response} -> :ok
+      {:ok, response} -> validate_copy_response(response)
       {:error, reason} -> {:error, reason}
     end
   end
+
+  @impl true
+  def copy_if_absent(source_key, dest_key) do
+    request = conditional_copy_request(source_key, dest_key)
+    execute_conditional_copy(request, @conditional_copy_attempts)
+  end
+
+  defp execute_conditional_copy(request, attempts_left) do
+    case ExAws.request(request) do
+      {:ok, response} ->
+        case validate_copy_response(response) do
+          :ok -> {:ok, true}
+          {:error, reason} -> {:error, reason}
+        end
+
+      {:error, {:http_error, 412, _response}} ->
+        {:ok, false}
+
+      {:error, {:http_error, 409, _response}} when attempts_left > 1 ->
+        execute_conditional_copy(request, attempts_left - 1)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp validate_copy_response(%{body: body}) when is_binary(body) do
+    cond do
+      String.contains?(body, "<Error") -> {:error, :copy_object_error_response}
+      String.contains?(body, "<CopyObjectResult") -> :ok
+      true -> {:error, :invalid_copy_object_response}
+    end
+  end
+
+  defp validate_copy_response(_response), do: {:error, :invalid_copy_object_response}
 
   @impl true
   def presigned_upload_url(key, content_type, opts) do
@@ -227,6 +263,28 @@ defmodule Storyarn.Assets.Storage.R2 do
       end
     else
       {:error, :invalid_url}
+    end
+  end
+
+  defp conditional_copy_request(source_key, dest_key) do
+    bucket = bucket()
+    request = ExAws.S3.put_object_copy(bucket, dest_key, bucket, source_key, if_none_match: "*")
+
+    if cloudflare_r2_endpoint?() do
+      %{request | headers: Map.put(request.headers, "cf-copy-destination-if-none-match", "*")}
+    else
+      request
+    end
+  end
+
+  defp cloudflare_r2_endpoint? do
+    case URI.parse(config()[:endpoint_url] || "").host do
+      host when is_binary(host) ->
+        host = String.downcase(host)
+        host == "r2.cloudflarestorage.com" or String.ends_with?(host, ".r2.cloudflarestorage.com")
+
+      _host ->
+        false
     end
   end
 

@@ -7,6 +7,8 @@ defmodule Storyarn.Assets.Storage.Local do
 
   @behaviour Storyarn.Assets.Storage
 
+  require Logger
+
   @stream_chunk_size 1_048_576
 
   @impl true
@@ -88,6 +90,20 @@ defmodule Storyarn.Assets.Storage.Local do
   end
 
   @impl true
+  # sobelow_skip ["Traversal.FileModule"]
+  def copy_if_absent(source_key, dest_key) do
+    with {:ok, source_path} <- file_path(source_key),
+         {:ok, dest_path} <- file_path(dest_key),
+         :ok <- ensure_directory(dest_path),
+         {:ok, result} <-
+           File.open(source_path, [:read, :binary], fn source ->
+             copy_open_source_if_absent(source, dest_path)
+           end) do
+      result
+    end
+  end
+
+  @impl true
   def presigned_upload_url(_key, _content_type, _opts) do
     # Local storage doesn't support presigned URLs
     # Files should be uploaded through the server
@@ -126,6 +142,84 @@ defmodule Storyarn.Assets.Storage.Local do
     path
     |> Path.dirname()
     |> File.mkdir_p()
+  end
+
+  # sobelow_skip ["Traversal.FileModule"]
+  defp copy_open_source_if_absent(source, dest_path) do
+    temporary_path = temporary_copy_path(dest_path)
+
+    case File.open(temporary_path, [:write, :binary, :exclusive], fn destination ->
+           {:copy_result, copy_chunks(source, destination)}
+         end) do
+      {:ok, {:copy_result, :ok}} ->
+        publish_temporary_copy(temporary_path, dest_path)
+
+      {:ok, {:copy_result, {:error, reason}}} ->
+        cleanup_partial_copy(temporary_path, reason)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp copy_chunks(source, destination) do
+    case IO.binread(source, @stream_chunk_size) do
+      data when is_binary(data) ->
+        case IO.binwrite(destination, data) do
+          :ok -> copy_chunks(source, destination)
+          {:error, reason} -> {:error, reason}
+        end
+
+      :eof ->
+        :ok
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  # sobelow_skip ["Traversal.FileModule"]
+  defp publish_temporary_copy(temporary_path, dest_path) do
+    case File.ln(temporary_path, dest_path) do
+      :ok ->
+        discard_temporary_copy(temporary_path)
+        {:ok, true}
+
+      {:error, :eexist} ->
+        discard_temporary_copy(temporary_path)
+        {:ok, false}
+
+      {:error, reason} ->
+        cleanup_partial_copy(temporary_path, reason)
+    end
+  end
+
+  defp temporary_copy_path(dest_path) do
+    suffix = 12 |> :crypto.strong_rand_bytes() |> Base.url_encode64(padding: false)
+    "#{dest_path}.storyarn-copy-#{suffix}"
+  end
+
+  # sobelow_skip ["Traversal.FileModule"]
+  defp discard_temporary_copy(temporary_path) do
+    case File.rm(temporary_path) do
+      :ok ->
+        :ok
+
+      {:error, :enoent} ->
+        :ok
+
+      {:error, reason} ->
+        Logger.warning("Could not remove local conditional-copy temporary file error=#{inspect(reason)}")
+    end
+  end
+
+  # sobelow_skip ["Traversal.FileModule"]
+  defp cleanup_partial_copy(temporary_path, copy_reason) do
+    case File.rm(temporary_path) do
+      :ok -> {:error, copy_reason}
+      {:error, :enoent} -> {:error, copy_reason}
+      {:error, cleanup_reason} -> {:error, {:copy_failed_cleanup_failed, copy_reason, cleanup_reason}}
+    end
   end
 
   defp file_stream(_path, _offset, 0), do: []

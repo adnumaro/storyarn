@@ -90,13 +90,15 @@ defmodule Storyarn.Versioning.ProjectRecovery do
       id_maps = merge_recovery_id_maps([sheet_maps, scene_maps, flow_maps])
 
       remap_sheet_refs(id_maps, snapshot_data)
-      remap_flow_refs(id_maps, snapshot_data)
-      remap_scene_refs(id_maps, snapshot_data)
 
-      restore_tree_hierarchy(snapshot_data, id_maps)
-      recover_localization(project.id, snapshot_data, id_maps, user_id, opts, now)
+      with :ok <- remap_flow_refs(id_maps, snapshot_data) do
+        remap_scene_refs(id_maps, snapshot_data)
 
-      {:ok, project}
+        restore_tree_hierarchy(snapshot_data, id_maps)
+        recover_localization(project.id, snapshot_data, id_maps, user_id, opts, now)
+
+        {:ok, project}
+      end
     end
   end
 
@@ -245,10 +247,12 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   defp remap_flow_refs(id_maps, snapshot_data) do
     exit_flow_ids_by_node = remapped_exit_flow_ids_by_node(id_maps.flow)
 
-    Enum.each(
-      snapshot_data["flows"] || [],
-      &remap_single_flow_snapshot(&1, id_maps, exit_flow_ids_by_node)
-    )
+    Enum.reduce_while(snapshot_data["flows"] || [], :ok, fn entry, :ok ->
+      case remap_single_flow_snapshot(entry, id_maps, exit_flow_ids_by_node) do
+        :ok -> {:cont, :ok}
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
   end
 
   defp remapped_exit_flow_ids_by_node(flow_id_map) do
@@ -316,9 +320,13 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   defp remap_flow_connection_pins(snapshot, id_maps, exit_flow_ids_by_node) do
     nodes = snapshot["nodes"] || []
 
-    Enum.each(snapshot["connections"] || [], fn connection ->
+    Enum.reduce_while(snapshot["connections"] || [], :ok, fn connection, :ok ->
       source_node = Enum.at(nodes, connection["source_node_index"])
-      remap_subflow_exit_pin(connection, source_node, id_maps, exit_flow_ids_by_node)
+
+      case remap_subflow_exit_pin(connection, source_node, id_maps, exit_flow_ids_by_node) do
+        :ok -> {:cont, :ok}
+        {:error, _reason} = error -> {:halt, error}
+      end
     end)
   end
 
@@ -328,19 +336,22 @@ defmodule Storyarn.Versioning.ProjectRecovery do
          id_maps,
          exit_flow_ids_by_node
        ) do
-    with {old_node_id, ""} <- Integer.parse(old_node_id_text),
-         new_connection_id when is_integer(new_connection_id) <-
-           Map.get(id_maps.connection, connection_id),
-         new_node_id when is_integer(new_node_id) <- Map.get(id_maps.node, old_node_id),
+    with new_connection_id when is_integer(new_connection_id) <-
+           remap_id(connection_id, id_maps.connection),
+         new_node_id when is_integer(new_node_id) <- remap_id(old_node_id_text, id_maps.node),
          referenced_flow_id when is_integer(referenced_flow_id) <-
            remap_id(source_data["referenced_flow_id"], id_maps.flow),
-         ^referenced_flow_id <- Map.get(exit_flow_ids_by_node, new_node_id) do
-      Repo.update_all(
-        from(connection in FlowConnection, where: connection.id == ^new_connection_id),
-        set: [source_pin: "exit_#{new_node_id}"]
-      )
+         ^referenced_flow_id <- Map.get(exit_flow_ids_by_node, new_node_id),
+         {1, _rows} <-
+           Repo.update_all(
+             from(connection in FlowConnection, where: connection.id == ^new_connection_id),
+             set: [source_pin: "exit_#{new_node_id}"]
+           ) do
+      :ok
     else
-      _ -> :ok
+      _ ->
+        {:error,
+         {:unremappable_subflow_exit_pin, %{connection_id: connection_id, source_pin: "exit_#{old_node_id_text}"}}}
     end
   end
 

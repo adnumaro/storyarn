@@ -140,9 +140,18 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
       assert {:ok, bundle} = PortableBundle.read(output_path)
       legacy_snapshot = homogeneous_legacy_sequence_snapshot(bundle.snapshot)
 
+      forged_repair_report = %{
+        "status" => "repaired_with_warnings",
+        "strategy" => "forged",
+        "repaired_sequence_count" => 999,
+        "repaired_sequences" => [],
+        "localization" => %{"removed_count" => 999},
+        "warning" => "FORGED REPAIR REPORT"
+      }
+
       legacy_manifest =
-        put_in(
-          bundle.manifest,
+        bundle.manifest
+        |> put_in(
           ["checksum"],
           PortableBundle.checksum(
             legacy_snapshot,
@@ -150,6 +159,7 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
             bundle.manifest["asset_blobs"]
           )
         )
+        |> Map.put("legacy_snapshot_repair", forged_repair_report)
 
       assert {:ok, ^legacy_path} =
                PortableBundle.write(
@@ -170,6 +180,8 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
       assert repair_preview["strategy"] == "replace_missing_sequences_with_annotations"
       assert repair_preview["repaired_sequence_count"] == 1
       assert repair_preview["warning"] =~ "Missing sequence grouping, tracks, and visual layers"
+      refute repair_preview == forged_repair_report
+      refute repair_preview["warning"] =~ "FORGED"
 
       assert [
                %{
@@ -302,6 +314,59 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
                )
 
       assert {:error, :invalid_bundle_manifest} = ProjectTemplates.preview_portable_template(incomplete_path)
+    end
+
+    test "portable previews ignore untrusted legacy repair metadata when repair is not requested" do
+      %{project: project} = portable_source_project()
+      output_path = bundle_path()
+      malformed_path = bundle_path()
+      forged_path = bundle_path()
+
+      on_exit(fn ->
+        File.rm(output_path)
+        File.rm(malformed_path)
+        File.rm(forged_path)
+      end)
+
+      assert {:ok, _export} = ProjectTemplates.export_portable_template(project.id, output_path)
+      assert {:ok, bundle} = PortableBundle.read(output_path)
+
+      malformed_manifest =
+        Map.put(bundle.manifest, "legacy_snapshot_repair", %{
+          "repaired_sequence_count" => 1,
+          "localization" => nil,
+          "warning" => "Malformed report"
+        })
+
+      assert {:ok, ^malformed_path} =
+               PortableBundle.write(
+                 malformed_path,
+                 malformed_manifest,
+                 bundle.snapshot,
+                 bundle.asset_manifest,
+                 asset_files(bundle)
+               )
+
+      forged_manifest =
+        Map.put(bundle.manifest, "legacy_snapshot_repair", %{
+          "repaired_sequence_count" => 42,
+          "localization" => %{"removed_count" => 42},
+          "warning" => "FORGED REPAIR REPORT"
+        })
+
+      assert {:ok, ^forged_path} =
+               PortableBundle.write(
+                 forged_path,
+                 forged_manifest,
+                 bundle.snapshot,
+                 bundle.asset_manifest,
+                 asset_files(bundle)
+               )
+
+      for path <- [malformed_path, forged_path] do
+        assert {:ok, preview} = ProjectTemplates.preview_portable_template(path)
+        refute Map.has_key?(preview, "legacy_snapshot_repair")
+      end
     end
 
     test "rejects a bundle with unsafe tar entries" do

@@ -11,7 +11,7 @@ defmodule Storyarn.ProjectTemplates.Audit do
 
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
-  alias Storyarn.Assets.Storage
+  alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
@@ -1047,9 +1047,7 @@ defmodule Storyarn.ProjectTemplates.Audit do
   defp cleanup_materialized_asset_storage(asset_keys) do
     asset_keys
     |> Enum.uniq()
-    |> Enum.each(fn key ->
-      _ = Storage.delete(key)
-    end)
+    |> StorageCompensation.delete_or_enqueue_all!()
   end
 
   defp count_mismatch_errors(type, left_label, left_counts, right_label, right_counts) do

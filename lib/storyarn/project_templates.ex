@@ -206,10 +206,17 @@ defmodule Storyarn.ProjectTemplates do
   defdelegate list_pending_workspace_installation_failures(scope, workspace), to: Installation
 
   @doc """
+  Returns whether one failed installation still needs acknowledgement by the current user.
+  """
+  @spec pending_installation_failure?(scope(), Workspace.t(), integer()) :: boolean()
+  defdelegate pending_installation_failure?(scope, workspace, installation_id), to: Installation
+
+  @doc """
   Dismisses one failed installation notification for the current user.
   """
   @spec dismiss_installation_failure(scope(), Workspace.t(), integer()) ::
-          {:ok, ProjectTemplateInstall.t()} | {:error, :not_found | :unauthorized}
+          {:ok, ProjectTemplateInstall.t()}
+          | {:error, :not_found | :unauthorized | Ecto.Changeset.t()}
   defdelegate dismiss_installation_failure(scope, workspace, installation_id), to: Installation
 
   @spec list_active_template_installations(scope(), ProjectTemplate.t()) :: [ProjectTemplateInstall.t()]

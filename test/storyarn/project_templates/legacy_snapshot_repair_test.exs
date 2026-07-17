@@ -150,6 +150,175 @@ defmodule Storyarn.ProjectTemplates.LegacySnapshotRepairTest do
     assert {:error, _reason} = LegacySnapshotRepair.repair(malformed)
   end
 
+  test "rejects invalid localization identity field types before using string helpers", %{
+    flow: flow,
+    legacy_snapshot: legacy_snapshot
+  } do
+    text = localization_row("flow", flow.id, "name", "Flow")
+
+    for {field, invalid_value} <- [
+          {"source_type", 42},
+          {"source_id", Integer.to_string(flow.id)},
+          {"source_field", 42},
+          {"locale_code", 42}
+        ] do
+      malformed =
+        Map.put(legacy_snapshot, "localization", %{
+          "languages" => [
+            %{"locale_code" => "es", "name" => "Spanish", "is_source" => false, "position" => 0}
+          ],
+          "texts" => [Map.put(text, field, invalid_value)],
+          "glossary" => []
+        })
+
+      assert {:error, :invalid_legacy_template_localization} =
+               LegacySnapshotRepair.repair(malformed)
+    end
+  end
+
+  test "rejects arbitrary flow-node source ids before checking repaired sequence targets", %{
+    legacy_snapshot: legacy_snapshot
+  } do
+    malformed_text = localization_row("flow_node", %{"not" => "an id"}, "text", "Dialogue")
+
+    malformed =
+      Map.put(
+        legacy_snapshot,
+        "localization",
+        localization_payload([localization_language("es")], [malformed_text], [])
+      )
+
+    assert {:error, :invalid_legacy_template_localization} =
+             LegacySnapshotRepair.repair(malformed)
+  end
+
+  test "validates language database constraints before materialization", %{
+    legacy_snapshot: legacy_snapshot
+  } do
+    language = localization_language("es")
+
+    invalid_language_sets = [
+      [Map.put(language, "locale_code", "ES")],
+      [Map.put(language, "locale_code", "not/a-locale")],
+      [Map.put(language, "name", 42)],
+      [Map.put(language, "name", String.duplicate("x", 101))],
+      [Map.put(language, "is_source", "true")],
+      [Map.put(language, "position", 2_147_483_648)],
+      [Map.put(language, "archived_at", "not-a-datetime")],
+      [language, Map.put(language, "name", "Duplicate Spanish")],
+      [
+        Map.put(language, "is_source", true),
+        "fr" |> localization_language() |> Map.put("is_source", true)
+      ]
+    ]
+
+    for languages <- invalid_language_sets do
+      assert_invalid_localization(
+        legacy_snapshot,
+        localization_payload(languages, [], [])
+      )
+    end
+  end
+
+  test "validates optional text payload types, hashes, dates, ids, and unique keys", %{
+    flow: flow,
+    legacy_snapshot: legacy_snapshot
+  } do
+    text = localization_row("flow", flow.id, "name", "Flow")
+
+    invalid_texts =
+      for {field, invalid_value} <- [
+            {"source_text", 42},
+            {"source_text_hash", "not-a-sha256"},
+            {"translated_source_hash", String.duplicate("a", 65)},
+            {"translated_text", 42},
+            {"status", "published"},
+            {"vo_status", "uploaded"},
+            {"vo_asset_id", "1"},
+            {"translator_notes", 42},
+            {"speaker_sheet_id", 0},
+            {"word_count", 2_147_483_648},
+            {"content_role", "editor_metadata"},
+            {"vo_eligible", "false"},
+            {"machine_translated", "false"},
+            {"last_translated_at", "yesterday"},
+            {"last_reviewed_at", 42},
+            {"translated_by_id", 9_223_372_036_854_775_808},
+            {"archived_at", "not-a-datetime"},
+            {"archive_reason", "unknown"}
+          ] do
+        [Map.put(text, field, invalid_value)]
+      end
+
+    for texts <- invalid_texts ++ [[text, text]] do
+      assert_invalid_localization(
+        legacy_snapshot,
+        localization_payload([localization_language("es")], texts, [])
+      )
+    end
+  end
+
+  test "validates glossary terms, locales, booleans, and unique keys", %{
+    legacy_snapshot: legacy_snapshot
+  } do
+    entry = glossary_entry()
+
+    invalid_glossaries =
+      for {field, invalid_value} <- [
+            {"source_term", "line\nbreak"},
+            {"source_locale", "invalid/locale"},
+            {"target_term", 42},
+            {"target_locale", "en-abcdefgh"},
+            {"context", 42},
+            {"do_not_translate", "false"}
+          ] do
+        [Map.put(entry, field, invalid_value)]
+      end
+
+    for glossary <- invalid_glossaries ++ [[entry, entry]] do
+      assert_invalid_localization(
+        legacy_snapshot,
+        localization_payload([localization_language("es")], [], glossary)
+      )
+    end
+  end
+
+  test "rejects non-map snapshot collection entries without raising", %{
+    legacy_snapshot: legacy_snapshot
+  } do
+    malformed =
+      legacy_snapshot
+      |> Map.put("sheets", [42])
+      |> Map.put("localization", %{
+        "languages" => [],
+        "texts" => [],
+        "glossary" => []
+      })
+
+    assert {:error, {:invalid_legacy_snapshot_entities, :sheet}} =
+             LegacySnapshotRepair.repair(malformed)
+  end
+
+  test "formats validated legacy repair reports for operator previews" do
+    report = %{
+      "repaired_sequence_count" => 2,
+      "localization" => %{"removed_count" => 3},
+      "warning" => "Recreate the affected sequences."
+    }
+
+    assert {:ok,
+            [
+              "Sequences replaced by recovery notes: 2",
+              "Legacy localization rows removed: 3",
+              "Warning: Recreate the affected sequences."
+            ]} = LegacySnapshotRepair.preview_lines(report)
+
+    assert {:ok, []} = LegacySnapshotRepair.preview_lines(nil)
+
+    assert {:error, :invalid_legacy_snapshot_repair_report} =
+             LegacySnapshotRepair.preview_lines(%{"localization" => nil})
+  end
+
   test "removes known legacy block metadata shapes and preserves runtime rows", %{
     legacy_snapshot: legacy_snapshot
   } do
@@ -344,6 +513,26 @@ defmodule Storyarn.ProjectTemplates.LegacySnapshotRepairTest do
     Map.put(snapshot, "localization", Map.put(localization, key, value))
   end
 
+  defp assert_invalid_localization(snapshot, localization) do
+    assert {:error, :invalid_legacy_template_localization} =
+             snapshot
+             |> Map.put("localization", localization)
+             |> LegacySnapshotRepair.repair()
+  end
+
+  defp localization_payload(languages, texts, glossary) do
+    %{"languages" => languages, "texts" => texts, "glossary" => glossary}
+  end
+
+  defp localization_language(locale_code) do
+    %{
+      "locale_code" => locale_code,
+      "name" => "Language #{locale_code}",
+      "is_source" => false,
+      "position" => 0
+    }
+  end
+
   defp localization_row(source_type, source_id, source_field, source_text) do
     %{
       "source_type" => source_type,
@@ -352,6 +541,17 @@ defmodule Storyarn.ProjectTemplates.LegacySnapshotRepairTest do
       "source_text" => source_text,
       "source_text_hash" => sha256(source_text),
       "locale_code" => "es"
+    }
+  end
+
+  defp glossary_entry do
+    %{
+      "source_term" => "Veilbreak",
+      "source_locale" => "en",
+      "target_term" => "Veilbreak",
+      "target_locale" => "es",
+      "context" => "World name",
+      "do_not_translate" => true
     }
   end
 

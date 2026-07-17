@@ -168,6 +168,60 @@ defmodule Storyarn.Assets.Storage.LocalTest do
     end
   end
 
+  describe "copy_if_absent/2" do
+    test "copies a large source once without replacing the destination", %{test_dir: test_dir} do
+      source_key = "copy/source.bin"
+      destination_key = "copy/destination.bin"
+      source = :binary.copy("bounded-copy-", 200_000)
+
+      assert byte_size(source) > 2_000_000
+      assert {:ok, _url} = Local.upload(source_key, source, "application/octet-stream")
+      assert {:ok, true} = Local.copy_if_absent(source_key, destination_key)
+
+      assert {:ok, _url} = Local.upload(source_key, "replacement", "application/octet-stream")
+      assert {:ok, false} = Local.copy_if_absent(source_key, destination_key)
+      assert File.read!(Path.join(test_dir, destination_key)) == source
+
+      assert Path.wildcard(Path.join(test_dir, destination_key) <> ".storyarn-copy-*") == []
+    end
+
+    test "claims destination ownership for exactly one concurrent caller", %{test_dir: test_dir} do
+      first_source_key = "race/first.bin"
+      second_source_key = "race/second.bin"
+      destination_key = "race/destination.bin"
+
+      assert {:ok, _url} = Local.upload(first_source_key, "first", "application/octet-stream")
+      assert {:ok, _url} = Local.upload(second_source_key, "second", "application/octet-stream")
+
+      results =
+        [first_source_key, second_source_key]
+        |> Task.async_stream(&Local.copy_if_absent(&1, destination_key),
+          max_concurrency: 2,
+          ordered: false
+        )
+        |> Enum.map(fn {:ok, result} -> result end)
+
+      assert Enum.count(results, &(&1 == {:ok, true})) == 1
+      assert Enum.count(results, &(&1 == {:ok, false})) == 1
+      assert File.read!(Path.join(test_dir, destination_key)) in ["first", "second"]
+
+      assert Path.wildcard(Path.join(test_dir, destination_key) <> ".storyarn-copy-*") == []
+    end
+
+    test "does not create a destination when the source is missing", %{test_dir: test_dir} do
+      destination_key = "missing/destination.bin"
+
+      assert {:error, :enoent} = Local.copy_if_absent("missing/source.bin", destination_key)
+      refute File.exists?(Path.join(test_dir, destination_key))
+    end
+
+    test "rejects traversal in either key", %{test_key: key} do
+      assert {:ok, _url} = Local.upload(key, "content", "text/plain")
+      assert {:error, :invalid_key} = Local.copy_if_absent("../source.txt", "safe/destination.txt")
+      assert {:error, :invalid_key} = Local.copy_if_absent(key, "../destination.txt")
+    end
+  end
+
   # =============================================================================
   # presigned_upload_url/3
   # =============================================================================

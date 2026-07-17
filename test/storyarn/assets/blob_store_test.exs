@@ -178,6 +178,94 @@ defmodule Storyarn.Assets.BlobStoreTest do
       assert {:error, _reason} = Storage.download(destination_blob_key)
     end
 
+    test "rejects a corrupt pre-existing destination blob", %{
+      project: source_project,
+      user: user
+    } do
+      destination_project = project_fixture(user)
+      content = "verified portable template asset"
+      corrupt_content = "corrupt destination bytes"
+      hash = BlobStore.compute_hash(content)
+      source_blob_key = BlobStore.blob_key(source_project.id, hash, "png")
+      destination_blob_key = BlobStore.blob_key(destination_project.id, hash, "png")
+
+      assert {:ok, ^source_blob_key} =
+               BlobStore.ensure_blob(source_project.id, hash, "png", content)
+
+      assert {:ok, _url} = Storage.upload(destination_blob_key, corrupt_content, "image/png")
+
+      on_exit(fn ->
+        Storage.delete(source_blob_key)
+        Storage.delete(destination_blob_key)
+      end)
+
+      metadata = %{
+        "filename" => "corrupt.png",
+        "content_type" => "image/png",
+        "size" => byte_size(content)
+      }
+
+      assert {:error, :blob_hash_mismatch} =
+               BlobStore.create_asset_from_blob(
+                 destination_project.id,
+                 user.id,
+                 hash,
+                 source_blob_key,
+                 metadata
+               )
+
+      assert {:ok, ^corrupt_content} = Storage.download(destination_blob_key)
+
+      refute Repo.exists?(
+               from asset in Asset,
+                 where:
+                   asset.project_id == ^destination_project.id and
+                     asset.blob_hash == ^hash
+             )
+    end
+
+    test "does not take cleanup ownership when the source is the project-local blob", %{
+      project: project,
+      user: user
+    } do
+      content = :binary.copy("streamed-local-blob-", 70_000)
+      hash = BlobStore.compute_hash(content)
+      blob_key = BlobStore.blob_key(project.id, hash, "png")
+      tracker = StorageCompensation.new()
+
+      assert {:ok, ^blob_key} = BlobStore.ensure_blob(project.id, hash, "png", content)
+
+      metadata = %{
+        "filename" => "local.png",
+        "content_type" => "image/png",
+        "size" => byte_size(content)
+      }
+
+      assert {:error, {:forced_rollback, asset_key}} =
+               Repo.transaction(fn ->
+                 {:ok, asset} =
+                   BlobStore.create_asset_from_blob(
+                     project.id,
+                     user.id,
+                     hash,
+                     blob_key,
+                     metadata,
+                     asset_copy_tracker: tracker
+                   )
+
+                 Repo.rollback({:forced_rollback, asset.key})
+               end)
+
+      on_exit(fn ->
+        Storage.delete(blob_key)
+        Storage.delete(asset_key)
+      end)
+
+      assert :ok = StorageCompensation.cleanup(tracker)
+      assert {:error, _reason} = Storage.download(asset_key)
+      assert {:ok, ^content} = Storage.download(blob_key)
+    end
+
     test "tracks a newly materialized blob for rollback compensation", %{
       project: source_project,
       user: user

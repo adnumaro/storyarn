@@ -181,6 +181,55 @@ defmodule Storyarn.Assets.StorageCompensationTest do
     assert %StorageCleanupRequest{storage_keys: [^storage_key]} = Repo.one(StorageCleanupRequest)
   end
 
+  test "delete_or_enqueue! raises when no durable cleanup path is available" do
+    storage_key = "projects/1/blobs/unrecoverable-orphan.png"
+
+    error =
+      assert_raise StorageCleanupPersistenceError, fn ->
+        StorageCompensation.delete_or_enqueue!(storage_key,
+          delete_fun: fn ^storage_key -> {:error, :storage_unavailable} end,
+          delete_attempts: 1,
+          enqueue_fun: fn [^storage_key] -> {:error, :oban_unavailable} end,
+          persist_fun: fn [^storage_key] -> {:error, :database_unavailable} end
+        )
+      end
+
+    assert {:storage_cleanup_not_persisted,
+            %{
+              failed_keys: [^storage_key],
+              enqueue_error: :oban_unavailable,
+              persistence_error: :database_unavailable
+            }} = error.reason
+  end
+
+  test "delete_or_enqueue_all! attempts every key before raising aggregated failures" do
+    storage_keys = [
+      "projects/1/assets/unrecoverable/one.png",
+      "projects/1/blobs/unrecoverable-two.png"
+    ]
+
+    {:ok, attempts} = Agent.start_link(fn -> [] end)
+
+    error =
+      assert_raise StorageCleanupPersistenceError, fn ->
+        StorageCompensation.delete_or_enqueue_all!(storage_keys,
+          delete_fun: fn storage_key ->
+            Agent.update(attempts, &[storage_key | &1])
+            {:error, :storage_unavailable}
+          end,
+          delete_attempts: 1,
+          enqueue_fun: fn _storage_keys -> {:error, :oban_unavailable} end,
+          persist_fun: fn _storage_keys -> {:error, :database_unavailable} end
+        )
+      end
+
+    assert Enum.sort(Agent.get(attempts, & &1)) == Enum.sort(storage_keys)
+
+    assert {:storage_cleanup_failures, failures} = error.reason
+    assert Enum.map(failures, &elem(&1, 0)) == storage_keys
+    assert Enum.all?(failures, fn {_storage_key, reason} -> match?({:storage_cleanup_not_persisted, _}, reason) end)
+  end
+
   test "accepts blob keys for deletion retries" do
     storage_key = "projects/1/blobs/#{System.unique_integer([:positive])}.png"
     assert {:ok, _url} = Storage.upload(storage_key, "blob", "image/png")

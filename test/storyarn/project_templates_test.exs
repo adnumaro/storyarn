@@ -990,6 +990,166 @@ defmodule Storyarn.ProjectTemplatesTest do
       assert [] = ProjectTemplates.list_pending_workspace_installation_failures(scope, workspace)
     end
 
+    test "treats an unremappable subflow exit pin as a permanent installation failure" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      workspace = WorkspacesFixtures.workspace_fixture(user)
+      source_project = ProjectsFixtures.project_fixture(user, %{name: "Invalid Subflow Source"})
+      caller_flow = flow_fixture(source_project)
+      referenced_flow = flow_fixture(source_project)
+
+      referenced_exit =
+        flow_node_fixture(referenced_flow, "exit", %{
+          data: %{"label" => "Returned", "exit_mode" => "caller_return"}
+        })
+
+      subflow =
+        flow_node_fixture(caller_flow, "subflow", %{
+          data: %{"referenced_flow_id" => referenced_flow.id}
+        })
+
+      target = flow_node_fixture(caller_flow, "hub")
+
+      _connection =
+        flow_connection_fixture(caller_flow, subflow, target, %{
+          source_pin: "exit_#{referenced_exit.id}"
+        })
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(scope, source_project, %{
+                 name: "Invalid Subflow Starter"
+               })
+
+      version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
+      assert {:ok, snapshot} = SnapshotStorage.load_snapshot(version.snapshot_storage_key)
+      assert {:ok, asset_manifest} = SnapshotStorage.load_snapshot(version.asset_manifest_storage_key)
+
+      invalid_snapshot =
+        Map.update!(snapshot, "flows", fn flows ->
+          Enum.map(flows, fn
+            %{"id" => flow_id} = flow_entry when flow_id == referenced_flow.id ->
+              update_in(flow_entry, ["snapshot", "nodes"], fn nodes ->
+                Enum.reject(nodes, &(&1["original_id"] == referenced_exit.id))
+              end)
+
+            flow_entry ->
+              flow_entry
+          end)
+        end)
+
+      assert {:ok, _size} = SnapshotStorage.store_raw(version.snapshot_storage_key, invalid_snapshot)
+
+      version =
+        version
+        |> Ecto.Changeset.change(
+          checksum:
+            Artifact.checksum(%{
+              "snapshot" => invalid_snapshot,
+              "asset_manifest" => asset_manifest
+            })
+        )
+        |> Repo.update!()
+
+      project_count = Repo.aggregate(Project, :count)
+
+      assert {:ok, installation} =
+               ProjectTemplates.request_template_instantiation(scope, version, workspace, %{
+                 name: "Invalid Subflow Copy",
+                 source: "template_show"
+               })
+
+      assert {:ok, failed} =
+               ProjectTemplates.perform_template_installation(installation.id,
+                 attempt: 1,
+                 max_attempts: 3
+               )
+
+      assert failed.status == "failed"
+      assert failed.stage == "failed"
+      assert failed.error_code == "unremappable_subflow_exit_pin"
+      assert failed.error_message =~ "invalid subflow exit"
+      assert failed.error_report == %{attempt: 1, max_attempts: 3}
+      assert Repo.aggregate(Project, :count) == project_count
+    end
+
+    test "lists pending failure feedback from newest to oldest" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      workspace = WorkspacesFixtures.workspace_fixture(user)
+      source_project = ProjectsFixtures.project_fixture(user, %{name: "Failure Ordering Source"})
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(scope, source_project, %{
+                 name: "Failure Ordering Starter"
+               })
+
+      version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
+      newest_completed_at = DateTime.truncate(DateTime.utc_now(), :second)
+      older_completed_at = DateTime.add(newest_completed_at, -60, :second)
+
+      insert_failure = fn project_name, completed_at ->
+        Repo.insert!(%ProjectTemplateInstall{
+          project_template_version_id: version.id,
+          user_id: user.id,
+          workspace_id: workspace.id,
+          status: "failed",
+          stage: "failed",
+          project_name: project_name,
+          source: "workspace_dashboard",
+          error_code: "test_failure",
+          error_message: "Test failure",
+          completed_at: completed_at
+        })
+      end
+
+      older = insert_failure.("Older Failure", older_completed_at)
+      first_newer = insert_failure.("First Newer Failure", newest_completed_at)
+      last_newer = insert_failure.("Last Newer Failure", newest_completed_at)
+
+      assert [last_newer.id, first_newer.id, older.id] ==
+               scope
+               |> ProjectTemplates.list_pending_workspace_installation_failures(workspace)
+               |> Enum.map(& &1.id)
+    end
+
+    test "checks pending feedback by id without the workspace list limit" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      workspace = WorkspacesFixtures.workspace_fixture(user)
+      source_project = ProjectsFixtures.project_fixture(user, %{name: "Pending Lookup Source"})
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(scope, source_project, %{
+                 name: "Pending Lookup Starter"
+               })
+
+      completed_at = DateTime.truncate(DateTime.utc_now(), :second)
+
+      insert_failure = fn index ->
+        Repo.insert!(%ProjectTemplateInstall{
+          project_template_version_id: template.current_version_id,
+          user_id: user.id,
+          workspace_id: workspace.id,
+          status: "failed",
+          stage: "failed",
+          project_name: "Pending Failure #{index}",
+          source: "template_show",
+          error_code: "test_failure",
+          error_message: "Test failure",
+          completed_at: DateTime.add(completed_at, index, :second)
+        })
+      end
+
+      oldest = insert_failure.(0)
+      _newer_failures = Enum.map(1..10, insert_failure)
+
+      pending = ProjectTemplates.list_pending_workspace_installation_failures(scope, workspace)
+
+      assert length(pending) == 10
+      refute Enum.any?(pending, &(&1.id == oldest.id))
+      assert ProjectTemplates.pending_installation_failure?(scope, workspace, oldest.id)
+    end
+
     test "records missing template asset blobs as a permanent failure" do
       user = AccountsFixtures.user_fixture()
       scope = AccountsFixtures.user_scope_fixture(user)

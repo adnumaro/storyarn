@@ -128,6 +128,32 @@ defmodule Storyarn.Assets.StorageCompensation do
     end
   end
 
+  @doc "Deletes one storage object or raises when no durable cleanup path can be established."
+  @spec delete_or_enqueue!(String.t(), keyword()) :: :ok
+  def delete_or_enqueue!(storage_key, opts \\ []) when is_binary(storage_key) do
+    case delete_or_enqueue(storage_key, opts) do
+      :ok -> :ok
+      {:error, reason} -> raise StorageCleanupPersistenceError, reason: reason
+    end
+  end
+
+  @doc "Deletes every object or raises after collecting cleanup handoff failures."
+  @spec delete_or_enqueue_all!([String.t()], keyword()) :: :ok
+  def delete_or_enqueue_all!(storage_keys, opts \\ []) when is_list(storage_keys) do
+    failures =
+      Enum.reduce(storage_keys, [], fn storage_key, failures ->
+        case delete_or_enqueue(storage_key, opts) do
+          :ok -> failures
+          {:error, reason} -> [{storage_key, reason} | failures]
+        end
+      end)
+
+    case Enum.reverse(failures) do
+      [] -> :ok
+      failures -> raise StorageCleanupPersistenceError, reason: {:storage_cleanup_failures, failures}
+    end
+  end
+
   @spec retry_persisted_cleanup_requests(pos_integer()) :: :ok | {:error, non_neg_integer()}
   def retry_persisted_cleanup_requests(limit \\ @persisted_cleanup_batch_size) when is_integer(limit) and limit > 0 do
     cleanup_requests =

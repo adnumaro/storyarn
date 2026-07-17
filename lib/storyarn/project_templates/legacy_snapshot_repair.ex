@@ -9,10 +9,19 @@ defmodule Storyarn.ProjectTemplates.LegacySnapshotRepair do
   position without inventing hierarchy, dimensions, tracks, or visual layers.
   """
 
+  alias Storyarn.Localization.LocaleCode
   alias Storyarn.Localization.SourceContract
   alias Storyarn.ProjectTemplates.Audit
 
+  @max_int32 2_147_483_647
+  @max_int64 9_223_372_036_854_775_807
   @legacy_format_version 2
+  @sha256_format ~r/\A[0-9a-f]{64}\z/
+  @glossary_term_format ~r/\A[^\t\r\n]*\z/u
+  @valid_text_statuses ~w(pending draft in_progress review final)
+  @valid_vo_statuses ~w(none needed recorded approved)
+  @valid_content_roles SourceContract.content_roles()
+  @valid_archive_reasons ~w(source_deleted source_field_removed source_not_runtime version_replaced)
   @missing_sequence_error_types MapSet.new([
                                   "missing_sequence_config_snapshot",
                                   "missing_sequence_collection_snapshot"
@@ -23,10 +32,38 @@ defmodule Storyarn.ProjectTemplates.LegacySnapshotRepair do
                               "missing_sequence_visual_layers_snapshot"
                             ])
 
+  @doc """
+  Formats the operator-facing summary for a legacy snapshot repair.
+
+  The report may come from portable bundle metadata, so the fields consumed by
+  the Mix and release entrypoints are validated before they are interpolated.
+  """
+  @spec preview_lines(nil | map()) ::
+          {:ok, [String.t()]} | {:error, :invalid_legacy_snapshot_repair_report}
+  def preview_lines(nil), do: {:ok, []}
+
+  def preview_lines(%{
+        "repaired_sequence_count" => repaired_sequence_count,
+        "localization" => %{"removed_count" => removed_count},
+        "warning" => warning
+      })
+      when is_integer(repaired_sequence_count) and repaired_sequence_count >= 0 and is_integer(removed_count) and
+             removed_count >= 0 and is_binary(warning) do
+    {:ok,
+     [
+       "Sequences replaced by recovery notes: #{repaired_sequence_count}",
+       "Legacy localization rows removed: #{removed_count}",
+       "Warning: #{warning}"
+     ]}
+  end
+
+  def preview_lines(_report), do: {:error, :invalid_legacy_snapshot_repair_report}
+
   @spec repair(map()) :: {:ok, map(), map()} | {:error, term()}
   def repair(snapshot) when is_map(snapshot) do
     with {:ok, targets} <- repair_targets(snapshot),
          :ok <- validate_legacy_snapshot_signature(snapshot, targets),
+         :ok <- validate_localization(snapshot["localization"]),
          :ok <- reject_localized_target_sequences(snapshot["localization"], targets),
          {:ok, flows, repaired_sequences} <- repair_flows(snapshot["flows"], targets),
          {:ok, localization, localization_report} <-
@@ -280,14 +317,14 @@ defmodule Storyarn.ProjectTemplates.LegacySnapshotRepair do
   end
 
   defp reject_localized_target_sequences(localization, targets) do
-    target_ids = MapSet.new(targets, fn {_flow_id, node_id} -> to_string(node_id) end)
+    target_ids = MapSet.new(targets, fn {_flow_id, node_id} -> node_id end)
 
     localized? =
       localization
       |> localization_texts()
       |> Enum.any?(fn
         %{"source_type" => "flow_node", "source_id" => source_id} ->
-          MapSet.member?(target_ids, to_string(source_id))
+          MapSet.member?(target_ids, source_id)
 
         _text ->
           false
@@ -325,8 +362,7 @@ defmodule Storyarn.ProjectTemplates.LegacySnapshotRepair do
            snapshot
        )
        when is_list(languages) and is_list(texts) and is_list(glossary) do
-    with :ok <- validate_localization_collections(languages, texts, glossary),
-         {:ok, indexes} <- localization_indexes(snapshot, languages),
+    with {:ok, indexes} <- localization_indexes(snapshot, languages),
          {:ok, kept, removed} <- classify_localization_texts(texts, indexes) do
       {:ok, Map.put(localization, "texts", kept), localization_report(kept, removed)}
     end
@@ -334,20 +370,176 @@ defmodule Storyarn.ProjectTemplates.LegacySnapshotRepair do
 
   defp repair_localization(_snapshot), do: {:error, :invalid_legacy_template_localization}
 
-  defp validate_localization_collections(languages, texts, glossary) do
-    locale_codes =
-      Enum.map(languages, fn
-        %{"locale_code" => locale_code} when is_binary(locale_code) and locale_code != "" -> locale_code
-        _language -> nil
-      end)
+  defp validate_localization(nil), do: :ok
 
-    valid? =
-      Enum.all?(languages, &is_map/1) and Enum.all?(texts, &is_map/1) and
-        Enum.all?(glossary, &is_map/1) and
-        Enum.all?(locale_codes, &is_binary/1) and unique_values?(locale_codes)
-
-    if valid?, do: :ok, else: {:error, :invalid_legacy_template_localization}
+  defp validate_localization(%{"languages" => languages, "texts" => texts, "glossary" => glossary})
+       when is_list(languages) and is_list(texts) and is_list(glossary) do
+    with true <- valid_languages?(languages),
+         locales = MapSet.new(languages, & &1["locale_code"]),
+         true <- valid_localization_texts?(texts, locales),
+         true <- valid_glossary?(glossary) do
+      :ok
+    else
+      _invalid -> {:error, :invalid_legacy_template_localization}
+    end
   end
+
+  defp validate_localization(_localization), do: {:error, :invalid_legacy_template_localization}
+
+  defp valid_languages?(languages) do
+    Enum.all?(languages, &valid_language?/1) and
+      Enum.count(languages, & &1["is_source"]) <= 1 and
+      unique_values?(Enum.map(languages, & &1["locale_code"]))
+  end
+
+  defp valid_language?(
+         %{"locale_code" => locale_code, "name" => name, "is_source" => is_source, "position" => position} = language
+       ) do
+    canonical_locale?(locale_code) and
+      valid_required_string?(name, 100) and
+      is_boolean(is_source) and
+      safe_int32?(position) and
+      valid_datetime?(language["archived_at"])
+  end
+
+  defp valid_language?(_language), do: false
+
+  defp valid_localization_texts?(texts, locales) do
+    Enum.all?(texts, &valid_localization_text?(&1, locales)) and
+      unique_values?(Enum.map(texts, &{&1["source_type"], &1["source_id"], &1["source_field"], &1["locale_code"]}))
+  end
+
+  defp valid_localization_text?(
+         %{
+           "source_type" => source_type,
+           "source_id" => source_id,
+           "source_field" => source_field,
+           "locale_code" => locale_code
+         } = text,
+         locales
+       ) do
+    valid_text_identity?(source_type, source_id, source_field, locale_code, locales) and
+      valid_text_content?(text) and
+      valid_text_workflow?(text) and
+      valid_text_attribution?(text)
+  end
+
+  defp valid_localization_text?(_text, _locales), do: false
+
+  defp valid_text_identity?(source_type, source_id, source_field, locale_code, locales) do
+    valid_required_string?(source_type, 255) and
+      safe_int32_id?(source_id) and
+      valid_required_string?(source_field, 255) and
+      canonical_locale?(locale_code) and
+      MapSet.member?(locales, locale_code)
+  end
+
+  defp valid_text_content?(text) do
+    valid_optional_string?(text["source_text"]) and
+      valid_optional_hash?(text["source_text_hash"]) and
+      valid_optional_hash?(text["translated_source_hash"]) and
+      valid_optional_string?(text["translated_text"]) and
+      valid_optional_word_count?(text["word_count"]) and
+      valid_optional_enum?(text["content_role"], @valid_content_roles)
+  end
+
+  defp valid_text_workflow?(text) do
+    valid_optional_enum?(text["status"], @valid_text_statuses) and
+      valid_optional_enum?(text["vo_status"], @valid_vo_statuses) and
+      valid_optional_id?(text["vo_asset_id"]) and
+      valid_optional_id?(text["speaker_sheet_id"]) and
+      valid_optional_boolean?(text["vo_eligible"]) and
+      valid_optional_boolean?(text["machine_translated"])
+  end
+
+  defp valid_text_attribution?(text) do
+    valid_optional_string?(text["translator_notes"]) and
+      valid_optional_string?(text["reviewer_notes"]) and
+      valid_datetime?(text["last_translated_at"]) and
+      valid_datetime?(text["last_reviewed_at"]) and
+      valid_optional_id?(text["translated_by_id"]) and
+      valid_optional_id?(text["reviewed_by_id"]) and
+      valid_datetime?(text["archived_at"]) and
+      valid_optional_enum?(text["archive_reason"], @valid_archive_reasons)
+  end
+
+  defp valid_glossary?(glossary) do
+    Enum.all?(glossary, &valid_glossary_entry?/1) and
+      unique_values?(Enum.map(glossary, &{&1["source_term"], &1["source_locale"], &1["target_locale"]}))
+  end
+
+  defp valid_glossary_entry?(
+         %{"source_term" => source_term, "source_locale" => source_locale, "target_locale" => target_locale} = entry
+       ) do
+    valid_glossary_source_term?(source_term) and
+      valid_glossary_locale?(source_locale) and
+      valid_glossary_term?(entry["target_term"]) and
+      valid_glossary_locale?(target_locale) and
+      valid_optional_string?(entry["context"]) and
+      valid_optional_boolean?(entry["do_not_translate"])
+  end
+
+  defp valid_glossary_entry?(_entry), do: false
+
+  defp canonical_locale?(locale_code) do
+    LocaleCode.valid?(locale_code) and LocaleCode.normalize(locale_code) == locale_code
+  end
+
+  defp valid_glossary_locale?(locale_code) do
+    LocaleCode.valid?(locale_code) and String.length(locale_code) <= 10
+  end
+
+  defp valid_required_string?(value, max_length) when is_binary(value) do
+    String.trim(value) != "" and String.length(value) <= max_length
+  end
+
+  defp valid_required_string?(_value, _max_length), do: false
+
+  defp valid_optional_string?(nil), do: true
+  defp valid_optional_string?(value), do: is_binary(value)
+
+  defp valid_optional_hash?(nil), do: true
+  defp valid_optional_hash?(value) when is_binary(value), do: Regex.match?(@sha256_format, value)
+  defp valid_optional_hash?(_value), do: false
+
+  defp valid_optional_enum?(nil, _values), do: true
+  defp valid_optional_enum?(value, values), do: value in values
+
+  defp valid_optional_boolean?(nil), do: true
+  defp valid_optional_boolean?(value), do: is_boolean(value)
+
+  defp valid_optional_id?(nil), do: true
+  defp valid_optional_id?(value), do: is_integer(value) and value > 0 and value <= @max_int64
+
+  defp safe_int32_id?(value), do: is_integer(value) and value > 0 and value <= @max_int32
+
+  defp safe_int32?(value) do
+    is_integer(value) and value >= -@max_int32 - 1 and value <= @max_int32
+  end
+
+  defp valid_optional_word_count?(nil), do: true
+  defp valid_optional_word_count?(value), do: is_integer(value) and value >= 0 and value <= @max_int32
+
+  defp valid_datetime?(nil), do: true
+  defp valid_datetime?(%DateTime{}), do: true
+
+  defp valid_datetime?(value) when is_binary(value) do
+    match?({:ok, %DateTime{}, _offset}, DateTime.from_iso8601(value))
+  end
+
+  defp valid_datetime?(_value), do: false
+
+  defp valid_glossary_source_term?(value) do
+    valid_required_string?(value, 255) and Regex.match?(@glossary_term_format, value)
+  end
+
+  defp valid_glossary_term?(nil), do: true
+
+  defp valid_glossary_term?(value) when is_binary(value) do
+    String.length(value) <= 255 and Regex.match?(@glossary_term_format, value)
+  end
+
+  defp valid_glossary_term?(_value), do: false
 
   defp classify_localization_texts(texts, indexes) do
     texts
@@ -666,22 +858,36 @@ defmodule Storyarn.ProjectTemplates.LegacySnapshotRepair do
   end
 
   defp validated_snapshot_entries(entries, entity_type) when is_list(entries) do
-    valid? =
-      Enum.all?(entries, fn
-        %{"id" => id, "snapshot" => %{"original_id" => id}} when is_integer(id) and id > 0 -> true
-        _entry -> false
-      end)
+    case collect_snapshot_entry_ids(entries) do
+      {:ok, ids} ->
+        if unique_values?(ids) do
+          {:ok, entries}
+        else
+          {:error, {:invalid_legacy_snapshot_entities, entity_type}}
+        end
 
-    ids = Enum.map(entries, & &1["id"])
-
-    if valid? and unique_values?(ids) do
-      {:ok, entries}
-    else
-      {:error, {:invalid_legacy_snapshot_entities, entity_type}}
+      :error ->
+        {:error, {:invalid_legacy_snapshot_entities, entity_type}}
     end
   end
 
   defp validated_snapshot_entries(_entries, entity_type), do: {:error, {:invalid_legacy_snapshot_entities, entity_type}}
+
+  defp collect_snapshot_entry_ids(entries) do
+    entries
+    |> Enum.reduce_while({:ok, []}, fn
+      %{"id" => id, "snapshot" => %{"original_id" => id}}, {:ok, ids}
+      when is_integer(id) and id > 0 ->
+        {:cont, {:ok, [id | ids]}}
+
+      _entry, _acc ->
+        {:halt, :error}
+    end)
+    |> case do
+      {:ok, ids} -> {:ok, Enum.reverse(ids)}
+      :error -> :error
+    end
+  end
 
   defp entry_snapshots_by_id(entries) do
     Map.new(entries, fn entry -> {entry["id"], entry["snapshot"]} end)

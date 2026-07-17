@@ -127,9 +127,8 @@ defmodule Storyarn.Assets.BlobStore do
   end
 
   defp materialize_and_insert_asset(changeset, project_id, blob_hash, ext, source_key, dest_key, opts) do
-    with {:ok, binary_data} <- load_verified_blob(source_key, blob_hash),
-         {:ok, destination_blob_key, blob_created?} <-
-           ensure_destination_blob(project_id, blob_hash, ext, binary_data) do
+    with {:ok, destination_blob_key, blob_created?} <-
+           ensure_destination_blob(project_id, blob_hash, ext, source_key, opts) do
       owned_keys = owned_storage_keys(dest_key, destination_blob_key, blob_created?)
       Enum.each(owned_keys, &track_copy(opts, &1))
 
@@ -137,53 +136,142 @@ defmodule Storyarn.Assets.BlobStore do
     end
   end
 
-  defp load_verified_blob(source_key, blob_hash) do
-    with {:ok, binary_data} <- Storage.download(source_key),
-         :ok <- verify_blob_hash(binary_data, blob_hash) do
-      {:ok, binary_data}
+  defp ensure_destination_blob(project_id, blob_hash, ext, source_key, opts) do
+    destination_blob_key = blob_key(project_id, blob_hash, ext)
+
+    with :ok <- verify_stored_blob(source_key, blob_hash) do
+      if source_key == destination_blob_key do
+        {:ok, destination_blob_key, false}
+      else
+        copy_verified_blob_if_absent(
+          source_key,
+          destination_blob_key,
+          blob_hash,
+          opts
+        )
+      end
     end
   end
 
-  defp ensure_destination_blob(project_id, blob_hash, ext, binary_data) do
-    case ensure_blob_with_status(project_id, blob_hash, ext, binary_data) do
-      {:ok, destination_blob_key, true} ->
-        {:ok, destination_blob_key, true}
-
-      {:ok, destination_blob_key, false} ->
-        with {:ok, stored_data} <- Storage.download(destination_blob_key),
-             :ok <- verify_blob_hash(stored_data, blob_hash) do
-          {:ok, destination_blob_key, false}
-        end
+  defp copy_verified_blob_if_absent(source_key, destination_blob_key, blob_hash, opts) do
+    case Storage.copy_if_absent(source_key, destination_blob_key) do
+      {:ok, created?} ->
+        verify_copied_blob(destination_blob_key, blob_hash, created?, opts)
 
       {:error, reason} ->
         {:error, reason}
     end
   end
 
-  defp verify_blob_hash(binary_data, expected_hash) do
-    if compute_hash(binary_data) == expected_hash, do: :ok, else: {:error, :blob_hash_mismatch}
+  defp verify_copied_blob(destination_blob_key, blob_hash, created?, opts) do
+    verification =
+      try do
+        {:result, verify_stored_blob(destination_blob_key, blob_hash)}
+      rescue
+        error -> {:raised, error, __STACKTRACE__}
+      catch
+        kind, reason -> {:caught, kind, reason, __STACKTRACE__}
+      end
+
+    case verification do
+      {:result, :ok} ->
+        {:ok, destination_blob_key, created?}
+
+      {:result, {:error, reason}} ->
+        compensate_created_blob(created?, opts, destination_blob_key)
+        {:error, reason}
+
+      {:result, _unexpected} ->
+        compensate_created_blob(created?, opts, destination_blob_key)
+        {:error, :unexpected_blob_verification_result}
+
+      {:raised, error, stacktrace} ->
+        compensate_created_blob(created?, opts, destination_blob_key)
+        reraise error, stacktrace
+
+      {:caught, kind, reason, stacktrace} ->
+        compensate_created_blob(created?, opts, destination_blob_key)
+        :erlang.raise(kind, reason, stacktrace)
+    end
+  end
+
+  defp compensate_created_blob(false, _opts, _destination_blob_key), do: :ok
+
+  defp compensate_created_blob(true, opts, destination_blob_key) do
+    track_copy(opts, destination_blob_key)
+    compensate_failed_materialization(opts, [destination_blob_key])
+  end
+
+  defp verify_stored_blob(storage_key, expected_hash) do
+    with {:ok, stat} <- Storage.stat(storage_key) do
+      verify_stored_blob(storage_key, stat, expected_hash)
+    end
+  end
+
+  defp verify_stored_blob(storage_key, stat, expected_hash) do
+    with {:ok, chunks} <-
+           Storage.stream(storage_key, 0, stat.size, etag: stat.etag),
+         {:ok, actual_hash} <- hash_chunks(chunks) do
+      if actual_hash == expected_hash, do: :ok, else: {:error, :blob_hash_mismatch}
+    end
+  end
+
+  defp hash_chunks(chunks) do
+    chunks
+    |> Enum.reduce_while({:ok, :crypto.hash_init(:sha256)}, fn
+      {:ok, chunk}, {:ok, hash_state} when is_binary(chunk) ->
+        {:cont, {:ok, :crypto.hash_update(hash_state, chunk)}}
+
+      {:error, reason}, _acc ->
+        {:halt, {:error, reason}}
+
+      _unexpected, _acc ->
+        {:halt, {:error, :unexpected_blob_stream_chunk}}
+    end)
+    |> case do
+      {:ok, hash_state} ->
+        hash = hash_state |> :crypto.hash_final() |> Base.encode16(case: :lower)
+        {:ok, hash}
+
+      {:error, _reason} = error ->
+        error
+    end
   end
 
   defp owned_storage_keys(dest_key, destination_blob_key, true), do: [dest_key, destination_blob_key]
   defp owned_storage_keys(dest_key, _destination_blob_key, false), do: [dest_key]
 
   defp copy_and_insert_asset(changeset, source_key, dest_key, owned_keys, opts) do
-    with :ok <- Storage.copy(source_key, dest_key),
-         {:ok, asset} <- Repo.insert(changeset) do
-      {:ok, asset}
-    else
-      {:error, reason} ->
+    outcome =
+      try do
+        with :ok <- Storage.copy(source_key, dest_key),
+             {:ok, asset} <- Repo.insert(changeset) do
+          {:success, asset}
+        else
+          {:error, reason} -> {:failure, reason}
+        end
+      rescue
+        error -> {:raised, error, __STACKTRACE__}
+      catch
+        kind, reason -> {:caught, kind, reason, __STACKTRACE__}
+      end
+
+    case outcome do
+      {:success, asset} ->
+        {:ok, asset}
+
+      {:failure, reason} ->
         compensate_failed_materialization(opts, owned_keys)
         {:error, reason}
+
+      {:raised, error, stacktrace} ->
+        compensate_failed_materialization(opts, owned_keys)
+        reraise error, stacktrace
+
+      {:caught, kind, reason, stacktrace} ->
+        compensate_failed_materialization(opts, owned_keys)
+        :erlang.raise(kind, reason, stacktrace)
     end
-  rescue
-    error ->
-      compensate_failed_materialization(opts, owned_keys)
-      reraise error, __STACKTRACE__
-  catch
-    kind, reason ->
-      compensate_failed_materialization(opts, owned_keys)
-      :erlang.raise(kind, reason, __STACKTRACE__)
   end
 
   defp restore_changeset(asset, %{content_type: "image/svg+xml", metadata: %{"sanitized_svg" => true}} = attrs) do
@@ -199,37 +287,26 @@ defmodule Storyarn.Assets.BlobStore do
     end
   end
 
-  defp untrack_copy(opts, dest_key) do
-    case Keyword.get(opts, :asset_copy_tracker) do
-      reference when is_reference(reference) -> StorageCompensation.untrack(reference, dest_key)
-      _reference -> :ok
-    end
-  end
-
   defp compensate_failed_materialization(opts, owned_keys) do
-    failed_keys =
-      Enum.reduce(owned_keys, [], fn storage_key, failed_keys ->
-        case Storage.delete(storage_key) do
-          :ok ->
-            untrack_copy(opts, storage_key)
-            failed_keys
+    case Keyword.get(opts, :asset_copy_tracker) do
+      reference when is_reference(reference) ->
+        compensate_tracked_materialization(reference, owned_keys)
 
-          {:error, reason} ->
-            Logger.warning("Could not delete asset after materialization failure error=#{safe_error(reason)}")
-            [storage_key | failed_keys]
-        end
-      end)
-
-    enqueue_untracked_cleanup(opts, failed_keys)
+      _reference ->
+        StorageCompensation.delete_or_enqueue_all!(owned_keys)
+    end
   end
 
-  defp enqueue_untracked_cleanup(_opts, []), do: :ok
+  defp compensate_tracked_materialization(reference, owned_keys) do
+    Enum.each(owned_keys, fn storage_key ->
+      case Storage.delete(storage_key) do
+        :ok ->
+          StorageCompensation.untrack(reference, storage_key)
 
-  defp enqueue_untracked_cleanup(opts, storage_keys) do
-    case Keyword.get(opts, :asset_copy_tracker) do
-      reference when is_reference(reference) -> :ok
-      _reference -> StorageCompensation.enqueue_cleanup(storage_keys)
-    end
+        {:error, reason} ->
+          Logger.warning("Could not delete tracked asset after materialization failure error=#{safe_error(reason)}")
+      end
+    end)
   end
 
   defp safe_error(reason) when is_atom(reason), do: reason

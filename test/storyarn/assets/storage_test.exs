@@ -74,6 +74,20 @@ defmodule Storyarn.Assets.StorageTest do
     end
   end
 
+  describe "copy_if_absent/2" do
+    test "delegates conditional copies and preserves the first destination bytes" do
+      source_key = "dispatch_copy/source.txt"
+      destination_key = "dispatch_copy/destination.txt"
+
+      assert {:ok, _url} = Storage.upload(source_key, "first", "text/plain")
+      assert {:ok, true} = Storage.copy_if_absent(source_key, destination_key)
+
+      assert {:ok, _url} = Storage.upload(source_key, "second", "text/plain")
+      assert {:ok, false} = Storage.copy_if_absent(source_key, destination_key)
+      assert {:ok, "first"} = Storage.download(destination_key)
+    end
+  end
+
   # =============================================================================
   # delete/1
   # =============================================================================
