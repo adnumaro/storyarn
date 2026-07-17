@@ -293,4 +293,42 @@ defmodule Storyarn.Versioning.RestorePolicyTest do
 
     assert Storyarn.Repo.aggregate(Projects.Project, :count) == project_count
   end
+
+  test "template clone bypass is enabled only by literal true" do
+    user = user_fixture()
+    project = project_fixture(user)
+
+    policy =
+      Application.get_env(:storyarn, RestorePolicy, [])
+
+    Application.put_env(
+      :storyarn,
+      RestorePolicy,
+      Keyword.put(policy, :deleted_project_recovery, false)
+    )
+
+    project_count = Storyarn.Repo.aggregate(Projects.Project, :count)
+
+    for template_clone <- ["true", 1, :yes] do
+      assert {:error, :restore_temporarily_disabled} =
+               ProjectRecovery.recover_project(
+                 project.workspace_id,
+                 %{},
+                 user.id,
+                 template_clone: template_clone
+               )
+    end
+
+    assert Storyarn.Repo.aggregate(Projects.Project, :count) == project_count
+
+    assert {:ok, _recovered_project} =
+             ProjectRecovery.recover_project(
+               project.workspace_id,
+               %{},
+               user.id,
+               template_clone: true
+             )
+
+    assert Storyarn.Repo.aggregate(Projects.Project, :count) == project_count + 1
+  end
 end

@@ -56,7 +56,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp ensure_recovery_enabled(opts) do
-    if Keyword.get(opts, :template_clone, false) do
+    if template_clone?(opts) do
       :ok
     else
       RestorePolicy.ensure_enabled(:deleted_project_recovery)
@@ -190,7 +190,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
       |> Keyword.merge(builder_opts)
       |> Keyword.put(:user_id, user_id)
 
-    if Keyword.get(recovery_opts, :template_clone, false) do
+    if template_clone?(recovery_opts) do
       Keyword.put(builder_opts, :asset_mode, :copy)
     else
       builder_opts
@@ -620,7 +620,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp localization_asset_opts(opts) do
-    asset_mode = if Keyword.get(opts, :template_clone, false), do: :copy, else: :reuse
+    asset_mode = if template_clone?(opts), do: :copy, else: :reuse
 
     opts
     |> Keyword.take([:asset_copy_tracker, :asset_error_mode])
@@ -632,6 +632,10 @@ defmodule Storyarn.Versioning.ProjectRecovery do
       reference when is_reference(reference) -> {reference, false}
       _reference -> {StorageCompensation.new(), true}
     end
+  end
+
+  defp template_clone?(opts) do
+    Keyword.get(opts, :template_clone, false) == true
   end
 
   defp finalize_asset_copies({:ok, _project} = result, tracker, true) do

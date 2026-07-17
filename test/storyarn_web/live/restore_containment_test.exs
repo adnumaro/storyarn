@@ -8,6 +8,7 @@ defmodule StoryarnWeb.RestoreContainmentTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Collaboration
   alias Storyarn.Projects
   alias Storyarn.Repo
   alias Storyarn.Sheets
@@ -15,6 +16,7 @@ defmodule StoryarnWeb.RestoreContainmentTest do
   alias Storyarn.Versioning.RestorePolicy
   alias Storyarn.Workers.RecoverProjectWorker
   alias Storyarn.Workers.RestoreProjectWorker
+  alias StoryarnWeb.ProjectLive.Components.SettingsComponents
 
   setup :register_and_log_in_user
 
@@ -167,6 +169,45 @@ defmodule StoryarnWeb.RestoreContainmentTest do
     assert Versioning.count_project_snapshots(project.id) == 1
   end
 
+  test "project snapshot lifecycle starts before an inline worker can complete", %{
+    user: user,
+    scope: scope
+  } do
+    Application.put_env(
+      :storyarn,
+      RestorePolicy,
+      sheet_version_restore: true,
+      flow_version_restore: true,
+      scene_version_restore: true,
+      project_snapshot_restore: true,
+      deleted_project_recovery: false
+    )
+
+    project = project_fixture(user)
+
+    {:ok, snapshot} =
+      Versioning.create_project_snapshot(project.id, user.id, title: "Fast restore")
+
+    Collaboration.subscribe_restoration(project.id)
+
+    socket =
+      %Phoenix.LiveView.Socket{assigns: %{__changed__: %{}, flash: %{}}}
+      |> Phoenix.Component.assign(:project, project)
+      |> Phoenix.Component.assign(:current_scope, scope)
+      |> Phoenix.Component.assign(:restoration_in_progress, false)
+
+    assert {:noreply, _socket} =
+             Oban.Testing.with_testing_mode(:inline, fn ->
+               SettingsComponents.do_restore_snapshot(socket, snapshot.id)
+             end)
+
+    assert {:project_restoration_started, %{user_email: user_email}} =
+             receive_restoration_event()
+
+    assert user_email == user.email
+    assert {:project_restoration_completed, _payload} = receive_restoration_event()
+  end
+
   test "deleted-project recovery is hidden and forged events create no job", %{
     conn: conn,
     user: user
@@ -200,6 +241,68 @@ defmodule StoryarnWeb.RestoreContainmentTest do
 
     refute_enqueued(worker: RecoverProjectWorker)
     assert Repo.get(Projects.Project, project.id)
+  end
+
+  test "deleted-project recovery rejects malformed and out-of-range IDs without crashing", %{
+    conn: conn,
+    user: user
+  } do
+    Application.put_env(
+      :storyarn,
+      RestorePolicy,
+      sheet_version_restore: false,
+      flow_version_restore: false,
+      scene_version_restore: false,
+      project_snapshot_restore: false,
+      deleted_project_recovery: true
+    )
+
+    project = user |> project_fixture() |> Repo.preload(:workspace)
+    {:ok, _deleted_project} = Projects.delete_project(project, user.id)
+
+    url =
+      ~p"/users/settings/workspaces/#{project.workspace.slug}/deleted-projects"
+
+    {:ok, view, _html} = live(conn, url)
+
+    out_of_range_id = 9_223_372_036_854_775_808
+
+    for id <- [
+          %{"forged" => project.id},
+          out_of_range_id,
+          Integer.to_string(out_of_range_id)
+        ] do
+      render_click(view, "toggle_project", %{"id" => id})
+    end
+
+    render_click(view, "toggle_project", %{})
+
+    for payload <- [
+          %{"project_id" => project.id, "snapshot_id" => [project.id]},
+          %{"project_id" => out_of_range_id, "snapshot_id" => project.id},
+          %{
+            "project_id" => project.id,
+            "snapshot_id" => Integer.to_string(out_of_range_id)
+          },
+          %{},
+          %{"project_id" => project.id},
+          %{"snapshot_id" => project.id}
+        ] do
+      render_click(view, "recover_project", payload)
+    end
+
+    assert Process.alive?(view.pid)
+    refute_enqueued(worker: RecoverProjectWorker)
+
+    vue =
+      LiveVue.Test.get_vue(
+        view,
+        name: "live/workspace/settings/WorkspaceSettingsDeletedProjects"
+      )
+
+    assert vue.props["expanded-project-id"] == nil
+    assert vue.props["snapshots"] == []
+    assert vue.props["recovering"] == false
   end
 
   test "the deleted-project screen cannot inspect another workspace's snapshots", %{
@@ -244,5 +347,15 @@ defmodule StoryarnWeb.RestoreContainmentTest do
 
     assert vue.props["expanded-project-id"] == nil
     assert vue.props["snapshots"] == []
+  end
+
+  defp receive_restoration_event do
+    receive do
+      {:project_restoration_started, _payload} = event -> event
+      {:project_restoration_completed, _payload} = event -> event
+      {:project_restoration_failed, _payload} = event -> event
+    after
+      1_000 -> flunk("expected a project restoration lifecycle event")
+    end
   end
 end

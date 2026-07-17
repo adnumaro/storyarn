@@ -167,14 +167,16 @@ defmodule Storyarn.Assets.Storage do
 
   defp recoverable_blob_key?(_key), do: false
 
-  defp canonical_key?(key) when is_binary(key) do
+  @doc false
+  @spec canonical_key?(term()) :: boolean()
+  def canonical_key?(key) when is_binary(key) do
     key != "" and
       String.valid?(key) and
       not String.contains?(key, [<<0>>, "\\"]) and
       canonical_segments?(String.split(key, "/", trim: false))
   end
 
-  defp canonical_key?(_key), do: false
+  def canonical_key?(_key), do: false
 
   defp canonical_segments?(segments) do
     segments != [] and

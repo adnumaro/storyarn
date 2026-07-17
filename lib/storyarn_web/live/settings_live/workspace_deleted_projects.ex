@@ -10,6 +10,8 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
   alias Storyarn.Workspaces
   alias StoryarnWeb.Helpers.Authorize
 
+  @max_bigint 9_223_372_036_854_775_807
+
   @impl true
   def mount(_params, _session, socket) do
     %{workspace: workspace, membership: membership} = socket.assigns
@@ -126,6 +128,8 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
     end
   end
 
+  def handle_event("toggle_project", _params, socket), do: recovery_unavailable(socket)
+
   @impl true
   def handle_event("recover_project", %{"snapshot_id" => snapshot_id, "project_id" => project_id}, socket) do
     Authorize.with_authorization(socket, :manage_workspace, fn socket ->
@@ -143,6 +147,8 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
       end
     end)
   end
+
+  def handle_event("recover_project", _params, socket), do: recovery_unavailable(socket)
 
   @impl true
   def handle_info({:recovery_completed, %{project_name: name}}, socket) do
@@ -232,12 +238,16 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
      )}
   end
 
-  defp parse_id(value) do
-    case Integer.parse(to_string(value)) do
-      {id, ""} when id > 0 -> {:ok, id}
+  defp parse_id(value) when is_integer(value) and value > 0 and value <= @max_bigint, do: {:ok, value}
+
+  defp parse_id(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {id, ""} when id > 0 and id <= @max_bigint -> {:ok, id}
       _error -> :error
     end
   end
+
+  defp parse_id(_value), do: :error
 
   defp authorize_current_manager(socket) do
     workspace_id = socket.assigns.workspace.id

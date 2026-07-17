@@ -7,6 +7,7 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpers do
 
   import Phoenix.LiveView, only: [push_event: 3, push_navigate: 2, put_flash: 3]
 
+  alias Phoenix.LiveView.Socket
   alias Storyarn.Analytics
   alias Storyarn.Versioning
   alias StoryarnWeb.Helpers.Authorize
@@ -50,7 +51,7 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpers do
   end
 
   def handle_preview_restore(%{"version_number" => version_number}, socket, config) do
-    with_authorized_restore(socket, config, fn authorized_socket ->
+    with_authorized_restore(socket, config.entity_type, fn authorized_socket ->
       with_version(authorized_socket, config, version_number, fn version ->
         VersionHistoryHelpers.detect_and_show_restore_preview(
           authorized_socket,
@@ -63,7 +64,7 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpers do
   end
 
   def handle_save_and_restore(%{"version_number" => version_number}, socket, config) do
-    with_authorized_restore(socket, config, fn authorized_socket ->
+    with_authorized_restore(socket, config.entity_type, fn authorized_socket ->
       with_version(
         authorized_socket,
         config,
@@ -77,7 +78,7 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpers do
   end
 
   def handle_discard_and_restore(%{"version_number" => version_number}, socket, config) do
-    with_authorized_restore(socket, config, fn authorized_socket ->
+    with_authorized_restore(socket, config.entity_type, fn authorized_socket ->
       with_version(
         authorized_socket,
         config,
@@ -97,7 +98,7 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpers do
   end
 
   def handle_confirm_restore(%{"version_number" => version_number} = params, socket, config) do
-    with_authorized_restore(socket, config, fn authorized_socket ->
+    with_authorized_restore(socket, config.entity_type, fn authorized_socket ->
       with_version(
         authorized_socket,
         config,
@@ -124,16 +125,19 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpers do
   defp blank_to_nil(""), do: nil
   defp blank_to_nil(value), do: value
 
-  defp with_authorized_restore(socket, config, fun) do
-    with_restore_enabled(socket, config, fn ->
-      Authorize.with_authorization(socket, :edit_content, fun)
-    end)
-  end
-
-  defp with_restore_enabled(socket, config, fun) do
-    case Versioning.ensure_restore_enabled({:entity_version_restore, config.entity_type}) do
+  @doc """
+  Runs an entity-version restore callback only when restore is enabled and the
+  current project member can edit content.
+  """
+  @spec with_authorized_restore(
+          Socket.t(),
+          String.t(),
+          (Socket.t() -> {:noreply, Socket.t()})
+        ) :: {:noreply, Socket.t()}
+  def with_authorized_restore(socket, entity_type, fun) do
+    case Versioning.ensure_restore_enabled({:entity_version_restore, entity_type}) do
       :ok ->
-        fun.()
+        Authorize.with_authorization(socket, :edit_content, fun)
 
       {:error, :restore_temporarily_disabled} ->
         {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not restore version."))}

@@ -267,21 +267,50 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   test "invalid or traversal-like keys never reach deletion callbacks" do
     parent = self()
 
-    for invalid_key <- [
-          "projects/1/assets/../blobs/recovery.png",
-          "projects/1/assets/./copy.png",
-          "projects/not-an-id/assets/tmp/copy.png",
-          "projects/1/assets/",
-          "other/1/assets/tmp/copy.png"
-        ] do
+    invalid_keys = [
+      "projects/1/assets/../blobs/recovery.png",
+      "projects/1/assets/./copy.png",
+      "projects/not-an-id/assets/tmp/copy.png",
+      "projects/1/assets/",
+      "other/1/assets/tmp/copy.png",
+      "projects/1/assets/tmp\\copy.png",
+      "projects/1/assets/tmp/copy.png" <> <<0>>,
+      "projects/1/assets/tmp/" <> <<255>>
+    ]
+
+    for invalid_key <- invalid_keys do
       assert :ok =
                StorageCompensation.delete_or_enqueue(invalid_key,
                  delete_fun: fn _key ->
                    send(parent, :invalid_delete_attempted)
-                   :ok
+                   {:error, :temporarily_unavailable}
                  end,
+                 delete_attempts: 1,
                  enqueue_fun: fn _keys ->
                    send(parent, :invalid_cleanup_enqueued)
+                   :ok
+                 end
+               )
+
+      assert :ok =
+               StorageCompensation.enqueue_cleanup([invalid_key],
+                 insert_fun: fn _keys ->
+                   send(parent, :invalid_cleanup_job_inserted)
+                   {:ok, %{id: 1}}
+                 end
+               )
+
+      tracker = StorageCompensation.new()
+      :ok = StorageCompensation.track(tracker, invalid_key)
+
+      assert :ok =
+               StorageCompensation.cleanup(tracker,
+                 enqueue_fun: fn _keys ->
+                   send(parent, :invalid_tracked_cleanup_enqueued)
+                   :ok
+                 end,
+                 delete_fun: fn _keys ->
+                   send(parent, :invalid_tracked_delete_attempted)
                    :ok
                  end
                )
@@ -289,5 +318,8 @@ defmodule Storyarn.Assets.StorageCompensationTest do
 
     refute_receive :invalid_delete_attempted
     refute_receive :invalid_cleanup_enqueued
+    refute_receive :invalid_cleanup_job_inserted
+    refute_receive :invalid_tracked_cleanup_enqueued
+    refute_receive :invalid_tracked_delete_attempted
   end
 end

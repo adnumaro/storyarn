@@ -62,7 +62,7 @@ describe("restore containment", () => {
       global,
     });
 
-    expect(wrapper.find('[data-testid="restore-version"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid^="restore-version-"]').exists()).toBe(false);
     expect(wrapper.find('button[title="Compare with current"]').exists()).toBe(true);
     expect(wrapper.find('button[title="Delete version"]').exists()).toBe(true);
 
@@ -90,12 +90,58 @@ describe("restore containment", () => {
       global,
     });
 
-    await wrapper.get('[data-testid="restore-version"]').trigger("click");
+    await wrapper.get('[data-testid="restore-version-3"]').trigger("click");
 
     expect(live.pushEvent).toHaveBeenCalledWith(
       "preview_restore",
       {
         version_number: 3,
+      },
+      undefined,
+    );
+  });
+
+  it("targets named and automatic restores by version number", async () => {
+    const { live, global } = liveGlobal();
+
+    const wrapper = mount(VersionHistory, {
+      props: {
+        versions: [
+          { id: 10, versionNumber: 3, title: "Milestone" },
+          { id: 11, versionNumber: 2, changeSummary: "Auto-save" },
+        ],
+        namedVersions: [{ id: 10, versionNumber: 3, title: "Milestone" }],
+        autoVersions: [{ id: 11, versionNumber: 2, changeSummary: "Auto-save" }],
+        canEdit: true,
+        canNameVersion: true,
+        restoreEnabled: true,
+      },
+      global,
+    });
+
+    const autoVersionsToggle = wrapper
+      .findAll("button")
+      .find((button) => button.text().includes("auto-save"));
+
+    expect(autoVersionsToggle).toBeDefined();
+    await autoVersionsToggle!.trigger("click");
+
+    await wrapper.get('[data-testid="restore-version-3"]').trigger("click");
+    await wrapper.get('[data-testid="restore-version-2"]').trigger("click");
+
+    expect(live.pushEvent).toHaveBeenNthCalledWith(
+      1,
+      "preview_restore",
+      {
+        version_number: 3,
+      },
+      undefined,
+    );
+    expect(live.pushEvent).toHaveBeenNthCalledWith(
+      2,
+      "preview_restore",
+      {
+        version_number: 2,
       },
       undefined,
     );

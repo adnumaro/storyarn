@@ -407,6 +407,14 @@ defmodule Storyarn.Assets.StorageCompensation do
   end
 
   defp classify_storage_key(storage_key) when is_binary(storage_key) do
+    if Storage.canonical_key?(storage_key),
+      do: classify_canonical_storage_key(storage_key),
+      else: :invalid
+  end
+
+  defp classify_storage_key(_storage_key), do: :invalid
+
+  defp classify_canonical_storage_key(storage_key) do
     case String.split(storage_key, "/", trim: false) do
       ["projects", project_id, "assets" | tail] ->
         classify_project_key(project_id, tail, :temporary_asset_copy)
@@ -418,8 +426,6 @@ defmodule Storyarn.Assets.StorageCompensation do
         :invalid
     end
   end
-
-  defp classify_storage_key(_storage_key), do: :invalid
 
   defp classify_project_key(project_id, tail, classification) do
     with {id, ""} when id > 0 <- Integer.parse(project_id),

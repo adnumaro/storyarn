@@ -160,7 +160,7 @@ function changeActionColor(action: string) {
               </button>
               <button
                 v-if="restoreEnabled && canEdit && version.id !== currentVersionId"
-                data-testid="restore-version"
+                :data-testid="`restore-version-${version.versionNumber}`"
                 class="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                 title="Restore this version"
                 @click="h.previewRestore(version.versionNumber)"
@@ -319,7 +319,7 @@ function changeActionColor(action: string) {
                 </button>
                 <button
                   v-if="restoreEnabled && canEdit && version.id !== currentVersionId"
-                  data-testid="restore-version"
+                  :data-testid="`restore-version-${version.versionNumber}`"
                   class="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                   title="Restore this version"
                   @click="h.previewRestore(version.versionNumber)"

@@ -114,11 +114,13 @@ defmodule Storyarn.Workers.RestoreProjectWorkerTest do
       assert_received {:project_restoration_failed, %{reason: :restore_temporarily_disabled}}
     end
 
-    test "rejects an already queued restore when the project was permanently deleted", %{
+    test "returns containment error when project disappears before queued restore executes", %{
       project: project,
       user: user
     } do
       project_id = project.id
+
+      # The containment branch still releases the lock, so a missing row must not raise.
       Repo.delete!(project)
 
       policy = Application.get_env(:storyarn, RestorePolicy, [])
