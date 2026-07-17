@@ -21,6 +21,7 @@ defmodule Mix.Tasks.Storyarn.Templates.Import do
     * `--description`
     * `--version-notes`
     * `--update-existing`
+    * `--repair-legacy-snapshot` explicitly repairs the pre-sequence portable format
     * `--yes`
 
   `public` templates are intended for controlled admin/operator imports, not
@@ -48,13 +49,14 @@ defmodule Mix.Tasks.Storyarn.Templates.Import do
           description: :string,
           version_notes: :string,
           update_existing: :boolean,
+          repair_legacy_snapshot: :boolean,
           yes: :boolean
         ]
       )
 
     path = parse_args!(positional)
 
-    case ProjectTemplates.preview_portable_template(path) do
+    case ProjectTemplates.preview_portable_template(path, opts) do
       {:ok, manifest} ->
         print_preview(path, manifest, opts)
         ensure_confirmed!(opts)
@@ -92,8 +94,18 @@ defmodule Mix.Tasks.Storyarn.Templates.Import do
     Mix.shell().info("Visibility: #{visibility}")
     Mix.shell().info("Verify user ID: #{Keyword.get(opts, :verify_user_id) || "missing"}")
     Mix.shell().info("Verify workspace ID: #{Keyword.get(opts, :verify_workspace_id) || "missing"}")
+    Mix.shell().info("Repair legacy snapshot: #{Keyword.get(opts, :repair_legacy_snapshot, false)}")
+    print_repair_preview(manifest["legacy_snapshot_repair"])
     Mix.shell().info("Assets: #{manifest["asset_count"]}")
     Mix.shell().info("Checksum: #{manifest["checksum"]}")
+  end
+
+  defp print_repair_preview(nil), do: :ok
+
+  defp print_repair_preview(report) do
+    Mix.shell().info("Sequences replaced by recovery notes: #{report["repaired_sequence_count"]}")
+    Mix.shell().info("Legacy localization rows removed: #{report["localization"]["removed_count"]}")
+    Mix.shell().info("Warning: #{report["warning"]}")
   end
 
   defp ensure_confirmed!(opts) do

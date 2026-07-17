@@ -519,14 +519,14 @@ defmodule StoryarnWeb.TemplateLive.Show do
     if installation_for_template?(installation, socket.assigns.template.id) do
       socket = refresh_active_installations(socket)
 
-      case installation.status do
-        "completed" ->
+      case {installation.status, installation.feedback_dismissed_at} do
+        {"completed", _dismissed_at} ->
           {:noreply,
            socket
            |> put_flash(:info, dgettext("projects", "Your project is ready."))
            |> push_navigate(to: ~p"/workspaces/#{installation.workspace.slug}/projects/#{installation.project.slug}")}
 
-        "failed" ->
+        {"failed", nil} ->
           {:noreply,
            put_flash(
              socket,
@@ -534,7 +534,7 @@ defmodule StoryarnWeb.TemplateLive.Show do
              dgettext("projects", "Template installation failed. Reference: %{reference}", reference: installation.id)
            )}
 
-        _status ->
+        {_status, _dismissed_at} ->
           {:noreply, socket}
       end
     else

@@ -13,6 +13,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Localization
+  alias Storyarn.ProjectTemplates.Audit
   alias Storyarn.Repo
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.Sheet
@@ -239,6 +240,63 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       assert recovered_dialogue.data["speaker_sheet_id"] == recovered_speaker.id
       assert recovered_dialogue.data["location_sheet_id"] == recovered_speaker.id
       assert recovered_subflow_node.data["referenced_flow_id"] == recovered_subflow.id
+    end
+
+    test "remaps subflow exit pins to exit nodes in the referenced recovered flow", %{
+      project: project,
+      workspace_id: workspace_id,
+      user: user
+    } do
+      caller_flow = flow_fixture(project, %{name: "Caller Flow"})
+      referenced_flow = flow_fixture(project, %{name: "Referenced Flow"})
+
+      referenced_exit =
+        node_fixture(referenced_flow, %{
+          type: "exit",
+          data: %{"label" => "Returned", "exit_mode" => "caller_return"}
+        })
+
+      subflow_node =
+        node_fixture(caller_flow, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => to_string(referenced_flow.id)}
+        })
+
+      next_node = node_fixture(caller_flow, %{type: "hub"})
+
+      _connection =
+        Storyarn.FlowsFixtures.connection_fixture(caller_flow, subflow_node, next_node, %{
+          source_pin: "exit_#{referenced_exit.id}"
+        })
+
+      snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
+
+      assert {:ok, recovered} =
+               ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id)
+
+      recovered_flows = Storyarn.Flows.list_flows(recovered.id)
+
+      recovered_caller =
+        recovered_flows
+        |> Enum.find(&(&1.name == "Caller Flow"))
+        |> Repo.preload([:connections, :nodes], force: true)
+
+      recovered_referenced =
+        recovered_flows
+        |> Enum.find(&(&1.name == "Referenced Flow"))
+        |> Repo.preload(:nodes, force: true)
+
+      recovered_exit =
+        Enum.find(
+          recovered_referenced.nodes,
+          &(&1.type == "exit" and &1.data["label"] == "Returned")
+        )
+
+      recovered_subflow = Enum.find(recovered_caller.nodes, &(&1.type == "subflow"))
+      recovered_connection = Enum.find(recovered_caller.connections, &(&1.source_node_id == recovered_subflow.id))
+
+      assert recovered_connection.source_pin == "exit_#{recovered_exit.id}"
+      assert {:ok, %{"status" => "passed"}} = Audit.run(recovered.id)
     end
 
     test "remaps inherited blocks across recovered sheets", %{

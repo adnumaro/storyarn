@@ -953,7 +953,41 @@ defmodule Storyarn.ProjectTemplatesTest do
       assert failed.stage == "failed"
       assert failed.error_code == "checksum_mismatch"
       assert failed.completed_at
+      assert is_nil(failed.project_id)
       assert Repo.aggregate(Project, :count) == project_count
+
+      assert [pending_failure] =
+               ProjectTemplates.list_pending_workspace_installation_failures(scope, workspace)
+
+      assert pending_failure.id == installation.id
+
+      other_user = AccountsFixtures.user_fixture()
+      other_scope = AccountsFixtures.user_scope_fixture(other_user)
+      _membership = WorkspacesFixtures.workspace_membership_fixture(workspace, other_user)
+
+      assert [] =
+               ProjectTemplates.list_pending_workspace_installation_failures(
+                 other_scope,
+                 workspace
+               )
+
+      assert {:error, :not_found} =
+               ProjectTemplates.dismiss_installation_failure(
+                 other_scope,
+                 workspace,
+                 installation.id
+               )
+
+      assert {:ok, dismissed} =
+               ProjectTemplates.dismiss_installation_failure(scope, workspace, installation.id)
+
+      assert dismissed.feedback_dismissed_at
+
+      assert {:ok, dismissed_again} =
+               ProjectTemplates.dismiss_installation_failure(scope, workspace, installation.id)
+
+      assert dismissed_again.feedback_dismissed_at == dismissed.feedback_dismissed_at
+      assert [] = ProjectTemplates.list_pending_workspace_installation_failures(scope, workspace)
     end
 
     test "records missing template asset blobs as a permanent failure" do
@@ -989,6 +1023,60 @@ defmodule Storyarn.ProjectTemplatesTest do
       assert failed.status == "failed"
       assert failed.error_code == "asset_copy_failed"
       assert Repo.aggregate(Project, :count) == project_count
+    end
+
+    test "lets a workspace member list and dismiss their own failed installation" do
+      workspace_owner = AccountsFixtures.user_fixture()
+      workspace = WorkspacesFixtures.workspace_fixture(workspace_owner)
+      installer = AccountsFixtures.user_fixture()
+      installer_scope = AccountsFixtures.user_scope_fixture(installer)
+      _membership = WorkspacesFixtures.workspace_membership_fixture(workspace, installer, "member")
+      source_project = ProjectsFixtures.project_fixture(installer, %{name: "Member Template Source"})
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(installer_scope, source_project, %{
+                 name: "Member Starter"
+               })
+
+      version =
+        ProjectTemplateVersion
+        |> Repo.get!(template.current_version_id)
+        |> Ecto.Changeset.change(checksum: String.duplicate("0", 64))
+        |> Repo.update!()
+
+      assert {:ok, installation} =
+               ProjectTemplates.request_template_instantiation(installer_scope, version, workspace, %{
+                 name: "Member Copy",
+                 source: "workspace_dashboard"
+               })
+
+      assert :ok =
+               perform_job(InstallProjectTemplateWorker, %{
+                 "installation_id" => installation.id
+               })
+
+      assert [%ProjectTemplateInstall{id: installation_id}] =
+               ProjectTemplates.list_pending_workspace_installation_failures(
+                 installer_scope,
+                 workspace
+               )
+
+      assert installation_id == installation.id
+
+      assert {:ok, dismissed} =
+               ProjectTemplates.dismiss_installation_failure(
+                 installer_scope,
+                 workspace,
+                 installation.id
+               )
+
+      assert dismissed.feedback_dismissed_at
+
+      assert [] =
+               ProjectTemplates.list_pending_workspace_installation_failures(
+                 installer_scope,
+                 workspace
+               )
     end
 
     test "persists retry progress for transient storage failures before failing the last attempt" do

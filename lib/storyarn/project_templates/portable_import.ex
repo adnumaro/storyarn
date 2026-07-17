@@ -7,6 +7,7 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
   alias Storyarn.Assets.Storage
   alias Storyarn.ProjectTemplates.Artifact
   alias Storyarn.ProjectTemplates.Audit
+  alias Storyarn.ProjectTemplates.LegacySnapshotRepair
   alias Storyarn.ProjectTemplates.PortableBundle
   alias Storyarn.ProjectTemplates.ProjectTemplate
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
@@ -18,12 +19,13 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
 
   @visibilities ~w(private public)
 
-  @spec preview_bundle(String.t()) :: {:ok, map()} | {:error, term()}
-  def preview_bundle(path) do
+  @spec preview_bundle(String.t(), keyword()) :: {:ok, map()} | {:error, term()}
+  def preview_bundle(path, opts \\ []) do
     with {:ok, bundle} <- PortableBundle.read(path),
          :ok <- validate_manifest(bundle.manifest),
-         :ok <- verify_bundle_checksum(bundle) do
-      {:ok, bundle.manifest}
+         :ok <- verify_bundle_checksum(bundle),
+         {:ok, repair_report} <- preview_legacy_repair(bundle.snapshot, opts) do
+      {:ok, put_repair_preview(bundle.manifest, repair_report)}
     end
   end
 
@@ -89,7 +91,8 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
       published_by_id: plan_published_by_id(opts, owner_id, verify_user_id),
       verify_user_id: verify_user_id,
       verify_workspace_id: normalize_integer(option(opts, :verify_workspace_id)),
-      version_notes: plan_version_notes(template, opts)
+      version_notes: plan_version_notes(template, opts),
+      repair_legacy_snapshot: truthy?(option(opts, :repair_legacy_snapshot))
     }
   end
 
@@ -199,8 +202,9 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
   end
 
   defp import_artifacts(bundle, plan) do
-    with {:ok, imported_blobs} <- upload_bundle_assets(bundle, plan),
-         snapshot = rewrite_snapshot_assets(bundle.snapshot, imported_blobs),
+    with {:ok, prepared_snapshot, repair_report} <- prepare_snapshot(bundle.snapshot, plan),
+         {:ok, imported_blobs} <- upload_bundle_assets(bundle, plan),
+         snapshot = rewrite_snapshot_assets(prepared_snapshot, imported_blobs),
          asset_manifest = rewrite_asset_manifest(bundle.asset_manifest, imported_blobs),
          {:ok, materialization_report} <- verify_import_materialization(snapshot, plan, imported_blobs),
          {:ok, snapshot_key, asset_manifest_key} <-
@@ -214,6 +218,7 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
          asset_manifest_key: asset_manifest_key,
          checksum: Artifact.checksum(%{"snapshot" => snapshot, "asset_manifest" => asset_manifest}),
          materialization_report: materialization_report,
+         repair_report: repair_report,
          preview: Artifact.preview(snapshot, asset_manifest)
        }}
     else
@@ -225,6 +230,26 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
         {:error, reason}
     end
   end
+
+  defp prepare_snapshot(snapshot, %{repair_legacy_snapshot: true}) do
+    LegacySnapshotRepair.repair(snapshot)
+  end
+
+  defp prepare_snapshot(snapshot, _plan), do: {:ok, snapshot, nil}
+
+  defp preview_legacy_repair(snapshot, opts) do
+    if truthy?(option(opts, :repair_legacy_snapshot)) do
+      case LegacySnapshotRepair.repair(snapshot) do
+        {:ok, _repaired_snapshot, report} -> {:ok, report}
+        {:error, reason} -> {:error, reason}
+      end
+    else
+      {:ok, nil}
+    end
+  end
+
+  defp put_repair_preview(manifest, nil), do: manifest
+  defp put_repair_preview(manifest, report), do: Map.put(manifest, "legacy_snapshot_repair", report)
 
   defp upload_bundle_assets(bundle, plan) do
     bundle.files
@@ -389,7 +414,13 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
   end
 
   defp import_audit_report(bundle, imported) do
-    Map.put(bundle.manifest["audit_report"], "import_materialization", imported.materialization_report)
+    report =
+      Map.put(bundle.manifest["audit_report"], "import_materialization", imported.materialization_report)
+
+    case imported.repair_report do
+      nil -> report
+      repair_report -> Map.put(report, "legacy_snapshot_repair", repair_report)
+    end
   end
 
   defp rewrite_snapshot_assets(value, imported_blobs) when is_map(value) do

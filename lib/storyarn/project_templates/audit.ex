@@ -10,6 +10,7 @@ defmodule Storyarn.ProjectTemplates.Audit do
   import Ecto.Query, warn: false
 
   alias Storyarn.Assets.Asset
+  alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.Storage
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
@@ -54,18 +55,7 @@ defmodule Storyarn.ProjectTemplates.Audit do
   def run_with_snapshot(project_id) do
     snapshot = ProjectSnapshotBuilder.build_snapshot(project_id)
 
-    static_errors =
-      []
-      |> Kernel.++(stale_connection_errors(project_id))
-      |> Kernel.++(unsafe_subflow_pin_errors(project_id))
-      |> Kernel.++(invalid_scene_pin_sheet_ref_errors(project_id))
-      |> Kernel.++(invalid_scene_pin_flow_ref_errors(project_id))
-      |> Kernel.++(invalid_scene_zone_scene_target_errors(project_id))
-      |> Kernel.++(invalid_scene_zone_flow_target_errors(project_id))
-      |> Kernel.++(invalid_localization_source_ref_errors(project_id))
-      |> Kernel.++(unsupported_localization_source_ref_errors(project_id))
-      |> Kernel.++(uncopiable_asset_reference_errors(project_id))
-      |> Kernel.++(snapshot_sequence_integrity_errors(snapshot))
+    static_errors = project_static_errors(project_id, snapshot)
 
     {materialization_errors, materialization_report} =
       materialization_audit(project_id, snapshot, static_errors)
@@ -81,6 +71,20 @@ defmodule Storyarn.ProjectTemplates.Audit do
     }
 
     if errors == [], do: {:ok, report, snapshot}, else: {:error, report}
+  end
+
+  defp project_static_errors(project_id, snapshot) do
+    []
+    |> Kernel.++(stale_connection_errors(project_id))
+    |> Kernel.++(unsafe_subflow_pin_errors(project_id))
+    |> Kernel.++(invalid_scene_pin_sheet_ref_errors(project_id))
+    |> Kernel.++(invalid_scene_pin_flow_ref_errors(project_id))
+    |> Kernel.++(invalid_scene_zone_scene_target_errors(project_id))
+    |> Kernel.++(invalid_scene_zone_flow_target_errors(project_id))
+    |> Kernel.++(invalid_localization_source_ref_errors(project_id))
+    |> Kernel.++(unsupported_localization_source_ref_errors(project_id))
+    |> Kernel.++(uncopiable_asset_reference_errors(project_id))
+    |> Kernel.++(snapshot_sequence_integrity_errors(snapshot))
   end
 
   @doc """
@@ -983,8 +987,7 @@ defmodule Storyarn.ProjectTemplates.Audit do
                    name: name,
                    template_clone: true
                  ) do
-            {:ok, materialized_entity_counts(recovered_project.id),
-             materialized_asset_reference_errors(recovered_project.id),
+            {:ok, materialized_entity_counts(recovered_project.id), materialized_project_errors(recovered_project.id),
              materialized_asset_storage_keys(recovered_project.id)}
           end
 
@@ -992,6 +995,11 @@ defmodule Storyarn.ProjectTemplates.Audit do
       end,
       timeout: to_timeout(minute: 5)
     )
+  end
+
+  defp materialized_project_errors(project_id) do
+    snapshot = ProjectSnapshotBuilder.build_snapshot(project_id)
+    project_static_errors(project_id, snapshot) ++ materialized_asset_reference_errors(project_id)
   end
 
   defp extract_recover_project_result({:error, {:template_materialization_audit, {:ok, counts, errors, asset_keys}}}) do
@@ -1014,11 +1022,27 @@ defmodule Storyarn.ProjectTemplates.Audit do
     query =
       from asset in Asset,
         where: asset.project_id == ^project_id,
-        where: not is_nil(asset.key),
-        select: asset.key
+        select: %{
+          key: asset.key,
+          blob_hash: asset.blob_hash,
+          content_type: asset.content_type
+        }
 
-    Repo.all(query)
+    query
+    |> Repo.all()
+    |> Enum.flat_map(fn asset ->
+      [asset.key, materialized_blob_storage_key(project_id, asset)]
+    end)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
   end
+
+  defp materialized_blob_storage_key(project_id, %{blob_hash: blob_hash, content_type: content_type})
+       when is_binary(blob_hash) and is_binary(content_type) do
+    BlobStore.blob_key(project_id, blob_hash, BlobStore.ext_from_content_type(content_type))
+  end
+
+  defp materialized_blob_storage_key(_project_id, _asset), do: nil
 
   defp cleanup_materialized_asset_storage(asset_keys) do
     asset_keys

@@ -85,8 +85,9 @@ defmodule Storyarn.Assets.BlobStore do
   @doc """
   Creates a new Asset record from a blob for restoring deleted assets.
 
-  Uses the blob content to populate a new asset with a fresh storage key,
-  while preserving the original metadata (filename, content_type, size).
+  Verifies the source content, materializes the content-addressed blob in the
+  destination project, and populates a new asset with a fresh storage key while
+  preserving the original metadata (filename, content_type, size).
   """
   @spec create_asset_from_blob(integer(), integer() | nil, String.t(), String.t(), map(), keyword()) ::
           {:ok, Asset.t()} | {:error, term()}
@@ -121,26 +122,68 @@ defmodule Storyarn.Assets.BlobStore do
     changeset = restore_changeset(asset, attrs)
 
     if changeset.valid?,
-      do: copy_and_insert_asset(changeset, source_key, dest_key, opts),
+      do: materialize_and_insert_asset(changeset, project_id, blob_hash, ext, source_key, dest_key, opts),
       else: {:error, changeset}
   end
 
-  defp copy_and_insert_asset(changeset, source_key, dest_key, opts) do
-    with :ok <- Storage.copy(source_key, dest_key) do
-      track_copy(opts, dest_key)
-      insert_copied_asset(changeset, dest_key, opts)
+  defp materialize_and_insert_asset(changeset, project_id, blob_hash, ext, source_key, dest_key, opts) do
+    with {:ok, binary_data} <- load_verified_blob(source_key, blob_hash),
+         {:ok, destination_blob_key, blob_created?} <-
+           ensure_destination_blob(project_id, blob_hash, ext, binary_data) do
+      owned_keys = owned_storage_keys(dest_key, destination_blob_key, blob_created?)
+      Enum.each(owned_keys, &track_copy(opts, &1))
+
+      copy_and_insert_asset(changeset, destination_blob_key, dest_key, owned_keys, opts)
     end
   end
 
-  defp insert_copied_asset(changeset, dest_key, opts) do
-    case Repo.insert(changeset) do
-      {:ok, asset} ->
-        {:ok, asset}
+  defp load_verified_blob(source_key, blob_hash) do
+    with {:ok, binary_data} <- Storage.download(source_key),
+         :ok <- verify_blob_hash(binary_data, blob_hash) do
+      {:ok, binary_data}
+    end
+  end
+
+  defp ensure_destination_blob(project_id, blob_hash, ext, binary_data) do
+    case ensure_blob_with_status(project_id, blob_hash, ext, binary_data) do
+      {:ok, destination_blob_key, true} ->
+        {:ok, destination_blob_key, true}
+
+      {:ok, destination_blob_key, false} ->
+        with {:ok, stored_data} <- Storage.download(destination_blob_key),
+             :ok <- verify_blob_hash(stored_data, blob_hash) do
+          {:ok, destination_blob_key, false}
+        end
 
       {:error, reason} ->
-        compensate_failed_insert(opts, dest_key)
         {:error, reason}
     end
+  end
+
+  defp verify_blob_hash(binary_data, expected_hash) do
+    if compute_hash(binary_data) == expected_hash, do: :ok, else: {:error, :blob_hash_mismatch}
+  end
+
+  defp owned_storage_keys(dest_key, destination_blob_key, true), do: [dest_key, destination_blob_key]
+  defp owned_storage_keys(dest_key, _destination_blob_key, false), do: [dest_key]
+
+  defp copy_and_insert_asset(changeset, source_key, dest_key, owned_keys, opts) do
+    with :ok <- Storage.copy(source_key, dest_key),
+         {:ok, asset} <- Repo.insert(changeset) do
+      {:ok, asset}
+    else
+      {:error, reason} ->
+        compensate_failed_materialization(opts, owned_keys)
+        {:error, reason}
+    end
+  rescue
+    error ->
+      compensate_failed_materialization(opts, owned_keys)
+      reraise error, __STACKTRACE__
+  catch
+    kind, reason ->
+      compensate_failed_materialization(opts, owned_keys)
+      :erlang.raise(kind, reason, __STACKTRACE__)
   end
 
   defp restore_changeset(asset, %{content_type: "image/svg+xml", metadata: %{"sanitized_svg" => true}} = attrs) do
@@ -163,21 +206,29 @@ defmodule Storyarn.Assets.BlobStore do
     end
   end
 
-  defp compensate_failed_insert(opts, dest_key) do
-    case Storage.delete(dest_key) do
-      :ok ->
-        untrack_copy(opts, dest_key)
+  defp compensate_failed_materialization(opts, owned_keys) do
+    failed_keys =
+      Enum.reduce(owned_keys, [], fn storage_key, failed_keys ->
+        case Storage.delete(storage_key) do
+          :ok ->
+            untrack_copy(opts, storage_key)
+            failed_keys
 
-      {:error, reason} ->
-        Logger.warning("Could not delete asset after database insert failure error=#{safe_error(reason)}")
-        enqueue_untracked_cleanup(opts, dest_key)
-    end
+          {:error, reason} ->
+            Logger.warning("Could not delete asset after materialization failure error=#{safe_error(reason)}")
+            [storage_key | failed_keys]
+        end
+      end)
+
+    enqueue_untracked_cleanup(opts, failed_keys)
   end
 
-  defp enqueue_untracked_cleanup(opts, dest_key) do
+  defp enqueue_untracked_cleanup(_opts, []), do: :ok
+
+  defp enqueue_untracked_cleanup(opts, storage_keys) do
     case Keyword.get(opts, :asset_copy_tracker) do
       reference when is_reference(reference) -> :ok
-      _reference -> StorageCompensation.enqueue_cleanup([dest_key])
+      _reference -> StorageCompensation.enqueue_cleanup(storage_keys)
     end
   end
 

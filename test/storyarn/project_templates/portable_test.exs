@@ -6,11 +6,15 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
   alias Storyarn.AccountsFixtures
   alias Storyarn.Assets
   alias Storyarn.Assets.BlobStore
+  alias Storyarn.Flows
+  alias Storyarn.FlowsFixtures
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectsFixtures
   alias Storyarn.ProjectTemplates
+  alias Storyarn.ProjectTemplates.Audit
   alias Storyarn.ProjectTemplates.PortableBundle
   alias Storyarn.ProjectTemplates.ProjectTemplate
+  alias Storyarn.ProjectTemplates.ProjectTemplateInstall
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Repo
   alias Storyarn.Sheets
@@ -110,6 +114,142 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
       refute cloned_asset.key == source_asset.key
       assert {:ok, _binary} = Assets.storage_download(cloned_asset.key)
       on_exit(fn -> Assets.storage_delete(cloned_asset.key) end)
+    end
+
+    test "repairs a homogeneous legacy sequence bundle through preview, import, and installation" do
+      %{project: project} = portable_source_project()
+      flow = FlowsFixtures.flow_fixture(project)
+      {:ok, sequence} = Flows.create_sequence(flow.id, %{"name" => "Legacy sequence"})
+      output_path = bundle_path()
+      legacy_path = bundle_path()
+      installer = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(installer)
+      workspace = WorkspacesFixtures.workspace_fixture(installer)
+
+      on_exit(fn ->
+        File.rm(output_path)
+        File.rm(legacy_path)
+      end)
+
+      assert {:ok, _export} =
+               ProjectTemplates.export_portable_template(project.id, output_path,
+                 name: "Legacy Sequence Demo",
+                 slug: "legacy-sequence-demo"
+               )
+
+      assert {:ok, bundle} = PortableBundle.read(output_path)
+      legacy_snapshot = homogeneous_legacy_sequence_snapshot(bundle.snapshot)
+
+      legacy_manifest =
+        put_in(
+          bundle.manifest,
+          ["checksum"],
+          PortableBundle.checksum(
+            legacy_snapshot,
+            bundle.asset_manifest,
+            bundle.manifest["asset_blobs"]
+          )
+        )
+
+      assert {:ok, ^legacy_path} =
+               PortableBundle.write(
+                 legacy_path,
+                 legacy_manifest,
+                 legacy_snapshot,
+                 bundle.asset_manifest,
+                 asset_files(bundle)
+               )
+
+      assert {:ok, preview} =
+               ProjectTemplates.preview_portable_template(legacy_path,
+                 repair_legacy_snapshot: true
+               )
+
+      repair_preview = preview["legacy_snapshot_repair"]
+      assert repair_preview["status"] == "repaired_with_warnings"
+      assert repair_preview["strategy"] == "replace_missing_sequences_with_annotations"
+      assert repair_preview["repaired_sequence_count"] == 1
+      assert repair_preview["warning"] =~ "Missing sequence grouping, tracks, and visual layers"
+
+      assert [
+               %{
+                 "flow_id" => flow_id,
+                 "node_id" => node_id
+               }
+             ] = repair_preview["repaired_sequences"]
+
+      assert flow_id == flow.id
+      assert node_id == sequence.id
+
+      assert {:ok, template} =
+               ProjectTemplates.import_portable_template(legacy_path,
+                 visibility: "public",
+                 slug: "legacy-sequence-demo",
+                 name: "Legacy Sequence Demo",
+                 repair_legacy_snapshot: true,
+                 verify_user_id: installer.id,
+                 verify_workspace_id: workspace.id
+               )
+
+      version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
+      register_template_artifact_cleanup(version)
+
+      assert {:ok, imported_asset_manifest} =
+               SnapshotStorage.load_snapshot(version.asset_manifest_storage_key)
+
+      for imported_asset <- imported_asset_manifest["assets"] do
+        on_exit(fn -> Assets.storage_delete(imported_asset["key"]) end)
+      end
+
+      repair_audit = version.audit_report["legacy_snapshot_repair"]
+      materialization_audit = version.audit_report["import_materialization"]
+      assert repair_audit == repair_preview
+      assert materialization_audit["status"] == "passed"
+      assert materialization_audit["errors"] == []
+      assert materialization_audit["snapshot_counts"] == materialization_audit["recovered_counts"]
+
+      assert {:ok, installed_project} =
+               ProjectTemplates.instantiate_template(scope, version, workspace, %{
+                 name: "Recovered Legacy Sequence"
+               })
+
+      for installed_asset <- Assets.list_assets(installed_project.id) do
+        on_exit(fn -> Assets.storage_delete(installed_asset.key) end)
+      end
+
+      [installed_flow] = Flows.list_flows(installed_project.id)
+      installed_flow = Repo.preload(installed_flow, :nodes)
+
+      assert [recovery_annotation] =
+               Enum.filter(installed_flow.nodes, fn node ->
+                 get_in(node.data, ["legacy_recovery", "original_id"]) == sequence.id
+               end)
+
+      assert recovery_annotation.type == "annotation"
+
+      assert recovery_annotation.data["legacy_recovery"] == %{
+               "original_id" => sequence.id,
+               "original_type" => "sequence"
+             }
+
+      refute Enum.any?(installed_flow.nodes, &(&1.type == "sequence"))
+
+      install = Repo.get_by!(ProjectTemplateInstall, project_id: installed_project.id)
+      assert install.status == "completed"
+      assert install.stage == "completed"
+      assert is_nil(install.error_code)
+      assert install.error_report == %{}
+      assert {:ok, %{"status" => "passed"}} = Audit.run(installed_project.id)
+
+      assert {:ok, republished_template} =
+               ProjectTemplates.create_template_from_project(scope, installed_project, %{
+                 name: "Republished Legacy Recovery"
+               })
+
+      assert republished_template.source_project_id == installed_project.id
+      republished_version = Repo.get!(ProjectTemplateVersion, republished_template.current_version_id)
+      register_template_artifact_cleanup(republished_version)
+      assert republished_version.audit_report["status"] == "passed"
     end
 
     test "rejects a bundle whose checksum does not match the payload" do
@@ -395,6 +535,21 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
   defp asset_files(bundle) do
     Enum.map(bundle.manifest["asset_blobs"], fn blob ->
       {blob["path"], bundle.files[blob["path"]]}
+    end)
+  end
+
+  defp homogeneous_legacy_sequence_snapshot(snapshot) do
+    update_in(snapshot, ["flows", Access.all(), "snapshot", "nodes", Access.all()], fn node ->
+      node = Map.delete(node, "parent_id")
+
+      if node["type"] == "sequence" do
+        node
+        |> Map.delete("sequence_config")
+        |> Map.delete("sequence_tracks")
+        |> Map.delete("sequence_visual_layers")
+      else
+        node
+      end
     end)
   end
 

@@ -27,8 +27,7 @@ defmodule Storyarn.ProjectTemplates.Installation do
   require Logger
 
   @active_statuses ProjectTemplateInstall.active_statuses()
-  @recent_failure_retention_seconds 86_400
-  @recent_failure_limit 10
+  @pending_failure_limit 10
   @permanent_errors ~w(
     archived
     checksum_mismatch
@@ -112,7 +111,7 @@ defmodule Storyarn.ProjectTemplates.Installation do
 
   @spec list_active_workspace_installations(Scope.t(), Workspace.t()) :: [ProjectTemplateInstall.t()]
   def list_active_workspace_installations(%Scope{} = scope, %Workspace{} = workspace) do
-    case Workspaces.authorize(scope, workspace.id, :read) do
+    case Workspaces.authorize(scope, workspace.id, :view) do
       {:ok, _workspace, _membership} ->
         ProjectTemplateInstall
         |> where([install], install.workspace_id == ^workspace.id and install.status in ^@active_statuses)
@@ -125,35 +124,73 @@ defmodule Storyarn.ProjectTemplates.Installation do
     end
   end
 
-  @spec list_workspace_installation_feedback(Scope.t(), Workspace.t()) :: [ProjectTemplateInstall.t()]
-  def list_workspace_installation_feedback(%Scope{} = scope, %Workspace{} = workspace) do
-    case Workspaces.authorize(scope, workspace.id, :read) do
+  @spec list_pending_workspace_installation_failures(Scope.t(), Workspace.t()) :: [ProjectTemplateInstall.t()]
+  def list_pending_workspace_installation_failures(%Scope{user: %{id: user_id}} = scope, %Workspace{} = workspace) do
+    case Workspaces.authorize(scope, workspace.id, :view) do
       {:ok, _workspace, _membership} ->
-        active_installations =
-          ProjectTemplateInstall
-          |> where([install], install.workspace_id == ^workspace.id and install.status in ^@active_statuses)
-          |> order_by([install], asc: install.inserted_at, asc: install.id)
-          |> preload([:project_template_version])
-          |> Repo.all()
-
-        failed_since = DateTime.add(TimeHelpers.now(), -@recent_failure_retention_seconds, :second)
-
-        recent_failures =
-          ProjectTemplateInstall
-          |> where(
-            [install],
-            install.workspace_id == ^workspace.id and install.status == "failed" and
-              install.completed_at >= ^failed_since
-          )
-          |> order_by([install], desc: install.completed_at, desc: install.id)
-          |> limit(^@recent_failure_limit)
-          |> preload([:project_template_version])
-          |> Repo.all()
-
-        active_installations ++ recent_failures
+        ProjectTemplateInstall
+        |> where(
+          [install],
+          install.workspace_id == ^workspace.id and install.user_id == ^user_id and
+            install.status == "failed" and is_nil(install.feedback_dismissed_at)
+        )
+        |> order_by([install], asc: install.completed_at, asc: install.id)
+        |> limit(^@pending_failure_limit)
+        |> preload([:project_template_version])
+        |> Repo.all()
 
       _error ->
         []
+    end
+  end
+
+  def list_pending_workspace_installation_failures(%Scope{}, %Workspace{}), do: []
+
+  @spec dismiss_installation_failure(Scope.t(), Workspace.t(), integer()) ::
+          {:ok, ProjectTemplateInstall.t()} | {:error, :not_found | :unauthorized}
+  def dismiss_installation_failure(%Scope{user: %{id: user_id}} = scope, %Workspace{} = workspace, installation_id)
+      when is_integer(installation_id) do
+    with {:ok, _workspace, _membership} <- Workspaces.authorize(scope, workspace.id, :view),
+         {:ok, {install, changed?}} <-
+           dismiss_installation_failure_transaction(installation_id, workspace.id, user_id) do
+      if changed?, do: broadcast_install(install)
+      {:ok, preload_install(install)}
+    end
+  end
+
+  def dismiss_installation_failure(%Scope{}, %Workspace{}, _installation_id), do: {:error, :unauthorized}
+
+  defp dismiss_installation_failure_transaction(installation_id, workspace_id, user_id) do
+    Repo.transact(fn ->
+      installation_id
+      |> lock_failed_installation(workspace_id, user_id)
+      |> dismiss_locked_installation()
+    end)
+  end
+
+  defp lock_failed_installation(installation_id, workspace_id, user_id) do
+    ProjectTemplateInstall
+    |> where(
+      [install],
+      install.id == ^installation_id and install.workspace_id == ^workspace_id and
+        install.user_id == ^user_id and install.status == "failed"
+    )
+    |> lock("FOR UPDATE")
+    |> Repo.one()
+  end
+
+  defp dismiss_locked_installation(nil), do: {:error, :not_found}
+
+  defp dismiss_locked_installation(%ProjectTemplateInstall{feedback_dismissed_at: %DateTime{}} = install) do
+    {:ok, {install, false}}
+  end
+
+  defp dismiss_locked_installation(%ProjectTemplateInstall{} = install) do
+    case install
+         |> ProjectTemplateInstall.dismiss_failure_changeset(TimeHelpers.now())
+         |> Repo.update() do
+      {:ok, install} -> {:ok, {install, true}}
+      {:error, changeset} -> {:error, changeset}
     end
   end
 

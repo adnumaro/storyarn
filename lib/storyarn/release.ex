@@ -26,6 +26,7 @@ defmodule Storyarn.Release do
     "name" => :name,
     "owner_id" => :owner_id,
     "published_by_id" => :published_by_id,
+    "repair_legacy_snapshot" => :repair_legacy_snapshot,
     "slug" => :slug,
     "update_existing" => :update_existing,
     "verify_user_id" => :verify_user_id,
@@ -36,6 +37,7 @@ defmodule Storyarn.Release do
     name: :name,
     owner_id: :owner_id,
     published_by_id: :published_by_id,
+    repair_legacy_snapshot: :repair_legacy_snapshot,
     slug: :slug,
     update_existing: :update_existing,
     verify_user_id: :verify_user_id,
@@ -123,7 +125,7 @@ defmodule Storyarn.Release do
     load_app()
 
     with {:ok, keyword_opts} <- template_import_options(opts),
-         {:ok, manifest} <- Storyarn.ProjectTemplates.preview_portable_template(path) do
+         {:ok, manifest} <- Storyarn.ProjectTemplates.preview_portable_template(path, keyword_opts) do
       print_template_bundle_preview(path, manifest, keyword_opts)
 
       case Storyarn.ProjectTemplates.import_portable_template(path, keyword_opts) do
@@ -168,8 +170,18 @@ defmodule Storyarn.Release do
     IO.puts("Visibility: #{Keyword.get(opts, :visibility, "private")}")
     IO.puts("Verify user ID: #{Keyword.get(opts, :verify_user_id) || "missing"}")
     IO.puts("Verify workspace ID: #{Keyword.get(opts, :verify_workspace_id) || "missing"}")
+    IO.puts("Repair legacy snapshot: #{Keyword.get(opts, :repair_legacy_snapshot, false)}")
+    print_template_repair_preview(manifest["legacy_snapshot_repair"])
     IO.puts("Assets: #{manifest["asset_count"]}")
     IO.puts("Checksum: #{manifest["checksum"]}")
+  end
+
+  defp print_template_repair_preview(nil), do: :ok
+
+  defp print_template_repair_preview(report) do
+    IO.puts("Sequences replaced by recovery notes: #{report["repaired_sequence_count"]}")
+    IO.puts("Legacy localization rows removed: #{report["localization"]["removed_count"]}")
+    IO.puts("Warning: #{report["warning"]}")
   end
 
   defp repos do

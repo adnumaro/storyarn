@@ -123,6 +123,30 @@ defmodule StoryarnWeb.TemplateLiveTest do
       assert installed_project.created_from_template_version_id == template.current_version_id
     end
 
+    test "does not show failure feedback for an installation that was already dismissed", %{
+      conn: conn,
+      user: user,
+      scope: scope
+    } do
+      template = template_fixture(user, scope, %{name: "Dismissed Failure Template"})
+      version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
+
+      {:ok, view, _html} = live(conn, ~p"/templates/#{template.id}")
+
+      send(
+        view.pid,
+        {:project_template_installation_updated,
+         %ProjectTemplateInstall{
+           id: 999_002,
+           status: "failed",
+           feedback_dismissed_at: DateTime.utc_now(),
+           project_template_version: version
+         }}
+      )
+
+      refute render(view) =~ "Template installation failed"
+    end
+
     test "installs a selected older template version", %{conn: conn, user: user, scope: scope} do
       workspace = workspace_fixture(user, %{name: "Version Install Studio"})
       template = template_fixture(user, scope, %{name: "Versioned Install Template"})

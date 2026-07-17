@@ -12,6 +12,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
 
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Localization.GlossaryEntry
   alias Storyarn.Localization.LocalizedText
@@ -32,7 +33,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   alias Storyarn.Versioning.Builders.SceneBuilder
   alias Storyarn.Versioning.Builders.SheetBuilder
 
-  @recovery_id_map_keys [:sheet, :block, :flow, :node, :scene, :pin, :zone]
+  @recovery_id_map_keys [:sheet, :block, :flow, :node, :connection, :scene, :pin, :zone]
 
   @doc """
   Recovers a project from snapshot data by creating a new project with all entities.
@@ -241,10 +242,30 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp remap_flow_refs(id_maps, snapshot_data) do
-    Enum.each(snapshot_data["flows"] || [], &remap_single_flow_snapshot(&1, id_maps))
+    exit_flow_ids_by_node = remapped_exit_flow_ids_by_node(id_maps.flow)
+
+    Enum.each(
+      snapshot_data["flows"] || [],
+      &remap_single_flow_snapshot(&1, id_maps, exit_flow_ids_by_node)
+    )
   end
 
-  defp remap_single_flow_snapshot(entry, id_maps) do
+  defp remapped_exit_flow_ids_by_node(flow_id_map) do
+    flow_ids = Map.values(flow_id_map)
+
+    if flow_ids == [] do
+      %{}
+    else
+      from(node in FlowNode,
+        where: node.flow_id in ^flow_ids and node.type == "exit" and is_nil(node.deleted_at),
+        select: {node.id, node.flow_id}
+      )
+      |> Repo.all()
+      |> Map.new()
+    end
+  end
+
+  defp remap_single_flow_snapshot(entry, id_maps, exit_flow_ids_by_node) do
     case remap_id(entry["id"], id_maps.flow) do
       nil ->
         :ok
@@ -252,6 +273,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
       new_flow_id ->
         remap_flow_scene_id(new_flow_id, entry["snapshot"]["scene_id"], id_maps.scene)
         Enum.each(entry["snapshot"]["nodes"] || [], &remap_node_snapshot(&1, id_maps))
+        remap_flow_connection_pins(entry["snapshot"], id_maps, exit_flow_ids_by_node)
     end
   end
 
@@ -288,6 +310,39 @@ defmodule Storyarn.Versioning.ProjectRecovery do
       Repo.update_all(from(n in FlowNode, where: n.id == ^node_id), set: [data: new_data])
     end
   end
+
+  defp remap_flow_connection_pins(snapshot, id_maps, exit_flow_ids_by_node) do
+    nodes = snapshot["nodes"] || []
+
+    Enum.each(snapshot["connections"] || [], fn connection ->
+      source_node = Enum.at(nodes, connection["source_node_index"])
+      remap_subflow_exit_pin(connection, source_node, id_maps, exit_flow_ids_by_node)
+    end)
+  end
+
+  defp remap_subflow_exit_pin(
+         %{"original_id" => connection_id, "source_pin" => "exit_" <> old_node_id_text},
+         %{"type" => "subflow", "data" => %{} = source_data},
+         id_maps,
+         exit_flow_ids_by_node
+       ) do
+    with {old_node_id, ""} <- Integer.parse(old_node_id_text),
+         new_connection_id when is_integer(new_connection_id) <-
+           Map.get(id_maps.connection, connection_id),
+         new_node_id when is_integer(new_node_id) <- Map.get(id_maps.node, old_node_id),
+         referenced_flow_id when is_integer(referenced_flow_id) <-
+           remap_id(source_data["referenced_flow_id"], id_maps.flow),
+         ^referenced_flow_id <- Map.get(exit_flow_ids_by_node, new_node_id) do
+      Repo.update_all(
+        from(connection in FlowConnection, where: connection.id == ^new_connection_id),
+        set: [source_pin: "exit_#{new_node_id}"]
+      )
+    else
+      _ -> :ok
+    end
+  end
+
+  defp remap_subflow_exit_pin(_connection, _source_node, _id_maps, _exit_flow_ids_by_node), do: :ok
 
   defp maybe_put_remapped(data, key, id_map) do
     case Map.fetch(data, key) do
@@ -381,11 +436,25 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp remap_id(nil, _map), do: nil
+
+  defp remap_id(old_id, map) when is_binary(old_id) do
+    case Map.fetch(map, old_id) do
+      {:ok, new_id} ->
+        new_id
+
+      :error ->
+        case Integer.parse(old_id) do
+          {integer_id, ""} -> Map.get(map, integer_id)
+          _ -> nil
+        end
+    end
+  end
+
   defp remap_id(old_id, map), do: Map.get(map, old_id)
 
-  defp remap_target_id("sheet", old_id, id_maps), do: Map.get(id_maps.sheet, old_id)
-  defp remap_target_id("flow", old_id, id_maps), do: Map.get(id_maps.flow, old_id)
-  defp remap_target_id("scene", old_id, id_maps), do: Map.get(id_maps.scene, old_id)
+  defp remap_target_id("sheet", old_id, id_maps), do: remap_id(old_id, id_maps.sheet)
+  defp remap_target_id("flow", old_id, id_maps), do: remap_id(old_id, id_maps.flow)
+  defp remap_target_id("scene", old_id, id_maps), do: remap_id(old_id, id_maps.scene)
   defp remap_target_id(_type, _old_id, _id_maps), do: nil
 
   # ========== Phase C: Tree Hierarchy ==========

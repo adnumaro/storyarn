@@ -5,7 +5,10 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
   import Storyarn.AssetsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
+  alias Storyarn.Assets.Storage
+  alias Storyarn.Repo
   alias Storyarn.Versioning.Builders.AssetCopyError
   alias Storyarn.Versioning.Builders.AssetHashResolver
 
@@ -76,13 +79,13 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
         }
       }
 
-      Storyarn.Repo.delete!(asset)
+      Repo.delete!(asset)
 
       new_id = AssetHashResolver.resolve_asset_fk(asset.id, snapshot, project.id, user.id)
       assert is_integer(new_id)
       refute new_id == asset.id
 
-      new_asset = Storyarn.Repo.get!(Storyarn.Assets.Asset, new_id)
+      new_asset = Repo.get!(Asset, new_id)
       assert new_asset.filename == "track.mp3"
       assert new_asset.content_type == "audio/mpeg"
       assert new_asset.blob_hash == hash
@@ -93,7 +96,7 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
       user: user
     } do
       asset = asset_fixture(project, user)
-      Storyarn.Repo.delete!(asset)
+      Repo.delete!(asset)
 
       snapshot = %{"asset_blob_hashes" => %{}, "asset_metadata" => %{}}
       result = AssetHashResolver.resolve_asset_fk(asset.id, snapshot, project.id)
@@ -132,6 +135,85 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
 
       assert error.asset_id == asset_id
       assert error.reason == :missing_asset_metadata
+    end
+
+    test "successive template clones keep a copyable project-local blob", %{
+      project: source_project,
+      user: user
+    } do
+      first_clone = project_fixture(user)
+      second_clone = project_fixture(user)
+      content = "avatar copied through two template generations"
+      hash = BlobStore.compute_hash(content)
+
+      assert {:ok, source_blob_key} =
+               BlobStore.ensure_blob(source_project.id, hash, "png", content)
+
+      source_asset =
+        asset_fixture(source_project, user, %{
+          filename: "avatar.png",
+          content_type: "image/png",
+          size: byte_size(content),
+          blob_hash: hash
+        })
+
+      {first_hashes, first_metadata} = AssetHashResolver.resolve_hashes([source_asset.id])
+
+      first_snapshot = %{
+        "asset_blob_hashes" => first_hashes,
+        "asset_metadata" => first_metadata
+      }
+
+      first_asset_id =
+        AssetHashResolver.resolve_asset_fk(
+          source_asset.id,
+          first_snapshot,
+          first_clone.id,
+          user.id,
+          asset_mode: :copy,
+          asset_error_mode: :strict
+        )
+
+      first_asset = Repo.get!(Asset, first_asset_id)
+      first_blob_key = BlobStore.blob_key(first_clone.id, hash, "png")
+      assert {:ok, ^content} = Storage.download(first_blob_key)
+
+      {second_hashes, second_metadata} = AssetHashResolver.resolve_hashes([first_asset.id])
+
+      second_snapshot = %{
+        "asset_blob_hashes" => second_hashes,
+        "asset_metadata" => second_metadata
+      }
+
+      second_asset_id =
+        AssetHashResolver.resolve_asset_fk(
+          first_asset.id,
+          second_snapshot,
+          second_clone.id,
+          user.id,
+          asset_mode: :copy,
+          asset_error_mode: :strict
+        )
+
+      second_asset = Repo.get!(Asset, second_asset_id)
+      second_blob_key = BlobStore.blob_key(second_clone.id, hash, "png")
+
+      on_exit(fn ->
+        Enum.each(
+          [
+            source_blob_key,
+            first_blob_key,
+            second_blob_key,
+            first_asset.key,
+            second_asset.key
+          ],
+          &Storage.delete/1
+        )
+      end)
+
+      assert {:ok, ^content} = Storage.download(second_asset.key)
+      assert {:ok, ^content} = Storage.download(second_blob_key)
+      assert second_asset.blob_hash == hash
     end
   end
 end

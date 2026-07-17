@@ -35,10 +35,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
      |> assign(:new_project_modal_open, false)
      |> assign(:project_form, to_form(Projects.change_new_project(%Project{})))
      |> assign(:project_templates, serialize_project_templates(ProjectTemplates.list_templates(scope)))
-     |> assign(
-       :template_installations,
-       serialize_template_installations(ProjectTemplates.list_workspace_installation_feedback(scope, workspace))
-     )}
+     |> assign_template_installation_feedback()}
   end
 
   @impl true
@@ -78,7 +75,13 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
         can-create-project={@can_create_project}
         new-project-modal-open={@new_project_modal_open}
         new-project-form={@project_form}
-        template-creation={%{templates: @project_templates, installations: @template_installations}}
+        template-creation={
+          %{
+            templates: @project_templates,
+            installations: @template_installations,
+            failures: @template_installation_failures
+          }
+        }
         project-metrics-options={Taxonomy.project_options()}
         settings-url={~p"/users/settings/workspaces/#{@workspace.slug}/general"}
       />
@@ -146,7 +149,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
       socket =
         socket
         |> assign(:new_project_modal_open, false)
-        |> refresh_template_installations()
+        |> assign_template_installation_feedback()
         |> put_flash(:info, dgettext("projects", "Template installation started."))
 
       {:reply, %{status: "queued", installation_id: installation.id}, socket}
@@ -160,9 +163,24 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
     end
   end
 
+  def handle_event("dismiss_template_installation_failure", %{"installation_id" => installation_id}, socket) do
+    with {:ok, installation_id} <- parse_template_id(installation_id),
+         {:ok, _installation} <-
+           ProjectTemplates.dismiss_installation_failure(
+             socket.assigns.current_scope,
+             socket.assigns.workspace,
+             installation_id
+           ) do
+      {:reply, %{status: "ok"}, assign_template_installation_feedback(socket)}
+    else
+      _error ->
+        {:reply, %{status: "error"}, socket}
+    end
+  end
+
   @impl true
   def handle_info({:project_template_installation_updated, installation}, socket) do
-    socket = refresh_template_installations(socket)
+    socket = assign_template_installation_feedback(socket)
     own_installation? = installation.user_id == socket.assigns.current_scope.user.id
 
     socket =
@@ -174,13 +192,6 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
 
         {"completed", false} ->
           refresh_projects(socket)
-
-        {"failed", true} ->
-          put_flash(
-            socket,
-            :error,
-            dgettext("projects", "Template installation failed. Reference: %{reference}", reference: installation.id)
-          )
 
         {_status, _own_installation?} ->
           socket
@@ -243,14 +254,21 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
     |> assign(:projects, format_projects(filtered, socket.assigns.workspace))
   end
 
-  defp refresh_template_installations(socket) do
-    installations =
-      ProjectTemplates.list_workspace_installation_feedback(
-        socket.assigns.current_scope,
-        socket.assigns.workspace
-      )
+  defp assign_template_installation_feedback(socket) do
+    scope = socket.assigns.current_scope
+    workspace = socket.assigns.workspace
 
-    assign(socket, :template_installations, serialize_template_installations(installations))
+    socket
+    |> assign(
+      :template_installations,
+      serialize_template_installations(ProjectTemplates.list_active_workspace_installations(scope, workspace))
+    )
+    |> assign(
+      :template_installation_failures,
+      serialize_template_installation_failures(
+        ProjectTemplates.list_pending_workspace_installation_failures(scope, workspace)
+      )
+    )
   end
 
   defp serialize_template_installations(installations) do
@@ -262,6 +280,17 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
         stage: installation.stage,
         template_version_id: installation.project_template_version_id,
         template_id: installation.project_template_version.project_template_id
+      }
+    end)
+  end
+
+  defp serialize_template_installation_failures(installations) do
+    Enum.map(installations, fn installation ->
+      %{
+        id: installation.id,
+        project_name: installation.project_name,
+        error_code: installation.error_code,
+        error_message: installation.error_message
       }
     end)
   end

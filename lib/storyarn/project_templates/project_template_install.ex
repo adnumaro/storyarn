@@ -36,6 +36,7 @@ defmodule Storyarn.ProjectTemplates.ProjectTemplateInstall do
           error_code: String.t() | nil,
           error_message: String.t() | nil,
           error_report: map(),
+          feedback_dismissed_at: DateTime.t() | nil,
           installed_at: DateTime.t() | nil,
           started_at: DateTime.t() | nil,
           completed_at: DateTime.t() | nil,
@@ -52,6 +53,7 @@ defmodule Storyarn.ProjectTemplates.ProjectTemplateInstall do
     field :error_code, :string
     field :error_message, :string
     field :error_report, :map, default: %{}
+    field :feedback_dismissed_at, :utc_datetime
     field :installed_at, :utc_datetime
     field :started_at, :utc_datetime
     field :completed_at, :utc_datetime
@@ -162,6 +164,12 @@ defmodule Storyarn.ProjectTemplates.ProjectTemplateInstall do
     |> validate_common()
   end
 
+  def dismiss_failure_changeset(install, now) do
+    install
+    |> change(feedback_dismissed_at: now)
+    |> validate_common()
+  end
+
   defp validate_common(changeset) do
     changeset
     |> validate_length(:project_name, min: 1, max: 100)
@@ -183,5 +191,9 @@ defmodule Storyarn.ProjectTemplates.ProjectTemplateInstall do
     |> check_constraint(:stage, name: :project_template_installs_stage_check)
     |> check_constraint(:source, name: :project_template_installs_source_check)
     |> check_constraint(:status, name: :project_template_installs_state_check)
+    |> check_constraint(:feedback_dismissed_at,
+      name: :project_template_installs_feedback_dismissal_check
+    )
+    |> check_constraint(:project_id, name: :project_template_installs_failed_project_check)
   end
 end

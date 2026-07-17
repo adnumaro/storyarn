@@ -97,6 +97,9 @@ defmodule StoryarnWeb.WorkspaceLive.TemplateCreationTest do
       )
 
       refute render(view) =~ "Template installation failed"
+
+      vue = get_dashboard_vue(view)
+      assert vue.props["template-creation"]["failures"] == []
     end
 
     test "shows a recent failed installation after the workspace is reloaded", %{
@@ -126,15 +129,26 @@ defmodule StoryarnWeb.WorkspaceLive.TemplateCreationTest do
 
       {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
 
-      failed_installation =
-        view
-        |> get_dashboard_vue()
-        |> then(& &1.props["template-creation"]["installations"])
-        |> Enum.find(&(&1["id"] == installation.id))
+      template_creation = get_dashboard_vue(view).props["template-creation"]
 
-      assert failed_installation["status"] == "failed"
-      assert failed_installation["stage"] == "failed"
+      refute Enum.any?(template_creation["installations"], &(&1["id"] == installation.id))
+
+      failed_installation =
+        Enum.find(template_creation["failures"], &(&1["id"] == installation.id))
+
       assert failed_installation["project_name"] == "Broken Copy"
+      assert failed_installation["error_code"] == "checksum_mismatch"
+      assert failed_installation["error_message"] == "The template failed its integrity check."
+
+      render_hook(view, "dismiss_template_installation_failure", %{
+        "installation_id" => installation.id
+      })
+
+      assert Repo.get!(ProjectTemplateInstall, installation.id).feedback_dismissed_at
+      assert get_dashboard_vue(view).props["template-creation"]["failures"] == []
+
+      {:ok, reloaded_view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+      assert get_dashboard_vue(reloaded_view).props["template-creation"]["failures"] == []
     end
   end
 
