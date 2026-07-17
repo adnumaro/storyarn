@@ -96,7 +96,7 @@ defmodule Storyarn.Versioning.SnapshotViewer do
   end
 
   defp maybe_add_hub_color(%{"color" => color} = data) when is_binary(color) do
-    Map.put(data, "color_hex", HubColors.resolve(color))
+    Map.put(data, "color_hex", HubColors.resolve_legacy(color))
   end
 
   defp maybe_add_hub_color(data), do: data

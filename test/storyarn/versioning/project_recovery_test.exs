@@ -241,6 +241,54 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       assert recovered_subflow_node.data["referenced_flow_id"] == recovered_subflow.id
     end
 
+    test "normalizes legacy Hub colors while remapping recovered node data", %{
+      project: project,
+      workspace_id: workspace_id,
+      user: user
+    } do
+      speaker = sheet_fixture(project, %{name: "Hub Reference"})
+      flow = flow_fixture(project, %{name: "Legacy Hub Flow"})
+
+      hub =
+        node_fixture(flow, %{
+          type: "hub",
+          data: %{
+            "hub_id" => "checkpoint",
+            "color" => "#3b82f6",
+            "speaker_sheet_id" => speaker.id
+          }
+        })
+
+      snapshot_data =
+        project.id
+        |> ProjectSnapshotBuilder.build_snapshot()
+        |> update_in(["flows", Access.at(0), "snapshot", "nodes"], fn nodes ->
+          Enum.map(nodes, fn
+            %{"original_id" => original_id, "data" => data} = node when original_id == hub.id ->
+              Map.put(node, "data", Map.put(data, "color", "blue"))
+
+            node ->
+              node
+          end)
+        end)
+
+      assert {:ok, recovered} =
+               ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id)
+
+      [recovered_speaker] = Storyarn.Sheets.list_all_sheets(recovered.id)
+
+      recovered_hub =
+        recovered.id
+        |> Storyarn.Flows.list_flows()
+        |> List.first()
+        |> Repo.preload(:nodes)
+        |> Map.fetch!(:nodes)
+        |> Enum.find(&(&1.type == "hub"))
+
+      assert recovered_hub.data["speaker_sheet_id"] == recovered_speaker.id
+      assert recovered_hub.data["color"] == "#3b82f6"
+    end
+
     test "remaps inherited blocks across recovered sheets", %{
       project: project,
       workspace_id: workspace_id,

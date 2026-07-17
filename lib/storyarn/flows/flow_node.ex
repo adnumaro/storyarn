@@ -120,9 +120,9 @@ defmodule Storyarn.Flows.FlowNode do
     |> foreign_key_constraint(:parent_id)
   end
 
-  @doc "Strict changeset for materializing a node from a current snapshot."
+  @doc "Changeset for materializing a node from a snapshot, including historical data normalization."
   def materialize_changeset(node, attrs) do
-    attrs = normalize_node_data(attrs, node)
+    attrs = normalize_legacy_node_data(attrs, node)
 
     node
     |> cast(attrs, [:type, :position_x, :position_y, :data, :word_count, :source, :parent_id])
@@ -207,7 +207,13 @@ defmodule Storyarn.Flows.FlowNode do
   defp normalize_node_data(attrs, node) do
     attrs
     |> ensure_dialogue_runtime_ids(node)
-    |> ensure_hub_color(node)
+    |> ensure_hub_color(node, &HubColors.resolve/1)
+  end
+
+  defp normalize_legacy_node_data(attrs, node) do
+    attrs
+    |> ensure_dialogue_runtime_ids(node)
+    |> ensure_hub_color(node, &HubColors.resolve_legacy/1)
   end
 
   defp ensure_dialogue_runtime_ids(attrs, node) when is_map(attrs) do
@@ -227,12 +233,12 @@ defmodule Storyarn.Flows.FlowNode do
     |> ensure_response_ids()
   end
 
-  defp ensure_hub_color(attrs, node) when is_map(attrs) do
+  defp ensure_hub_color(attrs, node, resolver) when is_map(attrs) do
     type = attr(attrs, :type) || (node && node.type)
     data = attr(attrs, :data) || existing_data(node)
 
     if type == "hub" and is_map(data) do
-      data = put_string_key(data, "color", HubColors.resolve(map_value(data, "color")))
+      data = put_string_key(data, "color", resolver.(map_value(data, "color")))
       put_attr(attrs, :data, data)
     else
       attrs

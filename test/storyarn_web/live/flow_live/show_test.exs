@@ -114,7 +114,8 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       assert Flows.get_node!(flow.id, hub.id).data["color"] == "#22c55e"
     end
 
-    test "replaces an invalid picker color with the Hub default", %{conn: conn, user: user} do
+    test "rejects a legacy named picker color from the current contract",
+         %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Validated Hub Flow"})
 
@@ -128,7 +129,7 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       view = mount_flow(conn, url)
 
       render_click(view, "node_selected", %{"id" => hub.id})
-      render_click(view, "update_hub_color", %{"color" => "not-a-color"})
+      render_click(view, "update_hub_color", %{"color" => "blue"})
 
       assert Flows.get_node!(flow.id, hub.id).data["color"] == Flows.hub_color_default_hex()
     end

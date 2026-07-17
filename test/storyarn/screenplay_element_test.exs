@@ -4,7 +4,7 @@ defmodule Storyarn.Screenplays.ScreenplayElementTest do
   alias Storyarn.Screenplays.ScreenplayElement
 
   describe "Hub marker color normalization" do
-    test "normalizes legacy colors when creating imported markers" do
+    test "defaults legacy colors in current create changesets" do
       changeset =
         ScreenplayElement.create_changeset(%ScreenplayElement{}, %{
           type: "hub_marker",
@@ -12,10 +12,10 @@ defmodule Storyarn.Screenplays.ScreenplayElementTest do
         })
 
       assert changeset.valid?
-      assert Ecto.Changeset.get_field(changeset, :data)["color"] == "#3b82f6"
+      assert Ecto.Changeset.get_field(changeset, :data)["color"] == "#be185d"
     end
 
-    test "normalizes existing legacy colors on update" do
+    test "defaults existing legacy colors in current update changesets" do
       element = %ScreenplayElement{
         type: "hub_marker",
         data: %{"hub_node_id" => "checkpoint", "color" => "amber"}
@@ -24,7 +24,18 @@ defmodule Storyarn.Screenplays.ScreenplayElementTest do
       changeset = ScreenplayElement.update_changeset(element, %{content: "Checkpoint"})
 
       assert changeset.valid?
-      assert Ecto.Changeset.get_field(changeset, :data)["color"] == "#f59e0b"
+      assert Ecto.Changeset.get_field(changeset, :data)["color"] == "#be185d"
+    end
+
+    test "preserves valid hex colors" do
+      changeset =
+        ScreenplayElement.create_changeset(%ScreenplayElement{}, %{
+          type: "hub_marker",
+          data: %{"hub_node_id" => "checkpoint", "color" => "#3b82f6"}
+        })
+
+      assert changeset.valid?
+      assert Ecto.Changeset.get_field(changeset, :data)["color"] == "#3b82f6"
     end
 
     test "does not add a Hub color to other element types" do

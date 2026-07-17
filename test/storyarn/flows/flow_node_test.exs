@@ -72,6 +72,39 @@ defmodule Storyarn.Flows.FlowNodeTest do
   end
 
   describe "Hub color normalization" do
+    test "defaults legacy names in current create changesets" do
+      changeset =
+        FlowNode.create_changeset(%FlowNode{}, %{
+          type: "hub",
+          data: %{"hub_id" => "checkpoint", "color" => "blue"}
+        })
+
+      assert changeset.valid?
+      assert Ecto.Changeset.get_field(changeset, :data)["color"] == "#be185d"
+    end
+
+    test "defaults legacy names in current update and data changesets" do
+      node = %FlowNode{
+        type: "hub",
+        data: %{"hub_id" => "checkpoint", "color" => "#3b82f6"}
+      }
+
+      update_changeset =
+        FlowNode.update_changeset(node, %{
+          data: %{"hub_id" => "checkpoint", "color" => "blue"}
+        })
+
+      data_changeset =
+        FlowNode.data_changeset(node, %{
+          data: %{"hub_id" => "checkpoint", "color" => "blue"}
+        })
+
+      assert update_changeset.valid?
+      assert data_changeset.valid?
+      assert Ecto.Changeset.get_field(update_changeset, :data)["color"] == "#be185d"
+      assert Ecto.Changeset.get_field(data_changeset, :data)["color"] == "#be185d"
+    end
+
     test "materializes legacy named colors as their original hex values" do
       changeset =
         FlowNode.materialize_changeset(%FlowNode{}, %{

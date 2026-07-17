@@ -18,16 +18,8 @@ defmodule Storyarn.Flows.HubColorsTest do
       assert HubColors.resolve("not-a-color") == HubColors.default_hex()
     end
 
-    test "resolves legacy color names to their original hex values" do
-      assert HubColors.resolve("purple") == "#8b5cf6"
-      assert HubColors.resolve("blue") == "#3b82f6"
-      assert HubColors.resolve("green") == "#22c55e"
-      assert HubColors.resolve("yellow") == "#f59e0b"
-      assert HubColors.resolve("amber") == "#f59e0b"
-      assert HubColors.resolve("red") == "#ef4444"
-      assert HubColors.resolve("pink") == "#ec4899"
-      assert HubColors.resolve("orange") == "#f97316"
-      assert HubColors.resolve("cyan") == "#06b6d4"
+    test "rejects legacy named colors from the current contract" do
+      assert HubColors.resolve("blue") == HubColors.default_hex()
     end
 
     test "passes through short hex colors" do
@@ -45,6 +37,26 @@ defmodule Storyarn.Flows.HubColorsTest do
     test "rejects otherwise valid hex colors with trailing newlines" do
       assert HubColors.resolve("#ff0000\n") == HubColors.default_hex()
       assert HubColors.resolve("#ff0000\r\n") == HubColors.default_hex()
+    end
+  end
+
+  describe "resolve_legacy/1" do
+    test "resolves historical color names to their original hex values" do
+      assert HubColors.resolve_legacy("purple") == "#8b5cf6"
+      assert HubColors.resolve_legacy("blue") == "#3b82f6"
+      assert HubColors.resolve_legacy("green") == "#22c55e"
+      assert HubColors.resolve_legacy("yellow") == "#f59e0b"
+      assert HubColors.resolve_legacy("amber") == "#f59e0b"
+      assert HubColors.resolve_legacy("red") == "#ef4444"
+      assert HubColors.resolve_legacy("pink") == "#ec4899"
+      assert HubColors.resolve_legacy("orange") == "#f97316"
+      assert HubColors.resolve_legacy("cyan") == "#06b6d4"
+    end
+
+    test "preserves valid hex values and defaults invalid values" do
+      assert HubColors.resolve_legacy("#3b82f6") == "#3b82f6"
+      assert HubColors.resolve_legacy("not-a-color") == HubColors.default_hex()
+      assert HubColors.resolve_legacy(nil) == HubColors.default_hex()
     end
   end
 end

@@ -430,6 +430,26 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       assert sp_with_data.elements != []
     end
 
+    test "normalizes legacy Flow Hub colors while importing", %{target: target} do
+      data =
+        [
+          %{
+            "id" => "legacy-hub",
+            "type" => "hub",
+            "source" => "manual",
+            "data" => %{"hub_id" => "checkpoint", "color" => "blue"}
+          }
+        ]
+        |> minimal_import_data()
+        |> put_in(["flows", Access.at(0), "name"], "Legacy Hub Colors")
+
+      assert {:ok, result} = Imports.execute(target, storyarn_plan(data))
+
+      flow = Enum.find(result.flows, &(&1.name == "Legacy Hub Colors"))
+      hub = flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "hub"))
+      assert hub.data["color"] == "#3b82f6"
+    end
+
     test "normalizes legacy Hub marker colors while importing", %{target: target} do
       data =
         minimal_import_data()

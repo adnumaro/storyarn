@@ -357,6 +357,9 @@ defmodule Storyarn.Flows do
   @doc "Resolves a Hub color to a valid hex value."
   defdelegate resolve_hub_color(color), to: HubColors, as: :resolve
 
+  @doc "Resolves a historical named Hub color to its hex value."
+  defdelegate resolve_legacy_hub_color(color), to: HubColors, as: :resolve_legacy
+
   @doc """
   Finds a hub node in a flow by its hub_id string.
   Returns nil if not found.
