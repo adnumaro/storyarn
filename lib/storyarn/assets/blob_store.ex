@@ -12,6 +12,7 @@ defmodule Storyarn.Assets.BlobStore do
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCompensation
+  alias Storyarn.Assets.StorageHash
   alias Storyarn.Assets.StorageKeyLock
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
@@ -338,30 +339,8 @@ defmodule Storyarn.Assets.BlobStore do
   defp verify_stored_blob(storage_key, stat, expected_hash) do
     with {:ok, chunks} <-
            Storage.stream(storage_key, 0, stat.size, etag: stat.etag),
-         {:ok, actual_hash} <- hash_chunks(chunks) do
+         {:ok, actual_hash} <- StorageHash.sha256_chunks(chunks) do
       if actual_hash == expected_hash, do: :ok, else: {:error, :blob_hash_mismatch}
-    end
-  end
-
-  defp hash_chunks(chunks) do
-    chunks
-    |> Enum.reduce_while({:ok, :crypto.hash_init(:sha256)}, fn
-      {:ok, chunk}, {:ok, hash_state} when is_binary(chunk) ->
-        {:cont, {:ok, :crypto.hash_update(hash_state, chunk)}}
-
-      {:error, reason}, _acc ->
-        {:halt, {:error, reason}}
-
-      _unexpected, _acc ->
-        {:halt, {:error, :unexpected_blob_stream_chunk}}
-    end)
-    |> case do
-      {:ok, hash_state} ->
-        hash = hash_state |> :crypto.hash_final() |> Base.encode16(case: :lower)
-        {:ok, hash}
-
-      {:error, _reason} = error ->
-        error
     end
   end
 

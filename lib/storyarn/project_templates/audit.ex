@@ -1048,7 +1048,7 @@ defmodule Storyarn.ProjectTemplates.Audit do
 
         Repo.rollback({:template_materialization_audit, result})
       end,
-      timeout: :infinity
+      timeout: to_timeout(minute: 5)
     )
   end
 

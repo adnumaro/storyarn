@@ -21,6 +21,7 @@ defmodule Storyarn.Application do
       Storyarn.Flows.DebugSessionStore,
       Storyarn.Flows.NavigationHistoryStore,
       {Task.Supervisor, name: Storyarn.TaskSupervisor},
+      Storyarn.Assets.Storage.Local.ConditionalCopySweeper,
       {Oban, Application.fetch_env!(:storyarn, Oban)},
       # Start to serve requests, typically the last entry
       StoryarnWeb.Endpoint

@@ -4,6 +4,7 @@ defmodule Storyarn.ProjectTemplates.Deletion do
   import Ecto.Query, warn: false
 
   alias Storyarn.Accounts.Scope
+  alias Storyarn.Assets.StorageCompensation
   alias Storyarn.ProjectTemplates.Authorization
   alias Storyarn.ProjectTemplates.ProjectTemplate
   alias Storyarn.ProjectTemplates.ProjectTemplatePublication
@@ -35,22 +36,29 @@ defmodule Storyarn.ProjectTemplates.Deletion do
   end
 
   def perform_template_artifact_gc(storage_keys) when is_list(storage_keys) do
-    storage_keys
-    |> Enum.filter(&valid_storage_key?/1)
-    |> Enum.uniq()
-    |> Enum.reduce([], fn key, failures ->
-      case SnapshotStorage.delete_snapshot(key) do
-        :ok -> failures
-        {:error, reason} -> [%{"storage_key" => key, "reason" => inspect(reason)} | failures]
-      end
-    end)
-    |> case do
-      [] -> :ok
-      failures -> {:error, %{"failed_deletions" => Enum.reverse(failures)}}
+    with {:ok, storage_keys} <- validate_template_storage_keys(storage_keys) do
+      delete_template_storage_keys(storage_keys)
     end
   end
 
   def perform_template_artifact_gc(_storage_keys), do: {:error, :invalid_storage_keys}
+
+  defp delete_template_storage_keys(storage_keys) do
+    storage_keys
+    |> Enum.reduce([], &collect_storage_deletion_failure/2)
+    |> deletion_result()
+  end
+
+  defp collect_storage_deletion_failure(key, failures) do
+    case StorageCompensation.delete_or_enqueue(key) do
+      :ok -> failures
+      {:error, reason} -> [%{"storage_key" => key, "reason" => inspect(reason)} | failures]
+    end
+  end
+
+  defp deletion_result([]), do: :ok
+
+  defp deletion_result(failures), do: {:error, %{"failed_deletions" => Enum.reverse(failures)}}
 
   defp lock_template(template_id) do
     ProjectTemplate
@@ -67,13 +75,28 @@ defmodule Storyarn.ProjectTemplates.Deletion do
     publication_keys = publication_storage_keys(template_id)
 
     with {:ok, imported_blob_keys} <- imported_blob_storage_keys(version_keys) do
-      storage_keys =
-        (version_keys ++ publication_keys ++ imported_blob_keys)
-        |> List.flatten()
-        |> Enum.filter(&valid_storage_key?/1)
-        |> Enum.uniq()
+      version_keys
+      |> Kernel.++(publication_keys)
+      |> Kernel.++(imported_blob_keys)
+      |> List.flatten()
+      |> Enum.reject(&is_nil/1)
+      |> validate_template_storage_keys()
+    end
+  end
 
-      {:ok, storage_keys}
+  defp validate_template_storage_keys(storage_keys) do
+    storage_keys = Enum.uniq(storage_keys)
+
+    case Enum.reject(storage_keys, &StorageCompensation.template_storage_key?/1) do
+      [] ->
+        {:ok, storage_keys}
+
+      invalid_keys ->
+        {:error,
+         {:invalid_template_storage_keys,
+          Enum.map(invalid_keys, fn key ->
+            if is_binary(key), do: key, else: inspect(key)
+          end)}}
     end
   end
 
@@ -106,25 +129,36 @@ defmodule Storyarn.ProjectTemplates.Deletion do
   end
 
   defp load_imported_blob_keys(manifest_key) do
-    expected_prefix = imported_blob_prefix(manifest_key)
+    {:ok, expected_identity} = imported_blob_identity(manifest_key)
 
     case SnapshotStorage.load_snapshot(manifest_key) do
       {:ok, %{"assets" => assets}} when is_list(assets) ->
-        keys =
-          assets
-          |> Enum.map(fn
-            %{"key" => key} when is_binary(key) -> key
-            _asset -> nil
-          end)
-          |> Enum.filter(&(is_binary(&1) and String.starts_with?(&1, expected_prefix)))
-
-        {:ok, keys}
+        validate_imported_blob_keys(assets, expected_identity)
 
       {:ok, _invalid_manifest} ->
         {:error, :invalid_asset_manifest}
 
       {:error, _reason} = error ->
         error
+    end
+  end
+
+  defp validate_imported_blob_keys(assets, expected_identity) do
+    assets
+    |> Enum.reduce_while({:ok, []}, fn
+      %{"key" => key}, {:ok, keys} when is_binary(key) ->
+        if canonical_imported_blob_key?(key, expected_identity) do
+          {:cont, {:ok, [key | keys]}}
+        else
+          {:halt, {:error, :invalid_asset_manifest}}
+        end
+
+      _invalid_asset, _keys ->
+        {:halt, {:error, :invalid_asset_manifest}}
+    end)
+    |> case do
+      {:ok, keys} -> {:ok, Enum.reverse(keys)}
+      {:error, _reason} = error -> error
     end
   end
 
@@ -138,12 +172,25 @@ defmodule Storyarn.ProjectTemplates.Deletion do
 
   defp portable_import_manifest_key?(_storage_key), do: false
 
-  defp imported_blob_prefix(manifest_key) do
+  defp imported_blob_identity(manifest_key) do
     ["project_templates", "imports", slug, suffix, "asset-manifest.json.gz"] =
       String.split(manifest_key, "/")
 
-    "project_templates/imported_blobs/#{slug}/#{suffix}/"
+    {:ok, {slug, suffix}}
   end
+
+  defp canonical_imported_blob_key?(storage_key, {expected_slug, expected_suffix}) when is_binary(storage_key) do
+    case String.split(storage_key, "/") do
+      ["project_templates", "imported_blobs", ^expected_slug, ^expected_suffix, hash, filename]
+      when filename not in ["", ".", ".."] ->
+        String.match?(hash, ~r/\A[0-9a-f]{64}\z/)
+
+      _parts ->
+        false
+    end
+  end
+
+  defp canonical_imported_blob_key?(_storage_key, _expected_identity), do: false
 
   defp enqueue_artifact_gc([]), do: {:ok, nil}
 
@@ -152,6 +199,4 @@ defmodule Storyarn.ProjectTemplates.Deletion do
     |> DeleteProjectTemplateArtifactsWorker.new()
     |> Oban.insert()
   end
-
-  defp valid_storage_key?(value), do: is_binary(value) and value != ""
 end

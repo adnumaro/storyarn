@@ -169,7 +169,7 @@ defmodule Storyarn.ProjectTemplates.Installation do
           install.user_id == ^user_id and version.project_template_id == ^template.id and
             install.status == "failed" and is_nil(install.feedback_dismissed_at)
         )
-        |> order_by([install], asc: install.completed_at, asc: install.id)
+        |> order_by([install], desc: install.completed_at, desc: install.id)
         |> limit(^@pending_failure_limit)
         |> preload([_install, version, _membership], project_template_version: version)
         |> preload([:workspace])
@@ -416,16 +416,21 @@ defmodule Storyarn.ProjectTemplates.Installation do
     try do
       result =
         Repo.transaction(
-          fn -> instantiate_template_under_workspace_lock(scope, version, workspace, attrs, snapshot, opts) end,
+          fn ->
+            project = instantiate_template_under_workspace_lock(scope, version, workspace, attrs, snapshot, opts)
+
+            case StorageCompensation.prepare_unretained_cleanup(tracker) do
+              :ok -> project
+              {:error, reason} -> Repo.rollback({:storage_cleanup_handoff_failed, reason})
+            end
+          end,
           timeout: :infinity
         )
 
       case result do
         {:ok, _project} ->
-          case StorageCompensation.cleanup_unretained(tracker) do
-            :ok -> result
-            {:error, cleanup_reason} -> {:error, cleanup_reason}
-          end
+          StorageCompensation.discard(tracker)
+          result
 
         {:error, _reason} ->
           cleanup_result(tracker, result)

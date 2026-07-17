@@ -317,11 +317,7 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
 
     with {:ok, artifact} <-
            store_publication_artifacts(publication, snapshot, asset_manifest, checksum, preview, audit_report),
-         :ok <-
-           run_publication_hook(opts, :before_finalize, %{
-             publication: publication,
-             artifact: artifact
-           }),
+         :ok <- run_before_finalize_hook(publication, artifact, opts),
          {:ok, publication} <-
            finalize_publication(
              publication,
@@ -337,6 +333,27 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
       {:error, reason} ->
         handle_unexpected_publication_error(publication, reason, opts)
     end
+  end
+
+  defp run_before_finalize_hook(publication, artifact, opts) do
+    result =
+      run_publication_hook(opts, :before_finalize, %{
+        publication: publication,
+        artifact: artifact
+      })
+
+    case result do
+      :ok -> :ok
+      {:error, reason} -> cleanup_publication_error(reason, artifact_keys(artifact))
+    end
+  rescue
+    error ->
+      cleanup_publication_artifacts!(artifact_keys(artifact))
+      reraise error, __STACKTRACE__
+  catch
+    kind, reason ->
+      cleanup_publication_artifacts!(artifact_keys(artifact))
+      :erlang.raise(kind, reason, __STACKTRACE__)
   end
 
   defp run_publication_hook(opts, name, payload) do

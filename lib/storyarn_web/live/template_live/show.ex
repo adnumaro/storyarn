@@ -423,7 +423,7 @@ defmodule StoryarnWeb.TemplateLive.Show do
       >
         <div role="alert" class="alert alert-error items-start border border-error/40 shadow-lg">
           <p class="min-w-0 flex-1 text-sm">
-            {installation_failure_message(@installation_failure.id)}
+            {installation_failure_message(@installation_failure)}
           </p>
           <button
             id="dismiss-template-installation-failure"
@@ -672,13 +672,34 @@ defmodule StoryarnWeb.TemplateLive.Show do
     end
   end
 
-  defp installation_failure_message(installation_id) do
+  @safe_installation_failure_messages [
+    "A template asset could not be copied.",
+    "The installation could not be completed.",
+    "This template is no longer available.",
+    "The template failed its integrity check.",
+    "This template version is incompatible and must be republished.",
+    "This template version contains an invalid subflow exit and must be republished.",
+    "The workspace project limit has been reached.",
+    "The template asset manifest is unavailable.",
+    "The template integrity information is unavailable.",
+    "The template or workspace is no longer available.",
+    "You no longer have permission to install this template."
+  ]
+
+  defp installation_failure_message(installation) do
     dgettext(
       "projects",
-      "Template installation failed. Reference: %{reference}",
-      reference: installation_id
+      "Template installation failed: %{reason} Reference: %{reference}",
+      reason: safe_installation_failure_reason(installation),
+      reference: installation.id
     )
   end
+
+  defp safe_installation_failure_reason(%{error_message: message}) when message in @safe_installation_failure_messages,
+    do: message
+
+  defp safe_installation_failure_reason(_installation),
+    do: dgettext("projects", "The installation could not be completed.")
 
   defp installation_stage_label("queued"), do: dgettext("projects", "Waiting to start…")
   defp installation_stage_label("verifying"), do: dgettext("projects", "Verifying template integrity…")

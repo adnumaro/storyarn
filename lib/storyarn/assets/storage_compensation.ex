@@ -7,8 +7,10 @@ defmodule Storyarn.Assets.StorageCompensation do
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCleanupPersistenceError
   alias Storyarn.Assets.StorageCleanupRequest
+  alias Storyarn.Assets.StorageHash
   alias Storyarn.Assets.StorageKeyLock
   alias Storyarn.Projects.Project
+  alias Storyarn.ProjectTemplates.ProjectTemplatePublication
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Repo
   alias Storyarn.Workers.DeleteStorageObjectsWorker
@@ -101,16 +103,30 @@ defmodule Storyarn.Assets.StorageCompensation do
   """
   @spec cleanup_unretained(reference(), keyword()) :: :ok | {:error, term()}
   def cleanup_unretained(reference, opts \\ []) when is_reference(reference) do
-    retained_keys = reference |> retained() |> MapSet.new()
+    cleanup_storage_keys(reference, unretained_cleanup_targets(reference), opts)
+  end
 
-    cleanup_targets =
-      reference
-      |> tracked()
-      |> Enum.reject(&MapSet.member?(retained_keys, cleanup_target_storage_key(&1)))
-      |> Enum.filter(&valid_cleanup_target?/1)
-      |> Enum.uniq()
+  @doc """
+  Persists cleanup ownership for partial storage writes before the surrounding
+  database transaction commits.
 
-    cleanup_storage_keys(reference, cleanup_targets, opts)
+  Unlike `cleanup_unretained/2`, this function deliberately keeps the tracker
+  intact. The owner must call `discard/1` after a successful commit, or
+  `cleanup/2` after rollback. This makes the cleanup handoff atomic with the
+  database writes without losing rollback compensation if the commit fails.
+  """
+  @spec prepare_unretained_cleanup(reference(), keyword()) :: :ok | {:error, term()}
+  def prepare_unretained_cleanup(reference, opts \\ []) when is_reference(reference) do
+    enqueue_fun = Keyword.get(opts, :enqueue_fun, &enqueue_cleanup/1)
+    persist_fun = Keyword.get(opts, :persist_fun, &persist_cleanup_request/1)
+
+    case unretained_cleanup_targets(reference) do
+      [] ->
+        :ok
+
+      cleanup_targets ->
+        persist_cleanup_handoff(cleanup_targets, enqueue_fun, persist_fun)
+    end
   end
 
   defp cleanup_storage_keys(reference, storage_keys, opts) do
@@ -130,6 +146,44 @@ defmodule Storyarn.Assets.StorageCompensation do
           delete_fun,
           persist_fun
         )
+    end
+  end
+
+  defp unretained_cleanup_targets(reference) do
+    retained_keys = reference |> retained() |> MapSet.new()
+
+    reference
+    |> tracked()
+    |> Enum.reject(&MapSet.member?(retained_keys, cleanup_target_storage_key(&1)))
+    |> Enum.filter(&valid_cleanup_target?/1)
+    |> Enum.uniq()
+  end
+
+  defp persist_cleanup_handoff(cleanup_targets, enqueue_fun, persist_fun) do
+    case call_enqueue(enqueue_fun, cleanup_targets) do
+      :ok ->
+        :ok
+
+      {:error, enqueue_reason} ->
+        case call_persist(persist_fun, cleanup_targets) do
+          {:ok, _cleanup_request} ->
+            :ok
+
+          {:error, persistence_reason} ->
+            Logger.error(
+              "Could not prepare copied asset cleanup before commit " <>
+                "enqueue_error=#{safe_error(enqueue_reason)} " <>
+                "persistence_error=#{safe_error(persistence_reason)}"
+            )
+
+            {:error,
+             {:storage_cleanup_handoff_not_persisted,
+              %{
+                cleanup_targets: cleanup_targets,
+                enqueue_error: safe_error(enqueue_reason),
+                persistence_error: safe_error(persistence_reason)
+              }}}
+        end
     end
   end
 
@@ -618,29 +672,7 @@ defmodule Storyarn.Assets.StorageCompensation do
   defp stored_object_hash(storage_key) do
     with {:ok, stat} <- Storage.stat(storage_key),
          {:ok, chunks} <- Storage.stream(storage_key, 0, stat.size, etag: stat.etag) do
-      hash_chunks(chunks)
-    end
-  end
-
-  defp hash_chunks(chunks) do
-    chunks
-    |> Enum.reduce_while({:ok, :crypto.hash_init(:sha256)}, fn
-      {:ok, chunk}, {:ok, hash_state} when is_binary(chunk) ->
-        {:cont, {:ok, :crypto.hash_update(hash_state, chunk)}}
-
-      {:error, reason}, _acc ->
-        {:halt, {:error, reason}}
-
-      _unexpected, _acc ->
-        {:halt, {:error, :unexpected_blob_stream_chunk}}
-    end)
-    |> case do
-      {:ok, hash_state} ->
-        hash = hash_state |> :crypto.hash_final() |> Base.encode16(case: :lower)
-        {:ok, hash}
-
-      {:error, _reason} = error ->
-        error
+      StorageHash.sha256_chunks(chunks)
     end
   end
 
@@ -654,13 +686,17 @@ defmodule Storyarn.Assets.StorageCompensation do
 
   defp committed_template_storage_key?(storage_key) do
     case template_storage_identity(storage_key) do
+      {:artifact, :publication, _publication_id} ->
+        committed_template_version_storage_key?(storage_key) or
+          Repo.exists?(
+            from publication in ProjectTemplatePublication,
+              where:
+                publication.snapshot_storage_key == ^storage_key or
+                  publication.asset_manifest_storage_key == ^storage_key
+          )
+
       {:artifact, _slug, _suffix} ->
-        Repo.exists?(
-          from version in ProjectTemplateVersion,
-            where:
-              version.snapshot_storage_key == ^storage_key or
-                version.asset_manifest_storage_key == ^storage_key
-        )
+        committed_template_version_storage_key?(storage_key)
 
       {:imported_blob, slug, suffix} ->
         asset_manifest_key = "project_templates/imports/#{slug}/#{suffix}/asset-manifest.json.gz"
@@ -673,6 +709,15 @@ defmodule Storyarn.Assets.StorageCompensation do
       :error ->
         false
     end
+  end
+
+  defp committed_template_version_storage_key?(storage_key) do
+    Repo.exists?(
+      from version in ProjectTemplateVersion,
+        where:
+          version.snapshot_storage_key == ^storage_key or
+            version.asset_manifest_storage_key == ^storage_key
+    )
   end
 
   defp cleanup_one(cleanup_target, cleanup_opts) do
@@ -750,10 +795,18 @@ defmodule Storyarn.Assets.StorageCompensation do
   end
 
   defp valid_storage_key?(storage_key) when is_binary(storage_key) do
-    project_storage_key?(storage_key) or match?({_, _, _}, template_storage_identity(storage_key))
+    project_storage_key?(storage_key) or template_storage_key?(storage_key)
   end
 
   defp valid_storage_key?(_storage_key), do: false
+
+  @doc false
+  @spec template_storage_key?(term()) :: boolean()
+  def template_storage_key?(storage_key) when is_binary(storage_key) do
+    match?({_, _, _}, template_storage_identity(storage_key))
+  end
+
+  def template_storage_key?(_storage_key), do: false
 
   defp project_storage_key?(storage_key) do
     String.starts_with?(storage_key, "projects/") and
@@ -762,22 +815,24 @@ defmodule Storyarn.Assets.StorageCompensation do
 
   defp template_storage_identity(storage_key) do
     storage_key
-    |> String.split("/", parts: 6)
+    |> String.split("/")
     |> parse_template_storage_identity()
   end
 
   defp parse_template_storage_identity(["project_templates", "imports", slug, suffix, filename])
-       when slug != "" and suffix != "" and filename in ["snapshot.json.gz", "asset-manifest.json.gz"] do
+       when slug not in ["", ".", ".."] and suffix not in ["", ".", ".."] and
+              filename in ["snapshot.json.gz", "asset-manifest.json.gz"] do
     {:artifact, slug, suffix}
   end
 
   defp parse_template_storage_identity(["project_templates", "imported_blobs", slug, suffix, hash, filename])
-       when slug != "" and suffix != "" and byte_size(hash) == 64 and filename != "" do
+       when slug not in ["", ".", ".."] and suffix not in ["", ".", ".."] and byte_size(hash) == 64 and
+              filename not in ["", ".", ".."] do
     imported_blob_storage_identity(slug, suffix, hash)
   end
 
   defp parse_template_storage_identity(["project_template_publications", publication_id, filename])
-       when publication_id != "" and filename != "" do
+       when publication_id != "" and filename not in ["", ".", ".."] do
     publication_storage_identity(publication_id, filename)
   end
 
@@ -790,9 +845,12 @@ defmodule Storyarn.Assets.StorageCompensation do
   end
 
   defp publication_storage_identity(publication_id, filename) do
-    if String.match?(filename, ~r/\A(?:snapshot|asset-manifest)-[0-9a-f]+\.json\.gz\z/),
-      do: {:artifact, :publication, publication_id},
-      else: :error
+    with {publication_id, ""} when publication_id > 0 <- Integer.parse(publication_id),
+         true <- String.match?(filename, ~r/\A(?:snapshot|asset-manifest)-[0-9a-f]+\.json\.gz\z/) do
+      {:artifact, :publication, publication_id}
+    else
+      _invalid -> :error
+    end
   end
 
   defp valid_cleanup_target?(cleanup_target) when is_binary(cleanup_target) do

@@ -163,11 +163,21 @@ defmodule StoryarnWeb.TemplateLiveTest do
           "Stale Failure Copy"
         )
 
+      Repo.update_all(
+        from(install in ProjectTemplateInstall, where: install.id == ^failed_installation.id),
+        set: [
+          error_code: "checksum_mismatch",
+          error_message: "The template failed its integrity check."
+        ]
+      )
+
       {:ok, view, _html} = live(conn, ~p"/templates/#{template.id}")
 
       assert has_element?(view, "#template-installation-failure-toast")
       assert has_element?(view, "#dismiss-template-installation-failure")
-      assert render(view) =~ "Template installation failed. Reference: #{failed_installation.id}"
+
+      assert render(view) =~
+               "Template installation failed: The template failed its integrity check. Reference: #{failed_installation.id}"
 
       render_click(element(view, "#dismiss-template-installation-failure"))
 
@@ -182,7 +192,7 @@ defmodule StoryarnWeb.TemplateLiveTest do
       refute has_element?(view, "#template-installation-failure-toast")
     end
 
-    test "queues concurrent failures and advances after dismissing the oldest", %{
+    test "queues concurrent failures and advances after dismissing the newest", %{
       conn: conn,
       user: user,
       scope: scope
@@ -208,18 +218,48 @@ defmodule StoryarnWeb.TemplateLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/templates/#{template.id}")
 
-      assert render(view) =~ "Template installation failed. Reference: #{first_failure.id}"
-      refute render(view) =~ "Template installation failed. Reference: #{second_failure.id}"
+      assert render(view) =~ failure_feedback_text(second_failure.id)
+      refute render(view) =~ failure_feedback_text(first_failure.id)
 
       render_click(element(view, "#dismiss-template-installation-failure"))
 
-      assert Repo.get!(ProjectTemplateInstall, first_failure.id).feedback_dismissed_at
-      assert render(view) =~ "Template installation failed. Reference: #{second_failure.id}"
+      assert Repo.get!(ProjectTemplateInstall, second_failure.id).feedback_dismissed_at
+      assert render(view) =~ failure_feedback_text(first_failure.id)
 
-      send(view.pid, {:project_template_installation_updated, first_failure})
+      send(view.pid, {:project_template_installation_updated, second_failure})
 
-      assert render(view) =~ "Template installation failed. Reference: #{second_failure.id}"
-      refute render(view) =~ "Template installation failed. Reference: #{first_failure.id}"
+      assert render(view) =~ failure_feedback_text(first_failure.id)
+      refute render(view) =~ failure_feedback_text(second_failure.id)
+    end
+
+    test "does not expose an internal stored installation error", %{
+      conn: conn,
+      user: user,
+      scope: scope
+    } do
+      template = template_fixture(user, scope, %{name: "Internal Failure Template"})
+      workspace = workspace_fixture(user, %{name: "Internal Failure Workspace"})
+
+      failed_installation =
+        failed_installation_fixture(
+          template,
+          user,
+          workspace,
+          "Internal Failed Copy"
+        )
+
+      internal_error = "{:materialization_failed, #Ecto.Changeset<errors: [secret: \"token\"]>}"
+
+      Repo.update_all(
+        from(install in ProjectTemplateInstall, where: install.id == ^failed_installation.id),
+        set: [error_code: "materialization_failed", error_message: internal_error]
+      )
+
+      {:ok, view, _html} = live(conn, ~p"/templates/#{template.id}")
+
+      assert render(view) =~ failure_feedback_text(failed_installation.id)
+      refute render(view) =~ internal_error
+      refute render(view) =~ "token"
     end
 
     test "does not let failures from inaccessible workspaces block the queue", %{
@@ -254,8 +294,8 @@ defmodule StoryarnWeb.TemplateLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/templates/#{template.id}")
 
-      assert render(view) =~ "Template installation failed. Reference: #{accessible_failure.id}"
-      refute render(view) =~ "Template installation failed. Reference: #{inaccessible_failure.id}"
+      assert render(view) =~ failure_feedback_text(accessible_failure.id)
+      refute render(view) =~ failure_feedback_text(inaccessible_failure.id)
     end
 
     test "advances the queue when workspace access is revoked while feedback is open", %{
@@ -268,14 +308,6 @@ defmodule StoryarnWeb.TemplateLiveTest do
       revoked_workspace = workspace_fixture(workspace_owner, %{name: "Soon Revoked Workspace"})
       membership = workspace_membership_fixture(revoked_workspace, user, "member")
 
-      revoked_failure =
-        failed_installation_fixture(
-          template,
-          user,
-          revoked_workspace,
-          "Revoked Failed Copy"
-        )
-
       accessible_workspace = workspace_fixture(user, %{name: "Still Accessible Workspace"})
 
       accessible_failure =
@@ -286,14 +318,22 @@ defmodule StoryarnWeb.TemplateLiveTest do
           "Still Accessible Failed Copy"
         )
 
+      revoked_failure =
+        failed_installation_fixture(
+          template,
+          user,
+          revoked_workspace,
+          "Revoked Failed Copy"
+        )
+
       {:ok, view, _html} = live(conn, ~p"/templates/#{template.id}")
-      assert render(view) =~ "Template installation failed. Reference: #{revoked_failure.id}"
+      assert render(view) =~ failure_feedback_text(revoked_failure.id)
 
       Repo.delete!(membership)
       render_click(element(view, "#dismiss-template-installation-failure"))
 
       refute Repo.get!(ProjectTemplateInstall, revoked_failure.id).feedback_dismissed_at
-      assert render(view) =~ "Template installation failed. Reference: #{accessible_failure.id}"
+      assert render(view) =~ failure_feedback_text(accessible_failure.id)
     end
 
     test "dismiss feedback only clears the matching installation failure", %{
@@ -304,20 +344,20 @@ defmodule StoryarnWeb.TemplateLiveTest do
       template = template_fixture(user, scope, %{name: "Concurrent Failure Template"})
       workspace = workspace_fixture(user, %{name: "Concurrent Failure Workspace"})
 
-      visible_failure =
-        failed_installation_fixture(
-          template,
-          user,
-          workspace,
-          "Visible Failure Copy"
-        )
-
       other_failure =
         failed_installation_fixture(
           template,
           user,
           workspace,
           "Other Failure Copy"
+        )
+
+      visible_failure =
+        failed_installation_fixture(
+          template,
+          user,
+          workspace,
+          "Visible Failure Copy"
         )
 
       {:ok, view, _html} = live(conn, ~p"/templates/#{template.id}")
@@ -327,7 +367,7 @@ defmodule StoryarnWeb.TemplateLiveTest do
         {:project_template_installation_updated, visible_failure}
       )
 
-      assert render(view) =~ "Template installation failed. Reference: #{visible_failure.id}"
+      assert render(view) =~ failure_feedback_text(visible_failure.id)
 
       assert {:ok, _dismissed} =
                ProjectTemplates.dismiss_installation_failure(
@@ -336,7 +376,7 @@ defmodule StoryarnWeb.TemplateLiveTest do
                  other_failure.id
                )
 
-      assert render(view) =~ "Template installation failed. Reference: #{visible_failure.id}"
+      assert render(view) =~ failure_feedback_text(visible_failure.id)
     end
 
     test "dismissing a failure does not clear a newer unrelated error", %{
@@ -362,7 +402,7 @@ defmodule StoryarnWeb.TemplateLiveTest do
         {:project_template_installation_updated, failed_installation}
       )
 
-      assert render(view) =~ "Template installation failed. Reference: #{failed_installation.id}"
+      assert render(view) =~ failure_feedback_text(failed_installation.id)
 
       html =
         render_submit(element(view, "#template-install-form"), %{
@@ -564,6 +604,10 @@ defmodule StoryarnWeb.TemplateLiveTest do
     }
     |> Repo.insert!()
     |> Repo.preload([:workspace, project_template_version: [:project_template]])
+  end
+
+  defp failure_feedback_text(installation_id) do
+    "Template installation failed: The installation could not be completed. Reference: #{installation_id}"
   end
 
   defp template_fixture(user, scope, attrs) do

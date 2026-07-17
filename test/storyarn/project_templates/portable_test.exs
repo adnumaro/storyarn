@@ -126,6 +126,175 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
       on_exit(fn -> Assets.storage_delete(cloned_asset.key) end)
     end
 
+    test "uploads a duplicate content hash only once while validating every bundle entry" do
+      %{project: project} = portable_source_project()
+      output_path = bundle_path()
+      duplicate_path = bundle_path()
+      installer = AccountsFixtures.set_super_admin(AccountsFixtures.user_fixture())
+      workspace = WorkspacesFixtures.workspace_fixture(installer)
+
+      on_exit(fn ->
+        File.rm(output_path)
+        File.rm(duplicate_path)
+      end)
+
+      assert {:ok, _export} =
+               ProjectTemplates.export_portable_template(project.id, output_path,
+                 name: "Duplicate Hash Import",
+                 slug: "duplicate-hash-import"
+               )
+
+      assert {:ok, bundle} = PortableBundle.read(output_path)
+      [blob] = bundle.manifest["asset_blobs"]
+      data = bundle.files[blob["path"]]
+
+      duplicate_blob =
+        blob
+        |> Map.put("asset_id", blob["asset_id"] + 1)
+        |> Map.put("filename", "duplicate.png")
+        |> Map.put("path", "assets/#{blob["sha256"]}/duplicate.png")
+
+      blobs = [blob, duplicate_blob]
+
+      manifest =
+        bundle.manifest
+        |> Map.put("asset_count", 2)
+        |> Map.put("asset_blobs", blobs)
+        |> Map.put(
+          "checksum",
+          PortableBundle.checksum(bundle.snapshot, bundle.asset_manifest, blobs)
+        )
+
+      assert {:ok, ^duplicate_path} =
+               PortableBundle.write(
+                 duplicate_path,
+                 manifest,
+                 bundle.snapshot,
+                 bundle.asset_manifest,
+                 [{blob["path"], data}, {duplicate_blob["path"], data}]
+               )
+
+      assert {:ok, template} =
+               ProjectTemplates.import_portable_template(duplicate_path,
+                 visibility: "public",
+                 verify_user_id: installer.id,
+                 verify_workspace_id: workspace.id
+               )
+
+      register_project_asset_cleanup(template.source_project)
+      version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
+      register_template_artifact_cleanup(version)
+
+      assert {:ok, %{"assets" => [%{"key" => imported_blob_key}]}} =
+               SnapshotStorage.load_snapshot(version.asset_manifest_storage_key)
+
+      on_exit(fn -> Assets.storage_delete(imported_blob_key) end)
+
+      duplicate_key = Path.join(Path.dirname(imported_blob_key), "duplicate.png")
+      refute imported_blob_key == duplicate_key
+      assert {:error, :enoent} = Assets.storage_download(duplicate_key)
+    end
+
+    test "rejects duplicate content hashes with different content types" do
+      %{project: project} = portable_source_project()
+      output_path = bundle_path()
+      incompatible_path = bundle_path()
+
+      on_exit(fn ->
+        File.rm(output_path)
+        File.rm(incompatible_path)
+      end)
+
+      assert {:ok, _export} =
+               ProjectTemplates.export_portable_template(project.id, output_path,
+                 name: "Duplicate MIME Import",
+                 slug: "duplicate-mime-import"
+               )
+
+      assert {:ok, bundle} = PortableBundle.read(output_path)
+      [blob] = bundle.manifest["asset_blobs"]
+
+      duplicate_blob =
+        blob
+        |> Map.put("asset_id", blob["asset_id"] + 1)
+        |> Map.put("content_type", "image/jpeg")
+        |> Map.put("filename", "duplicate.jpg")
+        |> Map.put("path", "assets/#{blob["sha256"]}/duplicate.jpg")
+
+      blobs = [blob, duplicate_blob]
+
+      manifest =
+        bundle.manifest
+        |> Map.put("asset_count", 2)
+        |> Map.put("asset_blobs", blobs)
+        |> Map.put(
+          "checksum",
+          PortableBundle.checksum(bundle.snapshot, bundle.asset_manifest, blobs)
+        )
+
+      assert {:ok, ^incompatible_path} =
+               PortableBundle.write(
+                 incompatible_path,
+                 manifest,
+                 bundle.snapshot,
+                 bundle.asset_manifest,
+                 [
+                   {blob["path"], bundle.files[blob["path"]]},
+                   {duplicate_blob["path"], bundle.files[blob["path"]]}
+                 ]
+               )
+
+      assert {:error, {:duplicate_asset_content_type_mismatch, hash, original_content_type, "image/jpeg"}} =
+               ProjectTemplates.preview_portable_template(incompatible_path)
+
+      assert hash == blob["sha256"]
+      assert original_content_type == blob["content_type"]
+    end
+
+    test "rejects malformed asset metadata before uploading bundle blobs" do
+      %{project: project} = portable_source_project()
+      output_path = bundle_path()
+      malformed_path = bundle_path()
+
+      on_exit(fn ->
+        File.rm(output_path)
+        File.rm(malformed_path)
+      end)
+
+      assert {:ok, _export} =
+               ProjectTemplates.export_portable_template(project.id, output_path, slug: "malformed-asset-metadata")
+
+      assert {:ok, bundle} = PortableBundle.read(output_path)
+      [blob] = bundle.manifest["asset_blobs"]
+      malformed_blobs = [Map.put(blob, "filename", %{"unexpected" => "object"})]
+
+      manifest =
+        bundle.manifest
+        |> Map.put("asset_blobs", malformed_blobs)
+        |> Map.put(
+          "checksum",
+          PortableBundle.checksum(
+            bundle.snapshot,
+            bundle.asset_manifest,
+            malformed_blobs
+          )
+        )
+
+      assert {:ok, ^malformed_path} =
+               PortableBundle.write(
+                 malformed_path,
+                 manifest,
+                 bundle.snapshot,
+                 bundle.asset_manifest,
+                 asset_files(bundle)
+               )
+
+      assert {:error, :invalid_bundle_manifest} =
+               ProjectTemplates.preview_portable_template(malformed_path)
+
+      assert imported_blob_files("malformed-asset-metadata") == []
+    end
+
     test "imports an editable source and publishes version 2 on the same private template" do
       %{project: project} = portable_source_project()
       output_path = bundle_path()
@@ -199,7 +368,6 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
                )
 
       register_project_asset_cleanup(template.source_project)
-
       version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
 
       assert {:ok, %{"assets" => [%{"key" => imported_blob_key}]}} =
@@ -214,6 +382,70 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
       assert imported_blob_key in job.args["storage_keys"]
       assert :ok = perform_job(DeleteProjectTemplateArtifactsWorker, job.args)
       assert {:error, :enoent} = Assets.storage_download(imported_blob_key)
+    end
+
+    test "refuses to delete an imported template with a non-canonical blob key" do
+      %{project: project} = portable_source_project()
+      output_path = bundle_path()
+      editor = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(editor)
+      workspace = WorkspacesFixtures.workspace_fixture(editor)
+
+      on_exit(fn -> File.rm(output_path) end)
+
+      assert {:ok, _export} =
+               ProjectTemplates.export_portable_template(project.id, output_path,
+                 name: "Disposable Import",
+                 slug: "disposable-import"
+               )
+
+      assert {:ok, template} =
+               ProjectTemplates.import_portable_template(output_path,
+                 visibility: "private",
+                 owner_id: editor.id,
+                 verify_user_id: editor.id,
+                 verify_workspace_id: workspace.id
+               )
+
+      register_project_asset_cleanup(template.source_project)
+
+      version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
+
+      assert {:ok, %{"assets" => [%{"key" => imported_blob_key}]} = asset_manifest} =
+               SnapshotStorage.load_snapshot(version.asset_manifest_storage_key)
+
+      on_exit(fn -> Assets.storage_delete(imported_blob_key) end)
+
+      ["project_templates", "imported_blobs", slug, suffix, _hash, _filename] =
+        String.split(imported_blob_key, "/")
+
+      malformed_key =
+        "project_templates/imported_blobs/#{slug}/#{suffix}/not-a-sha256/unrelated.png"
+
+      tampered_manifest =
+        Map.update!(asset_manifest, "assets", fn assets ->
+          [%{"key" => malformed_key} | assets]
+        end)
+
+      assert {:ok, _size_bytes} =
+               SnapshotStorage.store_raw(version.asset_manifest_storage_key, tampered_manifest)
+
+      assert {:ok, _url} =
+               Assets.storage_upload(malformed_key, "unrelated", "application/octet-stream")
+
+      on_exit(fn -> Assets.storage_delete(malformed_key) end)
+
+      assert {:ok, archived} = ProjectTemplates.archive_template(scope, template)
+      manifest_key = version.asset_manifest_storage_key
+
+      assert {:error, {:template_asset_manifest_unreadable, ^manifest_key, :invalid_asset_manifest}} =
+               ProjectTemplates.delete_template(scope, archived)
+
+      assert Repo.get(ProjectTemplate, template.id)
+      assert Repo.get(ProjectTemplateVersion, version.id)
+      assert all_enqueued(worker: DeleteProjectTemplateArtifactsWorker) == []
+      assert {:ok, _contents} = Assets.storage_download(imported_blob_key)
+      assert {:ok, "unrelated"} = Assets.storage_download(malformed_key)
     end
 
     test "repairs a homogeneous legacy sequence bundle through preview, import, and installation" do
@@ -511,13 +743,16 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
       output_path = bundle_path()
       incompatible_path = bundle_path()
       %{user: verify_user, workspace: verify_workspace} = verification_scope()
+      slug = "failed-materialization-cleanup-#{System.unique_integer([:positive])}"
 
       on_exit(fn ->
         File.rm(output_path)
         File.rm(incompatible_path)
       end)
 
-      assert {:ok, _export} = ProjectTemplates.export_portable_template(project.id, output_path)
+      assert {:ok, _export} =
+               ProjectTemplates.export_portable_template(project.id, output_path, slug: slug)
+
       assert {:ok, bundle} = PortableBundle.read(output_path)
 
       incompatible_snapshot = put_in(bundle.snapshot, ["project", "project_type"], "unsupported")
@@ -546,6 +781,7 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
                )
 
       assert report["status"] == "failed"
+      assert imported_blob_files(slug) == []
     end
 
     test "rejects import without a materialization verification scope" do
@@ -778,6 +1014,18 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
     Enum.map(bundle.manifest["asset_blobs"], fn blob ->
       {blob["path"], bundle.files[blob["path"]]}
     end)
+  end
+
+  defp imported_blob_files(slug) do
+    upload_dir =
+      :storyarn
+      |> Application.fetch_env!(:storage)
+      |> Keyword.fetch!(:upload_dir)
+
+    upload_dir
+    |> Path.join("project_templates/imported_blobs/#{slug}/**/*")
+    |> Path.wildcard()
+    |> Enum.filter(&File.regular?/1)
   end
 
   defp homogeneous_legacy_sequence_snapshot(snapshot) do

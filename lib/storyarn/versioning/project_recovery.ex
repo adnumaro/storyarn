@@ -76,11 +76,17 @@ defmodule Storyarn.Versioning.ProjectRecovery do
         Repo.transaction(
           fn ->
             case do_recover(workspace_id, snapshot_data, user_id, name, opts) do
-              {:ok, project} -> project
-              {:error, reason} -> Repo.rollback(reason)
+              {:ok, project} ->
+                case prepare_asset_cleanup_handoff(tracker, owns_tracker?) do
+                  :ok -> project
+                  {:error, reason} -> Repo.rollback({:storage_cleanup_handoff_failed, reason})
+                end
+
+              {:error, reason} ->
+                Repo.rollback(reason)
             end
           end,
-          timeout: :infinity
+          timeout: to_timeout(minute: 5)
         )
 
       finalize_asset_copies(result, tracker, owns_tracker?)
@@ -721,10 +727,8 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp finalize_asset_copies({:ok, _project} = result, tracker, true) do
-    case StorageCompensation.cleanup_unretained(tracker) do
-      :ok -> result
-      {:error, cleanup_reason} -> {:error, cleanup_reason}
-    end
+    StorageCompensation.discard(tracker)
+    result
   end
 
   defp finalize_asset_copies({:error, _reason} = result, tracker, true) do
@@ -735,6 +739,10 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp finalize_asset_copies(result, _tracker, false), do: result
+
+  defp prepare_asset_cleanup_handoff(tracker, true), do: StorageCompensation.prepare_unretained_cleanup(tracker)
+
+  defp prepare_asset_cleanup_handoff(_tracker, false), do: :ok
 
   defp cleanup_owned_asset_copies(tracker, true), do: StorageCompensation.cleanup!(tracker)
   defp cleanup_owned_asset_copies(_tracker, false), do: :ok

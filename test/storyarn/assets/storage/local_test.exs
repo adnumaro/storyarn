@@ -182,7 +182,7 @@ defmodule Storyarn.Assets.Storage.LocalTest do
       assert {:ok, false} = Local.copy_if_absent(source_key, destination_key)
       assert File.read!(Path.join(test_dir, destination_key)) == source
 
-      assert Path.wildcard(Path.join(test_dir, destination_key) <> ".storyarn-copy-*") == []
+      assert conditional_copy_paths(test_dir, destination_key) == []
     end
 
     test "claims destination ownership for exactly one concurrent caller", %{test_dir: test_dir} do
@@ -205,7 +205,7 @@ defmodule Storyarn.Assets.Storage.LocalTest do
       assert Enum.count(results, &(&1 == {:ok, false})) == 1
       assert File.read!(Path.join(test_dir, destination_key)) in ["first", "second"]
 
-      assert Path.wildcard(Path.join(test_dir, destination_key) <> ".storyarn-copy-*") == []
+      assert conditional_copy_paths(test_dir, destination_key) == []
     end
 
     test "reports a durable cleanup key when a published temporary link cannot be removed",
@@ -219,7 +219,10 @@ defmodule Storyarn.Assets.Storage.LocalTest do
       assert {:error, {:conditional_copy_cleanup_required, true, temporary_key, :eacces}} =
                Local.copy_if_absent(source_key, destination_key)
 
-      assert String.starts_with?(temporary_key, destination_key <> ".storyarn-copy-")
+      assert Path.dirname(temporary_key) ==
+               Path.join(Path.dirname(destination_key), ".storyarn-copy")
+
+      assert Path.basename(temporary_key) =~ ~r/\A[A-Za-z0-9_-]{16}\z/
       assert File.read!(Path.join(test_dir, destination_key)) == "source"
       assert File.read!(Path.join(test_dir, temporary_key)) == "source"
 
@@ -259,6 +262,62 @@ defmodule Storyarn.Assets.Storage.LocalTest do
       assert {:error, :invalid_key} = Local.copy_if_absent("../source.txt", "safe/destination.txt")
       assert {:error, :invalid_key} = Local.copy_if_absent(key, "../destination.txt")
     end
+
+    test "reserves the conditional-copy namespace from ordinary storage writes" do
+      reserved_key = "ordinary/.storyarn-copy/AAAAAAAAAAAAAAAA"
+
+      assert {:error, :invalid_key} =
+               Local.upload(reserved_key, "content", "application/octet-stream")
+
+      assert {:error, :invalid_key} =
+               Local.put_if_absent(reserved_key, "content", "application/octet-stream")
+
+      assert {:error, :invalid_key} = Local.download(reserved_key)
+    end
+
+    test "sweeps stale conditional-copy files left by a terminated process",
+         %{test_dir: test_dir} do
+      stale_key = "abandoned/.storyarn-copy/AAAAAAAAAAAAAAAA"
+      fresh_key = "active/.storyarn-copy/BBBBBBBBBBBBBBBB"
+      invalid_reserved_key = "abandoned/.storyarn-copy/not-generated"
+      ordinary_key = "active/file.storyarn-copy-CCCCCCCCCCCCCCCC"
+
+      write_internal_file!(test_dir, stale_key, "stale")
+      write_internal_file!(test_dir, fresh_key, "fresh")
+      write_internal_file!(test_dir, invalid_reserved_key, "reserved-but-not-generated")
+      assert {:ok, _url} = Local.upload(ordinary_key, "ordinary", "application/octet-stream")
+
+      stale_path = Path.join(test_dir, stale_key)
+      fresh_path = Path.join(test_dir, fresh_key)
+      invalid_reserved_path = Path.join(test_dir, invalid_reserved_key)
+      ordinary_path = Path.join(test_dir, ordinary_key)
+      symlink_path = Path.join(test_dir, "links/.storyarn-copy/DDDDDDDDDDDDDDDD")
+      directory_path = Path.join(test_dir, "directories/.storyarn-copy/EEEEEEEEEEEEEEEE")
+      external_dir = Path.join(System.tmp_dir!(), "storyarn-copy-external-#{System.unique_integer([:positive])}")
+      external_stale_path = Path.join(external_dir, ".storyarn-copy/FFFFFFFFFFFFFFFF")
+      external_symlink_path = Path.join(test_dir, "external-link")
+
+      File.mkdir_p!(Path.dirname(symlink_path))
+      assert :ok = File.ln_s(Path.expand(ordinary_path), symlink_path)
+      File.mkdir_p!(directory_path)
+      write_internal_file!(external_dir, ".storyarn-copy/FFFFFFFFFFFFFFFF", "external")
+      assert :ok = File.ln_s(Path.expand(external_dir), external_symlink_path)
+      assert :ok = File.touch(stale_path, {{2000, 1, 1}, {0, 0, 0}})
+      assert :ok = File.touch(external_stale_path, {{2000, 1, 1}, {0, 0, 0}})
+
+      on_exit(fn -> File.rm_rf(external_dir) end)
+
+      configure_conditional_copy_stale_after_seconds(3_600)
+
+      assert :ok = Local.cleanup_stale_conditional_copies()
+      refute File.exists?(stale_path)
+      assert File.read!(fresh_path) == "fresh"
+      assert File.read!(invalid_reserved_path) == "reserved-but-not-generated"
+      assert File.read!(ordinary_path) == "ordinary"
+      assert {:ok, %{type: :symlink}} = File.lstat(symlink_path)
+      assert File.dir?(directory_path)
+      assert File.read!(external_stale_path) == "external"
+    end
   end
 
   defp configure_conditional_copy_remove(remove) do
@@ -268,6 +327,28 @@ defmodule Storyarn.Assets.Storage.LocalTest do
       |> Keyword.put(:conditional_copy_file_rm, remove)
 
     Application.put_env(:storyarn, :storage, config)
+  end
+
+  defp configure_conditional_copy_stale_after_seconds(seconds) do
+    config =
+      :storyarn
+      |> Application.get_env(:storage, [])
+      |> Keyword.put(:conditional_copy_stale_after_seconds, seconds)
+
+    Application.put_env(:storyarn, :storage, config)
+  end
+
+  defp conditional_copy_paths(test_dir, destination_key) do
+    test_dir
+    |> Path.join(Path.dirname(destination_key))
+    |> Path.join(".storyarn-copy/*")
+    |> Path.wildcard(match_dot: true)
+  end
+
+  defp write_internal_file!(root, key, contents) do
+    path = Path.join(root, key)
+    File.mkdir_p!(Path.dirname(path))
+    File.write!(path, contents)
   end
 
   # =============================================================================

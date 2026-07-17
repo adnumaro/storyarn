@@ -11,6 +11,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.ProjectTemplates.ProjectTemplate
+  alias Storyarn.ProjectTemplates.ProjectTemplatePublication
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
 
   test "retries cleanup job persistence before returning an error" do
@@ -136,6 +137,67 @@ defmodule Storyarn.Assets.StorageCompensationTest do
     assert_receive {:cleanup_persisted, [^partial_key]}
     refute_receive {:delete_attempted, [^partial_key]}
     refute_receive {:cleanup_persisted, [^retained_key]}
+  end
+
+  test "pre-commit cleanup handoff keeps rollback compensation until commit is confirmed" do
+    tracker = StorageCompensation.new()
+    retained_key = "projects/1/assets/committed/file.png"
+    partial_key = "projects/1/assets/partial/file.png"
+    parent = self()
+
+    :ok = StorageCompensation.retain_after_commit(tracker, retained_key)
+    :ok = StorageCompensation.track(tracker, partial_key)
+
+    assert :ok =
+             StorageCompensation.prepare_unretained_cleanup(tracker,
+               enqueue_fun: fn keys ->
+                 send(parent, {:pre_commit_cleanup_persisted, keys})
+                 :ok
+               end
+             )
+
+    assert_receive {:pre_commit_cleanup_persisted, [^partial_key]}
+
+    assert :ok =
+             StorageCompensation.cleanup(tracker,
+               enqueue_fun: fn keys ->
+                 send(parent, {:rollback_cleanup_persisted, keys})
+                 :ok
+               end
+             )
+
+    assert_receive {:rollback_cleanup_persisted, rollback_keys}
+    assert MapSet.new(rollback_keys) == MapSet.new([retained_key, partial_key])
+  end
+
+  test "pre-commit cleanup handoff failure leaves the tracker available to the rollback path" do
+    tracker = StorageCompensation.new()
+    partial_key = "projects/1/assets/partial/file.png"
+    parent = self()
+
+    :ok = StorageCompensation.track(tracker, partial_key)
+
+    assert {:error,
+            {:storage_cleanup_handoff_not_persisted,
+             %{
+               cleanup_targets: [^partial_key],
+               enqueue_error: :oban_unavailable,
+               persistence_error: :database_unavailable
+             }}} =
+             StorageCompensation.prepare_unretained_cleanup(tracker,
+               enqueue_fun: fn _keys -> {:error, :oban_unavailable} end,
+               persist_fun: fn _keys -> {:error, :database_unavailable} end
+             )
+
+    assert :ok =
+             StorageCompensation.cleanup(tracker,
+               enqueue_fun: fn keys ->
+                 send(parent, {:rollback_cleanup_persisted, keys})
+                 :ok
+               end
+             )
+
+    assert_receive {:rollback_cleanup_persisted, [^partial_key]}
   end
 
   test "rollback cleanup includes keys previously marked for retention" do
@@ -635,6 +697,52 @@ defmodule Storyarn.Assets.StorageCompensationTest do
         "published_at" => DateTime.utc_now(:second)
       })
       |> Repo.insert!()
+
+    for key <- [snapshot_key, manifest_key] do
+      assert {:ok, _url} = Storage.upload(key, "committed", "application/octet-stream")
+      on_exit(fn -> Storage.delete(key) end)
+    end
+
+    assert :ok = StorageCompensation.delete_storage_keys([snapshot_key, manifest_key])
+
+    for key <- [snapshot_key, manifest_key] do
+      assert {:ok, "committed"} = Storage.download(key)
+    end
+  end
+
+  test "deferred cleanup preserves artifacts adopted directly by a committed publication" do
+    user = user_fixture()
+    project = project_fixture(user)
+
+    publication =
+      %ProjectTemplatePublication{
+        owner_id: user.id,
+        requested_by_id: user.id,
+        source_project_id: project.id
+      }
+      |> ProjectTemplatePublication.create_changeset(%{
+        "mode" => "new",
+        "status" => "queued",
+        "name" => "Committed publication"
+      })
+      |> Repo.insert!()
+
+    snapshot_key =
+      "project_template_publications/#{publication.id}/snapshot-deadbeef.json.gz"
+
+    manifest_key =
+      "project_template_publications/#{publication.id}/asset-manifest-cafebabe.json.gz"
+
+    _publication =
+      publication
+      |> Ecto.Changeset.change(
+        status: "published",
+        snapshot_storage_key: snapshot_key,
+        asset_manifest_storage_key: manifest_key,
+        checksum: String.duplicate("a", 64),
+        completed_at: DateTime.utc_now(:second)
+      )
+      |> Repo.update!()
 
     for key <- [snapshot_key, manifest_key] do
       assert {:ok, _url} = Storage.upload(key, "committed", "application/octet-stream")

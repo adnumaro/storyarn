@@ -8,6 +8,9 @@ defmodule Storyarn.Assets.Storage.Local do
   @behaviour Storyarn.Assets.Storage
 
   @stream_chunk_size 1_048_576
+  @conditional_copy_directory ".storyarn-copy"
+  @conditional_copy_suffix_pattern ~r/\A[A-Za-z0-9_-]{16}\z/
+  @default_conditional_copy_stale_after_seconds 3_600
 
   @impl true
   # sobelow_skip ["Traversal.FileModule"]
@@ -60,7 +63,7 @@ defmodule Storyarn.Assets.Storage.Local do
   @impl true
   # sobelow_skip ["Traversal.FileModule"]
   def delete(key) do
-    with {:ok, path} <- file_path(key) do
+    with {:ok, path} <- file_path(key, allow_conditional_copy: true) do
       case File.rm(path) do
         :ok -> :ok
         {:error, :enoent} -> :ok
@@ -93,13 +96,34 @@ defmodule Storyarn.Assets.Storage.Local do
     with {:ok, source_path} <- file_path(source_key),
          {:ok, dest_path} <- file_path(dest_key),
          temporary_key = temporary_copy_key(dest_key),
-         {:ok, temporary_path} <- file_path(temporary_key),
+         {:ok, temporary_path} <- file_path(temporary_key, allow_conditional_copy: true),
          :ok <- ensure_directory(dest_path),
+         :ok <- ensure_directory(temporary_path),
          {:ok, result} <-
            File.open(source_path, [:read, :binary], fn source ->
              copy_open_source_if_absent(source, dest_path, temporary_path, temporary_key)
            end) do
       result
+    end
+  end
+
+  @doc false
+  @spec cleanup_stale_conditional_copies() :: :ok | {:error, [{String.t(), term()}]}
+  def cleanup_stale_conditional_copies do
+    cutoff = System.system_time(:second) - conditional_copy_stale_after_seconds()
+    {conditional_copy_paths, traversal_failures} = conditional_copy_paths(upload_dir())
+
+    failures =
+      Enum.reduce(conditional_copy_paths, traversal_failures, fn path, failures ->
+        case remove_stale_conditional_copy(path, cutoff) do
+          :ok -> failures
+          {:error, reason} -> [{path, reason} | failures]
+        end
+      end)
+
+    case Enum.reverse(failures) do
+      [] -> :ok
+      failures -> {:error, failures}
     end
   end
 
@@ -128,8 +152,8 @@ defmodule Storyarn.Assets.Storage.Local do
 
   def key_from_url(_url), do: {:error, :invalid_url}
 
-  defp file_path(key) do
-    with {:ok, key} <- validate_key(key) do
+  defp file_path(key, opts \\ []) do
+    with {:ok, key} <- validate_key(key, opts) do
       upload_dir = upload_dir()
       path = Path.expand(Path.join(upload_dir, key))
 
@@ -192,7 +216,7 @@ defmodule Storyarn.Assets.Storage.Local do
 
   defp temporary_copy_key(dest_key) do
     suffix = 12 |> :crypto.strong_rand_bytes() |> Base.url_encode64(padding: false)
-    "#{dest_key}.storyarn-copy-#{suffix}"
+    Path.join([Path.dirname(dest_key), @conditional_copy_directory, suffix])
   end
 
   # sobelow_skip ["Traversal.FileModule"]
@@ -228,6 +252,103 @@ defmodule Storyarn.Assets.Storage.Local do
     case config()[:conditional_copy_file_rm] do
       remove when is_function(remove, 1) -> remove.(path)
       _other -> File.rm(path)
+    end
+  end
+
+  # sobelow_skip ["Traversal.FileModule"]
+  defp remove_stale_conditional_copy(path, cutoff) do
+    case File.lstat(path, time: :posix) do
+      {:ok, %{type: :regular, mtime: mtime}} when mtime <= cutoff ->
+        case File.rm(path) do
+          :ok -> :ok
+          {:error, :enoent} -> :ok
+          {:error, reason} -> {:error, reason}
+        end
+
+      {:ok, _stat} ->
+        :ok
+
+      {:error, :enoent} ->
+        :ok
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp conditional_copy_paths(root) do
+    walk_storage_directories([root], [], [])
+  end
+
+  defp walk_storage_directories([], candidates, failures), do: {candidates, failures}
+
+  defp walk_storage_directories([directory | rest], candidates, failures) do
+    case File.ls(directory) do
+      {:ok, entries} ->
+        {directories, candidates, failures} =
+          Enum.reduce(entries, {rest, candidates, failures}, fn entry, acc ->
+            collect_storage_entry(directory, entry, acc)
+          end)
+
+        walk_storage_directories(directories, candidates, failures)
+
+      {:error, :enoent} ->
+        walk_storage_directories(rest, candidates, failures)
+
+      {:error, reason} ->
+        walk_storage_directories(rest, candidates, [{directory, reason} | failures])
+    end
+  end
+
+  defp collect_storage_entry(directory, entry, {directories, candidates, failures}) do
+    path = Path.join(directory, entry)
+
+    case File.lstat(path) do
+      {:ok, %{type: :directory}} when entry == @conditional_copy_directory ->
+        collect_conditional_copy_directory(path, directories, candidates, failures)
+
+      {:ok, %{type: :directory}} ->
+        {[path | directories], candidates, failures}
+
+      {:ok, _stat} ->
+        {directories, candidates, failures}
+
+      {:error, :enoent} ->
+        {directories, candidates, failures}
+
+      {:error, reason} ->
+        {directories, candidates, [{path, reason} | failures]}
+    end
+  end
+
+  defp collect_conditional_copy_directory(path, directories, candidates, failures) do
+    case File.ls(path) do
+      {:ok, entries} ->
+        candidates =
+          entries
+          |> Enum.map(&Path.join(path, &1))
+          |> Enum.filter(&generated_conditional_copy_path?/1)
+          |> Kernel.++(candidates)
+
+        {directories, candidates, failures}
+
+      {:error, :enoent} ->
+        {directories, candidates, failures}
+
+      {:error, reason} ->
+        {directories, candidates, [{path, reason} | failures]}
+    end
+  end
+
+  defp generated_conditional_copy_path?(path) do
+    Path.basename(Path.dirname(path)) == @conditional_copy_directory and
+      String.match?(Path.basename(path), @conditional_copy_suffix_pattern)
+  end
+
+  defp conditional_copy_stale_after_seconds do
+    case config()[:conditional_copy_stale_after_seconds] do
+      seconds when is_integer(seconds) and seconds >= 0 -> seconds
+      _other -> @default_conditional_copy_stale_after_seconds
     end
   end
 
@@ -302,29 +423,43 @@ defmodule Storyarn.Assets.Storage.Local do
     end
   end
 
-  defp validate_key(key) when is_binary(key) do
-    cond do
-      key == "" ->
-        {:error, :invalid_key}
+  defp validate_key(key, opts \\ [])
 
-      not String.valid?(key) ->
-        {:error, :invalid_key}
-
-      String.contains?(key, <<0>>) or String.contains?(key, "\\") ->
-        {:error, :invalid_key}
-
-      Path.type(key) != :relative ->
-        {:error, :invalid_key}
-
-      invalid_segments?(key) ->
-        {:error, :invalid_key}
-
-      true ->
-        {:ok, key}
+  defp validate_key(key, opts) when is_binary(key) do
+    with :ok <- validate_key_bytes(key),
+         :ok <- validate_key_path(key),
+         :ok <- validate_key_namespace(key, opts) do
+      {:ok, key}
     end
   end
 
-  defp validate_key(_key), do: {:error, :invalid_key}
+  defp validate_key(_key, _opts), do: {:error, :invalid_key}
+
+  defp validate_key_bytes(key) do
+    cond do
+      key == "" -> {:error, :invalid_key}
+      not String.valid?(key) -> {:error, :invalid_key}
+      String.contains?(key, <<0>>) -> {:error, :invalid_key}
+      String.contains?(key, "\\") -> {:error, :invalid_key}
+      true -> :ok
+    end
+  end
+
+  defp validate_key_path(key) do
+    cond do
+      Path.type(key) != :relative -> {:error, :invalid_key}
+      invalid_segments?(key) -> {:error, :invalid_key}
+      true -> :ok
+    end
+  end
+
+  defp validate_key_namespace(key, opts) do
+    allow_conditional_copy? = Keyword.get(opts, :allow_conditional_copy, false)
+
+    if allow_conditional_copy? or @conditional_copy_directory not in Path.split(key),
+      do: :ok,
+      else: {:error, :invalid_key}
+  end
 
   defp invalid_segments?(key) do
     key

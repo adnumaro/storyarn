@@ -225,6 +225,61 @@ defmodule Storyarn.ProjectTemplatesTest do
       assert ProjectTemplates.list_templates(scope, source_project_id: project.id) == []
     end
 
+    test "cleans stored artifacts when the before-finalize hook rejects publication" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      project = ProjectsFixtures.project_fixture(user, %{name: "Rejected Hook Source"})
+      parent = self()
+
+      assert {:ok, publication} =
+               ProjectTemplates.request_template_publication(scope, project, %{
+                 name: "Rejected Hook Starter"
+               })
+
+      assert {:ok, failed} =
+               ProjectTemplates.perform_template_publication(publication.id,
+                 before_finalize: fn %{artifact: artifact} ->
+                   send(parent, {:publication_artifact_keys, [artifact.snapshot_key, artifact.asset_manifest_key]})
+                   {:error, :hook_rejected}
+                 end
+               )
+
+      assert failed.status == "failed"
+      assert failed.error_code == "unexpected_error"
+      assert_receive {:publication_artifact_keys, artifact_keys}
+
+      for storage_key <- artifact_keys do
+        assert {:error, :enoent} = Assets.storage_download(storage_key)
+      end
+    end
+
+    test "cleans stored artifacts when the before-finalize hook raises" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      project = ProjectsFixtures.project_fixture(user, %{name: "Raising Hook Source"})
+      parent = self()
+
+      assert {:ok, publication} =
+               ProjectTemplates.request_template_publication(scope, project, %{
+                 name: "Raising Hook Starter"
+               })
+
+      assert_raise RuntimeError, "before-finalize failure", fn ->
+        ProjectTemplates.perform_template_publication(publication.id,
+          before_finalize: fn %{artifact: artifact} ->
+            send(parent, {:publication_artifact_keys, [artifact.snapshot_key, artifact.asset_manifest_key]})
+            raise "before-finalize failure"
+          end
+        )
+      end
+
+      assert_receive {:publication_artifact_keys, artifact_keys}
+
+      for storage_key <- artifact_keys do
+        assert {:error, :enoent} = Assets.storage_download(storage_key)
+      end
+    end
+
     test "publishes the asset manifest captured with the audited snapshot" do
       user = AccountsFixtures.user_fixture()
       scope = AccountsFixtures.user_scope_fixture(user)
@@ -765,6 +820,43 @@ defmodule Storyarn.ProjectTemplatesTest do
 
       for storage_key <- storage_keys do
         assert {:error, _reason} = SnapshotStorage.load_snapshot(storage_key)
+      end
+    end
+
+    test "artifact garbage collection rejects non-template storage keys" do
+      storage_key = "unrelated/valuable-object.txt"
+      assert {:ok, _url} = Assets.storage_upload(storage_key, "valuable", "text/plain")
+      on_exit(fn -> Assets.storage_delete(storage_key) end)
+
+      assert {:error, {:invalid_template_storage_keys, [^storage_key]}} =
+               perform_job(DeleteProjectTemplateArtifactsWorker, %{
+                 "storage_keys" => [storage_key]
+               })
+
+      assert {:ok, "valuable"} = Assets.storage_download(storage_key)
+    end
+
+    test "artifact garbage collection retains keys adopted by a live template version" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      project = ProjectsFixtures.project_fixture(user)
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(scope, project, %{
+                 name: "Retained Template Artifact"
+               })
+
+      version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
+      storage_keys = [version.snapshot_storage_key, version.asset_manifest_storage_key]
+      on_exit(fn -> Enum.each(storage_keys, &Assets.storage_delete/1) end)
+
+      assert :ok =
+               perform_job(DeleteProjectTemplateArtifactsWorker, %{
+                 "storage_keys" => storage_keys
+               })
+
+      for storage_key <- storage_keys do
+        assert {:ok, _snapshot} = SnapshotStorage.load_snapshot(storage_key)
       end
     end
   end
@@ -1330,6 +1422,50 @@ defmodule Storyarn.ProjectTemplatesTest do
                scope
                |> ProjectTemplates.list_pending_workspace_installation_failures(workspace)
                |> Enum.map(& &1.id)
+    end
+
+    test "lists template-scoped failure feedback from newest to oldest" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      workspace = WorkspacesFixtures.workspace_fixture(user)
+      source_project = ProjectsFixtures.project_fixture(user, %{name: "Template Failure Ordering Source"})
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(scope, source_project, %{
+                 name: "Template Failure Ordering Starter"
+               })
+
+      completed_at = DateTime.truncate(DateTime.utc_now(), :second)
+
+      insert_failure = fn project_name, completed_at ->
+        Repo.insert!(%ProjectTemplateInstall{
+          project_template_version_id: template.current_version_id,
+          user_id: user.id,
+          workspace_id: workspace.id,
+          status: "failed",
+          stage: "failed",
+          project_name: project_name,
+          source: "template_show",
+          error_code: "test_failure",
+          error_message: "Test failure",
+          completed_at: completed_at
+        })
+      end
+
+      older = insert_failure.("Older Template Failure", DateTime.add(completed_at, -60, :second))
+
+      newer =
+        Enum.map(1..10, fn index ->
+          insert_failure.("Newer Template Failure #{index}", completed_at)
+        end)
+
+      pending_ids =
+        scope
+        |> ProjectTemplates.list_pending_template_installation_failures(template)
+        |> Enum.map(& &1.id)
+
+      assert pending_ids == newer |> Enum.reverse() |> Enum.map(& &1.id)
+      refute older.id in pending_ids
     end
 
     test "checks pending feedback by id without the workspace list limit" do
