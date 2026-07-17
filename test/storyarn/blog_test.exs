@@ -5,6 +5,8 @@ defmodule Storyarn.BlogTest do
   alias Storyarn.Blog.PostBuilder
 
   @slug "introducing-storyarn"
+  @version_control_slug "version-control-branching-narratives"
+  @version_control_spanish_slug "control-versiones-narrativa-ramificada"
   @debug_image_path Path.expand(
                       "../../priv/static/images/blog/introducing-storyarn-debug-active-node.png",
                       __DIR__
@@ -12,7 +14,7 @@ defmodule Storyarn.BlogTest do
   @debug_image_sha256 "79d6ab45511ed09be891ce1b89644faabea2ae64893ea5022df39c675b924814"
 
   test "lists published posts with editorial metadata" do
-    [post | _] = Blog.list_posts()
+    post = Blog.get_post(@slug)
 
     assert post.slug == @slug
     assert post.id == "introducing-storyarn:en"
@@ -34,6 +36,29 @@ defmodule Storyarn.BlogTest do
     assert "Storyarn" in post.tags
     assert "Narrative design" in post.tags
     assert post.reading_time >= 5
+  end
+
+  test "publishes the version-control article as the latest complete bilingual entry" do
+    [english | _] = Blog.list_posts("en")
+    [spanish | _] = Blog.list_posts("es")
+
+    assert english.slug == @version_control_slug
+    assert english.translation_key == "version-control-branching-narratives"
+    assert english.published_on == ~D[2026-07-17]
+    assert english.title == "Going Back Without Breaking the Story"
+    assert english.seo_title == "Version Control for Interactive Narrative"
+    assert english.image == "/images/blog/version-control-branching-narratives.svg"
+    assert english.reading_time in 6..8
+
+    assert spanish.slug == @version_control_spanish_slug
+    assert spanish.translation_key == english.translation_key
+    assert spanish.published_on == english.published_on
+    assert spanish.title == "Volver atrás sin romper la historia"
+    assert spanish.seo_title == "Control de versiones para narrativa interactiva"
+    assert spanish.reading_time in 6..8
+    assert abs(english.reading_time - spanish.reading_time) <= 1
+
+    assert Blog.list_translations(english.translation_key) == [english, spanish]
   end
 
   test "keeps compiled entries separate from posts visible by publication date" do
@@ -104,6 +129,49 @@ defmodule Storyarn.BlogTest do
     assert post.body =~ ~s(data-phx-link="redirect")
     refute String.contains?(String.downcase(post.body), "spreadsheet")
     refute post.body =~ "<ol>"
+  end
+
+  test "keeps the version-control article problem-led, sourced, and explicit about limits" do
+    english = Blog.get_post(@version_control_slug)
+    spanish = Blog.get_post(@version_control_spanish_slug, "es")
+
+    assert english.body =~ "A restore can complete without errors and still break a story."
+    assert english.body =~ "did not model how teams actually worked"
+    assert english.body =~ "qualitative examples, not measurements of frequency"
+    assert english.body =~ "does not cover every kind of reference"
+    assert english.body =~ "do not yet reproduce an exact moment in time"
+    assert english.body =~ "https://doi.org/10.1109/TSE.1975.6312866"
+    assert english.body =~ "https://la.disneyresearch.com/publication/story-version-control"
+    assert english.body =~ "https://github.com/inkle/inky/issues/508"
+    assert english.body =~ "https://forum.pixelcrushers.com/post/best-practices"
+    assert english.body =~ "https://www.articy.com/help/adx/RecentChanges.html"
+    assert english.body =~ "https://arcweave.com/whats-new/articles/project-history"
+    assert english.body =~ ~s(href="/docs/project-management/recovery-and-trash")
+    assert english.body =~ ~s(data-phx-link="redirect")
+    refute english.body =~ "<table>"
+    refute english.body =~ "<ol>"
+
+    refute english.body =~
+             ~r/<h2[^>]*>[^<]*\b(articy|Arcweave|Yarn Spinner|Ink|Inky|Twine)\b/i
+
+    assert spanish.body =~ "Una restauración puede terminar sin errores y aun así romper una historia."
+    assert spanish.body =~ "no modelaba bien cómo trabajaban realmente los equipos"
+    assert spanish.body =~ "ejemplos cualitativos, no una medición de frecuencia"
+    assert spanish.body =~ "no cubre todas las formas de referencia"
+    assert spanish.body =~ "no reproducen todavía un instante exacto"
+    assert spanish.body =~ "https://doi.org/10.1109/TSE.1975.6312866"
+    assert spanish.body =~ "https://la.disneyresearch.com/publication/story-version-control"
+    assert spanish.body =~ "https://github.com/inkle/inky/issues/508"
+    assert spanish.body =~ "https://forum.pixelcrushers.com/post/best-practices"
+    assert spanish.body =~ "https://www.articy.com/help/adx/RecentChanges.html"
+    assert spanish.body =~ "https://arcweave.com/whats-new/articles/project-history"
+    assert spanish.body =~ ~s(href="/es/docs/project-management/recovery-and-trash")
+    assert spanish.body =~ ~s(data-phx-link="redirect")
+    refute spanish.body =~ "<table>"
+    refute spanish.body =~ "<ol>"
+
+    refute spanish.body =~
+             ~r/<h2[^>]*>[^<]*\b(articy|Arcweave|Yarn Spinner|Ink|Inky|Twine)\b/i
   end
 
   test "ships the visually approved debugger image used by both translations" do

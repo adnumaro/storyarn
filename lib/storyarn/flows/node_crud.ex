@@ -363,30 +363,41 @@ defmodule Storyarn.Flows.NodeCrud do
   @doc """
   Resolves exit node data by enriching it with referenced flow info when exit_mode is flow_reference.
   """
-  def resolve_exit_data(%{"exit_mode" => "flow_reference"} = data) do
-    with ref_id when ref_id not in [nil, ""] <- data["referenced_flow_id"],
-         int_id when is_integer(int_id) <- safe_to_integer(ref_id),
-         %Flow{deleted_at: nil} = flow <- Repo.get(Flow, int_id) do
-      data
-      |> Map.put("stale_reference", false)
-      |> Map.put("referenced_flow_name", flow.name)
-      |> Map.put("referenced_flow_shortcut", flow.shortcut)
-    else
-      nil ->
+  def resolve_exit_data(data), do: resolve_exit_data(data, nil)
+
+  @doc """
+  Resolves exit reference data while optionally restricting the target to the
+  current project.
+  """
+  def resolve_exit_data(%{"exit_mode" => "flow_reference"} = data, project_id) do
+    case data["referenced_flow_id"] do
+      ref_id when ref_id in [nil, ""] ->
         data
 
-      "" ->
-        data
-
-      %Flow{} ->
-        mark_stale_reference(data)
-
-      _ ->
-        mark_stale_reference(data)
+      ref_id ->
+        resolve_exit_flow_reference(data, safe_to_integer(ref_id), project_id)
     end
   end
 
-  def resolve_exit_data(data), do: data
+  def resolve_exit_data(data, _project_id), do: data
+
+  defp resolve_exit_flow_reference(data, nil, _project_id), do: mark_stale_reference(data)
+
+  defp resolve_exit_flow_reference(data, flow_id, project_id) do
+    query = from(f in Flow, where: f.id == ^flow_id and is_nil(f.deleted_at))
+    query = if project_id, do: where(query, [f], f.project_id == ^project_id), else: query
+
+    case Repo.one(query) do
+      nil ->
+        mark_stale_reference(data)
+
+      flow ->
+        data
+        |> Map.put("stale_reference", false)
+        |> Map.put("referenced_flow_name", flow.name)
+        |> Map.put("referenced_flow_shortcut", flow.shortcut)
+    end
+  end
 
   defp mark_stale_reference(data) do
     data

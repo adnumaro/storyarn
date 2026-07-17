@@ -485,3 +485,93 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Node #%{n} sequence visual layer #%{layer}"
 msgstr ""
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Flow"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Missing entry node"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Flow has %{count} entry nodes"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Missing jump target"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Jump target does not exist"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Missing exit flow reference"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Exit flow reference does not exist"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Invalid output connection pin(s): %{pins}"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Invalid input connection pin(s): %{pins}"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Missing dialogue speaker"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Empty dialogue response"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Incomplete response condition"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Incomplete response assignment"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Incomplete condition"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Incomplete instruction assignment"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Output(s) without connection: %{pins}"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "No instruction assignments"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Condition has no rules"
+msgstr ""

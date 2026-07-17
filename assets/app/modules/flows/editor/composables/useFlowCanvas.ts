@@ -12,7 +12,12 @@ import { onUnmounted } from "vue";
 import { FlowNode } from "../lib/flow-node";
 import type { FlowAreaExtra, FlowConnection } from "../lib/rete-schemes";
 import { debug } from "../services/debug";
-import { editorHandlers, type FlowContext, type HookProxy } from "../services/editorHandlers";
+import {
+  editorHandlers,
+  type FlowContext,
+  type HookProxy,
+  type HubMapEntry,
+} from "../services/editorHandlers";
 import { keyboard } from "../services/keyboard";
 import { lod } from "../services/lod";
 import { navigation } from "../services/navigation";
@@ -34,6 +39,45 @@ import { createFlowSequenceGeometry, type FlowSequenceFitOptions } from "./flowS
 import { createFlowMarquee } from "../services/flowMarquee";
 
 export type { FlowCanvasReturn } from "./flowCanvasTypes";
+
+function addHubToMap(map: Record<string, HubMapEntry>, node: FlowNode): void {
+  if (node.nodeType !== "hub" || !node.nodeData?.hub_id) {
+    return;
+  }
+
+  map[node.nodeData.hub_id as string] = {
+    color_hex: (node.nodeData.color_hex as string) || null,
+    label: (node.nodeData.label as string) || "",
+    jumpCount: 0,
+  };
+}
+
+function countJumpForHub(map: Record<string, HubMapEntry>, node: FlowNode): void {
+  if (node.nodeType !== "jump" || !node.nodeData?.target_hub_id) {
+    return;
+  }
+
+  const entry = map[node.nodeData.target_hub_id as string];
+  if (entry) {
+    entry.jumpCount++;
+  }
+}
+
+export function buildHubsMap(
+  nodeMap: ReadonlyMap<string | number, FlowNode>,
+): Record<string, HubMapEntry> {
+  const map: Record<string, HubMapEntry> = {};
+
+  for (const [, node] of nodeMap) {
+    addHubToMap(map, node);
+  }
+
+  for (const [, node] of nodeMap) {
+    countJumpForHub(map, node);
+  }
+
+  return map;
+}
 
 export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowCanvasReturn {
   const runtime = createFlowCanvasRuntime(
@@ -530,36 +574,6 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
 
   // --- Hub map ---
 
-  function buildHubMap(): Record<
-    string,
-    { color_hex: string | null; label: string; jumpCount: number }
-  > {
-    const map: Record<string, { color_hex: string | null; label: string; jumpCount: number }> = {};
-    for (const [, node] of runtime.nodeMap) {
-      if (node.nodeType === "hub" && node.nodeData?.hub_id) {
-        map[node.nodeData.hub_id as string] = {
-          color_hex: (node.nodeData.color_hex as string) || null,
-          label: (node.nodeData.label as string) || "",
-          jumpCount: 0,
-        };
-      }
-    }
-    return map;
-  }
-
-  function countHubJumps(
-    map: Record<string, { color_hex: string | null; label: string; jumpCount: number }>,
-  ): void {
-    for (const [, node] of runtime.nodeMap) {
-      if (node.nodeType === "jump" && node.nodeData?.target_hub_id) {
-        const entry = map[node.nodeData.target_hub_id as string];
-        if (entry) {
-          entry.jumpCount++;
-        }
-      }
-    }
-  }
-
   async function updateHubAndJumpNodes(): Promise<void> {
     const ts = Date.now();
     for (const [, node] of runtime.nodeMap) {
@@ -571,8 +585,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
   }
 
   async function rebuildHubsMap(): Promise<void> {
-    const map = buildHubMap();
-    countHubJumps(map);
+    const map = buildHubsMap(runtime.nodeMap);
     hookProxy._hubsMap = map;
     syncFlowContext();
     await updateHubAndJumpNodes();

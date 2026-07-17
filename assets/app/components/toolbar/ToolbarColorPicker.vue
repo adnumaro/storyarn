@@ -22,6 +22,10 @@ function selectColor(c: string) {
 function onCustomColor(e: Event) {
   emit("update:color", (e.target as HTMLInputElement).value);
 }
+
+function selectedColor(candidate: string) {
+  return candidate.toLowerCase() === color.toLowerCase();
+}
 </script>
 
 <template>
@@ -48,21 +52,28 @@ function onCustomColor(e: Event) {
             :key="c"
             type="button"
             class="size-5 rounded-full border border-white/10 hover:scale-125 transition-transform cursor-pointer"
-            :class="{ 'ring-2 ring-primary ring-offset-1': c === color }"
+            :class="{ 'ring-2 ring-primary ring-offset-1': selectedColor(c) }"
             :style="{ backgroundColor: c }"
-            :aria-label="$t('common.color_picker.color')"
-            :title="$t('common.color_picker.color')"
+            :aria-label="`${$t('common.color_picker.color')} ${c}`"
+            :aria-pressed="selectedColor(c)"
+            :title="`${$t('common.color_picker.color')} ${c}`"
             @click="selectColor(c)"
           />
           <ToolbarTooltip
-            v-if="i === row.length - 1"
+            v-if="i === COLOR_SWATCHES.length - 1"
             :label="$t('common.color_picker.custom_color')"
           >
             <label
               class="size-5 rounded-full border border-dashed border-white/30 flex items-center justify-center cursor-pointer hover:scale-125 transition-transform"
             >
-              <span class="text-[9px]">+</span>
-              <input type="color" class="sr-only" :value="color" @input="onCustomColor" />
+              <span class="text-[9px]" aria-hidden="true">+</span>
+              <input
+                type="color"
+                class="sr-only"
+                :value="color"
+                :aria-label="$t('common.color_picker.custom_color')"
+                @input="onCustomColor"
+              />
             </label>
           </ToolbarTooltip>
         </div>

@@ -21,7 +21,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Hub.Node do
     %{
       "hub_id" => "",
       "label" => "",
-      "color" => "#be185d"
+      "color" => Flows.hub_color_default_hex()
     }
   end
 
@@ -29,7 +29,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Hub.Node do
     %{
       "hub_id" => data["hub_id"] || "",
       "label" => data["label"] || "",
-      "color" => data["color"] || "#be185d"
+      "color" => Flows.resolve_hub_color(data["color"])
     }
   end
 

@@ -804,6 +804,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         {data, dialogue_ids} =
           node_data["data"]
           |> remap_node_data(map)
+          |> normalize_legacy_hub_color(node_data["type"])
           |> rekey_conflicting_import_dialogue(node_data["type"], dialogue_ids)
 
         attrs = %{
@@ -890,6 +891,12 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   end
 
   defp clean_responses(data), do: data
+
+  defp normalize_legacy_hub_color(data, type) when type in ["hub", "hub_marker"] and is_map(data) do
+    Map.put(data, "color", Flows.resolve_legacy_hub_color(data["color"]))
+  end
+
+  defp normalize_legacy_hub_color(data, _type), do: data
 
   defp import_flow_connections(flow_id, connections, id_map) do
     now = TimeHelpers.now()
@@ -1281,11 +1288,13 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
 
   defp import_elements(screenplay_id, elements, id_map) do
     Enum.reduce(elements, {id_map, []}, fn el_data, {map, results} ->
+      data = normalize_legacy_hub_color(el_data["data"] || %{}, el_data["type"])
+
       attrs = %{
         "type" => el_data["type"],
         "position" => el_data["position"] || 0,
         "content" => el_data["content"],
-        "data" => el_data["data"] || %{},
+        "data" => data,
         "depth" => el_data["depth"] || 0,
         "branch" => el_data["branch"]
       }

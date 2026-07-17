@@ -300,6 +300,48 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluatorTest do
              end)
     end
 
+    test "follows the default pin when no rule matches" do
+      variables = %{
+        "mc.class" => make_variable("rogue", type: "select", name: "class")
+      }
+
+      node =
+        make_node(1, %{
+          "switch_mode" => true,
+          "condition" => %{
+            "logic" => "all",
+            "rules" => [
+              %{
+                "id" => "case_mage",
+                "sheet" => "mc",
+                "variable" => "class",
+                "operator" => "equals",
+                "value" => "mage",
+                "label" => "Mage"
+              }
+            ]
+          }
+        })
+
+      connections = [
+        make_connection(1, "case_mage", 10),
+        make_connection(1, "default", 20)
+      ]
+
+      state = make_state(variables)
+
+      assert {:ok, result_state} = ConditionNodeEvaluator.evaluate(node, state, connections)
+      assert result_state.current_node_id == 20
+
+      assert Enum.any?(result_state.console, fn entry ->
+               entry.level == :info and entry.message == "Switch → default"
+             end)
+
+      refute Enum.any?(result_state.console, fn entry ->
+               entry.level == :warning and String.contains?(entry.message, "no case matched")
+             end)
+    end
+
     test "finishes when no matching pin" do
       variables = %{
         "mc.class" => make_variable("rogue", type: "select", name: "class")
@@ -335,6 +377,40 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluatorTest do
   # =============================================================================
 
   describe "evaluate/3 switch mode with blocks" do
+    test "empty blocks take precedence over legacy rules and follow the default pin" do
+      variables = %{
+        "mc.class" => make_variable("mage", type: "select", name: "class")
+      }
+
+      node =
+        make_node(1, %{
+          "switch_mode" => true,
+          "condition" => %{
+            "logic" => "all",
+            "blocks" => [],
+            "rules" => [
+              %{
+                "id" => "legacy_case",
+                "sheet" => "mc",
+                "variable" => "class",
+                "operator" => "equals",
+                "value" => "mage"
+              }
+            ]
+          }
+        })
+
+      connections = [
+        make_connection(1, "legacy_case", 10),
+        make_connection(1, "default", 20)
+      ]
+
+      assert {:ok, result_state} =
+               ConditionNodeEvaluator.evaluate(node, make_state(variables), connections)
+
+      assert result_state.current_node_id == 20
+    end
+
     test "follows first matching block pin" do
       variables = %{
         "mc.health" => make_variable(80)

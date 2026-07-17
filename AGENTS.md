@@ -475,6 +475,7 @@ mix test --cover            # Tests with coverage (threshold: 85%)
 | `connection_deleted`                | Client→Server | `%{source_node_id, target_node_id}`                         | `flow_canvas.js`       | `show.ex`        |
 | `cursor_moved`                      | Client→Server | `%{x, y}`                                                   | `cursor_handler.js`    | `show.ex`        |
 | `update_node_data`                  | Client→Server | `%{node: params}`                                           | form phx-change        | `show.ex`        |
+| `update_hub_color`                  | Client→Server | `%{color}`                                                  | `HubToolbar.vue`       | `show.ex`        |
 | `update_node_text`                  | Client→Server | `%{id, content}`                                            | `tiptap_editor.js`     | `show.ex`        |
 | `update_node_field`                 | Client→Server | `%{field, value}`                                           | phx-blur inputs        | `show.ex`        |
 | `mention_suggestions`               | Client→Server | `%{query}`                                                  | `tiptap_editor.js`     | `show.ex`        |

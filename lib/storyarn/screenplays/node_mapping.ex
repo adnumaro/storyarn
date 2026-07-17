@@ -207,7 +207,7 @@ defmodule Storyarn.Screenplays.NodeMapping do
       data: %{
         "hub_id" => element.data["hub_node_id"] || "",
         "label" => element.content || "",
-        "color" => element.data["color"] || "#be185d"
+        "color" => Flows.resolve_hub_color(element.data["color"])
       },
       element_ids: [element.id],
       source: "screenplay_sync"

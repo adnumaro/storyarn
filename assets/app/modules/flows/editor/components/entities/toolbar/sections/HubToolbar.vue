@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Crosshair, LogIn } from "lucide-vue-next";
-import { ToolbarSeparator } from "@components/toolbar";
+import { ToolbarColorPicker, ToolbarSeparator } from "@components/toolbar";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { useLive } from "../../../../../../../shared/composables/useLive";
 import type { NodeData } from "../../../../lib/node-configs";
@@ -11,6 +11,7 @@ defineOptions({ inheritAttrs: false });
 interface HubToolbarData extends NodeData {
   label?: string;
   hub_id?: string;
+  color?: string;
 }
 
 const {
@@ -27,6 +28,10 @@ const live = useLive();
 
 function updateField(field: string, value: unknown) {
   live.pushEvent("update_node_data", { node: { [field]: value } });
+}
+
+function updateHubColor(color: string) {
+  live.pushEvent("update_hub_color", { color });
 }
 
 function navigateToJumps() {
@@ -57,6 +62,7 @@ function navigateToJumps() {
     @pointerdown.stop
     @keydown.stop
   />
+  <ToolbarColorPicker :color="nodeData.color || '#be185d'" @update:color="updateHubColor" />
   <ToolbarTooltip v-if="referencingJumps.length > 0" :label="$t('flows.hub_toolbar.locate_jumps')">
     <button type="button" class="toolbar-btn" @click="navigateToJumps">
       <Crosshair class="size-3.5" />

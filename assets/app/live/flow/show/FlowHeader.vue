@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   Check,
@@ -28,7 +29,7 @@ interface NavHistory {
 }
 
 interface HealthNode {
-  id: number | string;
+  id: number | string | null;
   label: string;
   reason?: string;
   reasons?: string[];
@@ -37,6 +38,7 @@ interface HealthNode {
 interface FlowHealth {
   wordCount: number;
   errorNodes: HealthNode[];
+  warningNodes: HealthNode[];
   infoNodes: HealthNode[];
 }
 
@@ -57,7 +59,7 @@ const {
   canEdit = false,
   saveStatus = "idle",
   navHistory = { back: null, forward: null },
-  flowHealth = { wordCount: 0, errorNodes: [], infoNodes: [] },
+  flowHealth = { wordCount: 0, errorNodes: [], warningNodes: [], infoNodes: [] },
   sceneSelected = { name: null, inherited: false },
   projectScenes = [],
 } = defineProps<{
@@ -76,13 +78,18 @@ const live = useLive();
 const sceneOpen = ref(false);
 const healthOpen = ref(false);
 
-const errorCount = computed(() => flowHealth.errorNodes.length);
-const infoCount = computed(() => flowHealth.infoNodes.length);
+const errorCount = computed(() => findingCount(flowHealth.errorNodes));
+const warningCount = computed(() => findingCount(flowHealth.warningNodes));
+const infoCount = computed(() => findingCount(flowHealth.infoNodes));
 const showScene = computed(() => canEdit || sceneSelected.name != null);
 
 function nodeReasons(node: HealthNode): string[] {
   if (node.reasons?.length) return node.reasons;
   return node.reason ? [node.reason] : [];
+}
+
+function findingCount(nodes: HealthNode[]): number {
+  return nodes.reduce((count, node) => count + nodeReasons(node).length, 0);
 }
 
 function saveName(name: string): void {
@@ -98,7 +105,8 @@ function selectScene(sceneId: number | string | null): void {
   sceneOpen.value = false;
 }
 
-function navigateToNode(nodeId: number | string): void {
+function navigateToNode(nodeId: number | string | null): void {
+  if (nodeId == null) return;
   live.pushEvent("navigate_to_node", { id: nodeId });
   healthOpen.value = false;
 }
@@ -224,18 +232,30 @@ function navigateToNode(nodeId: number | string): void {
       </ToolbarTooltip>
 
       <!-- Flow health indicator -->
-      <template v-if="errorCount > 0 || infoCount > 0">
+      <template v-if="errorCount > 0 || warningCount > 0 || infoCount > 0">
         <Popover v-model:open="healthOpen">
           <PopoverAnchor as-child>
             <ToolbarTooltip :label="$t('flows.header.flow_health')" side="bottom">
-              <PopoverTrigger class="toolbar-btn gap-0">
+              <PopoverTrigger data-testid="flow-health-trigger" class="toolbar-btn gap-0">
                 <span v-if="errorCount > 0" class="flex items-center gap-1.5 text-destructive">
                   <TriangleAlert class="size-3.5" />
-                  <span>{{ errorCount }}</span>
+                  <span data-testid="flow-health-error-count">{{ errorCount }}</span>
                 </span>
-                <span v-if="infoCount > 0" class="flex items-center gap-1.5 ml-2 text-blue-500">
+                <span
+                  v-if="warningCount > 0"
+                  class="flex items-center gap-1.5 text-yellow-500"
+                  :class="{ 'ml-2': errorCount > 0 }"
+                >
+                  <AlertTriangle class="size-3.5" />
+                  <span data-testid="flow-health-warning-count">{{ warningCount }}</span>
+                </span>
+                <span
+                  v-if="infoCount > 0"
+                  class="flex items-center gap-1.5 text-blue-500"
+                  :class="{ 'ml-2': errorCount > 0 || warningCount > 0 }"
+                >
                   <Info class="size-3.5" />
-                  <span>{{ infoCount }}</span>
+                  <span data-testid="flow-health-info-count">{{ infoCount }}</span>
                 </span>
                 <ChevronDown class="size-3 opacity-50 ml-1" />
               </PopoverTrigger>
@@ -244,16 +264,46 @@ function navigateToNode(nodeId: number | string): void {
           <PopoverContent side="bottom" :side-offset="4" class="w-max max-h-60 overflow-y-auto p-1">
             <div v-if="flowHealth.errorNodes.length > 0">
               <div
-                v-if="flowHealth.infoNodes.length > 0"
+                data-testid="flow-health-errors"
                 class="px-2 py-1 text-[10px] text-muted-foreground font-medium uppercase"
               >
                 {{ $t("flows.header.errors") }}
               </div>
               <button
-                v-for="node in flowHealth.errorNodes"
-                :key="'e-' + node.id"
+                v-for="(node, index) in flowHealth.errorNodes"
+                :key="'e-' + (node.id ?? `flow-${index}`)"
                 type="button"
-                class="w-full flex flex-col items-start gap-0.5 px-2 py-1.5 rounded-md text-xs hover:bg-accent transition-colors"
+                :data-health-node-id="node.id"
+                data-health-severity="error"
+                :disabled="node.id == null"
+                class="w-full flex flex-col items-start gap-0.5 px-2 py-1.5 rounded-md text-xs transition-colors enabled:hover:bg-accent disabled:cursor-default"
+                @click="navigateToNode(node.id)"
+              >
+                <span class="truncate">{{ node.label }}</span>
+                <span
+                  v-for="reason in nodeReasons(node)"
+                  :key="reason"
+                  class="text-[11px] text-muted-foreground"
+                >
+                  {{ reason }}
+                </span>
+              </button>
+            </div>
+            <div v-if="flowHealth.warningNodes.length > 0">
+              <div
+                data-testid="flow-health-warnings"
+                class="px-2 py-1 text-[10px] text-muted-foreground font-medium uppercase mt-1"
+              >
+                {{ $t("flows.header.warnings") }}
+              </div>
+              <button
+                v-for="(node, index) in flowHealth.warningNodes"
+                :key="'w-' + (node.id ?? `flow-${index}`)"
+                type="button"
+                :data-health-node-id="node.id"
+                data-health-severity="warning"
+                :disabled="node.id == null"
+                class="w-full flex flex-col items-start gap-0.5 px-2 py-1.5 rounded-md text-xs transition-colors enabled:hover:bg-accent disabled:cursor-default"
                 @click="navigateToNode(node.id)"
               >
                 <span class="truncate">{{ node.label }}</span>
@@ -268,16 +318,19 @@ function navigateToNode(nodeId: number | string): void {
             </div>
             <div v-if="flowHealth.infoNodes.length > 0">
               <div
-                v-if="flowHealth.errorNodes.length > 0"
+                data-testid="flow-health-info"
                 class="px-2 py-1 text-[10px] text-muted-foreground font-medium uppercase mt-1"
               >
                 {{ $t("flows.header.info") }}
               </div>
               <button
-                v-for="node in flowHealth.infoNodes"
-                :key="'i-' + node.id"
+                v-for="(node, index) in flowHealth.infoNodes"
+                :key="'i-' + (node.id ?? `flow-${index}`)"
                 type="button"
-                class="w-full flex flex-col items-start gap-0.5 px-2 py-1.5 rounded-md text-xs hover:bg-accent transition-colors"
+                :data-health-node-id="node.id"
+                data-health-severity="info"
+                :disabled="node.id == null"
+                class="w-full flex flex-col items-start gap-0.5 px-2 py-1.5 rounded-md text-xs transition-colors enabled:hover:bg-accent disabled:cursor-default"
                 @click="navigateToNode(node.id)"
               >
                 <span class="truncate">{{ node.label }}</span>

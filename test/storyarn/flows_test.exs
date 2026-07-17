@@ -465,12 +465,12 @@ defmodule Storyarn.FlowsTest do
           type: "hub",
           position_x: 300.0,
           position_y: 200.0,
-          data: %{"hub_id" => "merchant_done", "color" => "blue"}
+          data: %{"hub_id" => "merchant_done", "color" => "#3b82f6"}
         })
 
       assert hub.type == "hub"
       assert hub.data["hub_id"] == "merchant_done"
-      assert hub.data["color"] == "blue"
+      assert hub.data["color"] == "#3b82f6"
     end
 
     test "cannot create duplicate hub_id in same flow" do
@@ -484,7 +484,7 @@ defmodule Storyarn.FlowsTest do
           type: "hub",
           position_x: 300.0,
           position_y: 200.0,
-          data: %{"hub_id" => "my_hub", "color" => "purple"}
+          data: %{"hub_id" => "my_hub", "color" => "#8b5cf6"}
         })
 
       # Try to create second hub with same hub_id
@@ -493,7 +493,7 @@ defmodule Storyarn.FlowsTest do
           type: "hub",
           position_x: 500.0,
           position_y: 200.0,
-          data: %{"hub_id" => "my_hub", "color" => "blue"}
+          data: %{"hub_id" => "my_hub", "color" => "#3b82f6"}
         })
 
       assert result == {:error, :hub_id_not_unique}
@@ -592,7 +592,7 @@ defmodule Storyarn.FlowsTest do
           type: "hub",
           position_x: 300.0,
           position_y: 200.0,
-          data: %{"hub_id" => "meeting_point", "color" => "blue"}
+          data: %{"hub_id" => "meeting_point", "color" => "#3b82f6"}
         })
 
       # Create a jump node targeting the hub

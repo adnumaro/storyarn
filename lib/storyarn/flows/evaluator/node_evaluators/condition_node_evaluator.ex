@@ -165,16 +165,31 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluator do
     end
   end
 
-  defp follow_matched_switch_pin(state, node_id, label, nil, _connections) do
-    state =
-      log_switch_unmatched(
-        state,
-        node_id,
-        label,
-        "Switch — no case matched"
-      )
+  defp follow_matched_switch_pin(state, node_id, label, nil, connections) do
+    case EngineHelpers.find_connection(connections, node_id, "default") do
+      nil ->
+        state =
+          log_switch_unmatched(
+            state,
+            node_id,
+            label,
+            "Switch — no case matched"
+          )
 
-    {:finished, %{state | status: :finished}}
+        {:finished, %{state | status: :finished}}
+
+      conn ->
+        state =
+          EngineHelpers.add_console(
+            state,
+            :info,
+            node_id,
+            label,
+            "Switch → default"
+          )
+
+        EngineHelpers.advance_to(state, conn.target_node_id)
+    end
   end
 
   defp follow_matched_switch_pin(state, node_id, label, pin, connections) do

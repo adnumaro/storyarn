@@ -7,6 +7,7 @@ import {
   Box,
   ChevronLeft,
   ChevronRight,
+  CircleX,
   GitBranch,
   Info,
   MessageSquare,
@@ -67,7 +68,7 @@ interface FlowPagination {
 interface FlowIssue {
   href: string;
   message: string;
-  severity: "warning" | "info";
+  severity: "error" | "warning" | "info";
 }
 
 interface StatCard {
@@ -362,15 +363,26 @@ const pages = computed(() => {
           v-for="(issue, i) in issues"
           :key="i"
           :href="issue.href"
+          :data-severity="issue.severity"
           data-phx-link="redirect"
           data-phx-link-state="push"
           class="flex items-start gap-2 px-3 py-2 text-sm hover:bg-muted/30 transition-colors"
         >
+          <CircleX
+            v-if="issue.severity === 'error'"
+            data-testid="flow-issue-error-icon"
+            class="size-4 text-red-500 shrink-0 mt-0.5"
+          />
           <AlertTriangle
-            v-if="issue.severity === 'warning'"
+            v-else-if="issue.severity === 'warning'"
+            data-testid="flow-issue-warning-icon"
             class="size-4 text-yellow-500 shrink-0 mt-0.5"
           />
-          <Info v-else class="size-4 text-blue-400 shrink-0 mt-0.5" />
+          <Info
+            v-else
+            data-testid="flow-issue-info-icon"
+            class="size-4 text-blue-400 shrink-0 mt-0.5"
+          />
           <span class="text-muted-foreground">{{ issue.message }}</span>
         </a>
       </div>
