@@ -351,8 +351,11 @@ defmodule Storyarn.Flows do
   @spec list_hubs(integer()) :: [map()]
   defdelegate list_hubs(flow_id), to: NodeCrud
 
-  @doc "Returns the default hub color hex value."
-  defdelegate hub_colors_default_hex(), to: HubColors, as: :default_hex
+  @doc "Returns the default Hub color as a hex value."
+  defdelegate hub_color_default_hex(), to: HubColors, as: :default_hex
+
+  @doc "Resolves a Hub color to a valid hex value."
+  defdelegate resolve_hub_color(color), to: HubColors, as: :resolve
 
   @doc """
   Finds a hub node in a flow by its hub_id string.
@@ -771,7 +774,7 @@ defmodule Storyarn.Flows do
 
   @doc """
   Enriches node data with resolved values for the canvas.
-  Resolves hub color names to hex values and subflow references.
+  Adds validated Hub colors and resolves subflow references.
   The cache is pre-fetched by batch_resolve_subflow_data/1.
   When called via the 2-arity version (single-node updates), cache is `%{}`.
   """
@@ -780,7 +783,7 @@ defmodule Storyarn.Flows do
     Map.put(
       data,
       "color_hex",
-      HubColors.to_hex(data["color"], HubColors.default_hex())
+      HubColors.resolve(data["color"])
     )
   end
 

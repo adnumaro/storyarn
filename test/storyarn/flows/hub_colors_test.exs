@@ -9,27 +9,25 @@ defmodule Storyarn.Flows.HubColorsTest do
     end
   end
 
-  describe "to_hex/1" do
-    test "returns nil for nil input" do
-      assert HubColors.to_hex(nil) == nil
+  describe "resolve/1" do
+    test "returns the default for nil input" do
+      assert HubColors.resolve(nil) == HubColors.default_hex()
     end
 
-    test "passes through hex string" do
-      assert HubColors.to_hex("#ff0000") == "#ff0000"
-    end
-  end
-
-  describe "to_hex/2 with default" do
-    test "returns default for nil input" do
-      assert HubColors.to_hex(nil, "#123456") == "#123456"
+    test "returns the default for an invalid color" do
+      assert HubColors.resolve("not-a-color") == HubColors.default_hex()
     end
 
-    test "returns default for empty string" do
-      assert HubColors.to_hex("", "#123456") == "#123456"
+    test "passes through short hex colors" do
+      assert HubColors.resolve("#f00") == "#f00"
     end
 
-    test "passes through non-empty hex" do
-      assert HubColors.to_hex("#ff0000", "#123456") == "#ff0000"
+    test "passes through six-digit hex colors" do
+      assert HubColors.resolve("#ff0000") == "#ff0000"
+    end
+
+    test "passes through eight-digit hex colors" do
+      assert HubColors.resolve("#ff000080") == "#ff000080"
     end
   end
 end

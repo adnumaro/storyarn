@@ -597,7 +597,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
 
       load_flow(view)
 
-      node_fixture(flow, %{type: "hub", data: %{"hub_id" => "refresh_hub", "color" => "purple"}})
+      node_fixture(flow, %{type: "hub", data: %{"hub_id" => "refresh_hub", "color" => "#8b5cf6"}})
 
       render_click(view, "request_flow_refresh", %{})
 

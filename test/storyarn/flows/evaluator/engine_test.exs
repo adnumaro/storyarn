@@ -166,7 +166,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
     test "passes through to next node" do
       nodes = %{
         1 => node(1, "entry"),
-        2 => node(2, "hub", %{"hub_id" => "hub_1", "color" => "red"}),
+        2 => node(2, "hub", %{"hub_id" => "hub_1", "color" => "#ef4444"}),
         3 => node(3, "exit")
       }
 

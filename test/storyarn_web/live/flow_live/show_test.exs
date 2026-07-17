@@ -92,6 +92,48 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
     end
   end
 
+  describe "Hub color events" do
+    setup :register_and_log_in_user
+
+    test "updates the selected Hub with a valid picker color", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Colored Hub Flow"})
+
+      hub =
+        node_fixture(flow, %{
+          type: "hub",
+          data: %{"hub_id" => "checkpoint", "color" => "#be185d"}
+        })
+
+      url = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+      view = mount_flow(conn, url)
+
+      render_click(view, "node_selected", %{"id" => hub.id})
+      render_click(view, "update_hub_color", %{"color" => "#22c55e"})
+
+      assert Flows.get_node!(flow.id, hub.id).data["color"] == "#22c55e"
+    end
+
+    test "replaces an invalid picker color with the Hub default", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Validated Hub Flow"})
+
+      hub =
+        node_fixture(flow, %{
+          type: "hub",
+          data: %{"hub_id" => "checkpoint", "color" => "#3b82f6"}
+        })
+
+      url = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+      view = mount_flow(conn, url)
+
+      render_click(view, "node_selected", %{"id" => hub.id})
+      render_click(view, "update_hub_color", %{"color" => "not-a-color"})
+
+      assert Flows.get_node!(flow.id, hub.id).data["color"] == Flows.hub_color_default_hex()
+    end
+  end
+
   describe "version history events" do
     setup :register_and_log_in_user
 
