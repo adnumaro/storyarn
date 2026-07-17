@@ -38,11 +38,13 @@ const {
   expandedProjectId = null,
   snapshots = [],
   recovering = false,
+  recoveryEnabled,
 } = defineProps<{
   deletedProjects: DeletedProject[];
   expandedProjectId?: number | null;
   snapshots?: ProjectSnapshot[];
   recovering?: boolean;
+  recoveryEnabled: boolean;
 }>();
 
 const live = useLive();
@@ -52,16 +54,19 @@ const recoverSnapshot = ref<ProjectSnapshot | null>(null);
 const recoverProjectId = ref<number | null>(null);
 
 function toggleProject(projectId: number) {
+  if (!recoveryEnabled) return;
   live.pushEvent("toggle_project", { id: String(projectId) });
 }
 
 function openRecoverDialog(snapshot: ProjectSnapshot, projectId: number) {
+  if (!recoveryEnabled) return;
   recoverSnapshot.value = snapshot;
   recoverProjectId.value = projectId;
   recoverDialogOpen.value = true;
 }
 
 function confirmRecover() {
+  if (!recoveryEnabled) return;
   if (recoverSnapshot.value && recoverProjectId.value) {
     live.pushEvent("recover_project", {
       snapshot_id: recoverSnapshot.value.id,
@@ -111,7 +116,11 @@ function formatEntityCounts(counts: Record<string, number> | undefined) {
     >
       <button
         type="button"
-        class="w-full flex items-center justify-between p-4 hover:bg-accent/50 transition-colors"
+        :disabled="!recoveryEnabled"
+        :class="[
+          'w-full flex items-center justify-between p-4 transition-colors',
+          recoveryEnabled ? 'hover:bg-accent/50' : 'cursor-default',
+        ]"
         @click="toggleProject(project.id)"
       >
         <div class="flex items-center gap-3">
@@ -130,8 +139,13 @@ function formatEntityCounts(counts: Record<string, number> | undefined) {
           <Badge variant="secondary">
             {{ $t("settings.workspace.deleted_projects.snapshot_count", project.snapshot_count) }}
           </Badge>
-          <ChevronUp v-if="expandedProjectId === project.id" class="size-4 text-muted-foreground" />
-          <ChevronDown v-else class="size-4 text-muted-foreground" />
+          <template v-if="recoveryEnabled">
+            <ChevronUp
+              v-if="expandedProjectId === project.id"
+              class="size-4 text-muted-foreground"
+            />
+            <ChevronDown v-else class="size-4 text-muted-foreground" />
+          </template>
         </div>
       </button>
 
@@ -160,7 +174,13 @@ function formatEntityCounts(counts: Record<string, number> | undefined) {
               </span>
             </div>
           </div>
-          <Button size="sm" :disabled="recovering" @click="openRecoverDialog(snapshot, project.id)">
+          <Button
+            v-if="recoveryEnabled"
+            data-testid="recover-deleted-project"
+            size="sm"
+            :disabled="recovering"
+            @click="openRecoverDialog(snapshot, project.id)"
+          >
             <RotateCcw class="size-3.5" />
             {{ $t("settings.workspace.deleted_projects.recover") }}
           </Button>
@@ -169,7 +189,7 @@ function formatEntityCounts(counts: Record<string, number> | undefined) {
     </div>
 
     <!-- Recover Confirmation Dialog -->
-    <Dialog v-model:open="recoverDialogOpen">
+    <Dialog v-if="recoveryEnabled" v-model:open="recoverDialogOpen">
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{{

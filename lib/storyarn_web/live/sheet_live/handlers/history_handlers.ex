@@ -65,37 +65,55 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
   end
 
   def handle_preview_restore(%{"version_number" => version_number}, socket, _helpers) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with_version(socket, version_number, fn version ->
-        detect_and_show_restore_preview(socket, version)
+    with_authorized_restore(socket, fn authorized_socket ->
+      with_version(authorized_socket, version_number, fn version ->
+        detect_and_show_restore_preview(authorized_socket, version)
       end)
     end)
   end
 
   def handle_save_and_restore(%{"version_number" => version_number}, socket, _helpers) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with_version(socket, version_number, fn version -> save_and_show_restore(socket, version) end)
+    with_authorized_restore(socket, fn authorized_socket ->
+      with_version(authorized_socket, version_number, fn version ->
+        save_and_show_restore(authorized_socket, version)
+      end)
     end)
   end
 
   def handle_discard_and_restore(%{"version_number" => version_number}, socket, _helpers) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with_version(socket, version_number, fn version ->
-        show_conflict_preview(socket, version, true)
+    with_authorized_restore(socket, fn authorized_socket ->
+      with_version(authorized_socket, version_number, fn version ->
+        show_conflict_preview(authorized_socket, version, true)
       end)
     end)
   end
 
   def handle_confirm_restore(%{"version_number" => version_number} = params, socket, helpers) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with_version(socket, version_number, fn version ->
-        restore_version(socket, version, params, helpers)
+    with_authorized_restore(socket, fn authorized_socket ->
+      with_version(authorized_socket, version_number, fn version ->
+        restore_version(authorized_socket, version, params, helpers)
       end)
     end)
   end
 
   defp blank_to_nil(""), do: nil
   defp blank_to_nil(value), do: value
+
+  defp with_authorized_restore(socket, fun) do
+    with_restore_enabled(socket, fn ->
+      Authorize.with_authorization(socket, :edit_content, fun)
+    end)
+  end
+
+  defp with_restore_enabled(socket, fun) do
+    case Versioning.ensure_restore_enabled({:entity_version_restore, "sheet"}) do
+      :ok ->
+        fun.()
+
+      {:error, :restore_temporarily_disabled} ->
+        {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not restore version."))}
+    end
+  end
 
   defp create_named_version(socket, nil, _description) do
     {:noreply, put_flash(socket, :error, dgettext("versioning", "Title is required."))}

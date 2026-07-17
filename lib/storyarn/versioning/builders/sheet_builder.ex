@@ -28,6 +28,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   alias Storyarn.Versioning.DiffHelpers
   alias Storyarn.Versioning.LocalizationSnapshotCodec
   alias Storyarn.Versioning.MaterializationHelpers
+  alias Storyarn.Versioning.RestorePolicy
 
   # ========== Build Snapshot ==========
 
@@ -254,6 +255,16 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
   @impl true
   def restore_snapshot(%Sheet{} = sheet, snapshot, opts \\ []) do
+    with :ok <-
+           RestorePolicy.ensure_builder_enabled(
+             "sheet",
+             Keyword.get(opts, :restore_action)
+           ) do
+      do_restore_snapshot(sheet, snapshot, opts)
+    end
+  end
+
+  defp do_restore_snapshot(sheet, snapshot, opts) do
     avatar_entries = build_avatar_entries(snapshot, sheet.project_id, MaterializationHelpers.now(), opts)
     localization_rows = Map.get(snapshot, "localization", [])
 

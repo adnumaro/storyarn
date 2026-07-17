@@ -26,6 +26,7 @@ defmodule StoryarnWeb.ConnCase do
       import Phoenix.ConnTest
       import Plug.Conn
       import Storyarn.Factory
+      import Storyarn.StorageTestHelpers
       import StoryarnWeb.ConnCase
       # The default endpoint for testing
       @endpoint StoryarnWeb.Endpoint

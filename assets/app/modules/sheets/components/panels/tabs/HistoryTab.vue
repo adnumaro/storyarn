@@ -10,6 +10,7 @@ const {
   canNameVersion = false,
   currentVersionId = null,
   canEdit = false,
+  restoreEnabled,
   loading = false,
 } = defineProps<{
   versions?: VersionEntry[];
@@ -19,6 +20,7 @@ const {
   canNameVersion?: boolean;
   currentVersionId?: number | null;
   canEdit?: boolean;
+  restoreEnabled: boolean;
   loading?: boolean;
 }>();
 </script>
@@ -32,6 +34,7 @@ const {
     :can-name-version="canNameVersion"
     :current-version-id="currentVersionId"
     :can-edit="canEdit"
+    :restore-enabled="restoreEnabled"
     :loading="loading"
   />
 </template>

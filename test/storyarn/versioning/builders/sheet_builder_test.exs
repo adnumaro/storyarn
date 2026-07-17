@@ -115,7 +115,8 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       Sheets.delete_block(hd(Sheets.list_blocks(sheet.id)))
 
       # Restore from snapshot
-      {:ok, restored} = SheetBuilder.restore_snapshot(modified_sheet, snapshot)
+      {:ok, restored} =
+        SheetBuilder.restore_snapshot(modified_sheet, snapshot, restore_action: {:entity_version_restore, "sheet"})
 
       assert restored.name == sheet.name
       blocks = Sheets.list_blocks(sheet.id)
@@ -154,7 +155,9 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       snapshot = SheetBuilder.build_snapshot(sheet)
       assert length(snapshot["localization"]) == 2
 
-      assert {:ok, restored} = SheetBuilder.restore_snapshot(sheet, snapshot)
+      assert {:ok, restored} =
+               SheetBuilder.restore_snapshot(sheet, snapshot, restore_action: {:entity_version_restore, "sheet"})
+
       [restored_block] = Enum.filter(restored.blocks, &(&1.type == "text"))
       refute restored_block.id == block.id
 
@@ -315,7 +318,8 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       Sheets.delete_table_column(col)
 
       # Restore
-      {:ok, _restored} = SheetBuilder.restore_snapshot(sheet, snapshot)
+      {:ok, _restored} =
+        SheetBuilder.restore_snapshot(sheet, snapshot, restore_action: {:entity_version_restore, "sheet"})
 
       # Verify table data was restored
       blocks = Sheets.list_blocks(sheet.id)
@@ -451,7 +455,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
 
     on_exit(fn ->
       Assets.storage_delete(asset.key)
-      Assets.storage_delete(BlobStore.blob_key(project.id, asset.blob_hash, "png"))
+      delete_storage_blob(BlobStore.blob_key(project.id, asset.blob_hash, "png"))
     end)
 
     asset

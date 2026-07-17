@@ -971,7 +971,12 @@ defmodule Storyarn.ProjectTemplatesTest do
                })
 
       version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
-      :ok = Assets.storage_delete(BlobStore.blob_key(source_project.id, asset.blob_hash, "png"))
+      blob_key = BlobStore.blob_key(source_project.id, asset.blob_hash, "png")
+
+      # Simulate provider-side loss without weakening the application boundary
+      # that permanently blocks deletion of recoverable blobs.
+      :ok = delete_storage_blob(blob_key)
+
       project_count = Repo.aggregate(Project, :count)
 
       assert {:ok, installation} =
@@ -1370,7 +1375,7 @@ defmodule Storyarn.ProjectTemplatesTest do
 
     on_exit(fn ->
       Assets.storage_delete(asset.key)
-      Assets.storage_delete(BlobStore.blob_key(project.id, asset.blob_hash, "png"))
+      delete_storage_blob(BlobStore.blob_key(project.id, asset.blob_hash, "png"))
     end)
 
     asset
@@ -1387,7 +1392,7 @@ defmodule Storyarn.ProjectTemplatesTest do
 
     on_exit(fn ->
       Assets.storage_delete(asset.key)
-      Assets.storage_delete(BlobStore.blob_key(project.id, asset.blob_hash, "mp3"))
+      delete_storage_blob(BlobStore.blob_key(project.id, asset.blob_hash, "mp3"))
     end)
 
     asset

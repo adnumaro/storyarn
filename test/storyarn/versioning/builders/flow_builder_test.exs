@@ -170,7 +170,8 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       {:ok, modified_flow} = Flows.update_flow(flow, %{name: "Modified"})
 
       # Restore
-      {:ok, restored} = FlowBuilder.restore_snapshot(modified_flow, snapshot)
+      {:ok, restored} =
+        FlowBuilder.restore_snapshot(modified_flow, snapshot, restore_action: {:entity_version_restore, "flow"})
 
       assert restored.name == flow.name
 
@@ -198,7 +199,9 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       snapshot = FlowBuilder.build_snapshot(flow)
       assert [%{"translated_text" => "Hola"}] = snapshot["localization"]
 
-      assert {:ok, restored} = FlowBuilder.restore_snapshot(flow, snapshot)
+      assert {:ok, restored} =
+               FlowBuilder.restore_snapshot(flow, snapshot, restore_action: {:entity_version_restore, "flow"})
+
       restored_node = Enum.find(restored.nodes, &(&1.type == "dialogue"))
       refute restored_node.id == node.id
 
@@ -244,7 +247,9 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
 
       snapshot = FlowBuilder.build_snapshot(flow)
 
-      assert {:ok, restored} = FlowBuilder.restore_snapshot(flow, snapshot)
+      assert {:ok, restored} =
+               FlowBuilder.restore_snapshot(flow, snapshot, restore_action: {:entity_version_restore, "flow"})
+
       rebuilt_snapshot = FlowBuilder.build_snapshot(restored)
 
       assert FlowBuilder.diff_snapshots(snapshot, rebuilt_snapshot) == []
@@ -820,9 +825,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
     on_exit(fn ->
       Assets.storage_delete(asset.key)
 
-      Assets.storage_delete(
-        BlobStore.blob_key(project.id, asset.blob_hash, BlobStore.ext_from_content_type(content_type))
-      )
+      delete_storage_blob(BlobStore.blob_key(project.id, asset.blob_hash, BlobStore.ext_from_content_type(content_type)))
     end)
 
     asset

@@ -192,7 +192,7 @@ defmodule Storyarn.Projects do
   @doc """
   Releases the restoration lock on a project.
   """
-  @spec release_restoration_lock(integer()) :: {:ok, project()}
+  @spec release_restoration_lock(integer()) :: {:ok, project()} | {:error, :not_found}
   defdelegate release_restoration_lock(project_id), to: ProjectCrud
 
   @doc """

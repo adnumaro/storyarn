@@ -47,6 +47,24 @@ if admin_email = System.get_env("ADMIN_EMAIL") do
   config :storyarn, :admin_email, admin_email
 end
 
+if config_env() != :test do
+  config :storyarn, Storyarn.Versioning.RestorePolicy,
+    sheet_version_restore: System.get_env("SHEET_VERSION_RESTORE_ENABLED") in ~w(true 1),
+    flow_version_restore: System.get_env("FLOW_VERSION_RESTORE_ENABLED") in ~w(true 1),
+    scene_version_restore: System.get_env("SCENE_VERSION_RESTORE_ENABLED") in ~w(true 1),
+    project_snapshot_restore: System.get_env("PROJECT_SNAPSHOT_RESTORE_ENABLED") in ~w(true 1),
+    deleted_project_recovery: System.get_env("DELETED_PROJECT_RECOVERY_ENABLED") in ~w(true 1)
+
+  config :storyarn, Storyarn.Workers.DailySnapshotWorker,
+    pruning_enabled: System.get_env("AUTO_SNAPSHOT_PRUNING_ENABLED") in ~w(true 1)
+
+  config :storyarn, Storyarn.Workers.SnapshotRetentionWorker,
+    enabled: System.get_env("DELETED_PROJECT_SNAPSHOT_RETENTION_ENABLED") in ~w(true 1)
+
+  config :storyarn, Storyarn.Workers.TrashRetentionWorker,
+    enabled: System.get_env("ENTITY_TRASH_RETENTION_ENABLED") in ~w(true 1)
+end
+
 posthog_dotenv =
   if config_env() == :dev and File.exists?(".env") do
     ".env"

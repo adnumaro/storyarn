@@ -27,6 +27,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   alias Storyarn.Versioning.Builders.FlowSnapshotNormalizer
   alias Storyarn.Versioning.Builders.SceneBuilder
   alias Storyarn.Versioning.Builders.SheetBuilder
+  alias Storyarn.Versioning.RestorePolicy
 
   require Logger
 
@@ -134,45 +135,47 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   """
   @spec restore_snapshot(integer(), map(), keyword()) ::
           {:ok, map()} | {:error, term()}
-  def restore_snapshot(project_id, snapshot, _opts \\ []) do
-    snapshot = FlowSnapshotNormalizer.normalize_project(snapshot)
+  def restore_snapshot(project_id, snapshot, opts \\ []) do
+    with :ok <- RestorePolicy.ensure_enabled(:project_snapshot_restore) do
+      snapshot = FlowSnapshotNormalizer.normalize_project(snapshot)
 
-    Repo.transaction(
-      fn ->
-        results = %{
-          sheets:
-            restore_entities(
-              project_id,
-              snapshot,
-              "sheets",
-              &restore_sheet(&1, &2, project_id)
-            ),
-          flows:
-            restore_entities(
-              project_id,
-              snapshot,
-              "flows",
-              &restore_flow(&1, &2, project_id)
-            ),
-          scenes:
-            restore_entities(
-              project_id,
-              snapshot,
-              "scenes",
-              &restore_scene(&1, &2, project_id)
-            )
-        }
+      Repo.transaction(
+        fn ->
+          results = %{
+            sheets:
+              restore_entities(
+                project_id,
+                snapshot,
+                "sheets",
+                &restore_sheet(&1, &2, project_id, opts)
+              ),
+            flows:
+              restore_entities(
+                project_id,
+                snapshot,
+                "flows",
+                &restore_flow(&1, &2, project_id, opts)
+              ),
+            scenes:
+              restore_entities(
+                project_id,
+                snapshot,
+                "scenes",
+                &restore_scene(&1, &2, project_id, opts)
+              )
+          }
 
-        restore_localization(project_id, snapshot, collect_localization_id_maps(results))
+          restore_localization(project_id, snapshot, collect_localization_id_maps(results))
 
-        %{
-          restored: count_restored(results),
-          skipped: count_skipped(results),
-          details: results
-        }
-      end,
-      timeout: to_timeout(minute: 5)
-    )
+          %{
+            restored: count_restored(results),
+            skipped: count_skipped(results),
+            details: results
+          }
+        end,
+        timeout: to_timeout(minute: 5)
+      )
+    end
   end
 
   defp restore_entities(project_id, snapshot, entity_key, restore_fn) do
@@ -199,24 +202,49 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
     end)
   end
 
-  defp restore_sheet(sheet_id, snapshot, project_id) do
+  defp restore_sheet(sheet_id, snapshot, project_id, opts) do
     case Sheets.get_sheet(project_id, sheet_id) do
-      nil -> {:error, :not_found}
-      sheet -> SheetBuilder.restore_snapshot(sheet, snapshot, return_id_maps: true)
+      nil ->
+        {:error, :not_found}
+
+      sheet ->
+        SheetBuilder.restore_snapshot(
+          sheet,
+          snapshot,
+          opts
+          |> Keyword.put(:return_id_maps, true)
+          |> Keyword.put(:restore_action, :project_snapshot_restore)
+        )
     end
   end
 
-  defp restore_flow(flow_id, snapshot, project_id) do
+  defp restore_flow(flow_id, snapshot, project_id, opts) do
     case Flows.get_flow(project_id, flow_id) do
-      nil -> {:error, :not_found}
-      flow -> FlowBuilder.restore_snapshot(flow, snapshot, return_id_maps: true)
+      nil ->
+        {:error, :not_found}
+
+      flow ->
+        FlowBuilder.restore_snapshot(
+          flow,
+          snapshot,
+          opts
+          |> Keyword.put(:return_id_maps, true)
+          |> Keyword.put(:restore_action, :project_snapshot_restore)
+        )
     end
   end
 
-  defp restore_scene(scene_id, snapshot, project_id) do
+  defp restore_scene(scene_id, snapshot, project_id, opts) do
     case Scenes.get_scene(project_id, scene_id) do
-      nil -> {:error, :not_found}
-      scene -> SceneBuilder.restore_snapshot(scene, snapshot)
+      nil ->
+        {:error, :not_found}
+
+      scene ->
+        SceneBuilder.restore_snapshot(
+          scene,
+          snapshot,
+          Keyword.put(opts, :restore_action, :project_snapshot_restore)
+        )
     end
   end
 

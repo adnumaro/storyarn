@@ -25,6 +25,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.DiffHelpers
   alias Storyarn.Versioning.MaterializationHelpers
+  alias Storyarn.Versioning.RestorePolicy
 
   # ========== Build Snapshot ==========
 
@@ -362,6 +363,16 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
   @impl true
   def restore_snapshot(%Scene{} = scene, snapshot, opts \\ []) do
+    with :ok <-
+           RestorePolicy.ensure_builder_enabled(
+             "scene",
+             Keyword.get(opts, :restore_action)
+           ) do
+      do_restore_snapshot(scene, snapshot, opts)
+    end
+  end
+
+  defp do_restore_snapshot(scene, snapshot, opts) do
     Multi.new()
     |> Multi.update(:scene, fn _changes ->
       Scene.update_changeset(scene, %{

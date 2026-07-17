@@ -18,6 +18,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   alias Storyarn.Collaboration.Presence
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets
+  alias Storyarn.Versioning
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Helpers.UndoRedoStack
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
@@ -272,6 +273,9 @@ defmodule StoryarnWeb.SheetLive.Show do
       canNameVersion: history_data[:can_name_version] || false,
       currentVersionId: history_data[:current_version_id],
       canEdit: assigns.can_edit,
+      restoreEnabled:
+        assigns.can_edit &&
+          Versioning.restore_enabled?({:entity_version_restore, "sheet"}),
       loading: is_nil(assigns.history_data)
     }
   end

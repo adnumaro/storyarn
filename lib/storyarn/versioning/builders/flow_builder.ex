@@ -30,6 +30,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   alias Storyarn.Versioning.DiffHelpers
   alias Storyarn.Versioning.LocalizationSnapshotCodec
   alias Storyarn.Versioning.MaterializationHelpers
+  alias Storyarn.Versioning.RestorePolicy
 
   # ========== Build Snapshot ==========
 
@@ -324,6 +325,16 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   @impl true
   def restore_snapshot(%Flow{} = flow, snapshot, opts \\ []) do
+    with :ok <-
+           RestorePolicy.ensure_builder_enabled(
+             "flow",
+             Keyword.get(opts, :restore_action)
+           ) do
+      do_restore_snapshot(flow, snapshot, opts)
+    end
+  end
+
+  defp do_restore_snapshot(flow, snapshot, opts) do
     snapshot = FlowSnapshotNormalizer.normalize(snapshot)
     localization_rows = Map.get(snapshot, "localization", [])
 

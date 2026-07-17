@@ -32,12 +32,14 @@ const {
   snapshots = [],
   canCreateSnapshot = true,
   restorationInProgress = false,
+  restoreEnabled,
   workspaceSlug = "",
   projectSlug = "",
 } = defineProps<{
   snapshots?: Snapshot[];
   canCreateSnapshot?: boolean;
   restorationInProgress?: boolean;
+  restoreEnabled: boolean;
   workspaceSlug?: string;
   projectSlug?: string;
 }>();
@@ -61,6 +63,7 @@ function createSnapshot() {
 }
 
 function restoreSnapshot(id: number) {
+  if (!restoreEnabled) return;
   showRestoreDialog.value = null;
   live.pushEvent("restore_snapshot", { id });
 }
@@ -214,6 +217,8 @@ function downloadUrl(snapshotId: number) {
                 {{ $t("project_settings.snapshots.download") }}
               </Button>
               <Button
+                v-if="restoreEnabled"
+                data-testid="restore-project-snapshot"
                 variant="outline"
                 size="sm"
                 :disabled="restorationInProgress"
@@ -223,6 +228,7 @@ function downloadUrl(snapshotId: number) {
                 {{ $t("project_settings.snapshots.restore") }}
               </Button>
               <Button
+                data-testid="delete-project-snapshot"
                 variant="outline"
                 size="sm"
                 class="text-destructive border-destructive/30 hover:bg-destructive/10"
@@ -236,6 +242,7 @@ function downloadUrl(snapshotId: number) {
 
           <!-- Restore dialog -->
           <Dialog
+            v-if="restoreEnabled"
             :open="showRestoreDialog === snapshot.id"
             @update:open="
               (v) => {

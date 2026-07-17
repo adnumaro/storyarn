@@ -128,7 +128,8 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       {:ok, modified_scene} = Storyarn.Scenes.update_scene(scene, %{"name" => "Modified"})
 
       # Restore
-      {:ok, restored} = SceneBuilder.restore_snapshot(modified_scene, snapshot)
+      {:ok, restored} =
+        SceneBuilder.restore_snapshot(modified_scene, snapshot, restore_action: {:entity_version_restore, "scene"})
 
       assert restored.name == scene.name
 
@@ -190,7 +191,9 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
         ])
 
       {:ok, modified_scene} = Storyarn.Scenes.update_scene(scene, %{"name" => "Modified"})
-      {:ok, restored} = SceneBuilder.restore_snapshot(modified_scene, snapshot)
+
+      {:ok, restored} =
+        SceneBuilder.restore_snapshot(modified_scene, snapshot, restore_action: {:entity_version_restore, "scene"})
 
       zones = restored.id |> Storyarn.Scenes.list_zones() |> Map.new(&{&1.name, &1})
 
@@ -755,7 +758,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
 
     on_exit(fn ->
       Assets.storage_delete(asset.key)
-      Assets.storage_delete(BlobStore.blob_key(project.id, asset.blob_hash, "png"))
+      delete_storage_blob(BlobStore.blob_key(project.id, asset.blob_hash, "png"))
     end)
 
     asset

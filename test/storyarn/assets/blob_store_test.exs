@@ -108,7 +108,7 @@ defmodule Storyarn.Assets.BlobStoreTest do
       asset_glob = asset_file_glob(project.id, "payload.svg")
 
       on_exit(fn ->
-        Storage.delete(blob_key)
+        delete_storage_blob(blob_key)
         asset_glob |> Path.wildcard() |> Enum.each(&File.rm/1)
       end)
 
@@ -145,7 +145,7 @@ defmodule Storyarn.Assets.BlobStoreTest do
                BlobStore.create_asset_from_blob(project.id, user.id, hash, blob_key, metadata)
 
       on_exit(fn ->
-        Storage.delete(blob_key)
+        delete_storage_blob(blob_key)
         Storage.delete(new_asset.key)
       end)
 

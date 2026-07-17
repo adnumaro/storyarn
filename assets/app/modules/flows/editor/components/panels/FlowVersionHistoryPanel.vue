@@ -13,6 +13,7 @@ const {
   canNameVersion = false,
   currentVersionId = null,
   canEdit = false,
+  restoreEnabled,
   loading = false,
   open = false,
 } = defineProps<{
@@ -23,6 +24,7 @@ const {
   canNameVersion?: boolean;
   currentVersionId?: number | null;
   canEdit?: boolean;
+  restoreEnabled: boolean;
   loading?: boolean;
   open?: boolean;
 }>();
@@ -59,6 +61,7 @@ function close() {
       :can-name-version="canNameVersion"
       :current-version-id="currentVersionId"
       :can-edit="canEdit"
+      :restore-enabled="restoreEnabled"
       :loading="loading"
     />
   </Sidebar>

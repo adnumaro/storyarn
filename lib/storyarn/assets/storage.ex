@@ -5,6 +5,8 @@ defmodule Storyarn.Assets.Storage do
   Supports both local file storage (development) and S3-compatible storage (production).
   """
 
+  require Logger
+
   @type key :: String.t()
   @type url :: String.t()
   @type content_type :: String.t()
@@ -82,10 +84,38 @@ defmodule Storyarn.Assets.Storage do
   end
 
   @doc """
-  Deletes a file from storage.
+  Deletes a file from storage, except recoverable versioning blobs.
+
+  Content-addressed blobs are recovery substrate and cannot be proven orphaned
+  without a reachability-aware garbage collector.
   """
   def delete(key) do
-    adapter().delete(key)
+    cond do
+      not canonical_key?(key) ->
+        Logger.warning("Blocked deletion for a non-canonical storage key")
+
+        :telemetry.execute(
+          [:storyarn, :assets, :storage, :invalid_delete_blocked],
+          %{count: 1},
+          %{}
+        )
+
+        {:error, :invalid_key}
+
+      recoverable_blob_key?(key) ->
+        Logger.warning("Blocked deletion of a recoverable versioning blob")
+
+        :telemetry.execute(
+          [:storyarn, :assets, :storage, :recoverable_blob_delete_blocked],
+          %{count: 1},
+          %{}
+        )
+
+        {:error, :recoverable_blob}
+
+      true ->
+        adapter().delete(key)
+    end
   end
 
   @doc """
@@ -123,5 +153,44 @@ defmodule Storyarn.Assets.Storage do
   """
   def key_from_url(url) do
     adapter().key_from_url(url)
+  end
+
+  defp recoverable_blob_key?(key) when is_binary(key) do
+    case String.split(key, "/", trim: false) do
+      ["projects", project_id, "blobs" | tail] ->
+        valid_project_id?(project_id) and valid_key_tail?(tail)
+
+      _segments ->
+        false
+    end
+  end
+
+  defp recoverable_blob_key?(_key), do: false
+
+  defp canonical_key?(key) when is_binary(key) do
+    key != "" and
+      String.valid?(key) and
+      not String.contains?(key, [<<0>>, "\\"]) and
+      canonical_segments?(String.split(key, "/", trim: false))
+  end
+
+  defp canonical_key?(_key), do: false
+
+  defp canonical_segments?(segments) do
+    segments != [] and
+      Enum.all?(segments, fn segment ->
+        segment != "" and segment not in [".", ".."]
+      end)
+  end
+
+  defp valid_project_id?(project_id) do
+    case Integer.parse(project_id) do
+      {id, ""} when id > 0 -> true
+      _invalid_id -> false
+    end
+  end
+
+  defp valid_key_tail?(tail) do
+    canonical_segments?(tail)
   end
 end

@@ -125,7 +125,7 @@ defmodule StoryarnWeb.PrivateMediaControllerTest do
       key = "projects/#{project.id}/blobs/#{Ecto.UUID.generate()}.png"
       body = "project blob"
       {:ok, _url} = Storage.upload(key, body, "image/png")
-      on_exit(fn -> Storage.delete(key) end)
+      on_exit(fn -> delete_storage_blob(key) end)
 
       conn = get(conn, PrivateMedia.project_file_url(project.id, key))
 
@@ -172,7 +172,7 @@ defmodule StoryarnWeb.PrivateMediaControllerTest do
     } do
       key = "projects/#{project.id}/blobs/#{Ecto.UUID.generate()}.bin"
       {:ok, _url} = Storage.upload(key, "", "application/octet-stream")
-      on_exit(fn -> Storage.delete(key) end)
+      on_exit(fn -> delete_storage_blob(key) end)
 
       conn =
         conn
@@ -190,7 +190,7 @@ defmodule StoryarnWeb.PrivateMediaControllerTest do
     } do
       key = "projects/#{project.id}/blobs/#{Ecto.UUID.generate()}.bin"
       {:ok, _url} = Storage.upload(key, "", "application/octet-stream")
-      on_exit(fn -> Storage.delete(key) end)
+      on_exit(fn -> delete_storage_blob(key) end)
 
       conn =
         conn

@@ -1195,8 +1195,8 @@ defmodule Storyarn.AssetsTest do
       content_type = "text/html"
       blob_key = blob_key_for(project, content, content_type)
 
-      :ok = Assets.storage_delete(blob_key)
-      on_exit(fn -> Assets.storage_delete(blob_key) end)
+      :ok = delete_storage_blob(blob_key)
+      on_exit(fn -> delete_storage_blob(blob_key) end)
 
       assert {:error, changeset} =
                Assets.upload_binary_and_create_asset(
@@ -1222,8 +1222,8 @@ defmodule Storyarn.AssetsTest do
       content_type = "image/svg+xml"
       blob_key = blob_key_for(project, content, content_type)
 
-      :ok = Assets.storage_delete(blob_key)
-      on_exit(fn -> Assets.storage_delete(blob_key) end)
+      :ok = delete_storage_blob(blob_key)
+      on_exit(fn -> delete_storage_blob(blob_key) end)
 
       assert {:error, changeset} =
                Assets.upload_binary_and_create_asset(
@@ -1259,7 +1259,7 @@ defmodule Storyarn.AssetsTest do
 
       on_exit(fn ->
         Assets.storage_delete(asset.key)
-        Assets.storage_delete(BlobStore.blob_key(project.id, asset.blob_hash, "svg"))
+        delete_storage_blob(BlobStore.blob_key(project.id, asset.blob_hash, "svg"))
       end)
 
       assert asset.content_type == "image/svg+xml"
@@ -1278,8 +1278,8 @@ defmodule Storyarn.AssetsTest do
       content_type = "image/png"
       blob_key = blob_key_for(project, content, content_type)
 
-      :ok = Assets.storage_delete(blob_key)
-      on_exit(fn -> Assets.storage_delete(blob_key) end)
+      :ok = delete_storage_blob(blob_key)
+      on_exit(fn -> delete_storage_blob(blob_key) end)
 
       assert {:error, changeset} =
                Assets.upload_binary_and_create_asset(
@@ -1302,8 +1302,8 @@ defmodule Storyarn.AssetsTest do
       content_type = "application/pdf"
       blob_key = blob_key_for(project, content, content_type)
 
-      :ok = Assets.storage_delete(blob_key)
-      on_exit(fn -> Assets.storage_delete(blob_key) end)
+      :ok = delete_storage_blob(blob_key)
+      on_exit(fn -> delete_storage_blob(blob_key) end)
 
       assert {:ok, asset} =
                Assets.upload_binary_and_create_asset(

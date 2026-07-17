@@ -38,7 +38,7 @@ defmodule Storyarn.Assets.StorageCompensation do
 
   @spec cleanup(reference(), keyword()) :: :ok | {:error, term()}
   def cleanup(reference, opts \\ []) when is_reference(reference) do
-    storage_keys = reference |> tracked() |> Enum.filter(&valid_storage_key?/1) |> Enum.uniq()
+    storage_keys = reference |> tracked() |> cleanup_storage_keys()
     enqueue_fun = Keyword.get(opts, :enqueue_fun, &enqueue_cleanup/1)
     delete_fun = Keyword.get(opts, :delete_fun, &delete_storage_keys/1)
     persist_fun = Keyword.get(opts, :persist_fun, &persist_cleanup_request/1)
@@ -72,8 +72,7 @@ defmodule Storyarn.Assets.StorageCompensation do
   def delete_storage_keys(storage_keys) when is_list(storage_keys) do
     failed_keys =
       storage_keys
-      |> Enum.filter(&valid_storage_key?/1)
-      |> Enum.uniq()
+      |> cleanup_storage_keys()
       |> Enum.filter(fn storage_key ->
         case safe_storage_delete(storage_key) do
           :ok -> false
@@ -86,7 +85,7 @@ defmodule Storyarn.Assets.StorageCompensation do
 
   @spec enqueue_cleanup([String.t()], keyword()) :: :ok | {:error, term()}
   def enqueue_cleanup(storage_keys, opts \\ []) when is_list(storage_keys) do
-    storage_keys = storage_keys |> Enum.filter(&valid_storage_key?/1) |> Enum.uniq()
+    storage_keys = cleanup_storage_keys(storage_keys)
     insert_fun = Keyword.get(opts, :insert_fun, &insert_cleanup_job/1)
     attempts = Keyword.get(opts, :attempts, @enqueue_attempts)
     retry_delay_ms = Keyword.get(opts, :retry_delay_ms, @enqueue_retry_delay_ms)
@@ -103,6 +102,20 @@ defmodule Storyarn.Assets.StorageCompensation do
   @doc "Deletes one storage object, scheduling durable cleanup if the delete fails."
   @spec delete_or_enqueue(String.t(), keyword()) :: :ok | {:error, term()}
   def delete_or_enqueue(storage_key, opts \\ []) when is_binary(storage_key) do
+    case classify_storage_key(storage_key) do
+      :temporary_asset_copy ->
+        do_delete_or_enqueue(storage_key, opts)
+
+      :recoverable_blob ->
+        report_protected_blobs(1)
+        :ok
+
+      :invalid ->
+        :ok
+    end
+  end
+
+  defp do_delete_or_enqueue(storage_key, opts) do
     delete_fun = Keyword.get(opts, :delete_fun, &Storage.delete/1)
 
     delete_attempts =
@@ -187,7 +200,7 @@ defmodule Storyarn.Assets.StorageCompensation do
         discard(reference)
 
       {:error, failed_keys} ->
-        failed_keys = failed_keys |> Enum.filter(&valid_storage_key?/1) |> Enum.uniq()
+        failed_keys = cleanup_storage_keys(failed_keys)
         discard(reference)
         report_unpersisted_cleanup(failed_keys, enqueue_reason, persistence_reason)
 
@@ -384,12 +397,55 @@ defmodule Storyarn.Assets.StorageCompensation do
     )
   end
 
-  defp valid_storage_key?(storage_key) when is_binary(storage_key) do
-    String.starts_with?(storage_key, "projects/") and
-      (String.contains?(storage_key, "/assets/") or String.contains?(storage_key, "/blobs/"))
+  defp cleanup_storage_keys(storage_keys) do
+    storage_keys = Enum.uniq(storage_keys)
+    protected_count = Enum.count(storage_keys, &(classify_storage_key(&1) == :recoverable_blob))
+
+    if protected_count > 0, do: report_protected_blobs(protected_count)
+
+    Enum.filter(storage_keys, &(classify_storage_key(&1) == :temporary_asset_copy))
   end
 
-  defp valid_storage_key?(_storage_key), do: false
+  defp classify_storage_key(storage_key) when is_binary(storage_key) do
+    case String.split(storage_key, "/", trim: false) do
+      ["projects", project_id, "assets" | tail] ->
+        classify_project_key(project_id, tail, :temporary_asset_copy)
+
+      ["projects", project_id, "blobs" | tail] ->
+        classify_project_key(project_id, tail, :recoverable_blob)
+
+      _segments ->
+        :invalid
+    end
+  end
+
+  defp classify_storage_key(_storage_key), do: :invalid
+
+  defp classify_project_key(project_id, tail, classification) do
+    with {id, ""} when id > 0 <- Integer.parse(project_id),
+         true <- valid_key_tail?(tail) do
+      classification
+    else
+      _invalid_key -> :invalid
+    end
+  end
+
+  defp valid_key_tail?(tail) do
+    tail != [] and
+      Enum.all?(tail, fn segment ->
+        segment != "" and segment not in [".", ".."]
+      end)
+  end
+
+  defp report_protected_blobs(count) do
+    Logger.warning("Blocked cleanup of #{count} recoverable versioning blob(s)")
+
+    :telemetry.execute(
+      [:storyarn, :assets, :storage_compensation, :recoverable_blob_cleanup_blocked],
+      %{count: count},
+      %{}
+    )
+  end
 
   defp normalize_delete_attempts(attempts) when is_integer(attempts) and attempts > 0, do: attempts
   defp normalize_delete_attempts(_attempts), do: 1

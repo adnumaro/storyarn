@@ -32,6 +32,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   alias Storyarn.Versioning.Builders.FlowSnapshotNormalizer
   alias Storyarn.Versioning.Builders.SceneBuilder
   alias Storyarn.Versioning.Builders.SheetBuilder
+  alias Storyarn.Versioning.RestorePolicy
 
   @recovery_id_map_keys [:sheet, :block, :flow, :node, :scene, :pin, :zone]
 
@@ -49,6 +50,20 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   @spec recover_project(integer(), map(), integer(), keyword()) ::
           {:ok, Project.t()} | {:error, term()}
   def recover_project(workspace_id, snapshot_data, user_id, opts \\ []) do
+    with :ok <- ensure_recovery_enabled(opts) do
+      do_recover_project(workspace_id, snapshot_data, user_id, opts)
+    end
+  end
+
+  defp ensure_recovery_enabled(opts) do
+    if Keyword.get(opts, :template_clone, false) do
+      :ok
+    else
+      RestorePolicy.ensure_enabled(:deleted_project_recovery)
+    end
+  end
+
+  defp do_recover_project(workspace_id, snapshot_data, user_id, opts) do
     snapshot_data = FlowSnapshotNormalizer.normalize_project(snapshot_data)
     name = Keyword.get(opts, :name, "Recovered Project")
     {tracker, owns_tracker?} = asset_copy_tracker(opts)

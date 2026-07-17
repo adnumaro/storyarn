@@ -14,6 +14,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
   alias Storyarn.Versioning.ProjectSnapshot
+  alias Storyarn.Versioning.RestorePolicy
   alias Storyarn.Versioning.SnapshotStorage
   alias Storyarn.Versioning.VersionNumberLock
 
@@ -229,7 +230,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
   def restore_snapshot(project_id, %ProjectSnapshot{} = snapshot, opts \\ []) do
     user_id = Keyword.get(opts, :user_id)
 
-    with {:ok, snapshot_data} <- SnapshotStorage.load_snapshot(snapshot.storage_key) do
+    with :ok <- RestorePolicy.ensure_enabled(:project_snapshot_restore),
+         {:ok, snapshot_data} <- SnapshotStorage.load_snapshot(snapshot.storage_key) do
       maybe_create_pre_restore_snapshot(project_id, snapshot, user_id)
 
       case ProjectSnapshotBuilder.restore_snapshot(project_id, snapshot_data, opts) do

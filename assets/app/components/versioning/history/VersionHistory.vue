@@ -33,6 +33,7 @@ const {
   canNameVersion = false,
   currentVersionId = null,
   canEdit = false,
+  restoreEnabled,
   loading = false,
 } = defineProps<{
   versions?: Version[];
@@ -42,11 +43,12 @@ const {
   canNameVersion?: boolean;
   currentVersionId?: number | null;
   canEdit?: boolean;
+  restoreEnabled: boolean;
   loading?: boolean;
 }>();
 
 const live = useLive();
-const h = useVersionHistory();
+const h = useVersionHistory(() => restoreEnabled);
 
 function changeActionIcon(action: string) {
   if (action === "added") return "+";
@@ -157,7 +159,8 @@ function changeActionColor(action: string) {
                 <Columns2 class="size-3.5" />
               </button>
               <button
-                v-if="canEdit && version.id !== currentVersionId"
+                v-if="restoreEnabled && canEdit && version.id !== currentVersionId"
+                data-testid="restore-version"
                 class="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                 title="Restore this version"
                 @click="h.previewRestore(version.versionNumber)"
@@ -315,7 +318,8 @@ function changeActionColor(action: string) {
                   <BookmarkPlus class="size-3.5" />
                 </button>
                 <button
-                  v-if="canEdit && version.id !== currentVersionId"
+                  v-if="restoreEnabled && canEdit && version.id !== currentVersionId"
+                  data-testid="restore-version"
                   class="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                   title="Restore this version"
                   @click="h.previewRestore(version.versionNumber)"
@@ -446,6 +450,7 @@ function changeActionColor(action: string) {
   />
 
   <UnsavedChangesDialog
+    v-if="restoreEnabled"
     :open="h.showUnsavedModal.value"
     :version-number="h.unsavedVersionNumber.value"
     :loading-action="h.loadingAction.value"
@@ -455,6 +460,7 @@ function changeActionColor(action: string) {
   />
 
   <RestorePreviewDialog
+    v-if="restoreEnabled"
     :open="h.showRestoreModal.value"
     :restore-data="h.restoreData.value"
     :loading-action="h.loadingAction.value"

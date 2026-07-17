@@ -1,5 +1,5 @@
 defmodule Storyarn.Workers.RetryStorageCleanupRequestsWorkerTest do
-  use Storyarn.DataCase, async: true
+  use Storyarn.DataCase, async: false
   use Oban.Testing, repo: Storyarn.Repo
 
   alias Storyarn.Assets.Storage

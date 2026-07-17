@@ -211,6 +211,21 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   end
 
   def do_restore_snapshot(socket, snapshot_id) do
+    case Versioning.ensure_restore_enabled(:project_snapshot_restore) do
+      :ok ->
+        do_enabled_restore_snapshot(socket, snapshot_id)
+
+      {:error, :restore_temporarily_disabled} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext("projects", "Project restoration failed. Please try again.")
+         )}
+    end
+  end
+
+  defp do_enabled_restore_snapshot(socket, snapshot_id) do
     project = socket.assigns.project
     user = socket.assigns.current_scope.user
 
@@ -219,36 +234,59 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
         {:noreply, put_flash(socket, :error, dgettext("projects", "Snapshot not found."))}
 
       _snapshot ->
-        case Projects.acquire_restoration_lock(project.id, user.id) do
-          {:ok, _project} ->
-            Collaboration.broadcast_restoration_started(project.id, %{
-              user_email: user.email
-            })
-
-            %{project_id: project.id, snapshot_id: snapshot_id, user_id: user.id}
-            |> RestoreProjectWorker.new()
-            |> Oban.insert()
-
-            {:noreply,
-             socket
-             |> assign(:restoration_in_progress, true)
-             |> put_flash(
-               :info,
-               dgettext(
-                 "projects",
-                 "Restoration started. All editors will be notified when complete."
-               )
-             )}
-
-          {:error, :already_locked} ->
-            {:noreply,
-             put_flash(
-               socket,
-               :error,
-               dgettext("projects", "A restoration is already in progress.")
-             )}
-        end
+        acquire_and_enqueue_restore(socket, project, user, snapshot_id)
     end
+  end
+
+  defp acquire_and_enqueue_restore(socket, project, user, snapshot_id) do
+    case Projects.acquire_restoration_lock(project.id, user.id) do
+      {:ok, _project} ->
+        enqueue_locked_restore(socket, project, user, snapshot_id)
+
+      {:error, :already_locked} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext("projects", "A restoration is already in progress.")
+         )}
+    end
+  end
+
+  defp enqueue_locked_restore(socket, project, user, snapshot_id) do
+    case enqueue_project_restore(project.id, snapshot_id, user.id) do
+      {:ok, _job} ->
+        Collaboration.broadcast_restoration_started(project.id, %{
+          user_email: user.email
+        })
+
+        {:noreply,
+         socket
+         |> assign(:restoration_in_progress, true)
+         |> put_flash(
+           :info,
+           dgettext(
+             "projects",
+             "Restoration started. All editors will be notified when complete."
+           )
+         )}
+
+      {:error, _reason} ->
+        Projects.release_restoration_lock(project.id)
+
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext("projects", "Project restoration failed. Please try again.")
+         )}
+    end
+  end
+
+  defp enqueue_project_restore(project_id, snapshot_id, user_id) do
+    %{project_id: project_id, snapshot_id: snapshot_id, user_id: user_id}
+    |> RestoreProjectWorker.new()
+    |> Oban.insert()
   end
 
   def do_delete_snapshot(socket, snapshot_id) do

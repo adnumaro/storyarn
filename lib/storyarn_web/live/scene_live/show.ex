@@ -30,6 +30,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   alias Storyarn.Scenes
   alias Storyarn.Shared.HtmlSanitizer
   alias Storyarn.Shared.MapUtils
+  alias Storyarn.Versioning
   alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Helpers.VersionEventHelpers
@@ -312,6 +313,9 @@ defmodule StoryarnWeb.SceneLive.Show do
       canNameVersion: history_value(history_data, :can_name_version, false),
       currentVersionId: history_value(history_data, :current_version_id, nil),
       canEdit: assigns.can_edit,
+      restoreEnabled:
+        assigns.can_edit &&
+          Versioning.restore_enabled?({:entity_version_restore, "scene"}),
       loading: assigns.right_panel == :versions && is_nil(history_data)
     }
   end

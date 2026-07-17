@@ -42,7 +42,7 @@ export interface RestoreData {
  * All server events are the same across entity types — the server
  * knows which entity is active from the LiveView socket assigns.
  */
-export function useVersionHistory() {
+export function useVersionHistory(restoreEnabled: () => boolean) {
   const live = useLive();
 
   // Local state
@@ -68,12 +68,14 @@ export function useVersionHistory() {
   // Server push event handlers
   onMounted(() => {
     live.handleEvent("show_unsaved_modal", (payload) => {
+      if (!restoreEnabled()) return;
       loadingAction.value = null;
       unsavedVersionNumber.value = payload.versionNumber as number;
       showUnsavedModal.value = true;
     });
 
     live.handleEvent("show_restore_modal", (payload) => {
+      if (!restoreEnabled()) return;
       loadingAction.value = null;
       showUnsavedModal.value = false;
       restoreData.value = {
@@ -163,11 +165,13 @@ export function useVersionHistory() {
   }
 
   function previewRestore(versionNumber: number) {
+    if (!restoreEnabled()) return;
     loadingAction.value = `restore-${versionNumber}`;
     live.pushEvent("preview_restore", { version_number: versionNumber });
   }
 
   function saveAndRestore() {
+    if (!restoreEnabled()) return;
     loadingAction.value = "save-restore";
     live.pushEvent("save_and_restore", {
       version_number: unsavedVersionNumber.value,
@@ -175,6 +179,7 @@ export function useVersionHistory() {
   }
 
   function discardAndRestore() {
+    if (!restoreEnabled()) return;
     loadingAction.value = "discard-restore";
     live.pushEvent("discard_and_restore", {
       version_number: unsavedVersionNumber.value,
@@ -182,6 +187,7 @@ export function useVersionHistory() {
   }
 
   function confirmRestore() {
+    if (!restoreEnabled()) return;
     if (!restoreData.value) return;
     loadingAction.value = "confirm-restore";
     live.pushEvent("confirm_restore", {

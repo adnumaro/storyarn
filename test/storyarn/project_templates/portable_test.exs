@@ -356,7 +356,7 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
 
     on_exit(fn ->
       Assets.storage_delete(asset.key)
-      Assets.storage_delete(BlobStore.blob_key(project.id, asset.blob_hash, "png"))
+      delete_storage_blob(BlobStore.blob_key(project.id, asset.blob_hash, "png"))
     end)
 
     asset

@@ -11,6 +11,7 @@ defmodule Storyarn.Workers.RecoverProjectWorker do
   alias Storyarn.Projects
   alias Storyarn.Versioning
   alias Storyarn.Versioning.SnapshotStorage
+  alias Storyarn.Workspaces
 
   require Logger
 
@@ -19,21 +20,23 @@ defmodule Storyarn.Workers.RecoverProjectWorker do
         args: %{"workspace_id" => workspace_id, "snapshot_id" => snapshot_id, "user_id" => user_id} = args
       }) do
     project_id = args["project_id"]
-    snapshot = Versioning.get_project_snapshot(project_id, snapshot_id)
 
-    if snapshot do
-      original_name = get_original_project_name(project_id)
-      do_recover(workspace_id, snapshot, user_id, original_name)
+    with :ok <- Versioning.ensure_restore_enabled(:deleted_project_recovery),
+         %{role: role} when role in ["owner", "admin"] <-
+           Workspaces.get_membership(workspace_id, user_id),
+         %Projects.Project{} = project <-
+           Projects.get_deleted_project(workspace_id, project_id),
+         snapshot when not is_nil(snapshot) <-
+           Versioning.get_project_snapshot(project.id, snapshot_id) do
+      do_recover(workspace_id, snapshot, user_id, "#{project.name} (Recovered)")
     else
-      broadcast_failure(workspace_id, "Snapshot not found")
-      {:error, :snapshot_not_found}
-    end
-  end
+      {:error, :restore_temporarily_disabled} = error ->
+        broadcast_failure(workspace_id, "Recovery temporarily unavailable")
+        error
 
-  defp get_original_project_name(project_id) do
-    case Storyarn.Repo.get(Projects.Project, project_id) do
-      nil -> "Recovered Project"
-      project -> "#{project.name} (Recovered)"
+      _invalid_source ->
+        broadcast_failure(workspace_id, "Snapshot not found")
+        {:error, :snapshot_not_found}
     end
   end
 

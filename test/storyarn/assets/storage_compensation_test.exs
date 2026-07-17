@@ -1,5 +1,6 @@
 defmodule Storyarn.Assets.StorageCompensationTest do
-  use Storyarn.DataCase, async: true
+  use Storyarn.DataCase, async: false
+  use Oban.Testing, repo: Storyarn.Repo
 
   import ExUnit.CaptureLog
 
@@ -7,6 +8,8 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   alias Storyarn.Assets.StorageCleanupPersistenceError
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageCompensation
+  alias Storyarn.Workers.DeleteStorageObjectsWorker
+  alias Storyarn.Workers.RetryStorageCleanupRequestsWorker
 
   test "retries cleanup job persistence before returning an error" do
     {:ok, attempts} = Agent.start_link(fn -> 0 end)
@@ -106,7 +109,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   end
 
   test "enqueues durable cleanup when an immediate delete fails" do
-    storage_key = "projects/1/blobs/orphan.png"
+    storage_key = "projects/1/assets/tmp/orphan.png"
     parent = self()
 
     assert :ok =
@@ -123,7 +126,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   end
 
   test "does not enqueue cleanup when an immediate deletion retry succeeds" do
-    storage_key = "projects/1/blobs/recovered-orphan.png"
+    storage_key = "projects/1/assets/tmp/recovered-orphan.png"
     parent = self()
     {:ok, attempts} = Agent.start_link(fn -> 0 end)
 
@@ -147,7 +150,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   end
 
   test "treats nonpositive delete attempts as one before enqueuing" do
-    storage_key = "projects/1/blobs/no-retries-orphan.png"
+    storage_key = "projects/1/assets/tmp/no-retries-orphan.png"
     parent = self()
     {:ok, attempts} = Agent.start_link(fn -> 0 end)
 
@@ -169,7 +172,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   end
 
   test "persists failed immediate cleanup when queue insertion also fails" do
-    storage_key = "projects/1/blobs/persisted-orphan.png"
+    storage_key = "projects/1/assets/tmp/persisted-orphan.png"
 
     assert :ok =
              StorageCompensation.delete_or_enqueue(storage_key,
@@ -181,11 +184,110 @@ defmodule Storyarn.Assets.StorageCompensationTest do
     assert %StorageCleanupRequest{storage_keys: [^storage_key]} = Repo.one(StorageCleanupRequest)
   end
 
-  test "accepts blob keys for deletion retries" do
+  test "recoverable blobs never reach synchronous cleanup callbacks" do
     storage_key = "projects/1/blobs/#{System.unique_integer([:positive])}.png"
-    assert {:ok, _url} = Storage.upload(storage_key, "blob", "image/png")
+    assert {:ok, _url} = Storage.upload(storage_key, "recovery blob", "image/png")
+    parent = self()
+
+    assert :ok =
+             StorageCompensation.delete_or_enqueue(storage_key,
+               delete_fun: fn _key ->
+                 send(parent, :direct_delete_attempted)
+                 :ok
+               end,
+               enqueue_fun: fn _keys ->
+                 send(parent, :cleanup_enqueued)
+                 :ok
+               end
+             )
+
+    assert :ok =
+             StorageCompensation.enqueue_cleanup([storage_key],
+               insert_fun: fn _keys ->
+                 send(parent, :cleanup_job_inserted)
+                 {:ok, %{id: 1}}
+               end
+             )
+
+    tracker = StorageCompensation.new()
+    :ok = StorageCompensation.track(tracker, storage_key)
+
+    assert :ok =
+             StorageCompensation.cleanup(tracker,
+               enqueue_fun: fn _keys ->
+                 send(parent, :tracked_cleanup_enqueued)
+                 :ok
+               end,
+               delete_fun: fn _keys ->
+                 send(parent, :tracked_delete_attempted)
+                 :ok
+               end
+             )
 
     assert :ok = StorageCompensation.delete_storage_keys([storage_key])
-    assert {:error, :enoent} = Storage.download(storage_key)
+
+    refute_receive :direct_delete_attempted
+    refute_receive :cleanup_enqueued
+    refute_receive :cleanup_job_inserted
+    refute_receive :tracked_cleanup_enqueued
+    refute_receive :tracked_delete_attempted
+    assert {:ok, "recovery blob"} = Storage.download(storage_key)
+  end
+
+  test "mixed legacy jobs delete temporary assets but preserve blobs" do
+    suffix = System.unique_integer([:positive])
+    asset_key = "projects/1/assets/tmp/#{suffix}.png"
+    blob_key = "projects/1/blobs/#{suffix}.png"
+
+    assert {:ok, _url} = Storage.upload(asset_key, "temporary copy", "image/png")
+    assert {:ok, _url} = Storage.upload(blob_key, "queued recovery blob", "image/png")
+
+    request = Repo.insert!(%StorageCleanupRequest{storage_keys: [asset_key, blob_key]})
+
+    assert :ok =
+             perform_job(DeleteStorageObjectsWorker, %{
+               "storage_keys" => [asset_key, blob_key]
+             })
+
+    assert :ok = perform_job(RetryStorageCleanupRequestsWorker, %{})
+
+    refute Repo.get(StorageCleanupRequest, request.id)
+    assert {:error, :enoent} = Storage.download(asset_key)
+    assert {:ok, "queued recovery blob"} = Storage.download(blob_key)
+  end
+
+  test "the common storage boundary refuses direct blob deletion" do
+    storage_key = "projects/1/blobs/#{System.unique_integer([:positive])}.png"
+    assert {:ok, _url} = Storage.upload(storage_key, "protected blob", "image/png")
+
+    assert {:error, :recoverable_blob} = Storage.delete(storage_key)
+    assert {:ok, "protected blob"} = Storage.download(storage_key)
+  end
+
+  test "invalid or traversal-like keys never reach deletion callbacks" do
+    parent = self()
+
+    for invalid_key <- [
+          "projects/1/assets/../blobs/recovery.png",
+          "projects/1/assets/./copy.png",
+          "projects/not-an-id/assets/tmp/copy.png",
+          "projects/1/assets/",
+          "other/1/assets/tmp/copy.png"
+        ] do
+      assert :ok =
+               StorageCompensation.delete_or_enqueue(invalid_key,
+                 delete_fun: fn _key ->
+                   send(parent, :invalid_delete_attempted)
+                   :ok
+                 end,
+                 enqueue_fun: fn _keys ->
+                   send(parent, :invalid_cleanup_enqueued)
+                   :ok
+                 end
+               )
+    end
+
+    refute_receive :invalid_delete_attempted
+    refute_receive :invalid_cleanup_enqueued
   end
 end

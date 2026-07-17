@@ -2,10 +2,12 @@ defmodule Storyarn.Workers.SnapshotRetentionWorker do
   @moduledoc """
   Oban cron worker that enforces snapshot retention for soft-deleted projects.
 
-  Runs daily at 4 AM UTC. For each soft-deleted project:
+  When explicitly enabled, each soft-deleted project:
   - Looks up the workspace plan's retention period
   - Deletes auto snapshots older than the retention period
-  - Permanently deletes the project if no snapshots remain
+
+  This worker never permanently deletes projects. It is disabled by default
+  while deleted-project recovery is being hardened.
   """
 
   use Oban.Worker, queue: :snapshots, max_attempts: 3
@@ -14,7 +16,6 @@ defmodule Storyarn.Workers.SnapshotRetentionWorker do
 
   alias Storyarn.Billing.Plan
   alias Storyarn.Billing.SubscriptionCrud
-  alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Versioning
@@ -25,7 +26,7 @@ defmodule Storyarn.Workers.SnapshotRetentionWorker do
 
   @impl Oban.Worker
   def perform(%Oban.Job{}) do
-    process_batches(nil)
+    if enabled?(), do: process_batches(nil)
     :ok
   end
 
@@ -60,8 +61,6 @@ defmodule Storyarn.Workers.SnapshotRetentionWorker do
     if pruned > 0 do
       Logger.info("Pruned #{pruned} expired snapshots for deleted project #{project_id}")
     end
-
-    maybe_permanently_delete(project_id)
   rescue
     e ->
       Logger.error("Snapshot retention failed for project #{project_id}: #{Exception.message(e)}")
@@ -72,24 +71,13 @@ defmodule Storyarn.Workers.SnapshotRetentionWorker do
     Plan.limit(plan_key, :snapshot_retention_days) || 30
   end
 
-  defp maybe_permanently_delete(project_id) do
-    remaining = Versioning.count_project_snapshots(project_id)
-    if remaining > 0, do: :ok, else: do_permanently_delete(project_id)
-  end
+  defp enabled? do
+    case Application.get_env(:storyarn, __MODULE__, []) do
+      config when is_list(config) ->
+        Keyword.keyword?(config) and Keyword.get(config, :enabled, false) == true
 
-  defp do_permanently_delete(project_id) do
-    case Repo.get(Project, project_id) do
-      %Project{deleted_at: deleted_at} = project when not is_nil(deleted_at) ->
-        case Projects.permanently_delete_project(project) do
-          {:ok, _} ->
-            Logger.info("Permanently deleted project #{project_id} (no snapshots remain)")
-
-          {:error, reason} ->
-            Logger.warning("Failed to permanently delete project #{project_id}: #{inspect(reason)}")
-        end
-
-      _ ->
-        :ok
+      _invalid_config ->
+        false
     end
   end
 end

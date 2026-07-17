@@ -7,6 +7,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
   alias Storyarn.Billing
   alias Storyarn.Projects
   alias Storyarn.Versioning
+  alias Storyarn.Workspaces
   alias StoryarnWeb.Helpers.Authorize
 
   @impl true
@@ -31,7 +32,11 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
        |> assign(:deleted_projects, deleted_projects)
        |> assign(:expanded_project_id, nil)
        |> assign(:snapshots, [])
-       |> assign(:recovering, false)}
+       |> assign(:recovering, false)
+       |> assign(
+         :recovery_enabled,
+         Versioning.restore_enabled?(:deleted_project_recovery)
+       )}
     else
       {:ok,
        socket
@@ -63,6 +68,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
         expanded-project-id={@expanded_project_id}
         snapshots={serialize_snapshots(@snapshots)}
         recovering={@recovering}
+        recovery-enabled={@recovery_enabled}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>
     """
@@ -97,51 +103,43 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
 
   @impl true
   def handle_event("toggle_project", %{"id" => id}, socket) do
-    project_id = String.to_integer(id)
+    with :ok <- Versioning.ensure_restore_enabled(:deleted_project_recovery),
+         :ok <- authorize_current_manager(socket),
+         {:ok, project_id} <- parse_id(id),
+         %Projects.Project{} <-
+           Projects.get_deleted_project(socket.assigns.workspace.id, project_id) do
+      if socket.assigns.expanded_project_id == project_id do
+        {:noreply,
+         socket
+         |> assign(:expanded_project_id, nil)
+         |> assign(:snapshots, [])}
+      else
+        snapshots = Versioning.list_project_snapshots(project_id, limit: 20)
 
-    if socket.assigns.expanded_project_id == project_id do
-      {:noreply,
-       socket
-       |> assign(:expanded_project_id, nil)
-       |> assign(:snapshots, [])}
+        {:noreply,
+         socket
+         |> assign(:expanded_project_id, project_id)
+         |> assign(:snapshots, snapshots)}
+      end
     else
-      snapshots = Versioning.list_project_snapshots(project_id, limit: 20)
-
-      {:noreply,
-       socket
-       |> assign(:expanded_project_id, project_id)
-       |> assign(:snapshots, snapshots)}
+      _error -> recovery_unavailable(socket)
     end
   end
 
   @impl true
   def handle_event("recover_project", %{"snapshot_id" => snapshot_id, "project_id" => project_id}, socket) do
     Authorize.with_authorization(socket, :manage_workspace, fn socket ->
-      workspace = socket.assigns.workspace
-
-      case Billing.can_create_project?(workspace) do
-        :ok ->
-          %{
-            workspace_id: workspace.id,
-            snapshot_id: snapshot_id,
-            project_id: project_id,
-            user_id: socket.assigns.current_scope.user.id
-          }
-          |> Storyarn.Workers.RecoverProjectWorker.new()
-          |> Oban.insert()
-
-          {:noreply,
-           socket
-           |> assign(:recovering, true)
-           |> put_flash(:info, dgettext("workspaces", "Recovery started. This may take a moment..."))}
-
-        {:error, :limit_reached, _details} ->
-          {:noreply,
-           put_flash(
-             socket,
-             :error,
-             dgettext("workspaces", "Workspace project limit reached. Upgrade your plan to recover this project.")
-           )}
+      with :ok <- Versioning.ensure_restore_enabled(:deleted_project_recovery),
+           :ok <- authorize_current_manager(socket),
+           {:ok, project_id} <- parse_id(project_id),
+           {:ok, snapshot_id} <- parse_id(snapshot_id),
+           %Projects.Project{} <-
+             Projects.get_deleted_project(socket.assigns.workspace.id, project_id),
+           snapshot when not is_nil(snapshot) <-
+             Versioning.get_project_snapshot(project_id, snapshot_id) do
+        enqueue_recovery(socket, project_id, snapshot.id)
+      else
+        _error -> recovery_unavailable(socket)
       end
     end)
   end
@@ -180,6 +178,74 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
 
       true ->
         dngettext("workspaces", "%{count} day ago", "%{count} days ago", div(diff, 86_400), count: div(diff, 86_400))
+    end
+  end
+
+  defp enqueue_recovery(socket, project_id, snapshot_id) do
+    workspace = socket.assigns.workspace
+
+    case Billing.can_create_project?(workspace) do
+      :ok ->
+        result =
+          %{
+            workspace_id: workspace.id,
+            snapshot_id: snapshot_id,
+            project_id: project_id,
+            user_id: socket.assigns.current_scope.user.id
+          }
+          |> Storyarn.Workers.RecoverProjectWorker.new()
+          |> Oban.insert()
+
+        case result do
+          {:ok, _job} ->
+            {:noreply,
+             socket
+             |> assign(:recovering, true)
+             |> put_flash(
+               :info,
+               dgettext("workspaces", "Recovery started. This may take a moment...")
+             )}
+
+          {:error, _reason} ->
+            recovery_unavailable(socket)
+        end
+
+      {:error, :limit_reached, _details} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext(
+             "workspaces",
+             "Workspace project limit reached. Upgrade your plan to recover this project."
+           )
+         )}
+    end
+  end
+
+  defp recovery_unavailable(socket) do
+    {:noreply,
+     put_flash(
+       socket,
+       :error,
+       dgettext("workspaces", "Recovery failed: %{reason}", reason: "temporarily unavailable")
+     )}
+  end
+
+  defp parse_id(value) do
+    case Integer.parse(to_string(value)) do
+      {id, ""} when id > 0 -> {:ok, id}
+      _error -> :error
+    end
+  end
+
+  defp authorize_current_manager(socket) do
+    workspace_id = socket.assigns.workspace.id
+    user_id = socket.assigns.current_scope.user.id
+
+    case Workspaces.get_membership(workspace_id, user_id) do
+      %{role: role} when role in ["owner", "admin"] -> :ok
+      _membership -> {:error, :unauthorized}
     end
   end
 end
