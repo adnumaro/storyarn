@@ -34,6 +34,7 @@ defmodule Storyarn.Flows.FlowNode do
   alias Ecto.Association.NotLoaded
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
+  alias Storyarn.Flows.HubColors
   alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Flows.SequenceTrack
   alias Storyarn.Flows.SequenceVisualLayer
@@ -106,7 +107,7 @@ defmodule Storyarn.Flows.FlowNode do
   Changeset for creating a new node.
   """
   def create_changeset(node, attrs) do
-    attrs = ensure_dialogue_runtime_ids(attrs, nil)
+    attrs = normalize_node_data(attrs, nil)
 
     node
     |> cast(attrs, [:type, :position_x, :position_y, :data, :source, :parent_id])
@@ -119,8 +120,10 @@ defmodule Storyarn.Flows.FlowNode do
     |> foreign_key_constraint(:parent_id)
   end
 
-  @doc "Strict changeset for materializing a node from a current snapshot."
+  @doc "Changeset for materializing a node from a snapshot, including historical data normalization."
   def materialize_changeset(node, attrs) do
+    attrs = normalize_legacy_node_data(attrs, node)
+
     node
     |> cast(attrs, [:type, :position_x, :position_y, :data, :word_count, :source, :parent_id])
     |> validate_required([:type])
@@ -136,7 +139,7 @@ defmodule Storyarn.Flows.FlowNode do
   Changeset for updating a node.
   """
   def update_changeset(node, attrs) do
-    attrs = ensure_dialogue_runtime_ids(attrs, node)
+    attrs = normalize_node_data(attrs, node)
 
     node
     |> cast(attrs, [:type, :position_x, :position_y, :data, :parent_id])
@@ -176,7 +179,7 @@ defmodule Storyarn.Flows.FlowNode do
   Used for editing node properties.
   """
   def data_changeset(node, attrs) do
-    attrs = ensure_dialogue_runtime_ids(attrs, node)
+    attrs = normalize_node_data(attrs, node)
 
     node
     |> cast(attrs, [:data])
@@ -201,6 +204,18 @@ defmodule Storyarn.Flows.FlowNode do
     |> dialogue_localization_id_constraint()
   end
 
+  defp normalize_node_data(attrs, node) do
+    attrs
+    |> ensure_dialogue_runtime_ids(node)
+    |> ensure_hub_color(node, &HubColors.resolve/1)
+  end
+
+  defp normalize_legacy_node_data(attrs, node) do
+    attrs
+    |> ensure_dialogue_runtime_ids(node)
+    |> ensure_hub_color(node, &HubColors.resolve_legacy/1)
+  end
+
   defp ensure_dialogue_runtime_ids(attrs, node) when is_map(attrs) do
     type = attr(attrs, :type) || (node && node.type)
     data = attr(attrs, :data) || existing_data(node)
@@ -217,6 +232,27 @@ defmodule Storyarn.Flows.FlowNode do
     |> ensure_localization_id(existing_id)
     |> ensure_response_ids()
   end
+
+  defp ensure_hub_color(attrs, node, resolver) when is_map(attrs) do
+    type = attr(attrs, :type) || (node && node.type)
+    data = attr(attrs, :data) || existing_data(node)
+
+    if type == "hub" and is_map(data) do
+      color = hub_color_value(data, node)
+      data = put_string_key(data, "color", resolver.(color))
+      put_attr(attrs, :data, data)
+    else
+      attrs
+    end
+  end
+
+  defp hub_color_value(data, %__MODULE__{type: "hub", data: existing_data}) when is_map(existing_data) do
+    if map_has_key?(data, "color"),
+      do: map_value(data, "color"),
+      else: map_value(existing_data, "color")
+  end
+
+  defp hub_color_value(data, _node), do: map_value(data, "color")
 
   defp ensure_localization_id(data, existing_id) do
     case map_value(data, "localization_id") do
@@ -321,6 +357,7 @@ defmodule Storyarn.Flows.FlowNode do
   defp atom_key("localization_id"), do: :localization_id
   defp atom_key("responses"), do: :responses
   defp atom_key("id"), do: :id
+  defp atom_key("color"), do: :color
 
   defp put_attr(attrs, field, value) do
     cond do

@@ -250,13 +250,13 @@ defmodule Storyarn.Flows.NodeCrudTest do
           type: "hub",
           position_x: 300.0,
           position_y: 200.0,
-          data: %{"hub_id" => "central_plaza", "label" => "Plaza", "color" => "blue"}
+          data: %{"hub_id" => "central_plaza", "label" => "Plaza", "color" => "#3b82f6"}
         })
 
       assert hub.type == "hub"
       assert hub.data["hub_id"] == "central_plaza"
       assert hub.data["label"] == "Plaza"
-      assert hub.data["color"] == "blue"
+      assert hub.data["color"] == "#3b82f6"
     end
 
     test "auto-generates hub_id when not provided" do
@@ -271,6 +271,19 @@ defmodule Storyarn.Flows.NodeCrudTest do
         })
 
       assert hub.data["hub_id"] == "hub_1"
+      assert hub.data["color"] == Flows.hub_color_default_hex()
+    end
+
+    test "replaces invalid Hub colors with the default" do
+      %{flow: flow} = create_project_and_flow()
+
+      {:ok, hub} =
+        Flows.create_node(flow, %{
+          type: "hub",
+          data: %{"hub_id" => "invalid_color", "color" => "not-a-color"}
+        })
+
+      assert hub.data["color"] == Flows.hub_color_default_hex()
     end
 
     test "auto-generates hub_id when empty string" do
@@ -863,18 +876,18 @@ defmodule Storyarn.Flows.NodeCrudTest do
       {:ok, hub} =
         Flows.create_node(flow, %{
           type: "hub",
-          data: %{"hub_id" => "hub_alpha", "label" => "Alpha", "color" => "blue"}
+          data: %{"hub_id" => "hub_alpha", "label" => "Alpha", "color" => "#3b82f6"}
         })
 
       {:ok, updated, meta} =
         Flows.update_node_data(hub, %{
           "hub_id" => "hub_alpha",
           "label" => "Updated Alpha",
-          "color" => "red"
+          "color" => "#ef4444"
         })
 
       assert updated.data["label"] == "Updated Alpha"
-      assert updated.data["color"] == "red"
+      assert updated.data["color"] == "#ef4444"
       assert meta == %{renamed_jumps: 0}
     end
 

@@ -120,6 +120,85 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
     end
   end
 
+  describe "Hub color events" do
+    setup :register_and_log_in_user
+
+    test "updates the selected Hub with a valid picker color", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Colored Hub Flow"})
+
+      hub =
+        node_fixture(flow, %{
+          type: "hub",
+          data: %{"hub_id" => "checkpoint", "color" => "#be185d"}
+        })
+
+      url = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+      view = mount_flow(conn, url)
+
+      render_click(view, "node_selected", %{"id" => hub.id})
+      render_click(view, "update_hub_color", %{"color" => "#22c55e"})
+
+      assert Flows.get_node!(flow.id, hub.id).data["color"] == "#22c55e"
+    end
+
+    test "rejects a legacy named picker color from the current contract",
+         %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Validated Hub Flow"})
+
+      hub =
+        node_fixture(flow, %{
+          type: "hub",
+          data: %{"hub_id" => "checkpoint", "color" => "#3b82f6"}
+        })
+
+      url = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+      view = mount_flow(conn, url)
+
+      render_click(view, "node_selected", %{"id" => hub.id})
+      render_click(view, "update_hub_color", %{"color" => "blue"})
+
+      assert Flows.get_node!(flow.id, hub.id).data["color"] == Flows.hub_color_default_hex()
+    end
+
+    test "ignores Hub color events when the selected node is not a Hub",
+         %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Non-Hub Color Flow"})
+      jump = node_fixture(flow, %{type: "jump", data: %{"target_hub_id" => "checkpoint"}})
+
+      url = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+      view = mount_flow(conn, url)
+
+      render_click(view, "node_selected", %{"id" => jump.id})
+      render_click(view, "update_hub_color", %{"color" => "#22c55e"})
+
+      assert Flows.get_node!(flow.id, jump.id).data == %{"target_hub_id" => "checkpoint"}
+    end
+
+    test "does not let a viewer update a Hub color", %{conn: conn, user: user} do
+      owner = Storyarn.AccountsFixtures.user_fixture()
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+      _membership = membership_fixture(project, user, "viewer")
+      flow = flow_fixture(project, %{name: "Viewer Hub Color Flow"})
+
+      hub =
+        node_fixture(flow, %{
+          type: "hub",
+          data: %{"hub_id" => "checkpoint", "color" => "#be185d"}
+        })
+
+      url = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+      view = mount_flow(conn, url)
+
+      render_click(view, "node_selected", %{"id" => hub.id})
+      render_click(view, "update_hub_color", %{"color" => "#22c55e"})
+
+      assert Flows.get_node!(flow.id, hub.id).data["color"] == "#be185d"
+    end
+  end
+
   describe "version history events" do
     setup :register_and_log_in_user
 

@@ -13,6 +13,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.HubColors
   alias Storyarn.Localization.GlossaryEntry
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProjectLanguage
@@ -261,7 +262,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
         :ok
 
       new_node_id ->
-        remap_single_node_data(new_node_id, node_data["data"] || %{}, id_maps)
+        remap_single_node_data(new_node_id, node_data["type"], node_data["data"] || %{}, id_maps)
     end
   end
 
@@ -277,17 +278,24 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     end
   end
 
-  defp remap_single_node_data(node_id, data, id_maps) do
+  defp remap_single_node_data(node_id, node_type, data, id_maps) do
     new_data =
       data
       |> maybe_put_remapped("speaker_sheet_id", id_maps.sheet)
       |> maybe_put_remapped("location_sheet_id", id_maps.sheet)
       |> maybe_put_remapped("referenced_flow_id", id_maps.flow)
+      |> normalize_hub_color(node_type)
 
     if new_data != data do
       Repo.update_all(from(n in FlowNode, where: n.id == ^node_id), set: [data: new_data])
     end
   end
+
+  defp normalize_hub_color(data, "hub") do
+    Map.put(data, "color", HubColors.resolve_legacy(data["color"]))
+  end
+
+  defp normalize_hub_color(data, _node_type), do: data
 
   defp maybe_put_remapped(data, key, id_map) do
     case Map.fetch(data, key) do

@@ -57,6 +57,19 @@ defmodule Storyarn.Versioning.SnapshotViewerTest do
     test "resolves hub color hex" do
       snapshot = %{
         "nodes" => [
+          %{"type" => "hub", "data" => %{"color" => "#3b82f6"}}
+        ],
+        "connections" => []
+      }
+
+      result = SnapshotViewer.serialize_flow(snapshot)
+      [node] = result.nodes
+      assert node.data["color_hex"] == "#3b82f6"
+    end
+
+    test "preserves the intended color in legacy snapshots" do
+      snapshot = %{
+        "nodes" => [
           %{"type" => "hub", "data" => %{"color" => "blue"}}
         ],
         "connections" => []
@@ -64,7 +77,7 @@ defmodule Storyarn.Versioning.SnapshotViewerTest do
 
       result = SnapshotViewer.serialize_flow(snapshot)
       [node] = result.nodes
-      assert is_binary(node.data["color_hex"])
+      assert node.data["color_hex"] == "#3b82f6"
     end
 
     test "handles empty snapshot" do

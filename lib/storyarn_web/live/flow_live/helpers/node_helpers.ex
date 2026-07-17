@@ -356,7 +356,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
     })
   end
 
-  # Resolves node data for canvas events (e.g., hub color name → hex, type warnings).
+  # Resolves node data for canvas events (e.g., validated Hub colors and type warnings).
   # Also used by persist_node_update and add_node.
   # Only fetches project_variables when the node type needs type-warning checks.
   defp canvas_data(node, project_id) do
