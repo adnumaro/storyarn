@@ -961,8 +961,18 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   # Hub color picker
   def handle_event("update_hub_color", %{"color" => color}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      update_selected_node_data(socket, "color", Flows.resolve_hub_color(color))
+    Authorize.with_authorization(socket, :edit_content, fn authorized_socket ->
+      case authorized_socket.assigns.selected_node do
+        %{type: "hub"} ->
+          update_selected_node_data(
+            authorized_socket,
+            "color",
+            Flows.resolve_hub_color(color)
+          )
+
+        _other_node ->
+          {:noreply, authorized_socket}
+      end
     end)
   end
 

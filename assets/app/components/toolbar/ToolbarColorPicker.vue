@@ -55,7 +55,7 @@ function onCustomColor(e: Event) {
             @click="selectColor(c)"
           />
           <ToolbarTooltip
-            v-if="i === row.length - 1"
+            v-if="i === COLOR_SWATCHES.length - 1"
             :label="$t('common.color_picker.custom_color')"
           >
             <label

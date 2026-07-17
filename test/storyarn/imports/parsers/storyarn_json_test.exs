@@ -430,6 +430,33 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       assert sp_with_data.elements != []
     end
 
+    test "normalizes legacy Hub marker colors while importing", %{target: target} do
+      data =
+        minimal_import_data()
+        |> Map.put("flows", [])
+        |> Map.put("screenplays", [
+          %{
+            "id" => "legacy-screenplay",
+            "name" => "Legacy Hub Colors",
+            "position" => 0,
+            "elements" => [
+              %{
+                "id" => "legacy-hub-marker",
+                "type" => "hub_marker",
+                "position" => 0,
+                "data" => %{"hub_node_id" => "checkpoint", "color" => "blue"}
+              }
+            ]
+          }
+        ])
+
+      assert {:ok, result} = Imports.execute(target, storyarn_plan(data))
+
+      [screenplay] = result.screenplays
+      [marker] = screenplay |> Storyarn.Repo.preload(:elements) |> Map.fetch!(:elements)
+      assert marker.data["color"] == "#3b82f6"
+    end
+
     test "remaps localized sheet names to the imported sheet ID", %{source: source, target: target} do
       source_language_fixture(source, %{locale_code: "en", name: "English"})
       language_fixture(source, %{locale_code: "es", name: "Spanish"})

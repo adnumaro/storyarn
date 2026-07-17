@@ -67,6 +67,19 @@ defmodule Storyarn.Versioning.SnapshotViewerTest do
       assert node.data["color_hex"] == "#3b82f6"
     end
 
+    test "preserves the intended color in legacy snapshots" do
+      snapshot = %{
+        "nodes" => [
+          %{"type" => "hub", "data" => %{"color" => "blue"}}
+        ],
+        "connections" => []
+      }
+
+      result = SnapshotViewer.serialize_flow(snapshot)
+      [node] = result.nodes
+      assert node.data["color_hex"] == "#3b82f6"
+    end
+
     test "handles empty snapshot" do
       result = SnapshotViewer.serialize_flow(%{})
       assert result.nodes == []

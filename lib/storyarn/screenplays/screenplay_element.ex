@@ -43,6 +43,7 @@ defmodule Storyarn.Screenplays.ScreenplayElement do
 
   alias Ecto.Association.NotLoaded
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.HubColors
   alias Storyarn.Screenplays.Screenplay
 
   @element_types ~w(
@@ -121,6 +122,7 @@ defmodule Storyarn.Screenplays.ScreenplayElement do
   def create_changeset(element, attrs) do
     element
     |> cast(attrs, [:type, :position, :content, :data, :depth, :branch])
+    |> normalize_hub_marker_color()
     |> validate_required([:type])
     |> validate_inclusion(:type, @element_types)
     |> validate_number(:position, greater_than_or_equal_to: 0)
@@ -134,6 +136,7 @@ defmodule Storyarn.Screenplays.ScreenplayElement do
   def update_changeset(element, attrs) do
     element
     |> cast(attrs, [:type, :content, :data, :depth, :branch])
+    |> normalize_hub_marker_color()
     |> validate_inclusion(:type, @element_types)
     |> validate_number(:depth, greater_than_or_equal_to: 0)
     |> validate_inclusion(:branch, @valid_branches)
@@ -156,5 +159,22 @@ defmodule Storyarn.Screenplays.ScreenplayElement do
     element
     |> cast(attrs, [:linked_node_id])
     |> foreign_key_constraint(:linked_node_id)
+  end
+
+  defp normalize_hub_marker_color(changeset) do
+    case {get_field(changeset, :type), get_field(changeset, :data)} do
+      {"hub_marker", data} when is_map(data) ->
+        color = Map.get(data, "color", Map.get(data, :color))
+
+        normalized_data =
+          data
+          |> Map.delete(:color)
+          |> Map.put("color", HubColors.resolve(color))
+
+        put_change(changeset, :data, normalized_data)
+
+      _other ->
+        changeset
+    end
   end
 end

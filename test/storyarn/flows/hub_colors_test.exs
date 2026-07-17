@@ -18,6 +18,18 @@ defmodule Storyarn.Flows.HubColorsTest do
       assert HubColors.resolve("not-a-color") == HubColors.default_hex()
     end
 
+    test "resolves legacy color names to their original hex values" do
+      assert HubColors.resolve("purple") == "#8b5cf6"
+      assert HubColors.resolve("blue") == "#3b82f6"
+      assert HubColors.resolve("green") == "#22c55e"
+      assert HubColors.resolve("yellow") == "#f59e0b"
+      assert HubColors.resolve("amber") == "#f59e0b"
+      assert HubColors.resolve("red") == "#ef4444"
+      assert HubColors.resolve("pink") == "#ec4899"
+      assert HubColors.resolve("orange") == "#f97316"
+      assert HubColors.resolve("cyan") == "#06b6d4"
+    end
+
     test "passes through short hex colors" do
       assert HubColors.resolve("#f00") == "#f00"
     end
@@ -28,6 +40,11 @@ defmodule Storyarn.Flows.HubColorsTest do
 
     test "passes through eight-digit hex colors" do
       assert HubColors.resolve("#ff000080") == "#ff000080"
+    end
+
+    test "rejects otherwise valid hex colors with trailing newlines" do
+      assert HubColors.resolve("#ff0000\n") == HubColors.default_hex()
+      assert HubColors.resolve("#ff0000\r\n") == HubColors.default_hex()
     end
   end
 end

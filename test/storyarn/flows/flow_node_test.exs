@@ -70,4 +70,17 @@ defmodule Storyarn.Flows.FlowNodeTest do
       assert Enum.any?(changeset.errors, &match?({:data, {"responses must be a list", _}}, &1))
     end
   end
+
+  describe "Hub color normalization" do
+    test "materializes legacy named colors as their original hex values" do
+      changeset =
+        FlowNode.materialize_changeset(%FlowNode{}, %{
+          type: "hub",
+          data: %{"hub_id" => "checkpoint", "color" => "blue"}
+        })
+
+      assert changeset.valid?
+      assert Ecto.Changeset.get_field(changeset, :data)["color"] == "#3b82f6"
+    end
+  end
 end
