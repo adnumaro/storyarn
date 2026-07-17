@@ -1,0 +1,54 @@
+test/storyarn_web/live/project_settings_live/snapshot_lifecycle_test.exs
+  s_7d17843f59d188::t_e176ada79657bc 1-102
+lib/storyarn/versioning/project_recovery.ex
+  s_7d17843f59d188::t_e4eba2ae1dabc5 59,193,623,637-638
+  s_7d17843f59d188::t_ab344a3048df6b 639-640
+lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex
+  s_7d17843f59d188::t_6dffb3db2a6841 244-245,250-251
+  s_7d17843f59d188::t_0e6e5e54e6e63d 13-14,131-132,151-152,241-243
+test/storyarn/assets/storage_compensation_test.exs
+  s_7d17843f59d188::t_e4eba2ae1dabc5 270-281,286,288,294-316,321-323
+lib/storyarn_web/helpers/version_event_helpers.ex
+  s_7d17843f59d188::t_0aa4de48a983c4 10,54,67,81,101,128-138,140
+lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex
+  s_7d17843f59d188::t_ec4641f9dda636 17,69,77,85,93
+test/storyarn/workers/restore_project_worker_test.exs
+  s_7d17843f59d188::t_e4eba2ae1dabc5 117,122-123
+assets/app/test/components/versioning/RestoreContainment.test.ts
+  s_7d17843f59d188::t_75e30a674878fa 65,93,104-147
+  s_7d17843f59d188::t_d77c4fc128384a 148-149
+lib/storyarn/assets/storage.ex
+  s_7d17843f59d188::t_e4eba2ae1dabc5 170-172,179
+test/storyarn/versioning/restore_policy_test.exs
+  s_7d17843f59d188::t_e4eba2ae1dabc5 296-332
+  s_7d17843f59d188::t_d9cad0b5909b63 333
+lib/storyarn/assets/storage_compensation.ex
+  s_7d17843f59d188::t_e4eba2ae1dabc5 410-417
+lib/storyarn_web/live/project_live/components/settings_components.ex
+  s_7d17843f59d188::t_b8263e49008797 301
+  s_7d17843f59d188::t_6dffb3db2a6841 264-266,283
+  s_7d17843f59d188::t_e176ada79657bc 214-220,223,235,244,248,251,263,268,300,302-315
+  s_7d17843f59d188::t_7e203f81dd8d5a 269,316-317
+assets/app/components/versioning/history/VersionHistory.vue
+  s_7d17843f59d188::t_75e30a674878fa 163,322
+test/storyarn_web/live/restore_containment_test.exs
+  s_7d17843f59d188::t_0e6e5e54e6e63d 246,268,270-292
+  s_7d17843f59d188::t_6dffb3db2a6841 11,19,172-193,195-210,247-267,269,293-307,351-360
+  s_7d17843f59d188::t_5f6a4049aadd97 194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "160f6c20ee0409933981708ffe52881345d86985",
+  "prompts": {},
+  "sessions": {
+    "s_7d17843f59d188": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fbf-1c01-7451-82e0-8923d01cb5fe",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
