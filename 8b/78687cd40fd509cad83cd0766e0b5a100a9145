@@ -1,0 +1,281 @@
+lib/storyarn/project_templates/project_template_install.ex
+  s_b941eebfdd72f8::t_a55b77197d6574 148
+lib/storyarn/project_templates.ex
+  s_b941eebfdd72f8::t_79ccd5c034adc6 209-214
+  s_b941eebfdd72f8::t_ff8e6fb8c2ba2b 208
+assets/app/live/workspace/dashboard/WorkspaceDashboard.vue
+  s_b941eebfdd72f8::t_16b59f364e1431 275
+lib/storyarn/assets/storage/local.ex
+  s_b941eebfdd72f8::t_5cb656b99e5296 95-96,100,148,153,180,183,186,193,195,199-200,202,205,214,224-230
+  s_b941eebfdd72f8::t_13fd031d5df015 156,189,208,213,217,221
+  s_b941eebfdd72f8::t_da4cce3cee26de 215-216,218-220,222-223
+assets/app/locales/en/workspace.json
+  s_b941eebfdd72f8::t_16b59f364e1431 54-55
+test/storyarn_web/live/template_live_test.exs
+  s_b941eebfdd72f8::t_9fb686eeb2f602 150,183-259
+  s_b941eebfdd72f8::t_064e889b2ff2f0 261-296
+  s_b941eebfdd72f8::t_a6105a68b8c62d 168-169,172,174-175,182
+  s_b941eebfdd72f8::t_7d1696e75a46cb 260
+lib/storyarn/assets/blob_store.ex
+  s_b941eebfdd72f8::t_11b1a138d7c456 440,442,445-447
+  s_b941eebfdd72f8::t_525770e99837e9 87,90-93,95-96,101-105,324
+  s_b941eebfdd72f8::t_8f3518710408c1 107,119-142,180,183-195,200-205,207-212,330,426
+  s_b941eebfdd72f8::t_28a7b24a838f1f 196-199,388,418-424
+  s_b941eebfdd72f8::t_1773a6109c3494 86,88-89
+  s_b941eebfdd72f8::t_e940ccb028eff8 220-222
+  s_b941eebfdd72f8::t_5607357744a805 248-249,251-260
+  s_b941eebfdd72f8::t_a4626e1f189337 15,172-179,206,250
+  s_b941eebfdd72f8::t_d7efa5020eb275 285-288,314
+  s_b941eebfdd72f8::t_9c4624620a7c59 80-85
+  s_b941eebfdd72f8::t_71eaa52549bae3 262-266
+  s_b941eebfdd72f8::t_7b210238945999 106,315-323,325-329,425
+  s_b941eebfdd72f8::t_a871165c32e81f 108
+  s_b941eebfdd72f8::t_594b558e9575c2 213
+  s_b941eebfdd72f8::t_576a2a717323dc 331
+  s_b941eebfdd72f8::t_ed79f915487306 427
+test/storyarn/project_templates_test.exs
+  s_b941eebfdd72f8::t_81b339b2b27e1d 1192-1195
+  s_b941eebfdd72f8::t_3c96b1387a6aec 35,227-389,1211
+  s_b941eebfdd72f8::t_4161c761ace35e 32,1032-1033,1595-1597
+  s_b941eebfdd72f8::t_5b00b7be907d48 1014,1017-1018,1027-1028,1031
+  s_b941eebfdd72f8::t_9a307d567e456d 1015-1016,1029-1030,1170-1191,1196-1210
+  s_7d17843f59d188::t_61c52d9e6b7d5d 1212
+test/storyarn/assets/storage_compensation_test.exs
+  s_b941eebfdd72f8::t_19f92b42b1c551 432,438,444,449
+  s_b941eebfdd72f8::t_261998b1e8114d 553,598-646,648-667
+  s_b941eebfdd72f8::t_6a9456ecdfe9d7 231-259
+  s_b941eebfdd72f8::t_e281c15ea03337 463-471,473-485
+  s_b941eebfdd72f8::t_25670d20873a83 302,326,349,367,385,415,442,472,713,743
+  s_b941eebfdd72f8::t_fe1a1180787b53 13-14,545-552,554-597,647,668-689
+  s_b941eebfdd72f8::t_d5be74457d59fa 49-50,112,371-373,794
+  s_b941eebfdd72f8::t_2412b46bb3c5ed 179-230,260-291,763-793
+  s_b941eebfdd72f8::t_9b334329507303 6,114-136,138-152,154-158,497-532
+  s_b941eebfdd72f8::t_b945bb80de81ea 5,7,430-431,433-437,439-441,443,445-448,450-462,486-496,533-544
+  s_b941eebfdd72f8::t_11b1a138d7c456 375-384,386-414,416-429,690-691
+  s_b941eebfdd72f8::t_09271a9a567519 92,111,137,153
+  s_b941eebfdd72f8::t_df7aa157faefa5 692-702
+  s_b941eebfdd72f8::t_a6950848ddce63 159-178
+  s_7d17843f59d188::t_e2612c901f0c2e 113,374
+lib/storyarn/project_templates/audit.ex
+  s_b941eebfdd72f8::t_6c064f915a39c7 1009-1030,1042-1043
+  s_b941eebfdd72f8::t_f004b546824d69 56-69,73,75-94,96-103,946-947,955,967,1004-1005
+  s_b941eebfdd72f8::t_32df86a692b375 1051
+lib/storyarn_web/live/template_live/show.ex
+  s_b941eebfdd72f8::t_3bcaa485f76562 489
+  s_b941eebfdd72f8::t_f8ca10cfccca9c 474-475,477
+  s_b941eebfdd72f8::t_a6105a68b8c62d 31,417-439,473,478-483,488,490-491,651,669-671,728-737
+  s_b941eebfdd72f8::t_91c423ce2f4c55 13,472,476,484-487,585-587,591-593,615,631-650
+  s_b941eebfdd72f8::t_03ecb0bffc671d 492
+  s_b941eebfdd72f8::t_8a9189948e9410 652
+  s_b941eebfdd72f8::t_ab91f837703d42 738
+test/storyarn/assets_test.exs
+  s_b941eebfdd72f8::t_1a12b17319f424 3,19,813-814,816-825,1512-1520
+  s_b941eebfdd72f8::t_eebc0b3d06b65e 863-916
+  s_b941eebfdd72f8::t_8abb27c11f5981 11,15,792,795-796,798-799,801,804-806,809-810,826-831,834-835,838-862,1511
+  s_b941eebfdd72f8::t_56f5793f79a24a 811
+  s_b941eebfdd72f8::t_2d5d77cedcb989 1521
+lib/storyarn/project_templates/authorization.ex
+  s_b941eebfdd72f8::t_9268924bf8c3fb 51,65-73
+  s_b941eebfdd72f8::t_ced5e75d09e42b 74-75
+lib/storyarn/workers/delete_storage_objects_worker.ex
+  s_b941eebfdd72f8::t_0b3175b040e8f7 47-50
+  s_b941eebfdd72f8::t_c4f23e67ad526d 12
+  s_b941eebfdd72f8::t_6c064f915a39c7 5-9
+  s_b941eebfdd72f8::t_50145287cd47ed 4
+  s_b941eebfdd72f8::t_78bba0b9c554c4 24-26,33-46,51
+lib/mix/tasks/storyarn.templates.import.ex
+  s_b941eebfdd72f8::t_f706fc4e01777a 70
+lib/storyarn/project_templates/deletion.ex
+  s_b941eebfdd72f8::t_c2470bdfaa985c 66-77,96-146
+  s_b941eebfdd72f8::t_dbf8b039946fb7 16-34
+  s_b941eebfdd72f8::t_7e14de48b06be1 147
+test/storyarn/assets/storage/local_test.exs
+  s_b941eebfdd72f8::t_94702ed386507e 219,228,240,247
+  s_b941eebfdd72f8::t_5cb656b99e5296 211-218,220-227,229-239,241-246,248-249,264-270
+  s_b941eebfdd72f8::t_d42ce45c2a3692 271-272
+assets/app/test/live/workspace/dashboard/WorkspaceDashboard.test.ts
+  s_b941eebfdd72f8::t_dbb506bd138054 245-264
+lib/storyarn/versioning/builders/flow_builder.ex
+  s_b941eebfdd72f8::t_f60820c690fe58 240
+  s_b941eebfdd72f8::t_43291f19875566 238-239,241-242,330-331
+  s_b941eebfdd72f8::t_5a6799fa64508b 332-336,387
+lib/storyarn/versioning/builders/sheet_builder.ex
+  s_b941eebfdd72f8::t_f60820c690fe58 172,264
+  s_b941eebfdd72f8::t_43291f19875566 170-171,173-174,259-260,262,265-266
+  s_b941eebfdd72f8::t_e803b9264b5076 263,269,271-273,292-294
+test/storyarn/project_templates/portable_test.exs
+  s_b941eebfdd72f8::t_c2470bdfaa985c 3,24,176-203,205-216
+  s_b941eebfdd72f8::t_0f999419839098 61,599-616,772
+  s_b941eebfdd72f8::t_e085227d506b0f 88-91,93,97,129-175,217-218,308,808-825
+  s_b941eebfdd72f8::t_926be2404ab501 204,225
+  s_b941eebfdd72f8::t_1bf5da74416e9e 656-694
+  s_b941eebfdd72f8::t_2fbc1ee4367232 62,92
+  s_b941eebfdd72f8::t_b6d0a1151b98ce 580-598
+  s_b941eebfdd72f8::t_cc95f34f7687b2 826
+lib/storyarn/versioning/builders/scene_builder.ex
+  s_b941eebfdd72f8::t_812c448e7056e0 372-376,434
+  s_b941eebfdd72f8::t_43291f19875566 263,371
+  s_b941eebfdd72f8::t_34efeafa83c527 264-268,362
+lib/storyarn/project_templates/publication_runner.ex
+  s_b941eebfdd72f8::t_48edbb231876b9 8-9,356-357,367,409,640-649,654-655,663-671,926-927,930-931,942-974
+  s_b941eebfdd72f8::t_cacbc3ad5f11c9 295,361-364
+  s_b941eebfdd72f8::t_5f40208dc83bf4 265-270,294,296-297,299-300,302-304,314,320-324,342-351,522,524,570,633
+  s_b941eebfdd72f8::t_1d81c984de9d7f 377-378,380,382-383,389-408
+  s_b941eebfdd72f8::t_1be2f41255ed0f 56-61,360,368-375,651-653
+  s_b941eebfdd72f8::t_4b99f922a4214f 354-355,365-366
+  s_b941eebfdd72f8::t_1fec9d0a75db5d 12,25-26,262,328,334-336,359,379,381,385-388
+  s_b941eebfdd72f8::t_8f3bd36ea463da 411-521,523,525-569,571-632,634-639
+  s_b941eebfdd72f8::t_2eb1caf1c19c89 915
+  s_b941eebfdd72f8::t_771540aceff88a 263-264,271-280,293,298,301,305-313,376
+  s_b941eebfdd72f8::t_b2be2a368d067e 410,650
+test/storyarn_web/live/workspace_live/template_creation_test.exs
+  s_b941eebfdd72f8::t_c2dd91ae51d491 153-193
+lib/storyarn/versioning/project_recovery.ex
+  s_b941eebfdd72f8::t_5206961cc98d0b 724-727
+  s_b941eebfdd72f8::t_efbabba3920a55 69,83
+  s_b941eebfdd72f8::t_6fba7edf2634d6 53-68,713-719
+lib/storyarn/release.ex
+  s_b941eebfdd72f8::t_76334d2f360191 137
+config/config.exs
+  s_b941eebfdd72f8::t_c4f23e67ad526d 68-76
+test/storyarn/versioning/builders/sheet_builder_test.exs
+  s_b941eebfdd72f8::t_697340bf9fa5bb 196,300,303,306
+  s_b941eebfdd72f8::t_b7b2bbb521faf3 3,12,15,17,19,271,280-299,301-302,304-305,307-333,515-530
+  s_b941eebfdd72f8::t_b4aa9bdd57e12d 531
+test/storyarn/workers/delete_storage_objects_worker_test.exs
+  s_b941eebfdd72f8::t_c9bb663b6ec542 1-32,64-68
+  s_b941eebfdd72f8::t_330924e1774c23 33-63
+lib/storyarn/assets.ex
+  s_b941eebfdd72f8::t_c8b115e56ed02f 37,703,707,740-746,750-755,757-760,764-777,779-782,790-793,801-810,817-820,835
+  s_b941eebfdd72f8::t_238be30d1b509f 18,648,661,663
+  s_b941eebfdd72f8::t_a0225c32f8da12 173-176,1310-1312
+  s_b941eebfdd72f8::t_e940ccb028eff8 701-702,704-705,708-711
+  s_b941eebfdd72f8::t_525770e99837e9 650-659,662,667-689,692-695,706,714-723
+  s_b941eebfdd72f8::t_efd4aeddd0296b 747-749,794-798,800,811-816,828-834
+  s_b941eebfdd72f8::t_efbabba3920a55 783-789
+  s_b941eebfdd72f8::t_1c2bbf10889372 821-827
+  s_b941eebfdd72f8::t_cc93d64a738199 38,756,761-763,778,1070-1085,1089-1097
+  s_b941eebfdd72f8::t_710728fa7a209e 180-185,193-198,1398-1412
+  s_b941eebfdd72f8::t_32c7299946571f 649,700,724,1098-1099
+test/storyarn/assets/storage_key_lock_test.exs
+  s_b941eebfdd72f8::t_8303420e481f1f 1,3,5,7-15,53,138
+  s_b941eebfdd72f8::t_52de9ea765c032 6,52
+  s_b941eebfdd72f8::t_f2cc3a8a8ba812 2,4,16-27,32-51
+  s_b941eebfdd72f8::t_ee80bf8c5a0abb 28-31
+  s_b941eebfdd72f8::t_ea1a51d43b4f3b 54-89
+  s_b941eebfdd72f8::t_7b1b4ee520e87f 90-137
+test/storyarn/versioning/project_recovery_test.exs
+  s_b941eebfdd72f8::t_549fef0311aa9e 32-44
+assets/app/locales/es/workspace.json
+  s_b941eebfdd72f8::t_16b59f364e1431 54-55
+lib/storyarn/versioning/materialization_helpers.ex
+  s_b941eebfdd72f8::t_be5a1c1ea0f8f3 67-71
+  s_b941eebfdd72f8::t_43291f19875566 6,41-66,72-112
+  s_7d17843f59d188::t_6f8e93b3c37136 113
+test/storyarn/versioning/builders/scene_builder_test.exs
+  s_b941eebfdd72f8::t_4b50b5c9291896 3,11,14,16,440,450,459-519,824-839
+  s_b941eebfdd72f8::t_b76e7aea90731d 840
+lib/storyarn_web/live/workspace_live/show.ex
+  s_b941eebfdd72f8::t_7520a5d46dc497 177
+test/storyarn/versioning/builders/flow_builder_test.exs
+  s_b941eebfdd72f8::t_c2596cb741d186 3,16,23,25,478-579,644-660,664-665
+lib/storyarn/assets/storage_key_lock.ex
+  s_b941eebfdd72f8::t_9c00bfca20bb7f 34-35,38,100-101,211,213-214
+  s_b941eebfdd72f8::t_1a9d8145aab6e5 1-6,8,10,12-17,19-22,42-43,59-60,70,72-74,77-82,84,88-95,97-99,212,215
+  s_b941eebfdd72f8::t_e940ccb028eff8 18,23-33,36-37,41
+  s_b941eebfdd72f8::t_c169520caba812 9,85-86
+  s_b941eebfdd72f8::t_adac46b8e28f10 11,39-40,96,102-111,116-151,209
+  s_b941eebfdd72f8::t_3344417f272575 7,44-58,152-166,171-208
+  s_b941eebfdd72f8::t_efbabba3920a55 112-115
+  s_b941eebfdd72f8::t_f5d3d1ba008bd7 61-69,71,75-76,83,87
+  s_b941eebfdd72f8::t_a04a5451757cd4 167-170
+  s_b941eebfdd72f8::t_f41707577a77f1 210
+lib/storyarn/workers/retry_storage_cleanup_requests_worker.ex
+  s_b941eebfdd72f8::t_78bba0b9c554c4 7
+priv/repo/migrations/20260717100000_add_template_install_failure_feedback_dismissal.exs
+  s_b941eebfdd72f8::t_9556392884c0b8 10-16,31-35,40-57,71-72,76-77
+  s_b941eebfdd72f8::t_45a6aed6e3bfc7 17-22,28-29,69-70
+lib/storyarn/assets/storage.ex
+  s_b941eebfdd72f8::t_5cb656b99e5296 17,19,127-132
+  s_b941eebfdd72f8::t_ff93672e14ccf7 18
+lib/storyarn/project_templates/portable_import.ex
+  s_b941eebfdd72f8::t_ae546418df0fae 391-408,410
+  s_b941eebfdd72f8::t_dbf8b039946fb7 415,419,676-681,684,686
+  s_b941eebfdd72f8::t_0f999419839098 73-74,152-160
+  s_b941eebfdd72f8::t_b13f456a0edd9f 305-307,311-312,323-325,341-344,440-455
+  s_b941eebfdd72f8::t_cf8a3c179eb39f 421-422,424-438
+  s_b941eebfdd72f8::t_7f4727b966fcec 146,184,209-210,547
+  s_b941eebfdd72f8::t_cbe640529ef58d 10
+  s_b941eebfdd72f8::t_4096c2dbd9b7d7 268,467,469-470,472-476,682-683,685,687-689,722-743
+  s_b941eebfdd72f8::t_cba182d879b9d8 308-310,326-327,330-331,345-348,382
+  s_b941eebfdd72f8::t_efbabba3920a55 409
+  s_b941eebfdd72f8::t_66b0bbe72ae778 481-483,503-512
+  s_b941eebfdd72f8::t_03cda7d5ec4610 6,9,11,21,23,25,76,102,185-192,194,387-390,412-414,416-418,420,439,456-466,468,477-480,484-499,513-533,536,555,562,567
+  s_b941eebfdd72f8::t_4161c761ace35e 193
+  s_b941eebfdd72f8::t_b7ffb717137eac 70,147-151,161
+  s_b941eebfdd72f8::t_fed31ebf50c0e0 211
+test/storyarn/assets/blob_store_test.exs
+  s_b941eebfdd72f8::t_1f1935e20624a3 276,299,314,327,377
+  s_b941eebfdd72f8::t_de3498af0b93e3 70,73-82,228
+  s_b941eebfdd72f8::t_88862030699505 11
+  s_b941eebfdd72f8::t_60d3b84b67d188 2,382-403,405-448,450-467,537-547
+  s_b941eebfdd72f8::t_a967a37fca1b2f 301-303,325,404,449
+  s_b941eebfdd72f8::t_81876e8137047c 548
+lib/storyarn/assets/storage_compensation.ex
+  s_b941eebfdd72f8::t_43a344d772218b 522,527-534
+  s_b941eebfdd72f8::t_260dddb6cfa8c6 548,560,564,567,622-624,679,681-684
+  s_b941eebfdd72f8::t_656dda83813660 580,590-596,600-601,603,616-621,625-650,698-707
+  s_b941eebfdd72f8::t_6c064f915a39c7 55,686-697,732-734
+  s_b941eebfdd72f8::t_01f2d6546e908f 717
+  s_b941eebfdd72f8::t_e940ccb028eff8 546,565
+  s_b941eebfdd72f8::t_e8ec7336e16efa 186-192,215,270-272,274
+  s_b941eebfdd72f8::t_a6950848ddce63 67,85
+  s_b941eebfdd72f8::t_13a1cbf8a882d0 176-178,183
+  s_b941eebfdd72f8::t_4096c2dbd9b7d7 12,52,241,576-578,653-675,722-731,753-758,763,803
+  s_b941eebfdd72f8::t_effcdb90f46625 23,34-51,53-54,56,68,80-84,91-92,106,109-110,113,145-148,150-151,157,161-162,167,171-172,193-204,242,253-263,265-269,338-346,381,476-477,479,481,535,542-544,547,559,566,571,579,581,652,678,680,735,804-817
+  s_b941eebfdd72f8::t_e52b58b731d692 10-11,205
+  s_b941eebfdd72f8::t_a16ed606f7f7cf 685
+  s_b941eebfdd72f8::t_15c2cfd0bf41ec 480,482,485
+  s_b941eebfdd72f8::t_7702f72a3cc337 6,561-563,568-570,572-575,582-589,602,651,676-677,708-716,718-720
+  s_b941eebfdd72f8::t_78bba0b9c554c4 473-475,478
+  s_b941eebfdd72f8::t_9b334329507303 721
+  s_b941eebfdd72f8::t_306ea09dfc60fe 69,74,131,348,351-353,358-360
+  s_b941eebfdd72f8::t_11b1a138d7c456 244-246,250-252,264,277-278
+  s_b941eebfdd72f8::t_8072a606092389 70-73
+  s_b941eebfdd72f8::t_1d81c984de9d7f 218-240,597-599,604-615,764-802
+  s_b941eebfdd72f8::t_d9ac1ebf958231 179-182,247-249,275
+  s_b941eebfdd72f8::t_ffb5cc2c204306 58-66,93-105,107-108,111-112,114-116,330,335,337
+  s_b941eebfdd72f8::t_503dd580d3b7ff 57,243,536,545,736
+lib/storyarn/project_templates/installation.ex
+  s_b941eebfdd72f8::t_c4f23e67ad526d 27,164-166,168,174
+  s_b941eebfdd72f8::t_efbabba3920a55 420,465-467,491,496,499,505,517,519
+  s_b941eebfdd72f8::t_5206961cc98d0b 425-428
+  s_b941eebfdd72f8::t_7f91b5a87a178f 586-598
+  s_b941eebfdd72f8::t_79ccd5c034adc6 157-158,160-163,167,169-173,175-184
+  s_b941eebfdd72f8::t_59252b063c6a58 9,93-98,159,456,468-490,492-495,497-498,500-504,506-516,518
+  s_b941eebfdd72f8::t_90c1b27cc04552 520
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "8b78687cd40fd509cad83cd0766e0b5a100a9145",
+  "prompts": {},
+  "sessions": {
+    "s_7d17843f59d188": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fbf-1c01-7451-82e0-8923d01cb5fe",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_b941eebfdd72f8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6745-3a9e-7150-9871-f841a8054198",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
