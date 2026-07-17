@@ -31,12 +31,17 @@ defmodule StoryarnWeb.BlogLive.IndexTest do
 
     assert has_element?(
              view,
-             ~s|#blog-featured-post a[href="/blog/introducing-storyarn"][data-phx-link="redirect"]|
+             ~s|#blog-featured-post a[href="/blog/version-control-branching-narratives"][data-phx-link="redirect"]|
            )
 
     assert has_element?(
              view,
-             ~s|#blog-featured-post img[src="/images/docs/project-dashboard-current.png"][fetchpriority="high"]|
+             ~s|#blog-featured-post img[src="/images/blog/version-control-branching-narratives.svg"][fetchpriority="high"]|
+           )
+
+    assert has_element?(
+             view,
+             ~s|#blog-posts a[href="/blog/introducing-storyarn"][data-phx-link="redirect"]|
            )
 
     assert has_element?(view, ~s|#public-header a[href="/#features-section"][data-phx-link]|)
@@ -45,7 +50,7 @@ defmodule StoryarnWeb.BlogLive.IndexTest do
     assert has_element?(view, ~s|#public-header a[href="/contact"][data-phx-link]|)
 
     assert has_element?(view, "#blog-index h1", "Notes on building a connected narrative design platform")
-    assert has_element?(view, "#blog-featured-post h2", "Introducing Storyarn")
+    assert has_element?(view, "#blog-featured-post h2", "Going Back Without Breaking the Story")
     assert has_element?(view, ~s|#public-language-switcher-en[aria-current="page"]|)
     assert has_element?(view, ~s|#public-language-switcher-es[href="/es/blog"]|)
 
@@ -103,6 +108,7 @@ defmodule StoryarnWeb.BlogLive.IndexTest do
     assert has_element?(view, "#public-header", "Create account")
     assert has_element?(view, "#blog-index h1", "Notes on building a connected")
     assert has_element?(view, ~s|#blog-featured-post[lang="en"]|)
+    assert has_element?(view, "#blog-featured-post h2", "Going Back Without Breaking the Story")
   end
 
   test "renders the localized Spanish index from its canonical URL", %{conn: conn} do
@@ -116,14 +122,15 @@ defmodule StoryarnWeb.BlogLive.IndexTest do
     assert has_element?(view, "#public-header", "Características")
     assert has_element?(view, ~s|#public-header a[href="/es/blog"]|)
     assert has_element?(view, "#blog-index h1", "Notas sobre cómo construimos")
-    assert has_element?(view, "#blog-featured-post h2", "Presentamos Storyarn")
+    assert has_element?(view, "#blog-featured-post h2", "Volver atrás sin romper la historia")
 
     assert has_element?(
              view,
-             ~s|#blog-featured-post a[href="/es/blog/presentamos-storyarn"]|
+             ~s|#blog-featured-post a[href="/es/blog/control-versiones-narrativa-ramificada"]|
            )
 
-    assert has_element?(view, "#blog-featured-post time", "14 de julio de 2026")
+    assert has_element?(view, "#blog-featured-post time", "17 de julio de 2026")
+    assert has_element?(view, ~s|#blog-posts a[href="/es/blog/presentamos-storyarn"]|)
     assert has_element?(view, ~s|#public-language-switcher-es[aria-current="page"]|)
     assert has_element?(view, ~s|#public-language-switcher-en[href="/blog"]|)
 

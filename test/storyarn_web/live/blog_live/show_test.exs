@@ -176,6 +176,75 @@ defmodule StoryarnWeb.BlogLive.ShowTest do
     assert structured_data["url"] == canonical_url
   end
 
+  test "renders the sourced version-control article and its Spanish translation", %{conn: conn} do
+    english_path = "/blog/version-control-branching-narratives"
+    spanish_path = "/es/blog/control-versiones-narrativa-ramificada"
+
+    {:ok, english_view, english_html} = live(conn, english_path)
+    english_document = LazyHTML.from_document(english_html)
+
+    assert has_element?(english_view, ~s|#blog-post[lang="en"]|)
+    assert has_element?(english_view, "#blog-post h1", "Going Back Without Breaking the Story")
+    refute has_element?(english_view, "#blog-post-content table")
+
+    assert has_element?(
+             english_view,
+             "#blog-post-content",
+             "A restore can complete without errors and still break a story."
+           )
+
+    assert has_element?(english_view, "#blog-post-content", "do not yet reproduce an exact moment")
+
+    assert has_element?(
+             english_view,
+             ~s|#blog-post-content a[href="https://www.articy.com/help/adx/RecentChanges.html"]|
+           )
+
+    assert has_element?(
+             english_view,
+             ~s|#blog-post-content a[href="/docs/project-management/recovery-and-trash"][data-phx-link="redirect"]|
+           )
+
+    assert has_element?(
+             english_view,
+             ~s|#public-language-switcher-es[href="#{spanish_path}"]|
+           )
+
+    assert LazyHTML.attribute(
+             LazyHTML.query(english_document, ~s|meta[property="article:published_time"]|),
+             "content"
+           ) == ["2026-07-17"]
+
+    assert LazyHTML.attribute(
+             LazyHTML.query(english_document, ~s|link[rel="alternate"][hreflang="es"]|),
+             "href"
+           ) == [StoryarnWeb.Layouts.absolute_url(spanish_path)]
+
+    {:ok, spanish_view, _spanish_html} = live(conn, spanish_path)
+
+    assert has_element?(spanish_view, ~s|#blog-post[lang="es"]|)
+    assert has_element?(spanish_view, "#blog-post h1", "Volver atrás sin romper la historia")
+    refute has_element?(spanish_view, "#blog-post-content table")
+
+    assert has_element?(
+             spanish_view,
+             "#blog-post-content",
+             "Una restauración puede terminar sin errores y aun así romper una historia."
+           )
+
+    assert has_element?(spanish_view, "#blog-post-content", "no reproducen todavía un instante exacto")
+
+    assert has_element?(
+             spanish_view,
+             ~s|#blog-post-content a[href="/es/docs/project-management/recovery-and-trash"][data-phx-link="redirect"]|
+           )
+
+    assert has_element?(
+             spanish_view,
+             ~s|#public-language-switcher-en[href="#{english_path}"]|
+           )
+  end
+
   test "raises a 404-compatible error for an unknown article", %{conn: conn} do
     assert_raise Ecto.NoResultsError, fn ->
       live(conn, "/blog/missing-article")

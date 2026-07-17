@@ -9,8 +9,9 @@ defmodule StoryarnWeb.E2E.BlogTest do
 
   @moduletag :e2e
 
-  @article_path "/blog/introducing-storyarn"
-  @spanish_article_path "/es/blog/presentamos-storyarn"
+  @article_path "/blog/version-control-branching-narratives"
+  @spanish_article_path "/es/blog/control-versiones-narrativa-ramificada"
+  @spanish_intro_path "/es/blog/presentamos-storyarn"
 
   test "keeps one public shell and updates SEO metadata without document reloads", %{conn: conn} do
     conn
@@ -31,8 +32,8 @@ defmodule StoryarnWeb.E2E.BlogTest do
     |> evaluate(article_metadata_expression(), fn metadata ->
       assert metadata["type"] == "article"
       assert metadata["canonicalPath"] == @article_path
-      assert metadata["published"] == "2026-07-14"
-      assert metadata["tagCount"] == 3
+      assert metadata["published"] == "2026-07-17"
+      assert metadata["tagCount"] == 4
       assert metadata["hasStructuredData"] == true
     end)
     |> click("#blog-back-link")
@@ -93,7 +94,7 @@ defmodule StoryarnWeb.E2E.BlogTest do
     |> click("#public-language-switcher-es")
     |> assert_path("/es/blog")
     |> assert_has("html[lang='es']")
-    |> assert_has("#blog-featured-post h2", text: "Presentamos Storyarn")
+    |> assert_has("#blog-featured-post h2", text: "Volver atrás sin romper la historia")
     |> evaluate("window.__publicNavigationBlank", fn value -> assert value == false end)
     |> evaluate(localized_metadata_expression(), fn metadata ->
       assert metadata["canonicalPath"] == "/es/blog"
@@ -106,14 +107,18 @@ defmodule StoryarnWeb.E2E.BlogTest do
     |> click("#blog-featured-post a[href='#{@spanish_article_path}']")
     |> assert_path(@spanish_article_path)
     |> assert_has("#blog-post[lang='es']")
-    |> assert_has("#blog-post-content", text: "World Anvil se centra en organizar y presentar")
+    |> assert_has("#blog-post-content",
+      text: "Una restauración puede terminar sin errores y aun así romper una historia."
+    )
     |> evaluate("window.__publicNavigationBlank", fn value -> assert value == false end)
     |> click("#public-language-switcher-trigger")
     |> click("#public-language-switcher-en")
     |> assert_path(@article_path)
     |> assert_has("html[lang='en']")
     |> assert_has("#blog-post[lang='en']")
-    |> assert_has("#blog-post-content", text: "World Anvil focuses on organizing and presenting")
+    |> assert_has("#blog-post-content",
+      text: "A restore can complete without errors and still break a story."
+    )
     |> evaluate("window.__publicNavigationBlank", fn value -> assert value == false end)
     |> evaluate(localized_metadata_expression(), fn metadata ->
       assert metadata["canonicalPath"] == @article_path
@@ -127,7 +132,9 @@ defmodule StoryarnWeb.E2E.BlogTest do
     |> evaluate(history_navigation_expression("back"))
     |> assert_path(@spanish_article_path)
     |> assert_has("html[lang='es']")
-    |> assert_has("#blog-post-content", text: "World Anvil se centra en organizar y presentar")
+    |> assert_has("#blog-post-content",
+      text: "Una restauración puede terminar sin errores y aun así romper una historia."
+    )
     |> evaluate("window.__publicNavigationBlank", fn value -> assert value == false end)
     |> evaluate(history_navigation_expression("forward"))
     |> assert_path(@article_path)
@@ -139,7 +146,7 @@ defmodule StoryarnWeb.E2E.BlogTest do
     conn: conn
   } do
     conn
-    |> visit(@spanish_article_path)
+    |> visit(@spanish_intro_path)
     |> assert_has("body .phx-connected")
     |> assert_has("#blog-signup-card")
     |> assert_has("#blog-register-cta", text: "Crea tu cuenta de Storyarn")
@@ -176,14 +183,9 @@ defmodule StoryarnWeb.E2E.BlogTest do
 
   test "localized article links preserve the URL-authoritative locale", %{conn: conn} do
     conn
-    |> visit("/blog")
+    |> visit(@spanish_intro_path)
     |> assert_has("body .phx-connected")
     |> evaluate(cross_surface_blank_observer_expression())
-    |> click("#public-language-switcher-trigger")
-    |> click("#public-language-switcher-es")
-    |> assert_path("/es/blog")
-    |> click("#blog-featured-post a[href='#{@spanish_article_path}']")
-    |> assert_path(@spanish_article_path)
     |> click("#blog-post-content a[href='/es/docs/world-building/sheets-overview']")
     |> assert_path("/es/docs/world-building/sheets-overview")
     |> assert_has("html[lang='es']")
