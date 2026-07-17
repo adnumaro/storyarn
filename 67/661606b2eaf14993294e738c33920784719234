@@ -1,0 +1,55 @@
+test/storyarn_web/live/blog_live/show_test.exs
+  s_3cb2d6b0d2b40c::t_017a4c0aef1b9c 179,187-188,190-195,226-235
+  s_3cb2d6b0d2b40c::t_57bcfc4d48f5be 200
+  s_3cb2d6b0d2b40c::t_6c60e03cbac9ea 189,196
+  s_3cb2d6b0d2b40c::t_3b974ef2c854e1 180-186,197-199,201-225,236-247
+test/e2e/blog_test.exs
+  s_3cb2d6b0d2b40c::t_017a4c0aef1b9c 97,110-112,119-121,135-137
+  s_3cb2d6b0d2b40c::t_88fe8667f16508 12-14,35-36,149,186
+priv/static/images/blog/version-control-branching-narratives.svg
+  s_3cb2d6b0d2b40c::t_139ac945e6a3f4 1,4,8,12,16,19-20,22-23,25-29,31,37-38,41-42,68-70,75-77,104-105,109-110,115
+  s_3cb2d6b0d2b40c::t_20556b95664231 2-3,5-7,9-11,13-15,17-18,21,24,30,32-36,39-40,43-67,71-74,78-103,106-108,111-114
+test/storyarn_web/live/blog_live/index_test.exs
+  s_3cb2d6b0d2b40c::t_1076558a2e1e07 34,42-44,129,132-133
+  s_3cb2d6b0d2b40c::t_017a4c0aef1b9c 53,125
+  s_3cb2d6b0d2b40c::t_139ac945e6a3f4 39
+  s_3cb2d6b0d2b40c::t_0569cc11b577f3 111
+  s_3cb2d6b0d2b40c::t_3b2eb723c6f7c6 40-41
+test/storyarn/blog_test.exs
+  s_3cb2d6b0d2b40c::t_caf15e6efd30d9 8-9,17,41-47,52-55,60-61,135-137,149-150,152,168-169,171
+  s_3cb2d6b0d2b40c::t_e2c22584a875d1 51,58-59
+  s_3cb2d6b0d2b40c::t_a93af458271299 141
+  s_3cb2d6b0d2b40c::t_017a4c0aef1b9c 48-50,56-57,134,138,142,151,156-157,160-161,170
+  s_3cb2d6b0d2b40c::t_58d26a1d9926af 62,154-155,172-174
+  s_3cb2d6b0d2b40c::t_57bcfc4d48f5be 139-140,143-148,158-159,162-167
+  s_3cb2d6b0d2b40c::t_8cb760de2943dc 63,153,175-176
+priv/blog/es/2026-07-17-control-versiones-narrativa-ramificada.md
+  s_3cb2d6b0d2b40c::t_139ac945e6a3f4 7
+  s_3cb2d6b0d2b40c::t_7a7fd79dd9d328 1-2,6,10-13,15,17,19,21,23,25,27,29,31,33,35,37,39,41,43,45,47,49,51,53,55,57,59,61,63,67
+  s_3cb2d6b0d2b40c::t_ede37b3dcad62c 3-4,8-9,14,16,42,64
+  s_3cb2d6b0d2b40c::t_6f80431a997101 5,18,20,22,32,36,40,44,56,62,65-66
+  s_3cb2d6b0d2b40c::t_45a858712f57e1 24,30,38,46,50,52,58,60,68
+  s_3cb2d6b0d2b40c::t_2ff204d9add15c 26,28,34,48,54
+priv/blog/en/2026-07-17-version-control-branching-narratives.md
+  s_3cb2d6b0d2b40c::t_567d85f5d979aa 1-2,6,10-13,15,17,19,21,23,25,27,29,31,33,35,37,39,41,43,45,47,49,51,53,55,57,59,61,63,67
+  s_3cb2d6b0d2b40c::t_62658a92d63f9c 24,26,28,30,34,38,46,48,50,52,54,58,60,68
+  s_3cb2d6b0d2b40c::t_18e7eaad97d815 3-4,8-9,14,16,64
+  s_3cb2d6b0d2b40c::t_139ac945e6a3f4 7
+  s_3cb2d6b0d2b40c::t_51b8c268c42cc6 5,18,20,22,32,36,40,42,44,56,62,65-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "67661606b2eaf14993294e738c33920784719234",
+  "prompts": {},
+  "sessions": {
+    "s_3cb2d6b0d2b40c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b4a-b042-7412-8d10-5e6b95b13ee5",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
