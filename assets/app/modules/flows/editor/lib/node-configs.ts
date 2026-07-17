@@ -29,7 +29,10 @@ export interface NodeData {
   responses?: { id: string }[];
   exit_pins?: ({ id: string | number } | string | number)[];
   exit_labels?: ({ id: string | number } | string | number)[];
-  condition?: { rules?: { id?: string }[] };
+  condition?: {
+    rules?: { id?: string }[];
+    blocks?: { id?: string }[];
+  };
   switch_mode?: boolean;
   [key: string]: unknown;
 }
@@ -104,16 +107,26 @@ export const NODE_CONFIGS: Record<FlowNodeType, NodeConfig> = {
  * Used by FlowNode constructor to create the right sockets.
  */
 export function createDynamicOutputs(type: string, data: NodeData): string[] | null {
-  if (type === "dialogue" && data.responses && data.responses.length > 0) {
-    return data.responses.map((r) => r.id);
+  switch (type) {
+    case "dialogue":
+      return dialogueDynamicOutputs(data);
+    case "subflow":
+      return subflowDynamicOutputs(data);
+    case "condition":
+      return conditionDynamicOutputs(data);
+    default:
+      return null;
   }
-  if (type === "subflow" && data.exit_pins && data.exit_pins.length > 0) {
-    return data.exit_pins.map(subflowExitPinId);
-  }
-  if (type === "subflow" && data.exit_labels && data.exit_labels.length > 0) {
-    return data.exit_labels.map(subflowExitPinId);
-  }
-  return null;
+}
+
+function dialogueDynamicOutputs(data: NodeData): string[] | null {
+  const responses = data.responses || [];
+  return responses.length > 0 ? responses.map((response) => response.id) : null;
+}
+
+function subflowDynamicOutputs(data: NodeData): string[] | null {
+  const pins = subflowOutputPins(data);
+  return pins.length > 0 ? pins : null;
 }
 
 function subflowExitPinId(pin: { id: string | number } | string | number): string {
@@ -136,14 +149,26 @@ function dialogueNeedsRebuild(oldData: NodeData | null, newData: NodeData): bool
   return false;
 }
 
-function getRuleCount(data: NodeData | null): number {
-  return data?.condition?.rules?.length ?? 0;
+function conditionDynamicOutputs(data: NodeData | null): string[] | null {
+  if (!data?.switch_mode) return null;
+
+  const cases = data.condition?.blocks ?? data.condition?.rules ?? [];
+  const caseIds = cases.flatMap((item) =>
+    item.id === null || item.id === undefined ? [] : [String(item.id)],
+  );
+
+  return [...caseIds, "default"];
 }
 
 function conditionNeedsRebuild(oldData: NodeData | null, newData: NodeData): boolean {
   if (Boolean(oldData?.switch_mode) !== Boolean(newData.switch_mode)) return true;
-  if (!newData.switch_mode) return false;
-  return getRuleCount(oldData) !== getRuleCount(newData);
+
+  const oldOutputs = conditionDynamicOutputs(oldData) || [];
+  const newOutputs = conditionDynamicOutputs(newData) || [];
+  return (
+    oldOutputs.length !== newOutputs.length ||
+    oldOutputs.some((output, index) => output !== newOutputs[index])
+  );
 }
 
 function subflowNeedsRebuild(oldData: NodeData | null, newData: NodeData): boolean {

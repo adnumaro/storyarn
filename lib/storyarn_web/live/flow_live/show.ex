@@ -99,6 +99,7 @@ defmodule StoryarnWeb.FlowLive.Show do
           %{
             wordCount: @flow_word_count,
             errorNodes: @flow_error_nodes,
+            warningNodes: @flow_warning_nodes,
             infoNodes: @flow_info_nodes
           }
         }
@@ -205,6 +206,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:available_scenes, [])
       |> assign(:flow_word_count, 0)
       |> assign(:flow_error_nodes, [])
+      |> assign(:flow_warning_nodes, [])
       |> assign(:flow_info_nodes, [])
       |> assign(:save_status, :idle)
       |> assign(:save_status_reset_token, nil)

@@ -42,6 +42,7 @@
       "word_count": "{count} word in this flow | {count} words in this flow",
       "flow_health": "Review flow health",
       "errors": "Errors",
+      "warnings": "Warnings",
       "info": "Info",
       "looks_great": "This flow looks great!",
       "saving": "Saving",

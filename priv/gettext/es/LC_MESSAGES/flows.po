@@ -449,6 +449,96 @@ msgstr "No tienes permiso para editar."
 msgid "Debug session started"
 msgstr "Sesión de depuración iniciada"
 
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Flow"
+msgstr "Flujo"
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Missing entry node"
+msgstr "Falta el nodo de entrada"
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Flow has %{count} entry nodes"
+msgstr "El flujo tiene %{count} nodos de entrada"
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Missing jump target"
+msgstr "Falta el destino del salto"
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Jump target does not exist"
+msgstr "El destino del salto no existe"
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Missing exit flow reference"
+msgstr "Falta la referencia de flujo de la salida"
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Exit flow reference does not exist"
+msgstr "La referencia de flujo de la salida no existe"
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Invalid output connection pin(s): %{pins}"
+msgstr "Pines de conexión de salida no válidos: %{pins}"
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Invalid input connection pin(s): %{pins}"
+msgstr "Pines de conexión de entrada no válidos: %{pins}"
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Missing dialogue speaker"
+msgstr "Falta el personaje del diálogo"
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Empty dialogue response"
+msgstr "Respuesta de diálogo vacía"
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Incomplete response condition"
+msgstr "Condición de respuesta incompleta"
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Incomplete response assignment"
+msgstr "Asignación de respuesta incompleta"
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Incomplete condition"
+msgstr "Condición incompleta"
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Incomplete instruction assignment"
+msgstr "Asignación de instrucción incompleta"
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Output(s) without connection: %{pins}"
+msgstr "Salidas sin conexión: %{pins}"
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "No instruction assignments"
+msgstr "Sin asignaciones de instrucción"
+
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Condition has no rules"
+msgstr "La condición no tiene reglas"
+
 #: lib/storyarn_web/live/flow_live/show.ex:676
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Could not create sequence"

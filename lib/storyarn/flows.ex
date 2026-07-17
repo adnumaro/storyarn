@@ -681,12 +681,31 @@ defmodule Storyarn.Flows do
     nodes = Repo.preload(flow.nodes, :sequence_config)
     active_connections = active_graph_connections(nodes, flow.connections)
 
-    subflow_cache = NodeCrud.batch_resolve_subflow_data(flow.nodes)
+    subflow_cache = NodeCrud.batch_resolve_subflow_data(flow.nodes, flow.project_id)
     referencing_flows = NodeCrud.list_nodes_referencing_flow(flow.id, flow.project_id)
-    unreachable_ids = compute_unreachable_ids(nodes, active_connections)
-    dead_end_ids = compute_dead_end_ids(nodes, active_connections)
 
-    cache = %{subflow: subflow_cache}
+    cache = %{subflow: subflow_cache, project_id: flow.project_id}
+
+    resolved_node_data =
+      Map.new(nodes, fn node ->
+        {node.id, resolve_node_colors(node.type, node.data, cache)}
+      end)
+
+    {health_connections, invalid_output_pins, invalid_input_pins} =
+      classify_health_connections(nodes, active_connections, resolved_node_data)
+
+    connected_output_pins =
+      Enum.reduce(health_connections, %{}, fn connection, acc ->
+        Map.update(
+          acc,
+          connection.source_node_id,
+          MapSet.new([connection.source_pin]),
+          &MapSet.put(&1, connection.source_pin)
+        )
+      end)
+
+    unreachable_ids = compute_unreachable_ids(nodes, health_connections)
+    dead_end_ids = compute_dead_end_ids(nodes, health_connections)
 
     %{
       id: flow.id,
@@ -695,11 +714,15 @@ defmodule Storyarn.Flows do
         Enum.map(nodes, fn node ->
           serialize_node(node, %{
             cache: cache,
+            resolved_node_data: resolved_node_data,
             stale_node_ids: stale_node_ids,
             project_variables: project_variables,
             referencing_flows: referencing_flows,
             unreachable_ids: unreachable_ids,
-            dead_end_ids: dead_end_ids
+            dead_end_ids: dead_end_ids,
+            connected_output_pins: connected_output_pins,
+            invalid_output_pins: invalid_output_pins,
+            invalid_input_pins: invalid_input_pins
           })
         end),
       connections:
@@ -725,14 +748,68 @@ defmodule Storyarn.Flows do
     end)
   end
 
-  defp serialize_node(%FlowNode{type: "sequence"} = node, _ctx) do
+  defp classify_health_connections(nodes, connections, resolved_node_data) do
+    nodes_by_id = Map.new(nodes, &{&1.id, &1})
+
+    connections
+    |> Enum.reduce({[], %{}, %{}}, fn connection, {valid, invalid_outputs, invalid_inputs} ->
+      source = Map.fetch!(nodes_by_id, connection.source_node_id)
+      target = Map.fetch!(nodes_by_id, connection.target_node_id)
+      source_data = Map.get(resolved_node_data, source.id, source.data)
+
+      valid_output? =
+        NodeConnectionRules.valid_output_pin?(
+          source.type,
+          source_data,
+          connection.source_pin
+        )
+
+      valid_input? = NodeConnectionRules.valid_input_pin?(target.type, connection.target_pin)
+
+      invalid_outputs =
+        maybe_add_invalid_pin(
+          invalid_outputs,
+          source.id,
+          connection.source_pin,
+          !valid_output?
+        )
+
+      invalid_inputs =
+        maybe_add_invalid_pin(
+          invalid_inputs,
+          target.id,
+          connection.target_pin,
+          !valid_input?
+        )
+
+      if valid_output? and valid_input? do
+        {[connection | valid], invalid_outputs, invalid_inputs}
+      else
+        {valid, invalid_outputs, invalid_inputs}
+      end
+    end)
+    |> then(fn {valid, invalid_outputs, invalid_inputs} ->
+      {Enum.reverse(valid), invalid_outputs, invalid_inputs}
+    end)
+  end
+
+  defp maybe_add_invalid_pin(pins, _node_id, _pin, false), do: pins
+
+  defp maybe_add_invalid_pin(pins, node_id, pin, true) do
+    Map.update(pins, node_id, [pin], fn existing ->
+      [pin | existing] |> Enum.uniq() |> Enum.sort()
+    end)
+  end
+
+  defp serialize_node(%FlowNode{type: "sequence"} = node, ctx) do
     config = node.sequence_config
 
-    data = %{
-      "name" => config && config.name,
-      "width" => config && config.width,
-      "height" => config && config.height
-    }
+    data =
+      maybe_add_connection_pin_errors(
+        %{"name" => config && config.name, "width" => config && config.width, "height" => config && config.height},
+        Map.get(ctx.invalid_output_pins, node.id, []),
+        Map.get(ctx.invalid_input_pins, node.id, [])
+      )
 
     %{
       id: node.id,
@@ -745,13 +822,22 @@ defmodule Storyarn.Flows do
 
   defp serialize_node(%FlowNode{} = node, ctx) do
     data =
-      node.type
-      |> resolve_node_colors(node.data, ctx.cache)
+      ctx.resolved_node_data
+      |> Map.fetch!(node.id)
       |> maybe_add_stale_flag(node.id, ctx.stale_node_ids)
       |> maybe_add_type_warning_flag(node.type, ctx.project_variables)
       |> maybe_add_referencing_flows(node.type, ctx.referencing_flows)
       |> maybe_add_unreachable_flag(node.id, node.type, ctx.unreachable_ids)
       |> maybe_add_dead_end_flag(node.id, node.type, ctx.dead_end_ids)
+      |> maybe_add_missing_output_pins(
+        node.id,
+        node.type,
+        Map.get(ctx.connected_output_pins, node.id, MapSet.new())
+      )
+      |> maybe_add_connection_pin_errors(
+        Map.get(ctx.invalid_output_pins, node.id, []),
+        Map.get(ctx.invalid_input_pins, node.id, [])
+      )
 
     %{
       id: node.id,
@@ -789,8 +875,8 @@ defmodule Storyarn.Flows do
     NodeCrud.resolve_subflow_data(data, subflow_cache)
   end
 
-  def resolve_node_colors("exit", data, _cache) do
-    NodeCrud.resolve_exit_data(data)
+  def resolve_node_colors("exit", data, cache) do
+    NodeCrud.resolve_exit_data(data, Map.get(cache, :project_id))
   end
 
   def resolve_node_colors(_type, data, _cache), do: data
@@ -860,21 +946,65 @@ defmodule Storyarn.Flows do
       else: data
   end
 
+  defp maybe_add_missing_output_pins(data, _id, type, _connected_pins) when type in ~w(exit jump annotation sequence),
+    do: data
+
+  defp maybe_add_missing_output_pins(data, _id, type, connected_pins) do
+    missing_pins =
+      type
+      |> NodeConnectionRules.output_pins(data)
+      |> Enum.reject(&MapSet.member?(connected_pins, &1))
+
+    if missing_pins == [] do
+      data
+    else
+      Map.put(data, "missing_output_pins", missing_pins)
+    end
+  end
+
+  defp maybe_add_connection_pin_errors(data, [], []), do: data
+
+  defp maybe_add_connection_pin_errors(data, invalid_output_pins, invalid_input_pins) do
+    data
+    |> maybe_put_non_empty("invalid_output_pins", invalid_output_pins)
+    |> maybe_put_non_empty("invalid_input_pins", invalid_input_pins)
+  end
+
+  defp maybe_put_non_empty(data, _key, []), do: data
+  defp maybe_put_non_empty(data, key, values), do: Map.put(data, key, values)
+
   defp compute_unreachable_ids(nodes, connections) do
     entry_ids = for n <- nodes, n.type == "entry", do: n.id
 
     if entry_ids == [] do
       MapSet.new()
     else
-      adj =
+      physical_adj =
         Enum.reduce(connections, %{}, fn c, acc ->
           Map.update(acc, c.source_node_id, [c.target_node_id], &[c.target_node_id | &1])
         end)
 
+      adj = add_jump_edges(physical_adj, nodes)
       reachable = bfs(entry_ids, adj, MapSet.new(entry_ids))
       all_ids = MapSet.new(nodes, & &1.id)
       MapSet.difference(all_ids, reachable)
     end
+  end
+
+  defp add_jump_edges(adj, nodes) do
+    hubs_by_identifier =
+      nodes
+      |> Enum.filter(&(&1.type == "hub"))
+      |> Map.new(&{&1.data["hub_id"], &1.id})
+
+    nodes
+    |> Enum.filter(&(&1.type == "jump"))
+    |> Enum.reduce(adj, fn jump, acc ->
+      case Map.get(hubs_by_identifier, jump.data["target_hub_id"]) do
+        nil -> acc
+        hub_node_id -> Map.update(acc, jump.id, [hub_node_id], &[hub_node_id | &1])
+      end
+    end)
   end
 
   defp compute_dead_end_ids(nodes, connections) do

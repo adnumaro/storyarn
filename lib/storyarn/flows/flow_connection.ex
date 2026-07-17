@@ -69,8 +69,13 @@ defmodule Storyarn.Flows.FlowConnection do
   """
   def update_changeset(connection, attrs) do
     connection
-    |> cast(attrs, [:label])
+    |> cast(attrs, [:label, :source_pin])
+    |> validate_required([:source_pin])
+    |> validate_length(:source_pin, max: 100)
     |> validate_length(:label, max: 200)
+    |> unique_constraint([:source_node_id, :source_pin, :target_node_id, :target_pin],
+      name: :flow_connections_source_node_id_source_pin_target_node_id_targe
+    )
   end
 
   defp validate_not_self_connection(changeset) do

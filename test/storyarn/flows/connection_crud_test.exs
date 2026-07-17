@@ -486,6 +486,42 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
 
       assert errors_on(changeset).label
     end
+
+    test "updates the source pin of a connection" do
+      %{flow: flow} = create_project_and_flow()
+      dialogue = node_fixture(flow, %{type: "dialogue"})
+      target = node_fixture(flow, %{type: "dialogue"})
+      conn = connection_fixture(flow, dialogue, target, %{source_pin: "old-response"})
+
+      assert {:ok, updated} =
+               Flows.update_connection(conn, %{source_pin: "new-response"})
+
+      assert updated.source_pin == "new-response"
+      assert Flows.get_connection!(flow.id, conn.id).source_pin == "new-response"
+    end
+
+    test "requires a source pin when updating a connection" do
+      %{flow: flow} = create_project_and_flow()
+      entry = get_entry_node(flow)
+      dialogue = node_fixture(flow, %{type: "dialogue"})
+      conn = connection_fixture(flow, entry, dialogue)
+
+      assert {:error, changeset} = Flows.update_connection(conn, %{source_pin: ""})
+      assert errors_on(changeset).source_pin
+    end
+
+    test "rejects a source pin update that duplicates an existing connection" do
+      %{flow: flow} = create_project_and_flow()
+      dialogue = node_fixture(flow, %{type: "dialogue"})
+      target = node_fixture(flow, %{type: "dialogue"})
+      _existing = connection_fixture(flow, dialogue, target, %{source_pin: "response-1"})
+      conn = connection_fixture(flow, dialogue, target, %{source_pin: "response-2"})
+
+      assert {:error, changeset} =
+               Flows.update_connection(conn, %{source_pin: "response-1"})
+
+      assert errors_on(changeset).source_node_id
+    end
   end
 
   # ===========================================================================
