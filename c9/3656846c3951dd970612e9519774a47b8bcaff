@@ -1,0 +1,29 @@
+test/storyarn/blog_test.exs
+  s_3cb2d6b0d2b40c::t_f0ac81fb51a9b2 11,14,35,108,122,126
+test/storyarn_web/live/blog_live/show_test.exs
+  s_3cb2d6b0d2b40c::t_f0ac81fb51a9b2 143
+  s_3cb2d6b0d2b40c::t_bc916e54384876 41,79
+priv/blog/es/2026-07-14-presentamos-storyarn.md
+  s_3cb2d6b0d2b40c::t_f0ac81fb51a9b2 7,90
+priv/blog/en/2026-07-14-introducing-storyarn.md
+  s_3cb2d6b0d2b40c::t_bc916e54384876 90
+  s_3cb2d6b0d2b40c::t_f0ac81fb51a9b2 7
+test/e2e/blog_test.exs
+  s_3cb2d6b0d2b40c::t_f0ac81fb51a9b2 174-176,377
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c93656846c3951dd970612e9519774a47b8bcaff",
+  "prompts": {},
+  "sessions": {
+    "s_3cb2d6b0d2b40c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b4a-b042-7412-8d10-5e6b95b13ee5",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
