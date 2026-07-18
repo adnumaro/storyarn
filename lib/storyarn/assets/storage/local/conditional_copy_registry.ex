@@ -80,7 +80,8 @@ defmodule Storyarn.Assets.Storage.Local.ConditionalCopyRegistry do
     end
   end
 
-  # sobelow_skip ["Traversal.FileModule"]
+  # Marker files are private, capped at 256 bytes, and decoded with [:safe].
+  # sobelow_skip ["Traversal.FileModule", "Misc.BinToTerm"]
   defp owner_marker_active?(path, stale_cutoff) do
     marker_path = owner_marker_path(path)
 
