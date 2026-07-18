@@ -12,6 +12,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
 
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.HubColors
   alias Storyarn.Localization.GlossaryEntry
@@ -33,7 +34,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   alias Storyarn.Versioning.Builders.SceneBuilder
   alias Storyarn.Versioning.Builders.SheetBuilder
 
-  @recovery_id_map_keys [:sheet, :block, :flow, :node, :scene, :pin, :zone]
+  @recovery_id_map_keys [:sheet, :block, :flow, :node, :connection, :scene, :pin, :zone]
 
   @doc """
   Recovers a project from snapshot data by creating a new project with all entities.
@@ -49,9 +50,25 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   @spec recover_project(integer(), map(), integer(), keyword()) ::
           {:ok, Project.t()} | {:error, term()}
   def recover_project(workspace_id, snapshot_data, user_id, opts \\ []) do
+    case asset_copy_tracker(opts) do
+      {:ok, tracker, owns_tracker?} ->
+        recover_project_with_tracker(
+          workspace_id,
+          snapshot_data,
+          user_id,
+          opts,
+          tracker,
+          owns_tracker?
+        )
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp recover_project_with_tracker(workspace_id, snapshot_data, user_id, opts, tracker, owns_tracker?) do
     snapshot_data = FlowSnapshotNormalizer.normalize_project(snapshot_data)
     name = Keyword.get(opts, :name, "Recovered Project")
-    {tracker, owns_tracker?} = asset_copy_tracker(opts)
     opts = Keyword.put(opts, :asset_copy_tracker, tracker)
 
     try do
@@ -59,8 +76,14 @@ defmodule Storyarn.Versioning.ProjectRecovery do
         Repo.transaction(
           fn ->
             case do_recover(workspace_id, snapshot_data, user_id, name, opts) do
-              {:ok, project} -> project
-              {:error, reason} -> Repo.rollback(reason)
+              {:ok, project} ->
+                case prepare_asset_cleanup_handoff(tracker, owns_tracker?) do
+                  :ok -> project
+                  {:error, reason} -> Repo.rollback({:storage_cleanup_handoff_failed, reason})
+                end
+
+              {:error, reason} ->
+                Repo.rollback(reason)
             end
           end,
           timeout: to_timeout(minute: 5)
@@ -89,13 +112,15 @@ defmodule Storyarn.Versioning.ProjectRecovery do
       id_maps = merge_recovery_id_maps([sheet_maps, scene_maps, flow_maps])
 
       remap_sheet_refs(id_maps, snapshot_data)
-      remap_flow_refs(id_maps, snapshot_data)
-      remap_scene_refs(id_maps, snapshot_data)
 
-      restore_tree_hierarchy(snapshot_data, id_maps)
-      recover_localization(project.id, snapshot_data, id_maps, user_id, opts, now)
+      with :ok <- remap_flow_refs(id_maps, snapshot_data) do
+        remap_scene_refs(id_maps, snapshot_data)
 
-      {:ok, project}
+        restore_tree_hierarchy(snapshot_data, id_maps)
+        recover_localization(project.id, snapshot_data, id_maps, user_id, opts, now)
+
+        {:ok, project}
+      end
     end
   end
 
@@ -242,10 +267,32 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp remap_flow_refs(id_maps, snapshot_data) do
-    Enum.each(snapshot_data["flows"] || [], &remap_single_flow_snapshot(&1, id_maps))
+    exit_flow_ids_by_node = remapped_exit_flow_ids_by_node(id_maps.flow)
+
+    Enum.reduce_while(snapshot_data["flows"] || [], :ok, fn entry, :ok ->
+      case remap_single_flow_snapshot(entry, id_maps, exit_flow_ids_by_node) do
+        :ok -> {:cont, :ok}
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
   end
 
-  defp remap_single_flow_snapshot(entry, id_maps) do
+  defp remapped_exit_flow_ids_by_node(flow_id_map) do
+    flow_ids = Map.values(flow_id_map)
+
+    if flow_ids == [] do
+      %{}
+    else
+      from(node in FlowNode,
+        where: node.flow_id in ^flow_ids and node.type == "exit" and is_nil(node.deleted_at),
+        select: {node.id, node.flow_id}
+      )
+      |> Repo.all()
+      |> Map.new()
+    end
+  end
+
+  defp remap_single_flow_snapshot(entry, id_maps, exit_flow_ids_by_node) do
     case remap_id(entry["id"], id_maps.flow) do
       nil ->
         :ok
@@ -253,6 +300,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
       new_flow_id ->
         remap_flow_scene_id(new_flow_id, entry["snapshot"]["scene_id"], id_maps.scene)
         Enum.each(entry["snapshot"]["nodes"] || [], &remap_node_snapshot(&1, id_maps))
+        remap_flow_connection_pins(entry["snapshot"], id_maps, exit_flow_ids_by_node)
     end
   end
 
@@ -290,6 +338,46 @@ defmodule Storyarn.Versioning.ProjectRecovery do
       Repo.update_all(from(n in FlowNode, where: n.id == ^node_id), set: [data: new_data])
     end
   end
+
+  defp remap_flow_connection_pins(snapshot, id_maps, exit_flow_ids_by_node) do
+    nodes = snapshot["nodes"] || []
+
+    Enum.reduce_while(snapshot["connections"] || [], :ok, fn connection, :ok ->
+      source_node = Enum.at(nodes, connection["source_node_index"])
+
+      case remap_subflow_exit_pin(connection, source_node, id_maps, exit_flow_ids_by_node) do
+        :ok -> {:cont, :ok}
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp remap_subflow_exit_pin(
+         %{"original_id" => connection_id, "source_pin" => "exit_" <> old_node_id_text},
+         %{"type" => "subflow", "data" => %{} = source_data},
+         id_maps,
+         exit_flow_ids_by_node
+       ) do
+    with new_connection_id when is_integer(new_connection_id) <-
+           remap_id(connection_id, id_maps.connection),
+         new_node_id when is_integer(new_node_id) <- remap_id(old_node_id_text, id_maps.node),
+         referenced_flow_id when is_integer(referenced_flow_id) <-
+           remap_id(source_data["referenced_flow_id"], id_maps.flow),
+         ^referenced_flow_id <- Map.get(exit_flow_ids_by_node, new_node_id),
+         {1, _rows} <-
+           Repo.update_all(
+             from(connection in FlowConnection, where: connection.id == ^new_connection_id),
+             set: [source_pin: "exit_#{new_node_id}"]
+           ) do
+      :ok
+    else
+      _ ->
+        {:error,
+         {:unremappable_subflow_exit_pin, %{connection_id: connection_id, source_pin: "exit_#{old_node_id_text}"}}}
+    end
+  end
+
+  defp remap_subflow_exit_pin(_connection, _source_node, _id_maps, _exit_flow_ids_by_node), do: :ok
 
   defp normalize_hub_color(data, "hub") do
     Map.put(data, "color", HubColors.resolve_legacy(data["color"]))
@@ -389,11 +477,25 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp remap_id(nil, _map), do: nil
+
+  defp remap_id(old_id, map) when is_binary(old_id) do
+    case Map.fetch(map, old_id) do
+      {:ok, new_id} ->
+        new_id
+
+      :error ->
+        case Integer.parse(old_id) do
+          {integer_id, ""} -> Map.get(map, integer_id)
+          _ -> nil
+        end
+    end
+  end
+
   defp remap_id(old_id, map), do: Map.get(map, old_id)
 
-  defp remap_target_id("sheet", old_id, id_maps), do: Map.get(id_maps.sheet, old_id)
-  defp remap_target_id("flow", old_id, id_maps), do: Map.get(id_maps.flow, old_id)
-  defp remap_target_id("scene", old_id, id_maps), do: Map.get(id_maps.scene, old_id)
+  defp remap_target_id("sheet", old_id, id_maps), do: remap_id(old_id, id_maps.sheet)
+  defp remap_target_id("flow", old_id, id_maps), do: remap_id(old_id, id_maps.flow)
+  defp remap_target_id("scene", old_id, id_maps), do: remap_id(old_id, id_maps.scene)
   defp remap_target_id(_type, _old_id, _id_maps), do: nil
 
   # ========== Phase C: Tree Hierarchy ==========
@@ -614,8 +716,13 @@ defmodule Storyarn.Versioning.ProjectRecovery do
 
   defp asset_copy_tracker(opts) do
     case Keyword.get(opts, :asset_copy_tracker) do
-      reference when is_reference(reference) -> {reference, false}
-      _reference -> {StorageCompensation.new(), true}
+      reference when is_reference(reference) ->
+        {:ok, reference, false}
+
+      _reference ->
+        if Repo.in_transaction?(),
+          do: {:error, :asset_copy_tracker_required_in_transaction},
+          else: {:ok, StorageCompensation.new(), true}
     end
   end
 
@@ -632,6 +739,10 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp finalize_asset_copies(result, _tracker, false), do: result
+
+  defp prepare_asset_cleanup_handoff(tracker, true), do: StorageCompensation.prepare_unretained_cleanup(tracker)
+
+  defp prepare_asset_cleanup_handoff(_tracker, false), do: :ok
 
   defp cleanup_owned_asset_copies(tracker, true), do: StorageCompensation.cleanup!(tracker)
   defp cleanup_owned_asset_copies(_tracker, false), do: :ok

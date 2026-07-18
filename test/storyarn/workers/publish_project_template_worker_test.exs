@@ -16,6 +16,14 @@ defmodule Storyarn.Workers.PublishProjectTemplateWorkerTest do
   alias Storyarn.Workspaces.WorkspaceMembership
 
   describe "perform/1" do
+    test "snoozes session lock contention without consuming the retry budget" do
+      assert {:snooze, 30} =
+               PublishProjectTemplateWorker.handle_perform_result(
+                 {:error, :session_lock_timeout},
+                 123
+               )
+    end
+
     test "publishes a queued new template" do
       user = user_fixture()
       scope = user_scope_fixture(user)

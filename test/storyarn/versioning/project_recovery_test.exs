@@ -13,6 +13,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Localization
+  alias Storyarn.ProjectTemplates.Audit
   alias Storyarn.Repo
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.Sheet
@@ -28,6 +29,19 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
   end
 
   describe "recover_project/4" do
+    test "requires external transactions to provide a storage tracker", %{
+      project: project,
+      workspace_id: workspace_id,
+      user: user
+    } do
+      snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
+
+      assert {:ok, {:error, :asset_copy_tracker_required_in_transaction}} =
+               Repo.transaction(fn ->
+                 ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id)
+               end)
+    end
+
     test "creates a new project from snapshot data", %{
       project: project,
       workspace_id: workspace_id,
@@ -239,6 +253,135 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       assert recovered_dialogue.data["speaker_sheet_id"] == recovered_speaker.id
       assert recovered_dialogue.data["location_sheet_id"] == recovered_speaker.id
       assert recovered_subflow_node.data["referenced_flow_id"] == recovered_subflow.id
+    end
+
+    test "remaps subflow exit pins when snapshot IDs use mixed integer and string encodings", %{
+      project: project,
+      workspace_id: workspace_id,
+      user: user
+    } do
+      caller_flow = flow_fixture(project, %{name: "Caller Flow"})
+      referenced_flow = flow_fixture(project, %{name: "Referenced Flow"})
+
+      referenced_exit =
+        node_fixture(referenced_flow, %{
+          type: "exit",
+          data: %{"label" => "Returned", "exit_mode" => "caller_return"}
+        })
+
+      subflow_node =
+        node_fixture(caller_flow, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => to_string(referenced_flow.id)}
+        })
+
+      next_node = node_fixture(caller_flow, %{type: "hub"})
+
+      connection =
+        Storyarn.FlowsFixtures.connection_fixture(caller_flow, subflow_node, next_node, %{
+          source_pin: "exit_#{referenced_exit.id}"
+        })
+
+      snapshot_data =
+        project.id
+        |> ProjectSnapshotBuilder.build_snapshot()
+        |> update_flow_snapshot(caller_flow.id, fn snapshot ->
+          update_in(snapshot["connections"], fn connections ->
+            Enum.map(connections, fn
+              %{"original_id" => original_id} = entry when original_id == connection.id ->
+                Map.put(entry, "original_id", to_string(original_id))
+
+              entry ->
+                entry
+            end)
+          end)
+        end)
+        |> update_flow_snapshot(referenced_flow.id, fn snapshot ->
+          update_in(snapshot["nodes"], fn nodes ->
+            Enum.map(nodes, fn
+              %{"original_id" => original_id} = entry when original_id == referenced_exit.id ->
+                Map.put(entry, "original_id", to_string(original_id))
+
+              entry ->
+                entry
+            end)
+          end)
+        end)
+
+      assert {:ok, recovered} =
+               ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id)
+
+      recovered_flows = Storyarn.Flows.list_flows(recovered.id)
+
+      recovered_caller =
+        recovered_flows
+        |> Enum.find(&(&1.name == "Caller Flow"))
+        |> Repo.preload([:connections, :nodes], force: true)
+
+      recovered_referenced =
+        recovered_flows
+        |> Enum.find(&(&1.name == "Referenced Flow"))
+        |> Repo.preload(:nodes, force: true)
+
+      recovered_exit =
+        Enum.find(
+          recovered_referenced.nodes,
+          &(&1.type == "exit" and &1.data["label"] == "Returned")
+        )
+
+      recovered_subflow = Enum.find(recovered_caller.nodes, &(&1.type == "subflow"))
+      recovered_connection = Enum.find(recovered_caller.connections, &(&1.source_node_id == recovered_subflow.id))
+
+      assert recovered_connection.source_pin == "exit_#{recovered_exit.id}"
+      assert {:ok, %{"status" => "passed"}} = Audit.run(recovered.id)
+    end
+
+    test "rolls back recovery when a subflow exit pin has no referenced exit node", %{
+      project: project,
+      workspace_id: workspace_id,
+      user: user
+    } do
+      caller_flow = flow_fixture(project, %{name: "Caller Flow"})
+      referenced_flow = flow_fixture(project, %{name: "Referenced Flow"})
+
+      referenced_exit =
+        node_fixture(referenced_flow, %{
+          type: "exit",
+          data: %{"label" => "Returned", "exit_mode" => "caller_return"}
+        })
+
+      subflow_node =
+        node_fixture(caller_flow, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => referenced_flow.id}
+        })
+
+      next_node = node_fixture(caller_flow, %{type: "hub"})
+
+      connection =
+        Storyarn.FlowsFixtures.connection_fixture(caller_flow, subflow_node, next_node, %{
+          source_pin: "exit_#{referenced_exit.id}"
+        })
+
+      snapshot_data =
+        project.id
+        |> ProjectSnapshotBuilder.build_snapshot()
+        |> update_flow_snapshot(referenced_flow.id, fn snapshot ->
+          update_in(snapshot["nodes"], fn nodes ->
+            Enum.reject(nodes, &(&1["original_id"] == referenced_exit.id))
+          end)
+        end)
+
+      assert {:error, {:unremappable_subflow_exit_pin, %{connection_id: connection_id, source_pin: source_pin}}} =
+               ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id)
+
+      assert connection_id == connection.id
+      assert source_pin == "exit_#{referenced_exit.id}"
+
+      refute Repo.exists?(
+               from project in Storyarn.Projects.Project,
+                 where: project.workspace_id == ^workspace_id and project.name == "Recovered Project"
+             )
     end
 
     test "normalizes legacy Hub colors while remapping recovered node data", %{
@@ -560,5 +703,17 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
     end)
 
     asset
+  end
+
+  defp update_flow_snapshot(snapshot_data, flow_id, update_fun) do
+    update_in(snapshot_data["flows"], fn flows ->
+      Enum.map(flows, fn
+        %{"id" => ^flow_id, "snapshot" => snapshot} = entry ->
+          Map.put(entry, "snapshot", update_fun.(snapshot))
+
+        entry ->
+          entry
+      end)
+    end)
   end
 end

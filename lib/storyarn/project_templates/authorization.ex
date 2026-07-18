@@ -48,7 +48,7 @@ defmodule Storyarn.ProjectTemplates.Authorization do
   def ensure_template_source(%ProjectTemplate{source_project_id: project_id}, %Project{id: project_id}), do: :ok
   def ensure_template_source(%ProjectTemplate{}, %Project{}), do: {:error, :invalid_source_project}
 
-  def authorize_template_manager(%Scope{} = scope, %ProjectTemplate{visibility: "private"} = template) do
+  def authorize_template_manager(%Scope{} = scope, %ProjectTemplate{} = template) do
     if can_manage_template?(scope, template) do
       :ok
     else
@@ -60,6 +60,17 @@ defmodule Storyarn.ProjectTemplates.Authorization do
 
   def can_manage_template?(%Scope{user: %{id: user_id}}, %ProjectTemplate{visibility: "private"} = template) do
     template.owner_id == user_id or source_template_admin?(user_id, template.source_project_id)
+  end
+
+  def can_manage_template?(%Scope{user: %{is_super_admin: true}} = scope, %ProjectTemplate{
+        visibility: "public",
+        source_project_id: source_project_id
+      })
+      when is_integer(source_project_id) do
+    case Repo.get(Project, source_project_id) do
+      %Project{} = source_project -> match?({:ok, _project}, authorize_source_project(scope, source_project))
+      nil -> false
+    end
   end
 
   def can_manage_template?(_scope, _template), do: false

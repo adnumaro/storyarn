@@ -2,6 +2,7 @@ defmodule Storyarn.Assets.Storage.LocalTest do
   use ExUnit.Case, async: false
 
   alias Storyarn.Assets.Storage.Local
+  alias Storyarn.Assets.Storage.Local.ConditionalCopyRegistry
 
   setup do
     # Each test gets its own unique directory to avoid async race conditions
@@ -167,6 +168,329 @@ defmodule Storyarn.Assets.Storage.LocalTest do
       assert {:error, :invalid_key} = Local.copy(key, "../escaped.txt")
     end
   end
+
+  describe "copy_if_absent/2" do
+    test "copies a large source once without replacing the destination", %{test_dir: test_dir} do
+      source_key = "copy/source.bin"
+      destination_key = "copy/destination.bin"
+      source = :binary.copy("bounded-copy-", 200_000)
+
+      assert byte_size(source) > 2_000_000
+      assert {:ok, _url} = Local.upload(source_key, source, "application/octet-stream")
+      assert {:ok, true} = Local.copy_if_absent(source_key, destination_key)
+
+      assert {:ok, _url} = Local.upload(source_key, "replacement", "application/octet-stream")
+      assert {:ok, false} = Local.copy_if_absent(source_key, destination_key)
+      assert File.read!(Path.join(test_dir, destination_key)) == source
+
+      assert conditional_copy_paths(test_dir, destination_key) == []
+    end
+
+    test "claims destination ownership for exactly one concurrent caller", %{test_dir: test_dir} do
+      first_source_key = "race/first.bin"
+      second_source_key = "race/second.bin"
+      destination_key = "race/destination.bin"
+
+      assert {:ok, _url} = Local.upload(first_source_key, "first", "application/octet-stream")
+      assert {:ok, _url} = Local.upload(second_source_key, "second", "application/octet-stream")
+
+      results =
+        [first_source_key, second_source_key]
+        |> Task.async_stream(&Local.copy_if_absent(&1, destination_key),
+          max_concurrency: 2,
+          ordered: false
+        )
+        |> Enum.map(fn {:ok, result} -> result end)
+
+      assert Enum.count(results, &(&1 == {:ok, true})) == 1
+      assert Enum.count(results, &(&1 == {:ok, false})) == 1
+      assert File.read!(Path.join(test_dir, destination_key)) in ["first", "second"]
+
+      assert conditional_copy_paths(test_dir, destination_key) == []
+    end
+
+    test "reports a durable cleanup key when a published temporary link cannot be removed",
+         %{test_dir: test_dir} do
+      source_key = "cleanup/source.bin"
+      destination_key = "cleanup/destination.bin"
+      configure_conditional_copy_remove(fn _path -> {:error, :eacces} end)
+
+      assert {:ok, _url} = Local.upload(source_key, "source", "application/octet-stream")
+
+      assert {:error, {:conditional_copy_cleanup_required, true, temporary_key, :eacces}} =
+               Local.copy_if_absent(source_key, destination_key)
+
+      assert Path.dirname(temporary_key) ==
+               Path.join(Path.dirname(destination_key), ".storyarn-copy")
+
+      assert Path.basename(temporary_key) =~ ~r/\A[A-Za-z0-9_-]{16}\z/
+      assert File.read!(Path.join(test_dir, destination_key)) == "source"
+      assert File.read!(Path.join(test_dir, temporary_key)) == "source"
+
+      assert :ok = Local.delete(temporary_key)
+      refute File.exists?(Path.join(test_dir, temporary_key))
+      assert File.read!(Path.join(test_dir, destination_key)) == "source"
+    end
+
+    test "does not claim an existing destination when temporary cleanup is pending",
+         %{test_dir: test_dir} do
+      source_key = "cleanup-existing/source.bin"
+      destination_key = "cleanup-existing/destination.bin"
+      configure_conditional_copy_remove(fn _path -> {:error, :ebusy} end)
+
+      assert {:ok, _url} = Local.upload(source_key, "source", "application/octet-stream")
+      assert {:ok, _url} = Local.upload(destination_key, "existing", "application/octet-stream")
+
+      assert {:error, {:conditional_copy_cleanup_required, false, temporary_key, :ebusy}} =
+               Local.copy_if_absent(source_key, destination_key)
+
+      assert File.read!(Path.join(test_dir, destination_key)) == "existing"
+      assert File.read!(Path.join(test_dir, temporary_key)) == "source"
+
+      assert :ok = Local.delete(temporary_key)
+      assert File.read!(Path.join(test_dir, destination_key)) == "existing"
+    end
+
+    test "does not create a destination when the source is missing", %{test_dir: test_dir} do
+      destination_key = "missing/destination.bin"
+
+      assert {:error, :enoent} = Local.copy_if_absent("missing/source.bin", destination_key)
+      refute File.exists?(Path.join(test_dir, destination_key))
+    end
+
+    test "rejects traversal in either key", %{test_key: key} do
+      assert {:ok, _url} = Local.upload(key, "content", "text/plain")
+      assert {:error, :invalid_key} = Local.copy_if_absent("../source.txt", "safe/destination.txt")
+      assert {:error, :invalid_key} = Local.copy_if_absent(key, "../destination.txt")
+    end
+
+    test "reserves the conditional-copy namespace from ordinary storage writes" do
+      reserved_key = "ordinary/.storyarn-copy/AAAAAAAAAAAAAAAA"
+
+      assert {:error, :invalid_key} =
+               Local.upload(reserved_key, "content", "application/octet-stream")
+
+      assert {:error, :invalid_key} =
+               Local.put_if_absent(reserved_key, "content", "application/octet-stream")
+
+      assert {:error, :invalid_key} = Local.download(reserved_key)
+    end
+
+    test "sweeps stale conditional-copy files left by a terminated process",
+         %{test_dir: test_dir} do
+      stale_key = "abandoned/.storyarn-copy/AAAAAAAAAAAAAAAA"
+      fresh_key = "active/.storyarn-copy/BBBBBBBBBBBBBBBB"
+      corrupt_owner_key = "abandoned/.storyarn-copy/IIIIIIIIIIIIIIII"
+      invalid_reserved_key = "abandoned/.storyarn-copy/not-generated"
+      ordinary_key = "active/file.storyarn-copy-CCCCCCCCCCCCCCCC"
+
+      write_internal_file!(test_dir, stale_key, "stale")
+      write_internal_file!(test_dir, fresh_key, "fresh")
+      write_internal_file!(test_dir, corrupt_owner_key, "partial")
+      write_internal_file!(test_dir, "#{corrupt_owner_key}.owner", "not-an-owner")
+      write_internal_file!(test_dir, invalid_reserved_key, "reserved-but-not-generated")
+      assert {:ok, _url} = Local.upload(ordinary_key, "ordinary", "application/octet-stream")
+
+      stale_path = Path.join(test_dir, stale_key)
+      fresh_path = Path.join(test_dir, fresh_key)
+      corrupt_owner_path = Path.join(test_dir, corrupt_owner_key)
+      invalid_reserved_path = Path.join(test_dir, invalid_reserved_key)
+      ordinary_path = Path.join(test_dir, ordinary_key)
+      symlink_path = Path.join(test_dir, "links/.storyarn-copy/DDDDDDDDDDDDDDDD")
+      owner_symlink_path = Path.join(test_dir, "links/.storyarn-copy/GGGGGGGGGGGGGGGG.owner")
+      directory_path = Path.join(test_dir, "directories/.storyarn-copy/EEEEEEEEEEEEEEEE")
+      external_dir = Path.join(System.tmp_dir!(), "storyarn-copy-external-#{System.unique_integer([:positive])}")
+      external_stale_path = Path.join(external_dir, ".storyarn-copy/FFFFFFFFFFFFFFFF")
+      external_symlink_path = Path.join(test_dir, "external-link")
+
+      File.mkdir_p!(Path.dirname(symlink_path))
+      assert :ok = File.ln_s(Path.expand(ordinary_path), symlink_path)
+      assert :ok = File.ln_s(Path.expand(external_stale_path), owner_symlink_path)
+      File.mkdir_p!(directory_path)
+      write_internal_file!(external_dir, ".storyarn-copy/FFFFFFFFFFFFFFFF", "external")
+      assert :ok = File.ln_s(Path.expand(external_dir), external_symlink_path)
+      assert :ok = File.touch(stale_path, {{2000, 1, 1}, {0, 0, 0}})
+      assert :ok = File.touch(corrupt_owner_path, {{2000, 1, 1}, {0, 0, 0}})
+      assert :ok = File.touch("#{corrupt_owner_path}.owner", {{2000, 1, 1}, {0, 0, 0}})
+      assert :ok = File.touch(external_stale_path, {{2000, 1, 1}, {0, 0, 0}})
+
+      on_exit(fn -> File.rm_rf(external_dir) end)
+
+      configure_conditional_copy_stale_after_seconds(3_600)
+
+      assert :ok = Local.cleanup_stale_conditional_copies()
+      refute File.exists?(stale_path)
+      refute File.exists?(corrupt_owner_path)
+      refute File.exists?("#{corrupt_owner_path}.owner")
+      assert File.read!(fresh_path) == "fresh"
+      assert File.read!(invalid_reserved_path) == "reserved-but-not-generated"
+      assert File.read!(ordinary_path) == "ordinary"
+      assert {:ok, %{type: :symlink}} = File.lstat(symlink_path)
+      assert {:ok, %{type: :symlink}} = File.lstat(owner_symlink_path)
+      assert File.dir?(directory_path)
+      assert File.read!(external_stale_path) == "external"
+    end
+
+    test "keeps an active stale copy and removes it after its owner crashes",
+         %{test_dir: test_dir} do
+      active_key = "long-running/.storyarn-copy/AAAAAAAAAAAAAAAA"
+      active_path = Path.expand(Path.join(test_dir, active_key))
+      write_internal_file!(test_dir, active_key, "partial")
+      assert :ok = File.touch(active_path, {{2000, 1, 1}, {0, 0, 0}})
+
+      parent = self()
+
+      owner =
+        spawn(fn ->
+          ConditionalCopyRegistry.with_active_copy(active_path, fn ->
+            send(parent, {:copy_registered, self()})
+            Process.sleep(:infinity)
+          end)
+        end)
+
+      assert_receive {:copy_registered, ^owner}
+      configure_conditional_copy_stale_after_seconds(0)
+
+      assert :ok = Local.cleanup_stale_conditional_copies()
+      assert File.read!(active_path) == "partial"
+
+      monitor = Process.monitor(owner)
+      Process.exit(owner, :kill)
+      assert_receive {:DOWN, ^monitor, :process, ^owner, :killed}
+
+      assert_eventually(fn ->
+        assert :ok = Local.cleanup_stale_conditional_copies()
+        refute File.exists?(active_path)
+      end)
+    end
+
+    test "owner marker protects an active copy if its registry entry is lost",
+         %{test_dir: test_dir} do
+      active_key = "registry-restart/.storyarn-copy/HHHHHHHHHHHHHHHH"
+      active_path = Path.expand(Path.join(test_dir, active_key))
+      write_internal_file!(test_dir, active_key, "partial")
+      assert :ok = File.touch(active_path, {{2000, 1, 1}, {0, 0, 0}})
+
+      parent = self()
+
+      owner =
+        spawn(fn ->
+          ConditionalCopyRegistry.with_active_copy(active_path, fn ->
+            Registry.unregister(ConditionalCopyRegistry, active_path)
+            send(parent, {:registry_entry_dropped, self()})
+            Process.sleep(:infinity)
+          end)
+        end)
+
+      assert_receive {:registry_entry_dropped, ^owner}
+      configure_conditional_copy_stale_after_seconds(0)
+
+      assert :ok = Local.cleanup_stale_conditional_copies()
+      assert File.read!(active_path) == "partial"
+
+      monitor = Process.monitor(owner)
+      Process.exit(owner, :kill)
+      assert_receive {:DOWN, ^monitor, :process, ^owner, :killed}
+
+      assert_eventually(fn ->
+        assert :ok = Local.cleanup_stale_conditional_copies()
+        refute File.exists?(active_path)
+
+        refute File.exists?(ConditionalCopyRegistry.owner_marker_path(active_path))
+      end)
+    end
+
+    test "a failed contender does not remove the active owner's marker",
+         %{test_dir: test_dir} do
+      active_key = "contended/.storyarn-copy/JJJJJJJJJJJJJJJJ"
+      active_path = Path.expand(Path.join(test_dir, active_key))
+      File.mkdir_p!(Path.dirname(active_path))
+      parent = self()
+
+      owner =
+        spawn(fn ->
+          ConditionalCopyRegistry.with_active_copy(active_path, fn ->
+            send(parent, {:copy_registered, self()})
+
+            receive do
+              :finish -> :ok
+            end
+          end)
+        end)
+
+      assert_receive {:copy_registered, ^owner}
+
+      assert {:error, {:conditional_copy_owner_marker_failed, :eexist}} =
+               ConditionalCopyRegistry.with_active_copy(active_path, fn -> flunk("copy must not run") end)
+
+      assert File.exists?(ConditionalCopyRegistry.owner_marker_path(active_path))
+
+      monitor = Process.monitor(owner)
+      send(owner, :finish)
+      assert_receive {:DOWN, ^monitor, :process, ^owner, :normal}
+      refute File.exists?(ConditionalCopyRegistry.owner_marker_path(active_path))
+    end
+
+    test "expires stale markers left by a previous node incarnation",
+         %{test_dir: test_dir} do
+      stale_key = "previous-node/.storyarn-copy/KKKKKKKKKKKKKKKK"
+      stale_path = Path.expand(Path.join(test_dir, stale_key))
+      marker_path = ConditionalCopyRegistry.owner_marker_path(stale_path)
+
+      write_internal_file!(test_dir, stale_key, "partial")
+      File.write!(marker_path, :erlang.term_to_binary({:previous@node, self()}))
+      assert :ok = File.touch(stale_path, {{2000, 1, 1}, {0, 0, 0}})
+      assert :ok = File.touch(marker_path, {{2000, 1, 1}, {0, 0, 0}})
+      configure_conditional_copy_stale_after_seconds(3_600)
+
+      assert :ok = Local.cleanup_stale_conditional_copies()
+      refute File.exists?(stale_path)
+      refute File.exists?(marker_path)
+    end
+  end
+
+  defp configure_conditional_copy_remove(remove) do
+    config =
+      :storyarn
+      |> Application.get_env(:storage, [])
+      |> Keyword.put(:conditional_copy_file_rm, remove)
+
+    Application.put_env(:storyarn, :storage, config)
+  end
+
+  defp configure_conditional_copy_stale_after_seconds(seconds) do
+    config =
+      :storyarn
+      |> Application.get_env(:storage, [])
+      |> Keyword.put(:conditional_copy_stale_after_seconds, seconds)
+
+    Application.put_env(:storyarn, :storage, config)
+  end
+
+  defp conditional_copy_paths(test_dir, destination_key) do
+    test_dir
+    |> Path.join(Path.dirname(destination_key))
+    |> Path.join(".storyarn-copy/*")
+    |> Path.wildcard(match_dot: true)
+  end
+
+  defp write_internal_file!(root, key, contents) do
+    path = Path.join(root, key)
+    File.mkdir_p!(Path.dirname(path))
+    File.write!(path, contents)
+  end
+
+  defp assert_eventually(assertion, attempts \\ 20)
+
+  defp assert_eventually(assertion, attempts) when attempts > 1 do
+    assertion.()
+  rescue
+    ExUnit.AssertionError ->
+      Process.sleep(5)
+      assert_eventually(assertion, attempts - 1)
+  end
+
+  defp assert_eventually(assertion, 1), do: assertion.()
 
   # =============================================================================
   # presigned_upload_url/3

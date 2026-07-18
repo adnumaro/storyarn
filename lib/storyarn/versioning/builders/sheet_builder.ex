@@ -167,8 +167,10 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
   @impl true
   def instantiate_snapshot(project_id, snapshot, opts \\ []) do
-    fn -> instantiate_sheet_snapshot(project_id, snapshot, opts) end
-    |> Repo.transaction()
+    opts
+    |> MaterializationHelpers.with_asset_copy_tracker(fn tracked_opts ->
+      Repo.transaction(fn -> instantiate_sheet_snapshot(project_id, snapshot, tracked_opts) end, timeout: :infinity)
+    end)
     |> finalize_sheet_instantiation(project_id)
   end
 
@@ -254,17 +256,22 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
   @impl true
   def restore_snapshot(%Sheet{} = sheet, snapshot, opts \\ []) do
-    avatar_entries = build_avatar_entries(snapshot, sheet.project_id, MaterializationHelpers.now(), opts)
-    localization_rows = Map.get(snapshot, "localization", [])
+    opts
+    |> MaterializationHelpers.with_asset_copy_tracker(fn tracked_opts ->
+      localization_rows = Map.get(snapshot, "localization", [])
 
-    sheet
-    |> build_sheet_restore_multi(snapshot, opts, avatar_entries, localization_rows)
-    |> Repo.transaction()
+      sheet
+      |> build_sheet_restore_multi(snapshot, tracked_opts, localization_rows)
+      |> Repo.transaction(timeout: :infinity)
+    end)
     |> finalize_sheet_restore(snapshot, opts)
   end
 
-  defp build_sheet_restore_multi(sheet, snapshot, opts, avatar_entries, localization_rows) do
+  defp build_sheet_restore_multi(sheet, snapshot, opts, localization_rows) do
     Multi.new()
+    |> Multi.run(:prepare_avatars, fn _repo, _changes ->
+      {:ok, build_avatar_entries(snapshot, sheet.project_id, MaterializationHelpers.now(), opts)}
+    end)
     |> Multi.update(:sheet, fn _changes ->
       Sheet.update_changeset(sheet, %{
         name: snapshot["name"],
@@ -283,7 +290,9 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     |> Multi.delete_all(:delete_avatars, fn _changes ->
       from(sa in SheetAvatar, where: sa.sheet_id == ^sheet.id)
     end)
-    |> Multi.run(:restore_avatar, fn _repo, _changes -> restore_sheet_avatars(sheet.id, avatar_entries) end)
+    |> Multi.run(:restore_avatar, fn _repo, %{prepare_avatars: avatar_entries} ->
+      restore_sheet_avatars(sheet.id, avatar_entries)
+    end)
     |> Multi.delete_all(:delete_blocks, fn _changes ->
       from(b in Block, where: b.sheet_id == ^sheet.id)
     end)
@@ -336,6 +345,9 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
         sheet_restore_result(restored_sheet, block_data, snapshot, Keyword.get(opts, :return_id_maps, false))
 
       {:error, _op, reason, _changes} ->
+        {:error, reason}
+
+      {:error, reason} ->
         {:error, reason}
     end
   end

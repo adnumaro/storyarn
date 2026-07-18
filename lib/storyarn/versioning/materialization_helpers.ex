@@ -3,6 +3,7 @@ defmodule Storyarn.Versioning.MaterializationHelpers do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
 
@@ -36,6 +37,79 @@ defmodule Storyarn.Versioning.MaterializationHelpers do
     |> Keyword.take([:asset_copy_tracker, :asset_error_mode])
     |> Keyword.put(:asset_mode, asset_mode)
   end
+
+  @doc """
+  Runs a builder materialization with a storage compensation tracker when it
+  owns asset copies.
+
+  Callers that already coordinate a larger transaction may pass their tracker
+  through `:asset_copy_tracker`; in that case the caller remains responsible
+  for finalizing it. A builder can only own a tracker outside an existing
+  transaction, where its own transaction result is the final commit boundary.
+  """
+  @spec with_asset_copy_tracker(keyword(), (keyword() -> result)) ::
+          result | {:error, term()}
+        when result: term()
+  def with_asset_copy_tracker(opts, fun) when is_list(opts) and is_function(fun, 1) do
+    if Keyword.get(opts, :asset_mode) == :copy do
+      with_copy_tracker(opts, fun)
+    else
+      fun.(opts)
+    end
+  end
+
+  defp with_copy_tracker(opts, fun) do
+    case Keyword.get(opts, :asset_copy_tracker) do
+      tracker when is_reference(tracker) ->
+        fun.(opts)
+
+      _tracker ->
+        if Repo.in_transaction?() do
+          {:error, :asset_copy_tracker_required_in_transaction}
+        else
+          run_with_owned_copy_tracker(opts, fun)
+        end
+    end
+  end
+
+  defp run_with_owned_copy_tracker(opts, fun) do
+    tracker = StorageCompensation.new()
+    opts = Keyword.put(opts, :asset_copy_tracker, tracker)
+
+    try do
+      opts
+      |> fun.()
+      |> finalize_owned_copy_tracker(tracker)
+    rescue
+      error ->
+        StorageCompensation.cleanup!(tracker)
+        reraise error, __STACKTRACE__
+    catch
+      kind, reason ->
+        StorageCompensation.cleanup!(tracker)
+        :erlang.raise(kind, reason, __STACKTRACE__)
+    end
+  end
+
+  defp finalize_owned_copy_tracker(result, tracker) do
+    cleanup_result =
+      if successful_result?(result) do
+        StorageCompensation.cleanup_unretained(tracker)
+      else
+        StorageCompensation.cleanup(tracker)
+      end
+
+    case cleanup_result do
+      :ok -> result
+      {:error, reason} -> {:error, {:asset_storage_cleanup_failed, result, reason}}
+    end
+  end
+
+  defp successful_result?(result) when is_tuple(result) and tuple_size(result) > 0 do
+    elem(result, 0) == :ok
+  end
+
+  defp successful_result?(_result), do: false
 
   @spec resolve_project_external_ref(
           integer() | nil,

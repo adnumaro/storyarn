@@ -32,6 +32,7 @@
         "submitting": "Iniciando…",
         "installing": "Creando proyecto",
         "failed": "Error de creación",
+        "acknowledge_failure": "Entendido",
         "reference": "Instalación #{id}",
         "stages": {
           "queued": "Esperando un proceso disponible…",
@@ -39,6 +40,19 @@
           "materializing": "Copiando el contenido y los assets…",
           "retrying": "Ha ocurrido un problema temporal. Reintentando automáticamente…",
           "failed": "No se pudo crear el proyecto. Inténtalo de nuevo o contacta con soporte usando esta referencia."
+        },
+        "errors": {
+          "generic": "No se pudo crear el proyecto y no se ha conservado ningún proyecto parcial. Inténtalo de nuevo o contacta con soporte usando esta referencia.",
+          "archived": "Esta template ya no está disponible.",
+          "asset_copy_failed": "No se pudo copiar uno de los assets de la template.",
+          "checksum_mismatch": "La template no ha superado la comprobación de integridad.",
+          "incompatible_template_snapshot": "Esta versión de la template es incompatible. No se ha creado ningún proyecto. Contacta con soporte usando esta referencia.",
+          "limit_reached": "Se ha alcanzado el límite de proyectos del workspace.",
+          "missing_asset_manifest": "El manifiesto de assets de la template no está disponible.",
+          "missing_checksum": "La información de integridad de la template no está disponible.",
+          "not_found": "La template o el workspace ya no están disponibles.",
+          "unauthorized": "Ya no tienes permiso para instalar esta template.",
+          "unremappable_subflow_exit_pin": "Esta versión de la template contiene una salida de secuencia inválida y debe volver a publicarse."
         },
         "version": "v{version}",
         "counts": "Fichas / flows / escenas",

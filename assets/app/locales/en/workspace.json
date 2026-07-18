@@ -32,6 +32,7 @@
         "submitting": "Starting…",
         "installing": "Creating project",
         "failed": "Creation failed",
+        "acknowledge_failure": "Got it",
         "reference": "Installation #{id}",
         "stages": {
           "queued": "Waiting for an available worker…",
@@ -39,6 +40,19 @@
           "materializing": "Copying project content and assets…",
           "retrying": "A temporary issue occurred. Retrying automatically…",
           "failed": "The project could not be created. Try again or contact support with this reference."
+        },
+        "errors": {
+          "generic": "The project could not be created. No partial project was kept. Try again or contact support with this reference.",
+          "archived": "This template is no longer available.",
+          "asset_copy_failed": "A template asset could not be copied.",
+          "checksum_mismatch": "The template failed its integrity check.",
+          "incompatible_template_snapshot": "This template version is incompatible. No project was created. Contact support with this reference.",
+          "limit_reached": "The workspace project limit has been reached.",
+          "missing_asset_manifest": "The template asset manifest is unavailable.",
+          "missing_checksum": "The template integrity information is unavailable.",
+          "not_found": "The template or workspace is no longer available.",
+          "unauthorized": "You no longer have permission to install this template.",
+          "unremappable_subflow_exit_pin": "This template version contains an invalid sequence exit and must be republished."
         },
         "version": "v{version}",
         "counts": "Sheets / flows / scenes",

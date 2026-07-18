@@ -260,6 +260,12 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
   @impl true
   def instantiate_snapshot(project_id, snapshot, opts \\ []) do
+    MaterializationHelpers.with_asset_copy_tracker(opts, fn tracked_opts ->
+      instantiate_scene_snapshot(project_id, snapshot, tracked_opts)
+    end)
+  end
+
+  defp instantiate_scene_snapshot(project_id, snapshot, opts) do
     fn ->
       now = MaterializationHelpers.now()
 
@@ -353,7 +359,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
         {:error, reason} -> Repo.rollback(reason)
       end
     end
-    |> Repo.transaction()
+    |> Repo.transaction(timeout: :infinity)
     |> case do
       {:ok, {scene, id_maps}} -> {:ok, scene, id_maps}
       {:error, reason} -> {:error, reason}
@@ -362,6 +368,12 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
   @impl true
   def restore_snapshot(%Scene{} = scene, snapshot, opts \\ []) do
+    MaterializationHelpers.with_asset_copy_tracker(opts, fn tracked_opts ->
+      restore_scene_snapshot(scene, snapshot, tracked_opts)
+    end)
+  end
+
+  defp restore_scene_snapshot(scene, snapshot, opts) do
     Multi.new()
     |> Multi.update(:scene, fn _changes ->
       Scene.update_changeset(scene, %{
@@ -419,7 +431,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
         Map.put(layer_data, -1, %{pin_ids: orphan_data.pin_ids})
       )
     end)
-    |> Repo.transaction()
+    |> Repo.transaction(timeout: :infinity)
     |> case do
       {:ok, %{scene: updated_scene}} ->
         {:ok,

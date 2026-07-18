@@ -7,7 +7,12 @@ defmodule Storyarn.Assets.Storage.Local do
 
   @behaviour Storyarn.Assets.Storage
 
+  alias Storyarn.Assets.Storage.Local.ConditionalCopyRegistry
+
   @stream_chunk_size 1_048_576
+  @conditional_copy_directory ".storyarn-copy"
+  @conditional_copy_suffix_pattern ~r/\A[A-Za-z0-9_-]{16}\z/
+  @default_conditional_copy_stale_after_seconds 3_600
 
   @impl true
   # sobelow_skip ["Traversal.FileModule"]
@@ -60,7 +65,7 @@ defmodule Storyarn.Assets.Storage.Local do
   @impl true
   # sobelow_skip ["Traversal.FileModule"]
   def delete(key) do
-    with {:ok, path} <- file_path(key) do
+    with {:ok, path} <- file_path(key, allow_conditional_copy: true) do
       case File.rm(path) do
         :ok -> :ok
         {:error, :enoent} -> :ok
@@ -84,6 +89,43 @@ defmodule Storyarn.Assets.Storage.Local do
          {:ok, dest_path} <- file_path(dest_key),
          :ok <- ensure_directory(dest_path) do
       File.cp(source_path, dest_path)
+    end
+  end
+
+  @impl true
+  # sobelow_skip ["Traversal.FileModule"]
+  def copy_if_absent(source_key, dest_key) do
+    with {:ok, source_path} <- file_path(source_key),
+         {:ok, dest_path} <- file_path(dest_key),
+         temporary_key = temporary_copy_key(dest_key),
+         {:ok, temporary_path} <- file_path(temporary_key, allow_conditional_copy: true),
+         :ok <- ensure_directory(dest_path),
+         :ok <- ensure_directory(temporary_path),
+         {:ok, result} <-
+           File.open(source_path, [:read, :binary], fn source ->
+             copy_open_source_if_absent(source, dest_path, temporary_path, temporary_key)
+           end) do
+      result
+    end
+  end
+
+  @doc false
+  @spec cleanup_stale_conditional_copies() :: :ok | {:error, [{String.t(), term()}]}
+  def cleanup_stale_conditional_copies do
+    cutoff = System.system_time(:second) - conditional_copy_stale_after_seconds()
+    {conditional_copy_paths, traversal_failures} = conditional_copy_paths(upload_dir())
+
+    failures =
+      Enum.reduce(conditional_copy_paths, traversal_failures, fn path, failures ->
+        case remove_stale_conditional_copy(path, cutoff) do
+          :ok -> failures
+          {:error, reason} -> [{path, reason} | failures]
+        end
+      end)
+
+    case Enum.reverse(failures) do
+      [] -> :ok
+      failures -> {:error, failures}
     end
   end
 
@@ -112,8 +154,8 @@ defmodule Storyarn.Assets.Storage.Local do
 
   def key_from_url(_url), do: {:error, :invalid_url}
 
-  defp file_path(key) do
-    with {:ok, key} <- validate_key(key) do
+  defp file_path(key, opts \\ []) do
+    with {:ok, key} <- validate_key(key, opts) do
       upload_dir = upload_dir()
       path = Path.expand(Path.join(upload_dir, key))
 
@@ -126,6 +168,257 @@ defmodule Storyarn.Assets.Storage.Local do
     path
     |> Path.dirname()
     |> File.mkdir_p()
+  end
+
+  # sobelow_skip ["Traversal.FileModule"]
+  defp copy_open_source_if_absent(source, dest_path, temporary_path, temporary_key) do
+    ConditionalCopyRegistry.with_active_copy(temporary_path, fn ->
+      copy_to_temporary_and_publish(source, dest_path, temporary_path, temporary_key)
+    end)
+  end
+
+  # sobelow_skip ["Traversal.FileModule"]
+  defp copy_to_temporary_and_publish(source, dest_path, temporary_path, temporary_key) do
+    case File.open(temporary_path, [:write, :binary, :exclusive], fn destination ->
+           {:copy_result, copy_chunks(source, destination)}
+         end) do
+      {:ok, {:copy_result, :ok}} ->
+        publish_temporary_copy(temporary_path, temporary_key, dest_path)
+
+      {:ok, {:copy_result, {:error, reason}}} ->
+        cleanup_partial_copy(temporary_path, temporary_key, reason)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp copy_chunks(source, destination) do
+    case IO.binread(source, @stream_chunk_size) do
+      data when is_binary(data) ->
+        case IO.binwrite(destination, data) do
+          :ok -> copy_chunks(source, destination)
+          {:error, reason} -> {:error, reason}
+        end
+
+      :eof ->
+        :ok
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  # sobelow_skip ["Traversal.FileModule"]
+  defp publish_temporary_copy(temporary_path, temporary_key, dest_path) do
+    case File.ln(temporary_path, dest_path) do
+      :ok ->
+        finish_conditional_copy(temporary_path, temporary_key, true)
+
+      {:error, :eexist} ->
+        finish_conditional_copy(temporary_path, temporary_key, false)
+
+      {:error, reason} ->
+        cleanup_partial_copy(temporary_path, temporary_key, reason)
+    end
+  end
+
+  defp temporary_copy_key(dest_key) do
+    suffix = 12 |> :crypto.strong_rand_bytes() |> Base.url_encode64(padding: false)
+    Path.join([Path.dirname(dest_key), @conditional_copy_directory, suffix])
+  end
+
+  # sobelow_skip ["Traversal.FileModule"]
+  defp finish_conditional_copy(temporary_path, temporary_key, destination_created?) do
+    case remove_temporary_copy(temporary_path) do
+      :ok ->
+        {:ok, destination_created?}
+
+      {:error, :enoent} ->
+        {:ok, destination_created?}
+
+      {:error, reason} ->
+        {:error, {:conditional_copy_cleanup_required, destination_created?, temporary_key, reason}}
+    end
+  end
+
+  # sobelow_skip ["Traversal.FileModule"]
+  defp cleanup_partial_copy(temporary_path, temporary_key, copy_reason) do
+    case remove_temporary_copy(temporary_path) do
+      :ok ->
+        {:error, copy_reason}
+
+      {:error, :enoent} ->
+        {:error, copy_reason}
+
+      {:error, cleanup_reason} ->
+        cleanup_failure = {:copy_failed, copy_reason, cleanup_reason}
+        {:error, {:conditional_copy_cleanup_required, false, temporary_key, cleanup_failure}}
+    end
+  end
+
+  defp remove_temporary_copy(path) do
+    case config()[:conditional_copy_file_rm] do
+      remove when is_function(remove, 1) -> remove.(path)
+      _other -> File.rm(path)
+    end
+  end
+
+  # sobelow_skip ["Traversal.FileModule"]
+  defp remove_stale_conditional_copy(path, cutoff) do
+    if ConditionalCopyRegistry.owner_marker?(path) do
+      remove_orphaned_owner_marker(path, cutoff)
+    else
+      remove_stale_copy(path, cutoff)
+    end
+  end
+
+  defp remove_stale_copy(path, cutoff) do
+    if ConditionalCopyRegistry.active?(path, cutoff) do
+      :ok
+    else
+      remove_stale_regular_file(
+        path,
+        cutoff,
+        fn -> ConditionalCopyRegistry.remove_inactive_owner_marker(path, cutoff) end
+      )
+    end
+  end
+
+  defp remove_orphaned_owner_marker(marker_path, cutoff) do
+    copy_path = ConditionalCopyRegistry.copy_path_from_owner_marker(marker_path)
+
+    case File.lstat(copy_path) do
+      {:ok, _stat} ->
+        :ok
+
+      {:error, :enoent} ->
+        remove_stale_owner_marker(copy_path, marker_path, cutoff)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp remove_stale_owner_marker(copy_path, marker_path, cutoff) do
+    if ConditionalCopyRegistry.active?(copy_path, cutoff) do
+      :ok
+    else
+      remove_stale_regular_file(marker_path, cutoff, fn -> :ok end)
+    end
+  end
+
+  # sobelow_skip ["Traversal.FileModule"]
+  defp remove_stale_regular_file(path, cutoff, after_remove) do
+    case File.lstat(path, time: :posix) do
+      {:ok, %{type: :regular, mtime: mtime}} when mtime <= cutoff ->
+        remove_file(path, after_remove)
+
+      {:ok, _stat} ->
+        :ok
+
+      {:error, :enoent} ->
+        :ok
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  # sobelow_skip ["Traversal.FileModule"]
+  defp remove_file(path, after_remove) do
+    case File.rm(path) do
+      :ok -> after_remove.()
+      {:error, :enoent} -> after_remove.()
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp conditional_copy_paths(root) do
+    walk_storage_directories([root], [], [])
+  end
+
+  defp walk_storage_directories([], candidates, failures), do: {candidates, failures}
+
+  defp walk_storage_directories([directory | rest], candidates, failures) do
+    case File.ls(directory) do
+      {:ok, entries} ->
+        {directories, candidates, failures} =
+          Enum.reduce(entries, {rest, candidates, failures}, fn entry, acc ->
+            collect_storage_entry(directory, entry, acc)
+          end)
+
+        walk_storage_directories(directories, candidates, failures)
+
+      {:error, :enoent} ->
+        walk_storage_directories(rest, candidates, failures)
+
+      {:error, reason} ->
+        walk_storage_directories(rest, candidates, [{directory, reason} | failures])
+    end
+  end
+
+  defp collect_storage_entry(directory, entry, {directories, candidates, failures}) do
+    path = Path.join(directory, entry)
+
+    case File.lstat(path) do
+      {:ok, %{type: :directory}} when entry == @conditional_copy_directory ->
+        collect_conditional_copy_directory(path, directories, candidates, failures)
+
+      {:ok, %{type: :directory}} ->
+        {[path | directories], candidates, failures}
+
+      {:ok, _stat} ->
+        {directories, candidates, failures}
+
+      {:error, :enoent} ->
+        {directories, candidates, failures}
+
+      {:error, reason} ->
+        {directories, candidates, [{path, reason} | failures]}
+    end
+  end
+
+  defp collect_conditional_copy_directory(path, directories, candidates, failures) do
+    case File.ls(path) do
+      {:ok, entries} ->
+        candidates =
+          entries
+          |> Enum.map(&Path.join(path, &1))
+          |> Enum.filter(&(generated_conditional_copy_path?(&1) or generated_owner_marker_path?(&1)))
+          |> Kernel.++(candidates)
+
+        {directories, candidates, failures}
+
+      {:error, :enoent} ->
+        {directories, candidates, failures}
+
+      {:error, reason} ->
+        {directories, candidates, [{path, reason} | failures]}
+    end
+  end
+
+  defp generated_conditional_copy_path?(path) do
+    Path.basename(Path.dirname(path)) == @conditional_copy_directory and
+      String.match?(Path.basename(path), @conditional_copy_suffix_pattern)
+  end
+
+  defp generated_owner_marker_path?(path) do
+    basename = Path.basename(path)
+
+    Path.basename(Path.dirname(path)) == @conditional_copy_directory and
+      String.ends_with?(basename, ".owner") and
+      String.match?(
+        String.trim_trailing(basename, ".owner"),
+        @conditional_copy_suffix_pattern
+      )
+  end
+
+  defp conditional_copy_stale_after_seconds do
+    case config()[:conditional_copy_stale_after_seconds] do
+      seconds when is_integer(seconds) and seconds >= 0 -> seconds
+      _other -> @default_conditional_copy_stale_after_seconds
+    end
   end
 
   defp file_stream(_path, _offset, 0), do: []
@@ -199,29 +492,43 @@ defmodule Storyarn.Assets.Storage.Local do
     end
   end
 
-  defp validate_key(key) when is_binary(key) do
-    cond do
-      key == "" ->
-        {:error, :invalid_key}
+  defp validate_key(key, opts \\ [])
 
-      not String.valid?(key) ->
-        {:error, :invalid_key}
-
-      String.contains?(key, <<0>>) or String.contains?(key, "\\") ->
-        {:error, :invalid_key}
-
-      Path.type(key) != :relative ->
-        {:error, :invalid_key}
-
-      invalid_segments?(key) ->
-        {:error, :invalid_key}
-
-      true ->
-        {:ok, key}
+  defp validate_key(key, opts) when is_binary(key) do
+    with :ok <- validate_key_bytes(key),
+         :ok <- validate_key_path(key),
+         :ok <- validate_key_namespace(key, opts) do
+      {:ok, key}
     end
   end
 
-  defp validate_key(_key), do: {:error, :invalid_key}
+  defp validate_key(_key, _opts), do: {:error, :invalid_key}
+
+  defp validate_key_bytes(key) do
+    cond do
+      key == "" -> {:error, :invalid_key}
+      not String.valid?(key) -> {:error, :invalid_key}
+      String.contains?(key, <<0>>) -> {:error, :invalid_key}
+      String.contains?(key, "\\") -> {:error, :invalid_key}
+      true -> :ok
+    end
+  end
+
+  defp validate_key_path(key) do
+    cond do
+      Path.type(key) != :relative -> {:error, :invalid_key}
+      invalid_segments?(key) -> {:error, :invalid_key}
+      true -> :ok
+    end
+  end
+
+  defp validate_key_namespace(key, opts) do
+    allow_conditional_copy? = Keyword.get(opts, :allow_conditional_copy, false)
+
+    if allow_conditional_copy? or @conditional_copy_directory not in Path.split(key),
+      do: :ok,
+      else: {:error, :invalid_key}
+  end
 
   defp invalid_segments?(key) do
     key

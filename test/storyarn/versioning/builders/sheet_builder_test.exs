@@ -1,5 +1,6 @@
 defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
   use Storyarn.DataCase, async: true
+  use Oban.Testing, repo: Storyarn.Repo
 
   import Ecto.Query, warn: false
   import Storyarn.AccountsFixtures
@@ -8,10 +9,14 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Assets
+  alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Localization
+  alias Storyarn.Repo
   alias Storyarn.Sheets
+  alias Storyarn.Versioning.Builders.AssetCopyError
   alias Storyarn.Versioning.Builders.SheetBuilder
+  alias Storyarn.Workers.DeleteStorageObjectsWorker
 
   setup do
     user = user_fixture()
@@ -188,7 +193,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
           config: %{"label" => "Health Copy"}
         })
 
-      Storyarn.Repo.update_all(from(b in Storyarn.Sheets.Block, where: b.id == ^block_b.id),
+      Repo.update_all(from(b in Storyarn.Sheets.Block, where: b.id == ^block_b.id),
         set: [inherited_from_block_id: block_a.id]
       )
 
@@ -263,8 +268,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       Enum.each(avatars, fn avatar ->
         assert avatar.asset.project_id == destination_project.id
         refute avatar.asset_id in source_asset_ids
-        assert {:ok, _binary} = Assets.storage_download(avatar.asset.key)
-        on_exit(fn -> Assets.storage_delete(avatar.asset.key) end)
+        assert_copied_asset_storage(avatar.asset, destination_project.id)
       end)
 
       [cloned_gallery_block] = Enum.filter(Sheets.list_blocks(materialized.id), &(&1.type == "gallery"))
@@ -273,8 +277,60 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       assert cloned_gallery_image.asset.project_id == destination_project.id
       refute cloned_gallery_image.asset_id in source_asset_ids
       assert cloned_gallery_image.label == "Bridge"
-      assert {:ok, _binary} = Assets.storage_download(cloned_gallery_image.asset.key)
-      on_exit(fn -> Assets.storage_delete(cloned_gallery_image.asset.key) end)
+      assert_copied_asset_storage(cloned_gallery_image.asset, destination_project.id)
+    end
+
+    test "durably cleans copied assets when materialization rolls back", %{
+      user: user,
+      project: project,
+      sheet: sheet
+    } do
+      avatar_asset = uploaded_image_asset(project, user, "copied-avatar.png", "copied avatar")
+      broken_avatar_asset = uploaded_image_asset(project, user, "broken-avatar.png", "broken avatar")
+
+      {:ok, _avatar} = Sheets.add_avatar(sheet, avatar_asset.id, %{name: "Default"})
+      {:ok, _broken_avatar} = Sheets.add_avatar(sheet, broken_avatar_asset.id, %{name: "Broken"})
+
+      snapshot =
+        sheet
+        |> SheetBuilder.build_snapshot()
+        |> put_in(["asset_metadata", to_string(broken_avatar_asset.id)], %{})
+
+      destination_project = project_fixture(user)
+      destination_sheet = sheet_fixture(destination_project)
+
+      assert_raise AssetCopyError, fn ->
+        SheetBuilder.restore_snapshot(destination_sheet, snapshot,
+          asset_mode: :copy,
+          asset_error_mode: :strict,
+          user_id: user.id
+        )
+      end
+
+      refute Repo.exists?(from asset in Asset, where: asset.project_id == ^destination_project.id)
+      assert [cleanup_job] = all_enqueued(worker: DeleteStorageObjectsWorker)
+
+      cleanup_keys = cleanup_job.args["storage_keys"]
+
+      copied_blob_key =
+        BlobStore.blob_key(
+          destination_project.id,
+          avatar_asset.blob_hash,
+          BlobStore.ext_from_content_type(avatar_asset.content_type)
+        )
+
+      copied_asset_key =
+        Enum.find(cleanup_keys, &String.starts_with?(&1, "projects/#{destination_project.id}/assets/"))
+
+      assert copied_blob_key in cleanup_keys
+      assert is_binary(copied_asset_key)
+
+      on_exit(fn -> Enum.each(cleanup_keys, &Assets.storage_delete/1) end)
+
+      Repo.delete!(destination_project)
+      assert :ok = perform_job(DeleteStorageObjectsWorker, cleanup_job.args)
+      assert {:error, :enoent} = Assets.storage_download(copied_asset_key)
+      assert {:error, :enoent} = Assets.storage_download(copied_blob_key)
     end
   end
 
@@ -455,5 +511,22 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
     end)
 
     asset
+  end
+
+  defp assert_copied_asset_storage(asset, project_id) do
+    blob_key =
+      BlobStore.blob_key(
+        project_id,
+        asset.blob_hash,
+        BlobStore.ext_from_content_type(asset.content_type)
+      )
+
+    assert {:ok, _content} = Assets.storage_download(asset.key)
+    assert {:ok, _content} = Assets.storage_download(blob_key)
+
+    on_exit(fn ->
+      Assets.storage_delete(asset.key)
+      Assets.storage_delete(blob_key)
+    end)
   end
 end

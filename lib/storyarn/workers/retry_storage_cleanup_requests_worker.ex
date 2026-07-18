@@ -4,7 +4,7 @@ defmodule Storyarn.Workers.RetryStorageCleanupRequestsWorker do
   """
 
   use Oban.Worker,
-    queue: :default,
+    queue: :storage_cleanup,
     max_attempts: 5,
     unique: [period: 120, states: [:available, :scheduled, :executing, :retryable]]
 

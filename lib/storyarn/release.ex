@@ -3,8 +3,9 @@ defmodule Storyarn.Release do
   Used for executing DB release tasks when run in production without Mix
   installed.
   """
-  @app :storyarn
+  alias Storyarn.ProjectTemplates.LegacySnapshotRepair
 
+  @app :storyarn
   def migrate do
     load_app()
 
@@ -26,6 +27,7 @@ defmodule Storyarn.Release do
     "name" => :name,
     "owner_id" => :owner_id,
     "published_by_id" => :published_by_id,
+    "repair_legacy_snapshot" => :repair_legacy_snapshot,
     "slug" => :slug,
     "update_existing" => :update_existing,
     "verify_user_id" => :verify_user_id,
@@ -36,6 +38,7 @@ defmodule Storyarn.Release do
     name: :name,
     owner_id: :owner_id,
     published_by_id: :published_by_id,
+    repair_legacy_snapshot: :repair_legacy_snapshot,
     slug: :slug,
     update_existing: :update_existing,
     verify_user_id: :verify_user_id,
@@ -123,7 +126,7 @@ defmodule Storyarn.Release do
     load_app()
 
     with {:ok, keyword_opts} <- template_import_options(opts),
-         {:ok, manifest} <- Storyarn.ProjectTemplates.preview_portable_template(path) do
+         {:ok, manifest} <- Storyarn.ProjectTemplates.preview_portable_template(path, keyword_opts) do
       print_template_bundle_preview(path, manifest, keyword_opts)
 
       case Storyarn.ProjectTemplates.import_portable_template(path, keyword_opts) do
@@ -131,6 +134,7 @@ defmodule Storyarn.Release do
           IO.puts("Imported template ##{template.id}: #{template.name}")
           IO.puts("Visibility: #{template.visibility}")
           IO.puts("Current version: #{template.current_version_id}")
+          IO.puts("Editable source project: #{template.source_project_id}")
           template
 
         {:error, reason} ->
@@ -161,6 +165,7 @@ defmodule Storyarn.Release do
 
   defp print_template_bundle_preview(path, manifest, opts) do
     template = manifest["template"] || %{}
+    repair_lines = template_repair_preview_lines!(manifest["legacy_snapshot_repair"])
 
     IO.puts("Template bundle: #{path}")
     IO.puts("Name: #{Keyword.get(opts, :name) || template["name"]}")
@@ -168,8 +173,17 @@ defmodule Storyarn.Release do
     IO.puts("Visibility: #{Keyword.get(opts, :visibility, "private")}")
     IO.puts("Verify user ID: #{Keyword.get(opts, :verify_user_id) || "missing"}")
     IO.puts("Verify workspace ID: #{Keyword.get(opts, :verify_workspace_id) || "missing"}")
+    IO.puts("Repair legacy snapshot: #{Keyword.get(opts, :repair_legacy_snapshot, false)}")
+    Enum.each(repair_lines, &IO.puts/1)
     IO.puts("Assets: #{manifest["asset_count"]}")
     IO.puts("Checksum: #{manifest["checksum"]}")
+  end
+
+  defp template_repair_preview_lines!(report) do
+    case LegacySnapshotRepair.preview_lines(report) do
+      {:ok, lines} -> lines
+      {:error, reason} -> raise "Could not read template bundle: #{inspect(reason)}"
+    end
   end
 
   defp repos do

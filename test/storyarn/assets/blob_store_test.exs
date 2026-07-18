@@ -1,5 +1,5 @@
 defmodule Storyarn.Assets.BlobStoreTest do
-  use Storyarn.DataCase, async: true
+  use Storyarn.DataCase, async: false
 
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
@@ -7,6 +7,8 @@ defmodule Storyarn.Assets.BlobStoreTest do
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.Storage
+  alias Storyarn.Assets.StorageCompensation
+  alias Storyarn.Projects.Project
 
   setup do
     user = user_fixture()
@@ -65,8 +67,18 @@ defmodule Storyarn.Assets.BlobStoreTest do
       hash = BlobStore.compute_hash(first)
 
       assert {:ok, key, true} = BlobStore.ensure_blob_with_status(project.id, hash, "png", first)
-      assert {:ok, ^key, false} = BlobStore.ensure_blob_with_status(project.id, hash, "png", "replacement")
+      assert {:ok, ^key, false} = BlobStore.ensure_blob_with_status(project.id, hash, "png", first)
       assert {:ok, ^first} = Storage.download(key)
+    end
+
+    test "rejects bytes that do not match the requested content hash", %{project: project} do
+      expected_hash = BlobStore.compute_hash("expected")
+
+      assert {:error, :blob_hash_mismatch} =
+               BlobStore.ensure_blob_with_status(project.id, expected_hash, "png", "different")
+
+      assert {:error, :enoent} =
+               Storage.download(BlobStore.blob_key(project.id, expected_hash, "png"))
     end
   end
 
@@ -93,6 +105,364 @@ defmodule Storyarn.Assets.BlobStoreTest do
       assert new_asset.blob_hash == hash
       assert new_asset.project_id == project.id
       assert new_asset.uploaded_by_id == user.id
+    end
+
+    test "materializes a content-addressed blob in the destination project", %{
+      project: source_project,
+      user: user
+    } do
+      destination_project = project_fixture(user)
+      content = "portable template asset"
+      hash = BlobStore.compute_hash(content)
+      source_blob_key = BlobStore.blob_key(source_project.id, hash, "png")
+      destination_blob_key = BlobStore.blob_key(destination_project.id, hash, "png")
+
+      assert {:ok, ^source_blob_key} =
+               BlobStore.ensure_blob(source_project.id, hash, "png", content)
+
+      metadata = %{
+        "filename" => "template.png",
+        "content_type" => "image/png",
+        "size" => byte_size(content)
+      }
+
+      assert {:ok, asset} =
+               BlobStore.create_asset_from_blob(
+                 destination_project.id,
+                 user.id,
+                 hash,
+                 source_blob_key,
+                 metadata
+               )
+
+      on_exit(fn ->
+        Storage.delete(source_blob_key)
+        Storage.delete(destination_blob_key)
+        Storage.delete(asset.key)
+      end)
+
+      assert {:ok, ^content} = Storage.download(asset.key)
+      assert {:ok, ^content} = Storage.download(destination_blob_key)
+    end
+
+    test "rejects source content that does not match the requested blob hash", %{
+      project: source_project,
+      user: user
+    } do
+      destination_project = project_fixture(user)
+      content = "tampered portable template asset"
+      actual_hash = BlobStore.compute_hash(content)
+      expected_hash = BlobStore.compute_hash("expected portable template asset")
+      source_blob_key = BlobStore.blob_key(source_project.id, actual_hash, "png")
+      destination_blob_key = BlobStore.blob_key(destination_project.id, expected_hash, "png")
+
+      assert {:ok, ^source_blob_key} =
+               BlobStore.ensure_blob(source_project.id, actual_hash, "png", content)
+
+      on_exit(fn ->
+        Storage.delete(source_blob_key)
+        Storage.delete(destination_blob_key)
+      end)
+
+      metadata = %{
+        "filename" => "tampered.png",
+        "content_type" => "image/png",
+        "size" => byte_size(content)
+      }
+
+      assert {:error, :blob_hash_mismatch} =
+               BlobStore.create_asset_from_blob(
+                 destination_project.id,
+                 user.id,
+                 expected_hash,
+                 source_blob_key,
+                 metadata
+               )
+
+      refute Repo.exists?(
+               from asset in Asset,
+                 where:
+                   asset.project_id == ^destination_project.id and
+                     asset.blob_hash == ^expected_hash
+             )
+
+      assert {:error, _reason} = Storage.download(destination_blob_key)
+    end
+
+    test "rejects a corrupt pre-existing destination blob", %{
+      project: source_project,
+      user: user
+    } do
+      destination_project = project_fixture(user)
+      content = "verified portable template asset"
+      corrupt_content = "corrupt destination bytes"
+      hash = BlobStore.compute_hash(content)
+      source_blob_key = BlobStore.blob_key(source_project.id, hash, "png")
+      destination_blob_key = BlobStore.blob_key(destination_project.id, hash, "png")
+
+      assert {:ok, ^source_blob_key} =
+               BlobStore.ensure_blob(source_project.id, hash, "png", content)
+
+      assert {:ok, _url} = Storage.upload(destination_blob_key, corrupt_content, "image/png")
+
+      on_exit(fn ->
+        Storage.delete(source_blob_key)
+        Storage.delete(destination_blob_key)
+      end)
+
+      metadata = %{
+        "filename" => "corrupt.png",
+        "content_type" => "image/png",
+        "size" => byte_size(content)
+      }
+
+      assert {:error, :blob_hash_mismatch} =
+               BlobStore.create_asset_from_blob(
+                 destination_project.id,
+                 user.id,
+                 hash,
+                 source_blob_key,
+                 metadata
+               )
+
+      assert {:error, :enoent} = Storage.download(destination_blob_key)
+
+      refute Repo.exists?(
+               from asset in Asset,
+                 where:
+                   asset.project_id == ^destination_project.id and
+                     asset.blob_hash == ^hash
+             )
+    end
+
+    test "does not take cleanup ownership when the source is the project-local blob", %{
+      project: project,
+      user: user
+    } do
+      content = :binary.copy("streamed-local-blob-", 70_000)
+      hash = BlobStore.compute_hash(content)
+      blob_key = BlobStore.blob_key(project.id, hash, "png")
+      tracker = StorageCompensation.new()
+
+      assert {:ok, ^blob_key} = BlobStore.ensure_blob(project.id, hash, "png", content)
+
+      metadata = %{
+        "filename" => "local.png",
+        "content_type" => "image/png",
+        "size" => byte_size(content)
+      }
+
+      assert {:error, {:forced_rollback, asset_key}} =
+               Repo.transaction(fn ->
+                 {:ok, asset} =
+                   BlobStore.create_asset_from_blob(
+                     project.id,
+                     user.id,
+                     hash,
+                     blob_key,
+                     metadata,
+                     asset_copy_tracker: tracker
+                   )
+
+                 Repo.rollback({:forced_rollback, asset.key})
+               end)
+
+      on_exit(fn ->
+        Storage.delete(blob_key)
+        Storage.delete(asset_key)
+      end)
+
+      assert :ok = StorageCompensation.cleanup(tracker)
+      assert :ok = StorageCompensation.delete_storage_keys([asset_key])
+      assert {:error, _reason} = Storage.download(asset_key)
+      assert {:ok, ^content} = Storage.download(blob_key)
+    end
+
+    test "tracks a newly materialized blob for rollback compensation", %{
+      project: source_project,
+      user: user
+    } do
+      content = "asset rolled back after template materialization"
+      hash = BlobStore.compute_hash(content)
+      source_blob_key = BlobStore.blob_key(source_project.id, hash, "png")
+      tracker = StorageCompensation.new()
+
+      assert {:ok, ^source_blob_key} =
+               BlobStore.ensure_blob(source_project.id, hash, "png", content)
+
+      metadata = %{
+        "filename" => "rolled-back.png",
+        "content_type" => "image/png",
+        "size" => byte_size(content)
+      }
+
+      assert {:error, {:forced_rollback, destination_project_id, destination_blob_key, asset_key}} =
+               Repo.transaction(fn ->
+                 destination_project = project_fixture(user)
+                 destination_blob_key = BlobStore.blob_key(destination_project.id, hash, "png")
+
+                 {:ok, asset} =
+                   BlobStore.create_asset_from_blob(
+                     destination_project.id,
+                     user.id,
+                     hash,
+                     source_blob_key,
+                     metadata,
+                     asset_copy_tracker: tracker
+                   )
+
+                 Repo.rollback({:forced_rollback, destination_project.id, destination_blob_key, asset.key})
+               end)
+
+      on_exit(fn ->
+        Storage.delete(source_blob_key)
+        Storage.delete(destination_blob_key)
+        Storage.delete(asset_key)
+      end)
+
+      assert {:ok, ^content} = Storage.download(asset_key)
+      assert {:ok, ^content} = Storage.download(destination_blob_key)
+      refute Repo.get(Project, destination_project_id)
+      assert :ok = StorageCompensation.cleanup(tracker)
+      assert :ok = StorageCompensation.delete_storage_keys([asset_key, destination_blob_key])
+      assert {:error, _reason} = Storage.download(asset_key)
+      assert {:error, _reason} = Storage.download(destination_blob_key)
+    end
+
+    test "does not compensate a destination blob that already existed", %{
+      project: source_project,
+      user: user
+    } do
+      destination_project = project_fixture(user)
+      content = "shared content-addressed destination blob"
+      hash = BlobStore.compute_hash(content)
+      source_blob_key = BlobStore.blob_key(source_project.id, hash, "png")
+      destination_blob_key = BlobStore.blob_key(destination_project.id, hash, "png")
+      tracker = StorageCompensation.new()
+
+      assert {:ok, ^source_blob_key} =
+               BlobStore.ensure_blob(source_project.id, hash, "png", content)
+
+      assert {:ok, ^destination_blob_key} =
+               BlobStore.ensure_blob(destination_project.id, hash, "png", content)
+
+      metadata = %{
+        "filename" => "shared.png",
+        "content_type" => "image/png",
+        "size" => byte_size(content)
+      }
+
+      assert {:error, {:forced_rollback, asset_key}} =
+               Repo.transaction(fn ->
+                 {:ok, asset} =
+                   BlobStore.create_asset_from_blob(
+                     destination_project.id,
+                     user.id,
+                     hash,
+                     source_blob_key,
+                     metadata,
+                     asset_copy_tracker: tracker
+                   )
+
+                 Repo.rollback({:forced_rollback, asset.key})
+               end)
+
+      on_exit(fn ->
+        Storage.delete(source_blob_key)
+        Storage.delete(destination_blob_key)
+        Storage.delete(asset_key)
+      end)
+
+      assert :ok = StorageCompensation.cleanup(tracker)
+      assert :ok = StorageCompensation.delete_storage_keys([asset_key])
+      assert {:error, _reason} = Storage.download(asset_key)
+      assert {:ok, ^content} = Storage.download(destination_blob_key)
+    end
+
+    test "compensates a published blob and its temporary hard link when local cleanup fails", %{
+      project: source_project,
+      user: user
+    } do
+      destination_project = project_fixture(user)
+      content = "conditional copy with pending local cleanup"
+      hash = BlobStore.compute_hash(content)
+      source_blob_key = BlobStore.blob_key(source_project.id, hash, "png")
+      destination_blob_key = BlobStore.blob_key(destination_project.id, hash, "png")
+      tracker = StorageCompensation.new()
+
+      assert {:ok, ^source_blob_key} =
+               BlobStore.ensure_blob(source_project.id, hash, "png", content)
+
+      configure_conditional_copy_remove_failure(:eacces)
+
+      metadata = %{
+        "filename" => "pending-cleanup.png",
+        "content_type" => "image/png",
+        "size" => byte_size(content)
+      }
+
+      assert {:error, {:conditional_copy_cleanup_required, true, pending_cleanup_key, :eacces}} =
+               BlobStore.create_asset_from_blob(
+                 destination_project.id,
+                 user.id,
+                 hash,
+                 source_blob_key,
+                 metadata,
+                 asset_copy_tracker: tracker
+               )
+
+      on_exit(fn ->
+        Storage.delete(source_blob_key)
+        Storage.delete(destination_blob_key)
+        Storage.delete(pending_cleanup_key)
+      end)
+
+      assert {:error, _reason} = Storage.download(destination_blob_key)
+      assert {:error, _reason} = Storage.download(pending_cleanup_key)
+      assert :ok = StorageCompensation.cleanup(tracker)
+    end
+
+    test "preserves a pre-existing destination while compensating its temporary hard link", %{
+      project: source_project,
+      user: user
+    } do
+      destination_project = project_fixture(user)
+      content = "pre-existing conditional-copy destination"
+      hash = BlobStore.compute_hash(content)
+      source_blob_key = BlobStore.blob_key(source_project.id, hash, "png")
+      destination_blob_key = BlobStore.blob_key(destination_project.id, hash, "png")
+
+      assert {:ok, ^source_blob_key} =
+               BlobStore.ensure_blob(source_project.id, hash, "png", content)
+
+      assert {:ok, ^destination_blob_key} =
+               BlobStore.ensure_blob(destination_project.id, hash, "png", content)
+
+      configure_conditional_copy_remove_failure(:ebusy)
+
+      metadata = %{
+        "filename" => "existing-destination.png",
+        "content_type" => "image/png",
+        "size" => byte_size(content)
+      }
+
+      assert {:error, {:conditional_copy_cleanup_required, false, pending_cleanup_key, :ebusy}} =
+               BlobStore.create_asset_from_blob(
+                 destination_project.id,
+                 user.id,
+                 hash,
+                 source_blob_key,
+                 metadata
+               )
+
+      on_exit(fn ->
+        Storage.delete(source_blob_key)
+        Storage.delete(destination_blob_key)
+        Storage.delete(pending_cleanup_key)
+      end)
+
+      assert {:ok, ^content} = Storage.download(destination_blob_key)
+      assert {:error, _reason} = Storage.download(pending_cleanup_key)
     end
 
     test "rejects legacy SVG blob metadata before copying a public asset", %{
@@ -163,5 +533,17 @@ defmodule Storyarn.Assets.BlobStoreTest do
       |> Path.expand()
 
     Path.join([upload_dir, "projects", to_string(project_id), "assets", "*", filename])
+  end
+
+  defp configure_conditional_copy_remove_failure(reason) do
+    original_config = Application.get_env(:storyarn, :storage, [])
+
+    Application.put_env(
+      :storyarn,
+      :storage,
+      Keyword.put(original_config, :conditional_copy_file_rm, fn _path -> {:error, reason} end)
+    )
+
+    on_exit(fn -> Application.put_env(:storyarn, :storage, original_config) end)
   end
 end

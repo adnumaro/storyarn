@@ -29,8 +29,10 @@ defmodule Storyarn.ProjectTemplatesTest do
   alias Storyarn.SheetsFixtures
   alias Storyarn.Versioning.SnapshotStorage
   alias Storyarn.Workers.DeleteProjectTemplateArtifactsWorker
+  alias Storyarn.Workers.DeleteStorageObjectsWorker
   alias Storyarn.Workers.InstallProjectTemplateWorker
   alias Storyarn.Workers.PublishProjectTemplateWorker
+  alias Storyarn.Workspaces.WorkspaceMembership
   alias Storyarn.WorkspacesFixtures
 
   describe "create_template_from_project/3" do
@@ -221,6 +223,224 @@ defmodule Storyarn.ProjectTemplatesTest do
       refute failed.project_template_id
       assert Repo.aggregate(ProjectTemplatePublication, :count) == 1
       assert ProjectTemplates.list_templates(scope, source_project_id: project.id) == []
+    end
+
+    test "cleans stored artifacts when the before-finalize hook rejects publication" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      project = ProjectsFixtures.project_fixture(user, %{name: "Rejected Hook Source"})
+      parent = self()
+
+      assert {:ok, publication} =
+               ProjectTemplates.request_template_publication(scope, project, %{
+                 name: "Rejected Hook Starter"
+               })
+
+      assert {:ok, failed} =
+               ProjectTemplates.perform_template_publication(publication.id,
+                 before_finalize: fn %{artifact: artifact} ->
+                   send(parent, {:publication_artifact_keys, [artifact.snapshot_key, artifact.asset_manifest_key]})
+                   {:error, :hook_rejected}
+                 end
+               )
+
+      assert failed.status == "failed"
+      assert failed.error_code == "unexpected_error"
+      assert_receive {:publication_artifact_keys, artifact_keys}
+
+      for storage_key <- artifact_keys do
+        assert {:error, :enoent} = Assets.storage_download(storage_key)
+      end
+    end
+
+    test "cleans stored artifacts when the before-finalize hook raises" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      project = ProjectsFixtures.project_fixture(user, %{name: "Raising Hook Source"})
+      parent = self()
+
+      assert {:ok, publication} =
+               ProjectTemplates.request_template_publication(scope, project, %{
+                 name: "Raising Hook Starter"
+               })
+
+      assert_raise RuntimeError, "before-finalize failure", fn ->
+        ProjectTemplates.perform_template_publication(publication.id,
+          before_finalize: fn %{artifact: artifact} ->
+            send(parent, {:publication_artifact_keys, [artifact.snapshot_key, artifact.asset_manifest_key]})
+            raise "before-finalize failure"
+          end
+        )
+      end
+
+      assert_receive {:publication_artifact_keys, artifact_keys}
+
+      for storage_key <- artifact_keys do
+        assert {:error, :enoent} = Assets.storage_download(storage_key)
+      end
+    end
+
+    test "publishes the asset manifest captured with the audited snapshot" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      project = ProjectsFixtures.project_fixture(user, %{name: "Coherent Capture Source"})
+      scene = ScenesFixtures.scene_fixture(project)
+      asset = uploaded_image_asset(project, user, "coherent-capture.png", "coherent-capture")
+
+      assert {:ok, _scene} =
+               Storyarn.Scenes.update_scene(scene, %{"background_asset_id" => asset.id})
+
+      assert {:ok, publication} =
+               ProjectTemplates.request_template_publication(scope, project, %{
+                 name: "Coherent Capture Starter"
+               })
+
+      assert {:ok, published} =
+               ProjectTemplates.perform_template_publication(publication.id,
+                 after_source_capture: fn _payload ->
+                   assert {:ok, _deleted_asset} = Assets.delete_asset(asset)
+                   :ok
+                 end
+               )
+
+      assert published.status == "published"
+      assert is_nil(Repo.get!(Scene, scene.id).background_asset_id)
+
+      version = Repo.get!(ProjectTemplateVersion, published.project_template_version_id)
+      assert {:ok, snapshot} = SnapshotStorage.load_snapshot(version.snapshot_storage_key)
+      assert {:ok, asset_manifest} = SnapshotStorage.load_snapshot(version.asset_manifest_storage_key)
+
+      scene_snapshot =
+        snapshot["scenes"]
+        |> Enum.find(&(&1["id"] == scene.id))
+        |> Map.fetch!("snapshot")
+
+      assert scene_snapshot["background_asset_id"] == asset.id
+      assert scene_snapshot["asset_blob_hashes"][to_string(asset.id)] == asset.blob_hash
+      assert Enum.any?(asset_manifest["assets"], &(&1["id"] == asset.id))
+    end
+
+    test "fails an update when the template is archived before finalization" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      project = ProjectsFixtures.project_fixture(user, %{name: "Archive Race Source"})
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(scope, project, %{
+                 name: "Archive Race Starter"
+               })
+
+      first_version_id = template.current_version_id
+
+      assert {:ok, publication} =
+               ProjectTemplates.request_template_version_publication(scope, template, project, %{
+                 name: "Archived Before Commit"
+               })
+
+      assert {:ok, failed} =
+               ProjectTemplates.perform_template_publication(publication.id,
+                 before_finalize: fn _payload ->
+                   template
+                   |> Ecto.Changeset.change(%{status: "archived"})
+                   |> Repo.update!()
+
+                   :ok
+                 end
+               )
+
+      assert failed.status == "failed"
+      assert failed.error_code == "template_archived"
+
+      persisted_template = Repo.get!(ProjectTemplate, template.id)
+      assert persisted_template.status == "archived"
+      assert persisted_template.current_version_id == first_version_id
+
+      assert Repo.aggregate(
+               from(version in ProjectTemplateVersion,
+                 where: version.project_template_id == ^template.id
+               ),
+               :count
+             ) == 1
+    end
+
+    test "fails an update when the requester loses authorization before finalization" do
+      owner = AccountsFixtures.user_fixture()
+      admin = AccountsFixtures.user_fixture()
+      owner_scope = AccountsFixtures.user_scope_fixture(owner)
+      admin_scope = AccountsFixtures.user_scope_fixture(admin)
+      workspace = WorkspacesFixtures.workspace_fixture(owner)
+      project = ProjectsFixtures.project_fixture(owner, %{workspace: workspace, name: "Authorization Race Source"})
+      membership = WorkspacesFixtures.workspace_membership_fixture(workspace, admin, "admin")
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(owner_scope, project, %{
+                 name: "Authorization Race Starter"
+               })
+
+      first_version_id = template.current_version_id
+
+      assert {:ok, publication} =
+               ProjectTemplates.request_template_version_publication(admin_scope, template, project, %{
+                 name: "Unauthorized Before Commit"
+               })
+
+      assert {:ok, failed} =
+               ProjectTemplates.perform_template_publication(publication.id,
+                 before_finalize: fn _payload ->
+                   assert {:ok, _membership} = Repo.delete(membership)
+                   :ok
+                 end
+               )
+
+      assert failed.status == "failed"
+      assert failed.error_code == "unauthorized"
+      assert Repo.get!(ProjectTemplate, template.id).current_version_id == first_version_id
+
+      assert Repo.aggregate(
+               from(version in ProjectTemplateVersion,
+                 where: version.project_template_id == ^template.id
+               ),
+               :count
+             ) == 1
+
+      refute Repo.get(WorkspaceMembership, membership.id)
+    end
+
+    test "fails an update when the version limit is reached before finalization" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      project = ProjectsFixtures.project_fixture(user, %{name: "Limit Race Source"})
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(scope, project, %{
+                 name: "Limit Race Starter"
+               })
+
+      first_version_id = template.current_version_id
+
+      assert {:ok, publication} =
+               ProjectTemplates.request_template_version_publication(scope, template, project, %{
+                 name: "Limit Reached Before Commit"
+               })
+
+      assert {:ok, failed} =
+               ProjectTemplates.perform_template_publication(publication.id,
+                 before_finalize: fn _payload ->
+                   insert_template_versions_to_limit(template, project, user)
+                   :ok
+                 end
+               )
+
+      assert failed.status == "failed"
+      assert failed.error_code == "limit_reached"
+      assert Repo.get!(ProjectTemplate, template.id).current_version_id == first_version_id
+
+      assert Repo.aggregate(
+               from(version in ProjectTemplateVersion,
+                 where: version.project_template_id == ^template.id
+               ),
+               :count
+             ) == 20
     end
   end
 
@@ -602,6 +822,43 @@ defmodule Storyarn.ProjectTemplatesTest do
         assert {:error, _reason} = SnapshotStorage.load_snapshot(storage_key)
       end
     end
+
+    test "artifact garbage collection rejects non-template storage keys" do
+      storage_key = "unrelated/valuable-object.txt"
+      assert {:ok, _url} = Assets.storage_upload(storage_key, "valuable", "text/plain")
+      on_exit(fn -> Assets.storage_delete(storage_key) end)
+
+      assert {:error, {:invalid_template_storage_keys, [^storage_key]}} =
+               perform_job(DeleteProjectTemplateArtifactsWorker, %{
+                 "storage_keys" => [storage_key]
+               })
+
+      assert {:ok, "valuable"} = Assets.storage_download(storage_key)
+    end
+
+    test "artifact garbage collection retains keys adopted by a live template version" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      project = ProjectsFixtures.project_fixture(user)
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(scope, project, %{
+                 name: "Retained Template Artifact"
+               })
+
+      version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
+      storage_keys = [version.snapshot_storage_key, version.asset_manifest_storage_key]
+      on_exit(fn -> Enum.each(storage_keys, &Assets.storage_delete/1) end)
+
+      assert :ok =
+               perform_job(DeleteProjectTemplateArtifactsWorker, %{
+                 "storage_keys" => storage_keys
+               })
+
+      for storage_key <- storage_keys do
+        assert {:ok, _snapshot} = SnapshotStorage.load_snapshot(storage_key)
+      end
+    end
   end
 
   describe "instantiate_template/4" do
@@ -846,6 +1103,11 @@ defmodule Storyarn.ProjectTemplatesTest do
       install_count = Repo.aggregate(ProjectTemplateInstall, :count)
       storage_files_before_install = storage_files()
 
+      cleanup_job_ids_before_install =
+        [worker: DeleteStorageObjectsWorker]
+        |> all_enqueued()
+        |> MapSet.new(& &1.id)
+
       assert {:error, %Ecto.Changeset{} = changeset} =
                ProjectTemplates.instantiate_template(scope, %{version | project_template: template}, workspace, %{
                  name: "Should Roll Back"
@@ -854,6 +1116,13 @@ defmodule Storyarn.ProjectTemplatesTest do
       refute changeset.valid?
       assert Repo.aggregate(Project, :count) == project_count
       assert Repo.aggregate(ProjectTemplateInstall, :count) == install_count
+
+      assert [cleanup_job] =
+               [worker: DeleteStorageObjectsWorker]
+               |> all_enqueued()
+               |> Enum.reject(&MapSet.member?(cleanup_job_ids_before_install, &1.id))
+
+      assert :ok = perform_job(DeleteStorageObjectsWorker, cleanup_job.args)
       assert storage_files() == storage_files_before_install
     end
   end
@@ -953,7 +1222,288 @@ defmodule Storyarn.ProjectTemplatesTest do
       assert failed.stage == "failed"
       assert failed.error_code == "checksum_mismatch"
       assert failed.completed_at
+      assert is_nil(failed.project_id)
       assert Repo.aggregate(Project, :count) == project_count
+
+      assert [pending_failure] =
+               ProjectTemplates.list_pending_workspace_installation_failures(scope, workspace)
+
+      assert pending_failure.id == installation.id
+
+      other_user = AccountsFixtures.user_fixture()
+      other_scope = AccountsFixtures.user_scope_fixture(other_user)
+      _membership = WorkspacesFixtures.workspace_membership_fixture(workspace, other_user)
+
+      assert [] =
+               ProjectTemplates.list_pending_workspace_installation_failures(
+                 other_scope,
+                 workspace
+               )
+
+      assert {:error, :not_found} =
+               ProjectTemplates.dismiss_installation_failure(
+                 other_scope,
+                 workspace,
+                 installation.id
+               )
+
+      assert {:ok, dismissed} =
+               ProjectTemplates.dismiss_installation_failure(scope, workspace, installation.id)
+
+      assert dismissed.feedback_dismissed_at
+
+      assert {:ok, dismissed_again} =
+               ProjectTemplates.dismiss_installation_failure(scope, workspace, installation.id)
+
+      assert dismissed_again.feedback_dismissed_at == dismissed.feedback_dismissed_at
+      assert [] = ProjectTemplates.list_pending_workspace_installation_failures(scope, workspace)
+    end
+
+    test "a terminal failure clears any stale project association" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      workspace = WorkspacesFixtures.workspace_fixture(user)
+      source_project = ProjectsFixtures.project_fixture(user, %{name: "Failure Source"})
+      stale_project = ProjectsFixtures.project_fixture(user, %{workspace: workspace, name: "Stale Partial"})
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(scope, source_project, %{
+                 name: "Failure Starter"
+               })
+
+      version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
+
+      assert {:ok, installation} =
+               ProjectTemplates.request_template_instantiation(scope, version, workspace, %{
+                 name: "Failed Copy",
+                 source: "workspace_dashboard"
+               })
+
+      now = DateTime.utc_now(:second)
+
+      # Simulate the in-memory install returned by a materialization attempt.
+      # The database constraint intentionally prevents persisting this transient
+      # association once the install is terminally failed.
+      installation = %{installation | project_id: stale_project.id, installed_at: now}
+
+      failed =
+        installation
+        |> ProjectTemplateInstall.failed_changeset(%{
+          status: "failed",
+          stage: "failed",
+          error_code: "test_failure",
+          error_message: "Test failure",
+          completed_at: now
+        })
+        |> Repo.update!()
+
+      assert is_nil(failed.project_id)
+      assert is_nil(failed.installed_at)
+      assert Repo.get!(Project, stale_project.id)
+    end
+
+    test "treats an unremappable subflow exit pin as a permanent installation failure" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      workspace = WorkspacesFixtures.workspace_fixture(user)
+      source_project = ProjectsFixtures.project_fixture(user, %{name: "Invalid Subflow Source"})
+      caller_flow = flow_fixture(source_project)
+      referenced_flow = flow_fixture(source_project)
+
+      referenced_exit =
+        flow_node_fixture(referenced_flow, "exit", %{
+          data: %{"label" => "Returned", "exit_mode" => "caller_return"}
+        })
+
+      subflow =
+        flow_node_fixture(caller_flow, "subflow", %{
+          data: %{"referenced_flow_id" => referenced_flow.id}
+        })
+
+      target = flow_node_fixture(caller_flow, "hub")
+
+      _connection =
+        flow_connection_fixture(caller_flow, subflow, target, %{
+          source_pin: "exit_#{referenced_exit.id}"
+        })
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(scope, source_project, %{
+                 name: "Invalid Subflow Starter"
+               })
+
+      version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
+      assert {:ok, snapshot} = SnapshotStorage.load_snapshot(version.snapshot_storage_key)
+      assert {:ok, asset_manifest} = SnapshotStorage.load_snapshot(version.asset_manifest_storage_key)
+
+      invalid_snapshot =
+        Map.update!(snapshot, "flows", fn flows ->
+          Enum.map(flows, fn
+            %{"id" => flow_id} = flow_entry when flow_id == referenced_flow.id ->
+              update_in(flow_entry, ["snapshot", "nodes"], fn nodes ->
+                Enum.reject(nodes, &(&1["original_id"] == referenced_exit.id))
+              end)
+
+            flow_entry ->
+              flow_entry
+          end)
+        end)
+
+      assert {:ok, _size} = SnapshotStorage.store_raw(version.snapshot_storage_key, invalid_snapshot)
+
+      version =
+        version
+        |> Ecto.Changeset.change(
+          checksum:
+            Artifact.checksum(%{
+              "snapshot" => invalid_snapshot,
+              "asset_manifest" => asset_manifest
+            })
+        )
+        |> Repo.update!()
+
+      project_count = Repo.aggregate(Project, :count)
+
+      assert {:ok, installation} =
+               ProjectTemplates.request_template_instantiation(scope, version, workspace, %{
+                 name: "Invalid Subflow Copy",
+                 source: "template_show"
+               })
+
+      assert {:ok, failed} =
+               ProjectTemplates.perform_template_installation(installation.id,
+                 attempt: 1,
+                 max_attempts: 3
+               )
+
+      assert failed.status == "failed"
+      assert failed.stage == "failed"
+      assert failed.error_code == "unremappable_subflow_exit_pin"
+      assert failed.error_message =~ "invalid subflow exit"
+      assert failed.error_report == %{attempt: 1, max_attempts: 3}
+      assert Repo.aggregate(Project, :count) == project_count
+    end
+
+    test "lists pending failure feedback from newest to oldest" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      workspace = WorkspacesFixtures.workspace_fixture(user)
+      source_project = ProjectsFixtures.project_fixture(user, %{name: "Failure Ordering Source"})
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(scope, source_project, %{
+                 name: "Failure Ordering Starter"
+               })
+
+      version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
+      newest_completed_at = DateTime.truncate(DateTime.utc_now(), :second)
+      older_completed_at = DateTime.add(newest_completed_at, -60, :second)
+
+      insert_failure = fn project_name, completed_at ->
+        Repo.insert!(%ProjectTemplateInstall{
+          project_template_version_id: version.id,
+          user_id: user.id,
+          workspace_id: workspace.id,
+          status: "failed",
+          stage: "failed",
+          project_name: project_name,
+          source: "workspace_dashboard",
+          error_code: "test_failure",
+          error_message: "Test failure",
+          completed_at: completed_at
+        })
+      end
+
+      older = insert_failure.("Older Failure", older_completed_at)
+      first_newer = insert_failure.("First Newer Failure", newest_completed_at)
+      last_newer = insert_failure.("Last Newer Failure", newest_completed_at)
+
+      assert [last_newer.id, first_newer.id, older.id] ==
+               scope
+               |> ProjectTemplates.list_pending_workspace_installation_failures(workspace)
+               |> Enum.map(& &1.id)
+    end
+
+    test "lists template-scoped failure feedback from newest to oldest" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      workspace = WorkspacesFixtures.workspace_fixture(user)
+      source_project = ProjectsFixtures.project_fixture(user, %{name: "Template Failure Ordering Source"})
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(scope, source_project, %{
+                 name: "Template Failure Ordering Starter"
+               })
+
+      completed_at = DateTime.truncate(DateTime.utc_now(), :second)
+
+      insert_failure = fn project_name, completed_at ->
+        Repo.insert!(%ProjectTemplateInstall{
+          project_template_version_id: template.current_version_id,
+          user_id: user.id,
+          workspace_id: workspace.id,
+          status: "failed",
+          stage: "failed",
+          project_name: project_name,
+          source: "template_show",
+          error_code: "test_failure",
+          error_message: "Test failure",
+          completed_at: completed_at
+        })
+      end
+
+      older = insert_failure.("Older Template Failure", DateTime.add(completed_at, -60, :second))
+
+      newer =
+        Enum.map(1..10, fn index ->
+          insert_failure.("Newer Template Failure #{index}", completed_at)
+        end)
+
+      pending_ids =
+        scope
+        |> ProjectTemplates.list_pending_template_installation_failures(template)
+        |> Enum.map(& &1.id)
+
+      assert pending_ids == newer |> Enum.reverse() |> Enum.map(& &1.id)
+      refute older.id in pending_ids
+    end
+
+    test "checks pending feedback by id without the workspace list limit" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      workspace = WorkspacesFixtures.workspace_fixture(user)
+      source_project = ProjectsFixtures.project_fixture(user, %{name: "Pending Lookup Source"})
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(scope, source_project, %{
+                 name: "Pending Lookup Starter"
+               })
+
+      completed_at = DateTime.truncate(DateTime.utc_now(), :second)
+
+      insert_failure = fn index ->
+        Repo.insert!(%ProjectTemplateInstall{
+          project_template_version_id: template.current_version_id,
+          user_id: user.id,
+          workspace_id: workspace.id,
+          status: "failed",
+          stage: "failed",
+          project_name: "Pending Failure #{index}",
+          source: "template_show",
+          error_code: "test_failure",
+          error_message: "Test failure",
+          completed_at: DateTime.add(completed_at, index, :second)
+        })
+      end
+
+      oldest = insert_failure.(0)
+      _newer_failures = Enum.map(1..10, insert_failure)
+
+      pending = ProjectTemplates.list_pending_workspace_installation_failures(scope, workspace)
+
+      assert length(pending) == 10
+      refute Enum.any?(pending, &(&1.id == oldest.id))
+      assert ProjectTemplates.pending_installation_failure?(scope, workspace, oldest.id)
     end
 
     test "records missing template asset blobs as a permanent failure" do
@@ -989,6 +1539,60 @@ defmodule Storyarn.ProjectTemplatesTest do
       assert failed.status == "failed"
       assert failed.error_code == "asset_copy_failed"
       assert Repo.aggregate(Project, :count) == project_count
+    end
+
+    test "lets a workspace member list and dismiss their own failed installation" do
+      workspace_owner = AccountsFixtures.user_fixture()
+      workspace = WorkspacesFixtures.workspace_fixture(workspace_owner)
+      installer = AccountsFixtures.user_fixture()
+      installer_scope = AccountsFixtures.user_scope_fixture(installer)
+      _membership = WorkspacesFixtures.workspace_membership_fixture(workspace, installer, "member")
+      source_project = ProjectsFixtures.project_fixture(installer, %{name: "Member Template Source"})
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(installer_scope, source_project, %{
+                 name: "Member Starter"
+               })
+
+      version =
+        ProjectTemplateVersion
+        |> Repo.get!(template.current_version_id)
+        |> Ecto.Changeset.change(checksum: String.duplicate("0", 64))
+        |> Repo.update!()
+
+      assert {:ok, installation} =
+               ProjectTemplates.request_template_instantiation(installer_scope, version, workspace, %{
+                 name: "Member Copy",
+                 source: "workspace_dashboard"
+               })
+
+      assert :ok =
+               perform_job(InstallProjectTemplateWorker, %{
+                 "installation_id" => installation.id
+               })
+
+      assert [%ProjectTemplateInstall{id: installation_id}] =
+               ProjectTemplates.list_pending_workspace_installation_failures(
+                 installer_scope,
+                 workspace
+               )
+
+      assert installation_id == installation.id
+
+      assert {:ok, dismissed} =
+               ProjectTemplates.dismiss_installation_failure(
+                 installer_scope,
+                 workspace,
+                 installation.id
+               )
+
+      assert dismissed.feedback_dismissed_at
+
+      assert [] =
+               ProjectTemplates.list_pending_workspace_installation_failures(
+                 installer_scope,
+                 workspace
+               )
     end
 
     test "persists retry progress for transient storage failures before failing the last attempt" do
@@ -1124,6 +1728,9 @@ defmodule Storyarn.ProjectTemplatesTest do
 
       assert {:ok, report} = Audit.run(project.id)
       assert report["materialization"]["status"] == "passed"
+
+      assert [cleanup_job] = all_enqueued(worker: DeleteStorageObjectsWorker)
+      assert :ok = perform_job(DeleteStorageObjectsWorker, cleanup_job.args)
       assert storage_files() == storage_files_before_audit
     end
 
