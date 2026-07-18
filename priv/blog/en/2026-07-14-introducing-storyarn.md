@@ -4,7 +4,7 @@ title: "Introducing Storyarn: A Connected Narrative Design Platform",
 seo_title: "Introducing Storyarn: Narrative Design Platform",
 description: "Storyarn is a narrative design platform that keeps world data, branching dialogue, scenes, testing, localization, and export in one connected project.",
 author: "Storyarn Team",
-updated_on: "2026-07-15",
+updated_on: "2026-07-18",
 image: "/images/docs/project-dashboard-current.png",
 image_alt: "Storyarn project dashboard showing sheets, flows, scenes, localization progress, warnings, and recent activity in one connected project",
 tags: ["Storyarn", "Narrative design", "Game development"]
@@ -87,7 +87,7 @@ Storyarn’s [Story Player](/docs/narrative-design/flows-overview#story-player) 
 Those are different kinds of feedback. The Story Player helps a team judge pacing, choice, and context. The Debugger helps it understand behavior.
 
 <figure>
-  <img src="/images/blog/introducing-storyarn-debug-active-node.png" alt="Storyarn debug mode showing the active dialogue node, executed path, and console step history" loading="lazy">
+  <img src="/images/blog/introducing-storyarn-debug-session.jpg" alt="Storyarn debug mode paused on an active dialogue node for Sera Voss, with the executed path, console history, and four valid responses" loading="lazy">
   <figcaption>The narrative can be played and inspected while the full design context is still available.</figcaption>
 </figure>
 
