@@ -7,6 +7,8 @@ defmodule Storyarn.Assets.Storage.Local do
 
   @behaviour Storyarn.Assets.Storage
 
+  alias Storyarn.Assets.Storage.Local.ConditionalCopyRegistry
+
   @stream_chunk_size 1_048_576
   @conditional_copy_directory ".storyarn-copy"
   @conditional_copy_suffix_pattern ~r/\A[A-Za-z0-9_-]{16}\z/
@@ -170,6 +172,13 @@ defmodule Storyarn.Assets.Storage.Local do
 
   # sobelow_skip ["Traversal.FileModule"]
   defp copy_open_source_if_absent(source, dest_path, temporary_path, temporary_key) do
+    ConditionalCopyRegistry.with_active_copy(temporary_path, fn ->
+      copy_to_temporary_and_publish(source, dest_path, temporary_path, temporary_key)
+    end)
+  end
+
+  # sobelow_skip ["Traversal.FileModule"]
+  defp copy_to_temporary_and_publish(source, dest_path, temporary_path, temporary_key) do
     case File.open(temporary_path, [:write, :binary, :exclusive], fn destination ->
            {:copy_result, copy_chunks(source, destination)}
          end) do
@@ -257,13 +266,53 @@ defmodule Storyarn.Assets.Storage.Local do
 
   # sobelow_skip ["Traversal.FileModule"]
   defp remove_stale_conditional_copy(path, cutoff) do
+    if ConditionalCopyRegistry.owner_marker?(path) do
+      remove_orphaned_owner_marker(path, cutoff)
+    else
+      remove_stale_copy(path, cutoff)
+    end
+  end
+
+  defp remove_stale_copy(path, cutoff) do
+    if ConditionalCopyRegistry.active?(path, cutoff) do
+      :ok
+    else
+      remove_stale_regular_file(
+        path,
+        cutoff,
+        fn -> ConditionalCopyRegistry.remove_inactive_owner_marker(path, cutoff) end
+      )
+    end
+  end
+
+  defp remove_orphaned_owner_marker(marker_path, cutoff) do
+    copy_path = ConditionalCopyRegistry.copy_path_from_owner_marker(marker_path)
+
+    case File.lstat(copy_path) do
+      {:ok, _stat} ->
+        :ok
+
+      {:error, :enoent} ->
+        remove_stale_owner_marker(copy_path, marker_path, cutoff)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp remove_stale_owner_marker(copy_path, marker_path, cutoff) do
+    if ConditionalCopyRegistry.active?(copy_path, cutoff) do
+      :ok
+    else
+      remove_stale_regular_file(marker_path, cutoff, fn -> :ok end)
+    end
+  end
+
+  # sobelow_skip ["Traversal.FileModule"]
+  defp remove_stale_regular_file(path, cutoff, after_remove) do
     case File.lstat(path, time: :posix) do
       {:ok, %{type: :regular, mtime: mtime}} when mtime <= cutoff ->
-        case File.rm(path) do
-          :ok -> :ok
-          {:error, :enoent} -> :ok
-          {:error, reason} -> {:error, reason}
-        end
+        remove_file(path, after_remove)
 
       {:ok, _stat} ->
         :ok
@@ -273,6 +322,15 @@ defmodule Storyarn.Assets.Storage.Local do
 
       {:error, reason} ->
         {:error, reason}
+    end
+  end
+
+  # sobelow_skip ["Traversal.FileModule"]
+  defp remove_file(path, after_remove) do
+    case File.rm(path) do
+      :ok -> after_remove.()
+      {:error, :enoent} -> after_remove.()
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -327,7 +385,7 @@ defmodule Storyarn.Assets.Storage.Local do
         candidates =
           entries
           |> Enum.map(&Path.join(path, &1))
-          |> Enum.filter(&generated_conditional_copy_path?/1)
+          |> Enum.filter(&(generated_conditional_copy_path?(&1) or generated_owner_marker_path?(&1)))
           |> Kernel.++(candidates)
 
         {directories, candidates, failures}
@@ -343,6 +401,17 @@ defmodule Storyarn.Assets.Storage.Local do
   defp generated_conditional_copy_path?(path) do
     Path.basename(Path.dirname(path)) == @conditional_copy_directory and
       String.match?(Path.basename(path), @conditional_copy_suffix_pattern)
+  end
+
+  defp generated_owner_marker_path?(path) do
+    basename = Path.basename(path)
+
+    Path.basename(Path.dirname(path)) == @conditional_copy_directory and
+      String.ends_with?(basename, ".owner") and
+      String.match?(
+        String.trim_trailing(basename, ".owner"),
+        @conditional_copy_suffix_pattern
+      )
   end
 
   defp conditional_copy_stale_after_seconds do

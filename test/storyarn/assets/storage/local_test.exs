@@ -2,6 +2,7 @@ defmodule Storyarn.Assets.Storage.LocalTest do
   use ExUnit.Case, async: false
 
   alias Storyarn.Assets.Storage.Local
+  alias Storyarn.Assets.Storage.Local.ConditionalCopyRegistry
 
   setup do
     # Each test gets its own unique directory to avoid async race conditions
@@ -279,19 +280,24 @@ defmodule Storyarn.Assets.Storage.LocalTest do
          %{test_dir: test_dir} do
       stale_key = "abandoned/.storyarn-copy/AAAAAAAAAAAAAAAA"
       fresh_key = "active/.storyarn-copy/BBBBBBBBBBBBBBBB"
+      corrupt_owner_key = "abandoned/.storyarn-copy/IIIIIIIIIIIIIIII"
       invalid_reserved_key = "abandoned/.storyarn-copy/not-generated"
       ordinary_key = "active/file.storyarn-copy-CCCCCCCCCCCCCCCC"
 
       write_internal_file!(test_dir, stale_key, "stale")
       write_internal_file!(test_dir, fresh_key, "fresh")
+      write_internal_file!(test_dir, corrupt_owner_key, "partial")
+      write_internal_file!(test_dir, "#{corrupt_owner_key}.owner", "not-an-owner")
       write_internal_file!(test_dir, invalid_reserved_key, "reserved-but-not-generated")
       assert {:ok, _url} = Local.upload(ordinary_key, "ordinary", "application/octet-stream")
 
       stale_path = Path.join(test_dir, stale_key)
       fresh_path = Path.join(test_dir, fresh_key)
+      corrupt_owner_path = Path.join(test_dir, corrupt_owner_key)
       invalid_reserved_path = Path.join(test_dir, invalid_reserved_key)
       ordinary_path = Path.join(test_dir, ordinary_key)
       symlink_path = Path.join(test_dir, "links/.storyarn-copy/DDDDDDDDDDDDDDDD")
+      owner_symlink_path = Path.join(test_dir, "links/.storyarn-copy/GGGGGGGGGGGGGGGG.owner")
       directory_path = Path.join(test_dir, "directories/.storyarn-copy/EEEEEEEEEEEEEEEE")
       external_dir = Path.join(System.tmp_dir!(), "storyarn-copy-external-#{System.unique_integer([:positive])}")
       external_stale_path = Path.join(external_dir, ".storyarn-copy/FFFFFFFFFFFFFFFF")
@@ -299,10 +305,13 @@ defmodule Storyarn.Assets.Storage.LocalTest do
 
       File.mkdir_p!(Path.dirname(symlink_path))
       assert :ok = File.ln_s(Path.expand(ordinary_path), symlink_path)
+      assert :ok = File.ln_s(Path.expand(external_stale_path), owner_symlink_path)
       File.mkdir_p!(directory_path)
       write_internal_file!(external_dir, ".storyarn-copy/FFFFFFFFFFFFFFFF", "external")
       assert :ok = File.ln_s(Path.expand(external_dir), external_symlink_path)
       assert :ok = File.touch(stale_path, {{2000, 1, 1}, {0, 0, 0}})
+      assert :ok = File.touch(corrupt_owner_path, {{2000, 1, 1}, {0, 0, 0}})
+      assert :ok = File.touch("#{corrupt_owner_path}.owner", {{2000, 1, 1}, {0, 0, 0}})
       assert :ok = File.touch(external_stale_path, {{2000, 1, 1}, {0, 0, 0}})
 
       on_exit(fn -> File.rm_rf(external_dir) end)
@@ -311,12 +320,132 @@ defmodule Storyarn.Assets.Storage.LocalTest do
 
       assert :ok = Local.cleanup_stale_conditional_copies()
       refute File.exists?(stale_path)
+      refute File.exists?(corrupt_owner_path)
+      refute File.exists?("#{corrupt_owner_path}.owner")
       assert File.read!(fresh_path) == "fresh"
       assert File.read!(invalid_reserved_path) == "reserved-but-not-generated"
       assert File.read!(ordinary_path) == "ordinary"
       assert {:ok, %{type: :symlink}} = File.lstat(symlink_path)
+      assert {:ok, %{type: :symlink}} = File.lstat(owner_symlink_path)
       assert File.dir?(directory_path)
       assert File.read!(external_stale_path) == "external"
+    end
+
+    test "keeps an active stale copy and removes it after its owner crashes",
+         %{test_dir: test_dir} do
+      active_key = "long-running/.storyarn-copy/AAAAAAAAAAAAAAAA"
+      active_path = Path.expand(Path.join(test_dir, active_key))
+      write_internal_file!(test_dir, active_key, "partial")
+      assert :ok = File.touch(active_path, {{2000, 1, 1}, {0, 0, 0}})
+
+      parent = self()
+
+      owner =
+        spawn(fn ->
+          ConditionalCopyRegistry.with_active_copy(active_path, fn ->
+            send(parent, {:copy_registered, self()})
+            Process.sleep(:infinity)
+          end)
+        end)
+
+      assert_receive {:copy_registered, ^owner}
+      configure_conditional_copy_stale_after_seconds(0)
+
+      assert :ok = Local.cleanup_stale_conditional_copies()
+      assert File.read!(active_path) == "partial"
+
+      monitor = Process.monitor(owner)
+      Process.exit(owner, :kill)
+      assert_receive {:DOWN, ^monitor, :process, ^owner, :killed}
+
+      assert_eventually(fn ->
+        assert :ok = Local.cleanup_stale_conditional_copies()
+        refute File.exists?(active_path)
+      end)
+    end
+
+    test "owner marker protects an active copy if its registry entry is lost",
+         %{test_dir: test_dir} do
+      active_key = "registry-restart/.storyarn-copy/HHHHHHHHHHHHHHHH"
+      active_path = Path.expand(Path.join(test_dir, active_key))
+      write_internal_file!(test_dir, active_key, "partial")
+      assert :ok = File.touch(active_path, {{2000, 1, 1}, {0, 0, 0}})
+
+      parent = self()
+
+      owner =
+        spawn(fn ->
+          ConditionalCopyRegistry.with_active_copy(active_path, fn ->
+            Registry.unregister(ConditionalCopyRegistry, active_path)
+            send(parent, {:registry_entry_dropped, self()})
+            Process.sleep(:infinity)
+          end)
+        end)
+
+      assert_receive {:registry_entry_dropped, ^owner}
+      configure_conditional_copy_stale_after_seconds(0)
+
+      assert :ok = Local.cleanup_stale_conditional_copies()
+      assert File.read!(active_path) == "partial"
+
+      monitor = Process.monitor(owner)
+      Process.exit(owner, :kill)
+      assert_receive {:DOWN, ^monitor, :process, ^owner, :killed}
+
+      assert_eventually(fn ->
+        assert :ok = Local.cleanup_stale_conditional_copies()
+        refute File.exists?(active_path)
+
+        refute File.exists?(ConditionalCopyRegistry.owner_marker_path(active_path))
+      end)
+    end
+
+    test "a failed contender does not remove the active owner's marker",
+         %{test_dir: test_dir} do
+      active_key = "contended/.storyarn-copy/JJJJJJJJJJJJJJJJ"
+      active_path = Path.expand(Path.join(test_dir, active_key))
+      File.mkdir_p!(Path.dirname(active_path))
+      parent = self()
+
+      owner =
+        spawn(fn ->
+          ConditionalCopyRegistry.with_active_copy(active_path, fn ->
+            send(parent, {:copy_registered, self()})
+
+            receive do
+              :finish -> :ok
+            end
+          end)
+        end)
+
+      assert_receive {:copy_registered, ^owner}
+
+      assert {:error, {:conditional_copy_owner_marker_failed, :eexist}} =
+               ConditionalCopyRegistry.with_active_copy(active_path, fn -> flunk("copy must not run") end)
+
+      assert File.exists?(ConditionalCopyRegistry.owner_marker_path(active_path))
+
+      monitor = Process.monitor(owner)
+      send(owner, :finish)
+      assert_receive {:DOWN, ^monitor, :process, ^owner, :normal}
+      refute File.exists?(ConditionalCopyRegistry.owner_marker_path(active_path))
+    end
+
+    test "expires stale markers left by a previous node incarnation",
+         %{test_dir: test_dir} do
+      stale_key = "previous-node/.storyarn-copy/KKKKKKKKKKKKKKKK"
+      stale_path = Path.expand(Path.join(test_dir, stale_key))
+      marker_path = ConditionalCopyRegistry.owner_marker_path(stale_path)
+
+      write_internal_file!(test_dir, stale_key, "partial")
+      File.write!(marker_path, :erlang.term_to_binary({:previous@node, self()}))
+      assert :ok = File.touch(stale_path, {{2000, 1, 1}, {0, 0, 0}})
+      assert :ok = File.touch(marker_path, {{2000, 1, 1}, {0, 0, 0}})
+      configure_conditional_copy_stale_after_seconds(3_600)
+
+      assert :ok = Local.cleanup_stale_conditional_copies()
+      refute File.exists?(stale_path)
+      refute File.exists?(marker_path)
     end
   end
 
@@ -350,6 +479,18 @@ defmodule Storyarn.Assets.Storage.LocalTest do
     File.mkdir_p!(Path.dirname(path))
     File.write!(path, contents)
   end
+
+  defp assert_eventually(assertion, attempts \\ 20)
+
+  defp assert_eventually(assertion, attempts) when attempts > 1 do
+    assertion.()
+  rescue
+    ExUnit.AssertionError ->
+      Process.sleep(5)
+      assert_eventually(assertion, attempts - 1)
+  end
+
+  defp assert_eventually(assertion, 1), do: assertion.()
 
   # =============================================================================
   # presigned_upload_url/3

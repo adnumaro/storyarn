@@ -23,6 +23,11 @@ defmodule Storyarn.Assets.StorageCompensation do
   @delete_retry_delay_ms 25
   @persisted_cleanup_batch_size 100
   @force_delete_prefix "__storyarn_force_delete__:"
+  @max_project_id 9_223_372_036_854_775_807
+  @asset_uuid_pattern ~r/\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/
+  @asset_filename_pattern ~r/\A[a-z0-9_.-]{1,255}\z/
+  @blob_key_pattern ~r|\Aprojects/[1-9]\d*/blobs/[0-9a-f]{64}\.([a-z0-9][a-z0-9-]{0,31})\z|
+  @conditional_copy_suffix_pattern ~r/\A[A-Za-z0-9_-]{16}\z/
 
   @spec new() :: reference()
   def new do
@@ -244,6 +249,12 @@ defmodule Storyarn.Assets.StorageCompensation do
   end
 
   defp delete_or_enqueue_with_status(storage_key, opts) do
+    if valid_storage_key?(storage_key),
+      do: do_delete_or_enqueue_with_status(storage_key, opts),
+      else: {:error, :invalid_storage_key}
+  end
+
+  defp do_delete_or_enqueue_with_status(storage_key, opts) do
     force_delete? = Keyword.get(opts, :force_delete, false)
 
     cleanup_target =
@@ -795,7 +806,8 @@ defmodule Storyarn.Assets.StorageCompensation do
   end
 
   defp valid_storage_key?(storage_key) when is_binary(storage_key) do
-    project_storage_key?(storage_key) or template_storage_key?(storage_key)
+    String.valid?(storage_key) and
+      (project_storage_key?(storage_key) or template_storage_key?(storage_key))
   end
 
   defp valid_storage_key?(_storage_key), do: false
@@ -809,8 +821,49 @@ defmodule Storyarn.Assets.StorageCompensation do
   def template_storage_key?(_storage_key), do: false
 
   defp project_storage_key?(storage_key) do
-    String.starts_with?(storage_key, "projects/") and
-      (String.contains?(storage_key, "/assets/") or String.contains?(storage_key, "/blobs/"))
+    project_blob_storage_key?(storage_key) or
+      project_asset_storage_key?(storage_key) or
+      project_conditional_copy_key?(storage_key)
+  end
+
+  defp project_blob_storage_key?(storage_key) do
+    String.match?(storage_key, @blob_key_pattern) and
+      match?({:ok, _project_id, _hash}, StorageKeyLock.project_blob_identity(storage_key))
+  end
+
+  defp project_asset_storage_key?(storage_key) do
+    case String.split(storage_key, "/") do
+      ["projects", project_id, "assets", asset_uuid, filename] ->
+        valid_project_id?(project_id) and
+          String.match?(asset_uuid, @asset_uuid_pattern) and
+          filename not in [".", "..", ".storyarn-copy"] and
+          String.match?(filename, @asset_filename_pattern)
+
+      _parts ->
+        false
+    end
+  end
+
+  defp project_conditional_copy_key?(storage_key) do
+    case String.split(storage_key, "/") do
+      ["projects", project_id, "blobs", ".storyarn-copy", suffix] ->
+        valid_project_id?(project_id) and String.match?(suffix, @conditional_copy_suffix_pattern)
+
+      ["projects", project_id, "assets", asset_uuid, ".storyarn-copy", suffix] ->
+        valid_project_id?(project_id) and
+          String.match?(asset_uuid, @asset_uuid_pattern) and
+          String.match?(suffix, @conditional_copy_suffix_pattern)
+
+      _parts ->
+        false
+    end
+  end
+
+  defp valid_project_id?(project_id) do
+    case Integer.parse(project_id) do
+      {parsed_id, ""} -> parsed_id > 0 and parsed_id <= @max_project_id and Integer.to_string(parsed_id) == project_id
+      _invalid -> false
+    end
   end
 
   defp template_storage_identity(storage_key) do

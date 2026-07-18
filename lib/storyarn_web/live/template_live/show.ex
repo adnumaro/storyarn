@@ -672,20 +672,6 @@ defmodule StoryarnWeb.TemplateLive.Show do
     end
   end
 
-  @safe_installation_failure_messages [
-    "A template asset could not be copied.",
-    "The installation could not be completed.",
-    "This template is no longer available.",
-    "The template failed its integrity check.",
-    "This template version is incompatible and must be republished.",
-    "This template version contains an invalid subflow exit and must be republished.",
-    "The workspace project limit has been reached.",
-    "The template asset manifest is unavailable.",
-    "The template integrity information is unavailable.",
-    "The template or workspace is no longer available.",
-    "You no longer have permission to install this template."
-  ]
-
   defp installation_failure_message(installation) do
     dgettext(
       "projects",
@@ -695,8 +681,40 @@ defmodule StoryarnWeb.TemplateLive.Show do
     )
   end
 
-  defp safe_installation_failure_reason(%{error_message: message}) when message in @safe_installation_failure_messages,
-    do: message
+  defp safe_installation_failure_reason(%{error_message: "A template asset could not be copied."}),
+    do: dgettext("projects", "A template asset could not be copied.")
+
+  defp safe_installation_failure_reason(%{error_message: "The installation could not be completed."}),
+    do: dgettext("projects", "The installation could not be completed.")
+
+  defp safe_installation_failure_reason(%{error_message: "This template is no longer available."}),
+    do: dgettext("projects", "This template is no longer available.")
+
+  defp safe_installation_failure_reason(%{error_message: "The template failed its integrity check."}),
+    do: dgettext("projects", "The template failed its integrity check.")
+
+  defp safe_installation_failure_reason(%{
+         error_message: "This template version is incompatible and must be republished."
+       }), do: dgettext("projects", "This template version is incompatible and must be republished.")
+
+  defp safe_installation_failure_reason(%{
+         error_message: "This template version contains an invalid subflow exit and must be republished."
+       }), do: dgettext("projects", "This template version contains an invalid subflow exit and must be republished.")
+
+  defp safe_installation_failure_reason(%{error_message: "The workspace project limit has been reached."}),
+    do: dgettext("projects", "The workspace project limit has been reached.")
+
+  defp safe_installation_failure_reason(%{error_message: "The template asset manifest is unavailable."}),
+    do: dgettext("projects", "The template asset manifest is unavailable.")
+
+  defp safe_installation_failure_reason(%{error_message: "The template integrity information is unavailable."}),
+    do: dgettext("projects", "The template integrity information is unavailable.")
+
+  defp safe_installation_failure_reason(%{error_message: "The template or workspace is no longer available."}),
+    do: dgettext("projects", "The template or workspace is no longer available.")
+
+  defp safe_installation_failure_reason(%{error_message: "You no longer have permission to install this template."}),
+    do: dgettext("projects", "You no longer have permission to install this template.")
 
   defp safe_installation_failure_reason(_installation),
     do: dgettext("projects", "The installation could not be completed.")

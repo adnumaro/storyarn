@@ -1352,12 +1352,19 @@ defmodule Storyarn.Assets do
   """
   @spec sanitize_filename(String.t()) :: String.t()
   def sanitize_filename(filename) do
-    filename
-    |> String.split(~r/[\/\\]/)
-    |> List.last()
-    |> String.replace(~r/[^\w\.\-]/, "_")
-    |> String.downcase()
-    |> String.slice(0, 255)
+    sanitized =
+      filename
+      |> String.split(~r/[\/\\]/)
+      |> List.last()
+      |> String.replace(~r/[^\w\.\-]/, "_")
+      |> String.downcase()
+      |> String.slice(0, 255)
+
+    case sanitized do
+      value when value in ["", ".", ".."] -> "file"
+      ".storyarn-copy" -> "_storyarn-copy"
+      value -> value
+    end
   end
 
   # =============================================================================

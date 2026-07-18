@@ -384,6 +384,76 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
       assert {:error, :enoent} = Assets.storage_download(imported_blob_key)
     end
 
+    test "aborts deletion when artifact ownership changes after manifest discovery" do
+      %{project: project} = portable_source_project()
+      output_path = bundle_path()
+      editor = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(editor)
+      workspace = WorkspacesFixtures.workspace_fixture(editor)
+
+      on_exit(fn -> File.rm(output_path) end)
+
+      assert {:ok, _export} =
+               ProjectTemplates.export_portable_template(project.id, output_path,
+                 name: "Changing Import",
+                 slug: "changing-import"
+               )
+
+      assert {:ok, template} =
+               ProjectTemplates.import_portable_template(output_path,
+                 visibility: "private",
+                 owner_id: editor.id,
+                 verify_user_id: editor.id,
+                 verify_workspace_id: workspace.id
+               )
+
+      register_project_asset_cleanup(template.source_project)
+      version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
+      register_template_artifact_cleanup(version)
+
+      assert {:ok, %{"assets" => [%{"key" => imported_blob_key}]}} =
+               SnapshotStorage.load_snapshot(version.asset_manifest_storage_key)
+
+      on_exit(fn -> Assets.storage_delete(imported_blob_key) end)
+
+      assert {:ok, archived} = ProjectTemplates.archive_template(scope, template)
+
+      handler_id = "template-deletion-ownership-change-#{System.unique_integer([:positive])}"
+      test_pid = self()
+      changed_manifest_key = version.asset_manifest_storage_key <> ".changed"
+
+      :ok =
+        :telemetry.attach(
+          handler_id,
+          [:storyarn, :project_templates, :deletion, :asset_manifest_load],
+          fn _event, _measurements, %{storage_key: storage_key}, _config ->
+            if storage_key == version.asset_manifest_storage_key do
+              manifest_loaded_in_transaction? = Repo.in_transaction?()
+
+              version
+              |> Ecto.Changeset.change(asset_manifest_storage_key: changed_manifest_key)
+              |> Repo.update!()
+
+              send(
+                test_pid,
+                {:template_artifact_ownership_changed, manifest_loaded_in_transaction?}
+              )
+            end
+          end,
+          nil
+        )
+
+      on_exit(fn -> :telemetry.detach(handler_id) end)
+
+      assert {:error, :template_changed_during_deletion} =
+               ProjectTemplates.delete_template(scope, archived)
+
+      assert_receive {:template_artifact_ownership_changed, false}
+      assert Repo.get(ProjectTemplate, template.id)
+      assert Repo.get(ProjectTemplateVersion, version.id)
+      assert all_enqueued(worker: DeleteProjectTemplateArtifactsWorker) == []
+    end
+
     test "refuses to delete an imported template with a non-canonical blob key" do
       %{project: project} = portable_source_project()
       output_path = bundle_path()

@@ -625,3 +625,64 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "This invitation cannot be accepted while the workspace is at its member limit. Ask an owner or admin to free a seat, then try this invitation again."
 msgstr ""
+
+#: lib/storyarn_web/live/template_live/show.ex:678
+#, elixir-autogen, elixir-format
+msgid "Template installation failed: %{reason} Reference: %{reference}"
+msgstr "Template installation failed: %{reason} Reference: %{reference}"
+
+#: lib/storyarn_web/live/template_live/show.ex:685
+#, elixir-autogen, elixir-format
+msgid "A template asset could not be copied."
+msgstr "A template asset could not be copied."
+
+#: lib/storyarn_web/live/template_live/show.ex:688
+#: lib/storyarn_web/live/template_live/show.ex:720
+#, elixir-autogen, elixir-format
+msgid "The installation could not be completed."
+msgstr "The installation could not be completed."
+
+#: lib/storyarn_web/live/template_live/show.ex:691
+#, elixir-autogen, elixir-format
+msgid "This template is no longer available."
+msgstr "This template is no longer available."
+
+#: lib/storyarn_web/live/template_live/show.ex:694
+#, elixir-autogen, elixir-format
+msgid "The template failed its integrity check."
+msgstr "The template failed its integrity check."
+
+#: lib/storyarn_web/live/template_live/show.ex:698
+#, elixir-autogen, elixir-format
+msgid "This template version is incompatible and must be republished."
+msgstr "This template version is incompatible and must be republished."
+
+#: lib/storyarn_web/live/template_live/show.ex:702
+#, elixir-autogen, elixir-format
+msgid "This template version contains an invalid subflow exit and must be republished."
+msgstr "This template version contains an invalid subflow exit and must be republished."
+
+#: lib/storyarn_web/live/template_live/show.ex:705
+#, elixir-autogen, elixir-format
+msgid "The workspace project limit has been reached."
+msgstr "The workspace project limit has been reached."
+
+#: lib/storyarn_web/live/template_live/show.ex:708
+#, elixir-autogen, elixir-format
+msgid "The template asset manifest is unavailable."
+msgstr "The template asset manifest is unavailable."
+
+#: lib/storyarn_web/live/template_live/show.ex:711
+#, elixir-autogen, elixir-format
+msgid "The template integrity information is unavailable."
+msgstr "The template integrity information is unavailable."
+
+#: lib/storyarn_web/live/template_live/show.ex:714
+#, elixir-autogen, elixir-format
+msgid "The template or workspace is no longer available."
+msgstr "The template or workspace is no longer available."
+
+#: lib/storyarn_web/live/template_live/show.ex:717
+#, elixir-autogen, elixir-format
+msgid "You no longer have permission to install this template."
+msgstr "You no longer have permission to install this template."

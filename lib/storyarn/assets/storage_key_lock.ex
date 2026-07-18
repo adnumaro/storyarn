@@ -7,15 +7,22 @@ defmodule Storyarn.Assets.StorageKeyLock do
   @session_lock_namespace 731_002
   @max_lock_key 2_147_483_647
   @max_project_id 9_223_372_036_854_775_807
-  @transaction_timeout to_timeout(minute: 5)
+  @acquisition_timeout to_timeout(minute: 5)
   @lock_retry_delay_ms 25
   @temporary_copy_marker ".storyarn-copy-"
 
   @spec with_project_blob_lock(String.t(), (-> result)) :: result when result: term()
   def with_project_blob_lock(storage_key, fun) when is_binary(storage_key) and is_function(fun, 0) do
+    with_project_blob_lock(storage_key, fun, [])
+  end
+
+  @doc false
+  @spec with_project_blob_lock(String.t(), (-> result), keyword()) :: result when result: term()
+  def with_project_blob_lock(storage_key, fun, opts)
+      when is_binary(storage_key) and is_function(fun, 0) and is_list(opts) do
     case project_blob_id(storage_key) do
       {:ok, _project_id} ->
-        with_storage_key_lock(storage_key, fun)
+        with_storage_key_lock(storage_key, fun, opts)
 
       :error ->
         fun.()
@@ -32,11 +39,18 @@ defmodule Storyarn.Assets.StorageKeyLock do
   """
   @spec with_storage_key_lock(String.t(), (-> result)) :: result when result: term()
   def with_storage_key_lock(storage_key, fun) when is_binary(storage_key) and is_function(fun, 0) do
+    with_storage_key_lock(storage_key, fun, [])
+  end
+
+  @doc false
+  @spec with_storage_key_lock(String.t(), (-> result), keyword()) :: result when result: term()
+  def with_storage_key_lock(storage_key, fun, opts)
+      when is_binary(storage_key) and is_function(fun, 0) and is_list(opts) do
+    deadline = acquisition_deadline(opts)
+
     if Repo.in_transaction?() do
-      lock!(storage_key)
-      fun.()
+      acquire_transaction_lock_and_run(storage_key, fun, deadline)
     else
-      deadline = System.monotonic_time(:millisecond) + @transaction_timeout
       acquire_and_run(storage_key, fun, deadline)
     end
   end
@@ -52,7 +66,13 @@ defmodule Storyarn.Assets.StorageKeyLock do
   """
   @spec with_session_lock(String.t(), (-> result)) :: result when result: term()
   def with_session_lock(lock_name, fun) when is_binary(lock_name) and is_function(fun, 0) do
-    deadline = System.monotonic_time(:millisecond) + @transaction_timeout
+    with_session_lock(lock_name, fun, [])
+  end
+
+  @doc false
+  @spec with_session_lock(String.t(), (-> result), keyword()) :: result when result: term()
+  def with_session_lock(lock_name, fun, opts) when is_binary(lock_name) and is_function(fun, 0) and is_list(opts) do
+    deadline = acquisition_deadline(opts)
     acquire_session_lock_and_run(lock_name, fun, deadline)
   end
 
@@ -90,43 +110,84 @@ defmodule Storyarn.Assets.StorageKeyLock do
     end
   end
 
-  defp lock!(storage_key) do
-    Repo.query!("SELECT pg_advisory_xact_lock($1, $2)", [
-      @lock_namespace,
-      lock_key(storage_key)
-    ])
-
-    :ok
-  end
-
   defp acquire_and_run(storage_key, fun, deadline) do
-    result =
-      Repo.transaction(
-        fn ->
-          if try_lock!(storage_key) do
-            {:lock_acquired, rollback_callback_error(fun.())}
-          else
-            :lock_busy
-          end
-        end,
-        # The lock owner can perform storage I/O. A DBConnection deadline may
-        # disconnect the session while that callback is still executing,
-        # releasing the integrity fence before the mutation finishes.
-        timeout: :infinity
-      )
-
-    case result do
-      {:ok, {:lock_acquired, callback_result}} ->
-        callback_result
-
-      {:ok, :lock_busy} ->
+    case transaction_lock_attempt(storage_key, fun) do
+      :checkout_unavailable ->
         retry_lock(storage_key, fun, deadline)
 
-      {:error, {:storage_key_callback_error, callback_result}} ->
-        callback_result
+      result ->
+        handle_transaction_lock_result(result, storage_key, fun, deadline)
+    end
+  end
 
-      {:error, reason} ->
-        {:error, reason}
+  defp transaction_lock_attempt(storage_key, fun) do
+    attempt_ref = make_ref()
+
+    try do
+      Repo.checkout(
+        fn ->
+          Process.put(attempt_ref, :connection_checked_out)
+
+          Repo.transaction(
+            fn ->
+              if try_lock!(storage_key) do
+                Process.put(attempt_ref, :callback_started)
+                {:lock_acquired, rollback_callback_error(fun.())}
+              else
+                :lock_busy
+              end
+            end,
+            timeout: :infinity
+          )
+        end,
+        # Never queue with an infinite checkout deadline. An unavailable pool
+        # is retried only until the acquisition deadline, while a successful
+        # checkout has no deadline that could release the transaction lock in
+        # the middle of a long storage callback.
+        queue: false,
+        timeout: :infinity
+      )
+    rescue
+      error in DBConnection.ConnectionError ->
+        if Process.get(attempt_ref) == :callback_started do
+          reraise error, __STACKTRACE__
+        else
+          :checkout_unavailable
+        end
+    after
+      Process.delete(attempt_ref)
+    end
+  end
+
+  defp handle_transaction_lock_result({:ok, {:lock_acquired, callback_result}}, _storage_key, _fun, _deadline),
+    do: callback_result
+
+  defp handle_transaction_lock_result({:ok, :lock_busy}, storage_key, fun, deadline),
+    do: retry_lock(storage_key, fun, deadline)
+
+  defp handle_transaction_lock_result(
+         {:error, {:storage_key_callback_error, callback_result}},
+         _storage_key,
+         _fun,
+         _deadline
+       ), do: callback_result
+
+  defp handle_transaction_lock_result({:error, reason}, _storage_key, _fun, _deadline), do: {:error, reason}
+
+  defp acquire_transaction_lock_and_run(storage_key, fun, deadline) do
+    if try_lock!(storage_key) do
+      fun.()
+    else
+      retry_transaction_lock(storage_key, fun, deadline)
+    end
+  end
+
+  defp retry_transaction_lock(storage_key, fun, deadline) do
+    if System.monotonic_time(:millisecond) < deadline do
+      Process.sleep(@lock_retry_delay_ms)
+      acquire_transaction_lock_and_run(storage_key, fun, deadline)
+    else
+      {:error, :storage_key_lock_timeout}
     end
   end
 
@@ -151,11 +212,29 @@ defmodule Storyarn.Assets.StorageKeyLock do
   defp lock_key(storage_key), do: :erlang.phash2(storage_key, @max_lock_key)
 
   defp acquire_session_lock_and_run(lock_name, fun, deadline) do
-    result =
+    case session_lock_attempt(lock_name, fun) do
+      :checkout_unavailable ->
+        retry_session_lock(lock_name, fun, deadline)
+
+      {:lock_acquired, callback_result} ->
+        callback_result
+
+      :lock_busy ->
+        retry_session_lock(lock_name, fun, deadline)
+    end
+  end
+
+  defp session_lock_attempt(lock_name, fun) do
+    attempt_ref = make_ref()
+
+    try do
       Repo.checkout(
         fn ->
+          Process.put(attempt_ref, :connection_checked_out)
+
           if try_session_lock!(lock_name) do
             try do
+              Process.put(attempt_ref, :callback_started)
               {:lock_acquired, fun.()}
             after
               unlock_session!(lock_name)
@@ -164,18 +243,21 @@ defmodule Storyarn.Assets.StorageKeyLock do
             :lock_busy
           end
         end,
-        # The lock owner may legitimately run longer than the acquisition
-        # deadline. Disconnecting its checked-out session would release the
-        # advisory lock while the callback is still executing.
+        # See acquire_and_run/3: checkout itself is non-blocking, then the
+        # successful owner is allowed to keep the session for the whole
+        # callback without a DBConnection deadline.
+        queue: false,
         timeout: :infinity
       )
-
-    case result do
-      {:lock_acquired, callback_result} ->
-        callback_result
-
-      :lock_busy ->
-        retry_session_lock(lock_name, fun, deadline)
+    rescue
+      error in DBConnection.ConnectionError ->
+        if Process.get(attempt_ref) == :callback_started do
+          reraise error, __STACKTRACE__
+        else
+          :checkout_unavailable
+        end
+    after
+      Process.delete(attempt_ref)
     end
   end
 
@@ -204,6 +286,17 @@ defmodule Storyarn.Assets.StorageKeyLock do
          ]) do
       %{rows: [[true]]} -> :ok
       %{rows: [[false]]} -> raise "session advisory lock was not held"
+    end
+  end
+
+  defp acquisition_deadline(opts) do
+    case Keyword.get(opts, :acquisition_timeout, @acquisition_timeout) do
+      timeout when is_integer(timeout) and timeout >= 0 ->
+        System.monotonic_time(:millisecond) + timeout
+
+      invalid_timeout ->
+        raise ArgumentError,
+              ":acquisition_timeout must be a non-negative integer, got: #{inspect(invalid_timeout)}"
     end
   end
 

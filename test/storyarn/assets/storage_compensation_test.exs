@@ -16,6 +16,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
 
   test "retries cleanup job persistence before returning an error" do
     {:ok, attempts} = Agent.start_link(fn -> 0 end)
+    storage_key = cleanup_asset_key("retry-persistence")
 
     insert_fun = fn _storage_keys ->
       attempt = Agent.get_and_update(attempts, &{&1 + 1, &1 + 1})
@@ -26,7 +27,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
       capture_log(fn ->
         assert :ok =
                  StorageCompensation.enqueue_cleanup(
-                   ["projects/1/assets/copy/file.png"],
+                   [storage_key],
                    insert_fun: insert_fun,
                    retry_delay_ms: 0
                  )
@@ -38,7 +39,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
 
   test "persists failed keys in the fallback outbox when job persistence fails" do
     tracker = StorageCompensation.new()
-    storage_key = "projects/1/assets/copy/file.png"
+    storage_key = cleanup_asset_key("fallback-outbox")
     :ok = StorageCompensation.track(tracker, storage_key)
 
     assert :ok =
@@ -53,7 +54,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
 
   test "propagates failed keys when no durable cleanup path is available" do
     tracker = StorageCompensation.new()
-    storage_key = "projects/1/assets/copy/file.png"
+    storage_key = cleanup_asset_key("no-durable-path")
     :ok = StorageCompensation.track(tracker, storage_key)
 
     log =
@@ -79,7 +80,8 @@ defmodule Storyarn.Assets.StorageCompensationTest do
 
   test "cleanup! raises when the cleanup cannot be completed or persisted" do
     tracker = StorageCompensation.new()
-    :ok = StorageCompensation.track(tracker, "projects/1/assets/copy/file.png")
+    storage_key = cleanup_asset_key("cleanup-raises")
+    :ok = StorageCompensation.track(tracker, storage_key)
 
     assert_raise StorageCleanupPersistenceError, fn ->
       StorageCompensation.cleanup!(tracker,
@@ -92,7 +94,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
 
   test "hands cleanup to durable queue without caller-side remote deletion" do
     tracker = StorageCompensation.new()
-    storage_key = "projects/1/assets/copy/file.png"
+    storage_key = cleanup_asset_key("remote-handoff")
     :ok = StorageCompensation.track(tracker, storage_key)
     parent = self()
 
@@ -114,8 +116,8 @@ defmodule Storyarn.Assets.StorageCompensationTest do
 
   test "successful transaction cleanup retains adopted keys and hands off only partial writes" do
     tracker = StorageCompensation.new()
-    retained_key = "projects/1/assets/committed/file.png"
-    partial_key = "projects/1/assets/partial/file.png"
+    retained_key = cleanup_asset_key("committed")
+    partial_key = cleanup_asset_key("partial")
     parent = self()
 
     :ok = StorageCompensation.track(tracker, retained_key)
@@ -141,8 +143,8 @@ defmodule Storyarn.Assets.StorageCompensationTest do
 
   test "pre-commit cleanup handoff keeps rollback compensation until commit is confirmed" do
     tracker = StorageCompensation.new()
-    retained_key = "projects/1/assets/committed/file.png"
-    partial_key = "projects/1/assets/partial/file.png"
+    retained_key = cleanup_asset_key("precommit-retained")
+    partial_key = cleanup_asset_key("precommit-partial")
     parent = self()
 
     :ok = StorageCompensation.retain_after_commit(tracker, retained_key)
@@ -172,7 +174,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
 
   test "pre-commit cleanup handoff failure leaves the tracker available to the rollback path" do
     tracker = StorageCompensation.new()
-    partial_key = "projects/1/assets/partial/file.png"
+    partial_key = cleanup_asset_key("precommit-failure")
     parent = self()
 
     :ok = StorageCompensation.track(tracker, partial_key)
@@ -202,7 +204,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
 
   test "rollback cleanup includes keys previously marked for retention" do
     tracker = StorageCompensation.new()
-    storage_key = "projects/1/assets/rolled-back/file.png"
+    storage_key = cleanup_asset_key("rolled-back")
     parent = self()
 
     :ok = StorageCompensation.retain_after_commit(tracker, storage_key)
@@ -220,7 +222,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
 
   test "untracking removes a retained key without leaving duplicate cleanup ownership" do
     tracker = StorageCompensation.new()
-    storage_key = "projects/1/assets/adopted/file.png"
+    storage_key = cleanup_asset_key("adopted")
     parent = self()
 
     :ok = StorageCompensation.track(tracker, storage_key)
@@ -322,7 +324,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   test "a committed Asset row still protects its exact key from force cleanup" do
     user = user_fixture()
     project = project_fixture(user)
-    storage_key = "projects/#{project.id}/blobs/#{String.duplicate("F", 64)}.png"
+    storage_key = cleanup_asset_key("nonstandard-key", project.id)
     tracker = StorageCompensation.new()
     parent = self()
 
@@ -354,7 +356,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   end
 
   test "enqueues durable cleanup when an immediate delete fails" do
-    storage_key = "projects/1/blobs/orphan.png"
+    storage_key = cleanup_blob_key("orphan")
     parent = self()
 
     assert :ok =
@@ -372,7 +374,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   end
 
   test "does not enqueue cleanup when an immediate deletion retry succeeds" do
-    storage_key = "projects/1/blobs/recovered-orphan.png"
+    storage_key = cleanup_blob_key("recovered-orphan")
     parent = self()
     {:ok, attempts} = Agent.start_link(fn -> 0 end)
 
@@ -397,7 +399,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   end
 
   test "treats nonpositive delete attempts as one before enqueuing" do
-    storage_key = "projects/1/blobs/no-retries-orphan.png"
+    storage_key = cleanup_blob_key("no-retries-orphan")
     parent = self()
     {:ok, attempts} = Agent.start_link(fn -> 0 end)
 
@@ -420,7 +422,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   end
 
   test "persists failed immediate cleanup when queue insertion also fails" do
-    storage_key = "projects/1/blobs/persisted-orphan.png"
+    storage_key = cleanup_blob_key("persisted-orphan")
 
     assert :ok =
              StorageCompensation.delete_or_enqueue(storage_key,
@@ -436,7 +438,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
 
   test "untracks an object after handing failed deletion to durable cleanup" do
     tracker = StorageCompensation.new()
-    storage_key = "projects/1/blobs/handed-off-orphan.png"
+    storage_key = cleanup_blob_key("handed-off-orphan")
     parent = self()
     :ok = StorageCompensation.track(tracker, storage_key)
 
@@ -466,7 +468,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
 
   test "keeps an object tracked when deletion and durable handoff both fail" do
     tracker = StorageCompensation.new()
-    storage_key = "projects/1/blobs/unhanded-orphan.png"
+    storage_key = cleanup_blob_key("unhanded-orphan")
     parent = self()
     :ok = StorageCompensation.track(tracker, storage_key)
 
@@ -493,7 +495,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
 
   test "retains the tracker for cleanup after a transactional delete failure" do
     tracker = StorageCompensation.new()
-    storage_key = "projects/1/blobs/transactional-orphan.png"
+    storage_key = cleanup_blob_key("transactional-orphan")
     parent = self()
     :ok = StorageCompensation.track(tracker, storage_key)
 
@@ -524,7 +526,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
 
   test "untracks an object deleted successfully inside a transaction" do
     tracker = StorageCompensation.new()
-    storage_key = "projects/1/blobs/deleted-in-transaction.png"
+    storage_key = cleanup_blob_key("deleted-in-transaction")
     parent = self()
     :ok = StorageCompensation.track(tracker, storage_key)
 
@@ -800,18 +802,35 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   test "deferred cleanup still deletes unique conditional-copy temporaries for committed projects" do
     user = user_fixture()
     project = project_fixture(user)
-    hash = String.duplicate("c", 64)
-    storage_key = "projects/#{project.id}/blobs/#{hash}.png.storyarn-copy-random"
+    asset_uuid = Ecto.UUID.generate()
 
-    assert {:ok, _url} = Storage.upload(storage_key, "temporary", "image/png")
-    on_exit(fn -> Storage.delete(storage_key) end)
+    storage_keys = [
+      "projects/#{project.id}/blobs/.storyarn-copy/AAAAAAAAAAAAAAAA",
+      "projects/#{project.id}/assets/#{asset_uuid}/.storyarn-copy/BBBBBBBBBBBBBBBB"
+    ]
 
-    assert :ok = StorageCompensation.delete_storage_keys([storage_key])
-    assert {:error, :enoent} = Storage.download(storage_key)
+    upload_dir =
+      :storyarn
+      |> Application.fetch_env!(:storage)
+      |> Keyword.fetch!(:upload_dir)
+      |> Path.expand()
+
+    for storage_key <- storage_keys do
+      path = Path.join(upload_dir, storage_key)
+      File.mkdir_p!(Path.dirname(path))
+      File.write!(path, "temporary")
+      on_exit(fn -> Storage.delete(storage_key) end)
+    end
+
+    assert :ok = StorageCompensation.delete_storage_keys(storage_keys)
+
+    for storage_key <- storage_keys do
+      refute File.exists?(Path.join(upload_dir, storage_key))
+    end
   end
 
   test "delete_or_enqueue! raises when no durable cleanup path is available" do
-    storage_key = "projects/1/blobs/unrecoverable-orphan.png"
+    storage_key = cleanup_blob_key("unrecoverable-orphan")
 
     error =
       assert_raise StorageCleanupPersistenceError, fn ->
@@ -834,8 +853,8 @@ defmodule Storyarn.Assets.StorageCompensationTest do
 
   test "delete_or_enqueue_all! attempts every key before raising aggregated failures" do
     storage_keys = [
-      "projects/1/assets/unrecoverable/one.png",
-      "projects/1/blobs/unrecoverable-two.png"
+      cleanup_asset_key("unrecoverable-one"),
+      cleanup_blob_key("unrecoverable-two")
     ]
 
     {:ok, attempts} = Agent.start_link(fn -> [] end)
@@ -862,16 +881,66 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   end
 
   test "accepts blob keys for deletion retries" do
-    storage_key = "projects/1/blobs/#{System.unique_integer([:positive])}.png"
+    storage_key = cleanup_blob_key("deletion-retry-#{System.unique_integer([:positive])}")
     assert {:ok, _url} = Storage.upload(storage_key, "blob", "image/png")
 
     assert :ok = StorageCompensation.delete_storage_keys([storage_key])
     assert {:error, :enoent} = Storage.download(storage_key)
   end
 
+  test "rejects malformed project keys before immediate deletion or durable enqueue" do
+    hash = String.duplicate("a", 64)
+    uuid = Ecto.UUID.generate()
+
+    invalid_keys = [
+      "projects/01/blobs/#{hash}.png",
+      "projects/9223372036854775808/blobs/#{hash}.png",
+      "projects/1/blobs/#{String.upcase(hash)}.png",
+      "projects/1/blobs/#{hash}...",
+      "projects/1/blobs/#{hash}.pn\\g",
+      "projects/1/blobs/#{hash}.png#{<<0>>}",
+      "projects/1/assets/not-a-uuid/file.png",
+      "projects/1/assets/#{uuid}/.storyarn-copy",
+      "projects/1/assets/#{uuid}/nested/file.png",
+      "projects/1/archive/assets/#{uuid}/file.png"
+    ]
+
+    for storage_key <- invalid_keys do
+      assert {:error, :invalid_storage_key} =
+               StorageCompensation.delete_or_enqueue(storage_key,
+                 delete_fun: fn key ->
+                   send(self(), {:unexpected_delete, key})
+                   :ok
+                 end
+               )
+    end
+
+    assert :ok =
+             StorageCompensation.enqueue_cleanup(invalid_keys,
+               insert_fun: fn keys ->
+                 send(self(), {:unexpected_enqueue, keys})
+                 :ok
+               end
+             )
+
+    refute_receive {:unexpected_delete, _key}
+    refute_receive {:unexpected_enqueue, _keys}
+  end
+
+  test "does not delete a safe but non-canonical project object" do
+    storage_key =
+      "projects/1/archive/assets/unintended-#{System.unique_integer([:positive])}.png"
+
+    assert {:ok, _url} = Storage.upload(storage_key, "unintended", "image/png")
+    on_exit(fn -> Storage.delete(storage_key) end)
+
+    assert :ok = StorageCompensation.delete_storage_keys([storage_key])
+    assert {:ok, "unintended"} = Storage.download(storage_key)
+  end
+
   test "rotates a failing persisted request so newer cleanup is not starved" do
-    blocked_key = "projects/1/assets/blocked-#{System.unique_integer([:positive])}/object.png"
-    removable_key = "projects/1/assets/removable-#{System.unique_integer([:positive])}/object.png"
+    blocked_key = cleanup_asset_key("blocked")
+    removable_key = cleanup_asset_key("removable")
 
     upload_dir =
       :storyarn
@@ -899,5 +968,14 @@ defmodule Storyarn.Assets.StorageCompensationTest do
     assert :ok = StorageCompensation.retry_persisted_cleanup_requests(1)
     refute Repo.get(StorageCleanupRequest, removable_request.id)
     assert {:error, :enoent} = Storage.download(removable_key)
+  end
+
+  defp cleanup_asset_key(label, project_id \\ 1) do
+    "projects/#{project_id}/assets/#{Ecto.UUID.generate()}/#{label}.png"
+  end
+
+  defp cleanup_blob_key(label, project_id \\ 1) do
+    hash = :sha256 |> :crypto.hash(label) |> Base.encode16(case: :lower)
+    "projects/#{project_id}/blobs/#{hash}.png"
   end
 end

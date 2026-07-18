@@ -6,7 +6,7 @@ defmodule Storyarn.Workers.DeleteStorageObjectsWorkerTest do
 
   test "moves exhausted storage cleanup to the recurring durable reconciler" do
     storage_key =
-      "projects/1/assets/undeletable-#{System.unique_integer([:positive])}/object.png"
+      "projects/1/assets/#{Ecto.UUID.generate()}/undeletable.png"
 
     storage_path =
       :storyarn
@@ -62,7 +62,9 @@ defmodule Storyarn.Workers.DeleteStorageObjectsWorkerTest do
   end
 
   test "uses the bounded storage cleanup queue" do
+    storage_key = "projects/1/assets/#{Ecto.UUID.generate()}/queued.png"
+
     assert %{changes: %{queue: "storage_cleanup"}} =
-             DeleteStorageObjectsWorker.new(%{"storage_keys" => ["projects/1/assets/a/file.png"]})
+             DeleteStorageObjectsWorker.new(%{"storage_keys" => [storage_key]})
   end
 end

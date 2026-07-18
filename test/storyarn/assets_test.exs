@@ -472,6 +472,14 @@ defmodule Storyarn.AssetsTest do
     test "preserves dots and hyphens" do
       assert Assets.sanitize_filename("my-file.v2.png") == "my-file.v2.png"
     end
+
+    test "replaces empty, path-only, and reserved storage names" do
+      assert Assets.sanitize_filename("") == "file"
+      assert Assets.sanitize_filename("/") == "file"
+      assert Assets.sanitize_filename(".") == "file"
+      assert Assets.sanitize_filename("..") == "file"
+      assert Assets.sanitize_filename(".storyarn-copy") == "_storyarn-copy"
+    end
   end
 
   describe "list_assets_for_export/1" do

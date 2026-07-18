@@ -192,6 +192,39 @@ defmodule StoryarnWeb.TemplateLiveTest do
       refute has_element?(view, "#template-installation-failure-toast")
     end
 
+    test "translates allowlisted installation failure reasons", %{
+      conn: conn,
+      user: user,
+      scope: scope
+    } do
+      template = template_fixture(user, scope, %{name: "Localized Failure Template"})
+      workspace = workspace_fixture(user, %{name: "Localized Failure Workspace"})
+
+      failed_installation =
+        failed_installation_fixture(
+          template,
+          user,
+          workspace,
+          "Localized Failure Copy"
+        )
+
+      Repo.update_all(
+        from(install in ProjectTemplateInstall, where: install.id == ^failed_installation.id),
+        set: [
+          error_code: "checksum_mismatch",
+          error_message: "The template failed its integrity check."
+        ]
+      )
+
+      conn = put_session(conn, :locale, "es")
+      {:ok, view, _html} = live(conn, ~p"/templates/#{template.id}")
+
+      assert render(view) =~
+               "La instalación de la template ha fallado: " <>
+                 "La template no superó la comprobación de integridad. " <>
+                 "Referencia: #{failed_installation.id}"
+    end
+
     test "queues concurrent failures and advances after dismissing the newest", %{
       conn: conn,
       user: user,
