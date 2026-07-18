@@ -1,0 +1,22 @@
+test/storyarn/exports/serializers/yarn_validation_test.exs
+  s_7d17843f59d188::t_1e72c4574acfca 715,719,721-760,763,820-823
+test/storyarn/exports/serializers/ink_validation_test.exs
+  s_7d17843f59d188::t_61ab611693aa54 638-640,748,752,754-793,796
+  s_7d17843f59d188::t_63901615579534 637
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "666091610107be6ffba857de0e465150f560f2a6",
+  "prompts": {},
+  "sessions": {
+    "s_7d17843f59d188": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fbf-1c01-7451-82e0-8923d01cb5fe",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
