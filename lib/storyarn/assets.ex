@@ -20,6 +20,7 @@ defmodule Storyarn.Assets do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Projects.Project
+  alias Storyarn.References.AvatarIntegrity
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.ScenePin
@@ -206,19 +207,28 @@ defmodule Storyarn.Assets do
   Note: This only deletes database records. The actual files should be deleted
   from storage separately, after this returns `{:ok, asset}`.
   """
-  @spec delete_asset(asset()) :: {:ok, asset()} | {:error, changeset()}
+  @spec delete_asset(asset()) :: {:ok, asset()} | {:error, changeset() | term()}
   def delete_asset(%Asset{} = asset) do
-    Repo.transaction(fn ->
-      sheet_ids = detach_sheet_avatar_references(asset)
-      _updated_flow_nodes = clear_flow_node_audio_references(asset)
+    Repo.transaction(fn -> delete_asset_in_transaction(asset) end)
+  end
 
-      Enum.each(sheet_ids, &promote_default_avatar/1)
+  defp delete_asset_in_transaction(asset) do
+    case detach_sheet_avatar_references(asset) do
+      {:ok, sheet_ids} ->
+        _updated_flow_nodes = clear_flow_node_audio_references(asset)
+        Enum.each(sheet_ids, &promote_default_avatar/1)
+        delete_asset_or_rollback(asset)
 
-      case Repo.delete(asset) do
-        {:ok, deleted_asset} -> deleted_asset
-        {:error, changeset} -> Repo.rollback(changeset)
-      end
-    end)
+      {:error, reason} ->
+        Repo.rollback(reason)
+    end
+  end
+
+  defp delete_asset_or_rollback(asset) do
+    case Repo.delete(asset) do
+      {:ok, deleted_asset} -> deleted_asset
+      {:error, changeset} -> Repo.rollback(changeset)
+    end
   end
 
   @doc """
@@ -339,16 +349,36 @@ defmodule Storyarn.Assets do
           on: sa.sheet_id == s.id,
           where: sa.asset_id == ^asset_id,
           where: s.project_id == ^project_id,
-          select: %{id: sa.id, sheet_id: sa.sheet_id, is_default: sa.is_default}
+          order_by: [asc: sa.id],
+          lock: "FOR UPDATE",
+          select: sa
         )
       )
 
-    avatar_ids = Enum.map(avatars, & &1.id)
-
-    if avatar_ids != [] do
-      Repo.delete_all(from(sa in SheetAvatar, where: sa.id in ^avatar_ids))
+    with :ok <- ensure_avatars_deletable(avatars) do
+      avatar_ids = Enum.map(avatars, & &1.id)
+      delete_avatar_rows(avatar_ids)
+      {:ok, default_avatar_sheet_ids(avatars)}
     end
+  end
 
+  defp ensure_avatars_deletable(avatars) do
+    Enum.reduce_while(avatars, :ok, fn avatar, :ok ->
+      case AvatarIntegrity.ensure_deletable(avatar.id) do
+        :ok -> {:cont, :ok}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+  end
+
+  defp delete_avatar_rows([]), do: :ok
+
+  defp delete_avatar_rows(avatar_ids) do
+    Repo.delete_all(from(sa in SheetAvatar, where: sa.id in ^avatar_ids))
+    :ok
+  end
+
+  defp default_avatar_sheet_ids(avatars) do
     avatars
     |> Enum.filter(& &1.is_default)
     |> Enum.map(& &1.sheet_id)

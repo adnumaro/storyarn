@@ -38,7 +38,43 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   """
   @spec build_snapshot(integer()) :: map()
   def build_snapshot(project_id) do
-    project = Repo.get!(Project, project_id)
+    case Repo.transaction(
+           fn ->
+             project = lock_active_project_for_snapshot!(project_id)
+             build_consistent_snapshot(project)
+           end,
+           isolation: :repeatable_read,
+           timeout: to_timeout(minute: 5)
+         ) do
+      {:ok, snapshot} ->
+        snapshot
+
+      {:error, reason} ->
+        raise "project snapshot transaction failed: #{inspect(reason)}"
+    end
+  end
+
+  defp lock_active_project_for_snapshot!(project_id) do
+    case Repo.one(
+           from(project in Project,
+             where: project.id == ^project_id,
+             lock: "FOR UPDATE"
+           )
+         ) do
+      %Project{deleted_at: nil} = project ->
+        project
+
+      %Project{} ->
+        raise ArgumentError,
+              "cannot snapshot inactive project #{project_id}"
+
+      nil ->
+        raise Ecto.NoResultsError, queryable: Project
+    end
+  end
+
+  defp build_consistent_snapshot(project) do
+    project_id = project.id
     sheets = Sheets.list_sheets_for_export(project_id)
     flows = Flows.list_flows_for_export(project_id)
     scenes = Scenes.list_scenes_for_export(project_id)
@@ -52,7 +88,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
         else: Localization.list_texts_for_backup(project_id, locale_codes)
 
     glossary = Localization.list_glossary_for_export(project_id)
-    {asset_blob_hashes, asset_metadata} = localization_asset_metadata(texts)
+    {asset_blob_hashes, asset_metadata} = localization_asset_metadata(project_id, texts)
 
     entity_counts = %{
       "sheets" => length(sheets),
@@ -106,10 +142,10 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
     }
   end
 
-  defp localization_asset_metadata(texts) do
+  defp localization_asset_metadata(project_id, texts) do
     texts
     |> Enum.map(& &1.vo_asset_id)
-    |> AssetHashResolver.resolve_hashes()
+    |> AssetHashResolver.resolve_hashes_for_project!(project_id)
   end
 
   defp project_to_snapshot(project) do

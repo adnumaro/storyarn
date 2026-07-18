@@ -10,6 +10,7 @@ defmodule Storyarn.Workers.RecoverProjectWorker do
 
   alias Storyarn.Projects
   alias Storyarn.Versioning
+  alias Storyarn.Versioning.ProjectSnapshotIntegrity
   alias Storyarn.Versioning.SnapshotStorage
   alias Storyarn.Workspaces
 
@@ -41,7 +42,15 @@ defmodule Storyarn.Workers.RecoverProjectWorker do
   end
 
   defp do_recover(workspace_id, snapshot, user_id, name) do
-    with {:ok, snapshot_data} <- SnapshotStorage.load_snapshot(snapshot.storage_key),
+    with {:ok, snapshot_data, actual_checksum} <-
+           SnapshotStorage.load_snapshot_with_checksum(snapshot.storage_key),
+         :ok <-
+           ProjectSnapshotIntegrity.validate_recovery_blob(
+             snapshot_data,
+             snapshot.entity_counts,
+             snapshot.checksum,
+             actual_checksum
+           ),
          {:ok, project} <-
            Versioning.recover_project(workspace_id, snapshot_data, user_id, name: name) do
       broadcast_success(workspace_id, project)

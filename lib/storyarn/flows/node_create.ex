@@ -8,6 +8,7 @@ defmodule Storyarn.Flows.NodeCreate do
   alias Storyarn.Flows.NodeCrud
   alias Storyarn.Localization
   alias Storyarn.Projects.Project
+  alias Storyarn.References.AvatarIntegrity
   alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Shared.WordCount
@@ -20,14 +21,7 @@ defmodule Storyarn.Flows.NodeCreate do
     attrs = stringify_keys(attrs)
 
     result =
-      fn ->
-        locked_project = Repo.one!(from(p in Project, where: p.id == ^project.id, lock: "FOR UPDATE"))
-
-        case Billing.can_create_item?(locked_project) do
-          :ok -> create_and_extract_node(flow, attrs)
-          {:error, reason, details} -> Repo.rollback({reason, details})
-        end
-      end
+      fn -> create_node_in_transaction(flow, project.id, attrs) end
       |> Repo.transaction()
       |> normalize_item_limit_result()
 
@@ -40,6 +34,25 @@ defmodule Storyarn.Flows.NodeCreate do
     end
 
     result
+  end
+
+  defp create_node_in_transaction(flow, project_id, attrs) do
+    locked_project = Repo.one!(from(p in Project, where: p.id == ^project_id, lock: "FOR UPDATE"))
+
+    with :ok <- Billing.can_create_item?(locked_project),
+         {:ok, normalized_data} <-
+           AvatarIntegrity.lock_and_normalize_node_avatar(
+             flow.id,
+             attrs["type"],
+             attrs["data"] || %{}
+           ) do
+      attrs
+      |> Map.put("data", normalized_data)
+      |> then(&create_and_extract_node(flow, &1))
+    else
+      {:error, reason, details} -> Repo.rollback({reason, details})
+      {:error, reason} -> Repo.rollback(reason)
+    end
   end
 
   defp normalize_item_limit_result({:error, {:limit_reached, details}}), do: {:error, :limit_reached, details}

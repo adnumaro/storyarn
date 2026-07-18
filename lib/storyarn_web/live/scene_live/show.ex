@@ -994,7 +994,7 @@ defmodule StoryarnWeb.SceneLive.Show do
            |> put_flash(:info, dgettext("scenes", "Pin icon updated."))}
         )
       else
-        {:error, message} ->
+        {:error, message} when is_binary(message) ->
           {:noreply, put_flash(socket, :error, message)}
 
         _ ->
@@ -1043,7 +1043,7 @@ defmodule StoryarnWeb.SceneLive.Show do
            |> put_flash(:info, dgettext("scenes", "Zone icon updated."))}
         )
       else
-        {:error, message} ->
+        {:error, message} when is_binary(message) ->
           {:noreply, put_flash(socket, :error, message)}
 
         _ ->

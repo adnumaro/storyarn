@@ -91,6 +91,81 @@ defmodule Storyarn.Sheets.ReferenceTrackerTest do
     end
   end
 
+  describe "project-scoped reference rebuilding" do
+    test "keeps only active targets owned by the requested project" do
+      %{user: user, project: project} = setup_project()
+      other_project = project_fixture(user)
+      source_sheet = sheet_fixture(project, %{name: "Source"})
+      local_target = sheet_fixture(project, %{name: "Local"})
+      foreign_target = sheet_fixture(other_project, %{name: "Foreign"})
+
+      {:ok, block} =
+        Sheets.create_block(source_sheet, %{
+          type: "reference",
+          value: %{"target_type" => "sheet", "target_id" => local_target.id}
+        })
+
+      assert :ok =
+               ReferenceTracker.update_block_references(block,
+                 project_id: project.id
+               )
+
+      assert ReferenceTracker.count_backlinks("sheet", local_target.id) == 1
+
+      {:ok, block} =
+        Sheets.update_block(block, %{
+          value: %{"target_type" => "sheet", "target_id" => foreign_target.id}
+        })
+
+      assert :ok =
+               ReferenceTracker.update_block_references(block,
+                 project_id: project.id
+               )
+
+      assert ReferenceTracker.count_backlinks("sheet", local_target.id) == 0
+      assert ReferenceTracker.count_backlinks("sheet", foreign_target.id) == 0
+
+      {:ok, _deleted_target} = Sheets.delete_sheet(local_target)
+
+      {:ok, block} =
+        Sheets.update_block(block, %{
+          value: %{"target_type" => "sheet", "target_id" => local_target.id}
+        })
+
+      assert :ok =
+               ReferenceTracker.update_block_references(block,
+                 project_id: project.id
+               )
+
+      assert ReferenceTracker.count_backlinks("sheet", local_target.id) == 0
+    end
+
+    test "filters foreign mentions while retaining valid local mentions" do
+      %{user: user, project: project} = setup_project()
+      other_project = project_fixture(user)
+      source_sheet = sheet_fixture(project, %{name: "Source"})
+      local_target = sheet_fixture(project, %{name: "Local"})
+      foreign_target = sheet_fixture(other_project, %{name: "Foreign"})
+
+      content =
+        ~s(<p><span class="mention" data-type="sheet" data-id="#{local_target.id}">Local</span><span class="mention" data-type="sheet" data-id="#{foreign_target.id}">Foreign</span></p>)
+
+      {:ok, block} =
+        Sheets.create_block(source_sheet, %{
+          type: "rich_text",
+          value: %{"content" => content}
+        })
+
+      assert :ok =
+               ReferenceTracker.update_block_references(block,
+                 project_id: project.id
+               )
+
+      assert ReferenceTracker.count_backlinks("sheet", local_target.id) == 1
+      assert ReferenceTracker.count_backlinks("sheet", foreign_target.id) == 0
+    end
+  end
+
   # =============================================================================
   # Flow node references
   # =============================================================================

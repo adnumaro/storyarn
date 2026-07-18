@@ -29,10 +29,20 @@ defmodule Storyarn.Sheets.ReferenceTracker do
 
   import Ecto.Query
 
+  alias Storyarn.Flows.Flow
   alias Storyarn.Repo
+  alias Storyarn.Scenes.Scene
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.EntityReference
   alias Storyarn.Sheets.Sheet
+
+  @project_target_types %{
+    "block" => ~w(sheet flow),
+    "flow_node" => ~w(sheet flow),
+    "screenplay_element" => ~w(sheet flow),
+    "scene_pin" => ~w(sheet flow),
+    "scene_zone" => ~w(sheet flow scene)
+  }
 
   @doc """
   Updates references from a block.
@@ -40,8 +50,8 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   Deletes all existing references from this block and creates new ones
   based on the current block state.
   """
-  @spec update_block_references(map()) :: :ok
-  def update_block_references(block) do
+  @spec update_block_references(map(), keyword()) :: :ok
+  def update_block_references(block, opts \\ []) do
     block_id = block.id
 
     Repo.transaction(fn ->
@@ -50,7 +60,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
 
       # Extract and batch-insert new references
       references = extract_block_references(block)
-      batch_insert_references("block", block_id, references)
+      batch_insert_references("block", block_id, references, opts)
     end)
 
     :ok
@@ -69,18 +79,20 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   Updates references for a flow node based on its data.
   Extracts mentions from rich text fields and speaker references.
   """
-  @spec update_flow_node_references(map()) :: :ok
-  def update_flow_node_references(%{id: node_id, data: data}) when is_map(data) do
+  @spec update_flow_node_references(map(), keyword()) :: :ok
+  def update_flow_node_references(node, opts \\ [])
+
+  def update_flow_node_references(%{id: node_id, data: data}, opts) when is_map(data) do
     Repo.transaction(fn ->
       delete_flow_node_references(node_id)
       references = extract_flow_node_refs(data)
-      batch_insert_references("flow_node", node_id, references)
+      batch_insert_references("flow_node", node_id, references, opts)
     end)
 
     :ok
   end
 
-  def update_flow_node_references(_node), do: :ok
+  def update_flow_node_references(_node, _opts), do: :ok
 
   @doc """
   Deletes all references from a flow node.
@@ -241,15 +253,17 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   Updates references from a map pin.
   Tracks target_type/target_id and sheet_id references.
   """
-  @spec update_scene_pin_references(map()) :: :ok
-  def update_scene_pin_references(%{id: pin_id} = pin) do
+  @spec update_scene_pin_references(map(), keyword()) :: :ok
+  def update_scene_pin_references(pin, opts \\ [])
+
+  def update_scene_pin_references(%{id: pin_id} = pin, opts) do
     delete_map_pin_references(pin_id)
 
     refs = extract_map_pin_refs(pin)
-    batch_insert_references("scene_pin", pin_id, refs)
+    batch_insert_references("scene_pin", pin_id, refs, opts)
   end
 
-  def update_scene_pin_references(_pin), do: :ok
+  def update_scene_pin_references(_pin, _opts), do: :ok
 
   @doc """
   Deletes all references from a map pin.
@@ -263,15 +277,17 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   Updates references from a map zone.
   Tracks target_type/target_id references.
   """
-  @spec update_scene_zone_references(map()) :: :ok
-  def update_scene_zone_references(%{id: zone_id} = zone) do
+  @spec update_scene_zone_references(map(), keyword()) :: :ok
+  def update_scene_zone_references(zone, opts \\ [])
+
+  def update_scene_zone_references(%{id: zone_id} = zone, opts) do
     delete_map_zone_references(zone_id)
 
     refs = extract_map_zone_refs(zone)
-    batch_insert_references("scene_zone", zone_id, refs)
+    batch_insert_references("scene_zone", zone_id, refs, opts)
   end
 
-  def update_scene_zone_references(_zone), do: :ok
+  def update_scene_zone_references(_zone, _opts), do: :ok
 
   @doc """
   Deletes all references from a map zone.
@@ -300,7 +316,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
 
   # Private functions
 
-  defp batch_insert_references(source_type, source_id, references) do
+  defp batch_insert_references(source_type, source_id, references, opts \\ []) do
     now = DateTime.to_naive(TimeHelpers.now())
 
     entries =
@@ -318,10 +334,55 @@ defmodule Storyarn.Sheets.ReferenceTracker do
           updated_at: now
         }
       end)
+      |> filter_project_targets(source_type, Keyword.get(opts, :project_id))
 
     if entries != [], do: Repo.insert_all(EntityReference, entries, on_conflict: :nothing)
 
     :ok
+  end
+
+  defp filter_project_targets(entries, _source_type, nil), do: entries
+
+  defp filter_project_targets(entries, source_type, project_id) when is_integer(project_id) do
+    if not Repo.in_transaction?() do
+      raise ArgumentError,
+            "project-scoped entity references must be rebuilt inside an explicit database transaction"
+    end
+
+    allowed_types = Map.fetch!(@project_target_types, source_type)
+    entries = Enum.filter(entries, &(&1.target_type in allowed_types))
+
+    allowed_targets =
+      Enum.reduce([{"sheet", Sheet}, {"flow", Flow}, {"scene", Scene}], MapSet.new(), fn {target_type, schema}, allowed ->
+        target_ids =
+          entries
+          |> Enum.filter(&(&1.target_type == target_type))
+          |> Enum.map(& &1.target_id)
+          |> Enum.uniq()
+
+        active_ids =
+          if target_ids == [] do
+            []
+          else
+            Repo.all(
+              from target in schema,
+                where:
+                  target.id in ^target_ids and target.project_id == ^project_id and
+                    is_nil(target.deleted_at),
+                order_by: [asc: target.id],
+                lock: "FOR UPDATE",
+                select: target.id
+            )
+          end
+
+        Enum.reduce(active_ids, allowed, &MapSet.put(&2, {target_type, &1}))
+      end)
+
+    Enum.filter(entries, &MapSet.member?(allowed_targets, {&1.target_type, &1.target_id}))
+  end
+
+  defp filter_project_targets(_entries, _source_type, project_id) do
+    raise ArgumentError, "expected :project_id to be an integer, got: #{inspect(project_id)}"
   end
 
   defp parse_id(id) when is_integer(id), do: id

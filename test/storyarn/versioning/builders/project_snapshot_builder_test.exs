@@ -240,6 +240,84 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
       assert text_snapshot["vo_asset_id"] == voice_asset.id
     end
 
+    test "rejects localization voice assets owned by another project", %{
+      project: project,
+      user: user
+    } do
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      foreign_project = project_fixture(user)
+
+      foreign_voice =
+        uploaded_asset(
+          foreign_project,
+          user,
+          "foreign-localized-line.mp3",
+          "foreign voice",
+          "audio/mpeg"
+        )
+
+      text =
+        localized_text_fixture(project.id, %{
+          locale_code: "es",
+          source_text: "Hello",
+          translated_text: "Hola"
+        })
+
+      assert {:ok, _text} =
+               Localization.update_text(text, %{
+                 vo_asset_id: foreign_voice.id,
+                 vo_status: "recorded"
+               })
+
+      assert_raise ArgumentError, ~r/owned by another project/, fn ->
+        ProjectSnapshotBuilder.build_snapshot(project.id)
+      end
+    end
+
+    test "rejects localization voice assets whose recovery blob is unavailable", %{
+      project: project,
+      user: user
+    } do
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      voice_asset =
+        uploaded_asset(
+          project,
+          user,
+          "missing-localized-line.mp3",
+          "missing voice",
+          "audio/mpeg"
+        )
+
+      text =
+        localized_text_fixture(project.id, %{
+          locale_code: "es",
+          source_text: "Hello",
+          translated_text: "Hola"
+        })
+
+      assert {:ok, _text} =
+               Localization.update_text(text, %{
+                 vo_asset_id: voice_asset.id,
+                 vo_status: "recorded"
+               })
+
+      delete_storage_blob(
+        BlobStore.blob_key(
+          project.id,
+          voice_asset.blob_hash,
+          BlobStore.ext_from_content_type(voice_asset.content_type)
+        )
+      )
+
+      assert_raise ArgumentError, ~r/asset_blob_unavailable/, fn ->
+        ProjectSnapshotBuilder.build_snapshot(project.id)
+      end
+    end
+
     test "restores localization data", %{project: project, flow: flow} do
       source_language_fixture(project, %{locale_code: "en", name: "English"})
       language_fixture(project, %{locale_code: "es", name: "Spanish"})
@@ -289,7 +367,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
       assert hd(glossary).target_term == "Dragón"
     end
 
-    test "remaps localization when project restore replaces node and block IDs", %{
+    test "keeps localization attached when project restore preserves node and block IDs", %{
       project: project,
       sheet: sheet,
       flow: flow
@@ -321,17 +399,14 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
       restored_flow = Storyarn.Flows.get_flow(project.id, flow.id)
       restored_node = Enum.find(restored_flow.nodes, &((&1.data || %{})["text"] == "Versioned line"))
       restored_block = Enum.find(Storyarn.Sheets.list_blocks(sheet.id), &(&1.variable_name == "versioned_bio"))
-      refute restored_node.id == node.id
-      refute restored_block.id == block.id
+      assert restored_node.id == node.id
+      assert restored_block.id == block.id
 
       assert [%{translated_text: "Línea versionada", status: "final"}] =
                Localization.get_texts_for_source("flow_node", restored_node.id)
 
       assert [%{translated_text: "Biografía versionada", status: "final"}] =
                Localization.get_texts_for_source("block", restored_block.id)
-
-      assert Localization.get_texts_for_source("flow_node", node.id) == []
-      assert Localization.get_texts_for_source("block", block.id) == []
     end
   end
 

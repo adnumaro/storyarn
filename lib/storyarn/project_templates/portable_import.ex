@@ -4,7 +4,10 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
   import Ecto.Query, warn: false
 
   alias Storyarn.Accounts.User
+  alias Storyarn.Assets
+  alias Storyarn.Assets.Asset
   alias Storyarn.Assets.Storage
+  alias Storyarn.Assets.StorageCompensation
   alias Storyarn.ProjectTemplates.Artifact
   alias Storyarn.ProjectTemplates.Audit
   alias Storyarn.ProjectTemplates.PortableBundle
@@ -16,12 +19,17 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
   alias Storyarn.Versioning.SnapshotStorage
   alias Storyarn.Workspaces.Workspace
 
+  require Logger
+
   @visibilities ~w(private public)
+  @sha256_regex ~r/\A[0-9a-f]{64}\z/
+  @max_asset_size 52_428_800
 
   @spec preview_bundle(String.t()) :: {:ok, map()} | {:error, term()}
   def preview_bundle(path) do
     with {:ok, bundle} <- PortableBundle.read(path),
          :ok <- validate_manifest(bundle.manifest),
+         :ok <- validate_bundle_preflight(bundle),
          :ok <- verify_bundle_checksum(bundle) do
       {:ok, bundle.manifest}
     end
@@ -31,10 +39,41 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
   def import_bundle(path, opts \\ []) do
     with {:ok, bundle} <- PortableBundle.read(path),
          :ok <- validate_manifest(bundle.manifest),
+         :ok <- validate_bundle_preflight(bundle),
          :ok <- verify_bundle_checksum(bundle),
-         {:ok, import_plan} <- build_import_plan(bundle, opts),
-         {:ok, imported} <- import_artifacts(bundle, import_plan) do
-      persist_import(bundle, import_plan, imported)
+         {:ok, import_plan} <- build_import_plan(bundle, opts) do
+      import_with_compensation(bundle, import_plan)
+    end
+  end
+
+  defp import_with_compensation(bundle, plan) do
+    tracker = StorageCompensation.new()
+    success_key = {__MODULE__, :import_succeeded, tracker}
+
+    try do
+      result =
+        with {:ok, imported} <- import_artifacts(bundle, plan, tracker) do
+          persist_import(bundle, plan, imported)
+        end
+
+      if match?({:ok, %ProjectTemplate{}}, result), do: Process.put(success_key, true)
+      result
+    rescue
+      error ->
+        Logger.error("Portable template import failed: #{Exception.message(error)}")
+        {:error, {:template_import_failed, error.__struct__}}
+    catch
+      kind, reason ->
+        Logger.error("Portable template import failed: #{inspect(kind)} #{inspect(reason)}")
+        {:error, {:template_import_failed, kind}}
+    after
+      if Process.get(success_key) do
+        StorageCompensation.discard(tracker)
+      else
+        StorageCompensation.cleanup!(tracker)
+      end
+
+      Process.delete(success_key)
     end
   end
 
@@ -51,6 +90,480 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
     do: {:error, {:unsupported_bundle_format, version}}
 
   defp validate_manifest(_manifest), do: {:error, :invalid_bundle_manifest}
+
+  defp validate_bundle_preflight(bundle) do
+    with :ok <- validate_snapshot_shape(bundle.snapshot),
+         :ok <- validate_snapshot_sequence_integrity(bundle.snapshot),
+         {:ok, snapshot_assets} <- snapshot_asset_catalog(bundle.snapshot),
+         {:ok, manifest_assets} <- asset_manifest_catalog(bundle.asset_manifest),
+         {:ok, blobs_by_asset_id} <- blob_catalog(bundle) do
+      validate_asset_catalog_consistency(
+        snapshot_assets,
+        manifest_assets,
+        blobs_by_asset_id
+      )
+    end
+  rescue
+    _error -> {:error, :invalid_bundle_snapshot}
+  catch
+    _kind, _reason -> {:error, :invalid_bundle_snapshot}
+  end
+
+  defp validate_snapshot_shape(%{
+         "format_version" => 2,
+         "project" => project,
+         "entity_counts" => entity_counts,
+         "asset_blob_hashes" => asset_blob_hashes,
+         "asset_metadata" => asset_metadata,
+         "sheets" => sheets,
+         "flows" => flows,
+         "scenes" => scenes,
+         "tree" => %{"sheets" => tree_sheets, "flows" => tree_flows, "scenes" => tree_scenes},
+         "localization" => %{"languages" => languages, "texts" => texts, "glossary" => glossary}
+       }) do
+    with true <-
+           valid_snapshot_root_shape?(
+             [project, entity_counts, asset_blob_hashes, asset_metadata],
+             [
+               sheets,
+               flows,
+               scenes,
+               tree_sheets,
+               tree_flows,
+               tree_scenes,
+               languages,
+               texts,
+               glossary
+             ]
+           ),
+         :ok <- validate_snapshot_entities(sheets, :sheet),
+         :ok <- validate_snapshot_entities(flows, :flow),
+         :ok <- validate_snapshot_entities(scenes, :scene),
+         true <- Enum.all?(tree_sheets ++ tree_flows ++ tree_scenes, &is_map/1),
+         true <- Enum.all?(languages ++ texts ++ glossary, &is_map/1) do
+      :ok
+    else
+      false -> {:error, :invalid_bundle_snapshot}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp validate_snapshot_shape(_snapshot), do: {:error, :invalid_bundle_snapshot}
+
+  defp valid_snapshot_root_shape?(maps, lists) do
+    Enum.all?(maps, &is_map/1) and Enum.all?(lists, &is_list/1)
+  end
+
+  defp validate_snapshot_entities(entries, type) do
+    if Enum.all?(entries, fn
+         %{"id" => id, "snapshot" => snapshot} ->
+           valid_asset_id?(id) and valid_entity_snapshot_shape?(type, snapshot)
+
+         _entry ->
+           false
+       end) do
+      :ok
+    else
+      {:error, :invalid_bundle_snapshot}
+    end
+  end
+
+  defp valid_entity_snapshot_shape?(:sheet, %{
+         "blocks" => blocks,
+         "avatars" => avatars,
+         "hidden_inherited_block_ids" => hidden_ids,
+         "asset_blob_hashes" => hashes,
+         "asset_metadata" => metadata,
+         "localization" => localization,
+         "localization_manifest" => localization_manifest
+       }) do
+    is_list(blocks) and is_list(avatars) and is_list(hidden_ids) and is_map(hashes) and
+      is_map(metadata) and is_list(localization) and is_map(localization_manifest)
+  end
+
+  defp valid_entity_snapshot_shape?(:flow, %{
+         "nodes" => nodes,
+         "connections" => connections,
+         "referenced_sheets" => referenced_sheets,
+         "asset_blob_hashes" => hashes,
+         "asset_metadata" => metadata,
+         "localization" => localization,
+         "localization_manifest" => localization_manifest
+       }) do
+    is_list(nodes) and is_list(connections) and is_map(referenced_sheets) and is_map(hashes) and
+      is_map(metadata) and is_list(localization) and is_map(localization_manifest)
+  end
+
+  defp valid_entity_snapshot_shape?(:scene, %{
+         "layers" => layers,
+         "orphan_zones" => orphan_zones,
+         "orphan_pins" => orphan_pins,
+         "orphan_annotations" => orphan_annotations,
+         "connections" => connections,
+         "ambient_flows" => ambient_flows,
+         "asset_blob_hashes" => hashes,
+         "asset_metadata" => metadata
+       }) do
+    Enum.all?(
+      [layers, orphan_zones, orphan_pins, orphan_annotations, connections, ambient_flows],
+      &is_list/1
+    ) and is_map(hashes) and is_map(metadata)
+  end
+
+  defp valid_entity_snapshot_shape?(_type, _snapshot), do: false
+
+  defp validate_snapshot_sequence_integrity(snapshot) do
+    case Audit.validate_snapshot_integrity(snapshot) do
+      :ok -> :ok
+      {:error, errors} -> {:error, {:invalid_bundle_snapshot, errors}}
+    end
+  end
+
+  defp snapshot_asset_catalog(snapshot) do
+    collect_snapshot_asset_catalog(snapshot, %{})
+  end
+
+  defp collect_snapshot_asset_catalog(value, catalog) when is_map(value) do
+    with {:ok, catalog} <- merge_local_snapshot_assets(value, catalog) do
+      value
+      |> Map.drop(["asset_blob_hashes", "asset_metadata"])
+      |> Map.values()
+      |> collect_snapshot_asset_values(catalog)
+    end
+  end
+
+  defp collect_snapshot_asset_catalog(value, catalog) when is_list(value) do
+    collect_snapshot_asset_values(value, catalog)
+  end
+
+  defp collect_snapshot_asset_catalog(_value, catalog), do: {:ok, catalog}
+
+  defp collect_snapshot_asset_values(values, catalog) do
+    Enum.reduce_while(values, {:ok, catalog}, &collect_snapshot_asset_value/2)
+  end
+
+  defp collect_snapshot_asset_value(nested, {:ok, accumulated}) do
+    case collect_snapshot_asset_catalog(nested, accumulated) do
+      {:ok, updated} -> {:cont, {:ok, updated}}
+      {:error, _reason} = error -> {:halt, error}
+    end
+  end
+
+  defp merge_local_snapshot_assets(value, catalog) do
+    case {Map.fetch(value, "asset_blob_hashes"), Map.fetch(value, "asset_metadata")} do
+      {:error, :error} ->
+        {:ok, catalog}
+
+      {{:ok, hashes}, {:ok, metadata}} when is_map(hashes) and is_map(metadata) ->
+        merge_snapshot_asset_maps(hashes, metadata, catalog)
+
+      _invalid ->
+        {:error, :invalid_bundle_snapshot_asset_catalog}
+    end
+  end
+
+  defp merge_snapshot_asset_maps(hashes, metadata, catalog) do
+    hash_ids = hashes |> Map.keys() |> MapSet.new(&to_string/1)
+    metadata_ids = metadata |> Map.keys() |> MapSet.new(&to_string/1)
+
+    if MapSet.equal?(hash_ids, metadata_ids) do
+      merge_snapshot_asset_entries(hashes, metadata, catalog)
+    else
+      {:error, :invalid_bundle_snapshot_asset_catalog}
+    end
+  end
+
+  defp merge_snapshot_asset_entries(hashes, metadata, catalog) do
+    Enum.reduce_while(hashes, {:ok, catalog}, fn entry, {:ok, accumulated} ->
+      merge_snapshot_asset_entry(entry, metadata, accumulated)
+    end)
+  end
+
+  defp merge_snapshot_asset_entry({raw_id, blob_hash}, metadata, accumulated) do
+    id = to_string(raw_id)
+    asset_metadata = Map.get(metadata, id) || Map.get(metadata, raw_id)
+
+    with {:ok, normalized_id} <- normalize_asset_id(id),
+         :ok <- validate_blob_hash(blob_hash),
+         {:ok, entry} <- snapshot_asset_entry(normalized_id, blob_hash, asset_metadata),
+         {:ok, updated} <- put_consistent_asset(accumulated, normalized_id, entry) do
+      {:cont, {:ok, updated}}
+    else
+      {:error, _reason} = error -> {:halt, error}
+    end
+  end
+
+  defp snapshot_asset_entry(id, blob_hash, %{
+         "filename" => filename,
+         "content_type" => content_type,
+         "size" => size,
+         "project_id" => project_id
+       }) do
+    with :ok <- validate_portable_filename(filename),
+         :ok <- validate_portable_content_type(content_type, :snapshot),
+         :ok <- validate_asset_size(size),
+         true <- is_integer(project_id) and project_id > 0 do
+      {:ok,
+       %{
+         id: id,
+         blob_hash: blob_hash,
+         filename: filename,
+         content_type: content_type,
+         size: size,
+         project_id: project_id
+       }}
+    else
+      false -> {:error, :invalid_bundle_snapshot_asset_catalog}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp snapshot_asset_entry(_id, _blob_hash, _metadata), do: {:error, :invalid_bundle_snapshot_asset_catalog}
+
+  defp put_consistent_asset(catalog, id, entry) do
+    case Map.fetch(catalog, id) do
+      :error -> {:ok, Map.put(catalog, id, entry)}
+      {:ok, ^entry} -> {:ok, catalog}
+      {:ok, _different_entry} -> {:error, :conflicting_bundle_snapshot_asset}
+    end
+  end
+
+  defp asset_manifest_catalog(%{"format_version" => 1, "assets" => assets, "asset_count" => asset_count})
+       when is_list(assets) and is_integer(asset_count) and asset_count == length(assets) do
+    Enum.reduce_while(assets, {:ok, %{}}, fn asset, {:ok, catalog} ->
+      with {:ok, entry} <- manifest_asset_entry(asset),
+           false <- Map.has_key?(catalog, entry.id) do
+        {:cont, {:ok, Map.put(catalog, entry.id, entry)}}
+      else
+        true -> {:halt, {:error, :duplicate_bundle_asset_id}}
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp asset_manifest_catalog(_asset_manifest), do: {:error, :invalid_bundle_asset_manifest}
+
+  defp manifest_asset_entry(%{
+         "id" => raw_id,
+         "blob_hash" => blob_hash,
+         "filename" => filename,
+         "content_type" => content_type,
+         "size" => size
+       }) do
+    with {:ok, id} <- normalize_asset_id(raw_id),
+         :ok <- validate_blob_hash(blob_hash),
+         :ok <- validate_portable_filename(filename),
+         :ok <- validate_portable_content_type(content_type, :asset_manifest),
+         :ok <- validate_asset_size(size) do
+      {:ok,
+       %{
+         id: id,
+         blob_hash: blob_hash,
+         filename: filename,
+         content_type: content_type,
+         size: size
+       }}
+    end
+  end
+
+  defp manifest_asset_entry(_asset), do: {:error, :invalid_bundle_asset_manifest}
+
+  defp blob_catalog(%{manifest: manifest, files: files}) do
+    blobs = manifest["asset_blobs"]
+    asset_count = manifest["asset_count"]
+
+    with true <- is_list(blobs),
+         true <- is_integer(asset_count) and asset_count >= 0 and asset_count == length(blobs),
+         {:ok, catalog, paths} <- reduce_blob_catalog(blobs, files),
+         :ok <- validate_bundle_file_set(files, paths) do
+      {:ok, catalog}
+    else
+      false -> {:error, :invalid_bundle_asset_catalog}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp reduce_blob_catalog(blobs, files) do
+    Enum.reduce_while(blobs, {:ok, %{}, MapSet.new()}, fn blob, {:ok, catalog, paths} ->
+      with {:ok, entry} <- blob_catalog_entry(blob, files),
+           false <- Map.has_key?(catalog, entry.asset_id),
+           false <- MapSet.member?(paths, entry.path) do
+        {:cont, {:ok, Map.put(catalog, entry.asset_id, entry), MapSet.put(paths, entry.path)}}
+      else
+        true -> {:halt, {:error, :duplicate_bundle_asset_blob}}
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp blob_catalog_entry(
+         %{
+           "asset_id" => raw_asset_id,
+           "sha256" => blob_hash,
+           "size" => size,
+           "content_type" => content_type,
+           "path" => path,
+           "filename" => filename
+         },
+         files
+       )
+       when is_binary(filename) do
+    with {:ok, asset_id} <- normalize_asset_id(raw_asset_id),
+         :ok <- validate_blob_hash(blob_hash),
+         :ok <- validate_asset_size(size),
+         :ok <- validate_portable_filename(filename),
+         :ok <- validate_portable_content_type(content_type, path),
+         :ok <- validate_portable_blob_path(path, blob_hash),
+         {:ok, data} <- fetch_blob_file(files, path),
+         true <- byte_size(data) == size,
+         ^blob_hash <- sha256(data) do
+      {:ok,
+       %{
+         asset_id: asset_id,
+         sha256: blob_hash,
+         size: size,
+         content_type: content_type,
+         path: path
+       }}
+    else
+      false -> {:error, {:asset_size_mismatch, path}}
+      {:error, _reason} = error -> error
+      _hash_mismatch -> {:error, {:asset_checksum_mismatch, path}}
+    end
+  end
+
+  defp blob_catalog_entry(_blob, _files), do: {:error, :invalid_bundle_asset_catalog}
+
+  defp fetch_blob_file(files, path) do
+    case Map.fetch(files, path) do
+      {:ok, data} when is_binary(data) -> {:ok, data}
+      _missing -> {:error, {:missing_asset_blob, path}}
+    end
+  end
+
+  defp validate_portable_blob_path(path, blob_hash) when is_binary(path) do
+    case String.split(path, "/", trim: false) do
+      ["assets", ^blob_hash, filename] ->
+        if Storage.canonical_key?(path) and valid_storage_segment?(filename),
+          do: :ok,
+          else: {:error, :invalid_bundle_asset_path}
+
+      _invalid ->
+        {:error, :invalid_bundle_asset_path}
+    end
+  end
+
+  defp validate_portable_blob_path(_path, _blob_hash), do: {:error, :invalid_bundle_asset_path}
+
+  defp validate_bundle_file_set(files, blob_paths) do
+    expected_paths =
+      blob_paths
+      |> MapSet.put(PortableBundle.manifest_path())
+      |> MapSet.put(PortableBundle.snapshot_path())
+      |> MapSet.put(PortableBundle.asset_manifest_path())
+
+    if MapSet.equal?(MapSet.new(Map.keys(files)), expected_paths),
+      do: :ok,
+      else: {:error, :unexpected_bundle_files}
+  end
+
+  defp validate_asset_catalog_consistency(snapshot_assets, manifest_assets, blobs_by_asset_id) do
+    with true <- MapSet.equal?(MapSet.new(Map.keys(snapshot_assets)), MapSet.new(Map.keys(manifest_assets))),
+         :ok <- validate_snapshot_manifest_assets(snapshot_assets, manifest_assets),
+         true <-
+           MapSet.equal?(
+             MapSet.new(Map.keys(manifest_assets)),
+             MapSet.new(Map.keys(blobs_by_asset_id))
+           ),
+         :ok <- validate_manifest_blob_assets(manifest_assets, blobs_by_asset_id) do
+      :ok
+    else
+      false -> {:error, :inconsistent_bundle_asset_catalog}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp validate_snapshot_manifest_assets(snapshot_assets, manifest_assets) do
+    Enum.reduce_while(snapshot_assets, :ok, fn {id, snapshot_asset}, :ok ->
+      manifest_asset = manifest_assets[id]
+
+      if Map.take(snapshot_asset, [:blob_hash, :filename, :content_type, :size]) ==
+           Map.take(manifest_asset, [:blob_hash, :filename, :content_type, :size]) do
+        {:cont, :ok}
+      else
+        {:halt, {:error, :inconsistent_bundle_asset_catalog}}
+      end
+    end)
+  end
+
+  defp validate_manifest_blob_assets(manifest_assets, blobs_by_asset_id) do
+    Enum.reduce_while(manifest_assets, :ok, fn {id, asset}, :ok ->
+      case Map.fetch(blobs_by_asset_id, id) do
+        {:ok, blob}
+        when blob.sha256 == asset.blob_hash and blob.size == asset.size and
+               blob.content_type == asset.content_type ->
+          {:cont, :ok}
+
+        _missing_or_conflicting ->
+          {:halt, {:error, :inconsistent_bundle_asset_catalog}}
+      end
+    end)
+  end
+
+  defp normalize_asset_id(id) when is_integer(id) and id > 0, do: {:ok, to_string(id)}
+
+  defp normalize_asset_id(id) when is_binary(id) do
+    case Integer.parse(id) do
+      {parsed, ""} when parsed > 0 -> {:ok, Integer.to_string(parsed)}
+      _invalid -> {:error, :invalid_bundle_asset_id}
+    end
+  end
+
+  defp normalize_asset_id(_id), do: {:error, :invalid_bundle_asset_id}
+
+  defp valid_asset_id?(id), do: match?({:ok, _normalized}, normalize_asset_id(id))
+
+  defp validate_blob_hash(blob_hash) when is_binary(blob_hash) do
+    if Regex.match?(@sha256_regex, blob_hash),
+      do: :ok,
+      else: {:error, :invalid_bundle_asset_hash}
+  end
+
+  defp validate_blob_hash(_blob_hash), do: {:error, :invalid_bundle_asset_hash}
+
+  defp validate_asset_size(size) when is_integer(size) and size > 0 and size <= @max_asset_size, do: :ok
+
+  defp validate_asset_size(_size), do: {:error, :invalid_bundle_asset_size}
+
+  defp validate_portable_filename(filename) when is_binary(filename) do
+    sanitized = if String.valid?(filename), do: Assets.sanitize_filename(filename), else: ""
+
+    if String.valid?(filename) and String.trim(filename) != "" and
+         valid_storage_segment?(sanitized) do
+      :ok
+    else
+      {:error, :invalid_bundle_asset_filename}
+    end
+  end
+
+  defp validate_portable_filename(_filename), do: {:error, :invalid_bundle_asset_filename}
+
+  defp valid_storage_segment?(segment) do
+    is_binary(segment) and segment not in ["", ".", ".."] and
+      not String.contains?(segment, "/") and Storage.canonical_key?(segment)
+  end
+
+  defp validate_portable_content_type("image/svg+xml", source) do
+    {:error, {:unsupported_portable_asset_content_type, source, "image/svg+xml"}}
+  end
+
+  defp validate_portable_content_type(content_type, _source) when is_binary(content_type) do
+    if Asset.allowed_content_type?(content_type),
+      do: :ok,
+      else: {:error, :invalid_bundle_asset_content_type}
+  end
+
+  defp validate_portable_content_type(_content_type, _source), do: {:error, :invalid_bundle_asset_content_type}
 
   defp build_import_plan(bundle, opts) do
     fields = import_plan_fields(bundle, opts)
@@ -198,13 +711,13 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
     end
   end
 
-  defp import_artifacts(bundle, plan) do
-    with {:ok, imported_blobs} <- upload_bundle_assets(bundle, plan),
+  defp import_artifacts(bundle, plan, tracker) do
+    with {:ok, imported_blobs} <- upload_bundle_assets(bundle, plan, tracker),
          snapshot = rewrite_snapshot_assets(bundle.snapshot, imported_blobs),
          asset_manifest = rewrite_asset_manifest(bundle.asset_manifest, imported_blobs),
          {:ok, materialization_report} <- verify_import_materialization(snapshot, plan, imported_blobs),
          {:ok, snapshot_key, asset_manifest_key} <-
-           store_import_artifacts(plan, imported_blobs, snapshot, asset_manifest) do
+           store_import_artifacts(plan, snapshot, asset_manifest, tracker) do
       {:ok,
        %{
          imported_blob_keys: Map.values(imported_blobs),
@@ -216,69 +729,80 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
          materialization_report: materialization_report,
          preview: Artifact.preview(snapshot, asset_manifest)
        }}
-    else
-      {:error, reason, cleanup_keys} ->
-        cleanup_storage_keys(cleanup_keys)
-        {:error, reason}
-
-      {:error, reason} ->
-        {:error, reason}
     end
   end
 
-  defp upload_bundle_assets(bundle, plan) do
+  defp upload_bundle_assets(bundle, plan, tracker) do
     bundle.files
     |> PortableBundle.asset_files(bundle.manifest)
-    |> Enum.reduce_while({:ok, %{}}, fn {blob, data}, {:ok, uploaded} ->
-      case upload_bundle_asset(blob, data, plan) do
-        {:ok, hash, key} -> {:cont, {:ok, Map.put(uploaded, hash, key)}}
-        {:error, reason} -> {:halt, {:error, reason, Map.values(uploaded)}}
-      end
+    |> Enum.reduce_while({:ok, %{}}, fn asset, {:ok, uploaded} ->
+      upload_bundle_asset_once(asset, uploaded, plan, tracker)
     end)
   end
 
-  defp store_import_artifacts(plan, imported_blobs, snapshot, asset_manifest) do
-    blob_keys = Map.values(imported_blobs)
+  defp upload_bundle_asset_once({blob, data}, uploaded, plan, tracker) do
+    hash = blob["sha256"]
 
-    case store_import_artifact(plan, "snapshot", snapshot) do
-      {:ok, snapshot_key} ->
-        case store_import_artifact(plan, "asset-manifest", asset_manifest) do
-          {:ok, asset_manifest_key} -> {:ok, snapshot_key, asset_manifest_key}
-          {:error, reason} -> {:error, reason, [snapshot_key | blob_keys]}
-        end
-
-      {:error, reason} ->
-        {:error, reason, blob_keys}
+    case Map.fetch(uploaded, hash) do
+      {:ok, _existing_key} -> {:cont, {:ok, uploaded}}
+      :error -> upload_new_bundle_asset(blob, data, hash, uploaded, plan, tracker)
     end
   end
 
-  defp upload_bundle_asset(blob, nil, _plan), do: {:error, {:missing_asset_blob, blob["path"]}}
+  defp upload_new_bundle_asset(blob, data, hash, uploaded, plan, tracker) do
+    case upload_bundle_asset(blob, data, plan, tracker) do
+      {:ok, ^hash, key} -> {:cont, {:ok, Map.put(uploaded, hash, key)}}
+      {:error, reason} -> {:halt, {:error, reason}}
+    end
+  end
 
-  defp upload_bundle_asset(blob, data, plan) do
+  defp store_import_artifacts(plan, snapshot, asset_manifest, tracker) do
+    case store_import_artifact(plan, "snapshot", snapshot, tracker) do
+      {:ok, snapshot_key} ->
+        case store_import_artifact(plan, "asset-manifest", asset_manifest, tracker) do
+          {:ok, asset_manifest_key} -> {:ok, snapshot_key, asset_manifest_key}
+          {:error, reason} -> {:error, reason}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp upload_bundle_asset(blob, nil, _plan, _tracker), do: {:error, {:missing_asset_blob, blob["path"]}}
+
+  defp upload_bundle_asset(blob, data, plan, tracker) do
     hash = blob["sha256"]
+    key = "project_templates/imported_blobs/#{plan.slug}/#{plan.import_suffix}/#{hash}/blob"
 
     with ^hash <- sha256(data),
          true <- byte_size(data) == blob["size"],
-         filename = safe_filename(blob),
-         key = "project_templates/imported_blobs/#{plan.slug}/#{plan.import_suffix}/#{hash}/#{filename}",
-         {:ok, _url} <- Storage.upload(key, data, blob["content_type"]) do
+         :ok <- validate_import_storage_key(key),
+         {:ok, _url} <- Storage.upload(key, data, blob["content_type"]),
+         :ok <- StorageCompensation.track(tracker, key) do
       {:ok, hash, key}
     else
       false -> {:error, {:asset_size_mismatch, blob["path"]}}
+      {:error, :invalid_import_storage_key} -> {:error, {:invalid_asset_storage_key, blob["path"]}}
       {:error, reason} -> {:error, {:asset_upload_failed, blob["path"], reason}}
       _hash_mismatch -> {:error, {:asset_checksum_mismatch, blob["path"]}}
     end
   end
 
+  defp validate_import_storage_key(key) do
+    if Storage.canonical_key?(key), do: :ok, else: {:error, :invalid_import_storage_key}
+  end
+
   defp verify_import_materialization(snapshot, plan, imported_blobs) do
     case Audit.verify_snapshot_materialization(snapshot, plan.verify_workspace_id, plan.verify_user_id,
-           name: "Template Import #{plan.slug}"
+           name: "Template Import #{plan.slug}",
+           asset_source_keys: imported_blobs
          ) do
       {:ok, report} ->
         {:ok, report}
 
       {:error, report} ->
-        {:error, {:template_materialization_failed, report}, Map.values(imported_blobs)}
+        {:error, {:template_materialization_failed, report}}
     end
   end
 
@@ -292,12 +816,16 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
     end
   end
 
-  defp store_import_artifact(plan, name, data) do
+  defp store_import_artifact(plan, name, data, tracker) do
     key = "project_templates/imports/#{plan.slug}/#{plan.import_suffix}/#{name}.json.gz"
 
     case SnapshotStorage.store_raw(key, data) do
-      {:ok, _size_bytes} -> {:ok, key}
-      {:error, reason} -> {:error, reason}
+      {:ok, _size_bytes} ->
+        :ok = StorageCompensation.track(tracker, key)
+        {:ok, key}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -316,7 +844,6 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
         {:ok, template}
 
       {:error, reason} ->
-        cleanup_imported_artifacts(imported)
         {:error, reason}
     end
   end
@@ -392,6 +919,8 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
     Map.put(bundle.manifest["audit_report"], "import_materialization", imported.materialization_report)
   end
 
+  defp rewrite_snapshot_assets(%_struct{} = value, _imported_blobs), do: value
+
   defp rewrite_snapshot_assets(value, imported_blobs) when is_map(value) do
     value =
       case {value["asset_metadata"], value["asset_blob_hashes"]} do
@@ -452,19 +981,6 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
     |> Map.put("asset_count", length(assets))
   end
 
-  defp cleanup_imported_artifacts(imported) do
-    cleanup_storage_keys(imported.imported_blob_keys ++ [imported.snapshot_key, imported.asset_manifest_key])
-  end
-
-  defp safe_filename(blob) do
-    filename =
-      blob["filename"]
-      |> safe_string()
-      |> Storyarn.Assets.sanitize_filename()
-
-    if filename == "", do: "#{blob["sha256"]}.bin", else: filename
-  end
-
   defp option(opts, key) do
     cond do
       is_list(opts) ->
@@ -486,17 +1002,6 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
   defp truthy?(_value), do: false
 
   defp sha256(data), do: :sha256 |> :crypto.hash(data) |> Base.encode16(case: :lower)
-
-  defp cleanup_storage_keys(keys) do
-    keys
-    |> Enum.reject(&is_nil/1)
-    |> Enum.each(fn key ->
-      case Storage.delete(key) do
-        :ok -> :ok
-        {:error, _reason} -> :ok
-      end
-    end)
-  end
 
   defp normalize_string(value) when is_atom(value), do: Atom.to_string(value)
   defp normalize_string(value) when is_binary(value), do: value

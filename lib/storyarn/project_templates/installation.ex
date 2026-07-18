@@ -5,6 +5,7 @@ defmodule Storyarn.ProjectTemplates.Installation do
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.Analytics
+  alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Billing
   alias Storyarn.Projects
@@ -29,6 +30,8 @@ defmodule Storyarn.ProjectTemplates.Installation do
   @active_statuses ProjectTemplateInstall.active_statuses()
   @recent_failure_retention_seconds 86_400
   @recent_failure_limit 10
+  @portable_blob_prefix "project_templates/imported_blobs/"
+  @sha256_regex ~r/\A[0-9a-f]{64}\z/
   @permanent_errors ~w(
     archived
     checksum_mismatch
@@ -105,8 +108,15 @@ defmodule Storyarn.ProjectTemplates.Installation do
     with :ok <- Authorization.authorize_template_visibility(scope, version.project_template),
          {:ok, workspace, _membership} <- Workspaces.authorize(scope, workspace.id, :create_project),
          :ok <- Billing.can_create_project?(workspace),
-         {:ok, snapshot} <- load_verified_template_snapshot(version) do
-      instantiate_template_transaction(scope, version, workspace, attrs, snapshot, [])
+         {:ok, snapshot, asset_source_keys} <- load_verified_template_snapshot(version) do
+      instantiate_template_transaction(
+        scope,
+        version,
+        workspace,
+        attrs,
+        snapshot,
+        maybe_put_asset_source_keys([], asset_source_keys)
+      )
     end
   end
 
@@ -191,7 +201,8 @@ defmodule Storyarn.ProjectTemplates.Installation do
     try do
       with {:ok, install} <- mark_running(install),
            :ok <- authorize_installation(install),
-           {:ok, snapshot} <- load_verified_template_snapshot(install.project_template_version),
+           {:ok, snapshot, asset_source_keys} <-
+             load_verified_template_snapshot(install.project_template_version),
            {:ok, install} <- mark_stage(install, "materializing"),
            {:ok, project} <-
              instantiate_template_transaction(
@@ -200,7 +211,7 @@ defmodule Storyarn.ProjectTemplates.Installation do
                install.workspace,
                %{name: install.project_name},
                snapshot,
-               installation: install
+               maybe_put_asset_source_keys([installation: install], asset_source_keys)
              ) do
         completed = get_install!(install.id)
         publish_finished(completed, project, started_at)
@@ -276,9 +287,66 @@ defmodule Storyarn.ProjectTemplates.Installation do
     with {:ok, snapshot} <- SnapshotStorage.load_snapshot(version.snapshot_storage_key),
          {:ok, asset_manifest} <- load_template_asset_manifest(version),
          :ok <- verify_template_checksum(version, snapshot, asset_manifest),
-         :ok <- validate_template_snapshot(snapshot) do
-      {:ok, snapshot}
+         :ok <- validate_template_snapshot(snapshot),
+         {:ok, asset_source_keys} <- verified_asset_source_keys(asset_manifest) do
+      {:ok, snapshot, asset_source_keys}
     end
+  end
+
+  defp verified_asset_source_keys(%{"format_version" => 1, "assets" => assets, "asset_count" => asset_count})
+       when is_list(assets) and asset_count == length(assets) do
+    portable_assets =
+      Enum.filter(assets, fn
+        %{"key" => key} when is_binary(key) -> String.starts_with?(key, @portable_blob_prefix)
+        _asset -> false
+      end)
+
+    cond do
+      portable_assets == [] ->
+        {:ok, nil}
+
+      length(portable_assets) != length(assets) ->
+        incompatible_asset_manifest(:mixed_asset_source_keys)
+
+      true ->
+        build_portable_asset_source_keys(portable_assets)
+    end
+  end
+
+  defp verified_asset_source_keys(_asset_manifest) do
+    incompatible_asset_manifest(:invalid_asset_manifest)
+  end
+
+  defp build_portable_asset_source_keys(assets) do
+    Enum.reduce_while(assets, {:ok, %{}}, &put_portable_asset_source_key/2)
+  end
+
+  defp put_portable_asset_source_key(asset, {:ok, source_keys}) do
+    with %{"blob_hash" => blob_hash, "key" => key} <- asset,
+         true <- is_binary(blob_hash) and Regex.match?(@sha256_regex, blob_hash),
+         true <- Storage.canonical_key?(key) do
+      put_verified_asset_source_key(source_keys, blob_hash, key)
+    else
+      _invalid -> {:halt, incompatible_asset_manifest(:invalid_asset_source_key)}
+    end
+  end
+
+  defp put_verified_asset_source_key(source_keys, blob_hash, key) do
+    case Map.fetch(source_keys, blob_hash) do
+      :error ->
+        {:cont, {:ok, Map.put(source_keys, blob_hash, key)}}
+
+      {:ok, ^key} ->
+        {:cont, {:ok, source_keys}}
+
+      {:ok, _different_key} ->
+        {:halt, incompatible_asset_manifest(:conflicting_asset_source_keys)}
+    end
+  end
+
+  defp incompatible_asset_manifest(reason) do
+    Logger.warning("Rejected incompatible stored template asset manifest: #{inspect(reason)}")
+    {:error, :incompatible_template_snapshot}
   end
 
   defp validate_template_snapshot(snapshot) do
@@ -349,10 +417,24 @@ defmodule Storyarn.ProjectTemplates.Installation do
 
   defp cleanup_result(tracker, result) do
     case StorageCompensation.cleanup(tracker) do
-      :ok -> result
+      :ok -> normalize_asset_copy_error(result)
       {:error, cleanup_reason} -> {:error, cleanup_reason}
     end
   end
+
+  defp normalize_asset_copy_error({:error, {:materialization_failed, _entity_type, _entity_id, asset_error}} = result) do
+    normalize_entity_asset_copy_error(asset_error, result)
+  end
+
+  defp normalize_asset_copy_error({:error, {:asset_materialization_failed, _asset_id, reason}}),
+    do: {:error, {:asset_copy_failed, reason}}
+
+  defp normalize_asset_copy_error(result), do: result
+
+  defp normalize_entity_asset_copy_error({:asset_materialization_failed, _asset_id, reason}, _result),
+    do: {:error, {:asset_copy_failed, reason}}
+
+  defp normalize_entity_asset_copy_error(_asset_error, result), do: result
 
   defp instantiate_template_under_workspace_lock(scope, version, workspace, attrs, snapshot, opts) do
     with :ok <- Projects.lock_and_check_workspace_capacity(workspace.id),
@@ -365,18 +447,26 @@ defmodule Storyarn.ProjectTemplates.Installation do
   end
 
   defp do_instantiate_template(scope, version, workspace, attrs, snapshot, opts) do
+    recovery_opts =
+      opts
+      |> Keyword.take([:asset_source_keys])
+      |> Keyword.merge(
+        name: install_name(attrs, version),
+        template_clone: true,
+        asset_error_mode: :strict,
+        asset_copy_tracker: Keyword.fetch!(opts, :asset_copy_tracker)
+      )
+
     with {:ok, project} <-
-           Versioning.recover_project(workspace.id, snapshot, scope.user.id,
-             name: install_name(attrs, version),
-             template_clone: true,
-             asset_error_mode: :strict,
-             asset_copy_tracker: Keyword.fetch!(opts, :asset_copy_tracker)
-           ),
+           Versioning.recover_project(workspace.id, snapshot, scope.user.id, recovery_opts),
          {:ok, project} <- mark_template_origin(project, version),
          {:ok, _install} <- complete_or_record_install(scope, version, workspace, project, attrs, opts) do
       {:ok, project}
     end
   end
+
+  defp maybe_put_asset_source_keys(opts, nil), do: opts
+  defp maybe_put_asset_source_keys(opts, source_keys), do: Keyword.put(opts, :asset_source_keys, source_keys)
 
   defp mark_template_origin(project, version) do
     project

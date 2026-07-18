@@ -6,6 +6,7 @@ defmodule Storyarn.Localization.TextCrud do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Localization.RuntimeKey
   alias Storyarn.Localization.SourceContract
   alias Storyarn.Repo
@@ -287,6 +288,38 @@ defmodule Storyarn.Localization.TextCrud do
     )
   end
 
+  @doc """
+  Archives active localized texts only for the project's active target locales.
+
+  Version restore uses this narrower operation so translations retained under
+  archived project languages are not mutated when the snapshot contract covers
+  only active target languages.
+  """
+  def archive_texts_for_active_target_locales(_project_id, _source_type, [], _reason), do: {0, nil}
+
+  def archive_texts_for_active_target_locales(project_id, source_type, source_ids, reason) do
+    now = TimeHelpers.now()
+
+    active_target_locales =
+      from(language in ProjectLanguage,
+        where:
+          language.project_id == ^project_id and language.is_source == false and
+            is_nil(language.archived_at),
+        select: language.locale_code
+      )
+
+    Repo.update_all(
+      from(text in LocalizedText,
+        where:
+          text.project_id == ^project_id and text.source_type == ^source_type and
+            text.source_id in ^source_ids and is_nil(text.archived_at) and
+            text.locale_code in subquery(active_target_locales)
+      ),
+      set: [archived_at: now, archive_reason: reason, updated_at: now],
+      inc: [lock_version: 1]
+    )
+  end
+
   def purge_texts_for_source(source_type, source_id) do
     purge_texts_for_sources(source_type, [source_id])
   end
@@ -441,8 +474,6 @@ defmodule Storyarn.Localization.TextCrud do
   Used by the export Validator.
   """
   def list_target_locale_codes(project_id) do
-    alias Storyarn.Localization.ProjectLanguage
-
     Repo.all(
       from(l in ProjectLanguage,
         where: l.project_id == ^project_id and l.is_source == false and is_nil(l.archived_at),

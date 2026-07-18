@@ -4,7 +4,9 @@ defmodule Storyarn.AssetsTest do
   import Ecto.Query
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
+  import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
 
   alias Phoenix.LiveView.UploadEntry
   alias Storyarn.Assets
@@ -179,8 +181,6 @@ defmodule Storyarn.AssetsTest do
     end
 
     test "delete_asset/1 removes sheet avatar references before deleting", %{project: project, user: user} do
-      import Storyarn.SheetsFixtures
-
       asset = image_asset_fixture(project, user)
       sheet = sheet_fixture(project, %{name: "Hero"})
       {:ok, avatar} = Storyarn.Sheets.add_avatar(sheet, asset.id, %{is_default: true})
@@ -190,9 +190,37 @@ defmodule Storyarn.AssetsTest do
       assert Repo.get(SheetAvatar, avatar.id) == nil
     end
 
-    test "delete_asset/1 clears flow node audio references", %{project: project, user: user} do
-      import Storyarn.FlowsFixtures
+    test "delete_asset/1 rolls back every avatar deletion when one is referenced", %{
+      project: project,
+      user: user
+    } do
+      asset = image_asset_fixture(project, user)
+      referenced_sheet = sheet_fixture(project, %{name: "Referenced"})
+      other_sheet = sheet_fixture(project, %{name: "Other"})
+      {:ok, referenced_avatar} = Storyarn.Sheets.add_avatar(referenced_sheet, asset.id)
+      {:ok, other_avatar} = Storyarn.Sheets.add_avatar(other_sheet, asset.id)
+      flow = flow_fixture(project)
 
+      node =
+        node_fixture(flow, %{
+          data: %{
+            "speaker_sheet_id" => referenced_sheet.id,
+            "avatar_id" => referenced_avatar.id,
+            "text" => "Hello"
+          }
+        })
+
+      assert {:error, {:avatar_in_use, avatar_id, {:referenced_by_flow_nodes, 1}}} =
+               Assets.delete_asset(asset)
+
+      assert avatar_id == referenced_avatar.id
+      assert Assets.get_asset(project.id, asset.id)
+      assert Repo.get(SheetAvatar, referenced_avatar.id)
+      assert Repo.get(SheetAvatar, other_avatar.id)
+      assert Repo.get!(FlowNode, node.id).data["avatar_id"] == referenced_avatar.id
+    end
+
+    test "delete_asset/1 clears flow node audio references", %{project: project, user: user} do
       asset = audio_asset_fixture(project, user)
       flow = flow_fixture(project)
 

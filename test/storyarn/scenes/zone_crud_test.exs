@@ -2,10 +2,15 @@ defmodule Storyarn.Scenes.ZoneCrudTest do
   use Storyarn.DataCase, async: true
 
   import Storyarn.AccountsFixtures
+  import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
+  import Storyarn.SheetsFixtures
 
+  alias Storyarn.Flows.VariableReference
+  alias Storyarn.Scenes.SceneZone
   alias Storyarn.Scenes.ZoneCrud
+  alias Storyarn.Sheets.EntityReference
 
   defp create_scene(_context \\ %{}) do
     user = user_fixture()
@@ -123,6 +128,74 @@ defmodule Storyarn.Scenes.ZoneCrudTest do
       assert {:ok, updated} = ZoneCrud.update_zone(zone, %{"name" => "Updated Zone"})
       assert updated.name == "Updated Zone"
     end
+
+    test "reloads a stale zone under the scene lock before replacing its references" do
+      %{project: project, scene: scene} = create_scene()
+      flow = flow_fixture(project)
+      sheet = sheet_fixture(project, %{shortcut: "global.state"})
+
+      block =
+        block_fixture(sheet, %{
+          type: "number",
+          config: %{"label" => "Score"}
+        })
+
+      assignment = variable_assignment(sheet.shortcut, block.variable_name)
+      zone = zone_fixture(scene)
+      stale_zone = zone
+
+      assert {:ok, _updated_zone} =
+               ZoneCrud.update_zone(zone, %{
+                 "target_type" => "flow",
+                 "target_id" => flow.id,
+                 "action_type" => "action",
+                 "action_data" => %{"assignments" => [assignment]}
+               })
+
+      assert {:ok, updated_zone} =
+               ZoneCrud.update_zone(stale_zone, %{"name" => "Renamed from stale state"})
+
+      assert updated_zone.target_type == "flow"
+      assert updated_zone.target_id == flow.id
+      assert updated_zone.action_data == %{"assignments" => [assignment]}
+
+      persisted_zone = Repo.get!(SceneZone, zone.id)
+      assert persisted_zone.target_type == "flow"
+      assert persisted_zone.target_id == flow.id
+      assert persisted_zone.action_data == %{"assignments" => [assignment]}
+
+      entity_targets =
+        EntityReference
+        |> where(
+          [reference],
+          reference.source_type == "scene_zone" and
+            reference.source_id == ^zone.id
+        )
+        |> Repo.all()
+        |> MapSet.new(&{&1.target_type, &1.target_id, &1.context})
+
+      assert entity_targets ==
+               MapSet.new([
+                 {"flow", flow.id, "target"},
+                 {"sheet", sheet.id, "assignment"}
+               ])
+
+      assert [
+               %VariableReference{
+                 block_id: block_id,
+                 kind: "write"
+               }
+             ] =
+               Repo.all(
+                 from(reference in VariableReference,
+                   where:
+                     reference.source_type == "scene_zone" and
+                       reference.source_id == ^zone.id
+                 )
+               )
+
+      assert block_id == block.id
+    end
   end
 
   # =============================================================================
@@ -203,5 +276,16 @@ defmodule Storyarn.Scenes.ZoneCrudTest do
 
       assert ZoneCrud.list_actionable_zones(scene.id) == []
     end
+  end
+
+  defp variable_assignment(sheet_shortcut, variable_name) do
+    %{
+      "id" => Ecto.UUID.generate(),
+      "sheet" => sheet_shortcut,
+      "variable" => variable_name,
+      "operator" => "set",
+      "value" => "100",
+      "value_type" => "literal"
+    }
   end
 end

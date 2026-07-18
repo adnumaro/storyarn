@@ -121,15 +121,44 @@ defmodule Storyarn.Assets.BlobStore do
     changeset = restore_changeset(asset, attrs)
 
     if changeset.valid?,
-      do: copy_and_insert_asset(changeset, source_key, dest_key, opts),
+      do:
+        copy_and_insert_asset(
+          changeset,
+          source_key,
+          dest_key,
+          blob_hash,
+          metadata["size"],
+          metadata["content_type"],
+          opts
+        ),
       else: {:error, changeset}
   end
 
-  defp copy_and_insert_asset(changeset, source_key, dest_key, opts) do
-    with :ok <- Storage.copy(source_key, dest_key) do
+  defp copy_and_insert_asset(changeset, source_key, dest_key, expected_hash, expected_size, content_type, opts) do
+    with {:ok, binary_data} <- Storage.download(source_key),
+         :ok <- validate_blob_content(binary_data, expected_hash, expected_size),
+         {:ok, _url} <- Storage.upload(dest_key, binary_data, content_type) do
       track_copy(opts, dest_key)
       insert_copied_asset(changeset, dest_key, opts)
     end
+  end
+
+  defp validate_blob_content(binary_data, expected_hash, expected_size) do
+    actual_size = byte_size(binary_data)
+
+    if actual_size == expected_size do
+      validate_blob_hash(binary_data, expected_hash)
+    else
+      {:error, {:asset_blob_size_mismatch, expected_size, actual_size}}
+    end
+  end
+
+  defp validate_blob_hash(binary_data, expected_hash) do
+    actual_hash = compute_hash(binary_data)
+
+    if actual_hash == expected_hash,
+      do: :ok,
+      else: {:error, {:asset_blob_checksum_mismatch, expected_hash, actual_hash}}
   end
 
   defp insert_copied_asset(changeset, dest_key, opts) do

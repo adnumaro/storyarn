@@ -3,13 +3,12 @@ defmodule Storyarn.Scenes.ZoneCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows
+  alias Storyarn.References
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Scenes.PositionUtils
   alias Storyarn.Scenes.SceneZone
   alias Storyarn.Shared.MapUtils
-  alias Storyarn.Sheets
   alias Storyarn.Shortcuts
 
   @doc """
@@ -62,51 +61,43 @@ defmodule Storyarn.Scenes.ZoneCrud do
   def create_zone(scene_id, attrs) do
     attrs = MapUtils.stringify_keys(attrs)
 
-    result =
-      PositionUtils.with_scene_lock(scene_id, fn ->
+    PositionUtils.with_scene_lock(scene_id, fn ->
+      with project_id when is_integer(project_id) <- Scenes.get_scene_project_id(scene_id),
+           :ok <- PositionUtils.lock_requested_layer_for_scene(scene_id, attrs) do
         attrs = maybe_generate_zone_shortcut(attrs, scene_id, nil)
         position = PositionUtils.next_position(SceneZone, scene_id)
 
         %SceneZone{scene_id: scene_id}
         |> SceneZone.create_changeset(Map.put(attrs, "position", position))
-        |> Repo.insert()
-      end)
-
-    case result do
-      {:ok, zone} ->
-        project_id = Scenes.get_scene_project_id(scene_id)
-        Sheets.update_scene_zone_references(zone)
-        Flows.update_scene_zone_references(zone, project_id: project_id)
-
-      _ ->
-        :ok
-    end
-
-    result
+        |> persist_zone_with_references(project_id)
+      else
+        nil -> {:error, :scene_not_found}
+        error -> error
+      end
+    end)
   end
 
   def update_zone(%SceneZone{} = zone, attrs) do
-    attrs = maybe_regenerate_zone_shortcut(zone, attrs)
+    attrs = MapUtils.stringify_keys(attrs)
 
-    result =
-      zone
-      |> SceneZone.update_changeset(attrs)
-      |> Repo.update()
-
-    case result do
-      {:ok, updated_zone} ->
-        project_id = Scenes.get_scene_project_id(zone.scene_id)
-        Sheets.update_scene_zone_references(updated_zone)
-
-        Flows.update_scene_zone_references(updated_zone,
-          project_id: project_id
-        )
-
-      _ ->
-        :ok
-    end
-
-    result
+    PositionUtils.with_scene_lock(zone.scene_id, fn ->
+      with project_id when is_integer(project_id) <-
+             Scenes.get_scene_project_id(zone.scene_id),
+           {:ok, locked_zone} <- lock_zone_for_scene(zone.id, zone.scene_id),
+           :ok <-
+             PositionUtils.lock_requested_layer_for_scene(
+               zone.scene_id,
+               attrs,
+               locked_zone.layer_id
+             ) do
+        locked_zone
+        |> SceneZone.update_changeset(maybe_regenerate_zone_shortcut(locked_zone, attrs))
+        |> persist_zone_with_references(project_id)
+      else
+        nil -> {:error, :scene_not_found}
+        error -> error
+      end
+    end)
   end
 
   @doc """
@@ -119,18 +110,12 @@ defmodule Storyarn.Scenes.ZoneCrud do
   end
 
   def delete_zone(%SceneZone{} = zone) do
-    result =
-      Repo.transaction(fn ->
-        Sheets.delete_map_zone_references(zone.id)
-        Flows.delete_map_zone_references(zone.id)
-
-        case Repo.delete(zone) do
-          {:ok, deleted} -> deleted
-          {:error, changeset} -> Repo.rollback(changeset)
-        end
-      end)
-
-    result
+    PositionUtils.with_scene_lock(zone.scene_id, fn ->
+      with {:ok, locked_zone} <- lock_zone_for_scene(zone.id, zone.scene_id),
+           :ok <- delete_zone_references(locked_zone.id) do
+        Repo.delete(locked_zone)
+      end
+    end)
   end
 
   def change_zone(%SceneZone{} = zone, attrs \\ %{}) do
@@ -199,6 +184,44 @@ defmodule Storyarn.Scenes.ZoneCrud do
 
       true ->
         attrs
+    end
+  end
+
+  defp lock_zone_for_scene(zone_id, scene_id) do
+    case Repo.one(
+           from(zone in SceneZone,
+             where: zone.id == ^zone_id and zone.scene_id == ^scene_id,
+             lock: "FOR UPDATE"
+           )
+         ) do
+      %SceneZone{} = zone -> {:ok, zone}
+      nil -> {:error, :zone_not_found}
+    end
+  end
+
+  defp persist_zone_with_references(changeset, project_id) do
+    with {:ok, zone} <- Repo.insert_or_update(changeset),
+         :ok <-
+           References.update_scene_zone_entity_references(
+             zone,
+             project_id: project_id
+           ),
+         :ok <-
+           References.update_scene_zone_variable_references(
+             zone,
+             project_id: project_id
+           ) do
+      {:ok, zone}
+    end
+  end
+
+  defp delete_zone_references(zone_id) do
+    with {count, nil} when is_integer(count) <-
+           References.delete_scene_zone_entity_references(zone_id),
+         :ok <- References.delete_scene_zone_variable_references(zone_id) do
+      :ok
+    else
+      result -> {:error, {:zone_reference_delete_failed, zone_id, result}}
     end
   end
 end

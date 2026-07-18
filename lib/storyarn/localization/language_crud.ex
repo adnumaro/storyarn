@@ -87,6 +87,9 @@ defmodule Storyarn.Localization.LanguageCrud do
     attrs = MapUtils.stringify_keys(attrs)
 
     Repo.transaction(fn ->
+      lock_project!(project.id)
+      :ok = LocalizableWords.lock_inventory!(project.id)
+
       with {:ok, language} <- persist_language(project, attrs),
            {:ok, count} <- collect_existing_sources(project.id, language) do
         %{language: language, extracted_count: count}
@@ -134,22 +137,41 @@ defmodule Storyarn.Localization.LanguageCrud do
   def update_language(%ProjectLanguage{} = language, attrs) do
     attrs = MapUtils.stringify_keys(attrs)
 
-    language
-    |> ProjectLanguage.update_changeset(attrs)
-    |> Repo.update()
+    Repo.transaction(fn ->
+      lock_project!(language.project_id)
+      :ok = LocalizableWords.lock_inventory!(language.project_id)
+      locked_language = lock_language!(language.project_id, language.id)
+
+      locked_language
+      |> ProjectLanguage.update_changeset(attrs)
+      |> Repo.update()
+      |> unwrap_language_write()
+    end)
   end
 
   def remove_language(%ProjectLanguage{} = language) do
-    if language.is_source do
-      {:error, :source_language}
+    Repo.transaction(fn ->
+      lock_project!(language.project_id)
+      :ok = LocalizableWords.lock_inventory!(language.project_id)
+      locked_language = lock_language!(language.project_id, language.id)
+
+      archive_locked_language(locked_language)
+    end)
+  end
+
+  defp archive_locked_language(%ProjectLanguage{is_source: true}), do: Repo.rollback(:source_language)
+
+  defp archive_locked_language(%ProjectLanguage{} = language) do
+    with {:ok, archived} <-
+           language
+           |> ProjectLanguage.update_changeset(%{
+             "archived_at" => Storyarn.Shared.TimeHelpers.now()
+           })
+           |> Repo.update(),
+         :ok <- cancel_active_translation_run(archived) do
+      archived
     else
-      with {:ok, archived} <-
-             language
-             |> ProjectLanguage.update_changeset(%{"archived_at" => Storyarn.Shared.TimeHelpers.now()})
-             |> Repo.update(),
-           :ok <- cancel_active_translation_run(archived) do
-        {:ok, archived}
-      end
+      {:error, reason} -> Repo.rollback(reason)
     end
   end
 
@@ -174,16 +196,20 @@ defmodule Storyarn.Localization.LanguageCrud do
     locale_code = LocaleCode.normalize(locale_code)
     reset_translations? = Keyword.get(opts, :reset_translations, false)
 
-    fn -> change_source_in_transaction(project.id, locale_code, reset_translations?) end
+    fn ->
+      lock_project!(project.id)
+      :ok = LocalizableWords.lock_inventory!(project.id)
+      language = change_source_in_transaction(project.id, locale_code, reset_translations?)
+
+      case LocalizableWords.extract_all(project.id) do
+        {:ok, _count} -> language
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end
     |> Repo.transaction()
     |> case do
       {:ok, %ProjectLanguage{} = language} ->
-        if reset_translations? do
-          {:ok, _count} = LocalizableWords.extract_all(project.id)
-          {:ok, language}
-        else
-          {:ok, language}
-        end
+        {:ok, language}
 
       {:error, reason} ->
         {:error, reason}
@@ -244,6 +270,27 @@ defmodule Storyarn.Localization.LanguageCrud do
   # =============================================================================
   # Private
   # =============================================================================
+
+  defp unwrap_language_write({:ok, language}), do: language
+  defp unwrap_language_write({:error, reason}), do: Repo.rollback(reason)
+
+  defp lock_project!(project_id) do
+    Repo.one!(
+      from(project in Project,
+        where: project.id == ^project_id,
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp lock_language!(project_id, language_id) do
+    Repo.one!(
+      from(language in ProjectLanguage,
+        where: language.project_id == ^project_id and language.id == ^language_id,
+        lock: "FOR UPDATE"
+      )
+    )
+  end
 
   defp next_position(project_id) do
     from(l in ProjectLanguage,

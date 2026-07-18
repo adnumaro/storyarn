@@ -105,6 +105,18 @@ defmodule Storyarn.Localization.LocalizableWords do
     end)
   end
 
+  @doc false
+  @spec lock_inventory!(integer()) :: :ok
+  def lock_inventory!(project_id) do
+    if Repo.in_transaction?() do
+      lock_exclusive!(@inventory_lock_namespace, project_id)
+      :ok
+    else
+      raise ArgumentError,
+            "localization inventory locks require an explicit database transaction"
+    end
+  end
+
   defp reconcile_current_inventory(project_id) do
     target_locales = get_target_locales(project_id)
     sources = runtime_sources(project_id)

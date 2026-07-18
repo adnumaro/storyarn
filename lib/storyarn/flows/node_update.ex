@@ -9,6 +9,7 @@ defmodule Storyarn.Flows.NodeUpdate do
   alias Storyarn.Flows.NodeCrud
   alias Storyarn.Localization
   alias Storyarn.References
+  alias Storyarn.References.AvatarIntegrity
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Shared.WordCount
@@ -25,10 +26,21 @@ defmodule Storyarn.Flows.NodeUpdate do
     type = Ecto.Changeset.get_field(changeset, :type)
     data = Ecto.Changeset.get_field(changeset, :data)
 
-    changeset
-    |> Ecto.Changeset.put_change(:word_count, WordCount.for_node_data(type, data))
-    |> Repo.update()
-    |> extract_updated_node_or_rollback()
+    case AvatarIntegrity.lock_and_normalize_node_avatar(
+           node.flow_id,
+           type,
+           data || %{}
+         ) do
+      {:ok, data} ->
+        changeset
+        |> Ecto.Changeset.put_change(:data, data)
+        |> Ecto.Changeset.put_change(:word_count, WordCount.for_node_data(type, data))
+        |> Repo.update()
+        |> extract_updated_node_or_rollback()
+
+      {:error, reason} ->
+        Repo.rollback(reason)
+    end
   end
 
   defp extract_updated_node_or_rollback({:ok, updated_node}) do
@@ -184,24 +196,38 @@ defmodule Storyarn.Flows.NodeUpdate do
   end
 
   defp do_update_node_data(node, data) do
-    word_count = WordCount.for_node_data(node.type, data)
-
     Repo.transaction(fn ->
-      case node
-           |> FlowNode.data_changeset(%{data: data})
-           |> Ecto.Changeset.put_change(:word_count, word_count)
-           |> Repo.update() do
-        {:ok, updated_node} ->
-          References.update_flow_node_entity_references(updated_node)
-          References.update_flow_node_variable_references(updated_node)
-          Localization.extract_flow_node(updated_node)
-          updated_node
-
-        {:error, changeset} ->
-          Repo.rollback(changeset)
-      end
+      node
+      |> normalize_node_avatar_or_rollback(data)
+      |> persist_node_data(node)
     end)
   end
+
+  defp normalize_node_avatar_or_rollback(node, data) do
+    case AvatarIntegrity.lock_and_normalize_node_avatar(node.flow_id, node.type, data) do
+      {:ok, normalized_data} -> normalized_data
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp persist_node_data(data, node) do
+    word_count = WordCount.for_node_data(node.type, data)
+
+    node
+    |> FlowNode.data_changeset(%{data: data})
+    |> Ecto.Changeset.put_change(:word_count, word_count)
+    |> Repo.update()
+    |> handle_persisted_node_data()
+  end
+
+  defp handle_persisted_node_data({:ok, updated_node}) do
+    References.update_flow_node_entity_references(updated_node)
+    References.update_flow_node_variable_references(updated_node)
+    Localization.extract_flow_node(updated_node)
+    updated_node
+  end
+
+  defp handle_persisted_node_data({:error, changeset}), do: Repo.rollback(changeset)
 
   defp cascade_hub_id_rename(flow_id, old_hub_id, new_hub_id) when is_binary(old_hub_id) and old_hub_id != "" do
     now = TimeHelpers.now()

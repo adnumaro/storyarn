@@ -16,6 +16,8 @@ defmodule Storyarn.Assets.StorageCompensation do
   @delete_attempts 3
   @delete_retry_delay_ms 25
   @persisted_cleanup_batch_size 100
+  @sha256_regex ~r/\A[0-9a-f]{64}\z/
+  @safe_filename_regex ~r/\A[\w.-]+\z/u
 
   @spec new() :: reference()
   def new do
@@ -170,49 +172,53 @@ defmodule Storyarn.Assets.StorageCompensation do
   defp key(reference), do: {__MODULE__, reference}
 
   defp persist_or_delete_cleanup(reference, storage_keys, enqueue_fun, delete_fun, persist_fun, reconcile_fun) do
-    case call_enqueue(enqueue_fun, storage_keys) do
-      :ok ->
-        _result = call_delete(delete_fun, storage_keys)
+    case call_persist(persist_fun, storage_keys) do
+      {:ok, cleanup_request} ->
+        _enqueue_result = call_enqueue(enqueue_fun, storage_keys)
+        delete_result = call_delete(delete_fun, storage_keys)
+        _reconcile_result = call_reconcile(reconcile_fun, cleanup_request, delete_result)
         discard(reference)
 
-      {:error, enqueue_reason} ->
-        case call_persist(persist_fun, storage_keys) do
-          {:ok, cleanup_request} ->
-            delete_result = call_delete(delete_fun, storage_keys)
-            _result = call_reconcile(reconcile_fun, cleanup_request, delete_result)
-            discard(reference)
+      {:error, persistence_reason} ->
+        enqueue_result = call_enqueue(enqueue_fun, storage_keys)
 
-          {:error, persistence_reason} ->
-            handle_unpersisted_cleanup(
-              reference,
-              storage_keys,
-              enqueue_reason,
-              persistence_reason,
-              delete_fun
-            )
-        end
+        handle_unpersisted_cleanup(
+          reference,
+          storage_keys,
+          enqueue_result,
+          persistence_reason,
+          delete_fun
+        )
     end
   end
 
-  defp handle_unpersisted_cleanup(reference, storage_keys, enqueue_reason, persistence_reason, delete_fun) do
+  defp handle_unpersisted_cleanup(reference, storage_keys, enqueue_result, persistence_reason, delete_fun) do
     case call_delete(delete_fun, storage_keys) do
       :ok ->
         discard(reference)
 
       {:error, failed_keys} ->
-        failed_keys = cleanup_storage_keys(failed_keys)
-        discard(reference)
-        report_unpersisted_cleanup(failed_keys, enqueue_reason, persistence_reason)
+        retain(reference, failed_keys)
+        enqueue_error = enqueue_error(enqueue_result)
+        report_unpersisted_cleanup(failed_keys, enqueue_error, persistence_reason)
 
         {:error,
          {:storage_cleanup_not_persisted,
           %{
             failed_keys: failed_keys,
-            enqueue_error: safe_error(enqueue_reason),
+            enqueue_error: enqueue_error,
             persistence_error: safe_error(persistence_reason)
           }}}
     end
   end
+
+  defp retain(reference, storage_keys) do
+    Process.put(key(reference), storage_keys)
+    :ok
+  end
+
+  defp enqueue_error(:ok), do: nil
+  defp enqueue_error({:error, reason}), do: safe_error(reason)
 
   defp enqueue_with_retry(storage_keys, insert_fun, attempts, retry_delay_ms) when attempts > 0 do
     case call_insert(insert_fun, storage_keys) do
@@ -266,7 +272,7 @@ defmodule Storyarn.Assets.StorageCompensation do
 
   defp call_persist(persist_fun, storage_keys) do
     case persist_fun.(storage_keys) do
-      {:ok, _request} = success -> success
+      {:ok, %StorageCleanupRequest{}} = success -> success
       {:error, reason} -> {:error, reason}
       _result -> {:error, :unexpected_persistence_result}
     end
@@ -278,9 +284,14 @@ defmodule Storyarn.Assets.StorageCompensation do
 
   defp call_delete(delete_fun, storage_keys) do
     case delete_fun.(storage_keys) do
-      :ok -> :ok
-      {:error, failed_keys} when is_list(failed_keys) -> {:error, failed_keys}
-      _result -> {:error, storage_keys}
+      :ok ->
+        :ok
+
+      {:error, failed_keys} when is_list(failed_keys) ->
+        {:error, normalize_failed_keys(failed_keys, storage_keys)}
+
+      _result ->
+        {:error, storage_keys}
     end
   rescue
     error ->
@@ -292,8 +303,30 @@ defmodule Storyarn.Assets.StorageCompensation do
       {:error, storage_keys}
   end
 
+  defp normalize_failed_keys(failed_keys, storage_keys) do
+    failed_keys = Enum.uniq(failed_keys)
+    storage_key_set = MapSet.new(storage_keys)
+
+    if failed_keys != [] and Enum.all?(failed_keys, &MapSet.member?(storage_key_set, &1)) do
+      failed_keys
+    else
+      storage_keys
+    end
+  end
+
   defp call_reconcile(reconcile_fun, cleanup_request, delete_result) do
-    reconcile_fun.(cleanup_request, delete_result)
+    case reconcile_fun.(cleanup_request, delete_result) do
+      {:ok, _request} ->
+        :ok
+
+      {:error, reason} ->
+        Logger.warning("Could not reconcile durable asset cleanup error=#{safe_error(reason)}")
+        {:error, reason}
+
+      _result ->
+        Logger.warning("Could not reconcile durable asset cleanup error=unexpected_reconcile_result")
+        {:error, :unexpected_reconcile_result}
+    end
   rescue
     error ->
       Logger.warning("Could not reconcile durable asset cleanup error=#{safe_error(error)}")
@@ -382,16 +415,16 @@ defmodule Storyarn.Assets.StorageCompensation do
       {:error, :delete_failure}
   end
 
-  defp report_unpersisted_cleanup(failed_keys, enqueue_reason, persistence_reason) do
+  defp report_unpersisted_cleanup(failed_keys, enqueue_error, persistence_reason) do
     Logger.error(
-      "Copied asset cleanup could not be completed or persisted failed_count=#{length(failed_keys)} enqueue_error=#{safe_error(enqueue_reason)} persistence_error=#{safe_error(persistence_reason)}"
+      "Copied asset cleanup could not be completed or persisted failed_count=#{length(failed_keys)} enqueue_error=#{inspect(enqueue_error)} persistence_error=#{safe_error(persistence_reason)}"
     )
 
     :telemetry.execute(
       [:storyarn, :assets, :storage_compensation, :persistence_failed],
       %{count: 1, failed_count: length(failed_keys)},
       %{
-        enqueue_error: safe_error(enqueue_reason),
+        enqueue_error: enqueue_error,
         persistence_error: safe_error(persistence_reason)
       }
     )
@@ -422,6 +455,12 @@ defmodule Storyarn.Assets.StorageCompensation do
       ["projects", project_id, "blobs" | tail] ->
         classify_project_key(project_id, tail, :recoverable_blob)
 
+      ["project_templates", "imported_blobs", slug, suffix, sha256, filename] ->
+        classify_template_blob_key(slug, suffix, sha256, filename)
+
+      ["project_templates", "imports", slug, suffix, artifact_name] ->
+        classify_template_import_key(slug, suffix, artifact_name)
+
       _segments ->
         :invalid
     end
@@ -436,11 +475,40 @@ defmodule Storyarn.Assets.StorageCompensation do
     end
   end
 
+  defp classify_template_blob_key(slug, suffix, sha256, filename) do
+    if valid_template_namespace?(slug, suffix) and
+         Regex.match?(@sha256_regex, sha256) and
+         valid_template_filename?(filename) do
+      :temporary_asset_copy
+    else
+      :invalid
+    end
+  end
+
+  defp classify_template_import_key(slug, suffix, artifact_name) do
+    if valid_template_namespace?(slug, suffix) and
+         artifact_name in ["snapshot.json.gz", "asset-manifest.json.gz"] do
+      :temporary_asset_copy
+    else
+      :invalid
+    end
+  end
+
+  defp valid_template_namespace?(slug, suffix) do
+    valid_key_segment?(slug) and valid_key_segment?(suffix)
+  end
+
+  defp valid_template_filename?(filename) do
+    valid_key_segment?(filename) and
+      String.length(filename) <= 255 and
+      filename == String.downcase(filename) and
+      Regex.match?(@safe_filename_regex, filename)
+  end
+
+  defp valid_key_segment?(segment), do: segment != "" and segment not in [".", ".."]
+
   defp valid_key_tail?(tail) do
-    tail != [] and
-      Enum.all?(tail, fn segment ->
-        segment != "" and segment not in [".", ".."]
-      end)
+    tail != [] and Enum.all?(tail, &valid_key_segment?/1)
   end
 
   defp report_protected_blobs(count) do

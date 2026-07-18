@@ -259,6 +259,22 @@ defmodule Storyarn.LocalizationTest do
       refute Localization.get_language_by_locale(project.id, "en").is_source
     end
 
+    test "change_source_language/2 rebuilds the previous source as a target when no texts existed" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      flow = flow_fixture(project)
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Existing line", "responses" => []}})
+
+      assert Localization.get_texts_for_source("flow_node", node.id) == []
+
+      assert {:ok, new_source} = Localization.change_source_language(project, "es")
+      assert new_source.locale_code == "es"
+
+      assert [%{locale_code: "en", source_text: "Existing line"}] =
+               Localization.get_texts_for_source("flow_node", node.id)
+    end
+
     test "change_source_language/2 refuses to relabel translated content" do
       user = user_fixture()
       project = project_fixture(user)

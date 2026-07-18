@@ -297,6 +297,7 @@ defmodule Storyarn.Versioning.RestorePolicyTest do
   test "template clone bypass is enabled only by literal true" do
     user = user_fixture()
     project = project_fixture(user)
+    snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
 
     policy =
       Application.get_env(:storyarn, RestorePolicy, [])
@@ -313,7 +314,7 @@ defmodule Storyarn.Versioning.RestorePolicyTest do
       assert {:error, :restore_temporarily_disabled} =
                ProjectRecovery.recover_project(
                  project.workspace_id,
-                 %{},
+                 snapshot,
                  user.id,
                  template_clone: template_clone
                )
@@ -324,7 +325,7 @@ defmodule Storyarn.Versioning.RestorePolicyTest do
     assert {:ok, _recovered_project} =
              ProjectRecovery.recover_project(
                project.workspace_id,
-               %{},
+               snapshot,
                user.id,
                template_clone: true
              )

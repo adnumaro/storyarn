@@ -8,6 +8,7 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.PropertyInheritance
+  alias Storyarn.Sheets.Sheet
 
   defp setup_hierarchy(_context) do
     user = user_fixture()
@@ -134,6 +135,38 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
       assert count == 0
     end
 
+    test "rejects targets in trash or outside the source project", %{
+      user: user,
+      parent: parent,
+      child: child
+    } do
+      block = inheritable_block_fixture(parent, label: "Scoped")
+      foreign_project = project_fixture(user)
+      foreign_sheet = sheet_fixture(foreign_project)
+      deleted_at = DateTime.truncate(DateTime.utc_now(), :second)
+
+      Repo.update_all(
+        from(sheet in Sheet, where: sheet.id == ^child.id),
+        set: [deleted_at: deleted_at]
+      )
+
+      assert {:error, {:invalid_inheritance_targets, invalid_ids}} =
+               PropertyInheritance.create_inherited_instances(
+                 block,
+                 [foreign_sheet.id, child.id]
+               )
+
+      assert invalid_ids == Enum.sort([child.id, foreign_sheet.id])
+
+      refute Repo.exists?(
+               from(candidate in Block,
+                 where:
+                   candidate.sheet_id == ^foreign_sheet.id and
+                     candidate.inherited_from_block_id == ^block.id
+               )
+             )
+    end
+
     test "derives variable_name correctly", %{parent: parent, child: child} do
       block = inheritable_block_fixture(parent, label: "Health Points")
 
@@ -210,6 +243,48 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
       # If it runs in a transaction, either all update or none
       {:ok, count} = PropertyInheritance.sync_definition_change(block)
       assert count >= 2
+    end
+
+    test "updates only instances on active sheets in the source project", %{
+      user: user,
+      parent: parent,
+      child: child,
+      grandchild: grandchild
+    } do
+      source = inheritable_block_fixture(parent, label: "Scoped sync")
+      child_instance = inherited_instance!(child.id, source.id)
+      grandchild_instance = inherited_instance!(grandchild.id, source.id)
+      foreign_project = project_fixture(user)
+      foreign_sheet = sheet_fixture(foreign_project)
+
+      foreign_instance =
+        block_fixture(foreign_sheet, %{
+          type: source.type,
+          config: source.config,
+          inherited_from_block_id: source.id,
+          detached: false
+        })
+
+      deleted_at = DateTime.truncate(DateTime.utc_now(), :second)
+
+      Repo.update_all(
+        from(sheet in Sheet, where: sheet.id == ^child.id),
+        set: [deleted_at: deleted_at]
+      )
+
+      updated_source =
+        source
+        |> Ecto.Changeset.change(config: %{"label" => "Updated scope"})
+        |> Repo.update!()
+
+      assert {:ok, 1} = PropertyInheritance.sync_definition_change(updated_source)
+
+      assert Repo.get!(Block, grandchild_instance.id).config == %{
+               "label" => "Updated scope"
+             }
+
+      assert Repo.get!(Block, child_instance.id).config == source.config
+      assert Repo.get!(Block, foreign_instance.id).config == source.config
     end
   end
 
@@ -341,6 +416,26 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
       refute Enum.any?(gc_blocks, &(&1.inherited_from_block_id == block.id))
     end
 
+    test "preserves detached instances as local copies", %{
+      parent: parent,
+      child: child
+    } do
+      block = inheritable_block_fixture(parent, label: "Detachable")
+
+      instance =
+        child.id
+        |> Sheets.list_blocks()
+        |> Enum.find(&(&1.inherited_from_block_id == block.id))
+
+      assert {:ok, detached} = PropertyInheritance.detach_block(instance)
+      assert {:ok, 1} = PropertyInheritance.delete_inherited_instances(block)
+
+      preserved = Repo.get!(Block, detached.id)
+      assert preserved.detached
+      assert is_nil(preserved.deleted_at)
+      assert preserved.inherited_from_block_id == block.id
+    end
+
     test "cleans up entity references", %{project: project, parent: parent, child: child} do
       alias Storyarn.Sheets.ReferenceTracker
       # Create an inheritable reference block
@@ -376,6 +471,51 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
       # References should be cleaned up
       backlinks_after = ReferenceTracker.get_backlinks("sheet", target_sheet.id)
       assert backlinks_after == []
+    end
+
+    test "deletes and cleans hidden IDs only on active sheets in the source project", %{
+      user: user,
+      parent: parent,
+      child: child,
+      grandchild: grandchild
+    } do
+      source = inheritable_block_fixture(parent, label: "Scoped delete")
+      child_instance = inherited_instance!(child.id, source.id)
+      grandchild_instance = inherited_instance!(grandchild.id, source.id)
+      foreign_project = project_fixture(user)
+      foreign_sheet = sheet_fixture(foreign_project)
+
+      foreign_instance =
+        block_fixture(foreign_sheet, %{
+          type: source.type,
+          config: source.config,
+          inherited_from_block_id: source.id,
+          detached: false
+        })
+
+      Repo.update_all(
+        from(sheet in Sheet,
+          where: sheet.id in ^[child.id, grandchild.id, foreign_sheet.id]
+        ),
+        set: [hidden_inherited_block_ids: [source.id]]
+      )
+
+      deleted_at = DateTime.truncate(DateTime.utc_now(), :second)
+
+      Repo.update_all(
+        from(sheet in Sheet, where: sheet.id == ^child.id),
+        set: [deleted_at: deleted_at]
+      )
+
+      assert {:ok, 1} = PropertyInheritance.delete_inherited_instances(source)
+
+      assert is_nil(Repo.get!(Block, child_instance.id).deleted_at)
+      assert Repo.get!(Block, grandchild_instance.id).deleted_at
+      assert is_nil(Repo.get!(Block, foreign_instance.id).deleted_at)
+
+      assert Repo.get!(Sheet, child.id).hidden_inherited_block_ids == [source.id]
+      assert Repo.get!(Sheet, grandchild.id).hidden_inherited_block_ids == []
+      assert Repo.get!(Sheet, foreign_sheet.id).hidden_inherited_block_ids == [source.id]
     end
   end
 
@@ -656,7 +796,7 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
       assert inherited_snapshot["detached"] == false
     end
 
-    test "restore handles orphaned inherited_from_block_id", %{
+    test "restore rejects an orphaned inherited_from_block_id without mutating the child", %{
       user: user,
       parent: parent,
       child: child
@@ -669,20 +809,32 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
       # Delete the parent block permanently
       {:ok, _} = Sheets.permanently_delete_block(block)
 
-      # Restore the version - should handle the orphaned reference
-      {:ok, restored_sheet} = Sheets.restore_version(child, version)
+      child_before = Repo.get!(Sheet, child.id)
 
-      # The restored blocks should have the orphaned reference nilified
-      restored_blocks = Sheets.list_blocks(restored_sheet.id)
+      blocks_before =
+        Repo.all(
+          from(child_block in Block,
+            where: child_block.sheet_id == ^child.id,
+            order_by: [asc: child_block.id]
+          )
+        )
 
-      # The inherited block should be detached since its source is gone
-      orphaned =
-        Enum.find(restored_blocks, fn b ->
-          b.detached == true
-        end)
+      assert [current_instance] = blocks_before
+      assert is_nil(current_instance.inherited_from_block_id)
+      refute current_instance.detached
 
-      assert orphaned || is_list(restored_blocks)
-      # The key point: no crash occurred during restore
+      assert {:error, {:invalid_snapshot, {:invalid_block_reference, source_id}}} =
+               Sheets.restore_version(child, version)
+
+      assert source_id == block.id
+      assert Repo.get!(Sheet, child.id) == child_before
+
+      assert Repo.all(
+               from(child_block in Block,
+                 where: child_block.sheet_id == ^child.id,
+                 order_by: [asc: child_block.id]
+               )
+             ) == blocks_before
     end
   end
 
@@ -815,6 +967,56 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
 
       gc_blocks_restored = Sheets.list_blocks(grandchild.id)
       assert Enum.any?(gc_blocks_restored, &(&1.inherited_from_block_id == block.id))
+    end
+
+    test "restores only instances on active sheets in the source project", %{
+      user: user,
+      parent: parent,
+      child: child,
+      grandchild: grandchild
+    } do
+      source = inheritable_block_fixture(parent, label: "Scoped restore")
+      child_instance = inherited_instance!(child.id, source.id)
+      grandchild_instance = inherited_instance!(grandchild.id, source.id)
+      foreign_project = project_fixture(user)
+      foreign_sheet = sheet_fixture(foreign_project)
+
+      foreign_instance =
+        block_fixture(foreign_sheet, %{
+          type: source.type,
+          config: source.config,
+          inherited_from_block_id: source.id,
+          detached: false
+        })
+
+      deletion_time = DateTime.truncate(DateTime.utc_now(), :second)
+
+      Repo.update_all(
+        from(block in Block,
+          where:
+            block.id in ^[
+              child_instance.id,
+              grandchild_instance.id,
+              foreign_instance.id
+            ]
+        ),
+        set: [deleted_at: deletion_time]
+      )
+
+      Repo.update_all(
+        from(sheet in Sheet, where: sheet.id == ^child.id),
+        set: [deleted_at: deletion_time]
+      )
+
+      assert {:ok, 1} =
+               PropertyInheritance.restore_inherited_instances(%{
+                 source
+                 | deleted_at: deletion_time
+               })
+
+      assert Repo.get!(Block, child_instance.id).deleted_at
+      assert is_nil(Repo.get!(Block, grandchild_instance.id).deleted_at)
+      assert Repo.get!(Block, foreign_instance.id).deleted_at
     end
   end
 
@@ -1041,5 +1243,15 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
                "column_slug" => "base_value"
              }
     end
+  end
+
+  defp inherited_instance!(sheet_id, source_block_id) do
+    Repo.one!(
+      from(block in Block,
+        where:
+          block.sheet_id == ^sheet_id and
+            block.inherited_from_block_id == ^source_block_id
+      )
+    )
   end
 end

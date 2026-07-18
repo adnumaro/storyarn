@@ -127,7 +127,7 @@ defmodule Storyarn.ProjectTemplates.PortableBundle do
 
   defp checksum_asset_blobs(asset_blobs) do
     asset_blobs
-    |> Enum.map(&Map.take(&1, ["sha256", "size", "content_type", "path"]))
+    |> Enum.map(&Map.take(&1, ["asset_id", "sha256", "size", "content_type", "path", "filename"]))
     |> Enum.sort_by(&{&1["sha256"], &1["path"]})
   end
 

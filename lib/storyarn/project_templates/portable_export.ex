@@ -121,6 +121,8 @@ defmodule Storyarn.ProjectTemplates.PortableExport do
     |> collect_asset_blob_hash_keys(ids)
   end
 
+  defp collect_asset_blob_hash_keys(%_struct{}, ids), do: ids
+
   defp collect_asset_blob_hash_keys(map, ids) when is_map(map) do
     Enum.reduce(map, ids, fn {_key, value}, acc -> collect_asset_blob_hash_keys(value, acc) end)
   end

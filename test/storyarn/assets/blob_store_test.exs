@@ -95,6 +95,50 @@ defmodule Storyarn.Assets.BlobStoreTest do
       assert new_asset.uploaded_by_id == user.id
     end
 
+    test "rejects same-sized source bytes whose SHA256 differs from the declared blob hash", %{
+      project: project,
+      user: user
+    } do
+      expected_content = "expected"
+      corrupted_content = "tampered"
+      expected_hash = BlobStore.compute_hash(expected_content)
+      actual_hash = BlobStore.compute_hash(corrupted_content)
+      source_key = "projects/#{project.id}/assets/corrupt-source/blob.png"
+      asset_glob = asset_file_glob(project.id, "restored.png")
+
+      assert byte_size(corrupted_content) == byte_size(expected_content)
+      assert {:ok, _url} = Storage.upload(source_key, corrupted_content, "image/png")
+
+      on_exit(fn ->
+        Storage.delete(source_key)
+        asset_glob |> Path.wildcard() |> Enum.each(&File.rm/1)
+      end)
+
+      metadata = %{
+        "filename" => "restored.png",
+        "content_type" => "image/png",
+        "size" => byte_size(expected_content)
+      }
+
+      assert {:error, {:asset_blob_checksum_mismatch, ^expected_hash, ^actual_hash}} =
+               BlobStore.create_asset_from_blob(
+                 project.id,
+                 user.id,
+                 expected_hash,
+                 source_key,
+                 metadata
+               )
+
+      refute Repo.exists?(
+               from asset in Asset,
+                 where:
+                   asset.project_id == ^project.id and
+                     asset.blob_hash == ^expected_hash
+             )
+
+      assert Path.wildcard(asset_glob) == []
+    end
+
     test "rejects legacy SVG blob metadata before copying a public asset", %{
       project: project,
       user: user

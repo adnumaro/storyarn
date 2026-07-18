@@ -3,9 +3,13 @@ defmodule Storyarn.Sheets.AvatarCrudTest do
 
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
+  import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Flows
+  alias Storyarn.Flows.FlowNode
+  alias Storyarn.Repo
   alias Storyarn.Sheets
 
   setup do
@@ -186,6 +190,59 @@ defmodule Storyarn.Sheets.AvatarCrudTest do
     test "returns error for non-existent id", %{sheet: sheet} do
       assert {:error, :not_found} = Sheets.remove_avatar(sheet.id, 0)
     end
+
+    test "keeps an avatar referenced by an active flow node", %{
+      project: project,
+      sheet: sheet,
+      asset1: asset
+    } do
+      {:ok, avatar} = Sheets.add_avatar(sheet, asset.id)
+      flow = flow_fixture(project)
+
+      node =
+        node_fixture(flow, %{
+          data: %{
+            "speaker_sheet_id" => sheet.id,
+            "avatar_id" => avatar.id,
+            "text" => "Hello"
+          }
+        })
+
+      assert {:error, {:avatar_in_use, avatar_id, {:referenced_by_flow_nodes, 1}}} =
+               Sheets.remove_avatar(sheet.id, avatar.id)
+
+      assert avatar_id == avatar.id
+      assert Sheets.get_avatar(avatar.id)
+      assert Repo.get!(FlowNode, node.id).data["avatar_id"] == avatar.id
+    end
+
+    test "keeps an avatar needed to restore a soft-deleted node", %{
+      project: project,
+      sheet: sheet,
+      asset1: asset
+    } do
+      {:ok, avatar} = Sheets.add_avatar(sheet, asset.id)
+      flow = flow_fixture(project)
+
+      node =
+        node_fixture(flow, %{
+          data: %{
+            "speaker_sheet_id" => sheet.id,
+            "avatar_id" => avatar.id,
+            "text" => "Recoverable"
+          }
+        })
+
+      assert {:ok, deleted_node, _meta} = Flows.delete_node(node)
+
+      assert {:error, {:avatar_in_use, avatar_id, {:referenced_by_flow_nodes, 1}}} =
+               Sheets.remove_avatar(sheet.id, avatar.id)
+
+      assert avatar_id == avatar.id
+      assert {:ok, restored_node} = Flows.restore_node(flow.id, deleted_node.id)
+      assert restored_node.data["avatar_id"] == avatar.id
+      assert Sheets.get_avatar(avatar.id)
+    end
   end
 
   describe "update_avatar/2" do
@@ -245,7 +302,7 @@ defmodule Storyarn.Sheets.AvatarCrudTest do
 
       deleted_sheet
       |> Ecto.Changeset.change(deleted_at: Storyarn.Shared.TimeHelpers.now())
-      |> Storyarn.Repo.update!()
+      |> Repo.update!()
 
       result = Sheets.batch_load_avatars_by_sheet(project.id)
       refute Map.has_key?(result, deleted_sheet.id)

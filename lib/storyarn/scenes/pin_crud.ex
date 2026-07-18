@@ -3,13 +3,12 @@ defmodule Storyarn.Scenes.PinCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows
+  alias Storyarn.References
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Scenes.PositionUtils
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Shared.MapUtils
-  alias Storyarn.Sheets
   alias Storyarn.Shortcuts
 
   @doc """
@@ -67,55 +66,47 @@ defmodule Storyarn.Scenes.PinCrud do
     attrs = enforce_leader_constraints(%ScenePin{scene_id: scene_id}, attrs)
     attrs = maybe_generate_pin_shortcut(attrs, scene_id, nil)
 
-    result =
-      PositionUtils.with_scene_lock(scene_id, fn ->
+    PositionUtils.with_scene_lock(scene_id, fn ->
+      with project_id when is_integer(project_id) <- Scenes.get_scene_project_id(scene_id),
+           :ok <- PositionUtils.lock_requested_layer_for_scene(scene_id, attrs) do
         position = PositionUtils.next_position(ScenePin, scene_id)
         pin = %ScenePin{scene_id: scene_id}
         ensure_single_leader(pin, attrs)
 
         pin
         |> ScenePin.create_changeset(Map.put(attrs, "position", position))
-        |> Repo.insert()
-      end)
-
-    case result do
-      {:ok, pin} ->
-        project_id = Scenes.get_scene_project_id(scene_id)
-        Sheets.update_scene_pin_references(pin)
-        Flows.update_scene_pin_references(pin, project_id: project_id)
-
-      _ ->
-        :ok
-    end
-
-    result
+        |> persist_pin_with_references(project_id)
+      else
+        nil -> {:error, :scene_not_found}
+        error -> error
+      end
+    end)
   end
 
   def update_pin(%ScenePin{} = pin, attrs) do
     attrs = enforce_leader_constraints(pin, attrs)
-    attrs = maybe_regenerate_pin_shortcut(pin, attrs)
 
-    result =
-      Repo.transaction(fn ->
-        ensure_single_leader(pin, attrs)
+    PositionUtils.with_scene_lock(pin.scene_id, fn ->
+      with project_id when is_integer(project_id) <-
+             Scenes.get_scene_project_id(pin.scene_id),
+           {:ok, locked_pin} <- lock_pin_for_scene(pin.id, pin.scene_id),
+           :ok <-
+             PositionUtils.lock_requested_layer_for_scene(
+               pin.scene_id,
+               attrs,
+               locked_pin.layer_id
+             ) do
+        attrs = maybe_regenerate_pin_shortcut(locked_pin, attrs)
+        ensure_single_leader(locked_pin, attrs)
 
-        case pin |> ScenePin.update_changeset(attrs) |> Repo.update() do
-          {:ok, updated_pin} -> updated_pin
-          {:error, changeset} -> Repo.rollback(changeset)
-        end
-      end)
-
-    case result do
-      {:ok, updated_pin} ->
-        project_id = Scenes.get_scene_project_id(pin.scene_id)
-        Sheets.update_scene_pin_references(updated_pin)
-        Flows.update_scene_pin_references(updated_pin, project_id: project_id)
-
-      _ ->
-        :ok
-    end
-
-    result
+        locked_pin
+        |> ScenePin.update_changeset(attrs)
+        |> persist_pin_with_references(project_id)
+      else
+        nil -> {:error, :scene_not_found}
+        error -> error
+      end
+    end)
   end
 
   @doc """
@@ -128,18 +119,12 @@ defmodule Storyarn.Scenes.PinCrud do
   end
 
   def delete_pin(%ScenePin{} = pin) do
-    result =
-      Repo.transaction(fn ->
-        Sheets.delete_map_pin_references(pin.id)
-        Flows.delete_map_pin_references(pin.id)
-
-        case Repo.delete(pin) do
-          {:ok, deleted} -> deleted
-          {:error, changeset} -> Repo.rollback(changeset)
-        end
-      end)
-
-    result
+    PositionUtils.with_scene_lock(pin.scene_id, fn ->
+      with {:ok, locked_pin} <- lock_pin_for_scene(pin.id, pin.scene_id),
+           :ok <- delete_pin_references(locked_pin.id) do
+        Repo.delete(locked_pin)
+      end
+    end)
   end
 
   def change_pin(%ScenePin{} = pin, attrs \\ %{}) do
@@ -228,4 +213,42 @@ defmodule Storyarn.Scenes.PinCrud do
 
   defp shortcut_missing_for_existing_label?(pin, attrs),
     do: is_nil(pin.shortcut) and is_binary(pin.label) and pin.label != "" and not Map.has_key?(attrs, "label")
+
+  defp lock_pin_for_scene(pin_id, scene_id) do
+    case Repo.one(
+           from(pin in ScenePin,
+             where: pin.id == ^pin_id and pin.scene_id == ^scene_id,
+             lock: "FOR UPDATE"
+           )
+         ) do
+      %ScenePin{} = pin -> {:ok, pin}
+      nil -> {:error, :pin_not_found}
+    end
+  end
+
+  defp persist_pin_with_references(changeset, project_id) do
+    with {:ok, pin} <- Repo.insert_or_update(changeset),
+         :ok <-
+           References.update_scene_pin_entity_references(
+             pin,
+             project_id: project_id
+           ),
+         :ok <-
+           References.update_scene_pin_variable_references(
+             pin,
+             project_id: project_id
+           ) do
+      {:ok, pin}
+    end
+  end
+
+  defp delete_pin_references(pin_id) do
+    with {count, nil} when is_integer(count) <-
+           References.delete_scene_pin_entity_references(pin_id),
+         :ok <- References.delete_scene_pin_variable_references(pin_id) do
+      :ok
+    else
+      result -> {:error, {:pin_reference_delete_failed, pin_id, result}}
+    end
+  end
 end

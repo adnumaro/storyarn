@@ -3,6 +3,7 @@ defmodule Storyarn.Sheets.AvatarCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.References.AvatarIntegrity
   alias Storyarn.Repo
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.SheetAvatar
@@ -65,24 +66,24 @@ defmodule Storyarn.Sheets.AvatarCrud do
   # ===========================================================================
 
   def remove_avatar(sheet_id, avatar_id) do
-    case Repo.get(SheetAvatar, avatar_id) do
-      nil ->
-        {:error, :not_found}
-
-      %SheetAvatar{sheet_id: ^sheet_id} = avatar ->
-        result = Repo.delete(avatar)
-
-        case result do
-          {:ok, deleted} ->
-            if deleted.is_default, do: promote_next_default(deleted.sheet_id)
-            result
-
-          _ ->
-            result
-        end
-
-      _wrong_sheet ->
-        {:error, :not_found}
+    fn ->
+      with {:ok, avatar} <-
+             AvatarIntegrity.lock_avatar_for_delete(
+               avatar_id,
+               sheet_id: sheet_id
+             ),
+           :ok <- AvatarIntegrity.ensure_deletable(avatar.id),
+           {:ok, deleted} <- Repo.delete(avatar) do
+        if deleted.is_default, do: promote_next_default(deleted.sheet_id)
+        deleted
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end
+    |> Repo.transaction()
+    |> case do
+      {:ok, deleted} -> {:ok, deleted}
+      {:error, reason} -> {:error, reason}
     end
   end
 

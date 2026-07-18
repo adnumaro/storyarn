@@ -4,6 +4,7 @@ defmodule Storyarn.Scenes.ConnectionCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Repo
+  alias Storyarn.Scenes.PositionUtils
   alias Storyarn.Scenes.SceneConnection
   alias Storyarn.Scenes.ScenePin
 
@@ -47,11 +48,18 @@ defmodule Storyarn.Scenes.ConnectionCrud do
     from_pin_id = attrs["from_pin_id"]
     to_pin_id = attrs["to_pin_id"]
 
-    with {:ok, _from_pin} <- validate_optional_pin_belongs_to_map(from_pin_id, scene_id),
-         {:ok, _to_pin} <- validate_optional_pin_belongs_to_map(to_pin_id, scene_id) do
-      %SceneConnection{scene_id: scene_id}
-      |> SceneConnection.create_changeset(attrs)
-      |> Repo.insert()
+    scene_id
+    |> PositionUtils.with_scene_lock(fn ->
+      with {:ok, _from_pin} <- validate_optional_pin_belongs_to_map(from_pin_id, scene_id),
+           {:ok, _to_pin} <- validate_optional_pin_belongs_to_map(to_pin_id, scene_id) do
+        %SceneConnection{scene_id: scene_id}
+        |> SceneConnection.create_changeset(attrs)
+        |> Repo.insert()
+      end
+    end)
+    |> case do
+      {:ok, connection} -> {:ok, connection}
+      {:error, reason} -> {:error, reason}
     end
   end
 
