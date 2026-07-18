@@ -15,6 +15,44 @@ defmodule Storyarn.Assets.StorageKeyLockTest do
     assert :error = StorageKeyLock.project_blob_id("projects/42/blobs/not-a-hash.png")
   end
 
+  test "marks only transaction locks owned by the wrapper" do
+    storage_key = "projects/42/assets/#{Ecto.UUID.generate()}/owned-lock.png"
+
+    refute StorageKeyLock.wrapper_owned_transaction_lock_held?(storage_key)
+
+    assert :wrapper_owned =
+             Sandbox.unboxed_run(Repo, fn ->
+               StorageKeyLock.with_storage_key_lock(storage_key, fn ->
+                 assert Repo.in_transaction?()
+                 assert StorageKeyLock.wrapper_owned_transaction_lock_held?(storage_key)
+                 :wrapper_owned
+               end)
+             end)
+
+    refute StorageKeyLock.wrapper_owned_transaction_lock_held?(storage_key)
+
+    assert {:ok, :caller_owned} =
+             Sandbox.unboxed_run(Repo, fn ->
+               Repo.transaction(fn ->
+                 StorageKeyLock.with_storage_key_lock(storage_key, fn ->
+                   refute StorageKeyLock.wrapper_owned_transaction_lock_held?(storage_key)
+                   :caller_owned
+                 end)
+               end)
+             end)
+
+    assert_raise RuntimeError, "lock callback failed", fn ->
+      Sandbox.unboxed_run(Repo, fn ->
+        StorageKeyLock.with_storage_key_lock(storage_key, fn ->
+          assert StorageKeyLock.wrapper_owned_transaction_lock_held?(storage_key)
+          raise "lock callback failed"
+        end)
+      end)
+    end
+
+    refute StorageKeyLock.wrapper_owned_transaction_lock_held?(storage_key)
+  end
+
   test "serializes concurrent owners of the same project blob key" do
     parent = self()
     hash = String.duplicate("b", 64)
@@ -159,16 +197,20 @@ defmodule Storyarn.Assets.StorageKeyLockTest do
       Task.async(fn ->
         Sandbox.unboxed_run(Repo, fn ->
           Repo.transaction(fn ->
-            StorageKeyLock.with_storage_key_lock(
-              asset_key,
-              fn -> flunk("timed-out transactional contender must not run") end,
-              acquisition_timeout: 50
-            )
+            result =
+              StorageKeyLock.with_storage_key_lock(
+                asset_key,
+                fn -> flunk("timed-out transactional contender must not run") end,
+                acquisition_timeout: 50
+              )
+
+            assert %{rows: [[1]]} = Repo.query!("SELECT 1")
+            result
           end)
         end)
       end)
 
-    assert {:error, :storage_key_lock_timeout} = Task.await(contender)
+    assert {:ok, {:error, :storage_key_lock_timeout}} = Task.await(contender)
     send(owner.pid, :release_transaction_owner)
     assert :ok = Task.await(owner)
   end

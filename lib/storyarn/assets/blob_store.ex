@@ -121,10 +121,7 @@ defmodule Storyarn.Assets.BlobStore do
 
     case asset_copy_tracker(opts, caller_transactional?) do
       {:ok, tracker, owns_tracker?} ->
-        opts =
-          opts
-          |> Keyword.put(:asset_copy_tracker, tracker)
-          |> Keyword.put(:asset_copy_caller_transactional?, caller_transactional?)
+        opts = Keyword.put(opts, :asset_copy_tracker, tracker)
 
         try do
           project_id
@@ -322,9 +319,7 @@ defmodule Storyarn.Assets.BlobStore do
       reference when is_reference(reference) ->
         StorageCompensation.track_force_delete(reference, destination_blob_key)
 
-        case StorageCompensation.delete_force_tracked_or_enqueue(reference, destination_blob_key,
-               allow_force_delete_in_transaction?: not Keyword.fetch!(opts, :asset_copy_caller_transactional?)
-             ) do
+        case StorageCompensation.delete_force_tracked_or_enqueue(reference, destination_blob_key) do
           :ok ->
             :ok
 

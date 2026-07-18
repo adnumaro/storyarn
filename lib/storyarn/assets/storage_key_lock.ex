@@ -36,6 +36,11 @@ defmodule Storyarn.Assets.StorageKeyLock do
   In particular, this fences ambiguous commit outcomes: compensating cleanup
   cannot inspect and delete a unique asset key until PostgreSQL has completed
   the writer's commit or rollback.
+
+  When invoked inside an existing transaction, a lock-acquisition timeout is
+  returned to the transaction owner. The owner must propagate or explicitly
+  roll back that error; this helper never rolls back a transaction it did not
+  start.
   """
   @spec with_storage_key_lock(String.t(), (-> result)) :: result when result: term()
   def with_storage_key_lock(storage_key, fun) when is_binary(storage_key) and is_function(fun, 0) do
@@ -53,6 +58,12 @@ defmodule Storyarn.Assets.StorageKeyLock do
     else
       acquire_and_run(storage_key, fun, deadline)
     end
+  end
+
+  @doc false
+  @spec wrapper_owned_transaction_lock_held?(String.t()) :: boolean()
+  def wrapper_owned_transaction_lock_held?(storage_key) when is_binary(storage_key) do
+    Process.get(wrapper_owned_transaction_lock_key(storage_key), 0) > 0
   end
 
   @doc """
@@ -132,7 +143,13 @@ defmodule Storyarn.Assets.StorageKeyLock do
             fn ->
               if try_lock!(storage_key) do
                 Process.put(attempt_ref, :callback_started)
-                {:lock_acquired, rollback_callback_error(fun.())}
+
+                callback_result =
+                  with_wrapper_owned_transaction_lock(storage_key, fn ->
+                    rollback_callback_error(fun.())
+                  end)
+
+                {:lock_acquired, callback_result}
               else
                 :lock_busy
               end
@@ -187,7 +204,7 @@ defmodule Storyarn.Assets.StorageKeyLock do
       Process.sleep(@lock_retry_delay_ms)
       acquire_transaction_lock_and_run(storage_key, fun, deadline)
     else
-      Repo.rollback(:storage_key_lock_timeout)
+      {:error, :storage_key_lock_timeout}
     end
   end
 
@@ -305,4 +322,22 @@ defmodule Storyarn.Assets.StorageKeyLock do
   end
 
   defp rollback_callback_error(result), do: result
+
+  defp with_wrapper_owned_transaction_lock(storage_key, fun) do
+    marker_key = wrapper_owned_transaction_lock_key(storage_key)
+    previous_count = Process.get(marker_key, 0)
+    Process.put(marker_key, previous_count + 1)
+
+    try do
+      fun.()
+    after
+      if previous_count == 0,
+        do: Process.delete(marker_key),
+        else: Process.put(marker_key, previous_count)
+    end
+  end
+
+  defp wrapper_owned_transaction_lock_key(storage_key) do
+    {__MODULE__, :wrapper_owned_transaction_lock, storage_key}
+  end
 end

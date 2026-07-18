@@ -269,10 +269,10 @@ defmodule Storyarn.Assets.StorageCompensation do
 
     transactional? = in_transaction?(opts)
 
-    allow_force_delete_in_transaction? =
-      Keyword.get(opts, :allow_force_delete_in_transaction?, false)
+    wrapper_owned_force_cleanup? =
+      StorageKeyLock.wrapper_owned_transaction_lock_held?(storage_key)
 
-    if force_delete? and transactional? and not allow_force_delete_in_transaction? do
+    if force_delete? and transactional? and not wrapper_owned_force_cleanup? do
       # The current transaction can see a Project row that has not committed
       # yet. Keep the force target tracked until the owner knows whether that
       # row committed or rolled back, then let deferred cleanup decide whether
@@ -307,7 +307,6 @@ defmodule Storyarn.Assets.StorageCompensation do
         :delete_attempts,
         :delete_retry_delay_ms,
         :force_delete,
-        :allow_force_delete_in_transaction?,
         :in_transaction?
       ])
       |> Keyword.put(:delete_fun, fn storage_keys -> {:error, storage_keys} end)
@@ -643,12 +642,13 @@ defmodule Storyarn.Assets.StorageCompensation do
     end
   end
 
-  # The caller can be outside a business transaction while already holding
-  # this key's advisory lock in StorageKeyLock's internal transaction. Recheck
-  # force targets under that lock so a repaired canonical blob is never
-  # deleted.
+  # Only StorageKeyLock's wrapper-owned transaction can reach this branch. A
+  # caller-owned transaction may see an uncommitted Project row, so it must
+  # leave the force target tracked for post-transaction cleanup.
   defp delete_owned_storage_key_in_transaction(storage_key, true) do
-    deferred_storage_delete(storage_key, true)
+    if StorageKeyLock.wrapper_owned_transaction_lock_held?(storage_key),
+      do: deferred_storage_delete(storage_key, true),
+      else: {:error, :storage_cleanup_requires_post_transaction}
   end
 
   defp delete_owned_storage_key_in_transaction(storage_key, false) do

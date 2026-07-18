@@ -10,6 +10,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   alias Storyarn.Assets.StorageCleanupPersistenceError
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageCompensation
+  alias Storyarn.Assets.StorageKeyLock
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates.ProjectTemplate
   alias Storyarn.ProjectTemplates.ProjectTemplatePublication
@@ -333,11 +334,9 @@ defmodule Storyarn.Assets.StorageCompensationTest do
     assert {:ok, _url} = Storage.upload(storage_key, repaired_content, "image/png")
     on_exit(fn -> Storage.delete(storage_key) end)
 
-    assert {:ok, :ok} =
-             Repo.transaction(fn ->
-               StorageCompensation.delete_force_tracked_or_enqueue(tracker, storage_key,
-                 allow_force_delete_in_transaction?: true
-               )
+    assert :ok =
+             StorageKeyLock.with_storage_key_lock(storage_key, fn ->
+               StorageCompensation.delete_force_tracked_or_enqueue(tracker, storage_key)
              end)
 
     assert {:ok, ^repaired_content} = Storage.download(storage_key)
@@ -354,10 +353,9 @@ defmodule Storyarn.Assets.StorageCompensationTest do
     assert {:ok, _url} = Storage.upload(storage_key, "corrupt", "image/png")
     on_exit(fn -> Storage.delete(storage_key) end)
 
-    assert {:ok, {:error, :storage_cleanup_requires_post_transaction}} =
-             Repo.transaction(fn ->
+    assert {:error, :storage_cleanup_requires_post_transaction} =
+             StorageKeyLock.with_storage_key_lock(storage_key, fn ->
                StorageCompensation.delete_force_tracked_or_enqueue(tracker, storage_key,
-                 allow_force_delete_in_transaction?: true,
                  delete_fun: fn ^storage_key -> {:error, :storage_unavailable} end,
                  delete_attempts: 1,
                  enqueue_fun: fn targets ->
@@ -381,7 +379,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
     assert String.ends_with?(cleanup_target, storage_key)
   end
 
-  test "transactional force cleanup remains tracked until an inserted project rolls back" do
+  test "caller-owned transaction lock keeps force cleanup tracked until an inserted project rolls back" do
     user = user_fixture()
     repaired_content = "repaired before transaction rollback"
     hash = :sha256 |> :crypto.hash(repaired_content) |> Base.encode16(case: :lower)
@@ -397,7 +395,9 @@ defmodule Storyarn.Assets.StorageCompensationTest do
                on_exit(fn -> Storage.delete(storage_key) end)
 
                assert {:error, :storage_cleanup_requires_post_transaction} =
-                        StorageCompensation.delete_force_tracked_or_enqueue(tracker, storage_key)
+                        StorageKeyLock.with_storage_key_lock(storage_key, fn ->
+                          StorageCompensation.delete_force_tracked_or_enqueue(tracker, storage_key)
+                        end)
 
                Repo.rollback({project.id, storage_key})
              end)
