@@ -712,23 +712,55 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
         node_fixture(flow, %{
           type: "condition",
           data: %{
+            "switch_mode" => true,
             "condition" =>
               Jason.encode!(%{
                 "logic" => "all",
-                "rules" => [
+                "blocks" => [
                   %{
-                    "sheet" => sheet.shortcut,
-                    "variable" => "weather",
-                    "operator" => "equals",
-                    "value" => "0"
+                    "id" => "sunny",
+                    "type" => "block",
+                    "logic" => "all",
+                    "label" => "Sunny",
+                    "rules" => [
+                      %{
+                        "sheet" => sheet.shortcut,
+                        "variable" => "weather",
+                        "operator" => "equals",
+                        "value" => "0"
+                      }
+                    ]
+                  },
+                  %{
+                    "id" => "rainy",
+                    "type" => "block",
+                    "logic" => "all",
+                    "label" => "Rainy",
+                    "rules" => [
+                      %{
+                        "sheet" => sheet.shortcut,
+                        "variable" => "weather",
+                        "operator" => "equals",
+                        "value" => "1"
+                      }
+                    ]
+                  },
+                  %{
+                    "id" => "stormy",
+                    "type" => "block",
+                    "logic" => "all",
+                    "label" => "Stormy",
+                    "rules" => [
+                      %{
+                        "sheet" => sheet.shortcut,
+                        "variable" => "weather",
+                        "operator" => "equals",
+                        "value" => "2"
+                      }
+                    ]
                   }
                 ]
-              }),
-            "cases" => [
-              %{"id" => "sunny", "value" => "sunny", "label" => "Sunny"},
-              %{"id" => "rainy", "value" => "rainy", "label" => "Rainy"},
-              %{"id" => "stormy", "value" => "stormy", "label" => "Stormy"}
-            ]
+              })
           }
         })
 
@@ -785,7 +817,10 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
         })
 
       connection_fixture(caller_flow, caller_entry, subflow_node)
-      connection_fixture(caller_flow, subflow_node, after_dialogue)
+
+      connection_fixture(caller_flow, subflow_node, after_dialogue, %{
+        source_pin: "exit_#{target_exit.id}"
+      })
 
       source = yarn_source(export_files(project))
       assert source =~ "<<detour"
