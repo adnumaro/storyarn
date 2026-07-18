@@ -641,9 +641,7 @@ defmodule StoryarnWeb.TemplateLive.Show do
         &(not dismissed_installation_failure?(socket, &1.id))
       )
 
-    socket
-    |> assign(:installation_failures, failures)
-    |> assign(:installation_failure, visible_failure)
+    assign(socket, :installation_failure, visible_failure)
   end
 
   defp refresh_pending_installation_failures(socket) do

@@ -168,7 +168,7 @@ defmodule Storyarn.Assets.StorageKeyLockTest do
         end)
       end)
 
-    assert {:ok, {:error, :storage_key_lock_timeout}} = Task.await(contender)
+    assert {:error, :storage_key_lock_timeout} = Task.await(contender)
     send(owner.pid, :release_transaction_owner)
     assert :ok = Task.await(owner)
   end

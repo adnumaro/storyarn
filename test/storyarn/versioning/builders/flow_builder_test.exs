@@ -14,6 +14,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Flows
   alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Flows.SequenceTrack
   alias Storyarn.Flows.SequenceVisualLayer
@@ -217,6 +218,39 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
                |> Enum.filter(&(&1.source_id == node.id))
 
       assert archived_at
+    end
+
+    test "does not roll back a committed restore when post-commit localization raises", %{
+      project: project,
+      flow: flow
+    } do
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"speaker" => "Narrator", "text" => "Hello", "responses" => []}
+        })
+
+      snapshot = FlowBuilder.build_snapshot(flow)
+      {:ok, modified_flow} = Flows.update_flow(flow, %{name: "Keep this name"})
+      _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      constraint_name = "localized_texts_restore_#{System.unique_integer([:positive])}"
+
+      Repo.query!(
+        "ALTER TABLE localized_texts ADD CONSTRAINT #{constraint_name} " <>
+          "CHECK (project_id <> #{project.id} OR source_id = #{node.id}) NOT VALID"
+      )
+
+      assert_raise Postgrex.Error, ~r/#{constraint_name}/, fn ->
+        FlowBuilder.restore_snapshot(modified_flow, snapshot)
+      end
+
+      assert Repo.reload!(modified_flow).name == snapshot["name"]
+      refute Repo.get(FlowNode, node.id)
+
+      assert Repo.exists?(
+               from restored_node in FlowNode,
+                 where: restored_node.flow_id == ^modified_flow.id
+             )
     end
 
     test "round-trips nested sequence resources", %{user: user, project: project, flow: flow} do
@@ -484,6 +518,57 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
         )
 
       assert {:ok, "audio content"} = Assets.storage_download(cloned_blob_key)
+
+      on_exit(fn ->
+        Assets.storage_delete(cloned_audio.key)
+        Assets.storage_delete(cloned_blob_key)
+      end)
+    end
+
+    test "does not compensate committed copied assets when post-commit localization raises", %{
+      user: user,
+      project: project,
+      flow: flow
+    } do
+      audio = uploaded_asset(project, user, "post-commit.mp3", "post-commit audio", "audio/mpeg")
+
+      _node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"speaker" => "Narrator", "text" => "Hello", "audio_asset_id" => audio.id}
+        })
+
+      snapshot = FlowBuilder.build_snapshot(flow)
+      target_project = project_fixture(user)
+      _language = language_fixture(target_project, %{locale_code: "es", name: "Spanish"})
+      constraint_name = "localized_texts_post_commit_#{System.unique_integer([:positive])}"
+
+      Repo.query!(
+        "ALTER TABLE localized_texts ADD CONSTRAINT #{constraint_name} " <>
+          "CHECK (project_id <> #{target_project.id})"
+      )
+
+      assert_raise Postgrex.Error, ~r/#{constraint_name}/, fn ->
+        FlowBuilder.instantiate_snapshot(target_project.id, snapshot,
+          asset_mode: :copy,
+          user_id: user.id,
+          reset_shortcut: true
+        )
+      end
+
+      assert Repo.exists?(from flow in Flow, where: flow.project_id == ^target_project.id)
+      assert [cloned_audio] = Repo.all(from asset in Asset, where: asset.project_id == ^target_project.id)
+      assert {:ok, "post-commit audio"} = Assets.storage_download(cloned_audio.key)
+
+      cloned_blob_key =
+        BlobStore.blob_key(
+          target_project.id,
+          cloned_audio.blob_hash,
+          BlobStore.ext_from_content_type(cloned_audio.content_type)
+        )
+
+      assert {:ok, "post-commit audio"} = Assets.storage_download(cloned_blob_key)
+      assert [] = all_enqueued(worker: DeleteStorageObjectsWorker)
 
       on_exit(fn ->
         Assets.storage_delete(cloned_audio.key)

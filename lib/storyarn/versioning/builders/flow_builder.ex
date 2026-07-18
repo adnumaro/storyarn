@@ -235,11 +235,11 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   def instantiate_snapshot(project_id, snapshot, opts \\ []) do
     snapshot = FlowSnapshotNormalizer.normalize(snapshot)
 
-    MaterializationHelpers.with_asset_copy_tracker(opts, fn tracked_opts ->
-      fn -> instantiate_flow_snapshot(project_id, snapshot, tracked_opts) end
-      |> Repo.transaction(timeout: :infinity)
-      |> finalize_flow_instantiation()
+    opts
+    |> MaterializationHelpers.with_asset_copy_tracker(fn tracked_opts ->
+      Repo.transaction(fn -> instantiate_flow_snapshot(project_id, snapshot, tracked_opts) end, timeout: :infinity)
     end)
+    |> finalize_flow_instantiation()
   end
 
   defp instantiate_flow_snapshot(project_id, snapshot, opts) do
@@ -328,9 +328,11 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   def restore_snapshot(%Flow{} = flow, snapshot, opts \\ []) do
     snapshot = FlowSnapshotNormalizer.normalize(snapshot)
 
-    MaterializationHelpers.with_asset_copy_tracker(opts, fn tracked_opts ->
+    opts
+    |> MaterializationHelpers.with_asset_copy_tracker(fn tracked_opts ->
       restore_flow_snapshot(flow, snapshot, tracked_opts)
     end)
+    |> finalize_flow_restore(snapshot, opts)
   end
 
   defp restore_flow_snapshot(flow, snapshot, opts) do
@@ -387,30 +389,36 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     |> Repo.transaction(timeout: :infinity)
     |> case do
       {:ok, %{flow: updated_flow, restore_nodes: node_data}} ->
-        Localization.extract_flow_nodes(updated_flow.id)
-
-        restored_flow =
-          Repo.preload(
-            updated_flow,
-            [:connections, nodes: [:sequence_config, :sequence_tracks, :sequence_visual_layers]],
-            force: true
-          )
-
-        if Keyword.get(opts, :return_id_maps, false) do
-          id_maps = %{
-            flow: MaterializationHelpers.root_id_map(snapshot, updated_flow.id),
-            node: node_data.node_id_map
-          }
-
-          {:ok, restored_flow, id_maps}
-        else
-          {:ok, restored_flow}
-        end
+        {:ok, {updated_flow, node_data}}
 
       {:error, _op, reason, _changes} ->
         {:error, reason}
     end
   end
+
+  defp finalize_flow_restore({:ok, {updated_flow, node_data}}, snapshot, opts) do
+    Localization.extract_flow_nodes(updated_flow.id)
+
+    restored_flow =
+      Repo.preload(
+        updated_flow,
+        [:connections, nodes: [:sequence_config, :sequence_tracks, :sequence_visual_layers]],
+        force: true
+      )
+
+    if Keyword.get(opts, :return_id_maps, false) do
+      id_maps = %{
+        flow: MaterializationHelpers.root_id_map(snapshot, updated_flow.id),
+        node: node_data.node_id_map
+      }
+
+      {:ok, restored_flow, id_maps}
+    else
+      {:ok, restored_flow}
+    end
+  end
+
+  defp finalize_flow_restore({:error, reason}, _snapshot, _opts), do: {:error, reason}
 
   defp restore_nodes(_repo, _flow_id, [], _snapshot, _project_id, _opts), do: {:ok, %{node_ids: [], node_id_map: %{}}}
 

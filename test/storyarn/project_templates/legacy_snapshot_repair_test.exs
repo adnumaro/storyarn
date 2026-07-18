@@ -176,6 +176,31 @@ defmodule Storyarn.ProjectTemplates.LegacySnapshotRepairTest do
     end
   end
 
+  test "rejects malformed UTF-8 localization strings without raising", %{
+    flow: flow,
+    legacy_snapshot: legacy_snapshot
+  } do
+    invalid_utf8 = <<0xFF>>
+    language = localization_language("es")
+    text = localization_row("flow", flow.id, "name", "Flow")
+    glossary = glossary_entry()
+
+    invalid_payloads = [
+      localization_payload([Map.put(language, "locale_code", invalid_utf8)], [], []),
+      localization_payload([Map.put(language, "name", invalid_utf8)], [], []),
+      localization_payload([language], [Map.put(text, "source_type", invalid_utf8)], []),
+      localization_payload([language], [Map.put(text, "source_text", invalid_utf8)], []),
+      localization_payload([language], [Map.put(text, "source_text_hash", invalid_utf8)], []),
+      localization_payload([language], [Map.put(text, "last_translated_at", invalid_utf8)], []),
+      localization_payload([language], [], [Map.put(glossary, "source_term", invalid_utf8)]),
+      localization_payload([language], [], [Map.put(glossary, "target_locale", invalid_utf8)])
+    ]
+
+    for localization <- invalid_payloads do
+      assert_invalid_localization(legacy_snapshot, localization)
+    end
+  end
+
   test "rejects arbitrary flow-node source ids before checking repaired sequence targets", %{
     legacy_snapshot: legacy_snapshot
   } do
@@ -317,6 +342,13 @@ defmodule Storyarn.ProjectTemplates.LegacySnapshotRepairTest do
 
     assert {:error, :invalid_legacy_snapshot_repair_report} =
              LegacySnapshotRepair.preview_lines(%{"localization" => nil})
+
+    assert {:error, :invalid_legacy_snapshot_repair_report} =
+             LegacySnapshotRepair.preview_lines(%{
+               "repaired_sequence_count" => 2,
+               "localization" => %{"removed_count" => 3},
+               "warning" => <<0xFF>>
+             })
   end
 
   test "removes known legacy block metadata shapes and preserves runtime rows", %{

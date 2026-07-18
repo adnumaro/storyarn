@@ -269,18 +269,29 @@ defmodule Storyarn.Assets.StorageCompensation do
 
     transactional? = in_transaction?(opts)
 
-    delete_attempts =
-      opts |> Keyword.get(:delete_attempts, @delete_attempts) |> normalize_delete_attempts()
+    allow_force_delete_in_transaction? =
+      Keyword.get(opts, :allow_force_delete_in_transaction?, false)
 
-    delete_retry_delay_ms =
-      opts |> Keyword.get(:delete_retry_delay_ms, @delete_retry_delay_ms) |> normalize_delete_retry_delay()
+    if force_delete? and transactional? and not allow_force_delete_in_transaction? do
+      # The current transaction can see a Project row that has not committed
+      # yet. Keep the force target tracked until the owner knows whether that
+      # row committed or rolled back, then let deferred cleanup decide whether
+      # repaired bytes are still owned.
+      {:error, :storage_cleanup_requires_post_transaction}
+    else
+      delete_attempts =
+        opts |> Keyword.get(:delete_attempts, @delete_attempts) |> normalize_delete_attempts()
 
-    case delete_with_retry(storage_key, delete_fun, delete_attempts, delete_retry_delay_ms) do
-      :ok ->
-        {:ok, :deleted}
+      delete_retry_delay_ms =
+        opts |> Keyword.get(:delete_retry_delay_ms, @delete_retry_delay_ms) |> normalize_delete_retry_delay()
 
-      {:error, _reason} ->
-        hand_off_failed_delete(cleanup_target, opts, transactional?)
+      case delete_with_retry(storage_key, delete_fun, delete_attempts, delete_retry_delay_ms) do
+        :ok ->
+          {:ok, :deleted}
+
+        {:error, _reason} ->
+          hand_off_failed_delete(cleanup_target, opts, transactional?)
+      end
     end
   end
 
@@ -296,6 +307,7 @@ defmodule Storyarn.Assets.StorageCompensation do
         :delete_attempts,
         :delete_retry_delay_ms,
         :force_delete,
+        :allow_force_delete_in_transaction?,
         :in_transaction?
       ])
       |> Keyword.put(:delete_fun, fn storage_keys -> {:error, storage_keys} end)
@@ -623,14 +635,26 @@ defmodule Storyarn.Assets.StorageCompensation do
 
   defp delete_owned_storage_key(storage_key, force_delete?) do
     if Repo.in_transaction?() do
-      if committed_asset_key?(storage_key),
-        do: retain_committed_asset(storage_key),
-        else: Storage.delete(storage_key)
+      delete_owned_storage_key_in_transaction(storage_key, force_delete?)
     else
       StorageKeyLock.with_storage_key_lock(storage_key, fn ->
         deferred_storage_delete(storage_key, force_delete?)
       end)
     end
+  end
+
+  # The caller can be outside a business transaction while already holding
+  # this key's advisory lock in StorageKeyLock's internal transaction. Recheck
+  # force targets under that lock so a repaired canonical blob is never
+  # deleted.
+  defp delete_owned_storage_key_in_transaction(storage_key, true) do
+    deferred_storage_delete(storage_key, true)
+  end
+
+  defp delete_owned_storage_key_in_transaction(storage_key, false) do
+    if committed_asset_key?(storage_key),
+      do: retain_committed_asset(storage_key),
+      else: Storage.delete(storage_key)
   end
 
   defp deferred_storage_delete(storage_key, force_delete?) do
@@ -658,25 +682,27 @@ defmodule Storyarn.Assets.StorageCompensation do
 
   defp delete_if_still_invalid(storage_key) do
     case StorageKeyLock.project_blob_identity(storage_key) do
-      {:ok, _project_id, expected_hash} ->
+      {:ok, project_id, expected_hash} ->
         storage_key
         |> stored_object_hash()
-        |> handle_force_delete_hash(storage_key, expected_hash)
+        |> handle_force_delete_hash(storage_key, project_id, expected_hash)
 
       :error ->
         Storage.delete(storage_key)
     end
   end
 
-  defp handle_force_delete_hash({:ok, expected_hash}, _storage_key, expected_hash) do
-    retain_repaired_project_blob()
+  defp handle_force_delete_hash({:ok, expected_hash}, storage_key, project_id, expected_hash) do
+    if committed_project?(project_id),
+      do: retain_repaired_project_blob(project_id),
+      else: Storage.delete(storage_key)
   end
 
-  defp handle_force_delete_hash({:ok, _invalid_hash}, storage_key, _expected_hash) do
+  defp handle_force_delete_hash({:ok, _invalid_hash}, storage_key, _project_id, _expected_hash) do
     Storage.delete(storage_key)
   end
 
-  defp handle_force_delete_hash({:error, reason}, _storage_key, _expected_hash) do
+  defp handle_force_delete_hash({:error, reason}, _storage_key, _project_id, _expected_hash) do
     if storage_not_found?(reason), do: :ok, else: {:error, reason}
   end
 
@@ -693,6 +719,10 @@ defmodule Storyarn.Assets.StorageCompensation do
 
   defp committed_asset_key?(storage_key) do
     Repo.exists?(from asset in Asset, where: asset.key == ^storage_key)
+  end
+
+  defp committed_project?(project_id) do
+    Repo.exists?(from project in Project, where: project.id == ^project_id)
   end
 
   defp committed_template_storage_key?(storage_key) do
@@ -756,11 +786,11 @@ defmodule Storyarn.Assets.StorageCompensation do
     :ok
   end
 
-  defp retain_repaired_project_blob do
+  defp retain_repaired_project_blob(project_id) do
     :telemetry.execute(
       [:storyarn, :assets, :storage_compensation, :project_blob_repaired],
       %{count: 1},
-      %{}
+      %{project_id: project_id}
     )
 
     :ok

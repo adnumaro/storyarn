@@ -10,6 +10,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   alias Storyarn.Assets.StorageCleanupPersistenceError
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageCompensation
+  alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates.ProjectTemplate
   alias Storyarn.ProjectTemplates.ProjectTemplatePublication
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
@@ -319,6 +320,101 @@ defmodule Storyarn.Assets.StorageCompensationTest do
     assert {:ok, _url} = Storage.upload(storage_key, repaired_content, "image/png")
     assert :ok = StorageCompensation.delete_storage_keys([cleanup_target])
     assert {:ok, ^repaired_content} = Storage.download(storage_key)
+  end
+
+  test "force cleanup rechecks repaired bytes inside a lock-owned transaction" do
+    user = user_fixture()
+    project = project_fixture(user)
+    repaired_content = "repaired while waiting for the canonical blob lock"
+    hash = :sha256 |> :crypto.hash(repaired_content) |> Base.encode16(case: :lower)
+    storage_key = "projects/#{project.id}/blobs/#{hash}.png"
+    tracker = StorageCompensation.new()
+
+    assert {:ok, _url} = Storage.upload(storage_key, repaired_content, "image/png")
+    on_exit(fn -> Storage.delete(storage_key) end)
+
+    assert {:ok, :ok} =
+             Repo.transaction(fn ->
+               StorageCompensation.delete_force_tracked_or_enqueue(tracker, storage_key,
+                 allow_force_delete_in_transaction?: true
+               )
+             end)
+
+    assert {:ok, ^repaired_content} = Storage.download(storage_key)
+    assert :ok = StorageCompensation.cleanup(tracker)
+  end
+
+  test "failed force delete inside a lock-owned transaction keeps cleanup ownership" do
+    user = user_fixture()
+    project = project_fixture(user)
+    storage_key = "projects/#{project.id}/blobs/#{String.duplicate("d", 64)}.png"
+    tracker = StorageCompensation.new()
+    parent = self()
+
+    assert {:ok, _url} = Storage.upload(storage_key, "corrupt", "image/png")
+    on_exit(fn -> Storage.delete(storage_key) end)
+
+    assert {:ok, {:error, :storage_cleanup_requires_post_transaction}} =
+             Repo.transaction(fn ->
+               StorageCompensation.delete_force_tracked_or_enqueue(tracker, storage_key,
+                 allow_force_delete_in_transaction?: true,
+                 delete_fun: fn ^storage_key -> {:error, :storage_unavailable} end,
+                 delete_attempts: 1,
+                 enqueue_fun: fn targets ->
+                   send(parent, {:premature_force_cleanup_handoff, targets})
+                   :ok
+                 end
+               )
+             end)
+
+    refute_receive {:premature_force_cleanup_handoff, _targets}
+
+    assert :ok =
+             StorageCompensation.cleanup(tracker,
+               enqueue_fun: fn targets ->
+                 send(parent, {:force_cleanup_enqueued, targets})
+                 :ok
+               end
+             )
+
+    assert_receive {:force_cleanup_enqueued, [cleanup_target]}
+    assert String.ends_with?(cleanup_target, storage_key)
+  end
+
+  test "transactional force cleanup remains tracked until an inserted project rolls back" do
+    user = user_fixture()
+    repaired_content = "repaired before transaction rollback"
+    hash = :sha256 |> :crypto.hash(repaired_content) |> Base.encode16(case: :lower)
+    tracker = StorageCompensation.new()
+    parent = self()
+
+    assert {:error, {project_id, storage_key}} =
+             Repo.transaction(fn ->
+               project = project_fixture(user)
+               storage_key = "projects/#{project.id}/blobs/#{hash}.png"
+
+               assert {:ok, _url} = Storage.upload(storage_key, repaired_content, "image/png")
+               on_exit(fn -> Storage.delete(storage_key) end)
+
+               assert {:error, :storage_cleanup_requires_post_transaction} =
+                        StorageCompensation.delete_force_tracked_or_enqueue(tracker, storage_key)
+
+               Repo.rollback({project.id, storage_key})
+             end)
+
+    refute Repo.get(Project, project_id)
+
+    assert :ok =
+             StorageCompensation.cleanup(tracker,
+               enqueue_fun: fn targets ->
+                 send(parent, {:force_cleanup_enqueued, targets})
+                 :ok
+               end
+             )
+
+    assert_receive {:force_cleanup_enqueued, [cleanup_target]}
+    assert :ok = StorageCompensation.delete_storage_keys([cleanup_target])
+    assert {:error, :enoent} = Storage.download(storage_key)
   end
 
   test "a committed Asset row still protects its exact key from force cleanup" do

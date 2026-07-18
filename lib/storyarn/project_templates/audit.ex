@@ -10,7 +10,6 @@ defmodule Storyarn.ProjectTemplates.Audit do
   import Ecto.Query, warn: false
 
   alias Storyarn.Assets.Asset
-  alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
@@ -1010,7 +1009,7 @@ defmodule Storyarn.ProjectTemplates.Audit do
     opts = Keyword.put(opts, :asset_copy_tracker, tracker)
 
     try do
-      {result, _copied_asset_keys} =
+      result =
         snapshot
         |> recover_project_transaction_result(workspace_id, user_id, opts)
         |> extract_recover_project_result()
@@ -1042,8 +1041,7 @@ defmodule Storyarn.ProjectTemplates.Audit do
                    template_clone: true,
                    asset_copy_tracker: Keyword.fetch!(opts, :asset_copy_tracker)
                  ) do
-            {:ok, materialized_entity_counts(recovered_project.id), materialized_project_errors(recovered_project.id),
-             materialized_asset_storage_keys(recovered_project.id)}
+            {:ok, materialized_entity_counts(recovered_project.id), materialized_project_errors(recovered_project.id)}
           end
 
         Repo.rollback({:template_materialization_audit, result})
@@ -1057,47 +1055,21 @@ defmodule Storyarn.ProjectTemplates.Audit do
     project_static_errors(project_id, snapshot) ++ materialized_asset_reference_errors(project_id)
   end
 
-  defp extract_recover_project_result({:error, {:template_materialization_audit, {:ok, counts, errors, asset_keys}}}) do
-    {{:ok, counts, errors}, asset_keys}
+  defp extract_recover_project_result({:error, {:template_materialization_audit, {:ok, counts, errors}}}) do
+    {:ok, counts, errors}
   end
 
   defp extract_recover_project_result({:error, {:template_materialization_audit, {:error, reason}}}) do
-    {{:error, reason}, []}
+    {:error, reason}
   end
 
   defp extract_recover_project_result({:error, reason}) do
-    {{:error, reason}, []}
+    {:error, reason}
   end
 
   defp extract_recover_project_result({:ok, _unexpected}) do
-    {{:error, :unexpected_materialization_audit_commit}, []}
+    {:error, :unexpected_materialization_audit_commit}
   end
-
-  defp materialized_asset_storage_keys(project_id) do
-    query =
-      from asset in Asset,
-        where: asset.project_id == ^project_id,
-        select: %{
-          key: asset.key,
-          blob_hash: asset.blob_hash,
-          content_type: asset.content_type
-        }
-
-    query
-    |> Repo.all()
-    |> Enum.flat_map(fn asset ->
-      [asset.key, materialized_blob_storage_key(project_id, asset)]
-    end)
-    |> Enum.reject(&is_nil/1)
-    |> Enum.uniq()
-  end
-
-  defp materialized_blob_storage_key(project_id, %{blob_hash: blob_hash, content_type: content_type})
-       when is_binary(blob_hash) and is_binary(content_type) do
-    BlobStore.blob_key(project_id, blob_hash, BlobStore.ext_from_content_type(content_type))
-  end
-
-  defp materialized_blob_storage_key(_project_id, _asset), do: nil
 
   defp count_mismatch_errors(type, left_label, left_counts, right_label, right_counts) do
     left_counts

@@ -167,11 +167,11 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
   @impl true
   def instantiate_snapshot(project_id, snapshot, opts \\ []) do
-    MaterializationHelpers.with_asset_copy_tracker(opts, fn tracked_opts ->
-      fn -> instantiate_sheet_snapshot(project_id, snapshot, tracked_opts) end
-      |> Repo.transaction(timeout: :infinity)
-      |> finalize_sheet_instantiation(project_id)
+    opts
+    |> MaterializationHelpers.with_asset_copy_tracker(fn tracked_opts ->
+      Repo.transaction(fn -> instantiate_sheet_snapshot(project_id, snapshot, tracked_opts) end, timeout: :infinity)
     end)
+    |> finalize_sheet_instantiation(project_id)
   end
 
   defp instantiate_sheet_snapshot(project_id, snapshot, opts) do
@@ -256,14 +256,15 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
   @impl true
   def restore_snapshot(%Sheet{} = sheet, snapshot, opts \\ []) do
-    MaterializationHelpers.with_asset_copy_tracker(opts, fn tracked_opts ->
+    opts
+    |> MaterializationHelpers.with_asset_copy_tracker(fn tracked_opts ->
       localization_rows = Map.get(snapshot, "localization", [])
 
       sheet
       |> build_sheet_restore_multi(snapshot, tracked_opts, localization_rows)
       |> Repo.transaction(timeout: :infinity)
-      |> finalize_sheet_restore(snapshot, tracked_opts)
     end)
+    |> finalize_sheet_restore(snapshot, opts)
   end
 
   defp build_sheet_restore_multi(sheet, snapshot, opts, localization_rows) do
@@ -344,6 +345,9 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
         sheet_restore_result(restored_sheet, block_data, snapshot, Keyword.get(opts, :return_id_maps, false))
 
       {:error, _op, reason, _changes} ->
+        {:error, reason}
+
+      {:error, reason} ->
         {:error, reason}
     end
   end

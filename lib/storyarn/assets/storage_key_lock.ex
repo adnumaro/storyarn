@@ -187,7 +187,7 @@ defmodule Storyarn.Assets.StorageKeyLock do
       Process.sleep(@lock_retry_delay_ms)
       acquire_transaction_lock_and_run(storage_key, fun, deadline)
     else
-      {:error, :storage_key_lock_timeout}
+      Repo.rollback(:storage_key_lock_timeout)
     end
   end
 

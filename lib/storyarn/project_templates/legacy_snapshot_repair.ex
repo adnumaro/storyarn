@@ -49,12 +49,16 @@ defmodule Storyarn.ProjectTemplates.LegacySnapshotRepair do
       })
       when is_integer(repaired_sequence_count) and repaired_sequence_count >= 0 and is_integer(removed_count) and
              removed_count >= 0 and is_binary(warning) do
-    {:ok,
-     [
-       "Sequences replaced by recovery notes: #{repaired_sequence_count}",
-       "Legacy localization rows removed: #{removed_count}",
-       "Warning: #{warning}"
-     ]}
+    if String.valid?(warning) do
+      {:ok,
+       [
+         "Sequences replaced by recovery notes: #{repaired_sequence_count}",
+         "Legacy localization rows removed: #{removed_count}",
+         "Warning: #{warning}"
+       ]}
+    else
+      {:error, :invalid_legacy_snapshot_repair_report}
+    end
   end
 
   def preview_lines(_report), do: {:error, :invalid_legacy_snapshot_repair_report}
@@ -482,24 +486,30 @@ defmodule Storyarn.ProjectTemplates.LegacySnapshotRepair do
   defp valid_glossary_entry?(_entry), do: false
 
   defp canonical_locale?(locale_code) do
-    LocaleCode.valid?(locale_code) and LocaleCode.normalize(locale_code) == locale_code
+    valid_utf8_string?(locale_code) and
+      LocaleCode.valid?(locale_code) and LocaleCode.normalize(locale_code) == locale_code
   end
 
   defp valid_glossary_locale?(locale_code) do
-    LocaleCode.valid?(locale_code) and String.length(locale_code) <= 10
+    valid_utf8_string?(locale_code) and
+      LocaleCode.valid?(locale_code) and String.length(locale_code) <= 10
   end
 
   defp valid_required_string?(value, max_length) when is_binary(value) do
-    String.trim(value) != "" and String.length(value) <= max_length
+    String.valid?(value) and String.trim(value) != "" and String.length(value) <= max_length
   end
 
   defp valid_required_string?(_value, _max_length), do: false
 
   defp valid_optional_string?(nil), do: true
-  defp valid_optional_string?(value), do: is_binary(value)
+  defp valid_optional_string?(value), do: valid_utf8_string?(value)
 
   defp valid_optional_hash?(nil), do: true
-  defp valid_optional_hash?(value) when is_binary(value), do: Regex.match?(@sha256_format, value)
+
+  defp valid_optional_hash?(value) when is_binary(value) do
+    String.valid?(value) and Regex.match?(@sha256_format, value)
+  end
+
   defp valid_optional_hash?(_value), do: false
 
   defp valid_optional_enum?(nil, _values), do: true
@@ -524,7 +534,8 @@ defmodule Storyarn.ProjectTemplates.LegacySnapshotRepair do
   defp valid_datetime?(%DateTime{}), do: true
 
   defp valid_datetime?(value) when is_binary(value) do
-    match?({:ok, %DateTime{}, _offset}, DateTime.from_iso8601(value))
+    String.valid?(value) and
+      match?({:ok, %DateTime{}, _offset}, DateTime.from_iso8601(value))
   end
 
   defp valid_datetime?(_value), do: false
@@ -536,10 +547,13 @@ defmodule Storyarn.ProjectTemplates.LegacySnapshotRepair do
   defp valid_glossary_term?(nil), do: true
 
   defp valid_glossary_term?(value) when is_binary(value) do
-    String.length(value) <= 255 and Regex.match?(@glossary_term_format, value)
+    String.valid?(value) and
+      String.length(value) <= 255 and Regex.match?(@glossary_term_format, value)
   end
 
   defp valid_glossary_term?(_value), do: false
+
+  defp valid_utf8_string?(value), do: is_binary(value) and String.valid?(value)
 
   defp classify_localization_texts(texts, indexes) do
     texts

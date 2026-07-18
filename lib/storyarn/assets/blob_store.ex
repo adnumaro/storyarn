@@ -117,9 +117,14 @@ defmodule Storyarn.Assets.BlobStore do
   @spec create_asset_from_blob(integer(), integer() | nil, String.t(), String.t(), map(), keyword()) ::
           {:ok, Asset.t()} | {:error, term()}
   def create_asset_from_blob(project_id, user_id, blob_hash, source_key, metadata, opts \\ []) do
-    case asset_copy_tracker(opts) do
+    caller_transactional? = Repo.in_transaction?()
+
+    case asset_copy_tracker(opts, caller_transactional?) do
       {:ok, tracker, owns_tracker?} ->
-        opts = Keyword.put(opts, :asset_copy_tracker, tracker)
+        opts =
+          opts
+          |> Keyword.put(:asset_copy_tracker, tracker)
+          |> Keyword.put(:asset_copy_caller_transactional?, caller_transactional?)
 
         try do
           project_id
@@ -181,13 +186,13 @@ defmodule Storyarn.Assets.BlobStore do
     end
   end
 
-  defp asset_copy_tracker(opts) do
+  defp asset_copy_tracker(opts, caller_transactional?) do
     case Keyword.get(opts, :asset_copy_tracker) do
       tracker when is_reference(tracker) ->
         {:ok, tracker, false}
 
       _tracker ->
-        if Repo.in_transaction?(),
+        if caller_transactional?,
           do: {:error, :asset_copy_tracker_required_in_transaction},
           else: {:ok, StorageCompensation.new(), true}
     end
@@ -317,8 +322,15 @@ defmodule Storyarn.Assets.BlobStore do
       reference when is_reference(reference) ->
         StorageCompensation.track_force_delete(reference, destination_blob_key)
 
-        case StorageCompensation.delete_force_tracked_or_enqueue(reference, destination_blob_key) do
+        case StorageCompensation.delete_force_tracked_or_enqueue(reference, destination_blob_key,
+               allow_force_delete_in_transaction?: not Keyword.fetch!(opts, :asset_copy_caller_transactional?)
+             ) do
           :ok ->
+            :ok
+
+          {:error, :storage_cleanup_requires_post_transaction} ->
+            # The force target intentionally remains tracked until the owner
+            # knows whether its database transaction committed or rolled back.
             :ok
 
           {:error, reason} ->
