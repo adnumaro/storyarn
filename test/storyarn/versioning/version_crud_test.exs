@@ -296,6 +296,26 @@ defmodule Storyarn.Versioning.VersionCrudTest do
       assert length(versions) == 1
     end
 
+    test "rejects an ambient transaction before creating a safety snapshot", %{
+      sheet: sheet,
+      project: project,
+      user: user
+    } do
+      {:ok, version} =
+        Versioning.create_version("sheet", sheet, project.id, user.id, title: "Original")
+
+      version_count = length(Versioning.list_versions("sheet", sheet.id))
+      stored_paths = stored_version_paths(project.id, sheet.id)
+
+      assert {:ok, {:error, :version_restore_requires_transaction_boundary}} =
+               Storyarn.Repo.transaction(fn ->
+                 Versioning.restore_version("sheet", sheet, version, user_id: user.id)
+               end)
+
+      assert length(Versioning.list_versions("sheet", sheet.id)) == version_count
+      assert stored_version_paths(project.id, sheet.id) == stored_paths
+    end
+
     test "skips pre-restore snapshot when skip_pre_snapshot is true", %{
       sheet: sheet,
       project: project,
@@ -379,5 +399,18 @@ defmodule Storyarn.Versioning.VersionCrudTest do
 
       assert Versioning.count_named_versions(project.id) == 2
     end
+  end
+
+  defp stored_version_paths(project_id, sheet_id) do
+    upload_dir =
+      :storyarn
+      |> Application.fetch_env!(:storage)
+      |> Keyword.fetch!(:upload_dir)
+      |> Path.expand()
+
+    upload_dir
+    |> Path.join("projects/#{project_id}/snapshots/sheet/#{sheet_id}/*.json.gz")
+    |> Path.wildcard()
+    |> MapSet.new()
   end
 end

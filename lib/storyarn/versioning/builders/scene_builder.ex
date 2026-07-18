@@ -467,8 +467,10 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
   defp run_scene_instantiation(project_id, snapshot, opts) do
     opts
-    |> AssetMaterializationScope.run(fn scoped_opts ->
-      execute_scene_instantiation_transaction(project_id, snapshot, scoped_opts)
+    |> MaterializationHelpers.with_asset_copy_tracker(fn tracked_opts ->
+      AssetMaterializationScope.run(tracked_opts, fn scoped_opts ->
+        execute_scene_instantiation_transaction(project_id, snapshot, scoped_opts)
+      end)
     end)
     |> case do
       {:ok, {scene, id_maps}} -> {:ok, scene, id_maps}
@@ -477,7 +479,10 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   end
 
   defp execute_scene_instantiation_transaction(project_id, snapshot, opts) do
-    Repo.transaction(fn -> instantiate_scene_snapshot(project_id, snapshot, opts) end)
+    Repo.transaction(
+      fn -> instantiate_scene_snapshot(project_id, snapshot, opts) end,
+      timeout: :infinity
+    )
   end
 
   defp instantiate_scene_snapshot(project_id, snapshot, opts) do
@@ -642,11 +647,15 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
            ),
          :ok <- validate_portable_scene_snapshot(snapshot) do
       opts
-      |> AssetMaterializationScope.run(fn scoped_opts ->
-        execute_scene_restore_transaction(scene, snapshot, scoped_opts)
-      end)
+      |> MaterializationHelpers.with_asset_copy_tracker(&run_scene_restore_materialization(scene, snapshot, &1))
       |> finalize_scene_restore()
     end
+  end
+
+  defp run_scene_restore_materialization(scene, snapshot, opts) do
+    AssetMaterializationScope.run(opts, fn scoped_opts ->
+      execute_scene_restore_transaction(scene, snapshot, scoped_opts)
+    end)
   end
 
   defp execute_scene_restore_transaction(scene, snapshot, opts) do
@@ -717,7 +726,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
                                            } ->
       reconcile_scene_references(locked_scene.project_id, plan, restored)
     end)
-    |> Repo.transaction()
+    |> Repo.transaction(timeout: :infinity)
   end
 
   defp finalize_scene_restore({:ok, %{scene: updated_scene}}) do

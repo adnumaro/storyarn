@@ -171,9 +171,9 @@ defmodule StoryarnWeb.E2E.BlogTest do
     end)
     |> evaluate(debug_image_expression(), fn image ->
       assert image["complete"] == true
-      assert image["naturalWidth"] > 0
-      assert image["naturalHeight"] > 0
-      assert_in_delta image["aspectRatio"], 16 / 9, 0.01
+      assert image["naturalWidth"] == 1356
+      assert image["naturalHeight"] == 773
+      assert_in_delta image["aspectRatio"], 1356 / 773, 0.001
     end)
     |> click("#blog-register-cta")
     |> assert_path("/users/register")
@@ -374,7 +374,7 @@ defmodule StoryarnWeb.E2E.BlogTest do
     """
     new Promise((resolve) => {
       const image = document.querySelector(
-        '#blog-post-content img[src="/images/blog/introducing-storyarn-debug-active-node.png"]'
+        '#blog-post-content img[src="/images/blog/introducing-storyarn-debug-session.jpg"]'
       );
 
       const readDimensions = () => resolve({

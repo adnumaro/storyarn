@@ -276,13 +276,21 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   def instantiate_snapshot(project_id, snapshot, opts \\ []) do
     with :ok <- validate_sheet_instantiation_localization(project_id, snapshot, opts) do
       opts
-      |> AssetMaterializationScope.run(&instantiate_sheet_snapshot_transaction(project_id, snapshot, &1))
+      |> MaterializationHelpers.with_asset_copy_tracker(fn tracked_opts ->
+        AssetMaterializationScope.run(
+          tracked_opts,
+          &instantiate_sheet_snapshot_transaction(project_id, snapshot, &1)
+        )
+      end)
       |> finalize_sheet_instantiation(project_id)
     end
   end
 
   defp instantiate_sheet_snapshot_transaction(project_id, snapshot, opts) do
-    Repo.transaction(fn -> instantiate_sheet_snapshot(project_id, snapshot, opts) end)
+    Repo.transaction(
+      fn -> instantiate_sheet_snapshot(project_id, snapshot, opts) end,
+      timeout: :infinity
+    )
   end
 
   defp validate_sheet_instantiation_localization(_project_id, snapshot, _opts) when is_map(snapshot) do
@@ -607,12 +615,20 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
   defp do_restore_snapshot(sheet, snapshot, opts) do
     opts
-    |> AssetMaterializationScope.run(&restore_sheet_snapshot_transaction(sheet, snapshot, &1))
+    |> MaterializationHelpers.with_asset_copy_tracker(fn tracked_opts ->
+      AssetMaterializationScope.run(
+        tracked_opts,
+        &restore_sheet_snapshot_transaction(sheet, snapshot, &1)
+      )
+    end)
     |> finalize_sheet_restore(snapshot, opts)
   end
 
   defp restore_sheet_snapshot_transaction(sheet, snapshot, opts) do
-    Repo.transaction(fn -> restore_sheet_snapshot_in_transaction(sheet, snapshot, opts) end)
+    Repo.transaction(
+      fn -> restore_sheet_snapshot_in_transaction(sheet, snapshot, opts) end,
+      timeout: :infinity
+    )
   end
 
   defp restore_sheet_snapshot_in_transaction(sheet, snapshot, opts) do

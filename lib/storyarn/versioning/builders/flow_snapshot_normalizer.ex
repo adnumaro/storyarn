@@ -5,6 +5,10 @@ defmodule Storyarn.Versioning.Builders.FlowSnapshotNormalizer do
 
   @response_field_prefix "response."
   @response_field_suffix ".text"
+  @node_data_id_fields ~w(
+    audio_asset_id location_sheet_id referenced_flow_id speaker_sheet_id target_id
+  )
+  @localization_id_fields ~w(source_id speaker_sheet_id vo_asset_id)
 
   @spec normalize(map()) :: map()
   def normalize(snapshot) when is_map(snapshot) do
@@ -18,8 +22,29 @@ defmodule Storyarn.Versioning.Builders.FlowSnapshotNormalizer do
 
   def normalize(snapshot), do: snapshot
 
+  @doc """
+  Canonicalizes database IDs that may have been encoded as decimal strings.
+
+  Portable/project recovery accepts this narrow legacy representation, but the
+  materializers still validate and store one canonical integer identity. Values
+  that are not exact positive decimal integers are left untouched so the strict
+  snapshot validators can reject them with their normal error contract.
+  """
+  @spec normalize_entity_ids(map()) :: map()
+  def normalize_entity_ids(snapshot) when is_map(snapshot) do
+    snapshot
+    |> normalize_known_ids(~w(original_id scene_id))
+    |> update_existing("nodes", &normalize_node_entity_ids/1)
+    |> update_existing("connections", &normalize_original_ids/1)
+    |> update_existing("localization", &normalize_localization_entity_ids/1)
+  end
+
+  def normalize_entity_ids(snapshot), do: snapshot
+
   @spec normalize_project(map()) :: map()
   def normalize_project(snapshot) when is_map(snapshot) do
+    snapshot = normalize_project_entity_ids(snapshot)
+
     case Map.fetch(snapshot, "flows") do
       {:ok, flows} when is_list(flows) ->
         reserved_dialogue_ids = reserved_project_dialogue_ids(flows)
@@ -56,6 +81,81 @@ defmodule Storyarn.Versioning.Builders.FlowSnapshotNormalizer do
   end
 
   def normalize_project(snapshot), do: snapshot
+
+  defp normalize_project_entity_ids(snapshot) do
+    snapshot
+    |> update_existing("flows", fn
+      flows when is_list(flows) ->
+        Enum.map(flows, fn
+          %{"snapshot" => flow_snapshot} = flow_entry when is_map(flow_snapshot) ->
+            Map.put(flow_entry, "snapshot", normalize_entity_ids(flow_snapshot))
+
+          flow_entry ->
+            flow_entry
+        end)
+
+      flows ->
+        flows
+    end)
+    |> update_existing("localization", &normalize_project_localization_entity_ids/1)
+  end
+
+  defp normalize_node_entity_ids(nodes) when is_list(nodes) do
+    Enum.map(nodes, fn
+      %{} = node ->
+        node
+        |> normalize_known_ids(~w(original_id parent_id))
+        |> update_existing("data", &normalize_known_ids(&1, @node_data_id_fields))
+        |> update_existing("sequence_tracks", &normalize_sequence_resource_ids/1)
+        |> update_existing("sequence_visual_layers", &normalize_sequence_resource_ids/1)
+
+      node ->
+        node
+    end)
+  end
+
+  defp normalize_node_entity_ids(nodes), do: nodes
+
+  defp normalize_sequence_resource_ids(resources) when is_list(resources) do
+    Enum.map(resources, &normalize_known_ids(&1, ~w(original_id asset_id)))
+  end
+
+  defp normalize_sequence_resource_ids(resources), do: resources
+
+  defp normalize_original_ids(entries) when is_list(entries) do
+    Enum.map(entries, &normalize_known_ids(&1, ~w(original_id)))
+  end
+
+  defp normalize_original_ids(entries), do: entries
+
+  defp normalize_localization_entity_ids(rows) when is_list(rows) do
+    Enum.map(rows, &normalize_known_ids(&1, @localization_id_fields))
+  end
+
+  defp normalize_localization_entity_ids(rows), do: rows
+
+  defp normalize_project_localization_entity_ids(%{} = localization) do
+    update_existing(localization, "texts", &normalize_localization_entity_ids/1)
+  end
+
+  defp normalize_project_localization_entity_ids(localization), do: localization
+
+  defp normalize_known_ids(%{} = value, fields) do
+    Enum.reduce(fields, value, fn field, normalized ->
+      update_existing(normalized, field, &canonical_positive_id/1)
+    end)
+  end
+
+  defp normalize_known_ids(value, _fields), do: value
+
+  defp canonical_positive_id(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {id, ""} when id > 0 -> id
+      _invalid -> value
+    end
+  end
+
+  defp canonical_positive_id(value), do: value
 
   defp normalize_with_response_id_maps(snapshot, used_dialogue_ids, reserved_dialogue_ids, project_response_references) do
     case Map.fetch(snapshot, "nodes") do

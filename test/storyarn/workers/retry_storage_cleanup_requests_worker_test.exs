@@ -8,7 +8,7 @@ defmodule Storyarn.Workers.RetryStorageCleanupRequestsWorkerTest do
 
   test "deletes copied objects and their durable cleanup request" do
     storage_key =
-      "projects/1/assets/cleanup-test/#{System.unique_integer([:positive])}/file.png"
+      "projects/1/assets/#{Ecto.UUID.generate()}/cleanup-test.png"
 
     assert {:ok, _url} = Storage.upload(storage_key, "copied asset", "image/png")
     on_exit(fn -> Storage.delete(storage_key) end)

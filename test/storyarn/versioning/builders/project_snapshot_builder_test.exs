@@ -9,7 +9,9 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Assets
+  alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
+  alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Localization
   alias Storyarn.Projects
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
@@ -117,6 +119,80 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
                  is_nil(text.translated_by_id) and is_nil(text.reviewed_by_id)
              end)
     end
+
+    test "recreates a missing voice asset once and keeps global localization attached", %{
+      project: project,
+      user: user,
+      flow: flow
+    } do
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Recover this recording", "responses" => []}
+        })
+
+      voice_asset =
+        uploaded_asset(
+          project,
+          user,
+          "snapshot-voice-#{System.unique_integer([:positive])}.mp3",
+          "recorded voice",
+          "audio/mpeg"
+        )
+
+      text = Localization.get_text_by_source("flow_node", node.id, "text", "es")
+
+      assert {:ok, text} =
+               Localization.update_text(text, %{
+                 translated_text: "Recupera esta grabación",
+                 vo_asset_id: voice_asset.id,
+                 vo_status: "recorded"
+               })
+
+      snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
+
+      assert {:ok, _text} =
+               Localization.update_text(text, %{
+                 vo_asset_id: nil,
+                 vo_status: "needed"
+               })
+
+      Repo.delete!(voice_asset)
+
+      assert {:ok, _result} =
+               ProjectSnapshotBuilder.restore_snapshot(project.id, snapshot, user_id: user.id)
+
+      restored_text =
+        Localization.get_text_by_source(
+          "flow_node",
+          node.id,
+          "text",
+          "es"
+        )
+
+      refute restored_text.vo_asset_id == voice_asset.id
+      assert restored_text.vo_status == "recorded"
+
+      restored_asset = Repo.get!(Asset, restored_text.vo_asset_id)
+      assert restored_asset.project_id == project.id
+      assert restored_asset.blob_hash == voice_asset.blob_hash
+      assert {:ok, "recorded voice"} = Assets.storage_download(restored_asset.key)
+
+      assert 1 ==
+               Repo.aggregate(
+                 from(asset in Asset,
+                   where:
+                     asset.project_id == ^project.id and
+                       asset.blob_hash == ^voice_asset.blob_hash
+                 ),
+                 :count
+               )
+
+      on_exit(fn -> Assets.storage_delete(restored_asset.key) end)
+    end
   end
 
   describe "restore_snapshot/2" do
@@ -182,6 +258,174 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
       restored_new = Storyarn.Sheets.get_sheet(project.id, new_sheet.id)
       assert restored_new
       assert restored_new.name == "New After Snapshot"
+    end
+
+    test "requires an external tracker when composed inside another transaction", %{
+      project: project
+    } do
+      snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
+
+      assert {:ok, {:error, :asset_copy_tracker_required_in_transaction}} =
+               Repo.transaction(fn ->
+                 ProjectSnapshotBuilder.restore_snapshot(project.id, snapshot)
+               end)
+    end
+
+    test "leaves externally supplied tracker lifecycle to its transaction owner", %{
+      project: project
+    } do
+      snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
+      tracker = StorageCompensation.new()
+      sentinel_key = "projects/#{project.id}/assets/#{Ecto.UUID.generate()}/tracker-sentinel.bin"
+      assert :ok = StorageCompensation.track(tracker, sentinel_key)
+
+      assert {:ok, {:ok, _result}} =
+               Repo.transaction(fn ->
+                 ProjectSnapshotBuilder.restore_snapshot(project.id, snapshot, asset_copy_tracker: tracker)
+               end)
+
+      assert :ok =
+               StorageCompensation.cleanup(tracker,
+                 enqueue_fun: fn cleanup_keys ->
+                   send(self(), {:external_tracker_cleanup, cleanup_keys})
+                   :ok
+                 end
+               )
+
+      assert_receive {:external_tracker_cleanup, [^sentinel_key]}
+    end
+
+    test "retains copied asset storage after the restore transaction commits", %{
+      project: project,
+      user: user,
+      sheet: sheet
+    } do
+      filename = "project-restore-success-#{System.unique_integer([:positive])}.png"
+      source_asset = uploaded_asset(project, user, filename, "copied banner", "image/png")
+      assert {:ok, _sheet} = Storyarn.Sheets.update_sheet(sheet, %{banner_asset_id: source_asset.id})
+      snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
+
+      assert {:ok, _result} =
+               ProjectSnapshotBuilder.restore_snapshot(project.id, snapshot,
+                 asset_mode: :copy,
+                 user_id: user.id
+               )
+
+      restored_sheet = Storyarn.Sheets.get_sheet(project.id, sheet.id)
+      restored_asset = Repo.get!(Asset, restored_sheet.banner_asset_id)
+
+      refute restored_asset.id == source_asset.id
+      assert {:ok, "copied banner"} = Assets.storage_download(restored_asset.key)
+      on_exit(fn -> Assets.storage_delete(restored_asset.key) end)
+    end
+
+    test "rolls back database writes and compensates copied storage when a later entity fails", %{
+      project: project,
+      user: user,
+      sheet: sheet,
+      flow: flow
+    } do
+      filename = "project-restore-rollback-#{System.unique_integer([:positive])}.png"
+      source_asset = uploaded_asset(project, user, filename, "rollback banner", "image/png")
+      assert {:ok, _sheet} = Storyarn.Sheets.update_sheet(sheet, %{banner_asset_id: source_asset.id})
+
+      broken_snapshot =
+        project.id
+        |> ProjectSnapshotBuilder.build_snapshot()
+        |> update_in(["flows"], fn flows ->
+          Enum.map(flows, fn
+            %{"id" => flow_id, "snapshot" => flow_snapshot} = entry
+            when flow_id == flow.id ->
+              Map.put(entry, "snapshot", Map.delete(flow_snapshot, "name"))
+
+            entry ->
+              entry
+          end)
+        end)
+
+      asset_count_before = Repo.aggregate(Asset, :count)
+      stored_paths_before = stored_asset_paths(filename)
+
+      assert {:error, {:restore_failed, "flows", flow_id, {:missing_snapshot_fields, :flow, ["name"]}}} =
+               ProjectSnapshotBuilder.restore_snapshot(project.id, broken_snapshot,
+                 asset_mode: :copy,
+                 user_id: user.id
+               )
+
+      assert flow_id == flow.id
+      assert Repo.aggregate(Asset, :count) == asset_count_before
+
+      assert Storyarn.Sheets.get_sheet(project.id, sheet.id).banner_asset_id ==
+               source_asset.id
+
+      assert stored_asset_paths(filename) == stored_paths_before
+      assert {:ok, "rollback banner"} = Assets.storage_download(source_asset.key)
+    end
+
+    test "preserves a localization asset error after compensating earlier copies", %{
+      project: project,
+      user: user,
+      sheet: sheet,
+      flow: flow
+    } do
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Missing recorded line", "responses" => []}
+        })
+
+      filename = "project-restore-asset-error-#{System.unique_integer([:positive])}.png"
+      source_asset = uploaded_asset(project, user, filename, "cleanup banner", "image/png")
+      assert {:ok, _sheet} = Storyarn.Sheets.update_sheet(sheet, %{banner_asset_id: source_asset.id})
+
+      missing_asset_id = 9_000_000_000 + System.unique_integer([:positive])
+      missing_content = "missing global voice"
+      missing_hash = BlobStore.compute_hash(missing_content)
+      asset_id = to_string(missing_asset_id)
+
+      broken_snapshot =
+        project.id
+        |> ProjectSnapshotBuilder.build_snapshot()
+        |> update_in(["localization", "texts"], fn texts ->
+          Enum.map(texts, fn
+            %{
+              "source_type" => "flow_node",
+              "source_id" => source_id,
+              "source_field" => "text"
+            } = text
+            when source_id == dialogue.id ->
+              Map.merge(text, %{
+                "vo_asset_id" => missing_asset_id,
+                "vo_status" => "recorded"
+              })
+
+            text ->
+              text
+          end)
+        end)
+        |> put_in(["asset_blob_hashes", asset_id], missing_hash)
+        |> put_in(["asset_metadata", asset_id], %{
+          "filename" => "missing-global-voice.mp3",
+          "content_type" => "audio/mpeg",
+          "size" => byte_size(missing_content),
+          "project_id" => project.id
+        })
+
+      asset_count_before = Repo.aggregate(Asset, :count)
+      stored_paths_before = stored_asset_paths(filename)
+
+      assert {:error, {:asset_materialization_failed, ^missing_asset_id, {:asset_blob_unavailable, :enoent}}} =
+               ProjectSnapshotBuilder.restore_snapshot(project.id, broken_snapshot,
+                 asset_mode: :copy,
+                 user_id: user.id
+               )
+
+      assert Repo.aggregate(Asset, :count) == asset_count_before
+      assert Storyarn.Sheets.get_sheet(project.id, sheet.id).banner_asset_id == source_asset.id
+      assert stored_asset_paths(filename) == stored_paths_before
     end
   end
 
@@ -451,5 +695,18 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
     end)
 
     asset
+  end
+
+  defp stored_asset_paths(filename) do
+    upload_dir =
+      :storyarn
+      |> Application.fetch_env!(:storage)
+      |> Keyword.fetch!(:upload_dir)
+      |> Path.expand()
+
+    upload_dir
+    |> Path.join("projects/*/assets/*/#{filename}")
+    |> Path.wildcard()
+    |> MapSet.new()
   end
 end

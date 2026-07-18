@@ -4,7 +4,7 @@ title: "Presentamos Storyarn: una plataforma conectada para el diseño narrativo
 seo_title: "Storyarn: plataforma de diseño narrativo",
 description: "Storyarn conecta construcción de mundos, narrativa ramificada, escenas, pruebas, localización y exportación dentro de un mismo proyecto.",
 author: "Equipo de Storyarn",
-updated_on: "2026-07-15",
+updated_on: "2026-07-18",
 image: "/images/docs/project-dashboard-current.png",
 image_alt: "Panel de un proyecto de Storyarn con fichas, flujos, escenas, progreso de localización, avisos y actividad reciente",
 tags: ["Storyarn", "Diseño narrativo", "Desarrollo de videojuegos"]
@@ -87,7 +87,7 @@ El [Story Player](/docs/narrative-design/flows-overview#story-player) de Storyar
 Son dos tipos de información distintos. Story Player ayuda al equipo a valorar ritmo, decisiones y contexto. Modo Depuración permite comprender el comportamiento del sistema.
 
 <figure>
-  <img src="/images/blog/introducing-storyarn-debug-active-node.png" alt="Modo de depuración de Storyarn con un nodo de diálogo activo, la ruta ejecutada y el historial de pasos de la consola" loading="lazy">
+  <img src="/images/blog/introducing-storyarn-debug-session.jpg" alt="Modo de depuración de Storyarn detenido en un nodo de diálogo activo de Sera Voss, con la ruta ejecutada, el historial de la consola y cuatro respuestas válidas" loading="lazy">
   <figcaption>La narrativa puede jugarse e inspeccionarse mientras todo el contexto de diseño sigue disponible.</figcaption>
 </figure>
 

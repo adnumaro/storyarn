@@ -1,5 +1,6 @@
 defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
   use Storyarn.DataCase, async: true
+  use Oban.Testing, repo: Storyarn.Repo
 
   import Ecto.Query, warn: false
   import Storyarn.AccountsFixtures
@@ -34,6 +35,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
   alias Storyarn.Versioning.AssetMaterializationCache
   alias Storyarn.Versioning.Builders.SheetBuilder
   alias Storyarn.Versioning.LocalizationSnapshotCodec
+  alias Storyarn.Workers.DeleteStorageObjectsWorker
 
   setup do
     user = user_fixture(%{email: "sheet-builder-#{Ecto.UUID.generate()}@example.com"})
@@ -1670,6 +1672,13 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
           BlobStore.ext_from_content_type(gallery_asset.content_type)
         )
 
+      banner_blob_key =
+        BlobStore.blob_key(
+          project.id,
+          banner_asset.blob_hash,
+          BlobStore.ext_from_content_type(banner_asset.content_type)
+        )
+
       assert :ok = delete_storage_blob(gallery_blob_key)
 
       current_sheet =
@@ -1731,7 +1740,10 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
              ) == 1
 
       assert Repo.aggregate(Asset, :count) == asset_count_before
+
+      assert [] = all_enqueued(worker: DeleteStorageObjectsWorker)
       assert stored_asset_paths(banner_asset.filename) == copied_banner_paths_before
+      assert {:ok, "rollback-banner"} = Assets.storage_download(banner_blob_key)
     end
 
     test "rejects duplicate and foreign IDs before changing any data", %{
@@ -2630,8 +2642,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       Enum.each(avatars, fn avatar ->
         assert avatar.asset.project_id == destination_project.id
         refute avatar.asset_id in source_asset_ids
-        assert {:ok, _binary} = Assets.storage_download(avatar.asset.key)
-        on_exit(fn -> Assets.storage_delete(avatar.asset.key) end)
+        assert_copied_asset_storage(avatar.asset, destination_project.id)
       end)
 
       [cloned_gallery_block] = Enum.filter(Sheets.list_blocks(materialized.id), &(&1.type == "gallery"))
@@ -2640,8 +2651,52 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       assert cloned_gallery_image.asset.project_id == destination_project.id
       refute cloned_gallery_image.asset_id in source_asset_ids
       assert cloned_gallery_image.label == "Bridge"
-      assert {:ok, _binary} = Assets.storage_download(cloned_gallery_image.asset.key)
-      on_exit(fn -> Assets.storage_delete(cloned_gallery_image.asset.key) end)
+      assert_copied_asset_storage(cloned_gallery_image.asset, destination_project.id)
+    end
+
+    test "immediately cleans copied asset paths and retains the project blob after rollback", %{
+      user: user,
+      project: project,
+      sheet: sheet
+    } do
+      avatar_asset = uploaded_image_asset(project, user, "copied-avatar.png", "copied avatar")
+      broken_avatar_asset = uploaded_image_asset(project, user, "broken-avatar.png", "broken avatar")
+
+      {:ok, _avatar} = Sheets.add_avatar(sheet, avatar_asset.id, %{name: "Default"})
+      {:ok, _broken_avatar} = Sheets.add_avatar(sheet, broken_avatar_asset.id, %{name: "Broken"})
+
+      snapshot =
+        sheet
+        |> SheetBuilder.build_snapshot()
+        |> put_in(["asset_metadata", to_string(broken_avatar_asset.id)], %{})
+
+      destination_project = project_fixture(user)
+      copied_avatar_paths_before = stored_asset_paths(avatar_asset.filename)
+
+      assert {:error, {:asset_materialization_failed, broken_avatar_asset_id, :missing_asset_metadata}} =
+               SheetBuilder.instantiate_snapshot(destination_project.id, snapshot,
+                 asset_mode: :copy,
+                 asset_error_mode: :strict,
+                 user_id: user.id,
+                 reset_shortcut: true
+               )
+
+      assert broken_avatar_asset_id == broken_avatar_asset.id
+
+      refute Repo.exists?(from asset in Asset, where: asset.project_id == ^destination_project.id)
+
+      copied_blob_key =
+        BlobStore.blob_key(
+          destination_project.id,
+          avatar_asset.blob_hash,
+          BlobStore.ext_from_content_type(avatar_asset.content_type)
+        )
+
+      on_exit(fn -> delete_storage_blob(copied_blob_key) end)
+
+      assert [] = all_enqueued(worker: DeleteStorageObjectsWorker)
+      assert stored_asset_paths(avatar_asset.filename) == copied_avatar_paths_before
+      assert {:ok, "copied avatar"} = Assets.storage_download(copied_blob_key)
     end
 
     test "keeps banner, avatar, and gallery assets when external references are not preserved", %{
@@ -2824,9 +2879,22 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
                  delete_fun: fn _keys -> :ok end
                )
 
-      assert_receive {:tracked_asset_keys, [tracked_key]}
-      assert tracked_key == destination_asset.key
-      on_exit(fn -> Assets.storage_delete(destination_asset.key) end)
+      assert_receive {:tracked_asset_keys, tracked_keys}
+      assert destination_asset.key in tracked_keys
+
+      destination_blob_key =
+        BlobStore.blob_key(
+          destination_project.id,
+          destination_asset.blob_hash,
+          BlobStore.ext_from_content_type(destination_asset.content_type)
+        )
+
+      assert destination_blob_key in tracked_keys
+
+      on_exit(fn ->
+        Assets.storage_delete(destination_asset.key)
+        Assets.storage_delete(destination_blob_key)
+      end)
     end
   end
 
@@ -3165,5 +3233,22 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
     |> Path.join("projects/*/assets/*/#{filename}")
     |> Path.wildcard()
     |> MapSet.new()
+  end
+
+  defp assert_copied_asset_storage(asset, project_id) do
+    blob_key =
+      BlobStore.blob_key(
+        project_id,
+        asset.blob_hash,
+        BlobStore.ext_from_content_type(asset.content_type)
+      )
+
+    assert {:ok, _content} = Assets.storage_download(asset.key)
+    assert {:ok, _content} = Assets.storage_download(blob_key)
+
+    on_exit(fn ->
+      Assets.storage_delete(asset.key)
+      Assets.storage_delete(blob_key)
+    end)
   end
 end

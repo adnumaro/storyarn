@@ -119,7 +119,7 @@ defmodule Storyarn.ProjectTemplates.DeletionIntegrityTest do
       |> change(checksum: checksum)
       |> Repo.update!()
 
-      assert {:error, {:invalid_portable_artifact, manifest_key, :invalid_asset_source_key}} =
+      assert {:error, {:template_asset_manifest_unreadable, manifest_key, :invalid_asset_manifest}} =
                ProjectTemplates.delete_template(scope, artifact.template)
 
       assert manifest_key == artifact.manifest_key
@@ -157,7 +157,7 @@ defmodule Storyarn.ProjectTemplates.DeletionIntegrityTest do
       |> change(checksum: checksum)
       |> Repo.update!()
 
-      assert {:error, {:invalid_portable_artifact, manifest_key, :invalid_asset_source_key}} =
+      assert {:error, {:template_asset_manifest_unreadable, manifest_key, :invalid_asset_manifest}} =
                ProjectTemplates.delete_template(scope, artifact.template)
 
       assert manifest_key == artifact.manifest_key
@@ -405,10 +405,10 @@ defmodule Storyarn.ProjectTemplates.DeletionIntegrityTest do
 
       register_storage_cleanup([external_key])
 
-      assert {:error, :invalid_storage_keys} =
+      assert {:error, {:invalid_template_storage_keys, [^external_key]}} =
                ProjectTemplates.perform_template_artifact_gc([external_key])
 
-      assert {:error, :invalid_storage_keys} =
+      assert {:error, {:invalid_template_storage_keys, [^external_key]}} =
                perform_job(DeleteProjectTemplateArtifactsWorker, %{
                  "storage_keys" => [external_key]
                })

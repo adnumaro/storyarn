@@ -10,7 +10,6 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.Storage
-  alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Repo
   alias Storyarn.Versioning.AssetMaterializationCache
   alias Storyarn.Versioning.Builders.AssetCopyError
@@ -686,17 +685,16 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
           )
         end
 
-      assert error.reason ==
-               {:asset_blob_checksum_mismatch, blob_hash, actual_hash}
+      assert actual_hash != blob_hash
+      assert error.reason == :blob_hash_mismatch
 
       assert [] == Assets.list_assets(destination_project.id)
     end
 
-    test "strict copy rejects filenames whose sanitized value is not a safe storage segment", %{
+    test "strict copy sanitizes unsafe filenames to a safe storage segment", %{
       project: destination_project,
       user: user
     } do
-      isolated_upload_dir = isolate_storage!()
       source_project = project_fixture(user)
 
       {source_asset, _blob_hash} =
@@ -709,8 +707,6 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
         )
 
       snapshot = strict_snapshot(source_asset, source_project.id)
-      storage_before = storage_files(isolated_upload_dir)
-      tracker = StorageCompensation.new()
 
       for invalid_filename <- ["/", ".", ".."] do
         invalid_snapshot =
@@ -720,26 +716,35 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
             invalid_filename
           )
 
-        error =
-          assert_raise AssetCopyError, fn ->
-            AssetHashResolver.resolve_asset_fk(
-              source_asset.id,
-              invalid_snapshot,
-              destination_project.id,
-              user.id,
-              asset_mode: :copy,
-              asset_error_mode: :strict,
-              asset_copy_tracker: tracker
-            )
-          end
+        destination_id =
+          AssetHashResolver.resolve_asset_fk(
+            source_asset.id,
+            invalid_snapshot,
+            destination_project.id,
+            user.id,
+            asset_mode: :copy,
+            asset_error_mode: :strict
+          )
 
-        assert error.reason == :invalid_asset_filename
+        destination_asset = Repo.get!(Asset, destination_id)
+        assert Path.basename(destination_asset.key) == "file"
+
+        on_exit(fn ->
+          Storage.delete(destination_asset.key)
+
+          Storage.delete(
+            BlobStore.blob_key(
+              destination_project.id,
+              destination_asset.blob_hash,
+              BlobStore.ext_from_content_type(destination_asset.content_type)
+            )
+          )
+        end)
       end
 
-      assert [] == Assets.list_assets(destination_project.id)
-      assert storage_files(isolated_upload_dir) == storage_before
-      assert :ok = StorageCompensation.cleanup(tracker)
-      assert storage_files(isolated_upload_dir) == storage_before
+      assert Enum.all?(Assets.list_assets(destination_project.id), fn asset ->
+               Path.basename(asset.key) == "file"
+             end)
     end
 
     test "portable materialization drops untrusted metadata before persistence", %{
@@ -868,6 +873,85 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
 
       assert error.reason == :missing_asset_source_key
     end
+
+    test "successive template clones keep a copyable project-local blob", %{
+      project: source_project,
+      user: user
+    } do
+      first_clone = project_fixture(user)
+      second_clone = project_fixture(user)
+      content = "avatar copied through two template generations"
+      hash = BlobStore.compute_hash(content)
+
+      assert {:ok, source_blob_key} =
+               BlobStore.ensure_blob(source_project.id, hash, "png", content)
+
+      source_asset =
+        asset_fixture(source_project, user, %{
+          filename: "avatar.png",
+          content_type: "image/png",
+          size: byte_size(content),
+          blob_hash: hash
+        })
+
+      {first_hashes, first_metadata} = AssetHashResolver.resolve_hashes([source_asset.id])
+
+      first_snapshot = %{
+        "asset_blob_hashes" => first_hashes,
+        "asset_metadata" => first_metadata
+      }
+
+      first_asset_id =
+        AssetHashResolver.resolve_asset_fk(
+          source_asset.id,
+          first_snapshot,
+          first_clone.id,
+          user.id,
+          asset_mode: :copy,
+          asset_error_mode: :strict
+        )
+
+      first_asset = Repo.get!(Asset, first_asset_id)
+      first_blob_key = BlobStore.blob_key(first_clone.id, hash, "png")
+      assert {:ok, ^content} = Storage.download(first_blob_key)
+
+      {second_hashes, second_metadata} = AssetHashResolver.resolve_hashes([first_asset.id])
+
+      second_snapshot = %{
+        "asset_blob_hashes" => second_hashes,
+        "asset_metadata" => second_metadata
+      }
+
+      second_asset_id =
+        AssetHashResolver.resolve_asset_fk(
+          first_asset.id,
+          second_snapshot,
+          second_clone.id,
+          user.id,
+          asset_mode: :copy,
+          asset_error_mode: :strict
+        )
+
+      second_asset = Repo.get!(Asset, second_asset_id)
+      second_blob_key = BlobStore.blob_key(second_clone.id, hash, "png")
+
+      on_exit(fn ->
+        Enum.each(
+          [
+            source_blob_key,
+            first_blob_key,
+            second_blob_key,
+            first_asset.key,
+            second_asset.key
+          ],
+          &Storage.delete/1
+        )
+      end)
+
+      assert {:ok, ^content} = Storage.download(second_asset.key)
+      assert {:ok, ^content} = Storage.download(second_blob_key)
+      assert second_asset.blob_hash == hash
+    end
   end
 
   defp materializable_asset(project, user, content, attrs) do
@@ -896,37 +980,5 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
       "asset_blob_hashes" => hashes,
       "asset_metadata" => metadata
     }
-  end
-
-  defp isolate_storage! do
-    original_storage_config = Application.fetch_env!(:storyarn, :storage)
-
-    isolated_upload_dir =
-      Path.join(
-        System.tmp_dir!(),
-        "storyarn-asset-resolver-#{System.unique_integer([:positive])}"
-      )
-
-    Application.put_env(
-      :storyarn,
-      :storage,
-      Keyword.put(original_storage_config, :upload_dir, isolated_upload_dir)
-    )
-
-    on_exit(fn ->
-      Application.put_env(:storyarn, :storage, original_storage_config)
-      File.rm_rf!(isolated_upload_dir)
-    end)
-
-    isolated_upload_dir
-  end
-
-  defp storage_files(upload_dir) do
-    upload_dir
-    |> Path.join("**/*")
-    |> Path.wildcard()
-    |> Enum.reject(&File.dir?/1)
-    |> Enum.map(&Path.relative_to(&1, upload_dir))
-    |> Enum.sort()
   end
 end

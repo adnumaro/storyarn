@@ -3,6 +3,14 @@ defmodule Storyarn.Assets.Storage.R2Test do
 
   alias Storyarn.Assets.Storage.R2
 
+  @copy_result """
+  <?xml version="1.0" encoding="UTF-8"?>
+  <CopyObjectResult>
+    <ETag>"copy-etag"</ETag>
+    <LastModified>2026-07-17T08:00:00.000Z</LastModified>
+  </CopyObjectResult>
+  """
+
   setup do
     original_config = Application.get_env(:storyarn, :r2, [])
     original_s3_config = Application.get_env(:ex_aws, :s3)
@@ -87,6 +95,132 @@ defmodule Storyarn.Assets.Storage.R2Test do
 
       assert {:error, {:http_error, 409, _response}} =
                R2.put_if_absent("projects/1/blobs/hash.png", "content", "image/png")
+    end
+  end
+
+  describe "copy_if_absent/2" do
+    test "uses a server-side destination-conditional copy" do
+      Req.Test.expect(__MODULE__, fn conn ->
+        assert conn.method == "PUT"
+        assert conn.request_path == "/private-bucket/projects/2/blobs/hash.png"
+        assert Plug.Conn.get_req_header(conn, "if-none-match") == ["*"]
+
+        assert Plug.Conn.get_req_header(conn, "x-amz-copy-source") == [
+                 "/private-bucket/projects/1/blobs/hash.png"
+               ]
+
+        assert Plug.Conn.get_req_header(conn, "cf-copy-destination-if-none-match") == []
+        assert_signed_header_request(conn)
+        Plug.Conn.send_resp(conn, 200, @copy_result)
+      end)
+
+      assert {:ok, true} =
+               R2.copy_if_absent(
+                 "projects/1/blobs/hash.png",
+                 "projects/2/blobs/hash.png"
+               )
+    end
+
+    test "treats a failed destination precondition as an existing object" do
+      Req.Test.expect(__MODULE__, fn conn ->
+        assert Plug.Conn.get_req_header(conn, "if-none-match") == ["*"]
+        Plug.Conn.send_resp(conn, 412, "<Error><Code>PreconditionFailed</Code></Error>")
+      end)
+
+      assert {:ok, false} =
+               R2.copy_if_absent(
+                 "projects/1/blobs/hash.png",
+                 "projects/2/blobs/hash.png"
+               )
+    end
+
+    test "retries a conditional request conflict without claiming ownership" do
+      {:ok, requests} = Agent.start_link(fn -> 0 end)
+
+      Req.Test.expect(__MODULE__, 2, fn conn ->
+        request_number = Agent.get_and_update(requests, &{&1 + 1, &1 + 1})
+
+        case request_number do
+          1 -> Plug.Conn.send_resp(conn, 409, "<Error><Code>ConditionalRequestConflict</Code></Error>")
+          2 -> Plug.Conn.send_resp(conn, 412, "<Error><Code>PreconditionFailed</Code></Error>")
+        end
+      end)
+
+      assert {:ok, false} =
+               R2.copy_if_absent(
+                 "projects/1/blobs/hash.png",
+                 "projects/2/blobs/hash.png"
+               )
+
+      assert Agent.get(requests, & &1) == 2
+    end
+
+    test "rejects an embedded CopyObject error returned with HTTP 200" do
+      Req.Test.expect(__MODULE__, fn conn ->
+        Plug.Conn.send_resp(conn, 200, "<Error><Code>InternalError</Code></Error>")
+      end)
+
+      assert {:error, :copy_object_error_response} =
+               R2.copy_if_absent(
+                 "projects/1/blobs/hash.png",
+                 "projects/2/blobs/hash.png"
+               )
+    end
+
+    test "adds Cloudflare's destination condition only for an R2 endpoint" do
+      Application.put_env(:storyarn, :r2,
+        bucket: "private-bucket",
+        endpoint_url: "https://account.r2.cloudflarestorage.com",
+        public_url: nil
+      )
+
+      Application.put_env(:ex_aws, :s3,
+        host: "account.r2.cloudflarestorage.com",
+        scheme: "https://",
+        region: "auto"
+      )
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        assert Plug.Conn.get_req_header(conn, "if-none-match") == ["*"]
+        assert Plug.Conn.get_req_header(conn, "cf-copy-destination-if-none-match") == ["*"]
+
+        [authorization] = Plug.Conn.get_req_header(conn, "authorization")
+        assert authorization =~ "cf-copy-destination-if-none-match"
+        Plug.Conn.send_resp(conn, 200, @copy_result)
+      end)
+
+      assert {:ok, true} =
+               R2.copy_if_absent(
+                 "projects/1/blobs/hash.png",
+                 "projects/2/blobs/hash.png"
+               )
+    end
+  end
+
+  describe "copy/2" do
+    test "validates the CopyObject result body" do
+      Req.Test.expect(__MODULE__, fn conn ->
+        assert conn.method == "PUT"
+        Plug.Conn.send_resp(conn, 200, @copy_result)
+      end)
+
+      assert :ok =
+               R2.copy(
+                 "projects/1/blobs/hash.png",
+                 "projects/1/assets/copy/hash.png"
+               )
+    end
+
+    test "rejects an embedded CopyObject error returned with HTTP 200" do
+      Req.Test.expect(__MODULE__, fn conn ->
+        Plug.Conn.send_resp(conn, 200, "<Error><Code>InternalError</Code></Error>")
+      end)
+
+      assert {:error, :copy_object_error_response} =
+               R2.copy(
+                 "projects/1/blobs/hash.png",
+                 "projects/1/assets/copy/hash.png"
+               )
     end
   end
 

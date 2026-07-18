@@ -82,9 +82,17 @@ interface TemplateInstallation {
   template_version_id: number;
 }
 
+interface TemplateInstallationFailure {
+  id: number;
+  project_name: string;
+  error_code?: string | null;
+  error_message?: string | null;
+}
+
 interface TemplateCreationData {
   templates: ProjectTemplate[];
   installations: TemplateInstallation[];
+  failures?: TemplateInstallationFailure[];
 }
 
 const {
@@ -95,7 +103,7 @@ const {
   canCreateProject = false,
   newProjectModalOpen = false,
   newProjectForm = null,
-  templateCreation = { templates: [], installations: [] },
+  templateCreation = { templates: [], installations: [], failures: [] },
   projectMetricsOptions = { project_types: [], project_subtypes: {} },
   settingsUrl = null,
 } = defineProps<{
@@ -115,12 +123,21 @@ const live = useLiveVue();
 const { t } = useI18n();
 const projectTemplates = computed(() => templateCreation.templates);
 const templateInstallations = computed(() => templateCreation.installations);
+const templateInstallationFailures = computed(() => templateCreation.failures || []);
 const localSearch = ref(searchQuery);
 const newProjectMode = ref<"blank" | "private" | "public">("blank");
 const selectedTemplateId = ref<number | null>(null);
 const templateProjectName = ref("");
 const templateSubmissionPending = ref(false);
 const localNewProjectModalOpen = ref(newProjectModalOpen);
+const dismissedTemplateFailureIds = ref<Set<number>>(new Set());
+
+const currentTemplateFailure = computed(
+  () =>
+    templateInstallationFailures.value.find(
+      (failure) => !dismissedTemplateFailureIds.value.has(failure.id),
+    ) || null,
+);
 
 watch(
   () => newProjectModalOpen,
@@ -243,6 +260,50 @@ function createProjectFromTemplate() {
 
 function installationStageLabel(installation: TemplateInstallation) {
   return t(`workspace.new_project.templates.stages.${installation.stage}`);
+}
+
+const localizedTemplateFailureCodes = new Set([
+  "archived",
+  "asset_copy_failed",
+  "checksum_mismatch",
+  "incompatible_template_snapshot",
+  "limit_reached",
+  "missing_asset_manifest",
+  "missing_checksum",
+  "not_found",
+  "unauthorized",
+  "unremappable_subflow_exit_pin",
+]);
+
+function templateFailureMessage(failure: TemplateInstallationFailure) {
+  if (failure.error_code && localizedTemplateFailureCodes.has(failure.error_code)) {
+    return t(`workspace.new_project.templates.errors.${failure.error_code}`);
+  }
+
+  return t("workspace.new_project.templates.errors.generic");
+}
+
+function dismissTemplateFailure() {
+  const failure = currentTemplateFailure.value;
+  if (!failure || dismissedTemplateFailureIds.value.has(failure.id)) return;
+
+  dismissedTemplateFailureIds.value = new Set([...dismissedTemplateFailureIds.value, failure.id]);
+
+  live.pushEvent(
+    "dismiss_template_installation_failure",
+    { installation_id: failure.id },
+    (response: { status?: string }) => {
+      if (response.status === "ok") return;
+
+      const dismissedIds = new Set(dismissedTemplateFailureIds.value);
+      dismissedIds.delete(failure.id);
+      dismissedTemplateFailureIds.value = dismissedIds;
+    },
+  );
+}
+
+function setTemplateFailureOpen(open: boolean) {
+  if (!open) dismissTemplateFailure();
 }
 
 function templateCountLabel(template: ProjectTemplate) {
@@ -376,42 +437,20 @@ function templateCountLabel(template: ProjectTemplate) {
           v-for="installation in filteredTemplateInstallations"
           :key="`template-installation-${installation.id}`"
           :data-testid="`template-installation-${installation.id}`"
-          :class="[
-            'relative flex min-h-44 flex-col overflow-hidden rounded-xl border bg-card p-5 shadow-sm',
-            installation.status === 'failed'
-              ? 'border-destructive/40 bg-destructive/5'
-              : 'border-primary/30',
-          ]"
+          class="relative flex min-h-44 flex-col overflow-hidden rounded-xl border border-primary/30 bg-card p-5 shadow-sm"
           aria-live="polite"
         >
-          <div
-            v-if="installation.status !== 'failed'"
-            class="absolute inset-x-0 top-0 h-0.5 overflow-hidden bg-primary/10"
-          >
+          <div class="absolute inset-x-0 top-0 h-0.5 overflow-hidden bg-primary/10">
             <div class="h-full w-1/2 animate-pulse rounded-full bg-primary" />
           </div>
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
-              <p
-                :class="[
-                  'text-xs font-medium uppercase tracking-wide',
-                  installation.status === 'failed' ? 'text-destructive' : 'text-primary',
-                ]"
-              >
-                {{
-                  installation.status === "failed"
-                    ? $t("workspace.new_project.templates.failed")
-                    : $t("workspace.new_project.templates.installing")
-                }}
+              <p class="text-xs font-medium uppercase tracking-wide text-primary">
+                {{ $t("workspace.new_project.templates.installing") }}
               </p>
               <h3 class="mt-1 truncate text-lg font-semibold">{{ installation.project_name }}</h3>
             </div>
-            <CircleAlert
-              v-if="installation.status === 'failed'"
-              class="size-5 shrink-0 text-destructive"
-              aria-hidden="true"
-            />
-            <Loader2 v-else class="size-5 shrink-0 animate-spin text-primary" aria-hidden="true" />
+            <Loader2 class="size-5 shrink-0 animate-spin text-primary" aria-hidden="true" />
           </div>
           <p class="mt-3 text-sm text-muted-foreground">
             {{ installationStageLabel(installation) }}
@@ -467,6 +506,48 @@ function templateCountLabel(template: ProjectTemplate) {
       </div>
     </div>
   </div>
+
+  <Dialog v-if="currentTemplateFailure" :open="true" @update:open="setTemplateFailureOpen">
+    <DialogContent data-testid="template-installation-failure-dialog" class="sm:max-w-lg">
+      <template v-if="currentTemplateFailure">
+        <DialogHeader>
+          <div
+            class="mb-2 flex size-11 items-center justify-center rounded-full bg-destructive/10 text-destructive"
+          >
+            <CircleAlert class="size-6" aria-hidden="true" />
+          </div>
+          <DialogTitle>{{ $t("workspace.new_project.templates.failed") }}</DialogTitle>
+          <DialogDescription class="text-base font-medium text-foreground">
+            {{ currentTemplateFailure.project_name }}
+          </DialogDescription>
+        </DialogHeader>
+
+        <p
+          data-testid="template-installation-failure-message"
+          class="text-sm leading-6 text-muted-foreground"
+        >
+          {{ templateFailureMessage(currentTemplateFailure) }}
+        </p>
+
+        <div class="flex items-center justify-between gap-4 border-t border-border pt-4">
+          <span class="text-xs text-muted-foreground">
+            {{
+              $t("workspace.new_project.templates.reference", {
+                id: currentTemplateFailure.id,
+              })
+            }}
+          </span>
+          <Button
+            type="button"
+            data-testid="dismiss-template-installation-failure"
+            @click="dismissTemplateFailure"
+          >
+            {{ $t("workspace.new_project.templates.acknowledge_failure") }}
+          </Button>
+        </div>
+      </template>
+    </DialogContent>
+  </Dialog>
 
   <!-- New Project Modal -->
   <Dialog :open="localNewProjectModalOpen" @update:open="setNewProjectModalOpen">

@@ -97,6 +97,9 @@ defmodule StoryarnWeb.WorkspaceLive.TemplateCreationTest do
       )
 
       refute render(view) =~ "Template installation failed"
+
+      vue = get_dashboard_vue(view)
+      assert vue.props["template-creation"]["failures"] == []
     end
 
     test "shows a recent failed installation after the workspace is reloaded", %{
@@ -126,15 +129,67 @@ defmodule StoryarnWeb.WorkspaceLive.TemplateCreationTest do
 
       {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
 
-      failed_installation =
-        view
-        |> get_dashboard_vue()
-        |> then(& &1.props["template-creation"]["installations"])
-        |> Enum.find(&(&1["id"] == installation.id))
+      template_creation = get_dashboard_vue(view).props["template-creation"]
 
-      assert failed_installation["status"] == "failed"
-      assert failed_installation["stage"] == "failed"
+      refute Enum.any?(template_creation["installations"], &(&1["id"] == installation.id))
+
+      failed_installation =
+        Enum.find(template_creation["failures"], &(&1["id"] == installation.id))
+
       assert failed_installation["project_name"] == "Broken Copy"
+      assert failed_installation["error_code"] == "checksum_mismatch"
+      assert failed_installation["error_message"] == "The template failed its integrity check."
+
+      render_hook(view, "dismiss_template_installation_failure", %{
+        "installation_id" => installation.id
+      })
+
+      assert Repo.get!(ProjectTemplateInstall, installation.id).feedback_dismissed_at
+      assert get_dashboard_vue(view).props["template-creation"]["failures"] == []
+
+      {:ok, reloaded_view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+      assert get_dashboard_vue(reloaded_view).props["template-creation"]["failures"] == []
+    end
+
+    test "removes stale failure feedback if workspace access is revoked before dismissal", %{
+      conn: conn,
+      user: user,
+      scope: scope
+    } do
+      workspace_owner = user_fixture()
+      workspace = workspace_fixture(workspace_owner, %{name: "Revoked Installation Studio"})
+      membership = workspace_membership_fixture(workspace, user, "member")
+      template = template_fixture(user, scope, %{name: "Revoked Starter"})
+
+      installation =
+        Repo.insert!(%ProjectTemplateInstall{
+          project_template_version_id: template.current_version_id,
+          user_id: user.id,
+          workspace_id: workspace.id,
+          status: "failed",
+          stage: "failed",
+          project_name: "Revoked Copy",
+          source: "workspace_dashboard",
+          error_code: "test_failure",
+          error_message: "Test failure",
+          completed_at: DateTime.utc_now(:second)
+        })
+
+      {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+
+      assert Enum.any?(
+               get_dashboard_vue(view).props["template-creation"]["failures"],
+               &(&1["id"] == installation.id)
+             )
+
+      Repo.delete!(membership)
+
+      render_hook(view, "dismiss_template_installation_failure", %{
+        "installation_id" => installation.id
+      })
+
+      assert get_dashboard_vue(view).props["template-creation"]["failures"] == []
+      refute Repo.get!(ProjectTemplateInstall, installation.id).feedback_dismissed_at
     end
   end
 

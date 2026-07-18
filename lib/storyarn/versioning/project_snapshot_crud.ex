@@ -251,7 +251,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
   def restore_snapshot(project_id, %ProjectSnapshot{} = snapshot, opts \\ []) do
     user_id = Keyword.get(opts, :user_id)
 
-    with :ok <- RestorePolicy.ensure_enabled(:project_snapshot_restore),
+    with :ok <- ensure_restore_transaction_owner(),
+         :ok <- RestorePolicy.ensure_enabled(:project_snapshot_restore),
          {:ok, owned_snapshot} <- fetch_owned_snapshot(project_id, snapshot),
          {:ok, snapshot_data, actual_checksum} <-
            SnapshotStorage.load_snapshot_with_checksum(owned_snapshot.storage_key),
@@ -273,6 +274,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
           error
       end
     end
+  end
+
+  defp ensure_restore_transaction_owner do
+    if Repo.in_transaction?(),
+      do: {:error, :project_snapshot_restore_transaction_owner_required},
+      else: :ok
   end
 
   defp fetch_owned_snapshot(project_id, %ProjectSnapshot{id: snapshot_id, project_id: project_id})

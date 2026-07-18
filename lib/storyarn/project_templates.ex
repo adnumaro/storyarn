@@ -200,10 +200,31 @@ defmodule Storyarn.ProjectTemplates do
   defdelegate list_active_workspace_installations(scope, workspace), to: Installation
 
   @doc """
-  Lists active and recently failed installations for durable workspace feedback.
+  Lists the current user's failed installations that still need acknowledgement.
   """
-  @spec list_workspace_installation_feedback(scope(), Workspace.t()) :: [ProjectTemplateInstall.t()]
-  defdelegate list_workspace_installation_feedback(scope, workspace), to: Installation
+  @spec list_pending_workspace_installation_failures(scope(), Workspace.t()) :: [ProjectTemplateInstall.t()]
+  defdelegate list_pending_workspace_installation_failures(scope, workspace), to: Installation
+
+  @doc """
+  Lists the current user's pending failed installations for one template.
+  """
+  @spec list_pending_template_installation_failures(scope(), ProjectTemplate.t()) ::
+          [ProjectTemplateInstall.t()]
+  defdelegate list_pending_template_installation_failures(scope, template), to: Installation
+
+  @doc """
+  Returns whether one failed installation still needs acknowledgement by the current user.
+  """
+  @spec pending_installation_failure?(scope(), Workspace.t(), integer()) :: boolean()
+  defdelegate pending_installation_failure?(scope, workspace, installation_id), to: Installation
+
+  @doc """
+  Dismisses one failed installation notification for the current user.
+  """
+  @spec dismiss_installation_failure(scope(), Workspace.t(), integer()) ::
+          {:ok, ProjectTemplateInstall.t()}
+          | {:error, :not_found | :unauthorized | Ecto.Changeset.t()}
+  defdelegate dismiss_installation_failure(scope, workspace, installation_id), to: Installation
 
   @spec list_active_template_installations(scope(), ProjectTemplate.t()) :: [ProjectTemplateInstall.t()]
   defdelegate list_active_template_installations(scope, template), to: Installation
@@ -220,8 +241,8 @@ defmodule Storyarn.ProjectTemplates do
   @doc """
   Reads a portable template bundle manifest without importing it.
   """
-  @spec preview_portable_template(String.t()) :: {:ok, map()} | {:error, term()}
-  defdelegate preview_portable_template(path), to: PortableImport, as: :preview_bundle
+  @spec preview_portable_template(String.t(), keyword()) :: {:ok, map()} | {:error, term()}
+  defdelegate preview_portable_template(path, opts \\ []), to: PortableImport, as: :preview_bundle
 
   @doc """
   Imports a portable template bundle into this deployment.

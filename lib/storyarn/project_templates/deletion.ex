@@ -5,6 +5,7 @@ defmodule Storyarn.ProjectTemplates.Deletion do
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.Assets.Storage
+  alias Storyarn.Assets.StorageCompensation
   alias Storyarn.ProjectTemplates.Artifact
   alias Storyarn.ProjectTemplates.Authorization
   alias Storyarn.ProjectTemplates.ProjectTemplate
@@ -17,55 +18,65 @@ defmodule Storyarn.ProjectTemplates.Deletion do
   @portable_manifest_prefix "project_templates/imports/"
   @sha256_regex ~r/\A[0-9a-f]{64}\z/
   @internal_artifact_key_regex ~r/\Aproject_template_publications\/([1-9][0-9]*)\/(snapshot|asset-manifest)-[0-9a-f]{16}\.json\.gz\z/
+  @deletion_transaction_timeout to_timeout(second: 30)
+  @manifest_load_event [:storyarn, :project_templates, :deletion, :asset_manifest_load]
 
   def delete_template(%Scope{} = scope, %ProjectTemplate{} = template) do
-    Repo.transact(fn ->
-      with %ProjectTemplate{} = template <- lock_template(template.id),
-           :ok <- Authorization.authorize_template_manager(scope, template),
-           :ok <- ensure_archived(template),
-           {:ok, storage_keys} <- template_storage_keys(template.id),
-           {:ok, deleted_template} <- Repo.delete(template),
-           {:ok, _job} <- enqueue_artifact_gc(storage_keys) do
-        {:ok, deleted_template}
-      else
-        nil -> {:error, :not_found}
-        {:error, reason} -> {:error, reason}
-      end
-    end)
+    with {:ok, prepared} <- prepare_template_deletion(scope, template.id) do
+      commit_template_deletion(scope, template.id, prepared)
+    end
+  end
+
+  defp prepare_template_deletion(scope, template_id) do
+    with %ProjectTemplate{} = template <- Repo.get(ProjectTemplate, template_id),
+         :ok <- Authorization.authorize_template_manager(scope, template),
+         :ok <- ensure_archived(template),
+         artifact_ownership = template_artifact_ownership(template_id),
+         {:ok, storage_keys} <- template_storage_keys(template_id, artifact_ownership) do
+      {:ok, %{artifact_ownership: artifact_ownership, storage_keys: storage_keys}}
+    else
+      nil -> {:error, :not_found}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp commit_template_deletion(scope, template_id, prepared) do
+    Repo.transact(
+      fn ->
+        with %ProjectTemplate{} = template <- lock_template(template_id),
+             :ok <- Authorization.authorize_template_manager(scope, template),
+             :ok <- ensure_archived(template),
+             :ok <-
+               ensure_artifact_ownership_unchanged(
+                 template_id,
+                 prepared.artifact_ownership
+               ),
+             {:ok, deleted_template} <- Repo.delete(template),
+             {:ok, _job} <- enqueue_artifact_gc(prepared.storage_keys) do
+          {:ok, deleted_template}
+        else
+          nil -> {:error, :not_found}
+          {:error, reason} -> {:error, reason}
+        end
+      end,
+      # All remote manifest reads happen during preparation. This bounded
+      # transaction only locks and revalidates database ownership before the
+      # template delete and durable GC enqueue commit atomically.
+      timeout: @deletion_transaction_timeout
+    )
   end
 
   def perform_template_artifact_gc(storage_keys) when is_list(storage_keys) do
-    with :ok <- validate_template_gc_keys(storage_keys) do
+    with {:ok, storage_keys} <- validate_template_storage_keys(storage_keys) do
       referenced_keys = referenced_template_artifact_keys(storage_keys)
 
       storage_keys
       |> unreferenced_gc_keys(referenced_keys)
-      |> delete_template_gc_keys()
+      |> delete_template_storage_keys()
     end
   end
 
   def perform_template_artifact_gc(_storage_keys), do: {:error, :invalid_storage_keys}
-
-  defp validate_template_gc_keys(storage_keys) do
-    if Enum.all?(storage_keys, &valid_template_gc_key?/1),
-      do: :ok,
-      else: {:error, :invalid_storage_keys}
-  end
-
-  defp delete_template_gc_keys(storage_keys) do
-    storage_keys
-    |> Enum.uniq()
-    |> Enum.reduce([], fn key, failures ->
-      case SnapshotStorage.delete_snapshot(key) do
-        :ok -> failures
-        {:error, reason} -> [%{"storage_key" => key, "reason" => inspect(reason)} | failures]
-      end
-    end)
-    |> case do
-      [] -> :ok
-      failures -> {:error, %{"failed_deletions" => Enum.reverse(failures)}}
-    end
-  end
 
   defp referenced_template_artifact_keys(storage_keys) do
     reference_keys =
@@ -136,6 +147,23 @@ defmodule Storyarn.ProjectTemplates.Deletion do
     end
   end
 
+  defp delete_template_storage_keys(storage_keys) do
+    storage_keys
+    |> Enum.reduce([], &collect_storage_deletion_failure/2)
+    |> deletion_result()
+  end
+
+  defp collect_storage_deletion_failure(key, failures) do
+    case StorageCompensation.delete_or_enqueue(key) do
+      :ok -> failures
+      {:error, reason} -> [%{"storage_key" => key, "reason" => inspect(reason)} | failures]
+    end
+  end
+
+  defp deletion_result([]), do: :ok
+
+  defp deletion_result(failures), do: {:error, %{"failed_deletions" => Enum.reverse(failures)}}
+
   defp lock_template(template_id) do
     ProjectTemplate
     |> where([template], template.id == ^template_id)
@@ -146,8 +174,12 @@ defmodule Storyarn.ProjectTemplates.Deletion do
   defp ensure_archived(%ProjectTemplate{status: "archived"}), do: :ok
   defp ensure_archived(%ProjectTemplate{}), do: {:error, :template_must_be_archived}
 
-  defp template_storage_keys(template_id) do
-    artifact_refs = version_artifact_refs(template_id) ++ publication_artifact_refs(template_id)
+  defp template_storage_keys(template_id, artifact_ownership) do
+    artifact_refs =
+      Enum.filter(artifact_ownership, fn artifact ->
+        not is_nil(artifact.snapshot_storage_key) or
+          not is_nil(artifact.asset_manifest_storage_key)
+      end)
 
     with {:ok, artifact_groups} <- validate_artifact_groups(artifact_refs) do
       externally_referenced_keys =
@@ -155,33 +187,6 @@ defmodule Storyarn.ProjectTemplates.Deletion do
 
       {:ok, unreferenced_storage_keys(artifact_groups, externally_referenced_keys)}
     end
-  end
-
-  defp version_artifact_refs(template_id) do
-    Repo.all(
-      from version in ProjectTemplateVersion,
-        where: version.project_template_id == ^template_id,
-        select: %{
-          snapshot_storage_key: version.snapshot_storage_key,
-          asset_manifest_storage_key: version.asset_manifest_storage_key,
-          checksum: version.checksum
-        }
-    )
-  end
-
-  defp publication_artifact_refs(template_id) do
-    Repo.all(
-      from publication in ProjectTemplatePublication,
-        where:
-          publication.project_template_id == ^template_id and
-            (not is_nil(publication.snapshot_storage_key) or
-               not is_nil(publication.asset_manifest_storage_key)),
-        select: %{
-          snapshot_storage_key: publication.snapshot_storage_key,
-          asset_manifest_storage_key: publication.asset_manifest_storage_key,
-          checksum: publication.checksum
-        }
-    )
   end
 
   defp validate_artifact_groups(artifact_refs) do
@@ -331,9 +336,9 @@ defmodule Storyarn.ProjectTemplates.Deletion do
          :ok <- validate_snapshot_ownership(snapshot_key, expected_snapshot_key),
          {:ok, snapshot} <- safe_load_snapshot(snapshot_key, :snapshot),
          {:ok, manifest} <- safe_load_snapshot(manifest_key, :asset_manifest),
-         :ok <- verify_artifact_checksum(artifact.checksum, snapshot, manifest),
          {:ok, assets} <- validate_asset_manifest(manifest),
-         {:ok, keys} <- validate_manifest_asset_keys(assets, blob_prefix) do
+         {:ok, keys} <- validate_manifest_asset_keys(assets, blob_prefix),
+         :ok <- verify_artifact_checksum(artifact.checksum, snapshot, manifest) do
       {:ok, keys}
     else
       {:error, {:snapshot_unavailable, reason}} ->
@@ -342,12 +347,25 @@ defmodule Storyarn.ProjectTemplates.Deletion do
       {:error, {:asset_manifest_unavailable, reason}} ->
         {:error, {:portable_asset_manifest_unavailable, manifest_key, reason}}
 
+      {:error, reason}
+      when reason in [
+             :invalid_manifest,
+             :invalid_assets,
+             :invalid_asset_source_key,
+             :conflicting_asset_source_keys
+           ] ->
+        {:error, {:template_asset_manifest_unreadable, manifest_key, :invalid_asset_manifest}}
+
       {:error, reason} ->
         {:error, {:invalid_portable_artifact, manifest_key, reason}}
     end
   end
 
   defp safe_load_snapshot(storage_key, artifact_type) do
+    if artifact_type == :asset_manifest do
+      :telemetry.execute(@manifest_load_event, %{count: 1}, %{storage_key: storage_key})
+    end
+
     case SnapshotStorage.load_snapshot(storage_key) do
       {:ok, snapshot} -> {:ok, snapshot}
       {:error, reason} -> {:error, {unavailable_error(artifact_type), reason}}
@@ -486,6 +504,75 @@ defmodule Storyarn.ProjectTemplates.Deletion do
         false
     end
   end
+
+  defp ensure_artifact_ownership_unchanged(template_id, expected_ownership) do
+    current_ownership = lock_template_artifact_ownership(template_id)
+
+    if current_ownership == expected_ownership,
+      do: :ok,
+      else: {:error, :template_changed_during_deletion}
+  end
+
+  defp validate_template_storage_keys(storage_keys) do
+    storage_keys = Enum.uniq(storage_keys)
+
+    case Enum.reject(storage_keys, &valid_template_gc_key?/1) do
+      [] ->
+        {:ok, storage_keys}
+
+      invalid_keys ->
+        {:error,
+         {:invalid_template_storage_keys,
+          Enum.map(invalid_keys, fn key ->
+            if is_binary(key), do: key, else: inspect(key)
+          end)}}
+    end
+  end
+
+  defp template_artifact_ownership(template_id) do
+    template_id
+    |> artifact_ownership_queries()
+    |> Enum.flat_map(&Repo.all/1)
+    |> sort_artifact_ownership()
+  end
+
+  defp lock_template_artifact_ownership(template_id) do
+    template_id
+    |> artifact_ownership_queries()
+    |> Enum.flat_map(fn query ->
+      query
+      |> lock("FOR UPDATE")
+      |> Repo.all()
+    end)
+    |> sort_artifact_ownership()
+  end
+
+  defp artifact_ownership_queries(template_id) do
+    [
+      from(version in ProjectTemplateVersion,
+        where: version.project_template_id == ^template_id,
+        select: %{
+          record_type: "version",
+          record_id: version.id,
+          snapshot_storage_key: version.snapshot_storage_key,
+          asset_manifest_storage_key: version.asset_manifest_storage_key,
+          checksum: version.checksum
+        }
+      ),
+      from(publication in ProjectTemplatePublication,
+        where: publication.project_template_id == ^template_id,
+        select: %{
+          record_type: "publication",
+          record_id: publication.id,
+          snapshot_storage_key: publication.snapshot_storage_key,
+          asset_manifest_storage_key: publication.asset_manifest_storage_key,
+          checksum: publication.checksum
+        }
+      )
+    ]
+  end
+
+  defp sort_artifact_ownership(ownership), do: Enum.sort_by(ownership, &{&1.record_type, &1.record_id})
 
   defp portable_blob_key?(key) do
     case String.split(key, "/", trim: false) do

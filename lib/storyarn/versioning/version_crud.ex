@@ -336,6 +336,9 @@ defmodule Storyarn.Versioning.VersionCrud do
   @doc """
   Loads a version's snapshot from storage and restores the entity.
 
+  Restore owns its transaction boundary because safety snapshots and asset
+  compensation must be finalized only after the builder transaction commits.
+
   ## Options
   - `:user_id` - If provided, creates a pre-restore safety snapshot and a post-restore version entry
   """
@@ -347,6 +350,7 @@ defmodule Storyarn.Versioning.VersionCrud do
     builder_opts = Keyword.put(opts, :restore_action, restore_action)
 
     with :ok <- RestorePolicy.ensure_enabled(restore_action),
+         :ok <- require_restore_transaction_boundary(),
          builder = get_builder!(entity_type),
          {:ok, snapshot} <- SnapshotStorage.load_snapshot(version.storage_key),
          :ok <- require_pre_restore_snapshot(entity_type, entity, version, user_id, opts) do
@@ -374,6 +378,12 @@ defmodule Storyarn.Versioning.VersionCrud do
           error
       end
     end
+  end
+
+  defp require_restore_transaction_boundary do
+    if Repo.in_transaction?(),
+      do: {:error, :version_restore_requires_transaction_boundary},
+      else: :ok
   end
 
   defp require_pre_restore_snapshot(_entity_type, _entity, _version, nil, _opts), do: :ok

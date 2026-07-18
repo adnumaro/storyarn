@@ -177,6 +177,29 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrudTest do
       assert result.skipped >= 1
     end
 
+    test "rejects an enclosing transaction before creating safety snapshot rows or blobs", %{
+      project: project,
+      user: user
+    } do
+      {:ok, snapshot} =
+        Versioning.create_project_snapshot(project.id, user.id, title: "Transaction boundary")
+
+      snapshot_count = Versioning.count_project_snapshots(project.id)
+      stored_paths = stored_snapshot_paths(project.id)
+
+      assert {:ok, {:error, :project_snapshot_restore_transaction_owner_required}} =
+               Repo.transaction(fn ->
+                 Versioning.restore_project_snapshot(
+                   project.id,
+                   snapshot,
+                   user_id: user.id
+                 )
+               end)
+
+      assert Versioning.count_project_snapshots(project.id) == snapshot_count
+      assert stored_snapshot_paths(project.id) == stored_paths
+    end
+
     test "rejects a same-cardinality tampered blob before safety snapshots or mutation", %{
       project: project,
       user: user,
@@ -251,5 +274,18 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrudTest do
       assert Storyarn.Sheets.get_sheet(destination_project.id, destination_sheet.id).name ==
                "Destination state"
     end
+  end
+
+  defp stored_snapshot_paths(project_id) do
+    upload_dir =
+      :storyarn
+      |> Application.fetch_env!(:storage)
+      |> Keyword.fetch!(:upload_dir)
+      |> Path.expand()
+
+    upload_dir
+    |> Path.join("projects/#{project_id}/snapshots/project/*")
+    |> Path.wildcard()
+    |> MapSet.new()
   end
 end

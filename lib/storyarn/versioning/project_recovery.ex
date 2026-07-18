@@ -10,6 +10,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
@@ -33,9 +34,12 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   alias Storyarn.Versioning.AssetMaterializationScope
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.Builders.FlowBuilder
+  alias Storyarn.Versioning.Builders.FlowSnapshotNormalizer
   alias Storyarn.Versioning.Builders.SceneBuilder
   alias Storyarn.Versioning.Builders.SheetBuilder
   alias Storyarn.Versioning.RestorePolicy
+
+  require Logger
 
   @recovery_id_map_keys [
     :sheet,
@@ -72,11 +76,70 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   @spec recover_project(integer(), map(), integer(), keyword()) ::
           {:ok, Project.t()} | {:error, term()}
   def recover_project(workspace_id, snapshot_data, user_id, opts \\ []) do
-    with :ok <- ensure_recovery_enabled(opts),
-         :ok <- validate_project_snapshot_envelope(snapshot_data) do
-      AssetMaterializationScope.run(opts, fn scoped_opts ->
-        do_recover_project(workspace_id, snapshot_data, user_id, scoped_opts)
-      end)
+    with :ok <- ensure_recovery_enabled(opts) do
+      snapshot_data
+      |> FlowSnapshotNormalizer.normalize_project()
+      |> recover_project_with_asset_scope(workspace_id, user_id, opts)
+    end
+  end
+
+  defp recover_project_with_asset_scope(snapshot_data, workspace_id, user_id, opts) do
+    with :ok <- validate_project_snapshot_envelope(snapshot_data),
+         {:ok, tracker, owns_tracker?} <- asset_copy_tracker(opts) do
+      run_project_recovery_scope(
+        workspace_id,
+        snapshot_data,
+        user_id,
+        Keyword.put(opts, :asset_copy_tracker, tracker),
+        tracker,
+        owns_tracker?
+      )
+    end
+  end
+
+  defp run_project_recovery_scope(workspace_id, snapshot_data, user_id, opts, tracker, owns_tracker?) do
+    AssetMaterializationScope.run(opts, fn scoped_opts ->
+      recover_project_with_tracker(
+        workspace_id,
+        snapshot_data,
+        user_id,
+        scoped_opts,
+        tracker,
+        owns_tracker?
+      )
+    end)
+  end
+
+  defp recover_project_with_tracker(workspace_id, snapshot_data, user_id, opts, tracker, owns_tracker?) do
+    name = Keyword.get(opts, :name, "Recovered Project")
+
+    try do
+      result =
+        Repo.transaction(
+          fn ->
+            case do_recover(workspace_id, snapshot_data, user_id, name, opts) do
+              {:ok, project} ->
+                case prepare_asset_cleanup_handoff(tracker, owns_tracker?) do
+                  :ok -> project
+                  {:error, reason} -> Repo.rollback({:storage_cleanup_handoff_failed, reason})
+                end
+
+              {:error, reason} ->
+                Repo.rollback(reason)
+            end
+          end,
+          timeout: to_timeout(minute: 5)
+        )
+
+      finalize_asset_copies(result, tracker, owns_tracker?)
+    rescue
+      error ->
+        cleanup_owned_asset_copies(tracker, owns_tracker?)
+        reraise error, __STACKTRACE__
+    catch
+      kind, reason ->
+        cleanup_owned_asset_copies(tracker, owns_tracker?)
+        :erlang.raise(kind, reason, __STACKTRACE__)
     end
   end
 
@@ -164,20 +227,6 @@ defmodule Storyarn.Versioning.ProjectRecovery do
             {:cont, :ok}
         end
       end
-    )
-  end
-
-  defp do_recover_project(workspace_id, snapshot_data, user_id, opts) do
-    name = Keyword.get(opts, :name, "Recovered Project")
-
-    Repo.transaction(
-      fn ->
-        case do_recover(workspace_id, snapshot_data, user_id, name, opts) do
-          {:ok, project} -> project
-          {:error, reason} -> Repo.rollback(reason)
-        end
-      end,
-      timeout: to_timeout(minute: 5)
     )
   end
 
@@ -665,16 +714,30 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp build_flow_snapshot_node_index(flow_entries) do
-    Enum.reduce(flow_entries, %{}, fn entry, index ->
-      flow_id = entry["id"]
+    Enum.reduce(flow_entries, %{}, &index_flow_snapshot_nodes/2)
+  end
 
-      Enum.reduce(entry["snapshot"]["nodes"] || [], index, fn node, node_index ->
-        Map.put(node_index, node["original_id"], %{
+  defp index_flow_snapshot_nodes(entry, index) do
+    flow_id = normalize_recovery_id(entry["id"])
+
+    Enum.reduce(
+      entry["snapshot"]["nodes"] || [],
+      index,
+      &index_flow_snapshot_node(&1, &2, flow_id)
+    )
+  end
+
+  defp index_flow_snapshot_node(node, index, flow_id) do
+    case normalize_recovery_id(node["original_id"]) do
+      nil ->
+        index
+
+      node_id ->
+        Map.put(index, node_id, %{
           flow_id: flow_id,
           type: node["type"]
         })
-      end)
-    end)
+    end
   end
 
   defp remap_single_flow_snapshot(entry, id_maps, snapshot_node_index) do
@@ -827,7 +890,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp fetch_recovery_mapping(id_map, old_id, connection_id, pin, missing_reason) do
-    case id_map |> Map.get(old_id) |> normalize_recovery_id() do
+    case old_id |> remap_id(id_map) |> normalize_recovery_id() do
       nil ->
         {:error, {:dynamic_exit_pin_not_materializable, connection_id, pin, missing_reason}}
 
@@ -1233,6 +1296,20 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp remap_id(nil, _map), do: nil
+
+  defp remap_id(old_id, map) when is_binary(old_id) do
+    case Map.fetch(map, old_id) do
+      {:ok, new_id} ->
+        new_id
+
+      :error ->
+        case Integer.parse(old_id) do
+          {integer_id, ""} -> Map.get(map, integer_id)
+          _ -> nil
+        end
+    end
+  end
+
   defp remap_id(old_id, map), do: Map.get(map, old_id)
 
   defp fetch_required_mapping(id_map, source_id, context) do
@@ -1414,9 +1491,9 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     end
   end
 
-  defp remap_target_id("sheet", old_id, id_maps), do: Map.get(id_maps.sheet, old_id)
-  defp remap_target_id("flow", old_id, id_maps), do: Map.get(id_maps.flow, old_id)
-  defp remap_target_id("scene", old_id, id_maps), do: Map.get(id_maps.scene, old_id)
+  defp remap_target_id("sheet", old_id, id_maps), do: remap_id(old_id, id_maps.sheet)
+  defp remap_target_id("flow", old_id, id_maps), do: remap_id(old_id, id_maps.flow)
+  defp remap_target_id("scene", old_id, id_maps), do: remap_id(old_id, id_maps.scene)
   defp remap_target_id(_type, _old_id, _id_maps), do: nil
 
   # ========== Phase C: Tree Hierarchy ==========
@@ -2261,6 +2338,72 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   defp template_clone?(opts) do
     Keyword.get(opts, :template_clone, false) == true
   end
+
+  defp asset_copy_tracker(opts) do
+    case Keyword.get(opts, :asset_copy_tracker) do
+      reference when is_reference(reference) ->
+        {:ok, reference, false}
+
+      _reference ->
+        if Repo.in_transaction?(),
+          do: {:error, :asset_copy_tracker_required_in_transaction},
+          else: {:ok, StorageCompensation.new(), true}
+    end
+  end
+
+  defp finalize_asset_copies({:ok, _project} = result, tracker, true) do
+    StorageCompensation.discard(tracker)
+    result
+  end
+
+  defp finalize_asset_copies({:error, _reason} = result, tracker, true) do
+    case StorageCompensation.cleanup_after_rollback(tracker) do
+      :ok ->
+        result
+
+      {:error, cleanup_reason} ->
+        {:error, {:asset_storage_cleanup_failed, result, cleanup_reason}}
+    end
+  end
+
+  defp finalize_asset_copies(result, _tracker, false), do: result
+
+  defp prepare_asset_cleanup_handoff(tracker, true), do: StorageCompensation.prepare_unretained_cleanup(tracker)
+
+  defp prepare_asset_cleanup_handoff(_tracker, false), do: :ok
+
+  defp cleanup_owned_asset_copies(tracker, true) do
+    case StorageCompensation.cleanup_after_rollback(tracker) do
+      :ok ->
+        :ok
+
+      {:error, cleanup_reason} ->
+        Logger.error(
+          "Project recovery asset cleanup failed while preserving the original exception: " <>
+            inspect(cleanup_reason)
+        )
+
+        :ok
+    end
+  rescue
+    cleanup_error ->
+      Logger.error(
+        "Project recovery asset cleanup raised while preserving the original exception: " <>
+          Exception.format(:error, cleanup_error, __STACKTRACE__)
+      )
+
+      :ok
+  catch
+    kind, cleanup_reason ->
+      Logger.error(
+        "Project recovery asset cleanup threw while preserving the original exception: " <>
+          inspect({kind, cleanup_reason})
+      )
+
+      :ok
+  end
+
+  defp cleanup_owned_asset_copies(_tracker, false), do: :ok
 
   defp restore_glossary(_project_id, [], _now), do: :ok
 

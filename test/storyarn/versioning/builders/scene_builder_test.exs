@@ -1,5 +1,6 @@
 defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
   use Storyarn.DataCase, async: true
+  use Oban.Testing, repo: Storyarn.Repo
 
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
@@ -22,6 +23,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Scenes.SceneZone
   alias Storyarn.Versioning.Builders.SceneBuilder
+  alias Storyarn.Workers.DeleteStorageObjectsWorker
 
   setup do
     user = user_fixture()
@@ -2103,8 +2105,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       materialized = Repo.preload(materialized, :background_asset, force: true)
       assert materialized.background_asset.project_id == target_project.id
       refute materialized.background_asset_id == background_asset.id
-      assert {:ok, _binary} = Assets.storage_download(materialized.background_asset.key)
-      on_exit(fn -> Assets.storage_delete(materialized.background_asset.key) end)
+      assert_copied_asset_storage(materialized.background_asset, target_project.id, "map-background")
 
       cloned_pin =
         materialized.id
@@ -2114,8 +2115,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
 
       assert cloned_pin.icon_asset.project_id == target_project.id
       refute cloned_pin.icon_asset_id == pin_icon_asset.id
-      assert {:ok, _binary} = Assets.storage_download(cloned_pin.icon_asset.key)
-      on_exit(fn -> Assets.storage_delete(cloned_pin.icon_asset.key) end)
+      assert_copied_asset_storage(cloned_pin.icon_asset, target_project.id, "pin-icon")
 
       cloned_zone =
         materialized.id
@@ -2124,8 +2124,61 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
 
       assert cloned_zone.label_icon_asset.project_id == target_project.id
       refute cloned_zone.label_icon_asset_id == zone_icon_asset.id
-      assert {:ok, _binary} = Assets.storage_download(cloned_zone.label_icon_asset.key)
-      on_exit(fn -> Assets.storage_delete(cloned_zone.label_icon_asset.key) end)
+      assert_copied_asset_storage(cloned_zone.label_icon_asset, target_project.id, "zone-icon")
+    end
+
+    test "immediately cleans unique copied assets and retains the canonical blob after rollback", %{
+      user: user,
+      project: project,
+      scene: scene
+    } do
+      background_asset = uploaded_image_asset(project, user, "copied-background.png", "copied background")
+      broken_pin_asset = uploaded_image_asset(project, user, "broken-pin.png", "broken pin")
+
+      {:ok, scene} = Storyarn.Scenes.update_scene(scene, %{"background_asset_id" => background_asset.id})
+      layer = layer_fixture(scene)
+
+      _pin =
+        pin_fixture(scene, %{
+          "label" => "Broken Pin",
+          "layer_id" => layer.id,
+          "icon_asset_id" => broken_pin_asset.id
+        })
+
+      snapshot =
+        scene
+        |> SceneBuilder.build_snapshot()
+        |> put_in(["asset_metadata", to_string(broken_pin_asset.id)], %{})
+
+      target_project = project_fixture(user)
+      copied_asset_paths_before = stored_asset_paths(target_project.id, background_asset.filename)
+
+      copied_blob_key =
+        BlobStore.blob_key(
+          target_project.id,
+          background_asset.blob_hash,
+          BlobStore.ext_from_content_type(background_asset.content_type)
+        )
+
+      on_exit(fn -> Assets.storage_delete(copied_blob_key) end)
+
+      assert {:error, {:asset_materialization_failed, broken_pin_asset_id, :missing_asset_metadata}} =
+               SceneBuilder.instantiate_snapshot(target_project.id, snapshot,
+                 asset_mode: :copy,
+                 asset_error_mode: :strict,
+                 user_id: user.id,
+                 reset_shortcut: true
+               )
+
+      assert broken_pin_asset_id == broken_pin_asset.id
+
+      refute Repo.exists?(from asset in Asset, where: asset.project_id == ^target_project.id)
+
+      assert stored_asset_paths(target_project.id, background_asset.filename) ==
+               copied_asset_paths_before
+
+      assert {:ok, "copied background"} = Assets.storage_download(copied_blob_key)
+      assert [] = all_enqueued(worker: DeleteStorageObjectsWorker)
     end
 
     test "reuse mode never preserves a source-project asset id in the destination scene", %{
@@ -2657,5 +2710,35 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
     end)
 
     asset
+  end
+
+  defp assert_copied_asset_storage(asset, project_id, expected_content) do
+    blob_key =
+      BlobStore.blob_key(
+        project_id,
+        asset.blob_hash,
+        BlobStore.ext_from_content_type(asset.content_type)
+      )
+
+    assert {:ok, ^expected_content} = Assets.storage_download(asset.key)
+    assert {:ok, ^expected_content} = Assets.storage_download(blob_key)
+
+    on_exit(fn ->
+      Assets.storage_delete(asset.key)
+      Assets.storage_delete(blob_key)
+    end)
+  end
+
+  defp stored_asset_paths(project_id, filename) do
+    upload_dir =
+      :storyarn
+      |> Application.fetch_env!(:storage)
+      |> Keyword.fetch!(:upload_dir)
+      |> Path.expand()
+
+    upload_dir
+    |> Path.join("projects/#{project_id}/assets/*/#{filename}")
+    |> Path.wildcard()
+    |> MapSet.new()
   end
 end

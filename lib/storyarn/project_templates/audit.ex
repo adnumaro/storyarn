@@ -36,6 +36,8 @@ defmodule Storyarn.ProjectTemplates.Audit do
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
   alias Storyarn.Versioning.ProjectRecovery
 
+  require Logger
+
   @doc """
   Runs template-publication audit checks for a project.
   """
@@ -52,51 +54,101 @@ defmodule Storyarn.ProjectTemplates.Audit do
   """
   @spec run_with_snapshot(integer()) :: {:ok, map(), map()} | {:error, map()}
   def run_with_snapshot(project_id) do
-    static_errors =
-      []
-      |> Kernel.++(stale_connection_errors(project_id))
-      |> Kernel.++(unsafe_subflow_pin_errors(project_id))
-      |> Kernel.++(invalid_scene_pin_sheet_ref_errors(project_id))
-      |> Kernel.++(invalid_scene_pin_flow_ref_errors(project_id))
-      |> Kernel.++(invalid_scene_zone_scene_target_errors(project_id))
-      |> Kernel.++(invalid_scene_zone_flow_target_errors(project_id))
-      |> Kernel.++(invalid_localization_source_ref_errors(project_id))
-      |> Kernel.++(unsupported_localization_source_ref_errors(project_id))
-      |> Kernel.++(uncopiable_asset_reference_errors(project_id))
+    project_id
+    |> prepare_snapshot()
+    |> run_prepared_snapshot()
+  end
+
+  @doc false
+  @spec prepare_snapshot(integer()) :: map()
+  def prepare_snapshot(project_id) do
+    project =
+      Repo.one!(
+        from project in Project,
+          where: project.id == ^project_id and is_nil(project.deleted_at)
+      )
+
+    source_counts = materialized_entity_counts(project_id)
+    static_errors = project_static_errors(project_id)
+
+    prepared = %{
+      project_id: project.id,
+      workspace_id: project.workspace_id,
+      owner_id: project.owner_id,
+      source_counts: source_counts,
+      snapshot: nil
+    }
 
     case static_errors do
       [] ->
-        run_snapshot_audit(project_id)
+        case build_project_snapshot(project_id) do
+          {:ok, snapshot} ->
+            Map.merge(prepared, %{
+              snapshot: snapshot,
+              static_errors: snapshot_sequence_integrity_errors(snapshot)
+            })
+
+          {:error, reason} ->
+            Map.merge(prepared, %{
+              static_errors: [%{"type" => "snapshot_build_failed", "reason" => reason}],
+              materialization_skip_reason: "snapshot_build_failed"
+            })
+        end
 
       errors ->
-        {:error, failed_pre_snapshot_report(project_id, errors, "static_errors")}
+        Map.merge(prepared, %{
+          static_errors: errors,
+          materialization_skip_reason: "static_errors"
+        })
     end
   end
 
-  defp run_snapshot_audit(project_id) do
-    case build_project_snapshot(project_id) do
-      {:ok, snapshot} ->
-        snapshot_errors = snapshot_sequence_integrity_errors(snapshot)
+  @doc false
+  @spec run_prepared_snapshot(map()) :: {:ok, map(), map()} | {:error, map()}
+  def run_prepared_snapshot(%{snapshot: nil, static_errors: errors, source_counts: source_counts} = prepared) do
+    report = %{
+      "status" => "failed",
+      "errors" => errors,
+      "warnings" => [],
+      "entity_counts" => source_counts,
+      "materialization" => %{
+        "status" => "skipped",
+        "reason" => Map.get(prepared, :materialization_skip_reason, "static_errors")
+      }
+    }
 
-        {materialization_errors, materialization_report} =
-          materialization_audit(project_id, snapshot, snapshot_errors)
+    {:error, report}
+  end
 
-        errors = snapshot_errors ++ materialization_errors
+  def run_prepared_snapshot(%{
+        project_id: project_id,
+        workspace_id: workspace_id,
+        owner_id: owner_id,
+        snapshot: snapshot,
+        static_errors: static_errors,
+        source_counts: source_counts
+      }) do
+    {materialization_errors, materialization_report} =
+      materialization_audit(
+        snapshot,
+        static_errors,
+        source_counts,
+        workspace_id,
+        owner_id,
+        project_id
+      )
 
-        report = %{
-          "status" => if(errors == [], do: "passed", else: "failed"),
-          "errors" => errors,
-          "warnings" => [],
-          "entity_counts" => snapshot_entity_counts(snapshot),
-          "materialization" => materialization_report
-        }
+    errors = static_errors ++ materialization_errors
 
-        if errors == [], do: {:ok, report, snapshot}, else: {:error, report}
+    report = %{
+      "status" => if(errors == [], do: "passed", else: "failed"),
+      "errors" => errors,
+      "warnings" => [],
+      "entity_counts" => snapshot_entity_counts(snapshot),
+      "materialization" => materialization_report
+    }
 
-      {:error, reason} ->
-        error = %{"type" => "snapshot_build_failed", "reason" => reason}
-        {:error, failed_pre_snapshot_report(project_id, [error], "snapshot_build_failed")}
-    end
+    if errors == [], do: {:ok, report, snapshot}, else: {:error, report}
   end
 
   defp build_project_snapshot(project_id) do
@@ -106,14 +158,23 @@ defmodule Storyarn.ProjectTemplates.Audit do
       {:error, Exception.message(error)}
   end
 
-  defp failed_pre_snapshot_report(project_id, errors, reason) do
-    %{
-      "status" => "failed",
-      "errors" => errors,
-      "warnings" => [],
-      "entity_counts" => materialized_entity_counts(project_id),
-      "materialization" => %{"status" => "skipped", "reason" => reason}
-    }
+  defp project_static_errors(project_id) do
+    []
+    |> Kernel.++(stale_connection_errors(project_id))
+    |> Kernel.++(unsafe_subflow_pin_errors(project_id))
+    |> Kernel.++(invalid_scene_pin_sheet_ref_errors(project_id))
+    |> Kernel.++(invalid_scene_pin_flow_ref_errors(project_id))
+    |> Kernel.++(invalid_scene_zone_scene_target_errors(project_id))
+    |> Kernel.++(invalid_scene_zone_flow_target_errors(project_id))
+    |> Kernel.++(invalid_localization_source_ref_errors(project_id))
+    |> Kernel.++(unsupported_localization_source_ref_errors(project_id))
+    |> Kernel.++(uncopiable_asset_reference_errors(project_id))
+  end
+
+  defp project_static_errors(project_id, snapshot) do
+    project_id
+    |> project_static_errors()
+    |> Kernel.++(snapshot_sequence_integrity_errors(snapshot))
   end
 
   @doc """
@@ -935,7 +996,8 @@ defmodule Storyarn.ProjectTemplates.Audit do
     }
   end
 
-  defp materialization_audit(_project_id, _snapshot, static_errors) when static_errors != [] do
+  defp materialization_audit(_snapshot, static_errors, _source_counts, _workspace_id, _owner_id, _project_id)
+       when static_errors != [] do
     {[],
      %{
        "status" => "skipped",
@@ -943,8 +1005,7 @@ defmodule Storyarn.ProjectTemplates.Audit do
      }}
   end
 
-  defp materialization_audit(project_id, snapshot, []) do
-    source_counts = materialized_entity_counts(project_id)
+  defp materialization_audit(snapshot, [], source_counts, workspace_id, owner_id, project_id) do
     snapshot_counts = snapshot_entity_counts(snapshot)
     {expected_recovery_counts, deferred_orphan_count} = expected_recovery_counts(snapshot)
 
@@ -957,7 +1018,7 @@ defmodule Storyarn.ProjectTemplates.Audit do
         snapshot_counts
       )
 
-    case recover_project_in_rollback(project_id, snapshot) do
+    case recover_project_in_rollback(project_id, snapshot, workspace_id, owner_id) do
       {:ok, recovered_counts, materialized_asset_errors} ->
         snapshot_recovery_errors =
           count_mismatch_errors(
@@ -998,10 +1059,8 @@ defmodule Storyarn.ProjectTemplates.Audit do
     end
   end
 
-  defp recover_project_in_rollback(project_id, snapshot) do
-    project = Repo.get!(Project, project_id)
-
-    recover_snapshot_in_rollback(snapshot, project.workspace_id, project.owner_id, name: "Template Audit #{project.id}")
+  defp recover_project_in_rollback(project_id, snapshot, workspace_id, owner_id) do
+    recover_snapshot_in_rollback(snapshot, workspace_id, owner_id, name: "Template Audit #{project_id}")
   end
 
   defp recover_snapshot_in_rollback(snapshot, workspace_id, user_id, opts) do
@@ -1009,12 +1068,55 @@ defmodule Storyarn.ProjectTemplates.Audit do
     opts = Keyword.put(opts, :asset_copy_tracker, tracker)
 
     try do
-      snapshot
-      |> recover_project_transaction_result(workspace_id, user_id, opts)
-      |> extract_recover_project_result()
-    after
-      StorageCompensation.cleanup!(tracker)
+      result =
+        snapshot
+        |> recover_project_transaction_result(workspace_id, user_id, opts)
+        |> extract_recover_project_result()
+
+      case StorageCompensation.cleanup_after_rollback(tracker) do
+        :ok -> result
+        {:error, reason} -> {:error, {:asset_cleanup_failed, reason}}
+      end
+    rescue
+      error ->
+        cleanup_after_rollback_preserving_error(tracker)
+        reraise error, __STACKTRACE__
+    catch
+      kind, reason ->
+        cleanup_after_rollback_preserving_error(tracker)
+        :erlang.raise(kind, reason, __STACKTRACE__)
     end
+  end
+
+  defp cleanup_after_rollback_preserving_error(tracker) do
+    case StorageCompensation.cleanup_after_rollback(tracker) do
+      :ok ->
+        :ok
+
+      {:error, cleanup_reason} ->
+        Logger.error(
+          "Template audit asset cleanup failed while preserving the original exception: " <>
+            inspect(cleanup_reason)
+        )
+
+        :ok
+    end
+  rescue
+    cleanup_error ->
+      Logger.error(
+        "Template audit asset cleanup raised while preserving the original exception: " <>
+          Exception.format(:error, cleanup_error, __STACKTRACE__)
+      )
+
+      :ok
+  catch
+    kind, cleanup_reason ->
+      Logger.error(
+        "Template audit asset cleanup threw while preserving the original exception: " <>
+          inspect({kind, cleanup_reason})
+      )
+
+      :ok
   end
 
   defp recover_project_transaction_result(snapshot, workspace_id, user_id, opts) do
@@ -1030,14 +1132,18 @@ defmodule Storyarn.ProjectTemplates.Audit do
         result =
           with {:ok, recovered_project} <-
                  ProjectRecovery.recover_project(workspace_id, snapshot, user_id, recovery_opts) do
-            {:ok, materialized_entity_counts(recovered_project.id),
-             materialized_asset_reference_errors(recovered_project.id)}
+            {:ok, materialized_entity_counts(recovered_project.id), materialized_project_errors(recovered_project.id)}
           end
 
         Repo.rollback({:template_materialization_audit, result})
       end,
       timeout: to_timeout(minute: 5)
     )
+  end
+
+  defp materialized_project_errors(project_id) do
+    snapshot = ProjectSnapshotBuilder.build_snapshot(project_id)
+    project_static_errors(project_id, snapshot) ++ materialized_asset_reference_errors(project_id)
   end
 
   defp extract_recover_project_result({:error, {:template_materialization_audit, {:ok, counts, errors}}}) do

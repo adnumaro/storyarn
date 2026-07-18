@@ -684,8 +684,10 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   @impl true
   def instantiate_snapshot(project_id, snapshot, opts \\ []) do
+    snapshot = FlowSnapshotNormalizer.normalize_entity_ids(snapshot)
+
     with :ok <- validate_flow_snapshot(snapshot) do
-      AssetMaterializationScope.run(opts, fn scoped_opts ->
+      with_asset_materialization_scope(opts, fn scoped_opts ->
         instantiate_flow_snapshot_transaction(
           project_id,
           snapshot,
@@ -696,7 +698,11 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   end
 
   defp instantiate_flow_snapshot_transaction(project_id, snapshot, opts) do
-    result = Repo.transaction(fn -> instantiate_flow_snapshot(project_id, snapshot, opts) end)
+    result =
+      Repo.transaction(
+        fn -> instantiate_flow_snapshot(project_id, snapshot, opts) end,
+        timeout: :infinity
+      )
 
     if retry_main_constraint?(result, opts) do
       instantiate_flow_snapshot_transaction(
@@ -1026,12 +1032,18 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
              Keyword.get(opts, :restore_action)
            ) do
       scoped_result =
-        AssetMaterializationScope.run(opts, fn scoped_opts ->
+        with_asset_materialization_scope(opts, fn scoped_opts ->
           do_restore_snapshot(flow, snapshot, scoped_opts)
         end)
 
       finalize_in_place_flow_restore(scoped_result, snapshot, opts)
     end
+  end
+
+  defp with_asset_materialization_scope(opts, callback) do
+    MaterializationHelpers.with_asset_copy_tracker(opts, fn tracked_opts ->
+      AssetMaterializationScope.run(tracked_opts, callback)
+    end)
   end
 
   defp do_restore_snapshot(flow, snapshot, opts) do
@@ -1251,7 +1263,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
         flow.project_id
       )
     end)
-    |> Repo.transaction()
+    |> Repo.transaction(timeout: :infinity)
     |> then(fn result ->
       if retry_main_constraint?(result, opts) do
         execute_restore_snapshot(

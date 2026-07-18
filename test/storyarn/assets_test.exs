@@ -1,5 +1,6 @@
 defmodule Storyarn.AssetsTest do
   use Storyarn.DataCase, async: true
+  use Oban.Testing, repo: Storyarn.Repo
 
   import Ecto.Query
   import Storyarn.AccountsFixtures
@@ -10,13 +11,16 @@ defmodule Storyarn.AssetsTest do
   import Storyarn.SheetsFixtures
 
   alias Phoenix.LiveView.UploadEntry
+  alias Storyarn.Accounts.User
   alias Storyarn.Assets
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
+  alias Storyarn.Assets.Storage
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Localization
   alias Storyarn.Repo
   alias Storyarn.Sheets.SheetAvatar
+  alias Storyarn.Workers.DeleteStorageObjectsWorker
 
   describe "assets" do
     setup do
@@ -903,6 +907,14 @@ defmodule Storyarn.AssetsTest do
     test "preserves dots and hyphens" do
       assert Assets.sanitize_filename("my-file.v2.png") == "my-file.v2.png"
     end
+
+    test "replaces empty, path-only, and reserved storage names" do
+      assert Assets.sanitize_filename("") == "file"
+      assert Assets.sanitize_filename("/") == "file"
+      assert Assets.sanitize_filename(".") == "file"
+      assert Assets.sanitize_filename("..") == "file"
+      assert Assets.sanitize_filename(".storyarn-copy") == "_storyarn-copy"
+    end
   end
 
   describe "list_assets_for_export/1" do
@@ -1220,46 +1232,128 @@ defmodule Storyarn.AssetsTest do
       end
     end
 
-    test "cleans up storage on database error", %{project: project, user: user} do
+    test "cleans up unique storage after a database constraint error", %{project: project} do
       tmp_dir = System.tmp_dir!()
       tmp_path = Path.join(tmp_dir, "test_cleanup_#{Ecto.UUID.generate()}.pdf")
-      File.write!(tmp_path, "test content for cleanup")
+      content = "test content for database cleanup"
+      File.write!(tmp_path, content)
 
-      # First, create an asset to get a key collision
-      first_entry = %UploadEntry{
-        client_name: "collision_test.pdf",
+      entry = %UploadEntry{
+        client_name: "constraint-cleanup.pdf",
         client_type: "application/pdf",
-        client_size: 23
+        client_size: byte_size(content)
       }
 
-      {:ok, first_asset} = Assets.upload_and_create_asset(tmp_path, first_entry, project, user)
+      nonexistent_user = %User{id: 9_200_000_000 + System.unique_integer([:positive])}
+      blob_key = blob_key_for(project, content, "application/pdf")
+      asset_glob = asset_file_glob(project.id, "constraint-cleanup.pdf")
 
-      # Now try to create a second asset with the same key - we can't easily force
-      # a key collision due to UUID generation, but we can test by creating an asset
-      # with an invalid content_type that will fail changeset validation
-      bad_entry = %UploadEntry{
-        client_name: "bad_type.xyz",
-        client_type: "application/x-malware",
-        client_size: 23
-      }
+      cleanup_job_ids_before =
+        [worker: DeleteStorageObjectsWorker]
+        |> all_enqueued()
+        |> MapSet.new(& &1.id)
 
       try do
-        # This should fail at the changeset validation level after uploading
-        result = Assets.upload_and_create_asset(tmp_path, bad_entry, project, user)
-
-        case result do
-          {:error, _} ->
-            # The function should have cleaned up the storage file
-            assert true
-
-          {:ok, asset} ->
-            # If it somehow succeeded, clean up
-            Assets.storage_delete(asset.key)
+        assert_raise Ecto.ConstraintError, fn ->
+          Assets.upload_and_create_asset(tmp_path, entry, project, nonexistent_user)
         end
+
+        assert Path.wildcard(asset_glob) == []
+
+        assert [] ==
+                 [worker: DeleteStorageObjectsWorker]
+                 |> all_enqueued()
+                 |> Enum.reject(&MapSet.member?(cleanup_job_ids_before, &1.id))
+
+        refute Repo.exists?(from asset in Asset, where: asset.project_id == ^project.id)
+
+        # The deterministic blob is a safe project-scoped cache. It is retained
+        # rather than risking deletion of snapshot content adopted concurrently.
+        assert {:ok, ^content} = Storage.download(blob_key)
       after
         File.rm(tmp_path)
-        Assets.storage_delete(first_asset.key)
+        Storage.delete(blob_key)
+        asset_glob |> Path.wildcard() |> Enum.each(&File.rm/1)
       end
+    end
+
+    test "rejects caller-owned transactions before writing storage", %{
+      project: project,
+      user: user
+    } do
+      content = "transaction-owned upload"
+      blob_key = blob_key_for(project, content, "application/pdf")
+
+      assert {:ok, {:error, :asset_upload_transaction_owner_required}} =
+               Repo.transaction(fn ->
+                 Assets.upload_binary_and_create_asset(
+                   content,
+                   %{filename: "external-transaction.pdf", content_type: "application/pdf"},
+                   project,
+                   user
+                 )
+               end)
+
+      refute Repo.exists?(
+               from asset in Asset,
+                 where: asset.project_id == ^project.id and asset.blob_hash == ^BlobStore.compute_hash(content)
+             )
+
+      assert {:error, :enoent} = Storage.download(blob_key)
+    end
+
+    test "rejects and durably removes a corrupt canonical blob before a safe retry", %{
+      project: project,
+      user: user
+    } do
+      content = "canonical upload content"
+      blob_key = blob_key_for(project, content, "application/pdf")
+
+      assert {:ok, _url} = Storage.upload(blob_key, "partial corrupt bytes", "application/pdf")
+
+      on_exit(fn -> Storage.delete(blob_key) end)
+
+      assert {:error, :blob_hash_mismatch} =
+               Assets.upload_binary_and_create_asset(
+                 content,
+                 %{
+                   filename: "canonical.pdf",
+                   content_type: "application/pdf"
+                 },
+                 project,
+                 user
+               )
+
+      refute Repo.exists?(
+               from asset in Asset,
+                 where:
+                   asset.project_id == ^project.id and
+                     asset.blob_hash == ^BlobStore.compute_hash(content)
+             )
+
+      assert [cleanup_job] = all_enqueued(worker: DeleteStorageObjectsWorker)
+      assert [cleanup_target] = cleanup_job.args["storage_keys"]
+      refute cleanup_target == blob_key
+      assert String.ends_with?(cleanup_target, blob_key)
+
+      assert :ok = perform_job(DeleteStorageObjectsWorker, cleanup_job.args)
+      assert {:error, :enoent} = Storage.download(blob_key)
+
+      assert {:ok, asset} =
+               Assets.upload_binary_and_create_asset(
+                 content,
+                 %{
+                   filename: "canonical.pdf",
+                   content_type: "application/pdf"
+                 },
+                 project,
+                 user
+               )
+
+      on_exit(fn -> Storage.delete(asset.key) end)
+
+      assert asset.blob_hash == BlobStore.compute_hash(content)
+      assert {:ok, ^content} = Storage.download(blob_key)
     end
   end
 
@@ -1849,6 +1943,17 @@ defmodule Storyarn.AssetsTest do
       BlobStore.compute_hash(content),
       BlobStore.ext_from_content_type(content_type)
     )
+  end
+
+  defp asset_file_glob(project_id, filename) do
+    Path.join([storage_upload_dir(), "projects", to_string(project_id), "assets", "*", filename])
+  end
+
+  defp storage_upload_dir do
+    :storyarn
+    |> Application.fetch_env!(:storage)
+    |> Keyword.fetch!(:upload_dir)
+    |> Path.expand()
   end
 
   describe "count_assets_by_type/1 edge cases" do

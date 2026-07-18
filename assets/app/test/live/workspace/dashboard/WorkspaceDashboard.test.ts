@@ -164,29 +164,102 @@ describe("WorkspaceDashboard", () => {
     expect(wrapper.text()).not.toContain("No projects yet");
   });
 
-  it("shows durable failure feedback with a safe installation reference", () => {
-    const { wrapper } = mountDashboard({
+  it("shows a failed installation in a dismissible modal instead of the project grid", async () => {
+    const { live, wrapper } = mountDashboard({
       projects: [],
       templateCreation: {
         templates: [],
-        installations: [
+        installations: [],
+        failures: [
           {
             id: 43,
             project_name: "Broken Demo",
-            status: "failed",
-            stage: "failed",
-            template_id: 10,
-            template_version_id: 11,
+            error_code: "incompatible_template_snapshot",
+            error_message: "This template version is incompatible.",
           },
         ],
       },
     });
 
-    const feedback = wrapper.get('[data-testid="template-installation-43"]');
+    expect(wrapper.find('[data-testid="template-installation-43"]').exists()).toBe(false);
+
+    const feedback = wrapper.get('[data-testid="template-installation-failure-dialog"]');
     expect(feedback.text()).toContain("Broken Demo");
     expect(feedback.text()).toContain("Creation failed");
+    expect(feedback.text()).toContain("No project was created");
     expect(feedback.text()).toContain("Installation #43");
-    expect(feedback.find(".animate-spin").exists()).toBe(false);
+
+    await wrapper.get('[data-testid="dismiss-template-installation-failure"]').trigger("click");
+
+    expect(wrapper.find('[data-testid="template-installation-failure-message"]').exists()).toBe(
+      false,
+    );
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "dismiss_template_installation_failure",
+      { installation_id: 43 },
+      expect.any(Function),
+    );
+  });
+
+  it("does not let a failed installation replace the empty project state", () => {
+    const { wrapper } = mountDashboard({
+      projects: [],
+      templateCreation: {
+        templates: [],
+        installations: [],
+        failures: [
+          {
+            id: 44,
+            project_name: "Broken Demo",
+            error_code: "checksum_mismatch",
+          },
+        ],
+      },
+    });
+
+    expect(wrapper.text()).toContain("No projects yet");
+    expect(wrapper.find('[data-testid="template-installation-44"]').exists()).toBe(false);
+  });
+
+  it("uses a localized generic message for unknown terminal errors", () => {
+    const { wrapper } = mountDashboard({
+      templateCreation: {
+        templates: [],
+        installations: [],
+        failures: [
+          {
+            id: 45,
+            project_name: "Interrupted Demo",
+            error_code: "exception",
+            error_message: "The installation could not be completed.",
+          },
+        ],
+      },
+    });
+
+    const feedback = wrapper.get('[data-testid="template-installation-failure-dialog"]');
+    expect(feedback.text()).toContain("No partial project was kept");
+    expect(feedback.text()).not.toContain("The installation could not be completed");
+  });
+
+  it("explains an invalid sequence exit with the specific recoverable action", () => {
+    const { wrapper } = mountDashboard({
+      templateCreation: {
+        templates: [],
+        installations: [],
+        failures: [
+          {
+            id: 46,
+            project_name: "Legacy Sequence",
+            error_code: "unremappable_subflow_exit_pin",
+          },
+        ],
+      },
+    });
+
+    const feedback = wrapper.get('[data-testid="template-installation-failure-dialog"]');
+    expect(feedback.text()).toContain("invalid sequence exit");
+    expect(feedback.text()).toContain("must be republished");
   });
 
   it("allows another named project from a template that is already installing", async () => {
