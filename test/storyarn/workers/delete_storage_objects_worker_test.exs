@@ -17,6 +17,7 @@ defmodule Storyarn.Workers.DeleteStorageObjectsWorkerTest do
 
     File.mkdir_p!(storage_path)
     on_exit(fn -> File.rmdir(storage_path) end)
+    assert {:error, _reason} = File.rm(storage_path)
 
     job = %Oban.Job{
       args: %{"storage_keys" => [storage_key]},
@@ -45,6 +46,7 @@ defmodule Storyarn.Workers.DeleteStorageObjectsWorkerTest do
 
     File.mkdir_p!(storage_path)
     on_exit(fn -> File.rmdir(storage_path) end)
+    assert {:error, _reason} = File.rm(storage_path)
 
     job = %Oban.Job{
       args: %{"storage_keys" => [cleanup_target]},

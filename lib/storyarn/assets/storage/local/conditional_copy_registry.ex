@@ -67,7 +67,7 @@ defmodule Storyarn.Assets.Storage.Local.ConditionalCopyRegistry do
 
   @spec copy_path_from_owner_marker(String.t()) :: String.t()
   def copy_path_from_owner_marker(path) when is_binary(path) do
-    String.trim_trailing(path, @owner_marker_suffix)
+    String.replace_suffix(path, @owner_marker_suffix, "")
   end
 
   # sobelow_skip ["Traversal.FileModule"]
