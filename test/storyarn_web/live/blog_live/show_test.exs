@@ -38,7 +38,7 @@ defmodule StoryarnWeb.BlogLive.ShowTest do
     assert LazyHTML.attribute(
              LazyHTML.query(document, ~s|meta[property="article:modified_time"]|),
              "content"
-           ) == ["2026-07-15"]
+           ) == ["2026-07-18"]
 
     assert LazyHTML.attribute(LazyHTML.query(document, ~s|meta[property="article:author"]|), "content") ==
              []
@@ -76,7 +76,7 @@ defmodule StoryarnWeb.BlogLive.ShowTest do
 
     assert has_element?(
              view,
-             ~s|#blog-post-content img[src="/images/blog/introducing-storyarn-debug-active-node.png"][alt*="active dialogue node"]|
+             ~s|#blog-post-content img[src="/images/blog/introducing-storyarn-debug-session.jpg"][alt*="active dialogue node for Sera Voss"]|
            )
 
     refute has_element?(view, "#blog-post-content", "spreadsheet")
@@ -140,7 +140,7 @@ defmodule StoryarnWeb.BlogLive.ShowTest do
 
     assert has_element?(
              view,
-             ~s|#blog-post-content img[src="/images/blog/introducing-storyarn-debug-active-node.png"][alt*="nodo de diálogo activo"]|
+             ~s|#blog-post-content img[src="/images/blog/introducing-storyarn-debug-session.jpg"][alt*="nodo de diálogo activo de Sera Voss"]|
            )
 
     refute has_element?(view, "#blog-post-content", "spreadsheet")
