@@ -17,6 +17,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Localization.SourceContract
   alias Storyarn.Projects.Project
+  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Shared.TimeHelpers
@@ -24,7 +25,6 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.Builders.FlowBuilder
-  alias Storyarn.Versioning.Builders.FlowSnapshotNormalizer
   alias Storyarn.Versioning.Builders.SceneBuilder
   alias Storyarn.Versioning.Builders.SheetBuilder
   alias Storyarn.Versioning.RestorePolicy
@@ -173,10 +173,10 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
           {:ok, map()} | {:error, term()}
   def restore_snapshot(project_id, snapshot, opts \\ []) do
     with :ok <- RestorePolicy.ensure_enabled(:project_snapshot_restore) do
-      snapshot = FlowSnapshotNormalizer.normalize_project(snapshot)
-
       Repo.transaction(
         fn ->
+          lock_active_project_for_restore!(project_id)
+
           results = %{
             sheets:
               restore_entities(
@@ -211,6 +211,13 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
         end,
         timeout: to_timeout(minute: 5)
       )
+    end
+  end
+
+  defp lock_active_project_for_restore!(project_id) do
+    case ProjectReferenceIntegrity.lock_active_project(project_id, :update) do
+      {:ok, _project} -> :ok
+      {:error, reason} -> Repo.rollback(reason)
     end
   end
 

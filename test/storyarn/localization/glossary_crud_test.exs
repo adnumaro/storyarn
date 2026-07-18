@@ -5,6 +5,7 @@ defmodule Storyarn.Localization.GlossaryCrudTest do
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Localization
+  alias Storyarn.Repo
 
   describe "glossary entries" do
     test "create_glossary_entry/2 creates an entry" do
@@ -25,6 +26,63 @@ defmodule Storyarn.Localization.GlossaryCrudTest do
       assert entry.target_term == "Eldoria"
       assert entry.target_locale == "es"
       assert entry.do_not_translate == true
+    end
+
+    test "glossary writers reject stale structs after the project enters trash" do
+      project = project_fixture(user_fixture())
+
+      {:ok, entry} =
+        Localization.create_glossary_entry(project, %{
+          source_term: "mana",
+          source_locale: "en",
+          target_term: "maná",
+          target_locale: "es"
+        })
+
+      project
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
+      |> Repo.update!()
+
+      assert {:error, :project_not_active} =
+               Localization.create_glossary_entry(project, %{
+                 source_term: "health",
+                 source_locale: "en",
+                 target_term: "salud",
+                 target_locale: "es"
+               })
+
+      assert {:error, :project_not_active} =
+               Localization.update_glossary_entry(entry, %{target_term: "changed"})
+
+      assert {:error, :project_not_active} =
+               Localization.delete_glossary_entry(entry)
+
+      assert Repo.reload!(entry).target_term == "maná"
+    end
+
+    test "glossary writers reject a forged project owner" do
+      project = project_fixture(user_fixture())
+      foreign_project = project_fixture()
+
+      {:ok, entry} =
+        Localization.create_glossary_entry(project, %{
+          source_term: "mana",
+          source_locale: "en",
+          target_term: "maná",
+          target_locale: "es"
+        })
+
+      forged_entry = %{entry | project_id: foreign_project.id}
+
+      assert {:error, :glossary_entry_not_found} =
+               Localization.update_glossary_entry(forged_entry, %{
+                 target_term: "forged"
+               })
+
+      assert {:error, :glossary_entry_not_found} =
+               Localization.delete_glossary_entry(forged_entry)
+
+      assert Repo.reload!(entry).target_term == "maná"
     end
 
     test "create_glossary_entry/2 validates required fields" do

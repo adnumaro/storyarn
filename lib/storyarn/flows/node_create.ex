@@ -6,9 +6,9 @@ defmodule Storyarn.Flows.NodeCreate do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.NodeCrud
+  alias Storyarn.Flows.ReferenceIntegrity
   alias Storyarn.Localization
-  alias Storyarn.Projects.Project
-  alias Storyarn.References.AvatarIntegrity
+  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Shared.WordCount
@@ -17,11 +17,10 @@ defmodule Storyarn.Flows.NodeCreate do
   @max_reference_depth 20
 
   def create_node(%Flow{} = flow, attrs) do
-    project = Repo.get!(Project, flow.project_id)
     attrs = stringify_keys(attrs)
 
     result =
-      fn -> create_node_in_transaction(flow, project.id, attrs) end
+      fn -> create_node_in_transaction(flow, attrs) end
       |> Repo.transaction()
       |> normalize_item_limit_result()
 
@@ -36,22 +35,43 @@ defmodule Storyarn.Flows.NodeCreate do
     result
   end
 
-  defp create_node_in_transaction(flow, project_id, attrs) do
-    locked_project = Repo.one!(from(p in Project, where: p.id == ^project_id, lock: "FOR UPDATE"))
-
-    with :ok <- Billing.can_create_item?(locked_project),
+  defp create_node_in_transaction(flow, attrs) do
+    with {:ok,
+          %{
+            project: locked_project,
+            project_id: project_id,
+            flow: locked_flow
+          }} <-
+           ReferenceIntegrity.lock_active_flow_for_write(flow),
+         :ok <- Billing.can_create_item?(locked_project),
+         {:ok, parent_id} <-
+           ReferenceIntegrity.lock_node_parent(
+             locked_flow.id,
+             attrs["parent_id"]
+           ),
          {:ok, normalized_data} <-
-           AvatarIntegrity.lock_and_normalize_node_avatar(
-             flow.id,
+           ReferenceIntegrity.lock_and_normalize_node_references(
+             project_id,
+             locked_flow.id,
              attrs["type"],
              attrs["data"] || %{}
            ) do
       attrs
+      |> Map.put("parent_id", parent_id)
       |> Map.put("data", normalized_data)
-      |> then(&create_and_extract_node(flow, &1))
+      |> then(&create_and_extract_node(locked_flow, &1))
     else
-      {:error, reason, details} -> Repo.rollback({reason, details})
-      {:error, reason} -> Repo.rollback(reason)
+      {:error, reason, details} ->
+        Repo.rollback({reason, details})
+
+      {:error, {:invalid_project_reference, :referenced_flow_id, _value} = reason} ->
+        case ProjectReferenceIntegrity.normalize_optional_id(get_in(attrs, ["data", "referenced_flow_id"])) do
+          :error -> Repo.rollback(:invalid_reference)
+          {:ok, _id} -> Repo.rollback(reason)
+        end
+
+      {:error, reason} ->
+        Repo.rollback(reason)
     end
   end
 
@@ -72,7 +92,6 @@ defmodule Storyarn.Flows.NodeCreate do
     case attrs["type"] do
       "entry" -> create_entry_node(flow, attrs)
       "hub" -> create_hub_node(flow, attrs)
-      "subflow" -> validate_and_insert_subflow(flow, attrs)
       _ -> insert_node(flow, attrs)
     end
   end
@@ -141,31 +160,6 @@ defmodule Storyarn.Flows.NodeCreate do
       )
 
     "hub_#{(max_suffix || 0) + 1}"
-  end
-
-  defp validate_and_insert_subflow(%Flow{} = flow, attrs) do
-    referenced_flow_id = get_in(attrs, ["data", "referenced_flow_id"])
-
-    cond do
-      # Allow creation with nil reference (user will set it later)
-      is_nil(referenced_flow_id) || referenced_flow_id == "" ->
-        insert_node(flow, attrs)
-
-      # Reject unparseable IDs
-      is_nil(NodeCrud.safe_to_integer(referenced_flow_id)) ->
-        {:error, :invalid_reference}
-
-      # Cannot reference the same flow
-      to_string(referenced_flow_id) == to_string(flow.id) ->
-        {:error, :self_reference}
-
-      # Check circular reference
-      has_circular_reference?(flow.id, NodeCrud.safe_to_integer(referenced_flow_id)) ->
-        {:error, :circular_reference}
-
-      true ->
-        insert_node(flow, attrs)
-    end
   end
 
   @doc """

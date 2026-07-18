@@ -19,14 +19,21 @@ defmodule Storyarn.Assets do
   alias Storyarn.Billing
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.SequenceConfig
+  alias Storyarn.Flows.SequenceTrack
+  alias Storyarn.Flows.SequenceVisualLayer
+  alias Storyarn.Localization.LocalizedText
   alias Storyarn.Projects.Project
   alias Storyarn.References.AvatarIntegrity
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.ScenePin
+  alias Storyarn.Scenes.SceneZone
   alias Storyarn.Shared.HtmlSanitizer
   alias Storyarn.Shared.SearchHelpers
   alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.BlockGalleryImage
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Workspaces.Workspace
@@ -173,9 +180,8 @@ defmodule Storyarn.Assets do
   """
   @spec create_asset(project(), user(), attrs()) :: {:ok, asset()} | {:error, changeset()}
   def create_asset(%Project{} = project, %User{} = user, attrs) do
-    %Asset{project_id: project.id, uploaded_by_id: user.id}
-    |> Asset.create_changeset(attrs)
-    |> Repo.insert()
+    project
+    |> create_asset_record(user.id, attrs, :generic)
     |> track_asset_created(user, attrs)
   end
 
@@ -184,20 +190,17 @@ defmodule Storyarn.Assets do
   """
   @spec create_asset(project(), attrs()) :: {:ok, asset()} | {:error, changeset()}
   def create_asset(%Project{} = project, attrs) do
-    %Asset{project_id: project.id}
-    |> Asset.create_changeset(attrs)
-    |> Repo.insert()
+    project
+    |> create_asset_record(nil, attrs, :generic)
     |> track_asset_created(nil, attrs)
   end
 
   @doc """
   Updates an asset's metadata.
   """
-  @spec update_asset(asset(), attrs()) :: {:ok, asset()} | {:error, changeset()}
+  @spec update_asset(asset(), attrs()) :: {:ok, asset()} | {:error, changeset() | term()}
   def update_asset(%Asset{} = asset, attrs) do
-    asset
-    |> Asset.update_changeset(attrs)
-    |> Repo.update()
+    Repo.transaction(fn -> update_asset_in_transaction(asset, attrs) end)
   end
 
   @doc """
@@ -208,14 +211,24 @@ defmodule Storyarn.Assets do
   from storage separately, after this returns `{:ok, asset}`.
   """
   @spec delete_asset(asset()) :: {:ok, asset()} | {:error, changeset() | term()}
-  def delete_asset(%Asset{} = asset) do
-    Repo.transaction(fn -> delete_asset_in_transaction(asset) end)
+  def delete_asset(%Asset{id: asset_id, project_id: project_id}) do
+    Repo.transaction(fn ->
+      with {:ok, _project} <- lock_active_project_for_asset_write(project_id),
+           {:ok, asset} <- lock_asset_for_write(asset_id, project_id) do
+        delete_asset_in_transaction(asset)
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
   end
 
   defp delete_asset_in_transaction(asset) do
+    detach_asset_metadata_links(asset)
+
     case detach_sheet_avatar_references(asset) do
       {:ok, sheet_ids} ->
         _updated_flow_nodes = clear_flow_node_audio_references(asset)
+        _updated_localized_texts = clear_localized_voiceover_references(asset)
         Enum.each(sheet_ids, &promote_default_avatar/1)
         delete_asset_or_rollback(asset)
 
@@ -290,43 +303,273 @@ defmodule Storyarn.Assets do
   Returns a map of usage references for an asset within its project.
 
   Checks:
-  - Flow nodes with `data->>'audio_asset_id'` matching the asset (excludes soft-deleted)
-  - Sheets with avatars referencing the asset via `sheet_avatars` (excludes soft-deleted)
-  - Sheets with `banner_asset_id` matching the asset (excludes soft-deleted)
-  - Scenes with `background_asset_id` matching the asset (excludes soft-deleted)
-  - Scene pins with `icon_asset_id` matching the asset (excludes soft-deleted scenes)
+  - Flow nodes with `data->>'audio_asset_id'` matching the asset
+  - Sequence visual layers and audio tracks
+  - Sheets with avatars or banners referencing the asset
+  - Scenes with backgrounds, pin icons, or zone label icons referencing the asset
+  - Localized voice-over rows that reference the asset
+  - Gallery images that reference the asset
+
+  Content in trash is deliberately included because hard-deleting the asset
+  also clears or cascades those references. Usage maps expose `:trashed` (or
+  the source deletion timestamps for gallery rows) so callers can distinguish
+  inactive content without hiding its data-loss impact.
 
   Returns:
       %{
-        flow_nodes: [%{node: node, flow: flow}],
-        sheet_avatars: [sheet],
-        sheet_banners: [sheet],
-        scene_backgrounds: [scene],
-        scene_pin_icons: [%{pin_id: id, pin_label: label, scene_id: id, scene_name: name}]
+        asset_metadata_links: [map()],
+        flow_nodes: [map()],
+        sequence_visual_layers: [map()],
+        sequence_tracks: [map()],
+        sheet_avatars: [map()],
+        sheet_banners: [map()],
+        scene_backgrounds: [map()],
+        scene_pin_icons: [map()],
+        scene_zone_icons: [map()],
+        localized_voiceovers: [map()],
+        gallery_images: [map()]
       }
   """
   @spec get_asset_usages(integer(), integer()) :: %{
+          asset_metadata_links: [map()],
           flow_nodes: [map()],
-          sheet_avatars: [Sheet.t()],
-          sheet_banners: [Sheet.t()],
-          scene_backgrounds: [Scene.t()],
-          scene_pin_icons: [map()]
+          sequence_visual_layers: [map()],
+          sequence_tracks: [map()],
+          sheet_avatars: [map()],
+          sheet_banners: [map()],
+          scene_backgrounds: [map()],
+          scene_pin_icons: [map()],
+          scene_zone_icons: [map()],
+          localized_voiceovers: [map()],
+          gallery_images: [map()]
         }
   def get_asset_usages(project_id, asset_id) do
-    flow_nodes = Storyarn.Flows.list_nodes_using_asset(project_id, asset_id)
-    sheet_avatars = Storyarn.Sheets.list_sheets_using_asset_as_avatar(project_id, asset_id)
-    sheet_banners = Storyarn.Sheets.list_sheets_using_asset_as_banner(project_id, asset_id)
+    asset_metadata_links = list_asset_metadata_links(project_id, asset_id)
+    flow_nodes = list_flow_nodes_using_asset(project_id, asset_id)
+    sequence_visual_layers = list_sequence_visual_layers_using_asset(project_id, asset_id)
+    sequence_tracks = list_sequence_tracks_using_asset(project_id, asset_id)
+    sheet_avatars = list_sheet_avatars_using_asset(project_id, asset_id)
+    sheet_banners = list_sheet_banners_using_asset(project_id, asset_id)
     scene_backgrounds = list_scenes_using_asset_as_background(project_id, asset_id)
     scene_pin_icons = list_scene_pins_using_asset_as_icon(project_id, asset_id)
+    scene_zone_icons = list_scene_zones_using_asset_as_icon(project_id, asset_id)
+    localized_voiceovers = list_localized_voiceovers_using_asset(project_id, asset_id)
+    gallery_images = list_gallery_images_using_asset(project_id, asset_id)
 
     %{
+      asset_metadata_links: asset_metadata_links,
       flow_nodes: flow_nodes,
+      sequence_visual_layers: sequence_visual_layers,
+      sequence_tracks: sequence_tracks,
       sheet_avatars: sheet_avatars,
       sheet_banners: sheet_banners,
       scene_backgrounds: scene_backgrounds,
-      scene_pin_icons: scene_pin_icons
+      scene_pin_icons: scene_pin_icons,
+      scene_zone_icons: scene_zone_icons,
+      localized_voiceovers: localized_voiceovers,
+      gallery_images: gallery_images
     }
   end
+
+  defp lock_active_project_for_asset_write(project_id) do
+    case Repo.one(
+           from(project in Project,
+             where: project.id == ^project_id,
+             lock: "FOR UPDATE"
+           )
+         ) do
+      %Project{deleted_at: nil} = project -> {:ok, project}
+      %Project{} -> {:error, :project_not_active}
+      nil -> {:error, :project_not_found}
+    end
+  end
+
+  defp lock_asset_for_write(asset_id, project_id) do
+    case Repo.one(
+           from(asset in Asset,
+             where: asset.id == ^asset_id and asset.project_id == ^project_id,
+             lock: "FOR UPDATE"
+           )
+         ) do
+      %Asset{} = asset -> {:ok, asset}
+      nil -> {:error, :asset_not_found}
+    end
+  end
+
+  defp create_asset_record(%Project{} = project, uploaded_by_id, attrs, upload_kind) do
+    Repo.transaction(fn ->
+      with {:ok, _project} <- lock_active_project_for_asset_write(project.id),
+           changeset =
+             asset_create_changeset(
+               %Asset{project_id: project.id, uploaded_by_id: uploaded_by_id},
+               attrs,
+               upload_kind
+             ),
+           {:ok, asset} <- Repo.insert(changeset) do
+        asset
+      else
+        {:error, reason} ->
+          Repo.rollback(reason)
+      end
+    end)
+  end
+
+  defp update_asset_in_transaction(asset, attrs) do
+    with {:ok, _project} <- lock_active_project_for_asset_write(asset.project_id),
+         {:ok, locked_asset} <- lock_asset_for_write(asset.id, asset.project_id),
+         {:ok, updated_asset} <-
+           locked_asset
+           |> Asset.update_changeset(attrs)
+           |> Repo.update() do
+      updated_asset
+    else
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp asset_create_changeset(asset, attrs, :generic), do: Asset.create_changeset(asset, attrs)
+
+  defp asset_create_changeset(asset, attrs, :sanitized_svg), do: Asset.create_sanitized_svg_changeset(asset, attrs)
+
+  defp detach_asset_metadata_links(%Asset{id: asset_id, project_id: project_id}) do
+    asset_id_string = to_string(asset_id)
+
+    project_id
+    |> list_assets_with_metadata_link(asset_id_string, lock: "FOR UPDATE")
+    |> Enum.each(fn linked_asset ->
+      metadata = remove_asset_metadata_link(linked_asset.metadata || %{}, asset_id_string)
+
+      if metadata != (linked_asset.metadata || %{}) do
+        linked_asset
+        |> Asset.update_changeset(%{metadata: metadata})
+        |> Repo.update!()
+      end
+    end)
+
+    :ok
+  end
+
+  defp list_asset_metadata_links(project_id, asset_id) do
+    asset_id_string = to_string(asset_id)
+
+    project_id
+    |> list_assets_with_metadata_link(asset_id_string)
+    |> Enum.map(fn asset ->
+      %{
+        id: asset.id,
+        filename: asset.filename,
+        relations: asset_metadata_link_relations(asset.metadata || %{}, asset_id_string)
+      }
+    end)
+  end
+
+  defp list_assets_with_metadata_link(project_id, asset_id_string, opts \\ []) do
+    query =
+      from(asset in Asset,
+        where: asset.project_id == ^project_id,
+        where:
+          fragment("?->>'web_asset_id' = ?", asset.metadata, ^asset_id_string) or
+            fragment("?->>'original_asset_id' = ?", asset.metadata, ^asset_id_string) or
+            fragment(
+              """
+              EXISTS (
+                SELECT 1
+                FROM jsonb_each_text(
+                  CASE
+                    WHEN jsonb_typeof(?->'variant_asset_ids') = 'object'
+                    THEN ?->'variant_asset_ids'
+                    ELSE '{}'::jsonb
+                  END
+                ) AS variant_link
+                WHERE variant_link.value = ?
+              )
+              """,
+              asset.metadata,
+              asset.metadata,
+              ^asset_id_string
+            ),
+        order_by: [asc: asset.filename, asc: asset.id]
+      )
+
+    case Keyword.get(opts, :lock) do
+      nil -> Repo.all(query)
+      "FOR UPDATE" -> query |> lock("FOR UPDATE") |> Repo.all()
+    end
+  end
+
+  defp remove_asset_metadata_link(metadata, asset_id_string) do
+    metadata
+    |> maybe_remove_web_asset_link(asset_id_string)
+    |> maybe_remove_original_asset_link(asset_id_string)
+    |> remove_profile_variant_links(asset_id_string)
+  end
+
+  defp maybe_remove_web_asset_link(metadata, asset_id_string) do
+    if metadata_id_matches?(metadata["web_asset_id"], asset_id_string) do
+      Map.drop(metadata, ["web_asset_id", "web_url"])
+    else
+      metadata
+    end
+  end
+
+  defp maybe_remove_original_asset_link(metadata, asset_id_string) do
+    if metadata_id_matches?(metadata["original_asset_id"], asset_id_string) do
+      Map.delete(metadata, "original_asset_id")
+    else
+      metadata
+    end
+  end
+
+  defp remove_profile_variant_links(metadata, asset_id_string) do
+    case metadata["variant_asset_ids"] do
+      profiles when is_map(profiles) ->
+        profiles =
+          Map.reject(profiles, fn {_profile, asset_id} ->
+            metadata_id_matches?(asset_id, asset_id_string)
+          end)
+
+        if map_size(profiles) == 0 do
+          Map.delete(metadata, "variant_asset_ids")
+        else
+          Map.put(metadata, "variant_asset_ids", profiles)
+        end
+
+      _ ->
+        metadata
+    end
+  end
+
+  defp asset_metadata_link_relations(metadata, asset_id_string) do
+    []
+    |> maybe_add_metadata_relation(
+      metadata_id_matches?(metadata["web_asset_id"], asset_id_string),
+      "web_variant"
+    )
+    |> maybe_add_metadata_relation(
+      metadata_id_matches?(metadata["original_asset_id"], asset_id_string),
+      "original"
+    )
+    |> maybe_add_metadata_relation(profile_variant_link?(metadata, asset_id_string), "profile_variant")
+    |> Enum.reverse()
+  end
+
+  defp profile_variant_link?(%{"variant_asset_ids" => profiles}, asset_id_string) when is_map(profiles) do
+    Enum.any?(profiles, fn {_profile, asset_id} ->
+      metadata_id_matches?(asset_id, asset_id_string)
+    end)
+  end
+
+  defp profile_variant_link?(_metadata, _asset_id_string), do: false
+
+  defp maybe_add_metadata_relation(relations, true, relation), do: [relation | relations]
+  defp maybe_add_metadata_relation(relations, false, _relation), do: relations
+
+  defp metadata_id_matches?(value, asset_id_string) when is_integer(value),
+    do: Integer.to_string(value) == asset_id_string
+
+  defp metadata_id_matches?(value, asset_id_string) when is_binary(value), do: value == asset_id_string
+
+  defp metadata_id_matches?(_value, _asset_id_string), do: false
 
   @doc """
   Returns the total number of usage references for an asset.
@@ -416,7 +659,6 @@ defmodule Storyarn.Assets do
           join: f in Flow,
           on: n.flow_id == f.id,
           where: f.project_id == ^project_id,
-          where: is_nil(n.deleted_at),
           where: fragment("?->>'audio_asset_id' = ?", n.data, ^asset_id_str),
           update: [set: [data: fragment("? - 'audio_asset_id'", n.data), updated_at: ^now]]
         ),
@@ -426,31 +668,237 @@ defmodule Storyarn.Assets do
     count
   end
 
+  defp clear_localized_voiceover_references(%Asset{id: asset_id, project_id: project_id}) do
+    text_ids =
+      Repo.all(
+        from(text in LocalizedText,
+          where:
+            text.project_id == ^project_id and
+              text.vo_asset_id == ^asset_id,
+          order_by: [asc: text.id],
+          lock: "FOR UPDATE",
+          select: text.id
+        )
+      )
+
+    if text_ids == [] do
+      0
+    else
+      now = TimeHelpers.now()
+
+      query =
+        from(text in LocalizedText,
+          where: text.id in ^text_ids,
+          update: [
+            set: [
+              vo_asset_id: nil,
+              vo_status:
+                fragment(
+                  "CASE WHEN ? THEN 'needed' ELSE 'none' END",
+                  text.vo_eligible
+                ),
+              updated_at: ^now
+            ],
+            inc: [lock_version: 1]
+          ]
+        )
+
+      {count, _rows} = Repo.update_all(query, [])
+
+      count
+    end
+  end
+
+  defp list_flow_nodes_using_asset(project_id, asset_id) do
+    asset_id = to_string(asset_id)
+
+    Repo.all(
+      from(node in FlowNode,
+        join: flow in Flow,
+        on: node.flow_id == flow.id,
+        where:
+          flow.project_id == ^project_id and
+            fragment("?->>'audio_asset_id' = ?", node.data, ^asset_id),
+        order_by: [asc: flow.name, asc: node.id],
+        select: %{
+          node_id: node.id,
+          node_type: node.type,
+          flow_id: flow.id,
+          flow_name: flow.name,
+          trashed: not is_nil(node.deleted_at) or not is_nil(flow.deleted_at)
+        }
+      )
+    )
+  end
+
+  defp list_sequence_visual_layers_using_asset(project_id, asset_id) do
+    Repo.all(
+      from(layer in SequenceVisualLayer,
+        join: node in FlowNode,
+        on: layer.flow_node_id == node.id,
+        join: flow in Flow,
+        on: node.flow_id == flow.id,
+        left_join: config in SequenceConfig,
+        on: config.flow_node_id == node.id,
+        where: flow.project_id == ^project_id and layer.asset_id == ^asset_id,
+        order_by: [asc: flow.name, asc: config.name, asc: layer.z_index, asc: layer.id],
+        select: %{
+          id: layer.id,
+          node_id: node.id,
+          flow_id: flow.id,
+          flow_name: flow.name,
+          sequence_name: config.name,
+          label: layer.label,
+          kind: layer.kind,
+          trashed: not is_nil(node.deleted_at) or not is_nil(flow.deleted_at)
+        }
+      )
+    )
+  end
+
+  defp list_sequence_tracks_using_asset(project_id, asset_id) do
+    Repo.all(
+      from(track in SequenceTrack,
+        join: node in FlowNode,
+        on: track.flow_node_id == node.id,
+        join: flow in Flow,
+        on: node.flow_id == flow.id,
+        left_join: config in SequenceConfig,
+        on: config.flow_node_id == node.id,
+        where: flow.project_id == ^project_id and track.asset_id == ^asset_id,
+        order_by: [asc: flow.name, asc: config.name, asc: track.kind, asc: track.id],
+        select: %{
+          id: track.id,
+          node_id: node.id,
+          flow_id: flow.id,
+          flow_name: flow.name,
+          sequence_name: config.name,
+          kind: track.kind,
+          trashed: not is_nil(node.deleted_at) or not is_nil(flow.deleted_at)
+        }
+      )
+    )
+  end
+
+  defp list_sheet_avatars_using_asset(project_id, asset_id) do
+    Repo.all(
+      from(sheet in Sheet,
+        join: avatar in SheetAvatar,
+        on: avatar.sheet_id == sheet.id,
+        where: sheet.project_id == ^project_id and avatar.asset_id == ^asset_id,
+        distinct: true,
+        order_by: [asc: sheet.name, asc: sheet.id],
+        select: %{
+          id: sheet.id,
+          name: sheet.name,
+          trashed: not is_nil(sheet.deleted_at)
+        }
+      )
+    )
+  end
+
+  defp list_sheet_banners_using_asset(project_id, asset_id) do
+    Repo.all(
+      from(sheet in Sheet,
+        where: sheet.project_id == ^project_id and sheet.banner_asset_id == ^asset_id,
+        order_by: [asc: sheet.name, asc: sheet.id],
+        select: %{
+          id: sheet.id,
+          name: sheet.name,
+          trashed: not is_nil(sheet.deleted_at)
+        }
+      )
+    )
+  end
+
+  defp list_localized_voiceovers_using_asset(project_id, asset_id) do
+    Repo.all(
+      from(text in LocalizedText,
+        where:
+          text.project_id == ^project_id and
+            text.vo_asset_id == ^asset_id,
+        order_by: [asc: text.locale_code, asc: text.id],
+        select: %{
+          id: text.id,
+          locale_code: text.locale_code,
+          source_type: text.source_type,
+          source_id: text.source_id,
+          source_text: text.source_text,
+          archived_at: text.archived_at
+        }
+      )
+    )
+  end
+
+  defp list_gallery_images_using_asset(project_id, asset_id) do
+    Repo.all(
+      from(gallery_image in BlockGalleryImage,
+        join: block in Block,
+        on: block.id == gallery_image.block_id,
+        join: sheet in Sheet,
+        on: sheet.id == block.sheet_id,
+        where:
+          sheet.project_id == ^project_id and
+            gallery_image.asset_id == ^asset_id,
+        order_by: [asc: sheet.name, asc: block.position, asc: gallery_image.position],
+        select: %{
+          id: gallery_image.id,
+          block_id: block.id,
+          sheet_id: sheet.id,
+          sheet_name: sheet.name,
+          label: gallery_image.label,
+          block_deleted_at: block.deleted_at,
+          sheet_deleted_at: sheet.deleted_at
+        }
+      )
+    )
+  end
+
   defp list_scenes_using_asset_as_background(project_id, asset_id) do
     Repo.all(
-      from(s in Scene,
-        where: s.project_id == ^project_id,
-        where: is_nil(s.deleted_at),
-        where: s.background_asset_id == ^asset_id,
-        order_by: [asc: s.name]
+      from(scene in Scene,
+        where: scene.project_id == ^project_id and scene.background_asset_id == ^asset_id,
+        order_by: [asc: scene.name, asc: scene.id],
+        select: %{
+          id: scene.id,
+          name: scene.name,
+          trashed: not is_nil(scene.deleted_at)
+        }
       )
     )
   end
 
   defp list_scene_pins_using_asset_as_icon(project_id, asset_id) do
     Repo.all(
-      from(p in ScenePin,
-        join: s in Scene,
-        on: p.scene_id == s.id,
-        where: s.project_id == ^project_id,
-        where: is_nil(s.deleted_at),
-        where: p.icon_asset_id == ^asset_id,
-        order_by: [asc: s.name, asc: p.label],
+      from(pin in ScenePin,
+        join: scene in Scene,
+        on: pin.scene_id == scene.id,
+        where: scene.project_id == ^project_id and pin.icon_asset_id == ^asset_id,
+        order_by: [asc: scene.name, asc: pin.label, asc: pin.id],
         select: %{
-          pin_id: p.id,
-          pin_label: p.label,
-          scene_id: s.id,
-          scene_name: s.name
+          pin_id: pin.id,
+          pin_label: pin.label,
+          scene_id: scene.id,
+          scene_name: scene.name,
+          trashed: not is_nil(scene.deleted_at)
+        }
+      )
+    )
+  end
+
+  defp list_scene_zones_using_asset_as_icon(project_id, asset_id) do
+    Repo.all(
+      from(zone in SceneZone,
+        join: scene in Scene,
+        on: zone.scene_id == scene.id,
+        where: scene.project_id == ^project_id and zone.label_icon_asset_id == ^asset_id,
+        order_by: [asc: scene.name, asc: zone.name, asc: zone.id],
+        select: %{
+          zone_id: zone.id,
+          zone_name: zone.name,
+          scene_id: scene.id,
+          scene_name: scene.name,
+          trashed: not is_nil(scene.deleted_at)
         }
       )
     )
@@ -1082,9 +1530,8 @@ defmodule Storyarn.Assets do
   defp do_create_asset(project, user, attrs, :generic), do: do_create_asset(project, user, attrs)
 
   defp do_create_asset(%Project{} = project, user, attrs, :sanitized_svg) do
-    %Asset{project_id: project.id, uploaded_by_id: uploaded_by_id(user)}
-    |> Asset.create_sanitized_svg_changeset(attrs)
-    |> Repo.insert()
+    project
+    |> create_asset_record(uploaded_by_id(user), attrs, :sanitized_svg)
     |> track_asset_created(user, attrs)
   end
 

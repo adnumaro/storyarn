@@ -137,6 +137,7 @@ defmodule Storyarn.Localization.LocalizedText do
     |> validate_inclusion(:status, @valid_statuses)
     |> validate_inclusion(:vo_status, @valid_vo_statuses)
     |> validate_vo_eligibility()
+    |> validate_recorded_voiceover_has_asset()
     |> validate_length(:locale_code, min: 2, max: LocaleCode.max_length())
     |> validate_format(:locale_code, LocaleCode.format())
     |> unique_constraint([:source_type, :source_id, :source_field, :locale_code],
@@ -152,6 +153,9 @@ defmodule Storyarn.Localization.LocalizedText do
     |> check_constraint(:content_role, name: :localized_texts_source_metadata_runtime)
     |> check_constraint(:vo_status, name: :localized_texts_vo_status_valid)
     |> check_constraint(:vo_status, name: :localized_texts_vo_requires_eligible_source)
+    |> check_constraint(:vo_asset_id,
+      name: :localized_texts_recorded_voiceover_requires_asset
+    )
   end
 
   @doc """
@@ -178,6 +182,7 @@ defmodule Storyarn.Localization.LocalizedText do
     |> validate_inclusion(:status, @valid_statuses)
     |> validate_inclusion(:vo_status, @valid_vo_statuses)
     |> validate_vo_eligibility()
+    |> validate_recorded_voiceover_has_asset()
     |> foreign_key_constraint(:vo_asset_id)
     |> foreign_key_constraint(:speaker_sheet_id)
     |> foreign_key_constraint(:translated_by_id)
@@ -188,6 +193,9 @@ defmodule Storyarn.Localization.LocalizedText do
     |> check_constraint(:status, name: :localized_texts_final_requires_current_translation)
     |> check_constraint(:vo_status, name: :localized_texts_vo_status_valid)
     |> check_constraint(:vo_status, name: :localized_texts_vo_requires_eligible_source)
+    |> check_constraint(:vo_asset_id,
+      name: :localized_texts_recorded_voiceover_requires_asset
+    )
     |> optimistic_lock(:lock_version)
   end
 
@@ -214,9 +222,13 @@ defmodule Storyarn.Localization.LocalizedText do
     |> validate_inclusion(:archive_reason, @valid_archive_reasons)
     |> validate_runtime_source_metadata()
     |> validate_vo_eligibility()
+    |> validate_recorded_voiceover_has_asset()
     |> check_constraint(:content_role, name: :localized_texts_source_metadata_runtime)
     |> check_constraint(:vo_status, name: :localized_texts_vo_status_valid)
     |> check_constraint(:vo_status, name: :localized_texts_vo_requires_eligible_source)
+    |> check_constraint(:vo_asset_id,
+      name: :localized_texts_recorded_voiceover_requires_asset
+    )
     |> check_constraint(:archive_reason, name: :localized_texts_archive_reason_valid)
     |> optimistic_lock(:lock_version)
   end
@@ -288,6 +300,15 @@ defmodule Storyarn.Localization.LocalizedText do
 
   defp maybe_add_ineligible_vo_error(changeset, field, true) do
     add_error(changeset, field, "is only available for spoken dialogue and responses")
+  end
+
+  defp validate_recorded_voiceover_has_asset(changeset) do
+    if get_field(changeset, :vo_status) in ["recorded", "approved"] and
+         is_nil(get_field(changeset, :vo_asset_id)) do
+      add_error(changeset, :vo_asset_id, "is required for recorded or approved voice-over")
+    else
+      changeset
+    end
   end
 
   defp validate_translation_is_current_when_final(changeset) do

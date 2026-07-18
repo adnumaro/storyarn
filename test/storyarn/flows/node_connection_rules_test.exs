@@ -22,6 +22,29 @@ defmodule Storyarn.Flows.NodeConnectionRulesTest do
              }) == ["accept", "decline"]
     end
 
+    test "accepts only verified dialogue pin aliases and ignores malformed responses" do
+      data = %{
+        "responses" => [
+          %{"id" => "response_first"},
+          "malformed",
+          %{"id" => ""},
+          %{"id" => %{"malformed" => true}}
+        ]
+      }
+
+      assert NodeConnectionRules.output_pins("dialogue", data) == ["response_first"]
+
+      pins = NodeConnectionRules.accepted_output_pins("dialogue", data)
+      assert pins == ["response_first", "resp_response_first"]
+      assert NodeConnectionRules.valid_output_pin?("dialogue", data, "response_first")
+      assert NodeConnectionRules.valid_output_pin?("dialogue", data, "resp_response_first")
+      refute NodeConnectionRules.valid_output_pin?("dialogue", data, "response_missing")
+
+      malformed_data = %{"responses" => ["malformed"]}
+      assert NodeConnectionRules.accepted_output_pins("dialogue", malformed_data) == []
+      assert NodeConnectionRules.output_pins("dialogue", "malformed") == []
+    end
+
     test "uses true and false for boolean conditions" do
       assert NodeConnectionRules.output_pins("condition", %{"switch_mode" => false}) ==
                ["true", "false"]
@@ -39,6 +62,22 @@ defmodule Storyarn.Flows.NodeConnectionRulesTest do
                  "blocks" => [],
                  "rules" => [%{"id" => "legacy-case"}]
                }
+             }) == ["default"]
+
+      encoded =
+        Jason.encode!(%{
+          "logic" => "all",
+          "blocks" => [%{"id" => "encoded-case"}, "malformed"]
+        })
+
+      assert NodeConnectionRules.output_pins("condition", %{
+               "switch_mode" => true,
+               "condition" => encoded
+             }) == ["encoded-case", "default"]
+
+      assert NodeConnectionRules.output_pins("condition", %{
+               "switch_mode" => true,
+               "condition" => "not json"
              }) == ["default"]
     end
 

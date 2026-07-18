@@ -69,6 +69,86 @@ defmodule Storyarn.Flows.FlowNodeTest do
       refute changeset.valid?
       assert Enum.any?(changeset.errors, &match?({:data, {"responses must be a list", _}}, &1))
     end
+
+    test "updates never invent response ids and preserve the dialogue identity" do
+      localization_id = "dialogue_existing"
+
+      node = %FlowNode{
+        type: "dialogue",
+        data: %{
+          "localization_id" => localization_id,
+          "responses" => [%{"id" => "response_existing", "text" => "Before"}]
+        }
+      }
+
+      missing_response_id =
+        FlowNode.data_changeset(node, %{
+          data: %{
+            "responses" => [%{"text" => "After"}]
+          }
+        })
+
+      refute missing_response_id.valid?
+      assert Ecto.Changeset.get_field(missing_response_id, :data)["localization_id"] == localization_id
+
+      assert Enum.any?(
+               missing_response_id.errors,
+               &match?({:data, {"every response must contain a valid id", _}}, &1)
+             )
+
+      changed_localization_id =
+        FlowNode.data_changeset(node, %{
+          data: %{
+            "localization_id" => "dialogue_replacement",
+            "responses" => [%{"id" => "response_existing", "text" => "After"}]
+          }
+        })
+
+      refute changed_localization_id.valid?
+
+      assert Enum.any?(
+               changed_localization_id.errors,
+               &match?({:data, {"cannot change an existing localization_id", _}}, &1)
+             )
+    end
+
+    test "snapshot materialization preserves explicit identities and rejects missing ones" do
+      attrs = %{
+        type: "dialogue",
+        data: %{
+          "localization_id" => "dialogue_snapshot",
+          "responses" => [
+            %{"id" => "response_snapshot_one", "text" => "One"},
+            %{"id" => "response_snapshot_two", "text" => "Two"}
+          ]
+        }
+      }
+
+      changeset = FlowNode.materialize_changeset(%FlowNode{}, attrs)
+      assert changeset.valid?
+      assert Ecto.Changeset.get_field(changeset, :data) == attrs.data
+
+      missing_localization_id =
+        FlowNode.materialize_changeset(%FlowNode{}, %{
+          type: "dialogue",
+          data: %{"responses" => attrs.data["responses"]}
+        })
+
+      refute missing_localization_id.valid?
+      refute Ecto.Changeset.get_field(missing_localization_id, :data)["localization_id"]
+
+      missing_response_id =
+        FlowNode.materialize_changeset(%FlowNode{}, %{
+          type: "dialogue",
+          data: %{
+            "localization_id" => "dialogue_snapshot",
+            "responses" => [%{"text" => "No identity"}]
+          }
+        })
+
+      refute missing_response_id.valid?
+      refute hd(Ecto.Changeset.get_field(missing_response_id, :data)["responses"])["id"]
+    end
   end
 
   describe "Hub color normalization" do

@@ -108,7 +108,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.Node do
     parsed_ref_id = if ref_id, do: Flows.safe_to_integer(ref_id)
 
     case NodeHelpers.persist_node_update(socket, node.id, fn data ->
-           Map.put(data, "referenced_flow_id", ref_id)
+           Map.put(data, "referenced_flow_id", parsed_ref_id)
          end) do
       {:noreply, updated_socket} ->
         exit_nodes = load_exit_nodes(parsed_ref_id)

@@ -80,17 +80,21 @@ defmodule Storyarn.Flows.SequenceCrudTest do
     end
 
     test "rejects broken flow_id FK" do
-      assert {:error, cs} = Flows.create_sequence(-1, %{"name" => "s"})
-      assert %{flow_id: ["does not exist"]} = errors_on(cs)
+      assert {:error, :flow_not_found} =
+               Flows.create_sequence(-1, %{"name" => "s"})
     end
 
-    test "rejects parent_id pointing to a non-sequence node (DB trigger)" do
+    test "rejects parent_id pointing to a non-sequence node before writing" do
       %{flow: flow} = setup_flow()
       non_seq = node_fixture(flow, %{type: "dialogue", data: %{"text" => "a"}})
 
-      assert_raise Postgrex.Error, ~r/only sequence nodes can be parents/, fn ->
-        Flows.create_sequence(flow.id, %{"name" => "bad", "parent_id" => non_seq.id})
-      end
+      assert {:error, {:invalid_node_parent, parent_id}} =
+               Flows.create_sequence(flow.id, %{
+                 "name" => "bad",
+                 "parent_id" => non_seq.id
+               })
+
+      assert parent_id == non_seq.id
     end
   end
 
@@ -298,17 +302,16 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       assert Flows.get_sequence_visual_layer(seq.id, layer.id) == nil
     end
 
-    test "DB trigger rejects layers pointing to non-sequence flow_nodes" do
+    test "writer rejects layers pointing to non-sequence flow_nodes" do
       %{flow: flow, project: project, user: user} = setup_flow()
       asset = Storyarn.AssetsFixtures.image_asset_fixture(project, user)
       dialogue = node_fixture(flow, %{type: "dialogue", data: %{"text" => "x"}})
 
-      assert_raise Postgrex.Error, ~r/must reference a sequence node/, fn ->
-        Flows.create_sequence_visual_layer(dialogue.id, %{
-          "kind" => "backdrop",
-          "asset_id" => asset.id
-        })
-      end
+      assert {:error, :sequence_not_found} =
+               Flows.create_sequence_visual_layer(dialogue.id, %{
+                 "kind" => "backdrop",
+                 "asset_id" => asset.id
+               })
     end
   end
 
@@ -379,13 +382,12 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       assert {:error, :invalid_kind} = Flows.clear_sequence_track(seq.id, "narration")
     end
 
-    test "DB trigger rejects tracks pointing to non-sequence flow_nodes" do
+    test "writer rejects tracks pointing to non-sequence flow_nodes" do
       %{flow: flow} = setup_flow()
       dialogue = node_fixture(flow, %{type: "dialogue", data: %{"text" => "x"}})
 
-      assert_raise Postgrex.Error, ~r/must reference a sequence node/, fn ->
-        Flows.upsert_sequence_track(dialogue.id, "music", %{})
-      end
+      assert {:error, :sequence_not_found} =
+               Flows.upsert_sequence_track(dialogue.id, "music", %{})
     end
 
     test "UNIQUE (flow_node_id, kind) enforced — independent kinds coexist" do
@@ -423,6 +425,17 @@ defmodule Storyarn.Flows.SequenceCrudTest do
   end
 
   describe "delete_sequence/1 and restore_sequence/1" do
+    test "reloads the persisted node so a forged type cannot delete a dialogue" do
+      %{flow: flow} = setup_flow()
+      dialogue = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Keep me"}})
+
+      assert {:error, :sequence_not_found} =
+               Flows.delete_sequence(%{dialogue | type: "sequence"})
+
+      assert Repo.get!(FlowNode, dialogue.id).deleted_at == nil
+      assert Repo.get!(FlowNode, dialogue.id).type == "dialogue"
+    end
+
     test "soft-delete sets deleted_at; restore clears it" do
       %{flow: flow} = setup_flow()
       {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "s"})

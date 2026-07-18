@@ -12,6 +12,7 @@ defmodule Storyarn.Repo.Migrations.RuntimeLocalizationRepairTest do
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Flows.FlowConnection
   alias Storyarn.Repo.Migrations.RuntimeLocalizationRepair
 
   test "preserves valid runtime IDs and avoids IDs reserved by references" do
@@ -49,7 +50,7 @@ defmodule Storyarn.Repo.Migrations.RuntimeLocalizationRepairTest do
       connection_fixture(flow, dialogue, target, %{source_pin: "legacy.response"})
 
     _reserved_connection =
-      connection_fixture(flow, dialogue, target, %{source_pin: pin_reservation})
+      insert_legacy_connection!(flow, dialogue, target, pin_reservation)
 
     ambiguous_connection =
       connection_fixture(flow, dialogue, target, %{source_pin: "resp_bad.choice"})
@@ -173,6 +174,17 @@ defmodule Storyarn.Repo.Migrations.RuntimeLocalizationRepairTest do
       rows("SELECT source_pin FROM flow_connections WHERE id = #{connection_id}")
 
     source_pin
+  end
+
+  defp insert_legacy_connection!(flow, source, target, source_pin) do
+    %FlowConnection{flow_id: flow.id}
+    |> FlowConnection.create_changeset(%{
+      source_node_id: source.id,
+      source_pin: source_pin,
+      target_node_id: target.id,
+      target_pin: "input"
+    })
+    |> Repo.insert!()
   end
 
   defp localized_source_field(localized_text_id) do

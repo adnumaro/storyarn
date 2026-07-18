@@ -56,8 +56,11 @@ defmodule StoryarnWeb.FlowLive.Form do
       {:error, :limit_reached, _details} ->
         {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
 
-      {:error, changeset} ->
+      {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, :form, to_form(changeset))}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create flow."))}
     end
   end
 

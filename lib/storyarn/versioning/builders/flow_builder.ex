@@ -24,6 +24,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   alias Storyarn.Localization.HtmlHandler
   alias Storyarn.Localization.LocaleCode
   alias Storyarn.Localization.LocalizableWords
+  alias Storyarn.Localization.RuntimeKey
   alias Storyarn.Localization.SourceContract
   alias Storyarn.Localization.TextCrud
   alias Storyarn.Projects.Project
@@ -683,13 +684,11 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   @impl true
   def instantiate_snapshot(project_id, snapshot, opts \\ []) do
-    with :ok <- validate_flow_snapshot(snapshot),
-         normalized_snapshot = FlowSnapshotNormalizer.normalize(snapshot),
-         :ok <- validate_flow_snapshot(normalized_snapshot) do
+    with :ok <- validate_flow_snapshot(snapshot) do
       AssetMaterializationScope.run(opts, fn scoped_opts ->
         instantiate_flow_snapshot_transaction(
           project_id,
-          normalized_snapshot,
+          snapshot,
           scoped_opts
         )
       end)
@@ -1421,6 +1420,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   defp validate_snapshot_nodes(nodes) do
     with :ok <- validate_snapshot_entry_ids(nodes, :node),
          :ok <- validate_each_snapshot_node(nodes),
+         :ok <- validate_dialogue_runtime_id_uniqueness(nodes),
          :ok <- validate_flow_node_cardinality(nodes),
          :ok <- validate_sequence_resource_ids(nodes, "sequence_tracks", :sequence_track),
          :ok <-
@@ -1497,9 +1497,57 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   defp validate_snapshot_node_type_payload(%{"original_id" => node_id, "type" => "exit", "data" => data}),
     do: validate_flow_exit_target_contract(node_id, data)
 
+  defp validate_snapshot_node_type_payload(%{"original_id" => node_id, "type" => "dialogue", "data" => data}),
+    do: validate_dialogue_runtime_ids(node_id, data)
+
   defp validate_snapshot_node_type_payload(%{"type" => "sequence"} = node), do: validate_sequence_snapshot(node)
 
   defp validate_snapshot_node_type_payload(_node), do: :ok
+
+  defp validate_dialogue_runtime_ids(node_id, data) when is_map(data) do
+    localization_id = data["localization_id"]
+    responses = if Map.has_key?(data, "responses"), do: data["responses"], else: []
+
+    cond do
+      not RuntimeKey.valid_dialogue_id?(localization_id) ->
+        {:error, {:invalid_snapshot_dialogue_localization_id, node_id, localization_id}}
+
+      not is_list(responses) ->
+        {:error, {:invalid_snapshot_dialogue_responses, node_id, responses}}
+
+      true ->
+        validate_snapshot_response_ids(node_id, responses)
+    end
+  end
+
+  defp validate_snapshot_response_ids(node_id, responses) do
+    response_ids =
+      Enum.map(responses, fn
+        %{} = response -> response["id"]
+        _invalid_response -> nil
+      end)
+
+    cond do
+      not Enum.all?(response_ids, &RuntimeKey.valid_response_id?/1) ->
+        {:error, {:invalid_snapshot_dialogue_response_id, node_id, response_ids}}
+
+      length(response_ids) != length(Enum.uniq(response_ids)) ->
+        {:error, {:duplicate_snapshot_dialogue_response_id, node_id}}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_dialogue_runtime_id_uniqueness(nodes) do
+    localization_ids =
+      for %{"type" => "dialogue", "data" => %{"localization_id" => localization_id}} <- nodes,
+          do: localization_id
+
+    if length(localization_ids) == length(Enum.uniq(localization_ids)),
+      do: :ok,
+      else: {:error, :duplicate_snapshot_dialogue_localization_id}
+  end
 
   defp validate_flow_exit_target_contract(node_id, data) when is_map(data) do
     exit_mode = data["exit_mode"] || "terminal"
@@ -3335,13 +3383,10 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   defp insert_flow_nodes(_repo, _flow_id, [], _snapshot, _project_id, _now, _opts), do: {:ok, %{nodes: [], id_map: %{}}}
 
   defp insert_flow_nodes(repo, flow_id, nodes_data, snapshot, project_id, now, opts) do
-    used_localization_ids = existing_dialogue_localization_ids(repo, project_id)
-
-    {prepared_nodes, _used_localization_ids} =
-      Enum.map_reduce(nodes_data, used_localization_ids, fn node_data, used_ids ->
+    prepared_nodes =
+      Enum.map(nodes_data, fn node_data ->
         data = resolve_node_asset_refs(node_data["data"] || %{}, snapshot, project_id, opts)
-        {data, used_ids} = ensure_unique_dialogue_id(node_data["type"], data, used_ids)
-        {{node_data, data}, used_ids}
+        {node_data, data}
       end)
 
     result =
@@ -3368,35 +3413,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       {:ok, result} -> {:ok, %{result | nodes: Enum.reverse(result.nodes)}}
       {:error, _reason} = error -> error
     end
-  end
-
-  defp existing_dialogue_localization_ids(repo, project_id) do
-    from(node in FlowNode,
-      join: flow in Flow,
-      on: flow.id == node.flow_id,
-      where: flow.project_id == ^project_id and node.type == "dialogue",
-      select: fragment("?->>'localization_id'", node.data)
-    )
-    |> repo.all()
-    |> Enum.reject(&is_nil/1)
-    |> MapSet.new()
-  end
-
-  defp ensure_unique_dialogue_id("dialogue", %{"localization_id" => localization_id} = data, used_ids)
-       when is_binary(localization_id) and localization_id != "" do
-    if MapSet.member?(used_ids, localization_id) do
-      new_id = unused_dialogue_id(used_ids)
-      {Map.put(data, "localization_id", new_id), MapSet.put(used_ids, new_id)}
-    else
-      {data, MapSet.put(used_ids, localization_id)}
-    end
-  end
-
-  defp ensure_unique_dialogue_id(_type, data, used_ids), do: {data, used_ids}
-
-  defp unused_dialogue_id(used_ids) do
-    candidate = "dialogue_#{Ecto.UUID.generate()}"
-    if MapSet.member?(used_ids, candidate), do: unused_dialogue_id(used_ids), else: candidate
   end
 
   defp materialized_node_changeset(flow_id, node_data, data, now) do

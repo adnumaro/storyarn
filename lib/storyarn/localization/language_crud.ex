@@ -220,10 +220,32 @@ defmodule Storyarn.Localization.LanguageCrud do
   Reorders languages by setting their positions based on the provided list of IDs.
   """
   def reorder_languages(project_id, language_ids) when is_list(language_ids) do
-    pairs = Enum.with_index(language_ids)
-
     Repo.transaction(fn ->
-      TreeOperations.batch_set_positions("project_languages", pairs, scope: {"project_id", project_id})
+      lock_project!(project_id)
+
+      active_ids =
+        Repo.all(
+          from(language in ProjectLanguage,
+            where:
+              language.project_id == ^project_id and
+                is_nil(language.archived_at),
+            order_by: [asc: language.id],
+            lock: "FOR UPDATE",
+            select: language.id
+          )
+        )
+
+      if Enum.all?(language_ids, &is_integer/1) and
+           length(language_ids) == length(Enum.uniq(language_ids)) and
+           Enum.sort(language_ids) == active_ids do
+        TreeOperations.batch_set_positions(
+          "project_languages",
+          Enum.with_index(language_ids),
+          scope: {"project_id", project_id}
+        )
+      else
+        Repo.rollback(:invalid_language_order)
+      end
     end)
   end
 
@@ -275,12 +297,16 @@ defmodule Storyarn.Localization.LanguageCrud do
   defp unwrap_language_write({:error, reason}), do: Repo.rollback(reason)
 
   defp lock_project!(project_id) do
-    Repo.one!(
-      from(project in Project,
-        where: project.id == ^project_id,
-        lock: "FOR UPDATE"
-      )
-    )
+    case Repo.one(
+           from(project in Project,
+             where: project.id == ^project_id,
+             lock: "FOR UPDATE"
+           )
+         ) do
+      %Project{deleted_at: nil} = project -> project
+      %Project{} -> Repo.rollback(:project_not_active)
+      nil -> Repo.rollback(:project_not_found)
+    end
   end
 
   defp lock_language!(project_id, language_id) do

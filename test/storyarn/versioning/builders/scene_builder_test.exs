@@ -572,6 +572,45 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       end
     end
 
+    test "rejects restoring a collection whose referenced sheet is no longer active", %{
+      project: project,
+      scene: scene
+    } do
+      target_sheet = sheet_fixture(project)
+      item_id = Ecto.UUID.generate()
+
+      zone_fixture(scene, %{
+        "name" => "Roster",
+        "action_type" => "collection",
+        "action_data" => %{
+          "items" => [
+            %{"id" => item_id, "label" => "Target", "sheet_id" => target_sheet.id}
+          ]
+        }
+      })
+
+      snapshot = SceneBuilder.build_snapshot(scene)
+
+      {:ok, current_scene} =
+        Storyarn.Scenes.update_scene(scene, %{
+          "name" => "Current scene must survive"
+        })
+
+      {:ok, _deleted_sheet} = Storyarn.Sheets.delete_sheet(target_sheet)
+      before_restore = persisted_scene_state(scene.id)
+
+      assert {:error, {:scene_reference_not_found, :sheet, sheet_id}} =
+               SceneBuilder.restore_snapshot(
+                 current_scene,
+                 snapshot,
+                 restore_action: {:entity_version_restore, "scene"}
+               )
+
+      assert sheet_id == target_sheet.id
+      assert persisted_scene_state(scene.id) == before_restore
+      assert Repo.get!(Scene, scene.id).name == "Current scene must survive"
+    end
+
     test "reconciles exact child state with stable ids and is idempotent", %{
       scene: scene
     } do
@@ -1693,6 +1732,179 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       end
     end
 
+    test "rejects malformed collection items before materialization without mutation", %{
+      project: project,
+      scene: scene
+    } do
+      layer = layer_fixture(scene, %{"name" => "Collections"})
+      item_id = Ecto.UUID.generate()
+
+      zone =
+        zone_fixture(scene, %{
+          "name" => "Roster",
+          "layer_id" => layer.id,
+          "action_type" => "collection",
+          "action_data" => %{
+            "items" => [
+              %{"id" => item_id, "label" => "Unassigned", "sheet_id" => nil}
+            ]
+          }
+        })
+
+      snapshot = SceneBuilder.build_snapshot(scene)
+      scene_count = Repo.aggregate(Scene, :count)
+      zone_count = Repo.aggregate(SceneZone, :count)
+
+      invalid_action_data = [
+        {%{}, {:invalid_scene_zone_collection, zone.id, %{}}},
+        {%{"items" => ["not-a-map"]}, {:invalid_scene_zone_collection_item, zone.id, 0, :not_a_map, "not-a-map"}},
+        {%{"items" => [%{"id" => "not-a-uuid", "sheet_id" => nil}]},
+         {:invalid_scene_zone_collection_item, zone.id, 0, :invalid_id, "not-a-uuid"}},
+        {%{
+           "items" => [
+             %{"id" => item_id, "sheet_id" => nil},
+             %{"id" => item_id, "sheet_id" => nil}
+           ]
+         }, {:invalid_scene_zone_collection_item, zone.id, 1, :duplicate_id, item_id}},
+        {%{"items" => [%{"id" => item_id, "sheet_id" => 0}]},
+         {:invalid_scene_zone_collection_item, zone.id, 0, :invalid_sheet_id, 0}}
+      ]
+
+      for {action_data, expected_error} <- invalid_action_data do
+        invalid_snapshot =
+          update_snapshot_layer_child(
+            snapshot,
+            "zones",
+            zone.id,
+            &Map.put(&1, "action_data", action_data)
+          )
+
+        assert {:error, ^expected_error} =
+                 SceneBuilder.instantiate_snapshot(
+                   project.id,
+                   invalid_snapshot,
+                   reset_shortcut: true
+                 )
+
+        assert Repo.aggregate(Scene, :count) == scene_count
+        assert Repo.aggregate(SceneZone, :count) == zone_count
+      end
+    end
+
+    test "preserves collection item ids and remaps their sheets across projects", %{
+      user: user,
+      project: project,
+      scene: scene
+    } do
+      layer = layer_fixture(scene, %{"name" => "Collections"})
+      source_sheet = sheet_fixture(project)
+      linked_item_id = Ecto.UUID.generate()
+      unlinked_item_id = Ecto.UUID.generate()
+
+      zone =
+        zone_fixture(scene, %{
+          "name" => "Roster",
+          "layer_id" => layer.id,
+          "action_type" => "collection",
+          "action_data" => %{
+            "items" => [
+              %{
+                "id" => linked_item_id,
+                "label" => "Linked",
+                "sheet_id" => source_sheet.id
+              },
+              %{
+                "id" => unlinked_item_id,
+                "label" => "Unlinked",
+                "sheet_id" => nil
+              }
+            ]
+          }
+        })
+
+      snapshot = SceneBuilder.build_snapshot(scene)
+
+      assert %{"action_data" => %{"items" => snapshot_items}} =
+               snapshot
+               |> Map.fetch!("layers")
+               |> Enum.find(&(&1["original_id"] == layer.id))
+               |> Map.fetch!("zones")
+               |> Enum.find(&(&1["original_id"] == zone.id))
+
+      assert Enum.map(snapshot_items, & &1["id"]) ==
+               [linked_item_id, unlinked_item_id]
+
+      target_project = project_fixture(user)
+      target_sheet = sheet_fixture(target_project)
+
+      assert {:ok, _materialized, id_maps} =
+               SceneBuilder.instantiate_snapshot(
+                 target_project.id,
+                 snapshot,
+                 external_id_maps: %{
+                   sheet: %{source_sheet.id => target_sheet.id}
+                 },
+                 reset_shortcut: true
+               )
+
+      cloned_zone = Repo.get!(SceneZone, id_maps.zone[zone.id])
+      cloned_items = cloned_zone.action_data["items"]
+
+      assert Enum.map(cloned_items, & &1["id"]) ==
+               [linked_item_id, unlinked_item_id]
+
+      assert Enum.map(cloned_items, & &1["sheet_id"]) ==
+               [target_sheet.id, nil]
+
+      assert Repo.exists?(
+               from(reference in EntityReference,
+                 where:
+                   reference.source_type == "scene_zone" and
+                     reference.source_id == ^cloned_zone.id and
+                     reference.target_type == "sheet" and
+                     reference.target_id == ^target_sheet.id
+               )
+             )
+    end
+
+    test "rolls back scene materialization when a collection sheet cannot be remapped", %{
+      user: user,
+      project: project,
+      scene: scene
+    } do
+      source_sheet = sheet_fixture(project)
+      item_id = Ecto.UUID.generate()
+
+      zone =
+        zone_fixture(scene, %{
+          "name" => "Roster",
+          "action_type" => "collection",
+          "action_data" => %{
+            "items" => [
+              %{"id" => item_id, "label" => "Linked", "sheet_id" => source_sheet.id}
+            ]
+          }
+        })
+
+      snapshot = SceneBuilder.build_snapshot(scene)
+      target_project = project_fixture(user)
+      scene_count = Repo.aggregate(Scene, :count)
+      zone_count = Repo.aggregate(SceneZone, :count)
+
+      expected_error =
+        {:unresolved_scene_zone_collection_sheet, zone.id, 0, item_id, source_sheet.id}
+
+      assert {:error, ^expected_error} =
+               SceneBuilder.instantiate_snapshot(
+                 target_project.id,
+                 snapshot,
+                 reset_shortcut: true
+               )
+
+      assert Repo.aggregate(Scene, :count) == scene_count
+      assert Repo.aggregate(SceneZone, :count) == zone_count
+    end
+
     test "materializes orphan pins and remaps explicit sheet refs across projects", %{
       user: user,
       project: project,
@@ -2047,6 +2259,51 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       assert {:flow, 40} in types_and_ids
       assert {:sheet, 10} in types_and_ids
       assert length(refs) == 4
+    end
+
+    test "extracts sheet refs from layered and orphan collection items" do
+      snapshot = %{
+        "background_asset_id" => nil,
+        "layers" => [
+          %{
+            "pins" => [],
+            "zones" => [
+              %{
+                "action_type" => "collection",
+                "action_data" => %{
+                  "items" => [
+                    %{"id" => Ecto.UUID.generate(), "sheet_id" => 10},
+                    %{"id" => Ecto.UUID.generate(), "sheet_id" => nil}
+                  ]
+                },
+                "target_type" => nil,
+                "target_id" => nil,
+                "label_icon_asset_id" => nil
+              }
+            ]
+          }
+        ],
+        "orphan_zones" => [
+          %{
+            "action_type" => "collection",
+            "action_data" => %{
+              "items" => [
+                %{"id" => Ecto.UUID.generate(), "sheet_id" => 20}
+              ]
+            },
+            "target_type" => nil,
+            "target_id" => nil,
+            "label_icon_asset_id" => nil
+          }
+        ]
+      }
+
+      refs = SceneBuilder.scan_references(snapshot)
+
+      assert refs |> Enum.map(&{&1.type, &1.id}) |> Enum.sort() ==
+               [{:sheet, 10}, {:sheet, 20}]
+
+      assert Enum.all?(refs, &String.contains?(&1.context, "collection item"))
     end
   end
 

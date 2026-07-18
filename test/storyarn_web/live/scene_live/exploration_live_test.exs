@@ -2148,6 +2148,8 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       {sub_flow, _sub_entry, _sub_dialogue} =
         create_flow_with_dialogue(project, "Sub Flow", "Inside the subflow")
 
+      sub_exit = get_exit_node(sub_flow)
+
       # Create the main flow: entry -> dialogue -> subflow_node -> exit
       # Dialogues without responses auto-advance, so the engine will traverse
       # dialogue -> subflow_node -> flow_jump into the sub flow in one pass
@@ -2173,7 +2175,10 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
 
       FlowsFixtures.connection_fixture(flow, entry, dialogue)
       FlowsFixtures.connection_fixture(flow, dialogue, subflow_node)
-      FlowsFixtures.connection_fixture(flow, subflow_node, exit_node)
+
+      FlowsFixtures.connection_fixture(flow, subflow_node, exit_node, %{
+        source_pin: "exit_#{sub_exit.id}"
+      })
 
       {:ok, view, _html} = live(conn, explore_path(project, scene))
 
@@ -2259,7 +2264,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       FlowsFixtures.connection_fixture(flow, dialogue_before, subflow_node)
 
       FlowsFixtures.connection_fixture(flow, subflow_node, dialogue_after, %{
-        source_pin: "output",
+        source_pin: "exit_#{sub_exit.id}",
         target_pin: "input"
       })
 

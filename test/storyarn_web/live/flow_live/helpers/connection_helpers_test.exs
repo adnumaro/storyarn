@@ -2,8 +2,11 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpersTest do
   use Storyarn.DataCase, async: true
 
   import Storyarn.AccountsFixtures
+  import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Collaboration
+  alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.Helpers.ConnectionHelpers
 
   # =============================================================================
@@ -30,7 +33,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpersTest do
       assert result.assigns.save_status == :saved
       # Flow data should be reloaded with the new connection
       assert result.assigns.flow_data
-      connections = Storyarn.Flows.list_connections(result.assigns.flow.id)
+      connections = Flows.list_connections(result.assigns.flow.id)
 
       assert Enum.any?(connections, fn c ->
                c.source_node_id == entry.id && c.target_node_id == dialogue.id
@@ -53,6 +56,127 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpersTest do
   end
 
   # =============================================================================
+  # delete_connection/2
+  # =============================================================================
+
+  describe "delete_connection/2" do
+    setup :setup_flow_with_nodes
+
+    test "deletes exactly one persisted connection between parallel node pins", %{
+      socket: socket,
+      flow: flow,
+      dialogue_node: target
+    } do
+      source = node_fixture(flow, %{type: "condition"})
+
+      first =
+        connection_fixture(flow, source, target, %{
+          source_pin: "true",
+          target_pin: "input"
+        })
+
+      second =
+        connection_fixture(flow, source, target, %{
+          source_pin: "false",
+          target_pin: "input"
+        })
+
+      params = %{
+        "id" => first.id,
+        "source_node_id" => source.id,
+        "source_pin" => "true",
+        "target_node_id" => target.id,
+        "target_pin" => "input"
+      }
+
+      {:noreply, result} = ConnectionHelpers.delete_connection(socket, params)
+
+      assert result.assigns.save_status == :saved
+      assert Flows.get_connection(flow.id, first.id) == nil
+      second_id = second.id
+
+      assert %{
+               id: ^second_id,
+               source_pin: "false",
+               target_pin: "input"
+             } = Flows.get_connection(flow.id, second.id)
+    end
+
+    test "uses the exact pin pair before the persisted id reaches the canvas", %{
+      socket: socket,
+      flow: flow,
+      dialogue_node: target
+    } do
+      source = node_fixture(flow, %{type: "condition"})
+
+      first =
+        connection_fixture(flow, source, target, %{
+          source_pin: "true",
+          target_pin: "input"
+        })
+
+      second =
+        connection_fixture(flow, source, target, %{
+          source_pin: "false",
+          target_pin: "input"
+        })
+
+      params = %{
+        "source_node_id" => source.id,
+        "source_pin" => "false",
+        "target_node_id" => target.id,
+        "target_pin" => "input"
+      }
+
+      {:noreply, result} = ConnectionHelpers.delete_connection(socket, params)
+
+      assert result.assigns.save_status == :saved
+      assert Flows.get_connection(flow.id, first.id)
+      assert Flows.get_connection(flow.id, second.id) == nil
+    end
+
+    test "a forged id never falls back to deleting the supplied local pins", %{
+      socket: socket,
+      flow: flow,
+      dialogue_node: target,
+      project: project
+    } do
+      source = node_fixture(flow, %{type: "condition"})
+
+      local =
+        connection_fixture(flow, source, target, %{
+          source_pin: "true",
+          target_pin: "input"
+        })
+
+      foreign_flow = flow_fixture(project)
+      foreign_source = node_fixture(foreign_flow, %{type: "condition"})
+      foreign_target = node_fixture(foreign_flow, %{type: "dialogue"})
+
+      foreign =
+        connection_fixture(foreign_flow, foreign_source, foreign_target, %{
+          source_pin: "true",
+          target_pin: "input"
+        })
+
+      params = %{
+        "id" => foreign.id,
+        "source_node_id" => source.id,
+        "source_pin" => "true",
+        "target_node_id" => target.id,
+        "target_pin" => "input"
+      }
+
+      {:noreply, result} = ConnectionHelpers.delete_connection(socket, params)
+
+      assert result.assigns.save_status == :idle
+      assert result.assigns.flash["error"]
+      assert Flows.get_connection(flow.id, local.id)
+      assert Flows.get_connection(foreign_flow.id, foreign.id)
+    end
+  end
+
+  # =============================================================================
   # delete_connection_by_nodes/3
   # =============================================================================
 
@@ -69,7 +193,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpersTest do
 
       assert result.assigns.save_status == :saved
       # Connection should be deleted
-      connections = Storyarn.Flows.list_connections(result.assigns.flow.id)
+      connections = Flows.list_connections(result.assigns.flow.id)
 
       refute Enum.any?(connections, fn c ->
                c.source_node_id == entry.id && c.target_node_id == dialogue.id
@@ -80,19 +204,85 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpersTest do
       assert "No outgoing connection" in warning_node.reasons
     end
 
-    test "handles non-existent connection gracefully", %{
+    test "resyncs and reports a non-existent connection without marking a save", %{
       socket: socket,
       dialogue_node: dialogue,
       exit_node: exit_node
     } do
-      connections_before = Storyarn.Flows.list_connections(socket.assigns.flow.id)
+      connections_before = Flows.list_connections(socket.assigns.flow.id)
 
       # These nodes aren't connected
       {:noreply, result} =
         ConnectionHelpers.delete_connection_by_nodes(socket, dialogue.id, exit_node.id)
 
-      connections_after = Storyarn.Flows.list_connections(result.assigns.flow.id)
+      connections_after = Flows.list_connections(result.assigns.flow.id)
       assert length(connections_after) == length(connections_before)
+      assert result.assigns.save_status == :idle
+      assert result.assigns.flash["error"]
+      assert result.assigns[:auto_snapshot_ref] == nil
+      assert length(result.assigns.flow_data.connections) == length(connections_before)
+    end
+
+    test "a rejected delete does not snapshot or broadcast success and restores authoritative canvas data",
+         %{socket: socket, flow: flow} do
+      parent = self()
+
+      listener =
+        spawn(fn ->
+          :ok = Collaboration.subscribe_changes({:flow, flow.id})
+          send(parent, :connection_listener_ready)
+
+          receive do
+            message -> send(parent, {:connection_listener_message, message})
+          after
+            250 -> send(parent, :connection_listener_idle)
+          end
+        end)
+
+      assert_receive :connection_listener_ready
+
+      stale_socket = %{
+        socket
+        | assigns: Map.put(socket.assigns, :flow_data, %{id: flow.id, nodes: [], connections: []})
+      }
+
+      {:noreply, result} =
+        ConnectionHelpers.delete_connection_by_nodes(stale_socket, "not-an-id", "also-invalid")
+
+      assert result.assigns.save_status == :idle
+      assert result.assigns[:auto_snapshot_ref] == nil
+      assert result.assigns.flash["error"]
+      assert length(result.assigns.flow_data.connections) == 1
+
+      refute_receive {:connection_listener_message, {:remote_change, :connection_deleted, _payload}},
+                     300
+
+      if Process.alive?(listener), do: Process.exit(listener, :kill)
+    end
+
+    test "a rejected delete after the flow is removed clears stale canvas state", %{
+      socket: socket,
+      flow: flow,
+      entry_node: entry,
+      dialogue_node: dialogue
+    } do
+      assert {:ok, _deleted_flow} = Flows.delete_flow(flow)
+
+      {:noreply, result} =
+        ConnectionHelpers.delete_connection_by_nodes(socket, entry.id, dialogue.id)
+
+      assert result.assigns.save_status == :idle
+      assert result.assigns[:auto_snapshot_ref] == nil
+      assert result.assigns.flash["error"]
+
+      assert result.assigns.flow_data == %{
+               id: flow.id,
+               name: flow.name,
+               nodes: [],
+               connections: []
+             }
+
+      assert result.assigns.flow_hubs == []
     end
   end
 
@@ -106,7 +296,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpersTest do
     flow = Storyarn.FlowsFixtures.flow_fixture(project)
 
     # flow_fixture already creates an entry node, so find it
-    flow_with_nodes = Storyarn.Flows.get_flow!(project.id, flow.id)
+    flow_with_nodes = Flows.get_flow!(project.id, flow.id)
     entry_node = Enum.find(flow_with_nodes.nodes, &(&1.type == "entry"))
 
     dialogue_node =
@@ -125,8 +315,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpersTest do
         position_y: 100.0
       })
 
-    flow = Storyarn.Flows.get_flow!(project.id, flow.id)
-    flow_data = Storyarn.Flows.serialize_for_canvas(flow)
+    flow = Flows.get_flow!(project.id, flow.id)
+    flow_data = Flows.serialize_for_canvas(flow)
 
     socket = %Phoenix.LiveView.Socket{
       assigns: %{
@@ -165,8 +355,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpersTest do
       )
 
     # Reload flow data after connection
-    flow = Storyarn.Flows.get_flow!(result.project.id, result.flow.id)
-    flow_data = Storyarn.Flows.serialize_for_canvas(flow)
+    flow = Flows.get_flow!(result.project.id, result.flow.id)
+    flow_data = Flows.serialize_for_canvas(flow)
 
     socket = %{
       result.socket

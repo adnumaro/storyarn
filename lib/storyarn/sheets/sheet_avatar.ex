@@ -39,7 +39,7 @@ defmodule Storyarn.Sheets.SheetAvatar do
 
   def update_changeset(avatar, attrs) do
     avatar
-    |> cast(attrs, [:name, :notes, :is_default])
+    |> cast(attrs, [:name, :notes])
     |> maybe_variablify_name()
   end
 

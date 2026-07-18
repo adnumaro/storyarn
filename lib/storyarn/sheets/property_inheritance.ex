@@ -9,6 +9,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Shared.NameNormalizer
   alias Storyarn.Shared.TimeHelpers
@@ -17,6 +18,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   alias Storyarn.Sheets.BlockCrud
   alias Storyarn.Sheets.EntityReference
   alias Storyarn.Sheets.FormulaBindingRewriter
+  alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.SheetQueries
   alias Storyarn.Sheets.TableColumn
@@ -69,7 +71,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
       {:ok, 0}
     else
       fn ->
-        child_sheet_ids = Enum.uniq(child_sheet_ids)
+        child_sheet_ids = normalize_inheritance_target_ids!(child_sheet_ids)
         locked_parent_block = lock_inheritance_scope(parent_block, child_sheet_ids)
         do_create_inherited_instances(locked_parent_block, child_sheet_ids)
       end
@@ -78,6 +80,33 @@ defmodule Storyarn.Sheets.PropertyInheritance do
         {:ok, count} -> {:ok, count}
         {:error, reason} -> {:error, reason}
       end
+    end
+  end
+
+  @doc false
+  @spec create_inherited_instances_for_all_descendants(Block.t()) ::
+          {:ok, non_neg_integer()} | {:error, term()}
+  def create_inherited_instances_for_all_descendants(%Block{} = parent_block) do
+    fn ->
+      {project_id, source_sheet_id} =
+        fetch_inheritance_source_owner!(
+          parent_block,
+          {:inheritance_source_not_active, parent_block.id}
+        )
+
+      lock_active_project!(project_id)
+
+      descendant_ids =
+        all_descendant_sheet_ids(project_id, source_sheet_id)
+
+      lock_source_write_sheets!(project_id, source_sheet_id, descendant_ids)
+      source = lock_inheritance_parent_block!(parent_block, source_sheet_id)
+      do_create_inherited_instances(source, descendant_ids)
+    end
+    |> Repo.transaction()
+    |> case do
+      {:ok, count} -> {:ok, count}
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -132,24 +161,34 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   end
 
   defp lock_inheritance_scope(parent_block, child_sheet_ids) do
-    source_sheet = active_inheritance_source_sheet!(parent_block)
-    validate_inheritance_targets!(source_sheet, child_sheet_ids)
-    parent_by_id = active_project_hierarchy(source_sheet.project_id)
+    {project_id, source_sheet_id} =
+      fetch_inheritance_source_owner!(parent_block, {:inheritance_source_not_active, parent_block.id})
 
-    lock_inheritance_sheets!(
-      source_sheet,
-      child_sheet_ids,
-      parent_by_id
-    )
+    lock_active_project!(project_id)
+
+    source_sheet =
+      active_inheritance_source_sheet!(
+        parent_block,
+        project_id,
+        source_sheet_id
+      )
+
+    validate_inheritance_targets!(source_sheet, child_sheet_ids)
+    lock_active_inheritance_sheets!(project_id, source_sheet.id, child_sheet_ids)
 
     lock_inheritance_parent_block!(parent_block, source_sheet.id)
   end
 
-  defp active_inheritance_source_sheet!(parent_block) do
+  defp active_inheritance_source_sheet!(parent_block, project_id, source_sheet_id) do
+    if parent_block.sheet_id != source_sheet_id do
+      Repo.rollback({:inheritance_source_not_active, parent_block.id})
+    end
+
     case Repo.one(
            from(sheet in Sheet,
              where:
-               sheet.id == ^parent_block.sheet_id and
+               sheet.id == ^source_sheet_id and
+                 sheet.project_id == ^project_id and
                  is_nil(sheet.deleted_at)
            )
          ) do
@@ -184,39 +223,6 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     end
   end
 
-  defp active_project_hierarchy(project_id) do
-    from(sheet in Sheet,
-      where:
-        sheet.project_id == ^project_id and
-          is_nil(sheet.deleted_at),
-      select: {sheet.id, sheet.parent_id}
-    )
-    |> Repo.all()
-    |> Map.new()
-  end
-
-  defp lock_inheritance_sheets!(source_sheet, child_sheet_ids, parent_by_id) do
-    [source_sheet.id | child_sheet_ids]
-    |> Enum.uniq()
-    |> Enum.sort_by(&hierarchy_path(&1, parent_by_id))
-    |> Enum.each(&lock_inheritance_sheet!(&1, source_sheet.project_id))
-  end
-
-  defp lock_inheritance_sheet!(sheet_id, project_id) do
-    case Repo.one(
-           from(sheet in Sheet,
-             where:
-               sheet.id == ^sheet_id and
-                 sheet.project_id == ^project_id and
-                 is_nil(sheet.deleted_at),
-             lock: "FOR UPDATE"
-           )
-         ) do
-      %Sheet{} -> :ok
-      nil -> Repo.rollback({:invalid_inheritance_targets, [sheet_id]})
-    end
-  end
-
   defp lock_inheritance_parent_block!(parent_block, source_sheet_id) do
     case Repo.one(
            from(block in Block,
@@ -232,25 +238,6 @@ defmodule Storyarn.Sheets.PropertyInheritance do
 
       nil ->
         Repo.rollback({:inheritance_source_not_active, parent_block.id})
-    end
-  end
-
-  defp hierarchy_path(sheet_id, parent_by_id) do
-    build_hierarchy_path(sheet_id, parent_by_id, MapSet.new(), [])
-  end
-
-  defp build_hierarchy_path(nil, _parent_by_id, _seen, path), do: path
-
-  defp build_hierarchy_path(sheet_id, parent_by_id, seen, path) do
-    if MapSet.member?(seen, sheet_id) do
-      [sheet_id | path]
-    else
-      build_hierarchy_path(
-        Map.get(parent_by_id, sheet_id),
-        parent_by_id,
-        MapSet.put(seen, sheet_id),
-        [sheet_id | path]
-      )
     end
   end
 
@@ -275,15 +262,16 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   When parent block config/type changes, updates all instances that haven't been detached.
   If type changed, clears the value (incompatible data).
   """
-  @spec sync_definition_change(Block.t()) :: {:ok, integer()}
-  def sync_definition_change(%Block{} = parent_block) do
+  @spec sync_definition_change(Block.t(), keyword()) :: {:ok, integer()}
+  def sync_definition_change(%Block{} = parent_block, opts \\ []) do
     fn ->
-      instances = list_non_detached_instances(parent_block)
+      {locked_parent_block, instances, _project_id} =
+        lock_active_source_and_instances!(parent_block, opts)
 
       if instances == [] do
         0
       else
-        do_sync_definition(parent_block, instances)
+        do_sync_definition(locked_parent_block, instances)
       end
     end
     |> Repo.transaction()
@@ -297,11 +285,18 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   Detaches an inherited block, making it a local copy.
   Keeps `inherited_from_block_id` for provenance (allows re-attach).
   """
-  @spec detach_block(Block.t()) :: {:ok, Block.t()} | {:error, Ecto.Changeset.t()}
+  @spec detach_block(Block.t()) :: {:ok, Block.t()} | {:error, term()}
   def detach_block(%Block{} = block) do
-    block
-    |> Ecto.Changeset.change(%{detached: true})
-    |> Repo.update()
+    Repo.transaction(fn ->
+      locked_block = lock_active_inherited_instance!(block)
+
+      case locked_block
+           |> Ecto.Changeset.change(%{detached: true})
+           |> Repo.update() do
+        {:ok, detached} -> detached
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
   end
 
   @doc """
@@ -311,22 +306,23 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   def reattach_block(%Block{inherited_from_block_id: nil}), do: {:error, :source_not_found}
 
   def reattach_block(%Block{} = block) do
-    case active_same_project_source(block) do
-      nil ->
-        {:error, :source_not_found}
+    Repo.transaction(fn ->
+      {locked_block, source} = lock_reattach_scope!(block)
 
-      source ->
-        updates =
-          source
-          |> build_reattach_updates()
-          |> Map.put(:word_count, WordCount.for_block(source.type, block.value))
+      updates =
+        source
+        |> build_reattach_updates()
+        |> Map.put(:word_count, WordCount.for_block(source.type, locked_block.value))
 
-        block
-        |> Ecto.Changeset.change(updates)
-        |> BlockCrud.ensure_unique_variable_name_public(block.sheet_id, block.id)
-        |> Repo.update()
-        |> maybe_reset_table_structure(source.id)
-    end
+      case locked_block
+           |> Ecto.Changeset.change(updates)
+           |> BlockCrud.ensure_unique_variable_name_public(locked_block.sheet_id, locked_block.id)
+           |> Repo.update()
+           |> maybe_reset_table_structure(source.id) do
+        {:ok, reattached} -> reattached
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
   end
 
   @doc """
@@ -335,15 +331,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   """
   @spec hide_for_children(Sheet.t(), integer()) :: {:ok, Sheet.t()}
   def hide_for_children(%Sheet{} = sheet, ancestor_block_id) do
-    current = sheet.hidden_inherited_block_ids || []
-
-    if ancestor_block_id in current do
-      {:ok, sheet}
-    else
-      sheet
-      |> Ecto.Changeset.change(%{hidden_inherited_block_ids: [ancestor_block_id | current]})
-      |> Repo.update()
-    end
+    update_hidden_inherited_block_ids(sheet, ancestor_block_id, :hide)
   end
 
   @doc """
@@ -351,16 +339,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   """
   @spec unhide_for_children(Sheet.t(), integer()) :: {:ok, Sheet.t()}
   def unhide_for_children(%Sheet{} = sheet, ancestor_block_id) do
-    current = sheet.hidden_inherited_block_ids || []
-    updated = List.delete(current, ancestor_block_id)
-
-    if updated == current do
-      {:ok, sheet}
-    else
-      sheet
-      |> Ecto.Changeset.change(%{hidden_inherited_block_ids: updated})
-      |> Repo.update()
-    end
+    update_hidden_inherited_block_ids(sheet, ancestor_block_id, :unhide)
   end
 
   @doc """
@@ -371,22 +350,23 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     Repo.transaction(fn ->
       now = TimeHelpers.now()
 
-      instance_ids =
-        parent_block
-        |> list_non_detached_instances()
-        |> Enum.map(& &1.id)
+      {locked_parent_block, instances, project_id} =
+        lock_active_source_and_instances!(parent_block, lock_hidden_sheets: true)
+
+      instance_ids = Enum.map(instances, & &1.id)
 
       if instance_ids != [] do
         cleanup_instance_references(instance_ids)
-        cleanup_hidden_block_ids(parent_block)
       end
+
+      cleanup_hidden_block_ids(locked_parent_block, project_id)
 
       {count, _} =
         Repo.update_all(
           from(b in Block,
             where:
               b.id in ^instance_ids and
-                b.inherited_from_block_id == ^parent_block.id and
+                b.inherited_from_block_id == ^locked_parent_block.id and
                 b.detached == false and
                 is_nil(b.deleted_at)
           ),
@@ -402,32 +382,25 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   """
   @spec restore_inherited_instances(Block.t()) :: {:ok, integer()}
   def restore_inherited_instances(%Block{} = parent_block) do
-    # Only restore instances deleted within 2 seconds of the parent block's deletion,
-    # to avoid restoring instances that were individually deleted by the user.
-    since = parent_block.deleted_at || TimeHelpers.now()
-    lower_threshold = DateTime.add(since, -2, :second)
-    upper_threshold = DateTime.add(since, 2, :second)
-
     Repo.transaction(fn ->
-      instance_ids =
-        restorable_instance_ids(
-          parent_block,
-          lower_threshold,
-          upper_threshold
-        )
+      {locked_parent_block, instances, project_id} =
+        lock_restorable_source_and_instances!(parent_block)
+
+      instance_ids = Enum.map(instances, & &1.id)
 
       {count, _} =
         Repo.update_all(
           from(block in Block,
             where:
               block.id in ^instance_ids and
-                block.inherited_from_block_id == ^parent_block.id and
+                block.inherited_from_block_id == ^locked_parent_block.id and
                 block.detached == false and
                 not is_nil(block.deleted_at)
           ),
           set: [deleted_at: nil]
         )
 
+      rebuild_restored_instance_references!(project_id, instance_ids)
       count
     end)
   end
@@ -482,6 +455,33 @@ defmodule Storyarn.Sheets.PropertyInheritance do
         |> select([d], d.id)
         |> Repo.all()
     end
+  end
+
+  defp all_descendant_sheet_ids(project_id, sheet_id) do
+    anchor =
+      from(sheet in "sheets",
+        where:
+          sheet.parent_id == ^sheet_id and
+            sheet.project_id == ^project_id,
+        select: %{id: sheet.id}
+      )
+
+    recursion =
+      from(sheet in "sheets",
+        join: descendant in "all_descendants",
+        on: sheet.parent_id == descendant.id,
+        where: sheet.project_id == ^project_id,
+        select: %{id: sheet.id}
+      )
+
+    cte_query = union_all(anchor, ^recursion)
+
+    from("all_descendants")
+    |> recursive_ctes(true)
+    |> with_cte("all_descendants", as: ^cte_query)
+    |> select([descendant], descendant.id)
+    |> Repo.all()
+    |> Enum.sort()
   end
 
   @doc """
@@ -540,6 +540,19 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     end
   end
 
+  @doc false
+  @spec verify_restored_sheet_inheritance!(Sheet.t()) :: :ok
+  def verify_restored_sheet_inheritance!(%Sheet{deleted_at: nil} = sheet) do
+    ensure_restore_transaction!()
+    sheet = lock_restored_sheet!(sheet)
+    eligible_sources = eligible_restored_sheet_sources(sheet)
+    instances = lock_restored_sheet_instances!(sheet.id)
+
+    verify_restored_sheet_instances!(eligible_sources, instances)
+
+    :ok
+  end
+
   # Recalculates inheritance for a single sheet: soft-deletes non-detached
   # inherited instances and re-inherits from the current ancestor chain.
   defp recalculate_sheet_inheritance(sheet_id) do
@@ -563,6 +576,75 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   # Private Helpers
   # =============================================================================
 
+  defp ensure_restore_transaction! do
+    if !Repo.in_transaction?() do
+      raise ArgumentError,
+            "verify_restored_sheet_inheritance!/1 must run inside the sheet restore transaction"
+    end
+  end
+
+  defp lock_restored_sheet!(sheet) do
+    Repo.one(
+      from(current in Sheet,
+        where:
+          current.id == ^sheet.id and current.project_id == ^sheet.project_id and
+            is_nil(current.deleted_at),
+        lock: "FOR UPDATE"
+      )
+    ) || Repo.rollback(:sheet_not_active)
+  end
+
+  defp eligible_restored_sheet_sources(sheet) do
+    ancestors = build_ancestor_list(sheet)
+    hidden_block_ids = collect_hidden_block_ids([sheet | ancestors])
+
+    ancestors
+    |> Enum.flat_map(&load_children_scope_blocks/1)
+    |> Enum.reject(&(&1.id in hidden_block_ids))
+    |> Enum.sort_by(& &1.id)
+    |> lock_restored_sheet_sources!(sheet.project_id)
+  end
+
+  defp lock_restored_sheet_instances!(sheet_id) do
+    Repo.all(
+      from(block in Block,
+        where:
+          block.sheet_id == ^sheet_id and
+            not is_nil(block.inherited_from_block_id) and
+            block.detached == false and is_nil(block.deleted_at),
+        order_by: [asc: block.id],
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp verify_restored_sheet_instances!(eligible_sources, instances) do
+    instances_by_source = unique_instances_by_source!(instances)
+    eligible_source_ids = MapSet.new(eligible_sources, & &1.id)
+
+    verify_instances_have_eligible_sources!(instances, eligible_source_ids)
+    verify_eligible_sources_have_current_instances!(eligible_sources, instances_by_source)
+  end
+
+  defp verify_instances_have_eligible_sources!(instances, eligible_source_ids) do
+    Enum.each(instances, fn instance ->
+      if !MapSet.member?(eligible_source_ids, instance.inherited_from_block_id) do
+        Repo.rollback({:inheritance_source_not_active, instance.inherited_from_block_id})
+      end
+    end)
+  end
+
+  defp verify_eligible_sources_have_current_instances!(eligible_sources, instances_by_source) do
+    Enum.each(eligible_sources, fn source ->
+      instance =
+        Map.get(instances_by_source, source.id) ||
+          Repo.rollback({:stale_inherited_blocks, [source.id]})
+
+      verify_inherited_definition!(source, instance)
+      verify_inherited_table_structure!(source, instance)
+    end)
+  end
+
   defp active_sheet_project_id(sheet_id) do
     Repo.one(
       from(sheet in Sheet,
@@ -574,48 +656,523 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     )
   end
 
-  defp active_same_project_source(%Block{} = instance) do
-    Repo.one(
-      from(source in Block,
-        join: source_sheet in Sheet,
-        on: source_sheet.id == source.sheet_id,
-        join: instance_sheet in Sheet,
-        on: instance_sheet.id == ^instance.sheet_id,
+  defp lock_restored_sheet_sources!(sources, _project_id) when sources == [], do: []
+
+  defp lock_restored_sheet_sources!(sources, project_id) do
+    source_ids = Enum.map(sources, & &1.id)
+
+    locked_sources =
+      Repo.all(
+        from(block in Block,
+          join: owner_sheet in Sheet,
+          on: owner_sheet.id == block.sheet_id,
+          where:
+            block.id in ^source_ids and block.scope == "children" and
+              is_nil(block.deleted_at) and owner_sheet.project_id == ^project_id and
+              is_nil(owner_sheet.deleted_at),
+          order_by: [asc: block.id],
+          lock: "FOR UPDATE",
+          select: block
+        )
+      )
+
+    if Enum.map(locked_sources, & &1.id) == source_ids do
+      locked_sources
+    else
+      missing_id = Enum.find(source_ids, &(&1 not in Enum.map(locked_sources, fn block -> block.id end)))
+      Repo.rollback({:inheritance_source_not_active, missing_id})
+    end
+  end
+
+  defp unique_instances_by_source!(instances) do
+    Enum.reduce(instances, %{}, fn instance, by_source ->
+      case Map.fetch(by_source, instance.inherited_from_block_id) do
+        :error ->
+          Map.put(by_source, instance.inherited_from_block_id, instance)
+
+        {:ok, _duplicate} ->
+          Repo.rollback({:duplicate_inherited_instances, instance.inherited_from_block_id})
+      end
+    end)
+  end
+
+  defp verify_inherited_definition!(source, instance) do
+    current? =
+      instance.type == source.type and
+        instance.config == source.config and
+        instance.required == source.required and
+        instance.is_constant == source.is_constant and
+        instance.scope == "self"
+
+    if !current?, do: Repo.rollback({:stale_inherited_definition, instance.id})
+  end
+
+  defp verify_inherited_table_structure!(%Block{type: "table"} = source, %Block{type: "table"} = instance) do
+    block_ids = Enum.sort([source.id, instance.id])
+
+    columns =
+      Repo.all(
+        from(column in TableColumn,
+          where: column.block_id in ^block_ids,
+          order_by: [asc: column.block_id, asc: column.id],
+          lock: "FOR UPDATE"
+        )
+      )
+
+    rows =
+      Repo.all(
+        from(row in TableRow,
+          where: row.block_id in ^block_ids,
+          order_by: [asc: row.block_id, asc: row.id],
+          lock: "FOR UPDATE"
+        )
+      )
+
+    source_columns = table_columns_for_block(columns, source.id)
+    instance_columns = table_columns_for_block(columns, instance.id)
+    source_rows = table_rows_for_block(rows, source.id)
+    instance_rows = table_rows_for_block(rows, instance.id)
+
+    column_definitions_match? =
+      Enum.map(source_columns, &table_column_signature/1) ==
+        Enum.map(instance_columns, &table_column_signature/1)
+
+    row_definitions_match? =
+      Enum.map(source_rows, &table_row_signature/1) ==
+        Enum.map(instance_rows, &table_row_signature/1)
+
+    expected_cell_keys = MapSet.new(source_columns, & &1.slug)
+
+    cell_keys_match? =
+      Enum.all?(instance_rows, fn row ->
+        MapSet.new(Map.keys(row.cells || %{})) == expected_cell_keys
+      end)
+
+    if !column_definitions_match? or !row_definitions_match? or !cell_keys_match? do
+      Repo.rollback({:stale_inherited_table, instance.id})
+    end
+  end
+
+  defp verify_inherited_table_structure!(_source, _instance), do: :ok
+
+  defp table_columns_for_block(columns, block_id) do
+    columns
+    |> Enum.filter(&(&1.block_id == block_id))
+    |> Enum.sort_by(&{&1.position, &1.id})
+  end
+
+  defp table_rows_for_block(rows, block_id) do
+    rows
+    |> Enum.filter(&(&1.block_id == block_id))
+    |> Enum.sort_by(&{&1.position, &1.id})
+  end
+
+  defp table_column_signature(column) do
+    {
+      column.slug,
+      column.name,
+      column.type,
+      column.is_constant,
+      column.required,
+      column.position,
+      column.config
+    }
+  end
+
+  defp table_row_signature(row), do: {row.slug, row.name, row.position}
+
+  defp normalize_inheritance_target_ids!(sheet_ids) do
+    if Enum.all?(sheet_ids, &(is_integer(&1) and &1 > 0)) and
+         length(sheet_ids) == length(Enum.uniq(sheet_ids)) do
+      sheet_ids
+    else
+      Repo.rollback({:invalid_inheritance_targets, sheet_ids})
+    end
+  end
+
+  defp fetch_inheritance_source_owner!(%Block{} = parent_block, error_reason) do
+    case Repo.one(
+           from(block in Block,
+             join: sheet in Sheet,
+             on: sheet.id == block.sheet_id,
+             where: block.id == ^parent_block.id,
+             select: {sheet.project_id, sheet.id}
+           )
+         ) do
+      {project_id, sheet_id} when sheet_id == parent_block.sheet_id ->
+        {project_id, sheet_id}
+
+      _not_found_or_forged ->
+        Repo.rollback(error_reason)
+    end
+  end
+
+  defp lock_active_project!(project_id) do
+    case ProjectReferenceIntegrity.lock_active_project(project_id, :update) do
+      {:ok, _project} -> :ok
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp lock_active_inheritance_sheets!(project_id, source_sheet_id, target_sheet_ids) do
+    requested_ids = Enum.sort([source_sheet_id | target_sheet_ids])
+
+    locked_ids =
+      Repo.all(
+        from(sheet in Sheet,
+          where:
+            sheet.id in ^requested_ids and
+              sheet.project_id == ^project_id and
+              is_nil(sheet.deleted_at),
+          order_by: [asc: sheet.id],
+          lock: "FOR UPDATE",
+          select: sheet.id
+        )
+      )
+
+    cond do
+      source_sheet_id not in locked_ids ->
+        Repo.rollback({:inheritance_source_not_active, source_sheet_id})
+
+      locked_ids != requested_ids ->
+        Repo.rollback({:invalid_inheritance_targets, requested_ids -- locked_ids})
+
+      true ->
+        :ok
+    end
+  end
+
+  defp lock_source_write_sheets!(project_id, source_sheet_id, target_sheet_ids) do
+    requested_ids =
+      [source_sheet_id | target_sheet_ids]
+      |> Enum.uniq()
+      |> Enum.sort()
+
+    locked_sheets =
+      Repo.all(
+        from(sheet in Sheet,
+          where:
+            sheet.id in ^requested_ids and
+              sheet.project_id == ^project_id,
+          order_by: [asc: sheet.id],
+          lock: "FOR UPDATE",
+          select: {sheet.id, sheet.deleted_at}
+        )
+      )
+
+    locked_ids = Enum.map(locked_sheets, &elem(&1, 0))
+
+    cond do
+      locked_ids != requested_ids ->
+        Repo.rollback({:invalid_inheritance_targets, requested_ids -- locked_ids})
+
+      Enum.any?(locked_sheets, fn {id, deleted_at} ->
+        id == source_sheet_id and not is_nil(deleted_at)
+      end) ->
+        Repo.rollback({:inheritance_source_not_active, source_sheet_id})
+
+      true ->
+        :ok
+    end
+  end
+
+  defp lock_active_source_and_instances!(parent_block, opts) do
+    {project_id, source_sheet_id} =
+      fetch_inheritance_source_owner!(
+        parent_block,
+        {:inheritance_source_not_active, parent_block.id}
+      )
+
+    lock_active_project!(project_id)
+
+    instance_metadata = managed_instance_metadata(parent_block.id, project_id, opts)
+
+    hidden_sheet_ids =
+      if Keyword.get(opts, :lock_hidden_sheets, false) do
+        active_hidden_sheet_ids(parent_block.id, project_id)
+      else
+        []
+      end
+
+    instance_sheet_ids = Enum.map(instance_metadata, &elem(&1, 1))
+
+    lock_source_write_sheets!(
+      project_id,
+      source_sheet_id,
+      Enum.uniq(instance_sheet_ids ++ hidden_sheet_ids)
+    )
+
+    source = lock_inheritance_parent_block!(parent_block, source_sheet_id)
+    instances = lock_active_instance_rows!(source.id, instance_metadata)
+    {source, instances, project_id}
+  end
+
+  defp managed_instance_metadata(parent_block_id, project_id, opts) do
+    query =
+      from(block in Block,
+        join: owner_sheet in Sheet,
+        on: owner_sheet.id == block.sheet_id,
+        join: source in Block,
+        on: source.id == ^parent_block_id,
         where:
-          source.id == ^instance.inherited_from_block_id and
+          block.inherited_from_block_id == ^parent_block_id and
+            block.detached == false and
             is_nil(source.deleted_at) and
-            is_nil(source_sheet.deleted_at) and
-            is_nil(instance_sheet.deleted_at) and
-            source_sheet.project_id == instance_sheet.project_id,
-        select: source
+            owner_sheet.project_id == ^project_id and
+            is_nil(block.deleted_at),
+        order_by: [asc: block.id],
+        select: {block.id, block.sheet_id}
+      )
+
+    query =
+      if Keyword.get(opts, :active_owner_sheets_only, false) do
+        where(query, [_block, owner_sheet, _source], is_nil(owner_sheet.deleted_at))
+      else
+        query
+      end
+
+    Repo.all(query)
+  end
+
+  defp active_hidden_sheet_ids(parent_block_id, project_id) do
+    Repo.all(
+      from(sheet in Sheet,
+        where:
+          sheet.project_id == ^project_id and
+            ^parent_block_id in sheet.hidden_inherited_block_ids,
+        order_by: [asc: sheet.id],
+        select: sheet.id
       )
     )
   end
 
-  defp restorable_instance_ids(%Block{} = parent_block, lower_threshold, upper_threshold) do
-    case active_sheet_project_id(parent_block.sheet_id) do
-      nil ->
-        []
+  defp lock_active_instance_rows!(_parent_block_id, []), do: []
 
-      project_id ->
-        Repo.all(
-          from(block in Block,
-            join: owner_sheet in Sheet,
-            on: owner_sheet.id == block.sheet_id,
-            where:
-              block.inherited_from_block_id == ^parent_block.id and
-                block.detached == false and
-                not is_nil(block.deleted_at) and
-                block.deleted_at >= ^lower_threshold and
-                block.deleted_at <= ^upper_threshold and
-                owner_sheet.project_id == ^project_id and
-                is_nil(owner_sheet.deleted_at),
-            order_by: [asc: block.id],
-            lock: "FOR UPDATE",
-            select: block.id
-          )
+  defp lock_active_instance_rows!(parent_block_id, instance_metadata) do
+    instance_ids = Enum.map(instance_metadata, &elem(&1, 0))
+
+    instances =
+      Repo.all(
+        from(block in Block,
+          where:
+            block.id in ^instance_ids and
+              block.inherited_from_block_id == ^parent_block_id and
+              block.detached == false,
+          order_by: [asc: block.id],
+          lock: "FOR UPDATE"
         )
+      )
+
+    if Enum.map(instances, & &1.id) == instance_ids do
+      instances
+    else
+      Repo.rollback(:inheritance_instances_changed)
     end
+  end
+
+  defp lock_active_inherited_instance!(%Block{} = block) do
+    case Repo.one(
+           from(instance in Block,
+             join: sheet in Sheet,
+             on: sheet.id == instance.sheet_id,
+             where: instance.id == ^block.id,
+             select: {sheet.project_id, sheet.id, instance.inherited_from_block_id}
+           )
+         ) do
+      {project_id, sheet_id, source_id}
+      when sheet_id == block.sheet_id and is_integer(source_id) ->
+        lock_active_project!(project_id)
+        lock_active_inheritance_sheets!(project_id, sheet_id, [])
+
+        Repo.one(
+          from(instance in Block,
+            where:
+              instance.id == ^block.id and
+                instance.sheet_id == ^sheet_id and
+                not is_nil(instance.inherited_from_block_id) and
+                is_nil(instance.deleted_at),
+            lock: "FOR UPDATE"
+          )
+        ) || Repo.rollback(:block_not_active)
+
+      _not_found_or_local ->
+        Repo.rollback(:block_not_active)
+    end
+  end
+
+  defp lock_reattach_scope!(%Block{} = block) do
+    case Repo.one(
+           from(instance in Block,
+             join: instance_sheet in Sheet,
+             on: instance_sheet.id == instance.sheet_id,
+             left_join: source in Block,
+             on: source.id == instance.inherited_from_block_id,
+             left_join: source_sheet in Sheet,
+             on: source_sheet.id == source.sheet_id,
+             where: instance.id == ^block.id,
+             select:
+               {instance_sheet.project_id, instance_sheet.id, instance.inherited_from_block_id, source_sheet.project_id,
+                source_sheet.id}
+           )
+         ) do
+      {project_id, instance_sheet_id, source_id, project_id, source_sheet_id}
+      when instance_sheet_id == block.sheet_id and is_integer(source_id) ->
+        lock_active_project!(project_id)
+
+        lock_active_inheritance_sheets!(
+          project_id,
+          instance_sheet_id,
+          [source_sheet_id]
+        )
+
+        lock_reattach_blocks!(block.id, source_id, instance_sheet_id, source_sheet_id)
+
+      _missing_or_foreign_source ->
+        Repo.rollback(:source_not_found)
+    end
+  end
+
+  defp lock_reattach_blocks!(instance_id, source_id, instance_sheet_id, source_sheet_id) do
+    blocks =
+      Repo.all(
+        from(block in Block,
+          where:
+            block.id in ^Enum.sort([instance_id, source_id]) and
+              is_nil(block.deleted_at),
+          order_by: [asc: block.id],
+          lock: "FOR UPDATE"
+        )
+      )
+
+    instance =
+      Enum.find(
+        blocks,
+        &(&1.id == instance_id and &1.sheet_id == instance_sheet_id and
+            &1.inherited_from_block_id == source_id)
+      )
+
+    source =
+      Enum.find(
+        blocks,
+        &(&1.id == source_id and &1.sheet_id == source_sheet_id)
+      )
+
+    if instance && source do
+      {instance, source}
+    else
+      Repo.rollback(:source_not_found)
+    end
+  end
+
+  defp lock_restorable_source_and_instances!(parent_block) do
+    {project_id, source_sheet_id} =
+      fetch_inheritance_source_owner!(
+        parent_block,
+        {:inheritance_source_not_active, parent_block.id}
+      )
+
+    lock_active_project!(project_id)
+
+    deleted_at = parent_block.deleted_at || TimeHelpers.now()
+    lower_threshold = DateTime.add(deleted_at, -2, :second)
+    upper_threshold = DateTime.add(deleted_at, 2, :second)
+
+    metadata =
+      Repo.all(
+        from(block in Block,
+          join: owner_sheet in Sheet,
+          on: owner_sheet.id == block.sheet_id,
+          where:
+            block.inherited_from_block_id == ^parent_block.id and
+              block.detached == false and
+              not is_nil(block.deleted_at) and
+              block.deleted_at >= ^lower_threshold and
+              block.deleted_at <= ^upper_threshold and
+              owner_sheet.project_id == ^project_id,
+          order_by: [asc: block.id],
+          select: {block.id, block.sheet_id}
+        )
+      )
+
+    lock_source_write_sheets!(
+      project_id,
+      source_sheet_id,
+      Enum.map(metadata, &elem(&1, 1))
+    )
+
+    source = lock_inheritance_parent_block!(parent_block, source_sheet_id)
+    instances = lock_restorable_instance_rows!(source.id, metadata, lower_threshold, upper_threshold)
+    {source, instances, project_id}
+  end
+
+  defp lock_restorable_instance_rows!(_parent_block_id, [], _lower_threshold, _upper_threshold), do: []
+
+  defp lock_restorable_instance_rows!(parent_block_id, metadata, lower_threshold, upper_threshold) do
+    instance_ids = Enum.map(metadata, &elem(&1, 0))
+
+    instances =
+      Repo.all(
+        from(block in Block,
+          where:
+            block.id in ^instance_ids and
+              block.inherited_from_block_id == ^parent_block_id and
+              block.detached == false and
+              not is_nil(block.deleted_at) and
+              block.deleted_at >= ^lower_threshold and
+              block.deleted_at <= ^upper_threshold,
+          order_by: [asc: block.id],
+          lock: "FOR UPDATE"
+        )
+      )
+
+    if Enum.map(instances, & &1.id) == instance_ids do
+      instances
+    else
+      Repo.rollback(:inheritance_instances_changed)
+    end
+  end
+
+  defp rebuild_restored_instance_references!(_project_id, []), do: :ok
+
+  defp rebuild_restored_instance_references!(project_id, instance_ids) do
+    active_instances =
+      Repo.all(
+        from(block in Block,
+          join: sheet in Sheet,
+          on: sheet.id == block.sheet_id,
+          where:
+            block.id in ^instance_ids and is_nil(block.deleted_at) and
+              sheet.project_id == ^project_id and is_nil(sheet.deleted_at),
+          order_by: [asc: block.id],
+          select: block
+        )
+      )
+
+    Enum.each(active_instances, fn instance ->
+      normalized_value =
+        case ReferenceTracker.lock_and_normalize_block_value(
+               project_id,
+               instance.type,
+               instance.value
+             ) do
+          {:ok, value} -> value
+          {:error, reason} -> Repo.rollback(reason)
+        end
+
+      instance =
+        if normalized_value == instance.value do
+          instance
+        else
+          instance
+          |> Block.value_changeset(%{value: normalized_value})
+          |> Repo.update!()
+        end
+
+      case ReferenceTracker.update_block_references(instance, project_id: project_id) do
+        :ok -> :ok
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
   end
 
   defp build_ancestor_list(%Sheet{parent_id: nil}), do: []
@@ -679,6 +1236,100 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     |> Enum.uniq()
   end
 
+  defp update_hidden_inherited_block_ids(%Sheet{} = sheet, ancestor_block_id, operation)
+       when operation in [:hide, :unhide] do
+    Repo.transaction(fn ->
+      {project_id, sheet_id} = fetch_sheet_owner!(sheet)
+      lock_active_project!(project_id)
+
+      case operation do
+        :hide ->
+          lock_hide_scope!(project_id, sheet_id, ancestor_block_id)
+
+        :unhide ->
+          lock_active_inheritance_sheets!(project_id, sheet_id, [])
+      end
+
+      locked_sheet = Repo.get!(Sheet, sheet_id)
+      current = locked_sheet.hidden_inherited_block_ids || []
+      updated = update_hidden_ids(current, ancestor_block_id, operation)
+
+      persist_hidden_inherited_block_ids!(locked_sheet, current, updated)
+    end)
+  end
+
+  defp update_hidden_inherited_block_ids(_sheet, _ancestor_block_id, _operation), do: {:error, :invalid_inherited_block}
+
+  defp persist_hidden_inherited_block_ids!(sheet, current, current), do: sheet
+
+  defp persist_hidden_inherited_block_ids!(sheet, _current, updated) do
+    case sheet
+         |> Ecto.Changeset.change(%{hidden_inherited_block_ids: updated})
+         |> Repo.update() do
+      {:ok, updated_sheet} -> updated_sheet
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp fetch_sheet_owner!(%Sheet{} = sheet) do
+    case Repo.one(
+           from(persisted_sheet in Sheet,
+             where: persisted_sheet.id == ^sheet.id,
+             select: {persisted_sheet.project_id, persisted_sheet.id}
+           )
+         ) do
+      {project_id, sheet_id}
+      when project_id == sheet.project_id and sheet_id == sheet.id ->
+        {project_id, sheet_id}
+
+      _not_found_or_forged ->
+        Repo.rollback(:sheet_not_active)
+    end
+  end
+
+  defp lock_hide_scope!(project_id, target_sheet_id, ancestor_block_id)
+       when is_integer(ancestor_block_id) and ancestor_block_id > 0 do
+    case Repo.one(
+           from(block in Block,
+             join: source_sheet in Sheet,
+             on: source_sheet.id == block.sheet_id,
+             where:
+               block.id == ^ancestor_block_id and
+                 source_sheet.project_id == ^project_id,
+             select: {source_sheet.id, block.scope}
+           )
+         ) do
+      {source_sheet_id, "children"} ->
+        lock_active_inheritance_sheets!(
+          project_id,
+          target_sheet_id,
+          [source_sheet_id]
+        )
+
+        Repo.one(
+          from(block in Block,
+            where:
+              block.id == ^ancestor_block_id and
+                block.sheet_id == ^source_sheet_id and
+                block.scope == "children" and
+                is_nil(block.deleted_at),
+            lock: "FOR UPDATE"
+          )
+        ) || Repo.rollback(:invalid_inherited_block)
+
+      _not_found_or_invalid_scope ->
+        Repo.rollback(:invalid_inherited_block)
+    end
+  end
+
+  defp lock_hide_scope!(_project_id, _target_sheet_id, _ancestor_block_id), do: Repo.rollback(:invalid_inherited_block)
+
+  defp update_hidden_ids(current, ancestor_block_id, :hide) do
+    if ancestor_block_id in current, do: current, else: [ancestor_block_id | current]
+  end
+
+  defp update_hidden_ids(current, ancestor_block_id, :unhide), do: List.delete(current, ancestor_block_id)
+
   defp next_block_position(sheet_id) do
     BlockCrud.next_block_position(sheet_id)
   end
@@ -710,8 +1361,9 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     %{source_sheet: ancestor, blocks: blocks}
   end
 
-  # Lists active, non-detached instances owned by active sheets in the
-  # source sheet's project. Rows outside that boundary are never mutated.
+  # Lists active, non-detached instances in the source sheet's project.
+  # A target sheet may be in trash: source writes still maintain its hidden
+  # materialized instance so restore never has to recreate structure or IDs.
   defp list_non_detached_instances(%Block{} = parent_block) do
     case active_sheet_project_id(parent_block.sheet_id) do
       nil ->
@@ -726,8 +1378,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
               block.inherited_from_block_id == ^parent_block.id and
                 block.detached == false and
                 is_nil(block.deleted_at) and
-                owner_sheet.project_id == ^project_id and
-                is_nil(owner_sheet.deleted_at),
+                owner_sheet.project_id == ^project_id,
             order_by: [asc: block.id],
             lock: "FOR UPDATE",
             select: block
@@ -747,8 +1398,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
         where:
           b.id in ^instance_ids and
             b.inherited_from_block_id == ^parent_block.id and
-            b.detached == false and
-            is_nil(b.deleted_at)
+            b.detached == false
       ),
       common_updates
     )
@@ -794,8 +1444,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
       from(b in Block,
         where:
           b.id in ^instance_ids and
-            b.detached == false and
-            is_nil(b.deleted_at)
+            b.detached == false
       ),
       set: [variable_name: nil]
     )
@@ -826,36 +1475,30 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     Repo.delete_all(from(r in EntityReference, where: r.source_type == "block" and r.source_id in ^instance_ids))
   end
 
-  # Cleans orphaned hidden IDs only inside active sheets in the source project.
-  defp cleanup_hidden_block_ids(%Block{} = parent_block) do
+  # Cleans orphaned hidden IDs inside every sheet in the source project,
+  # including sheets in trash.
+  defp cleanup_hidden_block_ids(%Block{} = parent_block, project_id) do
     now = TimeHelpers.now()
 
-    case active_sheet_project_id(parent_block.sheet_id) do
-      nil ->
-        {0, nil}
-
-      project_id ->
-        Repo.update_all(
-          from(s in Sheet,
-            where:
-              s.project_id == ^project_id and
-                is_nil(s.deleted_at) and
-                ^parent_block.id in s.hidden_inherited_block_ids,
-            update: [
-              set: [
-                hidden_inherited_block_ids:
-                  fragment(
-                    "array_remove(?, ?)",
-                    s.hidden_inherited_block_ids,
-                    ^parent_block.id
-                  ),
-                updated_at: ^now
-              ]
-            ]
-          ),
-          []
-        )
-    end
+    Repo.update_all(
+      from(s in Sheet,
+        where:
+          s.project_id == ^project_id and
+            ^parent_block.id in s.hidden_inherited_block_ids,
+        update: [
+          set: [
+            hidden_inherited_block_ids:
+              fragment(
+                "array_remove(?, ?)",
+                s.hidden_inherited_block_ids,
+                ^parent_block.id
+              ),
+            updated_at: ^now
+          ]
+        ]
+      ),
+      []
+    )
   end
 
   # Loads children-scope blocks for an ancestor (used in inherit_blocks_for_new_sheet)

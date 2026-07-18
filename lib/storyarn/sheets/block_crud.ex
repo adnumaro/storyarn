@@ -7,12 +7,14 @@ defmodule Storyarn.Sheets.BlockCrud do
   alias Storyarn.Flows
   alias Storyarn.Localization
   alias Storyarn.References
+  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Shared.NameNormalizer
   alias Storyarn.Shared.TreeOperations
   alias Storyarn.Shared.WordCount
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.PropertyInheritance
+  alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
@@ -92,17 +94,22 @@ defmodule Storyarn.Sheets.BlockCrud do
   end
 
   def update_block(%Block{} = block, attrs) do
-    old_scope = block.scope
-
     fn ->
+      project_id = fetch_block_project_id!(block.id)
+      lock_active_project!(project_id)
+      {block, sheet} = lock_active_block!(block.id, project_id)
+      old_scope = block.scope
+
       changeset =
         block
         |> Block.update_changeset(attrs)
+        |> validate_and_normalize_block_references!(sheet.project_id)
         |> maybe_sync_variable_name(block)
         |> ensure_unique_variable_name(block.sheet_id, block.id)
         |> put_block_word_count()
 
       with {:ok, updated_block} <- Repo.update(changeset),
+           :ok <- maybe_update_block_references(updated_block, sheet.project_id),
            :ok <- handle_scope_change(updated_block, old_scope),
            :ok <- maybe_sync_definition(updated_block, old_scope),
            :ok <- extract_updated_block(updated_block, old_scope) do
@@ -117,9 +124,26 @@ defmodule Storyarn.Sheets.BlockCrud do
 
   defp insert_block_in_transaction(sheet, attrs, word_count) do
     Repo.transaction(fn ->
-      Repo.one!(from(s in Sheet, where: s.id == ^sheet.id, lock: "FOR UPDATE"))
+      lock_active_project!(sheet.project_id)
+
+      sheet =
+        Repo.one(
+          from(s in Sheet,
+            where:
+              s.id == ^sheet.id and s.project_id == ^sheet.project_id and
+                is_nil(s.deleted_at),
+            lock: "FOR UPDATE"
+          )
+        ) || Repo.rollback(:sheet_not_active)
+
       position = attrs[:position] || attrs["position"] || next_block_position(sheet.id)
-      insert_block(sheet, Map.put(attrs, :position, position), word_count)
+
+      attrs =
+        attrs
+        |> Map.put(:position, position)
+        |> normalize_new_block_references!(sheet.project_id)
+
+      insert_block(sheet, attrs, word_count)
     end)
   end
 
@@ -132,6 +156,7 @@ defmodule Storyarn.Sheets.BlockCrud do
       {:ok, block} ->
         maybe_create_default_table_structure({:ok, block})
         maybe_propagate_to_descendants({:ok, block}, sheet.id)
+        :ok = maybe_update_block_references(block, sheet.project_id)
 
         case Localization.extract_block_tree(block.id) do
           :ok -> block
@@ -143,13 +168,9 @@ defmodule Storyarn.Sheets.BlockCrud do
     end
   end
 
-  defp maybe_propagate_to_descendants({:ok, block}, sheet_id)
+  defp maybe_propagate_to_descendants({:ok, block}, _sheet_id)
        when block.scope == "children" and is_nil(block.inherited_from_block_id) do
-    descendant_ids = PropertyInheritance.get_descendant_sheet_ids(sheet_id)
-
-    if descendant_ids != [] do
-      {:ok, _count} = PropertyInheritance.create_inherited_instances(block, descendant_ids)
-    end
+    {:ok, _count} = PropertyInheritance.create_inherited_instances_for_all_descendants(block)
   end
 
   defp maybe_propagate_to_descendants(_result, _sheet_id), do: :ok
@@ -169,13 +190,9 @@ defmodule Storyarn.Sheets.BlockCrud do
 
   defp maybe_sync_definition(_block, _old_scope), do: :ok
 
-  defp handle_scope_change(%Block{scope: "children"}, "self") do
-    # Scope changed from "self" to "children" - instances created via propagation modal
-    :ok
-  end
+  defp handle_scope_change(%Block{scope: "children"}, "self"), do: :ok
 
   defp handle_scope_change(%Block{scope: "self"} = block, "children") do
-    # Scope changed from "children" to "self" - remove all inherited instances
     block
     |> PropertyInheritance.delete_inherited_instances()
     |> normalize_side_effect()
@@ -195,52 +212,124 @@ defmodule Storyarn.Sheets.BlockCrud do
   defp normalize_side_effect({:error, reason}), do: {:error, reason}
   defp normalize_side_effect(:ok), do: :ok
 
+  defp validate_and_normalize_block_references!(changeset, project_id) do
+    type = Ecto.Changeset.get_field(changeset, :type)
+    value = Ecto.Changeset.get_field(changeset, :value)
+
+    case ReferenceTracker.lock_and_normalize_block_value(project_id, type, value) do
+      {:ok, normalized_value} ->
+        Ecto.Changeset.put_change(changeset, :value, normalized_value)
+
+      {:error, reason} ->
+        Repo.rollback(reason)
+    end
+  end
+
+  defp normalize_new_block_references!(attrs, project_id) do
+    type = attrs[:type] || attrs["type"]
+    value = attrs[:value] || attrs["value"]
+
+    case ReferenceTracker.lock_and_normalize_block_value(project_id, type, value) do
+      {:ok, normalized_value} -> Map.put(attrs, :value, normalized_value)
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp fetch_block_project_id!(block_id) do
+    Repo.one(
+      from(block in Block,
+        join: sheet in Sheet,
+        on: sheet.id == block.sheet_id,
+        where: block.id == ^block_id,
+        select: sheet.project_id
+      )
+    ) || Repo.rollback(:block_not_found)
+  end
+
+  defp lock_active_project!(project_id) do
+    case ProjectReferenceIntegrity.lock_active_project(project_id, :update) do
+      {:ok, _project} -> :ok
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp lock_active_block!(block_id, project_id) do
+    case Repo.one(
+           from(block in Block,
+             join: sheet in Sheet,
+             on: sheet.id == block.sheet_id,
+             where:
+               block.id == ^block_id and is_nil(block.deleted_at) and
+                 sheet.project_id == ^project_id and is_nil(sheet.deleted_at),
+             lock: "FOR UPDATE",
+             select: {block, sheet}
+           )
+         ) do
+      {%Block{} = block, %Sheet{} = sheet} -> {block, sheet}
+      nil -> Repo.rollback(:block_not_active)
+    end
+  end
+
   def update_block_value(%Block{} = block, value) do
-    word_count = WordCount.for_block(block.type, value)
+    fn ->
+      project_id = fetch_block_project_id!(block.id)
+      lock_active_project!(project_id)
+      {block, sheet} = lock_active_block!(block.id, project_id)
 
-    Ecto.Multi.new()
-    |> Ecto.Multi.update(
-      :block,
-      block
-      |> Block.value_changeset(%{value: value})
-      |> Ecto.Changeset.put_change(:word_count, word_count)
-    )
-    |> Ecto.Multi.run(:update_references, fn _repo, %{block: updated_block} ->
-      if updated_block.type in ["reference", "rich_text"] do
-        References.update_block_references(updated_block)
-      end
+      value =
+        case ReferenceTracker.lock_and_normalize_block_value(
+               sheet.project_id,
+               block.type,
+               value
+             ) do
+          {:ok, normalized_value} -> normalized_value
+          {:error, reason} -> Repo.rollback(reason)
+        end
 
-      {:ok, :done}
-    end)
-    |> Ecto.Multi.run(:localization, fn _repo, %{block: updated_block} ->
-      case Localization.extract_block(updated_block) do
-        :ok -> {:ok, :done}
-        {:error, reason} -> {:error, reason}
+      word_count = WordCount.for_block(block.type, value)
+
+      with {:ok, updated_block} <-
+             block
+             |> Block.value_changeset(%{value: value})
+             |> Ecto.Changeset.put_change(:word_count, word_count)
+             |> Repo.update(),
+           :ok <- maybe_update_block_references(updated_block, sheet.project_id),
+           :ok <- Localization.extract_block(updated_block) do
+        updated_block
+      else
+        {:error, reason} -> Repo.rollback(reason)
       end
-    end)
+    end
     |> Repo.transaction()
     |> case do
-      {:ok, %{block: updated_block}} ->
+      {:ok, updated_block} ->
         broadcast_block_change(updated_block)
         {:ok, updated_block}
 
-      {:error, :block, changeset, _} ->
-        {:error, changeset}
-
-      {:error, _, reason, _} ->
+      {:error, reason} ->
         {:error, reason}
     end
   end
 
+  defp maybe_update_block_references(%Block{} = block, project_id) do
+    References.update_block_references(block, project_id: project_id)
+  end
+
   def update_block_config(%Block{} = block, config) do
     fn ->
+      project_id = fetch_block_project_id!(block.id)
+      lock_active_project!(project_id)
+      {block, sheet} = lock_active_block!(block.id, project_id)
+
       changeset =
         block
         |> Block.config_changeset(%{config: config})
+        |> validate_and_normalize_block_references!(sheet.project_id)
         |> maybe_sync_variable_name(block)
         |> ensure_unique_variable_name(block.sheet_id, block.id)
 
       with {:ok, updated_block} <- Repo.update(changeset),
+           :ok <- maybe_update_block_references(updated_block, sheet.project_id),
            :ok <- maybe_sync_config_definition(updated_block),
            :ok <- extract_updated_block(updated_block, block.scope) do
         updated_block
@@ -265,6 +354,10 @@ defmodule Storyarn.Sheets.BlockCrud do
   """
   def delete_block(%Block{} = block) do
     fn ->
+      project_id = fetch_block_project_id!(block.id)
+      lock_active_project!(project_id)
+      {block, _sheet} = lock_active_block!(block.id, project_id)
+
       # Clean up references and localization texts before soft-deleting
       References.delete_block_references(block.id)
       Localization.delete_block_tree_texts(block.id)
@@ -310,17 +403,126 @@ defmodule Storyarn.Sheets.BlockCrud do
   """
   def restore_block(%Block{} = block) do
     fn ->
-      with {:ok, restored_block} <- block |> Block.restore_changeset() |> Repo.update(),
-           :ok <- maybe_restore_inherited_instances(block),
-           :ok <- extract_updated_block(restored_block, block.scope) do
-        restored_block
-      else
-        {:error, reason} -> Repo.rollback(reason)
-      end
+      project_id = fetch_block_project_id!(block.id)
+      lock_active_project!(project_id)
+      {block, sheet} = lock_deleted_block!(block.id, project_id)
+      do_restore_block(block, sheet)
     end
     |> Repo.transaction()
     |> broadcast_block_result()
   end
+
+  @doc false
+  @spec reconcile_active_blocks_for_sheet(Sheet.t()) :: [Block.t()]
+  def reconcile_active_blocks_for_sheet(%Sheet{deleted_at: nil} = sheet) do
+    if !Repo.in_transaction?() do
+      raise ArgumentError,
+            "reconcile_active_blocks_for_sheet/1 must run inside the sheet restore transaction"
+    end
+
+    active_blocks =
+      Repo.all(
+        from(block in Block,
+          where: block.sheet_id == ^sheet.id and is_nil(block.deleted_at),
+          order_by: [asc: block.id],
+          lock: "FOR UPDATE"
+        )
+      )
+
+    Enum.map(active_blocks, &reconcile_active_block(&1, sheet))
+  end
+
+  defp do_restore_block(block, sheet) do
+    lock_active_inheritance_source!(block, sheet.project_id)
+
+    normalized_value =
+      case ReferenceTracker.lock_and_normalize_block_value(
+             sheet.project_id,
+             block.type,
+             block.value
+           ) do
+        {:ok, value} -> value
+        {:error, reason} -> Repo.rollback(reason)
+      end
+
+    with {:ok, restored_block} <-
+           block
+           |> Block.restore_changeset()
+           |> Ecto.Changeset.put_change(:value, normalized_value)
+           |> Repo.update(),
+         :ok <- maybe_update_block_references(restored_block, sheet.project_id),
+         :ok <- maybe_restore_inherited_instances(block),
+         :ok <- extract_updated_block(restored_block, block.scope) do
+      restored_block
+    else
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp reconcile_active_block(block, sheet) do
+    lock_active_inheritance_source!(block, sheet.project_id)
+
+    normalized_value =
+      case ReferenceTracker.lock_and_normalize_block_value(
+             sheet.project_id,
+             block.type,
+             block.value
+           ) do
+        {:ok, value} -> value
+        {:error, reason} -> Repo.rollback(reason)
+      end
+
+    block =
+      if normalized_value == block.value do
+        block
+      else
+        block
+        |> Block.value_changeset(%{value: normalized_value})
+        |> Repo.update!()
+      end
+
+    case maybe_update_block_references(block, sheet.project_id) do
+      :ok -> block
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp lock_deleted_block!(block_id, project_id) do
+    case Repo.one(
+           from(block in Block,
+             join: sheet in Sheet,
+             on: sheet.id == block.sheet_id,
+             where:
+               block.id == ^block_id and not is_nil(block.deleted_at) and
+                 sheet.project_id == ^project_id and is_nil(sheet.deleted_at),
+             lock: "FOR UPDATE",
+             select: {block, sheet}
+           )
+         ) do
+      {%Block{} = block, %Sheet{} = sheet} -> {block, sheet}
+      nil -> Repo.rollback(:block_not_restorable)
+    end
+  end
+
+  defp lock_active_inheritance_source!(%Block{inherited_from_block_id: source_id, detached: false}, project_id)
+       when is_integer(source_id) do
+    case Repo.one(
+           from(source in Block,
+             join: source_sheet in Sheet,
+             on: source_sheet.id == source.sheet_id,
+             where:
+               source.id == ^source_id and is_nil(source.deleted_at) and
+                 source_sheet.project_id == ^project_id and is_nil(source_sheet.deleted_at),
+             lock: "FOR SHARE",
+             select: source.id
+           )
+         ) do
+      ^source_id -> :ok
+      nil -> Repo.rollback({:inheritance_source_not_active, source_id})
+    end
+  end
+
+  defp lock_active_inheritance_source!(_block, _project_id), do: :ok
 
   defp maybe_restore_inherited_instances(%Block{scope: "children"} = deleted_block) do
     deleted_block
@@ -336,49 +538,80 @@ defmodule Storyarn.Sheets.BlockCrud do
   Falls back to creating a new block if the original doesn't exist.
   """
   def create_block_from_snapshot(%Sheet{} = sheet, snapshot) do
-    case Repo.get(Block, snapshot.id) do
-      %Block{deleted_at: d} = block when not is_nil(d) ->
-        # Block exists but is soft-deleted — restore it
-        restore_block(block)
-
-      nil ->
-        # Block doesn't exist, create from scratch
-        attrs = %{
-          type: snapshot.type,
-          position: snapshot.position,
-          config: snapshot.config,
-          value: snapshot.value,
-          is_constant: Map.get(snapshot, :is_constant, false),
-          variable_name: snapshot.variable_name,
-          scope: Map.get(snapshot, :scope, "self"),
-          column_group_id: snapshot.column_group_id,
-          column_index: Map.get(snapshot, :column_index, 0)
-        }
-
-        insert_block_from_snapshot(sheet, snapshot, attrs)
-
-      _active_block ->
-        # Block exists and is active — shouldn't happen in normal undo/redo
-        {:error, :block_already_exists}
-    end
-  end
-
-  defp insert_block_from_snapshot(sheet, snapshot, attrs) do
     fn ->
-      changeset =
-        %Block{sheet_id: sheet.id}
-        |> Block.create_changeset(attrs)
-        |> Ecto.Changeset.put_change(:word_count, WordCount.for_block(snapshot.type, snapshot.value))
+      lock_active_project!(sheet.project_id)
+      locked_sheet = lock_active_sheet!(sheet.id, sheet.project_id)
 
-      with {:ok, block} <- Repo.insert(changeset),
-           :ok <- extract_updated_block(block, block.scope) do
-        block
-      else
-        {:error, reason} -> Repo.rollback(reason)
+      existing_block =
+        Repo.one(
+          from(block in Block,
+            where: block.id == ^snapshot.id,
+            lock: "FOR UPDATE"
+          )
+        )
+
+      case existing_block do
+        %Block{sheet_id: sheet_id, deleted_at: deleted_at} = block
+        when sheet_id == locked_sheet.id and not is_nil(deleted_at) ->
+          do_restore_block(block, locked_sheet)
+
+        nil ->
+          attrs = %{
+            type: snapshot.type,
+            position: snapshot.position,
+            config: snapshot.config,
+            value: snapshot.value,
+            is_constant: Map.get(snapshot, :is_constant, false),
+            variable_name: snapshot.variable_name,
+            scope: Map.get(snapshot, :scope, "self"),
+            column_group_id: snapshot.column_group_id,
+            column_index: Map.get(snapshot, :column_index, 0)
+          }
+
+          insert_block_from_snapshot(locked_sheet, snapshot, attrs)
+
+        _existing_block ->
+          Repo.rollback(:block_already_exists)
       end
     end
     |> Repo.transaction()
     |> broadcast_block_result()
+  end
+
+  defp insert_block_from_snapshot(sheet, snapshot, attrs) do
+    attrs = normalize_new_block_references!(attrs, sheet.project_id)
+
+    block =
+      if is_integer(snapshot.id) and snapshot.id > 0 do
+        %Block{id: snapshot.id, sheet_id: sheet.id}
+      else
+        %Block{sheet_id: sheet.id}
+      end
+
+    changeset =
+      block
+      |> Block.create_changeset(attrs)
+      |> Ecto.Changeset.put_change(:word_count, WordCount.for_block(snapshot.type, attrs.value))
+      |> ensure_unique_variable_name(sheet.id, nil)
+
+    with {:ok, block} <- Repo.insert(changeset),
+         :ok <- maybe_update_block_references(block, sheet.project_id),
+         :ok <- extract_updated_block(block, block.scope) do
+      block
+    else
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp lock_active_sheet!(sheet_id, project_id) do
+    Repo.one(
+      from(sheet in Sheet,
+        where:
+          sheet.id == ^sheet_id and sheet.project_id == ^project_id and
+            is_nil(sheet.deleted_at),
+        lock: "FOR UPDATE"
+      )
+    ) || Repo.rollback(:sheet_not_active)
   end
 
   @doc """
@@ -388,33 +621,40 @@ defmodule Storyarn.Sheets.BlockCrud do
   Does NOT copy inherited_from_block_id (duplicate is always "own").
   """
   def duplicate_block(%Block{} = block) do
-    sheet_id = block.sheet_id
-
     fn ->
+      project_id = fetch_block_project_id!(block.id)
+      lock_active_project!(project_id)
+      {block, sheet} = lock_active_block!(block.id, project_id)
+
       # Shift all blocks after the original position by +1
       Repo.update_all(
-        from(b in Block, where: b.sheet_id == ^sheet_id and b.position > ^block.position and is_nil(b.deleted_at)),
+        from(candidate in Block,
+          where:
+            candidate.sheet_id == ^sheet.id and
+              candidate.position > ^block.position and
+              is_nil(candidate.deleted_at)
+        ),
         inc: [position: 1]
       )
 
-      attrs = %{
-        type: block.type,
-        config: block.config,
-        value: block.value,
-        scope: block.scope,
-        is_constant: block.is_constant,
-        position: block.position + 1,
-        column_group_id: block.column_group_id,
-        column_index: block.column_index
-      }
+      attrs =
+        normalize_new_block_references!(
+          %{
+            type: block.type,
+            config: block.config,
+            value: block.value,
+            scope: block.scope,
+            is_constant: block.is_constant,
+            position: block.position + 1,
+            column_group_id: block.column_group_id,
+            column_index: block.column_index
+          },
+          sheet.project_id
+        )
 
-      sheet = Repo.get!(Sheet, sheet_id)
       word_count = WordCount.for_block(block.type, block.value)
 
-      case insert_block_in_transaction(sheet, attrs, word_count) do
-        {:ok, new_block} -> new_block
-        {:error, reason} -> Repo.rollback(reason)
-      end
+      insert_block(sheet, attrs, word_count)
     end
     |> Repo.transaction()
     |> broadcast_block_result()
@@ -424,52 +664,57 @@ defmodule Storyarn.Sheets.BlockCrud do
   Moves a block up by swapping positions with the previous block.
   Returns `{:ok, :moved}`, `{:ok, :already_first}`, or `{:error, :not_found}`.
   """
-  def move_block_up(block_id, sheet_id) do
-    blocks = list_blocks(sheet_id)
+  def move_block_up(block_id, sheet_id)
+      when is_integer(block_id) and block_id > 0 and is_integer(sheet_id) and sheet_id > 0,
+      do: move_block(block_id, sheet_id, :up)
 
-    case Enum.find_index(blocks, &(&1.id == block_id)) do
-      nil ->
-        {:error, :not_found}
-
-      0 ->
-        {:ok, :already_first}
-
-      idx ->
-        swap_block_positions(Enum.at(blocks, idx), Enum.at(blocks, idx - 1))
-    end
-  end
+  def move_block_up(_block_id, _sheet_id), do: {:error, :not_found}
 
   @doc """
   Moves a block down by swapping positions with the next block.
   Returns `{:ok, :moved}`, `{:ok, :already_last}`, or `{:error, :not_found}`.
   """
-  def move_block_down(block_id, sheet_id) do
-    blocks = list_blocks(sheet_id)
-    last_idx = length(blocks) - 1
+  def move_block_down(block_id, sheet_id)
+      when is_integer(block_id) and block_id > 0 and is_integer(sheet_id) and sheet_id > 0,
+      do: move_block(block_id, sheet_id, :down)
 
-    case Enum.find_index(blocks, &(&1.id == block_id)) do
-      nil ->
-        {:error, :not_found}
+  def move_block_down(_block_id, _sheet_id), do: {:error, :not_found}
 
-      ^last_idx ->
-        {:ok, :already_last}
+  defp move_block(block_id, sheet_id, direction) do
+    Repo.transaction(fn ->
+      project_id = fetch_sheet_project_id!(sheet_id)
+      lock_active_project!(project_id)
+      lock_active_sheet!(sheet_id, project_id)
 
-      idx ->
-        swap_block_positions(Enum.at(blocks, idx), Enum.at(blocks, idx + 1))
-    end
+      blocks =
+        sheet_id
+        |> lock_active_blocks!()
+        |> Enum.sort_by(&{&1.position, &1.id})
+
+      case {direction, Enum.find_index(blocks, &(&1.id == block_id))} do
+        {_direction, nil} ->
+          Repo.rollback(:not_found)
+
+        {:up, 0} ->
+          :already_first
+
+        {:down, index} when index == length(blocks) - 1 ->
+          :already_last
+
+        {:up, index} ->
+          swap_locked_block_positions!(Enum.at(blocks, index), Enum.at(blocks, index - 1))
+          :moved
+
+        {:down, index} ->
+          swap_locked_block_positions!(Enum.at(blocks, index), Enum.at(blocks, index + 1))
+          :moved
+      end
+    end)
   end
 
-  defp swap_block_positions(%Block{} = a, %Block{} = b) do
-    Repo.transaction(fn ->
-      # Use a large negative sentinel to avoid unique constraint collisions
-      temp_pos = -999_999
-
-      Repo.update!(Block.position_changeset(a, %{position: temp_pos}))
-      Repo.update!(Block.position_changeset(b, %{position: a.position}))
-      Repo.update!(Block.position_changeset(a, %{position: b.position}))
-    end)
-
-    {:ok, :moved}
+  defp swap_locked_block_positions!(%Block{} = first, %Block{} = second) do
+    Repo.update!(Block.position_changeset(first, %{position: second.position}))
+    Repo.update!(Block.position_changeset(second, %{position: first.position}))
   end
 
   def change_block(%Block{} = block, attrs \\ %{}) do
@@ -480,16 +725,30 @@ defmodule Storyarn.Sheets.BlockCrud do
   Updates a block's variable_name directly (user-initiated rename).
   Normalizes via variablify and ensures uniqueness within the sheet.
   """
-  def update_variable_name(%Block{} = block, variable_name) do
-    normalized = NameNormalizer.variablify(variable_name)
+  def update_variable_name(%Block{id: block_id, sheet_id: sheet_id} = block, variable_name)
+      when is_integer(block_id) and block_id > 0 and is_integer(sheet_id) and sheet_id > 0 and
+             (is_binary(variable_name) or is_nil(variable_name)) do
+    fn ->
+      {project_id, sheet_id} = fetch_block_owner!(block.id)
 
-    # Fall back to auto-generated name from label when input is cleared
-    normalized = normalized || default_variable_name(block)
+      if block.sheet_id != sheet_id do
+        Repo.rollback(:block_not_active)
+      end
 
-    fn -> update_variable_name_transaction(block, normalized) end
+      lock_active_project!(project_id)
+      lock_active_sheet!(sheet_id, project_id)
+      locked_block = lock_active_block_in_sheet!(block.id, sheet_id)
+
+      normalized = NameNormalizer.variablify(variable_name)
+      normalized = normalized || default_variable_name(locked_block)
+
+      update_variable_name_transaction(locked_block, normalized)
+    end
     |> Repo.transaction()
     |> broadcast_block_result()
   end
+
+  def update_variable_name(%Block{}, _variable_name), do: {:error, :invalid_variable_name_update}
 
   defp update_variable_name_transaction(block, variable_name) do
     with {:ok, updated_block} <-
@@ -599,7 +858,8 @@ defmodule Storyarn.Sheets.BlockCrud do
 
   Accepts a list of maps with `id`, `column_group_id`, and `column_index`.
   Updates each block's position (= list index), column_group_id, and column_index.
-  Only updates blocks that belong to the given sheet.
+  The payload must describe every active block in the sheet exactly once.
+  Invalid, partial, foreign, or stale payloads are rejected atomically.
   """
   @reorder_blocks_with_columns_sql """
   UPDATE blocks
@@ -610,19 +870,32 @@ defmodule Storyarn.Sheets.BlockCrud do
   WHERE blocks.id = data.id AND blocks.sheet_id = $5 AND blocks.deleted_at IS NULL
   """
 
-  def reorder_blocks_with_columns(sheet_id, items) when is_list(items) do
+  def reorder_blocks_with_columns(sheet_id, items) when is_integer(sheet_id) and sheet_id > 0 and is_list(items) do
     Repo.transaction(fn ->
+      normalized_items = normalize_layout_items!(items)
+      validate_layout_contract!(normalized_items, items)
+      project_id = fetch_sheet_project_id!(sheet_id)
+
+      lock_active_project!(project_id)
+      lock_active_sheet!(sheet_id, project_id)
+
+      locked_ids =
+        sheet_id
+        |> lock_active_blocks!()
+        |> Enum.map(& &1.id)
+
+      normalized_ids = Enum.map(normalized_items, & &1.id)
+      ensure_complete_block_set!(normalized_ids, locked_ids, {:invalid_block_layout, items})
+
       {ids, positions, group_ids, col_indexes} =
-        items
+        normalized_items
         |> Enum.with_index()
         |> Enum.reduce({[], [], [], []}, fn {item, index}, {ids, pos, gids, cidxs} ->
-          col_idx = max(0, min(item[:column_index] || 0, 2))
-
           {
             [item.id | ids],
             [index | pos],
             [item.column_group_id | gids],
-            [col_idx | cidxs]
+            [item.column_index | cidxs]
           }
         end)
 
@@ -638,35 +911,56 @@ defmodule Storyarn.Sheets.BlockCrud do
     end)
   end
 
+  def reorder_blocks_with_columns(_sheet_id, items), do: {:error, {:invalid_block_layout, items}}
+
   @doc """
   Creates a column group from a list of blocks.
   Generates a new UUID for the group and assigns column indices.
   Returns {:ok, group_id} or {:error, reason}.
   """
-  def create_column_group(sheet_id, block_ids) when is_list(block_ids) do
-    group_id = Ecto.UUID.generate()
-
+  def create_column_group(sheet_id, block_ids) when is_integer(sheet_id) and sheet_id > 0 and is_list(block_ids) do
     Repo.transaction(fn ->
-      total_updated =
-        block_ids
-        |> Enum.with_index()
-        |> Enum.reduce(0, fn {block_id, idx}, acc ->
-          {count, _} =
-            Repo.update_all(
-              from(b in Block, where: b.id == ^block_id and b.sheet_id == ^sheet_id and is_nil(b.deleted_at)),
-              set: [column_group_id: group_id, column_index: idx]
-            )
-
-          acc + count
-        end)
-
-      if total_updated < 2 do
+      if length(block_ids) < 2 do
         Repo.rollback(:not_enough_blocks)
-      else
-        group_id
       end
+
+      normalized_ids =
+        normalize_block_ids!(block_ids, {:invalid_column_group, block_ids})
+
+      if length(normalized_ids) > 3 do
+        Repo.rollback({:invalid_column_group, block_ids})
+      end
+
+      project_id = fetch_sheet_project_id!(sheet_id)
+      lock_active_project!(project_id)
+      lock_active_sheet!(sheet_id, project_id)
+
+      locked_ids = lock_requested_active_block_ids!(sheet_id, normalized_ids)
+
+      if locked_ids != Enum.sort(normalized_ids) do
+        Repo.rollback({:invalid_column_group, block_ids})
+      end
+
+      group_id = Ecto.UUID.generate()
+
+      normalized_ids
+      |> Enum.with_index()
+      |> Enum.each(fn {block_id, index} ->
+        Repo.update_all(
+          from(block in Block,
+            where:
+              block.id == ^block_id and block.sheet_id == ^sheet_id and
+                is_nil(block.deleted_at)
+          ),
+          set: [column_group_id: group_id, column_index: index]
+        )
+      end)
+
+      group_id
     end)
   end
+
+  def create_column_group(_sheet_id, block_ids), do: {:error, {:invalid_column_group, block_ids}}
 
   @doc """
   Dissolves a column group by resetting column fields for all blocks in the group.
@@ -688,13 +982,28 @@ defmodule Storyarn.Sheets.BlockCrud do
   # Reordering
   # =============================================================================
 
-  def reorder_blocks(sheet_id, block_ids) when is_list(block_ids) do
-    pairs =
-      block_ids
-      |> Enum.reject(&is_nil/1)
-      |> Enum.with_index()
-
+  def reorder_blocks(sheet_id, block_ids) when is_integer(sheet_id) and sheet_id > 0 and is_list(block_ids) do
     Repo.transaction(fn ->
+      normalized_ids =
+        normalize_block_ids!(block_ids, {:invalid_block_reorder, block_ids})
+
+      project_id = fetch_sheet_project_id!(sheet_id)
+      lock_active_project!(project_id)
+      lock_active_sheet!(sheet_id, project_id)
+
+      locked_ids =
+        sheet_id
+        |> lock_active_blocks!()
+        |> Enum.map(& &1.id)
+
+      ensure_complete_block_set!(
+        normalized_ids,
+        locked_ids,
+        {:invalid_block_reorder, block_ids}
+      )
+
+      pairs = Enum.with_index(normalized_ids)
+
       TreeOperations.batch_set_positions("blocks", pairs,
         scope: {"sheet_id", sheet_id},
         soft_delete: true
@@ -704,9 +1013,176 @@ defmodule Storyarn.Sheets.BlockCrud do
     end)
   end
 
+  def reorder_blocks(_sheet_id, block_ids), do: {:error, {:invalid_block_reorder, block_ids}}
+
   # =============================================================================
   # Private Helpers
   # =============================================================================
+
+  defp fetch_sheet_project_id!(sheet_id) do
+    Repo.one(
+      from(sheet in Sheet,
+        where: sheet.id == ^sheet_id,
+        select: sheet.project_id
+      )
+    ) || Repo.rollback(:sheet_not_found)
+  end
+
+  defp fetch_block_owner!(block_id) do
+    Repo.one(
+      from(block in Block,
+        join: sheet in Sheet,
+        on: sheet.id == block.sheet_id,
+        where: block.id == ^block_id,
+        select: {sheet.project_id, sheet.id}
+      )
+    ) || Repo.rollback(:block_not_found)
+  end
+
+  defp lock_active_block_in_sheet!(block_id, sheet_id) do
+    Repo.one(
+      from(block in Block,
+        where:
+          block.id == ^block_id and block.sheet_id == ^sheet_id and
+            is_nil(block.deleted_at),
+        lock: "FOR UPDATE"
+      )
+    ) || Repo.rollback(:block_not_active)
+  end
+
+  defp lock_active_blocks!(sheet_id) do
+    Repo.all(
+      from(block in Block,
+        where:
+          block.sheet_id == ^sheet_id and
+            is_nil(block.deleted_at) and
+            (is_nil(block.inherited_from_block_id) or block.detached == true),
+        order_by: [asc: block.id],
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp lock_requested_active_block_ids!(sheet_id, block_ids) do
+    Repo.all(
+      from(block in Block,
+        where:
+          block.sheet_id == ^sheet_id and block.id in ^block_ids and
+            is_nil(block.deleted_at),
+        order_by: [asc: block.id],
+        lock: "FOR UPDATE",
+        select: block.id
+      )
+    )
+  end
+
+  defp normalize_block_ids!(block_ids, error_reason) do
+    if Enum.all?(block_ids, &(is_integer(&1) and &1 > 0)) and
+         length(block_ids) == length(Enum.uniq(block_ids)) do
+      block_ids
+    else
+      Repo.rollback(error_reason)
+    end
+  end
+
+  defp normalize_layout_items!(items) do
+    normalized =
+      Enum.reduce_while(items, [], fn item, acc ->
+        case normalize_layout_item(item) do
+          {:ok, normalized_item} -> {:cont, [normalized_item | acc]}
+          :error -> {:halt, :error}
+        end
+      end)
+
+    case normalized do
+      :error ->
+        Repo.rollback({:invalid_block_layout, items})
+
+      reversed_items ->
+        normalized_items = Enum.reverse(reversed_items)
+        ids = Enum.map(normalized_items, & &1.id)
+
+        if length(ids) == length(Enum.uniq(ids)) do
+          normalized_items
+        else
+          Repo.rollback({:invalid_block_layout, items})
+        end
+    end
+  end
+
+  defp normalize_layout_item(item) when is_map(item) do
+    id = layout_item_value(item, :id)
+    column_group_id = layout_item_value(item, :column_group_id)
+    column_index = layout_item_value(item, :column_index)
+
+    with true <- is_integer(id) and id > 0,
+         {:ok, normalized_group_id} <- normalize_column_group_id(column_group_id),
+         {:ok, normalized_column_index} <- normalize_column_index(column_index) do
+      {:ok,
+       %{
+         id: id,
+         column_group_id: normalized_group_id,
+         column_index: normalized_column_index
+       }}
+    else
+      _error -> :error
+    end
+  end
+
+  defp normalize_layout_item(_item), do: :error
+
+  defp layout_item_value(item, key) do
+    case Map.fetch(item, key) do
+      {:ok, value} -> value
+      :error -> Map.get(item, Atom.to_string(key))
+    end
+  end
+
+  defp normalize_column_group_id(nil), do: {:ok, nil}
+
+  defp normalize_column_group_id(column_group_id) do
+    Ecto.UUID.cast(column_group_id)
+  end
+
+  defp normalize_column_index(column_index) when is_integer(column_index) do
+    {:ok, column_index}
+  end
+
+  defp normalize_column_index(_column_index), do: :error
+
+  defp validate_layout_contract!(items, original_items) do
+    valid_full_width_items? =
+      Enum.all?(items, fn
+        %{column_group_id: nil, column_index: 0} -> true
+        %{column_group_id: nil} -> false
+        _grouped_item -> true
+      end)
+
+    valid_groups? =
+      items
+      |> Enum.with_index()
+      |> Enum.reject(fn {item, _position} -> is_nil(item.column_group_id) end)
+      |> Enum.group_by(fn {item, _position} -> item.column_group_id end)
+      |> Enum.all?(fn {_group_id, positioned_items} ->
+        group_size = length(positioned_items)
+        positions = Enum.map(positioned_items, &elem(&1, 1))
+        column_indexes = Enum.map(positioned_items, fn {item, _position} -> item.column_index end)
+
+        group_size in 2..3 and
+          positions == Enum.to_list(hd(positions)..List.last(positions)) and
+          column_indexes == Enum.to_list(0..(group_size - 1))
+      end)
+
+    if not valid_full_width_items? or not valid_groups? do
+      Repo.rollback({:invalid_block_layout, original_items})
+    end
+  end
+
+  defp ensure_complete_block_set!(requested_ids, locked_ids, error_reason) do
+    if Enum.sort(requested_ids) != locked_ids do
+      Repo.rollback(error_reason)
+    end
+  end
 
   # Ensures the variable_name is unique within the sheet.
   # If a collision exists, adds suffix _2, _3, etc.

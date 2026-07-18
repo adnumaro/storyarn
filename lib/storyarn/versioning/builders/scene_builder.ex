@@ -971,6 +971,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
          :ok <- validate_scene_layer_invariants(data.layers),
          :ok <- validate_scene_raw_child_types(data),
          :ok <- validate_scene_zone_target_contracts(data.zones),
+         :ok <- validate_scene_zone_collection_contracts(data.zones),
          :ok <- validate_scene_child_payloads(data, snapshot["original_id"]),
          :ok <- validate_scene_ambient_flow_payloads(data.ambient_flows, snapshot["original_id"]),
          :ok <-
@@ -1239,6 +1240,85 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       {:error, {:invalid_scene_zone_target_contract, zone["original_id"], normalized_action_type, target_type, target_id}}
     end
   end
+
+  defp validate_scene_zone_collection_contracts(zones) do
+    Enum.reduce_while(zones, :ok, fn entry, :ok ->
+      zone = restore_entry_data(entry)
+
+      case validate_scene_zone_collection_contract(zone) do
+        :ok -> {:cont, :ok}
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp validate_scene_zone_collection_contract(%{
+         "original_id" => zone_id,
+         "action_type" => "collection",
+         "action_data" => %{"items" => items}
+       })
+       when is_list(items) do
+    items
+    |> Enum.with_index()
+    |> Enum.reduce_while({:ok, MapSet.new()}, fn
+      {item, index}, {:ok, seen_ids} when is_map(item) ->
+        case validate_scene_collection_item(zone_id, item, index, seen_ids) do
+          {:ok, normalized_item_id} ->
+            {:cont, {:ok, MapSet.put(seen_ids, normalized_item_id)}}
+
+          {:error, _reason} = error ->
+            {:halt, error}
+        end
+
+      {item, index}, _acc ->
+        {:halt, {:error, {:invalid_scene_zone_collection_item, zone_id, index, :not_a_map, item}}}
+    end)
+    |> case do
+      {:ok, _seen_ids} -> :ok
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp validate_scene_zone_collection_contract(%{"original_id" => zone_id, "action_type" => "collection"} = zone) do
+    {:error, {:invalid_scene_zone_collection, zone_id, zone["action_data"]}}
+  end
+
+  defp validate_scene_zone_collection_contract(_zone), do: :ok
+
+  defp validate_scene_collection_item(zone_id, item, index, seen_ids) do
+    item_id = item["id"]
+
+    case cast_scene_collection_item_id(item_id) do
+      {:ok, normalized_item_id} ->
+        validate_scene_collection_item_fields(
+          zone_id,
+          item,
+          index,
+          seen_ids,
+          normalized_item_id
+        )
+
+      :error ->
+        {:error, {:invalid_scene_zone_collection_item, zone_id, index, :invalid_id, item_id}}
+    end
+  end
+
+  defp validate_scene_collection_item_fields(zone_id, item, index, seen_ids, normalized_item_id) do
+    cond do
+      MapSet.member?(seen_ids, normalized_item_id) ->
+        {:error, {:invalid_scene_zone_collection_item, zone_id, index, :duplicate_id, item["id"]}}
+
+      not optional_positive_integer?(item["sheet_id"]) ->
+        {:error, {:invalid_scene_zone_collection_item, zone_id, index, :invalid_sheet_id, item["sheet_id"]}}
+
+      true ->
+        {:ok, normalized_item_id}
+    end
+  end
+
+  defp cast_scene_collection_item_id(item_id) when is_binary(item_id), do: Ecto.UUID.cast(item_id)
+
+  defp cast_scene_collection_item_id(_item_id), do: :error
 
   defp scene_pin_raw_checks(pin) do
     [
@@ -1762,6 +1842,11 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     pin_flow_ids = Enum.map(plan.pins, fn {pin, _layer_id} -> pin["flow_id"] end)
     pin_sheet_ids = Enum.map(plan.pins, fn {pin, _layer_id} -> pin["sheet_id"] end)
 
+    zone_collection_sheet_ids =
+      Enum.flat_map(plan.zones, fn {zone, _layer_id} ->
+        scene_zone_collection_sheet_ids(zone)
+      end)
+
     zone_flow_ids =
       plan.zones
       |> Enum.filter(fn {zone, _layer_id} -> zone["target_type"] == "flow" end)
@@ -1782,11 +1867,18 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
     %{
       flow_ids: compact_scene_reference_ids(pin_flow_ids ++ zone_flow_ids ++ ambient_flow_ids),
-      sheet_ids: compact_scene_reference_ids(pin_sheet_ids),
+      sheet_ids: compact_scene_reference_ids(pin_sheet_ids ++ zone_collection_sheet_ids),
       scene_ids: compact_scene_reference_ids(zone_scene_ids),
       asset_ids: compact_scene_reference_ids([snapshot["background_asset_id"] | zone_asset_ids ++ pin_asset_ids])
     }
   end
+
+  defp scene_zone_collection_sheet_ids(%{"action_type" => "collection", "action_data" => %{"items" => items}})
+       when is_list(items) do
+    Enum.map(items, & &1["sheet_id"])
+  end
+
+  defp scene_zone_collection_sheet_ids(_zone), do: []
 
   defp compact_scene_reference_ids(ids), do: ids |> Enum.reject(&is_nil/1) |> Enum.uniq()
 
@@ -2768,16 +2860,63 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     attrs = zone_base_attrs(zone_data)
     {target_type, target_id} = resolve_materialized_zone_target(attrs, zone_data, project_id, opts)
 
-    Map.merge(attrs, %{
-      scene_id: scene_id,
-      layer_id: layer_id,
-      target_type: target_type,
-      target_id: target_id,
-      label_icon_asset_id: resolve_scene_asset(zone_data["label_icon_asset_id"], snapshot, project_id, opts),
-      inserted_at: now,
-      updated_at: now
-    })
+    with {:ok, action_data} <-
+           resolve_materialized_zone_action_data(
+             attrs,
+             zone_data,
+             project_id,
+             opts
+           ) do
+      {:ok,
+       Map.merge(attrs, %{
+         scene_id: scene_id,
+         layer_id: layer_id,
+         target_type: target_type,
+         target_id: target_id,
+         action_data: action_data,
+         label_icon_asset_id:
+           resolve_scene_asset(
+             zone_data["label_icon_asset_id"],
+             snapshot,
+             project_id,
+             opts
+           ),
+         inserted_at: now,
+         updated_at: now
+       })}
+    end
   end
+
+  defp resolve_materialized_zone_action_data(
+         %{action_type: "collection", action_data: %{"items" => items}} = attrs,
+         zone_data,
+         project_id,
+         opts
+       ) do
+    items
+    |> Enum.with_index()
+    |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, remapped_items} ->
+      source_sheet_id = item["sheet_id"]
+      resolved_sheet_id = resolve_scene_sheet_id(source_sheet_id, project_id, opts)
+
+      if is_nil(source_sheet_id) or not is_nil(resolved_sheet_id) do
+        remapped_item = Map.put(item, "sheet_id", resolved_sheet_id)
+        {:cont, {:ok, [remapped_item | remapped_items]}}
+      else
+        {:halt,
+         {:error, {:unresolved_scene_zone_collection_sheet, zone_data["original_id"], index, item["id"], source_sheet_id}}}
+      end
+    end)
+    |> case do
+      {:ok, remapped_items} ->
+        {:ok, Map.put(attrs.action_data, "items", Enum.reverse(remapped_items))}
+
+      {:error, _reason} = error ->
+        error
+    end
+  end
+
+  defp resolve_materialized_zone_action_data(attrs, _zone_data, _project_id, _opts), do: {:ok, attrs.action_data}
 
   defp resolve_materialized_zone_target(%{action_type: "action"}, zone_data, project_id, opts) do
     case normalize_zone_target(zone_data["target_type"], zone_data["target_id"]) do
@@ -2863,15 +3002,20 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
   defp insert_scene_snapshot_rows(repo, schema, snapshots, attrs_fun) do
     Enum.reduce_while(snapshots, {:ok, %{}}, fn snapshot, {:ok, id_map} ->
-      case MaterializationHelpers.insert_one_returning_id(repo, schema, attrs_fun.(snapshot)) do
-        {:ok, id} ->
-          {:cont, {:ok, Map.put(id_map, snapshot["original_id"], id)}}
-
-        {:error, reason} ->
-          {:halt, {:error, reason}}
+      with {:ok, attrs} <- normalize_scene_snapshot_row_attrs(attrs_fun.(snapshot)),
+           {:ok, id} <-
+             MaterializationHelpers.insert_one_returning_id(repo, schema, attrs) do
+        {:cont, {:ok, Map.put(id_map, snapshot["original_id"], id)}}
+      else
+        {:error, reason} -> {:halt, {:error, reason}}
       end
     end)
   end
+
+  defp normalize_scene_snapshot_row_attrs({:ok, attrs}) when is_map(attrs), do: {:ok, attrs}
+
+  defp normalize_scene_snapshot_row_attrs({:error, _reason} = error), do: error
+  defp normalize_scene_snapshot_row_attrs(attrs) when is_map(attrs), do: {:ok, attrs}
 
   defp insert_scene_connections(_repo, _scene_id, [], _pin_ids_by_layer, _now), do: {:ok, %{}}
 
@@ -3534,6 +3678,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       acc
       |> maybe_add_target_ref(zone["target_type"], zone["target_id"], prefix <> " — target")
       |> maybe_add_ref(:asset, zone["label_icon_asset_id"], prefix <> " — label icon")
+      |> scan_zone_collection_sheet_refs(zone, prefix)
     end)
   end
 
@@ -3559,8 +3704,38 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       acc
       |> maybe_add_target_ref(zone["target_type"], zone["target_id"], prefix <> " — target")
       |> maybe_add_ref(:asset, zone["label_icon_asset_id"], prefix <> " — label icon")
+      |> scan_zone_collection_sheet_refs(zone, prefix)
     end)
   end
+
+  defp scan_zone_collection_sheet_refs(
+         refs,
+         %{"action_type" => "collection", "action_data" => %{"items" => items}},
+         prefix
+       )
+       when is_list(items) do
+    items
+    |> Enum.with_index(1)
+    |> Enum.reduce(refs, fn
+      {%{"sheet_id" => sheet_id}, item_index}, acc ->
+        maybe_add_ref(
+          acc,
+          :sheet,
+          sheet_id,
+          prefix <>
+            dgettext(
+              "scenes",
+              " — collection item %{item} sheet",
+              item: item_index
+            )
+        )
+
+      {_item, _item_index}, acc ->
+        acc
+    end)
+  end
+
+  defp scan_zone_collection_sheet_refs(refs, _zone, _prefix), do: refs
 
   defp scan_ambient_flow_refs(refs, ambient_flows) do
     ambient_flows

@@ -21,6 +21,7 @@ import {
 import { keyboard } from "../services/keyboard";
 import { lod } from "../services/lod";
 import { navigation } from "../services/navigation";
+import { buildConnectionRemovalPayload } from "../services/connectionIdentity";
 
 import { createFlowPlacement } from "../services/flowPlacement";
 import { createPlugins, finalizeSetup } from "../services/reteSetup";
@@ -760,15 +761,27 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
         (context as { type: string }).type === "connectionremove" &&
         !hookProxy.isLoadingFromServer
       ) {
-        const conn = (context as { data: { source: string; target: string } }).data;
+        const conn = (
+          context as {
+            data: {
+              id: string;
+              source: string;
+              sourceOutput: string;
+              target: string;
+              targetInput: string;
+            };
+          }
+        ).data;
         const sourceNode = runtime.editor!.getNode(conn.source);
         const targetNode = runtime.editor!.getNode(conn.target);
 
         if (sourceNode?.nodeId && targetNode?.nodeId) {
-          pushEvent("connection_deleted", {
-            source_node_id: sourceNode.nodeId,
-            target_node_id: targetNode.nodeId,
-          });
+          const persistedId = runtime.connectionDataMap.get(conn.id)?.id;
+
+          pushEvent(
+            "connection_deleted",
+            buildConnectionRemovalPayload(conn, sourceNode.nodeId, targetNode.nodeId, persistedId),
+          );
         }
       }
       return context;

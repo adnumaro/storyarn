@@ -499,6 +499,7 @@ defmodule Storyarn.ScenesTest do
       user = user_fixture()
       project = project_fixture(user)
       scene = scene_fixture(project)
+      target_scene = scene_fixture(project)
 
       {:ok, zone} =
         Scenes.create_zone(scene.id, %{
@@ -509,11 +510,11 @@ defmodule Storyarn.ScenesTest do
             %{"x" => 30.0, "y" => 50.0}
           ],
           "target_type" => "scene",
-          "target_id" => 42
+          "target_id" => target_scene.id
         })
 
       assert zone.target_type == "scene"
-      assert zone.target_id == 42
+      assert zone.target_id == target_scene.id
     end
   end
 
@@ -526,7 +527,8 @@ defmodule Storyarn.ScenesTest do
       user = user_fixture()
       project = project_fixture(user)
       scene = scene_fixture(project)
-      %{scene: scene}
+      target_scene = scene_fixture(project)
+      %{scene: scene, target_scene: target_scene}
     end
 
     @triangle [
@@ -628,17 +630,20 @@ defmodule Storyarn.ScenesTest do
       assert "is invalid" in errors_on(changeset).action_type
     end
 
-    test "switching action_type preserves target_type and target_id", %{scene: scene} do
+    test "switching action_type preserves target_type and target_id", %{
+      scene: scene,
+      target_scene: target_scene
+    } do
       {:ok, zone} =
         Scenes.create_zone(scene.id, %{
           "name" => "Nav Zone",
           "vertices" => @triangle,
           "target_type" => "scene",
-          "target_id" => 42
+          "target_id" => target_scene.id
         })
 
       assert zone.target_type == "scene"
-      assert zone.target_id == 42
+      assert zone.target_id == target_scene.id
 
       {:ok, updated} =
         Scenes.update_zone(zone, %{
@@ -648,10 +653,13 @@ defmodule Storyarn.ScenesTest do
 
       assert updated.action_type == "action"
       assert updated.target_type == "scene"
-      assert updated.target_id == 42
+      assert updated.target_id == target_scene.id
     end
 
-    test "non-action zones cannot have a target", %{scene: scene} do
+    test "non-action zones cannot have a target", %{
+      scene: scene,
+      target_scene: target_scene
+    } do
       for action_type <- ["display", "collection", "walkable"] do
         action_data =
           case action_type do
@@ -668,7 +676,7 @@ defmodule Storyarn.ScenesTest do
             "action_data" => action_data,
             "is_walkable" => action_type == "walkable",
             "target_type" => "scene",
-            "target_id" => 42
+            "target_id" => target_scene.id
           })
 
         assert "is only allowed for action zones" in errors_on(changeset).target_type
@@ -1098,11 +1106,13 @@ defmodule Storyarn.ScenesTest do
       pin1 = pin_fixture(scene1)
       pin2 = pin_fixture(scene2)
 
-      assert {:error, :pin_belongs_to_different_scene} =
+      assert {:error, {:invalid_scene_connection_endpoint, :to_pin_id, invalid_pin_id}} =
                Scenes.create_connection(scene1.id, %{
                  "from_pin_id" => pin1.id,
                  "to_pin_id" => pin2.id
                })
+
+      assert invalid_pin_id == pin2.id
     end
 
     test "create_connection/2 validates line_style" do
@@ -1375,15 +1385,16 @@ defmodule Storyarn.ScenesTest do
       user = user_fixture()
       project = project_fixture(user)
       scene = scene_fixture(project)
+      target_scene = scene_fixture(project)
 
       _zone =
         zone_fixture(scene, %{
           "name" => "Kingdom Zone",
           "target_type" => "scene",
-          "target_id" => 42
+          "target_id" => target_scene.id
         })
 
-      result = Scenes.get_elements_for_target("scene", 42)
+      result = Scenes.get_elements_for_target("scene", target_scene.id)
 
       assert length(result.zones) == 1
       assert hd(result.zones).name == "Kingdom Zone"

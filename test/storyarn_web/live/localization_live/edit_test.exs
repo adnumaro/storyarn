@@ -227,6 +227,29 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
       assert vue.props["text"]["translated_text"] == "Texto actualizado"
       assert vue.props["text"]["translator_notes"] == "Notes here"
     end
+
+    test "crafted voice-over references return form errors without crashing the LiveView", %{
+      conn: conn,
+      project: project
+    } do
+      text = localized_text_fixture(project.id, %{locale_code: "es"})
+
+      {:ok, view, _html} = live(conn, edit_url(project, text))
+
+      html =
+        render_click(view, "save_translation", %{
+          "localized_text" => %{
+            "translated_text" => "Texto",
+            "status" => "draft",
+            "vo_asset_id" => "999999999",
+            "vo_status" => "recorded"
+          }
+        })
+
+      assert is_binary(html)
+      assert get_edit_vue(view).component == "live/localization/texts/LocalizationTextEdit"
+      assert Localization.get_text!(project.id, text.id).vo_asset_id == nil
+    end
   end
 
   describe "translate_with_deepl event" do

@@ -4,9 +4,9 @@ defmodule Storyarn.Scenes.ConnectionCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Repo
-  alias Storyarn.Scenes.PositionUtils
   alias Storyarn.Scenes.SceneConnection
-  alias Storyarn.Scenes.ScenePin
+  alias Storyarn.Scenes.SceneReferenceIntegrity
+  alias Storyarn.Shared.MapUtils
 
   @doc """
   Lists all connections for a map, with from_pin and to_pin preloaded.
@@ -44,61 +44,86 @@ defmodule Storyarn.Scenes.ConnectionCrud do
   Validates that any pinned endpoints belong to the same scene.
   """
   def create_connection(scene_id, attrs) do
-    attrs = Storyarn.Shared.MapUtils.stringify_keys(attrs)
-    from_pin_id = attrs["from_pin_id"]
-    to_pin_id = attrs["to_pin_id"]
+    attrs = MapUtils.stringify_keys(attrs)
 
-    scene_id
-    |> PositionUtils.with_scene_lock(fn ->
-      with {:ok, _from_pin} <- validate_optional_pin_belongs_to_map(from_pin_id, scene_id),
-           {:ok, _to_pin} <- validate_optional_pin_belongs_to_map(to_pin_id, scene_id) do
-        %SceneConnection{scene_id: scene_id}
+    SceneReferenceIntegrity.with_active_scene_lock(scene_id, fn scene ->
+      with {:ok, attrs} <-
+             SceneReferenceIntegrity.lock_connection_endpoints(scene, attrs) do
+        %SceneConnection{scene_id: scene.id}
         |> SceneConnection.create_changeset(attrs)
         |> Repo.insert()
       end
     end)
-    |> case do
-      {:ok, connection} -> {:ok, connection}
-      {:error, reason} -> {:error, reason}
-    end
   end
 
   def update_connection(%SceneConnection{} = connection, attrs) do
-    connection
-    |> SceneConnection.update_changeset(attrs)
-    |> Repo.update()
+    attrs = MapUtils.stringify_keys(attrs)
+
+    SceneReferenceIntegrity.with_active_scene_lock(connection.scene_id, fn scene ->
+      with {:ok, locked_connection} <-
+             lock_connection_for_scene(connection.id, scene.id),
+           {:ok, attrs} <-
+             SceneReferenceIntegrity.lock_connection_endpoints(
+               scene,
+               locked_connection,
+               attrs
+             ) do
+        locked_connection
+        |> SceneConnection.update_changeset(attrs)
+        |> Repo.update()
+      end
+    end)
   end
 
   @doc """
   Updates only the waypoints of a connection (optimized for drag).
   """
   def update_connection_waypoints(%SceneConnection{} = connection, attrs) do
-    connection
-    |> SceneConnection.waypoints_changeset(attrs)
-    |> Repo.update()
+    attrs = MapUtils.stringify_keys(attrs)
+
+    SceneReferenceIntegrity.with_active_scene_lock(connection.scene_id, fn scene ->
+      with {:ok, locked_connection} <-
+             lock_connection_for_scene(connection.id, scene.id),
+           {:ok, _attrs} <-
+             SceneReferenceIntegrity.lock_connection_endpoints(
+               scene,
+               locked_connection,
+               %{}
+             ) do
+        locked_connection
+        |> SceneConnection.waypoints_changeset(attrs)
+        |> Repo.update()
+      end
+    end)
   end
 
   def delete_connection(%SceneConnection{} = connection) do
-    Repo.delete(connection)
+    SceneReferenceIntegrity.with_active_scene_lock(connection.scene_id, fn scene ->
+      with {:ok, locked_connection} <-
+             lock_connection_for_scene(connection.id, scene.id) do
+        Repo.delete(locked_connection)
+      end
+    end)
   end
 
   def change_connection(%SceneConnection{} = connection, attrs \\ %{}) do
     SceneConnection.update_changeset(connection, attrs)
   end
 
-  defp validate_optional_pin_belongs_to_map(nil, _scene_id), do: {:ok, nil}
-  defp validate_optional_pin_belongs_to_map("", _scene_id), do: {:ok, nil}
+  defp lock_connection_for_scene(connection_id, scene_id) do
+    case Repo.one(
+           from(connection in SceneConnection,
+             where:
+               connection.id == ^connection_id and
+                 connection.scene_id == ^scene_id,
+             lock: "FOR UPDATE"
+           )
+         ) do
+      %SceneConnection{} = connection ->
+        {:ok, connection}
 
-  defp validate_optional_pin_belongs_to_map(pin_id, scene_id) do
-    case Repo.get(ScenePin, pin_id) do
       nil ->
-        {:error, :pin_not_found}
-
-      %ScenePin{scene_id: ^scene_id} = pin ->
-        {:ok, pin}
-
-      %ScenePin{} ->
-        {:error, :pin_belongs_to_different_scene}
+        {:error, :connection_not_found}
     end
   end
 end

@@ -1860,7 +1860,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     validate_each(source_ids, fn source_id ->
       Block
       |> Repo.get!(source_id)
-      |> PropertyInheritance.sync_definition_change()
+      |> PropertyInheritance.sync_definition_change(active_owner_sheets_only: true)
       |> normalize_property_inheritance_result(
         source_id,
         :sync_definition_change

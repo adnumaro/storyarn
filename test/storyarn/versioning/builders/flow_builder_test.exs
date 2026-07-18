@@ -21,7 +21,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Localization
   alias Storyarn.Localization.LocalizedText
-  alias Storyarn.Localization.RuntimeKey
   alias Storyarn.Projects.Project
   alias Storyarn.References
   alias Storyarn.Repo
@@ -205,15 +204,16 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
           "image/png"
         )
 
-      _audio_node =
+      audio_node =
         node_fixture(flow, %{
           type: "dialogue",
           data: %{
             "text" => "Corrupt audio reference",
-            "responses" => [],
-            "audio_asset_id" => foreign_audio.id
+            "responses" => []
           }
         })
+
+      set_node_data(audio_node, %{"audio_asset_id" => foreign_audio.id})
 
       assert_raise ArgumentError, ~r/owned by another project/, fn ->
         FlowBuilder.build_snapshot(flow)
@@ -662,8 +662,13 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
 
       connection =
         connection_fixture(flow, subflow, next_node, %{
-          source_pin: "exit_#{other_exit.id}"
+          source_pin: "exit_#{referenced_exit.id}"
         })
+
+      Repo.update_all(
+        from(current in FlowConnection, where: current.id == ^connection.id),
+        set: [source_pin: "exit_#{other_exit.id}"]
+      )
 
       assert_raise ArgumentError, ~r/exit_not_in_referenced_flow/, fn ->
         FlowBuilder.build_snapshot(flow)
@@ -1752,14 +1757,20 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
 
       snapshot = FlowBuilder.build_snapshot(flow)
 
-      assert {:ok, first, _meta} =
-               Flows.update_node_data(first, Map.put(first.data, "localization_id", "dialogue_temporary"))
+      first =
+        first
+        |> Ecto.Changeset.change(data: Map.put(first.data, "localization_id", "dialogue_temporary"))
+        |> Repo.update!()
 
-      assert {:ok, second, _meta} =
-               Flows.update_node_data(second, Map.put(second.data, "localization_id", "dialogue_first"))
+      _second =
+        second
+        |> Ecto.Changeset.change(data: Map.put(second.data, "localization_id", "dialogue_first"))
+        |> Repo.update!()
 
-      assert {:ok, _first, _meta} =
-               Flows.update_node_data(first, Map.put(first.data, "localization_id", "dialogue_second"))
+      _first =
+        first
+        |> Ecto.Changeset.change(data: Map.put(first.data, "localization_id", "dialogue_second"))
+        |> Repo.update!()
 
       assert {:ok, restored} =
                FlowBuilder.restore_snapshot(flow, snapshot, restore_action: {:entity_version_restore, "flow"})
@@ -2708,8 +2719,13 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       dialogue =
         node_fixture(flow, %{
           type: "dialogue",
-          data: %{"text" => text, "responses" => []}
+          data: %{
+            "text" => ~s(<p><span class="mention" data-type="sheet" data-id="#{local_sheet.id}">Local</span></p>),
+            "responses" => []
+          }
         })
+
+      set_node_data(dialogue, %{"text" => text})
 
       snapshot = FlowBuilder.build_snapshot(flow)
 
@@ -2863,6 +2879,82 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
   end
 
   describe "instantiate_snapshot/3" do
+    test "rejects missing or duplicate response identities atomically", %{
+      user: user,
+      flow: flow
+    } do
+      response_one = "response_snapshot_one"
+      response_two = "response_snapshot_two"
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Choose",
+            "responses" => [
+              %{"id" => response_one, "text" => "One"},
+              %{"id" => response_two, "text" => "Two"}
+            ]
+          }
+        })
+
+      snapshot = FlowBuilder.build_snapshot(flow)
+      target_project = project_fixture(user)
+
+      count_before =
+        Repo.aggregate(
+          from(candidate in Flow, where: candidate.project_id == ^target_project.id),
+          :count
+        )
+
+      invalid_snapshots = [
+        {
+          Map.update!(snapshot, "nodes", fn nodes ->
+            Enum.map(nodes, fn
+              %{"original_id" => id, "data" => data} = node when id == dialogue.id ->
+                responses = List.update_at(data["responses"], 1, &Map.delete(&1, "id"))
+
+                put_in(node, ["data", "responses"], responses)
+
+              node ->
+                node
+            end)
+          end),
+          {:invalid_snapshot_dialogue_response_id, dialogue.id, [response_one, nil]}
+        },
+        {
+          Map.update!(snapshot, "nodes", fn nodes ->
+            Enum.map(nodes, fn
+              %{"original_id" => id, "data" => data} = node when id == dialogue.id ->
+                responses = List.update_at(data["responses"], 1, &Map.put(&1, "id", response_one))
+
+                put_in(node, ["data", "responses"], responses)
+
+              node ->
+                node
+            end)
+          end),
+          {:duplicate_snapshot_dialogue_response_id, dialogue.id}
+        }
+      ]
+
+      for {invalid_snapshot, expected_error} <- invalid_snapshots do
+        assert {:error, ^expected_error} =
+                 FlowBuilder.instantiate_snapshot(
+                   target_project.id,
+                   invalid_snapshot,
+                   reset_shortcut: true
+                 )
+
+        assert Repo.aggregate(
+                 from(candidate in Flow,
+                   where: candidate.project_id == ^target_project.id
+                 ),
+                 :count
+               ) == count_before
+      end
+    end
+
     test "rejects malformed node payloads before materializing anything", %{
       user: user,
       flow: flow
@@ -3104,7 +3196,8 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       end
     end
 
-    test "materializes a new flow and remaps connection node ids", %{project: project, flow: flow} do
+    test "materializes a new flow, preserves runtime identities and remaps connection node ids",
+         %{user: user, flow: flow} do
       node_a =
         node_fixture(flow, %{
           type: "dialogue",
@@ -3117,9 +3210,10 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       connection = connection_fixture(flow, node_a, node_b)
 
       snapshot = FlowBuilder.build_snapshot(flow)
+      target_project = project_fixture(user)
 
       assert {:ok, materialized, id_maps} =
-               FlowBuilder.instantiate_snapshot(project.id, snapshot,
+               FlowBuilder.instantiate_snapshot(target_project.id, snapshot,
                  reset_shortcut: true,
                  position: 11
                )
@@ -3141,7 +3235,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       assert cloned_connection.target_node_id != node_b.id
 
       cloned_dialogue = Enum.find(materialized.nodes, &(&1.type == "dialogue"))
-      refute cloned_dialogue.data["localization_id"] == node_a.data["localization_id"]
+      assert cloned_dialogue.data["localization_id"] == node_a.data["localization_id"]
       assert cloned_dialogue.word_count == 3
     end
 
@@ -3250,7 +3344,10 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       on_exit(fn -> Assets.storage_delete(cloned_audio.key) end)
     end
 
-    test "materializes a legacy dialogue snapshot without a runtime identity", %{project: project, flow: flow} do
+    test "rejects a dialogue snapshot without a runtime identity before materializing", %{
+      project: project,
+      flow: flow
+    } do
       snapshot = FlowBuilder.build_snapshot(flow)
 
       invalid_dialogue = %{
@@ -3264,15 +3361,19 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       }
 
       snapshot = Map.put(snapshot, "nodes", [invalid_dialogue | snapshot["nodes"]])
+      flow_count = Repo.aggregate(from(candidate in Flow, where: candidate.project_id == ^project.id), :count)
 
-      assert {:ok, materialized, _id_maps} =
+      assert {:error, {:invalid_snapshot_dialogue_localization_id, 99_999, nil}} =
                FlowBuilder.instantiate_snapshot(project.id, snapshot, reset_shortcut: true)
 
-      legacy_dialogue = Enum.find(materialized.nodes, &(&1.data["text"] == "No identity"))
-      assert RuntimeKey.valid_dialogue_id?(legacy_dialogue.data["localization_id"])
+      assert Repo.aggregate(from(candidate in Flow, where: candidate.project_id == ^project.id), :count) ==
+               flow_count
     end
 
-    test "keeps legacy response connections aligned when ids are normalized", %{project: project, flow: flow} do
+    test "rejects malformed response identities instead of normalizing pins", %{
+      project: project,
+      flow: flow
+    } do
       snapshot = FlowBuilder.build_snapshot(flow)
 
       legacy_nodes =
@@ -3311,16 +3412,13 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       }
 
       snapshot = Map.merge(snapshot, %{"nodes" => legacy_nodes, "connections" => [legacy_connection]})
+      flow_count = Repo.aggregate(from(candidate in Flow, where: candidate.project_id == ^project.id), :count)
 
-      assert {:ok, materialized, _id_maps} =
+      assert {:error, {:invalid_snapshot_dialogue_localization_id, 99_998, "legacy.dialogue"}} =
                FlowBuilder.instantiate_snapshot(project.id, snapshot, reset_shortcut: true)
 
-      dialogue = Enum.find(materialized.nodes, &(&1.type == "dialogue"))
-      [response] = dialogue.data["responses"]
-      [connection] = materialized.connections
-
-      assert response["id"] == "legacy_choice"
-      assert connection.source_pin == response["id"]
+      assert Repo.aggregate(from(candidate in Flow, where: candidate.project_id == ^project.id), :count) ==
+               flow_count
     end
 
     test "remaps external scene refs with explicit id maps", %{
@@ -3416,9 +3514,13 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
 
       dialogue =
         node_fixture(flow, %{
-          type: "dialogue",
-          data: %{"text" => text, "responses" => []}
+          type: "annotation",
+          data: %{
+            "text" => ~s(<p><span class="mention" data-type="sheet" data-id="#{local_sheet.id}">Local</span></p>)
+          }
         })
+
+      set_node_data(dialogue, %{"text" => text})
 
       snapshot = FlowBuilder.build_snapshot(flow)
 
@@ -3843,10 +3945,17 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
 
       {:ok, flow} = Flows.update_flow(flow, %{scene_id: scene.id})
 
-      _node =
-        node_fixture(flow, %{
-          data: %{"speaker" => "Narrator", "text" => "Hello", "audio_asset_id" => audio_asset.id}
+      {:ok, sequence} =
+        Flows.create_sequence(flow.id, %{
+          "name" => "Asset preservation",
+          "width" => 640.0,
+          "height" => 360.0
         })
+
+      assert {:ok, _track} =
+               Flows.upsert_sequence_track(sequence.id, "music", %{
+                 "asset_id" => audio_asset.id
+               })
 
       snapshot = FlowBuilder.build_snapshot(flow)
 
@@ -3858,10 +3967,8 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
 
       assert materialized.scene_id == nil
 
-      assert Enum.any?(
-               materialized.nodes,
-               &((&1.data || %{})["audio_asset_id"] == audio_asset.id)
-             )
+      cloned_sequence = Enum.find(materialized.nodes, &(&1.type == "sequence"))
+      assert Enum.any?(cloned_sequence.sequence_tracks, &(&1.asset_id == audio_asset.id))
     end
 
     test "drops assets only when asset_mode is explicitly drop", %{
@@ -3878,14 +3985,17 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
           "audio/mpeg"
         )
 
-      _node =
-        node_fixture(flow, %{
-          data: %{
-            "speaker" => "Narrator",
-            "text" => "Hello",
-            "audio_asset_id" => audio_asset.id
-          }
+      {:ok, sequence} =
+        Flows.create_sequence(flow.id, %{
+          "name" => "Asset drop",
+          "width" => 640.0,
+          "height" => 360.0
         })
+
+      assert {:ok, _track} =
+               Flows.upsert_sequence_track(sequence.id, "music", %{
+                 "asset_id" => audio_asset.id
+               })
 
       snapshot = FlowBuilder.build_snapshot(flow)
 
@@ -3895,10 +4005,8 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
                  reset_shortcut: true
                )
 
-      assert Enum.all?(
-               materialized.nodes,
-               &is_nil((&1.data || %{})["audio_asset_id"])
-             )
+      cloned_sequence = Enum.find(materialized.nodes, &(&1.type == "sequence"))
+      assert Enum.all?(cloned_sequence.sequence_tracks, &is_nil(&1.asset_id))
     end
 
     test "copies audio assets into destination project", %{user: user, project: project, flow: flow} do
@@ -4206,11 +4314,16 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       target = node_fixture(flow, %{type: "hub", position_x: 200.0, position_y: 100.0})
       source_pin = "exit_#{target.id}"
 
-      _connection =
+      connection =
         connection_fixture(flow, source, target, %{
-          source_pin: source_pin,
+          source_pin: "output",
           target_pin: "input"
         })
+
+      Repo.update_all(
+        from(current in FlowConnection, where: current.id == ^connection.id),
+        set: [source_pin: source_pin]
+      )
 
       snapshot = FlowBuilder.build_snapshot(flow)
 

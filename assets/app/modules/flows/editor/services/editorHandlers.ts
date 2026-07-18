@@ -15,6 +15,7 @@ import type { NodeData } from "../lib/node-configs";
 import { needsRebuild } from "../lib/node-configs";
 import type { FlowSchemes, FlowAreaExtra, FlowConnection } from "../lib/rete-schemes";
 import type { SheetMapEntry } from "../../types";
+import { matchesConnectionRemoval, type ConnectionRemovalPayload } from "./connectionIdentity";
 import { normalizeFlowSequenceStacking, resolveFlowSequenceParent } from "./flowSequenceScopes";
 import {
   CreateNodeAction,
@@ -71,10 +72,7 @@ export interface ConnectionServerPayload {
   condition?: unknown;
 }
 
-export interface ConnectionRemovedPayload {
-  source_node_id: string | number;
-  target_node_id: string | number;
-}
+export type ConnectionRemovedPayload = ConnectionRemovalPayload;
 
 export interface ConnectionUpdatedPayload {
   id: number;
@@ -699,7 +697,15 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
           sourceNode && targetNode
             ? flowGraph(hook)
                 .outgoingConnections(sourceNode.id)
-                .find((connection) => connection.target === targetNode.id)
+                .find(
+                  (connection) =>
+                    connection.target === targetNode.id &&
+                    matchesConnectionRemoval(
+                      connection,
+                      data,
+                      hook.connectionDataMap.get(connection.id)?.id,
+                    ),
+                )
             : undefined;
 
         if (conn) {

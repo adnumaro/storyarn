@@ -8,11 +8,13 @@ defmodule Storyarn.Sheets.SheetCrud do
   alias Storyarn.Localization
   alias Storyarn.Projects.Project
   alias Storyarn.References
+  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Shared.ShortcutHelpers
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Shared.TreeOperations, as: SharedTree
+  alias Storyarn.Sheets.BlockCrud
   alias Storyarn.Sheets.PropertyInheritance
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Shortcuts
@@ -34,8 +36,11 @@ defmodule Storyarn.Sheets.SheetCrud do
           {:error, reason, details} -> Repo.rollback({reason, details})
         end
 
+        if not is_nil(locked_project.deleted_at), do: Repo.rollback(:project_not_active)
+
         # Normalize keys to strings for changeset
         attrs = stringify_keys(attrs)
+        attrs = lock_and_normalize_sheet_references!(project.id, nil, attrs)
         parent_id = attrs["parent_id"]
         position = attrs["position"] || next_position(project.id, parent_id)
 
@@ -72,13 +77,24 @@ defmodule Storyarn.Sheets.SheetCrud do
   end
 
   def update_sheet(%Sheet{} = sheet, attrs) do
-    # Auto-generate shortcut if sheet has no shortcut and name is being updated
-    attrs = maybe_generate_shortcut_on_update(sheet, attrs)
-
     result =
-      sheet
-      |> Sheet.update_changeset(attrs)
-      |> Repo.update()
+      Repo.transaction(fn ->
+        lock_active_project!(sheet.project_id)
+        locked_sheet = lock_active_sheet!(sheet.id, sheet.project_id)
+
+        attrs =
+          locked_sheet
+          |> maybe_generate_shortcut_on_update(attrs)
+          |> stringify_keys()
+          |> then(&lock_and_normalize_sheet_references!(sheet.project_id, locked_sheet, &1))
+
+        case locked_sheet
+             |> Sheet.update_changeset(attrs)
+             |> Repo.update() do
+          {:ok, updated_sheet} -> updated_sheet
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
 
     case result do
       {:ok, updated_sheet} -> Localization.sync_sheet_names(updated_sheet.project_id)
@@ -101,6 +117,9 @@ defmodule Storyarn.Sheets.SheetCrud do
   """
   def trash_sheet(%Sheet{} = sheet) do
     fn ->
+      lock_active_project!(sheet.project_id)
+      sheet = lock_active_sheet!(sheet.id, sheet.project_id)
+
       # Get all descendant IDs before deleting
       descendant_ids = get_descendant_ids(sheet.id)
 
@@ -126,41 +145,54 @@ defmodule Storyarn.Sheets.SheetCrud do
 
   @doc """
   Restores a soft-deleted sheet from trash.
-  Also restores all soft-deleted blocks for this sheet.
+  Revalidates all active blocks before making them visible again.
+  Individually deleted blocks remain deleted.
   Note: Does not automatically restore descendant sheets.
   """
   def restore_sheet(%Sheet{} = sheet) do
-    alias Storyarn.Sheets.Block
+    result =
+      Repo.transaction(fn ->
+        project_id =
+          Repo.one(from(current in Sheet, where: current.id == ^sheet.id, select: current.project_id)) ||
+            Repo.rollback(:sheet_not_found)
 
-    # Only restore blocks deleted within 2 seconds of the sheet's deletion,
-    # to avoid restoring blocks that were individually deleted by the user.
-    since = sheet.deleted_at || TimeHelpers.now()
-    since_threshold = DateTime.add(since, -2, :second)
+        lock_active_project!(project_id)
+        locked_sheet = lock_deleted_sheet!(sheet.id, project_id)
 
-    Ecto.Multi.new()
-    |> Ecto.Multi.update(:sheet, Sheet.restore_changeset(sheet))
-    |> Ecto.Multi.run(:restore_blocks, fn repo, _changes ->
-      {count, _} =
-        repo.update_all(
-          from(b in Block,
-            where: b.sheet_id == ^sheet.id and not is_nil(b.deleted_at) and b.deleted_at >= ^since_threshold
-          ),
-          set: [deleted_at: nil]
+        _normalized_references =
+          lock_and_normalize_sheet_references!(project_id, locked_sheet, %{})
+
+        restored_sheet =
+          case locked_sheet |> Sheet.restore_changeset() |> Repo.update() do
+            {:ok, restored_sheet} -> restored_sheet
+            {:error, reason} -> Repo.rollback(reason)
+          end
+
+        :ok = PropertyInheritance.verify_restored_sheet_inheritance!(restored_sheet)
+        active_blocks = BlockCrud.reconcile_active_blocks_for_sheet(restored_sheet)
+
+        with :ok <- Localization.extract_sheet_blocks(restored_sheet.id),
+             :ok <- Localization.sync_sheet_names(restored_sheet.project_id) do
+          %{
+            sheet: restored_sheet,
+            active_blocks: length(active_blocks)
+          }
+        else
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
+
+    case result do
+      {:ok, %{sheet: restored_sheet}} ->
+        Collaboration.broadcast_dashboard_result(
+          {:ok, restored_sheet},
+          restored_sheet.project_id,
+          :sheets
         )
 
-      {:ok, count}
-    end)
-    |> Repo.transaction()
-    |> case do
-      {:ok, %{sheet: sheet}} ->
-        Localization.extract_sheet_blocks(sheet.id)
-        Localization.sync_sheet_names(sheet.project_id)
-        {:ok, sheet}
-
-      {:error, _op, changeset, _changes} ->
-        {:error, changeset}
+      {:error, reason} ->
+        {:error, reason}
     end
-    |> Collaboration.broadcast_dashboard_result(sheet.project_id, :sheets)
   end
 
   @doc """
@@ -192,13 +224,17 @@ defmodule Storyarn.Sheets.SheetCrud do
 
   def move_sheet(%Sheet{} = sheet, parent_id, position \\ nil) do
     fn ->
-      Repo.one!(from(p in Project, where: p.id == ^sheet.project_id, lock: "FOR UPDATE"))
-      current_sheet = Repo.get!(Sheet, sheet.id)
+      lock_active_project!(sheet.project_id)
+      current_sheet = lock_active_sheet!(sheet.id, sheet.project_id)
 
-      case validate_parent(current_sheet, parent_id) do
-        :ok -> move_sheet_transaction(current_sheet, parent_id, position)
-        {:error, reason} -> Repo.rollback(reason)
-      end
+      %{"parent_id" => normalized_parent_id} =
+        lock_and_normalize_sheet_references!(
+          sheet.project_id,
+          current_sheet,
+          %{"parent_id" => parent_id}
+        )
+
+      move_sheet_transaction(current_sheet, normalized_parent_id, position)
     end
     |> Repo.transaction()
     |> Collaboration.broadcast_dashboard_result(sheet.project_id, :sheets)
@@ -253,6 +289,9 @@ defmodule Storyarn.Sheets.SheetCrud do
 
   defp validate_parent_sheet(sheet, parent) do
     cond do
+      not is_nil(parent.deleted_at) ->
+        {:error, :parent_not_found}
+
       parent.project_id != sheet.project_id ->
         {:error, :parent_different_project}
 
@@ -269,8 +308,7 @@ defmodule Storyarn.Sheets.SheetCrud do
   end
 
   defp descendant?(potential_descendant_id, ancestor_id) do
-    descendant_ids = get_descendant_ids(ancestor_id)
-    potential_descendant_id in descendant_ids
+    SharedTree.descendant?(Sheet, potential_descendant_id, ancestor_id)
   end
 
   defp next_position(project_id, parent_id) do
@@ -278,6 +316,98 @@ defmodule Storyarn.Sheets.SheetCrud do
   end
 
   defp stringify_keys(map), do: MapUtils.stringify_keys(map)
+
+  defp lock_active_project!(project_id) do
+    case Repo.one(
+           from(project in Project,
+             where: project.id == ^project_id,
+             lock: "FOR UPDATE"
+           )
+         ) do
+      %Project{deleted_at: nil} -> :ok
+      %Project{} -> Repo.rollback(:project_not_active)
+      nil -> Repo.rollback(:project_not_found)
+    end
+  end
+
+  defp lock_active_sheet!(sheet_id, project_id) do
+    case Repo.one(
+           from(sheet in Sheet,
+             where:
+               sheet.id == ^sheet_id and sheet.project_id == ^project_id and
+                 is_nil(sheet.deleted_at),
+             lock: "FOR UPDATE"
+           )
+         ) do
+      %Sheet{} = sheet -> sheet
+      nil -> Repo.rollback(:sheet_not_active)
+    end
+  end
+
+  defp lock_deleted_sheet!(sheet_id, project_id) do
+    case Repo.one(
+           from(sheet in Sheet,
+             where:
+               sheet.id == ^sheet_id and sheet.project_id == ^project_id and
+                 not is_nil(sheet.deleted_at),
+             lock: "FOR UPDATE"
+           )
+         ) do
+      %Sheet{} = sheet -> sheet
+      nil -> Repo.rollback(:sheet_not_deleted)
+    end
+  end
+
+  defp lock_and_normalize_sheet_references!(project_id, current_sheet, attrs) do
+    parent_id = effective_attr(attrs, "parent_id", current_sheet && current_sheet.parent_id)
+    banner_asset_id = effective_attr(attrs, "banner_asset_id", current_sheet && current_sheet.banner_asset_id)
+
+    case ProjectReferenceIntegrity.lock_active_references(project_id, [
+           {:sheet, :parent_id, parent_id},
+           {:asset, :banner_asset_id, banner_asset_id}
+         ]) do
+      {:ok, [normalized_parent_id, normalized_banner_asset_id]} ->
+        validate_sheet_parent!(current_sheet, normalized_parent_id)
+
+        case ProjectReferenceIntegrity.ensure_locked_asset_content_type(
+               project_id,
+               normalized_banner_asset_id,
+               :banner_asset_id,
+               "image/%"
+             ) do
+          :ok ->
+            attrs
+            |> maybe_put_normalized_reference("parent_id", normalized_parent_id)
+            |> maybe_put_normalized_reference(
+              "banner_asset_id",
+              normalized_banner_asset_id
+            )
+
+          {:error, reason} ->
+            Repo.rollback(reason)
+        end
+
+      {:error, reason} ->
+        Repo.rollback(reason)
+    end
+  end
+
+  defp validate_sheet_parent!(nil, _parent_id), do: :ok
+  defp validate_sheet_parent!(%Sheet{}, nil), do: :ok
+
+  defp validate_sheet_parent!(%Sheet{id: id}, id), do: Repo.rollback(:cannot_be_own_parent)
+
+  defp validate_sheet_parent!(%Sheet{id: sheet_id}, parent_id) do
+    if descendant?(parent_id, sheet_id), do: Repo.rollback(:would_create_cycle), else: :ok
+  end
+
+  defp effective_attr(attrs, key, current) do
+    if Map.has_key?(attrs, key), do: Map.get(attrs, key), else: current
+  end
+
+  defp maybe_put_normalized_reference(attrs, key, value) do
+    if Map.has_key?(attrs, key), do: Map.put(attrs, key, value), else: attrs
+  end
 
   defp maybe_generate_shortcut(attrs, project_id, exclude_sheet_id) do
     attrs

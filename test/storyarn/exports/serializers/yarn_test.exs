@@ -775,7 +775,10 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
         })
 
       connection_fixture(caller_flow, caller_entry, subflow)
-      connection_fixture(caller_flow, subflow, after_dialogue)
+
+      connection_fixture(caller_flow, subflow, after_dialogue, %{
+        source_pin: "exit_#{target_exit.id}"
+      })
 
       source = yarn_source(export_yarn(project))
       assert source =~ "<<return>>"

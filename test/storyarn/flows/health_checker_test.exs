@@ -6,7 +6,9 @@ defmodule Storyarn.Flows.HealthCheckerTest do
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Flows
+  alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.HealthChecker
+  alias Storyarn.Repo
 
   setup do
     user = user_fixture()
@@ -172,7 +174,17 @@ defmodule Storyarn.Flows.HealthCheckerTest do
           data: %{"referenced_flow_id" => referenced_flow.id}
         })
 
-      connection_fixture(flow, subflow, exit_node(flow), %{source_pin: "exit_obsolete"})
+      target = exit_node(flow)
+
+      # Deliberately bypass the productive writer: this health-check regression
+      # exercises repair visibility for a legacy/corrupt pin that new writes reject.
+      Repo.insert!(%FlowConnection{
+        flow_id: flow.id,
+        source_node_id: subflow.id,
+        target_node_id: target.id,
+        source_pin: "exit_obsolete",
+        target_pin: "input"
+      })
 
       {flow_data, findings} = check_flow(project, flow)
       subflow_data = serialized_node(flow_data, subflow).data
@@ -287,16 +299,16 @@ defmodule Storyarn.Flows.HealthCheckerTest do
       project: project,
       flow: flow
     } do
-      jump =
-        node_fixture(flow, %{
-          type: "jump",
-          data: %{"target_hub_id" => "destination"}
-        })
-
       hub =
         node_fixture(flow, %{
           type: "hub",
           data: %{"hub_id" => "destination", "name" => "Destination"}
+        })
+
+      jump =
+        node_fixture(flow, %{
+          type: "jump",
+          data: %{"target_hub_id" => "destination"}
         })
 
       connection_fixture(flow, entry_node(flow), jump)

@@ -11,6 +11,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
   alias Storyarn.Assets
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Localization
+  alias Storyarn.Projects
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
 
   setup do
@@ -119,6 +120,26 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
   end
 
   describe "restore_snapshot/2" do
+    test "rejects an empty-root localization restore after the project enters trash", %{
+      user: user
+    } do
+      project = project_fixture(user)
+      source = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
+
+      assert snapshot["sheets"] == []
+      assert snapshot["flows"] == []
+      assert snapshot["scenes"] == []
+      assert snapshot["localization"]["languages"] != []
+
+      assert {:ok, _deleted} = Projects.delete_project(project, user.id)
+
+      assert {:error, :project_not_active} =
+               ProjectSnapshotBuilder.restore_snapshot(project.id, snapshot)
+
+      assert Localization.get_language(project.id, source.id).name == "English"
+    end
+
     test "restores modified entities", %{project: project, sheet: sheet} do
       snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
 
@@ -265,11 +286,15 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
           translated_text: "Hola"
         })
 
-      assert {:ok, _text} =
-               Localization.update_text(text, %{
-                 vo_asset_id: foreign_voice.id,
-                 vo_status: "recorded"
-               })
+      # The public writer now rejects this corruption. Inject it below the
+      # context boundary to retain coverage for the snapshot builder's
+      # defensive ownership check.
+      text
+      |> Ecto.Changeset.change(
+        vo_asset_id: foreign_voice.id,
+        vo_status: "recorded"
+      )
+      |> Repo.update!()
 
       assert_raise ArgumentError, ~r/owned by another project/, fn ->
         ProjectSnapshotBuilder.build_snapshot(project.id)

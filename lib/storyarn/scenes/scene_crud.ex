@@ -16,6 +16,7 @@ defmodule Storyarn.Scenes.SceneCrud do
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.SceneLayer
   alias Storyarn.Scenes.ScenePin
+  alias Storyarn.Scenes.SceneReferenceIntegrity
   alias Storyarn.Scenes.SceneZone
   alias Storyarn.Scenes.TreeOperations
   alias Storyarn.Shared.ImportHelpers
@@ -250,35 +251,43 @@ defmodule Storyarn.Scenes.SceneCrud do
   end
 
   defp do_create_scene(project, attrs) do
-    fn ->
-      locked_project = Repo.one!(from(p in Project, where: p.id == ^project.id, lock: "FOR UPDATE"))
-
-      case Billing.can_create_item?(locked_project) do
-        :ok -> :ok
-        {:error, reason, details} -> Repo.rollback({reason, details})
-      end
-
-      attrs = maybe_generate_shortcut(attrs, project.id, nil)
-      parent_id = attrs["parent_id"]
-      attrs = maybe_assign_position(attrs, project.id, parent_id)
-
-      case %Scene{project_id: project.id}
-           |> Scene.create_changeset(attrs)
-           |> Repo.insert() do
-        {:ok, scene} ->
-          # Auto-create default layer
-          %SceneLayer{scene_id: scene.id}
-          |> SceneLayer.create_changeset(%{name: "Default", is_default: true, position: 0})
-          |> Repo.insert!()
-
-          scene
-
-        {:error, changeset} ->
-          Repo.rollback(changeset)
-      end
-    end
+    fn -> create_scene_transaction(project, attrs) end
     |> Repo.transaction()
     |> normalize_item_limit_result()
+  end
+
+  defp create_scene_transaction(project, attrs) do
+    with {:ok, locked_project} <-
+           SceneReferenceIntegrity.lock_active_project(project.id, :update),
+         :ok <- Billing.can_create_item?(locked_project),
+         attrs = maybe_generate_shortcut(attrs, locked_project.id, nil),
+         {:ok, attrs} <-
+           SceneReferenceIntegrity.lock_scene_root_references(
+             %Scene{project_id: locked_project.id},
+             attrs
+           ) do
+      attrs = maybe_assign_position(attrs, locked_project.id, attrs["parent_id"])
+      insert_scene_with_default_layer(locked_project.id, attrs)
+    else
+      {:error, reason, details} -> Repo.rollback({reason, details})
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp insert_scene_with_default_layer(project_id, attrs) do
+    case %Scene{project_id: project_id}
+         |> Scene.create_changeset(attrs)
+         |> Repo.insert() do
+      {:ok, scene} ->
+        %SceneLayer{scene_id: scene.id}
+        |> SceneLayer.create_changeset(%{name: "Default", is_default: true, position: 0})
+        |> Repo.insert!()
+
+        scene
+
+      {:error, changeset} ->
+        Repo.rollback(changeset)
+    end
   end
 
   defp normalize_item_limit_result({:error, {:limit_reached, details}}), do: {:error, :limit_reached, details}
@@ -289,11 +298,25 @@ defmodule Storyarn.Scenes.SceneCrud do
   Updates a scene. Regenerates shortcut if name changes.
   """
   def update_scene(%Scene{} = scene, attrs) do
-    attrs = maybe_generate_shortcut_on_update(scene, attrs)
+    SceneReferenceIntegrity.with_active_scene_lock(
+      scene.id,
+      [project_lock: :update],
+      fn locked_scene ->
+        attrs = maybe_generate_shortcut_on_update(locked_scene, attrs)
 
-    scene
-    |> Scene.update_changeset(attrs)
-    |> Repo.update()
+        with {:ok, attrs} <-
+               SceneReferenceIntegrity.lock_scene_root_references(
+                 locked_scene,
+                 attrs
+               ),
+             {:ok, updated_scene} <-
+               locked_scene
+               |> Scene.update_changeset(attrs)
+               |> Repo.update() do
+          {:ok, Repo.preload(updated_scene, @scene_preloads, force: true)}
+        end
+      end
+    )
   end
 
   @doc """
@@ -302,22 +325,32 @@ defmodule Storyarn.Scenes.SceneCrud do
   """
   def delete_scene(%Scene{} = scene) do
     result =
-      Repo.transaction(fn ->
-        # Soft delete the scene itself
-        case scene |> Scene.delete_changeset() |> Repo.update() do
-          {:ok, deleted_scene} ->
-            # Also soft-delete all children recursively
-            SoftDelete.soft_delete_children(Scene, scene.project_id, scene.id)
-            deleted_scene
+      SceneReferenceIntegrity.with_active_scene_lock(
+        scene.id,
+        [project_lock: :update],
+        fn locked_scene ->
+          case locked_scene |> Scene.delete_changeset() |> Repo.update() do
+            {:ok, deleted_scene} ->
+              SoftDelete.soft_delete_children(
+                Scene,
+                locked_scene.project_id,
+                locked_scene.id
+              )
 
-          {:error, changeset} ->
-            Repo.rollback(changeset)
+              {:ok, deleted_scene}
+
+            {:error, changeset} ->
+              {:error, changeset}
+          end
         end
-      end)
+      )
 
     case result do
-      {:ok, _} -> Collaboration.broadcast_dashboard_change(scene.project_id, :scenes)
-      _ -> :ok
+      {:ok, deleted_scene} ->
+        Collaboration.broadcast_dashboard_change(deleted_scene.project_id, :scenes)
+
+      _ ->
+        :ok
     end
 
     result
@@ -334,15 +367,32 @@ defmodule Storyarn.Scenes.SceneCrud do
   @doc """
   Restores a soft-deleted scene.
   """
-  def restore_scene(%Scene{} = scene) do
+  def restore_scene(%Scene{id: scene_id}) when is_integer(scene_id) do
     Repo.transaction(fn ->
-      case scene |> Scene.restore_changeset() |> Repo.update() do
-        {:ok, restored_scene} ->
-          restore_children(scene.project_id, scene.id, scene.deleted_at)
-          restored_scene
+      project_id =
+        Repo.one(from(scene in Scene, where: scene.id == ^scene_id, select: scene.project_id)) ||
+          Repo.rollback(:scene_not_found)
 
-        {:error, changeset} ->
-          Repo.rollback(changeset)
+      with {:ok, _project} <-
+             SceneReferenceIntegrity.lock_active_project(project_id, :update),
+           %Scene{} = locked_scene <-
+             Repo.one(
+               from(scene in Scene,
+                 where:
+                   scene.id == ^scene_id and scene.project_id == ^project_id and
+                     not is_nil(scene.deleted_at),
+                 lock: "FOR UPDATE"
+               )
+             ),
+           {:ok, restored_scene} <-
+             locked_scene
+             |> Scene.restore_changeset()
+             |> Repo.update() do
+        restore_children(project_id, locked_scene.id, locked_scene.deleted_at)
+        restored_scene
+      else
+        nil -> Repo.rollback(:scene_not_deleted)
+        {:error, reason} -> Repo.rollback(reason)
       end
     end)
   end

@@ -802,9 +802,9 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
-  def handle_event("connection_deleted", %{"source_node_id" => source_id, "target_node_id" => target_id}, socket) do
+  def handle_event("connection_deleted", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ConnectionHelpers.delete_connection_by_nodes(socket, source_id, target_id)
+      ConnectionHelpers.delete_connection(socket, params)
     end)
   end
 

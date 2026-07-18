@@ -38,7 +38,7 @@ defmodule Storyarn.Flows.AvatarIntegrityTest do
                }
              })
 
-    assert node.data["speaker_sheet_id"] == Integer.to_string(speaker.id)
+    assert node.data["speaker_sheet_id"] == speaker.id
     assert node.data["avatar_id"] == avatar.id
   end
 
@@ -94,7 +94,8 @@ defmodule Storyarn.Flows.AvatarIntegrityTest do
 
   test "update_node_data rejects a cross-project avatar and preserves existing JSONB", %{
     user: user,
-    flow: flow
+    flow: flow,
+    speaker: speaker
   } do
     node = node_fixture(flow)
     foreign_project = project_fixture(user)
@@ -106,7 +107,7 @@ defmodule Storyarn.Flows.AvatarIntegrityTest do
              Flows.update_node_data(
                node,
                Map.merge(node.data, %{
-                 "speaker_sheet_id" => foreign_speaker.id,
+                 "speaker_sheet_id" => speaker.id,
                  "avatar_id" => foreign_avatar.id
                })
              )

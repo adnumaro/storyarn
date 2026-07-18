@@ -2,11 +2,15 @@ defmodule Storyarn.Projects.SoftDeleteTest do
   use Storyarn.DataCase, async: true
 
   import Storyarn.AccountsFixtures
+  import Storyarn.AssetsFixtures
+  import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.Localization
   alias Storyarn.Projects
+  alias Storyarn.Repo
   alias Storyarn.Sheets
 
   describe "soft delete" do
@@ -183,10 +187,28 @@ defmodule Storyarn.Projects.SoftDeleteTest do
       project = project_fixture(user)
 
       {:ok, _} = Projects.delete_project(project, user.id)
-      deleted = Storyarn.Repo.get(Projects.Project, project.id)
+      deleted = Repo.get(Projects.Project, project.id)
 
       assert {:ok, _} = Projects.permanently_delete_project(deleted)
-      assert Storyarn.Repo.get(Projects.Project, project.id) == nil
+      assert Repo.get(Projects.Project, project.id) == nil
+    end
+
+    test "cascades a project with recorded voice-overs without violating the asset constraint" do
+      user = user_fixture()
+      project = project_fixture(user)
+      audio = audio_asset_fixture(project, user)
+      text = localized_text_fixture(project.id)
+
+      assert {:ok, _recorded} =
+               Localization.update_text(text, %{
+                 vo_asset_id: audio.id,
+                 vo_status: "recorded"
+               })
+
+      assert {:ok, deleted} = Projects.delete_project(project, user.id)
+      assert {:ok, _project} = Projects.permanently_delete_project(deleted)
+
+      refute Repo.get(Projects.Project, project.id)
     end
   end
 end

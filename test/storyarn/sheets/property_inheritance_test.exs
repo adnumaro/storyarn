@@ -245,7 +245,7 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
       assert count >= 2
     end
 
-    test "updates only instances on active sheets in the source project", %{
+    test "updates instances in active and trashed sheets inside the source project", %{
       user: user,
       parent: parent,
       child: child,
@@ -277,13 +277,16 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
         |> Ecto.Changeset.change(config: %{"label" => "Updated scope"})
         |> Repo.update!()
 
-      assert {:ok, 1} = PropertyInheritance.sync_definition_change(updated_source)
+      assert {:ok, 2} = PropertyInheritance.sync_definition_change(updated_source)
 
       assert Repo.get!(Block, grandchild_instance.id).config == %{
                "label" => "Updated scope"
              }
 
-      assert Repo.get!(Block, child_instance.id).config == source.config
+      assert Repo.get!(Block, child_instance.id).config == %{
+               "label" => "Updated scope"
+             }
+
       assert Repo.get!(Block, foreign_instance.id).config == source.config
     end
   end
@@ -473,7 +476,7 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
       assert backlinks_after == []
     end
 
-    test "deletes and cleans hidden IDs only on active sheets in the source project", %{
+    test "deletes and cleans hidden IDs in active and trashed sheets inside the source project", %{
       user: user,
       parent: parent,
       child: child,
@@ -507,13 +510,13 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
         set: [deleted_at: deleted_at]
       )
 
-      assert {:ok, 1} = PropertyInheritance.delete_inherited_instances(source)
+      assert {:ok, 2} = PropertyInheritance.delete_inherited_instances(source)
 
-      assert is_nil(Repo.get!(Block, child_instance.id).deleted_at)
+      assert Repo.get!(Block, child_instance.id).deleted_at
       assert Repo.get!(Block, grandchild_instance.id).deleted_at
       assert is_nil(Repo.get!(Block, foreign_instance.id).deleted_at)
 
-      assert Repo.get!(Sheet, child.id).hidden_inherited_block_ids == [source.id]
+      assert Repo.get!(Sheet, child.id).hidden_inherited_block_ids == []
       assert Repo.get!(Sheet, grandchild.id).hidden_inherited_block_ids == []
       assert Repo.get!(Sheet, foreign_sheet.id).hidden_inherited_block_ids == [source.id]
     end
@@ -969,7 +972,7 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
       assert Enum.any?(gc_blocks_restored, &(&1.inherited_from_block_id == block.id))
     end
 
-    test "restores only instances on active sheets in the source project", %{
+    test "restores instances in active and trashed sheets inside the source project", %{
       user: user,
       parent: parent,
       child: child,
@@ -1008,13 +1011,13 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
         set: [deleted_at: deletion_time]
       )
 
-      assert {:ok, 1} =
+      assert {:ok, 2} =
                PropertyInheritance.restore_inherited_instances(%{
                  source
                  | deleted_at: deletion_time
                })
 
-      assert Repo.get!(Block, child_instance.id).deleted_at
+      assert is_nil(Repo.get!(Block, child_instance.id).deleted_at)
       assert is_nil(Repo.get!(Block, grandchild_instance.id).deleted_at)
       assert Repo.get!(Block, foreign_instance.id).deleted_at
     end

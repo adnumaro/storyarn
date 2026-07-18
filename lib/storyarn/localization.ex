@@ -11,6 +11,8 @@ defmodule Storyarn.Localization do
   - `BatchTranslator` - Batch translation orchestrator
   """
 
+  import Ecto.Query, warn: false
+
   alias Storyarn.Localization.BatchTranslator
   alias Storyarn.Localization.ExportImport
   alias Storyarn.Localization.GlossaryCrud
@@ -27,6 +29,8 @@ defmodule Storyarn.Localization do
   alias Storyarn.Localization.TextExtractor
   alias Storyarn.Localization.TranslationRunCrud
   alias Storyarn.Projects.Project
+  alias Storyarn.References.ProjectReferenceIntegrity
+  alias Storyarn.Repo
 
   # =============================================================================
   # Type Definitions
@@ -352,7 +356,7 @@ defmodule Storyarn.Localization do
   @doc "Gets the translation provider config for a project. Returns nil if not configured."
   @spec get_provider_config(id(), String.t()) :: provider_config() | nil
   def get_provider_config(project_id, provider \\ "deepl") do
-    Storyarn.Repo.get_by(ProviderConfig, project_id: project_id, provider: provider)
+    Repo.get_by(ProviderConfig, project_id: project_id, provider: provider)
   end
 
   @doc "Returns true if the project has an active provider with an API key."
@@ -366,18 +370,50 @@ defmodule Storyarn.Localization do
 
   @doc "Creates or updates a provider config for a project."
   @spec upsert_provider_config(Project.t(), map()) ::
-          {:ok, provider_config()} | {:error, changeset()}
+          {:ok, provider_config()} | {:error, changeset() | term()}
   def upsert_provider_config(%Project{} = project, attrs) do
-    case get_provider_config(project.id) do
-      nil ->
-        %ProviderConfig{project_id: project.id}
-        |> ProviderConfig.changeset(Map.put(attrs, "provider", "deepl"))
-        |> Storyarn.Repo.insert()
+    Repo.transaction(fn -> upsert_provider_config_transaction(project.id, attrs) end)
+  end
 
-      config ->
-        config
-        |> ProviderConfig.changeset(attrs)
-        |> Storyarn.Repo.update()
+  defp upsert_provider_config_transaction(project_id, attrs) do
+    case ProjectReferenceIntegrity.lock_active_project(project_id, :update) do
+      {:ok, locked_project} ->
+        locked_project.id
+        |> get_locked_provider_config()
+        |> provider_config_changeset(locked_project.id, attrs)
+        |> persist_provider_config()
+
+      {:error, reason} ->
+        Repo.rollback(reason)
+    end
+  end
+
+  defp get_locked_provider_config(project_id) do
+    Repo.one(
+      from(config in ProviderConfig,
+        where:
+          config.project_id == ^project_id and
+            config.provider == "deepl",
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp provider_config_changeset(nil, project_id, attrs) do
+    ProviderConfig.changeset(
+      %ProviderConfig{project_id: project_id},
+      Map.put(attrs, "provider", "deepl")
+    )
+  end
+
+  defp provider_config_changeset(%ProviderConfig{} = config, _project_id, attrs) do
+    ProviderConfig.changeset(config, attrs)
+  end
+
+  defp persist_provider_config(changeset) do
+    case Repo.insert_or_update(changeset) do
+      {:ok, config} -> config
+      {:error, reason} -> Repo.rollback(reason)
     end
   end
 

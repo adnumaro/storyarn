@@ -11,7 +11,6 @@ defmodule Storyarn.ProjectTemplatesTest do
   alias Storyarn.Flows.FlowNode
   alias Storyarn.FlowsFixtures
   alias Storyarn.Localization
-  alias Storyarn.Localization.RuntimeKey
   alias Storyarn.LocalizationFixtures
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectsFixtures
@@ -657,14 +656,14 @@ defmodule Storyarn.ProjectTemplatesTest do
       assert install.project_id == cloned_project.id
     end
 
-    test "instantiates a legacy stored template snapshot without dialogue runtime ids" do
+    test "rejects a stored template snapshot without dialogue runtime ids" do
       user = AccountsFixtures.user_fixture()
       scope = AccountsFixtures.user_scope_fixture(user)
       workspace = WorkspacesFixtures.workspace_fixture(user)
       source_project = ProjectsFixtures.project_fixture(user, %{name: "Legacy Template Source"})
       source_flow = FlowsFixtures.flow_fixture(source_project)
 
-      _dialogue =
+      dialogue =
         FlowsFixtures.node_fixture(source_flow, %{
           type: "dialogue",
           data: %{"text" => "Legacy dialogue", "responses" => []}
@@ -703,14 +702,17 @@ defmodule Storyarn.ProjectTemplatesTest do
         )
         |> Repo.update!()
 
-      assert {:ok, cloned_project} =
+      project_count = Repo.aggregate(Project, :count)
+
+      assert {:error, {:materialization_failed, :flow, flow_id, localization_error}} =
                ProjectTemplates.instantiate_template(scope, version, workspace, %{name: "Legacy Snapshot Copy"})
 
-      [cloned_flow] = Storyarn.Flows.list_flows(cloned_project.id)
-      cloned_flow = Repo.preload(cloned_flow, :nodes)
-      cloned_dialogue = Enum.find(cloned_flow.nodes, &(&1.type == "dialogue"))
+      assert {:invalid_snapshot_dialogue_localization_id, dialogue_id, nil} =
+               localization_error
 
-      assert RuntimeKey.valid_dialogue_id?(cloned_dialogue.data["localization_id"])
+      assert flow_id == source_flow.id
+      assert dialogue_id == dialogue.id
+      assert Repo.aggregate(Project, :count) == project_count
     end
 
     test "rejects a stored legacy snapshot that omitted sequence state" do
@@ -1397,7 +1399,11 @@ defmodule Storyarn.ProjectTemplatesTest do
 
       {:ok, _scene} = Storyarn.Scenes.update_scene(scene, %{"background_asset_id" => asset.id})
       node = flow_node_fixture(flow, "dialogue")
-      Storyarn.Flows.update_node(node, %{data: %{"audio_asset_id" => asset.id}})
+
+      Repo.update_all(
+        from(current in FlowNode, where: current.id == ^node.id),
+        set: [data: Map.put(node.data, "audio_asset_id", asset.id)]
+      )
 
       assert {:error, report} = Audit.run(project.id)
 

@@ -1,17 +1,5 @@
 <script setup lang="ts">
-import {
-  ChevronLeft,
-  ChevronRight,
-  File,
-  GitBranch,
-  Image,
-  Link,
-  MapPin,
-  Music,
-  Trash2,
-  User,
-  X,
-} from "lucide-vue-next";
+import { ChevronLeft, ChevronRight, File, Image, Link, Music, Trash2, X } from "lucide-vue-next";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { Badge } from "@components/ui/badge/index.ts";
@@ -28,18 +16,44 @@ interface Asset {
 }
 
 interface FlowNodeUsage {
+  nodeId: number;
+  nodeType: string;
   flowId: number;
   flowName: string;
+  trashed: boolean;
+}
+
+interface SequenceVisualLayerUsage {
+  id: number;
+  nodeId: number;
+  flowId: number;
+  flowName: string;
+  sequenceName: string | null;
+  label: string | null;
+  kind: string;
+  trashed: boolean;
+}
+
+interface SequenceTrackUsage {
+  id: number;
+  nodeId: number;
+  flowId: number;
+  flowName: string;
+  sequenceName: string | null;
+  kind: string;
+  trashed: boolean;
 }
 
 interface SheetUsage {
   id: number;
   name: string;
+  trashed: boolean;
 }
 
 interface SceneUsage {
   id: number;
   name: string;
+  trashed: boolean;
 }
 
 interface ScenePinUsage {
@@ -47,31 +61,77 @@ interface ScenePinUsage {
   pinLabel: string | null;
   sceneId: number;
   sceneName: string;
+  trashed: boolean;
+}
+
+interface SceneZoneUsage {
+  zoneId: number;
+  zoneName: string;
+  sceneId: number;
+  sceneName: string;
+  trashed: boolean;
+}
+
+interface LocalizedVoiceoverUsage {
+  id: number;
+  localeCode: string;
+  sourceType: string;
+  sourceId: number;
+  sourceText: string | null;
+  archived: boolean;
+}
+
+interface GalleryImageUsage {
+  id: number;
+  blockId: number;
+  sheetId: number;
+  sheetName: string;
+  label: string | null;
+  trashed: boolean;
+}
+
+interface AssetMetadataLinkUsage {
+  id: number;
+  filename: string;
+  relations: string[];
 }
 
 interface AssetUsages {
+  assetMetadataLinks: AssetMetadataLinkUsage[];
   flowNodes: FlowNodeUsage[];
+  sequenceVisualLayers: SequenceVisualLayerUsage[];
+  sequenceTracks: SequenceTrackUsage[];
   sheetAvatars: SheetUsage[];
   sheetBanners: SheetUsage[];
   sceneBackgrounds: SceneUsage[];
   scenePinIcons: ScenePinUsage[];
+  sceneZoneIcons: SceneZoneUsage[];
+  localizedVoiceovers: LocalizedVoiceoverUsage[];
+  galleryImages: GalleryImageUsage[];
 }
 
 interface UsageSummary {
   key: string;
   name: string;
   context: string;
+  href: string | null;
 }
 
 const {
   assets = [],
   selectedAsset = null,
   assetUsages = {
+    assetMetadataLinks: [],
     flowNodes: [],
+    sequenceVisualLayers: [],
+    sequenceTracks: [],
     sheetAvatars: [],
     sheetBanners: [],
     sceneBackgrounds: [],
     scenePinIcons: [],
+    sceneZoneIcons: [],
+    localizedVoiceovers: [],
+    galleryImages: [],
   },
   canEdit = false,
   workspaceSlug,
@@ -96,33 +156,102 @@ const { t } = useI18n();
 const showDeleteConfirm = ref(false);
 
 const usageSummaries = computed<UsageSummary[]>(() => {
-  if (!assetUsages) return [];
-
   return [
-    ...(assetUsages.flowNodes || []).map((usage) => ({
-      key: `flow-${usage.flowId}`,
-      name: usage.flowName,
-      context: t("common.assets.flow_audio_context"),
+    ...assetUsages.assetMetadataLinks.map((asset) => ({
+      key: `asset-metadata-${asset.id}`,
+      name: asset.filename,
+      context: t("common.assets.asset_metadata_context"),
+      href: null,
     })),
-    ...(assetUsages.sheetAvatars || []).map((sheet) => ({
+    ...assetUsages.flowNodes.map((usage) => ({
+      key: `flow-node-${usage.nodeId}`,
+      name: usage.flowName,
+      context: usageContext(t("common.assets.flow_audio_context"), usage.trashed),
+      href: usage.trashed ? null : usageFlowHref(usage),
+    })),
+    ...assetUsages.sequenceVisualLayers.map((layer) => ({
+      key: `sequence-visual-layer-${layer.id}`,
+      name: layer.label || layer.sequenceName || layer.flowName,
+      context: usageContext(
+        t("common.assets.sequence_visual_layer_context", {
+          flow: layer.flowName,
+          kind: layer.kind,
+        }),
+        layer.trashed,
+      ),
+      href: layer.trashed ? null : usageFlowHref(layer),
+    })),
+    ...assetUsages.sequenceTracks.map((track) => ({
+      key: `sequence-track-${track.id}`,
+      name: track.sequenceName || track.flowName,
+      context: usageContext(
+        t("common.assets.sequence_track_context", {
+          flow: track.flowName,
+          kind: track.kind,
+        }),
+        track.trashed,
+      ),
+      href: track.trashed ? null : usageFlowHref(track),
+    })),
+    ...assetUsages.sheetAvatars.map((sheet) => ({
       key: `avatar-${sheet.id}`,
       name: sheet.name,
-      context: t("common.assets.avatar_context"),
+      context: usageContext(t("common.assets.avatar_context"), sheet.trashed),
+      href: sheet.trashed ? null : usageSheetHref(sheet),
     })),
-    ...(assetUsages.sheetBanners || []).map((sheet) => ({
+    ...assetUsages.sheetBanners.map((sheet) => ({
       key: `banner-${sheet.id}`,
       name: sheet.name,
-      context: t("common.assets.banner_context"),
+      context: usageContext(t("common.assets.banner_context"), sheet.trashed),
+      href: sheet.trashed ? null : usageSheetHref(sheet),
     })),
-    ...(assetUsages.sceneBackgrounds || []).map((scene) => ({
+    ...assetUsages.sceneBackgrounds.map((scene) => ({
       key: `scene-bg-${scene.id}`,
       name: scene.name,
-      context: t("common.assets.scene_background_context"),
+      context: usageContext(t("common.assets.scene_background_context"), scene.trashed),
+      href: scene.trashed ? null : usageSceneHref(scene.id),
     })),
-    ...(assetUsages.scenePinIcons || []).map((pin) => ({
+    ...assetUsages.scenePinIcons.map((pin) => ({
       key: `scene-pin-${pin.pinId}`,
       name: pin.pinLabel || pin.sceneName,
-      context: t("common.assets.scene_pin_icon_context", { scene: pin.sceneName }),
+      context: usageContext(
+        t("common.assets.scene_pin_icon_context", { scene: pin.sceneName }),
+        pin.trashed,
+      ),
+      href: pin.trashed ? null : usageSceneHref(pin.sceneId),
+    })),
+    ...assetUsages.sceneZoneIcons.map((zone) => ({
+      key: `scene-zone-${zone.zoneId}`,
+      name: zone.zoneName,
+      context: usageContext(
+        t("common.assets.scene_zone_icon_context", { scene: zone.sceneName }),
+        zone.trashed,
+      ),
+      href: zone.trashed ? null : usageSceneHref(zone.sceneId),
+    })),
+    ...assetUsages.localizedVoiceovers.map((voiceover) => ({
+      key: `voiceover-${voiceover.id}`,
+      name:
+        voiceover.sourceText ||
+        t("common.assets.voiceover_fallback", {
+          type: voiceover.sourceType,
+          id: voiceover.sourceId,
+        }),
+      context: usageContext(
+        t("common.assets.voiceover_context", { locale: voiceover.localeCode }),
+        false,
+        voiceover.archived,
+      ),
+      href: usageLocalizationHref(voiceover),
+    })),
+    ...assetUsages.galleryImages.map((image) => ({
+      key: `gallery-${image.id}`,
+      name: image.label || image.sheetName,
+      context: usageContext(
+        t("common.assets.gallery_context", { sheet: image.sheetName }),
+        image.trashed,
+      ),
+      href: image.trashed ? null : usageSheetHref({ id: image.sheetId }),
     })),
   ];
 });
@@ -209,16 +338,26 @@ function formatDate(dateStr: string) {
   });
 }
 
-function usageFlowHref(usage: FlowNodeUsage) {
+function usageFlowHref(usage: { flowId: number }) {
   return `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows/${usage.flowId}`;
 }
 
-function usageSheetHref(sheet: SheetUsage) {
+function usageSheetHref(sheet: { id: number }) {
   return `/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets/${sheet.id}`;
 }
 
 function usageSceneHref(sceneId: number) {
   return `/workspaces/${workspaceSlug}/projects/${projectSlug}/scenes/${sceneId}`;
+}
+
+function usageLocalizationHref(usage: LocalizedVoiceoverUsage) {
+  return `/workspaces/${workspaceSlug}/projects/${projectSlug}/localization/texts/${usage.localeCode}/${usage.id}`;
+}
+
+function usageContext(context: string, trashed = false, archived = false) {
+  if (trashed) return t("common.assets.trashed_context", { context });
+  if (archived) return t("common.assets.archived_context", { context });
+  return context;
 }
 </script>
 
@@ -339,88 +478,19 @@ function usageSceneHref(sceneId: number) {
           </p>
 
           <ul v-if="totalUsages > 0" class="text-sm space-y-1">
-            <li
-              v-for="usage in assetUsages.flowNodes"
-              :key="'flow-' + usage.flowId"
-              class="flex items-center gap-2"
-            >
-              <GitBranch class="size-3 text-muted-foreground" />
+            <li v-for="usage in usageSummaries" :key="usage.key" class="flex items-center gap-2">
+              <Link class="size-3 shrink-0 text-muted-foreground" />
               <a
-                :href="usageFlowHref(usage)"
+                v-if="usage.href"
+                :href="usage.href"
                 data-phx-link="redirect"
                 data-phx-link-state="push"
                 class="text-primary hover:underline truncate"
               >
-                {{ usage.flowName }}
+                {{ usage.name }}
               </a>
-            </li>
-            <li
-              v-for="sheet in assetUsages.sheetAvatars"
-              :key="'avatar-' + sheet.id"
-              class="flex items-center gap-2"
-            >
-              <User class="size-3 text-muted-foreground" />
-              <a
-                :href="usageSheetHref(sheet)"
-                data-phx-link="redirect"
-                data-phx-link-state="push"
-                class="text-primary hover:underline truncate"
-              >
-                {{ sheet.name }}
-                <span class="text-muted-foreground">{{ $t("common.assets.avatar_context") }}</span>
-              </a>
-            </li>
-            <li
-              v-for="sheet in assetUsages.sheetBanners"
-              :key="'banner-' + sheet.id"
-              class="flex items-center gap-2"
-            >
-              <Image class="size-3 text-muted-foreground" />
-              <a
-                :href="usageSheetHref(sheet)"
-                data-phx-link="redirect"
-                data-phx-link-state="push"
-                class="text-primary hover:underline truncate"
-              >
-                {{ sheet.name }}
-                <span class="text-muted-foreground">{{ $t("common.assets.banner_context") }}</span>
-              </a>
-            </li>
-            <li
-              v-for="scene in assetUsages.sceneBackgrounds"
-              :key="'scene-bg-' + scene.id"
-              class="flex items-center gap-2"
-            >
-              <Image class="size-3 text-muted-foreground" />
-              <a
-                :href="usageSceneHref(scene.id)"
-                data-phx-link="redirect"
-                data-phx-link-state="push"
-                class="text-primary hover:underline truncate"
-              >
-                {{ scene.name }}
-                <span class="text-muted-foreground">{{
-                  $t("common.assets.scene_background_context")
-                }}</span>
-              </a>
-            </li>
-            <li
-              v-for="pin in assetUsages.scenePinIcons"
-              :key="'scene-pin-' + pin.pinId"
-              class="flex items-center gap-2"
-            >
-              <MapPin class="size-3 text-muted-foreground" />
-              <a
-                :href="usageSceneHref(pin.sceneId)"
-                data-phx-link="redirect"
-                data-phx-link-state="push"
-                class="text-primary hover:underline truncate"
-              >
-                {{ pin.pinLabel || pin.sceneName }}
-                <span class="text-muted-foreground">
-                  {{ $t("common.assets.scene_pin_icon_context", { scene: pin.sceneName }) }}
-                </span>
-              </a>
+              <span v-else class="truncate text-foreground">{{ usage.name }}</span>
+              <span class="truncate text-xs text-muted-foreground">{{ usage.context }}</span>
             </li>
           </ul>
         </div>

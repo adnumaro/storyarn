@@ -51,6 +51,76 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       assert recovered.id != project.id
     end
 
+    test "rejects missing response identities without creating a partial recovered project",
+         %{project: project, workspace_id: workspace_id, user: user} do
+      flow = flow_fixture(project, %{name: "Identity source"})
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Choose",
+            "responses" => [
+              %{"id" => "response_recovery_one", "text" => "One"},
+              %{"id" => "response_recovery_two", "text" => "Two"}
+            ]
+          }
+        })
+
+      snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
+
+      invalid_snapshot =
+        update_in(snapshot_data, ["flows"], fn flows ->
+          Enum.map(flows, fn
+            %{"id" => flow_id, "snapshot" => flow_snapshot} = entry when flow_id == flow.id ->
+              invalid_flow_snapshot =
+                update_in(flow_snapshot, ["nodes"], fn nodes ->
+                  Enum.map(nodes, fn
+                    %{"original_id" => node_id, "data" => data} = node
+                    when node_id == dialogue.id ->
+                      responses = List.update_at(data["responses"], 1, &Map.delete(&1, "id"))
+
+                      put_in(node, ["data", "responses"], responses)
+
+                    node ->
+                      node
+                  end)
+                end)
+
+              Map.put(entry, "snapshot", invalid_flow_snapshot)
+
+            entry ->
+              entry
+          end)
+        end)
+
+      project_count_before =
+        Repo.aggregate(
+          from(candidate in Project, where: candidate.workspace_id == ^workspace_id),
+          :count
+        )
+
+      assert {:error,
+              {:materialization_failed, :flow, flow_id,
+               {:invalid_snapshot_dialogue_response_id, dialogue_id, ["response_recovery_one", nil]}}} =
+               ProjectRecovery.recover_project(
+                 workspace_id,
+                 invalid_snapshot,
+                 user.id,
+                 name: "Must not survive"
+               )
+
+      assert flow_id == flow.id
+      assert dialogue_id == dialogue.id
+
+      assert Repo.aggregate(
+               from(candidate in Project,
+                 where: candidate.workspace_id == ^workspace_id
+               ),
+               :count
+             ) == project_count_before
+    end
+
     test "entity counts match original", %{
       project: project,
       workspace_id: workspace_id,
@@ -388,6 +458,23 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
           "target_id" => subflow.id
         })
 
+      collection_item_id = Ecto.UUID.generate()
+
+      _collection_zone =
+        zone_fixture(scene, %{
+          "name" => "Party Roster",
+          "action_type" => "collection",
+          "action_data" => %{
+            "items" => [
+              %{
+                "id" => collection_item_id,
+                "label" => "Speaker",
+                "sheet_id" => speaker.id
+              }
+            ]
+          }
+        })
+
       {:ok, _ambient_flow} =
         Storyarn.Scenes.create_ambient_flow(scene.id, %{
           "flow_id" => subflow.id,
@@ -423,6 +510,9 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       recovered_zone = Enum.find(recovered_scene.zones, &(&1.name == "Portal"))
       recovered_flow_zone = Enum.find(recovered_scene.zones, &(&1.name == "Flow Portal"))
 
+      recovered_collection_zone =
+        Enum.find(recovered_scene.zones, &(&1.name == "Party Roster"))
+
       recovered_health =
         recovered_speaker.id
         |> Storyarn.Sheets.list_blocks()
@@ -440,6 +530,16 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       assert recovered_zone.target_id == recovered_target_scene.id
       assert recovered_flow_zone.target_type == "flow"
       assert recovered_flow_zone.target_id == recovered_subflow.id
+
+      assert [
+               %{
+                 "id" => ^collection_item_id,
+                 "sheet_id" => recovered_collection_sheet_id
+               }
+             ] = recovered_collection_zone.action_data["items"]
+
+      assert recovered_collection_sheet_id == recovered_speaker.id
+      refute recovered_collection_sheet_id == speaker.id
       assert recovered_dialogue.data["speaker_sheet_id"] == recovered_speaker.id
       assert recovered_dialogue.data["location_sheet_id"] == recovered_speaker.id
       assert recovered_dialogue.data["avatar_id"] == recovered_avatar.id
@@ -506,6 +606,16 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
                      reference.source_id == ^recovered_zone.id and
                      reference.target_type == "scene" and
                      reference.target_id == ^recovered_target_scene.id
+               )
+             )
+
+      assert Repo.exists?(
+               from(reference in EntityReference,
+                 where:
+                   reference.source_type == "scene_zone" and
+                     reference.source_id == ^recovered_collection_zone.id and
+                     reference.target_type == "sheet" and
+                     reference.target_id == ^recovered_speaker.id
                )
              )
     end

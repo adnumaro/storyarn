@@ -26,6 +26,15 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
     flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "exit"))
   end
 
+  defp dialogue_with_output_pins(flow, pins) do
+    responses = Enum.map(pins, &%{"id" => &1, "text" => &1})
+
+    node_fixture(flow, %{
+      type: "dialogue",
+      data: %{"text" => "Choose", "responses" => responses}
+    })
+  end
+
   # ===========================================================================
   # list_connections/1
   # ===========================================================================
@@ -297,7 +306,7 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
 
     test "allows multiple connections between same nodes on different pins" do
       %{flow: flow} = create_project_and_flow()
-      dialogue = node_fixture(flow, %{type: "dialogue"})
+      dialogue = dialogue_with_output_pins(flow, ["response-1", "response-2"])
       d2 = node_fixture(flow, %{type: "dialogue"})
 
       {:ok, conn1} =
@@ -489,7 +498,7 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
 
     test "updates the source pin of a connection" do
       %{flow: flow} = create_project_and_flow()
-      dialogue = node_fixture(flow, %{type: "dialogue"})
+      dialogue = dialogue_with_output_pins(flow, ["old-response", "new-response"])
       target = node_fixture(flow, %{type: "dialogue"})
       conn = connection_fixture(flow, dialogue, target, %{source_pin: "old-response"})
 
@@ -512,7 +521,7 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
 
     test "rejects a source pin update that duplicates an existing connection" do
       %{flow: flow} = create_project_and_flow()
-      dialogue = node_fixture(flow, %{type: "dialogue"})
+      dialogue = dialogue_with_output_pins(flow, ["response-1", "response-2"])
       target = node_fixture(flow, %{type: "dialogue"})
       _existing = connection_fixture(flow, dialogue, target, %{source_pin: "response-1"})
       conn = connection_fixture(flow, dialogue, target, %{source_pin: "response-2"})
@@ -561,7 +570,7 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
 
     test "deletes multiple connections between same node pair" do
       %{flow: flow} = create_project_and_flow()
-      d1 = node_fixture(flow, %{type: "dialogue"})
+      d1 = dialogue_with_output_pins(flow, ["response-1", "response-2"])
       d2 = node_fixture(flow, %{type: "dialogue"})
 
       _conn1 =
@@ -607,7 +616,7 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
   describe "delete_connection_by_pins/5" do
     test "deletes a specific connection by pins" do
       %{flow: flow} = create_project_and_flow()
-      d1 = node_fixture(flow, %{type: "dialogue"})
+      d1 = dialogue_with_output_pins(flow, ["response-1", "response-2"])
       d2 = node_fixture(flow, %{type: "dialogue"})
 
       _conn1 =

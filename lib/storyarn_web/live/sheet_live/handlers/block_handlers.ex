@@ -300,6 +300,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockHandlers do
   defp current_layout(sheet_id) do
     sheet_id
     |> Sheets.list_blocks()
+    |> Enum.filter(&(is_nil(&1.inherited_from_block_id) or &1.detached))
     |> Enum.sort_by(& &1.position)
     |> Enum.map(fn block ->
       %{id: block.id, column_group_id: block.column_group_id, column_index: block.column_index}

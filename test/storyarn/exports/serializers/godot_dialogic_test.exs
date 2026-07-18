@@ -615,7 +615,10 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
         })
 
       connection_fixture(caller_flow, caller_entry, subflow)
-      connection_fixture(caller_flow, subflow, after_dialogue)
+
+      connection_fixture(caller_flow, subflow, after_dialogue, %{
+        source_pin: "exit_#{target_exit.id}"
+      })
 
       files = export_dialogic(project)
       target_source = dtl_source_for(files, target_flow)

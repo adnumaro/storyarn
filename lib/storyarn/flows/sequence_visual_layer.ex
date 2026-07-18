@@ -103,7 +103,22 @@ defmodule Storyarn.Flows.SequenceVisualLayer do
 
   def update_changeset(layer, attrs) do
     layer
-    |> cast_layer(attrs)
+    |> cast(attrs, [
+      :asset_id,
+      :kind,
+      :label,
+      :z_index,
+      :slot,
+      :x,
+      :y,
+      :width,
+      :height,
+      :anchor_x,
+      :anchor_y,
+      :fit,
+      :opacity,
+      :visible
+    ])
     |> validate_layer()
     |> foreign_key_constraint(:asset_id)
   end

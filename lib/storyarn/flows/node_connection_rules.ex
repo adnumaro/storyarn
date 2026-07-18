@@ -45,21 +45,20 @@ defmodule Storyarn.Flows.NodeConnectionRules do
   def output_pins(type, _data) when type in ~w(entry hub instruction), do: ["output"]
   def output_pins(type, _data) when type in @output_optional_types, do: []
 
-  def output_pins("dialogue", data) do
+  def output_pins("dialogue", data) when is_map(data) do
     case data["responses"] do
       responses when is_list(responses) and responses != [] ->
-        responses
-        |> Enum.map(& &1["id"])
-        |> Enum.reject(&is_nil/1)
-        |> Enum.map(&to_string/1)
+        dynamic_pin_ids(responses)
 
       _ ->
         ["output"]
     end
   end
 
+  def output_pins("dialogue", _data), do: []
+
   def output_pins("condition", %{"switch_mode" => true} = data) do
-    condition = data["condition"] || %{}
+    condition = normalize_condition(data["condition"])
 
     case condition do
       %{"blocks" => blocks} when is_list(blocks) ->
@@ -75,14 +74,18 @@ defmodule Storyarn.Flows.NodeConnectionRules do
 
   def output_pins("condition", _data), do: ["true", "false"]
 
-  def output_pins("subflow", data) do
+  def output_pins("subflow", data) when is_map(data) do
     pins =
       cond do
         is_list(data["exit_pins"]) and data["exit_pins"] != [] ->
-          Enum.map(data["exit_pins"], &normalize_subflow_pin/1)
+          data["exit_pins"]
+          |> Enum.map(&normalize_subflow_pin/1)
+          |> Enum.reject(&is_nil/1)
 
         is_list(data["exit_labels"]) and data["exit_labels"] != [] ->
-          Enum.map(data["exit_labels"], &normalize_subflow_pin/1)
+          data["exit_labels"]
+          |> Enum.map(&normalize_subflow_pin/1)
+          |> Enum.reject(&is_nil/1)
 
         true ->
           []
@@ -91,12 +94,25 @@ defmodule Storyarn.Flows.NodeConnectionRules do
     if pins == [], do: ["output"], else: pins
   end
 
+  def output_pins("subflow", _data), do: []
+
   def output_pins(_type, _data), do: []
+
+  @doc "Returns every source pin accepted for a node, including verified legacy aliases."
+  @spec accepted_output_pins(String.t(), map()) :: [String.t()]
+  def accepted_output_pins("dialogue", %{"responses" => responses} = data) when is_list(responses) and responses != [] do
+    "dialogue"
+    |> output_pins(data)
+    |> Enum.flat_map(&dialogue_pin_aliases/1)
+    |> Enum.uniq()
+  end
+
+  def accepted_output_pins(type, data), do: output_pins(type, data)
 
   @doc "Returns true when a stored source pin still exists on the node."
   @spec valid_output_pin?(String.t(), map(), String.t()) :: boolean()
   def valid_output_pin?(type, data, source_pin) do
-    source_pin in output_pins(type, data)
+    source_pin in accepted_output_pins(type, data)
   end
 
   @doc "Returns true when a stored target pin exists on the node."
@@ -107,16 +123,43 @@ defmodule Storyarn.Flows.NodeConnectionRules do
 
   defp dynamic_pin_ids(items) do
     items
-    |> Enum.map(& &1["id"])
+    |> Enum.filter(&is_map/1)
+    |> Enum.map(&Map.get(&1, "id", Map.get(&1, :id)))
     |> Enum.reject(&is_nil/1)
-    |> Enum.map(&to_string/1)
+    |> Enum.map(&normalize_pin_id/1)
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp normalize_condition(condition) when is_map(condition), do: condition
+
+  defp normalize_condition(condition) when is_binary(condition) do
+    case Jason.decode(condition) do
+      {:ok, decoded} when is_map(decoded) -> decoded
+      _invalid -> %{}
+    end
+  end
+
+  defp normalize_condition(_condition), do: %{}
+
+  defp normalize_pin_id(id) when is_binary(id) do
+    if String.trim(id) == "", do: nil, else: id
+  end
+
+  defp normalize_pin_id(id) when is_integer(id), do: Integer.to_string(id)
+  defp normalize_pin_id(_id), do: nil
+
+  defp dialogue_pin_aliases(id) do
+    aliases = [id, "resp_#{id}"]
+    if String.starts_with?(id, "response_"), do: aliases, else: ["response_#{id}" | aliases]
   end
 
   defp normalize_subflow_pin(%{id: id}), do: normalize_subflow_pin(id)
   defp normalize_subflow_pin(%{"id" => id}), do: normalize_subflow_pin(id)
 
-  defp normalize_subflow_pin(pin) do
+  defp normalize_subflow_pin(pin) when is_binary(pin) or is_integer(pin) do
     pin = to_string(pin)
     if String.starts_with?(pin, "exit_"), do: pin, else: "exit_#{pin}"
   end
+
+  defp normalize_subflow_pin(_pin), do: nil
 end

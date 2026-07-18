@@ -5,8 +5,8 @@ defmodule Storyarn.Scenes.ZoneCrud do
 
   alias Storyarn.References
   alias Storyarn.Repo
-  alias Storyarn.Scenes
   alias Storyarn.Scenes.PositionUtils
+  alias Storyarn.Scenes.SceneReferenceIntegrity
   alias Storyarn.Scenes.SceneZone
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Shortcuts
@@ -61,57 +61,85 @@ defmodule Storyarn.Scenes.ZoneCrud do
   def create_zone(scene_id, attrs) do
     attrs = MapUtils.stringify_keys(attrs)
 
-    PositionUtils.with_scene_lock(scene_id, fn ->
-      with project_id when is_integer(project_id) <- Scenes.get_scene_project_id(scene_id),
-           :ok <- PositionUtils.lock_requested_layer_for_scene(scene_id, attrs) do
-        attrs = maybe_generate_zone_shortcut(attrs, scene_id, nil)
-        position = PositionUtils.next_position(SceneZone, scene_id)
+    SceneReferenceIntegrity.with_active_scene_lock(
+      scene_id,
+      [project_lock: :update],
+      fn scene ->
+        zone = %SceneZone{scene_id: scene.id}
 
-        %SceneZone{scene_id: scene_id}
-        |> SceneZone.create_changeset(Map.put(attrs, "position", position))
-        |> persist_zone_with_references(project_id)
-      else
-        nil -> {:error, :scene_not_found}
-        error -> error
+        with :ok <-
+               PositionUtils.lock_requested_layer_for_scene(scene.id, attrs),
+             {:ok, attrs} <-
+               SceneReferenceIntegrity.lock_zone_references(
+                 scene,
+                 zone,
+                 attrs
+               ) do
+          attrs = maybe_generate_zone_shortcut(attrs, scene.id, nil)
+          position = PositionUtils.next_position(SceneZone, scene.id)
+
+          zone
+          |> SceneZone.create_changeset(Map.put(attrs, "position", position))
+          |> persist_zone_with_references(scene.project_id)
+        end
       end
-    end)
+    )
   end
 
   def update_zone(%SceneZone{} = zone, attrs) do
     attrs = MapUtils.stringify_keys(attrs)
 
-    PositionUtils.with_scene_lock(zone.scene_id, fn ->
-      with project_id when is_integer(project_id) <-
-             Scenes.get_scene_project_id(zone.scene_id),
-           {:ok, locked_zone} <- lock_zone_for_scene(zone.id, zone.scene_id),
-           :ok <-
-             PositionUtils.lock_requested_layer_for_scene(
-               zone.scene_id,
-               attrs,
-               locked_zone.layer_id
-             ) do
-        locked_zone
-        |> SceneZone.update_changeset(maybe_regenerate_zone_shortcut(locked_zone, attrs))
-        |> persist_zone_with_references(project_id)
-      else
-        nil -> {:error, :scene_not_found}
-        error -> error
+    SceneReferenceIntegrity.with_active_scene_lock(
+      zone.scene_id,
+      [project_lock: :update],
+      fn scene ->
+        with {:ok, locked_zone} <- lock_zone_for_scene(zone.id, scene.id),
+             :ok <-
+               PositionUtils.lock_requested_layer_for_scene(
+                 scene.id,
+                 attrs,
+                 locked_zone.layer_id
+               ),
+             {:ok, attrs} <-
+               SceneReferenceIntegrity.lock_zone_references(
+                 scene,
+                 locked_zone,
+                 attrs
+               ) do
+          locked_zone
+          |> SceneZone.update_changeset(maybe_regenerate_zone_shortcut(locked_zone, attrs))
+          |> persist_zone_with_references(scene.project_id)
+        end
       end
-    end)
+    )
   end
 
   @doc """
   Updates only vertices (optimized for drag operations).
   """
   def update_zone_vertices(%SceneZone{} = zone, attrs) do
-    zone
-    |> SceneZone.update_vertices_changeset(attrs)
-    |> Repo.update()
+    SceneReferenceIntegrity.with_active_scene_lock(
+      zone.scene_id,
+      [project_lock: :update],
+      fn scene ->
+        with {:ok, locked_zone} <- lock_zone_for_scene(zone.id, scene.id),
+             {:ok, _attrs} <-
+               SceneReferenceIntegrity.lock_zone_references(
+                 scene,
+                 locked_zone,
+                 %{}
+               ) do
+          locked_zone
+          |> SceneZone.update_vertices_changeset(attrs)
+          |> Repo.update()
+        end
+      end
+    )
   end
 
   def delete_zone(%SceneZone{} = zone) do
-    PositionUtils.with_scene_lock(zone.scene_id, fn ->
-      with {:ok, locked_zone} <- lock_zone_for_scene(zone.id, zone.scene_id),
+    SceneReferenceIntegrity.with_active_scene_lock(zone.scene_id, fn scene ->
+      with {:ok, locked_zone} <- lock_zone_for_scene(zone.id, scene.id),
            :ok <- delete_zone_references(locked_zone.id) do
         Repo.delete(locked_zone)
       end

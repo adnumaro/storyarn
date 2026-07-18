@@ -239,13 +239,14 @@ defmodule Storyarn.Exports.LocalizationEngineContractTest do
       data: %{"localization_id" => "shared_dialogue", "text" => "First", "responses" => []}
     })
 
-    second = node_fixture(second_flow, %{type: "dialogue", data: %{"text" => "Second", "responses" => []}})
-
     assert {:error, changeset} =
-             Storyarn.Flows.update_node_data(second, %{
-               "localization_id" => "shared_dialogue",
-               "text" => "Second",
-               "responses" => []
+             Storyarn.Flows.create_node(second_flow, %{
+               type: "dialogue",
+               data: %{
+                 "localization_id" => "shared_dialogue",
+                 "text" => "Second",
+                 "responses" => []
+               }
              })
 
     assert "localization_id must be unique within the project" in errors_on(changeset).data

@@ -14,11 +14,14 @@ defmodule Storyarn.Flows.SequenceCrud do
 
   import Ecto.Query
 
+  alias Storyarn.Assets.Asset
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.ReferenceIntegrity
   alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Flows.SequenceTrack
   alias Storyarn.Flows.SequenceVisualLayer
+  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
 
   @type sequence :: FlowNode.t()
@@ -104,7 +107,12 @@ defmodule Storyarn.Flows.SequenceCrud do
     }
 
     Repo.transaction(fn ->
-      with {:ok, node} <-
+      with {:ok, %{flow: flow}} <-
+             ReferenceIntegrity.lock_active_flow_for_write(flow_id),
+           {:ok, parent_id} <-
+             ReferenceIntegrity.lock_node_parent(flow.id, node_attrs["parent_id"]),
+           node_attrs = Map.put(node_attrs, "parent_id", parent_id),
+           {:ok, node} <-
              %FlowNode{flow_id: flow_id}
              |> FlowNode.create_changeset(node_attrs)
              |> Repo.insert(),
@@ -114,7 +122,7 @@ defmodule Storyarn.Flows.SequenceCrud do
              |> Repo.insert() do
         %{node | sequence_config: config}
       else
-        {:error, changeset} -> Repo.rollback(changeset)
+        {:error, reason} -> Repo.rollback(reason)
       end
     end)
   end
@@ -135,10 +143,25 @@ defmodule Storyarn.Flows.SequenceCrud do
       Map.take(attrs, ["name", "width", "height"])
 
     Repo.transaction(fn ->
-      updated_node = update_sequence_node(node, node_attrs)
-      updated_config = update_sequence_config(node, config_attrs)
+      with {:ok, %{flow: flow, node: locked_node}} <-
+             ReferenceIntegrity.lock_active_node_for_write(node),
+           :ok <- ensure_sequence(locked_node),
+           parent_id = Map.get(node_attrs, "parent_id", locked_node.parent_id),
+           {:ok, parent_id} <-
+             ReferenceIntegrity.lock_node_parent(
+               flow.id,
+               parent_id,
+               locked_node.id
+             ) do
+        node_attrs = put_normalized_parent_id(node_attrs, parent_id)
 
-      %{updated_node | sequence_config: updated_config}
+        updated_node = update_sequence_node(locked_node, node_attrs)
+        updated_config = update_sequence_config(locked_node, config_attrs)
+
+        %{updated_node | sequence_config: updated_config}
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
     end)
   end
 
@@ -148,9 +171,19 @@ defmodule Storyarn.Flows.SequenceCrud do
   """
   @spec delete_sequence(sequence()) :: {:ok, sequence()} | {:error, Ecto.Changeset.t()}
   def delete_sequence(%FlowNode{type: "sequence"} = node) do
-    node
-    |> FlowNode.soft_delete_changeset()
-    |> Repo.update()
+    Repo.transaction(fn ->
+      with {:ok, %{node: locked_node}} <-
+             ReferenceIntegrity.lock_active_node_for_write(node),
+           :ok <- ensure_sequence(locked_node),
+           {:ok, deleted_node} <-
+             locked_node
+             |> FlowNode.soft_delete_changeset()
+             |> Repo.update() do
+        deleted_node
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
   end
 
   @doc """
@@ -158,11 +191,38 @@ defmodule Storyarn.Flows.SequenceCrud do
   previously nilified are NOT re-attached — the user must re-parent
   them manually.
   """
-  @spec restore_sequence(sequence()) :: {:ok, sequence()} | {:error, Ecto.Changeset.t()}
-  def restore_sequence(%FlowNode{type: "sequence"} = node) do
-    node
-    |> FlowNode.restore_changeset()
-    |> Repo.update()
+  @spec restore_sequence(sequence()) :: {:ok, sequence()} | {:error, term()}
+  def restore_sequence(%FlowNode{id: node_id, type: "sequence"}) when is_integer(node_id) do
+    Repo.transaction(fn ->
+      flow_id =
+        Repo.one(
+          from(node in FlowNode,
+            where: node.id == ^node_id and node.type == "sequence",
+            select: node.flow_id
+          )
+        ) || Repo.rollback(:sequence_not_found)
+
+      with {:ok, %{flow: flow}} <-
+             ReferenceIntegrity.lock_active_flow_for_write(flow_id),
+           %FlowNode{} = locked_node <-
+             Repo.one(
+               from(node in FlowNode,
+                 where:
+                   node.id == ^node_id and node.flow_id == ^flow.id and
+                     node.type == "sequence" and not is_nil(node.deleted_at),
+                 lock: "FOR UPDATE"
+               )
+             ),
+           {:ok, restored_node} <-
+             locked_node
+             |> FlowNode.restore_changeset()
+             |> Repo.update() do
+        restored_node
+      else
+        nil -> Repo.rollback(:sequence_not_deleted)
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
   end
 
   @doc """
@@ -189,10 +249,12 @@ defmodule Storyarn.Flows.SequenceCrud do
 
   def wrap_selection_in_sequence(%Flow{id: flow_id}, node_ids, attrs) when is_list(node_ids) do
     Repo.transaction(fn ->
-      with {:ok, nodes} <- load_active_nodes(flow_id, node_ids),
+      with {:ok, %{flow: locked_flow}} <-
+             ReferenceIntegrity.lock_active_flow_for_write(flow_id),
+           {:ok, nodes} <- load_active_nodes(locked_flow.id, node_ids),
            {:ok, parent_id} <- common_parent_id(nodes),
            attrs = build_wrap_attrs(attrs, parent_id),
-           {:ok, sequence} <- create_sequence(flow_id, attrs),
+           {:ok, sequence} <- create_sequence(locked_flow.id, attrs),
            :ok <- assign_nodes_to_sequence(nodes, sequence.id) do
         sequence
       else
@@ -240,7 +302,9 @@ defmodule Storyarn.Flows.SequenceCrud do
     nodes =
       Repo.all(
         from(n in FlowNode,
-          where: n.id in ^node_ids and n.flow_id == ^flow_id and is_nil(n.deleted_at)
+          where: n.id in ^node_ids and n.flow_id == ^flow_id and is_nil(n.deleted_at),
+          order_by: [asc: n.id],
+          lock: "FOR UPDATE"
         )
       )
 
@@ -271,6 +335,9 @@ defmodule Storyarn.Flows.SequenceCrud do
     Repo.update_all(from(n in FlowNode, where: n.id in ^ids), set: [parent_id: sequence_id])
     :ok
   end
+
+  defp ensure_sequence(%FlowNode{type: "sequence", deleted_at: nil}), do: :ok
+  defp ensure_sequence(_node), do: {:error, :sequence_not_found}
 
   # =========================================================================
   # Sequence visual layers
@@ -320,26 +387,73 @@ defmodule Storyarn.Flows.SequenceCrud do
       |> Map.put("kind", kind)
       |> Map.put("slot", slot)
 
-    %SequenceVisualLayer{}
-    |> SequenceVisualLayer.create_changeset(attrs)
-    |> Repo.insert()
+    Repo.transaction(fn ->
+      with {:ok, %{project_id: project_id}} <- lock_active_sequence(sequence_id),
+           changeset = SequenceVisualLayer.create_changeset(%SequenceVisualLayer{}, attrs),
+           asset_id = Ecto.Changeset.get_field(changeset, :asset_id),
+           {:ok, asset_id} <-
+             lock_project_asset(
+               project_id,
+               :sequence_visual_asset_id,
+               asset_id,
+               "image/%"
+             ),
+           {:ok, layer} <-
+             changeset
+             |> Ecto.Changeset.put_change(:asset_id, asset_id)
+             |> Repo.insert() do
+        layer
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
   end
 
   @doc "Updates a sequence visual layer."
   @spec update_sequence_visual_layer(SequenceVisualLayer.t(), map()) ::
           {:ok, SequenceVisualLayer.t()} | {:error, Ecto.Changeset.t()}
   def update_sequence_visual_layer(%SequenceVisualLayer{} = layer, attrs) when is_map(attrs) do
-    attrs = normalize_visual_layer_update_attrs(layer, normalize_keys(attrs))
-
-    layer
-    |> SequenceVisualLayer.update_changeset(attrs)
-    |> Repo.update()
+    Repo.transaction(fn ->
+      with {:ok, %{layer: locked_layer, project_id: project_id}} <-
+             lock_visual_layer_for_write(layer),
+           attrs =
+             normalize_visual_layer_update_attrs(
+               locked_layer,
+               normalize_keys(attrs)
+             ),
+           changeset = SequenceVisualLayer.update_changeset(locked_layer, attrs),
+           asset_id = Ecto.Changeset.get_field(changeset, :asset_id),
+           {:ok, asset_id} <-
+             lock_project_asset(
+               project_id,
+               :sequence_visual_asset_id,
+               asset_id,
+               "image/%"
+             ),
+           {:ok, updated_layer} <-
+             changeset
+             |> Ecto.Changeset.put_change(:asset_id, asset_id)
+             |> Repo.update() do
+        updated_layer
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
   end
 
   @doc "Deletes a sequence visual layer."
   @spec delete_sequence_visual_layer(SequenceVisualLayer.t()) ::
           {:ok, SequenceVisualLayer.t()} | {:error, Ecto.Changeset.t()}
-  def delete_sequence_visual_layer(%SequenceVisualLayer{} = layer), do: Repo.delete(layer)
+  def delete_sequence_visual_layer(%SequenceVisualLayer{} = layer) do
+    Repo.transaction(fn ->
+      with {:ok, %{layer: locked_layer}} <- lock_visual_layer_for_write(layer),
+           {:ok, deleted_layer} <- Repo.delete(locked_layer) do
+        deleted_layer
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+  end
 
   defp default_slot_for_visual_kind("backdrop"), do: "full"
   defp default_slot_for_visual_kind("overlay"), do: "full"
@@ -535,23 +649,7 @@ defmodule Storyarn.Flows.SequenceCrud do
           {:ok, SequenceTrack.t()} | {:error, atom() | Ecto.Changeset.t()}
   def upsert_sequence_track(sequence_id, kind, attrs) when is_integer(sequence_id) and is_binary(kind) do
     if kind in SequenceTrack.kinds() do
-      case get_sequence_track(sequence_id, kind) do
-        nil ->
-          attrs =
-            attrs
-            |> normalize_keys()
-            |> Map.put("flow_node_id", sequence_id)
-            |> Map.put("kind", kind)
-
-          %SequenceTrack{}
-          |> SequenceTrack.create_changeset(attrs)
-          |> Repo.insert()
-
-        %SequenceTrack{} = track ->
-          track
-          |> SequenceTrack.update_changeset(normalize_keys(attrs))
-          |> Repo.update()
-      end
+      do_upsert_sequence_track(sequence_id, kind, attrs)
     else
       {:error, :invalid_kind}
     end
@@ -565,15 +663,151 @@ defmodule Storyarn.Flows.SequenceCrud do
           {:ok, :cleared} | {:error, atom()}
   def clear_sequence_track(sequence_id, kind) when is_integer(sequence_id) and is_binary(kind) do
     if kind in SequenceTrack.kinds() do
-      Repo.delete_all(
-        from(t in SequenceTrack,
-          where: t.flow_node_id == ^sequence_id and t.kind == ^kind
-        )
-      )
-
-      {:ok, :cleared}
+      do_clear_sequence_track(sequence_id, kind)
     else
       {:error, :invalid_kind}
     end
+  end
+
+  defp put_normalized_parent_id(node_attrs, parent_id) do
+    if Map.has_key?(node_attrs, "parent_id"),
+      do: Map.put(node_attrs, "parent_id", parent_id),
+      else: node_attrs
+  end
+
+  defp do_upsert_sequence_track(sequence_id, kind, attrs) do
+    Repo.transaction(fn ->
+      with {:ok, %{project_id: project_id}} <- lock_active_sequence(sequence_id),
+           track = lock_sequence_track(sequence_id, kind),
+           changeset = sequence_track_changeset(track, sequence_id, kind, attrs),
+           asset_id = Ecto.Changeset.get_field(changeset, :asset_id),
+           {:ok, asset_id} <-
+             lock_project_asset(
+               project_id,
+               :sequence_track_asset_id,
+               asset_id,
+               "audio/%"
+             ),
+           {:ok, persisted_track} <-
+             persist_sequence_track(changeset, asset_id, track) do
+        persisted_track
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+  end
+
+  defp do_clear_sequence_track(sequence_id, kind) do
+    Repo.transaction(fn ->
+      case lock_active_sequence(sequence_id) do
+        {:ok, _context} ->
+          Repo.delete_all(
+            from(t in SequenceTrack,
+              where: t.flow_node_id == ^sequence_id and t.kind == ^kind
+            )
+          )
+
+          :cleared
+
+        {:error, reason} ->
+          Repo.rollback(reason)
+      end
+    end)
+  end
+
+  defp lock_active_sequence(sequence_id) do
+    with {:ok, %{node: node} = context} <-
+           ReferenceIntegrity.lock_active_node_for_write(sequence_id),
+         :ok <- ensure_sequence(node) do
+      {:ok, context}
+    end
+  end
+
+  defp lock_visual_layer_for_write(%SequenceVisualLayer{id: layer_id, flow_node_id: sequence_id})
+       when is_integer(layer_id) and is_integer(sequence_id) do
+    with {:ok, context} <- lock_active_sequence(sequence_id),
+         %SequenceVisualLayer{} = layer <-
+           Repo.one(
+             from(layer in SequenceVisualLayer,
+               where:
+                 layer.id == ^layer_id and
+                   layer.flow_node_id == ^sequence_id,
+               lock: "FOR UPDATE"
+             )
+           ) do
+      {:ok, Map.put(context, :layer, layer)}
+    else
+      nil -> {:error, :sequence_visual_layer_not_found}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp lock_visual_layer_for_write(_layer), do: {:error, :sequence_visual_layer_not_found}
+
+  defp lock_project_asset(project_id, context, asset_id, content_type_pattern) do
+    with {:ok, [normalized_asset_id]} <-
+           ProjectReferenceIntegrity.lock_active_references(project_id, [
+             {:asset, context, asset_id}
+           ]),
+         :ok <-
+           validate_asset_content_type(
+             project_id,
+             context,
+             normalized_asset_id,
+             content_type_pattern
+           ) do
+      {:ok, normalized_asset_id}
+    end
+  end
+
+  defp validate_asset_content_type(_project_id, _context, nil, _content_type_pattern), do: :ok
+
+  defp validate_asset_content_type(project_id, context, asset_id, content_type_pattern) do
+    if Repo.exists?(
+         from(asset in Asset,
+           where:
+             asset.id == ^asset_id and asset.project_id == ^project_id and
+               like(asset.content_type, ^content_type_pattern)
+         )
+       ) do
+      :ok
+    else
+      {:error, {:invalid_asset_content_type, context, asset_id}}
+    end
+  end
+
+  defp lock_sequence_track(sequence_id, kind) do
+    Repo.one(
+      from(track in SequenceTrack,
+        where: track.flow_node_id == ^sequence_id and track.kind == ^kind,
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp sequence_track_changeset(nil, sequence_id, kind, attrs) do
+    attrs =
+      attrs
+      |> normalize_keys()
+      |> Map.put("flow_node_id", sequence_id)
+      |> Map.put("kind", kind)
+
+    SequenceTrack.create_changeset(%SequenceTrack{}, attrs)
+  end
+
+  defp sequence_track_changeset(%SequenceTrack{} = track, _sequence_id, _kind, attrs) do
+    SequenceTrack.update_changeset(track, normalize_keys(attrs))
+  end
+
+  defp persist_sequence_track(changeset, asset_id, nil) do
+    changeset
+    |> Ecto.Changeset.put_change(:asset_id, asset_id)
+    |> Repo.insert()
+  end
+
+  defp persist_sequence_track(changeset, asset_id, %SequenceTrack{}) do
+    changeset
+    |> Ecto.Changeset.put_change(:asset_id, asset_id)
+    |> Repo.update()
   end
 end

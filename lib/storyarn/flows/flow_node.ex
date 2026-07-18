@@ -107,7 +107,7 @@ defmodule Storyarn.Flows.FlowNode do
   Changeset for creating a new node.
   """
   def create_changeset(node, attrs) do
-    attrs = normalize_node_data(attrs, nil)
+    attrs = normalize_node_data(attrs, nil, :create)
 
     node
     |> cast(attrs, [:type, :position_x, :position_y, :data, :source, :parent_id])
@@ -122,7 +122,7 @@ defmodule Storyarn.Flows.FlowNode do
 
   @doc "Changeset for materializing a node from a snapshot, including historical data normalization."
   def materialize_changeset(node, attrs) do
-    attrs = normalize_legacy_node_data(attrs, node)
+    attrs = normalize_legacy_node_data(attrs, node, :materialize)
 
     node
     |> cast(attrs, [:type, :position_x, :position_y, :data, :word_count, :source, :parent_id])
@@ -139,13 +139,13 @@ defmodule Storyarn.Flows.FlowNode do
   Changeset for updating a node.
   """
   def update_changeset(node, attrs) do
-    attrs = normalize_node_data(attrs, node)
+    attrs = normalize_node_data(attrs, node, :update)
 
     node
     |> cast(attrs, [:type, :position_x, :position_y, :data, :parent_id])
     |> validate_required([:type])
     |> validate_inclusion(:type, @node_types)
-    |> validate_dialogue_runtime_ids()
+    |> validate_dialogue_runtime_ids(:update)
     |> dialogue_localization_id_constraint()
     |> foreign_key_constraint(:parent_id)
   end
@@ -179,11 +179,11 @@ defmodule Storyarn.Flows.FlowNode do
   Used for editing node properties.
   """
   def data_changeset(node, attrs) do
-    attrs = normalize_node_data(attrs, node)
+    attrs = normalize_node_data(attrs, node, :update)
 
     node
     |> cast(attrs, [:data])
-    |> validate_dialogue_runtime_ids()
+    |> validate_dialogue_runtime_ids(:update)
     |> dialogue_localization_id_constraint()
   end
 
@@ -204,33 +204,47 @@ defmodule Storyarn.Flows.FlowNode do
     |> dialogue_localization_id_constraint()
   end
 
-  defp normalize_node_data(attrs, node) do
+  defp normalize_node_data(attrs, node, identity_mode) do
     attrs
-    |> ensure_dialogue_runtime_ids(node)
+    |> ensure_dialogue_runtime_ids(node, identity_mode)
     |> ensure_hub_color(node, &HubColors.resolve/1)
   end
 
-  defp normalize_legacy_node_data(attrs, node) do
+  defp normalize_legacy_node_data(attrs, node, identity_mode) do
     attrs
-    |> ensure_dialogue_runtime_ids(node)
+    |> ensure_dialogue_runtime_ids(node, identity_mode)
     |> ensure_hub_color(node, &HubColors.resolve_legacy/1)
   end
 
-  defp ensure_dialogue_runtime_ids(attrs, node) when is_map(attrs) do
+  defp ensure_dialogue_runtime_ids(attrs, node, identity_mode) when is_map(attrs) do
     type = attr(attrs, :type) || (node && node.type)
     data = attr(attrs, :data) || existing_data(node)
 
     if type == "dialogue" and is_map(data) do
-      put_attr(attrs, :data, normalize_dialogue_runtime_ids(data, existing_localization_id(node)))
+      put_attr(
+        attrs,
+        :data,
+        normalize_dialogue_runtime_ids(
+          data,
+          existing_localization_id(node),
+          identity_mode
+        )
+      )
     else
       attrs
     end
   end
 
-  defp normalize_dialogue_runtime_ids(data, existing_id) do
+  defp normalize_dialogue_runtime_ids(data, existing_id, :create) do
     data
-    |> ensure_localization_id(existing_id)
-    |> ensure_response_ids()
+    |> ensure_localization_id(existing_id, :create)
+    |> normalize_response_ids(:create)
+  end
+
+  defp normalize_dialogue_runtime_ids(data, existing_id, identity_mode) when identity_mode in [:update, :materialize] do
+    data
+    |> ensure_localization_id(existing_id, identity_mode)
+    |> normalize_response_ids(identity_mode)
   end
 
   defp ensure_hub_color(attrs, node, resolver) when is_map(attrs) do
@@ -254,17 +268,38 @@ defmodule Storyarn.Flows.FlowNode do
 
   defp hub_color_value(data, _node), do: map_value(data, "color")
 
-  defp ensure_localization_id(data, existing_id) do
+  defp ensure_localization_id(data, existing_id, :create) do
     case map_value(data, "localization_id") do
       value when value not in [nil, ""] -> put_string_key(data, "localization_id", value)
       _missing -> put_string_key(data, "localization_id", reusable_id(existing_id, &RuntimeKey.new_dialogue_id/0))
     end
   end
 
-  defp ensure_response_ids(data) do
+  defp ensure_localization_id(data, existing_id, :update) do
+    case map_value(data, "localization_id") do
+      value when value not in [nil, ""] ->
+        put_string_key(data, "localization_id", value)
+
+      _missing when not is_nil(existing_id) ->
+        put_string_key(data, "localization_id", existing_id)
+
+      _missing ->
+        data
+    end
+  end
+
+  defp ensure_localization_id(data, _existing_id, :materialize) do
+    if map_has_key?(data, "localization_id") do
+      put_string_key(data, "localization_id", map_value(data, "localization_id"))
+    else
+      data
+    end
+  end
+
+  defp normalize_response_ids(data, identity_mode) do
     case map_value(data, "responses") do
       responses when is_list(responses) ->
-        responses = Enum.map(responses, &ensure_response_id/1)
+        responses = Enum.map(responses, &normalize_response_id(&1, identity_mode))
         put_string_key(data, "responses", responses)
 
       missing_or_invalid ->
@@ -274,14 +309,23 @@ defmodule Storyarn.Flows.FlowNode do
     end
   end
 
-  defp ensure_response_id(response) when is_map(response) do
+  defp normalize_response_id(response, :create) when is_map(response) do
     case map_value(response, "id") do
       value when value not in [nil, ""] -> put_string_key(response, "id", value)
       _missing -> put_string_key(response, "id", RuntimeKey.new_response_id())
     end
   end
 
-  defp ensure_response_id(response), do: response
+  defp normalize_response_id(response, identity_mode)
+       when is_map(response) and identity_mode in [:update, :materialize] do
+    if map_has_key?(response, "id") do
+      put_string_key(response, "id", map_value(response, "id"))
+    else
+      response
+    end
+  end
+
+  defp normalize_response_id(response, _identity_mode), do: response
 
   defp reusable_id(existing_id, generator) do
     if RuntimeKey.valid_dialogue_id?(existing_id), do: existing_id, else: generator.()
@@ -296,7 +340,20 @@ defmodule Storyarn.Flows.FlowNode do
   defp validate_dialogue_runtime_ids(changeset) do
     if get_field(changeset, :type) == "dialogue" do
       data = get_field(changeset, :data) || %{}
-      changeset |> validate_localization_id(data) |> validate_response_ids(data)
+
+      changeset
+      |> validate_localization_id(data)
+      |> validate_response_ids(data)
+    else
+      changeset
+    end
+  end
+
+  defp validate_dialogue_runtime_ids(changeset, :update) do
+    changeset = validate_dialogue_runtime_ids(changeset)
+
+    if get_field(changeset, :type) == "dialogue" do
+      validate_localization_id_unchanged(changeset, get_field(changeset, :data) || %{})
     else
       changeset
     end
@@ -310,8 +367,21 @@ defmodule Storyarn.Flows.FlowNode do
     end
   end
 
+  defp validate_localization_id_unchanged(%{data: %__MODULE__{type: "dialogue", data: existing_data}} = changeset, data)
+       when is_map(existing_data) do
+    existing_id = existing_data["localization_id"]
+
+    if RuntimeKey.valid_dialogue_id?(existing_id) and data["localization_id"] != existing_id do
+      add_error(changeset, :data, "cannot change an existing localization_id")
+    else
+      changeset
+    end
+  end
+
+  defp validate_localization_id_unchanged(changeset, _data), do: changeset
+
   defp validate_response_ids(changeset, data) do
-    responses = data["responses"] || []
+    responses = if Map.has_key?(data, "responses"), do: data["responses"], else: []
 
     if is_list(responses) do
       ids =

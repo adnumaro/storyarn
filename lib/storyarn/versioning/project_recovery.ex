@@ -33,7 +33,6 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   alias Storyarn.Versioning.AssetMaterializationScope
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.Builders.FlowBuilder
-  alias Storyarn.Versioning.Builders.FlowSnapshotNormalizer
   alias Storyarn.Versioning.Builders.SceneBuilder
   alias Storyarn.Versioning.Builders.SheetBuilder
   alias Storyarn.Versioning.RestorePolicy
@@ -169,7 +168,6 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp do_recover_project(workspace_id, snapshot_data, user_id, opts) do
-    snapshot_data = FlowSnapshotNormalizer.normalize_project(snapshot_data)
     name = Keyword.get(opts, :name, "Recovered Project")
 
     Repo.transaction(

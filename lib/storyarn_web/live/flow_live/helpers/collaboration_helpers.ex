@@ -124,8 +124,11 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
 
   def push_remote_change_event(socket, :connection_deleted, payload) do
     push_event(socket, "connection_removed", %{
+      id: payload[:id],
       source_node_id: payload.source_node_id,
-      target_node_id: payload.target_node_id
+      source_pin: payload[:source_pin],
+      target_node_id: payload.target_node_id,
+      target_pin: payload[:target_pin]
     })
   end
 

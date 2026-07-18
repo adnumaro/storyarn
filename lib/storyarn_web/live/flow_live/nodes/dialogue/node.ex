@@ -76,78 +76,35 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
 
   @doc "Adds a response to a dialogue node."
   def handle_add_response(%{"node-id" => node_id}, socket) do
-    # Pre-read to check if we need to migrate connections
     node = Flows.get_node!(socket.assigns.flow.id, node_id)
     responses = node.data["responses"] || []
     new_id = RuntimeKey.new_response_id()
-    first_response? = responses == []
-
-    # If this is the first response, migrate existing "output" connections to new response ID
-    if first_response? do
-      migrate_node_output_connections(node.id, "output", new_id)
-    end
 
     response_number = length(responses) + 1
 
-    result =
-      NodeHelpers.persist_node_update(socket, node_id, fn data ->
-        default_text =
-          Gettext.dgettext(Storyarn.Gettext, "flows", "Response %{n}", n: response_number)
+    NodeHelpers.persist_node_update(socket, node_id, fn data ->
+      default_text =
+        Gettext.dgettext(Storyarn.Gettext, "flows", "Response %{n}", n: response_number)
 
-        new_response = %{
-          "id" => new_id,
-          "text" => default_text,
-          "condition" => nil,
-          "instruction" => nil,
-          "instruction_assignments" => []
-        }
+      new_response = %{
+        "id" => new_id,
+        "text" => default_text,
+        "condition" => nil,
+        "instruction" => nil,
+        "instruction_assignments" => []
+      }
 
-        Map.update(data, "responses", [new_response], &(&1 ++ [new_response]))
-      end)
-
-    # When adding the first response, connections were migrated from "output" pin
-    # to the new response pin. The canvas still has the old pin name in memory,
-    # so push a full flow_updated to sync canvas connections with DB state.
-    case {first_response?, result} do
-      {true, {:noreply, socket}} ->
-        {:noreply, push_event(socket, "flow_updated", socket.assigns.flow_data)}
-
-      _ ->
-        result
-    end
+      Map.update(data, "responses", [new_response], &(&1 ++ [new_response]))
+    end)
   end
 
   @doc "Removes a response from a dialogue node."
   def handle_remove_response(%{"response-id" => response_id, "node-id" => node_id}, socket) do
-    # Pre-read to handle connection cleanup
-    node = Flows.get_node!(socket.assigns.flow.id, node_id)
-    responses = node.data["responses"] || []
-    remaining = Enum.reject(responses, fn r -> r["id"] == response_id end)
-    last_response? = remaining == []
-
-    # Clean up connections from the deleted response pin
-    if last_response? do
-      migrate_node_output_connections(node.id, response_id, "output")
-    else
-      delete_node_output_connections(node.id, response_id)
-    end
-
-    result =
-      NodeHelpers.persist_node_update(socket, node_id, fn data ->
-        Map.update(data, "responses", [], fn resps ->
-          Enum.reject(resps, &(&1["id"] == response_id))
-        end)
+    NodeHelpers.persist_node_update(socket, node_id, fn data ->
+      Map.update(data, "responses", [], fn resps ->
+        Enum.reject(resps, &(&1["id"] == response_id))
       end)
-
-    # When removing the last response, connections were migrated back to "output" pin.
-    # Push full flow_updated to sync canvas with DB state.
-    case {last_response?, result} do
-      {true, {:noreply, socket}} ->
-        {:noreply, push_event(socket, "flow_updated", socket.assigns.flow_data)}
-
-      _ ->
-        result
-    end
+    end)
   end
 
   @doc "Updates response text."
@@ -249,24 +206,6 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
     Enum.map(responses, fn
       %{"id" => ^response_id} = resp -> Map.put(resp, field, value)
       resp -> resp
-    end)
-  end
-
-  defp migrate_node_output_connections(node_id, from_pin, to_pin) do
-    node_id
-    |> Flows.get_outgoing_connections()
-    |> Enum.filter(fn conn -> conn.source_pin == from_pin end)
-    |> Enum.each(fn conn ->
-      Flows.update_connection(conn, %{source_pin: to_pin})
-    end)
-  end
-
-  defp delete_node_output_connections(node_id, pin) do
-    node_id
-    |> Flows.get_outgoing_connections()
-    |> Enum.filter(fn conn -> conn.source_pin == pin end)
-    |> Enum.each(fn conn ->
-      Flows.delete_connection(conn)
     end)
   end
 

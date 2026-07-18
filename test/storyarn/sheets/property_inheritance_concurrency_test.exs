@@ -186,6 +186,60 @@ defmodule Storyarn.Sheets.PropertyInheritanceConcurrencyTest do
              length(table.table_rows)
   end
 
+  test "propagation and BlockCrud deletion serialize at the project before sheets and blocks" do
+    project = project_fixture()
+    parent_sheet = sheet_fixture(project, %{name: "Parent"})
+    child_sheet = child_sheet_fixture(project, parent_sheet, %{name: "Child"})
+
+    source =
+      block_fixture(parent_sheet, %{
+        type: "text",
+        scope: "children",
+        config: %{"label" => "Concurrent"},
+        value: %{"content" => ""}
+      })
+
+    holder = hold_project_lock(project.id)
+    parent = self()
+
+    delete_task =
+      Task.async(fn ->
+        send(parent, :inheritance_delete_started)
+        Sheets.delete_block(source)
+      end)
+
+    assert_receive :inheritance_delete_started
+
+    propagate_task =
+      Task.async(fn ->
+        send(parent, :inheritance_propagate_started)
+        PropertyInheritance.propagate_to_descendants(source, [child_sheet.id])
+      end)
+
+    assert_receive :inheritance_propagate_started
+    refute Task.yield(delete_task, 100)
+    refute Task.yield(propagate_task, 100)
+
+    release_project_lock(holder)
+
+    assert {:ok, %Block{deleted_at: %DateTime{}}} = Task.await(delete_task, 5_000)
+
+    assert Task.await(propagate_task, 5_000) in [
+             {:ok, 1},
+             {:error, {:inheritance_source_not_active, source.id}}
+           ]
+
+    assert Repo.reload!(source).deleted_at
+
+    refute Repo.exists?(
+             from(block in Block,
+               where:
+                 block.inherited_from_block_id == ^source.id and
+                   is_nil(block.deleted_at)
+             )
+           )
+  end
+
   defp hold_project_lock(project_id) do
     parent = self()
 

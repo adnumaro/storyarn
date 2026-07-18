@@ -4,9 +4,12 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
+  import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Assets
   alias Storyarn.Assets.Asset
+  alias Storyarn.Localization
   alias Storyarn.Repo
   alias Storyarn.Sheets.SheetAvatar
 
@@ -312,9 +315,17 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       vue = get_assets_vue(view)
       usages = vue.props["asset-usages"]
 
+      assert usages["assetMetadataLinks"] == []
       assert usages["flowNodes"] == []
+      assert usages["sequenceVisualLayers"] == []
+      assert usages["sequenceTracks"] == []
       assert usages["sheetAvatars"] == []
       assert usages["sheetBanners"] == []
+      assert usages["sceneBackgrounds"] == []
+      assert usages["scenePinIcons"] == []
+      assert usages["sceneZoneIcons"] == []
+      assert usages["localizedVoiceovers"] == []
+      assert usages["galleryImages"] == []
     end
 
     test "usage section includes linked flows", %{conn: conn, user: user, project: project} do
@@ -338,6 +349,37 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       assert Enum.any?(flow_nodes, fn u -> u["flowName"] == "Battle Flow" end)
     end
 
+    test "usage section includes optimized-image metadata relationships", %{
+      conn: conn,
+      user: user,
+      project: project
+    } do
+      original = image_asset_fixture(project, user, %{filename: "hero.png"})
+      variant = image_asset_fixture(project, user, %{filename: "hero.webp"})
+
+      assert {:ok, _original} =
+               Assets.update_asset(original, %{
+                 metadata: %{
+                   "web_asset_id" => variant.id,
+                   "web_url" => variant.url,
+                   "variant_asset_ids" => %{"avatar" => variant.id}
+                 }
+               })
+
+      {:ok, view, _html} = live(conn, assets_path(project))
+      render_click(view, "select_asset", %{"id" => to_string(variant.id)})
+
+      assert [
+               %{
+                 "id" => original_id,
+                 "filename" => "hero.png",
+                 "relations" => ["web_variant", "profile_variant"]
+               }
+             ] = get_assets_vue(view).props["asset-usages"]["assetMetadataLinks"]
+
+      assert original_id == original.id
+    end
+
     test "usage section includes linked sheet avatars", %{
       conn: conn,
       user: user,
@@ -357,6 +399,120 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       usages = vue.props["asset-usages"]
       avatars = usages["sheetAvatars"] || []
       assert Enum.any?(avatars, fn u -> u["name"] == "Hero Character" end)
+    end
+
+    test "usage section includes voice-over and gallery data-loss references", %{
+      conn: conn,
+      user: user,
+      project: project
+    } do
+      import Storyarn.SheetsFixtures
+
+      audio = audio_asset_fixture(project, user)
+      text = localized_text_fixture(project.id, %{source_text: "Voiced warning", locale_code: "es"})
+
+      assert {:ok, _text} =
+               Localization.update_text(text, %{
+                 vo_asset_id: audio.id,
+                 vo_status: "recorded"
+               })
+
+      image = image_asset_fixture(project, user)
+      sheet = sheet_fixture(project, %{name: "Gallery owner"})
+      block = block_fixture(sheet, %{type: "gallery"})
+      assert {:ok, gallery_image} = Storyarn.Sheets.add_gallery_image(block, image.id)
+
+      {:ok, view, _html} = live(conn, assets_path(project))
+
+      render_click(view, "select_asset", %{"id" => to_string(audio.id)})
+      voice_usages = get_assets_vue(view).props["asset-usages"]["localizedVoiceovers"]
+      assert [%{"id" => text_id, "sourceText" => "Voiced warning"}] = voice_usages
+      assert text_id == text.id
+
+      render_click(view, "select_asset", %{"id" => to_string(image.id)})
+      gallery_usages = get_assets_vue(view).props["asset-usages"]["galleryImages"]
+      assert [%{"id" => image_id, "sheetName" => "Gallery owner"}] = gallery_usages
+      assert image_id == gallery_image.id
+    end
+
+    test "usage section serializes sequence media and trashed scene zone icons", %{
+      conn: conn,
+      user: user,
+      project: project
+    } do
+      import Storyarn.FlowsFixtures
+      import Storyarn.ScenesFixtures
+
+      image = image_asset_fixture(project, user)
+      audio = audio_asset_fixture(project, user)
+      flow = flow_fixture(project, %{name: "Cinematic Flow"})
+      {:ok, sequence} = Storyarn.Flows.create_sequence(flow.id, %{"name" => "Opening"})
+
+      {:ok, layer} =
+        Storyarn.Flows.create_sequence_visual_layer(sequence.id, %{
+          "asset_id" => image.id,
+          "kind" => "backdrop",
+          "label" => "Wide shot"
+        })
+
+      {:ok, track} =
+        Storyarn.Flows.upsert_sequence_track(sequence.id, "music", %{"asset_id" => audio.id})
+
+      scene = scene_fixture(project, %{name: "Bridge"})
+
+      zone =
+        zone_fixture(scene, %{
+          "name" => "Exit",
+          "label_mode" => "icon",
+          "label_icon_asset_id" => image.id
+        })
+
+      scene
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
+      |> Repo.update!()
+
+      {:ok, view, _html} = live(conn, assets_path(project))
+
+      render_click(view, "select_asset", %{"id" => to_string(image.id)})
+      image_usages = get_assets_vue(view).props["asset-usages"]
+
+      assert [
+               %{
+                 "id" => layer_id,
+                 "flowName" => "Cinematic Flow",
+                 "sequenceName" => "Opening",
+                 "label" => "Wide shot",
+                 "trashed" => false
+               }
+             ] = image_usages["sequenceVisualLayers"]
+
+      assert layer_id == layer.id
+
+      assert [
+               %{
+                 "zoneId" => zone_id,
+                 "zoneName" => "Exit",
+                 "sceneName" => "Bridge",
+                 "trashed" => true
+               }
+             ] = image_usages["sceneZoneIcons"]
+
+      assert zone_id == zone.id
+
+      render_click(view, "select_asset", %{"id" => to_string(audio.id)})
+      audio_usages = get_assets_vue(view).props["asset-usages"]
+
+      assert [
+               %{
+                 "id" => track_id,
+                 "flowName" => "Cinematic Flow",
+                 "sequenceName" => "Opening",
+                 "kind" => "music",
+                 "trashed" => false
+               }
+             ] = audio_usages["sequenceTracks"]
+
+      assert track_id == track.id
     end
 
     test "deselect clears selected-asset", %{conn: conn, user: user, project: project} do
@@ -497,8 +653,15 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
 
       total_usages =
         length(usages["flowNodes"] || []) +
+          length(usages["sequenceVisualLayers"] || []) +
+          length(usages["sequenceTracks"] || []) +
           length(usages["sheetAvatars"] || []) +
-          length(usages["sheetBanners"] || [])
+          length(usages["sheetBanners"] || []) +
+          length(usages["sceneBackgrounds"] || []) +
+          length(usages["scenePinIcons"] || []) +
+          length(usages["sceneZoneIcons"] || []) +
+          length(usages["localizedVoiceovers"] || []) +
+          length(usages["galleryImages"] || [])
 
       assert total_usages >= 1
     end

@@ -24,6 +24,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   alias Storyarn.Localization.LocaleCode
   alias Storyarn.Localization.RuntimeKey
   alias Storyarn.Localization.SourceContract
+  alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Scenes.RoutePoints
@@ -441,7 +442,8 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   defp do_materialize_in_transaction(project, data, opts) do
     strategy = Keyword.get(opts, :conflict_strategy, :skip)
 
-    with :ok <- validate_structure(data),
+    with {:ok, project} <- lock_active_import_project(project),
+         :ok <- validate_structure(data),
          :ok <- validate_types(data),
          :ok <- validate_runtime_identifiers(data),
          :ok <- validate_entity_counts(data) do
@@ -491,6 +493,21 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
        }}
     end
   end
+
+  defp lock_active_import_project(%Project{id: project_id}) when is_integer(project_id) do
+    case Repo.one(
+           from(project in Project,
+             where: project.id == ^project_id,
+             lock: "FOR UPDATE"
+           )
+         ) do
+      %Project{deleted_at: nil} = project -> {:ok, project}
+      %Project{} -> {:error, :project_not_active}
+      nil -> {:error, :project_not_found}
+    end
+  end
+
+  defp lock_active_import_project(_project), do: {:error, :project_not_found}
 
   # =============================================================================
   # Entity count validation
