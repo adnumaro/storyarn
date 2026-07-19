@@ -1,0 +1,95 @@
+assets/app/shell/DashboardPanel.vue
+  s_bed98f63d67a17::t_d3deaa6beb15b0 2,13
+  s_bed98f63d67a17::t_bfae66edcef53a 1,3-12,14-54
+assets/app/live/flow/dashboard/FlowDashboard.vue
+  s_bed98f63d67a17::t_56886956468dd1 41-42,79,147,153,159,165,213,219-220,223-227,230-231,234,258-261,325-353,355-356,358-364,391-392
+  s_bed98f63d67a17::t_dc528e12726e74 324
+  s_bed98f63d67a17::t_ebf71248139ffa 321-323,390
+  s_bed98f63d67a17::t_f57d62140dbf75 262,268,372,377,382,387,389,393,396
+assets/app/locales/es/workspace.json
+  s_bed98f63d67a17::t_7c0594f24329de 148-149
+  s_2ed4884922c69c::t_49812d880fa0db 5
+assets/app/modules/sheets/types.ts
+  s_bed98f63d67a17::t_dc528e12726e74 319
+assets/app/live/project/dashboard/ProjectDashboard.vue
+  s_bed98f63d67a17::t_8b0ddf1592773d 3,6,11-12,17,24-25,145-148,152-168,170-180,182-188,191-197,201,203-209,215,219-228,232-233,235-256,258,260-266,268,270-285,287-298,300,302-319,321-324,327
+  s_bed98f63d67a17::t_62390b77d04f54 181,259
+test/storyarn_web/components/project_layout_test.exs
+  s_bed98f63d67a17::t_2b014c51f13845 19-22
+  s_bed98f63d67a17::t_b913b4bad642a4 1-18,23-34
+assets/app/live/scene/dashboard/SceneDashboard.vue
+  s_bed98f63d67a17::t_dc528e12726e74 46-47,54,162,168,174,180,207,213-214,217-221,224-225,228,251-255,261,302-338,340-341,343-348,363-367
+  s_bed98f63d67a17::t_4f4d782dc3885d 362
+  s_bed98f63d67a17::t_223a4f3c3e216c 349,356,360,370
+assets/app/test/shell/DashboardComponents.test.ts
+  s_bed98f63d67a17::t_2b014c51f13845 52
+  s_bed98f63d67a17::t_d3deaa6beb15b0 1-51,53-54
+test/storyarn/shared/color_utils_test.exs
+  s_bed98f63d67a17::t_b913b4bad642a4 1-22
+assets/app/live/workspace/dashboard/WorkspaceDashboardLoading.vue
+  s_bed98f63d67a17::t_7f191e20238aeb 7-16
+assets/app/locales/en/workspace.json
+  s_bed98f63d67a17::t_7c0594f24329de 148-149
+  s_2ed4884922c69c::t_d9b465b5c604a6 5
+assets/app/live/sheet/dashboard/SheetDashboard.vue
+  s_bed98f63d67a17::t_cb9a1529bf2f18 39-40,154,160-161,164-165,167-168,171-172,175,198-202,208,243-275,277-278,280-286,293,297,299,303-304,307
+  s_bed98f63d67a17::t_dc528e12726e74 103,109,115,121,127,166,300-302
+assets/app/shell/DashboardContent.vue
+  s_bed98f63d67a17::t_bfae66edcef53a 2-3,5,11-12,17-27,30-44,48,50-60,66-74,77,79
+assets/app/locales/en/flows.json
+  s_bed98f63d67a17::t_ebf71248139ffa 8
+assets/css/app.css
+  s_bed98f63d67a17::t_d875f8d9fe58fa 89
+  s_bed98f63d67a17::t_c4cf87bcc313d5 29,53
+assets/app/locales/es/scenes.json
+  s_bed98f63d67a17::t_ebf71248139ffa 8-9
+assets/app/shell/DashboardStatCard.vue
+  s_bed98f63d67a17::t_bfae66edcef53a 1,4-12,14-69
+  s_bed98f63d67a17::t_d3deaa6beb15b0 2-3,13
+lib/storyarn/shared/color_utils.ex
+  s_bed98f63d67a17::t_b913b4bad642a4 78-79
+  s_bed98f63d67a17::t_e01fd03de4ac7f 4-6,36-51,64-77,120-150
+assets/app/live/workspace/dashboard/WorkspaceDashboard.vue
+  s_bed98f63d67a17::t_4e7c1c2b68349b 3,6,322-325,328-329,336,340-347,349-350,352-361,363,365-371,373-381,386-420,428,430-439,442,451,453-459,464,469,473-475,479,482,484-488,502,505,507-531,534,539,551,553
+  s_bed98f63d67a17::t_257f8c4b6ae66d 543,546-550,552,554-560
+lib/storyarn_web/components/project_layout.ex
+  s_bed98f63d67a17::t_d875f8d9fe58fa 97-99,101-104
+  s_bed98f63d67a17::t_b913b4bad642a4 12-13,38-41,91-96,100,105-109
+  s_bed98f63d67a17::t_b91bc88a7c4ce4 110-114
+assets/app/locales/en/common.json
+  s_bed98f63d67a17::t_6dc4394086409c 115-116
+assets/app/locales/en/scenes.json
+  s_bed98f63d67a17::t_ebf71248139ffa 8-9
+assets/app/locales/es/flows.json
+  s_bed98f63d67a17::t_ebf71248139ffa 8
+docs/conventions/component-registry.md
+  s_bed98f63d67a17::t_2b014c51f13845 170-177
+assets/app/live/assets/dashboard/AssetsDashboard.vue
+  s_bed98f63d67a17::t_6dc4394086409c 8,366-374,377,379-380,388,390-391,395-399,404,406-412,414,416,429,438,475,505,516,587
+assets/app/locales/es/common.json
+  s_bed98f63d67a17::t_6dc4394086409c 115-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "77a4475dafc4a7faaa368c91a12a0be8f47bd3c0",
+  "prompts": {},
+  "sessions": {
+    "s_2ed4884922c69c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7958-919b-72b0-af69-d53c58e40ffe",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_bed98f63d67a17": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7956-f049-7c13-ae85-57a1ffd1c80f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
