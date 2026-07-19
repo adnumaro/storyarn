@@ -18,7 +18,7 @@ defmodule StoryarnWeb.Components.ProjectLayoutTest do
 
     assert style =~ "--primary: 177.74 100.0% 41.57%"
     assert style =~ "--ring: 177.74 100.0% 41.57%"
-    assert style =~ "--primary-foreground:"
+    assert style =~ "--primary-foreground: 0.0 0.0% 3.92%"
     assert style =~ "--project-accent: 32.11 80.09% 54.71%"
   end
 
