@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import {
+  ArrowUpRight,
   CircleAlert,
   FilePlus2,
+  FolderKanban,
   FolderOpen,
   Library,
   Loader2,
@@ -317,103 +319,127 @@ function templateCountLabel(template: ProjectTemplate) {
 </script>
 
 <template>
-  <div class="h-full w-full flex flex-col">
-    <!-- Workspace Banner -->
-    <header class="relative">
+  <div class="mx-auto flex min-h-full w-full max-w-7xl flex-col gap-6 pb-8">
+    <header
+      class="relative isolate min-h-72 overflow-hidden rounded-3xl border border-border/70 bg-card shadow-[0_24px_70px_-38px_rgba(0,0,0,0.55)]"
+    >
       <div
         :class="[
-          'h-86 overflow-hidden rounded-xl',
-          !workspace.banner_url && 'bg-linear-to-r from-primary to-secondary',
+          'absolute inset-0',
+          !workspace.banner_url && 'bg-linear-to-br from-primary via-primary/80 to-project-accent',
         ]"
       >
         <img
           v-if="workspace.banner_url"
           :src="workspace.banner_url"
           alt=""
-          class="w-full h-full object-cover"
+          class="h-full w-full object-cover"
         />
       </div>
 
-      <div class="absolute top-0 left-0 right-0 p-6">
-        <div>
-          <div class="flex justify-between items-center">
-            <h1 class="text-3xl font-bold">{{ workspace.name }}</h1>
-            <Button
-              v-if="canManage && settingsUrl"
-              as="a"
-              variant="ghost"
-              size="icon"
-              :href="settingsUrl"
-              data-phx-link="redirect"
-              data-phx-link-state="push"
-            >
-              <Settings class="size-4" />
-            </Button>
-          </div>
-          <div>
-            <p v-if="workspace.description" class="opacity-80 mt-1 max-w-2xl">
-              {{ workspace.description }}
-            </p>
-          </div>
-        </div>
-      </div>
+      <div
+        aria-hidden="true"
+        class="absolute inset-0 bg-linear-to-t from-slate-950/90 via-slate-950/35 to-slate-950/15"
+      />
+      <div
+        aria-hidden="true"
+        class="absolute inset-0 opacity-25 [background-image:radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.38)_1px,transparent_0)] [background-size:22px_22px]"
+      />
 
-      <div class="absolute bottom-0 left-0 right-0 px-4 py-2">
-        <!-- Toolbar -->
-        <div class="pt-4 pb-2 flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <div class="relative">
-              <Search
-                class="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground"
-              />
-              <Input
-                v-model="localSearch"
-                type="search"
-                :placeholder="$t('workspace.dashboard.search_placeholder')"
-                class="pl-9 w-64"
-              />
-            </div>
-          </div>
-
+      <div class="relative flex min-h-72 flex-col justify-between p-5 sm:p-7">
+        <div class="flex justify-end">
           <Button
-            v-if="canCreate && canCreateProject && newProjectForm"
-            data-testid="new-project-open"
-            size="sm"
-            @click="setNewProjectModalOpen(true)"
+            v-if="canManage && settingsUrl"
+            as="a"
+            variant="ghost"
+            size="icon"
+            :href="settingsUrl"
+            :aria-label="$t('workspace.dashboard.settings')"
+            :title="$t('workspace.dashboard.settings')"
+            class="border border-white/15 bg-black/15 text-white backdrop-blur-md hover:bg-white/15 hover:text-white"
+            data-phx-link="redirect"
+            data-phx-link-state="push"
           >
-            <Plus class="size-4 mr-1" />
-            {{ $t("workspace.dashboard.new_project") }}
+            <Settings class="size-4" />
           </Button>
-          <div v-else-if="canCreate && !canCreateProject" class="relative group">
-            <Button size="sm" disabled>
-              <Plus class="size-4 mr-1" />
-              {{ $t("workspace.dashboard.new_project") }}
-            </Button>
-            <div
-              class="absolute right-0 top-full mt-1 px-2 py-1 text-xs rounded bg-popover border border-border shadow-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10"
-            >
-              {{ $t("workspace.dashboard.limit_reached") }}
-            </div>
+        </div>
+
+        <div class="max-w-3xl">
+          <div
+            class="mb-4 grid size-11 place-items-center rounded-2xl border border-white/15 bg-white/10 text-white backdrop-blur-md"
+          >
+            <FolderKanban class="size-5" aria-hidden="true" />
           </div>
+          <h1 class="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+            {{ workspace.name }}
+          </h1>
+          <p
+            v-if="workspace.description"
+            class="mt-2 max-w-2xl text-sm leading-6 text-slate-200 sm:text-base"
+          >
+            {{ workspace.description }}
+          </p>
         </div>
       </div>
     </header>
 
+    <div
+      class="flex flex-col gap-3 rounded-2xl border border-border/70 bg-card/80 p-3 shadow-sm backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between"
+    >
+      <div class="relative w-full sm:max-w-sm">
+        <Search class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          v-model="localSearch"
+          type="search"
+          :placeholder="$t('workspace.dashboard.search_placeholder')"
+          class="h-10 w-full border-border/70 bg-background/70 pl-9 shadow-none"
+        />
+      </div>
+
+      <Button
+        v-if="canCreate && canCreateProject && newProjectForm"
+        data-testid="new-project-open"
+        class="shadow-sm"
+        @click="setNewProjectModalOpen(true)"
+      >
+        <Plus class="mr-1 size-4" />
+        {{ $t("workspace.dashboard.new_project") }}
+      </Button>
+      <div v-else-if="canCreate && !canCreateProject" class="group relative">
+        <Button disabled>
+          <Plus class="mr-1 size-4" />
+          {{ $t("workspace.dashboard.new_project") }}
+        </Button>
+        <div
+          class="pointer-events-none absolute right-0 top-full z-10 mt-1 whitespace-nowrap rounded-lg border border-border bg-popover px-2.5 py-1.5 text-xs opacity-0 shadow-md transition-opacity group-hover:opacity-100"
+        >
+          {{ $t("workspace.dashboard.limit_reached") }}
+        </div>
+      </div>
+    </div>
+
     <div class="flex-1">
-      <!-- Empty states -->
       <div
         v-if="
           filteredProjects.length === 0 &&
           filteredTemplateInstallations.length === 0 &&
           !localSearch
         "
-        class="flex flex-col items-center justify-center py-12 text-center h-full"
+        class="relative flex min-h-80 flex-col items-center justify-center overflow-hidden rounded-3xl border border-dashed border-border bg-card/60 px-6 py-16 text-center"
       >
-        <FolderOpen class="size-12 text-muted-foreground/40 mb-4" />
-        <h3 class="text-lg font-medium mb-1">
+        <div
+          aria-hidden="true"
+          class="absolute -top-16 size-56 rounded-full bg-primary/[0.07] blur-3xl"
+        />
+        <span
+          class="relative mb-5 grid size-16 place-items-center rounded-2xl border border-primary/15 bg-primary/[0.08] text-primary"
+        >
+          <FolderOpen class="size-7" />
+        </span>
+        <h3 class="relative text-lg font-semibold">
           {{ $t("workspace.dashboard.empty_projects.title") }}
         </h3>
-        <p class="text-sm text-muted-foreground">
+        <p class="relative mt-1 max-w-md text-sm leading-6 text-muted-foreground">
           {{ $t("workspace.dashboard.empty_projects.description") }}
         </p>
       </div>
@@ -422,35 +448,44 @@ function templateCountLabel(template: ProjectTemplate) {
         v-else-if="
           filteredProjects.length === 0 && filteredTemplateInstallations.length === 0 && localSearch
         "
-        class="flex flex-col items-center justify-center py-12 text-center h-full"
+        class="relative flex min-h-80 flex-col items-center justify-center overflow-hidden rounded-3xl border border-dashed border-border bg-card/60 px-6 py-16 text-center"
       >
-        <Search class="size-12 text-muted-foreground/40 mb-4" />
-        <h3 class="text-lg font-medium mb-1">{{ $t("workspace.dashboard.empty_search.title") }}</h3>
-        <p class="text-sm text-muted-foreground">
+        <span
+          class="mb-5 grid size-16 place-items-center rounded-2xl border border-primary/15 bg-primary/[0.08] text-primary"
+        >
+          <Search class="size-7" />
+        </span>
+        <h3 class="text-lg font-semibold">{{ $t("workspace.dashboard.empty_search.title") }}</h3>
+        <p class="mt-1 max-w-md text-sm leading-6 text-muted-foreground">
           {{ $t("workspace.dashboard.empty_search.description") }}
         </p>
       </div>
 
-      <!-- Projects Grid -->
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mt-4">
+      <div v-else class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
         <article
           v-for="installation in filteredTemplateInstallations"
           :key="`template-installation-${installation.id}`"
           :data-testid="`template-installation-${installation.id}`"
-          class="relative flex min-h-44 flex-col overflow-hidden rounded-xl border border-primary/30 bg-card p-5 shadow-sm"
+          class="relative flex min-h-48 flex-col overflow-hidden rounded-2xl border border-primary/30 bg-card/85 p-5 shadow-sm"
           aria-live="polite"
         >
           <div class="absolute inset-x-0 top-0 h-0.5 overflow-hidden bg-primary/10">
-            <div class="h-full w-1/2 animate-pulse rounded-full bg-primary" />
+            <div
+              class="h-full w-1/2 animate-pulse rounded-full bg-linear-to-r from-primary to-project-accent"
+            />
           </div>
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
-              <p class="text-xs font-medium uppercase tracking-wide text-primary">
+              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
                 {{ $t("workspace.new_project.templates.installing") }}
               </p>
-              <h3 class="mt-1 truncate text-lg font-semibold">{{ installation.project_name }}</h3>
+              <h3 class="mt-2 truncate text-lg font-semibold">{{ installation.project_name }}</h3>
             </div>
-            <Loader2 class="size-5 shrink-0 animate-spin text-primary" aria-hidden="true" />
+            <span
+              class="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"
+            >
+              <Loader2 class="size-4.5 animate-spin" aria-hidden="true" />
+            </span>
           </div>
           <p class="mt-3 text-sm text-muted-foreground">
             {{ installationStageLabel(installation) }}
@@ -464,42 +499,65 @@ function templateCountLabel(template: ProjectTemplate) {
           v-for="projectData in filteredProjects"
           :key="projectData.project.id"
           :href="projectData.href"
+          :data-testid="`project-card-${projectData.project.id}`"
           data-phx-link="redirect"
           data-phx-link-state="push"
-          class="group flex flex-col rounded-xl border bg-card text-card-foreground shadow-sm hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer overflow-hidden relative"
+          class="group relative flex min-h-48 flex-col overflow-hidden rounded-2xl border border-border/70 bg-card/85 text-card-foreground shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-1 hover:border-primary/35 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
         >
-          <div class="p-5 flex flex-col flex-1">
-            <div>
-              <h3 class="text-lg font-semibold truncate group-hover:text-primary transition-colors">
+          <div
+            aria-hidden="true"
+            class="absolute inset-x-0 top-0 h-0.5 bg-linear-to-r from-primary via-primary/75 to-project-accent opacity-80"
+          />
+          <div
+            aria-hidden="true"
+            class="absolute -right-12 -top-12 size-36 rounded-full bg-primary/[0.055] blur-3xl transition-transform duration-300 group-hover:scale-125"
+          />
+
+          <div class="relative flex flex-1 flex-col p-5">
+            <div class="flex items-start justify-between gap-4">
+              <span
+                class="grid size-10 shrink-0 place-items-center rounded-xl border border-primary/15 bg-primary/[0.08] text-primary"
+              >
+                <FolderKanban class="size-4.5" />
+              </span>
+              <ArrowUpRight
+                class="size-4 text-muted-foreground/35 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary"
+              />
+            </div>
+
+            <div class="mt-5">
+              <h3
+                class="truncate text-lg font-semibold tracking-tight transition-colors group-hover:text-primary"
+              >
                 {{ projectData.project.name }}
               </h3>
-              <div class="mt-2 text-sm text-muted-foreground line-clamp-2 min-h-10">
+              <p class="mt-2 line-clamp-2 min-h-10 text-sm leading-5 text-muted-foreground">
                 <template v-if="projectData.project.description">
                   {{ projectData.project.description }}
                 </template>
                 <template v-else>
-                  <span class="italic opacity-50">{{
+                  <span class="italic opacity-60">{{
                     $t("workspace.dashboard.no_description")
                   }}</span>
                 </template>
-              </div>
+              </p>
             </div>
 
-            <div class="mt-auto pt-5">
-              <div class="flex items-center justify-between border-t border-border/50 pt-4">
-                <div
-                  class="text-xs text-muted-foreground bg-secondary/50 px-2 py-1 rounded-md font-medium"
-                >
-                  {{ projectData.project.inserted_at_formatted }}
-                </div>
-                <div class="text-xs font-medium text-muted-foreground/70">
-                  {{
-                    $t("workspace.dashboard.updated_at", {
-                      time: formatRelativeTime(projectData.project.updated_at).toLowerCase(),
-                    })
-                  }}
-                </div>
-              </div>
+            <div
+              class="mt-auto flex items-center justify-between gap-3 border-t border-border/50 pt-4"
+            >
+              <span
+                class="rounded-lg bg-muted/70 px-2.5 py-1 text-xs font-medium text-muted-foreground"
+              >
+                {{ projectData.project.inserted_at_formatted }}
+              </span>
+              <span class="truncate text-xs font-medium text-muted-foreground">
+                {{
+                  $t("workspace.dashboard.updated_at", {
+                    time: formatRelativeTime(projectData.project.updated_at).toLowerCase(),
+                  })
+                }}
+              </span>
             </div>
           </div>
         </a>

@@ -112,6 +112,8 @@
       "no_docs": "No documentation available yet."
     },
     "assets": {
+      "title": "Assets",
+      "subtitle": "Browse and manage the visual, audio, and supporting files in this project",
       "picker": {
         "search_image": "Search images...",
         "search_audio": "Search audio...",

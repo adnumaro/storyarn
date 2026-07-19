@@ -1,7 +1,9 @@
 defmodule Storyarn.Shared.ColorUtils do
   @moduledoc """
   Color conversion utilities for theme customization.
-  Converts hex colors to oklch format for daisyUI v5 compatibility.
+
+  Supports both modern OKLCH values and HSL channel values used by the
+  application's semantic CSS tokens.
   """
 
   @hex_regex ~r/^#[0-9a-fA-F]{6}$/
@@ -32,6 +34,22 @@ defmodule Storyarn.Shared.ColorUtils do
   end
 
   @doc """
+  Converts a hex color to the space-separated HSL channels expected by the
+  semantic CSS variables in `app.css`.
+
+  ## Examples
+
+      iex> hex_to_hsl("#ff0000")
+      "0.0 100.0% 50.0%"
+  """
+  @spec hex_to_hsl(String.t()) :: String.t()
+  def hex_to_hsl(hex) do
+    {r, g, b} = hex_to_rgb(hex)
+    {h, s, l} = rgb_to_hsl(r, g, b)
+    "#{Float.round(h, 2)} #{Float.round(s * 100, 2)}% #{Float.round(l * 100, 2)}%"
+  end
+
+  @doc """
   Generates a darker variant of a hex color for gradient endpoints.
   Reduces lightness by the given amount (0.0-1.0 scale).
   """
@@ -41,6 +59,22 @@ defmodule Storyarn.Shared.ColorUtils do
     {l, c, h} = rgb_to_oklch(r, g, b)
     l2 = max(l - amount, 0.0)
     "oklch(#{Float.round(l2 * 100, 2)}% #{Float.round(c, 4)} #{Float.round(h + 15, 2)})"
+  end
+
+  @doc """
+  Chooses the higher-contrast near-black or near-white foreground for a hex color.
+
+  The result is intended for CSS theme tokens used on top of a customizable
+  project color.
+  """
+  @spec contrast_foreground(String.t()) :: String.t()
+  def contrast_foreground(hex) do
+    {r, g, b} = hex_to_rgb(hex)
+    luminance = 0.2126 * to_linear(r) + 0.7152 * to_linear(g) + 0.0722 * to_linear(b)
+    white_contrast = 1.05 / (luminance + 0.05)
+    black_contrast = (luminance + 0.05) / 0.05
+
+    if white_contrast >= black_contrast, do: "#fafafa", else: "#0a0a0a"
   end
 
   defp hex_to_rgb("#" <> hex), do: hex_to_rgb(hex)
@@ -81,6 +115,37 @@ defmodule Storyarn.Shared.ColorUtils do
       end
 
     {ok_l, c, h}
+  end
+
+  defp rgb_to_hsl(r, g, b) do
+    max_channel = max(r, max(g, b))
+    min_channel = min(r, min(g, b))
+    delta = max_channel - min_channel
+    lightness = (max_channel + min_channel) / 2
+
+    saturation =
+      if delta == 0 do
+        0.0
+      else
+        delta / (1 - abs(2 * lightness - 1))
+      end
+
+    hue =
+      cond do
+        delta == 0 ->
+          0.0
+
+        max_channel == r ->
+          60 * :math.fmod((g - b) / delta, 6)
+
+        max_channel == g ->
+          60 * ((b - r) / delta + 2)
+
+        true ->
+          60 * ((r - g) / delta + 4)
+      end
+
+    {if(hue < 0, do: hue + 360, else: hue), saturation, lightness}
   end
 
   defp to_linear(v) when v <= 0.04045, do: v / 12.92

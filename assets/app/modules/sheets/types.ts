@@ -316,8 +316,8 @@ export type THeadMenuType = "main" | "type" | "options" | "number" | "reference"
 export interface StatCard {
   icon: FunctionalComponent;
   label: string;
+  testId: string;
   value: number;
-  color: string;
 }
 
 export interface DashboardColumn {

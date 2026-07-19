@@ -5,6 +5,8 @@
       "subtitle": "Create scenes to visualize your world",
       "empty": "No scenes yet. Create your first scene to get started.",
       "all_scenes": "All Scenes",
+      "total_scenes": "{n} scene | {n} scenes",
+      "issues": "Issues",
       "delete": "Delete",
       "name": "Name",
       "zones": "Zones",

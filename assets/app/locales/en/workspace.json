@@ -2,6 +2,7 @@
   "workspace": {
     "dashboard": {
       "search_placeholder": "Search projects...",
+      "settings": "Workspace settings",
       "new_project": "New Project",
       "limit_reached": "Project limit reached for your plan",
       "no_description": "No description provided",
@@ -144,6 +145,8 @@
       "go_home": "Go to Homepage"
     },
     "project_dashboard": {
+      "title": "Project overview",
+      "subtitle": "A live snapshot of your narrative content, quality, and recent progress",
       "stats": {
         "sheets": "Sheets",
         "variables": "Variables",

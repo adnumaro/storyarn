@@ -112,6 +112,8 @@
       "no_docs": "Aún no hay documentación disponible."
     },
     "assets": {
+      "title": "Recursos",
+      "subtitle": "Explora y gestiona los archivos visuales, de audio y de apoyo del proyecto",
       "picker": {
         "search_image": "Buscar imágenes...",
         "search_audio": "Buscar audio...",

@@ -36,6 +36,8 @@ import { useLive } from "@shared/composables/useLive.ts";
 import { formatRelativeTime } from "@shared/utils/date-utils.ts";
 import { useI18n } from "vue-i18n";
 import DashboardContent from "@shell/DashboardContent.vue";
+import DashboardPanel from "@shell/DashboardPanel.vue";
+import DashboardStatCard from "@shell/DashboardStatCard.vue";
 import type {
   DashboardColumn,
   DashboardIssue,
@@ -98,32 +100,32 @@ const statCards = computed<StatCard[]>(() => {
     {
       icon: FileText,
       label: t("sheets.dashboard.stats.sheets"),
+      testId: "sheet-stat-total",
       value: stats.sheet_count,
-      color: "text-primary",
     },
     {
       icon: Layers,
       label: t("sheets.dashboard.stats.blocks"),
+      testId: "sheet-stat-blocks",
       value: stats.block_count,
-      color: "text-blue-400",
     },
     {
       icon: Variable,
       label: t("sheets.dashboard.stats.variables"),
+      testId: "sheet-stat-variables",
       value: stats.variable_count,
-      color: "text-violet-400",
     },
     {
       icon: Link,
       label: t("sheets.dashboard.stats.vars_in_use"),
+      testId: "sheet-stat-variables-in-use",
       value: stats.variables_in_use,
-      color: "text-amber-400",
     },
     {
       icon: TextCursorInput,
       label: t("sheets.dashboard.stats.words"),
+      testId: "sheet-stat-words",
       value: stats.word_count,
-      color: "text-emerald-400",
     },
   ];
 });
@@ -149,33 +151,28 @@ const pages = computed<number[]>(() => {
   <DashboardContent
     :title="$t('sheets.dashboard.title')"
     :subtitle="$t('sheets.dashboard.subtitle')"
+    :icon="FileText"
     :loading="!stats"
     :is-empty="pagination.total === 0 && !stats"
     :empty-icon="FileText"
     :empty-message="$t('sheets.dashboard.empty')"
   >
-    <!-- Stats row -->
-    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
-      <div
+    <div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+      <DashboardStatCard
         v-for="stat in statCards"
         :key="stat.label"
-        class="rounded-lg border border-border bg-surface p-4 space-y-2"
-      >
-        <div class="flex items-center gap-2 text-xs text-muted-foreground">
-          <component :is="stat.icon" :class="['size-4', stat.color]" />
-          {{ stat.label }}
-        </div>
-        <p class="text-2xl font-bold tabular-nums">{{ stat.value }}</p>
-      </div>
+        :icon="stat.icon"
+        :label="stat.label"
+        :test-id="stat.testId"
+        :value="stat.value"
+      />
     </div>
 
-    <!-- Table section -->
-    <div class="space-y-2">
-      <h2 class="text-sm font-medium">{{ $t("sheets.dashboard.all_sheets") }}</h2>
-      <div class="rounded-lg border border-border bg-surface overflow-auto max-h-[60vh]">
+    <DashboardPanel :title="$t('sheets.dashboard.all_sheets')" :icon="FileText" :padded="false">
+      <div class="max-h-[60vh] overflow-auto">
         <Table>
           <TableHeader>
-            <TableRow class="bg-muted/40 hover:bg-muted/40 sticky top-0 z-10">
+            <TableRow class="sticky top-0 z-10 bg-muted/70 hover:bg-muted/70">
               <TableHead
                 v-for="col in columns"
                 :key="col.key"
@@ -198,13 +195,17 @@ const pages = computed<number[]>(() => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            <TableRow v-for="row in tableData" :key="row.id">
+            <TableRow
+              v-for="row in tableData"
+              :key="row.id"
+              class="transition-colors hover:bg-primary/[0.035]"
+            >
               <TableCell>
                 <a
                   :href="sheetHref(row)"
                   data-phx-link="redirect"
                   data-phx-link-state="push"
-                  class="font-medium hover:underline"
+                  class="font-medium transition-colors hover:text-primary"
                 >
                   {{ row.name }}
                 </a>
@@ -239,64 +240,70 @@ const pages = computed<number[]>(() => {
       </div>
 
       <!-- Pagination -->
-      <div
-        v-if="pagination.totalPages > 1"
-        class="flex items-center justify-between text-xs text-muted-foreground pt-1"
-      >
-        <span>{{ $t("sheets.dashboard.total_sheets", pagination.total) }}</span>
-        <div class="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            class="size-7"
-            :disabled="pagination.page <= 1"
-            @click="goToPage(pagination.page - 1)"
-          >
-            <ChevronLeft class="size-4" />
-          </Button>
-          <Button
-            v-for="p in pages"
-            :key="p"
-            :variant="p === pagination.page ? 'default' : 'ghost'"
-            size="sm"
-            class="h-7 min-w-7 px-2 text-xs"
-            @click="goToPage(p)"
-          >
-            {{ p }}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            class="size-7"
-            :disabled="pagination.page >= pagination.totalPages"
-            @click="goToPage(pagination.page + 1)"
-          >
-            <ChevronRight class="size-4" />
-          </Button>
+      <template v-if="pagination.totalPages > 1" #footer>
+        <div class="flex items-center justify-between text-xs text-muted-foreground">
+          <span>{{ $t("sheets.dashboard.total_sheets", pagination.total) }}</span>
+          <div class="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              class="size-7"
+              :disabled="pagination.page <= 1"
+              @click="goToPage(pagination.page - 1)"
+            >
+              <ChevronLeft class="size-4" />
+            </Button>
+            <Button
+              v-for="p in pages"
+              :key="p"
+              :variant="p === pagination.page ? 'default' : 'ghost'"
+              size="sm"
+              class="h-7 min-w-7 px-2 text-xs"
+              @click="goToPage(p)"
+            >
+              {{ p }}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              class="size-7"
+              :disabled="pagination.page >= pagination.totalPages"
+              @click="goToPage(pagination.page + 1)"
+            >
+              <ChevronRight class="size-4" />
+            </Button>
+          </div>
         </div>
-      </div>
-    </div>
+      </template>
+    </DashboardPanel>
 
-    <!-- Issues -->
-    <div v-if="issues.length > 0" class="space-y-2">
-      <h2 class="text-sm font-medium">{{ $t("sheets.dashboard.issues") }}</h2>
-      <div class="rounded-lg border border-border divide-y divide-border">
+    <DashboardPanel
+      v-if="issues.length > 0"
+      :title="$t('sheets.dashboard.issues')"
+      :icon="AlertTriangle"
+      :padded="false"
+    >
+      <div class="divide-y divide-border/60">
         <a
           v-for="(issue, i) in issues"
           :key="i"
           :href="issue.href"
           data-phx-link="redirect"
           data-phx-link-state="push"
-          class="flex items-start gap-2 px-3 py-2 text-sm hover:bg-muted/30 transition-colors"
+          class="group flex items-start gap-3 px-4 py-3 text-sm transition-colors hover:bg-primary/[0.035] sm:px-5"
         >
           <AlertTriangle
             v-if="issue.severity === 'warning'"
-            class="size-4 text-yellow-500 shrink-0 mt-0.5"
+            class="mt-0.5 size-4 shrink-0 text-yellow-500"
           />
-          <Info v-else class="size-4 text-blue-400 shrink-0 mt-0.5" />
-          <span class="text-muted-foreground">{{ issue.message }}</span>
+          <Info v-else class="mt-0.5 size-4 shrink-0 text-blue-400" />
+          <span
+            class="leading-6 text-muted-foreground transition-colors group-hover:text-foreground"
+          >
+            {{ issue.message }}
+          </span>
         </a>
       </div>
-    </div>
+    </DashboardPanel>
   </DashboardContent>
 </template>

@@ -167,6 +167,14 @@ import StoryarnWeb.Components.Sidebar.SceneTree
 | ------------------ | ------------------------------------------------- | ------------------------------------------------------- |
 | `DashboardHelpers` | `import StoryarnWeb.Live.Shared.DashboardHelpers` | Sort, pagination, and reload helpers for Vue dashboards |
 
+### Vue Dashboard Shell
+
+| Component           | Import                                                         | Purpose                                                                              |
+| ------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `DashboardContent`  | `import DashboardContent from "@shell/DashboardContent.vue"`   | Responsive dashboard page header, ambient theme treatment, loading, and empty states |
+| `DashboardStatCard` | `import DashboardStatCard from "@shell/DashboardStatCard.vue"` | Theme-aware metric card with optional LiveView navigation                            |
+| `DashboardPanel`    | `import DashboardPanel from "@shell/DashboardPanel.vue"`       | Shared dashboard section surface with title, icon, actions, and footer slots         |
+
 ---
 
 ## Layouts (6 independent, NOT nested)

@@ -9,6 +9,8 @@ defmodule StoryarnWeb.Components.ProjectLayout do
 
   use StoryarnWeb, :html
 
+  alias Storyarn.Projects.Project
+  alias Storyarn.Shared.ColorUtils
   alias StoryarnWeb.Live.Shared.OnboardingHelpers
 
   attr :id, :string, default: "project-layout"
@@ -33,7 +35,10 @@ defmodule StoryarnWeb.Components.ProjectLayout do
 
   def project(assigns) do
     ~H"""
-    <div class="project-layout-frame relative h-screen w-screen overflow-hidden bg-surface">
+    <div
+      class="project-layout-frame relative h-screen w-screen overflow-hidden bg-surface"
+      style={project_theme_style(@project)}
+    >
       {live_render(@socket, StoryarnWeb.PresenceLive,
         id: "presence-#{@project.id}",
         sticky: true,
@@ -82,5 +87,29 @@ defmodule StoryarnWeb.Components.ProjectLayout do
       <Layouts.flash_group flash={@flash} socket={@socket} />
     </div>
     """
+  end
+
+  @doc false
+  def project_theme_style(project) do
+    case Project.theme_colors(project) do
+      %{primary: primary, accent: accent} ->
+        if ColorUtils.valid_hex?(primary) and ColorUtils.valid_hex?(accent) do
+          primary_color = ColorUtils.hex_to_hsl(primary)
+          accent_color = ColorUtils.hex_to_hsl(accent)
+
+          foreground =
+            primary
+            |> ColorUtils.contrast_foreground()
+            |> ColorUtils.hex_to_hsl()
+
+          "--primary: #{primary_color}; " <>
+            "--ring: #{primary_color}; " <>
+            "--primary-foreground: #{foreground}; " <>
+            "--project-accent: #{accent_color};"
+        end
+
+      nil ->
+        nil
+    end
   end
 end

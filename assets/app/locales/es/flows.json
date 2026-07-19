@@ -5,6 +5,7 @@
       "subtitle": "Crea flujos narrativos visuales y árboles de diálogo",
       "empty": "Aún no hay flujos. Crea tu primer flujo para empezar.",
       "all_flows": "Todos los flujos",
+      "total_flows": "{n} flujo | {n} flujos",
       "issues": "Problemas",
       "main": "Principal",
       "set_main": "Establecer como principal",

@@ -5,6 +5,7 @@
       "subtitle": "Create visual narrative flows and dialogue trees",
       "empty": "No flows yet. Create your first flow to get started.",
       "all_flows": "All Flows",
+      "total_flows": "{n} flow | {n} flows",
       "issues": "Issues",
       "main": "Main",
       "set_main": "Set as main",

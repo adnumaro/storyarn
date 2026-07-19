@@ -5,6 +5,7 @@ import { useI18n } from "vue-i18n";
 import { Badge } from "@components/ui/badge/index.ts";
 import { Button } from "@components/ui/button/index.ts";
 import { useLive } from "@shared/composables/useLive.ts";
+import DashboardContent from "@shell/DashboardContent.vue";
 
 interface Asset {
   id: number;
@@ -362,52 +363,57 @@ function usageContext(context: string, trashed = false, archived = false) {
 </script>
 
 <template>
-  <div class="mx-auto w-full max-w-6xl px-4 py-4">
-    <!-- Empty state -->
-    <div
-      v-if="assets.length === 0"
-      class="flex flex-col items-center justify-center py-16 text-center"
-    >
-      <Image class="size-12 text-muted-foreground/30 mb-4" />
-      <p class="text-sm text-muted-foreground">{{ $t("common.assets.empty") }}</p>
-    </div>
-
-    <!-- Asset grid + detail panel -->
-    <div v-if="assets.length > 0" class="flex gap-6">
+  <DashboardContent
+    :title="$t('common.assets.title')"
+    :subtitle="$t('common.assets.subtitle')"
+    :icon="Image"
+    :is-empty="assets.length === 0"
+    :empty-icon="Image"
+    :empty-message="$t('common.assets.empty')"
+  >
+    <div v-if="assets.length > 0" class="flex flex-col gap-5 xl:flex-row">
       <div
         :class="[
-          'grid gap-4 flex-1',
+          'grid flex-1 gap-4',
           selectedAsset
-            ? 'grid-cols-2 sm:grid-cols-2'
-            : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4',
+            ? 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-2'
+            : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4',
         ]"
       >
-        <!-- Asset card -->
         <div
           v-for="asset in assets"
           :key="asset.id"
           :data-testid="`asset-card-${asset.id}`"
           :class="[
-            'rounded-lg border shadow-sm hover:shadow-md transition-shadow cursor-pointer overflow-hidden bg-surface',
+            'group relative cursor-pointer overflow-hidden rounded-2xl border bg-card/85 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg',
             selectedAsset && selectedAsset.id === asset.id
-              ? 'border-primary ring-2 ring-primary/20'
-              : 'border-border',
+              ? 'border-primary ring-2 ring-primary/15'
+              : 'border-border/70 hover:border-primary/30',
           ]"
           @click="selectAsset(asset.id)"
         >
-          <div class="h-32 bg-muted flex items-center justify-center">
+          <div
+            aria-hidden="true"
+            class="absolute inset-x-0 top-0 z-10 h-0.5 bg-linear-to-r from-primary via-primary/75 to-project-accent opacity-0 transition-opacity group-hover:opacity-100"
+          />
+          <div class="flex h-36 items-center justify-center overflow-hidden bg-muted/70">
             <img
               v-if="isImage(asset)"
               :src="asset.url"
               :alt="asset.filename"
-              class="w-full h-full object-cover"
+              class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.025]"
             />
-            <Music v-else-if="isAudio(asset)" class="size-10 text-muted-foreground/30" />
-            <File v-else class="size-10 text-muted-foreground/30" />
+            <span
+              v-else
+              class="grid size-14 place-items-center rounded-2xl border border-primary/15 bg-primary/[0.08] text-primary"
+            >
+              <Music v-if="isAudio(asset)" class="size-6" />
+              <File v-else class="size-6" />
+            </span>
           </div>
-          <div class="p-3">
+          <div class="p-3.5">
             <p class="text-sm font-medium truncate" :title="asset.filename">{{ asset.filename }}</p>
-            <div class="flex items-center justify-between text-xs text-muted-foreground mt-1">
+            <div class="mt-2 flex items-center justify-between text-xs text-muted-foreground">
               <span>{{ formatSize(asset.size) }}</span>
               <Badge :variant="typeBadgeVariant(asset)" class="text-[10px] px-1.5 py-0">
                 {{ typeLabel(asset) }}
@@ -420,7 +426,7 @@ function usageContext(context: string, trashed = false, archived = false) {
       <!-- Detail panel -->
       <div
         v-if="selectedAsset"
-        class="w-80 shrink-0 border border-border rounded-lg bg-surface p-4 space-y-4 self-start"
+        class="w-full shrink-0 self-start rounded-2xl border border-border/70 bg-card/85 p-4 shadow-sm xl:sticky xl:top-0 xl:w-88"
       >
         <div class="flex items-center justify-between">
           <h3 class="font-semibold text-sm">{{ $t("common.assets.details") }}</h3>
@@ -429,7 +435,7 @@ function usageContext(context: string, trashed = false, archived = false) {
           </Button>
         </div>
 
-        <div class="rounded-lg overflow-hidden bg-muted">
+        <div class="overflow-hidden rounded-xl bg-muted">
           <img
             v-if="isImage(selectedAsset)"
             :src="selectedAsset.url"
@@ -466,7 +472,7 @@ function usageContext(context: string, trashed = false, archived = false) {
         </dl>
 
         <!-- Usage section -->
-        <div class="border-t border-border pt-4">
+        <div class="border-t border-border/60 pt-4">
           <h4 class="text-sm font-medium mb-2 flex items-center gap-2">
             <Link class="size-4" />
             {{ $t("common.assets.usage") }}
@@ -496,7 +502,7 @@ function usageContext(context: string, trashed = false, archived = false) {
         </div>
 
         <!-- Delete button -->
-        <div v-if="canEdit" class="border-t border-border pt-4">
+        <div v-if="canEdit" class="border-t border-border/60 pt-4">
           <Button variant="destructive" size="sm" class="w-full" @click="requestDelete">
             <Trash2 class="size-4" />
             {{ $t("common.assets.delete_asset") }}
@@ -507,7 +513,7 @@ function usageContext(context: string, trashed = false, archived = false) {
 
     <div
       v-if="totalPages > 1"
-      class="mt-6 flex items-center justify-between gap-4 border-t border-border pt-4"
+      class="flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-card/80 px-4 py-3 shadow-sm"
     >
       <p class="text-sm text-muted-foreground">
         {{ $t("common.assets.total_count", { count: totalCount }) }}
@@ -578,5 +584,5 @@ function usageContext(context: string, trashed = false, archived = false) {
         </div>
       </div>
     </Teleport>
-  </div>
+  </DashboardContent>
 </template>

@@ -2,6 +2,7 @@
   "workspace": {
     "dashboard": {
       "search_placeholder": "Buscar proyectos...",
+      "settings": "Ajustes del espacio de trabajo",
       "new_project": "Nuevo proyecto",
       "limit_reached": "Límite de proyectos alcanzado para tu plan",
       "no_description": "Sin descripción proporcionada",
@@ -144,6 +145,8 @@
       "go_home": "Ir al inicio"
     },
     "project_dashboard": {
+      "title": "Resumen del proyecto",
+      "subtitle": "Una vista en tiempo real del contenido narrativo, su calidad y el progreso reciente",
       "stats": {
         "sheets": "Fichas",
         "variables": "Variables",

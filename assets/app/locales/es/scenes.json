@@ -5,6 +5,8 @@
       "subtitle": "Crea escenas para visualizar tu mundo",
       "empty": "Aún no hay escenas. Crea tu primera escena para empezar.",
       "all_scenes": "Todas las escenas",
+      "total_scenes": "{n} escena | {n} escenas",
+      "issues": "Problemas",
       "delete": "Eliminar",
       "name": "Nombre",
       "zones": "Zonas",
