@@ -70,9 +70,13 @@ defmodule Storyarn.Shared.ColorUtils do
   @spec contrast_foreground(String.t()) :: String.t()
   def contrast_foreground(hex) do
     {r, g, b} = hex_to_rgb(hex)
-    luminance = 0.2126 * to_linear(r) + 0.7152 * to_linear(g) + 0.0722 * to_linear(b)
-    white_contrast = 1.05 / (luminance + 0.05)
-    black_contrast = (luminance + 0.05) / 0.05
+    bg_luminance = calculate_luminance(r, g, b)
+
+    white_luminance = calculate_luminance_from_hex("#fafafa")
+    black_luminance = calculate_luminance_from_hex("#0a0a0a")
+
+    white_contrast = (max(white_luminance, bg_luminance) + 0.05) / (min(white_luminance, bg_luminance) + 0.05)
+    black_contrast = (max(black_luminance, bg_luminance) + 0.05) / (min(black_luminance, bg_luminance) + 0.05)
 
     if white_contrast >= black_contrast, do: "#fafafa", else: "#0a0a0a"
   end
@@ -153,4 +157,13 @@ defmodule Storyarn.Shared.ColorUtils do
 
   defp cbrt(x) when x >= 0, do: :math.pow(x, 1 / 3)
   defp cbrt(x), do: -:math.pow(-x, 1 / 3)
+
+  defp calculate_luminance(r, g, b) do
+    0.2126 * to_linear(r) + 0.7152 * to_linear(g) + 0.0722 * to_linear(b)
+  end
+
+  defp calculate_luminance_from_hex(hex) do
+    {r, g, b} = hex_to_rgb(hex)
+    calculate_luminance(r, g, b)
+  end
 end
