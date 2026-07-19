@@ -6,6 +6,8 @@
       "empty": "No flows yet. Create your first flow to get started.",
       "all_flows": "All Flows",
       "total_flows": "{n} flow | {n} flows",
+      "previous_page": "Previous page",
+      "next_page": "Next page",
       "issues": "Issues",
       "main": "Main",
       "set_main": "Set as main",

@@ -327,6 +327,7 @@ const pages = computed(() => {
               size="icon-sm"
               class="size-7"
               :disabled="pagination.page <= 1"
+              :aria-label="$t('flows.dashboard.previous_page')"
               @click="goToPage(pagination.page - 1)"
             >
               <ChevronLeft class="size-4" />
@@ -346,6 +347,7 @@ const pages = computed(() => {
               size="icon-sm"
               class="size-7"
               :disabled="pagination.page >= pagination.totalPages"
+              :aria-label="$t('flows.dashboard.next_page')"
               @click="goToPage(pagination.page + 1)"
             >
               <ChevronRight class="size-4" />
