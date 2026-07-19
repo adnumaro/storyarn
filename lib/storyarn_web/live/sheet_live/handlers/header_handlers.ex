@@ -70,9 +70,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
       avatar = Sheets.get_avatar(id)
 
       if avatar && avatar.sheet_id == socket.assigns.sheet.id do
-        Sheets.set_avatar_default(avatar)
-
-        {:noreply, reload_broadcast_and_refresh_tree(socket, helpers)}
+        set_default_avatar(socket, avatar, helpers)
       else
         {:noreply, socket}
       end
@@ -82,8 +80,8 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
   def handle_gallery_update_name(%{"id" => id, "value" => value}, socket, helpers) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       with avatar when not is_nil(avatar) <- Sheets.get_avatar(helpers.parse_id.(id)),
-           true <- avatar.sheet_id == socket.assigns.sheet.id do
-        Sheets.update_avatar(avatar, %{name: value})
+           true <- avatar.sheet_id == socket.assigns.sheet.id,
+           {:ok, _updated} <- Sheets.update_avatar(avatar, %{name: value}) do
         {:noreply, socket |> helpers.reload_sheet.() |> helpers.broadcast.(:sheet_updated)}
       else
         _ -> {:noreply, socket}
@@ -94,8 +92,8 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
   def handle_gallery_update_notes(%{"id" => id, "value" => value}, socket, helpers) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       with avatar when not is_nil(avatar) <- Sheets.get_avatar(helpers.parse_id.(id)),
-           true <- avatar.sheet_id == socket.assigns.sheet.id do
-        Sheets.update_avatar(avatar, %{notes: value})
+           true <- avatar.sheet_id == socket.assigns.sheet.id,
+           {:ok, _updated} <- Sheets.update_avatar(avatar, %{notes: value}) do
         {:noreply, socket |> helpers.reload_sheet.() |> helpers.broadcast.(:sheet_updated)}
       else
         _ -> {:noreply, socket}
@@ -126,23 +124,46 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
         {:noreply, put_flash(socket, :error, dgettext("sheets", "Asset not found."))}
 
       _asset ->
-        case purpose do
-          :banner -> Sheets.update_sheet(sheet, %{banner_asset_id: asset_id})
-          :avatar -> Sheets.add_avatar(sheet, asset_id)
-        end
+        attach_verified_asset(socket, sheet, asset_id, purpose, helpers)
+    end
+  end
 
-        socket =
-          if purpose == :avatar do
-            reload_broadcast_and_refresh_tree(socket, helpers)
-          else
-            socket
-            |> helpers.reload_sheet.()
-            |> helpers.broadcast.(:sheet_updated)
-          end
+  defp set_default_avatar(socket, avatar, helpers) do
+    case Sheets.set_avatar_default(avatar) do
+      {:ok, _updated} ->
+        {:noreply, reload_broadcast_and_refresh_tree(socket, helpers)}
 
+      {:error, _reason} ->
         {:noreply, socket}
     end
   end
+
+  defp attach_verified_asset(socket, sheet, asset_id, purpose, helpers) do
+    result =
+      case purpose do
+        :banner -> Sheets.update_sheet(sheet, %{banner_asset_id: asset_id})
+        :avatar -> Sheets.add_avatar(sheet, asset_id)
+      end
+
+    handle_attach_result(result, socket, purpose, helpers)
+  end
+
+  defp handle_attach_result({:ok, _updated}, socket, :avatar, helpers) do
+    {:noreply, reload_broadcast_and_refresh_tree(socket, helpers)}
+  end
+
+  defp handle_attach_result({:ok, _updated}, socket, :banner, helpers) do
+    {:noreply,
+     socket
+     |> helpers.reload_sheet.()
+     |> helpers.broadcast.(:sheet_updated)}
+  end
+
+  defp handle_attach_result({:error, {:invalid_asset_content_type, _, _}}, socket, _purpose, _helpers) do
+    {:noreply, put_flash(socket, :error, dgettext("sheets", "Invalid file data."))}
+  end
+
+  defp handle_attach_result({:error, _reason}, socket, _purpose, _helpers), do: {:noreply, socket}
 
   # --- Shared helpers used by header event delegates ---
 

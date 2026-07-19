@@ -10,6 +10,10 @@ import Config
 # Keep every object-storage socket phase bounded well below the import-plan
 # reservation lease. The importer also wraps the whole PUT in a wall-clock
 # deadline because a send timeout only limits individual blocked writes.
+alias Storyarn.Workers.DailySnapshotWorker
+alias Storyarn.Workers.SnapshotRetentionWorker
+alias Storyarn.Workers.TrashRetentionWorker
+
 config :ex_aws, :req_opts,
   receive_timeout: 60_000,
   pool_timeout: 10_000,
@@ -61,6 +65,10 @@ config :posthog,
   enable_error_tracking: false,
   in_app_otp_apps: [:storyarn]
 
+# Daily backup creation remains active, but automatic deletion of older
+# recovery points is frozen.
+config :storyarn, DailySnapshotWorker, pruning_enabled: false
+
 # Oban background job processing
 config :storyarn, Oban,
   engine: Oban.Engines.Basic,
@@ -78,13 +86,17 @@ config :storyarn, Oban,
     {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},
     {Oban.Plugins.Cron,
      crontab: [
-       {"0 3 * * *", Storyarn.Workers.DailySnapshotWorker},
-       {"0 4 * * *", Storyarn.Workers.SnapshotRetentionWorker},
-       {"0 * * * *", Storyarn.Workers.TrashRetentionWorker},
+       {"0 3 * * *", DailySnapshotWorker},
+       {"0 4 * * *", SnapshotRetentionWorker},
+       {"0 * * * *", TrashRetentionWorker},
        {"*/15 * * * *", Storyarn.Workers.ExpireProjectImportsWorker},
        {"* * * * *", Storyarn.Workers.RetryStorageCleanupRequestsWorker}
      ]}
   ]
+
+# Automatic retention for deleted-project snapshots is frozen during the
+# recovery hardening phase. The worker also refuses to hard-delete projects.
+config :storyarn, SnapshotRetentionWorker, enabled: false
 
 # Configure Gettext locales
 config :storyarn, Storyarn.Gettext,
@@ -119,6 +131,16 @@ config :storyarn, Storyarn.Vault,
     }
   ]
 
+# Restores remain disabled by default while their referential-integrity
+# guarantees are being hardened. Runtime configuration can enable each surface
+# independently after it passes audit.
+config :storyarn, Storyarn.Versioning.RestorePolicy,
+  sheet_version_restore: false,
+  flow_version_restore: false,
+  scene_version_restore: false,
+  project_snapshot_restore: false,
+  deleted_project_recovery: false
+
 # Configures the endpoint
 config :storyarn, StoryarnWeb.Endpoint,
   url: [host: "localhost"],
@@ -133,6 +155,9 @@ config :storyarn, StoryarnWeb.Endpoint,
   session_signing_salt: "Fnke9Hmj",
   session_encryption_salt: "cV3kP8mQ"
 
+# Automatic trash hard-deletion is frozen while restore and referential
+# integrity are being hardened.
+config :storyarn, TrashRetentionWorker, enabled: false
 config :storyarn, :admin_email, "adan@storyarn.com"
 
 config :storyarn,

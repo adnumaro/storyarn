@@ -25,6 +25,7 @@ defmodule Storyarn.DataCase do
       import Ecto.Query
       import Storyarn.DataCase
       import Storyarn.Factory
+      import Storyarn.StorageTestHelpers
 
       alias Storyarn.Repo
     end

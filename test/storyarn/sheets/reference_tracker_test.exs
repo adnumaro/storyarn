@@ -6,6 +6,7 @@ defmodule Storyarn.Sheets.ReferenceTrackerTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Sheets.ReferenceTracker
 
@@ -20,14 +21,14 @@ defmodule Storyarn.Sheets.ReferenceTrackerTest do
   # =============================================================================
 
   describe "update_block_references/1 with nil reference target" do
-    test "creates no references when reference block has nil target_id" do
+    test "creates no references when a reference block has no target" do
       %{project: project} = setup_project()
       sheet = sheet_fixture(project, %{name: "Source"})
 
       {:ok, block} =
         Sheets.create_block(sheet, %{
           type: "reference",
-          value: %{"target_type" => "sheet", "target_id" => nil}
+          value: %{"target_type" => nil, "target_id" => nil}
         })
 
       ReferenceTracker.update_block_references(block)
@@ -88,6 +89,89 @@ defmodule Storyarn.Sheets.ReferenceTrackerTest do
 
       # Number blocks produce no references
       assert ReferenceTracker.count_backlinks("sheet", 0) == 0
+    end
+  end
+
+  describe "project-scoped reference rebuilding" do
+    test "keeps only active targets owned by the requested project" do
+      %{user: user, project: project} = setup_project()
+      other_project = project_fixture(user)
+      source_sheet = sheet_fixture(project, %{name: "Source"})
+      local_target = sheet_fixture(project, %{name: "Local"})
+      foreign_target = sheet_fixture(other_project, %{name: "Foreign"})
+
+      {:ok, block} =
+        Sheets.create_block(source_sheet, %{
+          type: "reference",
+          value: %{"target_type" => "sheet", "target_id" => local_target.id}
+        })
+
+      assert :ok =
+               ReferenceTracker.update_block_references(block,
+                 project_id: project.id
+               )
+
+      assert ReferenceTracker.count_backlinks("sheet", local_target.id) == 1
+
+      block =
+        Repo.update!(
+          Ecto.Changeset.change(block,
+            value: %{"target_type" => "sheet", "target_id" => foreign_target.id}
+          )
+        )
+
+      assert :ok =
+               ReferenceTracker.update_block_references(block,
+                 project_id: project.id
+               )
+
+      assert ReferenceTracker.count_backlinks("sheet", local_target.id) == 0
+      assert ReferenceTracker.count_backlinks("sheet", foreign_target.id) == 0
+
+      {:ok, _deleted_target} = Sheets.delete_sheet(local_target)
+
+      block =
+        Repo.update!(
+          Ecto.Changeset.change(block,
+            value: %{"target_type" => "sheet", "target_id" => local_target.id}
+          )
+        )
+
+      assert :ok =
+               ReferenceTracker.update_block_references(block,
+                 project_id: project.id
+               )
+
+      assert ReferenceTracker.count_backlinks("sheet", local_target.id) == 0
+    end
+
+    test "filters foreign mentions while retaining valid local mentions" do
+      %{user: user, project: project} = setup_project()
+      other_project = project_fixture(user)
+      source_sheet = sheet_fixture(project, %{name: "Source"})
+      local_target = sheet_fixture(project, %{name: "Local"})
+      foreign_target = sheet_fixture(other_project, %{name: "Foreign"})
+
+      content =
+        ~s(<p><span class="mention" data-type="sheet" data-id="#{local_target.id}">Local</span><span class="mention" data-type="sheet" data-id="#{foreign_target.id}">Foreign</span></p>)
+
+      {:ok, block} =
+        Sheets.create_block(source_sheet, %{
+          type: "rich_text",
+          value: %{"content" => ""}
+        })
+
+      # Simulate pre-guard legacy/corrupt storage so the repair tracker itself
+      # remains project-scoped without weakening the productive writer.
+      block = Repo.update!(Ecto.Changeset.change(block, value: %{"content" => content}))
+
+      assert :ok =
+               ReferenceTracker.update_block_references(block,
+                 project_id: project.id
+               )
+
+      assert ReferenceTracker.count_backlinks("sheet", local_target.id) == 1
+      assert ReferenceTracker.count_backlinks("sheet", foreign_target.id) == 0
     end
   end
 
@@ -213,8 +297,16 @@ defmodule Storyarn.Sheets.ReferenceTrackerTest do
       {:ok, block} =
         Sheets.create_block(source_sheet, %{
           type: "reference",
-          value: %{"target_type" => "sheet", "target_id" => "not-a-number"}
+          value: %{"target_type" => nil, "target_id" => nil}
         })
+
+      # Deliberately bypass the productive writer to exercise repair parsing.
+      block =
+        Repo.update!(
+          Ecto.Changeset.change(block,
+            value: %{"target_type" => "sheet", "target_id" => "not-a-number"}
+          )
+        )
 
       # This exercises parse_id/1 returning nil for non-integer strings
       ReferenceTracker.update_block_references(block)
@@ -285,6 +377,7 @@ defmodule Storyarn.Sheets.ReferenceTrackerTest do
           value: %{"content" => nil}
         })
 
+      assert block.value["content"] == ""
       ReferenceTracker.update_block_references(block)
 
       assert ReferenceTracker.count_backlinks("sheet", 0) == 0

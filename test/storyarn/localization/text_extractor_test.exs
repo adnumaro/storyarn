@@ -1,7 +1,9 @@
 defmodule Storyarn.Localization.TextExtractorTest do
   use Storyarn.DataCase, async: true
 
+  import Ecto.Query
   import Storyarn.AccountsFixtures
+  import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
@@ -14,6 +16,7 @@ defmodule Storyarn.Localization.TextExtractorTest do
   alias Storyarn.Localization.TextExtractor
   alias Storyarn.Repo
   alias Storyarn.Sheets
+  alias Storyarn.Sheets.Block
 
   setup do
     user = user_fixture()
@@ -107,9 +110,13 @@ defmodule Storyarn.Localization.TextExtractorTest do
       assert updated_text.source_text == "Goodbye"
     end
 
-    test "downgrades final status to review when source changes", %{project: project} do
+    test "downgrades final status to review when source changes", %{
+      project: project,
+      user: user
+    } do
       flow = flow_fixture(project)
       node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello"}})
+      voice = audio_asset_fixture(project, user)
 
       # First save
       {:ok, _updated, _} = Flows.update_node_data(node, %{"text" => "Hello"})
@@ -120,7 +127,8 @@ defmodule Storyarn.Localization.TextExtractorTest do
         Localization.update_text(text, %{
           translated_text: "Hola",
           status: "final",
-          vo_status: "approved"
+          vo_status: "approved",
+          vo_asset_id: voice.id
         })
 
       # Update source text
@@ -130,16 +138,21 @@ defmodule Storyarn.Localization.TextExtractorTest do
       assert updated_text.vo_status == "needed"
     end
 
-    test "invalidates recorded voice when the translated line changes", %{project: project} do
+    test "invalidates recorded voice when the translated line changes", %{
+      project: project,
+      user: user
+    } do
       flow = flow_fixture(project)
       node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello"}})
       [text] = Localization.get_texts_for_source("flow_node", node.id)
+      voice = audio_asset_fixture(project, user)
 
       assert {:ok, voiced} =
                Localization.update_text(text, %{
                  translated_text: "Hola",
                  status: "final",
-                 vo_status: "approved"
+                 vo_status: "approved",
+                 vo_asset_id: voice.id
                })
 
       assert {:ok, updated} =
@@ -616,6 +629,104 @@ defmodule Storyarn.Localization.TextExtractorTest do
     end
   end
 
+  describe "inherited blocks owned by sheets in trash" do
+    test "extract_block_tree keeps inherited-instance texts archived", %{project: project} do
+      parent = sheet_fixture(project)
+      child = child_sheet_fixture(project, parent)
+      source = inheritable_block_fixture(parent, label: "Runtime text")
+      instance = inherited_instance!(child.id, source.id)
+
+      assert {:ok, instance} =
+               Sheets.update_block_value(instance, %{"content" => "Hidden runtime value"})
+
+      [localized_text] = Localization.get_texts_for_source("block", instance.id)
+
+      assert {:ok, _trashed_child} = Sheets.trash_sheet(child)
+      assert Localization.get_texts_for_source("block", instance.id) == []
+
+      assert :ok = TextExtractor.extract_block_tree(source.id)
+
+      assert Localization.get_texts_for_source("block", instance.id) == []
+
+      archived = Repo.reload!(localized_text)
+      assert archived.archived_at
+      assert archived.archive_reason == "source_deleted"
+    end
+
+    test "source definition sync updates the hidden instance without reactivating its localization", %{
+      project: project
+    } do
+      parent = sheet_fixture(project)
+      child = child_sheet_fixture(project, parent)
+      source = inheritable_block_fixture(parent, label: "Runtime text")
+      instance = inherited_instance!(child.id, source.id)
+
+      assert {:ok, instance} =
+               Sheets.update_block_value(instance, %{"content" => "Preserve my translation"})
+
+      [localized_text] = Localization.get_texts_for_source("block", instance.id)
+
+      assert {:ok, translated} =
+               Localization.update_text(localized_text, %{
+                 translated_text: "Conserva mi traducción",
+                 status: "final"
+               })
+
+      assert {:ok, trashed_child} = Sheets.trash_sheet(child)
+
+      assert {:ok, _updated_source} =
+               Sheets.update_block_config(source, %{
+                 "label" => "Updated while hidden",
+                 "placeholder" => ""
+               })
+
+      hidden_instance = Repo.get!(Block, instance.id)
+      assert hidden_instance.id == instance.id
+      assert hidden_instance.config["label"] == "Updated while hidden"
+      assert Localization.get_texts_for_source("block", instance.id) == []
+      assert Repo.reload!(translated).archived_at
+
+      assert {:ok, restored_child} = Sheets.restore_sheet(trashed_child)
+      assert restored_child.id == child.id
+
+      assert [restored_text] = Localization.get_texts_for_source("block", instance.id)
+      assert restored_text.id == translated.id
+      assert restored_text.translated_text == "Conserva mi traducción"
+      assert restored_text.status == "final"
+      assert is_nil(restored_text.archived_at)
+    end
+
+    test "restoring an inherited source keeps trash-owned instance texts archived until sheet restore", %{
+      project: project
+    } do
+      parent = sheet_fixture(project)
+      child = child_sheet_fixture(project, parent)
+      source = inheritable_block_fixture(parent, label: "Runtime text")
+      instance = inherited_instance!(child.id, source.id)
+
+      assert {:ok, instance} =
+               Sheets.update_block_value(instance, %{"content" => "Hidden while restored"})
+
+      [localized_text] = Localization.get_texts_for_source("block", instance.id)
+      assert {:ok, trashed_child} = Sheets.trash_sheet(child)
+      assert {:ok, deleted_source} = Sheets.delete_block(source)
+      assert Repo.reload!(instance).deleted_at
+
+      assert {:ok, restored_source} = Sheets.restore_block(deleted_source)
+      assert restored_source.id == source.id
+      assert is_nil(Repo.reload!(instance).deleted_at)
+      assert Repo.reload!(trashed_child).deleted_at
+      assert Localization.get_texts_for_source("block", instance.id) == []
+      assert Repo.reload!(localized_text).archived_at
+
+      assert {:ok, _restored_child} = Sheets.restore_sheet(trashed_child)
+
+      assert [restored_text] = Localization.get_texts_for_source("block", instance.id)
+      assert restored_text.id == localized_text.id
+      assert is_nil(restored_text.archived_at)
+    end
+  end
+
   describe "tree lifecycle cleanup" do
     test "deleting a flow tree removes all runtime strings and restoring the root re-extracts its nodes", %{
       project: project
@@ -861,17 +972,20 @@ defmodule Storyarn.Localization.TextExtractorTest do
     end
 
     test "bulk reconciliation invalidates voice when source text changed outside normal callbacks", %{
-      project: project
+      project: project,
+      user: user
     } do
       flow = flow_fixture(project)
       node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Original line"}})
       [text] = Localization.get_texts_for_source("flow_node", node.id)
+      voice = audio_asset_fixture(project, user)
 
       assert {:ok, _text} =
                Localization.update_text(text, %{
                  translated_text: "Línea original",
                  status: "final",
-                 vo_status: "approved"
+                 vo_status: "approved",
+                 vo_asset_id: voice.id
                })
 
       node
@@ -1066,5 +1180,16 @@ defmodule Storyarn.Localization.TextExtractorTest do
       assert :ok = TextExtractor.delete_flow_node_texts_for_flows([flow.id])
       assert Localization.get_texts_for_source("flow_node", node.id) == []
     end
+  end
+
+  defp inherited_instance!(sheet_id, source_id) do
+    Repo.one!(
+      from(block in Block,
+        where:
+          block.sheet_id == ^sheet_id and
+            block.inherited_from_block_id == ^source_id and
+            block.detached == false and is_nil(block.deleted_at)
+      )
+    )
   end
 end

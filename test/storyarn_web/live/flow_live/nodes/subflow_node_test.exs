@@ -154,7 +154,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.NodeTest do
         SubflowNode.handle_update_reference(to_string(other_flow.id), socket)
 
       node = Storyarn.Flows.get_node!(result.assigns.flow.id, result.assigns.selected_node.id)
-      assert node.data["referenced_flow_id"] == to_string(other_flow.id)
+      assert node.data["referenced_flow_id"] == other_flow.id
     end
 
     test "clears reference with empty string", %{socket: socket} do

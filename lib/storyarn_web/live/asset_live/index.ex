@@ -11,11 +11,17 @@ defmodule StoryarnWeb.AssetLive.Index do
   alias StoryarnWeb.PrivateMedia
 
   @empty_asset_usages %{
+    asset_metadata_links: [],
     flow_nodes: [],
+    sequence_visual_layers: [],
+    sequence_tracks: [],
     sheet_avatars: [],
     sheet_banners: [],
     scene_backgrounds: [],
-    scene_pin_icons: []
+    scene_pin_icons: [],
+    scene_zone_icons: [],
+    localized_voiceovers: [],
+    gallery_images: []
   }
 
   @assets_per_page 48
@@ -452,21 +458,60 @@ defmodule StoryarnWeb.AssetLive.Index do
 
   defp serialize_usages(usages) do
     %{
+      assetMetadataLinks:
+        Enum.map(usages.asset_metadata_links, fn asset ->
+          %{
+            id: asset.id,
+            filename: asset.filename,
+            relations: asset.relations
+          }
+        end),
       flowNodes:
         Enum.map(usages.flow_nodes, fn u ->
-          %{flowId: u.flow_id, flowName: u.flow_name}
+          %{
+            nodeId: u.node_id,
+            nodeType: u.node_type,
+            flowId: u.flow_id,
+            flowName: u.flow_name,
+            trashed: u.trashed
+          }
+        end),
+      sequenceVisualLayers:
+        Enum.map(usages.sequence_visual_layers, fn layer ->
+          %{
+            id: layer.id,
+            nodeId: layer.node_id,
+            flowId: layer.flow_id,
+            flowName: layer.flow_name,
+            sequenceName: layer.sequence_name,
+            label: layer.label,
+            kind: layer.kind,
+            trashed: layer.trashed
+          }
+        end),
+      sequenceTracks:
+        Enum.map(usages.sequence_tracks, fn track ->
+          %{
+            id: track.id,
+            nodeId: track.node_id,
+            flowId: track.flow_id,
+            flowName: track.flow_name,
+            sequenceName: track.sequence_name,
+            kind: track.kind,
+            trashed: track.trashed
+          }
         end),
       sheetAvatars:
         Enum.map(usages.sheet_avatars, fn s ->
-          %{id: s.id, name: s.name}
+          %{id: s.id, name: s.name, trashed: s.trashed}
         end),
       sheetBanners:
         Enum.map(usages.sheet_banners, fn s ->
-          %{id: s.id, name: s.name}
+          %{id: s.id, name: s.name, trashed: s.trashed}
         end),
       sceneBackgrounds:
         Enum.map(usages.scene_backgrounds, fn s ->
-          %{id: s.id, name: s.name}
+          %{id: s.id, name: s.name, trashed: s.trashed}
         end),
       scenePinIcons:
         Enum.map(usages.scene_pin_icons, fn p ->
@@ -474,7 +519,42 @@ defmodule StoryarnWeb.AssetLive.Index do
             pinId: p.pin_id,
             pinLabel: p.pin_label,
             sceneId: p.scene_id,
-            sceneName: p.scene_name
+            sceneName: p.scene_name,
+            trashed: p.trashed
+          }
+        end),
+      sceneZoneIcons:
+        Enum.map(usages.scene_zone_icons, fn zone ->
+          %{
+            zoneId: zone.zone_id,
+            zoneName: zone.zone_name,
+            sceneId: zone.scene_id,
+            sceneName: zone.scene_name,
+            trashed: zone.trashed
+          }
+        end),
+      localizedVoiceovers:
+        Enum.map(usages.localized_voiceovers, fn text ->
+          %{
+            id: text.id,
+            localeCode: text.locale_code,
+            sourceType: text.source_type,
+            sourceId: text.source_id,
+            sourceText: text.source_text,
+            archived: not is_nil(text.archived_at)
+          }
+        end),
+      galleryImages:
+        Enum.map(usages.gallery_images, fn image ->
+          %{
+            id: image.id,
+            blockId: image.block_id,
+            sheetId: image.sheet_id,
+            sheetName: image.sheet_name,
+            label: image.label,
+            trashed:
+              not is_nil(image.block_deleted_at) or
+                not is_nil(image.sheet_deleted_at)
           }
         end)
     }

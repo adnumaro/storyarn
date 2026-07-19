@@ -44,6 +44,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   )
 
   @annotation_editable_fields ~w(text position_x position_y font_size color layer_id locked)
+  @collection_item_editable_fields ~w(label sheet_id)
 
   # ---------------------------------------------------------------------------
   # Safe field-to-atom conversion: avoids ArgumentError on unknown fields
@@ -483,11 +484,14 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   end
 
   @doc "Updates a field on a collection item (label, sheet_id)."
-  def handle_update_collection_item(%{"zone-id" => zone_id, "item-id" => item_id, "field" => field} = params, socket) do
+  def handle_update_collection_item(%{"zone-id" => zone_id, "item-id" => item_id, "field" => field} = params, socket)
+      when field in @collection_item_editable_fields do
     value = Map.get(params, "value", "")
     update_fn = fn item -> Map.put(item, field, value) end
     do_update_collection_item(socket, zone_id, item_id, update_fn)
   end
+
+  def handle_update_collection_item(_params, socket), do: {:noreply, socket}
 
   @doc "Updates the condition on a collection item."
   def handle_update_collection_item_condition(

@@ -4,12 +4,15 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Flows
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Flows.VariableReferenceTracker
+  alias Storyarn.References
+  alias Storyarn.Sheets.Block
 
   setup do
     user = user_fixture()
@@ -44,6 +47,167 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       sheet2: sheet2,
       quest_block: quest_block
     }
+  end
+
+  describe "rebuild_project_variable_references/1" do
+    test "rebuilds flow, pin, and zone references after a target block is reinserted", ctx do
+      condition = variable_condition(ctx.sheet.shortcut, ctx.health_block.variable_name)
+      assignment = variable_assignment(ctx.sheet.shortcut, ctx.health_block.variable_name)
+
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{"assignments" => [assignment]}
+        })
+
+      scene = scene_fixture(ctx.project)
+      pin = pin_fixture(scene, %{"condition" => condition})
+
+      zone =
+        zone_fixture(scene, %{
+          "action_type" => "action",
+          "action_data" => %{"assignments" => [assignment]}
+        })
+
+      assert :ok = VariableReferenceTracker.update_references(node)
+
+      assert source_identities(ctx.health_block.id) ==
+               MapSet.new([
+                 {"flow_node", node.id},
+                 {"scene_pin", pin.id},
+                 {"scene_zone", zone.id}
+               ])
+
+      Repo.delete!(ctx.health_block)
+      assert source_identities(ctx.health_block.id) == MapSet.new()
+      reinsert_block(ctx.health_block)
+
+      assert :ok = References.rebuild_project_variable_references(ctx.project.id)
+
+      assert source_identities(ctx.health_block.id) ==
+               MapSet.new([
+                 {"flow_node", node.id},
+                 {"scene_pin", pin.id},
+                 {"scene_zone", zone.id}
+               ])
+    end
+
+    test "does not rebuild sources in deleted roots or soft-deleted flow nodes", ctx do
+      condition = variable_condition(ctx.sheet.shortcut, ctx.health_block.variable_name)
+      assignment = variable_assignment(ctx.sheet.shortcut, ctx.health_block.variable_name)
+
+      active_node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{"assignments" => [assignment]}
+        })
+
+      deleted_node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{"assignments" => [assignment]}
+        })
+
+      deleted_flow = flow_fixture(ctx.project)
+
+      deleted_root_node =
+        node_fixture(deleted_flow, %{
+          type: "instruction",
+          data: %{"assignments" => [assignment]}
+        })
+
+      active_scene = scene_fixture(ctx.project)
+      active_pin = pin_fixture(active_scene, %{"condition" => condition})
+
+      active_zone =
+        zone_fixture(active_scene, %{
+          "action_type" => "action",
+          "action_data" => %{"assignments" => [assignment]}
+        })
+
+      deleted_scene = scene_fixture(ctx.project)
+      deleted_root_pin = pin_fixture(deleted_scene, %{"condition" => condition})
+
+      deleted_root_zone =
+        zone_fixture(deleted_scene, %{
+          "action_type" => "action",
+          "action_data" => %{"assignments" => [assignment]}
+        })
+
+      for node <- [active_node, deleted_node, deleted_root_node] do
+        assert :ok = VariableReferenceTracker.update_references(node)
+      end
+
+      deleted_at = DateTime.truncate(DateTime.utc_now(), :second)
+      Repo.update!(Ecto.Changeset.change(deleted_node, deleted_at: deleted_at))
+      Repo.update!(Ecto.Changeset.change(deleted_flow, deleted_at: deleted_at))
+      Repo.update!(Ecto.Changeset.change(deleted_scene, deleted_at: deleted_at))
+
+      Repo.delete!(ctx.health_block)
+      assert source_identities(ctx.health_block.id) == MapSet.new()
+      reinsert_block(ctx.health_block)
+
+      assert :ok =
+               VariableReferenceTracker.rebuild_project_variable_references(ctx.project.id)
+
+      identities = source_identities(ctx.health_block.id)
+
+      assert identities ==
+               MapSet.new([
+                 {"flow_node", active_node.id},
+                 {"scene_pin", active_pin.id},
+                 {"scene_zone", active_zone.id}
+               ])
+
+      refute MapSet.member?(identities, {"flow_node", deleted_node.id})
+      refute MapSet.member?(identities, {"flow_node", deleted_root_node.id})
+      refute MapSet.member?(identities, {"scene_pin", deleted_root_pin.id})
+      refute MapSet.member?(identities, {"scene_zone", deleted_root_zone.id})
+    end
+
+    test "preserves stale rows when restored Sheet names no longer resolve from source data", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              variable_assignment(ctx.sheet.shortcut, ctx.health_block.variable_name)
+            ]
+          }
+        })
+
+      assert :ok = VariableReferenceTracker.update_references(node)
+
+      [reference_before] =
+        Repo.all(
+          from(reference in VariableReference,
+            where:
+              reference.source_type == "flow_node" and
+                reference.source_id == ^node.id
+          )
+        )
+
+      Repo.update!(Ecto.Changeset.change(ctx.sheet, shortcut: "restored-sheet"))
+
+      Repo.update!(Ecto.Changeset.change(ctx.health_block, variable_name: "restored-health"))
+
+      assert :ok =
+               VariableReferenceTracker.rebuild_project_variable_references(ctx.project.id)
+
+      assert [reference_after] =
+               Repo.all(
+                 from(reference in VariableReference,
+                   where:
+                     reference.source_type == "flow_node" and
+                       reference.source_id == ^node.id
+                 )
+               )
+
+      assert reference_after.id == reference_before.id
+      assert reference_after.block_id == ctx.health_block.id
+      assert reference_after.source_sheet == reference_before.source_sheet
+      assert reference_after.source_variable == reference_before.source_variable
+    end
   end
 
   describe "update_references/1 with instruction nodes" do
@@ -2104,5 +2268,68 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
 
       assert refs == []
     end
+  end
+
+  defp variable_assignment(sheet_shortcut, variable_name) do
+    %{
+      "id" => Ecto.UUID.generate(),
+      "sheet" => sheet_shortcut,
+      "variable" => variable_name,
+      "operator" => "set",
+      "value" => "100",
+      "value_type" => "literal"
+    }
+  end
+
+  defp variable_condition(sheet_shortcut, variable_name) do
+    %{
+      "logic" => "all",
+      "blocks" => [
+        %{
+          "id" => Ecto.UUID.generate(),
+          "type" => "block",
+          "logic" => "all",
+          "rules" => [
+            %{
+              "id" => Ecto.UUID.generate(),
+              "sheet" => sheet_shortcut,
+              "variable" => variable_name,
+              "operator" => "greater_than",
+              "value" => "50"
+            }
+          ]
+        }
+      ]
+    }
+  end
+
+  defp source_identities(block_id) do
+    VariableReference
+    |> where([reference], reference.block_id == ^block_id)
+    |> Repo.all()
+    |> MapSet.new(&{&1.source_type, &1.source_id})
+  end
+
+  defp reinsert_block(block) do
+    attrs =
+      Map.take(block, [
+        :type,
+        :position,
+        :config,
+        :value,
+        :word_count,
+        :is_constant,
+        :variable_name,
+        :scope,
+        :inherited_from_block_id,
+        :detached,
+        :required,
+        :column_group_id,
+        :column_index
+      ])
+
+    %Block{id: block.id, sheet_id: block.sheet_id}
+    |> Ecto.Changeset.change(attrs)
+    |> Repo.insert!()
   end
 end

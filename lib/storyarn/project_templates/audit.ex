@@ -36,6 +36,8 @@ defmodule Storyarn.ProjectTemplates.Audit do
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
   alias Storyarn.Versioning.ProjectRecovery
 
+  require Logger
+
   @doc """
   Runs template-publication audit checks for a project.
   """
@@ -66,23 +68,58 @@ defmodule Storyarn.ProjectTemplates.Audit do
           where: project.id == ^project_id and is_nil(project.deleted_at)
       )
 
-    snapshot = ProjectSnapshotBuilder.build_snapshot(project_id)
-
-    static_errors = project_static_errors(project_id, snapshot)
     source_counts = materialized_entity_counts(project_id)
+    static_errors = project_static_errors(project_id)
 
-    %{
+    prepared = %{
       project_id: project.id,
       workspace_id: project.workspace_id,
       owner_id: project.owner_id,
-      snapshot: snapshot,
-      static_errors: static_errors,
-      source_counts: source_counts
+      source_counts: source_counts,
+      snapshot: nil
     }
+
+    case static_errors do
+      [] ->
+        case build_project_snapshot(project_id) do
+          {:ok, snapshot} ->
+            Map.merge(prepared, %{
+              snapshot: snapshot,
+              static_errors: snapshot_sequence_integrity_errors(snapshot)
+            })
+
+          {:error, reason} ->
+            Map.merge(prepared, %{
+              static_errors: [%{"type" => "snapshot_build_failed", "reason" => reason}],
+              materialization_skip_reason: "snapshot_build_failed"
+            })
+        end
+
+      errors ->
+        Map.merge(prepared, %{
+          static_errors: errors,
+          materialization_skip_reason: "static_errors"
+        })
+    end
   end
 
   @doc false
   @spec run_prepared_snapshot(map()) :: {:ok, map(), map()} | {:error, map()}
+  def run_prepared_snapshot(%{snapshot: nil, static_errors: errors, source_counts: source_counts} = prepared) do
+    report = %{
+      "status" => "failed",
+      "errors" => errors,
+      "warnings" => [],
+      "entity_counts" => source_counts,
+      "materialization" => %{
+        "status" => "skipped",
+        "reason" => Map.get(prepared, :materialization_skip_reason, "static_errors")
+      }
+    }
+
+    {:error, report}
+  end
+
   def run_prepared_snapshot(%{
         project_id: project_id,
         workspace_id: workspace_id,
@@ -114,7 +151,14 @@ defmodule Storyarn.ProjectTemplates.Audit do
     if errors == [], do: {:ok, report, snapshot}, else: {:error, report}
   end
 
-  defp project_static_errors(project_id, snapshot) do
+  defp build_project_snapshot(project_id) do
+    {:ok, ProjectSnapshotBuilder.build_snapshot(project_id)}
+  rescue
+    error in [ArgumentError, Ecto.NoResultsError] ->
+      {:error, Exception.message(error)}
+  end
+
+  defp project_static_errors(project_id) do
     []
     |> Kernel.++(stale_connection_errors(project_id))
     |> Kernel.++(unsafe_subflow_pin_errors(project_id))
@@ -125,6 +169,11 @@ defmodule Storyarn.ProjectTemplates.Audit do
     |> Kernel.++(invalid_localization_source_ref_errors(project_id))
     |> Kernel.++(unsupported_localization_source_ref_errors(project_id))
     |> Kernel.++(uncopiable_asset_reference_errors(project_id))
+  end
+
+  defp project_static_errors(project_id, snapshot) do
+    project_id
+    |> project_static_errors()
     |> Kernel.++(snapshot_sequence_integrity_errors(snapshot))
   end
 
@@ -134,6 +183,7 @@ defmodule Storyarn.ProjectTemplates.Audit do
   @spec verify_snapshot_materialization(map(), integer(), integer(), keyword()) :: {:ok, map()} | {:error, map()}
   def verify_snapshot_materialization(snapshot, workspace_id, user_id, opts \\ []) do
     snapshot_counts = snapshot_entity_counts(snapshot)
+    {expected_recovery_counts, deferred_orphan_count} = expected_recovery_counts(snapshot)
     integrity_errors = snapshot_sequence_integrity_errors(snapshot)
 
     case recover_snapshot_in_rollback(snapshot, workspace_id, user_id, opts) do
@@ -141,8 +191,8 @@ defmodule Storyarn.ProjectTemplates.Audit do
         count_errors =
           count_mismatch_errors(
             "snapshot_recovery_count_mismatch",
-            "snapshot_count",
-            snapshot_counts,
+            "expected_recovery_count",
+            expected_recovery_counts,
             "recovered_count",
             recovered_counts
           )
@@ -153,6 +203,8 @@ defmodule Storyarn.ProjectTemplates.Audit do
           "status" => if(errors == [], do: "passed", else: "failed"),
           "errors" => errors,
           "snapshot_counts" => snapshot_counts,
+          "expected_recovery_counts" => expected_recovery_counts,
+          "deferred_archived_localization_orphans" => deferred_orphan_count,
           "recovered_counts" => recovered_counts
         }
 
@@ -171,6 +223,8 @@ defmodule Storyarn.ProjectTemplates.Audit do
                  }
                ],
            "snapshot_counts" => snapshot_counts,
+           "expected_recovery_counts" => expected_recovery_counts,
+           "deferred_archived_localization_orphans" => deferred_orphan_count,
            "recovery_error" => inspect(reason)
          }}
     end
@@ -953,6 +1007,7 @@ defmodule Storyarn.ProjectTemplates.Audit do
 
   defp materialization_audit(snapshot, [], source_counts, workspace_id, owner_id, project_id) do
     snapshot_counts = snapshot_entity_counts(snapshot)
+    {expected_recovery_counts, deferred_orphan_count} = expected_recovery_counts(snapshot)
 
     source_snapshot_errors =
       count_mismatch_errors(
@@ -968,8 +1023,8 @@ defmodule Storyarn.ProjectTemplates.Audit do
         snapshot_recovery_errors =
           count_mismatch_errors(
             "snapshot_recovery_count_mismatch",
-            "snapshot_count",
-            snapshot_counts,
+            "expected_recovery_count",
+            expected_recovery_counts,
             "recovered_count",
             recovered_counts
           )
@@ -981,6 +1036,8 @@ defmodule Storyarn.ProjectTemplates.Audit do
            "status" => if(errors == [], do: "passed", else: "failed"),
            "source_counts" => source_counts,
            "snapshot_counts" => snapshot_counts,
+           "expected_recovery_counts" => expected_recovery_counts,
+           "deferred_archived_localization_orphans" => deferred_orphan_count,
            "recovered_counts" => recovered_counts
          }}
 
@@ -995,6 +1052,8 @@ defmodule Storyarn.ProjectTemplates.Audit do
            "status" => "failed",
            "source_counts" => source_counts,
            "snapshot_counts" => snapshot_counts,
+           "expected_recovery_counts" => expected_recovery_counts,
+           "deferred_archived_localization_orphans" => deferred_orphan_count,
            "recovery_error" => inspect(reason)
          }}
     end
@@ -1014,33 +1073,65 @@ defmodule Storyarn.ProjectTemplates.Audit do
         |> recover_project_transaction_result(workspace_id, user_id, opts)
         |> extract_recover_project_result()
 
-      case StorageCompensation.cleanup(tracker) do
+      case StorageCompensation.cleanup_after_rollback(tracker) do
         :ok -> result
         {:error, reason} -> {:error, {:asset_cleanup_failed, reason}}
       end
     rescue
       error ->
-        StorageCompensation.cleanup!(tracker)
+        cleanup_after_rollback_preserving_error(tracker)
         reraise error, __STACKTRACE__
     catch
       kind, reason ->
-        StorageCompensation.cleanup!(tracker)
+        cleanup_after_rollback_preserving_error(tracker)
         :erlang.raise(kind, reason, __STACKTRACE__)
     end
+  end
+
+  defp cleanup_after_rollback_preserving_error(tracker) do
+    case StorageCompensation.cleanup_after_rollback(tracker) do
+      :ok ->
+        :ok
+
+      {:error, cleanup_reason} ->
+        Logger.error(
+          "Template audit asset cleanup failed while preserving the original exception: " <>
+            inspect(cleanup_reason)
+        )
+
+        :ok
+    end
+  rescue
+    cleanup_error ->
+      Logger.error(
+        "Template audit asset cleanup raised while preserving the original exception: " <>
+          Exception.format(:error, cleanup_error, __STACKTRACE__)
+      )
+
+      :ok
+  catch
+    kind, cleanup_reason ->
+      Logger.error(
+        "Template audit asset cleanup threw while preserving the original exception: " <>
+          inspect({kind, cleanup_reason})
+      )
+
+      :ok
   end
 
   defp recover_project_transaction_result(snapshot, workspace_id, user_id, opts) do
     name = Keyword.get(opts, :name, "Template Materialization Audit")
 
+    recovery_opts =
+      opts
+      |> Keyword.take([:asset_copy_tracker, :asset_source_keys])
+      |> Keyword.merge(name: name, template_clone: true)
+
     Repo.transaction(
       fn ->
         result =
           with {:ok, recovered_project} <-
-                 ProjectRecovery.recover_project(workspace_id, snapshot, user_id,
-                   name: name,
-                   template_clone: true,
-                   asset_copy_tracker: Keyword.fetch!(opts, :asset_copy_tracker)
-                 ) do
+                 ProjectRecovery.recover_project(workspace_id, snapshot, user_id, recovery_opts) do
             {:ok, materialized_entity_counts(recovered_project.id), materialized_project_errors(recovered_project.id)}
           end
 
@@ -1284,6 +1375,57 @@ defmodule Storyarn.ProjectTemplates.Audit do
       "localized_texts" => length(localization["texts"] || []),
       "glossary_entries" => length(localization["glossary"] || [])
     }
+  end
+
+  defp expected_recovery_counts(snapshot) do
+    snapshot_counts = snapshot_entity_counts(snapshot)
+    deferred_orphan_count = deferred_archived_localization_orphans(snapshot)
+
+    expected_counts =
+      Map.update!(snapshot_counts, "localized_texts", &(&1 - deferred_orphan_count))
+
+    {expected_counts, deferred_orphan_count}
+  end
+
+  defp deferred_archived_localization_orphans(snapshot) do
+    source_ids = snapshot_localization_source_ids(snapshot)
+
+    snapshot
+    |> Map.get("localization", %{})
+    |> snapshot_collection("texts")
+    |> Enum.count(fn
+      %{"archived_at" => archived_at, "source_type" => source_type, "source_id" => source_id}
+      when not is_nil(archived_at) ->
+        source_type in SourceContract.source_types() and
+          not MapSet.member?(Map.fetch!(source_ids, source_type), source_id)
+
+      _text ->
+        false
+    end)
+  end
+
+  defp snapshot_localization_source_ids(snapshot) do
+    sheet_snapshots = snapshot |> snapshot_collection("sheets") |> snapshots_for()
+    flow_snapshots = snapshot |> snapshot_collection("flows") |> snapshots_for()
+
+    %{
+      "sheet" => original_ids(sheet_snapshots),
+      "block" =>
+        sheet_snapshots
+        |> Enum.flat_map(&snapshot_collection(&1, "blocks"))
+        |> original_ids(),
+      "flow_node" =>
+        flow_snapshots
+        |> Enum.flat_map(&snapshot_collection(&1, "nodes"))
+        |> original_ids()
+    }
+  end
+
+  defp original_ids(snapshots) do
+    snapshots
+    |> Enum.map(& &1["original_id"])
+    |> Enum.reject(&is_nil/1)
+    |> MapSet.new()
   end
 
   defp sum_nested_count(entries, key) do

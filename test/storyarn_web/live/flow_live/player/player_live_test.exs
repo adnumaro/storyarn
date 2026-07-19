@@ -827,7 +827,9 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
         target_pin: "input"
       })
 
-      connection_fixture(main_flow, subflow_node, after_dialogue)
+      connection_fixture(main_flow, subflow_node, after_dialogue, %{
+        source_pin: "exit_#{sub_exit.id}"
+      })
 
       connection_fixture(main_flow, after_dialogue, main_exit, %{
         source_pin: after_resp_id,

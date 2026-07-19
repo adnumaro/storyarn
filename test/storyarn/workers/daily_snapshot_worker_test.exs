@@ -1,12 +1,29 @@
 defmodule Storyarn.Workers.DailySnapshotWorkerTest do
-  use Storyarn.DataCase, async: true
+  use Storyarn.DataCase, async: false
   use Oban.Testing, repo: Storyarn.Repo
 
+  import Ecto.Query
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Repo
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Workers.DailySnapshotWorker
+
+  setup do
+    original_config = Application.get_env(:storyarn, DailySnapshotWorker)
+    Application.put_env(:storyarn, DailySnapshotWorker, pruning_enabled: false)
+
+    on_exit(fn ->
+      if is_nil(original_config) do
+        Application.delete_env(:storyarn, DailySnapshotWorker)
+      else
+        Application.put_env(:storyarn, DailySnapshotWorker, original_config)
+      end
+    end)
+
+    :ok
+  end
 
   describe "perform/1" do
     test "skips projects with auto_snapshots_enabled: false" do
@@ -77,6 +94,56 @@ defmodule Storyarn.Workers.DailySnapshotWorkerTest do
       # Should still have just 1 snapshot (manual one, no daily created)
       assert Storyarn.Versioning.count_project_snapshots(project.id) == 1
     end
+
+    test "keeps every automatic recovery point while pruning is disabled" do
+      {project, snapshots} = project_at_snapshot_limit()
+
+      assert :ok = perform_job(DailySnapshotWorker, %{})
+      assert Storyarn.Versioning.count_project_snapshots(project.id) == 11
+
+      snapshot_ids =
+        project.id
+        |> Storyarn.Versioning.list_project_snapshots()
+        |> MapSet.new(& &1.id)
+
+      assert Enum.all?(snapshots, &MapSet.member?(snapshot_ids, &1.id))
+    end
+
+    test "prunes only when explicitly enabled with literal true" do
+      {project, snapshots} = project_at_snapshot_limit()
+      oldest = Enum.min_by(snapshots, & &1.version_number)
+
+      Application.put_env(:storyarn, DailySnapshotWorker, pruning_enabled: true)
+
+      assert :ok = perform_job(DailySnapshotWorker, %{})
+      assert Storyarn.Versioning.count_project_snapshots(project.id) == 10
+
+      snapshot_ids =
+        project.id
+        |> Storyarn.Versioning.list_project_snapshots()
+        |> MapSet.new(& &1.id)
+
+      refute MapSet.member?(snapshot_ids, oldest.id)
+    end
+  end
+
+  defp project_at_snapshot_limit do
+    project = project_fixture()
+
+    snapshots =
+      for _index <- 1..10 do
+        insert_snapshot(project.id, is_auto: true)
+      end
+
+    past = DateTime.utc_now() |> DateTime.add(-86_400, :second) |> DateTime.truncate(:second)
+
+    Repo.update_all(
+      from(snapshot in ProjectSnapshot, where: snapshot.project_id == ^project.id),
+      set: [inserted_at: past]
+    )
+
+    _flow = flow_fixture(project)
+    {project, snapshots}
   end
 
   defp insert_snapshot(project_id, opts \\ []) do
@@ -89,6 +156,7 @@ defmodule Storyarn.Workers.DailySnapshotWorkerTest do
       version_number: version,
       storage_key: "test/snapshot/#{version}.json.gz",
       snapshot_size_bytes: 100,
+      checksum: String.duplicate("a", 64),
       entity_counts: %{},
       is_auto: is_auto
     })

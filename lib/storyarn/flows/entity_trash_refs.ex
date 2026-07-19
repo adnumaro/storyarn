@@ -44,6 +44,7 @@ defmodule Storyarn.Flows.EntityTrashRefs do
 
   alias Storyarn.Flows.EntityTrashRef
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.References.AvatarIntegrity
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
 
@@ -83,6 +84,8 @@ defmodule Storyarn.Flows.EntityTrashRefs do
       rows =
         source_schema
         |> where([s], field(s, ^source_column) == ^target_id)
+        |> order_by([s], asc: s.id)
+        |> lock("FOR UPDATE")
         |> Repo.all()
 
       case rows do
@@ -136,6 +139,8 @@ defmodule Storyarn.Flows.EntityTrashRefs do
           [s],
           fragment("?->>? = ?", field(s, ^jsonb_column), ^jsonb_key, ^target_id_str)
         )
+        |> order_by([s], asc: s.id)
+        |> lock("FOR UPDATE")
         |> Repo.all()
 
       sweep_jsonb_rows(rows, source_schema, source_type, jsonb_column, jsonb_key, target_column, target_id)
@@ -161,9 +166,16 @@ defmodule Storyarn.Flows.EntityTrashRefs do
     target_column = fetch_target_column!(target_type)
 
     Repo.transaction(fn ->
+      case lock_restore_target(target_type, target_id) do
+        :ok -> :ok
+        {:error, reason} -> Repo.rollback(reason)
+      end
+
       refs =
         EntityTrashRef
         |> where([r], field(r, ^target_column) == ^target_id)
+        |> order_by([r], asc: r.id)
+        |> lock("FOR UPDATE")
         |> Repo.all()
 
       results =
@@ -196,6 +208,12 @@ defmodule Storyarn.Flows.EntityTrashRefs do
       :error -> raise ArgumentError, "invalid target_type: #{inspect(target_type)}"
     end
   end
+
+  defp lock_restore_target(:sheet_avatar, target_id) do
+    AvatarIntegrity.lock_avatar_reference_target(target_id)
+  end
+
+  defp lock_restore_target(_target_type, _target_id), do: :ok
 
   defp insert_trash_refs(rows, source_type, source_field, target_column, target_id) do
     now = TimeHelpers.now()
@@ -244,10 +262,31 @@ defmodule Storyarn.Flows.EntityTrashRefs do
   defp restore_column(%EntityTrashRef{} = ref, source_schema, target_id) do
     column = String.to_existing_atom(ref.source_field)
 
-    {count, _} =
-      source_schema
-      |> where([s], s.id == ^ref.source_id and is_nil(field(s, ^column)))
-      |> Repo.update_all(set: [{column, target_id}])
+    source =
+      Repo.one(
+        from(source in source_schema,
+          where: source.id == ^ref.source_id,
+          lock: "FOR UPDATE"
+        )
+      )
+
+    count =
+      case source do
+        nil ->
+          0
+
+        source ->
+          if is_nil(Map.fetch!(source, column)) do
+            {count, _} =
+              source_schema
+              |> where([s], s.id == ^ref.source_id and is_nil(field(s, ^column)))
+              |> Repo.update_all(set: [{column, target_id}])
+
+            count
+          else
+            0
+          end
+      end
 
     if count > 0, do: :restored, else: :skipped
   end
@@ -256,7 +295,19 @@ defmodule Storyarn.Flows.EntityTrashRefs do
     [jsonb_col_str, jsonb_key] = String.split(ref.source_field, ".", parts: 2)
     jsonb_column = String.to_existing_atom(jsonb_col_str)
 
-    case Repo.get(source_schema, ref.source_id) do
+    source =
+      Repo.one(
+        from(source in source_schema,
+          where: source.id == ^ref.source_id,
+          lock: "FOR UPDATE"
+        )
+      )
+
+    restore_jsonb_row(source, ref, source_schema, jsonb_column, jsonb_key, target_id)
+  end
+
+  defp restore_jsonb_row(source, ref, source_schema, jsonb_column, jsonb_key, target_id) do
+    case source do
       nil ->
         :skipped
 
@@ -264,16 +315,46 @@ defmodule Storyarn.Flows.EntityTrashRefs do
         jsonb_map = Map.fetch!(row, jsonb_column) || %{}
 
         if Map.get(jsonb_map, jsonb_key) == nil do
-          new_jsonb = Map.put(jsonb_map, jsonb_key, target_id)
-
-          source_schema
-          |> where([s], s.id == ^ref.source_id)
-          |> Repo.update_all(set: [{jsonb_column, new_jsonb}])
-
-          :restored
+          restore_missing_jsonb_value(ref, row, source_schema, jsonb_column, jsonb_key, target_id)
         else
           :skipped
         end
     end
   end
+
+  defp restore_missing_jsonb_value(ref, row, source_schema, jsonb_column, jsonb_key, target_id) do
+    new_jsonb =
+      row
+      |> Map.fetch!(jsonb_column)
+      |> Kernel.||(%{})
+      |> Map.put(jsonb_key, target_id)
+
+    case validate_restored_jsonb(ref, row, jsonb_column, new_jsonb) do
+      {:ok, validated_jsonb} ->
+        source_schema
+        |> where([s], s.id == ^ref.source_id)
+        |> Repo.update_all(set: [{jsonb_column, validated_jsonb}])
+
+        :restored
+
+      {:error, reason} ->
+        Repo.rollback(reason)
+    end
+  end
+
+  defp validate_restored_jsonb(
+         %EntityTrashRef{target_sheet_avatar_id: avatar_id},
+         %FlowNode{} = node,
+         :data,
+         %{"avatar_id" => avatar_id} = data
+       )
+       when is_integer(avatar_id) do
+    AvatarIntegrity.lock_and_normalize_node_avatar(
+      node.flow_id,
+      node.type,
+      data
+    )
+  end
+
+  defp validate_restored_jsonb(_ref, _row, _jsonb_column, jsonb), do: {:ok, jsonb}
 end

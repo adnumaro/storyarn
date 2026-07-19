@@ -571,14 +571,26 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
         user_id: other_user.id,
         user_email: other_user.email,
         user_color: "#00ff00",
+        id: 77,
         source_node_id: 1,
-        target_node_id: 2
+        source_pin: "response-first",
+        target_node_id: 2,
+        target_pin: "input"
       }
 
       send(view.pid, {:remote_change, :connection_deleted, payload})
-      html = render(view)
 
-      assert html
+      assert_push_event(
+        view,
+        "connection_removed",
+        %{
+          id: 77,
+          source_node_id: 1,
+          source_pin: "response-first",
+          target_node_id: 2,
+          target_pin: "input"
+        }
+      )
     end
 
     test "handles node_moved from another user without toast", %{conn: conn, user: user} do

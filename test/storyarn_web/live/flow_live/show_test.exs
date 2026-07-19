@@ -166,6 +166,13 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
          %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Non-Hub Color Flow"})
+
+      _hub =
+        node_fixture(flow, %{
+          type: "hub",
+          data: %{"hub_id" => "checkpoint", "color" => "#3b82f6"}
+        })
+
       jump = node_fixture(flow, %{type: "jump", data: %{"target_hub_id" => "checkpoint"}})
 
       url = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"

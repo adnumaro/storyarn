@@ -6,7 +6,7 @@ defmodule Storyarn.Workers.DailySnapshotWorker do
   - Skips if a manual snapshot was created within the last 6 hours
   - Skips if no entities changed since the last snapshot
   - Creates an auto snapshot with `is_auto: true`
-  - Prunes oldest auto snapshots if over the billing limit
+  - Prunes oldest auto snapshots only when destructive pruning is explicitly enabled
   """
 
   use Oban.Worker, queue: :snapshots, max_attempts: 3
@@ -71,12 +71,24 @@ defmodule Storyarn.Workers.DailySnapshotWorker do
   end
 
   defp maybe_prune_auto_snapshots(project) do
-    case Billing.can_create_project_snapshot?(project.id, project.workspace_id) do
-      :ok ->
-        :ok
+    if pruning_enabled?() do
+      case Billing.can_create_project_snapshot?(project.id, project.workspace_id) do
+        :ok ->
+          :ok
 
-      {:error, :limit_reached, _} ->
-        Versioning.prune_auto_snapshots(project.id)
+        {:error, :limit_reached, _} ->
+          Versioning.prune_auto_snapshots(project.id)
+      end
+    end
+  end
+
+  defp pruning_enabled? do
+    case Application.get_env(:storyarn, __MODULE__, []) do
+      config when is_list(config) ->
+        Keyword.keyword?(config) and Keyword.get(config, :pruning_enabled, false) == true
+
+      _invalid_config ->
+        false
     end
   end
 end

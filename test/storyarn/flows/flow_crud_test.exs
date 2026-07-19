@@ -1268,7 +1268,7 @@ defmodule Storyarn.Flows.FlowCrudTest do
       %{project: project, flow: flow} = create_project_and_flow()
       loaded = Flows.get_flow!(project.id, flow.id)
       entry = Enum.find(loaded.nodes, &(&1.type == "entry"))
-      source = node_fixture(flow, %{type: "subflow", data: %{"referenced_flow_id" => nil}})
+      source = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Source"}})
       target = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Deleted"}})
 
       Storyarn.FlowsFixtures.connection_fixture(loaded, entry, source)

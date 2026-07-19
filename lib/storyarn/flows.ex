@@ -545,6 +545,14 @@ defmodule Storyarn.Flows do
   defdelegate delete_connection(connection), to: ConnectionCrud
 
   @doc """
+  Deletes one connection by its project-scoped flow and persisted identity.
+  """
+  @spec delete_connection_by_id(integer(), integer()) ::
+          {:ok, connection()} | {:error, term()}
+  defdelegate delete_connection_by_id(flow_id, connection_id),
+    to: ConnectionCrud
+
+  @doc """
   Deletes connections between two nodes.
   """
   @spec delete_connection_by_nodes(integer(), integer(), integer()) :: {integer(), nil | term()}

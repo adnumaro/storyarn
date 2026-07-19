@@ -176,7 +176,16 @@ defmodule Storyarn.Assets.BlobStore do
       project_id
       |> blob_key(blob_hash, ext)
       |> StorageKeyLock.with_project_blob_lock(fn ->
-        materialize_and_insert_asset(changeset, project_id, blob_hash, ext, source_key, dest_key, opts)
+        materialize_and_insert_asset(
+          changeset,
+          project_id,
+          blob_hash,
+          metadata["size"],
+          ext,
+          source_key,
+          dest_key,
+          opts
+        )
       end)
     else
       {:error, changeset}
@@ -203,7 +212,7 @@ defmodule Storyarn.Assets.BlobStore do
   end
 
   defp finalize_owned_asset_copies({:error, _reason} = result, tracker, true) do
-    case StorageCompensation.cleanup(tracker) do
+    case StorageCompensation.cleanup_after_rollback(tracker) do
       :ok -> result
       {:error, cleanup_reason} -> {:error, {:storage_cleanup_failed, elem(result, 1), cleanup_reason}}
     end
@@ -211,12 +220,42 @@ defmodule Storyarn.Assets.BlobStore do
 
   defp finalize_owned_asset_copies(result, _tracker, false), do: result
 
-  defp cleanup_owned_asset_copies(tracker, true), do: StorageCompensation.cleanup!(tracker)
+  defp cleanup_owned_asset_copies(tracker, true) do
+    case StorageCompensation.cleanup_after_rollback(tracker) do
+      :ok ->
+        :ok
+
+      {:error, cleanup_reason} ->
+        Logger.error(
+          "Asset copy cleanup failed while preserving the original exception: " <>
+            inspect(cleanup_reason)
+        )
+
+        :ok
+    end
+  rescue
+    cleanup_error ->
+      Logger.error(
+        "Asset copy cleanup raised while preserving the original exception: " <>
+          Exception.format(:error, cleanup_error, __STACKTRACE__)
+      )
+
+      :ok
+  catch
+    kind, cleanup_reason ->
+      Logger.error(
+        "Asset copy cleanup threw while preserving the original exception: " <>
+          inspect({kind, cleanup_reason})
+      )
+
+      :ok
+  end
+
   defp cleanup_owned_asset_copies(_tracker, false), do: :ok
 
-  defp materialize_and_insert_asset(changeset, project_id, blob_hash, ext, source_key, dest_key, opts) do
+  defp materialize_and_insert_asset(changeset, project_id, blob_hash, expected_size, ext, source_key, dest_key, opts) do
     with {:ok, destination_blob_key, blob_created?} <-
-           ensure_destination_blob(project_id, blob_hash, ext, source_key, opts) do
+           ensure_destination_blob(project_id, blob_hash, expected_size, ext, source_key, opts) do
       owned_keys = owned_storage_keys(dest_key, destination_blob_key, blob_created?)
       Enum.each(owned_keys, &track_copy(opts, &1))
 
@@ -226,10 +265,10 @@ defmodule Storyarn.Assets.BlobStore do
     end
   end
 
-  defp ensure_destination_blob(project_id, blob_hash, ext, source_key, opts) do
+  defp ensure_destination_blob(project_id, blob_hash, expected_size, ext, source_key, opts) do
     destination_blob_key = blob_key(project_id, blob_hash, ext)
 
-    with :ok <- verify_stored_blob(source_key, blob_hash) do
+    with :ok <- verify_stored_blob(source_key, blob_hash, expected_size) do
       if source_key == destination_blob_key do
         {:ok, destination_blob_key, false}
       else
@@ -237,16 +276,17 @@ defmodule Storyarn.Assets.BlobStore do
           source_key,
           destination_blob_key,
           blob_hash,
+          expected_size,
           opts
         )
       end
     end
   end
 
-  defp copy_verified_blob_if_absent(source_key, destination_blob_key, blob_hash, opts) do
+  defp copy_verified_blob_if_absent(source_key, destination_blob_key, blob_hash, expected_size, opts) do
     case Storage.copy_if_absent(source_key, destination_blob_key) do
       {:ok, created?} ->
-        verify_copied_blob(destination_blob_key, blob_hash, created?, opts)
+        verify_copied_blob(destination_blob_key, blob_hash, expected_size, created?, opts)
 
       {:error,
        {:conditional_copy_cleanup_required, destination_created?, pending_cleanup_key, _cleanup_reason} =
@@ -271,10 +311,10 @@ defmodule Storyarn.Assets.BlobStore do
     end
   end
 
-  defp verify_copied_blob(destination_blob_key, blob_hash, created?, opts) do
+  defp verify_copied_blob(destination_blob_key, blob_hash, expected_size, created?, opts) do
     verification =
       try do
-        {:result, verify_stored_blob(destination_blob_key, blob_hash)}
+        {:result, verify_stored_blob(destination_blob_key, blob_hash, expected_size)}
       rescue
         error -> {:raised, error, __STACKTRACE__}
       catch
@@ -286,6 +326,10 @@ defmodule Storyarn.Assets.BlobStore do
         {:ok, destination_blob_key, created?}
 
       {:result, {:error, :blob_hash_mismatch} = error} ->
+        compensate_invalid_blob(opts, destination_blob_key)
+        error
+
+      {:result, {:error, {:asset_blob_size_mismatch, _expected, _actual}} = error} ->
         compensate_invalid_blob(opts, destination_blob_key)
         error
 
@@ -343,13 +387,30 @@ defmodule Storyarn.Assets.BlobStore do
     end
   end
 
-  defp verify_stored_blob(storage_key, stat, expected_hash) do
+  defp verify_stored_blob(storage_key, expected_hash, expected_size)
+       when is_binary(expected_hash) and is_integer(expected_size) do
+    with {:ok, stat} <- Storage.stat(storage_key),
+         :ok <- verify_stored_blob_size(stat, expected_size) do
+      verify_stored_blob(storage_key, stat, expected_hash)
+    end
+  end
+
+  defp verify_stored_blob(storage_key, %{size: _size} = stat, expected_hash) when is_binary(expected_hash) do
     with {:ok, chunks} <-
            Storage.stream(storage_key, 0, stat.size, etag: stat.etag),
          {:ok, actual_hash} <- StorageHash.sha256_chunks(chunks) do
       if actual_hash == expected_hash, do: :ok, else: {:error, :blob_hash_mismatch}
     end
   end
+
+  defp verify_stored_blob_size(%{size: actual_size}, expected_size)
+       when is_integer(expected_size) and expected_size >= 0 do
+    if actual_size == expected_size,
+      do: :ok,
+      else: {:error, {:asset_blob_size_mismatch, expected_size, actual_size}}
+  end
+
+  defp verify_stored_blob_size(_stat, _expected_size), do: {:error, :invalid_asset_blob_size}
 
   defp owned_storage_keys(dest_key, destination_blob_key, true), do: [dest_key, destination_blob_key]
   defp owned_storage_keys(dest_key, _destination_blob_key, false), do: [dest_key]

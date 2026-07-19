@@ -233,16 +233,7 @@ defmodule Storyarn.Sheets do
   Reorders sheets within a parent container.
   """
   @spec reorder_sheets(id(), id() | nil, [id()]) :: {:ok, [sheet()]} | {:error, term()}
-  def reorder_sheets(project_id, parent_id, sheet_ids) do
-    Repo.transaction(fn ->
-      Repo.one!(from(p in Project, where: p.id == ^project_id, lock: "FOR UPDATE"))
-
-      case TreeOperations.reorder_sheets(project_id, parent_id, sheet_ids) do
-        {:ok, sheets} -> sheets
-        {:error, reason} -> Repo.rollback(reason)
-      end
-    end)
-  end
+  defdelegate reorder_sheets(project_id, parent_id, sheet_ids), to: TreeOperations
 
   @doc """
   Moves a sheet to a new parent at a specific position, reordering siblings as needed.
@@ -251,13 +242,33 @@ defmodule Storyarn.Sheets do
           {:ok, sheet()} | {:error, validation_error() | term()}
   def move_sheet_to_position(%Sheet{} = sheet, new_parent_id, new_position) do
     fn ->
-      Repo.one!(from(p in Project, where: p.id == ^sheet.project_id, lock: "FOR UPDATE"))
-      current_sheet = Repo.get!(Sheet, sheet.id)
-
-      case SheetCrud.validate_parent(current_sheet, new_parent_id) do
-        :ok -> move_sheet_to_position_transaction(current_sheet, new_parent_id, new_position)
-        {:error, reason} -> Repo.rollback(reason)
+      case Repo.one(
+             from(project in Project,
+               where: project.id == ^sheet.project_id,
+               lock: "FOR UPDATE"
+             )
+           ) do
+        %Project{deleted_at: nil} -> :ok
+        %Project{} -> Repo.rollback(:project_not_active)
+        nil -> Repo.rollback(:project_not_found)
       end
+
+      current_sheet =
+        Repo.one(
+          from(current in Sheet,
+            where:
+              current.id == ^sheet.id and
+                current.project_id == ^sheet.project_id and
+                is_nil(current.deleted_at),
+            lock: "FOR UPDATE"
+          )
+        ) || Repo.rollback(:sheet_not_active)
+
+      move_sheet_to_position_transaction(
+        current_sheet,
+        new_parent_id,
+        new_position
+      )
     end
     |> Repo.transaction()
     |> Collaboration.broadcast_dashboard_result(sheet.project_id, :sheets)

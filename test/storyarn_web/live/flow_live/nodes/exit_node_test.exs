@@ -268,6 +268,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.NodeTest do
 
     test "sets referenced flow ID", %{socket: socket, project: project} do
       other_flow = Storyarn.FlowsFixtures.flow_fixture(project)
+      {:noreply, socket} = ExitNode.handle_update_exit_mode("flow_reference", socket)
 
       {:noreply, result} =
         ExitNode.handle_update_exit_reference(to_string(other_flow.id), socket)
@@ -348,16 +349,18 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.NodeTest do
   describe "handle_update_exit_target/2" do
     setup :setup_exit_node_socket
 
-    test "sets valid scene target", %{socket: socket} do
+    test "sets valid scene target", %{socket: socket, project: project} do
+      scene = Storyarn.ScenesFixtures.scene_fixture(project)
+
       {:noreply, result} =
         ExitNode.handle_update_exit_target(
-          %{"target_type" => "scene", "target_id" => "42"},
+          %{"target_type" => "scene", "target_id" => to_string(scene.id)},
           socket
         )
 
       node = Storyarn.Flows.get_node!(result.assigns.flow.id, result.assigns.selected_node.id)
       assert node.data["target_type"] == "scene"
-      assert node.data["target_id"] == 42
+      assert node.data["target_id"] == scene.id
     end
 
     test "clears both when type is invalid", %{socket: socket} do

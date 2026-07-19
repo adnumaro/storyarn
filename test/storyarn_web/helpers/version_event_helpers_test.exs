@@ -1,5 +1,5 @@
 defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
-  use Storyarn.DataCase, async: true
+  use Storyarn.DataCase, async: false
 
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
@@ -9,10 +9,22 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
   alias Storyarn.Accounts.Scope
   alias Storyarn.Repo
   alias Storyarn.Versioning
+  alias Storyarn.Versioning.RestorePolicy
   alias StoryarnWeb.Helpers.VersionEventHelpers
 
   setup do
     Gettext.put_locale(Storyarn.Gettext, "en")
+
+    restore_policy =
+      Application.get_env(:storyarn, RestorePolicy, [])
+
+    on_exit(fn ->
+      Application.put_env(
+        :storyarn,
+        RestorePolicy,
+        restore_policy
+      )
+    end)
 
     user = user_fixture()
     project = user |> project_fixture() |> Repo.preload(:workspace)
@@ -82,6 +94,91 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
       assert result.assigns.flash["error"] == "Could not save current state."
       refute pushed_event(result, "show_restore_modal")
       assert Versioning.count_versions("flow", flow.id) == 1
+    end
+
+    test "all forged restore events are inert while containment is active", %{
+      user: user,
+      project: project,
+      flow: flow,
+      version: version
+    } do
+      policy =
+        Application.get_env(:storyarn, RestorePolicy, [])
+
+      Application.put_env(
+        :storyarn,
+        RestorePolicy,
+        Keyword.put(policy, :flow_version_restore, false)
+      )
+
+      socket =
+        build_socket(%{
+          current_scope: Scope.for_user(user),
+          flow: flow,
+          membership: %{role: "editor"},
+          project: project
+        })
+
+      params = %{"version_number" => to_string(version.version_number)}
+      config = flow_version_config()
+
+      assert {:noreply, preview_socket} =
+               VersionEventHelpers.handle_preview_restore(params, socket, config)
+
+      assert {:noreply, save_socket} =
+               VersionEventHelpers.handle_save_and_restore(params, socket, config)
+
+      assert {:noreply, discard_socket} =
+               VersionEventHelpers.handle_discard_and_restore(params, socket, config)
+
+      assert {:noreply, confirm_socket} =
+               VersionEventHelpers.handle_confirm_restore(
+                 Map.put(params, "skip_pre_snapshot", true),
+                 socket,
+                 config
+               )
+
+      for result <- [
+            preview_socket,
+            save_socket,
+            discard_socket,
+            confirm_socket
+          ] do
+        assert result.assigns.flash["error"] == "Could not restore version."
+        refute pushed_event(result, "show_unsaved_modal")
+        refute pushed_event(result, "show_restore_modal")
+        refute pushed_event(result, "version_restored")
+      end
+
+      assert Versioning.count_versions("flow", flow.id) == 1
+    end
+
+    test "a viewer cannot forge a restore preview while the feature is enabled", %{
+      user: user,
+      project: project,
+      flow: flow,
+      version: version
+    } do
+      socket =
+        build_socket(%{
+          current_scope: Scope.for_user(user),
+          flow: flow,
+          membership: %{role: "viewer"},
+          project: project
+        })
+
+      assert {:noreply, result} =
+               VersionEventHelpers.handle_preview_restore(
+                 %{"version_number" => to_string(version.version_number)},
+                 socket,
+                 flow_version_config()
+               )
+
+      assert result.assigns.flash["error"] ==
+               "You don't have permission to perform this action."
+
+      refute pushed_event(result, "show_unsaved_modal")
+      refute pushed_event(result, "show_restore_modal")
     end
   end
 

@@ -6,6 +6,8 @@ defmodule Storyarn.Versioning.MaterializationHelpers do
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Sheets.Sheet
+  alias Storyarn.Sheets.SheetAvatar
 
   @spec now() :: DateTime.t()
   def now, do: TimeHelpers.now()
@@ -34,7 +36,12 @@ defmodule Storyarn.Versioning.MaterializationHelpers do
   @spec asset_resolution_opts(keyword(), atom()) :: keyword()
   def asset_resolution_opts(opts, asset_mode) do
     opts
-    |> Keyword.take([:asset_copy_tracker, :asset_error_mode])
+    |> Keyword.take([
+      :asset_copy_tracker,
+      :asset_error_mode,
+      :asset_materialization_cache,
+      :asset_source_keys
+    ])
     |> Keyword.put(:asset_mode, asset_mode)
   end
 
@@ -82,11 +89,11 @@ defmodule Storyarn.Versioning.MaterializationHelpers do
       |> finalize_owned_copy_tracker(tracker)
     rescue
       error ->
-        StorageCompensation.cleanup!(tracker)
+        StorageCompensation.cleanup_after_rollback!(tracker)
         reraise error, __STACKTRACE__
     catch
       kind, reason ->
-        StorageCompensation.cleanup!(tracker)
+        StorageCompensation.cleanup_after_rollback!(tracker)
         :erlang.raise(kind, reason, __STACKTRACE__)
     end
   end
@@ -96,7 +103,7 @@ defmodule Storyarn.Versioning.MaterializationHelpers do
       if successful_result?(result) do
         StorageCompensation.cleanup_unretained(tracker)
       else
-        StorageCompensation.cleanup(tracker)
+        StorageCompensation.cleanup_after_rollback(tracker)
       end
 
     case cleanup_result do
@@ -121,12 +128,17 @@ defmodule Storyarn.Versioning.MaterializationHelpers do
   def resolve_project_external_ref(nil, _schema, _map_key, _project_id, _opts), do: nil
 
   def resolve_project_external_ref(source_id, schema, map_key, project_id, opts) do
+    if not Repo.in_transaction?() do
+      raise ArgumentError,
+            "project external references must be resolved inside an explicit database transaction"
+    end
+
     cond do
+      remapped_id = resolve_external_id_map(source_id, map_key, opts) ->
+        if project_owned_ref?(schema, remapped_id, project_id), do: remapped_id
+
       not preserve_external_refs?(opts) ->
         nil
-
-      remapped_id = resolve_external_id_map(source_id, map_key, opts) ->
-        remapped_id
 
       project_owned_ref?(schema, source_id, project_id) ->
         source_id
@@ -144,17 +156,6 @@ defmodule Storyarn.Versioning.MaterializationHelpers do
     end
   end
 
-  @spec insert_all_returning(module(), module(), [map()], [atom()]) ::
-          {:ok, [map()]} | {:error, term()}
-  def insert_all_returning(_repo, _schema, [], _returning), do: {:ok, []}
-
-  def insert_all_returning(repo, schema, entries, returning) do
-    case repo.insert_all(schema, entries, returning: returning) do
-      {count, rows} when count == length(entries) -> {:ok, rows}
-      other -> {:error, {:insert_all_failed, schema, other}}
-    end
-  end
-
   @spec insert_all(module(), module(), [map()]) :: :ok | {:error, term()}
   def insert_all(_repo, _schema, []), do: :ok
 
@@ -165,34 +166,11 @@ defmodule Storyarn.Versioning.MaterializationHelpers do
     end
   end
 
-  @spec build_id_map([map()], [map()], String.t()) :: %{optional(integer()) => integer()}
-  def build_id_map(snapshot_entries, inserted_rows, original_id_key \\ "original_id") do
-    snapshot_entries
-    |> Enum.zip(inserted_rows)
-    |> Enum.reduce(%{}, fn {snapshot_entry, inserted_row}, acc ->
-      case Map.get(snapshot_entry, original_id_key) do
-        nil -> acc
-        old_id -> Map.put(acc, old_id, inserted_row.id)
-      end
-    end)
-  end
-
   @spec root_id_map(map(), integer()) :: %{optional(integer()) => integer()}
   def root_id_map(snapshot, new_id) do
     case Map.get(snapshot, "original_id") do
       nil -> %{}
       old_id -> %{old_id => new_id}
-    end
-  end
-
-  @spec remap_reference(integer() | nil, map(), boolean()) :: integer() | nil
-  def remap_reference(nil, _id_map, _preserve_external_refs?), do: nil
-
-  def remap_reference(old_id, id_map, preserve_external_refs?) do
-    case Map.fetch(id_map, old_id) do
-      {:ok, new_id} -> new_id
-      :error when preserve_external_refs? -> old_id
-      :error -> nil
     end
   end
 
@@ -203,7 +181,31 @@ defmodule Storyarn.Versioning.MaterializationHelpers do
     |> Map.get(source_id)
   end
 
+  defp project_owned_ref?(SheetAvatar, source_id, project_id) do
+    not is_nil(
+      Repo.one(
+        from avatar in SheetAvatar,
+          join: sheet in Sheet,
+          on: sheet.id == avatar.sheet_id,
+          where:
+            avatar.id == ^source_id and sheet.project_id == ^project_id and
+              is_nil(sheet.deleted_at),
+          lock: "FOR KEY SHARE",
+          select: avatar.id
+      )
+    )
+  end
+
   defp project_owned_ref?(schema, source_id, project_id) do
-    Repo.exists?(from record in schema, where: record.id == ^source_id and record.project_id == ^project_id)
+    not is_nil(
+      Repo.one(
+        from record in schema,
+          where:
+            record.id == ^source_id and record.project_id == ^project_id and
+              is_nil(field(record, :deleted_at)),
+          lock: "FOR UPDATE",
+          select: record.id
+      )
+    )
   end
 end

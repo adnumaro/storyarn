@@ -259,6 +259,22 @@ defmodule Storyarn.LocalizationTest do
       refute Localization.get_language_by_locale(project.id, "en").is_source
     end
 
+    test "change_source_language/2 rebuilds the previous source as a target when no texts existed" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      flow = flow_fixture(project)
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Existing line", "responses" => []}})
+
+      assert Localization.get_texts_for_source("flow_node", node.id) == []
+
+      assert {:ok, new_source} = Localization.change_source_language(project, "es")
+      assert new_source.locale_code == "es"
+
+      assert [%{locale_code: "en", source_text: "Existing line"}] =
+               Localization.get_texts_for_source("flow_node", node.id)
+    end
+
     test "change_source_language/2 refuses to relabel translated content" do
       user = user_fixture()
       project = project_fixture(user)
@@ -296,6 +312,48 @@ defmodule Storyarn.LocalizationTest do
 
       languages = Localization.list_languages(project.id)
       assert Enum.map(languages, & &1.locale_code) == ["de", "fr", "es"]
+    end
+
+    test "reorder_languages/2 rejects partial, duplicate, and foreign payloads" do
+      user = user_fixture()
+      project = project_fixture(user)
+      es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      fr = language_fixture(project, %{locale_code: "fr", name: "French"})
+      foreign = language_fixture(project_fixture(user), %{locale_code: "de", name: "German"})
+
+      assert {:error, :invalid_language_order} =
+               Localization.reorder_languages(project.id, [es.id])
+
+      assert {:error, :invalid_language_order} =
+               Localization.reorder_languages(project.id, [es.id, es.id])
+
+      assert {:error, :invalid_language_order} =
+               Localization.reorder_languages(project.id, [es.id, foreign.id])
+
+      assert Enum.map(Localization.list_languages(project.id), & &1.id) == [es.id, fr.id]
+    end
+
+    test "language writers reject stale structs after the project enters trash" do
+      project = project_fixture(user_fixture())
+      language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      project
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
+      |> Repo.update!()
+
+      assert {:error, :project_not_active} =
+               Localization.add_language(project, %{locale_code: "fr", name: "French"})
+
+      assert {:error, :project_not_active} =
+               Localization.update_language(language, %{name: "Changed"})
+
+      assert {:error, :project_not_active} =
+               Localization.remove_language(language)
+
+      assert {:error, :project_not_active} =
+               Localization.reorder_languages(project.id, [language.id])
+
+      assert Repo.reload!(language).name == "Spanish"
     end
   end
 
@@ -958,6 +1016,22 @@ defmodule Storyarn.LocalizationTest do
       assert config.project_id == project.id
       assert config.provider == "deepl"
       assert config.is_active == true
+    end
+
+    test "upsert_provider_config/2 rejects a stale project struct in trash" do
+      project = project_fixture(user_fixture())
+
+      project
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
+      |> Repo.update!()
+
+      assert {:error, :project_not_active} =
+               Localization.upsert_provider_config(project, %{
+                 "is_active" => true,
+                 "api_endpoint" => "https://api-free.deepl.com"
+               })
+
+      assert Localization.get_provider_config(project.id) == nil
     end
 
     test "upsert_provider_config/2 rejects non-DeepL API endpoints" do

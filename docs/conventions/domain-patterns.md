@@ -295,9 +295,9 @@ end
 
 ```elixir
 # Behaviour + Adapter pattern
-Storyarn.Assets.Storage.adapter().upload(key, data, content_type)
-Storyarn.Assets.Storage.adapter().delete(key)
-Storyarn.Assets.Storage.adapter().get_url(key)
+Storyarn.Assets.Storage.upload(key, data, content_type)
+Storyarn.Assets.Storage.delete(key)
+Storyarn.Assets.Storage.get_url(key)
 
 # Key generation
 key = Assets.generate_key(project, filename)
@@ -305,3 +305,6 @@ key = Assets.generate_key(project, filename)
 ```
 
 Adapters: `Storage.Local` (dev) and `Storage.R2` (prod, Cloudflare R2/S3-compatible).
+Application code always goes through the `Storage` facade so deletion safety
+checks cannot be bypassed. Direct adapter deletion is reserved for explicit
+test-only helpers that simulate provider-side loss or clean up fixtures.

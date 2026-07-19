@@ -6,6 +6,7 @@ defmodule Storyarn.Localization.GlossarySync do
   alias Storyarn.Localization.GlossaryCrud
   alias Storyarn.Localization.ProviderConfig
   alias Storyarn.Localization.Providers.DeepL
+  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
 
   @hashes_key "glossary_hashes"
@@ -147,7 +148,26 @@ defmodule Storyarn.Localization.GlossarySync do
   end
 
   defp lock_config!(config_id) do
-    Repo.one!(from(c in ProviderConfig, where: c.id == ^config_id, lock: "FOR UPDATE"))
+    project_id =
+      Repo.one(
+        from(config in ProviderConfig,
+          where: config.id == ^config_id,
+          select: config.project_id
+        )
+      ) || Repo.rollback(:provider_config_not_found)
+
+    case ProjectReferenceIntegrity.lock_active_project(project_id, :update) do
+      {:ok, _project} ->
+        Repo.one!(
+          from(config in ProviderConfig,
+            where: config.id == ^config_id and config.project_id == ^project_id,
+            lock: "FOR UPDATE"
+          )
+        )
+
+      {:error, reason} ->
+        Repo.rollback(reason)
+    end
   end
 
   defp update_pair!(config, pair, glossary_id, hash) do

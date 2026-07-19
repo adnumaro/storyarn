@@ -31,6 +31,7 @@ interface SheetHistoryPanel {
   canNameVersion: boolean;
   currentVersionId: number | null;
   canEdit: boolean;
+  restoreEnabled: boolean;
   loading: boolean;
 }
 
@@ -88,6 +89,7 @@ const { panels } = defineProps<{
         :can-name-version="panels.history.canNameVersion"
         :current-version-id="panels.history.currentVersionId"
         :can-edit="panels.history.canEdit"
+        :restore-enabled="panels.history.restoreEnabled"
         :loading="panels.history.loading"
       />
     </div>

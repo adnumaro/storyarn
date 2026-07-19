@@ -8,6 +8,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrudTest do
 
   alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectSnapshot
+  alias Storyarn.Versioning.SnapshotStorage
 
   setup do
     user = user_fixture()
@@ -30,6 +31,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrudTest do
       assert snapshot.title == "v1"
       assert snapshot.storage_key =~ ~r|snapshots/project/#{snapshot.version_number}-[a-f0-9]{16}\.json\.gz$|
       assert snapshot.snapshot_size_bytes > 0
+      assert snapshot.checksum =~ ~r/\A[0-9a-f]{64}\z/
       assert snapshot.created_by_id == user.id
       assert snapshot.entity_counts["sheets"] >= 1
       assert snapshot.entity_counts["flows"] >= 1
@@ -174,5 +176,116 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrudTest do
       assert {:ok, result} = Versioning.restore_project_snapshot(project.id, snapshot)
       assert result.skipped >= 1
     end
+
+    test "rejects an enclosing transaction before creating safety snapshot rows or blobs", %{
+      project: project,
+      user: user
+    } do
+      {:ok, snapshot} =
+        Versioning.create_project_snapshot(project.id, user.id, title: "Transaction boundary")
+
+      snapshot_count = Versioning.count_project_snapshots(project.id)
+      stored_paths = stored_snapshot_paths(project.id)
+
+      assert {:ok, {:error, :project_snapshot_restore_transaction_owner_required}} =
+               Repo.transaction(fn ->
+                 Versioning.restore_project_snapshot(
+                   project.id,
+                   snapshot,
+                   user_id: user.id
+                 )
+               end)
+
+      assert Versioning.count_project_snapshots(project.id) == snapshot_count
+      assert stored_snapshot_paths(project.id) == stored_paths
+    end
+
+    test "rejects a same-cardinality tampered blob before safety snapshots or mutation", %{
+      project: project,
+      user: user,
+      sheet: sheet
+    } do
+      {:ok, snapshot} =
+        Versioning.create_project_snapshot(project.id, user.id, title: "Checksum boundary")
+
+      assert {:ok, snapshot_data} =
+               SnapshotStorage.load_snapshot(snapshot.storage_key)
+
+      tampered_data =
+        put_in(
+          snapshot_data,
+          ["sheets", Access.at(0), "snapshot", "name"],
+          "Tampered snapshot name"
+        )
+
+      assert {:ok, _size} =
+               SnapshotStorage.store_raw(snapshot.storage_key, tampered_data)
+
+      {:ok, _sheet} =
+        Storyarn.Sheets.update_sheet(sheet, %{name: "Current state"})
+
+      snapshot_count = Versioning.count_project_snapshots(project.id)
+
+      assert {:error, {:project_snapshot_checksum_mismatch, expected_checksum, actual_checksum}} =
+               Versioning.restore_project_snapshot(
+                 project.id,
+                 snapshot,
+                 user_id: user.id
+               )
+
+      assert expected_checksum == snapshot.checksum
+      refute actual_checksum == expected_checksum
+      assert Storyarn.Sheets.get_sheet(project.id, sheet.id).name == "Current state"
+      assert Versioning.count_project_snapshots(project.id) == snapshot_count
+    end
+
+    test "rejects a snapshot owned by another project before safety snapshots", %{
+      project: source_project,
+      user: user
+    } do
+      {:ok, snapshot} =
+        Versioning.create_project_snapshot(source_project.id, user.id, title: "Private source")
+
+      destination_project = project_fixture(user)
+      destination_sheet = sheet_fixture(destination_project, %{name: "Destination state"})
+
+      source_count = Versioning.count_project_snapshots(source_project.id)
+      destination_count = Versioning.count_project_snapshots(destination_project.id)
+
+      assert {:error, :snapshot_project_mismatch} =
+               Versioning.restore_project_snapshot(
+                 destination_project.id,
+                 snapshot,
+                 user_id: user.id
+               )
+
+      forged_snapshot = %{snapshot | project_id: destination_project.id}
+
+      assert {:error, :snapshot_project_mismatch} =
+               Versioning.restore_project_snapshot(
+                 destination_project.id,
+                 forged_snapshot,
+                 user_id: user.id
+               )
+
+      assert Versioning.count_project_snapshots(source_project.id) == source_count
+      assert Versioning.count_project_snapshots(destination_project.id) == destination_count
+
+      assert Storyarn.Sheets.get_sheet(destination_project.id, destination_sheet.id).name ==
+               "Destination state"
+    end
+  end
+
+  defp stored_snapshot_paths(project_id) do
+    upload_dir =
+      :storyarn
+      |> Application.fetch_env!(:storage)
+      |> Keyword.fetch!(:upload_dir)
+      |> Path.expand()
+
+    upload_dir
+    |> Path.join("projects/#{project_id}/snapshots/project/*")
+    |> Path.wildcard()
+    |> MapSet.new()
   end
 end

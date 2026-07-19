@@ -3,13 +3,16 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
 
   alias Storyarn.Versioning.ProjectSnapshot
 
+  @checksum String.duplicate("a", 64)
+
   describe "changeset/2" do
     test "valid changeset with required fields" do
       attrs = %{
         project_id: 1,
         version_number: 1,
         storage_key: "projects/1/snapshots/project/1.json.gz",
-        snapshot_size_bytes: 1024
+        snapshot_size_bytes: 1024,
+        checksum: @checksum
       }
 
       changeset = ProjectSnapshot.changeset(%ProjectSnapshot{}, attrs)
@@ -24,7 +27,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
                project_id: ["can't be blank"],
                version_number: ["can't be blank"],
                storage_key: ["can't be blank"],
-               snapshot_size_bytes: ["can't be blank"]
+               snapshot_size_bytes: ["can't be blank"],
+               checksum: ["can't be blank"]
              } = errors_on(changeset)
     end
 
@@ -34,6 +38,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
         version_number: 1,
         storage_key: "key",
         snapshot_size_bytes: 100,
+        checksum: @checksum,
         title: String.duplicate("a", 256)
       }
 
@@ -47,6 +52,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
         version_number: 1,
         storage_key: "key",
         snapshot_size_bytes: 100,
+        checksum: @checksum,
         description: String.duplicate("a", 501)
       }
 
@@ -59,7 +65,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
         project_id: 1,
         version_number: 1,
         storage_key: "key",
-        snapshot_size_bytes: -1
+        snapshot_size_bytes: -1,
+        checksum: @checksum
       }
 
       changeset = ProjectSnapshot.changeset(%ProjectSnapshot{}, attrs)
@@ -72,6 +79,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
         version_number: 1,
         storage_key: "key",
         snapshot_size_bytes: 100,
+        checksum: @checksum,
         title: "Before playtest",
         description: "Full project backup",
         entity_counts: %{"sheets" => 5, "flows" => 3, "scenes" => 2}
@@ -79,6 +87,19 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
 
       changeset = ProjectSnapshot.changeset(%ProjectSnapshot{}, attrs)
       assert changeset.valid?
+    end
+
+    test "rejects a malformed checksum" do
+      attrs = %{
+        project_id: 1,
+        version_number: 1,
+        storage_key: "key",
+        snapshot_size_bytes: 100,
+        checksum: "not-a-sha256"
+      }
+
+      changeset = ProjectSnapshot.changeset(%ProjectSnapshot{}, attrs)
+      assert %{checksum: ["has invalid format"]} = errors_on(changeset)
     end
   end
 

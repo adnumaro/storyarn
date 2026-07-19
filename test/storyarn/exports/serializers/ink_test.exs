@@ -609,7 +609,10 @@ defmodule Storyarn.Exports.Serializers.InkTest do
       subflow_node =
         node_fixture(caller_flow, %{
           type: "subflow",
-          data: %{"flow_shortcut" => target_flow.shortcut}
+          data: %{
+            "flow_shortcut" => target_flow.shortcut,
+            "referenced_flow_id" => target_flow.id
+          }
         })
 
       after_dialogue =
@@ -619,7 +622,10 @@ defmodule Storyarn.Exports.Serializers.InkTest do
         })
 
       connection_fixture(caller_flow, caller_entry, subflow_node)
-      connection_fixture(caller_flow, subflow_node, after_dialogue)
+
+      connection_fixture(caller_flow, subflow_node, after_dialogue, %{
+        source_pin: "exit_#{target_exit.id}"
+      })
 
       source = ink_source(export_ink(project))
       assert source =~ "->->"

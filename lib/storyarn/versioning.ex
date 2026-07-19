@@ -18,6 +18,7 @@ defmodule Storyarn.Versioning do
   alias Storyarn.Versioning.ProjectRecovery
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.ProjectSnapshotCrud
+  alias Storyarn.Versioning.RestorePolicy
   alias Storyarn.Versioning.SnapshotDiff
   alias Storyarn.Versioning.SnapshotViewer
   alias Storyarn.Versioning.VersionCrud
@@ -106,7 +107,21 @@ defmodule Storyarn.Versioning do
   @doc """
   Loads a version's snapshot from storage and restores the entity.
   """
-  defdelegate restore_version(entity_type, entity, version, opts \\ []), to: VersionCrud
+  def restore_version(entity_type, entity, version, opts \\ []) do
+    with :ok <- RestorePolicy.ensure_enabled({:entity_version_restore, entity_type}) do
+      VersionCrud.restore_version(entity_type, entity, version, opts)
+    end
+  end
+
+  @doc """
+  Returns whether a mutating restore surface is currently enabled.
+  """
+  defdelegate restore_enabled?(action), to: RestorePolicy, as: :enabled?
+
+  @doc """
+  Returns `:ok` when a mutating restore surface is enabled.
+  """
+  defdelegate ensure_restore_enabled(action), to: RestorePolicy, as: :ensure_enabled
 
   @doc """
   Loads a version's snapshot from storage.
@@ -145,7 +160,11 @@ defmodule Storyarn.Versioning do
   @doc """
   Restores all project entities from a snapshot.
   """
-  defdelegate restore_project_snapshot(project_id, snapshot, opts \\ []), to: ProjectSnapshotCrud, as: :restore_snapshot
+  def restore_project_snapshot(project_id, snapshot, opts \\ []) do
+    with :ok <- RestorePolicy.ensure_enabled(:project_snapshot_restore) do
+      ProjectSnapshotCrud.restore_snapshot(project_id, snapshot, opts)
+    end
+  end
 
   @doc """
   Deletes a project snapshot and its storage.

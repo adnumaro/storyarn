@@ -60,6 +60,15 @@ config :storyarn, Storyarn.Repo,
   queue_target: 500,
   queue_interval: 1000
 
+# Existing restore contract tests exercise the implementation with restores
+# enabled. Containment tests override this configuration explicitly.
+config :storyarn, Storyarn.Versioning.RestorePolicy,
+  sheet_version_restore: true,
+  flow_version_restore: true,
+  scene_version_restore: true,
+  project_snapshot_restore: true,
+  deleted_project_recovery: true
+
 # Server is enabled for E2E tests (Playwright requires a running server)
 config :storyarn, StoryarnWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: String.to_integer(System.get_env("MIX_TEST_PORT", "4002"))],

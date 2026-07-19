@@ -136,8 +136,8 @@ defmodule Storyarn.Assets.BlobStoreTest do
                )
 
       on_exit(fn ->
-        Storage.delete(source_blob_key)
-        Storage.delete(destination_blob_key)
+        delete_storage_blob(source_blob_key)
+        delete_storage_blob(destination_blob_key)
         Storage.delete(asset.key)
       end)
 
@@ -160,8 +160,8 @@ defmodule Storyarn.Assets.BlobStoreTest do
                BlobStore.ensure_blob(source_project.id, actual_hash, "png", content)
 
       on_exit(fn ->
-        Storage.delete(source_blob_key)
-        Storage.delete(destination_blob_key)
+        delete_storage_blob(source_blob_key)
+        delete_storage_blob(destination_blob_key)
       end)
 
       metadata = %{
@@ -196,6 +196,8 @@ defmodule Storyarn.Assets.BlobStoreTest do
       destination_project = project_fixture(user)
       content = "verified portable template asset"
       corrupt_content = "corrupt destination bytes"
+      expected_size = byte_size(content)
+      corrupt_size = byte_size(corrupt_content)
       hash = BlobStore.compute_hash(content)
       source_blob_key = BlobStore.blob_key(source_project.id, hash, "png")
       destination_blob_key = BlobStore.blob_key(destination_project.id, hash, "png")
@@ -206,17 +208,17 @@ defmodule Storyarn.Assets.BlobStoreTest do
       assert {:ok, _url} = Storage.upload(destination_blob_key, corrupt_content, "image/png")
 
       on_exit(fn ->
-        Storage.delete(source_blob_key)
-        Storage.delete(destination_blob_key)
+        delete_storage_blob(source_blob_key)
+        delete_storage_blob(destination_blob_key)
       end)
 
       metadata = %{
         "filename" => "corrupt.png",
         "content_type" => "image/png",
-        "size" => byte_size(content)
+        "size" => expected_size
       }
 
-      assert {:error, :blob_hash_mismatch} =
+      assert {:error, {:asset_blob_size_mismatch, ^expected_size, ^corrupt_size}} =
                BlobStore.create_asset_from_blob(
                  destination_project.id,
                  user.id,
@@ -268,7 +270,7 @@ defmodule Storyarn.Assets.BlobStoreTest do
                end)
 
       on_exit(fn ->
-        Storage.delete(blob_key)
+        delete_storage_blob(blob_key)
         Storage.delete(asset_key)
       end)
 
@@ -315,8 +317,8 @@ defmodule Storyarn.Assets.BlobStoreTest do
                end)
 
       on_exit(fn ->
-        Storage.delete(source_blob_key)
-        Storage.delete(destination_blob_key)
+        delete_storage_blob(source_blob_key)
+        delete_storage_blob(destination_blob_key)
         Storage.delete(asset_key)
       end)
 
@@ -368,8 +370,8 @@ defmodule Storyarn.Assets.BlobStoreTest do
                end)
 
       on_exit(fn ->
-        Storage.delete(source_blob_key)
-        Storage.delete(destination_blob_key)
+        delete_storage_blob(source_blob_key)
+        delete_storage_blob(destination_blob_key)
         Storage.delete(asset_key)
       end)
 
@@ -412,9 +414,9 @@ defmodule Storyarn.Assets.BlobStoreTest do
                )
 
       on_exit(fn ->
-        Storage.delete(source_blob_key)
-        Storage.delete(destination_blob_key)
-        Storage.delete(pending_cleanup_key)
+        delete_storage_blob(source_blob_key)
+        delete_storage_blob(destination_blob_key)
+        delete_storage_blob(pending_cleanup_key)
       end)
 
       assert {:error, _reason} = Storage.download(destination_blob_key)
@@ -456,9 +458,9 @@ defmodule Storyarn.Assets.BlobStoreTest do
                )
 
       on_exit(fn ->
-        Storage.delete(source_blob_key)
-        Storage.delete(destination_blob_key)
-        Storage.delete(pending_cleanup_key)
+        delete_storage_blob(source_blob_key)
+        delete_storage_blob(destination_blob_key)
+        delete_storage_blob(pending_cleanup_key)
       end)
 
       assert {:ok, ^content} = Storage.download(destination_blob_key)
@@ -478,7 +480,7 @@ defmodule Storyarn.Assets.BlobStoreTest do
       asset_glob = asset_file_glob(project.id, "payload.svg")
 
       on_exit(fn ->
-        Storage.delete(blob_key)
+        delete_storage_blob(blob_key)
         asset_glob |> Path.wildcard() |> Enum.each(&File.rm/1)
       end)
 
@@ -515,7 +517,7 @@ defmodule Storyarn.Assets.BlobStoreTest do
                BlobStore.create_asset_from_blob(project.id, user.id, hash, blob_key, metadata)
 
       on_exit(fn ->
-        Storage.delete(blob_key)
+        delete_storage_blob(blob_key)
         Storage.delete(new_asset.key)
       end)
 

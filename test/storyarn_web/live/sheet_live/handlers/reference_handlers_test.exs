@@ -65,7 +65,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.ReferenceHandlersTest do
       })
 
       updated_block = Sheets.get_block(other_block.id)
-      assert updated_block.value == %{}
+      assert updated_block.value == other_block.value
     end
   end
 end

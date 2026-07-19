@@ -7,6 +7,8 @@ defmodule Storyarn.Flows.NodeCrudTest do
 
   alias Storyarn.Collaboration
   alias Storyarn.Flows
+  alias Storyarn.Flows.FlowNode
+  alias Storyarn.Repo
 
   # ===========================================================================
   # Setup helpers
@@ -514,7 +516,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
         })
 
       assert subflow.type == "subflow"
-      assert subflow.data["referenced_flow_id"] == to_string(target_flow.id)
+      assert subflow.data["referenced_flow_id"] == target_flow.id
     end
 
     test "rejects self-referencing subflow" do
@@ -782,14 +784,16 @@ defmodule Storyarn.Flows.NodeCrudTest do
       assert is_nil(updated.parent_id)
     end
 
-    test "rejects parent_id referencing a non-sequence node (DB trigger)" do
+    test "rejects parent_id referencing a non-sequence node before writing" do
       %{flow: flow} = create_project_and_flow()
       node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "a"}})
       target = node_fixture(flow, %{type: "dialogue", data: %{"text" => "b"}})
 
-      assert_raise Postgrex.Error, ~r/only sequence nodes can be parents/, fn ->
-        Flows.update_node_parent(node, target.id)
-      end
+      assert {:error, {:invalid_node_parent, target_id}} =
+               Flows.update_node_parent(node, target.id)
+
+      assert target_id == target.id
+      assert is_nil(Repo.get!(FlowNode, node.id).parent_id)
     end
 
     test "does not mutate other fields" do
@@ -821,7 +825,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
         Flows.update_node_data(node, %{"text" => "New text", "speaker_sheet_id" => nil})
 
       assert updated.data["text"] == "New text"
-      assert meta == %{renamed_jumps: 0}
+      assert meta == %{connections_changed?: false, renamed_jumps: 0}
     end
 
     test "updates condition node expression" do
@@ -888,7 +892,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
 
       assert updated.data["label"] == "Updated Alpha"
       assert updated.data["color"] == "#ef4444"
-      assert meta == %{renamed_jumps: 0}
+      assert meta == %{connections_changed?: false, renamed_jumps: 0}
     end
 
     test "hub rename cascades to referencing jump nodes" do
@@ -1098,12 +1102,40 @@ defmodule Storyarn.Flows.NodeCrudTest do
       assert result == {:error, :cannot_delete_entry_node}
     end
 
+    test "uses the persisted type so a forged struct cannot delete the entry node" do
+      %{flow: flow} = create_project_and_flow()
+      entry = get_entry_node(flow)
+
+      assert {:error, :cannot_delete_entry_node} =
+               Flows.delete_node(%{entry | type: "dialogue"})
+
+      assert Flows.get_node!(flow.id, entry.id).type == "entry"
+    end
+
     test "cannot delete the last exit node" do
       %{flow: flow} = create_project_and_flow()
       exit_node = get_exit_node(flow)
 
       result = Flows.delete_node(exit_node)
       assert result == {:error, :cannot_delete_last_exit}
+    end
+
+    test "uses persisted state when a stale struct disguises the last exit" do
+      %{flow: flow} = create_project_and_flow()
+      last_exit = get_exit_node(flow)
+
+      {:ok, extra_exit} =
+        Flows.create_node(flow, %{
+          type: "exit",
+          data: %{"label" => "Extra", "exit_mode" => "terminal"}
+        })
+
+      {:ok, _deleted, _meta} = Flows.delete_node(extra_exit)
+
+      assert {:error, :cannot_delete_last_exit} =
+               Flows.delete_node(%{last_exit | type: "dialogue"})
+
+      assert Flows.get_node!(flow.id, last_exit.id).type == "exit"
     end
 
     test "can delete exit when multiple exits exist" do
@@ -1213,6 +1245,17 @@ defmodule Storyarn.Flows.NodeCrudTest do
       %{flow: flow} = create_project_and_flow()
 
       assert {:error, :not_found} = Flows.restore_node(flow.id, -1)
+    end
+
+    test "does not restore a node below a trashed flow" do
+      %{flow: flow} = create_project_and_flow()
+      node = node_fixture(flow, %{type: "dialogue"})
+
+      {:ok, _deleted, _meta} = Flows.delete_node(node)
+      {:ok, _deleted_flow} = Flows.delete_flow(flow)
+
+      assert {:error, :flow_not_found} = Flows.restore_node(flow.id, node.id)
+      assert Repo.get!(FlowNode, node.id).deleted_at
     end
   end
 
@@ -1831,8 +1874,6 @@ defmodule Storyarn.Flows.NodeCrudTest do
 
   describe "delete_node/1 — hub with nil/empty hub_id" do
     test "deleting hub with nil hub_id does not crash" do
-      alias Storyarn.Flows.FlowNode
-
       %{flow: flow} = create_project_and_flow()
 
       # Create a hub node with a valid hub_id
@@ -1847,7 +1888,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
       {:ok, updated_hub} =
         hub
         |> FlowNode.data_changeset(%{data: %{"hub_id" => nil, "label" => "Nil Hub"}})
-        |> Storyarn.Repo.update()
+        |> Repo.update()
 
       {:ok, deleted, meta} = Flows.delete_node(updated_hub)
       assert deleted.deleted_at
@@ -1861,8 +1902,6 @@ defmodule Storyarn.Flows.NodeCrudTest do
   # ===========================================================================
 
   describe "FlowNode schema" do
-    alias Storyarn.Flows.FlowNode
-
     test "node_types/0 returns all valid node types" do
       types = FlowNode.node_types()
       assert is_list(types)

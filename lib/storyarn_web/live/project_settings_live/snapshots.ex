@@ -39,6 +39,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
         snapshots={serialize_snapshots(@snapshots)}
         can-create-snapshot={@can_create_snapshot}
         restoration-in-progress={@restoration_in_progress}
+        restore-enabled={@restore_enabled}
         workspace-slug={@workspace.slug}
         project-slug={@project.slug}
       />
@@ -84,6 +85,10 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
         )
         |> assign(:snapshot_form, to_form(snapshot_changeset(%{}), as: "snapshot"))
         |> assign(:restoration_in_progress, restoration_in_progress?(project.id))
+        |> assign(
+          :restore_enabled,
+          Versioning.restore_enabled?(:project_snapshot_restore)
+        )
         |> maybe_subscribe_restoration(project.id)
 
       {:ok, socket}

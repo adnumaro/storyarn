@@ -345,7 +345,10 @@ defmodule Storyarn.Projects.ProjectCrud do
         set: [restoration_in_progress: false, restoration_started_by_id: nil, restoration_started_at: nil]
       )
 
-    {:ok, Repo.get!(Project, project_id)}
+    case Repo.get(Project, project_id) do
+      nil -> {:error, :not_found}
+      project -> {:ok, project}
+    end
   end
 
   @doc """

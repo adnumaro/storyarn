@@ -14,13 +14,16 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
   alias Storyarn.Versioning.ProjectSnapshot
+  alias Storyarn.Versioning.ProjectSnapshotIntegrity
+  alias Storyarn.Versioning.RestorePolicy
   alias Storyarn.Versioning.SnapshotStorage
   alias Storyarn.Versioning.VersionNumberLock
 
   require Logger
 
-  # Version number allocation is serialized per project. The retry path remains
-  # as a defensive fallback if an external writer bypasses the lock.
+  # Project capture and version number allocation are serialized per project.
+  # The retry path remains as a defensive fallback if an external writer
+  # bypasses the lock.
   @max_retries 3
 
   # ========== Create ==========
@@ -38,21 +41,33 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
   @spec create_snapshot(integer(), integer() | nil, keyword()) ::
           {:ok, ProjectSnapshot.t()} | {:error, term()}
   def create_snapshot(project_id, user_id, opts \\ []) do
-    snapshot = ProjectSnapshotBuilder.build_snapshot(project_id)
-
-    params = %{
-      project_id: project_id,
-      user_id: user_id,
-      snapshot: snapshot,
-      entity_counts: snapshot["entity_counts"],
-      title: Keyword.get(opts, :title),
-      description: Keyword.get(opts, :description),
-      is_auto: Keyword.get(opts, :is_auto, false)
-    }
-
     VersionNumberLock.project_snapshot(project_id, fn ->
+      snapshot = ProjectSnapshotBuilder.build_snapshot(project_id)
+      :ok = run_snapshot_captured_hook(opts, snapshot)
+
+      params = %{
+        project_id: project_id,
+        user_id: user_id,
+        snapshot: snapshot,
+        entity_counts: snapshot["entity_counts"],
+        title: Keyword.get(opts, :title),
+        description: Keyword.get(opts, :description),
+        is_auto: Keyword.get(opts, :is_auto, false)
+      }
+
       store_and_insert_snapshot(params, _attempt = 1)
     end)
+  end
+
+  defp run_snapshot_captured_hook(opts, snapshot) do
+    case Keyword.get(opts, :__snapshot_captured_hook) do
+      hook when is_function(hook, 1) ->
+        hook.(snapshot)
+        :ok
+
+      _hook ->
+        :ok
+    end
   end
 
   defp store_and_insert_snapshot(params, attempt) do
@@ -66,8 +81,14 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
       )
 
     case store_snapshot(storage_key, params.snapshot) do
-      {:ok, size_bytes} ->
-        case insert_snapshot_record(params, version_number, storage_key, size_bytes) do
+      {:ok, size_bytes, checksum} ->
+        case insert_snapshot_record(
+               params,
+               version_number,
+               storage_key,
+               size_bytes,
+               checksum
+             ) do
           {:ok, snapshot} ->
             {:ok, snapshot}
 
@@ -81,10 +102,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
   end
 
   defp store_snapshot(key, snapshot) do
-    SnapshotStorage.store_raw(key, snapshot)
+    SnapshotStorage.store_raw_with_checksum(key, snapshot)
   end
 
-  defp insert_snapshot_record(params, version_number, storage_key, size_bytes) do
+  defp insert_snapshot_record(params, version_number, storage_key, size_bytes, checksum) do
     %ProjectSnapshot{}
     |> ProjectSnapshot.changeset(%{
       project_id: params.project_id,
@@ -93,6 +114,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
       description: params.description,
       storage_key: storage_key,
       snapshot_size_bytes: size_bytes,
+      checksum: checksum,
       entity_counts: params.entity_counts,
       created_by_id: params.user_id,
       is_auto: params.is_auto
@@ -229,12 +251,23 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
   def restore_snapshot(project_id, %ProjectSnapshot{} = snapshot, opts \\ []) do
     user_id = Keyword.get(opts, :user_id)
 
-    with {:ok, snapshot_data} <- SnapshotStorage.load_snapshot(snapshot.storage_key) do
-      maybe_create_pre_restore_snapshot(project_id, snapshot, user_id)
+    with :ok <- ensure_restore_transaction_owner(),
+         :ok <- RestorePolicy.ensure_enabled(:project_snapshot_restore),
+         {:ok, owned_snapshot} <- fetch_owned_snapshot(project_id, snapshot),
+         {:ok, snapshot_data, actual_checksum} <-
+           SnapshotStorage.load_snapshot_with_checksum(owned_snapshot.storage_key),
+         :ok <-
+           ProjectSnapshotIntegrity.validate_recovery_blob(
+             snapshot_data,
+             owned_snapshot.entity_counts,
+             owned_snapshot.checksum,
+             actual_checksum
+           ) do
+      maybe_create_pre_restore_snapshot(project_id, owned_snapshot, user_id)
 
       case ProjectSnapshotBuilder.restore_snapshot(project_id, snapshot_data, opts) do
         {:ok, result} ->
-          maybe_create_post_restore_snapshot(project_id, snapshot, user_id)
+          maybe_create_post_restore_snapshot(project_id, owned_snapshot, user_id)
           {:ok, result}
 
         {:error, _} = error ->
@@ -242,6 +275,22 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
       end
     end
   end
+
+  defp ensure_restore_transaction_owner do
+    if Repo.in_transaction?(),
+      do: {:error, :project_snapshot_restore_transaction_owner_required},
+      else: :ok
+  end
+
+  defp fetch_owned_snapshot(project_id, %ProjectSnapshot{id: snapshot_id, project_id: project_id})
+       when is_integer(snapshot_id) do
+    case Repo.get_by(ProjectSnapshot, id: snapshot_id, project_id: project_id) do
+      %ProjectSnapshot{} = owned_snapshot -> {:ok, owned_snapshot}
+      nil -> {:error, :snapshot_project_mismatch}
+    end
+  end
+
+  defp fetch_owned_snapshot(_project_id, %ProjectSnapshot{}), do: {:error, :snapshot_project_mismatch}
 
   defp maybe_create_pre_restore_snapshot(_project_id, _snapshot, nil), do: :noop
 

@@ -48,7 +48,10 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
 
     # 3. Write to DB
     case Flows.update_node_data(node, new_data) do
-      {:ok, updated_node, %{renamed_jumps: renamed_count}} ->
+      {:ok, updated_node, meta} ->
+        renamed_count = Map.get(meta, :renamed_jumps, 0)
+        connections_changed? = Map.get(meta, :connections_changed?, false)
+        full_refresh? = renamed_count > 0 or connections_changed?
         form = FormHelpers.node_data_to_form(updated_node)
 
         socket =
@@ -59,13 +62,17 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
           |> mark_saved()
           |> schedule(:flow)
           |> maybe_refresh_referencing_jumps(updated_node)
-          |> push_node_or_flow_update(updated_node, renamed_count)
+          |> push_node_or_flow_update(
+            updated_node,
+            renamed_count,
+            connections_changed?
+          )
           |> maybe_refresh_dialogue_panel(updated_node)
 
         # Broadcast node data change to other users
         socket =
-          if renamed_count > 0 do
-            # Hub rename cascaded — broadcast full flow refresh
+          if full_refresh? do
+            # Hub cascades and pin reconciliation both mutate more than one row.
             CollaborationHelpers.broadcast_change(socket, :flow_refresh, %{})
           else
             CollaborationHelpers.broadcast_change(socket, :node_updated, %{
@@ -74,17 +81,17 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
             })
           end
 
-        # Push undo snapshot only when no cascade occurred.
-        # Hub rename cascade triggers flow_updated → history.clear() anyway.
+        # Full graph mutations trigger flow_updated → history.clear(); a
+        # node-only undo snapshot could not recreate deleted connections.
         socket =
-          if renamed_count == 0 do
+          if full_refresh? do
+            socket
+          else
             push_event(socket, "node_data_changed", %{
               id: node_id,
               prev_data: old_data,
               new_data: new_data
             })
-          else
-            socket
           end
 
         {:noreply, socket}
@@ -399,8 +406,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
 
   defp maybe_add_type_warning_flag(data, _type, _project_variables), do: data
 
-  # Pushes a full flow update when hub renames cascaded, otherwise a single node update.
-  defp push_node_or_flow_update(socket, _node, renamed_count) when renamed_count > 0 do
+  # Pushes a full flow update for graph-wide mutations, otherwise a single node update.
+  defp push_node_or_flow_update(socket, _node, renamed_count, _connections_changed?) when renamed_count > 0 do
     socket
     |> put_flash(
       :info,
@@ -416,7 +423,11 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
     |> push_event("flow_updated", socket.assigns.flow_data)
   end
 
-  defp push_node_or_flow_update(socket, node, _renamed_count) do
+  defp push_node_or_flow_update(socket, _node, _renamed_count, true) do
+    push_event(socket, "flow_updated", socket.assigns.flow_data)
+  end
+
+  defp push_node_or_flow_update(socket, node, _renamed_count, false) do
     push_event(socket, "node_updated", %{
       id: node.id,
       data: canvas_data(node, socket.assigns.flow.project_id)
@@ -514,20 +525,30 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
     node = Flows.get_node!(socket.assigns.flow.id, node_id)
 
     case Flows.update_node_data(node, data) do
-      {:ok, updated_node, _meta} ->
+      {:ok, updated_node, meta} ->
         form = FormHelpers.node_data_to_form(updated_node)
 
+        full_refresh? =
+          Map.get(meta, :renamed_jumps, 0) > 0 or
+            Map.get(meta, :connections_changed?, false)
+
+        socket =
+          socket
+          |> reload_flow_data()
+          |> assign(:selected_node, updated_node)
+          |> assign(:node_form, form)
+          |> mark_saved()
+          |> maybe_refresh_referencing_jumps(updated_node)
+
         {:noreply,
-         socket
-         |> reload_flow_data()
-         |> assign(:selected_node, updated_node)
-         |> assign(:node_form, form)
-         |> mark_saved()
-         |> maybe_refresh_referencing_jumps(updated_node)
-         |> push_event("node_updated", %{
-           id: node_id,
-           data: canvas_data(updated_node, socket.assigns.flow.project_id)
-         })}
+         if full_refresh? do
+           push_event(socket, "flow_updated", socket.assigns.flow_data)
+         else
+           push_event(socket, "node_updated", %{
+             id: node_id,
+             data: canvas_data(updated_node, socket.assigns.flow.project_id)
+           })
+         end}
 
       {:error, :hub_id_required} ->
         {:noreply,

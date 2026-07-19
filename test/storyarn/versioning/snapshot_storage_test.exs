@@ -37,6 +37,22 @@ defmodule Storyarn.Versioning.SnapshotStorageTest do
     test "returns error for non-existent key" do
       assert {:error, _} = SnapshotStorage.load_snapshot("nonexistent/key.json.gz")
     end
+
+    test "returns a checksum for the exact compressed bytes stored" do
+      key = "projects/1/snapshots/project/checksummed.json.gz"
+      snapshot = %{"format_version" => 2, "project" => %{"name" => "Checksum"}}
+
+      assert {:ok, size, checksum} =
+               SnapshotStorage.store_raw_with_checksum(key, snapshot)
+
+      assert size > 0
+      assert checksum =~ ~r/\A[0-9a-f]{64}\z/
+
+      assert {:ok, ^snapshot, ^checksum} =
+               SnapshotStorage.load_snapshot_with_checksum(key)
+
+      assert :ok = SnapshotStorage.delete_snapshot(key)
+    end
   end
 
   describe "delete_snapshot/1" do

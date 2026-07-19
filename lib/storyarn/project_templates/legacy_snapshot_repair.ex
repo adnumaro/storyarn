@@ -257,7 +257,10 @@ defmodule Storyarn.ProjectTemplates.LegacySnapshotRepair do
         nodes
         |> Enum.with_index()
         |> Enum.map_reduce([], fn {node, index}, repairs ->
-          repair_targeted_node(node, index, target_indexes, flow_id, repairs)
+          {repaired_node, repairs} =
+            repair_targeted_node(node, index, target_indexes, flow_id, repairs)
+
+          {Map.put(repaired_node, "parent_id", nil), repairs}
         end)
 
       repaired_flow = put_in(flow, ["snapshot", "nodes"], repaired_nodes)

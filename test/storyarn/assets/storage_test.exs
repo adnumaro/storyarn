@@ -106,6 +106,37 @@ defmodule Storyarn.Assets.StorageTest do
     test "returns :ok for non-existent file" do
       assert :ok = Storage.delete("nonexistent/key.txt")
     end
+
+    test "blocks deletion of recoverable blobs" do
+      key = "projects/1/blobs/hash.png"
+      {:ok, _url} = Storage.upload(key, "recoverable", "image/png")
+
+      assert {:error, :recoverable_blob} = Storage.delete(key)
+      assert File.read!(Path.join(@test_dir, key)) == "recoverable"
+    end
+
+    test "rejects non-canonical keys before the adapter can normalize them" do
+      canonical_key = "projects/1/blobs/hash.png"
+      {:ok, _url} = Storage.upload(canonical_key, "recoverable", "image/png")
+
+      invalid_keys = [
+        "projects/1/blobs//hash.png",
+        "projects/1//blobs/hash.png",
+        "projects//1/blobs/hash.png",
+        "projects/1/blobs/hash.png/",
+        "/projects/1/blobs/hash.png",
+        "projects/1/blobs/./hash.png",
+        "projects/1/assets/../blobs/hash.png",
+        "projects/1/blobs\\hash.png",
+        "projects/1/blobs/hash.png" <> <<0>>
+      ]
+
+      for invalid_key <- invalid_keys do
+        assert {:error, :invalid_key} = Storage.delete(invalid_key)
+      end
+
+      assert File.read!(Path.join(@test_dir, canonical_key)) == "recoverable"
+    end
   end
 
   # =============================================================================

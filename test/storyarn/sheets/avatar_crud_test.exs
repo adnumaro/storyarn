@@ -3,9 +3,14 @@ defmodule Storyarn.Sheets.AvatarCrudTest do
 
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
+  import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Flows
+  alias Storyarn.Flows.FlowNode
+  alias Storyarn.Repo
+  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
 
   setup do
@@ -63,6 +68,20 @@ defmodule Storyarn.Sheets.AvatarCrudTest do
       other_sheet = sheet_fixture(project, %{name: "Other"})
       {:ok, _} = Sheets.add_avatar(sheet, asset1.id)
       assert {:ok, _} = Sheets.add_avatar(other_sheet, asset1.id)
+    end
+
+    test "rejects a same-project non-image asset", %{
+      project: project,
+      sheet: sheet,
+      user: user
+    } do
+      audio = audio_asset_fixture(project, user)
+
+      assert {:error, {:invalid_asset_content_type, :avatar_asset_id, audio_id}} =
+               Sheets.add_avatar(sheet, audio.id)
+
+      assert audio_id == audio.id
+      assert Sheets.list_avatars(sheet.id) == []
     end
   end
 
@@ -141,6 +160,44 @@ defmodule Storyarn.Sheets.AvatarCrudTest do
       {:ok, same} = Sheets.set_avatar_default(avatar)
       assert same.is_default == true
     end
+
+    test "rejects a forged owner without changing either sheet", %{
+      project: project,
+      sheet: sheet,
+      asset1: asset1,
+      asset2: asset2
+    } do
+      other_sheet = sheet_fixture(project, %{name: "Other"})
+      {:ok, local_avatar} = Sheets.add_avatar(sheet, asset1.id)
+      {:ok, foreign_avatar} = Sheets.add_avatar(other_sheet, asset2.id)
+
+      forged_avatar = %{foreign_avatar | sheet_id: sheet.id}
+
+      assert {:error, :avatar_not_found} =
+               Sheets.set_avatar_default(forged_avatar)
+
+      assert Sheets.get_avatar(local_avatar.id).is_default
+      assert Sheets.get_avatar(foreign_avatar.id).is_default
+    end
+
+    test "rejects an avatar whose sheet is in trash", %{
+      sheet: sheet,
+      asset1: asset1,
+      asset2: asset2
+    } do
+      {:ok, first} = Sheets.add_avatar(sheet, asset1.id)
+      {:ok, second} = Sheets.add_avatar(sheet, asset2.id)
+
+      sheet
+      |> Ecto.Changeset.change(deleted_at: TimeHelpers.now())
+      |> Repo.update!()
+
+      assert {:error, :sheet_not_active} =
+               Sheets.set_avatar_default(second)
+
+      assert Sheets.get_avatar(first.id).is_default
+      refute Sheets.get_avatar(second.id).is_default
+    end
   end
 
   describe "remove_avatar/2" do
@@ -186,6 +243,89 @@ defmodule Storyarn.Sheets.AvatarCrudTest do
     test "returns error for non-existent id", %{sheet: sheet} do
       assert {:error, :not_found} = Sheets.remove_avatar(sheet.id, 0)
     end
+
+    test "rejects a forged sheet owner without deleting the avatar", %{
+      project: project,
+      sheet: sheet,
+      asset1: asset1
+    } do
+      other_sheet = sheet_fixture(project, %{name: "Other"})
+      {:ok, avatar} = Sheets.add_avatar(other_sheet, asset1.id)
+
+      assert {:error, :not_found} =
+               Sheets.remove_avatar(sheet.id, avatar.id)
+
+      assert Sheets.get_avatar(avatar.id)
+    end
+
+    test "rejects deleting an avatar whose sheet is in trash", %{
+      sheet: sheet,
+      asset1: asset1
+    } do
+      {:ok, avatar} = Sheets.add_avatar(sheet, asset1.id)
+
+      sheet
+      |> Ecto.Changeset.change(deleted_at: TimeHelpers.now())
+      |> Repo.update!()
+
+      assert {:error, :sheet_not_active} =
+               Sheets.remove_avatar(sheet.id, avatar.id)
+
+      assert Sheets.get_avatar(avatar.id)
+    end
+
+    test "keeps an avatar referenced by an active flow node", %{
+      project: project,
+      sheet: sheet,
+      asset1: asset
+    } do
+      {:ok, avatar} = Sheets.add_avatar(sheet, asset.id)
+      flow = flow_fixture(project)
+
+      node =
+        node_fixture(flow, %{
+          data: %{
+            "speaker_sheet_id" => sheet.id,
+            "avatar_id" => avatar.id,
+            "text" => "Hello"
+          }
+        })
+
+      assert {:error, {:avatar_in_use, avatar_id, {:referenced_by_flow_nodes, 1}}} =
+               Sheets.remove_avatar(sheet.id, avatar.id)
+
+      assert avatar_id == avatar.id
+      assert Sheets.get_avatar(avatar.id)
+      assert Repo.get!(FlowNode, node.id).data["avatar_id"] == avatar.id
+    end
+
+    test "keeps an avatar needed to restore a soft-deleted node", %{
+      project: project,
+      sheet: sheet,
+      asset1: asset
+    } do
+      {:ok, avatar} = Sheets.add_avatar(sheet, asset.id)
+      flow = flow_fixture(project)
+
+      node =
+        node_fixture(flow, %{
+          data: %{
+            "speaker_sheet_id" => sheet.id,
+            "avatar_id" => avatar.id,
+            "text" => "Recoverable"
+          }
+        })
+
+      assert {:ok, deleted_node, _meta} = Flows.delete_node(node)
+
+      assert {:error, {:avatar_in_use, avatar_id, {:referenced_by_flow_nodes, 1}}} =
+               Sheets.remove_avatar(sheet.id, avatar.id)
+
+      assert avatar_id == avatar.id
+      assert {:ok, restored_node} = Flows.restore_node(flow.id, deleted_node.id)
+      assert restored_node.data["avatar_id"] == avatar.id
+      assert Sheets.get_avatar(avatar.id)
+    end
   end
 
   describe "update_avatar/2" do
@@ -205,6 +345,55 @@ defmodule Storyarn.Sheets.AvatarCrudTest do
       {:ok, updated} = Sheets.update_avatar(avatar, %{name: nil})
       assert updated.name == nil
     end
+
+    test "cannot bypass set_default through generic updates", %{
+      sheet: sheet,
+      asset1: asset1,
+      asset2: asset2
+    } do
+      {:ok, first} = Sheets.add_avatar(sheet, asset1.id)
+      {:ok, second} = Sheets.add_avatar(sheet, asset2.id)
+
+      assert {:ok, updated} =
+               Sheets.update_avatar(second, %{name: "Alternate", is_default: true})
+
+      refute updated.is_default
+      assert Sheets.get_avatar(first.id).is_default
+      refute Sheets.get_avatar(second.id).is_default
+    end
+
+    test "rejects a forged sheet owner without mutating either avatar", %{
+      project: project,
+      sheet: sheet,
+      asset1: asset1,
+      asset2: asset2
+    } do
+      other_sheet = sheet_fixture(project, %{name: "Other"})
+      {:ok, local} = Sheets.add_avatar(sheet, asset1.id, %{name: "local"})
+      {:ok, foreign} = Sheets.add_avatar(other_sheet, asset2.id, %{name: "foreign"})
+
+      assert {:error, :avatar_not_found} =
+               Sheets.update_avatar(%{foreign | sheet_id: sheet.id}, %{name: "forged"})
+
+      assert Sheets.get_avatar(local.id).name == "local"
+      assert Sheets.get_avatar(foreign.id).name == "foreign"
+    end
+
+    test "rejects updates beneath a sheet in trash", %{
+      sheet: sheet,
+      asset1: asset1
+    } do
+      {:ok, avatar} = Sheets.add_avatar(sheet, asset1.id, %{name: "original"})
+
+      sheet
+      |> Ecto.Changeset.change(deleted_at: TimeHelpers.now())
+      |> Repo.update!()
+
+      assert {:error, :sheet_not_active} =
+               Sheets.update_avatar(avatar, %{name: "changed"})
+
+      assert Sheets.get_avatar(avatar.id).name == "original"
+    end
   end
 
   describe "reorder_avatars/2" do
@@ -222,6 +411,55 @@ defmodule Storyarn.Sheets.AvatarCrudTest do
 
       avatars = Sheets.list_avatars(sheet.id)
       assert Enum.map(avatars, & &1.id) == [a3.id, a1.id, a2.id]
+    end
+
+    test "rejects incomplete, duplicate, malformed, and foreign sets atomically", %{
+      project: project,
+      sheet: sheet,
+      asset1: asset1,
+      asset2: asset2,
+      asset3: asset3
+    } do
+      other_sheet = sheet_fixture(project, %{name: "Other"})
+      {:ok, a1} = Sheets.add_avatar(sheet, asset1.id)
+      {:ok, a2} = Sheets.add_avatar(sheet, asset2.id)
+      {:ok, foreign} = Sheets.add_avatar(other_sheet, asset3.id)
+
+      original = avatar_positions(sheet.id)
+
+      invalid_payloads = [
+        [a2.id],
+        [a2.id, a2.id],
+        [a2.id, foreign.id],
+        [a2.id, a1.id, "invalid"],
+        [a2.id, a1.id, 0]
+      ]
+
+      Enum.each(invalid_payloads, fn payload ->
+        assert {:error, {:invalid_avatar_reorder, ^payload}} =
+                 Sheets.reorder_avatars(sheet.id, payload)
+
+        assert avatar_positions(sheet.id) == original
+      end)
+    end
+
+    test "rejects reordering avatars under a sheet in trash without mutation", %{
+      sheet: sheet,
+      asset1: asset1,
+      asset2: asset2
+    } do
+      {:ok, a1} = Sheets.add_avatar(sheet, asset1.id)
+      {:ok, a2} = Sheets.add_avatar(sheet, asset2.id)
+      original = avatar_positions(sheet.id)
+
+      sheet
+      |> Ecto.Changeset.change(deleted_at: TimeHelpers.now())
+      |> Repo.update!()
+
+      assert {:error, :sheet_not_active} =
+               Sheets.reorder_avatars(sheet.id, [a2.id, a1.id])
+
+      assert avatar_positions(sheet.id) == original
     end
   end
 
@@ -244,8 +482,8 @@ defmodule Storyarn.Sheets.AvatarCrudTest do
       {:ok, _} = Sheets.add_avatar(deleted_sheet, asset1.id)
 
       deleted_sheet
-      |> Ecto.Changeset.change(deleted_at: Storyarn.Shared.TimeHelpers.now())
-      |> Storyarn.Repo.update!()
+      |> Ecto.Changeset.change(deleted_at: TimeHelpers.now())
+      |> Repo.update!()
 
       result = Sheets.batch_load_avatars_by_sheet(project.id)
       refute Map.has_key?(result, deleted_sheet.id)
@@ -255,5 +493,11 @@ defmodule Storyarn.Sheets.AvatarCrudTest do
       empty_project = project_fixture()
       assert Sheets.batch_load_avatars_by_sheet(empty_project.id) == %{}
     end
+  end
+
+  defp avatar_positions(sheet_id) do
+    sheet_id
+    |> Sheets.list_avatars()
+    |> Map.new(&{&1.id, &1.position})
   end
 end

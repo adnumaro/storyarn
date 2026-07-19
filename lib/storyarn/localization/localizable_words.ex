@@ -9,6 +9,7 @@ defmodule Storyarn.Localization.LocalizableWords do
   alias Storyarn.Localization.LocaleCode
   alias Storyarn.Localization.SourceContract
   alias Storyarn.Localization.TextCrud
+  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Shared.HtmlUtils
   alias Storyarn.Sheets.Block
@@ -105,6 +106,19 @@ defmodule Storyarn.Localization.LocalizableWords do
     end)
   end
 
+  @doc false
+  @spec lock_inventory!(integer()) :: :ok
+  def lock_inventory!(project_id) do
+    if Repo.in_transaction?() do
+      lock_active_project!(project_id)
+      lock_exclusive!(@inventory_lock_namespace, project_id)
+      :ok
+    else
+      raise ArgumentError,
+            "localization inventory locks require an explicit database transaction"
+    end
+  end
+
   defp reconcile_current_inventory(project_id) do
     target_locales = get_target_locales(project_id)
     sources = runtime_sources(project_id)
@@ -166,9 +180,21 @@ defmodule Storyarn.Localization.LocalizableWords do
   end
 
   defp reconcile_block(project_id, block_id) do
-    case Repo.get(Block, block_id) do
-      %Block{} = current when is_nil(current.deleted_at) -> reconcile_current_block(project_id, current)
-      _missing_or_deleted -> TextCrud.archive_texts_for_source("block", block_id, "source_deleted")
+    current =
+      Repo.one(
+        from(block in Block,
+          join: sheet in Sheet,
+          on: sheet.id == block.sheet_id,
+          where:
+            block.id == ^block_id and sheet.project_id == ^project_id and
+              is_nil(block.deleted_at) and is_nil(sheet.deleted_at),
+          select: block
+        )
+      )
+
+    case current do
+      %Block{} = block -> reconcile_current_block(project_id, block)
+      nil -> TextCrud.archive_texts_for_source("block", block_id, "source_deleted")
     end
 
     :ok
@@ -425,17 +451,25 @@ defmodule Storyarn.Localization.LocalizableWords do
 
   defp with_inventory_lock(project_id, fun) when is_function(fun, 0) do
     Repo.transaction(fn ->
-      lock_exclusive!(@inventory_lock_namespace, project_id)
+      lock_inventory!(project_id)
       fun.()
     end)
   end
 
   defp with_source_lock(project_id, source_namespace, source_id, fun) when is_function(fun, 0) do
     Repo.transaction(fn ->
+      lock_active_project!(project_id)
       lock_shared!(@inventory_lock_namespace, project_id)
       lock_exclusive!(source_namespace, source_id)
       fun.()
     end)
+  end
+
+  defp lock_active_project!(project_id) do
+    case ProjectReferenceIntegrity.lock_active_project(project_id, :update) do
+      {:ok, _project} -> :ok
+      {:error, reason} -> Repo.rollback(reason)
+    end
   end
 
   defp lock_exclusive!(namespace, id) do

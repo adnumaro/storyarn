@@ -5,14 +5,17 @@ defmodule Storyarn.Flows.FlowCrud do
 
   alias Storyarn.Billing
   alias Storyarn.Collaboration
+  alias Storyarn.Flows.EntityTrashRef
+  alias Storyarn.Flows.EntityTrashRefs
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.NodeCrud
+  alias Storyarn.Flows.ReferenceIntegrity
   alias Storyarn.Flows.TreeOperations
   alias Storyarn.Localization
   alias Storyarn.Projects.Project
+  alias Storyarn.References
   alias Storyarn.Repo
-  alias Storyarn.Scenes
   alias Storyarn.Shared.ImportHelpers
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Shared.SearchHelpers
@@ -202,19 +205,14 @@ defmodule Storyarn.Flows.FlowCrud do
     name = opts[:name] || derive_linked_flow_name(parent_flow, node)
 
     Ecto.Multi.new()
-    |> Ecto.Multi.run(:flow, fn _repo, _ ->
-      case do_create_flow(project, %{name: name, parent_id: parent_flow.id}) do
-        {:ok, flow} -> {:ok, flow}
-        {:error, :limit_reached, details} -> {:error, {:limit_reached, details}}
-        {:error, reason} -> {:error, reason}
-      end
+    |> Ecto.Multi.run(:source, fn _repo, _changes ->
+      lock_linked_flow_source(project, parent_flow, node)
     end)
-    |> Ecto.Multi.run(:node, fn _repo, %{flow: new_flow} ->
-      new_data = Map.put(node.data, "referenced_flow_id", new_flow.id)
-
-      node
-      |> FlowNode.data_changeset(%{data: new_data})
-      |> Repo.update()
+    |> Ecto.Multi.run(:flow, fn _repo, _ ->
+      create_linked_flow_record(project, parent_flow, name)
+    end)
+    |> Ecto.Multi.run(:node, fn _repo, %{flow: new_flow, source: %{node: locked_node}} ->
+      link_node_to_new_flow(locked_node, new_flow)
     end)
     |> Repo.transaction()
     |> case do
@@ -226,6 +224,43 @@ defmodule Storyarn.Flows.FlowCrud do
     end
     |> broadcast_flow_dashboard_result(project.id)
   end
+
+  defp lock_linked_flow_source(project, parent_flow, node) do
+    with {:ok, %{flow: locked_parent}} <-
+           ReferenceIntegrity.lock_active_flow_for_write(parent_flow),
+         true <- locked_parent.project_id == project.id,
+         {:ok, %{node: locked_node}} <-
+           ReferenceIntegrity.lock_active_node_for_write(node),
+         true <- locked_node.flow_id == locked_parent.id do
+      {:ok, %{parent: locked_parent, node: locked_node}}
+    else
+      false -> {:error, :source_not_found}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp create_linked_flow_record(project, parent_flow, name) do
+    case do_create_flow(project, %{name: name, parent_id: parent_flow.id}) do
+      {:ok, flow} -> {:ok, flow}
+      {:error, :limit_reached, details} -> {:error, {:limit_reached, details}}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp link_node_to_new_flow(locked_node, new_flow) do
+    new_data =
+      locked_node.data
+      |> Map.put("referenced_flow_id", new_flow.id)
+      |> maybe_put_flow_reference_mode(locked_node.type)
+
+    case NodeCrud.update_node_data(locked_node, new_data) do
+      {:ok, updated_node, _meta} -> {:ok, updated_node}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp maybe_put_flow_reference_mode(data, "exit"), do: Map.put(data, "exit_mode", "flow_reference")
+  defp maybe_put_flow_reference_mode(data, _node_type), do: data
 
   defp derive_linked_flow_name(parent_flow, node) do
     label = node.data["label"]
@@ -242,6 +277,9 @@ defmodule Storyarn.Flows.FlowCrud do
     fn ->
       locked_project = Repo.one!(from(p in Project, where: p.id == ^project.id, lock: "FOR UPDATE"))
 
+      if not is_nil(locked_project.deleted_at),
+        do: Repo.rollback(:project_not_active)
+
       # A flow consumes quota for the flow plus its entry and exit nodes.
       case Billing.can_create_items?(locked_project, 3) do
         :ok -> :ok
@@ -250,23 +288,39 @@ defmodule Storyarn.Flows.FlowCrud do
 
       attrs = stringify_keys(attrs)
       attrs = maybe_generate_shortcut(attrs, project.id, nil)
-      parent_id = attrs["parent_id"]
-      attrs = maybe_assign_position(attrs, project.id, parent_id)
 
-      case %Flow{project_id: project.id}
-           |> Flow.create_changeset(attrs)
-           |> Repo.insert() do
-        {:ok, flow} ->
-          insert_default_node!(flow.id, "entry", 100.0, 300.0, %{})
-          insert_default_node!(flow.id, "exit", 500.0, 300.0, default_exit_data())
-          flow
+      with {:ok, parent_id} <-
+             ReferenceIntegrity.lock_flow_parent(project.id, nil, attrs["parent_id"]),
+           {:ok, scene_id} <-
+             ReferenceIntegrity.lock_flow_scene(project.id, attrs["scene_id"]) do
+        attrs =
+          attrs
+          |> Map.put("parent_id", parent_id)
+          |> Map.put("scene_id", scene_id)
+          |> maybe_assign_position(project.id, parent_id)
 
-        {:error, changeset} ->
-          Repo.rollback(changeset)
+        insert_flow_with_default_nodes(project.id, attrs)
+      else
+        {:error, reason} ->
+          Repo.rollback(flow_reference_changeset(%Flow{project_id: project.id}, attrs, reason))
       end
     end
     |> Repo.transaction()
     |> normalize_item_limit_result()
+  end
+
+  defp insert_flow_with_default_nodes(project_id, attrs) do
+    case %Flow{project_id: project_id}
+         |> Flow.create_changeset(attrs)
+         |> Repo.insert() do
+      {:ok, flow} ->
+        insert_default_node!(flow.id, "entry", 100.0, 300.0, %{})
+        insert_default_node!(flow.id, "exit", 500.0, 300.0, default_exit_data())
+        flow
+
+      {:error, changeset} ->
+        Repo.rollback(changeset)
+    end
   end
 
   defp normalize_item_limit_result({:error, {:limit_reached, details}}), do: {:error, :limit_reached, details}
@@ -274,15 +328,70 @@ defmodule Storyarn.Flows.FlowCrud do
   defp normalize_item_limit_result(result), do: result
 
   def update_flow(%Flow{} = flow, attrs) do
-    # Auto-generate shortcut if flow has no shortcut and name is being updated
-    attrs = maybe_generate_shortcut_on_update(flow, attrs)
+    Repo.transaction(fn -> update_flow_transaction(flow, attrs) end)
+  end
 
-    result =
-      flow
-      |> Flow.update_changeset(attrs)
-      |> Repo.update()
+  defp update_flow_transaction(flow, attrs) do
+    case ReferenceIntegrity.lock_active_flow_for_write(flow) do
+      {:ok, %{flow: locked_flow, project_id: project_id}} ->
+        update_locked_flow(locked_flow, project_id, attrs)
 
-    result
+      {:error, reason} ->
+        Repo.rollback(reason)
+    end
+  end
+
+  defp update_locked_flow(locked_flow, project_id, attrs) do
+    attrs = maybe_generate_shortcut_on_update(locked_flow, attrs)
+    changeset = Flow.update_changeset(locked_flow, attrs)
+    parent_id = Ecto.Changeset.get_field(changeset, :parent_id)
+    scene_id = Ecto.Changeset.get_field(changeset, :scene_id)
+
+    with {:ok, parent_id} <-
+           ReferenceIntegrity.lock_flow_parent(project_id, locked_flow.id, parent_id),
+         {:ok, scene_id} <-
+           ReferenceIntegrity.lock_flow_scene(project_id, scene_id) do
+      changeset
+      |> Ecto.Changeset.put_change(:parent_id, parent_id)
+      |> Ecto.Changeset.put_change(:scene_id, scene_id)
+      |> update_flow_or_rollback()
+    else
+      {:error, reason} ->
+        Repo.rollback(flow_reference_changeset(locked_flow, attrs, reason))
+    end
+  end
+
+  defp update_flow_or_rollback(changeset) do
+    case Repo.update(changeset) do
+      {:ok, updated_flow} -> updated_flow
+      {:error, changeset} -> Repo.rollback(changeset)
+    end
+  end
+
+  defp flow_reference_changeset(flow, attrs, reason) do
+    changeset =
+      if flow.id do
+        Flow.update_changeset(flow, attrs)
+      else
+        Flow.create_changeset(flow, attrs)
+      end
+
+    {field, message} =
+      case reason do
+        {:invalid_project_reference, :scene_id, _value} ->
+          {:scene_id, "map not found in project"}
+
+        {:invalid_project_reference, :parent_id, _value} ->
+          {:parent_id, "parent flow not found in project"}
+
+        :cyclic_parent ->
+          {:parent_id, "cannot create a circular hierarchy"}
+
+        _other ->
+          {:parent_id, "contains an invalid project reference"}
+      end
+
+    Ecto.Changeset.add_error(changeset, field, message)
   end
 
   defp insert_default_node!(flow_id, type, x, y, data) do
@@ -316,36 +425,42 @@ defmodule Storyarn.Flows.FlowCrud do
   """
   def delete_flow(%Flow{} = flow) do
     result =
-      Repo.transaction(fn ->
-        # Remove runtime strings for the flow before it leaves the active export graph.
-        Localization.delete_flow_node_texts_for_flows([flow.id])
-
-        # Soft delete the flow + sweep referenced_flow_id refs atomically
-        case Trashable.soft_delete(flow) do
-          {:ok, deleted_flow} ->
-            # Also soft-delete all children recursively
-            SoftDelete.soft_delete_children(Flow, flow.project_id, flow.id,
-              pre_delete: &Localization.delete_flow_node_texts_for_flows([&1.id])
-            )
-
-            deleted_flow
-
-          {:error, changeset} ->
-            Repo.rollback(changeset)
-        end
-      end)
+      Repo.transaction(fn -> delete_flow_transaction(flow) end)
 
     case result do
-      {:ok, _} ->
+      {:ok, deleted_flow} ->
         # Notify open canvases that have subflow nodes referencing this flow
-        notify_affected_subflows(flow.id, flow.project_id)
-        Collaboration.broadcast_dashboard_change(flow.project_id, :flows)
+        notify_affected_subflows(deleted_flow.id, deleted_flow.project_id)
+        Collaboration.broadcast_dashboard_change(deleted_flow.project_id, :flows)
 
       _ ->
         :ok
     end
 
     result
+  end
+
+  defp delete_flow_transaction(flow) do
+    case ReferenceIntegrity.lock_active_flow_for_write(flow) do
+      {:ok, %{flow: locked_flow}} -> soft_delete_locked_flow(locked_flow)
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp soft_delete_locked_flow(locked_flow) do
+    Localization.delete_flow_node_texts_for_flows([locked_flow.id])
+
+    case Trashable.soft_delete(locked_flow) do
+      {:ok, deleted_flow} ->
+        SoftDelete.soft_delete_children(Flow, locked_flow.project_id, locked_flow.id,
+          pre_delete: &Localization.delete_flow_node_texts_for_flows([&1.id])
+        )
+
+        deleted_flow
+
+      {:error, changeset} ->
+        Repo.rollback(changeset)
+    end
   end
 
   @doc """
@@ -367,18 +482,393 @@ defmodule Storyarn.Flows.FlowCrud do
   end
 
   @doc """
-  Restores a soft-deleted flow. Trash refs (`referenced_flow_id` pointers
-  from subflow + exit nodes) are re-applied conservatively via `Trashable`.
+  Restores a soft-deleted flow. Its hierarchy references and every pending
+  `referenced_flow_id` reinjection are validated under the same project and
+  flow locks used by active writers.
   """
-  def restore_flow(%Flow{} = flow) do
-    flow
-    |> Trashable.restore()
-    |> tap(fn
-      {:ok, restored_flow} -> Localization.extract_flow_nodes(restored_flow.id)
-      _ -> :ok
-    end)
-    |> broadcast_flow_dashboard_result(flow.project_id)
+  def restore_flow(%Flow{id: flow_id}) when is_integer(flow_id) do
+    result =
+      Repo.transaction(fn -> restore_flow_transaction(flow_id) end)
+
+    case result do
+      {:ok, restored_flow} ->
+        Localization.extract_flow_nodes(restored_flow.id)
+        broadcast_flow_dashboard_result(result, restored_flow.project_id)
+
+      _ ->
+        result
+    end
   end
+
+  def restore_flow(_flow), do: {:error, :flow_not_found}
+
+  defp restore_flow_transaction(flow_id) do
+    project_id =
+      Repo.one(from(flow in Flow, where: flow.id == ^flow_id, select: flow.project_id)) ||
+        Repo.rollback(:flow_not_found)
+
+    lock_restore_project!(project_id)
+    locked_flow = lock_deleted_flow!(flow_id, project_id)
+    restored_nodes = lock_flow_nodes_for_restore(flow_id)
+    trash_refs = lock_flow_trash_refs(flow_id)
+
+    with :ok <- validate_no_pending_node_trash_refs(restored_nodes),
+         :ok <- validate_flow_trash_refs(trash_refs),
+         {:ok, source_nodes} <-
+           lock_flow_trash_source_rows(trash_refs, project_id, flow_id),
+         changeset = flow_restore_changeset(locked_flow),
+         :ok <- validate_restore_changeset(changeset),
+         {:ok, parent_id} <-
+           ReferenceIntegrity.lock_flow_parent(
+             project_id,
+             locked_flow.id,
+             locked_flow.parent_id
+           ),
+         {:ok, scene_id} <-
+           ReferenceIntegrity.lock_flow_scene(project_id, locked_flow.scene_id),
+         {:ok, restored_flow} <-
+           changeset
+           |> Ecto.Changeset.put_change(:parent_id, parent_id)
+           |> Ecto.Changeset.put_change(:scene_id, scene_id)
+           |> Ecto.Changeset.put_change(:deleted_at, nil)
+           |> Repo.update(),
+         {:ok, _restore_meta} <- EntityTrashRefs.restore(:flow, restored_flow.id),
+         :ok <-
+           validate_restored_flow_nodes(
+             restored_nodes,
+             project_id
+           ),
+         :ok <-
+           validate_restored_flow_sources(
+             source_nodes,
+             restored_nodes,
+             restored_flow,
+             project_id
+           ) do
+      restored_flow
+    else
+      {:error, reason} ->
+        Repo.rollback(flow_restore_error(locked_flow, reason))
+    end
+  end
+
+  defp lock_restore_project!(project_id) do
+    case Repo.one(
+           from(project in Project,
+             where: project.id == ^project_id and is_nil(project.deleted_at),
+             lock: "FOR UPDATE"
+           )
+         ) do
+      nil -> Repo.rollback(:project_not_active)
+      %Project{} -> :ok
+    end
+  end
+
+  defp lock_deleted_flow!(flow_id, project_id) do
+    Repo.one(
+      from(flow in Flow,
+        where:
+          flow.id == ^flow_id and flow.project_id == ^project_id and
+            not is_nil(flow.deleted_at),
+        lock: "FOR UPDATE"
+      )
+    ) || Repo.rollback(:flow_not_deleted)
+  end
+
+  defp lock_flow_nodes_for_restore(flow_id) do
+    Repo.all(
+      from(node in FlowNode,
+        where: node.flow_id == ^flow_id and is_nil(node.deleted_at),
+        order_by: [asc: node.id],
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp validate_no_pending_node_trash_refs([]), do: :ok
+
+  defp validate_no_pending_node_trash_refs(nodes) do
+    node_by_id = Map.new(nodes, &{&1.id, &1})
+    node_ids = Map.keys(node_by_id)
+
+    pending_ref =
+      from(ref in EntityTrashRef,
+        where:
+          ref.source_type == "flow_node" and
+            ref.source_id in ^node_ids,
+        order_by: [asc: ref.id],
+        lock: "FOR UPDATE"
+      )
+      |> Repo.all()
+      |> Enum.find(fn ref ->
+        case Map.fetch(node_by_id, ref.source_id) do
+          {:ok, node} -> trash_ref_would_restore?(ref, node)
+          :error -> false
+        end
+      end)
+
+    case pending_ref do
+      nil ->
+        :ok
+
+      ref ->
+        {:error, {:invalid_project_reference, trash_ref_context(ref), trash_ref_target_id(ref)}}
+    end
+  end
+
+  defp trash_ref_would_restore?(%EntityTrashRef{source_field: "data." <> key}, %FlowNode{data: data}) when is_map(data) do
+    Map.get(data, key) == nil
+  end
+
+  defp trash_ref_would_restore?(_ref, _node), do: true
+
+  defp trash_ref_context(%EntityTrashRef{source_field: "data." <> key}) do
+    case key do
+      "speaker_sheet_id" -> :speaker_sheet_id
+      "location_sheet_id" -> :location_sheet_id
+      "referenced_flow_id" -> :referenced_flow_id
+      "audio_asset_id" -> :audio_asset_id
+      "avatar_id" -> :avatar_id
+      _other -> {:flow_node_trash_reference, key}
+    end
+  end
+
+  defp trash_ref_context(%EntityTrashRef{source_field: source_field}) do
+    {:flow_node_trash_reference, source_field}
+  end
+
+  defp trash_ref_target_id(ref) do
+    Enum.find_value(EntityTrashRef.target_fields(), &Map.get(ref, &1))
+  end
+
+  defp lock_flow_trash_refs(flow_id) do
+    Repo.all(
+      from(ref in EntityTrashRef,
+        where: ref.target_flow_id == ^flow_id,
+        order_by: [asc: ref.id],
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp validate_flow_trash_refs(refs) do
+    case Enum.find(
+           refs,
+           &(&1.source_type != "flow_node" or
+               &1.source_field != "data.referenced_flow_id")
+         ) do
+      nil -> :ok
+      ref -> {:error, {:invalid_flow_trash_reference, ref.id}}
+    end
+  end
+
+  defp lock_flow_trash_source_rows([], _project_id, _target_flow_id), do: {:ok, []}
+
+  defp lock_flow_trash_source_rows(refs, project_id, target_flow_id) do
+    source_ids =
+      refs
+      |> Enum.map(& &1.source_id)
+      |> Enum.uniq()
+      |> Enum.sort()
+
+    source_flow_ids =
+      from(node in FlowNode,
+        where: node.id in ^source_ids,
+        order_by: [asc: node.id],
+        select: node.flow_id
+      )
+      |> Repo.all()
+      |> Enum.uniq()
+      |> Enum.sort()
+
+    source_flow_scopes =
+      Repo.all(
+        from(flow in Flow,
+          where: flow.id in ^source_flow_ids,
+          order_by: [asc: flow.id],
+          select: %{id: flow.id, project_id: flow.project_id}
+        )
+      )
+
+    case Enum.find(source_flow_scopes, &(&1.project_id != project_id)) do
+      nil ->
+        Repo.all(
+          from(flow in Flow,
+            where: flow.id in ^source_flow_ids,
+            order_by: [asc: flow.id],
+            lock: "FOR UPDATE"
+          )
+        )
+
+        {:ok,
+         Repo.all(
+           from(node in FlowNode,
+             where: node.id in ^source_ids,
+             order_by: [asc: node.id],
+             lock: "FOR UPDATE"
+           )
+         )}
+
+      _foreign_flow ->
+        {:error, {:invalid_project_reference, :referenced_flow_id, target_flow_id}}
+    end
+  end
+
+  defp flow_restore_changeset(flow) do
+    Flow.update_changeset(flow, %{
+      name: flow.name,
+      shortcut: flow.shortcut,
+      description: flow.description,
+      is_main: flow.is_main,
+      settings: flow.settings,
+      parent_id: flow.parent_id,
+      position: flow.position,
+      scene_id: flow.scene_id
+    })
+  end
+
+  defp validate_restore_changeset(%Ecto.Changeset{valid?: true}), do: :ok
+  defp validate_restore_changeset(%Ecto.Changeset{} = changeset), do: {:error, changeset}
+
+  defp validate_restored_flow_nodes(nodes, project_id) do
+    with :ok <- validate_restored_flow_node_set(nodes) do
+      normalize_restored_flow_nodes(nodes, project_id)
+    end
+  end
+
+  defp validate_restored_flow_node_set(nodes) do
+    entry_count = Enum.count(nodes, &(&1.type == "entry"))
+    exit_count = Enum.count(nodes, &(&1.type == "exit"))
+
+    cond do
+      entry_count == 0 -> {:error, :entry_node_missing}
+      entry_count > 1 -> {:error, :entry_node_exists}
+      exit_count == 0 -> {:error, :exit_node_missing}
+      true -> :ok
+    end
+  end
+
+  defp validate_restored_flow_sources(source_nodes, restored_nodes, restored_flow, project_id) do
+    restored_node_ids = MapSet.new(restored_nodes, & &1.id)
+
+    source_nodes
+    |> Enum.map(&Repo.get!(FlowNode, &1.id))
+    |> Enum.filter(&restored_source_node?(&1, restored_node_ids, restored_flow.id))
+    |> normalize_restored_flow_nodes(project_id)
+  end
+
+  defp restored_source_node?(source_node, restored_node_ids, restored_flow_id) do
+    source_node.data["referenced_flow_id"] == restored_flow_id and
+      not MapSet.member?(restored_node_ids, source_node.id)
+  end
+
+  defp normalize_restored_flow_nodes(nodes, project_id) do
+    Enum.reduce_while(nodes, :ok, fn node, :ok ->
+      normalize_restored_flow_node_result(node, project_id)
+    end)
+  end
+
+  defp normalize_restored_flow_node_result(node, project_id) do
+    case normalize_restored_flow_node(node, project_id) do
+      :ok -> {:cont, :ok}
+      {:error, _reason} = error -> {:halt, error}
+    end
+  end
+
+  defp normalize_restored_flow_node(node_hint, project_id) do
+    node = Repo.get!(FlowNode, node_hint.id)
+
+    changeset =
+      FlowNode.update_changeset(node, %{
+        type: node.type,
+        data: node.data,
+        parent_id: node.parent_id
+      })
+
+    type = Ecto.Changeset.get_field(changeset, :type)
+    data = Ecto.Changeset.get_field(changeset, :data) || %{}
+    parent_id = Ecto.Changeset.get_field(changeset, :parent_id)
+
+    with :ok <- validate_restore_changeset(changeset),
+         {:ok, parent_id} <-
+           ReferenceIntegrity.lock_node_parent(node.flow_id, parent_id, node.id),
+         {:ok, data} <-
+           ReferenceIntegrity.lock_and_normalize_node_references(
+             project_id,
+             node.flow_id,
+             type,
+             data
+           ),
+         :ok <- validate_restored_node_identity(node, type, data),
+         {:ok, normalized_node} <-
+           changeset
+           |> Ecto.Changeset.put_change(:parent_id, parent_id)
+           |> Ecto.Changeset.put_change(:data, data)
+           |> Repo.update() do
+      rebuild_node_references(normalized_node, project_id)
+    end
+  end
+
+  defp validate_restored_node_identity(node, "hub", data) do
+    hub_id = data["hub_id"]
+
+    cond do
+      not is_binary(hub_id) or String.trim(hub_id) == "" ->
+        {:error, :hub_id_required}
+
+      NodeCrud.hub_id_exists?(node.flow_id, hub_id, node.id) ->
+        {:error, :hub_id_not_unique}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_restored_node_identity(node, "entry", _data) do
+    if Repo.exists?(
+         from(other in FlowNode,
+           where:
+             other.flow_id == ^node.flow_id and other.id != ^node.id and
+               other.type == "entry" and is_nil(other.deleted_at)
+         )
+       ) do
+      {:error, :entry_node_exists}
+    else
+      :ok
+    end
+  end
+
+  defp validate_restored_node_identity(_node, _type, _data), do: :ok
+
+  defp rebuild_node_references(node, project_id) do
+    with :ok <-
+           normalize_reference_rebuild_result(
+             References.update_flow_node_entity_references(
+               node,
+               project_id: project_id
+             )
+           ) do
+      normalize_reference_rebuild_result(References.update_flow_node_variable_references(node))
+    end
+  end
+
+  defp normalize_reference_rebuild_result(:ok), do: :ok
+  defp normalize_reference_rebuild_result({:error, _reason} = error), do: error
+
+  defp normalize_reference_rebuild_result(result) do
+    {:error, {:unexpected_reference_rebuild_result, result}}
+  end
+
+  defp flow_restore_error(flow, :cyclic_parent) do
+    flow_reference_changeset(flow, %{}, :cyclic_parent)
+  end
+
+  defp flow_restore_error(flow, {:invalid_project_reference, context, _value} = reason)
+       when context in [:parent_id, :scene_id] do
+    flow_reference_changeset(flow, %{}, reason)
+  end
+
+  defp flow_restore_error(_flow, reason), do: reason
 
   @doc """
   Lists all soft-deleted flows for a project (trash).
@@ -407,23 +897,23 @@ defmodule Storyarn.Flows.FlowCrud do
   """
   def update_flow_scene(%Flow{} = flow, attrs) do
     attrs = MapUtils.stringify_keys(attrs)
-    scene_id = MapUtils.parse_int(attrs["scene_id"])
 
-    cond do
-      is_nil(scene_id) ->
-        flow |> Flow.scene_changeset(%{"scene_id" => nil}) |> Repo.update()
+    Repo.transaction(fn ->
+      with {:ok, %{flow: locked_flow, project_id: project_id}} <-
+             ReferenceIntegrity.lock_active_flow_for_write(flow),
+           {:ok, scene_id} <-
+             ReferenceIntegrity.lock_flow_scene(project_id, attrs["scene_id"]) do
+        locked_flow
+        |> Flow.scene_changeset(%{"scene_id" => scene_id})
+        |> update_flow_or_rollback()
+      else
+        {:error, :flow_not_found} ->
+          Repo.rollback(:flow_not_found)
 
-      Scenes.get_scene_project_id(scene_id) == flow.project_id ->
-        flow |> Flow.scene_changeset(attrs) |> Repo.update()
-
-      true ->
-        {:error,
-         Ecto.Changeset.add_error(
-           Ecto.Changeset.change(flow),
-           :scene_id,
-           "map not found in project"
-         )}
-    end
+        {:error, reason} ->
+          Repo.rollback(flow_reference_changeset(flow, attrs, reason))
+      end
+    end)
   end
 
   def change_flow(%Flow{} = flow, attrs \\ %{}) do
@@ -431,16 +921,35 @@ defmodule Storyarn.Flows.FlowCrud do
   end
 
   def set_main_flow(%Flow{} = flow) do
-    Repo.transaction(fn ->
-      Repo.update_all(from(f in Flow, where: f.project_id == ^flow.project_id and f.is_main == true),
-        set: [is_main: false]
-      )
+    Repo.transaction(fn -> set_main_flow_transaction(flow) end)
+  end
 
-      case flow |> Ecto.Changeset.change(is_main: true) |> Repo.update() do
-        {:ok, updated} -> updated
-        {:error, changeset} -> Repo.rollback(changeset)
-      end
-    end)
+  defp set_main_flow_transaction(flow) do
+    case ReferenceIntegrity.lock_active_flow_for_write(flow) do
+      {:ok, %{project_id: project_id, flow: locked_flow}} ->
+        replace_main_flow(locked_flow, project_id)
+
+      {:error, reason} ->
+        Repo.rollback(reason)
+    end
+  end
+
+  defp replace_main_flow(locked_flow, project_id) do
+    Repo.update_all(
+      from(candidate in Flow,
+        where:
+          candidate.project_id == ^project_id and
+            candidate.is_main == true
+      ),
+      set: [is_main: false]
+    )
+
+    case locked_flow
+         |> Ecto.Changeset.change(is_main: true)
+         |> Repo.update() do
+      {:ok, updated} -> updated
+      {:error, changeset} -> Repo.rollback(changeset)
+    end
   end
 
   defp maybe_generate_shortcut(attrs, project_id, exclude_flow_id) do

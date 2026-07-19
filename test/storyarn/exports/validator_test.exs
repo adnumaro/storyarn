@@ -10,6 +10,8 @@ defmodule Storyarn.Exports.ValidatorTest do
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Exports.Validator
   alias Storyarn.Exports.Validator.ValidationResult
+  alias Storyarn.Flows.FlowNode
+  alias Storyarn.Repo
 
   # =============================================================================
   # Setup
@@ -38,11 +40,12 @@ defmodule Storyarn.Exports.ValidatorTest do
     test "passes validation for well-formed project", %{project: project} do
       # Create a complete, valid flow
       flow = flow_fixture(project, %{name: "Clean Flow"})
+      speaker = sheet_fixture(project, %{name: "Speaker"})
       # Flow auto-creates entry node
       dialogue =
         node_fixture(flow, %{
           type: "dialogue",
-          data: %{"text" => "Hello!", "speaker_sheet_id" => "some_speaker"}
+          data: %{"text" => "Hello!", "speaker_sheet_id" => speaker.id}
         })
 
       exit_node = node_fixture(flow, %{type: "exit", data: %{}})
@@ -72,7 +75,7 @@ defmodule Storyarn.Exports.ValidatorTest do
       flow = flow_fixture(project, %{name: "Broken Flow"})
       entry = flow.id |> Storyarn.Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
       # Hard-delete the entry node to simulate a broken state
-      Storyarn.Repo.delete!(entry)
+      Repo.delete!(entry)
 
       result = Validator.validate_project(project.id)
       assert result.status == :errors
@@ -154,11 +157,12 @@ defmodule Storyarn.Exports.ValidatorTest do
 
     test "reports warning for dialogue nodes with empty text", %{project: project} do
       flow = flow_fixture(project, %{name: "Empty Dialogue Flow"})
+      speaker = sheet_fixture(project, %{name: "NPC"})
 
       _empty =
         node_fixture(flow, %{
           type: "dialogue",
-          data: %{"text" => "", "speaker_sheet_id" => "npc"}
+          data: %{"text" => "", "speaker_sheet_id" => speaker.id}
         })
 
       result = Validator.validate_project(project.id)
@@ -168,11 +172,12 @@ defmodule Storyarn.Exports.ValidatorTest do
 
     test "reports warning for dialogue nodes with only HTML tags", %{project: project} do
       flow = flow_fixture(project, %{name: "HTML Only Flow"})
+      speaker = sheet_fixture(project, %{name: "NPC"})
 
       _html =
         node_fixture(flow, %{
           type: "dialogue",
-          data: %{"text" => "<p><br></p>", "speaker_sheet_id" => "npc"}
+          data: %{"text" => "<p><br></p>", "speaker_sheet_id" => speaker.id}
         })
 
       result = Validator.validate_project(project.id)
@@ -214,7 +219,7 @@ defmodule Storyarn.Exports.ValidatorTest do
       flow = flow_fixture(project, %{name: "Broken Jump Flow"})
 
       _jump =
-        node_fixture(flow, %{
+        corrupt_node_fixture(flow, %{
           type: "jump",
           data: %{"target_hub_id" => "nonexistent_hub"}
         })
@@ -252,7 +257,7 @@ defmodule Storyarn.Exports.ValidatorTest do
       flow = flow_fixture(project, %{name: "Broken Subflow"})
 
       _subflow =
-        node_fixture(flow, %{
+        corrupt_node_fixture(flow, %{
           type: "subflow",
           data: %{"referenced_flow_id" => -999}
         })
@@ -404,7 +409,7 @@ defmodule Storyarn.Exports.ValidatorTest do
 
       # B references A (circular) — insert directly to bypass circular reference check
       {:ok, _subflow_b} =
-        Storyarn.Repo.insert(%Storyarn.Flows.FlowNode{
+        Repo.insert(%FlowNode{
           flow_id: flow_b.id,
           type: "subflow",
           data: %{"referenced_flow_id" => flow_a.id},
@@ -474,7 +479,7 @@ defmodule Storyarn.Exports.ValidatorTest do
     test "status is :errors when errors exist", %{project: project} do
       flow = flow_fixture(project, %{name: "Error Flow"})
       entry = flow.id |> Storyarn.Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
-      Storyarn.Repo.delete!(entry)
+      Repo.delete!(entry)
 
       result = Validator.validate_project(project.id)
       assert result.status == :errors
@@ -489,7 +494,7 @@ defmodule Storyarn.Exports.ValidatorTest do
     test "respects export options when loading flows", %{project: project} do
       flow = flow_fixture(project, %{name: "Excluded Broken Flow"})
       entry = flow.id |> Storyarn.Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
-      Storyarn.Repo.delete!(entry)
+      Repo.delete!(entry)
 
       result =
         Validator.validate_project(project.id, %ExportOptions{
@@ -504,7 +509,7 @@ defmodule Storyarn.Exports.ValidatorTest do
       # Create a flow with a broken state (no entry node)
       flow = flow_fixture(project, %{name: "Broken Flow"})
       entry = flow.id |> Storyarn.Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
-      Storyarn.Repo.delete!(entry)
+      Repo.delete!(entry)
 
       # Export with validation enabled (default) should fail
       result = Storyarn.Exports.export_project(project, %{format: :storyarn})
@@ -515,7 +520,7 @@ defmodule Storyarn.Exports.ValidatorTest do
       # Create a flow with a broken state
       flow = flow_fixture(project, %{name: "Broken Flow"})
       entry = flow.id |> Storyarn.Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
-      Storyarn.Repo.delete!(entry)
+      Repo.delete!(entry)
 
       # Export with validation disabled should succeed
       result =
@@ -526,5 +531,11 @@ defmodule Storyarn.Exports.ValidatorTest do
 
       assert {:ok, _json} = result
     end
+  end
+
+  defp corrupt_node_fixture(flow, attrs) do
+    %FlowNode{flow_id: flow.id}
+    |> FlowNode.create_changeset(attrs)
+    |> Repo.insert!()
   end
 end

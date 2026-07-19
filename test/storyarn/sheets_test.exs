@@ -11,6 +11,7 @@ defmodule Storyarn.SheetsTest do
 
   alias Storyarn.Collaboration
   alias Storyarn.Localization
+  alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Sheet
 
@@ -920,12 +921,12 @@ defmodule Storyarn.SheetsTest do
       earlier = ~U[2024-01-01 10:00:00Z]
       later = ~U[2024-01-01 11:00:00Z]
 
-      Storyarn.Repo.update_all(
+      Repo.update_all(
         from(s in Sheet, where: s.id == ^sheet1.id),
         set: [deleted_at: earlier]
       )
 
-      Storyarn.Repo.update_all(
+      Repo.update_all(
         from(s in Sheet, where: s.id == ^sheet2.id),
         set: [deleted_at: later]
       )
@@ -977,7 +978,7 @@ defmodule Storyarn.SheetsTest do
       assert Sheets.get_sheet(project.id, sheet.id)
     end
 
-    test "restores soft-deleted blocks" do
+    test "does not restore independently deleted blocks" do
       user = user_fixture()
       project = project_fixture(user)
       sheet = sheet_fixture(project)
@@ -991,10 +992,10 @@ defmodule Storyarn.SheetsTest do
       {:ok, trashed} = Sheets.trash_sheet(sheet)
       {:ok, _} = Sheets.restore_sheet(trashed)
 
-      # Block should be restored
-      restored_block = Sheets.get_block(block.id)
-      assert restored_block
-      assert restored_block.deleted_at == nil
+      # Trashing a sheet never deleted this block, so restoring the sheet must
+      # not reinterpret a recent independent deletion.
+      assert Sheets.get_block(block.id) == nil
+      assert Repo.reload!(block).deleted_at
     end
   end
 
@@ -1149,7 +1150,7 @@ defmodule Storyarn.SheetsTest do
       {:ok, _} = Sheets.permanently_delete_block(block)
 
       # Block should not exist at all
-      assert Storyarn.Repo.get(Storyarn.Sheets.Block, block_id) == nil
+      assert Repo.get(Storyarn.Sheets.Block, block_id) == nil
     end
   end
 

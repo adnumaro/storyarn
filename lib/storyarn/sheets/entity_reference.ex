@@ -1,6 +1,6 @@
 defmodule Storyarn.Sheets.EntityReference do
   @moduledoc """
-  Schema for tracking references between entities (sheets, flows).
+  Legacy schema alias for tracking references between project entities.
 
   Used to build backlinks: "What references this sheet/flow?"
 
@@ -8,10 +8,12 @@ defmodule Storyarn.Sheets.EntityReference do
   - "block" - A block in a sheet (e.g., reference block, mention in rich_text)
   - "flow_node" - A node in a flow (e.g., speaker reference, mention in dialogue)
   - "screenplay_element" - An element in a screenplay (e.g., character sheet ref, inline mention)
+  - "scene_pin" / "scene_zone" - Interactive elements in a scene
 
   ## Target Types
   - "sheet" - Reference to a sheet
   - "flow" - Reference to a flow
+  - "scene" - Reference to a scene
 
   ## Context
   The context field identifies where in the source the reference was found:
@@ -25,8 +27,8 @@ defmodule Storyarn.Sheets.EntityReference do
 
   @type t :: %__MODULE__{}
 
-  @source_types ~w(block flow_node screenplay_element map_pin map_zone)
-  @target_types ~w(sheet flow)
+  @source_types ~w(block flow_node screenplay_element scene_pin scene_zone)
+  @target_types ~w(sheet flow scene)
 
   schema "entity_references" do
     field :source_type, :string

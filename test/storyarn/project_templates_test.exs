@@ -868,19 +868,18 @@ defmodule Storyarn.ProjectTemplatesTest do
       workspace = WorkspacesFixtures.workspace_fixture(user)
       project = ProjectsFixtures.project_fixture(user, %{workspace: workspace, name: "Source Project"})
       source_sheet = SheetsFixtures.sheet_fixture(project, %{name: "Hero"})
-      source_block = SheetsFixtures.block_fixture(source_sheet, %{config: %{"label" => "Bio"}})
+
+      source_block =
+        SheetsFixtures.block_fixture(source_sheet, %{
+          variable_name: "bio",
+          config: %{"label" => "Bio"},
+          value: %{"content" => "Hero biography"}
+        })
+
       source_asset = uploaded_image_asset(project, user, "template-avatar.png", "template-avatar")
       {:ok, _avatar} = Storyarn.Sheets.add_avatar(source_sheet, source_asset.id, %{name: "Default"})
       LocalizationFixtures.language_fixture(project, %{locale_code: "es", name: "Spanish"})
-
-      _localized_block =
-        LocalizationFixtures.localized_text_fixture(project.id, %{
-          source_type: "block",
-          source_id: source_block.id,
-          source_field: "value.content",
-          source_text: "Hero biography",
-          locale_code: "es"
-        })
+      :ok = Localization.sync_sheet_names(project.id)
 
       assert {:ok, template} = ProjectTemplates.create_template_from_project(scope, project, %{name: "Starter"})
       version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
@@ -1084,6 +1083,138 @@ defmodule Storyarn.ProjectTemplatesTest do
       assert Repo.aggregate(Project, :count) == project_count
     end
 
+    test "rejects a coherently re-signed artifact with an avatar owned by another speaker" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      workspace = WorkspacesFixtures.workspace_fixture(user)
+
+      source_project =
+        ProjectsFixtures.project_fixture(user, %{
+          workspace: workspace,
+          name: "Avatar Integrity Source"
+        })
+
+      avatar_owner =
+        SheetsFixtures.sheet_fixture(source_project, %{
+          name: "Avatar owner"
+        })
+
+      other_speaker =
+        SheetsFixtures.sheet_fixture(source_project, %{
+          name: "Other speaker"
+        })
+
+      avatar_asset =
+        uploaded_image_asset(
+          source_project,
+          user,
+          "artifact-avatar-integrity.png",
+          "artifact-avatar-integrity"
+        )
+
+      {:ok, avatar} =
+        Storyarn.Sheets.add_avatar(
+          avatar_owner,
+          avatar_asset.id,
+          %{name: "Owner avatar"}
+        )
+
+      flow = FlowsFixtures.flow_fixture(source_project)
+
+      dialogue =
+        FlowsFixtures.node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "speaker_sheet_id" => avatar_owner.id,
+            "avatar_id" => avatar.id,
+            "text" => "Valid before artifact tampering"
+          }
+        })
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(
+                 scope,
+                 source_project,
+                 %{name: "Avatar Integrity Starter"}
+               )
+
+      version =
+        Repo.get!(
+          ProjectTemplateVersion,
+          template.current_version_id
+        )
+
+      assert {:ok, snapshot} =
+               SnapshotStorage.load_snapshot(version.snapshot_storage_key)
+
+      assert {:ok, asset_manifest} =
+               SnapshotStorage.load_snapshot(version.asset_manifest_storage_key)
+
+      tampered_snapshot =
+        update_in(
+          snapshot,
+          ["flows", Access.all(), "snapshot", "nodes", Access.all()],
+          fn
+            %{"original_id" => node_id} = node
+            when node_id == dialogue.id ->
+              put_in(
+                node,
+                ["data", "speaker_sheet_id"],
+                other_speaker.id
+              )
+
+            node ->
+              node
+          end
+        )
+
+      assert {:ok, _size} =
+               SnapshotStorage.store_raw(
+                 version.snapshot_storage_key,
+                 tampered_snapshot
+               )
+
+      version =
+        version
+        |> Ecto.Changeset.change(
+          checksum:
+            Artifact.checksum(%{
+              "snapshot" => tampered_snapshot,
+              "asset_manifest" => asset_manifest
+            })
+        )
+        |> Repo.update!()
+
+      project_count_before = Repo.aggregate(Project, :count)
+
+      install_count_before =
+        Repo.aggregate(ProjectTemplateInstall, :count)
+
+      storage_files_before_install = storage_files()
+
+      assert {:error,
+              {:materialization_failed, :flow, flow_id,
+               {:avatar_speaker_mismatch, avatar_id, avatar_sheet_id, requested_speaker_id}}} =
+               ProjectTemplates.instantiate_template(
+                 scope,
+                 version,
+                 workspace,
+                 %{name: "Rejected Avatar Integrity Copy"}
+               )
+
+      assert flow_id == flow.id
+      assert is_integer(avatar_id)
+      assert is_integer(avatar_sheet_id)
+      assert is_integer(requested_speaker_id)
+      refute avatar_sheet_id == requested_speaker_id
+      assert Repo.aggregate(Project, :count) == project_count_before
+
+      assert Repo.aggregate(ProjectTemplateInstall, :count) ==
+               install_count_before
+
+      assert storage_files() == storage_files_before_install
+    end
+
     test "rolls back the recovered project when install bookkeeping fails" do
       user = AccountsFixtures.user_fixture()
       scope = AccountsFixtures.user_scope_fixture(user)
@@ -1117,12 +1248,11 @@ defmodule Storyarn.ProjectTemplatesTest do
       assert Repo.aggregate(Project, :count) == project_count
       assert Repo.aggregate(ProjectTemplateInstall, :count) == install_count
 
-      assert [cleanup_job] =
+      assert [] ==
                [worker: DeleteStorageObjectsWorker]
                |> all_enqueued()
                |> Enum.reject(&MapSet.member?(cleanup_job_ids_before_install, &1.id))
 
-      assert :ok = perform_job(DeleteStorageObjectsWorker, cleanup_job.args)
       assert storage_files() == storage_files_before_install
     end
   end
@@ -1521,7 +1651,12 @@ defmodule Storyarn.ProjectTemplatesTest do
                })
 
       version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
-      :ok = Assets.storage_delete(BlobStore.blob_key(source_project.id, asset.blob_hash, "png"))
+      blob_key = BlobStore.blob_key(source_project.id, asset.blob_hash, "png")
+
+      # Simulate provider-side loss without weakening the application boundary
+      # that permanently blocks deletion of recoverable blobs.
+      :ok = delete_storage_blob(blob_key)
+
       project_count = Repo.aggregate(Project, :count)
 
       assert {:ok, installation} =
@@ -1726,11 +1861,19 @@ defmodule Storyarn.ProjectTemplatesTest do
 
       storage_files_before_audit = storage_files()
 
+      cleanup_job_ids_before_audit =
+        [worker: DeleteStorageObjectsWorker]
+        |> all_enqueued()
+        |> MapSet.new(& &1.id)
+
       assert {:ok, report} = Audit.run(project.id)
       assert report["materialization"]["status"] == "passed"
 
-      assert [cleanup_job] = all_enqueued(worker: DeleteStorageObjectsWorker)
-      assert :ok = perform_job(DeleteStorageObjectsWorker, cleanup_job.args)
+      assert [] ==
+               [worker: DeleteStorageObjectsWorker]
+               |> all_enqueued()
+               |> Enum.reject(&MapSet.member?(cleanup_job_ids_before_audit, &1.id))
+
       assert storage_files() == storage_files_before_audit
     end
 
@@ -1753,7 +1896,7 @@ defmodule Storyarn.ProjectTemplatesTest do
       project = ProjectsFixtures.project_fixture(user)
       flow = flow_fixture(project)
       referenced_flow = flow_fixture(project)
-      exit_node = flow_node_fixture(referenced_flow, "exit")
+      exit_node = Repo.get_by!(FlowNode, flow_id: referenced_flow.id, type: "exit")
       source_node = flow_node_fixture(flow, "subflow", %{data: %{"referenced_flow_id" => referenced_flow.id}})
       target_node = flow_node_fixture(flow, "hub")
 
@@ -1868,7 +2011,11 @@ defmodule Storyarn.ProjectTemplatesTest do
 
       {:ok, _scene} = Storyarn.Scenes.update_scene(scene, %{"background_asset_id" => asset.id})
       node = flow_node_fixture(flow, "dialogue")
-      Storyarn.Flows.update_node(node, %{data: %{"audio_asset_id" => asset.id}})
+
+      Repo.update_all(
+        from(current in FlowNode, where: current.id == ^node.id),
+        set: [data: Map.put(node.data, "audio_asset_id", asset.id)]
+      )
 
       assert {:error, report} = Audit.run(project.id)
 
@@ -1912,18 +2059,19 @@ defmodule Storyarn.ProjectTemplatesTest do
       user = AccountsFixtures.user_fixture()
       project = ProjectsFixtures.project_fixture(user)
       flow = flow_fixture(project)
-      node = flow_node_fixture(flow, "dialogue")
+
+      node =
+        FlowsFixtures.node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"speaker" => "Narrator", "text" => "Hello world"}
+        })
+
       voice_asset = uploaded_audio_asset(project, user, "line.mp3", "voice-over")
 
       LocalizationFixtures.language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
-      text =
-        LocalizationFixtures.localized_text_fixture(project.id, %{
-          source_type: "flow_node",
-          source_id: node.id,
-          source_field: "text",
-          locale_code: "es"
-        })
+      text = Localization.get_text_by_source("flow_node", node.id, "text", "es")
+      assert text
 
       assert {:ok, _text} = Localization.update_text(text, %{vo_asset_id: voice_asset.id, vo_status: "recorded"})
 
@@ -1931,14 +2079,52 @@ defmodule Storyarn.ProjectTemplatesTest do
       assert report["materialization"]["status"] == "passed"
       refute Enum.any?(report["errors"], &(&1["field"] == "vo_asset_id"))
     end
+
+    test "preserves archived orphan localization in the artifact and reports deferred materialization" do
+      user = AccountsFixtures.user_fixture()
+      project = ProjectsFixtures.project_fixture(user)
+      LocalizationFixtures.source_language_fixture(project, %{locale_code: "en", name: "English"})
+      LocalizationFixtures.language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      sheet = SheetsFixtures.sheet_fixture(project)
+
+      block =
+        SheetsFixtures.block_fixture(sheet, %{
+          type: "rich_text",
+          value: %{"content" => "A localizable biography"}
+        })
+
+      assert [_text] = Localization.get_texts_for_source("block", block.id)
+      assert {:ok, _deleted_block} = Storyarn.Sheets.delete_block(block)
+
+      assert {:ok, report, snapshot} = Audit.run_with_snapshot(project.id)
+
+      archived_orphan =
+        Enum.find(snapshot["localization"]["texts"], fn text ->
+          text["source_type"] == "block" and text["source_id"] == block.id
+        end)
+
+      assert archived_orphan["archived_at"]
+      assert archived_orphan["archive_reason"] == "source_deleted"
+
+      materialization = report["materialization"]
+      assert materialization["status"] == "passed"
+      assert materialization["source_counts"] == materialization["snapshot_counts"]
+      assert materialization["deferred_archived_localization_orphans"] == 1
+
+      assert materialization["expected_recovery_counts"]["localized_texts"] ==
+               materialization["snapshot_counts"]["localized_texts"] - 1
+
+      assert materialization["recovered_counts"] == materialization["expected_recovery_counts"]
+    end
   end
 
   defp flow_fixture(project) do
     unique = System.unique_integer([:positive])
 
-    %Flow{project_id: project.id}
-    |> Flow.create_changeset(%{name: "Main Flow #{unique}", shortcut: "main-flow-#{unique}"})
-    |> Repo.insert!()
+    FlowsFixtures.flow_fixture(project, %{
+      name: "Main Flow #{unique}",
+      shortcut: "main-flow-#{unique}"
+    })
   end
 
   defp flow_node_fixture(flow, type, attrs \\ %{}) do
@@ -1977,7 +2163,7 @@ defmodule Storyarn.ProjectTemplatesTest do
 
     on_exit(fn ->
       Assets.storage_delete(asset.key)
-      Assets.storage_delete(BlobStore.blob_key(project.id, asset.blob_hash, "png"))
+      delete_storage_blob(BlobStore.blob_key(project.id, asset.blob_hash, "png"))
     end)
 
     asset
@@ -1994,7 +2180,7 @@ defmodule Storyarn.ProjectTemplatesTest do
 
     on_exit(fn ->
       Assets.storage_delete(asset.key)
-      Assets.storage_delete(BlobStore.blob_key(project.id, asset.blob_hash, "mp3"))
+      delete_storage_blob(BlobStore.blob_key(project.id, asset.blob_hash, "mp3"))
     end)
 
     asset

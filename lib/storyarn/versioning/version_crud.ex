@@ -14,6 +14,7 @@ defmodule Storyarn.Versioning.VersionCrud do
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.EntityVersion
+  alias Storyarn.Versioning.RestorePolicy
   alias Storyarn.Versioning.SnapshotDiff
   alias Storyarn.Versioning.SnapshotStorage
   alias Storyarn.Versioning.VersionNumberLock
@@ -335,20 +336,27 @@ defmodule Storyarn.Versioning.VersionCrud do
   @doc """
   Loads a version's snapshot from storage and restores the entity.
 
+  Restore owns its transaction boundary because safety snapshots and asset
+  compensation must be finalized only after the builder transaction commits.
+
   ## Options
   - `:user_id` - If provided, creates a pre-restore safety snapshot and a post-restore version entry
   """
   @spec restore_version(String.t(), struct(), EntityVersion.t(), keyword()) ::
           {:ok, struct()} | {:error, term()}
   def restore_version(entity_type, entity, %EntityVersion{} = version, opts \\ []) do
-    builder = get_builder!(entity_type)
     user_id = Keyword.get(opts, :user_id)
+    restore_action = {:entity_version_restore, entity_type}
+    builder_opts = Keyword.put(opts, :restore_action, restore_action)
 
-    with {:ok, snapshot} <- SnapshotStorage.load_snapshot(version.storage_key),
+    with :ok <- RestorePolicy.ensure_enabled(restore_action),
+         :ok <- require_restore_transaction_boundary(),
+         builder = get_builder!(entity_type),
+         {:ok, snapshot} <- SnapshotStorage.load_snapshot(version.storage_key),
          :ok <- require_pre_restore_snapshot(entity_type, entity, version, user_id, opts) do
       snapshot = maybe_resolve_shortcut_collision(entity_type, entity, snapshot)
 
-      case builder.restore_snapshot(entity, snapshot, opts) do
+      case builder.restore_snapshot(entity, snapshot, builder_opts) do
         {:ok, updated_entity} ->
           log_snapshot_error(
             maybe_create_post_restore_snapshot(
@@ -370,6 +378,12 @@ defmodule Storyarn.Versioning.VersionCrud do
           error
       end
     end
+  end
+
+  defp require_restore_transaction_boundary do
+    if Repo.in_transaction?(),
+      do: {:error, :version_restore_requires_transaction_boundary},
+      else: :ok
   end
 
   defp require_pre_restore_snapshot(_entity_type, _entity, _version, nil, _opts), do: :ok

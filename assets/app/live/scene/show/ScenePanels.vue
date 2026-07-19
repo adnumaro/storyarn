@@ -14,6 +14,7 @@ interface SceneVersionsPanel {
   canNameVersion: boolean;
   currentVersionId: number | null;
   canEdit: boolean;
+  restoreEnabled: boolean;
   loading: boolean;
 }
 
@@ -59,6 +60,7 @@ const { panels } = defineProps<{
         :can-name-version="panels.versions.canNameVersion"
         :current-version-id="panels.versions.currentVersionId"
         :can-edit="panels.versions.canEdit"
+        :restore-enabled="panels.versions.restoreEnabled"
         :loading="panels.versions.loading"
       />
     </div>

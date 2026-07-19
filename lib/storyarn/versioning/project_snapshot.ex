@@ -21,6 +21,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
           description: String.t() | nil,
           storage_key: String.t(),
           snapshot_size_bytes: integer(),
+          checksum: String.t() | nil,
           entity_counts: map(),
           created_by_id: integer() | nil,
           created_by: User.t() | NotLoaded.t() | nil,
@@ -35,6 +36,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     field :description, :string
     field :storage_key, :string
     field :snapshot_size_bytes, :integer
+    field :checksum, :string
     field :entity_counts, :map, default: %{}
     field :is_auto, :boolean, default: false
 
@@ -56,6 +58,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :description,
       :storage_key,
       :snapshot_size_bytes,
+      :checksum,
       :entity_counts,
       :created_by_id,
       :is_auto
@@ -64,13 +67,16 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :project_id,
       :version_number,
       :storage_key,
-      :snapshot_size_bytes
+      :snapshot_size_bytes,
+      :checksum
     ])
     |> validate_length(:title, max: 255)
     |> validate_length(:description, max: 500)
     |> validate_number(:snapshot_size_bytes, greater_than_or_equal_to: 0)
+    |> validate_format(:checksum, ~r/\A[0-9a-f]{64}\z/)
     |> foreign_key_constraint(:project_id)
     |> foreign_key_constraint(:created_by_id)
+    |> check_constraint(:checksum, name: :project_snapshots_checksum_format)
     |> unique_constraint([:project_id, :version_number],
       name: :project_snapshots_project_id_version_number_index
     )

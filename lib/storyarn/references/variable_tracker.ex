@@ -8,6 +8,10 @@ defmodule Storyarn.References.VariableTracker do
 
   alias Storyarn.Flows.VariableReferenceTracker
 
+  @spec rebuild_project_variable_references(integer()) :: :ok | {:error, term()}
+  def rebuild_project_variable_references(project_id),
+    do: VariableReferenceTracker.rebuild_project_variable_references(project_id)
+
   def update_flow_node_variable_references(node), do: VariableReferenceTracker.update_references(node)
 
   def delete_flow_node_variable_references(node_id), do: VariableReferenceTracker.delete_references(node_id)

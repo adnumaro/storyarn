@@ -15,6 +15,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
   alias Storyarn.Imports
   alias Storyarn.Imports.ImportPlan
   alias Storyarn.Localization
+  alias Storyarn.Repo
 
   # =============================================================================
   # Setup
@@ -218,6 +219,15 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       assert details.sheets.limit == 1000
     end
 
+    test "rejects a stale project struct after the target enters trash", %{target: target} do
+      target
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
+      |> Repo.update!()
+
+      assert {:error, :project_not_active} =
+               Imports.execute(target, storyarn_plan(minimal_import_data()))
+    end
+
     test "counts every inserted node when source IDs are duplicated", %{target: target} do
       source_id = Ecto.UUID.generate()
 
@@ -360,7 +370,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       {:ok, _result} = Imports.execute(target, parsed, conflict_strategy: :overwrite)
 
       # The existing sheet should be soft-deleted
-      reloaded = Storyarn.Repo.get(Storyarn.Sheets.Sheet, existing.id)
+      reloaded = Repo.get(Storyarn.Sheets.Sheet, existing.id)
       assert reloaded.deleted_at
 
       # Should have a new active "Hero" sheet
@@ -396,7 +406,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       hero = Enum.find(sheets, &(&1.name == "Hero"))
       assert hero
 
-      hero_with_blocks = Storyarn.Repo.preload(hero, :blocks)
+      hero_with_blocks = Repo.preload(hero, :blocks)
       assert hero_with_blocks.blocks != []
       assert Enum.find(hero_with_blocks.blocks, &(&1.type == "text")).word_count == 1
     end
@@ -405,7 +415,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       {:ok, result} = Imports.execute(target, parsed)
 
       flow = hd(result.flows)
-      flow_with_data = Storyarn.Repo.preload(flow, [:nodes, :connections])
+      flow_with_data = Repo.preload(flow, [:nodes, :connections])
 
       # At least entry + dialogue nodes
       assert Enum.count(flow_with_data.nodes) >= 2
@@ -416,7 +426,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       {:ok, result} = Imports.execute(target, parsed)
 
       scene = hd(result.scenes)
-      scene_with_data = Storyarn.Repo.preload(scene, [:pins, :layers])
+      scene_with_data = Repo.preload(scene, [:pins, :layers])
 
       assert scene_with_data.pins != []
     end
@@ -425,7 +435,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       {:ok, result} = Imports.execute(target, parsed)
 
       sp = hd(result.screenplays)
-      sp_with_data = Storyarn.Repo.preload(sp, :elements)
+      sp_with_data = Repo.preload(sp, :elements)
 
       assert sp_with_data.elements != []
     end
@@ -473,7 +483,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       assert {:ok, result} = Imports.execute(target, storyarn_plan(data))
 
       [screenplay] = result.screenplays
-      [marker] = screenplay |> Storyarn.Repo.preload(:elements) |> Map.fetch!(:elements)
+      [marker] = screenplay |> Repo.preload(:elements) |> Map.fetch!(:elements)
       assert marker.data["color"] == "#3b82f6"
     end
 

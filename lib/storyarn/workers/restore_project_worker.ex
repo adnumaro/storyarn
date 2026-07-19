@@ -18,22 +18,41 @@ defmodule Storyarn.Workers.RestoreProjectWorker do
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"project_id" => project_id, "snapshot_id" => snapshot_id, "user_id" => user_id}}) do
-    snapshot = Versioning.get_project_snapshot(project_id, snapshot_id)
+    case Versioning.ensure_restore_enabled(:project_snapshot_restore) do
+      :ok ->
+        restore_snapshot(project_id, snapshot_id, user_id)
 
-    if snapshot do
-      do_restore(project_id, snapshot, user_id)
-    else
-      Projects.release_restoration_lock(project_id)
-      Collaboration.broadcast_restoration_failed(project_id, %{reason: "Snapshot not found"})
-      {:error, :snapshot_not_found}
+      {:error, :restore_temporarily_disabled} = error ->
+        Projects.release_restoration_lock(project_id)
+        Collaboration.broadcast_restoration_failed(project_id, %{reason: :restore_temporarily_disabled})
+        error
+    end
+  end
+
+  defp restore_snapshot(project_id, snapshot_id, user_id) do
+    case Versioning.get_project_snapshot(project_id, snapshot_id) do
+      nil ->
+        Projects.release_restoration_lock(project_id)
+        Collaboration.broadcast_restoration_failed(project_id, %{reason: "Snapshot not found"})
+        {:error, :snapshot_not_found}
+
+      snapshot ->
+        do_restore(project_id, snapshot, user_id)
     end
   end
 
   defp do_restore(project_id, snapshot, user_id) do
-    result = Versioning.restore_project_snapshot(project_id, snapshot, user_id: user_id)
+    result =
+      try do
+        Versioning.restore_project_snapshot(project_id, snapshot, user_id: user_id)
+      rescue
+        exception ->
+          Logger.error("Project restore raised for project #{project_id}: #{Exception.message(exception)}")
 
-    # ALWAYS release lock
-    Projects.release_restoration_lock(project_id)
+          {:error, :restore_exception}
+      after
+        Projects.release_restoration_lock(project_id)
+      end
 
     case result do
       {:ok, r} ->

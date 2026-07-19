@@ -722,7 +722,7 @@ defmodule Storyarn.FlowsTest do
       assert updated2.position_y == 400.0
     end
 
-    test "batch_update_positions/2 ignores nodes from a different flow" do
+    test "batch_update_positions/2 rejects nodes from a different flow" do
       user = user_fixture()
       project = project_fixture(user)
       flow = flow_fixture(project)
@@ -733,7 +733,8 @@ defmodule Storyarn.FlowsTest do
         %{id: other_node.id, position_x: 999.0, position_y: 999.0}
       ]
 
-      assert {:ok, 1} = Flows.batch_update_positions(flow.id, positions)
+      assert {:error, :nodes_not_found} =
+               Flows.batch_update_positions(flow.id, positions)
 
       unchanged = Flows.get_node!(other_flow.id, other_node.id)
       assert unchanged.position_x == 0.0
@@ -829,18 +830,34 @@ defmodule Storyarn.FlowsTest do
       user = user_fixture()
       project = project_fixture(user)
       flow = flow_fixture(project)
-      source = node_fixture(flow)
+      source = node_fixture(flow, %{type: "condition"})
       target = node_fixture(flow)
 
-      _conn1 = connection_fixture(flow, source, target, %{source_pin: "out1", target_pin: "in"})
-      _conn2 = connection_fixture(flow, source, target, %{source_pin: "out2", target_pin: "in"})
+      _conn1 =
+        connection_fixture(flow, source, target, %{
+          source_pin: "true",
+          target_pin: "input"
+        })
 
-      {count, _} = Flows.delete_connection_by_pins(flow.id, source.id, "out1", target.id, "in")
+      _conn2 =
+        connection_fixture(flow, source, target, %{
+          source_pin: "false",
+          target_pin: "input"
+        })
+
+      {count, _} =
+        Flows.delete_connection_by_pins(
+          flow.id,
+          source.id,
+          "true",
+          target.id,
+          "input"
+        )
 
       assert count == 1
       remaining = Flows.list_connections(flow.id)
       assert length(remaining) == 1
-      assert hd(remaining).source_pin == "out2"
+      assert hd(remaining).source_pin == "false"
     end
 
     test "cannot create connection from exit node" do
@@ -911,12 +928,19 @@ defmodule Storyarn.FlowsTest do
       user = user_fixture()
       project = project_fixture(user)
       flow = flow_fixture(project)
-      source = node_fixture(flow)
+      source = node_fixture(flow, %{type: "condition"})
       target1 = node_fixture(flow)
       target2 = node_fixture(flow)
 
-      connection_fixture(flow, source, target1, %{source_pin: "out1", target_pin: "in"})
-      connection_fixture(flow, source, target2, %{source_pin: "out2", target_pin: "in"})
+      connection_fixture(flow, source, target1, %{
+        source_pin: "true",
+        target_pin: "input"
+      })
+
+      connection_fixture(flow, source, target2, %{
+        source_pin: "false",
+        target_pin: "input"
+      })
 
       connections = Flows.get_outgoing_connections(source.id)
 
@@ -931,8 +955,15 @@ defmodule Storyarn.FlowsTest do
       source2 = node_fixture(flow)
       target = node_fixture(flow)
 
-      connection_fixture(flow, source1, target, %{source_pin: "out", target_pin: "in1"})
-      connection_fixture(flow, source2, target, %{source_pin: "out", target_pin: "in2"})
+      connection_fixture(flow, source1, target, %{
+        source_pin: "output",
+        target_pin: "input"
+      })
+
+      connection_fixture(flow, source2, target, %{
+        source_pin: "output",
+        target_pin: "input"
+      })
 
       connections = Flows.get_incoming_connections(target.id)
 
@@ -1248,12 +1279,21 @@ defmodule Storyarn.FlowsTest do
       project1 = project_fixture(user)
       project2 = project_fixture(user)
       sheet = sheet_fixture(project1)
+      foreign_sheet = sheet_fixture(project2)
       flow = flow_fixture(project2)
 
-      node_fixture(flow, %{
-        type: "dialogue",
-        data: %{"speaker_sheet_id" => sheet.id, "text" => "Wrong project"}
-      })
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "speaker_sheet_id" => foreign_sheet.id,
+            "text" => "Wrong project"
+          }
+        })
+
+      node
+      |> Ecto.Changeset.change(data: Map.put(node.data, "speaker_sheet_id", sheet.id))
+      |> Storyarn.Repo.update!()
 
       assert Flows.list_dialogue_nodes_by_speaker(project1.id, sheet.id) == []
     end

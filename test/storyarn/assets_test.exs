@@ -5,7 +5,10 @@ defmodule Storyarn.AssetsTest do
   import Ecto.Query
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
+  import Storyarn.FlowsFixtures
+  import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
 
   alias Phoenix.LiveView.UploadEntry
   alias Storyarn.Accounts.User
@@ -14,6 +17,7 @@ defmodule Storyarn.AssetsTest do
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.Storage
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Localization
   alias Storyarn.Repo
   alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Workers.DeleteStorageObjectsWorker
@@ -168,11 +172,39 @@ defmodule Storyarn.AssetsTest do
       assert asset.uploaded_by_id == nil
     end
 
+    test "create_asset/3 rejects a stale struct for a trashed project", %{
+      project: project,
+      user: user
+    } do
+      project
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
+      |> Repo.update!()
+
+      assert {:error, :project_not_active} =
+               Assets.create_asset(project, user, valid_asset_attributes())
+    end
+
     test "update_asset/2 updates an asset", %{project: project, user: user} do
       asset = asset_fixture(project, user)
 
       assert {:ok, updated} = Assets.update_asset(asset, %{metadata: %{"width" => 1024}})
       assert updated.metadata == %{"width" => 1024}
+    end
+
+    test "update_asset/2 rejects a stale write after the project enters trash", %{
+      project: project,
+      user: user
+    } do
+      asset = asset_fixture(project, user)
+
+      project
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
+      |> Repo.update!()
+
+      assert {:error, :project_not_active} =
+               Assets.update_asset(asset, %{metadata: %{"width" => 1024}})
+
+      assert Repo.reload!(asset).metadata == asset.metadata
     end
 
     test "delete_asset/1 deletes an asset", %{project: project, user: user} do
@@ -182,9 +214,21 @@ defmodule Storyarn.AssetsTest do
       assert Assets.get_asset(project.id, asset.id) == nil
     end
 
-    test "delete_asset/1 removes sheet avatar references before deleting", %{project: project, user: user} do
-      import Storyarn.SheetsFixtures
+    test "delete_asset/1 refuses stale writes after the project enters trash", %{
+      project: project,
+      user: user
+    } do
+      asset = asset_fixture(project, user)
 
+      project
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
+      |> Repo.update!()
+
+      assert {:error, :project_not_active} = Assets.delete_asset(asset)
+      assert Repo.get(Asset, asset.id)
+    end
+
+    test "delete_asset/1 removes sheet avatar references before deleting", %{project: project, user: user} do
       asset = image_asset_fixture(project, user)
       sheet = sheet_fixture(project, %{name: "Hero"})
       {:ok, avatar} = Storyarn.Sheets.add_avatar(sheet, asset.id, %{is_default: true})
@@ -194,9 +238,37 @@ defmodule Storyarn.AssetsTest do
       assert Repo.get(SheetAvatar, avatar.id) == nil
     end
 
-    test "delete_asset/1 clears flow node audio references", %{project: project, user: user} do
-      import Storyarn.FlowsFixtures
+    test "delete_asset/1 rolls back every avatar deletion when one is referenced", %{
+      project: project,
+      user: user
+    } do
+      asset = image_asset_fixture(project, user)
+      referenced_sheet = sheet_fixture(project, %{name: "Referenced"})
+      other_sheet = sheet_fixture(project, %{name: "Other"})
+      {:ok, referenced_avatar} = Storyarn.Sheets.add_avatar(referenced_sheet, asset.id)
+      {:ok, other_avatar} = Storyarn.Sheets.add_avatar(other_sheet, asset.id)
+      flow = flow_fixture(project)
 
+      node =
+        node_fixture(flow, %{
+          data: %{
+            "speaker_sheet_id" => referenced_sheet.id,
+            "avatar_id" => referenced_avatar.id,
+            "text" => "Hello"
+          }
+        })
+
+      assert {:error, {:avatar_in_use, avatar_id, {:referenced_by_flow_nodes, 1}}} =
+               Assets.delete_asset(asset)
+
+      assert avatar_id == referenced_avatar.id
+      assert Assets.get_asset(project.id, asset.id)
+      assert Repo.get(SheetAvatar, referenced_avatar.id)
+      assert Repo.get(SheetAvatar, other_avatar.id)
+      assert Repo.get!(FlowNode, node.id).data["avatar_id"] == referenced_avatar.id
+    end
+
+    test "delete_asset/1 clears flow node audio references", %{project: project, user: user} do
       asset = audio_asset_fixture(project, user)
       flow = flow_fixture(project)
 
@@ -210,6 +282,133 @@ defmodule Storyarn.AssetsTest do
 
       refreshed = Repo.get!(FlowNode, node.id)
       refute Map.has_key?(refreshed.data, "audio_asset_id")
+    end
+
+    test "delete_asset/1 cascades visual layers and gallery entries but nilifies zone icons", %{
+      project: project,
+      user: user
+    } do
+      import Storyarn.ScenesFixtures
+
+      asset = image_asset_fixture(project, user)
+      flow = flow_fixture(project)
+      {:ok, sequence} = Storyarn.Flows.create_sequence(flow.id, %{"name" => "Opening"})
+
+      {:ok, layer} =
+        Storyarn.Flows.create_sequence_visual_layer(sequence.id, %{
+          "asset_id" => asset.id,
+          "kind" => "backdrop"
+        })
+
+      sheet = sheet_fixture(project)
+      block = block_fixture(sheet, %{type: "gallery"})
+      {:ok, gallery_image} = Storyarn.Sheets.add_gallery_image(block, asset.id)
+      scene = scene_fixture(project)
+
+      zone =
+        zone_fixture(scene, %{
+          "label_mode" => "icon",
+          "label_icon_asset_id" => asset.id
+        })
+
+      assert {:ok, _asset} = Assets.delete_asset(asset)
+
+      refute Repo.get(Storyarn.Flows.SequenceVisualLayer, layer.id)
+      refute Repo.get(Storyarn.Sheets.BlockGalleryImage, gallery_image.id)
+      assert Repo.reload!(zone).label_icon_asset_id == nil
+    end
+
+    test "delete_asset/1 keeps sequence track slots and nilifies their asset", %{
+      project: project,
+      user: user
+    } do
+      asset = audio_asset_fixture(project, user)
+      flow = flow_fixture(project)
+      {:ok, sequence} = Storyarn.Flows.create_sequence(flow.id, %{"name" => "Opening"})
+
+      {:ok, track} =
+        Storyarn.Flows.upsert_sequence_track(sequence.id, "music", %{"asset_id" => asset.id})
+
+      assert {:ok, _asset} = Assets.delete_asset(asset)
+
+      assert Repo.reload!(track).asset_id == nil
+    end
+
+    test "delete_asset/1 clears localized voice-over references and downgrades their status", %{
+      project: project,
+      user: user
+    } do
+      asset = audio_asset_fixture(project, user)
+      text = localized_text_fixture(project.id)
+
+      assert {:ok, voiced_text} =
+               Localization.update_text(text, %{
+                 vo_asset_id: asset.id,
+                 vo_status: "recorded"
+               })
+
+      assert {:ok, _asset} = Assets.delete_asset(asset)
+
+      refreshed = Repo.reload!(voiced_text)
+      assert refreshed.vo_asset_id == nil
+      assert refreshed.vo_status == "needed"
+      assert refreshed.lock_version == voiced_text.lock_version + 1
+    end
+
+    test "delete_asset/1 clears optimized-image links and preserves unrelated variants", %{
+      project: project,
+      user: user
+    } do
+      variant = image_asset_fixture(project, user, %{filename: "hero-avatar.webp"})
+      other_variant = image_asset_fixture(project, user, %{filename: "hero-banner.webp"})
+      original = image_asset_fixture(project, user, %{filename: "hero.png"})
+
+      assert {:ok, original} =
+               Assets.update_asset(original, %{
+                 metadata: %{
+                   "web_asset_id" => variant.id,
+                   "web_url" => variant.url,
+                   "variant_asset_ids" => %{
+                     "avatar" => variant.id,
+                     "banner" => other_variant.id
+                   }
+                 }
+               })
+
+      assert {:ok, _variant} =
+               Assets.update_asset(variant, %{
+                 metadata: %{"is_variant" => true, "original_asset_id" => original.id}
+               })
+
+      assert {:ok, _deleted} = Assets.delete_asset(variant)
+
+      refreshed_original = Repo.reload!(original)
+
+      refute Map.has_key?(refreshed_original.metadata, "web_asset_id")
+      refute Map.has_key?(refreshed_original.metadata, "web_url")
+
+      assert refreshed_original.metadata["variant_asset_ids"] == %{
+               "banner" => other_variant.id
+             }
+
+      assert Assets.display_url(refreshed_original) == refreshed_original.url
+    end
+
+    test "delete_asset/1 clears a variant's inverse original link", %{
+      project: project,
+      user: user
+    } do
+      original = image_asset_fixture(project, user, %{filename: "hero.png"})
+      variant = image_asset_fixture(project, user, %{filename: "hero.webp"})
+
+      assert {:ok, variant} =
+               Assets.update_asset(variant, %{
+                 metadata: %{"is_variant" => true, "original_asset_id" => original.id}
+               })
+
+      assert {:ok, _deleted} = Assets.delete_asset(original)
+
+      refute Map.has_key?(Repo.reload!(variant).metadata, "original_asset_id")
     end
 
     test "change_asset/2 returns a changeset", %{project: project, user: user} do
@@ -300,6 +499,113 @@ defmodule Storyarn.AssetsTest do
 
       assert length(usages.flow_nodes) == 1
       assert hd(usages.flow_nodes).flow_name == "Intro Flow"
+      refute hd(usages.flow_nodes).trashed
+    end
+
+    test "returns optimized-image metadata relationships", %{project: project, user: user} do
+      original = image_asset_fixture(project, user, %{filename: "hero.png"})
+      variant = image_asset_fixture(project, user, %{filename: "hero.webp"})
+
+      assert {:ok, original} =
+               Assets.update_asset(original, %{
+                 metadata: %{
+                   "web_asset_id" => variant.id,
+                   "web_url" => variant.url,
+                   "variant_asset_ids" => %{"avatar" => variant.id}
+                 }
+               })
+
+      assert {:ok, variant} =
+               Assets.update_asset(variant, %{
+                 metadata: %{"is_variant" => true, "original_asset_id" => original.id}
+               })
+
+      assert [
+               %{
+                 id: original_id,
+                 filename: "hero.png",
+                 relations: ["web_variant", "profile_variant"]
+               }
+             ] = Assets.get_asset_usages(project.id, variant.id).asset_metadata_links
+
+      assert original_id == original.id
+
+      assert [
+               %{id: variant_id, filename: "hero.webp", relations: ["original"]}
+             ] = Assets.get_asset_usages(project.id, original.id).asset_metadata_links
+
+      assert variant_id == variant.id
+    end
+
+    test "returns sequence visual layers, including layers owned by trashed nodes", %{
+      project: project,
+      user: user
+    } do
+      image = image_asset_fixture(project, user)
+      flow = flow_fixture(project, %{name: "Cinematic Flow"})
+      {:ok, sequence} = Storyarn.Flows.create_sequence(flow.id, %{"name" => "Opening"})
+
+      assert {:ok, layer} =
+               Storyarn.Flows.create_sequence_visual_layer(sequence.id, %{
+                 "asset_id" => image.id,
+                 "kind" => "backdrop",
+                 "label" => "Wide shot"
+               })
+
+      sequence
+      |> FlowNode.soft_delete_changeset()
+      |> Repo.update!()
+
+      usages = Assets.get_asset_usages(project.id, image.id)
+
+      assert [
+               %{
+                 id: layer_id,
+                 node_id: node_id,
+                 flow_name: "Cinematic Flow",
+                 sequence_name: "Opening",
+                 label: "Wide shot",
+                 kind: "backdrop",
+                 trashed: true
+               }
+             ] = usages.sequence_visual_layers
+
+      assert layer_id == layer.id
+      assert node_id == sequence.id
+    end
+
+    test "returns sequence audio tracks, including tracks owned by trashed flows", %{
+      project: project,
+      user: user
+    } do
+      audio = audio_asset_fixture(project, user)
+      flow = flow_fixture(project, %{name: "Audio Flow"})
+      {:ok, sequence} = Storyarn.Flows.create_sequence(flow.id, %{"name" => "Chase"})
+
+      assert {:ok, track} =
+               Storyarn.Flows.upsert_sequence_track(sequence.id, "music", %{
+                 "asset_id" => audio.id
+               })
+
+      flow
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
+      |> Repo.update!()
+
+      usages = Assets.get_asset_usages(project.id, audio.id)
+
+      assert [
+               %{
+                 id: track_id,
+                 node_id: node_id,
+                 flow_name: "Audio Flow",
+                 sequence_name: "Chase",
+                 kind: "music",
+                 trashed: true
+               }
+             ] = usages.sequence_tracks
+
+      assert track_id == track.id
+      assert node_id == sequence.id
     end
 
     test "returns sheet avatar usages", %{project: project, user: user} do
@@ -352,19 +658,120 @@ defmodule Storyarn.AssetsTest do
       assert hd(usages.scene_pin_icons).pin_id == pin.id
     end
 
+    test "returns scene zone label icon usages, including zones in trashed scenes", %{
+      project: project,
+      user: user
+    } do
+      import Storyarn.ScenesFixtures
+
+      image = image_asset_fixture(project, user)
+      scene = scene_fixture(project, %{name: "Bridge"})
+
+      zone =
+        zone_fixture(scene, %{
+          "name" => "Exit",
+          "label_mode" => "icon",
+          "label_icon_asset_id" => image.id
+        })
+
+      scene
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
+      |> Repo.update!()
+
+      usages = Assets.get_asset_usages(project.id, image.id)
+
+      assert [
+               %{
+                 zone_id: zone_id,
+                 zone_name: "Exit",
+                 scene_id: scene_id,
+                 scene_name: "Bridge",
+                 trashed: true
+               }
+             ] = usages.scene_zone_icons
+
+      assert zone_id == zone.id
+      assert scene_id == scene.id
+    end
+
+    test "returns localized voice-over usages", %{project: project, user: user} do
+      audio = audio_asset_fixture(project, user)
+      text = localized_text_fixture(project.id, %{source_text: "A voiced line", locale_code: "es"})
+
+      assert {:ok, _text} =
+               Localization.update_text(text, %{
+                 vo_asset_id: audio.id,
+                 vo_status: "recorded"
+               })
+
+      usages = Assets.get_asset_usages(project.id, audio.id)
+
+      assert [
+               %{
+                 id: text_id,
+                 locale_code: "es",
+                 source_text: "A voiced line"
+               }
+             ] = usages.localized_voiceovers
+
+      assert text_id == text.id
+    end
+
+    test "returns gallery image usages, including content in trash", %{
+      project: project,
+      user: user
+    } do
+      image = image_asset_fixture(project, user)
+      sheet = sheet_fixture(project, %{name: "Gallery owner"})
+      block = block_fixture(sheet, %{type: "gallery"})
+
+      assert {:ok, gallery_image} =
+               Storyarn.Sheets.add_gallery_image(block, image.id)
+
+      block
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
+      |> Repo.update!()
+
+      usages = Assets.get_asset_usages(project.id, image.id)
+
+      assert [
+               %{
+                 id: gallery_image_id,
+                 block_id: block_id,
+                 sheet_id: sheet_id,
+                 sheet_name: "Gallery owner",
+                 block_deleted_at: deleted_at
+               }
+             ] = usages.gallery_images
+
+      assert gallery_image_id == gallery_image.id
+      assert block_id == block.id
+      assert sheet_id == sheet.id
+      assert deleted_at
+    end
+
     test "returns empty when asset is unused", %{project: project, user: user} do
       asset = asset_fixture(project, user)
 
       usages = Assets.get_asset_usages(project.id, asset.id)
 
+      assert usages.asset_metadata_links == []
       assert usages.flow_nodes == []
+      assert usages.sequence_visual_layers == []
+      assert usages.sequence_tracks == []
       assert usages.sheet_avatars == []
       assert usages.sheet_banners == []
       assert usages.scene_backgrounds == []
       assert usages.scene_pin_icons == []
+      assert usages.scene_zone_icons == []
+      assert usages.localized_voiceovers == []
+      assert usages.gallery_images == []
     end
 
-    test "excludes soft-deleted nodes", %{project: project, user: user} do
+    test "includes soft-deleted nodes because asset deletion still clears their audio", %{
+      project: project,
+      user: user
+    } do
       import Storyarn.FlowsFixtures
 
       audio = audio_asset_fixture(project, user)
@@ -383,14 +790,18 @@ defmodule Storyarn.AssetsTest do
 
       usages = Assets.get_asset_usages(project.id, audio.id)
 
-      assert usages.flow_nodes == []
+      assert [%{node_id: node_id, trashed: true}] = usages.flow_nodes
+      assert node_id == node.id
     end
 
-    test "excludes soft-deleted sheets", %{project: project, user: user} do
+    test "includes soft-deleted sheets because asset deletion still removes their references", %{
+      project: project,
+      user: user
+    } do
       import Storyarn.SheetsFixtures
 
       image = image_asset_fixture(project, user)
-      sheet = sheet_fixture(project, %{name: "Hero"})
+      sheet = sheet_fixture(project, %{name: "Hero", banner_asset_id: image.id})
       {:ok, _} = Storyarn.Sheets.add_avatar(sheet, image.id, %{is_default: true})
 
       # Soft-delete the sheet via raw changeset
@@ -400,7 +811,31 @@ defmodule Storyarn.AssetsTest do
 
       usages = Assets.get_asset_usages(project.id, image.id)
 
-      assert usages.sheet_avatars == []
+      assert [%{id: sheet_id, trashed: true}] = usages.sheet_avatars
+      assert [%{id: ^sheet_id, trashed: true}] = usages.sheet_banners
+      assert sheet_id == sheet.id
+    end
+
+    test "includes backgrounds and pin icons from trashed scenes", %{
+      project: project,
+      user: user
+    } do
+      import Storyarn.ScenesFixtures
+
+      image = image_asset_fixture(project, user)
+      scene = scene_fixture(project, %{name: "Bridge", background_asset_id: image.id})
+      pin = pin_fixture(scene, %{"label" => "Gate", "icon_asset_id" => image.id})
+
+      scene
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
+      |> Repo.update!()
+
+      usages = Assets.get_asset_usages(project.id, image.id)
+
+      assert [%{id: scene_id, trashed: true}] = usages.scene_backgrounds
+      assert [%{pin_id: pin_id, scene_id: ^scene_id, trashed: true}] = usages.scene_pin_icons
+      assert scene_id == scene.id
+      assert pin_id == pin.id
     end
   end
 
@@ -813,25 +1248,23 @@ defmodule Storyarn.AssetsTest do
       blob_key = blob_key_for(project, content, "application/pdf")
       asset_glob = asset_file_glob(project.id, "constraint-cleanup.pdf")
 
+      cleanup_job_ids_before =
+        [worker: DeleteStorageObjectsWorker]
+        |> all_enqueued()
+        |> MapSet.new(& &1.id)
+
       try do
         assert_raise Ecto.ConstraintError, fn ->
           Assets.upload_and_create_asset(tmp_path, entry, project, nonexistent_user)
         end
 
-        [asset_path] = Path.wildcard(asset_glob)
-        asset_key = Path.relative_to(asset_path, storage_upload_dir())
-
-        assert_enqueued(
-          worker: DeleteStorageObjectsWorker,
-          args: %{"storage_keys" => [asset_key, blob_key]}
-        )
-
-        assert :ok =
-                 perform_job(DeleteStorageObjectsWorker, %{
-                   "storage_keys" => [asset_key, blob_key]
-                 })
-
         assert Path.wildcard(asset_glob) == []
+
+        assert [] ==
+                 [worker: DeleteStorageObjectsWorker]
+                 |> all_enqueued()
+                 |> Enum.reject(&MapSet.member?(cleanup_job_ids_before, &1.id))
+
         refute Repo.exists?(from asset in Asset, where: asset.project_id == ^project.id)
 
         # The deterministic blob is a safe project-scoped cache. It is retained
@@ -947,49 +1380,45 @@ defmodule Storyarn.AssetsTest do
   end
 
   describe "count_asset_usages/2 with multiple usage types" do
-    test "counts combined flow node and sheet avatar usages" do
+    test "counts combined flow node and localized voice-over usages" do
       import Storyarn.FlowsFixtures
-      import Storyarn.SheetsFixtures
 
       user = user_fixture()
       project = project_fixture(user)
-      image = image_asset_fixture(project, user)
+      audio = audio_asset_fixture(project, user)
       flow = flow_fixture(project)
 
-      # Add flow node usage (audio_asset_id on dialogue node)
       node_fixture(flow, %{
         type: "dialogue",
-        data: %{"audio_asset_id" => image.id, "text" => "Hello"}
+        data: %{"audio_asset_id" => audio.id, "text" => "Hello"}
       })
 
-      # Add sheet avatar usage
-      sheet = sheet_fixture(project, %{name: "Hero"})
-      {:ok, _} = Storyarn.Sheets.add_avatar(sheet, image.id, %{is_default: true})
+      text = localized_text_fixture(project.id)
 
-      assert Assets.count_asset_usages(project.id, image.id) == 2
+      assert {:ok, _text} =
+               Localization.update_text(text, %{
+                 vo_asset_id: audio.id,
+                 vo_status: "recorded"
+               })
+
+      assert Assets.count_asset_usages(project.id, audio.id) == 2
     end
 
-    test "counts combined flow node, avatar, and banner usages" do
-      import Storyarn.FlowsFixtures
+    test "counts combined avatar, banner, and gallery usages" do
       import Storyarn.SheetsFixtures
 
       user = user_fixture()
       project = project_fixture(user)
       image = image_asset_fixture(project, user)
-      flow = flow_fixture(project)
 
-      # Flow node usage
-      node_fixture(flow, %{
-        type: "dialogue",
-        data: %{"audio_asset_id" => image.id, "text" => "Hello"}
-      })
-
-      # Sheet avatar usage
       avatar_sheet = sheet_fixture(project, %{name: "Hero"})
       {:ok, _} = Storyarn.Sheets.add_avatar(avatar_sheet, image.id, %{is_default: true})
 
-      # Sheet banner usage
       _banner_sheet = sheet_fixture(project, %{name: "Location", banner_asset_id: image.id})
+
+      gallery_sheet = sheet_fixture(project, %{name: "Gallery"})
+      gallery_block = block_fixture(gallery_sheet, %{type: "gallery"})
+      {:ok, _gallery_image} = Storyarn.Sheets.add_gallery_image(gallery_block, image.id)
 
       assert Assets.count_asset_usages(project.id, image.id) == 3
     end
@@ -1291,8 +1720,8 @@ defmodule Storyarn.AssetsTest do
       content_type = "text/html"
       blob_key = blob_key_for(project, content, content_type)
 
-      :ok = Assets.storage_delete(blob_key)
-      on_exit(fn -> Assets.storage_delete(blob_key) end)
+      :ok = delete_storage_blob(blob_key)
+      on_exit(fn -> delete_storage_blob(blob_key) end)
 
       assert {:error, changeset} =
                Assets.upload_binary_and_create_asset(
@@ -1318,8 +1747,8 @@ defmodule Storyarn.AssetsTest do
       content_type = "image/svg+xml"
       blob_key = blob_key_for(project, content, content_type)
 
-      :ok = Assets.storage_delete(blob_key)
-      on_exit(fn -> Assets.storage_delete(blob_key) end)
+      :ok = delete_storage_blob(blob_key)
+      on_exit(fn -> delete_storage_blob(blob_key) end)
 
       assert {:error, changeset} =
                Assets.upload_binary_and_create_asset(
@@ -1355,7 +1784,7 @@ defmodule Storyarn.AssetsTest do
 
       on_exit(fn ->
         Assets.storage_delete(asset.key)
-        Assets.storage_delete(BlobStore.blob_key(project.id, asset.blob_hash, "svg"))
+        delete_storage_blob(BlobStore.blob_key(project.id, asset.blob_hash, "svg"))
       end)
 
       assert asset.content_type == "image/svg+xml"
@@ -1374,8 +1803,8 @@ defmodule Storyarn.AssetsTest do
       content_type = "image/png"
       blob_key = blob_key_for(project, content, content_type)
 
-      :ok = Assets.storage_delete(blob_key)
-      on_exit(fn -> Assets.storage_delete(blob_key) end)
+      :ok = delete_storage_blob(blob_key)
+      on_exit(fn -> delete_storage_blob(blob_key) end)
 
       assert {:error, changeset} =
                Assets.upload_binary_and_create_asset(
@@ -1398,8 +1827,8 @@ defmodule Storyarn.AssetsTest do
       content_type = "application/pdf"
       blob_key = blob_key_for(project, content, content_type)
 
-      :ok = Assets.storage_delete(blob_key)
-      on_exit(fn -> Assets.storage_delete(blob_key) end)
+      :ok = delete_storage_blob(blob_key)
+      on_exit(fn -> delete_storage_blob(blob_key) end)
 
       assert {:ok, asset} =
                Assets.upload_binary_and_create_asset(

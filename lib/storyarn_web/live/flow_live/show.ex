@@ -9,6 +9,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias Storyarn.Flows
   alias Storyarn.Scenes
   alias Storyarn.Sheets
+  alias Storyarn.Versioning
   alias StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers
   alias StoryarnWeb.FlowLive.Handlers.DebugHandlers
   alias StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers
@@ -801,9 +802,9 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
-  def handle_event("connection_deleted", %{"source_node_id" => source_id, "target_node_id" => target_id}, socket) do
+  def handle_event("connection_deleted", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ConnectionHelpers.delete_connection_by_nodes(socket, source_id, target_id)
+      ConnectionHelpers.delete_connection(socket, params)
     end)
   end
 
@@ -1564,6 +1565,9 @@ defmodule StoryarnWeb.FlowLive.Show do
       canNameVersion: history_value(history_data, :can_name_version, false),
       currentVersionId: history_value(history_data, :current_version_id, nil),
       canEdit: assigns.can_edit,
+      restoreEnabled:
+        assigns.can_edit &&
+          Versioning.restore_enabled?({:entity_version_restore, "flow"}),
       loading: assigns.versions_panel_open && is_nil(history_data)
     }
   end

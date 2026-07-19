@@ -653,27 +653,48 @@ defmodule Storyarn.Sheets.BlockCrudTest do
       assert Enum.at(reordered, 2).position == 2
     end
 
-    test "filters out nil IDs", %{sheet: sheet} do
+    test "rejects nil IDs without changing positions", %{sheet: sheet} do
+      b1 = block_fixture(sheet, %{config: %{"label" => "A"}})
+      b2 = block_fixture(sheet, %{config: %{"label" => "B"}})
+      invalid_ids = [nil, b2.id, nil, b1.id]
+
+      assert {:error, {:invalid_block_reorder, ^invalid_ids}} =
+               Sheets.reorder_blocks(sheet.id, invalid_ids)
+
+      assert Enum.map(Sheets.list_blocks(sheet.id), &{&1.id, &1.position}) ==
+               [{b1.id, 0}, {b2.id, 1}]
+    end
+
+    test "rejects blocks from other sheets without a partial reorder", %{
+      project: project,
+      sheet: sheet
+    } do
+      b1 = block_fixture(sheet, %{config: %{"label" => "A"}})
+      b2 = block_fixture(sheet, %{config: %{"label" => "B"}})
+      other_sheet = sheet_fixture(project, %{name: "Other"})
+      b_other = block_fixture(other_sheet, %{config: %{"label" => "X"}})
+      invalid_ids = [b_other.id, b1.id]
+
+      assert {:error, {:invalid_block_reorder, ^invalid_ids}} =
+               Sheets.reorder_blocks(sheet.id, invalid_ids)
+
+      assert Enum.map(Sheets.list_blocks(sheet.id), &{&1.id, &1.position}) ==
+               [{b1.id, 0}, {b2.id, 1}]
+
+      assert Sheets.get_block(b_other.id).position == 0
+    end
+
+    test "requires the complete active set and unique positive integer IDs", %{sheet: sheet} do
       b1 = block_fixture(sheet, %{config: %{"label" => "A"}})
       b2 = block_fixture(sheet, %{config: %{"label" => "B"}})
 
-      {:ok, reordered} = Sheets.reorder_blocks(sheet.id, [nil, b2.id, nil, b1.id])
+      for invalid_ids <- [[b2.id], [b2.id, b2.id], [b2.id, -1], [b2.id, "#{b1.id}"]] do
+        assert {:error, {:invalid_block_reorder, ^invalid_ids}} =
+                 Sheets.reorder_blocks(sheet.id, invalid_ids)
 
-      assert length(reordered) == 2
-      assert Enum.at(reordered, 0).id == b2.id
-      assert Enum.at(reordered, 0).position == 0
-    end
-
-    test "ignores blocks from other sheets", %{project: project, sheet: sheet} do
-      b1 = block_fixture(sheet, %{config: %{"label" => "A"}})
-      other_sheet = sheet_fixture(project, %{name: "Other"})
-      b_other = block_fixture(other_sheet, %{config: %{"label" => "X"}})
-
-      {:ok, reordered} = Sheets.reorder_blocks(sheet.id, [b_other.id, b1.id])
-
-      # Only our block should be in the list
-      assert length(reordered) == 1
-      assert hd(reordered).id == b1.id
+        assert Enum.map(Sheets.list_blocks(sheet.id), &{&1.id, &1.position}) ==
+                 [{b1.id, 0}, {b2.id, 1}]
+      end
     end
   end
 
@@ -709,24 +730,146 @@ defmodule Storyarn.Sheets.BlockCrudTest do
       assert second.column_index == 1
     end
 
-    test "clamps column_index to 0..2", %{sheet: sheet} do
+    test "rejects out-of-range column indexes without mutating the layout", %{sheet: sheet} do
       b1 = block_fixture(sheet, %{config: %{"label" => "A"}})
-      group_id = Ecto.UUID.generate()
+      b2 = block_fixture(sheet, %{config: %{"label" => "B"}})
 
-      items = [%{id: b1.id, column_group_id: group_id, column_index: 5}]
-      {:ok, blocks} = Sheets.reorder_blocks_with_columns(sheet.id, items)
+      for column_index <- [-1, 5] do
+        group_id = Ecto.UUID.generate()
 
-      assert hd(blocks).column_index == 2
+        items = [
+          %{id: b2.id, column_group_id: group_id, column_index: 0},
+          %{id: b1.id, column_group_id: group_id, column_index: column_index}
+        ]
+
+        assert {:error, {:invalid_block_layout, ^items}} =
+                 Sheets.reorder_blocks_with_columns(sheet.id, items)
+
+        assert Enum.map(
+                 Sheets.list_blocks(sheet.id),
+                 &{&1.id, &1.position, &1.column_group_id, &1.column_index}
+               ) == [
+                 {b1.id, 0, nil, 0},
+                 {b2.id, 1, nil, 0}
+               ]
+      end
     end
 
-    test "clamps negative column_index to 0", %{sheet: sheet} do
+    test "rejects incomplete, duplicate, foreign, deleted, and malformed layouts atomically", %{
+      project: project,
+      sheet: sheet
+    } do
       b1 = block_fixture(sheet, %{config: %{"label" => "A"}})
+      b2 = block_fixture(sheet, %{config: %{"label" => "B"}})
+      other_sheet = sheet_fixture(project, %{name: "Other"})
+      foreign = block_fixture(other_sheet, %{config: %{"label" => "Foreign"}})
+      deleted = block_fixture(sheet, %{config: %{"label" => "Deleted"}})
+      {:ok, _deleted} = Sheets.delete_block(deleted)
       group_id = Ecto.UUID.generate()
 
-      items = [%{id: b1.id, column_group_id: group_id, column_index: -1}]
-      {:ok, blocks} = Sheets.reorder_blocks_with_columns(sheet.id, items)
+      invalid_layouts = [
+        [%{id: b2.id, column_group_id: group_id, column_index: 0}],
+        [
+          %{id: b2.id, column_group_id: group_id, column_index: 0},
+          %{id: b2.id, column_group_id: group_id, column_index: 1}
+        ],
+        [
+          %{id: b2.id, column_group_id: group_id, column_index: 0},
+          %{id: foreign.id, column_group_id: group_id, column_index: 1}
+        ],
+        [
+          %{id: b2.id, column_group_id: group_id, column_index: 0},
+          %{id: deleted.id, column_group_id: group_id, column_index: 1}
+        ],
+        [
+          %{id: b2.id, column_group_id: "not-a-uuid", column_index: 0},
+          %{id: b1.id, column_group_id: group_id, column_index: 1}
+        ],
+        [
+          %{id: "#{b2.id}", column_group_id: group_id, column_index: 0},
+          %{id: b1.id, column_group_id: group_id, column_index: 1}
+        ]
+      ]
 
-      assert hd(blocks).column_index == 0
+      for invalid_layout <- invalid_layouts do
+        assert {:error, {:invalid_block_layout, ^invalid_layout}} =
+                 Sheets.reorder_blocks_with_columns(sheet.id, invalid_layout)
+
+        assert Enum.map(
+                 Sheets.list_blocks(sheet.id),
+                 &{&1.id, &1.position, &1.column_group_id, &1.column_index}
+               ) == [
+                 {b1.id, 0, nil, 0},
+                 {b2.id, 1, nil, 0}
+               ]
+      end
+    end
+
+    test "enforces contiguous groups of two or three with exact indexes", %{sheet: sheet} do
+      blocks =
+        for label <- ~w(A B C D) do
+          block_fixture(sheet, %{config: %{"label" => label}})
+        end
+
+      [b1, b2, b3, b4] = blocks
+      group_id = Ecto.UUID.generate()
+      other_group_id = Ecto.UUID.generate()
+
+      invalid_layouts = [
+        [
+          %{id: b1.id, column_group_id: group_id, column_index: 0},
+          %{id: b2.id, column_group_id: nil, column_index: 0},
+          %{id: b3.id, column_group_id: nil, column_index: 0},
+          %{id: b4.id, column_group_id: nil, column_index: 0}
+        ],
+        [
+          %{id: b1.id, column_group_id: group_id, column_index: 0},
+          %{id: b2.id, column_group_id: group_id, column_index: 1},
+          %{id: b3.id, column_group_id: group_id, column_index: 2},
+          %{id: b4.id, column_group_id: group_id, column_index: 3}
+        ],
+        [
+          %{id: b1.id, column_group_id: group_id, column_index: 0},
+          %{id: b2.id, column_group_id: nil, column_index: 0},
+          %{id: b3.id, column_group_id: group_id, column_index: 1},
+          %{id: b4.id, column_group_id: nil, column_index: 0}
+        ],
+        [
+          %{id: b1.id, column_group_id: group_id, column_index: 0},
+          %{id: b2.id, column_group_id: group_id, column_index: 2},
+          %{id: b3.id, column_group_id: other_group_id, column_index: 0},
+          %{id: b4.id, column_group_id: other_group_id, column_index: 1}
+        ],
+        [
+          %{id: b1.id, column_group_id: group_id, column_index: 0},
+          %{id: b2.id, column_group_id: group_id, column_index: 0},
+          %{id: b3.id, column_group_id: other_group_id, column_index: 0},
+          %{id: b4.id, column_group_id: other_group_id, column_index: 1}
+        ],
+        [
+          %{id: b1.id, column_group_id: nil, column_index: 1},
+          %{id: b2.id, column_group_id: nil, column_index: 0},
+          %{id: b3.id, column_group_id: nil, column_index: 0},
+          %{id: b4.id, column_group_id: nil, column_index: 0}
+        ],
+        [
+          %{id: b1.id, column_group_id: nil, column_index: nil},
+          %{id: b2.id, column_group_id: nil, column_index: 0},
+          %{id: b3.id, column_group_id: nil, column_index: 0},
+          %{id: b4.id, column_group_id: nil, column_index: 0}
+        ]
+      ]
+
+      for invalid_layout <- invalid_layouts do
+        assert {:error, {:invalid_block_layout, ^invalid_layout}} =
+                 Sheets.reorder_blocks_with_columns(sheet.id, invalid_layout)
+
+        assert Enum.map(
+                 Sheets.list_blocks(sheet.id),
+                 &{&1.id, &1.position, &1.column_group_id, &1.column_index}
+               ) ==
+                 Enum.map(blocks, &{&1.id, &1.position, nil, 0})
+      end
     end
   end
 
@@ -762,6 +905,40 @@ defmodule Storyarn.Sheets.BlockCrudTest do
 
     test "fails with empty list", %{sheet: sheet} do
       {:error, :not_enough_blocks} = Sheets.create_column_group(sheet.id, [])
+    end
+
+    test "rejects duplicate, foreign, deleted, and oversized groups without partial writes", %{
+      project: project,
+      sheet: sheet
+    } do
+      b1 = block_fixture(sheet, %{config: %{"label" => "A"}})
+      b2 = block_fixture(sheet, %{config: %{"label" => "B"}})
+      b3 = block_fixture(sheet, %{config: %{"label" => "C"}})
+      b4 = block_fixture(sheet, %{config: %{"label" => "D"}})
+      other_sheet = sheet_fixture(project, %{name: "Other"})
+      foreign = block_fixture(other_sheet, %{config: %{"label" => "Foreign"}})
+      deleted = block_fixture(sheet, %{config: %{"label" => "Deleted"}})
+      {:ok, _deleted} = Sheets.delete_block(deleted)
+
+      invalid_groups = [
+        [b1.id, b1.id],
+        [b1.id, foreign.id],
+        [b1.id, deleted.id],
+        [b1.id, b2.id, b3.id, b4.id],
+        [b1.id, "#{b2.id}"]
+      ]
+
+      for invalid_ids <- invalid_groups do
+        assert {:error, {:invalid_column_group, ^invalid_ids}} =
+                 Sheets.create_column_group(sheet.id, invalid_ids)
+
+        assert Enum.all?(
+                 Sheets.list_blocks(sheet.id),
+                 &is_nil(&1.column_group_id)
+               )
+
+        assert is_nil(Sheets.get_block(foreign.id).column_group_id)
+      end
     end
   end
 
@@ -1215,6 +1392,16 @@ defmodule Storyarn.Sheets.BlockCrudTest do
 
       assert {:error, :not_found} = Sheets.move_block_up(0, sheet.id)
     end
+
+    test "rejects a block from another sheet", %{project: project, sheet: sheet} do
+      b1 = block_fixture(sheet, %{config: %{"label" => "A"}, position: 0})
+      other_sheet = sheet_fixture(project, %{name: "Other"})
+      foreign = block_fixture(other_sheet, %{config: %{"label" => "Foreign"}})
+
+      assert {:error, :not_found} = Sheets.move_block_up(foreign.id, sheet.id)
+      assert Sheets.get_block(b1.id).position == 0
+      assert Sheets.get_block(foreign.id).position == 0
+    end
   end
 
   # ===========================================================================
@@ -1246,6 +1433,61 @@ defmodule Storyarn.Sheets.BlockCrudTest do
       _b1 = block_fixture(sheet, %{config: %{"label" => "A"}, position: 0})
 
       assert {:error, :not_found} = Sheets.move_block_down(0, sheet.id)
+    end
+
+    test "rejects a soft-deleted block", %{sheet: sheet} do
+      active = block_fixture(sheet, %{config: %{"label" => "A"}, position: 0})
+      deleted = block_fixture(sheet, %{config: %{"label" => "Deleted"}, position: 1})
+      {:ok, _deleted} = Sheets.delete_block(deleted)
+
+      assert {:error, :not_found} = Sheets.move_block_down(deleted.id, sheet.id)
+      assert Sheets.get_block(active.id).position == 0
+    end
+  end
+
+  # ===========================================================================
+  # update_variable_name/2
+  # ===========================================================================
+
+  describe "update_variable_name/2" do
+    setup :setup_context
+
+    test "uses the locked persisted config when a blank rename falls back to the label", %{
+      sheet: sheet
+    } do
+      stale = block_fixture(sheet, %{config: %{"label" => "Stale label"}})
+
+      Repo.update_all(
+        from(block in Block, where: block.id == ^stale.id),
+        set: [config: %{"label" => "Persisted label"}]
+      )
+
+      assert {:ok, updated} = Sheets.update_variable_name(stale, "")
+      assert updated.variable_name == "persisted_label"
+    end
+
+    test "rejects a forged stale owner without mutating the persisted block", %{
+      project: project,
+      sheet: sheet
+    } do
+      block = block_fixture(sheet, %{config: %{"label" => "Original"}})
+      other_sheet = sheet_fixture(project, %{name: "Other"})
+      forged = %{block | sheet_id: other_sheet.id}
+
+      assert {:error, :block_not_active} =
+               Sheets.update_variable_name(forged, "forged")
+
+      assert Sheets.get_block(block.id).variable_name == "original"
+    end
+
+    test "rejects a stale soft-deleted block", %{sheet: sheet} do
+      block = block_fixture(sheet, %{config: %{"label" => "Original"}})
+      {:ok, _deleted} = Sheets.delete_block(block)
+
+      assert {:error, :block_not_active} =
+               Sheets.update_variable_name(block, "renamed")
+
+      assert Repo.get!(Block, block.id).variable_name == "original"
     end
   end
 end

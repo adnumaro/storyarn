@@ -298,6 +298,72 @@ defmodule Storyarn.Versioning.Builders.FlowSnapshotNormalizerTest do
              "response.choice_41.text"
   end
 
+  test "canonicalizes exact decimal entity ids and their dependent references" do
+    snapshot = %{
+      "original_id" => "40",
+      "scene_id" => "8",
+      "nodes" => [
+        %{
+          "original_id" => "41",
+          "parent_id" => nil,
+          "type" => "sequence",
+          "data" => %{"audio_asset_id" => "9", "referenced_flow_id" => "42"},
+          "sequence_tracks" => [%{"original_id" => "43", "asset_id" => "10"}],
+          "sequence_visual_layers" => [%{"original_id" => "44", "asset_id" => "11"}]
+        },
+        %{
+          "original_id" => "45",
+          "parent_id" => "41",
+          "type" => "hub",
+          "data" => %{}
+        }
+      ],
+      "connections" => [%{"original_id" => "46"}],
+      "localization" => [
+        %{"source_id" => "45", "speaker_sheet_id" => "12", "vo_asset_id" => "13"}
+      ]
+    }
+
+    normalized = FlowSnapshotNormalizer.normalize_entity_ids(snapshot)
+    [sequence, child] = normalized["nodes"]
+
+    assert normalized["original_id"] == 40
+    assert normalized["scene_id"] == 8
+    assert sequence["original_id"] == 41
+    assert sequence["data"]["audio_asset_id"] == 9
+    assert sequence["data"]["referenced_flow_id"] == 42
+    assert hd(sequence["sequence_tracks"])["original_id"] == 43
+    assert hd(sequence["sequence_tracks"])["asset_id"] == 10
+    assert hd(sequence["sequence_visual_layers"])["original_id"] == 44
+    assert hd(sequence["sequence_visual_layers"])["asset_id"] == 11
+    assert child["original_id"] == 45
+    assert child["parent_id"] == 41
+    assert hd(normalized["connections"])["original_id"] == 46
+
+    assert hd(normalized["localization"]) == %{
+             "source_id" => 45,
+             "speaker_sheet_id" => 12,
+             "vo_asset_id" => 13
+           }
+
+    assert normalized == FlowSnapshotNormalizer.normalize_entity_ids(normalized)
+  end
+
+  test "leaves non-canonical entity ids for strict validation" do
+    snapshot = %{
+      "original_id" => " 40",
+      "nodes" => [
+        %{
+          "original_id" => "forty-one",
+          "parent_id" => "-1",
+          "data" => %{"audio_asset_id" => "9.0"}
+        }
+      ]
+    }
+
+    assert FlowSnapshotNormalizer.normalize_entity_ids(snapshot) == snapshot
+  end
+
   test "reserves response ids referenced only by project localization" do
     snapshot = %{
       "flows" => [

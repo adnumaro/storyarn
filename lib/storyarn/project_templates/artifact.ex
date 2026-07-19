@@ -81,6 +81,13 @@ defmodule Storyarn.ProjectTemplates.Artifact do
     |> Enum.map(&Map.take(&1, ["filename", "content_type"]))
   end
 
+  defp canonicalize_checksum_data(%_struct{} = data) do
+    data
+    |> Jason.encode!()
+    |> Jason.decode!()
+    |> canonicalize_checksum_data()
+  end
+
   defp canonicalize_checksum_data(data) when is_map(data) do
     entries =
       data

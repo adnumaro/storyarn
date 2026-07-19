@@ -28,13 +28,70 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Repo
+  alias Storyarn.Scenes.Scene
+  alias Storyarn.Scenes.ScenePin
+  alias Storyarn.Scenes.SceneZone
   alias Storyarn.Shared.TimeHelpers
+
+  @type rebuild_error ::
+          {:invalid_project_id, term()}
+          | {:project_variable_reference_rebuild_failed,
+             %{
+               project_id: integer(),
+               source_type: String.t(),
+               source_id: integer(),
+               reason: term()
+             }}
+
+  @doc """
+  Restores variable-reference rows that can be resolved from every active
+  source in a project.
+
+  Active sources are:
+
+  * non-deleted nodes that belong to non-deleted flows
+  * pins and zones that belong to non-deleted scenes
+
+  This operation is deliberately additive. Existing rows may represent stale
+  references after a Sheet shortcut, block variable, or table slug changed;
+  those rows must remain available to the stale-reference repair workflow.
+  Replacing all rows here would destroy that recovery information.
+
+  The caller is responsible for the outer transaction so the rebuild can be
+  committed or rolled back with the operation that made it necessary.
+  """
+  @spec rebuild_project_variable_references(integer()) :: :ok | {:error, rebuild_error()}
+  def rebuild_project_variable_references(project_id) when is_integer(project_id) and project_id > 0 do
+    with :ok <-
+           rebuild_sources(
+             active_flow_nodes(project_id),
+             project_id,
+             "flow_node",
+             &restore_missing_flow_node_references/1
+           ),
+         :ok <-
+           rebuild_sources(
+             active_scene_pins(project_id),
+             project_id,
+             "scene_pin",
+             &restore_missing_scene_pin_references(&1, project_id)
+           ) do
+      rebuild_sources(
+        active_scene_zones(project_id),
+        project_id,
+        "scene_zone",
+        &restore_missing_scene_zone_references(&1, project_id)
+      )
+    end
+  end
+
+  def rebuild_project_variable_references(project_id), do: {:error, {:invalid_project_id, project_id}}
 
   @doc """
   Updates variable references for a node after its data changes.
   Dispatches to the correct extractor based on node type.
   """
-  @spec update_references(FlowNode.t()) :: :ok
+  @spec update_references(FlowNode.t()) :: :ok | {:error, term()}
   def update_references(%FlowNode{} = node) do
     refs =
       case node.type do
@@ -64,7 +121,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   Updates variable references for a map zone after its action_data changes.
   Extracts assignment write refs and display read refs.
   """
-  @spec update_scene_zone_references(map(), keyword()) :: :ok
+  @spec update_scene_zone_references(map(), keyword()) :: :ok | {:error, term()}
   def update_scene_zone_references(zone, opts \\ [])
 
   def update_scene_zone_references(%{id: zone_id, scene_id: scene_id} = zone, opts) do
@@ -99,7 +156,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   Updates variable references for a map pin after its action_data changes.
   Extracts assignment write refs and display read refs.
   """
-  @spec update_scene_pin_references(map(), keyword()) :: :ok
+  @spec update_scene_pin_references(map(), keyword()) :: :ok | {:error, term()}
   def update_scene_pin_references(pin, opts \\ [])
 
   def update_scene_pin_references(%{id: pin_id, scene_id: scene_id} = pin, opts) do
@@ -600,36 +657,178 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   end
 
   defp replace_references(source_type, source_id, refs, opts \\ []) do
-    Repo.transaction(fn ->
-      Repo.delete_all(
-        from(vr in VariableReference,
-          where: vr.source_type == ^source_type and vr.source_id == ^source_id
+    result =
+      Repo.transaction(fn ->
+        Repo.delete_all(
+          from(vr in VariableReference,
+            where: vr.source_type == ^source_type and vr.source_id == ^source_id
+          )
         )
+
+        unique_refs = Enum.uniq_by(refs, fn ref -> {ref.block_id, ref.kind, ref.source_variable} end)
+        now = TimeHelpers.now()
+
+        entries =
+          Enum.map(unique_refs, fn ref ->
+            %{
+              source_type: source_type,
+              source_id: source_id,
+              flow_node_id: Keyword.get(opts, :flow_node_id),
+              block_id: ref.block_id,
+              kind: ref.kind,
+              source_sheet: ref.source_sheet,
+              source_variable: ref.source_variable,
+              inserted_at: now,
+              updated_at: now
+            }
+          end)
+
+        insert_reference_entries(entries)
+      end)
+
+    case result do
+      {:ok, :ok} ->
+        :ok
+
+      {:error, reason} ->
+        {:error, {:variable_reference_write_failed, source_type, source_id, reason}}
+    end
+  end
+
+  defp restore_missing_flow_node_references(%FlowNode{} = node) do
+    refs =
+      case node.type do
+        "instruction" -> extract_write_refs(node)
+        "condition" -> extract_read_refs(node)
+        _ -> []
+      end
+
+    insert_missing_references("flow_node", node.id, refs, flow_node_id: node.id)
+  end
+
+  defp restore_missing_scene_pin_references(pin, project_id) do
+    insert_missing_references(
+      "scene_pin",
+      pin.id,
+      extract_pin_variable_refs(pin, project_id)
+    )
+  end
+
+  defp restore_missing_scene_zone_references(zone, project_id) do
+    insert_missing_references(
+      "scene_zone",
+      zone.id,
+      extract_zone_variable_refs(zone, project_id)
+    )
+  end
+
+  defp insert_missing_references(source_type, source_id, refs, opts \\ []) do
+    entries = reference_entries(source_type, source_id, refs, opts)
+
+    case Repo.insert_all(VariableReference, entries, on_conflict: :nothing) do
+      {count, _} when count >= 0 and count <= length(entries) ->
+        :ok
+
+      result ->
+        {:error, {:variable_reference_additive_insert_count_mismatch, source_type, source_id, length(entries), result}}
+    end
+  end
+
+  defp reference_entries(source_type, source_id, refs, opts) do
+    now = TimeHelpers.now()
+
+    refs
+    |> Enum.uniq_by(fn ref -> {ref.block_id, ref.kind, ref.source_variable} end)
+    |> Enum.map(fn ref ->
+      %{
+        source_type: source_type,
+        source_id: source_id,
+        flow_node_id: Keyword.get(opts, :flow_node_id),
+        block_id: ref.block_id,
+        kind: ref.kind,
+        source_sheet: ref.source_sheet,
+        source_variable: ref.source_variable,
+        inserted_at: now,
+        updated_at: now
+      }
+    end)
+  end
+
+  defp insert_reference_entries([]), do: :ok
+
+  defp insert_reference_entries(entries) do
+    case Repo.insert_all(VariableReference, entries, on_conflict: :nothing) do
+      {count, _} when count == length(entries) ->
+        :ok
+
+      result ->
+        Repo.rollback({:variable_reference_insert_count_mismatch, length(entries), result})
+    end
+  end
+
+  defp active_flow_nodes(project_id) do
+    Repo.all(
+      from(node in FlowNode,
+        join: flow in Flow,
+        on: flow.id == node.flow_id,
+        where:
+          flow.project_id == ^project_id and is_nil(flow.deleted_at) and
+            is_nil(node.deleted_at),
+        order_by: [asc: node.id]
       )
+    )
+  end
 
-      unique_refs = Enum.uniq_by(refs, fn r -> {r.block_id, r.kind, r.source_variable} end)
-      now = TimeHelpers.now()
+  defp active_scene_pins(project_id) do
+    Repo.all(
+      from(pin in ScenePin,
+        join: scene in Scene,
+        on: scene.id == pin.scene_id,
+        where: scene.project_id == ^project_id and is_nil(scene.deleted_at),
+        order_by: [asc: pin.id]
+      )
+    )
+  end
 
-      entries =
-        Enum.map(unique_refs, fn ref ->
-          %{
-            source_type: source_type,
-            source_id: source_id,
-            flow_node_id: Keyword.get(opts, :flow_node_id),
-            block_id: ref.block_id,
-            kind: ref.kind,
-            source_sheet: ref.source_sheet,
-            source_variable: ref.source_variable,
-            inserted_at: now,
-            updated_at: now
-          }
-        end)
+  defp active_scene_zones(project_id) do
+    Repo.all(
+      from(zone in SceneZone,
+        join: scene in Scene,
+        on: scene.id == zone.scene_id,
+        where: scene.project_id == ^project_id and is_nil(scene.deleted_at),
+        order_by: [asc: zone.id]
+      )
+    )
+  end
 
-      if entries != [] do
-        Repo.insert_all(VariableReference, entries, on_conflict: :nothing)
+  defp rebuild_sources(sources, project_id, source_type, update_fun) do
+    Enum.reduce_while(sources, :ok, fn source, :ok ->
+      case update_fun.(source) do
+        :ok ->
+          {:cont, :ok}
+
+        {:error, reason} ->
+          {:halt,
+           {:error,
+            {:project_variable_reference_rebuild_failed,
+             %{
+               project_id: project_id,
+               source_type: source_type,
+               source_id: source.id,
+               reason: reason
+             }}}}
+
+        result ->
+          {:halt,
+           {:error,
+            {:project_variable_reference_rebuild_failed,
+             %{
+               project_id: project_id,
+               source_type: source_type,
+               source_id: source.id,
+               reason: {:unexpected_result, result}
+             }}}}
       end
     end)
-
-    :ok
   end
 end

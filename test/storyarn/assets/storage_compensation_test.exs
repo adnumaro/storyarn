@@ -57,6 +57,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   test "propagates failed keys when no durable cleanup path is available" do
     tracker = StorageCompensation.new()
     storage_key = cleanup_asset_key("no-durable-path")
+    parent = self()
     :ok = StorageCompensation.track(tracker, storage_key)
 
     log =
@@ -77,7 +78,20 @@ defmodule Storyarn.Assets.StorageCompensationTest do
 
     assert log =~ "could not be completed or persisted"
 
-    assert :ok = StorageCompensation.cleanup(tracker)
+    assert :ok =
+             StorageCompensation.cleanup(tracker,
+               enqueue_fun: fn keys ->
+                 send(parent, {:retained_cleanup_enqueued, keys})
+                 :ok
+               end,
+               delete_fun: fn keys ->
+                 send(parent, {:unexpected_retained_delete, keys})
+                 :ok
+               end
+             )
+
+    assert_receive {:retained_cleanup_enqueued, [^storage_key]}
+    refute_receive {:unexpected_retained_delete, [^storage_key]}
   end
 
   test "cleanup! raises when the cleanup cannot be completed or persisted" do
@@ -114,6 +128,53 @@ defmodule Storyarn.Assets.StorageCompensationTest do
 
     assert_receive {:cleanup_persisted, [^storage_key]}
     refute_receive {:delete_attempted, [^storage_key]}
+  end
+
+  test "rollback cleanup deletes immediately without enqueueing when deletion succeeds" do
+    tracker = StorageCompensation.new()
+    storage_key = cleanup_asset_key("rollback-immediate")
+    parent = self()
+    :ok = StorageCompensation.track(tracker, storage_key)
+
+    assert :ok =
+             StorageCompensation.cleanup_after_rollback(tracker,
+               delete_fun: fn keys ->
+                 send(parent, {:rollback_delete_attempted, keys})
+                 :ok
+               end,
+               enqueue_fun: fn keys ->
+                 send(parent, {:unexpected_rollback_enqueue, keys})
+                 :ok
+               end
+             )
+
+    assert_receive {:rollback_delete_attempted, [^storage_key]}
+    refute_receive {:unexpected_rollback_enqueue, [^storage_key]}
+  end
+
+  test "rollback cleanup durably hands off only keys that could not be deleted" do
+    tracker = StorageCompensation.new()
+    deleted_key = cleanup_asset_key("rollback-deleted")
+    failed_key = cleanup_asset_key("rollback-failed")
+    parent = self()
+    :ok = StorageCompensation.track(tracker, deleted_key)
+    :ok = StorageCompensation.track(tracker, failed_key)
+
+    assert :ok =
+             StorageCompensation.cleanup_after_rollback(tracker,
+               delete_fun: fn keys ->
+                 send(parent, {:rollback_delete_attempted, keys})
+                 {:error, [failed_key]}
+               end,
+               enqueue_fun: fn keys ->
+                 send(parent, {:rollback_cleanup_enqueued, keys})
+                 :ok
+               end
+             )
+
+    assert_receive {:rollback_delete_attempted, attempted_keys}
+    assert MapSet.new(attempted_keys) == MapSet.new([deleted_key, failed_key])
+    assert_receive {:rollback_cleanup_enqueued, [^failed_key]}
   end
 
   test "successful transaction cleanup retains adopted keys and hands off only partial writes" do
@@ -998,7 +1059,15 @@ defmodule Storyarn.Assets.StorageCompensationTest do
       "projects/1/assets/not-a-uuid/file.png",
       "projects/1/assets/#{uuid}/.storyarn-copy",
       "projects/1/assets/#{uuid}/nested/file.png",
-      "projects/1/archive/assets/#{uuid}/file.png"
+      "projects/1/archive/assets/#{uuid}/file.png",
+      "project_templates/imported_blobs/../run/#{hash}/file.png",
+      "project_templates/imported_blobs/demo/../#{hash}/file.png",
+      "project_templates/imported_blobs/demo/run/#{String.upcase(hash)}/file.png",
+      "project_templates/imported_blobs/demo/run/#{hash}/Unsafe Name.png",
+      "project_templates/imported_blobs/demo/run/#{hash}/nested/file.png",
+      "project_templates/imports/../run/snapshot.json.gz",
+      "project_templates/imports/demo/../snapshot.json.gz",
+      "project_templates/imports/demo/run/snapshot.json.gz.bak"
     ]
 
     for storage_key <- invalid_keys do

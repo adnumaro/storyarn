@@ -3,8 +3,8 @@ defmodule Storyarn.Workers.TrashRetentionWorker do
   Oban cron worker that hard-deletes soft-deleted project entities past their
   trash retention window.
 
-  Runs hourly (daily + 24h retention would mean up to 47h effective — hourly
-  keeps slack bounded). For each soft-deleted project item:
+  Scheduled hourly, but disabled by default while referential integrity is
+  being hardened. When explicitly enabled, each soft-deleted project item:
   - Looks up the project's retention hours (per-project override in
     `project.settings["trash_retention_hours"]`, else the workspace plan's
     default).
@@ -36,11 +36,13 @@ defmodule Storyarn.Workers.TrashRetentionWorker do
 
   @impl Oban.Worker
   def perform(%Oban.Job{}) do
-    now = TimeHelpers.now()
+    if enabled?() do
+      now = TimeHelpers.now()
 
-    case Projects.deleted_items_retention_cutoff() do
-      nil -> :ok
-      cutoff -> process_batches(nil, cutoff, now)
+      case Projects.deleted_items_retention_cutoff() do
+        nil -> :ok
+        cutoff -> process_batches(nil, cutoff, now)
+      end
     end
 
     :ok
@@ -115,4 +117,14 @@ defmodule Storyarn.Workers.TrashRetentionWorker do
 
   defp fetch_deleted(%{deleted_at: %DateTime{}} = item), do: {:ok, item}
   defp fetch_deleted(_item), do: {:error, :not_found}
+
+  defp enabled? do
+    case Application.get_env(:storyarn, __MODULE__, []) do
+      config when is_list(config) ->
+        Keyword.keyword?(config) and Keyword.get(config, :enabled, false) == true
+
+      _invalid_config ->
+        false
+    end
+  end
 end

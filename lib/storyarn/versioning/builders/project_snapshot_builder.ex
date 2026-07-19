@@ -10,6 +10,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
 
   alias Storyarn.Accounts.User
   alias Storyarn.Assets.Asset
+  alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Flows
   alias Storyarn.Localization
   alias Storyarn.Localization.GlossaryEntry
@@ -17,16 +18,20 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Localization.SourceContract
   alias Storyarn.Projects.Project
+  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Sheet
+  alias Storyarn.Versioning.AssetMaterializationScope
+  alias Storyarn.Versioning.Builders.AssetCopyError
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.Builders.FlowBuilder
   alias Storyarn.Versioning.Builders.FlowSnapshotNormalizer
   alias Storyarn.Versioning.Builders.SceneBuilder
   alias Storyarn.Versioning.Builders.SheetBuilder
+  alias Storyarn.Versioning.RestorePolicy
 
   require Logger
 
@@ -37,7 +42,43 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   """
   @spec build_snapshot(integer()) :: map()
   def build_snapshot(project_id) do
-    project = Repo.get!(Project, project_id)
+    case Repo.transaction(
+           fn ->
+             project = lock_active_project_for_snapshot!(project_id)
+             build_consistent_snapshot(project)
+           end,
+           isolation: :repeatable_read,
+           timeout: to_timeout(minute: 5)
+         ) do
+      {:ok, snapshot} ->
+        snapshot
+
+      {:error, reason} ->
+        raise "project snapshot transaction failed: #{inspect(reason)}"
+    end
+  end
+
+  defp lock_active_project_for_snapshot!(project_id) do
+    case Repo.one(
+           from(project in Project,
+             where: project.id == ^project_id,
+             lock: "FOR UPDATE"
+           )
+         ) do
+      %Project{deleted_at: nil} = project ->
+        project
+
+      %Project{} ->
+        raise ArgumentError,
+              "cannot snapshot inactive project #{project_id}"
+
+      nil ->
+        raise Ecto.NoResultsError, queryable: Project
+    end
+  end
+
+  defp build_consistent_snapshot(project) do
+    project_id = project.id
     sheets = Sheets.list_sheets_for_export(project_id)
     flows = Flows.list_flows_for_export(project_id)
     scenes = Scenes.list_scenes_for_export(project_id)
@@ -51,7 +92,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
         else: Localization.list_texts_for_backup(project_id, locale_codes)
 
     glossary = Localization.list_glossary_for_export(project_id)
-    {asset_blob_hashes, asset_metadata} = localization_asset_metadata(texts)
+    {asset_blob_hashes, asset_metadata} = localization_asset_metadata(project_id, texts)
 
     entity_counts = %{
       "sheets" => length(sheets),
@@ -105,10 +146,10 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
     }
   end
 
-  defp localization_asset_metadata(texts) do
+  defp localization_asset_metadata(project_id, texts) do
     texts
     |> Enum.map(& &1.vo_asset_id)
-    |> AssetHashResolver.resolve_hashes()
+    |> AssetHashResolver.resolve_hashes_for_project!(project_id)
   end
 
   defp project_to_snapshot(project) do
@@ -131,48 +172,174 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
 
   ## Options
   - `:user_id` - User performing the restore (for audit trail)
+  - `:asset_copy_tracker` - External storage compensation tracker. When
+    supplied, its caller owns finalization after the surrounding transaction.
   """
   @spec restore_snapshot(integer(), map(), keyword()) ::
           {:ok, map()} | {:error, term()}
-  def restore_snapshot(project_id, snapshot, _opts \\ []) do
+  def restore_snapshot(project_id, snapshot, opts \\ []) do
     snapshot = FlowSnapshotNormalizer.normalize_project(snapshot)
 
-    Repo.transaction(
-      fn ->
-        results = %{
-          sheets:
-            restore_entities(
-              project_id,
-              snapshot,
-              "sheets",
-              &restore_sheet(&1, &2, project_id)
-            ),
-          flows:
-            restore_entities(
-              project_id,
-              snapshot,
-              "flows",
-              &restore_flow(&1, &2, project_id)
-            ),
-          scenes:
-            restore_entities(
-              project_id,
-              snapshot,
-              "scenes",
-              &restore_scene(&1, &2, project_id)
-            )
-        }
+    with :ok <- RestorePolicy.ensure_enabled(:project_snapshot_restore),
+         {:ok, tracker, owns_tracker?} <- asset_copy_tracker(opts) do
+      run_restore_scope(
+        project_id,
+        snapshot,
+        Keyword.put(opts, :asset_copy_tracker, tracker),
+        tracker,
+        owns_tracker?
+      )
+    end
+  end
 
-        restore_localization(project_id, snapshot, collect_localization_id_maps(results))
+  defp run_restore_scope(project_id, snapshot, opts, tracker, owns_tracker?) do
+    AssetMaterializationScope.run(opts, fn scoped_opts ->
+      restore_with_tracker(
+        project_id,
+        snapshot,
+        scoped_opts,
+        tracker,
+        owns_tracker?
+      )
+    end)
+  end
 
-        %{
-          restored: count_restored(results),
-          skipped: count_skipped(results),
-          details: results
-        }
-      end,
-      timeout: to_timeout(minute: 5)
+  defp restore_with_tracker(project_id, snapshot, opts, tracker, owns_tracker?) do
+    result =
+      Repo.transaction(
+        fn ->
+          lock_active_project_for_restore!(project_id)
+
+          results = restore_project_entities(project_id, snapshot, opts)
+
+          restore_localization(
+            project_id,
+            snapshot,
+            collect_localization_id_maps(results),
+            opts
+          )
+
+          case prepare_asset_cleanup_handoff(tracker, owns_tracker?) do
+            :ok ->
+              %{
+                restored: count_restored(results),
+                skipped: count_skipped(results),
+                details: results
+              }
+
+            {:error, reason} ->
+              Repo.rollback({:storage_cleanup_handoff_failed, reason})
+          end
+        end,
+        timeout: to_timeout(minute: 5)
+      )
+
+    finalize_asset_copies(result, tracker, owns_tracker?)
+  rescue
+    error in AssetCopyError ->
+      asset_copy_error_result(error, cleanup_owned_asset_copies(tracker, owns_tracker?))
+
+    error ->
+      tracker
+      |> cleanup_owned_asset_copies(owns_tracker?)
+      |> log_asset_cleanup_failure()
+
+      reraise error, __STACKTRACE__
+  catch
+    kind, reason ->
+      tracker
+      |> cleanup_owned_asset_copies(owns_tracker?)
+      |> log_asset_cleanup_failure()
+
+      :erlang.raise(kind, reason, __STACKTRACE__)
+  end
+
+  defp restore_project_entities(project_id, snapshot, opts) do
+    %{
+      sheets:
+        restore_entities(
+          project_id,
+          snapshot,
+          "sheets",
+          &restore_sheet(&1, &2, project_id, opts)
+        ),
+      flows:
+        restore_entities(
+          project_id,
+          snapshot,
+          "flows",
+          &restore_flow(&1, &2, project_id, opts)
+        ),
+      scenes:
+        restore_entities(
+          project_id,
+          snapshot,
+          "scenes",
+          &restore_scene(&1, &2, project_id, opts)
+        )
+    }
+  end
+
+  defp asset_copy_tracker(opts) do
+    case Keyword.get(opts, :asset_copy_tracker) do
+      reference when is_reference(reference) ->
+        {:ok, reference, false}
+
+      _reference ->
+        if Repo.in_transaction?(),
+          do: {:error, :asset_copy_tracker_required_in_transaction},
+          else: {:ok, StorageCompensation.new(), true}
+    end
+  end
+
+  defp finalize_asset_copies({:ok, _result} = result, tracker, true) do
+    StorageCompensation.discard(tracker)
+    result
+  end
+
+  defp finalize_asset_copies({:error, _reason} = result, tracker, true) do
+    case StorageCompensation.cleanup_after_rollback(tracker) do
+      :ok ->
+        result
+
+      {:error, cleanup_reason} ->
+        {:error, {:asset_storage_cleanup_failed, result, cleanup_reason}}
+    end
+  end
+
+  defp finalize_asset_copies(result, _tracker, false), do: result
+
+  defp prepare_asset_cleanup_handoff(tracker, true), do: StorageCompensation.prepare_unretained_cleanup(tracker)
+
+  defp prepare_asset_cleanup_handoff(_tracker, false), do: :ok
+
+  defp asset_copy_error_result(%AssetCopyError{} = error, :ok) do
+    {:error, {:asset_materialization_failed, error.asset_id, error.reason}}
+  end
+
+  defp asset_copy_error_result(%AssetCopyError{} = error, {:error, cleanup_reason}) do
+    {:error,
+     {:asset_storage_cleanup_failed, {:asset_materialization_failed, error.asset_id, error.reason}, cleanup_reason}}
+  end
+
+  defp cleanup_owned_asset_copies(tracker, true), do: StorageCompensation.cleanup_after_rollback(tracker)
+
+  defp cleanup_owned_asset_copies(_tracker, false), do: :ok
+
+  defp log_asset_cleanup_failure(:ok), do: :ok
+
+  defp log_asset_cleanup_failure({:error, cleanup_reason}) do
+    Logger.error(
+      "Could not compensate project snapshot asset copies after an exception: " <>
+        inspect(cleanup_reason)
     )
+  end
+
+  defp lock_active_project_for_restore!(project_id) do
+    case ProjectReferenceIntegrity.lock_active_project(project_id, :update) do
+      {:ok, _project} -> :ok
+      {:error, reason} -> Repo.rollback(reason)
+    end
   end
 
   defp restore_entities(project_id, snapshot, entity_key, restore_fn) do
@@ -199,24 +366,49 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
     end)
   end
 
-  defp restore_sheet(sheet_id, snapshot, project_id) do
+  defp restore_sheet(sheet_id, snapshot, project_id, opts) do
     case Sheets.get_sheet(project_id, sheet_id) do
-      nil -> {:error, :not_found}
-      sheet -> SheetBuilder.restore_snapshot(sheet, snapshot, return_id_maps: true)
+      nil ->
+        {:error, :not_found}
+
+      sheet ->
+        SheetBuilder.restore_snapshot(
+          sheet,
+          snapshot,
+          opts
+          |> Keyword.put(:return_id_maps, true)
+          |> Keyword.put(:restore_action, :project_snapshot_restore)
+        )
     end
   end
 
-  defp restore_flow(flow_id, snapshot, project_id) do
+  defp restore_flow(flow_id, snapshot, project_id, opts) do
     case Flows.get_flow(project_id, flow_id) do
-      nil -> {:error, :not_found}
-      flow -> FlowBuilder.restore_snapshot(flow, snapshot, return_id_maps: true)
+      nil ->
+        {:error, :not_found}
+
+      flow ->
+        FlowBuilder.restore_snapshot(
+          flow,
+          snapshot,
+          opts
+          |> Keyword.put(:return_id_maps, true)
+          |> Keyword.put(:restore_action, :project_snapshot_restore)
+        )
     end
   end
 
-  defp restore_scene(scene_id, snapshot, project_id) do
+  defp restore_scene(scene_id, snapshot, project_id, opts) do
     case Scenes.get_scene(project_id, scene_id) do
-      nil -> {:error, :not_found}
-      scene -> SceneBuilder.restore_snapshot(scene, snapshot)
+      nil ->
+        {:error, :not_found}
+
+      scene ->
+        SceneBuilder.restore_snapshot(
+          scene,
+          snapshot,
+          Keyword.put(opts, :restore_action, :project_snapshot_restore)
+        )
     end
   end
 
@@ -305,11 +497,11 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
 
   # ========== Localization Restore ==========
 
-  defp restore_localization(_project_id, %{"localization" => nil}, _id_maps), do: :ok
+  defp restore_localization(_project_id, %{"localization" => nil}, _id_maps, _opts), do: :ok
 
-  defp restore_localization(_project_id, snapshot, _id_maps) when not is_map_key(snapshot, "localization"), do: :ok
+  defp restore_localization(_project_id, snapshot, _id_maps, _opts) when not is_map_key(snapshot, "localization"), do: :ok
 
-  defp restore_localization(project_id, snapshot, id_maps) do
+  defp restore_localization(project_id, snapshot, id_maps, opts) do
     localization = snapshot["localization"]
     now = TimeHelpers.now()
 
@@ -318,7 +510,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
     Repo.delete_all(from(g in GlossaryEntry, where: g.project_id == ^project_id))
     Repo.delete_all(from(l in ProjectLanguage, where: l.project_id == ^project_id))
     restore_languages(project_id, Map.get(localization, "languages", []), now)
-    restore_texts(project_id, Map.get(localization, "texts", []), id_maps, now)
+    restore_texts(project_id, Map.get(localization, "texts", []), id_maps, snapshot, opts, now)
     restore_glossary(project_id, Map.get(localization, "glossary", []), now)
   end
 
@@ -342,10 +534,18 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
     Repo.insert_all(ProjectLanguage, entries)
   end
 
-  defp restore_texts(_project_id, [], _id_maps, _now), do: :ok
+  defp restore_texts(_project_id, [], _id_maps, _snapshot, _opts, _now), do: :ok
 
-  defp restore_texts(project_id, texts, id_maps, now) do
-    context = localization_restore_context(project_id, texts, id_maps)
+  defp restore_texts(project_id, texts, id_maps, snapshot, opts, now) do
+    context =
+      project_id
+      |> localization_restore_context(texts, id_maps)
+      |> Map.merge(%{
+        project_id: project_id,
+        snapshot: snapshot,
+        opts: opts,
+        user_id: Keyword.get(opts, :user_id)
+      })
 
     texts
     |> Enum.flat_map(fn text ->
@@ -355,7 +555,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
       if is_nil(metadata) or is_nil(source_id) or not MapSet.member?(context.locales, text["locale_code"]) do
         []
       else
-        vo_asset_id = valid_id(text["vo_asset_id"], context.assets)
+        vo_asset_id = restored_vo_asset_id(text, metadata, context)
         speaker_sheet_id = text["speaker_sheet_id"] |> remap_optional_id(id_maps.sheet) |> valid_id(context.sheets)
         translated_source_hash = translated_source_hash(text)
         archived_at = parse_datetime(text["archived_at"])
@@ -442,6 +642,45 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
       status when status in ~w(pending draft in_progress review final) -> status
       _invalid -> if(translated?, do: "draft", else: "pending")
     end
+  end
+
+  defp restored_vo_asset_id(_text, %{vo_eligible: false}, _context), do: nil
+  defp restored_vo_asset_id(%{"vo_asset_id" => nil}, %{vo_eligible: true}, _context), do: nil
+
+  defp restored_vo_asset_id(%{"vo_asset_id" => asset_id}, %{vo_eligible: true}, context) do
+    cond do
+      Keyword.get(context.opts, :asset_mode) == :drop ->
+        nil
+
+      recoverable_asset_catalog_entry?(context.snapshot, asset_id) ->
+        AssetHashResolver.resolve_asset_fk(
+          asset_id,
+          context.snapshot,
+          context.project_id,
+          context.user_id,
+          localization_asset_opts(context.opts)
+        )
+
+      true ->
+        valid_id(asset_id, context.assets)
+    end
+  end
+
+  defp recoverable_asset_catalog_entry?(snapshot, asset_id) do
+    id = to_string(asset_id)
+
+    is_binary(get_in(snapshot, ["asset_blob_hashes", id])) and
+      is_map(get_in(snapshot, ["asset_metadata", id]))
+  end
+
+  defp localization_asset_opts(opts) do
+    Keyword.take(opts, [
+      :asset_copy_tracker,
+      :asset_error_mode,
+      :asset_materialization_cache,
+      :asset_mode,
+      :asset_source_keys
+    ])
   end
 
   defp restored_vo_status(_status, false, _asset_id), do: "none"

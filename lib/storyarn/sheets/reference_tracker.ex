@@ -29,10 +29,21 @@ defmodule Storyarn.Sheets.ReferenceTracker do
 
   import Ecto.Query
 
+  alias Storyarn.Flows.Flow
+  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
+  alias Storyarn.Scenes.Scene
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.EntityReference
   alias Storyarn.Sheets.Sheet
+
+  @project_target_types %{
+    "block" => ~w(sheet flow),
+    "flow_node" => ~w(sheet flow),
+    "screenplay_element" => ~w(sheet flow),
+    "scene_pin" => ~w(sheet flow),
+    "scene_zone" => ~w(sheet flow scene)
+  }
 
   @doc """
   Updates references from a block.
@@ -40,20 +51,97 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   Deletes all existing references from this block and creates new ones
   based on the current block state.
   """
-  @spec update_block_references(map()) :: :ok
-  def update_block_references(block) do
+  @spec update_block_references(map(), keyword()) :: :ok | {:error, term()}
+  def update_block_references(block, opts \\ []) do
     block_id = block.id
 
-    Repo.transaction(fn ->
+    operation = fn ->
       # Delete existing references from this block
       Repo.delete_all(from(r in EntityReference, where: r.source_type == "block" and r.source_id == ^block_id))
 
       # Extract and batch-insert new references
       references = extract_block_references(block)
-      batch_insert_references("block", block_id, references)
-    end)
+      batch_insert_references("block", block_id, references, opts)
+    end
 
-    :ok
+    if Repo.in_transaction?() do
+      operation.()
+    else
+      case Repo.transaction(operation) do
+        {:ok, :ok} -> :ok
+        {:error, reason} -> {:error, reason}
+      end
+    end
+  end
+
+  @doc """
+  Validates the entity references encoded in a prospective block value.
+
+  This is a writer guard, not a tracker repair operation. It must run in the
+  same transaction as the block write so every target stays active and in the
+  source project until commit.
+  """
+  @spec lock_and_normalize_block_value(integer(), String.t(), map()) ::
+          {:ok, map()} | {:error, term()}
+  def lock_and_normalize_block_value(project_id, "reference", value) when is_integer(project_id) and is_map(value) do
+    target_type = value["target_type"] || value[:target_type]
+    target_id = value["target_id"] || value[:target_id]
+
+    case {normalize_optional_target_type(target_type), target_id} do
+      {nil, id} when id in [nil, ""] ->
+        clear_reference_target(value)
+
+      {type, id} when type in ["sheet", "flow"] and id not in [nil, ""] ->
+        lock_reference_target(project_id, value, type, id)
+
+      _invalid_pair ->
+        {:error, {:invalid_project_reference, {:block, :value, target_type}, target_id}}
+    end
+  end
+
+  def lock_and_normalize_block_value(project_id, "rich_text", value) when is_integer(project_id) and is_map(value) do
+    content = value["content"] || value[:content] || ""
+
+    with {:ok, references} <- strict_mentions_from_html(content),
+         specs = Enum.map(references, &mention_reference_spec/1),
+         {:ok, _normalized_ids} <-
+           ProjectReferenceIntegrity.lock_active_references(project_id, specs) do
+      {:ok,
+       value
+       |> Map.delete(:content)
+       |> Map.put("content", content)}
+    end
+  end
+
+  def lock_and_normalize_block_value(_project_id, type, value) when type in ["reference", "rich_text"] do
+    {:error, {:invalid_project_reference, {:block, :value, type}, value}}
+  end
+
+  def lock_and_normalize_block_value(_project_id, _type, value), do: {:ok, value}
+
+  defp clear_reference_target(value) do
+    {:ok,
+     value
+     |> put_reference_value("target_type", nil)
+     |> put_reference_value("target_id", nil)}
+  end
+
+  defp lock_reference_target(project_id, value, type, id) do
+    reference_type = if(type == "sheet", do: :sheet, else: :flow)
+    context = {:block, :value, type}
+
+    case ProjectReferenceIntegrity.lock_active_references(project_id, [
+           {reference_type, context, id}
+         ]) do
+      {:ok, [normalized_id]} ->
+        {:ok,
+         value
+         |> put_reference_value("target_type", type)
+         |> put_reference_value("target_id", normalized_id)}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   @doc """
@@ -69,18 +157,20 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   Updates references for a flow node based on its data.
   Extracts mentions from rich text fields and speaker references.
   """
-  @spec update_flow_node_references(map()) :: :ok
-  def update_flow_node_references(%{id: node_id, data: data}) when is_map(data) do
+  @spec update_flow_node_references(map(), keyword()) :: :ok
+  def update_flow_node_references(node, opts \\ [])
+
+  def update_flow_node_references(%{id: node_id, data: data}, opts) when is_map(data) do
     Repo.transaction(fn ->
       delete_flow_node_references(node_id)
       references = extract_flow_node_refs(data)
-      batch_insert_references("flow_node", node_id, references)
+      batch_insert_references("flow_node", node_id, references, opts)
     end)
 
     :ok
   end
 
-  def update_flow_node_references(_node), do: :ok
+  def update_flow_node_references(_node, _opts), do: :ok
 
   @doc """
   Deletes all references from a flow node.
@@ -241,15 +331,17 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   Updates references from a map pin.
   Tracks target_type/target_id and sheet_id references.
   """
-  @spec update_scene_pin_references(map()) :: :ok
-  def update_scene_pin_references(%{id: pin_id} = pin) do
+  @spec update_scene_pin_references(map(), keyword()) :: :ok
+  def update_scene_pin_references(pin, opts \\ [])
+
+  def update_scene_pin_references(%{id: pin_id} = pin, opts) do
     delete_map_pin_references(pin_id)
 
     refs = extract_map_pin_refs(pin)
-    batch_insert_references("scene_pin", pin_id, refs)
+    batch_insert_references("scene_pin", pin_id, refs, opts)
   end
 
-  def update_scene_pin_references(_pin), do: :ok
+  def update_scene_pin_references(_pin, _opts), do: :ok
 
   @doc """
   Deletes all references from a map pin.
@@ -263,15 +355,17 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   Updates references from a map zone.
   Tracks target_type/target_id references.
   """
-  @spec update_scene_zone_references(map()) :: :ok
-  def update_scene_zone_references(%{id: zone_id} = zone) do
+  @spec update_scene_zone_references(map(), keyword()) :: :ok
+  def update_scene_zone_references(zone, opts \\ [])
+
+  def update_scene_zone_references(%{id: zone_id} = zone, opts) do
     delete_map_zone_references(zone_id)
 
     refs = extract_map_zone_refs(zone)
-    batch_insert_references("scene_zone", zone_id, refs)
+    batch_insert_references("scene_zone", zone_id, refs, opts)
   end
 
-  def update_scene_zone_references(_zone), do: :ok
+  def update_scene_zone_references(_zone, _opts), do: :ok
 
   @doc """
   Deletes all references from a map zone.
@@ -300,7 +394,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
 
   # Private functions
 
-  defp batch_insert_references(source_type, source_id, references) do
+  defp batch_insert_references(source_type, source_id, references, opts \\ []) do
     now = DateTime.to_naive(TimeHelpers.now())
 
     entries =
@@ -318,10 +412,55 @@ defmodule Storyarn.Sheets.ReferenceTracker do
           updated_at: now
         }
       end)
+      |> filter_project_targets(source_type, Keyword.get(opts, :project_id))
 
     if entries != [], do: Repo.insert_all(EntityReference, entries, on_conflict: :nothing)
 
     :ok
+  end
+
+  defp filter_project_targets(entries, _source_type, nil), do: entries
+
+  defp filter_project_targets(entries, source_type, project_id) when is_integer(project_id) do
+    if not Repo.in_transaction?() do
+      raise ArgumentError,
+            "project-scoped entity references must be rebuilt inside an explicit database transaction"
+    end
+
+    allowed_types = Map.fetch!(@project_target_types, source_type)
+    entries = Enum.filter(entries, &(&1.target_type in allowed_types))
+
+    allowed_targets =
+      Enum.reduce([{"sheet", Sheet}, {"flow", Flow}, {"scene", Scene}], MapSet.new(), fn {target_type, schema}, allowed ->
+        target_ids =
+          entries
+          |> Enum.filter(&(&1.target_type == target_type))
+          |> Enum.map(& &1.target_id)
+          |> Enum.uniq()
+
+        active_ids =
+          if target_ids == [] do
+            []
+          else
+            Repo.all(
+              from target in schema,
+                where:
+                  target.id in ^target_ids and target.project_id == ^project_id and
+                    is_nil(target.deleted_at),
+                order_by: [asc: target.id],
+                lock: "FOR SHARE",
+                select: target.id
+            )
+          end
+
+        Enum.reduce(active_ids, allowed, &MapSet.put(&2, {target_type, &1}))
+      end)
+
+    Enum.filter(entries, &MapSet.member?(allowed_targets, {&1.target_type, &1.target_id}))
+  end
+
+  defp filter_project_targets(_entries, _source_type, project_id) do
+    raise ArgumentError, "expected :project_id to be an integer, got: #{inspect(project_id)}"
   end
 
   defp parse_id(id) when is_integer(id), do: id
@@ -334,6 +473,20 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   end
 
   defp parse_id(_), do: nil
+
+  defp normalize_optional_target_type(nil), do: nil
+  defp normalize_optional_target_type(""), do: nil
+  defp normalize_optional_target_type(type) when is_atom(type), do: Atom.to_string(type)
+  defp normalize_optional_target_type(type), do: type
+
+  defp put_reference_value(value, key, normalized) do
+    value
+    |> Map.delete(reference_atom_key(key))
+    |> Map.put(key, normalized)
+  end
+
+  defp reference_atom_key("target_type"), do: :target_type
+  defp reference_atom_key("target_id"), do: :target_id
 
   defp extract_block_references(block) do
     case block.type do
@@ -360,34 +513,66 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   end
 
   defp extract_rich_text_refs(block) do
-    content = get_in(block.value, ["content"]) || ""
+    content = block.value["content"] || block.value[:content] || ""
     extract_mentions_from_html(content)
   end
 
   defp extract_mentions_from_html(content) when is_binary(content) do
-    # Use Floki for robust HTML parsing instead of regex
-    case Floki.parse_fragment(content) do
-      {:ok, document} ->
-        document
-        |> Floki.find("span.mention")
-        |> Enum.map(&mention_element_to_ref/1)
-        |> Enum.reject(&is_nil/1)
-
-      {:error, _} ->
-        []
+    case strict_mentions_from_html(content) do
+      {:ok, references} -> references
+      {:error, _reason} -> []
     end
   end
 
   defp extract_mentions_from_html(_), do: []
 
-  defp mention_element_to_ref(element) do
-    type = element |> Floki.attribute("data-type") |> List.first()
-    id = element |> Floki.attribute("data-id") |> List.first()
+  defp strict_mentions_from_html(content) when is_binary(content) do
+    case Floki.parse_fragment(content) do
+      {:ok, document} ->
+        document
+        |> Floki.find(".mention")
+        |> Enum.reduce_while({:ok, []}, &accumulate_mention_reference/2)
+        |> case do
+          {:ok, references} -> {:ok, Enum.reverse(references)}
+          {:error, _reason} = error -> error
+        end
 
-    if type && id do
-      %{type: type, id: id, context: "content"}
+      {:error, reason} ->
+        {:error, {:invalid_project_reference, {:block, :content, :invalid_html}, reason}}
     end
   end
+
+  defp strict_mentions_from_html(content) do
+    {:error, {:invalid_project_reference, {:block, :content, :invalid_html}, content}}
+  end
+
+  defp accumulate_mention_reference(element, {:ok, references}) do
+    case mention_element_to_ref(element) do
+      {:ok, reference} -> {:cont, {:ok, [reference | references]}}
+      {:error, reason} -> {:halt, {:error, reason}}
+    end
+  end
+
+  defp mention_element_to_ref(element) do
+    type_attributes = Floki.attribute(element, "data-type")
+    id_attributes = Floki.attribute(element, "data-id")
+
+    case {type_attributes, id_attributes} do
+      {[type], [id]} when type in ["sheet", "flow"] and id != "" ->
+        {:ok, %{type: type, id: id, context: "content"}}
+
+      {[type], [id]} ->
+        {:error, {:invalid_project_reference, {:block, :content, type}, id}}
+
+      _malformed_attributes ->
+        attributes = %{type: type_attributes, id: id_attributes}
+        {:error, {:invalid_project_reference, {:block, :content, :malformed_mention}, attributes}}
+    end
+  end
+
+  defp mention_reference_spec(%{type: "sheet", id: id}), do: {:sheet, {:block, :content, "sheet"}, id}
+
+  defp mention_reference_spec(%{type: "flow", id: id}), do: {:flow, {:block, :content, "flow"}, id}
 
   defp extract_screenplay_element_refs(type, data, content) do
     refs = []
@@ -500,6 +685,19 @@ defmodule Storyarn.Sheets.ReferenceTracker do
        when is_map(action_data) do
     variable_ref = action_data["variable_ref"]
     resolve_display_sheet_ref(zone.scene_id, variable_ref)
+  end
+
+  defp extract_zone_action_data_refs(%{action_type: "collection", action_data: %{"items" => items}})
+       when is_list(items) do
+    items
+    |> Enum.flat_map(fn
+      %{"sheet_id" => sheet_id} when is_integer(sheet_id) ->
+        [%{type: "sheet", id: sheet_id, context: "collection_item"}]
+
+      _item ->
+        []
+    end)
+    |> Enum.uniq_by(fn reference -> {reference.type, reference.id} end)
   end
 
   defp extract_zone_action_data_refs(_zone), do: []

@@ -975,12 +975,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
   # Private helpers
 
-  defp format_shortcut_error(changeset) do
+  defp format_shortcut_error(%Ecto.Changeset{} = changeset) do
     case changeset.errors[:shortcut] do
       {msg, _opts} -> dgettext("flows", "Shortcut %{error}", error: msg)
       nil -> dgettext("flows", "Could not save shortcut.")
     end
   end
+
+  defp format_shortcut_error(_reason), do: dgettext("flows", "Could not save shortcut.")
 
   @lock_heartbeat_interval 10_000
 

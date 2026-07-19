@@ -14,6 +14,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
   alias Storyarn.Sheets
   alias Storyarn.Versioning
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.VersionEventHelpers
 
   def handle_compare(%{"version_number" => version_number}, socket, _helpers) do
     case parse_version_number(version_number) do
@@ -65,31 +66,33 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
   end
 
   def handle_preview_restore(%{"version_number" => version_number}, socket, _helpers) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with_version(socket, version_number, fn version ->
-        detect_and_show_restore_preview(socket, version)
+    VersionEventHelpers.with_authorized_restore(socket, "sheet", fn authorized_socket ->
+      with_version(authorized_socket, version_number, fn version ->
+        detect_and_show_restore_preview(authorized_socket, version)
       end)
     end)
   end
 
   def handle_save_and_restore(%{"version_number" => version_number}, socket, _helpers) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with_version(socket, version_number, fn version -> save_and_show_restore(socket, version) end)
+    VersionEventHelpers.with_authorized_restore(socket, "sheet", fn authorized_socket ->
+      with_version(authorized_socket, version_number, fn version ->
+        save_and_show_restore(authorized_socket, version)
+      end)
     end)
   end
 
   def handle_discard_and_restore(%{"version_number" => version_number}, socket, _helpers) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with_version(socket, version_number, fn version ->
-        show_conflict_preview(socket, version, true)
+    VersionEventHelpers.with_authorized_restore(socket, "sheet", fn authorized_socket ->
+      with_version(authorized_socket, version_number, fn version ->
+        show_conflict_preview(authorized_socket, version, true)
       end)
     end)
   end
 
   def handle_confirm_restore(%{"version_number" => version_number} = params, socket, helpers) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with_version(socket, version_number, fn version ->
-        restore_version(socket, version, params, helpers)
+    VersionEventHelpers.with_authorized_restore(socket, "sheet", fn authorized_socket ->
+      with_version(authorized_socket, version_number, fn version ->
+        restore_version(authorized_socket, version, params, helpers)
       end)
     end)
   end

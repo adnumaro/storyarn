@@ -58,6 +58,16 @@ defmodule Storyarn.ProjectTemplates.LegacySnapshotRepairTest do
     assert repaired_index == legacy_index
     assert repaired_node["type"] == "annotation"
 
+    assert Enum.all?(
+             flow_snapshot(repaired_snapshot, flow.id)["nodes"],
+             &Map.has_key?(&1, "parent_id")
+           )
+
+    assert Enum.all?(
+             flow_snapshot(repaired_snapshot, flow.id)["nodes"],
+             &is_nil(&1["parent_id"])
+           )
+
     assert Map.take(repaired_node, [
              "original_id",
              "position_x",

@@ -1,5 +1,5 @@
 defmodule Storyarn.Workers.RestoreProjectWorkerTest do
-  use Storyarn.DataCase, async: true
+  use Storyarn.DataCase, async: false
   use Oban.Testing, repo: Storyarn.Repo
 
   import Storyarn.AccountsFixtures
@@ -7,10 +7,23 @@ defmodule Storyarn.Workers.RestoreProjectWorkerTest do
 
   alias Storyarn.Collaboration
   alias Storyarn.Projects
+  alias Storyarn.Repo
   alias Storyarn.Versioning
+  alias Storyarn.Versioning.RestorePolicy
   alias Storyarn.Workers.RestoreProjectWorker
 
   setup do
+    restore_policy =
+      Application.get_env(:storyarn, RestorePolicy, [])
+
+    on_exit(fn ->
+      Application.put_env(
+        :storyarn,
+        RestorePolicy,
+        restore_policy
+      )
+    end)
+
     user = user_fixture()
     project = project_fixture(user)
     %{user: user, project: project}
@@ -67,6 +80,63 @@ defmodule Storyarn.Workers.RestoreProjectWorkerTest do
 
       # Should have received failure broadcast
       assert_received {:project_restoration_failed, %{reason: "Snapshot not found"}}
+    end
+
+    test "rejects an already queued restore and releases its lock when containment is active", %{
+      project: project,
+      user: user
+    } do
+      {:ok, snapshot} =
+        Versioning.create_project_snapshot(project.id, user.id, title: "Blocked")
+
+      {:ok, _} = Projects.acquire_restoration_lock(project.id, user.id)
+      Collaboration.subscribe_restoration(project.id)
+
+      policy =
+        Application.get_env(:storyarn, RestorePolicy, [])
+
+      Application.put_env(
+        :storyarn,
+        RestorePolicy,
+        Keyword.put(policy, :project_snapshot_restore, false)
+      )
+
+      assert {:error, :restore_temporarily_disabled} =
+               perform_job(RestoreProjectWorker, %{
+                 project_id: project.id,
+                 snapshot_id: snapshot.id,
+                 user_id: user.id
+               })
+
+      refute Projects.restoration_in_progress?(project.id)
+      assert Versioning.count_project_snapshots(project.id) == 1
+
+      assert_received {:project_restoration_failed, %{reason: :restore_temporarily_disabled}}
+    end
+
+    test "returns containment error when project disappears before queued restore executes", %{
+      project: project,
+      user: user
+    } do
+      project_id = project.id
+
+      # The containment branch still releases the lock, so a missing row must not raise.
+      Repo.delete!(project)
+
+      policy = Application.get_env(:storyarn, RestorePolicy, [])
+
+      Application.put_env(
+        :storyarn,
+        RestorePolicy,
+        Keyword.put(policy, :project_snapshot_restore, false)
+      )
+
+      assert {:error, :restore_temporarily_disabled} =
+               perform_job(RestoreProjectWorker, %{
+                 project_id: project_id,
+                 snapshot_id: -1,
+                 user_id: user.id
+               })
     end
   end
 end

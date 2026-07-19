@@ -71,6 +71,7 @@ defmodule Storyarn.Versioning.ChangeDetectorTest do
         version_number: version,
         storage_key: "test/snapshot/#{version}.json.gz",
         snapshot_size_bytes: 100,
+        checksum: String.duplicate("a", 64),
         entity_counts: %{},
         is_auto: is_auto
       })
