@@ -37,7 +37,33 @@ defmodule Storyarn.AI.IntegrationCrudTest do
 
       assert {:error, :invalid_key} = AI.connect(user, :anthropic, "sk-ant-bad")
       assert Repo.aggregate(Integration, :count) == 0
-      assert [%AuditEntry{action: "validation_failed"}] = Repo.all(AuditEntry)
+
+      assert [%AuditEntry{action: "validation_failed", metadata: metadata}] = Repo.all(AuditEntry)
+      assert metadata == %{"reason" => "invalid_key"}
+    end
+
+    test "the partial unique index rejects duplicate active integrations at the DB level", %{
+      user: user
+    } do
+      Req.Test.stub(@stub, fn conn -> Req.Test.json(conn, %{"data" => []}) end)
+      {:ok, _} = AI.connect(user, :anthropic, "sk-ant-api03-first-abcd")
+
+      # Bypasses the pre-check to prove the constraint fires with the exact
+      # name normalize_insert_error/1 matches on for the connect race.
+      duplicate =
+        Integration.connect_changeset(%Integration{}, %{
+          user_id: user.id,
+          provider: "anthropic",
+          api_key_encrypted: "sk-ant-api03-second-wxyz",
+          key_last_four: "wxyz",
+          connected_at: Storyarn.Shared.TimeHelpers.now()
+        })
+
+      assert {:error, changeset} = Repo.insert(duplicate)
+
+      assert Enum.any?(changeset.errors, fn {_field, {_msg, opts}} ->
+               opts[:constraint_name] == "ai_integrations_user_provider_active_index"
+             end)
     end
 
     test "refuses reuse when the user already has an active integration", %{user: user} do
@@ -82,6 +108,19 @@ defmodule Storyarn.AI.IntegrationCrudTest do
     test "get_active returns nil after revoke", %{user: user, integration: integration} do
       {:ok, _} = AI.revoke(integration)
       assert is_nil(AI.get_active(user, :anthropic))
+    end
+
+    test "a second revoke is rejected and writes no extra audit", %{integration: integration} do
+      {:ok, _} = AI.revoke(integration)
+
+      assert {:error, :already_revoked} = AI.revoke(integration)
+
+      disconnected_count =
+        AuditEntry
+        |> Repo.all()
+        |> Enum.count(&(&1.action == "disconnected"))
+
+      assert disconnected_count == 1
     end
   end
 

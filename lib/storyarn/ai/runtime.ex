@@ -29,7 +29,6 @@ defmodule Storyarn.AI.Runtime do
   """
 
   alias Storyarn.Accounts.User
-  alias Storyarn.AI.Audit
   alias Storyarn.AI.Integration
   alias Storyarn.AI.IntegrationCrud
   alias Storyarn.AI.Provider
@@ -69,12 +68,10 @@ defmodule Storyarn.AI.Runtime do
     |> Repo.update()
   end
 
+  # Conditional revoke: concurrent rejected calls transition the integration
+  # exactly once, so only one auto_revoked audit row is ever written.
   defp record_outcome(integration, {:error, :unauthorized}) do
-    integration
-    |> Integration.revoke_changeset(TimeHelpers.now())
-    |> Repo.update()
-
-    Audit.log(integration.user_id, integration.provider, :auto_revoked, %{})
+    IntegrationCrud.revoke_active(integration, :auto_revoked)
   end
 
   defp record_outcome(_integration, _other), do: :ok

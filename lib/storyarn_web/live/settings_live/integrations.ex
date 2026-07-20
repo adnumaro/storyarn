@@ -77,9 +77,6 @@ defmodule StoryarnWeb.SettingsLive.Integrations do
       {:error, :provider_error} ->
         {:reply, error_reply("provider_error"), socket}
 
-      {:error, :rate_limited_by_provider} ->
-        {:reply, error_reply("rate_limited"), socket}
-
       {:error, %Ecto.Changeset{}} ->
         {:reply, error_reply("invalid_data"), socket}
 
@@ -97,8 +94,10 @@ defmodule StoryarnWeb.SettingsLive.Integrations do
 
       integration ->
         case AI.revoke(integration) do
+          # Concurrent revoke means the end state the user wanted is already
+          # in place — treat it as success.
           {:ok, _revoked} -> {:reply, %{status: "ok"}, assign_cards(socket)}
-          {:error, %Ecto.Changeset{}} -> {:reply, error_reply("revoke_failed"), socket}
+          {:error, :already_revoked} -> {:reply, %{status: "ok"}, assign_cards(socket)}
         end
     end
   end

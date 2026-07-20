@@ -2,34 +2,55 @@ defmodule Storyarn.AI.Audit do
   @moduledoc """
   Records AI integration lifecycle events for security investigations.
 
-  Callers pass a plain `user_id`, provider identifier, action atom, and a
-  metadata map. Metadata MUST NOT contain key material — see
-  `Storyarn.AI.AuditEntry`.
+  Metadata is sanitized before insert: only whitelisted keys with scalar
+  values survive, so no caller — present or future — can persist key material
+  or arbitrary payloads through this API.
   """
 
   alias Storyarn.AI.AuditEntry
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
+
+  # Only these metadata keys are ever persisted. Extend deliberately.
+  @allowed_metadata_keys [:reason, :unexpected_status, "reason", "unexpected_status"]
+  @max_value_bytes 200
 
   @doc """
   Insert an audit row. Returns `{:ok, entry}` or `{:error, changeset}`.
 
-  Failures are non-fatal for the caller — the caller may choose to log the
-  error and proceed, since audit is defense-in-depth, not the primary source
-  of truth.
+  Failures are non-fatal for the caller — audit is defense-in-depth, not the
+  primary source of truth. `user_id` is stored twice: as a nilifiable FK and
+  as the immutable `actor_id` snapshot.
   """
-  @spec log(integer() | nil, atom() | String.t(), AuditEntry.action(), map()) ::
+  @spec log(integer(), atom() | String.t(), AuditEntry.action(), map()) ::
           {:ok, AuditEntry.t()} | {:error, Ecto.Changeset.t()}
   def log(user_id, provider, action, metadata \\ %{}) do
     attrs = %{
       user_id: user_id,
+      actor_id: user_id,
       provider: to_string(provider),
       action: Atom.to_string(action),
-      metadata: metadata
+      metadata: sanitize_metadata(metadata)
     }
 
-    %AuditEntry{inserted_at: TimeHelpers.now()}
+    %AuditEntry{}
     |> AuditEntry.changeset(attrs)
     |> Repo.insert()
   end
+
+  @doc "Exposed for tests — strips non-whitelisted keys and non-scalar values."
+  @spec sanitize_metadata(map()) :: map()
+  def sanitize_metadata(metadata) when is_map(metadata) do
+    metadata
+    |> Map.take(@allowed_metadata_keys)
+    |> Map.new(fn {key, value} -> {to_string(key), sanitize_value(value)} end)
+    |> Map.reject(fn {_key, value} -> is_nil(value) end)
+  end
+
+  def sanitize_metadata(_metadata), do: %{}
+
+  defp sanitize_value(value) when is_binary(value) and byte_size(value) <= @max_value_bytes, do: value
+
+  defp sanitize_value(value) when is_integer(value), do: value
+  defp sanitize_value(value) when is_atom(value) and not is_nil(value), do: Atom.to_string(value)
+  defp sanitize_value(_value), do: nil
 end

@@ -2,9 +2,13 @@ defmodule Storyarn.AI.AuditEntry do
   @moduledoc """
   Append-only audit trail for AI integration lifecycle events.
 
-  Rows are inserted for every connect / disconnect / validation-failure /
-  auto-revoke event. `:metadata` is a free-form JSON map — callers MUST NOT
-  put any part of the API key (plaintext, ciphertext, or hash) into it.
+  Append-only is enforced by a database trigger (UPDATE/DELETE raise; the only
+  allowed update is the FK nilify fired by user deletion). `:actor_id` is an
+  immutable snapshot of the acting user's id that survives account deletion,
+  while `:user_id` is a real FK that gets nilified.
+
+  `:metadata` is sanitized by `Storyarn.AI.Audit` before insert — callers
+  cannot write arbitrary keys (see `Audit.log/4`).
   """
   use Ecto.Schema
 
@@ -20,6 +24,7 @@ defmodule Storyarn.AI.AuditEntry do
           id: integer() | nil,
           user_id: integer() | nil,
           user: User.t() | Ecto.Association.NotLoaded.t() | nil,
+          actor_id: integer() | nil,
           provider: String.t() | nil,
           action: String.t() | nil,
           metadata: map(),
@@ -27,6 +32,7 @@ defmodule Storyarn.AI.AuditEntry do
         }
 
   schema "ai_integration_audits" do
+    field :actor_id, :integer
     field :provider, :string
     field :action, :string
     field :metadata, :map, default: %{}
@@ -39,8 +45,8 @@ defmodule Storyarn.AI.AuditEntry do
   @doc "Changeset for a fresh audit row."
   def changeset(entry, attrs) do
     entry
-    |> cast(attrs, [:user_id, :provider, :action, :metadata])
-    |> validate_required([:provider, :action])
+    |> cast(attrs, [:user_id, :actor_id, :provider, :action, :metadata])
+    |> validate_required([:actor_id, :provider, :action])
     |> validate_inclusion(:action, @actions)
   end
 

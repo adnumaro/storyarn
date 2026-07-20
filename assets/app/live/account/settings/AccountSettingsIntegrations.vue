@@ -23,6 +23,11 @@ const connecting = ref(false);
 const disconnecting = ref(false);
 const inlineError = ref<string | null>(null);
 
+// Sequence tokens: replies from a cancelled/superseded request must not
+// mutate dialog state for a newer one. Bumped on every open/close/submit.
+let connectSeq = 0;
+let disconnectSeq = 0;
+
 const disconnectDialogTitle = computed(() =>
   disconnectTarget.value
     ? t("integrations.disconnect.title", { name: disconnectTarget.value.name })
@@ -37,16 +42,19 @@ const disconnectDialogDescription = computed(() =>
 
 function openConnect(card: IntegrationCardData): void {
   inlineError.value = null;
+  connectSeq += 1;
   connectTarget.value = card;
 }
 
 function closeConnect(): void {
+  connectSeq += 1;
   connectTarget.value = null;
   connecting.value = false;
 }
 
 function openDisconnect(card: IntegrationCardData): void {
   inlineError.value = null;
+  disconnectSeq += 1;
   disconnectTarget.value = card;
   disconnectOpen.value = true;
 }
@@ -63,12 +71,14 @@ function submitConnect(apiKey: string, onResult: (errorCode: string | null) => v
     return;
   }
 
+  const seq = ++connectSeq;
   connecting.value = true;
 
   live.pushEvent(
     "connect",
     { provider: target.provider, api_key: apiKey },
     (reply: EventReply) => {
+      if (seq !== connectSeq) return;
       connecting.value = false;
       if (reply?.status === "ok") {
         closeConnect();
@@ -78,6 +88,7 @@ function submitConnect(apiKey: string, onResult: (errorCode: string | null) => v
       }
     },
     () => {
+      if (seq !== connectSeq) return;
       connecting.value = false;
       onResult("connection_lost");
     },
@@ -88,6 +99,7 @@ function confirmDisconnect(): void {
   const target = disconnectTarget.value;
   if (!target) return;
 
+  const seq = ++disconnectSeq;
   disconnecting.value = true;
   inlineError.value = null;
 
@@ -95,6 +107,7 @@ function confirmDisconnect(): void {
     "disconnect",
     { provider: target.provider },
     (reply: EventReply) => {
+      if (seq !== disconnectSeq) return;
       disconnecting.value = false;
       if (reply?.status === "ok") {
         disconnectTarget.value = null;
@@ -103,6 +116,7 @@ function confirmDisconnect(): void {
       }
     },
     () => {
+      if (seq !== disconnectSeq) return;
       disconnecting.value = false;
       inlineError.value = "connection_lost";
     },
@@ -110,6 +124,7 @@ function confirmDisconnect(): void {
 }
 
 function cancelDisconnect(): void {
+  disconnectSeq += 1;
   disconnectTarget.value = null;
 }
 </script>

@@ -85,21 +85,7 @@ defmodule Storyarn.AI.Integration do
     )
   end
 
-  @doc "Mark an integration as revoked. Preserves history for audits."
-  def revoke_changeset(integration, revoked_at) do
-    integration
-    |> cast(%{revoked_at: revoked_at}, [:revoked_at])
-    |> validate_required([:revoked_at])
-  end
-
-  @doc "Record a successful validation call. Called by the runtime after 200 OK."
-  def touch_validation_changeset(integration, at) do
-    integration
-    |> cast(%{last_validated_at: at}, [:last_validated_at])
-    |> validate_required([:last_validated_at])
-  end
-
-  @doc "Record a runtime API call. Called by `Storyarn.AI.call/2` (Slice 5)."
+  @doc "Record a runtime API call. Called by `Storyarn.AI.Runtime` on success."
   def touch_usage_changeset(integration, at) do
     integration
     |> cast(%{last_used_at: at}, [:last_used_at])

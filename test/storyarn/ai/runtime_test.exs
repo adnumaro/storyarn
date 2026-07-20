@@ -55,6 +55,31 @@ defmodule Storyarn.AI.RuntimeTest do
     assert "auto_revoked" in actions
   end
 
+  test "repeated unauthorized outcomes never produce a second auto_revoked audit", %{
+    user: user,
+    integration: integration
+  } do
+    alias Storyarn.AI.IntegrationCrud
+
+    {:error, :unauthorized} =
+      AI.with_integration(user, :anthropic, fn _key -> {:error, :unauthorized} end)
+
+    # The integration is now revoked, so a second call cannot even start...
+    assert {:error, :not_connected} =
+             AI.with_integration(user, :anthropic, fn _key -> {:error, :unauthorized} end)
+
+    # ...and even a direct conditional revoke (the concurrent-loser path)
+    # cannot write another lifecycle event.
+    assert {:error, :already_revoked} = IntegrationCrud.revoke_active(integration, :auto_revoked)
+
+    auto_revoked_count =
+      AuditEntry
+      |> Repo.all()
+      |> Enum.count(&(&1.action == "auto_revoked"))
+
+    assert auto_revoked_count == 1
+  end
+
   test "passes other errors through without revoking or touching usage", %{
     user: user,
     integration: integration

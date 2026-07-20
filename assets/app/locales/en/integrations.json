@@ -38,7 +38,6 @@
       "unknown_provider": "This provider is not supported.",
       "not_connected": "This provider is not connected.",
       "invalid_data": "The key format is invalid.",
-      "revoke_failed": "Could not disconnect. Please try again.",
       "connection_lost": "Lost connection to the server. Please retry.",
       "no_target": "No provider selected.",
       "unknown_error": "Something went wrong. Please try again."
