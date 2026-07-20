@@ -5,9 +5,7 @@ import { useI18n } from "vue-i18n";
 import ConfirmDialog from "@components/ConfirmDialog.vue";
 import { useLive } from "@shared/composables/useLive";
 import ConnectKeyDialog from "./integrations/ConnectKeyDialog.vue";
-import IntegrationCard, {
-  type IntegrationCardData,
-} from "./integrations/IntegrationCard.vue";
+import IntegrationCard, { type IntegrationCardData } from "./integrations/IntegrationCard.vue";
 
 const { cards = [] } = defineProps<{
   cards: IntegrationCardData[];

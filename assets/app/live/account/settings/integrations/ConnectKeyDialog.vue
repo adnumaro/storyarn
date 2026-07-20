@@ -15,7 +15,11 @@ import {
 import { Label } from "@components/ui/label";
 import type { IntegrationCardData } from "./IntegrationCard.vue";
 
-const { open, card, submitting = false } = defineProps<{
+const {
+  open,
+  card,
+  submitting = false,
+} = defineProps<{
   open: boolean;
   card: IntegrationCardData;
   submitting?: boolean;
@@ -38,16 +42,11 @@ const localOpen = computed({
   },
 });
 
-const canSubmit = computed(
-  () => apiKey.value.trim().length > 0 && !submitting,
-);
+const canSubmit = computed(() => apiKey.value.trim().length > 0 && !submitting);
 
 const errorMessage = computed(() => {
   if (!errorCode.value) return null;
-  return t(
-    `integrations.errors.${errorCode.value}`,
-    t("integrations.errors.unknown_error"),
-  );
+  return t(`integrations.errors.${errorCode.value}`, t("integrations.errors.unknown_error"));
 });
 
 watch(
@@ -107,6 +106,7 @@ function handleCancel(): void {
             :href="card.key_generation_url"
             target="_blank"
             rel="noopener noreferrer"
+            data-live-link-exempt="external-provider-console"
             class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
           >
             {{ t("integrations.connect.get_key") }}

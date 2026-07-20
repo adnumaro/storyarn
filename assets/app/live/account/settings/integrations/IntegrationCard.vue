@@ -81,25 +81,17 @@ const identifier = computed(() => {
         :href="card.docs_url"
         target="_blank"
         rel="noopener noreferrer"
+        data-live-link-exempt="external-provider-docs"
         class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
       >
         {{ t("integrations.card.docs") }}
         <ExternalLink class="size-3" aria-hidden="true" />
       </a>
 
-      <Button
-        v-if="isConnected"
-        variant="outline"
-        size="sm"
-        @click="emit('disconnect')"
-      >
+      <Button v-if="isConnected" variant="outline" size="sm" @click="emit('disconnect')">
         {{ t("integrations.card.disconnect") }}
       </Button>
-      <Button
-        v-else
-        size="sm"
-        @click="emit('connect')"
-      >
+      <Button v-else size="sm" @click="emit('connect')">
         {{ t("integrations.card.connect") }}
       </Button>
     </footer>
