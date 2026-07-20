@@ -1,0 +1,48 @@
+priv/repo/migrations/20260720143500_create_ai_integration_audits.exs
+  s_45b22073d60431::t_6f691c81b663bf 4,6-7,9-11,21-57
+lib/storyarn/ai/audit_entry.ex
+  s_45b22073d60431::t_d6048d7412d152 5-11,27,35,48-49
+lib/storyarn/ai/integration_crud.ex
+  s_45b22073d60431::t_da9d4b6dedf788 9-12,25-26,38-43,54-56,64-65,79-96,99-111,143,165,168-180,187-188
+test/storyarn/ai/runtime_test.exs
+  s_45b22073d60431::t_d0645e1c19dfad 58-80
+  s_45b22073d60431::t_d9dc47999087fc 81-82
+lib/storyarn/ai/integration.ex
+  s_45b22073d60431::t_82d6ccc971bb8c 88
+assets/app/test/live/account/settings/AccountSettingsIntegrations.test.ts
+  s_45b22073d60431::t_f952ee4e23f719 1-143
+lib/storyarn_web/live/settings_live/integrations.ex
+  s_45b22073d60431::t_30f2f5912a6191 97-98,100
+test/storyarn/ai/integration_crud_test.exs
+  s_45b22073d60431::t_40cefedb5198d2 40-66
+  s_45b22073d60431::t_46f78b82c586eb 112-124
+lib/storyarn/ai/audit.ex
+  s_45b22073d60431::t_b87c64c7630a05 5-7,12-15,20-22,24,29,32,35,39-55
+assets/app/live/account/settings/AccountSettingsIntegrations.vue
+  s_45b22073d60431::t_681f898295d039 74,81,91
+  s_45b22073d60431::t_c2f72a026e9819 45,50,57
+  s_45b22073d60431::t_d52adefd3f7f6d 26-30
+  s_45b22073d60431::t_ee5e2054415940 102,110,119,127
+lib/storyarn/ai/runtime.ex
+  s_45b22073d60431::t_f550c0829e6c09 71-72,74
+test/storyarn/ai/audit_test.exs
+  s_45b22073d60431::t_2128ded0c4d302 16,21,23-27
+  s_45b22073d60431::t_65c5e4776c63b5 1-15,17-20,22,28-85,93,97-99
+  s_45b22073d60431::t_60145791e76829 86-92,94-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "00af7a19d7fe888090f55fed555eebdd9bd2e924",
+  "prompts": {},
+  "sessions": {
+    "s_45b22073d60431": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69ce9805-664b-489d-8409-0b9e7d507066",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
