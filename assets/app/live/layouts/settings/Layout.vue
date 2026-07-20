@@ -14,6 +14,7 @@ import {
   Package,
   PanelLeft,
   PanelLeftClose,
+  Plug,
   Settings,
   ShieldCheck,
   Trash2,
@@ -48,6 +49,10 @@ interface SettingsProject {
   slug: string;
 }
 
+interface SettingsFeatureFlags {
+  aiIntegrations?: boolean;
+}
+
 const {
   currentPath,
   workspaces = [],
@@ -58,6 +63,7 @@ const {
   subtitle = null,
   onboarding = null,
   sudoGrant = null,
+  featureFlags = {},
 } = defineProps<{
   currentPath: string;
   workspaces?: SettingsWorkspace[];
@@ -68,6 +74,7 @@ const {
   subtitle?: string | null;
   onboarding?: { guide: string; autoShow: boolean } | null;
   sudoGrant?: string | null;
+  featureFlags?: SettingsFeatureFlags;
 }>();
 
 const { t } = useI18n();
@@ -81,6 +88,7 @@ const iconMap: Record<string, Component> = {
   languages: Languages,
   link: Link,
   package: Package,
+  plug: Plug,
   settings: Settings,
   "shield-check": ShieldCheck,
   "trash-2": Trash2,
@@ -187,26 +195,36 @@ const sections = computed<SettingsSection[]>(() => {
     managedWorkspaceSet.has(workspace.slug),
   );
 
+  const accountItems = [
+    {
+      label: t("settings.nav.items.profile"),
+      path: sensitiveSettingsPath("/users/settings"),
+      icon: "user",
+    },
+    {
+      label: t("settings.nav.items.security"),
+      path: sensitiveSettingsPath("/users/settings/security"),
+      icon: "shield-check",
+    },
+    {
+      label: t("settings.nav.items.tutorials"),
+      path: "/users/settings/tutorials",
+      icon: "book-open",
+    },
+  ];
+
+  if (featureFlags.aiIntegrations) {
+    accountItems.push({
+      label: t("settings.nav.items.integrations"),
+      path: "/users/settings/integrations",
+      icon: "plug",
+    });
+  }
+
   return [
     {
       label: t("settings.nav.sections.account"),
-      items: [
-        {
-          label: t("settings.nav.items.profile"),
-          path: sensitiveSettingsPath("/users/settings"),
-          icon: "user",
-        },
-        {
-          label: t("settings.nav.items.security"),
-          path: sensitiveSettingsPath("/users/settings/security"),
-          icon: "shield-check",
-        },
-        {
-          label: t("settings.nav.items.tutorials"),
-          path: "/users/settings/tutorials",
-          icon: "book-open",
-        },
-      ],
+      items: accountItems,
     },
     ...managedWorkspaces.map((workspace) => ({
       label: workspace.name,

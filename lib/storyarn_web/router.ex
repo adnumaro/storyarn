@@ -173,6 +173,7 @@ defmodule StoryarnWeb.Router do
       live "/users/settings", SettingsLive.Profile, :edit
       live "/users/settings/security", SettingsLive.Security, :edit
       live "/users/settings/tutorials", SettingsLive.Tutorials, :edit
+      live "/users/settings/integrations", SettingsLive.Integrations, :edit
       live "/users/settings/confirm-email/:token", SettingsLive.Profile, :confirm_email
 
       # Sudo re-authentication belongs to the authenticated app session so

@@ -3,6 +3,12 @@ import Config
 # Only in tests, remove the complexity from the password hashing algorithm
 config :bcrypt_elixir, :log_rounds, 1
 
+# Disable feature-flag cache and PubSub notifications in tests. Toggles are
+# read straight from Postgres so setting a flag in a test is immediately
+# visible without dealing with stale cache entries.
+config :fun_with_flags, :cache, enabled: false
+config :fun_with_flags, :cache_bust_notifications, enabled: false
+
 # Disable LiveVue props diffing so tests always see full props
 config :live_vue, enable_props_diff: false
 
@@ -38,6 +44,16 @@ config :posthog,
 
 # Oban: inline mode for testing
 config :storyarn, Oban, testing: :manual
+
+# Route AI-provider validation calls through Req.Test stubs so no test opens
+# an outbound socket. Each provider adapter has its own stub name so tests can
+# scope expectations per provider.
+config :storyarn, Storyarn.AI.Providers.Anthropic, req_options: [plug: {Req.Test, StoryarnTest.AI.Anthropic}]
+config :storyarn, Storyarn.AI.Providers.DeepSeek, req_options: [plug: {Req.Test, StoryarnTest.AI.DeepSeek}]
+config :storyarn, Storyarn.AI.Providers.Google, req_options: [plug: {Req.Test, StoryarnTest.AI.Google}]
+config :storyarn, Storyarn.AI.Providers.Mistral, req_options: [plug: {Req.Test, StoryarnTest.AI.Mistral}]
+config :storyarn, Storyarn.AI.Providers.Moonshot, req_options: [plug: {Req.Test, StoryarnTest.AI.Moonshot}]
+config :storyarn, Storyarn.AI.Providers.OpenAI, req_options: [plug: {Req.Test, StoryarnTest.AI.OpenAI}]
 
 # In test we don't send emails
 config :storyarn, Storyarn.Mailer, adapter: Swoosh.Adapters.Test

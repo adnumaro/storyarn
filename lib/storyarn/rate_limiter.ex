@@ -52,6 +52,11 @@ defmodule Storyarn.RateLimiter do
   @password_reset_limit 3
   @password_reset_window_ms 900_000
 
+  # AI integration connect: 3 validation attempts per minute per user. Guards
+  # against brute-forcing a valid key format against a live provider endpoint.
+  @ai_integration_connect_limit 3
+  @ai_integration_connect_window_ms 60_000
+
   @doc """
   Checks if a login attempt is allowed for the given IP address.
 
@@ -90,6 +95,22 @@ defmodule Storyarn.RateLimiter do
     with :ok <- check_rate("password_reset:ip:#{ip_address}", @password_reset_window_ms, @password_reset_limit) do
       check_rate("password_reset:email:#{normalized_email}", @password_reset_window_ms, @password_reset_limit)
     end
+  end
+
+  @doc """
+  Checks if an AI integration connect attempt is allowed for the given user.
+
+  Bucketed per user (the request already has a session, so the user id is the
+  natural key), not per IP. Returns `:ok` if allowed, `{:error, :rate_limited}`
+  if blocked.
+  """
+  @spec check_ai_integration_connect(pos_integer()) :: :ok | {:error, :rate_limited}
+  def check_ai_integration_connect(user_id) when is_integer(user_id) and user_id > 0 do
+    check_rate(
+      "ai_integration_connect:#{user_id}",
+      @ai_integration_connect_window_ms,
+      @ai_integration_connect_limit
+    )
   end
 
   @doc """

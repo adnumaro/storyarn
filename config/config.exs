@@ -29,6 +29,22 @@ config :ex_aws,
   json_codec: Jason,
   http_client: ExAws.Request.Req
 
+# Feature flags — Postgres-backed with per-node cache invalidated via PubSub.
+# Runtime toggling supports gradual rollout to individual users during beta.
+config :fun_with_flags, :cache,
+  enabled: true,
+  ttl: 900
+
+config :fun_with_flags, :cache_bust_notifications,
+  enabled: true,
+  adapter: FunWithFlags.Notifications.PhoenixPubSub,
+  client: Storyarn.PubSub
+
+config :fun_with_flags, :persistence,
+  adapter: FunWithFlags.Store.Persistent.Ecto,
+  repo: Storyarn.Repo,
+  ecto_table_name: "fun_with_flags_toggles"
+
 # LiveVue configuration
 config :live_vue,
   ssr: false,
