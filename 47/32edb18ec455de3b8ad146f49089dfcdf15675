@@ -1,0 +1,27 @@
+assets/app/live/account/settings/AccountSettingsIntegrations.vue
+  s_45b22073d60431::t_42116fa68ce981 8
+assets/app/live/account/settings/integrations/ConnectKeyDialog.vue
+  s_45b22073d60431::t_42116fa68ce981 18-22,45,49
+  s_45b22073d60431::t_0360c5475450a0 109
+assets/app/live/account/settings/integrations/IntegrationCard.vue
+  s_45b22073d60431::t_42116fa68ce981 91,94
+  s_45b22073d60431::t_a3a66b5d884c19 84
+docs/features/ai-integrations/PROVIDERS.md
+  s_45b22073d60431::t_42116fa68ce981 13-17,125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "4732edb18ec455de3b8ad146f49089dfcdf15675",
+  "prompts": {},
+  "sessions": {
+    "s_45b22073d60431": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69ce9805-664b-489d-8409-0b9e7d507066",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
