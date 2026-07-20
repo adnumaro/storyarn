@@ -1,0 +1,156 @@
+mix.exs
+  s_45b22073d60431::t_239aaf1ecfde7e 98-101
+priv/gettext/integrations.pot
+  s_45b22073d60431::t_dd7f9f6f4738c8 18-22
+  s_45b22073d60431::t_ae3f5d25f603a2 1-17
+assets/app/locales/es/integrations.json
+  s_45b22073d60431::t_e0458806a79828 1-47
+lib/storyarn/ai/providers/anthropic.ex
+  s_45b22073d60431::t_01e25521176ac6 1-12,15-30,42
+  s_45b22073d60431::t_26e1666b7305af 13-14,31-34,38-40
+  s_45b22073d60431::t_6638ce0916fcf2 35-37,41
+priv/repo/migrations/20260720143400_create_ai_integrations.exs
+  s_45b22073d60431::t_1bba9dd9f25a9b 1-31
+assets/app/live/layouts/settings/Layout.vue
+  s_45b22073d60431::t_f546a006276adc 91
+  s_45b22073d60431::t_3f183cbd0d79a6 198-223,227
+  s_45b22073d60431::t_ef4b897e4510c7 66,77
+  s_45b22073d60431::t_53d2e389b2cb51 17
+  s_45b22073d60431::t_d9be36ddb5f846 52-55
+lib/storyarn/accounts/user_feature_flags.ex
+  s_45b22073d60431::t_61513ad05dc5ce 1-10
+lib/storyarn/ai/providers/moonshot.ex
+  s_45b22073d60431::t_a52654682277b8 1-36
+test/storyarn/ai/providers/mistral_test.exs
+  s_45b22073d60431::t_b140a85e01f6f8 1-33
+lib/storyarn/ai/integration_crud.ex
+  s_45b22073d60431::t_8e3ceefcbfcd62 1-13,15-32,34-42,45-88,93-138,140-146
+  s_45b22073d60431::t_924bb6210d5a0a 14,33,43-44,89-92,139
+lib/storyarn_web/live/hooks/require_feature_flag.ex
+  s_45b22073d60431::t_10cc29e31d1fe9 1-14,16-29,34-39
+  s_45b22073d60431::t_3f43f955f8e44d 15,30-33
+lib/storyarn/ai/providers.ex
+  s_45b22073d60431::t_fc1bc09afb6132 1-11,17,20-47
+  s_45b22073d60431::t_0a2987f9155cf5 18
+  s_45b22073d60431::t_cd1bab900cfa28 12,14-15,19
+  s_45b22073d60431::t_3b1169b247ae55 13
+  s_45b22073d60431::t_2d9e56c2f87b54 16
+test/storyarn/ai/runtime_test.exs
+  s_45b22073d60431::t_e60ec6509415f0 1-86,88-92
+  s_45b22073d60431::t_74dbdaa5c8464f 87
+lib/storyarn/ai/audit_entry.ex
+  s_45b22073d60431::t_b7915c5cc8f6fd 1-49
+lib/storyarn_web/components/settings_layout.ex
+  s_45b22073d60431::t_237605fb56485f 119-128
+  s_45b22073d60431::t_0b0e0756ec795f 11
+  s_45b22073d60431::t_53827534560f14 61
+config/test.exs
+  s_45b22073d60431::t_41148b1e6c9036 56-57
+  s_45b22073d60431::t_63d7193af18c52 53
+  s_45b22073d60431::t_924bb6210d5a0a 6-11,48-51
+  s_45b22073d60431::t_8d8965d7f07e63 52,54-55
+assets/app/live/account/settings/integrations/IntegrationCard.vue
+  s_45b22073d60431::t_fd9c9efb0b9991 42-44
+  s_45b22073d60431::t_b516ef65cef266 10-12,14-17
+  s_45b22073d60431::t_1ff805b6c2497e 81
+  s_45b22073d60431::t_4912d4e73634d2 1-9,13,18-41,45-80,82-107
+assets/app/live/account/settings/integrations/ConnectKeyDialog.vue
+  s_45b22073d60431::t_4b317ee8ec58d8 1-98,100-106,108-138
+  s_45b22073d60431::t_6d03397ab05d49 99,107
+lib/storyarn/ai/providers/google.ex
+  s_45b22073d60431::t_1c3b5c2c6a6a5e 1-42
+lib/storyarn/ai/integration.ex
+  s_45b22073d60431::t_924bb6210d5a0a 17
+  s_45b22073d60431::t_8f0c429fbab7ec 1-16,18-113
+lib/storyarn/ai/runtime.ex
+  s_45b22073d60431::t_0a93d1528b5ed9 1-81
+priv/repo/migrations/20260720143500_create_ai_integration_audits.exs
+  s_45b22073d60431::t_c20814b548c145 1-19
+priv/repo/migrations/20260720143300_create_fun_with_flags_toggles.exs
+  s_45b22073d60431::t_f8e8dac76c041a 1-19
+lib/storyarn/ai/providers/deep_seek.ex
+  s_45b22073d60431::t_35c17e9efc1cc0 1-36
+test/storyarn/ai/providers/google_test.exs
+  s_45b22073d60431::t_700ab6772834de 1-73
+test/storyarn/ai/providers/moonshot_test.exs
+  s_45b22073d60431::t_934a3d866dbf57 1-33
+test/storyarn_web/live/settings_live/integrations_test.exs
+  s_45b22073d60431::t_1c6bbd9990b49f 69
+  s_45b22073d60431::t_924bb6210d5a0a 31,50,59,73,92
+  s_45b22073d60431::t_f60fec48a7d3fe 12
+  s_45b22073d60431::t_db52da2184ca24 1-11,13-30,32-45,47-49,51-58,60-68,70-72,74-91,93-111
+  s_45b22073d60431::t_6cff5d9538f013 46
+lib/storyarn/ai/audit.ex
+  s_45b22073d60431::t_37c927202d5e6a 1-35
+test/storyarn/ai/integration_crud_test.exs
+  s_45b22073d60431::t_236c5ae8cd52eb 1-118
+test/storyarn/ai/providers/deep_seek_test.exs
+  s_45b22073d60431::t_bdb97e19bf726e 1-33
+assets/app/test/live/account/settings/IntegrationCard.test.ts
+  s_45b22073d60431::t_4aeb57d4e60156 1-85
+lib/storyarn/rate_limiter.ex
+  s_45b22073d60431::t_fdee30589d2a6f 55-59
+  s_45b22073d60431::t_6453aa4879df4d 101-115
+  s_45b22073d60431::t_361ec1699f8b5f 100
+config/config.exs
+  s_45b22073d60431::t_924bb6210d5a0a 32-47
+lib/storyarn_web/router.ex
+  s_45b22073d60431::t_1e56af6e919e08 176
+assets/app/locales/en/integrations.json
+  s_45b22073d60431::t_77c4ffc35db8b7 1-47
+test/storyarn/ai/providers/open_ai_test.exs
+  s_45b22073d60431::t_9736c84afe3bce 1-64
+lib/storyarn/feature_flags.ex
+  s_45b22073d60431::t_0521bab11b396c 1-42
+assets/app/locales/es/settings.json
+  s_45b22073d60431::t_f07e0ca89039c4 12
+lib/storyarn/ai/providers/key_validation.ex
+  s_45b22073d60431::t_c47fcf297f844f 1-40,42-51,53,55-57,59,61-63
+  s_45b22073d60431::t_b22cb1f56f0e6a 41,52,54,58,60
+priv/gettext/es/LC_MESSAGES/integrations.po
+  s_45b22073d60431::t_8f6c7e64302e36 17,22
+  s_45b22073d60431::t_ae3f5d25f603a2 1-16
+  s_45b22073d60431::t_dd7f9f6f4738c8 18-21
+docs/features/ai-integrations/PROVIDERS.md
+  s_45b22073d60431::t_2bd9e5d03d28fd 1-58,61-128
+  s_45b22073d60431::t_b6a97549c1015d 59-60
+test/storyarn/ai/providers/anthropic_test.exs
+  s_45b22073d60431::t_ca591460dd4dc4 1-81
+lib/storyarn/ai/providers/open_ai.ex
+  s_45b22073d60431::t_db066ac4fc1063 1-38
+priv/gettext/en/LC_MESSAGES/integrations.po
+  s_45b22073d60431::t_ae3f5d25f603a2 1-17
+  s_45b22073d60431::t_dd7f9f6f4738c8 18-22
+lib/storyarn/ai.ex
+  s_45b22073d60431::t_92db530f067caf 18,27-28
+  s_45b22073d60431::t_b4be43d5933fc1 1-17,19-26,29
+assets/app/locales/en/settings.json
+  s_45b22073d60431::t_07709bd8b582c5 12
+lib/storyarn_web/live/settings_live/integrations.ex
+  s_45b22073d60431::t_3a78c0a7d878a6 1-18,21-107,109-157
+  s_45b22073d60431::t_924bb6210d5a0a 19-20,108
+lib/storyarn/ai/providers/mistral.ex
+  s_45b22073d60431::t_62fdf1ed749cf3 1-34
+lib/storyarn/ai/provider.ex
+  s_45b22073d60431::t_f1a51e2de53c78 1-62
+assets/app/live/account/settings/AccountSettingsIntegrations.vue
+  s_45b22073d60431::t_265e265a3dc2c9 1-180
+mix.lock
+  s_45b22073d60431::t_4de0a96b627cde 35-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c25a3d4bd2ab4ff53613ea59493aa06d4447df8e",
+  "prompts": {},
+  "sessions": {
+    "s_45b22073d60431": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69ce9805-664b-489d-8409-0b9e7d507066",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
