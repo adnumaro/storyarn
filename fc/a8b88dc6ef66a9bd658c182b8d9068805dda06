@@ -1,0 +1,56 @@
+docs/features/ai-platform/OVERVIEW.md
+  s_45b22073d60431::t_44366abe25e67e 63
+  s_45b22073d60431::t_bd77f8ce66958c 41
+  s_45b22073d60431::t_009ff42af1e859 56
+  s_45b22073d60431::t_bd7a54463e1c74 24-37
+  s_45b22073d60431::t_d0ced9f8c8112a 68
+  s_45b22073d60431::t_0071d9e17a7e77 22-23
+docs/features/ai-platform/SLICE_8_TEXT_TO_STRUCTURE.md
+  s_45b22073d60431::t_55a628c337b324 1,18,23,38,42
+docs/features/ai-platform/SLICE_7_DIALOGUE_TOOLS.md
+  s_45b22073d60431::t_55a628c337b324 1,14-15,22,37,41
+docs/features/ai-platform/SLICE_3_BYOK_LANE.md
+  s_45b22073d60431::t_55a628c337b324 1,10,15,38
+docs/features/ai-platform/SLICE_4_AI_TEAM.md
+  s_45b22073d60431::t_55a628c337b324 1-42
+docs/features/ai-platform/SLICE_10_IMAGE_GENERATION.md
+  s_45b22073d60431::t_71586adf81ecab 15
+  s_45b22073d60431::t_27720e9520e797 40
+  s_45b22073d60431::t_3806fda09e32b5 21
+  s_45b22073d60431::t_3789fe33856d97 14
+docs/features/ai-platform/SLICE_11_PRICING_TIERS.md
+  s_45b22073d60431::t_55a628c337b324 1,5,42
+docs/features/ai-platform/SLICE_5_CONTEXT_ENGINE.md
+  s_45b22073d60431::t_55a628c337b324 1,36
+docs/features/ai-platform/SLICE_1_COMMAND_PALETTE.md
+  s_45b22073d60431::t_8c8c9d40754f5d 9
+docs/features/ai-platform/SLICE_2_AI_SERVICE_CORE.md
+  s_45b22073d60431::t_b533ee28ee3ccc 29
+  s_45b22073d60431::t_1d94658ea1d86e 15
+docs/features/ai-platform/SLICE_6_STRUCTURAL_ANALYSIS.md
+  s_45b22073d60431::t_55a628c337b324 1,23,38,42
+docs/features/ai-platform/SLICE_0_BYOK_INTEGRATIONS.md
+  s_45b22073d60431::t_25aefe3b29ceb1 13
+  s_45b22073d60431::t_169fd2b49b3bb7 42
+docs/features/ai-platform/SLICE_9_TIPTAP_SUGGESTIONS.md
+  s_45b22073d60431::t_ac94c8a934019f 10
+  s_45b22073d60431::t_bc4c9ff33940dc 16
+  s_45b22073d60431::t_6fd32bb01f955a 22
+  s_45b22073d60431::t_801b243ae8f9ce 41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "fca8b88dc6ef66a9bd658c182b8d9068805dda06",
+  "prompts": {},
+  "sessions": {
+    "s_45b22073d60431": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69ce9805-664b-489d-8409-0b9e7d507066",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
