@@ -1,0 +1,53 @@
+docs/features/ai-platform/SLICE_9_TIPTAP_SUGGESTIONS.md
+  s_45b22073d60431::t_e87544a549265b 37
+  s_45b22073d60431::t_78150ce6f64169 18
+docs/features/ai-platform/SLICE_1_COMMAND_PALETTE.md
+  s_45b22073d60431::t_25fda9449a5c14 32
+  s_45b22073d60431::t_9f50f852cf5242 18
+  s_45b22073d60431::t_81856df9393a32 38
+docs/features/ai-platform/SLICE_2_AI_SERVICE_CORE.md
+  s_45b22073d60431::t_daae56ef9260bb 18
+  s_45b22073d60431::t_d14fb4f9230fa1 45
+  s_45b22073d60431::t_856b4832570cf4 25
+  s_45b22073d60431::t_89b807c66db20e 14-15
+docs/features/ai-platform/OVERVIEW.md
+  s_45b22073d60431::t_4408e714b23a83 70,72-82
+  s_45b22073d60431::t_3f9eb75b05d1cf 14
+  s_45b22073d60431::t_e7124b8f6e26ff 62
+  s_45b22073d60431::t_0ac32863e906b6 46
+docs/features/ai-platform/SLICE_7_DIALOGUE_TOOLS.md
+  s_45b22073d60431::t_4cb79da3a38ca0 37
+docs/features/ai-platform/SLICE_8_TEXT_TO_STRUCTURE.md
+  s_45b22073d60431::t_0d936bf502d65d 38
+docs/features/ai-platform/SLICE_11_PRICING_TIERS.md
+  s_45b22073d60431::t_111cb8ebd326a4 38
+docs/features/ai-platform/SLICE_4_AI_TEAM.md
+  s_45b22073d60431::t_bab6a2b05c649e 38
+  s_45b22073d60431::t_8255d9c1e3bdc2 16
+docs/features/ai-platform/SLICE_10_IMAGE_GENERATION.md
+  s_45b22073d60431::t_e46e39d80c01a1 36
+docs/features/ai-platform/SLICE_5_CONTEXT_ENGINE.md
+  s_45b22073d60431::t_6184acc16ef1c4 36
+docs/features/ai-platform/SLICE_3_BYOK_LANE.md
+  s_45b22073d60431::t_ca8983606751f9 39
+docs/features/ai-platform/SLICE_6_STRUCTURAL_ANALYSIS.md
+  s_45b22073d60431::t_233826b5df524b 38
+  s_45b22073d60431::t_ac4ec0b8aec85f 31
+  s_45b22073d60431::t_ddee7ac9bf73d7 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "b4b83762f5d5f3774a6953f63c71829a39853e1c",
+  "prompts": {},
+  "sessions": {
+    "s_45b22073d60431": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69ce9805-664b-489d-8409-0b9e7d507066",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
