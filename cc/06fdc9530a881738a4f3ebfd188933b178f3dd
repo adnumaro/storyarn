@@ -1,0 +1,40 @@
+lib/storyarn/flows.ex
+  s_aae902ef6fbd45::t_907542c6acd23f 100
+assets/app/components/command-palette/CommandPalette.vue
+  s_aae902ef6fbd45::t_52eb2866e6ec04 112-114
+lib/storyarn/scenes.ex
+  s_aae902ef6fbd45::t_dd8aaf5d6839d7 84
+lib/storyarn/sheets.ex
+  s_aae902ef6fbd45::t_a6d84b49b944b3 70
+lib/storyarn/global_search/destinations.ex
+  s_aae902ef6fbd45::t_4d6fe70074c5ff 78-85
+  s_aae902ef6fbd45::t_9e6e101098542a 28
+  s_aae902ef6fbd45::t_f4af211e93d3b8 99-108
+  s_aae902ef6fbd45::t_0f0b912966fdd7 58
+test/storyarn_web/live/hooks/palette_test.exs
+  s_aae902ef6fbd45::t_97a1464e374da3 146-166
+  s_aae902ef6fbd45::t_c28fb27b67903f 87-95
+lib/storyarn_web/live/hooks/palette.ex
+  s_aae902ef6fbd45::t_e11706aa1abc18 52-55
+  s_aae902ef6fbd45::t_0a1f88ccce7cf6 19-26
+  s_aae902ef6fbd45::t_eb1eca437ed1dc 72-78,84
+  s_aae902ef6fbd45::t_369cf4265f7a02 66
+test/storyarn/global_search/destinations_test.exs
+  s_aae902ef6fbd45::t_8b1a640f682630 88-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "cc06fdc9530a881738a4f3ebfd188933b178f3dd",
+  "prompts": {},
+  "sessions": {
+    "s_aae902ef6fbd45": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "efa92fc9-57cc-4595-a9fb-359884909f01",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
