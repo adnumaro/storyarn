@@ -1,0 +1,38 @@
+assets/app/components/command-palette/CommandPalette.vue
+  s_aae902ef6fbd45::t_219777296af034 133-135
+assets/app/test/components/command-palette/CommandPalette.test.ts
+  s_aae902ef6fbd45::t_41127912c092de 266-290
+test/storyarn_web/live/hooks/palette_test.exs
+  s_aae902ef6fbd45::t_3f3dbc90a50e26 93-99
+  s_aae902ef6fbd45::t_c20c7d09ef8cc3 153,157,159,174-178
+  s_aae902ef6fbd45::t_b0e07ae775ff7f 179
+lib/storyarn_web/live/settings_live/workspace_members.ex
+  s_aae902ef6fbd45::t_9c7c211f190307 16
+lib/storyarn_web/live/settings_live/workspace_general.ex
+  s_aae902ef6fbd45::t_9c7c211f190307 20
+lib/storyarn/workspaces/workspace_membership.ex
+  s_aae902ef6fbd45::t_4b58107d367842 70,77,84
+lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex
+  s_aae902ef6fbd45::t_9c7c211f190307 19,257
+lib/storyarn_web/live/hooks/palette.ex
+  s_aae902ef6fbd45::t_5292147cd10055 72
+  s_aae902ef6fbd45::t_61c24fe85caea1 91
+  s_aae902ef6fbd45::t_dc3dc6b6263b97 24-26,28-44
+  s_aae902ef6fbd45::t_d3dcf21446d9ef 113-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "f2ba1a3b4c0eb4fe6efe52f73cae9799b8d7ee2c",
+  "prompts": {},
+  "sessions": {
+    "s_aae902ef6fbd45": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "efa92fc9-57cc-4595-a9fb-359884909f01",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
