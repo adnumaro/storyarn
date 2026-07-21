@@ -7,7 +7,7 @@ Manual-trigger writing suggestions in tiptap-based rich-text editors: the user h
 ## Problem & proposed solution
 
 **Problem:** the blank-page moment is the most common writing friction — but continuous auto-suggest is the most expensive per-user AI pattern (unbounded frequency), which is exactly why it cannot run on platform credits.
-**Solution:** suggestions are explicit, single-shot, and run on the user's key through the Slice-3 lane, resolved via the **Writing-assistant assignment (Slice 4)**. Trigger → bounded context assembled (surrounding document segment + relevant entities via Slice 5) → one `AI.execute(:writing_suggestion, lane: :byok_only)` call → ghost text rendered inline → Tab/click accepts (insert at cursor + acceptance event), Esc dismisses (dismissal event). **Every suggestion reaches a terminal acceptance outcome: accepted | dismissed | abandoned (cancelled/re-triggered/blurred, recorded as a dismissal reason per the Slice-7 schema) — so the acceptance-rate denominator reconciles 1:1 with metered calls.** Users without a connected key see the connect CTA instead of the trigger affordance.
+**Solution:** suggestions are explicit, single-shot, and run on the user's key through the Slice-3 lane, resolved via the **Writing-assistant assignment (Slice 4), else the user-marked default AI (if capable), else the explicit connect/assign CTA — no auto-pick**. Trigger → bounded context assembled (surrounding document segment + relevant entities via Slice 5) → one `AI.execute(:writing_suggestion, lane: :byok_only)` call → ghost text rendered inline → Tab/click accepts (insert at cursor + acceptance event), Esc dismisses (dismissal event). **Every suggestion reaches a terminal acceptance outcome: accepted | dismissed | abandoned (cancelled/re-triggered/blurred, recorded as a dismissal reason per the Slice-7 schema) — so the acceptance-rate denominator reconciles 1:1 with metered calls.** Users without a connected key see the connect CTA instead of the trigger affordance.
 
 ## Architectural direction
 
@@ -24,6 +24,10 @@ Manual-trigger writing suggestions in tiptap-based rich-text editors: the user h
 ## Applicable conventions (MUST be surfaced in chat during implementation)
 
 TypeScript strict, emits over callbacks · tiptap decorations for ghost text (no document mutation before accept) · `@keydown.stop` conventions respected around editor inputs · i18n en/es for CTA/affordances · Lucide icons · authorization: suggestion runs under the user's own scope; the editor's `can_edit` gates the trigger · component registry check before any new UI piece · acceptance events follow the Slice-5 schema, no parallel telemetry shape.
+
+## Observability & error handling
+
+Terminal outcomes (accepted/dismissed/abandoned) reconcile 1:1 with metered calls — the acceptance-rate pipeline for this tool · provider errors render as an explicit inline error near the trigger (i18n), no auto-retry · rate-limit hit = explicit "slow down" state, not a queued retry · user docs: writing suggestions (trigger, accept/dismiss) documented in the flag-hidden AI docs.
 
 ## Verification / Definition of Done
 

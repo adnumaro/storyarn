@@ -7,12 +7,12 @@ A "My AI Team" section INSIDE the integrations page where the user assigns conne
 ## Problem & proposed solution
 
 **Problem:** with 7 providers and 4 usage classes, "which AI does what" becomes an implicit, confusing rule set; users cannot express preferences like "Claude for translations instead of DeepL".
-**Solution:** an explicit roster. Each role slot shows a dropdown of eligible providers (connected ∩ capable); optional model pin populated from the same `GET /models` response that validated the key (unpinned = our recommended default per provider). Consumers resolve `provider_for(user, role)` through one function; unassigned roles fall back to Slice 3's "first capable connected" rule (Analyst v1 always resolves to the internal lane). The team metaphor doubles as the differentiator narrative for game devs.
+**Solution:** an explicit roster. Each role slot shows a dropdown of eligible providers (connected ∩ capable); optional model pin populated from the same `GET /models` response that validated the key (unpinned = our recommended default per provider). **The team page also manages the user-marked DEFAULT AI (owner-decided): one provider marked as default with the explicit hint "this is the model used when you hit the platform AI limit"** — the same designation the Slice-3 opt-in modal creates. Consumers resolve `provider_for(user, role)` through one function; **an unassigned role resolves to the default if capable, otherwise an explicit error + CTA to this page — there is NO auto-pick** (Analyst v1 always resolves to the internal lane). The team metaphor doubles as the differentiator narrative for game devs.
 
 ## Architectural direction
 
 - Data: `ai_role_assignments` (user_id, role, provider, model nullable, **language nullable — column ships now, per-language Translator routing UI is backlog with zero future migration**). Unique per (user, role, language) with language NULL as the default row.
-- Resolution: `Storyarn.AI.provider_for(user, role)` via the facade; consumed by `BatchTranslator` (Translator) now and Slices 9 (Writing assistant) / 10 (Illustrator) when they land. Assignments validated against capabilities at write time AND resolution time (a revoked/disconnected provider degrades to the fallback rule with a UI hint, never a crash).
+- Resolution: `Storyarn.AI.provider_for(user, role)` via the facade; consumed by `BatchTranslator` (Translator) now and Slices 9 (Writing assistant) / 10 (Illustrator) when they land. Assignments validated against capabilities at write time AND resolution time. **Disconnected-assignment chain (owner-decided): if the assigned provider is revoked/disconnected, resolution uses the user's DEFAULT (if healthy) with a visible notice + link to the broken assignment; if the default is also unavailable → explicit error, no degradation.**
 - **DeepL unification (second half — adapter shipped in Slice 0)**: `BatchTranslator` resolves credentials through the Translator assignment; the legacy `translation_provider_configs` schema/CRUD and its project-settings UI are removed. **Live rows: DROP + in-app/email notice + reconnect (owner-decided 2026-07-21 — platform has ~2 real users; copying a key to the project owner's account could hand user A's credential to user B, so migration-by-copy is ruled out).** Localization settings keeps a read-only pointer ("managed in AI Integrations").
 - **LLM translation**: a `BatchTranslator` provider implementation that routes through `AI.execute` on the BYOK lane (`byok_only` for v1 — translation volume on credits is a Slice 11 pricing question, not assumed). DeepL remains the recommended Translator default when connected.
 - Model pinning: models fetched at connect/validation time and cached on the integration row (refresh on revalidate); the dropdown never blocks on a live provider call.
@@ -25,6 +25,10 @@ Slice 0 integrations page + `IntegrationCrud` + DeepL adapter (PR #28) · Slice 
 ## Applicable conventions (MUST be surfaced in chat during implementation)
 
 Facade-only resolution API · authorization: assignments are own-scope mutations on the settings LV · capability constraints enforced server-side (UI hiding is not enough — project auth rule applied to data validity) · i18n en/es for roles/empty states (role names are product vocabulary — owner reviews copy) · Lucide icons per role · no `<select>` daisy patterns — use the existing combobox/join-button conventions · migration verify on dev DB.
+
+## Observability & error handling
+
+Assignment/default changes to PostHog (role, provider — no keys) · resolution outcomes recorded on usage events (assigned | default_with_notice | error) · the disconnected-assignment notice is a visible, dismissible UI state with a link — never a log-only event · migration drop notices: delivery tracked (in-app seen + email sent) for the affected ~2 users · user docs: My AI Team + default AI semantics documented in the flag-hidden AI docs.
 
 ## Verification / Definition of Done
 

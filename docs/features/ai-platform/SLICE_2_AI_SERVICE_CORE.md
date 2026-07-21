@@ -33,6 +33,10 @@ Global: `Shared.TimeHelpers` · `Shared.MapUtils` · `Storyarn.RateLimiter` (new
 
 Context facade + `defdelegate`; LiveViews never call submodules · CRUD/changeset templates (`docs/conventions/domain-patterns.md`) · DB-enforced integrity over CRUD-level trust (ledger constraints, append-only where applicable — mirror the Slice-0 audit trigger approach) · `with_authorization` on every mutating LV event · `dgettext` for all user-facing text (decide domain: extend "integrations" vs new "ai" — surface in chat) · migrations: fresh, no back-compat shims (pre-release), verify dev DB after edits · shared-utilities registry check before ANY helper.
 
+## Observability & error handling
+
+Telemetry `[:ai, :execute, :start|:stop|:exception]` + operation state transitions · metering rows are the usage audit (counts/costs, never content) · **budget rejection is an explicit `:insufficient_credits` error — NEVER auto-degrade to a cheaper model or partial run (owner no-fallback rule; the ChatGPT-plan suggestion to "degrade the operation" is explicitly NOT adopted)** · provider errors classified and surfaced as failed operations with reason · orphaned-reservation sweeper emits an alert metric when it settles anything (a settle by sweeper means a crash happened) · user docs: AI credits/balance section added to the flag-hidden AI docs.
+
 ## Verification / Definition of Done
 
 - ExUnit: TaskRegistry, Router, Internal provider (Req.Test), Credits (grant idempotency per period, expiry, consumption order, reserve/settle/refund, insufficient balance, **concurrent reservations cannot overdraw**), Budget gates (reservation precedes call, output caps enforced, orphaned-reservation sweeper), `ai_operations` states + retry idempotency (no double charge) + **owner-scope enforcement on poll/PubSub (cross-scope access rejected)** + **same-transaction enqueue (no orphaned queued rows after a simulated crash)**, Metering rows, execute inline + async paths.

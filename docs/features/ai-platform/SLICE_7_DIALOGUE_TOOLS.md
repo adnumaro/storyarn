@@ -25,6 +25,10 @@ Dialogue per-type node module + `NodeCrud`/`NodeUpdate` handlers · `Collaborati
 
 Every mutating `handle_event` authorized (apply = `:edit_content`) · collaboration: lock check before apply, broadcast after · optimistic UI for the applied text · no rich-text marks in dialogue V2 (project decision — plain text pipeline) · Vue: emits, stable `v-for` keys (variant index is NOT stable across regenerate — use generated ids) · i18n en/es for all proposal UI · icons Lucide · component registry check before `AiProposalPanel` (verify nothing equivalent exists — surface findings in chat).
 
+## Observability & error handling
+
+Acceptance events (apply/dismiss per variant) are the north-star telemetry · generation failure = explicit panel error with user-initiated regenerate (no auto-retry) · apply conflict (collaboration lock held) = explicit conflict state naming the holder — the apply NEVER proceeds against a lock and never retries silently · charged-but-failed generations are visible in the usage event trail (succeeded=false) · user docs: dialogue tools + proposal flow documented in the flag-hidden AI docs.
+
 ## Verification / Definition of Done
 
 - ExUnit: task def + charging, context scoping for the node, apply path reuses NodeUpdate (assert broadcast + undo entry), acceptance events recorded for apply AND dismiss.

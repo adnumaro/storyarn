@@ -11,7 +11,7 @@ Generate images (character portraits, concept art) directly into sheet **gallery
 
 ## Architectural direction
 
-- Uses the **capabilities model introduced in Slice 3**; `InferenceProvider` gains `generate_image/2` implemented ONLY for OpenAI and Google adapters. UI availability derives from connected-provider capabilities — a capability-specific CTA ("requires OpenAI or Google connected") otherwise. Provider selection honors the Illustrator assignment (Slice 4).
+- Uses the **capabilities model introduced in Slice 3**; `InferenceProvider` gains `generate_image/2` implemented ONLY for OpenAI and Google adapters. UI availability derives from connected-provider capabilities — a capability-specific CTA ("requires OpenAI or Google connected") otherwise. Provider selection: Illustrator assignment (Slice 4), else the user-marked default AI (if image-capable), else the CTA — no auto-pick.
 - Lane: `byok_only` through Slice 3 (consent + provenance + no credit debit). Metering records the call with `lane` and image metadata (dimensions/count — never the image content in metering).
 - Storage: preview is ephemeral (temp URL/data); persistence ONLY on accept, and **accept means creating a real `Asset` record, not just uploading bytes: `Storyarn.Assets.upload_binary_and_create_asset/4` (atomic upload+record lifecycle) followed by `Sheets.add_gallery_image/2`, with rollback compensation if the gallery link fails after the asset was created** — a direct `Storage` upload would leave orphaned objects the gallery cannot reference. The gallery block references the created asset like any manually uploaded one.
 - Provider usage policies surfaced in the UI (link to the provider's content policy; generation errors from safety filters mapped to a clear message).
@@ -23,6 +23,10 @@ Generate images (character portraits, concept art) directly into sheet **gallery
 ## Applicable conventions (MUST be surfaced in chat during implementation)
 
 Storage ONLY through the `Assets`/`Storage` facade (deletion-safety checks live there — project rule) · authorization: `:edit_content` on generate/save events · i18n en/es · Lucide icons · block architecture respected (gallery block owns the UI entry; no bespoke panels) · metering stores counts/cost only, never image content · component registry check before new components.
+
+## Observability & error handling
+
+Generation telemetry (count, dimensions, latency — never image content) · safety-filter rejections map to an explicit, human message (provider policy linked) — no re-prompting or silent retry · asset-creation/link failure = compensation (no orphaned storage) + explicit error; the preview is never lost on failure · accept/discard to PostHog (acceptance signal) · user docs: image generation into galleries documented in the flag-hidden AI docs.
 
 ## Verification / Definition of Done
 

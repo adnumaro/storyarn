@@ -26,6 +26,10 @@
 
 Facades only, never submodules from web/AI layers · two-phase cross-ref remap (no raw FK inserts from generated payloads) · shortcut/slug generation exclusively via `Shortcuts`/`NameNormalizer` (duplicating them is a bug) · authorization `:edit_content` on apply · soft-delete-aware collision checks · all user-facing text i18n en/es · `validate_shortcut` from `Shared.Validations` on every proposed shortcut · surface in chat any place where the AI schema wants a field our changesets do not accept — adjust the schema, not the changeset.
 
+## Observability & error handling
+
+Import telemetry: entities proposed vs accepted vs excluded (acceptance signal for the import tool) · schema-invalid AI output → explicit error BEFORE any preview (per-item validation failures listed in the preview, never silently dropped items) · apply is atomic: any failure = zero writes + explicit error · **snapshot creation failure ABORTS the apply — no import without a rollback path** · user docs: text-import flow documented in the flag-hidden AI docs.
+
 ## Verification / Definition of Done
 
 - ExUnit: schema validation (malformed AI output rejected before preview), collision handling, two-phase remap correctness, Multi atomicity (partial failure = zero writes), snapshot-rollback path, input-size caps.

@@ -27,6 +27,15 @@ A global command palette (`Meta+K` on macOS, `Ctrl+K` on Windows/Linux — both 
 
 TypeScript strict, no `any`, destructured prop defaults · emits over callback props · component registry check before creating anything (`docs/conventions/component-registry.md`) · Lucide-only icons · no browser-native dialogs · i18n `$t()` with `{param}` interpolation, en/es both · a11y: focus trap, aria-activedescendant, escape handling via reka events (`@escape-key-down`, not `@update:open`) · vitest tests in `assets/app/test/` · LiveVue: wrap `<.vue>` in id'd div where mounted.
 
+## User documentation (deliverable of this slice)
+
+- **Platform guide page for the palette** (user docs system, `Storyarn.Docs`): what it is, how to open it per platform (Meta+K / Ctrl+K), command scopes per surface. Ships visible with the slice.
+- **AI docs skeleton prepared but hidden behind `:ai_integrations`**: the guide section where AI actions will be documented exists from this slice, gated by the flag. **Verify here how the docs surface can flag-gate pages** (docs may render for unauthenticated visitors — determine the gating point and document it for later slices).
+
+## Observability & error handling
+
+PostHog events: `palette_opened`, `palette_command_executed` (command id, surface), `palette_search_no_results` · command handler failures surface as an explicit toast/flash with an i18n message — never silent, never retried automatically · no fallbacks: an unavailable command simply does not appear (scope filtering), it never swaps in a different action.
+
 ## Verification / Definition of Done
 
 - Vitest: registry (scope filtering, registration, flag-gated commands hidden when the AI flag is off), palette component (open/close, search, group rendering, keyboard nav), stale-state guards.

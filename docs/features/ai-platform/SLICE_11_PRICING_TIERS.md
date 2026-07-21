@@ -25,6 +25,10 @@ Turn measured telemetry (Slices 2 + 6–10) into the commercial layer: per-plan 
 
 Billing changes through the `Billing` facade · DB-enforced ledger integrity (no negative balances via constraint/transaction, mirror Slice-2 design) · `dgettext("settings", …)` / dashboard i18n en/es · authorization: workspace spend views gated by `:manage_workspace`; user spend by own scope · dashboards via the shared Vue shells (no bespoke layouts) · pricing copy reviewed by owner before merge (user-facing money text is owner-approved, not implementer-invented).
 
+## Observability & error handling
+
+Purchase failures surface the payment provider's error explicitly (no optimistic credit before confirmation) · grant cron emits a missed-grant alert if a period has no grant row for an active workspace · spend-anomaly alerts (already specified) reach the owner, not just logs · dashboards read from `ai_usage_events`/ledger only — no shadow counters · user docs: pricing/credits pages ship WITH Stage B (owner-approved copy), flag-hidden until GA.
+
 ## Verification / Definition of Done
 
 - Stage A: pricing memo delivered and approved in chat (blocker for Stage B).

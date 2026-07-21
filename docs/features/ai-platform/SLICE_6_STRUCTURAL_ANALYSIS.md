@@ -26,6 +26,10 @@ First flagship AI action: **"Analyze structure" on a single flow** detecting dea
 
 Per-type node architecture respected (no giant case statements outside node modules) · `dgettext("flows", …)` for editor strings; report i18n decision surfaced in chat · authorization: running analysis requires project membership (`with_authorization(socket, :edit_content)` or read-tier — surface the choice) · Lucide icons · panel positioning via existing dock (no raw absolute positioning) · soft-delete filters in all graph queries · detectors get exhaustive ExUnit coverage BEFORE the LLM step is wired.
 
+## Observability & error handling
+
+Detector-run telemetry (duration, findings count per type) · findings resolve/dismiss to PostHog (acceptance signal) · report generation failure = explicit panel error with a user-initiated retry button (no auto-retry, no partial report) · free detector path emits its own metric so we can prove the differentiator gets used · user docs: structural analysis + free-linting vs paid-report documented in the flag-hidden AI docs.
+
 ## Verification / Definition of Done
 
 - ExUnit: each detector against crafted fixture graphs (dead branch, unreachable ending, orphan hub, absence spans; negative cases) · report task registration + charging · **detector runs never touch the credit ledger (free path verified)**.

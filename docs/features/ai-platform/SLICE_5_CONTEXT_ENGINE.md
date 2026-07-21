@@ -25,6 +25,10 @@ A budget-bounded context builder that assembles, for any AI task, exactly the re
 
 Facade-only exposure (`Storyarn.AI.build_context/2` via defdelegate) · read-only queries with soft-delete filters (`is_nil(deleted_at)`) ALWAYS · no new serializer if an adapter over exports suffices — justify in chat if deviation needed · preload strategy: aggressive single-query preloads for context assembly (avoid N+1, per Ecto conventions) · shared-utilities registry check before any helper.
 
+## Observability & error handling
+
+Context-build telemetry attached to the usage event: entities included, serialized size, truncations, **summary substitutions count** · **when summaries substitute oversized entities, the task result carries a visible indicator ("context summarized for N entities") — owner-decided: the mechanism is allowed but never silent** · scope impossible even after summaries → explicit error ("scope too large for this action"), no partial/silent context · summary generation failures are explicit task failures (metered), never skipped-and-continued.
+
 ## Verification / Definition of Done
 
 - ExUnit: scoping per rule, expansion correctness on fixture graphs (references followed, unrelated entities excluded), token-budget truncation on serialized payloads, summary cache hit/miss + invalidation on `source_hash` change + **concurrent-miss single-flight**, soft-deleted entities excluded, **authorization: cross-project access rejected**.

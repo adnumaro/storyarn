@@ -28,6 +28,10 @@ Users connect their own AI provider accounts via API key (BYOK) in Account Setti
 
 Facade + `defdelegate` (no direct submodule calls from web) · CRUD module template · changesets per operation · `dgettext("integrations", …)` + `locales/{en,es}/integrations.json` · Lucide icons only · no browser-native dialogs · authorization: settings LV scoped to `current_scope.user`, all queries user-scoped · LiveVue nested props stay snake_case on the wire · `data-live-link-exempt` for external hrefs · migrations verified against dev DB via `information_schema` after in-place edits.
 
+## Observability & error handling (as shipped)
+
+Telemetry span `[:ai, :integration, :call]` · append-only audit trail (connect/disconnect/validation_failed/auto_revoked) · validation errors classified (`:invalid_key | :network_error | :rate_limited | :provider_error | {:unexpected_status, n}`) → i18n error states in the connect dialog · `retry: false` on validation calls (no automatic retries) · no fallbacks anywhere: a failed validation is an explicit rejected connect.
+
 ## Verification (done)
 
 65 ExUnit (adapters w/ Req.Test, CRUD, LiveView, Runtime, audit trigger) · 615 Vitest (incl. dialog-race tests) · `just quality-lint` green · cubic review: 9/9 issues fixed, threads resolved. Browser-verified by owner (6-card grid).
