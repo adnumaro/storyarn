@@ -41,7 +41,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
                           )
                       )
 
-  @nav_command_id_format ~r/^nav\.(workspace|project|project-settings|workspace-settings|sheet|flow|scene)\.\d{1,20}$/
+  @nav_command_id_format ~r/^nav\.(workspace|project|project-settings|workspace-settings|sheet|flow|scene)\.[1-9]\d{0,19}$/
 
   def on_mount(:setup_palette, _params, _session, socket) do
     {:cont,

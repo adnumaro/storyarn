@@ -97,6 +97,13 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       "surface" => "workspace"
     })
 
+    # Leading zeros are never emitted by nav_item/1 — forged variants of a
+    # canonical id must not inflate analytics cardinality.
+    render_hook(view, "palette_command_executed", %{
+      "command_id" => "nav.sheet.007",
+      "surface" => "workspace"
+    })
+
     refute_receive {:analytics_capture, %{event: "palette command executed"}}, 100
   end
 

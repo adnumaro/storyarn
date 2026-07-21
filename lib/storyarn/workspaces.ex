@@ -34,7 +34,12 @@ defmodule Storyarn.Workspaces do
   @type changeset :: Ecto.Changeset.t()
   @type attrs :: map()
   @type role :: String.t()
-  @type action :: :manage_workspace | :manage_members | :create_project | :view
+  @type action ::
+          :manage_workspace
+          | :access_workspace_settings
+          | :manage_members
+          | :create_project
+          | :view
 
   # =============================================================================
   # Workspace CRUD
