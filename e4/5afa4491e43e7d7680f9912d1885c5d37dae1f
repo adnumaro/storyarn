@@ -1,0 +1,39 @@
+docs/features/ai-platform/SLICE_10_IMAGE_GENERATION.md
+  s_45b22073d60431::t_ecb933375e6820 29
+  s_45b22073d60431::t_9c1da8f217ef26 14
+docs/features/ai-platform/SLICE_9_TIPTAP_SUGGESTIONS.md
+  s_45b22073d60431::t_9b5ec976bae54a 30
+docs/features/ai-platform/SLICE_2_AI_SERVICE_CORE.md
+  s_45b22073d60431::t_ba46dedfb06ca9 39
+docs/features/ai-platform/SLICE_3_BYOK_LANE.md
+  s_45b22073d60431::t_d7e27a34e20bf4 33
+docs/features/ai-platform/SLICE_1_COMMAND_PALETTE.md
+  s_45b22073d60431::t_cff537263112d1 37
+  s_45b22073d60431::t_6233b11ceee4fd 33
+docs/features/ai-platform/SLICE_6_STRUCTURAL_ANALYSIS.md
+  s_45b22073d60431::t_a19a8cb5dd9944 31
+docs/features/ai-platform/SLICE_4_AI_TEAM.md
+  s_45b22073d60431::t_8273a8f86550cb 31
+  s_45b22073d60431::t_8a7b614933a6dd 37
+  s_45b22073d60431::t_97393bf7f0b97a 16
+  s_45b22073d60431::t_27197771d6923e 35
+  s_45b22073d60431::t_c619134f6246da 10
+docs/features/ai-platform/SLICE_11_PRICING_TIERS.md
+  s_45b22073d60431::t_480635504e5967 30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "e45afa4491e43e7d7680f9912d1885c5d37dae1f",
+  "prompts": {},
+  "sessions": {
+    "s_45b22073d60431": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69ce9805-664b-489d-8409-0b9e7d507066",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
