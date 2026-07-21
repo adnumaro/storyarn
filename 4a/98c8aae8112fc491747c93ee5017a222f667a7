@@ -1,0 +1,51 @@
+assets/app/locales/es/scenes.json
+  s_aae902ef6fbd45::t_5ca917deae4d5d 388-390
+assets/app/shared/command-palette/accountCommands.ts
+  s_aae902ef6fbd45::t_852d9c1739e983 1-35
+lib/storyarn_web/live/hooks/palette.ex
+  s_aae902ef6fbd45::t_3f39bd26f1a222 120-128
+  s_aae902ef6fbd45::t_196463069f7f6f 42-45
+assets/app/live/layouts/workspace/Layout.vue
+  s_aae902ef6fbd45::t_0f5a0e4837690a 33
+  s_aae902ef6fbd45::t_69aa713cada663 2,7-8
+  s_aae902ef6fbd45::t_542738199e4266 30-32,37-38,41-42,50,52
+assets/app/locales/es/palette.json
+  s_aae902ef6fbd45::t_3002afa393caa4 9,13
+assets/app/live/layouts/project/Layout.vue
+  s_aae902ef6fbd45::t_7902630ec6428d 95-96,104,120-121,127
+  s_aae902ef6fbd45::t_6b3202ed4ccdfb 18
+assets/app/locales/en/palette.json
+  s_aae902ef6fbd45::t_3bdbfaee2e3ee5 9,13
+assets/app/test/live/layouts/WorkspaceLayoutPalette.test.ts
+  s_aae902ef6fbd45::t_40cecdfa337000 90-95,97,106-107
+  s_aae902ef6fbd45::t_3cf84e852e898b 80-82
+test/storyarn_web/live/hooks/palette_test.exs
+  s_aae902ef6fbd45::t_17a93370d3aaf6 119,128-133
+  s_aae902ef6fbd45::t_1ff6ad6d112ead 134
+assets/app/components/command-palette/CommandPalette.vue
+  s_aae902ef6fbd45::t_7603295310dd24 61-75
+  s_aae902ef6fbd45::t_df0659cbc4c3ae 200
+assets/app/locales/en/scenes.json
+  s_aae902ef6fbd45::t_5ca917deae4d5d 388-390
+assets/app/modules/scenes/editor/components/canvas/SceneCanvas.vue
+  s_aae902ef6fbd45::t_36fa59d4a98920 174
+assets/app/modules/flows/editor/components/chrome/FlowMinimapToggle.vue
+  s_aae902ef6fbd45::t_6dfa9083689f7b 46
+  s_aae902ef6fbd45::t_a3a6a25f42d68b 39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "4a98c8aae8112fc491747c93ee5017a222f667a7",
+  "prompts": {},
+  "sessions": {
+    "s_aae902ef6fbd45": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "efa92fc9-57cc-4595-a9fb-359884909f01",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
