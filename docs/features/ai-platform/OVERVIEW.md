@@ -19,16 +19,16 @@ loreweaver.ink (Architect + Director, ex-AAA team, pre-launch): AI **extracts** 
 
 ## Slice index
 
-| # | Slice | Doc | Depends on | Status |
-|---|---|---|---|---|
-| 0 | BYOK provider integrations + feature-flag foundation | `SLICE_0_BYOK_INTEGRATIONS.md` | — | **DONE** (PR #28) |
-| 1 | Command palette foundation (no AI) | `SLICE_1_COMMAND_PALETTE.md` | — | pending |
-| 2 | AI Service core + internal provider + credits | `SLICE_2_AI_SERVICE_CORE.md` | 0 | pending |
-| 3 | Context engine v1 (deterministic) | `SLICE_3_CONTEXT_ENGINE.md` | 2 | pending |
-| 4 | Structural analysis tool (the differentiator) | `SLICE_4_STRUCTURAL_ANALYSIS.md` | 1, 2, 3 | pending |
-| 5 | Dialogue tools (rewrite/variants + proposal UX) | `SLICE_5_DIALOGUE_TOOLS.md` | 1, 2, 3 | pending |
-| 6 | Text → Storyarn structure (import with diff preview) | `SLICE_6_TEXT_TO_STRUCTURE.md` | 1, 2, 3, 5 (proposal UX) | pending |
-| 7 | Pricing, tiers & credit purchase (data-driven) | `SLICE_7_PRICING_TIERS.md` | 2 + telemetry from 4–6 | pending |
+| #   | Slice                                                | Doc                              | Depends on               | Status            |
+| --- | ---------------------------------------------------- | -------------------------------- | ------------------------ | ----------------- |
+| 0   | BYOK provider integrations + feature-flag foundation | `SLICE_0_BYOK_INTEGRATIONS.md`   | —                        | **DONE** (PR #28) |
+| 1   | Command palette foundation (no AI)                   | `SLICE_1_COMMAND_PALETTE.md`     | —                        | pending           |
+| 2   | AI Service core + internal provider + credits        | `SLICE_2_AI_SERVICE_CORE.md`     | 0                        | pending           |
+| 3   | Context engine v1 (deterministic)                    | `SLICE_3_CONTEXT_ENGINE.md`      | 2                        | pending           |
+| 4   | Structural analysis tool (the differentiator)        | `SLICE_4_STRUCTURAL_ANALYSIS.md` | 1, 2, 3                  | pending           |
+| 5   | Dialogue tools (rewrite/variants + proposal UX)      | `SLICE_5_DIALOGUE_TOOLS.md`      | 1, 2, 3                  | pending           |
+| 6   | Text → Storyarn structure (import with diff preview) | `SLICE_6_TEXT_TO_STRUCTURE.md`   | 1, 2, 3, 5 (proposal UX) | pending           |
+| 7   | Pricing, tiers & credit purchase (data-driven)       | `SLICE_7_PRICING_TIERS.md`       | 2 + telemetry from 4–6   | pending           |
 
 Backlog (explicitly NOT sliced yet): embeddings/semantic search where graph queries fall short · BYOK routed through the AI Service (user key for premium tiers) · workspace-shared key pools (Studio) · self-hosted open-weight models · Storyarn MCP server (separate feature, separate plan).
 
@@ -49,9 +49,9 @@ Backlog (explicitly NOT sliced yet): embeddings/semantic search where graph quer
 
 ## Open decisions (owner input needed — do not lock in code)
 
-| Decision | Options | Recommendation |
-|---|---|---|
-| Managed open-weight provider for the internal lane | Together.ai (EU region, no-retention default) / Cloudflare Workers AI (cheapest, global edge) / DeepInfra | Together.ai if EU data residency matters, else Cloudflare |
-| Flag naming | Reuse `:ai_integrations` for everything / umbrella `:ai_platform` for slices 2+ / separate `:command_palette` for slice 1 | Separate `:command_palette` (palette has non-AI value, can GA earlier) + `:ai_platform` for 2+ |
-| Palette scope in Slice 1 | AI-only launcher / full Storyarn control center | Full control center (single interface to learn; AI lands later as more commands) |
-| Free-tier "limited context" semantics | Scope gating (per-scene vs whole-project analysis) / window capping | Scope gating only — never silently degrade the same task |
+| Decision                                           | Options                                                                                                                   | Recommendation                                                                                 |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Managed open-weight provider for the internal lane | Together.ai (EU region, no-retention default) / Cloudflare Workers AI (cheapest, global edge) / DeepInfra                 | Together.ai if EU data residency matters, else Cloudflare                                      |
+| Flag naming                                        | Reuse `:ai_integrations` for everything / umbrella `:ai_platform` for slices 2+ / separate `:command_palette` for slice 1 | Separate `:command_palette` (palette has non-AI value, can GA earlier) + `:ai_platform` for 2+ |
+| Palette scope in Slice 1                           | AI-only launcher / full Storyarn control center                                                                           | Full control center (single interface to learn; AI lands later as more commands)               |
+| Free-tier "limited context" semantics              | Scope gating (per-scene vs whole-project analysis) / window capping                                                       | Scope gating only — never silently degrade the same task                                       |

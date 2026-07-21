@@ -6,7 +6,7 @@
 
 ## Problem & proposed solution
 
-**Problem:** first *generative mutation* of project data. Direct AI writes would bypass collaboration locks, undo, and authorization — and without an accept/reject affordance we cannot measure whether AI output is actually used.
+**Problem:** first _generative mutation_ of project data. Direct AI writes would bypass collaboration locks, undo, and authorization — and without an accept/reject affordance we cannot measure whether AI output is actually used.
 **Solution:** AI never writes directly. `AI.execute(:dialogue_variants)` returns candidates; a proposal panel shows them as diffs against the current text; **Apply** routes through the existing node-update path (locks respected, undo-able, authorized, broadcast to collaborators); every apply/dismiss is recorded as an acceptance event tied to the usage row.
 
 ## Architectural direction
