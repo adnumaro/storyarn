@@ -103,6 +103,34 @@ defmodule Storyarn.Flows.FlowCrud do
   defp maybe_exclude_flow(query, id), do: from(f in query, where: f.id != ^id)
 
   @doc """
+  Searches flows by name or shortcut across a pre-authorized set of projects.
+
+  Callers OWN the authorization of `project_ids` (see `Storyarn.GlobalSearch`);
+  this function never widens the set. Empty queries return no results — the
+  cross-project variant is a search surface, not a browsing one.
+  """
+  @spec search_flows_in_projects([integer()], String.t(), keyword()) :: [Flow.t()]
+  def search_flows_in_projects(project_ids, query, opts \\ []) when is_list(project_ids) and is_binary(query) do
+    limit = Keyword.get(opts, :limit, @default_search_limit)
+    query_str = String.trim(query)
+
+    if project_ids == [] or query_str == "" do
+      []
+    else
+      search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
+
+      Repo.all(
+        from(f in Flow,
+          where: f.project_id in ^project_ids and is_nil(f.deleted_at),
+          where: ilike(f.name, ^search_term) or ilike(f.shortcut, ^search_term),
+          order_by: [asc: f.name],
+          limit: ^limit
+        )
+      )
+    end
+  end
+
+  @doc """
   Deep search: searches flow names/shortcuts AND node content (dialogue text,
   labels, technical IDs, hub IDs, expressions, stage directions, menu text, locations).
 

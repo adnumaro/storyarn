@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { PanelLeft, PanelLeftClose } from "lucide-vue-next";
-import { ref } from "vue";
+import { onUnmounted, ref, watch } from "vue";
 import OnboardingDialog from "@components/onboarding/OnboardingDialog.vue";
 import WorkspaceSidebar from "@shell/WorkspaceSidebar.vue";
 import type { WorkspaceItem, WorkspaceUser } from "@shell/workspaceLayoutTypes";
+import { accountPaletteCommands } from "@shared/command-palette/accountCommands";
+import { registerPaletteCommands } from "@shared/command-palette/registry";
 import { useResponsiveSidebar } from "@shared/composables/useResponsiveSidebar";
 
 const {
@@ -18,12 +20,48 @@ const {
   onboarding?: { guide: string; autoShow: boolean } | null;
 }>();
 
-const { sidebarOpen, toggleSidebar } = useResponsiveSidebar();
+const { sidebarOpen, toggleSidebar, desktopSidebarOpen } = useResponsiveSidebar();
 const onboardingDialog = ref<{ openTutorial: () => void } | null>(null);
 
 function showTutorial(): void {
   onboardingDialog.value?.openTutorial();
 }
+
+// Workspace/project switching and workspace settings come from the
+// server-driven palette_nav results (authorized + searchable everywhere);
+// only surface-local commands register statically here.
+const unregisterPaletteCommands = registerPaletteCommands("workspace", accountPaletteCommands());
+
+// The dashboard sidebar is force-open on desktop (owner decision), so the
+// toggle can only execute below the breakpoint — the command exists exactly
+// while it can run, never as a listed no-op. Its label mirrors the toolbar
+// button's current state (same layout.main_sidebar keys, one name everywhere).
+let unregisterSidebarToggle: (() => void) | null = null;
+watch(
+  [desktopSidebarOpen, sidebarOpen],
+  ([desktop, open]) => {
+    unregisterSidebarToggle?.();
+    unregisterSidebarToggle = null;
+
+    if (!desktop) {
+      unregisterSidebarToggle = registerPaletteCommands("workspace", [
+        {
+          id: "workspace.toggle-sidebar",
+          labelKey: open ? "layout.main_sidebar.hide_panel" : "layout.main_sidebar.show_panel",
+          groupKey: "palette.groups.view",
+          icon: open ? PanelLeftClose : PanelLeft,
+          run: toggleSidebar,
+        },
+      ]);
+    }
+  },
+  { immediate: true },
+);
+
+onUnmounted(() => {
+  unregisterPaletteCommands();
+  unregisterSidebarToggle?.();
+});
 </script>
 
 <template>

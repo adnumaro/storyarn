@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { KonvaEventObject } from "konva/lib/Node";
-import { computed, ref, toRef } from "vue";
+import { Maximize2 } from "lucide-vue-next";
+import { computed, onUnmounted, ref, toRef } from "vue";
 import type { SceneRouteConnection } from "@modules/scenes/types/routes";
+import { registerPaletteCommands } from "@shared/command-palette/registry";
 import { useAnnotationEditing } from "../../composables/useAnnotationEditing";
 import { useAnnotations, type AnnotationConfig } from "../../composables/useAnnotations";
 import { useCanvasCreation } from "../../composables/useCanvasCreation";
@@ -158,12 +160,25 @@ const {
   syncStageDragPosition,
   percentToPixel,
   pixelToPercent,
+  fitToView,
 } = useKonvaStage({
   containerRef,
   sceneData: toRef(() => sceneData),
   activeTool: activeToolRef,
   editMode: toRef(() => editMode),
 });
+
+const unregisterPaletteCommands = registerPaletteCommands("scenes", [
+  {
+    id: "scenes.fit-to-view",
+    labelKey: "scenes.canvas.fit_view",
+    groupKey: "palette.groups.view",
+    icon: Maximize2,
+    run: fitToView,
+  },
+]);
+
+onUnmounted(unregisterPaletteCommands);
 
 const editRefs = {
   editMode: toRef(() => editMode),

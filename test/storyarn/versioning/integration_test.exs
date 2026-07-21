@@ -148,11 +148,20 @@ defmodule Storyarn.Versioning.IntegrationTest do
       flow = flow_fixture(project)
 
       {:ok, _} = Storyarn.Versioning.create_version("sheet", sheet, project.id, user.id)
+
+      # Probe the SAME numeric id under other entity types while only the
+      # sheet version exists: zero here is exactly what type isolation
+      # means. (Entity tables have independent id sequences that CAN align
+      # — e.g. on a fresh CI database — so asserting zero for another
+      # entity's id is a coin flip, not an isolation proof.)
+      assert Storyarn.Versioning.count_versions("sheet", sheet.id) == 1
+      assert Storyarn.Versioning.count_versions("flow", sheet.id) == 0
+      assert Storyarn.Versioning.count_versions("scene", sheet.id) == 0
+
       {:ok, _} = Storyarn.Versioning.create_version("flow", flow, project.id, user.id)
 
-      assert Storyarn.Versioning.count_versions("sheet", sheet.id) == 1
       assert Storyarn.Versioning.count_versions("flow", flow.id) == 1
-      assert Storyarn.Versioning.count_versions("sheet", flow.id) == 0
+      assert Storyarn.Versioning.count_versions("sheet", sheet.id) == 1
     end
   end
 end

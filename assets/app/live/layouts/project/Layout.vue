@@ -1,9 +1,23 @@
 <script setup lang="ts">
+import {
+  FileText,
+  GitBranch,
+  Image,
+  Languages,
+  LayoutDashboard,
+  Map,
+  ScrollText,
+  Settings,
+  Trash2,
+} from "lucide-vue-next";
 import { onMounted, onUnmounted, ref } from "vue";
 import OnboardingDialog from "@components/onboarding/OnboardingDialog.vue";
 import ProjectNavbarContext from "@shell/ProjectNavbarContext.vue";
 import ProjectNavbarAccount from "@shell/ProjectNavbarAccount.vue";
 import type { CurrentUser, OnlineUser, ProjectLayoutUrls } from "@shell/projectNavbarTypes";
+import { accountPaletteCommands } from "@shared/command-palette/accountCommands";
+import { registerPaletteCommands, type PaletteCommand } from "@shared/command-palette/registry";
+import { liveNavigate } from "@shared/navigation/liveNavigate";
 
 interface ProjectChrome {
   activeTool: string;
@@ -67,9 +81,58 @@ onMounted(() => {
   window.addEventListener("storyarn:main-sidebar-change", handleMainSidebarChange);
 });
 
+const paletteToolIcons: Record<string, PaletteCommand["icon"]> = {
+  dashboard: LayoutDashboard,
+  sheets: FileText,
+  flows: GitBranch,
+  scenes: Map,
+  screenplays: ScrollText,
+  assets: Image,
+  localization: Languages,
+};
+
+// Every section of the current project's settings, mirroring the routes
+// under /settings and reusing the settings shell's own nav labels — one
+// concept, one name. The server enforces access on entry, same as the navbar.
+const settingsSections: Array<{ key: string; suffix: string; icon: PaletteCommand["icon"] }> = [
+  { key: "general", suffix: "", icon: Settings },
+  { key: "members", suffix: "/members", icon: Settings },
+  { key: "localization", suffix: "/localization", icon: Languages },
+  { key: "snapshots", suffix: "/snapshots", icon: Settings },
+  { key: "version_control", suffix: "/version-control", icon: Settings },
+  { key: "usage_limits", suffix: "/usage-limits", icon: Settings },
+  { key: "import_export", suffix: "/export-import", icon: Settings },
+  { key: "trash", suffix: "/trash", icon: Trash2 },
+];
+
+function projectPaletteCommands(): PaletteCommand[] {
+  const toolCommands: PaletteCommand[] = Object.entries(urls.tools).map(([key, url]) => ({
+    id: `project.go-to.${key}`,
+    labelKey: `layout.tools.${key}`,
+    groupKey: "palette.groups.navigation",
+    icon: paletteToolIcons[key],
+    run: () => liveNavigate(url),
+  }));
+
+  for (const section of settingsSections) {
+    toolCommands.push({
+      id: `project.settings.${section.key}`,
+      labelKey: `project_settings.nav.items.${section.key}`,
+      groupKey: "layout.project_navbar_context.project_settings",
+      icon: section.icon,
+      run: () => liveNavigate(`${urls.projectSettings}${section.suffix}`),
+    });
+  }
+
+  return toolCommands.concat(accountPaletteCommands());
+}
+
+const unregisterPaletteCommands = registerPaletteCommands("project", projectPaletteCommands());
+
 onUnmounted(() => {
   desktopSidebarQuery?.removeEventListener("change", syncDesktopSidebar);
   window.removeEventListener("storyarn:main-sidebar-change", handleMainSidebarChange);
+  unregisterPaletteCommands();
 });
 </script>
 

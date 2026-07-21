@@ -34,6 +34,7 @@ defmodule Storyarn.Docs.GuideBuilder do
       section_order: attrs[:section_order] || section_order(section_parts),
       order: attrs[:order],
       description: attrs[:description],
+      feature_flag: attrs[:feature_flag],
       body: body,
       toc: toc
     }

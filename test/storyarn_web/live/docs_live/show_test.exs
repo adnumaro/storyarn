@@ -51,7 +51,13 @@ defmodule StoryarnWeb.DocsLive.ShowTest do
         |> Enum.filter(&(&1["category"] == "welcome"))
         |> Enum.map(& &1["title"])
 
-      assert welcome_guides == ["Start Here", "What is Storyarn?", "Core Concepts", "Core Workflow"]
+      assert welcome_guides == [
+               "Start Here",
+               "What is Storyarn?",
+               "Core Concepts",
+               "Core Workflow",
+               "Command Palette"
+             ]
 
       content = LiveVue.Test.get_vue(view, name: "live/docs/show/DocsContent")
       assert content.props["guide-body"] =~ "Workspace"

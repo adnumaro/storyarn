@@ -1,0 +1,18 @@
+{
+  "palette": {
+    "title": "Paleta de comandos",
+    "description": "Busca y ejecuta comandos",
+    "placeholder": "Escribe un comando o busca…",
+    "no_results": "No hay comandos que coincidan",
+    "command_failed": "El comando ha fallado al ejecutarse. Inténtalo de nuevo.",
+    "groups": {
+      "navigation": "Navegación",
+      "view": "Vista"
+    },
+    "nav": {
+      "projects": "Proyectos",
+      "workspace_settings": "Ajustes del espacio de trabajo",
+      "entities": "Ir a"
+    }
+  }
+}

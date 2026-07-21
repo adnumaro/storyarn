@@ -80,6 +80,10 @@ defmodule Storyarn.Scenes do
   @spec search_scenes(integer(), String.t(), keyword()) :: [scene_record()]
   defdelegate search_scenes(project_id, query, opts \\ []), to: SceneCrud
 
+  @doc "Cross-project scene search over a pre-authorized project set (see `Storyarn.GlobalSearch`)."
+  @spec search_scenes_in_projects([integer()], String.t(), keyword()) :: [scene_record()]
+  defdelegate search_scenes_in_projects(project_ids, query, opts \\ []), to: SceneCrud
+
   @doc """
   Gets a single scene by ID within a project, with all associations preloaded.
   Returns `nil` if the scene doesn't exist or doesn't belong to the project.

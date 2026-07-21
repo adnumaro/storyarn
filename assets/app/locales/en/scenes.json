@@ -385,6 +385,9 @@
       "character": "Character",
       "event": "Event",
       "custom": "Custom"
+    },
+    "canvas": {
+      "fit_view": "Fit to view"
     }
   }
 }
