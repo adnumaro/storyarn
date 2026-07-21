@@ -13,7 +13,7 @@ Generate images (character portraits, concept art) directly into sheet **gallery
 
 - Uses the **capabilities model introduced in Slice 3**; `InferenceProvider` gains `generate_image/2` implemented ONLY for OpenAI and Google adapters. UI availability derives from connected-provider capabilities — a capability-specific CTA ("requires OpenAI or Google connected") otherwise. Provider selection honors the Illustrator assignment (Slice 4).
 - Lane: `byok_only` through Slice 3 (consent + provenance + no credit debit). Metering records the call with `lane` and image metadata (dimensions/count — never the image content in metering).
-- Storage: preview is ephemeral (temp URL/data); persistence ONLY on accept, through the `Assets` facade (project-scoped keys, `ImageProcessor` pipeline, R2/local adapters) — never a parallel storage path. The gallery block references the created asset like any manually uploaded one.
+- Storage: preview is ephemeral (temp URL/data); persistence ONLY on accept, and **accept means creating a real `Asset` record, not just uploading bytes: `Storyarn.Assets.upload_binary_and_create_asset/4` (atomic upload+record lifecycle) followed by `Sheets.add_gallery_image/2`, with rollback compensation if the gallery link fails after the asset was created** — a direct `Storage` upload would leave orphaned objects the gallery cannot reference. The gallery block references the created asset like any manually uploaded one.
 - Provider usage policies surfaced in the UI (link to the provider's content policy; generation errors from safety filters mapped to a clear message).
 
 ## Existing code to reuse (do not duplicate)
@@ -26,7 +26,7 @@ Storage ONLY through the `Assets`/`Storage` facade (deletion-safety checks live 
 
 ## Verification / Definition of Done
 
-- ExUnit: capability gating (non-capable providers rejected), `byok_only` enforcement, accept path uploads via Assets facade + links the block, discard persists nothing, safety-filter errors mapped.
+- ExUnit: capability gating (non-capable providers rejected), `byok_only` enforcement, accept path creates the `Asset` record via `upload_binary_and_create_asset/4` + links the block via `add_gallery_image/2` (rollback compensation on link failure — no orphaned storage objects), discard persists nothing, safety-filter errors mapped.
 - Vitest: gallery generate flow (prompt input, preview, accept/discard), capability CTA state.
 - Browser: real OpenAI or Google key — generate a portrait into a character sheet gallery, verify asset in storage and provenance badge.
 - Lint fix as last command before push · `just quality-lint` green + full suites.

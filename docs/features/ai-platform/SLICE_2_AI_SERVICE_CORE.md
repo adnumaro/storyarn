@@ -18,7 +18,7 @@
   - **grant period + expiry** columns and a **DB-unique idempotency key** per (owner, period) so a retried monthly grant cannot double-credit and expired grants cannot accumulate;
   - **defined consumption order** at debit time (expiring credits first, then purchased);
   - **concurrency-safe debits**: reservation acquires a lock on a stable credit-owner row (or equivalent atomic conditional insert) so two concurrent reservations cannot both pass the balance check — derived-balance-in-a-transaction alone does NOT serialize read-then-insert; plus an idempotency key per request so client/Oban retries never charge twice. Covered by dedicated concurrency tests.
-- **`execute/1` result contract**: every call persists an `ai_operations` row (`queued | running | succeeded | failed`) keyed by an idempotent operation id. Short tasks return `{:ok, result}` inline (operation recorded as succeeded); long tasks return `{:async, operation_id}` and complete via Oban — retries are idempotent against the operation id (settlement happens once), results/failures observable by polling or PubSub on the operation.
+- **`execute/1` result contract**: every call persists an `ai_operations` row (`queued | running | succeeded | failed`) keyed by an idempotent operation id and **stamped with the authorized owner/actor scope — every poll, retry, and PubSub publication enforces that scope before returning results or failures** (cross-workspace access to an operation id must be impossible, covered by tests). Short tasks return `{:ok, result}` inline (operation recorded as succeeded); long tasks return `{:async, operation_id}` and complete via Oban — **the Oban job is inserted in the same database transaction as the operation row** (no commit-to-enqueue crash window; an orphaned `queued` operation cannot exist), retries are idempotent against the operation id (settlement happens once).
 - Privacy default: metering stores counts and costs, **never prompt/response content**.
 - Long tasks run through Oban (new `ai` queue); short tasks inline. Telemetry: extend `[:ai, …]` event namespace from Slice 0.
 - Flag: `:ai_platform` for all credit-lane surfaces (OPEN decision).
@@ -34,7 +34,7 @@ Context facade + `defdelegate`; LiveViews never call submodules · CRUD/changese
 
 ## Verification / Definition of Done
 
-- ExUnit: TaskRegistry, Router, Internal provider (Req.Test), Credits (grant idempotency per period, expiry, consumption order, reserve/settle/refund, insufficient balance, **concurrent reservations cannot overdraw**), Budget gates (reservation precedes call, output caps enforced, orphaned-reservation sweeper), `ai_operations` states + retry idempotency (no double charge), Metering rows, execute inline + async paths.
+- ExUnit: TaskRegistry, Router, Internal provider (Req.Test), Credits (grant idempotency per period, expiry, consumption order, reserve/settle/refund, insufficient balance, **concurrent reservations cannot overdraw**), Budget gates (reservation precedes call, output caps enforced, orphaned-reservation sweeper), `ai_operations` states + retry idempotency (no double charge) + **owner-scope enforcement on poll/PubSub (cross-scope access rejected)** + **same-transaction enqueue (no orphaned queued rows after a simulated crash)**, Metering rows, execute inline + async paths.
 - Vitest: credit balance UI, summarize-flow surface.
 - Browser: run the micro-task on a real flow with the flag enabled; watch balance decrease; verify metering row.
 - `just quality-lint` green + full suites.

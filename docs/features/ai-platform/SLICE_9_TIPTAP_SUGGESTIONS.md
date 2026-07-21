@@ -7,11 +7,11 @@ Manual-trigger writing suggestions in tiptap-based rich-text editors: the user h
 ## Problem & proposed solution
 
 **Problem:** the blank-page moment is the most common writing friction — but continuous auto-suggest is the most expensive per-user AI pattern (unbounded frequency), which is exactly why it cannot run on platform credits.
-**Solution:** suggestions are explicit, single-shot, and run on the user's key through the Slice-3 lane, resolved via the **Writing-assistant assignment (Slice 4)**. Trigger → bounded context assembled (surrounding document segment + relevant entities via Slice 5) → one `AI.execute(:writing_suggestion, lane: :byok_only)` call → ghost text rendered inline → Tab/click accepts (insert at cursor + acceptance event), Esc dismisses (dismissal event). Users without a connected key see the connect CTA instead of the trigger affordance.
+**Solution:** suggestions are explicit, single-shot, and run on the user's key through the Slice-3 lane, resolved via the **Writing-assistant assignment (Slice 4)**. Trigger → bounded context assembled (surrounding document segment + relevant entities via Slice 5) → one `AI.execute(:writing_suggestion, lane: :byok_only)` call → ghost text rendered inline → Tab/click accepts (insert at cursor + acceptance event), Esc dismisses (dismissal event). **Every suggestion reaches a terminal acceptance outcome: accepted | dismissed | abandoned (cancelled/re-triggered/blurred, recorded as a dismissal reason per the Slice-7 schema) — so the acceptance-rate denominator reconciles 1:1 with metered calls.** Users without a connected key see the connect CTA instead of the trigger affordance.
 
 ## Architectural direction
 
-- Tiptap extension in the existing plugin structure (`assets/app/plugins/tiptap/`): decoration-based ghost text (never real document content until accepted — undo history stays clean), keyboard handling scoped to the ghost state (Tab/Esc), single in-flight request with cancellation on re-trigger/blur.
+- Tiptap extension in the existing plugin structure (`assets/app/plugins/tiptap/`): decoration-based ghost text (never real document content until accepted — undo history stays clean), keyboard handling scoped to the ghost state (Tab/Esc), single in-flight request. **Cancellation is honestly scoped: re-trigger/blur suppresses the RESULT (stale-response guard by request token) — it does NOT abort the provider call in v1, so an abandoned suggestion still completes and bills the user's account (one small, output-capped call). Aborting mid-flight through `AI.execute`/`InferenceProvider` is deliberate non-scope; revisit only with evidence of waste.**
 - Trigger surfaces: editor keyboard shortcut + a toolbar affordance in editors that have one. Registered as a palette command too where an editor has focus (Slice 1 registry).
 - Context: the containing block/field text around the cursor plus scoped entity context from `build_context` (Slice 5; e.g. the sheet the rich-text block belongs to). Hard input budget — this is a cheap, fast task by design.
 - Rate limiting server-side per user (protects the user from their own trigger-spam against their provider bill) via the existing `RateLimiter` pattern.
@@ -27,8 +27,8 @@ TypeScript strict, emits over callbacks · tiptap decorations for ghost text (no
 
 ## Verification / Definition of Done
 
-- Vitest: extension behavior (trigger renders ghost text, accept inserts + fires acceptance, dismiss clears + fires dismissal, re-trigger cancels in-flight, no ghost text in undo history).
-- ExUnit: task def (`byok_only` lane enforced — no credit debit ever), context budget, rate-limit bucket.
+- Vitest: extension behavior (trigger renders ghost text, accept inserts + fires acceptance, dismiss clears + fires dismissal, re-trigger suppresses the stale result AND fires the abandoned terminal event, no ghost text in undo history).
+- ExUnit: task def (`byok_only` lane enforced — no credit debit ever), context budget, rate-limit bucket, terminal-outcome events reconcile with metered calls (accepted/dismissed/abandoned cover 100%).
 - Browser: real key, real editor — trigger, accept, dismiss, no-key CTA state.
 - Lint fix as last command before push · `just quality-lint` green + full suites.
 

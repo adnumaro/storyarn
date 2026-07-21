@@ -11,11 +11,12 @@ AI Service tasks can run on the user's own connected keys: `InferenceProvider` i
 
 ## Architectural direction
 
-- Router (Slice 2) gains lane resolution: task policy (`internal_first` | `byok_only`) × user state (balance, connected providers, consent) → lane. No new entry point — `AI.execute/1` callers are lane-agnostic.
+- Router (Slice 2) gains lane resolution: task policy (`internal_first` | `byok_only`) × user state (balance, connected providers, consent) → lane. No new entry point — `AI.execute/1` callers are lane-agnostic. **Lane branching happens BEFORE budget reservation: a `:byok` execution never touches the credit ledger — no reservation, no settlement, no refund rows — it writes metering only** (explicit no-ledger-mutation test).
+- **Operations carry their lane**: `ai_operations` persists `lane` + resolved provider so async result surfaces render the provenance badge without guessing, and every operation associates to its usage event. `ai_usage_events` gains a **constrained `lane` column via migration** (verified against the dev DB) — the lane audit trail is schema-enforced, not an in-memory field.
 - **Capabilities model introduced here**: provider metadata gains an immutable `capabilities` list (see OVERVIEW lane policy §5) — consumed by lane resolution, Slices 4/9/10, and the connect-CTA logic. Until Slice 4 assignments land (one slice later), BYOK provider selection is "the single/first capable connected provider".
-- BYOK execution reuses `Runtime.with_integration/3` (Slice 0) for key checkout — auto-revoke on 401/403, `last_used_at`, telemetry are already built; the lane wraps the `InferenceProvider` call inside it.
+- BYOK execution reuses `Runtime.with_integration/3` (Slice 0) for key checkout — `last_used_at` and telemetry are already built; the lane wraps the `InferenceProvider` call inside it. **Auto-revocation narrows here: only adapter-classified credential-invalid responses (401, plus 403s the provider explicitly signals as an invalid/revoked key) revoke the integration; permission- or capability-specific 403s surface as request errors and leave the key intact** — a valid key must never be revoked because one model or endpoint was forbidden.
 - `InferenceProvider` implementations: one OpenAI-compatible chat adapter shared by OpenAI/Moonshot/Mistral/DeepSeek (base URL + auth from each provider's metadata) + dedicated Anthropic (Messages API) and Google (generateContent) adapters. All test-injectable via the existing `req_options` pattern.
-- Consent: per (user, provider) columns on the existing `ai_integrations` row (e.g. `fallback_consented_at`) — no new table; toggle rendered in the integrations settings page.
+- Consent: `fallback_consented_at` lives ON the `ai_integrations` row — **binding consent to the key's lifecycle by construction**: disconnect+reconnect creates a NEW integration row (Slice 0 design), so a rotated or newly connected key always starts unconsented and requires a fresh opt-in before automatic fallback can spend from it (reconnect path explicitly tested). Toggle rendered in the integrations settings page.
 - At-limit banner + opt-in modal: LiveView-driven, reusing the flash/banner patterns; provenance badge is a small shared Vue component used by every AI result surface.
 
 ## Existing code to reuse (do not duplicate)
@@ -28,7 +29,7 @@ No silent spending of user money — consent is a hard gate, tested · facade-on
 
 ## Verification / Definition of Done
 
-- ExUnit: lane resolution matrix (balance × connected × consent), consent gate blocks fallback without opt-in, BYOK calls debit zero credits but write metering rows with `lane`, OpenAI-compatible adapter against Req.Test for all four providers, Anthropic/Google adapters, auto-revoke path still fires through the lane.
+- ExUnit: lane resolution matrix (balance × connected × consent), consent gate blocks fallback without opt-in, **reconnected key requires fresh consent (old row's consent never carries over)**, **`:byok` executions mutate zero ledger rows (no reservation/settlement/refund) while writing metering with `lane`**, `lane` column present and constrained in the DB, `ai_operations` carries lane/provider for async badge rendering, OpenAI-compatible adapter against Req.Test for all four providers, Anthropic/Google adapters, **revocation classification: credential-invalid revokes; capability/permission 403 returns a request error and leaves the integration intact**.
 - Vitest: opt-in modal, integrations toggle, provenance badge states.
 - Browser: force the limit (test fixture/flag), walk the consent flow with a real key, verify badge + no credit debit.
 - Lint fix as last command before push · `just quality-lint` green + full suites.
