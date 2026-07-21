@@ -1,0 +1,33 @@
+assets/app/components/command-palette/CommandPalette.vue
+  s_aae902ef6fbd45::t_15c04e251c5e88 123
+  s_aae902ef6fbd45::t_fcaf349ebc173a 198-199
+  s_aae902ef6fbd45::t_ca6189b0822ca7 82
+  s_aae902ef6fbd45::t_e3ad1eb3860a96 197
+  s_aae902ef6fbd45::t_bbf36cc51e3426 146-158,160-163,167
+assets/app/test/shared/navigation/liveNavigate.test.ts
+  s_aae902ef6fbd45::t_7097bd18b0a553 1-61
+assets/app/test/components/command-palette/CommandPalette.test.ts
+  s_aae902ef6fbd45::t_2c75ca57d2e401 177-199
+docs/features/ai-platform/SLICE_1_COMMAND_PALETTE.md
+  s_aae902ef6fbd45::t_2248c82873ca56 37
+assets/app/locales/en/palette.json
+  s_aae902ef6fbd45::t_1632ce682e56cd 7
+assets/app/locales/es/palette.json
+  s_aae902ef6fbd45::t_574b226ca76fea 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "7d7a4bf99f92f0040eeab7256a63a9df20234b8a",
+  "prompts": {},
+  "sessions": {
+    "s_aae902ef6fbd45": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "efa92fc9-57cc-4595-a9fb-359884909f01",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
