@@ -1,0 +1,19 @@
+test/storyarn/versioning/integration_test.exs
+  s_aae902ef6fbd45::t_529aaf7cf72b09 152-156,158-162,164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "72f78b1e2d76ea6527ca411193499c3c6ed6f1f6",
+  "prompts": {},
+  "sessions": {
+    "s_aae902ef6fbd45": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "efa92fc9-57cc-4595-a9fb-359884909f01",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
