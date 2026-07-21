@@ -7,7 +7,7 @@ Manual-trigger writing suggestions in tiptap-based rich-text editors: the user h
 ## Problem & proposed solution
 
 **Problem:** the blank-page moment is the most common writing friction — but continuous auto-suggest is the most expensive per-user AI pattern (unbounded frequency), which is exactly why it cannot run on platform credits.
-**Solution:** suggestions are explicit, single-shot, and run on the user's key through the Slice-3 lane, resolved via the **Writing-assistant assignment (Slice 4), else the user-marked default AI (if capable), else the explicit connect/assign CTA — no auto-pick**. Trigger → bounded context assembled (surrounding document segment + relevant entities via Slice 5) → one `AI.execute(:writing_suggestion, lane: :byok_only)` call → ghost text rendered inline → Tab/click accepts (insert at cursor + acceptance event), Esc dismisses (dismissal event). **Every suggestion reaches a terminal acceptance outcome: accepted | dismissed | abandoned (cancelled/re-triggered/blurred, recorded as a dismissal reason in the Slice-2 acceptance schema) — so the acceptance-rate denominator reconciles 1:1 with metered calls.** Users without a connected key see the connect CTA instead of the trigger affordance.
+**Solution:** suggestions are explicit, single-shot, and run on the user's key through the Slice-3 lane, resolved via the **Writing-assistant assignment (Slice 4), else the user-marked default AI (if capable), else the explicit connect/assign CTA — no auto-pick**. Trigger → bounded context assembled (surrounding document segment + relevant entities via Slice 5) → one `AI.execute(:writing_suggestion)` call (the task def carries the `byok_only` lane policy — callers stay lane-agnostic per Slice 3) → ghost text rendered inline → Tab/click accepts (insert at cursor + acceptance event), Esc dismisses (dismissal event). **Every suggestion reaches a terminal acceptance outcome: accepted | dismissed | abandoned (cancelled/re-triggered/blurred, recorded as a dismissal reason in the Slice-2 acceptance schema) — so the acceptance-rate denominator reconciles 1:1 with metered calls.** Users without a connected key see the connect CTA instead of the trigger affordance.
 
 ## Architectural direction
 
@@ -32,7 +32,7 @@ Terminal outcomes reconcile 1:1 with metered calls: **`accepted | dismissed | ab
 ## Verification / Definition of Done
 
 - Vitest: extension behavior (trigger renders ghost text, accept inserts + fires acceptance, dismiss clears + fires dismissal, re-trigger suppresses the stale result AND fires the abandoned terminal event, no ghost text in undo history).
-- ExUnit: task def (`byok_only` lane enforced — no credit debit ever), context budget, rate-limit bucket, terminal-outcome events reconcile with metered calls (accepted/dismissed/abandoned cover 100%).
+- ExUnit: task def (`byok_only` lane enforced — no credit debit ever), context budget, rate-limit bucket, terminal outcomes reconcile with metered calls (`accepted | dismissed | abandoned | failed` cover 100%; acceptance-rate numerator/denominator exclude `failed` — it counts toward reliability, not acceptance).
 - Browser: real key, real editor — trigger, accept, dismiss, no-key CTA state.
 - Lint fix as last command before push · `just quality-lint` green + full suites.
 

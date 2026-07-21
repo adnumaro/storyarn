@@ -28,7 +28,7 @@ Facades only, never submodules from web/AI layers · two-phase cross-ref remap (
 
 ## Observability & error handling
 
-Import telemetry: entities proposed vs accepted vs excluded (acceptance signal for the import tool) · schema-invalid AI output → explicit error BEFORE any preview (per-item validation failures listed in the preview, never silently dropped items) · apply is atomic: any failure = zero writes + explicit error · **snapshot creation failure ABORTS the apply — no import without a rollback path** · user docs: text-import flow documented in the flag-hidden AI docs.
+Import telemetry: ONE canonical terminal outcome on the generation's `ai_usage_events` row per the Slice-2 contract (applied → `accepted` with proposed/included/excluded counts in `acceptance_detail`; discarded → `dismissed`; `abandoned`/`failed` per the Slice-2 finalization rules); per-item include/exclude decisions are usage-event-keyed product events via the `Storyarn.Analytics` allowlist · schema-invalid AI output → explicit error BEFORE any preview (per-item validation failures listed in the preview, never silently dropped items) · apply is atomic: any failure = zero writes + explicit error · **snapshot creation failure ABORTS the apply — no import without a rollback path** · user docs: text-import flow documented in the flag-hidden AI docs.
 
 ## Verification / Definition of Done
 

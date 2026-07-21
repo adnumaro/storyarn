@@ -14,7 +14,7 @@
 - Task defs: `:dialogue_variants` (standard tier, fixed credit price, bounded output). Context via Slice 5: dialogue node + speaker sheet (relevant blocks) + incoming condition/variable summary — NOT the whole flow.
 - Proposal UX as a reusable pattern (`AiProposalPanel.vue` + a small proposal-state composable): variant list, per-variant diff vs current, Apply / Dismiss / Regenerate. Designed for reuse by Slice 8 (structure diffs) — build minimal, but with that consumer in mind.
 - Apply = the SAME `pushEvent` the manual editor uses for dialogue text updates (`NodeUpdate` handlers) — zero new mutation paths. Optimistic UI per project policy (field edits reflect pre-round-trip).
-- Acceptance telemetry: `ai_usage_events` row gets a follow-up acceptance record (accepted variant index | dismissed) — schema addition agreed in Slice 2's metering design.
+- Acceptance telemetry: the Slice-2 canonical contract, no new shape — exactly one terminal `acceptance_outcome` on the generation's `ai_usage_events` row through the write-once boundary: Apply → `accepted` with the variant index in `acceptance_detail` · Dismiss → `dismissed` · panel closed / regenerate without applying → `abandoned` · provider failure → `failed` (stamped by the pipeline).
 - Entry points: palette command (dialogue node selected) + node context menu (existing flow context-menu plugin).
 
 ## Existing code to reuse (do not duplicate)
@@ -31,7 +31,7 @@ Acceptance events (apply/dismiss per variant) are the north-star telemetry · ge
 
 ## Verification / Definition of Done
 
-- ExUnit: task def + charging, context scoping for the node, apply path reuses NodeUpdate (assert broadcast + undo entry), acceptance events recorded for apply AND dismiss.
+- ExUnit: task def + charging, context scoping for the node, apply path reuses NodeUpdate (assert broadcast + undo entry), terminal outcomes recorded through the write-once boundary for apply (`accepted` + variant index), dismiss (`dismissed`), and panel-close (`abandoned`).
 - Vitest: proposal panel states (loading, variants, error, applied), regenerate flow, emit contracts.
 - Browser: full loop on a real dialogue node in a two-session collab scenario (lock respected); undo restores pre-apply text; credits debited; acceptance telemetry visible.
 - `just quality-lint` green + full suites.

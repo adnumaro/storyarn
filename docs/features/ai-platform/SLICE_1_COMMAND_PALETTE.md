@@ -34,7 +34,7 @@ TypeScript strict, no `any`, destructured prop defaults · emits over callback p
 
 ## Observability & error handling
 
-PostHog events `palette_opened`, `palette_command_executed` (command id, surface), `palette_search_no_results` — **registered through the repository's analytics boundary (`Storyarn.Analytics` allowlist): this slice adds the event names AND their property keys to the allowlist with tests proving they are emitted, because unregistered events are silently dropped** · command handler failures surface as an explicit toast/flash with an i18n message — never silent, never retried automatically · no fallbacks: an unavailable command simply does not appear (scope filtering), it never swaps in a different action.
+PostHog events with their EXACT allowlisted property keys — `palette_opened` (`surface`), `palette_command_executed` (`command_id`, `surface`), `palette_search_no_results` (`surface`, `query_length` only — the raw query string NEVER leaves the client) — **registered through the repository's analytics boundary (`Storyarn.Analytics` allowlist): this slice adds the event names AND those property keys to the allowlist, with tests proving each event is emitted with exactly its sanitized payload (unregistered events/properties are silently dropped; no search content in telemetry)** · command handler failures surface as an explicit toast/flash with an i18n message — never silent, never retried automatically · no fallbacks: an unavailable command simply does not appear (scope filtering), it never swaps in a different action.
 
 ## Verification / Definition of Done
 

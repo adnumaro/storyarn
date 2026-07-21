@@ -7,7 +7,7 @@ First flagship AI action: **"Analyze structure" on a single flow** detecting dea
 ## Problem & proposed solution
 
 **Problem:** the highest-value narrative QA ("why can't the player reach Ending B?") is exactly what generic chat-over-prose tools hallucinate on. Loreweaver must extract structure before analyzing; we own it natively.
-**Solution:** pure-Elixir detectors traverse the relational flow graph (nodes + connections + conditions). Findings are facts (node ids, paths, variable states) — zero hallucination possible in detection. `AI.execute(:structural_report)` turns findings into a narrated report (standard tier, tiny context = findings only). Each finding links to its node (focus/navigate) and carries resolve/dismiss affordances feeding acceptance telemetry.
+**Solution:** pure-Elixir detectors traverse the relational flow graph (nodes + connections + conditions). Findings are facts (node ids, paths, variable states) — zero hallucination possible in detection. `AI.execute(:structural_report)` turns findings into a narrated report (standard tier, tiny context = findings only). Each finding links to its node (focus/navigate) and carries resolve/dismiss affordances feeding product analytics; the paid narrated report is what carries the canonical acceptance outcome.
 
 ## Architectural direction
 
@@ -28,13 +28,13 @@ Per-type node architecture respected (no giant case statements outside node modu
 
 ## Observability & error handling
 
-Detector-run telemetry (duration, findings count per type) · findings resolve/dismiss go through **`Storyarn.Analytics.track/3` with the event names ADDED to its allowlist (it silently drops unregistered events — never call PostHog directly), coarse content-free properties, emission covered by tests** · report generation failure = explicit panel error with a user-initiated retry button (no auto-retry, no partial report) · free detector path emits its own metric so we can prove the differentiator gets used · user docs: structural analysis + free-linting vs paid-report documented in the flag-hidden AI docs.
+Detector-run telemetry (duration, findings count per type) · **the acceptance split is explicit: finding resolve/dismiss are FREE deterministic actions — product analytics only, through `Storyarn.Analytics.track/3` with event names + property keys ADDED to its allowlist (it silently drops unregistered events — never call PostHog directly), coarse content-free properties, emission covered by tests — they are NOT the canonical acceptance outcome; the narrated report (the only metered generation in this slice) records the Slice-2 canonical terminal outcome on its own `ai_usage_events` row via the write-once boundary: report rendered in the panel → `accepted`, discarded/regenerated without use → `dismissed`, panel/session closed before the async report arrives → `abandoned`, generation failure → `failed` (stamped by the pipeline)** · report generation failure = explicit panel error with a user-initiated retry button (no auto-retry, no partial report) · free detector path emits its own metric so we can prove the differentiator gets used · user docs: structural analysis + free-linting vs paid-report documented in the flag-hidden AI docs.
 
 ## Verification / Definition of Done
 
 - ExUnit: each detector against crafted fixture graphs (dead branch, unreachable ending, orphan hub, absence spans; negative cases) · report task registration + charging · **detector runs never touch the credit ledger (free path verified)**.
 - Vitest: findings panel (grouping, navigation events, resolve/dismiss emits).
-- Browser: run on a real flow with known defects; verify findings correct, node focus works, credits debited once, acceptance events recorded.
+- Browser: run on a real flow with known defects; verify findings correct, node focus works, credits debited once for the report, the report's terminal outcome recorded on its usage event, finding resolve/dismiss product events emitted.
 - `just quality-lint` green + full suites.
 
 ## Delivery

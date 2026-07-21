@@ -27,12 +27,12 @@ Billing changes through the `Billing` facade · DB-enforced ledger integrity (no
 
 ## Observability & error handling
 
-Purchase failures: **the payment provider's result maps to a classified, localized message (`dgettext`) — raw provider responses never reach the user; diagnostic detail stays in telemetry/logs** (no optimistic credit before confirmation) · grant cron emits a missed-grant alert if a period has no grant row for an active workspace · **spend-anomaly alert contract (thresholds set by the Stage A memo from real data; the contract is fixed now): signal = workspace daily spend vs its trailing baseline, evaluated daily, deduplicated to one alert per workspace per day, delivered to the owner by email — not just logs** · dashboards read from `ai_usage_events`/ledger only — no shadow counters · user docs: pricing/credits pages ship WITH Stage B (owner-approved copy), flag-hidden until GA.
+Purchase failures: **the payment provider's result maps to a classified, localized message (`dgettext`) — raw provider responses never reach the user; diagnostic detail stays in telemetry/logs** (no optimistic credit before confirmation) · grant cron emits a missed-grant alert if a period has no grant row for an active workspace · **spend-anomaly alert contract (thresholds set by the Stage A memo from real data; the contract is fixed now): signal = internal-lane `credits_charged` summed per workspace per UTC day from `ai_usage_events` (BYOK calls debit no credits and spend the user's own money — excluded by construction) vs a trailing 14-day baseline (window owner-tunable via the memo); no-history/zero baseline alerts only above an absolute credits floor from the memo (no divide-by-zero noise); evaluated daily; deduplication is DURABLE — a persisted alert record with a DB-unique `(workspace_id, alert_date)` key, delivery through an idempotent worker keyed to that record, so a cron retry or concurrent evaluator cannot double-send; delivered to the workspace owner by email — not just logs** · dashboards read from `ai_usage_events`/ledger only — no shadow counters · user docs: pricing/credits pages ship WITH Stage B (owner-approved copy), flag-hidden until GA.
 
 ## Verification / Definition of Done
 
 - Stage A: pricing memo delivered and approved in chat (blocker for Stage B).
-- ExUnit: grant cron (idempotent per month), purchase entries, limit checks per tier, alert thresholds.
+- ExUnit: grant cron (idempotent per month), purchase entries, limit checks per tier, alert thresholds + durable dedup (DB-unique `(workspace_id, alert_date)`; retried/concurrent evaluation delivers exactly one email).
 - Vitest: spend dashboards, top-up flow UI.
 - Browser: full loop — consume credits, hit limit, top up, verify grant reset on simulated month roll.
 - `just quality-lint` green + full suites.
