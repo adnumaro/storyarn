@@ -1,8 +1,8 @@
-# Slice 7 — Pricing, Tiers & Credit Purchase (data-driven)
+# Slice 11 — Pricing, Tiers & Credit Purchase (data-driven)
 
 ## Objective
 
-Turn measured telemetry (Slices 2 + 4–6) into the commercial layer: per-plan monthly credit grants, credit top-up purchases, per-action published prices, spend visibility for users/workspaces, and budget alerts — WITHOUT locking tier numbers before the data exists.
+Turn measured telemetry (Slices 2 + 6–10) into the commercial layer: per-plan monthly credit grants, credit top-up purchases, per-action published prices, spend visibility for users/workspaces, and budget alerts — WITHOUT locking tier numbers before the data exists.
 
 ## Problem & proposed solution
 
@@ -39,4 +39,4 @@ Branch `feat/ai-pricing-tiers` from main → PR. Flags: `:ai_platform` (commerci
 
 ## Inputs from previous slices
 
-Slice 2 (ledger/metering — hard dependency) + REAL usage telemetry from Slices 4–6 in beta (Stage A needs weeks of data; do not start Stage A the day Slice 6 merges). Estimate: **8–12h** implementation + analysis time.
+Slice 2 (ledger/metering — hard dependency) + REAL usage telemetry from Slices 6–10 in beta (Stage A needs weeks of data; do not start Stage A the day Slice 10 merges). Estimate: **8–12h** implementation + analysis time.

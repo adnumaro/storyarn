@@ -12,7 +12,7 @@
 ## Architectural direction
 
 - Extend the existing `Storyarn.AI` facade (Slice 0) with submodules: `TaskRegistry` (task defs: quality tier, max output tokens, credit price, output schema) · `Router` (task tier → provider+model; v0 trivial single provider, interface ready for cheap/standard/premium) · `Providers.Internal` (managed open-weight; OPEN decision Together/Cloudflare in OVERVIEW) · `Metering` · `Credits` · `Budget`.
-- **New behaviour** `Storyarn.AI.InferenceProvider` (`generate/2` with structured request/response incl. token usage) — the Slice-0 `Provider` behaviour (metadata + validate_key) stays as-is for BYOK connection management. **Scope: this slice implements the INTERNAL lane only**; `InferenceProvider` implementations for the BYOK providers and the lane-fallback policy live in Slice 8 — but the Router is designed with the lane-resolution hook from day 1 (see OVERVIEW "Lane routing policy").
+- **New behaviour** `Storyarn.AI.InferenceProvider` (`generate/2` with structured request/response incl. token usage) — the Slice-0 `Provider` behaviour (metadata + validate_key) stays as-is for BYOK connection management. **Scope: this slice implements the INTERNAL lane only**; `InferenceProvider` implementations for the BYOK providers and the lane-fallback policy live in Slice 3 (immediately after) — but the Router is designed with the lane-resolution hook from day 1 (see OVERVIEW "Lane routing policy").
 - Migrations: `ai_usage_events` (user/workspace/project, feature, provider, model, input/cached/output tokens, provider_cost_usd, credits_charged, latency_ms, succeeded) · `ai_credit_ledger` — append-only entries (`monthly_grant | reservation | settlement | refund | purchase`) with:
   - **explicit owner scope** on every row (OPEN decision in OVERVIEW: recommendation is workspace-scoped to match Billing plans, per-member attribution via usage events) — `execute/1` receives and validates that scope; no ambient/default owner;
   - **grant period + expiry** columns and a **DB-unique idempotency key** per (owner, period) so a retried monthly grant cannot double-credit and expired grants cannot accumulate;
@@ -26,7 +26,7 @@
 ## Existing code to reuse (do not duplicate)
 
 From Slice 0 (requires PR #28 merged): `Storyarn.AI` facade · `Providers` registry (internal = one more adapter) · `KeyValidation` classify patterns · `Audit` · `Runtime.with_integration/3` (BYOK lane untouched) · `FeatureFlags` · Req + `Req.Test` config pattern (`req_options` per adapter).
-Global: `Shared.TimeHelpers` · `Shared.MapUtils` · `Storyarn.RateLimiter` (new bucket for execute calls) · Oban (queues config in `config.exs`) · `Billing.Limits` (pattern reference for limit checks; integration itself is Slice 7) · `config/runtime.exs` secret pattern for `INTERNAL_AI_API_KEY` · telemetry span pattern from `Runtime`.
+Global: `Shared.TimeHelpers` · `Shared.MapUtils` · `Storyarn.RateLimiter` (new bucket for execute calls) · Oban (queues config in `config.exs`) · `Billing.Limits` (pattern reference for limit checks; integration itself is Slice 11) · `config/runtime.exs` secret pattern for `INTERNAL_AI_API_KEY` · telemetry span pattern from `Runtime`.
 
 ## Applicable conventions (MUST be surfaced in chat during implementation)
 

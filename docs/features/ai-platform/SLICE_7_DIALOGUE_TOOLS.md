@@ -1,4 +1,4 @@
-# Slice 5 — Dialogue Tools (rewrite/variants + proposal UX)
+# Slice 7 — Dialogue Tools (rewrite/variants + proposal UX)
 
 ## Objective
 
@@ -11,15 +11,15 @@
 
 ## Architectural direction
 
-- Task defs: `:dialogue_variants` (standard tier, fixed credit price, bounded output). Context via Slice 3: dialogue node + speaker sheet (relevant blocks) + incoming condition/variable summary — NOT the whole flow.
-- Proposal UX as a reusable pattern (`AiProposalPanel.vue` + a small proposal-state composable): variant list, per-variant diff vs current, Apply / Dismiss / Regenerate. Designed for reuse by Slice 6 (structure diffs) — build minimal, but with that consumer in mind.
+- Task defs: `:dialogue_variants` (standard tier, fixed credit price, bounded output). Context via Slice 5: dialogue node + speaker sheet (relevant blocks) + incoming condition/variable summary — NOT the whole flow.
+- Proposal UX as a reusable pattern (`AiProposalPanel.vue` + a small proposal-state composable): variant list, per-variant diff vs current, Apply / Dismiss / Regenerate. Designed for reuse by Slice 8 (structure diffs) — build minimal, but with that consumer in mind.
 - Apply = the SAME `pushEvent` the manual editor uses for dialogue text updates (`NodeUpdate` handlers) — zero new mutation paths. Optimistic UI per project policy (field edits reflect pre-round-trip).
 - Acceptance telemetry: `ai_usage_events` row gets a follow-up acceptance record (accepted variant index | dismissed) — schema addition agreed in Slice 2's metering design.
 - Entry points: palette command (dialogue node selected) + node context menu (existing flow context-menu plugin).
 
 ## Existing code to reuse (do not duplicate)
 
-Dialogue per-type node module + `NodeCrud`/`NodeUpdate` handlers · `Collaboration.Locks` + `broadcast_change` · **flow-editor history: the Rete `HistoryPlugin`/`NodeDataAction` path (the flow editor does NOT use `StoryarnWeb.Helpers.UndoRedoStack` for node edits — Apply and undo tests must exercise the actual Rete history)** · flow context-menu plugin (shipped) · rete↔Vue reactivity contract (`nodeDataVersion`, `reactiveNodeData`) · `ConfirmDialog.vue` (destructive dismiss-all only if needed) · Slice-1 palette · Slice-2 execute/credits · Slice-3 context builder · `Authorize.with_edit_authorization` for apply events.
+Dialogue per-type node module + `NodeCrud`/`NodeUpdate` handlers · `Collaboration.Locks` + `broadcast_change` · **flow-editor history: the Rete `HistoryPlugin`/`NodeDataAction` path (the flow editor does NOT use `StoryarnWeb.Helpers.UndoRedoStack` for node edits — Apply and undo tests must exercise the actual Rete history)** · flow context-menu plugin (shipped) · rete↔Vue reactivity contract (`nodeDataVersion`, `reactiveNodeData`) · `ConfirmDialog.vue` (destructive dismiss-all only if needed) · Slice-1 palette · Slice-2 execute/credits · Slice-5 context builder · `Authorize.with_edit_authorization` for apply events.
 
 ## Applicable conventions (MUST be surfaced in chat during implementation)
 
@@ -34,8 +34,8 @@ Every mutating `handle_event` authorized (apply = `:edit_content`) · collaborat
 
 ## Delivery
 
-Branch `feat/ai-dialogue-tools` from main → PR → merge before Slice 6 (which reuses the proposal UX). Flags: `:ai_platform` + `:command_palette`.
+Branch `feat/ai-dialogue-tools` from main → PR → merge before Slice 8 (which reuses the proposal UX). Flags: `:ai_platform` + `:command_palette`.
 
 ## Inputs from previous slices
 
-Slices 1–4 merged (4 provides the panel/acceptance precedent — reflected in the OVERVIEW dependency table). Estimate: **8–12h**.
+Slices 1, 2, 5, 6 merged (6 provides the panel/acceptance precedent — reflected in the OVERVIEW dependency table). Estimate: **8–12h**.

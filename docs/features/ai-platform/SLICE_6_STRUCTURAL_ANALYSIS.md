@@ -1,4 +1,4 @@
-# Slice 4 — Structural Analysis Tool (the differentiator)
+# Slice 6 — Structural Analysis Tool (the differentiator)
 
 ## Objective
 
@@ -20,7 +20,7 @@ First flagship AI action: **"Analyze structure" on a single flow** detecting dea
 
 ## Existing code to reuse (do not duplicate)
 
-`Storyarn.Flows` facade: `FlowCrud`, `NodeCrud`, `ConnectionCrud` queries · **`Flows.FlowStats.detect_flow_issues/1` + `Flows.HealthChecker.check/1`** (existing detection to extend) · per-type node modules (`flow_live/nodes/{type}/node.ex`) for node metadata · `VariableReferenceTracker` (which nodes touch which variables) · `Shared.FormulaRuntime` (condition evaluation where applicable) · `CanvasDock` + `CanvasToolbar` (panel chrome) · rete selection bridge + `nodeDataVersion` reactivity contract (focus-node from panel) · `Collaboration` PubSub (report-ready broadcast) · Slice-2 `AI.execute` + Slice-3 context (findings ARE the context — minimal) · Slice-1 palette registration API.
+`Storyarn.Flows` facade: `FlowCrud`, `NodeCrud`, `ConnectionCrud` queries · **`Flows.FlowStats.detect_flow_issues/1` + `Flows.HealthChecker.check/1`** (existing detection to extend) · per-type node modules (`flow_live/nodes/{type}/node.ex`) for node metadata · `VariableReferenceTracker` (which nodes touch which variables) · `Shared.FormulaRuntime` (condition evaluation where applicable) · `CanvasDock` + `CanvasToolbar` (panel chrome) · rete selection bridge + `nodeDataVersion` reactivity contract (focus-node from panel) · `Collaboration` PubSub (report-ready broadcast) · Slice-2 `AI.execute` + Slice-5 context (findings ARE the context — minimal) · Slice-1 palette registration API.
 
 ## Applicable conventions (MUST be surfaced in chat during implementation)
 
@@ -35,8 +35,8 @@ Per-type node architecture respected (no giant case statements outside node modu
 
 ## Delivery
 
-Branch `feat/ai-structural-analysis` from main → PR → merge before Slice 5 starts (shared panel/acceptance patterns). Flags: `:ai_platform` (+ `:command_palette` for the command entry).
+Branch `feat/ai-structural-analysis` from main → PR → merge before Slice 7 starts (shared panel/acceptance patterns). Flags: `:ai_platform` (+ `:command_palette` for the command entry).
 
 ## Inputs from previous slices
 
-Slice 1 (palette registration), Slice 2 (`execute`, credits, metering), Slice 3 (context/token budgets — minimal here). Estimate: **10–14h**.
+Slice 1 (palette registration), Slice 2 (`execute`, credits, metering), Slice 5 (context/token budgets — minimal here). Estimate: **10–14h**.

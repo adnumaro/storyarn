@@ -1,4 +1,4 @@
-# Slice 8 — BYOK Lane Through the AI Service + Limit Fallback UX
+# Slice 3 — BYOK Lane Through the AI Service + Limit Fallback UX
 
 ## Objective
 
@@ -7,11 +7,12 @@ AI Service tasks can run on the user's own connected keys: `InferenceProvider` i
 ## Problem & proposed solution
 
 **Problem:** hitting the credit limit dead-ends the user mid-work, and BYOK-only features (Slices 9–10) have no execution path. Silent use of a user's external key would spend their money without consent.
-**Solution:** implement the owner-decided lane routing policy (OVERVIEW): at the limit, a banner offers credit top-up (when Slice 7 ships; hidden until then) AND "continue with your own key". First-time fallback per provider requires an explicit opt-in modal ("billed to your account"); consent persists as a toggle on the integrations page. Every result shows its lane badge; usage events carry `lane`; BYOK calls are metered (tokens/latency/success) but never debited.
+**Solution:** implement the owner-decided lane routing policy (OVERVIEW): at the limit, a banner offers credit top-up (when Slice 11 ships; hidden until then) AND "continue with your own key". First-time fallback per provider requires an explicit opt-in modal ("billed to your account"); consent persists as a toggle on the integrations page. Every result shows its lane badge; usage events carry `lane`; BYOK calls are metered (tokens/latency/success) but never debited.
 
 ## Architectural direction
 
 - Router (Slice 2) gains lane resolution: task policy (`internal_first` | `byok_only`) × user state (balance, connected providers, consent) → lane. No new entry point — `AI.execute/1` callers are lane-agnostic.
+- **Capabilities model introduced here**: provider metadata gains an immutable `capabilities` list (see OVERVIEW lane policy §5) — consumed by lane resolution, Slices 4/9/10, and the connect-CTA logic. Until Slice 4 assignments land (one slice later), BYOK provider selection is "the single/first capable connected provider".
 - BYOK execution reuses `Runtime.with_integration/3` (Slice 0) for key checkout — auto-revoke on 401/403, `last_used_at`, telemetry are already built; the lane wraps the `InferenceProvider` call inside it.
 - `InferenceProvider` implementations: one OpenAI-compatible chat adapter shared by OpenAI/Moonshot/Mistral/DeepSeek (base URL + auth from each provider's metadata) + dedicated Anthropic (Messages API) and Google (generateContent) adapters. All test-injectable via the existing `req_options` pattern.
 - Consent: per (user, provider) columns on the existing `ai_integrations` row (e.g. `fallback_consented_at`) — no new table; toggle rendered in the integrations settings page.
@@ -34,7 +35,7 @@ No silent spending of user money — consent is a hard gate, tested · facade-on
 
 ## Delivery
 
-Branch `feat/ai-byok-lane` from main → PR → merge before Slices 9–10. Flag `:ai_platform`. Parallel-safe with Slices 4–6 (different surfaces; coordinate Router merge order with Slice 4 if concurrent).
+Branch `feat/ai-byok-lane` from main → PR → merge before Slice 4. Flag `:ai_platform`.
 
 ## Inputs from previous slices
 

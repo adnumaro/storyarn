@@ -19,23 +19,26 @@ loreweaver.ink (Architect + Director, ex-AAA team, pre-launch): AI **extracts** 
 
 ## Slice index
 
-| #   | Slice                                                | Doc                              | Depends on                                 | Status                                   |
-| --- | ---------------------------------------------------- | -------------------------------- | ------------------------------------------ | ---------------------------------------- |
-| 0   | BYOK provider integrations + feature-flag foundation | `SLICE_0_BYOK_INTEGRATIONS.md`   | —                                          | implemented — **merge pending (PR #28)** |
-| 1   | Command palette foundation (no AI)                   | `SLICE_1_COMMAND_PALETTE.md`     | —                                          | pending                                  |
-| 2   | AI Service core + internal provider + credits        | `SLICE_2_AI_SERVICE_CORE.md`     | 0 **merged**                               | pending                                  |
-| 3   | Context engine v1 (deterministic)                    | `SLICE_3_CONTEXT_ENGINE.md`      | 2                                          | pending                                  |
-| 4   | Structural analysis tool (the differentiator)        | `SLICE_4_STRUCTURAL_ANALYSIS.md` | 1, 2, 3                                    | pending                                  |
-| 5   | Dialogue tools (rewrite/variants + proposal UX)      | `SLICE_5_DIALOGUE_TOOLS.md`      | 1, 2, 3, 4 (proposal/acceptance precedent) | pending                                  |
-| 6   | Text → Storyarn structure (import with diff preview) | `SLICE_6_TEXT_TO_STRUCTURE.md`   | 1, 2, 3, 5 (proposal UX)                   | pending                                  |
-| 7   | Pricing, tiers & credit purchase (data-driven)       | `SLICE_7_PRICING_TIERS.md`       | 2 + telemetry from 4–6                     | pending                                  |
-| 8   | BYOK lane through the AI Service + limit fallback UX | `SLICE_8_BYOK_LANE.md`           | 0, 2 (parallel-safe with 4–6)              | pending                                  |
-| 9   | Tiptap writing suggestions (manual, BYOK-only)       | `SLICE_9_TIPTAP_SUGGESTIONS.md`  | 3, 8 (+5 acceptance schema)                | pending                                  |
-| 10  | Image generation into sheet galleries (BYOK-only)    | `SLICE_10_IMAGE_GENERATION.md`   | 3, 8                                       | pending                                  |
+| #   | Slice                                                         | Doc                              | Depends on                                 | Status                                                          |
+| --- | ------------------------------------------------------------- | -------------------------------- | ------------------------------------------ | --------------------------------------------------------------- |
+| 0   | BYOK provider integrations + flag foundation (+DeepL adapter) | `SLICE_0_BYOK_INTEGRATIONS.md`   | —                                          | implemented — **merge pending (PR #28, +DeepL adapter to add)** |
+| 1   | Command palette foundation (no AI)                            | `SLICE_1_COMMAND_PALETTE.md`     | —                                          | pending                                                         |
+| 2   | AI Service core + internal provider + credits                 | `SLICE_2_AI_SERVICE_CORE.md`     | 0 **merged**                               | pending                                                         |
+| 3   | BYOK lane through the AI Service + limit fallback UX          | `SLICE_3_BYOK_LANE.md`           | 0, 2                                       | pending                                                         |
+| 4   | "My AI Team" — role assignments (+DeepL unification 2nd half) | `SLICE_4_AI_TEAM.md`             | 0, 3                                       | pending                                                         |
+| 5   | Context engine v1 (deterministic)                             | `SLICE_5_CONTEXT_ENGINE.md`      | 2                                          | pending                                                         |
+| 6   | Structural analysis tool (the differentiator)                 | `SLICE_6_STRUCTURAL_ANALYSIS.md` | 1, 2, 5                                    | pending                                                         |
+| 7   | Dialogue tools (rewrite/variants + proposal UX)               | `SLICE_7_DIALOGUE_TOOLS.md`      | 1, 2, 5, 6 (proposal/acceptance precedent) | pending                                                         |
+| 8   | Text → Storyarn structure (import with diff preview)          | `SLICE_8_TEXT_TO_STRUCTURE.md`   | 1, 2, 5, 7 (proposal UX)                   | pending                                                         |
+| 9   | Tiptap writing suggestions (manual, BYOK-only)                | `SLICE_9_TIPTAP_SUGGESTIONS.md`  | 3, 4, 5 (+7 acceptance schema)             | pending                                                         |
+| 10  | Image generation into sheet galleries (BYOK-only)             | `SLICE_10_IMAGE_GENERATION.md`   | 3, 4, 5                                    | pending                                                         |
+| 11  | Pricing, tiers & credit purchase (data-driven)                | `SLICE_11_PRICING_TIERS.md`      | 2 + telemetry from 6–10                    | pending                                                         |
+
+**Ordering rationale (owner-decided 2026-07-21):** credit limits become real in Slice 2, the fallback to the user's own key arrives in Slice 3, and the "which AI serves which role" decision surface (Slice 4) lands immediately after — so by the time users can hit a limit, the full decide-and-continue path exists. The DeepL _adapter_ rides PR #28 (trivial, same shape as the other six adapters); the complex half of its unification (localization consumption switch + legacy `translation_provider_configs` removal) is Slice 4's second half, so the resolution switch happens once (legacy → assignments), never twice.
 
 **Hard precondition:** Slice 0's implementation lives in PR #28 and is NOT on `main` yet. No slice that lists 0 as a dependency may start before PR #28 is merged. Module/API references in slice docs describe main + PR #28 combined; re-verify against `main` at each slice's implementation start.
 
-Backlog (explicitly NOT sliced yet): embeddings/semantic search where graph queries fall short · workspace-shared key pools (Studio) · self-hosted open-weight models · localization batch translation on BYOK · premium-quality opt-in runs on BYOK · Storyarn MCP server (separate feature, separate plan).
+Backlog (explicitly NOT sliced yet): embeddings/semantic search where graph queries fall short · workspace-shared key pools (Studio) · self-hosted open-weight models · per-language Translator routing (schema-ready in Slice 4; UI deferred) · BYOK Analyst role (premium-quality runs on the user's key) · Storyarn MCP server (separate feature, separate plan).
 
 ## Workflow contract (applies to every slice)
 
@@ -50,18 +53,19 @@ Backlog (explicitly NOT sliced yet): embeddings/semantic search where graph quer
 - Credit unit: internal Storyarn unit computed from real provider cost — never expose tokens. Published per-action prices must stay stable; the safety multiplier absorbs provider price drift.
 - Monthly reset, no indefinite accumulation.
 - Telemetry from day 1 answers: cost per feature, per user, per model; margin-negative users; % of MRR spent on inference; **acceptance rate** (share of AI outputs the user inserts/uses) as the north-star metric.
-- Fixed per-action pricing is only financially safe because the context engine bounds input size. Context engine (Slice 3) precedes the broad tool catalog.
+- Fixed per-action pricing is only financially safe because the context engine bounds input size. Context engine (Slice 5) precedes the broad tool catalog (Slices 6–8).
 
 ## Lane routing policy (owner-decided 2026-07-21)
 
 Which lane serves each AI action — **always transparent to the user**:
 
 1. **Internal lane (credits) is the default** for all task-based tools (Slices 4–6 and future catalog).
-2. **At the credit limit**: the user is informed with a banner offering BOTH exits — buy credits (once Slice 7 ships) and continue on their own connected key. **Fallback to BYOK requires explicit first-time opt-in per provider** ("continue with your X account — billed to your account"), persisted as a toggle in the integrations settings page; after consent, switching is automatic.
+2. **At the credit limit**: the user is informed with a banner offering BOTH exits — buy credits (once Slice 11 ships) and continue on their own connected key. **Fallback to BYOK requires explicit first-time opt-in per provider** ("continue with your X account — billed to your account"), persisted as a toggle in the integrations settings page; after consent, switching is automatic.
 3. **Provenance is always visible**: every AI result carries a lane badge ("Storyarn AI" vs "Your {provider} account"); `ai_usage_events` records a `lane` field. BYOK-lane calls debit NO credits (still metered for counts/latency; cost belongs to the user's provider bill).
 4. **BYOK-only features** (never on credits — cost profile or capability makes the internal lane unviable):
    - **Tiptap writing suggestions** — manual trigger only (shortcut/button, owner-decided; continuous auto-suggest is the most expensive per-user pattern and stays out of v1). Users without a connected key see a connect CTA.
    - **Image generation** — only providers with the capability (OpenAI, Google of the current six); lands in sheet **gallery blocks** first (owner-decided). Users without a capable key see a capability-specific connect CTA.
+5. **Capabilities vs assignments ("My AI Team", owner-decided 2026-07-21)**: providers declare immutable **capabilities** in metadata (DeepL `[:translation]`; Anthropic/Mistral/Kimi/DeepSeek `[:translation, :suggestions, :tasks]`; OpenAI/Google add `:images`); the user makes **assignments** per role slot (Translator / Writing assistant / Illustrator / Analyst) constrained by capabilities, in a "My AI Team" section INSIDE the integrations page (no third settings surface). **Provider required, model optional** — the model dropdown comes from the same `GET /models` call that validates the key; unpinned = our recommended default per provider. Analyst v1 is internal-lane only. Assignments schema carries a nullable `language` column so per-language Translator routing can land later with zero migration.
 
 ## Open decisions (owner input needed — do not lock in code)
 

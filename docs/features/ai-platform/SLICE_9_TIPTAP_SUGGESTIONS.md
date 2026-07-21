@@ -7,19 +7,19 @@ Manual-trigger writing suggestions in tiptap-based rich-text editors: the user h
 ## Problem & proposed solution
 
 **Problem:** the blank-page moment is the most common writing friction — but continuous auto-suggest is the most expensive per-user AI pattern (unbounded frequency), which is exactly why it cannot run on platform credits.
-**Solution:** suggestions are explicit, single-shot, and run on the user's key through the Slice-8 lane. Trigger → bounded context assembled (surrounding document segment + relevant entities via Slice 3) → one `AI.execute(:writing_suggestion, lane: :byok_only)` call → ghost text rendered inline → Tab/click accepts (insert at cursor + acceptance event), Esc dismisses (dismissal event). Users without a connected key see the connect CTA instead of the trigger affordance.
+**Solution:** suggestions are explicit, single-shot, and run on the user's key through the Slice-3 lane, resolved via the **Writing-assistant assignment (Slice 4)**. Trigger → bounded context assembled (surrounding document segment + relevant entities via Slice 5) → one `AI.execute(:writing_suggestion, lane: :byok_only)` call → ghost text rendered inline → Tab/click accepts (insert at cursor + acceptance event), Esc dismisses (dismissal event). Users without a connected key see the connect CTA instead of the trigger affordance.
 
 ## Architectural direction
 
 - Tiptap extension in the existing plugin structure (`assets/app/plugins/tiptap/`): decoration-based ghost text (never real document content until accepted — undo history stays clean), keyboard handling scoped to the ghost state (Tab/Esc), single in-flight request with cancellation on re-trigger/blur.
 - Trigger surfaces: editor keyboard shortcut + a toolbar affordance in editors that have one. Registered as a palette command too where an editor has focus (Slice 1 registry).
-- Context: the containing block/field text around the cursor plus scoped entity context from `build_context` (e.g. the sheet the rich-text block belongs to). Hard input budget — this is a cheap, fast task by design.
+- Context: the containing block/field text around the cursor plus scoped entity context from `build_context` (Slice 5; e.g. the sheet the rich-text block belongs to). Hard input budget — this is a cheap, fast task by design.
 - Rate limiting server-side per user (protects the user from their own trigger-spam against their provider bill) via the existing `RateLimiter` pattern.
 - No-BYOK state: affordance renders as a connect CTA deep-linking to the integrations page. Feature invisible when `:ai_platform` flag is off.
 
 ## Existing code to reuse (do not duplicate)
 
-`assets/app/plugins/tiptap/` extension structure + existing editor components · Slice-8 BYOK lane (`AI.execute` with `lane: :byok_only`, consent + badges) · Slice-3 `build_context` (scoped, budget-bounded) · Slice-5 acceptance-event schema · `Storyarn.RateLimiter` (new bucket) · Slice-1 palette registration · `FeatureFlags` · gettext/i18n infra.
+`assets/app/plugins/tiptap/` extension structure + existing editor components · Slice-3 BYOK lane (`AI.execute` with `lane: :byok_only`, consent + badges) · Slice-4 `provider_for/2` (Writing-assistant assignment) · Slice-5 `build_context` (scoped, budget-bounded) · Slice-7 acceptance-event schema · `Storyarn.RateLimiter` (new bucket) · Slice-1 palette registration · `FeatureFlags` · gettext/i18n infra.
 
 ## Applicable conventions (MUST be surfaced in chat during implementation)
 
@@ -38,4 +38,4 @@ Branch `feat/ai-tiptap-suggestions` from main → PR. Flags: `:ai_platform` (+ `
 
 ## Inputs from previous slices
 
-Slices 3 and 8 merged; Slice 5's acceptance schema. Estimate: **10–14h**.
+Slices 3, 4, 5 merged; Slice 7's acceptance schema. Estimate: **10–14h**.

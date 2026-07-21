@@ -1,4 +1,4 @@
-# Slice 6 — Text → Storyarn Structure (import with diff preview)
+# Slice 8 — Text → Storyarn Structure (import with diff preview)
 
 ## Objective
 
@@ -15,12 +15,12 @@
 - Two-phase like template import: create entities with nil cross-refs, then remap references (project precedent: never insert raw cross-entity FKs from external payloads — the snapshot-materialization lesson).
 - Apply via facades only: `Sheets.create_sheet/2`, `Flows.create_flow/2`, node creation through `Flows` — zero direct Repo writes from the AI layer.
 - Rollback: a project snapshot pre-apply **through the `Storyarn.Versioning` facade — `Versioning.create_project_snapshot/3` and `Versioning.restore_project_snapshot/3`** (`SnapshotBuilder` is an internal module with no project-snapshot API of its own; going through the facade keeps snapshot metadata and the restore-policy gates). "Undo import" restores that snapshot.
-- Preview UI: reuse `AiProposalPanel` pattern from Slice 5, extended to tree-shaped proposals; per-item include/exclude checkboxes.
+- Preview UI: reuse `AiProposalPanel` pattern from Slice 7, extended to tree-shaped proposals; per-item include/exclude checkboxes.
 - Premium-tier task (large context, structured reasoning); price reflects it. Scope gating for Free tier (limits on input size), never quality degradation.
 
 ## Existing code to reuse (do not duplicate)
 
-`Storyarn.Imports` parsers + idempotency patterns (reference for text→entities pipelines) · `Shared.NameNormalizer`, `Storyarn.Shortcuts`, `Shared.ShortcutHelpers` · `Shared.ImportHelpers` · context facades (`Sheets`, `Flows`) + their changesets · `Storyarn.Versioning` facade (`create_project_snapshot/3` / `restore_project_snapshot/3`) · `Ecto.Multi` patterns from existing CRUD · Slice-5 `AiProposalPanel` + acceptance telemetry · Slice-3 context (for matching against EXISTING entities) · `Billing.Limits` pattern for input-size caps.
+`Storyarn.Imports` parsers + idempotency patterns (reference for text→entities pipelines) · `Shared.NameNormalizer`, `Storyarn.Shortcuts`, `Shared.ShortcutHelpers` · `Shared.ImportHelpers` · context facades (`Sheets`, `Flows`) + their changesets · `Storyarn.Versioning` facade (`create_project_snapshot/3` / `restore_project_snapshot/3`) · `Ecto.Multi` patterns from existing CRUD · Slice-7 `AiProposalPanel` + acceptance telemetry · Slice-5 context (for matching against EXISTING entities) · `Billing.Limits` pattern for input-size caps.
 
 ## Applicable conventions (MUST be surfaced in chat during implementation)
 
@@ -35,8 +35,8 @@ Facades only, never submodules from web/AI layers · two-phase cross-ref remap (
 
 ## Delivery
 
-Branch `feat/ai-text-to-structure` from main → PR → merge before Slice 7 pricing reads its telemetry. Flags: `:ai_platform` + `:command_palette`.
+Branch `feat/ai-text-to-structure` from main → PR → merge before Slice 11 pricing reads its telemetry. Flags: `:ai_platform` + `:command_palette`.
 
 ## Inputs from previous slices
 
-Slices 1–3 + Slice 5's proposal UX and acceptance schema. Estimate: **12–16h**.
+Slices 1, 2, 5 + Slice 7's proposal UX and acceptance schema. Estimate: **12–16h**.
