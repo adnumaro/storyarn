@@ -33,7 +33,7 @@ Storage ONLY through the `Assets`/`Storage` facade (deletion-safety checks live 
 
 ## Delivery
 
-Branch `feat/ai-image-generation` from main → PR. Flags: `:ai_platform`.
+Branch `feat/ai-image-generation` from main → PR. Flag: `:ai_integrations` (the single AI flag).
 
 ## Inputs from previous slices
 

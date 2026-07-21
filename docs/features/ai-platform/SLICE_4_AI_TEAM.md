@@ -13,7 +13,7 @@ A "My AI Team" section INSIDE the integrations page where the user assigns conne
 
 - Data: `ai_role_assignments` (user_id, role, provider, model nullable, **language nullable — column ships now, per-language Translator routing UI is backlog with zero future migration**). Unique per (user, role, language) with language NULL as the default row.
 - Resolution: `Storyarn.AI.provider_for(user, role)` via the facade; consumed by `BatchTranslator` (Translator) now and Slices 9 (Writing assistant) / 10 (Illustrator) when they land. Assignments validated against capabilities at write time AND resolution time (a revoked/disconnected provider degrades to the fallback rule with a UI hint, never a crash).
-- **DeepL unification (second half — adapter shipped in Slice 0)**: `BatchTranslator` resolves credentials through the Translator assignment; the legacy `translation_provider_configs` schema/CRUD and its project-settings UI are removed. **Owner decision surfaced in chat before the migration**: live beta rows — copy each project key to the project owner's user integration + notify, vs. drop and ask users to reconnect. Localization settings keeps a read-only pointer ("managed in AI Integrations").
+- **DeepL unification (second half — adapter shipped in Slice 0)**: `BatchTranslator` resolves credentials through the Translator assignment; the legacy `translation_provider_configs` schema/CRUD and its project-settings UI are removed. **Live rows: DROP + in-app/email notice + reconnect (owner-decided 2026-07-21 — platform has ~2 real users; copying a key to the project owner's account could hand user A's credential to user B, so migration-by-copy is ruled out).** Localization settings keeps a read-only pointer ("managed in AI Integrations").
 - **LLM translation**: a `BatchTranslator` provider implementation that routes through `AI.execute` on the BYOK lane (`byok_only` for v1 — translation volume on credits is a Slice 11 pricing question, not assumed). DeepL remains the recommended Translator default when connected.
 - Model pinning: models fetched at connect/validation time and cached on the integration row (refresh on revalidate); the dropdown never blocks on a live provider call.
 - UI: a section under the cards grid in the integrations page (no third settings surface — owner-decided); each slot: role icon, eligible-provider dropdown, optional model select, capability-aware empty state ("connect a provider with translation capability").
@@ -35,7 +35,7 @@ Facade-only resolution API · authorization: assignments are own-scope mutations
 
 ## Delivery
 
-Branch `feat/ai-team-assignments` from main → PR → merge before Slice 5+. Flags: `:ai_platform` (+ `:ai_integrations` surfaces).
+Branch `feat/ai-team-assignments` from main → PR → merge before Slice 5+. Flag: `:ai_integrations` (the single AI flag).
 
 ## Inputs from previous slices
 

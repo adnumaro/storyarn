@@ -11,7 +11,7 @@ Storyarn's AI strategy: **credits-included default AI + BYOK escape hatch + mult
 3. **Never unlimited AI.** Budget gates before/during/after every call. Credits carry a 2.5–4× safety multiplier over provider cost; target AI variable cost ≤ 10–20% of a plan's net revenue.
 4. **Deterministic engine first, LLM second.** Graph queries, reference tracking, and validations resolve everything they can; the LLM narrates, generates, and reasons only where structure cannot. This is both the cost model and the moat.
 5. **Tools, not chat.** Concrete actions with fixed credit prices, bounded context, structured output — surfaced through a global command palette.
-6. **Multi-model router from day 1** (cheap / standard / premium quality tiers), starting with ONE managed open-weight provider. Self-hosting is gated by volume metrics (break-even ≈ 1.5–2B tokens/month).
+6. **Multi-model router from day 1** (cheap / standard / premium quality tiers), starting with ONE managed open-weight provider **behind a region-aware contract** (US/Asia expansion swaps providers per zone via config, never via code — owner requirement). Self-hosting is gated by volume metrics (break-even ≈ 1.5–2B tokens/month).
 
 ## Competitive positioning (Loreweaver, researched 2026-07-21)
 
@@ -43,7 +43,7 @@ Backlog (explicitly NOT sliced yet): embeddings/semantic search where graph quer
 ## Workflow contract (applies to every slice)
 
 1. **One branch per slice, cut from `main`**, one PR per slice. A slice is reviewed and **merged into main before the next slice starts**. If a slice depends on a previous one, it builds on the merged state.
-2. **Everything ships behind a feature flag**, disabled by default (`FunWithFlags`, per-user actor targeting available). Flag assignments are listed per slice; see Open decisions.
+2. **Every AI surface ships behind THE single AI flag `:ai_integrations`** (owner-decided 2026-07-21), disabled by default (`FunWithFlags`, per-user actor targeting available) — one flag governs the platform lane and the user lane alike. **Exception: the command palette ships unflagged** (no AI in it; AI commands it lists are individually flag-gated).
 3. **Definition of Done for every slice**: ExUnit + Vitest tests green · `just quality-lint` fully green (beware: the recipe backgrounds `pnpm arch` — check its output explicitly) · browser verification of the user-facing path · PR opened with the slice doc linked.
 4. **Conventions must be surfaced in chat during implementation**: the implementer states in conversation which project conventions apply and how they are being respected (facade pattern, shared helpers, Gettext domains, authorization on mutating events, component registry, icon policy, dialog policy…). Each slice doc lists its applicable conventions; the chat exposure is how the owner audits compliance. Convention sources: `CLAUDE.md`, `AGENTS.md`, `docs/conventions/*.md`.
 5. **No code duplication**: every slice doc lists the existing files and global helpers to reuse. Search `docs/conventions/shared-utilities.md` before writing ANY helper.
@@ -59,7 +59,7 @@ Backlog (explicitly NOT sliced yet): embeddings/semantic search where graph quer
 
 Which lane serves each AI action — **always transparent to the user**:
 
-1. **Internal lane (credits) is the default** for all task-based tools (Slices 4–6 and future catalog).
+1. **Internal lane (credits) is the default** for all task-based tools (Slices 6–8 and future catalog).
 2. **At the credit limit**: the user is informed with a banner offering BOTH exits — buy credits (once Slice 11 ships) and continue on their own connected key. **Fallback to BYOK requires explicit first-time opt-in per provider** ("continue with your X account — billed to your account"), persisted as a toggle in the integrations settings page; after consent, switching is automatic.
 3. **Provenance is always visible**: every AI result carries a lane badge ("Storyarn AI" vs "Your {provider} account"); `ai_usage_events` records a `lane` field. BYOK-lane calls debit NO credits (still metered for counts/latency; cost belongs to the user's provider bill).
 4. **BYOK-only features** (never on credits — cost profile or capability makes the internal lane unviable):
@@ -67,12 +67,16 @@ Which lane serves each AI action — **always transparent to the user**:
    - **Image generation** — only providers with the capability (OpenAI, Google of the current six); lands in sheet **gallery blocks** first (owner-decided). Users without a capable key see a capability-specific connect CTA.
 5. **Capabilities vs assignments ("My AI Team", owner-decided 2026-07-21)**: providers declare immutable **capabilities** in metadata (DeepL `[:translation]`; Anthropic/Mistral/Kimi/DeepSeek `[:translation, :suggestions, :tasks]`; OpenAI/Google add `:images`); the user makes **assignments** per role slot (Translator / Writing assistant / Illustrator / Analyst) constrained by capabilities, in a "My AI Team" section INSIDE the integrations page (no third settings surface). **Provider required, model optional** — the model dropdown comes from the same `GET /models` call that validates the key; unpinned = our recommended default per provider. Analyst v1 is internal-lane only. Assignments schema carries a nullable `language` column so per-language Translator routing can land later with zero migration.
 
-## Open decisions (owner input needed — do not lock in code)
+## Decisions log (all resolved by the owner, 2026-07-21)
 
-| Decision                                           | Options                                                                                                                   | Recommendation                                                                                 |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Managed open-weight provider for the internal lane | Together.ai (EU region, no-retention default) / Cloudflare Workers AI (cheapest, global edge) / DeepInfra                 | Together.ai if EU data residency matters, else Cloudflare                                      |
-| Flag naming                                        | Reuse `:ai_integrations` for everything / umbrella `:ai_platform` for slices 2+ / separate `:command_palette` for slice 1 | Separate `:command_palette` (palette has non-AI value, can GA earlier) + `:ai_platform` for 2+ |
-| Palette scope in Slice 1                           | AI-only launcher / full Storyarn control center                                                                           | Full control center (single interface to learn; AI lands later as more commands)               |
-| Free-tier "limited context" semantics              | Scope gating (per-scene vs whole-project analysis) / window capping                                                       | Scope gating only — never silently degrade the same task                                       |
-| Credit-ledger owner scope                          | Per-user / per-workspace (Billing plans are workspace-scoped) / hybrid                                                    | Workspace-scoped ledger to match existing plans, with per-member attribution via usage events  |
+| Decision                                   | Outcome                                                                                                                                                                       |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Managed provider for the internal lane     | **Together.ai** for v1 (EU region, no-retention) — **behind a region-aware contract**: US/Asia expansion swaps providers per zone via config + adapter, zero consumer changes |
+| Feature flags                              | **ONE flag for all AI**: `:ai_integrations` governs platform lane and user lane alike. **The command palette ships unflagged** (no AI in it; AI commands it lists are gated)  |
+| Palette scope (Slice 1)                    | **Full Storyarn control center** — normal commands from day one, AI actions register later as more commands                                                                   |
+| Free-tier "limited context" semantics      | **Scope gating only** (task scope/volume/input size) — never silently degrade the quality of the same task                                                                    |
+| Credit-ledger owner scope                  | **Workspace** — grants flow from the workspace's Billing plan; members share the pool; per-member attribution via `ai_usage_events`                                           |
+| Live DeepL config rows (Slice 4 migration) | **Drop + in-app/email notice + reconnect** (~2 real users on the platform; migration-by-copy ruled out — it could hand user A's key to user B)                                |
+| Structural detectors pricing (Slice 6)     | **Detectors FREE always** (deterministic narrative linting, ~zero marginal cost, max differentiation); only the LLM-narrated report costs credits                             |
+
+Implementation-time choices (resolved in chat during each slice per the workflow contract): analysis module placement (`Flows.Analysis` vs `AI.Analysis`), gettext domain for AI strings, purchased-credit expiry policy (Slice 11 Stage A memo).

@@ -35,7 +35,7 @@ Billing changes through the `Billing` facade · DB-enforced ledger integrity (no
 
 ## Delivery
 
-Branch `feat/ai-pricing-tiers` from main → PR. Flags: `:ai_platform` (commercial surfaces may need their own flag for staged rollout — decide in Stage A memo).
+Branch `feat/ai-pricing-tiers` from main → PR. Flag: `:ai_integrations` (commercial surfaces may need their own flag for staged rollout — decide in Stage A memo).
 
 ## Inputs from previous slices
 

@@ -33,7 +33,7 @@ Facade-only exposure (`Storyarn.AI.build_context/2` via defdelegate) · read-onl
 
 ## Delivery
 
-Branch `feat/ai-context-engine` from main → PR → merge before Slices 6–8. Flag: inherits `:ai_platform` (no new surface).
+Branch `feat/ai-context-engine` from main → PR → merge before Slices 6–8. Flag: inherits `:ai_integrations` (no new surface).
 
 ## Inputs from previous slices
 

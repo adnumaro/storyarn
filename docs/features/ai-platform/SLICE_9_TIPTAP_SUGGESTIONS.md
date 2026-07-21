@@ -15,7 +15,7 @@ Manual-trigger writing suggestions in tiptap-based rich-text editors: the user h
 - Trigger surfaces: editor keyboard shortcut + a toolbar affordance in editors that have one. Registered as a palette command too where an editor has focus (Slice 1 registry).
 - Context: the containing block/field text around the cursor plus scoped entity context from `build_context` (Slice 5; e.g. the sheet the rich-text block belongs to). Hard input budget — this is a cheap, fast task by design.
 - Rate limiting server-side per user (protects the user from their own trigger-spam against their provider bill) via the existing `RateLimiter` pattern.
-- No-BYOK state: affordance renders as a connect CTA deep-linking to the integrations page. Feature invisible when `:ai_platform` flag is off.
+- No-BYOK state: affordance renders as a connect CTA deep-linking to the integrations page. Feature invisible when the `:ai_integrations` flag is off.
 
 ## Existing code to reuse (do not duplicate)
 
@@ -34,7 +34,7 @@ TypeScript strict, emits over callbacks · tiptap decorations for ghost text (no
 
 ## Delivery
 
-Branch `feat/ai-tiptap-suggestions` from main → PR. Flags: `:ai_platform` (+ `:command_palette` for the palette entry).
+Branch `feat/ai-tiptap-suggestions` from main → PR. Flag: `:ai_integrations` (the single AI flag; the palette itself is unflagged).
 
 ## Inputs from previous slices
 

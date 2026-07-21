@@ -36,7 +36,7 @@ No silent spending of user money — consent is a hard gate, tested · facade-on
 
 ## Delivery
 
-Branch `feat/ai-byok-lane` from main → PR → merge before Slice 4. Flag `:ai_platform`.
+Branch `feat/ai-byok-lane` from main → PR → merge before Slice 4. Flag: `:ai_integrations` (the single AI flag).
 
 ## Inputs from previous slices
 

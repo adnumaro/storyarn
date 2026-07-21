@@ -34,7 +34,7 @@ Every mutating `handle_event` authorized (apply = `:edit_content`) · collaborat
 
 ## Delivery
 
-Branch `feat/ai-dialogue-tools` from main → PR → merge before Slice 8 (which reuses the proposal UX). Flags: `:ai_platform` + `:command_palette`.
+Branch `feat/ai-dialogue-tools` from main → PR → merge before Slice 8 (which reuses the proposal UX). Flag: `:ai_integrations` (the single AI flag; the palette itself is unflagged).
 
 ## Inputs from previous slices
 

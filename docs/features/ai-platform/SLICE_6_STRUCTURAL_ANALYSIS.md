@@ -16,7 +16,7 @@ First flagship AI action: **"Analyze structure" on a single flow** detecting dea
 - Reachability over the relational model (post flow-relational-refactor F1): entry/exit nodes, connections, condition satisfiability at the boolean-structure level (full formula evaluation only where `FormulaRuntime` already provides it — do not build a solver).
 - Report UI: dock panel in the flow editor (reuse `CanvasDock`) listing findings grouped by type; clicking focuses the node via the existing selection bridge. Report text rendered from the LLM narration.
 - Palette command `Analyze flow structure` (scope: flows surface) → LV event → detectors (sync) → report task (async via Oban if large) → panel update via PubSub.
-- Charged once per run at a published credit price; detectors alone (no narration) could be a free tier variant — OPEN sub-decision, surface in chat.
+- **Pricing (owner-decided 2026-07-21): the deterministic detectors run FREE, always available** — "narrative linting" is pure Elixir with ~zero marginal cost and is the strongest visible differentiator vs Loreweaver. **Only the LLM-narrated report costs credits** (one charge per report at a published price). The findings panel works fully without ever paying; the "Generate report" action is the upsell.
 
 ## Existing code to reuse (do not duplicate)
 
@@ -28,14 +28,14 @@ Per-type node architecture respected (no giant case statements outside node modu
 
 ## Verification / Definition of Done
 
-- ExUnit: each detector against crafted fixture graphs (dead branch, unreachable ending, orphan hub, absence spans; negative cases) · report task registration + charging.
+- ExUnit: each detector against crafted fixture graphs (dead branch, unreachable ending, orphan hub, absence spans; negative cases) · report task registration + charging · **detector runs never touch the credit ledger (free path verified)**.
 - Vitest: findings panel (grouping, navigation events, resolve/dismiss emits).
 - Browser: run on a real flow with known defects; verify findings correct, node focus works, credits debited once, acceptance events recorded.
 - `just quality-lint` green + full suites.
 
 ## Delivery
 
-Branch `feat/ai-structural-analysis` from main → PR → merge before Slice 7 starts (shared panel/acceptance patterns). Flags: `:ai_platform` (+ `:command_palette` for the command entry).
+Branch `feat/ai-structural-analysis` from main → PR → merge before Slice 7 starts (shared panel/acceptance patterns). Flag: `:ai_integrations` (the single AI flag; the palette itself ships unflagged).
 
 ## Inputs from previous slices
 

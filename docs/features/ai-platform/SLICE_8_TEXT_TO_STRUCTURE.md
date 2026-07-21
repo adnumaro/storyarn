@@ -35,7 +35,7 @@ Facades only, never submodules from web/AI layers · two-phase cross-ref remap (
 
 ## Delivery
 
-Branch `feat/ai-text-to-structure` from main → PR → merge before Slice 11 pricing reads its telemetry. Flags: `:ai_platform` + `:command_palette`.
+Branch `feat/ai-text-to-structure` from main → PR → merge before Slice 11 pricing reads its telemetry. Flag: `:ai_integrations` (the single AI flag; the palette itself is unflagged).
 
 ## Inputs from previous slices
 

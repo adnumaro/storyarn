@@ -11,17 +11,18 @@
 
 ## Architectural direction
 
-- Extend the existing `Storyarn.AI` facade (Slice 0) with submodules: `TaskRegistry` (task defs: quality tier, max output tokens, credit price, output schema) · `Router` (task tier → provider+model; v0 trivial single provider, interface ready for cheap/standard/premium) · `Providers.Internal` (managed open-weight; OPEN decision Together/Cloudflare in OVERVIEW) · `Metering` · `Credits` · `Budget`.
+- Extend the existing `Storyarn.AI` facade (Slice 0) with submodules: `TaskRegistry` (task defs: quality tier, max output tokens, credit price, output schema) · `Router` (task tier → provider+model; v0 trivial single provider, interface ready for cheap/standard/premium) · `Providers.Internal` · `Metering` · `Credits` · `Budget`.
+- **Internal provider = Together.ai for v1, behind a REGION-AWARE contract (owner-decided 2026-07-21, hard requirement)**: the internal lane resolves its provider through runtime config keyed by region/zone (`region → {adapter, model}`) — when Storyarn expands to the US or Asia, a different provider serves each zone by config + adapter, with ZERO changes to any consumer. No code path may hardcode Together; config-driven resolution is covered by a dedicated test. Together's EU region + no-retention default is why it wins v1.
 - **New behaviour** `Storyarn.AI.InferenceProvider` (`generate/2` with structured request/response incl. token usage) — the Slice-0 `Provider` behaviour (metadata + validate_key) stays as-is for BYOK connection management. **Scope: this slice implements the INTERNAL lane only**; `InferenceProvider` implementations for the BYOK providers and the lane-fallback policy live in Slice 3 (immediately after) — but the Router is designed with the lane-resolution hook from day 1 (see OVERVIEW "Lane routing policy").
 - Migrations: `ai_usage_events` (user/workspace/project, feature, provider, model, input/cached/output tokens, provider_cost_usd, credits_charged, latency_ms, succeeded) · `ai_credit_ledger` — append-only entries (`monthly_grant | reservation | settlement | refund | purchase`) with:
-  - **explicit owner scope** on every row (OPEN decision in OVERVIEW: recommendation is workspace-scoped to match Billing plans, per-member attribution via usage events) — `execute/1` receives and validates that scope; no ambient/default owner;
+  - **owner scope = WORKSPACE (owner-decided 2026-07-21)**: grants flow from the workspace's Billing plan; members share the pool; per-member attribution lives in `ai_usage_events` (user_id per call) — `execute/1` receives and validates the workspace scope; no ambient/default owner;
   - **grant period + expiry** columns and a **DB-unique idempotency key** per (owner, period) so a retried monthly grant cannot double-credit and expired grants cannot accumulate;
   - **defined consumption order** at debit time (expiring credits first, then purchased);
   - **concurrency-safe debits**: reservation acquires a lock on a stable credit-owner row (or equivalent atomic conditional insert) so two concurrent reservations cannot both pass the balance check — derived-balance-in-a-transaction alone does NOT serialize read-then-insert; plus an idempotency key per request so client/Oban retries never charge twice. Covered by dedicated concurrency tests.
 - **`execute/1` result contract**: every call persists an `ai_operations` row (`queued | running | succeeded | failed`) keyed by an idempotent operation id and **stamped with the authorized owner/actor scope — every poll, retry, and PubSub publication enforces that scope before returning results or failures** (cross-workspace access to an operation id must be impossible, covered by tests). Short tasks return `{:ok, result}` inline (operation recorded as succeeded); long tasks return `{:async, operation_id}` and complete via Oban — **the Oban job is inserted in the same database transaction as the operation row** (no commit-to-enqueue crash window; an orphaned `queued` operation cannot exist), retries are idempotent against the operation id (settlement happens once).
 - Privacy default: metering stores counts and costs, **never prompt/response content**.
 - Long tasks run through Oban (new `ai` queue); short tasks inline. Telemetry: extend `[:ai, …]` event namespace from Slice 0.
-- Flag: `:ai_platform` for all credit-lane surfaces (OPEN decision).
+- Flag: `:ai_integrations` — **the single AI flag (owner-decided 2026-07-21)** governing every AI surface, platform lane and user lane alike.
 
 ## Existing code to reuse (do not duplicate)
 
@@ -41,7 +42,7 @@ Context facade + `defdelegate`; LiveViews never call submodules · CRUD/changese
 
 ## Delivery
 
-Branch `feat/ai-service-core` from main → PR → merge before Slice 3. Flag `:ai_platform` disabled by default.
+Branch `feat/ai-service-core` from main → PR → merge before Slice 3. Flag `:ai_integrations` disabled by default.
 
 ## Inputs from previous slices
 

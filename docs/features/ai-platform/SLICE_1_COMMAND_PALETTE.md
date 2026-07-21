@@ -15,7 +15,7 @@ A global command palette (`Meta+K` on macOS, `Ctrl+K` on Windows/Linux — both 
 - Handlers are either pure-client (toggle panel, focus node) or LiveView events via `useLive().pushEvent` — reusing each surface's EXISTING event handlers; the palette never introduces new mutation paths.
 - Navigation commands use the LiveVue navigation contract (`data-phx-link` / `LiveLink`) — never raw `window.location`.
 - Global `Meta+K` (macOS) / `Ctrl+K` (Windows/Linux) listener with guard against input/contenteditable focus (respect `@keydown.stop` conventions from dnd work). Both platform bindings covered by tests.
-- Flag: `:command_palette` (OPEN decision in OVERVIEW — confirm before implementing). Gate both the keybinding and any visible affordance.
+- **No feature flag (owner-decided 2026-07-21): the palette ships directly** — it has no AI and the owner wants it GA from day one. AI commands registered by later slices are individually gated by the single AI flag (`:ai_integrations`): with the flag off, the palette simply never lists them.
 
 ## Existing code to reuse (do not duplicate)
 
@@ -29,14 +29,13 @@ TypeScript strict, no `any`, destructured prop defaults · emits over callback p
 
 ## Verification / Definition of Done
 
-- Vitest: registry (scope filtering, registration), palette component (open/close, search, group rendering, keyboard nav), stale-state guards.
-- ExUnit: flag gating if any server surface is touched.
+- Vitest: registry (scope filtering, registration, flag-gated commands hidden when the AI flag is off), palette component (open/close, search, group rendering, keyboard nav), stale-state guards.
 - Browser: open palette on ≥2 different surfaces, verify scoped commands differ, run a navigation command and a panel-toggle command.
 - `just quality-lint` green (check `pnpm arch` output explicitly) + full test suites.
 
 ## Delivery
 
-Branch `feat/command-palette` from main → PR → review → merge before Slice 2 UI work lands on it. Flag `:command_palette` disabled by default.
+Branch `feat/command-palette` from main → PR → review → merge before Slice 2 UI work lands on it. Ships unflagged (owner-decided).
 
 ## Inputs from previous slices
 
