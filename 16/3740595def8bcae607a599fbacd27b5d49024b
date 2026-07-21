@@ -1,0 +1,29 @@
+docs/features/ai-platform/OVERVIEW.md
+  s_45b22073d60431::t_73b914b4d96206 38
+  s_45b22073d60431::t_a531ed233aefd7 55-65
+  s_45b22073d60431::t_982b604497e9c7 32-34
+docs/features/ai-platform/SLICE_8_BYOK_LANE.md
+  s_45b22073d60431::t_3178ff6939eb28 1-41
+docs/features/ai-platform/SLICE_9_TIPTAP_SUGGESTIONS.md
+  s_45b22073d60431::t_845cf8894e2c86 1-41
+docs/features/ai-platform/SLICE_10_IMAGE_GENERATION.md
+  s_45b22073d60431::t_14f80e4a0855ae 1-40
+docs/features/ai-platform/SLICE_2_AI_SERVICE_CORE.md
+  s_45b22073d60431::t_090ac9f96dcfdb 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "163740595def8bcae607a599fbacd27b5d49024b",
+  "prompts": {},
+  "sessions": {
+    "s_45b22073d60431": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69ce9805-664b-489d-8409-0b9e7d507066",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
