@@ -1,0 +1,47 @@
+docs/features/ai-platform/SLICE_2_AI_SERVICE_CORE.md
+  s_aae902ef6fbd45::t_e7144846df1100 18
+  s_aae902ef6fbd45::t_7c89a17ad68819 43
+docs/features/ai-platform/SLICE_7_DIALOGUE_TOOLS.md
+  s_aae902ef6fbd45::t_f27343b9a362c9 17
+  s_aae902ef6fbd45::t_4c9467d641fb07 34
+docs/features/ai-platform/SLICE_8_TEXT_TO_STRUCTURE.md
+  s_aae902ef6fbd45::t_2f95ec013dc33d 31
+docs/features/ai-platform/SLICE_1_COMMAND_PALETTE.md
+  s_aae902ef6fbd45::t_5e1a5519e906af 37
+docs/features/ai-platform/SLICE_9_TIPTAP_SUGGESTIONS.md
+  s_aae902ef6fbd45::t_da53fdb5036daa 10
+  s_aae902ef6fbd45::t_d0dd83aa5cb565 35
+docs/features/ai-platform/SLICE_10_IMAGE_GENERATION.md
+  s_aae902ef6fbd45::t_c4a6680c411685 33
+  s_aae902ef6fbd45::t_c4e4476a2293e4 29
+docs/features/ai-platform/SLICE_11_PRICING_TIERS.md
+  s_aae902ef6fbd45::t_46f82bb49cf75d 30
+  s_aae902ef6fbd45::t_2fa406cf2b9383 35
+docs/features/ai-platform/SLICE_4_AI_TEAM.md
+  s_aae902ef6fbd45::t_36af72a5a8a797 35
+  s_aae902ef6fbd45::t_23aca50cf4c513 16
+  s_aae902ef6fbd45::t_3abe2a24e1c88f 31
+docs/features/ai-platform/SLICE_3_BYOK_LANE.md
+  s_aae902ef6fbd45::t_fef0bc1061775f 33
+  s_aae902ef6fbd45::t_feeb0eb8946338 37
+docs/features/ai-platform/SLICE_6_STRUCTURAL_ANALYSIS.md
+  s_aae902ef6fbd45::t_cbbad724310d86 10
+  s_aae902ef6fbd45::t_c45ff590babaa4 31
+  s_aae902ef6fbd45::t_68476394ce38da 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "9f2302e566e9f21d552e968e46600ade2beb18bd",
+  "prompts": {},
+  "sessions": {
+    "s_aae902ef6fbd45": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "efa92fc9-57cc-4595-a9fb-359884909f01",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
