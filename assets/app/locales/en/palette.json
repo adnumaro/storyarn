@@ -7,7 +7,13 @@
     "groups": {
       "navigation": "Navigation",
       "view": "View",
-      "workspace": "Switch workspace"
+      "settings": "Project settings"
+    },
+    "nav": {
+      "workspaces": "Workspaces",
+      "projects": "Projects",
+      "project_settings": "Project settings",
+      "entities": "Jump to"
     },
     "commands": {
       "flows": {
@@ -20,6 +26,16 @@
       "workspace": {
         "toggle_sidebar": "Toggle sidebar",
         "account_settings": "Account settings"
+      },
+      "project_settings": {
+        "general": "General",
+        "members": "Members",
+        "localization": "Localization",
+        "snapshots": "Snapshots",
+        "version_control": "Version control",
+        "usage_limits": "Usage limits",
+        "export_import": "Export & import",
+        "trash": "Trash"
       }
     }
   }

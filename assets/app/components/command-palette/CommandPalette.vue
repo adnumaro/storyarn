@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import {
+  Building2,
+  FileText,
+  Folder,
+  GitBranch,
+  Map as MapIcon,
+  Settings,
+  type LucideIcon,
+} from "lucide-vue-next";
+import { computed, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import {
   CommandDialog,
@@ -16,13 +25,49 @@ import {
   primarySurface,
   type PaletteCommand,
 } from "@shared/command-palette/registry";
+import { liveNavigate } from "@shared/navigation/liveNavigate";
 import PaletteEmpty from "./PaletteEmpty.vue";
+
+interface NavItem {
+  id: string;
+  type: string;
+  label: string;
+  url: string;
+  context?: string;
+  shortcut?: string | null;
+}
+
+interface NavGroup {
+  key: string;
+  items: NavItem[];
+}
+
+interface PaletteNavReply {
+  token?: number;
+  groups?: NavGroup[];
+}
+
+const NAV_DEBOUNCE_MS = 200;
+
+const navIcons: Record<string, LucideIcon> = {
+  workspace: Building2,
+  project: Folder,
+  settings: Settings,
+  sheet: FileText,
+  flow: GitBranch,
+  scene: MapIcon,
+};
 
 const { t } = useI18n();
 const live = useLive();
 
 const open = ref(false);
 const query = ref("");
+const navGroups = ref<NavGroup[]>([]);
+
+// Stale-reply guard: only the latest request may update the results.
+let navToken = 0;
+let navDebounce: ReturnType<typeof setTimeout> | null = null;
 
 const localOpen = computed({
   get: () => open.value,
@@ -45,9 +90,22 @@ useKeyboard({
   },
 });
 
+watch(query, () => {
+  if (!open.value) return;
+
+  if (navDebounce) clearTimeout(navDebounce);
+  navDebounce = setTimeout(() => fetchNavDestinations(), NAV_DEBOUNCE_MS);
+});
+
+onUnmounted(() => {
+  if (navDebounce) clearTimeout(navDebounce);
+});
+
 function openPalette(): void {
   query.value = "";
+  navGroups.value = [];
   open.value = true;
+  fetchNavDestinations();
   track("palette_opened", {});
 }
 
@@ -55,10 +113,29 @@ function closePalette(): void {
   open.value = false;
 }
 
+function fetchNavDestinations(): void {
+  const token = ++navToken;
+
+  try {
+    live.pushEvent("palette_nav", { query: query.value, token }, (reply: PaletteNavReply) => {
+      if (reply?.token !== token || !open.value) return;
+      navGroups.value = reply.groups ?? [];
+    });
+  } catch {
+    // socket unavailable — static commands keep working, results just don't load
+  }
+}
+
 function onSelect(command: PaletteCommand): void {
   track("palette_command_executed", { command_id: command.id });
   closePalette();
   command.run();
+}
+
+function onSelectNav(item: NavItem): void {
+  track("palette_command_executed", { command_id: item.id });
+  closePalette();
+  liveNavigate(item.url);
 }
 
 function onNoResults(queryLength: number): void {
@@ -100,6 +177,25 @@ function track(event: string, payload: Record<string, unknown>): void {
           <component :is="command.icon" v-if="command.icon" class="size-4 shrink-0" />
           <span>{{ commandLabel(command) }}</span>
           <CommandShortcut v-if="command.shortcut">{{ command.shortcut }}</CommandShortcut>
+        </CommandItem>
+      </CommandGroup>
+      <CommandGroup
+        v-for="group in navGroups"
+        :key="`nav-${group.key}`"
+        :heading="t(`palette.nav.${group.key}`)"
+      >
+        <CommandItem
+          v-for="item in group.items"
+          :key="item.id"
+          :value="item.id"
+          @select="onSelectNav(item)"
+        >
+          <component :is="navIcons[item.type]" v-if="navIcons[item.type]" class="size-4 shrink-0" />
+          <span>{{ item.label }}</span>
+          <span v-if="item.context" class="text-xs text-muted-foreground">{{ item.context }}</span>
+          <!-- Entities can match by shortcut server-side; keep it in the
+               filterable textContent without showing it. -->
+          <span v-if="item.shortcut" class="sr-only">{{ item.shortcut }}</span>
         </CommandItem>
       </CommandGroup>
     </CommandList>

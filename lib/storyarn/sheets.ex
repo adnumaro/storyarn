@@ -66,6 +66,9 @@ defmodule Storyarn.Sheets do
   @doc "Searches sheets by name/shortcut with pagination. Options: :limit, :offset."
   defdelegate search_sheets(project_id, query, opts \\ []), to: SheetQueries
 
+  @doc "Cross-project sheet search over a pre-authorized project set (see `Storyarn.GlobalSearch`)."
+  defdelegate search_sheets_in_projects(project_ids, query, opts \\ []), to: SheetQueries
+
   @doc """
   Gets a single sheet by ID within a project.
   Returns `nil` if the sheet doesn't exist or doesn't belong to the project.

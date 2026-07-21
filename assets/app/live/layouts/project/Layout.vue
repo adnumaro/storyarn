@@ -90,6 +90,19 @@ const paletteToolIcons: Record<string, PaletteCommand["icon"]> = {
   localization: Languages,
 };
 
+// Every section of the current project's settings, mirroring the routes
+// under /settings — the server enforces access on entry, same as the navbar.
+const settingsSections: Array<{ key: string; suffix: string; icon: PaletteCommand["icon"] }> = [
+  { key: "general", suffix: "", icon: Settings },
+  { key: "members", suffix: "/members", icon: Settings },
+  { key: "localization", suffix: "/localization", icon: Languages },
+  { key: "snapshots", suffix: "/snapshots", icon: Settings },
+  { key: "version_control", suffix: "/version-control", icon: Settings },
+  { key: "usage_limits", suffix: "/usage-limits", icon: Settings },
+  { key: "export_import", suffix: "/export-import", icon: Settings },
+  { key: "trash", suffix: "/trash", icon: Trash2 },
+];
+
 function projectPaletteCommands(): PaletteCommand[] {
   const toolCommands: PaletteCommand[] = Object.entries(urls.tools).map(([key, url]) => ({
     id: `project.go-to.${key}`,
@@ -99,21 +112,15 @@ function projectPaletteCommands(): PaletteCommand[] {
     run: () => liveNavigate(url),
   }));
 
-  toolCommands.push({
-    id: "project.go-to.settings",
-    labelKey: "layout.project_navbar_context.project_settings",
-    groupKey: "palette.groups.navigation",
-    icon: Settings,
-    run: () => liveNavigate(urls.projectSettings),
-  });
-
-  toolCommands.push({
-    id: "project.go-to.trash",
-    labelKey: "layout.project_navbar_context.trash",
-    groupKey: "palette.groups.navigation",
-    icon: Trash2,
-    run: () => liveNavigate(urls.trash),
-  });
+  for (const section of settingsSections) {
+    toolCommands.push({
+      id: `project.settings.${section.key}`,
+      labelKey: `palette.commands.project_settings.${section.key}`,
+      groupKey: "palette.groups.settings",
+      icon: section.icon,
+      run: () => liveNavigate(`${urls.projectSettings}${section.suffix}`),
+    });
+  }
 
   return toolCommands;
 }

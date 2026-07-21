@@ -1,8 +1,11 @@
-defmodule StoryarnWeb.Live.Hooks.PaletteAnalyticsTest do
+defmodule StoryarnWeb.Live.Hooks.PaletteTest do
   use StoryarnWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
+  import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
+  import Storyarn.WorkspacesFixtures
 
   defmodule TestAdapter do
     @moduledoc false
@@ -79,5 +82,60 @@ defmodule StoryarnWeb.Live.Hooks.PaletteAnalyticsTest do
 
     assert_receive {:analytics_capture, %{event: "palette opened"} = payload}
     assert Map.keys(payload.properties) == ["surface"]
+  end
+
+  describe "palette_nav" do
+    test "replies grouped authorized destinations with URLs and echoes the token",
+         %{view: view, user: user} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace, name: "Veilbreak"})
+      sheet = sheet_fixture(project, %{name: "Kael the Wanderer"})
+
+      render_hook(view, "palette_nav", %{"query" => "kael", "token" => 7})
+
+      assert_reply(view, %{token: 7, groups: groups})
+
+      entities = Enum.find(groups, &(&1.key == "entities"))
+      assert [item] = entities.items
+      assert item.id == "nav.sheet.#{sheet.id}"
+      assert item.type == "sheet"
+      assert item.label == "Kael the Wanderer"
+      assert item.context == "Veilbreak"
+      assert item.url == "/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
+    end
+
+    test "empty query lists workspaces, projects, and per-project settings",
+         %{view: view, user: user} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace, name: "Veilbreak"})
+
+      render_hook(view, "palette_nav", %{"query" => "", "token" => 1})
+
+      assert_reply(view, %{token: 1, groups: groups})
+      keys = Enum.map(groups, & &1.key)
+      assert "workspaces" in keys
+      assert "projects" in keys
+      assert "project_settings" in keys
+      refute "entities" in keys
+
+      settings = Enum.find(groups, &(&1.key == "project_settings"))
+
+      assert Enum.any?(
+               settings.items,
+               &(&1.url == "/workspaces/#{workspace.slug}/projects/#{project.slug}/settings")
+             )
+    end
+
+    test "never leaks another user's destinations", %{view: view} do
+      intruder_target = user_fixture()
+      other_workspace = workspace_fixture(intruder_target)
+      other_project = project_fixture(intruder_target, %{workspace: other_workspace})
+      sheet_fixture(other_project, %{name: "LeakMe Secret"})
+
+      render_hook(view, "palette_nav", %{"query" => "LeakMe", "token" => 3})
+
+      assert_reply(view, %{token: 3, groups: groups})
+      assert groups == []
+    end
   end
 end

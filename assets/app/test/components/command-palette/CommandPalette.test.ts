@@ -3,6 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, nextTick, type App } from "vue";
 import CommandPalette from "../../../components/command-palette/CommandPalette.vue";
 import { Command, CommandItem } from "../../../components/ui/command";
+import { liveNavigate } from "../../../shared/navigation/liveNavigate";
+
+vi.mock("../../../shared/navigation/liveNavigate", () => ({
+  liveNavigate: vi.fn(),
+}));
 import {
   registerPaletteCommands,
   resetPaletteRegistry,
@@ -180,5 +185,72 @@ describe("CommandPalette", () => {
     await nextTick();
 
     expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(true);
+  });
+
+  describe("server-driven navigation", () => {
+    function navReplyMock(live: LiveInterface, tokenOffset = 0) {
+      vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+        if (event !== "palette_nav" || !payload || !callback) return;
+
+        callback({
+          token: (payload.token as number) + tokenOffset,
+          groups: [
+            {
+              key: "projects",
+              items: [
+                {
+                  id: "nav.project.1",
+                  type: "project",
+                  label: "Veilbreak",
+                  url: "/workspaces/ws/projects/veilbreak",
+                },
+              ],
+            },
+          ],
+        });
+      });
+    }
+
+    it("fetches destinations on open and navigates on select", async () => {
+      const { live, wrapper } = mountPalette();
+      navReplyMock(live);
+
+      pressPaletteShortcut();
+      await nextTick();
+
+      const headings = wrapper
+        .findAll("[data-slot='command-group-heading']")
+        .map((heading) => heading.text());
+      expect(headings).toContain("Projects");
+
+      const item = wrapper
+        .findAllComponents(CommandItem)
+        .find((candidate) => candidate.props("value") === "nav.project.1");
+      expect(item).toBeDefined();
+
+      item!.vm.$emit("select", new Event("select"));
+      await nextTick();
+
+      expect(liveNavigate).toHaveBeenCalledWith("/workspaces/ws/projects/veilbreak");
+      expect(live.pushEvent).toHaveBeenCalledWith(
+        "palette_command_executed",
+        { command_id: "nav.project.1", surface: "global" },
+        undefined,
+      );
+      expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(false);
+    });
+
+    it("drops replies whose token does not match the latest request", async () => {
+      const { live, wrapper } = mountPalette();
+      navReplyMock(live, 999);
+
+      pressPaletteShortcut();
+      await nextTick();
+
+      const item = wrapper
+        .findAllComponents(CommandItem)
+        .find((candidate) => candidate.props("value") === "nav.project.1");
+      expect(item).toBeUndefined();
+    });
   });
 });

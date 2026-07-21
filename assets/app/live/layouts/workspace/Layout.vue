@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Building2, PanelLeft, PanelLeftClose, Settings } from "lucide-vue-next";
-import { onUnmounted, ref } from "vue";
+import { PanelLeft, PanelLeftClose, Settings } from "lucide-vue-next";
+import { onUnmounted, ref, watch } from "vue";
 import OnboardingDialog from "@components/onboarding/OnboardingDialog.vue";
 import WorkspaceSidebar from "@shell/WorkspaceSidebar.vue";
 import type { WorkspaceItem, WorkspaceUser } from "@shell/workspaceLayoutTypes";
@@ -20,48 +20,55 @@ const {
   onboarding?: { guide: string; autoShow: boolean } | null;
 }>();
 
-const { sidebarOpen, toggleSidebar } = useResponsiveSidebar();
+const { sidebarOpen, toggleSidebar, desktopSidebarOpen } = useResponsiveSidebar();
 const onboardingDialog = ref<{ openTutorial: () => void } | null>(null);
 
 function showTutorial(): void {
   onboardingDialog.value?.openTutorial();
 }
 
-function workspacePaletteCommands(): PaletteCommand[] {
-  const commands: PaletteCommand[] = [
-    {
-      id: "workspace.toggle-sidebar",
-      labelKey: "palette.commands.workspace.toggle_sidebar",
-      groupKey: "palette.groups.view",
-      icon: PanelLeft,
-      run: toggleSidebar,
-    },
-    {
-      id: "workspace.go-to.account-settings",
-      labelKey: "palette.commands.workspace.account_settings",
-      groupKey: "palette.groups.navigation",
-      icon: Settings,
-      run: () => liveNavigate("/users/settings"),
-    },
-  ];
+// Workspace/project switching comes from the server-driven palette_nav
+// results (authorized + searchable everywhere); only surface-local commands
+// register statically here.
+const unregisterPaletteCommands = registerPaletteCommands("workspace", [
+  {
+    id: "workspace.go-to.account-settings",
+    labelKey: "palette.commands.workspace.account_settings",
+    groupKey: "palette.groups.navigation",
+    icon: Settings,
+    run: () => liveNavigate("/users/settings"),
+  },
+]);
 
-  for (const workspace of workspaces) {
-    if (workspace.slug === currentWorkspaceSlug) continue;
-    commands.push({
-      id: `workspace.switch.${workspace.slug}`,
-      label: workspace.name,
-      groupKey: "palette.groups.workspace",
-      icon: Building2,
-      run: () => liveNavigate(`/workspaces/${workspace.slug}`),
-    });
-  }
+// The dashboard sidebar is force-open on desktop (owner decision), so the
+// toggle can only execute below the breakpoint — the command exists exactly
+// while it can run, never as a listed no-op.
+let unregisterSidebarToggle: (() => void) | null = null;
+watch(
+  desktopSidebarOpen,
+  (desktop) => {
+    unregisterSidebarToggle?.();
+    unregisterSidebarToggle = null;
 
-  return commands;
-}
+    if (!desktop) {
+      unregisterSidebarToggle = registerPaletteCommands("workspace", [
+        {
+          id: "workspace.toggle-sidebar",
+          labelKey: "palette.commands.workspace.toggle_sidebar",
+          groupKey: "palette.groups.view",
+          icon: PanelLeft,
+          run: toggleSidebar,
+        },
+      ]);
+    }
+  },
+  { immediate: true },
+);
 
-const unregisterPaletteCommands = registerPaletteCommands("workspace", workspacePaletteCommands());
-
-onUnmounted(unregisterPaletteCommands);
+onUnmounted(() => {
+  unregisterPaletteCommands();
+  unregisterSidebarToggle?.();
+});
 </script>
 
 <template>

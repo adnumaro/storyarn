@@ -7,7 +7,13 @@
     "groups": {
       "navigation": "Navegación",
       "view": "Vista",
-      "workspace": "Cambiar de espacio de trabajo"
+      "settings": "Ajustes del proyecto"
+    },
+    "nav": {
+      "workspaces": "Espacios de trabajo",
+      "projects": "Proyectos",
+      "project_settings": "Ajustes de proyecto",
+      "entities": "Ir a"
     },
     "commands": {
       "flows": {
@@ -20,6 +26,16 @@
       "workspace": {
         "toggle_sidebar": "Mostrar u ocultar la barra lateral",
         "account_settings": "Ajustes de cuenta"
+      },
+      "project_settings": {
+        "general": "General",
+        "members": "Miembros",
+        "localization": "Localización",
+        "snapshots": "Snapshots",
+        "version_control": "Control de versiones",
+        "usage_limits": "Límites de uso",
+        "export_import": "Exportar e importar",
+        "trash": "Papelera"
       }
     }
   }

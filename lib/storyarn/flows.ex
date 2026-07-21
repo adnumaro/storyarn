@@ -96,6 +96,9 @@ defmodule Storyarn.Flows do
   @spec search_flows(integer(), String.t(), keyword()) :: [flow()]
   defdelegate search_flows(project_id, query, opts \\ []), to: FlowCrud
 
+  @doc "Cross-project flow search over a pre-authorized project set (see `Storyarn.GlobalSearch`)."
+  defdelegate search_flows_in_projects(project_ids, query, opts \\ []), to: FlowCrud
+
   @doc """
   Deep search: searches flow names/shortcuts and node content.
   Accepts opts: [limit: 25, offset: 0, exclude_id: nil].
