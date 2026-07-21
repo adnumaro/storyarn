@@ -12,9 +12,10 @@ defmodule Storyarn.AI.Provider do
   @type id :: atom()
 
   @typedoc """
-  What a provider can be used for. Immutable per provider (owner-decided sets,
-  see `docs/features/ai-platform/OVERVIEW.md` lane policy §5). Consumed by role
-  assignments and lane resolution in later slices.
+  What a provider can be used for. Immutable per provider — owner-decided sets,
+  declared in each adapter's `metadata/0` (provider context in
+  `docs/features/ai-integrations/PROVIDERS.md`). Consumed by role assignments
+  and lane resolution in later slices of the AI platform plan.
   """
   @type capability :: :translation | :suggestions | :tasks | :images
 
