@@ -2,7 +2,8 @@
   "integrations": {
     "page": {
       "title": "Integraciones IA",
-      "description": "Conecta tus cuentas de proveedores de IA para usarlas desde Storyarn. La facturación va directamente contigo y cada proveedor."
+      "description": "Conecta tus cuentas de proveedores de IA para usarlas desde Storyarn. La facturación va directamente contigo y cada proveedor.",
+      "providers_aria": "Proveedores de IA"
     },
     "empty": {
       "description": "Todavía no hay proveedores de IA disponibles."

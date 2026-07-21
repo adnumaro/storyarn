@@ -1,6 +1,6 @@
 # AI Integrations — Provider Reference
 
-Internal reference for the AI Integrations feature. Covers the six providers targeted for v1 and the authentication decisions behind them.
+Internal reference for the AI Integrations feature. Covers the seven providers targeted for v1 (six LLM providers + DeepL, translation-only) and the authentication decisions behind them.
 
 ## Model: BYOK (Bring Your Own Key)
 
@@ -94,6 +94,19 @@ Each provider entry documents what Slice 1–4 adapters need. Where a value is m
 - **Account info endpoint**: `GET /user/balance` returns remaining balance in USD (useful for UX later, not for v1 validation).
 - **Notes**: OpenAI-compatible.
 - **User docs to link**: https://api-docs.deepseek.com/
+
+### DeepL (translation-only)
+
+- **Get key**: https://www.deepl.com/your-account/keys
+- **Key format**: UUID-style token; **API Free keys are suffixed `:fx`**, Pro keys are not.
+- **Base URL**: derived from the key shape — `https://api-free.deepl.com` for `:fx` keys, `https://api.deepl.com` otherwise. Each host rejects the other plan's keys, so no user-facing tier selector is needed (unlike the legacy per-project config, which asked the user to pick).
+- **Auth header**: `Authorization: DeepL-Auth-Key <KEY>`
+- **Validation endpoint** (cheap, non-billing): `GET /v2/usage` → 200 with character counts on valid key, 401/403 on invalid. DeepL has **no models endpoint** — no model selector ever renders for DeepL (capability metadata drives this).
+- **Account info endpoint**: none. Masked key.
+- **Capabilities**: `[:translation]` only — the Translator role slot is its only assignment target (Slice 4 of the platform plan).
+- **Billing model**: Free tier 500K chars/month; Pro pay-per-character.
+- **User docs to link**: https://developers.deepl.com/docs
+- **Note**: the legacy per-project DeepL config (`translation_provider_configs`) remains the localization consumer until Slice 4's unification (owner-decided); this adapter only powers the BYOK connection card.
 
 ## Common security requirements (all providers)
 

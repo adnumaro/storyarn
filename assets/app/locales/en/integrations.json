@@ -2,7 +2,8 @@
   "integrations": {
     "page": {
       "title": "AI Integrations",
-      "description": "Connect your AI provider accounts to use them from Storyarn. You are billed directly by each provider."
+      "description": "Connect your AI provider accounts to use them from Storyarn. You are billed directly by each provider.",
+      "providers_aria": "AI providers"
     },
     "empty": {
       "description": "No AI providers are available yet."

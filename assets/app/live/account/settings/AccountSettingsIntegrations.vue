@@ -149,7 +149,7 @@ function cancelDisconnect(): void {
     <section
       v-if="cards.length > 0"
       class="grid grid-cols-1 gap-4 sm:grid-cols-2"
-      aria-label="AI providers"
+      :aria-label="t('integrations.page.providers_aria')"
     >
       <IntegrationCard
         v-for="card in cards"
