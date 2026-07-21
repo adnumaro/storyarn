@@ -1,0 +1,78 @@
+assets/app/test/components/command-palette/CommandPalette.test.ts
+  s_aae902ef6fbd45::t_83cb64c89ceaf0 6-10
+  s_aae902ef6fbd45::t_402aa0d440287e 189-192,194-255
+  s_aae902ef6fbd45::t_9dc65e403eedee 193
+lib/storyarn/global_search/destinations.ex
+  s_aae902ef6fbd45::t_3afc29f3215289 93,99-107,109-112,114-120
+  s_aae902ef6fbd45::t_f3d1678c1e23f8 29-30
+  s_aae902ef6fbd45::t_01cb93ed758e23 1-28,31-91,94-98,108,121-122
+  s_aae902ef6fbd45::t_bea2dae9916cc6 92
+  s_aae902ef6fbd45::t_588af9018cae07 113
+lib/storyarn/scenes.ex
+  s_aae902ef6fbd45::t_2b25aa6cbb56ac 83-85
+lib/storyarn/sheets.ex
+  s_aae902ef6fbd45::t_c439e3a68af109 69-71
+lib/storyarn/global_search.ex
+  s_aae902ef6fbd45::t_809ebcb2d0e6fe 1-17
+test/storyarn/global_search/destinations_test.exs
+  s_aae902ef6fbd45::t_8eca12dd9c4a24 68
+  s_aae902ef6fbd45::t_017ff77b3e114e 50
+  s_aae902ef6fbd45::t_b66409d200e61e 1-49,51-67,69-126
+lib/storyarn/scenes/scene_crud.ex
+  s_aae902ef6fbd45::t_4d86c3c5e70d95 137-143,145-163
+  s_aae902ef6fbd45::t_3afc29f3215289 144
+  s_aae902ef6fbd45::t_a9a133df50f7fd 136
+lib/storyarn_web/router.ex
+  s_aae902ef6fbd45::t_87aff8e7903918 169
+assets/app/components/command-palette/CommandPalette.vue
+  s_aae902ef6fbd45::t_2ac41365da11a4 2-11,28,31-60,66-70,93-103,106,108,116-128,135-140,182-198
+  s_aae902ef6fbd45::t_ce4ea80c838ec2 199-200
+assets/app/test/live/layouts/WorkspaceLayoutPalette.test.ts
+  s_aae902ef6fbd45::t_d6f6a5285d7d5f 1-29,31-129
+  s_aae902ef6fbd45::t_8eca12dd9c4a24 30
+assets/app/locales/es/palette.json
+  s_aae902ef6fbd45::t_401ce5804e1aa2 10-16,29-38
+assets/app/live/layouts/project/Layout.vue
+  s_aae902ef6fbd45::t_a3c715399e89e5 93-105,115-123
+lib/storyarn_web/live/hooks/palette.ex
+  s_aae902ef6fbd45::t_4973c7b9166690 102
+  s_aae902ef6fbd45::t_55dcad37d1d418 1-36,46-50,52-55,57-65,67-101,103-127
+  s_aae902ef6fbd45::t_8eca12dd9c4a24 37-45,51,56,66
+lib/storyarn/flows.ex
+  s_aae902ef6fbd45::t_a011c023efbe60 99-101
+lib/storyarn/sheets/sheet_queries.ex
+  s_aae902ef6fbd45::t_3afc29f3215289 214
+  s_aae902ef6fbd45::t_54bb89982d7c7d 207-213,215-233
+  s_aae902ef6fbd45::t_0d01b27fdbd60b 206
+assets/app/locales/en/palette.json
+  s_aae902ef6fbd45::t_16b2c8251b2ca2 10-16,29-38
+test/storyarn_web/live/hooks/palette_test.exs
+  s_aae902ef6fbd45::t_27c8b544d0efa4 17,20,44,51,62,73,85-140
+  s_aae902ef6fbd45::t_e54b3fe774e926 1-8
+lib/storyarn/flows/flow_crud.ex
+  s_aae902ef6fbd45::t_3afc29f3215289 113
+  s_aae902ef6fbd45::t_5cf84bd53579e8 106-112,114-132
+  s_aae902ef6fbd45::t_284cc2e244aadc 105
+assets/app/live/layouts/workspace/Layout.vue
+  s_aae902ef6fbd45::t_bf420f07f48e99 2
+  s_aae902ef6fbd45::t_a710c591380fc5 30-41
+  s_aae902ef6fbd45::t_3b11a3ea0a4e4f 3
+  s_aae902ef6fbd45::t_2e94020bc3f5dc 43-51,53-66,68-71
+  s_aae902ef6fbd45::t_96171ce5d33cf1 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "7983a30f5b426424e8e79d619f5cc7487b22ae6b",
+  "prompts": {},
+  "sessions": {
+    "s_aae902ef6fbd45": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "efa92fc9-57cc-4595-a9fb-359884909f01",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
