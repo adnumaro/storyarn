@@ -1,0 +1,35 @@
+docs/features/ai-platform/SLICE_1_COMMAND_PALETTE.md
+  s_45b22073d60431::t_eab28cf996cdf1 1-43
+docs/features/ai-platform/SLICE_5_DIALOGUE_TOOLS.md
+  s_45b22073d60431::t_e3d280c9554853 1-41
+docs/features/ai-platform/SLICE_0_BYOK_INTEGRATIONS.md
+  s_45b22073d60431::t_1e10921e27f1c9 1-41
+docs/features/ai-platform/SLICE_6_TEXT_TO_STRUCTURE.md
+  s_45b22073d60431::t_71770538147b6c 1-42
+docs/features/ai-platform/SLICE_2_AI_SERVICE_CORE.md
+  s_45b22073d60431::t_617474a9c63730 1-43
+docs/features/ai-platform/SLICE_7_PRICING_TIERS.md
+  s_45b22073d60431::t_2da6a69c0f6247 1-42
+docs/features/ai-platform/SLICE_3_CONTEXT_ENGINE.md
+  s_45b22073d60431::t_be40ef433b425d 1-39
+docs/features/ai-platform/OVERVIEW.md
+  s_45b22073d60431::t_73faf2cbc3bb94 1-57
+docs/features/ai-platform/SLICE_4_STRUCTURAL_ANALYSIS.md
+  s_45b22073d60431::t_c6acd674e8a017 1-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "32e254a863c61a52b1cda3c01f68a93f7376a78d",
+  "prompts": {},
+  "sessions": {
+    "s_45b22073d60431": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69ce9805-664b-489d-8409-0b9e7d507066",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
