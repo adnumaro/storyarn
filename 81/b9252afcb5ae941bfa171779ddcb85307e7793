@@ -1,0 +1,21 @@
+docs/features/ai-platform/OVERVIEW.md
+  s_45b22073d60431::t_474193872bb856 22-31,52-57
+docs/features/ai-platform/SLICE_5_DIALOGUE_TOOLS.md
+  s_45b22073d60431::t_1e087360c36403 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "81b9252afcb5ae941bfa171779ddcb85307e7793",
+  "prompts": {},
+  "sessions": {
+    "s_45b22073d60431": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69ce9805-664b-489d-8409-0b9e7d507066",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
