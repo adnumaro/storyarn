@@ -1,11 +1,11 @@
 defmodule Storyarn.Docs.GuideBuilderTest do
   use ExUnit.Case, async: true
 
-  alias Storyarn.Docs
+  alias Storyarn.Docs.Guide
   alias Storyarn.Docs.GuideBuilder
 
   test "published Spanish guides emit localized internal documentation links" do
-    guides = Docs.list_guides("es")
+    guides = Guide.list_guides("es")
 
     assert Enum.any?(guides, &String.contains?(&1.body, ~s(href="/es/docs/)))
 

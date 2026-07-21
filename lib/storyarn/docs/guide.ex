@@ -24,14 +24,6 @@ defmodule Storyarn.Docs.Guide do
     end)
   end
 
-  @doc "List categories in display order with their labels."
-  def list_categories(locale \\ @default_locale) do
-    locale
-    |> list_guides()
-    |> Enum.map(fn g -> {g.category, g.category_label} end)
-    |> Enum.uniq_by(fn {cat, _} -> cat end)
-  end
-
   @doc "Get a single guide by category and slug."
   def get_guide(category, slug_or_path, locale \\ @default_locale) do
     path = String.split(slug_or_path, "/", trim: true)
@@ -69,23 +61,6 @@ defmodule Storyarn.Docs.Guide do
 
   def search(_, _), do: []
 
-  @doc "Get the first guide (for index redirect)."
-  def first_guide(locale \\ @default_locale) do
-    locale |> list_guides() |> List.first()
-  end
-
-  @doc "Get previous and next guides for navigation."
-  def prev_next(category, slug, locale \\ @default_locale) do
-    path = String.split(slug, "/", trim: true)
-    guides = list_guides(locale)
-    index = Enum.find_index(guides, &(&1.category == category && (&1.path == path || &1.slug == slug)))
-
-    prev = if index && index > 0, do: Enum.at(guides, index - 1)
-    next = if index, do: Enum.at(guides, index + 1)
-
-    {prev, next}
-  end
-
   defp category_order("welcome"), do: 0
   defp category_order("quick-start"), do: 1
   defp category_order("project-management"), do: 2
@@ -96,5 +71,6 @@ defmodule Storyarn.Docs.Guide do
   defp category_order("localization"), do: 7
   defp category_order("collaboration"), do: 8
   defp category_order("import-export"), do: 9
+  defp category_order("ai"), do: 10
   defp category_order(_), do: 99
 end

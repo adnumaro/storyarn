@@ -1,0 +1,26 @@
+{
+  "palette": {
+    "title": "Command palette",
+    "description": "Search and run commands",
+    "placeholder": "Type a command or search…",
+    "no_results": "No matching commands",
+    "groups": {
+      "navigation": "Navigation",
+      "view": "View",
+      "workspace": "Switch workspace"
+    },
+    "commands": {
+      "flows": {
+        "toggle_minimap": "Toggle minimap",
+        "fit_to_view": "Fit to view"
+      },
+      "scenes": {
+        "fit_to_view": "Fit to view"
+      },
+      "workspace": {
+        "toggle_sidebar": "Toggle sidebar",
+        "account_settings": "Account settings"
+      }
+    }
+  }
+}

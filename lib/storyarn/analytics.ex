@@ -20,6 +20,9 @@ defmodule Storyarn.Analytics do
     "flow player started" => MapSet.new(~w(flow_id project_id)),
     "onboarding tutorial interacted" => MapSet.new(~w(action guide source)),
     "page viewed" => MapSet.new(~w(route_family)),
+    "palette command executed" => MapSet.new(~w(command_id surface)),
+    "palette opened" => MapSet.new(~w(surface)),
+    "palette search no results" => MapSet.new(~w(query_length surface)),
     "project created" => MapSet.new(~w(project_id project_subtype project_type project_type_other workspace_id)),
     "project template installation requested" =>
       MapSet.new(~w(installation_id source template_id template_version_id visibility workspace_id)),

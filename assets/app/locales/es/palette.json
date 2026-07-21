@@ -1,0 +1,26 @@
+{
+  "palette": {
+    "title": "Paleta de comandos",
+    "description": "Busca y ejecuta comandos",
+    "placeholder": "Escribe un comando o busca…",
+    "no_results": "No hay comandos que coincidan",
+    "groups": {
+      "navigation": "Navegación",
+      "view": "Vista",
+      "workspace": "Cambiar de espacio de trabajo"
+    },
+    "commands": {
+      "flows": {
+        "toggle_minimap": "Mostrar u ocultar el minimapa",
+        "fit_to_view": "Ajustar a la vista"
+      },
+      "scenes": {
+        "fit_to_view": "Ajustar a la vista"
+      },
+      "workspace": {
+        "toggle_sidebar": "Mostrar u ocultar la barra lateral",
+        "account_settings": "Ajustes de cuenta"
+      }
+    }
+  }
+}

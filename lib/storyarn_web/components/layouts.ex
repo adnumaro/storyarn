@@ -17,6 +17,26 @@ defmodule StoryarnWeb.Layouts do
   embed_templates "layouts/*"
 
   @doc """
+  Mounts the global command palette island (Meta+K / Ctrl+K).
+
+  Rendered only by the layouts whose surfaces expose palette commands —
+  project tools and workspace dashboards — never on auth/public/docs pages.
+  """
+  attr :socket, :any, required: true, doc: "the LiveView socket (needed for LiveVue events)"
+
+  def command_palette(assigns) do
+    ~H"""
+    <div id="command-palette">
+      <.vue
+        v-component="components/command-palette/CommandPalette"
+        v-socket={@socket}
+        id="command-palette-island"
+      />
+    </div>
+    """
+  end
+
+  @doc """
   Shows the flash group with standard titles and content.
 
   ## Examples

@@ -166,6 +166,7 @@ defmodule StoryarnWeb.Router do
             {@user_auth_hook, :require_authenticated},
             {@user_auth_hook, :load_workspaces},
             {StoryarnWeb.Live.Hooks.Onboarding, :load_onboarding},
+            {StoryarnWeb.Live.Hooks.PaletteAnalytics, :track_palette},
             {StoryarnWeb.Live.Hooks.ProjectScope, :load_project},
             {StoryarnWeb.Live.Hooks.WorkspaceScope, :load_workspace}
           ] do

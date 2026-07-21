@@ -1,9 +1,22 @@
 <script setup lang="ts">
+import {
+  FileText,
+  GitBranch,
+  Image,
+  Languages,
+  LayoutDashboard,
+  Map,
+  ScrollText,
+  Settings,
+  Trash2,
+} from "lucide-vue-next";
 import { onMounted, onUnmounted, ref } from "vue";
 import OnboardingDialog from "@components/onboarding/OnboardingDialog.vue";
 import ProjectNavbarContext from "@shell/ProjectNavbarContext.vue";
 import ProjectNavbarAccount from "@shell/ProjectNavbarAccount.vue";
 import type { CurrentUser, OnlineUser, ProjectLayoutUrls } from "@shell/projectNavbarTypes";
+import { registerPaletteCommands, type PaletteCommand } from "@shared/command-palette/registry";
+import { liveNavigate } from "@shared/navigation/liveNavigate";
 
 interface ProjectChrome {
   activeTool: string;
@@ -67,9 +80,50 @@ onMounted(() => {
   window.addEventListener("storyarn:main-sidebar-change", handleMainSidebarChange);
 });
 
+const paletteToolIcons: Record<string, PaletteCommand["icon"]> = {
+  dashboard: LayoutDashboard,
+  sheets: FileText,
+  flows: GitBranch,
+  scenes: Map,
+  screenplays: ScrollText,
+  assets: Image,
+  localization: Languages,
+};
+
+function projectPaletteCommands(): PaletteCommand[] {
+  const toolCommands: PaletteCommand[] = Object.entries(urls.tools).map(([key, url]) => ({
+    id: `project.go-to.${key}`,
+    labelKey: `layout.tools.${key}`,
+    groupKey: "palette.groups.navigation",
+    icon: paletteToolIcons[key],
+    run: () => liveNavigate(url),
+  }));
+
+  toolCommands.push({
+    id: "project.go-to.settings",
+    labelKey: "layout.project_navbar_context.project_settings",
+    groupKey: "palette.groups.navigation",
+    icon: Settings,
+    run: () => liveNavigate(urls.projectSettings),
+  });
+
+  toolCommands.push({
+    id: "project.go-to.trash",
+    labelKey: "layout.project_navbar_context.trash",
+    groupKey: "palette.groups.navigation",
+    icon: Trash2,
+    run: () => liveNavigate(urls.trash),
+  });
+
+  return toolCommands;
+}
+
+const unregisterPaletteCommands = registerPaletteCommands("project", projectPaletteCommands());
+
 onUnmounted(() => {
   desktopSidebarQuery?.removeEventListener("change", syncDesktopSidebar);
   window.removeEventListener("storyarn:main-sidebar-change", handleMainSidebarChange);
+  unregisterPaletteCommands();
 });
 </script>
 

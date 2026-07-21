@@ -49,6 +49,7 @@ defmodule StoryarnWeb.Components.WorkspaceLayout do
 
       {render_slot(@inner_block)}
 
+      <Layouts.command_palette socket={@socket} />
       <Layouts.flash_group flash={@flash} socket={@socket} />
     </div>
     """

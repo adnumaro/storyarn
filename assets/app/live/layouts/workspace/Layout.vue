@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { PanelLeft, PanelLeftClose } from "lucide-vue-next";
-import { ref } from "vue";
+import { Building2, PanelLeft, PanelLeftClose, Settings } from "lucide-vue-next";
+import { onUnmounted, ref } from "vue";
 import OnboardingDialog from "@components/onboarding/OnboardingDialog.vue";
 import WorkspaceSidebar from "@shell/WorkspaceSidebar.vue";
 import type { WorkspaceItem, WorkspaceUser } from "@shell/workspaceLayoutTypes";
+import { registerPaletteCommands, type PaletteCommand } from "@shared/command-palette/registry";
 import { useResponsiveSidebar } from "@shared/composables/useResponsiveSidebar";
+import { liveNavigate } from "@shared/navigation/liveNavigate";
 
 const {
   currentUser,
@@ -24,6 +26,42 @@ const onboardingDialog = ref<{ openTutorial: () => void } | null>(null);
 function showTutorial(): void {
   onboardingDialog.value?.openTutorial();
 }
+
+function workspacePaletteCommands(): PaletteCommand[] {
+  const commands: PaletteCommand[] = [
+    {
+      id: "workspace.toggle-sidebar",
+      labelKey: "palette.commands.workspace.toggle_sidebar",
+      groupKey: "palette.groups.view",
+      icon: PanelLeft,
+      run: toggleSidebar,
+    },
+    {
+      id: "workspace.go-to.account-settings",
+      labelKey: "palette.commands.workspace.account_settings",
+      groupKey: "palette.groups.navigation",
+      icon: Settings,
+      run: () => liveNavigate("/users/settings"),
+    },
+  ];
+
+  for (const workspace of workspaces) {
+    if (workspace.slug === currentWorkspaceSlug) continue;
+    commands.push({
+      id: `workspace.switch.${workspace.slug}`,
+      label: workspace.name,
+      groupKey: "palette.groups.workspace",
+      icon: Building2,
+      run: () => liveNavigate(`/workspaces/${workspace.slug}`),
+    });
+  }
+
+  return commands;
+}
+
+const unregisterPaletteCommands = registerPaletteCommands("workspace", workspacePaletteCommands());
+
+onUnmounted(unregisterPaletteCommands);
 </script>
 
 <template>

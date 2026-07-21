@@ -5,7 +5,7 @@ defmodule Storyarn.Publication.LocalesTest do
   alias Expo.Message.Plural
   alias Expo.Message.Singular
   alias Storyarn.Blog
-  alias Storyarn.Docs
+  alias Storyarn.Docs.Guide
   alias Storyarn.Publication.Locales
 
   @project_root Path.expand("../../..", __DIR__)
@@ -113,7 +113,7 @@ defmodule Storyarn.Publication.LocalesTest do
     assert MapSet.size(default_keys) > 0, "the default locale must publish documentation guides"
 
     Enum.each(Locales.locales(), fn locale ->
-      guides = Docs.list_guides(locale)
+      guides = Guide.list_guides(locale)
       keys = Enum.map(guides, & &1.url_path)
 
       assert length(keys) == MapSet.size(MapSet.new(keys)),
@@ -212,7 +212,7 @@ defmodule Storyarn.Publication.LocalesTest do
 
   defp canonical_guide_keys(locale) do
     locale
-    |> Docs.list_guides()
+    |> Guide.list_guides()
     |> MapSet.new(& &1.url_path)
   end
 end

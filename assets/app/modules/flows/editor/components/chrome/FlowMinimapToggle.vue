@@ -3,7 +3,8 @@ import { LayoutGrid, Maximize2, Minus, Plus } from "lucide-vue-next";
 import type { NodeEditor } from "rete";
 import type { AreaPlugin } from "rete-area-plugin";
 import { AreaExtensions } from "rete-area-plugin";
-import { ref } from "vue";
+import { onUnmounted, ref } from "vue";
+import { registerPaletteCommands } from "@shared/command-palette/registry";
 import type { FlowSchemes, FlowAreaExtra } from "../../lib/rete-schemes";
 
 const { area = null, editor = null } = defineProps<{
@@ -31,6 +32,25 @@ function fitToView() {
     AreaExtensions.zoomAt(area, nodes);
   }
 }
+
+const unregisterPaletteCommands = registerPaletteCommands("flows", [
+  {
+    id: "flows.toggle-minimap",
+    labelKey: "palette.commands.flows.toggle_minimap",
+    groupKey: "palette.groups.view",
+    icon: LayoutGrid,
+    run: toggleMinimap,
+  },
+  {
+    id: "flows.fit-to-view",
+    labelKey: "palette.commands.flows.fit_to_view",
+    groupKey: "palette.groups.view",
+    icon: Maximize2,
+    run: fitToView,
+  },
+]);
+
+onUnmounted(unregisterPaletteCommands);
 
 function zoomBy(factor: number) {
   if (!area) return;
