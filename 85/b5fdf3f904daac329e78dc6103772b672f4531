@@ -1,0 +1,47 @@
+docs/features/ai-platform/SLICE_6_STRUCTURAL_ANALYSIS.md
+  s_45b22073d60431::t_d4163be8198e26 15
+docs/features/ai-platform/SLICE_7_DIALOGUE_TOOLS.md
+  s_45b22073d60431::t_d19aacb89a8efa 45
+docs/features/ai-platform/SLICE_11_PRICING_TIERS.md
+  s_45b22073d60431::t_556956f8e18ba7 42
+docs/features/ai-platform/OVERVIEW.md
+  s_45b22073d60431::t_a1f4eb70c3d500 69
+  s_45b22073d60431::t_87ca3cf2943d08 81
+  s_45b22073d60431::t_31630cec648e05 37
+  s_45b22073d60431::t_3744f2d641d097 75
+  s_45b22073d60431::t_57827997d94700 33
+  s_45b22073d60431::t_4fc57d203abd53 79-80
+  s_45b22073d60431::t_aefb9fc02bc8fb 82-84
+  s_45b22073d60431::t_3192d674501503 85-91
+docs/features/ai-platform/SLICE_9_TIPTAP_SUGGESTIONS.md
+  s_45b22073d60431::t_a702308bb36beb 26
+  s_45b22073d60431::t_78062e80597182 10
+  s_45b22073d60431::t_284e363c461bba 22
+  s_45b22073d60431::t_79d014e98b7db7 45
+docs/features/ai-platform/SLICE_4_AI_TEAM.md
+  s_45b22073d60431::t_8a976f71454793 10
+  s_45b22073d60431::t_df679b0b72a9a9 14
+docs/features/ai-platform/SLICE_10_IMAGE_GENERATION.md
+  s_45b22073d60431::t_b628892481379e 21
+  s_45b22073d60431::t_d1ce046f5a126d 10
+docs/features/ai-platform/SLICE_2_AI_SERVICE_CORE.md
+  s_45b22073d60431::t_fa4ddebcdc9b86 15-16
+docs/features/ai-platform/SLICE_0_BYOK_INTEGRATIONS.md
+  s_45b22073d60431::t_82844a6658eba0 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "85b5fdf3f904daac329e78dc6103772b672f4531",
+  "prompts": {},
+  "sessions": {
+    "s_45b22073d60431": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69ce9805-664b-489d-8409-0b9e7d507066",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
