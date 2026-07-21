@@ -11,7 +11,7 @@ Generate images (character portraits, concept art) directly into sheet **gallery
 
 ## Architectural direction
 
-- Uses the **capabilities model introduced in Slice 3**; `InferenceProvider` gains `generate_image/2` implemented ONLY for OpenAI and Google adapters. UI availability derives from connected-provider capabilities — a capability-specific CTA ("requires OpenAI or Google connected") otherwise. Provider selection: Illustrator assignment (Slice 4), else the user-marked default AI (if image-capable), else the CTA — no auto-pick.
+- Uses the **capabilities model introduced in Slice 3**; `InferenceProvider` gains `generate_image/2` implemented ONLY for OpenAI and Google adapters. UI availability derives from connected-provider capabilities — a capability-specific CTA ("requires OpenAI or Google connected") otherwise. **Provider selection goes through Slice 4's `provider_for/2` (Illustrator role) and requires a HEALTHY, connected, image-capable provider — capability alone is not enough; a disconnected/revoked default falls to the CTA, never gets selected.**
 - Lane: `byok_only` through Slice 3 (consent + provenance + no credit debit). Metering records the call with `lane` and image metadata (dimensions/count — never the image content in metering).
 - Storage: preview is ephemeral (temp URL/data); persistence ONLY on accept, and **accept means creating a real `Asset` record, not just uploading bytes: `Storyarn.Assets.upload_binary_and_create_asset/4` (atomic upload+record lifecycle) followed by `Sheets.add_gallery_image/2`, with rollback compensation if the gallery link fails after the asset was created** — a direct `Storage` upload would leave orphaned objects the gallery cannot reference. The gallery block references the created asset like any manually uploaded one.
 - Provider usage policies surfaced in the UI (link to the provider's content policy; generation errors from safety filters mapped to a clear message).
@@ -26,7 +26,7 @@ Storage ONLY through the `Assets`/`Storage` facade (deletion-safety checks live 
 
 ## Observability & error handling
 
-Generation telemetry (count, dimensions, latency — never image content) · safety-filter rejections map to an explicit, human message (provider policy linked) — no re-prompting or silent retry · asset-creation/link failure = compensation (no orphaned storage) + explicit error; the preview is never lost on failure · accept/discard to PostHog (acceptance signal) · user docs: image generation into galleries documented in the flag-hidden AI docs.
+Generation telemetry (count, dimensions, latency — never image content) · safety-filter rejections map to an explicit, human message (provider policy linked) — no re-prompting or silent retry · asset-creation/link failure = compensation (no orphaned storage) + explicit error; the preview is never lost on failure · **accept/discard recorded against the `ai_usage_events` row (one terminal outcome per generated image, same contract as Slices 7/9); PostHog receives only a product-event projection via the `Storyarn.Analytics` allowlist** · user docs: image generation into galleries documented in the flag-hidden AI docs.
 
 ## Verification / Definition of Done
 

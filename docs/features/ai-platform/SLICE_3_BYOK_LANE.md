@@ -30,7 +30,7 @@ No silent spending of user money — consent is a hard gate, tested · facade-on
 
 ## Observability & error handling
 
-Lane decision recorded on the operation and usage event · consent-missing and default-missing are explicit errors with CTA (never an auto-picked provider) · provider errors classified: credential-invalid (revokes) vs capability/permission (request error, key intact) · repeated provider-failure alert metric per provider · at-limit banner interactions to PostHog (top-up vs BYOK choice) · user docs: at-limit behavior + consent + provenance badges documented in the flag-hidden AI docs.
+Lane decision recorded on the operation and usage event · consent-missing and default-missing are explicit errors with CTA (never an auto-picked provider) · provider errors classified: credential-invalid (revokes) vs capability/permission (request error, key intact) · **provider-failure alert contract: ≥5 classified failures for the same provider within a 10-minute window (initial values, owner-tunable) emits one deduplicated alert per provider per window, tagged with provider + failure classification** · PostHog events (via the `Storyarn.Analytics` allowlist, added with tests): `ai_limit_banner_shown`, `ai_limit_topup_clicked`, `ai_limit_byok_chosen` (provider) · user docs: at-limit behavior + consent + provenance badges documented in the flag-hidden AI docs.
 
 ## Verification / Definition of Done
 

@@ -27,7 +27,7 @@ Billing changes through the `Billing` facade · DB-enforced ledger integrity (no
 
 ## Observability & error handling
 
-Purchase failures surface the payment provider's error explicitly (no optimistic credit before confirmation) · grant cron emits a missed-grant alert if a period has no grant row for an active workspace · spend-anomaly alerts (already specified) reach the owner, not just logs · dashboards read from `ai_usage_events`/ledger only — no shadow counters · user docs: pricing/credits pages ship WITH Stage B (owner-approved copy), flag-hidden until GA.
+Purchase failures: **the payment provider's result maps to a classified, localized message (`dgettext`) — raw provider responses never reach the user; diagnostic detail stays in telemetry/logs** (no optimistic credit before confirmation) · grant cron emits a missed-grant alert if a period has no grant row for an active workspace · **spend-anomaly alert contract (thresholds set by the Stage A memo from real data; the contract is fixed now): signal = workspace daily spend vs its trailing baseline, evaluated daily, deduplicated to one alert per workspace per day, delivered to the owner by email — not just logs** · dashboards read from `ai_usage_events`/ledger only — no shadow counters · user docs: pricing/credits pages ship WITH Stage B (owner-approved copy), flag-hidden until GA.
 
 ## Verification / Definition of Done
 

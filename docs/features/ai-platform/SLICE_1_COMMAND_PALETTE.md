@@ -30,11 +30,11 @@ TypeScript strict, no `any`, destructured prop defaults · emits over callback p
 ## User documentation (deliverable of this slice)
 
 - **Platform guide page for the palette** (user docs system, `Storyarn.Docs`): what it is, how to open it per platform (Meta+K / Ctrl+K), command scopes per surface. Ships visible with the slice.
-- **AI docs skeleton prepared but hidden behind `:ai_integrations`**: the guide section where AI actions will be documented exists from this slice, gated by the flag. **Verify here how the docs surface can flag-gate pages** (docs may render for unauthenticated visitors — determine the gating point and document it for later slices).
+- **AI docs skeleton prepared but hidden behind `:ai_integrations`**: the guide section where AI actions will be documented exists from this slice, gated by the flag. **This slice DEFINES AND TESTS one flag-aware visibility path — not just "verifies" it — covering every exposure surface: direct URLs (404 when off), guide navigation/search/prev-next indexes, `/sitemap.xml`, and `/llms.txt`** (docs render for unauthenticated visitors, so gating is by global flag state, not per-user). Tests assert the AI pages are unreachable through ALL of those surfaces with the flag off.
 
 ## Observability & error handling
 
-PostHog events: `palette_opened`, `palette_command_executed` (command id, surface), `palette_search_no_results` · command handler failures surface as an explicit toast/flash with an i18n message — never silent, never retried automatically · no fallbacks: an unavailable command simply does not appear (scope filtering), it never swaps in a different action.
+PostHog events `palette_opened`, `palette_command_executed` (command id, surface), `palette_search_no_results` — **registered through the repository's analytics boundary (`Storyarn.Analytics` allowlist): this slice adds the event names AND their property keys to the allowlist with tests proving they are emitted, because unregistered events are silently dropped** · command handler failures surface as an explicit toast/flash with an i18n message — never silent, never retried automatically · no fallbacks: an unavailable command simply does not appear (scope filtering), it never swaps in a different action.
 
 ## Verification / Definition of Done
 

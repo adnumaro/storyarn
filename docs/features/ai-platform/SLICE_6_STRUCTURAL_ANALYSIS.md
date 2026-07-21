@@ -28,7 +28,7 @@ Per-type node architecture respected (no giant case statements outside node modu
 
 ## Observability & error handling
 
-Detector-run telemetry (duration, findings count per type) · findings resolve/dismiss to PostHog (acceptance signal) · report generation failure = explicit panel error with a user-initiated retry button (no auto-retry, no partial report) · free detector path emits its own metric so we can prove the differentiator gets used · user docs: structural analysis + free-linting vs paid-report documented in the flag-hidden AI docs.
+Detector-run telemetry (duration, findings count per type) · findings resolve/dismiss go through **`Storyarn.Analytics.track/3` with the event names ADDED to its allowlist (it silently drops unregistered events — never call PostHog directly), coarse content-free properties, emission covered by tests** · report generation failure = explicit panel error with a user-initiated retry button (no auto-retry, no partial report) · free detector path emits its own metric so we can prove the differentiator gets used · user docs: structural analysis + free-linting vs paid-report documented in the flag-hidden AI docs.
 
 ## Verification / Definition of Done
 

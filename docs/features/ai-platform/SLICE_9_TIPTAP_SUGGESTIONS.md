@@ -27,7 +27,7 @@ TypeScript strict, emits over callbacks · tiptap decorations for ghost text (no
 
 ## Observability & error handling
 
-Terminal outcomes (accepted/dismissed/abandoned) reconcile 1:1 with metered calls — the acceptance-rate pipeline for this tool · provider errors render as an explicit inline error near the trigger (i18n), no auto-retry · rate-limit hit = explicit "slow down" state, not a queued retry · user docs: writing suggestions (trigger, accept/dismiss) documented in the flag-hidden AI docs.
+Terminal outcomes reconcile 1:1 with metered calls: **`accepted | dismissed | abandoned | failed` — a provider failure that produces no ghost text records the `failed` terminal outcome, so every metered call has exactly one outcome and the acceptance-rate denominator is defined as successful calls (failed excluded from acceptance, included in reliability)** · provider errors render as an explicit inline error near the trigger (i18n), no auto-retry · rate-limit hit = explicit "slow down" state, not a queued retry · user docs: writing suggestions (trigger, accept/dismiss) documented in the flag-hidden AI docs.
 
 ## Verification / Definition of Done
 
