@@ -174,6 +174,29 @@ describe("CommandPalette", () => {
     expect(noResultCalls).toHaveLength(1);
   });
 
+  it("a throwing command keeps the palette open with an explicit error and is NOT tracked as executed", async () => {
+    registerPaletteCommands("flows", [
+      command("flows.boom", () => {
+        throw new Error("boom");
+      }),
+    ]);
+
+    const { live, wrapper } = mountPalette();
+    pressPaletteShortcut();
+    await nextTick();
+
+    wrapper.findComponent(CommandItem).vm.$emit("select", new Event("select"));
+    await nextTick();
+
+    expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(true);
+    expect(wrapper.find('[role="alert"]').text()).toBe("The command failed to run. Try again.");
+
+    const executedCalls = vi
+      .mocked(live.pushEvent)
+      .mock.calls.filter(([event]) => event === "palette_command_executed");
+    expect(executedCalls).toHaveLength(0);
+  });
+
   it("survives a dead socket — analytics failures never break the palette", async () => {
     registerPaletteCommands("flows", [command("flows.a")]);
     const { live, wrapper } = mountPalette();

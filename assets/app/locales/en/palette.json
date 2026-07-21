@@ -4,6 +4,7 @@
     "description": "Search and run commands",
     "placeholder": "Type a command or search…",
     "no_results": "No matching commands",
+    "command_failed": "The command failed to run. Try again.",
     "groups": {
       "navigation": "Navigation",
       "view": "View"

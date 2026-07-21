@@ -79,6 +79,7 @@ const live = useLive();
 const open = ref(false);
 const query = ref("");
 const navGroups = ref<NavGroup[]>([]);
+const commandFailed = ref(false);
 
 // Stale-reply guard: only the latest request may update the results.
 let navToken = 0;
@@ -119,6 +120,7 @@ onUnmounted(() => {
 function openPalette(): void {
   query.value = "";
   navGroups.value = [];
+  commandFailed.value = false;
   open.value = true;
   fetchNavDestinations();
   track("palette_opened", {});
@@ -141,16 +143,28 @@ function fetchNavDestinations(): void {
   }
 }
 
-function onSelect(command: PaletteCommand): void {
-  track("palette_command_executed", { command_id: command.id });
+// A failing command keeps the palette open with an explicit error — it is
+// never recorded as executed and never fails silently.
+function runCommand(commandId: string, run: () => void): void {
+  commandFailed.value = false;
+
+  try {
+    run();
+  } catch {
+    commandFailed.value = true;
+    return;
+  }
+
+  track("palette_command_executed", { command_id: commandId });
   closePalette();
-  command.run();
+}
+
+function onSelect(command: PaletteCommand): void {
+  runCommand(command.id, command.run);
 }
 
 function onSelectNav(item: NavItem): void {
-  track("palette_command_executed", { command_id: item.id });
-  closePalette();
-  liveNavigate(item.url);
+  runCommand(item.id, () => liveNavigate(item.url));
 }
 
 function onNoResults(queryLength: number): void {
@@ -180,6 +194,9 @@ function track(event: string, payload: Record<string, unknown>): void {
     :description="t('palette.description')"
   >
     <CommandInput v-model="query" :placeholder="t('palette.placeholder')" />
+    <p v-if="commandFailed" role="alert" class="border-b px-3 py-2 text-sm text-destructive">
+      {{ t("palette.command_failed") }}
+    </p>
     <CommandList>
       <PaletteEmpty @no-results="onNoResults">{{ t("palette.no_results") }}</PaletteEmpty>
       <CommandGroup v-for="group in paletteGroups" :key="group.key" :heading="t(group.key)">
