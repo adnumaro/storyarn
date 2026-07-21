@@ -1,0 +1,107 @@
+assets/app/locales/es/palette.json
+  s_aae902ef6fbd45::t_f4f36ea39d050c 10-23
+  s_aae902ef6fbd45::t_461550abab2007 1-9,24-26
+assets/app/live/layouts/project/Layout.vue
+  s_aae902ef6fbd45::t_754c1bdfb896e0 112
+  s_aae902ef6fbd45::t_c005861aa0d664 104
+  s_aae902ef6fbd45::t_a05dd06c1a341d 2-12,18-19
+  s_aae902ef6fbd45::t_a7d5d1ee851ef1 83-103,105-111,113-122,126
+test/storyarn_web/live/hooks/palette_analytics_test.exs
+  s_aae902ef6fbd45::t_4203999ea5856f 1-8,11,13-21,23-25,28-35,39-45,48-55,59-66,70-79,82-83
+  s_aae902ef6fbd45::t_b077b295a13d22 36-38
+  s_aae902ef6fbd45::t_858f38511cad5f 9-10,12,22,26-27
+  s_aae902ef6fbd45::t_06cd9f56b1c6d0 47,57-58,68-69,81
+  s_aae902ef6fbd45::t_a4d81642fd00c1 46,56,67,80
+test/storyarn/docs/guide_builder_test.exs
+  s_aae902ef6fbd45::t_4f19636bc71586 4,8
+assets/app/components/command-palette/PaletteEmpty.vue
+  s_aae902ef6fbd45::t_07c7427d908607 1-29
+lib/storyarn/docs/guide.ex
+  s_aae902ef6fbd45::t_386a892c04a523 74
+assets/app/live/layouts/workspace/Layout.vue
+  s_aae902ef6fbd45::t_929d7753009cbd 2-3,7,9
+  s_aae902ef6fbd45::t_b0297217dbdf58 29-61,63-64
+  s_aae902ef6fbd45::t_3bb602ddb6c060 62
+assets/app/modules/scenes/editor/components/canvas/SceneCanvas.vue
+  s_aae902ef6fbd45::t_c23f343ed6e00b 3-4,6
+  s_aae902ef6fbd45::t_de68002f11c067 163,171-181
+  s_aae902ef6fbd45::t_12b459fc1be3bd 182
+assets/app/test/shared/command-palette/registry.test.ts
+  s_aae902ef6fbd45::t_2f697b3e0cc0e2 11-16
+  s_aae902ef6fbd45::t_20997d1c9f145e 1-10,17-54,61-63,65-77
+  s_aae902ef6fbd45::t_4650b73203de4c 55-60
+  s_aae902ef6fbd45::t_90331a38c4ade0 64
+lib/storyarn_web/components/layouts.ex
+  s_aae902ef6fbd45::t_9ba9f63286992a 20-38
+  s_aae902ef6fbd45::t_7940037cf1fbfc 19
+lib/storyarn_web/live/hooks/palette_analytics.ex
+  s_aae902ef6fbd45::t_5ceee9ab3a3165 1-60
+test/storyarn/publication/locales_test.exs
+  s_aae902ef6fbd45::t_cac48e6a9785ef 8,116,215
+priv/docs/en/welcome/03-command-palette.md
+  s_aae902ef6fbd45::t_4d9059766e89e8 1-29
+lib/storyarn/docs.ex
+  s_aae902ef6fbd45::t_9ff61e80a3f1d5 6-11,15,17-67
+assets/app/modules/flows/editor/components/chrome/FlowMinimapToggle.vue
+  s_aae902ef6fbd45::t_fc4aa806ebae0f 6-7
+  s_aae902ef6fbd45::t_27633db7e44a11 36-54
+priv/docs/es/ai/01-overview.md
+  s_aae902ef6fbd45::t_3b899b715ae1ad 1-19
+lib/storyarn_web/router.ex
+  s_aae902ef6fbd45::t_f8c9b280f42a06 169
+assets/app/locales/en/palette.json
+  s_aae902ef6fbd45::t_eab9a55952b618 1-9,24-26
+  s_aae902ef6fbd45::t_e07ff462ff93e6 10-23
+priv/docs/en/ai/01-overview.md
+  s_aae902ef6fbd45::t_141656f25fe33e 1-19
+assets/app/shared/command-palette/registry.ts
+  s_aae902ef6fbd45::t_9c2cfb7430adc9 4,14-22
+  s_aae902ef6fbd45::t_8d6dbf2caf365b 1-3,5-13,23-86
+assets/app/components/command-palette/CommandPalette.vue
+  s_aae902ef6fbd45::t_909742dc678cae 1-67,73-100,102-107
+  s_aae902ef6fbd45::t_72e7fb4a85880a 68-72
+  s_aae902ef6fbd45::t_625e2c96af3db6 101
+lib/storyarn_web/components/project_layout.ex
+  s_aae902ef6fbd45::t_64d67eea4720b0 82
+lib/storyarn_web/components/workspace_layout.ex
+  s_aae902ef6fbd45::t_d6978a61dc3444 52
+priv/docs/es/welcome/03-command-palette.md
+  s_aae902ef6fbd45::t_48b011c2d1bcab 1-29
+assets/app/shared/navigation/liveNavigate.ts
+  s_aae902ef6fbd45::t_cc75635ef2419c 1-29
+lib/storyarn/docs/guide_builder.ex
+  s_aae902ef6fbd45::t_cf621d19762ea6 37
+docs/features/ai-platform/SLICE_1_COMMAND_PALETTE.md
+  s_aae902ef6fbd45::t_3bb602ddb6c060 37
+test/storyarn_web/docs_gating_test.exs
+  s_aae902ef6fbd45::t_49084720db2117 1-84
+lib/storyarn/analytics.ex
+  s_aae902ef6fbd45::t_a9b67cf46d7f61 23-25
+test/storyarn_web/live/docs_live/show_test.exs
+  s_aae902ef6fbd45::t_4f19636bc71586 54-60
+assets/app/test/components/command-palette/CommandPalette.test.ts
+  s_aae902ef6fbd45::t_7f51f6f774dea0 175
+  s_aae902ef6fbd45::t_b339ff0fcbdc71 1,3-53,55-58,60-80,82-131,133-141,147-160,170-174,176-184
+  s_aae902ef6fbd45::t_19ab81f17177dd 142-146
+  s_aae902ef6fbd45::t_8d7385eb9315f3 54,59
+  s_aae902ef6fbd45::t_29a641107d0d65 2
+  s_aae902ef6fbd45::t_3dc3ee157514af 81
+  s_aae902ef6fbd45::t_83b275dae60d14 161-169
+  s_aae902ef6fbd45::t_fe9229918cf3e0 132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "99870151a86bf04b86ce279dd82799c0bb5a54c4",
+  "prompts": {},
+  "sessions": {
+    "s_aae902ef6fbd45": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "efa92fc9-57cc-4595-a9fb-359884909f01",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
