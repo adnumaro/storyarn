@@ -2,11 +2,11 @@
 
 ## Objective
 
-A global `Cmd+K` command palette that is **Storyarn's control center**: context-aware commands per editor surface (flows, sheets, scenes, screenplays, localization, dashboards), fuzzy search, keyboard-first. Ships useful with zero AI; later slices register AI actions as just more commands.
+A global `Cmd+K` command palette that is **Storyarn's control center**: context-aware commands per editor surface (flows, sheets, scenes, localization, dashboards), fuzzy search, keyboard-first. Ships useful with zero AI; later slices register AI actions as just more commands.
 
 ## Problem & proposed solution
 
-**Problem:** (a) feature discoverability — capabilities buried in per-surface toolbars/menus; (b) the AI tool catalog (Slices 4–6) needs a home that is not an open chat; (c) five distinct editor surfaces make users re-learn UI per tool.
+**Problem:** (a) feature discoverability — capabilities buried in per-surface toolbars/menus; (b) the AI tool catalog (Slices 4–6) needs a home that is not an open chat; (c) several distinct editor surfaces make users re-learn UI per tool.
 **Solution:** one palette, one interaction model. VSCode/Raycast pattern: typed prefix filters commands; free text falls through to (later) AI actions. Commands declare surface scope, so the palette only offers what applies where you are.
 
 ## Architectural direction

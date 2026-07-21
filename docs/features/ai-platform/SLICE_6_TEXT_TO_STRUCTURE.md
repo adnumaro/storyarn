@@ -20,7 +20,7 @@
 
 ## Existing code to reuse (do not duplicate)
 
-`Storyarn.Imports` parsers + idempotency patterns · `Screenplays.Import.Fountain` (reference for text→entities pipelines) · `Shared.NameNormalizer`, `Storyarn.Shortcuts`, `Shared.ShortcutHelpers` · `Shared.ImportHelpers` · context facades (`Sheets`, `Flows`) + their changesets · `Versioning.SnapshotBuilder`/`SnapshotStorage` · `Ecto.Multi` patterns from existing CRUD · Slice-5 `AiProposalPanel` + acceptance telemetry · Slice-3 context (for matching against EXISTING entities) · `Billing.Limits` pattern for input-size caps.
+`Storyarn.Imports` parsers + idempotency patterns (reference for text→entities pipelines) · `Shared.NameNormalizer`, `Storyarn.Shortcuts`, `Shared.ShortcutHelpers` · `Shared.ImportHelpers` · context facades (`Sheets`, `Flows`) + their changesets · `Versioning.SnapshotBuilder`/`SnapshotStorage` · `Ecto.Multi` patterns from existing CRUD · Slice-5 `AiProposalPanel` + acceptance telemetry · Slice-3 context (for matching against EXISTING entities) · `Billing.Limits` pattern for input-size caps.
 
 ## Applicable conventions (MUST be surfaced in chat during implementation)
 
