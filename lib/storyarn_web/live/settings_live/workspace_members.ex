@@ -13,7 +13,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
   def mount(_params, _session, socket) do
     %{workspace: workspace, membership: membership} = socket.assigns
 
-    if membership.role in ["owner", "admin"] do
+    if Workspaces.can?(membership.role, :access_workspace_settings) do
       members = Workspaces.list_workspace_members(workspace.id)
       pending_invitations = Workspaces.list_pending_invitations(workspace.id)
       invite_changeset = invite_changeset(%{})

@@ -21,9 +21,27 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   # Analytics payloads are allowlist-validated before tracking: a hostile
   # client must not be able to persist free text (story content) through
   # command_id/surface. Surfaces are the finite set of registration owners;
-  # command ids follow the registry's dotted-kebab shape.
+  # command ids must be EXACTLY a known static id or a numeric nav id — a
+  # character-shape regex alone would still let forged hyphenated text
+  # through. New palette commands must be added here to be tracked.
   @known_surfaces ~w(global project workspace flows sheets scenes localization account)
-  @command_id_format ~r/^[a-z0-9._-]{1,100}$/
+
+  @static_command_ids MapSet.new(
+                        ~w(account.profile account.security account.tutorials
+                           workspace.toggle-sidebar flows.toggle-minimap
+                           flows.fit-to-view scenes.fit-to-view) ++
+                          Enum.map(
+                            ~w(dashboard sheets flows scenes assets localization),
+                            &"project.go-to.#{&1}"
+                          ) ++
+                          Enum.map(
+                            ~w(general members localization snapshots version_control
+                               usage_limits import_export trash),
+                            &"project.settings.#{&1}"
+                          )
+                      )
+
+  @nav_command_id_format ~r/^nav\.(workspace|project|project-settings|workspace-settings|sheet|flow|scene)\.\d{1,20}$/
 
   def on_mount(:setup_palette, _params, _session, socket) do
     {:cont,
@@ -51,7 +69,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
               key: "workspace_settings",
               items:
                 destinations.workspaces
-                |> Enum.filter(&Workspaces.can?(&1.role, :manage_workspace))
+                |> Enum.filter(&Workspaces.can?(&1.role, :access_workspace_settings))
                 |> Enum.map(&workspace_settings_item/1)
             },
             %{key: "entities", items: Enum.map(destinations.entities, &nav_item/1)}
@@ -70,7 +88,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
 
   defp handle_palette_event("palette_command_executed", %{"command_id" => command_id, "surface" => surface}, socket)
        when is_binary(command_id) and surface in @known_surfaces do
-    if command_id =~ @command_id_format do
+    if valid_command_id?(command_id) do
       Analytics.track(socket.assigns.current_scope, "palette command executed", %{
         command_id: command_id,
         surface: surface
@@ -91,6 +109,11 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   end
 
   defp handle_palette_event(_event, _params, socket), do: {:cont, socket}
+
+  defp valid_command_id?(command_id) do
+    MapSet.member?(@static_command_ids, command_id) or
+      Regex.match?(@nav_command_id_format, command_id)
+  end
 
   defp nav_item(%{type: :workspace} = dest) do
     %{

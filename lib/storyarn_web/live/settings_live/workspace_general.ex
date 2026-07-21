@@ -17,7 +17,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   def mount(_params, _session, socket) do
     %{workspace: workspace, membership: membership} = socket.assigns
 
-    if membership.role in ["owner", "admin"] do
+    if Workspaces.can?(membership.role, :access_workspace_settings) do
       changeset = Workspaces.change_workspace(workspace)
 
       {:ok,

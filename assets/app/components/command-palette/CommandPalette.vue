@@ -121,7 +121,6 @@ onUnmounted(() => {
 });
 
 function openPalette(): void {
-  query.value = "";
   navGroups.value = [];
   commandFailed.value = false;
   open.value = true;
@@ -131,6 +130,9 @@ function openPalette(): void {
 
 function closePalette(): void {
   open.value = false;
+  // Reset the query on CLOSE, not open: the query watcher ignores changes
+  // while closed, so reopening never invalidates the immediate initial fetch.
+  query.value = "";
 }
 
 function fetchNavDestinations(): void {

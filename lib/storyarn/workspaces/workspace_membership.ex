@@ -67,19 +67,21 @@ defmodule Storyarn.Workspaces.WorkspaceMembership do
 
   Actions:
   - :manage_workspace - update workspace settings, delete workspace
+  - :access_workspace_settings - open the workspace settings pages
   - :manage_members - invite/remove members, change roles
   - :create_project - create new projects
   - :view - view workspace and projects
 
   Permissions:
   - owner: all actions
-  - admin: manage_members, create_project, view
+  - admin: access_workspace_settings, manage_members, create_project, view
   - member: create_project, view
   - viewer: view only
   """
   def can?(role, action)
 
   def can?("owner", _action), do: true
+  def can?("admin", :access_workspace_settings), do: true
   def can?("admin", :manage_members), do: true
   def can?("admin", :create_project), do: true
   def can?("admin", :view), do: true

@@ -90,6 +90,13 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       "surface" => "workspace"
     })
 
+    # Hyphenated forged text passes a character-shape check but not the
+    # exact static/nav allowlist.
+    render_hook(view, "palette_command_executed", %{
+      "command_id" => "mi-historia-secreta-con-guiones",
+      "surface" => "workspace"
+    })
+
     refute_receive {:analytics_capture, %{event: "palette command executed"}}, 100
   end
 
@@ -143,11 +150,13 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
              )
     end
 
-    test "workspace settings only appear for workspaces the user can manage",
+    test "workspace settings appear for owners and admins, never plain members",
          %{view: view, user: user} do
       other_owner = user_fixture()
       member_workspace = workspace_fixture(other_owner)
+      admin_workspace = workspace_fixture(user_fixture())
       Storyarn.Workspaces.create_membership(member_workspace.id, user.id, "member")
+      Storyarn.Workspaces.create_membership(admin_workspace.id, user.id, "admin")
 
       render_hook(view, "palette_nav", %{"query" => "", "token" => 5})
 
@@ -161,6 +170,12 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       refute Enum.any?(
                workspace_settings.items,
                &(&1.id == "nav.workspace-settings.#{member_workspace.id}")
+             )
+
+      # Same criterion as the settings pages (:access_workspace_settings).
+      assert Enum.any?(
+               workspace_settings.items,
+               &(&1.id == "nav.workspace-settings.#{admin_workspace.id}")
              )
     end
 

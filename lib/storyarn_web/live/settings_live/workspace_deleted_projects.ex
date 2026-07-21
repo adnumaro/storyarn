@@ -16,7 +16,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
   def mount(_params, _session, socket) do
     %{workspace: workspace, membership: membership} = socket.assigns
 
-    if membership.role in ["owner", "admin"] do
+    if Workspaces.can?(membership.role, :access_workspace_settings) do
       deleted_projects = Projects.list_deleted_projects(workspace.id)
 
       Phoenix.PubSub.subscribe(
@@ -254,7 +254,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
     user_id = socket.assigns.current_scope.user.id
 
     case Workspaces.get_membership(workspace_id, user_id) do
-      %{role: role} when role in ["owner", "admin"] -> :ok
+      %{role: role} -> if Workspaces.can?(role, :access_workspace_settings), do: :ok, else: {:error, :unauthorized}
       _membership -> {:error, :unauthorized}
     end
   end

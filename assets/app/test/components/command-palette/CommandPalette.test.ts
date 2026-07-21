@@ -263,6 +263,31 @@ describe("CommandPalette", () => {
       expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(false);
     });
 
+    it("reopening after a search shows default results immediately (no debounce delay)", async () => {
+      const { live, wrapper } = mountPalette();
+      navReplyMock(live);
+
+      pressPaletteShortcut();
+      await nextTick();
+      await wrapper.find("[data-slot='command-input']").setValue("old search");
+
+      pressPaletteShortcut(); // close
+      await nextTick();
+      pressPaletteShortcut(); // reopen
+      await nextTick();
+
+      const navCalls = vi
+        .mocked(live.pushEvent)
+        .mock.calls.filter(([event]) => event === "palette_nav");
+      const lastPayload = navCalls.at(-1)![1] as { query: string };
+      expect(lastPayload.query).toBe("");
+
+      const item = wrapper
+        .findAllComponents(CommandItem)
+        .find((candidate) => candidate.props("value") === "nav.project.1");
+      expect(item).toBeDefined();
+    });
+
     it("drops replies whose token does not match the latest request", async () => {
       const { live, wrapper } = mountPalette();
       navReplyMock(live, 999);
