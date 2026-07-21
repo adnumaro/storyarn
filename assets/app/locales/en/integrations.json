@@ -1,0 +1,47 @@
+{
+  "integrations": {
+    "page": {
+      "title": "AI Integrations",
+      "description": "Connect your AI provider accounts to use them from Storyarn. You are billed directly by each provider.",
+      "providers_aria": "AI providers"
+    },
+    "empty": {
+      "description": "No AI providers are available yet."
+    },
+    "card": {
+      "connected_as": "Connected as {identifier}",
+      "not_connected": "Not connected",
+      "connect": "Connect",
+      "disconnect": "Disconnect",
+      "docs": "API docs",
+      "key_suffix": "Key ending in {suffix}"
+    },
+    "connect": {
+      "title": "Connect {name}",
+      "description": "Paste your API key. Storyarn encrypts it at rest and validates it before saving.",
+      "label": "API key",
+      "get_key": "Get your API key",
+      "submit": "Connect",
+      "cancel": "Cancel"
+    },
+    "disconnect": {
+      "title": "Disconnect {name}?",
+      "description": "This removes your stored API key for {name}. You can reconnect anytime.",
+      "confirm": "Disconnect",
+      "cancel": "Keep connected"
+    },
+    "errors": {
+      "invalid_key": "This API key was rejected by the provider. Double-check it and try again.",
+      "network_error": "Could not reach the provider. Check your connection and try again.",
+      "provider_error": "The provider returned an error. Please try again in a moment.",
+      "rate_limited": "Too many attempts. Wait a minute and try again.",
+      "already_connected": "This provider is already connected. Disconnect it first to change the key.",
+      "unknown_provider": "This provider is not supported.",
+      "not_connected": "This provider is not connected.",
+      "invalid_data": "The key format is invalid.",
+      "connection_lost": "Lost connection to the server. Please retry.",
+      "no_target": "No provider selected.",
+      "unknown_error": "Something went wrong. Please try again."
+    }
+  }
+}

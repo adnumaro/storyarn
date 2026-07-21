@@ -95,6 +95,10 @@ defmodule Storyarn.MixProject do
       # Product analytics and error tracking
       {:posthog, "~> 2.0"},
 
+      # Feature flags (Postgres-backed, per-user targeting)
+      {:fun_with_flags, "~> 1.13"},
+      {:fun_with_flags_ui, "~> 1.1", only: :dev},
+
       # Email templates (MJML → HTML via Rust NIF)
       {:mjml, "~> 5.3"},
 

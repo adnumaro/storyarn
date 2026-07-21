@@ -8,6 +8,7 @@ defmodule StoryarnWeb.Components.SettingsLayout do
 
   use StoryarnWeb, :html
 
+  alias Storyarn.FeatureFlags
   alias StoryarnWeb.Live.Shared.OnboardingHelpers
 
   attr :flash, :map, required: true, doc: "the map of flash messages"
@@ -57,6 +58,7 @@ defmodule StoryarnWeb.Components.SettingsLayout do
             @onboarding_autostart
           )
         }
+        feature-flags={feature_flags_for(@current_scope)}
       />
 
       {render_slot(@inner_block)}
@@ -114,4 +116,14 @@ defmodule StoryarnWeb.Components.SettingsLayout do
       slug: Map.get(project, :slug)
     }
   end
+
+  # Serializes per-user feature flag state for the sidebar. Keys are camelCase
+  # to match the Vue Layout prop convention. Extend this map as flags are added.
+  defp feature_flags_for(%{user: user}) when not is_nil(user) do
+    %{
+      aiIntegrations: FeatureFlags.enabled?(:ai_integrations, for: user)
+    }
+  end
+
+  defp feature_flags_for(_scope), do: %{aiIntegrations: false}
 end

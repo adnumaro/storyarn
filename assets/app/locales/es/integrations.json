@@ -1,0 +1,47 @@
+{
+  "integrations": {
+    "page": {
+      "title": "Integraciones IA",
+      "description": "Conecta tus cuentas de proveedores de IA para usarlas desde Storyarn. La facturación va directamente contigo y cada proveedor.",
+      "providers_aria": "Proveedores de IA"
+    },
+    "empty": {
+      "description": "Todavía no hay proveedores de IA disponibles."
+    },
+    "card": {
+      "connected_as": "Conectado como {identifier}",
+      "not_connected": "Sin conectar",
+      "connect": "Conectar",
+      "disconnect": "Desconectar",
+      "docs": "Documentación API",
+      "key_suffix": "Clave terminada en {suffix}"
+    },
+    "connect": {
+      "title": "Conectar {name}",
+      "description": "Pega tu API key. Storyarn la cifra en reposo y la valida contra el proveedor antes de guardarla.",
+      "label": "API key",
+      "get_key": "Consigue tu API key",
+      "submit": "Conectar",
+      "cancel": "Cancelar"
+    },
+    "disconnect": {
+      "title": "¿Desconectar {name}?",
+      "description": "Se eliminará tu API key almacenada para {name}. Puedes reconectar cuando quieras.",
+      "confirm": "Desconectar",
+      "cancel": "Mantener"
+    },
+    "errors": {
+      "invalid_key": "El proveedor rechazó esta API key. Revísala e inténtalo de nuevo.",
+      "network_error": "No se pudo contactar al proveedor. Comprueba tu conexión e inténtalo de nuevo.",
+      "provider_error": "El proveedor devolvió un error. Inténtalo de nuevo en un momento.",
+      "rate_limited": "Demasiados intentos. Espera un minuto y vuelve a intentarlo.",
+      "already_connected": "Este proveedor ya está conectado. Desconéctalo primero para cambiar la clave.",
+      "unknown_provider": "Este proveedor no está soportado.",
+      "not_connected": "Este proveedor no está conectado.",
+      "invalid_data": "El formato de la clave no es válido.",
+      "connection_lost": "Se perdió la conexión con el servidor. Reintenta.",
+      "no_target": "No hay proveedor seleccionado.",
+      "unknown_error": "Algo salió mal. Inténtalo de nuevo."
+    }
+  }
+}
