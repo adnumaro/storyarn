@@ -1,0 +1,51 @@
+lib/storyarn/ai/providers/moonshot.ex
+  s_aae902ef6fbd45::t_6ce6f3c63d90e2 22-23
+lib/storyarn/ai/audit_entry.ex
+  s_aae902ef6fbd45::t_0bb9a1fa6a5bb3 51
+lib/storyarn/ai/providers/deep_l.ex
+  s_aae902ef6fbd45::t_2deb6b4e12e4eb 1-44
+assets/app/live/account/settings/integrations/ConnectKeyDialog.vue
+  s_aae902ef6fbd45::t_387f4b951691e8 140
+  s_aae902ef6fbd45::t_a7041fa7da7d16 72-74,76,79-81
+  s_aae902ef6fbd45::t_00fc8964e6a95a 87-92
+  s_aae902ef6fbd45::t_92799252de900d 82
+lib/storyarn/ai/provider.ex
+  s_aae902ef6fbd45::t_6d3294a5cbf285 15-20,29,36-37
+  s_aae902ef6fbd45::t_6bbf9cfeb98513 14
+lib/storyarn/ai/providers/deep_seek.ex
+  s_aae902ef6fbd45::t_b76a63dc550413 22-23
+test/storyarn/ai/providers/deep_l_test.exs
+  s_aae902ef6fbd45::t_717619006d4ebb 1-55
+lib/storyarn/ai/providers.ex
+  s_aae902ef6fbd45::t_7d87d1b1047957 12,20
+priv/repo/migrations/20260720143500_create_ai_integration_audits.exs
+  s_aae902ef6fbd45::t_67d083b77f2946 11
+lib/storyarn/ai/providers/anthropic.ex
+  s_aae902ef6fbd45::t_a2fceddbd4d5de 25-26
+lib/storyarn/ai/providers/open_ai.ex
+  s_aae902ef6fbd45::t_58eaebef0f2986 24-25
+config/test.exs
+  s_aae902ef6fbd45::t_80a3933146574f 52
+assets/app/test/live/account/settings/ConnectKeyDialog.test.ts
+  s_aae902ef6fbd45::t_7894c45acca6e6 1-95
+lib/storyarn/ai/providers/mistral.ex
+  s_aae902ef6fbd45::t_eaabe6b04dcb13 20-21
+lib/storyarn/ai/providers/google.ex
+  s_aae902ef6fbd45::t_82521b5302347a 25-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "daf9f5ae0bb6798ad3975a182b531b89e795b711",
+  "prompts": {},
+  "sessions": {
+    "s_aae902ef6fbd45": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "efa92fc9-57cc-4595-a9fb-359884909f01",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
