@@ -2,7 +2,7 @@
 
 ## Objective
 
-A global `Cmd+K` command palette that is **Storyarn's control center**: context-aware commands per editor surface (flows, sheets, scenes, localization, dashboards), fuzzy search, keyboard-first. Ships useful with zero AI; later slices register AI actions as just more commands.
+A global command palette (`Meta+K` on macOS, `Ctrl+K` on Windows/Linux — both bindings tested) that is **Storyarn's control center**: context-aware commands per editor surface (flows, sheets, scenes, localization, dashboards), fuzzy search, keyboard-first. Ships useful with zero AI; later slices register AI actions as just more commands.
 
 ## Problem & proposed solution
 
@@ -11,10 +11,10 @@ A global `Cmd+K` command palette that is **Storyarn's control center**: context-
 
 ## Architectural direction
 
-- **Client-side command registry**: each module (`assets/app/modules/{flows,sheets,scenes,…}`) registers its commands (id, i18n label key, icon, scope, handler) into a shared registry composable; the palette component renders from the registry. No hardcoded global list.
+- **Client-side command registry** with an explicit registration owner per declared surface: editor modules under `assets/app/modules/{flows,sheets,scenes,localization}` register their own commands; dashboard/workspace surfaces (which live under `assets/app/live/…`, not `modules/`) register from their page components. Each command: id, i18n label key, icon, scope, handler. No hardcoded global list; a surface without a registration owner is NOT declared in the objective.
 - Handlers are either pure-client (toggle panel, focus node) or LiveView events via `useLive().pushEvent` — reusing each surface's EXISTING event handlers; the palette never introduces new mutation paths.
 - Navigation commands use the LiveVue navigation contract (`data-phx-link` / `LiveLink`) — never raw `window.location`.
-- Global `Cmd+K` listener with guard against input/contenteditable focus (respect `@keydown.stop` conventions from dnd work).
+- Global `Meta+K` (macOS) / `Ctrl+K` (Windows/Linux) listener with guard against input/contenteditable focus (respect `@keydown.stop` conventions from dnd work). Both platform bindings covered by tests.
 - Flag: `:command_palette` (OPEN decision in OVERVIEW — confirm before implementing). Gate both the keybinding and any visible affordance.
 
 ## Existing code to reuse (do not duplicate)

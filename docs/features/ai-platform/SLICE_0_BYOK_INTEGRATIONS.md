@@ -1,6 +1,6 @@
 # Slice 0 — BYOK Provider Integrations + Feature-Flag Foundation
 
-**Status: DONE** — PR #28 (`feat/ai-integrations`). Documented retroactively; this doc is the reference for what later slices inherit.
+**Status: implemented — merge pending (PR #28, `feat/ai-integrations`).** Documented retroactively; this doc is the reference for what later slices inherit. Nothing described here exists on `main` until PR #28 merges.
 
 ## Objective
 
@@ -8,7 +8,7 @@ Users connect their own AI provider accounts via API key (BYOK) in Account Setti
 
 ## Problem & proposed solution
 
-**Problem:** "user-paid AI" originally meant OAuth (Linear-style), but Slice-0 research proved all three major providers closed consumer OAuth for third-party inference in 2026 (Anthropic ToS Feb-2026 + backend blocks; OpenAI partnership-only; Google Vertex-only with heavy friction). Full citations: `docs/features/ai-integrations/PROVIDERS.md`.
+**Problem:** "user-paid AI" originally meant OAuth (Linear-style), but Slice-0 research proved all three major providers closed consumer OAuth for third-party inference in 2026 (Anthropic ToS Feb-2026 + backend blocks; OpenAI partnership-only; Google Vertex-only with heavy friction). Full citations: `docs/features/ai-integrations/PROVIDERS.md` — **ships with PR #28, not on `main` until merge**; until then read it in the PR diff.
 **Solution:** BYOK for six providers (Anthropic, OpenAI, Google/AI-Studio, Kimi/Moonshot, Mistral, DeepSeek) with a Linear-quality card grid, validate-before-persist, Cloak encryption, append-only audit, and `fun_with_flags` for gradual rollout.
 
 ## Architectural direction (as shipped)

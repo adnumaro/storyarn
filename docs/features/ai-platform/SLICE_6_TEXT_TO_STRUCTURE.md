@@ -14,13 +14,13 @@
 - Output schema validated with existing changesets BEFORE preview: proposed names run through `Shortcuts` generators / `NameNormalizer`; collisions resolved or flagged in the preview, never silently.
 - Two-phase like template import: create entities with nil cross-refs, then remap references (project precedent: never insert raw cross-entity FKs from external payloads — the snapshot-materialization lesson).
 - Apply via facades only: `Sheets.create_sheet/2`, `Flows.create_flow/2`, node creation through `Flows` — zero direct Repo writes from the AI layer.
-- Rollback: `Versioning.SnapshotBuilder` snapshot pre-apply; "Undo import" restores it (respecting the restore-policy gates).
+- Rollback: a project snapshot pre-apply **through the `Storyarn.Versioning` facade — `Versioning.create_project_snapshot/3` and `Versioning.restore_project_snapshot/3`** (`SnapshotBuilder` is an internal module with no project-snapshot API of its own; going through the facade keeps snapshot metadata and the restore-policy gates). "Undo import" restores that snapshot.
 - Preview UI: reuse `AiProposalPanel` pattern from Slice 5, extended to tree-shaped proposals; per-item include/exclude checkboxes.
 - Premium-tier task (large context, structured reasoning); price reflects it. Scope gating for Free tier (limits on input size), never quality degradation.
 
 ## Existing code to reuse (do not duplicate)
 
-`Storyarn.Imports` parsers + idempotency patterns (reference for text→entities pipelines) · `Shared.NameNormalizer`, `Storyarn.Shortcuts`, `Shared.ShortcutHelpers` · `Shared.ImportHelpers` · context facades (`Sheets`, `Flows`) + their changesets · `Versioning.SnapshotBuilder`/`SnapshotStorage` · `Ecto.Multi` patterns from existing CRUD · Slice-5 `AiProposalPanel` + acceptance telemetry · Slice-3 context (for matching against EXISTING entities) · `Billing.Limits` pattern for input-size caps.
+`Storyarn.Imports` parsers + idempotency patterns (reference for text→entities pipelines) · `Shared.NameNormalizer`, `Storyarn.Shortcuts`, `Shared.ShortcutHelpers` · `Shared.ImportHelpers` · context facades (`Sheets`, `Flows`) + their changesets · `Storyarn.Versioning` facade (`create_project_snapshot/3` / `restore_project_snapshot/3`) · `Ecto.Multi` patterns from existing CRUD · Slice-5 `AiProposalPanel` + acceptance telemetry · Slice-3 context (for matching against EXISTING entities) · `Billing.Limits` pattern for input-size caps.
 
 ## Applicable conventions (MUST be surfaced in chat during implementation)
 

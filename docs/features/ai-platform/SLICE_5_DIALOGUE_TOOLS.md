@@ -7,7 +7,7 @@
 ## Problem & proposed solution
 
 **Problem:** first _generative mutation_ of project data. Direct AI writes would bypass collaboration locks, undo, and authorization — and without an accept/reject affordance we cannot measure whether AI output is actually used.
-**Solution:** AI never writes directly. `AI.execute(:dialogue_variants)` returns candidates; a proposal panel shows them as diffs against the current text; **Apply** routes through the existing node-update path (locks respected, undo-able, authorized, broadcast to collaborators); every apply/dismiss is recorded as an acceptance event tied to the usage row.
+**Solution:** AI never writes directly. `AI.execute(:dialogue_variants)` returns candidates; a proposal panel shows them as diffs against the current text; **Apply** routes through the existing node-update path (undo-able, authorized, broadcast to collaborators); every apply/dismiss is recorded as an acceptance event tied to the usage row. **Lock caveat: verify at implementation start whether the shared node-update path enforces lock ownership server-side; if enforcement is client-side only, this slice adds the server-side ownership check + conflict response BEFORE reusing the path for AI applies** — "locks respected" must be a tested property, not an assumption.
 
 ## Architectural direction
 
@@ -19,7 +19,7 @@
 
 ## Existing code to reuse (do not duplicate)
 
-Dialogue per-type node module + `NodeCrud`/`NodeUpdate` handlers · `Collaboration.Locks` + `broadcast_change` · `StoryarnWeb.Helpers.UndoRedoStack` · flow context-menu plugin (shipped) · rete↔Vue reactivity contract (`nodeDataVersion`, `reactiveNodeData`) · `ConfirmDialog.vue` (destructive dismiss-all only if needed) · Slice-1 palette · Slice-2 execute/credits · Slice-3 context builder · `Authorize.with_edit_authorization` for apply events.
+Dialogue per-type node module + `NodeCrud`/`NodeUpdate` handlers · `Collaboration.Locks` + `broadcast_change` · **flow-editor history: the Rete `HistoryPlugin`/`NodeDataAction` path (the flow editor does NOT use `StoryarnWeb.Helpers.UndoRedoStack` for node edits — Apply and undo tests must exercise the actual Rete history)** · flow context-menu plugin (shipped) · rete↔Vue reactivity contract (`nodeDataVersion`, `reactiveNodeData`) · `ConfirmDialog.vue` (destructive dismiss-all only if needed) · Slice-1 palette · Slice-2 execute/credits · Slice-3 context builder · `Authorize.with_edit_authorization` for apply events.
 
 ## Applicable conventions (MUST be surfaced in chat during implementation)
 
@@ -38,4 +38,4 @@ Branch `feat/ai-dialogue-tools` from main → PR → merge before Slice 6 (which
 
 ## Inputs from previous slices
 
-Slices 1–3 merged; Slice 4's acceptance affordance precedent. Estimate: **8–12h**.
+Slices 1–4 merged (4 provides the panel/acceptance precedent — reflected in the OVERVIEW dependency table). Estimate: **8–12h**.

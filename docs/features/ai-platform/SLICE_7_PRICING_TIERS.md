@@ -19,7 +19,7 @@ Turn measured telemetry (Slices 2 + 4–6) into the commercial layer: per-plan m
 
 ## Existing code to reuse (do not duplicate)
 
-`Storyarn.Billing.{Plan, Subscription, SubscriptionCrud, Limits}` · Slice-2 `Credits` ledger (purchase = one more append-only entry type) + `Metering` · Oban cron (existing crontab config pattern) · `DashboardContent` / `DashboardStatCard` / `DashboardPanel` shells + `DashboardHelpers` · `Shared.TimeHelpers` · mailer/`Emails` patterns for alerts · PostHog events for funnel analysis.
+`Storyarn.Billing.{Plan, Subscription, SubscriptionCrud, Limits}` · Slice-2 `Credits` ledger (purchase = one more append-only entry type) + `Metering` · Oban cron (existing crontab config pattern) · dashboard shell: **`assets/app/shell/DashboardContent.vue` is the only shell component verified on `main` — re-check what exists at implementation start; if stat-card/panel shells are still absent, create them under `shell/` (component-registry check first) rather than bespoke layouts** · `StoryarnWeb.Live.Shared.DashboardHelpers` · `Shared.TimeHelpers` · mailer/`Emails` patterns for alerts · PostHog events for funnel analysis.
 
 ## Applicable conventions (MUST be surfaced in chat during implementation)
 
