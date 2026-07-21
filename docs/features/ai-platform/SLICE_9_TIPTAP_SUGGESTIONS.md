@@ -7,7 +7,7 @@ Manual-trigger writing suggestions in tiptap-based rich-text editors: the user h
 ## Problem & proposed solution
 
 **Problem:** the blank-page moment is the most common writing friction — but continuous auto-suggest is the most expensive per-user AI pattern (unbounded frequency), which is exactly why it cannot run on platform credits.
-**Solution:** suggestions are explicit, single-shot, and run on the user's key through the Slice-3 lane, resolved via the **Writing-assistant assignment (Slice 4), else the user-marked default AI (if capable), else the explicit connect/assign CTA — no auto-pick**. Trigger → bounded context assembled (surrounding document segment + relevant entities via Slice 5) → one `AI.execute(:writing_suggestion, lane: :byok_only)` call → ghost text rendered inline → Tab/click accepts (insert at cursor + acceptance event), Esc dismisses (dismissal event). **Every suggestion reaches a terminal acceptance outcome: accepted | dismissed | abandoned (cancelled/re-triggered/blurred, recorded as a dismissal reason per the Slice-7 schema) — so the acceptance-rate denominator reconciles 1:1 with metered calls.** Users without a connected key see the connect CTA instead of the trigger affordance.
+**Solution:** suggestions are explicit, single-shot, and run on the user's key through the Slice-3 lane, resolved via the **Writing-assistant assignment (Slice 4), else the user-marked default AI (if capable), else the explicit connect/assign CTA — no auto-pick**. Trigger → bounded context assembled (surrounding document segment + relevant entities via Slice 5) → one `AI.execute(:writing_suggestion, lane: :byok_only)` call → ghost text rendered inline → Tab/click accepts (insert at cursor + acceptance event), Esc dismisses (dismissal event). **Every suggestion reaches a terminal acceptance outcome: accepted | dismissed | abandoned (cancelled/re-triggered/blurred, recorded as a dismissal reason in the Slice-2 acceptance schema) — so the acceptance-rate denominator reconciles 1:1 with metered calls.** Users without a connected key see the connect CTA instead of the trigger affordance.
 
 ## Architectural direction
 
@@ -19,11 +19,11 @@ Manual-trigger writing suggestions in tiptap-based rich-text editors: the user h
 
 ## Existing code to reuse (do not duplicate)
 
-`assets/app/plugins/tiptap/` extension structure + existing editor components · Slice-3 BYOK lane (`AI.execute` with `lane: :byok_only`, consent + badges) · Slice-4 `provider_for/2` (Writing-assistant assignment) · Slice-5 `build_context` (scoped, budget-bounded) · Slice-7 acceptance-event schema · `Storyarn.RateLimiter` (new bucket) · Slice-1 palette registration · `FeatureFlags` · gettext/i18n infra.
+`assets/app/plugins/tiptap/` extension structure + existing editor components · Slice-3 BYOK lane (`AI.execute` with `lane: :byok_only`, consent + badges) · Slice-4 `provider_for/2` (Writing-assistant assignment) · Slice-5 `build_context` (scoped, budget-bounded) · acceptance-event schema (defined in Slice 2's metering design) · `Storyarn.RateLimiter` (new bucket) · Slice-1 palette registration · `FeatureFlags` · gettext/i18n infra.
 
 ## Applicable conventions (MUST be surfaced in chat during implementation)
 
-TypeScript strict, emits over callbacks · tiptap decorations for ghost text (no document mutation before accept) · `@keydown.stop` conventions respected around editor inputs · i18n en/es for CTA/affordances · Lucide icons · authorization: suggestion runs under the user's own scope; the editor's `can_edit` gates the trigger · component registry check before any new UI piece · acceptance events follow the Slice-5 schema, no parallel telemetry shape.
+TypeScript strict, emits over callbacks · tiptap decorations for ghost text (no document mutation before accept) · `@keydown.stop` conventions respected around editor inputs · i18n en/es for CTA/affordances · Lucide icons · authorization: suggestion runs under the user's own scope; the editor's `can_edit` gates the trigger · component registry check before any new UI piece · acceptance events follow the Slice-2 metering schema, no parallel telemetry shape.
 
 ## Observability & error handling
 
@@ -42,4 +42,4 @@ Branch `feat/ai-tiptap-suggestions` from main → PR. Flag: `:ai_integrations` (
 
 ## Inputs from previous slices
 
-Slices 3, 4, 5 merged; Slice 7's acceptance schema. Estimate: **10–14h**.
+Prerequisites: Slices 3, 4, 5 merged before this slice starts (acceptance-event schema comes from Slice 2, already transitively required). Estimate: **10–14h**.

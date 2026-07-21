@@ -9,7 +9,7 @@ Users connect their own AI provider accounts via API key (BYOK) in Account Setti
 ## Problem & proposed solution
 
 **Problem:** "user-paid AI" originally meant OAuth (Linear-style), but Slice-0 research proved all three major providers closed consumer OAuth for third-party inference in 2026 (Anthropic ToS Feb-2026 + backend blocks; OpenAI partnership-only; Google Vertex-only with heavy friction). Full citations: `docs/features/ai-integrations/PROVIDERS.md` — **ships with PR #28, not on `main` until merge**; until then read it in the PR diff.
-**Solution:** BYOK for six providers (Anthropic, OpenAI, Google/AI-Studio, Kimi/Moonshot, Mistral, DeepSeek) with a Linear-quality card grid, validate-before-persist, Cloak encryption, append-only audit, and `fun_with_flags` for gradual rollout.
+**Solution:** BYOK for **seven providers** — six LLM providers (Anthropic, OpenAI, Google/AI-Studio, Kimi/Moonshot, Mistral, DeepSeek) plus DeepL (translation-only, see scope addition below) — with a Linear-quality card grid, validate-before-persist, Cloak encryption, append-only audit, and `fun_with_flags` for gradual rollout.
 **Scope addition (owner-decided 2026-07-21, pending in PR #28):** a seventh card — **DeepL** (`metadata` with capability `[:translation]`, `validate_key/1` against `/v2/usage`, free/pro endpoint handling) so DeepL joins the unified grid before the PR merges. Only the adapter + card land here; the localization consumption switch and legacy `translation_provider_configs` removal are Slice 4's second half.
 
 ## Architectural direction (as shipped)

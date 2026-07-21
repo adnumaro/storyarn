@@ -7,7 +7,7 @@ Generate images (character portraits, concept art) directly into sheet **gallery
 ## Problem & proposed solution
 
 **Problem:** visual reference assets are high-friction for narrative teams, but image inference is expensive and only some providers offer it — the internal credits lane is unviable for it (cost profile + capability), per the lane routing policy.
-**Solution:** an image-capability extension of the provider abstraction, exposed only where the user has a capable key connected. From a gallery block: "Generate image" → prompt composed from the sheet's context (name, description, relevant blocks via Slice 3) + user's free-text direction → BYOK call → preview (not yet stored) → on accept, the image uploads through the `Storyarn.Assets` Storage facade into the gallery block (acceptance event); discard deletes nothing persistent.
+**Solution:** an image-capability extension of the provider abstraction, exposed only where the user has a capable key connected. From a gallery block: "Generate image" → prompt composed from the sheet's context (name, description, relevant blocks via Slice 5) + user's free-text direction → BYOK call → preview (not yet stored) → on accept, the image uploads through the `Storyarn.Assets` Storage facade into the gallery block (acceptance event); discard deletes nothing persistent.
 
 ## Architectural direction
 
@@ -18,7 +18,7 @@ Generate images (character portraits, concept art) directly into sheet **gallery
 
 ## Existing code to reuse (do not duplicate)
 
-`Storyarn.Assets` facade + `Storage` (R2/local) + `ImageProcessor` · gallery block components (sheets) + `BlockComponents` · Slice-3 BYOK lane + consent + badges · Slice-4 `provider_for/2` (Illustrator assignment) · Slice-5 context (sheet scope) · Slice-7/9 acceptance-event schema · upload plumbing patterns (multipart/attach events) · `FeatureFlags` · gettext/i18n infra.
+`Storyarn.Assets` facade + `Storage` (R2/local) + `ImageProcessor` · gallery block components (sheets) + `BlockComponents` · Slice-3 BYOK lane + consent + badges · Slice-4 `provider_for/2` (Illustrator assignment) · Slice-5 context (sheet scope) · acceptance-event schema (defined in Slice 2's metering design; first produced by Slices 6–7) · upload plumbing patterns (multipart/attach events) · `FeatureFlags` · gettext/i18n infra.
 
 ## Applicable conventions (MUST be surfaced in chat during implementation)
 

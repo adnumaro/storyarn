@@ -42,4 +42,4 @@ Branch `feat/ai-dialogue-tools` from main → PR → merge before Slice 8 (which
 
 ## Inputs from previous slices
 
-Slices 1, 2, 5, 6 merged (6 provides the panel/acceptance precedent — reflected in the OVERVIEW dependency table). Estimate: **8–12h**.
+Prerequisites: Slices 1, 2, 5, 6 must be merged before this slice starts (6 provides the panel/acceptance precedent — reflected in the OVERVIEW dependency table). Estimate: **8–12h**.

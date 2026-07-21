@@ -39,7 +39,7 @@ Purchase failures surface the payment provider's error explicitly (no optimistic
 
 ## Delivery
 
-Branch `feat/ai-pricing-tiers` from main → PR. Flag: `:ai_integrations` (commercial surfaces may need their own flag for staged rollout — decide in Stage A memo).
+Branch `feat/ai-pricing-tiers` from main → PR. Flag: `:ai_integrations` — the single AI flag governs commercial surfaces too; staged commercial rollout, if needed, uses per-actor targeting of the SAME flag (FunWithFlags actors), never a second flag.
 
 ## Inputs from previous slices
 
