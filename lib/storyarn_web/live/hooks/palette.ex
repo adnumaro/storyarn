@@ -16,6 +16,14 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
 
   alias Storyarn.Analytics
   alias Storyarn.GlobalSearch
+  alias Storyarn.Workspaces
+
+  # Analytics payloads are allowlist-validated before tracking: a hostile
+  # client must not be able to persist free text (story content) through
+  # command_id/surface. Surfaces are the finite set of registration owners;
+  # command ids follow the registry's dotted-kebab shape.
+  @known_surfaces ~w(global project workspace flows sheets scenes localization account)
+  @command_id_format ~r/^[a-z0-9._-]{1,100}$/
 
   def on_mount(:setup_palette, _params, _session, socket) do
     {:cont,
@@ -41,7 +49,10 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
             %{key: "project_settings", items: Enum.map(destinations.projects, &settings_item/1)},
             %{
               key: "workspace_settings",
-              items: Enum.map(destinations.workspaces, &workspace_settings_item/1)
+              items:
+                destinations.workspaces
+                |> Enum.filter(&Workspaces.can?(&1.role, :manage_workspace))
+                |> Enum.map(&workspace_settings_item/1)
             },
             %{key: "entities", items: Enum.map(destinations.entities, &nav_item/1)}
           ],
@@ -52,23 +63,25 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
     {:halt, reply, socket}
   end
 
-  defp handle_palette_event("palette_opened", %{"surface" => surface}, socket) when is_binary(surface) do
+  defp handle_palette_event("palette_opened", %{"surface" => surface}, socket) when surface in @known_surfaces do
     Analytics.track(socket.assigns.current_scope, "palette opened", %{surface: surface})
     {:halt, socket}
   end
 
   defp handle_palette_event("palette_command_executed", %{"command_id" => command_id, "surface" => surface}, socket)
-       when is_binary(command_id) and is_binary(surface) do
-    Analytics.track(socket.assigns.current_scope, "palette command executed", %{
-      command_id: command_id,
-      surface: surface
-    })
+       when is_binary(command_id) and surface in @known_surfaces do
+    if command_id =~ @command_id_format do
+      Analytics.track(socket.assigns.current_scope, "palette command executed", %{
+        command_id: command_id,
+        surface: surface
+      })
+    end
 
     {:halt, socket}
   end
 
   defp handle_palette_event("palette_search_no_results", %{"query_length" => query_length, "surface" => surface}, socket)
-       when is_integer(query_length) and is_binary(surface) do
+       when is_integer(query_length) and surface in @known_surfaces do
     Analytics.track(socket.assigns.current_scope, "palette search no results", %{
       query_length: query_length,
       surface: surface

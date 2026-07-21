@@ -84,6 +84,15 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
     assert Map.keys(payload.properties) == ["surface"]
   end
 
+  test "free-text command_id is never persisted to analytics", %{view: view} do
+    render_hook(view, "palette_command_executed", %{
+      "command_id" => "mi historia secreta con espacios",
+      "surface" => "workspace"
+    })
+
+    refute_receive {:analytics_capture, %{event: "palette command executed"}}, 100
+  end
+
   describe "palette_nav" do
     test "replies grouped authorized destinations with URLs and echoes the token",
          %{view: view, user: user} do
@@ -131,6 +140,27 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       assert Enum.any?(
                workspace_settings.items,
                &(&1.url == "/users/settings/workspaces/#{workspace.slug}/general")
+             )
+    end
+
+    test "workspace settings only appear for workspaces the user can manage",
+         %{view: view, user: user} do
+      other_owner = user_fixture()
+      member_workspace = workspace_fixture(other_owner)
+      Storyarn.Workspaces.create_membership(member_workspace.id, user.id, "member")
+
+      render_hook(view, "palette_nav", %{"query" => "", "token" => 5})
+
+      assert_reply(view, %{token: 5, groups: groups})
+
+      workspaces = Enum.find(groups, &(&1.key == "workspaces"))
+      assert Enum.any?(workspaces.items, &(&1.id == "nav.workspace.#{member_workspace.id}"))
+
+      workspace_settings = Enum.find(groups, &(&1.key == "workspace_settings"))
+
+      refute Enum.any?(
+               workspace_settings.items,
+               &(&1.id == "nav.workspace-settings.#{member_workspace.id}")
              )
     end
 

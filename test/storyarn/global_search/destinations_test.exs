@@ -85,6 +85,8 @@ defmodule Storyarn.GlobalSearch.DestinationsTest do
       sheet_fixture(project, %{name: "K"})
 
       assert GlobalSearch.destinations(scope, "K").entities == []
+      # Characters, not bytes: one multibyte character is still one character.
+      assert GlobalSearch.destinations(scope, "ñ").entities == []
 
       long_query = String.duplicate("a", 5_000)
       assert %{entities: []} = GlobalSearch.destinations(scope, long_query)

@@ -109,6 +109,9 @@ useKeyboard({
 watch(query, () => {
   if (!open.value) return;
 
+  // Typing immediately invalidates any in-flight request — a reply for the
+  // previous query must never land after the user has kept typing.
+  ++navToken;
   if (navDebounce) clearTimeout(navDebounce);
   navDebounce = setTimeout(() => fetchNavDestinations(), NAV_DEBOUNCE_MS);
 });

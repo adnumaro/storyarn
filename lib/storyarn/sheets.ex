@@ -67,6 +67,7 @@ defmodule Storyarn.Sheets do
   defdelegate search_sheets(project_id, query, opts \\ []), to: SheetQueries
 
   @doc "Cross-project sheet search over a pre-authorized project set (see `Storyarn.GlobalSearch`)."
+  @spec search_sheets_in_projects([integer()], String.t(), keyword()) :: [sheet()]
   defdelegate search_sheets_in_projects(project_ids, query, opts \\ []), to: SheetQueries
 
   @doc """

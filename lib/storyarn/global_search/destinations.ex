@@ -25,6 +25,7 @@ defmodule Storyarn.GlobalSearch.Destinations do
           required(:id) => integer(),
           required(:name) => String.t(),
           required(:workspace_slug) => String.t(),
+          optional(:role) => String.t() | nil,
           optional(:project_slug) => String.t(),
           optional(:project_name) => String.t(),
           optional(:shortcut) => String.t() | nil
@@ -54,8 +55,7 @@ defmodule Storyarn.GlobalSearch.Destinations do
     %{
       workspaces:
         workspace_entries
-        |> Enum.map(& &1.workspace)
-        |> filter_by_name(query)
+        |> Enum.filter(&String.contains?(String.downcase(&1.workspace.name), String.downcase(query)))
         |> Enum.take(limit)
         |> Enum.map(&workspace_destination/1),
       projects:
@@ -75,8 +75,14 @@ defmodule Storyarn.GlobalSearch.Destinations do
     Enum.filter(items, &String.contains?(String.downcase(&1.name), downcased))
   end
 
-  defp workspace_destination(workspace) do
-    %{type: :workspace, id: workspace.id, name: workspace.name, workspace_slug: workspace.slug}
+  defp workspace_destination(%{workspace: workspace, role: role}) do
+    %{
+      type: :workspace,
+      id: workspace.id,
+      name: workspace.name,
+      workspace_slug: workspace.slug,
+      role: role
+    }
   end
 
   defp project_destination(project, workspace_by_id) do
@@ -89,10 +95,17 @@ defmodule Storyarn.GlobalSearch.Destinations do
     }
   end
 
-  defp entity_destinations(projects_by_id, _workspace_by_id, query, _limit)
-       when map_size(projects_by_id) == 0 or byte_size(query) < @min_entity_query_length, do: []
-
   defp entity_destinations(projects_by_id, workspace_by_id, query, limit) do
+    # String.length, not byte_size: a single non-ASCII character must not
+    # slip past the minimum-length threshold for the cross-project searches.
+    if map_size(projects_by_id) == 0 or String.length(query) < @min_entity_query_length do
+      []
+    else
+      run_entity_searches(projects_by_id, workspace_by_id, query, limit)
+    end
+  end
+
+  defp run_entity_searches(projects_by_id, workspace_by_id, query, limit) do
     project_ids = Map.keys(projects_by_id)
     search_opts = [limit: limit]
 
