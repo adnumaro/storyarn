@@ -26,6 +26,17 @@ defmodule Storyarn.Projects.Memberships do
   def get_membership(project_id, user_id), do: MembershipOperations.get_membership(@config, project_id, user_id)
 
   @doc """
+  Resolves the effective project role from a direct project role and a
+  workspace role, with the same precedence as `get_effective_membership/3`:
+  a direct project membership wins; otherwise the workspace role maps to a
+  synthetic project role. Returns `nil` when the user has neither.
+  """
+  def effective_role(project_role, workspace_role)
+  def effective_role(nil, nil), do: nil
+  def effective_role(nil, workspace_role), do: Map.get(@workspace_to_project_role, workspace_role, "viewer")
+  def effective_role(project_role, _workspace_role), do: project_role
+
+  @doc """
   Gets the effective membership for a user on a project.
 
   First checks for a direct ProjectMembership. If none exists, falls back to

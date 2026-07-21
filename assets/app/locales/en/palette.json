@@ -5,9 +5,15 @@
     "placeholder": "Type a command or search…",
     "no_results": "No matching commands",
     "command_failed": "The command failed to run. Try again.",
+    "not_allowed": "You don't have permission to do that.",
+    "limit_reached": "Item limit reached for your plan",
+    "delete_entity": "Delete sheet, flow or scene…",
+    "pick_project_placeholder": "Create in project…",
+    "no_editable_projects": "No projects where you can create content",
     "groups": {
       "navigation": "Navigation",
-      "view": "View"
+      "view": "View",
+      "actions": "Actions"
     },
     "nav": {
       "projects": "Projects",

@@ -127,8 +127,9 @@ describe("CommandPalette", () => {
     pressPaletteShortcut();
     await nextTick();
 
-    const items = wrapper.findAll("[data-slot='command-item']");
-    expect(items).toHaveLength(1);
+    const values = wrapper.findAllComponents(CommandItem).map((item) => item.props("value"));
+    expect(values).toContain("flows.a");
+    expect(values).not.toContain("sheets.b");
     expect(wrapper.find("[data-slot='command-group-heading']").text()).toBe("Navigation");
   });
 
@@ -299,6 +300,232 @@ describe("CommandPalette", () => {
         .findAllComponents(CommandItem)
         .find((candidate) => candidate.props("value") === "nav.project.1");
       expect(item).toBeUndefined();
+    });
+  });
+
+  function selectItem(wrapper: ReturnType<typeof mountPalette>["wrapper"], value: string) {
+    const item = wrapper
+      .findAllComponents(CommandItem)
+      .find((candidate) => candidate.props("value") === value);
+    expect(item, `expected a command item with value ${value}`).toBeDefined();
+    item!.vm.$emit("select", new Event("select"));
+  }
+
+  function itemValues(wrapper: ReturnType<typeof mountPalette>["wrapper"]): string[] {
+    return wrapper.findAllComponents(CommandItem).map((item) => String(item.props("value")));
+  }
+
+  describe("create flow (multi-step)", () => {
+    function createReplyMock(
+      live: LiveInterface,
+      { targets = [{ id: 11, label: "Veilbreak", context: "Acme" }], createReply = {} } = {},
+    ) {
+      vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+        if (!callback) return;
+
+        if (event === "palette_create_targets") {
+          callback({ token: (payload as { token: number }).token, projects: targets });
+        }
+
+        if (event === "palette_create") {
+          callback({ url: "/workspaces/acme/projects/veilbreak/sheets/42", ...createReply });
+        }
+      });
+    }
+
+    it("New Sheet opens the project picker, creates in the chosen project, and navigates", async () => {
+      const { live, wrapper } = mountPalette();
+      createReplyMock(live);
+
+      pressPaletteShortcut();
+      await nextTick();
+
+      selectItem(wrapper, "create.sheet");
+      await nextTick();
+
+      // Picker step: authorized projects with the pending action as heading.
+      const headings = wrapper
+        .findAll("[data-slot='command-group-heading']")
+        .map((heading) => heading.text());
+      expect(headings).toContain("New Sheet");
+
+      selectItem(wrapper, "create-target-11");
+      await nextTick();
+
+      expect(live.pushEvent).toHaveBeenCalledWith(
+        "palette_create",
+        { type: "sheet", project_id: 11 },
+        expect.any(Function),
+      );
+      expect(liveNavigate).toHaveBeenCalledWith("/workspaces/acme/projects/veilbreak/sheets/42");
+      expect(live.pushEvent).toHaveBeenCalledWith(
+        "palette_command_executed",
+        { command_id: "create.sheet", surface: "global" },
+        undefined,
+      );
+      expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(false);
+    });
+
+    it("shows an explicit empty state when no project accepts new content", async () => {
+      const { live, wrapper } = mountPalette();
+      createReplyMock(live, { targets: [] });
+
+      pressPaletteShortcut();
+      await nextTick();
+      selectItem(wrapper, "create.flow");
+      await nextTick();
+
+      expect(wrapper.text()).toContain("No projects where you can create content");
+    });
+
+    it("a limit_reached reply surfaces its specific error and stays open", async () => {
+      const { live, wrapper } = mountPalette();
+      createReplyMock(live, { createReply: { url: undefined, error: "limit_reached" } });
+
+      pressPaletteShortcut();
+      await nextTick();
+      selectItem(wrapper, "create.scene");
+      await nextTick();
+      selectItem(wrapper, "create-target-11");
+      await nextTick();
+
+      expect(wrapper.find('[role="alert"]').text()).toBe("Item limit reached for your plan");
+      expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(true);
+
+      const executedCalls = vi
+        .mocked(live.pushEvent)
+        .mock.calls.filter(([event]) => event === "palette_command_executed");
+      expect(executedCalls).toHaveLength(0);
+    });
+
+    it("Escape inside a step goes back to the root instead of closing", async () => {
+      const { live, wrapper } = mountPalette();
+      createReplyMock(live);
+
+      pressPaletteShortcut();
+      await nextTick();
+      selectItem(wrapper, "create.sheet");
+      await nextTick();
+
+      await wrapper.find("[data-slot='command-input']").trigger("keydown", { key: "Escape" });
+      await nextTick();
+
+      expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(true);
+      expect(itemValues(wrapper)).toContain("create.sheet");
+      expect(itemValues(wrapper)).not.toContain("create-target-11");
+    });
+  });
+
+  describe("delete flow (multi-step, never leaves the palette)", () => {
+    function deleteReplyMock(
+      live: LiveInterface,
+      {
+        deleteReply = { deleted: true },
+      }: { deleteReply?: { deleted?: boolean; error?: string } } = {},
+    ) {
+      vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+        if (!callback) return;
+
+        if (event === "palette_delete_search") {
+          callback({
+            token: (payload as { token: number }).token,
+            items: [
+              {
+                id: 7,
+                type: "sheet",
+                label: "Kael the Wanderer",
+                context: "Veilbreak",
+                projectId: 11,
+              },
+            ],
+          });
+        }
+
+        if (event === "palette_delete") {
+          callback(deleteReply);
+        }
+      });
+    }
+
+    it("lists deletable entities, confirms inline, deletes, and returns to the listing", async () => {
+      const { live, wrapper } = mountPalette();
+      deleteReplyMock(live);
+
+      pressPaletteShortcut();
+      await nextTick();
+      selectItem(wrapper, "palette.delete-entity");
+      await nextTick();
+
+      selectItem(wrapper, "delete-sheet-7");
+      await nextTick();
+
+      // Inline confirm step: title + question with the entity name; the
+      // search input is hidden while confirming.
+      expect(wrapper.text()).toContain("Delete sheet?");
+      expect(wrapper.text()).toContain('Are you sure you want to delete "Kael the Wanderer"?');
+      expect(wrapper.find("[data-slot='command-input']").exists()).toBe(false);
+
+      selectItem(wrapper, "palette.confirm-delete");
+      await nextTick();
+
+      expect(live.pushEvent).toHaveBeenCalledWith(
+        "palette_delete",
+        { type: "sheet", id: 7, project_id: 11 },
+        expect.any(Function),
+      );
+      expect(live.pushEvent).toHaveBeenCalledWith(
+        "palette_command_executed",
+        { command_id: "delete.sheet", surface: "global" },
+        undefined,
+      );
+
+      // Back on the refreshed listing, still inside the palette.
+      expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(true);
+      expect(itemValues(wrapper)).toContain("delete-sheet-7");
+    });
+
+    it("cancel returns to the listing without deleting", async () => {
+      const { live, wrapper } = mountPalette();
+      deleteReplyMock(live);
+
+      pressPaletteShortcut();
+      await nextTick();
+      selectItem(wrapper, "palette.delete-entity");
+      await nextTick();
+      selectItem(wrapper, "delete-sheet-7");
+      await nextTick();
+
+      selectItem(wrapper, "palette.cancel-delete");
+      await nextTick();
+
+      expect(itemValues(wrapper)).toContain("delete-sheet-7");
+
+      const deleteCalls = vi
+        .mocked(live.pushEvent)
+        .mock.calls.filter(([event]) => event === "palette_delete");
+      expect(deleteCalls).toHaveLength(0);
+    });
+
+    it("an unauthorized reply keeps the confirm step with an explicit error", async () => {
+      const { live, wrapper } = mountPalette();
+      deleteReplyMock(live, { deleteReply: { error: "unauthorized" } });
+
+      pressPaletteShortcut();
+      await nextTick();
+      selectItem(wrapper, "palette.delete-entity");
+      await nextTick();
+      selectItem(wrapper, "delete-sheet-7");
+      await nextTick();
+      selectItem(wrapper, "palette.confirm-delete");
+      await nextTick();
+
+      expect(wrapper.find('[role="alert"]').text()).toBe("You don't have permission to do that.");
+      expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(true);
+
+      const executedCalls = vi
+        .mocked(live.pushEvent)
+        .mock.calls.filter(([event]) => event === "palette_command_executed");
+      expect(executedCalls).toHaveLength(0);
     });
   });
 });

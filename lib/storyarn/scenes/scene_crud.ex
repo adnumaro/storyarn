@@ -137,27 +137,38 @@ defmodule Storyarn.Scenes.SceneCrud do
   Searches scenes by name or shortcut across a pre-authorized set of projects.
 
   Callers OWN the authorization of `project_ids` (see `Storyarn.GlobalSearch`);
-  this function never widens the set. Empty queries return no results — the
-  cross-project variant is a search surface, not a browsing one.
+  this function never widens the set. Empty queries list the most recently
+  updated scenes — pickers browse before typing.
   """
   @spec search_scenes_in_projects([integer()], String.t(), keyword()) :: [Scene.t()]
   def search_scenes_in_projects(project_ids, query, opts \\ []) when is_list(project_ids) and is_binary(query) do
     limit = Keyword.get(opts, :limit, @default_search_limit)
     query_str = String.trim(query)
 
-    if project_ids == [] or query_str == "" do
-      []
-    else
-      search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
+    cond do
+      project_ids == [] ->
+        []
 
-      Repo.all(
-        from(m in Scene,
-          where: m.project_id in ^project_ids and is_nil(m.deleted_at),
-          where: ilike(m.name, ^search_term) or ilike(m.shortcut, ^search_term),
-          order_by: [asc: m.name],
-          limit: ^limit
+      query_str == "" ->
+        Repo.all(
+          from(m in Scene,
+            where: m.project_id in ^project_ids and is_nil(m.deleted_at),
+            order_by: [desc: m.updated_at],
+            limit: ^limit
+          )
         )
-      )
+
+      true ->
+        search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
+
+        Repo.all(
+          from(m in Scene,
+            where: m.project_id in ^project_ids and is_nil(m.deleted_at),
+            where: ilike(m.name, ^search_term) or ilike(m.shortcut, ^search_term),
+            order_by: [asc: m.name],
+            limit: ^limit
+          )
+        )
     end
   end
 

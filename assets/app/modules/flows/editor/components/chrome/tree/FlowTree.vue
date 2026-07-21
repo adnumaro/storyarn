@@ -299,7 +299,7 @@ function handleDrop(e: unknown): void {
         <DialogHeader>
           <DialogTitle>{{ $t("flows.tree.delete_title") }}</DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete "{{ pendingDeleteFlow?.name }}"?
+            {{ $t("flows.tree.delete_description", { name: pendingDeleteFlow?.name ?? "" }) }}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

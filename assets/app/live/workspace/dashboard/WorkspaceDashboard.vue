@@ -10,7 +10,7 @@ import {
   Settings,
   Sparkles,
 } from "lucide-vue-next";
-import { computed, ref, watch } from "vue";
+import { computed, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import {
   Dialog,
@@ -24,6 +24,7 @@ import { Input } from "@components/ui/input/index.ts";
 import { Label } from "@components/ui/label/index.ts";
 import { useLiveVue, type Form } from "live_vue";
 import NewProjectForm from "../../project/form/ProjectNewProjectForm.vue";
+import { registerPaletteCommands } from "@shared/command-palette/registry";
 import { formatRelativeTime } from "@shared/utils/date-utils";
 
 interface Workspace {
@@ -218,6 +219,35 @@ function setNewProjectModalOpen(open: boolean) {
   localNewProjectModalOpen.value = open;
   live.pushEvent("set_new_project_modal_open", { open });
 }
+
+// "New Project" can only execute where its modal lives — this dashboard.
+// Palette registration mirrors the header button's visibility (role + plan
+// capacity), so the command is never listed as a no-op.
+let unregisterNewProjectCommand: (() => void) | null = null;
+watch(
+  () => canCreate.value && canCreateProject,
+  (enabled) => {
+    unregisterNewProjectCommand?.();
+    unregisterNewProjectCommand = null;
+
+    if (enabled) {
+      unregisterNewProjectCommand = registerPaletteCommands("workspace", [
+        {
+          id: "create.project",
+          labelKey: "workspace.dashboard.new_project",
+          groupKey: "palette.groups.actions",
+          icon: Plus,
+          run: () => setNewProjectModalOpen(true),
+        },
+      ]);
+    }
+  },
+  { immediate: true },
+);
+
+onUnmounted(() => {
+  unregisterNewProjectCommand?.();
+});
 
 function setNewProjectMode(mode: "blank" | "private" | "public") {
   newProjectMode.value = mode;

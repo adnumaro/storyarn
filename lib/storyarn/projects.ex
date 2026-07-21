@@ -220,6 +220,14 @@ defmodule Storyarn.Projects do
   defdelegate can?(role, action), to: ProjectMembership
 
   @doc """
+  Resolves the effective project role from a direct project role and a
+  workspace role (direct membership wins; workspace roles map to synthetic
+  project roles). Returns `nil` when the user has neither.
+  """
+  @spec effective_role(role() | nil, String.t() | nil) :: role() | nil
+  defdelegate effective_role(project_role, workspace_role), to: Memberships
+
+  @doc """
   Lists all members of a project.
   """
   @spec list_project_members(integer()) :: [membership()]

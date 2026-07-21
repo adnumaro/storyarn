@@ -65,20 +65,20 @@ None (parallel-safe with Slice 2's backend). Estimate: **10–14h**.
 - Analytics/docs/gating from the original scope: shipped as specified above (three allowlisted events, docs facade flag-gating over all four exposure surfaces, palette guide page en/es).
 - Corrections to this doc's original reuse list: `<.kbd>` and the `LucideIcon` map do NOT exist on main (use `CommandShortcut` + direct `lucide-vue-next` imports); "keep the registry client-side" was superseded by the server-driven navigation source; "AI Integrations" is deliberately NOT listed in the palette until it can check the flag (a listed-but-erroring command violates only-list-what-executes).
 
-### Pending — F2 creation commands (est. 3–5h)
+### Shipped — F2 creation + F3 deletion (2026-07-21, follow-up PR on `feat/palette-entity-commands`)
 
-Create project / flow / sheet / scene (empty) from the palette. All creation events EXIST: `set_new_project_modal_open` + `create_project` on `WorkspaceLive.Show`; `create_sheet`/`create_flow`/`create_scene` (+ child variants) on the sheets/flow/scene **sidebar LiveViews**.
+Owner-resolved design (all decided in chat before coding):
 
-- **Open design decision (the only real one — surface to owner before coding):** the palette talks to the MAIN LV, but entity-creation handlers live on the NESTED sidebar LVs. Options: (a) the global `Palette` hook handles `palette_create_*` events calling the same context facades with `with_authorization` (new entry point, same mutation path/facades), or (b) PubSub delegation to the sidebar LV. Lean (a) — simpler, testable, authorization explicit.
-- Create-project from the workspace dashboard = trigger the existing modal (`set_new_project_modal_open`); from inside a project = navigate to the workspace dashboard with the modal open (needs a param or post-nav event).
-- Creating an entity from OUTSIDE its project needs a project-picker step in the palette (multi-step state) — or v1 restricts entity creation to the current project (cheaper; surface the choice).
-- Respect permissions at registration where checkable (`can_edit`), always server-side on execution.
+- **Bridge = (a) global hook → facades**: `Hooks.Palette` gained `palette_create_targets` / `palette_create` / `palette_delete_search` / `palette_delete`. Authorization is domain-composed (`GlobalSearch.editable_project/2`, `deletable_entity/4` re-validate every client-sent id against the editable-project set built from the existing membership queries + `Projects.effective_role/2`, new public delegate). Mutations run through the SAME facades the sidebars call (`Sheets/Flows/Scenes.create_*`/`delete_*`, name `dgettext("<domain>", "Untitled")`), and broadcast the same shell-topic messages (`{:tree_changed, key}` + `{:entity_deleted, id}` via `ProjectChromeHelpers.shell_topic/1`) — plain broadcast, not `broadcast_from`, so the LV serving the palette navigates away when its own open entity is deleted (existing `Show` handlers do this).
+- **Entity creation with project picker from ANYWHERE** (owner chose picker over current-project-only): palette got multi-step state (`root → create-pick-project`, client-side cmdk filtering over the full editable set); create replies `{url}` → `liveNavigate`. Zero editable projects shows an explicit empty state.
+- **Project creation ONLY on the workspace dashboard** (owner reverted the `?new_project=1` idea): `WorkspaceDashboard.vue` registers `create.project` mirroring the header button's visibility (`canCreate && canCreateProject`, role + plan capacity) and triggers the existing modal event.
+- **Deletion = any entity by search, entirely INSIDE the palette (owner, verbatim: "NUNCA SALE DEL PALETTE")**: `root → delete-pick-entity → delete-confirm` with inline destructive confirm reusing `<type>s.tree.delete_title/description/delete`; success returns to the refreshed listing; Escape/Backspace-on-empty walks one step back (the dialog only closes from root). Delete search browses recents on empty query — `search_*_in_projects/3` empty-query contract changed from "no results" to "recent first" (destructive pickers must browse before typing).
+- Analytics: new static ids `create.project|sheet|flow|scene`, `delete.sheet|flow|scene` added to `@static_command_ids` (mandatory for tracking). Server error codes (`unauthorized`, `limit_reached`, `not_found`, `create_failed`, `delete_failed`) map to explicit client messages; `limit_reached`/`unauthorized` have specific texts.
+- Riders: `flows/scenes.tree.delete_description` keys added (en/es) and the hardcoded English literals in `FlowTree.vue`/`SceneTree.vue` confirm dialogs replaced with `$t` (pre-existing i18n drift).
 
-### Pending — F3 deletion commands (est. 2–3h)
-
-Delete the selected/current entity with permissions + confirmation. Events EXIST on the sidebar LVs (`set_pending_delete_*` + `confirm_delete_*`); reuse `ConfirmDialog.vue` (never browser-native). Same bridge decision as F2 applies. Only list the command where it can execute (`can_edit`, entity context present).
+**Known pre-existing issue surfaced (NOT fixed, owner to decide)**: `{:entity_deleted, id}` on the shell topic is type-blind — deleting sheet N navigates away a viewer of flow N in the same project. The sidebars already had this; the palette inherits it for parity.
 
 ### Also pending
 
-- Browser verification of F1 by the owner (palette on ≥2 surfaces; "kael"-style entity jump; workspace-settings gating as member vs owner).
+- Browser verification of F1 by the owner (palette on ≥2 surfaces; "kael"-style entity jump; workspace-settings gating as member vs owner) — plus F2/F3: picker create from the dashboard, in-palette delete of the currently open entity.
 - Sheets/localization surface-specific VIEW commands: none yet (no cheap client-side actions without new plumbing) — the registry mechanism is proven; they register when they have palette-worthy actions.
