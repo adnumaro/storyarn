@@ -28,7 +28,7 @@ defmodule StoryarnWeb.DocsGatingTest do
     end
 
     test "prev/next navigation skips flag-hidden guides" do
-      last_visible = Docs.list_guides() |> List.last()
+      last_visible = List.last(Docs.list_guides())
       assert last_visible.category != "ai"
 
       {_prev, next} = Docs.prev_next(last_visible.category, Enum.join(last_visible.path, "/"))

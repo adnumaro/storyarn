@@ -22,17 +22,12 @@ defmodule StoryarnWeb.Live.Hooks.PaletteAnalytics do
      )}
   end
 
-  defp handle_palette_event("palette_opened", %{"surface" => surface}, socket)
-       when is_binary(surface) do
+  defp handle_palette_event("palette_opened", %{"surface" => surface}, socket) when is_binary(surface) do
     Analytics.track(socket.assigns.current_scope, "palette opened", %{surface: surface})
     {:halt, socket}
   end
 
-  defp handle_palette_event(
-         "palette_command_executed",
-         %{"command_id" => command_id, "surface" => surface},
-         socket
-       )
+  defp handle_palette_event("palette_command_executed", %{"command_id" => command_id, "surface" => surface}, socket)
        when is_binary(command_id) and is_binary(surface) do
     Analytics.track(socket.assigns.current_scope, "palette command executed", %{
       command_id: command_id,
@@ -42,11 +37,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteAnalytics do
     {:halt, socket}
   end
 
-  defp handle_palette_event(
-         "palette_search_no_results",
-         %{"query_length" => query_length, "surface" => surface},
-         socket
-       )
+  defp handle_palette_event("palette_search_no_results", %{"query_length" => query_length, "surface" => surface}, socket)
        when is_integer(query_length) and is_binary(surface) do
     Analytics.track(socket.assigns.current_scope, "palette search no results", %{
       query_length: query_length,
