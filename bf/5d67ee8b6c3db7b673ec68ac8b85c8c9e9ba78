@@ -1,0 +1,21 @@
+lib/storyarn_web/live/hooks/palette_analytics.ex
+  s_aae902ef6fbd45::t_80132022745a8a 25,30,40
+test/storyarn_web/docs_gating_test.exs
+  s_aae902ef6fbd45::t_c23611ca6af877 31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "bf5d67ee8b6c3db7b673ec68ac8b85c8c9e9ba78",
+  "prompts": {},
+  "sessions": {
+    "s_aae902ef6fbd45": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "efa92fc9-57cc-4595-a9fb-359884909f01",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
