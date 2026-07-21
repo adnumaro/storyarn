@@ -36,14 +36,14 @@ function fitToView() {
 const unregisterPaletteCommands = registerPaletteCommands("flows", [
   {
     id: "flows.toggle-minimap",
-    labelKey: "palette.commands.flows.toggle_minimap",
+    labelKey: "flows.minimap.toggle",
     groupKey: "palette.groups.view",
     icon: LayoutGrid,
     run: toggleMinimap,
   },
   {
     id: "flows.fit-to-view",
-    labelKey: "palette.commands.flows.fit_to_view",
+    labelKey: "flows.minimap.fit_view",
     groupKey: "palette.groups.view",
     icon: Maximize2,
     run: fitToView,

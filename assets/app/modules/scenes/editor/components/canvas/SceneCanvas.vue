@@ -171,7 +171,7 @@ const {
 const unregisterPaletteCommands = registerPaletteCommands("scenes", [
   {
     id: "scenes.fit-to-view",
-    labelKey: "palette.commands.scenes.fit_to_view",
+    labelKey: "scenes.canvas.fit_view",
     groupKey: "palette.groups.view",
     icon: Maximize2,
     run: fitToView,

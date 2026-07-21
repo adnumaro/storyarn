@@ -116,6 +116,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       assert "workspaces" in keys
       assert "projects" in keys
       assert "project_settings" in keys
+      assert "workspace_settings" in keys
       refute "entities" in keys
 
       settings = Enum.find(groups, &(&1.key == "project_settings"))
@@ -123,6 +124,13 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       assert Enum.any?(
                settings.items,
                &(&1.url == "/workspaces/#{workspace.slug}/projects/#{project.slug}/settings")
+             )
+
+      workspace_settings = Enum.find(groups, &(&1.key == "workspace_settings"))
+
+      assert Enum.any?(
+               workspace_settings.items,
+               &(&1.url == "/users/settings/workspaces/#{workspace.slug}/general")
              )
     end
 

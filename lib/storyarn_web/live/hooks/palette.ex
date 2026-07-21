@@ -39,6 +39,10 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
             %{key: "workspaces", items: Enum.map(destinations.workspaces, &nav_item/1)},
             %{key: "projects", items: Enum.map(destinations.projects, &nav_item/1)},
             %{key: "project_settings", items: Enum.map(destinations.projects, &settings_item/1)},
+            %{
+              key: "workspace_settings",
+              items: Enum.map(destinations.workspaces, &workspace_settings_item/1)
+            },
             %{key: "entities", items: Enum.map(destinations.entities, &nav_item/1)}
           ],
           &(&1.items == [])
@@ -110,6 +114,15 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
       type: "settings",
       label: dest.name,
       url: ~p"/workspaces/#{dest.workspace_slug}/projects/#{dest.project_slug}/settings"
+    }
+  end
+
+  defp workspace_settings_item(%{type: :workspace} = dest) do
+    %{
+      id: "nav.workspace-settings.#{dest.id}",
+      type: "settings",
+      label: dest.name,
+      url: ~p"/users/settings/workspaces/#{dest.workspace_slug}/general"
     }
   end
 

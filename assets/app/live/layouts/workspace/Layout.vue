@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { PanelLeft, PanelLeftClose, Settings } from "lucide-vue-next";
+import { PanelLeft, PanelLeftClose } from "lucide-vue-next";
 import { onUnmounted, ref, watch } from "vue";
 import OnboardingDialog from "@components/onboarding/OnboardingDialog.vue";
 import WorkspaceSidebar from "@shell/WorkspaceSidebar.vue";
 import type { WorkspaceItem, WorkspaceUser } from "@shell/workspaceLayoutTypes";
-import { registerPaletteCommands, type PaletteCommand } from "@shared/command-palette/registry";
+import { accountPaletteCommands } from "@shared/command-palette/accountCommands";
+import { registerPaletteCommands } from "@shared/command-palette/registry";
 import { useResponsiveSidebar } from "@shared/composables/useResponsiveSidebar";
-import { liveNavigate } from "@shared/navigation/liveNavigate";
 
 const {
   currentUser,
@@ -27,26 +27,19 @@ function showTutorial(): void {
   onboardingDialog.value?.openTutorial();
 }
 
-// Workspace/project switching comes from the server-driven palette_nav
-// results (authorized + searchable everywhere); only surface-local commands
-// register statically here.
-const unregisterPaletteCommands = registerPaletteCommands("workspace", [
-  {
-    id: "workspace.go-to.account-settings",
-    labelKey: "palette.commands.workspace.account_settings",
-    groupKey: "palette.groups.navigation",
-    icon: Settings,
-    run: () => liveNavigate("/users/settings"),
-  },
-]);
+// Workspace/project switching and workspace settings come from the
+// server-driven palette_nav results (authorized + searchable everywhere);
+// only surface-local commands register statically here.
+const unregisterPaletteCommands = registerPaletteCommands("workspace", accountPaletteCommands());
 
 // The dashboard sidebar is force-open on desktop (owner decision), so the
 // toggle can only execute below the breakpoint — the command exists exactly
-// while it can run, never as a listed no-op.
+// while it can run, never as a listed no-op. Its label mirrors the toolbar
+// button's current state (same layout.main_sidebar keys, one name everywhere).
 let unregisterSidebarToggle: (() => void) | null = null;
 watch(
-  desktopSidebarOpen,
-  (desktop) => {
+  [desktopSidebarOpen, sidebarOpen],
+  ([desktop, open]) => {
     unregisterSidebarToggle?.();
     unregisterSidebarToggle = null;
 
@@ -54,9 +47,9 @@ watch(
       unregisterSidebarToggle = registerPaletteCommands("workspace", [
         {
           id: "workspace.toggle-sidebar",
-          labelKey: "palette.commands.workspace.toggle_sidebar",
+          labelKey: open ? "layout.main_sidebar.hide_panel" : "layout.main_sidebar.show_panel",
           groupKey: "palette.groups.view",
-          icon: PanelLeft,
+          icon: open ? PanelLeftClose : PanelLeft,
           run: toggleSidebar,
         },
       ]);

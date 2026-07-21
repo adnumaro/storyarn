@@ -15,6 +15,7 @@ import OnboardingDialog from "@components/onboarding/OnboardingDialog.vue";
 import ProjectNavbarContext from "@shell/ProjectNavbarContext.vue";
 import ProjectNavbarAccount from "@shell/ProjectNavbarAccount.vue";
 import type { CurrentUser, OnlineUser, ProjectLayoutUrls } from "@shell/projectNavbarTypes";
+import { accountPaletteCommands } from "@shared/command-palette/accountCommands";
 import { registerPaletteCommands, type PaletteCommand } from "@shared/command-palette/registry";
 import { liveNavigate } from "@shared/navigation/liveNavigate";
 
@@ -91,7 +92,8 @@ const paletteToolIcons: Record<string, PaletteCommand["icon"]> = {
 };
 
 // Every section of the current project's settings, mirroring the routes
-// under /settings — the server enforces access on entry, same as the navbar.
+// under /settings and reusing the settings shell's own nav labels — one
+// concept, one name. The server enforces access on entry, same as the navbar.
 const settingsSections: Array<{ key: string; suffix: string; icon: PaletteCommand["icon"] }> = [
   { key: "general", suffix: "", icon: Settings },
   { key: "members", suffix: "/members", icon: Settings },
@@ -99,7 +101,7 @@ const settingsSections: Array<{ key: string; suffix: string; icon: PaletteComman
   { key: "snapshots", suffix: "/snapshots", icon: Settings },
   { key: "version_control", suffix: "/version-control", icon: Settings },
   { key: "usage_limits", suffix: "/usage-limits", icon: Settings },
-  { key: "export_import", suffix: "/export-import", icon: Settings },
+  { key: "import_export", suffix: "/export-import", icon: Settings },
   { key: "trash", suffix: "/trash", icon: Trash2 },
 ];
 
@@ -115,14 +117,14 @@ function projectPaletteCommands(): PaletteCommand[] {
   for (const section of settingsSections) {
     toolCommands.push({
       id: `project.settings.${section.key}`,
-      labelKey: `palette.commands.project_settings.${section.key}`,
-      groupKey: "palette.groups.settings",
+      labelKey: `project_settings.nav.items.${section.key}`,
+      groupKey: "layout.project_navbar_context.project_settings",
       icon: section.icon,
       run: () => liveNavigate(`${urls.projectSettings}${section.suffix}`),
     });
   }
 
-  return toolCommands;
+  return toolCommands.concat(accountPaletteCommands());
 }
 
 const unregisterPaletteCommands = registerPaletteCommands("project", projectPaletteCommands());

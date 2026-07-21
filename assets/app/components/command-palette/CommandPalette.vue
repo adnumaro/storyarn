@@ -58,6 +58,21 @@ const navIcons: Record<string, LucideIcon> = {
   scene: MapIcon,
 };
 
+// Group headings reuse the canonical name each concept already has in the
+// UI (sidebar, navbar) — one concept, one name, everywhere.
+const navGroupLabelKeys: Record<string, string> = {
+  workspaces: "workspace.sidebar.my_workspaces",
+  projects: "palette.nav.projects",
+  project_settings: "layout.project_navbar_context.project_settings",
+  workspace_settings: "palette.nav.workspace_settings",
+  entities: "palette.nav.entities",
+};
+
+function navGroupHeading(key: string): string | undefined {
+  const labelKey = navGroupLabelKeys[key];
+  return labelKey ? t(labelKey) : undefined;
+}
+
 const { t } = useI18n();
 const live = useLive();
 
@@ -182,7 +197,7 @@ function track(event: string, payload: Record<string, unknown>): void {
       <CommandGroup
         v-for="group in navGroups"
         :key="`nav-${group.key}`"
-        :heading="t(`palette.nav.${group.key}`)"
+        :heading="navGroupHeading(group.key)"
       >
         <CommandItem
           v-for="item in group.items"

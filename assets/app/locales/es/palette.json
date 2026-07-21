@@ -6,37 +6,12 @@
     "no_results": "No hay comandos que coincidan",
     "groups": {
       "navigation": "Navegación",
-      "view": "Vista",
-      "settings": "Ajustes del proyecto"
+      "view": "Vista"
     },
     "nav": {
-      "workspaces": "Espacios de trabajo",
       "projects": "Proyectos",
-      "project_settings": "Ajustes de proyecto",
+      "workspace_settings": "Ajustes del espacio de trabajo",
       "entities": "Ir a"
-    },
-    "commands": {
-      "flows": {
-        "toggle_minimap": "Mostrar u ocultar el minimapa",
-        "fit_to_view": "Ajustar a la vista"
-      },
-      "scenes": {
-        "fit_to_view": "Ajustar a la vista"
-      },
-      "workspace": {
-        "toggle_sidebar": "Mostrar u ocultar la barra lateral",
-        "account_settings": "Ajustes de cuenta"
-      },
-      "project_settings": {
-        "general": "General",
-        "members": "Miembros",
-        "localization": "Localización",
-        "snapshots": "Snapshots",
-        "version_control": "Control de versiones",
-        "usage_limits": "Límites de uso",
-        "export_import": "Exportar e importar",
-        "trash": "Papelera"
-      }
     }
   }
 }

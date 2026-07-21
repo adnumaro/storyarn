@@ -77,7 +77,9 @@ describe("workspace layout palette commands", () => {
 
     const ids = allCommandIds();
     expect(ids).not.toContain("workspace.toggle-sidebar");
-    expect(ids).toContain("workspace.go-to.account-settings");
+    expect(ids).toContain("account.profile");
+    expect(ids).toContain("account.security");
+    expect(ids).toContain("account.tutorials");
   });
 
   it("below the breakpoint the toggle is listed and actually toggles the sidebar", async () => {
@@ -85,10 +87,14 @@ describe("workspace layout palette commands", () => {
     const wrapper = mountLayout();
     await nextTick();
 
-    const toggle = paletteGroups.value
-      .flatMap((group) => group.commands)
-      .find((command) => command.id === "workspace.toggle-sidebar");
+    const findToggle = () =>
+      paletteGroups.value
+        .flatMap((group) => group.commands)
+        .find((command) => command.id === "workspace.toggle-sidebar");
+
+    const toggle = findToggle();
     expect(toggle).toBeDefined();
+    expect(toggle!.labelKey).toBe("layout.main_sidebar.show_panel");
 
     const aside = wrapper.find("aside");
     expect(aside.attributes("aria-hidden")).toBe("true");
@@ -97,6 +103,8 @@ describe("workspace layout palette commands", () => {
     await nextTick();
 
     expect(aside.attributes("aria-hidden")).toBe("false");
+    // The command's label mirrors the toolbar button's state naming.
+    expect(findToggle()!.labelKey).toBe("layout.main_sidebar.hide_panel");
   });
 
   it("crossing the breakpoint registers/unregisters the toggle live", async () => {
