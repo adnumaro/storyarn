@@ -49,6 +49,7 @@ config :storyarn, Oban, testing: :manual
 # an outbound socket. Each provider adapter has its own stub name so tests can
 # scope expectations per provider.
 config :storyarn, Storyarn.AI.Providers.Anthropic, req_options: [plug: {Req.Test, StoryarnTest.AI.Anthropic}]
+config :storyarn, Storyarn.AI.Providers.DeepL, req_options: [plug: {Req.Test, StoryarnTest.AI.DeepL}]
 config :storyarn, Storyarn.AI.Providers.DeepSeek, req_options: [plug: {Req.Test, StoryarnTest.AI.DeepSeek}]
 config :storyarn, Storyarn.AI.Providers.Google, req_options: [plug: {Req.Test, StoryarnTest.AI.Google}]
 config :storyarn, Storyarn.AI.Providers.Mistral, req_options: [plug: {Req.Test, StoryarnTest.AI.Mistral}]

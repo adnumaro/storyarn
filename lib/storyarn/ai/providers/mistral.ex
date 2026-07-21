@@ -17,7 +17,8 @@ defmodule Storyarn.AI.Providers.Mistral do
       name: "Mistral",
       key_generation_url: "https://console.mistral.ai/api-keys",
       docs_url: "https://docs.mistral.ai/getting-started/quickstart/",
-      key_placeholder: "API key"
+      key_placeholder: "API key",
+      capabilities: [:translation, :suggestions, :tasks]
     }
   end
 

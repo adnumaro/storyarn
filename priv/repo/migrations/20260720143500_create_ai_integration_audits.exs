@@ -8,7 +8,7 @@ defmodule Storyarn.Repo.Migrations.CreateAiIntegrationAudits do
       add :user_id, references(:users, on_delete: :nilify_all)
       # Immutable snapshot of the acting user's id. No FK on purpose — it must
       # survive account deletion (pseudonymous, not direct PII).
-      add :actor_id, :integer, null: false
+      add :actor_id, :bigint, null: false
       add :provider, :string, null: false
       add :action, :string, null: false
       add :metadata, :map, default: %{}, null: false

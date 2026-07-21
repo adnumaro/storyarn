@@ -69,14 +69,27 @@ function handleSubmit(event: Event): void {
   });
 }
 
+// While the connect request is in flight the dialog must not be dismissible:
+// cancelling would only hide the dialog while the server may still persist
+// the key, leaving an integration connected behind the user's back.
 function handleCancel(): void {
+  if (submitting) return;
   emit("cancel");
+}
+
+function blockDismissWhileSubmitting(event: Event): void {
+  if (submitting) event.preventDefault();
 }
 </script>
 
 <template>
   <Dialog v-model:open="localOpen">
-    <DialogContent class="sm:max-w-md">
+    <DialogContent
+      class="sm:max-w-md"
+      @escape-key-down="blockDismissWhileSubmitting"
+      @interact-outside="blockDismissWhileSubmitting"
+      @pointer-down-outside="blockDismissWhileSubmitting"
+    >
       <DialogHeader>
         <DialogTitle class="flex items-center gap-2">
           <KeyRound class="size-5 shrink-0 text-muted-foreground" />
@@ -124,7 +137,7 @@ function handleCancel(): void {
         </p>
 
         <DialogFooter>
-          <Button type="button" variant="outline" @click="handleCancel">
+          <Button type="button" variant="outline" :disabled="submitting" @click="handleCancel">
             {{ t("integrations.connect.cancel") }}
           </Button>
           <Button type="submit" :disabled="!canSubmit">

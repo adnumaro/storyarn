@@ -22,7 +22,8 @@ defmodule Storyarn.AI.Providers.Anthropic do
       name: "Anthropic Claude",
       key_generation_url: "https://platform.claude.com/settings/keys",
       docs_url: "https://docs.claude.com/en/api/getting-started",
-      key_placeholder: "sk-ant-api03-..."
+      key_placeholder: "sk-ant-api03-...",
+      capabilities: [:translation, :suggestions, :tasks]
     }
   end
 

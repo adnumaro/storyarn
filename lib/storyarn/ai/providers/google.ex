@@ -22,7 +22,8 @@ defmodule Storyarn.AI.Providers.Google do
       name: "Google Gemini",
       key_generation_url: "https://aistudio.google.com/apikey",
       docs_url: "https://ai.google.dev/gemini-api/docs/api-key",
-      key_placeholder: "AIza..."
+      key_placeholder: "AIza...",
+      capabilities: [:translation, :suggestions, :tasks, :images]
     }
   end
 

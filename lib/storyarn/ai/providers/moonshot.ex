@@ -19,7 +19,8 @@ defmodule Storyarn.AI.Providers.Moonshot do
       name: "Kimi (Moonshot)",
       key_generation_url: "https://platform.moonshot.ai/console/api-keys",
       docs_url: "https://platform.moonshot.ai/docs",
-      key_placeholder: "sk-..."
+      key_placeholder: "sk-...",
+      capabilities: [:translation, :suggestions, :tasks]
     }
   end
 

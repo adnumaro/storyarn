@@ -19,7 +19,8 @@ defmodule Storyarn.AI.Providers.DeepSeek do
       name: "DeepSeek",
       key_generation_url: "https://platform.deepseek.com/api_keys",
       docs_url: "https://api-docs.deepseek.com/",
-      key_placeholder: "sk-..."
+      key_placeholder: "sk-...",
+      capabilities: [:translation, :suggestions, :tasks]
     }
   end
 

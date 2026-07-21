@@ -9,6 +9,7 @@ defmodule Storyarn.AI.Providers do
 
   alias Storyarn.AI.Provider
   alias Storyarn.AI.Providers.Anthropic
+  alias Storyarn.AI.Providers.DeepL
   alias Storyarn.AI.Providers.DeepSeek
   alias Storyarn.AI.Providers.Google
   alias Storyarn.AI.Providers.Mistral
@@ -16,7 +17,7 @@ defmodule Storyarn.AI.Providers do
   alias Storyarn.AI.Providers.OpenAI
 
   # Order defines the settings-grid card order (not alphabetical on purpose).
-  @adapters [Anthropic, OpenAI, Google, Moonshot, Mistral, DeepSeek]
+  @adapters [Anthropic, OpenAI, Google, Moonshot, Mistral, DeepSeek, DeepL]
 
   @doc "All adapter modules registered with the application."
   @spec adapters() :: [module()]

@@ -12,6 +12,13 @@ defmodule Storyarn.AI.Provider do
   @type id :: atom()
 
   @typedoc """
+  What a provider can be used for. Immutable per provider (owner-decided sets,
+  see `docs/features/ai-platform/OVERVIEW.md` lane policy §5). Consumed by role
+  assignments and lane resolution in later slices.
+  """
+  @type capability :: :translation | :suggestions | :tasks | :images
+
+  @typedoc """
   Static metadata every adapter exposes for the UI and admin surfaces.
 
   * `:id` — machine identifier, matches `id/0`.
@@ -19,13 +26,15 @@ defmodule Storyarn.AI.Provider do
   * `:key_generation_url` — where the user creates their key at the provider.
   * `:docs_url` — provider API documentation entry point.
   * `:key_placeholder` — hint shown in the connect input (safe to render).
+  * `:capabilities` — immutable capability list (never user-configurable).
   """
   @type metadata :: %{
           id: id(),
           name: String.t(),
           key_generation_url: String.t(),
           docs_url: String.t(),
-          key_placeholder: String.t()
+          key_placeholder: String.t(),
+          capabilities: [capability()]
         }
 
   @typedoc """

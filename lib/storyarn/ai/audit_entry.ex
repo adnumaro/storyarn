@@ -48,6 +48,7 @@ defmodule Storyarn.AI.AuditEntry do
     |> cast(attrs, [:user_id, :actor_id, :provider, :action, :metadata])
     |> validate_required([:actor_id, :provider, :action])
     |> validate_inclusion(:action, @actions)
+    |> foreign_key_constraint(:user_id)
   end
 
   @doc "Allowed action strings — used by `Storyarn.AI.Audit` and tests."
