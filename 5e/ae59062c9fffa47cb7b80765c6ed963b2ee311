@@ -1,0 +1,237 @@
+test/support/ai_contract_task.ex
+  s_6112f11c106698::t_60a6513a9688f3 1-29,31-44
+  s_6112f11c106698::t_91f1f98b7c5ddf 30
+lib/storyarn/ai/task_registry.ex
+  s_6112f11c106698::t_06e1498bc03c0b 1-21,33-34,36-38,40-48,50-68
+  s_6112f11c106698::t_88668163c512fb 49
+  s_6112f11c106698::t_1b3b39647f432f 22-32,35,39
+lib/storyarn/ai/operation.ex
+  s_6112f11c106698::t_cfee0c3d3b3648 2
+  s_6112f11c106698::t_59f6ef70da88a9 1,3-15,18-76,78-147,156-157
+  s_6112f11c106698::t_89ec06921e412c 16-17
+  s_6112f11c106698::t_86cc664ee96907 77,148-155
+lib/storyarn/ai/telemetry.ex
+  s_6112f11c106698::t_73fc2697e20924 1-10
+test/support/ai_fake_settlement.ex
+  s_6112f11c106698::t_60a6513a9688f3 1-17
+assets/app/shared/command-palette/aiDestinationRouter.ts
+  s_6112f11c106698::t_8386f4449f5d08 1-43
+lib/storyarn/ai/route_resolver.ex
+  s_6112f11c106698::t_3f8c895fb2668f 17
+  s_6112f11c106698::t_e68aa543cc33fc 1-16,18-19,25-60
+  s_6112f11c106698::t_91f1f98b7c5ddf 20-24
+assets/app/shared/command-palette/registry.ts
+  s_6112f11c106698::t_8386f4449f5d08 3-4,6,20,24-27,33-37,75-79
+config/config.exs
+  s_6112f11c106698::t_91611ae763f483 14,101,112
+  s_6112f11c106698::t_3f8c895fb2668f 120-128
+docs/features/ai-platform/OVERVIEW.md
+  s_6112f11c106698::t_5e4510d512f7ed 33
+lib/storyarn/ai/inference_providers.ex
+  s_6112f11c106698::t_73fc2697e20924 1,3-18
+  s_6112f11c106698::t_cfee0c3d3b3648 2
+lib/storyarn/ai/results.ex
+  s_6112f11c106698::t_853bd92de2936e 124
+  s_6112f11c106698::t_1b3b39647f432f 1,3-52,67-79,81-88,90-123,126-128,142,147,150-190
+  s_6112f11c106698::t_f3e07b494e121d 53-66,89,125
+  s_6112f11c106698::t_cfee0c3d3b3648 2
+  s_6112f11c106698::t_eca5dbfaef2e34 80
+  s_6112f11c106698::t_043686337f9af7 129-141,143-146,148-149
+lib/storyarn/workers/expire_ai_results_worker.ex
+  s_6112f11c106698::t_cfee0c3d3b3648 2
+  s_6112f11c106698::t_1b3b39647f432f 1,3-14
+lib/storyarn/ai/policy.ex
+  s_6112f11c106698::t_f3e07b494e121d 16-17
+  s_6112f11c106698::t_6ff7b5d0ac78b5 29,36-45
+  s_6112f11c106698::t_d4d686cee36602 28,31
+  s_6112f11c106698::t_59f7d450803a49 1,3-15,18-27,30,32-35,46-94
+  s_6112f11c106698::t_cfee0c3d3b3648 2
+test/storyarn/rate_limiter_test.exs
+  s_6112f11c106698::t_16dade8c497bb7 113-127
+lib/storyarn/ai/route_option.ex
+  s_6112f11c106698::t_86cc664ee96907 64,107-112
+  s_6112f11c106698::t_59f6ef70da88a9 1,3-63,65-106,113-114
+  s_6112f11c106698::t_cfee0c3d3b3648 2
+assets/app/test/components/command-palette/CommandPalette.test.ts
+  s_6112f11c106698::t_fad122b3472182 345-347
+  s_6112f11c106698::t_74df6a9b9c21b7 382
+  s_6112f11c106698::t_10151a530a933d 16,83-99,327-344,348-381,383-388
+  s_6112f11c106698::t_bcfb9bfdb2c978 389
+lib/storyarn/ai/execution_intent.ex
+  s_6112f11c106698::t_06e1498bc03c0b 1-112
+lib/storyarn/ai/workspace_policy.ex
+  s_6112f11c106698::t_06e1498bc03c0b 1,3-23,26-35
+  s_6112f11c106698::t_86cc664ee96907 24-25
+  s_6112f11c106698::t_cfee0c3d3b3648 2
+lib/storyarn/ai/execution.ex
+  s_6112f11c106698::t_16dade8c497bb7 18,29
+  s_6112f11c106698::t_ddb602682838ca 168
+  s_6112f11c106698::t_043686337f9af7 32,57-60,69-96
+  s_6112f11c106698::t_f3e07b494e121d 53,236-238
+  s_6112f11c106698::t_2ffe6418c5393b 1,3-17,19-22,25-28,30-31,33-51,54-56,97-104,106-167,169-189,195-235,239-243
+  s_6112f11c106698::t_853bd92de2936e 52,61-68
+  s_6112f11c106698::t_cfee0c3d3b3648 2
+  s_6112f11c106698::t_91f1f98b7c5ddf 23-24,105,190-194
+lib/storyarn/workspaces/workspace_membership.ex
+  s_6112f11c106698::t_3f46dc61a3afb1 73-74,89
+lib/storyarn/ai/task.ex
+  s_6112f11c106698::t_bff99870dab5d1 109,170
+  s_6112f11c106698::t_f3e07b494e121d 4-5,94,102,133-136,145-147,153,160-163
+  s_6112f11c106698::t_d6633bd83eed20 95-101
+  s_6112f11c106698::t_06e1498bc03c0b 1,3,6-93,103-108,110-132,137-144,148-152,154-159,164-169,171-180
+  s_6112f11c106698::t_cfee0c3d3b3648 2
+lib/storyarn/ai/route_options.ex
+  s_6112f11c106698::t_e68aa543cc33fc 1,3-5,7-17,19-35,37-79,81-108,110-116,120,146-155
+  s_6112f11c106698::t_6ff7b5d0ac78b5 117-119,121-145
+  s_6112f11c106698::t_6fb24db2d8dc6c 109
+  s_6112f11c106698::t_cfee0c3d3b3648 2
+  s_6112f11c106698::t_f3e07b494e121d 6,18,36,80
+lib/storyarn/projects/project_membership.ex
+  s_6112f11c106698::t_3f46dc61a3afb1 66-67,79
+lib/storyarn/ai/operations.ex
+  s_6112f11c106698::t_91f1f98b7c5ddf 230-233
+  s_6112f11c106698::t_1b3b39647f432f 288
+  s_6112f11c106698::t_853bd92de2936e 24,36
+  s_6112f11c106698::t_043686337f9af7 42-55,57-109,197,316
+  s_6112f11c106698::t_cfee0c3d3b3648 2
+  s_6112f11c106698::t_f3e07b494e121d 16-17,25,37,164-170,185-191,261-263,273,312-313
+  s_6112f11c106698::t_0dc00baf6ddfbd 118,138,171,192,241,301,310
+  s_6112f11c106698::t_2ffe6418c5393b 1,3-15,18-23,26-35,38-41,56,110-117,119-137,139-163,172-184,193-196,198-229,234-240,242-260,264-272,274-287,289-300,302-309,311,314-315,317-329
+lib/storyarn/projects.ex
+  s_6112f11c106698::t_91611ae763f483 37
+lib/storyarn/ai/usage_event.ex
+  s_6112f11c106698::t_59f6ef70da88a9 1,3-32,35-61
+  s_6112f11c106698::t_86cc664ee96907 33-34
+  s_6112f11c106698::t_cfee0c3d3b3648 2
+lib/storyarn/ai/result.ex
+  s_6112f11c106698::t_cfee0c3d3b3648 2
+  s_6112f11c106698::t_59f6ef70da88a9 1,3-9,11-16,19-44,46-69,76-77
+  s_6112f11c106698::t_f3e07b494e121d 10,17-18
+  s_6112f11c106698::t_86cc664ee96907 45,70-75
+lib/storyarn/ai/inference_providers/fake.ex
+  s_6112f11c106698::t_a302d76c9265fc 32-34
+  s_6112f11c106698::t_73fc2697e20924 1-31,35-39
+assets/app/components/command-palette/CommandPalette.vue
+  s_6112f11c106698::t_41eab2839e1761 26-32,170,315,334,549-592,594-596,603-618,780-795,814,816-817
+  s_6112f11c106698::t_1be92265a6d7f5 25
+test/storyarn/ai/execution_test.exs
+  s_6112f11c106698::t_91f1f98b7c5ddf 150-164,262-275
+  s_6112f11c106698::t_fb0a3537d08654 4
+  s_6112f11c106698::t_65c106156c2af2 1-3,5-15,17,19-21,24-25,28-37,39-128,148-149,165-190,192-201,203-215,227,229-251,253,255-261,276-297,299-320,340-386
+  s_6112f11c106698::t_6fb24db2d8dc6c 16,129-147
+  s_6112f11c106698::t_dffd9091ba6cf3 18,22,321-339
+  s_6112f11c106698::t_a302d76c9265fc 216-226
+  s_6112f11c106698::t_37287550b44945 23,26-27,38,191,202,228,252,254,298
+priv/repo/migrations/20260722190000_create_ai_execution_kernel.exs
+  s_6112f11c106698::t_3f8c895fb2668f 145,226,228
+  s_6112f11c106698::t_b6e3c19c265b2b 1-144,146-225,227,229-297
+lib/storyarn/ai/settlement_adapter.ex
+  s_6112f11c106698::t_cfee0c3d3b3648 2
+  s_6112f11c106698::t_e68aa543cc33fc 1,3-10
+lib/storyarn/rate_limiter.ex
+  s_6112f11c106698::t_16dade8c497bb7 60-66,123-135
+  s_6112f11c106698::t_3627fa790c346e 136
+lib/storyarn/ai/canonical_json.ex
+  s_6112f11c106698::t_6ff7b5d0ac78b5 33
+  s_6112f11c106698::t_91f1f98b7c5ddf 42,44-52
+  s_6112f11c106698::t_06e1498bc03c0b 1-22,24-32,34-41,53-64
+  s_6112f11c106698::t_3f8c895fb2668f 23
+  s_6112f11c106698::t_28456d75206b15 43
+config/test.exs
+  s_6112f11c106698::t_37287550b44945 47-48,72-75
+  s_6112f11c106698::t_60a6513a9688f3 61-71,76
+lib/storyarn/ai/resolved_credential.ex
+  s_6112f11c106698::t_e68aa543cc33fc 1,3-9
+  s_6112f11c106698::t_cfee0c3d3b3648 2
+lib/storyarn/workspaces.ex
+  s_6112f11c106698::t_91611ae763f483 42-43
+test/storyarn/ai/task_registry_test.exs
+  s_6112f11c106698::t_dffd9091ba6cf3 7,43-68
+  s_6112f11c106698::t_91f1f98b7c5ddf 42
+  s_6112f11c106698::t_37287550b44945 8,12,21,23,27
+  s_6112f11c106698::t_65c106156c2af2 1-6,9-11,13-20,22,24-26,28-41,69-70
+lib/storyarn/workers/ai_execution_worker.ex
+  s_6112f11c106698::t_cfee0c3d3b3648 2
+  s_6112f11c106698::t_2ffe6418c5393b 1,3-13
+assets/app/test/shared/command-palette/registry.test.ts
+  s_6112f11c106698::t_85d871c09819dd 8,15
+lib/storyarn/ai/credential_ref.ex
+  s_6112f11c106698::t_cfee0c3d3b3648 2
+  s_6112f11c106698::t_59f7d450803a49 1,3-28
+assets/app/shared/command-palette/aiCommands.ts
+  s_6112f11c106698::t_84348a531ffdb5 52-53,138-142
+  s_6112f11c106698::t_0d7594bc313606 47-50,104
+  s_6112f11c106698::t_85d871c09819dd 67-72
+  s_6112f11c106698::t_8386f4449f5d08 1-46,51,54-66,73-103,105-137,143-178
+lib/storyarn_web/live/hooks/palette.ex
+  s_6112f11c106698::t_7bb98b76d99f07 24,40-41,261-262
+docs/features/ai-platform/SLICE_2_AI_EXECUTION_KERNEL.md
+  s_6112f11c106698::t_5e4510d512f7ed 3-4,165-174
+  s_6112f11c106698::t_c83d0732764f33 175
+test/support/ai_fake_credential_resolver.ex
+  s_6112f11c106698::t_60a6513a9688f3 1-14
+test/storyarn/ai/policy_test.exs
+  s_6112f11c106698::t_65c106156c2af2 1-70,88
+  s_6112f11c106698::t_89ec06921e412c 71-87
+lib/storyarn/ai/execution_route.ex
+  s_6112f11c106698::t_59f7d450803a49 1,3-79
+  s_6112f11c106698::t_cfee0c3d3b3648 2
+assets/app/test/shared/command-palette/aiCommands.test.ts
+  s_6112f11c106698::t_10151a530a933d 1-168
+lib/storyarn/ai/policy_decision.ex
+  s_6112f11c106698::t_f3e07b494e121d 52,163-164
+  s_6112f11c106698::t_91f1f98b7c5ddf 44,51,98
+  s_6112f11c106698::t_fd2b8f4206a0f8 74-75,78
+  s_6112f11c106698::t_6ff7b5d0ac78b5 134-137,140-150,152-154,156-157,159-161,194-197
+  s_6112f11c106698::t_df6775ee14363f 215-219
+  s_6112f11c106698::t_59f7d450803a49 1,3-43,45-50,53-73,76-77,79-97,99-133,138-139,151,162,165-193,198-214,220-223
+  s_6112f11c106698::t_853bd92de2936e 155,158
+  s_6112f11c106698::t_cfee0c3d3b3648 2
+lib/storyarn/ai/inference_provider.ex
+  s_6112f11c106698::t_73fc2697e20924 1,3-31
+  s_6112f11c106698::t_cfee0c3d3b3648 2
+lib/storyarn/ai/task_definition.ex
+  s_6112f11c106698::t_cfee0c3d3b3648 2
+  s_6112f11c106698::t_3f46dc61a3afb1 4-5,11-12,15
+  s_6112f11c106698::t_06e1498bc03c0b 1,3,6-10,13-14,16
+lib/storyarn/ai.ex
+  s_6112f11c106698::t_91611ae763f483 3,8-11,14-15,17-18,20,22,33-48
+lib/storyarn/ai/settlement.ex
+  s_6112f11c106698::t_e68aa543cc33fc 1-12
+lib/storyarn/ai/credential_resolver.ex
+  s_6112f11c106698::t_cfee0c3d3b3648 2
+  s_6112f11c106698::t_e68aa543cc33fc 1,3-13
+test/storyarn_web/live/hooks/palette_test.exs
+  s_6112f11c106698::t_7bb98b76d99f07 67-77
+lib/storyarn/ai/settlement/unavailable.ex
+  s_6112f11c106698::t_e68aa543cc33fc 1-16
+lib/storyarn/ai/workspace_policy_audit.ex
+  s_6112f11c106698::t_06e1498bc03c0b 1,3-24,44,60
+  s_6112f11c106698::t_bff99870dab5d1 25-32,34-43,49-52,59
+  s_6112f11c106698::t_cfee0c3d3b3648 2
+  s_6112f11c106698::t_86cc664ee96907 33,53-58
+  s_6112f11c106698::t_0fb1117e239dc7 45-48
+lib/storyarn/ai/executor.ex
+  s_6112f11c106698::t_ddb602682838ca 56,58
+  s_6112f11c106698::t_a302d76c9265fc 70-72,92-113,115-128
+  s_6112f11c106698::t_cfee0c3d3b3648 2
+  s_6112f11c106698::t_2ffe6418c5393b 1,3-55,57,59-69,73-91,114,129
+lib/storyarn/ai/credential_resolver/unavailable.ex
+  s_6112f11c106698::t_e68aa543cc33fc 1-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "5eae59062c9fffa47cb7b80765c6ed963b2ee311",
+  "prompts": {},
+  "sessions": {
+    "s_6112f11c106698": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b7-96ce-73c1-8639-7be0374aaff0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
