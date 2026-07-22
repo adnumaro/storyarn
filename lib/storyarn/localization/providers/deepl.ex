@@ -133,15 +133,40 @@ defmodule Storyarn.Localization.Providers.DeepL do
   defp translate_with_endpoint([], _source_lang, _target_lang, _config, _api_key, _base_url, _opts), do: {:ok, []}
 
   defp translate_with_endpoint(texts, source_lang, target_lang, config, api_key, base_url, opts) do
+    request = {source_lang, target_lang, config, api_key, base_url, opts}
+
     texts
     |> Enum.with_index()
-    |> Enum.chunk_by(fn {text, _index} -> handling_mode(text) end)
-    |> Enum.reduce_while({:ok, []}, fn segment, {:ok, acc} ->
-      case translate_segment(segment, source_lang, target_lang, config, api_key, base_url, opts) do
-        {:ok, translations} -> {:cont, {:ok, acc ++ translations}}
-        {:error, _reason} = error -> {:halt, error}
-      end
-    end)
+    |> Enum.group_by(fn {text, _index} -> handling_mode(text) end)
+    |> Enum.reduce_while({:ok, []}, &translate_group(&1, &2, request))
+    |> case do
+      {:ok, grouped_translations} ->
+        translations =
+          grouped_translations
+          |> List.flatten()
+          |> Enum.sort_by(&elem(&1, 0))
+          |> Enum.map(&elem(&1, 1))
+
+        {:ok, translations}
+
+      {:error, _reason} = error ->
+        error
+    end
+  end
+
+  defp translate_group({_mode, segment}, {:ok, acc}, {source_lang, target_lang, config, api_key, base_url, opts}) do
+    case translate_segment(segment, source_lang, target_lang, config, api_key, base_url, opts) do
+      {:ok, translations} ->
+        indexed_translations =
+          Enum.zip_with(segment, translations, fn {_text, index}, translation ->
+            {index, translation}
+          end)
+
+        {:cont, {:ok, [indexed_translations | acc]}}
+
+      {:error, _reason} = error ->
+        {:halt, error}
+    end
   end
 
   defp translate_segment(segment, source_lang, target_lang, config, api_key, base_url, opts) do

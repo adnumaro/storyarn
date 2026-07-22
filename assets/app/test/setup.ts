@@ -69,6 +69,7 @@ export function createMockLive(
   return {
     pushEvent: vi.fn(),
     handleEvent: vi.fn(),
+    removeHandleEvent: vi.fn(),
     upload: vi.fn(),
     _props: props,
   };

@@ -23,7 +23,7 @@ import {
   ShieldCheck,
   Table2,
 } from "lucide-vue-next";
-import { computed, ref, watch, type Component } from "vue";
+import { computed, onUnmounted, ref, watch, type Component } from "vue";
 import { Button } from "@components/ui/button";
 import { Checkbox } from "@components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group";
@@ -63,6 +63,9 @@ const {
 
 const live = useLive();
 const validating = ref(false);
+const VALIDATION_TIMEOUT_MS = 15_000;
+let validationTimer: ReturnType<typeof setTimeout> | null = null;
+let validationEpoch = 0;
 
 const formatVisuals: Record<string, FormatVisual> = {
   ink: { icon: Feather },
@@ -235,12 +238,28 @@ function validateExport() {
   if (validating.value || !canExport.value) return;
 
   validating.value = true;
+  const epoch = ++validationEpoch;
   const finish = () => {
+    if (epoch !== validationEpoch) return;
+
+    if (validationTimer) {
+      clearTimeout(validationTimer);
+      validationTimer = null;
+    }
     validating.value = false;
   };
 
+  validationTimer = setTimeout(finish, VALIDATION_TIMEOUT_MS);
   live.pushEvent("validate_export", {}, finish, finish);
 }
+
+onUnmounted(() => {
+  validationEpoch += 1;
+  if (validationTimer) {
+    clearTimeout(validationTimer);
+    validationTimer = null;
+  }
+});
 
 function trackExport() {
   capture("project exported", {

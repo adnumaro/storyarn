@@ -163,4 +163,39 @@ describe("walkable pathfinding", () => {
       target,
     ]);
   });
+
+  it("rejects non-finite and oversized coordinates", () => {
+    const polygon = zone([
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: Number.POSITIVE_INFINITY, y: 10 },
+      { x: 0, y: 10 },
+    ]);
+
+    expect(isPointInWalkableArea({ x: 1, y: 1 }, [polygon])).toBe(false);
+    expect(findShortestWalkablePath({ x: 1, y: 1 }, { x: 2, y: 2 }, [polygon])).toBeNull();
+    expect(findShortestWalkablePath({ x: Number.NaN, y: 1 }, { x: 2, y: 2 }, [])).toBeNull();
+  });
+
+  it("rejects a zone whose vertex count exceeds the pathfinding budget", () => {
+    const vertices = Array.from({ length: 1_025 }, (_, index) => {
+      const angle = (index / 1_025) * Math.PI * 2;
+      return { x: Math.cos(angle) * 100, y: Math.sin(angle) * 100 };
+    });
+
+    expect(findShortestWalkablePath({ x: 0, y: 0 }, { x: 10, y: 10 }, [zone(vertices)])).toBeNull();
+  });
+
+  it("rejects oversized polygon lists before scanning malformed entries", () => {
+    let vertexReads = 0;
+    const polygons = Array.from({ length: 1_025 }, () => ({
+      get vertices() {
+        vertexReads += 1;
+        return [];
+      },
+    }));
+
+    expect(findShortestWalkablePath({ x: 0, y: 0 }, { x: 10, y: 10 }, polygons)).toBeNull();
+    expect(vertexReads).toBe(0);
+  });
 });

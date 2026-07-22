@@ -105,12 +105,12 @@ defmodule StoryarnWeb.PrivateDownload do
 
           {:error, reason} ->
             Logger.warning("Private download client stream failed: #{inspect(reason)}")
-            raise "private download transport failed"
+            {:halt, halt(conn)}
         end
 
-      {:error, reason}, _conn ->
+      {:error, reason}, conn ->
         Logger.error("Private storage stream failed for #{safe_key_label(key)}: #{inspect(reason)}")
-        raise "private storage stream failed"
+        {:halt, halt(conn)}
     end)
   end
 

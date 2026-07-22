@@ -35,6 +35,7 @@ defmodule StoryarnWeb.Router do
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
+    plug :ensure_login_handoff_nonce
     plug :fetch_live_flash
     plug :put_root_layout, html: {StoryarnWeb.Layouts, :root}
     plug :protect_from_forgery
@@ -51,6 +52,20 @@ defmodule StoryarnWeb.Router do
 
   defp put_content_security_policy(conn, _opts) do
     Plug.Conn.put_resp_header(conn, "content-security-policy", csp_policy())
+  end
+
+  defp ensure_login_handoff_nonce(conn, _opts) do
+    case Plug.Conn.get_session(conn, :login_handoff_nonce) do
+      nonce when is_binary(nonce) and nonce != "" ->
+        conn
+
+      _other ->
+        Plug.Conn.put_session(
+          conn,
+          :login_handoff_nonce,
+          Base.url_encode64(:crypto.strong_rand_bytes(32), padding: false)
+        )
+    end
   end
 
   defp put_posthog_user_context(%{assigns: %{current_scope: %{user: %{id: user_id}}}} = conn, _opts) do

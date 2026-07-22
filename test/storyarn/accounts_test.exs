@@ -10,6 +10,7 @@ defmodule Storyarn.AccountsTest do
   alias Storyarn.Accounts.User
   alias Storyarn.Accounts.UserToken
   alias Storyarn.Workers.DeliverResetPasswordInstructionsWorker
+  alias Storyarn.Workers.RequestResetPasswordInstructionsWorker
 
   describe "get_user_by_email/1" do
     test "does not return the user if the email does not exist" do
@@ -213,17 +214,22 @@ defmodule Storyarn.AccountsTest do
       assert user_token.context == "reset_password"
     end
 
-    test "does not disclose missing users" do
+    test "queues the same request worker for a missing email" do
+      email = unique_user_email()
+
       assert {:ok, :queued} =
-               Accounts.deliver_user_reset_password_instructions(nil, fn token ->
+               Accounts.request_user_reset_password_instructions(email, fn token ->
                  "https://example.com/reset/#{token}"
                end)
 
-      refute Repo.exists?(
-               from(job in Oban.Job,
-                 where: job.worker == ^inspect(DeliverResetPasswordInstructionsWorker)
-               )
-             )
+      assert_enqueued(
+        worker: RequestResetPasswordInstructionsWorker,
+        args: %{"email" => email}
+      )
+
+      job = Repo.get_by!(Oban.Job, worker: inspect(RequestResetPasswordInstructionsWorker))
+      assert :ok = perform_job(RequestResetPasswordInstructionsWorker, job.args)
+      refute_enqueued(worker: DeliverResetPasswordInstructionsWorker)
     end
 
     test "replaces previous reset tokens", %{user: user} do

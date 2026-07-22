@@ -4,6 +4,7 @@ defmodule StoryarnWeb.ExportController do
   use StoryarnWeb, :controller
 
   alias Storyarn.Exports
+  alias Storyarn.Exports.SizeGuard
   alias Storyarn.Projects
   alias Storyarn.Shared.NameNormalizer
 
@@ -49,39 +50,98 @@ defmodule StoryarnWeb.ExportController do
     ext = serializer.file_extension()
     filename = "#{slug}.#{ext}"
 
-    conn
-    |> put_resp_content_type(serializer.content_type())
-    |> put_resp_header("content-disposition", ~s(attachment; filename="#{filename}"))
-    |> send_resp(200, output)
+    case validate_export_size(byte_size(output), SizeGuard.max_sync_export_bytes()) do
+      :ok ->
+        conn
+        |> put_resp_content_type(serializer.content_type())
+        |> put_resp_header("content-disposition", ~s(attachment; filename="#{filename}"))
+        |> send_resp(200, output)
+
+      {:error, {:export_too_large, _details}} ->
+        conn |> put_status(413) |> text(gettext("Export is too large"))
+    end
   end
 
-  # sobelow_skip ["XSS.ContentType", "XSS.SendResp"]
+  # The ZIP path is generated internally by zip_files_to_disk/1 from
+  # System.tmp_dir!/0 and a unique integer; it never contains request input.
+  # sobelow_skip ["Traversal.FileModule", "XSS.ContentType", "XSS.SendResp"]
   # Multi-file output (list of {filename, content} tuples)
   defp send_export(conn, files, slug, format, _serializer) when is_list(files) do
     filename = "#{slug}-#{format}.zip"
 
-    case zip_files(filename, files) do
-      {:ok, zip_content} ->
-        conn
-        |> put_resp_content_type("application/zip", nil)
-        |> put_resp_header("content-disposition", ~s(attachment; filename="#{filename}"))
-        |> send_resp(200, zip_content)
+    case zip_files_to_disk(files) do
+      {:ok, zip_path} ->
+        try do
+          conn
+          |> put_resp_content_type("application/zip", nil)
+          |> put_resp_header("content-disposition", ~s(attachment; filename="#{filename}"))
+          |> send_chunked(200)
+          |> stream_zip_file(zip_path)
+        after
+          File.rm(zip_path)
+        end
+
+      {:error, {:export_too_large, _details}} ->
+        conn |> put_status(413) |> text(gettext("Export is too large"))
 
       {:error, _reason} ->
         conn |> put_status(:unprocessable_entity) |> text(gettext("Export failed"))
     end
   end
 
-  defp zip_files(filename, files) do
-    entries =
-      Enum.map(files, fn {entry_filename, content} ->
-        {String.to_charlist(entry_filename), IO.iodata_to_binary(content)}
-      end)
+  defp zip_files_to_disk(files) do
+    max_bytes = SizeGuard.max_sync_export_bytes()
 
-    with {:ok, {_zip_filename, zip_content}} <-
-           :zip.create(String.to_charlist(filename), entries, [:memory]) do
-      {:ok, zip_content}
+    with {:ok, total_bytes} <- export_size(files),
+         :ok <- validate_export_size(total_bytes, max_bytes) do
+      zip_path =
+        Path.join(
+          System.tmp_dir!(),
+          "storyarn-export-#{System.unique_integer([:positive, :monotonic])}.zip"
+        )
+
+      entries =
+        Enum.map(files, fn {entry_filename, content} ->
+          {String.to_charlist(entry_filename), IO.iodata_to_binary(content)}
+        end)
+
+      case :zip.create(String.to_charlist(zip_path), entries) do
+        {:ok, _zip_filename} -> {:ok, zip_path}
+        {:error, _reason} = error -> error
+      end
     end
+  end
+
+  defp export_size(files) do
+    Enum.reduce_while(files, {:ok, 0}, fn
+      {entry_filename, content}, {:ok, total} when is_binary(entry_filename) ->
+        try do
+          {:cont, {:ok, total + IO.iodata_length(content)}}
+        rescue
+          ArgumentError -> {:halt, {:error, :invalid_export_content}}
+        end
+
+      _entry, _acc ->
+        {:halt, {:error, :invalid_export_content}}
+    end)
+  end
+
+  defp validate_export_size(total_bytes, max_bytes) when total_bytes <= max_bytes, do: :ok
+
+  defp validate_export_size(total_bytes, max_bytes),
+    do: {:error, {:export_too_large, %{bytes: total_bytes, max_bytes: max_bytes}}}
+
+  # zip_path is the internally generated path returned by zip_files_to_disk/1.
+  # sobelow_skip ["Traversal.FileModule"]
+  defp stream_zip_file(conn, zip_path) do
+    zip_path
+    |> File.stream!(64 * 1024, [])
+    |> Enum.reduce_while(conn, fn data, conn ->
+      case chunk(conn, data) do
+        {:ok, conn} -> {:cont, conn}
+        {:error, _reason} -> {:halt, halt(conn)}
+      end
+    end)
   end
 
   defp parse_format(format_str) do

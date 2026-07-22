@@ -439,11 +439,31 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
 
   def materialize_in_transaction(_project, data, _opts) when is_map(data), do: {:error, :import_plan_required}
 
+  @doc false
+  def materialize_locked_project_in_transaction(project, plan, opts \\ [])
+
+  def materialize_locked_project_in_transaction(%Project{deleted_at: nil} = project, %ImportPlan{data: data} = plan, opts) do
+    cond do
+      not Repo.in_transaction?() -> {:error, :import_transaction_required}
+      ImportPlan.error?(plan) -> {:error, :import_plan_has_errors}
+      true -> materialize_validated_project(project, data, opts)
+    end
+  end
+
+  def materialize_locked_project_in_transaction(%Project{}, %ImportPlan{}, _opts), do: {:error, :project_not_active}
+
+  def materialize_locked_project_in_transaction(_project, data, _opts) when is_map(data),
+    do: {:error, :import_plan_required}
+
   defp do_materialize_in_transaction(project, data, opts) do
+    with {:ok, project} <- lock_active_import_project(project),
+         do: materialize_validated_project(project, data, opts)
+  end
+
+  defp materialize_validated_project(project, data, opts) do
     strategy = Keyword.get(opts, :conflict_strategy, :skip)
 
-    with {:ok, project} <- lock_active_import_project(project),
-         :ok <- validate_structure(data),
+    with :ok <- validate_structure(data),
          :ok <- validate_types(data),
          :ok <- validate_runtime_identifiers(data),
          :ok <- validate_entity_counts(data) do

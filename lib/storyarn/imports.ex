@@ -691,7 +691,7 @@ defmodule Storyarn.Imports do
        when status in ["queued", "running", "retrying"] do
     with {:ok, running} <- mark_running(attempt),
          {:ok, result} <-
-           StoryarnJSONParser.materialize_in_transaction(project, plan,
+           StoryarnJSONParser.materialize_locked_project_in_transaction(project, plan,
              conflict_strategy: strategy_atom(running.conflict_strategy)
            ),
          :ok <- run_before_attempt_completion(opts),
@@ -703,13 +703,14 @@ defmodule Storyarn.Imports do
 
   defp materialize_locked_attempt(_attempt, _project, _plan, _opts), do: {:error, :import_not_queued}
 
-  # Locking both rows prevents project deletion, role changes, or membership
-  # removal from racing the materialization after the background recheck.
+  # Lock the project exclusively before the membership and attempt. Besides
+  # preventing deletion, this serializes all imports into the same project and
+  # avoids upgrading the project lock after the attempt row is held.
   defp authorize_worker_locked(attempt, user) do
     with %Project{} = project <-
            Project
            |> where([candidate], candidate.id == ^attempt.project_id and is_nil(candidate.deleted_at))
-           |> lock("FOR SHARE")
+           |> lock("FOR UPDATE")
            |> Repo.one(),
          %ProjectMembership{} = locked_membership <-
            ProjectMembership

@@ -43,6 +43,63 @@ defmodule Storyarn.Versioning.EntityRestoreLockConcurrencyTest do
     )
   end
 
+  test "hard_delete_flow locks Project before Flow and serializes with restore" do
+    %{user: user, project: project, deleted: deleted} =
+      build_deleted_entity("flow-hard-delete", fn project ->
+        flow = flow_fixture(project)
+        assert {:ok, deleted} = Flows.delete_flow(flow)
+        deleted
+      end)
+
+    on_exit(fn -> cleanup_project(user, project) end)
+
+    parent = self()
+    barrier = make_ref()
+
+    entity_gate =
+      Task.async(fn ->
+        Sandbox.unboxed_run(Repo, fn ->
+          hold_entity_lock(Flow, deleted.id, parent, barrier)
+        end)
+      end)
+
+    assert_receive {^barrier, :entity_locked, gate_backend_pid}, @timeout
+
+    hard_deleter =
+      Task.async(fn ->
+        Sandbox.unboxed_run(Repo, fn ->
+          [[backend_pid]] = Repo.query!("SELECT pg_backend_pid()").rows
+          send(parent, {barrier, :hard_deleter_ready, backend_pid})
+          Flows.hard_delete_flow(deleted)
+        end)
+      end)
+
+    assert_receive {^barrier, :hard_deleter_ready, hard_deleter_backend_pid}, @timeout
+    assert wait_until_blocked_by(hard_deleter_backend_pid, gate_backend_pid)
+    assert project_row_locked?(project.id)
+
+    restorer =
+      Task.async(fn ->
+        Sandbox.unboxed_run(Repo, fn ->
+          [[backend_pid]] = Repo.query!("SELECT pg_backend_pid()").rows
+          send(parent, {barrier, :restorer_ready, backend_pid})
+          Flows.restore_flow(deleted)
+        end)
+      end)
+
+    assert_receive {^barrier, :restorer_ready, restorer_backend_pid}, @timeout
+    assert wait_until_blocked_by(restorer_backend_pid, hard_deleter_backend_pid)
+
+    send(entity_gate.pid, {barrier, :release_gate})
+
+    assert {:ok, hard_deleted} = Task.await(hard_deleter, @timeout)
+    assert hard_deleted.id == deleted.id
+    assert {:error, :flow_not_deleted} = Task.await(restorer, @timeout)
+    assert {:ok, :released} = Task.await(entity_gate, @timeout)
+
+    refute Sandbox.unboxed_run(Repo, fn -> Repo.get(Flow, deleted.id) end)
+  end
+
   test "restore_sequence locks Project before FlowNode and serializes with a stale delete" do
     %{user: user, project: project, deleted: deleted} =
       build_deleted_entity("sequence", fn project ->

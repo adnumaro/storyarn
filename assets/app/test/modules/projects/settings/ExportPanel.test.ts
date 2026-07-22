@@ -1,5 +1,5 @@
 import { mount } from "@vue/test-utils";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockLive } from "../../../setup";
 import type { ExportPanelProps } from "../../../../modules/projects/settings/export-import/types";
 
@@ -57,6 +57,10 @@ function mountPanel(props = baseProps()) {
 describe("ExportPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("summarizes only content supported by the selected format", () => {
@@ -135,6 +139,42 @@ describe("ExportPanel", () => {
 
     const callback = vi.mocked(live.pushEvent).mock.calls[0]?.[2];
     callback?.({});
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.get('[data-testid="validate-export"]').text()).toContain("Validate");
+  });
+
+  it("clears validation progress when LiveView drops the reply", async () => {
+    vi.useFakeTimers();
+    const { wrapper } = mountPanel();
+
+    await wrapper.get('[data-testid="validate-export"]').trigger("click");
+    expect(wrapper.get('[data-testid="validate-export"]').text()).toContain("Validating");
+
+    vi.advanceTimersByTime(15_000);
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.get('[data-testid="validate-export"]').text()).toContain("Validate");
+  });
+
+  it("ignores a stale validation reply after a new validation starts", async () => {
+    vi.useFakeTimers();
+    const { live, wrapper } = mountPanel();
+
+    await wrapper.get('[data-testid="validate-export"]').trigger("click");
+    const staleCallback = vi.mocked(live.pushEvent).mock.calls[0]?.[2];
+
+    vi.advanceTimersByTime(15_000);
+    await wrapper.vm.$nextTick();
+    await wrapper.get('[data-testid="validate-export"]').trigger("click");
+
+    staleCallback?.({});
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.get('[data-testid="validate-export"]').text()).toContain("Validating");
+
+    const currentCallback = vi.mocked(live.pushEvent).mock.calls[1]?.[2];
+    currentCallback?.({});
     await wrapper.vm.$nextTick();
 
     expect(wrapper.get('[data-testid="validate-export"]').text()).toContain("Validate");

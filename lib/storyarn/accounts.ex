@@ -179,9 +179,21 @@ defmodule Storyarn.Accounts do
   @doc """
   Queues reset password instructions for the given user.
   """
-  @spec deliver_user_reset_password_instructions(user() | nil, (String.t() -> String.t())) ::
+  @spec deliver_user_reset_password_instructions(user(), (String.t() -> String.t())) ::
           {:ok, :queued} | {:error, term()}
   defdelegate deliver_user_reset_password_instructions(user, reset_password_url_fun), to: Passwords
+
+  @doc """
+  Queues a reset request without synchronously revealing whether the email exists.
+  """
+  @spec request_user_reset_password_instructions(String.t(), (String.t() -> String.t())) ::
+          {:ok, :queued} | {:error, term()}
+  defdelegate request_user_reset_password_instructions(email, reset_password_url_fun), to: Passwords
+
+  @doc false
+  @spec process_user_reset_password_request(String.t(), String.t()) ::
+          :ok | {:ok, :queued} | {:error, term()}
+  defdelegate process_user_reset_password_request(email, reset_url_template), to: Passwords
 
   @doc false
   @spec decrypt_reset_password_url(String.t()) :: {:ok, String.t()} | {:error, :invalid_reset_password_url}

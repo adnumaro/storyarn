@@ -56,6 +56,32 @@ defmodule Storyarn.Localization.Providers.DeepLTest do
       assert_receive {:request_size, 1}
     end
 
+    test "partitions alternating plain and HTML texts without changing output order" do
+      test_pid = self()
+
+      Req.Test.stub(__MODULE__, fn conn ->
+        {body, conn} = read_json(conn)
+        mode = if body["tag_handling"] == "html", do: :html, else: :plain
+        send(test_pid, {:translation_request, mode, body["text"]})
+
+        translations =
+          Enum.map(body["text"], &%{text: "translated:#{&1}", detected_source_language: "EN"})
+
+        Req.Test.json(conn, %{translations: translations})
+      end)
+
+      texts = ["one", "<strong>two</strong>", "three", "<em>four</em>"]
+
+      assert {:ok, translations} = DeepL.translate(texts, "en", "es", config())
+
+      assert Enum.map(translations, & &1.text) ==
+               Enum.map(texts, &"translated:#{&1}")
+
+      assert_receive {:translation_request, :plain, ["one", "three"]}
+      assert_receive {:translation_request, :html, ["<strong>two</strong>", "<em>four</em>"]}
+      refute_receive {:translation_request, _, _}
+    end
+
     test "splits requests before the encoded body reaches the safety limit" do
       test_pid = self()
 

@@ -66,15 +66,34 @@ defmodule StoryarnWeb.UserSessionControllerTest do
 
     test "logs the user in with a validated LiveView login token", %{conn: conn, user: user} do
       user = set_password(user)
-      login_token = StoryarnWeb.UserLoginToken.sign_user(user)
+      session_nonce = "originating-browser-session"
+      login_token = StoryarnWeb.UserLoginToken.sign_user(user, session_nonce)
 
       conn =
-        post(conn, ~p"/users/log-in", %{
+        conn
+        |> init_test_session(login_handoff_nonce: session_nonce)
+        |> post(~p"/users/log-in", %{
           "user" => %{"_login_token" => login_token}
         })
 
       assert get_session(conn, :user_token)
       assert redirected_to(conn) =~ "/workspaces/"
+    end
+
+    test "rejects a LiveView login token replayed from another browser session", %{conn: conn, user: user} do
+      user = set_password(user)
+      login_token = StoryarnWeb.UserLoginToken.sign_user(user, "originating-browser-session")
+
+      conn =
+        conn
+        |> init_test_session(login_handoff_nonce: "attacker-browser-session")
+        |> post(~p"/users/log-in", %{
+          "user" => %{"_login_token" => login_token}
+        })
+
+      refute get_session(conn, :user_token)
+      assert Phoenix.Flash.get(conn.assigns.flash, :login_error) == "Invalid email or password"
+      assert redirected_to(conn) == ~p"/users/log-in"
     end
 
     test "ignores a blank LiveView login token when credentials are present", %{conn: conn, user: user} do

@@ -200,7 +200,8 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
           if self() == pid do
             lock =
               cond do
-                String.contains?(query, ~s(FROM "projects")) and String.contains?(query, "FOR SHARE") ->
+                String.contains?(query, ~s(FROM "projects")) and
+                    String.contains?(query, "FOR UPDATE") ->
                   :project
 
                 String.contains?(query, ~s(FROM "project_memberships")) and
