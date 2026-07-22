@@ -1,0 +1,59 @@
+lib/storyarn/flows.ex
+  s_601e46785f4b81::t_9df2ed8a57d7f6 1336-1337,1346-1354
+lib/storyarn/shared/trashable.ex
+  s_6112f11c106698::t_30d7f05ed4a90f 15-17,104-105
+test/storyarn/flows/entity_trash_refs_test.exs
+  s_7d17843f59d188::t_e3c120864ba597 164-196,200,204-209,212-218,220,227-230
+test/storyarn/flows/flow_restore_integrity_test.exs
+  s_6112f11c106698::t_eff7e0e4ef0581 241-290
+lib/storyarn/flows/entity_trash_refs.ex
+  s_2ed6d988dc0ed9::t_e12654676a69fa 214-216,228-232,241-245,260-317,327-331,336,346-353,356,359-360,362,394-401,445-492,636-648,650-663,666
+lib/storyarn/flows/flow_crud.ex
+  s_2ed6d988dc0ed9::t_b25568698ed9cc 30-36,554,571-576,725,730,734-739,741,743,745-752,757-773
+lib/storyarn/versioning/builders/project_snapshot_builder.ex
+  s_2ed6d988dc0ed9::t_a86a59dac95556 178-183,233,281,298,315,335-336
+lib/storyarn/versioning/project_snapshot_restore_plan.ex
+  s_2ed6d988dc0ed9::t_9fa669799e260c 7,23-39,101,106,484-641
+test/storyarn/versioning/project_snapshot_exact_restore_test.exs
+  s_2ed6d988dc0ed9::t_3ab79d5d6e72a8 77,85-88,97,100,107-111,113-119,122,131-138,147,154-162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "bb2379ca7101e121a85b2082ddbbc5185da96c7c",
+  "prompts": {},
+  "sessions": {
+    "s_2ed6d988dc0ed9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f899c-c586-75f3-b83b-3a7d91e8fa7f",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_601e46785f4b81": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b4-a630-7780-b438-bc2aa3d9363e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_6112f11c106698": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b7-96ce-73c1-8639-7be0374aaff0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_7d17843f59d188": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fbf-1c01-7451-82e0-8923d01cb5fe",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
