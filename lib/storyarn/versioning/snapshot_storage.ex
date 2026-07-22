@@ -38,11 +38,51 @@ defmodule Storyarn.Versioning.SnapshotStorage do
         ) ::
           {:ok, String.t(), integer()} | {:error, term()}
   def store_snapshot(project_id, entity_type, entity_id, version_number, snapshot, suffix, opts) when is_list(opts) do
+    with {:ok, key, size_bytes, _checksum} <-
+           store_snapshot_with_checksum(
+             project_id,
+             entity_type,
+             entity_id,
+             version_number,
+             snapshot,
+             suffix,
+             opts
+           ) do
+      {:ok, key, size_bytes}
+    end
+  end
+
+  @doc """
+  Stores a snapshot and returns the checksum of the exact compressed bytes.
+
+  Entity-version metadata persists this digest so restore and comparison paths
+  can reject missing, truncated, or replaced objects before decoding them.
+  """
+  @spec store_snapshot_with_checksum(
+          integer(),
+          String.t(),
+          integer(),
+          integer(),
+          map(),
+          String.t() | nil,
+          keyword()
+        ) ::
+          {:ok, String.t(), integer(), String.t()} | {:error, term()}
+  def store_snapshot_with_checksum(
+        project_id,
+        entity_type,
+        entity_id,
+        version_number,
+        snapshot,
+        suffix \\ nil,
+        opts \\ []
+      )
+      when is_list(opts) do
     key = build_key(project_id, entity_type, entity_id, version_number, suffix)
 
-    with {:ok, compressed, size_bytes, _checksum} <- encode_snapshot(snapshot, opts),
+    with {:ok, compressed, size_bytes, checksum} <- encode_snapshot(snapshot, opts),
          {:ok, _url} <- Storage.upload(key, compressed, "application/gzip") do
-      {:ok, key, size_bytes}
+      {:ok, key, size_bytes, checksum}
     end
   end
 
@@ -501,6 +541,24 @@ defmodule Storyarn.Versioning.SnapshotStorage do
   end
 
   def project_key?(_storage_key, _project_id, _version_number), do: false
+
+  @doc """
+  Returns whether a storage key belongs to the exact entity-version identity.
+
+  Both deterministic legacy keys and attempt-owned suffixed keys are accepted.
+  """
+  @spec entity_key?(term(), term(), term(), term(), term()) :: boolean()
+  def entity_key?(storage_key, project_id, entity_type, entity_id, version_number)
+      when is_binary(storage_key) and is_integer(project_id) and project_id > 0 and entity_type in ~w(sheet flow scene) and
+             is_integer(entity_id) and entity_id > 0 and is_integer(version_number) and version_number > 0 do
+    base =
+      "projects/#{project_id}/snapshots/#{entity_type}/#{entity_id}/#{version_number}"
+
+    storage_key == "#{base}.json.gz" or
+      Regex.match?(~r/\A#{Regex.escape(base)}-[0-9a-f]{16}\.json\.gz\z/, storage_key)
+  end
+
+  def entity_key?(_storage_key, _project_id, _entity_type, _entity_id, _version_number), do: false
 
   defp version_segment(version_number, nil), do: to_string(version_number)
   defp version_segment(version_number, ""), do: to_string(version_number)

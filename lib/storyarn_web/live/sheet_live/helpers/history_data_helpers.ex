@@ -95,7 +95,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.HistoryDataHelpers do
          versionNumber: version.version_number
        })}
     else
-      show_conflict_preview(socket, version, true)
+      show_conflict_preview(socket, version, false)
     end
   end
 

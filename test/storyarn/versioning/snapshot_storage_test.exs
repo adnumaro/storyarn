@@ -15,6 +15,26 @@ defmodule Storyarn.Versioning.SnapshotStorageTest do
       assert size_bytes > 0
     end
 
+    test "returns the checksum when requested by entity versioning" do
+      snapshot = %{"name" => "Bound entity version"}
+
+      assert {:ok, key, size_bytes, checksum} =
+               SnapshotStorage.store_snapshot_with_checksum(
+                 1,
+                 "sheet",
+                 42,
+                 1,
+                 snapshot
+               )
+
+      assert key == "projects/1/snapshots/sheet/42/1.json.gz"
+      assert size_bytes > 0
+      assert checksum =~ ~r/\A[0-9a-f]{64}\z/
+
+      assert {:ok, ^snapshot, ^checksum} =
+               SnapshotStorage.load_verified_snapshot(key, size_bytes, checksum)
+    end
+
     test "stores snapshots with a unique suffix when provided" do
       snapshot = %{"name" => "Test"}
 
@@ -316,6 +336,48 @@ defmodule Storyarn.Versioning.SnapshotStorageTest do
     test "builds an attempt-owned key when a suffix is provided" do
       assert SnapshotStorage.build_key(5, "flow", 10, 3, "deadbeef") ==
                "projects/5/snapshots/flow/10/3-deadbeef.json.gz"
+    end
+
+    test "recognizes only keys for the exact entity-version identity" do
+      assert SnapshotStorage.entity_key?(
+               "projects/5/snapshots/sheet/10/3.json.gz",
+               5,
+               "sheet",
+               10,
+               3
+             )
+
+      assert SnapshotStorage.entity_key?(
+               "projects/5/snapshots/sheet/10/3-0123456789abcdef.json.gz",
+               5,
+               "sheet",
+               10,
+               3
+             )
+
+      refute SnapshotStorage.entity_key?(
+               "projects/6/snapshots/sheet/10/3-0123456789abcdef.json.gz",
+               5,
+               "sheet",
+               10,
+               3
+             )
+
+      refute SnapshotStorage.entity_key?(
+               "projects/5/snapshots/flow/10/3-0123456789abcdef.json.gz",
+               5,
+               "sheet",
+               10,
+               3
+             )
+
+      refute SnapshotStorage.entity_key?(
+               "projects/5/snapshots/sheet/10/3-not-owned.json.gz",
+               5,
+               "sheet",
+               10,
+               3
+             )
     end
   end
 

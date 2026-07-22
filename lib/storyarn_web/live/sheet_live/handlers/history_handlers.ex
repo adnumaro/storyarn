@@ -84,7 +84,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
   def handle_discard_and_restore(%{"version_number" => version_number}, socket, _helpers) do
     VersionEventHelpers.with_authorized_restore(socket, "sheet", fn authorized_socket ->
       with_version(authorized_socket, version_number, fn version ->
-        show_conflict_preview(authorized_socket, version, true)
+        show_conflict_preview(authorized_socket, version, false)
       end)
     end)
   end
@@ -171,30 +171,18 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
   end
 
   defp save_and_show_restore(socket, version) do
-    %{sheet: sheet, project: project, current_scope: current_scope} = socket.assigns
-
-    case Versioning.create_version("sheet", sheet, project.id, current_scope.user.id,
-           title: dgettext("versioning", "Before restore to v%{number}", number: version.version_number),
-           skip_diff: true
-         ) do
-      {:ok, _} ->
-        show_conflict_preview(socket, version, true)
-
-      {:error, _} ->
-        {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not save current state."))}
-    end
+    # Capture and verify the safety version at final confirmation. Creating it
+    # while this modal opens would leave a race window for collaborator edits.
+    show_conflict_preview(socket, version, false)
   end
 
-  defp restore_version(socket, version, params, helpers) do
+  defp restore_version(socket, version, _params, helpers) do
     sheet = socket.assigns.sheet
-    skip_pre_snapshot = params["skip_pre_snapshot"] in [true, "true"]
+    restore_fun = Map.get(helpers, :restore_version, &Versioning.restore_version/4)
 
-    case Versioning.restore_version("sheet", sheet, version,
-           user_id: socket.assigns.current_scope.user.id,
-           skip_pre_snapshot: skip_pre_snapshot
-         ) do
+    case restore_fun.("sheet", sheet, version, user_id: socket.assigns.current_scope.user.id) do
       {:ok, _updated_entity} ->
-        track_version_event(socket, "version restored", %{skip_pre_snapshot: skip_pre_snapshot})
+        track_version_event(socket, "version restored", %{skip_pre_snapshot: false})
 
         on_version_restored(socket, version, helpers)
 
@@ -206,6 +194,33 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
            dgettext(
              "versioning",
              "Could not create safety backup before restoring. Restore aborted."
+           )
+         )}
+
+      {:error, :sheet_changed_since_pre_restore_snapshot} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext(
+             "versioning",
+             "The sheet changed while restore was being prepared. Review the latest changes and try again."
+           )
+         )}
+
+      {:error, reason}
+      when reason in [
+             :pre_restore_version_not_durable,
+             :pre_restore_version_identity_mismatch,
+             :invalid_pre_restore_version_identity
+           ] ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext(
+             "versioning",
+             "The safety backup is no longer available. Restore was aborted. Please try again."
            )
          )}
 

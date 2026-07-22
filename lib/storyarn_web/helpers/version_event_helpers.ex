@@ -89,7 +89,7 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpers do
             config.entity_type,
             entity(authorized_socket, config),
             version,
-            true
+            false
           )
         end,
         missing: :noop
@@ -218,26 +218,21 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpers do
   end
 
   defp save_and_show_restore(socket, config, version) do
-    %{project: project, current_scope: current_scope} = socket.assigns
-
-    case Versioning.create_version(config.entity_type, entity(socket, config), project.id, current_scope.user.id,
-           title: dgettext("versioning", "Before restore to v%{n}", n: version.version_number),
-           skip_diff: true
-         ) do
-      {:ok, _version} ->
-        VersionHistoryHelpers.show_conflict_preview(socket, config.entity_type, entity(socket, config), version, true)
-
-      {:error, _reason} ->
-        {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not save current state."))}
-    end
+    VersionHistoryHelpers.show_conflict_preview(
+      socket,
+      config.entity_type,
+      entity(socket, config),
+      version,
+      false
+    )
   end
 
-  defp restore_version(socket, config, version, params) do
-    skip = params["skip_pre_snapshot"] in [true, "true"]
-
-    case Versioning.restore_version(config.entity_type, entity(socket, config), version, skip_pre_snapshot: skip) do
+  defp restore_version(socket, config, version, _params) do
+    case Versioning.restore_version(config.entity_type, entity(socket, config), version,
+           user_id: socket.assigns.current_scope.user.id
+         ) do
       {:ok, _} ->
-        track_version_event(socket, config, "version restored", %{skip_pre_snapshot: skip})
+        track_version_event(socket, config, "version restored", %{skip_pre_snapshot: false})
 
         {:noreply,
          socket
