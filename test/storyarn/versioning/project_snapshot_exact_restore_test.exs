@@ -74,6 +74,41 @@ defmodule Storyarn.Versioning.ProjectSnapshotExactRestoreTest do
       assert Localization.get_texts_for_source("flow_node", node.id) == []
     end
 
+    test "keeps owned content recoverable when a post-snapshot root moves to trash", %{
+      project: project
+    } do
+      snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
+
+      sheet = sheet_fixture(project, %{name: "Recoverable sheet"})
+      block = block_fixture(sheet, %{value: %{"content" => "Recoverable block"}})
+      flow = flow_fixture(project, %{name: "Recoverable flow"})
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Recoverable node"}})
+      scene = scene_fixture(project, %{name: "Recoverable scene"})
+      layer = layer_fixture(scene, %{"name" => "Recoverable layer"})
+
+      assert {:ok, _result} =
+               ProjectSnapshotBuilder.restore_snapshot(project.id, snapshot)
+
+      assert %Sheet{deleted_at: %DateTime{}} = Repo.get!(Sheet, sheet.id)
+      assert %Flow{deleted_at: %DateTime{}} = Repo.get!(Flow, flow.id)
+      assert %Scene{deleted_at: %DateTime{}} = Repo.get!(Scene, scene.id)
+
+      # Owned rows remain recovery state behind the trashed roots. Treating
+      # them as independently deleted would make the normal trash restore
+      # paths lose content that the user explicitly asked to recover.
+      assert Repo.get!(Block, block.id).deleted_at == nil
+      assert Repo.get!(FlowNode, node.id).deleted_at == nil
+      assert Repo.get!(Storyarn.Scenes.SceneLayer, layer.id)
+
+      assert {:ok, _restored_sheet} = Sheets.restore_sheet(Repo.get!(Sheet, sheet.id))
+      assert {:ok, _restored_flow} = Flows.restore_flow(Repo.get!(Flow, flow.id))
+      assert {:ok, _restored_scene} = Scenes.restore_scene(Repo.get!(Scene, scene.id))
+
+      assert Enum.any?(Sheets.list_blocks(sheet.id), &(&1.id == block.id))
+      assert Enum.any?(Flows.list_nodes(flow.id), &(&1.id == node.id))
+      assert Enum.any?(Scenes.list_layers(scene.id), &(&1.id == layer.id))
+    end
+
     test "fails before writes when snapshot root IDs have divergent state in trash", %{
       project: project
     } do
