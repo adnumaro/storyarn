@@ -339,8 +339,13 @@ defmodule Storyarn.Versioning.VersionCrud do
   @spec delete_version(EntityVersion.t()) :: {:ok, EntityVersion.t()} | {:error, term()}
   def delete_version(%EntityVersion{id: version_id}) when is_integer(version_id) and version_id > 0 do
     case Repo.get(EntityVersion, version_id) do
-      %EntityVersion{} = persisted_version -> delete_persisted_version(persisted_version)
-      nil -> {:error, :entity_version_not_found}
+      %EntityVersion{} = persisted_version ->
+        with :ok <- validate_version_storage_key(persisted_version) do
+          delete_persisted_version(persisted_version)
+        end
+
+      nil ->
+        {:error, :entity_version_not_found}
     end
   end
 

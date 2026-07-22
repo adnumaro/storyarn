@@ -225,6 +225,27 @@ defmodule Storyarn.Versioning.VersionCrudTest do
       assert {:ok, _snapshot} = Versioning.load_version_snapshot(second)
       assert Repo.get!(EntityVersion, second.id).storage_key == second.storage_key
     end
+
+    test "rejects a corrupted persisted key before deleting the record or unrelated blob", %{
+      sheet: sheet,
+      project: project,
+      user: user
+    } do
+      {:ok, first} = Versioning.create_version("sheet", sheet, project.id, user.id)
+      {:ok, second} = Versioning.create_version("sheet", sheet, project.id, user.id)
+
+      Repo.update_all(
+        from(version in EntityVersion, where: version.id == ^first.id),
+        set: [storage_key: second.storage_key]
+      )
+
+      assert {:error, :entity_version_storage_key_mismatch} =
+               Versioning.delete_version(first)
+
+      assert Repo.get(EntityVersion, first.id)
+      assert Repo.get(EntityVersion, second.id)
+      assert {:ok, _snapshot} = Versioning.load_version_snapshot(second)
+    end
   end
 
   describe "load_version_snapshot/1" do

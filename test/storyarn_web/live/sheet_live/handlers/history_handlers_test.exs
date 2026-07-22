@@ -5,9 +5,12 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlersTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Phoenix.LiveView.Socket
+  alias Storyarn.Accounts.Scope
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Versioning
+  alias StoryarnWeb.SheetLive.Handlers.HistoryHandlers
 
   setup :register_and_log_in_user
 
@@ -119,5 +122,56 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlersTest do
       assert Enum.any?(versions, &(&1.title =~ "Before restore"))
       assert Enum.any?(versions, &(&1.title =~ "Restored from"))
     end
+
+    test "explains concurrent changes and missing safety backups", %{
+      user: user,
+      project: project,
+      sheet: sheet
+    } do
+      {:ok, version} =
+        Versioning.create_version("sheet", sheet, project.id, user.id, title: "Restore target")
+
+      cases = [
+        {:sheet_changed_since_pre_restore_snapshot,
+         "The sheet changed while restore was being prepared. Review the latest changes and try again."},
+        {:pre_restore_version_not_durable,
+         "The safety backup is no longer available. Restore was aborted. Please try again."}
+      ]
+
+      for {reason, message} <- cases do
+        socket = handler_socket(user, project, sheet)
+
+        helpers = %{
+          restore_version: fn "sheet", received_sheet, received_version, opts ->
+            assert received_sheet.id == sheet.id
+            assert received_version.id == version.id
+            assert opts[:user_id] == user.id
+            {:error, reason}
+          end
+        }
+
+        assert {:noreply, result} =
+                 HistoryHandlers.handle_confirm_restore(
+                   %{"version_number" => to_string(version.version_number)},
+                   socket,
+                   helpers
+                 )
+
+        assert result.assigns.flash["error"] == message
+      end
+    end
+  end
+
+  defp handler_socket(user, project, sheet) do
+    %Socket{
+      assigns: %{
+        __changed__: %{},
+        flash: %{},
+        current_scope: Scope.for_user(user),
+        membership: %{role: "owner"},
+        project: project,
+        sheet: sheet
+      }
+    }
   end
 end

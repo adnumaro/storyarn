@@ -93,6 +93,16 @@ msgstr "Restaurado desde v%{number}"
 msgid "Restored to version %{number}"
 msgstr "Restaurado a versión %{number}"
 
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:223
+#, elixir-autogen, elixir-format
+msgid "The safety backup is no longer available. Restore was aborted. Please try again."
+msgstr "La copia de seguridad ya no está disponible. La restauración se canceló. Inténtalo de nuevo."
+
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:207
+#, elixir-autogen, elixir-format
+msgid "The sheet changed while restore was being prepared. Review the latest changes and try again."
+msgstr "La ficha cambió mientras se preparaba la restauración. Revisa los últimos cambios e inténtalo de nuevo."
+
 #: lib/storyarn_web/live/flow_live/show.ex:455
 #: lib/storyarn_web/live/scene_live/show.ex:703
 #: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:52
