@@ -169,7 +169,7 @@ defmodule StoryarnWeb.RestoreContainmentTest do
     assert Versioning.count_project_snapshots(project.id) == 1
   end
 
-  test "project snapshot lifecycle starts before an inline worker can complete", %{
+  test "project snapshot lifecycle starts before a synchronous worker can complete", %{
     user: user,
     scope: scope
   } do
@@ -196,10 +196,21 @@ defmodule StoryarnWeb.RestoreContainmentTest do
       |> Phoenix.Component.assign(:current_scope, scope)
       |> Phoenix.Component.assign(:restoration_in_progress, false)
 
+    enqueue_fun = fn project_id, snapshot_id, user_id, lock_token ->
+      job =
+        build_job(RestoreProjectWorker, %{
+          project_id: project_id,
+          snapshot_id: snapshot_id,
+          user_id: user_id,
+          lock_token: lock_token
+        })
+
+      assert :ok = perform_job(job)
+      {:ok, job}
+    end
+
     assert {:noreply, _socket} =
-             Oban.Testing.with_testing_mode(:inline, fn ->
-               SettingsComponents.do_restore_snapshot(socket, snapshot.id)
-             end)
+             SettingsComponents.do_restore_snapshot(socket, snapshot.id, enqueue_fun: enqueue_fun)
 
     assert {:project_restoration_started, %{user_email: user_email}} =
              receive_restoration_event()

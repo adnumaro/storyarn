@@ -3,9 +3,14 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrudTest do
 
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
+  import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Assets.Storage
+  alias Storyarn.Flows.FlowNode
+  alias Storyarn.Localization
+  alias Storyarn.Sheets.Block
   alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.SnapshotStorage
@@ -166,15 +171,271 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrudTest do
       assert Versioning.count_project_snapshots(project.id) == initial_count + 2
     end
 
-    test "skips deleted entities gracefully", %{project: project, user: user, sheet: sheet} do
+    test "keeps the committed restore successful when the best-effort post snapshot fails", %{
+      project: project,
+      user: user,
+      sheet: sheet
+    } do
+      {:ok, snapshot} =
+        Versioning.create_project_snapshot(
+          project.id,
+          user.id,
+          title: "Post-snapshot failure boundary"
+        )
+
+      failures = [
+        {:raise, fn _project_id, _user_id, _opts -> raise "post snapshot raised" end},
+        {:throw, fn _project_id, _user_id, _opts -> throw(:post_snapshot_thrown) end},
+        {:exit, fn _project_id, _user_id, _opts -> exit(:post_snapshot_exited) end}
+      ]
+
+      Enum.each(failures, fn {failure_kind, post_snapshot_fun} ->
+        current_name = "Current before #{failure_kind}"
+        {:ok, _sheet} = Storyarn.Sheets.update_sheet(sheet, %{name: current_name})
+        snapshot_count = Versioning.count_project_snapshots(project.id)
+
+        assert {:ok, result} =
+                 Versioning.restore_project_snapshot(
+                   project.id,
+                   snapshot,
+                   user_id: user.id,
+                   __post_restore_snapshot_fun: post_snapshot_fun
+                 )
+
+        assert result.restored >= 1
+        assert Storyarn.Sheets.get_sheet(project.id, sheet.id).name == sheet.name
+
+        # The mandatory safety snapshot is durable; only the best-effort
+        # post-restore artifact is absent.
+        assert Versioning.count_project_snapshots(project.id) ==
+                 snapshot_count + 1
+      end)
+    end
+
+    test "restores snapshot entities directly from trash", %{
+      project: project,
+      user: user,
+      sheet: sheet
+    } do
       {:ok, snapshot} = Versioning.create_project_snapshot(project.id, user.id)
 
       # Soft-delete the sheet
-      {:ok, _} = Storyarn.Sheets.delete_sheet(sheet)
+      {:ok, _deleted_sheet} = Storyarn.Sheets.delete_sheet(sheet)
+      assert Storyarn.Sheets.get_sheet(project.id, sheet.id) == nil
 
-      # Restore should succeed, skipping the deleted sheet
-      assert {:ok, result} = Versioning.restore_project_snapshot(project.id, snapshot)
-      assert result.skipped >= 1
+      assert {:ok, result} =
+               Versioning.restore_project_snapshot(
+                 project.id,
+                 snapshot,
+                 user_id: user.id
+               )
+
+      assert result.restored >= 1
+      assert Storyarn.Sheets.get_sheet(project.id, sheet.id).id == sheet.id
+    end
+
+    test "the durable safety snapshot directly reverses a destructive restore with the same child IDs", %{
+      project: project,
+      user: user,
+      sheet: sheet,
+      flow: flow
+    } do
+      {:ok, target_snapshot} =
+        Versioning.create_project_snapshot(
+          project.id,
+          user.id,
+          title: "Target before current children"
+        )
+
+      current_block =
+        block_fixture(sheet, %{
+          type: "text",
+          config: %{"label" => "Current-only block"}
+        })
+
+      current_node =
+        node_fixture(flow, %{
+          type: "hub",
+          data: %{"hub_id" => "current_only_safety_node"}
+        })
+
+      assert {:ok, _result} =
+               Versioning.restore_project_snapshot(
+                 project.id,
+                 target_snapshot,
+                 user_id: user.id
+               )
+
+      assert %Block{deleted_at: %DateTime{}} =
+               Repo.get!(Block, current_block.id)
+
+      assert %FlowNode{deleted_at: %DateTime{}} =
+               Repo.get!(FlowNode, current_node.id)
+
+      safety_snapshot =
+        project.id
+        |> Versioning.list_project_snapshots()
+        |> Enum.find(fn snapshot ->
+          snapshot.title ==
+            "Before restore to project snapshot v#{target_snapshot.version_number}"
+        end)
+
+      assert %ProjectSnapshot{} = safety_snapshot
+
+      assert {:ok, _result} =
+               Versioning.restore_project_snapshot(
+                 project.id,
+                 safety_snapshot,
+                 user_id: user.id
+               )
+
+      assert %Block{id: block_id, deleted_at: nil} =
+               Repo.get!(Block, current_block.id)
+
+      assert %FlowNode{id: node_id, deleted_at: nil} =
+               Repo.get!(FlowNode, current_node.id)
+
+      assert block_id == current_block.id
+      assert node_id == current_node.id
+    end
+
+    test "requires an actor before creating a safety snapshot", %{
+      project: project,
+      user: user
+    } do
+      {:ok, snapshot} =
+        Versioning.create_project_snapshot(project.id, user.id)
+
+      snapshot_count = Versioning.count_project_snapshots(project.id)
+
+      assert {:error, :restore_user_required} =
+               Versioning.restore_project_snapshot(project.id, snapshot)
+
+      assert Versioning.count_project_snapshots(project.id) == snapshot_count
+    end
+
+    test "aborts when the mandatory pre-restore snapshot cannot be created", %{
+      project: project,
+      user: user,
+      sheet: sheet
+    } do
+      {:ok, snapshot} =
+        Versioning.create_project_snapshot(project.id, user.id)
+
+      {:ok, _sheet} =
+        Storyarn.Sheets.update_sheet(sheet, %{name: "Current state"})
+
+      snapshot_count = Versioning.count_project_snapshots(project.id)
+
+      assert {:error, {:pre_restore_snapshot_failed, :storage_unavailable}} =
+               Versioning.restore_project_snapshot(
+                 project.id,
+                 snapshot,
+                 user_id: user.id,
+                 __pre_restore_snapshot_fun: fn
+                   _project_id, _user_id, _opts ->
+                     {:error, :storage_unavailable}
+                 end
+               )
+
+      assert Storyarn.Sheets.get_sheet(project.id, sheet.id).name ==
+               "Current state"
+
+      assert Versioning.count_project_snapshots(project.id) == snapshot_count
+    end
+
+    test "reads back and verifies the pre-restore snapshot checksum", %{
+      project: project,
+      user: user,
+      sheet: sheet
+    } do
+      {:ok, snapshot} =
+        Versioning.create_project_snapshot(project.id, user.id)
+
+      {:ok, _sheet} =
+        Storyarn.Sheets.update_sheet(sheet, %{name: "Current state"})
+
+      corrupted_checksum = String.duplicate("0", 64)
+      snapshot_count = Versioning.count_project_snapshots(project.id)
+
+      create_corrupted_snapshot = fn project_id, user_id, opts ->
+        with {:ok, pre_snapshot} <-
+               Versioning.create_project_snapshot(project_id, user_id, opts) do
+          Repo.update_all(
+            from(s in ProjectSnapshot, where: s.id == ^pre_snapshot.id),
+            set: [checksum: corrupted_checksum]
+          )
+
+          {:ok, pre_snapshot}
+        end
+      end
+
+      assert {:error, {:pre_restore_snapshot_failed, {:checksum_mismatch, ^corrupted_checksum, actual_checksum}}} =
+               Versioning.restore_project_snapshot(
+                 project.id,
+                 snapshot,
+                 user_id: user.id,
+                 __pre_restore_snapshot_fun: create_corrupted_snapshot
+               )
+
+      refute actual_checksum == corrupted_checksum
+
+      assert Storyarn.Sheets.get_sheet(project.id, sheet.id).name ==
+               "Current state"
+
+      assert Versioning.count_project_snapshots(project.id) ==
+               snapshot_count + 1
+    end
+
+    test "reads back and verifies the pre-restore snapshot entity counts", %{
+      project: project,
+      user: user,
+      sheet: sheet
+    } do
+      {:ok, snapshot} =
+        Versioning.create_project_snapshot(project.id, user.id)
+
+      {:ok, _sheet} =
+        Storyarn.Sheets.update_sheet(sheet, %{name: "Current state"})
+
+      snapshot_count = Versioning.count_project_snapshots(project.id)
+
+      create_snapshot_with_invalid_counts = fn project_id, user_id, opts ->
+        with {:ok, pre_snapshot} <-
+               Versioning.create_project_snapshot(project_id, user_id, opts) do
+          invalid_counts =
+            Map.update!(
+              pre_snapshot.entity_counts,
+              "sheets",
+              &(&1 + 1)
+            )
+
+          Repo.update_all(
+            from(s in ProjectSnapshot, where: s.id == ^pre_snapshot.id),
+            set: [entity_counts: invalid_counts]
+          )
+
+          {:ok, pre_snapshot}
+        end
+      end
+
+      assert {:error,
+              {:pre_restore_snapshot_failed,
+               {:persisted_project_snapshot_entity_count_mismatch, "sheets", persisted_count, actual_count}}} =
+               Versioning.restore_project_snapshot(
+                 project.id,
+                 snapshot,
+                 user_id: user.id,
+                 __pre_restore_snapshot_fun: create_snapshot_with_invalid_counts
+               )
+
+      assert persisted_count == actual_count + 1
+
+      assert Storyarn.Sheets.get_sheet(project.id, sheet.id).name ==
+               "Current state"
+
+      assert Versioning.count_project_snapshots(project.id) ==
+               snapshot_count + 1
     end
 
     test "rejects an enclosing transaction before creating safety snapshot rows or blobs", %{
@@ -200,7 +461,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrudTest do
       assert stored_snapshot_paths(project.id) == stored_paths
     end
 
-    test "rejects a same-cardinality tampered blob before safety snapshots or mutation", %{
+    test "rejects a same-cardinality tampered blob with a different compressed size", %{
       project: project,
       user: user,
       sheet: sheet
@@ -226,7 +487,50 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrudTest do
 
       snapshot_count = Versioning.count_project_snapshots(project.id)
 
-      assert {:error, {:project_snapshot_checksum_mismatch, expected_checksum, actual_checksum}} =
+      assert {:error, {:compressed_size_mismatch, expected_size, actual_size}} =
+               Versioning.restore_project_snapshot(
+                 project.id,
+                 snapshot,
+                 user_id: user.id
+               )
+
+      assert expected_size == snapshot.snapshot_size_bytes
+      refute actual_size == expected_size
+      assert Storyarn.Sheets.get_sheet(project.id, sheet.id).name == "Current state"
+      assert Versioning.count_project_snapshots(project.id) == snapshot_count
+    end
+
+    test "rejects a same-size tampered blob by checksum before safety snapshots or mutation", %{
+      project: project,
+      user: user,
+      sheet: sheet
+    } do
+      {:ok, snapshot} =
+        Versioning.create_project_snapshot(
+          project.id,
+          user.id,
+          title: "Same-size checksum boundary"
+        )
+
+      assert {:ok, compressed} = Storage.download(snapshot.storage_key)
+      <<first_byte, rest::binary>> = compressed
+      tampered_compressed = <<Bitwise.bxor(first_byte, 1), rest::binary>>
+
+      assert byte_size(tampered_compressed) == snapshot.snapshot_size_bytes
+
+      assert {:ok, _url} =
+               Storage.upload(
+                 snapshot.storage_key,
+                 tampered_compressed,
+                 "application/gzip"
+               )
+
+      {:ok, _sheet} =
+        Storyarn.Sheets.update_sheet(sheet, %{name: "Current state"})
+
+      snapshot_count = Versioning.count_project_snapshots(project.id)
+
+      assert {:error, {:checksum_mismatch, expected_checksum, actual_checksum}} =
                Versioning.restore_project_snapshot(
                  project.id,
                  snapshot,
@@ -273,6 +577,172 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrudTest do
 
       assert Storyarn.Sheets.get_sheet(destination_project.id, destination_sheet.id).name ==
                "Destination state"
+    end
+
+    test "rejects a storage key that is not bound to the snapshot identity before mutation", %{
+      project: project,
+      user: user,
+      sheet: sheet
+    } do
+      {:ok, snapshot} =
+        Versioning.create_project_snapshot(project.id, user.id, title: "Bound storage identity")
+
+      {:ok, _sheet} =
+        Storyarn.Sheets.update_sheet(sheet, %{name: "Current state"})
+
+      forged_key =
+        SnapshotStorage.build_project_key(
+          project.id,
+          snapshot.version_number + 1,
+          "0123456789abcdef"
+        )
+
+      Repo.update_all(
+        from(candidate in ProjectSnapshot, where: candidate.id == ^snapshot.id),
+        set: [storage_key: forged_key]
+      )
+
+      snapshot_count = Versioning.count_project_snapshots(project.id)
+
+      assert {:error, :project_snapshot_storage_key_mismatch} =
+               Versioning.restore_project_snapshot(
+                 project.id,
+                 snapshot,
+                 user_id: user.id
+               )
+
+      assert Storyarn.Sheets.get_sheet(project.id, sheet.id).name == "Current state"
+      assert Versioning.count_project_snapshots(project.id) == snapshot_count
+    end
+
+    test "aborts atomically when the project changes after the safety snapshot", %{
+      project: project,
+      user: user,
+      sheet: sheet
+    } do
+      {:ok, snapshot} =
+        Versioning.create_project_snapshot(project.id, user.id, title: "Restore target")
+
+      {:ok, _sheet} =
+        Storyarn.Sheets.update_sheet(sheet, %{name: "State captured for safety"})
+
+      snapshot_count = Versioning.count_project_snapshots(project.id)
+
+      create_then_change_project = fn project_id, user_id, opts ->
+        with {:ok, pre_restore_snapshot} <-
+               Versioning.create_project_snapshot(project_id, user_id, opts),
+             {:ok, _sheet} <-
+               Storyarn.Sheets.update_sheet(sheet, %{
+                 name: "Concurrent state after safety"
+               }) do
+          {:ok, pre_restore_snapshot}
+        end
+      end
+
+      assert {:error, :project_changed_since_pre_restore_snapshot} =
+               Versioning.restore_project_snapshot(
+                 project.id,
+                 snapshot,
+                 user_id: user.id,
+                 __pre_restore_snapshot_fun: create_then_change_project
+               )
+
+      assert Storyarn.Sheets.get_sheet(project.id, sheet.id).name ==
+               "Concurrent state after safety"
+
+      assert Versioning.count_project_snapshots(project.id) ==
+               snapshot_count + 1
+    end
+
+    test "aborts without mutation when the verified safety record is deleted before the builder", %{
+      project: project,
+      user: user,
+      sheet: sheet
+    } do
+      {:ok, snapshot} =
+        Versioning.create_project_snapshot(
+          project.id,
+          user.id,
+          title: "Restore target"
+        )
+
+      {:ok, _sheet} =
+        Storyarn.Sheets.update_sheet(sheet, %{
+          name: "Current state"
+        })
+
+      snapshot_count = Versioning.count_project_snapshots(project.id)
+      test_pid = self()
+
+      delete_verified_safety_snapshot = fn safety_snapshot ->
+        send(test_pid, {:verified_safety_snapshot, safety_snapshot.id})
+        {:ok, _deleted} = Versioning.delete_project_snapshot(safety_snapshot)
+      end
+
+      assert {:error, :pre_restore_snapshot_not_durable} =
+               Versioning.restore_project_snapshot(
+                 project.id,
+                 snapshot,
+                 user_id: user.id,
+                 __after_pre_restore_snapshot_verified_hook: delete_verified_safety_snapshot
+               )
+
+      assert_received {:verified_safety_snapshot, safety_snapshot_id}
+      refute Versioning.get_project_snapshot(project.id, safety_snapshot_id)
+
+      assert Storyarn.Sheets.get_sheet(project.id, sheet.id).name ==
+               "Current state"
+
+      assert Versioning.count_project_snapshots(project.id) ==
+               snapshot_count
+    end
+
+    test "accepts a verified safety snapshot with serialized DateTime fields", %{
+      project: project,
+      user: user,
+      sheet: sheet,
+      flow: flow
+    } do
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Timestamped source", "responses" => []}
+        })
+
+      text =
+        Localization.get_text_by_source(
+          "flow_node",
+          node.id,
+          "text",
+          "es"
+        )
+
+      assert {:ok, translated_text} =
+               Localization.update_text(text, %{
+                 translated_text: "Fuente con fecha",
+                 status: "final"
+               })
+
+      assert %DateTime{} = translated_text.last_translated_at
+      assert %DateTime{} = translated_text.last_reviewed_at
+
+      {:ok, snapshot} =
+        Versioning.create_project_snapshot(project.id, user.id, title: "Timestamped target")
+
+      {:ok, _sheet} =
+        Storyarn.Sheets.update_sheet(sheet, %{name: "Changed after target"})
+
+      assert {:ok, _result} =
+               Versioning.restore_project_snapshot(
+                 project.id,
+                 snapshot,
+                 user_id: user.id
+               )
+
+      assert Storyarn.Sheets.get_sheet(project.id, sheet.id).name == sheet.name
     end
   end
 

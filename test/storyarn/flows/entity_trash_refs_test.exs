@@ -161,6 +161,74 @@ defmodule Storyarn.Flows.EntityTrashRefsTest do
       assert {:ok, %{restored: 0, skipped: 1}} = EntityTrashRefs.restore(:sheet, sheet.id)
       assert Repo.get!(FlowNode, n1.id).data["speaker_sheet_id"] == other_sheet.id
     end
+
+    test "fails closed without consuming a pending ref that points to an active Flow" do
+      user = user_fixture()
+      project = project_fixture(user)
+      source_flow = flow_fixture(project)
+      target_flow = flow_fixture(project)
+
+      source =
+        node_fixture(source_flow, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => target_flow.id}
+        })
+
+      assert {:ok, 1} =
+               EntityTrashRefs.sweep_jsonb_field(
+                 FlowNode,
+                 "flow_node",
+                 :data,
+                 "referenced_flow_id",
+                 :flow,
+                 target_flow.id
+               )
+
+      ref = Repo.one!(EntityTrashRef)
+
+      assert {:error, {:active_flow_has_pending_trash_references, target_id, [ref_id]}} =
+               EntityTrashRefs.restore(:flow, target_flow.id)
+
+      assert target_id == target_flow.id
+      assert ref_id == ref.id
+      assert Repo.get!(FlowNode, source.id).data["referenced_flow_id"] == nil
+      assert Repo.get!(EntityTrashRef, ref.id)
+    end
+  end
+
+  describe "reconcile_project_restore_flow_refs/3" do
+    test "fails closed without discarding a pending ref to an active target Flow" do
+      user = user_fixture()
+      project = project_fixture(user)
+      target_flow = flow_fixture(project)
+      source_flow = flow_fixture(project)
+
+      source =
+        node_fixture(source_flow, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => target_flow.id}
+        })
+
+      assert {:ok, 1} =
+               EntityTrashRefs.sweep_project_flow_references(
+                 project.id,
+                 target_flow.id
+               )
+
+      pending_ref = Repo.one!(EntityTrashRef)
+
+      assert {:error, {:project_restore_active_flow_has_pending_trash_references, [target_id], [ref_id]}} =
+               EntityTrashRefs.reconcile_project_restore_flow_refs(
+                 project.id,
+                 [target_flow.id],
+                 []
+               )
+
+      assert target_id == target_flow.id
+      assert ref_id == pending_ref.id
+      assert Repo.get!(FlowNode, source.id).data["referenced_flow_id"] == nil
+      assert Repo.get!(EntityTrashRef, pending_ref.id)
+    end
   end
 
   # ===========================================================================

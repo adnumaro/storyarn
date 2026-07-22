@@ -181,7 +181,7 @@ defmodule Storyarn.Flows do
   @doc """
   Restores a soft-deleted flow.
   """
-  @spec restore_flow(flow()) :: {:ok, flow()} | {:error, changeset()}
+  @spec restore_flow(flow()) :: {:ok, flow()} | {:error, term()}
   defdelegate restore_flow(flow), to: FlowCrud
 
   @doc """
@@ -1331,6 +1331,34 @@ defmodule Storyarn.Flows do
               to: EntityTrashRefs,
               as: :sweep_jsonb_field
 
-  @doc "Restore all trash refs pointing at `{target_type, target_id}` (conservative)."
+  @doc """
+  Sweep Flow references only from nodes whose owning Flow belongs to the
+  supplied project.
+
+  This is the containment boundary used by project snapshot restore.
+  """
+  defdelegate sweep_project_flow_references(project_id, target_flow_id),
+    to: EntityTrashRefs
+
+  @doc """
+  Reconcile refs for Flows proven to have been reactivated from trash, while
+  failing closed on pending refs to targets that were already active.
+  """
+  defdelegate reconcile_project_restore_flow_refs(
+                project_id,
+                target_flow_ids,
+                target_snapshot_node_ids
+              ),
+              to: EntityTrashRefs
+
+  defdelegate reconcile_project_restore_flow_refs(
+                project_id,
+                target_flow_ids,
+                target_snapshot_node_ids,
+                reactivated_target_flow_ids
+              ),
+              to: EntityTrashRefs
+
+  @doc "Restore trash refs conservatively; Flow targets use the validated Flow restore path."
   defdelegate restore_trash_refs(target_type, target_id), to: EntityTrashRefs, as: :restore
 end

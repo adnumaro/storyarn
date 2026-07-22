@@ -385,6 +385,43 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       assert Enum.find(blocks, &(&1.type == "text")).word_count == 3
     end
 
+    test "full-project restore skips external inheritance and table row locks", %{
+      sheet: sheet
+    } do
+      snapshot = SheetBuilder.build_snapshot(sheet)
+      handler_id = "full-project-sheet-locks-#{System.unique_integer([:positive])}"
+      marker = make_ref()
+      test_pid = self()
+
+      :ok =
+        :telemetry.attach(
+          handler_id,
+          [:storyarn, :repo, :query],
+          fn _event, _measurements, %{query: query}, {pid, ref} ->
+            if self() == pid and
+                 (String.contains?(query, ~s(FROM "table_columns")) or
+                    String.contains?(query, ~s(FROM "table_rows")) or
+                    (String.contains?(query, "inherited_from_block_id") and
+                       String.contains?(query, ~s(JOIN "sheets")) and
+                       String.contains?(query, "FOR UPDATE"))) do
+              send(pid, {ref, query})
+            end
+          end,
+          {test_pid, marker}
+        )
+
+      on_exit(fn -> :telemetry.detach(handler_id) end)
+
+      assert {:ok, restored} =
+               SheetBuilder.restore_snapshot(sheet, snapshot,
+                 full_project_restore: true,
+                 restore_action: :project_snapshot_restore
+               )
+
+      assert restored.id == sheet.id
+      refute_receive {^marker, _unnecessary_lock_query}
+    end
+
     test "rejects in-place restore for a sheet in trash without mutating it", %{sheet: sheet} do
       block =
         block_fixture(sheet, %{

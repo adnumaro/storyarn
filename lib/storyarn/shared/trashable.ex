@@ -12,7 +12,9 @@ defmodule Storyarn.Shared.Trashable do
        entity-trash-refs table via `Storyarn.Flows.EntityTrashRefs`.
 
   On `restore/1`, the inverse: `deleted_at` is cleared, then trash refs
-  pointing at this entity are re-applied conservatively.
+  pointing at this entity are re-applied conservatively. Flow restore delegates
+  to `Storyarn.Flows.FlowCrud` so its ownership, reference, and locking
+  invariants are enforced atomically.
 
   Everything in one transaction. Callers write one-liners:
 
@@ -96,9 +98,12 @@ defmodule Storyarn.Shared.Trashable do
   Restore a soft-deleted entity and re-apply trash refs pointing at it
   (conservative — only nil live fields are re-populated).
 
-  Returns `{:ok, restored_entity}` or `{:error, changeset}`.
+  Returns `{:ok, restored_entity}` or `{:error, reason}`. Flow restoration may
+  return integrity and lifecycle errors in addition to changesets.
   """
-  @spec restore(struct()) :: {:ok, struct()} | {:error, Ecto.Changeset.t()}
+  @spec restore(struct()) :: {:ok, struct()} | {:error, term()}
+  def restore(%Flow{} = flow), do: Storyarn.Flows.FlowCrud.restore_flow(flow)
+
   def restore(%_{} = entity) do
     target_type = target_type!(entity)
 

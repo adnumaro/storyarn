@@ -13,8 +13,12 @@ defmodule Storyarn.Projects.ProjectCrud do
   alias Storyarn.Repo
   alias Storyarn.Shared.NameNormalizer
   alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Workspaces
   alias Storyarn.Workspaces.Workspace
+
+  @restore_project_worker "Storyarn.Workers.RestoreProjectWorker"
+  @active_restore_job_states ~w(available scheduled executing retryable)
 
   @doc """
   Lists all projects the user has access to (owned or as a member).
@@ -240,7 +244,7 @@ defmodule Storyarn.Projects.ProjectCrud do
   """
   def list_deleted_projects(workspace_id) do
     snapshot_count_query =
-      from(s in Storyarn.Versioning.ProjectSnapshot,
+      from(s in ProjectSnapshot,
         where: s.project_id == parent_as(:project).id,
         select: count(s.id)
       )
@@ -318,38 +322,244 @@ defmodule Storyarn.Projects.ProjectCrud do
   @doc """
   Atomically acquires a restoration lock on a project.
 
-  Returns `{:ok, project}` if the lock was acquired,
-  `{:error, :already_locked}` if another restoration is in progress.
-  """
-  def acquire_restoration_lock(project_id, user_id) do
-    now = TimeHelpers.now()
+  The lock is bound to the actor, target snapshot, and a random token. The
+  token must accompany the queued job and is required to release the lock.
 
+  Returns `{:ok, project}` if the lock was acquired,
+  `{:error, :already_locked}` if another restoration is in progress, or
+  `{:error, :snapshot_not_found}` if the snapshot does not belong to the
+  project.
+  """
+  def acquire_restoration_lock(project_id, user_id, snapshot_id) do
+    now = TimeHelpers.now()
+    token = Ecto.UUID.generate()
+
+    fn ->
+      owned_snapshot =
+        ProjectSnapshot
+        |> where([snapshot], snapshot.id == ^snapshot_id and snapshot.project_id == ^project_id)
+        |> lock("FOR SHARE")
+        |> Repo.one()
+
+      if owned_snapshot,
+        do:
+          claim_restoration_lock!(
+            project_id,
+            user_id,
+            snapshot_id,
+            token,
+            now
+          ),
+        else: Repo.rollback(:snapshot_not_found)
+    end
+    |> Repo.transaction()
+    |> case do
+      {:ok, project} -> {:ok, project}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp claim_restoration_lock!(project_id, user_id, snapshot_id, token, now) do
     {count, _} =
-      Repo.update_all(from(p in Project, where: p.id == ^project_id and p.restoration_in_progress == false),
-        set: [restoration_in_progress: true, restoration_started_by_id: user_id, restoration_started_at: now]
+      Repo.update_all(
+        from(p in Project,
+          where: p.id == ^project_id and p.restoration_in_progress == false
+        ),
+        set: [
+          restoration_in_progress: true,
+          restoration_started_by_id: user_id,
+          restoration_started_at: now,
+          restoration_token: token,
+          restoration_claimed_by_job_id: nil,
+          restoration_snapshot_id: snapshot_id
+        ]
       )
 
-    if count == 1 do
-      {:ok, Repo.get!(Project, project_id)}
-    else
-      {:error, :already_locked}
+    case count do
+      1 -> Repo.get!(Project, project_id)
+      _count -> Repo.rollback(:already_locked)
     end
   end
 
   @doc """
-  Releases the restoration lock on a project.
-  """
-  def release_restoration_lock(project_id) do
-    {_count, _} =
-      Repo.update_all(from(p in Project, where: p.id == ^project_id),
-        set: [restoration_in_progress: false, restoration_started_by_id: nil, restoration_started_at: nil]
-      )
+  Releases an unclaimed restoration lock only when the token matches.
 
-    case Repo.get(Project, project_id) do
-      nil -> {:error, :not_found}
-      project -> {:ok, project}
+  This is the enqueue-compensation path. Once a worker claims the lock, it must
+  use `release_restoration_lock/3` with its Oban job id.
+  """
+  def release_restoration_lock(project_id, token) do
+    case Ecto.UUID.cast(token) do
+      {:ok, cast_token} ->
+        project_id
+        |> unclaimed_restoration_lock_query(cast_token)
+        |> release_restoration_lock_query(project_id)
+
+      :error ->
+        {:error, :lock_mismatch}
     end
   end
+
+  @doc """
+  Releases a claimed restoration lock only when both token and job id match.
+  """
+  def release_restoration_lock(project_id, token, job_id) when is_integer(job_id) and job_id > 0 do
+    case Ecto.UUID.cast(token) do
+      {:ok, cast_token} ->
+        project_id
+        |> claimed_restoration_lock_query(cast_token, job_id)
+        |> release_restoration_lock_query(project_id)
+
+      :error ->
+        {:error, :lock_mismatch}
+    end
+  end
+
+  def release_restoration_lock(_project_id, _token, _job_id), do: {:error, :invalid_job_id}
+
+  defp unclaimed_restoration_lock_query(project_id, token) do
+    from(project in Project,
+      where:
+        project.id == ^project_id and
+          project.restoration_in_progress == true and
+          project.restoration_token == ^token and
+          is_nil(project.restoration_claimed_by_job_id),
+      select: project
+    )
+  end
+
+  defp claimed_restoration_lock_query(project_id, token, job_id) do
+    from(project in Project,
+      where:
+        project.id == ^project_id and
+          project.restoration_in_progress == true and
+          project.restoration_token == ^token and
+          project.restoration_claimed_by_job_id == ^job_id,
+      select: project
+    )
+  end
+
+  defp release_restoration_lock_query(query, project_id) do
+    case Repo.update_all(
+           query,
+           set: [
+             restoration_in_progress: false,
+             restoration_started_by_id: nil,
+             restoration_started_at: nil,
+             restoration_token: nil,
+             restoration_claimed_by_job_id: nil,
+             restoration_snapshot_id: nil
+           ]
+         ) do
+      {1, [%Project{} = project]} ->
+        {:ok, project}
+
+      {0, _rows} ->
+        if Repo.exists?(from(project in Project, where: project.id == ^project_id)),
+          do: {:error, :lock_mismatch},
+          else: {:error, :not_found}
+    end
+  end
+
+  @doc """
+  Verifies that a queued restore still owns the project's active lock.
+  """
+  def verify_restoration_lock(project_id, user_id, snapshot_id, token) do
+    case Repo.get(Project, project_id) do
+      nil ->
+        {:error, :not_found}
+
+      %Project{
+        restoration_in_progress: true,
+        restoration_started_by_id: ^user_id,
+        restoration_snapshot_id: ^snapshot_id,
+        restoration_token: ^token
+      } = project ->
+        {:ok, project}
+
+      %Project{restoration_in_progress: false} ->
+        {:error, :not_locked}
+
+      %Project{} ->
+        {:error, :lock_mismatch}
+    end
+  end
+
+  @doc """
+  Atomically fences an active restoration lock to a single Oban job.
+
+  A lock is unclaimed between enqueue and worker start. Only the first worker
+  whose actor, snapshot, and token all match may set the claiming job id.
+  Subsequent deliveries — including duplicates carrying the same token — fail
+  closed before authorization, safety snapshots, or restore mutations.
+  """
+  def claim_restoration_lock(project_id, user_id, snapshot_id, token, job_id) when is_integer(job_id) and job_id > 0 do
+    case Ecto.UUID.cast(token) do
+      {:ok, cast_token} ->
+        do_claim_restoration_lock(
+          project_id,
+          user_id,
+          snapshot_id,
+          cast_token,
+          job_id
+        )
+
+      :error ->
+        {:error, :lock_mismatch}
+    end
+  end
+
+  def claim_restoration_lock(_project_id, _user_id, _snapshot_id, _token, _job_id), do: {:error, :invalid_job_id}
+
+  defp do_claim_restoration_lock(project_id, user_id, snapshot_id, token, job_id) do
+    {count, claimed_projects} =
+      Repo.update_all(
+        from(project in Project,
+          where:
+            project.id == ^project_id and
+              project.restoration_in_progress == true and
+              project.restoration_started_by_id == ^user_id and
+              project.restoration_snapshot_id == ^snapshot_id and
+              project.restoration_token == ^token and
+              is_nil(project.restoration_claimed_by_job_id),
+          select: project
+        ),
+        set: [restoration_claimed_by_job_id: job_id]
+      )
+
+    case {count, claimed_projects} do
+      {1, [%Project{} = project]} ->
+        {:ok, project}
+
+      {0, _rows} ->
+        classify_restoration_claim_failure(
+          Repo.get(Project, project_id),
+          user_id,
+          snapshot_id,
+          token
+        )
+    end
+  end
+
+  defp classify_restoration_claim_failure(nil, _user_id, _snapshot_id, _token), do: {:error, :not_found}
+
+  defp classify_restoration_claim_failure(%Project{restoration_in_progress: false}, _user_id, _snapshot_id, _token),
+    do: {:error, :not_locked}
+
+  defp classify_restoration_claim_failure(
+         %Project{
+           restoration_in_progress: true,
+           restoration_started_by_id: user_id,
+           restoration_snapshot_id: snapshot_id,
+           restoration_token: token,
+           restoration_claimed_by_job_id: claimed_by_job_id
+         },
+         user_id,
+         snapshot_id,
+         token
+       )
+       when not is_nil(claimed_by_job_id), do: {:error, :already_claimed}
+
+  defp classify_restoration_claim_failure(%Project{}, _user_id, _snapshot_id, _token), do: {:error, :lock_mismatch}
 
   @doc """
   Checks if a restoration is in progress for a project.
@@ -372,20 +582,77 @@ defmodule Storyarn.Projects.ProjectCrud do
   end
 
   @doc """
-  Clears a stale restoration lock if it's older than the given timeout.
+  Clears a stale restoration lock if it's older than the given timeout and no
+  queued or executing Oban job still owns its token.
+
+  The project row is locked while checking the job state. This also waits for
+  an in-flight restore transaction, which holds the same row lock for the full
+  mutation.
   """
   def clear_stale_restoration_lock(project_id, timeout_minutes \\ 15) do
     cutoff = DateTime.add(TimeHelpers.now(), -timeout_minutes * 60, :second)
 
-    {count, _} =
-      Repo.update_all(
-        from(p in Project,
-          where: p.id == ^project_id and p.restoration_in_progress == true and p.restoration_started_at < ^cutoff
-        ),
-        set: [restoration_in_progress: false, restoration_started_by_id: nil, restoration_started_at: nil]
-      )
+    fn ->
+      project =
+        Project
+        |> where([project], project.id == ^project_id)
+        |> lock("FOR UPDATE")
+        |> Repo.one()
 
-    if count == 1, do: {:ok, :cleared}, else: {:error, :not_stale}
+      cond do
+        not stale_restoration_lock?(project, cutoff) ->
+          Repo.rollback(:not_stale)
+
+        active_restore_job?(project.restoration_token) ->
+          Repo.rollback(:restore_active)
+
+        true ->
+          {1, _} =
+            Repo.update_all(
+              from(candidate in Project,
+                where:
+                  candidate.id == ^project.id and
+                    candidate.restoration_token ==
+                      ^project.restoration_token
+              ),
+              set: [
+                restoration_in_progress: false,
+                restoration_started_by_id: nil,
+                restoration_started_at: nil,
+                restoration_token: nil,
+                restoration_claimed_by_job_id: nil,
+                restoration_snapshot_id: nil
+              ]
+            )
+
+          :cleared
+      end
+    end
+    |> Repo.transaction()
+    |> case do
+      {:ok, :cleared} -> {:ok, :cleared}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp stale_restoration_lock?(
+         %Project{restoration_in_progress: true, restoration_started_at: %DateTime{} = started_at},
+         cutoff
+       ) do
+    DateTime.before?(started_at, cutoff)
+  end
+
+  defp stale_restoration_lock?(_project, _cutoff), do: false
+
+  defp active_restore_job?(token) do
+    Repo.exists?(
+      from(job in Oban.Job,
+        where:
+          job.worker == ^@restore_project_worker and
+            job.state in ^@active_restore_job_states and
+            fragment("?->>'lock_token' = ?", job.args, ^token)
+      )
+    )
   end
 
   # Private helpers

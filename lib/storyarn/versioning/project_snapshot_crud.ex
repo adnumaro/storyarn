@@ -212,7 +212,15 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
   @spec delete_snapshot(ProjectSnapshot.t()) ::
           {:ok, ProjectSnapshot.t()} | {:error, term()}
   def delete_snapshot(%ProjectSnapshot{} = snapshot) do
-    case Repo.delete(snapshot) do
+    delete_changeset =
+      snapshot
+      |> Ecto.Changeset.change()
+      |> Ecto.Changeset.foreign_key_constraint(
+        :id,
+        name: :projects_restoration_snapshot_id_fkey
+      )
+
+    case Repo.delete(delete_changeset) do
       {:ok, deleted} ->
         case SnapshotStorage.delete_snapshot(snapshot.storage_key) do
           :ok ->
@@ -234,11 +242,15 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
   @doc """
   Loads a snapshot from storage and restores all project entities.
 
-  Creates pre/post safety snapshots outside the restore transaction.
-  This is intentional: safety snapshots are best-effort and should not
-  block the restore if they fail. An orphan pre-restore snapshot may
-  exist if the restore transaction itself fails — this is acceptable
-  as it still captures the project's state before the attempt.
+  A pre-restore safety snapshot is mandatory. Its database record and stored
+  blob are read back and their checksum and entity counts are verified before
+  any restore mutation starts. The verified snapshot data is passed to the
+  restore builder as `:pre_restore_snapshot` so the transaction can reject a
+  project that changed after capture.
+
+  The post-restore snapshot remains best-effort. An orphan pre-restore
+  snapshot may exist if the restore transaction itself fails; it still
+  captures the project's state before the attempt.
 
   Safety snapshots bypass billing limits intentionally — they are
   system-generated recovery aids, not user-initiated snapshots.
@@ -253,21 +265,63 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
 
     with :ok <- ensure_restore_transaction_owner(),
          :ok <- RestorePolicy.ensure_enabled(:project_snapshot_restore),
+         :ok <- require_restore_user(user_id),
          {:ok, owned_snapshot} <- fetch_owned_snapshot(project_id, snapshot),
+         :ok <- validate_snapshot_storage_key(owned_snapshot),
          {:ok, snapshot_data, actual_checksum} <-
-           SnapshotStorage.load_snapshot_with_checksum(owned_snapshot.storage_key),
+           SnapshotStorage.load_verified_snapshot(
+             owned_snapshot.storage_key,
+             owned_snapshot.snapshot_size_bytes,
+             owned_snapshot.checksum
+           ),
          :ok <-
            ProjectSnapshotIntegrity.validate_recovery_blob(
              snapshot_data,
              owned_snapshot.entity_counts,
              owned_snapshot.checksum,
              actual_checksum
+           ),
+         {:ok, pre_restore_snapshot} <-
+           create_and_verify_pre_restore_snapshot(
+             project_id,
+             owned_snapshot,
+             user_id,
+             opts
+           ),
+         :ok <-
+           run_after_pre_restore_snapshot_verified_hook(
+             opts,
+             pre_restore_snapshot.record
            ) do
-      maybe_create_pre_restore_snapshot(project_id, owned_snapshot, user_id)
+      builder_opts =
+        opts
+        |> Keyword.drop([
+          :__pre_restore_snapshot_fun,
+          :__after_pre_restore_snapshot_verified_hook,
+          :__post_restore_snapshot_fun
+        ])
+        |> Keyword.put(
+          :pre_restore_snapshot,
+          pre_restore_snapshot.data
+        )
+        |> Keyword.put(
+          :pre_restore_snapshot_identity,
+          pre_restore_snapshot_identity(pre_restore_snapshot.record)
+        )
 
-      case ProjectSnapshotBuilder.restore_snapshot(project_id, snapshot_data, opts) do
+      case ProjectSnapshotBuilder.restore_snapshot(
+             project_id,
+             snapshot_data,
+             builder_opts
+           ) do
         {:ok, result} ->
-          maybe_create_post_restore_snapshot(project_id, owned_snapshot, user_id)
+          maybe_create_post_restore_snapshot(
+            project_id,
+            owned_snapshot,
+            user_id,
+            opts
+          )
+
           {:ok, result}
 
         {:error, _} = error ->
@@ -282,6 +336,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
       else: :ok
   end
 
+  defp require_restore_user(user_id) when is_integer(user_id), do: :ok
+  defp require_restore_user(_user_id), do: {:error, :restore_user_required}
+
   defp fetch_owned_snapshot(project_id, %ProjectSnapshot{id: snapshot_id, project_id: project_id})
        when is_integer(snapshot_id) do
     case Repo.get_by(ProjectSnapshot, id: snapshot_id, project_id: project_id) do
@@ -292,33 +349,214 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
 
   defp fetch_owned_snapshot(_project_id, %ProjectSnapshot{}), do: {:error, :snapshot_project_mismatch}
 
-  defp maybe_create_pre_restore_snapshot(_project_id, _snapshot, nil), do: :noop
+  defp create_and_verify_pre_restore_snapshot(project_id, snapshot, user_id, opts) do
+    create_opts = [
+      title:
+        dgettext(
+          "versioning",
+          "Before restore to project snapshot v%{number}",
+          number: snapshot.version_number
+        )
+    ]
 
-  defp maybe_create_pre_restore_snapshot(project_id, snapshot, user_id) do
-    case create_snapshot(project_id, user_id,
-           title: dgettext("versioning", "Before restore to project snapshot v%{number}", number: snapshot.version_number)
-         ) do
-      {:ok, _} ->
-        :ok
+    create_fun =
+      Keyword.get(
+        opts,
+        :__pre_restore_snapshot_fun,
+        &create_snapshot/3
+      )
+
+    result =
+      with {:ok, %ProjectSnapshot{} = created_snapshot} <-
+             safely_create_pre_restore_snapshot(
+               create_fun,
+               project_id,
+               user_id,
+               create_opts
+             ),
+           {:ok, persisted_snapshot} <-
+             reload_pre_restore_snapshot(
+               project_id,
+               created_snapshot.id,
+               user_id
+             ),
+           :ok <- validate_snapshot_storage_key(persisted_snapshot),
+           {:ok, snapshot_data, actual_checksum} <-
+             SnapshotStorage.load_verified_snapshot(
+               persisted_snapshot.storage_key,
+               persisted_snapshot.snapshot_size_bytes,
+               persisted_snapshot.checksum
+             ),
+           :ok <-
+             ProjectSnapshotIntegrity.validate_recovery_blob(
+               snapshot_data,
+               persisted_snapshot.entity_counts,
+               persisted_snapshot.checksum,
+               actual_checksum
+             ) do
+        {:ok, %{data: snapshot_data, record: persisted_snapshot}}
+      end
+
+    case result do
+      {:ok, %{data: _snapshot_data, record: %ProjectSnapshot{}}} = ok ->
+        ok
 
       {:error, reason} ->
-        Logger.warning("Failed to create pre-restore safety snapshot: #{inspect(reason)}")
+        Logger.warning(
+          "Failed to create or verify pre-restore safety snapshot: " <>
+            inspect(reason)
+        )
+
+        {:error, {:pre_restore_snapshot_failed, reason}}
     end
   end
 
-  defp maybe_create_post_restore_snapshot(_project_id, _snapshot, nil), do: :noop
-
-  defp maybe_create_post_restore_snapshot(project_id, snapshot, user_id) do
-    case create_snapshot(project_id, user_id,
-           title: dgettext("versioning", "Restored from project snapshot v%{number}", number: snapshot.version_number)
+  defp run_after_pre_restore_snapshot_verified_hook(opts, snapshot) do
+    case Keyword.get(
+           opts,
+           :__after_pre_restore_snapshot_verified_hook
          ) do
-      {:ok, _} ->
+      hook when is_function(hook, 1) ->
+        hook.(snapshot)
         :ok
 
-      {:error, reason} ->
-        Logger.warning("Failed to create post-restore snapshot: #{inspect(reason)}")
+      _hook ->
+        :ok
     end
   end
+
+  defp pre_restore_snapshot_identity(%ProjectSnapshot{} = snapshot) do
+    %{
+      id: snapshot.id,
+      project_id: snapshot.project_id,
+      created_by_id: snapshot.created_by_id,
+      version_number: snapshot.version_number,
+      storage_key: snapshot.storage_key,
+      snapshot_size_bytes: snapshot.snapshot_size_bytes,
+      checksum: snapshot.checksum,
+      entity_counts: snapshot.entity_counts
+    }
+  end
+
+  defp safely_create_pre_restore_snapshot(create_fun, project_id, user_id, create_opts) do
+    case create_fun.(project_id, user_id, create_opts) do
+      {:ok, %ProjectSnapshot{}} = ok -> ok
+      {:error, reason} -> {:error, reason}
+      _other -> {:error, :invalid_pre_restore_snapshot_result}
+    end
+  rescue
+    exception ->
+      Logger.error(
+        "Pre-restore safety snapshot creation raised: " <>
+          Exception.message(exception)
+      )
+
+      {:error, :pre_restore_snapshot_exception}
+  catch
+    kind, reason ->
+      Logger.error(
+        "Pre-restore safety snapshot creation failed " <>
+          "kind=#{kind} reason=#{inspect(reason)}"
+      )
+
+      {:error, :pre_restore_snapshot_failure}
+  end
+
+  defp reload_pre_restore_snapshot(project_id, snapshot_id, user_id) do
+    case Repo.get_by(
+           ProjectSnapshot,
+           id: snapshot_id,
+           project_id: project_id
+         ) do
+      %ProjectSnapshot{created_by_id: ^user_id} = snapshot ->
+        {:ok, snapshot}
+
+      %ProjectSnapshot{} ->
+        {:error, :pre_restore_snapshot_actor_mismatch}
+
+      nil ->
+        {:error, :pre_restore_snapshot_not_found}
+    end
+  end
+
+  defp validate_snapshot_storage_key(%ProjectSnapshot{} = snapshot) do
+    if SnapshotStorage.project_key?(
+         snapshot.storage_key,
+         snapshot.project_id,
+         snapshot.version_number
+       ) do
+      :ok
+    else
+      {:error, :project_snapshot_storage_key_mismatch}
+    end
+  end
+
+  defp maybe_create_post_restore_snapshot(project_id, snapshot, user_id, opts) do
+    create_fun =
+      Keyword.get(
+        opts,
+        :__post_restore_snapshot_fun,
+        &create_snapshot/3
+      )
+
+    create_opts = [
+      title:
+        dgettext(
+          "versioning",
+          "Restored from project snapshot v%{number}",
+          number: snapshot.version_number
+        )
+    ]
+
+    try do
+      case create_fun.(project_id, user_id, create_opts) do
+        {:ok, %ProjectSnapshot{}} ->
+          :ok
+
+        {:error, reason} ->
+          log_post_restore_snapshot_failure(
+            project_id,
+            :returned_error,
+            reason
+          )
+
+        _invalid_result ->
+          log_post_restore_snapshot_failure(
+            project_id,
+            :invalid_result,
+            :invalid_post_restore_snapshot_result
+          )
+      end
+    rescue
+      exception ->
+        log_post_restore_snapshot_failure(
+          project_id,
+          :raised,
+          exception
+        )
+    catch
+      kind, reason ->
+        log_post_restore_snapshot_failure(
+          project_id,
+          kind,
+          reason
+        )
+    end
+
+    :ok
+  end
+
+  defp log_post_restore_snapshot_failure(project_id, kind, reason) do
+    Logger.warning(
+      "Failed to create best-effort post-restore snapshot " <>
+        "project=#{project_id} kind=#{kind} reason=#{safe_error(reason)}"
+    )
+  end
+
+  defp safe_error(reason) when is_atom(reason), do: reason
+  defp safe_error(%module{}), do: module
+  defp safe_error({reason, _details}) when is_atom(reason), do: reason
+  defp safe_error(_reason), do: :unexpected_error
 
   # ========== Pruning ==========
 

@@ -216,11 +216,14 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
 
   @doc false
   def do_restore_snapshot(socket, snapshot_id, opts) when is_list(opts) do
-    enqueue_fun = Keyword.get(opts, :enqueue_fun, &enqueue_project_restore/3)
+    restore_ops = %{
+      enqueue: Keyword.get(opts, :enqueue_fun, &enqueue_project_restore/4),
+      release: Keyword.get(opts, :release_fun, &Projects.release_restoration_lock/2)
+    }
 
     case Versioning.ensure_restore_enabled(:project_snapshot_restore) do
       :ok ->
-        do_enabled_restore_snapshot(socket, snapshot_id, enqueue_fun)
+        do_enabled_restore_snapshot(socket, snapshot_id, restore_ops)
 
       {:error, :restore_temporarily_disabled} ->
         {:noreply,
@@ -232,7 +235,7 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
     end
   end
 
-  defp do_enabled_restore_snapshot(socket, snapshot_id, enqueue_fun) do
+  defp do_enabled_restore_snapshot(socket, snapshot_id, restore_ops) do
     project = socket.assigns.project
     user = socket.assigns.current_scope.user
 
@@ -241,14 +244,21 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
         {:noreply, put_flash(socket, :error, dgettext("projects", "Snapshot not found."))}
 
       _snapshot ->
-        acquire_and_enqueue_restore(socket, project, user, snapshot_id, enqueue_fun)
+        acquire_and_enqueue_restore(socket, project, user, snapshot_id, restore_ops)
     end
   end
 
-  defp acquire_and_enqueue_restore(socket, project, user, snapshot_id, enqueue_fun) do
-    case Projects.acquire_restoration_lock(project.id, user.id) do
-      {:ok, _project} ->
-        enqueue_locked_restore(socket, project, user, snapshot_id, enqueue_fun)
+  defp acquire_and_enqueue_restore(socket, project, user, snapshot_id, restore_ops) do
+    case Projects.acquire_restoration_lock(project.id, user.id, snapshot_id) do
+      {:ok, locked_project} ->
+        enqueue_locked_restore(
+          socket,
+          project,
+          user,
+          snapshot_id,
+          locked_project.restoration_token,
+          restore_ops
+        )
 
       {:error, :already_locked} ->
         {:noreply,
@@ -257,15 +267,24 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
            :error,
            dgettext("projects", "A restoration is already in progress.")
          )}
+
+      {:error, :snapshot_not_found} ->
+        {:noreply, put_flash(socket, :error, dgettext("projects", "Snapshot not found."))}
     end
   end
 
-  defp enqueue_locked_restore(socket, project, user, snapshot_id, enqueue_fun) do
+  defp enqueue_locked_restore(socket, project, user, snapshot_id, lock_token, restore_ops) do
     Collaboration.broadcast_restoration_started(project.id, %{
       user_email: user.email
     })
 
-    case safe_enqueue_project_restore(enqueue_fun, project.id, snapshot_id, user.id) do
+    case safe_enqueue_project_restore(
+           restore_ops.enqueue,
+           project.id,
+           snapshot_id,
+           user.id,
+           lock_token
+         ) do
       {:ok, _job} ->
         {:noreply,
          socket
@@ -279,27 +298,80 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
          )}
 
       {:error, _reason} ->
-        Projects.release_restoration_lock(project.id)
-        Collaboration.broadcast_restoration_failed(project.id, %{reason: :enqueue_failed})
+        compensate_failed_enqueue(socket, project.id, lock_token, restore_ops.release)
+    end
+  end
+
+  defp compensate_failed_enqueue(socket, project_id, lock_token, release_fun) do
+    case safe_release_enqueue_lock(release_fun, project_id, lock_token) do
+      :ok ->
+        Collaboration.broadcast_restoration_failed(project_id, %{reason: :enqueue_failed})
 
         {:noreply,
-         put_flash(
-           socket,
+         socket
+         |> assign(:restoration_in_progress, false)
+         |> put_flash(
            :error,
            dgettext("projects", "Project restoration failed. Please try again.")
+         )}
+
+      {:error, _reason} ->
+        Logger.warning(
+          "Could not confirm project restore enqueue compensation " <>
+            "project=#{project_id}; preserving in-progress state"
+        )
+
+        {:noreply,
+         socket
+         |> assign(:restoration_in_progress, true)
+         |> put_flash(
+           :info,
+           dgettext(
+             "projects",
+             "Restoration started. All editors will be notified when complete."
+           )
          )}
     end
   end
 
-  defp enqueue_project_restore(project_id, snapshot_id, user_id) do
-    %{project_id: project_id, snapshot_id: snapshot_id, user_id: user_id}
+  defp safe_release_enqueue_lock(release_fun, project_id, lock_token) do
+    case release_fun.(project_id, lock_token) do
+      {:ok, _project} -> :ok
+      {:error, reason} -> {:error, reason}
+      _unexpected -> {:error, :unexpected_release_result}
+    end
+  rescue
+    exception ->
+      Logger.warning(
+        "Project restore enqueue compensation raised " <>
+          "project=#{project_id} exception=#{inspect(exception.__struct__)}"
+      )
+
+      {:error, :release_exception}
+  catch
+    kind, _reason ->
+      Logger.warning(
+        "Project restore enqueue compensation terminated abnormally " <>
+          "project=#{project_id} kind=#{kind}"
+      )
+
+      {:error, :release_failure}
+  end
+
+  defp enqueue_project_restore(project_id, snapshot_id, user_id, lock_token) do
+    %{
+      project_id: project_id,
+      snapshot_id: snapshot_id,
+      user_id: user_id,
+      lock_token: lock_token
+    }
     |> RestoreProjectWorker.new()
     |> Oban.insert()
   end
 
-  defp safe_enqueue_project_restore(enqueue_fun, project_id, snapshot_id, user_id) do
+  defp safe_enqueue_project_restore(enqueue_fun, project_id, snapshot_id, user_id, lock_token) do
     project_id
-    |> enqueue_fun.(snapshot_id, user_id)
+    |> enqueue_fun.(snapshot_id, user_id, lock_token)
     |> normalize_enqueue_result()
   rescue
     error ->

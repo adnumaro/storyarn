@@ -92,6 +92,7 @@ config :storyarn, Oban,
   queues: [
     default: 10,
     snapshots: 2,
+    project_restores: 1,
     templates: 1,
     template_installs: 2,
     localization: 2,

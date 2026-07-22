@@ -238,6 +238,56 @@ defmodule Storyarn.Flows.FlowRestoreIntegrityTest do
     assert pending_flow_ref_count(target.id) == 1
   end
 
+  test "never re-fetches a source inserted after source locking", %{
+    user: user,
+    project: project
+  } do
+    target = flow_fixture(project, %{name: "Target"})
+    foreign_project = project_fixture(user)
+    foreign_flow = flow_fixture(foreign_project, %{name: "Foreign source"})
+
+    assert {:ok, deleted_target} = Flows.delete_flow(target)
+
+    [[missing_source_id]] =
+      Repo.query!("SELECT nextval(pg_get_serial_sequence('flow_nodes', 'id'))").rows
+
+    pending_ref =
+      %EntityTrashRef{}
+      |> EntityTrashRef.create_changeset(%{
+        source_type: "flow_node",
+        source_id: missing_source_id,
+        source_field: "data.referenced_flow_id",
+        target_flow_id: target.id
+      })
+      |> Repo.insert!()
+
+    handler_id = "flow-restore-missing-source-race-#{System.unique_integer([:positive])}"
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :flows, :flow_restore, :sources_locked],
+        fn _event, _measurements, %{flow_id: restored_flow_id}, _config ->
+          if restored_flow_id == target.id do
+            Repo.insert!(%FlowNode{
+              id: missing_source_id,
+              flow_id: foreign_flow.id,
+              type: "subflow",
+              data: %{"referenced_flow_id" => nil}
+            })
+          end
+        end,
+        nil
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
+    assert {:ok, restored_target} = Flows.restore_flow(deleted_target)
+    assert restored_target.id == target.id
+    assert Repo.get!(FlowNode, missing_source_id).data["referenced_flow_id"] == nil
+    refute Repo.get(EntityTrashRef, pending_ref.id)
+  end
+
   test "rolls back when reinjection would introduce a flow-reference cycle",
        %{project: project} do
     host = flow_fixture(project, %{name: "Host"})
