@@ -1,13 +1,21 @@
 defmodule Storyarn.AI.PolicyDecision do
   @moduledoc "Actor authorization decision, deliberately separate from provider routing."
 
+  import Ecto.Query
+
   alias Storyarn.AI.ExecutionIntent
   alias Storyarn.AI.Operation
   alias Storyarn.AI.Policy
   alias Storyarn.AI.Task
   alias Storyarn.FeatureFlags
   alias Storyarn.Projects
+  alias Storyarn.Projects.Memberships, as: ProjectMemberships
+  alias Storyarn.Projects.Project
+  alias Storyarn.Projects.ProjectMembership
+  alias Storyarn.Repo
   alias Storyarn.Workspaces
+  alias Storyarn.Workspaces.Workspace
+  alias Storyarn.Workspaces.WorkspaceMembership
 
   @enforce_keys [
     :workspace_id,
@@ -41,11 +49,12 @@ defmodule Storyarn.AI.PolicyDecision do
   def authorize(%ExecutionIntent{} = intent, %Task{} = task, phase, opts \\ []) do
     lane = Keyword.get(opts, :lane)
     lock_policy? = Keyword.get(opts, :lock_policy, false)
+    lock_access? = Keyword.get(opts, :lock_access, lock_policy?)
     subject_authorization = Keyword.get(opts, :subject_authorization, intent)
 
     with :ok <- feature_enabled(intent),
          :ok <- task_shape(intent, task),
-         {:ok, access} <- resolve_access(intent),
+         {:ok, access} <- resolve_access(intent, lock_access?),
          :ok <- base_permission(access, task, intent),
          :ok <- domain_permission(access, task, phase),
          :ok <- Task.authorize_subject(task, intent.scope, subject_authorization, phase),
@@ -76,7 +85,7 @@ defmodule Storyarn.AI.PolicyDecision do
   def reauthorize(%Operation{user_id: nil}, %Task{}, _phase, _opts), do: {:error, :actor_deleted}
 
   def reauthorize(%Operation{} = operation, %Task{} = task, phase, opts) do
-    user = Storyarn.Repo.get(Storyarn.Accounts.User, operation.user_id)
+    user = Repo.get(Storyarn.Accounts.User, operation.user_id)
 
     if user do
       subject =
@@ -159,14 +168,14 @@ defmodule Storyarn.AI.PolicyDecision do
 
   defp valid_data_scope(%ExecutionIntent{}, %Task{}), do: {:error, :invalid_scope}
 
-  defp resolve_access(%ExecutionIntent{scope: scope, workspace_id: workspace_id, project_id: nil}) do
+  defp resolve_access(%ExecutionIntent{scope: scope, workspace_id: workspace_id, project_id: nil}, false) do
     case Workspaces.get_workspace(scope, workspace_id) do
       {:ok, _workspace, membership} -> {:ok, %{workspace_role: membership.role, project_role: nil}}
       _error -> {:error, :unauthorized}
     end
   end
 
-  defp resolve_access(%ExecutionIntent{scope: scope, workspace_id: workspace_id, project_id: project_id}) do
+  defp resolve_access(%ExecutionIntent{scope: scope, workspace_id: workspace_id, project_id: project_id}, false) do
     with {:ok, project, project_membership} <- Projects.get_project(scope, project_id),
          true <- project.workspace_id == workspace_id,
          {:ok, _workspace, workspace_membership} <- Workspaces.get_workspace(scope, workspace_id) do
@@ -175,6 +184,80 @@ defmodule Storyarn.AI.PolicyDecision do
       _error -> {:error, :unauthorized}
     end
   end
+
+  defp resolve_access(%ExecutionIntent{scope: %{user: %{id: user_id}}, workspace_id: workspace_id, project_id: nil}, true) do
+    workspace = Repo.one(from(workspace in Workspace, where: workspace.id == ^workspace_id, lock: "FOR SHARE"))
+
+    membership =
+      Repo.one(
+        from(membership in WorkspaceMembership,
+          where: membership.workspace_id == ^workspace_id and membership.user_id == ^user_id,
+          lock: "FOR UPDATE"
+        )
+      )
+
+    if workspace && membership,
+      do: {:ok, %{workspace_role: membership.role, project_role: nil}},
+      else: {:error, :unauthorized}
+  end
+
+  defp resolve_access(
+         %ExecutionIntent{scope: %{user: %{id: user_id}}, workspace_id: workspace_id, project_id: project_id},
+         true
+       ) do
+    project = lock_project(project_id, workspace_id)
+    workspace = lock_workspace(workspace_id)
+    project_membership = lock_project_membership(project_id, user_id)
+    workspace_membership = lock_workspace_membership(workspace_id, user_id)
+
+    project_role =
+      ProjectMemberships.effective_role(
+        membership_role(project_membership),
+        membership_role(workspace_membership)
+      )
+
+    case {project, workspace, project_role} do
+      {%Project{}, %Workspace{}, role} when is_binary(role) ->
+        {:ok, %{workspace_role: membership_role(workspace_membership), project_role: role}}
+
+      _missing ->
+        {:error, :unauthorized}
+    end
+  end
+
+  defp lock_project(project_id, workspace_id) do
+    Repo.one(
+      from(project in Project,
+        where: project.id == ^project_id and project.workspace_id == ^workspace_id and is_nil(project.deleted_at),
+        lock: "FOR SHARE"
+      )
+    )
+  end
+
+  defp lock_workspace(workspace_id) do
+    Repo.one(from(workspace in Workspace, where: workspace.id == ^workspace_id, lock: "FOR SHARE"))
+  end
+
+  defp lock_project_membership(project_id, user_id) do
+    Repo.one(
+      from(membership in ProjectMembership,
+        where: membership.project_id == ^project_id and membership.user_id == ^user_id,
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp lock_workspace_membership(workspace_id, user_id) do
+    Repo.one(
+      from(membership in WorkspaceMembership,
+        where: membership.workspace_id == ^workspace_id and membership.user_id == ^user_id,
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp membership_role(%{role: role}), do: role
+  defp membership_role(nil), do: nil
 
   defp base_permission(access, task, intent) do
     role = role_for_scope(access, task.data_scope)

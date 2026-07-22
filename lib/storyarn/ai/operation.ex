@@ -22,6 +22,7 @@ defmodule Storyarn.AI.Operation do
     field :workspace_id_snapshot, :integer
     field :project_id_snapshot, :integer
     field :task_id, :string
+    field :task_contract_hash, :string
     field :capability, :string
     field :idempotency_key, :string
     field :execution_status, :string
@@ -57,6 +58,7 @@ defmodule Storyarn.AI.Operation do
     operation
     |> cast(attrs, [
       :task_id,
+      :task_contract_hash,
       :capability,
       :idempotency_key,
       :execution_status,
@@ -82,6 +84,7 @@ defmodule Storyarn.AI.Operation do
       :workspace_id_snapshot,
       :route_option_id,
       :task_id,
+      :task_contract_hash,
       :capability,
       :idempotency_key,
       :execution_status,

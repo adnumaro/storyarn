@@ -118,6 +118,14 @@ defmodule StoryarnWeb.Telemetry do
         unit: {:native, :millisecond}
       ),
 
+      # AI result retention is content-free and bounded per worker batch.
+      sum("storyarn.ai.expiration.stop.expired_count", tags: [:status]),
+      sum("storyarn.ai.expiration.stop.failure_count", tags: [:status]),
+      summary("storyarn.ai.expiration.stop.duration",
+        tags: [:status],
+        unit: {:native, :millisecond}
+      ),
+
       # VM Metrics
       summary("vm.memory.total", unit: {:byte, :kilobyte}),
       summary("vm.total_run_queue_lengths.total"),

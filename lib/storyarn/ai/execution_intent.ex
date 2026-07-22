@@ -10,6 +10,8 @@ defmodule Storyarn.AI.ExecutionIntent do
   alias Storyarn.Accounts.Scope
   alias Storyarn.AI.CanonicalJSON
 
+  @max_bigint 9_223_372_036_854_775_807
+
   @derive {Inspect, except: [:scope, :input, :requested_route_ref]}
   @enforce_keys [:scope, :workspace_id, :task_id, :input, :input_hash]
   defstruct [
@@ -73,11 +75,11 @@ defmodule Storyarn.AI.ExecutionIntent do
 
   def new(_scope, _attrs), do: {:error, :invalid_scope}
 
-  defp positive_id(value) when is_integer(value) and value > 0, do: {:ok, value}
+  defp positive_id(value) when is_integer(value) and value > 0 and value <= @max_bigint, do: {:ok, value}
   defp positive_id(_value), do: {:error, :invalid_workspace}
 
   defp optional_positive_id(nil), do: {:ok, nil}
-  defp optional_positive_id(value) when is_integer(value) and value > 0, do: {:ok, value}
+  defp optional_positive_id(value) when is_integer(value) and value > 0 and value <= @max_bigint, do: {:ok, value}
   defp optional_positive_id(_value), do: {:error, :invalid_project}
 
   defp bounded_string(value, max) when is_binary(value) and byte_size(value) > 0 and byte_size(value) <= max,
@@ -101,7 +103,7 @@ defmodule Storyarn.AI.ExecutionIntent do
 
   defp subject(%{type: type, id: id, revision: revision})
        when is_binary(type) and byte_size(type) > 0 and byte_size(type) <= 80 and is_integer(id) and id > 0 and
-              is_binary(revision) and byte_size(revision) > 0 and byte_size(revision) <= 200 do
+              id <= @max_bigint and is_binary(revision) and byte_size(revision) > 0 and byte_size(revision) <= 200 do
     {:ok, %{type: type, id: id, revision: revision}}
   end
 

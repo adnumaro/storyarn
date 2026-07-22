@@ -8,6 +8,7 @@ defmodule Storyarn.AI.Operations do
   alias Storyarn.AI.PolicyDecision
   alias Storyarn.AI.Result
   alias Storyarn.AI.Settlement
+  alias Storyarn.AI.Task
   alias Storyarn.AI.TaskRegistry
   alias Storyarn.AI.Telemetry
   alias Storyarn.AI.UsageEvent
@@ -17,7 +18,7 @@ defmodule Storyarn.AI.Operations do
   require Logger
 
   @spec claim(pos_integer()) ::
-          {:ok, Operation.t(), Storyarn.AI.Task.t(), ExecutionRoute.t()}
+          {:ok, Operation.t(), Task.t(), ExecutionRoute.t()}
           | {:cancelled, Operation.t()}
           | {:error, atom()}
   def claim(operation_id) do
@@ -30,7 +31,7 @@ defmodule Storyarn.AI.Operations do
     end
   end
 
-  @spec start_attempt(Operation.t(), Storyarn.AI.Task.t(), ExecutionRoute.t()) ::
+  @spec start_attempt(Operation.t(), Task.t(), ExecutionRoute.t()) ::
           {:ok, UsageEvent.t()} | {:cancelled, Operation.t()} | {:error, atom()}
   def start_attempt(%Operation{} = operation, task, route) do
     fn -> operation.id |> lock_operation() |> start_attempt_locked(task, route) end
@@ -43,16 +44,20 @@ defmodule Storyarn.AI.Operations do
   end
 
   defp claim_locked(operation_id) do
-    operation = lock_operation(operation_id)
+    case lock_operation(operation_id) do
+      nil -> Repo.rollback(:not_found)
+      %Operation{execution_status: "queued"} = operation -> claim_queued(operation)
+      %Operation{} -> Repo.rollback(:not_queued)
+    end
+  end
 
-    with %Operation{execution_status: "queued"} <- operation,
-         {:ok, task} <- TaskRegistry.fetch(operation.task_id),
+  defp claim_queued(operation) do
+    with {:ok, task} <- TaskRegistry.fetch(operation.task_id),
+         true <- operation.task_contract_hash == Task.contract_hash(task) || {:error, :task_contract_changed},
          {:ok, route} <- ExecutionRoute.from_map(operation.execution_route) do
       authorize_claim(operation, task, route)
     else
-      nil -> Repo.rollback(:not_found)
-      %Operation{} -> Repo.rollback(:not_queued)
-      {:error, reason} -> Repo.rollback(reason)
+      {:error, reason} -> {:cancelled, cancel_locked(operation, reason)}
     end
   end
 
@@ -109,55 +114,60 @@ defmodule Storyarn.AI.Operations do
     {:started, usage}
   end
 
-  @spec fail_before_attempt(Operation.t(), atom()) :: :ok
+  @spec fail_before_attempt(Operation.t(), term()) :: :ok | {:error, term()}
   def fail_before_attempt(%Operation{} = operation, reason) do
-    Repo.transaction(fn ->
+    fn ->
       locked = lock_operation(operation.id)
 
-      if locked.execution_status == "running" and is_nil(locked.external_attempt_started_at) do
+      if (locked && locked.execution_status == "running") and is_nil(locked.external_attempt_started_at) do
         locked = release!(locked)
         transition!(locked, "failed", %{error_classification: classify(reason), completed_at: TimeHelpers.now()})
         delete_result(locked.id)
       else
         Repo.rollback(:invalid_transition)
       end
-    end)
-
-    :ok
+    end
+    |> Repo.transaction()
+    |> transaction_status()
   end
 
-  @spec finish_success(Operation.t(), UsageEvent.t(), map(), map()) :: :ok
+  @spec finish_success(Operation.t(), UsageEvent.t(), map() | list(), map()) :: :ok | {:error, term()}
   def finish_success(operation, usage, output, metrics) do
-    Repo.transaction(fn ->
+    fn ->
       locked = lock_running_attempt!(operation.id, usage.id)
-      task = fetch_task!(locked.task_id)
+      task = current_task(locked.task_id)
       now = TimeHelpers.now()
 
-      deliver? = match?({:ok, _}, PolicyDecision.reauthorize(locked, task, :execute, lock_policy: true))
+      deliver? =
+        not is_nil(task) and locked.task_contract_hash == Task.contract_hash(task) and
+          is_nil(locked.cancellation_requested_at) and
+          match?({:ok, _}, PolicyDecision.reauthorize(locked, task, :execute, lock_policy: true))
+
       finish_usage!(usage.id, "succeeded", Map.put(metrics, :completed_at, now))
       locked = commit!(locked)
 
       if deliver? do
         result = Repo.get_by!(Result, operation_id: locked.id)
         encoded_output = Storyarn.AI.CanonicalJSON.encode!(output)
-        result |> Result.output_changeset(encoded_output) |> Repo.update!()
+        expires_at = DateTime.add(now, task.result_ttl_seconds, :second)
+        result |> Result.output_changeset(encoded_output, expires_at) |> Repo.update!()
         transition!(locked, "succeeded", %{completed_at: now})
       else
         delete_result(locked.id)
 
         transition!(locked, "succeeded", %{
           completed_at: now,
-          cancellation_requested_at: now
+          cancellation_requested_at: locked.cancellation_requested_at || now
         })
       end
-    end)
-
-    :ok
+    end
+    |> Repo.transaction()
+    |> transaction_status()
   end
 
-  @spec finish_failure(Operation.t(), UsageEvent.t(), atom(), map()) :: :ok
+  @spec finish_failure(Operation.t(), UsageEvent.t(), term(), map()) :: :ok | {:error, term()}
   def finish_failure(operation, usage, reason, metrics \\ %{}) do
-    Repo.transaction(fn ->
+    fn ->
       locked = lock_running_attempt!(operation.id, usage.id)
       now = TimeHelpers.now()
       classification = classify(reason)
@@ -171,39 +181,75 @@ defmodule Storyarn.AI.Operations do
       locked = release!(locked)
       delete_result(locked.id)
       transition!(locked, "failed", %{completed_at: now, error_classification: classification})
-    end)
-
-    :ok
+    end
+    |> Repo.transaction()
+    |> transaction_status()
   end
 
-  @spec finish_unknown(Operation.t(), UsageEvent.t(), atom(), map()) :: :ok
+  @spec finish_unknown(Operation.t(), UsageEvent.t(), term(), map()) :: :ok | {:error, term()}
   def finish_unknown(operation, usage, reason, metrics \\ %{}) do
-    Repo.transaction(fn ->
-      locked = lock_running_attempt!(operation.id, usage.id)
-      now = TimeHelpers.now()
-      classification = classify(reason)
+    result =
+      fn -> finish_unknown_locked(operation.id, usage.id, reason, metrics) end
+      |> Repo.transaction()
+      |> transaction_status()
 
-      finish_usage!(
-        usage.id,
-        "unknown",
-        metrics |> Map.put(:completed_at, now) |> Map.put(:error_classification, classification)
-      )
+    if result == :ok, do: emit_unknown(operation, reason)
+    result
+  end
 
-      locked = release!(locked)
-      delete_result(locked.id)
-      transition!(locked, "unknown", %{completed_at: now, error_classification: classification})
-    end)
+  @doc "Recovers a worker interrupted without ever starting a second provider attempt."
+  @spec recover_interrupted(pos_integer()) :: :ready | :ok | {:error, term()}
+  def recover_interrupted(operation_id) do
+    fn -> operation_id |> lock_operation() |> recover_locked() end
+    |> Repo.transaction()
+    |> case do
+      {:ok, :ready} -> :ready
+      {:ok, _terminal} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
 
-    Logger.error("AI provider outcome is unknown for task #{operation.task_id}")
+  defp recover_locked(nil), do: :terminal
+  defp recover_locked(%Operation{execution_status: "queued"}), do: :ready
 
-    Telemetry.emit([:operation, :unknown], %{count: 1}, %{
-      task_id: operation.task_id,
-      capability: operation.capability,
-      status: "unknown",
-      error_classification: classify(reason)
+  defp recover_locked(%Operation{execution_status: "running", external_attempt_started_at: nil} = operation) do
+    operation = release!(operation)
+    delete_result(operation.id)
+
+    transition!(operation, "failed", %{
+      completed_at: TimeHelpers.now(),
+      error_classification: "worker_interrupted_before_attempt"
     })
 
-    :ok
+    :terminal
+  end
+
+  defp recover_locked(%Operation{execution_status: "running"} = operation) do
+    operation
+    |> lock_usage_for_operation()
+    |> recover_started_attempt(operation)
+
+    :terminal
+  end
+
+  defp recover_locked(%Operation{}), do: :terminal
+
+  defp recover_started_attempt(%UsageEvent{status: "running"} = usage, operation) do
+    finish_unknown_locked(operation.id, usage.id, :worker_interrupted, %{})
+  end
+
+  defp recover_started_attempt(_usage, operation) do
+    operation = release!(operation)
+    delete_result(operation.id)
+
+    transition!(operation, "unknown", %{
+      completed_at: TimeHelpers.now(),
+      error_classification: "worker_interrupted"
+    })
+  end
+
+  defp lock_usage_for_operation(operation) do
+    Repo.one(from(event in UsageEvent, where: event.operation_id == ^operation.id, lock: "FOR UPDATE"))
   end
 
   @spec request_cancellation(Storyarn.Accounts.Scope.t(), pos_integer()) ::
@@ -270,7 +316,9 @@ defmodule Storyarn.AI.Operations do
     operation = lock_operation(operation_id)
     usage = Repo.one(from(event in UsageEvent, where: event.id == ^usage_id, lock: "FOR UPDATE"))
 
-    if (operation.execution_status == "running" and operation.external_attempt_started_at) && usage.status == "running" do
+    if operation && usage && operation.execution_status == "running" &&
+         not is_nil(operation.external_attempt_started_at) && usage.operation_id == operation.id &&
+         usage.status == "running" do
       operation
     else
       Repo.rollback(:invalid_transition)
@@ -284,10 +332,10 @@ defmodule Storyarn.AI.Operations do
     |> Repo.update!()
   end
 
-  defp fetch_task!(task_id) do
+  defp current_task(task_id) do
     case TaskRegistry.get(task_id) do
       {:ok, task} -> task
-      {:error, reason} -> Repo.rollback(reason)
+      {:error, _reason} -> nil
     end
   end
 
@@ -322,6 +370,36 @@ defmodule Storyarn.AI.Operations do
       error_classification: "duplicate_external_attempt"
     })
   end
+
+  defp finish_unknown_locked(operation_id, usage_id, reason, metrics) do
+    locked = lock_running_attempt!(operation_id, usage_id)
+    now = TimeHelpers.now()
+    classification = classify(reason)
+
+    finish_usage!(
+      usage_id,
+      "unknown",
+      metrics |> Map.put(:completed_at, now) |> Map.put(:error_classification, classification)
+    )
+
+    locked = release!(locked)
+    delete_result(locked.id)
+    transition!(locked, "unknown", %{completed_at: now, error_classification: classification})
+  end
+
+  defp emit_unknown(operation, reason) do
+    Logger.error("AI provider outcome is unknown for task #{operation.task_id}")
+
+    Telemetry.emit([:operation, :unknown], %{count: 1}, %{
+      task_id: operation.task_id,
+      capability: operation.capability,
+      status: "unknown",
+      error_classification: classify(reason)
+    })
+  end
+
+  defp transaction_status({:ok, _result}), do: :ok
+  defp transaction_status({:error, reason}), do: {:error, reason}
 
   defp classify({:unknown, reason}), do: classify(reason)
   defp classify(reason) when is_atom(reason), do: Atom.to_string(reason)

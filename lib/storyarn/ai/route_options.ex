@@ -26,6 +26,7 @@ defmodule Storyarn.AI.RouteOptions do
       workspace_id: intent.workspace_id,
       project_id: intent.project_id,
       task_id: task.id,
+      task_contract_hash: Task.contract_hash(task),
       input_hash: intent.input_hash,
       subject_type: subject[:type],
       subject_id: subject[:id],
@@ -115,6 +116,7 @@ defmodule Storyarn.AI.RouteOptions do
     cond do
       option.consumed_by_operation_id -> {:error, :route_ref_consumed}
       DateTime.compare(option.expires_at, TimeHelpers.now()) != :gt -> {:error, :route_ref_expired}
+      option.task_contract_hash != Task.contract_hash(task) -> {:error, :route_ref_stale}
       binding_matches?(option, intent, task) -> :ok
       true -> {:error, :route_ref_mismatch}
     end
@@ -128,6 +130,7 @@ defmodule Storyarn.AI.RouteOptions do
       option.workspace_id,
       option.project_id,
       option.task_id,
+      option.task_contract_hash,
       option.input_hash,
       option.subject_type,
       option.subject_id,
@@ -138,6 +141,7 @@ defmodule Storyarn.AI.RouteOptions do
         intent.workspace_id,
         intent.project_id,
         task.id,
+        Task.contract_hash(task),
         intent.input_hash,
         subject[:type],
         subject[:id],

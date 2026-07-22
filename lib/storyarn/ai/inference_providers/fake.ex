@@ -32,6 +32,9 @@ defmodule Storyarn.AI.InferenceProviders.Fake do
       scenario when scenario in [:invalid_metrics, "invalid_metrics"] ->
         {:ok, %{output: %{"echo" => input}, input_units: -1}}
 
+      scenario when scenario in [:crash, "crash"] ->
+        exit(:simulated_provider_crash)
+
       _scenario ->
         {:error, :provider_error}
     end

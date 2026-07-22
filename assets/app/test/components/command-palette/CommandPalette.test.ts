@@ -387,6 +387,40 @@ describe("CommandPalette", () => {
     ).toHaveLength(0);
   });
 
+  it("clears an AI CTA when the query changes or the user enters another step", async () => {
+    const cta = {
+      labelKey: "settings.nav.items.integrations",
+      destination: { type: "route", id: "account-ai-integrations" } as const,
+      launch: vi.fn().mockResolvedValue({ status: "launched" } as const),
+    };
+
+    registerPaletteCommands("flows", [
+      aiLaunchCommand({
+        availability: { state: "cta", reasonKey: "palette.not_allowed", cta },
+      }),
+    ]);
+
+    const { wrapper } = mountPalette();
+    pressPaletteShortcut();
+    await nextTick();
+    selectItem(wrapper, "ai.contract.launch");
+    await flushPromises();
+    expect(wrapper.find('[role="alert"] button').exists()).toBe(true);
+
+    await wrapper.find("[data-slot='command-input']").setValue("new query");
+    await nextTick();
+    expect(wrapper.find('[role="alert"] button').exists()).toBe(false);
+
+    await wrapper.find("[data-slot='command-input']").setValue("");
+    selectItem(wrapper, "ai.contract.launch");
+    await flushPromises();
+    expect(wrapper.find('[role="alert"] button').exists()).toBe(true);
+
+    selectItem(wrapper, "create.sheet");
+    await nextTick();
+    expect(wrapper.find('[role="alert"] button').exists()).toBe(false);
+  });
+
   it("survives a dead socket — analytics failures never break the palette", async () => {
     registerPaletteCommands("flows", [command("flows.a")]);
     const { live, wrapper } = mountPalette();

@@ -4,6 +4,7 @@ defmodule Storyarn.AI.PolicyTest do
   import Storyarn.AccountsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.Accounts.Scope
   alias Storyarn.AI
   alias Storyarn.AI.WorkspacePolicy
   alias Storyarn.AI.WorkspacePolicyAudit
@@ -24,6 +25,11 @@ defmodule Storyarn.AI.PolicyTest do
     assert policy.allowed_lanes == []
     assert policy.version == 1
     refute Repo.get_by(WorkspacePolicy, workspace_id: workspace.id)
+  end
+
+  test "nil-user scopes are rejected instead of raising", %{workspace: workspace} do
+    assert {:error, :unauthorized} = AI.get_workspace_policy(%Scope{}, workspace.id)
+    assert {:error, :unauthorized} = AI.update_workspace_policy(%Scope{}, workspace.id, [])
   end
 
   test "only the workspace owner can change policy and every transition is versioned and audited",
@@ -83,6 +89,18 @@ defmodule Storyarn.AI.PolicyTest do
 
     assert_raise Postgrex.Error, ~r/append-only/, fn ->
       Repo.delete(audit)
+    end
+  end
+
+  test "workspace policy audit links can only be nilified by their foreign keys", %{
+    scope: scope,
+    workspace: workspace
+  } do
+    assert {:ok, _policy} = AI.update_workspace_policy(scope, workspace.id, ["managed"])
+    audit = Repo.one!(WorkspacePolicyAudit)
+
+    assert_raise Postgrex.Error, ~r/append-only/, fn ->
+      Repo.query!("UPDATE ai_workspace_policy_audits SET user_id = NULL WHERE id = $1", [audit.id])
     end
   end
 end

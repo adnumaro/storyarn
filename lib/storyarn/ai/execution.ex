@@ -17,7 +17,6 @@ defmodule Storyarn.AI.Execution do
   alias Storyarn.AI.TaskRegistry
   alias Storyarn.RateLimiter
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Workers.AIExecutionWorker
 
   @idempotency_lock_namespace 981_005
@@ -82,19 +81,12 @@ defmodule Storyarn.AI.Execution do
 
     case idempotent_operation(intent, task) do
       %Operation{} = existing -> replay(existing, intent)
-      nil -> create_rate_limited(intent, task)
+      nil -> create_operation(intent, task)
     end
   end
 
   defp replay(existing, intent) do
     if same_intent?(existing, intent), do: {existing, false}, else: Repo.rollback(:idempotency_conflict)
-  end
-
-  defp create_rate_limited(intent, task) do
-    case RateLimiter.check_ai_execution(intent.scope.user.id, task.id) do
-      :ok -> create_operation(intent, task)
-      {:error, reason} -> Repo.rollback(reason)
-    end
   end
 
   defp create_operation(intent, task) do
@@ -103,8 +95,8 @@ defmodule Storyarn.AI.Execution do
            PolicyDecision.authorize(intent, task, :execute, lane: route.lane, lock_policy: true),
          true <- decision.policy_version == route.policy_version || {:error, :route_ref_stale},
          true <- RouteResolver.current?(decision, task, route) || {:error, :route_ref_stale},
+         :ok <- RateLimiter.check_ai_execution(intent.scope.user.id, task.id),
          {:ok, input} <- CanonicalJSON.encode(intent.input) do
-      now = TimeHelpers.now()
       subject = intent.subject || %{}
       settlement_status = if route.lane == :managed, do: "reserved", else: "not_applicable"
 
@@ -119,6 +111,7 @@ defmodule Storyarn.AI.Execution do
           project_id_snapshot: intent.project_id,
           route_option_id: route_option.id,
           task_id: task.id,
+          task_contract_hash: Task.contract_hash(task),
           capability: Atom.to_string(task.capability),
           idempotency_key: intent.idempotency_key,
           execution_status: "queued",
@@ -138,8 +131,6 @@ defmodule Storyarn.AI.Execution do
         })
         |> Repo.insert!()
 
-      expires_at = DateTime.add(now, task.result_ttl_seconds, :second)
-
       %Result{}
       |> Result.create_changeset(%{
         operation_id: operation.id,
@@ -152,8 +143,7 @@ defmodule Storyarn.AI.Execution do
         task_id: task.id,
         prompt_version: task.prompt_version,
         context_version: task.context_version,
-        output_schema_version: task.output_schema_version,
-        expires_at: expires_at
+        output_schema_version: task.output_schema_version
       })
       |> Repo.insert!()
 
@@ -224,6 +214,8 @@ defmodule Storyarn.AI.Execution do
   defp validate_input(task, intent) do
     with :ok <- Task.validate_input(task, intent.input),
          {:ok, encoded} <- CanonicalJSON.encode(intent.input),
+         actual_hash = :sha256 |> :crypto.hash(encoded) |> Base.encode16(case: :lower),
+         true <- actual_hash == intent.input_hash || {:error, :input_hash_mismatch},
          true <- byte_size(encoded) <= task.max_input_bytes do
       :ok
     else

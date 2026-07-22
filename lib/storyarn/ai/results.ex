@@ -7,9 +7,12 @@ defmodule Storyarn.AI.Results do
   alias Storyarn.AI.Operation
   alias Storyarn.AI.PolicyDecision
   alias Storyarn.AI.Result
+  alias Storyarn.AI.Task
   alias Storyarn.AI.TaskRegistry
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
+
+  @default_expiration_batch_size 100
 
   @spec get_operation(Scope.t(), pos_integer()) :: Operation.t() | nil
   def get_operation(%Scope{user: %{id: actor_id}}, operation_id) do
@@ -84,6 +87,7 @@ defmodule Storyarn.AI.Results do
       with %Operation{execution_status: "succeeded", user_disposition: nil} <- operation,
            :ok <- revision_matches(operation, current_revision),
            {:ok, task} <- TaskRegistry.get(operation.task_id),
+           :ok <- task_contract_current(operation, task),
            {:ok, _decision} <- PolicyDecision.reauthorize(operation, task, :apply, lock_policy: true),
            %Result{} = result <- lock_result(operation.id),
            true <- DateTime.after?(result.expires_at, TimeHelpers.now()),
@@ -102,16 +106,33 @@ defmodule Storyarn.AI.Results do
     end)
   end
 
-  @spec expire(DateTime.t()) :: non_neg_integer()
-  def expire(now \\ TimeHelpers.now()) do
-    ids = Repo.all(from(result in Result, where: result.expires_at <= ^now, select: result.operation_id))
+  @spec expire(DateTime.t(), keyword()) ::
+          {:ok, %{expired_count: non_neg_integer(), failure_count: non_neg_integer(), more?: boolean()}}
+  def expire(now \\ TimeHelpers.now(), opts \\ []) do
+    batch_size = Keyword.get(opts, :batch_size, @default_expiration_batch_size)
 
-    Enum.reduce(ids, 0, fn operation_id, count ->
-      case expire_one(operation_id, now) do
-        :ok -> count + 1
-        :missing -> count
-      end
-    end)
+    ids =
+      Repo.all(
+        from(result in Result,
+          where: not is_nil(result.expires_at) and result.expires_at <= ^now,
+          order_by: [asc: result.expires_at, asc: result.id],
+          limit: ^(batch_size + 1),
+          select: result.operation_id
+        )
+      )
+
+    {batch, overflow} = Enum.split(ids, batch_size)
+
+    summary =
+      Enum.reduce(batch, %{expired_count: 0, failure_count: 0, more?: overflow != []}, fn operation_id, acc ->
+        case expire_one(operation_id, now) do
+          :ok -> Map.update!(acc, :expired_count, &(&1 + 1))
+          :missing -> acc
+          {:error, _reason} -> Map.update!(acc, :failure_count, &(&1 + 1))
+        end
+      end)
+
+    {:ok, summary}
   end
 
   @spec purge_project(pos_integer()) :: non_neg_integer()
@@ -125,7 +146,7 @@ defmodule Storyarn.AI.Results do
     |> Repo.transaction()
     |> case do
       {:ok, result} -> result
-      {:error, _reason} -> :missing
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -133,7 +154,7 @@ defmodule Storyarn.AI.Results do
     operation = lock_operation(operation_id)
     result = Repo.one(from(result in Result, where: result.operation_id == ^operation_id, lock: "FOR UPDATE"))
 
-    if result && DateTime.compare(result.expires_at, now) != :gt do
+    if result && result.expires_at && DateTime.compare(result.expires_at, now) != :gt do
       maybe_abandon(operation)
       Repo.delete!(result)
       :ok
@@ -151,6 +172,12 @@ defmodule Storyarn.AI.Results do
   defp revision_matches(%Operation{subject_revision: nil}, nil), do: :ok
   defp revision_matches(%Operation{subject_revision: revision}, revision), do: :ok
   defp revision_matches(_operation, _revision), do: {:error, :stale_subject}
+
+  defp task_contract_current(operation, task) do
+    if operation.task_contract_hash == Task.contract_hash(task),
+      do: :ok,
+      else: {:error, :task_contract_changed}
+  end
 
   defp provenance(operation) do
     %{

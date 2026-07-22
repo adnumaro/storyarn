@@ -283,6 +283,9 @@ watch(query, () => {
 
   if (!open.value) return;
 
+  errorKey.value = null;
+  activeAICta.value = null;
+
   // Typing immediately invalidates any in-flight request — a reply for the
   // previous query must never land after the user has kept typing.
   ++navToken;
@@ -380,6 +383,7 @@ function enterStep(next: PaletteStep): void {
 
   step.value = next;
   errorKey.value = null;
+  activeAICta.value = null;
   ++mutationToken;
   ++navToken;
   if (navDebounce) clearTimeout(navDebounce);
@@ -559,6 +563,12 @@ async function runPaletteAICommand(command: PaletteCommand): Promise<void> {
   if (result.status === "completed") {
     track("palette_command_executed", { command_id: command.id });
     closePalette();
+    return;
+  }
+
+  if (result.status === "destination_failed") {
+    track("palette_command_executed", { command_id: command.id });
+    errorKey.value = result.reasonKey;
     return;
   }
 

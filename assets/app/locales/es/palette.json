@@ -5,6 +5,7 @@
     "placeholder": "Escribe un comando o busca…",
     "no_results": "No hay comandos que coincidan",
     "command_failed": "El comando ha fallado al ejecutarse. Inténtalo de nuevo.",
+    "ai_destination_failed": "La solicitud de IA fue aceptada, pero no se pudo abrir la vista del resultado.",
     "search_failed": "Storyarn no ha podido cargar estos resultados. Inténtalo de nuevo.",
     "loading": "Cargando…",
     "not_allowed": "No tienes permiso para hacer eso.",

@@ -95,6 +95,20 @@ describe("AI command-palette contract", () => {
     expect(open).toHaveBeenCalledWith({ type: "panel", id: "ai-operation" }, context);
   });
 
+  it("keeps an accepted operation distinct when only destination routing fails", async () => {
+    const command = executeCommand();
+
+    await expect(
+      runAIPaletteCommand(command, {
+        open: vi.fn().mockRejectedValue(new Error("surface disappeared")),
+      }),
+    ).resolves.toEqual({
+      status: "destination_failed",
+      operationId: "op-123",
+      reasonKey: "palette.ai_destination_failed",
+    });
+  });
+
   it("presentation availability never invokes a hidden or blocked command", async () => {
     const launch = vi.fn();
     const hidden = launchCommand({ availability: { state: "hidden" }, launch });
@@ -164,5 +178,18 @@ describe("AI command-palette contract", () => {
     await expect(openAIDestination(destination, context)).rejects.toThrow(
       "AI destination is not available",
     );
+  });
+
+  it("does not let a stale unregister callback remove a newer registration", async () => {
+    const destination = { type: "panel", id: "translation-preflight" } as const;
+    const unregisterFirst = registerAIDestination(destination, vi.fn());
+    unregisterFirst();
+
+    const secondHandler = vi.fn();
+    registerAIDestination(destination, secondHandler);
+    unregisterFirst();
+
+    await openAIDestination(destination, context);
+    expect(secondHandler).toHaveBeenCalledOnce();
   });
 });

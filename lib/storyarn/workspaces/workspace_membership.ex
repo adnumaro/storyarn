@@ -76,7 +76,7 @@ defmodule Storyarn.Workspaces.WorkspaceMembership do
 
   Permissions:
   - owner: all actions
-  - admin: access_workspace_settings, manage_members, create_project, view
+  - admin: access_workspace_settings, manage_members, create_project, use_ai, view
   - member: create_project, view
   - viewer: view only
   """

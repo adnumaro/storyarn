@@ -5,7 +5,12 @@ type DestinationHandler = (
   context: AICommandContext,
 ) => void | Promise<void>;
 
-const handlers = new Map<string, DestinationHandler>();
+interface DestinationRegistration {
+  token: symbol;
+  handler: DestinationHandler;
+}
+
+const handlers = new Map<string, DestinationRegistration>();
 
 export function registerAIDestination(
   destination: Exclude<AIDestination, { type: "none" }>,
@@ -17,8 +22,12 @@ export function registerAIDestination(
     throw new Error(`AI destination already registered: ${key}`);
   }
 
-  handlers.set(key, handler);
-  return () => handlers.delete(key);
+  const token = Symbol(key);
+  handlers.set(key, { token, handler });
+
+  return () => {
+    if (handlers.get(key)?.token === token) handlers.delete(key);
+  };
 }
 
 export async function openAIDestination(
@@ -27,10 +36,10 @@ export async function openAIDestination(
 ): Promise<void> {
   if (destination.type === "none") return;
 
-  const handler = handlers.get(destinationKey(destination));
-  if (!handler) throw new Error("AI destination is not available on this surface");
+  const registration = handlers.get(destinationKey(destination));
+  if (!registration) throw new Error("AI destination is not available on this surface");
 
-  await handler(destination, context);
+  await registration.handler(destination, context);
 }
 
 /** Test-only: clears all destination handlers. */

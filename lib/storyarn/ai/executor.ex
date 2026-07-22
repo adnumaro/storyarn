@@ -9,12 +9,12 @@ defmodule Storyarn.AI.Executor do
   alias Storyarn.AI.Task
   alias Storyarn.Repo
 
-  @spec run(pos_integer()) :: :ok
+  @spec run(pos_integer()) :: :ok | {:error, term()}
   def run(operation_id) do
     case Operations.claim(operation_id) do
       {:ok, operation, task, route} -> run_claimed(operation, task, route)
       {:cancelled, _operation} -> :ok
-      {:error, _reason} -> :ok
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -53,7 +53,10 @@ defmodule Storyarn.AI.Executor do
       provider_options: task.provider_options
     }
 
-    async = Elixir.Task.async(fn -> provider.generate(credential, request) end)
+    async =
+      Elixir.Task.Supervisor.async_nolink(Storyarn.TaskSupervisor, fn ->
+        provider.generate(credential, request)
+      end)
 
     case Elixir.Task.yield(async, task.timeout_ms) || Elixir.Task.shutdown(async, :brutal_kill) do
       {:ok, result} -> result

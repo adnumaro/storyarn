@@ -160,7 +160,7 @@ Revoked credentials, changed workspace policy, stale entity revisions, or lost m
 
 ## Delivery
 
-Branch `feat/ai-execution-kernel` from `main` → PR → merge before Slice 3. The kernel has no user-facing AI surface; `:ai_integrations` remains disabled by default.
+Branch `codex/slice2-ai-execution-kernel` from `main` → PR → merge before Slice 3. The kernel has no user-facing AI surface; `:ai_integrations` remains disabled by default.
 
 ## Implementation status & handoff (2026-07-22)
 

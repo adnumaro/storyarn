@@ -9,8 +9,13 @@ defmodule Storyarn.AI.InferenceProviders do
       |> Keyword.get(:providers, %{})
 
     case Map.fetch(providers, provider) do
-      {:ok, module} when is_atom(module) -> {:ok, module}
-      _missing -> {:error, :provider_unavailable}
+      {:ok, module} when is_atom(module) ->
+        if Code.ensure_loaded?(module) and function_exported?(module, :generate, 2),
+          do: {:ok, module},
+          else: {:error, :provider_unavailable}
+
+      _missing ->
+        {:error, :provider_unavailable}
     end
   end
 

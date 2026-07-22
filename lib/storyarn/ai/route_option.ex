@@ -15,6 +15,7 @@ defmodule Storyarn.AI.RouteOption do
     field :token_hash, :binary, redact: true
     field :actor_id, :integer
     field :task_id, :string
+    field :task_contract_hash, :string
     field :input_hash, :string
     field :subject_type, :string
     field :subject_id, :integer
@@ -45,6 +46,7 @@ defmodule Storyarn.AI.RouteOption do
     |> cast(attrs, [
       :token_hash,
       :task_id,
+      :task_contract_hash,
       :input_hash,
       :subject_type,
       :subject_id,
@@ -68,6 +70,7 @@ defmodule Storyarn.AI.RouteOption do
       :actor_id,
       :workspace_id,
       :task_id,
+      :task_contract_hash,
       :input_hash,
       :lane,
       :provider,

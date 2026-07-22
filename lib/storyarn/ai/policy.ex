@@ -12,6 +12,8 @@ defmodule Storyarn.AI.Policy do
   @lock_namespace 981_004
 
   @spec get(Scope.t(), pos_integer()) :: {:ok, WorkspacePolicy.t()} | {:error, :unauthorized}
+  def get(%Scope{user: nil}, _workspace_id), do: {:error, :unauthorized}
+
   def get(%Scope{} = scope, workspace_id) when is_integer(workspace_id) and workspace_id > 0 do
     case Workspaces.get_workspace(scope, workspace_id) do
       {:ok, workspace, _membership} -> {:ok, get_effective(workspace.id)}
@@ -21,6 +23,8 @@ defmodule Storyarn.AI.Policy do
 
   @spec update(Scope.t(), pos_integer(), [String.t()]) ::
           {:ok, WorkspacePolicy.t()} | {:error, :unauthorized | :invalid_policy | Ecto.Changeset.t()}
+  def update(%Scope{user: nil}, _workspace_id, _lanes), do: {:error, :unauthorized}
+
   def update(%Scope{user: user} = scope, workspace_id, lanes)
       when is_integer(workspace_id) and workspace_id > 0 and is_list(lanes) do
     normalized_lanes = lanes |> Enum.uniq() |> Enum.sort()

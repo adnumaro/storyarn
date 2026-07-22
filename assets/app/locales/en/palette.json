@@ -5,6 +5,7 @@
     "placeholder": "Type a command or search…",
     "no_results": "No matching commands",
     "command_failed": "The command failed to run. Try again.",
+    "ai_destination_failed": "The AI request was accepted, but its result view could not be opened.",
     "search_failed": "Storyarn couldn't load these results. Try again.",
     "loading": "Loading…",
     "not_allowed": "You don't have permission to do that.",

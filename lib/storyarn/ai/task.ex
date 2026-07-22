@@ -81,6 +81,20 @@ defmodule Storyarn.AI.Task do
   def enabled?(%__MODULE__{enabled?: enabled?}) when is_boolean(enabled?), do: enabled?
   def enabled?(%__MODULE__{enabled?: enabled?}) when is_function(enabled?, 0), do: enabled?.()
 
+  @doc "Returns a deploy-sensitive hash of every field that affects task execution."
+  @spec contract_hash(t()) :: String.t()
+  def contract_hash(%__MODULE__{} = task) do
+    contract = %{
+      task: Map.from_struct(%{task | enabled?: enabled?(task)}),
+      module_md5: task.module.module_info(:md5)
+    }
+
+    contract
+    |> :erlang.term_to_binary([:deterministic])
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
+  end
+
   @spec validate_input(t(), map() | list()) :: :ok | {:error, atom()}
   def validate_input(%__MODULE__{module: module}, input) do
     if function_exported?(module, :validate_input, 1), do: module.validate_input(input), else: :ok
@@ -155,7 +169,7 @@ defmodule Storyarn.AI.Task do
 
   defp valid_destination?(_destination), do: false
 
-  defp valid_managed_price?(%{allowed_lanes: lanes, managed_price: price}) do
+  defp valid_managed_price?(%{allowed_lanes: lanes, managed_price: price}) when is_list(lanes) do
     if :managed in lanes do
       match?(
         %{id: id, version: version} when is_binary(id) and byte_size(id) > 0 and is_integer(version) and version > 0,
@@ -165,6 +179,8 @@ defmodule Storyarn.AI.Task do
       is_nil(price)
     end
   end
+
+  defp valid_managed_price?(_task), do: false
 
   defp valid_command_ids?(ids) when is_list(ids) do
     Enum.uniq(ids) == ids and Enum.all?(ids, &(is_binary(&1) and Regex.match?(@id_format, &1)))

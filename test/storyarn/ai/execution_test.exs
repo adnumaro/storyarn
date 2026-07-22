@@ -21,6 +21,7 @@ defmodule Storyarn.AI.ExecutionTest do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Workspaces
   alias StoryarnTest.AI.ContractTask
+  alias StoryarnTest.AI.FakeSettlement
 
   setup do
     original_config = Application.get_env(:storyarn, ContractTask, [])
@@ -248,6 +249,133 @@ defmodule Storyarn.AI.ExecutionTest do
     refute Repo.get_by(Result, operation_id: queued.id)
   end
 
+  test "queued input does not expire before execution and result TTL starts on delivery", ctx do
+    Application.put_env(:storyarn, ContractTask,
+      scenario: :success,
+      execution_mode: :background,
+      result_ttl_seconds: 60
+    )
+
+    {queued, _intent} = execute!(ctx, "wait for worker")
+    assert Repo.get_by!(Result, operation_id: queued.id).expires_at == nil
+
+    before_execution = TimeHelpers.now()
+    assert :ok = Executor.run(queued.id)
+
+    result = Repo.get_by!(Result, operation_id: queued.id)
+    assert DateTime.after?(result.expires_at, DateTime.add(before_execution, 55, :second))
+  end
+
+  test "disabled and changed task contracts terminalize queued operations without provider access", ctx do
+    Application.put_env(:storyarn, ContractTask, scenario: :success, execution_mode: :background)
+    {disabled, _intent} = execute!(ctx, "disable queued task")
+
+    Application.put_env(:storyarn, ContractTask, scenario: :success, execution_mode: :background, enabled: false)
+    assert :ok = Executor.run(disabled.id)
+    assert Repo.get!(Operation, disabled.id).execution_status == "cancelled"
+    refute Repo.get_by(UsageEvent, operation_id: disabled.id)
+    refute Repo.get_by(Result, operation_id: disabled.id)
+
+    Application.put_env(:storyarn, ContractTask, scenario: :success, execution_mode: :background)
+    {changed, _intent} = execute!(ctx, "change queued task")
+    Application.put_env(:storyarn, ContractTask, scenario: :failure, execution_mode: :background)
+
+    assert :ok = Executor.run(changed.id)
+    changed = Repo.get!(Operation, changed.id)
+    assert changed.execution_status == "cancelled"
+    assert changed.error_classification == "task_contract_changed"
+    refute Repo.get_by(UsageEvent, operation_id: changed.id)
+  end
+
+  test "provider process exits become terminal unknown outcomes", ctx do
+    Application.put_env(:storyarn, ContractTask, scenario: :crash, execution_mode: :inline)
+    {operation, _intent} = execute!(ctx, "provider exits")
+
+    assert operation.execution_status == "unknown"
+    assert operation.settlement_status == "released"
+    assert Repo.get_by!(UsageEvent, operation_id: operation.id).status == "unknown"
+    refute Repo.get_by(Result, operation_id: operation.id)
+  end
+
+  test "a cancellation requested during the provider attempt suppresses result delivery", ctx do
+    Application.put_env(:storyarn, ContractTask, scenario: :success, execution_mode: :background)
+    {queued, _intent} = execute!(ctx, "cancel during attempt")
+    task = Enum.find(AI.registered_tasks(), &(&1.id == "contract.echo"))
+
+    assert {:ok, running, ^task, route} = Operations.claim(queued.id)
+    assert {:ok, usage} = Operations.start_attempt(running, task, route)
+    assert {:ok, requested} = AI.cancel(ctx.scope, running.id)
+    assert requested.cancellation_requested_at
+
+    assert :ok = Operations.finish_success(running, usage, %{"echo" => %{"text" => "cancel during attempt"}}, %{})
+
+    finished = Repo.get!(Operation, running.id)
+    assert finished.execution_status == "succeeded"
+    assert finished.settlement_status == "committed"
+    assert finished.cancellation_requested_at
+    refute Repo.get_by(Result, operation_id: running.id)
+  end
+
+  test "usage finalization rejects an event belonging to another operation", ctx do
+    Application.put_env(:storyarn, ContractTask, scenario: :success, execution_mode: :background)
+    {first, _intent} = execute!(ctx, "first operation")
+    {second, _intent} = execute!(ctx, "second operation")
+    task = Enum.find(AI.registered_tasks(), &(&1.id == "contract.echo"))
+
+    assert {:ok, first, ^task, first_route} = Operations.claim(first.id)
+    assert {:ok, first_usage} = Operations.start_attempt(first, task, first_route)
+    assert {:ok, second, ^task, second_route} = Operations.claim(second.id)
+    assert {:ok, second_usage} = Operations.start_attempt(second, task, second_route)
+
+    assert {:error, :invalid_transition} = Operations.finish_failure(first, second_usage, :provider_error)
+    assert :ok = Operations.finish_failure(first, first_usage, :provider_error)
+    assert :ok = Operations.finish_failure(second, second_usage, :provider_error)
+  end
+
+  test "settlement failures are returned and roll finalization back", ctx do
+    original = Application.get_env(:storyarn, FakeSettlement, [])
+    on_exit(fn -> Application.put_env(:storyarn, FakeSettlement, original) end)
+
+    Application.put_env(:storyarn, ContractTask, scenario: :success, execution_mode: :background)
+    {queued, _intent} = execute!(ctx, "settlement failure")
+    task = Enum.find(AI.registered_tasks(), &(&1.id == "contract.echo"))
+    assert {:ok, running, ^task, route} = Operations.claim(queued.id)
+    assert {:ok, usage} = Operations.start_attempt(running, task, route)
+
+    Application.put_env(:storyarn, FakeSettlement, release: {:error, :ledger_unavailable})
+    assert {:error, :ledger_unavailable} = Operations.finish_failure(running, usage, :provider_error)
+    assert Repo.get!(Operation, running.id).execution_status == "running"
+    assert Repo.get!(UsageEvent, usage.id).status == "running"
+  end
+
+  test "preflight and execution reject a mutated intent hash", ctx do
+    intent = intent!(ctx, "hash-bound")
+    tampered = %{intent | input_hash: String.duplicate("0", 64)}
+    assert {:error, :input_hash_mismatch} = AI.preflight(tampered)
+
+    route_ref = route_ref!(intent)
+    execute_intent = execution_intent!(ctx, "hash-bound", route_ref, "tampered-hash")
+    assert {:error, :input_hash_mismatch} = AI.execute(%{execute_intent | input_hash: String.duplicate("f", 64)})
+    assert Repo.aggregate(Operation, :count) == 0
+  end
+
+  test "invalid route attempts do not consume accepted-operation rate allowance", ctx do
+    original = Application.get_env(:storyarn, Storyarn.RateLimiter, [])
+    on_exit(fn -> Application.put_env(:storyarn, Storyarn.RateLimiter, original) end)
+    Application.put_env(:storyarn, Storyarn.RateLimiter, enabled: true)
+
+    base = intent!(ctx, "rate-bound")
+    route_ref = route_ref!(base)
+
+    for index <- 1..25 do
+      invalid = execution_intent!(ctx, "rate-bound", "invalid-route-#{index}", "invalid-route-#{index}")
+      assert {:error, :route_ref_invalid} = AI.execute(invalid)
+    end
+
+    valid = execution_intent!(ctx, "rate-bound", route_ref, "valid-after-invalid-routes")
+    assert {:ok, %Operation{execution_status: "succeeded"}} = AI.execute(valid)
+  end
+
   test "a second external attempt is blocked before provider access", ctx do
     Application.put_env(:storyarn, ContractTask, scenario: :success, execution_mode: :background)
     {queued, _intent} = execute!(ctx, "attempt once")
@@ -259,6 +387,30 @@ defmodule Storyarn.AI.ExecutionTest do
     assert Repo.aggregate(UsageEvent, :count) == 1
 
     assert :ok = Operations.finish_failure(running, usage, :provider_error)
+  end
+
+  test "interrupted workers terminalize state without another external attempt", ctx do
+    Application.put_env(:storyarn, ContractTask, scenario: :success, execution_mode: :background)
+    {before_attempt, _intent} = execute!(ctx, "interrupt before attempt")
+    task = Enum.find(AI.registered_tasks(), &(&1.id == "contract.echo"))
+    assert {:ok, running_before, ^task, _route} = Operations.claim(before_attempt.id)
+
+    assert :ok = Operations.recover_interrupted(running_before.id)
+    recovered_before = Repo.get!(Operation, running_before.id)
+    assert recovered_before.execution_status == "failed"
+    assert recovered_before.settlement_status == "released"
+    refute Repo.get_by(UsageEvent, operation_id: running_before.id)
+
+    {after_attempt, _intent} = execute!(ctx, "interrupt after attempt")
+    assert {:ok, running_after, ^task, route} = Operations.claim(after_attempt.id)
+    assert {:ok, usage} = Operations.start_attempt(running_after, task, route)
+
+    assert :ok = Operations.recover_interrupted(running_after.id)
+    recovered_after = Repo.get!(Operation, running_after.id)
+    assert recovered_after.execution_status == "unknown"
+    assert recovered_after.settlement_status == "released"
+    assert Repo.get!(UsageEvent, usage.id).status == "unknown"
+    refute Repo.get_by(Result, operation_id: running_after.id)
   end
 
   test "cancellation after claim but before provider access releases without an attempt", ctx do
@@ -300,8 +452,29 @@ defmodule Storyarn.AI.ExecutionTest do
       set: [expires_at: DateTime.add(TimeHelpers.now(), -1, :second)]
     )
 
-    assert Results.expire() == 1
+    assert {:ok, %{expired_count: 1, failure_count: 0, more?: false}} = Results.expire()
     assert Repo.get!(Operation, abandoned.id).user_disposition == "abandoned"
+  end
+
+  test "result expiry is processed in bounded batches", ctx do
+    {first, _intent} = execute_success!(ctx, "expire batch one")
+    {second, _intent} = execute_success!(ctx, "expire batch two")
+    expired_at = DateTime.add(TimeHelpers.now(), -1, :second)
+
+    Repo.update_all(
+      from(result in Result, where: result.operation_id in ^[first.id, second.id]),
+      set: [expires_at: expired_at]
+    )
+
+    assert {:ok, %{expired_count: 1, failure_count: 0, more?: true}} =
+             Results.expire(TimeHelpers.now(), batch_size: 1)
+
+    assert Repo.aggregate(Result, :count) == 1
+
+    assert {:ok, %{expired_count: 1, failure_count: 0, more?: false}} =
+             Results.expire(TimeHelpers.now(), batch_size: 1)
+
+    assert Repo.aggregate(Result, :count) == 0
   end
 
   test "project deletion purges encrypted content but preserves content-free operation and usage", ctx do

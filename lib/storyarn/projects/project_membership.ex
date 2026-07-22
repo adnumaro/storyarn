@@ -69,7 +69,7 @@ defmodule Storyarn.Projects.ProjectMembership do
 
   Permissions:
   - owner: all actions
-  - editor: edit_content, view
+  - editor: edit_content, use_ai, view
   - viewer: view only
   """
   def can?(role, action)

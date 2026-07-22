@@ -10,8 +10,14 @@ defmodule StoryarnTest.AI.FakeSettlement do
   def reserve(_operation), do: :ok
 
   @impl true
-  def commit(_operation), do: :ok
+  def commit(_operation), do: configured_result(:commit)
 
   @impl true
-  def release(_operation), do: :ok
+  def release(_operation), do: configured_result(:release)
+
+  defp configured_result(action) do
+    :storyarn
+    |> Application.get_env(__MODULE__, [])
+    |> Keyword.get(action, :ok)
+  end
 end

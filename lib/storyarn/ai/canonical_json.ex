@@ -6,6 +6,8 @@ defmodule Storyarn.AI.CanonicalJSON do
     {:ok, encode_value(value)}
   rescue
     ArgumentError -> {:error, :invalid_structured_input}
+    FunctionClauseError -> {:error, :invalid_structured_input}
+    Jason.EncodeError -> {:error, :invalid_structured_input}
     Protocol.UndefinedError -> {:error, :invalid_structured_input}
   end
 
@@ -33,7 +35,11 @@ defmodule Storyarn.AI.CanonicalJSON do
   defp encode_value(value) when is_float(value), do: Jason.encode!(value)
 
   defp encode_value(value) when is_list(value) do
-    "[" <> Enum.map_join(value, ",", &encode_value/1) <> "]"
+    if proper_list?(value) do
+      "[" <> Enum.map_join(value, ",", &encode_value/1) <> "]"
+    else
+      raise ArgumentError, "improper lists are not JSON values"
+    end
   end
 
   defp encode_value(%_{}), do: raise(ArgumentError, "structs are not JSON values")
@@ -61,4 +67,8 @@ defmodule Storyarn.AI.CanonicalJSON do
   defp normalize_key(key) when is_binary(key), do: key
   defp normalize_key(key) when is_atom(key), do: Atom.to_string(key)
   defp normalize_key(_key), do: raise(ArgumentError, "JSON object keys must be strings")
+
+  defp proper_list?([]), do: true
+  defp proper_list?([_head | tail]), do: proper_list?(tail)
+  defp proper_list?(_tail), do: false
 end

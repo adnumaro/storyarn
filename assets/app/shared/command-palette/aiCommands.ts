@@ -96,6 +96,7 @@ export interface AIDestinationRuntime {
 
 export type AICommandRunResult =
   | { status: "completed"; operationId?: string }
+  | { status: "destination_failed"; operationId: string; reasonKey: string }
   | { status: "blocked"; reasonKey: string; cta?: AICommandCta }
   | { status: "failed"; reasonKey: string };
 
@@ -131,8 +132,16 @@ export async function runAIPaletteCommand(
     const outcome = await command.execute();
 
     if (outcome.status === "succeeded" || outcome.status === "queued") {
-      await runtime.open(outcome.destination, command.context);
-      return { status: "completed", operationId: outcome.operationId };
+      try {
+        await runtime.open(outcome.destination, command.context);
+        return { status: "completed", operationId: outcome.operationId };
+      } catch {
+        return {
+          status: "destination_failed",
+          operationId: outcome.operationId,
+          reasonKey: "palette.ai_destination_failed",
+        };
+      }
     }
 
     if (outcome.status === "blocked") {

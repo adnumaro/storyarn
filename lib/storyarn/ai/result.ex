@@ -39,8 +39,7 @@ defmodule Storyarn.AI.Result do
       :task_id,
       :prompt_version,
       :context_version,
-      :output_schema_version,
-      :expires_at
+      :output_schema_version
     ])
     |> put_identity_fields(attrs)
     |> validate_required([
@@ -53,8 +52,7 @@ defmodule Storyarn.AI.Result do
       :task_id,
       :prompt_version,
       :context_version,
-      :output_schema_version,
-      :expires_at
+      :output_schema_version
     ])
     |> unique_constraint(:operation_id)
     |> foreign_key_constraint(:operation_id)
@@ -63,10 +61,10 @@ defmodule Storyarn.AI.Result do
     |> foreign_key_constraint(:project_id)
   end
 
-  def output_changeset(result, output) when is_binary(output) do
+  def output_changeset(result, output, expires_at) when is_binary(output) and not is_nil(expires_at) do
     result
-    |> change(output_encrypted: output)
-    |> validate_required([:output_encrypted])
+    |> change(output_encrypted: output, expires_at: expires_at)
+    |> validate_required([:output_encrypted, :expires_at])
   end
 
   defp put_identity_fields(changeset, attrs) do
