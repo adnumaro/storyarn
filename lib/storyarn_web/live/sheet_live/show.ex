@@ -929,6 +929,7 @@ defmodule StoryarnWeb.SheetLive.Show do
     {:noreply,
      socket
      |> assign(:sheet, sheet)
+     |> assign_sheet_health()
      |> push_event("sheet_updated_remote", %{name: sheet.name, shortcut: sheet.shortcut})
      |> show_collab_toast(:sheet_updated, payload)}
   end

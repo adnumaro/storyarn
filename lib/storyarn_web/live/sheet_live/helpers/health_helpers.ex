@@ -56,19 +56,27 @@ defmodule StoryarnWeb.SheetLive.Helpers.HealthHelpers do
   defp stale_variable_reference_counts(blocks, referenced_block_ids, project_id) do
     blocks
     |> Enum.filter(&(MapSet.member?(referenced_block_ids, &1.id) and Block.variable?(&1)))
-    |> Map.new(fn block ->
-      count = block.id |> Flows.check_stale_references(project_id) |> Enum.count(&(&1[:stale] == true))
-      {block.id, count}
-    end)
+    |> Enum.map(& &1.id)
+    |> Flows.count_stale_references(project_id)
   end
 
   defp reference_targets(blocks, project_id) do
-    blocks
-    |> Enum.filter(&(&1.type == "reference"))
-    |> Map.new(fn block ->
-      target_type = get_in(block.value || %{}, ["target_type"])
-      target_id = get_in(block.value || %{}, ["target_id"])
-      {block.id, Sheets.get_reference_target(target_type, target_id, project_id)}
+    references =
+      blocks
+      |> Enum.filter(&(&1.type == "reference"))
+      |> Enum.map(fn block ->
+        target_type = get_in(block.value || %{}, ["target_type"])
+        target_id = get_in(block.value || %{}, ["target_id"])
+        {block.id, target_type, target_id}
+      end)
+
+    targets =
+      references
+      |> Enum.map(fn {_block_id, target_type, target_id} -> {target_type, target_id} end)
+      |> Sheets.get_reference_targets(project_id)
+
+    Map.new(references, fn {block_id, target_type, target_id} ->
+      {block_id, Map.get(targets, {target_type, target_id})}
     end)
   end
 

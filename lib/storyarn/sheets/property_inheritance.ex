@@ -49,8 +49,17 @@ defmodule Storyarn.Sheets.PropertyInheritance do
       all_sheets = [sheet | ancestors]
       hidden_block_ids = collect_hidden_block_ids(all_sheets)
 
+      blocks_by_sheet =
+        ancestors
+        |> Enum.map(& &1.id)
+        |> load_children_scope_blocks_for_sheets()
+        |> Enum.reject(&(&1.id in hidden_block_ids))
+        |> Enum.group_by(& &1.sheet_id)
+
       ancestors
-      |> Enum.map(&ancestor_to_block_group(&1, hidden_block_ids))
+      |> Enum.map(fn ancestor ->
+        %{source_sheet: ancestor, blocks: Map.get(blocks_by_sheet, ancestor.id, [])}
+      end)
       |> Enum.reject(fn group -> group.blocks == [] end)
     end
   end
@@ -1488,16 +1497,6 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     end
   end
 
-  # Loads children-scope blocks for an ancestor sheet (used in resolve_inherited_blocks)
-  defp ancestor_to_block_group(ancestor, hidden_block_ids) do
-    blocks =
-      ancestor
-      |> load_children_scope_blocks()
-      |> Enum.reject(fn b -> b.id in hidden_block_ids end)
-
-    %{source_sheet: ancestor, blocks: blocks}
-  end
-
   # Lists active, non-detached instances in the source sheet's project.
   # A target sheet may be in trash: source writes still maintain its hidden
   # materialized instance so restore never has to recreate structure or IDs.
@@ -1644,6 +1643,17 @@ defmodule Storyarn.Sheets.PropertyInheritance do
       from(b in Block,
         where: b.sheet_id == ^ancestor.id and b.scope == "children" and is_nil(b.deleted_at),
         order_by: [asc: b.position]
+      )
+    )
+  end
+
+  defp load_children_scope_blocks_for_sheets([]), do: []
+
+  defp load_children_scope_blocks_for_sheets(sheet_ids) do
+    Repo.all(
+      from(b in Block,
+        where: b.sheet_id in ^sheet_ids and b.scope == "children" and is_nil(b.deleted_at),
+        order_by: [asc: b.sheet_id, asc: b.position, asc: b.id]
       )
     )
   end

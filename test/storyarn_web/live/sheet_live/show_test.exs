@@ -1,6 +1,7 @@
 defmodule StoryarnWeb.SheetLive.ShowTest do
   use StoryarnWeb.ConnCase, async: true
 
+  import Ecto.Query
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
@@ -100,6 +101,8 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
       warning = Enum.find(health["warningItems"], &(&1["blockId"] == block.id))
       info = Enum.find(health["infoItems"], &(&1["blockId"] == block.id))
 
+      assert warning
+      assert info
       assert Enum.any?(warning["reasons"], &(&1["code"] == "required_block_empty"))
       assert Enum.any?(info["reasons"], &(&1["code"] == "no_internal_variable_usages"))
       assert health["errorItems"] == []
@@ -111,6 +114,58 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
       refute Enum.any?(refreshed_health["warningItems"], fn item ->
                item["blockId"] == block.id and
                  Enum.any?(item["reasons"], &(&1["code"] == "required_block_empty"))
+             end)
+    end
+
+    test "refreshes health after a remote shortcut change", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      sheet = sheet_fixture(project, %{name: "Remote Health", shortcut: "remote-health"})
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
+        )
+
+      await_async(view)
+
+      Repo.update_all(
+        from(current in Storyarn.Sheets.Sheet, where: current.id == ^sheet.id),
+        set: [shortcut: nil]
+      )
+
+      send(view.pid, {:remote_change, :sheet_updated, %{user_id: -1}})
+      _html = render(view)
+
+      health = get_sheet_health_props(view)
+
+      assert Enum.any?(health["errorItems"], fn item ->
+               Enum.any?(item["reasons"], &(&1["code"] == "missing_sheet_shortcut"))
+             end)
+    end
+
+    test "reports a malformed reference target without crashing", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      sheet = sheet_fixture(project, %{name: "Malformed Reference", shortcut: "malformed-reference"})
+      block = block_fixture(sheet, %{type: "reference"})
+
+      Repo.update_all(
+        from(current in Storyarn.Sheets.Block, where: current.id == ^block.id),
+        set: [value: %{"target_type" => "unsupported", "target_id" => 123}]
+      )
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
+        )
+
+      await_async(view)
+      health = get_sheet_health_props(view)
+
+      assert Enum.any?(health["errorItems"], fn item ->
+               item["blockId"] == block.id and
+                 Enum.any?(item["reasons"], &(&1["code"] == "invalid_block_value"))
              end)
     end
 

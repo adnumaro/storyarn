@@ -147,14 +147,16 @@ defmodule Storyarn.Sheets.HealthChecker do
   defp block_value_findings(sheet, block, snapshot) do
     type = field(block, :type)
     value = field(block, :value, %{})
+    invalid_value? = invalid_block_value?(type, value)
 
     []
     |> maybe_add(
-      invalid_block_value?(type, value),
+      invalid_value?,
       block_finding(sheet, block, :invalid_block_value, %{expected: expected_value(type)})
     )
     |> maybe_add(
-      field(block, :required, false) and type != "table" and required_block_empty?(block, snapshot),
+      not invalid_value? and field(block, :required, false) and type != "table" and
+        required_block_empty?(block, snapshot),
       block_finding(sheet, block, :required_block_empty)
     )
     |> Kernel.++(select_findings(sheet, block, nil, nil, type, field(block, :config, %{}), content(value)))
@@ -690,7 +692,8 @@ defmodule Storyarn.Sheets.HealthChecker do
   defp stale_selection?(values, keys) when is_list(values), do: Enum.any?(values, &(&1 not in keys))
   defp stale_selection?(_value, _keys), do: false
 
-  defp empty_cell?(value), do: value in [nil, "", []]
+  defp empty_cell?(value) when is_binary(value), do: String.trim(value) == ""
+  defp empty_cell?(value), do: value in [nil, []]
 
   defp duplicate_values?(values), do: length(values) != length(Enum.uniq(values))
 

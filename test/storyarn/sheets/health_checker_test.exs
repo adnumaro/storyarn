@@ -76,6 +76,19 @@ defmodule Storyarn.Sheets.HealthCheckerTest do
       assert :invalid_constraints in error_codes(findings)
       assert warning_codes(findings) == MapSet.new([:required_block_empty, :value_outside_constraints])
     end
+
+    test "reports malformed required rich text without crashing" do
+      malformed =
+        block(1, "rich_text",
+          required: true,
+          value: %{"content" => %{"unexpected" => "value"}}
+        )
+
+      findings = check(sheet(), [malformed])
+
+      assert :invalid_block_value in error_codes(findings)
+      refute :required_block_empty in warning_codes(findings)
+    end
   end
 
   describe "selectors and references" do
@@ -154,6 +167,17 @@ defmodule Storyarn.Sheets.HealthCheckerTest do
 
       assert warning_codes(findings) ==
                MapSet.new([:required_table_cell_empty, :empty_select_options])
+    end
+
+    test "treats whitespace-only required table cells as empty" do
+      table_block = block(1, "table", variable_name: "stats")
+      column = column(10, "title", "text", required: true)
+      row = row(20, "hero", %{"title" => "  \n\t "})
+
+      findings =
+        check(sheet(), [table_block], table_data: %{1 => %{columns: [column], rows: [row]}})
+
+      assert :required_table_cell_empty in warning_codes(findings)
     end
 
     test "detects invalid formula expressions, unbound symbols, and invalid bindings" do

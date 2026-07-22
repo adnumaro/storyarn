@@ -846,6 +846,33 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       assert hd(refs).stale == true
     end
 
+    test "counts stale references for multiple blocks in one batch", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "assign_1",
+                "sheet" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "set",
+                "value" => "100",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+      Storyarn.Sheets.update_sheet(ctx.sheet, %{shortcut: "mc.renamed"})
+
+      assert VariableReferenceTracker.count_stale_references(
+               [ctx.health_block.id, -1],
+               ctx.project.id
+             ) == %{ctx.health_block.id => 1}
+    end
+
     test "detects stale condition read ref after rename", ctx do
       node =
         node_fixture(ctx.flow, %{

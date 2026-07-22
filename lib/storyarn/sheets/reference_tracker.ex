@@ -18,7 +18,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
 
   - **Deleted sources**: References from soft-deleted blocks/sheets are excluded from backlinks
   - **Deleted targets**: References to deleted targets show "not found" in UI
-  - **Orphaned references**: Stale references are cleaned up during bulk deletions
+  - **Orphaned references**: References from deleted sources are cleaned up during bulk deletions
   - **Cross-project**: References are always scoped to a single project
 
   ## Performance
@@ -249,6 +249,54 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     |> MapSet.new()
   end
 
+  @doc "Resolves active sheet and flow targets in a fixed number of queries."
+  @spec get_reference_targets([{String.t() | nil, integer() | nil}], integer()) :: map()
+  def get_reference_targets(references, project_id) when is_list(references) do
+    sheet_ids = reference_target_ids(references, "sheet")
+    flow_ids = reference_target_ids(references, "flow")
+
+    sheet_targets =
+      Repo.all(
+        from(sheet in Sheet,
+          where:
+            sheet.project_id == ^project_id and sheet.id in ^sheet_ids and
+              is_nil(sheet.deleted_at),
+          select: %{
+            type: "sheet",
+            id: sheet.id,
+            name: sheet.name,
+            shortcut: sheet.shortcut
+          }
+        )
+      )
+
+    flow_targets =
+      Repo.all(
+        from(flow in Flow,
+          where:
+            flow.project_id == ^project_id and flow.id in ^flow_ids and
+              is_nil(flow.deleted_at),
+          select: %{
+            type: "flow",
+            id: flow.id,
+            name: flow.name,
+            shortcut: flow.shortcut
+          }
+        )
+      )
+
+    Map.new(sheet_targets ++ flow_targets, &{{&1.type, &1.id}, &1})
+  end
+
+  defp reference_target_ids(references, target_type) do
+    references
+    |> Enum.flat_map(fn
+      {^target_type, target_id} when is_integer(target_id) and target_id > 0 -> [target_id]
+      _reference -> []
+    end)
+    |> Enum.uniq()
+  end
+
   defp stale_block_reference_query(project_id, block_ids) do
     EntityReference
     |> join_block_reference_sources(project_id, block_ids)
@@ -440,12 +488,44 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   end
 
   @doc """
-  Deletes all references pointing to a specific target.
-  Called when permanently deleting a sheet or flow.
+  Deletes references pointing to a target unless they originate from a live
+  block. Those rows are retained so health checks can report the now-missing
+  target in rich-text mentions and reference blocks.
   """
   @spec delete_target_references(String.t(), any()) :: {integer(), nil}
   def delete_target_references(target_type, target_id) do
-    Repo.delete_all(from(r in EntityReference, where: r.target_type == ^target_type and r.target_id == ^target_id))
+    retained_block_ids =
+      Repo.all(
+        from(reference in EntityReference,
+          join: block in Block,
+          on: reference.source_type == "block" and reference.source_id == block.id,
+          join: sheet in Sheet,
+          on: sheet.id == block.sheet_id,
+          where:
+            reference.target_type == ^target_type and reference.target_id == ^target_id and
+              is_nil(block.deleted_at) and is_nil(sheet.deleted_at),
+          distinct: block.id,
+          select: block.id
+        )
+      )
+
+    query =
+      from(reference in EntityReference,
+        where: reference.target_type == ^target_type and reference.target_id == ^target_id
+      )
+
+    query =
+      if retained_block_ids == [] do
+        query
+      else
+        from(reference in query,
+          where:
+            reference.source_type != "block" or
+              reference.source_id not in ^retained_block_ids
+        )
+      end
+
+    Repo.delete_all(query)
   end
 
   defp query_scene_pin_backlinks(target_type, target_id, project_id) do

@@ -199,6 +199,31 @@ defmodule Storyarn.Sheets.ReferenceTrackerTest do
                MapSet.new([block.id])
     end
 
+    test "retains live rich-text mentions after the target is permanently deleted" do
+      %{project: project} = setup_project()
+      source_sheet = sheet_fixture(project, %{name: "Source"})
+      target_sheet = sheet_fixture(project, %{name: "Target"})
+
+      content =
+        ~s(<p><span class="mention" data-type="sheet" data-id="#{target_sheet.id}">Target</span></p>)
+
+      {:ok, block} =
+        Sheets.create_block(source_sheet, %{
+          type: "rich_text",
+          value: %{"content" => content}
+        })
+
+      assert :ok = ReferenceTracker.update_block_references(block, project_id: project.id)
+      assert ReferenceTracker.count_backlinks("sheet", target_sheet.id) == 1
+
+      assert {:ok, _deleted_sheet} = Sheets.permanently_delete_sheet(target_sheet)
+
+      assert ReferenceTracker.count_backlinks("sheet", target_sheet.id) == 1
+
+      assert ReferenceTracker.list_stale_block_reference_source_ids(project.id, [block.id]) ==
+               MapSet.new([block.id])
+    end
+
     test "returns an empty set without block ids" do
       %{project: project} = setup_project()
       assert ReferenceTracker.list_stale_block_reference_source_ids(project.id, []) == MapSet.new()
@@ -269,7 +294,7 @@ defmodule Storyarn.Sheets.ReferenceTrackerTest do
   # =============================================================================
 
   describe "delete_target_references/2" do
-    test "removes all references pointing to a given target" do
+    test "retains references from live blocks so missing targets remain detectable" do
       %{project: project} = setup_project()
       source_sheet = sheet_fixture(project, %{name: "Source"})
       target_sheet = sheet_fixture(project, %{name: "Target"})
@@ -282,6 +307,26 @@ defmodule Storyarn.Sheets.ReferenceTrackerTest do
 
       ReferenceTracker.update_block_references(block)
       assert ReferenceTracker.count_backlinks("sheet", target_sheet.id) == 1
+
+      {count, nil} = ReferenceTracker.delete_target_references("sheet", target_sheet.id)
+
+      assert count == 0
+      assert ReferenceTracker.count_backlinks("sheet", target_sheet.id) == 1
+    end
+
+    test "removes target references whose block source is no longer live" do
+      %{project: project} = setup_project()
+      source_sheet = sheet_fixture(project, %{name: "Source"})
+      target_sheet = sheet_fixture(project, %{name: "Target"})
+
+      {:ok, block} =
+        Sheets.create_block(source_sheet, %{
+          type: "reference",
+          value: %{"target_type" => "sheet", "target_id" => target_sheet.id}
+        })
+
+      ReferenceTracker.update_block_references(block)
+      Repo.update!(Ecto.Changeset.change(block, deleted_at: TimeHelpers.now()))
 
       {count, nil} = ReferenceTracker.delete_target_references("sheet", target_sheet.id)
 

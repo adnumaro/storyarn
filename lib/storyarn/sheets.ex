@@ -826,6 +826,11 @@ defmodule Storyarn.Sheets do
     end
   end
 
+  def get_reference_target(_target_type, _target_id, _project_id), do: nil
+
+  @doc "Resolves multiple active sheet and flow targets in batch."
+  defdelegate get_reference_targets(references, project_id), to: ReferenceTracker
+
   @doc "Returns block IDs with stale tracked sheet/flow entity references."
   defdelegate list_stale_block_reference_source_ids(project_id, block_ids), to: ReferenceTracker
 
