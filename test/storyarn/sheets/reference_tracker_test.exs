@@ -6,6 +6,7 @@ defmodule Storyarn.Sheets.ReferenceTrackerTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.References.EntityReference
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
@@ -312,6 +313,30 @@ defmodule Storyarn.Sheets.ReferenceTrackerTest do
 
       assert count == 0
       assert ReferenceTracker.count_backlinks("sheet", target_sheet.id) == 1
+    end
+
+    test "removes self-references from blocks deleted with their target sheet" do
+      %{project: project} = setup_project()
+      target_sheet = sheet_fixture(project, %{name: "Self-referencing"})
+
+      {:ok, block} =
+        Sheets.create_block(target_sheet, %{
+          type: "reference",
+          value: %{"target_type" => "sheet", "target_id" => target_sheet.id}
+        })
+
+      ReferenceTracker.update_block_references(block)
+      assert ReferenceTracker.count_backlinks("sheet", target_sheet.id) == 1
+
+      assert {:ok, _deleted_sheet} = Sheets.permanently_delete_sheet(target_sheet)
+
+      assert ReferenceTracker.count_backlinks("sheet", target_sheet.id) == 0
+
+      refute Repo.exists?(
+               from(reference in EntityReference,
+                 where: reference.source_type == "block" and reference.source_id == ^block.id
+               )
+             )
     end
 
     test "removes target references whose block source is no longer live" do

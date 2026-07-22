@@ -494,20 +494,29 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   """
   @spec delete_target_references(String.t(), any()) :: {integer(), nil}
   def delete_target_references(target_type, target_id) do
-    retained_block_ids =
-      Repo.all(
-        from(reference in EntityReference,
-          join: block in Block,
-          on: reference.source_type == "block" and reference.source_id == block.id,
-          join: sheet in Sheet,
-          on: sheet.id == block.sheet_id,
-          where:
-            reference.target_type == ^target_type and reference.target_id == ^target_id and
-              is_nil(block.deleted_at) and is_nil(sheet.deleted_at),
-          distinct: block.id,
-          select: block.id
-        )
+    retained_blocks_query =
+      from(reference in EntityReference,
+        join: block in Block,
+        on: reference.source_type == "block" and reference.source_id == block.id,
+        join: sheet in Sheet,
+        on: sheet.id == block.sheet_id,
+        where:
+          reference.target_type == ^target_type and reference.target_id == ^target_id and
+            is_nil(block.deleted_at) and is_nil(sheet.deleted_at),
+        distinct: block.id,
+        select: block.id
       )
+
+    retained_blocks_query =
+      if target_type == "sheet" do
+        from([_reference, block, _sheet] in retained_blocks_query,
+          where: block.sheet_id != ^target_id
+        )
+      else
+        retained_blocks_query
+      end
+
+    retained_block_ids = Repo.all(retained_blocks_query)
 
     query =
       from(reference in EntityReference,

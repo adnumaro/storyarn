@@ -90,20 +90,24 @@ defmodule Storyarn.Sheets.SheetStats do
   defdelegate sheet_word_counts(project_id), to: LocalizableWords
 
   @doc """
-  Returns a MapSet of block IDs that have at least one variable reference.
+  Returns a MapSet of block IDs that have at least one variable reference,
+  including references stored in table formula bindings.
   """
   def referenced_block_ids_for_project(project_id) do
-    from(vr in VariableReference,
-      join: b in Block,
-      on: vr.block_id == b.id,
-      join: s in Sheet,
-      on: b.sheet_id == s.id,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(b.deleted_at),
-      distinct: vr.block_id,
-      select: vr.block_id
-    )
-    |> Repo.all()
-    |> MapSet.new()
+    tracked_ids =
+      from(vr in VariableReference,
+        join: b in Block,
+        on: vr.block_id == b.id,
+        join: s in Sheet,
+        on: b.sheet_id == s.id,
+        where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(b.deleted_at),
+        distinct: vr.block_id,
+        select: vr.block_id
+      )
+      |> Repo.all()
+      |> MapSet.new()
+
+    MapSet.union(tracked_ids, formula_referenced_block_ids(project_id))
   end
 
   # ===========================================================================
@@ -186,6 +190,73 @@ defmodule Storyarn.Sheets.SheetStats do
           variable_name: row.variable_name
         }
       })
+    end)
+  end
+
+  defp formula_referenced_block_ids(project_id) do
+    reference_pairs =
+      from(row in TableRow,
+        join: source_block in Block,
+        on: row.block_id == source_block.id,
+        join: source_sheet in Sheet,
+        on: source_block.sheet_id == source_sheet.id,
+        join: column in TableColumn,
+        on: column.block_id == source_block.id and column.type == "formula",
+        where:
+          source_sheet.project_id == ^project_id and is_nil(source_sheet.deleted_at) and
+            is_nil(source_block.deleted_at),
+        select: {row.cells, column.slug}
+      )
+      |> Repo.all()
+      |> Enum.flat_map(fn {cells, slug} ->
+        cells
+        |> Map.get(slug)
+        |> formula_variable_reference_pairs()
+      end)
+      |> MapSet.new()
+
+    resolve_reference_pairs(project_id, reference_pairs)
+  end
+
+  defp formula_variable_reference_pairs(%{"bindings" => bindings}) when is_map(bindings) do
+    bindings
+    |> Map.values()
+    |> Enum.flat_map(fn
+      %{"type" => "variable", "ref" => reference} when is_binary(reference) ->
+        case String.split(reference, ".") do
+          [sheet_shortcut, variable_name | _rest]
+          when sheet_shortcut != "" and variable_name != "" ->
+            [{sheet_shortcut, variable_name}]
+
+          _other ->
+            []
+        end
+
+      _other ->
+        []
+    end)
+  end
+
+  defp formula_variable_reference_pairs(_cell), do: []
+
+  defp resolve_reference_pairs(project_id, reference_pairs) do
+    shortcuts = reference_pairs |> Enum.map(&elem(&1, 0)) |> Enum.uniq()
+
+    from(block in Block,
+      join: sheet in Sheet,
+      on: block.sheet_id == sheet.id,
+      where:
+        sheet.project_id == ^project_id and sheet.shortcut in ^shortcuts and
+          is_nil(sheet.deleted_at) and is_nil(block.deleted_at),
+      select: {sheet.shortcut, block.variable_name, block.id}
+    )
+    |> Repo.all()
+    |> Enum.reduce(MapSet.new(), fn {shortcut, variable_name, block_id}, referenced_ids ->
+      if MapSet.member?(reference_pairs, {shortcut, variable_name}) do
+        MapSet.put(referenced_ids, block_id)
+      else
+        referenced_ids
+      end
     end)
   end
 

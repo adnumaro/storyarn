@@ -8,6 +8,7 @@ defmodule Storyarn.Sheets.SheetStatsTest do
 
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Repo
+  alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.BlockGalleryImage
   alias Storyarn.Sheets.HealthChecker
@@ -342,6 +343,44 @@ defmodule Storyarn.Sheets.SheetStatsTest do
 
       assert finding.severity == HealthChecker.severity_for(:no_internal_variable_usages)
       assert finding.details.sheet_name == "Unused Table"
+    end
+
+    test "does not report tables referenced by formula bindings as unused", %{project: project} do
+      target_sheet = sheet_fixture(project, %{name: "Formula Target"})
+      target_table = table_block_fixture(target_sheet, %{label: "Stats"})
+      target_row = hd(target_table.table_rows)
+      target_column = hd(target_table.table_columns)
+
+      source_sheet = sheet_fixture(project, %{name: "Formula Source"})
+      source_table = table_block_fixture(source_sheet, %{label: "Calculations"})
+      formula_column = table_column_fixture(source_table, %{name: "Total", type: "formula"})
+      source_row = hd(source_table.table_rows)
+
+      reference =
+        Enum.join(
+          [
+            target_sheet.shortcut,
+            target_table.variable_name,
+            target_row.slug,
+            target_column.slug
+          ],
+          "."
+        )
+
+      assert {:ok, _row} =
+               Sheets.update_table_cell(source_row, formula_column.slug, %{
+                 "expression" => "value",
+                 "bindings" => %{
+                   "value" => %{"type" => "variable", "ref" => reference}
+                 }
+               })
+
+      findings = SheetStats.list_dashboard_health_findings(project.id)
+
+      refute Enum.any?(
+               findings,
+               &(&1.code == :no_internal_variable_usages and &1.block_id == target_table.id)
+             )
     end
 
     test "returns missing shortcuts with the canonical code and severity", %{project: project} do
