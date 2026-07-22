@@ -185,4 +185,17 @@ describe("walkable pathfinding", () => {
 
     expect(findShortestWalkablePath({ x: 0, y: 0 }, { x: 10, y: 10 }, [zone(vertices)])).toBeNull();
   });
+
+  it("rejects oversized polygon lists before scanning malformed entries", () => {
+    let vertexReads = 0;
+    const polygons = Array.from({ length: 1_025 }, () => ({
+      get vertices() {
+        vertexReads += 1;
+        return [];
+      },
+    }));
+
+    expect(findShortestWalkablePath({ x: 0, y: 0 }, { x: 10, y: 10 }, polygons)).toBeNull();
+    expect(vertexReads).toBe(0);
+  });
 });

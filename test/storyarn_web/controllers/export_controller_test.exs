@@ -162,6 +162,28 @@ defmodule StoryarnWeb.ExportControllerTest do
   # ===========================================================================
 
   describe "error handling" do
+    test "rejects single-file exports over the synchronous byte limit", %{
+      conn: conn,
+      project: project
+    } do
+      previous_limit = Application.get_env(:storyarn, :max_sync_export_bytes)
+
+      on_exit(fn ->
+        if previous_limit do
+          Application.put_env(:storyarn, :max_sync_export_bytes, previous_limit)
+        else
+          Application.delete_env(:storyarn, :max_sync_export_bytes)
+        end
+      end)
+
+      Application.put_env(:storyarn, :max_sync_export_bytes, 1)
+
+      conn = get(conn, export_url(project, "storyarn"))
+
+      assert conn.status == 413
+      assert conn.resp_body =~ "Export is too large"
+    end
+
     test "rejects multi-file exports over the synchronous byte limit", %{
       conn: conn,
       project: project

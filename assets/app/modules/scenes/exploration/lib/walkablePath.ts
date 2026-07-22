@@ -4,6 +4,7 @@ const EPSILON = 1e-7;
 const MAX_ABS_COORDINATE = 1_000_000;
 const MAX_VERTICES_PER_POLYGON = 1_024;
 const MAX_TOTAL_VERTICES = 2_048;
+const MAX_POLYGONS = 1_024;
 const MAX_PATH_CANDIDATES = 256;
 const MAX_INTERSECTION_CHECKS = 100_000;
 const MAX_VISIBILITY_CHECKS = 25_000;
@@ -17,6 +18,10 @@ function validPoint(point: PixelPoint): boolean {
     Math.abs(point.x) <= MAX_ABS_COORDINATE &&
     Math.abs(point.y) <= MAX_ABS_COORDINATE
   );
+}
+
+function validPathEndpoints(start: PixelPoint, target: PixelPoint): boolean {
+  return validPoint(start) && validPoint(target);
 }
 
 function validPolygonVertices(vertices: Vertex[] | null | undefined): vertices is Vertex[] {
@@ -445,7 +450,7 @@ function pathInputWithinBudget(
   target: PixelPoint,
   polygons: readonly WalkablePolygon[],
 ): boolean {
-  if (!validPoint(start) || !validPoint(target)) return false;
+  if (!validPathEndpoints(start, target) || polygons.length > MAX_POLYGONS) return false;
 
   let totalVertices = 0;
 

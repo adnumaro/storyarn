@@ -51,10 +51,16 @@ defmodule StoryarnWeb.ExportController do
     ext = serializer.file_extension()
     filename = "#{slug}.#{ext}"
 
-    conn
-    |> put_resp_content_type(serializer.content_type())
-    |> put_resp_header("content-disposition", ~s(attachment; filename="#{filename}"))
-    |> send_resp(200, output)
+    case validate_export_size(byte_size(output), max_sync_export_bytes()) do
+      :ok ->
+        conn
+        |> put_resp_content_type(serializer.content_type())
+        |> put_resp_header("content-disposition", ~s(attachment; filename="#{filename}"))
+        |> send_resp(200, output)
+
+      {:error, {:export_too_large, _details}} ->
+        conn |> put_status(413) |> text(gettext("Export is too large"))
+    end
   end
 
   # The ZIP path is generated internally by zip_files_to_disk/1 from
@@ -85,12 +91,7 @@ defmodule StoryarnWeb.ExportController do
   end
 
   defp zip_files_to_disk(files) do
-    max_bytes =
-      Application.get_env(
-        :storyarn,
-        :max_sync_export_bytes,
-        @default_max_sync_export_bytes
-      )
+    max_bytes = max_sync_export_bytes()
 
     with {:ok, total_bytes} <- export_size(files),
          :ok <- validate_export_size(total_bytes, max_bytes) do
@@ -130,6 +131,14 @@ defmodule StoryarnWeb.ExportController do
 
   defp validate_export_size(total_bytes, max_bytes),
     do: {:error, {:export_too_large, %{bytes: total_bytes, max_bytes: max_bytes}}}
+
+  defp max_sync_export_bytes do
+    Application.get_env(
+      :storyarn,
+      :max_sync_export_bytes,
+      @default_max_sync_export_bytes
+    )
+  end
 
   # zip_path is the internally generated path returned by zip_files_to_disk/1.
   # sobelow_skip ["Traversal.FileModule"]

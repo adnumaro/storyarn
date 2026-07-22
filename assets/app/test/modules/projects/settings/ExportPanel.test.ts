@@ -157,6 +157,29 @@ describe("ExportPanel", () => {
     expect(wrapper.get('[data-testid="validate-export"]').text()).toContain("Validate");
   });
 
+  it("ignores a stale validation reply after a new validation starts", async () => {
+    vi.useFakeTimers();
+    const { live, wrapper } = mountPanel();
+
+    await wrapper.get('[data-testid="validate-export"]').trigger("click");
+    const staleCallback = vi.mocked(live.pushEvent).mock.calls[0]?.[2];
+
+    vi.advanceTimersByTime(15_000);
+    await wrapper.vm.$nextTick();
+    await wrapper.get('[data-testid="validate-export"]').trigger("click");
+
+    staleCallback?.({});
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.get('[data-testid="validate-export"]').text()).toContain("Validating");
+
+    const currentCallback = vi.mocked(live.pushEvent).mock.calls[1]?.[2];
+    currentCallback?.({});
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.get('[data-testid="validate-export"]').text()).toContain("Validate");
+  });
+
   it("prevents an empty export", () => {
     const props = baseProps();
     props.sectionConfig.selected = [];

@@ -65,6 +65,7 @@ const live = useLive();
 const validating = ref(false);
 const VALIDATION_TIMEOUT_MS = 15_000;
 let validationTimer: ReturnType<typeof setTimeout> | null = null;
+let validationEpoch = 0;
 
 const formatVisuals: Record<string, FormatVisual> = {
   ink: { icon: Feather },
@@ -237,7 +238,10 @@ function validateExport() {
   if (validating.value || !canExport.value) return;
 
   validating.value = true;
+  const epoch = ++validationEpoch;
   const finish = () => {
+    if (epoch !== validationEpoch) return;
+
     if (validationTimer) {
       clearTimeout(validationTimer);
       validationTimer = null;
@@ -250,7 +254,11 @@ function validateExport() {
 }
 
 onUnmounted(() => {
-  if (validationTimer) clearTimeout(validationTimer);
+  validationEpoch += 1;
+  if (validationTimer) {
+    clearTimeout(validationTimer);
+    validationTimer = null;
+  }
 });
 
 function trackExport() {
