@@ -173,7 +173,7 @@ defmodule Storyarn.Flows do
   @doc """
   Restores a soft-deleted flow.
   """
-  @spec restore_flow(flow()) :: {:ok, flow()} | {:error, changeset()}
+  @spec restore_flow(flow()) :: {:ok, flow()} | {:error, term()}
   defdelegate restore_flow(flow), to: FlowCrud
 
   @doc """

@@ -98,9 +98,10 @@ defmodule Storyarn.Shared.Trashable do
   Restore a soft-deleted entity and re-apply trash refs pointing at it
   (conservative — only nil live fields are re-populated).
 
-  Returns `{:ok, restored_entity}` or `{:error, changeset}`.
+  Returns `{:ok, restored_entity}` or `{:error, reason}`. Flow restoration may
+  return integrity and lifecycle errors in addition to changesets.
   """
-  @spec restore(struct()) :: {:ok, struct()} | {:error, Ecto.Changeset.t()}
+  @spec restore(struct()) :: {:ok, struct()} | {:error, term()}
   def restore(%Flow{} = flow), do: Storyarn.Flows.FlowCrud.restore_flow(flow)
 
   def restore(%_{} = entity) do

@@ -1487,9 +1487,6 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   defp preflight_property_inheritance(sheet, snapshot, opts) do
     target_blocks = snapshot["blocks"]
     current_blocks = lock_current_sheet_blocks(sheet.id)
-    current_by_id = Map.new(current_blocks, &{&1.id, &1})
-    instances_by_source = lock_external_instances(current_blocks, sheet)
-    current_table_data = lock_current_table_data(current_blocks)
 
     if Keyword.get(opts, :full_project_restore, false) do
       # Every active sheet and block is restored from the same project
@@ -1504,6 +1501,10 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
          sync_instance_ids: []
        }}
     else
+      current_by_id = Map.new(current_blocks, &{&1.id, &1})
+      instances_by_source = lock_external_instances(current_blocks, sheet)
+      current_table_data = lock_current_table_data(current_blocks)
+
       with :ok <-
              validate_property_inheritance_targets(
                target_blocks,

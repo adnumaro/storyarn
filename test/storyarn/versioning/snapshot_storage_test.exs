@@ -54,6 +54,26 @@ defmodule Storyarn.Versioning.SnapshotStorageTest do
 
       assert :ok = SnapshotStorage.delete_snapshot(key)
     end
+
+    test "streams snapshots spanning multiple storage chunks" do
+      key =
+        "projects/1/snapshots/project/multi-chunk-#{SnapshotStorage.unique_key_suffix()}.json.gz"
+
+      snapshot = %{
+        "format_version" => 2,
+        "payload" => Base.encode64(:crypto.strong_rand_bytes(1_100_000))
+      }
+
+      assert {:ok, size_bytes, checksum} =
+               SnapshotStorage.store_raw_with_checksum(key, snapshot)
+
+      assert size_bytes > 1_048_576
+
+      assert {:ok, ^snapshot, ^checksum} =
+               SnapshotStorage.load_snapshot_with_checksum(key)
+
+      assert :ok = SnapshotStorage.delete_snapshot(key)
+    end
   end
 
   describe "load_verified_snapshot/4" do
@@ -93,6 +113,32 @@ defmodule Storyarn.Versioning.SnapshotStorageTest do
 
       assert {:error, {:checksum_mismatch, ^wrong_checksum, ^checksum}} =
                SnapshotStorage.load_verified_snapshot(key, size_bytes, wrong_checksum)
+    end
+
+    test "rejects same-size invalid gzip bytes by checksum before inflation" do
+      key = "projects/1/snapshots/project/invalid-gzip-checksum.json.gz"
+      snapshot = %{"payload" => String.duplicate("compressible", 100)}
+
+      assert {:ok, size_bytes, expected_checksum} =
+               SnapshotStorage.store_raw_with_checksum(key, snapshot)
+
+      assert {:ok, compressed} = Storage.download(key)
+      <<first_byte, rest::binary>> = compressed
+      tampered = <<Bitwise.bxor(first_byte, 0xFF), rest::binary>>
+      assert byte_size(tampered) == size_bytes
+      assert {:ok, _url} = Storage.upload(key, tampered, "application/gzip")
+
+      actual_checksum =
+        :sha256
+        |> :crypto.hash(tampered)
+        |> Base.encode16(case: :lower)
+
+      assert {:error, {:checksum_mismatch, ^expected_checksum, ^actual_checksum}} =
+               SnapshotStorage.load_verified_snapshot(
+                 key,
+                 size_bytes,
+                 expected_checksum
+               )
     end
 
     test "stops incremental inflation above the uncompressed limit" do

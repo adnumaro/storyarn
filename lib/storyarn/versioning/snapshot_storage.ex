@@ -12,7 +12,6 @@ defmodule Storyarn.Versioning.SnapshotStorage do
 
   @default_max_compressed_bytes 128 * 1024 * 1024
   @default_max_uncompressed_bytes 128 * 1024 * 1024
-  @inflate_input_chunk_bytes 64 * 1024
   @sha256_regex ~r/\A[0-9a-f]{64}\z/
 
   @doc """
@@ -85,25 +84,27 @@ defmodule Storyarn.Versioning.SnapshotStorage do
          {:ok, object_stat} <- Storage.stat(storage_key),
          {:ok, stat_size_bytes} <-
            validate_storage_stat_compressed_size(object_stat, max_compressed_bytes),
-         {:ok, compressed} <- Storage.download(storage_key),
-         :ok <-
-           verify_downloaded_compressed_size(
-             compressed,
+         {:ok, json, actual_checksum} <-
+           stream_snapshot(
+             storage_key,
+             object_stat,
              stat_size_bytes,
-             max_compressed_bytes
+             max_compressed_bytes,
+             max_uncompressed_bytes
            ),
-         {:ok, json} <- bounded_gunzip(compressed, max_uncompressed_bytes),
          {:ok, snapshot} <- Jason.decode(json) do
-      {:ok, snapshot, checksum(compressed)}
+      {:ok, snapshot, actual_checksum}
     end
   end
 
   @doc """
   Loads a snapshot only after verifying its compressed size and SHA-256 digest.
 
-  The compressed blob is never inflated when either independently persisted
-  value does not match. Inflation is performed incrementally and stops once the
-  configured uncompressed-byte limit is exceeded.
+  The compressed blob is streamed through object-version conditional reads.
+  A first pass verifies its size and digest incrementally; only then may a
+  second pass inflate it incrementally. The snapshot is never inflated or
+  decoded when either independently persisted value does not match, and
+  inflation stops once the configured uncompressed-byte limit is exceeded.
 
   The default compressed and uncompressed limits are both 128 MiB. Callers may
   override them with `:max_compressed_bytes` and `:max_uncompressed_bytes`, or
@@ -130,15 +131,23 @@ defmodule Storyarn.Versioning.SnapshotStorage do
              expected_size_bytes,
              max_compressed_bytes
            ),
-         {:ok, compressed} <- Storage.download(storage_key),
-         :ok <-
-           verify_compressed_size(
-             compressed,
+         {:ok, actual_checksum} <-
+           stream_snapshot_checksum(
+             storage_key,
+             object_stat,
              expected_size_bytes,
              max_compressed_bytes
            ),
-         {:ok, actual_checksum} <- verify_checksum(compressed, expected_checksum),
-         {:ok, json} <- bounded_gunzip(compressed, max_uncompressed_bytes),
+         :ok <- verify_checksum(actual_checksum, expected_checksum),
+         {:ok, json, inflated_checksum} <-
+           stream_snapshot(
+             storage_key,
+             object_stat,
+             expected_size_bytes,
+             max_compressed_bytes,
+             max_uncompressed_bytes
+           ),
+         :ok <- verify_checksum(inflated_checksum, expected_checksum),
          {:ok, snapshot} <- Jason.decode(json) do
       {:ok, snapshot, actual_checksum}
     end
@@ -182,14 +191,6 @@ defmodule Storyarn.Versioning.SnapshotStorage do
     end
   end
 
-  defp verify_compressed_size(compressed, expected_size_bytes, max_compressed_bytes) do
-    actual_size_bytes = byte_size(compressed)
-
-    with :ok <- validate_compressed_size(actual_size_bytes, max_compressed_bytes) do
-      compare_compressed_size(expected_size_bytes, actual_size_bytes)
-    end
-  end
-
   defp verify_storage_stat_size(%{size: actual_size_bytes}, expected_size_bytes, max_compressed_bytes)
        when is_integer(actual_size_bytes) and actual_size_bytes >= 0 do
     with :ok <- validate_compressed_size(actual_size_bytes, max_compressed_bytes) do
@@ -210,14 +211,6 @@ defmodule Storyarn.Versioning.SnapshotStorage do
   defp validate_storage_stat_compressed_size(object_stat, _max_compressed_bytes),
     do: {:error, {:invalid_snapshot_storage_stat, object_stat}}
 
-  defp verify_downloaded_compressed_size(compressed, stat_size_bytes, max_compressed_bytes) do
-    actual_size_bytes = byte_size(compressed)
-
-    with :ok <- validate_compressed_size(actual_size_bytes, max_compressed_bytes) do
-      compare_compressed_size(stat_size_bytes, actual_size_bytes)
-    end
-  end
-
   defp validate_compressed_size(size_bytes, max_compressed_bytes) when size_bytes <= max_compressed_bytes, do: :ok
 
   defp validate_compressed_size(_size_bytes, max_compressed_bytes),
@@ -233,51 +226,142 @@ defmodule Storyarn.Versioning.SnapshotStorage do
   defp compare_compressed_size(expected_size_bytes, actual_size_bytes),
     do: {:error, {:compressed_size_mismatch, expected_size_bytes, actual_size_bytes}}
 
-  defp verify_checksum(compressed, expected_checksum) do
-    actual_checksum = checksum(compressed)
-
+  defp verify_checksum(actual_checksum, expected_checksum) do
     if Plug.Crypto.secure_compare(expected_checksum, actual_checksum) do
-      {:ok, actual_checksum}
+      :ok
     else
       {:error, {:checksum_mismatch, expected_checksum, actual_checksum}}
     end
   end
 
-  defp bounded_gunzip(compressed, max_uncompressed_bytes) do
+  defp stream_snapshot(storage_key, object_stat, expected_size_bytes, max_compressed_bytes, max_uncompressed_bytes) do
+    with {:ok, stream} <-
+           Storage.stream(
+             storage_key,
+             0,
+             expected_size_bytes,
+             conditional_stream_opts(object_stat)
+           ),
+         {:ok, json, actual_size_bytes, actual_checksum} <-
+           consume_snapshot_stream(
+             stream,
+             max_compressed_bytes,
+             max_uncompressed_bytes
+           ),
+         :ok <- compare_compressed_size(expected_size_bytes, actual_size_bytes) do
+      {:ok, json, actual_checksum}
+    end
+  end
+
+  defp stream_snapshot_checksum(storage_key, object_stat, expected_size_bytes, max_compressed_bytes) do
+    with {:ok, stream} <-
+           Storage.stream(
+             storage_key,
+             0,
+             expected_size_bytes,
+             conditional_stream_opts(object_stat)
+           ),
+         {:ok, actual_size_bytes, actual_checksum} <-
+           consume_snapshot_checksum_stream(stream, max_compressed_bytes),
+         :ok <- compare_compressed_size(expected_size_bytes, actual_size_bytes) do
+      {:ok, actual_checksum}
+    end
+  end
+
+  defp conditional_stream_opts(%{etag: etag}) when is_binary(etag) and etag != "", do: [etag: etag]
+
+  defp conditional_stream_opts(_object_stat), do: []
+
+  defp consume_snapshot_checksum_stream(stream, max_compressed_bytes) do
+    stream
+    |> Enum.reduce_while({:ok, 0, :crypto.hash_init(:sha256)}, fn
+      {:ok, chunk}, {:ok, compressed_size, hash_state} when is_binary(chunk) ->
+        new_compressed_size = compressed_size + byte_size(chunk)
+
+        case validate_compressed_size(new_compressed_size, max_compressed_bytes) do
+          :ok ->
+            {:cont, {:ok, new_compressed_size, :crypto.hash_update(hash_state, chunk)}}
+
+          {:error, _reason} = error ->
+            {:halt, error}
+        end
+
+      {:error, reason}, _acc ->
+        {:halt, {:error, reason}}
+
+      _unexpected, _acc ->
+        {:halt, {:error, :unexpected_snapshot_stream_chunk}}
+    end)
+    |> finalize_snapshot_checksum_stream()
+  end
+
+  defp finalize_snapshot_checksum_stream({:ok, compressed_size, hash_state}) do
+    actual_checksum =
+      hash_state
+      |> :crypto.hash_final()
+      |> Base.encode16(case: :lower)
+
+    {:ok, compressed_size, actual_checksum}
+  end
+
+  defp finalize_snapshot_checksum_stream({:error, _reason} = error), do: error
+
+  defp consume_snapshot_stream(stream, max_compressed_bytes, max_uncompressed_bytes) do
     zstream = :zlib.open()
 
     try do
       :ok = :zlib.inflateInit(zstream, 31)
 
-      with {:ok, chunks, _size_bytes} <-
-             inflate_chunks(zstream, compressed, [], 0, max_uncompressed_bytes),
+      result =
+        Enum.reduce_while(
+          stream,
+          {:ok, [], 0, 0, :crypto.hash_init(:sha256)},
+          fn
+            {:ok, chunk}, {:ok, output, uncompressed_size, compressed_size, hash_state}
+            when is_binary(chunk) ->
+              new_compressed_size = compressed_size + byte_size(chunk)
+
+              with :ok <-
+                     validate_compressed_size(
+                       new_compressed_size,
+                       max_compressed_bytes
+                     ),
+                   {:ok, output, new_uncompressed_size} <-
+                     inflate_input(
+                       zstream,
+                       chunk,
+                       output,
+                       uncompressed_size,
+                       max_uncompressed_bytes
+                     ) do
+                new_hash_state = :crypto.hash_update(hash_state, chunk)
+
+                {:cont, {:ok, output, new_uncompressed_size, new_compressed_size, new_hash_state}}
+              else
+                {:error, _reason} = error -> {:halt, error}
+              end
+
+            {:error, reason}, _acc ->
+              {:halt, {:error, reason}}
+
+            _unexpected, _acc ->
+              {:halt, {:error, :unexpected_snapshot_stream_chunk}}
+          end
+        )
+
+      with {:ok, output, _uncompressed_size, compressed_size, hash_state} <- result,
            :ok <- finish_inflate(zstream) do
-        {:ok, chunks |> Enum.reverse() |> IO.iodata_to_binary()}
+        actual_checksum =
+          hash_state
+          |> :crypto.hash_final()
+          |> Base.encode16(case: :lower)
+
+        {:ok, output |> Enum.reverse() |> IO.iodata_to_binary(), compressed_size, actual_checksum}
       end
     rescue
       error in ErlangError -> {:error, {:decompress_failed, error.original}}
     after
       :zlib.close(zstream)
-    end
-  end
-
-  defp inflate_chunks(_zstream, <<>>, chunks, size_bytes, _max_uncompressed_bytes) do
-    {:ok, chunks, size_bytes}
-  end
-
-  defp inflate_chunks(zstream, compressed, chunks, size_bytes, max_uncompressed_bytes) do
-    chunk_size = min(byte_size(compressed), @inflate_input_chunk_bytes)
-    <<input::binary-size(chunk_size), rest::binary>> = compressed
-
-    with {:ok, chunks, size_bytes} <-
-           inflate_input(
-             zstream,
-             input,
-             chunks,
-             size_bytes,
-             max_uncompressed_bytes
-           ) do
-      inflate_chunks(zstream, rest, chunks, size_bytes, max_uncompressed_bytes)
     end
   end
 

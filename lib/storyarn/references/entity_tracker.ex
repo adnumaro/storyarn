@@ -8,8 +8,10 @@ defmodule Storyarn.References.EntityTracker do
   Project rebuilds replace references only for active sources. Rows owned by
   sources under a soft-deleted Sheet, Flow, or Scene are recovery state: root
   restores make those sources visible again, and not every root restore path
-  rebuilds its children. Each active-source updater already deletes and
-  replaces its own rows atomically.
+  rebuilds its children. The transaction enclosing
+  `rebuild_project_entity_references/1` makes each active source's
+  delete-and-replace sequence atomic; direct updater callers must provide
+  their own transaction when they need the same guarantee.
   """
 
   import Ecto.Query, warn: false
