@@ -1,0 +1,19 @@
+test/storyarn/versioning/project_snapshot_exact_restore_test.exs
+  s_2ed6d988dc0ed9::t_f85f3422546eb4 77-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "8fb0cdadef24e6ba3c8ebde127bf1e9cc3d4c748",
+  "prompts": {},
+  "sessions": {
+    "s_2ed6d988dc0ed9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f899c-c586-75f3-b83b-3a7d91e8fa7f",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
