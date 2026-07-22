@@ -11,6 +11,7 @@ defmodule Storyarn.References.VariableUsage do
   defdelegate get_variable_usage(block_id, project_id), to: VariableReferenceTracker
   defdelegate count_variable_usage(block_id), to: VariableReferenceTracker
   defdelegate referenced_block_ids(block_ids), to: VariableReferenceTracker
+  defdelegate count_stale_references(block_ids, project_id), to: VariableReferenceTracker
 
   def check_stale_variable_references(block_id, project_id),
     do: VariableReferenceTracker.check_stale_references(block_id, project_id)

@@ -226,7 +226,13 @@ function resolveComponent(type: string): typeof TextBlock | null {
         </div>
 
         <div class="border-l-2 border-blue-400/30 ml-1 pl-3 space-y-3">
-          <div v-for="block in group.blocks" :key="block.id" class="relative">
+          <div
+            v-for="block in group.blocks"
+            :id="`sheet-block-${block.id}`"
+            :key="block.id"
+            :data-sheet-block-id="block.id"
+            class="relative scroll-mt-8 transition-shadow"
+          >
             <component
               :is="resolveComponent(block.type)"
               :block="block"

@@ -108,6 +108,29 @@ export interface Sheet {
   avatars?: SheetAvatar[];
 }
 
+export type SheetHealthDetails = Record<string, string | number | boolean | string[] | null>;
+
+export interface SheetHealthReason {
+  code: string;
+  details?: SheetHealthDetails;
+}
+
+export type SheetHealthSeverity = "error" | "warning" | "info";
+
+export interface SheetHealthItem {
+  blockId: number | string | null;
+  rowId: number | string | null;
+  columnId: number | string | null;
+  label: string;
+  reasons: SheetHealthReason[];
+}
+
+export interface SheetHealth {
+  errorItems: SheetHealthItem[];
+  warningItems: SheetHealthItem[];
+  infoItems: SheetHealthItem[];
+}
+
 // ── Tree types ──
 
 export interface SheetTreeNodeData {
@@ -193,8 +216,10 @@ export interface DashboardPagination {
 }
 
 export interface DashboardIssue {
-  severity: string;
-  message: string;
+  severity: SheetHealthSeverity;
+  code: string;
+  label: string;
+  details?: SheetHealthDetails;
   href: string;
 }
 

@@ -73,6 +73,7 @@ makeDroppable(
       :index="rowIdx"
       :items="localRows"
       :group="rowGroup"
+      :data-sheet-row-id="row.id"
       v-slot="{ isDragOver }"
     >
       <!-- ══ Row label cell ══ -->
@@ -81,7 +82,12 @@ makeDroppable(
       </td>
 
       <!-- ══ Data cells ══ -->
-      <td v-for="column in columns" :key="column.id" class="p-0! relative h-1">
+      <td
+        v-for="column in columns"
+        :key="column.id"
+        :data-sheet-column-id="column.id"
+        class="p-0! relative h-1 transition-shadow"
+      >
         <TBooleanCell
           v-if="column.type === 'boolean'"
           :row="row"

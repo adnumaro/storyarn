@@ -6,7 +6,7 @@ import SheetContentHeader from "@modules/sheets/components/chrome/header/SheetCo
 import BlockList from "@modules/sheets/components/entities/blocks/BlockList.vue";
 import SheetShowPanels from "@modules/sheets/components/panels/SheetShowPanels.vue";
 import SheetTabs from "@modules/sheets/components/panels/tabs/SheetTabs.vue";
-import type { Sheet } from "@modules/sheets/types";
+import type { Sheet, SheetHealth } from "@modules/sheets/types";
 
 type ServerPayload = any;
 
@@ -44,12 +44,14 @@ const {
   sheet: initialSheet = null,
   canEdit: initialCanEdit = false,
   sourceShortcut: initialSourceShortcut = null,
+  sheetHealth: initialSheetHealth = { errorItems: [], warningItems: [], infoItems: [] },
   surface: initialSurface,
   panels: initialPanels = null,
 } = defineProps<{
   sheet?: Sheet | null;
   canEdit?: boolean;
   sourceShortcut?: string | null;
+  sheetHealth?: SheetHealth;
   surface: SheetSurface;
   panels?: SheetPanelsProps | null;
 }>();
@@ -61,6 +63,9 @@ const sheet = computed(() => (live.vue?.props?.sheet as Sheet | null | undefined
 const canEdit = computed(() => (live.vue?.props?.canEdit as boolean | undefined) ?? initialCanEdit);
 const sourceShortcut = computed(
   () => (live.vue?.props?.sourceShortcut as string | null | undefined) ?? initialSourceShortcut,
+);
+const sheetHealth = computed(
+  () => (live.vue?.props?.sheetHealth as SheetHealth | undefined) ?? initialSheetHealth,
 );
 const surface = computed(
   () => (live.vue?.props?.surface as SheetSurface | undefined) ?? initialSurface,
@@ -75,7 +80,12 @@ const panels = computed(
     v-if="sheet"
     class="max-w-4xl mx-auto bg-surface border border-border rounded-2xl p-6 shadow-sm"
   >
-    <SheetContentHeader :sheet="sheet" :can-edit="canEdit" :source-shortcut="sourceShortcut" />
+    <SheetContentHeader
+      :sheet="sheet"
+      :can-edit="canEdit"
+      :source-shortcut="sourceShortcut"
+      :sheet-health="sheetHealth"
+    />
 
     <div class="pb-6">
       <div id="sheet-tabs" class="contents">

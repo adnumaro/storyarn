@@ -32,6 +32,8 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Scenes.SceneZone
   alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.Sheet
 
   @type rebuild_error ::
           {:invalid_project_id, term()}
@@ -259,6 +261,139 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     )
     |> Repo.all()
     |> MapSet.new()
+  end
+
+  @doc "Returns stale reference counts for many blocks in one grouped query."
+  @spec count_stale_references([integer()], integer()) :: %{integer() => non_neg_integer()}
+  def count_stale_references([], _project_id), do: %{}
+
+  def count_stale_references(block_ids, project_id) do
+    block_ids
+    |> stale_reference_count_query(project_id)
+    |> Repo.all()
+    |> Map.new()
+  end
+
+  defp stale_reference_count_query(block_ids, project_id) do
+    VariableReference
+    |> join_stale_reference_sources()
+    |> scope_stale_reference_sources(block_ids, project_id)
+    |> filter_active_reference_sources(project_id)
+    |> filter_stale_variable_references()
+    |> group_stale_reference_counts()
+  end
+
+  defp join_stale_reference_sources(query) do
+    from(reference in query,
+      as: :reference,
+      join: block in Block,
+      as: :block,
+      on: block.id == reference.block_id,
+      join: sheet in Sheet,
+      as: :sheet,
+      on: sheet.id == block.sheet_id,
+      left_join: node in FlowNode,
+      as: :node,
+      on: reference.source_type == "flow_node" and node.id == reference.source_id,
+      left_join: flow in Flow,
+      as: :flow,
+      on: flow.id == node.flow_id,
+      left_join: zone in SceneZone,
+      as: :zone,
+      on: reference.source_type == "scene_zone" and zone.id == reference.source_id,
+      left_join: zone_scene in Scene,
+      as: :zone_scene,
+      on: zone_scene.id == zone.scene_id,
+      left_join: pin in ScenePin,
+      as: :pin,
+      on: reference.source_type == "scene_pin" and pin.id == reference.source_id,
+      left_join: pin_scene in Scene,
+      as: :pin_scene,
+      on: pin_scene.id == pin.scene_id
+    )
+  end
+
+  defp scope_stale_reference_sources(query, block_ids, project_id) do
+    from([reference: reference, block: block, sheet: sheet] in query,
+      where:
+        reference.block_id in ^block_ids and sheet.project_id == ^project_id and
+          is_nil(sheet.deleted_at) and is_nil(block.deleted_at)
+    )
+  end
+
+  defp filter_active_reference_sources(query, project_id) do
+    from(
+      [
+        reference: reference,
+        node: node,
+        flow: flow,
+        zone: zone,
+        zone_scene: zone_scene,
+        pin: pin,
+        pin_scene: pin_scene
+      ] in query,
+      where:
+        fragment(
+          """
+          (? = 'flow_node' AND ? IS NOT NULL AND ? IS NULL AND ? = ? AND ? IS NULL)
+          OR (? = 'scene_zone' AND ? IS NOT NULL AND ? = ? AND ? IS NULL)
+          OR (? = 'scene_pin' AND ? IS NOT NULL AND ? = ? AND ? IS NULL)
+          """,
+          reference.source_type,
+          node.id,
+          node.deleted_at,
+          flow.project_id,
+          ^project_id,
+          flow.deleted_at,
+          reference.source_type,
+          zone.id,
+          zone_scene.project_id,
+          ^project_id,
+          zone_scene.deleted_at,
+          reference.source_type,
+          pin.id,
+          pin_scene.project_id,
+          ^project_id,
+          pin_scene.deleted_at
+        )
+    )
+  end
+
+  defp filter_stale_variable_references(query) do
+    from([reference: reference, block: block, sheet: sheet] in query,
+      where:
+        fragment(
+          """
+          CASE WHEN ? = 'table' THEN
+            ? != ? OR NOT EXISTS (
+              SELECT 1 FROM table_rows tr
+              JOIN table_columns tc ON tc.block_id = tr.block_id
+              WHERE tr.block_id = ?
+                AND ? = ? || '.' || tr.slug || '.' || tc.slug
+            )
+          ELSE
+            ? != ? OR ? != ?
+          END
+          """,
+          block.type,
+          reference.source_sheet,
+          sheet.shortcut,
+          block.id,
+          reference.source_variable,
+          block.variable_name,
+          reference.source_sheet,
+          sheet.shortcut,
+          reference.source_variable,
+          block.variable_name
+        )
+    )
+  end
+
+  defp group_stale_reference_counts(query) do
+    from([reference: reference] in query,
+      group_by: reference.block_id,
+      select: {reference.block_id, count(reference.id)}
+    )
   end
 
   @doc """

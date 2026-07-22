@@ -9,6 +9,7 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.PropertyInheritance
   alias Storyarn.Sheets.Sheet
+  alias Storyarn.Sheets.TableColumn
 
   defp setup_hierarchy(_context) do
     user = user_fixture()
@@ -24,6 +25,67 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
       child: child,
       grandchild: grandchild
     }
+  end
+
+  describe "list_health_issues/1" do
+    setup :setup_hierarchy
+
+    test "returns no issues for current inherited instances", %{parent: parent, child: child} do
+      inheritable_block_fixture(parent, label: "Current")
+
+      assert PropertyInheritance.list_health_issues(child.id) == []
+    end
+
+    test "detects missing and stale inherited instances", %{parent: parent, child: child} do
+      missing_source = inheritable_block_fixture(parent, label: "Missing")
+      stale_source = inheritable_block_fixture(parent, label: "Stale")
+      missing_instance = inherited_instance!(child.id, missing_source.id)
+      stale_instance = inherited_instance!(child.id, stale_source.id)
+      deleted_at = DateTime.truncate(DateTime.utc_now(), :second)
+
+      Repo.update_all(from(block in Block, where: block.id == ^missing_instance.id),
+        set: [deleted_at: deleted_at]
+      )
+
+      Repo.update_all(from(block in Block, where: block.id == ^stale_instance.id),
+        set: [required: !stale_source.required]
+      )
+
+      issues = PropertyInheritance.list_health_issues(child.id)
+
+      assert Enum.any?(issues, &(&1.reason == "missing_instance" and &1.source_block_id == missing_source.id))
+      assert Enum.any?(issues, &(&1.reason == "stale_definition" and &1.block_id == stale_instance.id))
+    end
+
+    test "detects stale inherited table structure", %{parent: parent, child: child} do
+      {:ok, source} =
+        Sheets.create_block(parent, %{
+          type: "table",
+          scope: "children",
+          config: %{"label" => "Stats", "collapsed" => false}
+        })
+
+      instance = inherited_instance!(child.id, source.id)
+      instance_column = instance.id |> Sheets.list_table_columns() |> hd()
+
+      Repo.update_all(from(column in TableColumn, where: column.id == ^instance_column.id),
+        set: [name: "Out of sync"]
+      )
+
+      assert Enum.any?(
+               PropertyInheritance.list_health_issues(child.id),
+               &(&1.reason == "stale_table_structure" and &1.block_id == instance.id)
+             )
+    end
+
+    test "ignores instances intentionally hidden on the sheet", %{parent: parent, child: child} do
+      source = inheritable_block_fixture(parent, label: "Hidden")
+      assert inherited_instance!(child.id, source.id)
+
+      assert {:ok, _hidden_sheet} = PropertyInheritance.hide_for_children(child, source.id)
+
+      assert PropertyInheritance.list_health_issues(child.id) == []
+    end
   end
 
   # ===========================================================================

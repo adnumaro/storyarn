@@ -39,6 +39,41 @@
       "add_cover": "Añadir portada",
       "remove_cover": "Eliminar"
     },
+    "health": {
+      "review": "Revisar estado de la ficha",
+      "looks_great": "Esta ficha se ve bien",
+      "errors": "Errores",
+      "warnings": "Avisos",
+      "info": "Información",
+      "findings": {
+        "missing_sheet_shortcut": "La ficha no tiene atajo",
+        "empty_leaf_sheet": "La ficha no tiene bloques ni fichas hijas",
+        "missing_variable_name": "Esta variable no tiene nombre de variable",
+        "no_internal_variable_usages": "No se han detectado usos internos",
+        "stale_incoming_variable_reference": "Hay {count} referencia de variable obsoleta | Hay {count} referencias de variable obsoletas",
+        "invalid_block_value": "El valor guardado no coincide con el tipo configurado",
+        "required_block_empty": "Este bloque obligatorio está vacío",
+        "stale_reference_target": "El destino de la referencia ya no existe",
+        "disallowed_reference_target": "El tipo del destino referenciado no está permitido",
+        "stale_inline_reference": "El texto enriquecido contiene una referencia a un destino inexistente",
+        "invalid_constraints": "Las restricciones configuradas son inválidas o contradictorias",
+        "value_outside_constraints": "El valor actual está fuera de las restricciones configuradas",
+        "invalid_select_option_keys": "Los identificadores de las opciones deben existir y ser únicos",
+        "stale_selected_option": "El valor seleccionado ya no es una opción disponible",
+        "empty_select_options": "Este selector no tiene opciones",
+        "blank_option_label": "Una opción no tiene etiqueta visible",
+        "invalid_table_structure": "La estructura de la tabla es inconsistente",
+        "required_table_cell_empty": "Esta celda obligatoria está vacía",
+        "unnamed_table_axis": "Una fila o columna de la tabla no tiene nombre visible",
+        "invalid_formula_expression": "La expresión de la fórmula es inválida",
+        "unbound_formula_symbol": "La fórmula contiene un símbolo sin enlace",
+        "invalid_formula_binding": "Un enlace de fórmula falta, está obsoleto o no es numérico",
+        "cyclic_formula_dependency": "La fórmula pertenece a un ciclo de dependencias",
+        "formula_evaluation_failed": "La fórmula no se puede evaluar con los valores actuales",
+        "invalid_block_layout": "La disposición de columnas es inconsistente",
+        "broken_inheritance": "El bloque heredado no está sincronizado con su origen"
+      }
+    },
     "metadata": {
       "untitled": "Sin título",
       "add_shortcut": "añadir-atajo"

@@ -39,20 +39,176 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   """
   @spec resolve_inherited_blocks(integer()) :: [%{source_sheet: Sheet.t(), blocks: [Block.t()]}]
   def resolve_inherited_blocks(sheet_id) do
+    {groups, _hidden_source_ids} = inheritance_resolution(sheet_id)
+    groups
+  end
+
+  defp inheritance_resolution(sheet_id) do
     sheet = Repo.get!(Sheet, sheet_id)
     ancestors = build_ancestor_list(sheet)
 
     if ancestors == [] do
-      []
+      {[], MapSet.new()}
     else
       # Collect hidden block IDs from intermediate sheets (the current sheet and all ancestors except root)
       all_sheets = [sheet | ancestors]
-      hidden_block_ids = collect_hidden_block_ids(all_sheets)
+      hidden_source_ids = all_sheets |> collect_hidden_block_ids() |> MapSet.new()
 
-      ancestors
-      |> Enum.map(&ancestor_to_block_group(&1, hidden_block_ids))
-      |> Enum.reject(fn group -> group.blocks == [] end)
+      blocks_by_sheet =
+        ancestors
+        |> Enum.map(& &1.id)
+        |> load_children_scope_blocks_for_sheets()
+        |> Enum.reject(&MapSet.member?(hidden_source_ids, &1.id))
+        |> Enum.group_by(& &1.sheet_id)
+
+      groups =
+        ancestors
+        |> Enum.map(fn ancestor ->
+          %{source_sheet: ancestor, blocks: Map.get(blocks_by_sheet, ancestor.id, [])}
+        end)
+        |> Enum.reject(fn group -> group.blocks == [] end)
+
+      {groups, hidden_source_ids}
     end
+  end
+
+  @doc """
+  Lists inheritance integrity issues for a sheet without mutating its blocks.
+
+  The audit compares the currently eligible ancestor definitions with every
+  active, non-detached instance on the sheet. It reports missing, duplicate,
+  orphaned, stale-definition, and stale-table-structure states.
+  """
+  @spec list_health_issues(integer()) :: [map()]
+  def list_health_issues(sheet_id) do
+    {groups, hidden_source_ids} = inheritance_resolution(sheet_id)
+    eligible_sources = Enum.flat_map(groups, & &1.blocks)
+
+    instances =
+      sheet_id
+      |> active_inherited_instances()
+      |> Enum.reject(&MapSet.member?(hidden_source_ids, &1.inherited_from_block_id))
+
+    sources_by_id = Map.new(eligible_sources, &{&1.id, &1})
+    instances_by_source = Enum.group_by(instances, & &1.inherited_from_block_id)
+    table_structures = inheritance_table_structures(eligible_sources, instances)
+
+    missing_instance_issues(eligible_sources, instances_by_source) ++
+      duplicate_instance_issues(instances_by_source) ++
+      instance_health_issues(instances, sources_by_id, table_structures)
+  end
+
+  defp active_inherited_instances(sheet_id) do
+    Repo.all(
+      from(block in Block,
+        where:
+          block.sheet_id == ^sheet_id and
+            not is_nil(block.inherited_from_block_id) and
+            block.detached == false and is_nil(block.deleted_at),
+        order_by: [asc: block.id]
+      )
+    )
+  end
+
+  defp missing_instance_issues(eligible_sources, instances_by_source) do
+    eligible_sources
+    |> Enum.reject(&Map.has_key?(instances_by_source, &1.id))
+    |> Enum.map(&inheritance_issue("missing_instance", nil, &1.id))
+  end
+
+  defp duplicate_instance_issues(instances_by_source) do
+    Enum.flat_map(instances_by_source, fn {source_id, instances} ->
+      if length(instances) > 1 do
+        [
+          inheritance_issue("duplicate_instances", hd(instances).id, source_id, %{
+            instance_ids: Enum.map(instances, & &1.id)
+          })
+        ]
+      else
+        []
+      end
+    end)
+  end
+
+  defp instance_health_issues(instances, sources_by_id, table_structures) do
+    Enum.flat_map(instances, fn instance ->
+      source = Map.get(sources_by_id, instance.inherited_from_block_id)
+
+      cond do
+        is_nil(source) ->
+          [inheritance_issue("source_not_eligible", instance.id, instance.inherited_from_block_id)]
+
+        not inherited_definition_current?(source, instance) ->
+          [inheritance_issue("stale_definition", instance.id, source.id)]
+
+        not inherited_table_structure_current?(source, instance, table_structures) ->
+          [inheritance_issue("stale_table_structure", instance.id, source.id)]
+
+        true ->
+          []
+      end
+    end)
+  end
+
+  defp inherited_definition_current?(source, instance) do
+    instance.type == source.type and
+      instance.config == source.config and
+      instance.required == source.required and
+      instance.is_constant == source.is_constant and
+      instance.scope == "self"
+  end
+
+  defp inheritance_table_structures(sources, instances) do
+    block_ids =
+      (sources ++ instances)
+      |> Enum.filter(&(&1.type == "table"))
+      |> Enum.map(& &1.id)
+
+    columns =
+      Repo.all(
+        from(column in TableColumn,
+          where: column.block_id in ^block_ids,
+          order_by: [asc: column.block_id, asc: column.position, asc: column.id]
+        )
+      )
+
+    rows =
+      Repo.all(
+        from(row in TableRow,
+          where: row.block_id in ^block_ids,
+          order_by: [asc: row.block_id, asc: row.position, asc: row.id]
+        )
+      )
+
+    Map.new(block_ids, fn block_id ->
+      {block_id, {table_columns_for_block(columns, block_id), table_rows_for_block(rows, block_id)}}
+    end)
+  end
+
+  defp inherited_table_structure_current?(%Block{type: "table"} = source, instance, structures) do
+    {source_columns, source_rows} = Map.get(structures, source.id, {[], []})
+    {instance_columns, instance_rows} = Map.get(structures, instance.id, {[], []})
+
+    Enum.map(source_columns, &table_column_signature/1) ==
+      Enum.map(instance_columns, &table_column_signature/1) and
+      Enum.map(source_rows, &table_row_signature/1) ==
+        Enum.map(instance_rows, &table_row_signature/1) and
+      inherited_cell_keys_current?(source_columns, instance_rows)
+  end
+
+  defp inherited_table_structure_current?(_source, _instance, _structures), do: true
+
+  defp inherited_cell_keys_current?(source_columns, instance_rows) do
+    expected_cell_keys = MapSet.new(source_columns, & &1.slug)
+    Enum.all?(instance_rows, &(MapSet.new(Map.keys(&1.cells || %{})) == expected_cell_keys))
+  end
+
+  defp inheritance_issue(reason, block_id, source_block_id, details \\ %{}) do
+    Map.merge(details, %{
+      reason: reason,
+      block_id: block_id,
+      source_block_id: source_block_id
+    })
   end
 
   @doc """
@@ -1351,16 +1507,6 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     end
   end
 
-  # Loads children-scope blocks for an ancestor sheet (used in resolve_inherited_blocks)
-  defp ancestor_to_block_group(ancestor, hidden_block_ids) do
-    blocks =
-      ancestor
-      |> load_children_scope_blocks()
-      |> Enum.reject(fn b -> b.id in hidden_block_ids end)
-
-    %{source_sheet: ancestor, blocks: blocks}
-  end
-
   # Lists active, non-detached instances in the source sheet's project.
   # A target sheet may be in trash: source writes still maintain its hidden
   # materialized instance so restore never has to recreate structure or IDs.
@@ -1501,12 +1647,24 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     )
   end
 
-  # Loads children-scope blocks for an ancestor (used in inherit_blocks_for_new_sheet)
+  # Loads children-scope blocks for one ancestor in mutation workflows that
+  # process each locked ancestor independently.
   defp load_children_scope_blocks(ancestor) do
     Repo.all(
       from(b in Block,
         where: b.sheet_id == ^ancestor.id and b.scope == "children" and is_nil(b.deleted_at),
         order_by: [asc: b.position]
+      )
+    )
+  end
+
+  defp load_children_scope_blocks_for_sheets([]), do: []
+
+  defp load_children_scope_blocks_for_sheets(sheet_ids) do
+    Repo.all(
+      from(b in Block,
+        where: b.sheet_id in ^sheet_ids and b.scope == "children" and is_nil(b.deleted_at),
+        order_by: [asc: b.sheet_id, asc: b.position, asc: b.id]
       )
     )
   end

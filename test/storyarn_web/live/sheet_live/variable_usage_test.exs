@@ -465,7 +465,7 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
         })
 
       # Mark as constant
-      Storyarn.Sheets.update_block_config(block, %{"is_constant" => true})
+      {:ok, _block} = Storyarn.Sheets.update_block(block, %{is_constant: true})
 
       {_view, html} = mount_references_tab(conn, project, sheet)
 

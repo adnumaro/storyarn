@@ -441,6 +441,12 @@ defmodule Storyarn.Flows do
   @spec referenced_block_ids([integer()]) :: MapSet.t()
   defdelegate referenced_block_ids(block_ids), to: References
 
+  @doc "Returns stale variable-reference counts for multiple blocks."
+  @spec count_stale_references([integer()], integer()) :: %{integer() => non_neg_integer()}
+  defdelegate count_stale_references(block_ids, project_id),
+    to: References,
+    as: :count_stale_variable_references
+
   @doc """
   Returns variable usage for a block with stale detection.
   Each ref map gets an additional `:stale` boolean.

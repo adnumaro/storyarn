@@ -273,6 +273,8 @@ makeDroppable(
       <!-- Full-width block -->
       <BlockDndItem
         v-if="item.type === 'full_width'"
+        :id="`sheet-block-${(item as FullWidthLayoutItem).block.id}`"
+        :data-sheet-block-id="(item as FullWidthLayoutItem).block.id"
         kind="full_width"
         :block-id="(item as FullWidthLayoutItem).block.id"
         :can-edit="canEdit"
@@ -325,6 +327,8 @@ makeDroppable(
         <div :class="['grid gap-6', gridClass((item as ColumnGroupLayoutItem).column_count)]">
           <BlockDndItem
             v-for="block in (item as ColumnGroupLayoutItem).blocks"
+            :id="`sheet-block-${block.id}`"
+            :data-sheet-block-id="block.id"
             :key="block.id"
             kind="column_child"
             :block-id="block.id"

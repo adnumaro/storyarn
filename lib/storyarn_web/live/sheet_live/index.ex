@@ -189,7 +189,7 @@ defmodule StoryarnWeb.SheetLive.Index do
 
     issues =
       DashboardCache.fetch(project_id, :sheet_issues, fn ->
-        Sheets.detect_sheet_issues(project_id, referenced_ids)
+        Sheets.list_dashboard_health_findings(project_id, referenced_ids)
       end)
 
     total_variable_count =
@@ -225,7 +225,7 @@ defmodule StoryarnWeb.SheetLive.Index do
       sorted_table: sorted_table,
       page_rows: page_rows,
       total_pages: total_pages,
-      formatted_issues: format_sheet_issues(issues, workspace, project)
+      formatted_issues: format_dashboard_health(issues, workspace, project)
     }
   end
 
@@ -274,32 +274,27 @@ defmodule StoryarnWeb.SheetLive.Index do
     }
   end
 
-  defp format_sheet_issues(issues, workspace, project) do
-    Enum.map(issues, fn issue ->
-      {severity, message} =
-        case issue.issue_type do
-          :empty_sheet ->
-            {:info, dgettext("sheets", "Sheet \"%{name}\" has no blocks", name: issue.sheet_name)}
-
-          :unused_variable ->
-            {:warning,
-             dgettext("sheets", "Variable \"%{sheet}.%{variable}\" is never used",
-               sheet: issue.sheet_shortcut,
-               variable: issue.variable_name
-             )}
-
-          :missing_shortcut ->
-            {:warning, dgettext("sheets", "Sheet \"%{name}\" has no shortcut", name: issue.sheet_name)}
-
-          _ ->
-            {:info, dgettext("sheets", "Issue detected")}
-        end
-
+  defp format_dashboard_health(findings, workspace, project) do
+    Enum.map(findings, fn finding ->
       %{
-        severity: to_string(severity),
-        message: message,
-        href: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{issue.sheet_id}"
+        severity: Atom.to_string(finding.severity),
+        code: Atom.to_string(finding.code),
+        label: dashboard_health_label(finding),
+        details: finding.details,
+        href: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{finding.sheet_id}"
       }
     end)
+  end
+
+  defp dashboard_health_label(finding) do
+    sheet_name = Map.get(finding.details, :sheet_name, "Sheet")
+
+    case Map.get(finding.details, :variable_name) do
+      variable_name when is_binary(variable_name) and variable_name != "" ->
+        "#{sheet_name} · #{variable_name}"
+
+      _other ->
+        sheet_name
+    end
   end
 end

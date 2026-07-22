@@ -1,6 +1,7 @@
 defmodule StoryarnWeb.SheetLive.IndexTest do
   use StoryarnWeb.ConnCase, async: true
 
+  import Ecto.Query
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
@@ -60,6 +61,36 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
       assert Enum.any?(vue.props["table-data"], fn row ->
                row["name"] == "Main Hero" and row["word_count"] == 5
              end)
+    end
+
+    test "uses canonical sheet health codes and severities in the dashboard", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      missing_shortcut = sheet_fixture(project, %{name: "Missing Shortcut"})
+      variable_sheet = sheet_fixture(project, %{name: "Unused Variable"})
+      block_fixture(variable_sheet, %{type: "number", is_constant: false})
+
+      Repo.update_all(
+        from(sheet in Storyarn.Sheets.Sheet, where: sheet.id == ^missing_shortcut.id),
+        set: [shortcut: nil]
+      )
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets")
+
+      await_async(view)
+
+      issues = get_dashboard_vue(view).props["issues"]
+
+      assert %{"severity" => "error", "label" => "Missing Shortcut"} =
+               Enum.find(issues, &(&1["code"] == "missing_sheet_shortcut"))
+
+      assert %{"severity" => "info", "label" => "Missing Shortcut"} =
+               Enum.find(issues, &(&1["code"] == "empty_leaf_sheet"))
+
+      assert %{"severity" => "info", "label" => label} =
+               Enum.find(issues, &(&1["code"] == "no_internal_variable_usages"))
+
+      assert String.starts_with?(label, "Unused Variable · ")
     end
   end
 

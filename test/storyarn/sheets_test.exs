@@ -1412,7 +1412,7 @@ defmodule Storyarn.SheetsTest do
   describe "delete_target_references/2" do
     alias Storyarn.Sheets.ReferenceTracker
 
-    test "removes all references pointing to a target" do
+    test "retains references from live blocks for stale-target health checks" do
       user = user_fixture()
       project = project_fixture(user)
       source_sheet = sheet_fixture(project, %{name: "Source"})
@@ -1428,7 +1428,7 @@ defmodule Storyarn.SheetsTest do
       assert Sheets.count_backlinks("sheet", target_sheet.id) == 1
 
       Sheets.delete_target_references("sheet", target_sheet.id)
-      assert Sheets.count_backlinks("sheet", target_sheet.id) == 0
+      assert Sheets.count_backlinks("sheet", target_sheet.id) == 1
     end
   end
 

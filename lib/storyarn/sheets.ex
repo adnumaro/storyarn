@@ -26,6 +26,7 @@ defmodule Storyarn.Sheets do
   alias Storyarn.Sheets.Constraints.Number
   alias Storyarn.Sheets.GalleryCrud
   alias Storyarn.Sheets.PropertyInheritance
+  alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Sheets.SheetCrud
@@ -116,6 +117,9 @@ defmodule Storyarn.Sheets do
   """
   @spec get_children(id()) :: [sheet()]
   defdelegate get_children(sheet_id), to: SheetQueries
+
+  @spec has_children?(id()) :: boolean()
+  defdelegate has_children?(sheet_id), to: SheetQueries
 
   @doc """
   Lists sheets by IDs with avatar and banner preloaded.
@@ -306,6 +310,11 @@ defmodule Storyarn.Sheets do
   Returns inherited blocks for a sheet, grouped by source sheet.
   """
   defdelegate resolve_inherited_blocks(sheet_id), to: PropertyInheritance
+
+  @doc """
+  Lists non-mutating inheritance integrity findings for a sheet.
+  """
+  defdelegate list_inheritance_health_issues(sheet_id), to: PropertyInheritance, as: :list_health_issues
 
   @doc """
   Gets a sheet's blocks split into inherited and own groups.
@@ -820,6 +829,14 @@ defmodule Storyarn.Sheets do
     end
   end
 
+  def get_reference_target(_target_type, _target_id, _project_id), do: nil
+
+  @doc "Resolves multiple active sheet and flow targets in batch."
+  defdelegate get_reference_targets(references, project_id), to: ReferenceTracker
+
+  @doc "Returns block IDs with stale tracked sheet/flow entity references."
+  defdelegate list_stale_block_reference_source_ids(project_id, block_ids), to: ReferenceTracker
+
   # =============================================================================
   # Reference Tracking (Backlinks)
   # =============================================================================
@@ -1009,8 +1026,8 @@ defmodule Storyarn.Sheets do
   @doc "Returns MapSet of block IDs with at least one variable reference."
   defdelegate referenced_block_ids_for_project(project_id), to: SheetStats
 
-  @doc "Detects issues in sheets. Returns [%{issue_type, sheet_id, sheet_name, ...}]."
-  defdelegate detect_sheet_issues(project_id, referenced_ids \\ nil), to: SheetStats
+  @doc "Returns the canonical sheet health findings used by the project dashboard overview."
+  defdelegate list_dashboard_health_findings(project_id, referenced_ids \\ nil), to: SheetStats
 
   defp broadcast_block_dashboard_result({:ok, _value} = result, %Block{} = block) do
     case Repo.get(Sheet, block.sheet_id) do

@@ -142,6 +142,12 @@ defmodule Storyarn.Sheets.SheetQueries do
     )
   end
 
+  @doc "Returns whether a sheet has at least one active direct child."
+  @spec has_children?(integer()) :: boolean()
+  def has_children?(sheet_id) do
+    Repo.exists?(from(s in Sheet, where: s.parent_id == ^sheet_id and is_nil(s.deleted_at)))
+  end
+
   @doc """
   Lists sheets by a list of IDs within a project, with avatar and banner preloaded.
   Used by the version viewer to build speaker data for dialogue nodes.
