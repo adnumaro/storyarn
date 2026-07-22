@@ -23,9 +23,11 @@ defmodule StoryarnWeb.UserSessionController do
   # Token-backed POST used by the LiveView login form after inline validation.
   defp create(conn, %{"user" => %{"_login_token" => login_token} = user_params}, info)
        when is_binary(login_token) and login_token != "" do
-    case user_from_login_token(login_token) do
+    case user_from_login_token(conn, login_token) do
       {:ok, user} ->
-        log_in_authenticated_user(conn, user, user_params, info)
+        conn
+        |> delete_session(:login_handoff_nonce)
+        |> log_in_authenticated_user(user, user_params, info)
 
       :error ->
         create_with_password(conn, user_params, info)
@@ -78,8 +80,9 @@ defmodule StoryarnWeb.UserSessionController do
     |> redirect(to: ~p"/users/log-in")
   end
 
-  defp user_from_login_token(token) do
-    with {:ok, user_id} when is_integer(user_id) <- UserLoginToken.verify(token),
+  defp user_from_login_token(conn, token) do
+    with session_nonce when is_binary(session_nonce) <- get_session(conn, :login_handoff_nonce),
+         {:ok, user_id} when is_integer(user_id) <- UserLoginToken.verify(token, session_nonce),
          user when not is_nil(user) <- get_user(user_id) do
       {:ok, user}
     else

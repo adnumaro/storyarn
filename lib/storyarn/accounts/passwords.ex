@@ -9,8 +9,10 @@ defmodule Storyarn.Accounts.Passwords do
   alias Storyarn.Repo
   alias Storyarn.Shared.EncryptedBinary
   alias Storyarn.Workers.DeliverResetPasswordInstructionsWorker
+  alias Storyarn.Workers.RequestResetPasswordInstructionsWorker
 
   @reset_password_context "reset_password"
+  @reset_token_placeholder "__STORYARN_RESET_TOKEN__"
 
   @doc """
   Returns an `%Ecto.Changeset{}` for changing the user password.
@@ -22,13 +24,11 @@ defmodule Storyarn.Accounts.Passwords do
   @doc """
   Queues reset password instructions for an existing user.
 
-  Passing `nil` is a no-op so callers can keep the public response generic and
-  avoid exposing whether an email address belongs to an account.
+  This lower-level function is used after an asynchronous reset request has
+  resolved the account. Public callers should use
+  `request_user_reset_password_instructions/2` so existing and missing emails
+  take the same synchronous path.
   """
-  def deliver_user_reset_password_instructions(nil, reset_password_url_fun) when is_function(reset_password_url_fun, 1) do
-    {:ok, :queued}
-  end
-
   def deliver_user_reset_password_instructions(%User{} = user, reset_password_url_fun)
       when is_function(reset_password_url_fun, 1) do
     {encoded_token, user_token} = UserToken.build_email_token(user, @reset_password_context)
@@ -45,6 +45,46 @@ defmodule Storyarn.Accounts.Passwords do
         {:ok, :queued}
       end
     end)
+  end
+
+  @doc """
+  Queues a password reset request without resolving the account synchronously.
+
+  The worker performs the account lookup and only creates a reset token when
+  the normalized email exists, keeping the public request path uniform.
+  """
+  def request_user_reset_password_instructions(email, reset_password_url_fun)
+      when is_binary(email) and is_function(reset_password_url_fun, 1) do
+    reset_url_template = reset_password_url_fun.(@reset_token_placeholder)
+
+    if is_binary(reset_url_template) and String.contains?(reset_url_template, @reset_token_placeholder) do
+      %{
+        email: normalize_email(email),
+        reset_url_template: reset_url_template
+      }
+      |> RequestResetPasswordInstructionsWorker.new()
+      |> Oban.insert()
+      |> case do
+        {:ok, _job} -> {:ok, :queued}
+        {:error, reason} -> {:error, reason}
+      end
+    else
+      {:error, :invalid_reset_password_url_template}
+    end
+  end
+
+  @doc false
+  def process_user_reset_password_request(email, reset_url_template)
+      when is_binary(email) and is_binary(reset_url_template) do
+    case Repo.get_by(User, email: normalize_email(email)) do
+      %User{} = user ->
+        deliver_user_reset_password_instructions(user, fn token ->
+          String.replace(reset_url_template, @reset_token_placeholder, token)
+        end)
+
+      nil ->
+        :ok
+    end
   end
 
   @doc false
@@ -100,4 +140,6 @@ defmodule Storyarn.Accounts.Passwords do
       from(token in UserToken, where: token.user_id == ^user_id and token.context == @reset_password_context)
     )
   end
+
+  defp normalize_email(email), do: email |> String.trim() |> String.downcase()
 end

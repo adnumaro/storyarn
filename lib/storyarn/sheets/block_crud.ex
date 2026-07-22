@@ -170,7 +170,10 @@ defmodule Storyarn.Sheets.BlockCrud do
 
   defp maybe_propagate_to_descendants({:ok, block}, _sheet_id)
        when block.scope == "children" and is_nil(block.inherited_from_block_id) do
-    {:ok, _count} = PropertyInheritance.create_inherited_instances_for_all_descendants(block)
+    case PropertyInheritance.create_inherited_instances_for_all_descendants(block) do
+      {:ok, _count} -> :ok
+      {:error, reason} -> Repo.rollback(reason)
+    end
   end
 
   defp maybe_propagate_to_descendants(_result, _sheet_id), do: :ok

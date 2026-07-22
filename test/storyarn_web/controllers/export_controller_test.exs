@@ -1,5 +1,5 @@
 defmodule StoryarnWeb.ExportControllerTest do
-  use StoryarnWeb.ConnCase, async: true
+  use StoryarnWeb.ConnCase, async: false
 
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
@@ -162,6 +162,29 @@ defmodule StoryarnWeb.ExportControllerTest do
   # ===========================================================================
 
   describe "error handling" do
+    test "rejects multi-file exports over the synchronous byte limit", %{
+      conn: conn,
+      project: project
+    } do
+      previous_limit = Application.get_env(:storyarn, :max_sync_export_bytes)
+
+      on_exit(fn ->
+        if previous_limit do
+          Application.put_env(:storyarn, :max_sync_export_bytes, previous_limit)
+        else
+          Application.delete_env(:storyarn, :max_sync_export_bytes)
+        end
+      end)
+
+      Application.put_env(:storyarn, :max_sync_export_bytes, 1)
+      exportable_flow_fixture(project, %{name: "Too Large"})
+
+      conn = get(conn, export_url(project, "ink"))
+
+      assert conn.status == 413
+      assert conn.resp_body =~ "Export is too large"
+    end
+
     test "returns 400 for invalid format", %{conn: conn, project: project} do
       conn = get(conn, export_url(project, "nonexistent_format_xyz"))
 

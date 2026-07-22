@@ -11,6 +11,7 @@ defmodule StoryarnWeb.UserLive.PasswordResetTest do
   alias Storyarn.RateLimiter
   alias Storyarn.Repo
   alias Storyarn.Workers.DeliverResetPasswordInstructionsWorker
+  alias Storyarn.Workers.RequestResetPasswordInstructionsWorker
 
   defp get_forgot_password_vue(view) do
     LiveVue.Test.get_vue(view, name: "live/auth/reset-password/AuthForgotPasswordForm")
@@ -68,6 +69,11 @@ defmodule StoryarnWeb.UserLive.PasswordResetTest do
       assert vue.props["instructions-sent"] == true
       assert vue.props["request-error"] == nil
       refute Map.get(flash.props["flash"], "info")
+      refute Repo.get_by(UserToken, user_id: user.id, context: "reset_password")
+      assert_enqueued(worker: RequestResetPasswordInstructionsWorker, args: %{"email" => user.email})
+
+      perform_latest_reset_request_job()
+
       assert Repo.get_by(UserToken, user_id: user.id, context: "reset_password")
       assert_enqueued(worker: DeliverResetPasswordInstructionsWorker, args: %{"email" => user.email})
       refute_receive {:email, _email}, 50
@@ -89,6 +95,10 @@ defmodule StoryarnWeb.UserLive.PasswordResetTest do
       assert vue.props["instructions-sent"] == true
       assert vue.props["request-error"] == nil
       refute Map.get(flash.props["flash"], "info")
+      assert_enqueued(worker: RequestResetPasswordInstructionsWorker)
+
+      perform_latest_reset_request_job()
+
       refute Repo.get_by(UserToken, context: "reset_password")
       refute_reset_password_job_enqueued()
     end
@@ -252,6 +262,19 @@ defmodule StoryarnWeb.UserLive.PasswordResetTest do
       )
 
     assert :ok = perform_job(DeliverResetPasswordInstructionsWorker, job.args)
+  end
+
+  defp perform_latest_reset_request_job do
+    job =
+      Repo.one!(
+        from(job in Oban.Job,
+          where: job.worker == ^inspect(RequestResetPasswordInstructionsWorker),
+          order_by: [desc: job.id],
+          limit: 1
+        )
+      )
+
+    assert :ok = perform_job(RequestResetPasswordInstructionsWorker, job.args)
   end
 
   defp refute_reset_password_job_enqueued do

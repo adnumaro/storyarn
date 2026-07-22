@@ -15,6 +15,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
   alias Storyarn.Shared.MapUtils
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
 
+  require Logger
+
   # Note: FormHelpers import removed - connection forms no longer need condition fields
 
   @doc """
@@ -186,10 +188,11 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
      )}
   end
 
-  defp resync_authoritative_flow(socket) do
+  @doc false
+  def resync_authoritative_flow(socket, reload_fun \\ &reload_flow_data/1) do
     socket =
       try do
-        reload_flow_data(socket)
+        reload_fun.(socket)
       rescue
         Ecto.NoResultsError ->
           empty_flow_data = %{
@@ -206,6 +209,14 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
           |> assign(:flow_error_nodes, [])
           |> assign(:flow_warning_nodes, [])
           |> assign(:flow_info_nodes, [])
+
+        error in [DBConnection.ConnectionError, Postgrex.Error] ->
+          Logger.warning(
+            "Could not resync flow #{socket.assigns.flow.id} after a rejected connection delete: " <>
+              Exception.message(error)
+          )
+
+          socket
       end
 
     push_event(socket, "flow_updated", socket.assigns.flow_data)

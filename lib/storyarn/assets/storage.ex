@@ -45,6 +45,7 @@ defmodule Storyarn.Assets.Storage do
     case Keyword.get(config, :adapter, :local) do
       :local -> Storyarn.Assets.Storage.Local
       :r2 -> Storyarn.Assets.Storage.R2
+      adapter when is_atom(adapter) -> adapter
     end
   end
 

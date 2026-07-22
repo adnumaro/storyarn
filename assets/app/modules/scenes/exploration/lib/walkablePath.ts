@@ -1,8 +1,32 @@
 import type { ExplorationZone, PixelPoint, Vertex } from "../types";
 
 const EPSILON = 1e-7;
+const MAX_ABS_COORDINATE = 1_000_000;
+const MAX_VERTICES_PER_POLYGON = 1_024;
+const MAX_TOTAL_VERTICES = 2_048;
+const MAX_PATH_CANDIDATES = 256;
+const MAX_INTERSECTION_CHECKS = 100_000;
+const MAX_VISIBILITY_CHECKS = 25_000;
 
 type WalkablePolygon = Pick<ExplorationZone, "vertices">;
+
+function validPoint(point: PixelPoint): boolean {
+  return (
+    Number.isFinite(point.x) &&
+    Number.isFinite(point.y) &&
+    Math.abs(point.x) <= MAX_ABS_COORDINATE &&
+    Math.abs(point.y) <= MAX_ABS_COORDINATE
+  );
+}
+
+function validPolygonVertices(vertices: Vertex[] | null | undefined): vertices is Vertex[] {
+  return (
+    !!vertices &&
+    vertices.length >= 3 &&
+    vertices.length <= MAX_VERTICES_PER_POLYGON &&
+    vertices.every(validPoint)
+  );
+}
 
 function cross(a: PixelPoint, b: PixelPoint): number {
   return a.x * b.y - a.y * b.x;
@@ -96,9 +120,12 @@ export function isPointInWalkableArea(
   point: PixelPoint,
   polygons: readonly WalkablePolygon[],
 ): boolean {
-  return polygons.some(
-    (polygon) =>
-      polygon.vertices && polygon.vertices.length >= 3 && pointInPolygon(point, polygon.vertices),
+  return (
+    validPoint(point) &&
+    polygons.some(
+      (polygon) =>
+        validPolygonVertices(polygon.vertices) && pointInPolygon(point, polygon.vertices),
+    )
   );
 }
 
@@ -162,7 +189,7 @@ function segmentBoundaryParameters(
   const intersections = [0, 1];
 
   for (const polygon of polygons) {
-    if (!polygon.vertices || polygon.vertices.length < 3) {
+    if (!validPolygonVertices(polygon.vertices)) {
       continue;
     }
 
@@ -207,7 +234,12 @@ export function isSegmentInWalkableArea(
   end: PixelPoint,
   polygons: readonly WalkablePolygon[],
 ): boolean {
-  if (!isPointInWalkableArea(start, polygons) || !isPointInWalkableArea(end, polygons)) {
+  if (
+    !validPoint(start) ||
+    !validPoint(end) ||
+    !isPointInWalkableArea(start, polygons) ||
+    !isPointInWalkableArea(end, polygons)
+  ) {
     return false;
   }
 
@@ -227,7 +259,9 @@ function addUniqueCandidate(
   candidate: PixelPoint,
   candidates: PixelPoint[],
   buckets: Map<string, PixelPoint[]>,
-): void {
+): boolean {
+  if (!validPoint(candidate)) return false;
+
   const bucketX = Math.floor(candidate.x / EPSILON);
   const bucketY = Math.floor(candidate.y / EPSILON);
 
@@ -235,7 +269,7 @@ function addUniqueCandidate(
     for (let offsetY = -1; offsetY <= 1; offsetY++) {
       const nearby = buckets.get(`${bucketX + offsetX}:${bucketY + offsetY}`) || [];
       if (nearby.some((point) => pointsEqual(point, candidate))) {
-        return;
+        return true;
       }
     }
   }
@@ -247,7 +281,11 @@ function addUniqueCandidate(
   } else {
     buckets.set(key, [candidate]);
   }
+
+  if (candidates.length >= MAX_PATH_CANDIDATES) return false;
+
   candidates.push(candidate);
+  return true;
 }
 
 function collectEdgeIntersections(
@@ -255,33 +293,40 @@ function collectEdgeIntersections(
   secondEdges: [Vertex, Vertex][],
   candidates: PixelPoint[],
   buckets: Map<string, PixelPoint[]>,
-): void {
+  budget: { checks: number },
+): boolean {
   for (const [start, end] of firstEdges) {
     for (const [edgeStart, edgeEnd] of secondEdges) {
+      budget.checks += 1;
+      if (budget.checks > MAX_INTERSECTION_CHECKS) return false;
+
       if (!boundingBoxesOverlap(start, end, edgeStart, edgeEnd)) {
         continue;
       }
 
       const parameters = segmentIntersectionParameters(start, end, edgeStart, edgeEnd);
       for (const parameter of parameters) {
-        addUniqueCandidate(pointAt(start, end, parameter), candidates, buckets);
+        if (!addUniqueCandidate(pointAt(start, end, parameter), candidates, buckets)) return false;
       }
     }
   }
+
+  return true;
 }
 
-function collectCandidateVertices(polygons: readonly WalkablePolygon[]): PixelPoint[] {
+function collectCandidateVertices(polygons: readonly WalkablePolygon[]): PixelPoint[] | null {
   const candidates: PixelPoint[] = [];
   const buckets = new Map<string, PixelPoint[]>();
   const edgesByPolygon: [Vertex, Vertex][][] = [];
+  const budget = { checks: 0 };
 
   for (const polygon of polygons) {
-    if (!polygon.vertices || polygon.vertices.length < 3) {
+    if (!validPolygonVertices(polygon.vertices)) {
       continue;
     }
 
     for (const vertex of polygon.vertices) {
-      addUniqueCandidate(vertex, candidates, buckets);
+      if (!addUniqueCandidate(vertex, candidates, buckets)) return null;
     }
     edgesByPolygon.push(polygonEdges(polygon.vertices));
   }
@@ -290,7 +335,17 @@ function collectCandidateVertices(polygons: readonly WalkablePolygon[]): PixelPo
   // the shortest path when several walkable polygons overlap.
   for (let first = 0; first < edgesByPolygon.length; first++) {
     for (let second = first + 1; second < edgesByPolygon.length; second++) {
-      collectEdgeIntersections(edgesByPolygon[first], edgesByPolygon[second], candidates, buckets);
+      if (
+        !collectEdgeIntersections(
+          edgesByPolygon[first],
+          edgesByPolygon[second],
+          candidates,
+          buckets,
+          budget,
+        )
+      ) {
+        return null;
+      }
     }
   }
 
@@ -322,6 +377,20 @@ function reconstructGraphPath(previous: number[], target: number): number[] | nu
   return path.reverse();
 }
 
+function visibleUnvisitedEdge(
+  current: number,
+  next: number,
+  visited: boolean[],
+  nodes: PixelPoint[],
+  polygons: readonly WalkablePolygon[],
+): boolean {
+  return (
+    next !== current &&
+    !visited[next] &&
+    isSegmentInWalkableArea(nodes[current], nodes[next], polygons)
+  );
+}
+
 /**
  * Runs A* over the implicit visibility graph. Edges are checked only while a
  * node is expanded, avoiding the eager O(n²) graph construction for routes
@@ -338,6 +407,7 @@ function shortestVisiblePath(
   const visited = nodes.map(() => false);
   distances[0] = 0;
   scores[0] = distance(nodes[0], nodes[target]);
+  let visibilityChecks = 0;
 
   for (let iteration = 0; iteration < nodes.length; iteration++) {
     const current = closestUnvisitedNode(scores, visited);
@@ -351,11 +421,10 @@ function shortestVisiblePath(
 
     visited[current] = true;
     for (let next = 0; next < nodes.length; next++) {
-      if (
-        next === current ||
-        visited[next] ||
-        !isSegmentInWalkableArea(nodes[current], nodes[next], polygons)
-      ) {
+      visibilityChecks += 1;
+      if (visibilityChecks > MAX_VISIBILITY_CHECKS) return null;
+
+      if (!visibleUnvisitedEdge(current, next, visited, nodes, polygons)) {
         continue;
       }
 
@@ -371,6 +440,26 @@ function shortestVisiblePath(
   return null;
 }
 
+function pathInputWithinBudget(
+  start: PixelPoint,
+  target: PixelPoint,
+  polygons: readonly WalkablePolygon[],
+): boolean {
+  if (!validPoint(start) || !validPoint(target)) return false;
+
+  let totalVertices = 0;
+
+  for (const polygon of polygons) {
+    const vertices = polygon.vertices;
+    if (vertices?.length && !validPolygonVertices(vertices)) return false;
+
+    totalVertices += vertices?.length ?? 0;
+    if (totalVertices > MAX_TOTAL_VERTICES) return false;
+  }
+
+  return true;
+}
+
 /**
  * Finds the shortest Euclidean route within the union of the walkable
  * polygons. The returned path excludes `start` and includes `target`.
@@ -380,6 +469,8 @@ export function findShortestWalkablePath(
   target: PixelPoint,
   polygons: readonly WalkablePolygon[],
 ): PixelPoint[] | null {
+  if (!pathInputWithinBudget(start, target, polygons)) return null;
+
   if (!isPointInWalkableArea(start, polygons) || !isPointInWalkableArea(target, polygons)) {
     return null;
   }
@@ -388,7 +479,10 @@ export function findShortestWalkablePath(
     return [{ ...target }];
   }
 
-  const candidates = collectCandidateVertices(polygons).filter(
+  const collectedCandidates = collectCandidateVertices(polygons);
+  if (!collectedCandidates) return null;
+
+  const candidates = collectedCandidates.filter(
     (point) => !pointsEqual(point, start) && !pointsEqual(point, target),
   );
   const nodes = [{ ...start }, { ...target }, ...candidates];

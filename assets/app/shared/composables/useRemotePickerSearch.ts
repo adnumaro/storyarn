@@ -9,6 +9,7 @@ export interface RemotePickerSearchOptions {
   selectedId?: Ref<number | string | null | undefined> | number | string | null | undefined;
   limit: number;
   debounceMs?: number;
+  responseTimeoutMs?: number;
 }
 
 export interface RemotePickerResults {
@@ -21,6 +22,7 @@ export interface RemotePickerResults {
 
 const DEFAULT_RESULTS_EVENT = "picker_search_results";
 const DEFAULT_DEBOUNCE_MS = 160;
+const DEFAULT_RESPONSE_TIMEOUT_MS = 10_000;
 
 function randomRequestId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -43,13 +45,27 @@ export function useRemotePickerSearch<T>(options: RemotePickerSearchOptions) {
   const resultsEventName = computed(() => toValue(options.resultsEvent) || DEFAULT_RESULTS_EVENT);
 
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let responseTimer: ReturnType<typeof setTimeout> | null = null;
   let latestRequestId: string | null = null;
-  let handlerRegistered = false;
+  let handlerRef: number | undefined;
 
   function clearTimer(): void {
     if (!debounceTimer) return;
     clearTimeout(debounceTimer);
     debounceTimer = null;
+  }
+
+  function clearResponseTimer(): void {
+    if (!responseTimer) return;
+    clearTimeout(responseTimer);
+    responseTimer = null;
+  }
+
+  function finishSearch(requestId: string): void {
+    if (latestRequestId !== requestId) return;
+
+    clearResponseTimer();
+    isSearching.value = false;
   }
 
   function searchNow(): void {
@@ -59,17 +75,28 @@ export function useRemotePickerSearch<T>(options: RemotePickerSearchOptions) {
     if (!isEnabled.value || !event) return;
 
     const requestId = randomRequestId();
+    clearResponseTimer();
     latestRequestId = requestId;
     hasResponse.value = false;
     isSearching.value = true;
 
-    live.pushEvent(event, {
-      ...toValue(options.payload),
-      request_id: requestId,
-      query: query.value,
-      limit: options.limit,
-      selected_id: toValue(options.selectedId) ?? null,
-    });
+    responseTimer = setTimeout(
+      () => finishSearch(requestId),
+      options.responseTimeoutMs ?? DEFAULT_RESPONSE_TIMEOUT_MS,
+    );
+
+    live.pushEvent(
+      event,
+      {
+        ...toValue(options.payload),
+        request_id: requestId,
+        query: query.value,
+        limit: options.limit,
+        selected_id: toValue(options.selectedId) ?? null,
+      },
+      undefined,
+      () => finishSearch(requestId),
+    );
   }
 
   function scheduleSearch(): void {
@@ -81,20 +108,19 @@ export function useRemotePickerSearch<T>(options: RemotePickerSearchOptions) {
   }
 
   function registerHandler(): void {
-    if (handlerRegistered) return;
+    if (handlerRef !== undefined) return;
 
-    live.handleEvent(resultsEventName.value, (payload: Record<string, unknown>) => {
+    handlerRef = live.handleEvent(resultsEventName.value, (payload: Record<string, unknown>) => {
       const response = payload as RemotePickerResults;
-      if (response.request_id !== latestRequestId) return;
+      const requestId = latestRequestId;
+      if (!requestId || response.request_id !== requestId) return;
 
       const remoteResults = response.results ?? response.items;
       results.value = Array.isArray(remoteResults) ? (remoteResults as T[]) : [];
       hasMore.value = !!(response.has_more ?? response.hasMore);
       hasResponse.value = true;
-      isSearching.value = false;
+      finishSearch(requestId);
     });
-
-    handlerRegistered = true;
   }
 
   watch(
@@ -113,6 +139,12 @@ export function useRemotePickerSearch<T>(options: RemotePickerSearchOptions) {
   onUnmounted(() => {
     latestRequestId = null;
     clearTimer();
+    clearResponseTimer();
+
+    if (handlerRef !== undefined) {
+      live.removeHandleEvent(handlerRef);
+      handlerRef = undefined;
+    }
   });
 
   return {

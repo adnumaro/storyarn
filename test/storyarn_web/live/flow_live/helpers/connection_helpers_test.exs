@@ -284,6 +284,19 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpersTest do
 
       assert result.assigns.flow_hubs == []
     end
+
+    test "a transient database error during rejected-delete recovery preserves the socket", %{
+      socket: socket
+    } do
+      flow_data = socket.assigns.flow_data
+
+      result =
+        ConnectionHelpers.resync_authoritative_flow(socket, fn _socket ->
+          raise DBConnection.ConnectionError, "database unavailable"
+        end)
+
+      assert result.assigns.flow_data == flow_data
+    end
   end
 
   # =============================================================================

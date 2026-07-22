@@ -27,6 +27,8 @@ defmodule Storyarn.Shared.InvitationOperations do
   alias Storyarn.Workers.DeliverInvitationWorker
   alias Storyarn.Workspaces.Workspace
 
+  require Logger
+
   @doc """
   Lists pending invitations for a parent entity.
   """
@@ -249,23 +251,36 @@ defmodule Storyarn.Shared.InvitationOperations do
   defp restore_limit_error(result), do: result
 
   defp enqueue_delivery(config, encoded_token, opts) do
-    encrypted_token = encrypt_token!(encoded_token)
-
-    %{
-      context: config.rate_limit_context,
-      encrypted_token: encrypted_token,
-      inviter_name: Keyword.get(opts, :inviter_name),
-      locale: Gettext.get_locale(Storyarn.Gettext)
-    }
-    |> Enum.reject(fn {_key, value} -> is_nil(value) end)
-    |> Map.new()
-    |> DeliverInvitationWorker.new()
-    |> Oban.insert()
+    with {:ok, encrypted_token} <- encrypt_token(encoded_token) do
+      %{
+        context: config.rate_limit_context,
+        encrypted_token: encrypted_token,
+        inviter_name: Keyword.get(opts, :inviter_name),
+        locale: Gettext.get_locale(Storyarn.Gettext)
+      }
+      |> Enum.reject(fn {_key, value} -> is_nil(value) end)
+      |> Map.new()
+      |> DeliverInvitationWorker.new()
+      |> Oban.insert()
+    end
   end
 
-  defp encrypt_token!(encoded_token) do
-    {:ok, encrypted_token} = EncryptedBinary.dump(encoded_token)
-    Base.encode64(encrypted_token)
+  defp encrypt_token(encoded_token) do
+    encryptor =
+      Application.get_env(:storyarn, :invitation_token_encryptor, EncryptedBinary)
+
+    case encryptor.dump(encoded_token) do
+      {:ok, encrypted_token} ->
+        {:ok, Base.encode64(encrypted_token)}
+
+      _error ->
+        Logger.error("Invitation token encryption failed")
+        {:error, :encryption_unavailable}
+    end
+  rescue
+    error ->
+      Logger.error("Invitation token encryption failed: #{Exception.message(error)}")
+      {:error, :encryption_unavailable}
   end
 
   defp normalize_email(email), do: email |> String.trim() |> String.downcase()

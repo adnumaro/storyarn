@@ -35,6 +35,8 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.Sheet
 
+  @rebuild_batch_size 100
+
   @type rebuild_error ::
           {:invalid_project_id, term()}
           | {:project_variable_reference_rebuild_failed,
@@ -66,20 +68,20 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   def rebuild_project_variable_references(project_id) when is_integer(project_id) and project_id > 0 do
     with :ok <-
            rebuild_sources(
-             active_flow_nodes(project_id),
+             active_flow_nodes_query(project_id),
              project_id,
              "flow_node",
              &restore_missing_flow_node_references/1
            ),
          :ok <-
            rebuild_sources(
-             active_scene_pins(project_id),
+             active_scene_pins_query(project_id),
              project_id,
              "scene_pin",
              &restore_missing_scene_pin_references(&1, project_id)
            ) do
       rebuild_sources(
-        active_scene_zones(project_id),
+        active_scene_zones_query(project_id),
         project_id,
         "scene_zone",
         &restore_missing_scene_zone_references(&1, project_id)
@@ -901,42 +903,52 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     end
   end
 
-  defp active_flow_nodes(project_id) do
-    Repo.all(
-      from(node in FlowNode,
-        join: flow in Flow,
-        on: flow.id == node.flow_id,
-        where:
-          flow.project_id == ^project_id and is_nil(flow.deleted_at) and
-            is_nil(node.deleted_at),
-        order_by: [asc: node.id]
-      )
+  defp active_flow_nodes_query(project_id) do
+    from(node in FlowNode,
+      join: flow in Flow,
+      on: flow.id == node.flow_id,
+      where:
+        flow.project_id == ^project_id and is_nil(flow.deleted_at) and
+          is_nil(node.deleted_at)
     )
   end
 
-  defp active_scene_pins(project_id) do
-    Repo.all(
-      from(pin in ScenePin,
-        join: scene in Scene,
-        on: scene.id == pin.scene_id,
-        where: scene.project_id == ^project_id and is_nil(scene.deleted_at),
-        order_by: [asc: pin.id]
-      )
+  defp active_scene_pins_query(project_id) do
+    from(pin in ScenePin,
+      join: scene in Scene,
+      on: scene.id == pin.scene_id,
+      where: scene.project_id == ^project_id and is_nil(scene.deleted_at)
     )
   end
 
-  defp active_scene_zones(project_id) do
-    Repo.all(
-      from(zone in SceneZone,
-        join: scene in Scene,
-        on: scene.id == zone.scene_id,
-        where: scene.project_id == ^project_id and is_nil(scene.deleted_at),
-        order_by: [asc: zone.id]
-      )
+  defp active_scene_zones_query(project_id) do
+    from(zone in SceneZone,
+      join: scene in Scene,
+      on: scene.id == zone.scene_id,
+      where: scene.project_id == ^project_id and is_nil(scene.deleted_at)
     )
   end
 
-  defp rebuild_sources(sources, project_id, source_type, update_fun) do
+  defp rebuild_sources(query, project_id, source_type, update_fun, after_id \\ 0) do
+    sources =
+      Repo.all(
+        from(source in query,
+          where: source.id > ^after_id,
+          order_by: [asc: source.id],
+          limit: ^@rebuild_batch_size
+        )
+      )
+
+    case rebuild_source_batch(sources, project_id, source_type, update_fun) do
+      :ok when length(sources) == @rebuild_batch_size ->
+        rebuild_sources(query, project_id, source_type, update_fun, List.last(sources).id)
+
+      result ->
+        result
+    end
+  end
+
+  defp rebuild_source_batch(sources, project_id, source_type, update_fun) do
     Enum.reduce_while(sources, :ok, fn source, :ok ->
       case update_fun.(source) do
         :ok ->

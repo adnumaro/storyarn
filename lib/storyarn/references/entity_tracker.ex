@@ -26,6 +26,8 @@ defmodule Storyarn.References.EntityTracker do
   alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Sheets.Sheet
 
+  @rebuild_batch_size 100
+
   def update_block_references(block, opts \\ []), do: ReferenceTracker.update_block_references(block, opts)
 
   defdelegate delete_block_references(block_id), to: ReferenceTracker
@@ -66,91 +68,73 @@ defmodule Storyarn.References.EntityTracker do
   end
 
   defp do_rebuild_project_entity_references(project_id) do
-    sources = lock_project_reference_sources(project_id)
-
-    Enum.each(
-      sources.active_blocks,
-      &ReferenceTracker.update_block_references(
-        &1,
-        project_id: project_id
-      )
-    )
-
-    Enum.each(
-      sources.active_nodes,
-      &ReferenceTracker.update_flow_node_references(
-        &1,
-        project_id: project_id
-      )
-    )
-
-    Enum.each(
-      sources.active_pins,
-      &ReferenceTracker.update_scene_pin_references(
-        &1,
-        project_id: project_id
-      )
-    )
-
-    Enum.each(
-      sources.active_zones,
-      &ReferenceTracker.update_scene_zone_references(
-        &1,
-        project_id: project_id
-      )
-    )
-
-    :ok
+    with :ok <-
+           rebuild_sources(active_project_blocks_query(project_id), fn block ->
+             ReferenceTracker.update_block_references(block, project_id: project_id)
+           end),
+         :ok <-
+           rebuild_sources(active_project_flow_nodes_query(project_id), fn node ->
+             ReferenceTracker.update_flow_node_references(node, project_id: project_id)
+           end),
+         :ok <-
+           rebuild_sources(active_project_scene_rows_query(ScenePin, project_id), fn pin ->
+             ReferenceTracker.update_scene_pin_references(pin, project_id: project_id)
+           end) do
+      rebuild_sources(active_project_scene_rows_query(SceneZone, project_id), fn zone ->
+        ReferenceTracker.update_scene_zone_references(zone, project_id: project_id)
+      end)
+    end
   end
 
-  defp lock_project_reference_sources(project_id) do
-    %{
-      active_blocks: active_project_blocks(project_id),
-      active_nodes: active_project_flow_nodes(project_id),
-      active_pins: active_project_scene_rows(ScenePin, project_id),
-      active_zones: active_project_scene_rows(SceneZone, project_id)
-    }
+  defp active_project_blocks_query(project_id) do
+    from block in Block,
+      join: sheet in Sheet,
+      on: sheet.id == block.sheet_id,
+      where:
+        sheet.project_id == ^project_id and
+          is_nil(sheet.deleted_at) and is_nil(block.deleted_at),
+      lock: "FOR UPDATE",
+      select: block
   end
 
-  defp active_project_blocks(project_id) do
-    Repo.all(
-      from block in Block,
-        join: sheet in Sheet,
-        on: sheet.id == block.sheet_id,
-        where:
-          sheet.project_id == ^project_id and
-            is_nil(sheet.deleted_at) and is_nil(block.deleted_at),
-        order_by: [asc: block.id],
-        lock: "FOR UPDATE",
-        select: block
-    )
+  defp active_project_flow_nodes_query(project_id) do
+    from node in FlowNode,
+      join: flow in Flow,
+      on: flow.id == node.flow_id,
+      where:
+        flow.project_id == ^project_id and
+          is_nil(flow.deleted_at) and is_nil(node.deleted_at),
+      lock: "FOR UPDATE",
+      select: node
   end
 
-  defp active_project_flow_nodes(project_id) do
-    Repo.all(
-      from node in FlowNode,
-        join: flow in Flow,
-        on: flow.id == node.flow_id,
-        where:
-          flow.project_id == ^project_id and
-            is_nil(flow.deleted_at) and is_nil(node.deleted_at),
-        order_by: [asc: node.id],
-        lock: "FOR UPDATE",
-        select: node
-    )
+  defp active_project_scene_rows_query(schema, project_id) do
+    from row in schema,
+      join: scene in Scene,
+      on: scene.id == row.scene_id,
+      where:
+        scene.project_id == ^project_id and
+          is_nil(scene.deleted_at),
+      lock: "FOR UPDATE",
+      select: row
   end
 
-  defp active_project_scene_rows(schema, project_id) do
-    Repo.all(
-      from row in schema,
-        join: scene in Scene,
-        on: scene.id == row.scene_id,
-        where:
-          scene.project_id == ^project_id and
-            is_nil(scene.deleted_at),
-        order_by: [asc: row.id],
-        lock: "FOR UPDATE",
-        select: row
-    )
+  defp rebuild_sources(query, update_fun, after_id \\ 0) do
+    sources =
+      Repo.all(
+        from(source in query,
+          where: source.id > ^after_id,
+          order_by: [asc: source.id],
+          limit: ^@rebuild_batch_size
+        )
+      )
+
+    Enum.each(sources, update_fun)
+
+    if length(sources) == @rebuild_batch_size do
+      rebuild_sources(query, update_fun, List.last(sources).id)
+    else
+      :ok
+    end
   end
 end

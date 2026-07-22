@@ -551,10 +551,24 @@ defmodule Storyarn.Flows.FlowCrud do
   """
   def hard_delete_flow(%Flow{} = flow) do
     fn ->
-      node_ids = Repo.all(from(n in FlowNode, where: n.flow_id == ^flow.id, select: n.id))
+      project_id =
+        Repo.one(from(candidate in Flow, where: candidate.id == ^flow.id, select: candidate.project_id)) ||
+          Repo.rollback(:flow_not_found)
+
+      lock_restore_project!(project_id)
+
+      locked_flow =
+        Repo.one(
+          from(candidate in Flow,
+            where: candidate.id == ^flow.id and candidate.project_id == ^project_id,
+            lock: "FOR UPDATE"
+          )
+        ) || Repo.rollback(:flow_not_found)
+
+      node_ids = Repo.all(from(n in FlowNode, where: n.flow_id == ^locked_flow.id, select: n.id))
       Localization.purge_texts_for_sources("flow_node", node_ids)
 
-      case Repo.delete(flow) do
+      case Repo.delete(locked_flow) do
         {:ok, deleted} -> deleted
         {:error, changeset} -> Repo.rollback(changeset)
       end

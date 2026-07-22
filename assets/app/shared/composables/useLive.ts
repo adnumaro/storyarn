@@ -16,7 +16,11 @@ export interface LiveInterface {
     callback?: (reply: Record<string, unknown>) => void,
     onError?: (error: unknown) => void,
   ) => void;
-  handleEvent: (event: string, callback: (payload: Record<string, unknown>) => void) => void;
+  handleEvent: (
+    event: string,
+    callback: (payload: Record<string, unknown>) => void,
+  ) => number | undefined;
+  removeHandleEvent: (ref: number) => void;
   upload: (name: string, files: FileList) => void;
 }
 
@@ -44,7 +48,9 @@ export function useLive(): LiveInterface {
       },
       handleEvent: (event: string, _callback: (payload: Record<string, unknown>) => void) => {
         console.warn(`[useLive] handleEvent("${event}") registered outside LiveView`);
+        return undefined;
       },
+      removeHandleEvent: () => {},
       upload: () => {
         console.warn("[useLive] upload() called outside LiveView");
       },
@@ -82,7 +88,14 @@ export function useLive(): LiveInterface {
      * Register a handler for server-pushed events.
      */
     handleEvent: (event: string, callback: (payload: Record<string, unknown>) => void) => {
-      $live.handleEvent(event, callback);
+      return $live.handleEvent(event, callback);
+    },
+
+    /**
+     * Remove a previously registered server-event handler.
+     */
+    removeHandleEvent: (ref: number) => {
+      $live.removeHandleEvent(ref);
     },
 
     /**

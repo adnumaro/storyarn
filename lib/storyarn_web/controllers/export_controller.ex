@@ -7,6 +7,8 @@ defmodule StoryarnWeb.ExportController do
   alias Storyarn.Projects
   alias Storyarn.Shared.NameNormalizer
 
+  @default_max_sync_export_bytes 64 * 1024 * 1024
+
   @doc """
   Export a project in the requested format.
 
@@ -60,28 +62,82 @@ defmodule StoryarnWeb.ExportController do
   defp send_export(conn, files, slug, format, _serializer) when is_list(files) do
     filename = "#{slug}-#{format}.zip"
 
-    case zip_files(filename, files) do
-      {:ok, zip_content} ->
-        conn
-        |> put_resp_content_type("application/zip", nil)
-        |> put_resp_header("content-disposition", ~s(attachment; filename="#{filename}"))
-        |> send_resp(200, zip_content)
+    case zip_files_to_disk(files) do
+      {:ok, zip_path} ->
+        try do
+          conn
+          |> put_resp_content_type("application/zip", nil)
+          |> put_resp_header("content-disposition", ~s(attachment; filename="#{filename}"))
+          |> send_chunked(200)
+          |> stream_zip_file(zip_path)
+        after
+          File.rm(zip_path)
+        end
+
+      {:error, {:export_too_large, _details}} ->
+        conn |> put_status(413) |> text(gettext("Export is too large"))
 
       {:error, _reason} ->
         conn |> put_status(:unprocessable_entity) |> text(gettext("Export failed"))
     end
   end
 
-  defp zip_files(filename, files) do
-    entries =
-      Enum.map(files, fn {entry_filename, content} ->
-        {String.to_charlist(entry_filename), IO.iodata_to_binary(content)}
-      end)
+  defp zip_files_to_disk(files) do
+    max_bytes =
+      Application.get_env(
+        :storyarn,
+        :max_sync_export_bytes,
+        @default_max_sync_export_bytes
+      )
 
-    with {:ok, {_zip_filename, zip_content}} <-
-           :zip.create(String.to_charlist(filename), entries, [:memory]) do
-      {:ok, zip_content}
+    with {:ok, total_bytes} <- export_size(files),
+         :ok <- validate_export_size(total_bytes, max_bytes) do
+      zip_path =
+        Path.join(
+          System.tmp_dir!(),
+          "storyarn-export-#{System.unique_integer([:positive, :monotonic])}.zip"
+        )
+
+      entries =
+        Enum.map(files, fn {entry_filename, content} ->
+          {String.to_charlist(entry_filename), IO.iodata_to_binary(content)}
+        end)
+
+      case :zip.create(String.to_charlist(zip_path), entries) do
+        {:ok, _zip_filename} -> {:ok, zip_path}
+        {:error, _reason} = error -> error
+      end
     end
+  end
+
+  defp export_size(files) do
+    Enum.reduce_while(files, {:ok, 0}, fn
+      {entry_filename, content}, {:ok, total} when is_binary(entry_filename) ->
+        try do
+          {:cont, {:ok, total + IO.iodata_length(content)}}
+        rescue
+          ArgumentError -> {:halt, {:error, :invalid_export_content}}
+        end
+
+      _entry, _acc ->
+        {:halt, {:error, :invalid_export_content}}
+    end)
+  end
+
+  defp validate_export_size(total_bytes, max_bytes) when total_bytes <= max_bytes, do: :ok
+
+  defp validate_export_size(total_bytes, max_bytes),
+    do: {:error, {:export_too_large, %{bytes: total_bytes, max_bytes: max_bytes}}}
+
+  defp stream_zip_file(conn, zip_path) do
+    zip_path
+    |> File.stream!(64 * 1024, [])
+    |> Enum.reduce_while(conn, fn data, conn ->
+      case chunk(conn, data) do
+        {:ok, conn} -> {:cont, conn}
+        {:error, _reason} -> {:halt, halt(conn)}
+      end
+    end)
   end
 
   defp parse_format(format_str) do

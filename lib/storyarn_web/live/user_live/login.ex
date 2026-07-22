@@ -49,7 +49,7 @@ defmodule StoryarnWeb.UserLive.Login do
   end
 
   @impl true
-  def mount(_params, _session, socket) do
+  def mount(_params, session, socket) do
     email =
       Phoenix.Flash.get(socket.assigns.flash, :email) ||
         get_in(socket.assigns, [:current_scope, Access.key(:user), Access.key(:email)])
@@ -66,6 +66,7 @@ defmodule StoryarnWeb.UserLive.Login do
     {:ok,
      socket
      |> assign(:client_ip, ClientIp.from_socket(socket))
+     |> assign(:login_handoff_nonce, session["login_handoff_nonce"])
      |> assign(:trigger_submit, false)
      |> assign(:login_token, nil)
      |> assign_form(changeset)}
@@ -115,7 +116,7 @@ defmodule StoryarnWeb.UserLive.Login do
             {:noreply,
              socket
              |> assign(:trigger_submit, true)
-             |> assign(:login_token, UserLoginToken.sign_user(user))
+             |> assign(:login_token, UserLoginToken.sign_user(user, socket.assigns.login_handoff_nonce))
              |> assign_form(initial_login_changeset(%{"email" => user_params["email"]}))}
         end
 
