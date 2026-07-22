@@ -171,6 +171,11 @@ defmodule Storyarn.Versioning do
   """
   defdelegate delete_project_snapshot(snapshot), to: ProjectSnapshotCrud, as: :delete_snapshot
 
+  @doc false
+  defdelegate load_project_recovery_snapshot(project_id, snapshot),
+    to: ProjectSnapshotCrud,
+    as: :load_recovery_snapshot
+
   @doc """
   Updates a project snapshot's title and description.
   """

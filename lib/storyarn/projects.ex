@@ -178,6 +178,9 @@ defmodule Storyarn.Projects do
   defdelegate list_deleted_items_for_retention(opts \\ []), to: ProjectTrash
   defdelegate deleted_items_retention_cutoff(), to: ProjectTrash
 
+  @doc false
+  defdelegate delete_retention_candidate(item, delete_fun), to: ProjectTrash
+
   # =============================================================================
   # Restoration Lock
   # =============================================================================

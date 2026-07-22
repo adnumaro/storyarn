@@ -1,6 +1,7 @@
 defmodule Storyarn.Versioning.ProjectSnapshotCrudTest do
   use Storyarn.DataCase, async: true
 
+  import Ecto.Query, warn: false
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.LocalizationFixtures
@@ -10,6 +11,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrudTest do
   alias Storyarn.Assets.Storage
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Localization
+  alias Storyarn.Repo
   alias Storyarn.Sheets.Block
   alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectSnapshot
@@ -136,6 +138,47 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrudTest do
       {:ok, snapshot} = Versioning.create_project_snapshot(project.id, user.id)
       assert {:ok, _} = Versioning.delete_project_snapshot(snapshot)
       assert Versioning.count_project_snapshots(project.id) == 0
+    end
+
+    test "uses persisted metadata instead of a caller-supplied storage key", %{
+      project: project,
+      user: user
+    } do
+      {:ok, first} = Versioning.create_project_snapshot(project.id, user.id)
+      {:ok, second} = Versioning.create_project_snapshot(project.id, user.id)
+
+      forged = %{
+        first
+        | storage_key: second.storage_key,
+          checksum: second.checksum,
+          snapshot_size_bytes: second.snapshot_size_bytes
+      }
+
+      assert {:ok, deleted} = Versioning.delete_project_snapshot(forged)
+      assert deleted.id == first.id
+      assert {:error, _reason} = SnapshotStorage.load_snapshot(first.storage_key)
+      assert {:ok, _snapshot} = SnapshotStorage.load_snapshot(second.storage_key)
+      assert Repo.get!(ProjectSnapshot, second.id).storage_key == second.storage_key
+    end
+
+    test "rejects a corrupted persisted key before deleting the record or unrelated blob", %{
+      project: project,
+      user: user
+    } do
+      {:ok, first} = Versioning.create_project_snapshot(project.id, user.id)
+      {:ok, second} = Versioning.create_project_snapshot(project.id, user.id)
+
+      Repo.update_all(
+        from(snapshot in ProjectSnapshot, where: snapshot.id == ^first.id),
+        set: [storage_key: second.storage_key]
+      )
+
+      assert {:error, :project_snapshot_storage_key_mismatch} =
+               Versioning.delete_project_snapshot(first)
+
+      assert Repo.get(ProjectSnapshot, first.id)
+      assert Repo.get(ProjectSnapshot, second.id)
+      assert {:ok, _snapshot} = SnapshotStorage.load_snapshot(second.storage_key)
     end
   end
 

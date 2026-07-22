@@ -140,6 +140,120 @@ defmodule Storyarn.Projects.ProjectTrash do
     )
   end
 
+  @doc false
+  @spec delete_retention_candidate(map(), (struct() -> {:ok, struct()} | {:error, term()})) ::
+          {:ok, struct()} | {:error, term()}
+  def delete_retention_candidate(
+        %{
+          id: id,
+          type: type,
+          project_id: project_id,
+          deleted_at: %DateTime{} = deleted_at,
+          project_settings: project_settings,
+          workspace_id: workspace_id
+        },
+        delete_fun
+      )
+      when is_integer(id) and is_integer(project_id) and is_integer(workspace_id) and is_map(project_settings) and
+             is_function(delete_fun, 1) do
+    with {:ok, schema} <- retention_schema(type) do
+      Repo.transaction(fn ->
+        delete_retention_candidate_transaction(
+          schema,
+          project_id,
+          workspace_id,
+          project_settings,
+          id,
+          deleted_at,
+          delete_fun
+        )
+      end)
+    end
+  end
+
+  def delete_retention_candidate(_item, _delete_fun), do: {:error, :retention_candidate_changed}
+
+  defp delete_retention_candidate_transaction(
+         schema,
+         project_id,
+         workspace_id,
+         project_settings,
+         id,
+         deleted_at,
+         delete_fun
+       ) do
+    case lock_retention_candidate(
+           schema,
+           project_id,
+           workspace_id,
+           project_settings,
+           id,
+           deleted_at
+         ) do
+      {:ok, entity} -> run_retention_delete(delete_fun, entity)
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp lock_retention_candidate(schema, project_id, workspace_id, project_settings, id, deleted_at) do
+    with %Project{} <-
+           lock_unchanged_retention_project(
+             project_id,
+             workspace_id,
+             project_settings
+           ),
+         %{} = entity <-
+           lock_unchanged_retention_entity(
+             schema,
+             project_id,
+             id,
+             deleted_at
+           ) do
+      {:ok, entity}
+    else
+      nil -> {:error, :retention_candidate_changed}
+    end
+  end
+
+  defp run_retention_delete(delete_fun, entity) do
+    case delete_fun.(entity) do
+      {:ok, deleted} -> deleted
+      {:error, reason} -> Repo.rollback(reason)
+      _invalid_result -> Repo.rollback(:invalid_retention_delete_result)
+    end
+  end
+
+  defp lock_unchanged_retention_project(project_id, workspace_id, project_settings) do
+    Repo.one(
+      from(project in Project,
+        where:
+          project.id == ^project_id and
+            project.workspace_id == ^workspace_id and
+            project.settings == ^project_settings and
+            is_nil(project.deleted_at),
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp lock_unchanged_retention_entity(schema, project_id, id, deleted_at) do
+    Repo.one(
+      from(entity in schema,
+        where:
+          field(entity, :id) == ^id and
+            field(entity, :project_id) == ^project_id and
+            field(entity, :deleted_at) == ^deleted_at,
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp retention_schema("sheet"), do: {:ok, Sheet}
+  defp retention_schema("flow"), do: {:ok, Flow}
+  defp retention_schema("scene"), do: {:ok, Scene}
+  defp retention_schema("screenplay"), do: {:ok, Screenplay}
+  defp retention_schema(_type), do: {:error, :retention_candidate_changed}
+
   defp retention_cursor_filter(nil), do: dynamic(true)
 
   defp retention_cursor_filter({deleted_at, type, id}) do
@@ -218,7 +332,7 @@ defmodule Storyarn.Projects.ProjectTrash do
     from(item in schema,
       join: p in Project,
       on: p.id == item.project_id,
-      where: not is_nil(item.deleted_at),
+      where: not is_nil(item.deleted_at) and is_nil(p.deleted_at),
       select: %{
         id: item.id,
         type: type(^type, :string),

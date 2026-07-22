@@ -8,6 +8,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
+  import Storyarn.WorkspacesFixtures
 
   alias Storyarn.Assets
   alias Storyarn.Assets.Asset
@@ -24,6 +25,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
   alias Storyarn.Versioning.ProjectRecovery
+  alias Storyarn.Workspaces
 
   setup do
     user = user_fixture()
@@ -64,6 +66,48 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       assert recovered.name == "My RPG (Recovered)"
       assert recovered.workspace_id == workspace_id
       assert recovered.id != project.id
+    end
+
+    test "revalidates workspace manager authorization inside the recovery transaction", %{
+      project: project,
+      user: owner
+    } do
+      workspace = workspace_fixture(owner)
+      former_admin = user_fixture()
+      membership = workspace_membership_fixture(workspace, former_admin, "admin")
+      snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
+      project_count = Repo.aggregate(Project, :count)
+
+      assert {:ok, _membership} = Workspaces.remove_member(membership)
+
+      assert {:error, :unauthorized} =
+               ProjectRecovery.recover_project(
+                 workspace.id,
+                 snapshot_data,
+                 former_admin.id
+               )
+
+      assert Repo.aggregate(Project, :count) == project_count
+    end
+
+    test "rechecks workspace capacity inside the recovery transaction", %{
+      project: project,
+      user: user
+    } do
+      workspace = workspace_fixture(user)
+      _second = project_fixture(user, %{workspace: workspace})
+      _third = project_fixture(user, %{workspace: workspace})
+      snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
+      project_count = Repo.aggregate(Project, :count)
+
+      assert {:error, {:limit_reached, %{resource: :projects_per_workspace, used: 3, limit: 3}}} =
+               ProjectRecovery.recover_project(
+                 workspace.id,
+                 snapshot_data,
+                 user.id
+               )
+
+      assert Repo.aggregate(Project, :count) == project_count
     end
 
     test "repairs missing response identities while preserving valid response ids",

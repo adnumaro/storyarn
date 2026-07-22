@@ -211,7 +211,21 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
   """
   @spec delete_snapshot(ProjectSnapshot.t()) ::
           {:ok, ProjectSnapshot.t()} | {:error, term()}
-  def delete_snapshot(%ProjectSnapshot{} = snapshot) do
+  def delete_snapshot(%ProjectSnapshot{id: snapshot_id}) when is_integer(snapshot_id) and snapshot_id > 0 do
+    case Repo.get(ProjectSnapshot, snapshot_id) do
+      %ProjectSnapshot{} = persisted_snapshot ->
+        with :ok <- validate_snapshot_storage_key(persisted_snapshot) do
+          delete_persisted_snapshot(persisted_snapshot)
+        end
+
+      nil ->
+        {:error, :project_snapshot_not_found}
+    end
+  end
+
+  def delete_snapshot(%ProjectSnapshot{}), do: {:error, :project_snapshot_not_found}
+
+  defp delete_persisted_snapshot(%ProjectSnapshot{} = snapshot) do
     delete_changeset =
       snapshot
       |> Ecto.Changeset.change()
@@ -234,6 +248,45 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
 
       error ->
         error
+    end
+  end
+
+  @doc false
+  @spec load_recovery_snapshot(integer(), ProjectSnapshot.t()) ::
+          {:ok, map()} | {:error, term()}
+  def load_recovery_snapshot(project_id, %ProjectSnapshot{} = snapshot) do
+    with {:ok, owned_snapshot} <- fetch_owned_snapshot(project_id, snapshot),
+         :ok <- validate_snapshot_storage_key(owned_snapshot),
+         {:ok, snapshot_data, actual_checksum} <-
+           load_verified_recovery_blob(owned_snapshot),
+         :ok <-
+           ProjectSnapshotIntegrity.validate_recovery_blob(
+             snapshot_data,
+             owned_snapshot.entity_counts,
+             owned_snapshot.checksum,
+             actual_checksum
+           ) do
+      {:ok, snapshot_data}
+    end
+  end
+
+  defp load_verified_recovery_blob(%ProjectSnapshot{} = snapshot) do
+    case SnapshotStorage.load_verified_snapshot(
+           snapshot.storage_key,
+           snapshot.snapshot_size_bytes,
+           snapshot.checksum
+         ) do
+      {:error, {:invalid_expected_checksum, nil}} ->
+        {:error, :missing_project_snapshot_checksum}
+
+      {:error, {:invalid_expected_checksum, checksum}} ->
+        {:error, {:invalid_persisted_project_snapshot_checksum, checksum}}
+
+      {:error, {:checksum_mismatch, expected_checksum, actual_checksum}} ->
+        {:error, {:project_snapshot_checksum_mismatch, expected_checksum, actual_checksum}}
+
+      result ->
+        result
     end
   end
 

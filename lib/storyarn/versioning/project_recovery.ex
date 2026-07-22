@@ -20,6 +20,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Localization.SourceContract
   alias Storyarn.Projects.Project
+  alias Storyarn.Projects.ProjectCrud
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.References
   alias Storyarn.References.AvatarIntegrity
@@ -38,6 +39,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   alias Storyarn.Versioning.Builders.SceneBuilder
   alias Storyarn.Versioning.Builders.SheetBuilder
   alias Storyarn.Versioning.RestorePolicy
+  alias Storyarn.Workspaces.WorkspaceMembership
 
   require Logger
 
@@ -233,7 +235,8 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   defp do_recover(workspace_id, snapshot_data, user_id, name, opts) do
     now = TimeHelpers.now()
 
-    with {:ok, project} <- create_project(workspace_id, user_id, name, snapshot_data),
+    with :ok <- authorize_deleted_project_recovery(workspace_id, user_id, opts),
+         {:ok, project} <- create_project(workspace_id, user_id, name, snapshot_data),
          {:ok, _membership} <- create_owner_membership(project, user_id),
          {:ok, sheet_maps} <- recover_sheets(project.id, snapshot_data, user_id, opts),
          {:ok, scene_maps} <- recover_scenes(project.id, snapshot_data, sheet_maps.sheet, user_id, opts),
@@ -270,6 +273,42 @@ defmodule Storyarn.Versioning.ProjectRecovery do
       end
     end
   end
+
+  defp authorize_deleted_project_recovery(workspace_id, user_id, opts) do
+    if template_clone?(opts) do
+      :ok
+    else
+      with :ok <- normalize_workspace_capacity(ProjectCrud.lock_and_check_workspace_capacity(workspace_id)),
+           %WorkspaceMembership{role: role}
+           when role in ["owner", "admin"] <-
+             lock_workspace_recovery_membership(workspace_id, user_id) do
+        :ok
+      else
+        %WorkspaceMembership{} -> {:error, :unauthorized}
+        nil -> {:error, :unauthorized}
+        {:error, reason} -> {:error, reason}
+      end
+    end
+  end
+
+  defp lock_workspace_recovery_membership(workspace_id, user_id) do
+    Repo.one(
+      from(membership in WorkspaceMembership,
+        where:
+          membership.workspace_id == ^workspace_id and
+            membership.user_id == ^user_id,
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp normalize_workspace_capacity(:ok), do: :ok
+
+  defp normalize_workspace_capacity({:error, :limit_reached, details}) do
+    {:error, {:limit_reached, details}}
+  end
+
+  defp normalize_workspace_capacity({:error, reason}), do: {:error, reason}
 
   # ========== Project Creation ==========
 

@@ -7,6 +7,7 @@ defmodule Storyarn.Workers.DailySnapshotWorkerTest do
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Repo
+  alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Workers.DailySnapshotWorker
 
@@ -39,7 +40,7 @@ defmodule Storyarn.Workers.DailySnapshotWorkerTest do
       assert :ok = perform_job(DailySnapshotWorker, %{})
 
       # No snapshot should be created
-      assert Storyarn.Versioning.count_project_snapshots(project.id) == 0
+      assert Versioning.count_project_snapshots(project.id) == 0
     end
 
     test "skips when no changes since last snapshot" do
@@ -52,7 +53,7 @@ defmodule Storyarn.Workers.DailySnapshotWorkerTest do
       assert :ok = perform_job(DailySnapshotWorker, %{})
 
       # Should still have just 1 snapshot (no new one created)
-      assert Storyarn.Versioning.count_project_snapshots(project.id) == 1
+      assert Versioning.count_project_snapshots(project.id) == 1
     end
 
     test "creates snapshot when project has changes and no recent snapshot" do
@@ -60,14 +61,14 @@ defmodule Storyarn.Workers.DailySnapshotWorkerTest do
       # Create a flow so there's a real entity to change-detect
       _flow = flow_fixture(project)
 
-      assert Storyarn.Versioning.count_project_snapshots(project.id) == 0
+      assert Versioning.count_project_snapshots(project.id) == 0
 
       assert :ok = perform_job(DailySnapshotWorker, %{})
 
       # Should have created exactly 1 auto snapshot
-      assert Storyarn.Versioning.count_project_snapshots(project.id) == 1
+      assert Versioning.count_project_snapshots(project.id) == 1
 
-      [snapshot] = Storyarn.Versioning.list_project_snapshots(project.id)
+      [snapshot] = Versioning.list_project_snapshots(project.id)
       assert snapshot.is_auto == true
       assert snapshot.created_by_id == nil
       assert snapshot.title =~ "Daily backup"
@@ -92,18 +93,18 @@ defmodule Storyarn.Workers.DailySnapshotWorkerTest do
       assert :ok = perform_job(DailySnapshotWorker, %{})
 
       # Should still have just 1 snapshot (manual one, no daily created)
-      assert Storyarn.Versioning.count_project_snapshots(project.id) == 1
+      assert Versioning.count_project_snapshots(project.id) == 1
     end
 
     test "keeps every automatic recovery point while pruning is disabled" do
       {project, snapshots} = project_at_snapshot_limit()
 
       assert :ok = perform_job(DailySnapshotWorker, %{})
-      assert Storyarn.Versioning.count_project_snapshots(project.id) == 11
+      assert Versioning.count_project_snapshots(project.id) == 11
 
       snapshot_ids =
         project.id
-        |> Storyarn.Versioning.list_project_snapshots()
+        |> Versioning.list_project_snapshots()
         |> MapSet.new(& &1.id)
 
       assert Enum.all?(snapshots, &MapSet.member?(snapshot_ids, &1.id))
@@ -116,14 +117,30 @@ defmodule Storyarn.Workers.DailySnapshotWorkerTest do
       Application.put_env(:storyarn, DailySnapshotWorker, pruning_enabled: true)
 
       assert :ok = perform_job(DailySnapshotWorker, %{})
-      assert Storyarn.Versioning.count_project_snapshots(project.id) == 10
+      assert Versioning.count_project_snapshots(project.id) == 10
 
       snapshot_ids =
         project.id
-        |> Storyarn.Versioning.list_project_snapshots()
+        |> Versioning.list_project_snapshots()
         |> MapSet.new(& &1.id)
 
       refute MapSet.member?(snapshot_ids, oldest.id)
+    end
+
+    test "fails closed when the oldest snapshot has a non-canonical persisted key" do
+      {project, snapshots} = project_at_snapshot_limit()
+      oldest = Enum.min_by(snapshots, & &1.version_number)
+
+      Repo.update_all(
+        from(snapshot in ProjectSnapshot, where: snapshot.id == ^oldest.id),
+        set: [storage_key: "test/snapshot/corrupted.json.gz"]
+      )
+
+      Application.put_env(:storyarn, DailySnapshotWorker, pruning_enabled: true)
+
+      assert :ok = perform_job(DailySnapshotWorker, %{})
+      assert Versioning.count_project_snapshots(project.id) == 11
+      assert Repo.get(ProjectSnapshot, oldest.id)
     end
   end
 
@@ -148,18 +165,10 @@ defmodule Storyarn.Workers.DailySnapshotWorkerTest do
 
   defp insert_snapshot(project_id, opts \\ []) do
     is_auto = Keyword.get(opts, :is_auto, false)
-    version = System.unique_integer([:positive])
 
-    %ProjectSnapshot{}
-    |> ProjectSnapshot.changeset(%{
-      project_id: project_id,
-      version_number: version,
-      storage_key: "test/snapshot/#{version}.json.gz",
-      snapshot_size_bytes: 100,
-      checksum: String.duplicate("a", 64),
-      entity_counts: %{},
-      is_auto: is_auto
-    })
-    |> Repo.insert!()
+    {:ok, snapshot} =
+      Versioning.create_project_snapshot(project_id, nil, is_auto: is_auto)
+
+    snapshot
   end
 end
