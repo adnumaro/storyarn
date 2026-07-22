@@ -222,6 +222,22 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
 
       assert get_general_vue(view).props["ai"]["visible"] == false
     end
+
+    test "an unflagged owner cannot forge a managed-policy update", %{conn: conn} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+
+      {:ok, view, _html} =
+        conn
+        |> log_in_user(owner)
+        |> live(~p"/users/settings/workspaces/#{workspace.slug}/general")
+
+      html = render_click(view, "update_managed_ai_policy", %{"enabled" => true})
+      assert html =~ "Storyarn AI policy could not be updated."
+
+      assert {:ok, policy} = AI.get_workspace_policy(user_scope_fixture(owner), workspace.id)
+      assert policy.allowed_lanes == []
+    end
   end
 
   describe "save event" do

@@ -46,7 +46,7 @@ defmodule Storyarn.AI.ProviderBudgetReservation do
       :currency,
       :status
     ])
-    |> validate_inclusion(:status, ~w(reserved settled))
+    |> validate_inclusion(:status, ["reserved"])
     |> validate_number(:estimated_cost, greater_than_or_equal_to: 0)
     |> validate_length(:currency, min: 1, max: 12)
     |> unique_constraint(:operation_id)

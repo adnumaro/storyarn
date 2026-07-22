@@ -32,6 +32,7 @@ defmodule Storyarn.AI.AllowanceAllocation do
   def restore_changeset(allocation, restored_units) do
     allocation
     |> change(restored_units: restored_units)
+    |> validate_required([:restored_units])
     |> validate_number(:restored_units, greater_than_or_equal_to: 0, less_than_or_equal_to: allocation.units)
   end
 end

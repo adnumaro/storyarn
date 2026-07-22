@@ -57,6 +57,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
       current_scope={@current_scope}
       workspaces={@workspaces}
       managed_workspace_slugs={@managed_workspace_slugs}
+      general_workspace_slugs={@general_workspace_slugs}
       current_path={@current_path}
     >
       <.vue

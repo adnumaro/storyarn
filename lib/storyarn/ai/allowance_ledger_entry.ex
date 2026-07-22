@@ -30,7 +30,6 @@ defmodule Storyarn.AI.AllowanceLedgerEntry do
     |> cast(attrs, [:kind, :units, :available_delta, :idempotency_key, :metadata])
     |> put_identity_fields(attrs)
     |> validate_required([
-      :workspace_id,
       :workspace_id_snapshot,
       :kind,
       :units,
@@ -40,6 +39,7 @@ defmodule Storyarn.AI.AllowanceLedgerEntry do
     |> validate_inclusion(:kind, ~w(grant reserve commit release adjustment expiry))
     |> validate_number(:units, greater_than: 0)
     |> validate_length(:idempotency_key, min: 1, max: 200)
+    |> validate_workspace_identity()
     |> unique_constraint([:workspace_id_snapshot, :idempotency_key],
       name: :ai_allowance_ledger_workspace_idempotency_unique
     )
@@ -47,6 +47,14 @@ defmodule Storyarn.AI.AllowanceLedgerEntry do
     |> foreign_key_constraint(:operation_id)
     |> foreign_key_constraint(:grant_id)
     |> foreign_key_constraint(:reservation_id)
+  end
+
+  defp validate_workspace_identity(changeset) do
+    case {get_field(changeset, :workspace_id), get_field(changeset, :workspace_id_snapshot)} do
+      {nil, snapshot} when is_integer(snapshot) -> changeset
+      {workspace_id, workspace_id} when is_integer(workspace_id) -> changeset
+      {_workspace_id, _snapshot} -> add_error(changeset, :workspace_id_snapshot, "must match workspace")
+    end
   end
 
   defp put_identity_fields(changeset, attrs) do

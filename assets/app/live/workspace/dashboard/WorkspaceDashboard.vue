@@ -170,7 +170,7 @@ const filteredTemplateInstallations = computed(() => {
   );
 });
 
-const canManage = computed(() => ["owner", "admin"].includes(membership.role));
+const canOpenSettings = computed(() => ["owner", "admin", "member"].includes(membership.role));
 
 const canCreate = computed(() => ["owner", "admin", "member"].includes(membership.role));
 
@@ -370,7 +370,7 @@ function templateCountLabel(template: ProjectTemplate) {
           <div class="flex justify-between items-center">
             <h1 class="text-3xl font-bold">{{ workspace.name }}</h1>
             <Button
-              v-if="canManage && settingsUrl"
+              v-if="canOpenSettings && settingsUrl"
               as="a"
               variant="ghost"
               size="icon"

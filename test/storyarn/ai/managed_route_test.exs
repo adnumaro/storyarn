@@ -11,8 +11,10 @@ defmodule Storyarn.AI.ManagedRouteTest do
   alias Storyarn.AI.Operation
   alias Storyarn.AI.OperatorAlert
   alias Storyarn.AI.ProviderBudgetReservation
+  alias Storyarn.AI.RouteOption
   alias Storyarn.AI.RouteResolver
   alias Storyarn.AI.Settlement
+  alias Storyarn.AI.Tasks.ManagedDiagnostic
   alias Storyarn.Repo
   alias StoryarnTest.AI.ContractTask
 
@@ -40,12 +42,22 @@ defmodule Storyarn.AI.ManagedRouteTest do
     %{owner: owner, scope: scope, workspace: workspace, project: project, route: original_route[:managed]}
   end
 
-  test "manual, EU, ZDR and HTTPS circuit breakers fail closed", ctx do
+  test "managed configuration and endpoint circuit breakers fail closed", ctx do
     for override <- [
           [enabled: false],
           [verified_eu_region: false],
           [verified_zdr: false],
-          [endpoint: "http://unverified.test/v1/chat/completions"]
+          [endpoint: "http://unverified.test/v1/chat/completions"],
+          [endpoint: "https://user:secret@verified.test/v1/chat/completions"],
+          [endpoint: "https://verified.test/v1/chat/completions?api_key=secret"],
+          [endpoint: "https://verified.test/v1/chat/completions#secret"],
+          [provider_price: Keyword.put(ctx.route[:provider_price], :input_per_million, %{})],
+          [
+            provider_price:
+              ctx.route[:provider_price]
+              |> Keyword.put(:input_per_million, "1")
+              |> Keyword.put(:max_estimated_cost, "0")
+          ]
         ] do
       configure_route(ctx.route, override)
       assert {:error, :no_route} = ctx |> preflight_intent("blocked-#{inspect(override)}") |> AI.preflight()
@@ -53,6 +65,27 @@ defmodule Storyarn.AI.ManagedRouteTest do
     end
 
     assert Repo.aggregate(Operation, :count) == 0
+  end
+
+  test "the diagnostic contract rejects unrecognized input and output fields" do
+    probe = ManagedDiagnostic.probe()
+
+    assert :ok = ManagedDiagnostic.validate_input(%{"probe" => probe})
+
+    assert {:error, :invalid_diagnostic_input} =
+             ManagedDiagnostic.validate_input(%{"probe" => probe, "extra" => true})
+
+    assert :ok = ManagedDiagnostic.validate_output(%{"status" => "ok"})
+
+    assert {:error, :invalid_diagnostic_output} =
+             ManagedDiagnostic.validate_output(%{"status" => "ok", "extra" => true})
+  end
+
+  test "provider endpoints stay in server configuration and are not persisted", ctx do
+    assert {:ok, %{route_options: [_route]}} = ctx |> preflight_intent("no-endpoint-at-rest") |> AI.preflight()
+
+    route_option = Repo.one!(RouteOption)
+    refute Map.has_key?(route_option.provider_configuration, "endpoint")
   end
 
   test "global daily and monthly provider ceilings block before an external call", ctx do

@@ -19,7 +19,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   def mount(_params, _session, socket) do
     %{workspace: workspace, membership: membership} = socket.assigns
 
-    if Workspaces.can?(membership.role, :access_workspace_settings) or membership.role == "member" do
+    if Workspaces.can?(membership.role, :access_workspace_general_settings) do
       changeset = Workspaces.change_workspace(workspace)
 
       {:ok,
@@ -48,6 +48,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
       current_scope={@current_scope}
       workspaces={@workspaces}
       managed_workspace_slugs={@managed_workspace_slugs}
+      general_workspace_slugs={@general_workspace_slugs}
       current_path={@current_path}
     >
       <.vue
@@ -70,24 +71,10 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
 
   @impl true
   def handle_event("update_managed_ai_policy", %{"enabled" => enabled}, socket) when is_boolean(enabled) do
-    lanes =
-      if enabled,
-        do: Enum.uniq(["managed" | socket.assigns.ai_policy_lanes]),
-        else: List.delete(socket.assigns.ai_policy_lanes, "managed")
-
-    case AI.update_workspace_policy(socket.assigns.current_scope, socket.assigns.workspace.id, lanes) do
-      {:ok, _policy} ->
-        {:noreply,
-         socket
-         |> assign_ai_settings()
-         |> put_flash(:info, dgettext("workspaces", "Storyarn AI policy updated."))}
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("workspaces", "Only the workspace owner can change Storyarn AI policy."))}
-
-      {:error, _reason} ->
-        {:noreply, put_flash(socket, :error, dgettext("workspaces", "Storyarn AI policy could not be updated."))}
+    if FeatureFlags.enabled?(:ai_integrations, for: socket.assigns.current_scope.user) do
+      update_managed_ai_policy(socket, enabled)
+    else
+      {:noreply, put_flash(socket, :error, dgettext("workspaces", "Storyarn AI policy could not be updated."))}
     end
   end
 
@@ -252,6 +239,28 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
       |> assign(:ai_managed_allowed, false)
       |> assign(:ai_allowance, %{})
       |> assign(:ai_provenance, nil)
+    end
+  end
+
+  defp update_managed_ai_policy(socket, enabled) do
+    lanes =
+      if enabled,
+        do: Enum.uniq(["managed" | socket.assigns.ai_policy_lanes]),
+        else: List.delete(socket.assigns.ai_policy_lanes, "managed")
+
+    case AI.update_workspace_policy(socket.assigns.current_scope, socket.assigns.workspace.id, lanes) do
+      {:ok, _policy} ->
+        {:noreply,
+         socket
+         |> assign_ai_settings()
+         |> put_flash(:info, dgettext("workspaces", "Storyarn AI policy updated."))}
+
+      {:error, :unauthorized} ->
+        {:noreply,
+         put_flash(socket, :error, dgettext("workspaces", "Only the workspace owner can change Storyarn AI policy."))}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, dgettext("workspaces", "Storyarn AI policy could not be updated."))}
     end
   end
 

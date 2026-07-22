@@ -6,7 +6,8 @@ defmodule Storyarn.AI.InferenceProviders.Together do
 
   @impl true
   def generate(%ResolvedCredential{kind: :managed, value: api_key}, request) when is_binary(api_key) do
-    with {:ok, endpoint, price_snapshot} <- route_configuration(request.provider_configuration),
+    with {:ok, endpoint} <- endpoint(),
+         {:ok, price_snapshot} <- route_configuration(request.provider_configuration),
          {:ok, body} <- request_body(request),
          {:ok, response} <- post(endpoint, api_key, body),
          {:ok, output} <- extract_output(response.body),
@@ -17,13 +18,9 @@ defmodule Storyarn.AI.InferenceProviders.Together do
 
   def generate(_credential, _request), do: {:error, :unauthorized}
 
-  defp route_configuration(%{
-         "endpoint" => endpoint,
-         "data_retention" => "zero_data_retention",
-         "provider_price" => price_snapshot
-       })
-       when is_binary(endpoint) and is_map(price_snapshot) do
-    {:ok, endpoint, price_snapshot}
+  defp route_configuration(%{"data_retention" => "zero_data_retention", "provider_price" => price_snapshot})
+       when is_map(price_snapshot) do
+    {:ok, price_snapshot}
   end
 
   defp route_configuration(_configuration), do: {:error, :provider_error}
@@ -126,5 +123,16 @@ defmodule Storyarn.AI.InferenceProviders.Together do
     :storyarn
     |> Application.get_env(__MODULE__, [])
     |> Keyword.get(:req_options, [])
+  end
+
+  defp endpoint do
+    endpoint =
+      :storyarn
+      |> Application.get_env(__MODULE__, [])
+      |> Keyword.get(:endpoint)
+
+    if is_binary(endpoint) and endpoint != "",
+      do: {:ok, endpoint},
+      else: {:error, :provider_error}
   end
 end

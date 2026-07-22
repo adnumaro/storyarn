@@ -34,7 +34,7 @@ defmodule Storyarn.AI.AllowanceReservation do
       :units,
       :status
     ])
-    |> validate_inclusion(:status, ~w(reserved committed released))
+    |> validate_inclusion(:status, ["reserved"])
     |> validate_number(:price_version, greater_than: 0)
     |> validate_number(:units, greater_than: 0)
     |> unique_constraint(:operation_id)

@@ -1,6 +1,7 @@
 import Config
 
 alias Storyarn.AI.CredentialResolver.Managed
+alias Storyarn.AI.InferenceProviders.Together
 alias Storyarn.AI.Tasks.ManagedDiagnostic
 
 env = fn key ->
@@ -101,7 +102,7 @@ if managed_ai_enabled? do
     price_units: positive_integer.("STORYARN_AI_DIAGNOSTIC_PRICE_UNITS")
 
   config :storyarn, Storyarn.AI.CredentialResolver, Managed
-  config :storyarn, Storyarn.AI.InferenceProviders, providers: %{"together" => Storyarn.AI.InferenceProviders.Together}
+  config :storyarn, Storyarn.AI.InferenceProviders, providers: %{"together" => Together}
 
   config :storyarn, Storyarn.AI.RouteResolver,
     managed: [
@@ -132,6 +133,7 @@ if managed_ai_enabled? do
 
   config :storyarn, Storyarn.AI.Settlement, Storyarn.AI.Settlement.Managed
   config :storyarn, Storyarn.AI.TaskRegistry, tasks: [ManagedDiagnostic]
+  config :storyarn, Together, endpoint: required_env.("STORYARN_AI_MANAGED_ENDPOINT")
 end
 
 posthog_dotenv =

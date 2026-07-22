@@ -171,13 +171,15 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
              )
     end
 
-    test "workspace settings appear for owners and admins, never plain members",
+    test "workspace general settings appear for owners, admins, and members",
          %{view: view, user: user} do
       other_owner = user_fixture()
       member_workspace = workspace_fixture(other_owner)
       admin_workspace = workspace_fixture(user_fixture())
+      viewer_workspace = workspace_fixture(user_fixture())
       Storyarn.Workspaces.create_membership(member_workspace.id, user.id, "member")
       Storyarn.Workspaces.create_membership(admin_workspace.id, user.id, "admin")
+      Storyarn.Workspaces.create_membership(viewer_workspace.id, user.id, "viewer")
 
       render_hook(view, "palette_nav", %{"query" => "", "token" => 5})
 
@@ -188,15 +190,20 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
 
       workspace_settings = Enum.find(groups, &(&1.key == "workspace_settings"))
 
-      refute Enum.any?(
+      assert Enum.any?(
                workspace_settings.items,
                &(&1.id == "nav.workspace-settings.#{member_workspace.id}")
              )
 
-      # Same criterion as the settings pages (:access_workspace_settings).
+      # Same criterion as the read-only general settings page.
       assert Enum.any?(
                workspace_settings.items,
                &(&1.id == "nav.workspace-settings.#{admin_workspace.id}")
+             )
+
+      refute Enum.any?(
+               workspace_settings.items,
+               &(&1.id == "nav.workspace-settings.#{viewer_workspace.id}")
              )
     end
 

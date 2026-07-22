@@ -126,11 +126,16 @@ defmodule Storyarn.AI.ProviderBudget do
         do: from(reservation in query, where: reservation.workspace_id_snapshot == ^workspace_id),
         else: query
 
-    query
-    |> Repo.all()
-    |> Enum.reduce(Decimal.new(0), fn reservation, total ->
-      Decimal.add(total, reservation.actual_cost || reservation.estimated_cost)
-    end)
+    Repo.one(
+      from(reservation in query,
+        select:
+          fragment(
+            "COALESCE(SUM(COALESCE(?, ?)), 0)",
+            reservation.actual_cost,
+            reservation.estimated_cost
+          )
+      )
+    )
   end
 
   defp below_cap(current, estimate, cap, error) do

@@ -27,7 +27,8 @@ defmodule Storyarn.AI.AllowanceGrant do
 
   def create_changeset(grant, attrs) do
     grant
-    |> cast(attrs, [:grant_key, :kind, :units, :remaining_units, :expires_at, :metadata])
+    |> cast(attrs, [:grant_key, :kind, :units, :remaining_units, :expires_at])
+    |> put_change(:metadata, %{})
     |> put_identity_fields(attrs)
     |> validate_required([
       :account_id,

@@ -41,7 +41,7 @@ defmodule Mix.Tasks.Storyarn.Ai.Diagnose do
          execute_intent = %{
            intent
            | requested_route_ref: route_ref,
-             idempotency_key: "diagnostic-#{System.unique_integer([:positive, :monotonic])}"
+             idempotency_key: "diagnostic-#{Ecto.UUID.generate()}"
          },
          {:ok, operation} <- AI.execute(execute_intent),
          {:ok, %{"status" => "ok"}, _operation} <- AI.get_result(scope, operation.id) do

@@ -7,10 +7,13 @@ defmodule Storyarn.AI.AllowanceTest do
 
   alias Storyarn.AI
   alias Storyarn.AI.Allowance
+  alias Storyarn.AI.AllowanceAllocation
   alias Storyarn.AI.AllowanceGrant
   alias Storyarn.AI.AllowanceLedgerEntry
   alias Storyarn.AI.AllowanceReservation
   alias Storyarn.AI.Operation
+  alias Storyarn.AI.Operations
+  alias Storyarn.AI.OperatorAlert
   alias Storyarn.AI.ProviderBudgetReservation
   alias Storyarn.AI.Settlement
   alias Storyarn.Repo
@@ -62,6 +65,46 @@ defmodule Storyarn.AI.AllowanceTest do
     assert Decimal.equal?(actual_cost, Decimal.new(0))
   end
 
+  test "managed accounting changesets reject incomplete terminal records" do
+    refute %AllowanceReservation{}
+           |> AllowanceReservation.create_changeset(%{
+             operation_id: 1,
+             workspace_id: 1,
+             workspace_id_snapshot: 1,
+             price_id: "beta",
+             price_version: 1,
+             units: 1,
+             status: "committed"
+           })
+           |> Map.fetch!(:valid?)
+
+    refute %ProviderBudgetReservation{}
+           |> ProviderBudgetReservation.create_changeset(%{
+             operation_id: 1,
+             workspace_id: 1,
+             workspace_id_snapshot: 1,
+             provider: "fake",
+             model: "fake",
+             price_snapshot: %{},
+             estimated_cost: 0,
+             currency: "USD",
+             status: "settled"
+           })
+           |> Map.fetch!(:valid?)
+
+    refute %AllowanceAllocation{units: 1}
+           |> AllowanceAllocation.restore_changeset(nil)
+           |> Map.fetch!(:valid?)
+
+    refute %OperatorAlert{}
+           |> OperatorAlert.create_changeset(%{
+             dedupe_key: "missing-workspace",
+             kind: "allowance_anomaly",
+             severity: "warning"
+           })
+           |> Map.fetch!(:valid?)
+  end
+
   test "known, validation and unknown failures release the workspace allowance", ctx do
     for {scenario, expected_status} <- [failure: "failed", invalid_metrics: "failed", unknown: "unknown"] do
       Application.put_env(:storyarn, ContractTask,
@@ -108,6 +151,18 @@ defmodule Storyarn.AI.AllowanceTest do
 
     assert Repo.aggregate(AllowanceGrant, :count) == 1
     assert Repo.aggregate(AllowanceLedgerEntry, :count) == 1
+  end
+
+  test "grant metadata supplied by an operator is not retained", ctx do
+    assert {:ok, grant} =
+             Allowance.grant(ctx.workspace.id, ctx.owner.id, %{
+               grant_key: "metadata-sanitized",
+               kind: "one_time",
+               units: 1,
+               metadata: %{"note" => "must not be persisted"}
+             })
+
+    assert grant.metadata == %{}
   end
 
   test "invalid grants fail closed without creating non-expiring allowance", ctx do
@@ -174,15 +229,13 @@ defmodule Storyarn.AI.AllowanceTest do
     entry = Repo.one!(AllowanceLedgerEntry)
 
     assert_raise Postgrex.Error, fn ->
-      Repo.transaction(
-        fn ->
-          Repo.update_all(
-            from(item in AllowanceLedgerEntry, where: item.id == ^entry.id),
-            set: [available_delta: 99]
-          )
-        end,
-        mode: :savepoint
-      )
+      Repo.transaction(fn ->
+        Repo.update_all(
+          from(item in AllowanceLedgerEntry, where: item.id == ^entry.id),
+          [set: [available_delta: 99]],
+          mode: :savepoint
+        )
+      end)
     end
   end
 
@@ -201,6 +254,46 @@ defmodule Storyarn.AI.AllowanceTest do
     assert Enum.all?(retained_entries, &is_nil(&1.workspace_id))
     assert Enum.all?(retained_entries, &(&1.workspace_id_snapshot == ctx.workspace.id))
     assert Enum.map(retained_entries, & &1.kind) == ["grant", "reserve", "commit"]
+  end
+
+  test "workspace deletion does not strand a queued managed reservation", ctx do
+    Application.put_env(:storyarn, ContractTask,
+      scenario: :success,
+      execution_mode: :background,
+      managed_price: %{id: "contract-beta", version: 1, units: 2}
+    )
+
+    grant!(ctx, 2, "delete-while-queued")
+    assert {:ok, queued} = execute(ctx, "queued", "delete-while-queued-operation")
+    assert queued.execution_status == "queued"
+    assert queued.settlement_status == "reserved"
+
+    assert {:ok, _workspace} = Workspaces.delete_workspace(ctx.workspace)
+    assert :ok = Operations.fail_queued_after_retries(queued.id, :workspace_deleted)
+
+    failed = Repo.get!(Operation, queued.id)
+    assert failed.workspace_id == nil
+    assert failed.execution_status == "failed"
+    assert failed.settlement_status == "released"
+
+    reservation = Repo.get_by!(AllowanceReservation, operation_id: queued.id)
+    assert reservation.status == "released"
+    assert reservation.workspace_id == nil
+
+    provider_reservation = Repo.get_by!(ProviderBudgetReservation, operation_id: queued.id)
+    assert provider_reservation.status == "settled"
+    assert Decimal.equal?(provider_reservation.actual_cost, Decimal.new(0))
+
+    entries =
+      Repo.all(
+        from(entry in AllowanceLedgerEntry,
+          where: entry.workspace_id_snapshot == ^ctx.workspace.id,
+          order_by: entry.id
+        )
+      )
+
+    assert Enum.all?(entries, &is_nil(&1.workspace_id))
+    assert Enum.map(entries, & &1.kind) == ["grant", "reserve", "release", "expiry"]
   end
 
   defp configure_price(units) do

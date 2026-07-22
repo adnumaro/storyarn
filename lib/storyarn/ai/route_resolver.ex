@@ -98,7 +98,6 @@ defmodule Storyarn.AI.RouteResolver do
          true <- valid_budget?(budget) do
       {:ok,
        %{
-         "endpoint" => endpoint,
          "region" => region,
          "data_retention" => "zero_data_retention",
          "provider_price" => provider_price,
@@ -111,8 +110,18 @@ defmodule Storyarn.AI.RouteResolver do
 
   defp valid_https_endpoint?(endpoint) when is_binary(endpoint) do
     case URI.parse(endpoint) do
-      %URI{scheme: "https", host: host} when is_binary(host) and host != "" -> true
-      _invalid -> false
+      %URI{
+        scheme: "https",
+        host: host,
+        userinfo: nil,
+        query: nil,
+        fragment: nil
+      }
+      when is_binary(host) and host != "" ->
+        true
+
+      _invalid ->
+        false
     end
   end
 
@@ -125,31 +134,51 @@ defmodule Storyarn.AI.RouteResolver do
          "output_per_million" => output_rate,
          "max_estimated_cost" => estimate
        }) do
-    is_integer(version) and version > 0 and is_binary(currency) and currency != "" and
-      Enum.all?([input_rate, output_rate, estimate], &valid_decimal?/1)
+    with true <- is_integer(version) and version > 0,
+         true <- is_binary(currency) and currency != "",
+         {:ok, input_rate} <- decimal(input_rate),
+         {:ok, output_rate} <- decimal(output_rate),
+         {:ok, estimate} <- decimal(estimate) do
+      free? = zero?(input_rate) and zero?(output_rate)
+      free? or positive?(estimate)
+    else
+      _invalid -> false
+    end
   end
 
   defp valid_provider_price?(_price), do: false
 
   defp valid_budget?(%{"global_daily" => daily, "global_monthly" => monthly, "workspace_daily" => workspace}) do
-    Enum.all?([daily, monthly, workspace], &valid_positive_decimal?/1)
+    Enum.all?([daily, monthly, workspace], fn value ->
+      case decimal(value) do
+        {:ok, decimal} -> positive?(decimal)
+        {:error, :invalid_decimal} -> false
+      end
+    end)
   end
 
   defp valid_budget?(_budget), do: false
 
-  defp valid_decimal?(value) do
-    case Decimal.parse(to_string(value)) do
-      {decimal, ""} -> Decimal.compare(decimal, Decimal.new(0)) in [:eq, :gt]
-      _invalid -> false
+  defp decimal(%Decimal{} = value), do: nonnegative_decimal(value)
+  defp decimal(value) when is_integer(value), do: value |> Decimal.new() |> nonnegative_decimal()
+
+  defp decimal(value) when is_binary(value) do
+    case Decimal.parse(value) do
+      {decimal, ""} -> nonnegative_decimal(decimal)
+      _invalid -> {:error, :invalid_decimal}
     end
   end
 
-  defp valid_positive_decimal?(value) do
-    case Decimal.parse(to_string(value)) do
-      {decimal, ""} -> Decimal.compare(decimal, Decimal.new(0)) == :gt
-      _invalid -> false
-    end
+  defp decimal(_value), do: {:error, :invalid_decimal}
+
+  defp nonnegative_decimal(decimal) do
+    if Decimal.compare(decimal, Decimal.new(0)) in [:eq, :gt],
+      do: {:ok, decimal},
+      else: {:error, :invalid_decimal}
   end
+
+  defp zero?(decimal), do: Decimal.compare(decimal, Decimal.new(0)) == :eq
+  defp positive?(decimal), do: Decimal.compare(decimal, Decimal.new(0)) == :gt
 
   defp normalize_map(value) when is_list(value), do: value |> Map.new() |> normalize_map()
   defp normalize_map(value) when is_map(value), do: Map.new(value, fn {key, item} -> {to_string(key), item} end)

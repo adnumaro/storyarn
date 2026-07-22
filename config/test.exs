@@ -46,7 +46,10 @@ config :posthog,
 config :storyarn, Oban, testing: :manual
 config :storyarn, Storyarn.AI.CredentialResolver, StoryarnTest.AI.FakeCredentialResolver
 config :storyarn, Storyarn.AI.InferenceProviders, providers: %{"fake" => Storyarn.AI.InferenceProviders.Fake}
-config :storyarn, Storyarn.AI.InferenceProviders.Together, req_options: [plug: {Req.Test, StoryarnTest.AI.Together}]
+
+config :storyarn, Storyarn.AI.InferenceProviders.Together,
+  endpoint: "https://fake.test/v1/chat/completions",
+  req_options: [plug: {Req.Test, StoryarnTest.AI.Together}]
 
 # Route AI-provider validation calls through Req.Test stubs so no test opens
 # an outbound socket. Each provider adapter has its own stub name so tests can

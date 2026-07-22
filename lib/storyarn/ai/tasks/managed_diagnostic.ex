@@ -53,11 +53,11 @@ defmodule Storyarn.AI.Tasks.ManagedDiagnostic do
   end
 
   @impl true
-  def validate_input(%{"probe" => @probe}), do: :ok
+  def validate_input(%{"probe" => @probe} = input) when map_size(input) == 1, do: :ok
   def validate_input(_input), do: {:error, :invalid_diagnostic_input}
 
   @impl true
-  def validate_output(%{"status" => "ok"}), do: :ok
+  def validate_output(%{"status" => "ok"} = output) when map_size(output) == 1, do: :ok
   def validate_output(_output), do: {:error, :invalid_diagnostic_output}
 
   def probe, do: @probe

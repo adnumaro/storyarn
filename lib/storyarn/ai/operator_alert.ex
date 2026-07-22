@@ -27,7 +27,7 @@ defmodule Storyarn.AI.OperatorAlert do
     |> cast(attrs, [:dedupe_key, :kind, :severity, :status, :workspace_id_snapshot, :metadata])
     |> put_change(:workspace_id, Map.get(attrs, :workspace_id))
     |> put_change(:operation_id, Map.get(attrs, :operation_id))
-    |> validate_required([:dedupe_key, :kind, :severity, :status])
+    |> validate_required([:dedupe_key, :kind, :severity, :status, :workspace_id_snapshot])
     |> validate_inclusion(
       :kind,
       ~w(allowance_anomaly provider_cost_spike unknown_operation stale_reservation duplicate_attempt)
@@ -35,8 +35,17 @@ defmodule Storyarn.AI.OperatorAlert do
     |> validate_inclusion(:severity, ~w(warning critical))
     |> validate_inclusion(:status, ~w(open resolved))
     |> validate_length(:dedupe_key, min: 1, max: 200)
+    |> validate_workspace_identity()
     |> unique_constraint(:dedupe_key)
     |> foreign_key_constraint(:workspace_id)
     |> foreign_key_constraint(:operation_id)
+  end
+
+  defp validate_workspace_identity(changeset) do
+    case {get_field(changeset, :workspace_id), get_field(changeset, :workspace_id_snapshot)} do
+      {nil, snapshot} when is_integer(snapshot) -> changeset
+      {workspace_id, workspace_id} when is_integer(workspace_id) -> changeset
+      {_workspace_id, _snapshot} -> add_error(changeset, :workspace_id_snapshot, "must match workspace")
+    end
   end
 end

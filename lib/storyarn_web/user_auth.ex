@@ -341,17 +341,24 @@ defmodule StoryarnWeb.UserAuth do
 
       managed_slugs =
         workspace_data
-        |> Enum.reject(&is_nil(&1.role))
+        |> Enum.filter(&Workspaces.can?(&1.role, :access_workspace_settings))
+        |> MapSet.new(& &1.workspace.slug)
+
+      general_slugs =
+        workspace_data
+        |> Enum.filter(&Workspaces.can?(&1.role, :access_workspace_general_settings))
         |> MapSet.new(& &1.workspace.slug)
 
       socket
       |> Phoenix.Component.assign(:workspaces, workspaces)
       |> Phoenix.Component.assign(:managed_workspace_slugs, managed_slugs)
+      |> Phoenix.Component.assign(:general_workspace_slugs, general_slugs)
       |> Phoenix.Component.assign_new(:current_workspace, fn -> nil end)
     else
       socket
       |> Phoenix.Component.assign(:workspaces, [])
       |> Phoenix.Component.assign(:managed_workspace_slugs, MapSet.new())
+      |> Phoenix.Component.assign(:general_workspace_slugs, MapSet.new())
       |> Phoenix.Component.assign_new(:current_workspace, fn -> nil end)
     end
   end

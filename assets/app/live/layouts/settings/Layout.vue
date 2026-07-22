@@ -57,7 +57,7 @@ interface SettingsFeatureFlags {
 const {
   currentPath,
   workspaces = [],
-  managedWorkspaceSlugs = [],
+  workspaceSettingsAccess = {},
   workspace = null,
   project = null,
   title = null,
@@ -68,7 +68,7 @@ const {
 } = defineProps<{
   currentPath: string;
   workspaces?: SettingsWorkspace[];
-  managedWorkspaceSlugs?: string[];
+  workspaceSettingsAccess?: Record<string, "manage" | "general">;
   workspace?: SettingsWorkspace | null;
   project?: SettingsProject | null;
   title?: string | null;
@@ -184,9 +184,11 @@ const sections = computed<SettingsSection[]>(() => {
     ];
   }
 
-  const managedWorkspaceSet = new Set(managedWorkspaceSlugs);
-  const managedWorkspaces = workspaces.filter((workspace) =>
-    managedWorkspaceSet.has(workspace.slug),
+  const managedWorkspaces = workspaces.filter(
+    (workspace) => workspaceSettingsAccess[workspace.slug] === "manage",
+  );
+  const readOnlyWorkspaces = workspaces.filter(
+    (workspace) => workspaceSettingsAccess[workspace.slug] === "general",
   );
 
   const accountItems = [
@@ -237,6 +239,16 @@ const sections = computed<SettingsSection[]>(() => {
           label: t("settings.nav.items.deleted_projects"),
           path: `/users/settings/workspaces/${workspace.slug}/deleted-projects`,
           icon: "trash-2",
+        },
+      ],
+    })),
+    ...readOnlyWorkspaces.map((workspace) => ({
+      label: workspace.name,
+      items: [
+        {
+          label: t("settings.nav.items.workspace_general"),
+          path: `/users/settings/workspaces/${workspace.slug}/general`,
+          icon: "settings",
         },
       ],
     })),

@@ -133,7 +133,7 @@ defmodule Storyarn.AI.Allowance do
         expires_at: value(attrs, :expires_at),
         granted_by_id: actor_id,
         actor_id: actor_id,
-        metadata: value(attrs, :metadata) || %{}
+        metadata: %{}
       })
 
     grant =
@@ -243,25 +243,10 @@ defmodule Storyarn.AI.Allowance do
           committed_units: account.committed_units + reservation.units
         })
 
-        reservation
-        |> AllowanceReservation.settle_changeset("committed", TimeHelpers.now())
-        |> Repo.update!()
-
-        insert_ledger!(%{
-          workspace_id: operation.workspace_id_snapshot,
-          workspace_id_snapshot: operation.workspace_id_snapshot,
-          operation_id: operation.id,
-          reservation_id: reservation.id,
-          kind: "commit",
-          units: reservation.units,
-          available_delta: 0,
-          idempotency_key: "operation:#{operation.id}:commit"
-        })
-
-        :ok
+        commit_reservation!(operation, reservation)
 
       nil ->
-        {:error, :allowance_unavailable}
+        commit_reservation!(operation, reservation)
     end
   end
 
@@ -279,39 +264,70 @@ defmodule Storyarn.AI.Allowance do
           reserved_units: account.reserved_units - reservation.units
         })
 
-        reservation
-        |> AllowanceReservation.settle_changeset("released", now)
-        |> Repo.update!()
-
-        insert_ledger!(%{
-          workspace_id: operation.workspace_id_snapshot,
-          workspace_id_snapshot: operation.workspace_id_snapshot,
-          operation_id: operation.id,
-          reservation_id: reservation.id,
-          kind: "release",
-          units: reservation.units,
-          available_delta: restored,
-          idempotency_key: "operation:#{operation.id}:release"
-        })
-
-        if expired > 0 do
-          insert_ledger!(%{
-            workspace_id: operation.workspace_id_snapshot,
-            workspace_id_snapshot: operation.workspace_id_snapshot,
-            operation_id: operation.id,
-            reservation_id: reservation.id,
-            kind: "expiry",
-            units: expired,
-            available_delta: 0,
-            idempotency_key: "operation:#{operation.id}:reserved-expiry"
-          })
-        end
-
-        :ok
+        release_reservation!(operation, reservation, now, restored, expired)
 
       nil ->
-        {:error, :allowance_unavailable}
+        reservation.id
+        |> lock_allocations()
+        |> Enum.each(fn allocation ->
+          allocation
+          |> AllowanceAllocation.restore_changeset(0)
+          |> Repo.update!()
+        end)
+
+        release_reservation!(operation, reservation, now, 0, reservation.units)
     end
+  end
+
+  defp commit_reservation!(operation, reservation) do
+    reservation
+    |> AllowanceReservation.settle_changeset("committed", TimeHelpers.now())
+    |> Repo.update!()
+
+    insert_ledger!(%{
+      workspace_id: operation.workspace_id,
+      workspace_id_snapshot: operation.workspace_id_snapshot,
+      operation_id: operation.id,
+      reservation_id: reservation.id,
+      kind: "commit",
+      units: reservation.units,
+      available_delta: 0,
+      idempotency_key: "operation:#{operation.id}:commit"
+    })
+
+    :ok
+  end
+
+  defp release_reservation!(operation, reservation, now, restored, expired) do
+    reservation
+    |> AllowanceReservation.settle_changeset("released", now)
+    |> Repo.update!()
+
+    insert_ledger!(%{
+      workspace_id: operation.workspace_id,
+      workspace_id_snapshot: operation.workspace_id_snapshot,
+      operation_id: operation.id,
+      reservation_id: reservation.id,
+      kind: "release",
+      units: reservation.units,
+      available_delta: restored,
+      idempotency_key: "operation:#{operation.id}:release"
+    })
+
+    if expired > 0 do
+      insert_ledger!(%{
+        workspace_id: operation.workspace_id,
+        workspace_id_snapshot: operation.workspace_id_snapshot,
+        operation_id: operation.id,
+        reservation_id: reservation.id,
+        kind: "expiry",
+        units: expired,
+        available_delta: 0,
+        idempotency_key: "operation:#{operation.id}:reserved-expiry"
+      })
+    end
+
+    :ok
   end
 
   defp lock_account(workspace_id) do

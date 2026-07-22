@@ -76,7 +76,6 @@ defmodule Storyarn.AI.InferenceProviders.TogetherTest do
         temperature: 0
       },
       provider_configuration: %{
-        "endpoint" => "https://eu.together.test/v1/chat/completions",
         "region" => "eu-test",
         "data_retention" => "zero_data_retention",
         "provider_price" => %{
