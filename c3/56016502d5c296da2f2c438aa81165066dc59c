@@ -1,0 +1,22 @@
+test/storyarn_web/live/scene_live/index_test.exs
+  s_601e46785f4b81::t_c9835fd4461b2b 95
+  s_601e46785f4b81::t_44e758ed1d4d71 130
+test/storyarn_web/live/sheet_live/index_test.exs
+  s_601e46785f4b81::t_c9835fd4461b2b 121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "c356016502d5c296da2f2c438aa81165066dc59c",
+  "prompts": {},
+  "sessions": {
+    "s_601e46785f4b81": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b4-a630-7780-b438-bc2aa3d9363e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
