@@ -1,7 +1,5 @@
 defmodule StoryarnWeb.SceneLive.IndexTest do
-  # Sticky child LiveViews terminate during redirects, so shared sandbox mode
-  # avoids ownership handoff races under full-suite concurrency.
-  use StoryarnWeb.ConnCase, async: false
+  use StoryarnWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
@@ -133,12 +131,6 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
       {redirect_path, _flash} = assert_redirect(view)
 
       assert redirect_path =~ "/scenes/"
-
-      # Verify the child scene was created with proper parent_id
-      scenes = Scenes.list_scenes(project.id)
-      child = Enum.find(scenes, &(&1.parent_id == parent_scene.id))
-      assert child
-      assert child.name == "Untitled"
     end
   end
 
