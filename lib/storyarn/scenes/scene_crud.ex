@@ -155,7 +155,8 @@ defmodule Storyarn.Scenes.SceneCrud do
             where: m.project_id in ^project_ids and is_nil(m.deleted_at),
             order_by: [desc: m.updated_at, desc: m.id],
             limit: ^limit
-          )
+          ),
+          log: false
         )
 
       true ->
@@ -167,7 +168,8 @@ defmodule Storyarn.Scenes.SceneCrud do
             where: ilike(m.name, ^search_term) or ilike(m.shortcut, ^search_term),
             order_by: [asc: m.name],
             limit: ^limit
-          )
+          ),
+          log: false
         )
     end
   end

@@ -1,4 +1,4 @@
-import { mount } from "@vue/test-utils";
+import { enableAutoUnmount, flushPromises, mount } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, nextTick, type App } from "vue";
 import CommandPalette from "../../../components/command-palette/CommandPalette.vue";
@@ -26,8 +26,8 @@ const CommandDialogStub = defineComponent({
     title: { type: String, default: "" },
     description: { type: String, default: "" },
   },
-  emits: ["update:open"],
-  template: `<div v-if="open" data-testid="palette-dialog"><Command><slot /></Command></div>`,
+  emits: ["update:open", "escapeKeyDown"],
+  template: `<div v-if="open" data-testid="palette-dialog" @keydown.esc="$emit('escapeKeyDown', $event)"><Command><slot /></Command></div>`,
 });
 
 function livePlugin(live: LiveInterface) {
@@ -40,6 +40,20 @@ function livePlugin(live: LiveInterface) {
 
 function mountPalette() {
   const live = createMockLive();
+  vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+    if (!callback) return;
+
+    if (event === "palette_nav") {
+      callback({ token: payload?.token as number, groups: [] });
+    }
+
+    if (event === "palette_create_targets") {
+      callback({
+        token: payload?.token as number,
+        projects: [{ id: 11, label: "Veilbreak", context: "Acme" }],
+      });
+    }
+  });
   const wrapper = mount(CommandPalette, {
     attachTo: document.body,
     global: {
@@ -56,7 +70,7 @@ function pressPaletteShortcut(init: KeyboardEventInit = { ctrlKey: true }) {
   document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", bubbles: true, ...init }));
 }
 
-function command(id: string, run: () => void = () => undefined): PaletteCommand {
+function command(id: string, run: () => void | Promise<void> = () => undefined): PaletteCommand {
   return {
     id,
     labelKey: `label.${id}`,
@@ -66,12 +80,15 @@ function command(id: string, run: () => void = () => undefined): PaletteCommand 
 }
 
 describe("CommandPalette", () => {
+  enableAutoUnmount(afterEach);
+
   beforeEach(() => {
     setTestLocale("en");
     resetPaletteRegistry();
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     document.body.innerHTML = "";
   });
 
@@ -100,6 +117,34 @@ describe("CommandPalette", () => {
 
     pressPaletteShortcut();
     await nextTick();
+    pressPaletteShortcut();
+    await nextTick();
+
+    expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(false);
+  });
+
+  it("the shortcut closes while the palette input owns focus", async () => {
+    const { wrapper } = mountPalette();
+
+    pressPaletteShortcut();
+    await nextTick();
+    const input = wrapper.find<HTMLInputElement>("[data-slot='command-input']");
+    input.element.focus();
+    input.element.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true }),
+    );
+    await nextTick();
+
+    expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(false);
+  });
+
+  it("does not stack on top of another open dialog", async () => {
+    const { wrapper } = mountPalette();
+    const existingDialog = document.createElement("div");
+    existingDialog.dataset.slot = "dialog-content";
+    existingDialog.dataset.state = "open";
+    document.body.appendChild(existingDialog);
+
     pressPaletteShortcut();
     await nextTick();
 
@@ -135,14 +180,18 @@ describe("CommandPalette", () => {
 
   it("runs the command, tracks execution, and closes on select", async () => {
     let ran = false;
-    registerPaletteCommands("flows", [command("flows.run-me", () => (ran = true))]);
+    registerPaletteCommands("flows", [
+      command("flows.run-me", () => {
+        ran = true;
+      }),
+    ]);
 
     const { live, wrapper } = mountPalette();
     pressPaletteShortcut();
     await nextTick();
 
     wrapper.findComponent(CommandItem).vm.$emit("select", new Event("select"));
-    await nextTick();
+    await flushPromises();
 
     expect(ran).toBe(true);
     expect(live.pushEvent).toHaveBeenCalledWith(
@@ -154,6 +203,7 @@ describe("CommandPalette", () => {
   });
 
   it("tracks a no-results search with the query length only", async () => {
+    vi.useFakeTimers();
     registerPaletteCommands("flows", [command("flows.a")]);
     const { live, wrapper } = mountPalette();
 
@@ -161,6 +211,7 @@ describe("CommandPalette", () => {
     await nextTick();
 
     await wrapper.find("[data-slot='command-input']").setValue("zzzz");
+    await vi.advanceTimersByTimeAsync(200);
     await nextTick();
 
     expect(wrapper.find("[data-slot='command-empty']").exists()).toBe(true);
@@ -173,6 +224,7 @@ describe("CommandPalette", () => {
       .mocked(live.pushEvent)
       .mock.calls.filter(([event]) => event === "palette_search_no_results");
     expect(noResultCalls).toHaveLength(1);
+    vi.useRealTimers();
   });
 
   it("a throwing command keeps the palette open with an explicit error and is NOT tracked as executed", async () => {
@@ -198,6 +250,62 @@ describe("CommandPalette", () => {
     expect(executedCalls).toHaveLength(0);
   });
 
+  it("awaits async commands and records only a fulfilled result", async () => {
+    let resolveCommand!: () => void;
+    registerPaletteCommands("flows", [
+      command(
+        "flows.async",
+        () =>
+          new Promise<void>((resolve) => {
+            resolveCommand = resolve;
+          }),
+      ),
+    ]);
+
+    const { live, wrapper } = mountPalette();
+    pressPaletteShortcut();
+    await nextTick();
+    selectItem(wrapper, "flows.async");
+    await nextTick();
+
+    expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(true);
+    expect(
+      vi
+        .mocked(live.pushEvent)
+        .mock.calls.filter(([event]) => event === "palette_command_executed"),
+    ).toHaveLength(0);
+
+    resolveCommand();
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(false);
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "palette_command_executed",
+      { command_id: "flows.async", surface: "flows" },
+      undefined,
+    );
+  });
+
+  it("keeps the palette open when an async command rejects", async () => {
+    registerPaletteCommands("flows", [
+      command("flows.reject", () => Promise.reject(new Error("failed"))),
+    ]);
+
+    const { live, wrapper } = mountPalette();
+    pressPaletteShortcut();
+    await nextTick();
+    selectItem(wrapper, "flows.reject");
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(true);
+    expect(wrapper.find('[role="alert"]').text()).toBe("The command failed to run. Try again.");
+    expect(
+      vi
+        .mocked(live.pushEvent)
+        .mock.calls.filter(([event]) => event === "palette_command_executed"),
+    ).toHaveLength(0);
+  });
+
   it("survives a dead socket — analytics failures never break the palette", async () => {
     registerPaletteCommands("flows", [command("flows.a")]);
     const { live, wrapper } = mountPalette();
@@ -209,6 +317,24 @@ describe("CommandPalette", () => {
     await nextTick();
 
     expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(true);
+  });
+
+  it("distinguishes a remote search failure from an empty result", async () => {
+    const { live, wrapper } = mountPalette();
+    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+      if (event === "palette_nav") throw new Error("socket gone");
+      if (event === "palette_create_targets" && callback) {
+        callback({ token: payload?.token as number, projects: [] });
+      }
+    });
+
+    pressPaletteShortcut();
+    await nextTick();
+
+    expect(wrapper.find('[role="alert"]').text()).toBe(
+      "Storyarn couldn't load these results. Try again.",
+    );
+    expect(wrapper.find("[data-slot='command-empty']").exists()).toBe(false);
   });
 
   describe("server-driven navigation", () => {
@@ -262,6 +388,13 @@ describe("CommandPalette", () => {
         undefined,
       );
       expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(false);
+      const analyticsCall = vi
+        .mocked(live.pushEvent)
+        .mock.invocationCallOrder.find(
+          (_order, index) =>
+            vi.mocked(live.pushEvent).mock.calls[index]?.[0] === "palette_command_executed",
+        );
+      expect(analyticsCall).toBeLessThan(vi.mocked(liveNavigate).mock.invocationCallOrder.at(-1)!);
     });
 
     it("reopening after a search shows default results immediately (no debounce delay)", async () => {
@@ -348,13 +481,18 @@ describe("CommandPalette", () => {
         .findAll("[data-slot='command-group-heading']")
         .map((heading) => heading.text());
       expect(headings).toContain("New Sheet");
+      expect(document.activeElement?.getAttribute("data-slot")).toBe("command-input");
 
       selectItem(wrapper, "create-target-11");
       await nextTick();
 
       expect(live.pushEvent).toHaveBeenCalledWith(
         "palette_create",
-        { type: "sheet", project_id: 11 },
+        expect.objectContaining({
+          type: "sheet",
+          project_id: 11,
+          operation_id: expect.any(String),
+        }),
         expect.any(Function),
       );
       expect(liveNavigate).toHaveBeenCalledWith("/workspaces/acme/projects/veilbreak/sheets/42");
@@ -366,16 +504,17 @@ describe("CommandPalette", () => {
       expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(false);
     });
 
-    it("shows an explicit empty state when no project accepts new content", async () => {
+    it("hides create/delete actions when no project accepts content mutations", async () => {
       const { live, wrapper } = mountPalette();
       createReplyMock(live, { targets: [] });
 
       pressPaletteShortcut();
       await nextTick();
-      selectItem(wrapper, "create.flow");
-      await nextTick();
 
-      expect(wrapper.text()).toContain("No projects where you can create content");
+      expect(itemValues(wrapper)).not.toContain("create.sheet");
+      expect(itemValues(wrapper)).not.toContain("create.flow");
+      expect(itemValues(wrapper)).not.toContain("create.scene");
+      expect(itemValues(wrapper)).not.toContain("palette.delete-entity");
     });
 
     it("a limit_reached reply surfaces its specific error and stays open", async () => {
@@ -426,6 +565,13 @@ describe("CommandPalette", () => {
       vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
         if (!callback) return;
 
+        if (event === "palette_create_targets") {
+          callback({
+            token: (payload as { token: number }).token,
+            projects: [{ id: 11, label: "Veilbreak", context: "Acme" }],
+          });
+        }
+
         if (event === "palette_delete_search") {
           callback({
             token: (payload as { token: number }).token,
@@ -470,7 +616,12 @@ describe("CommandPalette", () => {
 
       expect(live.pushEvent).toHaveBeenCalledWith(
         "palette_delete",
-        { type: "sheet", id: 7, project_id: 11 },
+        expect.objectContaining({
+          type: "sheet",
+          id: 7,
+          project_id: 11,
+          operation_id: expect.any(String),
+        }),
         expect.any(Function),
       );
       expect(live.pushEvent).toHaveBeenCalledWith(
@@ -533,6 +684,13 @@ describe("CommandPalette", () => {
       vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
         if (!callback) return;
 
+        if (event === "palette_create_targets") {
+          callback({
+            token: (payload as { token: number }).token,
+            projects: [{ id: 11, label: "Veilbreak", context: "Acme" }],
+          });
+        }
+
         if (event === "palette_delete_search") {
           callback({
             token: (payload as { token: number }).token,
@@ -572,6 +730,13 @@ describe("CommandPalette", () => {
       const { live, wrapper } = mountPalette();
 
       vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+        if (event === "palette_create_targets" && callback) {
+          callback({
+            token: (payload as { token: number }).token,
+            projects: [{ id: 11, label: "Veilbreak", context: "Acme" }],
+          });
+        }
+
         if (event === "palette_delete_search" && callback) {
           callback({
             token: (payload as { token: number }).token,
@@ -606,13 +771,23 @@ describe("CommandPalette", () => {
         .mocked(live.pushEvent)
         .mock.calls.filter(([event]) => event === "palette_delete");
       expect(deleteCalls).toHaveLength(2);
+      expect((deleteCalls[0]![1] as { operation_id: string }).operation_id).toBe(
+        (deleteCalls[1]![1] as { operation_id: string }).operation_id,
+      );
     });
 
-    it("a mutation reply arriving after close is discarded", async () => {
+    it("cannot close during a mutation and always reconciles its reply", async () => {
       const { live, wrapper } = mountPalette();
       let deleteCallback: ((reply: { deleted: boolean }) => void) | null = null;
 
       vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+        if (event === "palette_create_targets" && callback) {
+          callback({
+            token: (payload as { token: number }).token,
+            projects: [{ id: 11, label: "Veilbreak", context: "Acme" }],
+          });
+        }
+
         if (event === "palette_delete_search" && callback) {
           callback({
             token: (payload as { token: number }).token,
@@ -637,16 +812,18 @@ describe("CommandPalette", () => {
       pressPaletteShortcut(); // close while the delete is in flight
       await nextTick();
 
+      expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(true);
+
       deleteCallback!({ deleted: true });
       await nextTick();
 
-      // The stale reply must not reopen state or track an execution.
-      expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(false);
+      expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(true);
+      expect(itemValues(wrapper)).toContain("delete-sheet-7");
 
       const executedCalls = vi
         .mocked(live.pushEvent)
         .mock.calls.filter(([event]) => event === "palette_command_executed");
-      expect(executedCalls).toHaveLength(0);
+      expect(executedCalls).toHaveLength(1);
     });
 
     it("an unauthorized reply keeps the confirm step with an explicit error", async () => {

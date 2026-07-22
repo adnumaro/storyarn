@@ -225,7 +225,8 @@ defmodule Storyarn.Sheets.SheetQueries do
             where: s.project_id in ^project_ids and is_nil(s.deleted_at),
             order_by: [desc: s.updated_at, desc: s.id],
             limit: ^limit
-          )
+          ),
+          log: false
         )
 
       true ->
@@ -237,7 +238,8 @@ defmodule Storyarn.Sheets.SheetQueries do
             where: ilike(s.name, ^search_term) or ilike(s.shortcut, ^search_term),
             order_by: [asc: s.name],
             limit: ^limit
-          )
+          ),
+          log: false
         )
     end
   end

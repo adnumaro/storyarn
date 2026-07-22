@@ -16,16 +16,17 @@ const props = defineProps<{
   title?: string;
   description?: string;
 }>();
-const emits = defineEmits<{
+const emit = defineEmits<{
   "update:open": [value: boolean];
+  escapeKeyDown: [event: KeyboardEvent];
 }>();
 
-const forwarded = useForwardPropsEmits(props, emits);
+const forwarded = useForwardPropsEmits(props, emit);
 </script>
 
 <template>
   <Dialog v-slot="slotProps" v-bind="forwarded">
-    <DialogContent class="overflow-hidden p-0">
+    <DialogContent class="overflow-hidden p-0" @escape-key-down="emit('escapeKeyDown', $event)">
       <DialogHeader class="sr-only">
         <DialogTitle>{{ title }}</DialogTitle>
         <DialogDescription>{{ description }}</DialogDescription>

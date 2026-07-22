@@ -13,8 +13,9 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   the tree sidebars use and broadcast the same shell-topic messages, so
   sidebars and open editors react identically regardless of which surface
   performed the action. Analytics payloads are rebuilt from validated
-  params — raw client params never reach the adapter. Malformed events
-  (only our own client produces these) fall through like any unknown event.
+  params — raw client params never reach the adapter. Known palette events
+  fail closed with an `invalid_request` reply when their payload is malformed;
+  they are never delegated to the host LiveView.
   """
 
   use StoryarnWeb, :verified_routes
@@ -37,7 +38,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   @known_surfaces ~w(global project workspace flows sheets scenes localization account)
 
   @static_command_ids MapSet.new(
-                        ~w(account.profile account.security account.tutorials
+                        ~w(account.profile account.security account.tutorials account.integrations
                            workspace.toggle-sidebar flows.toggle-minimap
                            flows.fit-to-view scenes.fit-to-view
                            create.project create.sheet create.flow create.scene
@@ -54,12 +55,27 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
                       )
 
   @nav_command_id_format ~r/^nav\.(workspace|project|project-settings|workspace-settings|sheet|flow|scene)\.[1-9]\d{0,19}$/
+  @palette_events ~w(palette_nav palette_create_targets palette_create palette_delete_search
+                     palette_delete palette_opened palette_command_executed palette_search_no_results)
+  @operation_cache_limit 64
 
   # Client-supplied ids above the PostgreSQL bigint range would raise on
   # parameter encoding instead of failing closed — bound them at the guard.
   @max_pg_bigint 9_223_372_036_854_775_807
 
+  defguardp valid_database_id(value)
+            when is_integer(value) and value > 0 and value <= @max_pg_bigint
+
+  defguardp valid_operation_id(value)
+            when is_binary(value) and byte_size(value) > 0 and byte_size(value) <= 64
+
   def on_mount(:setup_palette, _params, _session, socket) do
+    socket =
+      Phoenix.Component.assign(socket, :palette_operation_cache, %{
+        results: %{},
+        order: []
+      })
+
     {:cont,
      Phoenix.LiveView.attach_hook(
        socket,
@@ -80,7 +96,13 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
           [
             %{key: "workspaces", items: Enum.map(destinations.workspaces, &nav_item/1)},
             %{key: "projects", items: Enum.map(destinations.projects, &nav_item/1)},
-            %{key: "project_settings", items: Enum.map(destinations.projects, &settings_item/1)},
+            %{
+              key: "project_settings",
+              items:
+                destinations.projects
+                |> Enum.filter(& &1.can_manage_project)
+                |> Enum.map(&settings_item/1)
+            },
             %{
               key: "workspace_settings",
               items:
@@ -108,29 +130,35 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
     {:halt, %{token: token, projects: projects}, socket}
   end
 
-  defp handle_palette_event("palette_create", %{"type" => type, "project_id" => project_id}, socket)
-       when type in ~w(sheet flow scene) and is_integer(project_id) and project_id > 0 and project_id <= @max_pg_bigint do
-    scope = socket.assigns.current_scope
+  defp handle_palette_event(
+         "palette_create",
+         %{"type" => type, "project_id" => project_id, "operation_id" => operation_id},
+         socket
+       )
+       when type in ~w(sheet flow scene) and valid_database_id(project_id) and valid_operation_id(operation_id) do
+    {reply, socket} =
+      idempotent_operation(socket, "palette_create", operation_id, fn ->
+        scope = socket.assigns.current_scope
 
-    reply =
-      with {:ok, %{project: project, workspace: workspace}} <- GlobalSearch.editable_project(scope, project_id),
-           {:ok, entity} <- create_entity(type, project) do
-        broadcast_tree_changed(project.id, type)
+        with {:ok, %{project: project, workspace: workspace}} <- GlobalSearch.editable_project(scope, project_id),
+             {:ok, entity} <- create_entity(type, project) do
+          broadcast_tree_changed(project.id, type)
 
-        %{
-          url:
-            entity_url(%{
-              type: entity_type(type),
-              id: entity.id,
-              project_slug: project.slug,
-              workspace_slug: workspace.slug
-            })
-        }
-      else
-        {:error, :unauthorized} -> %{error: "unauthorized"}
-        {:error, :limit_reached, _} -> %{error: "limit_reached"}
-        {:error, _} -> %{error: "create_failed"}
-      end
+          %{
+            url:
+              entity_url(%{
+                type: entity_type(type),
+                id: entity.id,
+                project_slug: project.slug,
+                workspace_slug: workspace.slug
+              })
+          }
+        else
+          {:error, :unauthorized} -> %{error: "unauthorized"}
+          {:error, :limit_reached, _} -> %{error: "limit_reached"}
+          {:error, _} -> %{error: "create_failed"}
+        end
+      end)
 
     {:halt, reply, socket}
   end
@@ -145,7 +173,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
           id: dest.id,
           type: Atom.to_string(dest.type),
           label: dest.name,
-          context: dest.project_name,
+          context: destination_context(dest),
           shortcut: dest.shortcut,
           projectId: dest.project_id
         }
@@ -154,27 +182,33 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
     {:halt, %{token: token, items: items}, socket}
   end
 
-  defp handle_palette_event("palette_delete", %{"type" => type, "id" => id, "project_id" => project_id}, socket)
-       when type in ~w(sheet flow scene) and is_integer(id) and id > 0 and id <= @max_pg_bigint and is_integer(project_id) and
-              project_id > 0 and project_id <= @max_pg_bigint do
-    scope = socket.assigns.current_scope
+  defp handle_palette_event(
+         "palette_delete",
+         %{"type" => type, "id" => id, "project_id" => project_id, "operation_id" => operation_id},
+         socket
+       )
+       when type in ~w(sheet flow scene) and valid_database_id(id) and valid_database_id(project_id) and
+              valid_operation_id(operation_id) do
+    {reply, socket} =
+      idempotent_operation(socket, "palette_delete", operation_id, fn ->
+        scope = socket.assigns.current_scope
 
-    reply =
-      with {:ok, %{entity: entity, project: project}} <-
-             GlobalSearch.deletable_entity(scope, entity_type(type), project_id, id),
-           # The delete itself reports the committed cascade set (collected
-           # under its own lock) — never a separate pre-delete traversal.
-           {:ok, %{deleted_ids: deleted_ids}} <- delete_entity_subtree(type, entity) do
-        # Plain broadcast (not broadcast_from): the LV serving this event may
-        # itself be showing a deleted entity and must navigate away too.
-        broadcast_entities_deleted(project.id, entity_type(type), deleted_ids)
-        broadcast_tree_changed(project.id, type)
-        %{deleted: true}
-      else
-        {:error, :unauthorized} -> %{error: "unauthorized"}
-        {:error, :not_found} -> %{error: "not_found"}
-        {:error, _} -> %{error: "delete_failed"}
-      end
+        with {:ok, %{entity: entity, project: project}} <-
+               GlobalSearch.deletable_entity(scope, entity_type(type), project_id, id),
+             # The delete itself reports the committed cascade set (collected
+             # under its own lock) — never a separate pre-delete traversal.
+             {:ok, %{deleted_ids: deleted_ids}} <- delete_entity_subtree(type, entity) do
+          # Plain broadcast (not broadcast_from): the LV serving this event may
+          # itself be showing a deleted entity and must navigate away too.
+          broadcast_entities_deleted(project.id, entity_type(type), deleted_ids)
+          broadcast_tree_changed(project.id, type)
+          %{deleted: true}
+        else
+          {:error, :unauthorized} -> %{error: "unauthorized"}
+          {:error, :not_found} -> %{error: "not_found"}
+          {:error, _} -> %{error: "delete_failed"}
+        end
+      end)
 
     {:halt, reply, socket}
   end
@@ -197,13 +231,17 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   end
 
   defp handle_palette_event("palette_search_no_results", %{"query_length" => query_length, "surface" => surface}, socket)
-       when is_integer(query_length) and surface in @known_surfaces do
+       when is_integer(query_length) and query_length >= 0 and query_length <= 100 and surface in @known_surfaces do
     Analytics.track(socket.assigns.current_scope, "palette search no results", %{
       query_length: query_length,
       surface: surface
     })
 
     {:halt, socket}
+  end
+
+  defp handle_palette_event(event, _params, socket) when event in @palette_events do
+    {:halt, %{error: "invalid_request"}, socket}
   end
 
   defp handle_palette_event(_event, _params, socket), do: {:cont, socket}
@@ -227,6 +265,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
       id: "nav.project.#{dest.id}",
       type: "project",
       label: dest.name,
+      context: dest.workspace_name,
       url: ~p"/workspaces/#{dest.workspace_slug}/projects/#{dest.project_slug}"
     }
   end
@@ -236,7 +275,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
       id: "nav.#{entity_type}.#{dest.id}",
       type: Atom.to_string(entity_type),
       label: dest.name,
-      context: dest.project_name,
+      context: destination_context(dest),
       shortcut: dest.shortcut,
       url: entity_url(dest)
     }
@@ -247,6 +286,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
       id: "nav.project-settings.#{dest.id}",
       type: "settings",
       label: dest.name,
+      context: dest.workspace_name,
       url: ~p"/workspaces/#{dest.workspace_slug}/projects/#{dest.project_slug}/settings"
     }
   end
@@ -275,6 +315,37 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   defp entity_type("sheet"), do: :sheet
   defp entity_type("flow"), do: :flow
   defp entity_type("scene"), do: :scene
+
+  defp destination_context(%{project_name: project_name, workspace_name: workspace_name}) do
+    "#{project_name} · #{workspace_name}"
+  end
+
+  defp idempotent_operation(socket, event, operation_id, operation) do
+    key = {event, operation_id}
+    cache = socket.assigns.palette_operation_cache
+
+    case Map.fetch(cache.results, key) do
+      {:ok, reply} ->
+        {reply, socket}
+
+      :error ->
+        reply = operation.()
+        cache = put_operation_result(cache, key, reply)
+        {reply, Phoenix.Component.assign(socket, :palette_operation_cache, cache)}
+    end
+  end
+
+  defp put_operation_result(cache, key, reply) do
+    results = Map.put(cache.results, key, reply)
+    order = [key | Enum.reject(cache.order, &(&1 == key))]
+
+    if length(order) > @operation_cache_limit do
+      expired_key = List.last(order)
+      %{results: Map.delete(results, expired_key), order: Enum.drop(order, -1)}
+    else
+      %{results: results, order: order}
+    end
+  end
 
   # Same default names the tree sidebars use — one concept, one name.
   defp create_entity("sheet", project), do: Sheets.create_sheet(project, %{name: dgettext("sheets", "Untitled")})

@@ -8,6 +8,7 @@ defmodule StoryarnWeb.Layouts do
 
   alias Phoenix.LiveView.JS
   alias Storyarn.Analytics
+  alias Storyarn.FeatureFlags
   alias Storyarn.Publication.Locales, as: PublicLocales
 
   # Embed all files in layouts/* within this module.
@@ -19,22 +20,30 @@ defmodule StoryarnWeb.Layouts do
   @doc """
   Mounts the global command palette island (Meta+K / Ctrl+K).
 
-  Rendered only by the layouts whose surfaces expose palette commands —
-  project tools and workspace dashboards — never on auth/public/docs pages.
+  Rendered by authenticated application layouts — workspace, project and
+  settings surfaces — never on auth/public/docs pages.
   """
   attr :socket, :any, required: true, doc: "the LiveView socket (needed for LiveVue events)"
+  attr :current_scope, :map, required: true, doc: "actor used to resolve command feature flags"
 
   def command_palette(assigns) do
     ~H"""
     <div id="command-palette">
       <.vue
-        v-component="components/command-palette/CommandPalette"
+        v-component="live/layouts/CommandPalette"
         v-socket={@socket}
         id="command-palette-island"
+        feature-flags={command_palette_feature_flags(@current_scope)}
       />
     </div>
     """
   end
+
+  defp command_palette_feature_flags(%{user: user}) when not is_nil(user) do
+    %{aiIntegrations: FeatureFlags.enabled?(:ai_integrations, for: user)}
+  end
+
+  defp command_palette_feature_flags(_scope), do: %{aiIntegrations: false}
 
   @doc """
   Shows the flash group with standard titles and content.

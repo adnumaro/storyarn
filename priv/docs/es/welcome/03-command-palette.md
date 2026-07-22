@@ -14,16 +14,16 @@ La paleta de comandos es el centro de control de Storyarn: un único buscador qu
 - **macOS**: pulsa {accent}⌘K{/accent}
 - **Windows / Linux**: pulsa {accent}Ctrl+K{/accent}
 
-Pulsa el mismo atajo otra vez, o {accent}Esc{/accent}, para cerrarla. El atajo no se interpone mientras escribes: no se activa dentro de campos de texto ni editores.
+Pulsa el mismo atajo otra vez, o {accent}Esc{/accent} desde la primera pantalla, para cerrarla. Dentro de un paso de creación o eliminación, {accent}Esc{/accent} vuelve un paso atrás. El atajo no se interpone mientras escribes fuera de la paleta: no se abre sobre campos de texto, editores ni otro diálogo.
 
 ## Cómo funciona
 
 Escribe para filtrar comandos por nombre. Usa las flechas para resaltar un comando y {accent}Enter{/accent} para ejecutarlo. Los comandos van agrupados:
 
-- **Navegación** — salta entre las herramientas del proyecto actual (Dashboard, Sheets, Flows, Scenes, Localization…), abre los ajustes del proyecto o la papelera.
+- **Navegación** — salta entre espacios de trabajo, proyectos, fichas, flujos y escenas, o abre los ajustes que tengas permiso para gestionar.
 - **Vista** — controles del editor en el que estás, como ajustar el lienzo a la vista en los editores de flujos y escenas o mostrar el minimapa de flujos.
-- **Cambiar de espacio de trabajo** — salta directamente a otro de tus espacios de trabajo desde el dashboard.
+- **Acciones** — crea una ficha, flujo o escena en cualquier proyecto que puedas editar, o busca uno para eliminarlo con confirmación dentro de la paleta. La paleta permanece abierta mientras termina una acción destructiva.
 
 ## Los comandos dependen de dónde estás
 
-La paleta solo ofrece lo que aplica a la página actual. En el editor de flujos tienes comandos de flujos; en el dashboard del espacio de trabajo, comandos de espacio de trabajo. Si un comando no aparece, no está disponible en esa página — la paleta nunca lo sustituye por otra acción.
+La paleta está disponible en las áreas autenticadas de espacios de trabajo, proyectos y ajustes. Solo ofrece lo que aplica a la página actual y a tus permisos. En el editor de flujos tienes comandos de flujos; en el dashboard del espacio de trabajo, comandos de espacio de trabajo. Si un comando no aparece, no está disponible en ese contexto — la paleta nunca lo sustituye por otra acción.

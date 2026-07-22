@@ -344,8 +344,12 @@ describe("WorkspaceDashboard", () => {
 
       const newProject = findNewProjectCommand();
       expect(newProject).toBeDefined();
+      expect(newProject).toHaveProperty("run");
 
-      newProject!.run();
+      if (!newProject || typeof newProject.run !== "function") {
+        throw new Error("Expected an action command");
+      }
+      newProject.run();
       expect(live.pushEvent).toHaveBeenCalledWith("set_new_project_modal_open", { open: true });
 
       wrapper.unmount();

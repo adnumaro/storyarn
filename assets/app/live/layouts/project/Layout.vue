@@ -15,9 +15,7 @@ import OnboardingDialog from "@components/onboarding/OnboardingDialog.vue";
 import ProjectNavbarContext from "@shell/ProjectNavbarContext.vue";
 import ProjectNavbarAccount from "@shell/ProjectNavbarAccount.vue";
 import type { CurrentUser, OnlineUser, ProjectLayoutUrls } from "@shell/projectNavbarTypes";
-import { accountPaletteCommands } from "@shared/command-palette/accountCommands";
 import { registerPaletteCommands, type PaletteCommand } from "@shared/command-palette/registry";
-import { liveNavigate } from "@shared/navigation/liveNavigate";
 
 interface ProjectChrome {
   activeTool: string;
@@ -27,6 +25,7 @@ interface ProjectChrome {
   workspaceName: string;
   showToolSwitcher: boolean;
   isSuperAdmin: boolean;
+  canManageProject: boolean;
 }
 
 interface RestorationBanner {
@@ -111,20 +110,22 @@ function projectPaletteCommands(): PaletteCommand[] {
     labelKey: `layout.tools.${key}`,
     groupKey: "palette.groups.navigation",
     icon: paletteToolIcons[key],
-    run: () => liveNavigate(url),
+    href: url,
   }));
 
-  for (const section of settingsSections) {
-    toolCommands.push({
-      id: `project.settings.${section.key}`,
-      labelKey: `project_settings.nav.items.${section.key}`,
-      groupKey: "layout.project_navbar_context.project_settings",
-      icon: section.icon,
-      run: () => liveNavigate(`${urls.projectSettings}${section.suffix}`),
-    });
+  if (chrome.canManageProject) {
+    for (const section of settingsSections) {
+      toolCommands.push({
+        id: `project.settings.${section.key}`,
+        labelKey: `project_settings.nav.items.${section.key}`,
+        groupKey: "layout.project_navbar_context.project_settings",
+        icon: section.icon,
+        href: `${urls.projectSettings}${section.suffix}`,
+      });
+    }
   }
 
-  return toolCommands.concat(accountPaletteCommands());
+  return toolCommands;
 }
 
 const unregisterPaletteCommands = registerPaletteCommands("project", projectPaletteCommands());

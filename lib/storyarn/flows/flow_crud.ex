@@ -131,7 +131,8 @@ defmodule Storyarn.Flows.FlowCrud do
             where: f.project_id in ^project_ids and is_nil(f.deleted_at),
             order_by: [desc: f.updated_at, desc: f.id],
             limit: ^limit
-          )
+          ),
+          log: false
         )
 
       true ->
@@ -143,7 +144,8 @@ defmodule Storyarn.Flows.FlowCrud do
             where: ilike(f.name, ^search_term) or ilike(f.shortcut, ^search_term),
             order_by: [asc: f.name],
             limit: ^limit
-          )
+          ),
+          log: false
         )
     end
   end

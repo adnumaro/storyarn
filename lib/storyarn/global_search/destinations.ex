@@ -29,6 +29,8 @@ defmodule Storyarn.GlobalSearch.Destinations do
           optional(:project_id) => integer(),
           optional(:project_slug) => String.t(),
           optional(:project_name) => String.t(),
+          optional(:workspace_name) => String.t(),
+          optional(:can_manage_project) => boolean(),
           optional(:shortcut) => String.t() | nil,
           optional(:updated_at) => DateTime.t()
         }
@@ -55,8 +57,7 @@ defmodule Storyarn.GlobalSearch.Destinations do
         |> Enum.map(&workspace_destination/1),
       projects:
         project_entries
-        |> Enum.map(& &1.project)
-        |> filter_by_name(query)
+        |> filter_project_entries_by_name(query)
         |> Enum.take(limit)
         |> Enum.map(&project_destination(&1, workspace_by_id)),
       entities: entity_destinations(projects_by_id, workspace_by_id, query, limit)
@@ -180,11 +181,11 @@ defmodule Storyarn.GlobalSearch.Destinations do
     query |> to_string() |> String.slice(0, @max_query_length) |> String.trim()
   end
 
-  defp filter_by_name(items, ""), do: items
+  defp filter_project_entries_by_name(entries, ""), do: entries
 
-  defp filter_by_name(items, query) do
+  defp filter_project_entries_by_name(entries, query) do
     downcased = String.downcase(query)
-    Enum.filter(items, &String.contains?(String.downcase(&1.name), downcased))
+    Enum.filter(entries, &String.contains?(String.downcase(&1.project.name), downcased))
   end
 
   defp workspace_destination(%{workspace: workspace, role: role}) do
@@ -197,13 +198,18 @@ defmodule Storyarn.GlobalSearch.Destinations do
     }
   end
 
-  defp project_destination(project, workspace_by_id) do
+  defp project_destination(%{project: project} = entry, workspace_by_id) do
+    workspace = workspace_by_id[project.workspace_id]
+    effective_role = Projects.effective_role(entry.project_role, entry.workspace_role)
+
     %{
       type: :project,
       id: project.id,
       name: project.name,
       project_slug: project.slug,
-      workspace_slug: workspace_by_id[project.workspace_id].slug
+      workspace_slug: workspace.slug,
+      workspace_name: workspace.name,
+      can_manage_project: Projects.can?(effective_role, :manage_project)
     }
   end
 
@@ -240,7 +246,8 @@ defmodule Storyarn.GlobalSearch.Destinations do
             project_id: project.id,
             project_name: project.name,
             project_slug: project.slug,
-            workspace_slug: workspace_by_id[project.workspace_id].slug
+            workspace_slug: workspace_by_id[project.workspace_id].slug,
+            workspace_name: workspace_by_id[project.workspace_id].name
           }
         end)
       end

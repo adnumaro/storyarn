@@ -288,6 +288,18 @@ defmodule Storyarn.WorkspacesTest do
       assert membership.role == nil
     end
 
+    test "soft-deleting the only project revokes project-derived workspace access", ctx do
+      assert {:ok, _deleted} = Storyarn.Projects.delete_project(ctx.project, ctx.owner.id)
+
+      refute Enum.any?(Workspaces.list_workspaces(ctx.invitee_scope), fn entry ->
+               entry.workspace.id == ctx.workspace.id
+             end)
+
+      refute Enum.any?(Workspaces.list_workspaces_for_user(ctx.invitee), &(&1.id == ctx.workspace.id))
+      assert {:error, :not_found} = Workspaces.get_workspace(ctx.invitee_scope, ctx.workspace.id)
+      assert {:error, :not_found} = Workspaces.get_workspace_by_slug(ctx.invitee_scope, ctx.workspace.slug)
+    end
+
     test "get_default_workspace falls back to workspace via ProjectMembership" do
       # Create a user with NO workspace membership (delete the auto-created one)
       invitee = user_fixture()

@@ -3,7 +3,9 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
 
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
+  import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
   import Storyarn.WorkspacesFixtures
 
@@ -123,7 +125,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       assert item.id == "nav.sheet.#{sheet.id}"
       assert item.type == "sheet"
       assert item.label == "Kael the Wanderer"
-      assert item.context == "Veilbreak"
+      assert item.context == "Veilbreak · #{workspace.name}"
       assert item.url == "/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
     end
 
@@ -186,6 +188,26 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
              )
     end
 
+    test "project settings appear only for project owners", %{view: view, user: user} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      editor_project = project_fixture(owner, %{workspace: workspace, name: "Editor project"})
+      viewer_project = project_fixture(owner, %{workspace: workspace, name: "Viewer project"})
+      membership_fixture(editor_project, user, "editor")
+      membership_fixture(viewer_project, user, "viewer")
+
+      render_hook(view, "palette_nav", %{"query" => "", "token" => 6})
+
+      assert_reply(view, %{token: 6, groups: groups})
+      projects = Enum.find(groups, &(&1.key == "projects"))
+      settings_items = Enum.find_value(groups, [], fn group -> if group.key == "project_settings", do: group.items end)
+
+      assert Enum.any?(projects.items, &(&1.id == "nav.project.#{editor_project.id}"))
+      assert Enum.any?(projects.items, &(&1.id == "nav.project.#{viewer_project.id}"))
+      refute Enum.any?(settings_items, &(&1.id == "nav.project-settings.#{editor_project.id}"))
+      refute Enum.any?(settings_items, &(&1.id == "nav.project-settings.#{viewer_project.id}"))
+    end
+
     test "never leaks another user's destinations", %{view: view} do
       intruder_target = user_fixture()
       other_workspace = workspace_fixture(intruder_target)
@@ -222,7 +244,11 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       project = project_fixture(user, %{workspace: workspace})
       Phoenix.PubSub.subscribe(Storyarn.PubSub, "project:#{project.id}:shell")
 
-      render_hook(view, "palette_create", %{"type" => "sheet", "project_id" => project.id})
+      render_hook(view, "palette_create", %{
+        "type" => "sheet",
+        "project_id" => project.id,
+        "operation_id" => "create-sheet-1"
+      })
 
       assert_reply(view, %{url: url})
       assert [_, sheet_id] = Regex.run(~r{/sheets/(\d+)$}, url)
@@ -235,12 +261,49 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       assert_receive {:tree_changed, :sheets}
     end
 
+    test "creates flows and scenes through their domain facades", %{view: view, user: user} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+      Phoenix.PubSub.subscribe(Storyarn.PubSub, "project:#{project.id}:shell")
+
+      for {type, path, tree_key} <- [{"flow", "flows", :flows}, {"scene", "scenes", :scenes}] do
+        render_hook(view, "palette_create", %{
+          "type" => type,
+          "project_id" => project.id,
+          "operation_id" => "create-#{type}-1"
+        })
+
+        assert_reply(view, %{url: url})
+        assert url =~ "/workspaces/#{workspace.slug}/projects/#{project.slug}/#{path}/"
+        assert_receive {:tree_changed, ^tree_key}
+      end
+    end
+
+    test "replaying an operation id returns the original result without creating twice",
+         %{view: view, user: user} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+      payload = %{"type" => "sheet", "project_id" => project.id, "operation_id" => "stable-create-id"}
+
+      render_hook(view, "palette_create", payload)
+      assert_reply(view, %{url: first_url})
+      render_hook(view, "palette_create", payload)
+      assert_reply(view, %{url: second_url})
+
+      assert first_url == second_url
+      assert length(Storyarn.Sheets.search_sheets_in_projects([project.id], "")) == 1
+    end
+
     test "rejects a project the user cannot edit — nothing is created", %{view: view, user: user} do
       viewer_owner = user_fixture()
       viewer_project = project_fixture(viewer_owner, %{workspace: workspace_fixture(viewer_owner)})
       membership_fixture(viewer_project, user, "viewer")
 
-      render_hook(view, "palette_create", %{"type" => "flow", "project_id" => viewer_project.id})
+      render_hook(view, "palette_create", %{
+        "type" => "flow",
+        "project_id" => viewer_project.id,
+        "operation_id" => "unauthorized-create"
+      })
 
       assert_reply(view, %{error: "unauthorized"})
       assert Storyarn.Flows.search_flows_in_projects([viewer_project.id], "") == []
@@ -264,7 +327,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       assert_reply(view, %{token: 9, items: items})
       hit = Enum.find(items, &(&1.id == sheet.id and &1.type == "sheet"))
       assert hit.label == "Kael the Wanderer"
-      assert hit.context == "Veilbreak"
+      assert hit.context == "Veilbreak · #{workspace.name}"
       assert hit.projectId == project.id
       refute Enum.any?(items, &(&1.id == readonly.id and &1.type == "sheet"))
     end
@@ -282,7 +345,8 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       render_hook(view, "palette_delete", %{
         "type" => "sheet",
         "id" => sheet.id,
-        "project_id" => project.id
+        "project_id" => project.id,
+        "operation_id" => "delete-sheet-1"
       })
 
       assert_reply(view, %{deleted: true})
@@ -302,19 +366,14 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       project = project_fixture(user, %{workspace: workspace})
       sheet = sheet_fixture(project)
 
-      # No guard matches, so the event falls through to the LV like any
-      # unknown event (crashing only the forging client's own session) —
-      # instead of raising inside database parameter encoding. The crash
-      # propagates through the test proxy link; trap it.
-      Process.flag(:trap_exit, true)
+      render_hook(view, "palette_delete", %{
+        "type" => "sheet",
+        "id" => 9_223_372_036_854_775_808,
+        "project_id" => project.id,
+        "operation_id" => "oversized-delete"
+      })
 
-      catch_exit(
-        render_hook(view, "palette_delete", %{
-          "type" => "sheet",
-          "id" => 9_223_372_036_854_775_808,
-          "project_id" => project.id
-        })
-      )
+      assert_reply(view, %{error: "invalid_request"})
 
       assert %{} = Storyarn.Sheets.get_sheet(project.id, sheet.id)
     end
@@ -328,7 +387,8 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       render_hook(view, "palette_delete", %{
         "type" => "sheet",
         "id" => readonly_sheet.id,
-        "project_id" => viewer_project.id
+        "project_id" => viewer_project.id,
+        "operation_id" => "readonly-delete"
       })
 
       assert_reply(view, %{error: "unauthorized"})
@@ -341,11 +401,51 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       render_hook(view, "palette_delete", %{
         "type" => "sheet",
         "id" => readonly_sheet.id,
-        "project_id" => own_project.id
+        "project_id" => own_project.id,
+        "operation_id" => "mismatched-delete"
       })
 
       assert_reply(view, %{error: "not_found"})
       assert %{} = Storyarn.Sheets.get_sheet(viewer_project.id, readonly_sheet.id)
+    end
+
+    test "soft-deletes flows and scenes", %{view: view, user: user} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+      flow = flow_fixture(project)
+      scene = scene_fixture(project)
+
+      for {type, entity} <- [{"flow", flow}, {"scene", scene}] do
+        render_hook(view, "palette_delete", %{
+          "type" => type,
+          "id" => entity.id,
+          "project_id" => project.id,
+          "operation_id" => "delete-#{type}-1"
+        })
+
+        assert_reply(view, %{deleted: true})
+      end
+
+      assert Storyarn.Flows.get_flow(project.id, flow.id) == nil
+      assert Storyarn.Scenes.get_scene(project.id, scene.id) == nil
+    end
+  end
+
+  test "malformed known palette events fail closed without reaching the host LiveView", %{view: view} do
+    invalid_events = [
+      {"palette_nav", %{"query" => "test", "token" => "bad"}},
+      {"palette_create_targets", %{"token" => "bad"}},
+      {"palette_create", %{"type" => "sheet", "project_id" => 1}},
+      {"palette_delete_search", %{"query" => 123, "token" => 1}},
+      {"palette_delete", %{"type" => "sheet", "id" => 1, "project_id" => 1}},
+      {"palette_opened", %{"surface" => "forged"}},
+      {"palette_command_executed", %{"command_id" => 123, "surface" => "workspace"}},
+      {"palette_search_no_results", %{"query_length" => -1, "surface" => "workspace"}}
+    ]
+
+    for {event, payload} <- invalid_events do
+      render_hook(view, event, payload)
+      assert_reply(view, %{error: "invalid_request"})
     end
   end
 end
