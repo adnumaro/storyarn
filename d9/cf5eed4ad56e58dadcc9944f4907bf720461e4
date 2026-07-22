@@ -1,0 +1,34 @@
+lib/storyarn/sheets/property_inheritance.ex
+  s_601e46785f4b81::t_18af7ba74deaec 1650-1651
+  s_601e46785f4b81::t_1a81cd07aa90c7 42-46,51,55,61,64-71,84-87,89-90
+test/storyarn/sheets/sheet_queries_test.exs
+  s_601e46785f4b81::t_f43e08df6c82cd 316-317
+  s_601e46785f4b81::t_1a81cd07aa90c7 315,318-329
+lib/storyarn/sheets/sheet_queries.ex
+  s_601e46785f4b81::t_1a81cd07aa90c7 145-150
+test/storyarn/sheets/property_inheritance_test.exs
+  s_601e46785f4b81::t_1a81cd07aa90c7 80-88
+lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex
+  s_601e46785f4b81::t_1a81cd07aa90c7 32
+lib/storyarn/sheets/sheet_stats.ex
+  s_601e46785f4b81::t_1a81cd07aa90c7 198-234
+  s_601e46785f4b81::t_9b125338400aa6 239
+lib/storyarn/sheets.ex
+  s_601e46785f4b81::t_1a81cd07aa90c7 121-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "d9cf5eed4ad56e58dadcc9944f4907bf720461e4",
+  "prompts": {},
+  "sessions": {
+    "s_601e46785f4b81": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b4-a630-7780-b438-bc2aa3d9363e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
