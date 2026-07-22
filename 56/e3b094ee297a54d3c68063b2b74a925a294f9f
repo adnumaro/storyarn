@@ -1,0 +1,124 @@
+lib/storyarn_web/private_download.ex
+  s_06a17c6bc9ab16::t_24241f5d481135 108,111,113
+lib/storyarn/flows/flow_crud.ex
+  s_06a17c6bc9ab16::t_24241f5d481135 554-568,571
+assets/app/test/composables/useRemotePickerSearch.test.ts
+  s_06a17c6bc9ab16::t_1cb8a5ec8720af 1-66
+test/storyarn/shared/invitation_operations_test.exs
+  s_06a17c6bc9ab16::t_b278c7cb652745 1-37
+test/storyarn_web/live/flow_live/helpers/connection_helpers_test.exs
+  s_06a17c6bc9ab16::t_7940a40c2d0917 287-299
+lib/storyarn_web/user_login_token.ex
+  s_06a17c6bc9ab16::t_24241f5d481135 7-8,11-15
+  s_06a17c6bc9ab16::t_0dc71ed45553a6 18
+assets/app/shared/composables/useRemotePickerSearch.ts
+  s_06a17c6bc9ab16::t_774e5918e9809a 115-116,122
+  s_06a17c6bc9ab16::t_1cb8a5ec8720af 12,25,48,50,58-70,78,83-99,111,113,142-147
+test/storyarn_web/controllers/export_controller_test.exs
+  s_06a17c6bc9ab16::t_25df7b8fbe547a 2,165-187
+test/storyarn/localization/providers/deepl_test.exs
+  s_06a17c6bc9ab16::t_d4fbbd3d55a3da 59-84
+test/storyarn_web/live/user_live/password_reset_test.exs
+  s_06a17c6bc9ab16::t_5a54294f3a988b 14,72-76,98-101,267-277
+  s_06a17c6bc9ab16::t_b67b0828d66319 278-279
+lib/storyarn/imports/parsers/storyarn_json.ex
+  s_06a17c6bc9ab16::t_ced0db78e1b467 442-457,459-463,466
+lib/storyarn/workers/request_reset_password_instructions_worker.ex
+  s_06a17c6bc9ab16::t_b6cecd413e980d 1-29
+lib/storyarn/localization/providers/deepl.ex
+  s_06a17c6bc9ab16::t_c7fe26ff279cd5 136-137,141,154-169
+  s_06a17c6bc9ab16::t_d4fbbd3d55a3da 140,142-153
+test/storyarn/accounts_test.exs
+  s_06a17c6bc9ab16::t_5a54294f3a988b 13,217-219,221,225-232
+lib/storyarn/assets/storage.ex
+  s_06a17c6bc9ab16::t_5a54294f3a988b 48
+test/support/failing_stream_storage.ex
+  s_06a17c6bc9ab16::t_5a54294f3a988b 1-38
+assets/app/modules/projects/settings/export-import/components/ExportPanel.vue
+  s_06a17c6bc9ab16::t_1cb8a5ec8720af 26,66-67,241-244,248,252-254
+  s_601e46785f4b81::t_7120ee26ea3cf8 255
+lib/storyarn/imports.ex
+  s_06a17c6bc9ab16::t_ced0db78e1b467 694,706-708,713
+lib/storyarn_web/live/user_live/forgot_password.ex
+  s_06a17c6bc9ab16::t_b6cecd413e980d 100
+lib/storyarn/accounts.ex
+  s_06a17c6bc9ab16::t_b6cecd413e980d 186-197
+  s_06a17c6bc9ab16::t_15b8587091997f 182
+lib/storyarn/sheets/block_crud.ex
+  s_06a17c6bc9ab16::t_24241f5d481135 173-176
+lib/storyarn/shared/invitation_operations.ex
+  s_06a17c6bc9ab16::t_b278c7cb652745 254-265,268-283
+  s_06a17c6bc9ab16::t_18fe0f3908d605 30-31
+lib/storyarn/accounts/passwords.ex
+  s_06a17c6bc9ab16::t_b6cecd413e980d 15,27-30,50-89,143-144
+  s_06a17c6bc9ab16::t_9028fa9c060f29 12
+lib/storyarn_web/router.ex
+  s_06a17c6bc9ab16::t_24241f5d481135 38,57-61
+  s_06a17c6bc9ab16::t_46ecf2e1a80c09 62-70
+test/storyarn_web/private_download_test.exs
+  s_06a17c6bc9ab16::t_5a54294f3a988b 1-27
+assets/app/test/modules/projects/settings/ExportPanel.test.ts
+  s_06a17c6bc9ab16::t_1cb8a5ec8720af 2,62-65,147-154,158
+  s_601e46785f4b81::t_42a405f1a66cfc 155-157,159
+priv/repo/migrations/20260722180000_index_flow_node_avatar_references.exs
+  s_06a17c6bc9ab16::t_7940a40c2d0917 1-20
+assets/app/test/setup.ts
+  s_06a17c6bc9ab16::t_1cb8a5ec8720af 72
+lib/storyarn_web/controllers/user_session_controller.ex
+  s_06a17c6bc9ab16::t_24241f5d481135 26,28-30,83-85
+lib/storyarn_web/live/flow_live/helpers/connection_helpers.ex
+  s_06a17c6bc9ab16::t_7940a40c2d0917 191-192,195,212-219
+  s_06a17c6bc9ab16::t_c97a9fc1f47451 18-19
+assets/app/test/modules/scenes/exploration/walkablePath.test.ts
+  s_06a17c6bc9ab16::t_c50b015970aa11 166-187
+assets/app/shared/composables/useLive.ts
+  s_06a17c6bc9ab16::t_1cb8a5ec8720af 19-23,51,53,91-98
+lib/storyarn_web/live/user_live/login.ex
+  s_06a17c6bc9ab16::t_24241f5d481135 52,69,119
+lib/storyarn/flows/variable_reference_tracker.ex
+  s_06a17c6bc9ab16::t_74ed675f655f8b 38-39,71,78,84,906-912,916-920,924-928,932-951
+lib/storyarn/references/entity_tracker.ex
+  s_06a17c6bc9ab16::t_74ed675f655f8b 29-30,71-86,89-97,100-108,111-119,122-138
+test/support/failing_invitation_encryptor.ex
+  s_06a17c6bc9ab16::t_b278c7cb652745 1-5
+test/storyarn/imports/import_lifecycle_test.exs
+  s_06a17c6bc9ab16::t_ced0db78e1b467 203-204
+test/storyarn_web/controllers/user_session_controller_test.exs
+  s_06a17c6bc9ab16::t_5a54294f3a988b 69-70,73-75,83-96
+  s_06a17c6bc9ab16::t_fd4f4b635dc00a 97-98
+assets/app/modules/scenes/exploration/lib/walkablePath.ts
+  s_06a17c6bc9ab16::t_744c04c7abe1f3 380-393,427,443-462,472
+  s_06a17c6bc9ab16::t_774e5918e9809a 22,126-127
+  s_06a17c6bc9ab16::t_c50b015970aa11 4-9,13-21,23-30,123-125,128,192,237-242,262-264,272,284-286,288,296-297,300-302,309,313-314,317,321,324,329,338-348,410,424-426,473,482-485
+lib/storyarn_web/controllers/export_controller.ex
+  s_06a17c6bc9ab16::t_25df7b8fbe547a 10-11,65-70,73-78,85-109,113-130
+  s_06a17c6bc9ab16::t_d52209fa696b70 71-72,131-141
+  s_06a17c6bc9ab16::t_06054507d27183 142
+test/storyarn/versioning/entity_restore_lock_concurrency_test.exs
+  s_06a17c6bc9ab16::t_15b8587091997f 46-96,98-102
+  s_06a17c6bc9ab16::t_d0f42ec4c0a671 97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "56e3b094ee297a54d3c68063b2b74a925a294f9f",
+  "prompts": {},
+  "sessions": {
+    "s_06a17c6bc9ab16": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8aef-507f-7491-9584-ebf0118908be",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_601e46785f4b81": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b4-a630-7780-b438-bc2aa3d9363e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
