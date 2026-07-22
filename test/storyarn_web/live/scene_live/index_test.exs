@@ -1,5 +1,7 @@
 defmodule StoryarnWeb.SceneLive.IndexTest do
-  use StoryarnWeb.ConnCase, async: true
+  # Sticky child LiveViews terminate during redirects, so shared sandbox mode
+  # avoids ownership handoff races under full-suite concurrency.
+  use StoryarnWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
