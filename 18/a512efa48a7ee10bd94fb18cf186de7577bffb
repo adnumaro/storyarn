@@ -1,0 +1,49 @@
+lib/storyarn/workers/expire_ai_results_worker.ex
+  s_6112f11c106698::t_d782fe0c02f108 39-45,68-71
+  s_6112f11c106698::t_c12cb9ebd3e239 72-73
+priv/repo/migrations/20260722200000_harden_ai_execution_kernel.exs
+  s_6112f11c106698::t_b4a1f499a02eb2 54-56
+  s_6112f11c106698::t_d782fe0c02f108 72-73
+test/storyarn/ai/execution_test.exs
+  s_6112f11c106698::t_ff4483e92bfdd5 269-283
+  s_6112f11c106698::t_d782fe0c02f108 408-422,444-448
+lib/storyarn/workers/ai_execution_worker.ex
+  s_6112f11c106698::t_d782fe0c02f108 9-19,21-24,26-27,29,31,35,37-39,45-46,48,51,53,56-58
+  s_06a17c6bc9ab16::t_c966b720ad0157 20
+test/storyarn/workers/expire_ai_results_worker_test.exs
+  s_6112f11c106698::t_d782fe0c02f108 33-36,58-67
+  s_6112f11c106698::t_e616774656873a 68-69
+lib/storyarn/ai/operations.ex
+  s_6112f11c106698::t_d782fe0c02f108 209-210,214-215,221-242,259-262,264
+  s_06a17c6bc9ab16::t_c966b720ad0157 206-208,211-213,216-217
+test/storyarn/ai/task_registry_test.exs
+  s_6112f11c106698::t_d782fe0c02f108 40-42
+test/storyarn/workers/ai_execution_worker_test.exs
+  s_6112f11c106698::t_d782fe0c02f108 1-50
+priv/repo/migrations/20260722190000_create_ai_execution_kernel.exs
+  s_6112f11c106698::t_b4a1f499a02eb2 254-256
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "18a512efa48a7ee10bd94fb18cf186de7577bffb",
+  "prompts": {},
+  "sessions": {
+    "s_06a17c6bc9ab16": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8aef-507f-7491-9584-ebf0118908be",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_6112f11c106698": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b7-96ce-73c1-8639-7be0374aaff0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
