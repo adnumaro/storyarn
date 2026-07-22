@@ -1,0 +1,89 @@
+assets/app/test/live/workspace/dashboard/WorkspaceDashboard.test.ts
+  s_f54c595cd8131f::t_d148da0d97592b 343,355-361,365-368
+docs/features/ai-platform/SLICE_1_COMMAND_PALETTE.md
+  s_7d17843f59d188::t_3555be71dda1f3 3,72,74,79
+lib/storyarn/sheets.ex
+  s_f54c595cd8131f::t_f55b569ff7c019 191-196
+lib/storyarn_web/live/flow_live/index.ex
+  s_f54c595cd8131f::t_0db7c791590345 143
+lib/storyarn_web/live/flow_sidebar_live.ex
+  s_f54c595cd8131f::t_c3dc7c5bd523e3 195,197,226,231
+lib/storyarn_web/live/hooks/palette.ex
+  s_f54c595cd8131f::t_8cfe2ccb89196c 108,154,160-162,165-166,284-287,300,304
+lib/storyarn_web/live/scene_live/index.ex
+  s_f54c595cd8131f::t_40efea7182a81c 143
+lib/storyarn_web/live/scene_sidebar_live.ex
+  s_f54c595cd8131f::t_a813e90a20f4d1 162,164,193,198
+lib/storyarn_web/live/sheet_live/index.ex
+  s_f54c595cd8131f::t_ac49e6564d7f73 144
+lib/storyarn_web/live/sheets_sidebar_live.ex
+  s_f54c595cd8131f::t_ed5b294b92def5 163,165,194,199
+test/storyarn_web/live/hooks/palette_test.exs
+  s_601e46785f4b81::t_3dd8d9e4097672 274,279,290,292-295
+assets/app/components/command-palette/CommandPalette.vue
+  s_f54c595cd8131f::t_feabca4d6815a7 146-147,226,260-263,370,374,381,391,402,406,413,416-419,428,459-465,467,469-472,474-512,514-516,520-524,526,528-596
+assets/app/live/workspace/dashboard/WorkspaceDashboard.vue
+  s_f54c595cd8131f::t_2f40affbc05310 224-226,229
+assets/app/test/components/command-palette/CommandPalette.test.ts
+  s_f54c595cd8131f::t_5f8b1468733029 509-570
+docs/features/ai-platform/OVERVIEW.md
+  s_f54c595cd8131f::t_0a89cb70f6943e 22-35
+lib/storyarn/flows.ex
+  s_f54c595cd8131f::t_b9ec0bae94aeec 166-171
+lib/storyarn/flows/flow_crud.ex
+  s_f54c595cd8131f::t_b9a7b08b679a34 125,456-464
+lib/storyarn/global_search/destinations.ex
+  s_f54c595cd8131f::t_0f3a22781d9d5e 32-33,110-125,239
+lib/storyarn/scenes.ex
+  s_f54c595cd8131f::t_4693343d0c571e 149-154
+lib/storyarn/scenes/scene_crud.ex
+  s_f54c595cd8131f::t_09130729fb79c0 156,361-369
+lib/storyarn/shared/tree_operations.ex
+  s_f54c595cd8131f::t_ac5951466ecef7 249-266
+lib/storyarn/sheets/sheet_crud.ex
+  s_7d17843f59d188::t_d3d179d094f028 115-123
+lib/storyarn/sheets/sheet_queries.ex
+  s_f54c595cd8131f::t_bed4cfa6e1a1c5 226
+lib/storyarn_web/live/flow_live/show.ex
+  s_f54c595cd8131f::t_efe1122338e41e 1343-1344,1354-1355
+lib/storyarn_web/live/scene_live/show.ex
+  s_f54c595cd8131f::t_5895e8dceb0791 1780-1781,1791-1792
+lib/storyarn_web/live/sheet_live/show.ex
+  s_f54c595cd8131f::t_ab056809edc5ad 795-796,806-807
+lib/storyarn_web/live/tree_sidebar_actions.ex
+  s_f54c595cd8131f::t_14957dc24cfbe4 32-35,37
+test/storyarn/global_search/destinations_test.exs
+  s_f54c595cd8131f::t_b61c5ed92b4cbd 209-232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "7c418f1f825850f3e3d4fcb8ad91f94e9622e327",
+  "prompts": {},
+  "sessions": {
+    "s_601e46785f4b81": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b4-a630-7780-b438-bc2aa3d9363e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_7d17843f59d188": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fbf-1c01-7451-82e0-8923d01cb5fe",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_f54c595cd8131f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0ebf251-7c3a-4f10-a638-b88d970362b3",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
