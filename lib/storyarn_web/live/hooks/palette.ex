@@ -132,7 +132,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
        when type in ~w(sheet flow scene) and valid_database_id(project_id) and valid_operation_id(operation_id) do
     scope = socket.assigns.current_scope
 
-    {reply, broadcast} =
+    {reply, post_commit} =
       CommandPalette.run(
         scope,
         "palette_create",
@@ -152,7 +152,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
                   })
               }
 
-              {reply, {:tree_changed, project.id, type}}
+              {reply, {:entity_created, project.id, type, entity}}
 
             {:error, :unauthorized} ->
               {%{error: "unauthorized"}, nil}
@@ -161,7 +161,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
         &create_error_reply/1
       )
 
-    maybe_broadcast_mutation(broadcast)
+    run_post_commit(post_commit)
     {:halt, reply, socket}
   end
 
@@ -193,7 +193,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
               valid_operation_id(operation_id) do
     scope = socket.assigns.current_scope
 
-    {reply, broadcast} =
+    {reply, post_commit} =
       CommandPalette.run(
         scope,
         "palette_delete",
@@ -203,9 +203,9 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
             {:ok, %{entity: entity, project: project}} ->
               # The delete itself reports the committed cascade set (collected
               # under its own lock) — never a separate pre-delete traversal.
-              %{deleted_ids: deleted_ids} = delete_entity_subtree_in_transaction(type, entity)
+              delete_result = delete_entity_subtree_in_transaction(type, entity)
 
-              {%{deleted: true}, {:entities_deleted, project.id, type, deleted_ids}}
+              {%{deleted: true}, delete_post_commit(project.id, type, delete_result)}
 
             {:error, :unauthorized} ->
               {%{error: "unauthorized"}, nil}
@@ -217,7 +217,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
         &delete_error_reply/1
       )
 
-    maybe_broadcast_mutation(broadcast)
+    run_post_commit(post_commit)
     {:halt, reply, socket}
   end
 
@@ -354,16 +354,27 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   defp tree_key("flow"), do: :flows
   defp tree_key("scene"), do: :scenes
 
-  defp maybe_broadcast_mutation(nil), do: :ok
+  defp delete_post_commit(project_id, "flow" = type, %{deleted_ids: deleted_ids, affected_flow_ids: affected_flow_ids}) do
+    {:entities_deleted, project_id, type, deleted_ids, affected_flow_ids}
+  end
 
-  defp maybe_broadcast_mutation({:tree_changed, project_id, type}) do
+  defp delete_post_commit(project_id, type, %{deleted_ids: deleted_ids}) do
+    {:entities_deleted, project_id, type, deleted_ids, []}
+  end
+
+  defp run_post_commit(nil), do: :ok
+
+  defp run_post_commit({:entity_created, project_id, type, entity}) do
+    if type == "sheet", do: Sheets.sync_created_sheet_localization(entity)
+
     Collaboration.broadcast_dashboard_change(project_id, tree_key(type))
     broadcast_tree_changed(project_id, type)
   end
 
-  defp maybe_broadcast_mutation({:entities_deleted, project_id, type, deleted_ids}) do
+  defp run_post_commit({:entities_deleted, project_id, type, deleted_ids, affected_flow_ids}) do
     # Plain broadcast (not broadcast_from): the LV serving this event may
     # itself be showing a deleted entity and must navigate away too.
+    Flows.broadcast_flow_refreshes(affected_flow_ids)
     Collaboration.broadcast_dashboard_change(project_id, tree_key(type))
     broadcast_entities_deleted(project_id, entity_type(type), deleted_ids)
     broadcast_tree_changed(project_id, type)

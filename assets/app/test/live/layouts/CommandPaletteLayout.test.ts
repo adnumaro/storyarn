@@ -33,7 +33,7 @@ describe("authenticated command palette boundary", () => {
     expect(commandIds()).toEqual([]);
   });
 
-  it("marks the boundary ready only after child mounted hooks and forwards sudo grants", async () => {
+  it("marks the boundary ready after mount and forwards sudo grants", async () => {
     const wrapper = mount(CommandPaletteLayout, {
       props: { sudoGrant: "validated-grant" },
       global: { stubs: { CommandPalette: CommandPaletteStub } },

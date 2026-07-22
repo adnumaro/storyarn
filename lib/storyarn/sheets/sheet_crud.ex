@@ -29,8 +29,7 @@ defmodule Storyarn.Sheets.SheetCrud do
 
     case result do
       {:ok, sheet} ->
-        Localization.extract_sheet_blocks(sheet.id)
-        Localization.sync_sheet_names(project.id)
+        sync_created_sheet_localization(sheet)
         Collaboration.broadcast_dashboard_change(project.id, :sheets)
 
       _ ->
@@ -41,6 +40,13 @@ defmodule Storyarn.Sheets.SheetCrud do
       {:error, {:limit_reached, details}} -> {:error, :limit_reached, details}
       other -> other
     end
+  end
+
+  @doc false
+  def sync_created_sheet_localization(%Sheet{} = sheet) do
+    Localization.extract_sheet_blocks(sheet.id)
+    Localization.sync_sheet_names(sheet.project_id)
+    :ok
   end
 
   @doc false

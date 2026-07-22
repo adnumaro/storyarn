@@ -24,6 +24,7 @@ import {
 import LiveLink from "@components/navigation/LiveLink.vue";
 import OnboardingDialog from "@components/onboarding/OnboardingDialog.vue";
 import { useResponsiveSidebar } from "@shared/composables/useResponsiveSidebar";
+import { sensitiveSettingsPath } from "@shared/navigation/sensitiveSettingsPath";
 
 interface SettingsItem {
   label: string;
@@ -103,13 +104,6 @@ const onboardingDialog = ref<{ openTutorial: () => void } | null>(null);
 
 function showTutorial(): void {
   onboardingDialog.value?.openTutorial();
-}
-
-function sensitiveSettingsPath(path: string): string {
-  if (!sudoGrant) return path;
-
-  const query = new URLSearchParams({ sudo_grant: sudoGrant });
-  return `${path}?${query.toString()}`;
 }
 
 function routePath(path: string): string {
@@ -198,12 +192,12 @@ const sections = computed<SettingsSection[]>(() => {
   const accountItems = [
     {
       label: t("settings.nav.items.profile"),
-      path: sensitiveSettingsPath("/users/settings"),
+      path: sensitiveSettingsPath("/users/settings", sudoGrant),
       icon: "user",
     },
     {
       label: t("settings.nav.items.security"),
-      path: sensitiveSettingsPath("/users/settings/security"),
+      path: sensitiveSettingsPath("/users/settings/security", sudoGrant),
       icon: "shield-check",
     },
     {

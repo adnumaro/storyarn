@@ -1,4 +1,5 @@
 import { GraduationCap, Plug, ShieldCheck, User } from "lucide-vue-next";
+import { sensitiveSettingsPath } from "../navigation/sensitiveSettingsPath";
 import type { PaletteCommand } from "./registry";
 
 interface AccountCommandFlags {
@@ -15,25 +16,20 @@ export function accountPaletteCommands(
   flags: AccountCommandFlags = {},
   sudoGrant: string | null = null,
 ): PaletteCommand[] {
-  const sensitivePath = (path: string): string => {
-    if (!sudoGrant) return path;
-    return `${path}?${new URLSearchParams({ sudo_grant: sudoGrant }).toString()}`;
-  };
-
   const commands: PaletteCommand[] = [
     {
       id: "account.profile",
       labelKey: "settings.nav.items.profile",
       groupKey: "settings.nav.sections.account",
       icon: User,
-      href: sensitivePath("/users/settings"),
+      href: sensitiveSettingsPath("/users/settings", sudoGrant),
     },
     {
       id: "account.security",
       labelKey: "settings.nav.items.security",
       groupKey: "settings.nav.sections.account",
       icon: ShieldCheck,
-      href: sensitivePath("/users/settings/security"),
+      href: sensitiveSettingsPath("/users/settings/security", sudoGrant),
     },
     {
       id: "account.tutorials",

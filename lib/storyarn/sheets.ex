@@ -178,6 +178,9 @@ defmodule Storyarn.Sheets do
   @doc false
   defdelegate create_sheet_in_transaction(project, attrs), to: SheetCrud
 
+  @doc false
+  defdelegate sync_created_sheet_localization(sheet), to: SheetCrud
+
   @doc """
   Updates a sheet.
   """

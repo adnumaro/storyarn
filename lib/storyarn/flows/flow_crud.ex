@@ -493,9 +493,9 @@ defmodule Storyarn.Flows.FlowCrud do
       Repo.transaction(fn -> delete_flow_subtree_in_transaction(flow) end)
 
     case result do
-      {:ok, %{entity: deleted_flow}} ->
+      {:ok, %{entity: deleted_flow, affected_flow_ids: affected_flow_ids}} ->
         # Notify open canvases that have subflow nodes referencing this flow
-        notify_affected_subflows(deleted_flow.id, deleted_flow.project_id)
+        broadcast_flow_refreshes(affected_flow_ids)
         Collaboration.broadcast_dashboard_change(deleted_flow.project_id, :flows)
 
       _ ->
@@ -512,8 +512,19 @@ defmodule Storyarn.Flows.FlowCrud do
 
   defp delete_flow_transaction(flow) do
     case ReferenceIntegrity.lock_active_flow_for_write(flow) do
-      {:ok, %{flow: locked_flow}} -> soft_delete_locked_flow(locked_flow)
-      {:error, reason} -> Repo.rollback(reason)
+      {:ok, %{flow: locked_flow}} ->
+        affected_flow_ids =
+          locked_flow.id
+          |> NodeCrud.list_subflow_nodes_referencing(locked_flow.project_id)
+          |> Enum.map(& &1.flow_id)
+          |> Enum.uniq()
+
+        locked_flow
+        |> soft_delete_locked_flow()
+        |> Map.put(:affected_flow_ids, affected_flow_ids)
+
+      {:error, reason} ->
+        Repo.rollback(reason)
     end
   end
 
@@ -968,13 +979,9 @@ defmodule Storyarn.Flows.FlowCrud do
   """
   def list_deleted_flows(project_id), do: SoftDelete.list_deleted(Flow, project_id)
 
-  defp notify_affected_subflows(deleted_flow_id, project_id) do
-    affected = NodeCrud.list_subflow_nodes_referencing(deleted_flow_id, project_id)
-
-    affected
-    |> Enum.map(& &1.flow_id)
-    |> Enum.uniq()
-    |> Enum.each(fn flow_id ->
+  @doc false
+  def broadcast_flow_refreshes(affected_flow_ids) when is_list(affected_flow_ids) do
+    Enum.each(affected_flow_ids, fn flow_id ->
       Collaboration.broadcast_change({:flow, flow_id}, :flow_refresh, %{
         user_id: 0,
         user_email: "System",

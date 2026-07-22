@@ -4,6 +4,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
+  import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
@@ -261,6 +262,23 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       assert_receive {:tree_changed, :sheets}
     end
 
+    test "synchronizes localization inventory after creating a sheet", %{view: view, user: user} do
+      project = project_fixture(user, %{workspace: workspace_fixture(user)})
+      language_fixture(project)
+
+      render_hook(view, "palette_create", %{
+        "type" => "sheet",
+        "project_id" => project.id,
+        "operation_id" => "create-localized-sheet"
+      })
+
+      assert_reply(view, %{url: url})
+      assert [_, sheet_id] = Regex.run(~r{/sheets/(\d+)$}, url)
+
+      assert [%{source_field: "name", source_text: "Untitled", locale_code: "es"}] =
+               Storyarn.Localization.get_texts_for_source("sheet", String.to_integer(sheet_id))
+    end
+
     test "creates flows and scenes through their domain facades", %{view: view, user: user} do
       workspace = workspace_fixture(user)
       project = project_fixture(user, %{workspace: workspace})
@@ -445,6 +463,31 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
 
       assert Storyarn.Flows.get_flow(project.id, flow.id) == nil
       assert Storyarn.Scenes.get_scene(project.id, scene.id) == nil
+    end
+
+    test "refreshes open flows that referenced a deleted flow", %{view: view, user: user} do
+      project = project_fixture(user, %{workspace: workspace_fixture(user)})
+      host_flow = flow_fixture(project)
+      target_flow = flow_fixture(project)
+
+      {:ok, _subflow} =
+        Storyarn.Flows.create_node(host_flow, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => target_flow.id}
+        })
+
+      Storyarn.Collaboration.subscribe_changes({:flow, host_flow.id})
+
+      render_hook(view, "palette_delete", %{
+        "type" => "flow",
+        "id" => target_flow.id,
+        "project_id" => project.id,
+        "operation_id" => "delete-referenced-flow"
+      })
+
+      assert_reply(view, %{deleted: true})
+
+      assert_receive {:remote_change, :flow_refresh, %{user_id: 0, user_email: "System", user_color: "#666"}}
     end
 
     test "replaying after a LiveView reconnect returns the durable delete result",
