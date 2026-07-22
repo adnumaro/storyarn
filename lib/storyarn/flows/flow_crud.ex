@@ -122,7 +122,7 @@ defmodule Storyarn.Flows.FlowCrud do
         Repo.all(
           from(f in Flow,
             where: f.project_id in ^project_ids and is_nil(f.deleted_at),
-            order_by: [desc: f.updated_at],
+            order_by: [desc: f.updated_at, desc: f.id],
             limit: ^limit
           )
         )
@@ -451,6 +451,15 @@ defmodule Storyarn.Flows.FlowCrud do
       "exit_mode" => "terminal",
       "referenced_flow_id" => nil
     }
+  end
+
+  @doc """
+  Ids the cascading soft-delete of this flow will remove (itself included).
+  Traverses the same parent_id tree `SoftDelete.soft_delete_children/4` walks,
+  so broadcasts about a deletion can name every affected entity.
+  """
+  def subtree_ids(%Flow{} = flow) do
+    [flow.id | SharedTree.descendant_ids(Flow, flow.project_id, flow.id)]
   end
 
   @doc """

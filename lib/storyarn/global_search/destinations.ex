@@ -29,7 +29,8 @@ defmodule Storyarn.GlobalSearch.Destinations do
           optional(:project_id) => integer(),
           optional(:project_slug) => String.t(),
           optional(:project_name) => String.t(),
-          optional(:shortcut) => String.t() | nil
+          optional(:shortcut) => String.t() | nil,
+          optional(:updated_at) => DateTime.t()
         }
 
   @spec destinations(Scope.t(), String.t(), keyword()) :: %{
@@ -106,10 +107,22 @@ defmodule Storyarn.GlobalSearch.Destinations do
     projects_by_id = Map.new(entries, fn %{project: p} -> {p.id, p} end)
     workspace_by_id = Map.new(entries, fn %{project: p, workspace: w} -> {p.workspace_id, w} end)
 
-    if map_size(projects_by_id) == 0 do
-      []
-    else
-      run_entity_searches(projects_by_id, workspace_by_id, query, limit)
+    cond do
+      map_size(projects_by_id) == 0 ->
+        []
+
+      query == "" ->
+        # The per-type searches are each recent-first, but concatenating them
+        # would let old sheets precede newer flows/scenes — the browse list
+        # must be recent-first ACROSS types. Enum.sort_by is stable, and each
+        # per-type list ties deterministically (id desc), so equal timestamps
+        # keep a stable order too.
+        projects_by_id
+        |> run_entity_searches(workspace_by_id, query, limit)
+        |> Enum.sort_by(& &1.updated_at, {:desc, DateTime})
+
+      true ->
+        run_entity_searches(projects_by_id, workspace_by_id, query, limit)
     end
   end
 
@@ -223,6 +236,7 @@ defmodule Storyarn.GlobalSearch.Destinations do
             id: entity.id,
             name: entity.name,
             shortcut: entity.shortcut,
+            updated_at: entity.updated_at,
             project_id: project.id,
             project_name: project.name,
             project_slug: project.slug,

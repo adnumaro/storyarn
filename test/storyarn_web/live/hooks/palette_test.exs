@@ -271,11 +271,12 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
   end
 
   describe "palette_delete" do
-    test "soft-deletes an authorized entity and broadcasts to the project shell",
+    test "soft-deletes an authorized entity and broadcasts the full typed subtree",
          %{view: view, user: user} do
       workspace = workspace_fixture(user)
       project = project_fixture(user, %{workspace: workspace})
       sheet = sheet_fixture(project)
+      child = sheet_fixture(project, %{parent_id: sheet.id})
       Phoenix.PubSub.subscribe(Storyarn.PubSub, "project:#{project.id}:shell")
 
       render_hook(view, "palette_delete", %{
@@ -286,11 +287,12 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
 
       assert_reply(view, %{deleted: true})
       assert Storyarn.Sheets.get_sheet(project.id, sheet.id) == nil
+      assert Storyarn.Sheets.get_sheet(project.id, child.id) == nil
 
-      # Same messages the sidebar delete path emits: open editors navigate
-      # away, sidebars refresh their trees.
-      assert_receive {:entity_deleted, deleted_id}
-      assert deleted_id == sheet.id
+      # Same messages the sidebar delete path emits: typed and carrying every
+      # cascade-deleted id, so only editors of THESE entities navigate away.
+      assert_receive {:entities_deleted, :sheet, deleted_ids}
+      assert Enum.sort(deleted_ids) == Enum.sort([sheet.id, child.id])
       assert_receive {:tree_changed, :sheets}
     end
 

@@ -153,7 +153,7 @@ defmodule Storyarn.Scenes.SceneCrud do
         Repo.all(
           from(m in Scene,
             where: m.project_id in ^project_ids and is_nil(m.deleted_at),
-            order_by: [desc: m.updated_at],
+            order_by: [desc: m.updated_at, desc: m.id],
             limit: ^limit
           )
         )
@@ -356,6 +356,15 @@ defmodule Storyarn.Scenes.SceneCrud do
         end
       end
     )
+  end
+
+  @doc """
+  Ids the cascading soft-delete of this scene will remove (itself included).
+  Traverses the same parent_id tree `SoftDelete.soft_delete_children/4` walks,
+  so broadcasts about a deletion can name every affected entity.
+  """
+  def subtree_ids(%Scene{} = scene) do
+    [scene.id | SharedTree.descendant_ids(Scene, scene.project_id, scene.id)]
   end
 
   @doc """

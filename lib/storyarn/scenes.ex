@@ -147,6 +147,12 @@ defmodule Storyarn.Scenes do
   defdelegate delete_scene(scene), to: SceneCrud
 
   @doc """
+  Ids the cascading soft-delete of this scene will remove (itself included).
+  """
+  @spec subtree_ids(scene_record()) :: [integer()]
+  defdelegate subtree_ids(scene), to: SceneCrud
+
+  @doc """
   Permanently deletes a scene from the database.
   Use with caution - this cannot be undone.
   """

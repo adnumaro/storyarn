@@ -113,6 +113,15 @@ defmodule Storyarn.Sheets.SheetCrud do
   end
 
   @doc """
+  Ids the cascading soft-delete of this sheet will remove (itself included).
+  Collected from the same source `trash_sheet/1` uses, so broadcasts about a
+  deletion can name every affected entity.
+  """
+  def subtree_ids(%Sheet{} = sheet) do
+    [sheet.id | get_descendant_ids(sheet.id)]
+  end
+
+  @doc """
   Soft deletes a sheet and all its descendants (moves to trash).
   """
   def trash_sheet(%Sheet{} = sheet) do

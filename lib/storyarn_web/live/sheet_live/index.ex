@@ -141,7 +141,7 @@ defmodule StoryarnWeb.SheetLive.Index do
   def handle_info({:active_scene, _scene_id}, socket), do: {:noreply, socket}
   def handle_info({:active_locale, _locale}, socket), do: {:noreply, socket}
   def handle_info({:tree_changed, :sheets}, socket), do: {:noreply, reload_sheets(socket)}
-  def handle_info({:entity_deleted, _id}, socket), do: {:noreply, socket}
+  def handle_info({:entities_deleted, _type, _ids}, socket), do: {:noreply, socket}
   def handle_info({:toolbar_event, _event, _params}, socket), do: {:noreply, socket}
   def handle_info({:online_users, users}, socket), do: {:noreply, assign(socket, :online_users, users)}
 

@@ -223,7 +223,7 @@ defmodule Storyarn.Sheets.SheetQueries do
         Repo.all(
           from(s in Sheet,
             where: s.project_id in ^project_ids and is_nil(s.deleted_at),
-            order_by: [desc: s.updated_at],
+            order_by: [desc: s.updated_at, desc: s.id],
             limit: ^limit
           )
         )

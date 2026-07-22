@@ -159,8 +159,9 @@ defmodule StoryarnWeb.SceneSidebarLive do
   defp confirm_delete_scene(socket) do
     TreeSidebarActions.confirm_delete(socket, %{
       get_entity: &Scenes.get_scene/2,
+      subtree_ids: &Scenes.subtree_ids/1,
       delete_entity: &Scenes.delete_scene/1,
-      broadcast_deleted: &broadcast_entity_deleted/2,
+      broadcast_deleted: &broadcast_entities_deleted/2,
       refresh_tree: &refresh_tree_and_broadcast/1,
       deleted_message: dgettext("scenes", "Scene moved to trash."),
       delete_error_message: dgettext("scenes", "Could not delete scene.")
@@ -189,12 +190,12 @@ defmodule StoryarnWeb.SceneSidebarLive do
     socket
   end
 
-  defp broadcast_entity_deleted(socket, id) do
+  defp broadcast_entities_deleted(socket, ids) do
     Phoenix.PubSub.broadcast_from(
       Storyarn.PubSub,
       self(),
       shell_topic(socket.assigns.project_id),
-      {:entity_deleted, id}
+      {:entities_deleted, :scene, ids}
     )
   end
 

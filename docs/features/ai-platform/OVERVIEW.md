@@ -19,20 +19,20 @@ loreweaver.ink (Architect + Director, ex-AAA team, pre-launch): AI **extracts** 
 
 ## Slice index
 
-| #   | Slice                                                         | Doc                              | Depends on                                 | Status                                                          |
-| --- | ------------------------------------------------------------- | -------------------------------- | ------------------------------------------ | --------------------------------------------------------------- |
-| 0   | BYOK provider integrations + flag foundation (+DeepL adapter) | `SLICE_0_BYOK_INTEGRATIONS.md`   | —                                          | implemented — **merge pending (PR #28, +DeepL adapter to add)** |
-| 1   | Command palette foundation (no AI)                            | `SLICE_1_COMMAND_PALETTE.md`     | —                                          | pending                                                         |
-| 2   | AI Service core + internal provider + credits                 | `SLICE_2_AI_SERVICE_CORE.md`     | 0 **merged**                               | pending                                                         |
-| 3   | BYOK lane through the AI Service + limit fallback UX          | `SLICE_3_BYOK_LANE.md`           | 0, 2                                       | pending                                                         |
-| 4   | "My AI Team" — role assignments (+DeepL unification 2nd half) | `SLICE_4_AI_TEAM.md`             | 0, 3                                       | pending                                                         |
-| 5   | Context engine v1 (deterministic)                             | `SLICE_5_CONTEXT_ENGINE.md`      | 2                                          | pending                                                         |
-| 6   | Structural analysis tool (the differentiator)                 | `SLICE_6_STRUCTURAL_ANALYSIS.md` | 1, 2, 5                                    | pending                                                         |
-| 7   | Dialogue tools (rewrite/variants + proposal UX)               | `SLICE_7_DIALOGUE_TOOLS.md`      | 1, 2, 5, 6 (proposal/acceptance precedent) | pending                                                         |
-| 8   | Text → Storyarn structure (import with diff preview)          | `SLICE_8_TEXT_TO_STRUCTURE.md`   | 1, 2, 5, 7 (proposal UX)                   | pending                                                         |
-| 9   | Tiptap writing suggestions (manual, BYOK-only)                | `SLICE_9_TIPTAP_SUGGESTIONS.md`  | 3, 4, 5                                    | pending                                                         |
-| 10  | Image generation into sheet galleries (BYOK-only)             | `SLICE_10_IMAGE_GENERATION.md`   | 3, 4, 5                                    | pending                                                         |
-| 11  | Pricing, tiers & credit purchase (data-driven)                | `SLICE_11_PRICING_TIERS.md`      | 2 + telemetry from 6–10                    | pending                                                         |
+| #   | Slice                                                         | Doc                              | Depends on                                 | Status                                           |
+| --- | ------------------------------------------------------------- | -------------------------------- | ------------------------------------------ | ------------------------------------------------ |
+| 0   | BYOK provider integrations + flag foundation (+DeepL adapter) | `SLICE_0_BYOK_INTEGRATIONS.md`   | —                                          | **merged** (PR #28)                              |
+| 1   | Command palette foundation (no AI)                            | `SLICE_1_COMMAND_PALETTE.md`     | —                                          | F1 **merged** (PR #30); F2/F3 in review (PR #31) |
+| 2   | AI Service core + internal provider + credits                 | `SLICE_2_AI_SERVICE_CORE.md`     | 0 **merged**                               | pending                                          |
+| 3   | BYOK lane through the AI Service + limit fallback UX          | `SLICE_3_BYOK_LANE.md`           | 0, 2                                       | pending                                          |
+| 4   | "My AI Team" — role assignments (+DeepL unification 2nd half) | `SLICE_4_AI_TEAM.md`             | 0, 3                                       | pending                                          |
+| 5   | Context engine v1 (deterministic)                             | `SLICE_5_CONTEXT_ENGINE.md`      | 2                                          | pending                                          |
+| 6   | Structural analysis tool (the differentiator)                 | `SLICE_6_STRUCTURAL_ANALYSIS.md` | 1, 2, 5                                    | pending                                          |
+| 7   | Dialogue tools (rewrite/variants + proposal UX)               | `SLICE_7_DIALOGUE_TOOLS.md`      | 1, 2, 5, 6 (proposal/acceptance precedent) | pending                                          |
+| 8   | Text → Storyarn structure (import with diff preview)          | `SLICE_8_TEXT_TO_STRUCTURE.md`   | 1, 2, 5, 7 (proposal UX)                   | pending                                          |
+| 9   | Tiptap writing suggestions (manual, BYOK-only)                | `SLICE_9_TIPTAP_SUGGESTIONS.md`  | 3, 4, 5                                    | pending                                          |
+| 10  | Image generation into sheet galleries (BYOK-only)             | `SLICE_10_IMAGE_GENERATION.md`   | 3, 4, 5                                    | pending                                          |
+| 11  | Pricing, tiers & credit purchase (data-driven)                | `SLICE_11_PRICING_TIERS.md`      | 2 + telemetry from 6–10                    | pending                                          |
 
 **Ordering rationale (owner-decided 2026-07-21):** credit limits become real in Slice 2, the fallback to the user's own key arrives in Slice 3, and the "which AI serves which role" decision surface (Slice 4) lands immediately after — so by the time users can hit a limit, the full decide-and-continue path exists. **Rollout guard: the `:ai_integrations` flag stays owner/internal-only until Slice 4 is merged** — merging Slices 2–3 does not enable any end user, so nobody can hit a credit limit before the complete decide-and-continue path ships (no intermediate limit UX needed). The DeepL _adapter_ rides PR #28 (trivial, same shape as the other six adapters); the complex half of its unification (localization consumption switch + legacy `translation_provider_configs` removal) is Slice 4's second half, so the resolution switch happens once (legacy → assignments), never twice.
 

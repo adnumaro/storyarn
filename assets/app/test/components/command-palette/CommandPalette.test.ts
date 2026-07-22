@@ -506,6 +506,68 @@ describe("CommandPalette", () => {
       expect(deleteCalls).toHaveLength(0);
     });
 
+    it("Escape during the inline confirm goes back to the listing, not out of the palette", async () => {
+      const { live, wrapper } = mountPalette();
+      deleteReplyMock(live);
+
+      pressPaletteShortcut();
+      await nextTick();
+      selectItem(wrapper, "palette.delete-entity");
+      await nextTick();
+      selectItem(wrapper, "delete-sheet-7");
+      await nextTick();
+
+      // The search input is hidden here — Escape must still step back.
+      await wrapper.find("[data-slot='command-item']").trigger("keydown", { key: "Escape" });
+      await nextTick();
+
+      expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(true);
+      expect(itemValues(wrapper)).toContain("delete-sheet-7");
+      expect(itemValues(wrapper)).not.toContain("palette.confirm-delete");
+    });
+
+    it("a pending mutation blocks re-submits until the server replies", async () => {
+      const { live, wrapper } = mountPalette();
+      let deleteCallback: ((reply: { deleted: boolean }) => void) | null = null;
+
+      vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+        if (!callback) return;
+
+        if (event === "palette_delete_search") {
+          callback({
+            token: (payload as { token: number }).token,
+            items: [{ id: 7, type: "sheet", label: "Kael", context: "Veilbreak", projectId: 11 }],
+          });
+        }
+
+        if (event === "palette_delete") {
+          // Hold the reply: the palette must not accept a second submit.
+          deleteCallback = callback as (reply: { deleted: boolean }) => void;
+        }
+      });
+
+      pressPaletteShortcut();
+      await nextTick();
+      selectItem(wrapper, "palette.delete-entity");
+      await nextTick();
+      selectItem(wrapper, "delete-sheet-7");
+      await nextTick();
+
+      selectItem(wrapper, "palette.confirm-delete");
+      await nextTick();
+      selectItem(wrapper, "palette.confirm-delete");
+      await nextTick();
+
+      const deleteCalls = vi
+        .mocked(live.pushEvent)
+        .mock.calls.filter(([event]) => event === "palette_delete");
+      expect(deleteCalls).toHaveLength(1);
+
+      deleteCallback!({ deleted: true });
+      await nextTick();
+      expect(itemValues(wrapper)).toContain("delete-sheet-7");
+    });
+
     it("an unauthorized reply keeps the confirm step with an explicit error", async () => {
       const { live, wrapper } = mountPalette();
       deleteReplyMock(live, { deleteReply: { error: "unauthorized" } });

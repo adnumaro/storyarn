@@ -105,7 +105,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   end
 
   defp handle_palette_event("palette_create", %{"type" => type, "project_id" => project_id}, socket)
-       when type in ~w(sheet flow scene) and is_integer(project_id) do
+       when type in ~w(sheet flow scene) and is_integer(project_id) and project_id > 0 do
     scope = socket.assigns.current_scope
 
     reply =
@@ -151,16 +151,19 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   end
 
   defp handle_palette_event("palette_delete", %{"type" => type, "id" => id, "project_id" => project_id}, socket)
-       when type in ~w(sheet flow scene) and is_integer(id) and is_integer(project_id) do
+       when type in ~w(sheet flow scene) and is_integer(id) and id > 0 and is_integer(project_id) and project_id > 0 do
     scope = socket.assigns.current_scope
 
     reply =
       with {:ok, %{entity: entity, project: project}} <-
              GlobalSearch.deletable_entity(scope, entity_type(type), project_id, id),
+           # Collected BEFORE the delete: the broadcast names the entity AND
+           # every descendant the cascade removes.
+           deleted_ids = subtree_ids(type, entity),
            {:ok, _} <- delete_entity(type, entity) do
         # Plain broadcast (not broadcast_from): the LV serving this event may
-        # itself be showing the deleted entity and must navigate away too.
-        broadcast_entity_deleted(project.id, entity.id)
+        # itself be showing a deleted entity and must navigate away too.
+        broadcast_entities_deleted(project.id, entity_type(type), deleted_ids)
         broadcast_tree_changed(project.id, type)
         %{deleted: true}
       else
@@ -278,6 +281,10 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   defp delete_entity("flow", entity), do: Flows.delete_flow(entity)
   defp delete_entity("scene", entity), do: Scenes.delete_scene(entity)
 
+  defp subtree_ids("sheet", entity), do: Sheets.subtree_ids(entity)
+  defp subtree_ids("flow", entity), do: Flows.subtree_ids(entity)
+  defp subtree_ids("scene", entity), do: Scenes.subtree_ids(entity)
+
   defp tree_key("sheet"), do: :sheets
   defp tree_key("flow"), do: :flows
   defp tree_key("scene"), do: :scenes
@@ -290,11 +297,11 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
     )
   end
 
-  defp broadcast_entity_deleted(project_id, id) do
+  defp broadcast_entities_deleted(project_id, type, ids) do
     Phoenix.PubSub.broadcast(
       Storyarn.PubSub,
       ProjectChromeHelpers.shell_topic(project_id),
-      {:entity_deleted, id}
+      {:entities_deleted, type, ids}
     )
   end
 end

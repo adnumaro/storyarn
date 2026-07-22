@@ -29,8 +29,12 @@ defmodule StoryarnWeb.Live.TreeSidebarActions do
 
   defp delete_pending(socket, id, opts) do
     with %{} = entity <- opts.get_entity.(socket.assigns.project.id, id),
+         # Collected BEFORE the delete: the broadcast must name the entity AND
+         # every descendant the cascade removes, so open editors of any of
+         # them can navigate away.
+         deleted_ids = opts.subtree_ids.(entity),
          {:ok, _} <- opts.delete_entity.(entity) do
-      opts.broadcast_deleted.(socket, id)
+      opts.broadcast_deleted.(socket, deleted_ids)
 
       socket =
         socket

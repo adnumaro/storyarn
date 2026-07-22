@@ -206,6 +206,30 @@ defmodule Storyarn.GlobalSearch.DestinationsTest do
       assert hit.project_id == project.id
     end
 
+    test "empty query browses newest-first ACROSS types, not per-type blocks",
+         %{scope: scope, project: project} do
+      old_sheet = sheet_fixture(project, %{name: "Old sheet"})
+      new_flow = flow_fixture(project, %{name: "New flow"})
+
+      # utc_datetime has second precision — same-second creates tie. Force a
+      # clearly older sheet so cross-type ordering is observable.
+      past = DateTime.utc_now() |> DateTime.truncate(:second) |> DateTime.add(-3600)
+
+      Storyarn.Repo.update_all(
+        Ecto.Query.from(s in Storyarn.Sheets.Sheet, where: s.id == ^old_sheet.id),
+        set: [updated_at: past]
+      )
+
+      positions =
+        scope
+        |> GlobalSearch.deletable_entities("")
+        |> Enum.map(&{&1.type, &1.id})
+
+      flow_pos = Enum.find_index(positions, &(&1 == {:flow, new_flow.id}))
+      sheet_pos = Enum.find_index(positions, &(&1 == {:sheet, old_sheet.id}))
+      assert flow_pos < sheet_pos
+    end
+
     test "excludes entities from view-only projects even on name match", %{user: user, scope: scope} do
       owner = user_fixture()
       foreign_project = project_fixture(owner, %{workspace: workspace_fixture(owner)})

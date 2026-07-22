@@ -247,6 +247,24 @@ defmodule Storyarn.Shared.TreeOperations do
   end
 
   @doc """
+  Recursively collects the ids of every non-deleted descendant of `parent_id`,
+  walking the same `project_id` + `parent_id` traversal as
+  `Storyarn.Shared.SoftDelete.soft_delete_children/4` — so the collected set
+  matches exactly what a cascading soft-delete will remove.
+  """
+  def descendant_ids(schema, project_id, parent_id) do
+    child_ids =
+      Repo.all(
+        from(s in schema,
+          where: s.project_id == ^project_id and s.parent_id == ^parent_id and is_nil(s.deleted_at),
+          select: s.id
+        )
+      )
+
+    Enum.flat_map(child_ids, fn id -> [id | descendant_ids(schema, project_id, id)] end)
+  end
+
+  @doc """
   Walks upward from `id` through `parent_id` links in `schema`.
   Returns true if `potential_ancestor_id` is found in the ancestor chain.
   Depth-limited to 100 to prevent cycles.

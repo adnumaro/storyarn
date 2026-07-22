@@ -189,6 +189,12 @@ defmodule Storyarn.Sheets do
   defdelegate delete_sheet(sheet), to: SheetCrud
 
   @doc """
+  Ids the cascading soft-delete of this sheet will remove (itself included).
+  """
+  @spec subtree_ids(sheet()) :: [integer()]
+  defdelegate subtree_ids(sheet), to: SheetCrud
+
+  @doc """
   Soft deletes a sheet and all its descendants (moves to trash).
   Alias for `delete_sheet/1`.
   """

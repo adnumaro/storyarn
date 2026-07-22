@@ -143,6 +143,8 @@ const navGroups = ref<NavGroup[]>([]);
 const createTargets = ref<CreateTarget[]>([]);
 const deleteItems = ref<DeleteItem[]>([]);
 const errorKey = ref<string | null>(null);
+// True while a create/delete pushEvent awaits its reply — blocks re-submits.
+const pendingMutation = ref(false);
 
 // Stale-reply guard: only the latest request may update the results.
 let navToken = 0;
@@ -221,6 +223,7 @@ function closePalette(): void {
   resetQuery();
   step.value = { kind: "root" };
   errorKey.value = null;
+  pendingMutation.value = false;
 }
 
 function resetQuery(): void {
@@ -254,7 +257,10 @@ function goBack(): void {
   }
 }
 
-function onInputKeydown(event: KeyboardEvent): void {
+// Attached to the wrapper AROUND the whole palette body (not the input): the
+// input is hidden during delete-confirm, and Escape must still mean "one
+// step back" there instead of letting the dialog's dismiss layer close.
+function onPaletteKeydown(event: KeyboardEvent): void {
   if (step.value.kind === "root") return;
 
   if (event.key === "Escape" || (event.key === "Backspace" && query.value === "")) {
@@ -361,16 +367,18 @@ function enterDeleteStep(): void {
 
 function onSelectCreateTarget(target: CreateTarget): void {
   const current = step.value;
-  if (current.kind !== "create-pick-project") return;
+  if (current.kind !== "create-pick-project" || pendingMutation.value) return;
 
   const entityType = current.entityType;
   errorKey.value = null;
+  pendingMutation.value = true;
 
   try {
     live.pushEvent(
       "palette_create",
       { type: entityType, project_id: target.id },
       (reply: MutationReply) => {
+        pendingMutation.value = false;
         const url = reply?.url;
         if (url) {
           runCommand(`create.${entityType}`, () => liveNavigate(url));
@@ -380,6 +388,7 @@ function onSelectCreateTarget(target: CreateTarget): void {
       },
     );
   } catch {
+    pendingMutation.value = false;
     errorKey.value = "palette.command_failed";
   }
 }
@@ -390,18 +399,24 @@ function onSelectDeleteItem(item: DeleteItem): void {
 
 function confirmDelete(): void {
   const current = step.value;
-  if (current.kind !== "delete-confirm") return;
+  if (current.kind !== "delete-confirm" || pendingMutation.value) return;
 
   const item = current.item;
   errorKey.value = null;
+  pendingMutation.value = true;
 
   try {
     live.pushEvent(
       "palette_delete",
       { type: item.type, id: item.id, project_id: item.projectId },
       (reply: MutationReply) => {
+        pendingMutation.value = false;
         if (reply?.deleted) {
           track("palette_command_executed", { command_id: `delete.${item.type}` });
+          // Drop the stale listing BEFORE showing it again: the deleted
+          // entity must never reappear as a selectable target while the
+          // refresh is in flight.
+          deleteItems.value = [];
           // Back to the refreshed listing — the flow never leaves the palette.
           enterStep({ kind: "delete-pick-entity" });
         } else {
@@ -410,6 +425,7 @@ function confirmDelete(): void {
       },
     );
   } catch {
+    pendingMutation.value = false;
     errorKey.value = "palette.command_failed";
   }
 }
@@ -440,141 +456,143 @@ function track(event: string, payload: Record<string, unknown>): void {
     :title="t('palette.title')"
     :description="t('palette.description')"
   >
-    <CommandInput
-      v-if="!confirmItem"
-      v-model="query"
-      :placeholder="inputPlaceholder"
-      @keydown="onInputKeydown"
-    />
-    <p v-if="errorKey" role="alert" class="border-b px-3 py-2 text-sm text-destructive">
-      {{ t(errorKey) }}
-    </p>
-    <CommandList>
-      <template v-if="step.kind === 'root'">
-        <PaletteEmpty @no-results="onNoResults">{{ t("palette.no_results") }}</PaletteEmpty>
-        <CommandGroup v-for="group in paletteGroups" :key="group.key" :heading="t(group.key)">
-          <CommandItem
-            v-for="command in group.commands"
-            :key="command.id"
-            :value="command.id"
-            @select="onSelect(command)"
-          >
-            <component :is="command.icon" v-if="command.icon" class="size-4 shrink-0" />
-            <span>{{ commandLabel(command) }}</span>
-            <CommandShortcut v-if="command.shortcut">{{ command.shortcut }}</CommandShortcut>
-          </CommandItem>
-        </CommandGroup>
-        <CommandGroup :heading="t('palette.groups.actions')">
-          <CommandItem
-            v-for="entityType in entityTypes"
-            :key="`create.${entityType}`"
-            :value="`create.${entityType}`"
-            @select="enterCreateStep(entityType)"
-          >
-            <component :is="navIcons[entityType]" class="size-4 shrink-0" />
-            <span>{{ t(createLabelKeys[entityType]) }}</span>
-          </CommandItem>
-          <CommandItem value="palette.delete-entity" @select="enterDeleteStep">
-            <Trash2 class="size-4 shrink-0" />
-            <span>{{ t("palette.delete_entity") }}</span>
-          </CommandItem>
-        </CommandGroup>
-        <CommandGroup
-          v-for="group in navGroups"
-          :key="`nav-${group.key}`"
-          :heading="navGroupHeading(group.key)"
-        >
-          <CommandItem
-            v-for="item in group.items"
-            :key="item.id"
-            :value="item.id"
-            @select="onSelectNav(item)"
-          >
-            <component
-              :is="navIcons[item.type]"
-              v-if="navIcons[item.type]"
-              class="size-4 shrink-0"
-            />
-            <span>{{ item.label }}</span>
-            <span v-if="item.context" class="text-xs text-muted-foreground">{{
-              item.context
-            }}</span>
-            <!-- Entities can match by shortcut server-side; keep it in the
-                 filterable textContent without showing it. -->
-            <span v-if="item.shortcut" class="sr-only">{{ item.shortcut }}</span>
-          </CommandItem>
-        </CommandGroup>
-      </template>
-
-      <template v-else-if="createEntityType">
-        <p v-if="createTargets.length === 0" class="py-6 text-center text-sm text-muted-foreground">
-          {{ t("palette.no_editable_projects") }}
-        </p>
-        <template v-else>
+    <div class="contents" @keydown="onPaletteKeydown">
+      <CommandInput v-if="!confirmItem" v-model="query" :placeholder="inputPlaceholder" />
+      <p v-if="errorKey" role="alert" class="border-b px-3 py-2 text-sm text-destructive">
+        {{ t(errorKey) }}
+      </p>
+      <CommandList>
+        <template v-if="step.kind === 'root'">
           <PaletteEmpty @no-results="onNoResults">{{ t("palette.no_results") }}</PaletteEmpty>
-          <CommandGroup :heading="t(createLabelKeys[createEntityType])">
+          <CommandGroup v-for="group in paletteGroups" :key="group.key" :heading="t(group.key)">
             <CommandItem
-              v-for="target in createTargets"
-              :key="`create-target-${target.id}`"
-              :value="`create-target-${target.id}`"
-              @select="onSelectCreateTarget(target)"
+              v-for="command in group.commands"
+              :key="command.id"
+              :value="command.id"
+              @select="onSelect(command)"
             >
-              <Folder class="size-4 shrink-0" />
-              <span>{{ target.label }}</span>
-              <span v-if="target.context" class="text-xs text-muted-foreground">{{
-                target.context
+              <component :is="command.icon" v-if="command.icon" class="size-4 shrink-0" />
+              <span>{{ commandLabel(command) }}</span>
+              <CommandShortcut v-if="command.shortcut">{{ command.shortcut }}</CommandShortcut>
+            </CommandItem>
+          </CommandGroup>
+          <CommandGroup :heading="t('palette.groups.actions')">
+            <CommandItem
+              v-for="entityType in entityTypes"
+              :key="`create.${entityType}`"
+              :value="`create.${entityType}`"
+              @select="enterCreateStep(entityType)"
+            >
+              <component :is="navIcons[entityType]" class="size-4 shrink-0" />
+              <span>{{ t(createLabelKeys[entityType]) }}</span>
+            </CommandItem>
+            <CommandItem value="palette.delete-entity" @select="enterDeleteStep">
+              <Trash2 class="size-4 shrink-0" />
+              <span>{{ t("palette.delete_entity") }}</span>
+            </CommandItem>
+          </CommandGroup>
+          <CommandGroup
+            v-for="group in navGroups"
+            :key="`nav-${group.key}`"
+            :heading="navGroupHeading(group.key)"
+          >
+            <CommandItem
+              v-for="item in group.items"
+              :key="item.id"
+              :value="item.id"
+              @select="onSelectNav(item)"
+            >
+              <component
+                :is="navIcons[item.type]"
+                v-if="navIcons[item.type]"
+                class="size-4 shrink-0"
+              />
+              <span>{{ item.label }}</span>
+              <span v-if="item.context" class="text-xs text-muted-foreground">{{
+                item.context
               }}</span>
+              <!-- Entities can match by shortcut server-side; keep it in the
+                 filterable textContent without showing it. -->
+              <span v-if="item.shortcut" class="sr-only">{{ item.shortcut }}</span>
             </CommandItem>
           </CommandGroup>
         </template>
-      </template>
 
-      <template v-else-if="step.kind === 'delete-pick-entity'">
-        <p v-if="deleteItems.length === 0" class="py-6 text-center text-sm text-muted-foreground">
-          {{ t("palette.no_results") }}
-        </p>
-        <CommandGroup v-else :heading="t('palette.delete_entity')">
-          <CommandItem
-            v-for="item in deleteItems"
-            :key="`delete-${item.type}-${item.id}`"
-            :value="`delete-${item.type}-${item.id}`"
-            @select="onSelectDeleteItem(item)"
+        <template v-else-if="createEntityType">
+          <p
+            v-if="createTargets.length === 0"
+            class="py-6 text-center text-sm text-muted-foreground"
           >
-            <component
-              :is="navIcons[item.type]"
-              v-if="navIcons[item.type]"
-              class="size-4 shrink-0"
-            />
-            <span>{{ item.label }}</span>
-            <span v-if="item.context" class="text-xs text-muted-foreground">{{
-              item.context
-            }}</span>
-            <span v-if="item.shortcut" class="sr-only">{{ item.shortcut }}</span>
-          </CommandItem>
-        </CommandGroup>
-      </template>
-
-      <template v-else-if="confirmItem">
-        <div class="px-3 py-4 text-sm">
-          <p class="font-medium">{{ t(`${confirmItem.type}s.tree.delete_title`) }}</p>
-          <p class="mt-1 text-muted-foreground">
-            {{ t(`${confirmItem.type}s.tree.delete_description`, { name: confirmItem.label }) }}
+            {{ t("palette.no_editable_projects") }}
           </p>
-        </div>
-        <CommandGroup>
-          <CommandItem
-            value="palette.confirm-delete"
-            class="text-destructive"
-            @select="confirmDelete"
-          >
-            <Trash2 class="size-4 shrink-0" />
-            <span>{{ t(`${confirmItem.type}s.tree.delete`) }}</span>
-          </CommandItem>
-          <CommandItem value="palette.cancel-delete" @select="goBack">
-            <span>{{ t("common.cancel") }}</span>
-          </CommandItem>
-        </CommandGroup>
-      </template>
-    </CommandList>
+          <template v-else>
+            <PaletteEmpty @no-results="onNoResults">{{ t("palette.no_results") }}</PaletteEmpty>
+            <CommandGroup :heading="t(createLabelKeys[createEntityType])">
+              <CommandItem
+                v-for="target in createTargets"
+                :key="`create-target-${target.id}`"
+                :value="`create-target-${target.id}`"
+                :disabled="pendingMutation"
+                @select="onSelectCreateTarget(target)"
+              >
+                <Folder class="size-4 shrink-0" />
+                <span>{{ target.label }}</span>
+                <span v-if="target.context" class="text-xs text-muted-foreground">{{
+                  target.context
+                }}</span>
+              </CommandItem>
+            </CommandGroup>
+          </template>
+        </template>
+
+        <template v-else-if="step.kind === 'delete-pick-entity'">
+          <p v-if="deleteItems.length === 0" class="py-6 text-center text-sm text-muted-foreground">
+            {{ t("palette.no_results") }}
+          </p>
+          <CommandGroup v-else :heading="t('palette.delete_entity')">
+            <CommandItem
+              v-for="item in deleteItems"
+              :key="`delete-${item.type}-${item.id}`"
+              :value="`delete-${item.type}-${item.id}`"
+              @select="onSelectDeleteItem(item)"
+            >
+              <component
+                :is="navIcons[item.type]"
+                v-if="navIcons[item.type]"
+                class="size-4 shrink-0"
+              />
+              <span>{{ item.label }}</span>
+              <span v-if="item.context" class="text-xs text-muted-foreground">{{
+                item.context
+              }}</span>
+              <span v-if="item.shortcut" class="sr-only">{{ item.shortcut }}</span>
+            </CommandItem>
+          </CommandGroup>
+        </template>
+
+        <template v-else-if="confirmItem">
+          <div class="px-3 py-4 text-sm">
+            <p class="font-medium">{{ t(`${confirmItem.type}s.tree.delete_title`) }}</p>
+            <p class="mt-1 text-muted-foreground">
+              {{ t(`${confirmItem.type}s.tree.delete_description`, { name: confirmItem.label }) }}
+            </p>
+          </div>
+          <CommandGroup>
+            <CommandItem
+              value="palette.confirm-delete"
+              class="text-destructive"
+              :disabled="pendingMutation"
+              @select="confirmDelete"
+            >
+              <Trash2 class="size-4 shrink-0" />
+              <span>{{ t(`${confirmItem.type}s.tree.delete`) }}</span>
+            </CommandItem>
+            <CommandItem value="palette.cancel-delete" :disabled="pendingMutation" @select="goBack">
+              <span>{{ t("common.cancel") }}</span>
+            </CommandItem>
+          </CommandGroup>
+        </template>
+      </CommandList>
+    </div>
   </CommandDialog>
 </template>

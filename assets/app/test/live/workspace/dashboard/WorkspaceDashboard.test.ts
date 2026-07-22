@@ -340,7 +340,7 @@ describe("WorkspaceDashboard", () => {
     });
 
     it("registers New Project exactly while creation is allowed, opening the existing modal", () => {
-      const { live, wrapper } = mountDashboard();
+      const { live, wrapper } = mountDashboard({ newProjectForm: {} as never });
 
       const newProject = findNewProjectCommand();
       expect(newProject).toBeDefined();
@@ -352,12 +352,20 @@ describe("WorkspaceDashboard", () => {
       expect(findNewProjectCommand()).toBeUndefined();
     });
 
-    it("never registers when the role or the plan forbids creating projects", () => {
-      const limited = mountDashboard({ canCreateProject: false });
+    it("never registers when the role, the plan, or the missing form forbids creation", () => {
+      // Same predicate as the header button: role AND capacity AND form.
+      const withoutForm = mountDashboard();
+      expect(findNewProjectCommand()).toBeUndefined();
+      withoutForm.wrapper.unmount();
+
+      const limited = mountDashboard({ newProjectForm: {} as never, canCreateProject: false });
       expect(findNewProjectCommand()).toBeUndefined();
       limited.wrapper.unmount();
 
-      const viewer = mountDashboard({ membership: { role: "viewer" } });
+      const viewer = mountDashboard({
+        newProjectForm: {} as never,
+        membership: { role: "viewer" },
+      });
       expect(findNewProjectCommand()).toBeUndefined();
       viewer.wrapper.unmount();
     });

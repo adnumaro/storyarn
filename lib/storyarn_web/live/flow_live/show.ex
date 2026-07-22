@@ -1340,8 +1340,8 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_info({:open_flow, _flow_id}, socket), do: {:noreply, socket}
   def handle_info({:tree_changed, :flows}, socket), do: {:noreply, socket}
 
-  def handle_info({:entity_deleted, id}, socket) do
-    if to_string(id) == to_string(socket.assigns.flow.id) do
+  def handle_info({:entities_deleted, :flow, ids}, socket) do
+    if socket.assigns.flow.id in ids do
       {:noreply,
        push_navigate(socket,
          to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows"
@@ -1350,6 +1350,8 @@ defmodule StoryarnWeb.FlowLive.Show do
       {:noreply, socket}
     end
   end
+
+  def handle_info({:entities_deleted, _type, _ids}, socket), do: {:noreply, socket}
 
   def handle_info({:toolbar_event, _event, _params}, socket), do: {:noreply, socket}
 

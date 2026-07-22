@@ -221,11 +221,12 @@ function setNewProjectModalOpen(open: boolean) {
 }
 
 // "New Project" can only execute where its modal lives — this dashboard.
-// Palette registration mirrors the header button's visibility (role + plan
-// capacity), so the command is never listed as a no-op.
+// Palette registration mirrors the header button's EXACT visibility predicate
+// (role + plan capacity + form availability), so the command is never listed
+// as a no-op or an empty modal.
 let unregisterNewProjectCommand: (() => void) | null = null;
 watch(
-  () => canCreate.value && canCreateProject,
+  () => canCreate.value && canCreateProject && newProjectForm !== null,
   (enabled) => {
     unregisterNewProjectCommand?.();
     unregisterNewProjectCommand = null;
