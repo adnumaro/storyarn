@@ -1,0 +1,129 @@
+assets/app/locales/en/palette.json
+  s_6112f11c106698::t_e7cc4f050fa6d4 8
+lib/storyarn/ai/inference_providers/fake.ex
+  s_6112f11c106698::t_d5d1c396eae1f5 35-37
+lib/storyarn/ai/route_options.ex
+  s_6112f11c106698::t_2bfbdaa15e84fb 29,133,144
+  s_6112f11c106698::t_e5d61860c99037 119
+lib/storyarn/workers/ai_execution_worker.ex
+  s_6112f11c106698::t_f2a5b1513ccc67 3,6,9-15,19-45
+assets/app/shared/command-palette/aiCommands.ts
+  s_6112f11c106698::t_e7cc4f050fa6d4 99,135-144
+lib/storyarn/ai/canonical_json.ex
+  s_06a17c6bc9ab16::t_55bcf35ea915af 9-10,38-42,70-73
+lib/storyarn/workers/expire_ai_results_worker.ex
+  s_6112f11c106698::t_23028f5be7bcfc 29-37,39-53,56-60
+  s_6112f11c106698::t_8446cff119d6c5 8-11,14-21,28,61-79
+  s_6112f11c106698::t_44e08e5d8ff000 23
+  s_6112f11c106698::t_e8aee02184ff76 22,24-27
+assets/app/locales/es/palette.json
+  s_6112f11c106698::t_e7cc4f050fa6d4 8
+lib/storyarn/projects/project_membership.ex
+  s_6112f11c106698::t_6dca04c3b73474 72
+lib/storyarn/ai/route_option.ex
+  s_6112f11c106698::t_2bfbdaa15e84fb 18,49,73
+lib/storyarn/ai/executor.ex
+  s_6112f11c106698::t_f2a5b1513ccc67 12,17
+  s_6112f11c106698::t_23028f5be7bcfc 56-59
+assets/app/components/command-palette/CommandPalette.vue
+  s_6112f11c106698::t_e7cc4f050fa6d4 286-288,386,569-571
+  s_6112f11c106698::t_0b81964a6cfdd3 572-574
+assets/app/shared/command-palette/aiDestinationRouter.ts
+  s_6112f11c106698::t_e7cc4f050fa6d4 8-13,25-30,39-40,42
+lib/storyarn/ai/execution_intent.ex
+  s_06a17c6bc9ab16::t_55bcf35ea915af 13-14,78,82,106
+lib/storyarn/ai/policy_decision.ex
+  s_6112f11c106698::t_44e08e5d8ff000 188,205
+  s_6112f11c106698::t_92ddd978fcfe2a 4-5,12-15,17-18,52,57,88,171,178,189-204,206-207,212,217-218,233,236,246,249
+  s_6112f11c106698::t_23028f5be7bcfc 208-211,213-216,219-232,234-235,237-245,247-248,250-260
+  s_6112f11c106698::t_5dad040ec0ad82 261
+test/storyarn/ai/execution_test.exs
+  s_6112f11c106698::t_f165386cf9537d 392-415
+  s_6112f11c106698::t_e5d61860c99037 455
+  s_6112f11c106698::t_c96ce0841d3049 252-265,267-335,338-344,346-378
+  s_6112f11c106698::t_e2ba883a974956 459-479
+  s_601e46785f4b81::t_fde9c91cffa3f0 24,266,336-337,345
+lib/storyarn/ai/operation.ex
+  s_6112f11c106698::t_2bfbdaa15e84fb 25,61,87
+priv/repo/migrations/20260722200000_harden_ai_execution_kernel.exs
+  s_6112f11c106698::t_2bfbdaa15e84fb 1-83
+test/storyarn/ai/task_registry_test.exs
+  s_6112f11c106698::t_44e08e5d8ff000 48
+  s_6112f11c106698::t_7927210bea480c 7-8,37-39,50-97
+  s_6112f11c106698::t_23028f5be7bcfc 4-5
+lib/storyarn_web/telemetry.ex
+  s_6112f11c106698::t_8446cff119d6c5 121-128
+lib/storyarn/ai/inference_providers.ex
+  s_6112f11c106698::t_6dca04c3b73474 12-15
+  s_601e46785f4b81::t_90836bb35fb09c 16-18
+lib/storyarn/ai/result.ex
+  s_6112f11c106698::t_2bfbdaa15e84fb 42,55,64,66-67
+assets/app/test/shared/command-palette/aiCommands.test.ts
+  s_6112f11c106698::t_fb4609dde73599 98-111,182-194
+test/storyarn/workers/expire_ai_results_worker_test.exs
+  s_6112f11c106698::t_dcf7fed4d2e1b3 1-66
+lib/storyarn/workspaces/workspace_membership.ex
+  s_6112f11c106698::t_6dca04c3b73474 79
+lib/storyarn/ai/results.ex
+  s_6112f11c106698::t_e53c49e85d0ca5 10
+  s_6112f11c106698::t_934d0ad263d498 90,176-180
+  s_6112f11c106698::t_8446cff119d6c5 15-16,109-122,124-135,149,157
+  s_601e46785f4b81::t_d84fb2b914aa64 181
+lib/storyarn/ai/execution.ex
+  s_6112f11c106698::t_a3bb730efdb827 84,98,114,146,217-218
+lib/storyarn/ai/task.ex
+  s_6112f11c106698::t_6dca04c3b73474 84-97,172,183
+  s_601e46785f4b81::t_6d5bbadff77c03 184
+docs/features/ai-platform/SLICE_2_AI_EXECUTION_KERNEL.md
+  s_6112f11c106698::t_93c76e9a55d7c1 163
+test/storyarn/ai/policy_test.exs
+  s_6112f11c106698::t_1180abcb76829a 30-34,94-103,105
+  s_6112f11c106698::t_23028f5be7bcfc 7
+  s_601e46785f4b81::t_07042a83f908c1 104
+lib/storyarn/ai/operations.ex
+  s_6112f11c106698::t_35da7595d5adad 142-143
+  s_6112f11c106698::t_23028f5be7bcfc 203,210,212-213,215-247,249,251-252
+  s_6112f11c106698::t_12372ec5aefda8 11,47-52,54-56,60,117,119,129-131,134,136,141,144-145,152-153,160,163-165,168,170,184-186,189,191-194,196-198,200-202,204-209,374-402
+  s_6112f11c106698::t_a7121d9e4bae6c 319-321
+  s_6112f11c106698::t_e53c49e85d0ca5 138,335,338
+  s_601e46785f4b81::t_88cb8602f789a6 21,34,122
+  s_601e46785f4b81::t_9dc546d153e845 403
+lib/storyarn/ai/policy.ex
+  s_6112f11c106698::t_6dca04c3b73474 15-16,26-27
+assets/app/test/components/command-palette/CommandPalette.test.ts
+  s_6112f11c106698::t_fb4609dde73599 390-423
+test/support/ai_fake_settlement.ex
+  s_6112f11c106698::t_d5d1c396eae1f5 13,16-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "7adffa30195f0535ad681c767d3369ab251d27ef",
+  "prompts": {},
+  "sessions": {
+    "s_06a17c6bc9ab16": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8aef-507f-7491-9584-ebf0118908be",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_601e46785f4b81": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b4-a630-7780-b438-bc2aa3d9363e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_6112f11c106698": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b7-96ce-73c1-8639-7be0374aaff0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
