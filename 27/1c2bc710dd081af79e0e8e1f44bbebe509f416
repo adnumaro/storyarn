@@ -1,0 +1,21 @@
+docs/features/ai-platform/SLICE_2_AI_EXECUTION_KERNEL.md
+  s_6112f11c106698::t_6381de30643b0c 63-72
+docs/features/ai-platform/OVERVIEW.md
+  s_6112f11c106698::t_6381de30643b0c 29-44,159-170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "271c2bc710dd081af79e0e8e1f44bbebe509f416",
+  "prompts": {},
+  "sessions": {
+    "s_6112f11c106698": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b7-96ce-73c1-8639-7be0374aaff0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
