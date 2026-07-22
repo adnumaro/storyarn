@@ -3,6 +3,8 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   use StoryarnWeb, :live_view
 
+  import StoryarnWeb.SceneLive.Helpers.HealthHelpers, only: [assign_scene_health: 1, empty_health: 0]
+
   import StoryarnWeb.SceneLive.Helpers.PropsSerializer,
     only: [
       prepare_layers_for_vue: 1,
@@ -176,7 +178,8 @@ defmodule StoryarnWeb.SceneLive.Show do
         searchQuery: assigns.search_query,
         searchFilter: assigns.search_filter,
         searchResults: assigns.search_results
-      }
+      },
+      health: assigns.scene_health
     }
   end
 
@@ -444,6 +447,9 @@ defmodule StoryarnWeb.SceneLive.Show do
       |> assign(:project_sheets, [])
       |> assign(:project_flows, [])
       |> assign(:project_variables, [])
+      |> assign(:project_asset_ids, [])
+      |> assign(:health_references_loaded, false)
+      |> assign(:scene_health, empty_health())
       |> assign(:referencing_flows, [])
       |> assign(:sidebar_loaded, false)
       |> assign(:pending_delete_id, nil)
@@ -477,18 +483,7 @@ defmodule StoryarnWeb.SceneLive.Show do
       {:active_scene, scene_id}
     )
 
-    # Handle highlight params
-    socket =
-      case params["highlight"] do
-        "pin:" <> id ->
-          push_event(socket, "focus_element", %{type: "pin", id: parse_highlight_id(id)})
-
-        "zone:" <> id ->
-          push_event(socket, "focus_element", %{type: "zone", id: parse_highlight_id(id)})
-
-        _ ->
-          socket
-      end
+    socket = apply_highlight(socket, params["highlight"])
 
     {:noreply, socket}
   end
@@ -537,7 +532,11 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   defp reload_ambient_flows(socket) do
-    assign(socket, :ambient_flows, Scenes.list_ambient_flows(socket.assigns.scene.id))
+    Collaboration.broadcast_dashboard_change(socket.assigns.project.id, :scenes)
+
+    socket
+    |> assign(:ambient_flows, Scenes.list_ambient_flows(socket.assigns.scene.id))
+    |> assign_scene_health()
   end
 
   defp update_ambient_flow_priority(socket, af_id, value) do
@@ -691,6 +690,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     |> assign(:auto_snapshot_timer, nil)
     |> assign(:panel_sections, %{})
     |> assign(:referencing_flows, [])
+    |> assign_scene_health()
   end
 
   defp maybe_load_sidebar(socket, true, _project), do: socket
@@ -701,17 +701,27 @@ defmodule StoryarnWeb.SceneLive.Show do
         project_scenes: Scenes.list_scenes(project.id),
         project_sheets: Storyarn.Sheets.list_sheets_tree(project.id),
         project_flows: Storyarn.Flows.list_flows(project.id),
-        project_variables: VariableHelpers.list_all_variables(project.id)
+        project_variables: VariableHelpers.list_all_variables(project.id),
+        project_asset_ids:
+          project.id
+          |> Assets.list_assets(images_only: true)
+          |> Enum.map(& &1.id)
       }
     end)
   end
 
-  defp parse_highlight_id(id) do
-    case Integer.parse(id) do
-      {int, ""} -> int
-      _ -> nil
+  defp apply_highlight(socket, highlight) when is_binary(highlight) do
+    with [type, id] <- String.split(highlight, ":", parts: 2),
+         true <- type in ~w(pin zone connection annotation),
+         {:noreply, socket} <-
+           CanvasEventHandlers.handle_focus_search_result(%{"type" => type, "id" => id}, socket) do
+      socket
+    else
+      _ -> socket
     end
   end
+
+  defp apply_highlight(socket, _highlight), do: socket
 
   @valid_tools ~w(select pan rectangle triangle circle freeform pin annotation connector ruler)
 
@@ -789,7 +799,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("save_name", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      CanvasEventHandlers.handle_save_name(params, socket)
+      params |> CanvasEventHandlers.handle_save_name(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1605,7 +1615,10 @@ defmodule StoryarnWeb.SceneLive.Show do
      |> assign(:project_sheets, data.project_sheets)
      |> assign(:project_flows, data.project_flows)
      |> assign(:project_variables, data.project_variables)
-     |> assign(:sidebar_loaded, true)}
+     |> assign(:project_asset_ids, data.project_asset_ids)
+     |> assign(:health_references_loaded, true)
+     |> assign(:sidebar_loaded, true)
+     |> assign_scene_health()}
   end
 
   def handle_async(:load_sidebar_data, {:exit, _reason}, socket) do
@@ -1623,12 +1636,14 @@ defmodule StoryarnWeb.SceneLive.Show do
         {:ok, updated} ->
           updated = Scenes.preload_pin_associations(updated)
 
-          {:noreply,
-           socket
-           |> assign(:selected_element, updated)
-           |> assign(:pins, replace_in_list(socket.assigns.pins, updated))
-           |> push_event("pin_updated", serialize_pin(updated))
-           |> assign(:_broadcast, {:pin_updated, %{id: updated.id}})}
+          broadcast_scene_change(
+            {:noreply,
+             socket
+             |> assign(:selected_element, updated)
+             |> assign(:pins, replace_in_list(socket.assigns.pins, updated))
+             |> push_event("pin_updated", serialize_pin(updated))
+             |> assign(:_broadcast, {:pin_updated, %{id: updated.id}})}
+          )
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not update pin."))}
@@ -1644,12 +1659,14 @@ defmodule StoryarnWeb.SceneLive.Show do
         {:ok, updated} ->
           updated = Scenes.preload_pin_associations(updated)
 
-          {:noreply,
-           socket
-           |> assign(:selected_element, updated)
-           |> assign(:pins, replace_in_list(socket.assigns.pins, updated))
-           |> push_event("pin_updated", serialize_pin(updated))
-           |> assign(:_broadcast, {:pin_updated, %{id: updated.id}})}
+          broadcast_scene_change(
+            {:noreply,
+             socket
+             |> assign(:selected_element, updated)
+             |> assign(:pins, replace_in_list(socket.assigns.pins, updated))
+             |> push_event("pin_updated", serialize_pin(updated))
+             |> assign(:_broadcast, {:pin_updated, %{id: updated.id}})}
+          )
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not update pin."))}
@@ -1755,7 +1772,9 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   def handle_info({:remote_change, action, payload}, socket) do
-    CollaborationHandlers.handle_remote_change(action, payload, socket)
+    action
+    |> CollaborationHandlers.handle_remote_change(payload, socket)
+    |> refresh_scene_health_result()
   end
 
   # ---------------------------------------------------------------------------
@@ -1919,8 +1938,13 @@ defmodule StoryarnWeb.SceneLive.Show do
       Collab.broadcast_change(socket, scope, action, payload)
     end
 
-    {:noreply, assign(socket, :_broadcast, nil)}
+    Collaboration.broadcast_dashboard_change(socket.assigns.project.id, :scenes)
+
+    {:noreply, socket |> assign(:_broadcast, nil) |> assign_scene_health()}
   end
+
+  defp refresh_scene_health_result({:noreply, socket}), do: {:noreply, assign_scene_health(socket)}
+  defp refresh_scene_health_result(result), do: result
 
   # ---------------------------------------------------------------------------
   # Private helpers

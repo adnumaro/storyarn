@@ -8,6 +8,7 @@ import {
   ArrowUpDown,
   ChevronLeft,
   ChevronRight,
+  CircleX,
   Image,
   Info,
   Map as MapIcon,
@@ -85,8 +86,10 @@ interface Pagination {
 
 interface Issue {
   href: string;
-  severity: string;
-  message: string;
+  severity: "error" | "warning" | "info";
+  code: string;
+  label: string;
+  details?: Record<string, string | number | boolean | string[] | number[] | null>;
 }
 
 const {
@@ -135,6 +138,10 @@ function confirmDelete(): void {
   live.pushEvent("confirm_delete_scene", {});
   deleteDialogOpen.value = false;
   pendingDeleteScene.value = null;
+}
+
+function healthFindingLabel(issue: Issue): string {
+  return t(`scenes.health.findings.${issue.code}`, issue.details || {});
 }
 
 function cancelDelete(): void {
@@ -302,7 +309,7 @@ const pages = computed(() => {
         v-if="pagination.totalPages > 1"
         class="flex items-center justify-between text-xs text-muted-foreground pt-1"
       >
-        <span>{{ pagination.total }} scenes</span>
+        <span>{{ $t("scenes.dashboard.total_scenes", pagination.total) }}</span>
         <div class="flex items-center gap-1">
           <Button
             variant="ghost"
@@ -342,22 +349,36 @@ const pages = computed(() => {
 
     <!-- Issues -->
     <div v-if="issues.length > 0" class="space-y-2">
-      <h2 class="text-sm font-medium">Issues</h2>
+      <h2 class="text-sm font-medium">{{ $t("scenes.dashboard.issues") }}</h2>
       <div class="rounded-lg border border-border divide-y divide-border">
         <a
           v-for="(issue, i) in issues"
           :key="i"
           :href="issue.href"
-          data-phx-link="patch"
+          :data-severity="issue.severity"
+          data-phx-link="redirect"
           data-phx-link-state="push"
           class="flex items-start gap-2 px-3 py-2 text-sm hover:bg-muted/30 transition-colors"
         >
+          <CircleX
+            v-if="issue.severity === 'error'"
+            data-testid="scene-issue-error-icon"
+            class="size-4 text-red-500 shrink-0 mt-0.5"
+          />
           <AlertTriangle
-            v-if="issue.severity === 'warning'"
+            v-else-if="issue.severity === 'warning'"
+            data-testid="scene-issue-warning-icon"
             class="size-4 text-yellow-500 shrink-0 mt-0.5"
           />
-          <Info v-else class="size-4 text-blue-400 shrink-0 mt-0.5" />
-          <span class="text-muted-foreground">{{ issue.message }}</span>
+          <Info
+            v-else
+            data-testid="scene-issue-info-icon"
+            class="size-4 text-blue-400 shrink-0 mt-0.5"
+          />
+          <span class="text-muted-foreground">
+            <span class="text-foreground">{{ issue.label }}</span>
+            · {{ healthFindingLabel(issue) }}
+          </span>
         </a>
       </div>
     </div>

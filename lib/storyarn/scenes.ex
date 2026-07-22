@@ -652,8 +652,8 @@ defmodule Storyarn.Scenes do
   @doc "Returns the count of scenes that have a background image."
   defdelegate scenes_with_background_count(project_id), to: SceneStats
 
-  @doc "Detects issues in scenes. Returns [%{issue_type, scene_id, scene_name}]."
-  defdelegate detect_scene_issues(project_id), to: SceneStats
+  @doc "Returns the canonical project-wide scene health overview findings."
+  defdelegate list_dashboard_health_findings(project_id), to: SceneStats
 
   # =============================================================================
   # Exploration Sessions

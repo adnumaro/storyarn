@@ -271,6 +271,30 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       assert toolbar["sceneName"] == "My Scene"
     end
 
+    test "passes canonical health findings to the scene header", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project, %{name: "Health Scene"})
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
+        )
+
+      _ = await_async(view)
+      health = get_scene_header_props(view)["health"]
+
+      assert [%{"entityType" => "scene", "reasons" => warning_reasons}] =
+               health["warningItems"]
+
+      assert Enum.any?(warning_reasons, &(&1["code"] == "missing_background"))
+
+      assert [%{"entityType" => "scene", "reasons" => info_reasons}] =
+               health["infoItems"]
+
+      assert Enum.any?(info_reasons, &(&1["code"] == "empty_scene"))
+    end
+
     test "SceneToolbar exposes the scene shortcut", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Test Scene"})
@@ -3165,6 +3189,22 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
         })
 
       refute html =~ "properties-panel"
+    end
+
+    test "selects annotations from dashboard health deep links", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project)
+      annotation = annotation_fixture(scene, %{"text" => "Broken note"})
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}?highlight=annotation:#{annotation.id}"
+        )
+
+      panel = get_element_panel_vue(view)
+      assert panel.props["selected-type"] == "annotation"
+      assert panel.props["selected-element"]["text"] == "Broken note"
     end
   end
 

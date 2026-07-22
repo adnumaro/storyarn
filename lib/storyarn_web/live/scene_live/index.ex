@@ -186,8 +186,8 @@ defmodule StoryarnWeb.SceneLive.Index do
       end)
 
     issues =
-      DashboardCache.fetch(project_id, :scene_issues, fn ->
-        Scenes.detect_scene_issues(project_id)
+      DashboardCache.fetch(project_id, :scene_health, fn ->
+        Scenes.list_dashboard_health_findings(project_id)
       end)
 
     table_data =
@@ -272,27 +272,39 @@ defmodule StoryarnWeb.SceneLive.Index do
   end
 
   defp format_scene_issues(issues, workspace, project) do
-    Enum.map(issues, fn issue ->
-      {severity, message} =
-        case issue.issue_type do
-          :empty_scene ->
-            {:info, dgettext("scenes", "Scene \"%{name}\" has no zones or pins", name: issue.scene_name)}
-
-          :no_background ->
-            {:warning, dgettext("scenes", "Scene \"%{name}\" has no background image", name: issue.scene_name)}
-
-          :missing_shortcut ->
-            {:warning, dgettext("scenes", "Scene \"%{name}\" has no shortcut", name: issue.scene_name)}
-
-          _ ->
-            {:info, dgettext("scenes", "Issue detected")}
-        end
-
+    issues
+    |> Enum.map(fn issue ->
       %{
-        severity: to_string(severity),
-        message: message,
-        href: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/scenes/#{issue.scene_id}"
+        severity: Atom.to_string(issue.severity),
+        code: Atom.to_string(issue.code),
+        label: scene_health_label(issue),
+        details: issue.details,
+        href: scene_health_href(issue, workspace, project)
       }
     end)
+    |> Enum.sort_by(&{severity_rank(&1.severity), &1.label, &1.code})
   end
+
+  defp scene_health_label(issue) do
+    scene_name = Map.get(issue.details, :scene_name, "Scene")
+
+    case Map.get(issue.details, :entity_label) do
+      label when is_binary(label) and label != "" -> "#{scene_name} · #{label}"
+      _ -> scene_name
+    end
+  end
+
+  defp scene_health_href(issue, workspace, project) do
+    base = ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/scenes/#{issue.scene_id}"
+
+    if issue.entity_type in ~w(pin zone connection annotation) and not is_nil(issue.entity_id) do
+      "#{base}?highlight=#{issue.entity_type}:#{issue.entity_id}"
+    else
+      base
+    end
+  end
+
+  defp severity_rank("error"), do: 0
+  defp severity_rank("warning"), do: 1
+  defp severity_rank("info"), do: 2
 end

@@ -303,6 +303,32 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
       assert "Dashboard Scene" in scene_names(view)
     end
 
+    test "passes canonical health severities, codes, and scene links to Vue", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project, %{name: "Health Overview"})
+
+      {:ok, view, _html} = live(conn, scenes_path(project))
+      _ = await_async(view)
+
+      issues = get_dashboard_vue(view).props["issues"]
+
+      assert %{
+               "severity" => "warning",
+               "code" => "missing_background",
+               "label" => "Health Overview",
+               "href" => href
+             } = Enum.find(issues, &(&1["code"] == "missing_background"))
+
+      assert href ==
+               "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
+
+      assert %{"severity" => "info", "code" => "empty_scene"} =
+               Enum.find(issues, &(&1["code"] == "empty_scene"))
+    end
+
     test "sort_scenes event toggles table order", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       scene_a = scene_fixture(project, %{name: "Alpha Scene"})
