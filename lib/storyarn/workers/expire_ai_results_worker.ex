@@ -36,8 +36,13 @@ defmodule Storyarn.Workers.ExpireAIResultsWorker do
        when is_integer(expired_count) and expired_count >= 0 and is_integer(failure_count) and failure_count >= 0 and
               is_boolean(more?) do
     RouteOptions.delete_expired()
-    maybe_schedule_followup(more?, schedule_followup)
-    finish_batch(started_at, expired_count, failure_count)
+
+    case maybe_schedule_followup(more?, schedule_followup) do
+      :ok -> finish_batch(started_at, expired_count, failure_count)
+      {:ok, _job} -> finish_batch(started_at, expired_count, failure_count)
+      {:error, reason} -> fail_followup(started_at, expired_count, failure_count, reason)
+      unexpected -> fail_followup(started_at, expired_count, failure_count, {:unexpected_reply, unexpected})
+    end
   end
 
   defp handle_expiration_result(_unexpected, _schedule_followup, started_at) do
@@ -58,6 +63,12 @@ defmodule Storyarn.Workers.ExpireAIResultsWorker do
     emit_stop(started_at, expired_count, failure_count, :error)
     Logger.warning("AI result expiration batch had #{failure_count} failed rows")
     {:error, :ai_result_expiration_failed}
+  end
+
+  defp fail_followup(started_at, expired_count, failure_count, reason) do
+    emit_stop(started_at, expired_count, failure_count, :error)
+    Logger.warning("Could not schedule AI result expiration continuation: #{inspect(reason)}")
+    {:error, :ai_result_expiration_followup_failed}
   end
 
   defp schedule_followup do

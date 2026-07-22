@@ -30,7 +30,10 @@ defmodule Storyarn.Workers.ExpireAIResultsWorkerTest do
     assert :ok =
              ExpireAIResultsWorker.perform_expiration(
                fn -> {:ok, %{expired_count: 100, failure_count: 0, more?: true}} end,
-               fn -> send(test_pid, :scheduled_followup) end
+               fn ->
+                 send(test_pid, :scheduled_followup)
+                 :ok
+               end
              )
 
     assert_receive :scheduled_followup
@@ -50,6 +53,18 @@ defmodule Storyarn.Workers.ExpireAIResultsWorkerTest do
     assert_receive {:expiration_stop, @event, measurements, %{status: :error}}
     assert measurements.expired_count == 2
     assert measurements.failure_count == 1
+  end
+
+  test "reports continuation scheduling failures and asks Oban to retry" do
+    assert {:error, :ai_result_expiration_followup_failed} =
+             ExpireAIResultsWorker.perform_expiration(
+               fn -> {:ok, %{expired_count: 100, failure_count: 0, more?: true}} end,
+               fn -> {:error, :queue_unavailable} end
+             )
+
+    assert_receive {:expiration_stop, @event, measurements, %{status: :error}}
+    assert measurements.expired_count == 100
+    assert measurements.failure_count == 0
   end
 
   test "registers content-free expiration metrics" do

@@ -203,10 +203,41 @@ defmodule Storyarn.AI.Operations do
     fn -> operation_id |> lock_operation() |> recover_locked() end
     |> Repo.transaction()
     |> case do
-      {:ok, :ready} -> :ready
-      {:ok, _terminal} -> :ok
-      {:error, reason} -> {:error, reason}
+      {:ok, :ready} ->
+        :ready
+
+      {:ok, {:unknown, operation}} ->
+        emit_unknown(operation, :worker_interrupted)
+        :ok
+
+      {:ok, _terminal} ->
+        :ok
+
+      {:error, reason} ->
+        {:error, reason}
     end
+  end
+
+  @doc "Fails a queued operation when durable worker recovery exhausts its retries."
+  @spec fail_queued_after_retries(pos_integer(), term()) :: :ok | {:error, term()}
+  def fail_queued_after_retries(operation_id, reason) do
+    fn ->
+      case lock_operation(operation_id) do
+        %Operation{execution_status: "queued"} = operation ->
+          operation = release!(operation)
+          delete_result(operation.id)
+
+          transition!(operation, "failed", %{
+            completed_at: TimeHelpers.now(),
+            error_classification: classify(reason)
+          })
+
+        _missing_or_terminal ->
+          :terminal
+      end
+    end
+    |> Repo.transaction()
+    |> transaction_status()
   end
 
   defp recover_locked(nil), do: :terminal
@@ -225,11 +256,12 @@ defmodule Storyarn.AI.Operations do
   end
 
   defp recover_locked(%Operation{execution_status: "running"} = operation) do
-    operation
-    |> lock_usage_for_operation()
-    |> recover_started_attempt(operation)
+    recovered =
+      operation
+      |> lock_usage_for_operation()
+      |> recover_started_attempt(operation)
 
-    :terminal
+    {:unknown, recovered}
   end
 
   defp recover_locked(%Operation{}), do: :terminal

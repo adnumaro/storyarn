@@ -251,8 +251,9 @@ defmodule Storyarn.Repo.Migrations.CreateAiExecutionKernel do
         RAISE EXCEPTION 'ai_workspace_policy_audits is append-only (DELETE blocked)';
       END IF;
 
-      IF (NEW.user_id IS NULL OR NEW.user_id = OLD.user_id)
-         AND (NEW.workspace_id IS NULL OR NEW.workspace_id = OLD.workspace_id)
+      IF pg_trigger_depth() > 1
+         AND (NEW.user_id IS NOT DISTINCT FROM OLD.user_id OR (OLD.user_id IS NOT NULL AND NEW.user_id IS NULL))
+         AND (NEW.workspace_id IS NOT DISTINCT FROM OLD.workspace_id OR (OLD.workspace_id IS NOT NULL AND NEW.workspace_id IS NULL))
          AND NEW.actor_id = OLD.actor_id
          AND NEW.workspace_id_snapshot = OLD.workspace_id_snapshot
          AND NEW.from_lanes = OLD.from_lanes

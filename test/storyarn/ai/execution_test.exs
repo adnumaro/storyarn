@@ -266,6 +266,21 @@ defmodule Storyarn.AI.ExecutionTest do
     assert DateTime.after?(result.expires_at, DateTime.add(before_execution, 55, :second))
   end
 
+  test "exhausted worker retries terminalize a queued operation without provider usage", ctx do
+    Application.put_env(:storyarn, ContractTask, scenario: :success, execution_mode: :background)
+    {queued, _intent} = execute!(ctx, "exhaust worker retries")
+
+    assert :ok = Operations.fail_queued_after_retries(queued.id, :worker_retries_exhausted)
+
+    failed = Repo.get!(Operation, queued.id)
+    assert failed.execution_status == "failed"
+    assert failed.settlement_status == "released"
+    assert failed.error_classification == "worker_retries_exhausted"
+    assert failed.completed_at
+    refute Repo.get_by(UsageEvent, operation_id: queued.id)
+    refute Repo.get_by(Result, operation_id: queued.id)
+  end
+
   test "disabled and changed task contracts terminalize queued operations without provider access", ctx do
     Application.put_env(:storyarn, ContractTask, scenario: :success, execution_mode: :background)
     {disabled, _intent} = execute!(ctx, "disable queued task")
@@ -390,6 +405,21 @@ defmodule Storyarn.AI.ExecutionTest do
   end
 
   test "interrupted workers terminalize state without another external attempt", ctx do
+    handler_id = "ai-operation-unknown-#{System.unique_integer([:positive])}"
+    test_pid = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:ai, :operation, :unknown],
+        fn event, measurements, metadata, _config ->
+          send(test_pid, {:operation_unknown, event, measurements, metadata})
+        end,
+        nil
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
     Application.put_env(:storyarn, ContractTask, scenario: :success, execution_mode: :background)
     {before_attempt, _intent} = execute!(ctx, "interrupt before attempt")
     task = Enum.find(AI.registered_tasks(), &(&1.id == "contract.echo"))
@@ -411,6 +441,11 @@ defmodule Storyarn.AI.ExecutionTest do
     assert recovered_after.settlement_status == "released"
     assert Repo.get!(UsageEvent, usage.id).status == "unknown"
     refute Repo.get_by(Result, operation_id: running_after.id)
+
+    assert_receive {:operation_unknown, [:ai, :operation, :unknown], %{count: 1}, metadata}
+    assert metadata.task_id == "contract.echo"
+    assert metadata.status == "unknown"
+    assert metadata.error_classification == "worker_interrupted"
   end
 
   test "cancellation after claim but before provider access releases without an attempt", ctx do
