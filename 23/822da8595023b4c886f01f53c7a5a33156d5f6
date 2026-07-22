@@ -1,0 +1,28 @@
+assets/app/modules/sheets/components/chrome/header/SheetContentHeader.vue
+  s_601e46785f4b81::t_ba0bc21f025c25 9
+test/storyarn_web/live/sheet_live/show_test.exs
+  s_601e46785f4b81::t_ba0bc21f025c25 23-26,64-65,85,104-106
+lib/storyarn_web/live/sheet_live/show.ex
+  s_601e46785f4b81::t_ba0bc21f025c25 83-91
+assets/app/live/sheet/show/SheetHeader.vue
+  s_601e46785f4b81::t_ba0bc21f025c25 1-20
+assets/app/live/sheet/show/SheetSurface.vue
+  s_601e46785f4b81::t_ba0bc21f025c25 9
+  s_601e46785f4b81::t_3492c1172b9111 78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "23822da8595023b4c886f01f53c7a5a33156d5f6",
+  "prompts": {},
+  "sessions": {
+    "s_601e46785f4b81": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b4-a630-7780-b438-bc2aa3d9363e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
