@@ -118,6 +118,9 @@ defmodule Storyarn.Sheets do
   @spec get_children(id()) :: [sheet()]
   defdelegate get_children(sheet_id), to: SheetQueries
 
+  @spec has_children?(id()) :: boolean()
+  defdelegate has_children?(sheet_id), to: SheetQueries
+
   @doc """
   Lists sheets by IDs with avatar and banner preloaded.
   Used by the version viewer for speaker data in flow snapshots.

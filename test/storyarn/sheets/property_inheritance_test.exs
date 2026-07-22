@@ -77,6 +77,15 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
                &(&1.reason == "stale_table_structure" and &1.block_id == instance.id)
              )
     end
+
+    test "ignores instances intentionally hidden on the sheet", %{parent: parent, child: child} do
+      source = inheritable_block_fixture(parent, label: "Hidden")
+      assert inherited_instance!(child.id, source.id)
+
+      assert {:ok, _hidden_sheet} = PropertyInheritance.hide_for_children(child, source.id)
+
+      assert PropertyInheritance.list_health_issues(child.id) == []
+    end
   end
 
   # ===========================================================================

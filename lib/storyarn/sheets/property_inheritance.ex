@@ -39,28 +39,36 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   """
   @spec resolve_inherited_blocks(integer()) :: [%{source_sheet: Sheet.t(), blocks: [Block.t()]}]
   def resolve_inherited_blocks(sheet_id) do
+    {groups, _hidden_source_ids} = inheritance_resolution(sheet_id)
+    groups
+  end
+
+  defp inheritance_resolution(sheet_id) do
     sheet = Repo.get!(Sheet, sheet_id)
     ancestors = build_ancestor_list(sheet)
 
     if ancestors == [] do
-      []
+      {[], MapSet.new()}
     else
       # Collect hidden block IDs from intermediate sheets (the current sheet and all ancestors except root)
       all_sheets = [sheet | ancestors]
-      hidden_block_ids = collect_hidden_block_ids(all_sheets)
+      hidden_source_ids = all_sheets |> collect_hidden_block_ids() |> MapSet.new()
 
       blocks_by_sheet =
         ancestors
         |> Enum.map(& &1.id)
         |> load_children_scope_blocks_for_sheets()
-        |> Enum.reject(&(&1.id in hidden_block_ids))
+        |> Enum.reject(&MapSet.member?(hidden_source_ids, &1.id))
         |> Enum.group_by(& &1.sheet_id)
 
-      ancestors
-      |> Enum.map(fn ancestor ->
-        %{source_sheet: ancestor, blocks: Map.get(blocks_by_sheet, ancestor.id, [])}
-      end)
-      |> Enum.reject(fn group -> group.blocks == [] end)
+      groups =
+        ancestors
+        |> Enum.map(fn ancestor ->
+          %{source_sheet: ancestor, blocks: Map.get(blocks_by_sheet, ancestor.id, [])}
+        end)
+        |> Enum.reject(fn group -> group.blocks == [] end)
+
+      {groups, hidden_source_ids}
     end
   end
 
@@ -73,12 +81,14 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   """
   @spec list_health_issues(integer()) :: [map()]
   def list_health_issues(sheet_id) do
-    eligible_sources =
-      sheet_id
-      |> resolve_inherited_blocks()
-      |> Enum.flat_map(& &1.blocks)
+    {groups, hidden_source_ids} = inheritance_resolution(sheet_id)
+    eligible_sources = Enum.flat_map(groups, & &1.blocks)
 
-    instances = active_inherited_instances(sheet_id)
+    instances =
+      sheet_id
+      |> active_inherited_instances()
+      |> Enum.reject(&MapSet.member?(hidden_source_ids, &1.inherited_from_block_id))
+
     sources_by_id = Map.new(eligible_sources, &{&1.id, &1})
     instances_by_source = Enum.group_by(instances, & &1.inherited_from_block_id)
     table_structures = inheritance_table_structures(eligible_sources, instances)
@@ -1637,7 +1647,8 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     )
   end
 
-  # Loads children-scope blocks for an ancestor (used in inherit_blocks_for_new_sheet)
+  # Loads children-scope blocks for one ancestor in mutation workflows that
+  # process each locked ancestor independently.
   defp load_children_scope_blocks(ancestor) do
     Repo.all(
       from(b in Block,

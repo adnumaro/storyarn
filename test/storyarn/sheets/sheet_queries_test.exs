@@ -312,6 +312,21 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
     end
   end
 
+  describe "has_children?/1" do
+    test "checks for active children without loading them" do
+      %{project: project} = setup_project()
+      parent = sheet_fixture(project, %{name: "Parent"})
+      child = child_sheet_fixture(project, parent, %{name: "Child"})
+      leaf = sheet_fixture(project, %{name: "Leaf"})
+
+      assert SheetQueries.has_children?(parent.id)
+      refute SheetQueries.has_children?(leaf.id)
+
+      {:ok, _trashed_child} = Sheets.trash_sheet(child)
+      refute SheetQueries.has_children?(parent.id)
+    end
+  end
+
   describe "list_all_sheets/1" do
     test "returns flat list of all non-deleted sheets" do
       %{project: project} = setup_project()

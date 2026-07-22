@@ -195,27 +195,48 @@ defmodule Storyarn.Sheets.SheetStats do
 
   defp formula_referenced_block_ids(project_id) do
     reference_pairs =
-      from(row in TableRow,
-        join: source_block in Block,
-        on: row.block_id == source_block.id,
-        join: source_sheet in Sheet,
-        on: source_block.sheet_id == source_sheet.id,
-        join: column in TableColumn,
-        on: column.block_id == source_block.id and column.type == "formula",
-        where:
-          source_sheet.project_id == ^project_id and is_nil(source_sheet.deleted_at) and
-            is_nil(source_block.deleted_at),
-        select: {row.cells, column.slug}
-      )
-      |> Repo.all()
-      |> Enum.flat_map(fn {cells, slug} ->
+      project_id
+      |> formula_column_slugs_by_block()
+      |> formula_reference_pairs()
+      |> MapSet.new()
+
+    resolve_reference_pairs(project_id, reference_pairs)
+  end
+
+  defp formula_column_slugs_by_block(project_id) do
+    from(column in TableColumn,
+      join: source_block in Block,
+      on: column.block_id == source_block.id,
+      join: source_sheet in Sheet,
+      on: source_block.sheet_id == source_sheet.id,
+      where:
+        source_sheet.project_id == ^project_id and is_nil(source_sheet.deleted_at) and
+          is_nil(source_block.deleted_at) and column.type == "formula",
+      select: {source_block.id, column.slug}
+    )
+    |> Repo.all()
+    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+  end
+
+  defp formula_reference_pairs(formula_slugs_by_block) when map_size(formula_slugs_by_block) == 0, do: []
+
+  defp formula_reference_pairs(formula_slugs_by_block) do
+    block_ids = Map.keys(formula_slugs_by_block)
+
+    from(row in TableRow,
+      where: row.block_id in ^block_ids,
+      select: {row.block_id, row.cells}
+    )
+    |> Repo.all()
+    |> Enum.flat_map(fn {block_id, cells} ->
+      formula_slugs_by_block
+      |> Map.fetch!(block_id)
+      |> Enum.flat_map(fn slug ->
         cells
         |> Map.get(slug)
         |> formula_variable_reference_pairs()
       end)
-      |> MapSet.new()
-
-    resolve_reference_pairs(project_id, reference_pairs)
+    end)
   end
 
   defp formula_variable_reference_pairs(%{"bindings" => bindings}) when is_map(bindings) do

@@ -29,7 +29,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.HealthHelpers do
       blocks: all_blocks,
       table_data: socket.assigns.table_data,
       gallery_data: socket.assigns.gallery_data,
-      has_children: Sheets.get_children(sheet.id) != [],
+      has_children: Sheets.has_children?(sheet.id),
       inheritance_issues: Sheets.list_inheritance_health_issues(sheet.id),
       referenced_block_ids: referenced_block_ids,
       stale_variable_reference_counts: stale_variable_reference_counts(all_blocks, referenced_block_ids, project.id),
