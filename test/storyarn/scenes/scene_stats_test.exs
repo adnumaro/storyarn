@@ -7,6 +7,7 @@ defmodule Storyarn.Scenes.SceneStatsTest do
   import Storyarn.ScenesFixtures
 
   alias Storyarn.Repo
+  alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.SceneStats
 
   setup do
@@ -94,7 +95,7 @@ defmodule Storyarn.Scenes.SceneStatsTest do
       scene = scene_fixture(project, %{name: "No Shortcut"})
 
       Repo.update_all(
-        from(s in Storyarn.Scenes.Scene, where: s.id == ^scene.id),
+        from(s in Scene, where: s.id == ^scene.id),
         set: [shortcut: nil]
       )
 
@@ -104,6 +105,22 @@ defmodule Storyarn.Scenes.SceneStatsTest do
       assert missing_issues != []
       assert Enum.any?(missing_issues, &(&1.details.scene_name == "No Shortcut"))
       assert Enum.all?(missing_issues, &(&1.severity == :warning))
+    end
+
+    test "treats whitespace-only shortcuts as missing", %{project: project} do
+      scene = scene_fixture(project, %{name: "Blank Shortcut"})
+
+      Repo.update_all(
+        from(s in Scene, where: s.id == ^scene.id),
+        set: [shortcut: "   "]
+      )
+
+      findings = SceneStats.list_dashboard_health_findings(project.id)
+
+      assert Enum.any?(findings, fn finding ->
+               finding.code == :missing_scene_shortcut and
+                 finding.scene_id == scene.id
+             end)
     end
 
     test "returns canonical error metadata for elements using a foreign scene layer", %{

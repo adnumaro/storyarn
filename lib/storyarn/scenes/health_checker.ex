@@ -178,7 +178,7 @@ defmodule Storyarn.Scenes.HealthChecker do
       entity_finding(scene, zone, "zone", :invalid_asset_reference, %{asset_role: "label_icon"})
     )
     |> maybe_add(
-      field(zone, :label_mode) == "icon" and is_nil(asset_id),
+      field(zone, :label_mode) in ["icon", "both"] and is_nil(asset_id),
       entity_finding(scene, zone, "zone", :missing_zone_label_icon)
     )
   end

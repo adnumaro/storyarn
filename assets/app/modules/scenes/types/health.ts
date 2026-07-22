@@ -1,24 +1,18 @@
-export type SceneHealthDetails = Record<
-  string,
-  string | number | boolean | string[] | number[] | null
->;
+import type {
+  HealthStatus,
+  HealthStatusDetails,
+  HealthStatusItem,
+  HealthStatusReason,
+  HealthStatusSeverity,
+} from "@shared/types/health";
 
-export interface SceneHealthReason {
-  code: string;
-  details?: SceneHealthDetails;
-}
+export type SceneHealthDetails = HealthStatusDetails;
+export type SceneHealthReason = HealthStatusReason;
+export type SceneHealthSeverity = HealthStatusSeverity;
 
-export type SceneHealthSeverity = "error" | "warning" | "info";
-
-export interface SceneHealthItem {
+export interface SceneHealthItem extends HealthStatusItem {
   entityType: string;
   entityId: number | string | null;
-  label: string;
-  reasons: SceneHealthReason[];
 }
 
-export interface SceneHealth {
-  errorItems: SceneHealthItem[];
-  warningItems: SceneHealthItem[];
-  infoItems: SceneHealthItem[];
-}
+export type SceneHealth = HealthStatus<SceneHealthItem>;

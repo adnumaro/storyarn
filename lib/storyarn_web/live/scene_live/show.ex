@@ -53,6 +53,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   @zone_label_icon_max_size 256 * 1024
   @zone_label_icon_content_types ~w(image/svg+xml image/png image/gif)
   @zone_label_icon_extensions ~w(.svg .png .gif)
+  @ephemeral_remote_actions ~w(pin_dragging annotation_dragging zone_dragging)a
 
   @impl true
   def render(%{compact: true, scene: nil} = assigns) do
@@ -998,6 +999,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         broadcast_scene_change(
           {:noreply,
            socket
+           |> include_project_asset_id(asset.id)
            |> maybe_update_selected_pin(updated)
            |> update_pin_in_list(updated)
            |> push_event("pin_updated", serialize_pin(updated))
@@ -1047,6 +1049,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         broadcast_scene_change(
           {:noreply,
            socket
+           |> include_project_asset_id(asset.id)
            |> maybe_update_selected_zone(updated)
            |> update_zone_in_list(updated)
            |> push_event("zone_updated", serialize_zone(updated))
@@ -1615,7 +1618,7 @@ defmodule StoryarnWeb.SceneLive.Show do
      |> assign(:project_sheets, data.project_sheets)
      |> assign(:project_flows, data.project_flows)
      |> assign(:project_variables, data.project_variables)
-     |> assign(:project_asset_ids, data.project_asset_ids)
+     |> assign(:project_asset_ids, Enum.uniq(data.project_asset_ids ++ socket.assigns.project_asset_ids))
      |> assign(:health_references_loaded, true)
      |> assign(:sidebar_loaded, true)
      |> assign_scene_health()}
@@ -1769,6 +1772,10 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_info({:lock_change, _action, _payload}, socket) do
     CollaborationHandlers.handle_lock_change(socket)
+  end
+
+  def handle_info({:remote_change, action, payload}, socket) when action in @ephemeral_remote_actions do
+    CollaborationHandlers.handle_remote_change(action, payload, socket)
   end
 
   def handle_info({:remote_change, action, payload}, socket) do
@@ -2000,6 +2007,7 @@ defmodule StoryarnWeb.SceneLive.Show do
           {:noreply,
            socket
            |> assign(:scene, updated)
+           |> include_project_asset_id(asset.id)
            |> assign(:_broadcast, {:layer_updated, %{}})
            |> push_event("background_changed", %{url: PrivateMedia.asset_url(asset)})
            |> put_flash(:info, dgettext("scenes", "Background image updated."))}
@@ -2012,6 +2020,10 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   defp background_set?(%{background_asset_id: id}) when not is_nil(id), do: true
   defp background_set?(_), do: false
+
+  defp include_project_asset_id(socket, asset_id) do
+    assign(socket, :project_asset_ids, Enum.uniq([asset_id | socket.assigns.project_asset_ids]))
+  end
 
   defp maybe_update_selected_zone(
          %{assigns: %{selected_type: "zone", selected_element: %{id: id}}} = socket,

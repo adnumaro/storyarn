@@ -61,8 +61,8 @@ describe("SceneHealthStatus", () => {
     expect(wrapper.get('[data-testid="scene-health-error-count"]').text()).toBe("2");
     expect(wrapper.get('[data-testid="scene-health-warning-count"]').text()).toBe("1");
     expect(wrapper.get('[data-testid="scene-health-info-count"]').text()).toBe("1");
-    expect(wrapper.get('[data-testid="scene-health-error"]').text()).toContain("Errors");
-    expect(wrapper.get('[data-testid="scene-health-warning"]').text()).toContain("Warnings");
+    expect(wrapper.get('[data-testid="scene-health-errors"]').text()).toContain("Errors");
+    expect(wrapper.get('[data-testid="scene-health-warnings"]').text()).toContain("Warnings");
     expect(wrapper.get('[data-testid="scene-health-info"]').text()).toContain("Info");
   });
 

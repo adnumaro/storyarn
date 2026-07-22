@@ -107,7 +107,9 @@ defmodule Storyarn.Scenes.SceneStats do
 
   defp missing_shortcut_findings(project_id) do
     from(s in Scene,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at) and (is_nil(s.shortcut) or s.shortcut == ""),
+      where:
+        s.project_id == ^project_id and is_nil(s.deleted_at) and
+          (is_nil(s.shortcut) or fragment("btrim(?) = ''", s.shortcut)),
       select: %{scene_id: s.id, scene_name: s.name}
     )
     |> Repo.all()

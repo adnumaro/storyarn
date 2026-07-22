@@ -44,6 +44,7 @@ import { useI18n } from "vue-i18n";
 import { useLive } from "@shared/composables/useLive.ts";
 import { formatRelativeTime } from "@shared/utils/date-utils.ts";
 import DashboardContent from "@shell/DashboardContent.vue";
+import type { SceneHealthDetails, SceneHealthSeverity } from "@modules/scenes/types/health";
 
 const { t } = useI18n();
 
@@ -86,10 +87,10 @@ interface Pagination {
 
 interface Issue {
   href: string;
-  severity: "error" | "warning" | "info";
+  severity: SceneHealthSeverity;
   code: string;
   label: string;
-  details?: Record<string, string | number | boolean | string[] | number[] | null>;
+  details?: SceneHealthDetails;
 }
 
 const {

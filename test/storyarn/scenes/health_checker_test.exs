@@ -44,6 +44,18 @@ defmodule Storyarn.Scenes.HealthCheckerTest do
     assert_codes(snapshot, [:invalid_zone_geometry, :invalid_layer_reference, :element_outside_canvas])
   end
 
+  test "requires an icon for icon-only and combined zone labels" do
+    icon = %{base_zone() | id: 13, label_mode: "icon"}
+    both = %{base_zone() | id: 14, label_mode: "both"}
+    text = %{base_zone() | id: 15, label_mode: "text"}
+
+    findings = HealthChecker.check(%{base_snapshot() | zones: [icon, both, text]})
+
+    assert Enum.any?(findings, &(&1.entity_id == 13 and &1.code == :missing_zone_label_icon))
+    assert Enum.any?(findings, &(&1.entity_id == 14 and &1.code == :missing_zone_label_icon))
+    refute Enum.any?(findings, &(&1.entity_id == 15 and &1.code == :missing_zone_label_icon))
+  end
+
   test "allows freeform connections but reports malformed routes and foreign endpoints" do
     freeform = %{id: 31, from_pin_id: nil, to_pin_id: nil, waypoints: [point(10), point(20)]}
     malformed = %{id: 32, from_pin_id: nil, to_pin_id: nil, waypoints: [point(10)]}
