@@ -73,7 +73,6 @@ function navigateToFinding(item: HealthStatusItem): void {
     :health="health"
     translation-prefix="sheets.health"
     test-id-prefix="sheet"
-    root-class="pt-2"
     :can-navigate="canNavigate"
     :item-key="itemKey"
     :item-data-attributes="itemDataAttributes"

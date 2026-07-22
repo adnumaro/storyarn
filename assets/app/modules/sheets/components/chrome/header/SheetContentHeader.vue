@@ -9,19 +9,19 @@ import { useAssetDecisionUpload } from "@shared/composables/useAssetDecisionUplo
 import type { Sheet, SheetHealth } from "@modules/sheets/types";
 import AvatarGallery from "@modules/sheets/components/chrome/header/AvatarGallery.vue";
 import SheetAvatarSection from "@modules/sheets/components/chrome/header/SheetAvatarSection.vue";
-import SheetMetadata from "@modules/sheets/components/chrome/header/SheetMetadata.vue";
 import SheetHealthStatus from "@modules/sheets/components/chrome/header/SheetHealthStatus.vue";
+import SheetMetadata from "@modules/sheets/components/chrome/header/SheetMetadata.vue";
 
 const {
   sheet,
   canEdit = false,
   sourceShortcut = null,
-  sheetHealth = { errorItems: [], warningItems: [], infoItems: [] },
+  sheetHealth = null,
 } = defineProps<{
   sheet: Sheet;
   canEdit?: boolean;
   sourceShortcut?: string | null;
-  sheetHealth?: SheetHealth;
+  sheetHealth?: SheetHealth | null;
 }>();
 
 const live = useLive();
@@ -170,7 +170,7 @@ function updateAvatarNotes(id: number | string, value: string): void {
 
       <!-- Title + Shortcut -->
       <SheetMetadata :sheet="sheet" :can-edit="canEdit" :source-shortcut="sourceShortcut" />
-      <SheetHealthStatus :health="sheetHealth" />
+      <SheetHealthStatus v-if="sheetHealth" :health="sheetHealth" />
     </div>
 
     <!-- Avatar Gallery Dialog -->
