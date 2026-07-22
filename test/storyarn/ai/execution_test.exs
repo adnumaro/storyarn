@@ -154,7 +154,7 @@ defmodule Storyarn.AI.ExecutionTest do
     Application.put_env(:storyarn, ContractTask,
       scenario: :success,
       execution_mode: :inline,
-      managed_price: %{id: "contract-free", version: 2}
+      managed_price: %{id: "contract-free", version: 2, units: 1}
     )
 
     assert {:error, :route_ref_stale} =

@@ -1,5 +1,7 @@
 # Slice 3 — Storyarn AI Beta + Internal Allowance
 
+> Implementation status: complete on `codex/slice3-storyarn-ai-beta`; pending review/merge. Operator setup and reconciliation are documented in `STORYARN_AI_OPERATIONS.md`.
+
 ## Objective
 
 Add the first managed execution lane: Storyarn owns the provider relationship and cost, users see **Storyarn AI**, and invited workspaces receive a small internal beta allowance. This slice validates real inference, cost controls, and failure accounting without checkout, subscriptions, top-ups, invoices, or a public pricing promise.

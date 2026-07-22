@@ -1,6 +1,7 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import LanguagePicker from "../../../../components/language/LanguagePicker.vue";
+import { Switch } from "../../../../components/ui/switch";
 import WorkspaceSettingsGeneral from "../../../../live/workspace/settings/WorkspaceSettingsGeneral.vue";
 import { createMockLive } from "../../../setup";
 
@@ -53,5 +54,67 @@ describe("WorkspaceSettingsGeneral source language", () => {
       },
       undefined,
     );
+  });
+});
+
+describe("WorkspaceSettingsGeneral Storyarn AI policy", () => {
+  it("lets only the owner request a managed-policy change", async () => {
+    const live = createMockLive();
+    const wrapper = mount(WorkspaceSettingsGeneral, {
+      props: {
+        workspaceName: "Narrative Team",
+        sourceLocale: "en",
+        languageOptions: [],
+        isOwner: true,
+        ai: {
+          visible: true,
+          managedAllowed: false,
+          allowance: {
+            status: "active",
+            availableUnits: 25,
+            reservedUnits: 0,
+            committedUnits: 5,
+          },
+          provenance: {
+            provider: "together",
+            model: "eu-model-v1",
+            region: "eu-central",
+            dataRetention: "zero_data_retention",
+          },
+        },
+      },
+      global: { provide: { _live_vue: live } },
+    });
+
+    expect(wrapper.get("#storyarn-ai-settings").text()).toContain("25");
+    wrapper.getComponent(Switch).vm.$emit("update:modelValue", true);
+    await wrapper.vm.$nextTick();
+
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "update_managed_ai_policy",
+      { enabled: true },
+      undefined,
+    );
+  });
+
+  it("renders a disabled policy control for non-owners", () => {
+    const live = createMockLive();
+    const wrapper = mount(WorkspaceSettingsGeneral, {
+      props: {
+        workspaceName: "Narrative Team",
+        sourceLocale: "en",
+        languageOptions: [],
+        isOwner: false,
+        ai: {
+          visible: true,
+          managedAllowed: true,
+          allowance: { status: "unavailable", availableUnits: 0 },
+        },
+      },
+      global: { provide: { _live_vue: live } },
+    });
+
+    expect(wrapper.getComponent(Switch).props("disabled")).toBe(true);
+    expect(live.pushEvent).not.toHaveBeenCalled();
   });
 });

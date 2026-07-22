@@ -76,6 +76,21 @@
         },
         "save_changes": "Guardar cambios"
       },
+      "storyarn_ai": {
+        "title": "Storyarn AI",
+        "beta_badge": "Beta solo por invitación",
+        "description": "Permite que los miembros autorizados ejecuten herramientas acotadas de Storyarn AI usando la asignación promocional de IA de este espacio. Este ajuste no activa claves personales ni ningún servicio de pago.",
+        "allowance": "Unidades de asignación disponibles",
+        "toggle_label": "Permitir Storyarn AI en este espacio",
+        "owner_only": "Solo el propietario del espacio puede cambiar esta política.",
+        "disclosure": "El contenido autorizado de las tareas se procesa con {provider}, usando {model} en la región configurada {region} y sin retención de datos. Storyarn registra metadatos de uso y coste sin contenido.",
+        "route_unavailable": "Storyarn AI permanece bloqueado hasta que el operador verifique y configure el proveedor gestionado, la región UE y la ruta sin retención de datos.",
+        "states": {
+          "active": "Asignación activa",
+          "paused": "Asignación pausada",
+          "unavailable": "Sin asignación"
+        }
+      },
       "appearance": {
         "title": "Apariencia",
         "system": "Sistema",

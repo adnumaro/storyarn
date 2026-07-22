@@ -76,6 +76,21 @@
         },
         "save_changes": "Save Changes"
       },
+      "storyarn_ai": {
+        "title": "Storyarn AI",
+        "beta_badge": "Invite-only beta",
+        "description": "Allow eligible members to run bounded Storyarn AI tools using this workspace's promotional AI allowance. This setting does not enable personal keys or any paid service.",
+        "allowance": "Available allowance units",
+        "toggle_label": "Allow Storyarn AI for this workspace",
+        "owner_only": "Only the workspace owner can change this policy.",
+        "disclosure": "Authorized task content is processed by {provider} using {model} in the configured {region} region with zero data retention. Storyarn records content-free usage and cost metadata.",
+        "route_unavailable": "Storyarn AI remains blocked until the operator has verified and configured the managed provider, EU region, and zero-data-retention route.",
+        "states": {
+          "active": "Allowance active",
+          "paused": "Allowance paused",
+          "unavailable": "No allowance"
+        }
+      },
       "appearance": {
         "title": "Appearance",
         "system": "System",

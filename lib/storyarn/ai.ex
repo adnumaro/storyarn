@@ -11,6 +11,7 @@ defmodule Storyarn.AI do
   later slices.
   """
 
+  alias Storyarn.AI.Allowance
   alias Storyarn.AI.Execution
   alias Storyarn.AI.ExecutionIntent
   alias Storyarn.AI.IntegrationCrud
@@ -18,6 +19,7 @@ defmodule Storyarn.AI do
   alias Storyarn.AI.Policy
   alias Storyarn.AI.Providers
   alias Storyarn.AI.Results
+  alias Storyarn.AI.RouteResolver
   alias Storyarn.AI.Runtime
   alias Storyarn.AI.TaskRegistry
 
@@ -43,6 +45,8 @@ defmodule Storyarn.AI do
 
   defdelegate get_workspace_policy(scope, workspace_id), to: Policy, as: :get
   defdelegate update_workspace_policy(scope, workspace_id, lanes), to: Policy, as: :update
+  defdelegate allowance_summary(scope, workspace_id), to: Allowance, as: :summary
+  defdelegate managed_provenance(), to: RouteResolver
 
   defdelegate registered_tasks(), to: TaskRegistry, as: :all
   defdelegate ai_command_id?(command_id), to: TaskRegistry, as: :command_id?

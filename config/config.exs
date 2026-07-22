@@ -110,6 +110,7 @@ config :storyarn, Oban,
        {"0 * * * *", TrashRetentionWorker},
        {"*/15 * * * *", Storyarn.Workers.ExpireProjectImportsWorker},
        {"*/15 * * * *", ExpireAIResultsWorker},
+       {"*/5 * * * *", Storyarn.Workers.ReconcileAIReservationsWorker},
        {"* * * * *", Storyarn.Workers.RetryStorageCleanupRequestsWorker}
      ]}
   ]
