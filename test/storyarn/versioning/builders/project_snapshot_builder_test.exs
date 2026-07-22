@@ -14,6 +14,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Localization
   alias Storyarn.Projects
+  alias Storyarn.Sheets.Sheet
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
 
   setup do
@@ -93,9 +94,24 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
   end
 
   describe "localization restore integrity" do
-    test "drops stale auxiliary foreign keys from snapshot rows", %{project: project} do
+    test "drops stale auxiliary foreign keys only where the source role does not support them", %{
+      project: project,
+      flow: flow
+    } do
       source_language_fixture(project, %{locale_code: "en", name: "English"})
       language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      speaker = sheet_fixture(project, %{name: "Snapshot speaker"})
+
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "speaker_sheet_id" => speaker.id,
+            "text" => "Spoken line",
+            "responses" => [%{"id" => "continue", "text" => "Continue"}]
+          }
+        })
+
       assert {:ok, _count} = Localization.extract_all(project.id)
 
       snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
@@ -103,21 +119,38 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
       localization =
         update_in(snapshot, ["localization", "texts"], fn texts ->
           Enum.map(texts, fn text ->
-            Map.merge(text, %{
+            stale_auxiliary_ids = %{
               "vo_asset_id" => 9_999_991,
-              "speaker_sheet_id" => 9_999_992,
               "translated_by_id" => 9_999_993,
               "reviewed_by_id" => 9_999_994
-            })
+            }
+
+            if text["content_role"] in ~w(dialogue response) do
+              Map.merge(text, stale_auxiliary_ids)
+            else
+              Map.merge(text, Map.put(stale_auxiliary_ids, "speaker_sheet_id", 9_999_992))
+            end
           end)
         end)
 
       assert {:ok, _result} = ProjectSnapshotBuilder.restore_snapshot(project.id, localization)
 
       assert Enum.all?(Localization.list_all_texts(project.id), fn text ->
-               is_nil(text.vo_asset_id) and is_nil(text.speaker_sheet_id) and
-                 is_nil(text.translated_by_id) and is_nil(text.reviewed_by_id)
+               is_nil(text.vo_asset_id) and is_nil(text.translated_by_id) and
+                 is_nil(text.reviewed_by_id)
              end)
+
+      spoken_rows = Localization.get_texts_for_source("flow_node", node.id)
+
+      assert spoken_rows |> Enum.map(& &1.source_field) |> Enum.sort() ==
+               ["response.continue.text", "text"]
+
+      assert Enum.all?(spoken_rows, &(&1.speaker_sheet_id == speaker.id))
+
+      assert project.id
+             |> Localization.list_all_texts()
+             |> Enum.reject(&(&1.source_type == "flow_node" and &1.source_id == node.id))
+             |> Enum.all?(&is_nil(&1.speaker_sheet_id))
     end
 
     test "recreates a missing voice asset once and keeps global localization attached", %{
@@ -231,33 +264,49 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
       assert restored.name == "Hero Sheet"
     end
 
-    test "skips soft-deleted entities", %{project: project, sheet: sheet} do
+    test "restores soft-deleted snapshot entities in the exact restore transaction", %{
+      project: project,
+      sheet: sheet
+    } do
       source_language_fixture(project, %{locale_code: "en", name: "English"})
       language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      assert {:ok, _count} = Localization.extract_all(project.id)
       snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
 
-      # Soft-delete an entity
-      {:ok, _} = Storyarn.Sheets.delete_sheet(sheet)
+      assert {:ok, _deleted_sheet} = Storyarn.Sheets.delete_sheet(sheet)
+      assert Repo.get!(Sheet, sheet.id).deleted_at
 
-      # Restore should skip the deleted entity
-      assert {:ok, result} = ProjectSnapshotBuilder.restore_snapshot(project.id, snapshot)
-      assert result.skipped >= 1
-      assert Localization.get_texts_for_source("sheet", sheet.id) == []
+      safety_snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
+
+      assert {:ok, result} =
+               ProjectSnapshotBuilder.restore_snapshot(
+                 project.id,
+                 snapshot,
+                 pre_restore_snapshot: safety_snapshot
+               )
+
+      assert result.skipped == 0
+
+      restored_sheet = Repo.get!(Sheet, sheet.id)
+      assert restored_sheet.id == sheet.id
+      assert is_nil(restored_sheet.deleted_at)
+      assert Localization.get_texts_for_source("sheet", sheet.id) != []
     end
 
-    test "leaves entities not in snapshot untouched", %{project: project} do
+    test "soft-deletes entities not present in the exact snapshot", %{project: project} do
       snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
 
-      # Create a new entity after the snapshot
       new_sheet = sheet_fixture(project, %{name: "New After Snapshot"})
 
-      # Restore
-      {:ok, _} = ProjectSnapshotBuilder.restore_snapshot(project.id, snapshot)
+      assert {:ok, result} =
+               ProjectSnapshotBuilder.restore_snapshot(project.id, snapshot)
 
-      # New entity should still exist and be unmodified
-      restored_new = Storyarn.Sheets.get_sheet(project.id, new_sheet.id)
-      assert restored_new
-      assert restored_new.name == "New After Snapshot"
+      assert result.removed.sheets == 1
+      assert Storyarn.Sheets.get_sheet(project.id, new_sheet.id) == nil
+
+      removed_sheet = Repo.get!(Sheet, new_sheet.id)
+      assert removed_sheet.name == "New After Snapshot"
+      assert removed_sheet.deleted_at
     end
 
     test "requires an external tracker when composed inside another transaction", %{
@@ -430,16 +479,21 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
   end
 
   describe "localization in snapshot" do
-    test "includes localization data", %{project: project} do
+    test "includes localization data for sources in the active project graph", %{
+      project: project,
+      flow: flow
+    } do
       source_language_fixture(project, %{locale_code: "en", name: "English"})
       language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
-      text =
-        localized_text_fixture(project.id, %{
-          locale_code: "es",
-          source_text: "Hello",
-          translated_text: "Hola"
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Hello", "responses" => []}
         })
+
+      text = Localization.get_text_by_source("flow_node", node.id, "text", "es")
+      assert {:ok, text} = Localization.update_text(text, %{translated_text: "Hola"})
 
       Localization.create_glossary_entry(project, %{
         source_term: "Dragon",
@@ -476,19 +530,29 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
       assert glossary["target_term"] == "Dragón"
     end
 
-    test "includes localization voice asset metadata", %{project: project, user: user} do
+    test "includes localization voice asset metadata", %{
+      project: project,
+      user: user,
+      flow: flow
+    } do
       source_language_fixture(project, %{locale_code: "en", name: "English"})
       language_fixture(project, %{locale_code: "es", name: "Spanish"})
       voice_asset = uploaded_asset(project, user, "localized-line.mp3", "voice-line", "audio/mpeg")
 
-      text =
-        localized_text_fixture(project.id, %{
-          locale_code: "es",
-          source_text: "Hello",
-          translated_text: "Hola"
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Localized voice line", "responses" => []}
         })
 
-      {:ok, _text} = Localization.update_text(text, %{vo_asset_id: voice_asset.id, vo_status: "recorded"})
+      text = Localization.get_text_by_source("flow_node", node.id, "text", "es")
+
+      {:ok, text} =
+        Localization.update_text(text, %{
+          translated_text: "Línea de voz localizada",
+          vo_asset_id: voice_asset.id,
+          vo_status: "recorded"
+        })
 
       snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
       asset_id = to_string(voice_asset.id)
@@ -507,7 +571,8 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
 
     test "rejects localization voice assets owned by another project", %{
       project: project,
-      user: user
+      user: user,
+      flow: flow
     } do
       source_language_fixture(project, %{locale_code: "en", name: "English"})
       language_fixture(project, %{locale_code: "es", name: "Spanish"})
@@ -523,12 +588,13 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
           "audio/mpeg"
         )
 
-      text =
-        localized_text_fixture(project.id, %{
-          locale_code: "es",
-          source_text: "Hello",
-          translated_text: "Hola"
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Corrupt foreign voice", "responses" => []}
         })
+
+      text = Localization.get_text_by_source("flow_node", node.id, "text", "es")
 
       # The public writer now rejects this corruption. Inject it below the
       # context boundary to retain coverage for the snapshot builder's
@@ -547,7 +613,8 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
 
     test "rejects localization voice assets whose recovery blob is unavailable", %{
       project: project,
-      user: user
+      user: user,
+      flow: flow
     } do
       source_language_fixture(project, %{locale_code: "en", name: "English"})
       language_fixture(project, %{locale_code: "es", name: "Spanish"})
@@ -561,12 +628,13 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
           "audio/mpeg"
         )
 
-      text =
-        localized_text_fixture(project.id, %{
-          locale_code: "es",
-          source_text: "Hello",
-          translated_text: "Hola"
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Missing localized voice", "responses" => []}
         })
+
+      text = Localization.get_text_by_source("flow_node", node.id, "text", "es")
 
       assert {:ok, _text} =
                Localization.update_text(text, %{

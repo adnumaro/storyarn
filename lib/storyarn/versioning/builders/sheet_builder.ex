@@ -33,6 +33,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   alias Storyarn.Versioning.DiffHelpers
   alias Storyarn.Versioning.LocalizationSnapshotCodec
   alias Storyarn.Versioning.MaterializationHelpers
+  alias Storyarn.Versioning.ProjectRestoreAvatarIntegrity
   alias Storyarn.Versioning.RestorePolicy
   alias Storyarn.Versioning.SheetLocalizationSnapshotValidator
 
@@ -635,7 +636,8 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     with {:ok, _project} <- lock_sheet_project_for_restore(sheet.project_id),
          {:ok, locked_sheet} <- lock_sheet_for_restore(sheet),
          :ok <- validate_sheet_snapshot(locked_sheet, snapshot),
-         {:ok, inheritance_plan} <- preflight_property_inheritance(locked_sheet, snapshot),
+         {:ok, inheritance_plan} <-
+           preflight_property_inheritance(locked_sheet, snapshot, opts),
          :ok <- LocalizableWords.lock_inventory!(locked_sheet.project_id),
          {:ok, updated_sheet} <- restore_sheet_fields(locked_sheet, snapshot, opts),
          {:ok, block_data} <-
@@ -1482,27 +1484,41 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     end)
   end
 
-  defp preflight_property_inheritance(sheet, snapshot) do
+  defp preflight_property_inheritance(sheet, snapshot, opts) do
     target_blocks = snapshot["blocks"]
     current_blocks = lock_current_sheet_blocks(sheet.id)
     current_by_id = Map.new(current_blocks, &{&1.id, &1})
     instances_by_source = lock_external_instances(current_blocks, sheet)
     current_table_data = lock_current_table_data(current_blocks)
 
-    with :ok <-
-           validate_property_inheritance_targets(
-             target_blocks,
-             current_by_id,
-             instances_by_source,
-             current_table_data
-           ) do
+    if Keyword.get(opts, :full_project_restore, false) do
+      # Every active sheet and block is restored from the same project
+      # snapshot. Cross-sheet propagation is deliberately deferred until the
+      # complete graph and target tree exist; the project restore verifies the
+      # resulting inheritance graph before commit.
       {:ok,
-       build_property_inheritance_plan(
-         target_blocks,
-         current_blocks,
-         current_by_id,
-         instances_by_source
-       )}
+       %{
+         extra_children_sources: [],
+         restore_sources: [],
+         sync_source_ids: [],
+         sync_instance_ids: []
+       }}
+    else
+      with :ok <-
+             validate_property_inheritance_targets(
+               target_blocks,
+               current_by_id,
+               instances_by_source,
+               current_table_data
+             ) do
+        {:ok,
+         build_property_inheritance_plan(
+           target_blocks,
+           current_blocks,
+           current_by_id,
+           instances_by_source
+         )}
+      end
     end
   end
 
@@ -2202,12 +2218,18 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
   defp reconcile_sheet_avatars(sheet, snapshot, opts) do
     with {:ok, avatar_entries} <- build_restore_avatar_entries(sheet, snapshot, opts),
-         :ok <- delete_missing_avatars(sheet.id, Enum.map(avatar_entries, & &1.original_id)) do
+         :ok <-
+           delete_missing_avatars(
+             sheet.id,
+             sheet.project_id,
+             Enum.map(avatar_entries, & &1.original_id),
+             opts
+           ) do
       upsert_sheet_avatars(sheet.id, avatar_entries)
     end
   end
 
-  defp delete_missing_avatars(sheet_id, target_ids) do
+  defp delete_missing_avatars(sheet_id, project_id, target_ids, opts) do
     candidates =
       SheetAvatar
       |> where([avatar], avatar.sheet_id == ^sheet_id)
@@ -2216,7 +2238,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       |> lock("FOR UPDATE")
       |> Repo.all()
 
-    with :ok <- ensure_avatar_deletions_safe(candidates) do
+    with :ok <- ensure_avatar_deletions_safe(candidates, project_id, opts) do
       delete_avatar_candidates(sheet_id, candidates)
     end
   end
@@ -2227,20 +2249,27 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     where(query, [avatar], avatar.id not in ^target_ids)
   end
 
-  defp ensure_avatar_deletions_safe(avatars) do
-    validate_each(avatars, &ensure_avatar_deletion_safe/1)
+  defp ensure_avatar_deletions_safe(avatars, project_id, opts) do
+    validate_each(avatars, &ensure_avatar_deletion_safe(&1, project_id, opts))
   end
 
-  defp ensure_avatar_deletion_safe(%SheetAvatar{id: avatar_id}) do
-    case AvatarIntegrity.ensure_deletable(avatar_id) do
-      :ok ->
-        :ok
+  defp ensure_avatar_deletion_safe(%SheetAvatar{id: avatar_id} = avatar, project_id, opts) do
+    with :ok <-
+           ProjectRestoreAvatarIntegrity.detach_recoverable_refs(
+             avatar,
+             project_id,
+             opts
+           ) do
+      case AvatarIntegrity.ensure_deletable(avatar_id) do
+        :ok ->
+          :ok
 
-      {:error, {:avatar_in_use, ^avatar_id, details}} ->
-        {:error, {:avatar_restore_conflict, avatar_id, details}}
+        {:error, {:avatar_in_use, ^avatar_id, details}} ->
+          {:error, {:avatar_restore_conflict, avatar_id, details}}
 
-      {:error, reason} ->
-        {:error, {:avatar_restore_conflict, avatar_id, reason}}
+        {:error, reason} ->
+          {:error, {:avatar_restore_conflict, avatar_id, reason}}
+      end
     end
   end
 

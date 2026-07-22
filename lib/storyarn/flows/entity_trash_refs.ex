@@ -43,6 +43,7 @@ defmodule Storyarn.Flows.EntityTrashRefs do
   import Ecto.Query
 
   alias Storyarn.Flows.EntityTrashRef
+  alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.References.AvatarIntegrity
   alias Storyarn.Repo
@@ -50,6 +51,17 @@ defmodule Storyarn.Flows.EntityTrashRefs do
 
   @type target_type ::
           :sheet | :asset | :flow | :flow_node | :sheet_avatar
+
+  @project_restore_sources_locked_event [
+    :storyarn,
+    :flows,
+    :entity_trash_refs,
+    :project_restore_sources_locked
+  ]
+
+  defguardp valid_project_restore_arguments?(project_id, flow_ids, node_ids)
+            when is_integer(project_id) and project_id > 0 and is_list(flow_ids) and
+                   is_list(node_ids)
 
   @target_type_to_column %{
     sheet: :target_sheet_id,
@@ -147,6 +159,51 @@ defmodule Storyarn.Flows.EntityTrashRefs do
     end)
   end
 
+  @doc """
+  Sweeps `data.referenced_flow_id` only from nodes whose owning Flow belongs
+  to `project_id`.
+
+  Project snapshot restore uses this narrower boundary when it moves a
+  current-only Flow to trash. It must never mutate a source row owned by a
+  different project, even if corrupt data points at the target Flow.
+  """
+  @spec sweep_project_flow_references(integer(), integer()) ::
+          {:ok, non_neg_integer()} | {:error, term()}
+  def sweep_project_flow_references(project_id, target_flow_id)
+      when is_integer(project_id) and project_id > 0 and is_integer(target_flow_id) and target_flow_id > 0 do
+    target_flow_id_string = Integer.to_string(target_flow_id)
+
+    project_flow_ids =
+      from(flow in Flow,
+        where: flow.project_id == ^project_id,
+        select: flow.id
+      )
+
+    Repo.transaction(fn ->
+      rows =
+        Repo.all(
+          from(node in FlowNode,
+            where: node.flow_id in subquery(project_flow_ids),
+            where:
+              fragment("?->>'referenced_flow_id'", node.data) ==
+                ^target_flow_id_string,
+            order_by: [asc: node.id],
+            lock: "FOR UPDATE"
+          )
+        )
+
+      sweep_jsonb_rows(
+        rows,
+        FlowNode,
+        "flow_node",
+        :data,
+        "referenced_flow_id",
+        :target_flow_id,
+        target_flow_id
+      )
+    end)
+  end
+
   # ===========================================================================
   # Restore
   # ===========================================================================
@@ -192,9 +249,242 @@ defmodule Storyarn.Flows.EntityTrashRefs do
     end)
   end
 
+  @doc """
+  Reconciles pending Flow trash references after an exact project restore.
+
+  The project snapshot is authoritative for every source node that it
+  materialized, so pending rows for those sources are discarded without
+  re-injecting their pre-restore value. Sources outside the target snapshot may
+  only be touched when they are still effectively in trash (the node or its
+  owning Flow is deleted); their reference is then restored conservatively.
+
+  Foreign-project sources and active same-project sources outside the target
+  snapshot fail the whole operation before any source row or trash reference is
+  changed.
+  """
+  @spec reconcile_project_restore_flow_refs(
+          integer(),
+          [integer()],
+          [integer()]
+        ) ::
+          {:ok,
+           %{
+             discarded: non_neg_integer(),
+             restored: non_neg_integer(),
+             skipped: non_neg_integer()
+           }}
+          | {:error, term()}
+  def reconcile_project_restore_flow_refs(project_id, target_flow_ids, target_snapshot_node_ids)
+      when valid_project_restore_arguments?(project_id, target_flow_ids, target_snapshot_node_ids) do
+    target_flow_ids = normalize_positive_ids(target_flow_ids)
+    target_snapshot_node_ids = target_snapshot_node_ids |> normalize_positive_ids() |> MapSet.new()
+
+    Repo.transaction(fn ->
+      with :ok <- validate_active_restore_targets(project_id, target_flow_ids),
+           refs = lock_project_restore_flow_refs(target_flow_ids),
+           :ok <- validate_project_restore_ref_shapes(refs),
+           {:ok, source_states} <-
+             lock_and_validate_project_restore_sources(
+               refs,
+               project_id,
+               target_snapshot_node_ids
+             ) do
+        emit_project_restore_sources_locked(project_id, refs, source_states)
+
+        reconcile_project_restore_refs(
+          refs,
+          source_states,
+          target_snapshot_node_ids
+        )
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+  end
+
   # ===========================================================================
   # Private helpers
   # ===========================================================================
+
+  defp normalize_positive_ids(ids) do
+    ids
+    |> Enum.filter(&(is_integer(&1) and &1 > 0))
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
+  defp validate_active_restore_targets(_project_id, []), do: :ok
+
+  defp validate_active_restore_targets(project_id, target_flow_ids) do
+    targets =
+      Repo.all(
+        from(flow in Flow,
+          where: flow.id in ^target_flow_ids,
+          order_by: [asc: flow.id],
+          lock: "FOR UPDATE"
+        )
+      )
+
+    target_by_id = Map.new(targets, &{&1.id, &1})
+
+    Enum.reduce_while(target_flow_ids, :ok, fn flow_id, :ok ->
+      case Map.get(target_by_id, flow_id) do
+        %Flow{project_id: ^project_id, deleted_at: nil} ->
+          {:cont, :ok}
+
+        %Flow{project_id: ^project_id} ->
+          {:halt, {:error, {:project_restore_flow_target_not_active, flow_id}}}
+
+        %Flow{project_id: owner_project_id} ->
+          {:halt, {:error, {:project_restore_flow_target_ownership_conflict, flow_id, owner_project_id}}}
+
+        nil ->
+          {:halt, {:error, {:project_restore_flow_target_missing, flow_id}}}
+      end
+    end)
+  end
+
+  defp lock_project_restore_flow_refs([]), do: []
+
+  defp lock_project_restore_flow_refs(target_flow_ids) do
+    Repo.all(
+      from(ref in EntityTrashRef,
+        where: ref.target_flow_id in ^target_flow_ids,
+        order_by: [asc: ref.id],
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp validate_project_restore_ref_shapes(refs) do
+    case Enum.find(
+           refs,
+           &(&1.source_type != "flow_node" or
+               &1.source_field != "data.referenced_flow_id")
+         ) do
+      nil -> :ok
+      ref -> {:error, {:invalid_project_restore_flow_trash_reference, ref.id}}
+    end
+  end
+
+  defp lock_and_validate_project_restore_sources([], _project_id, _target_snapshot_node_ids), do: {:ok, %{}}
+
+  defp lock_and_validate_project_restore_sources(refs, project_id, target_snapshot_node_ids) do
+    source_ids = refs |> Enum.map(& &1.source_id) |> Enum.uniq() |> Enum.sort()
+
+    source_scopes =
+      Repo.all(
+        from(node in FlowNode,
+          join: flow in Flow,
+          on: flow.id == node.flow_id,
+          where: node.id in ^source_ids,
+          order_by: [asc: node.id],
+          select: %{node_id: node.id, flow_id: flow.id, project_id: flow.project_id}
+        )
+      )
+
+    case Enum.find(source_scopes, &(&1.project_id != project_id)) do
+      %{node_id: node_id, project_id: owner_project_id} ->
+        {:error, {:project_restore_flow_trash_reference_cross_project_source, node_id, owner_project_id}}
+
+      nil ->
+        lock_and_validate_same_project_sources(
+          source_ids,
+          source_scopes,
+          project_id,
+          target_snapshot_node_ids
+        )
+    end
+  end
+
+  defp lock_and_validate_same_project_sources(source_ids, source_scopes, project_id, target_snapshot_node_ids) do
+    flow_ids = source_scopes |> Enum.map(& &1.flow_id) |> Enum.uniq() |> Enum.sort()
+
+    locked_flows =
+      Repo.all(
+        from(flow in Flow,
+          where: flow.id in ^flow_ids and flow.project_id == ^project_id,
+          order_by: [asc: flow.id],
+          lock: "FOR UPDATE"
+        )
+      )
+
+    locked_nodes =
+      Repo.all(
+        from(node in FlowNode,
+          where: node.id in ^source_ids,
+          order_by: [asc: node.id],
+          lock: "FOR UPDATE"
+        )
+      )
+
+    flow_by_id = Map.new(locked_flows, &{&1.id, &1})
+
+    source_states =
+      Map.new(locked_nodes, fn node ->
+        {node.id, %{node: node, flow: Map.fetch!(flow_by_id, node.flow_id)}}
+      end)
+
+    case Enum.find(source_states, fn {node_id, %{node: node, flow: flow}} ->
+           not MapSet.member?(target_snapshot_node_ids, node_id) and
+             is_nil(node.deleted_at) and is_nil(flow.deleted_at)
+         end) do
+      {node_id, _state} ->
+        {:error, {:project_restore_flow_trash_reference_unexpected_active_source, node_id}}
+
+      nil ->
+        {:ok, source_states}
+    end
+  end
+
+  defp reconcile_project_restore_refs(refs, source_states, target_snapshot_node_ids) do
+    Enum.reduce(
+      refs,
+      %{discarded: 0, restored: 0, skipped: 0},
+      fn ref, counts ->
+        outcome =
+          cond do
+            MapSet.member?(target_snapshot_node_ids, ref.source_id) ->
+              :discarded
+
+            source_state = Map.get(source_states, ref.source_id) ->
+              apply_project_restore(ref, source_state)
+
+            true ->
+              :skipped
+          end
+
+        Repo.delete!(ref)
+        Map.update!(counts, outcome, &(&1 + 1))
+      end
+    )
+  end
+
+  defp emit_project_restore_sources_locked(project_id, refs, source_states) do
+    :telemetry.execute(
+      @project_restore_sources_locked_event,
+      %{reference_count: length(refs), source_count: map_size(source_states)},
+      %{project_id: project_id}
+    )
+  end
+
+  defp apply_project_restore(
+         %EntityTrashRef{
+           source_type: "flow_node",
+           source_field: "data.referenced_flow_id",
+           target_flow_id: target_flow_id
+         } = ref,
+         %{node: %FlowNode{} = node, flow: %Flow{}}
+       ) do
+    restore_jsonb_row(
+      node,
+      ref,
+      FlowNode,
+      :data,
+      "referenced_flow_id",
+      target_flow_id
+    )
+  end
 
   defp validate_source_type!(source_type) do
     if !Map.has_key?(@source_type_to_schema, source_type) do

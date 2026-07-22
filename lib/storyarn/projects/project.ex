@@ -15,6 +15,7 @@ defmodule Storyarn.Projects.Project do
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
+  alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Workspaces.Workspace
 
   @type t :: %__MODULE__{
@@ -40,6 +41,10 @@ defmodule Storyarn.Projects.Project do
           restoration_in_progress: boolean(),
           restoration_started_by_id: integer() | nil,
           restoration_started_at: DateTime.t() | nil,
+          restoration_token: Ecto.UUID.t() | nil,
+          restoration_claimed_by_job_id: integer() | nil,
+          restoration_snapshot_id: integer() | nil,
+          restoration_snapshot: ProjectSnapshot.t() | NotLoaded.t() | nil,
           deleted_at: DateTime.t() | nil,
           deleted_by_id: integer() | nil,
           created_from_template_version_id: integer() | nil,
@@ -65,6 +70,9 @@ defmodule Storyarn.Projects.Project do
     field :restoration_in_progress, :boolean, default: false
     belongs_to :restoration_started_by, User
     field :restoration_started_at, :utc_datetime
+    field :restoration_token, Ecto.UUID
+    field :restoration_claimed_by_job_id, :integer
+    belongs_to :restoration_snapshot, ProjectSnapshot
 
     field :deleted_at, :utc_datetime
     belongs_to :deleted_by, User

@@ -57,21 +57,74 @@ defmodule StoryarnWeb.ProjectSettingsLive.SnapshotLifecycleTest do
   end
 
   test "returned enqueue errors publish a terminal failure and release the lock", context do
-    assert_enqueue_failure(context, fn _project_id, _snapshot_id, _user_id ->
+    assert_enqueue_failure(context, fn _project_id, _snapshot_id, _user_id, _lock_token ->
       {:error, :queue_unavailable}
     end)
   end
 
   test "enqueue exceptions publish a terminal failure and release the lock", context do
-    assert_enqueue_failure(context, fn _project_id, _snapshot_id, _user_id ->
+    assert_enqueue_failure(context, fn _project_id, _snapshot_id, _user_id, _lock_token ->
       raise "queue unavailable"
     end)
   end
 
   test "enqueue exits publish a terminal failure and release the lock", context do
-    assert_enqueue_failure(context, fn _project_id, _snapshot_id, _user_id ->
+    assert_enqueue_failure(context, fn _project_id, _snapshot_id, _user_id, _lock_token ->
       exit(:queue_unavailable)
     end)
+  end
+
+  test "a returned enqueue error remains in progress when compensation cannot release a claimed lock",
+       context do
+    assert_ambiguous_enqueue_failure(context, fn project_id, snapshot_id, user_id, lock_token ->
+      assert {:ok, _project} =
+               Projects.claim_restoration_lock(
+                 project_id,
+                 user_id,
+                 snapshot_id,
+                 lock_token,
+                 91_001
+               )
+
+      {:error, :queue_reply_lost}
+    end)
+  end
+
+  test "an enqueue exception remains in progress when the job may already be running", context do
+    assert_ambiguous_enqueue_failure(context, fn project_id, snapshot_id, user_id, lock_token ->
+      assert {:ok, _project} =
+               Projects.claim_restoration_lock(
+                 project_id,
+                 user_id,
+                 snapshot_id,
+                 lock_token,
+                 91_002
+               )
+
+      raise "queue reply lost"
+    end)
+  end
+
+  test "a compensation exception preserves in-progress state and suppresses terminal failure",
+       %{project: project, snapshot: snapshot, socket: socket} do
+    assert {:noreply, result_socket} =
+             SettingsComponents.do_restore_snapshot(socket, snapshot.id,
+               enqueue_fun: fn _project_id, _snapshot_id, _user_id, _lock_token ->
+                 {:error, :queue_unavailable}
+               end,
+               release_fun: fn _project_id, _lock_token ->
+                 raise "database unavailable"
+               end
+             )
+
+    assert result_socket.assigns.restoration_in_progress
+    assert {true, _metadata} = Projects.restoration_in_progress?(project.id)
+    refute_enqueued(worker: RestoreProjectWorker)
+
+    assert {:project_restoration_started, _payload} = receive_restoration_event()
+
+    refute_receive {:project_restoration_failed, _payload}
+    refute_receive {:project_restoration_completed, _payload}
   end
 
   defp assert_enqueue_failure(%{project: project, snapshot: snapshot, socket: socket}, enqueue_fun) do
@@ -87,6 +140,20 @@ defmodule StoryarnWeb.ProjectSettingsLive.SnapshotLifecycleTest do
     assert {:project_restoration_failed, %{reason: :enqueue_failed}} =
              receive_restoration_event()
 
+    refute_receive {:project_restoration_completed, _payload}
+  end
+
+  defp assert_ambiguous_enqueue_failure(%{project: project, snapshot: snapshot, socket: socket}, enqueue_fun) do
+    assert {:noreply, result_socket} =
+             SettingsComponents.do_restore_snapshot(socket, snapshot.id, enqueue_fun: enqueue_fun)
+
+    assert result_socket.assigns.restoration_in_progress
+    assert {true, _metadata} = Projects.restoration_in_progress?(project.id)
+    refute_enqueued(worker: RestoreProjectWorker)
+
+    assert {:project_restoration_started, _payload} = receive_restoration_event()
+
+    refute_receive {:project_restoration_failed, _payload}
     refute_receive {:project_restoration_completed, _payload}
   end
 

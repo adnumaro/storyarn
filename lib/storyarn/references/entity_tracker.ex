@@ -4,6 +4,12 @@ defmodule Storyarn.References.EntityTracker do
 
   During the PR2 transition this module delegates to the existing tracking logic
   while callers migrate to the `Storyarn.References` facade.
+
+  Project rebuilds replace references only for active sources. Rows owned by
+  sources under a soft-deleted Sheet, Flow, or Scene are recovery state: root
+  restores make those sources visible again, and not every root restore path
+  rebuilds its children. Each active-source updater already deletes and
+  replaces its own rows atomically.
   """
 
   import Ecto.Query, warn: false
@@ -15,7 +21,6 @@ defmodule Storyarn.References.EntityTracker do
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Scenes.SceneZone
   alias Storyarn.Sheets.Block
-  alias Storyarn.Sheets.EntityReference
   alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Sheets.Sheet
 
@@ -60,7 +65,6 @@ defmodule Storyarn.References.EntityTracker do
 
   defp do_rebuild_project_entity_references(project_id) do
     sources = lock_project_reference_sources(project_id)
-    delete_project_source_references(sources)
 
     Enum.each(
       sources.active_blocks,
@@ -102,8 +106,7 @@ defmodule Storyarn.References.EntityTracker do
       active_blocks: active_project_blocks(project_id),
       active_nodes: active_project_flow_nodes(project_id),
       active_pins: active_project_scene_rows(ScenePin, project_id),
-      active_zones: active_project_scene_rows(SceneZone, project_id),
-      all_source_ids: project_reference_source_ids(project_id)
+      active_zones: active_project_scene_rows(SceneZone, project_id)
     }
   end
 
@@ -147,57 +150,5 @@ defmodule Storyarn.References.EntityTracker do
         lock: "FOR UPDATE",
         select: row
     )
-  end
-
-  defp project_reference_source_ids(project_id) do
-    %{
-      "block" =>
-        Repo.all(
-          from block in Block,
-            join: sheet in Sheet,
-            on: sheet.id == block.sheet_id,
-            where: sheet.project_id == ^project_id,
-            select: block.id
-        ),
-      "flow_node" =>
-        Repo.all(
-          from node in FlowNode,
-            join: flow in Flow,
-            on: flow.id == node.flow_id,
-            where: flow.project_id == ^project_id,
-            select: node.id
-        ),
-      "scene_pin" =>
-        Repo.all(
-          from pin in ScenePin,
-            join: scene in Scene,
-            on: scene.id == pin.scene_id,
-            where: scene.project_id == ^project_id,
-            select: pin.id
-        ),
-      "scene_zone" =>
-        Repo.all(
-          from zone in SceneZone,
-            join: scene in Scene,
-            on: scene.id == zone.scene_id,
-            where: scene.project_id == ^project_id,
-            select: zone.id
-        )
-    }
-  end
-
-  defp delete_project_source_references(%{all_source_ids: source_ids}) do
-    Enum.each(source_ids, fn
-      {_source_type, []} ->
-        :ok
-
-      {source_type, ids} ->
-        Repo.delete_all(
-          from reference in EntityReference,
-            where:
-              reference.source_type == ^source_type and
-                reference.source_id in ^ids
-        )
-    end)
   end
 end

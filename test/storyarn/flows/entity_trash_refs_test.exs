@@ -163,6 +163,66 @@ defmodule Storyarn.Flows.EntityTrashRefsTest do
     end
   end
 
+  describe "reconcile_project_restore_flow_refs/3" do
+    test "does not re-fetch and mutate a foreign source inserted after source validation" do
+      user = user_fixture()
+      project = project_fixture(user)
+      target_flow = flow_fixture(project)
+      foreign_project = project_fixture(user)
+      foreign_flow = flow_fixture(foreign_project)
+
+      [[missing_source_id]] =
+        Repo.query!("SELECT nextval(pg_get_serial_sequence('flow_nodes', 'id'))").rows
+
+      pending_ref =
+        %EntityTrashRef{}
+        |> EntityTrashRef.create_changeset(%{
+          source_type: "flow_node",
+          source_id: missing_source_id,
+          source_field: "data.referenced_flow_id",
+          target_flow_id: target_flow.id
+        })
+        |> Repo.insert!()
+
+      handler_id =
+        "project-restore-missing-source-race-#{System.unique_integer([:positive])}"
+
+      :ok =
+        :telemetry.attach(
+          handler_id,
+          [
+            :storyarn,
+            :flows,
+            :entity_trash_refs,
+            :project_restore_sources_locked
+          ],
+          fn _event, _measurements, %{project_id: restored_project_id}, _config ->
+            if restored_project_id == project.id do
+              Repo.insert!(%FlowNode{
+                id: missing_source_id,
+                flow_id: foreign_flow.id,
+                type: "subflow",
+                data: %{"referenced_flow_id" => nil}
+              })
+            end
+          end,
+          nil
+        )
+
+      on_exit(fn -> :telemetry.detach(handler_id) end)
+
+      assert {:ok, %{discarded: 0, restored: 0, skipped: 1}} =
+               EntityTrashRefs.reconcile_project_restore_flow_refs(
+                 project.id,
+                 [target_flow.id],
+                 []
+               )
+
+      assert Repo.get!(FlowNode, missing_source_id).data["referenced_flow_id"] == nil
+      refute Repo.get(EntityTrashRef, pending_ref.id)
+    end
+  end
+
   # ===========================================================================
   # FK cascade
   # ===========================================================================

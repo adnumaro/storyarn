@@ -1323,6 +1323,28 @@ defmodule Storyarn.Flows do
               to: EntityTrashRefs,
               as: :sweep_jsonb_field
 
+  @doc """
+  Sweep Flow references only from nodes whose owning Flow belongs to the
+  supplied project.
+
+  This is the containment boundary used by project snapshot restore.
+  """
+  defdelegate sweep_project_flow_references(project_id, target_flow_id),
+    to: EntityTrashRefs
+
+  @doc """
+  Reconcile pending Flow trash refs after an exact project snapshot restore.
+
+  Target-snapshot sources remain authoritative; references belonging to
+  pre-existing trash are restored conservatively within the project boundary.
+  """
+  defdelegate reconcile_project_restore_flow_refs(
+                project_id,
+                target_flow_ids,
+                target_snapshot_node_ids
+              ),
+              to: EntityTrashRefs
+
   @doc "Restore all trash refs pointing at `{target_type, target_id}` (conservative)."
   defdelegate restore_trash_refs(target_type, target_id), to: EntityTrashRefs, as: :restore
 end

@@ -154,6 +154,17 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
              :error,
              dgettext("projects", "Lock is not stale yet. Please wait or let the restore finish.")
            )}
+
+        {:error, :restore_active} ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             dgettext(
+               "projects",
+               "The restoration job is still active. Please wait for it to finish."
+             )
+           )}
       end
     end)
   end

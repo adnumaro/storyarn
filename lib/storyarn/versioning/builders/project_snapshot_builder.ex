@@ -12,17 +12,20 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Flows
+  alias Storyarn.Flows.Flow
   alias Storyarn.Localization
   alias Storyarn.Localization.GlossaryEntry
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Localization.SourceContract
   alias Storyarn.Projects.Project
+  alias Storyarn.References
   alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
+  alias Storyarn.Sheets.PropertyInheritance
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Versioning.AssetMaterializationScope
   alias Storyarn.Versioning.Builders.AssetCopyError
@@ -31,6 +34,8 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   alias Storyarn.Versioning.Builders.FlowSnapshotNormalizer
   alias Storyarn.Versioning.Builders.SceneBuilder
   alias Storyarn.Versioning.Builders.SheetBuilder
+  alias Storyarn.Versioning.ProjectSnapshot
+  alias Storyarn.Versioning.ProjectSnapshotRestorePlan
   alias Storyarn.Versioning.RestorePolicy
 
   require Logger
@@ -154,19 +159,26 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
 
   defp project_to_snapshot(project) do
     %{
+      "description" => project.description,
       "project_type" => project.project_type,
       "project_subtype" => project.project_subtype,
-      "project_type_other" => project.project_type_other
+      "project_type_other" => project.project_type_other,
+      "settings" => project.settings,
+      "auto_snapshots_enabled" => project.auto_snapshots_enabled,
+      "auto_version_flows" => project.auto_version_flows,
+      "auto_version_scenes" => project.auto_version_scenes,
+      "auto_version_sheets" => project.auto_version_sheets
     }
   end
 
   @doc """
   Restores all entities in a project from a snapshot.
 
-  For each entity in the snapshot, finds the matching current entity by ID
-  and restores it using the per-entity builder. Entities that no longer exist
-  (soft-deleted or hard-deleted) are skipped. Entities not in the snapshot
-  are left untouched.
+  Reconciles the active project to the exact snapshot graph. Snapshot roots
+  and supported children are restored with their original IDs, including rows
+  that currently exist in trash. Hard-deleted roots are recreated. Active
+  roots absent from the snapshot are moved to trash, while unrelated
+  pre-existing trash remains untouched.
 
   Wrapped in a transaction for atomicity.
 
@@ -208,22 +220,32 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
     result =
       Repo.transaction(
         fn ->
-          lock_active_project_for_restore!(project_id)
+          project = lock_active_project_for_restore!(project_id)
+          :ok = lock_pre_restore_snapshot_record!(project_id, opts)
+          current_snapshot = current_restore_baseline!(project, opts)
+          plan = build_restore_plan!(snapshot)
+          root_result = prepare_restore_roots!(project_id, plan)
+          :ok = apply_restore_tree!(project_id, plan)
+          _project = restore_project_metadata!(project, plan)
 
-          results = restore_project_entities(project_id, snapshot, opts)
+          results = restore_project_entities(project_id, plan, opts)
 
           restore_localization(
             project_id,
             snapshot,
+            current_snapshot,
             collect_localization_id_maps(results),
             opts
           )
+
+          :ok = verify_restored_project!(project_id, plan)
 
           case prepare_asset_cleanup_handoff(tracker, owns_tracker?) do
             :ok ->
               %{
                 restored: count_restored(results),
                 skipped: count_skipped(results),
+                removed: root_result.removed,
                 details: results
               }
 
@@ -254,30 +276,68 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
       :erlang.raise(kind, reason, __STACKTRACE__)
   end
 
-  defp restore_project_entities(project_id, snapshot, opts) do
+  defp restore_project_entities(project_id, plan, opts) do
+    sheets =
+      restore_entities(
+        project_id,
+        "sheets",
+        plan.ordered.sheets,
+        &restore_sheet(&1, &2, project_id, opts)
+      )
+
+    flows =
+      restore_entities(
+        project_id,
+        "flows",
+        plan.ordered.flows,
+        &restore_flow(&1, &2, project_id, opts)
+      )
+
+    reconcile_project_flow_trash_refs!(project_id, plan)
+
+    scenes =
+      restore_entities(
+        project_id,
+        "scenes",
+        plan.ordered.scenes,
+        &restore_scene(&1, &2, project_id, opts)
+      )
+
     %{
-      sheets:
-        restore_entities(
-          project_id,
-          snapshot,
-          "sheets",
-          &restore_sheet(&1, &2, project_id, opts)
-        ),
-      flows:
-        restore_entities(
-          project_id,
-          snapshot,
-          "flows",
-          &restore_flow(&1, &2, project_id, opts)
-        ),
-      scenes:
-        restore_entities(
-          project_id,
-          snapshot,
-          "scenes",
-          &restore_scene(&1, &2, project_id, opts)
-        )
+      sheets: sheets,
+      flows: flows,
+      scenes: scenes
     }
+  end
+
+  defp reconcile_project_flow_trash_refs!(project_id, plan) do
+    target_flow_ids = plan.ids.flows |> MapSet.to_list() |> Enum.sort()
+
+    target_snapshot_node_ids =
+      plan.entries.flows
+      |> Enum.flat_map(fn entry ->
+        entry
+        |> get_in(["snapshot", "nodes"])
+        |> List.wrap()
+        |> Enum.flat_map(fn
+          %{"original_id" => id} when is_integer(id) and id > 0 -> [id]
+          _invalid -> []
+        end)
+      end)
+      |> Enum.uniq()
+      |> Enum.sort()
+
+    case Flows.reconcile_project_restore_flow_refs(
+           project_id,
+           target_flow_ids,
+           target_snapshot_node_ids
+         ) do
+      {:ok, _counts} ->
+        :ok
+
+      {:error, reason} ->
+        Repo.rollback({:project_snapshot_flow_trash_reference_reconciliation_failed, reason})
+    end
   end
 
   defp asset_copy_tracker(opts) do
@@ -337,14 +397,12 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
 
   defp lock_active_project_for_restore!(project_id) do
     case ProjectReferenceIntegrity.lock_active_project(project_id, :update) do
-      {:ok, _project} -> :ok
+      {:ok, project} -> project
       {:error, reason} -> Repo.rollback(reason)
     end
   end
 
-  defp restore_entities(project_id, snapshot, entity_key, restore_fn) do
-    entity_snapshots = Map.get(snapshot, entity_key, [])
-
+  defp restore_entities(project_id, entity_key, entity_snapshots, restore_fn) do
     Enum.map(entity_snapshots, fn entry ->
       entity_id = entry["id"]
 
@@ -354,9 +412,6 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
 
         {:ok, _entity} ->
           {:restored, entity_id}
-
-        {:error, :not_found} ->
-          {:skipped, entity_id}
 
         {:error, reason} ->
           Logger.warning("Failed to restore #{entity_key} #{entity_id} in project #{project_id}: #{inspect(reason)}")
@@ -377,6 +432,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
           snapshot,
           opts
           |> Keyword.put(:return_id_maps, true)
+          |> Keyword.put(:full_project_restore, true)
           |> Keyword.put(:restore_action, :project_snapshot_restore)
         )
     end
@@ -393,6 +449,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
           snapshot,
           opts
           |> Keyword.put(:return_id_maps, true)
+          |> Keyword.put(:full_project_restore, true)
           |> Keyword.put(:restore_action, :project_snapshot_restore)
         )
     end
@@ -426,6 +483,212 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
         Enum.count(entries, &(elem(&1, 0) == :skipped))
       end
     )
+  end
+
+  defp current_restore_baseline!(project, opts) do
+    current_snapshot = build_consistent_snapshot(project)
+
+    case Keyword.fetch(opts, :pre_restore_snapshot) do
+      {:ok, pre_restore_snapshot} when is_map(pre_restore_snapshot) ->
+        if canonical_project_snapshot(current_snapshot) ==
+             canonical_project_snapshot(pre_restore_snapshot) do
+          current_snapshot
+        else
+          Repo.rollback(:project_changed_since_pre_restore_snapshot)
+        end
+
+      {:ok, _invalid} ->
+        Repo.rollback(:invalid_pre_restore_snapshot)
+
+      :error ->
+        # The product restore boundary always supplies a verified safety
+        # snapshot. Keeping this optional here allows isolated builder tests and
+        # trusted internal migrations to exercise the transactional materializer.
+        current_snapshot
+    end
+  end
+
+  defp lock_pre_restore_snapshot_record!(project_id, opts) do
+    case Keyword.fetch(opts, :pre_restore_snapshot_identity) do
+      {:ok, identity} ->
+        lock_and_verify_pre_restore_snapshot_record!(
+          project_id,
+          Keyword.get(opts, :user_id),
+          identity
+        )
+
+      :error ->
+        # Product restores always supply this identity. It remains optional at
+        # this internal builder boundary for isolated materializer tests and
+        # trusted internal migrations.
+        :ok
+    end
+  end
+
+  defp lock_and_verify_pre_restore_snapshot_record!(project_id, user_id, identity) do
+    if !valid_pre_restore_snapshot_identity?(project_id, user_id, identity) do
+      Repo.rollback(:invalid_pre_restore_snapshot_identity)
+    end
+
+    snapshot_id = identity.id
+
+    snapshot =
+      Repo.one(
+        from(candidate in ProjectSnapshot,
+          where:
+            candidate.id == ^snapshot_id and
+              candidate.project_id == ^project_id,
+          lock: "FOR SHARE"
+        )
+      )
+
+    case snapshot do
+      %ProjectSnapshot{} ->
+        if pre_restore_snapshot_identity(snapshot) == identity do
+          :ok
+        else
+          Repo.rollback(:pre_restore_snapshot_identity_mismatch)
+        end
+
+      nil ->
+        Repo.rollback(:pre_restore_snapshot_not_durable)
+    end
+  end
+
+  defp valid_pre_restore_snapshot_identity?(project_id, user_id, %{
+         id: snapshot_id,
+         project_id: identity_project_id,
+         created_by_id: identity_user_id,
+         version_number: version_number,
+         storage_key: storage_key,
+         snapshot_size_bytes: snapshot_size_bytes,
+         checksum: checksum,
+         entity_counts: entity_counts
+       }) do
+    values_valid? =
+      Enum.all?(
+        [
+          {snapshot_id, &positive_integer_value?/1},
+          {project_id, &positive_integer_value?/1},
+          {user_id, &positive_integer_value?/1},
+          {version_number, &positive_integer_value?/1},
+          {storage_key, &is_binary/1},
+          {snapshot_size_bytes, &nonnegative_integer_value?/1},
+          {checksum, &is_binary/1},
+          {entity_counts, &is_map/1}
+        ],
+        fn {value, validator} -> validator.(value) end
+      )
+
+    values_valid? and identity_project_id == project_id and
+      identity_user_id == user_id
+  end
+
+  defp valid_pre_restore_snapshot_identity?(_project_id, _user_id, _identity), do: false
+
+  defp positive_integer_value?(value), do: is_integer(value) and value > 0
+
+  defp nonnegative_integer_value?(value), do: is_integer(value) and value >= 0
+
+  defp pre_restore_snapshot_identity(%ProjectSnapshot{} = snapshot) do
+    %{
+      id: snapshot.id,
+      project_id: snapshot.project_id,
+      created_by_id: snapshot.created_by_id,
+      version_number: snapshot.version_number,
+      storage_key: snapshot.storage_key,
+      snapshot_size_bytes: snapshot.snapshot_size_bytes,
+      checksum: snapshot.checksum,
+      entity_counts: snapshot.entity_counts
+    }
+  end
+
+  defp canonical_project_snapshot(snapshot) do
+    snapshot
+    |> Jason.encode!()
+    |> Jason.decode!()
+    |> FlowSnapshotNormalizer.normalize_project()
+  end
+
+  defp build_restore_plan!(snapshot) do
+    case ProjectSnapshotRestorePlan.build(snapshot) do
+      {:ok, plan} -> plan
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp prepare_restore_roots!(project_id, plan) do
+    case ProjectSnapshotRestorePlan.prepare(project_id, plan) do
+      {:ok, result} -> result
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp apply_restore_tree!(project_id, plan) do
+    case ProjectSnapshotRestorePlan.apply_tree(project_id, plan) do
+      :ok -> :ok
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp restore_project_metadata!(project, plan) do
+    case ProjectSnapshotRestorePlan.restore_project_metadata(project, plan) do
+      {:ok, restored_project} -> restored_project
+      {:error, reason} -> Repo.rollback({:project_metadata_restore_failed, reason})
+    end
+  end
+
+  defp verify_restored_project!(project_id, plan) do
+    with :ok <- verify_main_flow!(project_id, plan.entries.flows),
+         :ok <- verify_sheet_inheritance!(plan.ordered.sheets),
+         :ok <- verify_flow_references(plan.ordered.flows),
+         :ok <- References.rebuild_project_entity_references(project_id) do
+      References.rebuild_project_variable_references(project_id)
+    else
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp verify_main_flow!(project_id, flow_entries) do
+    expected_ids =
+      flow_entries
+      |> Enum.filter(&(&1["snapshot"]["is_main"] == true))
+      |> Enum.map(& &1["id"])
+      |> Enum.sort()
+
+    actual_ids =
+      Repo.all(
+        from(flow in Flow,
+          where: flow.project_id == ^project_id and flow.is_main == true and is_nil(flow.deleted_at),
+          order_by: [asc: flow.id],
+          select: flow.id
+        )
+      )
+
+    if actual_ids == expected_ids do
+      :ok
+    else
+      {:error, {:project_snapshot_main_flow_mismatch, expected_ids, actual_ids}}
+    end
+  end
+
+  defp verify_sheet_inheritance!(entries) do
+    Enum.each(entries, fn entry ->
+      Sheet
+      |> Repo.get!(entry["id"])
+      |> PropertyInheritance.verify_restored_sheet_inheritance!()
+    end)
+
+    :ok
+  end
+
+  defp verify_flow_references(entries) do
+    Enum.reduce_while(entries, :ok, fn entry, :ok ->
+      case FlowBuilder.validate_materialized_reference_cycles(entry["id"]) do
+        :ok -> {:cont, :ok}
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
   end
 
   defp collect_localization_id_maps(results) do
@@ -497,21 +760,153 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
 
   # ========== Localization Restore ==========
 
-  defp restore_localization(_project_id, %{"localization" => nil}, _id_maps, _opts), do: :ok
+  defp restore_localization(_project_id, %{"localization" => nil}, _current_snapshot, _id_maps, _opts), do: :ok
 
-  defp restore_localization(_project_id, snapshot, _id_maps, _opts) when not is_map_key(snapshot, "localization"), do: :ok
+  defp restore_localization(_project_id, snapshot, _current_snapshot, _id_maps, _opts)
+       when not is_map_key(snapshot, "localization"), do: :ok
 
-  defp restore_localization(project_id, snapshot, id_maps, opts) do
+  defp restore_localization(project_id, snapshot, current_snapshot, id_maps, opts) do
     localization = snapshot["localization"]
     now = TimeHelpers.now()
 
-    # Delete existing localization data (order: texts first due to no FK deps)
-    Repo.delete_all(from(lt in LocalizedText, where: lt.project_id == ^project_id))
+    # Replace rows for target sources, archive rows whose sources are moving
+    # from the active graph to trash, and leave pre-existing trash untouched.
+    reconcile_localization_restore_scope(project_id, snapshot, current_snapshot, now)
     Repo.delete_all(from(g in GlossaryEntry, where: g.project_id == ^project_id))
     Repo.delete_all(from(l in ProjectLanguage, where: l.project_id == ^project_id))
     restore_languages(project_id, Map.get(localization, "languages", []), now)
-    restore_texts(project_id, Map.get(localization, "texts", []), id_maps, snapshot, opts, now)
+
+    texts =
+      localization
+      |> Map.get("texts", [])
+      |> materializable_localization_texts!(snapshot)
+
+    restore_texts(project_id, texts, id_maps, snapshot, opts, now)
     restore_glossary(project_id, Map.get(localization, "glossary", []), now)
+  end
+
+  defp reconcile_localization_restore_scope(project_id, target_snapshot, current_snapshot, now) do
+    target_ids = localization_source_ids(target_snapshot)
+    current_ids = localization_source_ids(current_snapshot)
+
+    Enum.each(~w(sheet block flow_node), fn source_type ->
+      target_source_ids = target_ids |> Map.fetch!(source_type) |> MapSet.to_list()
+
+      if target_source_ids != [] do
+        Repo.delete_all(
+          from(text in LocalizedText,
+            where:
+              text.project_id == ^project_id and
+                text.source_type == ^source_type and
+                text.source_id in ^target_source_ids
+          )
+        )
+      end
+
+      current_only_source_ids =
+        current_ids
+        |> Map.fetch!(source_type)
+        |> MapSet.difference(Map.fetch!(target_ids, source_type))
+        |> MapSet.to_list()
+
+      if current_only_source_ids != [] do
+        Repo.update_all(
+          from(text in LocalizedText,
+            where:
+              text.project_id == ^project_id and
+                text.source_type == ^source_type and
+                text.source_id in ^current_only_source_ids and
+                is_nil(text.archived_at)
+          ),
+          set: [
+            archived_at: now,
+            archive_reason: "source_deleted",
+            updated_at: now
+          ],
+          inc: [lock_version: 1]
+        )
+      end
+    end)
+  end
+
+  defp localization_source_ids(snapshot) do
+    %{
+      "sheet" =>
+        snapshot
+        |> Map.get("sheets", [])
+        |> MapSet.new(& &1["id"]),
+      "block" =>
+        snapshot
+        |> Map.get("sheets", [])
+        |> Enum.flat_map(&get_in(&1, ["snapshot", "blocks"]))
+        |> MapSet.new(& &1["original_id"]),
+      "flow_node" =>
+        snapshot
+        |> Map.get("flows", [])
+        |> Enum.flat_map(&get_in(&1, ["snapshot", "nodes"]))
+        |> MapSet.new(& &1["original_id"])
+    }
+  end
+
+  defp materializable_localization_texts!(texts, snapshot) when is_list(texts) do
+    source_ids = localization_source_ids(snapshot)
+
+    texts
+    |> Enum.reduce_while({:ok, []}, fn text, {:ok, restorable} ->
+      source_type = text["source_type"]
+      source_id = text["source_id"]
+
+      case Map.fetch(source_ids, source_type) do
+        {:ok, ids} ->
+          materializable_localization_text_result(
+            text,
+            source_id,
+            ids,
+            restorable
+          )
+
+        :error ->
+          {:halt, {:error, invalid_localization_source(text)}}
+      end
+    end)
+    |> case do
+      {:ok, restorable} -> Enum.reverse(restorable)
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp materializable_localization_texts!(_texts, _snapshot) do
+    Repo.rollback(:invalid_project_snapshot_localization_texts)
+  end
+
+  defp materializable_localization_text_result(text, source_id, source_ids, restorable) do
+    if MapSet.member?(source_ids, source_id) do
+      {:cont, {:ok, [text | restorable]}}
+    else
+      defer_archived_localization_text(text, restorable)
+    end
+  end
+
+  defp defer_archived_localization_text(text, restorable) do
+    archived_at = parse_datetime(text["archived_at"])
+    metadata = SourceContract.field_metadata(text["source_type"], text["source_field"])
+
+    if is_integer(text["source_id"]) and text["source_id"] > 0 and
+         match?(%DateTime{}, archived_at) and not is_nil(metadata) do
+      {:cont, {:ok, restorable}}
+    else
+      {:halt, {:error, invalid_localization_source(text)}}
+    end
+  end
+
+  defp invalid_localization_source(text) do
+    {
+      :invalid_project_snapshot_localization_source,
+      text["source_type"],
+      text["source_id"],
+      text["source_field"],
+      text["locale_code"]
+    }
   end
 
   defp restore_languages(_project_id, [], _now), do: :ok
@@ -539,7 +934,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   defp restore_texts(project_id, texts, id_maps, snapshot, opts, now) do
     context =
       project_id
-      |> localization_restore_context(texts, id_maps)
+      |> localization_restore_context(texts, id_maps, snapshot)
       |> Map.merge(%{
         project_id: project_id,
         snapshot: snapshot,
@@ -548,60 +943,95 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
       })
 
     texts
-    |> Enum.flat_map(fn text ->
-      metadata = SourceContract.field_metadata(text["source_type"], text["source_field"])
-      source_id = remap_localization_source_id(text, id_maps)
-
-      if is_nil(metadata) or is_nil(source_id) or not MapSet.member?(context.locales, text["locale_code"]) do
-        []
-      else
-        vo_asset_id = restored_vo_asset_id(text, metadata, context)
-        speaker_sheet_id = text["speaker_sheet_id"] |> remap_optional_id(id_maps.sheet) |> valid_id(context.sheets)
-        translated_source_hash = translated_source_hash(text)
-        archived_at = parse_datetime(text["archived_at"])
-
-        [
-          %{
-            project_id: project_id,
-            source_type: text["source_type"],
-            source_id: source_id,
-            source_field: text["source_field"],
-            source_text: text["source_text"],
-            source_text_hash: text["source_text_hash"],
-            translated_source_hash: translated_source_hash,
-            locale_code: text["locale_code"],
-            translated_text: text["translated_text"],
-            status: restored_status(text, translated_source_hash),
-            vo_status: restored_vo_status(text["vo_status"], metadata.vo_eligible, vo_asset_id),
-            vo_asset_id: if(metadata.vo_eligible, do: vo_asset_id),
-            translator_notes: text["translator_notes"],
-            reviewer_notes: text["reviewer_notes"],
-            speaker_sheet_id: if(metadata.content_role == "dialogue", do: speaker_sheet_id),
-            word_count: text["word_count"],
-            content_role: metadata.content_role,
-            vo_eligible: metadata.vo_eligible,
-            machine_translated: text["machine_translated"] || false,
-            last_translated_at: parse_datetime(text["last_translated_at"]),
-            last_reviewed_at: parse_datetime(text["last_reviewed_at"]),
-            translated_by_id: valid_id(text["translated_by_id"], context.users),
-            reviewed_by_id: valid_id(text["reviewed_by_id"], context.users),
-            archived_at: archived_at,
-            archive_reason: restored_archive_reason(text["archive_reason"], archived_at),
-            inserted_at: now,
-            updated_at: now
-          }
-        ]
-      end
-    end)
+    |> Enum.map(&localization_text_restore_entry(&1, project_id, id_maps, context, now))
     |> Enum.chunk_every(500)
     |> Enum.each(fn chunk -> Repo.insert_all(LocalizedText, chunk) end)
   end
 
-  defp localization_restore_context(project_id, texts, id_maps) do
+  defp localization_text_restore_entry(text, project_id, id_maps, context, now) do
+    metadata = SourceContract.field_metadata(text["source_type"], text["source_field"])
+    source_id = remap_localization_source_id(text, id_maps)
+
+    validate_localization_text_source!(text, metadata, source_id, context.locales)
+
+    archived_at = parse_datetime(text["archived_at"])
+    vo_asset_id = restored_vo_asset_id(text, metadata, context)
+    speaker_sheet_id = restored_speaker_sheet_id(text, metadata, archived_at, id_maps, context)
+    translated_source_hash = translated_source_hash(text)
+
+    %{
+      project_id: project_id,
+      source_type: text["source_type"],
+      source_id: source_id,
+      source_field: text["source_field"],
+      source_text: text["source_text"],
+      source_text_hash: text["source_text_hash"],
+      translated_source_hash: translated_source_hash,
+      locale_code: text["locale_code"],
+      translated_text: text["translated_text"],
+      status: restored_status(text, translated_source_hash),
+      vo_status: restored_vo_status(text["vo_status"], metadata.vo_eligible, vo_asset_id),
+      vo_asset_id: if(metadata.vo_eligible, do: vo_asset_id),
+      translator_notes: text["translator_notes"],
+      reviewer_notes: text["reviewer_notes"],
+      speaker_sheet_id: speaker_sheet_id,
+      word_count: text["word_count"],
+      content_role: metadata.content_role,
+      vo_eligible: metadata.vo_eligible,
+      machine_translated: text["machine_translated"] || false,
+      last_translated_at: parse_datetime(text["last_translated_at"]),
+      last_reviewed_at: parse_datetime(text["last_reviewed_at"]),
+      translated_by_id: valid_id(text["translated_by_id"], context.users),
+      reviewed_by_id: valid_id(text["reviewed_by_id"], context.users),
+      archived_at: archived_at,
+      archive_reason: restored_archive_reason(text["archive_reason"], archived_at),
+      inserted_at: now,
+      updated_at: now
+    }
+  end
+
+  defp validate_localization_text_source!(text, metadata, source_id, locales) do
+    if is_nil(metadata) or is_nil(source_id) or
+         not MapSet.member?(locales, text["locale_code"]) do
+      Repo.rollback(
+        {:invalid_project_snapshot_localization_source, text["source_type"], text["source_id"], text["source_field"],
+         text["locale_code"]}
+      )
+    end
+  end
+
+  defp restored_speaker_sheet_id(_text, %{content_role: content_role}, _archived_at, _id_maps, _context)
+       when content_role not in ~w(dialogue response), do: nil
+
+  defp restored_speaker_sheet_id(text, _metadata, archived_at, id_maps, context) do
+    speaker_sheet_id =
+      text["speaker_sheet_id"]
+      |> remap_optional_id(id_maps.sheet)
+      |> valid_id(context.sheets)
+
+    if is_nil(archived_at) and not is_nil(text["speaker_sheet_id"]) and
+         is_nil(speaker_sheet_id) do
+      Repo.rollback(
+        {:invalid_project_snapshot_localization_speaker, text["source_type"], text["source_id"], text["source_field"],
+         text["speaker_sheet_id"]}
+      )
+    end
+
+    speaker_sheet_id
+  end
+
+  defp localization_restore_context(project_id, texts, id_maps, snapshot) do
     speaker_ids =
       texts
       |> Enum.map(&remap_optional_id(&1["speaker_sheet_id"], id_maps.sheet))
       |> Enum.reject(&is_nil/1)
+
+    target_sheet_ids =
+      snapshot
+      |> Map.get("sheets", [])
+      |> Enum.map(&remap_optional_id(&1["id"], id_maps.sheet))
+      |> Enum.reject(&is_nil/1)
+      |> MapSet.new()
 
     %{
       locales:
@@ -609,7 +1039,10 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
         |> Repo.all()
         |> MapSet.new(),
       assets: project_entity_ids(Asset, project_id, Enum.map(texts, & &1["vo_asset_id"])),
-      sheets: project_entity_ids(Sheet, project_id, speaker_ids),
+      sheets:
+        Sheet
+        |> project_entity_ids(project_id, speaker_ids)
+        |> MapSet.intersection(target_sheet_ids),
       users: existing_entity_ids(User, Enum.flat_map(texts, &[&1["translated_by_id"], &1["reviewed_by_id"]]))
     }
   end
@@ -635,7 +1068,10 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
 
   defp restored_status(text, translated_source_hash) do
     translated? = is_binary(text["translated_text"]) and String.trim(text["translated_text"]) != ""
-    current? = translated? and not is_nil(text["source_text_hash"]) and translated_source_hash == text["source_text_hash"]
+
+    current? =
+      translated? and not is_nil(text["source_text_hash"]) and
+        translated_source_hash == text["source_text_hash"]
 
     case text["status"] do
       "final" when not current? -> if(translated?, do: "review", else: "pending")
