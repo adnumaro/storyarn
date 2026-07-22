@@ -1,93 +1,174 @@
 # AI Platform — Overview & Slice Plan
 
-Storyarn's AI strategy: **credits-included default AI + BYOK escape hatch + multi-model router**, exploited through **structured narrative data** — not a generic chat.
+Storyarn's AI strategy is **Storyarn AI by default, personal BYOK as the advanced lane, and future workspace BYOK for enterprise**. The durable advantage is Storyarn's structured narrative engine, not a generic chat or ownership of model weights.
 
-> The differentiator is not the AI. It is that Storyarn already knows what other tools need AI to guess. The engine knows; the LLM writes.
+> The engine knows what can be proved. Models explain, transform, and propose only within a typed, authorized task.
 
 ## Strategic pillars
 
-1. **Storyarn pays and abstracts the API by default.** Users think in actions ("find dead branches"), never in tokens/keys. Each plan includes a monthly credit pool (resets, does not accumulate) with published per-action prices.
-2. **BYOK stays as the advanced lane** (shipped in Slice 0 / PR #28): power users, studios with provider agreements, privacy-sensitive teams.
-3. **Never unlimited AI.** Budget gates before/during/after every call. Credits carry a 2.5–4× safety multiplier over provider cost; target AI variable cost ≤ 10–20% of a plan's net revenue.
-4. **Deterministic engine first, LLM second.** Graph queries, reference tracking, and validations resolve everything they can; the LLM narrates, generates, and reasons only where structure cannot. This is both the cost model and the moat.
-5. **Tools, not chat.** Concrete actions with fixed credit prices, bounded context, structured output — surfaced through a global command palette.
-6. **Multi-model router from day 1** (cheap / standard / premium quality tiers), starting with ONE managed open-weight provider **behind a region-aware contract** (US/Asia expansion swaps providers per zone via config, never via code — owner requirement). Self-hosting is gated by volume metrics (break-even ≈ 1.5–2B tokens/month).
+1. **Storyarn AI is the frictionless product path.** Storyarn owns the provider relationship and presents concrete, bounded actions. During beta it is funded by a small internal workspace allowance; no payment system or public pricing is required.
+2. **Personal BYOK remains first-class.** A user may explicitly run eligible tasks through their own connected provider. Only that user can spend the credential and the provider bills their account.
+3. **Workspace BYOK is a future enterprise lane.** It will use organization/service credentials owned by the workspace, never a member's personal key shared with colleagues.
+4. **Deterministic engine first, model second.** Graph queries, references, constraints, localization state, and validation produce the facts. Models narrate or propose where generation adds value.
+5. **Tools, not open-ended chat.** Every action is a registered task with permissions, context scope, schemas, limits, lane policy, result destination, and provenance.
+6. **Proposal before mutation.** Generated content is private preview data until the user explicitly applies or attaches it through existing facades with revision checks.
+7. **Transparent payer and no silent fallback.** The UI always states `Storyarn AI` or `{Provider} · your key`. Changing lane, provider, or payer requires an explicit choice.
+8. **One managed route first.** Interfaces remain provider-neutral, but multi-model optimization and self-hosting wait for measured quality, cost, and volume.
 
-## Competitive positioning (Loreweaver, researched 2026-07-21)
+## Product layers
 
-loreweaver.ink (Architect + Director, ex-AAA team, pre-launch): AI **extracts** structure from prose; opaque pay-as-you-go AI, no BYOK, undisclosed models; Director charges 1% gross revenue >€100K. Our counters: structure is **native and deterministic** (no lossy extraction), transparent published pricing, no revenue share ever, BYOK available. Do NOT copy their consumer arm's context-window-as-paywall pattern: tiers gate task scope and volume, never silently degrade quality of the same task.
+- **Command palette:** deterministic control surface and launcher. It never becomes a result store or grants the model arbitrary tool access.
+- **Execution kernel:** intent, policy, route, operation, provider attempts, results, and outcomes.
+- **Storyarn AI:** managed provider route, bounded allowance, fixed task prices, validation, and provenance.
+- **Personal BYOK:** actor-owned credential route with workspace egress policy and external billing disclosure.
+- **Tools:** structural analysis, dialogue, scratch VO, structure import, writing suggestions, and images.
+- **Commercial billing:** deliberately last, after beta telemetry proves value and unit economics.
 
 ## Slice index
 
-| #   | Slice                                                         | Doc                              | Depends on                                 | Status                                           |
-| --- | ------------------------------------------------------------- | -------------------------------- | ------------------------------------------ | ------------------------------------------------ |
-| 0   | BYOK provider integrations + flag foundation (+DeepL adapter) | `SLICE_0_BYOK_INTEGRATIONS.md`   | —                                          | **merged** (PR #28)                              |
-| 1   | Command palette foundation (no AI)                            | `SLICE_1_COMMAND_PALETTE.md`     | —                                          | F1 **merged** (PR #30); F2/F3 in review (PR #31) |
-| 2   | AI Service core + internal provider + credits                 | `SLICE_2_AI_SERVICE_CORE.md`     | 0 **merged**                               | pending                                          |
-| 3   | BYOK lane through the AI Service + limit fallback UX          | `SLICE_3_BYOK_LANE.md`           | 0, 2                                       | pending                                          |
-| 4   | "My AI Team" — role assignments (+DeepL unification 2nd half) | `SLICE_4_AI_TEAM.md`             | 0, 3                                       | pending                                          |
-| 5   | Context engine v1 (deterministic)                             | `SLICE_5_CONTEXT_ENGINE.md`      | 2                                          | pending                                          |
-| 6   | Structural analysis tool (the differentiator)                 | `SLICE_6_STRUCTURAL_ANALYSIS.md` | 1, 2, 5                                    | pending                                          |
-| 7   | Dialogue tools (rewrite/variants + proposal UX)               | `SLICE_7_DIALOGUE_TOOLS.md`      | 1, 2, 5, 6 (proposal/acceptance precedent) | pending                                          |
-| 8   | Text → Storyarn structure (import with diff preview)          | `SLICE_8_TEXT_TO_STRUCTURE.md`   | 1, 2, 5, 7 (proposal UX)                   | pending                                          |
-| 9   | Tiptap writing suggestions (manual, BYOK-only)                | `SLICE_9_TIPTAP_SUGGESTIONS.md`  | 3, 4, 5                                    | pending                                          |
-| 10  | Image generation into sheet galleries (BYOK-only)             | `SLICE_10_IMAGE_GENERATION.md`   | 3, 4, 5                                    | pending                                          |
-| 11  | Pricing, tiers & credit purchase (data-driven)                | `SLICE_11_PRICING_TIERS.md`      | 2 + telemetry from 6–10                    | pending                                          |
+| # | Slice | Document | Depends on | Status |
+|---|---|---|---|---|
+| 0 | Personal provider connections + AI flag foundation | `SLICE_0_BYOK_INTEGRATIONS.md` | — | **merged** (PR #28) |
+| 1 | Command palette foundation (no AI) | `SLICE_1_COMMAND_PALETTE.md` | — | **merged** (F1 PR #30; F2/F3 PR #31) |
+| 2 | AI execution kernel + palette bridge | `SLICE_2_AI_EXECUTION_KERNEL.md` | 0, 1 | pending |
+| 3 | Storyarn AI beta + internal allowance | `SLICE_3_STORYARN_AI_BETA.md` | 2 | pending |
+| 4 | Personal BYOK execution lane | `SLICE_4_PERSONAL_BYOK_LANE.md` | 0, 2, 3 | pending |
+| 5 | Central routing + personal AI preferences | `SLICE_5_AI_ROUTING_PREFERENCES.md` | 2–4 | pending |
+| 6 | Deterministic context engine v1 | `SLICE_6_CONTEXT_ENGINE.md` | 2 | pending |
+| 7 | Structural analysis + optional AI explanation | `SLICE_7_STRUCTURAL_ANALYSIS.md` | 1–6 | pending |
+| 8 | Dialogue rewrite/variants + proposal UX | `SLICE_8_DIALOGUE_TOOLS.md` | 2–6 | pending |
+| 9 | Multilingual scratch voice-over | `SLICE_9_SCRATCH_VOICEOVER.md` | 0–5 + Localization/Assets | pending |
+| 10 | Text → Storyarn structure | `SLICE_10_TEXT_TO_STRUCTURE.md` | 2–6, 8 | pending |
+| 11 | Manual Tiptap writing suggestions | `SLICE_11_TIPTAP_SUGGESTIONS.md` | 2, 4–6 | pending |
+| 12 | Image generation into sheet galleries | `SLICE_12_IMAGE_GENERATION.md` | 2, 4–6 | pending |
+| 13 | Commercial billing + paid allowances | `SLICE_13_COMMERCIAL_BILLING.md` | 3 + representative telemetry from 7–12 | deferred until data |
 
-**Ordering rationale (owner-decided 2026-07-21):** credit limits become real in Slice 2, the fallback to the user's own key arrives in Slice 3, and the "which AI serves which role" decision surface (Slice 4) lands immediately after — so by the time users can hit a limit, the full decide-and-continue path exists. **Rollout guard: the `:ai_integrations` flag stays owner/internal-only until Slice 4 is merged** — merging Slices 2–3 does not enable any end user, so nobody can hit a credit limit before the complete decide-and-continue path ships (no intermediate limit UX needed). The DeepL _adapter_ rides PR #28 (trivial, same shape as the other six adapters); the complex half of its unification (localization consumption switch + legacy `translation_provider_configs` removal) is Slice 4's second half, so the resolution switch happens once (legacy → assignments), never twice.
+## Ordering rationale
 
-**Hard precondition (RESOLVED 2026-07-21 — PR #28 merged):** slices listing 0 as a dependency may start. The standing part of the rule: module/API references in slice docs describe `main` as of planning time and GO STALE — re-verify against `main` at each slice's implementation start.
+- Slice 2 defines one execution/result/command contract before any provider or tool can invent a competing shape.
+- Slice 3 makes Storyarn AI real with an internal beta allowance but deliberately excludes payments.
+- Slice 4 integrates the already-shipped personal connections as an explicit lane.
+- Slice 5 centralizes route resolution and personal preferences before tools depend on provider choice.
+- Slice 6 creates bounded context without hidden model calls.
+- Slice 7 proves the deterministic moat; Slice 8 proves proposal/apply and becomes the first tightly bounded writing transformation.
+- Slice 9 ships a narrow, valuable VO preview using domain structures that already exist.
+- Expensive/high-risk/broad tools follow only after the proposal, media, and execution contracts are proven.
+- Slice 13 starts only after several weeks of representative usage; payments do not block beta.
 
-Backlog (explicitly NOT sliced yet): embeddings/semantic search where graph queries fall short · workspace-shared key pools (Studio) · self-hosted open-weight models · per-language Translator routing (schema-ready in Slice 4; UI deferred) · BYOK Analyst role (premium-quality runs on the user's key) · Storyarn MCP server (separate feature, separate plan).
+## Workflow contract
 
-## Workflow contract (applies to every slice)
+1. One branch/PR per slice, cut from current `main`; merge hard dependencies before starting their consumer.
+2. Re-verify all named modules/APIs against `main` at implementation start; these documents are contracts, not proof that code still has the same shape.
+3. User-facing AI surfaces use the single product flag `:ai_integrations`, disabled by default and actor-targetable. Deterministic non-AI detectors may ship independently. Public documentation is not an entitlement boundary: invite-only AI beta relies on inline help, and Slice 7 publishes the AI guides for everyone when the first user-facing AI tool ships.
+4. Task/provider operational switches and circuit breakers are allowed and required; they are not additional product entitlements.
+5. Every user-facing slice ships en/es copy, user docs, browser verification, ExUnit/Vitest coverage, and the repository quality gate.
+6. Reuse facades, authorization, mutation, storage, collaboration, versioning, and component registries. AI never creates a second write path.
+7. No hour estimate is contractual. Size the slice after its implementation-start audit and split it if its acceptance criteria cannot fit one reviewable PR.
 
-1. **One branch per slice, cut from `main`**, one PR per slice. A slice is reviewed and **merged into main before the next slice starts**. If a slice depends on a previous one, it builds on the merged state.
-2. **Every AI surface ships behind THE single AI flag `:ai_integrations`** (owner-decided 2026-07-21), disabled by default (`FunWithFlags`, per-user actor targeting available) — one flag governs the platform lane and the user lane alike. **Exception: the command palette ships unflagged** (no AI in it; AI commands it lists are individually flag-gated).
-3. **Definition of Done for every slice**: ExUnit + Vitest tests green · `just quality-lint` fully green (beware: the recipe backgrounds `pnpm arch` — check its output explicitly) · browser verification of the user-facing path · PR opened with the slice doc linked.
-4. **Conventions must be surfaced in chat during implementation**: the implementer states in conversation which project conventions apply and how they are being respected (facade pattern, shared helpers, Gettext domains, authorization on mutating events, component registry, icon policy, dialog policy…). Each slice doc lists its applicable conventions; the chat exposure is how the owner audits compliance. Convention sources: `CLAUDE.md`, `AGENTS.md`, `docs/conventions/*.md`.
-5. **No code duplication**: every slice doc lists the existing files and global helpers to reuse. Search `docs/conventions/shared-utilities.md` before writing ANY helper.
-6. **User documentation ships with the surface**: every user-facing slice updates the platform guide (user docs) in the same PR. AI-related docs pages are prepared but stay **hidden behind `:ai_integrations`** until GA (the docs-surface gating mechanism is verified during Slice 1).
+## Canonical execution contract
 
-## Observability & error-handling contract (applies to every slice)
+`ExecutionIntent → PolicyDecision → ExecutionRoute → Operation → UsageEvent(s) → Result/Proposal`
 
-- **Telemetry**: AI executions emit under the `[:ai, …]` namespace (span start/stop/exception); product events (palette usage, tool acceptance, CTA clicks) go to PostHog. Each slice doc lists its specific events.
-- **Errors are explicit, classified, and user-visible**: failures map to classified atoms → i18n messages → explicit UI states. No silent rescues, no swallowed errors, no automatic retries beyond what a slice explicitly specifies.
-- **NO FALLBACKS BY DEFAULT (owner rule, 2026-07-21, verbatim: "NADA DE FALLBACKS")**: on failure or missing configuration the system surfaces an explicit error + CTA. A fallback exists ONLY where the owner explicitly decided it — approved ones live in the Decisions log. Implementers (human or AI) MUST surface any new fallback, product, or legacy-handling decision to the owner BEFORE writing it.
+- Operation = one user intent and lifecycle.
+- Usage event = one external provider attempt/cost record.
+- Result = encrypted temporary output or typed proposal with TTL and source/version hashes.
+- Apply = separate authorized domain mutation with reauthorization and stale checks.
+- Short and background work share the same durable pipeline.
+- No automatic inference retry in v1.
+- `cancelled` is a pre-provider terminal state only. Once an external attempt starts, it settles to known success/failure or `unknown`; managed reservations commit/release exactly once.
 
-## Economics guardrails (from planning discussion, 2026-07-21)
+Technical execution and human response are independent:
 
-- Credit unit: internal Storyarn unit computed from real provider cost — never expose tokens. Published per-action prices must stay stable; the safety multiplier absorbs provider price drift.
-- Monthly reset, no indefinite accumulation.
-- Telemetry from day 1 answers: cost per feature, per user, per model; margin-negative users; % of MRR spent on inference; **acceptance rate** (share of AI outputs the user inserts/uses) as the north-star metric.
-- Fixed per-action pricing is only financially safe because the context engine bounds input size. Context engine (Slice 5) precedes the broad tool catalog (Slices 6–8).
+- `execution_status`: `queued | running | succeeded | failed | cancelled | unknown`
+- `user_disposition`: `accepted | dismissed | abandoned | nil`
 
-## Lane routing policy (owner-decided 2026-07-21)
+`viewed` is an event, never acceptance.
 
-Which lane serves each AI action — **always transparent to the user**:
+## TaskRegistry contract
 
-1. **Internal lane (credits) is the default for ALL platform-paid AI execution** — the Slice-2 micro-task, Slice-5 summary generation, the tool catalog (Slices 6–8), and any future credit-charged task. If it debits credits, it runs on the internal lane unless the owner-decided BYOK rules below apply.
-2. **At the credit limit**: the user is informed with a banner offering BOTH exits — buy credits (once Slice 11 ships) and continue on their own connected key. **Fallback to BYOK requires explicit first-time opt-in per provider** ("continue with your X account — billed to your account"), persisted as a toggle in the integrations settings page; after consent, switching is automatic.
-3. **Provenance is always visible**: every AI result carries a lane badge ("Storyarn AI" vs "Your {provider} account"); `ai_usage_events` records a `lane` field. BYOK-lane calls debit NO credits (still metered for counts/latency; cost belongs to the user's provider bill).
-4. **BYOK-only features** (never on credits — cost profile or capability makes the internal lane unviable):
-   - **Tiptap writing suggestions** — manual trigger only (shortcut/button, owner-decided; continuous auto-suggest is the most expensive per-user pattern and stays out of v1). Users without a connected key see a connect CTA.
-   - **Image generation** — only providers with the capability (OpenAI, Google of the current six); lands in sheet **gallery blocks** first (owner-decided). Users without a capable key see a capability-specific connect CTA.
-5. **Capabilities vs assignments ("My AI Team", owner-decided 2026-07-21)**: providers declare immutable **capabilities** in metadata (DeepL `[:translation]`; Anthropic/Mistral/Kimi/DeepSeek `[:translation, :suggestions, :tasks]`; OpenAI/Google add `:images`); the user makes **assignments** per role slot (Translator / Writing assistant / Illustrator / Analyst) constrained by capabilities, in a "My AI Team" section INSIDE the integrations page (no third settings surface). **Provider required, model optional** — for LLM providers the model dropdown comes from the same `GET /models` call that validates the key; unpinned = our recommended default per provider. **DeepL has NO model path** (its validation is `/v2/usage`, no models endpoint): the Translator UI shows no model selector for DeepL — model pinning is qualified per provider by capability metadata. Analyst v1 is internal-lane only (fixed, non-assignable slot). Assignments schema carries a nullable `language` column so per-language Translator routing can land later with zero migration.
+Every task requires base `:use_ai` and declares phase-specific domain permissions, capability, data scope, allowed lanes, hard input/output limits, prompt/context/schema versions, execution mode, result destination/TTL, scheduled/bulk eligibility, managed price version, and operational enablement. Callers cannot override these values.
 
-## Decisions log (all resolved by the owner, 2026-07-21)
+Provider/model capabilities are curated and versioned per model. Provider discovery is an intersection input, not proof that a model supports a modality or endpoint.
 
-| Decision                                     | Outcome                                                                                                                                                                                                                                                                                                                                                   |
-| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Managed provider for the internal lane       | **Together.ai** for v1 — **conditional on verified ZDR (opt-in on their side) + documented EU endpoint/account config, failing closed if unmet** (see Slice 2) — **behind a region-aware contract**: US/Asia expansion swaps providers per zone via config + adapter, zero consumer changes. If Together cannot satisfy both, choice returns to the owner |
-| Feature flags                                | **ONE flag for all AI**: `:ai_integrations` governs platform lane and user lane alike. **The command palette ships unflagged** (no AI in it; AI commands it lists are gated)                                                                                                                                                                              |
-| Palette scope (Slice 1)                      | **Full Storyarn control center** — normal commands from day one, AI actions register later as more commands                                                                                                                                                                                                                                               |
-| Free-tier "limited context" semantics        | **Scope gating only** (task scope/volume/input size) — never silently degrade the quality of the same task                                                                                                                                                                                                                                                |
-| Credit-ledger owner scope                    | **Workspace** — grants flow from the workspace's Billing plan; members share the pool; per-member attribution via `ai_usage_events`                                                                                                                                                                                                                       |
-| Live DeepL config rows (Slice 4 migration)   | **Drop + in-app/email notice + reconnect** (~2 real users on the platform; migration-by-copy ruled out — it could hand user A's key to user B)                                                                                                                                                                                                            |
-| Structural detectors pricing (Slice 6)       | **Detectors FREE always** (deterministic narrative linting, ~zero marginal cost, max differentiation); only the LLM-narrated report costs credits                                                                                                                                                                                                         |
-| User-marked **default AI** (fallback target) | In My AI Team the user marks ONE provider as default, with an explicit hint ("this is the model used when you hit the platform AI limit"). The at-limit opt-in modal doubles as default designation. Unassigned roles resolve to the default if capable — otherwise **explicit error + CTA**. The "first capable connected" auto-pick is REMOVED          |
-| Assigned provider disconnected               | Use the user's default (if healthy) **with a visible notice + link to the broken assignment**; if the default is also unavailable → explicit error, no degradation                                                                                                                                                                                        |
-| Oversized context entities (Slice 5)         | Summarized via cached summaries **with a visible indicator in the result** ("context summarized for N entities") — never silently                                                                                                                                                                                                                         |
-| User documentation                           | Palette documented in the platform guide during Slice 1 + AI docs skeleton prepared flag-hidden; every user-facing slice updates user docs in its own PR                                                                                                                                                                                                  |
+## Lane and credential policy
 
-Implementation-time choices (resolved in chat during each slice per the workflow contract): analysis module placement (`Flows.Analysis` vs `AI.Analysis`), gettext domain for AI strings, purchased-credit expiry policy (Slice 11 Stage A memo).
+### `managed`
+
+- Storyarn owns the credential and provider cost.
+- Workspace allowance is reserved before the call.
+- User price is fixed/versioned; actual provider cost is internal telemetry.
+- Technical/validation/unknown failure releases the reservation; a valid dismissed result remains charged.
+
+### `personal_byok`
+
+- Only the initiating credential owner may execute.
+- No Storyarn allowance ledger mutation.
+- Workspace policy must allow personal-provider data egress.
+- Provider billing, consent, and accepted-result sharing are disclosed before execution.
+- Personal credentials never power another member or unattended third-party automation.
+
+### Future `workspace_byok`
+
+- Workspace-owned service credential with admin policy, budgets, rotation, region/retention controls, and audit.
+- Projects may reference an approved workspace route; they do not own duplicate secrets.
+- Explicitly out of the current sliced roadmap until enterprise demand exists.
+
+No lane silently falls back to another. Allowance exhaustion or route failure returns explicit choices/CTAs.
+
+## Beta economics without payments
+
+- Storyarn AI receives Storyarn-operator-configured promotional workspace grants.
+- Internal units are called **AI allowance**, not wallet or purchased balance.
+- Ledger is append-only and execution-safe, but no checkout/payment provider exists.
+- Managed tasks have fixed beta prices/size bands; provider cost is stored separately.
+- Global/workspace/user/task caps and provider-cost circuit breakers limit subsidy and abuse.
+- Personal BYOK use is still metered for reliability/units but spends no Storyarn allowance.
+- Commercial plans, subscriptions, top-ups, invoices, tax, refunds, and chargebacks belong to Slice 13.
+
+## Data, permissions, and result ownership
+
+- Minimum policy supports AI off, Storyarn AI allowed, and personal BYOK allowed.
+- Introduce explicit AI permissions rather than assuming all editors may spend future shared resources: `:use_ai`, `:run_bulk_ai`, and later routing/credential/budget administration.
+- Reauthorize at operation creation, immediately before provider/credential access, and before apply/publish/attach.
+- Unaccepted previews are actor-private. Accepted changes/assets become project data with provenance.
+- Prompts, results, keys, and raw story text never enter analytics or normal logs.
+- Temporary result/media retention and deletion are explicit per task.
+
+## Command palette policy
+
+- Palette remains unflagged; AI commands are registered only through Slice-2 descriptor v2.
+- AI descriptors distinguish `launch` (open preflight/configuration, zero operations) from `execute` (complete server-validated intent, at most one operation). Explicit provider/model choices travel as short-lived server-issued route references, not trusted client fields.
+- Natural-language intent may later map explicitly to allowlisted task ids, but raw palette queries are never sent automatically to a model.
+- Availability is not authorization; every invocation revalidates server-side.
+- Palette launches preflights or complete operations and routes to panels/editors. It does not own async lifecycle or hold result content.
+- Cost/payer, CTA, pending state, idempotency, and result destination are declarative.
+
+## Observability and product metrics
+
+- Technical telemetry uses `[:ai, ...]`; product events use canonical space-separated names through `Storyarn.Analytics`.
+- Record lane, task, provider/model, units, cost, latency, status, versions, and low-cardinality error class — no content/raw ids in analytics.
+- Measure usefulness per task rather than one inflated global acceptance number:
+  - rewrite/structure: proposal applied;
+  - image/VO: asset attached;
+  - structural analysis: evidence navigation, useful/false-positive, resolve/export;
+  - suggestions: inserted.
+- Track cost per accepted/useful result, managed-vs-BYOK choice, allowance exhaustion, and key-connection drop-off before pricing.
+
+## Decisions locked by this rewrite
+
+| Decision | Outcome |
+|---|---|
+| Beta payment system | **Not required.** Internal allowance + metering only |
+| Managed user charge | Fixed, versioned task price; real provider cost stays internal |
+| Storyarn AI provider | One configured route; Together remains conditional on verified ZDR + EU setup, otherwise the Storyarn operator reselects |
+| Personal key sharing | Forbidden; only credential owner may execute |
+| Automatic lane fallback | Forbidden; payer/provider changes require explicit choice |
+| DeepL migration | Deferred; do not replace shared project config with personal preferences |
+| Context summaries | Deferred from Context Engine v1; no hidden paid calls |
+| Structural detectors | Free deterministic product capability; AI explanation optional/gated |
+| Scratch VO | One target-locale line, personal BYOK, OpenAI initial target behind a provider-review gate, catalog voices, preview→Asset, `recorded` not `approved` |
+| Commercial launch | Subscription allowance first; top-ups only after separate evidence/approval |
+
+## Explicitly deferred
+
+Workspace credential vaults · enterprise provider/model/region allowlists · department/member budgets · customer-managed KMS · self-hosted/open-weight operations · dynamic cheap/standard/premium routing · embeddings/semantic search · autonomous agents · voice cloning/custom voices · batch/table-read VO · automatic writing suggestions · paid top-ups/overages before demand · Storyarn MCP server.
