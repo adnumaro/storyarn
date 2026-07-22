@@ -26,22 +26,22 @@ Storyarn's AI strategy is **Storyarn AI by default, personal BYOK as the advance
 
 ## Slice index
 
-| # | Slice | Document | Depends on | Status |
-|---|---|---|---|---|
-| 0 | Personal provider connections + AI flag foundation | `SLICE_0_BYOK_INTEGRATIONS.md` | — | **merged** (PR #28) |
-| 1 | Command palette foundation (no AI) | `SLICE_1_COMMAND_PALETTE.md` | — | **merged** (F1 PR #30; F2/F3 PR #31) |
-| 2 | AI execution kernel + palette bridge | `SLICE_2_AI_EXECUTION_KERNEL.md` | 0, 1 | pending |
-| 3 | Storyarn AI beta + internal allowance | `SLICE_3_STORYARN_AI_BETA.md` | 2 | pending |
-| 4 | Personal BYOK execution lane | `SLICE_4_PERSONAL_BYOK_LANE.md` | 0, 2, 3 | pending |
-| 5 | Central routing + personal AI preferences | `SLICE_5_AI_ROUTING_PREFERENCES.md` | 2–4 | pending |
-| 6 | Deterministic context engine v1 | `SLICE_6_CONTEXT_ENGINE.md` | 2 | pending |
-| 7 | Structural analysis + optional AI explanation | `SLICE_7_STRUCTURAL_ANALYSIS.md` | 1–6 | pending |
-| 8 | Dialogue rewrite/variants + proposal UX | `SLICE_8_DIALOGUE_TOOLS.md` | 2–6 | pending |
-| 9 | Multilingual scratch voice-over | `SLICE_9_SCRATCH_VOICEOVER.md` | 0–5 + Localization/Assets | pending |
-| 10 | Text → Storyarn structure | `SLICE_10_TEXT_TO_STRUCTURE.md` | 2–6, 8 | pending |
-| 11 | Manual Tiptap writing suggestions | `SLICE_11_TIPTAP_SUGGESTIONS.md` | 2, 4–6 | pending |
-| 12 | Image generation into sheet galleries | `SLICE_12_IMAGE_GENERATION.md` | 2, 4–6 | pending |
-| 13 | Commercial billing + paid allowances | `SLICE_13_COMMERCIAL_BILLING.md` | 3 + representative telemetry from 7–12 | deferred until data |
+| #   | Slice                                              | Document                            | Depends on                             | Status                               |
+| --- | -------------------------------------------------- | ----------------------------------- | -------------------------------------- | ------------------------------------ |
+| 0   | Personal provider connections + AI flag foundation | `SLICE_0_BYOK_INTEGRATIONS.md`      | —                                      | **merged** (PR #28)                  |
+| 1   | Command palette foundation (no AI)                 | `SLICE_1_COMMAND_PALETTE.md`        | —                                      | **merged** (F1 PR #30; F2/F3 PR #31) |
+| 2   | AI execution kernel + palette bridge               | `SLICE_2_AI_EXECUTION_KERNEL.md`    | 0, 1                                   | pending                              |
+| 3   | Storyarn AI beta + internal allowance              | `SLICE_3_STORYARN_AI_BETA.md`       | 2                                      | pending                              |
+| 4   | Personal BYOK execution lane                       | `SLICE_4_PERSONAL_BYOK_LANE.md`     | 0, 2, 3                                | pending                              |
+| 5   | Central routing + personal AI preferences          | `SLICE_5_AI_ROUTING_PREFERENCES.md` | 2–4                                    | pending                              |
+| 6   | Deterministic context engine v1                    | `SLICE_6_CONTEXT_ENGINE.md`         | 2                                      | pending                              |
+| 7   | Structural analysis + optional AI explanation      | `SLICE_7_STRUCTURAL_ANALYSIS.md`    | 1–6                                    | pending                              |
+| 8   | Dialogue rewrite/variants + proposal UX            | `SLICE_8_DIALOGUE_TOOLS.md`         | 2–6                                    | pending                              |
+| 9   | Multilingual scratch voice-over                    | `SLICE_9_SCRATCH_VOICEOVER.md`      | 0–5 + Localization/Assets              | pending                              |
+| 10  | Text → Storyarn structure                          | `SLICE_10_TEXT_TO_STRUCTURE.md`     | 2–6, 8                                 | pending                              |
+| 11  | Manual Tiptap writing suggestions                  | `SLICE_11_TIPTAP_SUGGESTIONS.md`    | 2, 4–6                                 | pending                              |
+| 12  | Image generation into sheet galleries              | `SLICE_12_IMAGE_GENERATION.md`      | 2, 4–6                                 | pending                              |
+| 13  | Commercial billing + paid allowances               | `SLICE_13_COMMERCIAL_BILLING.md`    | 3 + representative telemetry from 7–12 | deferred until data                  |
 
 ## Ordering rationale
 
@@ -156,18 +156,18 @@ No lane silently falls back to another. Allowance exhaustion or route failure re
 
 ## Decisions locked by this rewrite
 
-| Decision | Outcome |
-|---|---|
-| Beta payment system | **Not required.** Internal allowance + metering only |
-| Managed user charge | Fixed, versioned task price; real provider cost stays internal |
-| Storyarn AI provider | One configured route; Together remains conditional on verified ZDR + EU setup, otherwise the Storyarn operator reselects |
-| Personal key sharing | Forbidden; only credential owner may execute |
-| Automatic lane fallback | Forbidden; payer/provider changes require explicit choice |
-| DeepL migration | Deferred; do not replace shared project config with personal preferences |
-| Context summaries | Deferred from Context Engine v1; no hidden paid calls |
-| Structural detectors | Free deterministic product capability; AI explanation optional/gated |
-| Scratch VO | One target-locale line, personal BYOK, OpenAI initial target behind a provider-review gate, catalog voices, preview→Asset, `recorded` not `approved` |
-| Commercial launch | Subscription allowance first; top-ups only after separate evidence/approval |
+| Decision                | Outcome                                                                                                                                              |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Beta payment system     | **Not required.** Internal allowance + metering only                                                                                                 |
+| Managed user charge     | Fixed, versioned task price; real provider cost stays internal                                                                                       |
+| Storyarn AI provider    | One configured route; Together remains conditional on verified ZDR + EU setup, otherwise the Storyarn operator reselects                             |
+| Personal key sharing    | Forbidden; only credential owner may execute                                                                                                         |
+| Automatic lane fallback | Forbidden; payer/provider changes require explicit choice                                                                                            |
+| DeepL migration         | Deferred; do not replace shared project config with personal preferences                                                                             |
+| Context summaries       | Deferred from Context Engine v1; no hidden paid calls                                                                                                |
+| Structural detectors    | Free deterministic product capability; AI explanation optional/gated                                                                                 |
+| Scratch VO              | One target-locale line, personal BYOK, OpenAI initial target behind a provider-review gate, catalog voices, preview→Asset, `recorded` not `approved` |
+| Commercial launch       | Subscription allowance first; top-ups only after separate evidence/approval                                                                          |
 
 ## Explicitly deferred
 

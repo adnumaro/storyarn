@@ -60,16 +60,16 @@ This slice owns the base, versioned workspace AI policy and permission vocabular
 
 `queued` and `running` are non-terminal. `succeeded`, `failed`, `cancelled`, and `unknown` are terminal execution states; `user_disposition` is independent and may be set only for a successful result.
 
-| From | Proven event | To | Managed allowance |
-|---|---|---|---|
-| no operation | launch/preflight or policy block | no operation | no reservation |
-| no operation | idempotent execute intent accepted | `queued` | reserve fixed task price exactly once |
-| `queued` | explicit cancellation, lost authorization, or revoked route before the external call | `cancelled` | release reservation |
-| `queued` | worker claims and reauthorization passes | `running` | keep reservation held |
-| `queued`/`running` | confirmed local setup/validation failure before billable provider work | `failed` | release reservation |
-| `running` | valid provider result and output validation | `succeeded` | commit fixed task price exactly once |
-| `running` | confirmed provider/validation failure | `failed` | release reservation |
-| `running` | provider outcome cannot be proven | `unknown` | release user reservation, record possible provider cost, reconcile without retry |
+| From               | Proven event                                                                         | To           | Managed allowance                                                                |
+| ------------------ | ------------------------------------------------------------------------------------ | ------------ | -------------------------------------------------------------------------------- |
+| no operation       | launch/preflight or policy block                                                     | no operation | no reservation                                                                   |
+| no operation       | idempotent execute intent accepted                                                   | `queued`     | reserve fixed task price exactly once                                            |
+| `queued`           | explicit cancellation, lost authorization, or revoked route before the external call | `cancelled`  | release reservation                                                              |
+| `queued`           | worker claims and reauthorization passes                                             | `running`    | keep reservation held                                                            |
+| `queued`/`running` | confirmed local setup/validation failure before billable provider work               | `failed`     | release reservation                                                              |
+| `running`          | valid provider result and output validation                                          | `succeeded`  | commit fixed task price exactly once                                             |
+| `running`          | confirmed provider/validation failure                                                | `failed`     | release reservation                                                              |
+| `running`          | provider outcome cannot be proven                                                    | `unknown`    | release user reservation, record possible provider cost, reconcile without retry |
 
 There is no `running → cancelled` transition once an external attempt begins. A cancellation, membership loss, policy change, or credential revocation during the call prevents delivery/apply and records a cancellation request, but the attempt finalizes as `succeeded`/`failed` if its outcome is known or `unknown` otherwise. BYOK has no Storyarn reservation, but the external provider may still bill any started attempt. Every managed reservation reaches exactly one durable commit or release.
 
