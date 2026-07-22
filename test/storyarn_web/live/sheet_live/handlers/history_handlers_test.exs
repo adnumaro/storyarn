@@ -113,6 +113,11 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlersTest do
 
       restored = Sheets.get_sheet(project.id, sheet.id)
       assert restored.name == "History Sheet"
+
+      versions = Versioning.list_versions("sheet", sheet.id)
+      assert length(versions) == 3
+      assert Enum.any?(versions, &(&1.title =~ "Before restore"))
+      assert Enum.any?(versions, &(&1.title =~ "Restored from"))
     end
   end
 end

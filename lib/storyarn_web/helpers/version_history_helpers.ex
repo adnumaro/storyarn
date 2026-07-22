@@ -121,7 +121,7 @@ defmodule StoryarnWeb.Helpers.VersionHistoryHelpers do
          versionNumber: version.version_number
        })}
     else
-      show_conflict_preview(socket, entity_type, entity, version, true)
+      show_conflict_preview(socket, entity_type, entity, version, false)
     end
   end
 

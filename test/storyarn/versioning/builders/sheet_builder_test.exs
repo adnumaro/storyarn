@@ -902,6 +902,39 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       assert variable_reference_sources(block.id) == expected_sources
     end
 
+    test "rolls back every sheet write when reference reconciliation fails", %{
+      sheet: sheet
+    } do
+      block = block_fixture(sheet, %{value: %{"content" => "Historical value"}})
+      snapshot = SheetBuilder.build_snapshot(sheet)
+
+      {:ok, current_sheet} =
+        Sheets.update_sheet(sheet, %{
+          name: "Current sheet",
+          description: "Must survive a failed reference rebuild"
+        })
+
+      Repo.update_all(
+        from(current in Block, where: current.id == ^block.id),
+        set: [value: %{"content" => "Current value"}]
+      )
+
+      update_references = fn restored_block, _opts ->
+        {:error, {:reference_index_unavailable, restored_block.id}}
+      end
+
+      assert {:error, {:block_reference_reconcile_failed, block_id, {:reference_index_unavailable, block_id}}} =
+               SheetBuilder.restore_snapshot(current_sheet, snapshot,
+                 restore_action: {:entity_version_restore, "sheet"},
+                 __update_block_references_fun: update_references
+               )
+
+      assert block_id == block.id
+      assert Repo.get!(Sheet, sheet.id).name == "Current sheet"
+      assert Repo.get!(Sheet, sheet.id).description == "Must survive a failed reference rebuild"
+      assert Repo.get!(Block, block.id).value == %{"content" => "Current value"}
+    end
+
     test "does not mutate blocks already in trash, their nested rows, or localization", %{
       project: project,
       sheet: sheet

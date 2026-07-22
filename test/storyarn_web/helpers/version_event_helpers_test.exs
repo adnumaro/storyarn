@@ -37,7 +37,7 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
   end
 
   describe "handle_save_and_restore/3" do
-    test "shows the restore modal after creating the pre-restore backup", %{
+    test "shows the restore modal without creating an early race-prone backup", %{
       user: user,
       project: project,
       flow: flow,
@@ -61,14 +61,12 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
       assert event = pushed_event(result, "show_restore_modal")
       payload = pushed_payload(event)
       assert payload_value(payload, :versionNumber) == version.version_number
-      assert payload_value(payload, :skipPreSnapshot) == true
+      assert payload_value(payload, :skipPreSnapshot) == false
 
-      backup = Versioning.get_version("flow", flow.id, 2)
-      assert backup.title == "Before restore to v1"
-      assert Versioning.count_versions("flow", flow.id) == 2
+      assert Versioning.count_versions("flow", flow.id) == 1
     end
 
-    test "aborts when the pre-restore backup cannot be created", %{
+    test "defers actor validation and backup creation until final confirmation", %{
       user: user,
       project: project,
       flow: flow,
@@ -91,8 +89,7 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
                  flow_version_config()
                )
 
-      assert result.assigns.flash["error"] == "Could not save current state."
-      refute pushed_event(result, "show_restore_modal")
+      assert pushed_event(result, "show_restore_modal")
       assert Versioning.count_versions("flow", flow.id) == 1
     end
 
@@ -209,6 +206,9 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
   defp pushed_payload({_name, payload}), do: payload
 
   defp payload_value(payload, key) when is_atom(key) do
-    Map.get(payload, key) || Map.get(payload, Atom.to_string(key))
+    case Map.fetch(payload, key) do
+      {:ok, value} -> value
+      :error -> Map.get(payload, Atom.to_string(key))
+    end
   end
 end

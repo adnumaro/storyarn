@@ -54,7 +54,10 @@ defmodule Storyarn.Versioning.IntegrationTest do
 
       # Delete
       {:ok, _} = Storyarn.Versioning.delete_version(version)
-      assert Storyarn.Versioning.count_versions("sheet", sheet.id) == 0
+
+      assert [safety_version] = Storyarn.Versioning.list_versions("sheet", sheet.id)
+      assert safety_version.is_auto
+      assert safety_version.title == "Before restore to v1"
     end
   end
 

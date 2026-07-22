@@ -31,6 +31,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   alias Storyarn.Versioning.AssetMaterializationScope
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.DiffHelpers
+  alias Storyarn.Versioning.EntityVersion
   alias Storyarn.Versioning.LocalizationSnapshotCodec
   alias Storyarn.Versioning.MaterializationHelpers
   alias Storyarn.Versioning.ProjectRestoreAvatarIntegrity
@@ -635,20 +636,23 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   defp restore_sheet_snapshot_in_transaction(sheet, snapshot, opts) do
     with {:ok, _project} <- lock_sheet_project_for_restore(sheet.project_id),
          {:ok, locked_sheet} <- lock_sheet_for_restore(sheet),
+         :ok <- lock_pre_restore_version_record(locked_sheet, opts),
+         :ok <- LocalizableWords.lock_inventory!(locked_sheet.project_id),
+         :ok <- verify_pre_restore_sheet_baseline(locked_sheet, opts),
          :ok <- validate_sheet_snapshot(locked_sheet, snapshot),
          {:ok, inheritance_plan} <-
            preflight_property_inheritance(locked_sheet, snapshot, opts),
-         :ok <- LocalizableWords.lock_inventory!(locked_sheet.project_id),
          {:ok, updated_sheet} <- restore_sheet_fields(locked_sheet, snapshot, opts),
          {:ok, block_data} <-
            reconcile_sheet_blocks(locked_sheet, snapshot, opts, inheritance_plan),
          :ok <- reconcile_sheet_avatars(locked_sheet, snapshot, opts),
          :ok <- restore_sheet_localization_in_place(locked_sheet, snapshot, block_data),
-         :ok <- rebuild_restored_block_references(block_data, locked_sheet.project_id),
+         :ok <- rebuild_restored_block_references(block_data, locked_sheet.project_id, opts),
          :ok <-
            rebuild_inherited_instance_state(
              block_data.affected_inherited_instance_ids,
-             locked_sheet.project_id
+             locked_sheet.project_id,
+             opts
            ),
          :ok <- References.rebuild_project_variable_references(locked_sheet.project_id),
          :ok <- verify_active_block_ids(locked_sheet.id, block_data.block_id_map) do
@@ -681,6 +685,151 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       nil ->
         {:error, {:sheet_not_found, sheet.id}}
     end
+  end
+
+  defp lock_pre_restore_version_record(sheet, opts) do
+    case Keyword.fetch(opts, :pre_restore_version_identity) do
+      {:ok, identity} ->
+        lock_and_verify_pre_restore_version_record(
+          sheet,
+          Keyword.get(opts, :user_id),
+          identity
+        )
+
+      :error ->
+        # Product restores always supply this identity. It remains optional at
+        # this internal builder boundary for isolated materialization tests and
+        # trusted migrations.
+        :ok
+    end
+  end
+
+  defp lock_and_verify_pre_restore_version_record(sheet, user_id, identity) do
+    with :ok <- ensure_valid_pre_restore_version_identity(sheet, user_id, identity),
+         {:ok, version} <- fetch_locked_pre_restore_version(sheet, identity) do
+      ensure_pre_restore_version_identity(version, identity)
+    end
+  end
+
+  defp ensure_valid_pre_restore_version_identity(sheet, user_id, identity) do
+    if valid_pre_restore_version_identity?(sheet, user_id, identity),
+      do: :ok,
+      else: {:error, :invalid_pre_restore_version_identity}
+  end
+
+  defp fetch_locked_pre_restore_version(sheet, identity) do
+    version =
+      Repo.one(
+        from(candidate in EntityVersion,
+          where:
+            candidate.id == ^identity.id and
+              candidate.entity_type == "sheet" and
+              candidate.entity_id == ^sheet.id and
+              candidate.project_id == ^sheet.project_id,
+          lock: "FOR SHARE"
+        )
+      )
+
+    if version,
+      do: {:ok, version},
+      else: {:error, :pre_restore_version_not_durable}
+  end
+
+  defp ensure_pre_restore_version_identity(version, identity) do
+    if entity_version_identity(version) == identity,
+      do: :ok,
+      else: {:error, :pre_restore_version_identity_mismatch}
+  end
+
+  defp valid_pre_restore_version_identity?(sheet, user_id, %{
+         id: version_id,
+         entity_type: "sheet",
+         entity_id: entity_id,
+         project_id: project_id,
+         created_by_id: identity_user_id,
+         version_number: version_number,
+         storage_key: storage_key,
+         snapshot_size_bytes: snapshot_size_bytes,
+         checksum: checksum
+       }) do
+    valid_pre_restore_version_scope?(
+      sheet,
+      user_id,
+      entity_id,
+      project_id,
+      identity_user_id
+    ) and
+      valid_pre_restore_version_metadata?(
+        version_id,
+        version_number,
+        storage_key,
+        snapshot_size_bytes,
+        checksum
+      )
+  end
+
+  defp valid_pre_restore_version_identity?(_sheet, _user_id, _identity), do: false
+
+  defp valid_pre_restore_version_scope?(sheet, user_id, entity_id, project_id, identity_user_id) do
+    entity_id == sheet.id and project_id == sheet.project_id and
+      identity_user_id == user_id
+  end
+
+  defp valid_pre_restore_version_metadata?(version_id, version_number, storage_key, snapshot_size_bytes, checksum) do
+    is_integer(version_id) and version_id > 0 and is_integer(version_number) and
+      version_number > 0 and is_binary(storage_key) and
+      is_integer(snapshot_size_bytes) and snapshot_size_bytes >= 0 and
+      is_binary(checksum)
+  end
+
+  defp entity_version_identity(%EntityVersion{} = version) do
+    %{
+      id: version.id,
+      entity_type: version.entity_type,
+      entity_id: version.entity_id,
+      project_id: version.project_id,
+      created_by_id: version.created_by_id,
+      version_number: version.version_number,
+      storage_key: version.storage_key,
+      snapshot_size_bytes: version.snapshot_size_bytes,
+      checksum: version.checksum
+    }
+  end
+
+  defp verify_pre_restore_sheet_baseline(sheet, opts) do
+    case Keyword.get(opts, :restore_action) do
+      {:entity_version_restore, "sheet"} ->
+        verify_entity_version_restore_baseline(sheet, opts)
+
+      _other_restore_action ->
+        # Full-project restore verifies its canonical project-wide safety
+        # snapshot before dispatching individual entity builders.
+        :ok
+    end
+  end
+
+  defp verify_entity_version_restore_baseline(sheet, opts) do
+    case Keyword.fetch(opts, :pre_restore_snapshot) do
+      {:ok, pre_restore_snapshot} when is_map(pre_restore_snapshot) ->
+        safely_compare_pre_restore_sheet_baseline(sheet, pre_restore_snapshot)
+
+      {:ok, _invalid_snapshot} ->
+        {:error, :invalid_pre_restore_snapshot}
+
+      :error ->
+        :ok
+    end
+  end
+
+  defp safely_compare_pre_restore_sheet_baseline(sheet, pre_restore_snapshot) do
+    current_snapshot = do_build_snapshot(sheet)
+
+    if current_snapshot == pre_restore_snapshot,
+      do: :ok,
+      else: {:error, :sheet_changed_since_pre_restore_snapshot}
+  rescue
+    error in ArgumentError ->
+      {:error, {:pre_restore_snapshot_validation_failed, Exception.message(error)}}
   end
 
   defp validate_sheet_snapshot(%Sheet{} = sheet, snapshot) when is_map(snapshot) do
@@ -2416,7 +2565,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     end)
   end
 
-  defp rebuild_restored_block_references(block_data, project_id) do
+  defp rebuild_restored_block_references(block_data, project_id, opts) do
     target_ids = Map.keys(block_data.block_id_map)
 
     Enum.each(Enum.uniq(target_ids ++ block_data.soft_deleted_ids), fn block_id ->
@@ -2425,17 +2574,37 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
     target_ids
     |> Enum.map(&Repo.get(Block, &1))
-    |> Enum.each(&References.update_block_references(&1, project_id: project_id))
-
-    :ok
+    |> validate_each(&reconcile_block_references(&1, project_id, opts))
   end
 
-  defp rebuild_inherited_instance_state(instance_ids, project_id) do
+  defp rebuild_inherited_instance_state(instance_ids, project_id, opts) do
     validate_each(instance_ids, fn instance_id ->
       instance = Repo.get!(Block, instance_id)
-      :ok = References.update_block_references(instance, project_id: project_id)
-      Localization.extract_block(instance)
+
+      with :ok <- reconcile_block_references(instance, project_id, opts) do
+        Localization.extract_block(instance)
+      end
     end)
+  end
+
+  defp reconcile_block_references(block, project_id, opts) do
+    update_references =
+      Keyword.get(
+        opts,
+        :__update_block_references_fun,
+        &References.update_block_references/2
+      )
+
+    case update_references.(block, project_id: project_id) do
+      :ok ->
+        :ok
+
+      {:error, reason} ->
+        {:error, {:block_reference_reconcile_failed, block.id, reason}}
+
+      result ->
+        {:error, {:unexpected_block_reference_reconcile_result, block.id, result}}
+    end
   end
 
   defp verify_active_block_ids(sheet_id, block_id_map) do

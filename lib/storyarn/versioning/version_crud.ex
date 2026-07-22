@@ -27,6 +27,12 @@ defmodule Storyarn.Versioning.VersionCrud do
     "scene" => Storyarn.Versioning.Builders.SceneBuilder
   }
 
+  @entity_type_to_schema %{
+    "sheet" => Storyarn.Sheets.Sheet,
+    "flow" => Storyarn.Flows.Flow,
+    "scene" => Storyarn.Scenes.Scene
+  }
+
   # Default rate-limit interval: 10 minutes
   @default_min_interval_seconds 600
 
@@ -46,6 +52,12 @@ defmodule Storyarn.Versioning.VersionCrud do
   @spec create_version(String.t(), struct(), integer(), integer() | nil, keyword()) ::
           {:ok, EntityVersion.t()} | {:error, term()}
   def create_version(entity_type, entity, project_id, user_id, opts \\ []) do
+    with :ok <- validate_entity_scope(entity_type, entity, project_id) do
+      do_create_version(entity_type, entity, project_id, user_id, opts)
+    end
+  end
+
+  defp do_create_version(entity_type, entity, project_id, user_id, opts) do
     builder = get_builder!(entity_type)
     snapshot = builder.build_snapshot(entity)
 
@@ -89,7 +101,7 @@ defmodule Storyarn.Versioning.VersionCrud do
   defp store_and_insert_version(params, attempt) do
     version_number = next_version_number(params.entity_type, params.entity_id)
 
-    case SnapshotStorage.store_snapshot(
+    case SnapshotStorage.store_snapshot_with_checksum(
            params.project_id,
            params.entity_type,
            params.entity_id,
@@ -97,8 +109,14 @@ defmodule Storyarn.Versioning.VersionCrud do
            params.snapshot,
            SnapshotStorage.unique_key_suffix()
          ) do
-      {:ok, storage_key, size_bytes} ->
-        case insert_version_record(params, version_number, storage_key, size_bytes) do
+      {:ok, storage_key, size_bytes, checksum} ->
+        case insert_version_record(
+               params,
+               version_number,
+               storage_key,
+               size_bytes,
+               checksum
+             ) do
           {:ok, version} ->
             {:ok, version}
 
@@ -111,7 +129,7 @@ defmodule Storyarn.Versioning.VersionCrud do
     end
   end
 
-  defp insert_version_record(params, version_number, storage_key, size_bytes) do
+  defp insert_version_record(params, version_number, storage_key, size_bytes, checksum) do
     %EntityVersion{}
     |> EntityVersion.changeset(%{
       entity_type: params.entity_type,
@@ -124,6 +142,7 @@ defmodule Storyarn.Versioning.VersionCrud do
       change_details: params.change_details,
       storage_key: storage_key,
       snapshot_size_bytes: size_bytes,
+      checksum: checksum,
       is_auto: params.is_auto,
       created_by_id: params.user_id
     })
@@ -156,6 +175,12 @@ defmodule Storyarn.Versioning.VersionCrud do
   @spec maybe_create_version(String.t(), struct(), integer(), integer() | nil, keyword()) ::
           {:ok, EntityVersion.t()} | {:skipped, :too_recent} | {:error, term()}
   def maybe_create_version(entity_type, entity, project_id, user_id, opts \\ []) do
+    with :ok <- validate_entity_scope(entity_type, entity, project_id) do
+      do_maybe_create_version(entity_type, entity, project_id, user_id, opts)
+    end
+  end
+
+  defp do_maybe_create_version(entity_type, entity, project_id, user_id, opts) do
     min_interval = Keyword.get(opts, :min_interval, @default_min_interval_seconds)
 
     case get_latest_version(entity_type, entity.id) do
@@ -312,7 +337,16 @@ defmodule Storyarn.Versioning.VersionCrud do
   Deletes a version and its snapshot from storage.
   """
   @spec delete_version(EntityVersion.t()) :: {:ok, EntityVersion.t()} | {:error, term()}
-  def delete_version(%EntityVersion{} = version) do
+  def delete_version(%EntityVersion{id: version_id}) when is_integer(version_id) and version_id > 0 do
+    case Repo.get(EntityVersion, version_id) do
+      %EntityVersion{} = persisted_version -> delete_persisted_version(persisted_version)
+      nil -> {:error, :entity_version_not_found}
+    end
+  end
+
+  def delete_version(%EntityVersion{}), do: {:error, :entity_version_not_found}
+
+  defp delete_persisted_version(%EntityVersion{} = version) do
     case Repo.delete(version) do
       {:ok, deleted} ->
         # Best-effort cleanup of storage; don't fail the delete if storage cleanup fails
@@ -338,23 +372,54 @@ defmodule Storyarn.Versioning.VersionCrud do
 
   Restore owns its transaction boundary because safety snapshots and asset
   compensation must be finalized only after the builder transaction commits.
+  The target and mandatory pre-restore snapshots are both reloaded from their
+  persisted records and verified by size and checksum before mutation.
 
   ## Options
-  - `:user_id` - If provided, creates a pre-restore safety snapshot and a post-restore version entry
+  - `:user_id` - Actor recorded on the mandatory safety snapshot. When present,
+    a best-effort post-restore version is also created.
   """
   @spec restore_version(String.t(), struct(), EntityVersion.t(), keyword()) ::
           {:ok, struct()} | {:error, term()}
   def restore_version(entity_type, entity, %EntityVersion{} = version, opts \\ []) do
     user_id = Keyword.get(opts, :user_id)
     restore_action = {:entity_version_restore, entity_type}
-    builder_opts = Keyword.put(opts, :restore_action, restore_action)
 
     with :ok <- RestorePolicy.ensure_enabled(restore_action),
+         :ok <- validate_entity_scope(entity_type, entity, Map.get(entity, :project_id)),
          :ok <- require_restore_transaction_boundary(),
          builder = get_builder!(entity_type),
-         {:ok, snapshot} <- SnapshotStorage.load_snapshot(version.storage_key),
-         :ok <- require_pre_restore_snapshot(entity_type, entity, version, user_id, opts) do
+         {:ok, owned_version} <- fetch_owned_version(entity_type, entity, version),
+         :ok <- validate_version_storage_key(owned_version),
+         {:ok, snapshot, _actual_checksum} <- load_verified_version(owned_version),
+         {:ok, pre_restore_version} <-
+           create_and_verify_pre_restore_version(
+             entity_type,
+             entity,
+             owned_version,
+             user_id,
+             opts
+           ),
+         :ok <-
+           run_after_pre_restore_version_verified_hook(
+             opts,
+             pre_restore_version.record
+           ) do
       snapshot = maybe_resolve_shortcut_collision(entity_type, entity, snapshot)
+
+      builder_opts =
+        opts
+        |> Keyword.drop([
+          :skip_pre_snapshot,
+          :__pre_restore_version_fun,
+          :__after_pre_restore_version_verified_hook
+        ])
+        |> Keyword.put(:restore_action, restore_action)
+        |> Keyword.put(:pre_restore_snapshot, pre_restore_version.data)
+        |> Keyword.put(
+          :pre_restore_version_identity,
+          pre_restore_version_identity(pre_restore_version.record)
+        )
 
       case builder.restore_snapshot(entity, snapshot, builder_opts) do
         {:ok, updated_entity} ->
@@ -363,7 +428,7 @@ defmodule Storyarn.Versioning.VersionCrud do
               entity_type,
               updated_entity,
               entity,
-              version,
+              owned_version,
               user_id
             ),
             "post-restore",
@@ -386,21 +451,157 @@ defmodule Storyarn.Versioning.VersionCrud do
       else: :ok
   end
 
-  defp require_pre_restore_snapshot(_entity_type, _entity, _version, nil, _opts), do: :ok
+  defp fetch_owned_version(entity_type, entity, %EntityVersion{id: version_id})
+       when is_integer(version_id) and version_id > 0 do
+    case Repo.get_by(EntityVersion,
+           id: version_id,
+           entity_type: entity_type,
+           entity_id: entity.id,
+           project_id: entity.project_id
+         ) do
+      %EntityVersion{} = owned_version -> {:ok, owned_version}
+      nil -> {:error, :entity_version_scope_mismatch}
+    end
+  end
 
-  defp require_pre_restore_snapshot(entity_type, entity, version, user_id, opts) do
-    if Keyword.get(opts, :skip_pre_snapshot, false) do
+  defp fetch_owned_version(_entity_type, _entity, %EntityVersion{}), do: {:error, :entity_version_scope_mismatch}
+
+  defp create_and_verify_pre_restore_version(entity_type, entity, target_version, user_id, opts) do
+    create_opts = [
+      title:
+        dgettext(
+          "versioning",
+          "Before restore to v%{number}",
+          number: target_version.version_number
+        ),
+      is_auto: true,
+      skip_diff: true
+    ]
+
+    create_fun =
+      Keyword.get(
+        opts,
+        :__pre_restore_version_fun,
+        &create_version/5
+      )
+
+    result =
+      with {:ok, %EntityVersion{} = created_version} <-
+             safely_create_pre_restore_version(
+               create_fun,
+               entity_type,
+               entity,
+               user_id,
+               create_opts
+             ),
+           {:ok, persisted_version} <-
+             reload_pre_restore_version(
+               entity_type,
+               entity,
+               created_version.id,
+               user_id
+             ),
+           :ok <- validate_version_storage_key(persisted_version),
+           {:ok, snapshot_data, _actual_checksum} <-
+             load_verified_version(persisted_version) do
+        {:ok, %{data: snapshot_data, record: persisted_version}}
+      end
+
+    case result do
+      {:ok, %{data: _data, record: %EntityVersion{}}} = ok ->
+        ok
+
+      {:error, reason} ->
+        Logger.warning("Failed to create or verify pre-restore entity version: #{inspect(reason)}")
+
+        {:error, {:pre_restore_snapshot_failed, reason}}
+    end
+  end
+
+  defp safely_create_pre_restore_version(create_fun, entity_type, entity, user_id, create_opts) do
+    case create_fun.(entity_type, entity, entity.project_id, user_id, create_opts) do
+      {:ok, %EntityVersion{}} = ok -> ok
+      {:error, reason} -> {:error, reason}
+      _other -> {:error, :invalid_pre_restore_version_result}
+    end
+  rescue
+    exception ->
+      Logger.error("Pre-restore entity version creation raised: #{Exception.message(exception)}")
+
+      {:error, :pre_restore_version_exception}
+  catch
+    kind, reason ->
+      Logger.error(
+        "Pre-restore entity version creation failed " <>
+          "kind=#{kind} reason=#{inspect(reason)}"
+      )
+
+      {:error, :pre_restore_version_failure}
+  end
+
+  defp reload_pre_restore_version(entity_type, entity, version_id, user_id) do
+    case Repo.get_by(EntityVersion,
+           id: version_id,
+           entity_type: entity_type,
+           entity_id: entity.id,
+           project_id: entity.project_id
+         ) do
+      %EntityVersion{created_by_id: ^user_id} = version ->
+        {:ok, version}
+
+      %EntityVersion{} ->
+        {:error, :pre_restore_version_actor_mismatch}
+
+      nil ->
+        {:error, :pre_restore_version_not_found}
+    end
+  end
+
+  defp run_after_pre_restore_version_verified_hook(opts, version) do
+    case Keyword.get(opts, :__after_pre_restore_version_verified_hook) do
+      hook when is_function(hook, 1) ->
+        hook.(version)
+        :ok
+
+      _hook ->
+        :ok
+    end
+  end
+
+  defp pre_restore_version_identity(%EntityVersion{} = version) do
+    %{
+      id: version.id,
+      entity_type: version.entity_type,
+      entity_id: version.entity_id,
+      project_id: version.project_id,
+      created_by_id: version.created_by_id,
+      version_number: version.version_number,
+      storage_key: version.storage_key,
+      snapshot_size_bytes: version.snapshot_size_bytes,
+      checksum: version.checksum
+    }
+  end
+
+  defp validate_version_storage_key(%EntityVersion{} = version) do
+    if SnapshotStorage.entity_key?(
+         version.storage_key,
+         version.project_id,
+         version.entity_type,
+         version.entity_id,
+         version.version_number
+       ) do
       :ok
     else
-      case create_version(entity_type, entity, entity.project_id, user_id,
-             title: dgettext("versioning", "Before restore to v%{number}", number: version.version_number),
-             is_auto: true,
-             skip_diff: true
-           ) do
-        {:ok, _version} -> :ok
-        {:error, reason} -> {:error, {:pre_restore_snapshot_failed, reason}}
-      end
+      {:error, :entity_version_storage_key_mismatch}
     end
+  end
+
+  defp load_verified_version(%EntityVersion{} = version) do
+    SnapshotStorage.load_verified_snapshot(
+      version.storage_key,
+      version.snapshot_size_bytes,
+      version.checksum
+    )
   end
 
   defp maybe_create_post_restore_snapshot(_entity_type, _updated, _entity, _version, nil), do: :ok
@@ -426,7 +627,25 @@ defmodule Storyarn.Versioning.VersionCrud do
   """
   @spec load_version_snapshot(EntityVersion.t()) :: {:ok, map()} | {:error, term()}
   def load_version_snapshot(%EntityVersion{} = version) do
-    SnapshotStorage.load_snapshot(version.storage_key)
+    with {:ok, persisted_version} <- fetch_persisted_version(version),
+         :ok <- validate_version_storage_key(persisted_version),
+         {:ok, snapshot, _actual_checksum} <-
+           load_verified_version(persisted_version) do
+      {:ok, snapshot}
+    end
+  end
+
+  defp fetch_persisted_version(%EntityVersion{} = version) do
+    case Repo.get_by(EntityVersion,
+           id: version.id,
+           entity_type: version.entity_type,
+           entity_id: version.entity_id,
+           project_id: version.project_id,
+           version_number: version.version_number
+         ) do
+      %EntityVersion{} = persisted_version -> {:ok, persisted_version}
+      nil -> {:error, :entity_version_not_found}
+    end
   end
 
   # ========== Helpers ==========
@@ -462,12 +681,6 @@ defmodule Storyarn.Versioning.VersionCrud do
     end
   end
 
-  @entity_type_to_schema %{
-    "sheet" => Storyarn.Sheets.Sheet,
-    "flow" => Storyarn.Flows.Flow,
-    "scene" => Storyarn.Scenes.Scene
-  }
-
   defp maybe_resolve_shortcut_collision(entity_type, entity, snapshot) do
     shortcut = snapshot["shortcut"]
 
@@ -490,13 +703,27 @@ defmodule Storyarn.Versioning.VersionCrud do
     )
   end
 
+  defp validate_entity_scope(entity_type, entity, expected_project_id) do
+    with {:ok, schema} <- Map.fetch(@entity_type_to_schema, entity_type),
+         true <- is_struct(entity, schema),
+         {:ok, actual_project_id} <- Map.fetch(entity, :project_id),
+         true <-
+           is_integer(expected_project_id) and expected_project_id > 0 and
+             actual_project_id == expected_project_id do
+      :ok
+    else
+      :error -> {:error, :unknown_entity_type}
+      false -> {:error, :entity_scope_mismatch}
+    end
+  end
+
   defp generate_change_data(entity_type, entity_id, current_snapshot) do
     case get_latest_version(entity_type, entity_id) do
       nil ->
         {gettext("Initial version"), nil}
 
       previous ->
-        case SnapshotStorage.load_snapshot(previous.storage_key) do
+        case load_version_snapshot(previous) do
           {:ok, previous_snapshot} ->
             diff_result = SnapshotDiff.diff(entity_type, previous_snapshot, current_snapshot)
             summary = SnapshotDiff.format_summary(diff_result)
