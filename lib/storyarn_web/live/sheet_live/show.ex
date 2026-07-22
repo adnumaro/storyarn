@@ -130,6 +130,7 @@ defmodule StoryarnWeb.SheetLive.Show do
         current_tab={@current_tab}
         can_edit={@can_edit}
         source_shortcut={@source_shortcut}
+        sheet_health={@sheet_health}
         blocks={@blocks}
         gallery_data={@gallery_data}
         table_data={@table_data}
@@ -155,6 +156,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   attr :current_tab, :string, required: true
   attr :can_edit, :boolean, required: true
   attr :source_shortcut, :string, default: nil
+  attr :sheet_health, :map, default: nil
   attr :blocks, :list, default: []
   attr :gallery_data, :map, default: %{}
   attr :table_data, :map, default: %{}
@@ -191,6 +193,7 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   defp sheet_surface_props(assigns) do
     %{
+      health: if(assigns.compact, do: assigns.sheet_health),
       tabs: %{
         currentTab: assigns.current_tab,
         canEdit: assigns.can_edit,

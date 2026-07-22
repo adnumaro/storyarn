@@ -6,7 +6,7 @@ import SheetContentHeader from "@modules/sheets/components/chrome/header/SheetCo
 import BlockList from "@modules/sheets/components/entities/blocks/BlockList.vue";
 import SheetShowPanels from "@modules/sheets/components/panels/SheetShowPanels.vue";
 import SheetTabs from "@modules/sheets/components/panels/tabs/SheetTabs.vue";
-import type { Sheet } from "@modules/sheets/types";
+import type { Sheet, SheetHealth } from "@modules/sheets/types";
 
 type ServerPayload = any;
 
@@ -28,6 +28,7 @@ interface SheetSurfaceContent {
 }
 
 interface SheetSurface {
+  health: SheetHealth | null;
   tabs: SheetSurfaceTabs;
   content: SheetSurfaceContent | null;
 }
@@ -75,7 +76,12 @@ const panels = computed(
     v-if="sheet"
     class="max-w-4xl mx-auto bg-surface border border-border rounded-2xl p-6 shadow-sm"
   >
-    <SheetContentHeader :sheet="sheet" :can-edit="canEdit" :source-shortcut="sourceShortcut" />
+    <SheetContentHeader
+      :sheet="sheet"
+      :can-edit="canEdit"
+      :source-shortcut="sourceShortcut"
+      :sheet-health="surface.tabs.compact ? surface.health : null"
+    />
 
     <div class="pb-6">
       <div id="sheet-tabs" class="contents">

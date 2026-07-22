@@ -124,6 +124,42 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
              end)
     end
 
+    test "keeps grouped health findings in the compact compare surface", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      sheet = sheet_fixture(project, %{name: "Compact Health", shortcut: "compact-health"})
+
+      block =
+        block_fixture(sheet, %{
+          type: "text",
+          required: true,
+          config: %{"label" => "Biography"},
+          value: %{"content" => ""}
+        })
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}?layout=compact"
+        )
+
+      await_async(view)
+      refute has_element?(view, "#sheet-header")
+
+      surface = get_sheet_surface_props(view)
+      assert surface["tabs"]["compact"] == true
+
+      warning = Enum.find(surface["health"]["warningItems"], &(&1["blockId"] == block.id))
+      info = Enum.find(surface["health"]["infoItems"], &(&1["blockId"] == block.id))
+
+      assert warning
+      assert info
+      assert Enum.any?(warning["reasons"], &(&1["code"] == "required_block_empty"))
+      assert Enum.any?(info["reasons"], &(&1["code"] == "no_internal_variable_usages"))
+    end
+
     test "refreshes health after a remote shortcut change", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Remote Health", shortcut: "remote-health"})
