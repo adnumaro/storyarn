@@ -1333,10 +1333,8 @@ defmodule Storyarn.Flows do
     to: EntityTrashRefs
 
   @doc """
-  Reconcile pending Flow trash refs after an exact project snapshot restore.
-
-  Target-snapshot sources remain authoritative; references belonging to
-  pre-existing trash are restored conservatively within the project boundary.
+  Reconcile refs for Flows proven to have been reactivated from trash, while
+  failing closed on pending refs to targets that were already active.
   """
   defdelegate reconcile_project_restore_flow_refs(
                 project_id,
@@ -1345,6 +1343,14 @@ defmodule Storyarn.Flows do
               ),
               to: EntityTrashRefs
 
-  @doc "Restore all trash refs pointing at `{target_type, target_id}` (conservative)."
+  defdelegate reconcile_project_restore_flow_refs(
+                project_id,
+                target_flow_ids,
+                target_snapshot_node_ids,
+                reactivated_target_flow_ids
+              ),
+              to: EntityTrashRefs
+
+  @doc "Restore trash refs conservatively; Flow targets use the validated Flow restore path."
   defdelegate restore_trash_refs(target_type, target_id), to: EntityTrashRefs, as: :restore
 end

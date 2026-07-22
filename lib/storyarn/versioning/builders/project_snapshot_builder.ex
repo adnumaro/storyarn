@@ -175,10 +175,12 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   Restores all entities in a project from a snapshot.
 
   Reconciles the active project to the exact snapshot graph. Snapshot roots
-  and supported children are restored with their original IDs, including rows
-  that currently exist in trash. Hard-deleted roots are recreated. Active
-  roots absent from the snapshot are moved to trash, while unrelated
-  pre-existing trash remains untouched.
+  and supported children are restored with their original IDs. A target ID in
+  trash is only reactivated when its persisted state still matches the target
+  snapshot; divergent recoverable state fails closed instead of being
+  overwritten. Hard-deleted roots are recreated. Active roots absent from the
+  snapshot are moved to trash, while unrelated pre-existing trash remains
+  untouched.
 
   Wrapped in a transaction for atomicity.
 
@@ -228,7 +230,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
           :ok = apply_restore_tree!(project_id, plan)
           _project = restore_project_metadata!(project, plan)
 
-          results = restore_project_entities(project_id, plan, opts)
+          results = restore_project_entities(project_id, plan, root_result, opts)
 
           restore_localization(
             project_id,
@@ -276,7 +278,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
       :erlang.raise(kind, reason, __STACKTRACE__)
   end
 
-  defp restore_project_entities(project_id, plan, opts) do
+  defp restore_project_entities(project_id, plan, root_result, opts) do
     sheets =
       restore_entities(
         project_id,
@@ -293,7 +295,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
         &restore_flow(&1, &2, project_id, opts)
       )
 
-    reconcile_project_flow_trash_refs!(project_id, plan)
+    reconcile_project_flow_trash_refs!(project_id, plan, root_result.reactivated.flows)
 
     scenes =
       restore_entities(
@@ -310,7 +312,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
     }
   end
 
-  defp reconcile_project_flow_trash_refs!(project_id, plan) do
+  defp reconcile_project_flow_trash_refs!(project_id, plan, reactivated_flow_ids) do
     target_flow_ids = plan.ids.flows |> MapSet.to_list() |> Enum.sort()
 
     target_snapshot_node_ids =
@@ -330,7 +332,8 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
     case Flows.reconcile_project_restore_flow_refs(
            project_id,
            target_flow_ids,
-           target_snapshot_node_ids
+           target_snapshot_node_ids,
+           reactivated_flow_ids
          ) do
       {:ok, _counts} ->
         :ok

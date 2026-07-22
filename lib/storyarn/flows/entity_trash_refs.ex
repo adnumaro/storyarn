@@ -211,7 +211,9 @@ defmodule Storyarn.Flows.EntityTrashRefs do
   @doc """
   Restore all trash refs pointing at `{target_type, target_id}`. Conservative:
   only re-applies a ref if the live source field is currently nil (don't yank
-  refs the user created in the interim).
+  refs the user created in the interim). Flow refs must be restored through
+  the Flow restore transaction; a pending ref that points to an already-active
+  Flow is treated as inconsistent and fails closed.
 
   Always deletes the processed trash rows, whether restored or skipped.
 
@@ -223,10 +225,11 @@ defmodule Storyarn.Flows.EntityTrashRefs do
     target_column = fetch_target_column!(target_type)
 
     Repo.transaction(fn ->
-      case lock_restore_target(target_type, target_id) do
-        :ok -> :ok
-        {:error, reason} -> Repo.rollback(reason)
-      end
+      target_state =
+        case lock_restore_target(target_type, target_id) do
+          {:ok, state} -> state
+          {:error, reason} -> Repo.rollback(reason)
+        end
 
       refs =
         EntityTrashRef
@@ -234,6 +237,11 @@ defmodule Storyarn.Flows.EntityTrashRefs do
         |> order_by([r], asc: r.id)
         |> lock("FOR UPDATE")
         |> Repo.all()
+
+      case validate_restore_target_state(target_type, target_id, target_state, refs) do
+        :ok -> :ok
+        {:error, reason} -> Repo.rollback(reason)
+      end
 
       results =
         Enum.map(refs, fn ref ->
@@ -249,6 +257,64 @@ defmodule Storyarn.Flows.EntityTrashRefs do
     end)
   end
 
+  @doc false
+  @spec restore_locked_flow_refs(
+          [EntityTrashRef.t()],
+          [FlowNode.t()],
+          integer()
+        ) ::
+          {:ok, %{restored: non_neg_integer(), skipped: non_neg_integer()}}
+          | {:error, term()}
+  def restore_locked_flow_refs(refs, source_nodes, target_flow_id)
+      when is_list(refs) and is_list(source_nodes) and is_integer(target_flow_id) and target_flow_id > 0 do
+    if Repo.in_transaction?() do
+      do_restore_locked_flow_refs(refs, source_nodes, target_flow_id)
+    else
+      {:error, :locked_flow_trash_restore_requires_transaction}
+    end
+  end
+
+  def restore_locked_flow_refs(_refs, _source_nodes, _target_flow_id),
+    do: {:error, :invalid_locked_flow_trash_restore_arguments}
+
+  defp do_restore_locked_flow_refs(refs, source_nodes, target_flow_id) do
+    with :ok <- validate_locked_flow_refs(refs, target_flow_id),
+         {:ok, source_by_id} <- index_locked_flow_sources(source_nodes) do
+      results =
+        Enum.map(
+          refs,
+          &restore_locked_flow_ref(&1, source_by_id, target_flow_id)
+        )
+
+      {:ok,
+       %{
+         restored: Enum.count(results, &(&1 == :restored)),
+         skipped: Enum.count(results, &(&1 == :skipped))
+       }}
+    end
+  end
+
+  defp restore_locked_flow_ref(ref, source_by_id, target_flow_id) do
+    outcome =
+      case Map.get(source_by_id, ref.source_id) do
+        %FlowNode{} = node ->
+          restore_jsonb_row(
+            node,
+            ref,
+            FlowNode,
+            :data,
+            "referenced_flow_id",
+            target_flow_id
+          )
+
+        nil ->
+          :skipped
+      end
+
+    Repo.delete!(ref)
+    outcome
+  end
+
   @doc """
   Reconciles pending Flow trash references after an exact project restore.
 
@@ -258,12 +324,15 @@ defmodule Storyarn.Flows.EntityTrashRefs do
   only be touched when they are still effectively in trash (the node or its
   owning Flow is deleted); their reference is then restored conservatively.
 
-  Foreign-project sources and active same-project sources outside the target
-  snapshot fail the whole operation before any source row or trash reference is
-  changed.
+  Pending refs are only accepted for target Flows proven to have been
+  reactivated from matching trash state by the surrounding restore plan.
+  Pending refs to a Flow that was already active, foreign-project sources, and
+  active same-project sources outside the target snapshot fail the whole
+  operation before any source row or trash reference is changed.
   """
   @spec reconcile_project_restore_flow_refs(
           integer(),
+          [integer()],
           [integer()],
           [integer()]
         ) ::
@@ -274,14 +343,23 @@ defmodule Storyarn.Flows.EntityTrashRefs do
              skipped: non_neg_integer()
            }}
           | {:error, term()}
-  def reconcile_project_restore_flow_refs(project_id, target_flow_ids, target_snapshot_node_ids)
-      when valid_project_restore_arguments?(project_id, target_flow_ids, target_snapshot_node_ids) do
+  def reconcile_project_restore_flow_refs(
+        project_id,
+        target_flow_ids,
+        target_snapshot_node_ids,
+        reactivated_target_flow_ids \\ []
+      )
+      when valid_project_restore_arguments?(project_id, target_flow_ids, target_snapshot_node_ids) and
+             is_list(reactivated_target_flow_ids) do
     target_flow_ids = normalize_positive_ids(target_flow_ids)
     target_snapshot_node_ids = target_snapshot_node_ids |> normalize_positive_ids() |> MapSet.new()
+    reactivated_target_flow_ids = normalize_positive_ids(reactivated_target_flow_ids)
 
     Repo.transaction(fn ->
-      with :ok <- validate_active_restore_targets(project_id, target_flow_ids),
+      with :ok <- validate_reactivated_restore_targets(target_flow_ids, reactivated_target_flow_ids),
+           :ok <- validate_active_restore_targets(project_id, target_flow_ids),
            refs = lock_project_restore_flow_refs(target_flow_ids),
+           :ok <- validate_no_pending_active_flow_refs(refs, reactivated_target_flow_ids),
            :ok <- validate_project_restore_ref_shapes(refs),
            {:ok, source_states} <-
              lock_and_validate_project_restore_sources(
@@ -311,6 +389,14 @@ defmodule Storyarn.Flows.EntityTrashRefs do
     |> Enum.filter(&(is_integer(&1) and &1 > 0))
     |> Enum.uniq()
     |> Enum.sort()
+  end
+
+  defp validate_reactivated_restore_targets(target_flow_ids, reactivated_target_flow_ids) do
+    unexpected_ids = reactivated_target_flow_ids -- target_flow_ids
+
+    if unexpected_ids == [],
+      do: :ok,
+      else: {:error, {:invalid_project_restore_reactivated_flow_ids, unexpected_ids}}
   end
 
   defp validate_active_restore_targets(_project_id, []), do: :ok
@@ -354,6 +440,54 @@ defmodule Storyarn.Flows.EntityTrashRefs do
         lock: "FOR UPDATE"
       )
     )
+  end
+
+  defp validate_no_pending_active_flow_refs([], _reactivated_target_flow_ids), do: :ok
+
+  defp validate_no_pending_active_flow_refs(refs, reactivated_target_flow_ids) do
+    allowed = MapSet.new(reactivated_target_flow_ids)
+    stale_refs = Enum.reject(refs, &MapSet.member?(allowed, &1.target_flow_id))
+
+    case stale_refs do
+      [] ->
+        :ok
+
+      stale_refs ->
+        flow_ids = stale_refs |> Enum.map(& &1.target_flow_id) |> Enum.uniq() |> Enum.sort()
+        ref_ids = Enum.map(stale_refs, & &1.id)
+
+        {:error, {:project_restore_active_flow_has_pending_trash_references, flow_ids, ref_ids}}
+    end
+  end
+
+  defp validate_locked_flow_refs(refs, target_flow_id) do
+    case Enum.find(refs, fn ref ->
+           not match?(
+             %EntityTrashRef{
+               source_type: "flow_node",
+               source_field: "data.referenced_flow_id",
+               target_flow_id: ^target_flow_id
+             },
+             ref
+           )
+         end) do
+      nil -> :ok
+      ref -> {:error, {:invalid_locked_flow_trash_reference, ref.id}}
+    end
+  end
+
+  defp index_locked_flow_sources(source_nodes) do
+    if Enum.all?(source_nodes, &match?(%FlowNode{}, &1)) do
+      source_by_id = Map.new(source_nodes, &{&1.id, &1})
+
+      if map_size(source_by_id) == length(source_nodes) do
+        {:ok, source_by_id}
+      else
+        {:error, :invalid_locked_flow_trash_sources}
+      end
+    else
+      {:error, :invalid_locked_flow_trash_sources}
+    end
   end
 
   defp validate_project_restore_ref_shapes(refs) do
@@ -499,11 +633,37 @@ defmodule Storyarn.Flows.EntityTrashRefs do
     end
   end
 
-  defp lock_restore_target(:sheet_avatar, target_id) do
-    AvatarIntegrity.lock_avatar_reference_target(target_id)
+  defp lock_restore_target(:flow, target_id) do
+    case Repo.one(
+           from(flow in Flow,
+             where: flow.id == ^target_id,
+             lock: "FOR UPDATE"
+           )
+         ) do
+      %Flow{deleted_at: nil} -> {:ok, :active}
+      %Flow{} -> {:ok, :deleted}
+      nil -> {:ok, :missing}
+    end
   end
 
-  defp lock_restore_target(_target_type, _target_id), do: :ok
+  defp lock_restore_target(:sheet_avatar, target_id) do
+    case AvatarIntegrity.lock_avatar_reference_target(target_id) do
+      :ok -> {:ok, :available}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp lock_restore_target(_target_type, _target_id), do: {:ok, :unchecked}
+
+  defp validate_restore_target_state(:flow, target_id, :active, [_ref | _] = refs) do
+    {:error, {:active_flow_has_pending_trash_references, target_id, Enum.map(refs, & &1.id)}}
+  end
+
+  defp validate_restore_target_state(:flow, target_id, state, _refs) when state in [:deleted, :missing] do
+    {:error, {:flow_trash_reference_target_not_active, target_id, state}}
+  end
+
+  defp validate_restore_target_state(_target_type, _target_id, _state, _refs), do: :ok
 
   defp insert_trash_refs(rows, source_type, source_field, target_column, target_id) do
     now = TimeHelpers.now()

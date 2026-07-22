@@ -27,6 +27,13 @@ defmodule Storyarn.Flows.FlowCrud do
   alias Storyarn.Sheets
   alias Storyarn.Shortcuts
 
+  @restore_sources_locked_event [
+    :storyarn,
+    :flows,
+    :flow_restore,
+    :sources_locked
+  ]
+
   @doc """
   Lists all non-deleted flows for a project.
   Returns flows ordered by is_main (descending) then name.
@@ -544,6 +551,7 @@ defmodule Storyarn.Flows.FlowCrud do
          :ok <- validate_flow_trash_refs(trash_refs),
          {:ok, source_nodes} <-
            lock_flow_trash_source_rows(trash_refs, project_id, flow_id),
+         :ok <- emit_restore_sources_locked(flow_id, trash_refs, source_nodes),
          changeset = flow_restore_changeset(locked_flow),
          :ok <- validate_restore_changeset(changeset),
          {:ok, parent_id} <-
@@ -560,7 +568,12 @@ defmodule Storyarn.Flows.FlowCrud do
            |> Ecto.Changeset.put_change(:scene_id, scene_id)
            |> Ecto.Changeset.put_change(:deleted_at, nil)
            |> Repo.update(),
-         {:ok, _restore_meta} <- EntityTrashRefs.restore(:flow, restored_flow.id),
+         {:ok, _restore_meta} <-
+           EntityTrashRefs.restore_locked_flow_refs(
+             trash_refs,
+             source_nodes,
+             restored_flow.id
+           ),
          :ok <-
            validate_restored_flow_nodes(
              restored_nodes,
@@ -709,37 +722,53 @@ defmodule Storyarn.Flows.FlowCrud do
       |> Enum.uniq()
       |> Enum.sort()
 
-    source_flow_scopes =
+    locked_flows =
       Repo.all(
         from(flow in Flow,
           where: flow.id in ^source_flow_ids,
           order_by: [asc: flow.id],
-          select: %{id: flow.id, project_id: flow.project_id}
+          lock: "FOR UPDATE"
         )
       )
 
-    case Enum.find(source_flow_scopes, &(&1.project_id != project_id)) do
-      nil ->
-        Repo.all(
-          from(flow in Flow,
-            where: flow.id in ^source_flow_ids,
-            order_by: [asc: flow.id],
-            lock: "FOR UPDATE"
-          )
+    locked_nodes =
+      Repo.all(
+        from(node in FlowNode,
+          where: node.id in ^source_ids,
+          order_by: [asc: node.id],
+          lock: "FOR UPDATE"
         )
+      )
 
-        {:ok,
-         Repo.all(
-           from(node in FlowNode,
-             where: node.id in ^source_ids,
-             order_by: [asc: node.id],
-             lock: "FOR UPDATE"
-           )
-         )}
+    flow_by_id = Map.new(locked_flows, &{&1.id, &1})
 
-      _foreign_flow ->
+    case Enum.find(
+           locked_nodes,
+           &invalid_locked_flow_source?(&1, flow_by_id, project_id)
+         ) do
+      nil ->
+        {:ok, locked_nodes}
+
+      _foreign_source ->
         {:error, {:invalid_project_reference, :referenced_flow_id, target_flow_id}}
     end
+  end
+
+  defp invalid_locked_flow_source?(node, flow_by_id, project_id) do
+    case Map.get(flow_by_id, node.flow_id) do
+      %Flow{project_id: ^project_id} -> false
+      _missing_or_foreign -> true
+    end
+  end
+
+  defp emit_restore_sources_locked(flow_id, refs, source_nodes) do
+    :telemetry.execute(
+      @restore_sources_locked_event,
+      %{reference_count: length(refs), source_count: length(source_nodes)},
+      %{flow_id: flow_id}
+    )
+
+    :ok
   end
 
   defp flow_restore_changeset(flow) do

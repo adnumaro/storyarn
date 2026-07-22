@@ -161,65 +161,73 @@ defmodule Storyarn.Flows.EntityTrashRefsTest do
       assert {:ok, %{restored: 0, skipped: 1}} = EntityTrashRefs.restore(:sheet, sheet.id)
       assert Repo.get!(FlowNode, n1.id).data["speaker_sheet_id"] == other_sheet.id
     end
+
+    test "fails closed without consuming a pending ref that points to an active Flow" do
+      user = user_fixture()
+      project = project_fixture(user)
+      source_flow = flow_fixture(project)
+      target_flow = flow_fixture(project)
+
+      source =
+        node_fixture(source_flow, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => target_flow.id}
+        })
+
+      assert {:ok, 1} =
+               EntityTrashRefs.sweep_jsonb_field(
+                 FlowNode,
+                 "flow_node",
+                 :data,
+                 "referenced_flow_id",
+                 :flow,
+                 target_flow.id
+               )
+
+      ref = Repo.one!(EntityTrashRef)
+
+      assert {:error, {:active_flow_has_pending_trash_references, target_id, [ref_id]}} =
+               EntityTrashRefs.restore(:flow, target_flow.id)
+
+      assert target_id == target_flow.id
+      assert ref_id == ref.id
+      assert Repo.get!(FlowNode, source.id).data["referenced_flow_id"] == nil
+      assert Repo.get!(EntityTrashRef, ref.id)
+    end
   end
 
   describe "reconcile_project_restore_flow_refs/3" do
-    test "does not re-fetch and mutate a foreign source inserted after source validation" do
+    test "fails closed without discarding a pending ref to an active target Flow" do
       user = user_fixture()
       project = project_fixture(user)
       target_flow = flow_fixture(project)
-      foreign_project = project_fixture(user)
-      foreign_flow = flow_fixture(foreign_project)
+      source_flow = flow_fixture(project)
 
-      [[missing_source_id]] =
-        Repo.query!("SELECT nextval(pg_get_serial_sequence('flow_nodes', 'id'))").rows
-
-      pending_ref =
-        %EntityTrashRef{}
-        |> EntityTrashRef.create_changeset(%{
-          source_type: "flow_node",
-          source_id: missing_source_id,
-          source_field: "data.referenced_flow_id",
-          target_flow_id: target_flow.id
+      source =
+        node_fixture(source_flow, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => target_flow.id}
         })
-        |> Repo.insert!()
 
-      handler_id =
-        "project-restore-missing-source-race-#{System.unique_integer([:positive])}"
+      assert {:ok, 1} =
+               EntityTrashRefs.sweep_project_flow_references(
+                 project.id,
+                 target_flow.id
+               )
 
-      :ok =
-        :telemetry.attach(
-          handler_id,
-          [
-            :storyarn,
-            :flows,
-            :entity_trash_refs,
-            :project_restore_sources_locked
-          ],
-          fn _event, _measurements, %{project_id: restored_project_id}, _config ->
-            if restored_project_id == project.id do
-              Repo.insert!(%FlowNode{
-                id: missing_source_id,
-                flow_id: foreign_flow.id,
-                type: "subflow",
-                data: %{"referenced_flow_id" => nil}
-              })
-            end
-          end,
-          nil
-        )
+      pending_ref = Repo.one!(EntityTrashRef)
 
-      on_exit(fn -> :telemetry.detach(handler_id) end)
-
-      assert {:ok, %{discarded: 0, restored: 0, skipped: 1}} =
+      assert {:error, {:project_restore_active_flow_has_pending_trash_references, [target_id], [ref_id]}} =
                EntityTrashRefs.reconcile_project_restore_flow_refs(
                  project.id,
                  [target_flow.id],
                  []
                )
 
-      assert Repo.get!(FlowNode, missing_source_id).data["referenced_flow_id"] == nil
-      refute Repo.get(EntityTrashRef, pending_ref.id)
+      assert target_id == target_flow.id
+      assert ref_id == pending_ref.id
+      assert Repo.get!(FlowNode, source.id).data["referenced_flow_id"] == nil
+      assert Repo.get!(EntityTrashRef, pending_ref.id)
     end
   end
 

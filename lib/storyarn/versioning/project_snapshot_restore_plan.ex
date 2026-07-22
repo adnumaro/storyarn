@@ -4,6 +4,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestorePlan do
   import Ecto.Query, warn: false
 
   alias Storyarn.Flows
+  alias Storyarn.Flows.EntityTrashRef
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Projects.Project
@@ -18,6 +19,23 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestorePlan do
     flows: %{key: "flows", schema: Flow},
     scenes: %{key: "scenes", schema: Scene}
   }
+
+  @root_snapshot_fields %{
+    sheets: ~w(name shortcut description color hidden_inherited_block_ids banner_asset_id),
+    flows: ~w(name shortcut description is_main settings scene_id),
+    scenes: ~w(
+      name shortcut description width height default_zoom default_center_x
+      default_center_y scale_unit scale_value fog_color fog_opacity
+      exploration_display_mode background_asset_id
+    )
+  }
+
+  @block_snapshot_fields ~w(
+    type position config value is_constant variable_name scope
+    inherited_from_block_id detached required column_group_id column_index
+  )
+
+  @flow_node_snapshot_fields ~w(type position_x position_y data source parent_id)
 
   @project_fields ~w(
     description project_type project_subtype project_type_other settings
@@ -80,11 +98,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestorePlan do
   def prepare(project_id, plan) do
     with :ok <- validate_root_ownership(project_id, plan),
          :ok <- validate_block_ownership(plan.blocks),
+         {:ok, reactivated} <- validate_target_trash_conflicts(project_id, plan),
          :ok <- validate_main_flow_conflicts(project_id, plan),
          :ok <- validate_current_only_flow_cross_project_callers(project_id, plan),
          {:ok, removed} <- reconcile_roots(project_id, plan),
          :ok <- reconcile_sheet_blocks(plan) do
-      {:ok, %{removed: removed}}
+      {:ok, %{removed: removed, reactivated: reactivated}}
     end
   end
 
@@ -460,6 +479,164 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestorePlan do
     if is_nil(conflict),
       do: :ok,
       else: {:error, {:project_snapshot_block_ownership_conflict, conflict}}
+  end
+
+  defp validate_target_trash_conflicts(project_id, plan) do
+    trashed_roots = %{
+      sheets: locked_trashed_roots(Sheet, project_id, plan.ids.sheets),
+      flows: locked_trashed_roots(Flow, project_id, plan.ids.flows),
+      scenes: locked_trashed_roots(Scene, project_id, plan.ids.scenes)
+    }
+
+    target_nodes = target_flow_nodes(plan)
+    pending_flow_refs = locked_pending_flow_refs(Enum.map(target_nodes, & &1["original_id"]))
+
+    trashed_blocks =
+      locked_trashed_rows(Block, Enum.map(plan.blocks, & &1["original_id"]))
+
+    trashed_flow_nodes = locked_trashed_rows(FlowNode, Enum.map(target_nodes, & &1["original_id"]))
+
+    conflicts =
+      %{
+        sheets: mismatched_trashed_root_ids(:sheets, trashed_roots.sheets, plan),
+        flows: mismatched_trashed_root_ids(:flows, trashed_roots.flows, plan),
+        scenes: mismatched_trashed_root_ids(:scenes, trashed_roots.scenes, plan),
+        blocks: mismatched_trashed_block_ids(trashed_blocks, plan.blocks),
+        flow_nodes:
+          mismatched_trashed_flow_node_ids(
+            trashed_flow_nodes,
+            target_nodes,
+            pending_flow_refs
+          )
+      }
+      |> Enum.reject(fn {_type, ids} -> ids == [] end)
+      |> Map.new()
+
+    if map_size(conflicts) == 0,
+      do:
+        {:ok,
+         Map.new(trashed_roots, fn {type, rows} ->
+           {type, Enum.map(rows, & &1.id)}
+         end)},
+      else: {:error, {:project_snapshot_target_ids_in_trash, conflicts}}
+  end
+
+  defp locked_trashed_roots(schema, project_id, ids) do
+    case MapSet.to_list(ids) do
+      [] ->
+        []
+
+      target_ids ->
+        Repo.all(
+          from(row in schema,
+            where:
+              row.id in ^target_ids and row.project_id == ^project_id and
+                not is_nil(row.deleted_at),
+            order_by: [asc: row.id],
+            lock: "FOR UPDATE"
+          )
+        )
+    end
+  end
+
+  defp locked_trashed_rows(_schema, []), do: []
+
+  defp locked_trashed_rows(schema, ids) do
+    Repo.all(
+      from(row in schema,
+        where: row.id in ^Enum.uniq(ids) and not is_nil(row.deleted_at),
+        order_by: [asc: row.id],
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp locked_pending_flow_refs([]), do: %{}
+
+  defp locked_pending_flow_refs(source_ids) do
+    EntityTrashRef
+    |> where(
+      [ref],
+      ref.source_type == "flow_node" and
+        ref.source_field == "data.referenced_flow_id" and
+        ref.source_id in ^Enum.uniq(source_ids)
+    )
+    |> order_by([ref], asc: ref.id)
+    |> lock("FOR UPDATE")
+    |> Repo.all()
+    |> Map.new(&{&1.source_id, &1.target_flow_id})
+  end
+
+  defp mismatched_trashed_root_ids(type, rows, plan) do
+    entries_by_id = Map.new(plan.entries[type], &{&1["id"], &1["snapshot"]})
+    tree_by_id = Map.new(plan.tree[type], &{&1["id"], &1})
+
+    rows
+    |> Enum.reject(fn row ->
+      snapshot = Map.fetch!(entries_by_id, row.id)
+      tree = Map.fetch!(tree_by_id, row.id)
+
+      snapshot_fields_match?(row, snapshot, @root_snapshot_fields[type]) and
+        row.parent_id == tree["parent_id"] and row.position == tree["position"]
+    end)
+    |> Enum.map(& &1.id)
+  end
+
+  defp mismatched_trashed_block_ids(rows, blocks) do
+    blocks_by_id = Map.new(blocks, &{&1["original_id"], &1})
+
+    rows
+    |> Enum.reject(fn row ->
+      snapshot = Map.fetch!(blocks_by_id, row.id)
+
+      row.sheet_id == snapshot["__restore_owner_sheet_id"] and
+        snapshot_fields_match?(row, snapshot, @block_snapshot_fields)
+    end)
+    |> Enum.map(& &1.id)
+  end
+
+  defp mismatched_trashed_flow_node_ids(rows, nodes, pending_flow_refs) do
+    nodes_by_id = Map.new(nodes, &{&1["original_id"], &1})
+
+    rows
+    |> Enum.reject(fn row ->
+      snapshot = Map.fetch!(nodes_by_id, row.id)
+
+      row.flow_id == snapshot["__restore_owner_flow_id"] and
+        snapshot_fields_match?(
+          row,
+          snapshot,
+          @flow_node_snapshot_fields -- ["data"]
+        ) and flow_node_data_matches?(row, snapshot, pending_flow_refs)
+    end)
+    |> Enum.map(& &1.id)
+  end
+
+  defp flow_node_data_matches?(row, snapshot, pending_flow_refs) do
+    snapshot_data = snapshot["data"]
+
+    row.data == snapshot_data or
+      (is_map(row.data) and is_map(snapshot_data) and
+         row.data["referenced_flow_id"] == nil and
+         is_integer(snapshot_data["referenced_flow_id"]) and
+         pending_flow_refs[row.id] == snapshot_data["referenced_flow_id"] and
+         Map.put(row.data, "referenced_flow_id", snapshot_data["referenced_flow_id"]) ==
+           snapshot_data)
+  end
+
+  defp snapshot_fields_match?(row, snapshot, fields) do
+    Enum.all?(fields, fn field ->
+      Map.get(row, String.to_existing_atom(field)) == snapshot[field]
+    end)
+  end
+
+  defp target_flow_nodes(plan) do
+    Enum.flat_map(plan.entries.flows, fn entry ->
+      entry
+      |> get_in(["snapshot", "nodes"])
+      |> List.wrap()
+      |> Enum.map(&Map.put(&1, "__restore_owner_flow_id", entry["id"]))
+    end)
   end
 
   defp validate_main_flow_conflicts(project_id, plan) do

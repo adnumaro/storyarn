@@ -74,13 +74,17 @@ defmodule Storyarn.Versioning.ProjectSnapshotExactRestoreTest do
       assert Localization.get_texts_for_source("flow_node", node.id) == []
     end
 
-    test "restores snapshot roots directly from trash with their original IDs", %{
+    test "fails before writes when snapshot root IDs have divergent state in trash", %{
       project: project
     } do
       sheet = sheet_fixture(project, %{name: "Snapshot sheet"})
       flow = flow_fixture(project, %{name: "Snapshot flow"})
       scene = scene_fixture(project, %{name: "Snapshot scene"})
       target_snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
+
+      assert {:ok, _sheet} = Sheets.update_sheet(sheet, %{name: "Current sheet"})
+      assert {:ok, _flow} = Flows.set_main_flow(flow)
+      assert {:ok, _scene} = Scenes.update_scene(scene, %{name: "Current scene"})
 
       assert {:ok, _deleted_sheet} = Sheets.delete_sheet(sheet)
       assert {:ok, _deleted_flow} = Flows.delete_flow(flow)
@@ -90,25 +94,32 @@ defmodule Storyarn.Versioning.ProjectSnapshotExactRestoreTest do
       assert %Flow{deleted_at: %DateTime{}} = Repo.get!(Flow, flow.id)
       assert %Scene{deleted_at: %DateTime{}} = Repo.get!(Scene, scene.id)
 
+      current_only = sheet_fixture(project, %{name: "Must remain active"})
       safety_snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
 
-      assert {:ok, _result} =
+      assert {:error, {:project_snapshot_target_ids_in_trash, conflicts}} =
                ProjectSnapshotBuilder.restore_snapshot(
                  project.id,
                  target_snapshot,
                  pre_restore_snapshot: safety_snapshot
                )
 
-      assert %Sheet{id: sheet_id, deleted_at: nil} = Repo.get!(Sheet, sheet.id)
-      assert %Flow{id: flow_id, deleted_at: nil} = Repo.get!(Flow, flow.id)
-      assert %Scene{id: scene_id, deleted_at: nil} = Repo.get!(Scene, scene.id)
+      assert conflicts == %{
+               sheets: [sheet.id],
+               flows: [flow.id],
+               scenes: [scene.id]
+             }
 
-      assert sheet_id == sheet.id
-      assert flow_id == flow.id
-      assert scene_id == scene.id
+      assert %Sheet{deleted_at: %DateTime{}} = Repo.get!(Sheet, sheet.id)
+      assert %Flow{deleted_at: %DateTime{}} = Repo.get!(Flow, flow.id)
+      assert %Scene{deleted_at: %DateTime{}} = Repo.get!(Scene, scene.id)
+      assert Repo.get!(Sheet, sheet.id).name == "Current sheet"
+      assert Repo.get!(Flow, flow.id).is_main
+      assert Repo.get!(Scene, scene.id).name == "Current scene"
+      assert %Sheet{deleted_at: nil} = Repo.get!(Sheet, current_only.id)
     end
 
-    test "restores snapshot children directly from trash with their original IDs", %{
+    test "fails before writes when snapshot child IDs have divergent state in trash", %{
       project: project
     } do
       sheet = sheet_fixture(project, %{name: "Snapshot sheet"})
@@ -116,6 +127,14 @@ defmodule Storyarn.Versioning.ProjectSnapshotExactRestoreTest do
       flow = flow_fixture(project, %{name: "Snapshot flow"})
       node = node_fixture(flow, %{type: "dialogue"})
       target_snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
+
+      block
+      |> Ecto.Changeset.change(value: %{"content" => "Current value"})
+      |> Repo.update!()
+
+      node
+      |> Ecto.Changeset.change(position_x: node.position_x + 100.0)
+      |> Repo.update!()
 
       assert {:ok, _deleted_block} = Sheets.delete_block(block)
       assert {:ok, _deleted_node, _meta} = Flows.delete_node(node)
@@ -125,17 +144,22 @@ defmodule Storyarn.Versioning.ProjectSnapshotExactRestoreTest do
 
       safety_snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
 
-      assert {:ok, _result} =
+      assert {:error, {:project_snapshot_target_ids_in_trash, conflicts}} =
                ProjectSnapshotBuilder.restore_snapshot(
                  project.id,
                  target_snapshot,
                  pre_restore_snapshot: safety_snapshot
                )
 
-      assert %Block{id: block_id, deleted_at: nil} = Repo.get!(Block, block.id)
-      assert %FlowNode{id: node_id, deleted_at: nil} = Repo.get!(FlowNode, node.id)
-      assert block_id == block.id
-      assert node_id == node.id
+      assert conflicts == %{
+               blocks: [block.id],
+               flow_nodes: [node.id]
+             }
+
+      assert %Block{deleted_at: %DateTime{}} = Repo.get!(Block, block.id)
+      assert %FlowNode{deleted_at: %DateTime{}} = Repo.get!(FlowNode, node.id)
+      assert Repo.get!(Block, block.id).value == %{"content" => "Current value"}
+      assert Repo.get!(FlowNode, node.id).position_x == node.position_x + 100.0
     end
 
     test "recreates a hard-deleted snapshot root with the same root and child IDs", %{
