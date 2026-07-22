@@ -1,0 +1,30 @@
+test/storyarn/sheets/health_checker_test.exs
+  s_601e46785f4b81::t_5a139c1f4c4c58 183-204
+lib/storyarn/sheets/health_checker.ex
+  s_601e46785f4b81::t_5a139c1f4c4c58 307,311,315,665,699-705
+  s_7d17843f59d188::t_236ea400abcb13 706
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "51aef8da2adbacb58479eb0fbc35fc0ef96bca1b",
+  "prompts": {},
+  "sessions": {
+    "s_601e46785f4b81": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b4-a630-7780-b438-bc2aa3d9363e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_7d17843f59d188": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fbf-1c01-7451-82e0-8923d01cb5fe",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
