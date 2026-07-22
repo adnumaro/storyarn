@@ -1,11 +1,13 @@
 defmodule Storyarn.Scenes.SceneStatsTest do
   use Storyarn.DataCase, async: true
 
+  import Ecto.Query
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
 
   alias Storyarn.Repo
+  alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.SceneStats
 
   setup do
@@ -56,52 +58,104 @@ defmodule Storyarn.Scenes.SceneStatsTest do
     end
   end
 
-  describe "detect_scene_issues/1" do
+  describe "list_dashboard_health_findings/1" do
     test "detects empty scenes (no zones or pins)", %{project: project} do
       scene_fixture(project, %{name: "Empty One"})
 
-      issues = SceneStats.detect_scene_issues(project.id)
+      issues = SceneStats.list_dashboard_health_findings(project.id)
 
-      empty_issues = Enum.filter(issues, &(&1.issue_type == :empty_scene))
+      empty_issues = Enum.filter(issues, &(&1.code == :empty_scene))
       assert empty_issues != []
-      assert Enum.any?(empty_issues, &(&1.scene_name == "Empty One"))
+      assert Enum.any?(empty_issues, &(&1.details.scene_name == "Empty One"))
+      assert Enum.all?(empty_issues, &(&1.severity == :info))
     end
 
     test "does not flag scenes with zones as empty", %{project: project} do
       scene = scene_fixture(project, %{name: "Has Zones"})
       zone_fixture(scene)
 
-      issues = SceneStats.detect_scene_issues(project.id)
+      issues = SceneStats.list_dashboard_health_findings(project.id)
 
-      empty_issues = Enum.filter(issues, &(&1.issue_type == :empty_scene))
-      refute Enum.any?(empty_issues, &(&1.scene_name == "Has Zones"))
+      empty_issues = Enum.filter(issues, &(&1.code == :empty_scene))
+      refute Enum.any?(empty_issues, &(&1.details.scene_name == "Has Zones"))
     end
 
     test "detects scenes without background images", %{project: project} do
       scene_fixture(project, %{name: "No Background"})
 
-      issues = SceneStats.detect_scene_issues(project.id)
+      issues = SceneStats.list_dashboard_health_findings(project.id)
 
-      bg_issues = Enum.filter(issues, &(&1.issue_type == :no_background))
+      bg_issues = Enum.filter(issues, &(&1.code == :missing_background))
       assert bg_issues != []
-      assert Enum.any?(bg_issues, &(&1.scene_name == "No Background"))
+      assert Enum.any?(bg_issues, &(&1.details.scene_name == "No Background"))
+      assert Enum.all?(bg_issues, &(&1.severity == :warning))
     end
 
     test "detects missing shortcuts", %{project: project} do
-      import Ecto.Query
-
       scene = scene_fixture(project, %{name: "No Shortcut"})
 
       Repo.update_all(
-        from(s in Storyarn.Scenes.Scene, where: s.id == ^scene.id),
+        from(s in Scene, where: s.id == ^scene.id),
         set: [shortcut: nil]
       )
 
-      issues = SceneStats.detect_scene_issues(project.id)
+      issues = SceneStats.list_dashboard_health_findings(project.id)
 
-      missing_issues = Enum.filter(issues, &(&1.issue_type == :missing_shortcut))
+      missing_issues = Enum.filter(issues, &(&1.code == :missing_scene_shortcut))
       assert missing_issues != []
-      assert Enum.any?(missing_issues, &(&1.scene_name == "No Shortcut"))
+      assert Enum.any?(missing_issues, &(&1.details.scene_name == "No Shortcut"))
+      assert Enum.all?(missing_issues, &(&1.severity == :warning))
+    end
+
+    test "treats whitespace-only shortcuts as missing", %{project: project} do
+      scene = scene_fixture(project, %{name: "Blank Shortcut"})
+
+      Repo.update_all(
+        from(s in Scene, where: s.id == ^scene.id),
+        set: [shortcut: "   "]
+      )
+
+      findings = SceneStats.list_dashboard_health_findings(project.id)
+
+      assert Enum.any?(findings, fn finding ->
+               finding.code == :missing_scene_shortcut and
+                 finding.scene_id == scene.id
+             end)
+    end
+
+    test "returns canonical error metadata for elements using a foreign scene layer", %{
+      project: project
+    } do
+      scene = scene_fixture(project, %{name: "Layer Integrity"})
+      other_scene = scene_fixture(project, %{name: "Other Scene"})
+      pin = pin_fixture(scene, %{"label" => "Lost Pin"})
+
+      foreign_layer_id =
+        Repo.one!(
+          from(layer in Storyarn.Scenes.SceneLayer,
+            where: layer.scene_id == ^other_scene.id,
+            select: layer.id
+          )
+        )
+
+      Repo.update_all(
+        from(scene_pin in Storyarn.Scenes.ScenePin, where: scene_pin.id == ^pin.id),
+        set: [layer_id: foreign_layer_id]
+      )
+
+      findings = SceneStats.list_dashboard_health_findings(project.id)
+
+      assert %{
+               severity: :error,
+               code: :invalid_layer_reference,
+               scene_id: scene_id,
+               entity_type: "pin",
+               entity_id: pin_id,
+               details: %{scene_name: "Layer Integrity", entity_label: "Lost Pin"}
+             } = Enum.find(findings, &(&1.code == :invalid_layer_reference))
+
+      assert scene_id == scene.id
+      assert pin_id == pin.id
     end
   end
 end

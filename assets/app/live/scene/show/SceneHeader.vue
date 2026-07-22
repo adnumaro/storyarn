@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import SceneToolbar from "@modules/scenes/editor/components/chrome/header/SceneToolbar.vue";
+import SceneHealthStatus from "@modules/scenes/editor/components/chrome/header/SceneHealthStatus.vue";
 import SearchPanel from "@modules/scenes/editor/components/chrome/header/SearchPanel.vue";
+import type { SceneHealth } from "@modules/scenes/types/health";
 
 interface SearchResult {
   id: number | string;
@@ -23,6 +25,7 @@ interface SceneHeaderSearch {
 interface SceneHeader {
   toolbar: SceneHeaderToolbar;
   search: SceneHeaderSearch;
+  health: SceneHealth;
 }
 
 const { header } = defineProps<{
@@ -47,5 +50,7 @@ const { header } = defineProps<{
         :search-results="header.search.searchResults"
       />
     </div>
+
+    <SceneHealthStatus :health="header.health" />
   </div>
 </template>

@@ -38,6 +38,15 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     |> then(& &1.props["header"])
   end
 
+  defp health_reason_for_entity?(health, entity_type, entity_id, code) do
+    health
+    |> then(&((&1["errorItems"] || []) ++ (&1["warningItems"] || []) ++ (&1["infoItems"] || [])))
+    |> Enum.any?(fn item ->
+      item["entityType"] == entity_type and item["entityId"] == entity_id and
+        Enum.any?(item["reasons"] || [], &(&1["code"] == code))
+    end)
+  end
+
   defp get_scene_surface_props(view) do
     view
     |> LiveVue.Test.get_vue(name: "live/scene/show/SceneSurface")
@@ -269,6 +278,30 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       toolbar = get_scene_header_props(view)["toolbar"]
       assert toolbar["sceneName"] == "My Scene"
+    end
+
+    test "passes canonical health findings to the scene header", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project, %{name: "Health Scene"})
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
+        )
+
+      _ = await_async(view)
+      health = get_scene_header_props(view)["health"]
+
+      assert [%{"entityType" => "scene", "reasons" => warning_reasons}] =
+               health["warningItems"]
+
+      assert Enum.any?(warning_reasons, &(&1["code"] == "missing_background"))
+
+      assert [%{"entityType" => "scene", "reasons" => info_reasons}] =
+               health["infoItems"]
+
+      assert Enum.any?(info_reasons, &(&1["code"] == "empty_scene"))
     end
 
     test "SceneToolbar exposes the scene shortcut", %{conn: conn, user: user} do
@@ -1210,6 +1243,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       {:ok, view, _html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}")
 
+      _ = await_async(view)
+
       svg = ~s(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3"/></svg>)
 
       render_hook(view, "upload_zone_label_icon", %{
@@ -1221,6 +1256,13 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       updated = Scenes.get_zone!(zone.id)
       assert updated.label_icon_asset_id
+
+      refute health_reason_for_entity?(
+               get_scene_header_props(view)["health"],
+               "zone",
+               zone.id,
+               "invalid_asset_reference"
+             )
     end
 
     test "rejects files whose binary does not match the declared icon type", %{conn: conn, user: user} do
@@ -1273,6 +1315,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       {:ok, view, _html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}")
 
+      _ = await_async(view)
+
       svg = ~s(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3"/></svg>)
 
       render_hook(view, "upload_pin_icon", %{
@@ -1284,6 +1328,13 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       updated = Scenes.get_pin!(pin.id)
       assert updated.icon_asset_id
+
+      refute health_reason_for_entity?(
+               get_scene_header_props(view)["health"],
+               "pin",
+               pin.id,
+               "invalid_asset_reference"
+             )
     end
 
     test "rejects files whose binary does not match the declared pin icon type", %{conn: conn, user: user} do
@@ -3165,6 +3216,22 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
         })
 
       refute html =~ "properties-panel"
+    end
+
+    test "selects annotations from dashboard health deep links", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project)
+      annotation = annotation_fixture(scene, %{"text" => "Broken note"})
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}?highlight=annotation:#{annotation.id}"
+        )
+
+      panel = get_element_panel_vue(view)
+      assert panel.props["selected-type"] == "annotation"
+      assert panel.props["selected-element"]["text"] == "Broken note"
     end
   end
 

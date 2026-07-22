@@ -2,6 +2,13 @@
  * Shared types for the sheets module.
  */
 import type { FunctionalComponent } from "vue";
+import type {
+  HealthStatus,
+  HealthStatusDetails,
+  HealthStatusItem,
+  HealthStatusReason,
+  HealthStatusSeverity,
+} from "@shared/types/health";
 
 // ── Block types ──
 
@@ -108,28 +115,17 @@ export interface Sheet {
   avatars?: SheetAvatar[];
 }
 
-export type SheetHealthDetails = Record<string, string | number | boolean | string[] | null>;
+export type SheetHealthDetails = HealthStatusDetails;
+export type SheetHealthReason = HealthStatusReason;
+export type SheetHealthSeverity = HealthStatusSeverity;
 
-export interface SheetHealthReason {
-  code: string;
-  details?: SheetHealthDetails;
-}
-
-export type SheetHealthSeverity = "error" | "warning" | "info";
-
-export interface SheetHealthItem {
+export interface SheetHealthItem extends HealthStatusItem {
   blockId: number | string | null;
   rowId: number | string | null;
   columnId: number | string | null;
-  label: string;
-  reasons: SheetHealthReason[];
 }
 
-export interface SheetHealth {
-  errorItems: SheetHealthItem[];
-  warningItems: SheetHealthItem[];
-  infoItems: SheetHealthItem[];
-}
+export type SheetHealth = HealthStatus<SheetHealthItem>;
 
 // ── Tree types ──
 
