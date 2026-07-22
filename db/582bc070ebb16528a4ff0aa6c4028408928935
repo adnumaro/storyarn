@@ -1,0 +1,23 @@
+lib/storyarn/ai/operations.ex
+  s_6112f11c106698::t_1af389ae6a20d2 224-250,444-450
+  s_6112f11c106698::t_b61840dca47365 451-453
+  s_6112f11c106698::t_0a40a42089c666 454
+test/storyarn/ai/execution_test.exs
+  s_6112f11c106698::t_1af389ae6a20d2 270-284,297-301
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "db582bc070ebb16528a4ff0aa6c4028408928935",
+  "prompts": {},
+  "sessions": {
+    "s_6112f11c106698": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b7-96ce-73c1-8639-7be0374aaff0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
