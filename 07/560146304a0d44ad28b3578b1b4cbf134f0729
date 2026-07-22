@@ -1,0 +1,19 @@
+lib/storyarn/sheets.ex
+  s_f54c595cd8131f::t_151701a15c586e 188,196,203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "07560146304a0d44ad28b3578b1b4cbf134f0729",
+  "prompts": {},
+  "sessions": {
+    "s_f54c595cd8131f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0ebf251-7c3a-4f10-a638-b88d970362b3",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
