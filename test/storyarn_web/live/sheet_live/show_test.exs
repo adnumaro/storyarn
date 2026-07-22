@@ -20,6 +20,10 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     LiveVue.Test.get_vue(view, name: "live/sheet/show/SheetSurface")
   end
 
+  defp get_sheet_header_vue(view) do
+    LiveVue.Test.get_vue(view, name: "live/sheet/show/SheetHeader")
+  end
+
   defp get_sidebar_props(view, project) do
     view
     |> get_sidebar_live(project)
@@ -57,8 +61,8 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
 
   defp get_sheet_health_props(view) do
     view
-    |> get_sheet_surface_vue()
-    |> then(& &1.props["sheet-health"])
+    |> get_sheet_header_vue()
+    |> then(& &1.props["health"])
   end
 
   describe "Sheet show" do
@@ -78,7 +82,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
       assert html =~ "Test Sheet"
     end
 
-    test "passes grouped health findings to the sheet surface", %{conn: conn, user: user} do
+    test "passes grouped health findings to the sheet topbar", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Health Sheet", shortcut: "health-sheet"})
 
@@ -97,6 +101,9 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
         )
 
       await_async(view)
+      assert get_sheet_header_vue(view).component == "live/sheet/show/SheetHeader"
+      refute Map.has_key?(get_sheet_surface_vue(view).props, "sheet-health")
+
       health = get_sheet_health_props(view)
       warning = Enum.find(health["warningItems"], &(&1["blockId"] == block.id))
       info = Enum.find(health["infoItems"], &(&1["blockId"] == block.id))
