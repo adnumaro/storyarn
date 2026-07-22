@@ -1,0 +1,69 @@
+test/storyarn_web/live/sheet_live/show_test.exs
+  s_601e46785f4b81::t_739d6b6241b8bc 144-170
+  s_601e46785f4b81::t_69e71f482b645d 4
+  s_601e46785f4b81::t_fc9747cdfbd302 104-105,120-142
+  s_601e46785f4b81::t_538358469f9739 143,171
+test/storyarn/flows/variable_reference_tracker_test.exs
+  s_601e46785f4b81::t_a5276341eef301 849-875
+lib/storyarn/references.ex
+  s_601e46785f4b81::t_f4fb368c7bb6f8 42-45
+  s_601e46785f4b81::t_a3c6a5d4e61b12 41
+lib/storyarn/sheets/property_inheritance.ex
+  s_601e46785f4b81::t_52d058760243da 52-58,60-62,1650-1656
+  s_601e46785f4b81::t_136b61de14f7f8 1657-1659
+  s_ad4b77db1271df::t_3e3f00b779ab36 1660
+lib/storyarn/sheets/reference_tracker.ex
+  s_601e46785f4b81::t_4d9b25caeb1702 21,252-299,491-493,497-528
+test/storyarn/sheets/reference_tracker_test.exs
+  s_601e46785f4b81::t_becde76ffd2ad9 297,313-329
+  s_601e46785f4b81::t_73c8d727b71d5c 202-226
+  s_601e46785f4b81::t_5ca2532d89995d 330-332
+lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex
+  s_601e46785f4b81::t_f4fb368c7bb6f8 59-60
+  s_601e46785f4b81::t_4d9b25caeb1702 64-79
+lib/storyarn/flows.ex
+  s_601e46785f4b81::t_f4fb368c7bb6f8 444-449
+lib/storyarn_web/live/sheet_live/show.ex
+  s_601e46785f4b81::t_fc9747cdfbd302 932
+lib/storyarn/sheets.ex
+  s_601e46785f4b81::t_4d9b25caeb1702 829-833
+test/storyarn/sheets/health_checker_test.exs
+  s_601e46785f4b81::t_ebd9c90ad5be10 79-91,172-181
+  s_601e46785f4b81::t_6ea0411ec6caa6 182
+lib/storyarn/flows/variable_reference_tracker.ex
+  s_601e46785f4b81::t_a3c918e9748094 312
+  s_601e46785f4b81::t_8ca3d7e422bd19 271-286,288,290,293,296,299,302,305,308,311,313-317,320-334,336-363,388-393,397
+  s_601e46785f4b81::t_e75a4654940d3b 35-36,266-270,289,291-292,294-295,297-298,300-301,303-304,306-307,309-310,318-319,335,364-387,394-396
+  s_601e46785f4b81::t_5c0677fccb1a1a 287
+  s_601e46785f4b81::t_1eb67c1a447301 398
+lib/storyarn/references/variable_usage.ex
+  s_601e46785f4b81::t_f4fb368c7bb6f8 14
+lib/storyarn/sheets/health_checker.ex
+  s_601e46785f4b81::t_ebd9c90ad5be10 150,154,158-159,695-696
+test/storyarn/sheets_test.exs
+  s_601e46785f4b81::t_062392bc2a5645 1415,1431
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "d442dd6cb311d4c952c692dcfddb9aa57de53832",
+  "prompts": {},
+  "sessions": {
+    "s_601e46785f4b81": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b4-a630-7780-b438-bc2aa3d9363e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_ad4b77db1271df": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89c4-872b-74e2-8b80-dcfaa75d23bb",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
