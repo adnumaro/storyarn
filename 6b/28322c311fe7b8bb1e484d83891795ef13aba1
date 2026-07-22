@@ -1,0 +1,62 @@
+test/storyarn/versioning/version_crud_test.exs
+  s_7d17843f59d188::t_fe262e1e7d13f3 9,12,22,100,210,258,349,396,413,492,501,508-512,519,536
+  s_7d17843f59d188::t_a242734757be2c 212-226
+  s_7d17843f59d188::t_2a6a4016b8c0b5 11,15,39,211,238-257,259-281,364,376-377,379-381,404,421,423,426,430-491,493-500,502-506
+  s_7d17843f59d188::t_bd0994ad834226 4
+  s_7d17843f59d188::t_17c348b3e6544a 43-58,507
+lib/storyarn_web/helpers/version_history_helpers.ex
+  s_7d17843f59d188::t_dff14339fd994b 124
+test/storyarn/versioning/snapshot_storage_test.exs
+  s_7d17843f59d188::t_2a6a4016b8c0b5 18-37,340-380
+  s_7d17843f59d188::t_ceee10f16b3c89 381
+test/storyarn_web/helpers/version_event_helpers_test.exs
+  s_7d17843f59d188::t_f83abd7db9dfe8 40,64,66,69,92,209-212
+lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex
+  s_7d17843f59d188::t_dff14339fd994b 87,174-176
+  s_7d17843f59d188::t_43124ddc8f25c5 179
+  s_7d17843f59d188::t_b46ee0282813dc 182,184
+lib/storyarn/versioning/entity_version.ex
+  s_7d17843f59d188::t_b4706fa860367e 28,48,73,83-84,89,92
+lib/storyarn/versioning/snapshot_storage.ex
+  s_7d17843f59d188::t_b4706fa860367e 41-80,83,85,545-562
+lib/storyarn/versioning/version_crud.ex
+  s_7d17843f59d188::t_269caeba64f083 30-35,55-60,178-183,468,470,516,522,530,543,706-718
+  s_7d17843f59d188::t_a242734757be2c 340-349
+  s_7d17843f59d188::t_142dfc75dc12ce 104,112-119,132,145,376,379-380,389,392-407,410-423,431,454-467,469,471-515,517-521,523-529,531-537,539-542,544-592,595,599-606,630-648,719
+  s_7d17843f59d188::t_780816419b7758 375,726
+priv/repo/migrations/20260722160000_add_checksum_to_entity_versions.exs
+  s_7d17843f59d188::t_b4706fa860367e 1-16
+lib/storyarn_web/live/sheet_live/helpers/history_data_helpers.ex
+  s_7d17843f59d188::t_dfd63cd021129b 98
+test/storyarn_web/live/sheet_live/handlers/history_handlers_test.exs
+  s_7d17843f59d188::t_f83abd7db9dfe8 116-120
+test/storyarn/versioning/builders/sheet_builder_test.exs
+  s_7d17843f59d188::t_1cd0d3d9781029 905-937
+lib/storyarn_web/helpers/version_event_helpers.ex
+  s_7d17843f59d188::t_43124ddc8f25c5 230,232,235
+  s_7d17843f59d188::t_dff14339fd994b 92,221-227,231,233
+lib/storyarn/versioning/builders/sheet_builder.ex
+  s_7d17843f59d188::t_ebe62274f6df8c 813-824,834
+  s_7d17843f59d188::t_683e59eebcc5fa 650,654-655,2568,2577,2590-2609
+  s_7d17843f59d188::t_b57fd7d3d1dc86 34,639-641,690-707,731,733,737-738,745-755,770-772,797-812,825-833
+  s_7d17843f59d188::t_c89facc4d03c3f 708-730,732,734-736,739-744,756-769,773-796
+  s_7d17843f59d188::t_a54f6c87648d1f 2580,2583-2586
+test/storyarn/versioning/integration_test.exs
+  s_7d17843f59d188::t_ebe62274f6df8c 57-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "6b28322c311fe7b8bb1e484d83891795ef13aba1",
+  "prompts": {},
+  "sessions": {
+    "s_7d17843f59d188": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fbf-1c01-7451-82e0-8923d01cb5fe",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
