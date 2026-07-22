@@ -91,7 +91,10 @@ defmodule Storyarn.Flows.FlowCrud do
     base = maybe_exclude_flow(base, exclude_id)
 
     if query_str == "" do
-      Repo.all(from(f in base, order_by: [desc: f.updated_at], limit: ^limit, offset: ^offset))
+      Repo.all(
+        from(f in base, order_by: [desc: f.updated_at], limit: ^limit, offset: ^offset),
+        log: false
+      )
     else
       search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
 
@@ -101,7 +104,8 @@ defmodule Storyarn.Flows.FlowCrud do
           order_by: [asc: f.name],
           limit: ^limit,
           offset: ^offset
-        )
+        ),
+        log: false
       )
     end
   end
@@ -184,7 +188,7 @@ defmodule Storyarn.Flows.FlowCrud do
         offset: ^offset
       )
       |> maybe_exclude_flow(exclude_id)
-      |> Repo.all()
+      |> Repo.all(log: false)
     end
   end
 
@@ -322,39 +326,42 @@ defmodule Storyarn.Flows.FlowCrud do
   end
 
   defp do_create_flow(%Project{} = project, attrs) do
-    fn ->
-      locked_project = Repo.one!(from(p in Project, where: p.id == ^project.id, lock: "FOR UPDATE"))
-
-      if not is_nil(locked_project.deleted_at),
-        do: Repo.rollback(:project_not_active)
-
-      # A flow consumes quota for the flow plus its entry and exit nodes.
-      case Billing.can_create_items?(locked_project, 3) do
-        :ok -> :ok
-        {:error, reason, details} -> Repo.rollback({reason, details})
-      end
-
-      attrs = stringify_keys(attrs)
-      attrs = maybe_generate_shortcut(attrs, project.id, nil)
-
-      with {:ok, parent_id} <-
-             ReferenceIntegrity.lock_flow_parent(project.id, nil, attrs["parent_id"]),
-           {:ok, scene_id} <-
-             ReferenceIntegrity.lock_flow_scene(project.id, attrs["scene_id"]) do
-        attrs =
-          attrs
-          |> Map.put("parent_id", parent_id)
-          |> Map.put("scene_id", scene_id)
-          |> maybe_assign_position(project.id, parent_id)
-
-        insert_flow_with_default_nodes(project.id, attrs)
-      else
-        {:error, reason} ->
-          Repo.rollback(flow_reference_changeset(%Flow{project_id: project.id}, attrs, reason))
-      end
-    end
+    fn -> create_flow_in_transaction(project, attrs) end
     |> Repo.transaction()
     |> normalize_item_limit_result()
+  end
+
+  @doc false
+  def create_flow_in_transaction(%Project{} = project, attrs) do
+    locked_project = Repo.one!(from(p in Project, where: p.id == ^project.id, lock: "FOR UPDATE"))
+
+    if not is_nil(locked_project.deleted_at),
+      do: Repo.rollback(:project_not_active)
+
+    # A flow consumes quota for the flow plus its entry and exit nodes.
+    case Billing.can_create_items?(locked_project, 3) do
+      :ok -> :ok
+      {:error, reason, details} -> Repo.rollback({reason, details})
+    end
+
+    attrs = stringify_keys(attrs)
+    attrs = maybe_generate_shortcut(attrs, project.id, nil)
+
+    with {:ok, parent_id} <-
+           ReferenceIntegrity.lock_flow_parent(project.id, nil, attrs["parent_id"]),
+         {:ok, scene_id} <-
+           ReferenceIntegrity.lock_flow_scene(project.id, attrs["scene_id"]) do
+      attrs =
+        attrs
+        |> Map.put("parent_id", parent_id)
+        |> Map.put("scene_id", scene_id)
+        |> maybe_assign_position(project.id, parent_id)
+
+      insert_flow_with_default_nodes(project.id, attrs)
+    else
+      {:error, reason} ->
+        Repo.rollback(flow_reference_changeset(%Flow{project_id: project.id}, attrs, reason))
+    end
   end
 
   defp insert_flow_with_default_nodes(project_id, attrs) do
@@ -483,7 +490,7 @@ defmodule Storyarn.Flows.FlowCrud do
   """
   def delete_flow_subtree(%Flow{} = flow) do
     result =
-      Repo.transaction(fn -> delete_flow_transaction(flow) end)
+      Repo.transaction(fn -> delete_flow_subtree_in_transaction(flow) end)
 
     case result do
       {:ok, %{entity: deleted_flow}} ->
@@ -496,6 +503,11 @@ defmodule Storyarn.Flows.FlowCrud do
     end
 
     result
+  end
+
+  @doc false
+  def delete_flow_subtree_in_transaction(%Flow{} = flow) do
+    delete_flow_transaction(flow)
   end
 
   defp delete_flow_transaction(flow) do

@@ -22,7 +22,7 @@ Type to filter commands by name. Use the arrow keys to highlight a command and {
 
 - **Navigation** — jump between workspaces, projects, Sheets, Flows and Scenes, or open settings you have permission to manage.
 - **View** — controls for the editor you are in, such as fitting the canvas to view in the flow and scene editors or toggling the flow minimap.
-- **Actions** — create a Sheet, Flow or Scene in any project you can edit, or search for one to delete with an inline confirmation. The palette stays open while destructive actions complete.
+- **Actions** — create a Sheet, Flow or Scene in any project you can edit, or search for one of them to delete with an inline confirmation. The palette stays open while destructive actions complete.
 
 ## Commands depend on where you are
 

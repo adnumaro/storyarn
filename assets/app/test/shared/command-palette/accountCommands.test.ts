@@ -15,4 +15,18 @@ describe("account palette commands", () => {
 
     expect(command).toMatchObject({ href: "/users/settings/integrations" });
   });
+
+  it("preserves a validated sudo grant on sensitive account destinations", () => {
+    const commands = accountPaletteCommands({}, "grant with + symbols");
+
+    expect(commands.find((command) => command.id === "account.profile")).toMatchObject({
+      href: "/users/settings?sudo_grant=grant+with+%2B+symbols",
+    });
+    expect(commands.find((command) => command.id === "account.security")).toMatchObject({
+      href: "/users/settings/security?sudo_grant=grant+with+%2B+symbols",
+    });
+    expect(commands.find((command) => command.id === "account.tutorials")).toMatchObject({
+      href: "/users/settings/tutorials",
+    });
+  });
 });

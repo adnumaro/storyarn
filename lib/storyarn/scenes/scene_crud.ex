@@ -193,7 +193,8 @@ defmodule Storyarn.Scenes.SceneCrud do
           order_by: [desc: m.updated_at],
           limit: ^limit,
           offset: ^offset
-        )
+        ),
+        log: false
       )
     else
       search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
@@ -205,7 +206,8 @@ defmodule Storyarn.Scenes.SceneCrud do
           order_by: [asc: m.name],
           limit: ^limit,
           offset: ^offset
-        )
+        ),
+        log: false
       )
     end
   end
@@ -292,12 +294,13 @@ defmodule Storyarn.Scenes.SceneCrud do
   end
 
   defp do_create_scene(project, attrs) do
-    fn -> create_scene_transaction(project, attrs) end
+    fn -> create_scene_in_transaction(project, attrs) end
     |> Repo.transaction()
     |> normalize_item_limit_result()
   end
 
-  defp create_scene_transaction(project, attrs) do
+  @doc false
+  def create_scene_in_transaction(project, attrs) do
     with {:ok, locked_project} <-
            SceneReferenceIntegrity.lock_active_project(project.id, :update),
          :ok <- Billing.can_create_item?(locked_project),
@@ -375,27 +378,7 @@ defmodule Storyarn.Scenes.SceneCrud do
   separate pre-delete traversal can desync from concurrent tree changes.
   """
   def delete_scene_subtree(%Scene{} = scene) do
-    result =
-      SceneReferenceIntegrity.with_active_scene_lock(
-        scene.id,
-        [project_lock: :update],
-        fn locked_scene ->
-          case locked_scene |> Scene.delete_changeset() |> Repo.update() do
-            {:ok, deleted_scene} ->
-              child_ids =
-                SoftDelete.soft_delete_children(
-                  Scene,
-                  locked_scene.project_id,
-                  locked_scene.id
-                )
-
-              {:ok, %{entity: deleted_scene, deleted_ids: [deleted_scene.id | child_ids]}}
-
-            {:error, changeset} ->
-              {:error, changeset}
-          end
-        end
-      )
+    result = Repo.transaction(fn -> delete_scene_subtree_in_transaction(scene) end)
 
     case result do
       {:ok, %{entity: deleted_scene}} ->
@@ -406,6 +389,30 @@ defmodule Storyarn.Scenes.SceneCrud do
     end
 
     result
+  end
+
+  @doc false
+  def delete_scene_subtree_in_transaction(%Scene{} = scene) do
+    SceneReferenceIntegrity.with_active_scene_lock_in_transaction(
+      scene.id,
+      [project_lock: :update],
+      fn locked_scene ->
+        case locked_scene |> Scene.delete_changeset() |> Repo.update() do
+          {:ok, deleted_scene} ->
+            child_ids =
+              SoftDelete.soft_delete_children(
+                Scene,
+                locked_scene.project_id,
+                locked_scene.id
+              )
+
+            {:ok, %{entity: deleted_scene, deleted_ids: [deleted_scene.id | child_ids]}}
+
+          {:error, changeset} ->
+            {:error, changeset}
+        end
+      end
+    )
   end
 
   @doc """

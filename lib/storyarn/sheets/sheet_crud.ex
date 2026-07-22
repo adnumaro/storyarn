@@ -25,40 +25,7 @@ defmodule Storyarn.Sheets.SheetCrud do
   # =============================================================================
 
   def create_sheet(%Project{} = project, attrs) do
-    result =
-      Repo.transaction(fn ->
-        # A project row is the serialization point for both quota accounting and
-        # sibling position allocation.
-        locked_project = Repo.one!(from(p in Project, where: p.id == ^project.id, lock: "FOR UPDATE"))
-
-        case Billing.can_create_item?(locked_project) do
-          :ok -> :ok
-          {:error, reason, details} -> Repo.rollback({reason, details})
-        end
-
-        if not is_nil(locked_project.deleted_at), do: Repo.rollback(:project_not_active)
-
-        # Normalize keys to strings for changeset
-        attrs = stringify_keys(attrs)
-        attrs = lock_and_normalize_sheet_references!(project.id, nil, attrs)
-        parent_id = attrs["parent_id"]
-        position = attrs["position"] || next_position(project.id, parent_id)
-
-        # Auto-generate shortcut from name if not provided
-        attrs = maybe_generate_shortcut(attrs, project.id, nil)
-
-        sheet_result =
-          %Sheet{project_id: project.id}
-          |> Sheet.create_changeset(Map.put(attrs, "position", position))
-          |> Repo.insert()
-
-        with {:ok, sheet} <- sheet_result,
-             {:ok, _count} <- PropertyInheritance.inherit_blocks_for_new_sheet(sheet) do
-          sheet
-        else
-          {:error, reason} -> Repo.rollback(reason)
-        end
-      end)
+    result = Repo.transaction(fn -> create_sheet_in_transaction(project, attrs) end)
 
     case result do
       {:ok, sheet} ->
@@ -73,6 +40,41 @@ defmodule Storyarn.Sheets.SheetCrud do
     case result do
       {:error, {:limit_reached, details}} -> {:error, :limit_reached, details}
       other -> other
+    end
+  end
+
+  @doc false
+  def create_sheet_in_transaction(%Project{} = project, attrs) do
+    # A project row is the serialization point for both quota accounting and
+    # sibling position allocation.
+    locked_project = Repo.one!(from(p in Project, where: p.id == ^project.id, lock: "FOR UPDATE"))
+
+    case Billing.can_create_item?(locked_project) do
+      :ok -> :ok
+      {:error, reason, details} -> Repo.rollback({reason, details})
+    end
+
+    if not is_nil(locked_project.deleted_at), do: Repo.rollback(:project_not_active)
+
+    # Normalize keys to strings for changeset
+    attrs = stringify_keys(attrs)
+    attrs = lock_and_normalize_sheet_references!(project.id, nil, attrs)
+    parent_id = attrs["parent_id"]
+    position = attrs["position"] || next_position(project.id, parent_id)
+
+    # Auto-generate shortcut from name if not provided
+    attrs = maybe_generate_shortcut(attrs, project.id, nil)
+
+    sheet_result =
+      %Sheet{project_id: project.id}
+      |> Sheet.create_changeset(Map.put(attrs, "position", position))
+      |> Repo.insert()
+
+    with {:ok, sheet} <- sheet_result,
+         {:ok, _count} <- PropertyInheritance.inherit_blocks_for_new_sheet(sheet) do
+      sheet
+    else
+      {:error, reason} -> Repo.rollback(reason)
     end
   end
 
@@ -126,34 +128,37 @@ defmodule Storyarn.Sheets.SheetCrud do
   separate pre-delete traversal can desync from concurrent tree changes.
   """
   def delete_sheet_subtree(%Sheet{} = sheet) do
-    fn ->
-      lock_active_project!(sheet.project_id)
-      sheet = lock_active_sheet!(sheet.id, sheet.project_id)
-
-      # Get all descendant IDs before deleting (under the locks above)
-      descendant_ids = get_descendant_ids(sheet.id)
-
-      # Soft delete all descendants
-      now = TimeHelpers.now()
-
-      if descendant_ids != [] do
-        Repo.update_all(from(s in Sheet, where: s.id in ^descendant_ids), set: [deleted_at: now])
-      end
-
-      Localization.delete_block_texts_for_sheets([sheet.id | descendant_ids])
-
-      Enum.each([sheet.id | descendant_ids], &Localization.delete_texts_for_source("sheet", &1))
-
-      # Soft delete the sheet itself
-      deleted =
-        sheet
-        |> Sheet.delete_changeset()
-        |> Repo.update!()
-
-      %{entity: deleted, deleted_ids: [deleted.id | descendant_ids]}
-    end
+    fn -> delete_sheet_subtree_in_transaction(sheet) end
     |> Repo.transaction()
     |> Collaboration.broadcast_dashboard_result(sheet.project_id, :sheets)
+  end
+
+  @doc false
+  def delete_sheet_subtree_in_transaction(%Sheet{} = sheet) do
+    lock_active_project!(sheet.project_id)
+    sheet = lock_active_sheet!(sheet.id, sheet.project_id)
+
+    # Get all descendant IDs before deleting (under the locks above)
+    descendant_ids = get_descendant_ids(sheet.id)
+
+    # Soft delete all descendants
+    now = TimeHelpers.now()
+
+    if descendant_ids != [] do
+      Repo.update_all(from(s in Sheet, where: s.id in ^descendant_ids), set: [deleted_at: now])
+    end
+
+    Localization.delete_block_texts_for_sheets([sheet.id | descendant_ids])
+
+    Enum.each([sheet.id | descendant_ids], &Localization.delete_texts_for_source("sheet", &1))
+
+    # Soft delete the sheet itself
+    deleted =
+      sheet
+      |> Sheet.delete_changeset()
+      |> Repo.update!()
+
+    %{entity: deleted, deleted_ids: [deleted.id | descendant_ids]}
   end
 
   @doc """

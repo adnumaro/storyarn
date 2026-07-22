@@ -175,6 +175,9 @@ defmodule Storyarn.Sheets do
   @spec create_sheet(Project.t(), attrs()) :: {:ok, sheet()} | {:error, changeset()}
   defdelegate create_sheet(project, attrs), to: SheetCrud
 
+  @doc false
+  defdelegate create_sheet_in_transaction(project, attrs), to: SheetCrud
+
   @doc """
   Updates a sheet.
   """
@@ -195,6 +198,9 @@ defmodule Storyarn.Sheets do
   @spec delete_sheet_subtree(sheet()) ::
           {:ok, %{entity: sheet(), deleted_ids: [integer()]}} | {:error, term()}
   defdelegate delete_sheet_subtree(sheet), to: SheetCrud
+
+  @doc false
+  defdelegate delete_sheet_subtree_in_transaction(sheet), to: SheetCrud
 
   @doc """
   Soft deletes a sheet and all its descendants (moves to trash).

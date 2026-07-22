@@ -42,7 +42,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
     {:error, {:live_redirect, %{to: workspace_path}}} = live(conn, ~p"/workspaces")
     {:ok, view, _html} = live(conn, workspace_path)
 
-    {:ok, view: view, user: user}
+    {:ok, view: view, user: user, conn: conn, workspace_path: workspace_path}
   end
 
   test "palette_opened tracks the allowlisted event with its surface", %{view: view} do
@@ -294,6 +294,23 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       assert length(Storyarn.Sheets.search_sheets_in_projects([project.id], "")) == 1
     end
 
+    test "replaying after a LiveView reconnect returns the durable create result",
+         %{view: view, user: user, conn: conn, workspace_path: workspace_path} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+      payload = %{"type" => "sheet", "project_id" => project.id, "operation_id" => "reconnected-create-id"}
+
+      render_hook(view, "palette_create", payload)
+      assert_reply(view, %{url: first_url})
+
+      {:ok, reconnected_view, _html} = live(conn, workspace_path)
+      render_hook(reconnected_view, "palette_create", payload)
+      assert_reply(reconnected_view, %{url: second_url})
+
+      assert first_url == second_url
+      assert length(Storyarn.Sheets.search_sheets_in_projects([project.id], "")) == 1
+    end
+
     test "rejects a project the user cannot edit — nothing is created", %{view: view, user: user} do
       viewer_owner = user_fixture()
       viewer_project = project_fixture(viewer_owner, %{workspace: workspace_fixture(viewer_owner)})
@@ -428,6 +445,29 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
 
       assert Storyarn.Flows.get_flow(project.id, flow.id) == nil
       assert Storyarn.Scenes.get_scene(project.id, scene.id) == nil
+    end
+
+    test "replaying after a LiveView reconnect returns the durable delete result",
+         %{view: view, user: user, conn: conn, workspace_path: workspace_path} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+      sheet = sheet_fixture(project)
+
+      payload = %{
+        "type" => "sheet",
+        "id" => sheet.id,
+        "project_id" => project.id,
+        "operation_id" => "reconnected-delete-id"
+      }
+
+      render_hook(view, "palette_delete", payload)
+      assert_reply(view, %{deleted: true})
+
+      {:ok, reconnected_view, _html} = live(conn, workspace_path)
+      render_hook(reconnected_view, "palette_delete", payload)
+      assert_reply(reconnected_view, %{deleted: true})
+
+      assert Storyarn.Sheets.get_sheet(project.id, sheet.id) == nil
     end
   end
 

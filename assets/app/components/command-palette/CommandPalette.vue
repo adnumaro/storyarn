@@ -92,6 +92,7 @@ type PaletteStep =
   | { kind: "delete-confirm"; item: DeleteItem };
 
 const NAV_DEBOUNCE_MS = 200;
+const MUTATION_TIMEOUT_MS = 15_000;
 
 const navIcons: Record<string, LucideIcon> = {
   workspace: Building2,
@@ -169,6 +170,7 @@ let createTargetsToken = 0;
 let mutationToken = 0;
 let retryOperation: { key: string; id: string } | null = null;
 let navDebounce: ReturnType<typeof setTimeout> | null = null;
+let mutationTimeout: ReturnType<typeof setTimeout> | null = null;
 let suppressQueryWatch = false;
 
 const localOpen = computed({
@@ -290,6 +292,7 @@ watch(query, () => {
 
 onUnmounted(() => {
   if (navDebounce) clearTimeout(navDebounce);
+  clearMutationTimeout();
 });
 
 function openPalette(): void {
@@ -320,6 +323,35 @@ function closePalette(): void {
   errorKey.value = null;
   ++mutationToken;
   ++createTargetsToken;
+}
+
+function startMutationTimeout(token: number): void {
+  clearMutationTimeout();
+  mutationTimeout = setTimeout(() => {
+    if (token !== mutationToken) return;
+
+    // Invalidate a reply that may arrive after the client has already offered
+    // a retry. The stable operation ID is deliberately kept so the durable
+    // server fence can return the original result if the first attempt landed.
+    ++mutationToken;
+    pendingMutation.value = false;
+    errorKey.value = "palette.command_failed";
+    mutationTimeout = null;
+  }, MUTATION_TIMEOUT_MS);
+}
+
+function clearMutationTimeout(): void {
+  if (!mutationTimeout) return;
+  clearTimeout(mutationTimeout);
+  mutationTimeout = null;
+}
+
+function settleMutation(token: number): boolean {
+  if (token !== mutationToken) return false;
+
+  clearMutationTimeout();
+  pendingMutation.value = false;
+  return true;
 }
 
 function anotherDialogOpen(): boolean {
@@ -544,6 +576,7 @@ function onSelectCreateTarget(target: CreateTarget): void {
   errorKey.value = null;
   pendingMutation.value = true;
   const token = ++mutationToken;
+  startMutationTimeout(token);
 
   // useLive's pushEvent never throws — transport failures arrive through the
   // onError callback, which must clear the pending state or the palette
@@ -552,9 +585,8 @@ function onSelectCreateTarget(target: CreateTarget): void {
     "palette_create",
     { type: entityType, project_id: target.id, operation_id: operationIdFor(operationKey) },
     (reply: MutationReply) => {
-      if (token !== mutationToken) return;
+      if (!settleMutation(token)) return;
       finishOperation(operationKey);
-      pendingMutation.value = false;
       const url = reply?.url;
       if (url) {
         runNavigationCommand(`create.${entityType}`, url);
@@ -563,8 +595,7 @@ function onSelectCreateTarget(target: CreateTarget): void {
       }
     },
     () => {
-      if (token !== mutationToken) return;
-      pendingMutation.value = false;
+      if (!settleMutation(token)) return;
       errorKey.value = "palette.command_failed";
     },
   );
@@ -583,6 +614,7 @@ function confirmDelete(): void {
   errorKey.value = null;
   pendingMutation.value = true;
   const token = ++mutationToken;
+  startMutationTimeout(token);
 
   // useLive's pushEvent never throws — transport failures arrive through the
   // onError callback, which must clear the pending state or the palette
@@ -596,9 +628,8 @@ function confirmDelete(): void {
       operation_id: operationIdFor(operationKey),
     },
     (reply: MutationReply) => {
-      if (token !== mutationToken) return;
+      if (!settleMutation(token)) return;
       finishOperation(operationKey);
-      pendingMutation.value = false;
       if (reply?.deleted) {
         track("palette_command_executed", { command_id: `delete.${item.type}` });
         // Drop the stale listing BEFORE showing it again: the deleted
@@ -612,8 +643,7 @@ function confirmDelete(): void {
       }
     },
     () => {
-      if (token !== mutationToken) return;
-      pendingMutation.value = false;
+      if (!settleMutation(token)) return;
       errorKey.value = "palette.command_failed";
     },
   );

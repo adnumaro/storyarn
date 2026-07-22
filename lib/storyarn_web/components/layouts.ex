@@ -8,8 +8,8 @@ defmodule StoryarnWeb.Layouts do
 
   alias Phoenix.LiveView.JS
   alias Storyarn.Analytics
-  alias Storyarn.FeatureFlags
   alias Storyarn.Publication.Locales, as: PublicLocales
+  alias StoryarnWeb.FeatureFlagHelpers
 
   # Embed all files in layouts/* within this module.
   # The default root.html.heex file contains the HTML
@@ -25,6 +25,7 @@ defmodule StoryarnWeb.Layouts do
   """
   attr :socket, :any, required: true, doc: "the LiveView socket (needed for LiveVue events)"
   attr :current_scope, :map, required: true, doc: "actor used to resolve command feature flags"
+  attr :sudo_grant, :string, default: nil, doc: "validated grant for sensitive account commands"
 
   def command_palette(assigns) do
     ~H"""
@@ -33,17 +34,12 @@ defmodule StoryarnWeb.Layouts do
         v-component="live/layouts/CommandPalette"
         v-socket={@socket}
         id="command-palette-island"
-        feature-flags={command_palette_feature_flags(@current_scope)}
+        feature-flags={FeatureFlagHelpers.client_flags(@current_scope)}
+        sudo-grant={@sudo_grant}
       />
     </div>
     """
   end
-
-  defp command_palette_feature_flags(%{user: user}) when not is_nil(user) do
-    %{aiIntegrations: FeatureFlags.enabled?(:ai_integrations, for: user)}
-  end
-
-  defp command_palette_feature_flags(_scope), do: %{aiIntegrations: false}
 
   @doc """
   Shows the flash group with standard titles and content.

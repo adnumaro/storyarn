@@ -265,7 +265,8 @@ defmodule Storyarn.Sheets.SheetQueries do
           order_by: [desc: s.updated_at],
           limit: ^limit,
           offset: ^offset
-        )
+        ),
+        log: false
       )
     else
       search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
@@ -277,7 +278,8 @@ defmodule Storyarn.Sheets.SheetQueries do
           order_by: [asc: s.name],
           limit: ^limit,
           offset: ^offset
-        )
+        ),
+        log: false
       )
     end
   end

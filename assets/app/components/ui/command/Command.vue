@@ -63,7 +63,10 @@ function filterItems() {
 
   if (disableFilter.value || !search) {
     filterState.filtered.count = allItems.value.size;
-    // Do nothing, each item will know to show itself because search is empty
+    filterState.filtered.items = new Map(
+      Array.from(allItems.value.keys(), (id) => [id, 1] as [string, number]),
+    );
+    filterState.filtered.groups = new Set(allGroups.value.keys());
     return;
   }
 

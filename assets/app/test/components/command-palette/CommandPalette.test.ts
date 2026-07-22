@@ -776,6 +776,55 @@ describe("CommandPalette", () => {
       );
     });
 
+    it("times out a lost reply and retries with the same durable operation id", async () => {
+      vi.useFakeTimers();
+      const { live, wrapper } = mountPalette();
+
+      vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+        if (event === "palette_create_targets" && callback) {
+          callback({
+            token: (payload as { token: number }).token,
+            projects: [{ id: 11, label: "Veilbreak", context: "Acme" }],
+          });
+        }
+
+        if (event === "palette_delete_search" && callback) {
+          callback({
+            token: (payload as { token: number }).token,
+            items: [{ id: 7, type: "sheet", label: "Kael", context: "Veilbreak", projectId: 11 }],
+          });
+        }
+
+        // Simulate a push accepted by LiveView whose reply is lost when the
+        // connection drops: neither callback fires.
+      });
+
+      pressPaletteShortcut();
+      await nextTick();
+      selectItem(wrapper, "palette.delete-entity");
+      await nextTick();
+      selectItem(wrapper, "delete-sheet-7");
+      await nextTick();
+      selectItem(wrapper, "palette.confirm-delete");
+      await nextTick();
+
+      await vi.advanceTimersByTimeAsync(15_000);
+      await nextTick();
+
+      expect(wrapper.find("[role='alert']").text()).toBe("The command failed to run. Try again.");
+
+      selectItem(wrapper, "palette.confirm-delete");
+      await nextTick();
+
+      const deleteCalls = vi
+        .mocked(live.pushEvent)
+        .mock.calls.filter(([event]) => event === "palette_delete");
+      expect(deleteCalls).toHaveLength(2);
+      expect((deleteCalls[0]![1] as { operation_id: string }).operation_id).toBe(
+        (deleteCalls[1]![1] as { operation_id: string }).operation_id,
+      );
+    });
+
     it("cannot close during a mutation and always reconciles its reply", async () => {
       const { live, wrapper } = mountPalette();
       let deleteCallback: ((reply: { deleted: boolean }) => void) | null = null;

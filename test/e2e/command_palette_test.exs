@@ -37,7 +37,9 @@ defmodule StoryarnWeb.E2E.CommandPaletteTest do
     |> visit(path)
     |> wait_for_palette()
     |> evaluate(open_palette_expression())
-    |> assert_has("[data-slot='command-item']", text: "New Sheet")
+    |> assert_has("[data-slot='dialog-content'] [data-slot='command-input']")
+    |> refute_has("[data-slot='dialog-content'] [role='status']", timeout: 20_000)
+    |> assert_has("[data-slot='command-item']", text: "New Sheet", timeout: 20_000)
     |> click("[data-slot='command-item']", "New Sheet")
     |> assert_has("[data-slot='command-input'][placeholder='Create in project…']")
     |> evaluate(active_palette_input_expression(), fn active? -> assert active? end)
@@ -52,7 +54,7 @@ defmodule StoryarnWeb.E2E.CommandPaletteTest do
     |> unwrap(fn %{frame_id: frame_id} ->
       assert {:ok, _element} =
                PlaywrightEx.Frame.wait_for_selector(frame_id,
-                 selector: "#command-palette-island[data-v-app]",
+                 selector: "#command-palette-island[data-v-app] [data-command-palette-ready='true']",
                  state: "attached",
                  timeout: 10_000
                )

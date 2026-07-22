@@ -22,7 +22,7 @@ Escribe para filtrar comandos por nombre. Usa las flechas para resaltar un coman
 
 - **Navegación** — salta entre espacios de trabajo, proyectos, fichas, flujos y escenas, o abre los ajustes que tengas permiso para gestionar.
 - **Vista** — controles del editor en el que estás, como ajustar el lienzo a la vista en los editores de flujos y escenas o mostrar el minimapa de flujos.
-- **Acciones** — crea una ficha, flujo o escena en cualquier proyecto que puedas editar, o busca uno para eliminarlo con confirmación dentro de la paleta. La paleta permanece abierta mientras termina una acción destructiva.
+- **Acciones** — crea una ficha, flujo o escena en cualquier proyecto que puedas editar, o busca uno de ellos para eliminarlo con confirmación dentro de la paleta. La paleta permanece abierta mientras termina una acción destructiva.
 
 ## Los comandos dependen de dónde estás
 

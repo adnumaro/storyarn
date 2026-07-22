@@ -40,22 +40,25 @@ defmodule Storyarn.Scenes.SceneReferenceIntegrity do
           (Scene.t() -> {:ok, term()} | {:error, term()})
         ) :: {:ok, term()} | {:error, term()}
   def with_active_scene_lock(scene_id, opts, fun) when is_list(opts) and is_function(fun, 1) do
+    Repo.transaction(fn -> with_active_scene_lock_in_transaction(scene_id, opts, fun) end)
+  end
+
+  @doc false
+  def with_active_scene_lock_in_transaction(scene_id, opts, fun) when is_list(opts) and is_function(fun, 1) do
     # Scene child tables have activity triggers that update the owning project.
     # Taking an update lock up front avoids two child writers deadlocking while
     # both try to upgrade a shared project lock from their trigger.
     project_lock = Keyword.get(opts, :project_lock, :update)
 
-    Repo.transaction(fn ->
-      with {:ok, normalized_scene_id} <- normalize_required_id(scene_id, :scene_id),
-           {:ok, project_id} <- fetch_scene_project_id(normalized_scene_id),
-           {:ok, _project} <- lock_active_project(project_id, project_lock),
-           {:ok, scene} <- lock_active_scene(normalized_scene_id, project_id),
-           {:ok, value} <- fun.(scene) do
-        value
-      else
-        {:error, reason} -> Repo.rollback(reason)
-      end
-    end)
+    with {:ok, normalized_scene_id} <- normalize_required_id(scene_id, :scene_id),
+         {:ok, project_id} <- fetch_scene_project_id(normalized_scene_id),
+         {:ok, _project} <- lock_active_project(project_id, project_lock),
+         {:ok, scene} <- lock_active_scene(normalized_scene_id, project_id),
+         {:ok, value} <- fun.(scene) do
+      value
+    else
+      {:error, reason} -> Repo.rollback(reason)
+    end
   end
 
   @doc """
