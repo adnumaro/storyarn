@@ -221,23 +221,34 @@ defmodule Storyarn.AI.Operations do
   @doc "Fails a queued operation when durable worker recovery exhausts its retries."
   @spec fail_queued_after_retries(pos_integer(), term()) :: :ok | {:error, term()}
   def fail_queued_after_retries(operation_id, reason) do
-    fn ->
-      case lock_operation(operation_id) do
-        %Operation{execution_status: "queued"} = operation ->
-          operation = release!(operation)
-          delete_result(operation.id)
+    result =
+      Repo.transaction(fn ->
+        case lock_operation(operation_id) do
+          %Operation{execution_status: "queued"} = operation ->
+            operation = release!(operation)
+            delete_result(operation.id)
 
-          transition!(operation, "failed", %{
-            completed_at: TimeHelpers.now(),
-            error_classification: classify(reason)
-          })
+            transition!(operation, "failed", %{
+              completed_at: TimeHelpers.now(),
+              error_classification: classify(reason)
+            })
 
-        _missing_or_terminal ->
-          :terminal
-      end
+          _missing_or_terminal ->
+            :terminal
+        end
+      end)
+
+    case result do
+      {:ok, %Operation{} = operation} ->
+        emit_failed(operation, reason)
+        :ok
+
+      {:ok, :terminal} ->
+        :ok
+
+      {:error, transaction_reason} ->
+        {:error, transaction_reason}
     end
-    |> Repo.transaction()
-    |> transaction_status()
   end
 
   defp recover_locked(nil), do: :terminal
@@ -426,6 +437,17 @@ defmodule Storyarn.AI.Operations do
       task_id: operation.task_id,
       capability: operation.capability,
       status: "unknown",
+      error_classification: classify(reason)
+    })
+  end
+
+  defp emit_failed(operation, reason) do
+    Logger.error("AI operation exhausted worker retries for task #{operation.task_id}")
+
+    Telemetry.emit([:operation, :failed], %{count: 1}, %{
+      task_id: operation.task_id,
+      capability: operation.capability,
+      status: "failed",
       error_classification: classify(reason)
     })
   end

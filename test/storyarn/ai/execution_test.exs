@@ -267,6 +267,21 @@ defmodule Storyarn.AI.ExecutionTest do
   end
 
   test "exhausted worker retries terminalize a queued operation without provider usage", ctx do
+    handler_id = "ai-operation-failed-#{System.unique_integer([:positive])}"
+    test_pid = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:ai, :operation, :failed],
+        fn event, measurements, metadata, _config ->
+          send(test_pid, {:operation_failed, event, measurements, metadata})
+        end,
+        nil
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
     Application.put_env(:storyarn, ContractTask, scenario: :success, execution_mode: :background)
     {queued, _intent} = execute!(ctx, "exhaust worker retries")
 
@@ -279,6 +294,11 @@ defmodule Storyarn.AI.ExecutionTest do
     assert failed.completed_at
     refute Repo.get_by(UsageEvent, operation_id: queued.id)
     refute Repo.get_by(Result, operation_id: queued.id)
+
+    assert_receive {:operation_failed, [:ai, :operation, :failed], %{count: 1}, metadata}
+    assert metadata.task_id == "contract.echo"
+    assert metadata.status == "failed"
+    assert metadata.error_classification == "worker_retries_exhausted"
   end
 
   test "disabled and changed task contracts terminalize queued operations without provider access", ctx do
