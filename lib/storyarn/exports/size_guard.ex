@@ -36,6 +36,7 @@ defmodule Storyarn.Exports.SizeGuard do
 
   @default_max_sync_export_bytes 64 * 1024 * 1024
   @default_serialization_expansion_factor 8
+  @default_source_byte_query_timeout_ms 5_000
 
   @doc """
   Returns the default synchronous export limits.
@@ -73,10 +74,39 @@ defmodule Storyarn.Exports.SizeGuard do
   end
 
   defp ensure_source_bytes_within_limit(project_id, opts, counts, limits) do
-    source_bytes = DataCollector.estimate_source_bytes(project_id, opts)
     expansion_factor = serialization_expansion_factor()
-    estimated_output_bytes = source_bytes.total_bytes * expansion_factor
     max_bytes = max_sync_export_bytes()
+    max_source_bytes = div(max_bytes, expansion_factor)
+    timeout_ms = source_byte_query_timeout_ms()
+
+    case DataCollector.estimate_source_bytes(project_id, opts,
+           max_bytes: max_source_bytes,
+           timeout: timeout_ms
+         ) do
+      {:ok, source_bytes} ->
+        ensure_estimated_output_within_limit(
+          source_bytes,
+          expansion_factor,
+          max_bytes,
+          counts,
+          limits
+        )
+
+      {:error, :timeout} ->
+        violations = %{
+          source_bytes: %{
+            reason: :query_timeout,
+            timeout_ms: timeout_ms,
+            limit: max_bytes
+          }
+        }
+
+        export_too_large(counts, limits, violations)
+    end
+  end
+
+  defp ensure_estimated_output_within_limit(source_bytes, expansion_factor, max_bytes, counts, limits) do
+    estimated_output_bytes = source_bytes.total_bytes * expansion_factor
 
     if estimated_output_bytes <= max_bytes do
       :ok
@@ -114,6 +144,12 @@ defmodule Storyarn.Exports.SizeGuard do
     :storyarn
     |> Application.get_env(__MODULE__, [])
     |> Keyword.get(:serialization_expansion_factor, @default_serialization_expansion_factor)
+  end
+
+  defp source_byte_query_timeout_ms do
+    :storyarn
+    |> Application.get_env(__MODULE__, [])
+    |> Keyword.get(:source_byte_query_timeout_ms, @default_source_byte_query_timeout_ms)
   end
 
   defp limited?(_count, nil), do: false

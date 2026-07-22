@@ -18,6 +18,7 @@ defmodule Storyarn.Exports.DataCollector do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Localization
   alias Storyarn.Localization.GlossaryEntry
   alias Storyarn.Localization.LocalizedText
@@ -41,6 +42,33 @@ defmodule Storyarn.Exports.DataCollector do
   alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
+
+  @default_source_byte_query_timeout_ms 5_000
+  @source_byte_stream_rows 128
+  @source_byte_sections [
+    :project,
+    :sheets,
+    :sheet_avatars,
+    :sheet_blocks,
+    :table_columns,
+    :table_rows,
+    :flows,
+    :nodes,
+    :sequence_configs,
+    :flow_connections,
+    :scenes,
+    :scene_layers,
+    :scene_pins,
+    :scene_zones,
+    :scene_connections,
+    :scene_annotations,
+    :screenplays,
+    :screenplay_elements,
+    :assets,
+    :languages,
+    :localized_texts,
+    :glossary_entries
+  ]
 
   @doc """
   Load all project data into memory for export.
@@ -101,32 +129,40 @@ defmodule Storyarn.Exports.DataCollector do
   Ecto loads them into the request process. It deliberately includes all
   selected rows even when a target serializer may omit some fields.
   """
-  def estimate_source_bytes(project_id, %ExportOptions{} = opts) do
-    bytes = %{
-      project: row_bytes(from(p in Project, where: p.id == ^project_id)),
-      sheets: section_row_bytes(:sheets, Sheet, project_id, opts),
-      sheet_avatars: sheet_avatar_bytes(project_id, opts),
-      sheet_blocks: sheet_child_bytes(Block, project_id, opts),
-      table_columns: table_child_bytes(TableColumn, project_id, opts),
-      table_rows: table_child_bytes(TableRow, project_id, opts),
-      flows: section_row_bytes(:flows, Flow, project_id, opts),
-      nodes: flow_node_bytes(project_id, opts),
-      flow_connections: flow_child_bytes(FlowConnection, project_id, opts),
-      scenes: section_row_bytes(:scenes, Scene, project_id, opts),
-      scene_layers: scene_child_bytes(SceneLayer, project_id, opts),
-      scene_pins: scene_child_bytes(ScenePin, project_id, opts),
-      scene_zones: scene_child_bytes(SceneZone, project_id, opts),
-      scene_connections: scene_child_bytes(SceneConnection, project_id, opts),
-      scene_annotations: scene_child_bytes(SceneAnnotation, project_id, opts),
-      screenplays: screenplay_bytes(project_id, opts),
-      screenplay_elements: screenplay_element_bytes(project_id, opts),
-      assets: asset_bytes(project_id, opts),
-      languages: language_bytes(project_id, opts),
-      localized_texts: localized_text_bytes(project_id, opts),
-      glossary_entries: glossary_entry_bytes(project_id, opts)
-    }
+  def estimate_source_bytes(project_id, %ExportOptions{} = opts, estimate_opts \\ []) do
+    max_bytes = Keyword.get(estimate_opts, :max_bytes, :infinity)
+    timeout_ms = Keyword.get(estimate_opts, :timeout, @default_source_byte_query_timeout_ms)
 
-    Map.put(bytes, :total_bytes, bytes |> Map.values() |> Enum.sum())
+    if timeout_ms <= 0 do
+      {:error, :timeout}
+    else
+      deadline = System.monotonic_time(:millisecond) + timeout_ms
+
+      try do
+        case Repo.transaction(
+               fn ->
+                 configure_source_byte_statement_timeout(timeout_ms)
+                 queries = source_byte_queries(project_id, opts)
+                 remaining_source_timeout!(deadline)
+                 sum_source_bytes(queries, max_bytes, deadline)
+               end,
+               timeout: timeout_ms
+             ) do
+          {:ok, bytes} -> {:ok, bytes}
+          {:error, :source_byte_estimate_timeout} -> {:error, :timeout}
+        end
+      rescue
+        DBConnection.ConnectionError ->
+          {:error, :timeout}
+
+        error in Postgrex.Error ->
+          if error.postgres && error.postgres.code == :query_canceled do
+            {:error, :timeout}
+          else
+            reraise error, __STACKTRACE__
+          end
+      end
+    end
   end
 
   # -- Project --
@@ -376,140 +412,186 @@ defmodule Storyarn.Exports.DataCollector do
 
   # -- Source byte estimates --
 
-  defp section_row_bytes(:sheets, _schema, _project_id, %{include_sheets: false}), do: 0
-  defp section_row_bytes(:flows, _schema, _project_id, %{include_flows: false}), do: 0
-  defp section_row_bytes(:scenes, _schema, _project_id, %{include_scenes: false}), do: 0
-
-  defp section_row_bytes(:sheets, Sheet, project_id, opts) do
-    project_id
-    |> project_sheets_query(opts)
-    |> row_bytes()
+  defp configure_source_byte_statement_timeout(timeout_ms) do
+    timeout = Integer.to_string(timeout_ms) <> "ms"
+    Repo.query!("SELECT set_config('statement_timeout', $1, true)", [timeout])
   end
 
-  defp section_row_bytes(:flows, Flow, project_id, opts) do
-    project_id
-    |> project_flows_query(opts)
-    |> row_bytes()
+  defp source_byte_queries(project_id, opts) do
+    [
+      {:project, from(p in Project, where: p.id == ^project_id)},
+      {:sheets, section_row_query(:sheets, Sheet, project_id, opts)},
+      {:sheet_avatars, sheet_avatar_query(project_id, opts)},
+      {:sheet_blocks, sheet_child_query(Block, project_id, opts)},
+      {:table_columns, table_child_query(TableColumn, project_id, opts)},
+      {:table_rows, table_child_query(TableRow, project_id, opts)},
+      {:flows, section_row_query(:flows, Flow, project_id, opts)},
+      {:nodes, flow_node_query(project_id, opts)},
+      {:sequence_configs, sequence_config_query(project_id, opts)},
+      {:flow_connections, flow_child_query(FlowConnection, project_id, opts)},
+      {:scenes, section_row_query(:scenes, Scene, project_id, opts)},
+      {:scene_layers, scene_child_query(SceneLayer, project_id, opts)},
+      {:scene_pins, scene_child_query(ScenePin, project_id, opts)},
+      {:scene_zones, scene_child_query(SceneZone, project_id, opts)},
+      {:scene_connections, scene_child_query(SceneConnection, project_id, opts)},
+      {:scene_annotations, scene_child_query(SceneAnnotation, project_id, opts)},
+      {:screenplays, screenplay_query(project_id, opts)},
+      {:screenplay_elements, screenplay_element_query(project_id, opts)},
+      {:assets, asset_query(project_id, opts)},
+      {:languages, language_query(project_id, opts)},
+      {:localized_texts, localized_text_query(project_id, opts)},
+      {:glossary_entries, glossary_entry_query(project_id, opts)}
+    ]
   end
 
-  defp section_row_bytes(:scenes, Scene, project_id, opts) do
-    project_id
-    |> project_scenes_query(opts)
-    |> row_bytes()
+  defp sum_source_bytes(queries, max_bytes, deadline) do
+    initial_bytes = Map.new(@source_byte_sections, &{&1, 0})
+
+    {bytes, total_bytes, truncated?} =
+      Enum.reduce_while(queries, {initial_bytes, 0, false}, fn {section, query}, {bytes, total_bytes, false} ->
+        remaining_bytes = remaining_source_bytes(max_bytes, total_bytes)
+        section_bytes = query_source_bytes(query, remaining_bytes, deadline)
+        total_bytes = total_bytes + section_bytes
+        bytes = Map.put(bytes, section, section_bytes)
+
+        if source_limit_exceeded?(max_bytes, total_bytes) do
+          {:halt, {bytes, total_bytes, true}}
+        else
+          {:cont, {bytes, total_bytes, false}}
+        end
+      end)
+
+    bytes
+    |> Map.put(:total_bytes, total_bytes)
+    |> Map.put(:truncated?, truncated?)
   end
 
-  defp sheet_avatar_bytes(_project_id, %{include_sheets: false}), do: 0
+  defp query_source_bytes(nil, _max_bytes, _deadline), do: 0
 
-  defp sheet_avatar_bytes(project_id, %{sheet_ids: sheet_ids}) do
+  defp query_source_bytes(query, max_bytes, deadline) do
+    timeout = remaining_source_timeout!(deadline)
+
+    query
+    |> select([row], fragment("octet_length(to_jsonb(?)::text)", row))
+    |> Repo.stream(max_rows: @source_byte_stream_rows, timeout: timeout)
+    |> Enum.reduce_while(0, fn row_bytes, total_bytes ->
+      remaining_source_timeout!(deadline)
+      next_total = total_bytes + row_bytes
+
+      if source_limit_exceeded?(max_bytes, next_total) do
+        {:halt, max_bytes + 1}
+      else
+        {:cont, next_total}
+      end
+    end)
+  end
+
+  defp remaining_source_timeout!(deadline) do
+    remaining = deadline - System.monotonic_time(:millisecond)
+
+    if remaining > 0 do
+      remaining
+    else
+      Repo.rollback(:source_byte_estimate_timeout)
+    end
+  end
+
+  defp remaining_source_bytes(:infinity, _total_bytes), do: :infinity
+  defp remaining_source_bytes(max_bytes, total_bytes), do: max_bytes - total_bytes
+
+  defp source_limit_exceeded?(:infinity, _total_bytes), do: false
+  defp source_limit_exceeded?(max_bytes, total_bytes), do: total_bytes > max_bytes
+
+  defp section_row_query(:sheets, _schema, _project_id, %{include_sheets: false}), do: nil
+  defp section_row_query(:flows, _schema, _project_id, %{include_flows: false}), do: nil
+  defp section_row_query(:scenes, _schema, _project_id, %{include_scenes: false}), do: nil
+
+  defp section_row_query(:sheets, Sheet, project_id, opts), do: project_sheets_query(project_id, opts)
+  defp section_row_query(:flows, Flow, project_id, opts), do: project_flows_query(project_id, opts)
+  defp section_row_query(:scenes, Scene, project_id, opts), do: project_scenes_query(project_id, opts)
+
+  defp sheet_avatar_query(_project_id, %{include_sheets: false}), do: nil
+
+  defp sheet_avatar_query(project_id, %{sheet_ids: sheet_ids}) do
     query =
       from(avatar in SheetAvatar,
-        join: s in Sheet,
-        on: avatar.sheet_id == s.id,
-        where: s.project_id == ^project_id and is_nil(s.deleted_at)
+        join: sheet in Sheet,
+        on: avatar.sheet_id == sheet.id,
+        where: sheet.project_id == ^project_id and is_nil(sheet.deleted_at)
       )
 
-    case_result =
-      case sheet_ids do
-        :all -> query
-        [] -> where(query, false)
-        ids -> where(query, [_avatar, s], s.id in ^ids)
-      end
-
-    row_bytes(case_result)
+    case sheet_ids do
+      :all -> query
+      [] -> where(query, false)
+      ids -> where(query, [_avatar, sheet], sheet.id in ^ids)
+    end
   end
 
-  defp sheet_child_bytes(_schema, _project_id, %{include_sheets: false}), do: 0
+  defp sheet_child_query(_schema, _project_id, %{include_sheets: false}), do: nil
+  defp sheet_child_query(schema, project_id, opts), do: project_sheet_children_query(schema, project_id, opts)
 
-  defp sheet_child_bytes(schema, project_id, opts) do
-    schema
-    |> project_sheet_children_query(project_id, opts)
-    |> row_bytes()
-  end
+  defp table_child_query(_schema, _project_id, %{include_sheets: false}), do: nil
+  defp table_child_query(schema, project_id, opts), do: project_table_children_query(schema, project_id, opts)
 
-  defp table_child_bytes(_schema, _project_id, %{include_sheets: false}), do: 0
+  defp flow_node_query(_project_id, %{include_flows: false}), do: nil
+  defp flow_node_query(project_id, opts), do: project_flow_nodes_query(project_id, opts)
 
-  defp table_child_bytes(schema, project_id, opts) do
-    schema
-    |> project_table_children_query(project_id, opts)
-    |> row_bytes()
-  end
+  defp flow_child_query(_schema, _project_id, %{include_flows: false}), do: nil
+  defp flow_child_query(schema, project_id, opts), do: project_flow_children_query(schema, project_id, opts)
 
-  defp flow_node_bytes(_project_id, %{include_flows: false}), do: 0
+  defp scene_child_query(_schema, _project_id, %{include_scenes: false}), do: nil
+  defp scene_child_query(schema, project_id, opts), do: project_scene_children_query(schema, project_id, opts)
 
-  defp flow_node_bytes(project_id, opts) do
-    project_id
-    |> project_flow_nodes_query(opts)
-    |> row_bytes()
-  end
+  defp sequence_config_query(_project_id, %{include_flows: false}), do: nil
 
-  defp flow_child_bytes(_schema, _project_id, %{include_flows: false}), do: 0
-
-  defp flow_child_bytes(schema, project_id, opts) do
-    schema
-    |> project_flow_children_query(project_id, opts)
-    |> row_bytes()
-  end
-
-  defp scene_child_bytes(_schema, _project_id, %{include_scenes: false}), do: 0
-
-  defp scene_child_bytes(schema, project_id, opts) do
-    schema
-    |> project_scene_children_query(project_id, opts)
-    |> row_bytes()
-  end
-
-  defp screenplay_bytes(_project_id, %{include_screenplays: false}), do: 0
-
-  defp screenplay_bytes(project_id, _opts) do
-    row_bytes(from(sp in Screenplay, where: sp.project_id == ^project_id and is_nil(sp.deleted_at)))
-  end
-
-  defp screenplay_element_bytes(_project_id, %{include_screenplays: false}), do: 0
-
-  defp screenplay_element_bytes(project_id, _opts) do
-    row_bytes(
-      from(e in ScreenplayElement,
-        join: sp in Screenplay,
-        on: e.screenplay_id == sp.id,
-        where: sp.project_id == ^project_id and is_nil(sp.deleted_at)
+  defp sequence_config_query(project_id, %{flow_ids: flow_ids}) do
+    query =
+      from(config in SequenceConfig,
+        join: node in FlowNode,
+        on: config.flow_node_id == node.id,
+        join: flow in Flow,
+        on: node.flow_id == flow.id,
+        where: flow.project_id == ^project_id and is_nil(flow.deleted_at) and is_nil(node.deleted_at)
       )
+
+    case flow_ids do
+      :all -> query
+      [] -> where(query, false)
+      ids -> where(query, [_config, _node, flow], flow.id in ^ids)
+    end
+  end
+
+  defp screenplay_query(_project_id, %{include_screenplays: false}), do: nil
+
+  defp screenplay_query(project_id, _opts) do
+    from(screenplay in Screenplay,
+      where: screenplay.project_id == ^project_id and is_nil(screenplay.deleted_at)
     )
   end
 
-  defp asset_bytes(_project_id, %{include_assets: false}), do: 0
+  defp screenplay_element_query(_project_id, %{include_screenplays: false}), do: nil
 
-  defp asset_bytes(project_id, _opts) do
-    row_bytes(from(a in Asset, where: a.project_id == ^project_id))
-  end
-
-  defp language_bytes(_project_id, %{include_localization: false}), do: 0
-
-  defp language_bytes(project_id, opts) do
-    project_id
-    |> project_languages_query(opts)
-    |> row_bytes()
-  end
-
-  defp localized_text_bytes(_project_id, %{include_localization: false}), do: 0
-
-  defp localized_text_bytes(project_id, opts) do
-    project_id
-    |> project_localized_texts_query(opts)
-    |> row_bytes()
-  end
-
-  defp glossary_entry_bytes(_project_id, %{include_localization: false}), do: 0
-
-  defp glossary_entry_bytes(project_id, _opts) do
-    row_bytes(from(g in GlossaryEntry, where: g.project_id == ^project_id))
-  end
-
-  defp row_bytes(query) do
-    Repo.one(
-      from(row in query,
-        select: fragment("COALESCE(SUM(octet_length(to_jsonb(?)::text)), 0)", row)
-      )
+  defp screenplay_element_query(project_id, _opts) do
+    from(element in ScreenplayElement,
+      join: screenplay in Screenplay,
+      on: element.screenplay_id == screenplay.id,
+      where: screenplay.project_id == ^project_id and is_nil(screenplay.deleted_at)
     )
+  end
+
+  defp asset_query(_project_id, %{include_assets: false}), do: nil
+  defp asset_query(project_id, _opts), do: from(asset in Asset, where: asset.project_id == ^project_id)
+
+  defp language_query(_project_id, %{include_localization: false}), do: nil
+  defp language_query(project_id, opts), do: project_languages_query(project_id, opts)
+
+  defp localized_text_query(_project_id, %{include_localization: false}), do: nil
+  defp localized_text_query(project_id, opts), do: project_localized_texts_query(project_id, opts)
+
+  defp glossary_entry_query(_project_id, %{include_localization: false}), do: nil
+
+  defp glossary_entry_query(project_id, _opts) do
+    from(entry in GlossaryEntry, where: entry.project_id == ^project_id)
   end
 
   defp project_sheets_query(project_id, %{sheet_ids: sheet_ids}) do
@@ -562,21 +644,18 @@ defmodule Storyarn.Exports.DataCollector do
     if opts.format == :storyarn, do: query, else: where(query, [l], is_nil(l.archived_at))
   end
 
-  defp project_localized_texts_query(project_id, opts) do
+  defp project_localized_texts_query(project_id, %{format: :storyarn} = opts) do
     locale_codes =
-      case opts.languages do
-        :all when opts.format == :storyarn -> :all
-        languages when opts.format == :storyarn -> languages
-        languages -> requested_locale_codes(languages, Localization.list_languages(project_id))
-      end
+      requested_locale_codes(opts.languages, Localization.list_languages_for_backup(project_id))
 
-    query = from(lt in LocalizedText, where: lt.project_id == ^project_id)
+    from(text in LocalizedText,
+      where: text.project_id == ^project_id and text.locale_code in ^locale_codes
+    )
+  end
 
-    case locale_codes do
-      :all -> query
-      [] -> where(query, false)
-      codes -> where(query, [lt], lt.locale_code in ^codes)
-    end
+  defp project_localized_texts_query(project_id, opts) do
+    locale_codes = requested_locale_codes(opts.languages, Localization.list_languages(project_id))
+    Localization.texts_for_export_query(project_id, locale_codes, opts)
   end
 
   defp project_sheet_children_query(schema, project_id, %{sheet_ids: sheet_ids}) do

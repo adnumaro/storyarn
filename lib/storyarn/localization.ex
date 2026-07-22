@@ -451,6 +451,7 @@ defmodule Storyarn.Localization do
 
   @doc "Lists localized texts for export, filtered by locale codes."
   defdelegate list_texts_for_export(project_id, locale_codes, opts \\ []), to: TextCrud
+  defdelegate texts_for_export_query(project_id, locale_codes, opts \\ []), to: TextCrud
   defdelegate list_texts_for_backup(project_id, locale_codes), to: TextCrud
   defdelegate count_texts_for_export(project_id, locale_codes, opts \\ []), to: TextCrud
 

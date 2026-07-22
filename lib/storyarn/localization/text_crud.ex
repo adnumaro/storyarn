@@ -579,15 +579,27 @@ defmodule Storyarn.Localization.TextCrud do
   Lists localized texts for export, filtered by locale codes.
   """
   def list_texts_for_export(project_id, locale_codes, opts \\ []) do
-    from(lt in LocalizedText,
-      where:
-        lt.project_id == ^project_id and lt.locale_code in ^locale_codes and
-          is_nil(lt.archived_at),
-      order_by: [asc: lt.source_type, asc: lt.source_id, asc: lt.source_field, asc: lt.locale_code]
-    )
-    |> scope_engine_export_sources(project_id, opts)
+    project_id
+    |> texts_for_export_query(locale_codes, opts)
+    |> order_by([lt], asc: lt.source_type, asc: lt.source_id, asc: lt.source_field, asc: lt.locale_code)
     |> Repo.all()
     |> maybe_attach_runtime_localization_keys(opts)
+  end
+
+  @doc "Returns the active, source-scoped localized-text query used by engine exports."
+  def texts_for_export_query(project_id, locale_codes, opts \\ []) do
+    query =
+      from(lt in LocalizedText,
+        where: lt.project_id == ^project_id and is_nil(lt.archived_at)
+      )
+
+    query =
+      case locale_codes do
+        :all -> query
+        codes -> where(query, [lt], lt.locale_code in ^codes)
+      end
+
+    scope_engine_export_sources(query, project_id, opts)
   end
 
   @doc "Lists active and archived localized texts for native backups."
@@ -647,19 +659,8 @@ defmodule Storyarn.Localization.TextCrud do
 
   @doc "Counts active localized texts in the same source scope as an engine export."
   def count_texts_for_export(project_id, locale_codes, opts) do
-    query =
-      from(lt in LocalizedText,
-        where: lt.project_id == ^project_id and is_nil(lt.archived_at)
-      )
-
-    query =
-      case locale_codes do
-        :all -> query
-        codes -> where(query, [lt], lt.locale_code in ^codes)
-      end
-
-    query
-    |> scope_engine_export_sources(project_id, opts)
+    project_id
+    |> texts_for_export_query(locale_codes, opts)
     |> Repo.aggregate(:count)
   end
 
