@@ -1,6 +1,6 @@
 # Slice 0 — BYOK Provider Integrations + Feature-Flag Foundation
 
-**Status: implemented — merge pending (PR #28, `feat/ai-integrations`).** Documented retroactively; this doc is the reference for what later slices inherit. Nothing described here exists on `main` until PR #28 merges.
+**Status: merged (PR #28).** Documented retroactively; this doc is the reference for what later slices inherit.
 
 ## Objective
 
@@ -8,9 +8,9 @@ Users connect their own AI provider accounts via API key (BYOK) in Account Setti
 
 ## Problem & proposed solution
 
-**Problem:** "user-paid AI" originally meant OAuth (Linear-style), but Slice-0 research proved all three major providers closed consumer OAuth for third-party inference in 2026 (Anthropic ToS Feb-2026 + backend blocks; OpenAI partnership-only; Google Vertex-only with heavy friction). Full citations: `docs/features/ai-integrations/PROVIDERS.md` — **ships with PR #28, not on `main` until merge**; until then read it in the PR diff.
+**Problem:** "user-paid AI" originally meant OAuth (Linear-style), but Slice-0 research found no viable consumer OAuth path for third-party inference across the three major providers evaluated in 2026. The source review and citations shipped in `docs/features/ai-integrations/PROVIDERS.md` with PR #28.
 **Solution:** BYOK for **seven providers** — six LLM providers (Anthropic, OpenAI, Google/AI-Studio, Kimi/Moonshot, Mistral, DeepSeek) plus DeepL (translation-only, see scope addition below) — with a Linear-quality card grid, validate-before-persist, Cloak encryption, append-only audit, and `fun_with_flags` for gradual rollout.
-**Scope addition (owner-decided 2026-07-21, pending in PR #28):** a seventh card — **DeepL** (`metadata` with capability `[:translation]`, `validate_key/1` against `/v2/usage`, free/pro endpoint handling) so DeepL joins the unified grid before the PR merges. Only the adapter + card land here; the localization consumption switch and legacy `translation_provider_configs` removal are Slice 4's second half.
+**Scope addition shipped in PR #28:** a seventh card — **DeepL** (`metadata` with capability `[:translation]`, `validate_key/1` against `/v2/usage`, free/pro endpoint handling). Only the adapter + card live here; replacing shared localization configuration with a personal credential is explicitly deferred by the rewritten platform plan.
 
 ## Architectural direction (as shipped)
 
@@ -34,13 +34,13 @@ Telemetry span `[:ai, :integration, :call]` · append-only audit trail (connect/
 
 ## Verification (done)
 
-65 ExUnit (adapters w/ Req.Test, CRUD, LiveView, Runtime, audit trigger) · 615 Vitest (incl. dialog-race tests) · `just quality-lint` green · cubic review: 9/9 issues fixed, threads resolved. Browser-verified by owner (6-card grid).
+65 ExUnit (adapters w/ Req.Test, CRUD, LiveView, Runtime, audit trigger) · 615 Vitest (incl. dialog-race tests) · `just quality-lint` green · cubic review: 9/9 issues fixed, threads resolved. Browser verification covered the integrations grid; the shipped surface now contains seven providers including DeepL.
 
 ## Delivery
 
-- Branch `feat/ai-integrations` → **PR #28** against main. Flag `:ai_integrations` (disabled by default).
-- **Slice 6 of the original mini-plan is still pending** (sudo mode, visual polish, copy review, E2E Playwright, "Why an API key?" note) — folded into this platform plan as polish debt, to schedule after Slice 2.
+- Branch `feat/ai-integrations` → **PR #28 merged**. Flag `:ai_integrations` (disabled by default).
+- Remaining security/polish debt — especially sudo mode for credential mutations, E2E, and explanatory copy — must close before broad Slice-4 BYOK rollout.
 
 ## Hand-off to later slices
 
-Slice 2 consumes: `Providers` registry (internal provider = one more adapter), `Runtime.with_integration/3` (BYOK lane), `Audit`, `FeatureFlags`, telemetry event naming, Req.Test config pattern. Slice 4 consumes the DeepL adapter for the Translator role and the localization consumption switch. **PR #28 must be merged before Slice 2 starts.**
+Slice 2 consumes the facade, feature flag, audit/telemetry, and testing conventions while keeping connectable providers separate from inference providers. Slice 4 consumes `Runtime.with_integration/3` for actor-owned personal BYOK. Slice 5 keeps the personal Translator role hidden until an executable personal translation task exists; the legacy shared localization configuration is not removed.
