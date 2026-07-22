@@ -1,0 +1,30 @@
+lib/storyarn/sheets/reference_tracker.ex
+  s_601e46785f4b81::t_0927b97cc70ad5 497-507,510-519
+  s_601e46785f4b81::t_7bd5842c414e82 520
+test/storyarn/sheets/sheet_stats_test.exs
+  s_601e46785f4b81::t_0927b97cc70ad5 11,348-383
+  s_601e46785f4b81::t_768728ecf5ddd6 384-385
+test/storyarn/sheets/reference_tracker_test.exs
+  s_601e46785f4b81::t_bcf1b517b9d839 9
+  s_601e46785f4b81::t_0927b97cc70ad5 318-341
+lib/storyarn/sheets/sheet_stats.ex
+  s_601e46785f4b81::t_481ff761ed8760 243,245-260
+  s_601e46785f4b81::t_0927b97cc70ad5 93-94,97-110,196-242,244,261
+  s_601e46785f4b81::t_41cb4112cdb11e 262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "16347b473f07bc89a00c69c2d8558f1bddc80806",
+  "prompts": {},
+  "sessions": {
+    "s_601e46785f4b81": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b4-a630-7780-b438-bc2aa3d9363e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
