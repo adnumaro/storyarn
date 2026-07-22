@@ -1,0 +1,51 @@
+test/storyarn_web/live/hooks/palette_test.exs
+  s_601e46785f4b81::t_a64858ca341592 490
+  s_6112f11c106698::t_7c2214de16b55a 7,265-281,468-489,491
+  s_601e46785f4b81::t_1f2c6b1c89f83e 492
+lib/storyarn/flows.ex
+  s_6112f11c106698::t_7c2214de16b55a 174,180-181
+  s_6112f11c106698::t_5e4311acd887d1 182
+lib/storyarn_web/live/hooks/palette.ex
+  s_601e46785f4b81::t_a64858ca341592 357
+  s_6112f11c106698::t_7c2214de16b55a 135,155,164,196,206,208,220,358-368,374,377
+assets/app/test/live/layouts/CommandPaletteLayout.test.ts
+  s_6112f11c106698::t_7c2214de16b55a 36
+lib/storyarn/sheets.ex
+  s_6112f11c106698::t_7c2214de16b55a 181-183
+lib/storyarn/flows/flow_crud.ex
+  s_6112f11c106698::t_7c2214de16b55a 496,498,515-525,982-984
+  s_601e46785f4b81::t_a64858ca341592 526-527
+assets/app/shared/command-palette/accountCommands.ts
+  s_6112f11c106698::t_7c2214de16b55a 2,25,32
+assets/app/live/layouts/settings/Layout.vue
+  s_6112f11c106698::t_7c2214de16b55a 27,195,200
+lib/storyarn/sheets/sheet_crud.ex
+  s_6112f11c106698::t_7c2214de16b55a 32,45-49
+  s_6112f11c106698::t_aa7fbaa3295e23 50-51
+assets/app/shared/navigation/sensitiveSettingsPath.ts
+  s_6112f11c106698::t_7c2214de16b55a 1-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "7ea4fdd6dc3acd2cfbd55f7b1245fc80b0c48721",
+  "prompts": {},
+  "sessions": {
+    "s_601e46785f4b81": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b4-a630-7780-b438-bc2aa3d9363e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_6112f11c106698": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b7-96ce-73c1-8639-7be0374aaff0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
