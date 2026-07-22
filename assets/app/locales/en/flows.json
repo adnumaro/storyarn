@@ -23,6 +23,7 @@
       "empty": "No flows yet",
       "new_flow": "New Flow",
       "delete_title": "Delete flow?",
+      "delete_description": "Are you sure you want to delete \"{name}\"?",
       "cancel": "Cancel",
       "delete": "Delete",
       "add_child": "Add child flow",
@@ -303,11 +304,11 @@
       "locate_jumps": "Locate jumps"
     },
     "jump_toolbar": {
-      "target_placeholder": "Target hub\u2026",
+      "target_placeholder": "Target hub…",
       "locate_target": "Locate target hub"
     },
     "subflow_toolbar": {
-      "select_flow_placeholder": "Select flow\u2026",
+      "select_flow_placeholder": "Select flow…",
       "open_flow": "Open flow"
     },
     "instruction_toolbar": {
@@ -326,7 +327,7 @@
       "none": "None"
     },
     "annotation": {
-      "placeholder": "\u2026",
+      "placeholder": "…",
       "delete": "Delete"
     },
     "entry_toolbar": {

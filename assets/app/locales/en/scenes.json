@@ -24,6 +24,7 @@
       "empty": "No scenes yet",
       "new_scene": "New Scene",
       "delete_title": "Delete scene?",
+      "delete_description": "Are you sure you want to delete \"{name}\"?",
       "cancel": "Cancel",
       "delete": "Delete",
       "add_child": "Add child scene",

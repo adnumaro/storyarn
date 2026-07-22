@@ -137,27 +137,38 @@ defmodule Storyarn.Scenes.SceneCrud do
   Searches scenes by name or shortcut across a pre-authorized set of projects.
 
   Callers OWN the authorization of `project_ids` (see `Storyarn.GlobalSearch`);
-  this function never widens the set. Empty queries return no results — the
-  cross-project variant is a search surface, not a browsing one.
+  this function never widens the set. Empty queries list the most recently
+  updated scenes — pickers browse before typing.
   """
   @spec search_scenes_in_projects([integer()], String.t(), keyword()) :: [Scene.t()]
   def search_scenes_in_projects(project_ids, query, opts \\ []) when is_list(project_ids) and is_binary(query) do
     limit = Keyword.get(opts, :limit, @default_search_limit)
     query_str = String.trim(query)
 
-    if project_ids == [] or query_str == "" do
-      []
-    else
-      search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
+    cond do
+      project_ids == [] ->
+        []
 
-      Repo.all(
-        from(m in Scene,
-          where: m.project_id in ^project_ids and is_nil(m.deleted_at),
-          where: ilike(m.name, ^search_term) or ilike(m.shortcut, ^search_term),
-          order_by: [asc: m.name],
-          limit: ^limit
+      query_str == "" ->
+        Repo.all(
+          from(m in Scene,
+            where: m.project_id in ^project_ids and is_nil(m.deleted_at),
+            order_by: [desc: m.updated_at, desc: m.id],
+            limit: ^limit
+          )
         )
-      )
+
+      true ->
+        search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
+
+        Repo.all(
+          from(m in Scene,
+            where: m.project_id in ^project_ids and is_nil(m.deleted_at),
+            where: ilike(m.name, ^search_term) or ilike(m.shortcut, ^search_term),
+            order_by: [asc: m.name],
+            limit: ^limit
+          )
+        )
     end
   end
 
@@ -352,6 +363,16 @@ defmodule Storyarn.Scenes.SceneCrud do
   Also soft-deletes all children recursively.
   """
   def delete_scene(%Scene{} = scene) do
+    with {:ok, %{entity: entity}} <- delete_scene_subtree(scene), do: {:ok, entity}
+  end
+
+  @doc """
+  Same soft-delete as `delete_scene/1`, additionally returning `deleted_ids` —
+  the committed cascade set, collected by the deletion itself under the same
+  lock. Callers that broadcast about the deletion MUST use these ids: a
+  separate pre-delete traversal can desync from concurrent tree changes.
+  """
+  def delete_scene_subtree(%Scene{} = scene) do
     result =
       SceneReferenceIntegrity.with_active_scene_lock(
         scene.id,
@@ -359,13 +380,14 @@ defmodule Storyarn.Scenes.SceneCrud do
         fn locked_scene ->
           case locked_scene |> Scene.delete_changeset() |> Repo.update() do
             {:ok, deleted_scene} ->
-              SoftDelete.soft_delete_children(
-                Scene,
-                locked_scene.project_id,
-                locked_scene.id
-              )
+              child_ids =
+                SoftDelete.soft_delete_children(
+                  Scene,
+                  locked_scene.project_id,
+                  locked_scene.id
+                )
 
-              {:ok, deleted_scene}
+              {:ok, %{entity: deleted_scene, deleted_ids: [deleted_scene.id | child_ids]}}
 
             {:error, changeset} ->
               {:error, changeset}
@@ -374,7 +396,7 @@ defmodule Storyarn.Scenes.SceneCrud do
       )
 
     case result do
-      {:ok, deleted_scene} ->
+      {:ok, %{entity: deleted_scene}} ->
         Collaboration.broadcast_dashboard_change(deleted_scene.project_id, :scenes)
 
       _ ->

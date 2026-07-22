@@ -96,6 +96,18 @@ defmodule Storyarn.FlowsTest do
       assert deleted_flow.id in Enum.map(Flows.list_deleted_flows(project.id), & &1.id)
     end
 
+    test "delete_flow_subtree/1 returns the committed cascade ids" do
+      user = user_fixture()
+      project = project_fixture(user)
+      parent = flow_fixture(project)
+      child = flow_fixture(project, %{parent_id: parent.id})
+
+      assert {:ok, %{entity: deleted, deleted_ids: ids}} = Flows.delete_flow_subtree(parent)
+
+      assert deleted.id == parent.id
+      assert Enum.sort(ids) == Enum.sort([parent.id, child.id])
+    end
+
     test "restore_flow/1 restores a soft-deleted flow" do
       user = user_fixture()
       project = project_fixture(user)

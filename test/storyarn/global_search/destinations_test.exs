@@ -125,4 +125,155 @@ defmodule Storyarn.GlobalSearch.DestinationsTest do
       assert Enum.all?(filtered.projects, &(&1.workspace_slug == workspace.slug))
     end
   end
+
+  describe "create_targets/1" do
+    test "lists projects with edit rights, with workspace context",
+         %{scope: scope, project: project, workspace: workspace} do
+      targets = GlobalSearch.create_targets(scope)
+
+      assert [%{id: id, name: name, workspace_name: workspace_name}] = targets
+      assert id == project.id
+      assert name == project.name
+      assert workspace_name == workspace.name
+    end
+
+    test "excludes view-only access at both membership levels", %{user: user, scope: scope} do
+      owner = user_fixture()
+
+      viewer_workspace = workspace_fixture(owner)
+      workspace_membership_fixture(viewer_workspace, user, "viewer")
+      ws_viewer_project = project_fixture(owner, %{workspace: viewer_workspace})
+
+      foreign_workspace = workspace_fixture(owner)
+      pm_viewer_project = project_fixture(owner, %{workspace: foreign_workspace})
+      membership_fixture(pm_viewer_project, user, "viewer")
+
+      target_ids = scope |> GlobalSearch.create_targets() |> Enum.map(& &1.id)
+
+      refute ws_viewer_project.id in target_ids
+      refute pm_viewer_project.id in target_ids
+
+      # Both remain NAVIGABLE — view access is enough for destinations.
+      nav_ids = Enum.map(GlobalSearch.destinations(scope, "").projects, & &1.id)
+      assert ws_viewer_project.id in nav_ids
+      assert pm_viewer_project.id in nav_ids
+    end
+
+    test "a direct editor membership on a foreign project grants a create target", %{user: user, scope: scope} do
+      owner = user_fixture()
+      foreign_project = project_fixture(owner, %{workspace: workspace_fixture(owner)})
+      membership_fixture(foreign_project, user, "editor")
+
+      assert foreign_project.id in (scope |> GlobalSearch.create_targets() |> Enum.map(& &1.id))
+    end
+
+    test "never includes another user's projects", %{scope: scope} do
+      other = user_fixture()
+      other_project = project_fixture(other, %{workspace: workspace_fixture(other)})
+
+      refute other_project.id in (scope |> GlobalSearch.create_targets() |> Enum.map(& &1.id))
+    end
+  end
+
+  describe "editable_project/2" do
+    test "authorizes an editable project id", %{scope: scope, project: project, workspace: workspace} do
+      assert {:ok, %{project: found, workspace: found_workspace}} =
+               GlobalSearch.editable_project(scope, project.id)
+
+      assert found.id == project.id
+      assert found_workspace.slug == workspace.slug
+    end
+
+    test "rejects foreign and view-only project ids", %{user: user, scope: scope} do
+      owner = user_fixture()
+      foreign_project = project_fixture(owner, %{workspace: workspace_fixture(owner)})
+
+      assert {:error, :unauthorized} = GlobalSearch.editable_project(scope, foreign_project.id)
+
+      membership_fixture(foreign_project, user, "viewer")
+      assert {:error, :unauthorized} = GlobalSearch.editable_project(scope, foreign_project.id)
+    end
+  end
+
+  describe "deletable_entities/3" do
+    test "empty query lists recent entities from editable projects, with project_id",
+         %{scope: scope, project: project} do
+      sheet = sheet_fixture(project, %{name: "Recent sheet"})
+
+      items = GlobalSearch.deletable_entities(scope, "")
+
+      hit = Enum.find(items, &(&1.type == :sheet and &1.id == sheet.id))
+      assert hit.project_id == project.id
+    end
+
+    test "empty query browses newest-first ACROSS types, not per-type blocks",
+         %{scope: scope, project: project} do
+      old_sheet = sheet_fixture(project, %{name: "Old sheet"})
+      new_flow = flow_fixture(project, %{name: "New flow"})
+
+      # utc_datetime has second precision — same-second creates tie. Force a
+      # clearly older sheet so cross-type ordering is observable.
+      past = DateTime.utc_now() |> DateTime.truncate(:second) |> DateTime.add(-3600)
+
+      Storyarn.Repo.update_all(
+        Ecto.Query.from(s in Storyarn.Sheets.Sheet, where: s.id == ^old_sheet.id),
+        set: [updated_at: past]
+      )
+
+      positions =
+        scope
+        |> GlobalSearch.deletable_entities("")
+        |> Enum.map(&{&1.type, &1.id})
+
+      flow_pos = Enum.find_index(positions, &(&1 == {:flow, new_flow.id}))
+      sheet_pos = Enum.find_index(positions, &(&1 == {:sheet, old_sheet.id}))
+      assert flow_pos < sheet_pos
+    end
+
+    test "excludes entities from view-only projects even on name match", %{user: user, scope: scope} do
+      owner = user_fixture()
+      foreign_project = project_fixture(owner, %{workspace: workspace_fixture(owner)})
+      membership_fixture(foreign_project, user, "viewer")
+      sheet_fixture(foreign_project, %{name: "Readonly Relic"})
+
+      assert GlobalSearch.deletable_entities(scope, "Readonly Relic") == []
+      # Still discoverable through plain navigation search.
+      assert [_] = GlobalSearch.destinations(scope, "Readonly Relic").entities
+    end
+  end
+
+  describe "deletable_entity/4" do
+    test "loads an entity for deletion within an editable project", %{scope: scope, project: project} do
+      sheet = sheet_fixture(project)
+
+      assert {:ok, %{entity: entity, project: found_project, workspace: _}} =
+               GlobalSearch.deletable_entity(scope, :sheet, project.id, sheet.id)
+
+      assert entity.id == sheet.id
+      assert found_project.id == project.id
+    end
+
+    test "rejects a project the scope cannot edit even with a valid entity id", %{user: user, scope: scope} do
+      owner = user_fixture()
+      foreign_project = project_fixture(owner, %{workspace: workspace_fixture(owner)})
+      membership_fixture(foreign_project, user, "viewer")
+      sheet = sheet_fixture(foreign_project)
+
+      assert {:error, :unauthorized} =
+               GlobalSearch.deletable_entity(scope, :sheet, foreign_project.id, sheet.id)
+    end
+
+    test "an entity outside the claimed project or already trashed is not found",
+         %{scope: scope, project: project, user: user, workspace: workspace} do
+      other_project = project_fixture(user, %{workspace: workspace})
+      sheet = sheet_fixture(other_project)
+
+      # Editable project + entity id from ANOTHER project: scoped load fails.
+      assert {:error, :not_found} = GlobalSearch.deletable_entity(scope, :sheet, project.id, sheet.id)
+
+      trashed = sheet_fixture(project)
+      {:ok, _} = Sheets.delete_sheet(trashed)
+      assert {:error, :not_found} = GlobalSearch.deletable_entity(scope, :sheet, project.id, trashed.id)
+    end
+  end
 end

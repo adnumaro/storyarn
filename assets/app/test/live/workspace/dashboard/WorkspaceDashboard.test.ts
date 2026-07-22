@@ -1,6 +1,7 @@
 import { mount } from "@vue/test-utils";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import WorkspaceDashboard from "../../../../live/workspace/dashboard/WorkspaceDashboard.vue";
+import { paletteGroups, resetPaletteRegistry } from "../../../../shared/command-palette/registry";
 import { createMockLive } from "../../../setup";
 
 const projects = [
@@ -325,5 +326,48 @@ describe("WorkspaceDashboard", () => {
       "disabled",
     );
     expect(wrapper.text()).toContain("Starting");
+  });
+
+  describe("palette command registration", () => {
+    function findNewProjectCommand() {
+      return paletteGroups.value
+        .flatMap((group) => group.commands)
+        .find((paletteCommand) => paletteCommand.id === "create.project");
+    }
+
+    beforeEach(() => {
+      resetPaletteRegistry();
+    });
+
+    it("registers New Project exactly while creation is allowed, opening the existing modal", () => {
+      const { live, wrapper } = mountDashboard({ newProjectForm: {} as never });
+
+      const newProject = findNewProjectCommand();
+      expect(newProject).toBeDefined();
+
+      newProject!.run();
+      expect(live.pushEvent).toHaveBeenCalledWith("set_new_project_modal_open", { open: true });
+
+      wrapper.unmount();
+      expect(findNewProjectCommand()).toBeUndefined();
+    });
+
+    it("never registers when the role, the plan, or the missing form forbids creation", () => {
+      // Same predicate as the header button: role AND capacity AND form.
+      const withoutForm = mountDashboard();
+      expect(findNewProjectCommand()).toBeUndefined();
+      withoutForm.wrapper.unmount();
+
+      const limited = mountDashboard({ newProjectForm: {} as never, canCreateProject: false });
+      expect(findNewProjectCommand()).toBeUndefined();
+      limited.wrapper.unmount();
+
+      const viewer = mountDashboard({
+        newProjectForm: {} as never,
+        membership: { role: "viewer" },
+      });
+      expect(findNewProjectCommand()).toBeUndefined();
+      viewer.wrapper.unmount();
+    });
   });
 });

@@ -160,8 +160,8 @@ defmodule StoryarnWeb.SheetsSidebarLive do
   defp confirm_delete_sheet(socket) do
     TreeSidebarActions.confirm_delete(socket, %{
       get_entity: &Sheets.get_sheet/2,
-      delete_entity: &Sheets.delete_sheet/1,
-      broadcast_deleted: &broadcast_entity_deleted/2,
+      delete_entity: &Sheets.delete_sheet_subtree/1,
+      broadcast_deleted: &broadcast_entities_deleted/2,
       refresh_tree: &refresh_tree_and_broadcast/1,
       deleted_message: dgettext("sheets", "Sheet moved to trash."),
       delete_error_message: dgettext("sheets", "Could not delete sheet.")
@@ -190,12 +190,12 @@ defmodule StoryarnWeb.SheetsSidebarLive do
     socket
   end
 
-  defp broadcast_entity_deleted(socket, id) do
+  defp broadcast_entities_deleted(socket, ids) do
     Phoenix.PubSub.broadcast_from(
       Storyarn.PubSub,
       self(),
       shell_topic(socket.assigns.project_id),
-      {:entity_deleted, id}
+      {:entities_deleted, :sheet, ids}
     )
   end
 

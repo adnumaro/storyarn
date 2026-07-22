@@ -23,6 +23,7 @@
       "empty": "Aún no hay flujos",
       "new_flow": "Nuevo flujo",
       "delete_title": "¿Eliminar flujo?",
+      "delete_description": "¿Estás seguro de que quieres eliminar \"{name}\"?",
       "cancel": "Cancelar",
       "delete": "Eliminar",
       "add_child": "Añadir flujo hijo",
@@ -303,11 +304,11 @@
       "locate_jumps": "Localizar saltos"
     },
     "jump_toolbar": {
-      "target_placeholder": "Hub destino\u2026",
+      "target_placeholder": "Hub destino…",
       "locate_target": "Localizar hub destino"
     },
     "subflow_toolbar": {
-      "select_flow_placeholder": "Seleccionar flujo\u2026",
+      "select_flow_placeholder": "Seleccionar flujo…",
       "open_flow": "Abrir flujo"
     },
     "instruction_toolbar": {
@@ -326,7 +327,7 @@
       "none": "Ninguno"
     },
     "annotation": {
-      "placeholder": "\u2026",
+      "placeholder": "…",
       "delete": "Eliminar"
     },
     "entry_toolbar": {

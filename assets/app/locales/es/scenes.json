@@ -24,6 +24,7 @@
       "empty": "Aún no hay escenas",
       "new_scene": "Nueva escena",
       "delete_title": "¿Eliminar escena?",
+      "delete_description": "¿Estás seguro de que quieres eliminar \"{name}\"?",
       "cancel": "Cancelar",
       "delete": "Eliminar",
       "add_child": "Añadir escena hija",

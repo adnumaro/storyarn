@@ -302,7 +302,7 @@ function handleDrop(e: any): void {
         <DialogHeader>
           <DialogTitle>{{ $t("scenes.tree.delete_title") }}</DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete "{{ pendingDeleteScene?.name }}"?
+            {{ $t("scenes.tree.delete_description", { name: pendingDeleteScene?.name ?? "" }) }}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

@@ -198,4 +198,154 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       assert groups == []
     end
   end
+
+  describe "palette_create_targets" do
+    test "replies editable projects only, with workspace context", %{view: view, user: user} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace, name: "Veilbreak"})
+
+      viewer_owner = user_fixture()
+      viewer_project = project_fixture(viewer_owner, %{workspace: workspace_fixture(viewer_owner)})
+      membership_fixture(viewer_project, user, "viewer")
+
+      render_hook(view, "palette_create_targets", %{"token" => 4})
+
+      assert_reply(view, %{token: 4, projects: projects})
+      assert Enum.any?(projects, &(&1.id == project.id and &1.label == "Veilbreak" and &1.context == workspace.name))
+      refute Enum.any?(projects, &(&1.id == viewer_project.id))
+    end
+  end
+
+  describe "palette_create" do
+    test "creates the entity in an authorized project and replies its URL", %{view: view, user: user} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+      Phoenix.PubSub.subscribe(Storyarn.PubSub, "project:#{project.id}:shell")
+
+      render_hook(view, "palette_create", %{"type" => "sheet", "project_id" => project.id})
+
+      assert_reply(view, %{url: url})
+      assert [_, sheet_id] = Regex.run(~r{/sheets/(\d+)$}, url)
+      assert url == "/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet_id}"
+
+      sheet = Storyarn.Sheets.get_sheet(project.id, String.to_integer(sheet_id))
+      assert sheet.name == "Untitled"
+
+      # Sidebars refresh through the same shell-topic message the tree emits.
+      assert_receive {:tree_changed, :sheets}
+    end
+
+    test "rejects a project the user cannot edit — nothing is created", %{view: view, user: user} do
+      viewer_owner = user_fixture()
+      viewer_project = project_fixture(viewer_owner, %{workspace: workspace_fixture(viewer_owner)})
+      membership_fixture(viewer_project, user, "viewer")
+
+      render_hook(view, "palette_create", %{"type" => "flow", "project_id" => viewer_project.id})
+
+      assert_reply(view, %{error: "unauthorized"})
+      assert Storyarn.Flows.search_flows_in_projects([viewer_project.id], "") == []
+    end
+  end
+
+  describe "palette_delete_search" do
+    test "lists deletable entities with their project id; empty query browses recents",
+         %{view: view, user: user} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace, name: "Veilbreak"})
+      sheet = sheet_fixture(project, %{name: "Kael the Wanderer"})
+
+      viewer_owner = user_fixture()
+      viewer_project = project_fixture(viewer_owner, %{workspace: workspace_fixture(viewer_owner)})
+      membership_fixture(viewer_project, user, "viewer")
+      readonly = sheet_fixture(viewer_project, %{name: "Readonly Relic"})
+
+      render_hook(view, "palette_delete_search", %{"query" => "", "token" => 9})
+
+      assert_reply(view, %{token: 9, items: items})
+      hit = Enum.find(items, &(&1.id == sheet.id and &1.type == "sheet"))
+      assert hit.label == "Kael the Wanderer"
+      assert hit.context == "Veilbreak"
+      assert hit.projectId == project.id
+      refute Enum.any?(items, &(&1.id == readonly.id and &1.type == "sheet"))
+    end
+  end
+
+  describe "palette_delete" do
+    test "soft-deletes an authorized entity and broadcasts the full typed subtree",
+         %{view: view, user: user} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+      sheet = sheet_fixture(project)
+      child = sheet_fixture(project, %{parent_id: sheet.id})
+      Phoenix.PubSub.subscribe(Storyarn.PubSub, "project:#{project.id}:shell")
+
+      render_hook(view, "palette_delete", %{
+        "type" => "sheet",
+        "id" => sheet.id,
+        "project_id" => project.id
+      })
+
+      assert_reply(view, %{deleted: true})
+      assert Storyarn.Sheets.get_sheet(project.id, sheet.id) == nil
+      assert Storyarn.Sheets.get_sheet(project.id, child.id) == nil
+
+      # Same messages the sidebar delete path emits: typed and carrying every
+      # cascade-deleted id, so only editors of THESE entities navigate away.
+      assert_receive {:entities_deleted, :sheet, deleted_ids}
+      assert Enum.sort(deleted_ids) == Enum.sort([sheet.id, child.id])
+      assert_receive {:tree_changed, :sheets}
+    end
+
+    test "an id beyond the bigint range is rejected before reaching the database",
+         %{view: view, user: user} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+      sheet = sheet_fixture(project)
+
+      # No guard matches, so the event falls through to the LV like any
+      # unknown event (crashing only the forging client's own session) —
+      # instead of raising inside database parameter encoding. The crash
+      # propagates through the test proxy link; trap it.
+      Process.flag(:trap_exit, true)
+
+      catch_exit(
+        render_hook(view, "palette_delete", %{
+          "type" => "sheet",
+          "id" => 9_223_372_036_854_775_808,
+          "project_id" => project.id
+        })
+      )
+
+      assert %{} = Storyarn.Sheets.get_sheet(project.id, sheet.id)
+    end
+
+    test "rejects view-only and mismatched ids — nothing is deleted", %{view: view, user: user} do
+      viewer_owner = user_fixture()
+      viewer_project = project_fixture(viewer_owner, %{workspace: workspace_fixture(viewer_owner)})
+      membership_fixture(viewer_project, user, "viewer")
+      readonly_sheet = sheet_fixture(viewer_project)
+
+      render_hook(view, "palette_delete", %{
+        "type" => "sheet",
+        "id" => readonly_sheet.id,
+        "project_id" => viewer_project.id
+      })
+
+      assert_reply(view, %{error: "unauthorized"})
+      assert %{} = Storyarn.Sheets.get_sheet(viewer_project.id, readonly_sheet.id)
+
+      # An editable project cannot be used as a doorway to another project's entity.
+      workspace = workspace_fixture(user)
+      own_project = project_fixture(user, %{workspace: workspace})
+
+      render_hook(view, "palette_delete", %{
+        "type" => "sheet",
+        "id" => readonly_sheet.id,
+        "project_id" => own_project.id
+      })
+
+      assert_reply(view, %{error: "not_found"})
+      assert %{} = Storyarn.Sheets.get_sheet(viewer_project.id, readonly_sheet.id)
+    end
+  end
 end

@@ -192,8 +192,8 @@ defmodule StoryarnWeb.FlowSidebarLive do
   defp confirm_delete_flow(socket) do
     TreeSidebarActions.confirm_delete(socket, %{
       get_entity: &Flows.get_flow/2,
-      delete_entity: &Flows.delete_flow/1,
-      broadcast_deleted: &broadcast_entity_deleted/2,
+      delete_entity: &Flows.delete_flow_subtree/1,
+      broadcast_deleted: &broadcast_entities_deleted/2,
       refresh_tree: &refresh_tree_and_broadcast/1,
       deleted_message: dgettext("flows", "Flow moved to trash."),
       delete_error_message: dgettext("flows", "Could not delete flow.")
@@ -222,12 +222,12 @@ defmodule StoryarnWeb.FlowSidebarLive do
     socket
   end
 
-  defp broadcast_entity_deleted(socket, id) do
+  defp broadcast_entities_deleted(socket, ids) do
     Phoenix.PubSub.broadcast_from(
       Storyarn.PubSub,
       self(),
       shell_topic(socket.assigns.project_id),
-      {:entity_deleted, id}
+      {:entities_deleted, :flow, ids}
     )
   end
 

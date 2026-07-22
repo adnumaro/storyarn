@@ -164,6 +164,14 @@ defmodule Storyarn.Flows do
   defdelegate delete_flow(flow), to: FlowCrud
 
   @doc """
+  Soft deletes a flow and its descendants, returning the committed cascade
+  ids (collected under the delete's own lock).
+  """
+  @spec delete_flow_subtree(flow()) ::
+          {:ok, %{entity: flow(), deleted_ids: [integer()]}} | {:error, term()}
+  defdelegate delete_flow_subtree(flow), to: FlowCrud
+
+  @doc """
   Permanently deletes a flow from the database.
   Use with caution - this cannot be undone.
   """

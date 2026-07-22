@@ -28,9 +28,12 @@ defmodule StoryarnWeb.Live.TreeSidebarActions do
   end
 
   defp delete_pending(socket, id, opts) do
+    # The delete itself reports the committed cascade set (collected under its
+    # own lock) — broadcasting THOSE ids keeps open editors of the entity and
+    # every deleted descendant in sync even under concurrent tree changes.
     with %{} = entity <- opts.get_entity.(socket.assigns.project.id, id),
-         {:ok, _} <- opts.delete_entity.(entity) do
-      opts.broadcast_deleted.(socket, id)
+         {:ok, %{deleted_ids: deleted_ids}} <- opts.delete_entity.(entity) do
+      opts.broadcast_deleted.(socket, deleted_ids)
 
       socket =
         socket

@@ -116,11 +116,21 @@ defmodule Storyarn.Sheets.SheetCrud do
   Soft deletes a sheet and all its descendants (moves to trash).
   """
   def trash_sheet(%Sheet{} = sheet) do
+    with {:ok, %{entity: entity}} <- delete_sheet_subtree(sheet), do: {:ok, entity}
+  end
+
+  @doc """
+  Same soft-delete as `trash_sheet/1`, additionally returning `deleted_ids` —
+  the committed cascade set, collected under the same project/sheet locks as
+  the delete. Callers that broadcast about the deletion MUST use these ids: a
+  separate pre-delete traversal can desync from concurrent tree changes.
+  """
+  def delete_sheet_subtree(%Sheet{} = sheet) do
     fn ->
       lock_active_project!(sheet.project_id)
       sheet = lock_active_sheet!(sheet.id, sheet.project_id)
 
-      # Get all descendant IDs before deleting
+      # Get all descendant IDs before deleting (under the locks above)
       descendant_ids = get_descendant_ids(sheet.id)
 
       # Soft delete all descendants
@@ -135,9 +145,12 @@ defmodule Storyarn.Sheets.SheetCrud do
       Enum.each([sheet.id | descendant_ids], &Localization.delete_texts_for_source("sheet", &1))
 
       # Soft delete the sheet itself
-      sheet
-      |> Sheet.delete_changeset()
-      |> Repo.update!()
+      deleted =
+        sheet
+        |> Sheet.delete_changeset()
+        |> Repo.update!()
+
+      %{entity: deleted, deleted_ids: [deleted.id | descendant_ids]}
     end
     |> Repo.transaction()
     |> Collaboration.broadcast_dashboard_result(sheet.project_id, :sheets)

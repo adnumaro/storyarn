@@ -106,27 +106,38 @@ defmodule Storyarn.Flows.FlowCrud do
   Searches flows by name or shortcut across a pre-authorized set of projects.
 
   Callers OWN the authorization of `project_ids` (see `Storyarn.GlobalSearch`);
-  this function never widens the set. Empty queries return no results — the
-  cross-project variant is a search surface, not a browsing one.
+  this function never widens the set. Empty queries list the most recently
+  updated flows — pickers browse before typing.
   """
   @spec search_flows_in_projects([integer()], String.t(), keyword()) :: [Flow.t()]
   def search_flows_in_projects(project_ids, query, opts \\ []) when is_list(project_ids) and is_binary(query) do
     limit = Keyword.get(opts, :limit, @default_search_limit)
     query_str = String.trim(query)
 
-    if project_ids == [] or query_str == "" do
-      []
-    else
-      search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
+    cond do
+      project_ids == [] ->
+        []
 
-      Repo.all(
-        from(f in Flow,
-          where: f.project_id in ^project_ids and is_nil(f.deleted_at),
-          where: ilike(f.name, ^search_term) or ilike(f.shortcut, ^search_term),
-          order_by: [asc: f.name],
-          limit: ^limit
+      query_str == "" ->
+        Repo.all(
+          from(f in Flow,
+            where: f.project_id in ^project_ids and is_nil(f.deleted_at),
+            order_by: [desc: f.updated_at, desc: f.id],
+            limit: ^limit
+          )
         )
-      )
+
+      true ->
+        search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
+
+        Repo.all(
+          from(f in Flow,
+            where: f.project_id in ^project_ids and is_nil(f.deleted_at),
+            where: ilike(f.name, ^search_term) or ilike(f.shortcut, ^search_term),
+            order_by: [asc: f.name],
+            limit: ^limit
+          )
+        )
     end
   end
 
@@ -452,11 +463,21 @@ defmodule Storyarn.Flows.FlowCrud do
   — that requires recursion through Trashable, tracked as follow-up.
   """
   def delete_flow(%Flow{} = flow) do
+    with {:ok, %{entity: entity}} <- delete_flow_subtree(flow), do: {:ok, entity}
+  end
+
+  @doc """
+  Same soft-delete as `delete_flow/1`, additionally returning `deleted_ids` —
+  the committed cascade set, collected by the deletion itself under the same
+  lock. Callers that broadcast about the deletion MUST use these ids: a
+  separate pre-delete traversal can desync from concurrent tree changes.
+  """
+  def delete_flow_subtree(%Flow{} = flow) do
     result =
       Repo.transaction(fn -> delete_flow_transaction(flow) end)
 
     case result do
-      {:ok, deleted_flow} ->
+      {:ok, %{entity: deleted_flow}} ->
         # Notify open canvases that have subflow nodes referencing this flow
         notify_affected_subflows(deleted_flow.id, deleted_flow.project_id)
         Collaboration.broadcast_dashboard_change(deleted_flow.project_id, :flows)
@@ -480,11 +501,12 @@ defmodule Storyarn.Flows.FlowCrud do
 
     case Trashable.soft_delete(locked_flow) do
       {:ok, deleted_flow} ->
-        SoftDelete.soft_delete_children(Flow, locked_flow.project_id, locked_flow.id,
-          pre_delete: &Localization.delete_flow_node_texts_for_flows([&1.id])
-        )
+        child_ids =
+          SoftDelete.soft_delete_children(Flow, locked_flow.project_id, locked_flow.id,
+            pre_delete: &Localization.delete_flow_node_texts_for_flows([&1.id])
+          )
 
-        deleted_flow
+        %{entity: deleted_flow, deleted_ids: [deleted_flow.id | child_ids]}
 
       {:error, changeset} ->
         Repo.rollback(changeset)
