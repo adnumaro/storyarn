@@ -259,6 +259,58 @@ defmodule Storyarn.Versioning.ProjectSnapshotExactRestoreTest do
       assert Repo.get!(Flow, second_flow.id).name == "Current second"
     end
 
+    test "rejects a malformed block entry before applying writes", %{
+      project: project
+    } do
+      sheet = sheet_fixture(project, %{name: "Snapshot sheet"})
+      _block = block_fixture(sheet, %{value: %{"content" => "Snapshot block"}})
+      snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
+
+      invalid_snapshot =
+        update_in(snapshot["sheets"], fn entries ->
+          Enum.map(entries, fn entry ->
+            if entry["id"] == sheet.id,
+              do: put_in(entry, ["snapshot", "blocks"], ["not-a-block-map"]),
+              else: entry
+          end)
+        end)
+
+      assert {:ok, _sheet} =
+               Sheets.update_sheet(sheet, %{name: "Current sheet must remain"})
+
+      assert {:error, {:invalid_project_snapshot_block_entry, sheet_id, 0, "not-a-block-map"}} =
+               ProjectSnapshotBuilder.restore_snapshot(project.id, invalid_snapshot)
+
+      assert sheet_id == sheet.id
+      assert Repo.get!(Sheet, sheet.id).name == "Current sheet must remain"
+    end
+
+    test "rejects a malformed flow node entry before applying writes", %{
+      project: project
+    } do
+      flow = flow_fixture(project, %{name: "Snapshot flow"})
+      _node = node_fixture(flow, %{type: "dialogue"})
+      snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
+
+      invalid_snapshot =
+        update_in(snapshot["flows"], fn entries ->
+          Enum.map(entries, fn entry ->
+            if entry["id"] == flow.id,
+              do: put_in(entry, ["snapshot", "nodes"], ["not-a-node-map"]),
+              else: entry
+          end)
+        end)
+
+      assert {:ok, _flow} =
+               Flows.update_flow(flow, %{name: "Current flow must remain"})
+
+      assert {:error, {:invalid_project_snapshot_flow_node_entry, flow_id, 0, "not-a-node-map"}} =
+               ProjectSnapshotBuilder.restore_snapshot(project.id, invalid_snapshot)
+
+      assert flow_id == flow.id
+      assert Repo.get!(Flow, flow.id).name == "Current flow must remain"
+    end
+
     test "fails before writes when a main flow absent from target remains in trash", %{
       project: project
     } do

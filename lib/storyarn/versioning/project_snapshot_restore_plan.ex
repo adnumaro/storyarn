@@ -49,6 +49,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestorePlan do
           ordered: %{required(atom()) => [map()]},
           tree: %{required(atom()) => [map()]},
           blocks: [map()],
+          flow_nodes: [map()],
           project_attrs: map()
         }
 
@@ -58,6 +59,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestorePlan do
          :ok <- validate_main_flow(entries.flows),
          ids = Map.new(entries, fn {type, type_entries} -> {type, MapSet.new(type_entries, & &1["id"])} end),
          {:ok, blocks} <- validate_sheet_blocks(entries.sheets),
+         {:ok, flow_nodes} <- validate_flow_nodes(entries.flows),
          {:ok, sheet_order} <- order_sheets(entries.sheets, blocks),
          {:ok, flow_order} <- order_flows(entries.flows, ids.flows),
          {:ok, tree} <- validate_tree(snapshot["tree"], ids),
@@ -73,6 +75,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestorePlan do
          },
          tree: tree,
          blocks: blocks,
+         flow_nodes: flow_nodes,
          project_attrs: project_attrs
        }}
     end
@@ -178,14 +181,61 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestorePlan do
   defp tagged_sheet_blocks(entry) do
     case entry["snapshot"]["blocks"] do
       blocks when is_list(blocks) ->
-        {:ok,
-         Enum.map(
-           blocks,
-           &Map.put(&1, "__restore_owner_sheet_id", entry["id"])
-         )}
+        tag_owned_snapshot_entries(
+          blocks,
+          "__restore_owner_sheet_id",
+          entry["id"],
+          :invalid_project_snapshot_block_entry
+        )
 
       invalid ->
         {:error, {:invalid_project_snapshot_blocks, entry["id"], invalid}}
+    end
+  end
+
+  defp validate_flow_nodes(flow_entries) do
+    result =
+      Enum.reduce_while(flow_entries, {:ok, []}, fn entry, {:ok, acc} ->
+        case tagged_flow_nodes(entry) do
+          {:ok, tagged} -> {:cont, {:ok, Enum.reverse(tagged, acc)}}
+          {:error, _reason} = error -> {:halt, error}
+        end
+      end)
+
+    case result do
+      {:ok, flow_nodes} -> {:ok, Enum.reverse(flow_nodes)}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp tagged_flow_nodes(entry) do
+    case entry["snapshot"]["nodes"] do
+      nodes when is_list(nodes) ->
+        tag_owned_snapshot_entries(
+          nodes,
+          "__restore_owner_flow_id",
+          entry["id"],
+          :invalid_project_snapshot_flow_node_entry
+        )
+
+      invalid ->
+        {:error, {:invalid_project_snapshot_flow_nodes, entry["id"], invalid}}
+    end
+  end
+
+  defp tag_owned_snapshot_entries(entries, owner_key, owner_id, invalid_entry_error) do
+    entries
+    |> Enum.with_index()
+    |> Enum.reduce_while({:ok, []}, fn
+      {entry, _index}, {:ok, acc} when is_map(entry) ->
+        {:cont, {:ok, [Map.put(entry, owner_key, owner_id) | acc]}}
+
+      {entry, index}, {:ok, _acc} ->
+        {:halt, {:error, {invalid_entry_error, owner_id, index, entry}}}
+    end)
+    |> case do
+      {:ok, tagged} -> {:ok, Enum.reverse(tagged)}
+      {:error, _reason} = error -> error
     end
   end
 
@@ -630,14 +680,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestorePlan do
     end)
   end
 
-  defp target_flow_nodes(plan) do
-    Enum.flat_map(plan.entries.flows, fn entry ->
-      entry
-      |> get_in(["snapshot", "nodes"])
-      |> List.wrap()
-      |> Enum.map(&Map.put(&1, "__restore_owner_flow_id", entry["id"]))
-    end)
-  end
+  defp target_flow_nodes(plan), do: plan.flow_nodes
 
   defp validate_main_flow_conflicts(project_id, plan) do
     case target_main_flow_id(plan.entries.flows) do
