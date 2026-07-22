@@ -1,0 +1,95 @@
+config/config.exs
+  s_7d17843f59d188::t_d8cee7fef059c3 79
+lib/storyarn/flows.ex
+  s_601e46785f4b81::t_5e8ac799fe4db0 1322-1343
+lib/storyarn/projects.ex
+  s_7d17843f59d188::t_f8526d991f6850 188-190,193,195-232,245
+lib/storyarn/projects/project.ex
+  s_7d17843f59d188::t_85238b6c2c28d4 18,44-47,73-75
+lib/storyarn/projects/project_crud.ex
+  s_7d17843f59d188::t_d4334bf7336ff3 16,20-22,247,325-327,329-331,333,335-360,362,364-375,378-380,385-388,390-454,456-466,468-483,487-563,585-590,595-636,638-655
+lib/storyarn/references/entity_tracker.ex
+  s_7d17843f59d188::t_624f11610e8673 7-12,109
+lib/storyarn/versioning/builders/flow_builder.ex
+  s_7d17843f59d188::t_6ae702f3443a5d 19,1124-1125,1136-1175,1180-1183,2342,2379-2380,2387-2389,2391-2397,2402-2413,2418-2419,2424-2451,2460-2531,2533-2576,2782-3190,3217,3228-3232,3256-3380
+lib/storyarn/versioning/builders/sheet_builder.ex
+  s_7d17843f59d188::t_fd32922993d08f 36,639-640,1487,1494-1498,1500-1521,2221-2227,2232,2241,2252-2253,2256-2265,2267-2268,2270-2272
+lib/storyarn/versioning/project_restore_avatar_integrity.ex
+  s_7d17843f59d188::t_372c232130b897 1-211
+lib/storyarn/versioning/project_snapshot_crud.ex
+  s_7d17843f59d188::t_00ad384f982712 215-223,245-253,268,270,272-276,283-315,318-324,339-341,352-398,400-417,419-420,423-424,428-463,465-469,471-472,474-478,482-560
+lib/storyarn/versioning/snapshot_storage.ex
+  s_7d17843f59d188::t_6f25fe31b9ec6a 13-17,28-41,44-46,57-62,77-95,101-317,319,328-330,342-349,351-359,401-420
+lib/storyarn/workers/restore_project_worker.ex
+  s_7d17843f59d188::t_e9d0cdb337efcd 5-8,11-14,16-17,20,26-50,52,56-57,60-75,78-88,91-102,107-119,121-140,144-147,150-157,159-208
+lib/storyarn_web/live/project_live/components/settings_components.ex
+  s_7d17843f59d188::t_f7628db44be023 219-222,226,238,247,251-261,270-272,276,281-287,301-308,311-313,317-333,337-367,372,374
+lib/storyarn_web/live/project_settings_live/snapshots.ex
+  s_7d17843f59d188::t_e90a8a65905141 157-167
+priv/repo/migrations/20260719100000_bind_project_restoration_locks.exs
+  s_7d17843f59d188::t_6064e81046b360 1-78
+test/storyarn/flows/entity_trash_refs_test.exs
+  s_7d17843f59d188::t_52dd833a9209e8 166-225
+test/storyarn/projects/restoration_lock_concurrency_test.exs
+  s_7d17843f59d188::t_bbd8fe3ab98067 1-123
+test/storyarn/projects/restoration_lock_test.exs
+  s_7d17843f59d188::t_ba7881edae25c3 8-10,15-19,22-34,38-40,43-49,54-58,61-91,95-108,113-226,235-241,251-257,263,271-277,282-334
+test/storyarn/versioning/builders/project_snapshot_builder_test.exs
+  s_7d17843f59d188::t_5bae8c8f16a5cd 17,97-100,103-114,122,126-132,139-140,142-153,267-270,273,276-277,279-293,296,301-302,304-309,482-485,489-492,495-497,533-537,542-545,548-555,574-575,591-594,597-598,616-617,631-634,637-638
+test/storyarn/versioning/project_snapshot_avatar_restore_test.exs
+  s_7d17843f59d188::t_954c4a1f9f239a 1-214
+test/storyarn/versioning/project_snapshot_child_id_integrity_test.exs
+  s_7d17843f59d188::t_d21a07111fb583 1-556
+test/storyarn/versioning/project_snapshot_crud_test.exs
+  s_7d17843f59d188::t_ca4d18aa5b9feb 6,10-13,174-219,223-399,401-438,464,490-533,581-746
+test/storyarn/versioning/project_snapshot_localization_lifecycle_test.exs
+  s_7d17843f59d188::t_e1d65403a9fcd8 1-486
+test/storyarn/versioning/project_snapshot_reference_index_integrity_test.exs
+  s_7d17843f59d188::t_0a54c0c78d2788 1-586
+test/storyarn/versioning/snapshot_storage_test.exs
+  s_7d17843f59d188::t_5aa102f8d3a66d 4,59-253,284-315
+test/storyarn/workers/restore_project_worker_test.exs
+  s_7d17843f59d188::t_238ce531246742 29-37,41-57,59-69,75-94,98-99,102-105,107-117,119-133,136-146,148-153,155,158-160,163-207,209-246,249,251-252,254-259,273-276,284,286-287,289-290,292-302,304-307,309-315,317-359,362-396
+test/storyarn_web/live/project_settings_live/snapshot_lifecycle_test.exs
+  s_7d17843f59d188::t_6e9371a50db73d 60,66,72,77-129,146-159
+lib/storyarn/flows/entity_trash_refs.ex
+  s_2ed6d988dc0ed9::t_9a211ce1e3f8c9 46,55-65,162-206,252-304,309-488
+lib/storyarn/versioning/builders/project_snapshot_builder.ex
+  s_2ed6d988dc0ed9::t_307e9fb737e5ef 15,22,28,37-38,162,165-170,177-181,223-229,231,236,241-242,248,279-305,307-309,313-342,400,405,435,452,488-693,763,765-766,768,772-774,778-784,788-911,937,946,951-1023,1029-1035,1042-1045,1071-1074
+lib/storyarn/versioning/project_snapshot_restore_plan.ex
+  s_2ed6d988dc0ed9::t_a695eeaa45607b 1-852
+test/storyarn/versioning/project_snapshot_exact_restore_test.exs
+  s_2ed6d988dc0ed9::t_5cf6fd212e7254 1-1048
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "215646737758792cc566bae3e2b10f6dcfd99f62",
+  "prompts": {},
+  "sessions": {
+    "s_2ed6d988dc0ed9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f899c-c586-75f3-b83b-3a7d91e8fa7f",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_601e46785f4b81": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b4-a630-7780-b438-bc2aa3d9363e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_7d17843f59d188": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fbf-1c01-7451-82e0-8923d01cb5fe",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
