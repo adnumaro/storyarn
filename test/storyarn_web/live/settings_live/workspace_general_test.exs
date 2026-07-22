@@ -27,6 +27,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
       assert vue.component == "live/workspace/settings/WorkspaceSettingsGeneral"
       assert vue.props["workspace-name"] == "Test Workspace"
       assert vue.props["is-owner"] == true
+      assert vue.props["can-edit-workspace"] == true
     end
 
     test "renders Vue for admin", %{conn: conn} do
@@ -44,6 +45,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
       vue = get_general_vue(view)
       assert vue.props["workspace-name"] == "Admin Test Workspace"
       assert vue.props["is-owner"] == false
+      assert vue.props["can-edit-workspace"] == false
     end
 
     test "is-owner=true only for owner", %{conn: conn} do

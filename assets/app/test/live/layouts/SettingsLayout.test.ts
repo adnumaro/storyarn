@@ -8,7 +8,17 @@ const OnboardingDialogStub = defineComponent({
   template: "<div />",
 });
 
-function mountLayout() {
+function mountLayout(
+  workspaces = [
+    { id: 1, name: "Admin workspace", slug: "admin" },
+    { id: 2, name: "Member workspace", slug: "member" },
+    { id: 3, name: "Viewer workspace", slug: "viewer" },
+  ],
+  workspaceSettingsAccess: Record<string, "manage" | "general"> = {
+    admin: "manage",
+    member: "general",
+  },
+) {
   vi.stubGlobal(
     "matchMedia",
     vi.fn().mockReturnValue({
@@ -21,12 +31,8 @@ function mountLayout() {
   return mount(SettingsLayout, {
     props: {
       currentPath: "/users/settings",
-      workspaces: [
-        { id: 1, name: "Admin workspace", slug: "admin" },
-        { id: 2, name: "Member workspace", slug: "member" },
-        { id: 3, name: "Viewer workspace", slug: "viewer" },
-      ],
-      workspaceSettingsAccess: { admin: "manage", member: "general" },
+      workspaces,
+      workspaceSettingsAccess,
     },
     global: {
       stubs: {
@@ -52,5 +58,19 @@ describe("SettingsLayout workspace navigation", () => {
     expect(hrefs).not.toContain("/users/settings/workspaces/member/deleted-projects");
 
     expect(hrefs.some((href) => href?.includes("/workspaces/viewer/"))).toBe(false);
+  });
+
+  it("keeps same-named workspace sections distinct", () => {
+    const wrapper = mountLayout(
+      [
+        { id: 1, name: "Shared name", slug: "first" },
+        { id: 2, name: "Shared name", slug: "second" },
+      ],
+      { first: "manage", second: "general" },
+    );
+    const hrefs = wrapper.findAll("a").map((link) => link.attributes("href"));
+
+    expect(hrefs).toContain("/users/settings/workspaces/first/general");
+    expect(hrefs).toContain("/users/settings/workspaces/second/general");
   });
 });

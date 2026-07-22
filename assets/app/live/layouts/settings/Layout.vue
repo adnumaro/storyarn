@@ -33,6 +33,7 @@ interface SettingsItem {
 }
 
 interface SettingsSection {
+  key: string;
   label: string;
   items: SettingsItem[];
 }
@@ -131,6 +132,7 @@ const sections = computed<SettingsSection[]>(() => {
 
     return [
       {
+        key: "project-general",
         label: t("project_settings.nav.sections.general"),
         items: [
           { label: t("project_settings.nav.items.general"), path: basePath, icon: "settings" },
@@ -147,6 +149,7 @@ const sections = computed<SettingsSection[]>(() => {
         ],
       },
       {
+        key: "project-integrations",
         label: t("project_settings.nav.sections.integrations"),
         items: [
           {
@@ -157,6 +160,7 @@ const sections = computed<SettingsSection[]>(() => {
         ],
       },
       {
+        key: "project-administration",
         label: t("project_settings.nav.sections.administration"),
         items: [
           {
@@ -219,10 +223,12 @@ const sections = computed<SettingsSection[]>(() => {
 
   return [
     {
+      key: "account",
       label: t("settings.nav.sections.account"),
       items: accountItems,
     },
     ...managedWorkspaces.map((workspace) => ({
+      key: `workspace:${workspace.slug}`,
       label: workspace.name,
       items: [
         {
@@ -243,6 +249,7 @@ const sections = computed<SettingsSection[]>(() => {
       ],
     })),
     ...readOnlyWorkspaces.map((workspace) => ({
+      key: `workspace:${workspace.slug}`,
       label: workspace.name,
       items: [
         {
@@ -274,7 +281,7 @@ const sections = computed<SettingsSection[]>(() => {
       </div>
 
       <nav class="flex-1 overflow-y-auto p-3 space-y-5">
-        <div v-for="section in sections" :key="section.label">
+        <div v-for="section in sections" :key="section.key">
           <h3 class="text-xs font-semibold uppercase text-foreground/50 px-2 mb-2 tracking-wider">
             {{ section.label }}
           </h3>

@@ -36,6 +36,7 @@ defmodule Storyarn.Workspaces do
   @type role :: String.t()
   @type action ::
           :manage_workspace
+          | :access_workspace_general_settings
           | :access_workspace_settings
           | :manage_members
           | :create_project

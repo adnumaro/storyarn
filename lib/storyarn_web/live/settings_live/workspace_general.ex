@@ -62,7 +62,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
         source-locale={@workspace.source_locale || ""}
         language-options={LanguagePickerOption.all()}
         is-owner={@membership.role == "owner"}
-        can-edit-workspace={@membership.role in ["owner", "admin"]}
+        can-edit-workspace={Workspaces.can?(@membership.role, :manage_workspace)}
         ai={serialize_ai_settings(assigns)}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>
