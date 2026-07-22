@@ -57,7 +57,9 @@ defmodule StoryarnWeb.ExportController do
     |> send_resp(200, output)
   end
 
-  # sobelow_skip ["XSS.ContentType", "XSS.SendResp"]
+  # The ZIP path is generated internally by zip_files_to_disk/1 from
+  # System.tmp_dir!/0 and a unique integer; it never contains request input.
+  # sobelow_skip ["Traversal.FileModule", "XSS.ContentType", "XSS.SendResp"]
   # Multi-file output (list of {filename, content} tuples)
   defp send_export(conn, files, slug, format, _serializer) when is_list(files) do
     filename = "#{slug}-#{format}.zip"
@@ -129,6 +131,8 @@ defmodule StoryarnWeb.ExportController do
   defp validate_export_size(total_bytes, max_bytes),
     do: {:error, {:export_too_large, %{bytes: total_bytes, max_bytes: max_bytes}}}
 
+  # zip_path is the internally generated path returned by zip_files_to_disk/1.
+  # sobelow_skip ["Traversal.FileModule"]
   defp stream_zip_file(conn, zip_path) do
     zip_path
     |> File.stream!(64 * 1024, [])
