@@ -1,0 +1,49 @@
+lib/storyarn/versioning/project_snapshot_crud.ex
+  s_7d17843f59d188::t_1c342305a337b3 262,271-292
+  s_7d17843f59d188::t_4c9b8b80832f24 214-228,254-261,263-270
+test/storyarn/versioning/project_recovery_test.exs
+  s_7d17843f59d188::t_e0ee302036b964 11,28,71-112
+test/storyarn/projects/soft_delete_test.exs
+  s_7d17843f59d188::t_1396c3cd50fb73 225-244
+  s_7d17843f59d188::t_e0ee302036b964 4,16,184-224
+lib/storyarn/projects.ex
+  s_7d17843f59d188::t_ec70828042a157 181-183
+lib/storyarn/workers/recover_project_worker.ex
+  s_7d17843f59d188::t_4c9b8b80832f24 30-36,48-50
+lib/storyarn/projects/project_trash.ex
+  s_7d17843f59d188::t_ec70828042a157 143-150,154-156,159-160,170-173,232,234-235,241-256
+  s_7d17843f59d188::t_c34d177b059ae2 157-158,161-169,175-231
+  s_7d17843f59d188::t_1396c3cd50fb73 151-153,174,233,236-240
+  s_7d17843f59d188::t_554c8a2312e960 335
+lib/storyarn/versioning.ex
+  s_7d17843f59d188::t_4c9b8b80832f24 174-178
+lib/storyarn/workers/trash_retention_worker.ex
+  s_7d17843f59d188::t_ec70828042a157 97,101,105,109
+test/storyarn/versioning/project_snapshot_crud_test.exs
+  s_7d17843f59d188::t_e0ee302036b964 4,14,142-158,160-182
+  s_7d17843f59d188::t_1396c3cd50fb73 159
+lib/storyarn/versioning/project_recovery.ex
+  s_7d17843f59d188::t_822403f5d7d42c 23,42,238-239,277-280,283,285-311
+  s_7d17843f59d188::t_58ab68f37e7377 281-282,284
+  s_7d17843f59d188::t_833f95ded4e6ec 312
+test/storyarn/workers/recover_project_worker_test.exs
+  s_7d17843f59d188::t_999ac4ca12c48e 11,15,171-182,218-219,224-230,255-258,260-261,263-264,293,322-323,328-334,349-420
+test/storyarn/workers/daily_snapshot_worker_test.exs
+  s_7d17843f59d188::t_036fa7531f8a80 10,43,56,64,69,71,96,103,107,120,124,129-144,168-172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "6558cef68358358fa7ce172141233dc7d2f507db",
+  "prompts": {},
+  "sessions": {
+    "s_7d17843f59d188": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fbf-1c01-7451-82e0-8923d01cb5fe",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
