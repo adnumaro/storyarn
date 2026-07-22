@@ -5,14 +5,14 @@ import {
   primarySurface,
   registerPaletteCommands,
   resetPaletteRegistry,
-  type PaletteCommand,
+  type LocalPaletteCommand,
 } from "../../../shared/command-palette/registry";
 
 function command(
   id: string,
   groupKey = "palette.groups.navigation",
   labelKey = `label.${id}`,
-): PaletteCommand {
+): LocalPaletteCommand {
   return { id, labelKey, groupKey, run: () => undefined };
 }
 

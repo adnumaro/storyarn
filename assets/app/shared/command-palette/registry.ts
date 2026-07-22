@@ -1,7 +1,9 @@
 import type { Component } from "vue";
 import { computed, reactive } from "vue";
+import type { AIPaletteCommand } from "./aiCommands";
+import { isAIPaletteCommand } from "./aiCommands";
 
-interface PaletteCommandBase {
+export interface PaletteCommandBase {
   /** Stable identifier, e.g. "flows.toggle-debug-panel". Also the analytics command_id. */
   id: string;
   /** i18n key for the group heading the command renders under. */
@@ -15,18 +17,24 @@ interface PaletteCommandBase {
   disabledReasonKey?: string;
 }
 
-type PaletteCommandExecution =
+type LocalPaletteCommandExecution =
   | { run: () => void | Promise<void>; href?: never }
   | { href: string; run?: never };
+
+type PaletteCommandLabel =
+  | { labelKey: string; label?: never }
+  | { label: string; labelKey?: never };
 
 /**
  * A command labels itself with EITHER an i18n key or a raw data-driven string
  * (workspace names, etc.). The union makes a labelless command a compile
  * error — there is deliberately no render-time fallback.
  */
-export type PaletteCommand = PaletteCommandBase &
-  PaletteCommandExecution &
-  ({ labelKey: string; label?: never } | { label: string; labelKey?: never });
+export type LocalPaletteCommand = PaletteCommandBase &
+  LocalPaletteCommandExecution &
+  PaletteCommandLabel;
+
+export type PaletteCommand = LocalPaletteCommand | (AIPaletteCommand & PaletteCommandLabel);
 
 export interface PaletteRegistration {
   surface: string;
@@ -64,7 +72,11 @@ export const paletteGroups = computed<PaletteGroup[]>(() => {
   for (const { commands } of entries.values()) {
     for (const command of commands) {
       if (seen.has(command.id)) continue;
-      if (command.visible?.() === false) continue;
+      if (isAIPaletteCommand(command)) {
+        if (command.availability.state === "hidden") continue;
+      } else if (command.visible?.() === false) {
+        continue;
+      }
       seen.add(command.id);
 
       const list = groups.get(command.groupKey);

@@ -21,6 +21,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   use StoryarnWeb, :verified_routes
   use Gettext, backend: Storyarn.Gettext
 
+  alias Storyarn.AI
   alias Storyarn.Analytics
   alias Storyarn.Collaboration
   alias Storyarn.CommandPalette
@@ -36,7 +37,8 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   # command_id/surface. Surfaces are the finite set of registration owners;
   # command ids must be EXACTLY a known static id or a numeric nav id — a
   # character-shape regex alone would still let forged hyphenated text
-  # through. New palette commands must be added here to be tracked.
+  # through. Static commands live here; AI command ids come from the canonical
+  # TaskRegistry catalog so product execution and analytics cannot drift.
   @known_surfaces ~w(global project workspace flows sheets scenes localization account)
 
   @static_command_ids MapSet.new(
@@ -256,7 +258,8 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
 
   defp valid_command_id?(command_id) do
     MapSet.member?(@static_command_ids, command_id) or
-      Regex.match?(@nav_command_id_format, command_id)
+      Regex.match?(@nav_command_id_format, command_id) or
+      AI.ai_command_id?(command_id)
   end
 
   defp nav_item(%{type: :workspace} = dest) do

@@ -23,6 +23,14 @@ import {
 import { useKeyboard } from "@shared/composables/useKeyboard";
 import { useLive } from "@shared/composables/useLive";
 import {
+  isAIPaletteCommand,
+  runAICommandCta,
+  runAIPaletteCommand,
+  type AICommandContext,
+  type AICommandCta,
+} from "@shared/command-palette/aiCommands";
+import { openAIDestination } from "@shared/command-palette/aiDestinationRouter";
+import {
   paletteGroups,
   primarySurface,
   type PaletteCommand,
@@ -159,6 +167,7 @@ const deleteItemsLoading = ref(false);
 // True while a create/delete pushEvent awaits its reply — blocks re-submits.
 const pendingMutation = ref(false);
 const pendingCommandId = ref<string | null>(null);
+const activeAICta = ref<{ cta: AICommandCta; context: AICommandContext } | null>(null);
 const paletteBody = ref<HTMLElement | null>(null);
 
 // Stale-reply guard: only the latest request may update the results.
@@ -303,6 +312,7 @@ function openPalette(): void {
   navErrorKey.value = null;
   createTargetsErrorKey.value = null;
   deleteItemsErrorKey.value = null;
+  activeAICta.value = null;
   createTargetsLoaded.value = false;
   step.value = { kind: "root" };
   open.value = true;
@@ -321,6 +331,7 @@ function closePalette(): void {
   resetQuery();
   step.value = { kind: "root" };
   errorKey.value = null;
+  activeAICta.value = null;
   ++mutationToken;
   ++createTargetsToken;
 }
@@ -535,12 +546,74 @@ async function runActionCommand(commandId: string, run: () => void | Promise<voi
   closePalette();
 }
 
+async function runPaletteAICommand(command: PaletteCommand): Promise<void> {
+  if (busy.value || !isAIPaletteCommand(command)) return;
+
+  errorKey.value = null;
+  activeAICta.value = null;
+  pendingCommandId.value = command.id;
+
+  const result = await runAIPaletteCommand(command, { open: openAIDestination });
+  pendingCommandId.value = null;
+
+  if (result.status === "completed") {
+    track("palette_command_executed", { command_id: command.id });
+    closePalette();
+    return;
+  }
+
+  errorKey.value = result.reasonKey;
+  if (result.status === "blocked" && result.cta) {
+    activeAICta.value = { cta: result.cta, context: command.context };
+  }
+}
+
+async function runActiveAICta(): Promise<void> {
+  if (busy.value || !activeAICta.value) return;
+
+  const { cta, context } = activeAICta.value;
+  errorKey.value = null;
+  pendingCommandId.value = `cta:${cta.labelKey}`;
+
+  const result = await runAICommandCta(cta, context, { open: openAIDestination });
+  pendingCommandId.value = null;
+
+  if (result.status === "completed") {
+    activeAICta.value = null;
+    closePalette();
+    return;
+  }
+
+  errorKey.value = result.reasonKey;
+  if (result.status === "blocked" && result.cta) {
+    activeAICta.value = { cta: result.cta, context };
+  }
+}
+
 function onSelect(command: PaletteCommand): void {
-  if (command.href !== undefined) {
+  if (isAIPaletteCommand(command)) {
+    void runPaletteAICommand(command);
+  } else if (command.href !== undefined) {
     runNavigationCommand(command.id, command.href);
   } else {
     void runActionCommand(command.id, command.run);
   }
+}
+
+function commandEnabled(command: PaletteCommand): boolean {
+  if (isAIPaletteCommand(command)) {
+    return command.availability.state === "ready" || command.availability.state === "cta";
+  }
+
+  return command.enabled?.() !== false;
+}
+
+function commandDisabledReasonKey(command: PaletteCommand): string | undefined {
+  if (isAIPaletteCommand(command)) {
+    return command.availability.state === "blocked" ? command.availability.reasonKey : undefined;
+  }
+
+  return command.disabledReasonKey;
 }
 
 function onSelectNav(item: NavItem): void {
@@ -704,9 +777,22 @@ function track(event: string, payload: Record<string, unknown>): void {
         :disabled="busy"
         :placeholder="inputPlaceholder"
       />
-      <p v-if="activeErrorKey" role="alert" class="border-b px-3 py-2 text-sm text-destructive">
-        {{ t(activeErrorKey) }}
-      </p>
+      <div
+        v-if="activeErrorKey"
+        role="alert"
+        class="flex items-center justify-between gap-3 border-b px-3 py-2 text-sm text-destructive"
+      >
+        <span>{{ t(activeErrorKey) }}</span>
+        <button
+          v-if="activeAICta"
+          type="button"
+          class="btn btn-ghost btn-xs shrink-0"
+          :disabled="busy"
+          @click="runActiveAICta"
+        >
+          {{ t(activeAICta.cta.labelKey) }}
+        </button>
+      </div>
       <p
         v-if="activeLoading"
         role="status"
@@ -725,10 +811,10 @@ function track(event: string, payload: Record<string, unknown>): void {
               v-for="command in group.commands"
               :key="command.id"
               :value="command.id"
-              :disabled="busy || command.enabled?.() === false"
+              :disabled="busy || !commandEnabled(command)"
               :title="
-                command.enabled?.() === false && command.disabledReasonKey
-                  ? t(command.disabledReasonKey)
+                !commandEnabled(command) && commandDisabledReasonKey(command)
+                  ? t(commandDisabledReasonKey(command)!)
                   : undefined
               "
               @select="onSelect(command)"

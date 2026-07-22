@@ -44,6 +44,8 @@ config :posthog,
 
 # Oban: inline mode for testing
 config :storyarn, Oban, testing: :manual
+config :storyarn, Storyarn.AI.CredentialResolver, StoryarnTest.AI.FakeCredentialResolver
+config :storyarn, Storyarn.AI.InferenceProviders, providers: %{"fake" => Storyarn.AI.InferenceProviders.Fake}
 
 # Route AI-provider validation calls through Req.Test stubs so no test opens
 # an outbound socket. Each provider adapter has its own stub name so tests can
@@ -55,6 +57,22 @@ config :storyarn, Storyarn.AI.Providers.Google, req_options: [plug: {Req.Test, S
 config :storyarn, Storyarn.AI.Providers.Mistral, req_options: [plug: {Req.Test, StoryarnTest.AI.Mistral}]
 config :storyarn, Storyarn.AI.Providers.Moonshot, req_options: [plug: {Req.Test, StoryarnTest.AI.Moonshot}]
 config :storyarn, Storyarn.AI.Providers.OpenAI, req_options: [plug: {Req.Test, StoryarnTest.AI.OpenAI}]
+
+config :storyarn, Storyarn.AI.RouteResolver,
+  managed: [
+    provider: "fake",
+    model: "deterministic-v1",
+    credential_ref: "test-managed",
+    payer: "storyarn",
+    assignment_source: "contract_test",
+    consent_basis: "workspace_policy"
+  ]
+
+config :storyarn, Storyarn.AI.Settlement, StoryarnTest.AI.FakeSettlement
+
+# Slice-2 contract tests use a deterministic provider and non-financial fake
+# settlement. Production keeps every one of these boundaries unavailable.
+config :storyarn, Storyarn.AI.TaskRegistry, tasks: [StoryarnTest.AI.ContractTask]
 
 # In test we don't send emails
 config :storyarn, Storyarn.Mailer, adapter: Swoosh.Adapters.Test

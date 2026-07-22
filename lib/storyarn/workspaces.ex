@@ -39,6 +39,8 @@ defmodule Storyarn.Workspaces do
           | :access_workspace_settings
           | :manage_members
           | :create_project
+          | :use_ai
+          | :run_bulk_ai
           | :view
 
   # =============================================================================

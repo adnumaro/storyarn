@@ -110,6 +110,21 @@ defmodule Storyarn.RateLimiterTest do
     end
   end
 
+  describe "AI execution buckets" do
+    test "separates preflight from accepted operations and scopes both by task" do
+      with_rate_limiting_enabled(fn ->
+        user_id = System.unique_integer([:positive])
+
+        assert :ok = RateLimiter.check_ai_preflight(user_id, "dialogue.translate", 1)
+        assert {:error, :rate_limited} = RateLimiter.check_ai_preflight(user_id, "dialogue.translate", 1)
+        assert :ok = RateLimiter.check_ai_preflight(user_id, "dialogue.summarize", 1)
+
+        assert :ok = RateLimiter.check_ai_execution(user_id, "dialogue.translate", 1)
+        assert {:error, :rate_limited} = RateLimiter.check_ai_execution(user_id, "dialogue.translate", 1)
+      end)
+    end
+  end
+
   describe "backend/0" do
     test "defaults to ETS backend" do
       assert RateLimiter.backend() == ETSBackend
