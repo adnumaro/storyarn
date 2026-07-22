@@ -180,6 +180,28 @@ defmodule Storyarn.Sheets.HealthCheckerTest do
       assert :required_table_cell_empty in warning_codes(findings)
     end
 
+    test "treats a blank required formula expression as empty" do
+      table_block = block(1, "table", variable_name: "stats")
+      column = column(10, "total", "formula", required: true)
+      row = row(20, "hero", %{"total" => %{"expression" => "  ", "bindings" => %{}}})
+
+      findings =
+        check(sheet(), [table_block], table_data: %{1 => %{columns: [column], rows: [row]}})
+
+      assert :required_table_cell_empty in warning_codes(findings)
+    end
+
+    test "rejects scalar reference table cells" do
+      table_block = block(1, "table", variable_name: "stats")
+      column = column(10, "owner", "reference")
+      row = row(20, "hero", %{"owner" => "sheet:123"})
+
+      findings =
+        check(sheet(), [table_block], table_data: %{1 => %{columns: [column], rows: [row]}})
+
+      assert :invalid_block_value in error_codes(findings)
+    end
+
     test "detects invalid formula expressions, unbound symbols, and invalid bindings" do
       table_block = block(1, "table", variable_name: "stats")
       number = column(10, "base", "number")

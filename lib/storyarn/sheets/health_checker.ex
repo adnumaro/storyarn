@@ -304,14 +304,15 @@ defmodule Storyarn.Sheets.HealthChecker do
     type = field(column, :type)
     value = row |> field(:cells, %{}) |> Map.get(field(column, :slug))
     location = {row, column}
+    invalid_value? = invalid_cell_value?(type, value)
 
     []
     |> maybe_add(
-      invalid_cell_value?(type, value),
+      invalid_value?,
       located_finding(sheet, block, row, column, :invalid_block_value, %{expected: expected_value(type)})
     )
     |> maybe_add(
-      field(column, :required, false) and empty_cell?(value),
+      not invalid_value? and field(column, :required, false) and required_cell_empty?(type, value),
       located_finding(sheet, block, row, column, :required_table_cell_empty)
     )
     |> Kernel.++(
@@ -661,7 +662,7 @@ defmodule Storyarn.Sheets.HealthChecker do
     not ((blank?(target_type) and blank?(target_id)) or (target_type in ["sheet", "flow"] and not blank?(target_id)))
   end
 
-  defp invalid_cell_value?("reference", value), do: not (is_nil(value) or is_binary(value) or is_list(value))
+  defp invalid_cell_value?("reference", value), do: not is_nil(value)
   defp invalid_cell_value?("formula", value), do: not (is_nil(value) or is_map(value))
   defp invalid_cell_value?(type, value) when type in ["table", "gallery"], do: not is_map(value)
   defp invalid_cell_value?(_type, _value), do: false
@@ -694,6 +695,14 @@ defmodule Storyarn.Sheets.HealthChecker do
 
   defp empty_cell?(value) when is_binary(value), do: String.trim(value) == ""
   defp empty_cell?(value), do: value in [nil, []]
+
+  defp required_cell_empty?("formula", value) when is_map(value), do: blank?(field(value, :expression))
+
+  defp required_cell_empty?("reference", value) when is_map(value) do
+    blank?(field(value, :target_type)) or blank?(field(value, :target_id))
+  end
+
+  defp required_cell_empty?(_type, value), do: empty_cell?(value)
 
   defp duplicate_values?(values), do: length(values) != length(Enum.uniq(values))
 
