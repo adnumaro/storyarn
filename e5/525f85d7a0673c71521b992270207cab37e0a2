@@ -1,0 +1,95 @@
+lib/storyarn_web/live/scene_live/show.ex
+  s_601e46785f4b81::t_8b83644bcf9421 535-536,1941
+  s_601e46785f4b81::t_c75b9793cb5595 181-182,450-452,537-539,693,704-708,1618-1621,1775-1777,1943,1946-1947
+  s_601e46785f4b81::t_9803d6c1564f32 1639-1646,1662-1669
+  s_601e46785f4b81::t_c7a796fdafdd69 802
+  s_601e46785f4b81::t_ce425780697e0d 6-7,486,713-720,724
+  s_601e46785f4b81::t_ba0313b70b10f8 725
+  s_601e46785f4b81::t_73e15a2f66e822 1942
+  s_601e46785f4b81::t_b63916a8ceae5a 1948
+test/storyarn/scenes/scene_stats_test.exs
+  s_601e46785f4b81::t_595f5d125f9ff3 4,107-141
+  s_601e46785f4b81::t_82d47a1f227403 60,64,66,68-69,76,78-79,85,87,89-90,101,103,105-106
+assets/app/locales/es/scenes.json
+  s_601e46785f4b81::t_19e510c481c64a 21-22
+  s_601e46785f4b81::t_c8deb9f24f63f7 8,40-83
+  s_6112f11c106698::t_ea220f4bae95a2 84
+assets/app/test/live/scene/dashboard/SceneDashboard.test.ts
+  s_601e46785f4b81::t_9bfd67af36bd4d 1-73
+test/storyarn/scenes/health_checker_test.exs
+  s_601e46785f4b81::t_1106d45ffdc445 1-316
+  s_601e46785f4b81::t_10dcb0b83ef571 317-334
+lib/storyarn/scenes/scene_stats.ex
+  s_601e46785f4b81::t_d54ad20402c7a1 8,85-93,95,100-102,104,109-111,113,118-124,126,137-152,154,159-174,176,181-196,198,203-223,225-233,241-256,258,263-278,280,289-305,307,312-328,330,335-350,352
+  s_601e46785f4b81::t_38b517279bd7e8 6,10-11,13,16,62,66,68-70,72-81,84,96,99,105,108,112,114-117,125,127-136,153,155-158,175,177-180,199-202,224,234-240,257,259-262,279,281-288,306,308-311,329,331-334,351,353-370
+lib/storyarn/scenes/health_checker.ex
+  s_601e46785f4b81::t_86852fc8327b76 604-605,613
+  s_601e46785f4b81::t_d54ad20402c7a1 444-445,457-472,502,504-545,598,619-622,659
+  s_601e46785f4b81::t_53dddd86472a79 32-36,323-326,561-564,574-580,633-639,652,670,677-679
+  s_601e46785f4b81::t_3cea334764104c 1-31,37-322,327-443,446-456,473-501,503,546-560,565-573,581-597,599-603,606-612,614-617,624-632,640-651,653-658,660-669,671-676,680-761
+  s_601e46785f4b81::t_65062cd2b908f1 618,623
+assets/app/live/scene/show/SceneHeader.vue
+  s_601e46785f4b81::t_87c5bb6cddbee7 3,5,28,53-54
+lib/storyarn_web/live/scene_live/index.ex
+  s_601e46785f4b81::t_3177b03bf5daec 189-190,275-286,288-289,291-295,297-298,300-304,306-309
+assets/app/live/scene/dashboard/SceneDashboard.vue
+  s_601e46785f4b81::t_3177b03bf5daec 11,89-92,143-144,352,358-359,363-367,369-370,373-381
+  s_601e46785f4b81::t_952977913d47ab 312
+  s_7d17843f59d188::t_4984bf38b4d100 145-146
+assets/app/modules/scenes/types/health.ts
+  s_601e46785f4b81::t_87c5bb6cddbee7 1-24
+assets/app/test/live/scene/show/SceneHealthStatus.test.ts
+  s_601e46785f4b81::t_fea5dfd2998be2 98-105
+  s_601e46785f4b81::t_9bfd67af36bd4d 1-97,106-110
+assets/app/modules/scenes/editor/components/chrome/header/SceneHealthStatus.vue
+  s_601e46785f4b81::t_1a3848aedb3347 39-44,97,102
+  s_601e46785f4b81::t_87c5bb6cddbee7 1-38,45-96,98-101,103-136
+  s_601e46785f4b81::t_fd287250169047 137-138
+lib/storyarn/scenes.ex
+  s_601e46785f4b81::t_6573f7dc08cacd 655-656
+test/storyarn_web/live/scene_live/index_test.exs
+  s_601e46785f4b81::t_ce425780697e0d 306-331
+test/storyarn_web/live/scene_live/show_test.exs
+  s_601e46785f4b81::t_a2fa798e24f04f 290,295,3193-3207
+  s_601e46785f4b81::t_ce425780697e0d 274-289,291-294,296-297,3208
+assets/app/locales/en/scenes.json
+  s_601e46785f4b81::t_19e510c481c64a 21-22
+  s_601e46785f4b81::t_c8deb9f24f63f7 8,40-83
+  s_6112f11c106698::t_f0a943eedcf763 84
+lib/storyarn_web/live/scene_live/helpers/health_helpers.ex
+  s_601e46785f4b81::t_d54ad20402c7a1 21-22,28-37,39-69,175-177
+  s_601e46785f4b81::t_c75b9793cb5595 113-114
+  s_601e46785f4b81::t_ac38ae593fbe80 1-20,23-27,38,70-112,115-174,178-188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "e5525f85d7a0673c71521b992270207cab37e0a2",
+  "prompts": {},
+  "sessions": {
+    "s_601e46785f4b81": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b4-a630-7780-b438-bc2aa3d9363e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_6112f11c106698": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b7-96ce-73c1-8639-7be0374aaff0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_7d17843f59d188": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fbf-1c01-7451-82e0-8923d01cb5fe",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
