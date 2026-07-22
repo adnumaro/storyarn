@@ -841,6 +841,19 @@ defmodule Storyarn.SheetsTest do
       assert deleted.deleted_at
     end
 
+    test "delete_sheet_subtree/1 returns the committed cascade ids" do
+      user = user_fixture()
+      project = project_fixture(user)
+      root = sheet_fixture(project, %{name: "Root"})
+      child = sheet_fixture(project, %{name: "Child", parent_id: root.id})
+      grandchild = sheet_fixture(project, %{name: "Grandchild", parent_id: child.id})
+
+      assert {:ok, %{entity: deleted, deleted_ids: ids}} = Sheets.delete_sheet_subtree(root)
+
+      assert deleted.id == root.id
+      assert Enum.sort(ids) == Enum.sort([root.id, child.id, grandchild.id])
+    end
+
     test "sets deleted_at on all descendant sheets" do
       user = user_fixture()
       project = project_fixture(user)

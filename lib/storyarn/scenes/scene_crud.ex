@@ -359,19 +359,20 @@ defmodule Storyarn.Scenes.SceneCrud do
   end
 
   @doc """
-  Ids the cascading soft-delete of this scene will remove (itself included).
-  Traverses the same parent_id tree `SoftDelete.soft_delete_children/4` walks,
-  so broadcasts about a deletion can name every affected entity.
-  """
-  def subtree_ids(%Scene{} = scene) do
-    [scene.id | SharedTree.descendant_ids(Scene, scene.project_id, scene.id)]
-  end
-
-  @doc """
   Soft-deletes a scene by setting deleted_at.
   Also soft-deletes all children recursively.
   """
   def delete_scene(%Scene{} = scene) do
+    with {:ok, %{entity: entity}} <- delete_scene_subtree(scene), do: {:ok, entity}
+  end
+
+  @doc """
+  Same soft-delete as `delete_scene/1`, additionally returning `deleted_ids` —
+  the committed cascade set, collected by the deletion itself under the same
+  lock. Callers that broadcast about the deletion MUST use these ids: a
+  separate pre-delete traversal can desync from concurrent tree changes.
+  """
+  def delete_scene_subtree(%Scene{} = scene) do
     result =
       SceneReferenceIntegrity.with_active_scene_lock(
         scene.id,
@@ -379,13 +380,14 @@ defmodule Storyarn.Scenes.SceneCrud do
         fn locked_scene ->
           case locked_scene |> Scene.delete_changeset() |> Repo.update() do
             {:ok, deleted_scene} ->
-              SoftDelete.soft_delete_children(
-                Scene,
-                locked_scene.project_id,
-                locked_scene.id
-              )
+              child_ids =
+                SoftDelete.soft_delete_children(
+                  Scene,
+                  locked_scene.project_id,
+                  locked_scene.id
+                )
 
-              {:ok, deleted_scene}
+              {:ok, %{entity: deleted_scene, deleted_ids: [deleted_scene.id | child_ids]}}
 
             {:error, changeset} ->
               {:error, changeset}
@@ -394,7 +396,7 @@ defmodule Storyarn.Scenes.SceneCrud do
       )
 
     case result do
-      {:ok, deleted_scene} ->
+      {:ok, %{entity: deleted_scene}} ->
         Collaboration.broadcast_dashboard_change(deleted_scene.project_id, :scenes)
 
       _ ->

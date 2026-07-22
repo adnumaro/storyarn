@@ -148,6 +148,11 @@ const pendingMutation = ref(false);
 
 // Stale-reply guard: only the latest request may update the results.
 let navToken = 0;
+// Mutation replies are checked against this separately from navToken (typing
+// must never invalidate an in-flight create/delete): closing the palette or
+// changing step abandons the flow, so a late reply must not navigate or
+// mutate the reopened palette's state.
+let mutationToken = 0;
 let navDebounce: ReturnType<typeof setTimeout> | null = null;
 let suppressQueryWatch = false;
 
@@ -224,6 +229,7 @@ function closePalette(): void {
   step.value = { kind: "root" };
   errorKey.value = null;
   pendingMutation.value = false;
+  ++mutationToken;
 }
 
 function resetQuery(): void {
@@ -235,6 +241,8 @@ function resetQuery(): void {
 function enterStep(next: PaletteStep): void {
   step.value = next;
   errorKey.value = null;
+  pendingMutation.value = false;
+  ++mutationToken;
   ++navToken;
   if (navDebounce) clearTimeout(navDebounce);
   resetQuery();
@@ -372,25 +380,30 @@ function onSelectCreateTarget(target: CreateTarget): void {
   const entityType = current.entityType;
   errorKey.value = null;
   pendingMutation.value = true;
+  const token = ++mutationToken;
 
-  try {
-    live.pushEvent(
-      "palette_create",
-      { type: entityType, project_id: target.id },
-      (reply: MutationReply) => {
-        pendingMutation.value = false;
-        const url = reply?.url;
-        if (url) {
-          runCommand(`create.${entityType}`, () => liveNavigate(url));
-        } else {
-          errorKey.value = errorMessageKeys[reply?.error ?? ""] ?? "palette.command_failed";
-        }
-      },
-    );
-  } catch {
-    pendingMutation.value = false;
-    errorKey.value = "palette.command_failed";
-  }
+  // useLive's pushEvent never throws — transport failures arrive through the
+  // onError callback, which must clear the pending state or the palette
+  // would be stuck unclickable.
+  live.pushEvent(
+    "palette_create",
+    { type: entityType, project_id: target.id },
+    (reply: MutationReply) => {
+      if (token !== mutationToken) return;
+      pendingMutation.value = false;
+      const url = reply?.url;
+      if (url) {
+        runCommand(`create.${entityType}`, () => liveNavigate(url));
+      } else {
+        errorKey.value = errorMessageKeys[reply?.error ?? ""] ?? "palette.command_failed";
+      }
+    },
+    () => {
+      if (token !== mutationToken) return;
+      pendingMutation.value = false;
+      errorKey.value = "palette.command_failed";
+    },
+  );
 }
 
 function onSelectDeleteItem(item: DeleteItem): void {
@@ -404,30 +417,35 @@ function confirmDelete(): void {
   const item = current.item;
   errorKey.value = null;
   pendingMutation.value = true;
+  const token = ++mutationToken;
 
-  try {
-    live.pushEvent(
-      "palette_delete",
-      { type: item.type, id: item.id, project_id: item.projectId },
-      (reply: MutationReply) => {
-        pendingMutation.value = false;
-        if (reply?.deleted) {
-          track("palette_command_executed", { command_id: `delete.${item.type}` });
-          // Drop the stale listing BEFORE showing it again: the deleted
-          // entity must never reappear as a selectable target while the
-          // refresh is in flight.
-          deleteItems.value = [];
-          // Back to the refreshed listing — the flow never leaves the palette.
-          enterStep({ kind: "delete-pick-entity" });
-        } else {
-          errorKey.value = errorMessageKeys[reply?.error ?? ""] ?? "palette.command_failed";
-        }
-      },
-    );
-  } catch {
-    pendingMutation.value = false;
-    errorKey.value = "palette.command_failed";
-  }
+  // useLive's pushEvent never throws — transport failures arrive through the
+  // onError callback, which must clear the pending state or the palette
+  // would be stuck unclickable.
+  live.pushEvent(
+    "palette_delete",
+    { type: item.type, id: item.id, project_id: item.projectId },
+    (reply: MutationReply) => {
+      if (token !== mutationToken) return;
+      pendingMutation.value = false;
+      if (reply?.deleted) {
+        track("palette_command_executed", { command_id: `delete.${item.type}` });
+        // Drop the stale listing BEFORE showing it again: the deleted
+        // entity must never reappear as a selectable target while the
+        // refresh is in flight.
+        deleteItems.value = [];
+        // Back to the refreshed listing — the flow never leaves the palette.
+        enterStep({ kind: "delete-pick-entity" });
+      } else {
+        errorKey.value = errorMessageKeys[reply?.error ?? ""] ?? "palette.command_failed";
+      }
+    },
+    () => {
+      if (token !== mutationToken) return;
+      pendingMutation.value = false;
+      errorKey.value = "palette.command_failed";
+    },
+  );
 }
 
 function onNoResults(queryLength: number): void {

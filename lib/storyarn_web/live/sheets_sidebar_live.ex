@@ -160,8 +160,7 @@ defmodule StoryarnWeb.SheetsSidebarLive do
   defp confirm_delete_sheet(socket) do
     TreeSidebarActions.confirm_delete(socket, %{
       get_entity: &Sheets.get_sheet/2,
-      subtree_ids: &Sheets.subtree_ids/1,
-      delete_entity: &Sheets.delete_sheet/1,
+      delete_entity: &Sheets.delete_sheet_subtree/1,
       broadcast_deleted: &broadcast_entities_deleted/2,
       refresh_tree: &refresh_tree_and_broadcast/1,
       deleted_message: dgettext("sheets", "Sheet moved to trash."),

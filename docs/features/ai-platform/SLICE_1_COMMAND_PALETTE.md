@@ -1,6 +1,6 @@
 # Slice 1 — Command Palette Foundation (no AI)
 
-**Status: COMPLETE. F1 foundation + universal navigation MERGED (PR #30); F2 creation + F3 deletion in review (PR #31, `feat/palette-entity-commands`) — see "Implementation status & handoff" below.**
+**Status: IN REVIEW. F1 foundation + universal navigation MERGED (PR #30); F2 creation + F3 deletion in review (PR #31, `feat/palette-entity-commands`), owner browser verification pending — see "Implementation status & handoff" below.**
 
 ## Objective
 
@@ -76,7 +76,7 @@ Owner-resolved design (all decided in chat before coding):
 - Analytics: new static ids `create.project|sheet|flow|scene`, `delete.sheet|flow|scene` added to `@static_command_ids` (mandatory for tracking). Server error codes (`unauthorized`, `limit_reached`, `not_found`, `create_failed`, `delete_failed`) map to explicit client messages; `limit_reached`/`unauthorized` have specific texts.
 - Riders: `flows/scenes.tree.delete_description` keys added (en/es) and the hardcoded English literals in `FlowTree.vue`/`SceneTree.vue` confirm dialogs replaced with `$t` (pre-existing i18n drift).
 
-**Deletion broadcast contract (cubic round 1, 2026-07-22)**: the legacy type-blind `{:entity_deleted, id}` was replaced everywhere by `{:entities_deleted, :sheet | :flow | :scene, ids}` carrying the FULL cascade set — `Sheets/Flows/Scenes.subtree_ids/1` (backed by `PropertyInheritance.get_descendant_sheet_ids/1` for sheets and the new `Shared.TreeOperations.descendant_ids/3` for flows/scenes) is collected BEFORE the delete, so open editors of the entity OR any cascade-deleted descendant navigate away, and same-numeric-id collisions across types no longer misfire. Both emitters (sidebar `TreeSidebarActions` path and the palette hook) and all six Show/Index consumers use the typed shape.
+**Deletion broadcast contract (cubic rounds 1–2, 2026-07-22)**: the legacy type-blind `{:entity_deleted, id}` was replaced everywhere by `{:entities_deleted, :sheet | :flow | :scene, ids}` carrying the FULL committed cascade set. The ids are reported by the deletion itself — `Sheets.delete_sheet_subtree/1` / `Flows.delete_flow_subtree/1` / `Scenes.delete_scene_subtree/1` return `{:ok, %{entity, deleted_ids}}` collected UNDER the delete's own locks (`SoftDelete.soft_delete_children/4` now returns the ids it cascades) — so the broadcast can never desync from a concurrent tree change, open editors of the entity OR any cascade-deleted descendant navigate away, and same-numeric-id collisions across types no longer misfire. Both emitters (sidebar `TreeSidebarActions` path and the palette hook) and all six Show/Index consumers use the typed shape.
 
 ### Also pending
 

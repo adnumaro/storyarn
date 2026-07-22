@@ -27,6 +27,11 @@ defmodule Storyarn.Shared.SoftDelete do
   Finds all non-deleted children of the given schema matching `project_id` and
   `parent_id`, sets their `deleted_at`, and recurses into each child's subtree.
 
+  Returns the ids of every soft-deleted descendant — the authoritative cascade
+  set, collected by the deletion itself (callers broadcasting about the delete
+  must use THIS, never a separate pre-delete traversal, or concurrent tree
+  changes desync the broadcast from the committed cascade).
+
   ## Options
 
     * `:pre_delete` - A function called with each child before soft-deleting it.
@@ -42,11 +47,11 @@ defmodule Storyarn.Shared.SoftDelete do
         from(s in schema, where: s.project_id == ^project_id and s.parent_id == ^parent_id and is_nil(s.deleted_at))
       )
 
-    Enum.each(children, fn child ->
+    Enum.flat_map(children, fn child ->
       if pre_delete, do: pre_delete.(child)
 
       Repo.update_all(from(s in schema, where: s.id == ^child.id), set: [deleted_at: now])
-      soft_delete_children(schema, project_id, child.id, opts)
+      [child.id | soft_delete_children(schema, project_id, child.id, opts)]
     end)
   end
 end

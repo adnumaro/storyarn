@@ -148,6 +148,18 @@ defmodule Storyarn.ScenesTest do
       assert deleted_scene.id in Enum.map(Scenes.list_deleted_scenes(project.id), & &1.id)
     end
 
+    test "delete_scene_subtree/1 returns the committed cascade ids" do
+      user = user_fixture()
+      project = project_fixture(user)
+      parent = scene_fixture(project, %{name: "World"})
+      child = scene_fixture(project, %{name: "Region", parent_id: parent.id})
+
+      assert {:ok, %{entity: deleted, deleted_ids: ids}} = Scenes.delete_scene_subtree(parent)
+
+      assert deleted.id == parent.id
+      assert Enum.sort(ids) == Enum.sort([parent.id, child.id])
+    end
+
     test "delete_scene/1 cascades soft-delete to children" do
       user = user_fixture()
       project = project_fixture(user)

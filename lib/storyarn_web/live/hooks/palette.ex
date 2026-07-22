@@ -55,6 +55,10 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
 
   @nav_command_id_format ~r/^nav\.(workspace|project|project-settings|workspace-settings|sheet|flow|scene)\.[1-9]\d{0,19}$/
 
+  # Client-supplied ids above the PostgreSQL bigint range would raise on
+  # parameter encoding instead of failing closed — bound them at the guard.
+  @max_pg_bigint 9_223_372_036_854_775_807
+
   def on_mount(:setup_palette, _params, _session, socket) do
     {:cont,
      Phoenix.LiveView.attach_hook(
@@ -105,7 +109,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   end
 
   defp handle_palette_event("palette_create", %{"type" => type, "project_id" => project_id}, socket)
-       when type in ~w(sheet flow scene) and is_integer(project_id) and project_id > 0 do
+       when type in ~w(sheet flow scene) and is_integer(project_id) and project_id > 0 and project_id <= @max_pg_bigint do
     scope = socket.assigns.current_scope
 
     reply =
@@ -151,16 +155,16 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   end
 
   defp handle_palette_event("palette_delete", %{"type" => type, "id" => id, "project_id" => project_id}, socket)
-       when type in ~w(sheet flow scene) and is_integer(id) and id > 0 and is_integer(project_id) and project_id > 0 do
+       when type in ~w(sheet flow scene) and is_integer(id) and id > 0 and id <= @max_pg_bigint and is_integer(project_id) and
+              project_id > 0 and project_id <= @max_pg_bigint do
     scope = socket.assigns.current_scope
 
     reply =
       with {:ok, %{entity: entity, project: project}} <-
              GlobalSearch.deletable_entity(scope, entity_type(type), project_id, id),
-           # Collected BEFORE the delete: the broadcast names the entity AND
-           # every descendant the cascade removes.
-           deleted_ids = subtree_ids(type, entity),
-           {:ok, _} <- delete_entity(type, entity) do
+           # The delete itself reports the committed cascade set (collected
+           # under its own lock) — never a separate pre-delete traversal.
+           {:ok, %{deleted_ids: deleted_ids}} <- delete_entity_subtree(type, entity) do
         # Plain broadcast (not broadcast_from): the LV serving this event may
         # itself be showing a deleted entity and must navigate away too.
         broadcast_entities_deleted(project.id, entity_type(type), deleted_ids)
@@ -277,13 +281,9 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   defp create_entity("flow", project), do: Flows.create_flow(project, %{name: dgettext("flows", "Untitled")})
   defp create_entity("scene", project), do: Scenes.create_scene(project, %{name: dgettext("scenes", "Untitled")})
 
-  defp delete_entity("sheet", entity), do: Sheets.delete_sheet(entity)
-  defp delete_entity("flow", entity), do: Flows.delete_flow(entity)
-  defp delete_entity("scene", entity), do: Scenes.delete_scene(entity)
-
-  defp subtree_ids("sheet", entity), do: Sheets.subtree_ids(entity)
-  defp subtree_ids("flow", entity), do: Flows.subtree_ids(entity)
-  defp subtree_ids("scene", entity), do: Scenes.subtree_ids(entity)
+  defp delete_entity_subtree("sheet", entity), do: Sheets.delete_sheet_subtree(entity)
+  defp delete_entity_subtree("flow", entity), do: Flows.delete_flow_subtree(entity)
+  defp delete_entity_subtree("scene", entity), do: Scenes.delete_scene_subtree(entity)
 
   defp tree_key("sheet"), do: :sheets
   defp tree_key("flow"), do: :flows

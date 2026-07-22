@@ -568,6 +568,87 @@ describe("CommandPalette", () => {
       expect(itemValues(wrapper)).toContain("delete-sheet-7");
     });
 
+    it("a transport failure clears the pending state and stays recoverable", async () => {
+      const { live, wrapper } = mountPalette();
+
+      vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+        if (event === "palette_delete_search" && callback) {
+          callback({
+            token: (payload as { token: number }).token,
+            items: [{ id: 7, type: "sheet", label: "Kael", context: "Veilbreak", projectId: 11 }],
+          });
+        }
+
+        // The raw LiveVue pushEvent throws when the socket is gone; the
+        // useLive wrapper turns that into the component's onError callback.
+        if (event === "palette_delete") {
+          throw new Error("socket gone");
+        }
+      });
+
+      pressPaletteShortcut();
+      await nextTick();
+      selectItem(wrapper, "palette.delete-entity");
+      await nextTick();
+      selectItem(wrapper, "delete-sheet-7");
+      await nextTick();
+
+      selectItem(wrapper, "palette.confirm-delete");
+      await nextTick();
+
+      expect(wrapper.find('[role="alert"]').text()).toBe("The command failed to run. Try again.");
+
+      // Not stuck pending: the confirm can be retried.
+      selectItem(wrapper, "palette.confirm-delete");
+      await nextTick();
+
+      const deleteCalls = vi
+        .mocked(live.pushEvent)
+        .mock.calls.filter(([event]) => event === "palette_delete");
+      expect(deleteCalls).toHaveLength(2);
+    });
+
+    it("a mutation reply arriving after close is discarded", async () => {
+      const { live, wrapper } = mountPalette();
+      let deleteCallback: ((reply: { deleted: boolean }) => void) | null = null;
+
+      vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+        if (event === "palette_delete_search" && callback) {
+          callback({
+            token: (payload as { token: number }).token,
+            items: [{ id: 7, type: "sheet", label: "Kael", context: "Veilbreak", projectId: 11 }],
+          });
+        }
+
+        if (event === "palette_delete" && callback) {
+          deleteCallback = callback as (reply: { deleted: boolean }) => void;
+        }
+      });
+
+      pressPaletteShortcut();
+      await nextTick();
+      selectItem(wrapper, "palette.delete-entity");
+      await nextTick();
+      selectItem(wrapper, "delete-sheet-7");
+      await nextTick();
+      selectItem(wrapper, "palette.confirm-delete");
+      await nextTick();
+
+      pressPaletteShortcut(); // close while the delete is in flight
+      await nextTick();
+
+      deleteCallback!({ deleted: true });
+      await nextTick();
+
+      // The stale reply must not reopen state or track an execution.
+      expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(false);
+
+      const executedCalls = vi
+        .mocked(live.pushEvent)
+        .mock.calls.filter(([event]) => event === "palette_command_executed");
+      expect(executedCalls).toHaveLength(0);
+    });
+
     it("an unauthorized reply keeps the confirm step with an explicit error", async () => {
       const { live, wrapper } = mountPalette();
       deleteReplyMock(live, { deleteReply: { error: "unauthorized" } });

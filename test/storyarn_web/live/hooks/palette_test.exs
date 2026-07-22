@@ -296,6 +296,29 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       assert_receive {:tree_changed, :sheets}
     end
 
+    test "an id beyond the bigint range is rejected before reaching the database",
+         %{view: view, user: user} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+      sheet = sheet_fixture(project)
+
+      # No guard matches, so the event falls through to the LV like any
+      # unknown event (crashing only the forging client's own session) —
+      # instead of raising inside database parameter encoding. The crash
+      # propagates through the test proxy link; trap it.
+      Process.flag(:trap_exit, true)
+
+      catch_exit(
+        render_hook(view, "palette_delete", %{
+          "type" => "sheet",
+          "id" => 9_223_372_036_854_775_808,
+          "project_id" => project.id
+        })
+      )
+
+      assert %{} = Storyarn.Sheets.get_sheet(project.id, sheet.id)
+    end
+
     test "rejects view-only and mismatched ids — nothing is deleted", %{view: view, user: user} do
       viewer_owner = user_fixture()
       viewer_project = project_fixture(viewer_owner, %{workspace: workspace_fixture(viewer_owner)})

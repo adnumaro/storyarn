@@ -192,8 +192,7 @@ defmodule StoryarnWeb.FlowSidebarLive do
   defp confirm_delete_flow(socket) do
     TreeSidebarActions.confirm_delete(socket, %{
       get_entity: &Flows.get_flow/2,
-      subtree_ids: &Flows.subtree_ids/1,
-      delete_entity: &Flows.delete_flow/1,
+      delete_entity: &Flows.delete_flow_subtree/1,
       broadcast_deleted: &broadcast_entities_deleted/2,
       refresh_tree: &refresh_tree_and_broadcast/1,
       deleted_message: dgettext("flows", "Flow moved to trash."),
