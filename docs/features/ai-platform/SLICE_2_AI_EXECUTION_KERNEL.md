@@ -1,5 +1,7 @@
 # Slice 2 — AI Execution Kernel + Palette Bridge
 
+**Status: implemented on `codex/slice2-ai-execution-kernel`; pending review and merge. The production task/provider/route catalogs remain empty, so this adds no user-facing AI command, provider call, allowance, or payment dependency.**
+
 ## Objective
 
 Build the provider-neutral, payment-neutral execution contract used by every AI feature: typed tasks, actor-scoped policy decisions, durable operations, per-attempt usage records, temporary results, explicit outcomes, and the command-palette bridge. This slice does **not** call a production model, grant AI allowance, or expose a user-facing AI tool.
@@ -158,7 +160,18 @@ Revoked credentials, changed workspace policy, stale entity revisions, or lost m
 
 ## Delivery
 
-Branch `feat/ai-execution-kernel` from `main` → PR → merge before Slice 3. The kernel has no user-facing AI surface; `:ai_integrations` remains disabled by default.
+Branch `codex/slice2-ai-execution-kernel` from `main` → PR → merge before Slice 3. The kernel has no user-facing AI surface; `:ai_integrations` remains disabled by default.
+
+## Implementation status & handoff (2026-07-22)
+
+- `Storyarn.AI` is the only public execution boundary. It now exposes registered intents, opaque route preflight, idempotent execute/cancel, actor-private result read/apply/dismiss and owner-controlled workspace policy. There is no generic client-shaped completion endpoint.
+- `TaskRegistry`, `PolicyDecision`, `RouteResolver`, `CredentialResolver`, `Settlement` and `InferenceProvider` are separate boundaries. Production registers no tasks, providers, credentials, routes or settlement adapter; tests use one deterministic contract task and fake adapters.
+- `ai_operations`, zero-or-one `ai_usage_events`, encrypted `ai_results`, short-lived actor-bound `ai_route_options`, versioned workspace policy and append-only policy audit are durable. Project/workspace deletion purges temporary content while retaining content-free operation/usage history and snapshot ids.
+- Workspace policy defaults to disabled and only the workspace owner can enable the initial `managed` lane. Explicit `:use_ai` and additive owner-only `:run_bulk_ai` role matrices are enforced together with each task's phase-specific domain permission at create, pre-provider and apply time.
+- Preflight route references are hashed at rest and bound to actor, workspace/project, task, input hash, subject revision, policy, route and price version. Confirmation rejects expired, consumed, mismatched or currently stale routes without fallback. Actor/task rate limits separate route-option preflight from newly accepted operations; idempotent replays do not spend the latter bucket.
+- The operation state machine has no automatic inference retry. Cancellation before a provider attempt releases settlement; a started attempt ends exactly once as succeeded, failed or unknown. Invalid provider output/metrics fail cleanly, unknown outcomes and duplicate-attempt violations are terminal/alerted, and temporary successful previews become accepted, dismissed or abandoned independently of execution status.
+- The palette registry now supports additive discriminated `launch | execute` AI descriptors. Launch cost is deferred to preflight; execute requires server-resolved lane/payer/price metadata. Availability, pending/error/CTA behavior, declarative destination routing and Promise rejection are covered without registering a product command. AI analytics ids derive from `TaskRegistry`, while raw URLs and result content are absent from descriptors.
+- Hierarchical creation, full sheet/flow/scene catalogs and other advanced non-AI command families remain intentionally deferred. Slice 3 may implement Storyarn-managed allowance on these boundaries; Slice 4 may add personal BYOK without changing the operation or palette contracts.
 
 ## Inputs from previous slices
 

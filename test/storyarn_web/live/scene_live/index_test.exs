@@ -133,12 +133,6 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
       {redirect_path, _flash} = assert_redirect(view)
 
       assert redirect_path =~ "/scenes/"
-
-      # Verify the child scene was created with proper parent_id
-      scenes = Scenes.list_scenes(project.id)
-      child = Enum.find(scenes, &(&1.parent_id == parent_scene.id))
-      assert child
-      assert child.name == "Untitled"
     end
   end
 

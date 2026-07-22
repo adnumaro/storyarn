@@ -34,7 +34,7 @@ defmodule Storyarn.Projects do
   @type changeset :: Ecto.Changeset.t()
   @type attrs :: map()
   @type role :: String.t()
-  @type action :: :manage_project | :manage_members | :edit_content | :view
+  @type action :: :manage_project | :manage_members | :edit_content | :use_ai | :run_bulk_ai | :view
 
   # =============================================================================
   # Project CRUD

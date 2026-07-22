@@ -30,7 +30,7 @@ Storyarn's AI strategy is **Storyarn AI by default, personal BYOK as the advance
 | --- | -------------------------------------------------- | ----------------------------------- | -------------------------------------- | ------------------------------------ |
 | 0   | Personal provider connections + AI flag foundation | `SLICE_0_BYOK_INTEGRATIONS.md`      | —                                      | **merged** (PR #28)                  |
 | 1   | Command palette foundation (no AI)                 | `SLICE_1_COMMAND_PALETTE.md`        | —                                      | **merged** (F1 PR #30; F2/F3 PR #31) |
-| 2   | AI execution kernel + palette bridge               | `SLICE_2_AI_EXECUTION_KERNEL.md`    | 0, 1                                   | pending                              |
+| 2   | AI execution kernel + palette bridge               | `SLICE_2_AI_EXECUTION_KERNEL.md`    | 0, 1                                   | implemented; pending review/merge    |
 | 3   | Storyarn AI beta + internal allowance              | `SLICE_3_STORYARN_AI_BETA.md`       | 2                                      | pending                              |
 | 4   | Personal BYOK execution lane                       | `SLICE_4_PERSONAL_BYOK_LANE.md`     | 0, 2, 3                                | pending                              |
 | 5   | Central routing + personal AI preferences          | `SLICE_5_AI_ROUTING_PREFERENCES.md` | 2–4                                    | pending                              |

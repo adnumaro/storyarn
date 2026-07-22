@@ -63,17 +63,20 @@ defmodule Storyarn.Projects.ProjectMembership do
   - :manage_project - update project settings, delete project
   - :manage_members - invite/remove members, change roles
   - :edit_content - edit flows, entities
+  - :use_ai - execute an explicitly initiated single-item AI task
+  - :run_bulk_ai - execute an AI task registered as bulk (owner only)
   - :view - view project content
 
   Permissions:
   - owner: all actions
-  - editor: edit_content, view
+  - editor: edit_content, use_ai, view
   - viewer: view only
   """
   def can?(role, action)
 
   def can?("owner", _action), do: true
   def can?("editor", :edit_content), do: true
+  def can?("editor", :use_ai), do: true
   def can?("editor", :view), do: true
   def can?("viewer", :view), do: true
   def can?(_role, _action), do: false

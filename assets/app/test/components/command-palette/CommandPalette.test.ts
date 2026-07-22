@@ -13,6 +13,7 @@ import {
   resetPaletteRegistry,
   type PaletteCommand,
 } from "../../../shared/command-palette/registry";
+import type { AILaunchCommand } from "../../../shared/command-palette/aiCommands";
 import type { LiveInterface } from "../../../shared/composables/useLive";
 import { createMockLive, setTestLocale } from "../../setup";
 
@@ -76,6 +77,23 @@ function command(id: string, run: () => void | Promise<void> = () => undefined):
     labelKey: `label.${id}`,
     groupKey: "palette.groups.navigation",
     run,
+  };
+}
+
+function aiLaunchCommand(overrides: Partial<AILaunchCommand> = {}): PaletteCommand {
+  return {
+    kind: "ai",
+    mode: "launch",
+    id: "ai.contract.launch",
+    taskId: "contract.echo",
+    label: "Configure AI task",
+    groupKey: "palette.groups.actions",
+    context: { surface: "flows", selection: null },
+    availability: { state: "ready" },
+    destination: { type: "none" },
+    cost: { kind: "deferred_to_preflight" },
+    launch: vi.fn().mockResolvedValue({ status: "launched" }),
+    ...overrides,
   };
 }
 
@@ -304,6 +322,103 @@ describe("CommandPalette", () => {
         .mocked(live.pushEvent)
         .mock.calls.filter(([event]) => event === "palette_command_executed"),
     ).toHaveLength(0);
+  });
+
+  it("keeps an AI command pending and disabled until launch settles", async () => {
+    let resolveLaunch!: () => void;
+    registerPaletteCommands("flows", [
+      aiLaunchCommand({
+        launch: () =>
+          new Promise((resolve) => {
+            resolveLaunch = () => resolve({ status: "launched" });
+          }),
+      }),
+    ]);
+
+    const { live, wrapper } = mountPalette();
+    pressPaletteShortcut();
+    await nextTick();
+    selectItem(wrapper, "ai.contract.launch");
+    await nextTick();
+
+    expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(true);
+    expect(
+      wrapper.find<HTMLInputElement>("[data-slot='command-input']").attributes("disabled"),
+    ).toBeDefined();
+    expect(
+      vi
+        .mocked(live.pushEvent)
+        .mock.calls.filter(([event]) => event === "palette_command_executed"),
+    ).toHaveLength(0);
+
+    resolveLaunch();
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(false);
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "palette_command_executed",
+      { command_id: "ai.contract.launch", surface: "flows" },
+      undefined,
+    );
+  });
+
+  it("keeps the palette open and untracked for a classified AI block", async () => {
+    registerPaletteCommands("flows", [
+      aiLaunchCommand({
+        launch: vi.fn().mockResolvedValue({
+          status: "blocked",
+          reasonKey: "palette.not_allowed",
+        }),
+      }),
+    ]);
+
+    const { live, wrapper } = mountPalette();
+    pressPaletteShortcut();
+    await nextTick();
+    selectItem(wrapper, "ai.contract.launch");
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(true);
+    expect(wrapper.find('[role="alert"]').text()).toBe("You don't have permission to do that.");
+    expect(
+      vi
+        .mocked(live.pushEvent)
+        .mock.calls.filter(([event]) => event === "palette_command_executed"),
+    ).toHaveLength(0);
+  });
+
+  it("clears an AI CTA when the query changes or the user enters another step", async () => {
+    const cta = {
+      labelKey: "settings.nav.items.integrations",
+      destination: { type: "route", id: "account-ai-integrations" } as const,
+      launch: vi.fn().mockResolvedValue({ status: "launched" } as const),
+    };
+
+    registerPaletteCommands("flows", [
+      aiLaunchCommand({
+        availability: { state: "cta", reasonKey: "palette.not_allowed", cta },
+      }),
+    ]);
+
+    const { wrapper } = mountPalette();
+    pressPaletteShortcut();
+    await nextTick();
+    selectItem(wrapper, "ai.contract.launch");
+    await flushPromises();
+    expect(wrapper.find('[role="alert"] button').exists()).toBe(true);
+
+    await wrapper.find("[data-slot='command-input']").setValue("new query");
+    await nextTick();
+    expect(wrapper.find('[role="alert"] button').exists()).toBe(false);
+
+    await wrapper.find("[data-slot='command-input']").setValue("");
+    selectItem(wrapper, "ai.contract.launch");
+    await flushPromises();
+    expect(wrapper.find('[role="alert"] button').exists()).toBe(true);
+
+    selectItem(wrapper, "create.sheet");
+    await nextTick();
+    expect(wrapper.find('[role="alert"] button').exists()).toBe(false);
   });
 
   it("survives a dead socket — analytics failures never break the palette", async () => {

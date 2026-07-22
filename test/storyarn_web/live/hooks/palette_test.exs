@@ -64,6 +64,17 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
     assert payload.properties["surface"] == "workspace"
   end
 
+  test "registered AI command ids use the canonical task catalog", %{view: view} do
+    render_hook(view, "palette_command_executed", %{
+      "command_id" => "ai.contract.echo",
+      "surface" => "flows"
+    })
+
+    assert_receive {:analytics_capture, %{event: "palette command executed"} = payload}
+    assert payload.properties["command_id"] == "ai.contract.echo"
+    assert payload.properties["surface"] == "flows"
+  end
+
   test "palette_search_no_results tracks the query length, never content", %{view: view} do
     render_hook(view, "palette_search_no_results", %{
       "query_length" => 7,

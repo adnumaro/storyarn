@@ -57,6 +57,13 @@ defmodule Storyarn.RateLimiter do
   @ai_integration_connect_limit 3
   @ai_integration_connect_window_ms 60_000
 
+  # AI execution uses separate preflight and accepted-operation buckets. A
+  # caller can refresh route choices more often than it can create billable
+  # intent, and idempotent operation replays do not consume this allowance.
+  @ai_preflight_limit 60
+  @ai_execution_limit 20
+  @ai_execution_window_ms 60_000
+
   @doc """
   Checks if a login attempt is allowed for the given IP address.
 
@@ -111,6 +118,20 @@ defmodule Storyarn.RateLimiter do
       @ai_integration_connect_window_ms,
       @ai_integration_connect_limit
     )
+  end
+
+  @doc "Checks actor/task preflight volume before issuing opaque route options."
+  @spec check_ai_preflight(pos_integer(), String.t(), pos_integer()) :: :ok | {:error, :rate_limited}
+  def check_ai_preflight(user_id, task_id, limit \\ @ai_preflight_limit)
+      when is_integer(user_id) and user_id > 0 and is_binary(task_id) and is_integer(limit) and limit > 0 do
+    check_rate("ai_preflight:#{user_id}:#{task_id}", @ai_execution_window_ms, limit)
+  end
+
+  @doc "Checks newly accepted AI-operation volume; callers must not charge idempotent replays."
+  @spec check_ai_execution(pos_integer(), String.t(), pos_integer()) :: :ok | {:error, :rate_limited}
+  def check_ai_execution(user_id, task_id, limit \\ @ai_execution_limit)
+      when is_integer(user_id) and user_id > 0 and is_binary(task_id) and is_integer(limit) and limit > 0 do
+    check_rate("ai_execution:#{user_id}:#{task_id}", @ai_execution_window_ms, limit)
   end
 
   @doc """

@@ -156,13 +156,20 @@ defmodule StoryarnWeb.TelemetryTest do
       assert [:vm, :total_run_queue_lengths, :io] in names
     end
 
+    test "includes AI result expiration metrics with privacy-safe tags" do
+      metrics = Enum.filter(Telemetry.metrics(), &(Enum.take(&1.name, 3) == [:storyarn, :ai, :expiration]))
+
+      assert length(metrics) == 3
+      assert Enum.all?(metrics, &(&1.tags == [:status]))
+    end
+
     # -- Total count --
 
     test "defines exactly the expected number of metrics" do
       metrics = Telemetry.metrics()
 
-      # 9 Phoenix + 5 DB + 3 template installation + 8 import + 4 VM = 29
-      assert length(metrics) == 29
+      # 9 Phoenix + 5 DB + 3 template installation + 8 import + 3 AI expiration + 4 VM = 32
+      assert length(metrics) == 32
     end
   end
 

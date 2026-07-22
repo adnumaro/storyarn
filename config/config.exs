@@ -11,6 +11,7 @@ import Config
 # reservation lease. The importer also wraps the whole PUT in a wall-clock
 # deadline because a send timeout only limits individual blocked writes.
 alias Storyarn.Workers.DailySnapshotWorker
+alias Storyarn.Workers.ExpireAIResultsWorker
 alias Storyarn.Workers.SnapshotRetentionWorker
 alias Storyarn.Workers.TrashRetentionWorker
 
@@ -97,6 +98,7 @@ config :storyarn, Oban,
     template_installs: 2,
     localization: 2,
     imports: 2,
+    ai: 2,
     storage_cleanup: 1
   ],
   plugins: [
@@ -107,6 +109,7 @@ config :storyarn, Oban,
        {"0 4 * * *", SnapshotRetentionWorker},
        {"0 * * * *", TrashRetentionWorker},
        {"*/15 * * * *", Storyarn.Workers.ExpireProjectImportsWorker},
+       {"*/15 * * * *", ExpireAIResultsWorker},
        {"* * * * *", Storyarn.Workers.RetryStorageCleanupRequestsWorker}
      ]}
   ]
@@ -114,6 +117,15 @@ config :storyarn, Oban,
 # Automatic retention for deleted-project snapshots is frozen during the
 # recovery hardening phase. The worker also refuses to hard-delete projects.
 config :storyarn, SnapshotRetentionWorker, enabled: false
+config :storyarn, Storyarn.AI.CredentialResolver, Storyarn.AI.CredentialResolver.Unavailable
+config :storyarn, Storyarn.AI.InferenceProviders, providers: %{}
+config :storyarn, Storyarn.AI.RouteOptions, ttl_seconds: 300
+config :storyarn, Storyarn.AI.RouteResolver, managed: nil
+config :storyarn, Storyarn.AI.Settlement, Storyarn.AI.Settlement.Unavailable
+
+# Slice 2 defines execution contracts but deliberately ships with no
+# production task, route, credential resolver, or allowance implementation.
+config :storyarn, Storyarn.AI.TaskRegistry, tasks: []
 
 # Configure Gettext locales
 config :storyarn, Storyarn.Gettext,
