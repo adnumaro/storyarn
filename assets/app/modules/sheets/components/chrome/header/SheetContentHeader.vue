@@ -6,19 +6,22 @@ import { Button } from "@components/ui/button";
 import { useLive } from "@shared/composables/useLive.ts";
 import AssetUploadDecisionDialog from "@shared/components/assets/AssetUploadDecisionDialog.vue";
 import { useAssetDecisionUpload } from "@shared/composables/useAssetDecisionUpload.ts";
-import type { Sheet } from "@modules/sheets/types";
+import type { Sheet, SheetHealth } from "@modules/sheets/types";
 import AvatarGallery from "@modules/sheets/components/chrome/header/AvatarGallery.vue";
 import SheetAvatarSection from "@modules/sheets/components/chrome/header/SheetAvatarSection.vue";
 import SheetMetadata from "@modules/sheets/components/chrome/header/SheetMetadata.vue";
+import SheetHealthStatus from "@modules/sheets/components/chrome/header/SheetHealthStatus.vue";
 
 const {
   sheet,
   canEdit = false,
   sourceShortcut = null,
+  sheetHealth = { errorItems: [], warningItems: [], infoItems: [] },
 } = defineProps<{
   sheet: Sheet;
   canEdit?: boolean;
   sourceShortcut?: string | null;
+  sheetHealth?: SheetHealth;
 }>();
 
 const live = useLive();
@@ -167,6 +170,7 @@ function updateAvatarNotes(id: number | string, value: string): void {
 
       <!-- Title + Shortcut -->
       <SheetMetadata :sheet="sheet" :can-edit="canEdit" :source-shortcut="sourceShortcut" />
+      <SheetHealthStatus :health="sheetHealth" />
     </div>
 
     <!-- Avatar Gallery Dialog -->

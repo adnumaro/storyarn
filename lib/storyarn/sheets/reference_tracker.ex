@@ -34,6 +34,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.EntityReference
   alias Storyarn.Sheets.Sheet
 
@@ -232,6 +233,71 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   end
 
   @doc """
+  Returns active block IDs whose tracked entity reference points to a missing,
+  deleted, or cross-project sheet/flow target.
+
+  The batch query is used by sheet health checks to avoid resolving every
+  rich-text mention and reference block independently.
+  """
+  @spec list_stale_block_reference_source_ids(integer(), [integer()]) :: MapSet.t()
+  def list_stale_block_reference_source_ids(_project_id, []), do: MapSet.new()
+
+  def list_stale_block_reference_source_ids(project_id, block_ids) do
+    project_id
+    |> stale_block_reference_query(block_ids)
+    |> Repo.all()
+    |> MapSet.new()
+  end
+
+  defp stale_block_reference_query(project_id, block_ids) do
+    EntityReference
+    |> join_block_reference_sources(project_id, block_ids)
+    |> join_block_reference_targets(project_id)
+    |> filter_stale_block_reference_targets()
+    |> distinct(true)
+    |> select([source_block: source_block], source_block.id)
+  end
+
+  defp join_block_reference_sources(query, project_id, block_ids) do
+    from(reference in query,
+      as: :reference,
+      join: source_block in Block,
+      as: :source_block,
+      on: reference.source_type == "block" and reference.source_id == source_block.id,
+      join: source_sheet in Sheet,
+      as: :source_sheet,
+      on: source_sheet.id == source_block.sheet_id,
+      where:
+        source_block.id in ^block_ids and source_sheet.project_id == ^project_id and
+          is_nil(source_block.deleted_at) and is_nil(source_sheet.deleted_at)
+    )
+  end
+
+  defp join_block_reference_targets(query, project_id) do
+    from([reference: reference] in query,
+      left_join: target_sheet in Sheet,
+      as: :target_sheet,
+      on:
+        reference.target_type == "sheet" and reference.target_id == target_sheet.id and
+          target_sheet.project_id == ^project_id and is_nil(target_sheet.deleted_at),
+      left_join: target_flow in Flow,
+      as: :target_flow,
+      on:
+        reference.target_type == "flow" and reference.target_id == target_flow.id and
+          target_flow.project_id == ^project_id and is_nil(target_flow.deleted_at)
+    )
+  end
+
+  defp filter_stale_block_reference_targets(query) do
+    from(
+      [reference: reference, target_sheet: target_sheet, target_flow: target_flow] in query,
+      where:
+        (reference.target_type == "sheet" and is_nil(target_sheet.id)) or
+          (reference.target_type == "flow" and is_nil(target_flow.id))
+    )
+  end
+
+  @doc """
   Gets backlinks with preloaded source information.
 
   Returns a list of maps with:
@@ -259,8 +325,6 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   end
 
   defp query_block_backlinks(target_type, target_id, project_id) do
-    alias Storyarn.Sheets.Block
-
     from(r in EntityReference,
       join: b in Block,
       on: r.source_type == "block" and r.source_id == b.id,

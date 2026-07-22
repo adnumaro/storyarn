@@ -54,6 +54,12 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     |> then(& &1.props["panels"])
   end
 
+  defp get_sheet_health_props(view) do
+    view
+    |> get_sheet_surface_vue()
+    |> then(& &1.props["sheet-health"])
+  end
+
   describe "Sheet show" do
     setup :register_and_log_in_user
 
@@ -69,6 +75,43 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
 
       html = await_async(view)
       assert html =~ "Test Sheet"
+    end
+
+    test "passes grouped health findings to the sheet surface", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      sheet = sheet_fixture(project, %{name: "Health Sheet", shortcut: "health-sheet"})
+
+      block =
+        block_fixture(sheet, %{
+          type: "text",
+          required: true,
+          config: %{"label" => "Biography"},
+          value: %{"content" => ""}
+        })
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
+        )
+
+      await_async(view)
+      health = get_sheet_health_props(view)
+      warning = Enum.find(health["warningItems"], &(&1["blockId"] == block.id))
+      info = Enum.find(health["infoItems"], &(&1["blockId"] == block.id))
+
+      assert Enum.any?(warning["reasons"], &(&1["code"] == "required_block_empty"))
+      assert Enum.any?(info["reasons"], &(&1["code"] == "no_internal_variable_usages"))
+      assert health["errorItems"] == []
+
+      render_hook(view, "update_block_value", %{"id" => block.id, "value" => "Ready"})
+
+      refreshed_health = get_sheet_health_props(view)
+
+      refute Enum.any?(refreshed_health["warningItems"], fn item ->
+               item["blockId"] == block.id and
+                 Enum.any?(item["reasons"], &(&1["code"] == "required_block_empty"))
+             end)
     end
 
     test "refreshes sidebar avatar when avatar is attached from sheet content", %{

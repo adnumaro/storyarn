@@ -7,6 +7,7 @@ defmodule Storyarn.Sheets.ReferenceTrackerTest do
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Repo
+  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
   alias Storyarn.Sheets.ReferenceTracker
 
@@ -172,6 +173,35 @@ defmodule Storyarn.Sheets.ReferenceTrackerTest do
 
       assert ReferenceTracker.count_backlinks("sheet", local_target.id) == 1
       assert ReferenceTracker.count_backlinks("sheet", foreign_target.id) == 0
+    end
+  end
+
+  describe "list_stale_block_reference_source_ids/2" do
+    test "returns source blocks whose tracked target is no longer active" do
+      %{project: project} = setup_project()
+      source_sheet = sheet_fixture(project, %{name: "Source"})
+      target_sheet = sheet_fixture(project, %{name: "Target"})
+
+      {:ok, block} =
+        Sheets.create_block(source_sheet, %{
+          type: "reference",
+          value: %{"target_type" => "sheet", "target_id" => target_sheet.id}
+        })
+
+      assert :ok = ReferenceTracker.update_block_references(block, project_id: project.id)
+
+      assert ReferenceTracker.list_stale_block_reference_source_ids(project.id, [block.id]) ==
+               MapSet.new()
+
+      Repo.update!(Ecto.Changeset.change(target_sheet, deleted_at: TimeHelpers.now()))
+
+      assert ReferenceTracker.list_stale_block_reference_source_ids(project.id, [block.id]) ==
+               MapSet.new([block.id])
+    end
+
+    test "returns an empty set without block ids" do
+      %{project: project} = setup_project()
+      assert ReferenceTracker.list_stale_block_reference_source_ids(project.id, []) == MapSet.new()
     end
   end
 

@@ -39,6 +39,41 @@
       "add_cover": "Add cover",
       "remove_cover": "Remove"
     },
+    "health": {
+      "review": "Review sheet health",
+      "looks_great": "This sheet looks great!",
+      "errors": "Errors",
+      "warnings": "Warnings",
+      "info": "Info",
+      "findings": {
+        "missing_sheet_shortcut": "The sheet has no shortcut",
+        "empty_leaf_sheet": "The sheet has no blocks or child sheets",
+        "missing_variable_name": "This variable has no variable name",
+        "no_internal_variable_usages": "No internal usages were detected",
+        "stale_incoming_variable_reference": "{count} incoming variable reference is stale | {count} incoming variable references are stale",
+        "invalid_block_value": "The stored value does not match the configured type",
+        "required_block_empty": "This required block is empty",
+        "stale_reference_target": "The referenced target no longer exists",
+        "disallowed_reference_target": "The referenced target type is not allowed",
+        "stale_inline_reference": "The rich text contains a reference to a missing target",
+        "invalid_constraints": "The configured constraints are invalid or contradictory",
+        "value_outside_constraints": "The current value falls outside its configured constraints",
+        "invalid_select_option_keys": "Option identifiers must be present and unique",
+        "stale_selected_option": "The selected value is no longer an available option",
+        "empty_select_options": "This selector has no options",
+        "blank_option_label": "An option has no visible label",
+        "invalid_table_structure": "The table structure is inconsistent",
+        "required_table_cell_empty": "This required cell is empty",
+        "unnamed_table_axis": "A table row or column has no visible name",
+        "invalid_formula_expression": "The formula expression is invalid",
+        "unbound_formula_symbol": "The formula contains an unbound symbol",
+        "invalid_formula_binding": "A formula binding is missing, stale, or non-numeric",
+        "cyclic_formula_dependency": "The formula belongs to a dependency cycle",
+        "formula_evaluation_failed": "The formula cannot be evaluated with the current values",
+        "invalid_block_layout": "The column layout is inconsistent",
+        "broken_inheritance": "The inherited block is out of sync with its source"
+      }
+    },
     "metadata": {
       "untitled": "Untitled",
       "add_shortcut": "add-shortcut"

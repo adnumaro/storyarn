@@ -26,6 +26,7 @@ defmodule Storyarn.Sheets do
   alias Storyarn.Sheets.Constraints.Number
   alias Storyarn.Sheets.GalleryCrud
   alias Storyarn.Sheets.PropertyInheritance
+  alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Sheets.SheetCrud
@@ -306,6 +307,11 @@ defmodule Storyarn.Sheets do
   Returns inherited blocks for a sheet, grouped by source sheet.
   """
   defdelegate resolve_inherited_blocks(sheet_id), to: PropertyInheritance
+
+  @doc """
+  Lists non-mutating inheritance integrity findings for a sheet.
+  """
+  defdelegate list_inheritance_health_issues(sheet_id), to: PropertyInheritance, as: :list_health_issues
 
   @doc """
   Gets a sheet's blocks split into inherited and own groups.
@@ -819,6 +825,9 @@ defmodule Storyarn.Sheets do
       flow -> %{type: "flow", id: flow.id, name: flow.name, shortcut: flow.shortcut}
     end
   end
+
+  @doc "Returns block IDs with stale tracked sheet/flow entity references."
+  defdelegate list_stale_block_reference_source_ids(project_id, block_ids), to: ReferenceTracker
 
   # =============================================================================
   # Reference Tracking (Backlinks)

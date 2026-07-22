@@ -108,6 +108,25 @@ export interface Sheet {
   avatars?: SheetAvatar[];
 }
 
+export interface SheetHealthReason {
+  code: string;
+  details?: Record<string, string | number | string[]>;
+}
+
+export interface SheetHealthItem {
+  blockId: number | string | null;
+  rowId: number | string | null;
+  columnId: number | string | null;
+  label: string;
+  reasons: SheetHealthReason[];
+}
+
+export interface SheetHealth {
+  errorItems: SheetHealthItem[];
+  warningItems: SheetHealthItem[];
+  infoItems: SheetHealthItem[];
+}
+
 // ── Tree types ──
 
 export interface SheetTreeNodeData {

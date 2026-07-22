@@ -9,6 +9,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   import StoryarnWeb.Live.Shared.RestorationHandlers, only: [check_restoration_lock: 2]
   import StoryarnWeb.SheetLive.Helpers.AudioDataHelpers
   import StoryarnWeb.SheetLive.Helpers.FormulaHelpers
+  import StoryarnWeb.SheetLive.Helpers.HealthHelpers
   import StoryarnWeb.SheetLive.Helpers.HistoryDataHelpers
   import StoryarnWeb.SheetLive.Helpers.PropsSerializer
   import StoryarnWeb.SheetLive.Helpers.ReferencesDataHelpers
@@ -85,6 +86,7 @@ defmodule StoryarnWeb.SheetLive.Show do
         current_tab={@current_tab}
         can_edit={@can_edit}
         source_shortcut={@source_shortcut}
+        sheet_health={@sheet_health}
         blocks={@blocks}
         gallery_data={@gallery_data}
         table_data={@table_data}
@@ -119,6 +121,7 @@ defmodule StoryarnWeb.SheetLive.Show do
         current_tab={@current_tab}
         can_edit={@can_edit}
         source_shortcut={@source_shortcut}
+        sheet_health={@sheet_health}
         blocks={@blocks}
         gallery_data={@gallery_data}
         table_data={@table_data}
@@ -144,6 +147,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   attr :current_tab, :string, required: true
   attr :can_edit, :boolean, required: true
   attr :source_shortcut, :string, default: nil
+  attr :sheet_health, :map, required: true
   attr :blocks, :list, default: []
   attr :gallery_data, :map, default: %{}
   attr :table_data, :map, default: %{}
@@ -172,6 +176,7 @@ defmodule StoryarnWeb.SheetLive.Show do
       sheet={prepare_sheet_for_vue(@sheet)}
       can-edit={@can_edit}
       source-shortcut={@source_shortcut}
+      sheet-health={@sheet_health}
       surface={sheet_surface_props(assigns)}
       panels={sheet_panels_props(assigns)}
     />
@@ -313,6 +318,7 @@ defmodule StoryarnWeb.SheetLive.Show do
      |> assign(:gallery_data, %{})
      |> assign(:table_data, %{})
      |> assign(:source_shortcut, nil)
+     |> assign(:sheet_health, empty_health())
      |> assign(:current_tab, "content")
      |> assign(:references_data, nil)
      |> assign(:audio_data, nil)
@@ -416,6 +422,7 @@ defmodule StoryarnWeb.SheetLive.Show do
         |> assign(:references_data, nil)
         |> assign(:audio_data, nil)
         |> assign(:history_data, nil)
+        |> assign_sheet_health()
     end
   end
 
@@ -1053,7 +1060,10 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   defp reload_sheet(socket) do
     sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
-    assign(socket, :sheet, sheet)
+
+    socket
+    |> assign(:sheet, sheet)
+    |> assign_sheet_health()
   end
 
   defp reload_blocks(socket) do
@@ -1083,5 +1093,6 @@ defmodule StoryarnWeb.SheetLive.Show do
     |> assign(:inherited_groups, inherited_groups)
     |> assign(:gallery_data, gallery_data)
     |> assign(:table_data, table_data)
+    |> assign_sheet_health()
   end
 end
