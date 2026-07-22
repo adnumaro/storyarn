@@ -18,6 +18,7 @@ defmodule StoryarnWeb.Components.ProjectLayout do
   attr :workspace, :map, required: true
   attr :current_scope, :map, required: true
   attr :current_user, :map, required: true
+  attr :membership, :map, required: true
   attr :urls, :map, required: true
   attr :active_tool, :atom, default: :sheets
   attr :is_super_admin, :boolean, default: false
@@ -66,7 +67,8 @@ defmodule StoryarnWeb.Components.ProjectLayout do
             projectName: @project.name,
             workspaceName: @workspace.name,
             showToolSwitcher: true,
-            isSuperAdmin: @is_super_admin
+            isSuperAdmin: @is_super_admin,
+            canManageProject: Storyarn.Projects.can?(@membership.role, :manage_project)
           }
         }
         current-user={@current_user}
@@ -79,7 +81,7 @@ defmodule StoryarnWeb.Components.ProjectLayout do
 
       {render_slot(@inner_block)}
 
-      <Layouts.command_palette socket={@socket} />
+      <Layouts.command_palette socket={@socket} current_scope={@current_scope} />
       <Layouts.flash_group flash={@flash} socket={@socket} />
     </div>
     """

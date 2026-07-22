@@ -9,6 +9,7 @@ defmodule StoryarnWeb.Layouts do
   alias Phoenix.LiveView.JS
   alias Storyarn.Analytics
   alias Storyarn.Publication.Locales, as: PublicLocales
+  alias StoryarnWeb.FeatureFlagHelpers
 
   # Embed all files in layouts/* within this module.
   # The default root.html.heex file contains the HTML
@@ -19,18 +20,22 @@ defmodule StoryarnWeb.Layouts do
   @doc """
   Mounts the global command palette island (Meta+K / Ctrl+K).
 
-  Rendered only by the layouts whose surfaces expose palette commands —
-  project tools and workspace dashboards — never on auth/public/docs pages.
+  Rendered by authenticated application layouts — workspace, project and
+  settings surfaces — never on auth/public/docs pages.
   """
   attr :socket, :any, required: true, doc: "the LiveView socket (needed for LiveVue events)"
+  attr :current_scope, :map, required: true, doc: "actor used to resolve command feature flags"
+  attr :sudo_grant, :string, default: nil, doc: "validated grant for sensitive account commands"
 
   def command_palette(assigns) do
     ~H"""
     <div id="command-palette">
       <.vue
-        v-component="components/command-palette/CommandPalette"
+        v-component="live/layouts/CommandPalette"
         v-socket={@socket}
         id="command-palette-island"
+        feature-flags={FeatureFlagHelpers.client_flags(@current_scope)}
+        sudo-grant={@sudo_grant}
       />
     </div>
     """

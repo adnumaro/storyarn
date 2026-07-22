@@ -1,35 +1,54 @@
-import { GraduationCap, ShieldCheck, User } from "lucide-vue-next";
-import { liveNavigate } from "../navigation/liveNavigate";
+import { GraduationCap, Plug, ShieldCheck, User } from "lucide-vue-next";
+import { sensitiveSettingsPath } from "../navigation/sensitiveSettingsPath";
 import type { PaletteCommand } from "./registry";
+
+interface AccountCommandFlags {
+  aiIntegrations?: boolean;
+}
 
 /**
  * Account-settings commands shared by every layout that mounts the palette.
  * Labels reuse the settings shell's own nav keys — one concept, one name.
- * The AI Integrations page is flag-gated server-side and deliberately not
- * listed until the palette can check the flag.
+ * Flagged destinations use the same actor-resolved feature state as the
+ * settings shell, so unavailable commands are absent rather than failing.
  */
-export function accountPaletteCommands(): PaletteCommand[] {
-  return [
+export function accountPaletteCommands(
+  flags: AccountCommandFlags = {},
+  sudoGrant: string | null = null,
+): PaletteCommand[] {
+  const commands: PaletteCommand[] = [
     {
       id: "account.profile",
       labelKey: "settings.nav.items.profile",
       groupKey: "settings.nav.sections.account",
       icon: User,
-      run: () => liveNavigate("/users/settings"),
+      href: sensitiveSettingsPath("/users/settings", sudoGrant),
     },
     {
       id: "account.security",
       labelKey: "settings.nav.items.security",
       groupKey: "settings.nav.sections.account",
       icon: ShieldCheck,
-      run: () => liveNavigate("/users/settings/security"),
+      href: sensitiveSettingsPath("/users/settings/security", sudoGrant),
     },
     {
       id: "account.tutorials",
       labelKey: "settings.nav.items.tutorials",
       groupKey: "settings.nav.sections.account",
       icon: GraduationCap,
-      run: () => liveNavigate("/users/settings/tutorials"),
+      href: "/users/settings/tutorials",
     },
   ];
+
+  if (flags.aiIntegrations) {
+    commands.push({
+      id: "account.integrations",
+      labelKey: "settings.nav.items.integrations",
+      groupKey: "settings.nav.sections.account",
+      icon: Plug,
+      href: "/users/settings/integrations",
+    });
+  }
+
+  return commands;
 }

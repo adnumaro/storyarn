@@ -1,6 +1,6 @@
 # Slice 1 — Command Palette Foundation (no AI)
 
-**Status: MERGED. F1 foundation + universal navigation shipped in PR #30; F2 creation + F3 deletion shipped in PR #31. Owner browser verification remains pending — see "Implementation status & handoff" below.**
+**Status: MERGED baseline. F1 foundation + universal navigation shipped in PR #30; F2 creation + F3 deletion shipped in PR #31. The 2026-07-22 post-merge audit produced a hardening follow-up covering real-browser keyboard behavior, async execution, idempotency, authorization and authenticated settings coverage.**
 
 ## Objective
 
@@ -16,7 +16,7 @@ A global command palette (`Meta+K` on macOS, `Ctrl+K` on Windows/Linux — both 
 - **Hybrid registry and authorized server sources:** surface-owned client commands register for their component lifetime; global navigation/create/delete results come from `StoryarnWeb.Live.Hooks.Palette` and `Storyarn.GlobalSearch`, scoped to the current authenticated actor. A surface without a local owner exposes only the global commands it can execute.
 - Handlers are either pure-client (toggle panel, focus node) or LiveView events through the palette hook. Mutations reuse the same domain facades and broadcasts as existing UI; the palette never introduces a second mutation path.
 - Navigation commands use the LiveVue navigation contract (`data-phx-link` / `LiveLink`) — never raw `window.location`.
-- Global `Meta+K` (macOS) / `Ctrl+K` (Windows/Linux) listener. The current v1 guard excludes input/contenteditable focus; Slice 2 replaces the blanket guard with an explicit per-binding editable-context policy before any editor-scoped AI command ships.
+- Global `Meta+K` (macOS) / `Ctrl+K` (Windows/Linux) listener. Editable contexts use a per-binding policy: the shortcut does not open over an editor or another dialog, but it does close the palette while its own search input has focus.
 - **No feature flag (owner-decided 2026-07-21): the palette ships directly** — it has no AI and the owner wants it GA from day one. AI commands registered by later slices are individually gated by the single AI flag (`:ai_integrations`): with the flag off, the palette simply never lists them.
 
 ## Existing code to reuse (do not duplicate)
@@ -55,7 +55,7 @@ None (parallel-safe with Slice 2's backend). Estimate: **10–14h**.
 
 ## AI hand-off (normative)
 
-The shipped v1 registry is not a valid AI execution contract. No AI command may register until Slice 2 adds the Promise-aware, discriminated `launch | execute` v2 descriptor, server-resolved availability/cost or deferred preflight, idempotent operation acknowledgement for execute, pending/error states, and declarative result routing. Slice 2 also owns the prerequisite fixes for server-search pending/no-results, permission-aware settings commands, flag propagation, and opening from explicitly supported editable contexts.
+The hardened registry supports typed navigation and Promise-aware local actions, reactive visibility/enabled predicates, actor-resolved flag propagation, pending/error states and session-idempotent palette mutations. This is sufficient for deterministic non-AI commands, but it is still not the AI execution contract. Slice 2 must add the discriminated `launch | execute` AI task descriptor, server-resolved cost/preflight and declarative result routing before an AI command registers.
 
 ## Implementation status & handoff (2026-07-21, PR #30)
 
@@ -83,7 +83,16 @@ Owner-resolved design (all decided in chat before coding):
 
 **Deletion broadcast contract (cubic rounds 1–2, 2026-07-22)**: the legacy type-blind `{:entity_deleted, id}` was replaced everywhere by `{:entities_deleted, :sheet | :flow | :scene, ids}` carrying the FULL committed cascade set. The ids are reported by the deletion itself — `Sheets.delete_sheet_subtree/1` / `Flows.delete_flow_subtree/1` / `Scenes.delete_scene_subtree/1` return `{:ok, %{entity, deleted_ids}}` collected UNDER the delete's own locks (`SoftDelete.soft_delete_children/4` now returns the ids it cascades) — so the broadcast can never desync from a concurrent tree change, open editors of the entity OR any cascade-deleted descendant navigate away, and same-numeric-id collisions across types no longer misfire. Both emitters (sidebar `TreeSidebarActions` path and the palette hook) and all six Show/Index consumers use the typed shape.
 
-### Also pending
+### Post-merge audit hardening (2026-07-22)
 
-- Browser verification of F1 by the owner (palette on ≥2 surfaces; "kael"-style entity jump; workspace-settings gating as member vs owner) — plus F2/F3: picker create from the dashboard, in-palette delete of the currently open entity.
-- Sheets/localization surface-specific VIEW commands: none yet (no cheap client-side actions without new plumbing) — the registry mechanism is proven; they register when they have palette-worthy actions.
+- Real Reka Escape handling now walks one step back, each step restores input focus, and a second shortcut closes from the palette input. The palette refuses to stack over onboarding or another open dialog.
+- Pending mutations cannot be dismissed. Create/delete requests carry a bounded operation id cached by the LiveView session, retries reuse it, and every accepted result is reconciled.
+- Navigation analytics are sent before LiveView teardown. Remote loading, transport failure and settled-empty states are distinct; no-results telemetry waits for the server result.
+- Project settings require `:manage_project` in both static and server-driven commands. Project-derived workspace access disappears when its granting project is soft-deleted. Malformed `palette_*` events fail closed instead of reaching the host LiveView.
+- The public LiveVue palette boundary now mounts in workspace, project and settings layouts, owns global account commands, and resolves the `:ai_integrations` flag for the current actor.
+- Explicit create/delete error messages, workspace-qualified duplicate-name context, trimmed client/server filtering and query-suppressed Ecto logging close the remaining UX/privacy gaps.
+
+### Product expansion intentionally deferred
+
+- Hierarchical creation (for example, creating a sheet inside another sheet), complete project listings for sheets/flows/scenes and other advanced command families belong to the next command-catalog increment.
+- Sheets/localization surface-specific view commands register when their owning surfaces expose palette-worthy actions.

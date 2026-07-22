@@ -141,6 +141,28 @@ describe("useKeyboard", () => {
       document.body.removeChild(div);
       app.unmount();
     });
+
+    it("allows only explicitly opted-in bindings inside editable targets", () => {
+      const closePalette = vi.fn();
+      const deleteItem = vi.fn();
+      const { app } = withSetup(() =>
+        useKeyboard(
+          { "ctrl+k": closePalette, delete: deleteItem },
+          { allowInEditable: (combo) => combo === "ctrl+k" },
+        ),
+      );
+
+      const input = document.createElement("input");
+      document.body.appendChild(input);
+
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true }));
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete", bubbles: true }));
+
+      expect(closePalette).toHaveBeenCalledOnce();
+      expect(deleteItem).not.toHaveBeenCalled();
+      input.remove();
+      app.unmount();
+    });
   });
 
   describe("preventDefault behavior", () => {

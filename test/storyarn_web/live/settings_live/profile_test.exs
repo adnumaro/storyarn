@@ -20,6 +20,7 @@ defmodule StoryarnWeb.SettingsLive.ProfileTest do
 
       vue = get_profile_vue(view)
       assert vue.component == "live/account/settings/AccountSettingsProfile"
+      assert has_element?(view, "#command-palette")
     end
 
     test "passes profile_form prop without email change props", %{conn: conn} do

@@ -4,12 +4,13 @@ import {
   FileText,
   Folder,
   GitBranch,
+  LoaderCircle,
   Map as MapIcon,
   Settings,
   Trash2,
   type LucideIcon,
 } from "lucide-vue-next";
-import { computed, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import {
   CommandDialog,
@@ -91,6 +92,7 @@ type PaletteStep =
   | { kind: "delete-confirm"; item: DeleteItem };
 
 const NAV_DEBOUNCE_MS = 200;
+const MUTATION_TIMEOUT_MS = 15_000;
 
 const navIcons: Record<string, LucideIcon> = {
   workspace: Building2,
@@ -126,6 +128,10 @@ const navGroupLabelKeys: Record<string, string> = {
 const errorMessageKeys: Record<string, string> = {
   limit_reached: "palette.limit_reached",
   unauthorized: "palette.not_allowed",
+  not_found: "palette.not_found",
+  create_failed: "palette.create_failed",
+  delete_failed: "palette.delete_failed",
+  invalid_request: "palette.invalid_request",
 };
 
 function navGroupHeading(key: string): string | undefined {
@@ -143,17 +149,28 @@ const navGroups = ref<NavGroup[]>([]);
 const createTargets = ref<CreateTarget[]>([]);
 const deleteItems = ref<DeleteItem[]>([]);
 const errorKey = ref<string | null>(null);
+const navErrorKey = ref<string | null>(null);
+const createTargetsErrorKey = ref<string | null>(null);
+const deleteItemsErrorKey = ref<string | null>(null);
+const navLoading = ref(false);
+const createTargetsLoading = ref(false);
+const createTargetsLoaded = ref(false);
+const deleteItemsLoading = ref(false);
 // True while a create/delete pushEvent awaits its reply — blocks re-submits.
 const pendingMutation = ref(false);
+const pendingCommandId = ref<string | null>(null);
+const paletteBody = ref<HTMLElement | null>(null);
 
 // Stale-reply guard: only the latest request may update the results.
 let navToken = 0;
+let createTargetsToken = 0;
 // Mutation replies are checked against this separately from navToken (typing
-// must never invalidate an in-flight create/delete): closing the palette or
-// changing step abandons the flow, so a late reply must not navigate or
-// mutate the reopened palette's state.
+// must never invalidate an in-flight create/delete). The palette cannot close
+// while one is pending, so every accepted mutation reply is reconciled.
 let mutationToken = 0;
+let retryOperation: { key: string; id: string } | null = null;
 let navDebounce: ReturnType<typeof setTimeout> | null = null;
+let mutationTimeout: ReturnType<typeof setTimeout> | null = null;
 let suppressQueryWatch = false;
 
 const localOpen = computed({
@@ -183,15 +200,71 @@ const inputPlaceholder = computed<string>(() =>
     : t("palette.placeholder"),
 );
 
-useKeyboard({
-  "ctrl+k": () => {
-    if (open.value) {
-      closePalette();
-    } else {
-      openPalette();
-    }
-  },
+const inputKey = computed(() => {
+  const current = step.value;
+  return current.kind === "create-pick-project"
+    ? `${current.kind}-${current.entityType}`
+    : current.kind;
 });
+
+const busy = computed(() => pendingMutation.value || pendingCommandId.value !== null);
+
+const canMutate = computed(
+  () =>
+    createTargetsLoaded.value &&
+    !createTargetsLoading.value &&
+    !createTargetsErrorKey.value &&
+    createTargets.value.length > 0,
+);
+
+const activeErrorKey = computed<string | null>(() => {
+  if (errorKey.value) return errorKey.value;
+
+  switch (step.value.kind) {
+    case "root":
+      return navErrorKey.value;
+    case "create-pick-project":
+      return createTargetsErrorKey.value;
+    case "delete-pick-entity":
+      return deleteItemsErrorKey.value;
+    case "delete-confirm":
+      return null;
+  }
+
+  return null;
+});
+
+const activeLoading = computed(() => {
+  switch (step.value.kind) {
+    case "root":
+      return navLoading.value;
+    case "create-pick-project":
+      return createTargetsLoading.value;
+    case "delete-pick-entity":
+      return deleteItemsLoading.value;
+    case "delete-confirm":
+      return pendingMutation.value;
+  }
+
+  return false;
+});
+
+useKeyboard(
+  {
+    "ctrl+k": () => {
+      if (open.value) {
+        closePalette();
+      } else if (!anotherDialogOpen()) {
+        openPalette();
+      }
+    },
+  },
+  {
+    // The global shortcut remains suppressed in editors, but once the palette
+    // owns focus the same shortcut must be able to close it.
+    allowInEditable: (combo) => combo === "ctrl+k" && open.value,
+  },
+);
 
 watch(query, () => {
   if (suppressQueryWatch) {
@@ -205,31 +278,84 @@ watch(query, () => {
   // previous query must never land after the user has kept typing.
   ++navToken;
   if (navDebounce) clearTimeout(navDebounce);
+
+  if (step.value.kind === "root") {
+    navLoading.value = true;
+    navErrorKey.value = null;
+  } else if (step.value.kind === "delete-pick-entity") {
+    deleteItemsLoading.value = true;
+    deleteItemsErrorKey.value = null;
+  }
+
   navDebounce = setTimeout(() => fetchForStep(), NAV_DEBOUNCE_MS);
 });
 
 onUnmounted(() => {
   if (navDebounce) clearTimeout(navDebounce);
+  clearMutationTimeout();
 });
 
 function openPalette(): void {
   navGroups.value = [];
+  createTargets.value = [];
+  deleteItems.value = [];
   errorKey.value = null;
+  navErrorKey.value = null;
+  createTargetsErrorKey.value = null;
+  deleteItemsErrorKey.value = null;
+  createTargetsLoaded.value = false;
   step.value = { kind: "root" };
   open.value = true;
+  focusPaletteInput();
   fetchNavDestinations();
+  fetchCreateTargets();
   track("palette_opened", {});
 }
 
 function closePalette(): void {
+  if (busy.value) return;
+
   open.value = false;
   // Reset on CLOSE, not open: the query watcher ignores changes while
   // closed, so reopening never invalidates the immediate initial fetch.
   resetQuery();
   step.value = { kind: "root" };
   errorKey.value = null;
-  pendingMutation.value = false;
   ++mutationToken;
+  ++createTargetsToken;
+}
+
+function startMutationTimeout(token: number): void {
+  clearMutationTimeout();
+  mutationTimeout = setTimeout(() => {
+    if (token !== mutationToken) return;
+
+    // Invalidate a reply that may arrive after the client has already offered
+    // a retry. The stable operation ID is deliberately kept so the durable
+    // server fence can return the original result if the first attempt landed.
+    ++mutationToken;
+    pendingMutation.value = false;
+    errorKey.value = "palette.command_failed";
+    mutationTimeout = null;
+  }, MUTATION_TIMEOUT_MS);
+}
+
+function clearMutationTimeout(): void {
+  if (!mutationTimeout) return;
+  clearTimeout(mutationTimeout);
+  mutationTimeout = null;
+}
+
+function settleMutation(token: number): boolean {
+  if (token !== mutationToken) return false;
+
+  clearMutationTimeout();
+  pendingMutation.value = false;
+  return true;
+}
+
+function anotherDialogOpen(): boolean {
+  return document.querySelector("[data-slot='dialog-content'][data-state='open']") !== null;
 }
 
 function resetQuery(): void {
@@ -239,19 +365,28 @@ function resetQuery(): void {
 }
 
 function enterStep(next: PaletteStep): void {
+  if (busy.value) return;
+
   step.value = next;
   errorKey.value = null;
-  pendingMutation.value = false;
   ++mutationToken;
   ++navToken;
   if (navDebounce) clearTimeout(navDebounce);
   resetQuery();
 
-  if (next.kind === "create-pick-project") {
+  if (next.kind === "create-pick-project" && !createTargetsLoaded.value) {
     fetchCreateTargets();
-  } else {
+  } else if (next.kind !== "create-pick-project") {
     fetchForStep();
   }
+
+  focusPaletteInput();
+}
+
+function focusPaletteInput(): void {
+  void nextTick(() => {
+    paletteBody.value?.querySelector<HTMLInputElement>("[data-slot='command-input']")?.focus();
+  });
 }
 
 function goBack(): void {
@@ -265,19 +400,24 @@ function goBack(): void {
   }
 }
 
-// Attached to the wrapper AROUND the whole palette body (not the input): the
-// input is hidden during delete-confirm, and Escape must still mean "one
-// step back" there instead of letting the dialog's dismiss layer close.
 function onPaletteKeydown(event: KeyboardEvent): void {
   if (step.value.kind === "root") return;
 
-  if (event.key === "Escape" || (event.key === "Backspace" && query.value === "")) {
-    // Swallow the key before the dialog's dismiss layer sees it: inside a
-    // step it means "one step back", never "close".
+  if (event.key === "Backspace" && query.value === "") {
     event.preventDefault();
     event.stopPropagation();
-    goBack();
+    if (!busy.value) goBack();
   }
+}
+
+// Reka owns Escape at the dismiss layer. Preventing that event is the only
+// reliable way to turn Escape into one-step-back for nested palette flows.
+function onDialogEscape(event: KeyboardEvent): void {
+  if (step.value.kind === "root" && !busy.value) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+  if (!busy.value) goBack();
 }
 
 function fetchForStep(): void {
@@ -294,77 +434,131 @@ function fetchForStep(): void {
 
 function fetchNavDestinations(): void {
   const token = ++navToken;
+  navLoading.value = true;
+  navErrorKey.value = null;
 
-  try {
-    live.pushEvent("palette_nav", { query: query.value, token }, (reply: PaletteNavReply) => {
+  live.pushEvent(
+    "palette_nav",
+    { query: query.value.trim(), token },
+    (reply: PaletteNavReply) => {
       if (reply?.token !== token || !open.value || step.value.kind !== "root") return;
+      navLoading.value = false;
       navGroups.value = reply.groups ?? [];
-    });
-  } catch {
-    // socket unavailable — static commands keep working, results just don't load
-  }
+    },
+    () => {
+      if (token !== navToken || !open.value || step.value.kind !== "root") return;
+      navLoading.value = false;
+      navGroups.value = [];
+      navErrorKey.value = "palette.search_failed";
+    },
+  );
 }
 
 function fetchCreateTargets(): void {
-  const token = ++navToken;
+  const token = ++createTargetsToken;
+  createTargetsLoading.value = true;
+  createTargetsErrorKey.value = null;
 
-  try {
-    live.pushEvent("palette_create_targets", { token }, (reply: CreateTargetsReply) => {
-      if (reply?.token !== token || !open.value || step.value.kind !== "create-pick-project") {
-        return;
-      }
+  live.pushEvent(
+    "palette_create_targets",
+    { token },
+    (reply: CreateTargetsReply) => {
+      if (!acceptsCreateTargetsReply(token, reply)) return;
+
+      createTargetsLoading.value = false;
+      createTargetsLoaded.value = true;
       createTargets.value = reply.projects ?? [];
-    });
-  } catch {
-    // socket unavailable — the step shows its empty state
-  }
+    },
+    () => {
+      if (token !== createTargetsToken || !open.value) return;
+      createTargetsLoading.value = false;
+      createTargetsLoaded.value = true;
+      createTargets.value = [];
+      createTargetsErrorKey.value = "palette.search_failed";
+    },
+  );
+}
+
+function acceptsCreateTargetsReply(token: number, reply: CreateTargetsReply): boolean {
+  const currentKind = step.value.kind;
+
+  return (
+    reply?.token === token &&
+    token === createTargetsToken &&
+    open.value &&
+    (currentKind === "root" || currentKind === "create-pick-project")
+  );
 }
 
 function fetchDeleteItems(): void {
   const token = ++navToken;
+  deleteItemsLoading.value = true;
+  deleteItemsErrorKey.value = null;
 
-  try {
-    live.pushEvent(
-      "palette_delete_search",
-      { query: query.value, token },
-      (reply: DeleteSearchReply) => {
-        if (reply?.token !== token || !open.value || step.value.kind !== "delete-pick-entity") {
-          return;
-        }
-        deleteItems.value = reply.items ?? [];
-      },
-    );
-  } catch {
-    // socket unavailable — the step shows its empty state
-  }
+  live.pushEvent(
+    "palette_delete_search",
+    { query: query.value.trim(), token },
+    (reply: DeleteSearchReply) => {
+      if (reply?.token !== token || !open.value || step.value.kind !== "delete-pick-entity") {
+        return;
+      }
+      deleteItemsLoading.value = false;
+      deleteItems.value = reply.items ?? [];
+    },
+    () => {
+      if (token !== navToken || !open.value || step.value.kind !== "delete-pick-entity") return;
+      deleteItemsLoading.value = false;
+      deleteItems.value = [];
+      deleteItemsErrorKey.value = "palette.search_failed";
+    },
+  );
 }
 
-// A failing command keeps the palette open with an explicit error — it is
-// never recorded as executed and never fails silently.
-function runCommand(commandId: string, run: () => void): void {
+// A failing command keeps the palette open with an explicit error. Promise
+// handlers remain pending until they settle and are tracked only on success.
+async function runActionCommand(commandId: string, run: () => void | Promise<void>): Promise<void> {
+  if (busy.value) return;
+
   errorKey.value = null;
+  pendingCommandId.value = commandId;
 
   try {
-    run();
+    await run();
   } catch {
+    pendingCommandId.value = null;
     errorKey.value = "palette.command_failed";
     return;
   }
 
   track("palette_command_executed", { command_id: commandId });
+  pendingCommandId.value = null;
   closePalette();
 }
 
 function onSelect(command: PaletteCommand): void {
-  runCommand(command.id, command.run);
+  if (command.href !== undefined) {
+    runNavigationCommand(command.id, command.href);
+  } else {
+    void runActionCommand(command.id, command.run);
+  }
 }
 
 function onSelectNav(item: NavItem): void {
-  runCommand(item.id, () => liveNavigate(item.url));
+  runNavigationCommand(item.id, item.url);
+}
+
+// Navigation tears down the current LiveView. Send telemetry first, while
+// the socket is still connected, then close and navigate synchronously.
+function runNavigationCommand(commandId: string, url: string): void {
+  if (busy.value) return;
+
+  errorKey.value = null;
+  track("palette_command_executed", { command_id: commandId });
+  closePalette();
+  liveNavigate(url);
 }
 
 function enterCreateStep(entityType: EntityType): void {
-  createTargets.value = [];
   enterStep({ kind: "create-pick-project", entityType });
 }
 
@@ -378,29 +572,30 @@ function onSelectCreateTarget(target: CreateTarget): void {
   if (current.kind !== "create-pick-project" || pendingMutation.value) return;
 
   const entityType = current.entityType;
+  const operationKey = `create:${entityType}:${target.id}`;
   errorKey.value = null;
   pendingMutation.value = true;
   const token = ++mutationToken;
+  startMutationTimeout(token);
 
   // useLive's pushEvent never throws — transport failures arrive through the
   // onError callback, which must clear the pending state or the palette
   // would be stuck unclickable.
   live.pushEvent(
     "palette_create",
-    { type: entityType, project_id: target.id },
+    { type: entityType, project_id: target.id, operation_id: operationIdFor(operationKey) },
     (reply: MutationReply) => {
-      if (token !== mutationToken) return;
-      pendingMutation.value = false;
+      if (!settleMutation(token)) return;
+      finishOperation(operationKey);
       const url = reply?.url;
       if (url) {
-        runCommand(`create.${entityType}`, () => liveNavigate(url));
+        runNavigationCommand(`create.${entityType}`, url);
       } else {
         errorKey.value = errorMessageKeys[reply?.error ?? ""] ?? "palette.command_failed";
       }
     },
     () => {
-      if (token !== mutationToken) return;
-      pendingMutation.value = false;
+      if (!settleMutation(token)) return;
       errorKey.value = "palette.command_failed";
     },
   );
@@ -415,19 +610,26 @@ function confirmDelete(): void {
   if (current.kind !== "delete-confirm" || pendingMutation.value) return;
 
   const item = current.item;
+  const operationKey = `delete:${item.type}:${item.projectId}:${item.id}`;
   errorKey.value = null;
   pendingMutation.value = true;
   const token = ++mutationToken;
+  startMutationTimeout(token);
 
   // useLive's pushEvent never throws — transport failures arrive through the
   // onError callback, which must clear the pending state or the palette
   // would be stuck unclickable.
   live.pushEvent(
     "palette_delete",
-    { type: item.type, id: item.id, project_id: item.projectId },
+    {
+      type: item.type,
+      id: item.id,
+      project_id: item.projectId,
+      operation_id: operationIdFor(operationKey),
+    },
     (reply: MutationReply) => {
-      if (token !== mutationToken) return;
-      pendingMutation.value = false;
+      if (!settleMutation(token)) return;
+      finishOperation(operationKey);
       if (reply?.deleted) {
         track("palette_command_executed", { command_id: `delete.${item.type}` });
         // Drop the stale listing BEFORE showing it again: the deleted
@@ -441,8 +643,7 @@ function confirmDelete(): void {
       }
     },
     () => {
-      if (token !== mutationToken) return;
-      pendingMutation.value = false;
+      if (!settleMutation(token)) return;
       errorKey.value = "palette.command_failed";
     },
   );
@@ -455,6 +656,26 @@ function onNoResults(queryLength: number): void {
 function commandLabel(command: PaletteCommand): string {
   if (command.label !== undefined) return command.label;
   return t(command.labelKey);
+}
+
+function createOperationId(): string {
+  if (typeof globalThis.crypto?.randomUUID === "function") {
+    return globalThis.crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function operationIdFor(key: string): string {
+  if (retryOperation?.key === key) return retryOperation.id;
+
+  const id = createOperationId();
+  retryOperation = { key, id };
+  return id;
+}
+
+function finishOperation(key: string): void {
+  if (retryOperation?.key === key) retryOperation = null;
 }
 
 // Analytics is fire-and-forget: a dropped event must never break the palette
@@ -473,20 +694,43 @@ function track(event: string, payload: Record<string, unknown>): void {
     v-model:open="localOpen"
     :title="t('palette.title')"
     :description="t('palette.description')"
+    @escape-key-down="onDialogEscape"
   >
-    <div class="contents" @keydown="onPaletteKeydown">
-      <CommandInput v-if="!confirmItem" v-model="query" :placeholder="inputPlaceholder" />
-      <p v-if="errorKey" role="alert" class="border-b px-3 py-2 text-sm text-destructive">
-        {{ t(errorKey) }}
+    <div ref="paletteBody" class="contents" @keydown="onPaletteKeydown">
+      <CommandInput
+        v-if="!confirmItem"
+        :key="inputKey"
+        v-model="query"
+        :disabled="busy"
+        :placeholder="inputPlaceholder"
+      />
+      <p v-if="activeErrorKey" role="alert" class="border-b px-3 py-2 text-sm text-destructive">
+        {{ t(activeErrorKey) }}
+      </p>
+      <p
+        v-if="activeLoading"
+        role="status"
+        class="flex items-center justify-center gap-2 border-b px-3 py-2 text-sm text-muted-foreground"
+      >
+        <LoaderCircle class="size-4 animate-spin" />
+        {{ t("palette.loading") }}
       </p>
       <CommandList>
         <template v-if="step.kind === 'root'">
-          <PaletteEmpty @no-results="onNoResults">{{ t("palette.no_results") }}</PaletteEmpty>
+          <PaletteEmpty :enabled="!navLoading && !navErrorKey" @no-results="onNoResults">
+            {{ t("palette.no_results") }}
+          </PaletteEmpty>
           <CommandGroup v-for="group in paletteGroups" :key="group.key" :heading="t(group.key)">
             <CommandItem
               v-for="command in group.commands"
               :key="command.id"
               :value="command.id"
+              :disabled="busy || command.enabled?.() === false"
+              :title="
+                command.enabled?.() === false && command.disabledReasonKey
+                  ? t(command.disabledReasonKey)
+                  : undefined
+              "
               @select="onSelect(command)"
             >
               <component :is="command.icon" v-if="command.icon" class="size-4 shrink-0" />
@@ -494,17 +738,18 @@ function track(event: string, payload: Record<string, unknown>): void {
               <CommandShortcut v-if="command.shortcut">{{ command.shortcut }}</CommandShortcut>
             </CommandItem>
           </CommandGroup>
-          <CommandGroup :heading="t('palette.groups.actions')">
+          <CommandGroup v-if="canMutate" :heading="t('palette.groups.actions')">
             <CommandItem
               v-for="entityType in entityTypes"
               :key="`create.${entityType}`"
               :value="`create.${entityType}`"
+              :disabled="busy"
               @select="enterCreateStep(entityType)"
             >
               <component :is="navIcons[entityType]" class="size-4 shrink-0" />
               <span>{{ t(createLabelKeys[entityType]) }}</span>
             </CommandItem>
-            <CommandItem value="palette.delete-entity" @select="enterDeleteStep">
+            <CommandItem value="palette.delete-entity" :disabled="busy" @select="enterDeleteStep">
               <Trash2 class="size-4 shrink-0" />
               <span>{{ t("palette.delete_entity") }}</span>
             </CommandItem>
@@ -518,6 +763,7 @@ function track(event: string, payload: Record<string, unknown>): void {
               v-for="item in group.items"
               :key="item.id"
               :value="item.id"
+              :disabled="busy"
               @select="onSelectNav(item)"
             >
               <component
@@ -538,13 +784,15 @@ function track(event: string, payload: Record<string, unknown>): void {
 
         <template v-else-if="createEntityType">
           <p
-            v-if="createTargets.length === 0"
+            v-if="!createTargetsLoading && !createTargetsErrorKey && createTargets.length === 0"
             class="py-6 text-center text-sm text-muted-foreground"
           >
             {{ t("palette.no_editable_projects") }}
           </p>
-          <template v-else>
-            <PaletteEmpty @no-results="onNoResults">{{ t("palette.no_results") }}</PaletteEmpty>
+          <template v-else-if="!createTargetsErrorKey">
+            <PaletteEmpty :enabled="!createTargetsLoading" @no-results="onNoResults">
+              {{ t("palette.no_results") }}
+            </PaletteEmpty>
             <CommandGroup :heading="t(createLabelKeys[createEntityType])">
               <CommandItem
                 v-for="target in createTargets"
@@ -564,14 +812,29 @@ function track(event: string, payload: Record<string, unknown>): void {
         </template>
 
         <template v-else-if="step.kind === 'delete-pick-entity'">
-          <p v-if="deleteItems.length === 0" class="py-6 text-center text-sm text-muted-foreground">
+          <PaletteEmpty
+            :enabled="!deleteItemsLoading && !deleteItemsErrorKey"
+            @no-results="onNoResults"
+          >
+            {{ t("palette.no_results") }}
+          </PaletteEmpty>
+          <p
+            v-if="
+              !deleteItemsLoading &&
+              !deleteItemsErrorKey &&
+              query.trim() === '' &&
+              deleteItems.length === 0
+            "
+            class="py-6 text-center text-sm text-muted-foreground"
+          >
             {{ t("palette.no_results") }}
           </p>
-          <CommandGroup v-else :heading="t('palette.delete_entity')">
+          <CommandGroup v-if="deleteItems.length > 0" :heading="t('palette.delete_entity')">
             <CommandItem
               v-for="item in deleteItems"
               :key="`delete-${item.type}-${item.id}`"
               :value="`delete-${item.type}-${item.id}`"
+              :disabled="busy"
               @select="onSelectDeleteItem(item)"
             >
               <component

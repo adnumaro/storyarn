@@ -19,10 +19,12 @@ export type KeyboardBindings = Record<string, (e: KeyboardEvent) => void>;
 export interface UseKeyboardOptions {
   target?: EventTarget;
   prevent?: boolean;
+  /** Opt selected bindings into editable targets without weakening every shortcut. */
+  allowInEditable?: (combo: string, event: KeyboardEvent) => boolean;
 }
 
 export function useKeyboard(bindings: KeyboardBindings, options: UseKeyboardOptions = {}): void {
-  const { target = document, prevent = true } = options;
+  const { target = document, prevent = true, allowInEditable } = options;
 
   function isEditableTarget(el: HTMLElement | null): boolean {
     if (!el) return false;
@@ -41,9 +43,15 @@ export function useKeyboard(bindings: KeyboardBindings, options: UseKeyboardOpti
 
   function handler(e: Event): void {
     const keyEvent = e as KeyboardEvent;
-    if (isEditableTarget(keyEvent.target as HTMLElement | null)) return;
+    const combo = buildCombo(keyEvent);
+    if (
+      isEditableTarget(keyEvent.target as HTMLElement | null) &&
+      !allowInEditable?.(combo, keyEvent)
+    ) {
+      return;
+    }
 
-    const fn = bindings[buildCombo(keyEvent)];
+    const fn = bindings[combo];
     if (!fn) return;
 
     if (prevent) {

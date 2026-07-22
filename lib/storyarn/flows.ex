@@ -150,6 +150,9 @@ defmodule Storyarn.Flows do
   @spec create_flow(Project.t(), attrs()) :: {:ok, flow()} | {:error, changeset()}
   defdelegate create_flow(project, attrs), to: FlowCrud
 
+  @doc false
+  defdelegate create_flow_in_transaction(project, attrs), to: FlowCrud
+
   @doc """
   Updates a flow.
   """
@@ -168,8 +171,14 @@ defmodule Storyarn.Flows do
   ids (collected under the delete's own lock).
   """
   @spec delete_flow_subtree(flow()) ::
-          {:ok, %{entity: flow(), deleted_ids: [integer()]}} | {:error, term()}
+          {:ok, %{entity: flow(), deleted_ids: [integer()], affected_flow_ids: [integer()]}} | {:error, term()}
   defdelegate delete_flow_subtree(flow), to: FlowCrud
+
+  @doc false
+  defdelegate delete_flow_subtree_in_transaction(flow), to: FlowCrud
+
+  @doc false
+  defdelegate broadcast_flow_refreshes(affected_flow_ids), to: FlowCrud
 
   @doc """
   Permanently deletes a flow from the database.

@@ -14,16 +14,16 @@ The command palette is Storyarn's control center: one search box that finds and 
 - **macOS**: press {accent}⌘K{/accent}
 - **Windows / Linux**: press {accent}Ctrl+K{/accent}
 
-Press the same shortcut again, or {accent}Esc{/accent}, to close it. The shortcut stays out of your way while you type: it does not fire inside text fields or editors.
+Press the same shortcut again, or {accent}Esc{/accent} from the first page, to close it. Inside a creation or deletion step, {accent}Esc{/accent} goes back one step. The shortcut stays out of your way while you type elsewhere: it does not open over text fields, editors, or another dialog.
 
 ## How it works
 
 Type to filter commands by name. Use the arrow keys to highlight a command and {accent}Enter{/accent} to run it. Commands are grouped:
 
-- **Navigation** — jump between the tools of your current project (Dashboard, Sheets, Flows, Scenes, Localization…), open project settings, or the trash.
+- **Navigation** — jump between workspaces, projects, Sheets, Flows and Scenes, or open settings you have permission to manage.
 - **View** — controls for the editor you are in, such as fitting the canvas to view in the flow and scene editors or toggling the flow minimap.
-- **Switch workspace** — jump straight to another of your workspaces from the dashboard.
+- **Actions** — create a Sheet, Flow or Scene in any project you can edit, or search for one of them to delete with an inline confirmation. The palette stays open while destructive actions complete.
 
 ## Commands depend on where you are
 
-The palette only offers what applies to the current page. In the flow editor you get flow commands; on the workspace dashboard you get workspace commands. If a command does not appear, it is not available on that page — the palette never swaps in a different action.
+The palette is available across the authenticated workspace, project and settings areas. It only offers what applies to the current page and your permissions. In the flow editor you get flow commands; on the workspace dashboard you get workspace commands. If a command does not appear, it is unavailable in that context — the palette never swaps in a different action.

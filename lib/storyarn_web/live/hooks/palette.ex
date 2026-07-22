@@ -13,14 +13,17 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   the tree sidebars use and broadcast the same shell-topic messages, so
   sidebars and open editors react identically regardless of which surface
   performed the action. Analytics payloads are rebuilt from validated
-  params — raw client params never reach the adapter. Malformed events
-  (only our own client produces these) fall through like any unknown event.
+  params — raw client params never reach the adapter. Known palette events
+  fail closed with an `invalid_request` reply when their payload is malformed;
+  they are never delegated to the host LiveView.
   """
 
   use StoryarnWeb, :verified_routes
   use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Analytics
+  alias Storyarn.Collaboration
+  alias Storyarn.CommandPalette
   alias Storyarn.Flows
   alias Storyarn.GlobalSearch
   alias Storyarn.Scenes
@@ -37,7 +40,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   @known_surfaces ~w(global project workspace flows sheets scenes localization account)
 
   @static_command_ids MapSet.new(
-                        ~w(account.profile account.security account.tutorials
+                        ~w(account.profile account.security account.tutorials account.integrations
                            workspace.toggle-sidebar flows.toggle-minimap
                            flows.fit-to-view scenes.fit-to-view
                            create.project create.sheet create.flow create.scene
@@ -54,10 +57,17 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
                       )
 
   @nav_command_id_format ~r/^nav\.(workspace|project|project-settings|workspace-settings|sheet|flow|scene)\.[1-9]\d{0,19}$/
-
+  @palette_events ~w(palette_nav palette_create_targets palette_create palette_delete_search
+                     palette_delete palette_opened palette_command_executed palette_search_no_results)
   # Client-supplied ids above the PostgreSQL bigint range would raise on
   # parameter encoding instead of failing closed — bound them at the guard.
   @max_pg_bigint 9_223_372_036_854_775_807
+
+  defguardp valid_database_id(value)
+            when is_integer(value) and value > 0 and value <= @max_pg_bigint
+
+  defguardp valid_operation_id(value)
+            when is_binary(value) and byte_size(value) > 0 and byte_size(value) <= 64
 
   def on_mount(:setup_palette, _params, _session, socket) do
     {:cont,
@@ -80,7 +90,13 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
           [
             %{key: "workspaces", items: Enum.map(destinations.workspaces, &nav_item/1)},
             %{key: "projects", items: Enum.map(destinations.projects, &nav_item/1)},
-            %{key: "project_settings", items: Enum.map(destinations.projects, &settings_item/1)},
+            %{
+              key: "project_settings",
+              items:
+                destinations.projects
+                |> Enum.filter(& &1.can_manage_project)
+                |> Enum.map(&settings_item/1)
+            },
             %{
               key: "workspace_settings",
               items:
@@ -108,30 +124,44 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
     {:halt, %{token: token, projects: projects}, socket}
   end
 
-  defp handle_palette_event("palette_create", %{"type" => type, "project_id" => project_id}, socket)
-       when type in ~w(sheet flow scene) and is_integer(project_id) and project_id > 0 and project_id <= @max_pg_bigint do
+  defp handle_palette_event(
+         "palette_create",
+         %{"type" => type, "project_id" => project_id, "operation_id" => operation_id},
+         socket
+       )
+       when type in ~w(sheet flow scene) and valid_database_id(project_id) and valid_operation_id(operation_id) do
     scope = socket.assigns.current_scope
 
-    reply =
-      with {:ok, %{project: project, workspace: workspace}} <- GlobalSearch.editable_project(scope, project_id),
-           {:ok, entity} <- create_entity(type, project) do
-        broadcast_tree_changed(project.id, type)
+    {reply, post_commit} =
+      CommandPalette.run(
+        scope,
+        "palette_create",
+        operation_id,
+        fn ->
+          case GlobalSearch.editable_project(scope, project_id) do
+            {:ok, %{project: project, workspace: workspace}} ->
+              entity = create_entity_in_transaction(type, project)
 
-        %{
-          url:
-            entity_url(%{
-              type: entity_type(type),
-              id: entity.id,
-              project_slug: project.slug,
-              workspace_slug: workspace.slug
-            })
-        }
-      else
-        {:error, :unauthorized} -> %{error: "unauthorized"}
-        {:error, :limit_reached, _} -> %{error: "limit_reached"}
-        {:error, _} -> %{error: "create_failed"}
-      end
+              reply = %{
+                url:
+                  entity_url(%{
+                    type: entity_type(type),
+                    id: entity.id,
+                    project_slug: project.slug,
+                    workspace_slug: workspace.slug
+                  })
+              }
 
+              {reply, {:entity_created, project.id, type, entity}}
+
+            {:error, :unauthorized} ->
+              {%{error: "unauthorized"}, nil}
+          end
+        end,
+        &create_error_reply/1
+      )
+
+    run_post_commit(post_commit)
     {:halt, reply, socket}
   end
 
@@ -145,7 +175,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
           id: dest.id,
           type: Atom.to_string(dest.type),
           label: dest.name,
-          context: dest.project_name,
+          context: destination_context(dest),
           shortcut: dest.shortcut,
           projectId: dest.project_id
         }
@@ -154,28 +184,40 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
     {:halt, %{token: token, items: items}, socket}
   end
 
-  defp handle_palette_event("palette_delete", %{"type" => type, "id" => id, "project_id" => project_id}, socket)
-       when type in ~w(sheet flow scene) and is_integer(id) and id > 0 and id <= @max_pg_bigint and is_integer(project_id) and
-              project_id > 0 and project_id <= @max_pg_bigint do
+  defp handle_palette_event(
+         "palette_delete",
+         %{"type" => type, "id" => id, "project_id" => project_id, "operation_id" => operation_id},
+         socket
+       )
+       when type in ~w(sheet flow scene) and valid_database_id(id) and valid_database_id(project_id) and
+              valid_operation_id(operation_id) do
     scope = socket.assigns.current_scope
 
-    reply =
-      with {:ok, %{entity: entity, project: project}} <-
-             GlobalSearch.deletable_entity(scope, entity_type(type), project_id, id),
-           # The delete itself reports the committed cascade set (collected
-           # under its own lock) — never a separate pre-delete traversal.
-           {:ok, %{deleted_ids: deleted_ids}} <- delete_entity_subtree(type, entity) do
-        # Plain broadcast (not broadcast_from): the LV serving this event may
-        # itself be showing a deleted entity and must navigate away too.
-        broadcast_entities_deleted(project.id, entity_type(type), deleted_ids)
-        broadcast_tree_changed(project.id, type)
-        %{deleted: true}
-      else
-        {:error, :unauthorized} -> %{error: "unauthorized"}
-        {:error, :not_found} -> %{error: "not_found"}
-        {:error, _} -> %{error: "delete_failed"}
-      end
+    {reply, post_commit} =
+      CommandPalette.run(
+        scope,
+        "palette_delete",
+        operation_id,
+        fn ->
+          case GlobalSearch.deletable_entity(scope, entity_type(type), project_id, id) do
+            {:ok, %{entity: entity, project: project}} ->
+              # The delete itself reports the committed cascade set (collected
+              # under its own lock) — never a separate pre-delete traversal.
+              delete_result = delete_entity_subtree_in_transaction(type, entity)
 
+              {%{deleted: true}, delete_post_commit(project.id, type, delete_result)}
+
+            {:error, :unauthorized} ->
+              {%{error: "unauthorized"}, nil}
+
+            {:error, :not_found} ->
+              {%{error: "not_found"}, nil}
+          end
+        end,
+        &delete_error_reply/1
+      )
+
+    run_post_commit(post_commit)
     {:halt, reply, socket}
   end
 
@@ -197,13 +239,17 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   end
 
   defp handle_palette_event("palette_search_no_results", %{"query_length" => query_length, "surface" => surface}, socket)
-       when is_integer(query_length) and surface in @known_surfaces do
+       when is_integer(query_length) and query_length >= 0 and query_length <= 100 and surface in @known_surfaces do
     Analytics.track(socket.assigns.current_scope, "palette search no results", %{
       query_length: query_length,
       surface: surface
     })
 
     {:halt, socket}
+  end
+
+  defp handle_palette_event(event, _params, socket) when event in @palette_events do
+    {:halt, %{error: "invalid_request"}, socket}
   end
 
   defp handle_palette_event(_event, _params, socket), do: {:cont, socket}
@@ -227,6 +273,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
       id: "nav.project.#{dest.id}",
       type: "project",
       label: dest.name,
+      context: dest.workspace_name,
       url: ~p"/workspaces/#{dest.workspace_slug}/projects/#{dest.project_slug}"
     }
   end
@@ -236,7 +283,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
       id: "nav.#{entity_type}.#{dest.id}",
       type: Atom.to_string(entity_type),
       label: dest.name,
-      context: dest.project_name,
+      context: destination_context(dest),
       shortcut: dest.shortcut,
       url: entity_url(dest)
     }
@@ -247,6 +294,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
       id: "nav.project-settings.#{dest.id}",
       type: "settings",
       label: dest.name,
+      context: dest.workspace_name,
       url: ~p"/workspaces/#{dest.workspace_slug}/projects/#{dest.project_slug}/settings"
     }
   end
@@ -276,18 +324,61 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   defp entity_type("flow"), do: :flow
   defp entity_type("scene"), do: :scene
 
-  # Same default names the tree sidebars use — one concept, one name.
-  defp create_entity("sheet", project), do: Sheets.create_sheet(project, %{name: dgettext("sheets", "Untitled")})
-  defp create_entity("flow", project), do: Flows.create_flow(project, %{name: dgettext("flows", "Untitled")})
-  defp create_entity("scene", project), do: Scenes.create_scene(project, %{name: dgettext("scenes", "Untitled")})
+  defp destination_context(%{project_name: project_name, workspace_name: workspace_name}) do
+    "#{project_name} · #{workspace_name}"
+  end
 
-  defp delete_entity_subtree("sheet", entity), do: Sheets.delete_sheet_subtree(entity)
-  defp delete_entity_subtree("flow", entity), do: Flows.delete_flow_subtree(entity)
-  defp delete_entity_subtree("scene", entity), do: Scenes.delete_scene_subtree(entity)
+  # Same default names the tree sidebars use — one concept, one name.
+  defp create_entity_in_transaction("sheet", project),
+    do: Sheets.create_sheet_in_transaction(project, %{name: dgettext("sheets", "Untitled")})
+
+  defp create_entity_in_transaction("flow", project),
+    do: Flows.create_flow_in_transaction(project, %{name: dgettext("flows", "Untitled")})
+
+  defp create_entity_in_transaction("scene", project),
+    do: Scenes.create_scene_in_transaction(project, %{name: dgettext("scenes", "Untitled")})
+
+  defp delete_entity_subtree_in_transaction("sheet", entity), do: Sheets.delete_sheet_subtree_in_transaction(entity)
+
+  defp delete_entity_subtree_in_transaction("flow", entity), do: Flows.delete_flow_subtree_in_transaction(entity)
+
+  defp delete_entity_subtree_in_transaction("scene", entity), do: Scenes.delete_scene_subtree_in_transaction(entity)
+
+  defp create_error_reply({:limit_reached, _details}), do: %{error: "limit_reached"}
+  defp create_error_reply(_reason), do: %{error: "create_failed"}
+
+  defp delete_error_reply(:not_found), do: %{error: "not_found"}
+  defp delete_error_reply(_reason), do: %{error: "delete_failed"}
 
   defp tree_key("sheet"), do: :sheets
   defp tree_key("flow"), do: :flows
   defp tree_key("scene"), do: :scenes
+
+  defp delete_post_commit(project_id, "flow" = type, %{deleted_ids: deleted_ids, affected_flow_ids: affected_flow_ids}) do
+    {:entities_deleted, project_id, type, deleted_ids, affected_flow_ids}
+  end
+
+  defp delete_post_commit(project_id, type, %{deleted_ids: deleted_ids}) do
+    {:entities_deleted, project_id, type, deleted_ids, []}
+  end
+
+  defp run_post_commit(nil), do: :ok
+
+  defp run_post_commit({:entity_created, project_id, type, entity}) do
+    if type == "sheet", do: Sheets.sync_created_sheet_localization(entity)
+
+    Collaboration.broadcast_dashboard_change(project_id, tree_key(type))
+    broadcast_tree_changed(project_id, type)
+  end
+
+  defp run_post_commit({:entities_deleted, project_id, type, deleted_ids, affected_flow_ids}) do
+    # Plain broadcast (not broadcast_from): the LV serving this event may
+    # itself be showing a deleted entity and must navigate away too.
+    Flows.broadcast_flow_refreshes(affected_flow_ids)
+    Collaboration.broadcast_dashboard_change(project_id, tree_key(type))
+    broadcast_entities_deleted(project_id, entity_type(type), deleted_ids)
+    broadcast_tree_changed(project_id, type)
+  end
 
   defp broadcast_tree_changed(project_id, type) do
     Phoenix.PubSub.broadcast(

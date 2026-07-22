@@ -32,7 +32,7 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
       |> join(:inner, [w], p in Project, on: p.workspace_id == w.id)
       |> join(:inner, [w, p], pm in ProjectMembership, on: pm.project_id == p.id and pm.user_id == ^user.id)
       |> join(:left, [w, p, pm], wm in WorkspaceMembership, on: wm.workspace_id == w.id and wm.user_id == ^user.id)
-      |> where([w, p, pm, wm], is_nil(wm.id))
+      |> where([w, p, pm, wm], is_nil(p.deleted_at) and is_nil(wm.id))
       |> select([w, p, pm, wm], %{workspace_id: w.id, role: type(^nil, :string)})
       |> distinct(true)
 
@@ -58,7 +58,7 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
     |> join(:left, [w], wm in WorkspaceMembership, on: wm.workspace_id == w.id and wm.user_id == ^user.id)
     |> join(:left, [w, wm], p in Project, on: p.workspace_id == w.id)
     |> join(:left, [w, wm, p], pm in ProjectMembership, on: pm.project_id == p.id and pm.user_id == ^user.id)
-    |> where([w, wm, p, pm], not is_nil(wm.id) or not is_nil(pm.id))
+    |> where([w, wm, p, pm], not is_nil(wm.id) or (is_nil(p.deleted_at) and not is_nil(pm.id)))
     |> distinct([w], w.id)
     |> order_by([w], asc: w.inserted_at)
     |> Repo.all()
@@ -221,7 +221,7 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
   defp has_project_membership?(workspace_id, user_id) do
     Project
     |> join(:inner, [p], pm in ProjectMembership, on: pm.project_id == p.id)
-    |> where([p, pm], p.workspace_id == ^workspace_id and pm.user_id == ^user_id)
+    |> where([p, pm], p.workspace_id == ^workspace_id and pm.user_id == ^user_id and is_nil(p.deleted_at))
     |> limit(1)
     |> Repo.exists?()
   end
@@ -234,6 +234,7 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
     Workspace
     |> join(:inner, [w], p in Project, on: p.workspace_id == w.id)
     |> join(:inner, [w, p], pm in ProjectMembership, on: pm.project_id == p.id and pm.user_id == ^user.id)
+    |> where([w, p, pm], is_nil(p.deleted_at))
     |> order_by([w], asc: w.inserted_at)
     |> limit(1)
     |> Repo.one()

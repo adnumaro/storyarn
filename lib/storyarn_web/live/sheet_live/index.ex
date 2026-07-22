@@ -30,6 +30,7 @@ defmodule StoryarnWeb.SheetLive.Index do
       workspace={@workspace}
       current_scope={@current_scope}
       current_user={@current_user}
+      membership={@membership}
       urls={@urls}
       active_tool={:sheets}
       is_super_admin={@is_super_admin}

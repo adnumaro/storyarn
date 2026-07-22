@@ -64,6 +64,15 @@ describe("command palette registry", () => {
     expect(rendered[0]!.labelKey).toBe("label.first");
   });
 
+  it("omits commands whose availability predicate is false", () => {
+    registerPaletteCommands("flows", [
+      { ...command("flows.visible"), visible: () => true },
+      { ...command("flows.hidden"), visible: () => false },
+    ]);
+
+    expect(paletteGroups.value[0]!.commands.map((item) => item.id)).toEqual(["flows.visible"]);
+  });
+
   it("primarySurface is the last non-global registration and falls back after unregister", () => {
     registerPaletteCommands(GLOBAL_SURFACE, [command("global.a")]);
     const unregisterFlows = registerPaletteCommands("flows", [command("flows.b")]);

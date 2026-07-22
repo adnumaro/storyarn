@@ -59,9 +59,14 @@ const filterState = reactive({
 });
 
 function filterItems() {
-  if (disableFilter.value || !filterState.search) {
+  const search = filterState.search.trim();
+
+  if (disableFilter.value || !search) {
     filterState.filtered.count = allItems.value.size;
-    // Do nothing, each item will know to show itself because search is empty
+    filterState.filtered.items = new Map(
+      Array.from(allItems.value.keys(), (id) => [id, 1] as [string, number]),
+    );
+    filterState.filtered.groups = new Set(allGroups.value.keys());
     return;
   }
 
@@ -71,7 +76,7 @@ function filterItems() {
 
   // Check which items should be included
   for (const [id, value] of allItems.value) {
-    const score = contains(value, filterState.search);
+    const score = contains(value, search);
     filterState.filtered.items.set(id, score ? 1 : 0);
     if (score) itemCount++;
   }

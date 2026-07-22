@@ -9,17 +9,24 @@ interface PaletteCommandBase {
   icon?: Component;
   /** Display-only shortcut hint, e.g. "⇧⌘L". Never a binding. */
   shortcut?: string;
-  run: () => void;
+  /** Dynamic availability is evaluated whenever the reactive registry recomputes. */
+  visible?: () => boolean;
+  enabled?: () => boolean;
+  disabledReasonKey?: string;
 }
+
+type PaletteCommandExecution =
+  | { run: () => void | Promise<void>; href?: never }
+  | { href: string; run?: never };
 
 /**
  * A command labels itself with EITHER an i18n key or a raw data-driven string
  * (workspace names, etc.). The union makes a labelless command a compile
  * error — there is deliberately no render-time fallback.
  */
-export type PaletteCommand =
-  | (PaletteCommandBase & { labelKey: string; label?: never })
-  | (PaletteCommandBase & { label: string; labelKey?: never });
+export type PaletteCommand = PaletteCommandBase &
+  PaletteCommandExecution &
+  ({ labelKey: string; label?: never } | { label: string; labelKey?: never });
 
 export interface PaletteRegistration {
   surface: string;
@@ -57,6 +64,7 @@ export const paletteGroups = computed<PaletteGroup[]>(() => {
   for (const { commands } of entries.values()) {
     for (const command of commands) {
       if (seen.has(command.id)) continue;
+      if (command.visible?.() === false) continue;
       seen.add(command.id);
 
       const list = groups.get(command.groupKey);

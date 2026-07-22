@@ -9,6 +9,7 @@ defmodule Storyarn.GlobalSearch.DestinationsTest do
   import Storyarn.WorkspacesFixtures
 
   alias Storyarn.GlobalSearch
+  alias Storyarn.Projects
   alias Storyarn.Sheets
 
   setup do
@@ -53,6 +54,18 @@ defmodule Storyarn.GlobalSearch.DestinationsTest do
       assert Enum.any?(result.projects, &(&1.id == foreign_project.id))
       assert Enum.any?(result.workspaces, &(&1.id == foreign_workspace.id))
       assert Enum.any?(result.workspaces, &(&1.id == workspace.id))
+    end
+
+    test "a soft-deleted direct project no longer exposes its workspace", %{user: user, scope: scope} do
+      owner = user_fixture()
+      foreign_workspace = workspace_fixture(owner)
+      foreign_project = project_fixture(owner, %{workspace: foreign_workspace})
+      membership_fixture(foreign_project, user, "viewer")
+
+      assert Enum.any?(GlobalSearch.destinations(scope, "").workspaces, &(&1.id == foreign_workspace.id))
+      assert {:ok, _deleted} = Projects.delete_project(foreign_project, owner.id)
+
+      refute Enum.any?(GlobalSearch.destinations(scope, "").workspaces, &(&1.id == foreign_workspace.id))
     end
   end
 
