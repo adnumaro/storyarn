@@ -3,6 +3,33 @@ defmodule Storyarn.Sheets.HealthCheckerTest do
 
   alias Storyarn.Sheets.HealthChecker
 
+  describe "canonical findings" do
+    test "owns the shared code-to-severity contract" do
+      assert HealthChecker.severity_for(:missing_sheet_shortcut) == :error
+      assert HealthChecker.severity_for(:required_block_empty) == :warning
+      assert HealthChecker.severity_for(:empty_leaf_sheet) == :info
+
+      finding =
+        HealthChecker.finding(:no_internal_variable_usages, %{
+          sheet_id: 7,
+          block_id: 11,
+          block_type: "number",
+          details: %{sheet_name: "Hero"}
+        })
+
+      assert finding == %{
+               severity: :info,
+               code: :no_internal_variable_usages,
+               sheet_id: 7,
+               block_id: 11,
+               block_type: "number",
+               row_id: nil,
+               column_id: nil,
+               details: %{sheet_name: "Hero"}
+             }
+    end
+  end
+
   describe "severity contract" do
     test "treats missing runtime identity as errors and an empty leaf as info" do
       findings =

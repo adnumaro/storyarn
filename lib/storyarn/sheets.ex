@@ -1018,8 +1018,8 @@ defmodule Storyarn.Sheets do
   @doc "Returns MapSet of block IDs with at least one variable reference."
   defdelegate referenced_block_ids_for_project(project_id), to: SheetStats
 
-  @doc "Detects issues in sheets. Returns [%{issue_type, sheet_id, sheet_name, ...}]."
-  defdelegate detect_sheet_issues(project_id, referenced_ids \\ nil), to: SheetStats
+  @doc "Returns the canonical sheet health findings used by the project dashboard overview."
+  defdelegate list_dashboard_health_findings(project_id, referenced_ids \\ nil), to: SheetStats
 
   defp broadcast_block_dashboard_result({:ok, _value} = result, %Block{} = block) do
     case Repo.get(Sheet, block.sheet_id) do

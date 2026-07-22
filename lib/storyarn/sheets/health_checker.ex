@@ -27,6 +27,54 @@ defmodule Storyarn.Sheets.HealthChecker do
   @numeric_types ~w(number formula)
   @select_types ~w(select multi_select)
 
+  @severity_by_code %{
+    broken_inheritance: :error,
+    cyclic_formula_dependency: :error,
+    disallowed_reference_target: :error,
+    formula_evaluation_failed: :error,
+    invalid_block_layout: :error,
+    invalid_block_value: :error,
+    invalid_constraints: :error,
+    invalid_formula_binding: :error,
+    invalid_formula_expression: :error,
+    invalid_select_option_keys: :error,
+    invalid_table_structure: :error,
+    missing_sheet_shortcut: :error,
+    missing_variable_name: :error,
+    stale_incoming_variable_reference: :error,
+    stale_inline_reference: :error,
+    stale_reference_target: :error,
+    stale_selected_option: :error,
+    unbound_formula_symbol: :error,
+    blank_option_label: :warning,
+    empty_select_options: :warning,
+    required_block_empty: :warning,
+    required_table_cell_empty: :warning,
+    unnamed_table_axis: :warning,
+    value_outside_constraints: :warning,
+    empty_leaf_sheet: :info,
+    no_internal_variable_usages: :info
+  }
+
+  @doc "Returns the canonical severity for a sheet health finding code."
+  @spec severity_for(atom()) :: severity()
+  def severity_for(code), do: Map.fetch!(@severity_by_code, code)
+
+  @doc "Builds a canonical finding for adapters that detect health in bulk."
+  @spec finding(atom(), map()) :: finding()
+  def finding(code, attrs \\ %{}) when is_atom(code) and is_map(attrs) do
+    %{
+      severity: severity_for(code),
+      code: code,
+      sheet_id: Map.get(attrs, :sheet_id),
+      block_id: Map.get(attrs, :block_id),
+      block_type: Map.get(attrs, :block_type),
+      row_id: Map.get(attrs, :row_id),
+      column_id: Map.get(attrs, :column_id),
+      details: Map.get(attrs, :details, %{})
+    }
+  end
+
   @spec check(map()) :: [finding()]
   def check(%{sheet: sheet} = snapshot) when is_map(sheet) do
     blocks = Map.get(snapshot, :blocks, [])
@@ -49,19 +97,19 @@ defmodule Storyarn.Sheets.HealthChecker do
       details = Map.drop(issue, [:block_id, "block_id"])
 
       if is_nil(block) do
-        sheet_finding(sheet, :error, :broken_inheritance, details)
+        sheet_finding(sheet, :broken_inheritance, details)
       else
-        block_finding(sheet, block, :error, :broken_inheritance, details)
+        block_finding(sheet, block, :broken_inheritance, details)
       end
     end)
   end
 
   defp sheet_findings(sheet, blocks, snapshot) do
     []
-    |> maybe_add(blank?(field(sheet, :shortcut)), sheet_finding(sheet, :error, :missing_sheet_shortcut))
+    |> maybe_add(blank?(field(sheet, :shortcut)), sheet_finding(sheet, :missing_sheet_shortcut))
     |> maybe_add(
       blocks == [] and Map.get(snapshot, :has_children, false) == false,
-      sheet_finding(sheet, :info, :empty_leaf_sheet)
+      sheet_finding(sheet, :empty_leaf_sheet)
     )
   end
 
@@ -81,16 +129,16 @@ defmodule Storyarn.Sheets.HealthChecker do
     []
     |> maybe_add(
       variable? and blank?(field(block, :variable_name)),
-      block_finding(sheet, block, :error, :missing_variable_name)
+      block_finding(sheet, block, :missing_variable_name)
     )
     |> maybe_add(
       variable? and not blank?(field(block, :variable_name)) and
         not MapSet.member?(referenced_ids, field(block, :id)),
-      block_finding(sheet, block, :info, :no_internal_variable_usages)
+      block_finding(sheet, block, :no_internal_variable_usages)
     )
     |> maybe_add(
       Map.get(stale_counts, field(block, :id), 0) > 0,
-      block_finding(sheet, block, :error, :stale_incoming_variable_reference, %{
+      block_finding(sheet, block, :stale_incoming_variable_reference, %{
         count: Map.get(stale_counts, field(block, :id), 0)
       })
     )
@@ -103,11 +151,11 @@ defmodule Storyarn.Sheets.HealthChecker do
     []
     |> maybe_add(
       invalid_block_value?(type, value),
-      block_finding(sheet, block, :error, :invalid_block_value, %{expected: expected_value(type)})
+      block_finding(sheet, block, :invalid_block_value, %{expected: expected_value(type)})
     )
     |> maybe_add(
       field(block, :required, false) and type != "table" and required_block_empty?(block, snapshot),
-      block_finding(sheet, block, :warning, :required_block_empty)
+      block_finding(sheet, block, :required_block_empty)
     )
     |> Kernel.++(select_findings(sheet, block, nil, nil, type, field(block, :config, %{}), content(value)))
   end
@@ -134,7 +182,7 @@ defmodule Storyarn.Sheets.HealthChecker do
         reference_block_findings(sheet, block, snapshot, stale_entity_ids)
 
       type == "rich_text" and MapSet.member?(stale_entity_ids, block_id) ->
-        [block_finding(sheet, block, :error, :stale_inline_reference)]
+        [block_finding(sheet, block, :stale_inline_reference)]
 
       true ->
         []
@@ -153,11 +201,11 @@ defmodule Storyarn.Sheets.HealthChecker do
     []
     |> maybe_add(
       stale? or MapSet.member?(stale_entity_ids, field(block, :id)),
-      block_finding(sheet, block, :error, :stale_reference_target)
+      block_finding(sheet, block, :stale_reference_target)
     )
     |> maybe_add(
       complete? and is_list(allowed_types) and target_type not in allowed_types,
-      block_finding(sheet, block, :error, :disallowed_reference_target, %{target_type: target_type})
+      block_finding(sheet, block, :disallowed_reference_target, %{target_type: target_type})
     )
   end
 
@@ -184,15 +232,15 @@ defmodule Storyarn.Sheets.HealthChecker do
     []
     |> maybe_add(
       columns == [],
-      block_finding(sheet, block, :error, :invalid_table_structure, %{reason: "missing_columns"})
+      block_finding(sheet, block, :invalid_table_structure, %{reason: "missing_columns"})
     )
     |> maybe_add(
       rows == [],
-      block_finding(sheet, block, :error, :invalid_table_structure, %{reason: "missing_rows"})
+      block_finding(sheet, block, :invalid_table_structure, %{reason: "missing_rows"})
     )
     |> maybe_add(
       Enum.any?(column_slugs, &blank?/1) or duplicate_values?(column_slugs),
-      block_finding(sheet, block, :error, :invalid_table_structure, %{reason: "invalid_column_slugs"})
+      block_finding(sheet, block, :invalid_table_structure, %{reason: "invalid_column_slugs"})
     )
     |> Kernel.++(row_structure_findings(sheet, block, rows, expected_keys))
   end
@@ -202,7 +250,7 @@ defmodule Storyarn.Sheets.HealthChecker do
 
     base =
       if Enum.any?(row_slugs, &blank?/1) or duplicate_values?(row_slugs) do
-        [block_finding(sheet, block, :error, :invalid_table_structure, %{reason: "invalid_row_slugs"})]
+        [block_finding(sheet, block, :invalid_table_structure, %{reason: "invalid_row_slugs"})]
       else
         []
       end
@@ -216,7 +264,7 @@ defmodule Storyarn.Sheets.HealthChecker do
           []
         else
           [
-            located_finding(sheet, block, row, nil, :error, :invalid_table_structure, %{
+            located_finding(sheet, block, row, nil, :invalid_table_structure, %{
               reason: "cell_schema_mismatch"
             })
           ]
@@ -228,7 +276,7 @@ defmodule Storyarn.Sheets.HealthChecker do
     Enum.flat_map(columns, fn column ->
       axis_findings =
         if blank?(field(column, :name)) do
-          [located_finding(sheet, block, nil, column, :warning, :unnamed_table_axis, %{axis: "column"})]
+          [located_finding(sheet, block, nil, column, :unnamed_table_axis, %{axis: "column"})]
         else
           []
         end
@@ -243,7 +291,7 @@ defmodule Storyarn.Sheets.HealthChecker do
   defp table_row_name_findings(sheet, block, rows) do
     Enum.flat_map(rows, fn row ->
       if blank?(field(row, :name)) do
-        [located_finding(sheet, block, row, nil, :warning, :unnamed_table_axis, %{axis: "row"})]
+        [located_finding(sheet, block, row, nil, :unnamed_table_axis, %{axis: "row"})]
       else
         []
       end
@@ -258,11 +306,11 @@ defmodule Storyarn.Sheets.HealthChecker do
     []
     |> maybe_add(
       invalid_cell_value?(type, value),
-      located_finding(sheet, block, row, column, :error, :invalid_block_value, %{expected: expected_value(type)})
+      located_finding(sheet, block, row, column, :invalid_block_value, %{expected: expected_value(type)})
     )
     |> maybe_add(
       field(column, :required, false) and empty_cell?(value),
-      located_finding(sheet, block, row, column, :warning, :required_table_cell_empty)
+      located_finding(sheet, block, row, column, :required_table_cell_empty)
     )
     |> Kernel.++(
       select_findings(
@@ -310,7 +358,7 @@ defmodule Storyarn.Sheets.HealthChecker do
     else
       case FormulaEngine.parse(expression) do
         {:error, reason} ->
-          [located_finding(sheet, block, row, column, :error, :invalid_formula_expression, %{reason: reason})]
+          [located_finding(sheet, block, row, column, :invalid_formula_expression, %{reason: reason})]
 
         {:ok, ast} ->
           parsed_formula_findings(sheet, block, row, column, columns, value, ast, snapshot)
@@ -319,7 +367,7 @@ defmodule Storyarn.Sheets.HealthChecker do
   end
 
   defp do_formula_findings(sheet, block, row, column, _columns, _value, _snapshot) do
-    [located_finding(sheet, block, row, column, :error, :invalid_formula_expression)]
+    [located_finding(sheet, block, row, column, :invalid_formula_expression)]
   end
 
   defp parsed_formula_findings(sheet, block, row, column, columns, value, ast, snapshot) do
@@ -334,7 +382,7 @@ defmodule Storyarn.Sheets.HealthChecker do
         []
       else
         [
-          located_finding(sheet, block, row, column, :error, :unbound_formula_symbol, %{
+          located_finding(sheet, block, row, column, :unbound_formula_symbol, %{
             symbols: missing_symbols
           })
         ]
@@ -344,7 +392,7 @@ defmodule Storyarn.Sheets.HealthChecker do
       if is_map(bindings) do
         invalid_formula_bindings(sheet, block, row, column, columns, bindings, extra_symbols, snapshot)
       else
-        [located_finding(sheet, block, row, column, :error, :invalid_formula_binding)]
+        [located_finding(sheet, block, row, column, :invalid_formula_binding)]
       end
 
     evaluation =
@@ -372,7 +420,7 @@ defmodule Storyarn.Sheets.HealthChecker do
       []
     else
       [
-        located_finding(sheet, block, row, column, :error, :invalid_formula_binding, %{
+        located_finding(sheet, block, row, column, :invalid_formula_binding, %{
           symbols: Enum.sort(invalid)
         })
       ]
@@ -406,7 +454,7 @@ defmodule Storyarn.Sheets.HealthChecker do
 
         {:error, reason} ->
           [
-            located_finding(sheet, block, row, column, :error, :formula_evaluation_failed, %{
+            located_finding(sheet, block, row, column, :formula_evaluation_failed, %{
               reason: reason
             })
           ]
@@ -427,7 +475,7 @@ defmodule Storyarn.Sheets.HealthChecker do
       graph
       |> cyclic_graph_nodes()
       |> Enum.map(fn slug ->
-        located_finding(sheet, block, row, Map.get(columns_by_slug, slug), :error, :cyclic_formula_dependency)
+        located_finding(sheet, block, row, Map.get(columns_by_slug, slug), :cyclic_formula_dependency)
       end)
     end)
   end
@@ -479,22 +527,22 @@ defmodule Storyarn.Sheets.HealthChecker do
       []
       |> maybe_add(
         not valid_keys?,
-        located_finding(sheet, block, row, column, :error, :invalid_select_option_keys)
+        located_finding(sheet, block, row, column, :invalid_select_option_keys)
       )
       |> maybe_add(
         valid_keys? and stale_selection?(value, option_keys),
-        located_finding(sheet, block, row, column, :error, :stale_selected_option)
+        located_finding(sheet, block, row, column, :stale_selected_option)
       )
       |> maybe_add(
         options == [],
-        located_finding(sheet, block, row, column, :warning, :empty_select_options)
+        located_finding(sheet, block, row, column, :empty_select_options)
       )
       |> maybe_add(
         Enum.any?(options, &blank?(field(&1, :value))),
-        located_finding(sheet, block, row, column, :warning, :blank_option_label)
+        located_finding(sheet, block, row, column, :blank_option_label)
       )
     else
-      [located_finding(sheet, block, row, column, :error, :invalid_select_option_keys)]
+      [located_finding(sheet, block, row, column, :invalid_select_option_keys)]
     end
   end
 
@@ -504,11 +552,11 @@ defmodule Storyarn.Sheets.HealthChecker do
     []
     |> maybe_add(
       invalid?,
-      located_finding(sheet, block, row, column, :error, :invalid_constraints)
+      located_finding(sheet, block, row, column, :invalid_constraints)
     )
     |> maybe_add(
       not invalid? and value_outside_constraints?(type, value, config),
-      located_finding(sheet, block, row, column, :warning, :value_outside_constraints)
+      located_finding(sheet, block, row, column, :value_outside_constraints)
     )
   end
 
@@ -579,7 +627,7 @@ defmodule Storyarn.Sheets.HealthChecker do
         []
       else
         [
-          block_finding(sheet, hd(group_blocks), :error, :invalid_block_layout, %{
+          block_finding(sheet, hd(group_blocks), :invalid_block_layout, %{
             group_id: group_id
           })
         ]
@@ -727,29 +775,23 @@ defmodule Storyarn.Sheets.HealthChecker do
   defp expected_value(type) when type in ["table", "gallery"], do: "map"
   defp expected_value(_type), do: "string"
 
-  defp sheet_finding(sheet, severity, code, details \\ %{}) do
-    finding(sheet, nil, nil, nil, severity, code, details)
+  defp sheet_finding(sheet, code, details \\ %{}) do
+    finding(code, %{sheet_id: field(sheet, :id), details: details})
   end
 
-  defp block_finding(sheet, block, severity, code, details \\ %{}) do
-    finding(sheet, block, nil, nil, severity, code, details)
+  defp block_finding(sheet, block, code, details \\ %{}) do
+    located_finding(sheet, block, nil, nil, code, details)
   end
 
-  defp located_finding(sheet, block, row, column, severity, code, details \\ %{}) do
-    finding(sheet, block, row, column, severity, code, details)
-  end
-
-  defp finding(sheet, block, row, column, severity, code, details) do
-    %{
-      severity: severity,
-      code: code,
+  defp located_finding(sheet, block, row, column, code, details \\ %{}) do
+    finding(code, %{
       sheet_id: field(sheet, :id),
       block_id: field(block, :id),
       block_type: field(block, :type),
       row_id: field(row, :id),
       column_id: field(column, :id),
       details: details
-    }
+    })
   end
 
   defp maybe_add(findings, true, finding), do: findings ++ [finding]

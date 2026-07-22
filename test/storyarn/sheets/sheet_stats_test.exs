@@ -10,6 +10,7 @@ defmodule Storyarn.Sheets.SheetStatsTest do
   alias Storyarn.Repo
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.BlockGalleryImage
+  alias Storyarn.Sheets.HealthChecker
   alias Storyarn.Sheets.SheetStats
 
   setup do
@@ -304,28 +305,46 @@ defmodule Storyarn.Sheets.SheetStatsTest do
     end
   end
 
-  describe "detect_sheet_issues/1" do
-    test "detects empty sheets", %{project: project} do
+  describe "list_dashboard_health_findings/1" do
+    test "returns empty leaves with the canonical code and severity", %{project: project} do
       sheet_fixture(project, %{name: "Empty One"})
 
-      issues = SheetStats.detect_sheet_issues(project.id)
+      findings = SheetStats.list_dashboard_health_findings(project.id)
 
-      empty_issues = Enum.filter(issues, &(&1.issue_type == :empty_sheet))
-      assert empty_issues != []
-      assert Enum.any?(empty_issues, &(&1.sheet_name == "Empty One"))
+      assert finding = Enum.find(findings, &(&1.code == :empty_leaf_sheet))
+      assert finding.severity == HealthChecker.severity_for(:empty_leaf_sheet)
+      assert finding.details.sheet_name == "Empty One"
     end
 
-    test "detects unused variables", %{project: project} do
+    test "returns unused variables with the canonical code and severity", %{project: project} do
       sheet = sheet_fixture(project, %{name: "Unused Vars"})
-      block_fixture(sheet, %{type: "number", is_constant: false})
+      block = block_fixture(sheet, %{type: "number", is_constant: false})
 
-      issues = SheetStats.detect_sheet_issues(project.id)
+      findings = SheetStats.list_dashboard_health_findings(project.id)
 
-      unused_issues = Enum.filter(issues, &(&1.issue_type == :unused_variable))
-      assert unused_issues != []
+      assert finding = Enum.find(findings, &(&1.code == :no_internal_variable_usages))
+      assert finding.severity == HealthChecker.severity_for(:no_internal_variable_usages)
+      assert finding.block_id == block.id
+      assert finding.details.sheet_name == "Unused Vars"
     end
 
-    test "detects missing shortcuts", %{project: project} do
+    test "includes unused table variables in health findings", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "Unused Table"})
+      block = block_fixture(sheet, %{type: "table", is_constant: false})
+
+      findings = SheetStats.list_dashboard_health_findings(project.id)
+
+      assert finding =
+               Enum.find(
+                 findings,
+                 &(&1.code == :no_internal_variable_usages and &1.block_id == block.id)
+               )
+
+      assert finding.severity == HealthChecker.severity_for(:no_internal_variable_usages)
+      assert finding.details.sheet_name == "Unused Table"
+    end
+
+    test "returns missing shortcuts with the canonical code and severity", %{project: project} do
       # Create a sheet, then nil out its shortcut directly
       sheet = sheet_fixture(project, %{name: "No Shortcut"})
 
@@ -334,11 +353,11 @@ defmodule Storyarn.Sheets.SheetStatsTest do
         set: [shortcut: nil]
       )
 
-      issues = SheetStats.detect_sheet_issues(project.id)
+      findings = SheetStats.list_dashboard_health_findings(project.id)
 
-      missing_issues = Enum.filter(issues, &(&1.issue_type == :missing_shortcut))
-      assert missing_issues != []
-      assert Enum.any?(missing_issues, &(&1.sheet_name == "No Shortcut"))
+      assert finding = Enum.find(findings, &(&1.code == :missing_sheet_shortcut))
+      assert finding.severity == HealthChecker.severity_for(:missing_sheet_shortcut)
+      assert finding.details.sheet_name == "No Shortcut"
     end
   end
 end

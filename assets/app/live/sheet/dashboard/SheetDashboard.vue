@@ -6,6 +6,7 @@ import {
   ArrowUpDown,
   ChevronLeft,
   ChevronRight,
+  CircleX,
   FileText,
   Info,
   Layers,
@@ -81,6 +82,10 @@ function goToPage(page: number): void {
 function requestDelete(id: number | string): void {
   live.pushEvent("set_pending_delete_sheet", { id });
   live.pushEvent("confirm_delete_sheet", {});
+}
+
+function healthFindingLabel(issue: DashboardIssue): string {
+  return t(`sheets.health.findings.${issue.code}`, issue.details || {});
 }
 
 function sortIcon(column: string): FunctionalComponent {
@@ -285,16 +290,30 @@ const pages = computed<number[]>(() => {
           v-for="(issue, i) in issues"
           :key="i"
           :href="issue.href"
+          :data-severity="issue.severity"
           data-phx-link="redirect"
           data-phx-link-state="push"
           class="flex items-start gap-2 px-3 py-2 text-sm hover:bg-muted/30 transition-colors"
         >
+          <CircleX
+            v-if="issue.severity === 'error'"
+            data-testid="sheet-issue-error-icon"
+            class="size-4 text-red-500 shrink-0 mt-0.5"
+          />
           <AlertTriangle
-            v-if="issue.severity === 'warning'"
+            v-else-if="issue.severity === 'warning'"
+            data-testid="sheet-issue-warning-icon"
             class="size-4 text-yellow-500 shrink-0 mt-0.5"
           />
-          <Info v-else class="size-4 text-blue-400 shrink-0 mt-0.5" />
-          <span class="text-muted-foreground">{{ issue.message }}</span>
+          <Info
+            v-else
+            data-testid="sheet-issue-info-icon"
+            class="size-4 text-blue-400 shrink-0 mt-0.5"
+          />
+          <span class="text-muted-foreground">
+            <span class="text-foreground">{{ issue.label }}</span>
+            · {{ healthFindingLabel(issue) }}
+          </span>
         </a>
       </div>
     </div>

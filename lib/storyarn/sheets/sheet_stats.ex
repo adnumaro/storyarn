@@ -7,11 +7,13 @@ defmodule Storyarn.Sheets.SheetStats do
   alias Storyarn.Localization.LocalizableWords
   alias Storyarn.Repo
   alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.HealthChecker
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
 
   @variable_types ~w(text rich_text number select multi_select boolean date)
+  @health_variable_types ~w(text rich_text number select multi_select boolean date table)
 
   # ===========================================================================
   # Stats
@@ -105,46 +107,52 @@ defmodule Storyarn.Sheets.SheetStats do
   end
 
   # ===========================================================================
-  # Issue Detection
+  # Dashboard Health Overview
   # ===========================================================================
 
   @doc """
-  Detects issues in sheets for a project.
-  Returns `[%{issue_type, sheet_id, sheet_name, ...}]`.
+  Returns the project-wide overview subset of canonical sheet health findings.
 
-  Issue types:
-  - `:empty_sheet` — leaf sheet with 0 blocks
-  - `:unused_variable` — variable block with no references (capped at 10)
-  - `:missing_shortcut` — sheet with nil/empty shortcut
+  The editor runs the full checker for a single sheet. The dashboard uses
+  efficient aggregate queries for findings that make sense in a global list:
+
+  - `:missing_sheet_shortcut`
+  - `:empty_leaf_sheet`
+  - `:no_internal_variable_usages` (capped at 10)
+
+  Codes, finding shape, and severities come from `HealthChecker`.
   """
-  def detect_sheet_issues(project_id, referenced_ids \\ nil) do
-    empty = detect_empty_sheets(project_id)
-    unused = detect_unused_variables(project_id, referenced_ids)
-    missing = detect_missing_shortcuts(project_id)
-    empty ++ unused ++ missing
+  def list_dashboard_health_findings(project_id, referenced_ids \\ nil) do
+    missing_shortcut_findings(project_id) ++
+      empty_leaf_findings(project_id) ++
+      unused_variable_findings(project_id, referenced_ids)
   end
 
   # ===========================================================================
   # Private
   # ===========================================================================
 
-  defp detect_empty_sheets(project_id) do
-    # Sheets with no blocks AND no children are "empty"
-    Repo.all(
-      from(s in Sheet,
-        left_join: b in Block,
-        on: b.sheet_id == s.id and is_nil(b.deleted_at),
-        left_join: child in Sheet,
-        on: child.parent_id == s.id and child.project_id == ^project_id and is_nil(child.deleted_at),
-        where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(child.id),
-        group_by: [s.id, s.name],
-        having: count(b.id) == 0,
-        select: %{issue_type: :empty_sheet, sheet_id: s.id, sheet_name: s.name}
-      )
+  defp empty_leaf_findings(project_id) do
+    from(s in Sheet,
+      left_join: b in Block,
+      on: b.sheet_id == s.id and is_nil(b.deleted_at),
+      left_join: child in Sheet,
+      on: child.parent_id == s.id and child.project_id == ^project_id and is_nil(child.deleted_at),
+      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(child.id),
+      group_by: [s.id, s.name],
+      having: count(b.id) == 0,
+      select: %{sheet_id: s.id, sheet_name: s.name}
     )
+    |> Repo.all()
+    |> Enum.map(fn row ->
+      HealthChecker.finding(:empty_leaf_sheet, %{
+        sheet_id: row.sheet_id,
+        details: %{sheet_name: row.sheet_name}
+      })
+    end)
   end
 
-  defp detect_unused_variables(project_id, referenced_ids) do
+  defp unused_variable_findings(project_id, referenced_ids) do
     referenced_ids = referenced_ids || referenced_block_ids_for_project(project_id)
 
     from(b in Block,
@@ -152,35 +160,46 @@ defmodule Storyarn.Sheets.SheetStats do
       on: b.sheet_id == s.id,
       where:
         s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(b.deleted_at) and
-          b.type in ^@variable_types and b.is_constant == false,
+          b.type in ^@health_variable_types and b.is_constant == false and
+          not is_nil(b.variable_name) and b.variable_name != "",
       select: %{
         block_id: b.id,
+        block_type: b.type,
         variable_name: b.variable_name,
         sheet_id: s.id,
         sheet_name: s.name,
         sheet_shortcut: s.shortcut
-      }
+      },
+      order_by: [asc: s.name, asc: b.position, asc: b.id]
     )
     |> Repo.all()
     |> Enum.reject(&MapSet.member?(referenced_ids, &1.block_id))
     |> Enum.take(10)
     |> Enum.map(fn row ->
-      %{
-        issue_type: :unused_variable,
+      HealthChecker.finding(:no_internal_variable_usages, %{
         sheet_id: row.sheet_id,
-        sheet_name: row.sheet_name,
-        sheet_shortcut: row.sheet_shortcut,
-        variable_name: row.variable_name
-      }
+        block_id: row.block_id,
+        block_type: row.block_type,
+        details: %{
+          sheet_name: row.sheet_name,
+          sheet_shortcut: row.sheet_shortcut,
+          variable_name: row.variable_name
+        }
+      })
     end)
   end
 
-  defp detect_missing_shortcuts(project_id) do
-    Repo.all(
-      from(s in Sheet,
-        where: s.project_id == ^project_id and is_nil(s.deleted_at) and (is_nil(s.shortcut) or s.shortcut == ""),
-        select: %{issue_type: :missing_shortcut, sheet_id: s.id, sheet_name: s.name}
-      )
+  defp missing_shortcut_findings(project_id) do
+    from(s in Sheet,
+      where: s.project_id == ^project_id and is_nil(s.deleted_at) and (is_nil(s.shortcut) or s.shortcut == ""),
+      select: %{sheet_id: s.id, sheet_name: s.name}
     )
+    |> Repo.all()
+    |> Enum.map(fn row ->
+      HealthChecker.finding(:missing_sheet_shortcut, %{
+        sheet_id: row.sheet_id,
+        details: %{sheet_name: row.sheet_name}
+      })
+    end)
   end
 end

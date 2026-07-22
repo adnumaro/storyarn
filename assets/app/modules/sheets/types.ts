@@ -108,10 +108,14 @@ export interface Sheet {
   avatars?: SheetAvatar[];
 }
 
+export type SheetHealthDetails = Record<string, string | number | boolean | string[] | null>;
+
 export interface SheetHealthReason {
   code: string;
-  details?: Record<string, string | number | string[]>;
+  details?: SheetHealthDetails;
 }
+
+export type SheetHealthSeverity = "error" | "warning" | "info";
 
 export interface SheetHealthItem {
   blockId: number | string | null;
@@ -212,8 +216,10 @@ export interface DashboardPagination {
 }
 
 export interface DashboardIssue {
-  severity: string;
-  message: string;
+  severity: SheetHealthSeverity;
+  code: string;
+  label: string;
+  details?: SheetHealthDetails;
   href: string;
 }
 
