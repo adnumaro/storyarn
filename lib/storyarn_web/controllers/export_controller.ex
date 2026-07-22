@@ -4,10 +4,9 @@ defmodule StoryarnWeb.ExportController do
   use StoryarnWeb, :controller
 
   alias Storyarn.Exports
+  alias Storyarn.Exports.SizeGuard
   alias Storyarn.Projects
   alias Storyarn.Shared.NameNormalizer
-
-  @default_max_sync_export_bytes 64 * 1024 * 1024
 
   @doc """
   Export a project in the requested format.
@@ -51,7 +50,7 @@ defmodule StoryarnWeb.ExportController do
     ext = serializer.file_extension()
     filename = "#{slug}.#{ext}"
 
-    case validate_export_size(byte_size(output), max_sync_export_bytes()) do
+    case validate_export_size(byte_size(output), SizeGuard.max_sync_export_bytes()) do
       :ok ->
         conn
         |> put_resp_content_type(serializer.content_type())
@@ -91,7 +90,7 @@ defmodule StoryarnWeb.ExportController do
   end
 
   defp zip_files_to_disk(files) do
-    max_bytes = max_sync_export_bytes()
+    max_bytes = SizeGuard.max_sync_export_bytes()
 
     with {:ok, total_bytes} <- export_size(files),
          :ok <- validate_export_size(total_bytes, max_bytes) do
@@ -131,14 +130,6 @@ defmodule StoryarnWeb.ExportController do
 
   defp validate_export_size(total_bytes, max_bytes),
     do: {:error, {:export_too_large, %{bytes: total_bytes, max_bytes: max_bytes}}}
-
-  defp max_sync_export_bytes do
-    Application.get_env(
-      :storyarn,
-      :max_sync_export_bytes,
-      @default_max_sync_export_bytes
-    )
-  end
 
   # zip_path is the internally generated path returned by zip_files_to_disk/1.
   # sobelow_skip ["Traversal.FileModule"]

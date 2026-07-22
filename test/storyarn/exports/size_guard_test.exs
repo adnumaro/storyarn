@@ -13,12 +13,19 @@ defmodule Storyarn.Exports.SizeGuardTest do
 
   setup do
     previous_env = Application.get_env(:storyarn, SizeGuard)
+    previous_max_bytes = Application.get_env(:storyarn, :max_sync_export_bytes)
 
     on_exit(fn ->
       if previous_env do
         Application.put_env(:storyarn, SizeGuard, previous_env)
       else
         Application.delete_env(:storyarn, SizeGuard)
+      end
+
+      if previous_max_bytes do
+        Application.put_env(:storyarn, :max_sync_export_bytes, previous_max_bytes)
+      else
+        Application.delete_env(:storyarn, :max_sync_export_bytes)
       end
     end)
 
@@ -89,6 +96,27 @@ defmodule Storyarn.Exports.SizeGuardTest do
       assert error.rule == :export_too_large
       assert error.violations == %{flows: %{count: 1, limit: 0}}
     end
+
+    test "rejects oversized source fields before collection and serialization" do
+      project = project_fixture(nil, %{description: String.duplicate("large", 200)})
+
+      Application.put_env(:storyarn, :max_sync_export_bytes, 512)
+      Application.put_env(:storyarn, SizeGuard, serialization_expansion_factor: 1)
+
+      assert {:error, {:export_too_large, details}} =
+               Exports.export_project(project, %{
+                 format: :storyarn,
+                 validate_before_export: false
+               })
+
+      assert details.violations.source_bytes.bytes > 512
+
+      assert details.violations.source_bytes.estimated_output_bytes ==
+               details.violations.source_bytes.bytes
+
+      assert details.violations.source_bytes.limit == 512
+      assert details.source_bytes.project > 512
+    end
   end
 
   describe "entity counting" do
@@ -118,6 +146,33 @@ defmodule Storyarn.Exports.SizeGuardTest do
       assert counts.sheet_blocks == 1
       assert counts.table_rows == 2
       assert counts.table_columns == 2
+    end
+
+    test "estimates selected source bytes without loading excluded flows" do
+      project = project_fixture()
+      _flow = flow_fixture(project, %{description: String.duplicate("flow", 500)})
+
+      {:ok, included_opts} =
+        ExportOptions.new(%{
+          format: :storyarn,
+          validate_before_export: false
+        })
+
+      {:ok, excluded_opts} =
+        ExportOptions.new(%{
+          format: :storyarn,
+          include_flows: false,
+          validate_before_export: false
+        })
+
+      included = DataCollector.estimate_source_bytes(project.id, included_opts)
+      excluded = DataCollector.estimate_source_bytes(project.id, excluded_opts)
+
+      assert included.flows > 0
+      assert included.nodes > 0
+      assert excluded.flows == 0
+      assert excluded.nodes == 0
+      assert included.total_bytes > excluded.total_bytes
     end
   end
 end

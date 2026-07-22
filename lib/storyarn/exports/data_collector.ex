@@ -12,6 +12,7 @@ defmodule Storyarn.Exports.DataCollector do
   import Ecto.Query
 
   alias Storyarn.Assets
+  alias Storyarn.Assets.Asset
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Flows
   alias Storyarn.Flows.Flow
@@ -22,6 +23,7 @@ defmodule Storyarn.Exports.DataCollector do
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Projects
+  alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Scenes.Scene
@@ -36,6 +38,7 @@ defmodule Storyarn.Exports.DataCollector do
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.Sheet
+  alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
 
@@ -88,6 +91,42 @@ defmodule Storyarn.Exports.DataCollector do
     }
 
     Map.put(counts, :total_rows, counts |> Map.values() |> Enum.sum())
+  end
+
+  @doc """
+  Estimate the database bytes that the in-memory export path would materialize.
+
+  The estimate is computed inside PostgreSQL from each row's logical JSON byte
+  length, so compressed or TOASTed text and JSON fields are fully counted before
+  Ecto loads them into the request process. It deliberately includes all
+  selected rows even when a target serializer may omit some fields.
+  """
+  def estimate_source_bytes(project_id, %ExportOptions{} = opts) do
+    bytes = %{
+      project: row_bytes(from(p in Project, where: p.id == ^project_id)),
+      sheets: section_row_bytes(:sheets, Sheet, project_id, opts),
+      sheet_avatars: sheet_avatar_bytes(project_id, opts),
+      sheet_blocks: sheet_child_bytes(Block, project_id, opts),
+      table_columns: table_child_bytes(TableColumn, project_id, opts),
+      table_rows: table_child_bytes(TableRow, project_id, opts),
+      flows: section_row_bytes(:flows, Flow, project_id, opts),
+      nodes: flow_node_bytes(project_id, opts),
+      flow_connections: flow_child_bytes(FlowConnection, project_id, opts),
+      scenes: section_row_bytes(:scenes, Scene, project_id, opts),
+      scene_layers: scene_child_bytes(SceneLayer, project_id, opts),
+      scene_pins: scene_child_bytes(ScenePin, project_id, opts),
+      scene_zones: scene_child_bytes(SceneZone, project_id, opts),
+      scene_connections: scene_child_bytes(SceneConnection, project_id, opts),
+      scene_annotations: scene_child_bytes(SceneAnnotation, project_id, opts),
+      screenplays: screenplay_bytes(project_id, opts),
+      screenplay_elements: screenplay_element_bytes(project_id, opts),
+      assets: asset_bytes(project_id, opts),
+      languages: language_bytes(project_id, opts),
+      localized_texts: localized_text_bytes(project_id, opts),
+      glossary_entries: glossary_entry_bytes(project_id, opts)
+    }
+
+    Map.put(bytes, :total_bytes, bytes |> Map.values() |> Enum.sum())
   end
 
   # -- Project --
@@ -333,6 +372,211 @@ defmodule Storyarn.Exports.DataCollector do
 
   defp count_glossary_entries(project_id, _opts) do
     Repo.aggregate(from(g in GlossaryEntry, where: g.project_id == ^project_id), :count)
+  end
+
+  # -- Source byte estimates --
+
+  defp section_row_bytes(:sheets, _schema, _project_id, %{include_sheets: false}), do: 0
+  defp section_row_bytes(:flows, _schema, _project_id, %{include_flows: false}), do: 0
+  defp section_row_bytes(:scenes, _schema, _project_id, %{include_scenes: false}), do: 0
+
+  defp section_row_bytes(:sheets, Sheet, project_id, opts) do
+    project_id
+    |> project_sheets_query(opts)
+    |> row_bytes()
+  end
+
+  defp section_row_bytes(:flows, Flow, project_id, opts) do
+    project_id
+    |> project_flows_query(opts)
+    |> row_bytes()
+  end
+
+  defp section_row_bytes(:scenes, Scene, project_id, opts) do
+    project_id
+    |> project_scenes_query(opts)
+    |> row_bytes()
+  end
+
+  defp sheet_avatar_bytes(_project_id, %{include_sheets: false}), do: 0
+
+  defp sheet_avatar_bytes(project_id, %{sheet_ids: sheet_ids}) do
+    query =
+      from(avatar in SheetAvatar,
+        join: s in Sheet,
+        on: avatar.sheet_id == s.id,
+        where: s.project_id == ^project_id and is_nil(s.deleted_at)
+      )
+
+    case_result =
+      case sheet_ids do
+        :all -> query
+        [] -> where(query, false)
+        ids -> where(query, [_avatar, s], s.id in ^ids)
+      end
+
+    row_bytes(case_result)
+  end
+
+  defp sheet_child_bytes(_schema, _project_id, %{include_sheets: false}), do: 0
+
+  defp sheet_child_bytes(schema, project_id, opts) do
+    schema
+    |> project_sheet_children_query(project_id, opts)
+    |> row_bytes()
+  end
+
+  defp table_child_bytes(_schema, _project_id, %{include_sheets: false}), do: 0
+
+  defp table_child_bytes(schema, project_id, opts) do
+    schema
+    |> project_table_children_query(project_id, opts)
+    |> row_bytes()
+  end
+
+  defp flow_node_bytes(_project_id, %{include_flows: false}), do: 0
+
+  defp flow_node_bytes(project_id, opts) do
+    project_id
+    |> project_flow_nodes_query(opts)
+    |> row_bytes()
+  end
+
+  defp flow_child_bytes(_schema, _project_id, %{include_flows: false}), do: 0
+
+  defp flow_child_bytes(schema, project_id, opts) do
+    schema
+    |> project_flow_children_query(project_id, opts)
+    |> row_bytes()
+  end
+
+  defp scene_child_bytes(_schema, _project_id, %{include_scenes: false}), do: 0
+
+  defp scene_child_bytes(schema, project_id, opts) do
+    schema
+    |> project_scene_children_query(project_id, opts)
+    |> row_bytes()
+  end
+
+  defp screenplay_bytes(_project_id, %{include_screenplays: false}), do: 0
+
+  defp screenplay_bytes(project_id, _opts) do
+    row_bytes(from(sp in Screenplay, where: sp.project_id == ^project_id and is_nil(sp.deleted_at)))
+  end
+
+  defp screenplay_element_bytes(_project_id, %{include_screenplays: false}), do: 0
+
+  defp screenplay_element_bytes(project_id, _opts) do
+    row_bytes(
+      from(e in ScreenplayElement,
+        join: sp in Screenplay,
+        on: e.screenplay_id == sp.id,
+        where: sp.project_id == ^project_id and is_nil(sp.deleted_at)
+      )
+    )
+  end
+
+  defp asset_bytes(_project_id, %{include_assets: false}), do: 0
+
+  defp asset_bytes(project_id, _opts) do
+    row_bytes(from(a in Asset, where: a.project_id == ^project_id))
+  end
+
+  defp language_bytes(_project_id, %{include_localization: false}), do: 0
+
+  defp language_bytes(project_id, opts) do
+    project_id
+    |> project_languages_query(opts)
+    |> row_bytes()
+  end
+
+  defp localized_text_bytes(_project_id, %{include_localization: false}), do: 0
+
+  defp localized_text_bytes(project_id, opts) do
+    project_id
+    |> project_localized_texts_query(opts)
+    |> row_bytes()
+  end
+
+  defp glossary_entry_bytes(_project_id, %{include_localization: false}), do: 0
+
+  defp glossary_entry_bytes(project_id, _opts) do
+    row_bytes(from(g in GlossaryEntry, where: g.project_id == ^project_id))
+  end
+
+  defp row_bytes(query) do
+    Repo.one(
+      from(row in query,
+        select: fragment("COALESCE(SUM(octet_length(to_jsonb(?)::text)), 0)", row)
+      )
+    )
+  end
+
+  defp project_sheets_query(project_id, %{sheet_ids: sheet_ids}) do
+    query = from(s in Sheet, where: s.project_id == ^project_id and is_nil(s.deleted_at))
+
+    case sheet_ids do
+      :all -> query
+      [] -> where(query, false)
+      ids -> where(query, [s], s.id in ^ids)
+    end
+  end
+
+  defp project_flows_query(project_id, %{flow_ids: flow_ids}) do
+    query = from(f in Flow, where: f.project_id == ^project_id and is_nil(f.deleted_at))
+
+    case flow_ids do
+      :all -> query
+      [] -> where(query, false)
+      ids -> where(query, [f], f.id in ^ids)
+    end
+  end
+
+  defp project_flow_nodes_query(project_id, %{flow_ids: flow_ids}) do
+    query =
+      from(n in FlowNode,
+        join: f in Flow,
+        on: n.flow_id == f.id,
+        where: f.project_id == ^project_id and is_nil(f.deleted_at) and is_nil(n.deleted_at)
+      )
+
+    case flow_ids do
+      :all -> query
+      [] -> where(query, false)
+      ids -> where(query, [_node, f], f.id in ^ids)
+    end
+  end
+
+  defp project_scenes_query(project_id, %{scene_ids: scene_ids}) do
+    query = from(s in Scene, where: s.project_id == ^project_id and is_nil(s.deleted_at))
+
+    case scene_ids do
+      :all -> query
+      [] -> where(query, false)
+      ids -> where(query, [s], s.id in ^ids)
+    end
+  end
+
+  defp project_languages_query(project_id, opts) do
+    query = from(l in ProjectLanguage, where: l.project_id == ^project_id)
+    if opts.format == :storyarn, do: query, else: where(query, [l], is_nil(l.archived_at))
+  end
+
+  defp project_localized_texts_query(project_id, opts) do
+    locale_codes =
+      case opts.languages do
+        :all when opts.format == :storyarn -> :all
+        languages when opts.format == :storyarn -> languages
+        languages -> requested_locale_codes(languages, Localization.list_languages(project_id))
+      end
+
+    query = from(lt in LocalizedText, where: lt.project_id == ^project_id)
+
+    case locale_codes do
+      :all -> query
+      [] -> where(query, false)
+      codes -> where(query, [lt], lt.locale_code in ^codes)
+    end
   end
 
   defp project_sheet_children_query(schema, project_id, %{sheet_ids: sheet_ids}) do
