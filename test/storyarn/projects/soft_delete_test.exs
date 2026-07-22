@@ -1,6 +1,7 @@
 defmodule Storyarn.Projects.SoftDeleteTest do
   use Storyarn.DataCase, async: true
 
+  import Ecto.Query, warn: false
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
   import Storyarn.LocalizationFixtures
@@ -12,6 +13,7 @@ defmodule Storyarn.Projects.SoftDeleteTest do
   alias Storyarn.Projects
   alias Storyarn.Repo
   alias Storyarn.Sheets
+  alias Storyarn.Sheets.Sheet
 
   describe "soft delete" do
     test "delete_project/2 sets deleted_at and deleted_by_id" do
@@ -178,6 +180,67 @@ defmodule Storyarn.Projects.SoftDeleteTest do
 
       assert [item] = Projects.list_deleted_items_for_retention(through: cutoff)
       assert item.id == first_sheet.id
+    end
+
+    test "excludes trash that belongs to a deleted project" do
+      user = user_fixture()
+      project = project_fixture(user)
+      sheet = sheet_fixture(project)
+
+      assert {:ok, _deleted_sheet} = Sheets.delete_sheet(sheet)
+      assert [_item] = Projects.list_deleted_items_for_retention()
+
+      assert {:ok, _deleted_project} = Projects.delete_project(project, user.id)
+      assert Projects.list_deleted_items_for_retention() == []
+      assert Projects.deleted_items_retention_cutoff() == nil
+    end
+
+    test "rejects a stale retention candidate after restore and re-delete" do
+      project = project_fixture()
+      sheet = sheet_fixture(project)
+      assert {:ok, _deleted_sheet} = Sheets.delete_sheet(sheet)
+
+      expired_at =
+        DateTime.utc_now()
+        |> DateTime.add(-48 * 60 * 60, :second)
+        |> DateTime.truncate(:second)
+
+      Repo.update_all(
+        from(stored_sheet in Sheet, where: stored_sheet.id == ^sheet.id),
+        set: [deleted_at: expired_at]
+      )
+
+      assert [stale_candidate] = Projects.list_deleted_items_for_retention()
+      assert {:ok, restored_sheet} = Sheets.restore_sheet(Repo.get!(Sheet, sheet.id))
+      assert {:ok, _deleted_again} = Sheets.delete_sheet(restored_sheet)
+      refute Repo.get!(Sheet, sheet.id).deleted_at == stale_candidate.deleted_at
+
+      assert {:error, :retention_candidate_changed} =
+               Projects.delete_retention_candidate(
+                 stale_candidate,
+                 &Sheets.permanently_delete_sheet/1
+               )
+
+      assert %Sheet{deleted_at: %DateTime{}} = Repo.get(Sheet, sheet.id)
+    end
+
+    test "rejects a retention candidate after its project policy changes" do
+      project = project_fixture()
+      sheet = sheet_fixture(project)
+      assert {:ok, _deleted_sheet} = Sheets.delete_sheet(sheet)
+      assert [stale_candidate] = Projects.list_deleted_items_for_retention()
+
+      project
+      |> Ecto.Changeset.change(settings: %{"trash_retention_hours" => 720})
+      |> Repo.update!()
+
+      assert {:error, :retention_candidate_changed} =
+               Projects.delete_retention_candidate(
+                 stale_candidate,
+                 &Sheets.permanently_delete_sheet/1
+               )
+
+      assert %Sheet{deleted_at: %DateTime{}} = Repo.get(Sheet, sheet.id)
     end
   end
 

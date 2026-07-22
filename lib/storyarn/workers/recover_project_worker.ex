@@ -10,8 +10,6 @@ defmodule Storyarn.Workers.RecoverProjectWorker do
 
   alias Storyarn.Projects
   alias Storyarn.Versioning
-  alias Storyarn.Versioning.ProjectSnapshotIntegrity
-  alias Storyarn.Versioning.SnapshotStorage
   alias Storyarn.Workspaces
 
   require Logger
@@ -29,7 +27,13 @@ defmodule Storyarn.Workers.RecoverProjectWorker do
            Projects.get_deleted_project(workspace_id, project_id),
          snapshot when not is_nil(snapshot) <-
            Versioning.get_project_snapshot(project.id, snapshot_id) do
-      do_recover(workspace_id, snapshot, user_id, "#{project.name} (Recovered)")
+      do_recover(
+        workspace_id,
+        project.id,
+        snapshot,
+        user_id,
+        "#{project.name} (Recovered)"
+      )
     else
       {:error, :restore_temporarily_disabled} = error ->
         broadcast_failure(workspace_id, "Recovery temporarily unavailable")
@@ -41,16 +45,9 @@ defmodule Storyarn.Workers.RecoverProjectWorker do
     end
   end
 
-  defp do_recover(workspace_id, snapshot, user_id, name) do
-    with {:ok, snapshot_data, actual_checksum} <-
-           SnapshotStorage.load_snapshot_with_checksum(snapshot.storage_key),
-         :ok <-
-           ProjectSnapshotIntegrity.validate_recovery_blob(
-             snapshot_data,
-             snapshot.entity_counts,
-             snapshot.checksum,
-             actual_checksum
-           ),
+  defp do_recover(workspace_id, project_id, snapshot, user_id, name) do
+    with {:ok, snapshot_data} <-
+           Versioning.load_project_recovery_snapshot(project_id, snapshot),
          {:ok, project} <-
            Versioning.recover_project(workspace_id, snapshot_data, user_id, name: name) do
       broadcast_success(workspace_id, project)

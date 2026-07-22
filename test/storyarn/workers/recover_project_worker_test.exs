@@ -8,9 +8,11 @@ defmodule Storyarn.Workers.RecoverProjectWorkerTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Assets.Storage
   alias Storyarn.Projects
   alias Storyarn.Repo
   alias Storyarn.Versioning
+  alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.RestorePolicy
   alias Storyarn.Versioning.SnapshotStorage
   alias Storyarn.Workers.RecoverProjectWorker
@@ -166,8 +168,18 @@ defmodule Storyarn.Workers.RecoverProjectWorkerTest do
         |> put_in(["tree", "sheets"], [])
         |> put_in(["entity_counts", "sheets"], 0)
 
-      assert {:ok, _size} =
-               SnapshotStorage.store_raw(snapshot.storage_key, truncated_snapshot)
+      assert {:ok, size_bytes, checksum} =
+               SnapshotStorage.store_raw_with_checksum(
+                 snapshot.storage_key,
+                 truncated_snapshot
+               )
+
+      Repo.update_all(
+        from(stored_snapshot in ProjectSnapshot,
+          where: stored_snapshot.id == ^snapshot.id
+        ),
+        set: [snapshot_size_bytes: size_bytes, checksum: checksum]
+      )
 
       {:ok, _deleted_project} = Projects.delete_project(project, user.id)
 
@@ -203,11 +215,18 @@ defmodule Storyarn.Workers.RecoverProjectWorkerTest do
 
       assert {:ok, snapshot_data} = SnapshotStorage.load_snapshot(snapshot.storage_key)
 
-      assert {:ok, _size} =
-               SnapshotStorage.store_raw(
+      assert {:ok, size_bytes, checksum} =
+               SnapshotStorage.store_raw_with_checksum(
                  snapshot.storage_key,
                  Map.put(snapshot_data, "format_version", 999)
                )
+
+      Repo.update_all(
+        from(stored_snapshot in ProjectSnapshot,
+          where: stored_snapshot.id == ^snapshot.id
+        ),
+        set: [snapshot_size_bytes: size_bytes, checksum: checksum]
+      )
 
       {:ok, _deleted_project} = Projects.delete_project(project, user.id)
 
@@ -233,20 +252,16 @@ defmodule Storyarn.Workers.RecoverProjectWorkerTest do
       {:ok, snapshot} =
         Versioning.create_project_snapshot(project.id, user.id, title: "Cryptographically bound")
 
-      assert {:ok, snapshot_data} =
-               SnapshotStorage.load_snapshot(snapshot.storage_key)
+      assert {:ok, compressed_snapshot} = Storage.download(snapshot.storage_key)
+      <<first_byte, rest::binary>> = compressed_snapshot
+      tampered_snapshot = <<Bitwise.bxor(first_byte, 1), rest::binary>>
+      assert byte_size(tampered_snapshot) == snapshot.snapshot_size_bytes
 
-      tampered_snapshot =
-        put_in(
-          snapshot_data,
-          ["sheets", Access.at(0), "snapshot", "name"],
-          "Tampered without changing a count"
-        )
-
-      assert {:ok, _size} =
-               SnapshotStorage.store_raw(
+      assert {:ok, _url} =
+               Storage.upload(
                  snapshot.storage_key,
-                 tampered_snapshot
+                 tampered_snapshot,
+                 "application/gzip"
                )
 
       {:ok, _deleted_project} = Projects.delete_project(project, user.id)
@@ -275,7 +290,7 @@ defmodule Storyarn.Workers.RecoverProjectWorkerTest do
         Versioning.create_project_snapshot(project.id, user.id, title: "Missing checksum")
 
       Repo.update_all(
-        from(stored_snapshot in Storyarn.Versioning.ProjectSnapshot,
+        from(stored_snapshot in ProjectSnapshot,
           where: stored_snapshot.id == ^snapshot.id
         ),
         set: [checksum: nil]
@@ -304,11 +319,18 @@ defmodule Storyarn.Workers.RecoverProjectWorkerTest do
 
       assert {:ok, snapshot_data} = SnapshotStorage.load_snapshot(snapshot.storage_key)
 
-      assert {:ok, _size} =
-               SnapshotStorage.store_raw(
+      assert {:ok, size_bytes, checksum} =
+               SnapshotStorage.store_raw_with_checksum(
                  snapshot.storage_key,
                  Map.delete(snapshot_data, "localization")
                )
+
+      Repo.update_all(
+        from(stored_snapshot in ProjectSnapshot,
+          where: stored_snapshot.id == ^snapshot.id
+        ),
+        set: [snapshot_size_bytes: size_bytes, checksum: checksum]
+      )
 
       {:ok, _deleted_project} = Projects.delete_project(project, user.id)
 
@@ -322,6 +344,78 @@ defmodule Storyarn.Workers.RecoverProjectWorkerTest do
                  user_id: user.id
                })
 
+      assert Repo.aggregate(Projects.Project, :count) == project_count
+    end
+
+    test "rejects a persisted storage key from another project before loading it", %{
+      user: user,
+      project: project
+    } do
+      other_user = user_fixture()
+      other_project = project_fixture(other_user)
+
+      {:ok, snapshot} =
+        Versioning.create_project_snapshot(project.id, user.id, title: "Source")
+
+      {:ok, other_snapshot} =
+        Versioning.create_project_snapshot(
+          other_project.id,
+          other_user.id,
+          title: "Unrelated"
+        )
+
+      Repo.update_all(
+        from(stored_snapshot in ProjectSnapshot,
+          where: stored_snapshot.id == ^snapshot.id
+        ),
+        set: [storage_key: other_snapshot.storage_key]
+      )
+
+      {:ok, _deleted_project} = Projects.delete_project(project, user.id)
+      project_count = Repo.aggregate(Projects.Project, :count)
+
+      assert {:error, :project_snapshot_storage_key_mismatch} =
+               perform_job(RecoverProjectWorker, %{
+                 workspace_id: project.workspace_id,
+                 snapshot_id: snapshot.id,
+                 project_id: project.id,
+                 user_id: user.id
+               })
+
+      assert Repo.aggregate(Projects.Project, :count) == project_count
+
+      assert {:ok, _snapshot} =
+               SnapshotStorage.load_snapshot(other_snapshot.storage_key)
+    end
+
+    test "rejects a persisted compressed size mismatch before decoding", %{
+      user: user,
+      project: project
+    } do
+      {:ok, snapshot} =
+        Versioning.create_project_snapshot(project.id, user.id, title: "Sized")
+
+      expected_size = snapshot.snapshot_size_bytes + 1
+
+      Repo.update_all(
+        from(stored_snapshot in ProjectSnapshot,
+          where: stored_snapshot.id == ^snapshot.id
+        ),
+        set: [snapshot_size_bytes: expected_size]
+      )
+
+      {:ok, _deleted_project} = Projects.delete_project(project, user.id)
+      project_count = Repo.aggregate(Projects.Project, :count)
+
+      assert {:error, {:compressed_size_mismatch, ^expected_size, actual_size}} =
+               perform_job(RecoverProjectWorker, %{
+                 workspace_id: project.workspace_id,
+                 snapshot_id: snapshot.id,
+                 project_id: project.id,
+                 user_id: user.id
+               })
+
+      assert actual_size == snapshot.snapshot_size_bytes
       assert Repo.aggregate(Projects.Project, :count) == project_count
     end
   end

@@ -94,29 +94,20 @@ defmodule Storyarn.Workers.TrashRetentionWorker do
   end
 
   defp permanently_delete_item(%{type: "sheet"} = item) do
-    with {:ok, sheet} <- fetch_sheet(item), do: Sheets.permanently_delete_sheet(sheet)
+    Projects.delete_retention_candidate(item, &Sheets.permanently_delete_sheet/1)
   end
 
   defp permanently_delete_item(%{type: "flow"} = item) do
-    with {:ok, flow} <- fetch_flow(item), do: Flows.hard_delete_flow(flow)
+    Projects.delete_retention_candidate(item, &Flows.hard_delete_flow/1)
   end
 
   defp permanently_delete_item(%{type: "scene"} = item) do
-    with {:ok, scene} <- fetch_scene(item), do: Scenes.hard_delete_scene(scene)
+    Projects.delete_retention_candidate(item, &Scenes.hard_delete_scene/1)
   end
 
   defp permanently_delete_item(%{type: "screenplay"} = item) do
-    with {:ok, screenplay} <- fetch_screenplay(item), do: Screenplays.hard_delete_screenplay(screenplay)
+    Projects.delete_retention_candidate(item, &Screenplays.hard_delete_screenplay/1)
   end
-
-  defp fetch_sheet(item), do: fetch_deleted(Sheets.get_trashed_sheet(item.project_id, item.id))
-  defp fetch_flow(item), do: fetch_deleted(Flows.get_flow_including_deleted(item.project_id, item.id))
-  defp fetch_scene(item), do: fetch_deleted(Scenes.get_scene_including_deleted(item.project_id, item.id))
-
-  defp fetch_screenplay(item), do: fetch_deleted(Screenplays.get_screenplay_including_deleted(item.project_id, item.id))
-
-  defp fetch_deleted(%{deleted_at: %DateTime{}} = item), do: {:ok, item}
-  defp fetch_deleted(_item), do: {:error, :not_found}
 
   defp enabled? do
     case Application.get_env(:storyarn, __MODULE__, []) do
