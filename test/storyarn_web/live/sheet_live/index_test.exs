@@ -118,6 +118,7 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
     test "creates a root sheet and navigates to it", %{conn: conn, url: url, project: project} do
       {:ok, view, _html} = live(conn, url)
       sidebar = get_sidebar_live(view, project)
+      _ = await_async(view)
 
       render_click(sidebar, "create_sheet")
       {redirect_path, _flash} = assert_redirect(view)

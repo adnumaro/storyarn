@@ -92,6 +92,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
 
       {:ok, view, _html} = live(conn, scenes_path(project))
       sidebar = get_sidebar_live(view, project)
+      _ = await_async(view)
 
       render_click(sidebar, "create_scene")
       {redirect_path, _flash} = assert_redirect(view)
@@ -126,6 +127,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
 
       {:ok, view, _html} = live(conn, scenes_path(project))
       sidebar = get_sidebar_live(view, project)
+      _ = await_async(view)
 
       render_click(sidebar, "create_child_scene", %{"parent-id" => parent_scene.id})
       {redirect_path, _flash} = assert_redirect(view)
