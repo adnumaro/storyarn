@@ -1,0 +1,157 @@
+assets/app/test/composables/useKeyboard.test.ts
+  s_6112f11c106698::t_8b34cdb96d6a76 158
+  s_6112f11c106698::t_e2443a789af24a 144-157,159-165
+test/storyarn_web/live/hooks/palette_test.exs
+  s_6112f11c106698::t_9cf992cba7fdd2 6,8,191-202,204-206,209-210,247-251,264-296,302-306,330,348-349,369-374,376,390-391,404-405,411-449
+  s_6112f11c106698::t_ed8a33feefa64e 203,207-208
+  s_6112f11c106698::t_8d572c3ebbd717 128
+assets/app/live/layouts/project/Layout.vue
+  s_6112f11c106698::t_c8fe4d55664499 28,113,116-125,128
+lib/storyarn_web/live/localization_live/edit.ex
+  s_6112f11c106698::t_6fce951acc5797 22
+test/storyarn/global_search/destinations_test.exs
+  s_6112f11c106698::t_9b60af583511cc 12,58-68
+  s_601e46785f4b81::t_1da95f464c6fb7 69
+priv/docs/es/welcome/03-command-palette.md
+  s_6112f11c106698::t_8e20677c5bc346 17,23,25,29
+test/storyarn_web/live/settings_live/profile_test.exs
+  s_6112f11c106698::t_ff4174d074c3d3 23
+lib/storyarn/sheets/sheet_queries.ex
+  s_6112f11c106698::t_3638c41544dbbc 228-229,241-242
+assets/app/components/command-palette/PaletteEmpty.vue
+  s_6112f11c106698::t_3aa98bb238a7b3 5-8,18,20,27
+assets/app/test/live/layouts/ProjectLayoutPalette.test.ts
+  s_6112f11c106698::t_2255e4c7278627 1-77
+lib/storyarn/global_search/destinations.ex
+  s_6112f11c106698::t_cd44210bb29680 32-33,60,184,186,188,201-204,210-212,249-250
+lib/storyarn/scenes/scene_crud.ex
+  s_6112f11c106698::t_3638c41544dbbc 158-159,171-172
+lib/storyarn_web/components/layouts.ex
+  s_6112f11c106698::t_6fce951acc5797 11,23-24,27,33,36,42-46
+  s_6112f11c106698::t_57582d31c43433 47
+lib/storyarn_web/live/asset_live/index.ex
+  s_6112f11c106698::t_6fce951acc5797 39
+test/storyarn/workspaces_test.exs
+  s_6112f11c106698::t_9b60af583511cc 291-302
+lib/storyarn_web/live/sheet_live/show.ex
+  s_6112f11c106698::t_6fce951acc5797 59
+lib/storyarn_web/components/workspace_layout.ex
+  s_6112f11c106698::t_6fce951acc5797 52
+lib/storyarn_web/live/flow_live/show.ex
+  s_6112f11c106698::t_6fce951acc5797 59
+assets/app/test/components/command-palette/CommandPalette.test.ts
+  s_6112f11c106698::t_77a832ee07b0aa 29,206,214,227
+  s_6112f11c106698::t_8b34cdb96d6a76 273-275,301,303-305,394-395
+  s_6112f11c106698::t_acb2f568e94b1f 91
+  s_6112f11c106698::t_e692221ef0cad7 73
+  s_6112f11c106698::t_43a32ed081d755 491-495,619-624
+  s_6112f11c106698::t_512c5dab34f1d6 507,514-517
+  s_6112f11c106698::t_fa97652e2bf4a3 687-693,733-739,774-776,779,784-790,815-816,820-821,826
+  s_6112f11c106698::t_0cce0f8fcaece1 183-187
+  s_6112f11c106698::t_cc4c2800ee5f37 1,30,43-56,83-84,194
+  s_6112f11c106698::t_489164b7e51b69 126-153,253-272,276-300,302,306-308,391-393,396-397,484
+  s_6112f11c106698::t_cdc4cd7aba5c78 322-339
+  s_6112f11c106698::t_3f8902c4a625f1 568-574
+lib/storyarn_web/live/hooks/palette.ex
+  s_6112f11c106698::t_0a28925b3a6e5c 138,190-191
+  s_6112f11c106698::t_b8e797621b49a0 16-18,41,58-60,73-78,99-105,133-137,139-161,176,185-189,192-211,234,243-246,268,278,289,319-348
+  s_6112f11c106698::t_2fbc5b21d71b3e 66-71
+  s_6112f11c106698::t_5d777083340d02 349
+lib/storyarn_web/live/project_live/show.ex
+  s_6112f11c106698::t_6fce951acc5797 26
+assets/app/test/live/layouts/WorkspaceLayoutPalette.test.ts
+  s_6112f11c106698::t_ecb8ae1e899b8f 95,101
+  s_6112f11c106698::t_bdc62768259078 100
+lib/storyarn_web/live/scene_live/index.ex
+  s_6112f11c106698::t_6fce951acc5797 33
+docs/features/ai-platform/SLICE_1_COMMAND_PALETTE.md
+  s_6112f11c106698::t_8e20677c5bc346 3,19,58,86,88-98
+lib/storyarn_web/components/settings_layout.ex
+  s_6112f11c106698::t_6fce951acc5797 66
+assets/app/locales/es/palette.json
+  s_6112f11c106698::t_739b4ba757359c 8-9,12-15
+lib/storyarn/flows/flow_crud.ex
+  s_6112f11c106698::t_3638c41544dbbc 134-135,147-148
+assets/app/test/live/workspace/dashboard/WorkspaceDashboard.test.ts
+  s_6112f11c106698::t_bdc62768259078 349-351
+  s_6112f11c106698::t_ecb8ae1e899b8f 347,352
+assets/app/test/live/layouts/CommandPaletteLayout.test.ts
+  s_6112f11c106698::t_8cabef65b5ad71 1-35
+assets/app/components/ui/command/Command.vue
+  s_6112f11c106698::t_3aa98bb238a7b3 62-64,76
+assets/app/components/command-palette/CommandPalette.vue
+  s_6112f11c106698::t_7abd56bc83ef10 167-168,297-298,300-303,308,313-314,323-326,336-337,345,347,374,377,381-390,405-406,408-411,413,415-422,427-428,430-433,436-437,439-440,442-446,458,463-464,466-482
+  s_6112f11c106698::t_6dc0ad8893acab 485-486,488-489,491,494,496,502,507-511,515-526,560,592-595,597,631-636
+  s_6112f11c106698::t_12ad29b1fdd7cf 667,670-676,678-686,691-692,698-703,711,716,722,736,757,762-765,785-799,802,807
+  s_6112f11c106698::t_8aef08fb96e7db 165,322,426,441
+  s_6112f11c106698::t_ad29f8ebbbd850 13,161,306,350-357,669
+  s_6112f11c106698::t_8b34cdb96d6a76 203-205,250-265,487,677,690
+  s_6112f11c106698::t_987e14ed7e1627 231-232,246-247,434-435,447-457
+  s_6112f11c106698::t_2d32f718140d96 7,130-133,151-157,160,201-202,206-230,235-245,248-249,279-287
+  s_6112f11c106698::t_58515740fbd458 170,543,553,556,582,596,600,637-649
+  s_601e46785f4b81::t_235363e5b3f106 266,650
+lib/storyarn_web/live/flow_live/index.ex
+  s_6112f11c106698::t_6fce951acc5797 32
+lib/storyarn/workspaces/workspace_crud.ex
+  s_6112f11c106698::t_2d7c05a5a3b5cd 35,61,224,237
+lib/storyarn_web/live/sheet_live/index.ex
+  s_6112f11c106698::t_6fce951acc5797 33
+assets/app/test/shared/command-palette/registry.test.ts
+  s_6112f11c106698::t_bd4a768a02d6ea 67-75
+test/e2e/command_palette_test.exs
+  s_6112f11c106698::t_07a573f7fdc563 1-21,23-37,39-40,42-46,60-77
+  s_6112f11c106698::t_8511fcf409f7e2 22,38,47-59
+  s_6112f11c106698::t_fce7892ed14699 41
+assets/app/live/layouts/CommandPalette.vue
+  s_6112f11c106698::t_8b34cdb96d6a76 5
+  s_6112f11c106698::t_2e857c6361f2c1 1-4,6-25
+priv/docs/en/welcome/03-command-palette.md
+  s_6112f11c106698::t_8e20677c5bc346 17,23,25,29
+lib/storyarn_web/live/localization_live/report.ex
+  s_6112f11c106698::t_6fce951acc5797 20
+assets/app/shared/command-palette/accountCommands.ts
+  s_6112f11c106698::t_f5724f4b7afe68 1,4-7,11-12,14-15,21,28,35,38-49
+assets/app/shared/composables/useKeyboard.ts
+  s_6112f11c106698::t_f353eedae8b117 22-23,27,46-52,54
+assets/app/components/ui/command/CommandDialog.vue
+  s_6112f11c106698::t_4c635165a0dca9 19,21,24
+  s_6112f11c106698::t_8b34cdb96d6a76 29
+lib/storyarn_web/components/project_layout.ex
+  s_6112f11c106698::t_6fce951acc5797 21,70-71,84
+assets/app/locales/en/palette.json
+  s_6112f11c106698::t_739b4ba757359c 8-9,12-15
+lib/storyarn_web/live/localization_live/index.ex
+  s_6112f11c106698::t_6fce951acc5797 27
+assets/app/shared/command-palette/registry.ts
+  s_6112f11c106698::t_5ad96da0d4787e 12-15,18-21,27-29,67
+lib/storyarn_web/live/localization_live/glossary.ex
+  s_6112f11c106698::t_6fce951acc5797 21
+lib/storyarn_web/live/scene_live/show.ex
+  s_6112f11c106698::t_6fce951acc5797 79
+assets/app/test/shared/command-palette/accountCommands.test.ts
+  s_6112f11c106698::t_bd4a768a02d6ea 1-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "94c393c5e7d1567ead84c2227b1ba5fc2d41a33f",
+  "prompts": {},
+  "sessions": {
+    "s_601e46785f4b81": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b4-a630-7780-b438-bc2aa3d9363e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_6112f11c106698": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b7-96ce-73c1-8639-7be0374aaff0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
