@@ -186,7 +186,7 @@ defmodule Storyarn.Sheets do
   Soft deletes a sheet (moves to trash).
   Also soft deletes all descendant sheets.
   """
-  @spec delete_sheet(sheet()) :: {:ok, sheet()} | {:error, changeset()}
+  @spec delete_sheet(sheet()) :: {:ok, sheet()} | {:error, term()}
   defdelegate delete_sheet(sheet), to: SheetCrud
 
   @doc """
@@ -194,14 +194,14 @@ defmodule Storyarn.Sheets do
   ids (collected under the delete's own locks).
   """
   @spec delete_sheet_subtree(sheet()) ::
-          {:ok, %{entity: sheet(), deleted_ids: [integer()]}} | {:error, changeset()}
+          {:ok, %{entity: sheet(), deleted_ids: [integer()]}} | {:error, term()}
   defdelegate delete_sheet_subtree(sheet), to: SheetCrud
 
   @doc """
   Soft deletes a sheet and all its descendants (moves to trash).
   Alias for `delete_sheet/1`.
   """
-  @spec trash_sheet(sheet()) :: {:ok, sheet()} | {:error, changeset()}
+  @spec trash_sheet(sheet()) :: {:ok, sheet()} | {:error, term()}
   defdelegate trash_sheet(sheet), to: SheetCrud
 
   @doc """
