@@ -49,7 +49,9 @@ defmodule StoryarnTest.AI.ContextTask do
   def authorize_subject(_scope, _intent_or_operation, _phase), do: :ok
 
   @impl true
-  def subject_current?(_operation), do: true
+  def subject_current?(_operation) do
+    Process.get({__MODULE__, :subject_current?}, true)
+  end
 
   @impl true
   def context_subject(%ExecutionIntent{} = intent) do

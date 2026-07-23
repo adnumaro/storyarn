@@ -71,4 +71,22 @@ defmodule Storyarn.Sheets.ContextQueries do
       )
     )
   end
+
+  @spec count_blocks_by_labels(integer(), integer(), [String.t()]) :: non_neg_integer()
+  def count_blocks_by_labels(_project_id, _sheet_id, []), do: 0
+
+  def count_blocks_by_labels(project_id, sheet_id, labels) do
+    Repo.aggregate(
+      from(block in Block,
+        join: sheet in Sheet,
+        on: sheet.id == block.sheet_id,
+        where:
+          sheet.project_id == ^project_id and sheet.id == ^sheet_id and
+            fragment("?->>'label' = ANY(?)", block.config, ^labels) and
+            is_nil(sheet.deleted_at) and is_nil(block.deleted_at)
+      ),
+      :count,
+      :id
+    )
+  end
 end

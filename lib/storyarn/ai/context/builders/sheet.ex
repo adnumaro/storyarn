@@ -25,7 +25,7 @@ defmodule Storyarn.AI.Context.Builders.Sheet do
          {:ok, block_entities, missing_blocks} <-
            block_entities(project_id, sheet.id, block_ids, policy),
          {:ok, reference_entities, reference_excluded} <-
-           reference_entities(project_id, block_entities, policy) do
+           reference_entities(project_id, sheet.id, block_entities, policy) do
       excluded = missing_blocks ++ reference_excluded
       warnings = if excluded == [], do: [], else: ["stale_reference"]
 
@@ -96,11 +96,12 @@ defmodule Storyarn.AI.Context.Builders.Sheet do
     end
   end
 
-  defp reference_entities(project_id, block_entities, policy) do
+  defp reference_entities(project_id, source_sheet_id, block_entities, policy) do
     targets =
       block_entities
       |> Enum.flat_map(&reference_target/1)
       |> Enum.uniq()
+      |> Enum.reject(&(&1 == {"sheet", source_sheet_id}))
       |> Enum.sort()
 
     loaded = load_reference_targets(project_id, targets, policy.max_entities + 1)

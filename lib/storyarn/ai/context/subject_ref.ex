@@ -9,6 +9,8 @@ defmodule Storyarn.AI.Context.SubjectRef do
   alias Storyarn.AI.CanonicalJSON
 
   @kinds [:dialogue, :flow_neighborhood, :sheet, :structural_finding]
+  @evidence_types ~w(flow flow_node flow_connection sheet sheet_block)
+  @max_evidence_items 50
   @max_bigint 9_223_372_036_854_775_807
 
   @enforce_keys [:kind, :workspace_id, :project_id, :subject_id]
@@ -121,12 +123,23 @@ defmodule Storyarn.AI.Context.SubjectRef do
   defp valid_finding?(%__MODULE__{finding: nil}), do: true
   defp valid_finding?(_ref), do: false
 
-  defp valid_evidence?(evidence) when is_list(evidence), do: Enum.all?(evidence, &valid_evidence_item?/1)
+  defp valid_evidence?(evidence) when is_list(evidence) do
+    if length(evidence) <= @max_evidence_items and Enum.all?(evidence, &valid_evidence_item?/1) do
+      keys = Enum.map(evidence, &{value(&1, :type), value(&1, :id)})
+      Enum.uniq(keys) == keys
+    else
+      false
+    end
+  end
+
   defp valid_evidence?(_evidence), do: false
 
   defp valid_evidence_item?(%{} = item) do
-    valid_type?(value(item, :type)) and valid_subject_id?(:evidence, value(item, :id)) and
-      serializable?(value(item, :content))
+    normalized_keys = Enum.map(Map.keys(item), &normalize_evidence_key/1)
+
+    Enum.sort(normalized_keys) == ["id", "type"] and
+      value(item, :type) in @evidence_types and
+      valid_subject_id?(:evidence, value(item, :id))
   end
 
   defp valid_evidence_item?(_item), do: false
@@ -147,7 +160,10 @@ defmodule Storyarn.AI.Context.SubjectRef do
   defp valid_response_id?(nil), do: true
   defp valid_response_id?(value), do: is_binary(value) and byte_size(value) > 0 and byte_size(value) <= 200
 
-  defp valid_type?(value), do: is_binary(value) and byte_size(value) > 0 and byte_size(value) <= 80
+  defp normalize_evidence_key(key) when is_atom(key), do: Atom.to_string(key)
+  defp normalize_evidence_key(key) when is_binary(key), do: key
+  defp normalize_evidence_key(_key), do: :invalid
+
   defp value(attrs, key), do: Map.get(attrs, key, Map.get(attrs, Atom.to_string(key)))
 
   defp persisted_kind(value) when is_binary(value) do

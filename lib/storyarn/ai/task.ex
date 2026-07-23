@@ -121,7 +121,7 @@ defmodule Storyarn.AI.Task do
 
   @spec subject_current?(t(), Operation.t()) :: boolean()
   def subject_current?(%__MODULE__{module: module}, operation) do
-    if function_exported?(module, :subject_current?, 1), do: module.subject_current?(operation), else: true
+    not function_exported?(module, :subject_current?, 1) or module.subject_current?(operation) == true
   end
 
   @spec context_subject(t(), ExecutionIntent.t() | Operation.t()) ::
@@ -162,6 +162,7 @@ defmodule Storyarn.AI.Task do
     |> require(valid_command_ids?(task.command_ids), :invalid_command_ids)
     |> require(is_map(task.provider_options), :invalid_provider_options)
     |> require(ContextPolicy.valid?(task.context_policy), :invalid_context_policy)
+    |> require(valid_context_data_scope?(task), :invalid_context_data_scope)
     |> require(
       task.data_scope != :entity or function_exported?(task.module, :authorize_subject, 3),
       :missing_subject_authorizer
@@ -227,6 +228,14 @@ defmodule Storyarn.AI.Task do
     case ContextPolicy.new(policy) do
       {:ok, %ContextPolicy{scope: :none}} -> true
       {:ok, %ContextPolicy{}} -> function_exported?(module, :context_subject, 1)
+      {:error, _reason} -> false
+    end
+  end
+
+  defp valid_context_data_scope?(%{context_policy: policy, data_scope: data_scope}) do
+    case ContextPolicy.new(policy) do
+      {:ok, %ContextPolicy{scope: :none}} -> true
+      {:ok, %ContextPolicy{}} -> data_scope in [:project, :entity]
       {:error, _reason} -> false
     end
   end

@@ -59,4 +59,43 @@ describe("ContextDisclosure", () => {
     expect(warnings).toContain("Some optional context was omitted");
     expect(warnings).toContain("Some referenced content no longer exists");
   });
+
+  it("does not describe stale-only context as complete", async () => {
+    const wrapper = mount(ContextDisclosure, {
+      props: {
+        disclosure: disclosure({
+          excluded_count: 1,
+          truncated: false,
+          warnings: ["stale_reference"],
+        }),
+      },
+    });
+
+    expect(wrapper.text()).toContain("Limited");
+    expect(wrapper.text()).not.toContain("Complete");
+
+    await wrapper.get('[data-testid="ai-context-disclosure-trigger"]').trigger("click");
+    expect(wrapper.get('[data-testid="ai-context-disclosure-warnings"]').text()).toContain(
+      "Some referenced content no longer exists",
+    );
+  });
+
+  it("does not describe depth-limited context as complete", async () => {
+    const wrapper = mount(ContextDisclosure, {
+      props: {
+        disclosure: disclosure({
+          truncated: false,
+          warnings: ["depth_limit_reached"],
+        }),
+      },
+    });
+
+    expect(wrapper.text()).toContain("Limited");
+    expect(wrapper.text()).not.toContain("Complete");
+
+    await wrapper.get('[data-testid="ai-context-disclosure-trigger"]').trigger("click");
+    expect(wrapper.get('[data-testid="ai-context-disclosure-warnings"]').text()).toContain(
+      "The surrounding graph continues beyond this task's depth limit",
+    );
+  });
 });

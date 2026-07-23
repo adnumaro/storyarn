@@ -5,6 +5,7 @@ defmodule Storyarn.AI.RouteOption do
   import Ecto.Changeset
 
   alias Storyarn.Accounts.User
+  alias Storyarn.AI.Context.PersistenceContract
   alias Storyarn.AI.Operation
   alias Storyarn.Projects.Project
   alias Storyarn.Workspaces.Workspace
@@ -98,6 +99,7 @@ defmodule Storyarn.AI.RouteOption do
     |> validate_price()
     |> validate_subject()
     |> validate_context()
+    |> check_constraint(:context_hash, name: :ai_route_options_context_complete)
     |> unique_constraint(:token_hash)
     |> foreign_key_constraint(:user_id)
     |> foreign_key_constraint(:workspace_id)
@@ -127,15 +129,14 @@ defmodule Storyarn.AI.RouteOption do
     manifest = get_field(changeset, :context_manifest)
     subject = get_field(changeset, :context_subject)
 
-    cond do
-      is_nil(hash) and is_nil(manifest) and is_nil(subject) ->
-        changeset
-
-      is_binary(hash) and is_map(manifest) and (is_nil(subject) or is_map(subject)) ->
-        changeset
-
-      true ->
-        add_error(changeset, :context_hash, "must include hash and manifest together")
+    if PersistenceContract.valid?(hash, manifest, subject) do
+      changeset
+    else
+      add_error(
+        changeset,
+        :context_hash,
+        "must include hash, manifest, and a scope-compatible subject together"
+      )
     end
   end
 

@@ -2,15 +2,17 @@ defmodule Storyarn.AI.Context.Builders.StructuralFinding do
   @moduledoc false
 
   alias Storyarn.AI.Context.Entity
+  alias Storyarn.AI.Context.EvidenceLoader
   alias Storyarn.AI.Context.Policy
   alias Storyarn.AI.Context.SubjectRef
 
   @spec build(map(), SubjectRef.t(), Policy.t()) :: {:ok, map()} | {:error, atom()}
-  def build(_project, %SubjectRef{} = subject_ref, %Policy{} = policy) do
+  def build(project, %SubjectRef{} = subject_ref, %Policy{} = policy) do
     if length(subject_ref.evidence) > policy.max_fan_out do
       {:error, :context_too_large}
     else
-      with {:ok, finding} <-
+      with {:ok, loaded_evidence} <- EvidenceLoader.load(project.id, subject_ref.evidence),
+           {:ok, finding} <-
              Entity.new(
                "structural_finding",
                subject_ref.subject_id,
@@ -18,7 +20,7 @@ defmodule Storyarn.AI.Context.Builders.StructuralFinding do
                required: true,
                priority: 1
              ),
-           {:ok, evidence} <- evidence_entities(subject_ref.evidence) do
+           {:ok, evidence} <- evidence_entities(loaded_evidence) do
         {:ok, %{entities: [finding | evidence], excluded: [], warnings: []}}
       end
     end
@@ -26,15 +28,15 @@ defmodule Storyarn.AI.Context.Builders.StructuralFinding do
 
   defp evidence_entities(evidence) do
     evidence
-    |> Enum.sort_by(&{value(&1, :type), value(&1, :id)})
+    |> Enum.sort_by(&{&1.type, &1.id})
     |> Enum.reduce_while({:ok, []}, fn item, {:ok, acc} ->
       case Entity.new(
-             value(item, :type),
-             value(item, :id),
-             value(item, :content),
+             item.type,
+             item.id,
+             item.content,
              required: true,
-             priority: 1,
-             revision: value(item, :revision)
+             priority: 2,
+             revision: item.revision
            ) do
         {:ok, entity} -> {:cont, {:ok, [entity | acc]}}
         {:error, reason} -> {:halt, {:error, reason}}
@@ -45,6 +47,4 @@ defmodule Storyarn.AI.Context.Builders.StructuralFinding do
       {:error, reason} -> {:error, reason}
     end
   end
-
-  defp value(map, key), do: Map.get(map, key, Map.get(map, Atom.to_string(key)))
 end

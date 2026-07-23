@@ -5,6 +5,7 @@ defmodule Storyarn.AI.Operation do
   import Ecto.Changeset
 
   alias Storyarn.Accounts.User
+  alias Storyarn.AI.Context.PersistenceContract
   alias Storyarn.AI.RouteOption
   alias Storyarn.Projects.Project
   alias Storyarn.Workspaces.Workspace
@@ -110,6 +111,7 @@ defmodule Storyarn.AI.Operation do
     |> validate_length(:idempotency_key, min: 1, max: 64)
     |> validate_subject()
     |> validate_context()
+    |> check_constraint(:context_hash, name: :ai_operations_context_complete)
     |> unique_constraint([:actor_id, :task_id, :idempotency_key],
       name: :ai_operations_actor_task_idempotency_unique
     )
@@ -162,15 +164,14 @@ defmodule Storyarn.AI.Operation do
     manifest = get_field(changeset, :context_manifest)
     subject = get_field(changeset, :context_subject)
 
-    cond do
-      is_nil(hash) and is_nil(manifest) and is_nil(subject) ->
-        changeset
-
-      is_binary(hash) and is_map(manifest) and (is_nil(subject) or is_map(subject)) ->
-        changeset
-
-      true ->
-        add_error(changeset, :context_hash, "must include hash and manifest together")
+    if PersistenceContract.valid?(hash, manifest, subject) do
+      changeset
+    else
+      add_error(
+        changeset,
+        :context_hash,
+        "must include hash, manifest, and a scope-compatible subject together"
+      )
     end
   end
 

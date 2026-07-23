@@ -2,6 +2,7 @@ defmodule Storyarn.AI.InferenceProviders.Personal.Anthropic do
   @moduledoc "Anthropic Messages structured-output adapter for actor-owned API keys."
   @behaviour Storyarn.AI.InferenceProvider
 
+  alias Storyarn.AI.Context.ModelLimits
   alias Storyarn.AI.ResolvedCredential
 
   @anthropic_version "2023-06-01"
@@ -11,6 +12,7 @@ defmodule Storyarn.AI.InferenceProviders.Personal.Anthropic do
     with :ok <- valid_route?(request.provider_configuration),
          {:ok, endpoint} <- endpoint(),
          {:ok, body} <- request_body(request),
+         :ok <- ModelLimits.validate_provider_request("anthropic", request, body),
          {:ok, response} <- post(endpoint, api_key, body),
          {:ok, output} <- extract_output(response.body),
          {:ok, metrics} <- metrics(response.body) do

@@ -10,8 +10,10 @@ defmodule Storyarn.AI.ContextTest do
   alias Storyarn.AI.Context
   alias Storyarn.AI.Context.Entity
   alias Storyarn.AI.Context.Finalizer
+  alias Storyarn.AI.Context.Package
   alias Storyarn.AI.Context.Policy
   alias Storyarn.AI.Context.SubjectRef
+  alias Storyarn.AI.Operation
   alias Storyarn.AI.Task
   alias Storyarn.Flows
   alias Storyarn.Sheets.Block
@@ -76,6 +78,97 @@ defmodule Storyarn.AI.ContextTest do
       assert Enum.any?(first.manifest.excluded, &(&1["id"] == "a" and &1["reason"] == "fan_out_limit"))
     end
 
+    test "bounds the response exclusion manifest while preserving the omitted count", %{
+      scope: scope,
+      project: project
+    } do
+      flow = flow_fixture(project)
+
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Choose",
+            "responses" =>
+              Enum.map(1..8, fn index ->
+                %{"id" => "response-#{index}", "text" => "Response #{index}"}
+              end)
+          }
+        })
+
+      task =
+        task(%{
+          scope: :dialogue,
+          max_depth: 0,
+          max_fan_out: 1,
+          max_entities: 3,
+          max_bytes: 16_384,
+          tokenizer: nil,
+          fields: %{}
+        })
+
+      {:ok, ref} = SubjectRef.dialogue(project.workspace_id, project.id, node.id)
+
+      assert {:ok, package} = Context.build_context(scope, task, ref)
+      assert length(package.manifest.excluded) == 4
+      assert Package.excluded_count(package) == 7
+
+      assert Enum.any?(package.manifest.excluded, fn item ->
+               item["type"] == "dialogue_response_overflow" and item["omitted_count"] == 4
+             end)
+    end
+
+    test "discloses speaker block fan-out overflow", %{scope: scope, project: project} do
+      speaker = sheet_fixture(project, %{name: "Ariadna"})
+
+      first =
+        block_fixture(speaker, %{
+          config: %{"label" => "Summary"},
+          value: %{"content" => "First"}
+        })
+
+      second =
+        block_fixture(speaker, %{
+          config: %{"label" => "Biography"},
+          value: %{"content" => "Second"}
+        })
+
+      flow = flow_fixture(project)
+
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"speaker_sheet_id" => speaker.id, "text" => "Hello"}
+        })
+
+      task =
+        task(%{
+          scope: :dialogue,
+          max_depth: 0,
+          max_fan_out: 1,
+          max_entities: 10,
+          max_bytes: 16_384,
+          tokenizer: nil,
+          fields: %{speaker_blocks: ["Summary", "Biography"]}
+        })
+
+      {:ok, ref} = SubjectRef.dialogue(project.workspace_id, project.id, node.id)
+
+      assert {:ok, package} = Context.build_context(scope, task, ref)
+      assert "optional_context_truncated" in package.warnings
+
+      included_block_ids =
+        for %{"type" => "sheet_block", "id" => id} <- package.payload["entities"], do: id
+
+      assert included_block_ids == [first.id]
+
+      assert Enum.any?(
+               package.manifest.excluded,
+               &(&1["type"] == "sheet_block" and &1["id"] == second.id and
+                   &1["reason"] == "fan_out_limit")
+             )
+    end
+
     test "enforces project permission isolation before loading context", %{project: project} do
       flow = flow_fixture(project)
       node = node_fixture(flow)
@@ -131,6 +224,131 @@ defmodule Storyarn.AI.ContextTest do
 
       assert selected.id in node_ids
       assert length(node_ids) == 2
+    end
+
+    test "continues breadth-first traversal when the parent edge already consumed a prior level", %{
+      scope: scope,
+      project: project
+    } do
+      flow = flow_fixture(project)
+      selected = node_fixture(flow, %{data: %{"text" => "Selected"}})
+      first = node_fixture(flow, %{data: %{"text" => "First"}})
+      second = node_fixture(flow, %{data: %{"text" => "Second"}})
+      first_connection = connection_fixture(flow, selected, first)
+      second_connection = connection_fixture(flow, first, second)
+
+      task =
+        task(%{
+          scope: :flow_neighborhood,
+          max_depth: 2,
+          max_fan_out: 1,
+          max_entities: 10,
+          max_bytes: 16_384,
+          tokenizer: nil,
+          fields: %{}
+        })
+
+      {:ok, ref} = SubjectRef.flow_neighborhood(project.workspace_id, project.id, selected.id)
+
+      assert {:ok, package} = Context.build_context(scope, task, ref)
+
+      node_ids =
+        for %{"type" => "flow_node", "id" => id} <- package.payload["entities"], do: id
+
+      connection_ids =
+        for %{"type" => "flow_connection", "id" => id} <- package.payload["entities"], do: id
+
+      assert Enum.sort(node_ids) == Enum.sort([selected.id, first.id, second.id])
+      assert Enum.sort(connection_ids) == Enum.sort([first_connection.id, second_connection.id])
+      refute Enum.any?(package.manifest.excluded, &(&1["reason"] == "fan_out_limit"))
+    end
+
+    test "records every bounded fan-out overflow instead of only the first", %{
+      scope: scope,
+      project: project
+    } do
+      flow = flow_fixture(project)
+      selected = node_fixture(flow)
+
+      connections =
+        for _index <- 1..4 do
+          neighbor = node_fixture(flow)
+          connection_fixture(flow, selected, neighbor)
+        end
+
+      task =
+        task(%{
+          scope: :flow_neighborhood,
+          max_depth: 1,
+          max_fan_out: 1,
+          max_entities: 20,
+          max_bytes: 16_384,
+          tokenizer: nil,
+          fields: %{}
+        })
+
+      {:ok, ref} = SubjectRef.flow_neighborhood(project.workspace_id, project.id, selected.id)
+
+      assert {:ok, package} = Context.build_context(scope, task, ref)
+
+      included_connection_ids =
+        for %{"type" => "flow_connection", "id" => id} <- package.payload["entities"], do: id
+
+      excluded_connection_ids =
+        for %{"type" => "flow_connection", "id" => id, "reason" => "fan_out_limit"} <-
+              package.manifest.excluded,
+            do: id
+
+      [included | overflow] = connections
+      assert included_connection_ids == [included.id]
+      assert Enum.sort(excluded_connection_ids) == Enum.sort(Enum.map(overflow, & &1.id))
+    end
+
+    test "disclosure and telemetry count entities represented by bounded overflow summaries", %{
+      scope: scope,
+      project: project
+    } do
+      flow = flow_fixture(project)
+      selected = node_fixture(flow)
+
+      for _index <- 1..8 do
+        neighbor = node_fixture(flow)
+        _connection = connection_fixture(flow, selected, neighbor)
+      end
+
+      task =
+        task(%{
+          scope: :flow_neighborhood,
+          max_depth: 1,
+          max_fan_out: 1,
+          max_entities: 4,
+          max_bytes: 16_384,
+          tokenizer: nil,
+          fields: %{}
+        })
+
+      handler_id = "context-overflow-count-#{System.unique_integer([:positive])}"
+      caller = self()
+
+      :ok =
+        :telemetry.attach(
+          handler_id,
+          [:ai, :context, :build],
+          fn _event, measurements, _metadata, test_pid ->
+            send(test_pid, {:context_overflow_telemetry, measurements})
+          end,
+          caller
+        )
+
+      on_exit(fn -> :telemetry.detach(handler_id) end)
+
+      {:ok, ref} = SubjectRef.flow_neighborhood(project.workspace_id, project.id, selected.id)
+
+      assert {:ok, package} = Context.build_context(scope, task, ref)
+      assert length(package.manifest.excluded) == 5
+      assert Package.excluded_count(package) == 7
+      assert Package.disclosure(package).excluded_count == 7
+      assert_receive {:context_overflow_telemetry, %{excluded_count: 7}}
     end
 
     test "enforces the entity budget inside dense flow traversal", %{
@@ -211,6 +429,40 @@ defmodule Storyarn.AI.ContextTest do
       |> Repo.update!()
 
       assert {:error, :stale_context} = Context.current?(scope, task, ref, package.hash)
+    end
+
+    test "a warning-only context change invalidates the stable hash", %{
+      scope: scope,
+      project: project
+    } do
+      flow = flow_fixture(project)
+      selected = node_fixture(flow)
+
+      task =
+        task(%{
+          scope: :flow_neighborhood,
+          max_depth: 0,
+          max_fan_out: 5,
+          max_entities: 10,
+          max_bytes: 16_384,
+          tokenizer: nil,
+          fields: %{}
+        })
+
+      {:ok, ref} = SubjectRef.flow_neighborhood(project.workspace_id, project.id, selected.id)
+
+      assert {:ok, before_package} = Context.build_context(scope, task, ref)
+      assert before_package.warnings == []
+
+      neighbor = node_fixture(flow)
+      _connection = connection_fixture(flow, selected, neighbor)
+
+      assert {:ok, after_package} = Context.build_context(scope, task, ref)
+      assert after_package.warnings == ["depth_limit_reached"]
+      assert before_package.payload == after_package.payload
+      assert before_package.manifest == after_package.manifest
+      refute before_package.hash == after_package.hash
+      assert {:error, :stale_context} = Context.current?(scope, task, ref, before_package.hash)
     end
 
     test "reports exact UTF-8 bytes and an optional tokenizer count", %{
@@ -313,10 +565,39 @@ defmodule Storyarn.AI.ContextTest do
       refute inspect(package.payload) =~ "Must stay private"
     end
 
+    test "a sheet self-reference reuses the selected sheet entity", %{
+      scope: scope,
+      project: project
+    } do
+      sheet = sheet_fixture(project, %{name: "Self reference"})
+
+      reference =
+        block_fixture(sheet, %{
+          type: "reference",
+          config: %{"label" => "Self", "allowed_types" => ["sheet"]},
+          value: %{"target_type" => "sheet", "target_id" => sheet.id}
+        })
+
+      {:ok, ref} =
+        SubjectRef.sheet(project.workspace_id, project.id, sheet.id, block_ids: [reference.id])
+
+      assert {:ok, package} = Context.build_context(scope, sheet_task(), ref)
+
+      included_sheet_ids =
+        for %{"type" => "sheet", "id" => id} <- package.payload["entities"], do: id
+
+      assert included_sheet_ids == [sheet.id]
+      assert length(package.manifest.included) == 2
+    end
+
     test "builds a structural finding only when all required evidence fits", %{
       scope: scope,
       project: project
     } do
+      flow = flow_fixture(project)
+      first_node = node_fixture(flow, %{data: %{"text" => "Loaded from the project"}})
+      second_node = node_fixture(flow)
+
       task =
         task(%{
           scope: :structural_finding,
@@ -334,11 +615,17 @@ defmodule Storyarn.AI.ContextTest do
           project.id,
           "orphan-node",
           %{"severity" => "warning"},
-          [%{"type" => "flow_node", "id" => 42, "content" => %{"type" => "dialogue"}}]
+          [%{"type" => "flow_node", "id" => first_node.id}]
         )
 
       assert {:ok, package} = Context.build_context(scope, task, ref)
       assert length(package.manifest.included) == 2
+      assert hd(package.payload["entities"])["type"] == "structural_finding"
+
+      assert Enum.any?(package.payload["entities"], fn entity ->
+               entity["type"] == "flow_node" and entity["id"] == first_node.id and
+                 entity["content"]["data"]["text"] == "Loaded from the project"
+             end)
 
       {:ok, oversized_ref} =
         SubjectRef.structural_finding(
@@ -347,12 +634,76 @@ defmodule Storyarn.AI.ContextTest do
           "orphan-node",
           %{"severity" => "warning"},
           [
-            %{"type" => "flow_node", "id" => 42, "content" => %{}},
-            %{"type" => "flow_node", "id" => 43, "content" => %{}}
+            %{"type" => "flow_node", "id" => first_node.id},
+            %{"type" => "flow_node", "id" => second_node.id}
           ]
         )
 
       assert {:error, :context_too_large} = Context.build_context(scope, task, oversized_ref)
+    end
+
+    test "rejects duplicate structural evidence identities", %{project: project} do
+      evidence = [
+        %{"type" => "flow_node", "id" => 42},
+        %{"type" => "flow_node", "id" => 42}
+      ]
+
+      assert {:error, :invalid_context_subject} =
+               SubjectRef.structural_finding(
+                 project.workspace_id,
+                 project.id,
+                 "duplicate-evidence",
+                 %{"severity" => "warning"},
+                 evidence
+               )
+
+      assert {:error, :invalid_context_subject} =
+               SubjectRef.structural_finding(
+                 project.workspace_id,
+                 project.id,
+                 "invalid-evidence",
+                 %{"severity" => "warning"},
+                 [:invalid]
+               )
+
+      assert {:error, :invalid_context_subject} =
+               SubjectRef.structural_finding(
+                 project.workspace_id,
+                 project.id,
+                 "caller-content",
+                 %{"severity" => "warning"},
+                 [%{"type" => "flow_node", "id" => 42, "content" => %{"secret" => true}}]
+               )
+    end
+
+    test "structural evidence cannot cross project boundaries", %{scope: scope, project: project} do
+      foreign_project = project_fixture(scope.user)
+      foreign_flow = flow_fixture(foreign_project)
+      foreign_node = node_fixture(foreign_flow, %{data: %{"text" => "Must stay private"}})
+
+      {:ok, ref} =
+        SubjectRef.structural_finding(
+          project.workspace_id,
+          project.id,
+          "foreign-node",
+          %{"severity" => "warning"},
+          [%{"type" => "flow_node", "id" => foreign_node.id}]
+        )
+
+      assert {:error, :context_missing} =
+               Context.build_context(
+                 scope,
+                 task(%{
+                   scope: :structural_finding,
+                   max_depth: 0,
+                   max_fan_out: 1,
+                   max_entities: 3,
+                   max_bytes: 8_192,
+                   tokenizer: nil,
+                   fields: %{}
+                 }),
+                 ref
+               )
     end
 
     test "rejects task policies that could request project-scale context" do
@@ -372,6 +723,43 @@ defmodule Storyarn.AI.ContextTest do
                Task.new(ContextWithoutStalenessTask, ContextWithoutStalenessTask.definition())
 
       assert :missing_context_staleness_check in errors
+    end
+
+    test "structural staleness callbacks fail closed unless they return exactly true", %{
+      scope: scope
+    } do
+      task =
+        task(%{
+          scope: :structural_finding,
+          max_depth: 0,
+          max_fan_out: 1,
+          max_entities: 3,
+          max_bytes: 8_192,
+          tokenizer: nil,
+          fields: %{}
+        })
+
+      operation = %Operation{
+        context_hash: String.duplicate("0", 64),
+        context_manifest: %{},
+        context_subject: nil
+      }
+
+      key = {ContextTask, :subject_current?}
+
+      try do
+        for callback_result <- [false, nil, :unknown, {:error, :unavailable}] do
+          Process.put(key, callback_result)
+          refute Task.subject_current?(task, operation)
+          assert {:error, :stale_context} = Context.operation_current?(scope, task, operation)
+        end
+
+        Process.put(key, true)
+        assert Task.subject_current?(task, operation)
+        assert :ok = Context.operation_current?(scope, task, operation)
+      after
+        Process.delete(key)
+      end
     end
 
     test "final serialization and hash are invariant to builder entity order" do
@@ -407,6 +795,28 @@ defmodule Storyarn.AI.ContextTest do
       assert first.manifest == second.manifest
       assert first.hash == second.hash
       assert first.serialized_bytes == second.serialized_bytes
+    end
+
+    test "finalization rejects duplicate entity identities" do
+      assert {:ok, policy} =
+               Policy.new(%{
+                 scope: :sheet,
+                 max_depth: 0,
+                 max_fan_out: 5,
+                 max_entities: 5,
+                 max_bytes: 4_096,
+                 tokenizer: nil,
+                 fields: %{}
+               })
+
+      assert {:ok, selected} =
+               Entity.new("sheet", 7, %{"name" => "Selected"}, required: true, priority: 1)
+
+      assert {:ok, duplicate} =
+               Entity.new("sheet", 7, %{"name" => "Duplicate"}, required: true, priority: 2)
+
+      assert {:error, :invalid_context_entities} =
+               Finalizer.finalize(policy, "context-v1", [selected, duplicate])
     end
 
     test "emits only content-free context telemetry", %{scope: scope, project: project} do

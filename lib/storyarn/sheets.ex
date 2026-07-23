@@ -97,6 +97,11 @@ defmodule Storyarn.Sheets do
     to: ContextQueries,
     as: :list_blocks_by_labels
 
+  @doc false
+  defdelegate count_context_blocks_by_labels(project_id, sheet_id, labels),
+    to: ContextQueries,
+    as: :count_blocks_by_labels
+
   @doc """
   Gets a single sheet by ID within a project.
   Raises `Ecto.NoResultsError` if not found.

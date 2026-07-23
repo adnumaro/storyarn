@@ -411,6 +411,25 @@ defmodule Storyarn.AI.ExecutionTest do
     assert {:ok, %Operation{execution_status: "succeeded"}} = AI.execute(valid)
   end
 
+  test "idempotent replays do not consume or require accepted-operation rate allowance", ctx do
+    original = Application.get_env(:storyarn, Storyarn.RateLimiter, [])
+    on_exit(fn -> Application.put_env(:storyarn, Storyarn.RateLimiter, original) end)
+    Application.put_env(:storyarn, Storyarn.RateLimiter, enabled: false)
+
+    {operation, execute_intent} = execute_success!(ctx, "replay after rate limit")
+
+    Application.put_env(:storyarn, Storyarn.RateLimiter, enabled: true)
+
+    for _index <- 1..20 do
+      assert :ok = Storyarn.RateLimiter.check_ai_execution(ctx.user.id, "contract.echo")
+    end
+
+    assert {:ok, replayed} = AI.execute(execute_intent)
+    assert replayed.id == operation.id
+    assert Repo.aggregate(Operation, :count) == 1
+    assert Repo.aggregate(UsageEvent, :count) == 1
+  end
+
   test "a second external attempt is blocked before provider access", ctx do
     Application.put_env(:storyarn, ContractTask, scenario: :success, execution_mode: :background)
     {queued, _intent} = execute!(ctx, "attempt once")

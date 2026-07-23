@@ -5,6 +5,7 @@ defmodule Storyarn.AI.Results do
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.AI.Context
+  alias Storyarn.AI.Context.SourceLocks
   alias Storyarn.AI.ExecutionRoute
   alias Storyarn.AI.Operation
   alias Storyarn.AI.PersonalConsents
@@ -78,8 +79,9 @@ defmodule Storyarn.AI.Results do
   Reauthorizes and applies a temporary result through a feature-owned mutation.
 
   `current_revision` must be read by the server-side feature immediately before
-  this call. The callback runs in the same database transaction and receives
-  decoded output plus content-free provenance.
+  this call. Context roots and source rows are locked before the final staleness
+  check. The callback runs while those locks remain held in the same database
+  transaction and receives decoded output plus content-free provenance.
   """
   @spec apply(Scope.t(), pos_integer(), String.t() | nil, (term(), map() -> {:ok, term()} | {:error, term()})) ::
           {:ok, term()} | {:error, term()}
@@ -93,6 +95,7 @@ defmodule Storyarn.AI.Results do
            {:ok, task} <- TaskRegistry.get(operation.task_id),
            :ok <- task_contract_current(operation, task),
            {:ok, _decision} <- PolicyDecision.reauthorize(operation, task, :apply, lock_policy: true),
+           :ok <- SourceLocks.acquire(operation),
            :ok <- Context.operation_current?(scope, task, operation),
            {:ok, route} <- ExecutionRoute.from_map(operation.execution_route),
            :ok <- PersonalConsents.authorize_operation(operation, task, route, lock: true),

@@ -74,13 +74,14 @@ defmodule Storyarn.AI.Context do
   def operation_current?(%Scope{}, %Task{}, %Operation{context_hash: nil, context_manifest: nil, context_subject: nil}),
     do: :ok
 
-  def operation_current?(%Scope{} = scope, %Task{} = task, %Operation{
-        context_hash: hash,
-        context_manifest: %{},
-        context_subject: %{} = persisted
-      })
+  def operation_current?(
+        %Scope{} = scope,
+        %Task{} = task,
+        %Operation{context_hash: hash, context_manifest: %{}, context_subject: %{} = persisted} = operation
+      )
       when is_binary(hash) do
-    with {:ok, subject_ref} <- SubjectRef.from_persisted_map(persisted) do
+    with {:ok, subject_ref} <- SubjectRef.from_persisted_map(persisted),
+         :ok <- matching_owner(subject_ref, operation) do
       current?(scope, task, subject_ref, hash)
     end
   end
@@ -91,7 +92,10 @@ defmodule Storyarn.AI.Context do
         %Operation{context_hash: hash, context_manifest: %{}, context_subject: nil} = operation
       )
       when is_binary(hash) do
-    if Task.subject_current?(task, operation), do: :ok, else: {:error, :stale_context}
+    case Task.subject_current?(task, operation) do
+      true -> :ok
+      _not_current -> {:error, :stale_context}
+    end
   end
 
   def operation_current?(_scope, _task, _operation), do: {:error, :stale_context}
@@ -123,6 +127,7 @@ defmodule Storyarn.AI.Context do
 
   defp prepare_context(scope, task, intent_or_operation) do
     with {:ok, subject_ref} <- Task.context_subject(task, intent_or_operation),
+         :ok <- matching_owner(subject_ref, intent_or_operation),
          {:ok, package} <- build_context(scope, task, subject_ref) do
       {:ok,
        %{
@@ -131,6 +136,20 @@ defmodule Storyarn.AI.Context do
        }}
     end
   end
+
+  defp matching_owner(%SubjectRef{workspace_id: workspace_id, project_id: project_id}, %ExecutionIntent{
+         workspace_id: workspace_id,
+         project_id: project_id
+       }), do: :ok
+
+  defp matching_owner(%SubjectRef{workspace_id: workspace_id, project_id: project_id}, %Operation{
+         workspace_id_snapshot: workspace_id,
+         project_id_snapshot: project_id
+       }), do: :ok
+
+  defp matching_owner(%SubjectRef{}, %ExecutionIntent{}), do: {:error, :unauthorized_context}
+  defp matching_owner(%SubjectRef{}, %Operation{}), do: {:error, :unauthorized_context}
+  defp matching_owner(%SubjectRef{}, _intent_or_operation), do: {:error, :invalid_context_subject}
 
   defp persistable_subject(subject_ref) do
     case SubjectRef.persisted_map(subject_ref) do
@@ -150,7 +169,7 @@ defmodule Storyarn.AI.Context do
               duration: duration,
               serialized_bytes: package.serialized_bytes,
               included_count: length(package.manifest.included),
-              excluded_count: length(package.manifest.excluded),
+              excluded_count: Package.excluded_count(package),
               truncated: if("optional_context_truncated" in package.warnings, do: 1, else: 0)
             },
             %{

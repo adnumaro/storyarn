@@ -30,6 +30,10 @@ const warningLabels = computed(() =>
   }),
 );
 
+const limited = computed(
+  () => disclosure.truncated || disclosure.excluded_count > 0 || disclosure.warnings.length > 0,
+);
+
 const formattedBytes = computed(() => {
   const bytes = disclosure.serialized_bytes;
   if (bytes < 1024) return `${bytes} B`;
@@ -69,7 +73,7 @@ const scopeLabel = computed(() => {
           <span class="text-sm font-semibold">
             {{ $t("integrations.context_disclosure.title") }}
           </span>
-          <Badge v-if="disclosure.truncated" variant="outline" class="gap-1 text-warning">
+          <Badge v-if="limited" variant="outline" class="gap-1 text-warning">
             <AlertTriangle class="size-3" />
             {{ $t("integrations.context_disclosure.truncated") }}
           </Badge>

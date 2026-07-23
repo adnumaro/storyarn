@@ -1,7 +1,8 @@
 defmodule Storyarn.AI.InferenceProviders.FireworksTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias Storyarn.AI.InferenceProviders.Fireworks
+  alias Storyarn.AI.ModelCatalog
   alias Storyarn.AI.ResolvedCredential
 
   @stub StoryarnTest.AI.Fireworks
@@ -46,6 +47,37 @@ defmodule Storyarn.AI.InferenceProviders.FireworksTest do
     assert {:error, :provider_error} = Fireworks.generate(credential(), request)
   end
 
+  test "does not call the provider for contextual input without a curated model contract" do
+    request = %{request() | input: contextual_input(), contextual?: true}
+
+    assert {:error, :model_context_limits_unavailable} =
+             Fireworks.generate(credential(), request)
+  end
+
+  test "rejects atom and string protected request overrides before provider access" do
+    for overrides <- [%{max_tokens: 1}, %{"messages" => []}] do
+      with_request_overrides(overrides, fn ->
+        assert {:error, :provider_error} = Fireworks.generate(credential(), request())
+      end)
+    end
+  end
+
+  test "validates allowed overrides as part of the exact body sent to the provider" do
+    request = %{
+      request()
+      | model: "accounts/fireworks/models/qwen3p7-plus",
+        input: contextual_input(),
+        contextual?: true
+    }
+
+    with_default_catalog(fn ->
+      with_request_overrides(%{metadata: String.duplicate("x", 262_144)}, fn ->
+        assert {:error, :model_context_window_exceeded} =
+                 Fireworks.generate(credential(), request)
+      end)
+    end)
+  end
+
   test "does not follow provider redirects with the managed credential" do
     Req.Test.stub(@stub, fn conn ->
       conn
@@ -63,6 +95,7 @@ defmodule Storyarn.AI.InferenceProviders.FireworksTest do
       task_id: "operator.managed_diagnostic",
       model: "accounts/fireworks/models/test-model",
       input: %{"probe" => "storyarn-managed-ai-diagnostic-v1"},
+      contextual?: false,
       max_output_bytes: 256,
       provider_options: %{
         system_prompt: "Return JSON.",
@@ -93,5 +126,41 @@ defmodule Storyarn.AI.InferenceProviders.FireworksTest do
       "required" => ["status"],
       "additionalProperties" => false
     }
+  end
+
+  defp contextual_input do
+    %{
+      "request" => %{"probe" => "storyarn-managed-ai-diagnostic-v1"},
+      "context" => %{
+        "version" => "storyarn-context-v1",
+        "scope" => "sheet",
+        "entities" => []
+      }
+    }
+  end
+
+  defp with_request_overrides(overrides, callback) do
+    original = Application.fetch_env!(:storyarn, Fireworks)
+    Application.put_env(:storyarn, Fireworks, Keyword.put(original, :request_overrides, overrides))
+
+    try do
+      callback.()
+    after
+      Application.put_env(:storyarn, Fireworks, original)
+    end
+  end
+
+  defp with_default_catalog(callback) do
+    original = Application.fetch_env(:storyarn, ModelCatalog)
+    Application.delete_env(:storyarn, ModelCatalog)
+
+    try do
+      callback.()
+    after
+      case original do
+        {:ok, config} -> Application.put_env(:storyarn, ModelCatalog, config)
+        :error -> Application.delete_env(:storyarn, ModelCatalog)
+      end
+    end
   end
 end

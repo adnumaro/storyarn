@@ -72,10 +72,11 @@ defmodule Storyarn.AI.Context.Builders.Dialogue do
     with :ok <- selected_response_present(normalized, selected_id) do
       normalized = selected_first(normalized, selected_id)
       {allowed, overflow} = Enum.split(normalized, policy.max_fan_out)
+      {detailed_overflow, summarized_overflow} = Enum.split(overflow, policy.max_entities)
 
       allowed
       |> Enum.reduce_while({:ok, []}, &reduce_response(&1, &2, selected_id))
-      |> finalize_responses(overflow)
+      |> finalize_responses(detailed_overflow, length(summarized_overflow))
     end
   end
 
@@ -106,11 +107,16 @@ defmodule Storyarn.AI.Context.Builders.Dialogue do
     end
   end
 
-  defp finalize_responses({:ok, entities}, overflow) do
-    {:ok, Enum.reverse(entities), Enum.map(overflow, &excluded_response/1)}
+  defp finalize_responses({:ok, entities}, overflow, omitted_count) do
+    excluded =
+      overflow
+      |> Enum.map(&excluded_response/1)
+      |> maybe_add_response_overflow(omitted_count)
+
+    {:ok, Enum.reverse(entities), excluded}
   end
 
-  defp finalize_responses({:error, reason}, _overflow), do: {:error, reason}
+  defp finalize_responses({:error, reason}, _overflow, _omitted_count), do: {:error, reason}
 
   defp excluded_response(response) do
     %{
@@ -119,6 +125,20 @@ defmodule Storyarn.AI.Context.Builders.Dialogue do
       "reason" => "fan_out_limit"
     }
   end
+
+  defp maybe_add_response_overflow(excluded, omitted_count) when omitted_count > 0 do
+    [
+      %{
+        "type" => "dialogue_response_overflow",
+        "id" => "responses",
+        "reason" => "fan_out_limit",
+        "omitted_count" => omitted_count
+      }
+      | excluded
+    ]
+  end
+
+  defp maybe_add_response_overflow(excluded, _omitted_count), do: excluded
 
   defp selected_first(responses, nil), do: responses
 
@@ -145,8 +165,9 @@ defmodule Storyarn.AI.Context.Builders.Dialogue do
              priority: 2,
              revision: sheet.updated_at
            ),
-         {:ok, block_entities} <- speaker_block_entities(project_id, sheet.id, policy) do
-      {:ok, [sheet_entity | block_entities], [], []}
+         {:ok, block_entities, block_excluded} <-
+           speaker_block_entities(project_id, sheet.id, policy) do
+      {:ok, [sheet_entity | block_entities], block_excluded, []}
     else
       :error ->
         stale_speaker(raw_sheet_id)
@@ -161,9 +182,18 @@ defmodule Storyarn.AI.Context.Builders.Dialogue do
 
   defp speaker_block_entities(project_id, sheet_id, policy) do
     labels = Map.get(policy.fields, :speaker_blocks, [])
+    detail_limit = policy.max_fan_out + policy.max_entities
 
-    project_id
-    |> Sheets.list_context_blocks_by_labels(sheet_id, labels, policy.max_fan_out)
+    blocks = Sheets.list_context_blocks_by_labels(project_id, sheet_id, labels, detail_limit)
+    total_count = Sheets.count_context_blocks_by_labels(project_id, sheet_id, labels)
+    {included, overflow} = Enum.split(blocks, policy.max_fan_out)
+
+    excluded =
+      overflow
+      |> Enum.map(&excluded_speaker_block/1)
+      |> maybe_add_speaker_overflow(total_count - length(blocks), sheet_id)
+
+    included
     |> Enum.reduce_while({:ok, []}, fn block, {:ok, acc} ->
       case Entity.new(
              "sheet_block",
@@ -181,10 +211,32 @@ defmodule Storyarn.AI.Context.Builders.Dialogue do
       end
     end)
     |> case do
-      {:ok, entities} -> {:ok, Enum.reverse(entities)}
+      {:ok, entities} -> {:ok, Enum.reverse(entities), excluded}
       {:error, reason} -> {:error, reason}
     end
   end
+
+  defp excluded_speaker_block(block) do
+    %{
+      "type" => "sheet_block",
+      "id" => block.id,
+      "reason" => "fan_out_limit"
+    }
+  end
+
+  defp maybe_add_speaker_overflow(excluded, remaining, sheet_id) when remaining > 0 do
+    [
+      %{
+        "type" => "sheet_block_overflow",
+        "id" => "sheet-#{sheet_id}",
+        "reason" => "fan_out_limit",
+        "omitted_count" => remaining
+      }
+      | excluded
+    ]
+  end
+
+  defp maybe_add_speaker_overflow(excluded, _remaining, _sheet_id), do: excluded
 
   defp stale_speaker(raw_sheet_id) do
     {:ok, [], [%{"type" => "sheet", "id" => raw_sheet_id, "reason" => "stale_reference"}], ["stale_reference"]}

@@ -52,7 +52,8 @@ defmodule Storyarn.Flows.ContextQueries do
           nodes: %{node.id => {node, 0}},
           connections: %{},
           frontier: [node.id],
-          excluded: []
+          excluded: [],
+          fan_out_detail_count: 0
         }
 
         {:ok, walk(state, 0, max_depth, max_fan_out, max_entities)}
@@ -67,39 +68,18 @@ defmodule Storyarn.Flows.ContextQueries do
   end
 
   defp walk(state, depth, max_depth, max_fan_out, max_entities) do
-    {connections, fan_out_excluded} =
-      state.frontier
-      |> Enum.sort()
-      |> Enum.reduce({[], []}, fn node_id, {connections, excluded} ->
-        rows = adjacent_connections(state.flow.id, node_id, max_fan_out + 1)
-        {allowed, overflow} = Enum.split(rows, max_fan_out)
+    connections = select_frontier_connections(state, max_fan_out)
+    discovered_connection_ids = Map.keys(state.connections) ++ Enum.map(connections, & &1.id)
+    remaining_detail_limit = max(max_entities - state.fan_out_detail_count, 0)
 
-        overflow_excluded =
-          Enum.map(overflow, fn connection ->
-            %{
-              "type" => "flow_connection",
-              "id" => connection.id,
-              "reason" => "fan_out_limit"
-            }
-          end)
-
-        {connections ++ allowed, excluded ++ overflow_excluded}
-      end)
-
-    connections =
-      connections
-      |> Enum.uniq_by(& &1.id)
-      |> Enum.sort_by(& &1.id)
-
-    discovered_connection_ids =
-      connections
-      |> MapSet.new(& &1.id)
-      |> MapSet.union(MapSet.new(Map.keys(state.connections)))
-
-    fan_out_excluded =
-      fan_out_excluded
-      |> Enum.reject(&MapSet.member?(discovered_connection_ids, &1["id"]))
-      |> Enum.uniq_by(& &1["id"])
+    {fan_out_excluded, fan_out_detail_count} =
+      fan_out_exclusions(
+        state.flow.id,
+        state.frontier,
+        discovered_connection_ids,
+        remaining_detail_limit,
+        depth + 1
+      )
 
     {connections, next_ids, entity_excluded} =
       select_within_entity_budget(connections, state, max_entities)
@@ -121,7 +101,8 @@ defmodule Storyarn.Flows.ContextQueries do
       | nodes: nodes,
         connections: connections,
         frontier: Enum.map(next_nodes, & &1.id),
-        excluded: state.excluded ++ fan_out_excluded ++ entity_excluded
+        excluded: state.excluded ++ fan_out_excluded ++ entity_excluded,
+        fan_out_detail_count: state.fan_out_detail_count + fan_out_detail_count
     }
 
     walk(next_state, depth + 1, max_depth, max_fan_out, max_entities)
@@ -170,8 +151,84 @@ defmodule Storyarn.Flows.ContextQueries do
     end
   end
 
-  defp adjacent_connections(flow_id, node_id, limit) do
+  defp select_frontier_connections(state, max_fan_out) do
+    known_ids = MapSet.new(Map.keys(state.connections))
+
+    state.frontier
+    |> Enum.sort()
+    |> Enum.reduce({[], known_ids}, fn node_id, {connections, seen_ids} ->
+      rows =
+        adjacent_connections(
+          state.flow.id,
+          node_id,
+          MapSet.to_list(seen_ids),
+          max_fan_out
+        )
+
+      next_seen_ids = Enum.reduce(rows, seen_ids, &MapSet.put(&2, &1.id))
+      {connections ++ rows, next_seen_ids}
+    end)
+    |> elem(0)
+    |> Enum.sort_by(& &1.id)
+  end
+
+  defp fan_out_exclusions(flow_id, frontier, discovered_ids, detail_limit, depth) do
+    query = adjacent_query(flow_id, frontier, discovered_ids)
+    total_count = Repo.aggregate(query, :count, :id)
+
+    detail_ids =
+      if detail_limit > 0 do
+        Repo.all(
+          from(connection in query,
+            order_by: [asc: connection.id],
+            limit: ^detail_limit,
+            select: connection.id
+          )
+        )
+      else
+        []
+      end
+
+    excluded =
+      Enum.map(detail_ids, fn connection_id ->
+        %{
+          "type" => "flow_connection",
+          "id" => connection_id,
+          "reason" => "fan_out_limit"
+        }
+      end)
+
+    remaining = total_count - length(detail_ids)
+
+    excluded =
+      if remaining > 0 do
+        [
+          %{
+            "type" => "flow_connection_overflow",
+            "id" => "depth-#{depth}",
+            "reason" => "fan_out_limit",
+            "omitted_count" => remaining
+          }
+          | excluded
+        ]
+      else
+        excluded
+      end
+
+    {excluded, length(detail_ids)}
+  end
+
+  defp adjacent_connections(flow_id, node_id, excluded_ids, limit) do
     Repo.all(
+      from(connection in adjacent_query(flow_id, [node_id], excluded_ids),
+        order_by: [asc: connection.id],
+        limit: ^limit
+      )
+    )
+  end
+
+  defp adjacent_query(flow_id, node_ids, excluded_ids) do
+    query =
       from(connection in FlowConnection,
         join: source in FlowNode,
         on: source.id == connection.source_node_id,
@@ -179,13 +236,15 @@ defmodule Storyarn.Flows.ContextQueries do
         on: target.id == connection.target_node_id,
         where:
           connection.flow_id == ^flow_id and
-            (connection.source_node_id == ^node_id or connection.target_node_id == ^node_id) and
-            is_nil(source.deleted_at) and is_nil(target.deleted_at),
-        order_by: [asc: connection.id],
-        limit: ^limit
+            (connection.source_node_id in ^node_ids or connection.target_node_id in ^node_ids) and
+            is_nil(source.deleted_at) and is_nil(target.deleted_at)
       )
-    )
+
+    exclude_connections(query, excluded_ids)
   end
+
+  defp exclude_connections(query, []), do: query
+  defp exclude_connections(query, ids), do: from(connection in query, where: connection.id not in ^ids)
 
   defp list_nodes(_flow_id, []), do: []
 

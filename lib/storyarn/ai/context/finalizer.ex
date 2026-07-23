@@ -9,26 +9,27 @@ defmodule Storyarn.AI.Context.Finalizer do
   @package_version "storyarn-context-v1"
 
   @spec finalize(Policy.t(), String.t(), [Entity.t()], [map()], [String.t()]) ::
-          {:ok, Package.t()} | {:error, :context_too_large | :context_serialization_failed}
+          {:ok, Package.t()}
+          | {:error, :context_too_large | :context_serialization_failed | :invalid_context_entities}
   def finalize(%Policy{} = policy, context_version, entities, excluded \\ [], warnings \\ []) do
     entities = Enum.sort_by(entities, &sort_key/1)
     required = Enum.filter(entities, & &1.required?)
     optional = Enum.reject(entities, & &1.required?)
 
-    with :ok <- required_entity_limit(required, policy),
+    with :ok <- unique_entity_keys(entities),
+         :ok <- required_entity_limit(required, policy),
          {:ok, required_bytes} <- payload_size(policy.scope, required),
          :ok <- required_byte_limit(required_bytes, policy),
          {included, excluded, truncated?} <- include_optional(required, optional, excluded, policy),
          {:ok, payload} <- payload(policy.scope, included),
          {:ok, encoded_payload} <- CanonicalJSON.encode(payload),
          manifest = manifest(included, excluded),
-         {:ok, hash} <- context_hash(context_version, payload, manifest) do
-      warnings =
-        warnings
-        |> maybe_add_warning(truncated?, "optional_context_truncated")
-        |> Enum.uniq()
-        |> Enum.sort()
-
+         warnings =
+           warnings
+           |> maybe_add_warning(truncated?, "optional_context_truncated")
+           |> Enum.uniq()
+           |> Enum.sort(),
+         {:ok, hash} <- context_hash(context_version, payload, manifest, warnings) do
       {:ok,
        %Package{
          version: @package_version,
@@ -109,11 +110,12 @@ defmodule Storyarn.AI.Context.Finalizer do
     }
   end
 
-  defp context_hash(context_version, payload, manifest) do
+  defp context_hash(context_version, payload, manifest, warnings) do
     CanonicalJSON.hash(%{
       "version" => @package_version,
       "context_version" => context_version,
       "payload" => payload,
+      "warnings" => warnings,
       "manifest" => %{
         "included" => manifest.included,
         "excluded" => manifest.excluded
@@ -123,6 +125,12 @@ defmodule Storyarn.AI.Context.Finalizer do
 
   defp required_entity_limit(required, policy) do
     if length(required) <= policy.max_entities, do: :ok, else: {:error, :context_too_large}
+  end
+
+  defp unique_entity_keys(entities) do
+    keys = Enum.map(entities, &{&1.type, &1.id})
+
+    if Enum.uniq(keys) == keys, do: :ok, else: {:error, :invalid_context_entities}
   end
 
   defp required_byte_limit(bytes, policy) do

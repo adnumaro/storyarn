@@ -22,13 +22,19 @@ defmodule Storyarn.Repo.Migrations.AddAiContextProvenance do
     create constraint(:ai_route_options, :ai_route_options_context_complete,
              check:
                "(context_hash IS NULL AND context_manifest IS NULL AND context_subject IS NULL) OR " <>
-                 "(context_hash IS NOT NULL AND context_manifest IS NOT NULL)"
+                 "(context_hash IS NOT NULL AND context_manifest IS NOT NULL AND (" <>
+                 "(COALESCE(context_manifest->>'scope', '') = 'structural_finding' AND context_subject IS NULL) OR " <>
+                 "(COALESCE(context_manifest->>'scope', '') IN ('dialogue', 'flow_neighborhood', 'sheet') AND context_subject IS NOT NULL)" <>
+                 "))"
            )
 
     create constraint(:ai_operations, :ai_operations_context_complete,
              check:
                "(context_hash IS NULL AND context_manifest IS NULL AND context_subject IS NULL) OR " <>
-                 "(context_hash IS NOT NULL AND context_manifest IS NOT NULL)"
+                 "(context_hash IS NOT NULL AND context_manifest IS NOT NULL AND (" <>
+                 "(COALESCE(context_manifest->>'scope', '') = 'structural_finding' AND context_subject IS NULL) OR " <>
+                 "(COALESCE(context_manifest->>'scope', '') IN ('dialogue', 'flow_neighborhood', 'sheet') AND context_subject IS NOT NULL)" <>
+                 "))"
            )
 
     create constraint(:ai_results, :ai_results_context_complete,

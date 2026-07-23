@@ -70,7 +70,12 @@ defmodule StoryarnTest.AI.ContractTask do
   def context_subject(%ExecutionIntent{} = intent) do
     case intent.input do
       %{"context_kind" => "sheet", "sheet_id" => sheet_id} = input ->
-        SubjectRef.sheet(intent.workspace_id, intent.project_id, sheet_id, block_ids: Map.get(input, "block_ids", []))
+        SubjectRef.sheet(
+          Map.get(input, "context_workspace_id", intent.workspace_id),
+          Map.get(input, "context_project_id", intent.project_id),
+          sheet_id,
+          block_ids: Map.get(input, "block_ids", [])
+        )
 
       _input ->
         {:error, :invalid_context_subject}

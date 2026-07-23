@@ -62,6 +62,7 @@ defmodule Storyarn.AI.InferenceProviders.TogetherTest do
       task_id: "operator.managed_diagnostic",
       model: "eu-model-v1",
       input: %{"probe" => "storyarn-managed-ai-diagnostic-v1"},
+      contextual?: false,
       max_output_bytes: 256,
       provider_options: %{
         system_prompt: "Return JSON.",
