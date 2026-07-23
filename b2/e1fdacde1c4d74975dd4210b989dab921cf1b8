@@ -1,0 +1,186 @@
+lib/storyarn/ai/resolved_credential.ex
+  s_6112f11c106698::t_fb507ac95678b9 6,8
+test/storyarn/ai/credential_resolver_managed_test.exs
+  s_6112f11c106698::t_aae299f4330534 28-29,36
+test/support/ai_contract_task.ex
+  s_6112f11c106698::t_8fc7064546a09d 14,26-27
+  s_6112f11c106698::t_c5932423b85d86 29
+  s_6112f11c106698::t_855a4522f943c4 34-53
+assets/app/locales/es/settings.json
+  s_6112f11c106698::t_932a2848d8374d 94-102
+lib/storyarn/ai/credential_resolver/personal.ex
+  s_6112f11c106698::t_218a7cbdf77da3 16
+  s_6112f11c106698::t_fb507ac95678b9 1-15,17-58,60-68
+  s_6112f11c106698::t_c5e783abc7c4b6 59
+lib/storyarn/ai/inference_providers/personal/anthropic.ex
+  s_6112f11c106698::t_218a7cbdf77da3 28
+  s_6112f11c106698::t_1f06795172a30f 1-27,29-116
+lib/storyarn/ai/route_option.ex
+  s_6112f11c106698::t_8fc7064546a09d 92,118-134
+  s_6112f11c106698::t_cc204cd5faeea9 135-137
+lib/storyarn/ai/audit.ex
+  s_6112f11c106698::t_c6078bedfc2a71 20-23
+lib/storyarn/ai/tasks/managed_diagnostic.ex
+  s_6112f11c106698::t_8fc7064546a09d 29
+test/storyarn/ai/personal_byok_test.exs
+  s_6112f11c106698::t_7813f409d18fe6 1-13,15-48,50-388
+  s_6112f11c106698::t_0650e6b72ae1a8 14,49
+lib/storyarn/ai/policy_decision.ex
+  s_6112f11c106698::t_218a7cbdf77da3 162-165
+  s_6112f11c106698::t_8fc7064546a09d 21,32,58,67,73,127,146,149,161,166-167,314-323
+assets/app/live/workspace/settings/WorkspaceSettingsGeneral.vue
+  s_6112f11c106698::t_932a2848d8374d 2-10,35,156-160,340-391,393
+  s_6112f11c106698::t_eb767a6c6745ca 392
+  s_6112f11c106698::t_7887f85cf35b6f 394
+lib/storyarn/ai/credential_resolver.ex
+  s_6112f11c106698::t_218a7cbdf77da3 5,7-8,11
+  s_6112f11c106698::t_fb507ac95678b9 10
+lib/storyarn/ai/inference_providers/open_ai_compatible.ex
+  s_6112f11c106698::t_f4fb076d6bce7e 53
+  s_6112f11c106698::t_b5d7574b31674f 9-10,13,116
+  s_6112f11c106698::t_1f06795172a30f 15-16,18-25,39-48,65,75-76,82-87,92,141-154,172-176
+  s_6112f11c106698::t_218a7cbdf77da3 38,66-74
+  s_6112f11c106698::t_108d7081f82c18 14
+  s_6112f11c106698::t_91c2edba0ef2fd 17
+  s_6112f11c106698::t_64014640f2639d 177
+test/storyarn/ai/personal_runtime_config_test.exs
+  s_6112f11c106698::t_3a0448563a6a08 1-111
+lib/storyarn/ai/credential_resolver/managed.ex
+  s_6112f11c106698::t_fb507ac95678b9 9,21-24
+lib/storyarn/ai/credential_resolver/unavailable.ex
+  s_6112f11c106698::t_fb507ac95678b9 6-9
+lib/storyarn/ai/inference_providers/personal/open_ai.ex
+  s_6112f11c106698::t_1f06795172a30f 1-9
+lib/storyarn/ai/personal_consents.ex
+  s_6112f11c106698::t_218a7cbdf77da3 30,44-45,113-115
+  s_6112f11c106698::t_f4fb076d6bce7e 88-90
+  s_6112f11c106698::t_4b3bf5d2a89f86 106-107,111-112,176-186
+  s_6112f11c106698::t_2399dd83c16bee 33,197-199
+  s_6112f11c106698::t_fb507ac95678b9 91-100,116
+  s_6112f11c106698::t_6f61b1fddff818 103,200,202-203
+  s_6112f11c106698::t_eb510521fe7b79 175
+  s_6112f11c106698::t_e7debe68d006ca 201
+  s_6112f11c106698::t_d568af590eb042 1-29,31-32,34-43,46-87,101-102,104-105,108-110,117-174,187-196,204-229
+lib/storyarn/ai/credential_resolver/composite.ex
+  s_6112f11c106698::t_fb507ac95678b9 1-29
+lib/storyarn/ai/execution.ex
+  s_6112f11c106698::t_a1a9c877ef9346 31-34,36,66,71
+lib/storyarn/ai/runtime.ex
+  s_6112f11c106698::t_c6078bedfc2a71 27-28,55
+lib/storyarn/ai/inference_providers/personal/mistral.ex
+  s_6112f11c106698::t_1f06795172a30f 1-9
+assets/app/test/live/workspace/settings/WorkspaceSettingsGeneral.test.ts
+  s_6112f11c106698::t_5a3026ae865ebd 103-144,162-164
+docs/features/ai-platform/OVERVIEW.md
+  s_6112f11c106698::t_f2fe48a145a4bf 34-35
+lib/storyarn/ai/execution_route.ex
+  s_6112f11c106698::t_8fc7064546a09d 56,88-96
+lib/storyarn/ai/workspace_policy.ex
+  s_6112f11c106698::t_8fc7064546a09d 10
+docs/features/ai-platform/SLICE_4_PERSONAL_BYOK_LANE.md
+  s_6112f11c106698::t_33ad175e01f15e 74-75,77-79,81
+  s_6112f11c106698::t_f2fe48a145a4bf 85
+test/storyarn/ai/execution_test.exs
+  s_6112f11c106698::t_bfce7e9bb180de 341,361,363,378,420,456
+lib/storyarn_web/live/settings_live/integrations.ex
+  s_6112f11c106698::t_f818dfe1523526 108
+  s_6112f11c106698::t_18d3e36118a6e2 9-10,16,19-21,45,60-67,100,113,118-131,133
+  s_6112f11c106698::t_fbc6ae67013929 132
+  s_6112f11c106698::t_d3220c62e83427 134
+lib/storyarn/ai/personal_consent.ex
+  s_6112f11c106698::t_e1015a51631d2d 1-66
+lib/storyarn_web/live/settings_live/workspace_general.ex
+  s_6112f11c106698::t_f1cc9550b50ac3 85-96,245,253,259-280,328
+lib/storyarn/ai/inference_providers/personal/deep_seek.ex
+  s_6112f11c106698::t_1f06795172a30f 1-9
+priv/gettext/en/LC_MESSAGES/workspaces.po
+  s_6112f11c106698::t_1eae6c067595af 263-296
+assets/app/locales/en/settings.json
+  s_6112f11c106698::t_932a2848d8374d 94-102
+lib/storyarn/ai/personal_providers.ex
+  s_6112f11c106698::t_d568af590eb042 1-17,19-31,33-35,46-59,61-67,69-83
+  s_6112f11c106698::t_8fc7064546a09d 18,60,68
+  s_6112f11c106698::t_a8f38fb9b3a155 32,36-45
+lib/storyarn/ai/route_resolver.ex
+  s_6112f11c106698::t_83d812c27a364d 11-13,23-38,102-110,113-172
+  s_6112f11c106698::t_9f342d04deeaff 173
+lib/storyarn/ai/integration_crud.ex
+  s_6112f11c106698::t_218a7cbdf77da3 103,165
+  s_6112f11c106698::t_c6078bedfc2a71 20,73-74,94-95,104-106,163,166-168,218
+  s_6112f11c106698::t_f818dfe1523526 85-90
+  s_6112f11c106698::t_a8f38fb9b3a155 102,164,169-217,219
+  s_6112f11c106698::t_c5e783abc7c4b6 98
+  s_6112f11c106698::t_c9513e0fb266cb 220
+config/test.exs
+  s_6112f11c106698::t_855a4522f943c4 67
+  s_6112f11c106698::t_46b0f814934e0c 51-52,55,64-66,68-69
+  s_6112f11c106698::t_218a7cbdf77da3 3-4,53-54,61-63,74-83
+  s_6112f11c106698::t_e8cebd92d72452 50
+  s_6112f11c106698::t_91ec7ff2ef8dbd 84
+test/storyarn_web/live/settings_live/integrations_test.exs
+  s_6112f11c106698::t_5a3026ae865ebd 8,50-60
+  s_6112f11c106698::t_6c19d22c8919e3 61-62
+lib/storyarn/ai/executor.ex
+  s_6112f11c106698::t_f7990cd83ce613 22,24,28,43
+.env.example
+  s_6112f11c106698::t_f2fe48a145a4bf 144-170
+test/storyarn/ai/integration_crud_test.exs
+  s_6112f11c106698::t_f818dfe1523526 82,103-104,109,113-114,116,125-131,142
+test/storyarn/ai/inference_providers/personal_test.exs
+  s_6112f11c106698::t_65aeb332923831 1-126
+lib/storyarn/ai/task.ex
+  s_6112f11c106698::t_e54051b089007d 190,195
+  s_6112f11c106698::t_8fc7064546a09d 34,60,142,192-194,197-200
+  s_6112f11c106698::t_bfce7e9bb180de 191,196
+  s_6112f11c106698::t_b88202d3416265 201
+priv/gettext/es/LC_MESSAGES/workspaces.po
+  s_6112f11c106698::t_1eae6c067595af 263-296
+lib/storyarn/ai/inference_providers/personal/google.ex
+  s_6112f11c106698::t_1f06795172a30f 1-9
+test/storyarn_web/live/settings_live/workspace_general_test.exs
+  s_6112f11c106698::t_5a3026ae865ebd 177,187-213,243-261
+lib/storyarn/ai/inference_providers/personal/moonshot.ex
+  s_6112f11c106698::t_1f06795172a30f 1-9
+test/storyarn/ai/runtime_test.exs
+  s_6112f11c106698::t_bfce7e9bb180de 112-113,115-119
+priv/docs/es/ai/01-overview.md
+  s_6112f11c106698::t_f2fe48a145a4bf 15-31,35
+lib/storyarn/ai.ex
+  s_6112f11c106698::t_f818dfe1523526 30
+  s_6112f11c106698::t_027377612af41f 19,41-42
+priv/docs/en/ai/01-overview.md
+  s_6112f11c106698::t_f2fe48a145a4bf 15-31,35
+lib/storyarn/ai/operations.ex
+  s_6112f11c106698::t_f7990cd83ce613 7,10,38-40,45-46,100-103,110,129,156,397-406
+  s_6112f11c106698::t_4fb9ff0c5faa00 407-409
+test/storyarn/ai/policy_test.exs
+  s_6112f11c106698::t_bfce7e9bb180de 60-75
+lib/storyarn/ai/results.ex
+  s_6112f11c106698::t_f7990cd83ce613 7,9,94-95
+priv/gettext/workspaces.pot
+  s_6112f11c106698::t_1eae6c067595af 289-322
+priv/repo/migrations/20260723100000_add_personal_byok_lane.exs
+  s_6112f11c106698::t_218a7cbdf77da3 36-43
+  s_6112f11c106698::t_e1015a51631d2d 1-35,44-71
+test/support/ai_fake_credential_resolver.ex
+  s_6112f11c106698::t_fb507ac95678b9 9,13-20
+config/runtime.exs
+  s_6112f11c106698::t_36b0ef08218fcd 3,5,7-12,82,84-136,138-144,151-159,161-162,165-168,174,176-181,229-230,270,273-287
+  s_6112f11c106698::t_218a7cbdf77da3 137,145-150,170-171,173,175,182-185,187-190,192-211,213,215-217,219-227,232-235,237-265,268-269,271-272
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "b2e1fdacde1c4d74975dd4210b989dab921cf1b8",
+  "prompts": {},
+  "sessions": {
+    "s_6112f11c106698": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b7-96ce-73c1-8639-7be0374aaff0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
