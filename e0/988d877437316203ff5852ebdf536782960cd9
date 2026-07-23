@@ -1,0 +1,76 @@
+assets/app/live/account/settings/integrations/PreferenceCard.vue
+  s_6112f11c106698::t_2301186da0f9aa 278
+assets/app/live/account/settings/ProviderIntegrationDetail.vue
+  s_6112f11c106698::t_2301186da0f9aa 54-58
+lib/storyarn/ai/personal_preferences.ex
+  s_6112f11c106698::t_3d7fac8d8c6d87 407,439,751-754
+lib/storyarn_web/live/settings_live/sudo.ex
+  s_6112f11c106698::t_359d52e57b1cbf 1-22
+assets/app/live/account/settings/MyAITeam.vue
+  s_6112f11c106698::t_2301186da0f9aa 3,39-40,45-56,65-68,108-112
+test/e2e/settings_reauthentication_test.exs
+  s_6112f11c106698::t_a949bbcd4d0b2b 72,76
+assets/app/locales/en/integrations.json
+  s_6112f11c106698::t_a949bbcd4d0b2b 222-223
+lib/storyarn/ai/route_resolver.ex
+  s_6112f11c106698::t_3d7fac8d8c6d87 22-47,50,55-63,72-82,84-85,87,91-119
+priv/repo/migrations/20260723200000_invalidate_personal_ai_on_workspace_membership_removal.exs
+  s_6112f11c106698::t_d56f96203e278d 16-23,25-33,35-41,43-48,52-56,61-65,67-68,71-74
+  s_6112f11c106698::t_3d7fac8d8c6d87 1-15,24,34,42,49-51,57-60,66,69-70,75-76
+assets/app/locales/es/integrations.json
+  s_6112f11c106698::t_a949bbcd4d0b2b 222-223
+assets/app/test/live/account/settings/MyAITeam.test.ts
+  s_6112f11c106698::t_d47621acf67789 2,107-110,240-260
+  s_6112f11c106698::t_b2bbe858e1a379 261
+test/storyarn/ai/integration_assignments_test.exs
+  s_6112f11c106698::t_a09520f593608f 238,243-244
+assets/app/live/account/settings/integrations/PreferenceCombobox.vue
+  s_6112f11c106698::t_2301186da0f9aa 116
+assets/app/live/account/settings/MyAITeamOverview.vue
+  s_6112f11c106698::t_2301186da0f9aa 183
+test/storyarn_web/live/settings_live/ai_team_test.exs
+  s_6112f11c106698::t_37f91b10b7f26f 282,284-286,289-293
+  s_6112f11c106698::t_b7f3943de97feb 294
+test/storyarn/ai/personal_preferences_test.exs
+  s_6112f11c106698::t_bafaf3c199aa65 289,384,387
+  s_6112f11c106698::t_37f91b10b7f26f 10,307,310,354-383,385-386,388-418,420-428,430
+  s_6112f11c106698::t_d56f96203e278d 419
+  s_6112f11c106698::t_74b1afafe25824 429
+  s_6112f11c106698::t_aff663e40b18c2 431
+assets/app/test/live/account/settings/PreferenceCard.test.ts
+  s_6112f11c106698::t_d47621acf67789 244-256,268-270
+assets/app/test/live/account/settings/MyAITeamOverview.test.ts
+  s_6112f11c106698::t_d47621acf67789 257-270
+priv/docs/en/ai/01-overview.md
+  s_6112f11c106698::t_a949bbcd4d0b2b 74
+lib/storyarn_web/live/settings_live/ai_team.ex
+  s_6112f11c106698::t_359d52e57b1cbf 13,149
+lib/storyarn_web/live/settings_live/integration_detail.ex
+  s_6112f11c106698::t_359d52e57b1cbf 13,266
+assets/app/test/live/account/settings/ProviderIntegrationDetail.test.ts
+  s_6112f11c106698::t_d47621acf67789 206-225
+  s_6112f11c106698::t_c699d06b4f41a7 226-227
+lib/storyarn/ai/execution.ex
+  s_6112f11c106698::t_3d7fac8d8c6d87 31-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "e0988d877437316203ff5852ebdf536782960cd9",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_6112f11c106698": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b7-96ce-73c1-8639-7be0374aaff0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
