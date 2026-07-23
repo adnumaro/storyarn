@@ -46,7 +46,7 @@ export function accountPaletteCommands(
       labelKey: "settings.nav.items.integrations",
       groupKey: "settings.nav.sections.account",
       icon: Plug,
-      href: "/users/settings/integrations",
+      href: sensitiveSettingsPath("/users/settings/integrations", sudoGrant),
     });
   }
 

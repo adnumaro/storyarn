@@ -1,5 +1,6 @@
-import { mount } from "@vue/test-utils";
-import { describe, expect, it, vi } from "vitest";
+import { flushPromises, mount } from "@vue/test-utils";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { nextTick } from "vue";
 import AuthConfirmAccessForm from "../../../../live/auth/confirm-access/AuthConfirmAccessForm.vue";
 import { createMockLive } from "../../../setup";
 import type { LiveInterface } from "../../../../shared/composables/useLive";
@@ -9,6 +10,11 @@ function mountForm(live: LiveInterface = createMockLive()) {
     props: {
       email: "ada@example.com",
       backUrl: "/workspaces/ada",
+      confirmAction: "/users/confirm-access",
+      csrfToken: "csrf-token",
+      returnTo: "/users/settings/security",
+      sudoHandoff: null,
+      triggerSubmit: false,
     },
     global: {
       provide: {
@@ -19,6 +25,10 @@ function mountForm(live: LiveInterface = createMockLive()) {
 }
 
 describe("AuthConfirmAccessForm", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("renders the current user's email as read only", () => {
     const wrapper = mountForm();
     const emailInput = wrapper.find('input[name="user[email]"]');
@@ -27,7 +37,7 @@ describe("AuthConfirmAccessForm", () => {
     expect(emailInput.attributes("readonly")).toBeDefined();
   });
 
-  it("uses a LiveView event without exposing session or redirect fields", async () => {
+  it("validates the password through LiveView before submitting the session rotation", async () => {
     const live = createMockLive();
     const wrapper = mountForm(live);
 
@@ -40,10 +50,34 @@ describe("AuthConfirmAccessForm", () => {
       expect.any(Function),
     );
 
-    const form = wrapper.get("#confirm-access-form");
-    expect(form.attributes("action")).toBeUndefined();
-    expect(wrapper.find('input[name="_csrf_token"]').exists()).toBe(false);
-    expect(wrapper.find('input[name="return_to"]').exists()).toBe(false);
+    const hiddenForm = wrapper.get('form[action="/users/confirm-access"]');
+    expect(hiddenForm.attributes("method")).toBe("post");
+    expect(hiddenForm.get('input[name="_csrf_token"]').attributes("value")).toBe("csrf-token");
+    expect(hiddenForm.get('input[name="return_to"]').attributes("value")).toBe(
+      "/users/settings/security",
+    );
+  });
+
+  it("submits the signed handoff after LiveView validates the password", async () => {
+    const submittedHandoffs: string[] = [];
+
+    vi.spyOn(HTMLFormElement.prototype, "submit").mockImplementation(
+      function (this: HTMLFormElement) {
+        const handoffInput = this.querySelector<HTMLInputElement>('input[name="sudo_handoff"]');
+        submittedHandoffs.push(handoffInput?.value ?? "");
+      },
+    );
+
+    const wrapper = mountForm();
+
+    await wrapper.setProps({
+      sudoHandoff: "signed-sudo-handoff",
+      triggerSubmit: true,
+    });
+    await nextTick();
+    await flushPromises();
+
+    expect(submittedHandoffs).toEqual(["signed-sudo-handoff"]);
   });
 
   it("keeps the back destination outside protected settings", () => {
@@ -83,7 +117,7 @@ describe("AuthConfirmAccessForm", () => {
     expect(passwordInput.attributes("aria-describedby")).toBe("confirm-password-error");
   });
 
-  it("accepts the empty reply returned before a successful LiveView navigation", async () => {
+  it("accepts the empty reply returned while LiveView prepares session rotation", async () => {
     const live = createMockLive();
 
     vi.mocked(live.pushEvent).mockImplementation((_event, _payload, callback) => {

@@ -204,3 +204,9 @@ msgstr "Usa una contraseña segura que no utilices en ningún otro sitio."
 #, elixir-autogen, elixir-format
 msgid "Back to log in"
 msgstr "Volver a iniciar sesión"
+
+#: lib/storyarn_web/controllers/user_session_controller.ex:121
+#: lib/storyarn_web/controllers/user_session_controller.ex:137
+#, elixir-autogen, elixir-format
+msgid "Your access confirmation has expired. Please try again."
+msgstr "La confirmación de acceso ha caducado. Inténtalo de nuevo."

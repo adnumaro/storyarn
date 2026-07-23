@@ -174,7 +174,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
       vue = get_general_vue(view)
       assert vue.props["ai"]["visible"] == true
       assert vue.props["ai"]["managedAllowed"] == false
-      assert vue.props["ai"]["personalAllowed"] == false
+      assert vue.props["ai"]["personalMembersAllowed"] == false
       assert vue.props["ai"]["allowance"]["status"] == "unavailable"
 
       render_click(view, "update_managed_ai_policy", %{"enabled" => true})
@@ -184,7 +184,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
       assert get_general_vue(view).props["ai"]["managedAllowed"] == true
     end
 
-    test "owner can toggle personal keys without changing the managed policy", %{conn: conn} do
+    test "owner can toggle member access to personal keys without changing the managed policy", %{conn: conn} do
       owner = user_fixture()
       workspace = workspace_fixture(owner)
       scope = user_scope_fixture(owner)
@@ -196,19 +196,19 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
         |> log_in_user(owner)
         |> live(~p"/users/settings/workspaces/#{workspace.slug}/general")
 
-      render_click(view, "update_personal_ai_policy", %{"enabled" => true})
+      render_click(view, "update_personal_ai_members_policy", %{"enabled" => true})
 
       assert {:ok, enabled} = AI.get_workspace_policy(scope, workspace.id)
       assert enabled.allowed_lanes == ["managed", "personal_byok"]
       assert get_general_vue(view).props["ai"]["managedAllowed"] == true
-      assert get_general_vue(view).props["ai"]["personalAllowed"] == true
+      assert get_general_vue(view).props["ai"]["personalMembersAllowed"] == true
 
-      render_click(view, "update_personal_ai_policy", %{"enabled" => false})
+      render_click(view, "update_personal_ai_members_policy", %{"enabled" => false})
 
       assert {:ok, disabled} = AI.get_workspace_policy(scope, workspace.id)
       assert disabled.allowed_lanes == ["managed"]
       assert get_general_vue(view).props["ai"]["managedAllowed"] == true
-      assert get_general_vue(view).props["ai"]["personalAllowed"] == false
+      assert get_general_vue(view).props["ai"]["personalMembersAllowed"] == false
     end
 
     test "flagged admin and member can read but cannot change managed policy", %{conn: conn} do
@@ -253,8 +253,8 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
         |> log_in_user(admin)
         |> live(~p"/users/settings/workspaces/#{workspace.slug}/general")
 
-      html = render_click(view, "update_personal_ai_policy", %{"enabled" => true})
-      assert html =~ "Only the workspace owner can change Personal AI policy."
+      html = render_click(view, "update_personal_ai_members_policy", %{"enabled" => true})
+      assert html =~ "Only the workspace owner can change Personal AI member policy."
 
       assert {:ok, policy} = AI.get_workspace_policy(user_scope_fixture(admin), workspace.id)
       assert policy.allowed_lanes == []

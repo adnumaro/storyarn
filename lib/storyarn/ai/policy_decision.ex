@@ -61,7 +61,8 @@ defmodule Storyarn.AI.PolicyDecision do
          :ok <- domain_permission(access, task, phase),
          :ok <- Task.authorize_subject(task, intent.scope, subject_authorization, phase),
          policy = Policy.get_effective(intent.workspace_id, lock: lock_policy?),
-         :ok <- lane_allowed(policy.allowed_lanes, task.allowed_lanes, lane) do
+         effective_lanes = effective_policy_lanes(policy.allowed_lanes, access.workspace_role),
+         :ok <- lane_allowed(effective_lanes, task.allowed_lanes, lane) do
       {:ok,
        %__MODULE__{
          actor_id: intent.scope.user.id,
@@ -70,7 +71,7 @@ defmodule Storyarn.AI.PolicyDecision do
          task_id: task.id,
          phase: phase,
          policy_version: policy.version,
-         allowed_lanes: allowed_lanes(intent, task, policy.allowed_lanes),
+         allowed_lanes: allowed_lanes(intent, task, effective_lanes),
          base_permission: :use_ai,
          domain_permission: Map.fetch!(task.required_domain_permissions, phase),
          project_role: access.project_role,
@@ -298,14 +299,23 @@ defmodule Storyarn.AI.PolicyDecision do
   defp permission_module(:workspace), do: Workspaces
   defp permission_module(scope) when scope in [:project, :entity], do: Projects
 
+  # Workspace owners govern data egress for the workspace and may always make
+  # an explicit personal-BYOK choice themselves. The persisted personal lane
+  # therefore represents permission for other eligible workspace members.
+  defp effective_policy_lanes(policy_lanes, "owner"), do: Enum.uniq(["personal_byok" | policy_lanes])
+
+  defp effective_policy_lanes(policy_lanes, _workspace_role), do: policy_lanes
+
   defp lane_allowed(policy_lanes, task_lanes, nil) do
     if Enum.any?(task_lanes, &(Atom.to_string(&1) in policy_lanes)), do: :ok, else: {:error, :ai_disabled}
   end
 
   defp lane_allowed(policy_lanes, task_lanes, lane) when lane in [:managed, :personal_byok, :workspace_byok] do
+    task_policy_lanes = Enum.filter(task_lanes, &(Atom.to_string(&1) in policy_lanes))
+
     cond do
-      policy_lanes == [] -> {:error, :ai_disabled}
-      lane in task_lanes and Atom.to_string(lane) in policy_lanes -> :ok
+      task_policy_lanes == [] -> {:error, :ai_disabled}
+      lane in task_policy_lanes -> :ok
       true -> {:error, :lane_not_allowed}
     end
   end

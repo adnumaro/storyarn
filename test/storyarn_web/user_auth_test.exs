@@ -441,6 +441,22 @@ defmodule StoryarnWeb.UserAuthTest do
       assert :error = UserAuth.authorize_sudo(stale_user, session_token, active_grant)
     end
 
+    test "issues a session-rotation handoff that cannot be used as a normal sudo grant", %{
+      user: user
+    } do
+      stale_user = %{user | authenticated_at: DateTime.add(DateTime.utc_now(:second), -21, :minute)}
+      session_token = Accounts.generate_user_session_token(stale_user)
+      another_session_token = Accounts.generate_user_session_token(stale_user)
+      handoff = UserAuth.issue_sudo_handoff(stale_user, session_token)
+
+      assert UserAuth.sudo_handoff_valid?(stale_user, session_token, handoff)
+      refute UserAuth.sudo_handoff_valid?(stale_user, another_session_token, handoff)
+      refute UserAuth.sudo_grant_valid?(stale_user, session_token, handoff)
+
+      normal_grant = UserAuth.issue_sudo_grant(stale_user, session_token)
+      refute UserAuth.sudo_handoff_valid?(stale_user, session_token, normal_grant)
+    end
+
     test "adds the grant to sensitive paths without losing existing query values", %{user: user} do
       session_token = Accounts.generate_user_session_token(user)
       grant = UserAuth.issue_sudo_grant(user, session_token)

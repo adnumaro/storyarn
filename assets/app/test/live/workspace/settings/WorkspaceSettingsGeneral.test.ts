@@ -100,7 +100,7 @@ describe("WorkspaceSettingsGeneral Storyarn AI policy", () => {
     );
   });
 
-  it("keeps personal BYOK policy independent from managed Storyarn AI", async () => {
+  it("keeps member access to personal BYOK independent from managed Storyarn AI", async () => {
     const live = createMockLive();
     const wrapper = mount(WorkspaceSettingsGeneral, {
       props: {
@@ -111,17 +111,22 @@ describe("WorkspaceSettingsGeneral Storyarn AI policy", () => {
         ai: {
           visible: true,
           managedAllowed: true,
-          personalAllowed: false,
+          personalMembersAllowed: false,
           allowance: { status: "active", availableUnits: 25 },
         },
       },
       global: { provide: { _live_vue: live } },
     });
 
-    expect(wrapper.get("#personal-ai-policy").text()).toContain("billed by the provider");
-    expect(wrapper.get("#personal-ai-policy").text()).toContain("leave Storyarn");
-    expect(wrapper.get("#personal-ai-policy").text()).toContain("no automatic fallback");
-    expect(wrapper.get("#personal-ai-policy a").attributes("href")).toBe(
+    expect(wrapper.get("#personal-ai-members-policy").text()).toContain("Personal AI for members");
+    expect(wrapper.get("#personal-ai-members-policy").text()).toContain(
+      "workspace owner can always",
+    );
+    expect(wrapper.get("#personal-ai-members-policy").text()).toContain("leaves Storyarn");
+    expect(wrapper.get("#personal-ai-members-policy").text()).toContain(
+      "cannot guarantee zero retention or no training",
+    );
+    expect(wrapper.get("#personal-ai-members-policy a").attributes("href")).toBe(
       "/users/settings/integrations",
     );
 
@@ -131,7 +136,7 @@ describe("WorkspaceSettingsGeneral Storyarn AI policy", () => {
     await wrapper.vm.$nextTick();
 
     expect(live.pushEvent).toHaveBeenCalledWith(
-      "update_personal_ai_policy",
+      "update_personal_ai_members_policy",
       { enabled: true },
       undefined,
     );

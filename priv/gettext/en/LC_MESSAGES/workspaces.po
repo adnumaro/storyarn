@@ -263,19 +263,19 @@ msgstr ""
 
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:89
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:94
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:277
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:281
 #, elixir-autogen, elixir-format
-msgid "Personal AI policy could not be updated."
+msgid "Personal AI member policy could not be updated."
 msgstr ""
 
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:270
 #, elixir-autogen, elixir-format
-msgid "Personal AI policy updated."
+msgid "Personal AI member policy updated."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:274
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:277
 #, elixir-autogen, elixir-format
-msgid "Only the workspace owner can change Personal AI policy."
+msgid "Only the workspace owner can change Personal AI member policy."
 msgstr ""
 
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:77

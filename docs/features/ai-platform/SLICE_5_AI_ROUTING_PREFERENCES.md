@@ -16,6 +16,18 @@ Initial visible roles:
 
 “My AI Team” means personal defaults for explicitly initiated work. Project/workspace creative routing, shared credentials, and automated jobs are separate future concepts.
 
+## Connection-to-workspace assignment
+
+Personal credentials remain account-level, actor-owned connections. They are not copied into projects or stored once per workspace. Slice 5 adds an explicit assignment between a connection and each workspace where that actor wants to use it:
+
+- A connection may be assigned to multiple workspaces without duplicating its encrypted secret.
+- Assignment is the user's choice and is separate from both the owner-controlled member-egress policy and per-capability consent.
+- An owner may assign their connection to any workspace they own. A non-owner may assign it only where the owner permits member personal AI and the actor has the required task permissions.
+- Central route resolution requires an active workspace assignment before offering a personal route. Removing the assignment invalidates affected route references and consent eligibility without disconnecting the account-level credential.
+- The integrations UI shows each connection's assigned workspaces and explains blocked, permitted, and consent-required states.
+
+The initial UI keeps the Slice-4 limit of one active connection per provider and user. The assignment model must reference a connection id rather than embed provider secrets so it can later support multiple labeled connections for the same provider, such as `OpenAI — Personal` and `OpenAI — Client ACME`. If that extension ships, at most one connection for a provider may be selected by one user in one workspace, while the same connection may still serve several workspaces.
+
 ## Central route resolution
 
 Consumers call `AI.resolve_route(ExecutionIntent)`; they never call `provider_for/2`, inspect integrations, or choose a fallback.
@@ -23,10 +35,11 @@ Consumers call `AI.resolve_route(ExecutionIntent)`; they never call `provider_fo
 Resolution evaluates:
 
 1. task lanes/capability and current workspace policy;
-2. explicit lane/provider/model choice represented by a valid Slice-2 `requested_route_ref` for this invocation;
-3. actor's compatible role/default preference when personal BYOK was requested;
-4. Storyarn managed route when managed was requested;
-5. provider/model health, consent, allowance, and operational switches.
+2. actor-owned connection assignment to the current workspace for personal BYOK;
+3. explicit lane/provider/model choice represented by a valid Slice-2 `requested_route_ref` for this invocation;
+4. actor's compatible role/default preference when personal BYOK was requested;
+5. Storyarn managed route when managed was requested;
+6. provider/model health, consent, allowance, and operational switches.
 
 Failure returns a classified CTA. It never changes payer or provider silently.
 
@@ -55,7 +68,7 @@ Slice-0 provider metadata/settings UI · Slice-2 TaskRegistry/route types · Sli
 
 ## Non-goals
 
-- Workspace/project-owned credentials.
+- Workspace/project-owned credentials or duplicated per-workspace secrets.
 - Shared project role assignments or per-language team routing.
 - Personal translation/DeepL execution tasks or adapters.
 - Destructive DeepL migration.
@@ -70,9 +83,9 @@ Slice-0 provider metadata/settings UI · Slice-2 TaskRegistry/route types · Sli
 
 ## Verification / Definition of Done
 
-- ExUnit: capability/model constraints, actor ownership, central route precedence, broken preference produces CTA, no silent payer/provider switch, Translator/DeepL cannot be assigned without a registered executable personal translation task, DeepL has no model path, legacy translation config remains untouched.
-- Vitest/LiveView: visible role cards exclude Translator, DeepL is absent from assignable preferences, provider/model selector, unavailable/deprecated state, explicit defaults, Storyarn-vs-personal lane disclosure.
-- Browser: configure two providers, assign different roles, revoke one, and verify affected commands show repair rather than fallback.
+- ExUnit: capability/model constraints, actor ownership, workspace assignment ownership and eligibility, one selected connection per actor+workspace+provider, central route precedence, broken preference produces CTA, no silent payer/provider switch, Translator/DeepL cannot be assigned without a registered executable personal translation task, DeepL has no model path, legacy translation config remains untouched.
+- Vitest/LiveView: visible role cards exclude Translator, DeepL is absent from assignable preferences, provider/model selector, workspace assignment states, unavailable/deprecated state, explicit defaults, Storyarn-vs-personal lane disclosure.
+- Browser: configure two providers, assign them to eligible workspaces and different roles, revoke one, and verify affected commands show repair rather than fallback.
 - User documentation explains personal preferences versus project/workspace policy.
 - `just quality-lint` and full relevant suites green.
 

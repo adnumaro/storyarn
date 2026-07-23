@@ -263,20 +263,20 @@ msgstr "Esta invitación no se puede aceptar mientras el espacio de trabajo est�
 
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:89
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:94
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:277
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:281
 #, elixir-autogen, elixir-format
-msgid "Personal AI policy could not be updated."
-msgstr "No se pudo actualizar la política de IA personal."
+msgid "Personal AI member policy could not be updated."
+msgstr "No se pudo actualizar la política de IA personal para miembros."
 
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:270
 #, elixir-autogen, elixir-format
-msgid "Personal AI policy updated."
-msgstr "Política de IA personal actualizada."
+msgid "Personal AI member policy updated."
+msgstr "Política de IA personal para miembros actualizada."
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:274
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:277
 #, elixir-autogen, elixir-format
-msgid "Only the workspace owner can change Personal AI policy."
-msgstr "Solo el propietario del espacio de trabajo puede cambiar la política de IA personal."
+msgid "Only the workspace owner can change Personal AI member policy."
+msgstr "Solo el propietario del espacio de trabajo puede cambiar la política de IA personal para miembros."
 
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:77
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:82

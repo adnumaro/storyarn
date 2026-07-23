@@ -17,10 +17,11 @@ defmodule StoryarnWeb.E2E.SettingsReauthenticationTest do
 
   @moduletag :e2e
 
-  test "returns to account settings without a reload flash or a second confirmation", %{conn: conn} do
+  test "keeps one sudo window after navigating through non-sensitive settings", %{conn: conn} do
     user = user_fixture()
     workspace = Workspaces.get_default_workspace(user)
     stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+    FunWithFlags.enable(:ai_integrations, for_actor: user)
 
     conn
     |> authenticate(user, token_authenticated_at: stale_authenticated_at)
@@ -54,19 +55,24 @@ defmodule StoryarnWeb.E2E.SettingsReauthenticationTest do
     |> assert_has("#settings-layout-wrapper")
     |> assert_has("#profile-display-name")
     |> refute_has("#confirm-access-vue")
-    |> evaluate("document.documentElement.dataset.settingsNavigationSentinel", fn value ->
-      assert value == "kept"
-    end)
-    |> evaluate("window.__settingsNavigationBlank", fn value -> assert value == false end)
     |> evaluate(settings_navigation_blank_observer_expression())
-    |> click("a[href^='/users/settings/security?sudo_grant=']")
+    |> click("a[href='/users/settings/tutorials']")
+    |> assert_path("/users/settings/tutorials")
+    |> assert_has("[data-testid='restart-all-tutorials']")
+    |> refute_has("#confirm-access-vue")
+    |> click("a[href='/users/settings/security']")
     |> assert_path("/users/settings/security")
-    |> evaluate("new URL(window.location.href).searchParams.has('sudo_grant')", fn value ->
-      assert value == true
-    end)
     |> assert_has("#security-password")
     |> refute_has("#confirm-access-vue")
     |> evaluate("window.__settingsNavigationBlank", fn value -> assert value == false end)
+    |> click("a[href='/users/settings/tutorials']")
+    |> assert_path("/users/settings/tutorials")
+    |> assert_has("[data-testid='restart-all-tutorials']")
+    |> refute_has("#confirm-access-vue")
+    |> click("a[href='/users/settings/integrations']")
+    |> assert_path("/users/settings/integrations")
+    |> assert_has("#settings-integrations-page")
+    |> refute_has("#confirm-access-vue")
   end
 
   test "submits the real password form as POST and rotates the authenticated session", %{conn: conn} do

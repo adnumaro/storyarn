@@ -32,7 +32,7 @@ import { useLive } from "@shared/composables/useLive";
 type AiSettings = {
   visible?: boolean;
   managedAllowed?: boolean;
-  personalAllowed?: boolean;
+  personalMembersAllowed?: boolean;
   allowance?: {
     status?: string;
     availableUnits?: number;
@@ -154,9 +154,9 @@ function updateManagedAiPolicy(enabled: boolean) {
   live.pushEvent("update_managed_ai_policy", { enabled });
 }
 
-function updatePersonalAiPolicy(enabled: boolean) {
+function updatePersonalAiMembersPolicy(enabled: boolean) {
   if (!isOwner) return;
-  live.pushEvent("update_personal_ai_policy", { enabled });
+  live.pushEvent("update_personal_ai_members_policy", { enabled });
 }
 </script>
 
@@ -339,7 +339,7 @@ function updatePersonalAiPolicy(enabled: boolean) {
       </div>
 
       <div
-        id="personal-ai-policy"
+        id="personal-ai-members-policy"
         class="flex items-start justify-between gap-5 rounded-xl border border-border bg-card p-5 shadow-sm"
       >
         <div class="min-w-0 space-y-3">
@@ -381,11 +381,11 @@ function updatePersonalAiPolicy(enabled: boolean) {
 
         <div class="flex shrink-0 flex-col items-end gap-2">
           <Switch
-            id="personal-ai-policy-toggle"
-            :model-value="ai.personalAllowed"
+            id="personal-ai-members-policy-toggle"
+            :model-value="ai.personalMembersAllowed"
             :disabled="!isOwner"
             :aria-label="$t('settings.workspace.personal_ai.toggle_label')"
-            @update:model-value="updatePersonalAiPolicy"
+            @update:model-value="updatePersonalAiMembersPolicy"
           />
           <span v-if="!isOwner" class="text-right text-xs text-muted-foreground">
             {{ $t("settings.workspace.personal_ai.owner_only") }}

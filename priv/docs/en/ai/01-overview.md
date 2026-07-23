@@ -18,12 +18,12 @@ Connecting a key does not automatically send project data or enable it for a wor
 
 ## Personal AI keys
 
-A workspace owner can independently allow or disable **Personal AI keys** in **Workspace settings → General**. When enabled, eligible members can explicitly choose a supported provider they connected themselves.
+A workspace owner can always use their own personal connections in a workspace they own. In **Workspace settings → General**, the owner can independently allow or disable **Personal AI for other members**. When enabled, eligible members can explicitly choose a supported provider they connected themselves.
 
 Before Storyarn issues a personal route, it shows the provider, model, project-data scope, capability and cost class. You must consent for that workspace and provider connection. The consent becomes invalid if you disconnect the key, the workspace policy changes, or Storyarn updates the disclosure text.
 
 - The provider bills your own account. Personal runs never consume Storyarn AI allowance.
-- Authorized task content leaves Storyarn and is processed in the provider's infrastructure. Its location and retention depend on your provider account and terms.
+- Authorized task content leaves Storyarn and is processed in the provider's infrastructure. Processing location, retention, and possible model-training use depend on your provider account and terms. Storyarn cannot guarantee zero retention or no training for personal keys.
 - Your key can only run an action you initiate. It is never shared with another member or used by scheduled automation.
 - Storyarn never silently switches between your key and Storyarn AI. You choose the payer and route.
 - A provider rejection does not normally disconnect a key. An authentication failure does, because the credential is no longer usable.

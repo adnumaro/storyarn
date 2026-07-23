@@ -105,6 +105,42 @@ defmodule Storyarn.AI.PersonalByokTest do
     assert is_nil(route.price_units)
   end
 
+  test "workspace owner can use personal BYOK when member access is disabled", ctx do
+    assert {:ok, _policy} = AI.update_workspace_policy(ctx.scope, ctx.workspace.id, [])
+
+    assert {:ok, %{route_options: [], personal_choices: [choice]}} =
+             ctx
+             |> intent!("owner-only draft")
+             |> AI.preflight()
+
+    assert choice.provider == "openai"
+    assert choice.status == :connect_required
+  end
+
+  test "workspace member needs the owner-controlled personal lane", ctx do
+    editor = user_fixture()
+    workspace_membership_fixture(ctx.workspace, editor, "admin")
+    membership_fixture(ctx.project, editor, "editor")
+    editor_scope = user_scope_fixture(editor)
+    FunWithFlags.enable(:ai_integrations, for_actor: editor)
+    on_exit(fn -> FunWithFlags.disable(:ai_integrations, for_actor: editor) end)
+
+    assert {:ok, _policy} = AI.update_workspace_policy(ctx.scope, ctx.workspace.id, [])
+
+    editor_ctx = %{ctx | owner: editor, scope: editor_scope}
+    assert {:error, :ai_disabled} = editor_ctx |> intent!("blocked member") |> AI.preflight()
+
+    assert {:ok, _policy} =
+             AI.update_workspace_policy(ctx.scope, ctx.workspace.id, ["personal_byok"])
+
+    assert {:ok, %{personal_choices: [choice]}} =
+             editor_ctx
+             |> intent!("allowed member")
+             |> AI.preflight()
+
+    assert choice.status == :connect_required
+  end
+
   test "executes with only the actor key and never touches managed allowance", ctx do
     integration = connect_openai!(ctx.owner)
     intent = consented_intent!(ctx, integration, "private draft")

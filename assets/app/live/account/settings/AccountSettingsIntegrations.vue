@@ -128,7 +128,7 @@ function cancelDisconnect(): void {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div id="settings-integrations-page" class="space-y-6">
     <header>
       <h1 class="text-lg font-semibold leading-8">
         {{ t("integrations.page.title") }}

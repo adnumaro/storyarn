@@ -30,9 +30,10 @@ defmodule Storyarn.Accounts.Sessions do
   @doc """
   Re-authenticates one active session without changing its sudo timestamp.
 
-  Sudo elevation is represented by a separate, short-lived signed grant in the
-  web layer. Keeping the primary token unchanged ensures another browser holding
-  a copy of it does not inherit the password confirmation.
+  This verification step does not elevate the existing token. The web layer
+  exchanges a short-lived, session-bound handoff for a freshly authenticated
+  browser session, while the previous token remains un-elevated. A browser
+  holding a copy of the previous token therefore does not inherit confirmation.
   """
   def reauthenticate_user_session(%Scope{user: %User{} = user}, token, password)
       when is_binary(token) and is_binary(password) do

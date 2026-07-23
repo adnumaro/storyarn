@@ -333,6 +333,7 @@ defmodule StoryarnWeb.Router do
            :index
     end
 
+    post "/users/confirm-access", UserSessionController, :confirm_access
     post "/users/update-password", UserSessionController, :update_password
   end
 

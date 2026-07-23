@@ -1,15 +1,28 @@
 <script setup lang="ts">
 import { ArrowRight, LoaderCircle, Shield } from "lucide-vue-next";
-import { onBeforeUnmount, ref, watch } from "vue";
+import { nextTick, onBeforeUnmount, ref, watch } from "vue";
 import PasswordInput from "@components/forms/PasswordInput.vue";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { Label } from "@components/ui/label/index.ts";
 import { useLive } from "@shared/composables/useLive.ts";
 
-const { email, backUrl } = defineProps<{
+const {
+  email,
+  backUrl,
+  confirmAction,
+  csrfToken,
+  returnTo,
+  sudoHandoff = null,
+  triggerSubmit = false,
+} = defineProps<{
   email: string;
   backUrl: string;
+  confirmAction: string;
+  csrfToken: string;
+  returnTo: string;
+  sudoHandoff?: string | null;
+  triggerSubmit?: boolean;
 }>();
 
 const errorCodes = ["invalid_password", "rate_limited", "session_expired"] as const;
@@ -19,6 +32,7 @@ const live = useLive();
 const passwordValue = ref("");
 const errorCode = ref<ErrorCode | null>(null);
 const submitting = ref(false);
+const hiddenFormRef = ref<HTMLFormElement | null>(null);
 const confirmationTimeoutMs = 10_000;
 let confirmationTimeout: ReturnType<typeof setTimeout> | undefined;
 let nextAttemptId = 0;
@@ -27,6 +41,17 @@ let activeAttemptId: number | null = null;
 watch(passwordValue, () => {
   errorCode.value = null;
 });
+
+watch(
+  () => triggerSubmit,
+  async (value) => {
+    if (value && sudoHandoff && hiddenFormRef.value) {
+      await nextTick();
+      hiddenFormRef.value.submit();
+    }
+  },
+  { flush: "post" },
+);
 
 function replyError(reply: unknown): ErrorCode | null {
   if (reply === null || typeof reply !== "object") return null;
@@ -79,6 +104,12 @@ function confirmAccess(): void {
 
 <template>
   <div class="mx-auto max-w-sm space-y-6">
+    <form ref="hiddenFormRef" :action="confirmAction" method="post" class="hidden">
+      <input type="hidden" name="_csrf_token" :value="csrfToken" />
+      <input type="hidden" name="sudo_handoff" :value="sudoHandoff || ''" />
+      <input type="hidden" name="return_to" :value="returnTo" />
+    </form>
+
     <div class="text-center space-y-3">
       <div class="flex justify-center">
         <div class="rounded-full bg-yellow-500/10 p-3">

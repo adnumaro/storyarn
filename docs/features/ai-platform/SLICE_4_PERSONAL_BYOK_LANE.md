@@ -2,7 +2,7 @@
 
 ## Objective
 
-Run registered AI tasks through the initiating user's own connected provider. Personal BYOK is an explicit, actor-owned lane: the provider bills that user, no Storyarn allowance is debited, and no other member or unattended/scheduled automation may use the credential.
+Run registered AI tasks through the initiating user's own connected provider. Personal BYOK is an explicit, actor-owned lane: the provider bills that user, no Storyarn allowance is debited, and no other member or unattended/scheduled automation may use the credential. A workspace owner may always make this choice in a workspace they own; the workspace policy controls whether other eligible members may do so.
 
 ## Ownership rules
 
@@ -18,16 +18,17 @@ Run registered AI tasks through the initiating user's own connected provider. Pe
 Extend the versioned Slice-2 workspace policy; do not introduce another policy record or resolver:
 
 - Slice 2 already represents `AI disabled` as no allowed lanes and `Storyarn AI allowed` as the `managed` lane.
-- This slice adds `personal_byok` as an independently allowed lane, so a workspace may permit managed, personal BYOK, both, or neither.
+- This slice adds `personal_byok` as an independently allowed lane for non-owner members. A workspace may permit managed Storyarn AI, member personal BYOK, both, or neither; the owner remains eligible to choose their own personal credential even when member access is disabled.
 - Existing operations retain the exact policy version used for their decision.
 
-Only the workspace owner changes this policy through the existing `:manage_workspace` action in v1. Admins may inspect the effective state but cannot mutate it. Personal consent cannot override workspace prohibition. Provider allowlists, regional rules, and bulk budgets remain future enterprise extensions of the same policy contract.
+Only the workspace owner changes this policy through the existing `:manage_workspace` action in v1. Admins may inspect the effective state but cannot mutate it. For non-owner members, personal consent cannot override workspace prohibition. Provider allowlists, regional rules, and bulk budgets remain future enterprise extensions of the same policy contract.
 
 ## Consent and UX
 
 - The lane is selected explicitly for an action or by an explicit personal preference added in Slice 5.
 - First use is consented per workspace + integration/provider + capability/cost class + policy-text version.
-- Copy states what project data scope will be sent and that the provider bills the user's account.
+- Workspace settings state that the owner can always use their own personal connections and that the switch grants access only to other eligible members.
+- Copy states what project data scope will be sent, that the provider bills the user's account, and that processing region, retention, and possible model-training use depend on that member's provider account. Storyarn does not claim zero retention or no training for personal credentials.
 - Badge: `{Provider} · your key`; provider/model and lane remain visible in result provenance.
 - Missing, revoked, incapable, or unconsented integration yields an explicit connect/repair/consent CTA.
 - There is no silent managed↔personal fallback. Reaching the Storyarn allowance shows choices; the user decides.
@@ -74,7 +75,7 @@ Before broad rollout, close Slice-0 credential-security debt: connect/disconnect
 The platform overview deliberately schedules the first end-user AI task for Slice 7. Therefore this infrastructure slice must not add a fake task shell solely to exercise action UI. It ships and verifies the reusable preflight/consent/route contract plus the real settings surfaces. The first consuming task must complete the deferred action-level acceptance below.
 
 - ExUnit: sudo-protected credential mutation, atomic/durable audit, owner-only credential use, extension of the Slice-2 policy without a parallel resolver, independent managed/personal lane combinations, workspace egress denial, actor removal/revocation before an actor-initiated worker call, rejection of unattended/scheduled use, consent lifecycle, no allowance-ledger writes, capability-specific 403 does not revoke, invalid-key response does, task caps, no retries, sanitized telemetry.
-- Vitest/LiveView in this slice: independent managed/personal workspace controls, personal-data egress and external-billing disclosure, owner-only policy mutation, key-management CTA, and sudo-protected connection mutation.
+- Vitest/LiveView in this slice: independent managed/member-personal workspace controls, owner-always-eligible semantics, personal-data egress, provider retention/training and external-billing disclosure, owner-only member-policy mutation, key-management CTA, and sudo-protected connection mutation whose successful password confirmation rotates only the current browser session and remains valid for the shared twenty-minute window even after navigating through non-sensitive pages.
 - Contract tests in this slice: preflight exposes `connect_required`, `consent_required`, and `ready` without leaking another member's integration; only `ready` receives an opaque route reference.
 - Deferred to the first consuming task: explicit lane picker, per-action cost/data disclosure, consent modal, `{Provider} · your key` badge, connect/repair CTA, allowance-exhausted choice with no automatic switch, and a two-user browser proof that neither can select the other's connection.
 - User documentation covers who pays, what data is sent, and how to revoke consent.

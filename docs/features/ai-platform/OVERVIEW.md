@@ -20,7 +20,7 @@ Storyarn's AI strategy is **Storyarn AI by default, personal BYOK as the advance
 - **Command palette:** deterministic control surface and launcher. It never becomes a result store or grants the model arbitrary tool access.
 - **Execution kernel:** intent, policy, route, operation, provider attempts, results, and outcomes.
 - **Storyarn AI:** managed provider route, bounded allowance, fixed task prices, validation, and provenance.
-- **Personal BYOK:** actor-owned credential route with workspace egress policy and external billing disclosure.
+- **Personal BYOK:** actor-owned credential route with owner-controlled member egress and external billing disclosure.
 - **Tools:** structural analysis, dialogue, scratch VO, structure import, writing suggestions, and images.
 - **Commercial billing:** deliberately last, after beta telemetry proves value and unit economics.
 
@@ -103,7 +103,7 @@ Provider/model capabilities are curated and versioned per model. Provider discov
 
 - Only the initiating credential owner may execute.
 - No Storyarn allowance ledger mutation.
-- Workspace policy must allow personal-provider data egress.
+- Workspace owners may always choose their own personal route; other members require the owner-controlled personal-provider egress policy.
 - Provider billing, consent, and accepted-result sharing are disclosed before execution.
 - Personal credentials never power another member or unattended third-party automation.
 
@@ -127,7 +127,7 @@ No lane silently falls back to another. Allowance exhaustion or route failure re
 
 ## Data, permissions, and result ownership
 
-- Minimum policy supports AI off, Storyarn AI allowed, and personal BYOK allowed.
+- Minimum policy supports Storyarn AI allowed and personal BYOK allowed for members; workspace owners remain eligible to choose their own personal credential.
 - Introduce explicit AI permissions rather than assuming all editors may spend future shared resources: `:use_ai`, `:run_bulk_ai`, and later routing/credential/budget administration.
 - Reauthorize at operation creation, immediately before provider/credential access, and before apply/publish/attach.
 - Unaccepted previews are actor-private. Accepted changes/assets become project data with provenance.

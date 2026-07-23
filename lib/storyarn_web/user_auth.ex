@@ -38,6 +38,8 @@ defmodule StoryarnWeb.UserAuth do
   @sudo_grant_max_age 20 * 60
   @sudo_grant_salt "storyarn sudo access grant"
   @sudo_grant_param "sudo_grant"
+  @sudo_handoff_max_age 60
+  @sudo_handoff_salt "storyarn sudo session handoff"
 
   @doc """
   Logs the user in.
@@ -413,6 +415,21 @@ defmodule StoryarnWeb.UserAuth do
 
   def sudo_grant_valid?(_user, _session_token, _grant), do: false
 
+  @doc "Issues a short-lived handoff that may rotate only the current session after password confirmation."
+  def issue_sudo_handoff(%Accounts.User{id: user_id}, session_token) when is_binary(session_token) do
+    payload = {:sudo_handoff, user_id, session_fingerprint(session_token)}
+
+    Phoenix.Token.sign(StoryarnWeb.Endpoint, @sudo_handoff_salt, payload, max_age: @sudo_handoff_max_age)
+  end
+
+  @doc "Returns whether the supplied sudo handoff is valid for this active session."
+  def sudo_handoff_valid?(%Accounts.User{} = user, session_token, handoff) when is_binary(session_token) do
+    Accounts.session_token_active?(Scope.for_user(user), session_token) and
+      signed_sudo_handoff_matches?(handoff, user, session_token)
+  end
+
+  def sudo_handoff_valid?(_user, _session_token, _handoff), do: false
+
   @doc "Adds or replaces the sudo grant query parameter on a local settings path."
   def with_sudo_grant(path, grant) when is_binary(path) and is_binary(grant) do
     path = safe_sudo_return_to(path) || "/users/settings"
@@ -526,6 +543,21 @@ defmodule StoryarnWeb.UserAuth do
   end
 
   defp signed_sudo_grant_matches?(_grant, _user, _session_token), do: false
+
+  defp signed_sudo_handoff_matches?(handoff, %Accounts.User{id: user_id}, session_token) when is_binary(handoff) do
+    expected_fingerprint = session_fingerprint(session_token)
+
+    case Phoenix.Token.verify(StoryarnWeb.Endpoint, @sudo_handoff_salt, handoff, max_age: @sudo_handoff_max_age) do
+      {:ok, {:sudo_handoff, ^user_id, fingerprint}}
+      when is_binary(fingerprint) and byte_size(fingerprint) == byte_size(expected_fingerprint) ->
+        Plug.Crypto.secure_compare(fingerprint, expected_fingerprint)
+
+      _ ->
+        false
+    end
+  end
+
+  defp signed_sudo_handoff_matches?(_handoff, _user, _session_token), do: false
 
   defp session_fingerprint(session_token), do: :crypto.hash(:sha256, session_token)
 

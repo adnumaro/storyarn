@@ -35,9 +35,11 @@ defmodule StoryarnWeb.UserLive.AuthRedirectTest do
         )
 
       assert String.starts_with?(vue.props["back-url"], "/workspaces/")
-      refute Map.has_key?(vue.props, "login-action")
-      refute Map.has_key?(vue.props, "return-to")
-      refute Map.has_key?(vue.props, "csrf-token")
+      assert vue.props["confirm-action"] == "/users/confirm-access"
+      assert vue.props["return-to"] == "/users/settings/security"
+      assert is_binary(vue.props["csrf-token"])
+      assert vue.props["sudo-handoff"] == nil
+      assert vue.props["trigger-submit"] == false
     end
 
     test "falls back to profile for an unsafe return target", %{conn: conn} do
@@ -52,7 +54,7 @@ defmodule StoryarnWeb.UserLive.AuthRedirectTest do
       assert String.starts_with?(vue.props["back-url"], "/workspaces/")
     end
 
-    test "confirms the current session and ignores a client-supplied destination", %{
+    test "validates the password and prepares a session-bound rotation handoff", %{
       conn: conn,
       user: user
     } do
@@ -63,34 +65,28 @@ defmodule StoryarnWeb.UserLive.AuthRedirectTest do
       {:ok, view, _html} =
         live(conn, ~p"/users/confirm-access?return_to=/users/settings/security")
 
+      refute Accounts.sudo_mode?(elem(Accounts.get_user_by_session_token(token), 0))
+
       render_hook(view, "confirm_access", %{
         "password" => valid_user_password(),
         "return_to" => "/users/settings"
       })
 
-      {granted_path, _flash} = assert_redirect(view)
-      uri = URI.parse(granted_path)
-      grant = URI.decode_query(uri.query)["sudo_grant"]
+      vue =
+        LiveVue.Test.get_vue(view,
+          name: "live/auth/confirm-access/AuthConfirmAccessForm"
+        )
 
-      assert uri.path == "/users/settings/security"
-      assert is_binary(grant)
+      handoff = vue.props["sudo-handoff"]
+      assert is_binary(handoff)
+      assert vue.props["trigger-submit"] == true
+      assert vue.props["return-to"] == "/users/settings/security"
 
       assert {session_user, _inserted_at} = Accounts.get_user_by_session_token(token)
       assert session_user.id == user.id
       assert session_user.authenticated_at == stale_authenticated_at
       refute StoryarnWeb.UserAuth.sudo_mode?(session_user)
-      assert StoryarnWeb.UserAuth.sudo_grant_valid?(session_user, token, grant)
-
-      # A browser holding only a clone of the unchanged cookie does not inherit
-      # the confirmation. The browser carrying the grant can enter directly.
-      assert {:error, {:live_redirect, %{to: confirm_path}}} =
-               live(conn, "/users/settings/security")
-
-      assert confirm_path ==
-               StoryarnWeb.UserAuth.sudo_confirmation_path("/users/settings/security")
-
-      assert {:ok, granted_view, _html} = live(conn, granted_path)
-      assert has_element?(granted_view, "#settings-security-vue")
+      assert StoryarnWeb.UserAuth.sudo_handoff_valid?(session_user, token, handoff)
     end
 
     test "rejects an invalid password without navigating", %{conn: conn} do

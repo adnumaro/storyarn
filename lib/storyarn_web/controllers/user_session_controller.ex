@@ -100,6 +100,45 @@ defmodule StoryarnWeb.UserSessionController do
     match?(%{current_scope: %{user: %Accounts.User{}}}, conn.assigns)
   end
 
+  def confirm_access(conn, %{"sudo_handoff" => sudo_handoff, "return_to" => requested_return_to}) do
+    user = conn.assigns.current_scope.user
+    session_token = get_session(conn, :user_token)
+    return_to = UserAuth.safe_sudo_return_to(requested_return_to) || ~p"/users/settings"
+
+    if UserAuth.sudo_handoff_valid?(user, session_token, sudo_handoff) do
+      # Rotate this browser onto a freshly authenticated session token. The
+      # previous token remains un-elevated, so a browser holding a copy does
+      # not inherit the password confirmation.
+      updated_user = %{user | authenticated_at: TimeHelpers.now()}
+
+      conn
+      |> put_session(:user_return_to, return_to)
+      |> UserAuth.log_in_user(updated_user)
+    else
+      conn
+      |> put_flash(
+        :error,
+        dgettext("identity", "Your access confirmation has expired. Please try again.")
+      )
+      |> redirect(to: UserAuth.sudo_confirmation_path(return_to))
+    end
+  end
+
+  def confirm_access(conn, params) do
+    return_to =
+      params
+      |> Map.get("return_to")
+      |> UserAuth.safe_sudo_return_to()
+      |> Kernel.||(~p"/users/settings")
+
+    conn
+    |> put_flash(
+      :error,
+      dgettext("identity", "Your access confirmation has expired. Please try again.")
+    )
+    |> redirect(to: UserAuth.sudo_confirmation_path(return_to))
+  end
+
   def update_password(conn, %{"user" => user_params} = params) do
     user = conn.assigns.current_scope.user
     session_token = get_session(conn, :user_token)
