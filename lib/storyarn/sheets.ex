@@ -24,6 +24,7 @@ defmodule Storyarn.Sheets do
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.BlockCrud
   alias Storyarn.Sheets.Constraints.Number
+  alias Storyarn.Sheets.ContextQueries
   alias Storyarn.Sheets.GalleryCrud
   alias Storyarn.Sheets.PropertyInheritance
   alias Storyarn.Sheets.ReferenceTracker
@@ -77,6 +78,24 @@ defmodule Storyarn.Sheets do
   """
   @spec get_sheet(id(), id()) :: sheet() | nil
   defdelegate get_sheet(project_id, sheet_id), to: SheetQueries
+
+  @doc false
+  defdelegate get_context_sheet(project_id, sheet_id), to: ContextQueries, as: :get_sheet_brief
+
+  @doc false
+  defdelegate list_context_sheets(project_id, sheet_ids, limit),
+    to: ContextQueries,
+    as: :list_sheet_briefs
+
+  @doc false
+  defdelegate list_context_blocks(project_id, sheet_id, block_ids, limit),
+    to: ContextQueries,
+    as: :list_blocks
+
+  @doc false
+  defdelegate list_context_blocks_by_labels(project_id, sheet_id, labels, limit),
+    to: ContextQueries,
+    as: :list_blocks_by_labels
 
   @doc """
   Gets a single sheet by ID within a project.

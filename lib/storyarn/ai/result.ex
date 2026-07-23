@@ -17,6 +17,8 @@ defmodule Storyarn.AI.Result do
     field :input_encrypted, EncryptedBinary, redact: true
     field :output_encrypted, EncryptedBinary, redact: true
     field :input_hash, :string
+    field :context_hash, :string
+    field :context_manifest, :map
     field :task_id, :string
     field :prompt_version, :string
     field :context_version, :string
@@ -36,11 +38,14 @@ defmodule Storyarn.AI.Result do
     |> cast(attrs, [
       :input_encrypted,
       :input_hash,
+      :context_hash,
+      :context_manifest,
       :task_id,
       :prompt_version,
       :context_version,
       :output_schema_version
     ])
+    |> validate_context()
     |> put_identity_fields(attrs)
     |> validate_required([
       :operation_id,
@@ -65,6 +70,17 @@ defmodule Storyarn.AI.Result do
     result
     |> change(output_encrypted: output, expires_at: expires_at)
     |> validate_required([:output_encrypted, :expires_at])
+  end
+
+  defp validate_context(changeset) do
+    hash = get_field(changeset, :context_hash)
+    manifest = get_field(changeset, :context_manifest)
+
+    if (is_nil(hash) and is_nil(manifest)) or (is_binary(hash) and is_map(manifest)) do
+      changeset
+    else
+      add_error(changeset, :context_hash, "must include hash and manifest together")
+    end
   end
 
   defp put_identity_fields(changeset, attrs) do

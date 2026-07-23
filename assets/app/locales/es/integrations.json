@@ -244,6 +244,30 @@
       "confirm": "Desconectar",
       "cancel": "Mantener"
     },
+    "context_disclosure": {
+      "title": "Contexto enviado a la IA",
+      "summary": "{included} elementos · {size}",
+      "complete": "Completo",
+      "truncated": "Limitado",
+      "scope": "Ámbito",
+      "included": "Incluidos",
+      "excluded": "Excluidos",
+      "tokens": "Tokens estimados",
+      "not_available": "No disponible",
+      "warning_title": "Avisos del contexto",
+      "explanation": "Storyarn selecciona este contexto acotado de forma determinista. El contenido del proyecto no puede ampliar la selección ni ejecutar herramientas.",
+      "scopes": {
+        "dialogue": "Diálogo",
+        "flow_neighborhood": "Entorno del flow",
+        "sheet": "Sheet",
+        "structural_finding": "Hallazgo estructural"
+      },
+      "warnings": {
+        "optional_context_truncated": "Se ha omitido contexto opcional para respetar el límite de la tarea.",
+        "stale_reference": "Parte del contenido referenciado ya no existe o ha dejado de ser accesible.",
+        "depth_limit_reached": "El grafo continúa más allá del límite de profundidad de esta tarea."
+      }
+    },
     "errors": {
       "invalid_key": "El proveedor rechazó esta API key. Revísala e inténtalo de nuevo.",
       "network_error": "No se pudo contactar al proveedor. Comprueba tu conexión e inténtalo de nuevo.",

@@ -20,6 +20,9 @@ defmodule Storyarn.AI.RouteOption do
     field :subject_type, :string
     field :subject_id, :integer
     field :subject_revision, :string
+    field :context_hash, :string
+    field :context_manifest, :map
+    field :context_subject, :map
     field :lane, :string
     field :provider, :string
     field :model, :string
@@ -53,6 +56,9 @@ defmodule Storyarn.AI.RouteOption do
       :subject_type,
       :subject_id,
       :subject_revision,
+      :context_hash,
+      :context_manifest,
+      :context_subject,
       :lane,
       :provider,
       :model,
@@ -91,6 +97,7 @@ defmodule Storyarn.AI.RouteOption do
     |> validate_number(:policy_version, greater_than: 0)
     |> validate_price()
     |> validate_subject()
+    |> validate_context()
     |> unique_constraint(:token_hash)
     |> foreign_key_constraint(:user_id)
     |> foreign_key_constraint(:workspace_id)
@@ -112,6 +119,23 @@ defmodule Storyarn.AI.RouteOption do
       changeset
     else
       add_error(changeset, :subject_type, "must include type, id, and revision together")
+    end
+  end
+
+  defp validate_context(changeset) do
+    hash = get_field(changeset, :context_hash)
+    manifest = get_field(changeset, :context_manifest)
+    subject = get_field(changeset, :context_subject)
+
+    cond do
+      is_nil(hash) and is_nil(manifest) and is_nil(subject) ->
+        changeset
+
+      is_binary(hash) and is_map(manifest) and (is_nil(subject) or is_map(subject)) ->
+        changeset
+
+      true ->
+        add_error(changeset, :context_hash, "must include hash and manifest together")
     end
   end
 

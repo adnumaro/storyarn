@@ -13,6 +13,7 @@ defmodule Storyarn.Flows do
 
   alias Storyarn.Flows.Condition
   alias Storyarn.Flows.ConnectionCrud
+  alias Storyarn.Flows.ContextQueries
   alias Storyarn.Flows.DebugSessionStore
   alias Storyarn.Flows.EntityTrashRefs
   alias Storyarn.Flows.Evaluator.ConditionEval
@@ -120,6 +121,11 @@ defmodule Storyarn.Flows do
   """
   @spec get_flow_brief(integer(), integer()) :: flow() | nil
   defdelegate get_flow_brief(project_id, flow_id), to: FlowCrud
+
+  @doc false
+  defdelegate list_context_flows(project_id, flow_ids, limit),
+    to: ContextQueries,
+    as: :list_flow_briefs
 
   @doc """
   Gets a single flow by ID within a project, including soft-deleted flows.
@@ -278,6 +284,14 @@ defmodule Storyarn.Flows do
   """
   @spec get_node(integer(), integer()) :: flow_node() | nil
   defdelegate get_node(flow_id, node_id), to: NodeCrud
+
+  @doc false
+  defdelegate get_context_node(project_id, node_id), to: ContextQueries, as: :get_node
+
+  @doc false
+  defdelegate get_context_neighborhood(project_id, node_id, max_depth, max_fan_out, max_entities),
+    to: ContextQueries,
+    as: :neighborhood
 
   @doc """
   Gets a single node by ID within a flow.

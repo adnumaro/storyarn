@@ -244,6 +244,30 @@
       "confirm": "Disconnect",
       "cancel": "Keep connected"
     },
+    "context_disclosure": {
+      "title": "Context sent to AI",
+      "summary": "{included} items · {size}",
+      "complete": "Complete",
+      "truncated": "Limited",
+      "scope": "Scope",
+      "included": "Included",
+      "excluded": "Excluded",
+      "tokens": "Estimated tokens",
+      "not_available": "Not available",
+      "warning_title": "Context warnings",
+      "explanation": "Storyarn selects this bounded context deterministically. Project content cannot widen the selection or trigger tools.",
+      "scopes": {
+        "dialogue": "Dialogue",
+        "flow_neighborhood": "Flow neighborhood",
+        "sheet": "Sheet",
+        "structural_finding": "Structural finding"
+      },
+      "warnings": {
+        "optional_context_truncated": "Some optional context was omitted to stay within the task limit.",
+        "stale_reference": "Some referenced content no longer exists or is no longer accessible.",
+        "depth_limit_reached": "The surrounding graph continues beyond this task's depth limit."
+      }
+    },
     "errors": {
       "invalid_key": "This API key was rejected by the provider. Double-check it and try again.",
       "network_error": "Could not reach the provider. Check your connection and try again.",

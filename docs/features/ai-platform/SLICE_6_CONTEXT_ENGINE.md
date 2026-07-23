@@ -1,5 +1,7 @@
 # Slice 6 — Deterministic Context Engine v1
 
+**Status:** implemented on `codex/slice6-context-engine`; PR in review.
+
 ## Objective
 
 Build authorized, deterministic, task-specific context packages with hard size limits and an auditable manifest. V1 performs no hidden LLM summarization: it includes, truncates, or rejects content according to explicit task policy.

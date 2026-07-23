@@ -3,7 +3,10 @@ defmodule Storyarn.AI.Operations do
 
   import Ecto.Query
 
+  alias Storyarn.Accounts.Scope
+  alias Storyarn.Accounts.User
   alias Storyarn.AI.Alerts
+  alias Storyarn.AI.Context
   alias Storyarn.AI.CredentialResolver
   alias Storyarn.AI.ExecutionRoute
   alias Storyarn.AI.Operation
@@ -76,13 +79,14 @@ defmodule Storyarn.AI.Operations do
   end
 
   defp authorize_claim(operation, task, route) do
-    case PolicyDecision.reauthorize(operation, task, :execute, lane: route.lane, lock_policy: true) do
-      {:ok, _decision} ->
-        running = transition!(operation, "running", %{started_at: TimeHelpers.now()})
-        {:claimed, running, task, route}
-
-      {:error, reason} ->
-        {:cancelled, cancel_locked(operation, reason)}
+    with {:ok, _decision} <-
+           PolicyDecision.reauthorize(operation, task, :execute, lane: route.lane, lock_policy: true),
+         {:ok, scope} <- operation_scope(operation),
+         :ok <- Context.operation_current?(scope, task, operation) do
+      running = transition!(operation, "running", %{started_at: TimeHelpers.now()})
+      {:claimed, running, task, route}
+    else
+      {:error, reason} -> {:cancelled, cancel_locked(operation, reason)}
     end
   end
 
@@ -98,6 +102,8 @@ defmodule Storyarn.AI.Operations do
     with %Operation{execution_status: "running", external_attempt_started_at: nil} <- locked,
          {:ok, _decision} <-
            PolicyDecision.reauthorize(locked, task, :execute, lane: route.lane, lock_policy: true),
+         {:ok, scope} <- operation_scope(locked),
+         :ok <- Context.operation_current?(scope, task, locked),
          {:ok, credential} <-
            CredentialResolver.resolve(route.credential_ref, %{operation: locked, task: task, route: route}) do
       insert_attempt(locked, route, credential)
@@ -307,7 +313,7 @@ defmodule Storyarn.AI.Operations do
     Repo.one(from(event in UsageEvent, where: event.operation_id == ^operation.id, lock: "FOR UPDATE"))
   end
 
-  @spec request_cancellation(Storyarn.Accounts.Scope.t(), pos_integer()) ::
+  @spec request_cancellation(Scope.t(), pos_integer()) ::
           {:ok, Operation.t()} | {:error, atom()}
   def request_cancellation(%{user: %{id: actor_id}}, operation_id) do
     Repo.transaction(fn ->
@@ -366,6 +372,15 @@ defmodule Storyarn.AI.Operations do
   defp ensure_transition!(_operation, _next), do: Repo.rollback(:invalid_transition)
 
   defp lock_operation(id), do: Repo.one(from(operation in Operation, where: operation.id == ^id, lock: "FOR UPDATE"))
+
+  defp operation_scope(%Operation{user_id: user_id}) when is_integer(user_id) do
+    case Repo.get(User, user_id) do
+      %User{} = user -> {:ok, Scope.for_user(user)}
+      nil -> {:error, :actor_deleted}
+    end
+  end
+
+  defp operation_scope(%Operation{}), do: {:error, :actor_deleted}
 
   defp lock_running_attempt!(operation_id, usage_id) do
     operation = lock_operation(operation_id)

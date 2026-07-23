@@ -2,6 +2,9 @@ defmodule StoryarnTest.AI.ContractTask do
   @moduledoc false
   @behaviour Storyarn.AI.TaskDefinition
 
+  alias Storyarn.AI.Context.SubjectRef
+  alias Storyarn.AI.ExecutionIntent
+
   @impl true
   def definition do
     config = Application.get_env(:storyarn, __MODULE__, [])
@@ -15,7 +18,8 @@ defmodule StoryarnTest.AI.ContractTask do
       input_schema_version: "contract-input-v1",
       output_schema_version: "contract-output-v1",
       prompt_version: "contract-prompt-v1",
-      context_version: "none-v1",
+      context_version: Keyword.get(config, :context_version, "none-v1"),
+      context_policy: Keyword.get(config, :context_policy, %{scope: :none}),
       max_input_bytes: 4_096,
       max_output_bytes: 8_192,
       execution_mode: Keyword.get(config, :execution_mode, :inline),
@@ -61,4 +65,17 @@ defmodule StoryarnTest.AI.ContractTask do
   @impl true
   def validate_output(%{"echo" => %{"text" => text}}) when is_binary(text), do: :ok
   def validate_output(_output), do: {:error, :invalid_contract_output}
+
+  @impl true
+  def context_subject(%ExecutionIntent{} = intent) do
+    case intent.input do
+      %{"context_kind" => "sheet", "sheet_id" => sheet_id} = input ->
+        SubjectRef.sheet(intent.workspace_id, intent.project_id, sheet_id, block_ids: Map.get(input, "block_ids", []))
+
+      _input ->
+        {:error, :invalid_context_subject}
+    end
+  end
+
+  def context_subject(_operation), do: {:error, :invalid_context_subject}
 end

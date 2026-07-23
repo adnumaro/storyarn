@@ -11,11 +11,13 @@ defmodule Storyarn.AI.InferenceProviders.Fake do
 
   @impl true
   def generate(_credential, %{input: input, provider_options: options}) do
+    echo_input = if is_map(input), do: Map.get(input, "request", input), else: input
+
     case Map.get(options, :scenario, Map.get(options, "scenario", :success)) do
       scenario when scenario in [:success, "success"] ->
         {:ok,
          %{
-           output: %{"echo" => input},
+           output: %{"echo" => echo_input},
            provider_request_id: "fake-deterministic-request",
            input_units: 1,
            output_units: 1,
@@ -30,7 +32,7 @@ defmodule Storyarn.AI.InferenceProviders.Fake do
         {:error, {:unknown, :transport_outcome_unproven}}
 
       scenario when scenario in [:invalid_metrics, "invalid_metrics"] ->
-        {:ok, %{output: %{"echo" => input}, input_units: -1}}
+        {:ok, %{output: %{"echo" => echo_input}, input_units: -1}}
 
       scenario when scenario in [:crash, "crash"] ->
         exit(:simulated_provider_crash)
