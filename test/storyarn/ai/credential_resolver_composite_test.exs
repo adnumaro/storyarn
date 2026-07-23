@@ -19,7 +19,9 @@ defmodule Storyarn.AI.CredentialResolver.CompositeTest do
   test "missing lanes fail closed without invoking nil as an adapter" do
     assert {:ok, ref} = CredentialRef.new(:workspace_byok, "missing")
     assert {:error, :credential_unavailable} = Composite.resolve(ref, %{})
+  end
 
+  test "recording an outcome is a no-op when the lane has no adapter" do
     credential = %ResolvedCredential{kind: :workspace_byok, value: "ephemeral-secret"}
     assert :ok = Composite.record_outcome(credential, {:ok, :unused})
   end
