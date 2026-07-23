@@ -279,9 +279,18 @@ defmodule StoryarnWeb.SettingsLive.AITeamTest do
 
   test "forged events cannot select another actor's connection", %{conn: conn} do
     user = with_ai_flag(user_fixture())
+    scope = user_scope_fixture(user)
     workspace = workspace_fixture(user)
-    other = user_fixture()
+    other = with_ai_flag(user_fixture())
+    other_scope = user_scope_fixture(other)
+    workspace_membership_fixture(workspace, other, "admin")
     other_integration = connect_openai!(other, "sk-proj-other-wxyz")
+
+    assert {:ok, _policy} =
+             AI.update_workspace_policy(scope, workspace.id, ["personal_byok"])
+
+    assert {:ok, _assignment} =
+             AI.assign_integration(other_scope, other_integration.id, workspace.id)
 
     {:ok, view, _html} =
       conn

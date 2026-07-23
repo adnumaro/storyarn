@@ -275,7 +275,7 @@ watch(() => slotData, resetSelection, { deep: true, immediate: true });
             role: t(`integrations.team.slots.${slotData.slot}.title`),
           })
         "
-        :disabled="pending"
+        :disabled="disabled || pending"
         @click="emit('remove', slotData.slot)"
       >
         <Trash2 class="size-3.5" aria-hidden="true" />

@@ -219,7 +219,8 @@
       "reasons": {
         "owner_allowed": "Eres owner de este workspace",
         "member_policy_allowed": "El owner permite claves personales de IA",
-        "member_policy_disabled": "El owner ha deshabilitado las claves personales de IA"
+        "member_policy_disabled": "El owner ha deshabilitado las claves personales de IA",
+        "workspace_membership_required": "Necesitas ser miembro directo del workspace"
       }
     },
     "connect": {

@@ -7,6 +7,7 @@ defmodule Storyarn.AI.PersonalPreferencesTest do
 
   alias Storyarn.AI
   alias Storyarn.AI.AuditEntry
+  alias Storyarn.AI.IntegrationWorkspaceAssignment
   alias Storyarn.AI.ModelCatalog
   alias Storyarn.AI.PersonalPreference
   alias Storyarn.AI.PersonalPreferences
@@ -285,7 +286,7 @@ defmodule Storyarn.AI.PersonalPreferencesTest do
 
     other = user_fixture()
     other_scope = user_scope_fixture(other)
-    workspace_membership_fixture(ctx.workspace, other, "member")
+    workspace_membership_fixture(ctx.workspace, other, "admin")
     FunWithFlags.enable(:ai_integrations, for_actor: other)
 
     on_exit(fn -> FunWithFlags.disable(:ai_integrations, for_actor: other) end)
@@ -303,10 +304,10 @@ defmodule Storyarn.AI.PersonalPreferencesTest do
              )
   end
 
-  test "member preference writes fail closed when the workspace policy is disabled", ctx do
+  test "admin preference writes fail closed when the workspace policy is disabled", ctx do
     member = user_fixture()
     member_scope = user_scope_fixture(member)
-    workspace_membership_fixture(ctx.workspace, member, "member")
+    workspace_membership_fixture(ctx.workspace, member, "admin")
     FunWithFlags.enable(:ai_integrations, for_actor: member)
 
     on_exit(fn -> FunWithFlags.disable(:ai_integrations, for_actor: member) end)
@@ -347,6 +348,84 @@ defmodule Storyarn.AI.PersonalPreferencesTest do
 
     writer = Enum.find(slots, &(&1.slot == "writing_assistant"))
     assert writer.preference.status == "workspace_policy_denied"
+    assert writer.options == []
+  end
+
+  test "viewer cannot configure personal AI even when the workspace policy allows it", ctx do
+    viewer = user_fixture()
+    viewer_scope = user_scope_fixture(viewer)
+    workspace_membership_fixture(ctx.workspace, viewer, "viewer")
+    FunWithFlags.enable(:ai_integrations, for_actor: viewer)
+
+    on_exit(fn -> FunWithFlags.disable(:ai_integrations, for_actor: viewer) end)
+
+    assert {:ok, _policy} =
+             AI.update_workspace_policy(ctx.scope, ctx.workspace.id, ["personal_byok"])
+
+    integration = connect_openai!(viewer, "sk-proj-viewer-wxyz")
+
+    assert {:ok, _assignment} =
+             AI.assign_integration(viewer_scope, integration.id, ctx.workspace.id)
+
+    assert {:error, :workspace_policy_disabled} =
+             AI.put_personal_preference(
+               viewer_scope,
+               ctx.workspace.id,
+               :writing_assistant,
+               integration.id,
+               @primary_model
+             )
+
+    assert {:ok, %{policy_allowed: false, slots: slots}} =
+             AI.personal_preferences(viewer_scope, ctx.workspace.id)
+
+    assert Enum.all?(slots, &(&1.options == []))
+
+    assert {:ok, %{workspaces: workspaces}} =
+             AI.personal_preferences_overview(viewer_scope)
+
+    overview = Enum.find(workspaces, &(&1.id == ctx.workspace.id))
+    refute overview.can_configure
+    refute overview.policy_allowed
+  end
+
+  test "removing workspace membership permanently invalidates personal AI access", ctx do
+    member = user_fixture()
+    member_scope = user_scope_fixture(member)
+    membership = workspace_membership_fixture(ctx.workspace, member, "admin")
+    FunWithFlags.enable(:ai_integrations, for_actor: member)
+
+    on_exit(fn -> FunWithFlags.disable(:ai_integrations, for_actor: member) end)
+
+    assert {:ok, _policy} =
+             AI.update_workspace_policy(ctx.scope, ctx.workspace.id, ["personal_byok"])
+
+    integration = connect_openai!(member, "sk-proj-membership-wxyz")
+
+    assert {:ok, assignment} =
+             AI.assign_integration(member_scope, integration.id, ctx.workspace.id)
+
+    assert {:ok, preference} =
+             AI.put_personal_preference(
+               member_scope,
+               ctx.workspace.id,
+               :writing_assistant,
+               integration.id,
+               @primary_model
+             )
+
+    Repo.delete!(membership)
+
+    refute Repo.get(IntegrationWorkspaceAssignment, assignment.id)
+    refute Repo.get(PersonalPreference, preference.id)
+
+    workspace_membership_fixture(ctx.workspace, member, "admin")
+
+    assert {:ok, %{slots: slots}} =
+             AI.personal_preferences(member_scope, ctx.workspace.id)
+
+    writer = Enum.find(slots, &(&1.slot == "writing_assistant"))
+    assert is_nil(writer.preference)
     assert writer.options == []
   end
 

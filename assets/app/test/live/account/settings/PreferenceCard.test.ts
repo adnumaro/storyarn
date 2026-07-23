@@ -241,7 +241,19 @@ describe("PreferenceCard", () => {
   it("disables role editing when workspace policy blocks personal AI", () => {
     const wrapper = mount(PreferenceCard, {
       props: {
-        slotData: slot(),
+        slotData: slot({
+          preference: {
+            id: 11,
+            slot: "writing_assistant",
+            integration_id: 42,
+            provider: "openai",
+            provider_name: "OpenAI",
+            model: "personal-deterministic-v1",
+            implementation_status: "executable",
+            status: "ready",
+            payer: "personal_provider_account",
+          },
+        }),
         disabled: true,
       },
     });
@@ -253,5 +265,8 @@ describe("PreferenceCard", () => {
     expect(wrapper.get("#preference-model-writing_assistant").attributes()).toHaveProperty(
       "disabled",
     );
+    expect(
+      wrapper.get('button[aria-label="Remove the Writing assistant configuration"]').attributes(),
+    ).toHaveProperty("disabled");
   });
 });

@@ -180,7 +180,7 @@ function workspaceRoleLabel(role: string | null): string {
             :data-role="role"
             :data-state="stateFor(slotFor(workspace, role))"
           >
-            <p class="mb-2 text-[11px] font-semibold text-muted-foreground xl:hidden">
+            <p class="mb-2 text-[11px] font-semibold text-muted-foreground xl:sr-only">
               {{ t(`integrations.team.slots.${role}.title`) }}
             </p>
 

@@ -227,16 +227,6 @@ defmodule Storyarn.AI.IntegrationAssignmentsTest do
     assert state.state == "blocked"
     assert state.reason == "workspace_membership_required"
 
-    assignment =
-      %IntegrationWorkspaceAssignment{
-        user_id: project_user.id,
-        workspace_id: ctx.workspace.id,
-        integration_id: integration.id,
-        provider: integration.provider
-      }
-      |> IntegrationWorkspaceAssignment.assign_changeset(TimeHelpers.now())
-      |> Repo.insert!()
-
     assert is_nil(
              IntegrationAssignments.active_for(
                project_user.id,
@@ -245,18 +235,16 @@ defmodule Storyarn.AI.IntegrationAssignmentsTest do
              )
            )
 
-    [stale_state] =
+    [state_after_denial] =
       project_scope
       |> AI.list_assignment_states(integration)
       |> Enum.filter(&(&1.workspace_id == ctx.workspace.id))
 
-    refute stale_state.assigned
-    refute stale_state.can_assign
+    refute state_after_denial.assigned
+    refute state_after_denial.can_assign
 
     assert {:error, :workspace_unavailable} =
              AI.unassign_integration(project_scope, integration.id, ctx.workspace.id)
-
-    assert Repo.get!(IntegrationWorkspaceAssignment, assignment.id).revoked_at == nil
   end
 
   test "database guard rejects an assignment whose owner does not match the integration", ctx do

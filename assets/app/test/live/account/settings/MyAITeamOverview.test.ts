@@ -254,6 +254,20 @@ describe("MyAITeamOverview", () => {
     );
   });
 
+  it("keeps each role label available to screen readers in the desktop matrix", () => {
+    const wrapper = mount(MyAITeamOverview, {
+      props: { workspaces: workspaces() },
+    });
+
+    const roleLabel = wrapper
+      .get('[data-workspace-slug="narrative-games"] [data-role="general_assistant"]')
+      .get("p");
+
+    expect(roleLabel.text()).toBe("General assistant");
+    expect(roleLabel.classes()).toContain("xl:sr-only");
+    expect(roleLabel.classes()).not.toContain("xl:hidden");
+  });
+
   it("renders an informative empty state without workspaces", () => {
     const wrapper = mount(MyAITeamOverview, {
       props: { workspaces: [] },

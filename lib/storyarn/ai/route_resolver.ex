@@ -19,13 +19,48 @@ defmodule Storyarn.AI.RouteResolver do
   alias Storyarn.AI.Settlement
   alias Storyarn.AI.Task
 
+  @type resolution :: %{
+          routes: [ExecutionRoute.t()],
+          personal_choices: [map()],
+          personal_preference: map()
+        }
+
+  @spec preflight_options(PolicyDecision.t(), Task.t()) :: resolution()
+  def preflight_options(%PolicyDecision{} = decision, %Task{} = task) do
+    personal = personal_resolution(decision, task)
+
+    routes =
+      Enum.flat_map(decision.allowed_lanes, fn
+        :personal_byok ->
+          ready_personal_routes(personal.choices)
+
+        lane ->
+          route_for_lane(lane, decision, task)
+      end)
+
+    %{
+      routes: routes,
+      personal_choices: personal.choices,
+      personal_preference: personal.preference
+    }
+  end
+
   @spec routes(PolicyDecision.t(), Task.t()) :: [ExecutionRoute.t()]
   def routes(%PolicyDecision{} = decision, %Task{} = task) do
-    Enum.flat_map(decision.allowed_lanes, &route_for_lane(&1, decision, task))
+    preflight_options(decision, task).routes
   end
 
   @spec personal_choices(PolicyDecision.t(), Task.t()) :: [map()]
   def personal_choices(%PolicyDecision{} = decision, %Task{} = task) do
+    personal_resolution(decision, task).choices
+  end
+
+  @spec personal_preference(PolicyDecision.t(), Task.t()) :: map()
+  def personal_preference(%PolicyDecision{} = decision, %Task{} = task) do
+    personal_resolution(decision, task).preference
+  end
+
+  defp personal_resolution(%PolicyDecision{} = decision, %Task{} = task) do
     if :personal_byok in decision.allowed_lanes and task.personal_byok_allowed? and not decision.scheduled? do
       preference = PersonalPreferences.resolve(decision.actor_id, decision.workspace_id, task)
 
@@ -34,48 +69,54 @@ defmodule Storyarn.AI.RouteResolver do
         |> IntegrationCrud.list_active()
         |> Map.new(&{&1.provider, &1})
 
-      task.capability
-      |> PersonalProviders.for_capability()
-      |> Enum.map(
-        &personal_choice(
-          &1,
-          Map.get(integrations, &1.provider),
-          decision,
-          task,
-          preference
+      choices =
+        task.capability
+        |> PersonalProviders.for_capability()
+        |> Enum.map(
+          &personal_choice(
+            &1,
+            Map.get(integrations, &1.provider),
+            decision,
+            task,
+            preference
+          )
         )
-      )
+
+      %{choices: choices, preference: public_preference(preference, choices)}
     else
-      []
+      %{choices: [], preference: unavailable_personal_preference()}
     end
   end
 
-  @spec personal_preference(PolicyDecision.t(), Task.t()) :: map()
-  def personal_preference(%PolicyDecision{} = decision, %Task{} = task) do
-    if :personal_byok in decision.allowed_lanes and task.personal_byok_allowed? and
-         not decision.scheduled? do
-      resolution = PersonalPreferences.resolve(decision.actor_id, decision.workspace_id, task)
+  defp public_preference(resolution, choices) do
+    status =
+      case Enum.find(choices, &preference_choice?(&1, resolution)) do
+        nil -> resolution.status
+        choice -> choice.status
+      end
 
-      status =
-        case Enum.find(personal_choices(decision, task), &preference_choice?(&1, resolution)) do
-          nil -> resolution.status
-          choice -> choice.status
-        end
+    resolution
+    |> PersonalPreferences.public_resolution()
+    |> Map.put(:status, status)
+  end
 
-      resolution
-      |> PersonalPreferences.public_resolution()
-      |> Map.put(:status, status)
-    else
-      %{
-        status: :not_available,
-        slot: nil,
-        assignment_source: nil,
-        preference_id: nil,
-        integration_id: nil,
-        provider: nil,
-        model: nil
-      }
-    end
+  defp unavailable_personal_preference do
+    %{
+      status: :not_available,
+      slot: nil,
+      assignment_source: nil,
+      preference_id: nil,
+      integration_id: nil,
+      provider: nil,
+      model: nil
+    }
+  end
+
+  defp ready_personal_routes(choices) do
+    Enum.flat_map(choices, fn
+      %{status: :ready, route: route} -> [route]
+      _blocked -> []
+    end)
   end
 
   @spec current?(PolicyDecision.t(), Task.t(), ExecutionRoute.t()) :: boolean()
@@ -139,15 +180,6 @@ defmodule Storyarn.AI.RouteResolver do
     else
       _unavailable -> []
     end
-  end
-
-  defp route_for_lane(:personal_byok, decision, task) do
-    decision
-    |> personal_choices(task)
-    |> Enum.flat_map(fn
-      %{status: :ready, route: route} -> [route]
-      _blocked -> []
-    end)
   end
 
   defp route_for_lane(_lane, _decision, _task), do: []

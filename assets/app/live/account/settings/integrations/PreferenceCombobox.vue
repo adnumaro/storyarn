@@ -113,6 +113,7 @@ watch(
               @select="selectOption(option)"
             >
               <span class="min-w-0 flex-1 truncate">{{ option.label }}</span>
+              <span class="sr-only">{{ option.searchText }} {{ option.value }}</span>
               <span
                 v-if="option.badge"
                 class="shrink-0 rounded-full bg-sky-500/10 px-1.5 py-0.5 text-[9px] font-medium text-sky-700 dark:text-sky-300"

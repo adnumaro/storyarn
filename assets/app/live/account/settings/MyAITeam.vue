@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ArrowLeft, Bot, CircleAlert, KeyRound, ShieldCheck } from "lucide-vue-next";
-import { ref } from "vue";
+import { onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import LiveLink from "@components/navigation/LiveLink.vue";
 import { useLive } from "@shared/composables/useLive";
@@ -36,10 +36,24 @@ const live = useLive();
 const pendingSlots = ref(new Set<string>());
 const inlineError = ref<string | null>(null);
 const mutationSequences = new Map<string, number>();
+const mutationTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+const mutationTimeoutMs = 15_000;
 
 function beginMutation(slot: string): number {
   const seq = (mutationSequences.get(slot) ?? 0) + 1;
   mutationSequences.set(slot, seq);
+
+  const previousTimeout = mutationTimeouts.get(slot);
+  if (previousTimeout) clearTimeout(previousTimeout);
+
+  mutationTimeouts.set(
+    slot,
+    setTimeout(() => {
+      if (!finishMutation(slot, seq)) return;
+      inlineError.value = "connection_lost";
+    }, mutationTimeoutMs),
+  );
+
   pendingSlots.value = new Set(pendingSlots.value).add(slot);
   inlineError.value = null;
   return seq;
@@ -47,6 +61,10 @@ function beginMutation(slot: string): number {
 
 function finishMutation(slot: string, seq: number): boolean {
   if (mutationSequences.get(slot) !== seq) return false;
+
+  const timeout = mutationTimeouts.get(slot);
+  if (timeout) clearTimeout(timeout);
+  mutationTimeouts.delete(slot);
 
   const nextPending = new Set(pendingSlots.value);
   nextPending.delete(slot);
@@ -87,6 +105,11 @@ function removePreference(slot: string): void {
     },
   );
 }
+
+onUnmounted(() => {
+  for (const timeout of mutationTimeouts.values()) clearTimeout(timeout);
+  mutationTimeouts.clear();
+});
 </script>
 
 <template>

@@ -71,4 +71,4 @@ If Storyarn AI allowance is exhausted, the managed action does not run. When you
 have a compatible personal route, Storyarn may offer **Use my own API key**.
 Choosing it opens the personal data and provider-billing disclosure; a separate
 personal run starts only after you grant the current task consent. Storyarn
-never changes the payer, provider, model, key, or lane automatically.
+never changes the payer, provider, model, key, or route automatically.

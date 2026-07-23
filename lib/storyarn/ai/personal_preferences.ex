@@ -404,7 +404,7 @@ defmodule Storyarn.AI.PersonalPreferences do
       )
 
     policy_allowed? = eligible?(role, policy)
-    can_configure? = is_binary(role)
+    can_configure? = policy_allowed?
 
     preferences =
       data.preferences
@@ -436,6 +436,7 @@ defmodule Storyarn.AI.PersonalPreferences do
   end
 
   defp overview_preference(nil, _role, _policy_allowed?, _data), do: nil
+  defp overview_preference(_preference, nil, _policy_allowed?, _data), do: nil
 
   defp overview_preference(preference, role, policy_allowed?, data) do
     status = overview_preference_status(preference, role, policy_allowed?, data)
@@ -747,7 +748,10 @@ defmodule Storyarn.AI.PersonalPreferences do
 
   defp eligible?(nil, %WorkspacePolicy{}), do: false
   defp eligible?("owner", %WorkspacePolicy{}), do: true
-  defp eligible?(_role, %WorkspacePolicy{allowed_lanes: lanes}), do: "personal_byok" in lanes
+
+  defp eligible?(role, %WorkspacePolicy{allowed_lanes: lanes}) do
+    Workspaces.can?(role, :use_ai) and "personal_byok" in lanes
+  end
 
   defp require_workspace_membership(nil), do: {:error, :workspace_unavailable}
   defp require_workspace_membership(role) when is_binary(role), do: :ok

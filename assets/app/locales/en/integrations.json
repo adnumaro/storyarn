@@ -219,7 +219,8 @@
       "reasons": {
         "owner_allowed": "You own this workspace",
         "member_policy_allowed": "The workspace owner allows personal AI keys",
-        "member_policy_disabled": "The workspace owner has disabled personal AI keys"
+        "member_policy_disabled": "The workspace owner has disabled personal AI keys",
+        "workspace_membership_required": "Direct workspace membership is required"
       }
     },
     "connect": {

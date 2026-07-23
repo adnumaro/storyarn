@@ -51,7 +51,11 @@ export interface ProviderWorkspaceAssignmentData {
   assignment_id: number | null;
   can_assign: boolean;
   state: "available" | "assigned" | "blocked";
-  reason: "owner_allowed" | "member_policy_allowed" | "member_policy_disabled";
+  reason:
+    | "owner_allowed"
+    | "member_policy_allowed"
+    | "member_policy_disabled"
+    | "workspace_membership_required";
 }
 
 export interface ProviderPreferenceImpactData {

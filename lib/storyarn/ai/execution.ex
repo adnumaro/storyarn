@@ -28,11 +28,15 @@ defmodule Storyarn.AI.Execution do
          :ok <- validate_input(task, intent),
          :ok <- RateLimiter.check_ai_preflight(intent.scope.user.id, task.id),
          {:ok, decision} <- PolicyDecision.authorize(intent, task, :execute),
-         routes = RouteResolver.routes(decision, task),
-         personal_choices = RouteResolver.personal_choices(decision, task),
-         personal_preference = RouteResolver.personal_preference(decision, task),
-         true <- routes != [] or personal_choices != [] do
-      issue_preflight(intent, task, routes, personal_choices, personal_preference)
+         resolution = RouteResolver.preflight_options(decision, task),
+         true <- resolution.routes != [] or resolution.personal_choices != [] do
+      issue_preflight(
+        intent,
+        task,
+        resolution.routes,
+        resolution.personal_choices,
+        resolution.personal_preference
+      )
     else
       false -> {:error, :no_route}
       {:error, reason} -> {:error, reason}

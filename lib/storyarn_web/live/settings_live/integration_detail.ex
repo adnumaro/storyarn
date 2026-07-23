@@ -10,6 +10,7 @@ defmodule StoryarnWeb.SettingsLive.IntegrationDetail do
 
   alias Storyarn.AI
   alias Storyarn.RateLimiter
+  alias StoryarnWeb.SettingsLive.Sudo
   alias StoryarnWeb.UserAuth
 
   on_mount {StoryarnWeb.Live.Hooks.RequireFeatureFlag, :ai_integrations}
@@ -262,20 +263,7 @@ defmodule StoryarnWeb.SettingsLive.IntegrationDetail do
   end
 
   defp with_sudo(socket, fun) do
-    case UserAuth.authorize_sudo(
-           socket.assigns.current_scope.user,
-           socket.assigns.sudo_session_token,
-           socket.assigns.sudo_grant
-         ) do
-      {:ok, _grant} ->
-        fun.(socket)
-
-      :error ->
-        {:noreply,
-         push_navigate(socket,
-           to: UserAuth.sudo_confirmation_path(return_to(socket))
-         )}
-    end
+    Sudo.authorize(socket, return_to(socket), fun)
   end
 
   defp return_to(socket), do: ~p"/users/settings/integrations/#{socket.assigns.provider}"

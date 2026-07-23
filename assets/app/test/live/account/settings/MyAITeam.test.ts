@@ -1,5 +1,5 @@
 import { mount } from "@vue/test-utils";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, type App } from "vue";
 import MyAITeam from "../../../../live/account/settings/MyAITeam.vue";
 import type { PreferenceSlotData } from "../../../../live/account/settings/integrations/PreferenceCard.vue";
@@ -102,6 +102,10 @@ function mountPage(policyAllowed = true, pageSlots = slots()) {
 describe("MyAITeam", () => {
   beforeEach(() => {
     setTestLocale("en");
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("renders the four workspace-scoped roles without a workspace switch", () => {
@@ -231,6 +235,28 @@ describe("MyAITeam", () => {
     await wrapper.vm.$nextTick();
 
     expect(writing.props("pending")).toBe(false);
+  });
+
+  it("releases a pending role when LiveView never acknowledges the mutation", async () => {
+    vi.useFakeTimers();
+    const { wrapper } = mountPage();
+    const writing = wrapper
+      .findAllComponents(PreferenceCardStub)
+      .find((component) => component.props("slotData").slot === "writing_assistant")!;
+
+    await writing.vm.$emit("save", {
+      slot: "writing_assistant",
+      integration_id: 42,
+      model: "personal-deterministic-v1",
+    });
+
+    expect(writing.props("pending")).toBe(true);
+
+    await vi.advanceTimersByTimeAsync(15_000);
+    await wrapper.vm.$nextTick();
+
+    expect(writing.props("pending")).toBe(false);
+    expect(wrapper.get('[role="alert"]').text()).toContain("connection");
   });
 
   it("keeps repairable roles visible but disables configuration when workspace policy blocks AI", () => {

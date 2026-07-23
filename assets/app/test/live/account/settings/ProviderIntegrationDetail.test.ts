@@ -203,6 +203,28 @@ describe("ProviderIntegrationDetail", () => {
     expect(filteredRows[0]!.attributes("data-workspace-id")).toBe("2");
   });
 
+  it("explains when project-only access cannot enable a provider connection", () => {
+    const { wrapper } = mountDetail({
+      workspace_assignments: [
+        {
+          workspace_id: 3,
+          workspace_name: "Project access only",
+          workspace_slug: "project-access-only",
+          role: null,
+          assigned: false,
+          assignment_id: null,
+          can_assign: false,
+          state: "blocked",
+          reason: "workspace_membership_required",
+        },
+      ],
+    });
+
+    expect(wrapper.get('[data-workspace-id="3"]').text()).toContain(
+      "Direct workspace membership is required",
+    );
+  });
+
   it("sends only the selected workspace id when changing access", async () => {
     const { live, wrapper } = mountDetail();
 

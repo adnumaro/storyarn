@@ -10,6 +10,7 @@ defmodule StoryarnWeb.SettingsLive.AITeam do
   use StoryarnWeb, :live_view
 
   alias Storyarn.AI
+  alias StoryarnWeb.SettingsLive.Sudo
   alias StoryarnWeb.UserAuth
 
   on_mount {StoryarnWeb.Live.Hooks.RequireFeatureFlag, :ai_integrations}
@@ -145,22 +146,7 @@ defmodule StoryarnWeb.SettingsLive.AITeam do
   end
 
   defp with_sudo(socket, fun) do
-    case UserAuth.authorize_sudo(
-           socket.assigns.current_scope.user,
-           socket.assigns.sudo_session_token,
-           socket.assigns.sudo_grant
-         ) do
-      {:ok, _grant} ->
-        fun.(socket)
-
-      :error ->
-        return_to = ~p"/users/settings/ai-team/#{socket.assigns.workspace.slug}"
-
-        {:noreply,
-         push_navigate(socket,
-           to: UserAuth.sudo_confirmation_path(return_to)
-         )}
-    end
+    Sudo.authorize(socket, ~p"/users/settings/ai-team/#{socket.assigns.workspace.slug}", fun)
   end
 
   defp positive_integer(value) when is_integer(value) and value > 0, do: {:ok, value}
